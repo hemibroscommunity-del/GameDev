@@ -110,6 +110,18 @@ check('meadow lazily spawns monsters', monsters.length > 0, monsters.length);
 for (const m of monsters) m._wanderPausedUntil = Date.now() + 600000; // freeze wander
 const m0 = monsters[0];
 m0.x = m0.spawnX = FAR; m0.y = m0.spawnY = FAR;
+/* v2.3.1812: m0 is meadow FODDER, and fodder gained a wind-up in this
+   version (server/src/telegraph.js).  Every attack assertion in this file
+   is about the BASIC SWING — dmgTaken, the cooldown stamp, the block price
+   — so the cast is pinned off rather than letting a `lunge` answer for the
+   swing.  Re-pinned before each attack tick because a resolved cast writes
+   _tgNextAt itself.  Telegraph behaviour has its own coverage in
+   combat-lifecycle.test.mjs. */
+const swingOnly = () => {
+  m0._tgPhase = null; m0._tgUntil = 0; m0._tgAim = null; m0._tgTarget = null;
+  m0._tgNextAt = Date.now() + 1e9;
+};
+swingOnly();
 
 // ── 1. aggro chase + dual-protocol dirty marking ──
 ps.x = FAR + 100; ps.y = FAR; // inside MONSTER_AGGRO_RANGE (120), outside ATTACK_RANGE (45)
@@ -126,7 +138,7 @@ check('chase dirties BOTH v1 zone set and v2 entity set (dual-protocol invariant
 m0.x = FAR; m0.y = FAR; // reset drift from the chase tick
 ps.x = FAR + 30; ps.y = FAR; // attackDist 30 <= 45
 ps.blocking = false;
-m0.atkCd = 0;
+m0.atkCd = 0; swingOnly();
 clearDirty();
 room._tickMonsters();
 const atk = room.eventBuffer.find((e) => e.type === 'monster_attack' && e.payload.monsterId === m0.id);
@@ -136,7 +148,7 @@ check('attack: cooldown stamped (no machine-gun swings)', m0.atkCd > Date.now(),
 
 // ── 3. blocking victim ──
 ps.hp = 100; ps.stamina = 100; ps.blocking = true;
-m0.atkCd = 0;
+m0.atkCd = 0; swingOnly();
 clearDirty();
 room._tickMonsters();
 const blk = room.eventBuffer.find((e) => e.type === 'monster_attack' && e.payload.monsterId === m0.id);
@@ -166,7 +178,7 @@ check(BLOCK_COSTS_STAMINA
 // the Math.max(1, …) floor holds the cost at 1 — blocking is never
 // TRULY free (the anti-turtle backstop). ──
 ps.stamina = 100; ps.defenseSpec = { bulwark: 100 };
-m0.atkCd = 0;
+m0.atkCd = 0; swingOnly();
 clearDirty();
 room.eventBuffer.length = 0;
 room._tickMonsters();

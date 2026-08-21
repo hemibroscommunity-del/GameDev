@@ -117,9 +117,26 @@ export const accountMethods = {
       // The rpg blob has no name field (fixed field list, Rule 1), so
       // level + account age is the whole preview.
       const rpg = await this.state.storage.get('rpg:' + id);
+      /* v2.3.1814: the character record joins the preview.  Two jobs.
+         (1) The confirm dialog can say WHO you are about to become by name
+         instead of only "your Lv 7 character" — you may hold several keys.
+         (2) It is how the pre-game screen decides which screen to show at
+         all: a key with a character skips the creator and goes straight
+         into the game (owner: "it should just bring you into the game not
+         the login menu anymore"), and one without it goes to the creator.
+
+         Safe to return here: you already had to present the correct
+         passphrase to reach this branch, so this leaks nothing that
+         exists:true did not already. */
+      const char = await this.state.storage.get('char:' + id);
       return {
         ok: true, settled: true, exists: true, id,
-        preview: { level: (rpg && rpg.level) || 1, createdAt: auth.createdAt },
+        preview: {
+          level: (rpg && rpg.level) || 1,
+          createdAt: auth.createdAt,
+          hasChar: !!(char && char.look),
+          name: (char && char.name) || '',
+        },
       };
     }
 

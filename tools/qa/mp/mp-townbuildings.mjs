@@ -42,6 +42,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Townie', wsPort, webPort });
   await H.enterWorld(P);
   await P.page.waitForTimeout(2500);
+  /* ═══ v2.3.1813: TOWN'S PROPS ARE SWITCHED OFF ═══
+     Owner, sending the re-fused BroTown map: "You can just keep the buildings
+     and NPCS removed for now."  worldProps.js TOWN_PROPS_ENABLED is the switch.
+
+     Skipped rather than deleted, and gated on the FLAG rather than on an empty
+     prop list — those look identical from out here, so a list-based guard would
+     turn a genuine drawing regression into a green run.  The moment the flag
+     goes back to true this whole file runs again, which is exactly when it
+     needs to: the props still carry their v16 positions and will need
+     re-measuring against the new map. */
+  const propsOn = await P.page.evaluate(
+    () => (window.__btTownPropsEnabled ? window.__btTownPropsEnabled() : true));
+  if (!propsOn) {
+    rec.ok('town props are switched off by directive — scenario skipped', true,
+      { flag: 'TOWN_PROPS_ENABLED=false', see: 'src/data/worldProps.js' });
+    await P.ctx.close().catch(() => {});
+    return;
+  }
 
   /* ── 1. all five are on screen, and building-sized ── */
   const drawn = await props(P);

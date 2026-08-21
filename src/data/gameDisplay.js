@@ -2525,6 +2525,25 @@ BT_AUDIO.SFX_MANIFEST = {
   'catch-splash':     '/sfx/fishing/catch-splash.mp3',
   'cook-success':     '/sfx/cooking/cook-success.mp3',
   'sword-swing':   '/sfx/sword/sword-swing.mp3',
+  /* ═══ v2.3.1798: OWNER SWING PACK — three, rotated ═══
+     Owner: "these are sound effects I want to swap out for the sword swing
+     instead (you can rotate between the 3).  The last one is special attack
+     sound."
+     'sword-swing' above is kept as the FALLBACK key rather than deleted:
+     meleeSwingSfx() still returns it, swordSwing() maps it onto the rotation,
+     and anything that plays the key directly keeps working.
+     Each upload was frame-trimmed by tools/trim_mp3.py to the part that is
+     actually the sound — swing-b had 1.08s of leading silence before its
+     transient and a dead tail after it (60KB -> 11KB), swing-c 0.16s (16KB ->
+     8KB).  110KB of upload became 50KB of game asset with no re-encode.
+     mp3, per the v2.3.1610 rule above; proven by tools/qa/mp/audio-formats.mjs. */
+  'sword-swing-1': '/sfx/sword/swing-a.mp3',
+  'sword-swing-2': '/sfx/sword/swing-b.mp3',
+  'sword-swing-3': '/sfx/sword/swing-c.mp3',
+  /* The fourth upload, and the owner named its job: the special attack.  It
+     replaces a three-beep synth arpeggio (see specialAttack in
+     playerActions.js). */
+  'special-swipe': '/sfx/sword/special-swipe.mp3',
   /* v2.3.254: wood-tier sword (the bamboo stick) gets its own swing
      SFX -- airier whoosh sourced from the user-uploaded mov. */
   'bamboo-swing':  '/sfx/sword/bamboo-swing.mp3',
@@ -2590,6 +2609,78 @@ BT_AUDIO.SFX_MANIFEST = {
 /* Regular sword-hit alternation. The two samples cycle so a flurry of hits
    doesn't hammer the same waveform. The original `sword-hit` sample is
    reserved for grand-slam hits per BT_AUDIO.grandSlam(). */
+/* ═══ v2.3.1798: THE SWING ROTATION, LEVEL-MATCHED ═══
+   Same shape as swordHit/magicHit below — a counter on BT_AUDIO and one
+   helper — because that is how this file already alternates a sample set.
+   THE GAIN TABLE IS NOT DECORATION.  The three uploads are recorded at very
+   different levels: peak RMS 0.274 / 0.391 / 0.129, a 3x spread.  (v2.3.1807
+   dropped the third from the rotation on the owner's ear; the table keeps its
+   measurement anyway.)  Rotated raw
+   at one volume, every third swing would sound like it came from another room
+   — a rotation exists to stop the ear noticing repetition, and an audible
+   level step is MORE noticeable than the repetition it was meant to hide.
+   The multipliers bring all three to the loudness of swing-1, which is the one
+   the existing vol:0.55 call sites were tuned against.  Resulting peaks at
+   that volume are 0.44 / 0.36 / 0.40 — no clipping headroom problem.
+   (Measured with tools/audio_analyze.mjs, which decodes through a real
+   Chromium; there is no ffmpeg in this sandbox to normalise the files
+   themselves, so the correction lives at the gain node.) */
+/* ═══ WHICH UPLOAD IS WHICH ═══ (v2.3.1810b — settled, so nobody redoes it)
+     sword-swing-1  swing-a.mp3  freesound_gamestudioattackrelease*384909*
+                                 20898 bytes, shipped untrimmed
+     sword-swing-2  swing-b.mp3  u_xg7ssi08yrswordairswing24*37695*
+                                 60186 -> 11703 (1.08s of leading silence cut)
+     sword-swing-3  swing-c.mp3  musicholderswordsound*260274*
+                                 16800 -> 8160 (0.16s cut)
+     special-swipe               freesound_communityhitswingswordsmall*295566*
+   Recovered from the upload byte sizes through the trim, because the source
+   filenames do not survive into the repo and the owner refers to them by the
+   digits at the end.
+
+   ═══ v2.3.1807 -> v2.3.1810b: WHICH TWO ═══
+   v2.3.1807 dropped sword-swing-3 on "I think it's the 3rd in the order I
+   uploaded ... it sounds more like a hit".  The identification was right —
+   the 3rd upload IS swing-c — but the guess about which sound they disliked
+   was not, and the owner has now named the files outright: "Remove sound
+   ending in 4909 for sword swing and only use alternating between sounds
+   ending in 60274 and 37695."  So swing-1 comes out and swing-3 goes back in.
+   A filename beats an ordinal; that is the whole lesson, and it is why the
+   table above now exists.
+
+   The KEYS and the FILES all stay (see SFX above).  Nothing fetches an
+   unlisted key, so an idle entry costs nothing until something plays it, and
+   the rotation is the whole switch.  Note the gain table still normalises to
+   swing-1's loudness even though swing-1 no longer plays: that is deliberate,
+   because the vol:0.55 call sites were tuned against it, so the pair keep both
+   their match to each other AND their absolute level. */
+BT_AUDIO.SWING_ROTATION = ['sword-swing-3', 'sword-swing-2'];
+BT_AUDIO.SWING_GAIN = {
+  'sword-swing-1': 1.00,   /* out of rotation since v2.3.1810b; kept as the reference the other two are normalised to */
+  'sword-swing-2': 0.70,
+  'sword-swing-3': 2.12,
+};
+BT_AUDIO._swingIdx = 0;
+/* `key` is whatever meleeSwingSfx() decided.  Only the generic sword key is
+   rotated: 'bamboo-swing' is the wood-tier stick's own airier whoosh
+   (v2.3.254) and is a different weapon's sound, not a variant of this one. */
+BT_AUDIO.swordSwing = function (key, opts) {
+  var k = key;
+  if (!k || k === 'sword-swing') {
+    k = this.SWING_ROTATION[this._swingIdx++ % this.SWING_ROTATION.length];
+  }
+  var base = (opts && opts.vol != null) ? opts.vol : 0.6;
+  var o = {};
+  for (var q in opts) o[q] = opts[q];
+  o.vol = base * (this.SWING_GAIN[k] || 1);
+  return this.play(k, o);
+};
+/* v2.3.1798: the special's own sound.  Quietest of the four uploads by a wide
+   margin (peak RMS 0.043 against the swings' 0.27), so it carries a large
+   fixed boost rather than a table entry — it has one caller and one level. */
+BT_AUDIO.specialSwipe = function (opts) {
+  var base = (opts && opts.vol != null) ? opts.vol : 0.6;
+  return this.play('special-swipe', { vol: base * 4.6, pitchVar: 0.04 });
+};
 BT_AUDIO._swordHitToggle = 0;
 BT_AUDIO.swordHit = function (opts) {
   var key = (this._swordHitToggle++ & 1) ? 'sword-hit3' : 'sword-hit2';
@@ -3316,9 +3407,32 @@ export const NPC_DATA = [{
   portrait: '/sprites/npc/mayor-bro-head.webp',
   avatar: '🧔',
   color: '#f5c542',
-  x: 985, y: 565,
-  spawnX: 985, spawnY: 565,
-  renderX: 985, renderY: 565,
+  /* v2.3.1794 (owner: "mayor bro right outside the house"): he followed his
+     house up the stairs.  Beside the door rather than in front of it — the
+     stair head is at x=960 and standing on it would make the one route onto
+     the terrace a squeeze past him, now that NPCs block. */
+  /* v2.3.1813: the re-fused town map (town_v17) is 52x55 tiles where v16 was
+     96x30, so (1055, 300) now sits in the cliffs along the northern rim.
+     Moved onto open cobble 245px north-north-east of TOWN_SPAWN (815, 1010),
+     so he is on screen and straight ahead when the player lands — the job
+     this position has always had.  Measured against the new art, not
+     converted from the old number: every sample within a 44px disc of this
+     point is open ground.
+     He is deliberately KEPT while the town's buildings are switched off
+     (worldProps.js, TOWN_PROPS_ENABLED).  He is the only NPC in the game and
+     the entire Mayor Bro quest chain hangs off him, so removing him along
+     with the scenery would silently delete onboarding rather than clear the
+     map — a different thing from what "keep the buildings and NPCS removed"
+     was asking for. */
+  x: 900, y: 780,
+  /* v2.3.1794: MOVED WITH HIM.  The wander step steers an NPC toward
+     spawnX/spawnY (pathRadius 0 means exactly that point, with no roaming), so
+     leaving this at the old plaza spot spawned him outside his new house and
+     then walked him back down the stairs over the next few seconds.  Caught by
+     mp-townmap reading him at (985.3, 563.7) — the old coordinates, with the
+     fractional drift of something mid-walk. */
+  spawnX: 900, spawnY: 780,   /* v2.3.1813: moves WITH x/y above — pathRadius 0 walks him to this exact point every frame, so leaving it behind drags him back to the old plaza */
+  renderX: 900, renderY: 780,   /* v2.3.1813: kept in step with x/y — these are the FIRST-FRAME draw position, and they were stale even against the previous (1055,300), so he popped across the plaza on frame one */
   hp: 100, maxHp: 100,
   /* v2.3.1675 (owner: "remove his health bar he doesn't need one").  He is a
      quest giver in a safe town; a health bar over him reads as "fight this". */
@@ -3327,7 +3441,7 @@ export const NPC_DATA = [{
   respawnAt: 0,
   pathRadius: 0,
   moveTimer: 0,
-  targetX: 985, targetY: 565,
+  targetX: 900, targetY: 780,   /* v2.3.1813: likewise — the initial wander target, before the first steer overwrites it */
   chatTimer: 8000,
   chatBubble: null,
   phrases: [

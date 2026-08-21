@@ -18,6 +18,7 @@
 import { processGameEvent } from '@/networking/gameEvents.js';
 import { stashPendingZoneNodes } from '@/networking/nodeSync.js'; /* v2.3.1301: node self-heal */
 import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking/index.js';
+import { applyCharacterRecord, hasStoredCharacter, publishCharRecord } from '@/game/characterRecord.js'; /* v2.3.1814: the stored name+look */
 import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, DEATH_GOLD_PENALTY, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, PROG3_SKILL_META, PROG3 } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { usesClientSideMovement, MONSTER_VARIANTS, isRemnantSkull, applyZoneVariant } from '@/data/monsterVariants.js';
@@ -55,6 +56,7 @@ export function getTickSizes() { return tickSizes; }
 export function setupWebSocket(ctx) {
   var stateRef = ctx.stateRef,
     showNameModal = ctx.showNameModal,
+    preGame = ctx.preGame,   /* v2.3.1814: true for the boot check and the login screen too */
     showLogin = ctx.showLogin,
     setPlayerCount = ctx.setPlayerCount,
     setChatLog = ctx.setChatLog,
@@ -71,7 +73,17 @@ export function setupWebSocket(ctx) {
     setArenaBets = ctx.setArenaBets,
     setClanData = ctx.setClanData, /* v2.3.1611 */
     pixiRef = ctx.pixiRef;
-    if (showNameModal || showLogin) return;
+    /* v2.3.1814: `preGame` covers the LOGIN screen and the boot check as
+       well as the creator.  This gate used to name only the creator, which
+       was complete while the creator WAS the whole pre-game.  With a login
+       door in front of it the socket connected underneath that door and
+       joined with the default trait catalogs — and since a join is what
+       creates the permanent character record, that locked a blank,
+       nameless character in before the player had chosen anything.  It is
+       the exact hazard the record's first-write-wins rule creates, and
+       there is no way back from permanent, so the gate has to cover every
+       screen that comes before the player commits. */
+    if (showNameModal || showLogin || preGame) return;
     var S = stateRef.current;
 
     /* ═══ DURABLE OBJECTS WEBSOCKET CLIENT ═══ */
@@ -642,6 +654,22 @@ export function setupWebSocket(ctx) {
                  the legacy client-side credit paths stay in place but
                  only run when the server hasn't claimed the job. */
               S._serverCaps = msg.caps || {};
+              /* ═══ v2.3.1814: WEAR YOUR OWN FACE ═══
+                 The character's name and look are stored against the identity
+                 now (caps.charLock), and the worker echoes them here.  This is
+                 the path that matters on a NEW DEVICE: after a Login Key
+                 switch the look exists nowhere locally, so without applying it
+                 the character would render correctly for every other player in
+                 the room and wrong for its owner.
+                 Gated on the CAP as well as the payload — against an old
+                 worker `char` is absent, and treating that as "no character"
+                 would hand an existing player a blank bro. */
+              try {
+                if (hasStoredCharacter(S._serverCaps.charLock, msg.char)) {
+                  applyCharacterRecord(msg.char, S);
+                  publishCharRecord(msg.char);
+                }
+              } catch (e) { /* never let a cosmetic restore break the sync */ }
               /* v2.3.1576: the server's verified Hemi Bro for THIS player,
                  restored from storage if the link is still fresh.  Server-owned
                  — the client never writes it, it only renders from it. */
@@ -2028,6 +2056,12 @@ export function setupWebSocket(ctx) {
          (REBUILD-PLAN Phase 4). Its former closure captures are passed
          explicitly; built once per effect run (the setters and
          _buildServerPile are stable for the effect's lifetime). */
+      /* QA hook (tools/qa/mp), house pattern.  A scenario cannot make the
+         worker telegraph on demand — brutes live in mist/hollows/sky/tidal and
+         only wind up when they have aggro at range — so mp-windup delivers the
+         real event through the real handler instead of poking the state a
+         handler would have written.  Assigned where the deps object is built
+         so it can never go stale against it. */
       var _gameEventDeps = {
         setRpgState: setRpgState,
         setChatLog: setChatLog,
@@ -2044,6 +2078,7 @@ export function setupWebSocket(ctx) {
         pixiRef: pixiRef,
         _buildServerPile: _buildServerPile
       };
+      try { window.__btDispatch = function (e) { processGameEvent(e.type, e.payload, S, _gameEventDeps); }; } catch (e) {}
 
 
       ws.onclose = function (event) {

@@ -11,6 +11,11 @@ import { Assets, BitmapFont, BitmapText, CanvasTextMetrics, Container, Graphics,
    _fxLoad is a drop-in for Assets.load; effectsAnimationsReady() is
    consumed by preloadWorldAnimations (preloadAnimations.js). */
 const _fxPreload = [];
+
+/* v2.3.1800: which of the three bow frames a HELD block sits on.  0 is still
+   raising and 2 is the release recoil; 1 is drawn and steady, which is the one
+   that reads as bracing behind a shield. */
+const BLOCK_POSE_FRAME = 1;
 const _fxLoad = (url) => { const p = Assets.load(url); _fxPreload.push(p); return p; };
 export function effectsAnimationsReady() { return Promise.allSettled(_fxPreload); }
 import { ELEMENTS } from '@/data/elements.js';
@@ -33,6 +38,7 @@ import { getGearFrame } from '../gearSheets.js';
 import { gearTint, gearArt } from '../gearVariants.js'; /* v2.3.1764: the swing wears the same metal; v2.3.1772: ...and finds its sheets */
 import { materialTint, weaponTint } from '../traits/materialTints.js';
 import { upscaleToFrameHeight } from '../spriteScale.js'; /* v2.3.1112: restore downscaled-on-disk sword stand-in strips to their authored frame height */
+import { AIM_CARET, AIM_CARET_EDGE } from '../aimCaret.js'; /* v2.3.1799 */
 import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX } from '../backShield.js'; /* v2.3.1784 */
 import { registerBowBodyFrames } from '../blockArm.js'; /* v2.3.1785 */
 
@@ -1144,7 +1150,36 @@ export class EffectsRenderer {
     this._bakeBodyStrip = (rec) => {
       const img = this._bodyImgCache[rec.url];
       if (!img) return;
-      const skinT = skinTarget(getSkin()), pantsT = pantsTarget(getPants()), shoesT = shoesTarget(getShoes());
+      /* ═══ v2.3.1788: the attack stand-ins wear the WALKING skin ═══
+         Owner's block-arm work exposed this, but it is a bug on its own and
+         has been shipped for a long time: the bro changes complexion every
+         time he swings.
+
+         The recolour catalogs give 'default' a target of null, meaning "leave
+         the art as painted".  That is only coherent while every sheet is
+         painted in the SAME palette, and they are not.  Measured mean skin
+         RGB, default skin, no recolour applied:
+             stand-east / stand-south   [188,121,69] / [189,122,68]
+             sword-east / sword-south   [207,126,64] / [210,117,59]
+             bow-east                   [223,121,57]
+         Same luminance band (143-151, so brightness was never the issue), a
+         clear hue slide toward orange.  A custom skin hid it, because then a
+         target IS applied and every sheet normalises to it — which is why this
+         only ever showed for players who left the default.
+
+         So a target is now ALWAYS applied.  This is not a new idea: v2.3.1710
+         did exactly this for the cook and the fire-lighter (`skinTarget(...)
+         || DEFAULT_SKIN_TARGET`, two call sites below) after the owner
+         reported "has the wrong skin color" — the sword and bow stand-ins
+         simply never got the same treatment.
+
+         SKIN ONLY, deliberately.  Pants and shoes were measured across the
+         same sheets and differ only in brightness ([100,104,63] vs [102,103,61]
+         vs [119,115,65]; shoes [67,67,66] vs [81,80,78]) — same hue, nothing a
+         player can see, and forcing them would change shipped appearance for
+         no reported problem. */
+      const skinT = skinTarget(getSkin()) || DEFAULT_SKIN_TARGET;
+      const pantsT = pantsTarget(getPants()), shoesT = shoesTarget(getShoes());
       const cv = recolorBodyToCanvas(img, skinT, pantsT, shoesT, null, rec.cfg.fh);
       const source = Texture.from(cv).source;
       source.scaleMode = 'linear';
@@ -1152,6 +1187,26 @@ export class EffectsRenderer {
       const arr = [];
       for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * rec.cfg.fw, 0, rec.cfg.fw, rec.cfg.fh) }));
       rec.target[rec.dir] = arr;
+      /* v2.3.1788 QA probe: the mean skin RGB of the BAKED sheet, so
+         mp-standinskin can assert the stand-ins land on the same palette as
+         the walking body.  Measuring the baked canvas is the only honest
+         place — a screenshot of the world is swamped by cobblestone, which
+         passes the same warm-tone test the classifier uses (measured: 51k
+         "skin" pixels in an 80x90 crop containing one bro). */
+      try {
+        const _c = cv.getContext('2d');
+        const _d = _c.getImageData(0, 0, cv.width, cv.height).data;
+        let _n = 0, _r = 0, _g = 0, _b = 0;
+        for (let _i = 0; _i < _d.length; _i += 4) {
+          const r = _d[_i], g = _d[_i + 1], b = _d[_i + 2], a = _d[_i + 3];
+          if (!(a > 40 && r > g && g >= b && (r - b) > 30 && r > 90 && (r - g) > 25)) continue;
+          _n++; _r += r; _g += g; _b += b;
+        }
+        if (!window.__btStandInSkin) window.__btStandInSkin = {};
+        window.__btStandInSkin[rec.url] = _n
+          ? { n: _n, rgb: [Math.round(_r / _n), Math.round(_g / _n), Math.round(_b / _n)] }
+          : { n: 0 };
+      } catch (e) { /* never breaks a bake */ }
       /* v2.3.1785: hand the BOW body frames to blockArm.js, which cuts the
          outstretched arm out of them for the raised-shield pose.  Done here
          rather than in its own loader so the arm rides the same recolour bake
@@ -2807,12 +2862,15 @@ export class EffectsRenderer {
           gfx.lineTo(_bx + _px * _hw, _by + _py * _hw);
           gfx.lineTo(_bx - _px * _hw, _by - _py * _hw);
           gfx.closePath();
-          gfx.fill({ color: 0xffffff, alpha: 0.7 });
+          /* v2.3.1799: the same blue as the block caret — see aimCaret.js.
+             Was white at 0.7, which on sand read as a pale smudge; the owner
+             asked for both direction marks to be one, more noticeable colour. */
+          gfx.fill({ color: AIM_CARET, alpha: 0.92 });
           gfx.moveTo(_tipx, _tipy);
           gfx.lineTo(_bx + _px * _hw, _by + _py * _hw);
           gfx.lineTo(_bx - _px * _hw, _by - _py * _hw);
           gfx.closePath();
-          gfx.stroke({ color: 0x000000, width: 1, alpha: 0.35 });
+          gfx.stroke({ color: AIM_CARET_EDGE, width: 1.5, alpha: 0.6 });
         } else {
         /* Ranged / staff: the reach beam (melee now uses the AoE shape above).
            The `: 95` fallback is retained for any non-ranged that reaches here. */
@@ -5229,6 +5287,36 @@ export class EffectsRenderer {
        from the feet by half the figure. */
     shown.x = S.player.x + place.dx * scale;
     shown.y = (footY != null ? footY : S.player.y) - (bodyH || 0) * 0.5 + place.dy * scale;
+    /* ═══ v2.3.1807: IN FRONT MEANS IN FRONT OF HIS HEAD TOO ═══
+       Owner: "the character swinging north northeast and northwest has his
+       beard, hat, and maybe other items that are still layering in front of
+       the shield (should be behind it)."
+       Facing away, the shield on his back is between the camera and ALL of
+       him — the hat and beard included.  The hi clone was already above the
+       body and the gear, which is why this only showed on the head: the
+       trait sprites (hair / beard / hat) are added to the node layer AFTER
+       both stand-ins' shield clones (v2.3.867, "so they layer on top"), and
+       that build-order default is right for every case except this one.
+       Lifting the clone above them is done HERE, on the frame that chose
+       front mode, rather than by reordering the constructor — the traits must
+       stay above the BODY, and there is one shared trait set serving two
+       stand-ins, so no single fixed order satisfies both.
+       Only ever moves UP, and only when it is not already there, so this
+       cannot ratchet a slot per frame (the setChildIndex remove-then-insert
+       trap this file has hit before). */
+    if (!place.behind) {
+      const layer = this.nodeLayer;
+      const cur = layer.getChildIndex(shown);
+      let top = cur;
+      for (const k of ['hair', 'beard', 'hat']) {   /* hairMask is a mask, never drawn */
+        const t = this.skillTraits && this.skillTraits[k];
+        if (t && t.parent === layer) {
+          const i = layer.getChildIndex(t);
+          if (i > top) top = i;
+        }
+      }
+      if (cur < top) layer.setChildIndex(shown, top);
+    }
     /* QA probe (mp-backshield) — a headless run cannot read the WebGL canvas,
        so the stand-in's z-order is asserted from here. */
     try {
@@ -5242,6 +5330,12 @@ export class EffectsRenderer {
         weaponIdx: layer.getChildIndex(lo === this.swordShieldLo ? this.swordWeaponSprite : this.bowWeaponSprite),
         chestIdx: layer.getChildIndex(lo === this.swordShieldLo ? this.swordChestSprite : this.bowChestSprite),
         legsIdx: layer.getChildIndex(lo === this.swordShieldLo ? this.swordLegsSprite : this.bowLegsSprite),
+        /* v2.3.1807: the topmost DRAWN trait (hat / beard / hair).  A shield in
+           front of him has to beat this, not just the body. */
+        traitIdx: ['hair', 'beard', 'hat'].reduce((m, k) => {
+          const t = this.skillTraits && this.skillTraits[k];
+          return (t && t.parent === layer) ? Math.max(m, layer.getChildIndex(t)) : m;
+        }, -1),
         sizePx: shown.height, facing: S._renderFacing,
       };
     } catch (e) { /* never breaks the frame */ }
@@ -5452,6 +5546,16 @@ export class EffectsRenderer {
     if (this.bowJogLegsSprite) this.bowJogLegsSprite.visible = false;
     if (this.bowJogLegsGearSprite) this.bowJogLegsGearSprite.visible = false;
     if (this.bowShirtSprite) this.bowShirtSprite.visible = false;
+    /* v2.3.1800: tell entityRenderer the bow art is up before it hides the
+       real body to show this.  A bow shot is 400ms and would flicker at worst;
+       a BLOCK is held, so an unguarded swap would leave the player invisible
+       for as long as they held it.  Published every frame rather than once, so
+       it also goes false if a zone change ever evicts the sheets. */
+    if (S) {
+      const _rf = this._bowFacing[S._bowDir || 'east'];
+      S._bowArtReady = !!(this.bowSprite && _rf && this._bowCfg[_rf[0]]
+        && (this._bowFrames[_rf[0]] || []).length);
+    }
     if (!S || !S._bowShowing || !S.player || !this.bowSprite) return;
     const fmap = this._bowFacing[S._bowDir];
     if (!fmap) return;
@@ -5464,9 +5568,15 @@ export class EffectsRenderer {
     /* v2.3.937: quick draw -> the load/pull frames play across BOW_RELEASE_MS,
        then the final (release) frame holds for the rest of BOW_SHOT_MS.  The
        arrow launches from the grip at BOW_RELEASE_MS (projectiles.js). */
-    const fi = elapsed < BOW_RELEASE_MS
-      ? Math.max(0, Math.min(n - 2, Math.floor((elapsed / BOW_RELEASE_MS) * (n - 1))))
-      : n - 1;
+    /* v2.3.1800: a block HOLDS one frame — there is no shot clock to animate
+       against, and _bowShotAt is whatever the last real shot left behind.
+       Frame 1 of the three is the drawn-and-steady one; frame 0 is still
+       raising and frame 2 is the release recoil. */
+    const fi = S._blockPose
+      ? Math.min(n - 1, BLOCK_POSE_FRAME)
+      : (elapsed < BOW_RELEASE_MS
+          ? Math.max(0, Math.min(n - 2, Math.floor((elapsed / BOW_RELEASE_MS) * (n - 1))))
+          : n - 1);
     const sp = this.bowSprite;
     const anchorY = cfg.feetY / cfg.fh;
     sp.anchor.set(0.5, anchorY);
@@ -5480,8 +5590,35 @@ export class EffectsRenderer {
     sp.x = S.player.x;
     sp.y = (S._swordFootY != null) ? S._swordFootY : S.player.y;
     /* v2.3.1784: same slung shield on the bow shot — both hands are on the
-       bow, so the shield is on the back exactly as when walking. */
-    this._placeStandInShield(S, this.bowShieldLo, this.bowShieldHi, sp.y, bodyH);
+       bow, so the shield is on the back exactly as when walking.
+       v2.3.1800: ...but NOT while blocking, where this same pose is holding
+       the shield out in front.  It cannot be in both places at once. */
+    if (!S._blockPose) {
+      this._placeStandInShield(S, this.bowShieldLo, this.bowShieldHi, sp.y, bodyH);
+    } else if (S._blockShieldBehind) {
+      /* v2.3.1805: facing away, the shield is held on the FAR side of the
+         body, so it has to be drawn by the clone that sits below this pose in
+         the node layer.  entityRenderer cannot do it — its shield lives in a
+         different container (see the note there) — so it publishes the
+         geometry and this draws it.  Positioned off the same feet/height the
+         stand-in was planted with, so it tracks the body by construction. */
+      const b = S._blockShieldBehind;
+      const scale = bodyH ? (bodyH / STANDIN_REF_BODY_H) : 1;
+      const shown = this.bowShieldLo;
+      if (shown && b.tex) {
+        if (shown.texture !== b.tex) shown.texture = b.tex;
+        const R = 16 * scale;                       /* same reach as the held placement */
+        shown.width = b.px * scale;
+        shown.height = b.px * scale;
+        shown.scale.x = Math.abs(shown.scale.x) * (b.mirror ? -1 : 1);
+        shown.rotation = 0;
+        shown.alpha = 0.95;
+        shown.tint = 0xffffff;
+        shown.x = S.player.x + Math.cos(b.ang) * R;
+        shown.y = sp.y - bodyH * 0.5 + Math.sin(b.ang) * R;
+        shown.visible = true;
+      }
+    }
     sp.visible = true;
     const place = (spr, tex) => { if (!spr) return; if (!tex) { spr.visible = false; return; } spr.anchor.set(0.5, anchorY); spr.texture = tex; spr.scale.set(sgn, s); spr.x = sp.x; spr.y = sp.y; spr.visible = true; };
     /* v2.3.957: layered gear path -- bald body + equipped chest/legs armour +
@@ -5541,11 +5678,12 @@ export class EffectsRenderer {
       place(this.bowLegsSprite,  _jogLegs ? null : this._gearStripFrame('legs', getEquip('legs'), gp, fmap[0], cfg.fw, fi));
       this._tintGearSprite(this.bowChestSprite, getEquip('chest'), 'bowChest');  /* v2.3.1764 */
       this._tintGearSprite(this.bowLegsSprite, getEquip('legs'), 'bowLegs');
-      place(this.bowWeaponSprite, weaponFrames && weaponFrames[fi]);
+      /* v2.3.1800: no bow while blocking — same pose, different thing held. */
+      place(this.bowWeaponSprite, S._blockPose ? null : (weaponFrames && weaponFrames[fi]));
     } else {
       _armored = !!(armorFrames && armorFrames[fi]);
       sp.texture = _armored ? armorFrames[fi] : frames[fi];
-      if (_armored) place(this.bowWeaponSprite, weaponFrames && weaponFrames[fi]);
+      if (_armored && !S._blockPose) place(this.bowWeaponSprite, weaponFrames && weaponFrames[fi]);
     }
     /* v2.3.937: publish the teal grip's WORLD position (same anchor math as
        _placeSkillTraitsOn) so the procedural arrow can launch from the bow

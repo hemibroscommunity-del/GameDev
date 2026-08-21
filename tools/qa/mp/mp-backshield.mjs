@@ -97,8 +97,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const held = await P.page.evaluate(() => window.__btBackShield || null);
   rec.ok('raising the shield hides both back clones',
     held && !held.on && !held.behind && !held.front, { probe: held });
+  /* v2.3.1805: "in hand" is now either renderer.  Facing NW/N/NE the shield is
+     held on the FAR side of the body, and under the block stand-in the only
+     sprite that can sit behind that body is the stand-in's own lower clone —
+     the display's shield lives in a different container and cannot be ordered
+     against it.  So the invariant is that it is drawn in hand by ONE of the
+     two, not that this particular sprite is the one doing it. */
   rec.ok('...and the in-hand shield is the one drawing instead',
-    !!(held && held.heldVisible), { heldVisible: held && held.heldVisible });
+    !!(held && (held.heldVisible || held.heldByStandIn)),
+    { heldVisible: held && held.heldVisible, heldByStandIn: held && held.heldByStandIn });
   await P.page.evaluate(() => { window._gameState.current._shieldUp = false; });
   await P.page.waitForTimeout(400);
 
@@ -142,16 +149,54 @@ export async function run({ browser, wsPort, webPort, rec }) {
      a stand-in takes over, and the stand-in's own pair must ARRIVE.  Testing
      only one of them passes against "the shield vanished when you attack",
      which is the other way to get this wrong. */
+  /* ── PIN FROM INSIDE THE PAGE, EVERY FRAME ──
+     A one-shot evaluate cannot hold a facing.  _facingAngle is SLEWED toward
+     its target by the game's own frame loop, so a value poked once is
+     overwritten before the next render: instrumenting the resolver showed
+     src:"facingAngle" with aim already at 3.927 (northwest) and fa still at
+     -2.76 — mid-slew, rounding to west.  That is why NW failed on some armour
+     combos and not others while always reporting west; nothing about the
+     armour mattered, it was a race.
+     So the pin lives in a rAF inside the page and re-stamps every frame, the
+     same shape mp-blockstance settled on.  It also re-arms the swing window,
+     which is short enough to lapse while we wait. */
+  await P.page.evaluate(() => {
+    window.__pinA = { i: 0, kind: 'sword', on: false };
+    const tick = () => {
+      const S = window._gameState && window._gameState.current;
+      const p = window.__pinA;
+      if (S && p && p.on) {
+        const a = p.i * Math.PI / 4;
+        S._facingAngle = a; S._aimAngle = a; S._mouseAimAngle = a;
+        S._shieldKb = false; S.lockedMonster = null;
+        if (S.player) { S.player.vx = 0; S.player.vy = 0; }
+        if (p.kind === 'sword') { S.isSwinging = true; S.swingTimer = Date.now(); S._swingAng = a; }
+        else { S._bowShotAt = Date.now(); S._bowShotAng = a; }
+      }
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+
   const attack = async (idx, kind) => {
-    await P.page.evaluate(({ i, k }) => {
-      const S = window._gameState.current;
-      S._facingAngle = i * Math.PI / 4; S._aimAngle = i * Math.PI / 4;
-      S.lockedMonster = null;
-      if (k === 'sword') { S.isSwinging = true; S.swingTimer = Date.now(); S._swingAng = i * Math.PI / 4; }
-      else { S._bowShotAt = Date.now(); S._bowShotAng = i * Math.PI / 4; }
-    }, { i: idx, k: kind });
-    await P.page.waitForTimeout(150);
+    await P.page.evaluate(({ i, k }) => { window.__pinA.i = i; window.__pinA.kind = k; window.__pinA.on = true; },
+      { i: idx, k: kind });
+    /* Wait for the PROBE, not for the state: _renderFacing reaching the target
+       is not the same event as the shield being PLACED at it. */
+    const want = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'][idx];
+    const t0 = Date.now();
+    for (;;) {
+      const f = await P.page.evaluate(() => (window.__btStandInShield && window.__btStandInShield.facing) || null);
+      if (f === want) break;
+      if (Date.now() - t0 > 5000) break;      /* let the assertion report it */
+      await P.page.waitForTimeout(70);
+    }
+    await P.page.waitForTimeout(120);
     return P.page.evaluate(() => ({
+      why: (() => { const S = window._gameState.current; return {
+        src: S._facingSrc, rf: S._renderFacing, aim: S._aimAngle, ma: S._mouseAimAngle,
+        fa: S._facingAngle, vx: S.player && S.player.vx, vy: S.player && S.player.vy,
+        shieldUp: !!S._shieldUp, sw: !!S.isSwinging }; })(),
       standIn: window.__btStandInShield || null,
       walk: window.__btBackShield || null,
     }));
@@ -174,7 +219,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(400);
 
     for (const kind of ['sword', 'bow']) {
-      for (const [fname, fidx] of [['N', 6], ['S', 2], ['E', 0]]) {
+      for (const [fname, fidx] of [['N', 6], ['NE', 7], ['NW', 5], ['S', 2], ['E', 0]]) {
         const r = await attack(fidx, kind);
         const tag = `${kind} ${fname}, ${label}`;
         const si = r.standIn;
@@ -201,7 +246,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
         rec.ok(`${tag}: exactly one clone is drawn`,
           (si.behind ? 1 : 0) + (si.front ? 1 : 0) === 1, { behind: si.behind, front: si.front });
         rec.ok(`${tag}: on the side the camera says`,
-          si.behind === (fidx !== 6), { behind: si.behind, facing: si.facing });
+          si.behind === !(fidx === 5 || fidx === 6 || fidx === 7),
+          { behind: si.behind, facing: si.facing, why: r.why });
+        /* ═══ v2.3.1807: IN FRONT MEANS IN FRONT OF HIS HEAD TOO ═══
+           Owner: "the character swinging north northeast and northwest has his
+           beard, hat, and maybe other items that are still layering in front
+           of the shield (should be behind it)."
+           Facing away, the shield on his back is between the camera and ALL of
+           him.  It only showed on the head because the trait sprites are added
+           to the node layer AFTER both stand-ins' clones (v2.3.867) — a
+           build-order default that is right everywhere except here.
+           The armour claim above cannot catch this: the plate sits between the
+           clones by construction, and the traits are a separate set added
+           later.  Asserted only in FRONT mode, because behind-mode wants the
+           opposite and would fail this by design. */
+        if (!si.behind) {
+          rec.ok(`${tag}: the front-clone covers the hat and beard as well`,
+            si.traitIdx >= 0 && si.hiIdx > si.traitIdx,
+            { hiIdx: si.hiIdx, traitIdx: si.traitIdx });
+        } else {
+          rec.ok(`${tag}: ...and behind him, the traits stay on top where they belong`,
+            si.traitIdx >= 0 && si.loIdx < si.traitIdx,
+            { loIdx: si.loIdx, traitIdx: si.traitIdx });
+        }
         /* Same object, same size: a shield that resized on attack reads as a
            different shield.  BACK_SHIELD_PX is 72, scaled by the stand-in's
            per-facing body height, so allow a modest band rather than equality. */

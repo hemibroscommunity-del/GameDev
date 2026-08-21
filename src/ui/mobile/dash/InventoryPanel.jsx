@@ -1023,7 +1023,12 @@ const StashTile = ({ kind, obj, index, style: styleOverride }) => {
                       : kind === 'stashGear'   ? (obj && obj.slot === 'legs' ? '\u{1F456}' : '\u{1F9BA}')
                       :                          '⚔';
   return (
-    <div onPointerUp={handleTap} className={rarityClass} style={{
+    /* v2.3.1796: a stash tile is, by definition, a piece of gear you own
+       and are NOT wearing — which makes it the target the questline's
+       "gear up" coach mark points at once the bag is open (QuestCoach.jsx
+       takes the first match, and the mark retires the moment the sword
+       and shield are on). */
+    <div onPointerUp={handleTap} className={rarityClass} data-tut="coach-gear" style={{
       width: '100%', aspectRatio: '1 / 1',
       background: COL.tile,
       border: `${edgeWidth}px solid ${color}`,

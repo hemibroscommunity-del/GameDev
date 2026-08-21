@@ -322,3 +322,141 @@ and screen shake over every nearby player on every swing, in every zone,
 duel or not. Pinned by `server/test/party.test.mjs` §11 and
 `tools/qa/mp/mp-party.mjs` (whose control taps the SAME player after the
 party breaks up, so a lock-free pass cannot be a missed click).
+
+## 20. Fixing an invisible overlay by raising its z-index
+
+**Tempting:** your new overlay measured onto the right control, at the
+right size, at opacity 1 — and it is not on screen. Something with a
+higher z-index must be on top of it, so raise yours. **Wrong:**
+`.brotown-wrap` is `position:fixed`, which Chrome treats as its own
+stacking context, so EVERY element inside the wrap is flattened onto one
+rung of the root stack. Nothing inside can outrank anything outside it —
+the dashboard band, the HUD player chip, the keyboard-hints strip — no
+matter what number you write. A v2.3.1796 coach mark was still invisible
+at `z-index: 99999`; the same box appended to `<body>` painted
+immediately, which is the two-minute experiment that settles it.
+
+**The fix is where the element lives, not what number it carries:**
+render it as a SIBLING of the wrap (BroTown.jsx renders
+`KeyboardHintsPanel`, `UpdateBanner`, `ChatPanel` and `QuestCoach`
+there). Being outside then puts you ABOVE the in-wrap modals, which is
+its own hazard — solve that by hit-testing what you point at
+(`elementFromPoint` on the control's centre; if a scrim answers, stand
+down) rather than by enumerating modal classes, which goes stale.
+
+**Receipt:** the third sighting of the same trap — the HUD player chip
+(v2.3.1235) and the keyboard hints (v2.3.1728), both documented in
+game.css, each needed a NON-z-index fix (geometric clearance and a
+`.bt-inspect`-keyed hide). `src/ui/mobile/QuestCoach.jsx` header;
+`tools/qa/mp/mp-questcoach.mjs`.
+
+## 21. Trusting a loose pixel-classifier over a look at the crop
+
+**Tempting:** you cannot see your change in a screenshot, so you count
+pixels instead — `r>150 && g>110 && b<130` is "brass", and 688 of them
+inside the card's box says the card is painting. **Wrong:** that filter
+also passes the coin counter, the brass chip borders, the level-up ring
+and a good deal of town cobble. The count "confirmed" a card that a
+cropped screenshot then showed was not there at all, and nearly ended
+the investigation on the wrong answer. The same error is on record for
+skin measurement (v2.3.1788: town cobble reads as skin, ~51,000 "skin"
+pixels in an 80x90 crop, before and after identical).
+
+**The rule:** a colour count is evidence only against a CONTROL — the
+same crop with the feature off — or when the classifier is tight enough
+that nothing else in frame can pass it. Otherwise crop the region and
+look at it. `H.screenshotPixels` supports both; only one of them is an
+argument.
+
+**Receipt:** v2.3.1796 session log; v2.3.1788's stand-in skin work.
+
+## 22. Transcribing an orchestral track into chiptune
+
+**Tempting:** the owner wants NES-style music and already has seven
+orchestral tracks. A bit-crush obviously won't do it (that is a damaged
+recording, not chiptune), but *transcription* looks like the real answer:
+pull the melody and bass out with an STFT, quantise to a grid, replay on
+pulse/triangle/noise. The pipeline works, the numbers look right, and
+each track compresses to under a kilobyte of note data — which also
+happens to solve the 40–56 MiB resident-PCM problem in one move.
+**Wrong:** it does not sound like the song. Orchestral texture is dense
+polyphony; monophonic pitch tracking has to pick ONE line out of it, and
+what it picks wanders between instruments even after a Viterbi path
+constraint and a key snap. Owner's verdict on the result: *"It doesn't
+sound anything like the original song and not very good. I'd rather find
+chiptune music someone already made."*
+
+**What was actually true along the way, and is worth keeping:** the first
+render sounded like isolated notes and the fix was the ENVELOPE, not the
+transcription (v2.3.1806 — held segments instead of per-step strikes;
+near-silent windows 36.9% → 0%). So "it sounds wrong" and "the notes are
+wrong" are separate diagnoses, and the voicing is the cheaper one to check
+first. The note-data-instead-of-audio argument also still stands on its
+own merits for any chiptune source, however the music is obtained.
+
+**Receipt:** `tools/audio_to_chiptune.mjs` (kept, with this verdict in its
+header); v2.3.1804 and v2.3.1806; the comparison artifact built for the
+owner to judge by ear rather than by my description. If music like this is
+wanted, SOURCE it — the sourcing constraint is short, looping, MONO,
+because resident memory is duration × rate × channels regardless of what
+is on the track.
+
+---
+
+## §23 — An alignment score with no control is a random number generator (v2.3.1813)
+
+**The move that looks right:** two painted map halves need stitching, so
+write a scorer that slides one over the other and picks the offset with the
+lowest pixel difference. Report the winner. Build the map from it.
+
+**Why it is wrong:** every scorer tried on this pair was junk, and each one
+was *confidently* junk — it returned a specific "best" answer with a
+plausible-looking margin.
+
+1. A per-pixel overlap search returned its best at the **smallest overlap
+   offered**, with the vertical offset pinned at the **edge of the search
+   range**. Both are the signature of a metric that is not measuring
+   alignment: fewer sampled pixels means a lower mean error, so an
+   unnormalised score always prefers less overlap.
+2. A structural (downsampled, cobble-vs-cliff classified) search looked much
+   better — until its control was checked. Matching an image **against
+   itself**, which must score 0, scored **0.29**. The control was comparing
+   two different parts of the same image, so the metric was measuring
+   nothing at all, and its "winner" was noise wearing a decimal point.
+
+**What was actually true**, once controls existed to make numbers mean
+something: adjacent columns *inside* one half differ by ~12/channel
+(the texture's own noise floor), the best cross-piece join by ~34, and two
+unrelated columns by ~65. The halves are independently generated, so their
+cobble **cannot** align pixel-wise at any offset — a seam hunt was never
+going to converge, and every score above was ranking noise.
+
+**What worked:** looking at them. Rendering each half on its own answered
+the ordering question in seconds (one is bounded by cliff on the left and
+opens right; the other is the mirror), and it agreed with the *one*
+automated result that had survived.
+
+**The second half of the trap:** having established the textures cannot
+match, the reflex fix is a wide cross-fade. That is also wrong, and
+measurably so. Across a 240px fade the brightness was *flatter than the
+surrounding cobble* (max column step 3.98 vs 4.81) — and it still looked
+wrong, because **averaging two uncorrelated textures produces low-contrast
+mush**, a blurred bar the eye finds instantly even though no edge exists.
+Widening the fade widens the mush; 240 looked worse than 100, not smoother.
+The fix is an **irregular hard cut** — full contrast on both sides, the
+boundary wandering on a low-frequency wobble so there is no straight line to
+find. After it, seam-band contrast is *statistically indistinguishable* from
+the cobble beside it (4.72/1.28 vs 4.69/1.34), which is the number to aim
+for: not "smoother than its surroundings" (that is blur) but "the same".
+
+**Rules this leaves:**
+- A similarity score without a control that must return a known value is not
+  evidence. Include a self-match and a deliberately-wrong match, every time.
+- A "best" sitting at the edge of the search range means the range is wrong
+  or the metric is.
+- Normalise for sample size, or the scorer just picks the smallest sample.
+- When the thing being measured is visual and cheap to render, render it.
+- Flat brightness across a seam does not mean an invisible seam. Contrast
+  matching the neighbourhood does.
+
+**Receipt:** `tools/maps/build-town-v17.mjs` and its header.

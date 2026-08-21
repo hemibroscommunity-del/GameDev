@@ -56,6 +56,7 @@ extended.
    |---|---|---|
    | `rpg:<playerId>` | the player blob (fixed field list) | core |
    | `auth:<playerId>` | `{pfHash, createdAt}` SHA-256 of `btv1\|phrase` | identity.md |
+   | `char:<playerId>` | `{name, look, createdAt}` the PERMANENT name + appearance; first write wins and a stored record beats the join payload | identity.md |
    | `inbox:<playerId>` | pending credit entries (offline mail) | inbox-escrow.md |
    | `oplog:<opId>` | timestamp; idempotency journal, pruned >48h | inbox-escrow.md |
    | `mkt_order:<orderId>` | resting order w/ escrowed item | marketplace.md |

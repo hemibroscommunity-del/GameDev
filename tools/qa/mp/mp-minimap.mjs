@@ -45,15 +45,32 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.enterWorld(P);
   await P.page.waitForTimeout(3000);
 
-  const mid = await at(P, 1536, 700);
+  /* v2.3.1813: the probe points are DERIVED from the zone, not typed in.
+     They used to be (100 / 1536 / 2972), measured for the 96x30 clifftop —
+     and when town became 52x55 the "mid" and "east" samples both landed past
+     the right-hand edge, clamped to the same pan, and three assertions failed
+     as though the minimap had broken.  It had not; the coordinates had.  That
+     is twice a town shape change has invalidated hardcoded town coordinates
+     (TOWN_EXITS was the other), so this reads the zone instead. */
+  const zw = await P.page.evaluate(() => {
+    const z = (window.__btZones || {}).town;
+    return z ? z.w * 32 : null;
+  });
+  rec.ok('the town zone reports a width (guard: everything below is relative to it)',
+    !!zw && zw > 320, { zw });
+  const midX = Math.round(zw * 0.50);
+  const westX = Math.round(zw * 0.03);
+  const eastX = Math.round(zw * 0.97);
+
+  const mid = await at(P, midX, 700);
   console.log('    mid ', JSON.stringify(mid));
   rec.ok('the minimap is drawing in town', !!(mid && mid.visible && mid.zone === 'town'), { mid });
   if (!mid) { await P.ctx.close().catch(() => {}); return; }
 
   /* GUARD: the probe is live.  Everything below reads one object; if it were
      stale from the first frame, every comparison would still "agree". */
-  const west = await at(P, 100, 700);
-  const east = await at(P, 2972, 700);
+  const west = await at(P, westX, 700);
+  const east = await at(P, eastX, 700);
   console.log('    west', JSON.stringify(west));
   console.log('    east', JSON.stringify(east));
   rec.ok('the probe actually tracks the player (guard)',
@@ -141,26 +158,47 @@ export async function run({ browser, wsPort, webPort, rec }) {
      cannot tell an anvil from a satchel at 11px; this can. */
   const ic = mid.icons || {};
   console.log('    icons', JSON.stringify(ic));
+  /* v2.3.1813: the BUILDING marks only exist while the buildings do, and the
+     owner switched town's props off with the re-fused map ("keep the buildings
+     and NPCS removed for now").  Split rather than dropped: the marks that do
+     not depend on a building — the mayor, the way out — are still asserted
+     unconditionally, and the building ones come back automatically with the
+     props.  Gated on the FLAG, not on an empty census, so a genuinely broken
+     icon set still fails while the props are off. */
+  const propsOn = await P.page.evaluate(
+    () => (window.__btTownPropsEnabled ? window.__btTownPropsEnabled() : true));
   for (const [key, what] of [
-    ['forge', 'the forge and the blacksmith'],
-    ['bank', 'the bank'],
-    ['enchant', 'the enchanter'],
-    ['shop', 'the general store and the storekeeper'],
-    ['house', "the mayor's house"],
     ['star', 'the mayor himself'],
     ['portal', 'the way out'],
   ]) {
     rec.ok(`${what} has its own symbol on the map`, (ic[key] || 0) > 0, { key, census: ic });
   }
-  /* A trade shared by a building AND the person who runs it draws the same
-     mark twice — that is the point, so you can find either one. */
-  rec.ok('the blacksmith and his forge share the anvil', (ic.forge || 0) >= 2, { forge: ic.forge });
-  rec.ok('the storekeeper and his store share the satchel', (ic.shop || 0) >= 2, { shop: ic.shop });
-  /* GUARD: they are genuinely DIFFERENT textures, not one glyph counted
-     under several names.  Six distinct keys is only possible if six
-     distinct textures are in use. */
-  rec.ok('at least six distinct symbols are actually in use (guard)',
-    Object.keys(ic).length >= 6, { keys: Object.keys(ic) });
+  if (propsOn) {
+    for (const [key, what] of [
+      ['forge', 'the forge and the blacksmith'],
+      ['bank', 'the bank'],
+      ['enchant', 'the enchanter'],
+      ['shop', 'the general store and the storekeeper'],
+      ['house', "the mayor's house"],
+    ]) {
+      rec.ok(`${what} has its own symbol on the map`, (ic[key] || 0) > 0, { key, census: ic });
+    }
+    /* A trade shared by a building AND the person who runs it draws the same
+       mark twice — that is the point, so you can find either one. */
+    rec.ok('the blacksmith and his forge share the anvil', (ic.forge || 0) >= 2, { forge: ic.forge });
+    rec.ok('the storekeeper and his store share the satchel', (ic.shop || 0) >= 2, { shop: ic.shop });
+    /* GUARD: they are genuinely DIFFERENT textures, not one glyph counted
+       under several names. */
+    rec.ok('at least six distinct symbols are actually in use (guard)',
+      Object.keys(ic).length >= 6, { keys: Object.keys(ic) });
+  } else {
+    rec.ok('building marks are absent because the buildings are switched off', true,
+      { flag: 'TOWN_PROPS_ENABLED=false', census: ic });
+    /* Still a real distinctness claim, at the size the bare town supports:
+       the marks that ARE drawn must not have collapsed onto one glyph. */
+    rec.ok('...and the marks still drawn are distinct textures (guard)',
+      Object.keys(ic).length >= 3, { keys: Object.keys(ic) });
+  }
 
   /* The quest pin, read off the same npc._questMarker the in-world badge
      uses — so the map cannot claim work the NPC is not offering. */
@@ -184,8 +222,38 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   await P.page.waitForTimeout(600);
   const withMob = await P.page.evaluate(() => window.__btMinimap || null);
-  rec.ok('a monster draws as the hostile spike, not another dot',
+  rec.ok('a monster draws as its own mark, not another dot',
     !!(withMob && withMob.icons && withMob.icons.monster > 0), { icons: withMob && withMob.icons });
+
+  /* ═══ v2.3.1810: AND IT GOES WHEN IT DIES ═══
+     Owner: "remove monster icons from minimap when they die."
+     The filter checked m.dead and m.hp and never checked m.alive — which is
+     the field the kill paths actually set (monsterCombat 202 / 849 / 1833,
+     wsClient on a server-side kill).  `dead` is not set on those paths at all
+     and hp is left wherever the killing blow put it, so a corpse kept its pin
+     until the respawn recycled the slot.
+     Killed the way the game kills, and asserted as the COUNT dropping rather
+     than the key vanishing: with two mobs up, one dying must take exactly one
+     pin with it — a test that only checked "no monster icons" would pass
+     against a map that had lost both. */
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    S.monsters = (S.monsters || []).concat([{ id: 'qa-mob2', x: 1560, y: 720, hp: 10, maxHp: 10 }]);
+  });
+  await P.page.waitForTimeout(500);
+  const twoMobs = await P.page.evaluate(() => window.__btMinimap || null);
+  rec.ok('two monsters draw two marks (guard)',
+    !!(twoMobs && twoMobs.icons && twoMobs.icons.monster === 2), { icons: twoMobs && twoMobs.icons });
+
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const m = (S.monsters || []).find((x) => x && x.id === 'qa-mob');
+    if (m) m.alive = false;          /* exactly what monsterCombat does */
+  });
+  await P.page.waitForTimeout(500);
+  const oneDead = await P.page.evaluate(() => window.__btMinimap || null);
+  rec.ok('a dead monster loses its mark, and only its own',
+    !!(oneDead && oneDead.icons && oneDead.icons.monster === 1), { icons: oneDead && oneDead.icons });
 
   /* The player chevron points where the player faces.  SECTORS order is
      E,SE,S,SW,W,NW,N,NE and the glyph is authored pointing north. */

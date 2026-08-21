@@ -14,7 +14,18 @@ export const ZONES = {
        square map was walk-anywhere because every edge was painted ground.
        Here the plateau ends in a cliff with a painted valley beyond it, so
        without collision you walk off the edge and stand in the sky. */
-    id: 'town', name: 'Town', w: 96, h: 30,
+    /* ═══ v2.3.1813: A NEW PAIR OF HALVES, AND A DIFFERENT SHAPE ═══
+       Owner: "I have a better map of Brotown that I want you to use.  The
+       fusion should be better."  The v16 plateau was WIDE (3303x1024, 96x30
+       tiles); this one is nearly square (1674x1774), so the zone has to
+       change shape with it or the art gets stretched to 3x its aspect.
+       52x55 tiles = 1664x1760 world px against the art's 1674x1774 — an
+       aspect of 0.945 vs 0.944, so the map draws at 0.994:1, even closer to
+       native than v16's 0.8% stretch.  TOWN_SPAWN (constants.js) and the
+       World View trail-head (TOWN_EXITS, effects.js) both moved with it;
+       they are the only two coordinates anchored to this zone's shape, and
+       both were re-checked against the new art rather than converted. */
+    id: 'town', name: 'Town', w: 52, h: 55,
     element: null, level: [0, 0], music: 'town', safe: true,
     palette: { ground: '#4a6741', path: '#8b7355', accent: '#5a7a50' }
   },
@@ -249,3 +260,10 @@ export function zonePlayerScale(zoneId, x, y, TILE) {
   }
   return 1;
 }
+
+/* v2.3.1813 dev probe, house style (__btWorldProps, __btCoach).  mp-townmap
+   already read `window.__btZones` — behind a `.catch(() => null)` that made a
+   missing probe look like a skipped check rather than a failure, so the zone's
+   dimensions went untested through two shape changes.  Defining it for real is
+   the fix; the scenario no longer swallows the miss. */
+if (typeof window !== 'undefined') window.__btZones = ZONES;

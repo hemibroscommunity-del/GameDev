@@ -278,15 +278,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await tapMayor();
 
   let dlg = await H.bodyText(P);
+  /* v2.3.1793: the reward card is a look-at-it change, so leave a picture of
+     the moment it exists — the chooser is only on screen between "quest ready"
+     and "skill picked", which is a hard state to reach by hand. */
+  await P.page.screenshot({ path: 'tools/qa/mp/out/questui-chooser.png' }).catch(() => {});
   rec.ok('with the remnants in hand the giver offers the turn-in',
     /Redeem Reward|Choose a skill to train/.test(dlg), dlg.slice(0, 300));
   /* v2.3.1704: the SAME slot that showed the sword and shield now shows the
      bow and staff, so the caption has to say which moment these belong to. */
   rec.ok('the ready card says these items are what FINISHING pays',
     /For finishing this quest/i.test(dlg), dlg.slice(0, 400));
-  rec.ok('the dialogue asks where the XP should go',
-    dlg.includes(`Train ${TUT1.xp} XP into`),
-    { want: `Train ${TUT1.xp} XP into`, dlg: dlg.slice(0, 300) });
+  /* v2.3.1793: asserts the PROPERTY, not the sentence.  This used to require
+     the literal string "Train 30 XP into", so restyling the chooser into a
+     reward card broke a passing test that had found no bug — the same trap
+     v2.3.1765 records for the turn-in button, whose caption is owner-facing
+     copy and got a stable class precisely because it will be reworded again.
+     What has to be true is that the amount is stated and the skills are
+     offered; how it is phrased is the owner's to change. */
+  rec.ok('the dialogue names the XP on offer',
+    new RegExp(`\\b${TUT1.xp}\\s*XP\\b`, 'i').test(dlg),
+    { want: `${TUT1.xp} XP`, dlg: dlg.slice(0, 300) });
+  rec.ok('...and offers the skills to spend it on',
+    /Melee/.test(dlg) && /Bow/.test(dlg),
+    { dlg: dlg.slice(0, 300) });
   rec.ok('...naming the three trained skills',
     /Melee/.test(dlg) && /Bow/.test(dlg) && /Magic/.test(dlg), dlg.slice(0, 300));
   rec.ok('...and the turn-in button is held until one is chosen',

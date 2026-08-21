@@ -61,8 +61,24 @@ export const WORLD_PROPS = [
      before placement, and the grid re-checked for connectivity afterwards:
      five solid blocks in a bowl is an easy way to wall the town in half. */
   {
+    /* ═══ v2.3.1794: UP ON THE HILL ═══
+       Owner: "put mayor bros house up on the hill (above the stairs) and mayor
+       bro right outside the house."  It stood on the lower plaza at (1180,585),
+       in the row with the forge and the bank, which made the town's one
+       landmark just another shopfront.
+
+       Placed by reading the art rather than by eye: the walled courtyard at the
+       top of the stairs is sand from about x 750..1150 and y 120..300, with the
+       stair head at (960,300).  A prop's (x,y) is its BOTTOM-CENTRE
+       (anchor 0.5,1), so the base sits on the courtyard floor at y=300 and the
+       house draws upward from there.
+
+       worldH 300 -> 235 for the same reason: at 300 the roof reached y=0 and
+       stood over the cliffs and pines that ring the terrace.  235 fits between
+       the cliff line (~60) and the stair head, and a slightly smaller building
+       on a raised terrace reads as further away, which is what it is. */
     id: 'mayor-house', zone: 'town', sprite: '/sprites/props/mayor-house.png',
-    x: 1180, y: 585, worldH: 300, blockW: 210, blockD: 95,
+    x: 930, y: 300, worldH: 235, blockW: 165, blockD: 75,
     /* No action: it is Mayor Bro's house, and he is standing outside it
        handing out the tutorial.  A door that opens a panel he already covers
        would be a second, worse way to talk to him. */
@@ -111,7 +127,30 @@ export function buildingPropNear(zoneId, x, y, range) {
 }
 
 /** Props for a zone, in draw order (later entries draw on top). */
+/** ═══ v2.3.1813: TOWN'S BUILDINGS ARE OFF WHILE THE MAP IS RE-FUSED ═══
+ *  Owner, sending the new BroTown art: "You can just keep the buildings and
+ *  NPCS removed for now."
+ *
+ *  They are switched off rather than deleted, and the positions are left
+ *  untouched on purpose — every one of them was measured against the v16
+ *  plateau, which was 96x30 tiles.  The new map is 52x55, so those x values
+ *  (up to 2560) now sit off the right-hand edge of the zone entirely; they
+ *  are not wrong-but-close, they are unplaceable until someone re-measures
+ *  them against the new art.  Converting them arithmetically would land
+ *  seven buildings in the trees and look like a bug rather than a to-do.
+ *
+ *  NOTE what this also switches off: town collision.  Since v2.3.1794 the
+ *  town blocks on PROPS, not on a walk mask (the owner rejected hue-derived
+ *  collision — see tiledMaps.js), so with the props gone the plateau has no
+ *  edges and you can walk off the clifftop into the painted valley.  That is
+ *  a known consequence of "removed for now", not an oversight; the builder
+ *  still emits town_v17.walk.json if a mask is ever wanted back.
+ *
+ *  Flip to true to get them back exactly as they were. */
+export const TOWN_PROPS_ENABLED = false;
+
 export function propsForZone(zoneId) {
+  if (zoneId === 'town' && !TOWN_PROPS_ENABLED) return [];
   return WORLD_PROPS.filter((p) => p.zone === zoneId);
 }
 
@@ -119,3 +158,10 @@ export function propsForZone(zoneId) {
 export function propSpriteSources() {
   return [...new Set(WORLD_PROPS.map((p) => p.sprite).filter(Boolean))];
 }
+
+/* v2.3.1813 dev probe, house style (__btWorldProps): the props switch itself.
+   mp-townprops / mp-townbuildings need to tell "switched off by directive"
+   apart from "drawing is broken" — an empty prop list looks identical from the
+   outside, and a scenario that treated the two the same would either fail
+   every run while they are off or pass silently once they come back. */
+if (typeof window !== 'undefined') window.__btTownPropsEnabled = () => TOWN_PROPS_ENABLED;

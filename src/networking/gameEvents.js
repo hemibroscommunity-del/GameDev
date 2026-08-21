@@ -586,8 +586,19 @@ export function processGameEvent(type, payload, S, deps) {
                  unknown ability string renders nothing at all. */
               if (!payload || !S.player) break;
               if (payload.zone && S.currentZone && payload.zone !== S.currentZone) break;
-              var _maLabels = { slam: 'SLAM!', pounce: 'POUNCE!' };
-              var _maColors = { slam: '#f5c542', pounce: '#2C3E50' };
+              /* v2.3.1812: `lunge` is fodder's beginner tell (owner: "Yes
+                 give fodder a tell").  This whitelist is the reason it
+                 needs an entry AT ALL — an ability the client does not
+                 know renders NOTHING, silently, which is this codebase's
+                 signature failure.  server/test/mirror-audit now pins
+                 these keys against TELEGRAPH.KITS so a future kit cannot
+                 ship server-side and simply not appear.
+                 Softer orange than the brute's amber and a smaller shake
+                 below: the tell should read as "here it comes", not as
+                 "you are in trouble". */
+              var _maLabels = { slam: 'SLAM!', pounce: 'POUNCE!', lunge: 'LUNGE!' };
+              var _maColors = { slam: '#f5c542', pounce: '#2C3E50', lunge: '#E8955A' };
+              var _maShake = { slam: 8, pounce: 5, lunge: 3 };
               var _maLabel = _maLabels[payload.ability];
               if (!_maLabel) break; /* never render an arbitrary wire string */
               var _maX = typeof payload.x === 'number' ? payload.x : S.player.x;
@@ -606,6 +617,26 @@ export function processGameEvent(type, payload, S, deps) {
                     color: _maColors[payload.ability] || '#fbbf24',
                   });
                 }
+                /* ═══ v2.3.1811: AND MARK THE MONSTER ITSELF ═══
+                   Owner: "add monster attack animations or just having you
+                   add something to them so that way attacks are predictable
+                   enough to block."
+                   The ground marker above says WHERE and is genuinely the
+                   readable half — but it is on the FLOOR, and the thing a
+                   player watches in a fight is the enemy.  Stamping the
+                   wind-up on the monster lets entityRenderer make the body
+                   itself load up, so the tell is where the eye already is.
+                   monsterId is already in this payload; no wire change. */
+                if (payload.monsterId && S.monsters) {
+                  for (var _tgi = 0; _tgi < S.monsters.length; _tgi++) {
+                    var _tgm = S.monsters[_tgi];
+                    if (_tgm && _tgm.id === payload.monsterId) {
+                      _tgm._tgFrom = Date.now();
+                      _tgm._tgUntil = Date.now() + (payload.ms || 800);
+                      break;
+                    }
+                  }
+                }
                 BT_AUDIO.beep(400, 0.08, 0.1, 'sine');
                 break;
               }
@@ -618,8 +649,9 @@ export function processGameEvent(type, payload, S, deps) {
                   color: _maColors[payload.ability] || '#f5c542',
                   maxR: payload.radius || 55, duration: 400,
                 });
-                S.screenShake = payload.ability === 'slam' ? 8 : 5;
-                BT_AUDIO.beep(payload.ability === 'slam' ? 80 : 150, 0.18, 0.22,
+                S.screenShake = _maShake[payload.ability] || 5;
+                BT_AUDIO.beep(payload.ability === 'slam' ? 80 : (payload.ability === 'lunge' ? 200 : 150),
+                  0.18, 0.22,
                   payload.ability === 'slam' ? 'sawtooth' : 'square');
               } else {
                 pushDmgPopup(S, _maX, _maY - 30, 'MISS', '#8FD6A0');

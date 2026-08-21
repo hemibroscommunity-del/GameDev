@@ -4,7 +4,7 @@
  */
 import { Assets, ColorMatrixFilter, Container, Graphics, Rectangle, Sprite, Text, TextStyle, Texture } from 'pixi.js';
 import { getNpcTexture } from '../npcSprites.js'; /* v2.3.1672: NPC figure art */
-import { propsForZone } from '../../data/worldProps.js'; /* v2.3.1775: scenery */
+import { propsForZone, propFootprint } from '../../data/worldProps.js'; /* v2.3.1775: scenery; v2.3.1794: + footprint for the props probe */
 import { TILE } from '@/data/constants.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { ELEMENTS } from '@/data/elements.js';
@@ -19,7 +19,7 @@ for (const el of Object.values(ELEMENTS || {})) {
 import { lookupCollision, PVP_THREAT_CONSENT_MS } from '@/data/gameSystems.js';
 import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrameCount, dodgeSheetDir } from '../playerSprites.js';
 import { getShieldFrame } from '../shieldSprites.js';
-import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX } from '../backShield.js'; /* v2.3.1784 */
+import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX, HELD_SHIELD_PX } from '../backShield.js'; /* v2.3.1784; HELD_ v2.3.1798 */
 import { STUN_STARS, STUN_SPIN_MS } from '../fxStrips.js'; /* v2.3.1735: the owner's stun ring */
 import { jogWaistRow } from '../jogWaist.js'; /* v2.3.1341: stable waist band */
 import { getFrame as getSlimeBaseFrame, hasState as hasSlimeState, frameCount as slimeFrameCount } from '../slimeSprites.js';
@@ -60,7 +60,8 @@ import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/faci
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { getGearFrame, getGearFramePhased, getLoadedGearSources } from '../gearSheets.js';
-import { BLOCK_ARM_FACING, BLOCK_ARM_CUT, blockArmTexture } from '../blockArm.js'; /* v2.3.1785 */
+import { AIM_CARET, AIM_CARET_EDGE, AIM_CARET_HOT } from '../aimCaret.js'; /* v2.3.1799 */
+import { BLOCK_ARM_ENABLED, BLOCK_ARM_FACING, BLOCK_ARM_CUT, blockArmTexture, blockArmSleeveTexture } from '../blockArm.js'; /* v2.3.1785, sleeve v2.3.1789, ENABLED v2.3.1798 */
 import { gearTint, gearArt, gearMaterial } from '../gearVariants.js'; /* v2.3.1757: material recolor */
 import { materialTint, weaponTint } from '../traits/materialTints.js'; /* v2.3.1757: weapons share the metals table */
 import { combatGearUrls } from '../combatGear.js';
@@ -3267,14 +3268,86 @@ const BLOCK_ARM_SHOULDER = {
   southwest: [-6, -12],
 };
 
+/* Hide the arm AND record it.  Both must happen together: the probe was
+   written only inside the placement at first, so lowering the shield left the
+   previous frame's reading in place and mp-blockarm read a shield-down bro as
+   still holding one. */
+function _hideBlockArm(display, why) {
+  if (display._blockArmGroup) display._blockArmGroup.visible = false;
+  if (display._blockArmSprite) display._blockArmSprite.visible = false;
+  if (display._blockArmSleeve) display._blockArmSleeve.visible = false;
+  /* v2.3.1800: keep the last CUT facts alongside the hidden flag.  Since the
+     stand-in took over, the arm is deliberately never drawn — but the cut is
+     still what positions the shield, so a probe that reported only "off" would
+     make the surviving contract untestable. */
+  try {
+    const _prev = window.__btBlockArm || {};
+    window.__btBlockArm = Object.assign(
+      { sheet: _prev.sheet, armW: _prev.armW, armH: _prev.armH, hand: _prev.hand },
+      { on: false }, why || {});
+  } catch (e) {}
+}
+
+/* ═══ v2.3.1798: THE BLOCK CARET ═══
+   A chevron pointing out along the centre of the guard arc (owner: "Add a
+   carat while blocking to indicate the direction you're blocking").
+   Drawn twice — a near-black pass wider underneath, then the blue on top
+   (v2.3.1799: was brass; see aimCaret.js for why one colour, and why blue).  That is not decoration either: this mark lands on town cobble,
+   desert sand and snow, and a single brass stroke disappears against two of
+   the three.  Same reasoning as the coach ring's dark edge (QuestCoach.jsx),
+   and the same reason the joystick sprites carry their own rim.
+   No CSS/pixi filter — a filter compositing over the WebGL canvas is the
+   documented cause of the iOS "static" (CLAUDE.md). */
+/* Measured from the shield's CENTRE, so it has to clear the shield's own
+   radius: HELD_SHIELD_PX is 72, i.e. 36 half-width, and the first cut at 21
+   put the chevron INSIDE the disc — it only showed at all because the art
+   does not fill its box.  42 leaves a clear gap at every facing. */
+const CARET_OUT = 42;     /* how far past the shield's centre the tip sits */
+const CARET_BACK = 13;    /* tip-to-shoulder along the aim axis */
+const CARET_HALF = 10;    /* half the chevron's opening */
+function _drawBlockCaret(display, sx, sy, ang, pulse) {
+  const g = display._blockCaretGfx;
+  if (!g) return;
+  const cx = Math.cos(ang), cy = Math.sin(ang);
+  const nx = -cy, ny = cx;
+  const tipX = sx + cx * CARET_OUT;
+  const tipY = sy + cy * CARET_OUT;
+  const baseX = sx + cx * (CARET_OUT - CARET_BACK);
+  const baseY = sy + cy * (CARET_OUT - CARET_BACK);
+  const aX = baseX + nx * CARET_HALF, aY = baseY + ny * CARET_HALF;
+  const bX = baseX - nx * CARET_HALF, bY = baseY - ny * CARET_HALF;
+  g.clear();
+  g.moveTo(aX, aY); g.lineTo(tipX, tipY); g.lineTo(bX, bY);
+  g.stroke({ color: AIM_CARET_EDGE, width: 7, alpha: 0.6, cap: 'round', join: 'round' });
+  g.moveTo(aX, aY); g.lineTo(tipX, tipY); g.lineTo(bX, bY);
+  /* Whitens for the 250ms after a hit is blocked — the same blockPulse the
+     shield's own brightness pop reads, so the two say "that one landed on the
+     shield" together instead of one of them saying it alone. */
+  g.stroke({
+    color: pulse > 0 ? AIM_CARET_HOT : AIM_CARET,
+    width: 4 + pulse * 1.5, alpha: 1, cap: 'round', join: 'round',
+  });
+  g.visible = true;
+}
+function _hideBlockCaret(display) {
+  const g = display && display._blockCaretGfx;
+  if (g && g.visible) { g.visible = false; g.clear(); }
+}
+
 function _placeBlockArm(display, facing, bodyH, bobY) {
   const spr = display._blockArmSprite;
+  const sleeve = display._blockArmSleeve;
+  const group = display._blockArmGroup;
+  if (sleeve) sleeve.visible = false;
   if (!spr) return null;
   const map = BLOCK_ARM_FACING[facing];
   const anchor = BLOCK_ARM_SHOULDER[facing];
   const tex = map && blockArmTexture(map[0]);
   const cut = map && BLOCK_ARM_CUT[map[0]];
-  if (!map || !anchor || !tex || !cut) { spr.visible = false; return null; }
+  if (!map || !anchor || !tex || !cut) {
+    _hideBlockArm(display, { facing, hasSheet: !!map, hasArt: !!tex });
+    return null;
+  }
 
   const mirror = map[1];
   /* 188 is the bow sheet's crown-to-foot figure height, the same constant the
@@ -3291,11 +3364,68 @@ function _placeBlockArm(display, facing, bodyH, bobY) {
   spr.tint = 0xffffff;
   spr.alpha = 1;
   spr.visible = true;
+  if (group) group.visible = true;
+
+  /* v2.3.1789: the sleeve rides the arm — same rect, same transform, drawn
+     straight over it, so a copper plate reaches out with the arm instead of
+     stopping at the shoulder.  Tinted by the piece's material for the same
+     reason every other gear draw site is (v2.3.1757): a recoloured set shares
+     its donor's texture and the colour is applied here. */
+  if (sleeve) {
+    const worn = getEquip('chest');
+    const sleeveTex = blockArmSleeveTexture(map[0], worn, getGearFrame);
+    if (sleeveTex) {
+      sleeve.texture = sleeveTex;
+      sleeve.scale.set(spr.scale.x, spr.scale.y);
+      sleeve.x = spr.x;
+      sleeve.y = spr.y;
+      sleeve.tint = gearTint(worn);
+      sleeve.alpha = 1;
+      sleeve.visible = true;
+    }
+  }
+
+  /* Z-ORDER: the arm group goes DIRECTLY BENEATH the shield, so the boss covers
+     the hand rather than the hand being painted across the shield face.  It has
+     to happen per frame, because the in-hand shield's own z-rule slides
+     _shieldSprite up and down the child list by facing — a fixed build-order
+     position for the arm is right on some facings and wrong on the rest.
+     (Caught by mp-blockarm: the arm sat at index 25 with the shield at 8.)
+
+     setChildIndex removes then re-inserts, so the target depends on which side
+     the group starts from: from above, the shield does not move and the group
+     goes to shIdx; from below, the shield slides down one during the removal
+     and the group goes to shIdx-1.  The "already there" check keeps it stable
+     rather than ratcheting a slot per frame. */
+  const shieldSpr = display._shieldSprite;
+  if (group && shieldSpr) {
+    const shIdx = display.getChildIndex(shieldSpr);
+    const gi = display.getChildIndex(group);
+    if (gi !== shIdx - 1) display.setChildIndex(group, gi < shIdx ? shIdx - 1 : shIdx);
+  }
 
   /* Where the hand ended up, for the shield to sit in. */
   const handDX = (cut.hand[0] - cut.shoulder[0]) * sx;
   const handDY = (cut.hand[1] - cut.shoulder[1]) * sc;
-  return { x: anchor[0] + handDX, y: anchor[1] + (bobY || 0) + handDY };
+  const hand = { x: anchor[0] + handDX, y: anchor[1] + (bobY || 0) + handDY };
+
+  /* QA probe (mp-blockarm) — a headless run cannot read the WebGL canvas. */
+  try {
+    window.__btBlockArm = {
+      on: true, facing, sheet: map[0], mirror,
+      armVisible: spr.visible,
+      armW: spr.texture ? spr.texture.width : 0,
+      armH: spr.texture ? spr.texture.height : 0,
+      sleeveVisible: !!(sleeve && sleeve.visible),
+      sleeveW: (sleeve && sleeve.visible && sleeve.texture) ? sleeve.texture.width : 0,
+      sleeveTint: (sleeve && sleeve.visible) ? sleeve.tint : null,
+      worn: getEquip('chest'),
+      hand,
+      armIdx: group ? display.getChildIndex(group) : display.getChildIndex(spr),
+      shieldIdx: display._shieldSprite ? display.getChildIndex(display._shieldSprite) : -1,
+    };
+  } catch (e) { /* never breaks the frame */ }
+  return hand;
 }
 
 function createPlayerDisplay() {
@@ -3510,10 +3640,22 @@ function createPlayerDisplay() {
      gear, immediately before the shield — so it reaches out OVER the torso and
      the shield's boss still covers the hand.  Structural, like the back
      shield's pair: nothing recomputes an index for it. */
+  /* v2.3.1789: arm + sleeve share ONE container, so the per-frame z-order step
+     moves them together and the shield can never slide between them.  Two
+     sprites reindexed independently is how you get a sleeve floating over a
+     shield with its own arm behind it. */
+  const blockArmGroup = new Container();
+  blockArmGroup.visible = false;
   const blockArmSprite = new Sprite();
   blockArmSprite.anchor.set(0, 0);
-  blockArmSprite.visible = false;
-  container.addChild(blockArmSprite);
+  blockArmGroup.addChild(blockArmSprite);
+  /* the sleeve: the worn chest piece's bowshot strip, cut to the same rect and
+     drawn directly over the bare arm with the same transform. */
+  const blockArmSleeve = new Sprite();
+  blockArmSleeve.anchor.set(0, 0);
+  blockArmSleeve.visible = false;
+  blockArmGroup.addChild(blockArmSleeve);
+  container.addChild(blockArmGroup);
 
   /* v2.3.1782: the in-FRONT half of the on-back shield.  Sits here — after
      the arms, before the in-hand shield — so a shield slung across a back
@@ -3532,6 +3674,21 @@ function createPlayerDisplay() {
   shieldSprite.anchor.set(0.5, 0.5);
   shieldSprite.visible = false;
   container.addChild(shieldSprite);
+
+  /* ═══ v2.3.1798: THE BLOCK CARET ═══
+     Owner: "Add a carat while blocking to indicate the direction you're
+     blocking."
+     The shield sprite already sits on the guarded side, but a shield seen
+     near-top-down is a disc — it says WHERE it is, not which way it faces, and
+     the guard is an ARC whose centre the player has to aim.  A chevron pointing
+     straight out along that centre states it unambiguously.
+     Its own Graphics rather than a share of weaponGfx: weaponGfx lives inside
+     weaponContainer, which is re-parented up and down the child list every
+     frame by the in-front/behind weapon rule, and the caret must not inherit
+     that.  Added after shieldSprite so it draws over the shield. */
+  const blockCaretGfx = new Graphics();
+  blockCaretGfx.visible = false;
+  container.addChild(blockCaretGfx);
 
   // §5.9.5 Combo Chain count badge — sits above the bars.
   const comboText = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 10 } });
@@ -3676,7 +3833,10 @@ function createPlayerDisplay() {
   container._handArmSprite = handArmSprite;
   container._handArmMask = handArmMask;
   container._shieldSprite = shieldSprite;
+  container._blockCaretGfx = blockCaretGfx;     /* v2.3.1798 */
   container._blockArmSprite = blockArmSprite;   /* v2.3.1785 */
+  container._blockArmSleeve = blockArmSleeve;   /* v2.3.1789 */
+  container._blockArmGroup = blockArmGroup;     /* v2.3.1789 */
   container._shieldBackLo = shieldBackLo;   /* v2.3.1782 */
   container._shieldBackHi = shieldBackHi;   /* v2.3.1782 */
   container._comboText = comboText;
@@ -3713,6 +3873,19 @@ function createOtherPlayerDisplay() {
 
   /* Procedural fallback body — drawn until /sprites/player sheets
      resolve (and as a permanent fallback if they fail to load). */
+  /* ═══ v2.3.1790: other bros wear their shield on their back too ═══
+     v2.3.1782 built the slung shield for the local player only and said so;
+     this closes that gap.  Same structural trick, because the reason for it is
+     the same: a LOW clone before every drawn layer and a HIGH clone after them,
+     with the facing choosing which is visible.  No index arithmetic, so no
+     per-facing exception to get wrong — and the geometry comes from
+     backShield.js, shared with the local player and both attack stand-ins, so
+     a peer's shield cannot sit somewhere yours does not. */
+  const shieldBackLo = new Sprite();
+  shieldBackLo.anchor.set(0.5, 0.5);
+  shieldBackLo.visible = false;
+  container.addChild(shieldBackLo);
+
   const body = new Graphics();
   container.addChild(body);
 
@@ -3794,6 +3967,12 @@ function createOtherPlayerDisplay() {
      z-order all three relative to spriteBody. */
   const weaponContainer = new Container();
   container.addChild(weaponContainer);
+  /* v2.3.1790: the in-FRONT half — after the body, the gear and the shirt, so a
+     back turned to the camera shows the shield over all of them. */
+  const shieldBackHi = new Sprite();
+  shieldBackHi.anchor.set(0.5, 0.5);
+  shieldBackHi.visible = false;
+  container.addChild(shieldBackHi);
 
   const weaponGlowGfx = new Graphics();
   weaponContainer.addChild(weaponGlowGfx);
@@ -3851,6 +4030,8 @@ function createOtherPlayerDisplay() {
   container._animDir = null;
   container._animFrame = -1;
 
+  container._shieldBackLo = shieldBackLo;   /* v2.3.1790 */
+  container._shieldBackHi = shieldBackHi;   /* v2.3.1790 */
   return container;
 }
 
@@ -4189,6 +4370,53 @@ export class EntityRenderer {
         if (display._hpUi && display._hpUi.visible) display._hpUi.visible = false;
       };
       try { _spawnFx(); } catch (e) { /* an FX must never take the frame down */ }
+
+      /* ═══ v2.3.1811: A MONSTER WINDING UP LOADS UP ═══
+         Owner: "add monster attack animations or just having you add
+         something to them so that way attacks are predictable enough to
+         block."
+         The server already telegraphs (server/src/telegraph.js) and the
+         client already draws the ground marker — but on the FLOOR, at the aim
+         point, while the thing a player is watching in a fight is the enemy.
+         This puts the same information on the body: a throb that tightens as
+         the wind-up runs out, so "it is about to go" is legible without
+         looking away from the monster.
+         Scale only — no filter.  SPAWN_WHITE_FILTER above shows a filter is
+         allowed here, but it is one monster arriving versus potentially every
+         monster on screen winding up, and a per-monster filter is a
+         per-monster render target.
+         Written AFTER _spawnFx and restoring MONSTER_SIZE_MULT on the way
+         out, so the two can never fight over display.scale: spawn wins while
+         it is arriving, this wins after, and neither leaves it stranded. */
+      const _windupFx = () => {
+        const until = m._tgUntil || 0;
+        if (!until) return;
+        if (now >= until) {
+          m._tgUntil = 0; m._tgFrom = 0;
+          if (display.scale.x !== MONSTER_SIZE_MULT) display.scale.set(MONSTER_SIZE_MULT);
+          return;
+        }
+        const from = m._tgFrom || (until - 800);
+        const t = Math.max(0, Math.min(1, (now - from) / Math.max(1, until - from)));
+        /* Throb faster and wider as it winds up — the last beat before the
+           hit is the loudest, which is the one worth reading. */
+        const beat = 0.5 + 0.5 * Math.sin(now / (52 - 26 * t));
+        display.scale.set(MONSTER_SIZE_MULT * (1 + (0.05 + 0.09 * t) * beat));
+      };
+      try { _windupFx(); } catch (e) { /* an FX must never take the frame down */ }
+      /* QA probe (mp-windup): a throb cannot be read off one screenshot, so
+         the scenario reads the scale the FX actually wrote — and the resting
+         multiplier beside it, so "it grew" has a control. */
+      try {
+        if (!window.__btMonsterScale) {
+          window.__btMonsterScale = (mid) => {
+            const st = window.__btMonScales && window.__btMonScales[mid];
+            return st ? { scale: st, baseMult: MONSTER_SIZE_MULT } : null;
+          };
+        }
+        if (!window.__btMonScales) window.__btMonScales = Object.create(null);
+        window.__btMonScales[m.id] = display.scale.x;
+      } catch (e) {}
 
       const size = display._size;
 
@@ -5155,6 +5383,53 @@ export class EntityRenderer {
          Dropping it makes remote facing match local. */
       const facingIdx = SECTORS.indexOf(facing);
       const isHit = other._hitFlash && (now - other._hitFlash) < 250;
+
+      /* ═══ v2.3.1790: the peer's slung shield ═══
+         Whether they own one comes from rpgData.shield, which the presence
+         payload already carries for the inspect card — so this needs NO wire
+         change and cannot break deploy order in either direction: an old
+         client shows a new client's shield and a new client shows an old
+         one's.  It is the shield's NAME rather than a render flag, and that is
+         enough, because the art is one pine PNG triplet whatever shield it is
+         — exactly as for the local player.
+
+         Drawn while they stand or jog, hidden during a hit, a death or any
+         stand-in pose, for the reason the local one is: those replace or move
+         the torso in ways a fixed back placement cannot follow.  A peer's
+         BLOCK is not broadcast at all, so a blocking peer keeps the shield
+         slung — wrong for the half-second it is up, and better than guessing
+         from data that is not on the wire. */
+      {
+        const _shLo = display._shieldBackLo, _shHi = display._shieldBackHi;
+        if (_shLo && _shHi) {
+          const _hasShield = !!(other.rpgData && other.rpgData.shield);
+          const _place = (_hasShield && !isHit && !other._dying && !other._extraction && !other._firemaking)
+            ? backShieldPlacement(facingIdx, isMoving, bobY)
+            : null;
+          if (!_place) {
+            _shLo.visible = false;
+            _shHi.visible = false;
+          } else {
+            const _shown = _place.behind ? _shLo : _shHi;
+            (_place.behind ? _shHi : _shLo).visible = false;
+            applyBackShield(_shown, _place, BACK_SHIELD_PX);
+            _shown.x = _place.dx;
+            _shown.y = _place.dy;
+          }
+          /* QA probe (mp-peershield) — one entry per peer id. */
+          try {
+            if (!window.__btPeerShield) window.__btPeerShield = {};
+            window.__btPeerShield[id] = {
+              on: !!(_shLo.visible || _shHi.visible),
+              hasShield: _hasShield,
+              facing, behind: _shLo.visible, front: _shHi.visible,
+              loIdx: display.getChildIndex(_shLo),
+              hiIdx: display.getChildIndex(_shHi),
+              bodyIdx: display._spriteBody ? display.getChildIndex(display._spriteBody) : -1,
+            };
+          } catch (e) { /* never breaks the frame */ }
+        }
+      }
       /* v2.3.1092: remote harvest activity broadcast by the gatherer.
          mine/fish render as the SAME south-only body poses the local player
          uses; chop/cook/fire are full-character STAND-INS drawn in
@@ -5538,19 +5813,64 @@ export class EntityRenderer {
 
       /* Z-order: same per-direction split as local.  Shield uses the
          forward-half (E/SE/S/SW) in front rule; weapon uses the
-         E/SE/S + NE rule. */
+         E/SE/S + NE rule.
+
+         v2.3.1791: BOTH HALVES OF v2.3.1787 APPLIED HERE TOO.  That fix — the
+         owner's "SW SE and E need the sword layered in front of ... Looks like
+         it is probably the shirt" — went into _updatePlayer only, so other
+         bros kept carrying their sword buried under their own shirt.  This is
+         the third time a defect has had to be fixed twice in this file because
+         the local and remote renders are parallel implementations sharing
+         variable names (v2.3.1786's ReferenceError and v2.3.1790's slung
+         shield were the other two).  Worth saying plainly: when something is
+         wrong with how YOUR bro is drawn, check whether it is also wrong for
+         everyone else's. */
       if (display._weaponContainer && oSpriteBody) {
+        /* Held weapons get SW in front, exactly as local: the greatsword is
+           carried point-up (v2.3.1786) so its blade rises clear of the torso
+           rather than lying across it, which is what v2.3.199 dropped SW for.
+           Scoped to held types so a peer's bamboo/staff keeps that behaviour. */
+        const _oHeldInHand = oWpnType === 'greatsword' || oWpnType === 'bow';
+        const _oInFrontBase = facingIdx === 0 || facingIdx === 1 || facingIdx === 2 || facingIdx === 7;
         const inFront = oIsShielding
           ? (facingIdx >= 0 && facingIdx <= 3)
-          : (facingIdx === 0 || facingIdx === 1 || facingIdx === 2 || facingIdx === 7);
+          : (_oHeldInHand ? (_oInFrontBase || facingIdx === 3) : _oInFrontBase);
         const bodyIdx = display.getChildIndex(oSpriteBody);
         const wcIdx   = display.getChildIndex(display._weaponContainer);
+        /* "In front" is measured against the topmost VISIBLE worn layer, not
+           against oSpriteBody — which is not drawn (it is the invisible
+           texture/transform reference the body regions and gear copy from), so
+           anchoring there buried the blade under the torso, the armour and the
+           shirt.  Asked of the layers rather than hard-coded, so a gear slot
+           added later joins the list instead of ending up over the blade. */
+        let frontRefIdx = bodyIdx;
+        for (const _r of [display._bodyHead, display._bodyTorso, display._bodyLegs,
+                          display._gearLegs, display._gearShirt, display._gearChest,
+                          display._gearShoulders, display._gearHead, display._shirtSprite]) {
+          if (_r && _r.visible) {
+            const _i = display.getChildIndex(_r);
+            if (_i > frontRefIdx) frontRefIdx = _i;
+          }
+        }
         const targetIdx = inFront
-          ? (wcIdx > bodyIdx ? bodyIdx + 1 : bodyIdx)
+          ? (wcIdx > frontRefIdx ? frontRefIdx : frontRefIdx - 1) + 1
           : (wcIdx > bodyIdx ? bodyIdx : Math.max(0, bodyIdx - 1));
         if (wcIdx !== targetIdx) {
           display.setChildIndex(display._weaponContainer, targetIdx);
         }
+        /* QA probe (mp-peersword) — one entry per peer id. */
+        try {
+          if (!window.__btPeerSword) window.__btPeerSword = {};
+          window.__btPeerSword[id] = {
+            facing, wpnType: oWpnType, inFront,
+            wcIdx: display.getChildIndex(display._weaponContainer),
+            bodyIdx, frontRefIdx,
+            shirtVis: !!(display._shirtSprite && display._shirtSprite.visible),
+            gearChestVis: !!(display._gearChest && display._gearChest.visible),
+            gearChestIdx: display._gearChest ? display.getChildIndex(display._gearChest) : -1,
+            bladeUp: display._weaponSprite ? display._weaponSprite.scale.y < 0 : null,
+          };
+        } catch (e) { /* never breaks the frame */ }
       }
       /* v2.3.354: beard z-order for remote players (same rule as local). */
       _orderTraitsAndWeapon(display, facingIdx);
@@ -5811,6 +6131,75 @@ export class EntityRenderer {
       const _bf = SECTORS[((_bsec % 8) + 8) % 8];
       if (_BOW_FACINGS.includes(_bf)) _bowDir = _bf;
     }
+    /* ═══ v2.3.1800: A RAISED SHIELD BORROWS THE BOW POSE ═══
+       Owner: "are you allowing the legs to move (jog motion while blocking)
+       and just freezing the top half?  Thats what I'd prefer.  Otherwise the
+       character will look like they're sliding."  And: "I can see a slight arm
+       straight down on the southwest angle above where he's holding the shield
+       straight out arm."
+
+       Both of those are the same fault, and it is the COMPOSITE: v2.3.1785 cut
+       an arm out of the bow art and pasted it onto the walking body, so the
+       body's OWN arms are still under it — swinging while jogging, and poking
+       out below at southwest.  v2.3.1798 froze the body to hide that, which
+       traded three arms for sliding feet.  Neither is a fix; both are ways of
+       arranging one.
+
+       So stop pasting an arm onto a body that has two, and draw the body that
+       already holds one out: the bow stand-in.  It is the same art the arm was
+       cut FROM, it is already wired for exactly this shape of problem — the
+       jog-legs composite (v2.3.1072/1080/1088) draws animated legs under a
+       leg-erased torso strip, which IS "legs move, top half frozen" — and it
+       carries the gear, shirt, traits and skin recolour that a hand-cut arm
+       had to be taught one at a time.  Hiding its bow is one line.
+
+       Three things fall out of this for free:
+         - SOUTH DOES NOT WORK, and this comment claimed it did.  v2.3.1805
+           corrected it: the south body sheet has the bow erased out of it and
+           the bow crosses the FACE there, so hiding the bow exposes a slot cut
+           through the head.  See the exclusion above.  (The original claim was
+           made off a 140px screenshot in which the shield covered the torso;
+           the owner found the face.)
+         - The composited arm still draws, exactly on top of the torso's own —
+           it was cut from this art at this scale, so it aligns by construction
+           — and it is what carries the shield's hand position.
+         - Peers are unaffected: a peer's block is not broadcast (see PR #438),
+           so nothing here can desync.
+
+       GATED ON THE ART BEING LOADED.  A bow shot lasts 400ms, so if its
+       stand-in were ever missing you would barely see it; a block is held, so
+       an unguarded version of this would leave the player INVISIBLE for as
+       long as they held the button — the real body is hidden the moment
+       _bowShowing goes true.  Everything preloads before the intro lifts (the
+       animation-preloading law), so this should never fire; it costs one flag
+       to make sure. */
+    let _blockPose = false;
+    /* ═══ v2.3.1805: NOT SOUTH ═══
+       Owner: "For shield hold, part of the characters face is missing or keyed
+       out facing south."  Correct, and v2.3.1800's claim that the stand-in had
+       finally given south a block pose was WRONG — I checked it in a 140px
+       screenshot where the shield covered the torso and never looked at the
+       head.
+
+       The cause is in the art and is not tunable.  bow-<dir>-body.png is the
+       sheet with the WEAPON erased, and in the south pose the bow is held
+       vertically in front of the face: erasing it cuts a slot straight down
+       through the head, which the bow itself then covers.  Hide the bow — which
+       is exactly what a block does — and the slot is exposed.  Measured on the
+       sheet rather than guessed: rendering bow-south-body frame 1 over magenta
+       shows a clean vertical gap through the face in ALL THREE frames, so no
+       choice of BLOCK_POSE_FRAME escapes it.  east, northwest and north are
+       clean; only south is holed.
+       So south keeps the pre-v2.3.1800 behaviour (real body, planted stance,
+       shield in front), and the honest position is the one v2.3.1789 already
+       reached: a south block needs painted south art. */
+    if (!_bowDir && S._shieldUp && S.rpg && S.rpg.shield && S._bowArtReady) {
+      const _sa = (S._shieldAngle != null) ? S._shieldAngle
+                : (S._aimAngle != null) ? S._aimAngle : (S._facingAngle || 0);
+      const _bf2 = SECTORS[((Math.round(_sa / (Math.PI / 4)) % 8) + 8) % 8];
+      if (_bf2 !== 'south' && _BOW_FACINGS.includes(_bf2)) { _bowDir = _bf2; _blockPose = true; }
+    }
+    S._blockPose = _blockPose;
     const _bowShot = !!_bowDir;
     S._bowShowing = _bowShot;
     S._bowDir = _bowDir;
@@ -5936,28 +6325,35 @@ export class EntityRenderer {
       facing = SECTORS[((sector % 8) + 8) % 8];
     } else if (isShielding && S._shieldAngle != null) {
       const sector = Math.round(S._shieldAngle / (Math.PI / 4));
-      facing = SECTORS[((sector % 8) + 8) % 8];
+      facing = SECTORS[((sector % 8) + 8) % 8]; S._facingSrc = 'shield';
     } else if (aimAttackActive) {
       const sector = Math.round(S._aimAngle / (Math.PI / 4));
-      facing = SECTORS[((sector % 8) + 8) % 8];
+      facing = SECTORS[((sector % 8) + 8) % 8]; S._facingSrc = 'aim';
     } else if (stickActive) {
       const ang = Math.atan2(stickY, stickX);
       const sector = Math.round(ang / (Math.PI / 4));
-      facing = SECTORS[((sector % 8) + 8) % 8];
+      facing = SECTORS[((sector % 8) + 8) % 8]; S._facingSrc = 'stick';
     } else if (isMoving) {
       const ang = Math.atan2(P.vy || 0, P.vx || 0);
       const sector = Math.round(ang / (Math.PI / 4));
-      facing = SECTORS[((sector % 8) + 8) % 8];
+      facing = SECTORS[((sector % 8) + 8) % 8]; S._facingSrc = 'moving';
     } else if (S._facingAngle !== undefined) {
       const sector = Math.round(S._facingAngle / (Math.PI / 4));
-      facing = SECTORS[((sector % 8) + 8) % 8];
+      facing = SECTORS[((sector % 8) + 8) % 8]; S._facingSrc = 'facingAngle';
     } else {
-      facing = S._facing || 'south';
+      facing = S._facing || 'south'; S._facingSrc = 'fallback';
     }
     /* v2.3.396: publish the ACTUAL rendered facing (8-way compass) so the
        network broadcast can send it and remote clients render the same
        facing -- they previously reconstructed it from movement, which is
-       wrong whenever a standing player's facing came from aim, not motion. */
+       wrong whenever a standing player's facing came from aim, not motion.
+       v2.3.1807: ...and _facingSrc names WHICH of the branches above decided
+       it.  One string per frame, and it is worth it: the branch order is
+       bash > shield > aim > stick > moving > facingAngle, so a facing that
+       looks wrong is usually a facing that came from somewhere else, and
+       nothing said where.  A QA pin that set _aimAngle correctly still
+       rendered west for an afternoon because the resolver had fallen through
+       to _facingAngle mid-slew; the probe below now says so in one word. */
     S._renderFacing = facing;
     const isHit = S._hitFlash && (now - S._hitFlash) < 250;
     /* v2.3.188: pickup pose during the loot-pickup freeze.  Takes
@@ -5977,6 +6373,31 @@ export class EntityRenderer {
        already committed to the tumble — in both cases the roll is what the
        body is actually doing, and cutting to the 250ms hit pose mid-roll
        would strand the player upright and sliding. */
+    /* ═══ v2.3.1798: A RAISED SHIELD PLANTS THE STANCE — NOW A FALLBACK ═══
+       v2.3.1800 moved the block onto the bow stand-in, which hides this body
+       entirely and animates its own jog legs, so on the normal path this no
+       longer decides anything.  It still runs for the one case the stand-in
+       cannot cover: _bowArtReady false, i.e. the bow sheets are not loaded.
+       There it keeps doing its original job (below), and it is cheap.
+       ORIGINAL REASONING, kept because it is why the composite was a dead end:
+       Owner: "One downside to the shield arm is that jogging backwards still
+       shows both arms moving AND the outstretched arm."
+       Exactly right, and the count is the bug: the jog frames draw two arms,
+       the block arm composites a third on top, and while jogging the body's
+       own arm swings out from behind it and becomes visible.  Standing, it
+       does not — the stand frames hold the arms in close enough that the
+       composited arm covers the one it stands in for.
+       So while the shield is up the body holds STAND.  This is not a
+       compromise dressed up as a feature: blocking is already HALF SPEED
+       (BroTown.jsx shieldMult), so a raised shield is already a planted,
+       trade-mobility-for-guard stance, and holding the pose is what that
+       reads as.  Legs stop cycling during a blocking shuffle; three arms
+       stop existing.
+       ONLY WHERE AN ARM IS ACTUALLY DRAWN.  Facing south there is no cut to
+       composite (the bow art's south frames are foreshortened — see
+       blockArm.js), so the shield floats there as before and freezing the
+       legs would cost the jog and buy nothing. */
+    const _blockPlanted = isShielding && BLOCK_ARM_ENABLED && !!BLOCK_ARM_FACING[facing];
     const pose = lootFrozen
       ? 'pickup'
       : (mining
@@ -5987,7 +6408,7 @@ export class EntityRenderer {
                   ? 'dodge'
                   : (isHit
                       ? 'hit'
-                      : (isMoving ? 'jog' : 'stand')))));
+                      : ((isMoving && !_blockPlanted) ? 'jog' : 'stand')))));
     /* Resolve to the unmirrored sheet direction + mirror flag.  Lifted
        to outer scope so the weapon-positioning code below can pin to
        the per-frame hand anchor regardless of whether the spritesheet
@@ -7200,6 +7621,18 @@ export class EntityRenderer {
              art authored at a different size, so it needs this to match. */
           const _blockBodyH = (221 - 33) * bodyDirScale(pose, dir) * LOCAL_SCALE * (display.scale.y || 1);
           const _armHand = _placeBlockArm(display, facing, _blockBodyH, bobY);
+          /* ═══ v2.3.1800: DON'T PASTE AN ARM ONTO A BODY THAT HAS ONE ═══
+             Owner, looking at the stand-in: "East (the mirror of west) is
+             showing two arms.  The outstretched arm that came with the bow
+             attack pose looks more natural.  I think if you just removed the
+             extra arm you put on there it'd look natural."
+             Exactly so.  The cut arm existed to give the WALKING body an
+             outstretched one; the bow pose already has that arm, authored,
+             and the paste-on is now a duplicate sitting a pixel or two off it.
+             It still gets CALLED, because the hand it computes is what the
+             shield is positioned by and that placement is already tuned — but
+             nothing it draws is shown. */
+          if (_blockPose) _hideBlockArm(display, { reason: 'stand-in has its own arm' });
           if (_armHand) {
             shieldSprite.x = _armHand.x;
             shieldSprite.y = _armHand.y;
@@ -7207,10 +7640,16 @@ export class EntityRenderer {
             shieldSprite.x = Math.cos(shieldAng) * sR;
             shieldSprite.y = Math.sin(shieldAng) * sR + bobY + shieldHoldY;
           }
-          /* Render at 56 px (sprite is 64 px source). */
-          const baseScale = 56 / 64;
-          shieldSprite.scale.x = baseScale * (shieldFrame.mirror ? -1 : 1);
-          shieldSprite.scale.y = baseScale;
+          /* v2.3.1798: the SAME world size as the shield on his back — see
+             HELD_SHIELD_PX.  Sized through width/height rather than a scale
+             factor, exactly as applyBackShield does, so the result is that
+             many world px whatever the source texture measures; the old
+             `56/64` silently depended on the art being 64px.  The mirror is
+             then re-applied as the sign of scale.x.  Anchor is (0.5,0.5), so
+             growing it keeps its centre in the hand. */
+          shieldSprite.width = HELD_SHIELD_PX;
+          shieldSprite.height = HELD_SHIELD_PX;
+          shieldSprite.scale.x = Math.abs(shieldSprite.scale.x) * (shieldFrame.mirror ? -1 : 1);
           /* v2.3.193: reset rotation in the in-hand path -- otherwise
              a running-lean rotation from the on-back path could stick
              when the player flips into a block mid-stride. */
@@ -7220,8 +7659,83 @@ export class EntityRenderer {
           shieldSprite.tint = pulseTint;
           shieldSprite.alpha = 0.95 + blockPulse * 0.05;
           shieldSprite.visible = true;
+          /* ═══ v2.3.1805: A SHIELD HELD AWAY FROM THE CAMERA ═══
+             Owner: "The northeast/northwest and north facings put the shield
+             facing the camera but should show the character's back with the
+             shield in front of them facing those directions."
+             There has been a rule for this since v2.3.190 — shieldBehind for
+             sectors 5/6/7 — and under the stand-in it CANNOT WORK, because it
+             is a child-index rule and the two things it is ordering are no
+             longer siblings: the body is drawn by effectsRenderer into its
+             nodeLayer while this shield is a child of the player display.  No
+             index in one container can put a sprite behind a sprite in
+             another, so the shield sat on top and, facing north, covered the
+             character completely.
+             The stand-ins already solved exactly this for the SLUNG shield:
+             a lo/hi clone pair straddling the body sprite (v2.3.1784), picked
+             by facing.  So hand the held shield to the same pair — publish
+             what to draw and let effectsRenderer draw it on the correct side —
+             and hide this one, which is in the wrong container to help. */
+          if (_blockPose && (facingIdx === 5 || facingIdx === 6 || facingIdx === 7)) {
+            shieldSprite.visible = false;
+            /* The TEXTURE travels too, not just the angle: shieldFrame was
+               already chosen here by the same getShieldFrame the display path
+               uses, and re-deriving it on the other side is how the two
+               placements drift apart. */
+            S._blockShieldBehind = {
+              tex: shieldFrame.tex, mirror: !!shieldFrame.mirror, ang: shieldAng,
+              px: HELD_SHIELD_PX,
+            };
+          } else {
+            S._blockShieldBehind = null;
+          }
+          /* v2.3.1798: the caret, pointing out along the guarded direction.
+             Measured from the SHIELD's final position rather than from the
+             body, so it stays correct on both placements — the arm's hand
+             (which moves per facing) and the free-floating fallback. */
+          _drawBlockCaret(display, shieldSprite.x, shieldSprite.y, shieldAng, blockPulse);
+          /* v2.3.1798 dev probe, house style (__btBlockArm, __btWorldProps):
+             the shield's size, the pose the body settled on, and where the
+             caret's tip landed.  None of the three can be read off a
+             screenshot — you cannot count arms in a 110px crop — so the test
+             reads the facts instead.  See tools/qa/mp/mp-blockstance.mjs. */
+          if (typeof window !== 'undefined') {
+            const _g = display._blockCaretGfx;
+            window.__btBlockPose = {
+              pose: pose,
+              /* v2.3.1800: which body is actually on screen.  With the bow
+                 stand-in driving a block, `pose` describes a body that is
+                 HIDDEN, so a test that only read it would be reasoning about
+                 something the player cannot see. */
+              standIn: !!S._blockPose,
+              standInDir: S._blockPose ? S._bowDir : null,
+              jogLegs: !!(S._blockPose && S._bowJogLegs),
+              /* v2.3.1805: which side of the body the shield is drawn on, and
+                 by WHICH renderer.  Facing away it has to be the stand-in's
+                 lower clone; the display's own sprite is in a container that
+                 cannot be ordered against the stand-in at all. */
+              shieldBehind: !!S._blockShieldBehind,
+              shieldSpriteVisible: !!(display._shieldSprite && display._shieldSprite.visible),
+              shieldAng: shieldAng,
+              stateShieldAng: S._shieldAngle,
+              stateAimAng: S._aimAngle,
+              facing: facing,
+              moving: isMoving,
+              planted: _blockPlanted,
+              shieldW: Math.round(Math.abs(shieldSprite.width)),
+              backShieldPx: BACK_SHIELD_PX,
+              shieldX: shieldSprite.x, shieldY: shieldSprite.y,
+              armVisible: !!(display._blockArmSprite && display._blockArmSprite.visible),
+              caretVisible: !!(_g && _g.visible),
+              caretTip: _g && _g.visible ? {
+                x: shieldSprite.x + Math.cos(shieldAng) * CARET_OUT,
+                y: shieldSprite.y + Math.sin(shieldAng) * CARET_OUT,
+              } : null,
+            };
+          }
         } else {
           if (shieldSprite) shieldSprite.visible = false;
+          _hideBlockCaret(display);
           /* Fallback procedural arc — sprite hasn't loaded yet. */
           const sArc = Math.PI * 2 / 3;
           const startA = shieldAng - sArc / 2;
@@ -7240,7 +7754,8 @@ export class EntityRenderer {
       } else if (display._shieldSprite) {
         display._shieldSprite.visible = false;
       }
-      if (!shieldVisible && display._blockArmSprite) display._blockArmSprite.visible = false;
+      if (!shieldVisible || !(S.rpg && S.rpg.shield)) _hideBlockCaret(display);
+      if (!shieldVisible) _hideBlockArm(display, { reason: 'shield down' });
 
       /* ═══ v2.3.1782: the shield slung on the back ═══
          Cosmetic only.  Restored from the v2.3.377 removal ("a persistent
@@ -7311,6 +7826,10 @@ export class EntityRenderer {
             bodyIdx: display._spriteBody ? display.getChildIndex(display._spriteBody) : -1,
             armIdx: display._handArmSprite ? display.getChildIndex(display._handArmSprite) : -1,
             heldVisible: !!(display._shieldSprite && display._shieldSprite.visible),
+            /* v2.3.1805: facing away, the held shield is drawn by the stand-in's
+               lower clone instead of by this display's sprite — so "is it in
+               hand" is the OR of the two, not heldVisible alone. */
+            heldByStandIn: !!S._blockShieldBehind,
             mirror: !!(backFrame && backFrame.mirror),
             sizePx: _shLo.visible ? _shLo.height : _shHi.height,
             texH: (_shLo.visible ? _shLo : _shHi).texture ? (_shLo.visible ? _shLo : _shHi).texture.height : 0,
@@ -7439,6 +7958,10 @@ export class EntityRenderer {
   _updateProps(S) {
     if (typeof window !== 'undefined') _entityLayerRef = this.entityLayer;
     const props = propsForZone(S.currentZone);
+    /* id -> prop, so the probe below can ask for a footprint by the same id
+       the display map is keyed on. */
+    const _propById = Object.create(null);
+    for (const _p of props) _propById[_p.id] = _p;
     if (!this.propDisplays) this.propDisplays = new Map();
     const live = new Set();
     for (const p of props) {
@@ -7473,9 +7996,17 @@ export class EntityRenderer {
       _propsDrawn.length = 0;
       for (const [id, spr] of this.propDisplays) {
         if (!spr.visible) continue;
+        /* v2.3.1794: report the FOOTPRINT too.  Since collision comes from
+           the props table rather than a map mask, a test that wants to walk
+           into something solid has to be able to tell which props are solid —
+           the anvil and the market stall are scenery and do not block, and
+           mp-townmap picked the anvil and failed for the right reason. */
+        let _fp = null;
+        try { _fp = propFootprint(_propById[id]) || null; } catch (e) { /* probe only */ }
         _propsDrawn.push({ id, x: spr.x, y: spr.y,
           width: spr.texture.width * spr.scale.x,
-          height: spr.texture.height * spr.scale.y });
+          height: spr.texture.height * spr.scale.y,
+          blocks: !!_fp, footprint: _fp });
       }
     }
   }

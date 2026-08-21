@@ -38,6 +38,11 @@ import { PlayerListPanel } from './panels/PlayerListPanel.jsx';
 import { EmotePanel } from './panels/EmotePanel.jsx';
 import { InspectPlayerPanel } from './panels/InspectPlayerPanel.jsx';
 import { NameModal } from './panels/NameModal.jsx';
+/* v2.3.1814: the login door that now sits in front of the creator.
+   getBtPassphrase is already imported further down with the other
+   networking helpers — only checkAccountLogin is new here. */
+import { LoginScreen } from './panels/LoginScreen.jsx';
+import { checkAccountLogin } from '@/networking/index.js';
 import { KeyboardHintsPanel } from './panels/KeyboardHintsPanel.jsx';
 import { UpdateBanner } from './panels/UpdateBanner.jsx';
 import { startBuildWatch } from '@/game/buildWatch.js';
@@ -104,6 +109,10 @@ import { eatBus } from './mobile/eatBus.js';
 import { blockRingBus } from './mobile/blockRingBus.js';
 import { chatBubbleBus } from './mobile/chatBubbleBus.js'; /* v2.3.1287: self-tap opens chat */
 import { controlsTutorialBus } from './mobile/controlsTutorialBus.js';
+/* v2.3.1796: the questline teaches the controls by flashing the real one
+   (owner).  Sibling of, not replacement for, ControlsTutorial above — see
+   the header of QuestCoach.jsx for why both exist. */
+import { QuestCoach } from './mobile/QuestCoach.jsx';
 /* Renderer: PixiJS (WebGL) with Canvas 2D fallback */
 import { initPixiRenderer, preloadPlayerAssets } from '@/rendering/pixiRenderer.js';
 import { IMAGE_ZONE_MAPS } from '@/rendering/tiledMaps.js';
@@ -1545,11 +1554,33 @@ export var BroTown = function BroTown(_ref0) {
     _useState188 = _slicedToArray(_useState187, 2),
     joinFlash = _useState188[0],
     setJoinFlash = _useState188[1];
-  /* Simple welcome screen — always show (fresh session each time) */
-  var _useState189 = useState(true),
+  /* ═══ v2.3.1814: WHICH PRE-GAME SCREEN, IF ANY ═══
+     Owner: "character selections in terms of names and traits picked during
+     login should be permanent.  When you load a character using the key it
+     should just bring you into the game not the login menu anymore.  Which
+     means a new login screen needs to be made."
+
+     This used to be `useState(true)` under the comment "always show (fresh
+     session each time)", which is the whole behaviour the owner is ending:
+     the creator was the front door because a character was something you
+     re-made every session.  Now there are three outcomes and the boot check
+     picks between them:
+       'checking' — asking the worker whether THIS device's key already has
+                    a character (read-only; see _bootCharCheck below).
+       'login'    — it does not, so: log in with a key, or create one.
+       'create'   — the creator, now reached deliberately rather than by
+                    default.
+       null       — it does, so there is no pre-game screen at all and we
+                    walk straight into town.
+     Starting at 'checking' rather than 'login' matters: flashing the login
+     screen for a moment before skipping it would undo the point of skipping
+     it. */
+  var _useState189 = useState('checking'),
     _useState190 = _slicedToArray(_useState189, 2),
-    showWelcome = _useState190[0],
-    setShowWelcome = _useState190[1];
+    bootPhase = _useState190[0],
+    setBootPhase = _useState190[1];
+  var showWelcome = bootPhase === 'create';
+  var setShowWelcome = function setShowWelcome(v) { setBootPhase(v ? 'create' : null); };
   /* Bro Town intro video — overlays the game for ~4 s after character
      creation (fades out at 3 s).  Town music starts during the video. */
   var _useState229 = useState(false),
@@ -2155,6 +2186,7 @@ export var BroTown = function BroTown(_ref0) {
       stateRef: stateRef,
       showNameModal: showNameModal,
       showLogin: showLogin,
+      preGame: bootPhase !== null,   /* v2.3.1814: also the boot check + login door */
       setPlayerCount: setPlayerCount,
       setChatLog: setChatLog,
       setUnreadChats: setUnreadChats,
@@ -2173,7 +2205,7 @@ export var BroTown = function BroTown(_ref0) {
       setClanData: setClanData,
       pixiRef: pixiRef
     });
-  }, [showNameModal, showLogin]);
+  }, [showNameModal, showLogin, bootPhase]);   /* v2.3.1814: reconnect decision changes with the pre-game phase */
 
   /* ═══ Server stats_update sync ═══
      The worker tracks HP authoritatively but doesn't know our derived
@@ -3426,6 +3458,9 @@ export var BroTown = function BroTown(_ref0) {
        outer try/catch swallowed it silently, no rendering ever
        happened.  The earlier resize() at line ~2810 (guarded) plus
        its listeners cover the same job. */
+    /* v2.3.1794: how close you can get to a townsperson before they block.
+       14px against a ~24px-wide drawn figure — see the note in isSolid. */
+    var NPC_BLOCK_R2 = 14 * 14;
     var isSolid = function isSolid(px, py) {
       var _S$map;
       var zone = ZONES[S.currentZone];
@@ -3437,6 +3472,44 @@ export var BroTown = function BroTown(_ref0) {
          everything else is walkable. The legacy TILE_SOLID check is
          skipped because the procedural S.map still has old building
          tiles (3, etc.) underneath the new Tiled render. */
+      /* ═══ v2.3.1794: NPCs ARE OBJECTS TOO ═══
+         Owner: "only make the objects (like each house and NPC) unwalkable
+         areas."  Buildings block through the props grid; townsfolk block here
+         instead, as a live radius test, because a grid would be a lie the
+         moment one of them moved and because the NPC list is already the
+         authority on where they are.  Five of them in town, so this is five
+         distance checks on a movement step that already does more work than
+         that.
+
+         The radius is deliberately smaller than the sprite: you should be able
+         to stand shoulder to shoulder with the blacksmith to use his anvil,
+         and a blocker as wide as the drawn figure makes talking to anyone feel
+         like bumping into furniture.  Dead NPCs and any without a position do
+         not block at all. */
+      var _npcs = S.npcs;
+      if (_npcs && _npcs.length) {
+        var _pp = S.player;
+        for (var _ni = 0; _ni < _npcs.length; _ni++) {
+          var _n = _npcs[_ni];
+          if (!_n || _n.alive === false || _n.x == null || _n.y == null) continue;
+          var _ndx = px - _n.x, _ndy = py - _n.y;
+          if (_ndx * _ndx + _ndy * _ndy >= NPC_BLOCK_R2) continue;
+          /* NEVER TRAP SOMEONE ALREADY INSIDE.  A pure position test would seal
+             a player who ends up within the radius by any route that skips
+             collision — a teleport, a spawn, a quest hand-in that repositions
+             them, or an NPC that walks onto them — because then EVERY
+             candidate step is solid and there is no direction out.  Found the
+             hard way: mp-townmap put the player at the foot of the steps, 5px
+             from Mayor Bro, and he could not move at all.
+             So the block only applies from OUTSIDE: if you are already inside,
+             every step is allowed and you simply walk free. */
+          if (_pp) {
+            var _cdx = _pp.x - _n.x, _cdy = _pp.y - _n.y;
+            if (_cdx * _cdx + _cdy * _cdy < NPC_BLOCK_R2) continue;
+          }
+          return true;
+        }
+      }
       var _wgrid = (S._tiledWalkable && S._tiledWalkable[S.currentZone]) || null;
       if (_wgrid && _wgrid.length) {
         /* The walkability grid uses its OWN resolution (set by the
@@ -7124,6 +7197,62 @@ export var BroTown = function BroTown(_ref0) {
       clearTimeout(t2);
     };
   }, [showNameModal, showLogin]);
+  /* ═══ v2.3.1814: DOES THIS DEVICE'S KEY ALREADY HAVE A CHARACTER? ═══
+     Asked over the READ-ONLY account endpoint, before connecting, and that
+     choice is load-bearing rather than incidental: the alternative — join
+     first and decide from state_sync — would have the client send its
+     current (default) trait catalogs on that join, and the worker locks in
+     the first look it is sent.  Deciding before we connect is what stops
+     the boot check itself from minting a blank permanent character.
+
+     Three outcomes, and the failure branch is the interesting one: if the
+     worker is old, unreachable, or simply says no, we fall through to the
+     login screen.  That is the safe direction — the worst case is a player
+     who has to tap "Log in with your Key" once, rather than one who gets
+     dropped into the creator and makes a second character by accident. */
+  var _bootRan = useRef(false);
+  useEffect(function () {
+    if (_bootRan.current) return;
+    _bootRan.current = true;
+    var alive = true;
+    (function () {
+      var phrase = null;
+      try { phrase = getBtPassphrase(); } catch (e) { phrase = null; }
+      if (!phrase) { if (alive) setBootPhase('login'); return; }
+      checkAccountLogin(phrase).then(function (res) {
+        if (!alive) return;
+        if (res && res.ok && res.exists && res.preview && res.preview.hasChar) {
+          /* Straight in.  The NAME comes from the record via state_sync a
+             moment later (wsClient applies it); nameInput is seeded here so
+             joinTown's `nameInput.trim() || 'Anon'` cannot stamp 'Anon'
+             over a real character in the window before that arrives. */
+          if (res.preview.name) setNameInput(res.preview.name);
+          setBootPhase(null);
+          try { window.__btBootRoute = 'resume'; } catch (e) {}
+        } else {
+          setBootPhase('login');
+          try { window.__btBootRoute = 'login'; } catch (e) {}
+        }
+      }).catch(function () {
+        if (!alive) return;
+        setBootPhase('login');
+        try { window.__btBootRoute = 'login'; } catch (e) {}
+      });
+    })();
+    return function () { alive = false; };
+  }, []);
+
+  /* Walking in with a stored character: joinTown is the same entry the
+     creator's ENTER button uses, so there is ONE way into the world and no
+     second path to keep in step.  Held until the phase settles to null AND
+     the name has been seeded, so the join carries the right name. */
+  var _autoJoined = useRef(false);
+  useEffect(function () {
+    if (bootPhase !== null || _autoJoined.current) return;
+    _autoJoined.current = true;
+    try { joinTown(); } catch (e) { /* fall back to the login door */ setBootPhase('login'); }
+  }, [bootPhase]);
+
   var joinTown = function joinTown() {
     /* Refuse to start while the page is pinch-zoomed.  iOS Safari ignores
        maximum-scale/user-scalable=no, so users can still pinch.  If they
@@ -7347,6 +7476,15 @@ export var BroTown = function BroTown(_ref0) {
      PLAY on the left (~57%), scrollable category rail + RANDOMIZE on the
      right.  Layout-only change — every input/button keeps its previous
      handlers and state. */
+  /* v2.3.1814: the login door, and the blank hold while we ask whether this
+     key already has a character.  Both return BEFORE the creator: the
+     creator is now something you choose, not the default landing. */
+  if (bootPhase === 'checking' || bootPhase === 'login') {
+    return /*#__PURE__*/React.createElement(LoginScreen, {
+      checking: bootPhase === 'checking',
+      onCreateNew: function onCreateNew() { setBootPhase('create'); },
+    });
+  }
   if (showNameModal) {
     return /*#__PURE__*/React.createElement(NameModal, { _dragRotX: _dragRotX, _swatchTile: _swatchTile, _thumbTile: _thumbTile, activeCat: activeCat, beardColorSel: beardColorSel, facialHairSel: facialHairSel, hairColorSel: hairColorSel, hairSel: hairSel, hatColorSel: hatColorSel, headwearSel: headwearSel, joinTown: joinTown, nameInput: nameInput, pantsSel: pantsSel, previewCanvasRef: previewCanvasRef, previewDir: previewDir, randomizeWithFlair: randomizeWithFlair, rollRandomName: rollRandomName, rotatePreview: rotatePreview, setActiveCat: setActiveCat, setBeardColorSel: setBeardColorSel, setFacialHairSel: setFacialHairSel, setHairColorSel: setHairColorSel, setHairSel: setHairSel, setHatColorSel: setHatColorSel, setHeadwearSel: setHeadwearSel, setNameInput: setNameInput, setPantsSel: setPantsSel, setShirtColorSel: setShirtColorSel, setShirtSel: setShirtSel, setShoesSel: setShoesSel, setSkinSel: setSkinSel, shirtColorSel: shirtColorSel, shirtSel: shirtSel, shoesSel: shoesSel, skinSel: skinSel });
   }
@@ -8403,11 +8541,18 @@ export var BroTown = function BroTown(_ref0) {
       justifyContent: 'center'
     }
   }, /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1808: the rise and the fade are CSS now (.bt-quest-plate in
+       game.css).  They used to be computed from Date.now() right here, which
+       meant the animation only advanced when React re-rendered — the owner saw
+       it step.  The key is questMsg.ts so a queued second banner restarts the
+       animation instead of inheriting the first one's finished state. */
+    className: "bt-quest-plate",
+    key: questMsg.ts,
     style: {
       position: 'absolute',
       left: '50%',
       top: '26%',
-      transform: "translate(-50%,-50%) translateY(".concat(Math.max(0, 18 - (Date.now() - questMsg.ts) / 1000 * 60), "px) scale(").concat(Math.min(1.06, 0.86 + (Date.now() - questMsg.ts) / 1200), ")"),
+      '--qm-out': (QUEST_MSG_MS - 500) + 'ms',
       textAlign: 'center',
       /* v2.3.1745b: a PLATE, not bare text.  The first cut floated the words
          straight onto the dialogue and they landed across the giver's
@@ -8421,10 +8566,8 @@ export var BroTown = function BroTown(_ref0) {
       background: 'rgba(13,21,26,.90)',
       border: '1px solid ' + (questMsg.kind === 'completed'
         ? 'rgba(97,176,107,.55)' : 'rgba(216,169,77,.55)'),
-      boxShadow: '0 12px 30px rgba(3,8,10,.45)',
-      /* in over 260ms, hold, then out over the last 500ms */
-      opacity: Math.min(1, (Date.now() - questMsg.ts) / 260)
-        * Math.max(0, Math.min(1, (QUEST_MSG_MS - (Date.now() - questMsg.ts)) / 500))
+      boxShadow: '0 12px 30px rgba(3,8,10,.45)'
+      /* opacity + transform: see .bt-quest-plate */
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -10063,5 +10206,20 @@ export var BroTown = function BroTown(_ref0) {
      and z-index 6 so they sit over the world canvas but under all HUD
      (z>=20).  bt-desktop-hide drops them on desktop so the mouse reaches the
      canvas. */
-  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rStickRef: rStickRef, rKnobRef: rKnobRef, rJoyPreviewRef: rJoyPreviewRef, shieldJoyRef: shieldJoyRef, autoAttack: autoAttack, isLandscape: isLandscape, shieldUp: shieldUp }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until their milestone level unlocks them (AbilityButtons.jsx). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape })), ((_window$matchMedia = (_window = window).matchMedia) === null || _window$matchMedia === void 0 || (_window$matchMedia = _window$matchMedia.call(_window, '(pointer:fine)')) === null || _window$matchMedia === void 0 ? void 0 : _window$matchMedia.matches) && /*#__PURE__*/React.createElement(KeyboardHintsPanel, { hidden: kbHintsOff, onToggle: toggleKbHints }), staleBuild && /*#__PURE__*/React.createElement(UpdateBanner, { info: staleBuild, onReload: function () { try { window.location.reload(); } catch (e) {} }, onDismiss: function () { setStaleBuild(null); } }), chatOpen && /*#__PURE__*/React.createElement(ChatPanel, { chatInput: chatInput, chatInputRef: chatInputRef, chatInputValRef: chatInputValRef, sendChat: sendChat, setChatInput: setChatInput, setChatOpen: setChatOpen }));
+  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rStickRef: rStickRef, rKnobRef: rKnobRef, rJoyPreviewRef: rJoyPreviewRef, shieldJoyRef: shieldJoyRef, autoAttack: autoAttack, isLandscape: isLandscape, shieldUp: shieldUp }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until their milestone level unlocks them (AbilityButtons.jsx). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
+     Not a style choice — a hard requirement this cost a round of QA to
+     find.  .brotown-wrap is position:fixed, and Chrome treats that as its
+     own stacking context, so EVERY element inside it is confined to one
+     rung of the root stack no matter what z-index it carries.  The coach
+     mark rendered inside the wrap measured onto the right control, at the
+     right size, at opacity 1 — and was invisible in a screenshot even at
+     z-index 99999, because the dashboard band paints from outside.  This
+     is the third sighting of the same trap (the HUD player chip at
+     v2.3.1235 and the keyboard hints at v2.3.1728, both documented in
+     game.css) and the answer is the same one they reached: sit outside
+     the wrap, with the other fixed overlays.
+     The cost of being outside is that the mark now also outranks the
+     in-wrap modals, which it must NOT cover — QuestCoach handles that
+     itself, by only drawing on a control a finger can actually reach. */
+  /*#__PURE__*/React.createElement(QuestCoach, { stateRef: stateRef }), ((_window$matchMedia = (_window = window).matchMedia) === null || _window$matchMedia === void 0 || (_window$matchMedia = _window$matchMedia.call(_window, '(pointer:fine)')) === null || _window$matchMedia === void 0 ? void 0 : _window$matchMedia.matches) && /*#__PURE__*/React.createElement(KeyboardHintsPanel, { hidden: kbHintsOff, onToggle: toggleKbHints }), staleBuild && /*#__PURE__*/React.createElement(UpdateBanner, { info: staleBuild, onReload: function () { try { window.location.reload(); } catch (e) {} }, onDismiss: function () { setStaleBuild(null); } }), chatOpen && /*#__PURE__*/React.createElement(ChatPanel, { chatInput: chatInput, chatInputRef: chatInputRef, chatInputValRef: chatInputValRef, sendChat: sendChat, setChatInput: setChatInput, setChatOpen: setChatOpen }));
 };

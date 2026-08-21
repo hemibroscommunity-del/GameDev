@@ -179,5 +179,85 @@ await room.webSocketMessage(wsA4, JSON.stringify({ type: 'player_attack', payloa
 check('lethal duel hit kills', room.playerState['bp_bob'].dying === true);
 check('death clears the consent pair', !room._pvpConsent.has(room._pvpPairKey('bp_alice', 'bp_bob')));
 
+/* ═══ v2.3.1814: THE CHARACTER RECORD — NAME AND LOOK ARE PERMANENT ═══
+   Owner: "character selections in terms of names and traits picked during
+   login should be permanent."  On an authoritative server that has to mean
+   the STORED record beats the join payload, or "permanent" is only a
+   client-side suggestion and a hand-edited join restyles the character.
+
+   Sits in identity.test because the record is keyed by, and only meaningful
+   for, the authenticated identity — it is the same first-write-wins lock as
+   `auth:`, applied to the face instead of the password. */
+{
+  const wsE = fakeWs('erin-1');
+  await join(wsE, 'bp_erin', 'ember-vault-lucid-crown-3', 'town', 'Erin');
+  /* join() sends a bare data block, so give this one a real look the way a
+     creating client does. */
+  const wsF = fakeWs('finn-1');
+  room.sessions.set(wsF, baseSession());
+  await room.webSocketMessage(wsF, JSON.stringify({
+    type: 'join', id: 'bp_finn', phrase: 'frost-tundra-amber-vigil-5', name: 'Finn',
+    data: { x: 10, y: 10, z: 'town', name: 'Finn', hr: 'long', hc: 'ash', sk: 'tan', st: 'tunic' },
+  }));
+  const charF = state._store.get('char:bp_finn');
+  check('char record stamped in its own storage key on first join',
+    !!(charF && charF.look), charF);
+  check('...carrying the name and the picked traits',
+    !!(charF && charF.name === 'Finn' && charF.look.hr === 'long' && charF.look.sk === 'tan'),
+    charF);
+  check('...and NOT carrying the top-level name inside the look blob',
+    !!(charF && charF.look.name === undefined), charF && charF.look);
+
+  /* THE POINT OF THE WHOLE THING: rejoin claiming a different face. */
+  const wsF2 = fakeWs('finn-2');
+  room.sessions.set(wsF2, baseSession());
+  await room.webSocketMessage(wsF2, JSON.stringify({
+    type: 'join', id: 'bp_finn', phrase: 'frost-tundra-amber-vigil-5', name: 'Impostor',
+    data: { x: 10, y: 10, z: 'town', name: 'Impostor', hr: 'bald', hc: 'pink', sk: 'pale', st: 'robe' },
+  }));
+  const charF2 = state._store.get('char:bp_finn');
+  check('a later join CANNOT restyle the character (stored record wins)',
+    !!(charF2 && charF2.look.hr === 'long' && charF2.look.sk === 'tan' && charF2.name === 'Finn'),
+    charF2);
+  check('...and the live session wears the stored look, not the claimed one',
+    room.sessions.get(wsF2).data.hr === 'long'
+    && room.sessions.get(wsF2).data.name === 'Finn',
+    room.sessions.get(wsF2).data);
+  /* The echo is how a NEW DEVICE gets the look at all — it exists nowhere
+     locally after a Login Key switch. */
+  const syncF = msgsOfType(wsF2, 'state_sync').slice(-1)[0];
+  check('state_sync echoes the character record back to its owner',
+    !!(syncF && syncF.char && syncF.char.look.hr === 'long' && syncF.char.name === 'Finn'),
+    syncF && syncF.char);
+  check('...and advertises charLock so an old client is not gated on a flag it cannot see',
+    !!(syncF && syncF.caps && syncF.caps.charLock === true), syncF && syncF.caps);
+
+  /* A NAMELESS JOIN MUST NOT CREATE ONE.  Body colours ride every join,
+     including one opened behind a pre-game screen before the player has
+     chosen anything — and a blank character made permanent has no way back.
+     Two locks: the client no longer connects there, and this. */
+  const wsG = fakeWs('ghost-1');
+  room.sessions.set(wsG, baseSession());
+  await room.webSocketMessage(wsG, JSON.stringify({
+    type: 'join', id: 'bp_ghost', phrase: 'gale-hollow-quartz-mint-8',
+    data: { x: 10, y: 10, z: 'town', bt: '#2563eb', bl: '#1e3a5f' },
+  }));
+  check('a nameless join does NOT lock a blank character in',
+    !state._store.get('char:bp_ghost'), state._store.get('char:bp_ghost'));
+  /* GUARD: that id really did join — otherwise the check above passes for
+     the wrong reason (no record because no join). */
+  check('...but that join was otherwise accepted (guard)',
+    msgsOfType(wsG, 'state_sync').length === 1, msgsOfType(wsG, 'state_sync').length);
+
+  /* Guests are throwaways and have nothing to make permanent. */
+  const wsH = fakeWs('guest-1');
+  room.sessions.set(wsH, baseSession());
+  await room.webSocketMessage(wsH, JSON.stringify({
+    type: 'join', id: 'guest_xyz', name: 'Guest',
+    data: { x: 10, y: 10, z: 'town', name: 'Guest', hr: 'long' },
+  }));
+  check('a guest id gets no character record', !state._store.get('char:guest_xyz'));
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
