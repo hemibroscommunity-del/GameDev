@@ -70,10 +70,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`${NAMES[i]}: the blade points UP`, !!(m && m.bladeUp && m.scaleY < 0),
       { bladeUp: m && m.bladeUp, scaleY: m && m.scaleY });
     /* FORWARD, not backward: a 180-degree rotation would also read as
-       "blade up", so pin rotation to 0 — with rotation 0 the only thing
-       inverted is the vertical, which is what keeps the art's forward lean. */
+       "blade up", so the vertical inversion has to come from the FLIP, which
+       is what keeps the art's forward lean.
+
+       v2.3.1839: SOUTH IS EXEMPT FROM THE EXACT-ZERO FORM, and it had been
+       failing here since v2.3.1821b gave it a deliberate idle tilt to get the
+       blade off the character's face — a standing red nobody had chased,
+       confirmed by re-running this at the old -0.18 (south failed, all seven
+       other facings reported exactly 0).  Pinning to zero was only ever a
+       proxy for "not rotated 180 degrees"; now that one facing tilts on
+       purpose, the proxy has to become the actual claim.  1 radian is far
+       above any idle tilt worth having and far below the ~3.14 this exists to
+       catch. */
+    const _tiltOk = (NAMES[i] === 'S')
+      ? (m && Math.abs(m.rotation) < 1)
+      : (m && Math.abs(m.rotation) < 1e-6);
     rec.ok(`${NAMES[i]}: ...by flipping, not rotating, so the lean stays forward`,
-      !!(m && Math.abs(m.rotation) < 1e-6), { rotation: m && m.rotation });
+      !!_tiltOk, { rotation: m && m.rotation,
+        rule: NAMES[i] === 'S' ? 'south carries SOUTH_IDLE_TILT; must not be a 180 flip' : 'must be exactly 0' });
     /* The per-facing horizontal mirror must be untouched by any of this. */
     rec.ok(`${NAMES[i]}: the facing mirror is left alone`,
       !!(m && Math.abs(Math.abs(m.scaleX) - Math.abs(m.scaleY)) < 1e-6),

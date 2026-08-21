@@ -158,7 +158,16 @@ const PLAYER_SIZE_MULT = 1.25;
    radians about the grip.  Negative because the south sheet is mirrored (see
    the note at the assignment); ~10 degrees, which is the "smidge" the owner
    asked for rather than a re-pose. */
-const SOUTH_IDLE_TILT = -0.18;
+/* v2.3.1839: -0.18 -> -0.60.  Owner, on the second look: "South idle the
+   sword is in front of the characters face.  Angle south sword just a bit so
+   it's not over the face."  Chosen from a SWEEP photographed in game
+   (mp-southsword, BT_TILT_SWEEP) rather than derived: the sign is the trap
+   this file already warns about, and the sweep settles which way is which —
+   negative swings the tip LEFT clear of the head, positive drags it down
+   across the chest.  At -0.18 the blade ran straight up over the face; -0.45
+   only grazed clear; -0.60 clears the head box with the whole segment below
+   it, and still reads as a carried sword rather than a held-out one. */
+const SOUTH_IDLE_TILT = -0.60;
 /* v2.3.1765: how long a monster spends arriving (see the spawn-in note in the
    monster loop).  Short on purpose — this is a flourish on a respawn, and a
    monster you cannot fight yet is a monster in your way. */
@@ -7358,7 +7367,15 @@ export class EntityRenderer {
 
                Idle only: `swingActive` is handled above and owns the blade's
                angle during a swing, so this cannot fight the swing arc. */
-            weaponSprite.rotation = (_gsDir === 'south') ? SOUTH_IDLE_TILT : 0;
+            /* v2.3.1839: the tilt is overridable from the page so QA can sweep
+               it in ONE build and pick by looking.  The sign is the trap this
+               block already warns about — the sprite is mirrored, so screen
+               direction and angle sign disagree — and sweeping settles it in a
+               way that reasoning about radians repeatedly has not. */
+            const _southTilt = (typeof window !== 'undefined'
+              && typeof window.__btSouthTilt === 'number')
+              ? window.__btSouthTilt : SOUTH_IDLE_TILT;
+            weaponSprite.rotation = (_gsDir === 'south') ? _southTilt : 0;
             /* v2.3.942: per-facing greatsword art is already drawn for its
                canonical facing, so flip it only for the truly-mirrored facings
                (resolveDirection's `mirror`: west/northwest/southeast).  Other
@@ -7453,6 +7470,56 @@ export class EntityRenderer {
               texW: weaponSprite.texture ? weaponSprite.texture.width : 0,
               texH: weaponSprite.texture ? weaponSprite.texture.height : 0,
               facing: S._renderFacing,
+              /* ═══ v2.3.1839: WHERE THE BLADE ACTUALLY IS, AND WHERE HIS FACE IS ═══
+                 Owner, twice now: the south blade sits over the character's
+                 face.  An AABB of a diagonal blade is useless for this — it
+                 covers the head whenever the sword leans — so publish the
+                 blade's CENTRELINE (grip -> tip) and let the test do a
+                 segment-vs-box check.  Both in global screen space, taken
+                 through the live transforms rather than recomputed, so the
+                 numbers describe the frame on screen. */
+              blade: (() => {
+                try {
+                  const tw = weaponSprite.texture ? weaponSprite.texture.width : 0;
+                  const th = weaponSprite.texture ? weaponSprite.texture.height : 0;
+                  if (!tw || !th) return null;
+                  const ax = weaponSprite.anchor.x, ay = weaponSprite.anchor.y;
+                  /* THE WHOLE CENTRELINE, both ends, rather than "the tip".
+                     Which texture end is the tip depends on the handle anchor
+                     AND on v2.3.1786's vertical FLIP (scale.y < 0), and
+                     guessing it produced a 6.7px stub sitting on the grip —
+                     an assertion built on that would have reported a blade
+                     that never touches anything.  Both ends span the blade in
+                     either orientation, so nothing has to be guessed. */
+                  const cx = tw * 0.5 - ax * tw;
+                  const a = weaponSprite.toGlobal({ x: cx, y: 0 - ay * th });
+                  const b2 = weaponSprite.toGlobal({ x: cx, y: th - ay * th });
+                  return { gx: +a.x.toFixed(1), gy: +a.y.toFixed(1),
+                    tx: +b2.x.toFixed(1), ty: +b2.y.toFixed(1),
+                    len: +Math.hypot(b2.x - a.x, b2.y - a.y).toFixed(1) };
+                } catch (e) { return null; }
+              })(),
+              /* The head region of the body ON SCREEN: the top fifth of the
+                 painted figure, middle 44% of its width.  Derived from the
+                 body sprite's own global bounds so it tracks whatever scale
+                 and facing are live. */
+              head: (() => {
+                try {
+                  const sb = display._spriteBody;
+                  if (!sb || !sb.visible) return null;
+                  const b = sb.getBounds();
+                  return {
+                    x0: +(b.x + b.width * 0.28).toFixed(1),
+                    x1: +(b.x + b.width * 0.72).toFixed(1),
+                    y0: +b.y.toFixed(1),
+                    /* 26%, not 20%: at 20% the box stopped at the chin and a
+                       blade across the mouth counted as clear.  Measured
+                       against the sweep frames — the head occupies roughly the
+                       top quarter of the painted figure. */
+                    y1: +(b.y + b.height * 0.26).toFixed(1),
+                  };
+                } catch (e) { return null; }
+              })(),
             };
           } catch (e) {}
           weaponSprite.visible = true;

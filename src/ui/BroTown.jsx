@@ -7299,6 +7299,30 @@ export var BroTown = function BroTown(_ref0) {
     _bootRan.current = true;
     var alive = true;
     (function () {
+      /* ═══ v2.3.1840: LOGGING OUT LANDS ON THE DOOR, NOT BACK INSIDE ═══
+         Owner: "log out behavior should bring you back to main splash screen
+         of create new character or the use key option.  Right now it doesn't."
+
+         It didn't because logout reloaded with `?noresume=1`, and that flag
+         only suppresses the RESUME SNAPSHOT (the 10-minute rejoin further
+         down this file).  The boot check below is a separate road into the
+         world: it finds the stored key, asks the worker whether that key has
+         a character, and on yes sets bootPhase null — which auto-joins.  So
+         logging out reloaded the page and walked straight back in.
+
+         `?login=1` says "show me the door".  The key is deliberately NOT
+         cleared: characters are permanent and the passphrase IS the
+         character, so wiping it to force the login screen would throw the
+         character away to fix a routing bug.  LoginScreen offers both of the
+         things the owner asked for — "Log in with your Key" (which still has
+         the stored key) and "Create Character". */
+      var _forceLogin = false;
+      try { _forceLogin = /[?&]login=1\b/.test(window.location.search); } catch (e) { _forceLogin = false; }
+      if (_forceLogin) {
+        if (alive) setBootPhase('login');
+        try { window.__btBootRoute = 'login-forced'; } catch (e) {}
+        return;
+      }
       var phrase = null;
       try { phrase = getBtPassphrase(); } catch (e) { phrase = null; }
       if (!phrase) { if (alive) setBootPhase('login'); return; }
