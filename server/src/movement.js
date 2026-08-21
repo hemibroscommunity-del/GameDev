@@ -13,7 +13,27 @@
  * `pong` / `track` stay inline in the router (session-local, two
  * lines each). */
 
-import { VALID_ZONE_IDS, DUNGEON_ZONE_RE } from './data.js';
+import { VALID_ZONE_IDS, DUNGEON_ZONE_RE, QUEST_REWARDS } from './data.js';
+
+/* v2.3.1817: zones you can always reach — see _zoneUnlocked for why each one
+   is here.  A Set literal rather than an array: this is tested per move. */
+const ALWAYS_OPEN_ZONES = new Set(['town', 'worldview', 'farm_home', 'meadow']);
+
+/* zone -> the quest ids that open it, built ONCE from the quest table's own
+   objective.zone.  Built rather than written out so a new step opens its zone
+   by existing, and a retuned one cannot leave a stale lock behind.
+   Object.create(null) is not needed — a Map is keyed by our own strings, and
+   the values come from QUEST_REWARDS, never from a client. */
+const QUEST_ZONE_GATE = (() => {
+  const m = new Map();
+  for (const qid of Object.keys(QUEST_REWARDS)) {
+    const z = QUEST_REWARDS[qid] && QUEST_REWARDS[qid].objective && QUEST_REWARDS[qid].objective.zone;
+    if (!z) continue;
+    if (!m.has(z)) m.set(z, []);
+    m.get(z).push(qid);
+  }
+  return m;
+})();
 
 export const movementMethods = {
   /* v2.3.1625: the ONE zone gate.  Every path that lets a client choose
@@ -56,6 +76,41 @@ export const movementMethods = {
     if (typeof z !== 'string' || z.length === 0 || z.length > 40) return false;
     if (VALID_ZONE_IDS.has(z)) return true;
     return DUNGEON_ZONE_RE.test(z);
+  },
+
+  /* ═══ v2.3.1817: A ZONE OPENS WHEN A QUEST SENDS YOU THERE ═══
+   * Owner: "make each zone open up only after a mayor bro quest requires
+   * that area."
+   *
+   * Derived from QUEST_REWARDS' own `objective.zone` rather than a second
+   * table, because that field ALREADY names the zone each step is scoped to
+   * and a parallel list is how the lock and the quest text drift apart.  The
+   * client mirrors it from QUEST_CHAINS[].zone for the UI; this is what
+   * actually enforces it, because the client cannot be trusted with a gate.
+   *
+   * ACCEPTED counts, not completed: the quest is the thing that sends you
+   * there, so it has to open on accept or the step is impossible.  Turned-in
+   * counts too — a zone you have earned does not close behind you, which
+   * would strand anyone farming a zone they already finished.
+   *
+   * THE ALWAYS-OPEN SET is not "everything not in a quest".  Town and the
+   * World View are how you reach a quest giver at all; farm_home is personal;
+   * the Starting Meadow is where a new character begins.  Locking any of
+   * those makes the game unenterable rather than gated.  Dungeon instances
+   * carry their own entry rules (_validZone's DUNGEON_ZONE_RE) and are not
+   * re-gated here. */
+  _zoneUnlocked(ps, z) {
+    if (ALWAYS_OPEN_ZONES.has(z)) return true;
+    if (DUNGEON_ZONE_RE.test(z)) return true;
+    const gate = QUEST_ZONE_GATE.get(z);
+    if (!gate) return true;          /* no quest names it -> not a gated zone */
+    const q = ps && ps._quests;
+    if (!q) return false;
+    for (const qid of gate) {
+      const st = q[qid];
+      if (st === 'active' || st === 'turnedIn') return true;
+    }
+    return false;
   },
 
   _handleMove(session, ws, msg) {
@@ -107,7 +162,24 @@ export const movementMethods = {
        forever (the v2.3.1625 pin).  The player stays mobile in the zone
        the server believes they are in, which is the state their next
        legitimate transition corrects. */
-    const _zoneRejected = (msg.z !== undefined && msg.z !== null && !this._validZone(msg.z));
+    /* v2.3.1817: a LOCKED zone is rejected exactly like an invalid one, and
+       that reuse is the point — this path already keeps the player in the
+       zone the server believes they are in while leaving them mobile, which
+       is precisely the right behaviour for walking into a portal you have not
+       unlocked.  Inventing a second rejection shape here is what produced
+       three freezes the last time someone tried (see the note above). */
+    /* v2.3.1817: the lock applies to a zone CHANGE only — `msg.z !== ps.z`
+       is load-bearing, not tidiness.  A client re-sends its current zone on
+       EVERY move packet, so gating on the zone alone drops every move a
+       player standing in a locked zone makes: they freeze in place with no
+       way out, which is the exact failure this file's own comments warn
+       about three times over.  Someone can legitimately be inside a locked
+       zone — they entered before the gate existed, or their quest was
+       abandoned — and the honest answer is to let them walk (and leave),
+       not to trap them there. */
+    const _zoneRejected = (msg.z !== undefined && msg.z !== null
+      && (!this._validZone(msg.z)
+          || (msg.z !== ps.z && !this._zoneUnlocked(ps, msg.z))));
     const newZone = (msg.z === undefined || msg.z === null || _zoneRejected) ? ps.z : msg.z;
 
     // ═══ Movement validation (anti-teleport) ═══

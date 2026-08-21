@@ -144,7 +144,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     (await H.readState(P, (S) => (S.lockedTarget ? (S.lockedTarget.id || 'held') : null))) === null,
     await H.readState(P, (S) => S.lockedTarget && S.lockedTarget.id));
 
-  const spoke = marks.spokes.find((s2) => s2.zoneId === 'ember') || marks.spokes[0];
+  /* v2.3.1817: FROST, not ember.  Spokes are gated on the Mayor Bro step that
+     names them now (_zoneUnlocked), and the only quest accepted here is tut_1
+     — which opens frost.  Walking at ember therefore gets turned back, which
+     is the gate working, but it made this read as "the route to the spokes is
+     blocked" when what this block tests is that the ARRIVAL POINT has a clear
+     line to a spoke.  Frost tests the same line against a zone this player is
+     actually allowed into.  The gate itself is covered by mp-zonegate. */
+  const spoke = marks.spokes.find((s2) => s2.zoneId === 'frost') || marks.spokes[0];
   await stand(P, spoke.tx, spoke.ty);
   const atSpoke = await H.waitFor(P, (S) => S.currentZone, (z) => z === spoke.zoneId,
     { timeout: 15000, label: 'reach ' + spoke.zoneId }).catch(() => null);

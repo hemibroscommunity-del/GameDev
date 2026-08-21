@@ -56,6 +56,7 @@ import { IMAGE_ZONE_MAPS } from '../tiledMaps.js';
 import { propsForZone } from '@/data/worldProps.js';
 import { ZONES } from '@/data/zones.js';
 import { TILE } from '@/data/constants.js';
+import { questRouteExit } from '@/game/questRoute.js'; /* v2.3.1817: which portal the active quest wants */
 
 /* Box size in CSS px.  104 is ~27% of a 390px phone's width — big enough
    that a 3px dot reads, small enough to leave the corner usable. */
@@ -665,6 +666,29 @@ export class MinimapRenderer {
       this._mark(exits[i].x, exits[i].y, 'portal', C_EXIT, BIG_ICON_PX, 0);
     }
 
+    /* ═══ v2.3.1817: A STAR ON THE ONE YOU ACTUALLY WANT ═══
+       Owner: "Make star active quest mark marking portals that you're
+       supposed to go to on minimap for next steps."
+
+       Every portal above draws identically, so a player carrying "Bring 4
+       Snowman Remnants from Frost Ridge" is looking at five interchangeable
+       arches.  This marks the next step of the route (questRoute.js) — from
+       town that is the World View trail, from the World View it is the spoke
+       itself, and standing in the target zone it is deliberately nothing.
+
+       Drawn at the DECLARED exit's own tile rather than snapped to the
+       nearest painted portal tile: the declared coordinate is where the
+       trigger actually is, so the star marks the spot you must reach rather
+       than the art near it.
+
+       Above the plain portals (drawn after) and below the NPC quest pins
+       (drawn next), which is the same precedence the pins already have — the
+       thing you can act on right now outranks the thing you travel to. */
+    const routeTo = questRouteExit(zoneId, S.rpg);
+    if (routeTo) {
+      this._mark(routeTo.x, routeTo.y, 'star', C_QUEST, BIG_ICON_PX, 0, -9);
+    }
+
     /* '❗' = he has work for you, '❓' = you can hand it in.  Read straight off
        npc._questMarker, which is what the in-world badge over his head reads
        too — one source, so the map and the world can never disagree about
@@ -697,6 +721,11 @@ export class MinimapRenderer {
     try {
       window.__btIconDump = () => this._dumpIcons();
       window.__btMinimap = {
+        /* v2.3.1817: what the quest star is pointing at (null = nothing
+           starred).  A scenario cannot read a WebGL canvas, and "is there a
+           star" is not the claim worth testing — "is it on the RIGHT portal"
+           is. */
+        questRoute: routeTo ? { x: Math.round(routeTo.x), y: Math.round(routeTo.y), zoneId: routeTo.zoneId } : null,
         visible: true, zone: zoneId,
         panX: this.pan.x, panY: this.pan.y,
         spanW, spanH, markers: this._used,
