@@ -7923,6 +7923,14 @@ export class EntityRenderer {
               facing: facing,
               moving: isMoving,
               planted: _blockPlanted,
+              /* v2.3.1833: where the figure is on SCREEN.  A QA shot of a
+                 block has to be clipped to the player, and the viewport
+                 centre is not it — the camera does not hold the player dead
+                 centre, so a centre crop returns the cobblestones. */
+              screen: (() => {
+                const g = display.toGlobal({ x: 0, y: 0 });
+                return { x: +g.x.toFixed(1), y: +g.y.toFixed(1) };
+              })(),
               shieldW: Math.round(Math.abs(shieldSprite.width)),
               backShieldPx: BACK_SHIELD_PX,
               shieldX: shieldSprite.x, shieldY: shieldSprite.y,

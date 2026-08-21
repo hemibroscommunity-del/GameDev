@@ -40,7 +40,7 @@ import { materialTint, weaponTint } from '../traits/materialTints.js';
 import { upscaleToFrameHeight } from '../spriteScale.js'; /* v2.3.1112: restore downscaled-on-disk sword stand-in strips to their authored frame height */
 import { AIM_CARET, AIM_CARET_EDGE } from '../aimCaret.js'; /* v2.3.1799 */
 import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX } from '../backShield.js'; /* v2.3.1784 */
-import { registerBowBodyFrames } from '../blockArm.js'; /* v2.3.1785 */
+import { registerBowBodyFrames, BLOCK_STANDIN_HAND } from '../blockArm.js'; /* v2.3.1785; v2.3.1833 the away-facing hand */
 
 /* v2.3.1784: the 8-way compass, module scope.  An identical list already
    existed as a local inside _updateRemoteBowShots; the slung shield needs it
@@ -5462,6 +5462,13 @@ export class EffectsRenderer {
           return (t && t.parent === layer) ? Math.max(m, layer.getChildIndex(t)) : m;
         }, -1),
         sizePx: shown.height, facing: S._renderFacing,
+        /* v2.3.1834: the facing the BODY was drawn with, next to the facing
+           this shield was placed with.  They are chosen from different state —
+           the stand-in body from _swordSwingDir / _bowDir, the shield from
+           _renderFacing — so a test can see them diverge instead of inferring
+           it from a screenshot. */
+        bodyFacing: (lo === this.swordShieldLo) ? (S._swordSwingDir || null) : (S._bowDir || null),
+        special: !!S._specialAttack,
       };
     } catch (e) { /* never breaks the frame */ }
     return true;
@@ -5732,16 +5739,53 @@ export class EffectsRenderer {
       const shown = this.bowShieldLo;
       if (shown && b.tex) {
         if (shown.texture !== b.tex) shown.texture = b.tex;
-        const R = 16 * scale;                       /* same reach as the held placement */
         shown.width = b.px * scale;
         shown.height = b.px * scale;
         shown.scale.x = Math.abs(shown.scale.x) * (b.mirror ? -1 : 1);
         shown.rotation = 0;
         shown.alpha = 0.95;
         shown.tint = 0xffffff;
-        shown.x = S.player.x + Math.cos(b.ang) * R;
-        shown.y = sp.y - bodyH * 0.5 + Math.sin(b.ang) * R;
+        /* ═══ v2.3.1833: ON THE HAND, NOT ON A CIRCLE ROUND THE CHEST ═══
+           Owner: "The northeast shield position (and mirror) is not
+           positioned correctly on the outstretched hand."
+
+           This used to read `player.x + cos(ang) * 16`, on the reasoning
+           (its comment said so) that 16px was "the same reach as the held
+           placement".  It was not: the held placement is `_armHand`, an
+           actual point on the arm, and no radius round the body centre is
+           the same thing.  At 16px the shield sat flat against the torso —
+           mostly hidden behind the body — while the stand-in's authored arm
+           reached out past it to nothing.
+
+           BLOCK_STANDIN_HAND gives the hand in the bow frame's own
+           coordinates, so map it through the transform this very sprite was
+           just placed with: anchor (0.5, feetY/fh), scale (sgn, s), origin
+           (sp.x, sp.y).  `sgn` already carries the mirror, which is what
+           makes northeast fall out of the northwest sheet for free.  Tying it
+           to sp's own numbers means it tracks the body by construction — the
+           property the polar version only claimed. */
+        const _hand = BLOCK_STANDIN_HAND[fmap[0]];
+        if (_hand) {
+          shown.x = sp.x + (_hand[0] - cfg.fw / 2) * sgn;
+          shown.y = sp.y + (_hand[1] - cfg.feetY) * s;
+        } else {
+          /* No measured hand for this sheet — keep the old reach rather than
+             stack the shield on the feet. */
+          const R = 16 * scale;
+          shown.x = S.player.x + Math.cos(b.ang) * R;
+          shown.y = sp.y - bodyH * 0.5 + Math.sin(b.ang) * R;
+        }
         shown.visible = true;
+        /* v2.3.1833 dev probe: where the shield landed and what put it there,
+           so mp-blockstance can assert the hand placement instead of a
+           screenshot being the only witness. */
+        if (typeof window !== 'undefined') {
+          window.__btBlockShieldBehind = {
+            sheet: fmap[0], mirror: !!mirror, viaHand: !!_hand,
+            x: shown.x, y: shown.y,
+            bodyX: sp.x, bodyFootY: sp.y, bodyH,
+          };
+        }
       }
     }
     sp.visible = true;
