@@ -2145,6 +2145,11 @@ body:has(.bt-inspect) .bt-kb-chip{display:none}
   image-rendering:pixelated;  /* he is pixel art — a smooth upscale mushes him */
   pointer-events:none;
 }
+/* v2.3.1828: the head crop is a PORTRAIT, so it centres and fills its frame
+   rather than standing on the floor of it — object-position:bottom is right
+   for a full figure (feet on the ground) and wrong for a face, which it
+   pushes to the bottom edge leaving a band of empty above the hat. */
+.bt-npcdlg-img--head{object-fit:cover;object-position:center top}
 .bt-npcdlg-body{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:6px}
 .bt-npcdlg-name{
   font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;

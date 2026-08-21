@@ -29,10 +29,14 @@ import { NPC_DATA } from '@/data/gameDisplay.js';
  * the control list — which is one thought — into three.
  */
 
-/* The FULL figure, not the head crop.  `portrait` is the 40px thumbnail the
-   old card used and it is cropped for that size; at the scale this window
-   gives it, the whole character reads far better — and NPC_DATA already
-   carries both, so this costs no new art. */
+/* ═══ v2.3.1828: THE HEAD, not the whole figure ═══
+   Owner: "I wanted just the head of Mayor bro in his profile pic while
+   talking for quest dialog."
+   v2.3.1820 chose the full sprite on the reasoning that a window this size
+   could afford it.  It can — but a talking-head panel is a portrait, and a
+   whole body standing in it reads as a character select.  `portrait` is the
+   head crop NPC_DATA already carries; the figure stays as the fallback so a
+   missing crop shows a speaker rather than a hole. */
 function npcArt(name) {
   const npc = (NPC_DATA || []).find((n) => n && n.name === name);
   if (!npc) return { full: null, head: null };
@@ -81,17 +85,21 @@ export const NpcDialogue = (props) => {
     <div className="bt-npcdlg-scrim" onClick={onClose}>
       <div className="bt-npcdlg" onClick={(e) => { e.stopPropagation(); advance(); }}>
         <div className="bt-npcdlg-art">
-          {art.full && (
+          {(art.head || art.full) && (
             <img
-              src={art.full}
+              src={art.head || art.full}
               alt=""
               draggable={false}
-              className="bt-npcdlg-img"
-              /* Fall back to the head crop rather than leaving a hole: a
-                 missing figure must not take the speaker's face with it. */
+              className="bt-npcdlg-img bt-npcdlg-img--head"
+              /* Fall back to the full figure rather than leaving a hole: a
+                 missing crop must not take the speaker's face with it. */
               onError={(e) => {
                 const el = e.currentTarget;
-                if (art.head && el.src.indexOf(art.head) < 0) { el.src = art.head; return; }
+                if (art.full && el.src.indexOf(art.full) < 0) {
+                  el.src = art.full;
+                  el.classList.remove('bt-npcdlg-img--head');
+                  return;
+                }
                 el.style.display = 'none';
               }}
             />

@@ -111,8 +111,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
       text: dlg.innerText || '',
     };
   });
-  rec.ok("the dialogue shows Mayor Bro's portrait, not an initial in a circle",
-    !!spoken && spoken.imgs.some((u) => /mayor-bro/.test(u)), spoken && spoken.imgs);
+  /* v2.3.1828: the HEAD crop specifically (owner: "I wanted just the head of
+     Mayor bro in his profile pic while talking for quest dialog").  Matching
+     a bare /mayor-bro/ would also pass on the full figure, which is the thing
+     that was replaced — so it has to name the crop. */
+  rec.ok("the dialogue shows Mayor Bro's HEAD, not his whole figure",
+    !!spoken && spoken.imgs.some((u) => /mayor-bro-head/.test(u))
+    && !spoken.imgs.some((u) => /mayor-bro\.(webp|png)/.test(u)),
+    spoken && spoken.imgs);
 
   /* His whole script, gathered across the chunks — the control instructions
      are chunk 2 of three, so a single read of the open window sees only the

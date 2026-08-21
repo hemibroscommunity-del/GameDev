@@ -214,6 +214,35 @@ export function QuestPanel(props) {
     stage = _stageState[0],
     setStage = _stageState[1];
 
+  /* ═══ v2.3.1828: HE TALKS AGAIN WHEN THE SUBJECT CHANGES ═══
+     Owner: "The quest complete loop is broken.  It says I finished the quest
+     and rewards me."
+
+     He was right, and this was the whole of it.  `stage` was state with no
+     reset, and the panel deliberately STAYS OPEN across a change of subject:
+     acceptQuest flips the same card to `active` (so he can answer you rather
+     than the screen going blank), and turnInQuest re-opens it on his NEXT
+     quest (v2.3.1713).  Both leave `stage` on 'act' — so the act screen
+     re-rendered against a quest it had never introduced.
+
+     On ACCEPT that is exactly what the owner saw: the quest is now `active`
+     rather than `available`, so `_isOffer` goes false, and the act stage
+     renders the REWARD face — "Quest Complete", the completion items, and a
+     Claim Reward button — for a quest you have not started.  The claim is
+     then refused by the worker (the objective is not met), so it is a dead
+     end dressed as a payout.
+
+     Keyed on the quest AND its status because both are a change of subject:
+     a new quest needs its opening line, and the same quest going
+     active/ready needs the line that goes with the new state.  NpcDialogue
+     already does this for its own chunk index (`setI(0)` on `text`); this is
+     the same rule one level up, and the level it was missing from.
+
+     Every other scenario missed it by CLOSING the panel after accepting —
+     mp-questloop now stays put, which is what a player does. */
+  var _subject = questPanel.quest.id + ':' + questPanel.status;
+  React.useEffect(function () { setStage('talk'); }, [_subject]);
+
   var _isOffer = questPanel.status === 'available';
   var _canTurnIn = questPanel.status === 'active'
     && questPanel.quest.check(rpgState, stateRef.current);
