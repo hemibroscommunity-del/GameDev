@@ -127,7 +127,30 @@ export function buildingPropNear(zoneId, x, y, range) {
 }
 
 /** Props for a zone, in draw order (later entries draw on top). */
+/** ═══ v2.3.1813: TOWN'S BUILDINGS ARE OFF WHILE THE MAP IS RE-FUSED ═══
+ *  Owner, sending the new BroTown art: "You can just keep the buildings and
+ *  NPCS removed for now."
+ *
+ *  They are switched off rather than deleted, and the positions are left
+ *  untouched on purpose — every one of them was measured against the v16
+ *  plateau, which was 96x30 tiles.  The new map is 52x55, so those x values
+ *  (up to 2560) now sit off the right-hand edge of the zone entirely; they
+ *  are not wrong-but-close, they are unplaceable until someone re-measures
+ *  them against the new art.  Converting them arithmetically would land
+ *  seven buildings in the trees and look like a bug rather than a to-do.
+ *
+ *  NOTE what this also switches off: town collision.  Since v2.3.1794 the
+ *  town blocks on PROPS, not on a walk mask (the owner rejected hue-derived
+ *  collision — see tiledMaps.js), so with the props gone the plateau has no
+ *  edges and you can walk off the clifftop into the painted valley.  That is
+ *  a known consequence of "removed for now", not an oversight; the builder
+ *  still emits town_v17.walk.json if a mask is ever wanted back.
+ *
+ *  Flip to true to get them back exactly as they were. */
+export const TOWN_PROPS_ENABLED = false;
+
 export function propsForZone(zoneId) {
+  if (zoneId === 'town' && !TOWN_PROPS_ENABLED) return [];
   return WORLD_PROPS.filter((p) => p.zone === zoneId);
 }
 
@@ -135,3 +158,10 @@ export function propsForZone(zoneId) {
 export function propSpriteSources() {
   return [...new Set(WORLD_PROPS.map((p) => p.sprite).filter(Boolean))];
 }
+
+/* v2.3.1813 dev probe, house style (__btWorldProps): the props switch itself.
+   mp-townprops / mp-townbuildings need to tell "switched off by directive"
+   apart from "drawing is broken" — an empty prop list looks identical from the
+   outside, and a scenario that treated the two the same would either fail
+   every run while they are off or pass silently once they come back. */
+if (typeof window !== 'undefined') window.__btTownPropsEnabled = () => TOWN_PROPS_ENABLED;

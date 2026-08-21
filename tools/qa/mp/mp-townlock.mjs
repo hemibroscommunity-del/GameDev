@@ -29,7 +29,7 @@ import * as H from './harness.mjs';
    an unarmed player" PASSED because they were still in town.  Only "and says
    why" caught it.  That is the shape the comment above promised, and it is
    worth knowing the first assertion alone would have hidden this. */
-const TOWN_EXIT = { tx: 56, ty: 28, zoneId: 'worldview' };
+const TOWN_EXIT = { tx: 25, ty: 48, zoneId: 'worldview' };   /* v2.3.1813: town_v17 is 52x55 — tx 56 is off the new zone entirely */
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Rookie', wsPort, webPort });

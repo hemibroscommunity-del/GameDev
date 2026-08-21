@@ -37,7 +37,7 @@ export const IMAGE_ZONE_MAPS = {
      shrink the download. WebP decodes fine in Pixi Assets.load + <img> on
      iOS Safari 14+. Dimensions unchanged (1024x1024), so world bounds and the
      walkability grids still align. */
-  town:    '/maps/town_v16.webp',   /* v2.3.1777: the stitched clifftop plateau */
+  town:    '/maps/town_v17.webp',   /* v2.3.1813: re-fused clifftop plateau (tools/maps/build-town-v17.mjs) */
   worldview: '/maps/worldview_v2.webp',   /* v2.3.1420: REVERTED to v2 (owner: "revert back to the previous world map art").  The v2.3.1403 worldview_v3 trial stays on disk if it's ever wanted again.  Upside of the revert: the WORLDVIEW_EXITS trail-heads were coordinate-verified against THIS art (v2.3.1359), so the markers sit exactly on the painted trails again. */
   frost:   '/maps/frost_v5.webp',   /* redesign: meadow-coast -> deep-ice transition */
   meadow:  '/maps/meadow_v6.webp',   /* redesign: new painterly meadow (scaled to 1024 world) */
@@ -117,7 +117,13 @@ export const WALKABILITY_MAPS = {
      tools/mask-to-walkable.mjs (64x64 grid). Authoritative collision for
      the new cove town -- blocks cliffs + ocean, replaces the stale
      procedural building tiles. */
-  town: '/maps/town_v16.walk.json',   /* v2.3.1794: no longer loaded — town blocks on props, not on a mask */
+  /* v2.3.1794: NOT LOADED — town blocks on props, not on a mask (see
+     WALK_MASK_ZONES above for the owner's verdict on hue-derived collision).
+     v2.3.1813 regenerates it alongside the new art so the two never drift,
+     and because the builder needs the flood-fill to find unreachable islands
+     either way — but the switch stays off.  Re-enabling it would re-ship
+     exactly what the owner rejected. */
+  town: '/maps/town_v17.walk.json',
   meadow: '/maps/meadow_v6.walk.json',
   frost: '/maps/frost_v5.walk.json',   /* note: north ice flat over-blocked by the mask; repaint to open it */
   tidal: '/maps/tidal_v6.walk.json',   /* note: mask covered rocks only -- open sea + deep pools still walkable, needs a water pass */
@@ -415,3 +421,9 @@ export function getTilesetImage(imageSrc) {
 export function isBlockingTilesetName(name) {
   return _isBlockingTileset(name);
 }
+
+/* v2.3.1813 dev probe: which art a zone is actually drawing.  A zone resized
+   to fit new art while still pointing at the OLD file passes every geometry
+   assertion and looks completely wrong on screen — mp-townmap checks this so
+   that gap cannot open. */
+if (typeof window !== 'undefined') window.__btZoneMapUrl = (z) => IMAGE_ZONE_MAPS[z] || null;

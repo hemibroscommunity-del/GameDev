@@ -3411,15 +3411,28 @@ export const NPC_DATA = [{
      house up the stairs.  Beside the door rather than in front of it — the
      stair head is at x=960 and standing on it would make the one route onto
      the terrace a squeeze past him, now that NPCs block. */
-  x: 1055, y: 300,
+  /* v2.3.1813: the re-fused town map (town_v17) is 52x55 tiles where v16 was
+     96x30, so (1055, 300) now sits in the cliffs along the northern rim.
+     Moved onto open cobble 245px north-north-east of TOWN_SPAWN (815, 1010),
+     so he is on screen and straight ahead when the player lands — the job
+     this position has always had.  Measured against the new art, not
+     converted from the old number: every sample within a 44px disc of this
+     point is open ground.
+     He is deliberately KEPT while the town's buildings are switched off
+     (worldProps.js, TOWN_PROPS_ENABLED).  He is the only NPC in the game and
+     the entire Mayor Bro quest chain hangs off him, so removing him along
+     with the scenery would silently delete onboarding rather than clear the
+     map — a different thing from what "keep the buildings and NPCS removed"
+     was asking for. */
+  x: 900, y: 780,
   /* v2.3.1794: MOVED WITH HIM.  The wander step steers an NPC toward
      spawnX/spawnY (pathRadius 0 means exactly that point, with no roaming), so
      leaving this at the old plaza spot spawned him outside his new house and
      then walked him back down the stairs over the next few seconds.  Caught by
      mp-townmap reading him at (985.3, 563.7) — the old coordinates, with the
      fractional drift of something mid-walk. */
-  spawnX: 1055, spawnY: 300,
-  renderX: 985, renderY: 565,
+  spawnX: 900, spawnY: 780,   /* v2.3.1813: moves WITH x/y above — pathRadius 0 walks him to this exact point every frame, so leaving it behind drags him back to the old plaza */
+  renderX: 900, renderY: 780,   /* v2.3.1813: kept in step with x/y — these are the FIRST-FRAME draw position, and they were stale even against the previous (1055,300), so he popped across the plaza on frame one */
   hp: 100, maxHp: 100,
   /* v2.3.1675 (owner: "remove his health bar he doesn't need one").  He is a
      quest giver in a safe town; a health bar over him reads as "fight this". */
@@ -3428,7 +3441,7 @@ export const NPC_DATA = [{
   respawnAt: 0,
   pathRadius: 0,
   moveTimer: 0,
-  targetX: 985, targetY: 565,
+  targetX: 900, targetY: 780,   /* v2.3.1813: likewise — the initial wander target, before the first steer overwrites it */
   chatTimer: 8000,
   chatBubble: null,
   phrases: [

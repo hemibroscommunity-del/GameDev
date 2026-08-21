@@ -79,6 +79,9 @@ export const CLAN_LOGO_SIZE = 8;
    `24 * TILE`.  Three copies of a coordinate is how two of them end up stale;
    the new map is also not square, so the old one is not even on the plaza any
    more.  One definition, imported by all three.
-   Open cobble just south-east of the fountain at world (977, 625), clear of
-   the basin and both lamp posts (checked against town_v16.walk.json). */
-export const TOWN_SPAWN = { x: 1050, y: 780 };
+   v2.3.1813: the re-fused map (town_v17) is a different SHAPE — nearly square
+   where v16 was wide — so the old point is off the plaza again, exactly as the
+   comment above predicted would keep happening.  Now the middle of the open
+   cobble: measured against the art rather than converted from the old
+   coordinate, and every sample within a 48px disc of it is open ground. */
+export const TOWN_SPAWN = { x: 815, y: 1010 };

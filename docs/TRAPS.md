@@ -400,3 +400,63 @@ owner to judge by ear rather than by my description. If music like this is
 wanted, SOURCE it — the sourcing constraint is short, looping, MONO,
 because resident memory is duration × rate × channels regardless of what
 is on the track.
+
+---
+
+## §23 — An alignment score with no control is a random number generator (v2.3.1813)
+
+**The move that looks right:** two painted map halves need stitching, so
+write a scorer that slides one over the other and picks the offset with the
+lowest pixel difference. Report the winner. Build the map from it.
+
+**Why it is wrong:** every scorer tried on this pair was junk, and each one
+was *confidently* junk — it returned a specific "best" answer with a
+plausible-looking margin.
+
+1. A per-pixel overlap search returned its best at the **smallest overlap
+   offered**, with the vertical offset pinned at the **edge of the search
+   range**. Both are the signature of a metric that is not measuring
+   alignment: fewer sampled pixels means a lower mean error, so an
+   unnormalised score always prefers less overlap.
+2. A structural (downsampled, cobble-vs-cliff classified) search looked much
+   better — until its control was checked. Matching an image **against
+   itself**, which must score 0, scored **0.29**. The control was comparing
+   two different parts of the same image, so the metric was measuring
+   nothing at all, and its "winner" was noise wearing a decimal point.
+
+**What was actually true**, once controls existed to make numbers mean
+something: adjacent columns *inside* one half differ by ~12/channel
+(the texture's own noise floor), the best cross-piece join by ~34, and two
+unrelated columns by ~65. The halves are independently generated, so their
+cobble **cannot** align pixel-wise at any offset — a seam hunt was never
+going to converge, and every score above was ranking noise.
+
+**What worked:** looking at them. Rendering each half on its own answered
+the ordering question in seconds (one is bounded by cliff on the left and
+opens right; the other is the mirror), and it agreed with the *one*
+automated result that had survived.
+
+**The second half of the trap:** having established the textures cannot
+match, the reflex fix is a wide cross-fade. That is also wrong, and
+measurably so. Across a 240px fade the brightness was *flatter than the
+surrounding cobble* (max column step 3.98 vs 4.81) — and it still looked
+wrong, because **averaging two uncorrelated textures produces low-contrast
+mush**, a blurred bar the eye finds instantly even though no edge exists.
+Widening the fade widens the mush; 240 looked worse than 100, not smoother.
+The fix is an **irregular hard cut** — full contrast on both sides, the
+boundary wandering on a low-frequency wobble so there is no straight line to
+find. After it, seam-band contrast is *statistically indistinguishable* from
+the cobble beside it (4.72/1.28 vs 4.69/1.34), which is the number to aim
+for: not "smoother than its surroundings" (that is blur) but "the same".
+
+**Rules this leaves:**
+- A similarity score without a control that must return a known value is not
+  evidence. Include a self-match and a deliberately-wrong match, every time.
+- A "best" sitting at the edge of the search range means the range is wrong
+  or the metric is.
+- Normalise for sample size, or the scorer just picks the smallest sample.
+- When the thing being measured is visual and cheap to render, render it.
+- Flat brightness across a seam does not mean an invisible seam. Contrast
+  matching the neighbourhood does.
+
+**Receipt:** `tools/maps/build-town-v17.mjs` and its header.

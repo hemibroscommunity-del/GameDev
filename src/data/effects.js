@@ -275,8 +275,15 @@ export function getCollisionDeathFX(deathX, deathY, collisionId, killAngle, body
    no longer exists.  Moved to the plateau's southern lip, mid-map, which is
    open cobble in town_v16.walk.json and roughly where the old exit sat
    relative to the plaza. */
+/* v2.3.1813: town_v17 is 52x55 tiles, not 96x30 — tx 56 is off the RIGHT edge
+   of the new zone, the same failure mode as v2.3.1777's ty 41 one shape-change
+   earlier.  Moved to the painted stone STAIRS on the plateau's southern lip,
+   which is where a way down off a clifftop belongs and is open cobble in the
+   new art (checked, every sample within 48px).  ty 48 of 55 keeps it clear of
+   the bottom rows that render under the dashboard.
+   tools/qa/mp/mp-townlock.mjs hardcodes this marker — kept in step. */
 export const TOWN_EXITS = [
-  { zoneId: 'worldview', tx: 56, ty: 28, dir: 'south', label: 'World View ↓', color: '#cdb27a' },
+  { zoneId: 'worldview', tx: 25, ty: 48, dir: 'south', label: 'World View ↓', color: '#cdb27a' },
 ];
 
 /* The World View is the second hub (see zoneTransitions hub logic). Trails
@@ -364,3 +371,8 @@ export const COMING_SOON_MARKS = [
    This list comes back one entry at a time as buildings are placed, or does
    not come back at all if they ship with real entrances instead. */
 export const TOWN_SOON_MARKS = [];
+
+/* v2.3.1813 dev probe: the town's exit markers, so mp-townmap can prove they
+   sit on tiles the zone actually has.  Two shape changes in a row (v2.3.1777,
+   v2.3.1813) left this marker off the map entirely. */
+if (typeof window !== 'undefined') window.__btTownExits = () => TOWN_EXITS.slice();
