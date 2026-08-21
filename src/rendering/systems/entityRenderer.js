@@ -646,6 +646,63 @@ const BODY_DIR_SCALE = {
      (mp-bodysize only ever covered standing). */
   jog:   { south: 1.015, east: 1.25, north: 0.986, northeast: 1.102, southwest: 1.015 },
 };
+/* ═══ v2.3.1836: WHERE THE CROWN AND THE FEET ACTUALLY ARE ═══
+ *
+ * Owner: "the shield block per direction still have mismatched character
+ * scales."
+ *
+ * The block, the swing and the bow shot all replace the walking body with a
+ * STAND-IN drawn by effectsRenderer, and entityRenderer sizes and plants it by
+ * publishing S._swordBodyH / S._swordFootY.  Both were computed from the
+ * constants 221 (feet row) and 33 (crown row), which are SOUTH's rows applied
+ * to every facing — and then multiplied by bodyDirScale('stand', dir).
+ *
+ * That multiplication is the bug, and it is backwards in an interesting way.
+ * The dir-scale exists to CANCEL the per-facing height differences in the
+ * walking art: the sheets paint the figure 189/197/185/201/214 units tall and
+ * the scale brings them all to one rendered height.  Measured:
+ *      south 189*1.061   east 197*1.018   north 185*1.083
+ *      northeast 201*0.998   southwest 214*0.933      -> 200.5 every time
+ * Multiply that same scale by a CONSTANT 188 instead and the cancellation runs
+ * the wrong way — it re-introduces the variation it was built to remove:
+ *      175.4 .. 203.6, a 16.1% spread.
+ * So the block pose was up to 16% bigger in one direction than another, which
+ * is exactly what the owner is looking at.  The jog figure used for the
+ * moving-block leg composite was worse: 26.8%.
+ *
+ * These are the MEASURED painted rows of each sheet, in 256-frame units, so
+ * (feet - crown + 1) * dirScale is the constant the dir-scale was designed to
+ * produce.  The jog rows are the CYCLE MEDIAN — a running figure bobs, so one
+ * frame would be one arbitrary moment (the same reason mp-scalesheet medians
+ * over the strip).
+ *
+ * The feet row was wrong per facing too, and independently: 221 is south's,
+ * while east ends at 223 and southwest at 234.  A stand-in planted on south's
+ * feet row floats or sinks in every other direction.
+ */
+const BODY_ROWS = {
+  stand: {
+    south:     { crown: 33, feet: 221 },
+    east:      { crown: 27, feet: 223 },
+    north:     { crown: 35, feet: 219 },
+    northeast: { crown: 27, feet: 227 },
+    southwest: { crown: 21, feet: 234 },
+  },
+  jog: {
+    south:     { crown: 32, feet: 232 },
+    east:      { crown: 48, feet: 210 },
+    north:     { crown: 24, feet: 230 },
+    northeast: { crown: 44, feet: 228 },
+    southwest: { crown: 32, feet: 232 },
+  },
+};
+/* South is the fallback because it is the pair the old constants encoded, so
+   an unknown facing lands exactly where it used to rather than somewhere new. */
+function bodyRows(pose, dir) {
+  const m = BODY_ROWS[pose] || BODY_ROWS.stand;
+  return m[dir] || m.south;
+}
+
 function bodyDirScale(pose, dir) {
   if (pose === 'hit') return dir === 'east' ? 0.88 : 1.0;
   const m = BODY_DIR_SCALE[pose];
@@ -6947,15 +7004,20 @@ export class EntityRenderer {
          exempt only because its jog≈stand).  Using the stand scale here keeps
          the swing/shoot stand-in idle-sized in every facing. */
       const _standBodyScale = bodyDirScale('stand', dir) * LOCAL_SCALE;
-      S._swordFootY = display.y + (221 - 128) * _standBodyScale * _dscale;
+      /* v2.3.1836: this facing's OWN crown/feet rows — see BODY_ROWS.  The
+         old constants were south's, so every other facing was sized and
+         planted against a body that is not the one on screen. */
+      const _sRows = bodyRows('stand', dir);
+      S._swordFootY = display.y + (_sRows.feet - 128) * _standBodyScale * _dscale;
       /* Also publish the avatar's drawn body height (crown-to-foot ~188px in
          the source frame) so the stand-in renders at the matching size for this
          facing / zone. */
-      S._swordBodyH = (221 - 33) * _standBodyScale * _dscale;
+      S._swordBodyH = (_sRows.feet - _sRows.crown + 1) * _standBodyScale * _dscale;
       /* v2.3.1073: jog-scaled body height for the composited jog legs -- the bow
          art per direction is drawn jog-sized, so legs scaled by the STAND height
          read ~25% small (east jog 1.25 vs stand 0.983).  Use the JOG dir-scale. */
-      S._jogBodyH = (221 - 33) * bodyDirScale('jog', dir) * LOCAL_SCALE * _dscale;
+      const _jRows = bodyRows('jog', dir);
+      S._jogBodyH = (_jRows.feet - _jRows.crown + 1) * bodyDirScale('jog', dir) * LOCAL_SCALE * _dscale;
       /* v2.3.1072: tell the bow stand-in to swap to the leg-erased torso strip and
          composite jogging legs underneath while MOVING (effectsRenderer restricts
          this to the south facing for now via fmap).  Gate on the function-scope

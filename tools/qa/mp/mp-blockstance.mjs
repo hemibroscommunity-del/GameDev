@@ -210,6 +210,38 @@ export async function run({ browser, wsPort, webPort, rec }) {
       { dxFromBodyCentre: sb ? +(sb.x - sb.bodyX).toFixed(1) : null,
         onTheOldPlacement: ({ NW: -15.7, N: -3.9, NE: 10.6 })[n], sb });
   }
+  /* ═══ v2.3.1836: ONE SIZE, WHICHEVER WAY YOU GUARD ═══
+     Owner: "the shield block per direction still have mismatched character
+     scales."  The block replaces the body with a stand-in that effectsRenderer
+     sizes from S._swordBodyH, and that was (221-33)*dirScale — south's rows
+     times a scale built to cancel per-facing height differences, which
+     re-introduces them instead.  Measured 16.1% across the five sheets.
+     Asserted on the published number rather than on pixels because this IS
+     the number the stand-in is sized by; a pixel check would also be
+     measuring the pose art, which legitimately differs. */
+  const sizes = [];
+  for (const n of ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE']) {
+    await pin(P, IDX[n]);
+    const h = await P.page.evaluate(() => {
+      const S = window._gameState && window._gameState.current;
+      return S ? { bodyH: S._swordBodyH, footY: S._swordFootY, y: S.player && S.player.y } : null;
+    });
+    if (h && h.bodyH) sizes.push({ dir: n, bodyH: +h.bodyH.toFixed(2), footDrop: +(h.footY - h.y).toFixed(2) });
+  }
+  rec.ok('every facing published a stand-in size (guard)', sizes.length === 8, { sizes });
+  if (sizes.length === 8) {
+    const hs = sizes.map((x) => x.bodyH);
+    const spread = (Math.max(...hs) - Math.min(...hs)) / ((Math.max(...hs) + Math.min(...hs)) / 2);
+    rec.ok('the blocking character is the same size whichever way it faces (within 1%)',
+      spread < 0.01, { spreadPct: +(spread * 100).toFixed(2), was: '16.1', sizes });
+    /* The feet move with the same constants, so they are worth their own
+       line: a stand-in planted on another facing's feet row floats or sinks. */
+    const fs = sizes.map((x) => x.footDrop);
+    const fSpread = Math.max(...fs) - Math.min(...fs);
+    rec.ok('...and stands on the same ground line in every facing (within 2px)',
+      fSpread < 2, { spreadPx: +fSpread.toFixed(2), sizes });
+  }
+
   /* ...and the south half keeps it in front, drawn the normal way. */
   for (const n of ['E', 'SW']) {
     await pin(P, IDX[n]);
