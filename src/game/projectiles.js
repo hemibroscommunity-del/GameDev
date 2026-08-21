@@ -257,8 +257,13 @@ export function updateArrows(S, deps) {
               if (_archProj === 'fodder') {
                 /* Slime body is wider than the 18 px default — bump
                    the radius so arrows that visually hit the body
-                   register.  Same intuition as the melee +20 bonus. */
-                _hitR = a.isStaff ? 38 : 26;
+                   register.  Same intuition as the melee bonus.
+                   v2.3.1824: 26 -> 27, the blob's measured half-width in
+                   world px (48 frame-px * 0.75 * 1.5 / 2).  A small change,
+                   but it is now a MEASURED number rather than a guess, and
+                   it is paired with the anchor fix that finally puts the
+                   centre it is measured from in the right place. */
+                _hitR = a.isStaff ? 38 : 27;
               } else if (_archProj === 'fireGoblin') {
                 _hitR = a.isStaff ? 40 : 26;
               } else if (_archProj === 'snowman') {

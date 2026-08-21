@@ -21,6 +21,44 @@ import { Assets, Rectangle, Texture } from 'pixi.js';
 const FRAME_W = 128;
 const FRAME_H = 128;
 
+/* ═══ v2.3.1824: WHERE THE BLOB ACTUALLY SITS IN ITS CELL ═══
+ *
+ * Owner: "the hitbox for the slime is way off.  All hitboxes need to be
+ * based on where the actual base of where the sprite is shown in the game.
+ * It's hard to see here but it's the red circle around the 6G coins."
+ *
+ * The slime is drawn in a 128px cell that it does not fill: on the live
+ * sheets the blob's lowest opaque row is 86, so there are 41 empty rows
+ * UNDER it.  The sprite was anchored at the frame's bottom, which put the
+ * blob's visible base 34 world px ABOVE the monster's own position — and
+ * everything keyed to that position (the loot pile in the owner's
+ * screenshot, the hit tests, the tap-to-lock circle) landed that far below
+ * the slime you can see.
+ *
+ * v2.3.1704 met the same geometry from the other side — the ground shadow
+ * was sitting in the road under the blob — and answered it by deleting the
+ * shadow, which fixed the shadow and left everything else misaligned.  This
+ * is the fix that one declined: anchor the sprite at the row the artwork
+ * actually rests on, so the monster's position IS the base of what you see
+ * and every consumer is right for free.
+ *
+ * MEASURED, not eyeballed — the numbers are the per-frame alpha bounds of
+ * the shipped sheets, and slimeAnchor.test.mjs re-measures them so a
+ * re-exported sheet fails loudly instead of quietly sliding the hitbox back.
+ * Death is on its OWN baseline (the splat spreads to row ~108) and gets its
+ * own number; sharing one would drop the splat 24px through the floor. */
+export const SLIME_BASE_ROW = {
+  idle: 86,
+  shoot: 86,
+  hit: 87,
+  death: 108,
+};
+/** The blob's HIGHEST row across the idle loop's bounce — what the HP bar
+ *  and level text have to clear. */
+export const SLIME_TOP_ROW = 29;
+/** Frame cell size, so consumers can turn the rows above into a fraction. */
+export const SLIME_FRAME_PX = FRAME_H;
+
 const SHEETS = {
   idle:       { url: '/sprites/monsters/slime-idle-v5.png',       frames: [] },
   shoot:      { url: '/sprites/monsters/slime-shoot-v2.png',      frames: [] },

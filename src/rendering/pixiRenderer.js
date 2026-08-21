@@ -430,6 +430,33 @@ export async function initPixiRenderer(canvas) {
        white silhouette is a fact about a filter and a scale on a display
        object — a screenshot can see a pale blob but cannot tell it from a
        monster that simply has not loaded its art. */
+    /* v2.3.1824: read-only probe of where a slime is actually DRAWN.
+       Owner: "the hitbox for the slime is way off.  All hitboxes need to be
+       based on where the actual base of where the sprite is shown in the
+       game."  Whether the blob's base lands on the monster's own y is a fact
+       about a Pixi anchor, a scale and two container transforms; a
+       screenshot can see a slime and a coin pile but cannot say which of
+       them is in the wrong place, and window._gameState cannot see a sprite
+       at all.  Reports the geometry and lets the test do the arithmetic. */
+    slimeBaseProbe: () => {
+      const out = [];
+      for (const [id, d] of entityRenderer.monsterDisplays) {
+        if (!d || !d._isFodder) continue;
+        const sb = d._spriteBody;
+        if (!sb || !sb.visible || !sb.texture || !sb.texture.height) continue;
+        out.push({
+          id,
+          worldY: d.y,
+          anchorY: sb.anchor.y,
+          sbY: sb.y,
+          texH: sb.texture.height,
+          scaleY: Math.abs(sb.scale.y),
+          containerScaleY: d.scale.y,
+          state: d._slimeState || null,
+        });
+      }
+      return out;
+    },
     spawnFxProbe: () => {
       const out = [];
       for (const [id, d] of entityRenderer.monsterDisplays) {

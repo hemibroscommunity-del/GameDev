@@ -22,7 +22,7 @@ import { getShieldFrame } from '../shieldSprites.js';
 import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX, HELD_SHIELD_PX } from '../backShield.js'; /* v2.3.1784; HELD_ v2.3.1798 */
 import { STUN_STARS, STUN_SPIN_MS } from '../fxStrips.js'; /* v2.3.1735: the owner's stun ring */
 import { jogWaistRow } from '../jogWaist.js'; /* v2.3.1341: stable waist band */
-import { getFrame as getSlimeBaseFrame, hasState as hasSlimeState, frameCount as slimeFrameCount } from '../slimeSprites.js';
+import { getFrame as getSlimeBaseFrame, hasState as hasSlimeState, frameCount as slimeFrameCount, SLIME_BASE_ROW, SLIME_FRAME_PX } from '../slimeSprites.js';
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1573 generalised */
 
 /* v2.3.1534: one place that decides whether a slime draws from the shared
@@ -3066,6 +3066,15 @@ function createMonsterDisplay(monster) {
      ever want the grounding back; this is the deliberate cheaper answer to
      what they actually said.
 
+     ═══ v2.3.1824: THE GEOMETRY ABOVE IS NO LONGER TRUE ═══
+     The 42 empty rows are still in the art, but the sprite is anchored on
+     the blob's base row now (SLIME_BASE_ROW), so a shadow at
+     `shadow.y = size` would land roughly under the blob rather than 48px
+     adrift.  Leaving the slimes shadowless anyway: the owner asked for that
+     directly, and the player has no shadow either (v2.3.1365).  Kept as a
+     note rather than deleted, because this measurement is what made the
+     anchor bug findable.
+
      GATED PER-VARIANT, deliberately: `isFodder` is the useSlimeSheets test,
      so it covers ALL FOUR slimes — plain fodder, blueSlime (the Verdant
      Wilds one the owner was looking at), mossSlime and mireWisp — because
@@ -4257,6 +4266,12 @@ export class EntityRenderer {
             }
             sb.scale.x = 96 / 128;
             sb.scale.y = 96 / 128;
+            /* v2.3.1824: the splat has its own baseline (row ~108, vs 86 for
+               the live blob) — anchoring it on the live number would drop it
+               24px through the floor at the moment of death. */
+            const _deathAnchor = SLIME_BASE_ROW.death / SLIME_FRAME_PX;
+            if (sb.anchor.y !== _deathAnchor) sb.anchor.set(0.5, _deathAnchor);
+            sb.y = 0;
             sb.tint = slimeTintFor(variant, 'death'); /* v2.3.1147; v2.3.1534 */
             sb.visible = true;
             display.x = m.x;
@@ -4763,7 +4778,17 @@ export class EntityRenderer {
           const sy = baseScale * sqy;
           if (spriteBody.scale.x !== sx) spriteBody.scale.x = sx;
           if (spriteBody.scale.y !== sy) spriteBody.scale.y = sy;
-          if (spriteBody.y !== size) spriteBody.y = size; /* feet at the circle's bottom edge */
+          /* v2.3.1824: anchor on the row the BLOB rests on, not the empty
+             bottom of the cell — see SLIME_BASE_ROW.  y=0 then puts that row
+             on the monster's own position, which is what makes the loot pile,
+             the hit tests and the tap circle line up with the slime you can
+             actually see.  Set per state because the three live sheets share
+             a baseline and the death sheet does not.
+             Bonus: the hit squash now pivots on the blob's base, so a
+             squashed slime stays planted instead of sliding. */
+          const _slimeAnchor = (SLIME_BASE_ROW[state] || SLIME_BASE_ROW.idle) / SLIME_FRAME_PX;
+          if (spriteBody.anchor.y !== _slimeAnchor) spriteBody.anchor.set(0.5, _slimeAnchor);
+          if (spriteBody.y !== 0) spriteBody.y = 0;
           /* v2.3.1147: tinted slime reskins (mossSlime/mireWisp).
              v2.3.1534: a recoloured variant reports white here — see
              slimeTintFor. */
@@ -4922,7 +4947,15 @@ export class EntityRenderer {
         } else if (display._isSnowman && spriteVisible) {
           visualTopY = display._size - 64;
         } else if (display._isFodder && spriteVisible) {
-          visualTopY = display._size - 96;
+          /* v2.3.1824: the sprite is anchored on the blob's base row now, so
+             the frame top is that many scaled rows above the origin rather
+             than `size - 96`.  Deliberately the FRAME top and not the blob
+             top: it works out to the same clearance the bar had before this
+             change (~22 local px over the blob's highest bounce), and the
+             damage-number-over-the-HP-bar overlap has been reported three
+             times (v2.3.1402/1403/1638) — this fix has no business moving
+             that gap as a side effect. */
+          visualTopY = -(SLIME_BASE_ROW.idle * (96 / SLIME_FRAME_PX));
         } else {
           visualTopY = -size;
         }

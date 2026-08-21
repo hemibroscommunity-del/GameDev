@@ -6286,7 +6286,14 @@ export function monsterBodyOffsetY(archOrType) {
   /* v2.3.1535: resolve reskins to the shape they actually render as, or a
      variant falls through to 0 = body centred on the FEET.  See hitShapeOf. */
   archOrType = hitShapeOf(archOrType);
-  if (archOrType === 'fodder') return 40;
+  /* v2.3.1824: 40 -> 23.  The slime sprite is anchored on the blob's base
+     row now (SLIME_BASE_ROW, entityRenderer), so m.y IS the bottom of the
+     drawn blob and the body centre is half a blob above it: the blob is 41
+     frame-px tall, drawn at 96/128 inside a container scaled by
+     MONSTER_SIZE_MULT 1.5, so 41 * 0.75 * 1.5 / 2 = 23 world px.  The old 40
+     was tuned against the old anchoring and was wrong even then — it is the
+     reason "the hitbox is at their shadow" kept coming back. */
+  if (archOrType === 'fodder') return 23;
   if (archOrType === 'mummy' || archOrType === 'skeleton') return 48;
   if (archOrType === 'fireGoblin') return 28;
   if (archOrType === 'snowman') return 19;
@@ -6347,7 +6354,11 @@ export function monsterBodyOffsetY(archOrType) {
  * They are allowed to differ in VALUE; they must not differ in COVERAGE. */
 export function monsterMeleeHitRadius(archOrType) {
   const shape = hitShapeOf(archOrType);
-  if (shape === 'fodder') return 20;
+  /* v2.3.1824: the blob is 48 frame-px wide = 48 * 0.75 * 1.5 = 54 world px
+     across, so its half-width is 27.  24 keeps the swing bonus a shade
+     inside the drawn body (the swing brings GS_OUTER_RADIUS of its own
+     reach) while still covering it. */
+  if (shape === 'fodder') return 24;
   if (shape === 'fireGoblin') return 14;
   if (shape === 'snowman') return 32;
   if (shape === 'mummy' || shape === 'skeleton') return 40;
