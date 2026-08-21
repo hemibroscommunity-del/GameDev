@@ -3,7 +3,7 @@ import { COL, panelStyle, getState } from '../dash/common.js';
 import { buildSkillUnspent, STAT_TO_WEAPON_CAT } from '../../../data/gameSystems.js';
 import { requestT2Category } from '../dash/T2Panel.jsx';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
-import { CharacterView } from './CharacterView.jsx'; /* v2.3.1815: the equip screen's own figure */
+import { CharacterView, FIGURE_W_FRAC } from './CharacterView.jsx'; /* v2.3.1815: the equip screen's own figure */
 import { COMBAT_SKILLS, skillLevel, skillProgressPct, skillProgress, deriveHeroStats, unspentPointsTotal } from './heroModel.js';
 /* v2.3.1660: trained-skill rebuild — the Build section becomes the
    seven-stat allocation menu when the worker owns prog3. */
@@ -74,6 +74,14 @@ dashboardPanelBus.subscribe(() => {
 export const HeroExpanded = () => {
   const [, force] = useState(0);
   const [eqSel, setEqSel] = useState(null);
+  const cardRef = React.useRef(null);
+  /* v2.3.1842: see the note by the card below. */
+  React.useEffect(() => {
+    if (!eqSel || !cardRef.current) return;
+    try {
+      cardRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    } catch (e) { /* an old engine simply does not scroll */ }
+  }, [eqSel]);
   const [section, setSectionState] = useState(_lastSection);
   /* v2.3.1668: which combat type the Build grid is allocating into.
      Defaults to whatever you are actually holding, so opening Build
@@ -300,11 +308,10 @@ export const HeroExpanded = () => {
 
       {section === 'Overview' && (
         <>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0 6px' }}>
-            {compactVital('hp', R.hp || 0, R.maxHp || 100)}
-            {compactVital('stamina', R.stamina || 0, R.maxStamina || 100)}
-            {compactVital('mana', R.mana || 0, R.maxMana || 100)}
-          </div>
+          {/* v2.3.1842: the three vitals MOVED — they now stand beside the
+              figure (below), stacked, in the width the compact crop freed.
+              Removing this strip also hands ~26px of height back, which is
+              most of what the taller equip row cost at v2.3.1841. */}
 
           {/* v2.3.1653: EQUIPPED LEFT, STATS RIGHT — the owner's layout,
               literally.  The left column is fixed at what two cells need so
@@ -357,20 +364,27 @@ export const HeroExpanded = () => {
               still what makes it cheap: leaving the slots 3 wide would have
               cost the same height AND stranded them in a 2-row strip half the
               figure's height. */}
+          {/* v2.3.1842: three columns, in the owner's order — CHARACTER,
+              then the gear slots, then the vitals.  ("I actually have slots to
+              the right and vitals to the right of that.") */}
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+            {/* HARD LEFT, and cropped to a rectangle around him.  `crop`
+                narrows the WELL over the canvas rather than shrinking the
+                canvas — the character stays the size the owner asked to keep,
+                and the ~70px of empty frame it was reserving is what pays for
+                the vitals column. */}
             <div style={{
-              flex: 1, minWidth: 0, height: 3 * EQ_W + 2 * DASH_GAP,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flex: 'none',
+              width: Math.round((3 * EQ_W + 2 * DASH_GAP) * FIGURE_W_FRAC),
+              height: 3 * EQ_W + 2 * DASH_GAP,
               background: COL.wellSoft, border: `1px solid ${COL.tileBor}`,
               borderRadius: 8, overflow: 'hidden',
             }}>
-              {/* Square because the portrait composites square; the well takes
-                  the leftover width.  Sized to the slot block's height so the
-                  figure and the gear it is wearing still read as one group. */}
               <CharacterView
                 size={3 * EQ_W + 2 * DASH_GAP}
                 weapon={R.weapon}
                 shield={R.shield}
+                crop
               />
             </div>
 
@@ -380,9 +394,39 @@ export const HeroExpanded = () => {
             }}>
               {['weapon', 'shield', 'chest', 'legs', 'amulet', 'cape'].map(eqCell)}
             </div>
+
+            {/* The vitals, stacked: each still a horizontal BAR (that is what
+                a bar is for), the LIST running vertically.  Takes whatever the
+                first two columns leave, which is what the crop freed. */}
+            <div style={{
+              flex: 1, minWidth: 0, height: 3 * EQ_W + 2 * DASH_GAP,
+              display: 'flex', flexDirection: 'column',
+              justifyContent: 'center', gap: 10,
+            }}>
+              {compactVital('hp', R.hp || 0, R.maxHp || 100)}
+              {compactVital('stamina', R.stamina || 0, R.maxStamina || 100)}
+              {compactVital('mana', R.mana || 0, R.maxMana || 100)}
+            </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 6 }}>
+          {/* ═══ v2.3.1842: TAPPING A SLOT BRINGS ITS CARD INTO VIEW ═══
+              Owner: "make sure there's enough room so that when you click on
+              an item to equip the menu still shows up."
+
+              It did not.  Measured after the row grew to fit the bigger
+              figure: the card's title landed at y845 and its CHANGE button at
+              842-859, in an 844px viewport — about 15px below the fold.
+
+              The fix is NOT to shrink the character back, because keeping his
+              size is the other half of the same request.  Overview already
+              scrolls (that is what the v2.3.1311d edge fade is for), so the
+              card was reachable all along and simply did not announce itself.
+              Selecting a slot now scrolls it into view, which is what "shows
+              up" means from the player's side of the screen.
+
+              Only on SELECT, never on deselect: scrolling when you tap a slot
+              closed would yank the panel around for no reason. */}
+          <div ref={cardRef} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 6 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               {/* The header names what the numbers below are ABOUT, which is
                   the whole point of a contextual panel: without it, a card

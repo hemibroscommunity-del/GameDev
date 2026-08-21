@@ -39,7 +39,27 @@ import { getEquip, onEquipChange } from '@/rendering/gearCatalog.js';
 
 /* The portrait composites at 256 and the figure occupies most of it, so the
    canvas is square and the caller gives it whatever box it can spare. */
-export const CharacterView = ({ size, weapon, shield }) => {
+/* ═══ v2.3.1842: THE COMPACT CROP ═══
+ * Owner: "keep the character size but make it a super compact rectangle
+ * around the character to make way more room."
+ *
+ * The compositor works in a 256 SQUARE because that is the frame the sprite
+ * sheets are cut in — but a standing person is narrow, so most of that width
+ * is empty and the well around it was reserving all of it.  MEASURED with the
+ * kit on (mp-heroview logs the painted bbox): the figure spans 43.8% of the
+ * canvas width and its centre sits at 48.3%, a little left of the frame's
+ * middle because the sword hangs on that side.
+ *
+ * So the canvas keeps its size — the character does not shrink, which is the
+ * part the owner wants kept — and the WELL is narrowed to a window over it,
+ * with the canvas slid so the figure lands in that window.  52% leaves a
+ * margin either side of the measured 43.8% so a wider pose or a bigger shield
+ * does not clip; mp-heroview asserts the figure still fits.
+ */
+export const FIGURE_W_FRAC = 0.52;   /* window width, as a fraction of `size` */
+const FIGURE_CX_FRAC = 0.483;        /* measured centre of the painted figure */
+
+export const CharacterView = ({ size, weapon, shield, crop }) => {
   const ref = React.useRef(null);
   /* Bumped by every catalog subscription below; the draw effect keys on it.
      A counter rather than the values themselves because there are twelve
@@ -108,7 +128,12 @@ export const CharacterView = ({ size, weapon, shield }) => {
        second. */
   }, [rev, size, weapon && (weapon.id || weapon.type), weapon && weapon.gearBase, !!shield]);
 
-  return (
+  const winW = crop ? Math.round(size * FIGURE_W_FRAC) : size;
+  /* Slide the canvas so the figure's measured centre lands in the window's
+     centre.  Without this the window would show the frame's middle, which is
+     not where the figure is. */
+  const shift = crop ? Math.round(size * FIGURE_CX_FRAC - winW / 2) : 0;
+  const canvasEl = (
     <canvas
       ref={ref}
       /* No width/height attributes: drawCharacterPortrait force-sets the
@@ -116,7 +141,14 @@ export const CharacterView = ({ size, weapon, shield }) => {
          them here would be overwritten on the first draw and misleading to
          read. CSS owns the displayed size only. */
       aria-label="Your character"
-      style={{ width: size, height: size, display: 'block', imageRendering: 'auto' }}
+      style={{ width: size, height: size, display: 'block', imageRendering: 'auto',
+        marginLeft: -shift }}
     />
+  );
+  if (!crop) return canvasEl;
+  return (
+    <div style={{ width: winW, height: size, overflow: 'hidden', flex: 'none' }}>
+      {canvasEl}
+    </div>
   );
 };

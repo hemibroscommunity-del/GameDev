@@ -75,7 +75,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const layout = await P.page.evaluate(() => {
     const cv = document.querySelector('canvas[aria-label="Your character"]');
     if (!cv) return null;
-    const r = cv.getBoundingClientRect();
+    /* v2.3.1842: measure the VISIBLE window, not the canvas.  The compact crop
+       narrows a wrapper over a canvas that deliberately overhangs it (that is
+       how the empty frame is reclaimed without shrinking the figure), so the
+       canvas's own rect now starts at a negative x and says nothing about
+       where the player sees the character.  Walk up to the clipping box. */
+    let visEl = cv;
+    try {
+      const p = cv.parentElement;
+      if (p && getComputedStyle(p).overflow === 'hidden') visEl = p;
+    } catch (e) { /* keep the canvas */ }
+    const r = visEl.getBoundingClientRect();
     /* The gear slots are the tiles with an aria-label that are NOT the
        figure; take the leftmost one as the block's edge. */
     const tiles = [...document.querySelectorAll('[role="button"][aria-label]')]
@@ -172,6 +182,83 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and by a real amount, not a pixel or two',
     !!(beforeKit && afterKit && Math.abs(afterKit.n - beforeKit.n) > 150),
     { beforePainted: beforeKit && beforeKit.n, afterPainted: afterKit && afterKit.n });
+
+  /* v2.3.1842: the painted BOX of the figure inside its square canvas.  The
+     compositor works in a 256 square but a standing person is narrow, so most
+     of that width is empty — this is what the compact crop is sized from, and
+     asserting it keeps the crop honest if the pose or the kit ever widens. */
+  const bbox = await P.page.evaluate(() => {
+    const cv = document.querySelector('canvas[aria-label="Your character"]');
+    if (!cv) return null;
+    const c = document.createElement('canvas');
+    c.width = cv.width; c.height = cv.height;
+    const x = c.getContext('2d');
+    x.drawImage(cv, 0, 0);
+    const d = x.getImageData(0, 0, c.width, c.height).data;
+    let l = 1e9, r = -1, t = 1e9, b = -1;
+    for (let y = 0; y < c.height; y++) {
+      for (let X = 0; X < c.width; X++) {
+        if (d[(y * c.width + X) * 4 + 3] < 24) continue;
+        if (X < l) l = X; if (X > r) r = X; if (y < t) t = y; if (y > b) b = y;
+      }
+    }
+    return r < 0 ? null : { l, r, t, b, w: r - l + 1, h: b - t + 1,
+      cw: c.width, ch: c.height, wPct: +((r - l + 1) / c.width * 100).toFixed(1) };
+  });
+  console.log('    figure bbox', JSON.stringify(bbox));
+  rec.ok('the figure is measurably narrower than its square canvas',
+    !!(bbox && bbox.wPct < 80), bbox);
+
+  /* ═══ v2.3.1842: TAPPING A SLOT STILL SHOWS ITS MENU ═══
+     Owner: "make sure there's enough room so that when you click on an item to
+     equip the menu still shows up."  The equip row grew to fit a bigger
+     figure, so the card BELOW it is the thing that could get pushed off the
+     bottom.  Asserted as "visible inside the viewport", not merely "in the
+     DOM" — an element scrolled out of the panel is present and useless, which
+     is exactly the failure being guarded against. */
+  const slotBtn = await P.page.$('[role="button"][aria-label="Weapon"]');
+  rec.ok('the weapon slot is there to tap (guard)', !!slotBtn, {});
+  if (slotBtn) {
+    await slotBtn.click();
+    /* The card scrolls itself into view on select (v2.3.1842) and the scroll
+       is smooth, so measure after it settles, not while it is moving. */
+    await P.page.waitForTimeout(1400);
+    const card = await P.page.evaluate(() => {
+      /* The panel header names the SELECTED slot once one is picked; before
+         that it reads "Your stats".  Find it and measure where it sits. */
+      /* Anchor on CHANGE — the control that actually equips something, which
+         is the "menu" in the owner's sentence.  The first cut matched
+         /great sword/ with a space and found nothing while the card was right
+         there reading "GREATSWORD"; the header is one word.  Both the title
+         and the button are checked so a card that renders without its action
+         cannot pass. */
+      const leaf = (re) => [...document.querySelectorAll('span, div, button')]
+        .filter((el) => {
+          const t = (el.textContent || '').trim();
+          return t && t.length < 40 && re.test(t) && el.children.length === 0;
+        })[0] || null;
+      const title = leaf(/greatsword|copper/i);
+      const change = leaf(/^change$/i);
+      if (!title && !change) {
+        return { found: false, body: (document.body.innerText || '').slice(0, 300) };
+      }
+      const box = (el) => {
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        return { top: Math.round(r.top), bottom: Math.round(r.bottom),
+          h: Math.round(r.height),
+          onScreen: r.top >= 0 && r.bottom <= window.innerHeight && r.height > 0 };
+      };
+      return { found: true, vh: window.innerHeight,
+        title: title && title.textContent.trim(), titleBox: box(title),
+        changeBox: box(change),
+        onScreen: !!(box(title) && box(title).onScreen
+          && box(change) && box(change).onScreen) };
+    });
+    rec.ok('tapping a slot opens its card', !!(card && card.found), card);
+    rec.ok('...and the card is ON SCREEN, not pushed off the bottom',
+      !!(card && card.onScreen), card);
+  }
 
   await P.page.screenshot({ path: '/home/user/GameDev/tools/maps/.hero.png' });
   await P.ctx.close().catch(() => {});

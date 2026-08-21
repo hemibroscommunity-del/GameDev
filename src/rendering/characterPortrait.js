@@ -26,7 +26,7 @@ import { upscaleToFrameHeight } from './spriteScale.js'; /* v2.3.1110: restore d
    metal to multiply it by — the same two-step the world renderer uses, so a
    copper plate cannot come out steel here while it is copper in play. */
 import { gearArt, gearMaterial } from './gearVariants.js';
-import { materialRgb } from './traits/materialTints.js';
+import { materialRgb, weaponMaterial } from './traits/materialTints.js'; /* v2.3.1842: weapons share the metals table */
 
 import { weaponArtUrl } from './weaponSprites.js';        /* v2.3.1841 */
 import { getShieldArt } from './shieldSprites.js';        /* v2.3.1841 */
@@ -536,6 +536,32 @@ export async function drawCharacterPortrait(canvas, opts) {
       const key = weapon.gearBase ? `${_wpnType}:${weapon.gearBase}` : _wpnType;
       const worldH = WORLD_WEAPON_PX[key] || WORLD_WEAPON_PX[_wpnType] || 36;
       const k = (worldH * _w2f) / th;
+      /* ═══ v2.3.1842: THE METAL, not the donor art ═══
+         Owner: "it should show the copper sword in the character preview
+         (it's still the iron color - it was recolored to be copper for the
+         first tier)."
+         Every metal weapon shares ONE steel-grey sheet and the world tints it
+         (entityRenderer: weaponSprite.tint = weaponTint(...)).  This canvas
+         drew the sheet raw, so a copper sword came out the donor's iron.
+         Same two-step the armour layers above use — multiply the metal over
+         the art, then destination-in to put the sheet's own alpha back so the
+         fill is confined to the blade instead of flooding the frame — and the
+         material comes from weaponMaterial, the same function the renderer
+         asks, so a new metal is wired up in both places at once. */
+      const _wRgb = materialRgb(weaponMaterial(_wpnType, weapon.gearBase));
+      let _wLayer = wpnImg;
+      if (_wRgb) {
+        const wc = document.createElement('canvas');
+        wc.width = tw; wc.height = th;
+        const wx = wc.getContext('2d');
+        wx.drawImage(wpnImg, 0, 0, tw, th);
+        wx.globalCompositeOperation = 'multiply';
+        wx.fillStyle = `rgb(${_wRgb[0]},${_wRgb[1]},${_wRgb[2]})`;
+        wx.fillRect(0, 0, tw, th);
+        wx.globalCompositeOperation = 'destination-in';
+        wx.drawImage(wpnImg, 0, 0, tw, th);
+        _wLayer = wc;
+      }
       const hand = getAnchor('stand', DIR, 0, false) || [FRAME / 2 + 14, crown[1] + _bodyH * 0.55];
       const grip = getWeaponHandle(_wpnType, weapon.gearBase, DIR) || [tw * 0.17, th * 0.12];
       ctx.save();
@@ -544,7 +570,7 @@ export async function drawCharacterPortrait(canvas, opts) {
          so the crossguard lands just above the hand.  A rotation would mirror
          left-right too and point the tip back over the shoulder. */
       ctx.scale(1, -1);
-      ctx.drawImage(wpnImg, -grip[0] * k, -grip[1] * k, tw * k, th * k);
+      ctx.drawImage(_wLayer, -grip[0] * k, -grip[1] * k, tw * k, th * k);
       ctx.restore();
     }
   }
