@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { COL, QUALITY_COLOR, QUALITY_LABEL, panelStyle, getState } from '../dash/common.js';
+import { COL, QUALITY_COLOR, panelStyle, getState } from '../dash/common.js';
 import { buildSkillUnspent, STAT_TO_WEAPON_CAT } from '../../../data/gameSystems.js';
 import { requestT2Category } from '../dash/T2Panel.jsx';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
@@ -52,12 +52,31 @@ import { DASH_GAP, HERO_TAB_H } from './sheetGeometry.js';                      
    new maths. */
 
 const SECTIONS = ['Overview', 'Build', 'Records'];
-/* v2.3.1323 (owner icon sheet): each section tab gets its art —
-   knight bust / point tree / tally ledger. */
-const SECTION_ICONS = {
-  Overview: '/icons/ui/hero/tab-overview.webp?v=2.3.1323',
-  Build: '/icons/ui/hero/tab-build.webp?v=2.3.1323',
-  Records: '/icons/ui/hero/tab-records.webp?v=2.3.1323',
+/* ═══ v2.3.1847: THE TABS SAY WHAT THEY ARE ═══
+ * Owner: "for the 3 tabs on the character menu I think I'd prefer text.  So
+ * just equipment, build, and journey."
+ *
+ * That reverses v2.3.1657, which made them icon-only ("without any text") —
+ * and the reversal is the owner's call to make, so it is made here without
+ * argument.  Worth recording WHY it is safe: the icons were introduced to
+ * buy vertical space, and they did not buy any.  The row is HERO_TAB_H (28)
+ * tall either way; a 24px picture and an 11px word both sit inside it.  What
+ * the pictures cost was legibility — a knight bust, a point tree and a tally
+ * ledger have to be learned, while "Equipment" does not.
+ *
+ * The SECTION KEYS are unchanged.  'Overview' and 'Records' are the section
+ * ids that `_lastSection` persists and that every `section === ...` branch in
+ * this file tests; renaming them to match the labels would have been a
+ * rename across the whole component to change three words on screen.  The
+ * label is a display concern and lives in a display table.
+ *
+ * The old icons stay on disk — nothing else references them, but they are the
+ * owner's art, and deleting art on a text change is not this commit's call.
+ */
+const SECTION_LABEL = {
+  Overview: 'Equipment',   /* what the section actually shows: the worn six */
+  Build: 'Build',
+  Records: 'Journey',
 };
 /* Round-3 §6 state preservation: the selected section survives leaving
    the destination (module-scoped, session-only).  v2.3.1311: reset to
@@ -182,17 +201,43 @@ export const HeroExpanded = () => {
      the point: the card is ready for the ladder the owner is adding, and a
      rare drop will not look identical to a plain one. */
   const quality = (selSlot && ((selSlot.item && selSlot.item.quality) || selSlot.quality)) || 'normal';
-  /* The frame's hue.  Brass (the panel's own accent) for a normal item —
-     QUALITY_COLOR maps 'normal' to null precisely so that the approved
-     look survives the feature — and the rarity hue for anything above it. */
-  const rimCol = QUALITY_COLOR[quality] || COL.accent;
-  const rimFill = QUALITY_COLOR[quality] ? `${QUALITY_COLOR[quality]}26` : COL.accentFill;
+  /* ═══ v2.3.1847: RARITY IS THE NAME'S COLOUR ═══
+     Owner: "instead of communicating the item rarity with literal text I
+     think I'd rather have the font color of the name of the item represent
+     rarity.  For normal items it will just be white."
+
+     So the word is gone and the NAME carries it.  That is the convention
+     every ARPG uses, and it costs nothing: the name is already on the frame,
+     already the biggest text on the card, and a colour needs no line of its
+     own — which gives the picture and the stat list back the height the
+     rarity line was taking.
+
+     The FRAME goes back to brass and stays there.  Colouring the rim as well
+     would say the same thing twice, and the second saying is the one that
+     fights the panel: at rare the whole card changed hue, which reads as the
+     card being in a different state rather than the item being better.
+     QUALITY_COLOR maps 'normal' to null, which is exactly "no rarity hue" —
+     so a normal item's name falls back to the panel's warm white, the
+     owner's "just white". */
+  const nameCol = QUALITY_COLOR[quality] || COL.text;
+  const rimCol = COL.accent;
+  const rimFill = COL.accentFill;
   /* The item picture inside that card.  62 measured against the row: the
      card column is ~183px wide at 390, and once the frame and the interior
      well have taken their padding there are ~160 left — so 62 gives the art
      a real presence and still leaves the DMG/DPS tiles ~90px, which is more
      than "9–14" needs. */
   const ART_W = 62;
+  /* v2.3.1846: the card's stat LIST and its bonus strip.  `rows` falls back
+     to the primary/secondary pair the card has always carried, so a card
+     added later that does not define rows still renders its two stats rather
+     than an empty list. */
+  const rows = selCard
+    ? (selCard.rows && selCard.rows.length
+      ? selCard.rows
+      : [selCard.primary, selCard.secondary].filter(Boolean))
+    : [];
+  const bonuses = (selCard && selCard.bonuses) || [];
   /* THREE across, TWO down.  Two-by-three was the shape the band's EQUIPPED
      panel settled on at v2.3.1648 and the obvious reading of "grouped on
      the left", but measured it did not fit: three rows of 46 is 146px, and
@@ -226,24 +271,28 @@ export const HeroExpanded = () => {
       </div>
     );
   };
-  /* v2.3.1844: one stat line INSIDE the selected item's card.  Replaces the
-     old `kv` tile, which was built to sit on the panel floor and used
-     `wellSoft` — invisible against the card's darker interior.  `raised` on
-     `well` is the depth pair that reads there.
-
-     `flex: 1` rather than a fixed height: the card fills the equip row, and
-     a weapon with two stats should divide that space between them instead of
-     stacking two short tiles under a pile of empty card. */
-  const cardStat = (k, v) => (
+  /* v2.3.1846: ONE STAT, as a row inside the item card — label left, value
+     right, per the owner's mockup.  Replaces v2.3.1844's centred tile, which
+     spent a border and 8px of padding per stat; at four stats those tiles did
+     not fit the card at all, and the two that did fit were mostly padding.
+     A row is also easier to READ down a column: the labels line up on the
+     left and the numbers on the right, instead of every value sitting in the
+     middle of its own box at its own x. */
+  const statRow = ({ k, v }) => (
     <div key={k} style={{
-      flex: 1, minHeight: 0, minWidth: 0,
-      background: COL.raised, border: `1px solid ${COL.tileBor}`, borderRadius: 7,
-      display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center',
-      padding: '2px 4px', textAlign: 'center',
+      display: 'flex', alignItems: 'baseline', gap: 4, minWidth: 0,
     }}>
-      <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{k}</div>
-      <div style={{ fontSize: 15, fontWeight: 800, color: COL.text, fontVariantNumeric: 'tabular-nums', marginTop: 1, whiteSpace: 'nowrap' }}>{v}</div>
+      <span style={{
+        flex: 1, minWidth: 0,
+        fontSize: 8.5, fontWeight: 700, letterSpacing: '.04em',
+        textTransform: 'uppercase', color: COL.muted,
+        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+      }}>{k}</span>
+      <span style={{
+        flex: 'none',
+        fontSize: 12.5, fontWeight: 800, color: COL.text,
+        fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+      }}>{v}</span>
     </div>
   );
 
@@ -298,8 +347,8 @@ export const HeroExpanded = () => {
           return (
             <div key={s}
               role="button"
-              aria-label={badge ? `Build — ${badge} points` : s}
-              aria-pressed={on} title={s}
+              aria-label={badge ? `Build — ${badge} points` : (SECTION_LABEL[s] || s)}
+              aria-pressed={on} title={SECTION_LABEL[s] || s}
               onPointerUp={(e) => { e.stopPropagation(); setSection(s); }}
               style={{
                 position: 'relative',
@@ -310,11 +359,15 @@ export const HeroExpanded = () => {
                 borderRadius: 7,
                 cursor: 'pointer', touchAction: 'manipulation',
               }}>
-              <img src={SECTION_ICONS[s]} alt="" draggable={false}
-                style={{
-                  width: 24, height: 24, objectFit: 'contain',
-                  opacity: on ? 1 : 0.7, pointerEvents: 'none',
-                }} />
+              <span style={{
+                fontSize: 11, fontWeight: 800, letterSpacing: '.03em',
+                color: on ? COL.accent : COL.text2,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                pointerEvents: 'none',
+                /* The Build tab carries a count badge at top/right 2 — keep
+                   the word clear of it so "Build" and "3" never overlap. */
+                paddingRight: badge > 0 ? 12 : 0,
+              }}>{SECTION_LABEL[s] || s}</span>
               {badge > 0 && (
                 <span aria-hidden="true" style={{
                   position: 'absolute', top: 2, right: 2,
@@ -464,6 +517,14 @@ export const HeroExpanded = () => {
                   padding: 5,
                   overflow: 'hidden',
                 }}>
+                  {/* ═══ v2.3.1846/1847: THE FRAME CARRIES THE NAME ═══
+                      The mockup put a second line under the title; the owner
+                      first cut it to the rarity alone ("you can ignore the
+                      redundant name of the greatsword"), then to nothing at
+                      all — the name's own COLOUR is the rarity now.  Both
+                      moves went the same direction, which is why the line is
+                      gone rather than shortened again: the second row was
+                      never carrying information the first could not. */}
                   <div style={{
                     flex: 'none', display: 'flex', alignItems: 'center',
                     gap: 6, minHeight: 18, padding: '0 2px',
@@ -477,13 +538,15 @@ export const HeroExpanded = () => {
                         GREATSWORD) takes a second line, which the frame has
                         room for.  Truncation is the one outcome to avoid:
                         mp-itemcard asserts the text is not clipped. */}
-                    <span style={{
-                      flex: 1, minWidth: 0,
-                      fontSize: 8.5, fontWeight: 800, letterSpacing: '.03em',
-                      lineHeight: 1.1,
-                      textTransform: 'uppercase', color: rimCol,
-                      overflowWrap: 'anywhere',
-                    }}>{selCard ? selCard.title : selSlot.label}</span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{
+                        display: 'block',
+                        fontSize: 9.5, fontWeight: 800, letterSpacing: '.03em',
+                        lineHeight: 1.1,
+                        textTransform: 'uppercase', color: nameCol,
+                        overflowWrap: 'anywhere',
+                      }}>{selCard ? selCard.title : selSlot.label}</span>
+                    </span>
                     {selSlot.pickerSlot && (
                       <button
                         onClick={(e) => {
@@ -514,65 +577,71 @@ export const HeroExpanded = () => {
                       Same idea as the character on the left of this row, one
                       level down: the thing itself gets a well of its own, and
                       the numbers about it sit beside it rather than filling
-                      the card on their own.  The art tile takes a fixed width
-                      and the stats take what is left, so a two-stat weapon
-                      and a one-stat greave give the picture the same size —
-                      the item is the constant here, not the stat count.
+                      the card on their own.
 
                       `sl.iconSrc` rather than a second art lookup: that is
                       the exact URL the gear cell to the left is showing, so
                       the big view and the little one cannot disagree.  It is
                       also where v2.3.1845's bow bug lived — this card would
-                      have shown the same wrong art at four times the size. */}
+                      have shown the same wrong art at four times the size.
+
+                      v2.3.1846: the stats are a LABEL/VALUE LIST, per the
+                      owner's mockup, rather than the two centred tiles that
+                      were here.  Tiles cost a border and 8px of padding EACH
+                      to say two words; a list fits four rows in the height
+                      two tiles took, which is what makes room for SPEED and
+                      RANGE to exist at all. */}
                   <div style={{
                     flex: 1, minHeight: 0, borderRadius: 8,
                     background: COL.well,
                     padding: 5,
-                    display: 'flex', alignItems: 'stretch', gap: 6,
+                    display: 'flex', alignItems: 'stretch', gap: 7,
                   }}>
                     {!selSlot.ghost && selSlot.iconSrc && (
                       <div style={{
-                        flex: 'none', width: ART_W,
-                        display: 'flex', flexDirection: 'column', gap: 3,
+                        flex: 'none', width: ART_W, minHeight: 0,
+                        borderRadius: 7,
+                        background: COL.raised, border: `1px solid ${COL.tileBor}`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        overflow: 'hidden',
                       }}>
-                        <div style={{
-                          flex: 1, minHeight: 0, borderRadius: 7,
-                          background: COL.raised, border: `1px solid ${COL.tileBor}`,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          overflow: 'hidden',
-                        }}>
-                          <img src={selSlot.iconSrc} alt="" draggable={false}
-                            style={{ width: '88%', height: '88%', objectFit: 'contain',
-                              pointerEvents: 'none' }} />
-                        </div>
-                        {/* The rarity word.  Under the picture because that is
-                            what it describes, and because the frame's own hue
-                            says the same thing without any text at all. */}
-                        <div style={{
-                          flex: 'none', textAlign: 'center',
-                          fontSize: 7.5, fontWeight: 800, letterSpacing: '.08em',
-                          textTransform: 'uppercase',
-                          color: QUALITY_COLOR[quality] || COL.muted,
-                        }}>{QUALITY_LABEL[quality] || quality}</div>
+                        <img src={selSlot.iconSrc} alt="" draggable={false}
+                          style={{ width: '90%', height: '90%', objectFit: 'contain',
+                            pointerEvents: 'none' }} />
                       </div>
                     )}
                     <div style={{
                       flex: 1, minWidth: 0, minHeight: 0,
-                      display: 'flex', flexDirection: 'column', gap: 5,
+                      display: 'flex', flexDirection: 'column',
+                      justifyContent: 'center', gap: 2,
                     }}>
-                      {selCard ? (
-                        <>
-                          {cardStat(selCard.primary.k, selCard.primary.v)}
-                          {selCard.secondary ? cardStat(selCard.secondary.k, selCard.secondary.v) : null}
-                        </>
-                      ) : (
+                      {rows.length ? rows.map(statRow) : (
                         <div style={{
-                          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 11, fontWeight: 600, color: COL.muted, textAlign: 'center',
+                          fontSize: 10.5, fontWeight: 600, color: COL.muted,
+                          textAlign: 'center',
                         }}>{selSlot.ghost ? 'Nothing equipped here.' : 'No stat bonuses.'}</div>
                       )}
                     </div>
                   </div>
+                  {/* The strip along the bottom of the mockup: what this ONE
+                      item adds on top of its base numbers — a forge reforge,
+                      a harden, an element, a socketed gem.  Nothing in the
+                      starter kit has any, so it is absent far more often than
+                      it is present, and it is omitted rather than drawn empty:
+                      a blank band reads as a stat whose value failed to load. */}
+                  {bonuses.length > 0 && (
+                    <div style={{
+                      flex: 'none', display: 'flex', flexWrap: 'wrap',
+                      justifyContent: 'space-between', gap: 4, padding: '0 2px',
+                    }}>
+                      {bonuses.map((b) => (
+                        <span key={b} style={{
+                          fontSize: 8.5, fontWeight: 700, letterSpacing: '.02em',
+                          color: COL.text2, whiteSpace: 'nowrap',
+                        }}>{b}</span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <>

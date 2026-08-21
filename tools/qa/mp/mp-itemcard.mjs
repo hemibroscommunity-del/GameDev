@@ -137,13 +137,31 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const art = [...f.querySelectorAll('img')].map((im) => {
       const r = im.getBoundingClientRect();
       return { src: im.getAttribute('src'), w: Math.round(r.width), h: Math.round(r.height),
-        left: Math.round(r.left), right: Math.round(r.right) };
+        left: Math.round(r.left), right: Math.round(r.right), top: Math.round(r.top) };
     })[0] || null;
-    const stat = leaf(/^dmg$/i);
+    const stat = leaf(/^damage$/i);
     const sr = stat ? stat.getBoundingClientRect() : null;
     const rarity = leaf(/^(normal|rare|elite|godly)$/i);
+    const rr = rarity ? rarity.getBoundingClientRect() : null;
+    const titleCol = getComputedStyle(title).color;
+    /* The stat LIST: each row is a label span and a value span side by side.
+       Collected by walking the rows' shared parent so the geometry check
+       below sees exactly what the player sees. */
+    const rowBox = stat ? stat.parentElement.parentElement : null;
+    const rowEls = rowBox ? [...rowBox.children] : [];
+    const rowGeom = rowEls.map((el) => {
+      const kids = [...el.children];
+      if (kids.length !== 2) return null;
+      const a = kids[0].getBoundingClientRect(), b = kids[1].getBoundingClientRect();
+      return { k: kids[0].textContent.trim(), v: kids[1].textContent.trim(),
+        sameLine: Math.abs(a.bottom - b.bottom) < 6 && b.left >= a.right - 1 };
+    }).filter(Boolean);
     return {
       found: true, title: title.textContent.trim(),
+      rows: rowGeom.map((r) => r.k), rowCount: rowGeom.length, rowGeom,
+      rowsAligned: rowGeom.length > 0 && rowGeom.every((r) => r.sameLine),
+      rarityTop: rr ? Math.round(rr.top) : null,
+      titleCol,
       /* Is the name actually READABLE, or is the box just clipping it?
          v2.3.1845 shipped "COPPER GREAT…" for one preview: the title passed
          every text check while the screen said something else.  scrollWidth
@@ -179,13 +197,93 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and it is the sword\'s art, not another slot\'s',
     !!(card && card.art && /great-sword/.test(card.art.src || '')), card && card.art);
 
-  /* RARITY.  Everything mints 'normal' today, so this asserts the readout
-     exists and reads the roll — not that some other value appears. */
-  rec.ok('the card states the item\'s rarity', !!(card && card.rarity), card);
-  rec.ok('...and it is NORMAL, which is what every item rolls today',
-    !!(card && /normal/i.test(card.rarity || '')), card);
+  /* ═══ RARITY IS THE NAME'S COLOUR (v2.3.1847) ═══
+     Owner: "instead of communicating the item rarity with literal text I
+     think I'd rather have the font color of the name of the item represent
+     rarity.  For normal items it will just be white."
+
+     Colour is the hardest thing on this card to test WELL, because "the name
+     has a colour" is true of every name ever rendered.  So it is asserted as
+     a DIFFERENCE the code has to produce: the same weapon, the same card,
+     one field changed, and the name must come out a different colour — and a
+     specific one, matching the bag's own edge for that word.  Without the
+     re-roll below, a build that ignored quality entirely and painted every
+     name white would pass the normal case perfectly. */
+  rec.ok('the rarity WORD is gone from the card',
+    !!(card && !card.rarity), { rarity: card && card.rarity });
+  rec.ok('a normal item\'s name is white',
+    !!(card && /^rgb\(2[0-9]{2}, 2[0-9]{2}, 2[0-9]{2}\)$/.test(card.titleCol || '')),
+    { titleCol: card && card.titleCol });
+
+  const rareCol = await P.page.evaluate(async () => {
+    const S = window._gameState.current;
+    S.rpg.weapon.quality = 'rare';
+    /* Re-open so the panel re-reads the item — the same path a real re-roll
+       would take, rather than poking the DOM. */
+    window.__broDashPanelBus.open(null);
+    await new Promise((r) => setTimeout(r, 250));
+    window.__broDashPanelBus.open('hero');
+    await new Promise((r) => setTimeout(r, 700));
+    const cell = document.querySelector('[role="button"][aria-label="Weapon"]');
+    if (cell) cell.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 500));
+    const t = [...document.querySelectorAll('span')]
+      .filter((el) => el.children.length === 0 && /greatsword/i.test((el.textContent || '').trim()))[0];
+    return t ? getComputedStyle(t).color : null;
+  });
+  rec.ok('...and a RARE one is not the same colour',
+    !!(rareCol && card && rareCol !== card.titleCol), { normal: card && card.titleCol, rare: rareCol });
+  /* #5B99DE — the blue InventoryPanel already draws on a rare item's tile.
+     Asserted exactly, because "some other colour" would be satisfied by a
+     bug that painted rare items grey. */
+  rec.ok('...it is the same blue the bag uses for rare',
+    rareCol === 'rgb(91, 153, 222)', { rare: rareCol });
+  await P.page.evaluate(() => { window._gameState.current.rpg.weapon.quality = 'normal'; });
+
+  /* v2.3.1846: the mockup's LIST — more than the two stats the tiles held. */
+  rec.ok('the card lists more than two stats now',
+    !!(card && card.rowCount >= 3), { rows: card && card.rows });
+  rec.ok('...including the swing rate and the reach',
+    !!(card && /speed/i.test((card.rows || []).join(' ')) && /range/i.test((card.rows || []).join(' '))),
+    { rows: card && card.rows });
+  /* Every label is paired with a value on the SAME line — a list whose
+     values wrapped under their labels would still contain all the words. */
+  rec.ok('...each label with its value beside it, not under it',
+    !!(card && card.rowsAligned === true), { rowGeom: card && card.rowGeom });
 
   await P.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/itemcard.png' });
+
+  /* ── the bonus strip along the bottom of the card ──
+     The owner's mockup has one ("+2 Might   +4% Crit Damage") and the
+     starter kit never shows it, because nothing in it carries an affix.
+     So: put a real reforge and a real element on the weapon and require the
+     strip to appear — and require it to be ABSENT above, which the earlier
+     card check already proves by finding four stat rows and no fifth line.
+     A strip that drew empty would be worse than none: it reads as a stat
+     whose value failed to load. */
+  await closeHero(P);
+  await P.page.evaluate(() => {
+    const w = window._gameState.current.rpg.weapon;
+    w.reforgeBonus = { label: 'Might', value: 2, unit: '' };
+    w.element1 = 'flame';
+  });
+  await openHero(P);
+  await P.page.evaluate(() => {
+    const cell = document.querySelector('[role="button"][aria-label="Weapon"]');
+    if (cell) cell.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+  });
+  await P.page.waitForTimeout(600);
+  const strip = await P.page.evaluate(() => {
+    const txt = [...document.querySelectorAll('span')]
+      .filter((el) => el.children.length === 0)
+      .map((el) => (el.textContent || '').trim());
+    return { might: txt.some((t) => /^\+2\s*Might$/i.test(t)),
+      flame: txt.some((t) => /^Flame$/i.test(t)) };
+  });
+  rec.ok('an item with an affix shows it on the bottom strip',
+    !!(strip && strip.might), strip);
+  rec.ok('...and its element too', !!(strip && strip.flame), strip);
+  await P.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/itemcard-bonus.png' });
 
   /* ── 3b. the bow and the staff are named too ──
      A separate check because the tier tables they read are different ones,

@@ -225,6 +225,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
      that column now. */
   try { await P.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/hero-vitals.png' }); } catch (e) {}
 
+  /* ═══ v2.3.1847: THE SECTION TABS SAY THEIR NAMES ═══
+     Owner: "for the 3 tabs on the character menu I think I'd prefer text.
+     So just equipment, build, and journey."  This reverses v2.3.1657's
+     icon-only row, so the thing to assert is that the words are VISIBLE —
+     an aria-label carrying "Equipment" was already true of the icon version
+     and would satisfy a test that only queried the label. */
+  const tabs = await P.page.evaluate(() => {
+    const chips = [...document.querySelectorAll('[role="button"][aria-pressed]')]
+      .filter((el) => /^(equipment|build|journey|build — )/i.test(el.getAttribute('aria-label') || ''));
+    return chips.map((el) => {
+      const span = [...el.querySelectorAll('span')].filter((x) => x.children.length === 0)[0];
+      const r = span ? span.getBoundingClientRect() : null;
+      return { label: el.getAttribute('aria-label'),
+        text: span ? span.textContent.trim() : null,
+        w: r ? Math.round(r.width) : 0, h: r ? Math.round(r.height) : 0,
+        imgs: el.querySelectorAll('img').length };
+    });
+  });
+  rec.ok('all three section tabs were found (guard)', tabs.length === 3, { tabs });
+  rec.ok('the tabs read Equipment / Build / Journey',
+    tabs.map((t) => (t.text || '').toLowerCase()).join(',') === 'equipment,build,journey', { tabs });
+  /* Painted, not merely present: a word in a zero-width box is invisible. */
+  rec.ok('...and each word is actually laid out, not collapsed',
+    tabs.every((t) => t.w > 20 && t.h > 6), { tabs });
+  rec.ok('...with the icons retired, not stacked behind the text',
+    tabs.every((t) => t.imgs === 0), { tabs });
+
   const slotBtn = await P.page.$('[role="button"][aria-label="Weapon"]');
   rec.ok('the weapon slot is there to tap (guard)', !!slotBtn, {});
   if (slotBtn) {
@@ -306,12 +333,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
           && r.left >= fr.left - 1 && r.right <= fr.right + 1;
       };
       const cs = getComputedStyle(f);
+      /* v2.3.1846: the interior well is the frame's own CHILD that contains
+         the stat — climb to it rather than counting parentElement hops.  The
+         hop count was 2 when the stats were tiles and is 3 now that they are
+         rows in a list, and the old code silently read the row CONTAINER
+         (transparent) as "the well", which still differed from the frame and
+         so kept passing while measuring nothing. */
+      let well = statK;
+      while (well.parentElement && well.parentElement !== f) well = well.parentElement;
       return {
         found: true,
         border: cs.borderTopWidth + ' ' + cs.borderTopColor,
         frameBg: cs.backgroundColor,
-        statBg: getComputedStyle(statK.parentElement).backgroundColor,
-        wellBg: getComputedStyle(statK.parentElement.parentElement).backgroundColor,
+        wellBg: getComputedStyle(well).backgroundColor,
+        labelCol: getComputedStyle(statK).color,
+        valueCol: statK.nextElementSibling
+          ? getComputedStyle(statK.nextElementSibling).color : null,
         holdsTitle: inside(title),
         holdsChange: !!change && inside(change),
         holdsStat: inside(statK),
@@ -334,8 +371,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
       !!(frame && frame.holdsStat), frame);
     rec.ok('...and the interior is a different ground than the frame (sunken, not flat)',
       !!(frame && frame.wellBg && frame.wellBg !== frame.frameBg), frame);
-    rec.ok('...and the stat tile is a different ground again (tile on well)',
-      !!(frame && frame.statBg && frame.statBg !== frame.wellBg), frame);
+    /* v2.3.1846: this used to assert a third GROUND — the stat tile's fill on
+       the interior well.  There are no tiles any more: the owner's mockup
+       made the stats a label/value list, so the depth language stops at the
+       well and the remaining claim is about TYPE.  The label must not be
+       painted in the value's colour, or the list reads as eight equal words
+       instead of four labelled numbers. */
+    rec.ok('...and a stat\'s label is quieter than its value',
+      !!(frame && frame.labelCol && frame.valueCol && frame.labelCol !== frame.valueCol),
+      frame);
     rec.ok('...and the frame is the CARD, not the panel (character is outside it)',
       !!(frame && frame.holdsFigure === false && frame.holdsSlots === false), frame);
   }

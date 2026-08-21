@@ -1,5 +1,6 @@
 import { calcDisplayDmgRange, calcDisplayDps, getArmorPieceDr, getArmorDrPct } from '../../../data/gameSystems.js';
-import { BLACKSMITH_TIERS, WOODWORKING_TIERS, WEAPON_TYPES } from '../../../data/gameSystems.js'; /* v2.3.1845: item naming */
+import { BLACKSMITH_TIERS, WOODWORKING_TIERS, WEAPON_TYPES, SWING_RANGE, bowRangeMult } from '../../../data/gameSystems.js'; /* v2.3.1845: item naming; v2.3.1846: the stat rows */
+import { TILE } from '../../../data/constants.js'; /* v2.3.1846: range, in tiles */
 import { displayWeapon } from './statPreview.js'; /* v2.3.1766: one weapon-for-display rule */
 import { gearIdIcon, armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.1758: one armour art table */
 import { weaponMaterial, metalIconPath } from '@/rendering/traits/materialTints.js'; /* v2.3.1760 */
@@ -246,12 +247,68 @@ export function getEquipContribs(R) {
   const dmgText = range ? range.text.replace('-', '–') : null;
   const gemOf = (b) => ({ k: GEM_SHORT[b.stat] || 'GEM', v: '+' + fmt1(b.value) + (b.unit || '') });
 
+  /* ═══ v2.3.1846: THE ROWS ON AN ITEM CARD ═══
+   * Owner mockup: name and CHANGE on the frame, the rarity under the name,
+   * the item's picture beside a LABEL/VALUE list, and the item's bonuses on
+   * a strip along the bottom.  ("You can ignore the irrelevant test data" —
+   * so this fills the shape with the stats this game actually has, rather
+   * than reproducing the mockup's placeholder numbers.)
+   *
+   * WHAT IS REAL, and what was left out.  Every row here is a number the
+   * fight uses:
+   *   DAMAGE / DPS  — calcDisplayDmgRange + calcDisplayDps, the same pair
+   *                   the totals grid shows.
+   *   SPEED         — swings per second, from that range's own `cdMs`
+   *                   (600ms × the attack-speed allocation).  NOT
+   *                   WEAPON_TYPES.speed: that field reads like the answer
+   *                   (0.7 for a greatsword, 1.4 for a sword) and is DEAD —
+   *                   nothing in combat or in the damage math consumes it,
+   *                   so printing it would put a number on the card that
+   *                   describes nothing that happens.
+   *   RANGE         — WEAPON_TYPES.range, which combat DOES use
+   *                   (monsterCombat's swing envelope), through the same
+   *                   bow multiplier and 250px clamp the attack applies, and
+   *                   divided into TILEs because "50" means nothing to a
+   *                   player standing on a 32px grid.
+   * A weapon's `speed` word from the mockup is therefore absent by choice,
+   * not by omission. */
+  const cdMs = range && range.cdMs ? range.cdMs : 0;
+  const rangePx = wpn && WEAPON_TYPES[wpn.type]
+    ? Math.min(250, Math.round((WEAPON_TYPES[wpn.type].range || SWING_RANGE)
+      * (WEAPON_TYPES[wpn.type].type === 'ranged' ? bowRangeMult(R) : 1)))
+    : 0;
+
+  /* The bottom strip: what this ONE item adds beyond its base numbers.
+     Empty for every starter item, and the card drops the strip entirely
+     rather than drawing an empty band — a row of nothing reads as a stat
+     with no value rather than as an item with no affixes. */
+  const wpnBonuses = [];
+  if (wpn) {
+    if (wpn.reforgeBonus && wpn.reforgeBonus.label) {
+      wpnBonuses.push(`+${fmt1(wpn.reforgeBonus.value)}${wpn.reforgeBonus.unit || ''} ${wpn.reforgeBonus.label}`);
+    }
+    if (wpn.hardenBonus && wpn.hardenBonus.label) {
+      wpnBonuses.push(`+${fmt1(wpn.hardenBonus.value)}${wpn.hardenBonus.unit || ''} ${wpn.hardenBonus.label}`);
+    }
+    /* Elements are the weapon's identity, not a stat line — one word each. */
+    for (const el of [wpn.element1, wpn.element2]) {
+      if (el) wpnBonuses.push(String(el).charAt(0).toUpperCase() + String(el).slice(1));
+    }
+  }
+
   const cards = {
     weapon: range ? {
       /* v2.3.1845: COPPER GREATSWORD, not GREATSWORD — see weaponDisplayName. */
       title: weaponDisplayName(wpn).toUpperCase(),
       primary: { k: 'DMG', v: dmgText },
       secondary: { k: 'DPS', v: fmt1(dps) },
+      rows: [
+        { k: 'DAMAGE', v: dmgText },
+        { k: 'DPS', v: fmt1(dps) },
+        cdMs ? { k: 'SPEED', v: fmt1(1000 / cdMs) + '/s' } : null,
+        rangePx ? { k: 'RANGE', v: fmt1(rangePx / TILE) } : null,
+      ].filter(Boolean),
+      bonuses: wpnBonuses,
     } : null,
     shield: ss ? {
       /* v2.3.1845: the shield's own name (PINE SHIELD), not the bare slot
@@ -260,16 +317,25 @@ export function getEquipContribs(R) {
       title: String((R.shield && R.shield.name) || 'Shield').toUpperCase(),
       primary: { k: 'BLOCK', v: '+' + fmt1(ss.blockBonus) + '%' },
       secondary: ss.gemBonus ? gemOf(ss.gemBonus) : { k: 'STAM', v: '+' + ss.staminaBonus },
+      rows: [
+        { k: 'BLOCK', v: '+' + fmt1(ss.blockBonus) + '%' },
+        { k: 'STAMINA', v: '+' + ss.staminaBonus },
+        ss.flatDef ? { k: 'DEFENCE', v: '+' + fmt1(ss.flatDef) } : null,
+      ].filter(Boolean),
+      bonuses: ss.gemBonus ? [`+${fmt1(ss.gemBonus.value)}${ss.gemBonus.unit || ''} ${GEM_SHORT[ss.gemBonus.stat] || 'GEM'}`] : [],
     } : null,
-    chest: chestDr ? { title: 'CHEST', primary: { k: 'DMG RED', v: fmt1(chestDr * 100) + '%' }, secondary: null } : null,
+    chest: chestDr ? { title: 'CHEST', primary: { k: 'DMG RED', v: fmt1(chestDr * 100) + '%' }, secondary: null,
+      rows: [{ k: 'DMG RED', v: fmt1(chestDr * 100) + '%' }], bonuses: [] } : null,
     /* v2.3.1697: legs are no longer stat-less.  The old note ("steel
        greaves are cosmetic") described the gearCatalog cosmetic, but
        R.legsArmor is a real worn piece cutting 20%+ of every hit since
        v2.3.1679 — cosmetic greaves with no armour piece still show
        nothing, which is the honest reading. */
-    legs: legsDr ? { title: 'LEGS', primary: { k: 'DMG RED', v: fmt1(legsDr * 100) + '%' }, secondary: null } : null,
+    legs: legsDr ? { title: 'LEGS', primary: { k: 'DMG RED', v: fmt1(legsDr * 100) + '%' }, secondary: null,
+      rows: [{ k: 'DMG RED', v: fmt1(legsDr * 100) + '%' }], bonuses: [] } : null,
     cape: null,   /* Phase-2: no data field */
-    amulet: am ? { title: 'AMULET', primary: gemOf(am), secondary: null } : null,
+    amulet: am ? { title: 'AMULET', primary: gemOf(am), secondary: null,
+      rows: [gemOf(am)], bonuses: [] } : null,
   };
 
   /* Fixed order + fixed labels; '—' for absent (brief: cells never
