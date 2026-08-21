@@ -59,7 +59,10 @@ export const AccountKeyCard = () => {
      fill), and the loss warning drops its chrome emoji and reads as
      12px secondary copy.  Copy/select handlers byte-identical. */
   return (
-    <div>
+    /* v2.3.1823: a QA handle.  "The login door must not show this card" is a
+       claim about a specific component being absent, and querying for its
+       heading text would pass the moment someone rewords the heading. */
+    <div data-bt="account-keycard">
       <div style={{
         fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
         letterSpacing: '.14em', color: 'var(--ui-text-muted)', marginBottom: 4,

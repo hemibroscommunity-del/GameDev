@@ -1909,39 +1909,194 @@ body:has(.bt-inspect) .bt-kb-chip{display:none}
 .bt-coach-ring{ animation: bt-coach-pulse 600ms ease-in-out infinite }
 @media (prefers-reduced-motion: reduce){ .bt-coach-ring{ animation: none; opacity: 1 } }
 
-/* ═══ v2.3.1814: THE LOGIN SCREEN ═══
-   Owner: "a new login screen needs to be made (re use the same splash
-   screen).  It should have button for Login (put in key) or create new
-   character."
-   It shares .bt-name-modal with the creator — same painted backdrop, same
-   vignette, same safe-area padding — so only the CONTENTS are described
-   here.  Centred column rather than the creator's two-column shell: this
-   screen has one decision on it, and the creator's layout exists to give
-   the character picker room it does not need. */
+/* ═══ v2.3.1814 / v2.3.1823: THE TITLE SCREEN ═══
+   Owner (v2.3.1814): "a new login screen needs to be made (re use the same
+   splash screen).  It should have button for Login (put in key) or create
+   new character."
+   Owner (v2.3.1823), after seeing it: "the title feels game-like but the
+   buttons feel like standard mobile-app controls... your background and
+   title currently say fantasy RPG, while the buttons say website login
+   form" — with a painted sheet attached, and then: "I had that art already
+   attached."
+
+   So the chrome on this screen is ART, not CSS: logo, BRO TOWN banner and
+   both button plates are slices of the owner's sheet
+   (tools/gear/slice-splash-art.mjs -> /ui/welcome/title/*.png), labels and
+   glow included.  What is left here is layout, the atmospheric backing the
+   brief asked for, and the restrained motion — the things a PNG cannot do.
+
+   THE LABELS ARE IN THE ART.  Each button is a real <button> with an
+   aria-label and a visually-hidden text node, so the accessible name and
+   the QA hooks survive; the plate is a background-image.  That is the trade
+   the sheet makes, and it is only acceptable because these two labels are
+   fixed strings that never localise or reflow.
+
+   It still shares .bt-name-modal with the creator (same painted backdrop,
+   same vignette, same safe-area padding) — only the CONTENTS live here. */
 .bt-login-shell{
   position:relative;z-index:1;flex:1 1 auto;min-height:0;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:clamp(14px,3.2vh,26px);padding:16px;text-align:center;
+  display:flex;flex-direction:column;align-items:center;
+  /* LOGO -> pause -> controls.  Centring the whole stack is what made the
+     spacing read as evenly-stacked page sections (the owner: "it feels like
+     a webpage"); the title now sits high and the gap below it is deliberate
+     rather than left over. */
+  justify-content:flex-start;
+  padding:clamp(10px,4vh,44px) 16px 16px;text-align:center;
 }
-.bt-login-logo{width:min(72vw,340px);max-height:26vh;object-fit:contain}
-.bt-login-actions{display:flex;flex-direction:column;gap:12px;width:100%;max-width:320px}
-/* 52px, not 44: these are the only two targets on the screen and the first
-   thing a new player ever taps, so they get more than the minimum. */
-.bt-login-btn{min-height:52px;font-size:16px;border-radius:10px;
-  display:flex;align-items:center;justify-content:center;gap:8px}
-.bt-login-keyicon{width:20px;height:20px;object-fit:contain}
-/* The note sits over a PAINTED backdrop whose brightness varies with the
-   loop — a text-shadow alone left it fighting the lit sky in some frames.
-   A soft scrim pins the contrast regardless of what the art is doing
-   behind it, which a shadow cannot do. */
-.bt-login-note{max-width:320px;font-size:12px;line-height:1.5;
-  color:var(--ui-text);opacity:.92;padding:8px 12px;border-radius:10px;
-  background:rgba(8,14,20,.52);backdrop-filter:blur(2px);
-  text-shadow:0 1px 2px rgba(4,7,9,.7)}
-/* Short/landscape viewports: the logo is the part that can afford to go. */
-@media (max-height:520px){
-  .bt-login-logo{max-height:18vh}
-  .bt-login-shell{gap:12px}
+/* The column vignette: an ellipse, strongest behind the middle of the stack
+   and gone well before the edges, so the artwork still reads through it and
+   it never looks like a panel.  ~30% at its darkest, per the brief. */
+.bt-login-shell::before{
+  content:"";position:absolute;left:50%;top:0;transform:translateX(-50%);
+  width:min(150%,760px);height:100%;pointer-events:none;z-index:-1;
+  background:radial-gradient(ellipse 46% 52% at 50% 46%,
+    rgba(5,9,15,.30) 0%,rgba(5,9,15,.20) 45%,rgba(5,9,15,.07) 72%,transparent 100%);
+}
+
+/* ── the title ── */
+.bt-login-title{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px}
+/* "a very subtle dark navy/black radial haze behind the logo — not a visible
+   rectangle, just enough to suppress the bright castle/clouds behind it."
+   No edge of its own: it dissolves before you can see a shape. */
+.bt-login-title::before{
+  content:"";position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);
+  width:155%;height:185%;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse at center,
+    rgba(6,10,20,.60) 0%,rgba(6,10,20,.40) 34%,rgba(6,10,20,.15) 62%,transparent 78%);
+}
+/* The logo art carries its own outline and underside shadow — the sheet is
+   drawn that way — so this adds only the ground shadow that lifts it off the
+   painting.  No wide fuzzy glow: "reduce the fuzzy glow". */
+.bt-login-logo{
+  position:relative;z-index:1;
+  width:min(80vw,380px);max-height:30vh;object-fit:contain;
+  filter:drop-shadow(0 5px 12px rgba(3,6,10,.55));
+}
+/* The shimmer uses the LOGO as its own mask, so the highlight can only ever
+   fall on the lettering — a gradient laid over the box would wash the sky
+   beside it.  One slow pass, then a long wait: "an occasional faint
+   shimmer", not a loop you notice. */
+.bt-login-shine{
+  position:absolute;left:0;right:0;top:0;height:var(--lg-logoh,100%);z-index:2;pointer-events:none;
+  -webkit-mask-image:var(--lg-logo);mask-image:var(--lg-logo);
+  -webkit-mask-size:contain;mask-size:contain;
+  -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
+  -webkit-mask-position:center;mask-position:center;
+  background:linear-gradient(105deg,transparent 40%,rgba(255,246,214,.55) 47%,
+    rgba(255,255,255,.8) 50%,rgba(255,246,214,.55) 53%,transparent 60%);
+  background-size:300% 100%;background-repeat:no-repeat;
+  animation:btLoginShine 8.5s ease-in-out infinite;
+}
+@keyframes btLoginShine{
+  0%,76%{background-position:160% 0;opacity:0}
+  78%{opacity:1}
+  97%{background-position:-80% 0;opacity:1}
+  100%{background-position:-80% 0;opacity:0}
+}
+/* The BRO TOWN banner from the sheet, sized against the logo rather than the
+   viewport so the pair always reads as one lockup. */
+.bt-login-banner{
+  position:relative;z-index:1;
+  width:min(62vw,290px);object-fit:contain;
+  filter:drop-shadow(0 2px 5px rgba(3,6,10,.6));
+}
+
+/* ── the buttons ── */
+/* The pause the brief asks for.  clamp so a short phone gives it up first. */
+.bt-login-actions{
+  display:flex;flex-direction:column;gap:clamp(8px,1.6vh,16px);
+  width:100%;max-width:360px;
+  margin-top:clamp(18px,6.5vh,58px);
+}
+/* The plate IS the button.  aspect-ratio comes from the slice so the art
+   never squashes; the slices are cut so both plates land at the same 94% of
+   their box and dead-centred (slice-splash-art.mjs), which is what keeps the
+   two painted edges in line under one CSS width. */
+.bt-login-btn{
+  position:relative;display:block;width:100%;
+  padding:0;border:0;background:transparent;border-radius:0;
+  background-repeat:no-repeat;background-position:center;background-size:contain;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
+  transition:transform .09s ease-out,filter .18s ease-out;
+}
+.bt-login-btn--key{background-image:url('/ui/welcome/title/btn-login.png');aspect-ratio:815/259}
+.bt-login-btn--new{background-image:url('/ui/welcome/title/btn-create.png');aspect-ratio:799/212}
+.bt-login-btn:active{transform:translateY(1px) scale(.995)}
+.bt-login-btn:disabled{opacity:.55;cursor:default;animation:none}
+/* Focus ring hugs the painted plate, not the transparent glow margin. */
+.bt-login-btn:focus-visible{outline:2px solid #FFEAAC;outline-offset:-8px;border-radius:10px}
+/* "a gentle 2-3% breathing glow on the primary button."  A drop-shadow on
+   the plate rather than a box-shadow on the element, so the halo follows the
+   painted silhouette instead of drawing a rectangle around the glow margin. */
+@media (prefers-reduced-motion:no-preference){
+  .bt-login-btn--key{animation:btLoginBreathe 3.8s ease-in-out infinite}
+}
+@keyframes btLoginBreathe{
+  0%,100%{filter:drop-shadow(0 3px 8px rgba(3,6,10,.5))}
+  50%    {filter:drop-shadow(0 3px 8px rgba(3,6,10,.5)) drop-shadow(0 0 9px rgba(242,193,78,.30))}
+}
+.bt-login-btn--new{filter:drop-shadow(0 3px 8px rgba(3,6,10,.5))}
+/* The label lives in the art; this keeps the accessible name and the QA
+   hooks without painting anything. */
+.bt-login-btn span{
+  position:absolute;width:1px;height:1px;overflow:hidden;
+  clip-path:inset(50%);white-space:nowrap;
+}
+
+/* ── the note ── */
+/* "small unobtrusive text directly beneath the buttons, perhaps over a soft
+   bottom-fading dark gradient" — the chunky rounded box was the third large
+   UI block competing with the two that matter.  The sheet ships a painted
+   note plate too; it is deliberately NOT used, because this string is the
+   one piece of copy here that may still change. */
+.bt-login-note{
+  position:relative;margin-top:auto;padding:26px 14px 6px;
+  max-width:360px;font-size:12.5px;line-height:1.55;
+  color:#F3E7CC;opacity:.86;
+  text-shadow:0 1px 3px rgba(3,6,10,.95),0 0 8px rgba(3,6,10,.7);
+}
+.bt-login-note::before{
+  content:"";position:absolute;left:50%;bottom:-40px;transform:translateX(-50%);
+  width:190%;height:190%;pointer-events:none;z-index:-1;
+  background:radial-gradient(ellipse 50% 60% at 50% 70%,
+    rgba(4,8,13,.55) 0%,rgba(4,8,13,.28) 55%,transparent 100%);
+}
+
+/* ── gold motes ── */
+/* "slow gold dust/motes drifting around the title."  Pure CSS, no JS and no
+   canvas: this screen has no game loop running yet, and a rAF here would be
+   the one thing on it competing with the portrait prewarm. */
+.bt-login-motes{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+.bt-login-motes i{
+  position:absolute;bottom:-8px;width:3px;height:3px;border-radius:50%;
+  background:#FFEAAC;opacity:0;
+  box-shadow:0 0 6px 1px rgba(242,193,78,.7);
+  animation:btLoginMote linear infinite;
+}
+@keyframes btLoginMote{
+  0%{transform:translateY(0) translateX(0);opacity:0}
+  12%{opacity:.8}
+  70%{opacity:.55}
+  100%{transform:translateY(-46vh) translateX(16px);opacity:0}
+}
+.bt-login-motes i:nth-child(1){left:16%;animation-duration:13s;animation-delay:0s}
+.bt-login-motes i:nth-child(2){left:31%;animation-duration:17s;animation-delay:2.5s;width:2px;height:2px}
+.bt-login-motes i:nth-child(3){left:49%;animation-duration:11s;animation-delay:5s}
+.bt-login-motes i:nth-child(4){left:66%;animation-duration:19s;animation-delay:1.2s;width:2px;height:2px}
+.bt-login-motes i:nth-child(5){left:79%;animation-duration:14s;animation-delay:7s}
+.bt-login-motes i:nth-child(6){left:90%;animation-duration:16s;animation-delay:3.7s;width:2px;height:2px}
+@media (prefers-reduced-motion:reduce){
+  .bt-login-motes{display:none}
+  .bt-login-shine{animation:none;opacity:0}
+}
+
+/* Short/landscape viewports: the logo is the part that can afford to go, and
+   the deliberate pause is the second. */
+@media (max-height:600px){
+  .bt-login-logo{max-height:20vh}
+  .bt-login-banner{width:min(50vw,220px)}
+  .bt-login-actions{margin-top:12px;gap:8px;max-width:300px}
+  .bt-login-note{padding-top:10px;font-size:11.5px}
 }
 
 /* ═══ v2.3.1820: THE NPC MESSAGE WINDOW AND THE OFFER THAT FOLLOWS ═══

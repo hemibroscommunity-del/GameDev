@@ -77,6 +77,11 @@ export const LoginScreen = ({ onCreateNew, checking }) => {
     return () => { cancelled = true; };
   }, []);
 
+  /* Cache-busted on the build version: these are new files at a new path,
+     but they will be re-cut from the sheet again and a CDN edge holding the
+     old crop is exactly the "it looks fine for me" report. */
+  const art = (n) => `/ui/welcome/title/${n}.png?v=${BUILD_INFO.version}`;
+
   return (
     <div className="bt-name-modal bt-login-modal">
       {/* The SAME painted backdrop the creator uses — same element, same
@@ -91,40 +96,68 @@ export const LoginScreen = ({ onCreateNew, checking }) => {
         autoPlay muted playsInline loop preload="auto"
         aria-hidden
       />
+      {/* v2.3.1823: gold motes drifting past the title.  Six empty <i>s
+          because the animation is entirely CSS — this screen has no game
+          loop, and a rAF here would compete with the portrait prewarm below
+          for the one thing that actually matters on it. */}
+      <div className="bt-login-motes" aria-hidden>
+        <i /><i /><i /><i /><i /><i />
+      </div>
       <div className="bt-login-shell">
-        <img
-          src={'/ui/hemi-bros-logo.webp?v=' + BUILD_INFO.version}
-          alt="Hemi Bros"
-          draggable={false}
-          className="bt-login-logo"
-        />
+        {/* v2.3.1823: the logo, its atmospheric backing and the BRO TOWN
+            banner are ONE unit — the haze is sized off this box, so wrapping
+            them is what keeps it tracking the logo's clamp instead of needing
+            its own hand-kept numbers.  Both marks are slices of the owner's
+            sheet (tools/gear/slice-splash-art.mjs). */}
+        <div className="bt-login-title">
+          <img
+            src={art('logo')}
+            alt="Hemi Bros"
+            draggable={false}
+            className="bt-login-logo"
+          />
+          {/* The shimmer uses the logo as its own mask, so the highlight can
+              only ever fall on the lettering.  The URL goes in as a custom
+              property because a CSS mask cannot read an <img>'s src, and the
+              height is pinned to the logo so the mask does not stretch over
+              the banner below it. */}
+          <div
+            className="bt-login-shine"
+            aria-hidden
+            style={{ '--lg-logo': `url("${art('logo')}")` }}
+          />
+          <img
+            src={art('banner')}
+            alt=""
+            draggable={false}
+            className="bt-login-banner"
+          />
+        </div>
 
         <div className="bt-login-actions">
           {/* The one gold primary on this surface — Lantern Slate allows
               exactly one, and coming back is the common path. */}
+          {/* The plate art carries its own label, so the <button> keeps a
+              visually-hidden text node: that is what screen readers announce
+              and what the QA scenario matches on. */}
           <button
             type="button"
-            className="button-primary bt-login-btn"
+            className="bt-login-btn bt-login-btn--key"
             data-tut="login-key"
             disabled={checking}
             onClick={() => setShowAccount(true)}
           >
-            <img
-              src={'/ui/welcome/cc/cc-login-key.webp?v=' + BUILD_INFO.version}
-              alt="" draggable={false}
-              className="bt-login-keyicon"
-            />
-            Log in with your Key
+            <span>Log in with your Key</span>
           </button>
 
           <button
             type="button"
-            className="bt-cc-btn bt-login-btn"
+            className="bt-login-btn bt-login-btn--new"
             data-tut="login-create"
             disabled={checking}
             onClick={onCreateNew}
           >
-            Create a new character
+            <span>Create Character</span>
           </button>
         </div>
 
@@ -135,11 +168,15 @@ export const LoginScreen = ({ onCreateNew, checking }) => {
         <div className="bt-login-note">
           {checking
             ? 'Checking for your character…'
-            : 'Your Login Key is how you reach your character from any device. You can copy it any time from the Account panel.'}
+            /* v2.3.1823: the owner's own wording, off their art sheet — the
+               longer version ran to three lines at the bottom of a phone,
+               which is a paragraph competing with the buttons rather than
+               the "small unobtrusive text" the brief asked for. */
+            : 'Your Login Key lets you access your character on any device.'}
         </div>
       </div>
 
-      {showAccount && <AccountModal onClose={() => setShowAccount(false)} />}
+      {showAccount && <AccountModal loginDoor onClose={() => setShowAccount(false)} />}
     </div>
   );
 };
