@@ -132,7 +132,7 @@ window.__sheet = async (spec) => {
   c.fillText('Character size per facing, drawn at true game scale', PAD, 30);
   c.font = '12px system-ui'; c.fillStyle = '#9FB3C0';
   c.fillText('mirrored facings share a sheet: west=east, northwest=northeast, southeast=southwest', PAD, 50);
-  c.fillText('height = crown-to-feet in screen px, measured live through the render transform', PAD, 66);
+  c.fillText('height = crown-to-feet in screen px, measured live in game; jog is the median of the whole run cycle', PAD, 66);
   return { png: cv.toDataURL('image/png'), diag: spec.diag };
 };
 window.__frames = async (url) => {
@@ -180,17 +180,14 @@ for (const pose of ['stand', 'jog']) {
     const url = `/public/sprites/player/${pose}-${sheet}.png`;
     const fr = await page.evaluate((u) => window.__frames(u), url);
     if (!fr) { console.error('missing sheet', url); process.exit(1); }
-    /* STAND is a single frame, so the live probe is already exact and there
-       is nothing to average — use it.  (Deriving it from the sheet instead
-       read 0.5% low: the 256px stand art is resampled into the 128-space
-       display texture, and halving the painted bbox is not the same as
-       measuring the halved bbox.)
-       JOG is where the sampling problem lives, so its height is computed
-       over the WHOLE cycle as painted-frame-height x the probe's exact
-       px-per-texel — which reproduces the probe's own reading to 0.01px on
-       the frames they share, while removing the 1% frame-luck. */
-    px[pose][d] = { sheet, mirror, frame: fr.medianFrame, frames: fr.n,
-      h: pose === 'stand' ? row.figurePx : +(fr.medianH * row.unitPxY).toFixed(2) };
+    /* Heights come straight off the live probe for BOTH poses.  They used to
+       be recomputed here for jog, to route around a sampler that only took 14
+       timed shots of a bobbing figure; v2.3.1832 made the probe cover the run
+       cycle by frame index instead, so the live reading is now the converged
+       one (mirrors agree to 0.00px) and the picture can just report it.
+       The sheet is still read, for WHICH frame to draw: the one whose painted
+       height is the cycle median, so the figure shown matches the number. */
+    px[pose][d] = { sheet, mirror, frame: fr.medianFrame, frames: fr.n, h: row.figurePx };
     need.add(sheet + ':' + pose);
   }
 }

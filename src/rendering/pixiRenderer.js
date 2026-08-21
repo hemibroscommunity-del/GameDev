@@ -548,6 +548,16 @@ export async function initPixiRenderer(canvas) {
         facing: pd._lastFacingKey || null,
         pose: pd._lastPoseKey || null,
         painted,
+        /* v2.3.1832: WHICH FRAME OF THE CYCLE THIS IS.  The run cycle bobs the
+           figure between ~68 and ~83 screen px, so a caller that samples on a
+           timer is really sampling the bob, and 14 shots leave ~1% of error in
+           the median — enough that southeast and southwest, which are ONE
+           sheet mirrored and therefore identical by construction, read 1%
+           apart.  Reporting the frame lets a caller cover the cycle by index
+           and take a converged median instead of hoping. */
+        frameIx: (sb.texture && sb.texture.frame && sb.texture.frame.width)
+          ? Math.round(sb.texture.frame.x / sb.texture.frame.width) : 0,
+        frameW: (sb.texture && sb.texture.frame) ? sb.texture.frame.width : 0,
         unitPxY: +unitY.toFixed(5),
         figurePx: +(painted.h * unitY).toFixed(2),
         widthPx: +(painted.w * unitY).toFixed(2),

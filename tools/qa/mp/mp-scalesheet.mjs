@@ -65,23 +65,36 @@ async function jog(P, dir) {
   for (const k of keys) await P.page.keyboard.down(k);
   await P.page.waitForTimeout(900);    // let the walk cycle actually start
 
-  /* ═══ SAMPLE THE WHOLE CYCLE, NOT ONE FRAME ═══
-     A jogging figure's painted height changes frame to frame — the legs
-     spread, the body bobs — so a single sample is a coin toss.  The first
-     version took one, and reported east at 70.9 against west at 83.3: the
-     SAME sheet mirrored, 18% apart, which is impossible and would have sent
-     me looking for a bug that does not exist.  Median over the cycle, with
-     the range kept so the reader can see how much of the spread is bob. */
-  const samples = [];
-  for (let i = 0; i < 14; i++) {
+  /* ═══ COVER THE CYCLE BY FRAME INDEX, NOT BY CLOCK ═══
+     A jogging figure's painted height swings from ~68 to ~83 screen px as it
+     bobs, so what a timed sample measures is mostly WHERE IN THE STRIDE it
+     landed.  Two earlier versions got this wrong in different ways:
+       - one frame only: east read 70.9 against west 83.3, the SAME sheet
+         mirrored and therefore impossible;
+       - 14 timed shots: southeast read 79.33 against southwest 78.55 — again
+         one sheet, and still 1% apart, because the median of 14 draws from a
+         15px range is still noisy.
+     So sample until every frame INDEX has been seen (the probe reports it),
+     keep one reading per index, and take the median across the cycle.  That
+     is deterministic: mirrors then agree exactly, which is the check that it
+     converged rather than the check that it ran. */
+  const byFrame = new Map();
+  let seenSame = 0;
+  for (let i = 0; i < 220 && seenSame < 45; i++) {
     const r = await P.page.evaluate(() => (window._pixiRenderer && window._pixiRenderer.bodyFigureProbe
       ? window._pixiRenderer.bodyFigureProbe() : null));
-    if (r && !r.err && r.painted && r.painted.h > 0) samples.push(r);
-    await P.page.waitForTimeout(70);
+    if (r && !r.err && r.painted && r.painted.h > 0 && r.pose === 'jog') {
+      const had = byFrame.has(r.frameIx);
+      if (!had) byFrame.set(r.frameIx, r);
+      seenSame = had ? seenSame + 1 : 0;
+    }
+    await P.page.waitForTimeout(25);
   }
+  const samples = [...byFrame.values()];
   for (const k of keys) await P.page.keyboard.up(k);
   await P.page.waitForTimeout(250);
   if (!samples.length) return null;
+  samples.sort((a, b) => a.frameIx - b.frameIx);
   const med = (arr) => arr.slice().sort((a, b) => a - b)[arr.length >> 1];
   const hs = samples.map((r) => r.figurePx);
   const ws = samples.map((r) => r.widthPx);
@@ -91,6 +104,7 @@ async function jog(P, dir) {
     widthPx: +med(ws).toFixed(2),
     hMin: +Math.min(...hs).toFixed(1), hMax: +Math.max(...hs).toFixed(1),
     n: samples.length,
+    frames: samples.map((r) => r.frameIx),
   });
 }
 
@@ -121,7 +135,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (r && !r.err && r.painted && r.painted.h > 0) {
       rows.push({ want, moving, pose: r.pose, facing: r.facing,
         figurePx: r.figurePx, widthPx: r.widthPx, feetOffsetPx: r.feetOffsetPx,
-        hMin: r.hMin, hMax: r.hMax, n: r.n,
+        hMin: r.hMin, hMax: r.hMax, n: r.n, frames: r.frames,
         hatScaleRatio: r.hatScaleRatio, beardScaleRatio: r.beardScaleRatio,
         painted: r.painted, unitPxY: r.unitPxY });
     }
@@ -143,6 +157,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the jogging pass really reached the JOG pose (guard)',
     jogRows.length > 0 && jogRows.every((r) => r.pose === 'jog'),
     { poses: jogRows.map((r) => `${r.want}:${r.pose}`) });
+  /* A median over a PARTIAL cycle is just a differently-shaped guess, so
+     assert the sampler actually walked the whole strip.  The shortest jog
+     sheet is southwest's 20 frames. */
+  rec.ok('every jog reading covers a whole run cycle, not part of one (guard)',
+    jogRows.every((r) => (r.frames || []).length >= 20),
+    { seen: jogRows.map((r) => `${r.want}=${(r.frames || []).length}`) });
 
   const byPose = (mv) => rows.filter((r) => r.moving === mv);
   for (const [label, mv] of [['standing', false], ['jogging', true]]) {
@@ -152,8 +172,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const lo = Math.min(...hs), hi = Math.max(...hs);
     const spread = (hi - lo) / ((hi + lo) / 2);
     const sorted = set.slice().sort((a, b) => a.figurePx - b.figurePx);
-    rec.ok(`${label}: the character is the same height whichever way it faces (within 4%)`,
-      spread < 0.04,
+    /* v2.3.1832: 4% -> 1%.  4% was the threshold a NOISY sampler needed; now
+       that the cycle is covered by frame index the reading is deterministic
+       (mirrors agree to 0.00px), so the assertion can be as tight as the
+       thing it is guarding.  Measured: stand 0.1%, jog 0.05%. */
+    rec.ok(`${label}: the character is the same height whichever way it faces (within 1%)`,
+      spread < 0.01,
       { spreadPct: +(spread * 100).toFixed(1),
         smallest: `${sorted[0].want} ${sorted[0].figurePx}`,
         largest: `${sorted[sorted.length - 1].want} ${sorted[sorted.length - 1].figurePx}`,
@@ -171,8 +195,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
       pct: +(((j.figurePx - s.figurePx) / s.figurePx) * 100).toFixed(1) });
   }
   const worstPop = pops.reduce((a, b) => (Math.abs(b.pct) > Math.abs(a.pct) ? b : a), pops[0] || { pct: 0 });
-  rec.ok('no facing changes size when it starts or stops moving (within 6%)',
-    Math.abs(worstPop.pct || 0) < 6, { worst: worstPop, all: pops });
+  /* v2.3.1832: 6% -> 2.5%.  Measured +1.7% in every facing, which is the pop
+     v2.3.740 already accepted for east and is now uniform rather than ranging
+     to +8.4%.  Tight enough that any facing drifting off the shared anchor
+     fails here. */
+  rec.ok('no facing changes size when it starts or stops moving (within 2.5%)',
+    Math.abs(worstPop.pct || 0) < 2.5, { worst: worstPop, all: pops });
 
   /* ═══ MIRRORS MUST AGREE, AND ON THE SCALE, NOT THE BOB ═══
      west renders the east sheet flipped, NW the NE sheet, SE the SW sheet —
@@ -189,6 +217,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`${mv ? 'jogging' : 'standing'}: ${b} is drawn at the same scale as ${a} (same sheet, mirrored)`,
         Math.abs(ra.unitPxY - rb.unitPxY) < 1e-4,
         { [a]: ra.unitPxY, [b]: rb.unitPxY });
+      /* And therefore at the same HEIGHT.  This is the assertion that fails
+         when the sampler has not converged — it is how the 14-shot version
+         was caught reading SE 79.33 against SW 78.55 off one sheet. */
+      rec.ok(`${mv ? 'jogging' : 'standing'}: ...and reads the same height as ${a} (sampler converged)`,
+        Math.abs(ra.figurePx - rb.figurePx) < 0.1,
+        { [a]: ra.figurePx, [b]: rb.figurePx });
     }
   }
 
