@@ -31,6 +31,52 @@ import { AccountModal } from '../account/AccountModal.jsx';
 export const LoginScreen = ({ onCreateNew, checking }) => {
   const [showAccount, setShowAccount] = React.useState(false);
 
+  /* ═══ v2.3.1818: WARM THE CHARACTER WHILE NOBODY IS WAITING ═══
+     Owner: "loading character assets seems slow (no char in image)."
+
+     The creator's portrait fetches the body sheet, body-tops.json and the
+     trait art on its FIRST draw, and it composites offscreen and blits at
+     the end so the previous frame survives a redraw.  On the very first
+     draw there is no previous frame — so the stage sits EMPTY for as long
+     as those fetches take, which is exactly the blank platform in the
+     owner's screenshot.
+
+     This screen is the fix's opportunity as much as its location: until
+     v2.3.1814 the creator WAS the landing screen and there was no earlier
+     moment to warm anything.  Now a player sits here deciding between two
+     buttons, which is dead network time by definition.
+
+     Fire-and-forget, and deliberately not awaited: nothing on this screen
+     depends on it, and a slow phone must never have its login button
+     gated on prefetching art for a path it might not take.  Everything
+     lands in the same image cache drawCharacterPortrait reads, so a hit
+     costs nothing and a miss is what we have today. */
+  React.useEffect(() => {
+    let cancelled = false;
+    /* Dynamic import so the portrait module is not pulled into the login
+       screen's own critical path — the point is to spend IDLE time, not to
+       make this screen heavier to show. */
+    import('@/rendering/characterPortrait.js').then((m) => {
+      if (cancelled || !m || typeof m.prewarmPortraitDirs !== 'function') return;
+      /* Read the live catalogs rather than passing nothing: a returning
+         player's stored look is already in them (v2.3.1814), so this warms
+         the traits they will actually see instead of only the bare body. */
+      Promise.all([
+        import('@/rendering/traits/hairCatalog.js'),
+        import('@/rendering/traits/facialHairCatalog.js'),
+        import('@/rendering/traits/headwearCatalog.js'),
+      ]).then(([hair, beard, hat]) => {
+        if (cancelled) return;
+        try {
+          m.prewarmPortraitDirs({
+            hair: hair.getHair(), facialHair: beard.getFacialHair(), headwear: hat.getHeadwear(),
+          });
+        } catch (e) { /* a cold cache is the status quo, never an error */ }
+      }).catch(() => {});
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
   return (
     <div className="bt-name-modal bt-login-modal">
       {/* The SAME painted backdrop the creator uses — same element, same

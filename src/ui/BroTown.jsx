@@ -1723,7 +1723,28 @@ export var BroTown = function BroTown(_ref0) {
       headwearSel: headwearSel, hatColorSel: hatColorSel,
       shirtSel: shirtSel, shirtColorSel: shirtColorSel,
     });
-  }, [previewDir, skinSel, pantsSel, shoesSel, hairSel, hairColorSel, facialHairSel, beardColorSel, headwearSel, hatColorSel, shirtSel, shirtColorSel]);
+    /* ═══ v2.3.1818: showNameModal IS A DEPENDENCY ═══
+       Owner: "loading character assets seems slow (no char in image)."
+
+       Not slow — never drawn, and this was my own regression from
+       v2.3.1814.  wireCharacterPortrait opens with
+       `if (!previewCanvasRef.current) return;`, which was harmless while the
+       creator WAS the landing screen: the canvas existed on mount, so the
+       first run of this effect always found it.  Putting a login screen in
+       front of the creator made it mount LATER, so this effect ran against a
+       null ref, returned, and — with only the trait selections in its
+       dependency list — never ran again.  The stage sat empty until the
+       player happened to change a trait.
+
+       Diagnosed rather than guessed: the preview canvas was still 300x150
+       (the HTML default, so nothing had ever sized it) and carried no
+       `__pseq`, the counter drawCharacterPortrait stamps on its FIRST call.
+       No throw, no error — the draw simply never happened, which is why it
+       reads as a slow load.
+
+       Listing the mount flag is the whole fix: the effect re-runs when the
+       creator appears, the ref is attached by then, and the portrait draws. */
+  }, [showNameModal, previewDir, skinSel, pantsSel, shoesSel, hairSel, hairColorSel, facialHairSel, beardColorSel, headwearSel, hatColorSel, shirtSel, shirtColorSel]);
   /* v2.3.715: the welcome modal is dead network time -- start pulling the
      heavy in-game sheets (network/decode only; the CPU bakes still run
      behind the intro overlay via preloadPlayerAssets in joinTown) and warm
