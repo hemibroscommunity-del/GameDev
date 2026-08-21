@@ -5497,30 +5497,34 @@ export const QUEST_CHAINS = {
       { when: 'complete', icon: '/icons/items/staff.png',  label: "Pine Staff" },
     ],
     dialogue: {
-      /* v2.3.1676 (owner: "He'll give you the sword and shield (with
-         instructions on how to use)").  The controls live in the START line
-         because that is the moment the kit is handed over — the gate will not
-         let you out of town until you have read it. */
-      /* v2.3.1681 (owner: "the instructions on mayor bro's dialog for
-         beginning the quest are wrong.  It should say a quick swipe on right
-         joystick to trigger a special attack").  "Flick it and let go" was
-         describing the right gesture in the wrong words — the handler measures
-         release SPEED, so a quick swipe is exactly it, and that is what the
-         line should say.  Also "joystick" throughout, matching what the owner
-         and the on-screen control are actually called. */
+      /* ═══ v2.3.1831: HE HANDS YOU THE KIT, HE DOES NOT READ YOU THE MANUAL ═══
+         Owner: "You can also remove the quest dialog from mayor bro about the
+         instructions for how to swing your sword, etc.  That is all covered in
+         the guided tutorial afterward."
+
+         v2.3.1676 put the controls here because this is the moment the kit
+         changes hands, and v2.3.1681/1681b then spent two rounds getting the
+         wording of those three lines right.  Since then the teaching moved to
+         where a control lesson belongs — beside the control, at the moment you
+         need it — and every line he was reciting now has an owner:
+             swing   -> ControlsTutorial 'Attack'
+             special -> ControlsTutorial 'Attack' + QuestCoach 'special'
+             shield  -> QuestCoach 'block'  (double-tap and HOLD, then turn)
+             swap    -> QuestCoach 'cycle', whose own comment already noted it
+                        "lands on the same beat as the sentence" below
+         So this was the same lesson twice, once as a wall of text you scroll
+         past before you have the gear in your hands.  His two remaining chunks
+         are the handover and the errand.
+
+         THE WORDING ASSERTIONS DID NOT GO WITH IT.  mp-questcoach holds the
+         v2.3.1681 corrections against the coach copy (quick SWIPE not "flick
+         and let go"; the shield HOLD and the turn; the cycle gesture), and
+         mp-questui now asserts the opposite of what it used to — that he is
+         not reciting controls at all. */
       start: "Take the sword and the shield — you're not walking out of my town without them.\n\n"
-        + '⚔️ Hold the right joystick to aim and swing.\n'
-        + '✨ A quick swipe on the right joystick triggers a special attack.\n'
-        /* v2.3.1681b (owner): the HOLD is the gesture, not a detail.  The
-           handler only raises the shield on the second tap of a double-tap
-           and keeps it up for as long as that touch lasts; dragging during
-           the hold is what steers the arc.  "Double-tap to raise the shield"
-           alone describes a tap-toggle that does not exist, and a player who
-           lets go mid-fight is unshielded without knowing why. */
-        + '🛡️ Double-tap the right joystick and HOLD to raise the shield, then aim it at the enemy.\n\n'
         + 'Now: snowmen up on Frost Ridge, and they throw first. Four wrecks, and mind the snowballs.',
       progress: 'Frost Ridge. The white one. Four of them.',
-      complete: "Cold work. Here — a bow. Double-tap the LEFT joystick to switch weapons.",
+      complete: "Cold work. Here — a bow.",
     },
   },
   tut_2: {

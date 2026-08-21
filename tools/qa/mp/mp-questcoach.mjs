@@ -232,7 +232,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
      as wrong — the handler measures release SPEED. This line has to say the
      same thing in the same words, or the game teaches one gesture in the
      dialogue and a different one on the joystick. */
-  rec.ok('...calling it a quick SWIPE, the same word the dialogue uses',
+  /* v2.3.1831: the dialogue no longer says it — the coach is now the ONLY
+     place this wording lives, which is why this assertion matters more. */
+  rec.ok("...calling it a quick SWIPE, the wording v2.3.1681 settled on",
     !!(cS && /quick swipe/i.test(cS.text)), cS && cS.text);
   rec.ok('...and NOT the "flick and let go" wording v2.3.1681 removed',
     !!(cS && !/flick/i.test(cS.text)), cS && cS.text);

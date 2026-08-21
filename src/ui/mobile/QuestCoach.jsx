@@ -221,10 +221,11 @@ const LESSONS = [
     anchors: [{ sel: '.bt-joystick-zone', reach: '[data-joyzone="L"]',
                 body: 'Double-tap to cycle. Use whichever you like best.' }],
     label: 'Swap weapons',
-    /* Nothing to cycle BETWEEN until the second weapon is in hand — and this
-       is exactly where Mayor Bro's completion line already says "Double-tap
-       the LEFT joystick to switch weapons".  The mark lands on the same beat
-       as the sentence. */
+    /* Nothing to cycle BETWEEN until the second weapon is in hand, which is
+       the beat Mayor Bro hands the bow over on.  He USED to add "Double-tap
+       the LEFT joystick to switch weapons" there; v2.3.1831 removed it as
+       duplicate teaching, so this mark is now the only place the gesture is
+       taught and its copy has to carry it alone. */
     live: function (rpg) {
       return !!rpg.weapon && !!(rpg.rangedWeapon || rpg.staffWeapon);
     },

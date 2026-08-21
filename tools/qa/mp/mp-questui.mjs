@@ -218,22 +218,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and the gold/XP line names the quest it is the reward for',
     !!art && /for finishing “cold reception”/i.test(art.text), art && art.text.slice(0, 600));
 
-  /* ── the control instructions ── */
-  rec.ok('the special-attack instruction says a quick swipe, not a flick-and-let-go',
-    /* v2.3.1827: read HIS SCRIPT, not the offer panel — the controls live in
-       dialogue.start, which is now his window's chunks (v2.3.1820). */
-    /quick swipe/i.test(script) && !/let go for a special/i.test(script),
-    script.slice(0, 500));
-  rec.ok('the instructions call them joysticks, matching the on-screen control',
-    /right joystick/i.test(script), script.slice(0, 500));
-  /* The shield is a double-tap-and-HOLD: the handler raises it on the second
-     tap and keeps it up only while that touch lasts, and dragging during the
-     hold is what aims the arc.  Copy that says "double-tap to raise the
-     shield" describes a toggle that does not exist, and a player who lets go
-     mid-fight is unshielded with no idea why. */
-  rec.ok('the shield instruction says to double-tap AND HOLD, then aim',
-    /double-tap the right joystick and hold/i.test(script) && /aim it at the enemy/i.test(script),
-    script.slice(0, 700));
+  /* ── he does NOT recite the controls ── */
+  /* v2.3.1831 (owner: "remove the quest dialog from mayor bro about the
+     instructions for how to swing your sword, etc.  That is all covered in
+     the guided tutorial afterward").  This block used to assert the WORDING
+     of those instructions, corrected twice at v2.3.1681/1681b.  The wording
+     still matters — it just belongs to the coach now, and mp-questcoach
+     asserts it there (quick SWIPE not "flick and let go", the shield HOLD and
+     the turn, the cycle gesture).  What is asserted HERE is the removal, so
+     the manual cannot quietly creep back into his greeting. */
+  const CONTROL_WORDS = /joystick|double-tap|quick swipe|hold the right|swipe on the/i;
+  rec.ok('Mayor Bro hands the kit over without reciting the controls',
+    !CONTROL_WORDS.test(script), { script: script.slice(0, 600) });
+  /* Guard the guard: an empty script would satisfy the line above without
+     him having said anything at all. */
+  rec.ok('...and he is still saying something — the errand and the handover',
+    /sword and the shield/i.test(script) && /frost ridge/i.test(script),
+    { script: script.slice(0, 600) });
 
   /* ── accept, then re-check the leak ── */
   /* A REAL hit-tested click — see harness.confirmQuestOffer. */
