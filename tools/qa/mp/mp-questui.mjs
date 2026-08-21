@@ -230,7 +230,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     script.slice(0, 700));
 
   /* ── accept, then re-check the leak ── */
-  const accepted = await H.clickText(P, 'Accept Quest').then(() => true).catch(() => false);
+  /* A REAL hit-tested click — see harness.confirmQuestOffer. */
+  const accepted = await H.confirmQuestOffer(P);
   rec.ok('the offer can be accepted from the world dialogue', accepted);
   await P.page.waitForTimeout(2600);
 
