@@ -38,6 +38,7 @@ const SCENARIOS = {
   townprops: () => import('./mp-townprops.mjs'), /* v2.3.1775: anvil, stall, storekeeper */
   bodysize: () => import('./mp-bodysize.mjs'), /* v2.3.1826: the same character in every direction */
   slimebase: () => import('./mp-slimebase.mjs'), /* v2.3.1824: the blob's base is the monster's position */
+  hatrim: () => import('./mp-questui.mjs').then((m) => ({ run: m.hatRim })), /* v2.3.1829 */
   questloop: () => import('./mp-questloop.mjs'), /* v2.3.1828: the hand-in must not repeat */
   keylogin: () => import('./mp-keylogin.mjs'), /* v2.3.1823: the login door joins you */
   ccload: () => import('./mp-ccload.mjs'), /* v2.3.1818: the creator opens with a character, and no keyboard */

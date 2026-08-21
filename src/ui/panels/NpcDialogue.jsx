@@ -1,6 +1,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { NPC_DATA } from '@/data/gameDisplay.js';
+import { npcArtUrl } from '@/rendering/npcSprites.js'; /* v2.3.1829: same cache-bust as the world figures */
 
 /* ═══ v2.3.1820: HE TALKS TO YOU, ONE THING AT A TIME ═══
  *
@@ -87,7 +88,7 @@ export const NpcDialogue = (props) => {
         <div className="bt-npcdlg-art">
           {(art.head || art.full) && (
             <img
-              src={art.head || art.full}
+              src={npcArtUrl(art.head || art.full)}
               alt=""
               draggable={false}
               className="bt-npcdlg-img bt-npcdlg-img--head"
@@ -96,7 +97,7 @@ export const NpcDialogue = (props) => {
               onError={(e) => {
                 const el = e.currentTarget;
                 if (art.full && el.src.indexOf(art.full) < 0) {
-                  el.src = art.full;
+                  el.src = npcArtUrl(art.full);
                   el.classList.remove('bt-npcdlg-img--head');
                   return;
                 }

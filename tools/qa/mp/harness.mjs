@@ -67,6 +67,26 @@ export async function serveDist(port) {
     if (p === '/') p = '/index.html';
     let body = null;
     let type = MIME[extname(p)] || 'application/octet-stream';
+    /* v2.3.1829: /src-art/* serves tools/gear/src-art — the PRISTINE art a
+       generator was run against.  It does not ship, and it is not in dist,
+       so a scenario that wants to prove "the tool changed only what it
+       claimed to change" has no other way to see the before.  Read-only and
+       path-guarded: a scenario is trusted, a traversal out of the folder is
+       not. */
+    if (p.startsWith('/src-art/')) {
+      const rel = p.slice('/src-art/'.length);
+      const base = join(REPO, 'tools/gear/src-art');
+      const full = join(base, rel);
+      if (full.startsWith(base)) {
+        try { body = await readFile(full); } catch { body = null; }
+      }
+      try {
+        if (s.headersSent) return;
+        if (!body) { s.writeHead(404); return s.end('no'); }
+        s.writeHead(200, { 'content-type': type });
+        return s.end(body);
+      } catch { return; }
+    }
     try {
       body = await readFile(join(DIST, p));
     } catch {

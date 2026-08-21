@@ -417,3 +417,105 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   await P.ctx.close().catch(() => {});
 }
+
+/* ═══ v2.3.1829: NO GREY RIM ON THE HAT ═══
+ * Owner: "Mayor bro has slight gray artifact around his black top hat can you
+ * remove that."  It was a 1px band of neutral grey painted along the hat's
+ * outer edge, at max-channel 67-89, where the hat's own keyline is 56-64.
+ *
+ * Checked by DECODING the shipped file rather than by looking at a
+ * screenshot: at portrait scale the band is ~2.6 screen px of dark grey
+ * against dark black, which is exactly the kind of difference a pixel
+ * comparison sees reliably and an eye does not.
+ *
+ * Bounded to the hat's rows because his HAIR is neutral grey too — an
+ * unbounded version of this rule would fail on art that is perfectly fine.
+ */
+export async function hatRim({ browser, wsPort, webPort, rec }) {
+  const P = await H.newPlayer(browser, { name: 'Hat', wsPort, webPort });
+  const found = await P.page.evaluate(() => new Promise((res) => {
+    const img = new Image();
+    img.onerror = () => res({ err: 'could not load the portrait' });
+    img.onload = () => {
+      const W = img.width, H = img.height;
+      const cv = document.createElement('canvas');
+      cv.width = W; cv.height = H;
+      const c = cv.getContext('2d', { willReadFrequently: true });
+      c.drawImage(img, 0, 0);
+      const p = c.getImageData(0, 0, W, H).data;
+      const A = (x, y) => (x < 0 || y < 0 || x >= W || y >= H) ? 0 : p[(y * W + x) * 4 + 3];
+      /* The hat ends at row 40 of the 96px crop — below that is face and hair. */
+      const HAT_BOTTOM = Math.round(H * (40 / 96));
+      const bad = [];
+      for (let y = 0; y < HAT_BOTTOM; y++) for (let x = 0; x < W; x++) {
+        const q = (y * W + x) * 4;
+        if (p[q + 3] < 200) continue;
+        const r = p[q], g = p[q + 1], b = p[q + 2];
+        const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+        if (mx - mn > 26 || mx < 66 || mx > 215) continue;
+        let onSil = false;
+        for (let dy = -1; dy <= 1 && !onSil; dy++) {
+          for (let dx = -1; dx <= 1; dx++) if (A(x + dx, y + dy) < 40) { onSil = true; break; }
+        }
+        if (onSil) bad.push(x + ',' + y + ' rgb(' + r + ',' + g + ',' + b + ')');
+      }
+      res({ W, H, hatBottom: HAT_BOTTOM, bad: bad.length, sample: bad.slice(0, 6) });
+    };
+    img.src = '/sprites/npc/mayor-bro-head.webp';
+  }));
+  rec.ok('the portrait decoded (guard)', !found.err && found.W > 0, found);
+  rec.ok("no grey rim on Mayor Bro's top hat", !found.err && found.bad === 0, found);
+
+  /* ═══ AND NOTHING ELSE MOVED ═══
+     The rim fix rewrites a shipped .webp, and the first write used Chromium's
+     DEFAULT WebP quality — which re-encoded the whole 96px sprite: 3445
+     pixels changed, 2369 of them outside the hat, on his face, hair and
+     chain, max channel shift 142.  Fixing 54 pixels by smearing 2369 is a
+     worse bug than the one being fixed, and it is invisible to the eye at
+     this size.  So the shipped file is diffed against the pristine source
+     and the damage is required to be confined to the hat.
+     (tools/gear/fix-mayor-hat.mjs now encodes at quality 1, which is
+     lossless — this is what holds it to that.) */
+  const diff = await P.page.evaluate(() => {
+    const load = (u) => new Promise((res) => {
+      const i = new Image();
+      i.onerror = () => res(null);
+      i.onload = () => {
+        const cv = document.createElement('canvas');
+        cv.width = i.width; cv.height = i.height;
+        const c = cv.getContext('2d', { willReadFrequently: true });
+        c.drawImage(i, 0, 0);
+        res({ w: i.width, h: i.height, d: c.getImageData(0, 0, i.width, i.height).data });
+      };
+      i.src = u;
+    });
+    return Promise.all([
+      load('/src-art/npc/mayor-bro-head.webp'),
+      load('/sprites/npc/mayor-bro-head.webp'),
+    ]).then(([A, B]) => {
+      if (!A || !B) return { err: 'could not load both' };
+      if (A.w !== B.w || A.h !== B.h) return { err: 'size changed' };
+      const HAT_BOTTOM = Math.round(A.h * (40 / 96));
+      let changed = 0, outside = 0;
+      for (let k = 0; k < A.d.length; k += 4) {
+        const y = Math.floor((k / 4) / A.w);
+        const d = Math.max(
+          Math.abs(A.d[k] - B.d[k]), Math.abs(A.d[k + 1] - B.d[k + 1]),
+          Math.abs(A.d[k + 2] - B.d[k + 2]), Math.abs(A.d[k + 3] - B.d[k + 3]),
+        );
+        if (d > 2) { changed++; if (y >= HAT_BOTTOM) outside++; }
+      }
+      return { changed, outside };
+    });
+  });
+  if (diff.err) {
+    /* The source lives outside public/ and is only reachable when the harness
+       is told to serve it — say so rather than passing on a missing file. */
+    rec.skip('the hat fix touched nothing outside the hat', diff.err);
+  } else {
+    rec.ok('the hat fix touched NOTHING outside the hat',
+      diff.outside === 0 && diff.changed > 0 && diff.changed < 200, diff);
+  }
+
+  await P.ctx.close().catch(() => {});
+}

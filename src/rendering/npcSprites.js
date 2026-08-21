@@ -28,6 +28,19 @@ import { propSpriteSources } from '../data/worldProps.js'; /* v2.3.1775: scenery
 const _tex = Object.create(null);
 let _done = null;
 
+/* ═══ v2.3.1829: CACHE-BUST THE NPC ART ═══
+ * Owner: "Mayor bro has slight gray artifact around his black top hat can you
+ * remove that."  The fix repaints two shipped files at the SAME paths, and
+ * nothing here carried a version — so a browser or a CDN edge holding the old
+ * bytes would keep showing the grey rim, which is precisely the "it still
+ * looks wrong for me" report that wastes a round trip.
+ *
+ * Versioned on the FETCH only; `_tex` stays keyed by the raw path so
+ * getNpcTexture's callers (entityRenderer, which looks up by `npc.sprite`)
+ * need no change and cannot drift out of step with the loader. */
+export const NPC_ART_VERSION = '2.3.1829';
+export const npcArtUrl = (src) => (src ? src + '?v=' + NPC_ART_VERSION : src);
+
 /** Every distinct sprite named by NPC_DATA.  Driven off the data table so a
  *  new NPC sprite is registered by adding the field and nothing else — a
  *  second hand-maintained list is how an asset gets forgotten. */
@@ -53,7 +66,7 @@ export function npcSpriteSources() {
 export function loadNpcSprites() {
   if (_done) return _done;
   const srcs = npcSpriteSources();
-  _done = Promise.allSettled(srcs.map((src) => Assets.load(src).then((tex) => {
+  _done = Promise.allSettled(srcs.map((src) => Assets.load(npcArtUrl(src)).then((tex) => {
     if (!tex) return;
     /* Pixel art: NEAREST.  These are 256px frames drawn at 0.25, and a linear
        filter turns the outline into mush and makes the figure shimmer as the
