@@ -33,6 +33,7 @@ const SCENARIOS = {
   standinskin: () => import('./mp-standinskin.mjs'), /* v2.3.1788: attack stand-ins wear the walking skin */
   blockstance: () => import('./mp-blockstance.mjs'), /* v2.3.1798: shield size, planted stance, caret */
   blockarm: () => import('./mp-blockarm.mjs'), /* v2.3.1789: the raised shield is held by an arm */
+  blockweapon: () => import('./mp-blockweapon.mjs'), /* v2.3.1864: the equipped weapon rides in the block's off hand */
   peershield: () => import('./mp-peershield.mjs'), /* v2.3.1790: other bros wear their shield on their back */
   peersword: () => import('./mp-peersword.mjs'), /* v2.3.1791: peers carry the sword the way you do */
   entitydt: () => import('./mp-entitydt.mjs'), /* v2.3.1771: monsters, NPCs + remotes move per second too */

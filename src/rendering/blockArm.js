@@ -210,3 +210,82 @@ export function blockArmReady(facing) {
   const m = BLOCK_ARM_FACING[facing];
   return !!(m && blockArmTexture(m[0]));
 }
+
+/* ═══ v2.3.1864: THE WEAPON RIDES IN THE OFF HAND WHILE BLOCKING ═══
+ *
+ * Owner: "When the character is blocking I want to see what it looks like for
+ * the equipped weapon to be visible in the off hand (the hand that's back).
+ * Can you put it there?"
+ *
+ * Until now a raised shield hid the weapon outright — entityRenderer's held
+ * branch is `if (wpn && !isShielding)`, on the rule that you attack OR block.
+ * That rule is about DAMAGE, not about where the sword goes: a bro behind his
+ * shield is still holding it, and nothing was drawing it.
+ *
+ * The block pose is the bow stand-in (v2.3.1800), so the hand to put it in is
+ * one of that art's two, and it is NOT the one the shield uses: the shield
+ * takes the outstretched bow hand (BLOCK_ARM_CUT.hand / BLOCK_STANDIN_HAND),
+ * so the weapon takes the DRAW hand — the fist the bowstring is pulled back
+ * to.  These are those points, measured off the frame the block actually
+ * holds (BLOCK_POSE_FRAME = 1) in the bow frame's own pixels, exactly the
+ * space and meaning BLOCK_STANDIN_HAND uses, so effectsRenderer maps them
+ * through the transform the stand-in was just placed with and they track the
+ * body by construction.
+ *
+ * Read off the art rather than derived, because the four poses do genuinely
+ * different things with that hand: east and southwest pull the fist in to the
+ * chest and the chin, northwest reaches its free hand out past the far
+ * shoulder, and north crosses it low over the back.
+ *
+ *   hand    the point the weapon's GRIP sits on
+ *   aim     which way the blade POINTS, as a screen angle in the sheet's own
+ *           (unmirrored) space: 0 is out to the right, PI/2 straight down.
+ *           An angle rather than a rotation offset because the four weapon
+ *           icons are authored on the same diagonal but the poses are not —
+ *           saying where the tip goes is a statement about the pose, and one
+ *           constant (BLOCK_OFFHAND_ART_ANG) turns it into a sprite rotation.
+ *           Chosen per facing to point the blade AWAY from the shield hand and
+ *           down out of the silhouette, so it never crosses the face; a
+ *           mirrored facing reflects it with the art it is flipped from.
+ *   behind  true = drawn by the clone UNDER the body (the away-facing poses,
+ *           where the hands are on the far side of the torso from us), false
+ *           = the clone OVER it.  Same structural lo/hi pair the slung shield
+ *           uses, so no child-index maths and no per-facing exception.
+ *
+ * northeast / west / southeast are absent for the same reason they are absent
+ * above: _bowFacing maps them onto a mirrored sheet, and a second entry would
+ * be a second source of truth for one piece of art.  south is absent because a
+ * south block is not the stand-in at all (v2.3.1805 — the sheet is holed
+ * through the face), so there is no measured hand to put anything in; a south
+ * block therefore keeps its weapon hidden until that pose is painted. */
+export const BLOCK_OFFHAND_ENABLED = true;
+
+export const BLOCK_OFFHAND = {
+  east:      { hand: [108, 100], aim: 2.55, behind: false },
+  southwest: { hand: [95,   82], aim: 0.70, behind: false },
+  northwest: { hand: [115, 105], aim: 0.70, behind: true  },
+  north:     { hand: [82,  113], aim: 2.30, behind: true  },
+};
+
+/* Every weapon ICON in the game is drawn along the same diagonal — grip at the
+ * bottom-left of its frame, tip at the top-right — so one constant converts
+ * "point the blade THIS way on screen" into a sprite rotation, for all four
+ * types.  (Sword1's grip is [75,1180] of 1254 and its tip [1160,99]: -44.9
+ * degrees.  The 64px bow and staff icons run the same way.)  This is the same
+ * fact entityRenderer's REST_ANG encodes for the swing arc; kept as its own
+ * constant here rather than imported because that table calls a bow 0 and a
+ * staff -PI/2 — approximations tuned for a swing, not the art's real axis, and
+ * a blade aimed through them lands 45 degrees off. */
+export const BLOCK_OFFHAND_ART_ANG = -Math.PI / 4;
+
+/* How tall the weapon is drawn, in world px, against an 84px figure
+ * (STANDIN_REF_BODY_H) — the same "measure it against the body, scale with the
+ * body" contract HELD_SHIELD_PX / BACK_SHIELD_PX are on.  Tuned to read at the
+ * size the weapon does in hand while walking; a greatsword is the longest, a
+ * chrome sword the shortest. */
+export const BLOCK_OFFHAND_PX = {
+  greatsword: 54,
+  staff:      50,
+  bow:        46,
+  sword:      40,
+};
