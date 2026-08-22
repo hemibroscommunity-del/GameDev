@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { COL, getState } from '../dash/common.js';
-import { combatLevelProgress, unspentPointsTotal, bestWeaponProgress } from './heroModel.js';
+import { combatLevelProgress, unspentPointsTotal } from './heroModel.js';
 import { getActiveWeapon, calcDisplayDmgRange, calcDisplayDps } from '../../../data/gameSystems.js';
 import { portraitStore } from './portraitStore.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
@@ -152,7 +152,6 @@ export const IdentityStrip = ({ band = false, gutter = 0, trackW = null }) => {
      * you play: who you are and what you can spend, and how close the
      * nearest weapon is to its next level.  Everything cut is one tap away.
      */
-    const wp = bestWeaponProgress(R);
 
     return (
       <div
@@ -164,67 +163,36 @@ export const IdentityStrip = ({ band = false, gutter = 0, trackW = null }) => {
           cursor: 'pointer', touchAction: 'manipulation',
           fontFamily: 'Source Sans 3, sans-serif',
         }}>
-        {/* ═══ v2.3.1851: ONE LINE — XP AND GOLD ═══
-            Owner: "actually just put the gold and xp there.  You already see
-            the name and level below the actual character."
+        {/* ═══ v2.3.1853: THE BAND IS THE PURSE ═══
+            Owner: "actually just put the coins there.  The dashboard menu
+            has the 3 skills on it already for xp."
 
-            They do: the Hero panel's own header carries the name and the
-            level beside the character, so the band was printing them a
-            second time a few pixels away.  This is the same one-count rule
-            that retired the world card into this strip at v2.3.1294 — the
-            rule simply points the other way now that Hero shows what it
-            shows.
+            And it does — the three combat pills a few pixels below this row
+            carry the XP now, one bar per skill (v2.3.1853, DashColumns), so
+            a fourth XP readout up here would be the same information a
+            third time.  This strip has shed, in order: the portrait, the
+            stat row, the name and level, and now the XP pair — each because
+            something else on screen already said it.  What is left is the
+            one number nothing else on the resting screen shows.
 
-            With two things left, the row is one line rather than two, and
-            the freed height goes into making both READABLE at a glance
-            instead of leaving a gap.
-
-            The 6px presence dot stays.  It is not a readout — it is the only
-            thing on the resting screen that says whether a 100%-server game
-            is still talking to its server. */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+            The 6px presence dot stays.  It is not a readout — it is the
+            only thing on the resting screen that says whether a 100%-server
+            game is still talking to its server. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
           <span aria-label={(S && S._realtimeStatus === 'connected') ? 'Connected' : 'Offline'}
             style={{
               flex: 'none', width: 7, height: 7, borderRadius: '50%',
               background: (S && S._realtimeStatus === 'connected') ? '#55B98A' : '#D95C54',
             }} />
-          {/* v2.3.1852: THE NUMBERS, NOT A BAR.
-              Owner: "instead of an xp bar just show the number over the
-              number like 324/500."
-
-              A bar answers "roughly how far", which is the same answer at
-              320/500 and 340/500; the pair answers "how much more", which is
-              the question you ask when you are deciding whether to do one
-              more lap.  It is also cheaper: no track, no fill, no width to
-              flex, so the row holds two readouts at a size worth reading.
-
-              `prog` is clamped to `thresh` upstream in bestWeaponProgress —
-              this can never print 540/500. */}
-          {wp && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, minWidth: 0 }}
-              title={`${wp.label} — ${wp.prog} / ${wp.thresh} XP to level ${wp.level + 1}`}>
-              <img src={wp.iconSrc} alt="" draggable={false} style={{
-                width: 15, height: 15, objectFit: 'contain', flex: 'none',
-                pointerEvents: 'none',
-              }} />
-              <span style={{
-                fontSize: 13.5, fontWeight: 800, color: COL.text,
-                fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
-              }}>{wp.prog.toLocaleString()}<span style={{
-                fontWeight: 700, color: COL.muted,
-              }}>/{wp.thresh.toLocaleString()}</span></span>
-            </span>
-          )}
           <span style={{
-            flex: 'none', marginLeft: 'auto', display: 'inline-flex',
-            alignItems: 'center', gap: 3,
+            flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 4,
           }}>
             <img src="/icons/popups/gold.webp" alt="" draggable={false} style={{
-              width: 15, height: 15, imageRendering: 'pixelated', display: 'block',
+              width: 20, height: 20, imageRendering: 'pixelated', display: 'block',
               pointerEvents: 'none',
             }} />
             <span className="bt-coin-glimmer" style={{
-              fontSize: 13.5, fontWeight: 800, color: COL.gold,
+              fontSize: 17, fontWeight: 800, color: COL.gold,
               fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
             }}>{Number(gold).toLocaleString()}</span>
           </span>

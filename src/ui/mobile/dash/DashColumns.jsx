@@ -4,7 +4,7 @@ import { getBagEntries } from './bagModel.js';
 import { BagTile } from './InventoryPanel.jsx';
 import { BagFilterChips } from './BagFilterChips.jsx';
 import { bagFilterBus } from './bagFilterBus.js';
-import { COMBAT_SKILLS, skillLevel } from '../sheet/heroModel.js';
+import { COMBAT_SKILLS, skillLevel, weaponSkillProgress } from '../sheet/heroModel.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { requestT2Category } from './T2Panel.jsx';
 import { heroSectionBus } from '../sheet/heroSectionBus.js';
@@ -201,8 +201,33 @@ export const DashColumns = ({ R }) => {
      three glyphs (sword / bow / wand) are the same ones Hero's build cards
      label in full, one tap away, and both aria-label and title spell it
      out here for anyone who needs it read aloud. */
+  /* Four digits do not fit a 40px bar, and a level-20 skill needs 4,800 XP.
+     Thousands collapse to one decimal so the pair stays inside its bar for
+     the whole level range rather than only the early one. */
+  const xpShort = (n) => (n >= 10000 ? `${Math.round(n / 1000)}k`
+    : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
   const pillW = combatPillWidth(vw);
   const pillH = combatPillHeight(vw);
+  /* v2.3.1853: the pill now carries THREE things across, so the icon stops
+     taking the pill's whole height.  MEASURED against the narrowest phone
+     the layout supports: at 360 the pill is 80px wide and 68 of that is
+     content once the padding is paid, which has to hold the icon, the bar
+     and the level.  Everything below is sized from that budget and asserted
+     by mp-bandsummary at 360 / 390 / 430. */
+  /* MEASURED, in the harness, at the width that binds.  The first cut of
+     this sized the three children by estimate and the bar came out 2px
+     short of its own text at 390 — mp-bandsummary reports "needs 36, has
+     34" rather than just "clipped", which is what turned four unknowns into
+     one arithmetic problem.  Note the level can read "+2" (an unspent-point
+     badge), not just a digit, so the budget is set against the WIDER of the
+     two things that span can hold. */
+  const tight = pillW < 88;
+  const iconPx = tight ? 20 : 24;
+  /* v2.3.1854: the bar is the row's height less a little breathing room,
+     not a chip floating inside a much taller box. */
+  const barH = Math.max(18, Math.min(26, pillH - 26));
+  const chipFs = tight ? 9 : 10;
+  const lvlFs = tight ? 14 : 16;
   const combatPill = (s) => {
     /* ═══ v2.3.1668: these pills were the last live route into the
        retired tier-2 screen ═══
@@ -235,6 +260,10 @@ export const DashColumns = ({ R }) => {
        Fallback: with no stamp (an older save, or points from some other
        source) show it on all three rather than hide unspent points
        entirely — a missed badge costs the player their level-up. */
+    /* v2.3.1853: this skill's own progress toward its next level.  null at
+       the level cap, where "how far to the next level" has no answer and the
+       pill shows the icon and the level alone. */
+    const xp = p3cat ? weaponSkillProgress(rpg, p3cat) : null;
     const p3Pool = p3 ? prog3Pool(rpg) : 0;
     const p3From = rpg && rpg._p3PoolFrom;
     const unspent = p3
@@ -243,7 +272,9 @@ export const DashColumns = ({ R }) => {
     return (
       <div key={s.key}
         role="button"
-        className={unspent > 0 ? 'bt-build-flash' : undefined}
+        /* v2.3.1854: the level-up flash moved to the BAR below.  It is a
+           box-shadow glow, and this row no longer paints a background or a
+           border — a halo around nothing reads as a rendering artefact. */
         onPointerUp={(e) => {
           e.stopPropagation();
           dashboardPanelBus.open('hero');
@@ -256,31 +287,94 @@ export const DashColumns = ({ R }) => {
         aria-label={`${s.label} level ${lvl}`}
         title={`${s.label} — Lv ${lvl}${unspent > 0 ? `, ${unspent} unspent` : ''}`}
         style={{
+          /* ═══ v2.3.1854: THE PILL *IS* THE BAR ═══
+             Owner: "I want the whole pill container to be the xp bar and
+             move the weapon icons to the left of it.  Also the level to the
+             right of the pill container."
+
+             So this outer element stops being a bordered container and
+             becomes a plain ROW: icon, bar, level, with nothing drawn around
+             them.  The pill shape and its fill moved inward onto the bar
+             itself, which is now full height rather than a chip floating in
+             a much taller box.
+
+             It keeps the role, the tap target and the aria-label: the whole
+             row is still the button, so losing the visible container did not
+             shrink what a thumb has to hit.
+          */
           width: pillW, height: pillH, flex: 'none', boxSizing: 'border-box',
+          position: 'relative',   /* anchors the +N corner badge */
           display: 'flex', flexDirection: 'row', alignItems: 'center',
-          justifyContent: 'space-between', gap: 4, padding: '0 8px 0 4px',
-          background: unspent > 0 ? COL.accentFill : COL.wellSoft,
-          border: `1px solid ${unspent > 0 ? COL.accent : COL.tileBor}`,
-          /* Fully-rounded ends: the same pill the nav buttons use, so the
-             one non-square thing on the row reads as deliberate rather
-             than as a square that failed to fit. */
-          borderRadius: 999,
+          justifyContent: 'space-between', gap: 4,
           cursor: 'pointer', touchAction: 'manipulation',
         }}>
         <img src={s.iconSrc} alt="" draggable={false}
           style={{
-            width: pillH - 8, height: pillH - 8,
+            width: iconPx, height: iconPx,
             flex: 'none', objectFit: 'contain', pointerEvents: 'none',
           }} />
-        {/* The level, at 16px on its own — it was a 9px corner digit through
+        {/* ═══ v2.3.1853/1854: THE XP BAR ═══
+            Owner: "the dashboard menu has the 3 skills on it already for
+            xp.  Just put the icons to the left of the bar and overall level
+            to the right of the bar.  A number in the bar numerator and
+            denominator on the same line" — then: the whole pill IS the bar.
+
+            The numbers live INSIDE it, which is what makes it fit: at 360
+            the row is 80px wide, and a track with "250/280" printed beside
+            it needs width for both.  Text on the fill needs width for one.
+
+            The fill is a low-contrast wash rather than a bright bar, because
+            it sweeps UNDER the digits — a saturated fill makes them hardest
+            to read at exactly the moment the bar is most interesting
+            (nearly full). */}
+        {xp && (
+          <div aria-hidden="true"
+            className={unspent > 0 ? 'bt-build-flash' : undefined}
+            style={{
+            flex: '1 1 auto', minWidth: 0, position: 'relative',
+            height: barH, borderRadius: 999, overflow: 'hidden',
+            background: COL.wellSoft,
+            border: `1px solid ${unspent > 0 ? COL.accent : COL.tileBor}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <div style={{
+              position: 'absolute', left: 0, top: 0, bottom: 0,
+              width: `${Math.min(100, (xp.prog / xp.thresh) * 100)}%`,
+              background: 'rgba(138,169,249,.42)',
+            }} />
+            <span style={{
+              position: 'relative',
+              fontSize: chipFs, fontWeight: 800, lineHeight: 1,
+              color: COL.text, fontVariantNumeric: 'tabular-nums',
+              whiteSpace: 'nowrap',
+            }}>{xpShort(xp.prog)}<span style={{ opacity: .62 }}>/{xpShort(xp.thresh)}</span></span>
+          </div>
+        )}
+        {/* The level, at its own size — it was a 9px corner digit through
             v2.3.1647, which is the exact kind of number the owner said a
             player with weaker sight cannot read. */}
         <span aria-hidden="true" style={{
           flex: 'none',
-          fontSize: 16, fontWeight: 900, lineHeight: 1,
+          fontSize: lvlFs, fontWeight: 900, lineHeight: 1,
           color: unspent > 0 ? COL.accent : COL.text,
           fontVariantNumeric: 'tabular-nums', pointerEvents: 'none',
-        }}>{unspent > 0 ? `+${unspent}` : lvl}</span>
+        }}>{lvl}</span>
+        {/* ═══ v2.3.1853: THE LEVEL IS ALWAYS THE LEVEL ═══
+            The unspent-points badge used to REPLACE it — "+2" where the
+            number goes — which was fine while the row said one thing.  It is
+            not fine now that the owner asked for the level to be here: with
+            points waiting you could not see the number this slot exists to
+            show.  The badge moves to the corner, which costs no WIDTH — the
+            scarce dimension in an 80px row. */}
+        {unspent > 0 && (
+          <span aria-hidden="true" style={{
+            position: 'absolute', top: 0, right: 0,
+            minWidth: 13, height: 13, padding: '0 3px',
+            borderRadius: 7, background: COL.accent, color: COL.onAccent,
+            fontSize: 9, fontWeight: 900, lineHeight: '13px', textAlign: 'center',
+            fontVariantNumeric: 'tabular-nums', pointerEvents: 'none',
+          }}>+{unspent}</span>
+        )}
       </div>
     );
   };

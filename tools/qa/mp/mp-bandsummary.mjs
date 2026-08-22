@@ -26,7 +26,7 @@ const setXp = (P, xps) => P.page.evaluate((x) => {
   }
   /* Nudge the band to re-render: the strip reads getState() on every render
      and the dashboard repaints on this bus. */
-  try { window.__broDashPanelBus.open(null); } catch (e) {}
+  try { window.__broDashPanelBus.toBar(); } catch (e) {}
 }, xps);
 
 const readBand = (P) => P.page.evaluate(() => {
@@ -81,6 +81,43 @@ const readBand = (P) => P.page.evaluate(() => {
   };
 });
 
+const readPills = (P) => P.page.evaluate(() => {
+    const els = [...document.querySelectorAll('[role="button"][aria-label*="level"]')]
+      .filter((el) => el.offsetParent !== null && /^(Melee|Bow|Magic) level/i.test(el.getAttribute('aria-label')));
+    return els.map((el) => {
+      const img = el.querySelector('img');
+      const spans = [...el.querySelectorAll('span')].filter((x) => (x.textContent || '').trim());
+      /* The bar is the only child with a rounded track and an absolute fill
+         inside it; find it by that fill rather than by position. */
+      const bar = [...el.querySelectorAll('div')]
+        .filter((d) => [...d.children].some((c) => c.style && c.style.position === 'absolute'))[0] || null;
+      const box = (n) => { if (!n) return null; const r = n.getBoundingClientRect();
+        return { l: Math.round(r.left), r: Math.round(r.right), w: Math.round(r.width) }; };
+      const txt = bar ? (bar.textContent || '').replace(/\s+/g, '') : null;
+      /* The LEVEL span, not the corner badge: the badge is last in DOM
+         order when it exists, and reading it as the level is exactly the
+         confusion v2.3.1853 fixed. */
+      const lvlSpan = spans.filter((x) => !/^\+/.test((x.textContent || '').trim())).pop() || null;
+      const badge = spans.filter((x) => /^\+\d+$/.test((x.textContent || '').trim()))[0] || null;
+      const fill = bar ? [...bar.children].filter((c) => c.style && c.style.position === 'absolute')[0] : null;
+      return {
+        label: el.getAttribute('aria-label'),
+        icon: box(img), bar: box(bar), lvl: box(lvlSpan),
+        lvlText: lvlSpan ? (lvlSpan.textContent || '').trim() : null,
+        badgeText: badge ? (badge.textContent || '').trim() : null,
+        pair: txt, fillW: fill ? fill.style.width : null,
+        pillW: Math.round(el.getBoundingClientRect().width),
+        clipped: bar ? bar.scrollWidth > bar.clientWidth + 1 : null,
+        /* Reported, not just judged: "it clips" sends you guessing at four
+           sizes; "needs 41, has 34" names the seven pixels. */
+        barNeed: bar ? bar.scrollWidth : null,
+        barHave: bar ? bar.clientWidth : null,
+        iconW: img ? Math.round(img.getBoundingClientRect().width) : null,
+        lvlW: lvlSpan ? Math.round(lvlSpan.getBoundingClientRect().width) : null,
+      };
+    });
+});
+
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Bandit', wsPort, webPort, viewport: { width: 390, height: 844 }, touch: true });
   await H.enterWorld(P);
@@ -123,46 +160,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /profile\.webp|data:image\/(png|webp)/i.test(sizeSrc || ''));
   rec.ok('the head preview is gone from the band', portraitGone, { imgs: band.imgs });
 
-  /* ── the three lines ── */
+  /* ── what the band says now ── */
   const all = (band.texts || []).join(' ');
   rec.ok('it shows the coins', /\b75\b/.test(all), band.texts);
-  /* v2.3.1852 (owner: "instead of an xp bar just show the number over the
-     number like 324/500"): a PAIR, and no bar left to paint. */
-  rec.ok('...and XP as a pair of numbers', /^\d+\/\d+$/.test(band.xpText || ''), { xpText: band.xpText });
-  rec.ok('...with no bar left to paint', (band.fills || []).length === 0, { fills: band.fills });
-  /* ═══ v2.3.1851: NAME AND LEVEL ARE GONE TOO ═══
-     Owner: "actually just put the gold and xp there.  You already see the
-     name and level below the actual character."  Two readouts left.
+  /* ═══ v2.3.1853: EVERYTHING ELSE IS GONE FROM THE BAND ═══
+     Four rounds of cuts, each because something else on screen already said
+     it: the portrait, then DPS/DEF/HP, then the name and level, and now the
+     XP pair — owner: "actually just put the coins there.  The dashboard
+     menu has the 3 skills on it already for xp."
 
-     Asserted as absent, and by the character's OWN name rather than by a
-     pattern: 'BANDIT' is on screen elsewhere in this app, so the check is
-     scoped to the summary block's own text. */
-  rec.ok('the name is not repeated on the band', !/BANDIT/i.test(all), band.texts);
-  rec.ok('...nor the level', !/\bLV\b/i.test(all), band.texts);
-  /* ═══ v2.3.1849: WHAT IS DELIBERATELY ABSENT ═══
-     Owner, on the first build (which followed the mockup exactly): "that
-     summary looks way too busy.  What's the best way to give as much useful
-     info without overload."  DEF and HP came off, then the rest: "best might
-     just be to remove the bottom row (all the DPS, def, and hp data)".  Each
-     is a number you consult when changing something, and changing something
-     happens on the screen this block opens.
-
-     Asserted as ABSENT rather than just untested.  A deletion nothing checks
-     is a deletion the next person restores by accident, and "less on the
-     band" is the whole point of this pass. */
-  rec.ok('DEF is not on the band', !/DEF/.test(all), band.texts);
-  rec.ok('...nor max HP', !/\bHP\b/.test(all), band.texts);
-  rec.ok('...nor DPS — the whole stat row is gone', !/DPS/.test(all), band.texts);
-  /* v2.3.1850 (owner: "have the summary tab just be name, level, xp, and
-     gold"): FOUR things, and the unspent-points badge was a fifth.  It reads
-     as "+2", so this checks for a lone plus-number rather than for the word
-     — the badge never carried one. */
+     Every one is asserted ABSENT.  A removal nothing checks is one the next
+     person restores by accident, and "less on the band" has been the whole
+     direction of this pass. */
+  rec.ok('...and nothing else — no stat row', !/DPS|DEF|\bHP\b/.test(all), band.texts);
+  rec.ok('...no name or level', !/BANDIT/i.test(all) && !/\bLV\b/i.test(all), band.texts);
+  rec.ok('...no XP pair', !/\d+\/\d+/.test(all), band.texts);
+  rec.ok('...and no bar left to paint', (band.fills || []).length === 0, { fills: band.fills });
   rec.ok('...nor the unspent-points badge',
     !(band.texts || []).some((t) => /^\+\d+$/.test(t)), band.texts);
-  /* ONE line now.  The busyness was structural, and each cut took a line
-     with it: three (mockup) -> two (DPS/DEF/HP out) -> one (name/level out). */
-  rec.ok('the summary is a single line',
-    (band.lines || []).length === 1, { lines: (band.lines || []).map((l) => l.kids.map((k) => k.t)) });
+
   /* It still opens Hero — the portrait was the button, and the button is the
      only reason the character screen is reachable from the resting band. */
   await P.page.evaluate(() => {
@@ -174,7 +190,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const opened = await P.page.evaluate(() =>
     !!document.querySelector('canvas[aria-label="Your character"]'));
   rec.ok('tapping the summary still opens Hero', opened, {});
-  await P.page.evaluate(() => { window.__broDashPanelBus.open(null); });
+  await P.page.evaluate(() => { window.__broDashPanelBus.toBar(); });
   await P.page.waitForTimeout(400);
 
   /* ── it FITS ──
@@ -200,7 +216,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      beside the XP bar, which is the flexible element that gives way. */
   await P.page.evaluate(() => {
     window._gameState.current.rpg.coins = 1234567;
-    try { window.__broDashPanelBus.open(null); } catch (e) {}
+    try { window.__broDashPanelBus.toBar(); } catch (e) {}
   });
   await P.page.waitForTimeout(600);
   const rich = await readBand(P);
@@ -211,30 +227,102 @@ export async function run({ browser, wsPort, webPort, rec }) {
     (rich.texts || []).some((t) => /1,234,567/.test(t)), { texts: rich.texts });
   await P.page.evaluate(() => {
     window._gameState.current.rpg.coins = 75;
-    try { window.__broDashPanelBus.open(null); } catch (e) {}
+    try { window.__broDashPanelBus.toBar(); } catch (e) {}
   });
   await P.page.waitForTimeout(400);
 
-  /* ── the XP row follows the CLOSEST weapon ──
-     Three passes, each with a different winner.  prog3XpRequired(1) is 280,
-     so the denominator is fixed and the numerator names which skill won —
-     which is what makes a wrong WINNER visible rather than just a wrong
-     number. */
-  const cases = [
-    { name: 'melee', xp: { sword: 250, bow: 40, staff: 10 }, icon: 'melee', pair: '250/280' },
-    { name: 'bow', xp: { sword: 20, bow: 210, staff: 10 }, icon: 'bow', pair: '210/280' },
-    { name: 'magic', xp: { sword: 20, bow: 40, staff: 140 }, icon: 'magic', pair: '140/280' },
-  ];
-  for (const c of cases) {
-    await setXp(P, c.xp);
-    await P.page.waitForTimeout(700);
-    const b = await readBand(P);
-    const icons = (b.imgs || []).join(' ');
-    rec.ok(`the XP row takes the ${c.name} icon when ${c.name} is closest`,
-      new RegExp('hero/' + c.icon + '\\.webp').test(icons), { icons });
-    rec.ok(`...and reads ${c.pair}`, b.xpText === c.pair, { xpText: b.xpText });
-  }
+  /* ═══ v2.3.1853: THE XP MOVED TO THE THREE COMBAT PILLS ═══
+     Owner: "just put the icons to the left of the bar and overall level to
+     the right of the bar.  A number in the bar numerator and denominator on
+     the same line."
+
+     Every assertion here is bound to a three-pills guard: `[].every(...)`
+     is TRUE, so a selector that found nothing would have "passed" the
+     geometry checks — which is exactly what the first run of this did.
+
+     Three claims per pill, and the ORDER is the one that would pass by
+     accident: "an icon, a bar and a level exist somewhere in this pill" is
+     true of almost any arrangement of them, so the geometry is checked —
+     icon left of bar, level right of bar.
+
+     The pills read their OWN skill, which is the part a shared readout
+     would fake: the three are given different XP and each must print its
+     own pair, not the biggest or the first. */
+  await setXp(P, { sword: 250, bow: 210, staff: 140 });
+  await P.page.waitForTimeout(700);
+  const pills = await readPills(P);
+  rec.ok('all three combat pills were found (guard)', pills.length === 3,
+    { pills: pills.map((p) => p.label) });
+  const [melee, bow, magic] = pills;
+  const three = pills.length === 3;   /* .every() on [] is true — see below */
+  rec.ok('each pill carries an XP bar with its numbers inside',
+    three && pills.every((p) => p.pair && /^\d[\d.k]*\/\d[\d.k]*$/.test(p.pair)),
+    pills.map((p) => p.pair));
+  /* Its OWN skill's numbers: 250 / 210 / 140 against the same 280. */
+  rec.ok('...and it is that skill\'s own progress, not a shared number',
+    !!(melee && bow && magic && melee.pair === '250/280'
+      && bow.pair === '210/280' && magic.pair === '140/280'),
+    pills.map((p) => `${p.label}=${p.pair}`));
+  rec.ok('...with the icon to the LEFT of the bar',
+    three && pills.every((p) => p.icon && p.bar && p.icon.r <= p.bar.l + 1),
+    pills.map((p) => ({ icon: p.icon, bar: p.bar })));
+  rec.ok('...and the level to the RIGHT of it',
+    three && pills.every((p) => p.lvl && p.bar && p.lvl.l >= p.bar.r - 1),
+    pills.map((p) => ({ bar: p.bar, lvl: p.lvl })));
+  /* The painted fill, not just the text — a bar whose numbers moved while
+     its fill did not is the bug a text-only check would miss. */
+  /* v2.3.1853: with points waiting, the pill shows BOTH — the level in the
+     slot the owner asked for it in, and the +N in the corner.  The scenario
+     stocks the pool with 2, so this is the state under test; before this
+     version the badge REPLACED the level and lvlText would read "+2". */
+  rec.ok('the level survives an unspent-points badge',
+    three && pills.every((p) => /^\d+$/.test(p.lvlText || '')),
+    pills.map((p) => ({ lvl: p.lvlText, badge: p.badgeText })));
+  rec.ok('...and the badge is still shown, in the corner',
+    three && pills.every((p) => p.badgeText === '+2'),
+    pills.map((p) => p.badgeText));
+  rec.ok('...and the fill matches the numbers',
+    !!(melee && melee.fillW && Math.abs(parseFloat(melee.fillW) - (250 / 280) * 100) < 1),
+    { fillW: melee && melee.fillW });
+  /* It has to FIT.  360 is the narrowest phone this layout supports and the
+     pill is 80px there — the whole reason the numbers sit inside the bar. */
+  rec.ok('...and nothing is clipped at this width',
+    three && pills.every((p) => p.clipped === false),
+    pills.map((p) => ({ pill: p.pillW, icon: p.iconW, bar: `${p.barNeed}/${p.barHave}`, lvl: p.lvlW })));
 
   await P.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/bandsummary.png' });
+
+  /* ═══ THE NARROW PHONE ═══
+     360 is the smallest width this layout supports, and it is the one the
+     pill sizing is actually constrained by: 80px of pill against 94 at 390.
+     The component has a `tight` branch for it, and a branch no test ever
+     renders is a branch that is wrong the first time someone opens the game
+     on a small phone.  Same assertions, one viewport down. */
+  const N = await H.newPlayer(browser, { name: 'Narrow', wsPort, webPort, viewport: { width: 360, height: 780 }, touch: true });
+  await H.enterWorld(N);
+  await N.page.waitForTimeout(3000);
+  await N.page.evaluate(() => {
+    const R = window._gameState.current.rpg;
+    if (!R.prog3) R.prog3 = {};
+    if (!R.prog3.sk) R.prog3.sk = {};
+    R.prog3.sk.sword = { level: 1, xp: 250 };
+    R.prog3.sk.bow = { level: 1, xp: 210 };
+    R.prog3.sk.staff = { level: 1, xp: 140 };
+    try { window.__broDashPanelBus.toBar(); } catch (e) {}
+  });
+  await N.page.waitForTimeout(700);
+  const narrow = await readPills(N);
+  rec.ok('the three pills are there at 360 too (guard)', narrow.length === 3,
+    { n: narrow.length });
+  rec.ok('...and their numbers still fit',
+    narrow.length === 3 && narrow.every((p) => p.clipped === false),
+    narrow.map((p) => ({ pill: p.pillW, icon: p.iconW, bar: `${p.barNeed}/${p.barHave}`, lvl: p.lvlW })));
+  rec.ok('...and still read their own skill',
+    narrow.length === 3 && narrow[0].pair === '250/280'
+      && narrow[1].pair === '210/280' && narrow[2].pair === '140/280',
+    narrow.map((p) => p.pair));
+  await N.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/bandsummary-360.png' });
+  await N.ctx.close().catch(() => {});
+
   await P.ctx.close().catch(() => {});
 }

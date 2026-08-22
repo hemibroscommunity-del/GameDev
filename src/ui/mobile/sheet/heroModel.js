@@ -126,6 +126,34 @@ export function skillProgress(R, key) {
  * level" has no meaning for a skill with no next level, and a permanently
  * full bar reads as a bug.  With all three capped there is nothing honest to
  * draw, so it returns null and the caller omits the row. */
+/* v2.3.1853: ONE weapon skill's progress toward its next level.
+ * The per-pill readout on the dashboard, and the piece bestWeaponProgress
+ * below was already computing inline for each of the three — extracted so
+ * the pill and the "closest weapon" answer cannot disagree about what a
+ * skill's progress IS.
+ *
+ * `cat` is a prog3 category: 'sword' | 'bow' | 'staff'.  Returns null for a
+ * capped skill, which is the honest answer to "how far to the next level"
+ * when there is no next level — the caller shows the cap instead of a bar
+ * that can only ever read full. */
+export function weaponSkillProgress(R, cat) {
+  if (!R || !cat) return null;
+  if (prog3Live(R)) {
+    const lvl = prog3SkillLevel(R, cat);
+    if (lvl >= PROG3.LEVEL_CAP) return null;
+    const sk = (R.prog3.sk && R.prog3.sk[cat]) || {};
+    const thresh = Math.max(1, prog3XpRequired(lvl));
+    return { prog: Math.min(Math.floor(sk.xp || 0), thresh), thresh, level: lvl };
+  }
+  /* Legacy blob: the weapon skills are the first three COMBAT_SKILLS, in
+     the same Melee/Bow/Magic order as the prog3 categories. */
+  const legacyKey = { sword: 'power', bow: 'agility', staff: 'mind' }[cat];
+  if (!legacyKey) return null;
+  const p = skillProgress(R, legacyKey);
+  if (!p || !p.thresh) return null;
+  return { prog: Math.min(p.prog, p.thresh), thresh: p.thresh, level: R[legacyKey] || 0 };
+}
+
 export function bestWeaponProgress(R) {
   if (!R) return null;
   let best = null;
