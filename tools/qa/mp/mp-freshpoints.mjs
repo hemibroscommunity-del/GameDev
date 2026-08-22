@@ -150,40 +150,105 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
 
   /* ═══ AND WHAT DOES "CREATE CHARACTER" DO FROM HERE? ═══
-     This is the question the owner's report turns on.  mp-charlock proves a
+     This is the question the owner's report turned on.  mp-charlock proves a
      device holding its key never SEES this door — it walks straight in — so
      the only way to be standing here with a key is to have logged out, and
      logging out keeps the key on purpose (the passphrase IS the character).
 
-     Press the button and find out whether the character that arrives is a
-     NEW one or the one that was just logged out of.  Asserted on the name
-     and the identity rather than on the points, because this character has
-     never earned any — the points are the SYMPTOM the owner saw; whose
-     character it is, is the cause. */
+     Before v2.3.1861, pressing Create Character from here ran the creator
+     and then handed back the STORED character anyway (charLock): same bp_
+     id, same name, same progress.  That is how a "brand new character" turns
+     up with combat points already on it.
+
+     Now it asks first.  Both answers are tested, because a dialog that
+     appears is not the fix — a dialog whose buttons do what they say is. */
   const doorCreate = await P.page.$('[data-tut="login-create"]');
   rec.ok('the door has a Create Character button (guard)', !!doorCreate, {});
   if (doorCreate) {
     await doorCreate.click();
-    await P.page.waitForTimeout(1500);
-    await H.enterWorld(P).catch(() => {});
-    await P.page.waitForTimeout(3000);
-    const after = await P.page.evaluate(() => {
-      const S = window._gameState.current;
-      const R = S.rpg || {};
-      return { myId: S.myId, name: S.myName, level: R.level,
-        pool: R.prog3 ? R.prog3.pool : null,
-        key: (() => { try { return localStorage.getItem('bt_passphrase'); } catch (e) { return null; } })() };
+    await P.page.waitForTimeout(900);
+    const warn = await P.page.evaluate(() => {
+      const el = document.querySelector('[data-tut="login-existing-warn"]');
+      if (!el) return { shown: false };
+      return { shown: true, text: (el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 160),
+        namesIt: /Newbie/.test(el.textContent || '') };
     });
-    console.log('    after Create Character', JSON.stringify(after));
-    /* THE FINDING.  Recorded as an assertion either way so the behaviour
-       cannot change silently: if this passes, "Create Character" after a
-       logout hands back the SAME character — which is what makes a
-       supposedly brand-new character arrive with progress already on it. */
-    rec.ok('"Create Character" after a logout returns the SAME identity',
-      after.myId === idBefore.myId,
-      { before: idBefore.myId, after: after.myId, name: after.name, level: after.level });
-    rec.ok('...wearing the same name it had before',
-      after.name === 'Newbie', { name: after.name });
+    rec.ok('it warns that a character already exists', warn.shown === true, warn);
+    /* NAMED, not counted: "you have a character" is abstract until it is
+       your bro's name about to be written over. */
+    rec.ok('...and names the character at risk', warn.namesIt === true, warn);
+    await P.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/existingwarn.png' });
+
+    /* ── answer 1: Continue ── */
+    const cont = await P.page.$('[data-tut="login-existing-continue"]');
+    rec.ok('the dialog offers Continue (guard)', !!cont, {});
+    if (cont) {
+      await cont.click();
+      await P.page.waitForTimeout(4000);
+      const back = await P.page.evaluate(() => {
+        const S = window._gameState.current;
+        return { myId: S.myId, name: S.myName, inWorld: !!document.querySelector('canvas') };
+      });
+      console.log('    after Continue', JSON.stringify(back));
+      rec.ok('Continue puts you back in the SAME character',
+        back.myId === idBefore.myId && back.name === 'Newbie', { before: idBefore.myId, back });
+    }
+  }
+
+  /* ── answer 2: Create new ──
+     A second logout, then take the other branch.  Asserted on the IDENTITY,
+     which is what actually changed: a new key means the worker has no
+     stored record to hand back, so the creator's character is the one that
+     lives.  This is the assertion that fails on the old code. */
+  await P.page.evaluate(() => { try { window.__broDashPanelBus.toBar(); } catch (e) {} });
+  await P.page.waitForTimeout(600);
+  const chip2 = await P.page.$('[aria-label="Log out to the character screen"]');
+  if (chip2) {
+    await chip2.click();
+    await P.page.waitForTimeout(700);
+    const c2 = await P.page.$('text=Log Out');
+    if (c2) {
+      await Promise.all([
+        P.page.waitForNavigation({ waitUntil: 'domcontentloaded' }).catch(() => {}),
+        c2.click(),
+      ]);
+      await P.page.waitForTimeout(3500);
+    }
+  }
+  const create2 = await P.page.$('[data-tut="login-create"]');
+  rec.ok('back at the door for the second answer (guard)', !!create2, {});
+  if (create2) {
+    await create2.click();
+    await P.page.waitForTimeout(900);
+    const replace = await P.page.$('[data-tut="login-existing-replace"]');
+    rec.ok('the dialog offers Create new character (guard)', !!replace, {});
+    if (replace) {
+      await Promise.all([
+        P.page.waitForNavigation({ waitUntil: 'domcontentloaded' }).catch(() => {}),
+        replace.click(),
+      ]);
+      await P.page.waitForTimeout(3000);
+      const fresh = await P.page.evaluate(() => ({
+        route: window.__btBootRoute || null,
+        myId: window._gameState.current.myId,
+        key: (() => { try { return localStorage.getItem('bt_passphrase'); } catch (e) { return null; } })(),
+        prev: (() => { try { return localStorage.getItem('bt_passphrase_prev'); } catch (e) { return null; } })(),
+        rpgCache: (() => { try { return localStorage.getItem('bt_rpg'); } catch (e) { return null; } })(),
+        inCreator: !!document.querySelector('.bt-cc-shell'),
+      }));
+      console.log('    after Create new', JSON.stringify({ ...fresh, key: !!fresh.key, prev: !!fresh.prev }));
+      rec.ok('choosing Create new lands in the CREATOR, not back at the door',
+        fresh.route === 'create-forced' && fresh.inCreator === true, fresh);
+      /* THE ONE THAT WOULD HAVE CAUGHT THE ORIGINAL BUG. */
+      rec.ok('...on a NEW identity, so the old character cannot be handed back',
+        !!fresh.myId && fresh.myId !== idBefore.myId, { before: idBefore.myId, now: fresh.myId });
+      rec.ok('...with the old key stashed, not destroyed',
+        !!fresh.prev && fresh.prev === idBefore.key, { stashed: !!fresh.prev });
+      /* The stale cache is what carried old progress into a "new"
+         character; it has to be gone, not merely overwritten later. */
+      rec.ok('...and no stale character cache left behind',
+        fresh.rpgCache === null, { rpgCache: fresh.rpgCache });
+    }
   }
 
   await P.ctx.close().catch(() => {});
