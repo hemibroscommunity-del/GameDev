@@ -157,6 +157,16 @@ const readPills = (P) => P.page.evaluate(() => {
       pairText: pairEl ? (pairEl.textContent || '').replace(/\s+/g, '') : null,
       lvlText: lvlEl ? (lvlEl.textContent || '').trim() : null,
       badgeText: badgeEl ? (badgeEl.textContent || '').trim() : null,
+      /* Do the badge and the level OVERLAP?  v2.3.1859 grew the level to
+         13.5px and the card rendered "LV ǂ2" — the corner badge sitting on
+         the digit.  Every width check passed, because overlap is not
+         clipping: both boxes were within their own bounds, on top of each
+         other.  Rect intersection is the only thing that sees it. */
+      badgeHitsLvl: (() => {
+        if (!badgeEl || !lvlEl) return false;
+        const a = badgeEl.getBoundingClientRect(), b = lvlEl.getBoundingClientRect();
+        return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+      })(),
       fillW: fill ? fill.style.width : null,
       pillW: Math.round(el.getBoundingClientRect().width),
       rows,
@@ -306,6 +316,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await setXp(P, { sword: 250, bow: 210, staff: 140 });
   await P.page.waitForTimeout(700);
   const pills = await readPills(P);
+  /* Printed on every run, not just failures: the sizing of this card has
+     been revised five times, and each round starts by asking how much room
+     each readout actually has.  "needs 43, has 34" is the number that ends
+     the argument. */
+  console.log('    card text', JSON.stringify((pills[0] || {}).rows));
   rec.ok('all three combat cards were found (guard)', pills.length === 3,
     { pills: pills.map((p) => p.label) });
   const three = pills.length === 3;   /* .every() on [] is TRUE — see above */
@@ -364,6 +379,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the level survives an unspent-points badge',
     three && pills.every((p) => /^LV\s*\d+$/i.test(p.lvlText || '') && p.badgeText === '+2'),
     pills.map((p) => ({ lvl: p.lvlText, badge: p.badgeText })));
+  rec.ok('...without the badge sitting ON the level',
+    three && pills.every((p) => p.badgeHitsLvl === false),
+    pills.map((p) => ({ lvl: p.lvlText, badge: p.badgeText, overlap: p.badgeHitsLvl })));
   /* It has to FIT.  360 is the narrowest phone this layout supports; the
      card is 80px there, and the top row is the one that spills. */
   rec.ok('...and no row is clipped at this width',
