@@ -233,9 +233,21 @@ export const DashColumns = ({ R }) => {
      row's needed vs available width at both widths — four earlier passes
      over this card were sized by eye and every one came out over. */
   const iconPx = Math.round(pillW * (tight ? 0.40 : 0.45));
-  const lvlFs = tight ? 9.5 : 11;
-  const badgeFs = tight ? 9 : 10;
-  const chipFs = tight ? 8 : 8.5;
+  /* ═══ v2.3.1859: BIGGER TYPE, TO THE CEILING THE COLUMN ALLOWS ═══
+     Owner: "combat icons are perfect size just make the other font bigger."
+     So the icon share above is frozen and only the type moves.
+
+     LV and the badge had real room and take it: 11 -> 13.5 and 10 -> 12 at
+     390.  THE XP PAIR DID NOT, and the number is worth recording rather than
+     rediscovering: at 11px it needs 50px and its box is 41, so the ceiling
+     is 41/50 x 11 = 9.0 — it goes 8.5 -> 8.8 and no further.  Its box is the
+     right-hand column, and the column is what is left of a 94px card after a
+     frozen 42px icon.  Growing it further needs width the card does not
+     have: either the icon gives some back, or the COMBAT column takes it
+     from the bag.  Both are the owner's call, so neither is made here. */
+  const lvlFs = tight ? 12 : 13.5;
+  const badgeFs = tight ? 10.5 : 12;
+  const chipFs = tight ? 8 : 8.8;
   const barH = tight ? 5 : 6;
   const combatPill = (s) => {
     /* ═══ v2.3.1668: these pills were the last live route into the
@@ -376,9 +388,25 @@ export const DashColumns = ({ R }) => {
             what it did before the owner asked for the level to be shown. */}
         {unspent > 0 && (
           <span aria-hidden="true" style={{
-            position: 'absolute', top: 1, right: 3,
+            /* ═══ v2.3.1859: THE BADGE MOVES OFF THE TEXT COLUMN ═══
+               It sat in the card's top-RIGHT corner, which is the same
+               corner "LV n" starts from — fine while the level was 11px and
+               a collision the moment it grew to 13.5: the card rendered
+               "LV ǂ2", the badge sitting on top of the digit.
+
+               Overlap is not clipping, so the width checks had nothing to
+               say about it (mp-bandsummary now asserts the two boxes do not
+               intersect).  There is no size that fixes it either: "LV 1" at
+               13.5px needs ~28px and the badge ~18, in a 41px column.
+
+               So it moves to the top-LEFT, over the icon's own corner —
+               a call-to-action pip on the skill's picture, which is where
+               these read naturally anyway, and the one part of the card
+               with no text to fight. */
+            position: 'absolute', top: 1, left: 3,
             fontSize: badgeFs, fontWeight: 900, lineHeight: 1,
             color: COL.accent, fontVariantNumeric: 'tabular-nums',
+            textShadow: '0 1px 2px rgba(9,14,17,.85)',
             pointerEvents: 'none',
           }}>+{unspent}</span>
         )}
