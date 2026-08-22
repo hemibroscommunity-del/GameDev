@@ -222,11 +222,27 @@ export const DashColumns = ({ R }) => {
      badge), not just a digit, so the budget is set against the WIDER of the
      two things that span can hold. */
   const tight = pillW < 88;
-  const iconPx = tight ? 20 : 24;
-  /* v2.3.1854: the bar is the row's height less a little breathing room,
-     not a chip floating inside a much taller box. */
-  const barH = Math.max(18, Math.min(26, pillH - 26));
-  const chipFs = tight ? 9 : 10;
+  const iconPx = tight ? 19 : 22;
+  /* ═══ v2.3.1855: FAT PILLS ═══
+     Owner, on a photo of the real device: "I want fat pills that make better
+     use of the space.  Right now they're too skinny."
+
+     They were, and by construction: v2.3.1854 capped the bar at 26px inside
+     a row that is 52-59 tall, so half the height the COMBAT column had
+     already been given went to empty air between three thin bars.
+
+     But a pill is WIDER than it is tall, and this one is only ~52px wide —
+     so "as tall as the row" (48) drew three CIRCLES, which is a different
+     wrong.  Two thirds of the row height is the fattest a capsule can be
+     here and still read as a capsule; the rest of the height is the gap
+     between rows, which is what stops three stacked bars from reading as
+     one striped block. */
+  const barH = Math.round(pillH * 0.66);
+  /* FAT is a HEIGHT.  The width is still 80px at 360 and the numbers still
+     have to fit inside the bar, so the type grows only as far as that
+     allows — measured, not guessed: mp-bandsummary reports the bar's needed
+     and available width at both widths, and 13.5px overflowed by 8. */
+  const chipFs = tight ? 9 : 10.5;
   const lvlFs = tight ? 14 : 16;
   const combatPill = (s) => {
     /* ═══ v2.3.1668: these pills were the last live route into the
@@ -305,7 +321,7 @@ export const DashColumns = ({ R }) => {
           width: pillW, height: pillH, flex: 'none', boxSizing: 'border-box',
           position: 'relative',   /* anchors the +N corner badge */
           display: 'flex', flexDirection: 'row', alignItems: 'center',
-          justifyContent: 'space-between', gap: 4,
+          justifyContent: 'space-between', gap: 3,
           cursor: 'pointer', touchAction: 'manipulation',
         }}>
         <img src={s.iconSrc} alt="" draggable={false}
