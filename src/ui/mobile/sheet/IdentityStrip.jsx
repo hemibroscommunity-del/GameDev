@@ -178,12 +178,18 @@ export const IdentityStrip = ({ band = false, gutter = 0, trackW = null }) => {
             The 6px presence dot stays.  It is not a readout — it is the
             only thing on the resting screen that says whether a 100%-server
             game is still talking to its server. */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-          <span aria-label={(S && S._realtimeStatus === 'connected') ? 'Connected' : 'Offline'}
-            style={{
-              flex: 'none', width: 7, height: 7, borderRadius: '50%',
-              background: (S && S._realtimeStatus === 'connected') ? '#55B98A' : '#D95C54',
-            }} />
+        {/* v2.3.1857 (owner: "center the coins within that extra space,
+            remove the dot to the left of it").  The presence dot is gone
+            with it — it was the last thing on the resting screen that said
+            whether a 100%-server game was still connected, so noting where
+            that signal now lives: nowhere on the band.  The reconnect
+            overlay still fires on a real drop, which is the loud half of
+            what the dot did; the quiet half — "yes, still fine" — is what
+            this trades away for a centred purse. */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          minWidth: 0,
+        }}>
           <span style={{
             flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 4,
           }}>

@@ -67,6 +67,14 @@ const readBand = (P) => P.page.evaluate(() => {
       return el ? Math.round(el.getBoundingClientRect().top) : null;
     })(),
     bottom: Math.round(r.bottom),
+    /* The purse's own centre — the coin icon and its number as one unit. */
+    coinMid: (() => {
+      const im = hero.querySelector('img[src*="gold"]');
+      if (!im) return null;
+      const wrap = im.parentElement;
+      const b = wrap.getBoundingClientRect();
+      return Math.round(b.left + b.width / 2);
+    })(),
     /* WHICH line, and by how much — an overflow report that just says "yes"
        sends you guessing at three lines and four chips. */
     lines: [...hero.children].map((el, i) => ({
@@ -194,6 +202,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and no bar left to paint', (band.fills || []).length === 0, { fills: band.fills });
   rec.ok('...nor the unspent-points badge',
     !(band.texts || []).some((t) => /^\+\d+$/.test(t)), band.texts);
+  /* v2.3.1857 (owner: "center the coins within that extra space, remove the
+     dot to the left of it").  Centred is asserted as a MEASUREMENT — the
+     purse's midpoint against the strip's — because "it moved right a bit"
+     and "it is centred" look the same in a screenshot. */
+  rec.ok('the coins are centred in the strip',
+    !!(band.coinMid != null && band.box
+      && Math.abs(band.coinMid - (band.box.right - band.box.w / 2)) <= 2),
+    { coinMid: band.coinMid, stripMid: band.box && Math.round(band.box.right - band.box.w / 2) });
 
   /* It still opens Hero — the portrait was the button, and the button is the
      only reason the character screen is reachable from the resting band. */
