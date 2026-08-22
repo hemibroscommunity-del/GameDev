@@ -9,6 +9,7 @@ import { Container, Graphics, Sprite, Text, TextStyle, Texture, Rectangle, Asset
 import { TILE } from '@/data/constants.js';
 import { ZONES } from '@/data/zones.js';
 import { TOWN_EXITS, WORLDVIEW_EXITS, COMING_SOON_MARKS, TOWN_SOON_MARKS } from '@/data/effects.js';
+import { isZoneUnlocked, zoneUnlockQuest } from '@/game/questRoute.js'; /* v2.3.1822: a shut door looks shut */
 import { getLoadedTiledMap, getTilesetImage, IMAGE_ZONE_MAPS, VIDEO_ZONE_MAPS } from '../tiledMaps.js';
 
 const ZONE_LABEL_STYLE = new TextStyle({
@@ -73,7 +74,7 @@ export class TileRenderer {
     /* Exit portal pulse — drawn per-frame on overlayGfx over S.map
        cells with tile id 8 (zone exit) / 9 (return-to-town) / 10
        (dungeon entrance). */
-    this._exitTiles = [];   // [{ r, c, tile }]
+    this._exitTiles = [];   // [{ r, c, tile, zoneId }]
 
     this.currentZone = null;
     this.currentMap = null;
@@ -129,6 +130,23 @@ export class TileRenderer {
     /* Collect exit/entrance positions from the procedural S.map.
        Tiles 8/9/10 mark zone exits, return-to-town, and dungeon
        entrances.  Used in update() to draw pulsing portal glows. */
+    /* v2.3.1822: ...and remember WHERE each one goes, so update() can paint a
+       locked zone's portal as locked.  The tile grid only says "this is an
+       exit"; the destination lives in the exit tables, so match by position.
+       A tile that matches nothing (every spoke's tile-9 way home, and the
+       procedural zones) keeps zoneId null and is never treated as gated. */
+    const _destAt = new Map();
+    const _declared = zoneId === 'town' ? TOWN_EXITS
+      : zoneId === 'worldview' ? WORLDVIEW_EXITS : null;
+    if (_declared) {
+      for (const ex of _declared) {
+        /* Exits are declared at a 2x2 marker block's corner, so claim the
+           block rather than the single cell. */
+        for (let dr = 0; dr < 2; dr++) {
+          for (let dc = 0; dc < 2; dc++) _destAt.set(`${ex.ty + dr},${ex.tx + dc}`, ex.zoneId);
+        }
+      }
+    }
     this._exitTiles = [];
     for (let r = 0; r < rows; r++) {
       const row = map[r];
@@ -136,7 +154,7 @@ export class TileRenderer {
       for (let c = 0; c < cols; c++) {
         const t = row[c];
         if (t === 8 || t === 9 || t === 10) {
-          this._exitTiles.push({ r, c, tile: t });
+          this._exitTiles.push({ r, c, tile: t, zoneId: _destAt.get(`${r},${c}`) || null });
         }
       }
     }
@@ -151,7 +169,10 @@ export class TileRenderer {
       for (const ex of TOWN_EXITS) {
         const destZone = ZONES[ex.zoneId];
         const text = (destZone && destZone.name) || ex.zoneId;
-        labelsForFrame.push(this._exitLabelPos(ex.tx, ex.ty, cols, rows, text, ex.dir));
+        /* v2.3.1822: carry the destination so update() can append "Locked". */
+        labelsForFrame.push(Object.assign(
+          this._exitLabelPos(ex.tx, ex.ty, cols, rows, text, ex.dir),
+          { zoneId: ex.zoneId, baseText: text }));
       }
     } else if (zoneId === 'worldview') {
       /* v2.3.1303: worldview trail-heads get destination labels —
@@ -166,7 +187,8 @@ export class TileRenderer {
       for (const ex of WORLDVIEW_EXITS) {
         const destZone = ZONES[ex.zoneId];
         const text = (destZone && destZone.name) || ex.zoneId;
-        labelsForFrame.push({ text, x: ex.tx * TILE, y: ex.ty * TILE - TILE * 2.4, rotation: 0 });
+        labelsForFrame.push({ text, x: ex.tx * TILE, y: ex.ty * TILE - TILE * 2.4, rotation: 0,
+          zoneId: ex.zoneId, baseText: text });
       }
     } else {
       /* Find tile-9 cells (return-to-town) and label one of them. */
@@ -247,6 +269,19 @@ export class TileRenderer {
       if (t.scale.x !== wantScale) t.scale.set(wantScale);
       if (t.anchor.y !== 0.5) t.anchor.set(0.5, 0.5);
       t.visible = true;
+    }
+    /* v2.3.1822: the labels naming a GATED zone, so update() can flip them
+       between "Frost Ridge" and "Frost Ridge / Locked" the moment the quest
+       that opens it is accepted.  Only gated ones are listed — an ungated
+       destination can never change, and re-texting it every frame would be
+       work for nothing. */
+    this._gatedLabels = [];
+    for (let i = 0; i < labelsForFrame.length; i++) {
+      const spec = labelsForFrame[i];
+      if (spec && spec.zoneId && zoneUnlockQuest(spec.zoneId)) {
+        this._gatedLabels.push({ text: this._zoneLabels[i], base: spec.baseText });
+        this._zoneLabels[i]._btZone = spec.zoneId;
+      }
     }
 
     /* Looping-video zone path — same render shape as the image path
@@ -614,7 +649,7 @@ export class TileRenderer {
     }
   }
 
-  update(cx, cy, viewW, viewH) {
+  update(cx, cy, viewW, viewH, S) {
     /* Auto-refresh when a Tiled map finishes loading AFTER the
        initial rebuild for this zone — the user briefly sees the
        procedural fallback, then snaps to the Tiled visuals once
@@ -638,16 +673,43 @@ export class TileRenderer {
       const zone = ZONES[this.currentZone];
       const elemColor = zone && zone.element ? 0xff5e6c : 0x5b52ff;
       const obvious = !!this._isImageZone;
+      /* v2.3.1822: read the quest table LIVE, not at rebuild.  Accepting the
+         quest that opens a zone has to change its portal there and then —
+         rebuild only runs on a zone change, so a portal baked at entry would
+         stay grey until you walked out and back. */
+      const _rpg = (S && S.rpg) || null;
+      /* v2.3.1822: QA probe — what each portal is ACTUALLY painted as this
+         frame.  "The portals still look open" is a claim about pixels, and
+         re-deriving the answer in the test from the quest table would just be
+         asserting the test's own copy of the rule. */
+      const _portalProbe = (typeof window !== 'undefined') ? [] : null;
+      for (const gl of (this._gatedLabels || [])) {
+        const want = isZoneUnlocked(_rpg, gl.text._btZone) ? gl.base : gl.base + '\nLocked';
+        if (gl.text.text !== want) gl.text.text = want;
+      }
       for (const ex of this._exitTiles) {
         const x = ex.c * TILE;
         const y = ex.r * TILE;
         const cx = x + TILE / 2;
         const cy = y + TILE / 2;
+        /* ═══ v2.3.1822: A SHUT DOOR SHOULD LOOK SHUT ═══
+           Owner: "I started a new character on the first quest and it was
+           still showing the blue circle portals on every zone entrance...  I
+           wanted you to only be able to access a zone if it's required by a
+           quest first (in sequence)."  Entry was already refused (v2.3.1817,
+           client + worker), but nothing SAID so until you walked into it and
+           got pushed back — which reads as a broken portal, not a locked one.
+           Locked exits keep their halo (so the way is still findable on the
+           painted map) in a dead grey with a slower, weaker pulse. */
+        const _locked = !!ex.zoneId && !isZoneUnlocked(_rpg, ex.zoneId);
+        if (_portalProbe) _portalProbe.push({ zoneId: ex.zoneId, r: ex.r, c: ex.c, locked: _locked });
         let color, pulseSpeed;
-        if (ex.tile === 9)      { color = 0x3dd497; pulseSpeed = 400; }
+        if (_locked)            { color = 0x6b7280; pulseSpeed = 900; }
+        else if (ex.tile === 9) { color = 0x3dd497; pulseSpeed = 400; }
         else if (ex.tile === 10){ color = elemColor; pulseSpeed = 250; }
         else                    { color = elemColor; pulseSpeed = 300; }
-        const pulse = Math.sin(now / pulseSpeed + ex.c + ex.r) * 0.2 + 0.6;
+        const pulse = (Math.sin(now / pulseSpeed + ex.c + ex.r) * 0.2 + 0.6)
+          * (_locked ? 0.5 : 1);
         if (obvious) {
           /* Wide radial halo — three nested circles fading outward,
              so the exit reads as a glowing portal even on top of the
@@ -659,7 +721,10 @@ export class TileRenderer {
           this.overlayGfx.circle(cx, cy, TILE * 0.55);
           this.overlayGfx.fill({ color, alpha: pulse * 0.65 });
           this.overlayGfx.circle(cx, cy, TILE * 0.55);
-          this.overlayGfx.stroke({ color: 0xffffff, width: 2, alpha: pulse * 0.7 });
+          /* The white rim is what makes an open portal read as "step here";
+             a locked one gets the same grey as its fill so it stays a shape
+             on the map without inviting the step. */
+          this.overlayGfx.stroke({ color: _locked ? 0x9ca3af : 0xffffff, width: 2, alpha: pulse * 0.7 });
         } else {
           this.overlayGfx.rect(x - 2, y - 2, TILE + 4, TILE + 4);
           this.overlayGfx.fill({ color, alpha: pulse * 0.55 });
@@ -669,6 +734,7 @@ export class TileRenderer {
           this.overlayGfx.stroke({ color, width: 1.5, alpha: pulse * 0.9 });
         }
       }
+      if (_portalProbe) window.__btPortals = _portalProbe;
     }
 
     // Two-pass background, matching the Canvas 2D path:

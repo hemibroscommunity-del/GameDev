@@ -2,46 +2,24 @@ import React from 'react';
 import { acceptQuest, turnInQuest } from '@/game/quests.js';
 import { NPC_DATA } from '@/data/gameDisplay.js';
 import { prog3Live, PROG3_SKILL_META } from '@/data/prog3.js';
+/* v2.3.1820: the two screens this panel now drives — he talks, then you
+   choose.  See the note above the render for why the old single card was
+   split rather than restyled. */
+import { NpcDialogue } from './NpcDialogue.jsx';
+import { QuestOfferPanel } from './QuestOfferPanel.jsx';
 
 /* v2.3.1681 (owner: "Add thumbnail of mayor bro's profile picture in quest
    dialog box and also thumbnail of the quest items (sword and shield)").
    Looked up by the NAME the quest chain stores — the same key getNpcQuest
    matches on — so there is no second id to keep in sync.  Null for a giver
    with no art, which falls back to the initial-letter disc below. */
-function npcPortrait(name) {
-  const npc = (NPC_DATA || []).find((n) => n && n.name === name);
-  return (npc && npc.portrait) || null;
-}
+/* v2.3.1820: npcPortrait removed with the old card — NpcDialogue resolves its own art, and prefers the FULL figure over this head crop */
 
 /* One item chip: art over its name.  Small (40px) — this is a "here is what
    it looks like" cue beside the text, not a shop listing.  A missing file
    removes the whole chip rather than leaving a broken-image glyph in the
    middle of the dialogue. */
-function ItemChip(props) {
-  const it = props.item;
-  return React.createElement('div', {
-    style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, width: 52 },
-  }, React.createElement('img', {
-    src: it.icon,
-    alt: it.label || '',
-    draggable: false,
-    style: {
-      width: 40, height: 40, objectFit: 'contain',
-      borderRadius: 9,
-      background: '#121B20',
-      /* Same recessed well as the objective block, so the chips read as part
-         of the panel's material rather than pasted on. */
-      boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
-      padding: 3,
-    },
-    onError: function onError(e) {
-      const box = e.currentTarget.parentNode;
-      if (box && box.parentNode) box.parentNode.removeChild(box);
-    },
-  }), React.createElement('div', {
-    style: { fontSize: 9, lineHeight: 1.15, color: '#96A2A0', textAlign: 'center' },
-  }, it.label || ''));
-}
+/* v2.3.1820: ItemChip moved to QuestOfferPanel, where the items are the point of the screen and are drawn at 64px instead of 40 */
 
 /* === QuestPanel — NPC quest accept / turn-in dialog === */
 /* v2.3.870: moved verbatim from BroTown.jsx's JSX tree (UI-panel
@@ -172,6 +150,13 @@ export function QuestPanel(props) {
     xpCat = _xpCatState[0],
     setXpCat = _xpCatState[1];
   var _xpAmt = (questPanel.quest.reward && questPanel.quest.reward.xp) || 0;
+  /* v2.3.1820: restored verbatim — the tidy-up that removed the old card's
+     redeem-label block took these two with it, and they are not part of it:
+     they decide whether the CLAIM screen carries the XP-skill chooser
+     (v2.3.1685).  Read from stateRef first because rpgState can lag a frame
+     behind the worker's echo. */
+  var _liveRpg = (stateRef && stateRef.current && stateRef.current.rpg) || rpgState;
+  var _needsXpChoice = prog3Live(_liveRpg) && _xpAmt > 0;
   /* ═══ v2.3.1764: SAY WHAT THE BUTTON DOES ═══
      Owner: "When you turn in a quest it needs to be more obvious that you're
      redeeming a reward."  "Turn In Quest" describes handing something OVER —
@@ -179,55 +164,17 @@ export function QuestPanel(props) {
      they COLLECT, so it says so, and it names the payout: the reward chips
      above are what you will get, and this is the same fact on the control that
      grants it, where nobody has to scroll to find it. */
-  var _rwd = questPanel.quest.reward || {};
-  var _redeemBits = [];
-  if (_rwd.gold) _redeemBits.push(_rwd.gold + 'g');
-  if (_rwd.xp) _redeemBits.push(_rwd.xp + ' XP');
-  if (_rwd.item) _redeemBits.push(String(_rwd.item));
-  var _redeemLabel = _redeemBits.length
-    ? 'Redeem Reward · ' + _redeemBits.join(' · ')
-    : 'Redeem Reward';
-  /* Read the LIVE rpg (stateRef), not the React copy: prog3 arrives on a
-     player_state and the copy can lag a tick, which would render the wrong
-     branch for exactly the character the picker exists for. */
-  var _liveRpg = (stateRef && stateRef.current && stateRef.current.rpg) || rpgState;
-  var _needsXpChoice = prog3Live(_liveRpg) && _xpAmt > 0;
-  var _questPanel$npcRef;
-  /* v2.3.1681: the giver's face, and the kit on offer. */
-  var _portrait = npcPortrait(questPanel.npc);
-  /* ═══ v2.3.1710: THE OFFER SHOWS WHAT YOU ARE WORKING TOWARD ═══
-     Owner: "Quest item thumbnail rewards are not shown in the quest panel
-     until after you accept the quest (only xp and gold are shown)."
-
-     Until now this card illustrated ONE payout moment: `accept` while the
-     quest was on offer, `complete` once it was active.  The reasoning
-     (v2.3.1681) was that drawing the turn-in reward on an offer "would
-     promise a reward you have not earned".  The owner has now looked at the
-     other side of that: on tut_4 and life_2 every `gives` entry is a
-     turn-in reward, so their offer cards showed NO art at all — gold and XP
-     and nothing else — and on tut_1 the bow and staff appeared out of
-     nowhere after accepting.  You could not see what the job paid before
-     taking it, which is the one thing a quest offer is for.
-
-     So the offer draws BOTH moments — but as two separately captioned
-     groups, never as one row.  That distinction is the whole v2.3.1704
-     lesson ("say WHEN, not who"): the same chip style in the same slot has
-     to state its payout moment or a player cannot tell a promise from a
-     hand-over.  The accept group keeps its existing caption; the turn-in
-     group carries the same "for finishing this quest" wording it already
-     has on the active card, so one string means one thing on both cards.
-     An ACTIVE card still shows only the turn-in group — the kit is already
-     in your bag by then, and re-drawing it would read as a second payout. */
-  var _byWhen = function (when) {
-    return (questPanel.quest.gives || []).filter(function (g) {
-      return g && g.icon && g.when === when;
-    });
-  };
-  var _giveGroups = (questPanel.status === 'available'
-    ? [{ when: 'accept', label: 'He hands you now', items: _byWhen('accept') },
-       { when: 'complete', label: 'For finishing this quest', items: _byWhen('complete') }]
-    : [{ when: 'complete', label: 'For finishing this quest', items: _byWhen('complete') }]
-  ).filter(function (g) { return g.items.length > 0; });
+  /* v2.3.1820: the v2.3.1710 note that stood here described the OLD card
+     drawing both payout moments as two captioned groups inside one panel.
+     They are on two screens now — the accept window shows what he hands you
+     now, the claim window shows what finishing it paid — so each states its
+     timing by BEING a different screen rather than by a caption alone.  The
+     v2.3.1704 lesson it rested on is restated below and still holds. */
+  /* v2.3.1820: the _byWhen / _giveGroups pair moved into QuestOfferPanel.
+     It now picks ONE moment rather than grouping both, because the two
+     moments are on two different screens: the accept window shows what he
+     hands you now, and the claim window shows what finishing it paid.  The
+     v2.3.1704 note below is why each still states its own timing. */
   /* ═══ v2.3.1704: SAY WHEN, NOT WHO ═══
      Owner: "The quest UI is a little confusing what's rewards for the next
      quests vs what's rewarded for the current quest."
@@ -241,355 +188,110 @@ export function QuestPanel(props) {
      Timing is the distinction that matters, so the captions state it — and
      since v2.3.1710 the offer shows both moments at once, which is only
      readable BECAUSE each group states its own. */
-  return React.createElement("div", {
-    className: "bt-inspect",
-    onClick: function onClick() {
-      return setQuestPanel(null);
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "bt-inspect-card",
-    onClick: function onClick(e) {
-      return e.stopPropagation();
-    },
-    style: {
-      width: 'min(360px, calc(100vw - 24px))', /* v2.3.1234: was 300 fixed — fill narrow phones, never overflow */
-      /* v2.3.1685: the card's height is left to the stylesheet's
-         `max-height:100%` (game.css .bt-inspect-card) ON PURPOSE — that
-         resolves against the overlay region ABOVE the dashboard, so the card
-         never slides under the band.  An explicit taller cap was tried and
-         put the primary button behind the dashboard, which is worse than
-         scrolling.  What this card needed instead was for its ACTION to stay
-         reachable while the body scrolls — see the sticky button below.
-         `overscrollBehavior` keeps that scroll from chaining into the page
-         behind it on iOS. */
-      overscrollBehavior: 'contain',
-      /* v2.3.1232: override legacy navy card with Lantern panel surface */
-      background: '#202C32',
-      border: '1px solid rgba(238,242,235,.14)',
-      borderRadius: 14,
-      boxShadow: '0 14px 30px rgba(4,7,9,.38)',
-      padding: 16,
-      textAlign: 'left'
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "bt-inspect-close",
-    onClick: function onClick() {
-      return setQuestPanel(null);
-    }
-  }, "✕"), /*#__PURE__*/React.createElement("div", {
-    /* v2.3.1232: panel title row — UI-Bible icon + 13/700 uppercase title */
-    style: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: 8,
-      marginBottom: 10,
-      paddingBottom: 8,
-      borderBottom: '1px solid rgba(238,242,235,.10)'
-    }
-  }, /*#__PURE__*/React.createElement("img", {
-    src: "/icons/ui/panel-quests.webp",
-    alt: "",
-    draggable: false,
-    style: {
-      width: 24,
-      height: 24,
-      objectFit: 'contain'
-    },
-    onError: function onError(e) {
-      e.currentTarget.replaceWith(document.createTextNode('📜'));
-    }
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 13,
-      fontWeight: 700,
-      textTransform: 'uppercase',
-      letterSpacing: '.10em',
-      color: '#F7F2E7'
-    }
-  }, "Quest")), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: 10,
-      minHeight: 44,
-      marginBottom: 8
-    }
-  }, _portrait ? /*#__PURE__*/React.createElement("img", {
-    /* v2.3.1681: his actual face.  Same head crop the sheet's quest page
-       uses, so the portrait can never drift from the figure in the street.
-       On error the <img> swaps itself for the letter disc rather than leaving
-       a broken-image icon where the quest giver should be. */
-    src: _portrait,
-    alt: questPanel.npc,
-    draggable: false,
-    style: {
-      width: 44,
-      height: 44,
-      borderRadius: '50%',
-      objectFit: 'cover',
-      background: '#121B20',
-      border: '1px solid rgba(238,242,235,.16)',
-      flexShrink: 0
-    },
-    onError: function onError(e) {
-      var d = document.createElement('div');
-      d.textContent = questPanel.npc.charAt(0);
-      d.setAttribute('style', 'width:44px;height:44px;border-radius:50%;background:'
-        + (((_questPanel$npcRef = questPanel.npcRef) === null || _questPanel$npcRef === void 0 ? void 0 : _questPanel$npcRef.color) || '#888')
-        + ';display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;color:#F7F2E7;flex-shrink:0');
-      e.currentTarget.replaceWith(d);
-    }
-  }) : /*#__PURE__*/React.createElement("div", {
-    style: {
-      width: 44,
-      height: 44,
-      borderRadius: '50%',
-      background: ((_questPanel$npcRef = questPanel.npcRef) === null || _questPanel$npcRef === void 0 ? void 0 : _questPanel$npcRef.color) || '#888',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontSize: 18,
-      fontWeight: 900,
-      color: '#F7F2E7',
-      flexShrink: 0
-    }
-  }, questPanel.npc.charAt(0)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 14,
-      fontWeight: 700,
-      color: '#F7F2E7'
-    }
-  }, questPanel.npc), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: '#96A2A0'
-    }
-  }, questPanel.status === 'available' ? 'New Quest!' : questPanel.status === 'active' ? 'Quest Active' : ''))), _giveGroups.length > 0 && /*#__PURE__*/React.createElement("div", {
-    /* v2.3.1681: the kit, pictured.  Sits high — directly under his name,
-       above the dialogue — because the card scrolls on a phone and anything
-       below the quest text is behind the fold.  The owner asked to SEE the
-       sword and shield; putting them where the reward line goes would have
-       meant scrolling to find them.  v2.3.1710 keeps them here for the same
-       reason, and it is the reason the second group is affordable: "what does
-       this quest pay" has to be answerable without scrolling, or it has not
-       been answered. */
-    /* v2.3.1704: the caption moved from BESIDE the chips to ABOVE them.  It
-       used to be a `flexShrink:0` column next to them, which was fine for two
-       words ("You receive") and would have eaten most of a 390px card now that
-       it states the payout moment.  Stacked, the caption gets a full line, the
-       chips keep the full width, and the paddingTop:12 that was faking optical
-       centring against the chips is no longer needed — so this costs about six
-       pixels, not a row. */
-    /* v2.3.1710: now a LIST of captioned groups (usually one; two on an offer
-       that pays at both moments).  The 8px gap between groups is deliberately
-       tighter than the 12px below the block, so the two groups read as one
-       "what this pays" region rather than as two unrelated rows. */
-    style: {
-      marginBottom: 12,
-      paddingTop: 2,
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 8
-    }
-  }, _giveGroups.map(function (grp) {
-    return /*#__PURE__*/React.createElement("div", {
-      key: grp.when,
-      /* A stable hook for mp-questui, which has to prove the bow is drawn
-         under the FINISHING caption and not under the hand-over one — the
-         two groups are otherwise identical markup and a text search of the
-         card cannot tell which chip belongs to which caption. */
-      'data-gives': grp.when,
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 11,
-        fontWeight: 600,
-        textTransform: 'uppercase',
-        letterSpacing: '.12em',
-        color: '#96A2A0',
-        marginBottom: 5
+  /* ═══ v2.3.1820: TWO SCREENS, NOT ONE CARD ═══
+     Owner: "Instead did the thumbnail and reading through the quest dialog
+     menu I'd rather have an NPC message window that has a larger picture of
+     him on the left side of the window and just the text of what he's saying
+     in sequential order chunks.  Then a new 'Accept quest' window pops up
+     with the items shown that will be handed over on accepting it (the 'the
+     hands you now').  Same with claiming quest rewards."
+
+     The old card did two jobs at once: a 40px head, everything he says, the
+     objective, both payout moments as chips and the Accept button all shared
+     one scrolling panel — so the thing you had to READ competed with the
+     thing you had to DECIDE, and on a phone the deciding half was often below
+     the fold.  Now: he talks (NpcDialogue), then you choose
+     (QuestOfferPanel).
+
+     `stage` is local to the open dialogue, like xpCat above and for the same
+     reason: walking away and coming back should start the conversation over,
+     because you may not remember what he said.
+
+     NOTHING IS DROPPED IN THE SPLIT.  The XP-skill chooser rides onto the
+     claim screen as `extra`, and the claim button keeps `bt-quest-turnin` —
+     the class the QA harnesses click by (see QuestOfferPanel). */
+  var _stageState = React.useState('talk'),
+    stage = _stageState[0],
+    setStage = _stageState[1];
+
+  /* ═══ v2.3.1828: HE TALKS AGAIN WHEN THE SUBJECT CHANGES ═══
+     Owner: "The quest complete loop is broken.  It says I finished the quest
+     and rewards me."
+
+     He was right, and this was the whole of it.  `stage` was state with no
+     reset, and the panel deliberately STAYS OPEN across a change of subject:
+     acceptQuest flips the same card to `active` (so he can answer you rather
+     than the screen going blank), and turnInQuest re-opens it on his NEXT
+     quest (v2.3.1713).  Both leave `stage` on 'act' — so the act screen
+     re-rendered against a quest it had never introduced.
+
+     On ACCEPT that is exactly what the owner saw: the quest is now `active`
+     rather than `available`, so `_isOffer` goes false, and the act stage
+     renders the REWARD face — "Quest Complete", the completion items, and a
+     Claim Reward button — for a quest you have not started.  The claim is
+     then refused by the worker (the objective is not met), so it is a dead
+     end dressed as a payout.
+
+     Keyed on the quest AND its status because both are a change of subject:
+     a new quest needs its opening line, and the same quest going
+     active/ready needs the line that goes with the new state.  NpcDialogue
+     already does this for its own chunk index (`setI(0)` on `text`); this is
+     the same rule one level up, and the level it was missing from.
+
+     Every other scenario missed it by CLOSING the panel after accepting —
+     mp-questloop now stays put, which is what a player does. */
+  var _subject = questPanel.quest.id + ':' + questPanel.status;
+  React.useEffect(function () { setStage('talk'); }, [_subject]);
+
+  var _isOffer = questPanel.status === 'available';
+  var _canTurnIn = questPanel.status === 'active'
+    && questPanel.quest.check(rpgState, stateRef.current);
+
+  /* Which of the three things he says.  Same selection the old card made in
+     one line, kept identical so no dialogue string changes meaning here. */
+  var _speech = _isOffer
+    ? questPanel.quest.dialogue.start
+    : (_canTurnIn ? questPanel.quest.dialogue.complete : questPanel.quest.dialogue.progress);
+
+  /* A quest in progress has nothing to decide — he tells you how it is going
+     and that is the end of it, so his last button closes rather than opening
+     an offer screen with no offer on it. */
+  var _hasDecision = _isOffer || _canTurnIn;
+
+  if (stage === 'talk') {
+    return React.createElement(NpcDialogue, {
+      npcName: questPanel.quest.npc,
+      text: _speech,
+      ctaLabel: _isOffer ? 'See the quest' : (_canTurnIn ? 'Claim reward' : 'Close'),
+      onClose: function () { return setQuestPanel(null); },
+      onDone: function () {
+        if (_hasDecision) setStage('act');
+        else setQuestPanel(null);
+      },
+    });
+  }
+
+  return React.createElement(QuestOfferPanel, {
+    mode: _isOffer ? 'offer' : 'reward',
+    quest: questPanel.quest,
+    gold: (questPanel.quest.reward && questPanel.quest.reward.gold) || 0,
+    xp: _xpAmt,
+    /* The chooser only exists when prog3 is live and there is XP to place —
+       _needsXpChoice is computed above and unchanged. */
+    extra: (!_isOffer && _needsXpChoice)
+      ? React.createElement(XpChooser, { xp: _xpAmt, xpCat: xpCat, setXpCat: setXpCat })
+      : null,
+    confirmClass: _isOffer ? null : 'bt-quest-turnin',
+    confirmDisabled: !_isOffer && _needsXpChoice && !xpCat,
+    onClose: function () { return setQuestPanel(null); },
+    onConfirm: function () {
+      if (_isOffer) {
+        acceptQuest(stateRef.current, questPanel,
+          { setRpgState: setRpgState, setQuestPanel: setQuestPanel });
+        return;
       }
-    }, grp.label), /*#__PURE__*/React.createElement("div", {
-      style: { display: 'flex', gap: 8, flexWrap: 'wrap' }
-    }, grp.items.map(function (g, i) {
-      return /*#__PURE__*/React.createElement(ItemChip, { key: g.icon + i, item: g });
-    })));
-  })), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 14,
-      fontWeight: 700,
-      color: '#F7F2E7',
-      marginBottom: 4
-    }
-  }, questPanel.quest.title), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 13.5,
-      color: '#B9C1BF',
-      lineHeight: 1.5,
-      marginBottom: 10
-    }
-  }, questPanel.status === 'available' ? questPanel.quest.dialogue.start : questPanel.quest.check(rpgState, stateRef.current) ? questPanel.quest.dialogue.complete : questPanel.quest.dialogue.progress), /*#__PURE__*/React.createElement("div", {
-    /* v2.3.1232: objective sits in a recessed well */
-    style: {
-      padding: 10,
-      borderRadius: 8,
-      background: '#121B20',
-      boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
-      marginBottom: 10
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      fontWeight: 600,
-      textTransform: 'uppercase',
-      letterSpacing: '.12em',
-      color: '#96A2A0',
-      marginBottom: 3
-    }
-  }, "Objective"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 13.5,
-      color: '#F7F2E7'
-    }
-  }, questPanel.quest.desc), questPanel.quest.check(rpgState, stateRef.current) && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12,
-      fontWeight: 700,
-      color: '#59BF91',
-      marginTop: 4
-    }
-  }, "✓ Complete!")), /*#__PURE__*/React.createElement("div", {
-    /* ═══ v2.3.1704: THE NUMBERS NAME THEIR OWN QUEST ═══
-       Owner: "The quest UI is a little confusing what's rewards for the next
-       quests vs what's rewarded for the current quest."
-       This line said "REWARD  💰25g · ⭐40XP" and nothing else.  On an OFFER
-       card it sits below the chip row that has just shown a sword and a shield
-       under a caption of its own, so the card holds two payouts with only one
-       of them attributed — and because tut_1's dialogue carries the whole
-       control tutorial, this line is below the fold on a 390px phone, so the
-       only "reward" a new player ever actually sees for the quest they are
-       accepting is the accept kit.  Saying WHICH quest and WHEN, right here on
-       the numbers, is what makes the two unmistakable; it wraps to a second
-       line on a narrow card rather than truncating, which is why the row is
-       `flexWrap` now instead of a single baseline run. */
-    style: {
-      display: 'flex',
-      alignItems: 'baseline',
-      flexWrap: 'wrap',
-      gap: 6,
-      marginBottom: 12
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 11,
-      fontWeight: 600,
-      textTransform: 'uppercase',
-      letterSpacing: '.12em',
-      color: '#96A2A0'
-    }
-  }, 'For finishing “' + questPanel.quest.title + '”'), /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 14,
-      fontWeight: 700,
-      fontVariantNumeric: 'tabular-nums',
-      color: '#F7F2E7'
-    }
-  }, "💰", questPanel.quest.reward.gold, "g \xB7 ⭐", questPanel.quest.reward.xp, "XP")), /*#__PURE__*/React.createElement("div", {
-    /* ═══ v2.3.1681: THE BUTTON STAYS ON SCREEN ═══
-       The card is already a scroll container (game.css clamps it to the game
-       area, above the dashboard band).  That was fine when the dialogue was
-       three lines; it is not fine now that the opening quest carries the
-       control instructions AND a row of item thumbnails, which push "Accept
-       Quest" below the fold on a phone.  It was still reachable by scrolling,
-       and the scrollbar is deliberately hidden, so the very first interaction
-       in the game was a button a new player had no reason to believe existed.
-       Sticky footer instead: the text scrolls, the one action never leaves.
-       The negative margins bleed the card's own surface to the card's edges
-       so scrolling text passes UNDER an opaque strip rather than beside it. */
-    style: {
-      position: 'sticky',
-      bottom: -16,
-      background: '#202C32',
-      marginLeft: -16, marginRight: -16, marginBottom: -16,
-      padding: '8px 16px 16px',
-      boxShadow: '0 -10px 12px rgba(32,44,50,.92)'
-    }
-  }, questPanel.status === 'available' && /*#__PURE__*/React.createElement("button", {
-    style: {
-      /* v2.3.1232: brass primary — the region's one primary action */
-      width: '100%',
-      minHeight: 44,
-      padding: '10px',
-      borderRadius: 11,
-      border: 'none',
-      background: (_needsXpChoice && !xpCat) ? '#293B41' : '#D8A85F',
-      color: (_needsXpChoice && !xpCat) ? '#F4F0E7' : '#20170D',
-      boxShadow: (_needsXpChoice && !xpCat) ? 'inset 0 0 0 1px #D8A85F' : 'none',
-      fontWeight: 700,
-      fontSize: 13,
-      cursor: 'pointer'
+      turnInQuest(stateRef.current, questPanel,
+        { setRpgState: setRpgState, setQuestPanel: setQuestPanel }, xpCat);
     },
-    onClick: function onClick() {
-      /* v2.3.782: body moved to src/game/quests.js (Phase 3). */
-      acceptQuest(stateRef.current, questPanel, { setRpgState: setRpgState, setQuestPanel: setQuestPanel });
-    }
-  }, "Accept Quest"), questPanel.status === 'active' && questPanel.quest.check(rpgState, stateRef.current) && /*#__PURE__*/React.createElement(React.Fragment, null,
-    /* v2.3.1685: the picker sits ABOVE the button it unlocks, so the reason
-       the button is dim is the thing you just read. */
-    _needsXpChoice && /*#__PURE__*/React.createElement(XpChooser, {
-      xp: _xpAmt, xpCat: xpCat, setXpCat: setXpCat,
-    }),
-    /*#__PURE__*/React.createElement("button", {
-    /* v2.3.1765: A STABLE HOOK, BECAUSE THE LABEL IS NOT ONE.
-       Renaming this button from "Turn In Quest" to "Redeem Reward" in
-       v2.3.1764 broke three QA scenarios at once — each clicked it by the word
-       "Turn In", each swallowed the miss with .catch(), and the questline run
-       then failed eight quests downstream with "the WORKER marked it turned
-       in {tut_1: active}", which points at the server and not at a button
-       caption.  The label is owner-facing copy and will be reworded again;
-       this class is the contract the harnesses hold. */
-    className: 'bt-quest-turnin',
-    'aria-disabled': _needsXpChoice && !xpCat,
-    style: {
-      /* v2.3.1232: brass primary (only one button renders per status) */
-      width: '100%',
-      minHeight: 44,
-      padding: '10px',
-      borderRadius: 11,
-      border: 'none',
-      background: (_needsXpChoice && !xpCat) ? '#293B41' : '#D8A85F',
-      color: (_needsXpChoice && !xpCat) ? '#F4F0E7' : '#20170D',
-      boxShadow: (_needsXpChoice && !xpCat) ? 'inset 0 0 0 1px #D8A85F' : 'none',
-      fontWeight: 700,
-      fontSize: 13,
-      cursor: 'pointer',
-      /* ═══ v2.3.1764: NOT-READY IS NOT THE SAME AS NOT-VISIBLE ═══
-         Owner: "the choose a skill to train button is all faded like you can
-         barely see it."  v2.3.1685 dimmed the whole control to opacity .5 to
-         say "not ready" — but this is dark text on brass over a dark card, so
-         halving the opacity took the LABEL with it and the instruction telling
-         you what to do became the hardest thing on the card to read.
-         The not-ready state is now a secondary SURFACE instead: full opacity,
-         bright text on the card's own secondary fill with a brass edge.  It
-         still reads as "this is not the gold button yet" — which was the real
-         intent — while the words stay legible. */
-      /* v2.3.1685: PINNED.  This dialogue's content already overflowed its
-         box before the picker existed (441px of content in 423px on main —
-         the rewards row was the casualty), and the picker adds ~74px more.
-         Sticky keeps the one action the card exists for on screen while the
-         body scrolls under it, which beats both a button below the fold and
-         a taller card sliding under the dashboard.  The brass fill is opaque,
-         so scrolled content passes behind it cleanly. */
-      position: 'sticky',
-      bottom: 0
-    },
-    onClick: function onClick() {
-      /* v2.3.1685: refuse locally what the worker would refuse anyway.
-         Without this the client runs its own congratulation path — gold,
-         XP and 'turnedIn' all applied locally — for a turn-in the worker
-         throws away, and the next player_state quietly takes it all back. */
-      if (_needsXpChoice && !xpCat) return;
-      /* v2.3.782: body moved to src/game/quests.js (Phase 3). */
-      turnInQuest(stateRef.current, questPanel, { setRpgState: setRpgState, setQuestPanel: setQuestPanel }, xpCat);
-    }
-  }, _needsXpChoice && !xpCat ? "Choose a skill to train" : _redeemLabel)))));
+  });
 }

@@ -36,6 +36,7 @@ import { getEquip, syncArmorLayers, migrateTier1Armor } from '@/rendering/gearCa
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
+import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822 */
 /* Tick arrival timestamps — module-level so the buffer survives
  * WebSocket reconnects and can be sampled by the FPS/NET overlay.
  * performance.now() values, capped at ~5 minutes of history.  Bytes-per-tick
@@ -1362,35 +1363,11 @@ export function setupWebSocket(ctx) {
                  clear local death state.  hp/stamina/mana are restored
                  server-side and arrive via the player_state that fires
                  alongside this event. */
-              /* v2.3.1127: dying inside a dungeon leaves it -- clear
-                 the dungeon flags the legacy path left stale (harmless
-                 then, but a stale _serverDungeon would suppress the
-                 local wave engine and pin the synthetic ZONES entry). */
-              if (S._serverDungeon) {
-                if (ZONES[S._serverDungeon] && ZONES[S._serverDungeon]._instance) delete ZONES[S._serverDungeon];
-                S._serverDungeon = null;
-              }
-              S._inDungeon = false;
-              S._inCustomDungeon = false;
-              S._customDungeonConfig = null;
-              S._dungeonComplete = false;
-              S._dungeonBossSpawned = false;
-              S.currentZone = (msg.payload && msg.payload.zone) || 'town';
-              updateZoneDimensions(S.currentZone);
-              BT_AUDIO.startZoneAmbient(S.currentZone);
-              S.map = generateZoneMap(S.currentZone);
-              S.monsters = [];
-              S.gatherNodes = [];
-              S.player.x = (ZONES[S.currentZone] ? ZONES[S.currentZone].w / 2 : 16) * TILE;
-              S.player.y = (ZONES[S.currentZone] ? ZONES[S.currentZone].h / 2 : 16) * TILE;
-              S.respawnTimer = Date.now() + 3000;
-              S._deathStart = 0;
-              S._dying = false;
-              /* Tell the server our new position + zone + dead=false.
-                 Other clients clear our _isDead via the broadcast. */
-              if (S.channel) S.channel.send({ type: 'broadcast', event: 'move', payload: { x: S.player.x, y: S.player.y, z: S.currentZone, vx: 0, vy: 0 } });
-              if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_respawned', payload: { id: S.myId } });
-              try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
+              /* v2.3.1822: the sequence moved to game/respawn.js so the
+                 game loop's stuck-dead watchdog can run the SAME code — see
+                 that file for why a respawn that only one message can trigger
+                 is a freeze waiting to happen. */
+              applyLocalRespawn(S, (msg.payload && msg.payload.zone) || 'town');
               break;
             }
           case 'harvest_credit':

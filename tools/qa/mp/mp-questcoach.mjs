@@ -107,16 +107,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
   });
   await P.page.waitForTimeout(1200);
-  const took = await H.clickText(P, 'Accept Quest').then(() => true).catch(() => false);
+  /* v2.3.1827: he speaks first now, and the Accept lives on a second panel
+     behind his lines (v2.3.1820) — see harness.advanceNpcDialogue. */
+  const landed = await H.advanceNpcDialogue(P);
+  rec.ok("Mayor Bro's lines lead to the offer panel (guard)", landed === 'offer', { landed });
+  const took = await H.confirmQuestOffer(P);
   rec.ok("Mayor Bro's first quest was accepted for real (guard)", took, { took });
   await P.page.waitForTimeout(2500);
   /* Close the dialogue — it stays open after accepting, and its scrim is
      exactly the kind of thing the mark is supposed to stand down behind. */
   await P.page.keyboard.press('Escape').catch(() => {});
-  await P.page.evaluate(() => {
-    const scrim = document.querySelector('.bt-inspect');
-    if (scrim) scrim.click();
-  });
+  await H.closeNpcDialogue(P);
   await P.page.waitForTimeout(900);
   const granted = await H.readState(P, (S) => ({
     quests: S.rpg._quests,
@@ -231,7 +232,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
      as wrong — the handler measures release SPEED. This line has to say the
      same thing in the same words, or the game teaches one gesture in the
      dialogue and a different one on the joystick. */
-  rec.ok('...calling it a quick SWIPE, the same word the dialogue uses',
+  /* v2.3.1831: the dialogue no longer says it — the coach is now the ONLY
+     place this wording lives, which is why this assertion matters more. */
+  rec.ok("...calling it a quick SWIPE, the wording v2.3.1681 settled on",
     !!(cS && /quick swipe/i.test(cS.text)), cS && cS.text);
   rec.ok('...and NOT the "flick and let go" wording v2.3.1681 removed',
     !!(cS && !/flick/i.test(cS.text)), cS && cS.text);

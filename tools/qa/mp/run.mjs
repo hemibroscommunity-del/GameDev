@@ -21,6 +21,8 @@ import * as H from './harness.mjs';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  bandsummary: () => import('./mp-bandsummary.mjs'), /* v2.3.1848: the band's compact summary */
+  itemcard: () => import('./mp-itemcard.mjs'), /* v2.3.1845: the item card's art, name and rarity */
   arrowdt: () => import('./mp-arrowdt.mjs'), /* v2.3.1770: arrows fly at a speed */
   movespeed: () => import('./mp-movespeed.mjs'), /* v2.3.1769: speed is per second, not per frame */
   hairclip: () => import('./mp-hairclip.mjs'), /* v2.3.1776: the swing clips the hair too */
@@ -36,6 +38,22 @@ const SCENARIOS = {
   coppergear: () => import('./mp-coppergear.mjs'), /* v2.3.1772: every worn copper combo, in every pose */
   blacksmith: () => import('./mp-blacksmith.mjs'), /* v2.3.1773: the smith at the fountain */
   townprops: () => import('./mp-townprops.mjs'), /* v2.3.1775: anvil, stall, storekeeper */
+  logout: () => import('./mp-logout.mjs'), /* v2.3.1840: log out lands on the login door */
+  southsword: () => import('./mp-southsword.mjs'), /* v2.3.1839: the south idle blade off his face */
+  tutspecial: () => import('./mp-tutspecial.mjs'), /* v2.3.1838: a REAL special, shield slung not held */
+  idleface: () => import('./mp-idleface.mjs'), /* v2.3.1837: idle keeps the last TURN, not the last walk */
+  turnshield: () => import('./mp-turnshield.mjs'), /* v2.3.1836: shield side while turning */
+  hudface: () => import('./mp-hudface.mjs'), /* v2.3.1835: the HUD portrait tracks the worn cosmetics */
+  specshield: () => import('./mp-specshield.mjs'), /* v2.3.1834: shield layering during a special */
+  scalesheet: () => import('./mp-scalesheet.mjs'), /* v2.3.1830: size per direction, both poses */
+  bodysize: () => import('./mp-bodysize.mjs'), /* v2.3.1826: the same character in every direction */
+  slimebase: () => import('./mp-slimebase.mjs'), /* v2.3.1824: the blob's base is the monster's position */
+  hatrim: () => import('./mp-questui.mjs').then((m) => ({ run: m.hatRim })), /* v2.3.1829 */
+  questloop: () => import('./mp-questloop.mjs'), /* v2.3.1828: the hand-in must not repeat */
+  keylogin: () => import('./mp-keylogin.mjs'), /* v2.3.1823: the login door joins you */
+  ccload: () => import('./mp-ccload.mjs'), /* v2.3.1818: the creator opens with a character, and no keyboard */
+  zonegate: () => import('./mp-zonegate.mjs'), /* v2.3.1817: a zone opens when a quest sends you there */
+  heroview: () => import('./mp-heroview.mjs'), /* v2.3.1815: the equip screen's character view */
   charlock: () => import('./mp-charlock.mjs'), /* v2.3.1814: permanent name+look, and the login door in front of the creator */
   townmap: () => import('./mp-townmap.mjs'), /* v2.3.1777: the clifftop plateau + its edges */
   townbuildings: () => import('./mp-townbuildings.mjs'), /* v2.3.1778: the buildings, solid, with doors */

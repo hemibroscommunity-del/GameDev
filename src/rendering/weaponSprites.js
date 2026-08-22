@@ -105,6 +105,19 @@ export function getWeaponTexture(type, gearBase, dir) {
   return (entry && entry.tex) || null;
 }
 
+/** v2.3.1841: the same art, by URL, for the 2D compositor.
+ *  characterPortrait draws on a canvas and cannot use a Pixi Texture, and the
+ *  equip screen has to show the weapon you are actually holding.  Resolving
+ *  the key HERE rather than rebuilding the path over there is the point: the
+ *  per-facing keys, the gearBase variants and the cache-busting version are
+ *  all one table, and a second copy of them would drift the first time a
+ *  sprite is renamed. */
+export function weaponArtUrl(type, gearBase, dir) {
+  if (dir && SHEETS[`${type}-${dir}`]) return SHEETS[`${type}-${dir}`].url;
+  const k = keyFor(type, gearBase);
+  return (SHEETS[k] && SHEETS[k].url) || null;
+}
+
 export function hasWeapon(type, gearBase, dir) {
   if (dir && SHEETS[`${type}-${dir}`]) {
     return !!SHEETS[`${type}-${dir}`].tex;

@@ -20,6 +20,7 @@
    - W/H: CSS-pixel canvas size for the camera snap.
    S is stateRef.current; P is S.player (same object the loop mutates). */
 import { TILE, ZONES, ELEMENTS, TOWN_EXITS, WORLDVIEW_EXITS, DEPTH_CONFIG, BT_AUDIO, updateZoneDimensions, discoverZone, generateZoneMap, spawnMonstersForZone, spawnGatherNodes, createMonster } from '@/data/index.js';
+import { zoneUnlockQuest } from '@/game/questRoute.js'; /* v2.3.1817: which quest opens a zone */
 import { perfTracker } from '@/debug/perfTracker.js';
 import { _typeof } from '@/lib/babelHelpers.js';
 
@@ -311,6 +312,53 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                 var _mang = Math.atan2(_mcy - P.y, _mcx - P.x);
                 P.x += Math.cos(_mang) * TILE * 2;
                 P.y += Math.sin(_mang) * TILE * 2;
+              }
+              return;
+            }
+
+            /* ═══ v2.3.1817: A ZONE OPENS WHEN A QUEST SENDS YOU THERE ═══
+               Owner: "make each zone open up only after a mayor bro quest
+               requires that area."
+
+               HARD, like the Mayor gate directly above and unlike the level
+               warning below — walking in again does not pass it, because the
+               point is that you have no reason to be there yet.
+
+               The SERVER is what enforces this (_zoneUnlocked in
+               server/src/movement.js, gating on the quest table's own
+               objective.zone).  This is the courtesy half: without it the
+               worker silently refuses the zone change and the portal reads as
+               broken, which is precisely how the v2.3.1708 incident above got
+               reported.  Client and server derive the rule from the same
+               quest ids, so they cannot disagree about which zone is open.
+
+               Any status counts — an accepted quest opens its zone, and a
+               finished one leaves it open — matching the server exactly. */
+            var _zq = zoneUnlockQuest(bestExit.zoneId);
+            if (_zq && !(S.rpg && S.rpg._quests && S.rpg._quests[_zq])) {
+              if (!S._zoneLockAt || Date.now() - S._zoneLockAt > 2500) {
+                S._zoneLockAt = Date.now();
+                var _zlName = (ZONES[bestExit.zoneId] && ZONES[bestExit.zoneId].name) || bestExit.zoneId;
+                if (typeof window !== 'undefined' && typeof window._setLevelUpMsg === 'function') {
+                  window._setLevelUpMsg({
+                    kind: 'warning',
+                    text: _zlName + ' is not on your map yet',
+                    sub: 'Mayor Bro will send you when it is time',
+                    ts: Date.now(),
+                  });
+                } else {
+                  pushDmgPopup(S, P.x, P.y - 30, 'Not yet', '#f5c542', { ttl: 3 });
+                }
+                try { BT_AUDIO.beep(220, 0.08, 0.08, 'square'); } catch (e) {}
+              }
+              /* Same nudge as the Mayor gate: without it the proximity test
+                 re-fires every frame and the banner never clears. */
+              var _zlz = ZONES[S.currentZone];
+              if (_zlz) {
+                var _zcx = (_zlz.w * TILE) / 2, _zcy = (_zlz.h * TILE) / 2;
+                var _zang = Math.atan2(_zcy - P.y, _zcx - P.x);
+                P.x += Math.cos(_zang) * TILE * 2;
+                P.y += Math.sin(_zang) * TILE * 2;
               }
               return;
             }

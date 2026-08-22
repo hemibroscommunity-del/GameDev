@@ -1,4 +1,6 @@
 import { calcDisplayDmgRange, calcDisplayDps, getArmorPieceDr, getArmorDrPct } from '../../../data/gameSystems.js';
+import { BLACKSMITH_TIERS, WOODWORKING_TIERS, WEAPON_TYPES, SWING_RANGE, bowRangeMult } from '../../../data/gameSystems.js'; /* v2.3.1845: item naming; v2.3.1846: the stat rows */
+import { TILE } from '../../../data/constants.js'; /* v2.3.1846: range, in tiles */
 import { displayWeapon } from './statPreview.js'; /* v2.3.1766: one weapon-for-display rule */
 import { gearIdIcon, armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.1758: one armour art table */
 import { weaponMaterial, metalIconPath } from '@/rendering/traits/materialTints.js'; /* v2.3.1760 */
@@ -43,17 +45,85 @@ export const GHOST_SRC = {
    vest").  Lives in THREE files — keep them in lockstep or one surface serves
    stale thumbnails while its neighbour serves fresh ones. */
 const ITEMS_V = '?v=2.3.1774'; /* v2.3.1774: pine shield icon */
+/* v2.3.1845: THE ICON IS THE WEAPON'S, NOT THE SLOT'S.
+   Owner: "when you only have sword (no bow or staff) it still shows bow icon
+   when you double tap to switch weapons on the character's weapon slot."
+
+   This used to read `slot === 'ranged'` as a second way to reach the bow art,
+   and that is a different question from "what is in your hand".  activeSlot
+   can be 'ranged' with an EMPTY ranged slot — the weapon cycle would rotate
+   into it whether or not you owned a bow (fixed the same version in
+   BroTown's _desktopCycleWeapon) and the server persists the slot across
+   sessions.  displayWeapon then falls back to the sword you do own, so the
+   cell drew a bow over a sword's stats: art and numbers describing different
+   weapons.
+
+   The weapon's own `type` is the whole answer, and it is always set — every
+   mint path writes it (server quests.js `_grantQuestItem`, the forge, drops).
+   No fallback is needed, and one that guesses from the slot is exactly the
+   bug. */
 const wpnIconSrc = (R, wpn) => {
   if (!wpn) return null;
-  const slot = R.activeSlot || 'melee';
   /* v2.3.1760: a melee weapon's icon takes its METAL (metalIconPath); a bow or
      a staff never does — owner: "only for metals though not staff or bow". */
   const metal = weaponMaterial(wpn.type, wpn.gearBase);
-  return wpn.type === 'bow' || slot === 'ranged' ? `/icons/items/bow.png${ITEMS_V}`
-    : wpn.type === 'staff' || slot === 'staff' ? `/icons/items/staff.png${ITEMS_V}`
+  return wpn.type === 'bow' ? `/icons/items/bow.png${ITEMS_V}`
+    : wpn.type === 'staff' ? `/icons/items/staff.png${ITEMS_V}`
     : wpn.type === 'greatsword' ? `${metalIconPath('/icons/items/great-sword.webp', metal)}${ITEMS_V}`
       : `${metalIconPath('/icons/items/sword.webp', metal)}${ITEMS_V}`;
 };
+
+/* ═══ v2.3.1845: ONE NAME FOR A WEAPON ═══
+ * Owner: "refer to it as copper greatsword, pine bow, and pine staff in the
+ * character equip menu.  Right now it's not that way."
+ *
+ * It was not, because the card title was `wpn.type.toUpperCase()` — the
+ * TYPE, which knows nothing about what the thing is made of.  So the starter
+ * kit read GREATSWORD / BOW / STAFF and the copper and the pine, which are
+ * the parts that change as you play, were nowhere on the screen.
+ *
+ * Composed from the tier and the type rather than taken from `wpn.name`,
+ * for two reasons.  The stored name is what the SERVER minted ("Copper Great
+ * Sword") and is not what the owner asked to read; and it is a free-text
+ * label that a forge or a future rename can put anything into, while
+ * gearBase is the field the stats already come from — so a composed name
+ * cannot drift from the item's real tier.  `wpn.name` is still the fallback
+ * when the tier is unknown, because a name we cannot verify beats no name.
+ *
+ * NOT used for shields.  The starter shield is `gearBase:'wood'` and named
+ * "Pine Shield" on purpose (server data.js: the wood tier is what carries its
+ * stats, so renaming the base would blank them).  Composing there would print
+ * WOOD SHIELD over an item the rest of the game calls a Pine Shield — so the
+ * shield card uses its own `name`, which is right for the same reason
+ * composing is right for weapons: use the field that is true. */
+const TYPE_WORD = {
+  /* One word, per the owner's own spelling — WEAPON_TYPES.greatsword.label is
+     'Great Sword' and stays that way for the surfaces that already use it. */
+  greatsword: 'Greatsword', sword: 'Sword', bow: 'Bow', staff: 'Staff',
+};
+
+export function weaponTierLabel(w) {
+  if (!w || !w.gearBase) return '';
+  const base = String(w.gearBase);
+  /* Woodworking gearBases carry a 'ww_' prefix that the tier table's own keys
+     do not — the same strip `gemExtractCost` does.  Without it a Pine Bow
+     resolves to no tier at all and falls through to printing the raw
+     'ww_pine' at the player, which is what the old tierLabel in
+     ItemDetailPopup did. */
+  const ww = base.indexOf('ww_') === 0 ? base.slice(3) : null;
+  const tier = ww ? WOODWORKING_TIERS[ww]
+    : (BLACKSMITH_TIERS[base] || WOODWORKING_TIERS[base]);
+  return tier && tier.label ? tier.label : '';
+}
+
+export function weaponDisplayName(w) {
+  if (!w) return '';
+  const word = TYPE_WORD[w.type]
+    || (WEAPON_TYPES[w.type] && WEAPON_TYPES[w.type].label)
+    || w.type || 'Weapon';
+  const tier = weaponTierLabel(w);
+  return tier ? `${tier} ${word}` : (w.name || word);
+}
 
 /* v2.3.1758: armour art comes from ONE table (gearVariants) so a tier's icon
    cannot drift from the metal it renders in.  The shirt keeps its own line —
@@ -177,26 +247,95 @@ export function getEquipContribs(R) {
   const dmgText = range ? range.text.replace('-', '–') : null;
   const gemOf = (b) => ({ k: GEM_SHORT[b.stat] || 'GEM', v: '+' + fmt1(b.value) + (b.unit || '') });
 
+  /* ═══ v2.3.1846: THE ROWS ON AN ITEM CARD ═══
+   * Owner mockup: name and CHANGE on the frame, the rarity under the name,
+   * the item's picture beside a LABEL/VALUE list, and the item's bonuses on
+   * a strip along the bottom.  ("You can ignore the irrelevant test data" —
+   * so this fills the shape with the stats this game actually has, rather
+   * than reproducing the mockup's placeholder numbers.)
+   *
+   * WHAT IS REAL, and what was left out.  Every row here is a number the
+   * fight uses:
+   *   DAMAGE / DPS  — calcDisplayDmgRange + calcDisplayDps, the same pair
+   *                   the totals grid shows.
+   *   SPEED         — swings per second, from that range's own `cdMs`
+   *                   (600ms × the attack-speed allocation).  NOT
+   *                   WEAPON_TYPES.speed: that field reads like the answer
+   *                   (0.7 for a greatsword, 1.4 for a sword) and is DEAD —
+   *                   nothing in combat or in the damage math consumes it,
+   *                   so printing it would put a number on the card that
+   *                   describes nothing that happens.
+   *   RANGE         — WEAPON_TYPES.range, which combat DOES use
+   *                   (monsterCombat's swing envelope), through the same
+   *                   bow multiplier and 250px clamp the attack applies, and
+   *                   divided into TILEs because "50" means nothing to a
+   *                   player standing on a 32px grid.
+   * A weapon's `speed` word from the mockup is therefore absent by choice,
+   * not by omission. */
+  const cdMs = range && range.cdMs ? range.cdMs : 0;
+  const rangePx = wpn && WEAPON_TYPES[wpn.type]
+    ? Math.min(250, Math.round((WEAPON_TYPES[wpn.type].range || SWING_RANGE)
+      * (WEAPON_TYPES[wpn.type].type === 'ranged' ? bowRangeMult(R) : 1)))
+    : 0;
+
+  /* The bottom strip: what this ONE item adds beyond its base numbers.
+     Empty for every starter item, and the card drops the strip entirely
+     rather than drawing an empty band — a row of nothing reads as a stat
+     with no value rather than as an item with no affixes. */
+  const wpnBonuses = [];
+  if (wpn) {
+    if (wpn.reforgeBonus && wpn.reforgeBonus.label) {
+      wpnBonuses.push(`+${fmt1(wpn.reforgeBonus.value)}${wpn.reforgeBonus.unit || ''} ${wpn.reforgeBonus.label}`);
+    }
+    if (wpn.hardenBonus && wpn.hardenBonus.label) {
+      wpnBonuses.push(`+${fmt1(wpn.hardenBonus.value)}${wpn.hardenBonus.unit || ''} ${wpn.hardenBonus.label}`);
+    }
+    /* Elements are the weapon's identity, not a stat line — one word each. */
+    for (const el of [wpn.element1, wpn.element2]) {
+      if (el) wpnBonuses.push(String(el).charAt(0).toUpperCase() + String(el).slice(1));
+    }
+  }
+
   const cards = {
     weapon: range ? {
-      title: (wpn.type || 'weapon').toUpperCase(),
+      /* v2.3.1845: COPPER GREATSWORD, not GREATSWORD — see weaponDisplayName. */
+      title: weaponDisplayName(wpn).toUpperCase(),
       primary: { k: 'DMG', v: dmgText },
       secondary: { k: 'DPS', v: fmt1(dps) },
+      rows: [
+        { k: 'DAMAGE', v: dmgText },
+        { k: 'DPS', v: fmt1(dps) },
+        cdMs ? { k: 'SPEED', v: fmt1(1000 / cdMs) + '/s' } : null,
+        rangePx ? { k: 'RANGE', v: fmt1(rangePx / TILE) } : null,
+      ].filter(Boolean),
+      bonuses: wpnBonuses,
     } : null,
     shield: ss ? {
-      title: 'SHIELD',
+      /* v2.3.1845: the shield's own name (PINE SHIELD), not the bare slot
+         word.  Its `gearBase` is 'wood' by design, so composing from the tier
+         the way weapons do would print WOOD SHIELD — see weaponDisplayName. */
+      title: String((R.shield && R.shield.name) || 'Shield').toUpperCase(),
       primary: { k: 'BLOCK', v: '+' + fmt1(ss.blockBonus) + '%' },
       secondary: ss.gemBonus ? gemOf(ss.gemBonus) : { k: 'STAM', v: '+' + ss.staminaBonus },
+      rows: [
+        { k: 'BLOCK', v: '+' + fmt1(ss.blockBonus) + '%' },
+        { k: 'STAMINA', v: '+' + ss.staminaBonus },
+        ss.flatDef ? { k: 'DEFENCE', v: '+' + fmt1(ss.flatDef) } : null,
+      ].filter(Boolean),
+      bonuses: ss.gemBonus ? [`+${fmt1(ss.gemBonus.value)}${ss.gemBonus.unit || ''} ${GEM_SHORT[ss.gemBonus.stat] || 'GEM'}`] : [],
     } : null,
-    chest: chestDr ? { title: 'CHEST', primary: { k: 'DMG RED', v: fmt1(chestDr * 100) + '%' }, secondary: null } : null,
+    chest: chestDr ? { title: 'CHEST', primary: { k: 'DMG RED', v: fmt1(chestDr * 100) + '%' }, secondary: null,
+      rows: [{ k: 'DMG RED', v: fmt1(chestDr * 100) + '%' }], bonuses: [] } : null,
     /* v2.3.1697: legs are no longer stat-less.  The old note ("steel
        greaves are cosmetic") described the gearCatalog cosmetic, but
        R.legsArmor is a real worn piece cutting 20%+ of every hit since
        v2.3.1679 — cosmetic greaves with no armour piece still show
        nothing, which is the honest reading. */
-    legs: legsDr ? { title: 'LEGS', primary: { k: 'DMG RED', v: fmt1(legsDr * 100) + '%' }, secondary: null } : null,
+    legs: legsDr ? { title: 'LEGS', primary: { k: 'DMG RED', v: fmt1(legsDr * 100) + '%' }, secondary: null,
+      rows: [{ k: 'DMG RED', v: fmt1(legsDr * 100) + '%' }], bonuses: [] } : null,
     cape: null,   /* Phase-2: no data field */
-    amulet: am ? { title: 'AMULET', primary: gemOf(am), secondary: null } : null,
+    amulet: am ? { title: 'AMULET', primary: gemOf(am), secondary: null,
+      rows: [gemOf(am)], bonuses: [] } : null,
   };
 
   /* Fixed order + fixed labels; '—' for absent (brief: cells never

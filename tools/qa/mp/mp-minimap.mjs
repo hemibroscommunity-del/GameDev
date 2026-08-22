@@ -167,8 +167,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
      icon set still fails while the props are off. */
   const propsOn = await P.page.evaluate(
     () => (window.__btTownPropsEnabled ? window.__btTownPropsEnabled() : true));
+  /* v2.3.1819: the mayor draws the plain NPC mark now, not a star.  The star
+     was minted once and drawn twice — blue under him, gold on the quest's
+     portal — one glyph carrying two meanings, separated only by a colour the
+     player was never told about.  He keeps the '!' / '?' pin above his head,
+     which says more than a star did. */
   for (const [key, what] of [
-    ['star', 'the mayor himself'],
+    ['npc', 'the mayor, as an NPC'],
     ['portal', 'the way out'],
   ]) {
     rec.ok(`${what} has its own symbol on the map`, (ic[key] || 0) > 0, { key, census: ic });
@@ -274,6 +279,70 @@ export async function run({ browser, wsPort, webPort, rec }) {
     Math.abs(((rots.north % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) - 2 * Math.PI) < 0.01
       || Math.abs(rots.north % (Math.PI * 2)) < 0.01,
     { north: rots.north });
+
+  /* ═══ v2.3.1817: THE QUEST STAR POINTS AT THE RIGHT PORTAL ═══
+     Owner: "Make star active quest mark marking portals that you're supposed
+     to go to on minimap for next steps."
+
+     "Is there a star" is not the claim worth testing — every portal already
+     draws a mark.  What matters is WHICH one it lands on, and that it lands
+     on nothing when there is nothing to point at.  So this drives the real
+     quest state and checks the route the renderer resolved, including the two
+     negative cases that a naive "star the destination" implementation gets
+     wrong. */
+  /* THE STAR IS EXCLUSIVE.  Asserted directly, because "the mayor uses npc"
+     and "the star means quest" are two halves of one fix and the second is
+     the one a future NPC_ICON entry would quietly break. */
+  const censusNow = await P.page.evaluate(() => ((window.__btMinimap || {}).icons) || {});
+  rec.ok('the star is not spent on anything but a quest destination',
+    !censusNow.star || censusNow.star === 0, { census: censusNow });
+
+  const route = () => P.page.evaluate(() => (window.__btMinimap || {}).questRoute || null);
+  const setQuests = (obj) => P.page.evaluate((q) => {
+    const S = window._gameState.current;
+    if (!S.rpg) S.rpg = {};
+    S.rpg._quests = q;
+  }, obj);
+
+  /* No quest -> nothing starred.  Without this, a star that is always drawn
+     passes every positive check below. */
+  await setQuests({});
+  await P.page.waitForTimeout(400);
+  rec.ok('with no active quest, no portal is starred', (await route()) === null, await route());
+
+  /* tut_1 sends you to FROST.  Standing in TOWN, the next step is not a frost
+     portal — town has none — it is the way up to the World View.  A literal
+     destination match would star nothing here and read as "no quest". */
+  await setQuests({ tut_1: 'active' });
+  await P.page.waitForTimeout(400);
+  const fromTown = await route();
+  rec.ok('a frost quest in TOWN stars the way out of town, not nothing',
+    !!(fromTown && fromTown.zoneId === 'worldview'), fromTown);
+  /* And it is a real tile of this zone, not an off-map coordinate — the same
+     failure two town reshapes have already caused for the exit tables. */
+  rec.ok('...at a coordinate inside the town zone',
+    !!(fromTown && fromTown.x > 0 && fromTown.y > 0
+       && fromTown.x < 52 * 32 && fromTown.y < 55 * 32), fromTown);
+
+  /* Already IN the target zone: the star must go away.  Otherwise it points
+     at the way home while the quest says hunt here. */
+  await P.page.evaluate(() => { window._gameState.current.currentZone = 'frost'; });
+  await P.page.waitForTimeout(400);
+  rec.ok('standing in the target zone stars nothing', (await route()) === null, await route());
+
+  /* From the hub the spoke itself is present, so it is starred directly. */
+  await P.page.evaluate(() => { window._gameState.current.currentZone = 'worldview'; });
+  await P.page.waitForTimeout(400);
+  const fromHub = await route();
+  rec.ok('from the World View it stars the FROST spoke itself',
+    !!(fromHub && fromHub.zoneId === 'frost'), fromHub);
+  /* GUARD: a different quest must move the star, or the check above is
+     satisfied by a hardcoded frost. */
+  await setQuests({ tut_4: 'active' });
+  await P.page.waitForTimeout(400);
+  const emberHub = await route();
+  rec.ok('...and a different quest stars a different spoke (guard)',
+    !!(emberHub && emberHub.zoneId === 'ember'), { fromHub, emberHub });
 
   await P.ctx.close().catch(() => {});
 }

@@ -615,7 +615,17 @@ export const GameApp = () => {
       {/* v2.3.1333: zone header rail — hosts the logout chip (with
           confirmation) + centered zone name; replaces BroTown's
           bt-exit-fab and floating zone label. */}
-      <ZoneHeader onExit={() => { window.location.href = '/?noresume=1'; }} />
+      {/* v2.3.1840: `login=1` alongside `noresume=1`.  noresume only stops the
+          resume SNAPSHOT; the boot check is a second road into the world and
+          it walked the player straight back in, which is why logging out did
+          not appear to do anything.  `guest` is carried through because it
+          identifies WHICH browser identity this tab is — dropping it would
+          log a guest tab out into the main character. */}
+      <ZoneHeader onExit={() => {
+        let guest = '';
+        try { guest = /[?&]guest=1\b/.test(window.location.search) ? '&guest=1' : ''; } catch (e) { guest = ''; }
+        window.location.href = `/?noresume=1&login=1${guest}`;
+      }} />
       <BottomDashboard />
       <ChatBubble />
       {/* InventorySurface, InspectCard, MoreOverlay are no longer mounted — */}

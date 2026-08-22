@@ -56,6 +56,7 @@ import { IMAGE_ZONE_MAPS } from '../tiledMaps.js';
 import { propsForZone } from '@/data/worldProps.js';
 import { ZONES } from '@/data/zones.js';
 import { TILE } from '@/data/constants.js';
+import { questRouteExit } from '@/game/questRoute.js'; /* v2.3.1817: which portal the active quest wants */
 
 /* Box size in CSS px.  104 is ~27% of a 390px phone's width — big enough
    that a 3px dot reads, small enough to leave the corner usable. */
@@ -77,8 +78,17 @@ const MARGIN = 10;   /* clears the 2px outer ring above */
 /* Icon footprint in CSS px.  11 is the smallest a distinct SHAPE survives at
    on a phone — below that everything becomes the same grey lozenge and only
    colour carries meaning, which is what the first cut of this shipped. */
-const ICON_PX = 9;
-const BIG_ICON_PX = 11;   /* buildings and quest markers: the things you steer by */
+/* ═══ v2.3.1819: BIGGER ═══
+   Owner: "Icons on the minimap need the be a bit larger."
+   9 -> 12 and 11 -> 14, a third up on each.  The glyphs were redrawn in
+   v2.3.1810 to carry real detail — a skull has sockets, the portal an arch
+   and a step — and at 9px that detail was below the point where any of it
+   reads, so the redraw was largely invisible on a phone.  The ratio between
+   the two sizes is kept (the things you steer by stay the larger pair), and
+   mp-minishot's pairwise distinctness check is what proves the bigger
+   glyphs still tell each other apart rather than merging into blobs. */
+const ICON_PX = 12;
+const BIG_ICON_PX = 14;   /* buildings and quest markers: the things you steer by */
 const SCALE = MINIMAP_PX / WINDOW_WORLD;
 
 /* Marker radius in CSS px, and colours.  Lantern Slate (docs/LANTERN-SLATE-SPEC.md):
@@ -114,10 +124,25 @@ const BUILDING_ICON = {
 /* Townsfolk who do a job get that job's glyph — the same one their building
    carries, so "the anvil on the map" is the blacksmith whether you find the
    forge or the man.  Anyone else is a plain townsfolk. */
+/* ═══ v2.3.1819: THE STAR MEANS QUEST, AND NOTHING ELSE ═══
+   Owner: "the start icon should be yellow for quests (if that's what it's
+   for)" — and the parenthesis is the real finding.  It was for two things.
+
+   The star was minted once and drawn TWICE in different colours: blue
+   (C_NPC) under Mayor Bro because he is an NPC, and gold (C_QUEST) on the
+   portal your active quest wants (v2.3.1817).  One glyph, two meanings,
+   and the only thing separating them was a colour the player was never told
+   about — which is exactly the collision the v2.3.1810 icon pass and
+   mp-minishot exist to prevent, reintroduced by hand.
+
+   Mayor Bro takes the plain `npc` mark instead.  He loses nothing: he
+   already carries the '!' / '?' quest pin above his head (drawn after the
+   NPC loop precisely so nothing can cover it), which says far more than a
+   star did — it says whether he has work for you or is waiting to be paid.
+   The star is now unambiguous and always gold. */
 const NPC_ICON = {
   blacksmith_bro: 'forge',
   storekeeper_bro: 'shop',
-  mayor_bro: 'star',
 };
 
 /* Same order as entityRenderer's SECTORS — S._renderFacing is published from
@@ -665,6 +690,29 @@ export class MinimapRenderer {
       this._mark(exits[i].x, exits[i].y, 'portal', C_EXIT, BIG_ICON_PX, 0);
     }
 
+    /* ═══ v2.3.1817: A STAR ON THE ONE YOU ACTUALLY WANT ═══
+       Owner: "Make star active quest mark marking portals that you're
+       supposed to go to on minimap for next steps."
+
+       Every portal above draws identically, so a player carrying "Bring 4
+       Snowman Remnants from Frost Ridge" is looking at five interchangeable
+       arches.  This marks the next step of the route (questRoute.js) — from
+       town that is the World View trail, from the World View it is the spoke
+       itself, and standing in the target zone it is deliberately nothing.
+
+       Drawn at the DECLARED exit's own tile rather than snapped to the
+       nearest painted portal tile: the declared coordinate is where the
+       trigger actually is, so the star marks the spot you must reach rather
+       than the art near it.
+
+       Above the plain portals (drawn after) and below the NPC quest pins
+       (drawn next), which is the same precedence the pins already have — the
+       thing you can act on right now outranks the thing you travel to. */
+    const routeTo = questRouteExit(zoneId, S.rpg);
+    if (routeTo) {
+      this._mark(routeTo.x, routeTo.y, 'star', C_QUEST, BIG_ICON_PX, 0, -9);
+    }
+
     /* '❗' = he has work for you, '❓' = you can hand it in.  Read straight off
        npc._questMarker, which is what the in-world badge over his head reads
        too — one source, so the map and the world can never disagree about
@@ -697,6 +745,11 @@ export class MinimapRenderer {
     try {
       window.__btIconDump = () => this._dumpIcons();
       window.__btMinimap = {
+        /* v2.3.1817: what the quest star is pointing at (null = nothing
+           starred).  A scenario cannot read a WebGL canvas, and "is there a
+           star" is not the claim worth testing — "is it on the RIGHT portal"
+           is. */
+        questRoute: routeTo ? { x: Math.round(routeTo.x), y: Math.round(routeTo.y), zoneId: routeTo.zoneId } : null,
         visible: true, zone: zoneId,
         panX: this.pan.x, panY: this.pan.y,
         spanW, spanH, markers: this._used,

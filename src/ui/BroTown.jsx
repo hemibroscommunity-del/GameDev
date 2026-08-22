@@ -91,6 +91,29 @@ import { pushHudPopup } from './XpFlyOverlay.jsx';
    up.  Exported so the headless check reads the real number instead of
    hard-coding a copy that can drift (tools/qa/mp/mp-questbanner.mjs). */
 export var QUEST_MSG_MS = 2200;
+/* ═══ v2.3.1816: THE ONES THAT SAY WHAT YOU GOT STAY UP LONGER ═══
+   Owner: "Make the reward completion message moments after collecting
+   required items stay on screen longer."
+
+   Split by KIND rather than raising the one number, because the three
+   banners do different jobs.  QUEST ACCEPTED! is a go-cue — you already know
+   what you accepted, you were just reading the card — and 2.2s suits it.
+   QUEST COMPLETED! and QUEST REWARD carry the thing you actually want to
+   read: which quest closed, and what it paid.  Those fire the moment the last
+   required item lands, which is usually mid-fight or mid-harvest with your
+   eyes somewhere else, so 2.2s routinely expired before the player looked up.
+
+   4200 is a little under twice as long: enough to look up, find the banner
+   and read a title plus a reward line, without holding the screen so long
+   that the next banner stacks up behind it (the queue gate waits out the
+   current one, so an over-long hold delays whatever follows). */
+export var QUEST_MSG_LONG_MS = 4200;
+/* ONE place decides, so the queue gate, the expiry sweep, the render gate and
+   the CSS fade cannot drift apart — a banner that is drawn while considered
+   expired (or held with no fade) is the failure that split constants cause. */
+export function questMsgMs(kind) {
+  return (kind === 'completed' || kind === 'reward') ? QUEST_MSG_LONG_MS : QUEST_MSG_MS;
+}
 
 /* v2.3.868: COOK_PAN_BY_FISH removed — it fed panSheetSrc to the
    canvas CookingMinigame (pan + doneness slider), retired in v2.3.853
@@ -134,11 +157,13 @@ import { wireGearWornSync } from '@/game/gearWornSync.js';
 import { wireTorchCrackle, wireThemeMusic } from '@/game/splashAudio.js';
 import { wireCharacterPortrait, wireSplashPrewarm, clampLongHairColor } from '@/game/characterCreatorEffects.js';
 import { wireTownMusic } from '@/game/townMusic.js';
+import { nextWeaponSlot } from '@/game/weaponSlots.js'; /* v2.3.1845: one weapon-cycle rotation */
 import { wireSpriteSheets } from '@/game/spriteSheets.js';
 import { wireSlimeAudio } from '@/game/slimeAudio.js';
 import { wireOrientationSync } from '@/game/orientationSync.js';
 /* v2.3.765: combat helpers extracted behavior-frozen (docs/REBUILD-PLAN.md Phase 0). */
 import { releasePeerDamage, addBuildProg, pushDmgPopup, monsterPopupY } from '@/game/combatHelpers.js';
+import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822: stuck-dead watchdog */
 /* v2.3.767: chat send + chat/emote handlers extracted behavior-frozen (REBUILD-PLAN Phase 2). */
 import { sendChatMessage } from '@/game/chat.js';
 /* v2.3.787: zone transitions (town exits, tile-9 return, dungeon entrance/exit)
@@ -718,6 +743,17 @@ export var BroTown = function BroTown(_ref0) {
   /* Expose state for autotest */
   window._gameState = stateRef;
   window._gameFns = {
+    /* v2.3.1826: trait setters on the autotest surface.  The owner's
+       constraint on the body-size fix was "without breaking anything else
+       (relative item scale like hats, beards, etc)", and the only honest way
+       to check that is to put a hat on the character and measure it — a
+       bare-headed run makes the assertion pass by measuring nothing.  Same
+       posture as createMonster above: a hook that mutates the world, so a
+       test can set up the case it is actually about. */
+    setHeadwear: setHeadwear,
+    setFacialHair: setFacialHair,
+    HEADWEAR_CATALOG: HEADWEAR_CATALOG,
+    FACIALHAIR_CATALOG: FACIALHAIR_CATALOG,
     addLifeSkillXp: addLifeSkillXp,
     awardSkillXp: awardSkillXp,
     createMonster: createMonster,
@@ -1535,7 +1571,7 @@ export var BroTown = function BroTown(_ref0) {
     window._setQuestMsg = function (m) {
       if (!m) { setQuestMsg(null); return; }
       var cur = questMsgRef.current;
-      if (m.queue && cur && Date.now() - cur.ts < QUEST_MSG_MS) {
+      if (m.queue && cur && Date.now() - cur.ts < questMsgMs(cur.kind)) {
         questQueueRef.current.push(m);
         if (questQueueRef.current.length > 3) questQueueRef.current.shift();
         return;
@@ -1545,6 +1581,10 @@ export var BroTown = function BroTown(_ref0) {
     /* published so the headless check reads the REAL hold time instead of
        keeping its own copy to drift out of sync */
     window.__QUEST_MSG_MS = QUEST_MSG_MS;
+    /* v2.3.1816: the per-kind hold too, so mp-questbanner asserts the real
+       numbers rather than a copy of them that drifts. */
+    window.__QUEST_MSG_LONG_MS = QUEST_MSG_LONG_MS;
+    window.__questMsgMs = questMsgMs;
   }
   var _useState185 = useState(1),
     _useState186 = _slicedToArray(_useState185, 2),
@@ -1696,7 +1736,28 @@ export var BroTown = function BroTown(_ref0) {
       headwearSel: headwearSel, hatColorSel: hatColorSel,
       shirtSel: shirtSel, shirtColorSel: shirtColorSel,
     });
-  }, [previewDir, skinSel, pantsSel, shoesSel, hairSel, hairColorSel, facialHairSel, beardColorSel, headwearSel, hatColorSel, shirtSel, shirtColorSel]);
+    /* ═══ v2.3.1818: showNameModal IS A DEPENDENCY ═══
+       Owner: "loading character assets seems slow (no char in image)."
+
+       Not slow — never drawn, and this was my own regression from
+       v2.3.1814.  wireCharacterPortrait opens with
+       `if (!previewCanvasRef.current) return;`, which was harmless while the
+       creator WAS the landing screen: the canvas existed on mount, so the
+       first run of this effect always found it.  Putting a login screen in
+       front of the creator made it mount LATER, so this effect ran against a
+       null ref, returned, and — with only the trait selections in its
+       dependency list — never ran again.  The stage sat empty until the
+       player happened to change a trait.
+
+       Diagnosed rather than guessed: the preview canvas was still 300x150
+       (the HTML default, so nothing had ever sized it) and carried no
+       `__pseq`, the counter drawCharacterPortrait stamps on its FIRST call.
+       No throw, no error — the draw simply never happened, which is why it
+       reads as a slow load.
+
+       Listing the mount flag is the whole fix: the effect re-runs when the
+       creator appears, the ref is attached by then, and the portrait draws. */
+  }, [showNameModal, previewDir, skinSel, pantsSel, shoesSel, hairSel, hairColorSel, facialHairSel, beardColorSel, headwearSel, hatColorSel, shirtSel, shirtColorSel]);
   /* v2.3.715: the welcome modal is dead network time -- start pulling the
      heavy in-game sheets (network/decode only; the CPU bakes still run
      behind the intro overlay via preloadPlayerAssets in joinTown) and warm
@@ -3743,6 +3804,29 @@ export var BroTown = function BroTown(_ref0) {
              hit-reaction sprite without triggering the stun visual. */
         var _hitLockActive = S.lastDamageTaken && (Date.now() - S.lastDamageTaken) < 250;
         var _realStunned = S._playerStunUntil && Date.now() < S._playerStunUntil;
+        /* ═══ v2.3.1822: STUCK-DEAD WATCHDOG ═══
+           Owner: "I died while I was on another tab and my character just got
+           stuck there.  I had to wait for a monster to attack me again and
+           die again while it was my active screen to respawn in town."
+
+           `S._dying` is cleared by exactly one thing — a `player_respawned`
+           from the worker — so any reason that message does not arrive is a
+           permanent freeze rather than a hiccup.  The real cause is fixed at
+           source (the worker now records an undelivered respawn and replays
+           it on rejoin, v2.3.1822 index.js/join.js), but that fix only helps
+           against a NEW worker and only when a rejoin actually happens.  This
+           is the client's own floor: the worker's respawn timer is 5s, so
+           being dead for 20s with the worker reporting us alive means the
+           message was lost, not late.  Stand up in town, which is where the
+           worker put us.
+
+           Deliberately requires hp > 0 from the wire: while we are really
+           dead the worker holds hp at 0 and echoes it, so this cannot fire
+           during an honest death, however long the respawn takes. */
+        if (S._dying && S._deathStart && (Date.now() - S._deathStart) > 20000
+            && S.rpg && S.rpg.hp > 0) {
+          try { applyLocalRespawn(S, 'town'); } catch (e) { S._dying = false; S._deathStart = 0; }
+        }
         /* Dead during the death-animation hold (HP=0 or _dying set by
            a death handler).  Suppresses joystick + keyboard + dodge so
            the corpse stays put until the respawn setTimeout fires. */
@@ -5767,13 +5851,13 @@ export var BroTown = function BroTown(_ref0) {
          an updater must stay pure, and shifting a ref inside one would drop
          a queued banner the moment React chose to call it twice. */
       var _qCur = questMsgRef.current;
-      if ((!_qCur || Date.now() - _qCur.ts > QUEST_MSG_MS) && questQueueRef.current.length) {
+      if ((!_qCur || Date.now() - _qCur.ts > questMsgMs(_qCur.kind)) && questQueueRef.current.length) {
         var _qNext = questQueueRef.current.shift();
         _qNext.ts = Date.now();
         setQuestMsg(_qNext);
       } else {
         setQuestMsg(function (prev) {
-          return prev && Date.now() - prev.ts > QUEST_MSG_MS ? null : prev;
+          return prev && Date.now() - prev.ts > questMsgMs(prev.kind) ? null : prev;
         });
       }
 
@@ -6294,10 +6378,17 @@ export var BroTown = function BroTown(_ref0) {
     var _S2$rpg$weapon, _S2$rpg$rangedWeapon;
     var S2 = stateRef.current;
     if (!S2.rpg) return;
-    var slots = ['melee', 'ranged'];
-    if (S2.rpg.staffWeapon) slots.push('staff');
-    var curIdx = slots.indexOf(S2.rpg.activeSlot || 'melee');
-    var nextSlot = slots[(curIdx + 1) % slots.length];
+    /* v2.3.1845: the rotation moved to game/weaponSlots.js, shared with the
+       joystick's next-weapon PREVIEW below — the two used to carry separate
+       copies and both had 'ranged' ungated, so a sword-only character was
+       shown a bow and then moved into an empty ranged slot.  Owner: "when you
+       only have sword (no bow or staff) it still shows bow icon when you
+       double tap to switch weapons."  A slot you cannot fill is not a weapon
+       to switch to. */
+    var nextSlot = nextWeaponSlot(S2.rpg);
+    /* Nowhere to go — one weapon, one slot.  Returning early keeps the beep
+       and the name popup for a swap that did not happen off the screen. */
+    if (nextSlot === (S2.rpg.activeSlot || 'melee')) return;
     S2.rpg.activeSlot = nextSlot;
     /* Mark the session as having an explicit cycle so the player_state
        handler stops accepting the server's persisted activeSlot
@@ -6708,13 +6799,14 @@ export var BroTown = function BroTown(_ref0) {
     var DOUBLE_TAP_MAX_DIST_SQ_PX = 2500; /* 50 px squared */
     var PREVIEW_HOLD_MS = 350;
     var SLOT_ICON = { melee: 'sword', ranged: 'bow', staff: 'staff' };
+    /* v2.3.1845: the SAME rotation the double tap performs (weaponSlots.js).
+       This is the preview that drew the bow the owner reported — it was a
+       second copy of the loop with 'ranged' ungated, so it promised a weapon
+       the character did not own, and the tap then delivered it. */
     var getNextWeaponSlot = function () {
       var S2 = stateRef.current;
       if (!S2 || !S2.rpg) return 'melee';
-      var slots = ['melee', 'ranged'];
-      if (S2.rpg.staffWeapon) slots.push('staff');
-      var curIdx = slots.indexOf(S2.rpg.activeSlot || 'melee');
-      return slots[(curIdx + 1) % slots.length];
+      return nextWeaponSlot(S2.rpg);
     };
     var lS = function lS(e) {
       /* v2.3.848: while the chop swipe window is open, the joystick zones
@@ -6823,12 +6915,24 @@ export var BroTown = function BroTown(_ref0) {
                after PREVIEW_HOLD_MS. */
             if (lJoyPreviewRef.current) {
               var nextSlot = getNextWeaponSlot();
-              lJoyPreviewRef.current.textContent = SLOT_ICON[nextSlot] || 'sword';
-              lJoyPreviewRef.current.style.display = 'flex';
-              if (lPreviewTimer.current) clearTimeout(lPreviewTimer.current);
-              lPreviewTimer.current = setTimeout(function () {
-                if (lJoyPreviewRef.current) lJoyPreviewRef.current.style.display = 'none';
-              }, PREVIEW_HOLD_MS);
+              /* v2.3.1845: with one weapon there is no swap target, and a
+                 preview of the weapon you are already holding is a promise
+                 the second tap cannot keep — nextWeaponSlot returns the
+                 CURRENT slot to say so.  Hide the disc instead of drawing it.
+                 (Written as an else rather than an early return: this sits
+                 inside the touch-end handler, and bailing out of it here
+                 would skip the tap bookkeeping below.) */
+              var curSlot = (stateRef.current.rpg && stateRef.current.rpg.activeSlot) || 'melee';
+              if (nextSlot === curSlot) {
+                lJoyPreviewRef.current.style.display = 'none';
+              } else {
+                lJoyPreviewRef.current.textContent = SLOT_ICON[nextSlot] || 'sword';
+                lJoyPreviewRef.current.style.display = 'flex';
+                if (lPreviewTimer.current) clearTimeout(lPreviewTimer.current);
+                lPreviewTimer.current = setTimeout(function () {
+                  if (lJoyPreviewRef.current) lJoyPreviewRef.current.style.display = 'none';
+                }, PREVIEW_HOLD_MS);
+              }
             }
           }
         } else {
@@ -7216,6 +7320,30 @@ export var BroTown = function BroTown(_ref0) {
     _bootRan.current = true;
     var alive = true;
     (function () {
+      /* ═══ v2.3.1840: LOGGING OUT LANDS ON THE DOOR, NOT BACK INSIDE ═══
+         Owner: "log out behavior should bring you back to main splash screen
+         of create new character or the use key option.  Right now it doesn't."
+
+         It didn't because logout reloaded with `?noresume=1`, and that flag
+         only suppresses the RESUME SNAPSHOT (the 10-minute rejoin further
+         down this file).  The boot check below is a separate road into the
+         world: it finds the stored key, asks the worker whether that key has
+         a character, and on yes sets bootPhase null — which auto-joins.  So
+         logging out reloaded the page and walked straight back in.
+
+         `?login=1` says "show me the door".  The key is deliberately NOT
+         cleared: characters are permanent and the passphrase IS the
+         character, so wiping it to force the login screen would throw the
+         character away to fix a routing bug.  LoginScreen offers both of the
+         things the owner asked for — "Log in with your Key" (which still has
+         the stored key) and "Create Character". */
+      var _forceLogin = false;
+      try { _forceLogin = /[?&]login=1\b/.test(window.location.search); } catch (e) { _forceLogin = false; }
+      if (_forceLogin) {
+        if (alive) setBootPhase('login');
+        try { window.__btBootRoute = 'login-forced'; } catch (e) {}
+        return;
+      }
       var phrase = null;
       try { phrase = getBtPassphrase(); } catch (e) { phrase = null; }
       if (!phrase) { if (alive) setBootPhase('login'); return; }
@@ -8528,7 +8656,7 @@ export var BroTown = function BroTown(_ref0) {
      that ate that tap would make the dialogue feel broken for two seconds.
      Sits at 26% height — above the centred card's middle, and clear of the
      level-up banner at 55%, so both are legible together. */
-  questMsg && Date.now() - questMsg.ts < QUEST_MSG_MS && /*#__PURE__*/React.createElement("div", {
+  questMsg && Date.now() - questMsg.ts < questMsgMs(questMsg.kind) && /*#__PURE__*/React.createElement("div", {
     className: "bt-quest-banner",
     "data-quest-banner": questMsg.kind,
     style: {
@@ -8552,7 +8680,10 @@ export var BroTown = function BroTown(_ref0) {
       position: 'absolute',
       left: '50%',
       top: '26%',
-      '--qm-out': (QUEST_MSG_MS - 500) + 'ms',
+      /* v2.3.1816: the fade starts 500ms before THIS banner's own hold
+         ends — a fixed 1700ms here would have the long banners fade out and
+         then sit invisible for two more seconds. */
+      '--qm-out': (questMsgMs(questMsg.kind) - 500) + 'ms',
       textAlign: 'center',
       /* v2.3.1745b: a PLATE, not bare text.  The first cut floated the words
          straight onto the dialogue and they landed across the giver's

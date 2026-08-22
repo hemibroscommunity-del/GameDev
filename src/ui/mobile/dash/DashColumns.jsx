@@ -4,7 +4,7 @@ import { getBagEntries } from './bagModel.js';
 import { BagTile } from './InventoryPanel.jsx';
 import { BagFilterChips } from './BagFilterChips.jsx';
 import { bagFilterBus } from './bagFilterBus.js';
-import { COMBAT_SKILLS, skillLevel } from '../sheet/heroModel.js';
+import { COMBAT_SKILLS, skillLevel, weaponSkillProgress } from '../sheet/heroModel.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { requestT2Category } from './T2Panel.jsx';
 import { heroSectionBus } from '../sheet/heroSectionBus.js';
@@ -201,8 +201,37 @@ export const DashColumns = ({ R }) => {
      three glyphs (sword / bow / wand) are the same ones Hero's build cards
      label in full, one tap away, and both aria-label and title spell it
      out here for anyone who needs it read aloud. */
+  /* Four digits do not fit a 40px bar, and a level-20 skill needs 4,800 XP.
+     Thousands collapse to one decimal so the pair stays inside its bar for
+     the whole level range rather than only the early one. */
+  const xpShort = (n) => (n >= 10000 ? `${Math.round(n / 1000)}k`
+    : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
   const pillW = combatPillWidth(vw);
   const pillH = combatPillHeight(vw);
+  /* v2.3.1853: the pill now carries THREE things across, so the icon stops
+     taking the pill's whole height.  MEASURED against the narrowest phone
+     the layout supports: at 360 the pill is 80px wide and 68 of that is
+     content once the padding is paid, which has to hold the icon, the bar
+     and the level.  Everything below is sized from that budget and asserted
+     by mp-bandsummary at 360 / 390 / 430. */
+  /* MEASURED, in the harness, at the width that binds.  The first cut of
+     this sized the three children by estimate and the bar came out 2px
+     short of its own text at 390 — mp-bandsummary reports "needs 36, has
+     34" rather than just "clipped", which is what turned four unknowns into
+     one arithmetic problem.  Note the level can read "+2" (an unspent-point
+     badge), not just a digit, so the budget is set against the WIDER of the
+     two things that span can hold. */
+  const tight = pillW < 88;
+  /* MEASURED against the narrower phone, where the content line is 68px:
+     the icon, "LV 1" and the "+2" have to share it, and the XP pair below
+     has the whole line to itself.  mp-bandsummary reports each row's needed
+     vs available width at 390 AND 360 — three earlier passes here were sized
+     by eye and each came out a few pixels over. */
+  const iconPx = tight ? 15 : 17;
+  const lvlFs = tight ? 10 : 11.5;
+  const badgeFs = tight ? 9.5 : 11;
+  const chipFs = tight ? 11 : 12.5;
+  const barH = tight ? 7 : 8;
   const combatPill = (s) => {
     /* ═══ v2.3.1668: these pills were the last live route into the
        retired tier-2 screen ═══
@@ -235,6 +264,10 @@ export const DashColumns = ({ R }) => {
        Fallback: with no stamp (an older save, or points from some other
        source) show it on all three rather than hide unspent points
        entirely — a missed badge costs the player their level-up. */
+    /* v2.3.1853: this skill's own progress toward its next level.  null at
+       the level cap, where "how far to the next level" has no answer and the
+       pill shows the icon and the level alone. */
+    const xp = p3cat ? weaponSkillProgress(rpg, p3cat) : null;
     const p3Pool = p3 ? prog3Pool(rpg) : 0;
     const p3From = rpg && rpg._p3PoolFrom;
     const unspent = p3
@@ -243,6 +276,10 @@ export const DashColumns = ({ R }) => {
     return (
       <div key={s.key}
         role="button"
+        /* v2.3.1856: the level-up flash is back on the CARD.  It is a
+           box-shadow glow and the card paints a border again, so the glow
+           has an edge to sit on — which it did not in v2.3.1854/1855, where
+           the row drew nothing and the halo floated around empty space. */
         className={unspent > 0 ? 'bt-build-flash' : undefined}
         onPointerUp={(e) => {
           e.stopPropagation();
@@ -256,31 +293,79 @@ export const DashColumns = ({ R }) => {
         aria-label={`${s.label} level ${lvl}`}
         title={`${s.label} — Lv ${lvl}${unspent > 0 ? `, ${unspent} unspent` : ''}`}
         style={{
+          /* ═══ v2.3.1856: THE STACKED MICRO-CARD ═══
+             Owner's mockup, after "fat pills" ran out of room: each skill is
+             a small CARD — icon and level across the top, the XP pair under
+             it, and a full-width bar along the bottom.
+
+             This is the shape that fits.  The one-line pill spent its width
+             on three things side by side, which is why the numbers had to
+             shrink twice and the name never fit at all; stacking gives the
+             bar the card's FULL width and lets the numbers have their own
+             line at a size worth reading.  The column is 94px at 390 and 80
+             at 360, and everything below is sized against the narrower one.
+
+             The skill NAME from the mockup is still absent, and deliberately:
+             "MELEE" at a readable size needs ~40px of a 68px content line
+             that already holds the icon, the level and the badge.  The icon
+             is the name — the same three glyphs Hero's build cards label in
+             full, one tap away — and both aria-label and title spell it out
+             for anyone who needs it read aloud. */
           width: pillW, height: pillH, flex: 'none', boxSizing: 'border-box',
-          display: 'flex', flexDirection: 'row', alignItems: 'center',
-          justifyContent: 'space-between', gap: 4, padding: '0 8px 0 4px',
-          background: unspent > 0 ? COL.accentFill : COL.wellSoft,
+          position: 'relative',
+          display: 'flex', flexDirection: 'column', justifyContent: 'center',
+          gap: 2, padding: '3px 5px',
+          background: COL.wellSoft,
           border: `1px solid ${unspent > 0 ? COL.accent : COL.tileBor}`,
-          /* Fully-rounded ends: the same pill the nav buttons use, so the
-             one non-square thing on the row reads as deliberate rather
-             than as a square that failed to fit. */
-          borderRadius: 999,
+          borderRadius: 8,
           cursor: 'pointer', touchAction: 'manipulation',
         }}>
-        <img src={s.iconSrc} alt="" draggable={false}
-          style={{
-            width: pillH - 8, height: pillH - 8,
-            flex: 'none', objectFit: 'contain', pointerEvents: 'none',
-          }} />
-        {/* The level, at 16px on its own — it was a 9px corner digit through
-            v2.3.1647, which is the exact kind of number the owner said a
-            player with weaker sight cannot read. */}
-        <span aria-hidden="true" style={{
-          flex: 'none',
-          fontSize: 16, fontWeight: 900, lineHeight: 1,
-          color: unspent > 0 ? COL.accent : COL.text,
-          fontVariantNumeric: 'tabular-nums', pointerEvents: 'none',
-        }}>{unspent > 0 ? `+${unspent}` : lvl}</span>
+        {/* TOP — what this is, and where it is. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 3, minWidth: 0 }}>
+          <img src={s.iconSrc} alt="" draggable={false}
+            style={{
+              width: iconPx, height: iconPx,
+              flex: 'none', objectFit: 'contain', pointerEvents: 'none',
+            }} />
+          <span aria-hidden="true" style={{
+            flex: 'none', fontSize: lvlFs, fontWeight: 900, lineHeight: 1,
+            color: unspent > 0 ? COL.accent : COL.text,
+            fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+          }}>LV {lvl}</span>
+          {unspent > 0 && (
+            <span aria-hidden="true" style={{
+              flex: 'none', marginLeft: 'auto',
+              fontSize: badgeFs, fontWeight: 900, lineHeight: 1,
+              color: COL.accent, fontVariantNumeric: 'tabular-nums',
+              whiteSpace: 'nowrap',
+            }}>+{unspent}</span>
+          )}
+        </div>
+        {/* MIDDLE — how much more, in full.  Its own line, so it is not
+            competing with the icon for width and can stay legible. */}
+        {xp && (
+          <div aria-hidden="true" style={{
+            fontSize: chipFs, fontWeight: 800, lineHeight: 1,
+            color: COL.text2, fontVariantNumeric: 'tabular-nums',
+            textAlign: 'center', whiteSpace: 'nowrap',
+            overflow: 'hidden', textOverflow: 'clip',
+          }}>{xpShort(xp.prog)}<span style={{ opacity: .6 }}>/{xpShort(xp.thresh)}</span></div>
+        )}
+        {/* BOTTOM — the bar, the card's full width.  A plain track now that
+            it carries no text: the fill can be solid and read at a glance
+            instead of washing out under digits. */}
+        {xp && (
+          <div aria-hidden="true" style={{
+            height: barH, borderRadius: barH / 2, overflow: 'hidden',
+            background: COL.wellDeep,
+            border: '1px solid rgba(255,255,255,.06)',
+          }}>
+            <div style={{
+              width: `${Math.min(100, (xp.prog / xp.thresh) * 100)}%`,
+              height: '100%', background: '#8AA9F9',
+            }} />
+          </div>
+        )}
       </div>
     );
   };

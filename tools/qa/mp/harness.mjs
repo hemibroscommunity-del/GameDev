@@ -67,6 +67,26 @@ export async function serveDist(port) {
     if (p === '/') p = '/index.html';
     let body = null;
     let type = MIME[extname(p)] || 'application/octet-stream';
+    /* v2.3.1829: /src-art/* serves tools/gear/src-art — the PRISTINE art a
+       generator was run against.  It does not ship, and it is not in dist,
+       so a scenario that wants to prove "the tool changed only what it
+       claimed to change" has no other way to see the before.  Read-only and
+       path-guarded: a scenario is trusted, a traversal out of the folder is
+       not. */
+    if (p.startsWith('/src-art/')) {
+      const rel = p.slice('/src-art/'.length);
+      const base = join(REPO, 'tools/gear/src-art');
+      const full = join(base, rel);
+      if (full.startsWith(base)) {
+        try { body = await readFile(full); } catch { body = null; }
+      }
+      try {
+        if (s.headersSent) return;
+        if (!body) { s.writeHead(404); return s.end('no'); }
+        s.writeHead(200, { 'content-type': type });
+        return s.end(body);
+      } catch { return; }
+    }
     try {
       body = await readFile(join(DIST, p));
     } catch {
@@ -674,6 +694,127 @@ export function wireCounts(P) {
 }
 
 /* ── tiny assertion recorder ───────────────────────────────────────────── */
+/* ═══ v2.3.1827: WALK MAYOR BRO'S DIALOGUE ═══
+ *
+ * v2.3.1820 split the quest card in two, at the owner's ask: the NPC now
+ * speaks in his own window (`.bt-npcdlg`, his lines in sequential chunks
+ * behind a Next button) and the offer is a SECOND panel (`.bt-qoffer`) that
+ * shows the items being handed over.  Every scenario that used to find one
+ * `.bt-inspect-card` and tap Accept now has two surfaces to get through.
+ *
+ * One helper, because four scenarios drive this flow and four hand-rolled
+ * chunk loops is how they drift apart — which is exactly what the split
+ * already cost once: mp-questline went red on the retired selector while the
+ * flow underneath it was working perfectly.
+ *
+ * Returns the surface it ended on, so a caller can assert on it rather than
+ * guess: 'offer' when the offer panel is up, 'dialogue' if it ran out of
+ * clicks still talking, or null if nothing opened at all.
+ */
+export async function advanceNpcDialogue(P, { max = 12, onChunk = null } = {}) {
+  for (let i = 0; i < max; i++) {
+    const where = await P.page.evaluate(() => {
+      if (document.querySelector('.bt-qoffer')) return 'offer';
+      if (document.querySelector('.bt-npcdlg')) return 'dialogue';
+      return null;
+    });
+    if (where !== 'dialogue') return where;
+    /* Hand each chunk to the caller before clicking past it — his script is
+       split across chunks, so a scenario asserting on what he SAYS can only
+       see one line at a time otherwise. */
+    if (onChunk) {
+      onChunk(await P.page.evaluate(() => {
+        const t = document.querySelector('.bt-npcdlg-text');
+        return t ? (t.innerText || '') : '';
+      }));
+    }
+    /* Click the Next BUTTON rather than the window: the window advances on
+       any click, so tapping it works — but only the button proves the
+       control a player actually aims at is wired. */
+    const clicked = await P.page.evaluate(() => {
+      const b = document.querySelector('.bt-npcdlg-next');
+      if (!b) return false;
+      b.click();
+      return true;
+    });
+    if (!clicked) return 'dialogue';
+    await P.page.waitForTimeout(220);
+  }
+  return P.page.evaluate(() => (document.querySelector('.bt-qoffer') ? 'offer'
+    : document.querySelector('.bt-npcdlg') ? 'dialogue' : null));
+}
+
+/** Tap the offer panel's one primary — Accept Quest, or Claim Reward.
+ *
+ *  A REAL Playwright click, not an in-page `.click()`, and that is the whole
+ *  point: an in-page click dispatches straight at the node and skips hit
+ *  testing, so it happily "presses" a button that is underneath something
+ *  else.  v2.3.1827 shipped exactly that — the offer panel rendered inside
+ *  `.brotown-wrap`, the dashboard band covered the lower two thirds of it,
+ *  and the centre of Claim Reward was unreachable to a finger while every
+ *  in-page click in the suite kept passing.  A real click times out there,
+ *  which is what a player experiences and therefore what the test must do.
+ */
+export async function confirmQuestOffer(P, { timeout = 6000 } = {}) {
+  const blocked = await questOfferBlocked(P);
+  if (blocked) return false;
+  try {
+    await P.page.locator('[data-tut="qoffer-confirm"]:visible').first()
+      .click({ timeout });
+  } catch (e) {
+    return false;
+  }
+  await P.page.waitForTimeout(500);
+  return true;
+}
+
+/** Pick the skill an XP-paying turn-in has to name, INSIDE the offer panel.
+ *
+ *  v2.3.1827.  The worker refuses an XP-paying turn-in that does not name a
+ *  skill (v2.3.1669), so the claim button renders aria-disabled until one is
+ *  chosen — which is why a missed skill click shows up later as "the turn-in
+ *  button could be clicked: false" and reads like a broken button.
+ *
+ *  Scoped to `.bt-qoffer` and matched on exact text, because a page-wide
+ *  text search for "Melee" also finds the dashboard behind the scrim; the
+ *  old call site swallowed that ambiguity with `.catch(() => {})` and left
+ *  the confirm disabled with nothing to say why.  Returns false rather than
+ *  throwing, so the caller can assert on it AT the point it happened.
+ */
+export function chooseQuestSkill(P, name) {
+  return P.page.evaluate((want) => {
+    const panel = document.querySelector('.bt-qoffer');
+    if (!panel) return false;
+    const b = Array.from(panel.querySelectorAll('button'))
+      .find((x) => (x.innerText || '').trim().toLowerCase() === want.toLowerCase());
+    if (!b) return false;
+    b.click();
+    return true;
+  }, name).then(async (ok) => { await P.page.waitForTimeout(300); return ok; });
+}
+
+/** Does the offer panel's primary still refuse to be pressed? */
+export function questOfferBlocked(P) {
+  return P.page.evaluate(() => {
+    const b = document.querySelector('[data-tut="qoffer-confirm"]');
+    return !!b && b.getAttribute('aria-disabled') === 'true';
+  });
+}
+
+/** Is either half of the NPC conversation on screen? */
+export function npcDialogueOpen(P) {
+  return P.page.evaluate(() => !!document.querySelector('.bt-npcdlg, .bt-qoffer'));
+}
+
+/** Close whichever half is up, the way a player does — the scrim. */
+export async function closeNpcDialogue(P) {
+  await P.page.evaluate(() => {
+    const s = document.querySelector('.bt-npcdlg-scrim');
+    if (s) s.click();
+  });
+  await P.page.waitForTimeout(400);
+}
+
 export function recorder(suite) {
   const rows = [];
   return {

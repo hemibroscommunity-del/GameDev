@@ -97,108 +97,111 @@ export const IdentityStrip = ({ band = false, gutter = 0, trackW = null }) => {
      unchanged flex row below — the pixel-identical rule at the top of this
      file is why this is a branch and not an edit. */
   if (band) {
-    const portraitNode = (
+    /* ═══ v2.3.1848: THE BAND IS A SUMMARY, NOT A HEAD ═══
+     * Owner: "in the top dashboard where it shows the character head preview
+     * I want to replace it with a compact summary like this" — a mockup of
+     * three lines: NAME · LV n, an XP bar with a percentage, and a row of
+     * DPS / DEF / HP / coins.  Then: "the XP bar will need to be shown based
+     * on whatever weapon is closest to the next level with a little weapon
+     * icon preceding it.  The coins amount can find a different area within
+     * that space — whatever fits best."
+     *
+     * THE PORTRAIT PAYS FOR THE SECOND LINE.  40px of picture plus its gap
+     * is 46px of a row with ~174 to give once the nav group has taken its
+     * share, and the summary does not fit without them.
+     *
+     * WHAT THE PORTRAIT WAS DOING, and where each job went — this is the
+     * part that breaks quietly if it is not enumerated:
+     *   - it was the HERO BUTTON (v2.3.1637).  The whole summary block is
+     *     that button now, which is a bigger target, not a smaller one.
+     *   - it carried the UNSPENT-POINTS badge (v2.3.1649).  That moves onto
+     *     the name line, right after the level, where it still reads as
+     *     "progress waiting" and still shows the GLOBAL total.
+     *   - it carried the PRESENCE DOT (connection status).  It becomes the
+     *     dot before the name — same colour rule, same meaning, and it is
+     *     the only place on the resting screen that says you are connected.
+     * Drop any of the three and the band looks fine and is worse.
+     *
+     * ═══ v2.3.1849/1850: WHAT WAS CUT ═══
+     * The first build followed the mockup exactly — three lines, with DPS /
+     * DEF / HP / coins across the bottom — and the owner's read was "way too
+     * busy", asking what gives the most useful information without overload.
+     * Four labelled units at 8-11px inside 174px is the busyness; the fix is
+     * fewer things, not smaller type.  DEF and HP came off first, then the
+     * owner took the rest: "best might just be to remove the bottom row (all
+     * the DPS, def, and hp data)".
+     *
+     * All three are gone, and the reasons run the same way:
+     *
+     *   HP could only ever be MAX hp here — live HP is on the world HUD an
+     *   inch away, during the only moments it matters — and max hp changes a
+     *   few times a level and never during play.  Permanent width for rare
+     *   news.
+     *
+     *   DEF reads 0% for every character until their first armour, and it
+     *   only moves on the Equipment screen, where the aggregate grid shows
+     *   it beside everything it should be compared with.
+     *
+     *   DPS survived one round on the argument that it is the one combat
+     *   number nowhere else at a glance.  True, and still not enough: it is
+     *   a number you consult when CHANGING something, and changing something
+     *   happens on the screen this whole block opens.  A stat you read on
+     *   purpose does not need to be on screen always.
+     *
+     * What is left is two lines that are each about a thing that MOVES while
+     * you play: who you are and what you can spend, and how close the
+     * nearest weapon is to its next level.  Everything cut is one tap away.
+     */
+
+    return (
       <div
         role="button" aria-label="Hero" title="Hero"
         onPointerUp={(e) => { e.stopPropagation(); dashboardPanelBus.open('hero'); }}
         style={{
-          position: 'relative', width: 40, height: 40, flex: 'none',
+          flex: '1 1 auto', minWidth: 0, marginRight: gutter,
+          display: 'flex', flexDirection: 'column', justifyContent: 'center',
           cursor: 'pointer', touchAction: 'manipulation',
+          fontFamily: 'Source Sans 3, sans-serif',
         }}>
-        <img
-          src={portrait || (S && S.myAvatar) || '/icons/ui/profile.webp?v=2.3.128'}
-          alt="Portrait" draggable={false}
-          style={{
-            width: '100%', height: '100%',
-            objectFit: 'cover', imageRendering: 'pixelated',
-            borderRadius: 8, userSelect: 'none', pointerEvents: 'none',
-          }} />
-        <span style={{
-          position: 'absolute', right: -2, bottom: -2,
-          width: 7, height: 7, borderRadius: '50%',
-          background: (S && S._realtimeStatus === 'connected') ? '#55B98A' : '#D95C54',
-          border: '2px solid #202C32',
-        }} />
-        {/* v2.3.1649: the unspent-points nag moves ONTO the portrait.  It
-            was a standalone brass chip in the flex row, and track 1 has no
-            width to spare for one — but the portrait IS the Hero button
-            (v2.3.1637), Hero is where points are spent, and a count badge
-            on the control that opens the screen is a truer place for it
-            than a chip floating beside the name.
-            This also keeps the GLOBAL total visible.  The COMBAT pills
-            show per-skill unspent, but only for melee/bow/magic — after
-            v2.3.1648 dropped the other three parents from the band, points
-            waiting in Vitality/Defense/Stamina would otherwise have had no
-            signal anywhere on the resting screen. */}
-        {unspent > 0 && (
-          <span aria-label={unspent + ' unspent build points'} style={{
-            position: 'absolute', top: -4, right: -6,
-            minWidth: 17, height: 17, padding: '0 4px',
-            borderRadius: 9, background: COL.accent, color: COL.onAccent,
-            fontSize: 11, fontWeight: 900, lineHeight: '17px', textAlign: 'center',
-            fontVariantNumeric: 'tabular-nums', pointerEvents: 'none',
-            border: '1px solid rgba(9,14,17,.55)',
-          }}>+{unspent}</span>
-        )}
-      </div>
-    );
-    return (
-      <div style={{
-        /* v2.3.1653 (owner: the dashboard becomes the bag; EQUIPPED moves
-           to Hero).  The strip goes back to a plain flex row that simply
-           fills the space left of the nav group.
+        {/* ═══ v2.3.1853: THE BAND IS THE PURSE ═══
+            Owner: "actually just put the coins there.  The dashboard menu
+            has the 3 skills on it already for xp."
 
-           IT USED TO BE A GRID on the columns row's tracks, and that was
-           right while there were three panels below it to align to: gold
-           had to end on the bag panel's edge and DPS had to centre over
-           the weapon cell.  Neither promise survives its subject — the bag
-           is nearly the whole row now, so every left-hand pixel is "above
-           the inventory slots", and there is no weapon on the band to sit
-           over.  Keeping the grid would have been alignment to landmarks
-           that no longer exist. */
-        flex: '1 1 auto', minWidth: 0, marginRight: gutter,
-        display: 'flex', alignItems: 'center', gap: 6,
-        fontFamily: 'Source Sans 3, sans-serif',
-      }}>
-        {portraitNode}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          {/* LINE 1 — name and level. */}
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
-            <span style={{
-              flex: '0 1 auto', minWidth: 0,
-              fontSize: 14, fontWeight: 700, color: COL.text,
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-            }}>{(S && S.myName) || 'Anon'}</span>
-            <span style={{ flex: 'none', fontSize: 12, fontWeight: 600, color: COL.text2 }}>Lv {level}</span>
-          </div>
-          {/* LINE 2 — progress, then the two numbers, right-aligned.  The
-              XP bar is the only element here that can give up width, so it
-              is the only one that flexes. */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-            <div title={`${lp.prog} / ${lp.thresh} XP`} style={{
-              flex: '1 1 auto', minWidth: 20, height: 5, borderRadius: 3,
-              background: 'rgba(0,0,0,.5)', border: '1px solid rgba(255,255,255,.08)',
-              overflow: 'hidden',
-            }}>
-              <div style={{ width: `${Math.min(100, (lp.prog / lp.thresh) * 100)}%`, height: '100%', background: '#8AA9F9' }} />
-            </div>
-            <span style={{
-              flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 3,
-              color: COL.gold, fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
-            }}>
-              <img src="/icons/popups/gold.webp" alt=""
-                style={{ width: 14, height: 14, imageRendering: 'pixelated', display: 'block' }} />
-              <span className="bt-coin-glimmer">{Number(gold).toLocaleString()}</span>
-            </span>
-            {/* v2.3.1653's DPS chip is GONE (owner, v2.3.1655: "remove DPS
-                on character HUD area within dashboard to make room for one
-                more navigation button for lifeskills").  It is not lost —
-                Hero > Overview carries DPS in the aggregate stat grid, and
-                since v2.3.1653 that screen is one tap away on the Character
-                button this trade helps pay for.  The band keeps the two
-                numbers no other screen shows at a glance: progress to the
-                next level, and what you can spend. */}
-          </div>
+            And it does — the three combat pills a few pixels below this row
+            carry the XP now, one bar per skill (v2.3.1853, DashColumns), so
+            a fourth XP readout up here would be the same information a
+            third time.  This strip has shed, in order: the portrait, the
+            stat row, the name and level, and now the XP pair — each because
+            something else on screen already said it.  What is left is the
+            one number nothing else on the resting screen shows.
+
+            The 6px presence dot stays.  It is not a readout — it is the
+            only thing on the resting screen that says whether a 100%-server
+            game is still talking to its server. */}
+        {/* v2.3.1857 (owner: "center the coins within that extra space,
+            remove the dot to the left of it").  The presence dot is gone
+            with it — it was the last thing on the resting screen that said
+            whether a 100%-server game was still connected, so noting where
+            that signal now lives: nowhere on the band.  The reconnect
+            overlay still fires on a real drop, which is the loud half of
+            what the dot did; the quiet half — "yes, still fine" — is what
+            this trades away for a centred purse. */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          minWidth: 0,
+        }}>
+          <span style={{
+            flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 4,
+          }}>
+            <img src="/icons/popups/gold.webp" alt="" draggable={false} style={{
+              width: 20, height: 20, imageRendering: 'pixelated', display: 'block',
+              pointerEvents: 'none',
+            }} />
+            <span className="bt-coin-glimmer" style={{
+              fontSize: 17, fontWeight: 800, color: COL.gold,
+              fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+            }}>{Number(gold).toLocaleString()}</span>
+          </span>
         </div>
       </div>
     );

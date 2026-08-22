@@ -83,6 +83,13 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
 
   // Zone change bypasses the delta gate (players legitimately jump to
   // the new zone's spawn coords).
+  /* v2.3.1817: frost is gated on Mayor Bro's first step now (_zoneUnlocked),
+     and a refused zone change is dropped whole — which would make this read as
+     "the teleport gate blocked it" when the gate is exactly what this line
+     exists to prove gets BYPASSED on a zone change.  Granting the quest keeps
+     the subject of the test intact. */
+  if (!psA._quests) psA._quests = Object.create(null);
+  psA._quests.tut_1 = 'active';
   await room.webSocketMessage(wsA, JSON.stringify({ type: 'move', x: 90000, y: 90000, z: 'frost' }));
   check('zone-change move bypasses gate', psA.z === 'frost' && psA.x === 90000, { z: psA.z, x: psA.x });
 

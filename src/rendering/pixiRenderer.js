@@ -314,7 +314,9 @@ export async function initPixiRenderer(canvas) {
     update._lastStages.tileMs = update._lastStages.entityMs = update._lastStages.effectsMs = update._lastStages.fpsMs = update._lastStages.appMs = 0;
 
     const _t0 = performance.now();
-    try { tileRenderer.update(cx, cy, viewW, viewH); }
+    /* v2.3.1822: S passed in so the tile pass can read the LIVE quest table
+       and paint a locked zone's portal as locked (see tileRenderer). */
+    try { tileRenderer.update(cx, cy, viewW, viewH, S); }
     catch (e) { if (!update._tileErr) { update._tileErr = true; console.error('[pixi-render] tileRenderer threw', e && e.message, e && e.stack); } }
     const _t1 = performance.now();
     update._lastStages.tileMs = _t1 - _t0;
@@ -428,6 +430,33 @@ export async function initPixiRenderer(canvas) {
        white silhouette is a fact about a filter and a scale on a display
        object — a screenshot can see a pale blob but cannot tell it from a
        monster that simply has not loaded its art. */
+    /* v2.3.1824: read-only probe of where a slime is actually DRAWN.
+       Owner: "the hitbox for the slime is way off.  All hitboxes need to be
+       based on where the actual base of where the sprite is shown in the
+       game."  Whether the blob's base lands on the monster's own y is a fact
+       about a Pixi anchor, a scale and two container transforms; a
+       screenshot can see a slime and a coin pile but cannot say which of
+       them is in the wrong place, and window._gameState cannot see a sprite
+       at all.  Reports the geometry and lets the test do the arithmetic. */
+    slimeBaseProbe: () => {
+      const out = [];
+      for (const [id, d] of entityRenderer.monsterDisplays) {
+        if (!d || !d._isFodder) continue;
+        const sb = d._spriteBody;
+        if (!sb || !sb.visible || !sb.texture || !sb.texture.height) continue;
+        out.push({
+          id,
+          worldY: d.y,
+          anchorY: sb.anchor.y,
+          sbY: sb.y,
+          texH: sb.texture.height,
+          scaleY: Math.abs(sb.scale.y),
+          containerScaleY: d.scale.y,
+          state: d._slimeState || null,
+        });
+      }
+      return out;
+    },
     spawnFxProbe: () => {
       const out = [];
       for (const [id, d] of entityRenderer.monsterDisplays) {
@@ -466,6 +495,98 @@ export async function initPixiRenderer(canvas) {
        The plate is hidden for one synchronous measurement so the body's bounds
        exclude it, then restored before returning — no frame renders in
        between, so nothing is visible to the player. */
+    /* v2.3.1826: read-only probe of HOW BIG the player is actually drawn, per
+       facing.  Owner: "Character's size is inconsistent across different
+       directions (east, southwest, etc).  I don't know the best way to fix
+       that."
+
+       This cannot be answered from the sheets alone: between the PNG and the
+       screen sit an on-disk downscale (DISPLAY_DS), an upscale back to the
+       authored frame height, a per-(pose,dir) normalisation table, LOCAL_SCALE,
+       PLAYER_SIZE_MULT and the zone's player scale.  And it cannot be answered
+       from getBounds() either — a player cell is fixed-size with transparent
+       margin under the boots, so bounds measure the CELL, not the figure.
+
+       So: read the texture's own pixels for the frame currently on screen,
+       find the painted crown and feet rows, and convert to screen px through
+       the live transform.  That is the figure height a person actually sees. */
+    bodyFigureProbe: () => {
+      const pd = entityRenderer.playerDisplay;
+      const sb = pd && pd._spriteBody;
+      if (!pd || !sb || !sb.visible || !sb.texture) return null;
+      const tex = sb.texture;
+      const src = tex.source && tex.source.resource;
+      if (!src) return { err: 'texture source is not readable' };
+      const fr = tex.frame || { x: 0, y: 0, width: tex.width, height: tex.height };
+      let painted;
+      try {
+        const cv = document.createElement('canvas');
+        cv.width = Math.max(1, Math.round(fr.width));
+        cv.height = Math.max(1, Math.round(fr.height));
+        const c = cv.getContext('2d', { willReadFrequently: true });
+        c.drawImage(src, fr.x, fr.y, fr.width, fr.height, 0, 0, cv.width, cv.height);
+        const p = c.getImageData(0, 0, cv.width, cv.height).data;
+        let top = -1, bot = -1, l = cv.width, r = -1;
+        for (let y = 0; y < cv.height; y++) {
+          for (let x = 0; x < cv.width; x++) {
+            if (p[(y * cv.width + x) * 4 + 3] < 24) continue;
+            if (top < 0) top = y;
+            bot = y;
+            if (x < l) l = x;
+            if (x > r) r = x;
+          }
+        }
+        painted = { top, bot, l, r, h: bot - top + 1, w: r - l + 1, cellH: cv.height, cellW: cv.width };
+      } catch (e) {
+        return { err: 'texture is tainted or unreadable: ' + (e && e.message) };
+      }
+      /* What ONE texture pixel is worth on screen, measured through the whole
+         chain rather than multiplied out of the factors by hand — that is the
+         arithmetic this probe exists to avoid trusting. */
+      const unitY = sb.toGlobal({ x: 0, y: 1 }).y - sb.toGlobal({ x: 0, y: 0 }).y;
+      return {
+        facing: pd._lastFacingKey || null,
+        pose: pd._lastPoseKey || null,
+        painted,
+        /* v2.3.1832: WHICH FRAME OF THE CYCLE THIS IS.  The run cycle bobs the
+           figure between ~68 and ~83 screen px, so a caller that samples on a
+           timer is really sampling the bob, and 14 shots leave ~1% of error in
+           the median — enough that southeast and southwest, which are ONE
+           sheet mirrored and therefore identical by construction, read 1%
+           apart.  Reporting the frame lets a caller cover the cycle by index
+           and take a converged median instead of hoping. */
+        frameIx: (sb.texture && sb.texture.frame && sb.texture.frame.width)
+          ? Math.round(sb.texture.frame.x / sb.texture.frame.width) : 0,
+        frameW: (sb.texture && sb.texture.frame) ? sb.texture.frame.width : 0,
+        unitPxY: +unitY.toFixed(5),
+        figurePx: +(painted.h * unitY).toFixed(2),
+        widthPx: +(painted.w * unitY).toFixed(2),
+        /* Where the boots land on screen, relative to the display's origin —
+           a figure that changes height about a fixed centre also moves its
+           feet, which reads as the character bobbing as it turns. */
+        feetOffsetPx: +((painted.bot - (painted.cellH - 1) / 2) * unitY).toFixed(2),
+        spriteScaleY: +sb.scale.y.toFixed(5),
+        /* v2.3.1826: the worn traits, in the SAME screen units, so a test can
+           check that a hat keeps its proportion to the body across facings —
+           the owner's actual constraint on the size fix ("without breaking
+           anything else (relative item scale like hats, beards, etc)"). */
+        hatPx: pd._headwearSprite && pd._headwearSprite.visible
+          ? +(pd._headwearSprite.getBounds().height).toFixed(2) : 0,
+        beardPx: pd._facialHairSprite && pd._facialHairSprite.visible
+          ? +(pd._facialHairSprite.getBounds().height).toFixed(2) : 0,
+        /* The trait's scale AGAINST the body's, which is the invariant that
+           actually matters: hat-height / body-height varies between facings
+           because each facing's hat ART has its own frame size, and that is
+           authored, not a bug.  What must never change is that the trait is
+           scaled BY the body — so this ratio is what a body-scale edit is
+           tested against.  Absolute values: scale.x carries the mirror sign,
+           and west is east flipped. */
+        hatScaleRatio: pd._headwearSprite && pd._headwearSprite.visible && sb.scale.y
+          ? +(Math.abs(pd._headwearSprite.scale.y) / Math.abs(sb.scale.y)).toFixed(5) : 0,
+        beardScaleRatio: pd._facialHairSprite && pd._facialHairSprite.visible && sb.scale.y
+          ? +(Math.abs(pd._facialHairSprite.scale.y) / Math.abs(sb.scale.y)).toFixed(5) : 0,
+      };
+    },
     namePillProbe: () => {
       const pd = entityRenderer.playerDisplay;
       const pill = pd && pd._namePill;

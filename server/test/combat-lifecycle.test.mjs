@@ -923,6 +923,56 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   delete room.playerState['stuck1'];
   delete room.playerState['stuck2'];
 
+  /* ── v2.3.1822: A RESPAWN NOBODY HEARD ──
+     Owner: "I also died while I was on another tab and my character just got
+     stuck there.  I had to wait for a monster to attack me again and die
+     again while it was my active screen to respawn in town."
+
+     A backgrounded tab's socket is suspended, so the respawn runs with no ws
+     and `player_respawned` — the ONLY thing that clears the client's death
+     state — is dropped.  The respawn still HAPPENED server-side, so the debt
+     has to be remembered and replayed on the next join. */
+  {
+    room._wsBySessionId = () => null;                     // the tab is gone
+    const away = { hp: 0, maxHp: 100, z: 'frost', dying: true, respawnAt: Date.now() - 1, inventory: {} };
+    room.playerState['away1'] = away;
+    room._tickPlayerRespawn();
+    check('background death: the respawn still runs with nobody listening',
+      away.dying === false && away.z === 'town' && away.hp === away.maxHp,
+      { dying: away.dying, z: away.z, hp: away.hp });
+    check('background death: the undelivered respawn is remembered',
+      away._respawnOwed === true, { owed: away._respawnOwed });
+
+    /* GUARD: a respawn that WAS delivered owes nothing — otherwise the flag
+       would be set on every respawn and the assertion above would pass for
+       the wrong reason. */
+    const liveWs = fakeWs('live');
+    room._wsBySessionId = () => liveWs;
+    const here = { hp: 0, maxHp: 100, z: 'frost', dying: true, respawnAt: Date.now() - 1, inventory: {} };
+    room.playerState['here1'] = here;
+    room._tickPlayerRespawn();
+    check('foreground death: player_respawned is sent',
+      msgsOfType(liveWs, 'player_respawned').length === 1, liveWs.sent.map((m) => m.type));
+    check('foreground death: nothing is owed',
+      here._respawnOwed === undefined, { owed: here._respawnOwed });
+
+    /* A send that THREW did not arrive either — the bare swallow this
+       replaced is exactly how the failure stayed invisible. */
+    const deadWs = fakeWs('dead');
+    deadWs.send = () => { throw new Error('socket closed'); };
+    room._wsBySessionId = () => deadWs;
+    const threw = { hp: 0, maxHp: 100, z: 'frost', dying: true, respawnAt: Date.now() - 1, inventory: {} };
+    room.playerState['threw1'] = threw;
+    room._tickPlayerRespawn();
+    check('a respawn whose send threw is owed too',
+      threw._respawnOwed === true, { owed: threw._respawnOwed });
+
+    delete room.playerState['away1'];
+    delete room.playerState['here1'];
+    delete room.playerState['threw1'];
+    room._wsBySessionId = (id) => (id === 'stuck1' || id === 'stuck2' ? ws : null);
+  }
+
   /* ── v2.3.1688: dying must not destroy the GATHERING TOOLS ──
    * Owner: "Logs are not getting collected after woodcutting a tree. Maybe
    * it's the new requirement of having a woodcutting axe interfering with it."

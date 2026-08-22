@@ -21,10 +21,61 @@ import { getHatRef } from './traits/hatColorCatalog.js';
 import { headwearIsSolid } from './traits/headwearCatalog.js';
 import { SOLID_ONLY_HAT_COLOR } from './traits/recolorOptions.js'; /* v2.3.1109: shared per-hat recolour reference (call-time use; cyclic import is safe) */
 import { upscaleToFrameHeight } from './spriteScale.js'; /* v2.3.1110: restore downscaled shirt sheet to 256 frame */
+/* v2.3.1815: worn armour in the portrait.  gearArt resolves a recoloured set
+   to its DONOR sheet (copperplate -> steelplate) and materialRgb gives the
+   metal to multiply it by — the same two-step the world renderer uses, so a
+   copper plate cannot come out steel here while it is copper in play. */
+import { gearArt, gearMaterial } from './gearVariants.js';
+import { materialRgb, weaponMaterial } from './traits/materialTints.js'; /* v2.3.1842: weapons share the metals table */
+
+import { weaponArtUrl } from './weaponSprites.js';        /* v2.3.1841 */
+import { getShieldArt } from './shieldSprites.js';        /* v2.3.1841 */
+import { getWeaponHandle, getAnchor } from './playerAnchors.js'; /* v2.3.1841 */
 
 const FRAME = 256;
+
+/* ═══ v2.3.1841: THE KIT YOU ARE ACTUALLY HOLDING ═══
+ *
+ * Owner: "It should also reflect the currently equipped items (like sword and
+ * shield) but right now it doesn't."
+ *
+ * The armour slots were already here (v2.3.1815) because armour ships as
+ * body-ALIGNED sheets — draw them at (0,0,FRAME,FRAME) and they land on the
+ * body by construction.  A weapon and a shield are not aligned sheets: the
+ * world places them, one from a grip anchor and one from an offset off the
+ * body's centre, and both are stated in WORLD pixels.
+ *
+ * So the numbers are converted rather than re-invented.  Everything below is
+ * derived from constants that live in the modules that own them:
+ *   - the ART comes from weaponArtUrl / getShieldArt, so the per-facing keys,
+ *     gearBase variants, mirror rules and cache-busting versions stay in one
+ *     place;
+ *   - the HAND comes from getAnchor, the same per-frame anchor the world pins
+ *     weapons to, and it is already in this 256 frame's coordinates;
+ *   - the SHIELD's offset comes from backShield.js's own numbers.
+ *
+ * THE ONE CONVERSION, and where it comes from: the world renders the body at
+ * paintedHeight * dirScale * LOCAL_SCALE, and v2.3.1836 measured
+ * paintedHeight * dirScale to be 200.5 for every facing (that is what the
+ * dir-scale is FOR).  With LOCAL_SCALE 0.421875 the body is 84.58 world px
+ * tall, so any world size converts to a fraction of the body:
+ *      fractionOfBody = worldPx / 84.58
+ * and this canvas multiplies that by the figure's own painted height.  One
+ * ratio, stated once, instead of a second placement table to keep in step. */
+const WORLD_BODY_PX = 200.5 * 0.421875;   /* 84.58 — see above */
+/* Held greatsword target height in world px (entityRenderer: 48 for the
+   per-facing art).  Sheathed/other types differ; the equip screen shows the
+   held pose, which is the one the player is looking at. */
+const WORLD_WEAPON_PX = { greatsword: 48, sword: 26, 'sword:wood': 45, bow: 52, staff: 34 };
+/* Lowest opaque row of each stand sheet — the same measured feet the ground
+   shadow below uses, and the same rows entityRenderer's BODY_ROWS carries. */
+const FOOT_ROW = { south: 221, north: 219, east: 223, northeast: 227, southwest: 234 };
 const DEFAULT_LIT_LUM = 149;            // default lit-skin luminance (see playerSkins)
 const TRAIT_VER = '2.3.1561';            // cache-bust for body-tops.json (matches entityRenderer)
+/* v2.3.1815: matches gearSheets.js GEAR_VERSION so the portrait and the world
+   pull the SAME cached bytes rather than a second copy under a different
+   query string. */
+const GEAR_ART_VER = '2.3.1656';
 
 /* v2.3.1579: the portrait prefers the 256px `hi/` art.
  *
@@ -206,7 +257,7 @@ function renderTraitCanvas(traitImg, meta, crown, dir) {
  *  draw completes (after async asset loads).  Safe to call repeatedly. */
 export async function drawCharacterPortrait(canvas, opts) {
   if (!canvas) return;
-  const { skin, pants, shoes, hair, hairColor, facialHair, facialHairColor, headwear, hatColor, shirt, shirtColor, dir } = opts || {};
+  const { skin, pants, shoes, hair, hairColor, facialHair, facialHairColor, headwear, hatColor, shirt, shirtColor, dir, gear, weapon, shield } = opts || {};
   /* v2.3.1580 (owner: traits still soft after the v2.3.1579 re-bake).
      OPT-IN supersampling.  This canvas has always composited at a fixed
      256 with no devicePixelRatio scaling -- the WORLD canvas is DPR-aware
@@ -259,19 +310,42 @@ export async function drawCharacterPortrait(canvas, opts) {
   const wantHair = hair && hair !== 'none';
   const wantFh = facialHair && facialHair !== 'none';
   const wantHw = headwear && headwear !== 'none';
-  const wantShirt = shirt && shirt !== 'none';
+  /* ═══ v2.3.1815: WORN ARMOUR ═══
+     Owner: "Should show armor worn etc if player is wearing it."
+
+     Three things make this safe to composite here rather than needing the
+     world renderer.  (1) The layer ORDER is the renderer's own _GEAR_SLOTS
+     order — shirt, legs, chest, shoulders — read off entityRenderer rather
+     than guessed.  (2) The renderer's pre-composed FULLSET figure, which
+     replaces the body wholesale when a matched set is worn, is gated on
+     `pose !== 'jog'` and returns null for anything else — so a STANDING
+     figure is always the plain layered path and there is no substitution to
+     mirror here.  (3) The shirt is hidden under a chest piece, which is the
+     renderer's own rule (v2.3.809, owner's call) and matters because the
+     plate silhouette is not a strict superset of the tee's. */
+  const _g = gear || {};
+  const _wornChest = (_g.chest && _g.chest !== 'none') ? _g.chest : null;
+  const _wornLegs = (_g.legs && _g.legs !== 'none') ? _g.legs : null;
+  const _wornShoulders = (_g.shoulders && _g.shoulders !== 'none') ? _g.shoulders : null;
+  const wantShirt = shirt && shirt !== 'none' && !_wornChest;
 
   /* Fire EVERY fetch concurrently.  This used to be three sequential await
      stages (body-tops -> body sprite -> traits), so on a cold load the preview
      sat blank-white for ~3 network round-trips; now it's one.  All loads are
      cached after the first draw, so later redraws/rotations are instant. */
-  const [bodyTops, bodyImg, shirtImg, hairImg, hairMeta, fhImg, fhMeta, hwImg, hwMeta, maskImg, hatRef] = await Promise.all([
+  const [bodyTops, bodyImg, shirtImg, legsImg, chestImg, shouldersImg, hairImg, hairMeta, fhImg, fhMeta, hwImg, hwMeta, maskImg, hatRef] = await Promise.all([
     loadBodyTops(),
     loadImage(`/sprites/player/stand-${DIR}.png?v=${SPRITE_VERSION}`),
     /* v2.3.757: the LAYERED shirt sheet (white-base, tinted below) -- the
        baked torso-retint shirt is retired, so the preview composites the
        same layer the game renders. */
     wantShirt ? loadImage(`/sprites/gear/shirt/tshirt/stand-${DIR}.png?v=2.3.760`).catch(() => null) : null,
+    /* v2.3.1815: in the SAME concurrent batch as everything else — a
+       sequential await here would put the armour a round-trip behind the
+       body, and the figure would visibly dress itself. */
+    _wornLegs ? loadImage(`/sprites/gear/legs/${gearArt(_wornLegs)}/stand-${DIR}.png?v=${GEAR_ART_VER}`).catch(() => null) : null,
+    _wornChest ? loadImage(`/sprites/gear/chest/${gearArt(_wornChest)}/stand-${DIR}.png?v=${GEAR_ART_VER}`).catch(() => null) : null,
+    _wornShoulders ? loadImage(`/sprites/gear/shoulders/${gearArt(_wornShoulders)}/stand-${DIR}.png?v=${GEAR_ART_VER}`).catch(() => null) : null,
     wantHair ? loadTraitBest('hair', hair, DIR) : null,
     wantHair ? loadMeta('hair', hair) : null,
     wantFh ? loadTraitBest('facialhair', facialHair, DIR) : null,
@@ -286,6 +360,32 @@ export async function drawCharacterPortrait(canvas, opts) {
     (wantHw && hatColor && (!SOLID_ONLY_HAT_COLOR || headwearIsSolid(headwear))) ? getHatRef(headwear).catch(() => 0) : 0,
   ]);
   const crown = (bodyTops && bodyTops[`stand-${DIR}-0`]) || [FRAME / 2, 33];
+
+  /* ═══ v2.3.1841: the weapon + shield art, and the geometry to place them ═══
+     Loaded here rather than in the Promise.all above only because both depend
+     on DIR, which that block resolves.  Both degrade to null — an equip screen
+     that loses its sword is better than one that throws. */
+  const _wpnType = weapon && weapon.type;
+  const _wpnUrl = _wpnType ? weaponArtUrl(_wpnType, weapon.gearBase, DIR) : null;
+  /* The shield on the back faces OPPOSITE the way the player does, which is
+     why backShieldPlacement asks for facing + PI; the same rule here. */
+  const _dirIdx = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'].indexOf(dir || DIR);
+  const _shieldArt = shield && _dirIdx >= 0 ? getShieldArt(_dirIdx * Math.PI / 4 + Math.PI) : null;
+  const [wpnImg, shieldImg] = await Promise.all([
+    _wpnUrl ? loadImage(_wpnUrl).catch(() => null) : null,
+    _shieldArt ? loadImage(_shieldArt.url).catch(() => null) : null,
+  ]);
+  /* Painted height of THIS facing's figure, so world px convert to frame px.
+     crown[1] is measured (body-tops.json); the foot row is the measured
+     lowest opaque row. */
+  const _bodyH = Math.max(1, (FOOT_ROW[DIR] || 221) - (crown[1] || 33));
+  const _w2f = _bodyH / WORLD_BODY_PX;      /* world px -> this frame's px */
+  /* v2.3.1815 dev probe: which facing this canvas actually composited.  The
+     equip screen pins itself to southwest, and southwest vs south is not
+     reliably tellable by eye at 96px — a `dir` that silently fell back would
+     look plausible in every screenshot.  Stamped on the canvas so a scenario
+     reads the element it is asserting about rather than a global. */
+  try { canvas.__btDir = DIR; canvas.__btMirror = !!_mirror; } catch (e) { /* ignore */ }
 
   ctx.clearRect(0, 0, FRAME, FRAME);
   /* Zoom the figure to fill the preview window, then shift it DOWN a touch.
@@ -340,6 +440,26 @@ export async function drawCharacterPortrait(canvas, opts) {
      shirt is the layered white-base sheet tinted to the picked color and
      composited on top -- exactly what the game renders.  Null color = white
      tee (matches the in-game default tint). */
+  /* ═══ v2.3.1841: THE SLUNG SHIELD, BEHIND THE BODY ═══
+     Before the body, because the equip screen shows a toward-camera facing
+     (southwest) where the shield is on his back and the body is between it
+     and the viewer.  backShield.js's own displacement, converted through
+     _w2f — its BACK_RX/BACK_RY/BACK_LIFT place the shield's CENTRE and are
+     deliberately not scaled with the shield, so they convert as plain world
+     px.  Facing away, the world draws it in FRONT; that case cannot arise
+     here while the equip screen pins southwest, and if it ever does the
+     shield simply sits behind him, which is the safer wrong. */
+  if (shieldImg) {
+    const ang = _dirIdx * Math.PI / 4;
+    const sPx = 72 * _w2f;                                  /* BACK_SHIELD_PX */
+    const sx = FRAME / 2 + (-Math.cos(ang) * 11) * _w2f;
+    const sy = (crown[1] + _bodyH * 0.5) + ((-Math.sin(ang) * 5) - 14) * _w2f;
+    ctx.save();
+    ctx.translate(sx, sy);
+    if (_shieldArt && _shieldArt.mirror) ctx.scale(-1, 1);
+    ctx.drawImage(shieldImg, -sPx / 2, -sPx / 2, sPx, sPx);
+    ctx.restore();
+  }
   ctx.drawImage(recolorBodyToCanvas(bodyImg, skinTarget(skin), pantsTarget(pants), shoesTarget(shoes), null, FRAME), 0, 0);
   if (shirtImg) {
     /* v2.3.1110: restore a downscaled-on-disk shirt sheet to the 256px frame
@@ -359,6 +479,100 @@ export async function drawCharacterPortrait(canvas, opts) {
       layer = sc;
     }
     ctx.drawImage(layer, 0, 0, FRAME, FRAME, 0, 0, FRAME, FRAME);
+  }
+  /* ═══ v2.3.1815: THE ARMOUR, in the renderer's own slot order ═══
+     legs -> chest -> shoulders (entityRenderer's _GEAR_SLOTS, minus the
+     shirt which is drawn above).  Each sheet is a STRIP and frame 0 is the
+     standing pose, which is why the source rect is the same (0,0,FRAME,FRAME)
+     window the shirt uses rather than the whole image.
+
+     The metal is a MULTIPLY over the sheet's own alpha — identical in effect
+     to the Pixi tint the world applies, and it has to happen here or copper
+     armour renders as the steel art it borrows. */
+  const _drawGearLayer = (img, item) => {
+    if (!img) return;
+    const up = upscaleToFrameHeight(img, FRAME);
+    const rgb = materialRgb(gearMaterial(item));
+    let layer = up;
+    if (rgb) {
+      const gc = document.createElement('canvas');
+      gc.width = FRAME; gc.height = FRAME;
+      const gx = gc.getContext('2d');
+      gx.drawImage(up, 0, 0, FRAME, FRAME, 0, 0, FRAME, FRAME);
+      gx.globalCompositeOperation = 'multiply';
+      gx.fillStyle = `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+      gx.fillRect(0, 0, FRAME, FRAME);
+      /* destination-in re-applies the sheet's alpha, so the fill above is
+         confined to the armour instead of flooding the frame — the same
+         two-step the shirt tint uses directly above. */
+      gx.globalCompositeOperation = 'destination-in';
+      gx.drawImage(up, 0, 0, FRAME, FRAME, 0, 0, FRAME, FRAME);
+      layer = gc;
+    }
+    ctx.drawImage(layer, 0, 0, FRAME, FRAME, 0, 0, FRAME, FRAME);
+  };
+  _drawGearLayer(legsImg, _wornLegs);
+  _drawGearLayer(chestImg, _wornChest);
+  _drawGearLayer(shouldersImg, _wornShoulders);
+  /* ═══ v2.3.1841: THE WEAPON, IN THE HAND ═══
+     After the armour so the blade reads in FRONT of the plate, which is what
+     the world does on the toward-camera facings this screen uses.
+
+     PINNED BY THE GRIP, not by a guessed offset: getWeaponHandle gives the
+     handle point in the ICON's own pixels and getAnchor gives the hand in
+     THIS 256 frame — the same two tables entityRenderer pins the world
+     weapon with.  The icon is scaled to its world target height converted
+     through _w2f, so the sword is the same size relative to the body as the
+     one on screen.
+
+     The mirrored views are already inside the ctx mirror transform (applied
+     above with the zoom), so nothing extra is needed here — the hand anchor
+     is asked for with the mirror flag and the whole layer flips with the
+     body. */
+  if (wpnImg && _wpnType) {
+    const th = wpnImg.naturalHeight || wpnImg.height || 0;
+    const tw = wpnImg.naturalWidth || wpnImg.width || 0;
+    if (th > 0 && tw > 0) {
+      const key = weapon.gearBase ? `${_wpnType}:${weapon.gearBase}` : _wpnType;
+      const worldH = WORLD_WEAPON_PX[key] || WORLD_WEAPON_PX[_wpnType] || 36;
+      const k = (worldH * _w2f) / th;
+      /* ═══ v2.3.1842: THE METAL, not the donor art ═══
+         Owner: "it should show the copper sword in the character preview
+         (it's still the iron color - it was recolored to be copper for the
+         first tier)."
+         Every metal weapon shares ONE steel-grey sheet and the world tints it
+         (entityRenderer: weaponSprite.tint = weaponTint(...)).  This canvas
+         drew the sheet raw, so a copper sword came out the donor's iron.
+         Same two-step the armour layers above use — multiply the metal over
+         the art, then destination-in to put the sheet's own alpha back so the
+         fill is confined to the blade instead of flooding the frame — and the
+         material comes from weaponMaterial, the same function the renderer
+         asks, so a new metal is wired up in both places at once. */
+      const _wRgb = materialRgb(weaponMaterial(_wpnType, weapon.gearBase));
+      let _wLayer = wpnImg;
+      if (_wRgb) {
+        const wc = document.createElement('canvas');
+        wc.width = tw; wc.height = th;
+        const wx = wc.getContext('2d');
+        wx.drawImage(wpnImg, 0, 0, tw, th);
+        wx.globalCompositeOperation = 'multiply';
+        wx.fillStyle = `rgb(${_wRgb[0]},${_wRgb[1]},${_wRgb[2]})`;
+        wx.fillRect(0, 0, tw, th);
+        wx.globalCompositeOperation = 'destination-in';
+        wx.drawImage(wpnImg, 0, 0, tw, th);
+        _wLayer = wc;
+      }
+      const hand = getAnchor('stand', DIR, 0, false) || [FRAME / 2 + 14, crown[1] + _bodyH * 0.55];
+      const grip = getWeaponHandle(_wpnType, weapon.gearBase, DIR) || [tw * 0.17, th * 0.12];
+      ctx.save();
+      ctx.translate(hand[0], hand[1]);
+      /* v2.3.1786's blade-up flip, in the same terms: reflect about the grip
+         so the crossguard lands just above the hand.  A rotation would mirror
+         left-right too and point the tip back over the shoulder. */
+      ctx.scale(1, -1);
+      ctx.drawImage(_wLayer, -grip[0] * k, -grip[1] * k, tw * k, th * k);
+      ctx.restore();
+    }
   }
   /* Beard BELOW hair so hair strands lay over the beard (per user -- the NW
      view had the beard covering the hair). */

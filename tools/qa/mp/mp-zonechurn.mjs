@@ -43,15 +43,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     S.player.x = npc.x + ox; S.player.y = npc.y + oy;
     return true;
   }, { ox: dx, oy: dy });
-  const closeCard = () => P.page.evaluate(() => {
-    const b = document.querySelector('.bt-inspect-close'); if (b) b.click();
-  });
+  /* v2.3.1827: the quest card is two surfaces now (v2.3.1820) — his window,
+     then the offer.  See harness.advanceNpcDialogue. */
+  const closeCard = () => H.closeNpcDialogue(P);
   await place(420, 0);
   await P.page.waitForTimeout(500);
   await closeCard();
   await place(0, 34);
   await P.page.waitForTimeout(1200);
-  await H.clickText(P, 'Accept').catch(() => {});
+  await H.advanceNpcDialogue(P);
+  await H.confirmQuestOffer(P);
   await P.page.waitForTimeout(1600);
   await closeCard();
   await P.page.evaluate(() => {

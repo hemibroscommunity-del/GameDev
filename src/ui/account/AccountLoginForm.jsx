@@ -20,7 +20,29 @@ const ERROR_COPY = {
   same: "You're already playing as this character.",
 };
 
-export const AccountLoginForm = () => {
+/* ═══ v2.3.1823: THE LOGIN DOOR DOES NOT ASK TWICE ═══
+ *
+ * Owner: "make it so that when you enter your character key you just
+ * immediately join the game.  Right now it's broken and does nothing after
+ * you enter it."
+ *
+ * The confirm step below (v2.3.1143) exists to protect something real: from
+ * the IN-GAME Account panel, entering another character's key signs THIS
+ * device's character out, and its key is gone unless you wrote it down.  The
+ * preview + Continue is what stops that being a one-tap accident.
+ *
+ * None of that is true on the login screen.  You are standing there
+ * BECAUSE this device has no character — there is nothing to sign out and
+ * nothing to lose, so the second tap is pure friction, and (the owner's
+ * report) it reads as the form having done nothing at all: you type the key,
+ * the button says "Checking…", and then the same modal is still sitting
+ * there with a question in it rather than a game.
+ *
+ * So the guard follows the risk instead of the form: `immediate` skips
+ * straight to the switch, and only the login door passes it.  The in-game
+ * panel is untouched.
+ */
+export const AccountLoginForm = ({ immediate = false }) => {
   const [input, setInput] = useState('');
   const [phase, setPhase] = useState('idle'); // idle | checking | confirm | switching
   const [error, setError] = useState('');
@@ -35,6 +57,17 @@ export const AccountLoginForm = () => {
     setPhase('checking');
     const res = await checkAccountLogin(key);
     if (res.ok && res.exists) {
+      /* v2.3.1823: on the login door, a key that checks out IS the answer.
+         setPhase before applying so the button reads "Switching…" for the
+         moment before the reload — applyAccountLogin reloads the page, and
+         a button still saying "Checking…" while the screen sits there is the
+         exact "it does nothing" the owner reported. */
+      if (immediate) {
+        setFound({ key, preview: res.preview || {} });
+        setPhase('switching');
+        applyAccountLogin(key);
+        return;
+      }
       setFound({ key, preview: res.preview || {} });
       setPhase('confirm');
       return;
@@ -50,7 +83,11 @@ export const AccountLoginForm = () => {
     applyAccountLogin(found.key); // stashes the old key, writes, reloads
   };
 
-  if (phase === 'confirm' || phase === 'switching') {
+  /* v2.3.1823: in immediate mode 'switching' must NOT render the confirm
+     view — the page is already reloading, and flashing a "Continue as your
+     Lv 3 character?" card on the way out is the same double-ask by another
+     name.  Show the plain form with a working label instead. */
+  if (phase === 'confirm' || (phase === 'switching' && !immediate)) {
     const lvl = (found && found.preview && found.preview.level) || 1;
     const created = found && found.preview && found.preview.createdAt
       ? new Date(found.preview.createdAt).toLocaleDateString() : null;
@@ -144,7 +181,7 @@ export const AccountLoginForm = () => {
         />
         <button
           onClick={submit}
-          disabled={phase === 'checking'}
+          disabled={phase === 'checking' || phase === 'switching'}
           className="button-secondary"
           style={{
             flexShrink: 0, minHeight: 44,
@@ -152,7 +189,7 @@ export const AccountLoginForm = () => {
             opacity: phase === 'checking' ? 0.6 : 1,
           }}
         >
-          {phase === 'checking' ? 'Checking…' : 'Log in'}
+          {phase === 'switching' ? 'Joining…' : phase === 'checking' ? 'Checking…' : 'Log in'}
         </button>
       </div>
       {error && (

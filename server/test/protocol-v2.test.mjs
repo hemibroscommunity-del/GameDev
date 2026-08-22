@@ -186,6 +186,18 @@ check('v2 tick carries only the respawned node', !!ntick2 && ntick2.nodes.meadow
 
 // ── 4. merged zone_state on zone change ──
 ws1.sent.length = 0; ws2.sent.length = 0;
+/* v2.3.1817: frost is GATED on Mayor Bro's first step now (_zoneUnlocked), so
+   these two need the quest that opens it or the move is refused and the
+   player is held where they were — which silently emptied all three
+   assertions below, because no zone change happened at all.
+   Granted here rather than moving this block to an ungated zone: everything
+   downstream reads frost's own level band, and the point of this block is the
+   zone_state WIRE FORMAT, which is unchanged.  The gate itself is covered in
+   tick.test.mjs. */
+for (const _pid of ['p1', 'p2']) {
+  const _ps = room.playerState[_pid];
+  if (_ps) { if (!_ps._quests) _ps._quests = Object.create(null); _ps._quests.tut_1 = 'active'; }
+}
 await room.webSocketMessage(ws1, JSON.stringify({ type: 'move', x: 1, y: 1, z: 'frost' }));
 await room.webSocketMessage(ws2, JSON.stringify({ type: 'move', x: 1, y: 1, z: 'frost' }));
 

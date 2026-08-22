@@ -5458,6 +5458,20 @@ export const QUEST_CHAINS = {
      'accept' icon really has a grantOnAccept server-side and likewise for
      'complete', so this can go stale loudly rather than quietly. */
   tut_1: {
+    /* ═══ v2.3.1817: WHICH ZONE THIS STEP SENDS YOU TO ═══
+       Owner, two requests that turned out to need the same missing fact:
+       "make each zone open up only after a mayor bro quest requires that
+       area", and "make star active quest mark marking portals that you're
+       supposed to go to on minimap for next steps".
+
+       Until now the destination existed only in `desc` PROSE — "from Frost
+       Ridge" — which no gate and no map marker can read.  Naming it as data
+       is what lets the lock and the star agree with the quest text instead of
+       being a second, hand-maintained copy of it.
+
+       Mirrored by QUEST_ZONE in server/src/data.js, which is what actually
+       enforces the lock; this side drives the marker and the UI. */
+    zone: 'frost',   /* Frost Ridge */
     id: 'tut_1', npc: 'Mayor Bro', title: 'Cold Reception',
     desc: 'Bring 4 Snowman Remnants from Frost Ridge.',
     check: function (rpg) { return ((rpg.inventory || {}).snowman || 0) >= 4; },
@@ -5483,33 +5497,39 @@ export const QUEST_CHAINS = {
       { when: 'complete', icon: '/icons/items/staff.png',  label: "Pine Staff" },
     ],
     dialogue: {
-      /* v2.3.1676 (owner: "He'll give you the sword and shield (with
-         instructions on how to use)").  The controls live in the START line
-         because that is the moment the kit is handed over — the gate will not
-         let you out of town until you have read it. */
-      /* v2.3.1681 (owner: "the instructions on mayor bro's dialog for
-         beginning the quest are wrong.  It should say a quick swipe on right
-         joystick to trigger a special attack").  "Flick it and let go" was
-         describing the right gesture in the wrong words — the handler measures
-         release SPEED, so a quick swipe is exactly it, and that is what the
-         line should say.  Also "joystick" throughout, matching what the owner
-         and the on-screen control are actually called. */
+      /* ═══ v2.3.1831: HE HANDS YOU THE KIT, HE DOES NOT READ YOU THE MANUAL ═══
+         Owner: "You can also remove the quest dialog from mayor bro about the
+         instructions for how to swing your sword, etc.  That is all covered in
+         the guided tutorial afterward."
+
+         v2.3.1676 put the controls here because this is the moment the kit
+         changes hands, and v2.3.1681/1681b then spent two rounds getting the
+         wording of those three lines right.  Since then the teaching moved to
+         where a control lesson belongs — beside the control, at the moment you
+         need it — and every line he was reciting now has an owner:
+             swing   -> ControlsTutorial 'Attack'
+             special -> ControlsTutorial 'Attack' + QuestCoach 'special'
+             shield  -> QuestCoach 'block'  (double-tap and HOLD, then turn)
+             swap    -> QuestCoach 'cycle', whose own comment already noted it
+                        "lands on the same beat as the sentence" below
+         So this was the same lesson twice, once as a wall of text you scroll
+         past before you have the gear in your hands.  His two remaining chunks
+         are the handover and the errand.
+
+         THE WORDING ASSERTIONS DID NOT GO WITH IT.  mp-questcoach holds the
+         v2.3.1681 corrections against the coach copy (quick SWIPE not "flick
+         and let go"; the shield HOLD and the turn; the cycle gesture), and
+         mp-questui now asserts the opposite of what it used to — that he is
+         not reciting controls at all. */
       start: "Take the sword and the shield — you're not walking out of my town without them.\n\n"
-        + '⚔️ Hold the right joystick to aim and swing.\n'
-        + '✨ A quick swipe on the right joystick triggers a special attack.\n'
-        /* v2.3.1681b (owner): the HOLD is the gesture, not a detail.  The
-           handler only raises the shield on the second tap of a double-tap
-           and keeps it up for as long as that touch lasts; dragging during
-           the hold is what steers the arc.  "Double-tap to raise the shield"
-           alone describes a tap-toggle that does not exist, and a player who
-           lets go mid-fight is unshielded without knowing why. */
-        + '🛡️ Double-tap the right joystick and HOLD to raise the shield, then aim it at the enemy.\n\n'
         + 'Now: snowmen up on Frost Ridge, and they throw first. Four wrecks, and mind the snowballs.',
       progress: 'Frost Ridge. The white one. Four of them.',
-      complete: "Cold work. Here — a bow. Double-tap the LEFT joystick to switch weapons.",
+      complete: "Cold work. Here — a bow.",
     },
   },
   tut_2: {
+    /* v2.3.1817: the zone this step opens and points at — see tut_1. */
+    zone: 'verdant',   /* Verdant Wilds */
     id: 'tut_2', npc: 'Mayor Bro', title: 'Into the Blue',
     desc: 'Bring 6 Slime Remnants from the Verdant Wilds.',
     check: function (rpg) { return ((rpg.inventory || {})['slime-remnants'] || 0) >= 6; },
@@ -5524,6 +5544,8 @@ export const QUEST_CHAINS = {
     },
   },
   tut_3: {
+    /* v2.3.1817: the zone this step opens and points at — see tut_1. */
+    zone: 'sky',   /* Wind Dunes */
     id: 'tut_3', npc: 'Mayor Bro', title: 'Bad Wind',
     desc: 'Bring 5 Skeleton Remnants from the Wind Dunes.',
     check: function (rpg) { return ((rpg.inventory || {})['skeleton-remnants'] || 0) >= 5; },
@@ -5536,6 +5558,8 @@ export const QUEST_CHAINS = {
     },
   },
   tut_4: {
+    /* v2.3.1817: the zone this step opens and points at — see tut_1. */
+    zone: 'ember',   /* Flame Fields */
     id: 'tut_4', npc: 'Mayor Bro', title: 'Bro Ascendant',
     desc: 'Bring 6 Fire Goblin Remnants from the Flame Fields.',
     check: function (rpg) { return ((rpg.inventory || {})['fire-goblin-remnants'] || 0) >= 6; },
@@ -6266,7 +6290,14 @@ export function monsterBodyOffsetY(archOrType) {
   /* v2.3.1535: resolve reskins to the shape they actually render as, or a
      variant falls through to 0 = body centred on the FEET.  See hitShapeOf. */
   archOrType = hitShapeOf(archOrType);
-  if (archOrType === 'fodder') return 40;
+  /* v2.3.1824: 40 -> 23.  The slime sprite is anchored on the blob's base
+     row now (SLIME_BASE_ROW, entityRenderer), so m.y IS the bottom of the
+     drawn blob and the body centre is half a blob above it: the blob is 41
+     frame-px tall, drawn at 96/128 inside a container scaled by
+     MONSTER_SIZE_MULT 1.5, so 41 * 0.75 * 1.5 / 2 = 23 world px.  The old 40
+     was tuned against the old anchoring and was wrong even then — it is the
+     reason "the hitbox is at their shadow" kept coming back. */
+  if (archOrType === 'fodder') return 23;
   if (archOrType === 'mummy' || archOrType === 'skeleton') return 48;
   if (archOrType === 'fireGoblin') return 28;
   if (archOrType === 'snowman') return 19;
@@ -6302,6 +6333,42 @@ export function monsterBodyOffsetY(archOrType) {
  * MIRROR: entityRenderer.getMonsterSize (the 32) and MONSTER_SIZE_MULT (the
  * 1.5).  Both live in the renderer because they are drawing constants; this is
  * the hit-side copy, and the two have to move together. */
+/* v2.3.1822: the MELEE body radius, as one table instead of an inline chain.
+ *
+ * Owner: "The hit boxes on snowman for sword are inconsistent.  Make it so
+ * that if the aim carat is touching the monster during midswing it counts as
+ * a hit."  It was not inconsistent — it was ZERO.  monsterCombat's swing test
+ * carried its own hand-written radius chain (fodder 20 / fireGoblin 14 /
+ * mummy|skeleton 40 / else monsterProceduralRadius), and the snowman matched
+ * no case; monsterProceduralRadius returns 0 for it precisely BECAUSE it is
+ * sprite-backed and "hand-tuned per archetype at the hit sites" — except the
+ * melee hit site never grew the case.  So a snowman had a point-sized hitbox
+ * while its 64px body filled the caret.  This is the third time the same class
+ * of bug has been fixed (v2.3.1535 slime-at-its-shadow, v2.3.1536 procedural
+ * circles), and every one of them was a hand-maintained duplicate drifting, so
+ * the melee copy becomes a shared function like monsterBodyOffsetY did.
+ *
+ * The melee numbers are deliberately NOT the projectile numbers: a swing
+ * already brings GS_OUTER_RADIUS of reach with it, so its per-body bonus is
+ * smaller.  The snowman is the exception and gets the drawn half-width (32,
+ * its sprite is 64px) rather than a smaller nudge — the whole complaint is
+ * that visibly-connecting swings miss it, and matching the art is the fix.
+ *
+ * MIRROR: projectiles.js has its own (wider) table for the same archetypes.
+ * They are allowed to differ in VALUE; they must not differ in COVERAGE. */
+export function monsterMeleeHitRadius(archOrType) {
+  const shape = hitShapeOf(archOrType);
+  /* v2.3.1824: the blob is 48 frame-px wide = 48 * 0.75 * 1.5 = 54 world px
+     across, so its half-width is 27.  24 keeps the swing bonus a shade
+     inside the drawn body (the swing brings GS_OUTER_RADIUS of its own
+     reach) while still covering it. */
+  if (shape === 'fodder') return 24;
+  if (shape === 'fireGoblin') return 14;
+  if (shape === 'snowman') return 32;
+  if (shape === 'mummy' || shape === 'skeleton') return 40;
+  return monsterProceduralRadius(shape);
+}
+
 const PROCEDURAL_BODY_RADIUS = 32 * 1.5;
 export function monsterProceduralRadius(archOrType) {
   const shape = hitShapeOf(archOrType);

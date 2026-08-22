@@ -11,7 +11,7 @@ import { getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange
 import { getHair, onHairChange } from '../../rendering/traits/hairCatalog.js';
 import { getHairColor, hairColorTarget, onHairColorChange } from '../../rendering/traits/hairColorCatalog.js';
 import { getHatColor, hatColorTarget, onHatColorChange } from '../../rendering/traits/hatColorCatalog.js';
-import { getFacialHair } from '../../rendering/traits/facialHairCatalog.js';
+import { getFacialHair, onFacialHairChange } from '../../rendering/traits/facialHairCatalog.js'; /* v2.3.1835: the beard STYLE was never subscribed */
 import { getFacialHairColor, facialHairColorTarget, onFacialHairColorChange } from '../../rendering/traits/facialHairColorCatalog.js';
 import { getHeadwear, onHeadwearChange } from '../../rendering/traits/headwearCatalog.js';
 import { getShirt, onShirtChange } from '../../rendering/traits/shirtCatalog.js';
@@ -672,20 +672,46 @@ export const BottomDashboard = () => {
      top-right card it used to serve is retired). */
   const [profilePortrait, setProfilePortrait] = useState('');
   useEffect(() => { portraitStore.set(profilePortrait); }, [profilePortrait]);
+  /* ═══ v2.3.1835: THE FACE IN THE CORNER IS THE ONE YOU ARE PLAYING ═══
+     Owner: "the character displayed in the HUD doesn't match the character
+     played anymore."
+
+     Two independent ways this portrait went stale, and both are the same
+     class of bug — the picture is generated from a snapshot of eleven stores
+     and nothing guaranteed the snapshot was the current one.
+
+     1. A MISSING SUBSCRIPTION.  It READ getFacialHair() but only subscribed
+        to onFacialHairColorChange, so changing the beard STYLE repainted
+        nothing.  CharacterView, which draws the same figure on the equip
+        screen, subscribes to the full set and says why in its own comment:
+        "Missing a subscription does not break the picture — it makes it
+        STALE, which is worse."  This is that, one store short.
+
+     2. AN UNSEQUENCED ASYNC RACE, which is the one that can go wrong on a
+        cosmetic that IS subscribed.  portraitDataUrl is async, several
+        regens can be in flight at once (rolling a random bro fires ten
+        setters in a row), and `alive` only guards unmount — so whichever
+        render FINISHES last won, not whichever STARTED last.  A slow early
+        portrait landing after a fast late one leaves the corner showing a
+        character you have already changed away from.  A sequence number
+        fixes it: only the newest request may set state. */
   useEffect(() => {
     let alive = true;
+    let seq = 0;
     const regen = () => {
+      const mine = ++seq;
       portraitDataUrl({
         skin: getSkin(), pants: getPants(), shoes: getShoes(),
         hair: getHair(), hairColor: hairColorTarget(getHairColor()),
         facialHair: getFacialHair(), facialHairColor: facialHairColorTarget(getFacialHairColor()),
         headwear: getHeadwear(), hatColor: hatColorTarget(getHatColor()),
         shirt: getShirt(), shirtColor: shirtColorTarget(getShirtColor()),
-      }, true).then(url => { if (alive && url) setProfilePortrait(url); });
+      }, true).then(url => { if (alive && url && mine === seq) setProfilePortrait(url); });
     };
     regen();
     const unsubs = [onSkinChange(regen), onHairChange(regen), onHairColorChange(regen),
-      onHeadwearChange(regen), onHatColorChange(regen), onFacialHairColorChange(regen),
+      onHeadwearChange(regen), onHatColorChange(regen),
+      onFacialHairChange(regen), onFacialHairColorChange(regen),
       onShirtChange(regen), onShirtColorChange(regen),
       onPantsChange(regen), onShoesChange(regen)];
     return () => { alive = false; unsubs.forEach(u => u && u()); };

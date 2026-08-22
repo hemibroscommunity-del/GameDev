@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { COL, panelStyle, getState } from '../dash/common.js';
+import { COL, QUALITY_COLOR, panelStyle, getState } from '../dash/common.js';
 import { buildSkillUnspent, STAT_TO_WEAPON_CAT } from '../../../data/gameSystems.js';
 import { requestT2Category } from '../dash/T2Panel.jsx';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
+import { CharacterView, FIGURE_W_FRAC } from './CharacterView.jsx'; /* v2.3.1815: the equip screen's own figure */
 import { COMBAT_SKILLS, skillLevel, skillProgressPct, skillProgress, deriveHeroStats, unspentPointsTotal } from './heroModel.js';
 /* v2.3.1660: trained-skill rebuild — the Build section becomes the
    seven-stat allocation menu when the worker owns prog3. */
@@ -51,12 +52,35 @@ import { DASH_GAP, HERO_TAB_H } from './sheetGeometry.js';                      
    new maths. */
 
 const SECTIONS = ['Overview', 'Build', 'Records'];
-/* v2.3.1323 (owner icon sheet): each section tab gets its art —
-   knight bust / point tree / tally ledger. */
-const SECTION_ICONS = {
-  Overview: '/icons/ui/hero/tab-overview.webp?v=2.3.1323',
-  Build: '/icons/ui/hero/tab-build.webp?v=2.3.1323',
-  Records: '/icons/ui/hero/tab-records.webp?v=2.3.1323',
+/* ═══ v2.3.1847: THE TABS SAY WHAT THEY ARE ═══
+ * Owner: "for the 3 tabs on the character menu I think I'd prefer text.  So
+ * just equipment, build, and journey."
+ *
+ * That reverses v2.3.1657, which made them icon-only ("without any text") —
+ * and the reversal is the owner's call to make, so it is made here without
+ * argument.  Worth recording WHY it is safe: the icons were introduced to
+ * buy vertical space, and they did not buy any.  The row is HERO_TAB_H (28)
+ * tall either way; a 24px picture and an 11px word both sit inside it.  What
+ * the pictures cost was legibility — a knight bust, a point tree and a tally
+ * ledger have to be learned, while "Equipment" does not.
+ *
+ * The SECTION KEYS are unchanged.  'Overview' and 'Records' are the section
+ * ids that `_lastSection` persists and that every `section === ...` branch in
+ * this file tests; renaming them to match the labels would have been a
+ * rename across the whole component to change three words on screen.  The
+ * label is a display concern and lives in a display table.
+ *
+ * The old icons stay on disk — nothing else references them, but they are the
+ * owner's art, and deleting art on a text change is not this commit's call.
+ */
+const SECTION_LABEL = {
+  Overview: 'Equipment',   /* what the section actually shows: the worn six */
+  /* v2.3.1849 (owner: "instead of build name it points").  The tab already
+     carries a count badge of unspent POINTS, and "Build" named the activity
+     while "Points" names the thing you have waiting — which is what makes
+     the badge and the word say one thing instead of two. */
+  Build: 'Points',
+  Records: 'Journey',
 };
 /* Round-3 §6 state preservation: the selected section survives leaving
    the destination (module-scoped, session-only).  v2.3.1311: reset to
@@ -172,6 +196,52 @@ export const HeroExpanded = () => {
   const contribs = getEquipContribs(R);
   const selSlot = eqSel ? equipped.find(sl => sl.slot === eqSel) : null;
   const selCard = selSlot ? contribs.cards[selSlot.slot] : null;
+  /* v2.3.1845: the selected item's QUALITY roll (normal / rare / elite /
+     godly — see QUALITY_COLOR in dash/common.js for why this is a different
+     ladder from the material tier the card is NAMED by).  Read from the item
+     itself with the slot's own field as a fallback, because getEquippedSlots
+     lifts `quality` to the top level for the weapon only.  Everything minted
+     today is 'normal', so today this changes nothing on screen — which is
+     the point: the card is ready for the ladder the owner is adding, and a
+     rare drop will not look identical to a plain one. */
+  const quality = (selSlot && ((selSlot.item && selSlot.item.quality) || selSlot.quality)) || 'normal';
+  /* ═══ v2.3.1847: RARITY IS THE NAME'S COLOUR ═══
+     Owner: "instead of communicating the item rarity with literal text I
+     think I'd rather have the font color of the name of the item represent
+     rarity.  For normal items it will just be white."
+
+     So the word is gone and the NAME carries it.  That is the convention
+     every ARPG uses, and it costs nothing: the name is already on the frame,
+     already the biggest text on the card, and a colour needs no line of its
+     own — which gives the picture and the stat list back the height the
+     rarity line was taking.
+
+     The FRAME goes back to brass and stays there.  Colouring the rim as well
+     would say the same thing twice, and the second saying is the one that
+     fights the panel: at rare the whole card changed hue, which reads as the
+     card being in a different state rather than the item being better.
+     QUALITY_COLOR maps 'normal' to null, which is exactly "no rarity hue" —
+     so a normal item's name falls back to the panel's warm white, the
+     owner's "just white". */
+  const nameCol = QUALITY_COLOR[quality] || COL.text;
+  const rimCol = COL.accent;
+  const rimFill = COL.accentFill;
+  /* The item picture inside that card.  62 measured against the row: the
+     card column is ~183px wide at 390, and once the frame and the interior
+     well have taken their padding there are ~160 left — so 62 gives the art
+     a real presence and still leaves the DMG/DPS tiles ~90px, which is more
+     than "9–14" needs. */
+  const ART_W = 62;
+  /* v2.3.1846: the card's stat LIST and its bonus strip.  `rows` falls back
+     to the primary/secondary pair the card has always carried, so a card
+     added later that does not define rows still renders its two stats rather
+     than an empty list. */
+  const rows = selCard
+    ? (selCard.rows && selCard.rows.length
+      ? selCard.rows
+      : [selCard.primary, selCard.secondary].filter(Boolean))
+    : [];
+  const bonuses = (selCard && selCard.bonuses) || [];
   /* THREE across, TWO down.  Two-by-three was the shape the band's EQUIPPED
      panel settled on at v2.3.1648 and the obvious reading of "grouped on
      the left", but measured it did not fit: three rows of 46 is 146px, and
@@ -205,13 +275,28 @@ export const HeroExpanded = () => {
       </div>
     );
   };
-  const kv = (k, v, big) => (
+  /* v2.3.1846: ONE STAT, as a row inside the item card — label left, value
+     right, per the owner's mockup.  Replaces v2.3.1844's centred tile, which
+     spent a border and 8px of padding per stat; at four stats those tiles did
+     not fit the card at all, and the two that did fit were mostly padding.
+     A row is also easier to READ down a column: the labels line up on the
+     left and the numbers on the right, instead of every value sitting in the
+     middle of its own box at its own x. */
+  const statRow = ({ k, v }) => (
     <div key={k} style={{
-      background: COL.wellSoft, border: `1px solid ${COL.tileBor}`, borderRadius: 8,
-      padding: '4px 2px 5px', minWidth: 0, textAlign: 'center',
+      display: 'flex', alignItems: 'baseline', gap: 4, minWidth: 0,
     }}>
-      <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{k}</div>
-      <div style={{ fontSize: big ? 15 : 13, fontWeight: 800, color: COL.text, fontVariantNumeric: 'tabular-nums', marginTop: 1, whiteSpace: 'nowrap' }}>{v}</div>
+      <span style={{
+        flex: 1, minWidth: 0,
+        fontSize: 8.5, fontWeight: 700, letterSpacing: '.04em',
+        textTransform: 'uppercase', color: COL.muted,
+        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+      }}>{k}</span>
+      <span style={{
+        flex: 'none',
+        fontSize: 12.5, fontWeight: 800, color: COL.text,
+        fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+      }}>{v}</span>
     </div>
   );
 
@@ -222,7 +307,10 @@ export const HeroExpanded = () => {
          panelStyle bottom scroll-edge fade exists to signal MORE
          content below the fold — Hero's subtabs are designed no-scroll,
          so the mask only dimmed the flush last row.  Off here. */
-      WebkitMaskImage: 'none', maskImage: 'none',
+      /* v2.3.1815: Overview scrolls now (the character view took the row the
+         stats used to share), so it keeps the fade that tells you so; the
+         other sections are still no-scroll and still turn it off. */
+      ...(section === 'Overview' ? null : { WebkitMaskImage: 'none', maskImage: 'none' }),
     }}>
       {/* v2.3.1653: Hero's OWN identity strip is gone.  Since v2.3.1652 the
           band's top row carries name, level, XP, gold and DPS on every
@@ -263,8 +351,8 @@ export const HeroExpanded = () => {
           return (
             <div key={s}
               role="button"
-              aria-label={badge ? `Build — ${badge} points` : s}
-              aria-pressed={on} title={s}
+              aria-label={badge ? `Build — ${badge} points` : (SECTION_LABEL[s] || s)}
+              aria-pressed={on} title={SECTION_LABEL[s] || s}
               onPointerUp={(e) => { e.stopPropagation(); setSection(s); }}
               style={{
                 position: 'relative',
@@ -275,11 +363,15 @@ export const HeroExpanded = () => {
                 borderRadius: 7,
                 cursor: 'pointer', touchAction: 'manipulation',
               }}>
-              <img src={SECTION_ICONS[s]} alt="" draggable={false}
-                style={{
-                  width: 24, height: 24, objectFit: 'contain',
-                  opacity: on ? 1 : 0.7, pointerEvents: 'none',
-                }} />
+              <span style={{
+                fontSize: 11, fontWeight: 800, letterSpacing: '.03em',
+                color: on ? COL.accent : COL.text2,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                pointerEvents: 'none',
+                /* The Build tab carries a count badge at top/right 2 — keep
+                   the word clear of it so "Build" and "3" never overlap. */
+                paddingRight: badge > 0 ? 12 : 0,
+              }}>{SECTION_LABEL[s] || s}</span>
               {badge > 0 && (
                 <span aria-hidden="true" style={{
                   position: 'absolute', top: 2, right: 2,
@@ -296,24 +388,282 @@ export const HeroExpanded = () => {
 
       {section === 'Overview' && (
         <>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0 6px' }}>
-            {compactVital('hp', R.hp || 0, R.maxHp || 100)}
-            {compactVital('stamina', R.stamina || 0, R.maxStamina || 100)}
-            {compactVital('mana', R.mana || 0, R.maxMana || 100)}
-          </div>
+          {/* v2.3.1842: the three vitals MOVED — they now stand beside the
+              figure (below), stacked, in the width the compact crop freed.
+              Removing this strip also hands ~26px of height back, which is
+              most of what the taller equip row cost at v2.3.1841. */}
 
           {/* v2.3.1653: EQUIPPED LEFT, STATS RIGHT — the owner's layout,
               literally.  The left column is fixed at what two cells need so
               the right column gets every remaining pixel; the numbers are
               the thing that was missing, so the numbers get the space. */}
+          {/* ═══ v2.3.1815: YOUR CHARACTER, BESIDE YOUR GEAR ═══
+              Owner: "On the character equip menu find space to put as large
+              view of the character as possible to fit inside the space.
+              Should show armor worn etc if player is wearing it."  Pose, on
+              a follow-up: "Southwest idle view."
+
+              THERE WAS NO SPARE SPACE — that is measured, not assumed.  At
+              390px the row ran equipped 146 + gap 8 + stats 224 = 378 of 378
+              available, exactly full, so a figure could only come out of the
+              slots (46px, and v2.3.1653 shrank them from 32 specifically to
+              stop them being small) or out of the stat cells (56px, where
+              CRIT DMG already ellipsises).  Both are worse than the thing
+              being added.
+
+              So the stats move DOWN to their own full-width row instead of
+              sharing this one.  They get MORE width there (378 vs 224), the
+              slots keep their size, and the figure gets the whole 224px the
+              stats vacated at the row's full 101px height — the largest it
+              can be without taking anything away from what was already here.
+
+              THE COST, stated: Overview now scrolls by roughly a stat row.
+              v2.3.1311d turned this panel's scroll-edge fade off because the
+              subtabs were designed no-scroll, so the fade is turned back on
+              for Overview only — a panel that scrolls with no cue that it
+              scrolls is how the last row goes unnoticed. */}
+          {/* ═══ v2.3.1841: THE CHARACTER FIRST, AND BIGGER ═══
+              Owner: "I want the character on the character menu to display
+              larger and be in the left side.  I just scroll down to see the
+              whole character."
+
+              Two changes, and the second is what buys the size.  The figure
+              moves to the LEFT, and the six gear slots re-flow from three
+              columns to TWO — so the slot block becomes 2 wide x 3 tall
+              instead of 3 wide x 2 tall.  That hands the figure a taller box:
+              3*EQ_W + 2*GAP instead of 2*EQ_W + GAP, 146px against 96px, a
+              52% bigger character, with the same six slots at the same tile
+              size beside it.
+
+              THE COST, stated rather than glossed: the row is 50px TALLER
+              (96 -> 146), because the slot block grew along with the figure.
+              A square canvas is sized by its height, so no arrangement makes
+              the figure half again as tall without spending half again as
+              much height — an earlier draft of this comment claimed the row
+              height was unchanged, and that was simply wrong.  The re-flow is
+              still what makes it cheap: leaving the slots 3 wide would have
+              cost the same height AND stranded them in a 2-row strip half the
+              figure's height. */}
+          {/* v2.3.1842: three columns, in the owner's order — CHARACTER,
+              then the gear slots, then the vitals.  ("I actually have slots to
+              the right and vitals to the right of that.") */}
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+            {/* HARD LEFT, and cropped to a rectangle around him.  `crop`
+                narrows the WELL over the canvas rather than shrinking the
+                canvas — the character stays the size the owner asked to keep,
+                and the ~70px of empty frame it was reserving is what pays for
+                the vitals column. */}
             <div style={{
-              flex: 'none', width: 3 * EQ_W + 2 * DASH_GAP,
+              flex: 'none',
+              width: Math.round((3 * EQ_W + 2 * DASH_GAP) * FIGURE_W_FRAC),
+              height: 3 * EQ_W + 2 * DASH_GAP,
+              background: COL.wellSoft, border: `1px solid ${COL.tileBor}`,
+              borderRadius: 8, overflow: 'hidden',
+            }}>
+              <CharacterView
+                size={3 * EQ_W + 2 * DASH_GAP}
+                weapon={R.weapon}
+                shield={R.shield}
+                crop
+              />
+            </div>
+
+            <div style={{
+              flex: 'none', width: 2 * EQ_W + DASH_GAP,
               display: 'flex', flexWrap: 'wrap', gap: DASH_GAP,
             }}>
               {['weapon', 'shield', 'chest', 'legs', 'amulet', 'cape'].map(eqCell)}
             </div>
 
+            {/* ═══ v2.3.1843: THE CARD OPENS OVER THE VITALS ═══
+                Owner: "It's fine if the card opens over where the vitals are."
+
+                v2.3.1842 tried to solve the same problem by SCROLLING the card
+                into view, and the screenshot showed why that was wrong: the
+                scroll pushed the top of this row up behind the subtab bar and
+                cut off the character's head and the HP bar to reveal a card at
+                the bottom.  Taking the owner's suggestion instead — the
+                selected item's card simply takes this column — means nothing
+                moves, nothing is cut off, and the card is on screen the
+                instant you tap a slot.
+
+                The vitals come back the moment you tap the slot closed.  The
+                whole-character stats below are unchanged. */}
+            <div style={{
+              flex: 1, minWidth: 0, height: 3 * EQ_W + 2 * DASH_GAP,
+              display: 'flex', flexDirection: 'column',
+              justifyContent: 'center', gap: selSlot ? 0 : 10,
+            }}>
+              {selSlot ? (
+                /* ═══ v2.3.1844: THE ITEM CARD IS A CARD ═══
+                   Owner: "put it on its own card.  Like the GREATSWORD and
+                   CHANGE are the thick border of the card.  The inside of it
+                   is where it lists the stats."
+
+                   So the name and the CHANGE button are not floating text
+                   above some tiles any more — they sit ON the frame, in the
+                   brass-tinted band that IS the card's border, and the stats
+                   live in a sunken well inside it.  That is the whole shape:
+                   a lit rim around a dark interior.
+
+                   The tiles inside switch from `wellSoft` to `raised`,
+                   because the interior they now sit in is darker than the row
+                   behind them was — wellSoft on well is the same colour twice
+                   and the tiles vanished into the floor.  Depth order, from
+                   docs/LANTERN-SLATE-SPEC.md: frame (accentFill) > well
+                   (COL.well) > tile (COL.raised). */
+                <div style={{
+                  flex: 1, minWidth: 0,
+                  display: 'flex', flexDirection: 'column', gap: 4,
+                  borderRadius: 11,
+                  border: `1px solid ${rimCol}`,
+                  background: rimFill,
+                  padding: 5,
+                  overflow: 'hidden',
+                }}>
+                  {/* ═══ v2.3.1846/1847: THE FRAME CARRIES THE NAME ═══
+                      The mockup put a second line under the title; the owner
+                      first cut it to the rarity alone ("you can ignore the
+                      redundant name of the greatsword"), then to nothing at
+                      all — the name's own COLOUR is the rarity now.  Both
+                      moves went the same direction, which is why the line is
+                      gone rather than shortened again: the second row was
+                      never carrying information the first could not. */}
+                  <div style={{
+                    flex: 'none', display: 'flex', alignItems: 'center',
+                    gap: 6, minHeight: 18, padding: '0 2px',
+                  }}>
+                    {/* v2.3.1845: the title WRAPS rather than ellipsising.
+                        Naming the metal made it longer — "COPPER GREATSWORD"
+                        instead of "GREATSWORD" — and at the old size it came
+                        out "COPPER GREAT…", which loses the half that says
+                        what the thing is.  Smaller and tighter fits the
+                        starter kit on one line; anything longer (SOFTWOOD
+                        GREATSWORD) takes a second line, which the frame has
+                        room for.  Truncation is the one outcome to avoid:
+                        mp-itemcard asserts the text is not clipped. */}
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{
+                        display: 'block',
+                        fontSize: 9.5, fontWeight: 800, letterSpacing: '.03em',
+                        lineHeight: 1.1,
+                        textTransform: 'uppercase', color: nameCol,
+                        overflowWrap: 'anywhere',
+                      }}>{selCard ? selCard.title : selSlot.label}</span>
+                    </span>
+                    {selSlot.pickerSlot && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          let anchor = null;
+                          try {
+                            const r = e.currentTarget.getBoundingClientRect();
+                            anchor = { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.width, height: r.height };
+                          } catch (_e) {}
+                          itemDetailBus.open({ kind: 'loadout', slot: selSlot.pickerSlot, anchor, panel: null });
+                        }}
+                        style={{
+                          /* On the frame the button no longer needs a fill to
+                             separate it from the row — the frame IS the fill,
+                             so it reads as a control cut into the rim. */
+                          flex: 'none', padding: '2px 8px', borderRadius: 999,
+                          background: 'transparent', border: `1px solid ${rimCol}`,
+                          color: rimCol, fontFamily: 'inherit',
+                          fontSize: 10, fontWeight: 800, letterSpacing: '.04em',
+                          cursor: 'pointer',
+                        }}>CHANGE</button>
+                    )}
+                  </div>
+                  {/* ═══ v2.3.1845: THE ITEM, THEN ITS STATS ═══
+                      Owner: "put a larger view of the item selected before
+                      you list its stats to the right of it inside the card."
+
+                      Same idea as the character on the left of this row, one
+                      level down: the thing itself gets a well of its own, and
+                      the numbers about it sit beside it rather than filling
+                      the card on their own.
+
+                      `sl.iconSrc` rather than a second art lookup: that is
+                      the exact URL the gear cell to the left is showing, so
+                      the big view and the little one cannot disagree.  It is
+                      also where v2.3.1845's bow bug lived — this card would
+                      have shown the same wrong art at four times the size.
+
+                      v2.3.1846: the stats are a LABEL/VALUE LIST, per the
+                      owner's mockup, rather than the two centred tiles that
+                      were here.  Tiles cost a border and 8px of padding EACH
+                      to say two words; a list fits four rows in the height
+                      two tiles took, which is what makes room for SPEED and
+                      RANGE to exist at all. */}
+                  <div style={{
+                    flex: 1, minHeight: 0, borderRadius: 8,
+                    background: COL.well,
+                    padding: 5,
+                    display: 'flex', alignItems: 'stretch', gap: 7,
+                  }}>
+                    {!selSlot.ghost && selSlot.iconSrc && (
+                      <div style={{
+                        flex: 'none', width: ART_W, minHeight: 0,
+                        borderRadius: 7,
+                        background: COL.raised, border: `1px solid ${COL.tileBor}`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        overflow: 'hidden',
+                      }}>
+                        <img src={selSlot.iconSrc} alt="" draggable={false}
+                          style={{ width: '90%', height: '90%', objectFit: 'contain',
+                            pointerEvents: 'none' }} />
+                      </div>
+                    )}
+                    <div style={{
+                      flex: 1, minWidth: 0, minHeight: 0,
+                      display: 'flex', flexDirection: 'column',
+                      justifyContent: 'center', gap: 2,
+                    }}>
+                      {rows.length ? rows.map(statRow) : (
+                        <div style={{
+                          fontSize: 10.5, fontWeight: 600, color: COL.muted,
+                          textAlign: 'center',
+                        }}>{selSlot.ghost ? 'Nothing equipped here.' : 'No stat bonuses.'}</div>
+                      )}
+                    </div>
+                  </div>
+                  {/* The strip along the bottom of the mockup: what this ONE
+                      item adds on top of its base numbers — a forge reforge,
+                      a harden, an element, a socketed gem.  Nothing in the
+                      starter kit has any, so it is absent far more often than
+                      it is present, and it is omitted rather than drawn empty:
+                      a blank band reads as a stat whose value failed to load. */}
+                  {bonuses.length > 0 && (
+                    <div style={{
+                      flex: 'none', display: 'flex', flexWrap: 'wrap',
+                      justifyContent: 'space-between', gap: 4, padding: '0 2px',
+                    }}>
+                      {bonuses.map((b) => (
+                        <span key={b} style={{
+                          fontSize: 8.5, fontWeight: 700, letterSpacing: '.02em',
+                          color: COL.text2, whiteSpace: 'nowrap',
+                        }}>{b}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {compactVital('hp', R.hp || 0, R.maxHp || 100)}
+                  {compactVital('stamina', R.stamina || 0, R.maxStamina || 100)}
+                  {compactVital('mana', R.mana || 0, R.maxMana || 100)}
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* v2.3.1843: the scrollIntoView v2.3.1842 added here is GONE.  It
+              worked — the card came into view — but the screenshot showed the
+              cost: the scroll pushed the row up behind the subtab bar and cut
+              off the character's head and the HP bar.  The card moved into the
+              row instead (over the vitals, the owner's suggestion), so there
+              is nothing left to scroll to. */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 6 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               {/* The header names what the numbers below are ABOUT, which is
                   the whole point of a contextual panel: without it, a card
@@ -326,50 +676,16 @@ export const HeroExpanded = () => {
                 <span style={{
                   fontSize: 9.5, fontWeight: 800, letterSpacing: '.06em',
                   textTransform: 'uppercase',
-                  color: selCard ? COL.accent : COL.muted,
+                  color: COL.muted,
                   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                }}>{selSlot ? (selCard ? selCard.title : selSlot.label) : 'Your stats'}</span>
-                {selSlot && selSlot.pickerSlot && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      let anchor = null;
-                      try {
-                        const r = e.currentTarget.getBoundingClientRect();
-                        anchor = { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.width, height: r.height };
-                      } catch (_e) {}
-                      itemDetailBus.open({ kind: 'loadout', slot: selSlot.pickerSlot, anchor, panel: null });
-                    }}
-                    style={{
-                      flex: 'none', padding: '2px 8px', borderRadius: 999,
-                      background: COL.accentFill, border: `1px solid ${COL.accent}`,
-                      color: COL.accent, fontFamily: 'inherit',
-                      fontSize: 10, fontWeight: 800, letterSpacing: '.04em',
-                      cursor: 'pointer',
-                    }}>CHANGE</button>
-                )}
+                }}>Your stats</span>
               </div>
 
-              {selSlot ? (
-                /* CONTEXTUAL — this one item's contribution.  An equipped
-                   slot with no stat data (legs and cape carry none, by
-                   v2.3.1328's own note) says so rather than showing an
-                   empty frame that looks broken. */
-                selCard ? (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 5 }}>
-                    {kv(selCard.primary.k, selCard.primary.v, true)}
-                    {selCard.secondary ? kv(selCard.secondary.k, selCard.secondary.v, true) : <div />}
-                  </div>
-                ) : (
-                  <div style={{
-                    padding: '10px 8px', borderRadius: 8,
-                    background: COL.wellSoft, border: `1px solid ${COL.tileBor}`,
-                    fontSize: 11, fontWeight: 600, color: COL.muted, textAlign: 'center',
-                  }}>{selSlot.ghost ? 'Nothing equipped here.' : 'No stat bonuses.'}</div>
-                )
-              ) : (
-                /* AGGREGATE — the whole character, which is what you see
-                   when nothing is selected. */
+              {/* v2.3.1843: ALWAYS the whole character now.  The per-item card
+                  moved up into the row (over the vitals) so that tapping a slot
+                  shows it without scrolling — see the note there.  This block
+                  keeps the one job it is good at: the aggregate. */}
+              {(
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 5 }}>
                   {/* v2.3.1668: every cell here now moves when you spend
                       a point.  Block and Speed were removed — Speed was

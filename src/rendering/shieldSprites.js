@@ -39,6 +39,22 @@ export function loadShieldSprites() {
 /** Pick a (texture, mirror) pair for the given shield angle (radians,
  *  +x = east, +y = south).  Returns null if no shield textures have
  *  loaded yet — caller falls back to the procedural arc. */
+/** v2.3.1841: which shield art an angle resolves to, as a URL + mirror flag,
+ *  for the 2D compositor (characterPortrait).  Deliberately shares the sector
+ *  and mirror tables with getShieldFrame below by calling it for the view
+ *  choice — the equip screen must show the same shield the world does, and
+ *  the "NE and NW use the opposite mirror" rule is exactly the kind of thing
+ *  that gets copied wrong. */
+export function getShieldArt(angle) {
+  const TAU = Math.PI * 2;
+  const a = ((angle % TAU) + TAU) % TAU;
+  const sector = Math.round(a / (Math.PI / 4)) % 8;
+  const view = ['side', '3q', 'front', '3q', 'side', '3q', 'front', '3q'][sector];
+  const mirror = [false, false, false, true, true, false, false, true][sector];
+  const entry = SHEETS[view];
+  return entry ? { url: entry.url, view, mirror } : null;
+}
+
 export function getShieldFrame(angle) {
   const front = SHEETS.front.tex;
   if (!front) return null;

@@ -93,12 +93,45 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('a tap could be dispatched at his feet', tapped);
   await P.page.waitForTimeout(700);
 
-  const dlgOpen = await P.page.evaluate(() => !!document.querySelector('.bt-inspect-card'));
+  const dlgOpen = await H.npcDialogueOpen(P);
   rec.ok('tapping him opens the in-world quest dialogue', dlgOpen);
+  /* v2.3.1827: the offer moved to its own panel behind his lines (v2.3.1820)
+     — the item art this scenario reads lives there, so talk him through
+     first.  See harness.advanceNpcDialogue. */
+  /* v2.3.1827: the PORTRAIT and his LINES live on the dialogue window now —
+     that is the split the owner asked for ("a larger picture of him on the
+     left side of the window and just the text of what he's saying").  Read
+     them here, BEFORE talking through to the offer, because advancing past
+     the last chunk closes the window that holds them. */
+  const spoken = await P.page.evaluate(() => {
+    const dlg = document.querySelector('.bt-npcdlg');
+    if (!dlg) return null;
+    return {
+      imgs: [...dlg.querySelectorAll('img')].map((i) => i.getAttribute('src') || ''),
+      text: dlg.innerText || '',
+    };
+  });
+  /* v2.3.1828: the HEAD crop specifically (owner: "I wanted just the head of
+     Mayor bro in his profile pic while talking for quest dialog").  Matching
+     a bare /mayor-bro/ would also pass on the full figure, which is the thing
+     that was replaced — so it has to name the crop. */
+  rec.ok("the dialogue shows Mayor Bro's HEAD, not his whole figure",
+    !!spoken && spoken.imgs.some((u) => /mayor-bro-head/.test(u))
+    && !spoken.imgs.some((u) => /mayor-bro\.(webp|png)/.test(u)),
+    spoken && spoken.imgs);
+
+  /* His whole script, gathered across the chunks — the control instructions
+     are chunk 2 of three, so a single read of the open window sees only the
+     line it is currently on. */
+  let script = (spoken && spoken.text) || '';
+  const _landed = await H.advanceNpcDialogue(P, {
+    onChunk: (t) => { script += '\n' + t; },
+  });
+  rec.ok('...and his lines lead to the offer panel', _landed === 'offer', { _landed });
 
   /* ── the dialogue's art ── */
   const art = await P.page.evaluate(() => {
-    const card = document.querySelector('.bt-inspect-card');
+    const card = document.querySelector('.bt-qoffer');
     if (!card) return null;
     const imgs = [...card.querySelectorAll('img')].map((i) => i.getAttribute('src') || '');
     /* v2.3.1710: the card now draws BOTH payout moments on an offer, so
@@ -113,8 +146,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
     return { imgs, groups, text: card.innerText || '' };
   });
-  rec.ok('the dialogue shows Mayor Bro\'s portrait, not an initial in a circle',
-    !!art && art.imgs.some((s) => /mayor-bro-head/.test(s)), art && art.imgs);
   /* great-sword.webp specifically: /icons/items/sword.webp is the BAMBOO
      STICK (the art for weaponType 'sword' at wood tier), which is what the
      owner saw here.  Asserting the exact file is what stops it drifting back. */
@@ -187,23 +218,27 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and the gold/XP line names the quest it is the reward for',
     !!art && /for finishing “cold reception”/i.test(art.text), art && art.text.slice(0, 600));
 
-  /* ── the control instructions ── */
-  rec.ok('the special-attack instruction says a quick swipe, not a flick-and-let-go',
-    !!art && /quick swipe/i.test(art.text) && !/let go for a special/i.test(art.text),
-    art && art.text.slice(0, 400));
-  rec.ok('the instructions call them joysticks, matching the on-screen control',
-    !!art && /right joystick/i.test(art.text), art && art.text.slice(0, 400));
-  /* The shield is a double-tap-and-HOLD: the handler raises it on the second
-     tap and keeps it up only while that touch lasts, and dragging during the
-     hold is what aims the arc.  Copy that says "double-tap to raise the
-     shield" describes a toggle that does not exist, and a player who lets go
-     mid-fight is unshielded with no idea why. */
-  rec.ok('the shield instruction says to double-tap AND HOLD, then aim',
-    !!art && /double-tap the right joystick and hold/i.test(art.text) && /aim it at the enemy/i.test(art.text),
-    art && art.text.slice(0, 500));
+  /* ── he does NOT recite the controls ── */
+  /* v2.3.1831 (owner: "remove the quest dialog from mayor bro about the
+     instructions for how to swing your sword, etc.  That is all covered in
+     the guided tutorial afterward").  This block used to assert the WORDING
+     of those instructions, corrected twice at v2.3.1681/1681b.  The wording
+     still matters — it just belongs to the coach now, and mp-questcoach
+     asserts it there (quick SWIPE not "flick and let go", the shield HOLD and
+     the turn, the cycle gesture).  What is asserted HERE is the removal, so
+     the manual cannot quietly creep back into his greeting. */
+  const CONTROL_WORDS = /joystick|double-tap|quick swipe|hold the right|swipe on the/i;
+  rec.ok('Mayor Bro hands the kit over without reciting the controls',
+    !CONTROL_WORDS.test(script), { script: script.slice(0, 600) });
+  /* Guard the guard: an empty script would satisfy the line above without
+     him having said anything at all. */
+  rec.ok('...and he is still saying something — the errand and the handover',
+    /sword and the shield/i.test(script) && /frost ridge/i.test(script),
+    { script: script.slice(0, 600) });
 
   /* ── accept, then re-check the leak ── */
-  const accepted = await H.clickText(P, 'Accept Quest').then(() => true).catch(() => false);
+  /* A REAL hit-tested click — see harness.confirmQuestOffer. */
+  const accepted = await H.confirmQuestOffer(P);
   rec.ok('the offer can be accepted from the world dialogue', accepted);
   await P.page.waitForTimeout(2600);
 
@@ -228,6 +263,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     granted.wstash.includes("Copper Great Sword"), granted);
   rec.ok('...and the shield with it', granted.sstash.includes("Pine Shield"), granted);
 
+  /* v2.3.1827: close him first.  The dialogue deliberately STAYS OPEN through
+     an accept (v2.3.1713 — he goes straight on to his next quest), and the
+     offer panel is portaled above the dashboard now, so it sits over the nav
+     rail this line is about to tap. */
+  await H.closeNpcDialogue(P);
   await H.openDest(P, 'Quests');
   await P.page.waitForTimeout(700);
   await H.clickText(P, 'Available').catch(() => {});
@@ -277,17 +317,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(800);
   await tapMayor();
 
+  /* v2.3.1827: talk him through to the claim panel — the chooser and the
+     reward list live there now, behind his lines (v2.3.1820). */
+  const _landedTurn = await H.advanceNpcDialogue(P);
+  rec.ok('his lines lead to the claim panel', _landedTurn === 'offer', { _landedTurn });
   let dlg = await H.bodyText(P);
   /* v2.3.1793: the reward card is a look-at-it change, so leave a picture of
      the moment it exists — the chooser is only on screen between "quest ready"
      and "skill picked", which is a hard state to reach by hand. */
   await P.page.screenshot({ path: 'tools/qa/mp/out/questui-chooser.png' }).catch(() => {});
   rec.ok('with the remnants in hand the giver offers the turn-in',
-    /Redeem Reward|Choose a skill to train/.test(dlg), dlg.slice(0, 300));
+    /Claim Reward|Choose a skill to train/.test(dlg), dlg.slice(0, 300));
   /* v2.3.1704: the SAME slot that showed the sword and shield now shows the
      bow and staff, so the caption has to say which moment these belong to. */
+  /* v2.3.1827: the caption NAMES the quest again — see QuestOfferPanel.
+     Case-insensitive because the caption is uppercased in CSS. */
   rec.ok('the ready card says these items are what FINISHING pays',
-    /For finishing this quest/i.test(dlg), dlg.slice(0, 400));
+    /for finishing/i.test(dlg) && /cold reception/i.test(dlg), dlg.slice(0, 400));
   /* v2.3.1793: asserts the PROPERTY, not the sentence.  This used to require
      the literal string "Train 30 XP into", so restyling the chooser into a
      reward card broke a passing test that had found no bug — the same trap
@@ -303,14 +349,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
     { dlg: dlg.slice(0, 300) });
   rec.ok('...naming the three trained skills',
     /Melee/.test(dlg) && /Bow/.test(dlg) && /Magic/.test(dlg), dlg.slice(0, 300));
+  /* v2.3.1827: assert the STATE, not the caption.  This used to look for the
+     literal words "Choose a skill to train" — the copy the held button used
+     to carry — so rewording it to "Choose where to train it" broke a passing
+     test that had found no bug.  That is the same trap the v2.3.1793 note
+     directly above records, arriving one assertion later; being held is a
+     fact about aria-disabled, and aria-disabled is what a screen reader and
+     the click handler both read. */
   rec.ok('...and the turn-in button is held until one is chosen',
-    /Choose a skill to train/.test(dlg), dlg.slice(0, 300));
+    await H.questOfferBlocked(P), dlg.slice(0, 300));
 
   /* Pressing the held button must do NOTHING — not even locally.  A local
      'turnedIn' here would strand the quest: the worker never saw it, and the
      client will not offer a turn-in twice. */
   const beforePress = await H.readState(P, (S) => ({ q: S.rpg._quests.tut_1, coins: S.rpg.coins }));
-  await H.clickText(P, 'Choose a skill to train').catch(() => {});
+  await P.page.evaluate(() => {
+    const b = document.querySelector('[data-tut="qoffer-confirm"]');
+    if (b) b.click();       // in-page ON PURPOSE: press the held button anyway
+  });
   await P.page.waitForTimeout(900);
   const afterPress = await H.readState(P, (S) => ({ q: S.rpg._quests.tut_1, coins: S.rpg.coins }));
   rec.ok('pressing it with no choice made changes nothing at all',
@@ -319,11 +375,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* Choose BOW deliberately — the melee skill would also be raised by the
      starter sword, so bow is the one whose XP can only have come from here. */
-  await H.clickText(P, 'Bow').catch(() => {});
-  await P.page.waitForTimeout(600);
+  rec.ok('the bow skill could be chosen', await H.chooseQuestSkill(P, 'Bow'));
+  await P.page.waitForTimeout(400);
   dlg = await H.bodyText(P);
   rec.ok('choosing a skill arms the turn-in button',
-    /Redeem Reward/.test(dlg) && !/Choose a skill to train/.test(dlg), dlg.slice(0, 300));
+    !(await H.questOfferBlocked(P)) && /Claim Reward/i.test(dlg), dlg.slice(0, 300));
 
   const bowXpBefore = await H.readState(P, (S) =>
     (S.rpg.prog3 && S.rpg.prog3.sk && S.rpg.prog3.sk.bow && S.rpg.prog3.sk.bow.xp) || 0);
@@ -334,7 +390,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
      the persisted blob and compare against that instead. */
   const svrCoinsBefore = await H.adminPlayer(wsPort, pid)
     .then((a) => (a && a.rpg && a.rpg.coins) || 0).catch(() => null);
-  await H.clickText(P, 'Redeem Reward').catch(() => {});
+  /* A REAL click — see harness.confirmQuestOffer for why an in-page one is
+     not good enough here. */
+  rec.ok('the claim could actually be pressed', await H.confirmQuestOffer(P));
   await P.page.waitForTimeout(3000);
 
   const paid = await H.readState(P, (S) => ({
@@ -357,6 +415,108 @@ export async function run({ browser, wsPort, webPort, rec }) {
     svrCoinsBefore != null && svrCoinsAfter >= svrCoinsBefore + 25,
     { before: svrCoinsBefore, after: svrCoinsAfter, clientSays: paid.coins });
   rec.ok('and the remnants are consumed', paid.snowman === 0, paid);
+
+  await P.ctx.close().catch(() => {});
+}
+
+/* ═══ v2.3.1829: NO GREY RIM ON THE HAT ═══
+ * Owner: "Mayor bro has slight gray artifact around his black top hat can you
+ * remove that."  It was a 1px band of neutral grey painted along the hat's
+ * outer edge, at max-channel 67-89, where the hat's own keyline is 56-64.
+ *
+ * Checked by DECODING the shipped file rather than by looking at a
+ * screenshot: at portrait scale the band is ~2.6 screen px of dark grey
+ * against dark black, which is exactly the kind of difference a pixel
+ * comparison sees reliably and an eye does not.
+ *
+ * Bounded to the hat's rows because his HAIR is neutral grey too — an
+ * unbounded version of this rule would fail on art that is perfectly fine.
+ */
+export async function hatRim({ browser, wsPort, webPort, rec }) {
+  const P = await H.newPlayer(browser, { name: 'Hat', wsPort, webPort });
+  const found = await P.page.evaluate(() => new Promise((res) => {
+    const img = new Image();
+    img.onerror = () => res({ err: 'could not load the portrait' });
+    img.onload = () => {
+      const W = img.width, H = img.height;
+      const cv = document.createElement('canvas');
+      cv.width = W; cv.height = H;
+      const c = cv.getContext('2d', { willReadFrequently: true });
+      c.drawImage(img, 0, 0);
+      const p = c.getImageData(0, 0, W, H).data;
+      const A = (x, y) => (x < 0 || y < 0 || x >= W || y >= H) ? 0 : p[(y * W + x) * 4 + 3];
+      /* The hat ends at row 40 of the 96px crop — below that is face and hair. */
+      const HAT_BOTTOM = Math.round(H * (40 / 96));
+      const bad = [];
+      for (let y = 0; y < HAT_BOTTOM; y++) for (let x = 0; x < W; x++) {
+        const q = (y * W + x) * 4;
+        if (p[q + 3] < 200) continue;
+        const r = p[q], g = p[q + 1], b = p[q + 2];
+        const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+        if (mx - mn > 26 || mx < 66 || mx > 215) continue;
+        let onSil = false;
+        for (let dy = -1; dy <= 1 && !onSil; dy++) {
+          for (let dx = -1; dx <= 1; dx++) if (A(x + dx, y + dy) < 40) { onSil = true; break; }
+        }
+        if (onSil) bad.push(x + ',' + y + ' rgb(' + r + ',' + g + ',' + b + ')');
+      }
+      res({ W, H, hatBottom: HAT_BOTTOM, bad: bad.length, sample: bad.slice(0, 6) });
+    };
+    img.src = '/sprites/npc/mayor-bro-head.webp';
+  }));
+  rec.ok('the portrait decoded (guard)', !found.err && found.W > 0, found);
+  rec.ok("no grey rim on Mayor Bro's top hat", !found.err && found.bad === 0, found);
+
+  /* ═══ AND NOTHING ELSE MOVED ═══
+     The rim fix rewrites a shipped .webp, and the first write used Chromium's
+     DEFAULT WebP quality — which re-encoded the whole 96px sprite: 3445
+     pixels changed, 2369 of them outside the hat, on his face, hair and
+     chain, max channel shift 142.  Fixing 54 pixels by smearing 2369 is a
+     worse bug than the one being fixed, and it is invisible to the eye at
+     this size.  So the shipped file is diffed against the pristine source
+     and the damage is required to be confined to the hat.
+     (tools/gear/fix-mayor-hat.mjs now encodes at quality 1, which is
+     lossless — this is what holds it to that.) */
+  const diff = await P.page.evaluate(() => {
+    const load = (u) => new Promise((res) => {
+      const i = new Image();
+      i.onerror = () => res(null);
+      i.onload = () => {
+        const cv = document.createElement('canvas');
+        cv.width = i.width; cv.height = i.height;
+        const c = cv.getContext('2d', { willReadFrequently: true });
+        c.drawImage(i, 0, 0);
+        res({ w: i.width, h: i.height, d: c.getImageData(0, 0, i.width, i.height).data });
+      };
+      i.src = u;
+    });
+    return Promise.all([
+      load('/src-art/npc/mayor-bro-head.webp'),
+      load('/sprites/npc/mayor-bro-head.webp'),
+    ]).then(([A, B]) => {
+      if (!A || !B) return { err: 'could not load both' };
+      if (A.w !== B.w || A.h !== B.h) return { err: 'size changed' };
+      const HAT_BOTTOM = Math.round(A.h * (40 / 96));
+      let changed = 0, outside = 0;
+      for (let k = 0; k < A.d.length; k += 4) {
+        const y = Math.floor((k / 4) / A.w);
+        const d = Math.max(
+          Math.abs(A.d[k] - B.d[k]), Math.abs(A.d[k + 1] - B.d[k + 1]),
+          Math.abs(A.d[k + 2] - B.d[k + 2]), Math.abs(A.d[k + 3] - B.d[k + 3]),
+        );
+        if (d > 2) { changed++; if (y >= HAT_BOTTOM) outside++; }
+      }
+      return { changed, outside };
+    });
+  });
+  if (diff.err) {
+    /* The source lives outside public/ and is only reachable when the harness
+       is told to serve it — say so rather than passing on a missing file. */
+    rec.skip('the hat fix touched nothing outside the hat', diff.err);
+  } else {
+    rec.ok('the hat fix touched NOTHING outside the hat',
+      diff.outside === 0 && diff.changed > 0 && diff.changed < 200, diff);
+  }
 
   await P.ctx.close().catch(() => {});
 }

@@ -211,6 +211,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     ['legs only', 'none', 'coppergreaves'],
     ['full copper', 'copperplate', 'coppergreaves'],
   ];
+  /* Every stand-in size measured, so the constancy assertion at the end has
+     the whole matrix rather than one facing's word for it. */
+  const sizeLog = [];
   for (const [label, chest, legs] of COMBOS) {
     await P.page.evaluate(({ c, l }) => {
       window.__btSetGear && window.__btSetGear('chest', c);
@@ -269,11 +272,30 @@ export async function run({ browser, wsPort, webPort, rec }) {
             si.traitIdx >= 0 && si.loIdx < si.traitIdx,
             { loIdx: si.loIdx, traitIdx: si.traitIdx });
         }
-        /* Same object, same size: a shield that resized on attack reads as a
-           different shield.  BACK_SHIELD_PX is 72, scaled by the stand-in's
-           per-facing body height, so allow a modest band rather than equality. */
+        /* ═══ SAME OBJECT, SAME SIZE ═══
+           A shield that resized on attack reads as a different shield.
+           BACK_SHIELD_PX is 72, scaled by the stand-in's body height.
+
+           v2.3.1837: THE BAND WAS RECALIBRATED, and it is worth saying why
+           rather than just moving a number.  It used to be 55..90 and two
+           facings sat outside it (N 92.03, S 90.16) — a standing failure
+           nobody had chased.  The cause was the bug v2.3.1836 fixed: the
+           stand-in was sized by (221-33)*dirScale, south's crown/feet rows
+           times a scale built to CANCEL per-facing height differences, so
+           the body height it produced varied 16% by facing and drifted off
+           whatever this band was first tuned against.
+           With the stand-in now sized by each sheet's own measured rows,
+           _swordBodyH equals the WALKING body's rendered height exactly —
+           (feet - crown + 1) is the painted height, so painted * dirScale is
+           the real figure — and every facing lands on 90.2..90.7.  The
+           shield-to-body ratio is unchanged at 86%; only the absolute size
+           moved, because the body underneath it was wrong before.
+           So the band moves up to cover the corrected size, and the real
+           assertion is the new one below it: the size is now CONSTANT, which
+           is a far stronger claim than any band. */
         rec.ok(`${tag}: it is still the same size shield`,
-          si.sizePx > 55 && si.sizePx < 90, { sizePx: si.sizePx });
+          si.sizePx > 55 && si.sizePx < 110, { sizePx: si.sizePx });
+        sizeLog.push({ tag, sizePx: si.sizePx });
       }
       await P.page.evaluate(() => {
         const S = window._gameState.current;
@@ -289,4 +311,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   await P.page.screenshot({ path: 'tools/qa/mp/out/backshield.png' }).catch(() => {});
   await P.ctx.close().catch(() => {});
+  /* ═══ v2.3.1837: ONE SIZE ACROSS THE WHOLE MATRIX ═══
+     Five facings x two stand-ins x four armour combos.  Before v2.3.1836 the
+     stand-in's body height varied 16% by facing, so this could not have been
+     asserted at all; now it can, and it is the assertion that would catch a
+     regression in the sizing the band above is too loose to see. */
+  if (sizeLog.length) {
+    const v = sizeLog.map((x) => x.sizePx);
+    const lo = Math.min(...v), hi = Math.max(...v);
+    const spread = (hi - lo) / ((hi + lo) / 2);
+    rec.ok('the slung shield is one size across every facing, stand-in and armour combo',
+      spread < 0.01,
+      { spreadPct: +(spread * 100).toFixed(2), lo: +lo.toFixed(2), hi: +hi.toFixed(2),
+        n: sizeLog.length,
+        smallest: sizeLog.find((x) => x.sizePx === lo),
+        largest: sizeLog.find((x) => x.sizePx === hi) });
+  }
+
 }

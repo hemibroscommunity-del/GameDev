@@ -3,6 +3,7 @@ import { gearIdIcon, armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.
 import { weaponMaterial, metalIconPath } from '@/rendering/traits/materialTints.js'; /* v2.3.1760 */
 import { COL, getState } from './common.js';
 import { itemDetailBus } from './itemDetailBus.js';
+import { weaponTierLabel } from '../sheet/equipModel.js'; /* v2.3.1845: one tier lookup */
 import {
   lock as lockItem,
   unlock as unlockItem,
@@ -23,8 +24,8 @@ import {
   calcDisplayHeal,
   getArmorPieceDr, /* v2.3.1697: replaced calcDisplayArmorHp — armor buys mitigation, not HP */
   calcBlockReduction,
-  BLACKSMITH_TIERS,
-  WOODWORKING_TIERS,
+  /* v2.3.1845: the two tier tables left with tierLabel — weaponTierLabel
+     (equipModel) owns that lookup now. */
   recalcDerived,
 } from '../../../data/gameSystems.js';
 
@@ -61,14 +62,14 @@ function weaponDmgRange(rpg, wpn) {
   return { dmgText: range.text, dps: calcDisplayDps(rpg, wpn).toFixed(1) };
 }
 
-function tierLabel(wpn) {
-  if (!wpn || !wpn.gearBase) return '';
-  const tbl = (wpn.gearBase || '').startsWith && wpn.type === 'bow'
-    ? WOODWORKING_TIERS
-    : BLACKSMITH_TIERS;
-  const tier = tbl[wpn.gearBase] || WOODWORKING_TIERS[wpn.gearBase];
-  return tier ? tier.label : wpn.gearBase;
-}
+/* v2.3.1845: one tier lookup, shared with the equip screen (equipModel).
+   The local one this replaces looked up a woodworking gearBase by its RAW
+   key — but those carry a 'ww_' prefix the tier table's own keys do not, so
+   a Pine Bow found no tier and this function's last line printed the raw
+   'ww_pine' at the player, in the same picker the owner asked to read "pine
+   bow".  It also only reached the woodworking table for `type === 'bow'`,
+   leaving every staff looking in the metals. */
+const tierLabel = (wpn) => weaponTierLabel(wpn);
 
 /* Pick a thumb URL for a weapon based on type.
    v2.3.1325 (owner icon sheets): painted item set — greatsword and

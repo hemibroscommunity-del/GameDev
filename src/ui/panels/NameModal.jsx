@@ -493,7 +493,27 @@ export function NameModal(props) {
     },
     placeholder: "Name your Bro…",
     maxLength: 20,
-    autoFocus: true,
+    /* ═══ v2.3.1818: NO AUTOFOCUS ═══
+       Owner: "Immediately after tapping new character from splash screen the
+       iOS keyboard scrolls you to this view.  Don't make it jump to the name
+       right away."
+
+       On a phone, focusing an input IS opening the keyboard.  iOS then
+       scrolls the focused field into the shrunken viewport, which drags the
+       creator up and takes the character — the whole point of this screen —
+       off the top of it.  So the first thing a player saw of their new bro
+       was a name box and a keyboard.
+
+       Deliberately not replaced with a scroll-into-view or a delayed focus:
+       both still open the keyboard, and the keyboard is the thing that
+       breaks the layout.  The field is one tap away and reads "Name your
+       Bro…", so nothing is hidden — you just get to look at the character
+       first, and pick the name when you are ready.
+
+       Desktop loses a small convenience (click before typing).  Accepted:
+       iPhone Safari is the primary platform per CLAUDE.md, and a
+       pointer-fine-only autofocus would put the two platforms on different
+       code paths for a keystroke. */
     className: "bt-cc-name",
     style: {
       width: '100%',

@@ -9,6 +9,7 @@ import {
 import {
   prog3Live, prog3Pool, prog3CritPct, prog3CritFlat, prog3DodgePct,
   prog3DefPct, prog3SkillLevel, prog3XpRequired, PROG3,
+  PROG3_SKILL_META, /* v2.3.1848: bestWeaponProgress needs the icons */
 } from '../../../data/prog3.js';
 
 /* v2.3.1286: data model for the Hero destination (nav-system spec) —
@@ -108,6 +109,82 @@ export function skillProgress(R, key) {
    — the same numbers the Build cards print.  Clamped so the numerator
    can never exceed the denominator, per the spec.  Lifetime XP moved
    to Records. */
+/* ═══ v2.3.1848: WHICH WEAPON IS CLOSEST TO ITS NEXT LEVEL ═══
+ * Owner, on the band's new summary: "the XP bar will need to be shown based
+ * on whatever weapon is closest to the next level with a little weapon icon
+ * preceding it."
+ *
+ * combatLevelProgress below already picks the best-progressed track — but it
+ * answers a different question ("when does my CHARACTER level") and so it
+ * considers every skill, which under the legacy blob includes Vitality,
+ * Defense and Stamina.  Those are not weapons, and a bar preceded by a shield
+ * icon is not what was asked for.  This one is restricted to the three
+ * weapon skills in both branches, and it returns WHICH one won, because the
+ * icon is half the ask.
+ *
+ * A capped skill is skipped rather than shown at 100%: "closest to the next
+ * level" has no meaning for a skill with no next level, and a permanently
+ * full bar reads as a bug.  With all three capped there is nothing honest to
+ * draw, so it returns null and the caller omits the row. */
+/* v2.3.1853: ONE weapon skill's progress toward its next level.
+ * The per-pill readout on the dashboard, and the piece bestWeaponProgress
+ * below was already computing inline for each of the three — extracted so
+ * the pill and the "closest weapon" answer cannot disagree about what a
+ * skill's progress IS.
+ *
+ * `cat` is a prog3 category: 'sword' | 'bow' | 'staff'.  Returns null for a
+ * capped skill, which is the honest answer to "how far to the next level"
+ * when there is no next level — the caller shows the cap instead of a bar
+ * that can only ever read full. */
+export function weaponSkillProgress(R, cat) {
+  if (!R || !cat) return null;
+  if (prog3Live(R)) {
+    const lvl = prog3SkillLevel(R, cat);
+    if (lvl >= PROG3.LEVEL_CAP) return null;
+    const sk = (R.prog3.sk && R.prog3.sk[cat]) || {};
+    const thresh = Math.max(1, prog3XpRequired(lvl));
+    return { prog: Math.min(Math.floor(sk.xp || 0), thresh), thresh, level: lvl };
+  }
+  /* Legacy blob: the weapon skills are the first three COMBAT_SKILLS, in
+     the same Melee/Bow/Magic order as the prog3 categories. */
+  const legacyKey = { sword: 'power', bow: 'agility', staff: 'mind' }[cat];
+  if (!legacyKey) return null;
+  const p = skillProgress(R, legacyKey);
+  if (!p || !p.thresh) return null;
+  return { prog: Math.min(p.prog, p.thresh), thresh: p.thresh, level: R[legacyKey] || 0 };
+}
+
+export function bestWeaponProgress(R) {
+  if (!R) return null;
+  let best = null;
+  if (prog3Live(R)) {
+    for (const meta of PROG3_SKILL_META) {
+      const lvl = prog3SkillLevel(R, meta.key);
+      if (lvl >= PROG3.LEVEL_CAP) continue;
+      const sk = (R.prog3.sk && R.prog3.sk[meta.key]) || {};
+      const prog = Math.floor(sk.xp || 0);
+      const thresh = Math.max(1, prog3XpRequired(lvl));
+      if (!best || prog / thresh > best.prog / best.thresh) {
+        best = { prog: Math.min(prog, thresh), thresh, level: lvl,
+          key: meta.key, label: meta.label, iconSrc: meta.iconSrc };
+      }
+    }
+    return best;
+  }
+  /* Legacy blob: the first three COMBAT_SKILLS are the weapon ones, in the
+     same Melee/Bow/Magic order.  Sliced rather than filtered by key so this
+     cannot silently pick up a fourth skill if the list grows. */
+  for (const sk of COMBAT_SKILLS.slice(0, 3)) {
+    const p = skillProgress(R, sk.key);
+    if (!p || !p.thresh) continue;
+    if (!best || p.prog / p.thresh > best.prog / best.thresh) {
+      best = { prog: Math.min(p.prog, p.thresh), thresh: p.thresh,
+        level: R[sk.key] || 0, key: sk.key, label: sk.label, iconSrc: sk.iconSrc };
+    }
+  }
+  return best;
+}
+
 export function combatLevelProgress(R) {
   /* v2.3.1660 (prog3): the next character level arrives when the
      best-progressed TRAINED skill crosses its threshold (level = Σ

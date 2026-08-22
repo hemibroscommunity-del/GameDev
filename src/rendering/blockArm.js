@@ -102,6 +102,40 @@ export const BLOCK_ARM_CUT = {
   southwest: { frame: 2, rect: [6, 86, 58, 34],   shoulder: [56, 12], hand: [10, 18] },
 };
 
+/* ═══ v2.3.1833: WHERE THE SHIELD SITS ON THE FACINGS THAT HAVE NO CUT ═══
+ *
+ * Owner: "The northeast shield position (and mirror) is not positioned
+ * correctly on the outstretched hand."
+ *
+ * They are right, and the cause is that NW/N/NE never had a hand position at
+ * all.  ARM_CUTS above covers only the facings where the shield is drawn IN
+ * FRONT of the body, because that is where a cut ARM was needed — and the
+ * shield happened to be positioned by the same table.  On the three facings
+ * where the player's back is to the camera there is no cut, so `_armHand` is
+ * null and the shield fell through to a polar fallback: 16px from the body
+ * CENTRE along the guard angle.  That put it flat against the torso, mostly
+ * hidden behind the body, while the stand-in's authored arm reached out to
+ * nothing.
+ *
+ * The stand-in body DOES have an outstretched arm on all three — it is a
+ * bow-shot pose — so the hand is there to sit on; nobody had measured it.
+ * These are those points, in the bow frame's own coordinates, same space and
+ * same meaning as `hand` above: the point the shield's CENTRE sits on.  Read
+ * off the art (the frame the block holds, BLOCK_POSE_FRAME) rather than
+ * derived, because the two shipped values disagree about the rule — east's
+ * sits at the centre of the closed fist, southwest's out at the fingertips.
+ *
+ * northeast is absent DELIBERATELY: _bowFacing maps it to ['northwest', true],
+ * so it renders the northwest sheet mirrored and takes this point mirrored
+ * with it.  A separate northeast entry would be a second source of truth for
+ * one piece of art.  south is absent too — v2.3.1805 keeps a south block on
+ * the real body, not the stand-in.
+ */
+export const BLOCK_STANDIN_HAND = {
+  northwest: [19, 104],
+  north:     [100, 100],
+};
+
 /* Baked bow body frames, handed over by effectsRenderer after every recolour
    bake (so the arm follows a skin change without its own loader).  Keyed by
    authored sheet name. */

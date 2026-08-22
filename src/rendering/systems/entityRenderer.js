@@ -22,7 +22,7 @@ import { getShieldFrame } from '../shieldSprites.js';
 import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX, HELD_SHIELD_PX } from '../backShield.js'; /* v2.3.1784; HELD_ v2.3.1798 */
 import { STUN_STARS, STUN_SPIN_MS } from '../fxStrips.js'; /* v2.3.1735: the owner's stun ring */
 import { jogWaistRow } from '../jogWaist.js'; /* v2.3.1341: stable waist band */
-import { getFrame as getSlimeBaseFrame, hasState as hasSlimeState, frameCount as slimeFrameCount } from '../slimeSprites.js';
+import { getFrame as getSlimeBaseFrame, hasState as hasSlimeState, frameCount as slimeFrameCount, SLIME_BASE_ROW, SLIME_FRAME_PX } from '../slimeSprites.js';
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1573 generalised */
 
 /* v2.3.1534: one place that decides whether a slime draws from the shared
@@ -142,8 +142,32 @@ const POPUP_BAR_CLEAR = 34;
    stays one knob per entity type.  Render-only: world positions, server
    hitboxes, and combat ranges are untouched. */
 /* v2.3.1277: owner — "character 25% smaller."  4/3 x 0.75 = 1.0, i.e.
-   exactly the pre-experiment size; keep the knob for further tuning. */
-const PLAYER_SIZE_MULT = 1.0;
+   exactly the pre-experiment size; keep the knob for further tuning.
+   ── v2.3.1821: back UP 25% (owner: "Make the character and name plate 25%
+   larger.  Needs to be more legible for discerning details about the
+   character and the font size").  This is the knob that note kept for
+   exactly this, and it is the right one because it is applied at the
+   CONTAINER level: the body, the above-head bar and the name plate all grow
+   together, so the plate cannot drift off the character it belongs to.
+   Render-only — world positions, server hitboxes and combat ranges are
+   untouched, so nothing about reach or collision changes with it.
+   The plate's TEXT needs one thing more than this scale; see the resolution
+   note in _attachNamePill. */
+const PLAYER_SIZE_MULT = 1.25;
+/* v2.3.1821b: how far the idle SOUTH greatsword tilts off the face, in
+   radians about the grip.  Negative because the south sheet is mirrored (see
+   the note at the assignment); ~10 degrees, which is the "smidge" the owner
+   asked for rather than a re-pose. */
+/* v2.3.1839: -0.18 -> -0.60.  Owner, on the second look: "South idle the
+   sword is in front of the characters face.  Angle south sword just a bit so
+   it's not over the face."  Chosen from a SWEEP photographed in game
+   (mp-southsword, BT_TILT_SWEEP) rather than derived: the sign is the trap
+   this file already warns about, and the sweep settles which way is which —
+   negative swings the tip LEFT clear of the head, positive drags it down
+   across the chest.  At -0.18 the blade ran straight up over the face; -0.45
+   only grazed clear; -0.60 clears the head box with the whole segment below
+   it, and still reads as a carried sword rather than a held-out one. */
+const SOUTH_IDLE_TILT = -0.60;
 /* v2.3.1765: how long a monster spends arriving (see the spawn-in note in the
    monster loop).  Short on purpose — this is a flourish on a respawn, and a
    monster you cannot fight yet is a monster in your way. */
@@ -172,6 +196,19 @@ const MONSTER_SIZE_MULT = 1.5;
    follow the figure automatically rather than needing their own pass. */
 const NPC_SPRITE_SCALE = 120 / 256;
 
+/* v2.3.1822: per-figure size, because "the mayor" is no longer the only NPC.
+   Every earlier size request (1673/1675/1681 above) was about Mayor Bro and
+   was applied to the shared constant, which was harmless while he was the
+   only one drawn.  He is not: the blacksmith (v2.3.1773) and the storekeeper
+   (v2.3.1775) render off the same constant, and the owner did NOT ask for
+   those to change.  Owner: "Make mayor bro 10% larger" — so the 10% lives
+   here, keyed by sprite path, and everyone else keeps 1.0.
+   Keyed by client-visible strings, so Object.create(null) (CLAUDE.md rule 4). */
+const NPC_SCALE_MULT = Object.assign(Object.create(null), {
+  '/sprites/npc/mayor-bro.webp': 1.10,
+});
+const npcSpriteScale = (src) => NPC_SPRITE_SCALE * (NPC_SCALE_MULT[src] || 1);
+
 /* v2.3.1773: QA probe store — id-keyed from data, so Object.create(null)
    (CLAUDE.md: a plain {} silently no-ops on '__proto__'). */
 const _npcDrawn = Object.create(null);
@@ -195,7 +232,7 @@ if (typeof window !== 'undefined') window.__btNpcSprites = () => Object.values(_
 const NPC_FRAME_FEET_Y = 223;
 const NPC_FRAME_TOP_Y = 23;
 /** Height of the drawn figure above the NPC's feet, in world px. */
-const npcFigureHeight = () => NPC_SPRITE_SCALE * (NPC_FRAME_FEET_Y - NPC_FRAME_TOP_Y);
+const npcFigureHeight = (src) => npcSpriteScale(src) * (NPC_FRAME_FEET_Y - NPC_FRAME_TOP_Y);
 
 /* v2.3.1681: the quest badge behind the '!' (owner: "thick white outline or
    something to be more attention grabbing").  Radius in world px — the label
@@ -509,7 +546,52 @@ const BODY_DIR_SCALE = {
      JOG_HEIGHT (1.052) without re-deriving this map; for south those two
      factors were what held idle == jog.  Re-measured on the armored figure:
      stand 188px, jog mean 197.6px -> 197.6/188 = 1.051 makes them equal. */
-  stand: { south: 1.051, east: 0.983, north: 1.039, northeast: 1.003, southwest: 0.983 },
+  /* ═══ v2.3.1826: RE-DERIVED FROM THE FIGURE ON SCREEN ═══
+     Owner: "Character's size is inconsistent across different directions
+     (east, southwest, etc).  I don't know the best way to fix that.  Also
+     without breaking anything else (relative item scale like hats, beards,
+     etc)."
+
+     They are right, and the old numbers are why.  Measured through
+     bodyFigureProbe — the painted crown-to-boots of the frame actually on
+     screen, converted through the live transform — the eight facings came
+     out spanning 9.4%:
+         north 74.0  east/west 74.6  south 76.5  NE/NW 77.6  SE/SW 81.4
+     Southwest is 9.9% taller than north, which is exactly the pair the
+     owner named.
+
+     WHY THE OLD MAP DID NOT HOLD IT.  It was derived at v2.3.569 against the
+     ARMOURED figure, because at the time gear was drawn at its own size and
+     the bare body could not see it.  v2.3.645 ended that — the aligned gear
+     is drawn to FIT the body now, and only this uniform scale applies — so
+     normalising the armoured silhouette stopped being the right target and
+     nobody re-derived it.  South was then hand-patched at v2.3.684 for a
+     different reason again (idle/jog parity).
+
+     THE NEW TARGET is 77.2px, the facing-weighted mean of what the eight
+     were already doing (east art covers E+W, SW art covers SW+SE, NE art
+     covers NE+NW, so those three carry double weight).  Keeping the mean
+     fixed means this removes the VARIANCE without making the character
+     bigger or smaller overall — a size change is not what was asked for.
+
+     THE BOOTS COME ALONG FOR FREE, and that is the check that the model is
+     right rather than a coincidence: the body sprite is anchored at the
+     CELL's centre, and the painted figure's centre sits at row ~126 of 256
+     in every sheet, so a facing that is drawn taller also puts its feet
+     lower — the character sinks and rises as it turns.  Equalising the
+     heights predicted a foot-line spread of 1.2px, down from 4.5px, and
+     that is what mp-bodysize measures.
+
+     AND THE HATS ARE SAFE, which was the owner's actual worry: every trait
+     is placed through _placeTrait with THIS bodyScale, and its anchors are
+     frame-relative, so a hat's size and its seat on the head scale in
+     lockstep with the body.  mp-bodysize asserts hat-height / body-height
+     stays constant across facings rather than trusting that.
+
+     NOT TOUCHING `jog` — see the note below.  Its numbers encode a
+     deliberate perceptual correction for east's under-drawn source art, and
+     re-deriving it on height alone would undo that. */
+  stand: { south: 1.061, east: 1.018, north: 1.083, northeast: 0.998, southwest: 0.933 },
   /* v2.3.539: jog re-derived to match each facing's OWN idle size (the player
      was bigger running than standing).  Crown-to-hip over-scaled the jog
      because a running figure leans + spreads its legs, compressing vertical
@@ -532,8 +614,104 @@ const BODY_DIR_SCALE = {
      of the mass gap at the cost of a small jog>stand height pop when
      stopping.  The DURABLE fix is regenerating jog-east art at proper figure
      scale via the same video pipeline that rebuilt NE (v2.3.708/716). */
-  jog:   { south: 1.000, east: 1.25, north: 1.050, northeast: 1.126, southwest: 1.000 },
+  /* ═══ v2.3.1830: THE JOG MAP, RE-DERIVED ON EAST'S ANCHOR ═══
+     Owner: "the larger issue is still the inconsistent player scale per
+     direction.  I need you to provide a visual preview of the character per
+     direction and come up with the best solution to equalize the scale
+     between directions."
+
+     v2.3.1826 equalised STAND to 0.1%.  Jogging still spanned 8.1%:
+         south 77.39  SE/SW 77.39  E/W 78.54  NE/NW 80.24  north 83.67
+     measured as painted crown-to-feet through the live transform, taken as
+     the MEDIAN OF THE WHOLE RUN CYCLE rather than one frame — a running
+     figure bobs, and a single frame compares eight arbitrary moments.  (The
+     first pass sampled 14 moments and had SE and SW, which are the same
+     sheet mirrored, disagreeing by 1%.  They are identical here, which is
+     the check that the sampling is converged.)
+
+     WHY EAST IS THE ANCHOR AND NOT THE MEAN.  East's 1.25 is not a height
+     number — v2.3.740 set it to close an ~18% BODY MASS deficit in the
+     jog-east source art, knowingly buying a small jog>stand pop to do it.
+     Re-deriving it on height would quietly undo that.  So the target is
+     east's own current rendered height, 78.54px, which happens to also be
+     the median of the eight: east's entry is therefore UNCHANGED BY
+     CONSTRUCTION and everything else moves to meet it.
+
+     WHY NORTH MOVES MOST (1.050 -> 0.986, -6.1%).  v2.3.540 derived north
+     on full height as 0.967, judged it "a bit small" against the leg-spread
+     of its run, and settled on 1.050 — matched to the idle map OF THAT ERA,
+     when north stood at 74.0px.  v2.3.1826 moved north's stand to 77.2px,
+     so the target that 1.050 was tuned against no longer exists; this is
+     the same principle re-applied to corrected inputs, not a perceptual
+     call being overridden.  0.986 also sits 2% ABOVE the 0.967 that was
+     called small, so it does not walk back into that.
+
+     RESULT: jog spread 8.1% -> 0.05%, and because the anchor is east's
+     height rather than the stand height, every facing now has the SAME
+     +1.7% stand->jog pop that v2.3.740 already accepted for east — the pop
+     is uniform instead of ranging from -0.8% to +8.4%.
+     Traits ride this scale through _placeTrait, so hats and beards follow
+     in lockstep; mp-scalesheet asserts that ratio while JOGGING rather than trusting it
+     (mp-bodysize only ever covered standing). */
+  jog:   { south: 1.015, east: 1.25, north: 0.986, northeast: 1.102, southwest: 1.015 },
 };
+/* ═══ v2.3.1836: WHERE THE CROWN AND THE FEET ACTUALLY ARE ═══
+ *
+ * Owner: "the shield block per direction still have mismatched character
+ * scales."
+ *
+ * The block, the swing and the bow shot all replace the walking body with a
+ * STAND-IN drawn by effectsRenderer, and entityRenderer sizes and plants it by
+ * publishing S._swordBodyH / S._swordFootY.  Both were computed from the
+ * constants 221 (feet row) and 33 (crown row), which are SOUTH's rows applied
+ * to every facing — and then multiplied by bodyDirScale('stand', dir).
+ *
+ * That multiplication is the bug, and it is backwards in an interesting way.
+ * The dir-scale exists to CANCEL the per-facing height differences in the
+ * walking art: the sheets paint the figure 189/197/185/201/214 units tall and
+ * the scale brings them all to one rendered height.  Measured:
+ *      south 189*1.061   east 197*1.018   north 185*1.083
+ *      northeast 201*0.998   southwest 214*0.933      -> 200.5 every time
+ * Multiply that same scale by a CONSTANT 188 instead and the cancellation runs
+ * the wrong way — it re-introduces the variation it was built to remove:
+ *      175.4 .. 203.6, a 16.1% spread.
+ * So the block pose was up to 16% bigger in one direction than another, which
+ * is exactly what the owner is looking at.  The jog figure used for the
+ * moving-block leg composite was worse: 26.8%.
+ *
+ * These are the MEASURED painted rows of each sheet, in 256-frame units, so
+ * (feet - crown + 1) * dirScale is the constant the dir-scale was designed to
+ * produce.  The jog rows are the CYCLE MEDIAN — a running figure bobs, so one
+ * frame would be one arbitrary moment (the same reason mp-scalesheet medians
+ * over the strip).
+ *
+ * The feet row was wrong per facing too, and independently: 221 is south's,
+ * while east ends at 223 and southwest at 234.  A stand-in planted on south's
+ * feet row floats or sinks in every other direction.
+ */
+const BODY_ROWS = {
+  stand: {
+    south:     { crown: 33, feet: 221 },
+    east:      { crown: 27, feet: 223 },
+    north:     { crown: 35, feet: 219 },
+    northeast: { crown: 27, feet: 227 },
+    southwest: { crown: 21, feet: 234 },
+  },
+  jog: {
+    south:     { crown: 32, feet: 232 },
+    east:      { crown: 48, feet: 210 },
+    north:     { crown: 24, feet: 230 },
+    northeast: { crown: 44, feet: 228 },
+    southwest: { crown: 32, feet: 232 },
+  },
+};
+/* South is the fallback because it is the pair the old constants encoded, so
+   an unknown facing lands exactly where it used to rather than somewhere new. */
+function bodyRows(pose, dir) {
+  const m = BODY_ROWS[pose] || BODY_ROWS.stand;
+  return m[dir] || m.south;
+}
+
 function bodyDirScale(pose, dir) {
   if (pose === 'hit') return dir === 'east' ? 0.88 : 1.0;
   const m = BODY_DIR_SCALE[pose];
@@ -3038,6 +3216,15 @@ function createMonsterDisplay(monster) {
      ever want the grounding back; this is the deliberate cheaper answer to
      what they actually said.
 
+     ═══ v2.3.1824: THE GEOMETRY ABOVE IS NO LONGER TRUE ═══
+     The 42 empty rows are still in the art, but the sprite is anchored on
+     the blob's base row now (SLIME_BASE_ROW), so a shadow at
+     `shadow.y = size` would land roughly under the blob rather than 48px
+     adrift.  Leaving the slimes shadowless anyway: the owner asked for that
+     directly, and the player has no shadow either (v2.3.1365).  Kept as a
+     note rather than deleted, because this measurement is what made the
+     anchor bug findable.
+
      GATED PER-VARIANT, deliberately: `isFodder` is the useSlimeSheets test,
      so it covers ALL FOUR slimes — plain fodder, blueSlime (the Verdant
      Wilds one the owner was looking at), mossSlime and mireWisp — because
@@ -3159,14 +3346,28 @@ function _attachNamePill(container, nameSize) {
   pill.y = 38;
   const bg = new Graphics();
   pill.addChild(bg);
-  const nameT = new Text({ text: '', style: {
+  /* ═══ v2.3.1821: RASTERISE AT THE SIZE IT IS SHOWN ═══
+     The owner asked for the plate to be "more legible ... and the font size",
+     and those are two different problems.  PLAYER_SIZE_MULT makes the plate
+     BIGGER, but a Pixi Text is a texture: enlarging its container resamples
+     glyphs that were rasterised at nameSize, so scaling alone buys size at
+     the cost of sharpness — bigger AND blurrier, which is not more legible.
+
+     Rasterising at devicePixelRatio x the container scale means the glyphs
+     are generated at the pixel count they actually occupy, so the growth is
+     the only thing that changes.  Capped at 4: beyond that the texture cost
+     climbs for detail no screen resolves, and every player in the room
+     carries one of these. */
+  const _pillRes = Math.min(4, Math.max(1,
+    ((typeof window !== 'undefined' && window.devicePixelRatio) || 1) * PLAYER_SIZE_MULT));
+  const nameT = new Text({ text: '', resolution: _pillRes, style: {
     fontFamily: 'Source Sans 3, sans-serif', fontSize: nameSize, fontWeight: '700',
     fill: '#F4F0E7', align: 'center',
   } });
   nameT.anchor.set(0.5, 0);
   nameT.y = 3;
   pill.addChild(nameT);
-  const lvlT = new Text({ text: '', style: {
+  const lvlT = new Text({ text: '', resolution: _pillRes, style: {
     fontFamily: 'Source Sans 3, sans-serif', fontSize: nameSize - 1, fontWeight: '800',
     fill: '#D8AA58', align: 'center', letterSpacing: 0.5,
   } });
@@ -4215,6 +4416,12 @@ export class EntityRenderer {
             }
             sb.scale.x = 96 / 128;
             sb.scale.y = 96 / 128;
+            /* v2.3.1824: the splat has its own baseline (row ~108, vs 86 for
+               the live blob) — anchoring it on the live number would drop it
+               24px through the floor at the moment of death. */
+            const _deathAnchor = SLIME_BASE_ROW.death / SLIME_FRAME_PX;
+            if (sb.anchor.y !== _deathAnchor) sb.anchor.set(0.5, _deathAnchor);
+            sb.y = 0;
             sb.tint = slimeTintFor(variant, 'death'); /* v2.3.1147; v2.3.1534 */
             sb.visible = true;
             display.x = m.x;
@@ -4721,7 +4928,17 @@ export class EntityRenderer {
           const sy = baseScale * sqy;
           if (spriteBody.scale.x !== sx) spriteBody.scale.x = sx;
           if (spriteBody.scale.y !== sy) spriteBody.scale.y = sy;
-          if (spriteBody.y !== size) spriteBody.y = size; /* feet at the circle's bottom edge */
+          /* v2.3.1824: anchor on the row the BLOB rests on, not the empty
+             bottom of the cell — see SLIME_BASE_ROW.  y=0 then puts that row
+             on the monster's own position, which is what makes the loot pile,
+             the hit tests and the tap circle line up with the slime you can
+             actually see.  Set per state because the three live sheets share
+             a baseline and the death sheet does not.
+             Bonus: the hit squash now pivots on the blob's base, so a
+             squashed slime stays planted instead of sliding. */
+          const _slimeAnchor = (SLIME_BASE_ROW[state] || SLIME_BASE_ROW.idle) / SLIME_FRAME_PX;
+          if (spriteBody.anchor.y !== _slimeAnchor) spriteBody.anchor.set(0.5, _slimeAnchor);
+          if (spriteBody.y !== 0) spriteBody.y = 0;
           /* v2.3.1147: tinted slime reskins (mossSlime/mireWisp).
              v2.3.1534: a recoloured variant reports white here — see
              slimeTintFor. */
@@ -4880,7 +5097,15 @@ export class EntityRenderer {
         } else if (display._isSnowman && spriteVisible) {
           visualTopY = display._size - 64;
         } else if (display._isFodder && spriteVisible) {
-          visualTopY = display._size - 96;
+          /* v2.3.1824: the sprite is anchored on the blob's base row now, so
+             the frame top is that many scaled rows above the origin rather
+             than `size - 96`.  Deliberately the FRAME top and not the blob
+             top: it works out to the same clearance the bar had before this
+             change (~22 local px over the blob's highest bounce), and the
+             damage-number-over-the-HP-bar overlap has been reported three
+             times (v2.3.1402/1403/1638) — this fix has no business moving
+             that gap as a side effect. */
+          visualTopY = -(SLIME_BASE_ROW.idle * (96 / SLIME_FRAME_PX));
         } else {
           visualTopY = -size;
         }
@@ -6303,6 +6528,33 @@ export class EntityRenderer {
     /* v2.3.1534: the §5.8 dodge roll owns the body for its whole window. */
     const dodging = !!S._dodgeRoll;
     let facing;
+    /* ═══ v2.3.1837: A TURN IS A FACING, NOT JUST A POSE ═══
+       Owner: "the character when idle faces whatever direction he last moved
+       instead of the direction he last rotated.  It needs to be the direction
+       last faced."
+
+       The idle branch at the bottom of this ladder reads S._facingAngle, and
+       that angle only ever learned about WALKING: visualSystems slews it
+       toward S._targetFacingAngle, and the only thing that ever set the target
+       was velocity —
+           if (absDx > 0.02 || absDy > 0.02) S._targetFacingAngle = atan2(dy, dx)
+       So every branch ABOVE isMoving could turn the body — the guard angle,
+       the aim, the movement stick pushed against a wall — and the moment it
+       let go the body snapped back to the last direction the player had
+       actually WALKED, discarding the turn.
+
+       Stamping the resting target with whatever angle just decided the facing
+       makes "last faced" literally true, and it is done HERE, once, rather
+       than at the dozen sites that write an aim angle: this is the ladder that
+       decides which way the body points, so it is the only place that knows
+       which of them won this frame.  Velocity still owns the target while
+       walking (visualSystems rewrites it every frame you move), so this only
+       takes effect for a turn that was NOT a walk — which is the ask.
+
+       The forced-south poses are deliberately excluded: loot pickup, mining
+       and fishing point the body at the camera so their animation reads, and
+       none of them is the player choosing a direction. */
+    let facedAng = null;
     if (lootFrozen) {
       facing = 'south';
     } else if (mining || fishing) {
@@ -6313,7 +6565,7 @@ export class EntityRenderer {
          below would miss it and the tumble would play toward whatever the
          player happened to be facing when they swiped. */
       const sector = Math.round(S._dodgeRoll.angle / (Math.PI / 4));
-      facing = SECTORS[((sector % 8) + 8) % 8];
+      facing = SECTORS[((sector % 8) + 8) % 8]; facedAng = S._dodgeRoll.angle;
     } else if (bashPose) {
       /* v2.3.1735: the bash owns the body for its window, exactly as the
          dodge roll above does.  Placed ahead of the shield/aim branches so
@@ -6322,17 +6574,17 @@ export class EntityRenderer {
          cast time, so the body must not drift off it and lie about where
          the hit went. */
       const sector = Math.round(bashPose.ang / (Math.PI / 4));
-      facing = SECTORS[((sector % 8) + 8) % 8];
+      facing = SECTORS[((sector % 8) + 8) % 8]; facedAng = bashPose.ang;
     } else if (isShielding && S._shieldAngle != null) {
       const sector = Math.round(S._shieldAngle / (Math.PI / 4));
-      facing = SECTORS[((sector % 8) + 8) % 8]; S._facingSrc = 'shield';
+      facing = SECTORS[((sector % 8) + 8) % 8]; S._facingSrc = 'shield'; facedAng = S._shieldAngle;
     } else if (aimAttackActive) {
       const sector = Math.round(S._aimAngle / (Math.PI / 4));
-      facing = SECTORS[((sector % 8) + 8) % 8]; S._facingSrc = 'aim';
+      facing = SECTORS[((sector % 8) + 8) % 8]; S._facingSrc = 'aim'; facedAng = S._aimAngle;
     } else if (stickActive) {
       const ang = Math.atan2(stickY, stickX);
       const sector = Math.round(ang / (Math.PI / 4));
-      facing = SECTORS[((sector % 8) + 8) % 8]; S._facingSrc = 'stick';
+      facing = SECTORS[((sector % 8) + 8) % 8]; S._facingSrc = 'stick'; facedAng = ang;
     } else if (isMoving) {
       const ang = Math.atan2(P.vy || 0, P.vx || 0);
       const sector = Math.round(ang / (Math.PI / 4));
@@ -6343,6 +6595,8 @@ export class EntityRenderer {
     } else {
       facing = S._facing || 'south'; S._facingSrc = 'fallback';
     }
+    /* v2.3.1837: the turn becomes the resting facing — see the note above. */
+    if (facedAng != null && isFinite(facedAng)) S._targetFacingAngle = facedAng;
     /* v2.3.396: publish the ACTUAL rendered facing (8-way compass) so the
        network broadcast can send it and remote clients render the same
        facing -- they previously reconstructed it from movement, which is
@@ -6438,6 +6692,13 @@ export class EntityRenderer {
        BODY_DIR_SCALE map (silhouette-height normalization), replacing the
        old hand-tuned bump stack. */
     const bodyScale = bodyDirScale(pose, dir) * LOCAL_SCALE;
+    /* v2.3.1826: publish the (pose, dir) the body is ACTUALLY drawn as, for
+       bodyFigureProbe.  Not the same as S._facing: this is post-
+       resolveDirection, so it carries the mirror collapse (west renders as
+       east) — and "east and west are the same art" is exactly the kind of
+       thing a size comparison has to know rather than assume. */
+    display._lastPoseKey = pose;
+    display._lastFacingKey = dir;
     /* v2.3.551: set true once the full covering set hides the body, so the
        NFT/procedural fallbacks below don't draw a body in its place.  Declared
        at function scope (the NFT fallback is outside the spritesAvailable block). */
@@ -6781,15 +7042,20 @@ export class EntityRenderer {
          exempt only because its jog≈stand).  Using the stand scale here keeps
          the swing/shoot stand-in idle-sized in every facing. */
       const _standBodyScale = bodyDirScale('stand', dir) * LOCAL_SCALE;
-      S._swordFootY = display.y + (221 - 128) * _standBodyScale * _dscale;
+      /* v2.3.1836: this facing's OWN crown/feet rows — see BODY_ROWS.  The
+         old constants were south's, so every other facing was sized and
+         planted against a body that is not the one on screen. */
+      const _sRows = bodyRows('stand', dir);
+      S._swordFootY = display.y + (_sRows.feet - 128) * _standBodyScale * _dscale;
       /* Also publish the avatar's drawn body height (crown-to-foot ~188px in
          the source frame) so the stand-in renders at the matching size for this
          facing / zone. */
-      S._swordBodyH = (221 - 33) * _standBodyScale * _dscale;
+      S._swordBodyH = (_sRows.feet - _sRows.crown + 1) * _standBodyScale * _dscale;
       /* v2.3.1073: jog-scaled body height for the composited jog legs -- the bow
          art per direction is drawn jog-sized, so legs scaled by the STAND height
          read ~25% small (east jog 1.25 vs stand 0.983).  Use the JOG dir-scale. */
-      S._jogBodyH = (221 - 33) * bodyDirScale('jog', dir) * LOCAL_SCALE * _dscale;
+      const _jRows = bodyRows('jog', dir);
+      S._jogBodyH = (_jRows.feet - _jRows.crown + 1) * bodyDirScale('jog', dir) * LOCAL_SCALE * _dscale;
       /* v2.3.1072: tell the bow stand-in to swap to the leg-erased torso strip and
          composite jogging legs underneath while MOVING (effectsRenderer restricts
          this to the south facing for now via fmap).  Gate on the function-scope
@@ -7082,12 +7348,55 @@ export class EntityRenderer {
             weaponSprite.rotation = mirror ? -Math.PI * 0.3 : Math.PI * 0.3;
             weaponSprite.scale.x = (mirror ? -1 : 1) * fitScale;
           } else {
-            weaponSprite.rotation = 0;
+            /* ═══ v2.3.1821b: TILT THE SOUTH BLADE OFF HIS FACE ═══
+               Owner: "The south sword is right on the characters face tilt it
+               just a smidge more to the right at least just on idle south
+               view."
+
+               A consequence of the mirror added minutes earlier in this same
+               version: flipping the south sheet about the grip swung the
+               blade across the head instead of away from it.  The fix is a
+               small rotation about that same grip anchor, not a reposition —
+               moving the sprite would take the hilt out of the hand.
+
+               SIGN NOTE, and it is the easy thing to get wrong: the sprite is
+               mirrored (scale.x < 0), so a POSITIVE Pixi rotation reads as
+               counter-clockwise on screen.  Tilting the tip further right
+               therefore needs a negative angle.  Verified against the
+               rendered frame rather than reasoned about — see mp-swordcarry.
+
+               Idle only: `swingActive` is handled above and owns the blade's
+               angle during a swing, so this cannot fight the swing arc. */
+            /* v2.3.1839: the tilt is overridable from the page so QA can sweep
+               it in ONE build and pick by looking.  The sign is the trap this
+               block already warns about — the sprite is mirrored, so screen
+               direction and angle sign disagree — and sweeping settles it in a
+               way that reasoning about radians repeatedly has not. */
+            const _southTilt = (typeof window !== 'undefined'
+              && typeof window.__btSouthTilt === 'number')
+              ? window.__btSouthTilt : SOUTH_IDLE_TILT;
+            weaponSprite.rotation = (_gsDir === 'south') ? _southTilt : 0;
             /* v2.3.942: per-facing greatsword art is already drawn for its
                canonical facing, so flip it only for the truly-mirrored facings
                (resolveDirection's `mirror`: west/northwest/southeast).  Other
                weapons keep the single-icon rule (flip for SW/W/NW/N). */
-            const weaponMirror = _gsDir ? mirror : (facingIdx >= 3 && facingIdx <= 6);
+            /* ═══ v2.3.1821: THE SOUTH BLADE POINTS RIGHT ═══
+               Owner: "The south facing held sword should point to the right
+               (from the camera person's perspective) instead of left."
+
+               South is not one of resolveDirection's mirrored facings, so its
+               per-facing art was drawn as authored — hilt in the hand, blade
+               out to the viewer's LEFT.  Adding south to the flip set mirrors
+               that one sheet.
+
+               Safe because the flip is about the GRIP: scale.x negates around
+               the sprite's anchor, and the anchor is the handle point from
+               handles.json, so the hilt stays exactly where the hand is and
+               only the blade swings to the other side.  Nothing else moves,
+               which is why this is one condition rather than a new anchor. */
+            const weaponMirror = _gsDir
+              ? (mirror || _gsDir === 'south')
+              : (facingIdx >= 3 && facingIdx <= 6);
             weaponSprite.scale.x = (weaponMirror ? -1 : 1) * fitScale;
             /* v2.3.1786 (owner: "invert the sword held angle so instead of
                running around with it facing downward it points upward").
@@ -7161,6 +7470,56 @@ export class EntityRenderer {
               texW: weaponSprite.texture ? weaponSprite.texture.width : 0,
               texH: weaponSprite.texture ? weaponSprite.texture.height : 0,
               facing: S._renderFacing,
+              /* ═══ v2.3.1839: WHERE THE BLADE ACTUALLY IS, AND WHERE HIS FACE IS ═══
+                 Owner, twice now: the south blade sits over the character's
+                 face.  An AABB of a diagonal blade is useless for this — it
+                 covers the head whenever the sword leans — so publish the
+                 blade's CENTRELINE (grip -> tip) and let the test do a
+                 segment-vs-box check.  Both in global screen space, taken
+                 through the live transforms rather than recomputed, so the
+                 numbers describe the frame on screen. */
+              blade: (() => {
+                try {
+                  const tw = weaponSprite.texture ? weaponSprite.texture.width : 0;
+                  const th = weaponSprite.texture ? weaponSprite.texture.height : 0;
+                  if (!tw || !th) return null;
+                  const ax = weaponSprite.anchor.x, ay = weaponSprite.anchor.y;
+                  /* THE WHOLE CENTRELINE, both ends, rather than "the tip".
+                     Which texture end is the tip depends on the handle anchor
+                     AND on v2.3.1786's vertical FLIP (scale.y < 0), and
+                     guessing it produced a 6.7px stub sitting on the grip —
+                     an assertion built on that would have reported a blade
+                     that never touches anything.  Both ends span the blade in
+                     either orientation, so nothing has to be guessed. */
+                  const cx = tw * 0.5 - ax * tw;
+                  const a = weaponSprite.toGlobal({ x: cx, y: 0 - ay * th });
+                  const b2 = weaponSprite.toGlobal({ x: cx, y: th - ay * th });
+                  return { gx: +a.x.toFixed(1), gy: +a.y.toFixed(1),
+                    tx: +b2.x.toFixed(1), ty: +b2.y.toFixed(1),
+                    len: +Math.hypot(b2.x - a.x, b2.y - a.y).toFixed(1) };
+                } catch (e) { return null; }
+              })(),
+              /* The head region of the body ON SCREEN: the top fifth of the
+                 painted figure, middle 44% of its width.  Derived from the
+                 body sprite's own global bounds so it tracks whatever scale
+                 and facing are live. */
+              head: (() => {
+                try {
+                  const sb = display._spriteBody;
+                  if (!sb || !sb.visible) return null;
+                  const b = sb.getBounds();
+                  return {
+                    x0: +(b.x + b.width * 0.28).toFixed(1),
+                    x1: +(b.x + b.width * 0.72).toFixed(1),
+                    y0: +b.y.toFixed(1),
+                    /* 26%, not 20%: at 20% the box stopped at the chin and a
+                       blade across the mouth counted as clear.  Measured
+                       against the sweep frames — the head occupies roughly the
+                       top quarter of the painted figure. */
+                    y1: +(b.y + b.height * 0.26).toFixed(1),
+                  };
+                } catch (e) { return null; }
+              })(),
             };
           } catch (e) {}
           weaponSprite.visible = true;
@@ -7722,6 +8081,14 @@ export class EntityRenderer {
               facing: facing,
               moving: isMoving,
               planted: _blockPlanted,
+              /* v2.3.1833: where the figure is on SCREEN.  A QA shot of a
+                 block has to be clipped to the player, and the viewport
+                 centre is not it — the camera does not hold the player dead
+                 centre, so a centre crop returns the cobblestones. */
+              screen: (() => {
+                const g = display.toGlobal({ x: 0, y: 0 });
+                return { x: +g.x.toFixed(1), y: +g.y.toFixed(1) };
+              })(),
               shieldW: Math.round(Math.abs(shieldSprite.width)),
               backShieldPx: BACK_SHIELD_PX,
               shieldX: shieldSprite.x, shieldY: shieldSprite.y,
@@ -8111,7 +8478,7 @@ export class EntityRenderer {
         if (npc.sprite) {
           const fig = new Sprite(getNpcTexture(npc.sprite) || Texture.EMPTY);
           fig.anchor.set(0.5, NPC_FRAME_FEET_Y / 256);
-          fig.scale.set(NPC_SPRITE_SCALE);
+          fig.scale.set(npcSpriteScale(npc.sprite));
           display.addChildAt(fig, 0);      // behind the bars and labels
           display._fig = fig;
           display._figSrc = npc.sprite;
@@ -8134,7 +8501,7 @@ export class EntityRenderer {
          and only once the texture is bound so we know he is actually drawn. */
       if (display._fig && !display._lifted && display._fig.texture !== Texture.EMPTY) {
         display._lifted = true;
-        const top = npcFigureHeight();          // world px above the feet
+        const top = npcFigureHeight(npc.sprite); // world px above the feet
         /* The marker is anchored at its CENTRE, so clearing the hat needs half
            its own glyph height on top of the gap — the first attempt used the
            gap alone and the ❗ sat down inside the hat brim. */

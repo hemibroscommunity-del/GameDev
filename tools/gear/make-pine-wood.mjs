@@ -54,6 +54,20 @@ const FILES = [
   ['shields/wood-shield-front.webp', 'sprites/shields/wood-shield-front.png'],
   ['shields/wood-shield-3q.webp', 'sprites/shields/wood-shield-3q.png'],
   ['shields/wood-shield-side.webp', 'sprites/shields/wood-shield-side.png'],
+  /* v2.3.1825 (owner: "you need to change the bow attack art (each
+     direction) to match the pine bow").  These are the bow-only layer of the
+     five bowshot poses — the pose sheets are authored with the weapon
+     separated out precisely so it can be recoloured without touching the
+     archer.  They were never in this list, so the held bow went pine at
+     v2.3.1763 and the drawn bow stayed brown for two months.
+     Their sources are the ORIGINAL brown PNGs, copied into src-art
+     unmodified: the shipped file was pristine because nothing had ever
+     processed it. */
+  ['player/bow-east-weapon.png', 'sprites/player/bow-east-weapon.png'],
+  ['player/bow-north-weapon.png', 'sprites/player/bow-north-weapon.png'],
+  ['player/bow-northwest-weapon.png', 'sprites/player/bow-northwest-weapon.png'],
+  ['player/bow-south-weapon.png', 'sprites/player/bow-south-weapon.png'],
+  ['player/bow-southwest-weapon.png', 'sprites/player/bow-southwest-weapon.png'],
 ];
 
 const PAGE = `<!doctype html><meta charset="utf-8"><body><script>
@@ -66,19 +80,46 @@ window.__pine = (src) => new Promise((res) => {
     const c = cv.getContext('2d', { willReadFrequently: true });
     c.drawImage(img, 0, 0);
     const d = c.getImageData(0, 0, cv.width, cv.height); const p = d.data;
-    /* screen toward white by LIFT, then warm toward pine */
-    const LIFT = 0.42;                 /* how far each channel travels to 255 */
+    /* ═══ v2.3.1825: THE CURVE, AND WHY IT IS NOT A SINGLE SCREEN ═══
+       Owner: "The pine bow looks like the black outline was keyed out during
+       recoloring to make it pine.  Add the outline back in."
+
+       Measured before changing anything.  The v2.3.1763 curve was one screen
+       step, up = c + (255 - c) * 0.42, which lifts the DARK end by ~92 and
+       the light end by ~31 — it crushes the shadows.  On the icon art, whose
+       drawing is carried by a dark brown ink band around L 20-45 rather than
+       by a pure black keyline, that band came out at L 120-140: the same
+       brightness as the wood beside it, so the linework vanished.  (The
+       sprite bows kept theirs, because their outline really is near-black
+       and was already inside the old guard.  The bow ICON's edge mean went
+       85.9 -> 127.9 — that is the "keyed out" the owner is seeing.)
+
+       No single tone curve can both make the wood pine-pale AND keep the ink
+       dark if it lifts proportionally.  A REPEATED SCREEN can:
+           out = 255 * (1 - (1 - x/255)^p)
+       For small x this is almost exactly a linear gain of p, so shadow
+       CONTRAST survives; it approaches 255 smoothly, so highlights roll off
+       instead of clipping.  p = 2.869 is chosen so the wood midtone lands on
+       the same value the approved pine art already has (66 -> 147), which is
+       what keeps this a fix to the outline and not a re-colour of a colour
+       the owner already signed off.
+
+       The near-black guard below is kept but is no longer load-bearing: this
+       curve maps 0 to 0 on its own.  It still spares true black from the
+       WARM multiply. */
+    const P_SCREEN = 2.869;
     const WARM = [1.00, 1.03, 0.90];   /* pine reads yellow-tan, not pink */
+    const curve = new Uint8Array(256);
+    for (let v = 0; v < 256; v++) {
+      curve[v] = Math.round(255 * (1 - Math.pow(1 - v / 255, P_SCREEN)));
+    }
     for (let i = 0; i < p.length; i += 4) {
       if (p[i + 3] < 8) continue;
       const r = p[i], g = p[i + 1], b = p[i + 2];
       const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
       /* keyline: near-black and near-neutral -> the outline, leave it */
       if (mx < 60 && mx - mn < 24) continue;
-      const lift = (c0, k) => {
-        const up = c0 + (255 - c0) * LIFT;
-        return Math.max(0, Math.min(255, Math.round(up * k)));
-      };
+      const lift = (c0, k) => Math.max(0, Math.min(255, Math.round(curve[c0] * k)));
       p[i] = lift(r, WARM[0]);
       p[i + 1] = lift(g, WARM[1]);
       p[i + 2] = lift(b, WARM[2]);

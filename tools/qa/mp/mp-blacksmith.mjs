@@ -77,10 +77,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   if (mayor && bs) {
     /* Same drawn HEIGHT is the owner's "about the same size": width differs
        because he is a broader man holding a hammer, and pinning width would
-       be asking the art to be someone else. */
+       be asking the art to be someone else.
+       v2.3.1822: the mayor is now deliberately drawn 10% larger than everyone
+       else (owner: "Make mayor bro 10% larger"), so the expected ratio is
+       1/1.10 = 0.909, not 1.0.  The band is stated around that number rather
+       than left to squeak past the old 0.9 floor by two thousandths — a
+       tolerance that only just holds is a test that will lie next time. */
     const ratio = bs.height / mayor.height;
-    rec.ok('the blacksmith is drawn at the mayor\'s scale',
-      ratio > 0.9 && ratio < 1.1, { ratio: +ratio.toFixed(3), bs: bs.height, mayor: mayor.height });
+    rec.ok('the blacksmith is drawn a touch under the mayor, who is the 10% larger one',
+      ratio > 0.86 && ratio < 0.96, { ratio: +ratio.toFixed(3), bs: bs.height, mayor: mayor.height });
     rec.ok('...and his feet sit on the same ground line as his position',
       Math.abs(bs.footY - bs.y) < 3, bs);
   }

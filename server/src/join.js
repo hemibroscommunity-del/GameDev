@@ -969,6 +969,25 @@ export const joinMethods = {
        client just sent on the first connect, and matches the
        stored value on subsequent connects. */
     this._sendPlayerState(ws, msg.id);
+    /* v2.3.1822: replay a respawn the player was never told about.  See
+       _tickPlayerRespawn (index.js) for the incident — a tab backgrounded at
+       the moment of death has no socket to receive `player_respawned`, and
+       the client's death state is cleared by nothing else.  Sent AFTER
+       state_sync + player_state so it lands on a client that already has the
+       world, and carries the zone so the client teleports home rather than
+       standing up wherever it died.
+       Cleared before the send, not after, so a throw here cannot leave the
+       debt to be replayed on every future join. */
+    const _ps = this.playerState[msg.id];
+    if (_ps && _ps._respawnOwed) {
+      delete _ps._respawnOwed;
+      try {
+        ws.send(JSON.stringify({
+          type: 'player_respawned',
+          payload: { zone: _ps.z || 'town' },
+        }));
+      } catch (e) {}
+    }
     // v2.3.1185: party roster re-send -- MUST stay after the state_sync
     // send above: clients clear their party HUD on every state_sync
     // (deploys wipe the in-memory roster; stale HUDs must not survive a

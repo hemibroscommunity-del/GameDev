@@ -17,7 +17,17 @@ import { AccountLoginForm } from './AccountLoginForm.jsx';
    although the owner's painted cc-login-key.webp already ships and is
    what the button that OPENS this modal displays (spec do-not-drift:
    no text/emoji label as primary identity where an icon exists). */
-export const AccountModal = ({ onClose }) => (
+/* v2.3.1823: `loginDoor` marks the instance opened from the LOGIN screen
+   rather than from in-game.  Two things change there, both because the
+   device has no character yet:
+     - a checked key joins immediately (no confirm step — see
+       AccountLoginForm; owner: "just immediately join the game"),
+     - the "your Login Key" card is hidden.  It shows the key of the
+       character on THIS device, and on the login door there isn't one, so it
+       was offering a freshly-minted passphrase for a character that does not
+       exist — which is worse than unhelpful next to a box asking for a real
+       one. */
+export const AccountModal = ({ onClose, loginDoor = false }) => (
   <div
     onClick={onClose}
     style={{
@@ -64,9 +74,9 @@ export const AccountModal = ({ onClose }) => (
           ✕
         </button>
       </div>
-      <AccountLoginForm />
-      <div style={{ height: 1, background: 'var(--ui-line)', margin: '14px 0' }} />
-      <AccountKeyCard />
+      <AccountLoginForm immediate={loginDoor} />
+      {!loginDoor && <div style={{ height: 1, background: 'var(--ui-line)', margin: '14px 0' }} />}
+      {!loginDoor && <AccountKeyCard />}
     </div>
   </div>
 );

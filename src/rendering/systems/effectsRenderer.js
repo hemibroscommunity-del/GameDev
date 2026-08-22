@@ -40,7 +40,7 @@ import { materialTint, weaponTint } from '../traits/materialTints.js';
 import { upscaleToFrameHeight } from '../spriteScale.js'; /* v2.3.1112: restore downscaled-on-disk sword stand-in strips to their authored frame height */
 import { AIM_CARET, AIM_CARET_EDGE } from '../aimCaret.js'; /* v2.3.1799 */
 import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX } from '../backShield.js'; /* v2.3.1784 */
-import { registerBowBodyFrames } from '../blockArm.js'; /* v2.3.1785 */
+import { registerBowBodyFrames, BLOCK_STANDIN_HAND } from '../blockArm.js'; /* v2.3.1785; v2.3.1833 the away-facing hand */
 
 /* v2.3.1784: the 8-way compass, module scope.  An identical list already
    existed as a local inside _updateRemoteBowShots; the slung shield needs it
@@ -263,6 +263,45 @@ const MAGIC_SPECIAL = {
    the slash draws here, not in entityRenderer's retired arc path).
    Art: crescent bulge faces LEFT → rotation aim+PI leads the swing. */
 const SWORD_SLASH = { frames: [], anchor: { x: 0.5, y: 0.5 } };
+
+/* ═══ v2.3.1825: THE PINE ARROW ═══
+ * Owner: "You can use this art for the pine arrow."
+ *
+ * The ordinary arrow was drawn procedurally — four brown polygons — from
+ * back when there was no art for it.  There is now, and it is the same pine
+ * the bow was recoloured to at v2.3.1763, so the missile and the thing
+ * firing it finally read as one kit.
+ *
+ * TWO TEXTURES, ONE FILE.  A buried arrow loses its HEAD and keeps its
+ * shaft, so the shaft runs into whatever it hit (v2.3.1765, owner: "the
+ * arrowhead should be stuck in the material").  `full` is the whole strip;
+ * `noHead` is a Texture over the same source cropped at the steel head's
+ * measured start (73.9%, printed by tools/gear/make-pine-arrow.mjs).  A
+ * frame, not a second PNG: the crop must move with the art if it is ever
+ * re-cut, and one file cannot go stale against the other.
+ *
+ * Art noses RIGHT like the magic bolt and the special arrow, so rotation is
+ * the travel angle with no offset.  The anchor is where the OLD polygon
+ * arrow had its origin: it spanned -8..+9.5 of its 17.5px length, i.e. the
+ * pivot sat 8/17.5 = 0.457 along it, and keeping that means the trail, the
+ * hit tests and the stuck-arrow hand-off all still line up. */
+const ARROW_PINE = {
+  full: null, noHead: null,
+  headFrac: 0.739,
+  anchor: { x: 0.457, y: 0.5 },
+  /* World length of the whole arrow at scale 1 — the polygon it replaces
+     ran from -8 to +9.5. */
+  lenPx: 17.5,
+};
+_fxLoad('/sprites/projectiles/arrow-pine.png?v=2.3.1825').then((tex) => {
+  if (!tex || !tex.source) return;
+  const w = tex.source.width, h = tex.source.height;
+  ARROW_PINE.full = new Texture({ source: tex.source, frame: new Rectangle(0, 0, w, h) });
+  ARROW_PINE.noHead = new Texture({
+    source: tex.source,
+    frame: new Rectangle(0, 0, Math.max(1, Math.round(w * ARROW_PINE.headFrac)), h),
+  });
+}).catch((err) => console.warn('[pine-arrow] load failed', err));
 for (const [cfg, url] of [
   [ARROW_SPECIAL, '/sprites/projectiles/arrow-special-v1.webp?v=2.3.1396'],
   [MAGIC_SPECIAL, '/sprites/projectiles/magic-special-v1.webp?v=2.3.1396'],
@@ -782,6 +821,10 @@ export class EffectsRenderer {
     /* v2.3.1396: same lifecycle for the painted SPECIAL projectiles
        (charged bow arrow + charged staff orb, local + remote). */
     this.specialFxSprites = [];
+    /* v2.3.1825: flat, index-pooled sprites for the painted pine arrow —
+       refilled every frame, never reaped.  See _placeArrowSprite. */
+    this.arrowSprites = [];
+    this._arrowSpriteN = 0;
 
     // Chat bubble texts
     this.chatTexts = new Map();
@@ -2201,6 +2244,11 @@ export class EffectsRenderer {
        chose, and a screenshot cannot separate a buried head from an arrow that
        was never drawn — which is the exact distinction the owner's fix makes. */
     this._arrowsDrawn = 0;
+    /* v2.3.1825: the painted-arrow pool is refilled from zero every frame,
+       in lockstep with the Graphics clear above — the two draw the same
+       arrows and must be reset together or a stale sprite outlives the
+       polygon that replaced it. */
+    this._resetArrowSprites();
     this._arrowHeadsDrawn = 0;
 
     /* Track aim rotation rate for the mid-flight arrow bend.  Arrows
@@ -2666,6 +2714,16 @@ export class EffectsRenderer {
    *  arrow rendering so a live arrow and a stuck one read as the
    *  same wooden missile. */
   _drawArrow(gfx, cx, cy, ang, headColor /* unused — kept for signature compat */, alpha, scale, buried) {
+    /* v2.3.1825: the painted pine arrow, when it has loaded.  Falls through
+       to the polygons below until it does — an in-flight load must never
+       blank a live arrow, the same contract the special-projectile sprites
+       keep. */
+    if (ARROW_PINE.full) {
+      this._placeArrowSprite(cx, cy, ang, alpha, scale || 1, !!buried);
+      this._arrowsDrawn = (this._arrowsDrawn || 0) + 1;
+      if (!buried) this._arrowHeadsDrawn = (this._arrowHeadsDrawn || 0) + 1;
+      return;
+    }
     const c = Math.cos(ang), s = Math.sin(ang);
     /* v2.3.222: optional scale param for the special-bow path so the
        arrow grows along with its halo + damage radius. Default 1. */
@@ -2694,9 +2752,76 @@ export class EffectsRenderer {
     this._fillPoly(gfx, [pt(-8, 1), pt(-5, 1), pt(-5, 2.5), pt(-8, 2.5)], 0x5a3820, alpha * 0.85);
   }
 
+  /** v2.3.1825: place one pine-arrow sprite for this frame.
+   *
+   *  Pooled by INDEX rather than by projectile.  The special-projectile
+   *  sprites hang off `p._fxSprite` because each one animates its own
+   *  flicker phase and has to survive across frames; an ordinary arrow has
+   *  no per-arrow state at all, and _drawArrow is also called for remote
+   *  players' arrows and for stuck poses — things that are not projectiles
+   *  and have nowhere to hang a sprite.  A flat pool that is refilled every
+   *  frame covers all three callers with one mechanism and no reaping.
+   *
+   *  The counter is reset by _resetArrowSprites at the top of the
+   *  projectile pass; anything left over from a busier frame is hidden
+   *  rather than destroyed, so a volley does not churn the GPU. */
+  _placeArrowSprite(cx, cy, ang, alpha, scale, buried, stuck) {
+    const tex = buried || stuck ? ARROW_PINE.noHead : ARROW_PINE.full;
+    if (!tex) return;
+    let sprite = this.arrowSprites[this._arrowSpriteN];
+    if (!sprite) {
+      sprite = new Sprite(tex);
+      this.projectileLayer.addChild(sprite);
+      this.arrowSprites.push(sprite);
+    }
+    this._arrowSpriteN++;
+    if (sprite.texture !== tex) sprite.texture = tex;
+    /* A STUCK arrow is pinned by its cut end, not its middle: (cx, cy) is the
+       impact point and the shaft has to run backwards out of it.  Anchoring
+       right-edge-centre is what puts the cut exactly on the surface instead
+       of a couple of px inside the monster (the v2.3.1765 complaint). */
+    if (stuck) sprite.anchor.set(1, 0.5);
+    else sprite.anchor.set(ARROW_PINE.anchor.x, ARROW_PINE.anchor.y);
+    /* Width is pinned to the world length the polygon arrow had, so the art
+       swap does not silently resize the missile; height follows the texture's
+       own aspect so the fletching is not squashed.
+       A buried arrow keeps the SAME pixel scale — its texture is simply
+       narrower — which is what makes the shaft stay put while the head
+       disappears rather than the whole arrow shrinking. */
+    const px = (ARROW_PINE.lenPx * scale) / (ARROW_PINE.full.width || 1);
+    sprite.scale.set(px);
+    sprite.x = cx;
+    sprite.y = cy;
+    sprite.rotation = ang || 0;
+    sprite.alpha = alpha;
+    sprite.visible = true;
+  }
+
+  /** Hide any arrow sprites the previous frame used and this one did not. */
+  _resetArrowSprites() {
+    for (let i = this._arrowSpriteN; i < this.arrowSprites.length; i++) {
+      if (this.arrowSprites[i].visible) this.arrowSprites[i].visible = false;
+    }
+    this._arrowSpriteN = 0;
+  }
+
   /** Stuck arrow on a monster — half-length, fletching at the air end,
    *  arrowhead buried in the body.  Center (cx, cy) is the impact point. */
   _drawStuckArrow(gfx, cx, cy, ang, color) {
+    /* v2.3.1825: the same painted arrow as the one in flight, headless and
+       pinned by its cut end.  Reusing the texture rather than recolouring
+       the polygons is the only version of "they match" that survives the
+       next art change — a hand-copied palette drifts the moment the sheet is
+       re-cut, which is exactly how the bow ended up pine while its own
+       attack art stayed brown for two months. */
+    if (ARROW_PINE.noHead) {
+      /* Scaled to the 11px stub the polygons drew: the cropped texture is
+         0.739 of the full length, so ask for the scale that makes it 11. */
+      const k = 11 / (ARROW_PINE.lenPx * ARROW_PINE.headFrac);
+      this._placeArrowSprite(cx, cy, ang, 0.9, k, false, true);
+      this._arrowsDrawn = (this._arrowsDrawn || 0) + 1;
+      return;
+    }
     const c = Math.cos(ang), s = Math.sin(ang);
     const pt = (lx, ly) => ({ x: cx + lx * c - ly * s, y: cy + lx * s + ly * c });
     /* Shaft 11 px out, 2.4 px wide — ending AT the impact point (v2.3.1765;
@@ -5337,6 +5462,13 @@ export class EffectsRenderer {
           return (t && t.parent === layer) ? Math.max(m, layer.getChildIndex(t)) : m;
         }, -1),
         sizePx: shown.height, facing: S._renderFacing,
+        /* v2.3.1834: the facing the BODY was drawn with, next to the facing
+           this shield was placed with.  They are chosen from different state —
+           the stand-in body from _swordSwingDir / _bowDir, the shield from
+           _renderFacing — so a test can see them diverge instead of inferring
+           it from a screenshot. */
+        bodyFacing: (lo === this.swordShieldLo) ? (S._swordSwingDir || null) : (S._bowDir || null),
+        special: !!S._specialAttack,
       };
     } catch (e) { /* never breaks the frame */ }
     return true;
@@ -5607,16 +5739,53 @@ export class EffectsRenderer {
       const shown = this.bowShieldLo;
       if (shown && b.tex) {
         if (shown.texture !== b.tex) shown.texture = b.tex;
-        const R = 16 * scale;                       /* same reach as the held placement */
         shown.width = b.px * scale;
         shown.height = b.px * scale;
         shown.scale.x = Math.abs(shown.scale.x) * (b.mirror ? -1 : 1);
         shown.rotation = 0;
         shown.alpha = 0.95;
         shown.tint = 0xffffff;
-        shown.x = S.player.x + Math.cos(b.ang) * R;
-        shown.y = sp.y - bodyH * 0.5 + Math.sin(b.ang) * R;
+        /* ═══ v2.3.1833: ON THE HAND, NOT ON A CIRCLE ROUND THE CHEST ═══
+           Owner: "The northeast shield position (and mirror) is not
+           positioned correctly on the outstretched hand."
+
+           This used to read `player.x + cos(ang) * 16`, on the reasoning
+           (its comment said so) that 16px was "the same reach as the held
+           placement".  It was not: the held placement is `_armHand`, an
+           actual point on the arm, and no radius round the body centre is
+           the same thing.  At 16px the shield sat flat against the torso —
+           mostly hidden behind the body — while the stand-in's authored arm
+           reached out past it to nothing.
+
+           BLOCK_STANDIN_HAND gives the hand in the bow frame's own
+           coordinates, so map it through the transform this very sprite was
+           just placed with: anchor (0.5, feetY/fh), scale (sgn, s), origin
+           (sp.x, sp.y).  `sgn` already carries the mirror, which is what
+           makes northeast fall out of the northwest sheet for free.  Tying it
+           to sp's own numbers means it tracks the body by construction — the
+           property the polar version only claimed. */
+        const _hand = BLOCK_STANDIN_HAND[fmap[0]];
+        if (_hand) {
+          shown.x = sp.x + (_hand[0] - cfg.fw / 2) * sgn;
+          shown.y = sp.y + (_hand[1] - cfg.feetY) * s;
+        } else {
+          /* No measured hand for this sheet — keep the old reach rather than
+             stack the shield on the feet. */
+          const R = 16 * scale;
+          shown.x = S.player.x + Math.cos(b.ang) * R;
+          shown.y = sp.y - bodyH * 0.5 + Math.sin(b.ang) * R;
+        }
         shown.visible = true;
+        /* v2.3.1833 dev probe: where the shield landed and what put it there,
+           so mp-blockstance can assert the hand placement instead of a
+           screenshot being the only witness. */
+        if (typeof window !== 'undefined') {
+          window.__btBlockShieldBehind = {
+            sheet: fmap[0], mirror: !!mirror, viaHand: !!_hand,
+            x: shown.x, y: shown.y,
+            bodyX: sp.x, bodyFootY: sp.y, bodyH,
+          };
+        }
       }
     }
     sp.visible = true;

@@ -711,5 +711,88 @@ check('forged monster_transform dropped by deny-list',
     typeof psR._lastDealtAt === 'number' && Date.now() - psR._lastDealtAt < 2000, psR._lastDealtAt);
 }
 
+/* ═══ v2.3.1817: A ZONE OPENS WHEN A QUEST SENDS YOU THERE ═══
+   Owner: "make each zone open up only after a mayor bro quest requires that
+   area."
+
+   The gate reuses the EXISTING invalid-zone rejection path, and that reuse is
+   the thing most worth pinning: that path holds the player in the zone the
+   server believes they are in while leaving them MOBILE.  A lock that froze
+   the player instead would look like the game hanging, and this file's own
+   history records three freezes from people inventing a second rejection
+   shape here. */
+{
+  const wsZ = fakeWs('zonegate');
+  await join(wsZ, 'bp_zone');
+  const ps = room.playerState['bp_zone'];
+  ps.z = 'town'; ps.x = 100; ps.y = 100;
+  ps._quests = Object.create(null);
+  const move = async (z, x = 120, y = 120) => {
+    ps.lastMoveAt = 0;   /* the anti-teleport budget is not what is under test */
+    await room.webSocketMessage(wsZ, JSON.stringify({ type: 'move', x, y, z }));
+  };
+
+  /* ── locked: no quest names frost yet ── */
+  await move('frost');
+  check('a gated zone is refused with no quest for it', ps.z === 'town', ps.z);
+  /* NOT FROZEN — the property that actually matters, and it is subtler than
+     "the position still applies".  The rejection path drops the offending
+     message whole and arms the NEXT one to bypass the anti-teleport cap
+     (lastMoveAt = undefined), so the player loses one packet and keeps
+     playing.  Asserted as "the next move lands", because that is the thing a
+     player would notice if it broke — and because a first draft of this test
+     asserted the position applied on the REJECTED message, which is not what
+     this path has ever done. */
+  check('...and the rejected move does not write a position', ps.x === 100, { x: ps.x });
+  await move('town', 121, 121);
+  check('...but the NEXT move lands, so a lock never freezes you',
+    ps.x === 121 && ps.y === 121, { x: ps.x, y: ps.y });
+
+  /* ── always-open zones are never gated ── */
+  await move('meadow', 130, 130);
+  check('the Starting Meadow is always open', ps.z === 'meadow', ps.z);
+  ps.z = 'town';
+  await move('worldview', 140, 140);
+  check('the World View is always open (it is how you reach a quest giver)',
+    ps.z === 'worldview', ps.z);
+  ps.z = 'town';
+
+  /* ── accepting the quest opens it ── */
+  ps._quests.tut_1 = 'active';
+  await move('frost', 150, 150);
+  check('accepting the quest that names frost opens frost', ps.z === 'frost', ps.z);
+
+  /* ── and it does not close behind you ── */
+  ps._quests.tut_1 = 'turnedIn';
+  ps.z = 'town';
+  await move('frost', 160, 160);
+  check('...and a finished quest leaves its zone open, not locked again',
+    ps.z === 'frost', ps.z);
+
+  /* ── ALREADY INSIDE A LOCKED ZONE: you can still move, and still leave ──
+     Found by the suite rather than by reasoning: the first cut gated on the
+     zone alone, and since a client re-sends its current zone on every move
+     packet, anyone standing in a locked zone had EVERY move dropped.  That is
+     a player frozen in place with no way out — strictly worse than the lock
+     being absent.  Reachable for real: entered before the gate shipped, or
+     abandoned the quest afterwards. */
+  ps.z = 'sky'; ps.x = 200; ps.y = 200;      /* no tut_3 -> sky is locked */
+  await move('sky', 210, 210);
+  check('a player already inside a locked zone can still move',
+    ps.x === 210 && ps.y === 210, { x: ps.x, y: ps.y });
+  await move('town', 220, 220);
+  check('...and can still walk OUT of it', ps.z === 'town', ps.z);
+
+  /* ── GUARD: the gate is per-zone, not a single global unlock ──
+     Without this, "opens frost" would also pass on an implementation that
+     opened EVERYTHING the moment any quest went active. */
+  ps.z = 'town';
+  await move('ember', 170, 170);
+  check('one quest does not open every zone (guard)', ps.z === 'town', ps.z);
+  ps._quests.tut_4 = 'active';
+  await move('ember', 180, 180);
+  check('...and the quest that DOES name ember opens ember', ps.z === 'ember', ps.z);
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

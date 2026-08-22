@@ -16,6 +16,7 @@
  * readable.
  */
 import * as H from './harness.mjs';
+import fsMod from 'fs';
 
 const IDX = { E: 0, SE: 1, S: 2, SW: 3, W: 4, NW: 5, N: 6, NE: 7 };
 
@@ -158,7 +159,89 @@ export async function run({ browser, wsPort, webPort, rec }) {
       !!(b && b.shieldBehind), b);
     rec.ok(`${n}: ...and the display's own shield sprite is not also drawn`,
       !!(b && !b.shieldSpriteVisible), b);
+
+    /* ═══ v2.3.1833: ON THE HAND ═══
+       Owner: "The northeast shield position (and mirror) is not positioned
+       correctly on the outstretched hand."  Everything above asserted WHICH
+       RENDERER draws the shield and nothing asserted WHERE, so the shield
+       could sit anywhere and this file stayed green — which is what happened:
+       it was pinned 16px from the body CENTRE along the guard angle, flat
+       against the torso and largely hidden behind it, while the stand-in's
+       authored arm reached past it to nothing.
+
+       Two assertions, because they fail for different reasons.  The first is
+       that the measured hand table was consulted at all (a missing sheet key
+       silently drops back to the old polar reach).  The second discriminates
+       against the OLD placement by its signature: on an outstretched arm the
+       shield is well off the body's centre-line.  Both placements were
+       measured by running this file against each — old NW -15.7, N -3.9,
+       NE +10.6; new NW -32.1, N +22.3, NE +32.1 — so 20 separates them with
+       room on both sides.  The first threshold tried was 12, which the old
+       NW already cleared: it would have passed on the bug for one of the
+       three facings. */
+    if (process.env.BT_BLOCK_SHOTS) {
+      /* Optional: a real screenshot per facing, for eyeballing the placement.
+         Off by default — the assertions are the test; this is for a human. */
+      try {
+        fsMod.mkdirSync('tools/qa/mp/out', { recursive: true });
+        /* Clip to the PLAYER, found through the renderer.  Two traps here,
+           both hit: a full-page screenshot is TALLER than the viewport, so
+           its centre is not the screen's centre (the first attempt cropped
+           the cobblestones below the player); and pixi's toGlobal returns
+           CSS pixels, not backing pixels — scaling it by canvas.width/rect
+           .width halves the position on a devicePixelRatio 2 display. */
+        const clip = await P.page.evaluate(() => {
+          const b = window.__btBlockPose;
+          const cv = document.querySelector('canvas');
+          if (!b || !b.screen || !cv) return null;
+          const r = cv.getBoundingClientRect();
+          const cx = r.left + b.screen.x, cy = r.top + b.screen.y;
+          const S = 120;
+          return { x: Math.max(0, cx - S / 2), y: Math.max(0, cy - S * 0.62), width: S, height: S };
+        });
+        await P.page.screenshot({ path: `tools/qa/mp/out/block-${n}.png`, ...(clip ? { clip } : {}) });
+      } catch (e) { /* a missing shot must not fail the run */ }
+    }
+    const sb = await P.page.evaluate(() => window.__btBlockShieldBehind || null);
+    rec.ok(`${n}: the shield is placed from the measured hand, not the fallback reach`,
+      !!(sb && sb.viaHand), sb);
+    rec.ok(`${n}: ...so it sits out on the arm, not against the chest`,
+      !!(sb && Math.abs(sb.x - sb.bodyX) > 20),
+      { dxFromBodyCentre: sb ? +(sb.x - sb.bodyX).toFixed(1) : null,
+        onTheOldPlacement: ({ NW: -15.7, N: -3.9, NE: 10.6 })[n], sb });
   }
+  /* ═══ v2.3.1836: ONE SIZE, WHICHEVER WAY YOU GUARD ═══
+     Owner: "the shield block per direction still have mismatched character
+     scales."  The block replaces the body with a stand-in that effectsRenderer
+     sizes from S._swordBodyH, and that was (221-33)*dirScale — south's rows
+     times a scale built to cancel per-facing height differences, which
+     re-introduces them instead.  Measured 16.1% across the five sheets.
+     Asserted on the published number rather than on pixels because this IS
+     the number the stand-in is sized by; a pixel check would also be
+     measuring the pose art, which legitimately differs. */
+  const sizes = [];
+  for (const n of ['E', 'SE', 'S', 'SW', 'W', 'NW', 'N', 'NE']) {
+    await pin(P, IDX[n]);
+    const h = await P.page.evaluate(() => {
+      const S = window._gameState && window._gameState.current;
+      return S ? { bodyH: S._swordBodyH, footY: S._swordFootY, y: S.player && S.player.y } : null;
+    });
+    if (h && h.bodyH) sizes.push({ dir: n, bodyH: +h.bodyH.toFixed(2), footDrop: +(h.footY - h.y).toFixed(2) });
+  }
+  rec.ok('every facing published a stand-in size (guard)', sizes.length === 8, { sizes });
+  if (sizes.length === 8) {
+    const hs = sizes.map((x) => x.bodyH);
+    const spread = (Math.max(...hs) - Math.min(...hs)) / ((Math.max(...hs) + Math.min(...hs)) / 2);
+    rec.ok('the blocking character is the same size whichever way it faces (within 1%)',
+      spread < 0.01, { spreadPct: +(spread * 100).toFixed(2), was: '16.1', sizes });
+    /* The feet move with the same constants, so they are worth their own
+       line: a stand-in planted on another facing's feet row floats or sinks. */
+    const fs = sizes.map((x) => x.footDrop);
+    const fSpread = Math.max(...fs) - Math.min(...fs);
+    rec.ok('...and stands on the same ground line in every facing (within 2px)',
+      fSpread < 2, { spreadPx: +fSpread.toFixed(2), sizes });
+  }
+
   /* ...and the south half keeps it in front, drawn the normal way. */
   for (const n of ['E', 'SW']) {
     await pin(P, IDX[n]);

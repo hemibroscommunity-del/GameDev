@@ -41,7 +41,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const seen = new WeakSet();
     const snap = (el) => {
       const cs = getComputedStyle(el);
-      const modal = document.querySelector('.bt-inspect');
+      /* v2.3.1827: the quest modal is the NPC dialogue's scrim now
+         (v2.3.1820 split the card in two).  The old `.bt-inspect` selector
+         still matched nothing here and reported modalZ:null, which turned
+         "the banner is above the modal" into a comparison against null. */
+      const modal = document.querySelector('.bt-npcdlg-scrim')
+        || document.querySelector('.bt-inspect');
       const r = el.getBoundingClientRect();
       /* Sampled at INSERTION, in the same tick, so "was the dialogue open
          when the banner appeared" is a fact about that instant rather than
@@ -51,7 +56,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         text: (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim(),
         z: Number(cs.zIndex),
         pointerEvents: cs.pointerEvents,
-        modalOpen: !!document.querySelector('.bt-inspect-card'),
+        modalOpen: !!document.querySelector('.bt-npcdlg, .bt-qoffer'),
         modalZ: modal ? Number(getComputedStyle(modal).zIndex) : null,
         w: Math.round(r.width),
         t: Date.now(),
@@ -91,14 +96,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     S.player.x = npc.x + ox; S.player.y = npc.y + oy;
     return true;
   }, { ox: dx, oy: dy });
-  const open = () => P.page.evaluate(() => !!document.querySelector('.bt-inspect-card'));
-  const close = async () => {
-    await P.page.evaluate(() => {
-      const b = document.querySelector('.bt-inspect-close');
-      if (b) b.click();
-    });
-    await P.page.waitForTimeout(400);
-  };
+  /* v2.3.1827: the quest card became two surfaces at v2.3.1820 — his window,
+     then the offer panel.  See harness.advanceNpcDialogue. */
+  const open = () => H.npcDialogueOpen(P);
+  const close = () => H.closeNpcDialogue(P);
   /* The proximity latch only re-arms after leaving the larger radius, and the
      scan will not re-fire while a card is open — so step away, clear, step
      back (mp-questline v2.3.1706b learned this the hard way). */
@@ -114,8 +115,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('walking up to Mayor Bro opens his dialogue', await approach());
 
   /* ── ACCEPT ── */
-  const accepted = await H.clickText(P, 'Accept').then(() => true).catch(() => false);
-  rec.ok('the dialogue offers Accept', accepted);
+  const landed = await H.advanceNpcDialogue(P);
+  rec.ok('his lines lead to the offer panel', landed === 'offer', { landed });
+  const accepted = await H.confirmQuestOffer(P);
+  rec.ok('the offer panel offers Accept', accepted);
   await P.page.waitForTimeout(700);
 
   const afterAccept = await banners();
@@ -160,8 +163,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.grant(wsPort, myId, 'item', { invKey: 'snowman', count: 4 });
   await P.page.waitForTimeout(1600);
   rec.ok('walking back up re-opens the dialogue for the hand-in', await approach());
-  await H.clickText(P, 'Melee').catch(() => {});
-  await P.page.waitForTimeout(400);
+  const landedBack = await H.advanceNpcDialogue(P);
+  rec.ok('...and his lines lead to the claim panel', landedBack === 'offer', { landedBack });
+  /* v2.3.1827: scoped and asserted — see the note at the same call in
+     mp-questline.  A swallowed miss here leaves the claim aria-disabled and
+     the next assertion blames the button. */
+  rec.ok('the XP skill could be chosen', await H.chooseQuestSkill(P, 'Melee'));
   /* v2.3.1765: by CLASS — see the note on H.clickSel.  The caption moved to
      "Redeem Reward" in v2.3.1764 and this assertion went red for a wording
      change rather than a broken button. */
@@ -196,6 +203,45 @@ export async function run({ browser, wsPort, webPort, rec }) {
     afterTurnIn.filter((b) => b.kind === 'accepted').length >= 1
     && afterTurnIn.filter((b) => b.kind === 'completed').length >= 1,
     afterTurnIn.map((b) => b.kind));
+
+  /* ═══ v2.3.1816: THE COMPLETION BANNER OUTLASTS THE ACCEPT ONE ═══
+     Owner: "Make the reward completion message moments after collecting
+     required items stay on screen longer."
+
+     Asserted as a RELATIONSHIP between the two holds rather than against a
+     literal 4200, so retuning either number keeps this honest — and asserted
+     against the live clock too, because the constants agreeing proves only
+     that two variables differ, not that a banner is still on screen.  The
+     accept banner's own hold is the yardstick: it is what the completion one
+     used to get. */
+  const holds = await P.page.evaluate(() => ({
+    short: window.__QUEST_MSG_MS || 0,
+    long: window.__QUEST_MSG_LONG_MS || 0,
+    completed: window.__questMsgMs ? window.__questMsgMs('completed') : 0,
+    accepted: window.__questMsgMs ? window.__questMsgMs('accepted') : 0,
+    reward: window.__questMsgMs ? window.__questMsgMs('reward') : 0,
+  }));
+  rec.ok('a completion banner is held longer than an accept banner',
+    holds.completed > holds.accepted, holds);
+  rec.ok('...and a reward banner gets the same long hold',
+    holds.reward === holds.completed && holds.reward > holds.short, holds);
+
+  /* THE LIVE PROOF.  Raise a completion banner and check it is STILL up at
+     the moment the old hold would have taken it away.  Without this, the
+     numbers could be right while the render gate still read the short one —
+     which is exactly the drift the shared helper exists to prevent. */
+  await P.page.evaluate(() => {
+    window._setQuestMsg({ kind: 'completed', title: 'Hold check', ts: Date.now() });
+  });
+  await P.page.waitForTimeout(holds.accepted + 500);
+  const stillUp = await onScreen();
+  rec.ok('a completion banner is still on screen past the OLD hold',
+    !!stillUp, { waited: holds.accepted + 500, longHold: holds.completed });
+  /* ...and still clears itself.  A banner that never leaves is worse than one
+     that leaves too early. */
+  await P.page.waitForTimeout((holds.completed - holds.accepted) + 1200);
+  rec.ok('...and it does eventually clear, rather than sticking forever',
+    !(await onScreen()), { longHold: holds.completed });
 
   await P.ctx.close().catch(() => {});
 }
