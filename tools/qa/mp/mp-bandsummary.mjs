@@ -124,13 +124,36 @@ const readPills = (P) => P.page.evaluate(() => {
     /* Row overflow, per row rather than for the card: the card is a column,
        so a too-wide TOP row is what spills, and the card's own scrollWidth
        reports it late. */
-    const rows = [...el.children].map((r) => ({
-      need: r.scrollWidth, have: r.clientWidth, over: r.scrollWidth - r.clientWidth,
-      t: (r.textContent || '').trim().slice(0, 12) || r.tagName,
-    }));
+    /* ═══ v2.3.1858: MEASURE THE ELEMENT THAT CLIPS ═══
+       This walked the card's direct children and compared each one's
+       scrollWidth to its clientWidth — and it reported "not clipped" while
+       the card on screen read "250/28".  A child with `overflow: hidden`
+       does NOT grow its parent's scrollWidth, so the overflow was invisible
+       one level up: the row containing the pair looked fine because the pair
+       swallowed its own spill.
+       So EVERY text leaf is measured, not just the rows. */
+    /* ═══ v2.3.1858: MEASURE WHATEVER CLIPS ═══
+       Two wrong versions of this shipped before the screenshot showed the
+       card reading "250/28":
+         1. it compared the card's direct CHILDREN — but a descendant with
+            `overflow: hidden` does not grow its parent's scrollWidth, so the
+            spill was invisible one level up;
+         2. it then measured text LEAVES — and the element that clips is the
+            pair's wrapper, which holds a dimmed <span> for the denominator
+            and so is not a leaf.  The leaf inside it fits perfectly; the box
+            around it is the one cutting the text off.
+       There is no clever subset.  Every descendant is measured, and any one
+       whose content is wider than its box counts. */
+    const rows = [...el.querySelectorAll('div, span')]
+      .filter((n) => (n.textContent || '').trim())
+      .map((r) => ({
+        need: r.scrollWidth, have: r.clientWidth, over: r.scrollWidth - r.clientWidth,
+        t: (r.textContent || '').trim().slice(0, 12),
+      }));
     return {
       label: el.getAttribute('aria-label'),
       icon: box(img), bar: box(bar), pair: box(pairEl), lvl: box(lvlEl),
+      cardH: Math.round(el.getBoundingClientRect().height),
       pairText: pairEl ? (pairEl.textContent || '').replace(/\s+/g, '') : null,
       lvlText: lvlEl ? (lvlEl.textContent || '').trim() : null,
       badgeText: badgeEl ? (badgeEl.textContent || '').trim() : null,
@@ -299,26 +322,40 @@ export async function run({ browser, wsPort, webPort, rec }) {
     three && pills.every((p) => /^LV\s*\d+$/i.test(p.lvlText || '')),
     pills.map((p) => p.lvlText));
 
-  /* ═══ THE STACK ═══
-     The owner's mockup is a specific ORDER — icon and level on top, the
-     numbers under them, the bar along the bottom — and "all three exist" is
-     true of any arrangement of them, including the one-line pill this
-     replaced.  So the geometry is what is asserted. */
-  rec.ok('the icon and level share the TOP row',
-    three && pills.every((p) => p.icon && p.lvl
-      && p.lvl.l >= p.icon.r - 1 && Math.abs(p.lvl.t - p.icon.t) < 14),
-    pills.map((p) => ({ icon: p.icon, lvl: p.lvl })));
-  rec.ok('...the numbers sit BELOW them',
-    three && pills.every((p) => p.pair && p.icon && p.pair.t >= p.icon.b - 4),
-    pills.map((p) => ({ icon: p.icon, pair: p.pair })));
-  rec.ok('...and the bar runs along the bottom',
-    three && pills.every((p) => p.bar && p.pair && p.bar.t >= p.pair.b - 2),
-    pills.map((p) => ({ pair: p.pair, bar: p.bar })));
-  /* FULL WIDTH is the point of stacking — a bar still boxed in beside
-     something else would have gained nothing over the pill. */
-  rec.ok('...at nearly the card\'s full width',
-    three && pills.every((p) => p.bar && p.bar.w >= p.pillW - 16),
-    pills.map((p) => ({ pill: p.pillW, bar: p.bar && p.bar.w })));
+  /* ═══ v2.3.1858: HALF THE CARD IS THE ICON ═══
+     Owner: "the 3 combat icons need to take up half of the pill space.  You
+     can shrink down the xp bar to make room for that."
+
+     Asserted as a RATIO of the card, not as a pixel size: the card is 94px
+     at 390 and 80 at 360, so any fixed number is right on one phone and
+     wrong on the other — and "the icon got bigger" would be satisfied by
+     one extra pixel. */
+  rec.ok('the icon takes about half the card\'s width',
+    three && pills.every((p) => p.icon && p.icon.w / p.pillW >= 0.42 && p.icon.w / p.pillW <= 0.55),
+    pills.map((p) => ({ card: p.pillW, icon: p.icon && p.icon.w,
+      pct: p.icon && Math.round((p.icon.w / p.pillW) * 100) })));
+  /* ...and it is a real picture, not a wide sliver: square, and most of the
+     card's height too. */
+  rec.ok('...and most of its height',
+    three && pills.every((p) => p.icon && p.icon.b - p.icon.t >= p.cardH * 0.6),
+    pills.map((p) => ({ cardH: p.cardH, iconH: p.icon && (p.icon.b - p.icon.t) })));
+
+  /* The three readouts moved into the right column beside it — the whole
+     point of the split, and the thing a naive "make the icon bigger" would
+     have broken by overlapping them. */
+  rec.ok('the level, the numbers and the bar all sit RIGHT of the icon',
+    three && pills.every((p) => p.lvl && p.pair && p.bar && p.icon
+      && p.lvl.l >= p.icon.r - 1 && p.pair.l >= p.icon.r - 1 && p.bar.l >= p.icon.r - 1),
+    pills.map((p) => ({ icon: p.icon, lvl: p.lvl, pair: p.pair, bar: p.bar })));
+  rec.ok('...stacked in that order, top to bottom',
+    three && pills.every((p) => p.pair.t >= p.lvl.t && p.bar.t >= p.pair.t),
+    pills.map((p) => ({ lvl: p.lvl, pair: p.pair, bar: p.bar })));
+  /* The bar SHRANK, which is what paid for the icon.  Asserted so a later
+     pass cannot quietly widen it back across the card and re-break the
+     half. */
+  rec.ok('...and the bar is now about half the card, not all of it',
+    three && pills.every((p) => p.bar && p.bar.w <= p.pillW * 0.62),
+    pills.map((p) => ({ card: p.pillW, bar: p.bar && p.bar.w })));
   /* The painted fill, not just the text — a card whose numbers moved while
      its fill did not is the bug a text-only check would miss. */
   rec.ok('...and the fill matches the numbers',
