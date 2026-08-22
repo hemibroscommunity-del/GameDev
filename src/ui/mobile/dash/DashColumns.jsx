@@ -222,28 +222,16 @@ export const DashColumns = ({ R }) => {
      badge), not just a digit, so the budget is set against the WIDER of the
      two things that span can hold. */
   const tight = pillW < 88;
-  const iconPx = tight ? 19 : 22;
-  /* ═══ v2.3.1855: FAT PILLS ═══
-     Owner, on a photo of the real device: "I want fat pills that make better
-     use of the space.  Right now they're too skinny."
-
-     They were, and by construction: v2.3.1854 capped the bar at 26px inside
-     a row that is 52-59 tall, so half the height the COMBAT column had
-     already been given went to empty air between three thin bars.
-
-     But a pill is WIDER than it is tall, and this one is only ~52px wide —
-     so "as tall as the row" (48) drew three CIRCLES, which is a different
-     wrong.  Two thirds of the row height is the fattest a capsule can be
-     here and still read as a capsule; the rest of the height is the gap
-     between rows, which is what stops three stacked bars from reading as
-     one striped block. */
-  const barH = Math.round(pillH * 0.66);
-  /* FAT is a HEIGHT.  The width is still 80px at 360 and the numbers still
-     have to fit inside the bar, so the type grows only as far as that
-     allows — measured, not guessed: mp-bandsummary reports the bar's needed
-     and available width at both widths, and 13.5px overflowed by 8. */
-  const chipFs = tight ? 9 : 10.5;
-  const lvlFs = tight ? 14 : 16;
+  /* MEASURED against the narrower phone, where the content line is 68px:
+     the icon, "LV 1" and the "+2" have to share it, and the XP pair below
+     has the whole line to itself.  mp-bandsummary reports each row's needed
+     vs available width at 390 AND 360 — three earlier passes here were sized
+     by eye and each came out a few pixels over. */
+  const iconPx = tight ? 15 : 17;
+  const lvlFs = tight ? 10 : 11.5;
+  const badgeFs = tight ? 9.5 : 11;
+  const chipFs = tight ? 11 : 12.5;
+  const barH = tight ? 7 : 8;
   const combatPill = (s) => {
     /* ═══ v2.3.1668: these pills were the last live route into the
        retired tier-2 screen ═══
@@ -288,9 +276,11 @@ export const DashColumns = ({ R }) => {
     return (
       <div key={s.key}
         role="button"
-        /* v2.3.1854: the level-up flash moved to the BAR below.  It is a
-           box-shadow glow, and this row no longer paints a background or a
-           border — a halo around nothing reads as a rendering artefact. */
+        /* v2.3.1856: the level-up flash is back on the CARD.  It is a
+           box-shadow glow and the card paints a border again, so the glow
+           has an edge to sit on — which it did not in v2.3.1854/1855, where
+           the row drew nothing and the halo floated around empty space. */
+        className={unspent > 0 ? 'bt-build-flash' : undefined}
         onPointerUp={(e) => {
           e.stopPropagation();
           dashboardPanelBus.open('hero');
@@ -303,93 +293,78 @@ export const DashColumns = ({ R }) => {
         aria-label={`${s.label} level ${lvl}`}
         title={`${s.label} — Lv ${lvl}${unspent > 0 ? `, ${unspent} unspent` : ''}`}
         style={{
-          /* ═══ v2.3.1854: THE PILL *IS* THE BAR ═══
-             Owner: "I want the whole pill container to be the xp bar and
-             move the weapon icons to the left of it.  Also the level to the
-             right of the pill container."
+          /* ═══ v2.3.1856: THE STACKED MICRO-CARD ═══
+             Owner's mockup, after "fat pills" ran out of room: each skill is
+             a small CARD — icon and level across the top, the XP pair under
+             it, and a full-width bar along the bottom.
 
-             So this outer element stops being a bordered container and
-             becomes a plain ROW: icon, bar, level, with nothing drawn around
-             them.  The pill shape and its fill moved inward onto the bar
-             itself, which is now full height rather than a chip floating in
-             a much taller box.
+             This is the shape that fits.  The one-line pill spent its width
+             on three things side by side, which is why the numbers had to
+             shrink twice and the name never fit at all; stacking gives the
+             bar the card's FULL width and lets the numbers have their own
+             line at a size worth reading.  The column is 94px at 390 and 80
+             at 360, and everything below is sized against the narrower one.
 
-             It keeps the role, the tap target and the aria-label: the whole
-             row is still the button, so losing the visible container did not
-             shrink what a thumb has to hit.
-          */
+             The skill NAME from the mockup is still absent, and deliberately:
+             "MELEE" at a readable size needs ~40px of a 68px content line
+             that already holds the icon, the level and the badge.  The icon
+             is the name — the same three glyphs Hero's build cards label in
+             full, one tap away — and both aria-label and title spell it out
+             for anyone who needs it read aloud. */
           width: pillW, height: pillH, flex: 'none', boxSizing: 'border-box',
-          position: 'relative',   /* anchors the +N corner badge */
-          display: 'flex', flexDirection: 'row', alignItems: 'center',
-          justifyContent: 'space-between', gap: 3,
+          position: 'relative',
+          display: 'flex', flexDirection: 'column', justifyContent: 'center',
+          gap: 2, padding: '3px 5px',
+          background: COL.wellSoft,
+          border: `1px solid ${unspent > 0 ? COL.accent : COL.tileBor}`,
+          borderRadius: 8,
           cursor: 'pointer', touchAction: 'manipulation',
         }}>
-        <img src={s.iconSrc} alt="" draggable={false}
-          style={{
-            width: iconPx, height: iconPx,
-            flex: 'none', objectFit: 'contain', pointerEvents: 'none',
-          }} />
-        {/* ═══ v2.3.1853/1854: THE XP BAR ═══
-            Owner: "the dashboard menu has the 3 skills on it already for
-            xp.  Just put the icons to the left of the bar and overall level
-            to the right of the bar.  A number in the bar numerator and
-            denominator on the same line" — then: the whole pill IS the bar.
-
-            The numbers live INSIDE it, which is what makes it fit: at 360
-            the row is 80px wide, and a track with "250/280" printed beside
-            it needs width for both.  Text on the fill needs width for one.
-
-            The fill is a low-contrast wash rather than a bright bar, because
-            it sweeps UNDER the digits — a saturated fill makes them hardest
-            to read at exactly the moment the bar is most interesting
-            (nearly full). */}
-        {xp && (
-          <div aria-hidden="true"
-            className={unspent > 0 ? 'bt-build-flash' : undefined}
+        {/* TOP — what this is, and where it is. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 3, minWidth: 0 }}>
+          <img src={s.iconSrc} alt="" draggable={false}
             style={{
-            flex: '1 1 auto', minWidth: 0, position: 'relative',
-            height: barH, borderRadius: 999, overflow: 'hidden',
-            background: COL.wellSoft,
-            border: `1px solid ${unspent > 0 ? COL.accent : COL.tileBor}`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: iconPx, height: iconPx,
+              flex: 'none', objectFit: 'contain', pointerEvents: 'none',
+            }} />
+          <span aria-hidden="true" style={{
+            flex: 'none', fontSize: lvlFs, fontWeight: 900, lineHeight: 1,
+            color: unspent > 0 ? COL.accent : COL.text,
+            fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+          }}>LV {lvl}</span>
+          {unspent > 0 && (
+            <span aria-hidden="true" style={{
+              flex: 'none', marginLeft: 'auto',
+              fontSize: badgeFs, fontWeight: 900, lineHeight: 1,
+              color: COL.accent, fontVariantNumeric: 'tabular-nums',
+              whiteSpace: 'nowrap',
+            }}>+{unspent}</span>
+          )}
+        </div>
+        {/* MIDDLE — how much more, in full.  Its own line, so it is not
+            competing with the icon for width and can stay legible. */}
+        {xp && (
+          <div aria-hidden="true" style={{
+            fontSize: chipFs, fontWeight: 800, lineHeight: 1,
+            color: COL.text2, fontVariantNumeric: 'tabular-nums',
+            textAlign: 'center', whiteSpace: 'nowrap',
+            overflow: 'hidden', textOverflow: 'clip',
+          }}>{xpShort(xp.prog)}<span style={{ opacity: .6 }}>/{xpShort(xp.thresh)}</span></div>
+        )}
+        {/* BOTTOM — the bar, the card's full width.  A plain track now that
+            it carries no text: the fill can be solid and read at a glance
+            instead of washing out under digits. */}
+        {xp && (
+          <div aria-hidden="true" style={{
+            height: barH, borderRadius: barH / 2, overflow: 'hidden',
+            background: COL.wellDeep,
+            border: '1px solid rgba(255,255,255,.06)',
           }}>
             <div style={{
-              position: 'absolute', left: 0, top: 0, bottom: 0,
               width: `${Math.min(100, (xp.prog / xp.thresh) * 100)}%`,
-              background: 'rgba(138,169,249,.42)',
+              height: '100%', background: '#8AA9F9',
             }} />
-            <span style={{
-              position: 'relative',
-              fontSize: chipFs, fontWeight: 800, lineHeight: 1,
-              color: COL.text, fontVariantNumeric: 'tabular-nums',
-              whiteSpace: 'nowrap',
-            }}>{xpShort(xp.prog)}<span style={{ opacity: .62 }}>/{xpShort(xp.thresh)}</span></span>
           </div>
-        )}
-        {/* The level, at its own size — it was a 9px corner digit through
-            v2.3.1647, which is the exact kind of number the owner said a
-            player with weaker sight cannot read. */}
-        <span aria-hidden="true" style={{
-          flex: 'none',
-          fontSize: lvlFs, fontWeight: 900, lineHeight: 1,
-          color: unspent > 0 ? COL.accent : COL.text,
-          fontVariantNumeric: 'tabular-nums', pointerEvents: 'none',
-        }}>{lvl}</span>
-        {/* ═══ v2.3.1853: THE LEVEL IS ALWAYS THE LEVEL ═══
-            The unspent-points badge used to REPLACE it — "+2" where the
-            number goes — which was fine while the row said one thing.  It is
-            not fine now that the owner asked for the level to be here: with
-            points waiting you could not see the number this slot exists to
-            show.  The badge moves to the corner, which costs no WIDTH — the
-            scarce dimension in an 80px row. */}
-        {unspent > 0 && (
-          <span aria-hidden="true" style={{
-            position: 'absolute', top: 0, right: 0,
-            minWidth: 13, height: 13, padding: '0 3px',
-            borderRadius: 7, background: COL.accent, color: COL.onAccent,
-            fontSize: 9, fontWeight: 900, lineHeight: '13px', textAlign: 'center',
-            fontVariantNumeric: 'tabular-nums', pointerEvents: 'none',
-          }}>+{unspent}</span>
         )}
       </div>
     );

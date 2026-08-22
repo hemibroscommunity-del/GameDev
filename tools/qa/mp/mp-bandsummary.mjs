@@ -81,41 +81,57 @@ const readBand = (P) => P.page.evaluate(() => {
   };
 });
 
+/* ═══ v2.3.1856: THE SKILL CARDS ═══
+ * The pill became a stacked micro-card (owner's mockup): icon and level
+ * across the top, the XP pair on its own line, a full-width bar along the
+ * bottom.  The probe reads each piece SEPARATELY now — in the one-line pill
+ * the numbers lived inside the bar, so "the bar's text" was the pair; here
+ * they are siblings, and a probe that still read the bar would report null
+ * and every assertion built on it would go quiet rather than red.
+ */
 const readPills = (P) => P.page.evaluate(() => {
-    const els = [...document.querySelectorAll('[role="button"][aria-label*="level"]')]
-      .filter((el) => el.offsetParent !== null && /^(Melee|Bow|Magic) level/i.test(el.getAttribute('aria-label')));
-    return els.map((el) => {
-      const img = el.querySelector('img');
-      const spans = [...el.querySelectorAll('span')].filter((x) => (x.textContent || '').trim());
-      /* The bar is the only child with a rounded track and an absolute fill
-         inside it; find it by that fill rather than by position. */
-      const bar = [...el.querySelectorAll('div')]
-        .filter((d) => [...d.children].some((c) => c.style && c.style.position === 'absolute'))[0] || null;
-      const box = (n) => { if (!n) return null; const r = n.getBoundingClientRect();
-        return { l: Math.round(r.left), r: Math.round(r.right), w: Math.round(r.width) }; };
-      const txt = bar ? (bar.textContent || '').replace(/\s+/g, '') : null;
-      /* The LEVEL span, not the corner badge: the badge is last in DOM
-         order when it exists, and reading it as the level is exactly the
-         confusion v2.3.1853 fixed. */
-      const lvlSpan = spans.filter((x) => !/^\+/.test((x.textContent || '').trim())).pop() || null;
-      const badge = spans.filter((x) => /^\+\d+$/.test((x.textContent || '').trim()))[0] || null;
-      const fill = bar ? [...bar.children].filter((c) => c.style && c.style.position === 'absolute')[0] : null;
-      return {
-        label: el.getAttribute('aria-label'),
-        icon: box(img), bar: box(bar), lvl: box(lvlSpan),
-        lvlText: lvlSpan ? (lvlSpan.textContent || '').trim() : null,
-        badgeText: badge ? (badge.textContent || '').trim() : null,
-        pair: txt, fillW: fill ? fill.style.width : null,
-        pillW: Math.round(el.getBoundingClientRect().width),
-        clipped: bar ? bar.scrollWidth > bar.clientWidth + 1 : null,
-        /* Reported, not just judged: "it clips" sends you guessing at four
-           sizes; "needs 41, has 34" names the seven pixels. */
-        barNeed: bar ? bar.scrollWidth : null,
-        barHave: bar ? bar.clientWidth : null,
-        iconW: img ? Math.round(img.getBoundingClientRect().width) : null,
-        lvlW: lvlSpan ? Math.round(lvlSpan.getBoundingClientRect().width) : null,
-      };
-    });
+  const els = [...document.querySelectorAll('[role="button"][aria-label*="level"]')]
+    .filter((el) => el.getBoundingClientRect().width > 0
+      && /^(Melee|Bow|Magic) level/i.test(el.getAttribute('aria-label') || ''));
+  const box = (n) => { if (!n) return null; const r = n.getBoundingClientRect();
+    return { l: Math.round(r.left), r: Math.round(r.right),
+      t: Math.round(r.top), b: Math.round(r.bottom), w: Math.round(r.width) }; };
+  return els.map((el) => {
+    const img = el.querySelector('img');
+    /* The bar is the only descendant holding a percentage-width child. */
+    const bar = [...el.querySelectorAll('div')]
+      .filter((d) => [...d.children].some((c) => c.style && /%$/.test(c.style.width || '')))[0] || null;
+    const fill = bar ? [...bar.children].filter((c) => /%$/.test(c.style.width || ''))[0] : null;
+    /* The pair, the level and the badge are three leaf texts. */
+    const leaves = [...el.querySelectorAll('div, span')]
+      .filter((n) => (n.textContent || '').trim() && !n.querySelector('div, span') === false ? false : true);
+    const texts = [...el.querySelectorAll('div, span')]
+      .filter((n) => {
+        const t = (n.textContent || '').trim();
+        return t && n.querySelectorAll('div').length === 0 && t.length < 20;
+      });
+    const pairEl = texts.filter((n) => /^\d[\d.k]*\/\d[\d.k]*$/.test((n.textContent || '').replace(/\s+/g, '')))[0] || null;
+    const lvlEl = texts.filter((n) => /^LV\s*\d+$/i.test((n.textContent || '').trim()))[0] || null;
+    const badgeEl = texts.filter((n) => /^\+\d+$/.test((n.textContent || '').trim()))[0] || null;
+    /* Row overflow, per row rather than for the card: the card is a column,
+       so a too-wide TOP row is what spills, and the card's own scrollWidth
+       reports it late. */
+    const rows = [...el.children].map((r) => ({
+      need: r.scrollWidth, have: r.clientWidth, over: r.scrollWidth - r.clientWidth,
+      t: (r.textContent || '').trim().slice(0, 12) || r.tagName,
+    }));
+    return {
+      label: el.getAttribute('aria-label'),
+      icon: box(img), bar: box(bar), pair: box(pairEl), lvl: box(lvlEl),
+      pairText: pairEl ? (pairEl.textContent || '').replace(/\s+/g, '') : null,
+      lvlText: lvlEl ? (lvlEl.textContent || '').trim() : null,
+      badgeText: badgeEl ? (badgeEl.textContent || '').trim() : null,
+      fillW: fill ? fill.style.width : null,
+      pillW: Math.round(el.getBoundingClientRect().width),
+      rows,
+      clipped: rows.some((r) => r.over > 1),
+    };
+  });
 });
 
 export async function run({ browser, wsPort, webPort, rec }) {
@@ -251,44 +267,55 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await setXp(P, { sword: 250, bow: 210, staff: 140 });
   await P.page.waitForTimeout(700);
   const pills = await readPills(P);
-  rec.ok('all three combat pills were found (guard)', pills.length === 3,
+  rec.ok('all three combat cards were found (guard)', pills.length === 3,
     { pills: pills.map((p) => p.label) });
+  const three = pills.length === 3;   /* .every() on [] is TRUE — see above */
   const [melee, bow, magic] = pills;
-  const three = pills.length === 3;   /* .every() on [] is true — see below */
-  rec.ok('each pill carries an XP bar with its numbers inside',
-    three && pills.every((p) => p.pair && /^\d[\d.k]*\/\d[\d.k]*$/.test(p.pair)),
-    pills.map((p) => p.pair));
+  rec.ok('each card shows its XP as a pair',
+    three && pills.every((p) => p.pairText && /^\d[\d.k]*\/\d[\d.k]*$/.test(p.pairText)),
+    pills.map((p) => p.pairText));
   /* Its OWN skill's numbers: 250 / 210 / 140 against the same 280. */
   rec.ok('...and it is that skill\'s own progress, not a shared number',
-    !!(melee && bow && magic && melee.pair === '250/280'
-      && bow.pair === '210/280' && magic.pair === '140/280'),
-    pills.map((p) => `${p.label}=${p.pair}`));
-  rec.ok('...with the icon to the LEFT of the bar',
-    three && pills.every((p) => p.icon && p.bar && p.icon.r <= p.bar.l + 1),
-    pills.map((p) => ({ icon: p.icon, bar: p.bar })));
-  rec.ok('...and the level to the RIGHT of it',
-    three && pills.every((p) => p.lvl && p.bar && p.lvl.l >= p.bar.r - 1),
-    pills.map((p) => ({ bar: p.bar, lvl: p.lvl })));
-  /* The painted fill, not just the text — a bar whose numbers moved while
+    three && melee.pairText === '250/280' && bow.pairText === '210/280'
+      && magic.pairText === '140/280',
+    pills.map((p) => `${p.label}=${p.pairText}`));
+  rec.ok('...and its level, spelled LV n',
+    three && pills.every((p) => /^LV\s*\d+$/i.test(p.lvlText || '')),
+    pills.map((p) => p.lvlText));
+
+  /* ═══ THE STACK ═══
+     The owner's mockup is a specific ORDER — icon and level on top, the
+     numbers under them, the bar along the bottom — and "all three exist" is
+     true of any arrangement of them, including the one-line pill this
+     replaced.  So the geometry is what is asserted. */
+  rec.ok('the icon and level share the TOP row',
+    three && pills.every((p) => p.icon && p.lvl
+      && p.lvl.l >= p.icon.r - 1 && Math.abs(p.lvl.t - p.icon.t) < 14),
+    pills.map((p) => ({ icon: p.icon, lvl: p.lvl })));
+  rec.ok('...the numbers sit BELOW them',
+    three && pills.every((p) => p.pair && p.icon && p.pair.t >= p.icon.b - 4),
+    pills.map((p) => ({ icon: p.icon, pair: p.pair })));
+  rec.ok('...and the bar runs along the bottom',
+    three && pills.every((p) => p.bar && p.pair && p.bar.t >= p.pair.b - 2),
+    pills.map((p) => ({ pair: p.pair, bar: p.bar })));
+  /* FULL WIDTH is the point of stacking — a bar still boxed in beside
+     something else would have gained nothing over the pill. */
+  rec.ok('...at nearly the card\'s full width',
+    three && pills.every((p) => p.bar && p.bar.w >= p.pillW - 16),
+    pills.map((p) => ({ pill: p.pillW, bar: p.bar && p.bar.w })));
+  /* The painted fill, not just the text — a card whose numbers moved while
      its fill did not is the bug a text-only check would miss. */
-  /* v2.3.1853: with points waiting, the pill shows BOTH — the level in the
-     slot the owner asked for it in, and the +N in the corner.  The scenario
-     stocks the pool with 2, so this is the state under test; before this
-     version the badge REPLACED the level and lvlText would read "+2". */
-  rec.ok('the level survives an unspent-points badge',
-    three && pills.every((p) => /^\d+$/.test(p.lvlText || '')),
-    pills.map((p) => ({ lvl: p.lvlText, badge: p.badgeText })));
-  rec.ok('...and the badge is still shown, in the corner',
-    three && pills.every((p) => p.badgeText === '+2'),
-    pills.map((p) => p.badgeText));
   rec.ok('...and the fill matches the numbers',
-    !!(melee && melee.fillW && Math.abs(parseFloat(melee.fillW) - (250 / 280) * 100) < 1),
-    { fillW: melee && melee.fillW });
-  /* It has to FIT.  360 is the narrowest phone this layout supports and the
-     pill is 80px there — the whole reason the numbers sit inside the bar. */
-  rec.ok('...and nothing is clipped at this width',
+    three && !!melee.fillW && Math.abs(parseFloat(melee.fillW) - (250 / 280) * 100) < 1,
+    { fillW: three && melee.fillW });
+  rec.ok('the level survives an unspent-points badge',
+    three && pills.every((p) => /^LV\s*\d+$/i.test(p.lvlText || '') && p.badgeText === '+2'),
+    pills.map((p) => ({ lvl: p.lvlText, badge: p.badgeText })));
+  /* It has to FIT.  360 is the narrowest phone this layout supports; the
+     card is 80px there, and the top row is the one that spills. */
+  rec.ok('...and no row is clipped at this width',
     three && pills.every((p) => p.clipped === false),
-    pills.map((p) => ({ pill: p.pillW, icon: p.iconW, bar: `${p.barNeed}/${p.barHave}`, lvl: p.lvlW })));
+    pills.map((p) => ({ pill: p.pillW, rows: p.rows })));
 
   await P.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/bandsummary.png' });
 
@@ -316,11 +343,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     { n: narrow.length });
   rec.ok('...and their numbers still fit',
     narrow.length === 3 && narrow.every((p) => p.clipped === false),
-    narrow.map((p) => ({ pill: p.pillW, icon: p.iconW, bar: `${p.barNeed}/${p.barHave}`, lvl: p.lvlW })));
+    narrow.map((p) => ({ pill: p.pillW, rows: p.rows })));
   rec.ok('...and still read their own skill',
-    narrow.length === 3 && narrow[0].pair === '250/280'
-      && narrow[1].pair === '210/280' && narrow[2].pair === '140/280',
-    narrow.map((p) => p.pair));
+    narrow.length === 3 && narrow[0].pairText === '250/280'
+      && narrow[1].pairText === '210/280' && narrow[2].pairText === '140/280',
+    narrow.map((p) => p.pairText));
   await N.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/bandsummary-360.png' });
   await N.ctx.close().catch(() => {});
 
