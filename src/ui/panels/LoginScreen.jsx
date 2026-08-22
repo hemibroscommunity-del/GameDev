@@ -27,9 +27,27 @@ import { AccountModal } from '../account/AccountModal.jsx';
  * this device's key already has a character, the player never reaches this
  * screen at all — they go straight into the game, which is the other half
  * of the owner's ask.
+ *
+ * ═══ v2.3.1861: ...EXCEPT AFTER A LOGOUT ═══
+ * That note was true of every road here but one.  Logging out (v2.3.1840)
+ * lands on this screen deliberately, and it KEEPS the key — the passphrase
+ * is the character.  So there is exactly one way to stand here holding a
+ * character, and from there "Create Character" was a promise the game could
+ * not keep: the creator ran, and the worker handed back the stored record
+ * anyway (charLock).  The player got their old character wearing a new
+ * character's ceremony — which is how a "brand new" character turns up with
+ * combat points already on it (mp-freshpoints).
+ *
+ * Owner: "when you try to create a new character and there's already one
+ * just have a pop up notification appear that you already have a character
+ * and ask to continue otherwise it'll be overwritten with the new
+ * character."  So the button asks first, and both answers now do what they
+ * say.
  */
-export const LoginScreen = ({ onCreateNew, checking }) => {
+export const LoginScreen = ({ onCreateNew, onContinue, existingName, checking }) => {
   const [showAccount, setShowAccount] = React.useState(false);
+  /* v2.3.1861: the "you already have one" gate — see the button below. */
+  const [warnExisting, setWarnExisting] = React.useState(false);
 
   /* ═══ v2.3.1818: WARM THE CHARACTER WHILE NOBODY IS WAITING ═══
      Owner: "loading character assets seems slow (no char in image)."
@@ -155,11 +173,75 @@ export const LoginScreen = ({ onCreateNew, checking }) => {
             className="bt-login-btn bt-login-btn--new"
             data-tut="login-create"
             disabled={checking}
-            onClick={onCreateNew}
+            /* v2.3.1861: ask first when this device already holds a
+               character.  `existingName` is the name the boot check found
+               against this key — its presence IS the condition, so a device
+               with nothing to lose still gets the straight-through path it
+               has always had. */
+            onClick={() => { if (existingName) setWarnExisting(true); else onCreateNew(); }}
           >
             <span>Create Character</span>
           </button>
         </div>
+
+        {warnExisting && (
+          <div
+            className="bt-login-warn-scrim"
+            data-tut="login-existing-warn"
+            onPointerDown={() => setWarnExisting(false)}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 9600,
+              background: 'rgba(5, 9, 12, 0.62)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: 24,
+            }}
+          >
+            <div
+              onPointerDown={(e) => e.stopPropagation()}
+              style={{
+                width: 'min(320px, 100%)',
+                background: '#1E2E34',
+                border: '1px solid rgba(229, 237, 233, 0.16)',
+                borderRadius: 12,
+                padding: '16px 16px 14px',
+                boxShadow: '0 16px 34px rgba(4,7,9,.45)',
+                fontFamily: 'Source Sans 3, sans-serif',
+                textAlign: 'center',
+              }}
+            >
+              <div style={{ fontSize: 16, fontWeight: 800, color: '#F4F0E7' }}>
+                You already have a character
+              </div>
+              {/* Named, not just counted: "you have a character" is abstract
+                  until it is YOUR bro's name about to be written over. */}
+              <div style={{ fontSize: 13, color: '#B6C1BE', marginTop: 6, lineHeight: 1.35 }}>
+                <b style={{ color: '#F4F0E7' }}>{existingName}</b> is saved to this device.
+                Making a new one replaces them here — they can only be reached
+                again with their Login Key.
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 14 }}>
+                <button
+                  type="button"
+                  data-tut="login-existing-continue"
+                  className="bt-chisel bt-chisel--chip"
+                  style={{ minHeight: 44, fontSize: 14, fontWeight: 800, color: '#F4F0E7' }}
+                  onClick={() => { setWarnExisting(false); onContinue && onContinue(); }}
+                >
+                  Continue as {existingName}
+                </button>
+                <button
+                  type="button"
+                  data-tut="login-existing-replace"
+                  className="bt-chisel bt-chisel--danger"
+                  style={{ minHeight: 40, fontSize: 13, fontWeight: 800 }}
+                  onClick={() => { setWarnExisting(false); onCreateNew(); }}
+                >
+                  Create new character
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Said once, HERE, rather than after the fact: the key is the
             account, and a player who does not know that loses a character

@@ -1619,6 +1619,13 @@ export var BroTown = function BroTown(_ref0) {
     _useState190 = _slicedToArray(_useState189, 2),
     bootPhase = _useState190[0],
     setBootPhase = _useState190[1];
+  /* v2.3.1861: the name of the character this device's key already holds, or
+     null.  Filled by the boot check only on the forced-login road (a logout),
+     because that is the one way to reach the door still holding a character —
+     every other road either has no key or walks straight into the world. */
+  var _useStateExisting = useState(null),
+    existingName = _useStateExisting[0],
+    setExistingName = _useStateExisting[1];
   var showWelcome = bootPhase === 'create';
   var setShowWelcome = function setShowWelcome(v) { setBootPhase(v ? 'create' : null); };
   /* Bro Town intro video — overlays the game for ~4 s after character
@@ -7337,11 +7344,40 @@ export var BroTown = function BroTown(_ref0) {
          character away to fix a routing bug.  LoginScreen offers both of the
          things the owner asked for — "Log in with your Key" (which still has
          the stored key) and "Create Character". */
+      /* ═══ v2.3.1861: `?create=1` — the door said replace, and meant it ═══
+         Set by the login screen's "Create new character" answer AFTER it has
+         minted a fresh key.  It has to be its own road: with a new key the
+         boot check below would find no character and route to the door,
+         which would put the player back on the screen they just answered. */
+      var _forceCreate = false;
+      try { _forceCreate = /[?&]create=1\b/.test(window.location.search); } catch (e) { _forceCreate = false; }
+      if (_forceCreate) {
+        if (alive) setBootPhase('create');
+        try { window.__btBootRoute = 'create-forced'; } catch (e) {}
+        return;
+      }
       var _forceLogin = false;
       try { _forceLogin = /[?&]login=1\b/.test(window.location.search); } catch (e) { _forceLogin = false; }
       if (_forceLogin) {
         if (alive) setBootPhase('login');
         try { window.__btBootRoute = 'login-forced'; } catch (e) {}
+        /* v2.3.1861: ...and find out whether this key still has a character,
+           because the door needs to know before its Create button is pressed.
+           Deliberately AFTER setBootPhase: the screen paints immediately and
+           the name arrives when it arrives.  A failed check leaves
+           existingName null, which degrades to the old straight-through
+           behaviour rather than blocking the button on a network call. */
+        try {
+          var _p = getBtPassphrase();
+          if (_p) {
+            checkAccountLogin(_p).then(function (res) {
+              if (!alive) return;
+              if (res && res.ok && res.exists && res.preview && res.preview.hasChar) {
+                setExistingName(res.preview.name || 'your character');
+              }
+            }).catch(function () {});
+          }
+        } catch (e) {}
         return;
       }
       var phrase = null;
@@ -7610,7 +7646,54 @@ export var BroTown = function BroTown(_ref0) {
   if (bootPhase === 'checking' || bootPhase === 'login') {
     return /*#__PURE__*/React.createElement(LoginScreen, {
       checking: bootPhase === 'checking',
-      onCreateNew: function onCreateNew() { setBootPhase('create'); },
+      /* v2.3.1861: null on a device with nothing to lose — the door's
+         Create button then behaves exactly as it always has. */
+      existingName: existingName,
+      /* "Continue as <name>" — the same road a returning player takes, which
+         is bootPhase null (the auto-join effect above owns it from there). */
+      onContinue: function onContinue() { setBootPhase(null); },
+      onCreateNew: function onCreateNew() {
+        /* ═══ v2.3.1861: REPLACING A CHARACTER ═══
+           Owner: "...otherwise it'll be overwritten with the new character."
+
+           A NEW KEY is what does it, and the choice of mechanism matters.
+           The alternative was the server-side wipe (`character_reset`,
+           v2.3.1347) — but that needs a LIVE socket, and nobody at this door
+           has joined anything yet, so it would have to connect as the old
+           character purely to delete it.  Minting a key needs no socket and
+           destroys nothing: this device gets a genuinely new character, and
+           the old one is still there under its own Login Key for anyone who
+           wrote it down.  The dialog says exactly that before this runs.
+
+           The previous phrase is stashed the way the auth-rejection path
+           already stashes it (v2.3.1143), so a player who replaces a
+           character they meant to keep is one devtools read from recovering
+           it rather than nothing at all. */
+        if (existingName) {
+          try {
+            var _prev = localStorage.getItem('bt_passphrase');
+            if (_prev) localStorage.setItem('bt_passphrase_prev', _prev);
+            localStorage.setItem('bt_passphrase', generatePassphrase());
+            /* The stale per-character caches belong to the character being
+               left behind; carrying them into a new one is how a "new"
+               character shows up wearing old progress. */
+            ['bt_rpg', 'bt_stats', 'bt_codex', 'bt_bestiary', 'bt_materials', 'bt_zones', 'bt_resume'].forEach(function (k) {
+              localStorage.removeItem(k);
+            });
+            try { sessionStorage.removeItem('bt_resume'); sessionStorage.removeItem('bt_resume_now'); } catch (e2) {}
+          } catch (e) {}
+          /* Reload rather than setBootPhase('create'): S.myId was derived
+             from the OLD phrase when this component's state was built, so
+             the creator would otherwise mint a character against the very
+             identity we just walked away from. */
+          try {
+            var _g = /[?&]guest=1\b/.test(window.location.search) ? '&guest=1' : '';
+            window.location.href = '/?create=1' + _g;
+            return;
+          } catch (e) {}
+        }
+        setBootPhase('create');
+      },
     });
   }
   if (showNameModal) {

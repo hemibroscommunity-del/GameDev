@@ -247,7 +247,10 @@ export const DashColumns = ({ R }) => {
      from the bag.  Both are the owner's call, so neither is made here. */
   const lvlFs = tight ? 12 : 13.5;
   const badgeFs = tight ? 10.5 : 12;
-  const chipFs = tight ? 8 : 8.8;
+  /* v2.3.1862: the pair spans the card now, not the column — ~88px at 390
+     instead of 41 — so this is sized against the CARD.  Measured, as ever:
+     mp-bandsummary reports needed-vs-available for every text node. */
+  const chipFs = tight ? 10.5 : 12;
   const barH = tight ? 5 : 6;
   const combatPill = (s) => {
     /* ═══ v2.3.1668: these pills were the last live route into the
@@ -348,20 +351,16 @@ export const DashColumns = ({ R }) => {
         {/* RIGHT — the three readouts, stacked in what is left. */}
         <div style={{
           flex: '1 1 auto', minWidth: 0,
-          display: 'flex', flexDirection: 'column', gap: 2,
+          /* v2.3.1862: the pair left this column for the card's bottom edge,
+             so what remains sits clear of it. */
+          display: 'flex', flexDirection: 'column', gap: 3,
+          paddingBottom: chipFs + 2,
         }}>
           <span aria-hidden="true" style={{
             fontSize: lvlFs, fontWeight: 900, lineHeight: 1,
             color: unspent > 0 ? COL.accent : COL.text,
             fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
           }}>LV {lvl}</span>
-          {xp && (
-            <div aria-hidden="true" style={{
-              fontSize: chipFs, fontWeight: 800, lineHeight: 1,
-              color: COL.text2, fontVariantNumeric: 'tabular-nums',
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'clip',
-            }}>{xpShort(xp.prog)}<span style={{ opacity: .6 }}>/{xpShort(xp.thresh)}</span></div>
-          )}
           {/* The bar, now the right column's width rather than the card's
               — the room the icon was given came from here.  Still a plain
               track carrying no text, so the fill stays solid and readable
@@ -386,6 +385,45 @@ export const DashColumns = ({ R }) => {
             card this full that was still empty.
             v2.3.1853's rule holds — it must not REPLACE the level, which is
             what it did before the owner asked for the level to be shown. */}
+        {/* ═══ v2.3.1862: THE XP PAIR TAKES THE WHOLE CARD ═══
+            Owner: "try to make the xp text just wider."
+
+            It could not get wider where it was.  Boxed in the right-hand
+            column it had 41px, and at 8.8px the text needed all 41 — the
+            measured ceiling was 9.0 (v2.3.1859), which is not a change
+            anyone would notice.  Every pixel of that column is spoken for by
+            an icon the owner has called the right size, so the width had to
+            come from somewhere else.
+
+            The card's own width was free.  The pair sits ACROSS THE BOTTOM
+            now — absolutely positioned, so it costs the icon no height
+            either — which takes it from 41px to the full ~88 and the type
+            from 8.8 to 12.  Same card, same icon, half again the size.
+
+            It overlaps the icon's bottom edge, and that is the trade: these
+            three sprites (sword, bow, staff) are drawn on the diagonal with
+            an empty lower-left, and the shadow below keeps the digits
+            legible over whatever art does fall behind them.  mp-bandsummary
+            asserts the numbers still fit at 360 as well as 390. */}
+        {xp && (
+          <div aria-hidden="true" style={{
+            /* v2.3.1863 (owner: "shift it all the way to the right so the
+               second number is almost touching the gold border").  Right-
+               aligned rather than centred, and hard against the rim: the
+               denominator is the fixed half of the pair, so anchoring THAT
+               edge keeps the numbers still while the numerator grows — a
+               centred pair slides left every time the first number gains a
+               digit.  3px of inset, which is the card's own padding. */
+            position: 'absolute', left: 3, right: 3, bottom: 1,
+            textAlign: 'right',
+            fontSize: chipFs, fontWeight: 800, lineHeight: 1,
+            color: COL.text, fontVariantNumeric: 'tabular-nums',
+            letterSpacing: '-0.01em',
+            textShadow: '0 1px 3px rgba(9,14,17,.92), 0 0 2px rgba(9,14,17,.9)',
+            whiteSpace: 'nowrap', overflow: 'hidden',
+            pointerEvents: 'none',
+          }}>{xpShort(xp.prog)}<span style={{ opacity: .62 }}>/{xpShort(xp.thresh)}</span></div>
+        )}
         {unspent > 0 && (
           <span aria-hidden="true" style={{
             /* ═══ v2.3.1859: THE BADGE MOVES OFF THE TEXT COLUMN ═══

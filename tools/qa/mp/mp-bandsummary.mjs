@@ -119,6 +119,12 @@ const readPills = (P) => P.page.evaluate(() => {
         return t && n.querySelectorAll('div').length === 0 && t.length < 20;
       });
     const pairEl = texts.filter((n) => /^\d[\d.k]*\/\d[\d.k]*$/.test((n.textContent || '').replace(/\s+/g, '')))[0] || null;
+    /* The DENOMINATOR's own span — the dimmed half.  v2.3.1863 anchors the
+       pair to the card's right rim, and the containing div spans the whole
+       card either way, so its box says nothing about where the glyphs sit.
+       This is the element whose right edge IS the claim. */
+    const denomEl = pairEl ? [...pairEl.querySelectorAll('span')]
+      .filter((n) => /^\//.test((n.textContent || '').trim()))[0] || null : null;
     const lvlEl = texts.filter((n) => /^LV\s*\d+$/i.test((n.textContent || '').trim()))[0] || null;
     const badgeEl = texts.filter((n) => /^\+\d+$/.test((n.textContent || '').trim()))[0] || null;
     /* Row overflow, per row rather than for the card: the card is a column,
@@ -153,6 +159,8 @@ const readPills = (P) => P.page.evaluate(() => {
     return {
       label: el.getAttribute('aria-label'),
       icon: box(img), bar: box(bar), pair: box(pairEl), lvl: box(lvlEl),
+      denom: box(denomEl),
+      cardRight: Math.round(el.getBoundingClientRect().right),
       cardH: Math.round(el.getBoundingClientRect().height),
       pairText: pairEl ? (pairEl.textContent || '').replace(/\s+/g, '') : null,
       lvlText: lvlEl ? (lvlEl.textContent || '').trim() : null,
@@ -358,13 +366,34 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* The three readouts moved into the right column beside it — the whole
      point of the split, and the thing a naive "make the icon bigger" would
      have broken by overlapping them. */
-  rec.ok('the level, the numbers and the bar all sit RIGHT of the icon',
-    three && pills.every((p) => p.lvl && p.pair && p.bar && p.icon
-      && p.lvl.l >= p.icon.r - 1 && p.pair.l >= p.icon.r - 1 && p.bar.l >= p.icon.r - 1),
-    pills.map((p) => ({ icon: p.icon, lvl: p.lvl, pair: p.pair, bar: p.bar })));
-  rec.ok('...stacked in that order, top to bottom',
-    three && pills.every((p) => p.pair.t >= p.lvl.t && p.bar.t >= p.pair.t),
-    pills.map((p) => ({ lvl: p.lvl, pair: p.pair, bar: p.bar })));
+  rec.ok('the level and the bar sit RIGHT of the icon',
+    three && pills.every((p) => p.lvl && p.bar && p.icon
+      && p.lvl.l >= p.icon.r - 1 && p.bar.l >= p.icon.r - 1),
+    pills.map((p) => ({ icon: p.icon, lvl: p.lvl, bar: p.bar })));
+  rec.ok('...with the level above the bar',
+    three && pills.every((p) => p.bar.t >= p.lvl.t),
+    pills.map((p) => ({ lvl: p.lvl, bar: p.bar })));
+  /* ═══ v2.3.1862: THE PAIR SPANS THE CARD ═══
+     Owner: "try to make the xp text just wider."  It could not get wider
+     inside the right-hand column — 41px, all of it needed at 8.8, ceiling
+     measured at 9.0 — so it moved to the card's full width along the bottom.
+     Asserted as a RATIO of the card, not a pixel count, because the card is
+     94px at 390 and 80 at 360; and asserted BELOW the bar, because "it is
+     wide" would also be true of a pair that had landed on top of the level. */
+  rec.ok('the XP pair spans the whole card, not one column',
+    three && pills.every((p) => p.pair && p.pair.w >= p.pillW * 0.85),
+    pills.map((p) => ({ card: p.pillW, pair: p.pair && p.pair.w,
+      pct: p.pair && Math.round((p.pair.w / p.pillW) * 100) })));
+  /* v2.3.1863: hard against the right rim.  Measured on the denominator's
+     glyphs, not the containing box — the box spans the card whether the text
+     is centred or not, so it would pass either way. */
+  rec.ok('...ending hard against the card\'s right edge',
+    three && pills.every((p) => p.denom && p.cardRight - p.denom.r <= 6),
+    pills.map((p) => ({ cardRight: p.cardRight, denomRight: p.denom && p.denom.r,
+      gap: p.denom && (p.cardRight - p.denom.r) })));
+  rec.ok('...along the bottom, clear of the bar above it',
+    three && pills.every((p) => p.pair && p.bar && p.pair.t >= p.bar.b - 1),
+    pills.map((p) => ({ bar: p.bar, pair: p.pair })));
   /* The bar SHRANK, which is what paid for the icon.  Asserted so a later
      pass cannot quietly widen it back across the card and re-break the
      half. */
