@@ -407,8 +407,15 @@ export const DashColumns = ({ R }) => {
             asserts the numbers still fit at 360 as well as 390. */}
         {xp && (
           <div aria-hidden="true" style={{
+            /* v2.3.1863 (owner: "shift it all the way to the right so the
+               second number is almost touching the gold border").  Right-
+               aligned rather than centred, and hard against the rim: the
+               denominator is the fixed half of the pair, so anchoring THAT
+               edge keeps the numbers still while the numerator grows — a
+               centred pair slides left every time the first number gains a
+               digit.  3px of inset, which is the card's own padding. */
             position: 'absolute', left: 3, right: 3, bottom: 1,
-            textAlign: 'center',
+            textAlign: 'right',
             fontSize: chipFs, fontWeight: 800, lineHeight: 1,
             color: COL.text, fontVariantNumeric: 'tabular-nums',
             letterSpacing: '-0.01em',
