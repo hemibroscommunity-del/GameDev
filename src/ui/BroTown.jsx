@@ -2082,7 +2082,7 @@ export var BroTown = function BroTown(_ref0) {
   /* Ambient background music — gentle chiptune loop */
   useEffect(function () {
     return wireTownMusic(showNameModal, showLogin);
-  }, [showNameModal, showLogin]);
+  }, [showNameModal, showLogin, bootPhase]);   /* v2.3.1869 */
   /* Load player sprite sheets once, on mount. Per-direction frame counts
      and cycle durations differ — east source video is ~1 s, north/south
      ~2 s. Storing intervalMs per sheet lets each direction animate at its
@@ -2107,7 +2107,12 @@ export var BroTown = function BroTown(_ref0) {
   /* Prevent iOS page scroll + track keyboard height */
   var wrapRef = useRef(null);
   useEffect(function () {
-    if (showNameModal || showLogin) return;
+    /* v2.3.1869: bootPhase — the login door (v2.3.1814) is a third pre-game
+       screen this guard never knew about, and the refs below only exist once
+       the game UI renders.  Without it this effect runs while the door is up,
+       bails on a null ref, and never re-runs; see the game-loop effect for
+       the full account. */
+    if (showNameModal || showLogin || bootPhase !== null) return;
     /* Lock the page so iOS can't scroll it */
     var orig = {
       htmlOF: document.documentElement.style.overflow,
@@ -2189,7 +2194,7 @@ export var BroTown = function BroTown(_ref0) {
       window.removeEventListener('resize', handleOrientationChange);
       window.removeEventListener('orientationchange', handleOrientationChange);
     };
-  }, [showNameModal, showLogin]);
+  }, [showNameModal, showLogin, bootPhase]);   /* v2.3.1869 */
   /* Initialize WebSocket connection to Durable Objects game server.
      v2.3.784: the ~1,560-line effect body moved verbatim to
      src/networking/wsClient.js setupWebSocket (REBUILD-PLAN Phase 5);
@@ -2420,8 +2425,41 @@ export var BroTown = function BroTown(_ref0) {
 
 
   /* ═══ GAME LOOP — Full simulation + PixiJS/Canvas 2D rendering ═══ */
+  /* ═══ v2.3.1869: THE LOGIN DOOR HAD TO BE A DEPENDENCY ═══
+     Owner: "When I try to continue my character the screen is black" — on the
+     Create Character pop-up's Continue.
+
+     This effect creates the Pixi renderer and starts the game loop, and it
+     bails when `canvasRef.current` is null.  Its guard and its dependency
+     list knew about two pre-game screens, `showNameModal` and `showLogin`,
+     and nothing else.  v2.3.1814 then put a THIRD screen in front of both of
+     them — the login door — gated on `bootPhase`, which was never added
+     here.  On that road both old flags are false the whole time, so:
+
+       1. the component mounts with bootPhase 'login'; the render returns the
+          door and never renders the <canvas>;
+       2. this effect runs anyway (its guards are false), finds canvasRef
+          null, and returns — no renderer, no loop;
+       3. Continue sets bootPhase null and the canvas finally mounts;
+       4. ...and this effect does NOT re-run, because none of its three
+          dependencies changed.  Pixi is never initialised.
+
+     The canvas is therefore present and permanently unpainted, which is what
+     every measurement of this bug said: canvas:true, 0% lit, and a renderer
+     "rebuild" that could not help because there was no renderer to rebuild.
+     The black-screen watchdog then struck three times and reloaded — into the
+     same trap.
+
+     It also explains the shape of the report: creating a character works,
+     because that road toggles showNameModal, which IS a dependency.  Only the
+     roads gated purely on bootPhase — the Continue pop-up, and a plain reload
+     holding your key — came up black.
+
+     So bootPhase joins both the guard and the deps.  The guard matters as
+     much as the list: without it the effect would run while the door is up,
+     find no canvas and return, and then have nothing left to re-trigger it. */
   useEffect(function () {
-    if (showNameModal || showLogin) return;
+    if (showNameModal || showLogin || bootPhase !== null) return;
     var canvas = canvasRef.current;
     if (!canvas) return;
     var S = stateRef.current;
@@ -5588,11 +5626,16 @@ export var BroTown = function BroTown(_ref0) {
         window.__pixiActive = false;
       }
     };
-  }, [showNameModal, showLogin, glEpoch]);
+  }, [showNameModal, showLogin, bootPhase, glEpoch]);   /* v2.3.1869: bootPhase — see the note at the top of this effect */
 
   /* Sync nearBuilding + player list from game loop to React */
   useEffect(function () {
-    if (showNameModal || showLogin) return;
+    /* v2.3.1869: bootPhase — the login door (v2.3.1814) is a third pre-game
+       screen this guard never knew about, and the refs below only exist once
+       the game UI renders.  Without it this effect runs while the door is up,
+       bails on a null ref, and never re-runs; see the game-loop effect for
+       the full account. */
+    if (showNameModal || showLogin || bootPhase !== null) return;
     /* v2.3.777: tiny world-canvas readback -> % of pixels brighter than
        near-black.  Cheap (32x18) and only every 5s. */
     function _sampleLit() {
@@ -5997,7 +6040,7 @@ export var BroTown = function BroTown(_ref0) {
     return function () {
       return clearInterval(interval);
     };
-  }, [showNameModal, showLogin]);
+  }, [showNameModal, showLogin, bootPhase]);   /* v2.3.1869 */
 
   /* Send emote */
   /* Sword swing attack */
@@ -6664,7 +6707,12 @@ export var BroTown = function BroTown(_ref0) {
      effort -- Safari sometimes overrules; if it persists the user
      can reflag for a PWA / fullscreen path. */
   useEffect(function () {
-    if (showNameModal || showLogin) return;
+    /* v2.3.1869: bootPhase — the login door (v2.3.1814) is a third pre-game
+       screen this guard never knew about, and the refs below only exist once
+       the game UI renders.  Without it this effect runs while the door is up,
+       bails on a null ref, and never re-runs; see the game-loop effect for
+       the full account. */
+    if (showNameModal || showLogin || bootPhase !== null) return;
     var guard = document.createElement('div');
     guard.style.cssText = [
       'position: fixed',
@@ -6687,11 +6735,16 @@ export var BroTown = function BroTown(_ref0) {
       try { guard.removeEventListener('touchstart', onTouchStart); } catch (_) {}
       try { document.body.removeChild(guard); } catch (_) {}
     };
-  }, [showNameModal, showLogin]);
+  }, [showNameModal, showLogin, bootPhase]);   /* v2.3.1869 */
 
   /* Dual joystick — each finger tracked independently */
   useEffect(function () {
-    if (showNameModal || showLogin) return;
+    /* v2.3.1869: bootPhase — the login door (v2.3.1814) is a third pre-game
+       screen this guard never knew about, and the refs below only exist once
+       the game UI renders.  Without it this effect runs while the door is up,
+       bails on a null ref, and never re-runs; see the game-loop effect for
+       the full account. */
+    if (showNameModal || showLogin || bootPhase !== null) return;
     /* v2.3.816: touchstart is captured by the full-height left/right zones
        (floating model), not the small joystick bases.  touchmove/end stay
        on window so a drag tracks anywhere once started. */
@@ -7311,11 +7364,16 @@ export var BroTown = function BroTown(_ref0) {
         window.removeEventListener('touchcancel', sE);
       }
     };
-  }, [showNameModal, showLogin, handleJoystickMove, handleJoystickEnd, handleRJoyMove, handleRJoyEnd, handleShieldMove, handleCanvasSwipe]);
+  }, [showNameModal, showLogin, bootPhase, handleJoystickMove, handleJoystickEnd, handleRJoyMove, handleRJoyEnd, handleShieldMove, handleCanvasSwipe]);   /* v2.3.1869 */
 
   /* Keep keyboard open — focus input when game starts and periodically re-focus */
   useEffect(function () {
-    if (showNameModal || showLogin) return;
+    /* v2.3.1869: bootPhase — the login door (v2.3.1814) is a third pre-game
+       screen this guard never knew about, and the refs below only exist once
+       the game UI renders.  Without it this effect runs while the door is up,
+       bails on a null ref, and never re-runs; see the game-loop effect for
+       the full account. */
+    if (showNameModal || showLogin || bootPhase !== null) return;
     BT_AUDIO.init();
     var focusChat = function focusChat() {
       if (chatInputRef.current) chatInputRef.current.focus();
@@ -7327,7 +7385,7 @@ export var BroTown = function BroTown(_ref0) {
       clearTimeout(t1);
       clearTimeout(t2);
     };
-  }, [showNameModal, showLogin]);
+  }, [showNameModal, showLogin, bootPhase]);   /* v2.3.1869 */
   /* ═══ v2.3.1814: DOES THIS DEVICE'S KEY ALREADY HAVE A CHARACTER? ═══
      Asked over the READ-ONLY account endpoint, before connecting, and that
      choice is load-bearing rather than incidental: the alternative — join

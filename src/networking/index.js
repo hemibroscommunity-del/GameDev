@@ -94,7 +94,23 @@ export function applyAccountLogin(phrase) {
     localStorage.removeItem('bt_rpg');
     localStorage.removeItem('bt_stats');
   } catch (e) {}
-  window.location.reload();
+  /* ═══ v2.3.1869: LAND IN THE GAME, NOT BACK ON THE DOOR ═══
+     reload() keeps the query string, and the login door is most often reached
+     BY LOGGING OUT — which navigates to `/?noresume=1&login=1` (v2.3.1840).
+     So typing a valid Login Key at that door wrote the key correctly and then
+     reloaded onto `login=1`, which routes straight back to the door: the key
+     worked and the routing threw it away.  That is the same "it does nothing
+     after you enter it" the owner reported in v2.3.1823, arriving through a
+     different road.  Measured in mp-contblack: key written, route back to
+     'login-forced', URL unchanged.
+     Navigating to a clean path is the fix, and it does not weaken either
+     flag — both describe what a fresh, deliberate navigation should do, and
+     this is the end of one, not the start of another.  ?guest=1 is carried
+     because it identifies WHICH browser identity this tab is. */
+  try {
+    var _g = /[?&]guest=1\b/.test(window.location.search) ? '?guest=1' : '';
+    window.location.replace(window.location.pathname + _g);
+  } catch (e) { window.location.reload(); }
 }
 
 /* ═══ RPG SERVER SYNC ═══ */
