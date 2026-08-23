@@ -22,6 +22,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
      a renderer that quietly declines to start says so in a warn or a log. */
   const consoleLines = [];
   P.page.on('console', (m) => consoleLines.push(`${m.type()} ${m.text().slice(0, 180)}`));
+
+  /* ═══ THE CAUSE, MADE DELIBERATE ═══
+     The owner's black screen came from the loading screen's video failing to
+     load: its onError forced readyRef — the ASSET GATE — true and finished
+     the overlay on the spot, so the world was revealed with nothing loaded.
+     In the harness that failure arrived by accident (the dist server reset a
+     connection), which is no basis for a regression test: it would pass or
+     fail on the weather.  So the clip is aborted ON PURPOSE here, every run.
+     That turns "sometimes black" into a fixed, reproducible input, and this
+     scenario then asserts the thing that must remain true — a dead video
+     costs you the clip, not the game. */
+  await P.page.route('**/intro/loading-ashore.mp4', (r) => r.abort());
   await H.enterWorld(P);
   await P.page.waitForTimeout(3000);
 
@@ -31,7 +43,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
      about WHY.  The watchdog reloads a first join that renders dark, so
      whether those frames were lit is the difference between "the world is
      broken" and "something else reloaded the page". */
-  const snap = () => P.page.evaluate(() => {
+  /* INSIDE rAF, and this is not a detail: a WebGL canvas without
+     preserveDrawingBuffer is empty to drawImage outside the frame, so a
+     synchronous sample reads 0% lit on a perfectly healthy world.  The
+     in-game watchdog samples inside rAF for exactly this reason
+     (BroTown.jsx _sampleLit) and this has to match it, or the two disagree
+     and neither can be trusted.  (The first cut of this file sampled
+     synchronously; its lit:0 readings happened to agree with the watchdog,
+     which is the kind of luck that hides a broken instrument.) */
+  const snap = () => P.page.evaluate(() => new Promise((resolve) => {
+    requestAnimationFrame(() => {
     let lit = -1;
     try {
       const cv = document.querySelector('canvas');
@@ -49,7 +70,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const S = (window._gameState && window._gameState.current) || {};
     let resumeNow = null;
     try { resumeNow = sessionStorage.getItem('bt_resume_now'); } catch (e) {}
-    return {
+    resolve({
       phase: window.__btPhase || null,
       route: window.__btBootRoute || null,
       joinError: window.__btJoinError || null,
@@ -66,8 +87,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       intro: (window.__btIntro || []).slice(-6),
       ready: document.readyState,
       url: location.search,
-    };
-  });
+    });
+    });
+  }));
 
   const first = await snap();
   rec.ok('in world before logging out (guard)', first.canvas === true, first);
@@ -129,6 +151,39 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and the world is on screen when the dust settles',
     /canvas:true/.test(last.key), trail);
   rec.ok('...without the join having thrown', !last.joinError, last);
+
+  /* ── the three claims that make this a regression test ── */
+
+  /* 1. THE WORLD PAINTS.  The whole report in one line: with the intro clip
+     dead, does the player end up looking at the game or at nothing?  Read off
+     the same 32x18 sample the in-game watchdog judges by, so a pass here
+     means the watchdog would not have struck either. */
+  const litAtEnd = /\|lit:(\d+)/.exec(last.key);
+  rec.ok('a dead intro clip still ends with a LIT world',
+    !!(litAtEnd && Number(litAtEnd[1]) >= 1), { last, trail });
+
+  /* 2. THE OVERLAY HELD.  The mechanism, asserted separately from the
+     symptom: the fix is that a video error stops forcing the asset gate, so
+     the overlay must now last longer than the video took to fail.  Without
+     it the overlay finished 761ms after mounting against a 3000ms floor. */
+  const iv = (trail.find((x) => (x.intro || []).some((e) => e.ev === 'finish')) || {}).intro || [];
+  const mount = iv.find((e) => e.ev === 'mount');
+  const finish = iv.find((e) => e.ev === 'finish');
+  rec.ok('the loading overlay mounted and finished (guard)', !!(mount && finish), iv);
+  if (mount && finish) {
+    rec.ok('...and it held for its minimum, instead of being dismissed by the dead video',
+      (finish.at - mount.at) >= 2500, { heldMs: finish.at - mount.at, iv });
+    /* The gate itself.  `ready` false at finish would mean the overlay lifted
+       without the assets — the exact lie the old onError told. */
+    rec.ok('...and lifted because the ASSETS were ready, not because the video died',
+      finish.ready === true, { finish, iv });
+  }
+
+  /* 3. NO WATCHDOG RESCUE WAS NEEDED.  A pass on (1) with a reload in the
+     middle would mean the game recovered rather than worked; bt_resume_now is
+     set only by _recoveryReload, so it is the fingerprint. */
+  rec.ok('...without the black-screen watchdog having to reload the page',
+    !trail.some((x) => x.resumeNow === '1'), trail.map((x) => ({ tMs: x.tMs, resumeNow: x.resumeNow })));
 
   await P.page.screenshot({ path: 'tools/qa/mp/out/road2.png' });
   await P.ctx.close().catch(() => {});

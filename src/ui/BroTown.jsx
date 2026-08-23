@@ -5644,7 +5644,27 @@ export var BroTown = function BroTown(_ref0) {
         import('../debug/crashTrap.js').then(function (ct) {
           ct.recordCrash('auto-reload', why);
         }).catch(function () {});
-        setTimeout(function () { window.location.reload(); }, 350);
+        /* ═══ v2.3.1868: THE RECOVERY RELOAD HAS TO LAND IN THE WORLD ═══
+           reload() keeps the query string, and after a logout that string is
+           `?noresume=1&login=1` (v2.3.1840).  Both flags defeat this rescue:
+           `noresume=1` makes the auto-rejoin effect return early — it is that
+           feature's own escape hatch for a deliberate exit — and `login=1`
+           forces the login door.  So the one mechanism built to recover a
+           black first join was depositing the player back at the door, where
+           pressing Continue starts the same cycle again.  Measured on the
+           owner's road: reload at ~7s, back on the door at ~20s.
+
+           Reloading to a CLEAN path fixes it without touching either flag's
+           real purpose: both are about what a fresh, deliberate navigation
+           should do, and this is neither.  bt_resume_now (set just above) is
+           what carries the intent through, and the auto-rejoin effect reads
+           it — but only if noresume=1 is not there to make it return first. */
+        setTimeout(function () {
+          try {
+            var _g = /[?&]guest=1\b/.test(window.location.search) ? '?guest=1' : '';
+            window.location.replace(window.location.pathname + _g);
+          } catch (e2) { window.location.reload(); }
+        }, 350);
         return true;
       } catch (e) { return false; }
     }
