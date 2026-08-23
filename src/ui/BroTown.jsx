@@ -7414,7 +7414,29 @@ export var BroTown = function BroTown(_ref0) {
   useEffect(function () {
     if (bootPhase !== null || _autoJoined.current) return;
     _autoJoined.current = true;
-    try { joinTown(); } catch (e) { /* fall back to the login door */ setBootPhase('login'); }
+    try { joinTown(); } catch (e) {
+      /* ═══ v2.3.1866: THIS CATCH USED TO ERASE ITS OWN EVIDENCE ═══
+         Owner: "When I try to continue my character the screen is black."
+         A throw in joinTown lands here, and the only thing that happened was
+         a silent bounce back to the login door — no console error (a caught
+         exception is not a pageerror), no crash record, nothing on screen to
+         say the join had failed.  The player is left looking at the door's
+         dark backdrop, which is what "black" is from the outside, and every
+         test that checked identity rather than the screen still passed.
+         So the error is now RECORDED before the fallback: crashTrap for the
+         cross-reload log, and a window probe so a headless run can read the
+         message that was previously destroyed here. */
+      try {
+        window.__btJoinError = { message: String((e && e.message) || e), stack: String((e && e.stack) || '').slice(0, 800), at: Date.now() };
+      } catch (e2) {}
+      try {
+        import('../debug/crashTrap.js').then(function (ct) {
+          ct.recordCrash('join-threw', String((e && e.message) || e));
+        }).catch(function () {});
+      } catch (e3) {}
+      /* fall back to the login door */
+      setBootPhase('login');
+    }
   }, [bootPhase]);
 
   var joinTown = function joinTown() {
@@ -7643,6 +7665,18 @@ export var BroTown = function BroTown(_ref0) {
   /* v2.3.1814: the login door, and the blank hold while we ask whether this
      key already has a character.  Both return BEFORE the creator: the
      creator is now something you choose, not the default landing. */
+  /* v2.3.1866 dev probe: WHICH PRE-GAME SCREEN THIS RENDER CHOSE, and the
+     three flags that choose it.  Chasing the owner's black screen, every
+     other reading agreed the join had run (S.myName had been stamped by
+     joinTown) while the door was still on screen — and nothing published the
+     one number that decides that, so there was no way to tell "the phase went
+     back" from "the phase never moved".  Stamped on every render, cheap. */
+  try {
+    if (typeof window !== 'undefined') {
+      window.__btPhase = { bootPhase: bootPhase, showIntro: showIntro,
+        showNameModal: showNameModal, at: Date.now() };
+    }
+  } catch (e) {}
   if (bootPhase === 'checking' || bootPhase === 'login') {
     return /*#__PURE__*/React.createElement(LoginScreen, {
       checking: bootPhase === 'checking',

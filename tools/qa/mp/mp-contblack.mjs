@@ -84,6 +84,12 @@ const LIT = (P) => P.page.evaluate(() => new Promise((res) => {
    "Execution context was destroyed" — which is the page working, not a black
    screen.  The first cut of this file reported that as a scenario error and
    measured nothing at all. */
+/* NO CANVAS IS NOT A BLACK SCREEN, and conflating them cost a whole run:
+   the login door has no canvas and a dark painted backdrop, so the first cut
+   of this file reported "landed back on the door" as "the screen is black"
+   and would have sent me hunting a renderer bug that was a routing bug.
+   `lit` is -1 when there is nothing to sample; the roads say separately
+   whether a canvas was even expected. */
 async function litWithin(P, ms) {
   const t0 = Date.now();
   let last = { lit: -1, note: 'never sampled' };
@@ -110,6 +116,12 @@ async function identity(P) {
         let key = null; try { key = localStorage.getItem('bt_passphrase'); } catch (e) {}
         return { myId: S.myId || null, name: S.myName || null, key,
           route: window.__btBootRoute || null,
+          /* v2.3.1866: what the auto-join threw, if it threw.  The catch used
+             to swallow it and bounce to the door, which is indistinguishable
+             from "the door is what was supposed to happen". */
+          joinError: window.__btJoinError || null,
+          /* v2.3.1866: the pre-game phase this render actually chose. */
+          phase: window.__btPhase || null,
           url: location.pathname + location.search };
       });
     } catch (e) { await P.page.waitForTimeout(500).catch(() => {}); }
@@ -135,11 +147,23 @@ async function logOut(P) {
 }
 
 export async function run({ browser, wsPort, webPort, rec }) {
-  const P = await H.newPlayer(browser, {
-    name: 'Comeback', wsPort, webPort, viewport: { width: 390, height: 844 }, touch: true,
-  });
-  await H.enterWorld(P);
-  await P.page.waitForTimeout(3500);
+  /* ═══ ONE FRESH CONTEXT PER ROAD ═══
+     The first cut walked all three roads down a single page: reload, then
+     logout, then key entry.  Every road after the first was therefore being
+     measured on a page that had already loaded three times and built three
+     WebGL contexts, and a browser that runs out of those renders black for
+     reasons that have nothing to do with the game.  A shared page cannot
+     tell a real regression from its own wear, so each road gets its own. */
+  const fresh = async (name) => {
+    const p = await H.newPlayer(browser, {
+      name, wsPort, webPort, viewport: { width: 390, height: 844 }, touch: true,
+    });
+    await H.enterWorld(p);
+    await p.page.waitForTimeout(3500);
+    return p;
+  };
+
+  const P = await fresh('Comeback');
 
   /* ── CONTROL: the world is lit when you are simply IN it ──
      Without this, a harness that renders black for its own reasons (a
@@ -164,26 +188,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
      Reachable only after a logout, which is the point: logout KEEPS the key
      (the passphrase is the character), so this is the one screen in the game
      where you stand at the door already holding a character. */
-  const out = await logOut(P);
+  const R = await fresh('Returner');
+  const rBefore = await identity(R);
+  const out = await logOut(R);
   rec.ok('logged out to the door (guard)', out === true, {});
-  const atDoor = await identity(P);
+  const atDoor = await identity(R);
   console.log('    at the door', JSON.stringify(atDoor));
-  const create = await P.page.$('[data-tut="login-create"]');
+  const create = await R.page.$('[data-tut="login-create"]');
   rec.ok('the door offers Create Character (guard)', !!create, atDoor);
   if (create) {
     await create.click();
-    await P.page.waitForTimeout(800);
-    const cont = await P.page.$('[data-tut="login-existing-continue"]');
+    await R.page.waitForTimeout(800);
+    const cont = await R.page.$('[data-tut="login-existing-continue"]');
     rec.ok('the dialog offers "Continue as <name>" (guard)', !!cont, {});
     if (cont) {
       await cont.click();
-      const r2 = await litWithin(P, 30000);
-      const i2 = await identity(P);
+      const r2 = await litWithin(R, 45000);
+      const i2 = await identity(R);
       console.log('    road 2 continue', JSON.stringify(r2), JSON.stringify(i2));
-      rec.ok('ROAD 2 ("Continue as <name>"): the screen is not black', r2.ok, { ...r2, ...i2 });
-      rec.ok('ROAD 2: ...and it is the same character', i2.myId === idBefore.myId, { i2, idBefore });
+      /* A canvas AND no lit pixels is the failure the owner described; no
+         canvas at all would mean it never left the door, which is a
+         different bug and gets its own line rather than being folded in. */
+      rec.ok('ROAD 2 ("Continue as <name>"): it leaves the door for the world', r2.canvas === true, { ...r2, ...i2 });
+      rec.ok('ROAD 2: ...and the world is not black', r2.ok, { ...r2, ...i2 });
+      rec.ok('ROAD 2: ...and it is the same character', i2.myId === rBefore.myId, { i2, rBefore });
     }
   }
+  await R.ctx.close().catch(() => {});
 
   /* ── ROAD 3: the door's KEY entry ──
      The other button in this game labelled Continue.  Walked from a SECOND
@@ -192,11 +223,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      The road matters beyond the label: applyAccountLogin finishes with
      location.reload(), and a logout leaves `?login=1` in the URL — so what
      the reload lands on is a real question, not a formality. */
-  const Q = await H.newPlayer(browser, {
-    name: 'Second', wsPort, webPort, viewport: { width: 390, height: 844 }, touch: true,
-  });
-  await H.enterWorld(Q);
-  await Q.page.waitForTimeout(3000);
+  const Q = await fresh('Second');
   const qBefore = await identity(Q);
   const qOut = await logOut(Q);
   rec.ok('the second device logged out to the door (guard)', qOut === true, {});
@@ -220,7 +247,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const r3 = await litWithin(Q, 30000);
       const i3 = await identity(Q);
       console.log('    road 3 key login', JSON.stringify(r3), JSON.stringify(i3));
-      rec.ok('ROAD 3 (login with a Key): the screen is not black', r3.ok, { ...r3, ...i3 });
+      /* Blackness is only a meaningful question once it actually left the
+         door — see the note on litWithin. */
+      rec.ok('ROAD 3 (login with a Key): it leaves the door for the world', r3.canvas === true, { ...r3, ...i3 });
+      rec.ok('ROAD 3: ...and the world is not black', r3.canvas !== true || r3.ok, { ...r3, ...i3 });
       /* AND IT ACTUALLY SWITCHED.  A reload that lands back on the door is
          not black, so the lit check above would pass it — and "it does
          nothing after you enter the key" is the owner report v2.3.1823 was
