@@ -29,6 +29,16 @@ export const IntroVideo = ({ onComplete, waitFor, themeAudio }) => {
   const finish = () => {
     if (finishedRef.current) return;
     finishedRef.current = true;
+    /* v2.3.1866 probe: WHO took the loading screen down, and when.  Chasing
+       the owner's black screen, the overlay was measured coming off in under
+       a second against a 3000ms floor — which is either this finish() running
+       early or the overlay never really being up.  One is a timer bug and the
+       other is a mount bug, and nothing distinguished them. */
+    try {
+      window.__btIntro = window.__btIntro || [];
+      window.__btIntro.push({ ev: 'finish', at: Date.now(),
+        minDone: minDoneRef.current, ready: readyRef.current });
+    } catch (e) {}
     onComplete && onComplete();
   };
 
@@ -60,6 +70,10 @@ export const IntroVideo = ({ onComplete, waitFor, themeAudio }) => {
   };
 
   useEffect(() => {
+    try {
+      window.__btIntro = window.__btIntro || [];
+      window.__btIntro.push({ ev: 'mount', at: Date.now(), hasWaitFor: !!waitFor });
+    } catch (e) {}
     let cancelled = false;
     const maybeFinish = () => {
       if (cancelled || finishedRef.current) return;
@@ -85,6 +99,14 @@ export const IntroVideo = ({ onComplete, waitFor, themeAudio }) => {
     const hardCap = setTimeout(() => { readyRef.current = true; maybeFinish(); }, 20000);
 
     return () => {
+      /* An UNMOUNT here is the interesting case: the overlay disappearing
+         without finish() ever running means something above it stopped
+         rendering it, and the world is then on screen with none of the
+         assets this screen exists to wait for. */
+      try {
+        window.__btIntro = window.__btIntro || [];
+        window.__btIntro.push({ ev: 'unmount', at: Date.now(), finished: finishedRef.current });
+      } catch (e) {}
       cancelled = true;
       clearTimeout(minTimer);
       clearTimeout(hardCap);
