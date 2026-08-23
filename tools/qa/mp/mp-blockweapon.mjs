@@ -246,6 +246,65 @@ export async function run({ browser, wsPort, webPort, rec }) {
       sw.wcIdx >= 0 && sw.shieldIdx >= 0 && sw.wcIdx < sw.shieldIdx, sw);
   }
 
+  /* ── SOUTH, JOGGING: FROZEN ON TOP, STRIDING BELOW (v2.3.1872) ──
+     Owner: "the same frozen torso half so jogging while blocking doesn't look
+     weird."  Three separable claims, because a screenshot of a 110px bro
+     mid-stride cannot separate them:
+       - the composite is on at all;
+       - the cut is the JOG frame's own waist, and it MOVES with the cycle
+         (a fixed row would look right in one frame and wrong in the rest);
+       - the whole-body sprite is hidden, which is what stops a second,
+         standing pair of legs showing around the striding ones.
+     Movement is real input, not a poked flag: the composite keys off the
+     renderer's own isMoving, so a pinned velocity would prove nothing. */
+  await pin(P, IDX.S);
+  await P.page.keyboard.down('a');
+  await P.page.waitForTimeout(900);
+  const sbFrames = [];
+  for (let i = 0; i < 8; i++) {
+    await P.page.waitForTimeout(160);
+    const b = await P.page.evaluate(() => window.__btSouthBlockBody || null);
+    if (b) sbFrames.push(b);
+  }
+  /* look at it: four crops across one stride, so the seam can be judged in
+     motion rather than in a single lucky frame */
+  for (let i = 0; i < 4; i++) {
+    await P.page.waitForTimeout(130);
+    const cv = await P.page.evaluate(() => {
+      const S = window._gameState.current;
+      const r = document.querySelector('canvas').getBoundingClientRect();
+      return { x: r.left + (S.player.x - S.camera.x) * (S._worldScaleX || 1),
+               y: r.top + (S.player.y - S.camera.y) * (S._worldScaleY || 1) };
+    });
+    await P.page.screenshot({ path: `tools/qa/mp/out/bw-southjog-${i}.png`,
+      clip: { x: Math.max(0, Math.round(cv.x - 85)), y: Math.max(0, Math.round(cv.y - 120)), width: 170, height: 165 } });
+  }
+  await P.page.keyboard.up('a');
+  const sbOn = sbFrames.filter((b) => b && b.on);
+  rec.ok('south + moving: the frozen-torso composite is drawn', sbOn.length > 0,
+    { samples: sbFrames.length, on: sbOn.length, first: sbFrames[0] });
+  if (sbOn.length) {
+    rec.ok('south: ...with the standing body sprite hidden, so there is one pair of legs',
+      sbOn.every((b) => b.bodyHidden === true && b.topVisible && b.legsVisible), sbOn[0]);
+    /* THE CUT MOVES.  This is the assertion that separates a real waist-
+       tracking composite from a hard-coded row that happens to look fine in
+       the frame the screenshot caught. */
+    const cuts = [...new Set(sbOn.map((b) => b.cut))];
+    rec.ok('south: ...and the waist cut tracks the jog cycle rather than sitting at a fixed row',
+      cuts.length > 1, { cuts, frames: sbOn.map((b) => ({ f: b.jogFrame, cut: b.cut })) });
+    /* ...and stays in the hips.  A cut that wandered into the chest or the
+       knees would still "move" and would still be wrong. */
+    rec.ok('south: ...and stays at the waist (rows 120..160 of the 256 frame)',
+      sbOn.every((b) => b.cut >= 120 && b.cut <= 160), sbOn.map((b) => b.cut));
+  }
+
+  /* AND STANDING STILL, IT IS NOT USED.  The composite exists for the jog;
+     leaving it on while stopped would be a second code path rendering every
+     idle block for no reason. */
+  await P.page.waitForTimeout(700);
+  const sbIdle = await P.page.evaluate(() => window.__btSouthBlockBody || null);
+  rec.ok('south + standing still: the composite is off', !(sbIdle && sbIdle.on), sbIdle);
+
   /* AND IT GOES AWAY WITH THE SHIELD.  The display's weapon sprite is shared
      with the carried pose, so a south block that forgot to release it would
      strand a weapon at the off hand for the rest of the session. */
