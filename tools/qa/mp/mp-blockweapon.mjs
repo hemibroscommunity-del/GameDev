@@ -222,15 +222,39 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
   await setWeapon(P, { slot: 'melee', item: { type: 'greatsword', name: 'Copper Greatsword', gearBase: 'copper', dmg: 5 } });
 
-  /* ── 2. SOUTH IS HONESTLY EMPTY ──
-     A south block is not the stand-in at all (v2.3.1805: the bow south body
-     sheet is holed through the face), so there is no measured hand to put a
-     weapon in.  Pinned as the DECISION, so a later change to it is loud
-     instead of looking like the feature quietly half-working. */
+  /* ── 2. SOUTH DRAWS ITS OWN, FROM THE OTHER RENDERER ──
+     v2.3.1805 keeps south on the REAL body (its bow sheet is holed through
+     the face), so the stand-in's off-hand weapon cannot run there and this
+     used to assert the absence.  v2.3.1871 draws it from the player display
+     instead, so both halves are now checked: the stand-in stays out of it,
+     and the display path takes over. */
   await pin(P, IDX.S);
   const s = await probe(P);
-  rec.ok('south draws no off-hand weapon — it has no stand-in to hold one',
+  rec.ok('south does NOT use the stand-in off-hand weapon (it has no stand-in)',
     !(s.off && s.off.on), s.off);
+  const sw = await P.page.evaluate(() => window.__btSouthBlockWeapon || null);
+  rec.ok('south draws the off-hand weapon from the display instead', !!(sw && sw.on), sw);
+  if (sw && sw.on) {
+    rec.ok('south: ...as the equipped weapon', sw.type === 'greatsword', sw);
+    rec.ok('south: ...pivoting on its grip, not its frame\'s bottom edge', sw.gripped === true, sw);
+    /* THE OCCLUSION THE OWNER ASKED FOR, as the only thing that can express
+       it: a screenshot at this size cannot tell a weapon in front of the
+       shield from one behind it, but the child indices can.  Lower index =
+       drawn first = cut by the shield where they overlap. */
+    rec.ok('south: the shield is actually drawn (guard)', sw.shieldVisible === true, sw);
+    rec.ok('south: ...and the weapon sits UNDER it, so the shield occludes it',
+      sw.wcIdx >= 0 && sw.shieldIdx >= 0 && sw.wcIdx < sw.shieldIdx, sw);
+  }
+
+  /* AND IT GOES AWAY WITH THE SHIELD.  The display's weapon sprite is shared
+     with the carried pose, so a south block that forgot to release it would
+     strand a weapon at the off hand for the rest of the session. */
+  await P.page.evaluate(() => { window.__pin.on = false; window._gameState.current._shieldUp = false; });
+  await P.page.waitForTimeout(700);
+  const swDown = await P.page.evaluate(() => window.__btSouthBlockWeapon || null);
+  rec.ok('south: lowering the shield releases the off-hand draw',
+    !(swDown && swDown.on), swDown);
+  await P.page.evaluate(() => { window.__pin.on = true; });
 
   /* ── 3. every weapon type gets in the hand ──
      The three slots read from three different fields, and the port that

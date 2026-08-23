@@ -3535,6 +3535,126 @@ function _hideBlockCaret(display) {
   if (g && g.visible) { g.visible = false; g.clear(); }
 }
 
+/* ═══ v2.3.1871: THE WEAPON IN A SOUTH BLOCK'S OFF HAND ═══
+ *
+ * Owner: "the south block view needs to show weapon in offhand partially
+ * occluded by shield."
+ *
+ * South is the one facing with no stand-in — its bow body sheet is holed
+ * through the face (v2.3.1805) — so it blocks on the REAL body with a
+ * free-floating shield, and the stand-in's off-hand weapon (v2.3.1864) never
+ * runs for it.  This is that weapon, drawn from the player display instead.
+ *
+ * THE OCCLUSION IS THE Z-ORDER, and it is the point of the request rather
+ * than a detail: the container is parked directly BENEATH the shield sprite,
+ * so the 72px disc over the chest cuts the weapon where they overlap and the
+ * rest shows past its edge.  Done per frame because the shield's own z-rule
+ * slides _shieldSprite up and down the child list by facing — a fixed
+ * build-order slot is right on some facings and wrong on the rest (the lesson
+ * _placeBlockArm records at length).
+ *
+ * Returns false when it cannot draw (no art yet), so the caller falls through
+ * to hiding the sprite rather than leaving a stale icon on screen.
+ */
+const SOUTH_BLOCK_OFFHAND_ENABLED = true;
+/* Display-local, so it rides the figure's own transform.  x is negative =
+ * the player's off side (screen left), opposite the arm the shield boss sits
+ * on; y is negative = up from the feet, at about chest height.  Tuned against
+ * the 72px shield: far enough out that the hilt clears its edge, close enough
+ * that the hand still reads as the body's. */
+const SOUTH_BLOCK_OFFHAND = { x: -11, y: -34 };
+/* Per-type, because the two kinds of art hang from the grip in opposite
+ * directions.  The posed greatsword and bow are drawn hilt-high with the
+ * blade falling away, so the default puts the grip up by the shoulder and the
+ * blade runs down into the shield.  A staff is AIMED (its icon is neutral)
+ * and stands head-up out of the fist, so the same grip drove its butt end
+ * straight across the face.  Dropped and pushed out, it rises clear of the
+ * head and its lower end tucks behind the shield's top edge instead. */
+const SOUTH_BLOCK_OFFHAND_BY_TYPE = {
+  staff: { x: -25, y: -20, px: 40 },
+};
+/* Aimed down and out, so the blade leaves the silhouette below the shield
+ * instead of climbing across the face. */
+const SOUTH_BLOCK_OFFHAND_AIM = Math.PI * 0.72;
+function _placeSouthBlockWeapon(display, wpn, bobY) {
+  const spr = display && display._weaponSprite;
+  if (!spr || !wpn || !wpn.type) return false;
+  /* THE SAME OBJECT HE WAS JUST CARRYING.  A greatsword and a bow have
+     per-facing held art, and their single-icon fallbacks are something else
+     entirely — `greatsword` is keyed to Sword1.webp, which is the bamboo
+     pole.  The first cut of this took the neutral icon and a bro holding a
+     copper greatsword raised his shield and was holding a gold stick.  Same
+     resolution the stand-in path uses (effectsRenderer), and south is a
+     canonical facing so there is no mirror to reconcile. */
+  const perFacing = (wpn.type === 'greatsword' || wpn.type === 'bow');
+  const artDir = (perFacing && hasWeapon(wpn.type, wpn.gearBase, 'south')) ? 'south' : null;
+  if (!hasWeapon(wpn.type, wpn.gearBase, artDir)) return false;
+  const tex = getWeaponTexture(wpn.type, wpn.gearBase, artDir);
+  if (!tex) return false;
+  if (spr.texture !== tex) spr.texture = tex;
+  const tw = tex.width || 64, th = tex.height || 64;
+  /* handles.json has no bare `greatsword` — its grips are per-facing — and
+     the generic greatsword icon IS the sword's file, so the sword's grip is
+     the same point on the same art.  (Same fallback the stand-in path needs;
+     without it the sprite pivots on its frame's bottom edge and the blade
+     hangs off the chest at an angle nothing asked for.) */
+  const grip = getWeaponHandle(wpn.type, wpn.gearBase, artDir)
+            || (wpn.type === 'greatsword' ? getWeaponHandle('sword', wpn.gearBase, null) : null);
+  if (grip) spr.anchor.set(grip[0] / tw, grip[1] / th);
+  else spr.anchor.set(0.5, 1);
+  const over = SOUTH_BLOCK_OFFHAND_BY_TYPE[wpn.type] || null;
+  const targetH = (over && over.px) ? over.px
+                : wpn.type === 'greatsword' ? 44
+                : wpn.type === 'bow' ? 34
+                : (wpn.type === 'sword' && wpn.gearBase === 'wood') ? 36
+                : 26;
+  const k = targetH / Math.max(8, th);
+  spr.scale.set(k, k);
+  /* Every weapon icon runs grip-to-tip along the same diagonal (see
+     BLOCK_OFFHAND_ART_ANG), so one constant turns "point it this way" into a
+     rotation.  A staff is reflected about the horizon for the same reason it
+     is on the stand-in: its far end is the HEAD, and head-down is a broom. */
+  const artAng = -Math.PI / 4;
+  if (artDir) {
+    /* Art posed for this facing already knows which way the blade goes;
+       rotating it would only fight the drawing. */
+    spr.rotation = 0;
+  } else {
+    const aim = (wpn.type === 'staff') ? -SOUTH_BLOCK_OFFHAND_AIM : SOUTH_BLOCK_OFFHAND_AIM;
+    spr.rotation = aim - artAng;
+  }
+  spr.tint = weaponTint(wpn.type, wpn.gearBase);
+  spr.alpha = 1;
+  spr.x = (over && typeof over.x === 'number') ? over.x : SOUTH_BLOCK_OFFHAND.x;
+  spr.y = ((over && typeof over.y === 'number') ? over.y : SOUTH_BLOCK_OFFHAND.y) + (bobY || 0);
+  spr.visible = true;
+  /* UNDER THE SHIELD.  setChildIndex removes then re-inserts, so the target
+     depends on which side the container starts from: from above, the shield
+     does not move and the container goes to shIdx; from below, the shield
+     slides down one during the removal and it goes to shIdx-1.  The
+     already-there check keeps it stable rather than ratcheting a slot a
+     frame. */
+  const wc = display._weaponContainer, sh = display._shieldSprite;
+  if (wc && sh && sh.visible) {
+    const shIdx = display.getChildIndex(sh);
+    const wi = display.getChildIndex(wc);
+    if (wi !== shIdx - 1) display.setChildIndex(wc, wi < shIdx ? shIdx - 1 : shIdx);
+  }
+  if (typeof window !== 'undefined') {
+    window.__btSouthBlockWeapon = {
+      on: true, type: wpn.type, gearBase: wpn.gearBase || null,
+      x: spr.x, y: spr.y, px: targetH, rotation: spr.rotation,
+      gripped: !!grip, artDir, posed: !!artDir,
+      /* The whole request in two numbers: the weapon's slot and the
+         shield's.  Lower means drawn first means occluded. */
+      wcIdx: wc ? display.getChildIndex(wc) : -1,
+      shieldIdx: (sh && sh.visible) ? display.getChildIndex(sh) : -1,
+      shieldVisible: !!(sh && sh.visible),
+    };
+  }
+  return true;
+}
+
 function _placeBlockArm(display, facing, bodyH, bobY) {
   const spr = display._blockArmSprite;
   const sleeve = display._blockArmSleeve;
@@ -7184,6 +7304,17 @@ export class EntityRenderer {
         const restAng = REST_ANG[wpn.type] != null ? REST_ANG[wpn.type] : 0;
         swingAng = (aimAngleForSwing - restAng) + swingOffset;
       }
+      /* v2.3.1871: the south-block probe is RESET here, before the branches,
+         not inside the one that stops drawing.  Cleared only on the
+         shield-down path it went stale the moment the weapon returned to the
+         carried pose — which reaches a different branch entirely — and
+         mp-blockweapon then read a south block that had ended seconds ago.
+         Exactly the trap _hideBlockArm records: hide and record together, or
+         the probe outlives what it describes. */
+      if (typeof window !== 'undefined' && window.__btSouthBlockWeapon
+          && window.__btSouthBlockWeapon.on) {
+        window.__btSouthBlockWeapon = { on: false };
+      }
       if (wpn && !isShielding) {
         /* Weapon is fully hidden while shielding — gameplay rule: you
            can attack OR block, never both, so no point drawing the
@@ -7695,6 +7826,30 @@ export class EntityRenderer {
             }
           }
         }
+      } else if (wpn && isShielding && !S._blockPose && S.rpg && S.rpg.shield
+                 && SOUTH_BLOCK_OFFHAND_ENABLED && _placeSouthBlockWeapon(display, wpn, bobY)) {
+        /* ═══ v2.3.1871: THE SOUTH BLOCK KEEPS ITS WEAPON TOO ═══
+           Owner: "the south block view needs to show weapon in offhand
+           partially occluded by shield".
+
+           Every other facing gets this from the bow stand-in (v2.3.1864), and
+           south is the one facing that has no stand-in at all — its bow body
+           sheet is holed through the face (v2.3.1805), so the block there is
+           the REAL body with a free-floating shield.  That is why the weapon
+           was still being hidden here: this branch is the "shield is up" case,
+           and south never reaches the stand-in's off-hand code.
+
+           So it is drawn from the display container instead, and the
+           occlusion the owner asked for is the z-order — see
+           _placeSouthBlockWeapon, which parks the weapon container directly
+           BENEATH the shield.  The shield at south is a 72px disc over the
+           chest, so a weapon at the off hand shows past its edge and is cut
+           where they overlap, which is what "partially occluded" means.
+
+           Guarded on !S._blockPose so it can never double up with the
+           stand-in's own off-hand weapon: exactly one of the two draws. */
+        if (display._handCapSprite) display._handCapSprite.visible = false;
+        if (display._handArmSprite) display._handArmSprite.visible = false;
       } else {
         /* No weapon equipped or shield is up — hide the icon Sprite
            so a stale icon doesn't linger from a previous loadout (or
