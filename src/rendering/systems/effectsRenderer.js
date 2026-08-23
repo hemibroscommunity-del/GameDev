@@ -40,7 +40,9 @@ import { materialTint, weaponTint } from '../traits/materialTints.js';
 import { upscaleToFrameHeight } from '../spriteScale.js'; /* v2.3.1112: restore downscaled-on-disk sword stand-in strips to their authored frame height */
 import { AIM_CARET, AIM_CARET_EDGE } from '../aimCaret.js'; /* v2.3.1799 */
 import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX } from '../backShield.js'; /* v2.3.1784 */
-import { registerBowBodyFrames, BLOCK_STANDIN_HAND } from '../blockArm.js'; /* v2.3.1785; v2.3.1833 the away-facing hand */
+import { registerBowBodyFrames, BLOCK_STANDIN_HAND, BLOCK_OFFHAND, BLOCK_OFFHAND_PX, BLOCK_OFFHAND_ENABLED, BLOCK_OFFHAND_ART_ANG } from '../blockArm.js'; /* v2.3.1785; v2.3.1833 the away-facing hand; v2.3.1864 the off-hand weapon */
+import { getWeaponTexture, hasWeapon } from '../weaponSprites.js'; /* v2.3.1864 */
+import { getWeaponHandle } from '../playerAnchors.js';             /* v2.3.1864 */
 
 /* v2.3.1784: the 8-way compass, module scope.  An identical list already
    existed as a local inside _updateRemoteBowShots; the slung shield needs it
@@ -1326,6 +1328,14 @@ export class EffectsRenderer {
     this.bowShieldLo.anchor.set(0.5, 0.5);
     this.bowShieldLo.visible = false;
     this.nodeLayer.addChild(this.bowShieldLo);
+    /* v2.3.1864: the weapon in the block's OFF hand, on the same structural
+       lo/hi pair as the slung shield above — lo goes in before the body and
+       can never draw over it, hi goes in after everything and can never draw
+       under it, so choosing a side is one `visible` flag and never a child
+       index.  See blockArm.js BLOCK_OFFHAND for which facings use which. */
+    this.blockOffHandLo = new Sprite();
+    this.blockOffHandLo.visible = false;
+    this.nodeLayer.addChild(this.blockOffHandLo);
     this.bowJogLegsSprite = new Sprite();
     this.bowJogLegsSprite.visible = false;
     this.nodeLayer.addChild(this.bowJogLegsSprite);
@@ -1362,6 +1372,10 @@ export class EffectsRenderer {
     this.bowShieldHi.anchor.set(0.5, 0.5);
     this.bowShieldHi.visible = false;
     this.nodeLayer.addChild(this.bowShieldHi);
+    /* v2.3.1864: HIGH clone of the off-hand weapon — see its LOW twin above. */
+    this.blockOffHandHi = new Sprite();
+    this.blockOffHandHi.visible = false;
+    this.nodeLayer.addChild(this.blockOffHandHi);
     const _loadBowStrip = (target, dir, url, cfg) => {
       target[dir] = [];
       _fxLoad(url + '?v=' + BOW_ART_VERSION).then((tex) => {
@@ -5663,6 +5677,191 @@ export class EffectsRenderer {
     }
   }
 
+  /* ═══ v2.3.1864: THE EQUIPPED WEAPON, IN THE BLOCK'S OFF HAND ═══
+   *
+   * Owner: "When the character is blocking I want to see what it looks like
+   * for the equipped weapon to be visible in the off hand (the hand that's
+   * back).  Can you put it there?"
+   *
+   * A raised shield used to hide the weapon outright (entityRenderer's held
+   * branch is `if (wpn && !isShielding)`).  That rule is about damage — you
+   * attack OR block — and it was silently doing a second job it was never
+   * about: making the sword disappear out of a hand that is still holding it.
+   *
+   * Drawn HERE rather than from the player display, for the same reason the
+   * away-facing shield is (v2.3.1805): while blocking, the body on screen is
+   * this stand-in, in the node layer, and nothing in the display container can
+   * be ordered against it.  Placed off this very sprite's numbers — `sp.x/y`,
+   * `sgn`, `s` — so it tracks the figure by construction rather than by a
+   * second copy of the transform that drifts the first time one is tuned.
+   *
+   * Silent no-ops, all deliberate: no entry for this sheet (a south block is
+   * not the stand-in at all), no weapon equipped, or the weapon's texture not
+   * resolved yet.  There is no procedural fallback on this path — half a
+   * weapon in a hand reads worse than an empty one. */
+  _placeBlockOffHand(S, fmap, cfg, sp, sgn, s, bodyH) {
+    const lo = this.blockOffHandLo, hi = this.blockOffHandHi;
+    /* Both were parked at the top of the frame, so every return below leaves
+       the hand empty rather than stranding the last frame's weapon. */
+    if (!lo || !hi || !BLOCK_OFFHAND_ENABLED || !S._blockPose) return;
+    const off = BLOCK_OFFHAND[fmap[0]];
+    const R = S.rpg;
+    if (!off || !R) return;
+    /* Same three-slot read entityRenderer's held branch does — melee, staff,
+       ranged — so the off hand shows whatever the weapon toggle last chose. */
+    const slot = R.activeSlot || 'melee';
+    const wpn = slot === 'melee' ? R.weapon
+              : slot === 'staff' ? (R.staffWeapon || R.rangedWeapon)
+              :                    R.rangedWeapon;
+    if (!wpn || !wpn.type) return;
+    /* ═══ THE SAME OBJECT HE WAS JUST CARRYING ═══
+       A greatsword and a bow have per-FACING held art (v2.3.942/944) and their
+       single-icon fallbacks are something else entirely — `greatsword` is keyed
+       to Sword1.webp, which is the bamboo pole.  Taking the neutral icon here
+       would have a bro who is carrying a copper greatsword raise his shield and
+       be holding a gold-tinted stick, and the swap would happen on the frame the
+       block starts.  So resolve the same per-facing art the carried weapon uses,
+       through the same resolveDirection the body does.
+       TWO MIRRORS, and they are not the same one: `sgn` carries the BOW sheet's
+       mirror and belongs to the hand POINT (where on the stand-in the fist is),
+       while this one carries the WEAPON art's and belongs to the blade.  They
+       disagree on several facings — southeast takes the southwest body sheet but
+       the southeast weapon art — and using either for both is a weapon on the
+       wrong side of the body. */
+    const perFacing = (wpn.type === 'greatsword' || wpn.type === 'bow');
+    const artRes = perFacing ? resolveDirection(S._bowDir || 'east') : null;
+    const artDir = (artRes && hasWeapon(wpn.type, wpn.gearBase, artRes.dir)) ? artRes.dir : null;
+    if (!hasWeapon(wpn.type, wpn.gearBase, artDir)) return;
+    const tex = getWeaponTexture(wpn.type, wpn.gearBase, artDir);
+    if (!tex) return;
+
+    /* Tunable from the page so a placement can be SWEPT in one build and
+       picked by looking, the way the south blade tilt was (__btSouthTilt).
+       Guessing at radians and pixel offsets is what made that one take five
+       tries. */
+    let tune = null;
+    try { tune = (typeof window !== 'undefined') ? window.__btOffHand : null; } catch (e) { tune = null; }
+    const dx = (tune && typeof tune.dx === 'number') ? tune.dx : 0;
+    const dy = (tune && typeof tune.dy === 'number') ? tune.dy : 0;
+    const sizeMul = (tune && typeof tune.size === 'number') ? tune.size : 1;
+    const aim = (tune && typeof tune.aim === 'number') ? tune.aim : off.aim;
+
+    /* v2.3.1870: a facing may override BOTH the grip and the side for one
+       weapon type — see BLOCK_OFFHAND.north, where a staff and a bow come to
+       the front so the shaft reads as one object rather than two ends poking
+       past the shoulders. */
+    const over = (off.byType && off.byType[wpn.type]) || null;
+    const behind = over && typeof over.behind === 'boolean' ? over.behind : !!off.behind;
+    const spr = behind ? lo : hi;
+    if (spr.texture !== tex) spr.texture = tex;
+    const tw = tex.width || 64, th = tex.height || 64;
+    /* Anchor on the GRIP, so every transform below pivots in the hand: the
+       size, the mirror and the tilt all leave the hilt where the fist is. */
+    /* handles.json HAS NO BARE `greatsword`, and falling through to the
+       bottom-centre default is not a small miss: the pivot moves to the middle
+       of the frame's bottom edge, which for a blade drawn corner-to-corner is
+       a third of its length away from the hilt — the first cut of this hung
+       the pole off the chest at an angle nothing in the table asked for.  The
+       generic greatsword icon IS Sword1.webp, the same file `sword` is keyed
+       to (see weaponSprites.js SHEETS), so the sword's grip is literally the
+       same point on the same art.  The per-facing `greatsword-<dir>` grips
+       cannot stand in — they belong to different, posed drawings. */
+    const grip = getWeaponHandle(wpn.type, wpn.gearBase, artDir)
+              || (wpn.type === 'greatsword' ? getWeaponHandle('sword', wpn.gearBase, null) : null);
+    if (grip) spr.anchor.set(grip[0] / tw, grip[1] / th);
+    else spr.anchor.set(0.5, 1);
+    /* Measured against the FIGURE and scaled with it — the contract
+       HELD_SHIELD_PX / BACK_SHIELD_PX are on, so a weapon does not stay one
+       fixed size while the body changes per facing or per zone. */
+    const px = (BLOCK_OFFHAND_PX[wpn.type] || BLOCK_OFFHAND_PX.sword)
+             * ((bodyH || STANDIN_REF_BODY_H) / STANDIN_REF_BODY_H) * sizeMul;
+    const k = px / Math.max(8, th);
+    const mir = sgn < 0;
+    /* No vertical flip anywhere on this path: every one of these icons is
+       already drawn tip-away-from-the-grip, and the carried pose's
+       scale.y = -fit (v2.3.1786) would put the tip back through the floor. */
+    let aimScreen;
+    if (artDir) {
+      /* Art posed for this facing already knows which way the blade goes —
+         rotating it would only fight the drawing.  Mirror comes from the
+         WEAPON's resolveDirection, never from the body sheet's. */
+      spr.scale.set((artRes.mirror ? -1 : 1) * k, k);
+      spr.rotation = 0;
+      /* NO AIM PUBLISHED, deliberately.  Posed art runs along whatever axis it
+         was drawn on — greatsword-east is +55 degrees, not the icons' shared
+         -45 — so reporting BLOCK_OFFHAND_ART_ANG here would be a number that
+         looks measured and is not.  null says "the drawing decided", and
+         mp-blockweapon's aim checks gate on it rather than on a facing list. */
+      aimScreen = null;
+    } else {
+      /* A neutral icon has no pose of its own, so the table says where the tip
+         goes.  Pixi builds its matrix as rotate * scale, so the mirror lands
+         first — reflecting the art's diagonal about the vertical — and
+         `rotation` then turns the result clockwise on screen.  Composing both
+         in one line is what lets the table state a direction rather than a
+         lean, which is the thing that can be checked against a pose. */
+      /* A STAFF STANDS THE OTHER WAY UP.  `aim` says where the far end of the
+         weapon goes, and for a blade that end is the tip, which hangs down out
+         of the fist.  For a staff it is the HEAD, and a wizard holding his
+         staff head-down is holding a broom.  Reflecting the table's angle about
+         the horizon keeps the one statement it is making — lean away from the
+         guard, out of the silhouette — and stands the staff up. */
+      const longAim = (wpn.type === 'staff') ? -aim : aim;
+      aimScreen = mir ? (Math.PI - longAim) : longAim;
+      const artScreen = mir ? (Math.PI - BLOCK_OFFHAND_ART_ANG) : BLOCK_OFFHAND_ART_ANG;
+      spr.scale.set((mir ? -1 : 1) * k, k);
+      spr.rotation = aimScreen - artScreen;
+    }
+    /* v2.3.1760: a melee weapon's metal is its gearBase; same call the held
+       weapon makes, so a copper sword is copper in this hand too. */
+    spr.tint = weaponTint(wpn.type, wpn.gearBase);
+    spr.alpha = 1;
+    /* The hand, in the bow frame's own pixels, through the transform this
+       stand-in was just placed with — identical mapping to the away-facing
+       shield's (v2.3.1833). */
+    /* v2.3.1870: a facing may name a different grip for a given weapon TYPE —
+       see BLOCK_OFFHAND.north, where the long weapons come in off the
+       shoulder and the blade does not. */
+    const hand = (over && over.hand) || off.hand;
+    spr.x = sp.x + (hand[0] + dx - cfg.fw / 2) * sgn;
+    spr.y = sp.y + (hand[1] + dy - cfg.feetY) * s;
+    spr.visible = true;
+
+    /* QA probe (mp-blockweapon): a headless run cannot read the WebGL canvas,
+       and "is the sword in the back hand" is a question about a point, a side
+       and a size — all three readable here and none of them off a screenshot. */
+    if (typeof window !== 'undefined') {
+      window.__btBlockOffHand = {
+        on: true, sheet: fmap[0], mirror: mir, behind: behind,
+        type: wpn.type, gearBase: wpn.gearBase || null, slot,
+        /* WHICH ART.  null here means the neutral icon, and for a greatsword
+           that is the bamboo pole — a silent downgrade that a position check
+           cannot see and a 110px screenshot barely can. */
+        artDir, posed: !!artDir,
+        x: +spr.x.toFixed(1), y: +spr.y.toFixed(1),
+        bodyX: sp.x, bodyFootY: sp.y, bodyH: bodyH || null,
+        px: +px.toFixed(1), rotation: spr.rotation,
+        /* v2.3.1870: which grip this type actually used, so a per-type
+           override is visible to a test rather than inferred from x/y. */
+        handUsed: hand, byType: !!over,
+        /* Whether the GRIP resolved.  Without it the sprite pivots on its
+           frame's bottom edge instead of the hilt, which is a placement bug
+           that still reports a plausible x/y — so the probe has to say. */
+        gripped: !!grip, anchorX: +spr.anchor.x.toFixed(3), anchorY: +spr.anchor.y.toFixed(3),
+        /* WHERE THE BLADE POINTS, in world screen angle.  The grip alone
+           cannot answer "is it in the other hand" on a pose that holds both
+           hands close together (north does), and the blade is the part you
+           actually see. */
+        aim: aimScreen,
+        texW: tw, texH: th,
+        /* Which clone drew it — the lo/hi choice IS the z-order here, so a
+           test that only read a position could not tell a weapon in front of
+           the chest from one lost behind the back. */
+        clone: behind ? 'lo' : 'hi',
+      };
+    }
+  }
+
   /* ── Bow-shoot animation (v2.3.925) ──
    * Plays the owner's bow-shoot at the player during a ranged-bow shot.
    * entityRenderer._updatePlayer sets S._bowShowing + S._bowDir (and hides the
@@ -5671,6 +5870,12 @@ export class EffectsRenderer {
   _updateBowShot(S, now) {
     if (this.bowShieldLo) this.bowShieldLo.visible = false;
     if (this.bowShieldHi) this.bowShieldHi.visible = false;
+    /* v2.3.1864: parked BEFORE every early return below, same as the shield —
+       the block ends on some of those paths, and a weapon left visible would
+       hang in the air where the hand used to be. */
+    if (this.blockOffHandLo) this.blockOffHandLo.visible = false;
+    if (this.blockOffHandHi) this.blockOffHandHi.visible = false;
+    if (typeof window !== 'undefined' && window.__btBlockOffHand) window.__btBlockOffHand = { on: false };
     if (this.bowSprite) this.bowSprite.visible = false;
     if (this.bowWeaponSprite) this.bowWeaponSprite.visible = false;
     if (this.bowChestSprite) this.bowChestSprite.visible = false;
@@ -5725,6 +5930,14 @@ export class EffectsRenderer {
        bow, so the shield is on the back exactly as when walking.
        v2.3.1800: ...but NOT while blocking, where this same pose is holding
        the shield out in front.  It cannot be in both places at once. */
+    /* v2.3.1864: the away-facing shield probe is CLEARED whenever this frame
+       did not use it.  It never was, and a stale reading is worse than a
+       missing one: mp-blockweapon read a west block's shield off the last
+       north frame's numbers and reported the sword aimed through a guard that
+       was 60px away from where it said. */
+    if (typeof window !== 'undefined' && (!S._blockPose || !S._blockShieldBehind)) {
+      window.__btBlockShieldBehind = null;
+    }
     if (!S._blockPose) {
       this._placeStandInShield(S, this.bowShieldLo, this.bowShieldHi, sp.y, bodyH);
     } else if (S._blockShieldBehind) {
@@ -5788,6 +6001,11 @@ export class EffectsRenderer {
         }
       }
     }
+    /* v2.3.1864: and the equipped weapon goes in the OTHER hand.  Called for
+       every block facing, not just the away ones — the shield above splits
+       because its two placements live in different renderers; this one is
+       always drawn here, and picks its side with a visible flag. */
+    this._placeBlockOffHand(S, fmap, cfg, sp, sgn, s, bodyH);
     sp.visible = true;
     const place = (spr, tex) => { if (!spr) return; if (!tex) { spr.visible = false; return; } spr.anchor.set(0.5, anchorY); spr.texture = tex; spr.scale.set(sgn, s); spr.x = sp.x; spr.y = sp.y; spr.visible = true; };
     /* v2.3.957: layered gear path -- bald body + equipped chest/legs armour +

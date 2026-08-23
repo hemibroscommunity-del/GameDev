@@ -749,6 +749,12 @@ input{font-family:inherit}
 .bt-zone-loading-spin{width:44px;height:44px;border-radius:50%;border:3.5px solid rgba(255,255,255,.18);border-top-color:rgba(255,255,255,.92);animation:bt-exit-spin .8s linear infinite}
 .bt-zone-loading-name{font-size:15px;font-weight:700;letter-spacing:.06em;color:rgba(255,255,255,.9);font-family:'Source Sans 3',sans-serif;text-align:center;max-width:80vw}
 .bt-zone-loading-name::before{content:'Entering ';color:rgba(255,255,255,.5);font-weight:600}
+/* v2.3.1868: the loading overlay's stand-in when the intro clip fails to
+   load.  The clip carries its own caption and bar (v2.3.1220), so without
+   this the overlay is an empty black rectangle while the assets load — which
+   is indistinguishable from the black screen this whole change is fixing. */
+.bt-intro-fallback{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;pointer-events:none}
+.bt-intro-fallback-text{font-size:13px;font-weight:700;letter-spacing:.08em;color:rgba(255,255,255,.85);font-family:'Source Sans 3',sans-serif}
 .bt-chat-input::placeholder{color:rgba(255,255,255,.3)}
 .bt-chat-input:focus{border-color:var(--pop)}
 .bt-joystick-zone{z-index:30;display:block;

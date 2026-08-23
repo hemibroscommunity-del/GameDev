@@ -2082,7 +2082,7 @@ export var BroTown = function BroTown(_ref0) {
   /* Ambient background music — gentle chiptune loop */
   useEffect(function () {
     return wireTownMusic(showNameModal, showLogin);
-  }, [showNameModal, showLogin]);
+  }, [showNameModal, showLogin, bootPhase]);   /* v2.3.1869 */
   /* Load player sprite sheets once, on mount. Per-direction frame counts
      and cycle durations differ — east source video is ~1 s, north/south
      ~2 s. Storing intervalMs per sheet lets each direction animate at its
@@ -2107,7 +2107,12 @@ export var BroTown = function BroTown(_ref0) {
   /* Prevent iOS page scroll + track keyboard height */
   var wrapRef = useRef(null);
   useEffect(function () {
-    if (showNameModal || showLogin) return;
+    /* v2.3.1869: bootPhase — the login door (v2.3.1814) is a third pre-game
+       screen this guard never knew about, and the refs below only exist once
+       the game UI renders.  Without it this effect runs while the door is up,
+       bails on a null ref, and never re-runs; see the game-loop effect for
+       the full account. */
+    if (showNameModal || showLogin || bootPhase !== null) return;
     /* Lock the page so iOS can't scroll it */
     var orig = {
       htmlOF: document.documentElement.style.overflow,
@@ -2189,7 +2194,7 @@ export var BroTown = function BroTown(_ref0) {
       window.removeEventListener('resize', handleOrientationChange);
       window.removeEventListener('orientationchange', handleOrientationChange);
     };
-  }, [showNameModal, showLogin]);
+  }, [showNameModal, showLogin, bootPhase]);   /* v2.3.1869 */
   /* Initialize WebSocket connection to Durable Objects game server.
      v2.3.784: the ~1,560-line effect body moved verbatim to
      src/networking/wsClient.js setupWebSocket (REBUILD-PLAN Phase 5);
@@ -2420,8 +2425,41 @@ export var BroTown = function BroTown(_ref0) {
 
 
   /* ═══ GAME LOOP — Full simulation + PixiJS/Canvas 2D rendering ═══ */
+  /* ═══ v2.3.1869: THE LOGIN DOOR HAD TO BE A DEPENDENCY ═══
+     Owner: "When I try to continue my character the screen is black" — on the
+     Create Character pop-up's Continue.
+
+     This effect creates the Pixi renderer and starts the game loop, and it
+     bails when `canvasRef.current` is null.  Its guard and its dependency
+     list knew about two pre-game screens, `showNameModal` and `showLogin`,
+     and nothing else.  v2.3.1814 then put a THIRD screen in front of both of
+     them — the login door — gated on `bootPhase`, which was never added
+     here.  On that road both old flags are false the whole time, so:
+
+       1. the component mounts with bootPhase 'login'; the render returns the
+          door and never renders the <canvas>;
+       2. this effect runs anyway (its guards are false), finds canvasRef
+          null, and returns — no renderer, no loop;
+       3. Continue sets bootPhase null and the canvas finally mounts;
+       4. ...and this effect does NOT re-run, because none of its three
+          dependencies changed.  Pixi is never initialised.
+
+     The canvas is therefore present and permanently unpainted, which is what
+     every measurement of this bug said: canvas:true, 0% lit, and a renderer
+     "rebuild" that could not help because there was no renderer to rebuild.
+     The black-screen watchdog then struck three times and reloaded — into the
+     same trap.
+
+     It also explains the shape of the report: creating a character works,
+     because that road toggles showNameModal, which IS a dependency.  Only the
+     roads gated purely on bootPhase — the Continue pop-up, and a plain reload
+     holding your key — came up black.
+
+     So bootPhase joins both the guard and the deps.  The guard matters as
+     much as the list: without it the effect would run while the door is up,
+     find no canvas and return, and then have nothing left to re-trigger it. */
   useEffect(function () {
-    if (showNameModal || showLogin) return;
+    if (showNameModal || showLogin || bootPhase !== null) return;
     var canvas = canvasRef.current;
     if (!canvas) return;
     var S = stateRef.current;
@@ -5588,11 +5626,16 @@ export var BroTown = function BroTown(_ref0) {
         window.__pixiActive = false;
       }
     };
-  }, [showNameModal, showLogin, glEpoch]);
+  }, [showNameModal, showLogin, bootPhase, glEpoch]);   /* v2.3.1869: bootPhase — see the note at the top of this effect */
 
   /* Sync nearBuilding + player list from game loop to React */
   useEffect(function () {
-    if (showNameModal || showLogin) return;
+    /* v2.3.1869: bootPhase — the login door (v2.3.1814) is a third pre-game
+       screen this guard never knew about, and the refs below only exist once
+       the game UI renders.  Without it this effect runs while the door is up,
+       bails on a null ref, and never re-runs; see the game-loop effect for
+       the full account. */
+    if (showNameModal || showLogin || bootPhase !== null) return;
     /* v2.3.777: tiny world-canvas readback -> % of pixels brighter than
        near-black.  Cheap (32x18) and only every 5s. */
     function _sampleLit() {
@@ -5644,7 +5687,27 @@ export var BroTown = function BroTown(_ref0) {
         import('../debug/crashTrap.js').then(function (ct) {
           ct.recordCrash('auto-reload', why);
         }).catch(function () {});
-        setTimeout(function () { window.location.reload(); }, 350);
+        /* ═══ v2.3.1868: THE RECOVERY RELOAD HAS TO LAND IN THE WORLD ═══
+           reload() keeps the query string, and after a logout that string is
+           `?noresume=1&login=1` (v2.3.1840).  Both flags defeat this rescue:
+           `noresume=1` makes the auto-rejoin effect return early — it is that
+           feature's own escape hatch for a deliberate exit — and `login=1`
+           forces the login door.  So the one mechanism built to recover a
+           black first join was depositing the player back at the door, where
+           pressing Continue starts the same cycle again.  Measured on the
+           owner's road: reload at ~7s, back on the door at ~20s.
+
+           Reloading to a CLEAN path fixes it without touching either flag's
+           real purpose: both are about what a fresh, deliberate navigation
+           should do, and this is neither.  bt_resume_now (set just above) is
+           what carries the intent through, and the auto-rejoin effect reads
+           it — but only if noresume=1 is not there to make it return first. */
+        setTimeout(function () {
+          try {
+            var _g = /[?&]guest=1\b/.test(window.location.search) ? '?guest=1' : '';
+            window.location.replace(window.location.pathname + _g);
+          } catch (e2) { window.location.reload(); }
+        }, 350);
         return true;
       } catch (e) { return false; }
     }
@@ -5977,7 +6040,7 @@ export var BroTown = function BroTown(_ref0) {
     return function () {
       return clearInterval(interval);
     };
-  }, [showNameModal, showLogin]);
+  }, [showNameModal, showLogin, bootPhase]);   /* v2.3.1869 */
 
   /* Send emote */
   /* Sword swing attack */
@@ -6644,7 +6707,12 @@ export var BroTown = function BroTown(_ref0) {
      effort -- Safari sometimes overrules; if it persists the user
      can reflag for a PWA / fullscreen path. */
   useEffect(function () {
-    if (showNameModal || showLogin) return;
+    /* v2.3.1869: bootPhase — the login door (v2.3.1814) is a third pre-game
+       screen this guard never knew about, and the refs below only exist once
+       the game UI renders.  Without it this effect runs while the door is up,
+       bails on a null ref, and never re-runs; see the game-loop effect for
+       the full account. */
+    if (showNameModal || showLogin || bootPhase !== null) return;
     var guard = document.createElement('div');
     guard.style.cssText = [
       'position: fixed',
@@ -6667,11 +6735,16 @@ export var BroTown = function BroTown(_ref0) {
       try { guard.removeEventListener('touchstart', onTouchStart); } catch (_) {}
       try { document.body.removeChild(guard); } catch (_) {}
     };
-  }, [showNameModal, showLogin]);
+  }, [showNameModal, showLogin, bootPhase]);   /* v2.3.1869 */
 
   /* Dual joystick — each finger tracked independently */
   useEffect(function () {
-    if (showNameModal || showLogin) return;
+    /* v2.3.1869: bootPhase — the login door (v2.3.1814) is a third pre-game
+       screen this guard never knew about, and the refs below only exist once
+       the game UI renders.  Without it this effect runs while the door is up,
+       bails on a null ref, and never re-runs; see the game-loop effect for
+       the full account. */
+    if (showNameModal || showLogin || bootPhase !== null) return;
     /* v2.3.816: touchstart is captured by the full-height left/right zones
        (floating model), not the small joystick bases.  touchmove/end stay
        on window so a drag tracks anywhere once started. */
@@ -7291,11 +7364,16 @@ export var BroTown = function BroTown(_ref0) {
         window.removeEventListener('touchcancel', sE);
       }
     };
-  }, [showNameModal, showLogin, handleJoystickMove, handleJoystickEnd, handleRJoyMove, handleRJoyEnd, handleShieldMove, handleCanvasSwipe]);
+  }, [showNameModal, showLogin, bootPhase, handleJoystickMove, handleJoystickEnd, handleRJoyMove, handleRJoyEnd, handleShieldMove, handleCanvasSwipe]);   /* v2.3.1869 */
 
   /* Keep keyboard open — focus input when game starts and periodically re-focus */
   useEffect(function () {
-    if (showNameModal || showLogin) return;
+    /* v2.3.1869: bootPhase — the login door (v2.3.1814) is a third pre-game
+       screen this guard never knew about, and the refs below only exist once
+       the game UI renders.  Without it this effect runs while the door is up,
+       bails on a null ref, and never re-runs; see the game-loop effect for
+       the full account. */
+    if (showNameModal || showLogin || bootPhase !== null) return;
     BT_AUDIO.init();
     var focusChat = function focusChat() {
       if (chatInputRef.current) chatInputRef.current.focus();
@@ -7307,7 +7385,7 @@ export var BroTown = function BroTown(_ref0) {
       clearTimeout(t1);
       clearTimeout(t2);
     };
-  }, [showNameModal, showLogin]);
+  }, [showNameModal, showLogin, bootPhase]);   /* v2.3.1869 */
   /* ═══ v2.3.1814: DOES THIS DEVICE'S KEY ALREADY HAVE A CHARACTER? ═══
      Asked over the READ-ONLY account endpoint, before connecting, and that
      choice is load-bearing rather than incidental: the alternative — join
@@ -7414,7 +7492,29 @@ export var BroTown = function BroTown(_ref0) {
   useEffect(function () {
     if (bootPhase !== null || _autoJoined.current) return;
     _autoJoined.current = true;
-    try { joinTown(); } catch (e) { /* fall back to the login door */ setBootPhase('login'); }
+    try { joinTown(); } catch (e) {
+      /* ═══ v2.3.1866: THIS CATCH USED TO ERASE ITS OWN EVIDENCE ═══
+         Owner: "When I try to continue my character the screen is black."
+         A throw in joinTown lands here, and the only thing that happened was
+         a silent bounce back to the login door — no console error (a caught
+         exception is not a pageerror), no crash record, nothing on screen to
+         say the join had failed.  The player is left looking at the door's
+         dark backdrop, which is what "black" is from the outside, and every
+         test that checked identity rather than the screen still passed.
+         So the error is now RECORDED before the fallback: crashTrap for the
+         cross-reload log, and a window probe so a headless run can read the
+         message that was previously destroyed here. */
+      try {
+        window.__btJoinError = { message: String((e && e.message) || e), stack: String((e && e.stack) || '').slice(0, 800), at: Date.now() };
+      } catch (e2) {}
+      try {
+        import('../debug/crashTrap.js').then(function (ct) {
+          ct.recordCrash('join-threw', String((e && e.message) || e));
+        }).catch(function () {});
+      } catch (e3) {}
+      /* fall back to the login door */
+      setBootPhase('login');
+    }
   }, [bootPhase]);
 
   var joinTown = function joinTown() {
@@ -7643,6 +7743,18 @@ export var BroTown = function BroTown(_ref0) {
   /* v2.3.1814: the login door, and the blank hold while we ask whether this
      key already has a character.  Both return BEFORE the creator: the
      creator is now something you choose, not the default landing. */
+  /* v2.3.1866 dev probe: WHICH PRE-GAME SCREEN THIS RENDER CHOSE, and the
+     three flags that choose it.  Chasing the owner's black screen, every
+     other reading agreed the join had run (S.myName had been stamped by
+     joinTown) while the door was still on screen — and nothing published the
+     one number that decides that, so there was no way to tell "the phase went
+     back" from "the phase never moved".  Stamped on every render, cheap. */
+  try {
+    if (typeof window !== 'undefined') {
+      window.__btPhase = { bootPhase: bootPhase, showIntro: showIntro,
+        showNameModal: showNameModal, at: Date.now() };
+    }
+  } catch (e) {}
   if (bootPhase === 'checking' || bootPhase === 'login') {
     return /*#__PURE__*/React.createElement(LoginScreen, {
       checking: bootPhase === 'checking',

@@ -22,13 +22,32 @@ const FADE_MS = 1000;    // opacity fade duration
 export const IntroVideo = ({ onComplete, waitFor, themeAudio }) => {
   const [fading, setFading] = useState(false);
   const [waiting, setWaiting] = useState(false);   // assets still loading past MIN_MS
+  /* v2.3.1868: the clip failed to load/decode.  Tracked so the overlay can
+     paint something instead of a black rectangle — with the caption baked
+     into the video art (v2.3.1220), a failed video leaves this screen with
+     nothing on it at all, which is its own "black screen" report waiting to
+     happen while the assets legitimately load behind it. */
+  const [videoFailed, setVideoFailed] = useState(false);
   const finishedRef = useRef(false);
   const minDoneRef = useRef(false);
   const readyRef = useRef(false);
+  /* maybeFinish lives inside the mount effect (it closes over `cancelled`),
+     and the video's error handler is outside it.  The ref is the seam. */
+  const maybeFinishRef = useRef(null);
 
   const finish = () => {
     if (finishedRef.current) return;
     finishedRef.current = true;
+    /* v2.3.1866 probe: WHO took the loading screen down, and when.  Chasing
+       the owner's black screen, the overlay was measured coming off in under
+       a second against a 3000ms floor — which is either this finish() running
+       early or the overlay never really being up.  One is a timer bug and the
+       other is a mount bug, and nothing distinguished them. */
+    try {
+      window.__btIntro = window.__btIntro || [];
+      window.__btIntro.push({ ev: 'finish', at: Date.now(),
+        minDone: minDoneRef.current, ready: readyRef.current });
+    } catch (e) {}
     onComplete && onComplete();
   };
 
@@ -60,6 +79,10 @@ export const IntroVideo = ({ onComplete, waitFor, themeAudio }) => {
   };
 
   useEffect(() => {
+    try {
+      window.__btIntro = window.__btIntro || [];
+      window.__btIntro.push({ ev: 'mount', at: Date.now(), hasWaitFor: !!waitFor });
+    } catch (e) {}
     let cancelled = false;
     const maybeFinish = () => {
       if (cancelled || finishedRef.current) return;
@@ -73,6 +96,7 @@ export const IntroVideo = ({ onComplete, waitFor, themeAudio }) => {
       }
     };
 
+    maybeFinishRef.current = maybeFinish;
     const minTimer = setTimeout(() => { minDoneRef.current = true; maybeFinish(); }, MIN_MS);
 
     /* No waitFor supplied -> behave like the old fixed-duration intro. */
@@ -85,6 +109,14 @@ export const IntroVideo = ({ onComplete, waitFor, themeAudio }) => {
     const hardCap = setTimeout(() => { readyRef.current = true; maybeFinish(); }, 20000);
 
     return () => {
+      /* An UNMOUNT here is the interesting case: the overlay disappearing
+         without finish() ever running means something above it stopped
+         rendering it, and the world is then on screen with none of the
+         assets this screen exists to wait for. */
+      try {
+        window.__btIntro = window.__btIntro || [];
+        window.__btIntro.push({ ev: 'unmount', at: Date.now(), finished: finishedRef.current });
+      } catch (e) {}
       cancelled = true;
       clearTimeout(minTimer);
       clearTimeout(hardCap);
@@ -93,6 +125,17 @@ export const IntroVideo = ({ onComplete, waitFor, themeAudio }) => {
 
   return (
     <div className={'bt-intro' + (fading ? ' bt-intro--fading' : '')}>
+      {/* v2.3.1868: shown only when the clip could not load — the art
+          normally carries its own caption and progress bar, so this stands in
+          for them rather than sitting on top of them.  Same spinner the
+          per-zone loading veil uses, so a player who hits this sees the
+          game's own loading language and not a blank hold. */}
+      {videoFailed && (
+        <div className="bt-intro-fallback">
+          <div className="bt-zone-loading-spin" />
+          <div className="bt-intro-fallback-text">Loading{waiting ? '…' : '…'}</div>
+        </div>
+      )}
       <video
         /* v2.3.822: ocean clip (owner art) — the loading screen leads into
            the planned opening beat of the player washing ashore.
@@ -120,7 +163,41 @@ export const IntroVideo = ({ onComplete, waitFor, themeAudio }) => {
         playsInline
         preload="auto"
         onEnded={(e) => { try { e.target.pause(); } catch (err) {} }}
-        onError={() => { minDoneRef.current = true; readyRef.current = true; beginTransition(); finish(); }}
+        /* ═══ v2.3.1868: A BROKEN VIDEO MUST NOT UNLOCK THE ASSET GATE ═══
+           Owner: "When I try to continue my character the screen is black" —
+           on the Create-Character pop-up's Continue.
+
+           This handler used to read:
+
+             onError={() => { minDoneRef.current = true; readyRef.current = true;
+                              beginTransition(); finish(); }}
+
+           `readyRef` is not a timer, it is THE ASSET GATE: it means
+           preloadPlayerAssets() has resolved.  Forcing it true on a video
+           error told the overlay that assets were ready when nothing had
+           loaded, so the loading screen came off instantly and the world was
+           revealed with no art in it — a canvas that renders 0% lit.  From
+           there the black-screen watchdog struck three times, rebuilt the
+           renderer, and reloaded the page; measured on this road, the overlay
+           finished 761ms after mounting against a 3000ms floor, which is only
+           possible through this line.
+
+           It also breaks the animation-preloading law outright (CLAUDE.md):
+           every asset is supposed to be loaded before the intro overlay
+           lifts, and the loading screen is explicitly allowed to take longer.
+           A decorative clip failing to decode is not a reason to show the
+           player an empty world.
+
+           So the error now drops only the MINIMUM DISPLAY TIME — there is no
+           point holding a clip that will never play — and hands the decision
+           to maybeFinish(), which lifts the overlay when the assets are
+           genuinely ready and otherwise holds.  The 20s hardCap above still
+           guarantees nobody is trapped here forever. */
+        onError={() => {
+          minDoneRef.current = true;
+          setVideoFailed(true);
+          maybeFinishRef.current && maybeFinishRef.current();
+        }}
       />
     </div>
   );

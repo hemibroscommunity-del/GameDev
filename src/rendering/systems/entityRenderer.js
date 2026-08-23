@@ -1179,7 +1179,12 @@ if (typeof window !== 'undefined') {
     return { slots, bodyTint: body ? body.tint : null };
   };
 }
-function _placeGear(display, equip, pose, dir, frameIdx) {
+/* v2.3.1872: `legsFrom` lets ONE slot be drawn from a different (pose,frame)
+ * than the rest.  The south block needs exactly that and nothing more general:
+ * the chest and shirt hold the standing frame while the greaves animate with
+ * the jog, or a bro in leg armour blocks with static plates over striding
+ * legs.  Null on every other call site, so the normal path is byte-identical. */
+function _placeGear(display, equip, pose, dir, frameIdx, legsFrom) {
   _lastGearDisplay = display;
   const sb = display._spriteBody;
   /* v2.3.1361: the fullset figure carries ALL its armor — hide every gear
@@ -1200,7 +1205,12 @@ function _placeGear(display, equip, pose, dir, frameIdx) {
        a strict superset of the shirt's).  Owner call: the shirt is fully
        hidden while a torso piece is worn -- it pops back on unequip. */
     const hiddenUnderChest = _GEAR_SLOTS[s][0] === 'shirt' && equip && equip.chest && equip.chest !== 'none';
-    const tex = (sb && item && item !== 'none' && !hiddenUnderChest) ? getGearFrame(_GEAR_SLOTS[s][0], item, pose, dir, frameIdx) : null;
+    /* v2.3.1872: per-slot pose/frame override (south block's jogging greaves). */
+    const _slotName = _GEAR_SLOTS[s][0];
+    const _from = (legsFrom && _slotName === 'legs') ? legsFrom : null;
+    const _gPose = _from ? _from.pose : pose;
+    const _gFrame = _from ? _from.frameIdx : frameIdx;
+    const tex = (sb && item && item !== 'none' && !hiddenUnderChest) ? getGearFrame(_slotName, item, _gPose, dir, _gFrame) : null;
     if (tex) {
       if (spr.texture !== tex) spr.texture = tex;
       spr.x = sb.x; spr.y = sb.y;
@@ -1287,6 +1297,125 @@ function _bodyRegionTex(bodyTex, region) {
     catch (e) { m[region] = bodyTex; }
   }
   return m[region];
+}
+
+/* ═══ v2.3.1872: AN ARBITRARY ROW BAND OF A BODY/GEAR FRAME ═══
+ * _bodyRegionTex above crops the three NAMED bands (head/torso/legs) and
+ * caches by name.  The south block's composite needs a band whose boundary
+ * MOVES — it cuts at the jog frame's own waist row, which is different on
+ * every frame of the cycle — so this is the same crop keyed by the rows
+ * themselves.  Same 256-space contract: r0/r1 are rows in the authored
+ * 256px frame and are mapped into whatever the DISPLAY frame's height is.
+ * Cached per source texture, so a cycle of 24 jog frames builds 24 entries
+ * once and then reuses them forever. */
+const _bandTexCache = new WeakMap();
+function _bandTex(tex, r0, r1) {
+  if (!tex) return null;
+  let m = _bandTexCache.get(tex);
+  if (!m) { m = {}; _bandTexCache.set(tex, m); }
+  const key = r0 + ':' + r1;
+  if (!m[key]) {
+    const f = tex.frame;
+    const _rsc = f.height / 256;
+    const rr0 = Math.max(0, Math.round(r0 * _rsc));
+    const rr1 = Math.min(f.height, Math.round(r1 * _rsc));
+    if (rr1 <= rr0) return null;
+    try { m[key] = new Texture({ source: tex.source, frame: new Rectangle(f.x, f.y + rr0, f.width, rr1 - rr0) }); }
+    catch (e) { m[key] = null; }
+  }
+  return m[key];
+}
+
+/* Place one band sprite at the body's own transform.  Identical arithmetic to
+ * _placeBodyRegions: the band's CENTRE row, in 256-space, offset from the
+ * frame's centre (128) and carried through sb's scale.  Keeping the two in
+ * step by construction is why this is written as the same expression rather
+ * than a new one. */
+function _placeBand(spr, sb, tex, r0, r1) {
+  if (!spr) return false;
+  const t = _bandTex(tex, r0, r1);
+  if (!t) { spr.visible = false; return false; }
+  if (spr.texture !== t) spr.texture = t;
+  spr.scale.x = sb.scale.x; spr.scale.y = sb.scale.y;
+  spr.x = sb.x;
+  spr.y = sb.y + ((r0 + r1) / 2 - 128) * sb.scale.y / DISPLAY_DS;
+  spr.tint = sb.tint;
+  spr.alpha = sb.alpha;
+  spr.visible = true;
+  return true;
+}
+
+/* ═══ v2.3.1872: THE SOUTH BLOCK, FROZEN ON TOP AND JOGGING BELOW ═══
+ *
+ * Owner: "the same frozen torso half so jogging while blocking doesn't look
+ * weird."
+ *
+ * Every other facing gets this free: blocking there swaps the whole figure
+ * for the bow stand-in, whose jog-legs composite (v2.3.1072) already draws
+ * animated legs beneath a leg-erased torso.  South cannot use that pose —
+ * its body sheet is holed through the face (v2.3.1805) — so it blocks on the
+ * REAL walking body, which has no such composite and therefore jogged with
+ * everything moving: both arms swinging under a shield that does not.
+ *
+ * So the same trick, built here: the STANDING frame above the waist and the
+ * JOG frame below it, as two bands of one figure.  Three things make that
+ * safe rather than fiddly:
+ *   - the cut is the jog frame's OWN waist row (jogWaist.js), which is why
+ *     the bands meet at the hips through the whole stride instead of at a
+ *     fixed row the bob walks away from;
+ *   - both bands ride sb's transform, so they cannot drift apart or from the
+ *     gear, which copies the same transform;
+ *   - the bands are complementary — [0,cut) and [cut,256) — so there is
+ *     never a seam of two legs or a gap of none.
+ *
+ * ARMOUR IS PART OF IT, not an afterthought.  The masked-body bake erases the
+ * body under worn plate so it cannot poke past a plate edge, and the mask is
+ * per (pose,frame) — so the jog half is baked against the JOG gear frames,
+ * and _placeGear draws the greaves from the jog frame too (its `legsFrom`
+ * override).  Without both, a bro in leg armour blocks with static plates
+ * over striding legs.
+ *
+ * Returns false whenever it cannot draw the pair — art not loaded, no waist
+ * row for this frame — and parks both sprites, so the caller keeps the plain
+ * body rather than half a figure.
+ */
+function _placeSouthBlockLegs(display, sb, o) {
+  const top = display && display._southTop, legs = display && display._southLegs;
+  if (!top || !legs) return false;
+  const park = () => { top.visible = false; legs.visible = false; return false; };
+  if (!o || !o.active || !sb || !o.standTex) return park();
+  const cut = jogWaistRow(o.dir, o.jogFrame);
+  if (!cut || cut <= 0 || cut >= 256) return park();
+  const jogRaw = getBodyFrame(o.skin, o.pants, o.shoes, 'jog', o.dir, o.jogFrame, o.shirtT, o.shirtKey);
+  if (!jogRaw) return park();
+  /* The jog half's mask needs the jog frame's OWN gear silhouettes; reusing
+     the standing frame's would erase the body along last frame's plate edge. */
+  let jogTex = jogRaw;
+  try {
+    const wornJog = [];
+    for (const sl of ['chest', 'legs']) {
+      const it = getEquip(sl);
+      if (it && it !== 'none') {
+        const gt = getGearFrame(sl, it, 'jog', o.dir, o.jogFrame);
+        if (gt) wornJog.push({ k: sl + ':' + it, tex: gt });
+      }
+    }
+    if (wornJog.length) jogTex = _maskedBodyFrame(jogRaw, wornJog, 6, { pose: 'jog', dir: o.dir, frameIdx: o.jogFrame });
+  } catch (e) { jogTex = jogRaw; }
+  if (!_placeBand(top, sb, o.standTex, 0, cut)) return park();
+  if (!_placeBand(legs, sb, jogTex, cut, 256)) { top.visible = false; return park(); }
+  /* The whole body sprite would draw its own standing legs UNDER the jog
+     band and show around their edges — two pairs of legs, which is the bug
+     this composite exists to avoid. */
+  sb.visible = false;
+  if (typeof window !== 'undefined') {
+    window.__btSouthBlockBody = {
+      on: true, cut, jogFrame: o.jogFrame, dir: o.dir,
+      topVisible: top.visible, legsVisible: legs.visible, bodyHidden: !sb.visible,
+      topY: +top.y.toFixed(2), legsY: +legs.y.toFixed(2),
+    };
+  }
+  return true;
 }
 
 /* v2.3.611: masked body.  The AI-drawn armour frames are a few px off the body
@@ -3535,6 +3664,126 @@ function _hideBlockCaret(display) {
   if (g && g.visible) { g.visible = false; g.clear(); }
 }
 
+/* ═══ v2.3.1871: THE WEAPON IN A SOUTH BLOCK'S OFF HAND ═══
+ *
+ * Owner: "the south block view needs to show weapon in offhand partially
+ * occluded by shield."
+ *
+ * South is the one facing with no stand-in — its bow body sheet is holed
+ * through the face (v2.3.1805) — so it blocks on the REAL body with a
+ * free-floating shield, and the stand-in's off-hand weapon (v2.3.1864) never
+ * runs for it.  This is that weapon, drawn from the player display instead.
+ *
+ * THE OCCLUSION IS THE Z-ORDER, and it is the point of the request rather
+ * than a detail: the container is parked directly BENEATH the shield sprite,
+ * so the 72px disc over the chest cuts the weapon where they overlap and the
+ * rest shows past its edge.  Done per frame because the shield's own z-rule
+ * slides _shieldSprite up and down the child list by facing — a fixed
+ * build-order slot is right on some facings and wrong on the rest (the lesson
+ * _placeBlockArm records at length).
+ *
+ * Returns false when it cannot draw (no art yet), so the caller falls through
+ * to hiding the sprite rather than leaving a stale icon on screen.
+ */
+const SOUTH_BLOCK_OFFHAND_ENABLED = true;
+/* Display-local, so it rides the figure's own transform.  x is negative =
+ * the player's off side (screen left), opposite the arm the shield boss sits
+ * on; y is negative = up from the feet, at about chest height.  Tuned against
+ * the 72px shield: far enough out that the hilt clears its edge, close enough
+ * that the hand still reads as the body's. */
+const SOUTH_BLOCK_OFFHAND = { x: -11, y: -34 };
+/* Per-type, because the two kinds of art hang from the grip in opposite
+ * directions.  The posed greatsword and bow are drawn hilt-high with the
+ * blade falling away, so the default puts the grip up by the shoulder and the
+ * blade runs down into the shield.  A staff is AIMED (its icon is neutral)
+ * and stands head-up out of the fist, so the same grip drove its butt end
+ * straight across the face.  Dropped and pushed out, it rises clear of the
+ * head and its lower end tucks behind the shield's top edge instead. */
+const SOUTH_BLOCK_OFFHAND_BY_TYPE = {
+  staff: { x: -25, y: -20, px: 40 },
+};
+/* Aimed down and out, so the blade leaves the silhouette below the shield
+ * instead of climbing across the face. */
+const SOUTH_BLOCK_OFFHAND_AIM = Math.PI * 0.72;
+function _placeSouthBlockWeapon(display, wpn, bobY) {
+  const spr = display && display._weaponSprite;
+  if (!spr || !wpn || !wpn.type) return false;
+  /* THE SAME OBJECT HE WAS JUST CARRYING.  A greatsword and a bow have
+     per-facing held art, and their single-icon fallbacks are something else
+     entirely — `greatsword` is keyed to Sword1.webp, which is the bamboo
+     pole.  The first cut of this took the neutral icon and a bro holding a
+     copper greatsword raised his shield and was holding a gold stick.  Same
+     resolution the stand-in path uses (effectsRenderer), and south is a
+     canonical facing so there is no mirror to reconcile. */
+  const perFacing = (wpn.type === 'greatsword' || wpn.type === 'bow');
+  const artDir = (perFacing && hasWeapon(wpn.type, wpn.gearBase, 'south')) ? 'south' : null;
+  if (!hasWeapon(wpn.type, wpn.gearBase, artDir)) return false;
+  const tex = getWeaponTexture(wpn.type, wpn.gearBase, artDir);
+  if (!tex) return false;
+  if (spr.texture !== tex) spr.texture = tex;
+  const tw = tex.width || 64, th = tex.height || 64;
+  /* handles.json has no bare `greatsword` — its grips are per-facing — and
+     the generic greatsword icon IS the sword's file, so the sword's grip is
+     the same point on the same art.  (Same fallback the stand-in path needs;
+     without it the sprite pivots on its frame's bottom edge and the blade
+     hangs off the chest at an angle nothing asked for.) */
+  const grip = getWeaponHandle(wpn.type, wpn.gearBase, artDir)
+            || (wpn.type === 'greatsword' ? getWeaponHandle('sword', wpn.gearBase, null) : null);
+  if (grip) spr.anchor.set(grip[0] / tw, grip[1] / th);
+  else spr.anchor.set(0.5, 1);
+  const over = SOUTH_BLOCK_OFFHAND_BY_TYPE[wpn.type] || null;
+  const targetH = (over && over.px) ? over.px
+                : wpn.type === 'greatsword' ? 44
+                : wpn.type === 'bow' ? 34
+                : (wpn.type === 'sword' && wpn.gearBase === 'wood') ? 36
+                : 26;
+  const k = targetH / Math.max(8, th);
+  spr.scale.set(k, k);
+  /* Every weapon icon runs grip-to-tip along the same diagonal (see
+     BLOCK_OFFHAND_ART_ANG), so one constant turns "point it this way" into a
+     rotation.  A staff is reflected about the horizon for the same reason it
+     is on the stand-in: its far end is the HEAD, and head-down is a broom. */
+  const artAng = -Math.PI / 4;
+  if (artDir) {
+    /* Art posed for this facing already knows which way the blade goes;
+       rotating it would only fight the drawing. */
+    spr.rotation = 0;
+  } else {
+    const aim = (wpn.type === 'staff') ? -SOUTH_BLOCK_OFFHAND_AIM : SOUTH_BLOCK_OFFHAND_AIM;
+    spr.rotation = aim - artAng;
+  }
+  spr.tint = weaponTint(wpn.type, wpn.gearBase);
+  spr.alpha = 1;
+  spr.x = (over && typeof over.x === 'number') ? over.x : SOUTH_BLOCK_OFFHAND.x;
+  spr.y = ((over && typeof over.y === 'number') ? over.y : SOUTH_BLOCK_OFFHAND.y) + (bobY || 0);
+  spr.visible = true;
+  /* UNDER THE SHIELD.  setChildIndex removes then re-inserts, so the target
+     depends on which side the container starts from: from above, the shield
+     does not move and the container goes to shIdx; from below, the shield
+     slides down one during the removal and it goes to shIdx-1.  The
+     already-there check keeps it stable rather than ratcheting a slot a
+     frame. */
+  const wc = display._weaponContainer, sh = display._shieldSprite;
+  if (wc && sh && sh.visible) {
+    const shIdx = display.getChildIndex(sh);
+    const wi = display.getChildIndex(wc);
+    if (wi !== shIdx - 1) display.setChildIndex(wc, wi < shIdx ? shIdx - 1 : shIdx);
+  }
+  if (typeof window !== 'undefined') {
+    window.__btSouthBlockWeapon = {
+      on: true, type: wpn.type, gearBase: wpn.gearBase || null,
+      x: spr.x, y: spr.y, px: targetH, rotation: spr.rotation,
+      gripped: !!grip, artDir, posed: !!artDir,
+      /* The whole request in two numbers: the weapon's slot and the
+         shield's.  Lower means drawn first means occluded. */
+      wcIdx: wc ? display.getChildIndex(wc) : -1,
+      shieldIdx: (sh && sh.visible) ? display.getChildIndex(sh) : -1,
+      shieldVisible: !!(sh && sh.visible),
+    };
+  }
+  return true;
+}
+
 function _placeBlockArm(display, facing, bodyH, bobY) {
   const spr = display._blockArmSprite;
   const sleeve = display._blockArmSleeve;
@@ -3689,6 +3938,20 @@ function createPlayerDisplay() {
   const bodyTorso = new Sprite(); bodyTorso.anchor.set(0.5, 0.5); bodyTorso.visible = false; container.addChild(bodyTorso);
   const bodyLegs = new Sprite(); bodyLegs.anchor.set(0.5, 0.5); bodyLegs.visible = false; container.addChild(bodyLegs);
   container._bodyHead = bodyHead; container._bodyTorso = bodyTorso; container._bodyLegs = bodyLegs;
+  /* ═══ v2.3.1872: THE SOUTH BLOCK'S TWO HALVES ═══
+     Owner: "the same frozen torso half so jogging while blocking doesn't look
+     weird."  Every other facing gets that from the bow stand-in, whose
+     jog-legs composite (v2.3.1072) draws animated legs under a leg-erased
+     torso.  South has no stand-in at all — its bow body sheet is holed
+     through the face (v2.3.1805) — so it needs the same trick built on the
+     REAL body: the standing frame above the waist, the jog frame below it.
+     Their own sprites rather than the dormant _body* region trio, because
+     _hideBodyRegions is called unconditionally further down the body path and
+     would park them every frame.  Added here so they sit exactly where the
+     body sits in the child order: under the gear, over the slung shield. */
+  const southTop = new Sprite(); southTop.anchor.set(0.5, 0.5); southTop.visible = false; container.addChild(southTop);
+  const southLegs = new Sprite(); southLegs.anchor.set(0.5, 0.5); southLegs.visible = false; container.addChild(southLegs);
+  container._southTop = southTop; container._southLegs = southLegs;
 
   /* v2.3.503: layered gear (paper-doll).  One sprite per slot, drawn above the
      body with the body's exact transform, all below the head traits.
@@ -4104,6 +4367,20 @@ function createOtherPlayerDisplay() {
   const bodyTorso = new Sprite(); bodyTorso.anchor.set(0.5, 0.5); bodyTorso.visible = false; container.addChild(bodyTorso);
   const bodyLegs = new Sprite(); bodyLegs.anchor.set(0.5, 0.5); bodyLegs.visible = false; container.addChild(bodyLegs);
   container._bodyHead = bodyHead; container._bodyTorso = bodyTorso; container._bodyLegs = bodyLegs;
+  /* ═══ v2.3.1872: THE SOUTH BLOCK'S TWO HALVES ═══
+     Owner: "the same frozen torso half so jogging while blocking doesn't look
+     weird."  Every other facing gets that from the bow stand-in, whose
+     jog-legs composite (v2.3.1072) draws animated legs under a leg-erased
+     torso.  South has no stand-in at all — its bow body sheet is holed
+     through the face (v2.3.1805) — so it needs the same trick built on the
+     REAL body: the standing frame above the waist, the jog frame below it.
+     Their own sprites rather than the dormant _body* region trio, because
+     _hideBodyRegions is called unconditionally further down the body path and
+     would park them every frame.  Added here so they sit exactly where the
+     body sits in the child order: under the gear, over the slung shield. */
+  const southTop = new Sprite(); southTop.anchor.set(0.5, 0.5); southTop.visible = false; container.addChild(southTop);
+  const southLegs = new Sprite(); southLegs.anchor.set(0.5, 0.5); southLegs.visible = false; container.addChild(southLegs);
+  container._southTop = southTop; container._southLegs = southLegs;
 
   /* v2.3.504: layered gear for remote players (above body, below head traits).
      Driven by other.equip; placement copies the body transform.
@@ -6651,7 +6928,16 @@ export class EntityRenderer {
        composite (the bow art's south frames are foreshortened — see
        blockArm.js), so the shield floats there as before and freezing the
        legs would cost the jog and buy nothing. */
-    const _blockPlanted = isShielding && BLOCK_ARM_ENABLED && !!BLOCK_ARM_FACING[facing];
+    /* v2.3.1872: SOUTH JOINS THE PLANTED SET.  It was excluded because
+       freezing there "would cost the jog and buy nothing" — true while south
+       had no way to keep its legs moving.  It has one now (the band composite
+       below), so the top half holds like every other facing and the legs keep
+       striding.  Gated on the jog art being loadable at all: if the composite
+       cannot draw, this falls back to the old full jog rather than freezing
+       the whole figure into a slide. */
+    const _southBlock = isShielding && facing === 'south' && !!(S.rpg && S.rpg.shield);
+    const _blockPlanted = isShielding
+      && ((BLOCK_ARM_ENABLED && !!BLOCK_ARM_FACING[facing]) || _southBlock);
     const pose = lootFrozen
       ? 'pickup'
       : (mining
@@ -6921,6 +7207,46 @@ export class EntityRenderer {
           /* v2.3.1123: lift the angler's head above the fishing chest plate. */
           if (pose === 'fish' && _chestW) _placeFishHead(display, spriteBody, tex);
         } catch (e) { if (display._bodyHead) display._bodyHead.visible = false; spriteBody.visible = true; }
+        /* ═══ v2.3.1872: THE SOUTH BLOCK'S JOGGING LEGS ═══
+           Placed HERE, after the masked/fullset body has been resolved, because
+           the frozen top half must be the texture that actually would have been
+           drawn — mask and all — not the raw frame.  _placeSouthBlockLegs parks
+           itself and returns false on any facing but this one, so every other
+           frame in the game reaches it and leaves unchanged.
+           The jog index is recomputed rather than read from frameIdx: the body
+           is holding STAND now (see _blockPlanted), so the jog branch above
+           never ran.  Same clock it uses, including the half-speed cadence a
+           raised shield already imposes on movement. */
+        let _sbActive = false;
+        if (_southBlock && isMoving) {
+          const _jfc = playerFrameCount('jog', dir) || 24;
+          const _jArm = getEquip('chest') !== 'none' && getEquip('legs') !== 'none';
+          const _jCyc = (cycleMs('jog', dir, _jArm) || 700) * (useAimDirection ? 2 : 1);
+          const _jRaw = Math.floor((now / _jCyc) * _jfc) % _jfc;
+          const _jFrame = isMovingBackward ? ((_jfc - 1) - _jRaw) : _jRaw;
+          _sbActive = _placeSouthBlockLegs(display, spriteBody, {
+            active: true, standTex: spriteBody.texture, dir, jogFrame: _jFrame,
+            skin: getSkin(), pants: getPants(), shoes: getShoes(),
+            shirtT: _shirtT, shirtKey: _shirtKey,
+          });
+          /* The greaves stride with the legs they are worn over — otherwise a
+             bro in leg armour blocks with static plates over moving shins. */
+          if (_sbActive) {
+            _placeGear(display, {
+              shirt: getEquip('shirt'), legs: getEquip('legs'),
+              chest: getEquip('chest'), shoulders: getEquip('shoulders'),
+              shirtTint: shirtFill(_shId, _shCol),
+            }, pose, dir, frameIdx, { pose: 'jog', frameIdx: _jFrame });
+          }
+        }
+        if (!_sbActive) {
+          if (display._southTop) display._southTop.visible = false;
+          if (display._southLegs) display._southLegs.visible = false;
+          if (typeof window !== 'undefined' && window.__btSouthBlockBody
+              && window.__btSouthBlockBody.on) {
+            window.__btSouthBlockBody = { on: false };
+          }
+        }
         body.visible = false;
         if (display._procDrawn) {
           /* Free the procedural Graphics paths once the sprite path
@@ -7183,6 +7509,17 @@ export class EntityRenderer {
         swingOffset = -swingArcSpan / 2 + eased * swingArcSpan;
         const restAng = REST_ANG[wpn.type] != null ? REST_ANG[wpn.type] : 0;
         swingAng = (aimAngleForSwing - restAng) + swingOffset;
+      }
+      /* v2.3.1871: the south-block probe is RESET here, before the branches,
+         not inside the one that stops drawing.  Cleared only on the
+         shield-down path it went stale the moment the weapon returned to the
+         carried pose — which reaches a different branch entirely — and
+         mp-blockweapon then read a south block that had ended seconds ago.
+         Exactly the trap _hideBlockArm records: hide and record together, or
+         the probe outlives what it describes. */
+      if (typeof window !== 'undefined' && window.__btSouthBlockWeapon
+          && window.__btSouthBlockWeapon.on) {
+        window.__btSouthBlockWeapon = { on: false };
       }
       if (wpn && !isShielding) {
         /* Weapon is fully hidden while shielding — gameplay rule: you
@@ -7695,6 +8032,30 @@ export class EntityRenderer {
             }
           }
         }
+      } else if (wpn && isShielding && !S._blockPose && S.rpg && S.rpg.shield
+                 && SOUTH_BLOCK_OFFHAND_ENABLED && _placeSouthBlockWeapon(display, wpn, bobY)) {
+        /* ═══ v2.3.1871: THE SOUTH BLOCK KEEPS ITS WEAPON TOO ═══
+           Owner: "the south block view needs to show weapon in offhand
+           partially occluded by shield".
+
+           Every other facing gets this from the bow stand-in (v2.3.1864), and
+           south is the one facing that has no stand-in at all — its bow body
+           sheet is holed through the face (v2.3.1805), so the block there is
+           the REAL body with a free-floating shield.  That is why the weapon
+           was still being hidden here: this branch is the "shield is up" case,
+           and south never reaches the stand-in's off-hand code.
+
+           So it is drawn from the display container instead, and the
+           occlusion the owner asked for is the z-order — see
+           _placeSouthBlockWeapon, which parks the weapon container directly
+           BENEATH the shield.  The shield at south is a 72px disc over the
+           chest, so a weapon at the off hand shows past its edge and is cut
+           where they overlap, which is what "partially occluded" means.
+
+           Guarded on !S._blockPose so it can never double up with the
+           stand-in's own off-hand weapon: exactly one of the two draws. */
+        if (display._handCapSprite) display._handCapSprite.visible = false;
+        if (display._handArmSprite) display._handArmSprite.visible = false;
       } else {
         /* No weapon equipped or shield is up — hide the icon Sprite
            so a stale icon doesn't linger from a previous loadout (or
