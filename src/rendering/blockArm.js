@@ -264,7 +264,39 @@ export const BLOCK_OFFHAND = {
   east:      { hand: [108, 100], aim: 2.55, behind: false },
   southwest: { hand: [95,   82], aim: 0.70, behind: false },
   northwest: { hand: [115, 105], aim: 0.70, behind: true  },
-  north:     { hand: [82,  113], aim: 2.30, behind: true  },
+  north:     { hand: [82,  113], aim: 2.30, behind: true,
+    /* ═══ v2.3.1870: THE LONG WEAPONS COME IN OFF THE SHOULDER ═══
+       Owner: "The weapon held in the off hand positioning while blocking
+       north needs to be moved more in front of the character's head for the
+       staff and bow.  It looks floating off to the side a bit."
+
+       The hand above is the right POINT — it is the draw fist, measured off
+       the art — and for a blade that is the end of it: a sword hangs down out
+       of the fist and stays inside the silhouette.  A staff and a bow are
+       long and stand UP out of it, so the same grip throws most of their
+       length out past the shoulder, into empty ground beside the head, where
+       nothing anchors them.  That is the floating.
+
+       Facing north the head is x 42..78 of this 122-wide frame (centre ~60),
+       so pulling the grip in to the head's edge puts the shaft up against the
+       skull instead of a body-width clear of it, and the figure reads as
+       holding it rather than standing next to it.  Per TYPE rather than a new
+       hand for the whole facing, because the blade at [82,113] is right and
+       moving it would break what is already correct.
+
+       AND THEY COME TO THE FRONT, which turned out to be most of the report.
+       Every away facing draws the off hand BEHIND the body, correctly for a
+       blade that hangs inside the silhouette.  A staff crossing the figure
+       diagonally is a different shape: the middle of the shaft disappears
+       behind the head and torso and only the two ENDS show, one past each
+       shoulder — which is precisely "floating off to the side a bit", two
+       fragments with nothing joining them.  Drawn in front the shaft is one
+       object passing the head, and it reads as held.  The blade stays behind,
+       where the occlusion is doing real work. */
+    byType: {
+      staff: { hand: [66, 100], behind: false },
+      bow:   { hand: [66, 100], behind: false },
+    } },
 };
 
 /* Every weapon ICON in the game is drawn along the same diagonal — grip at the

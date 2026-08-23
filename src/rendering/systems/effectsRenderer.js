@@ -5746,7 +5746,13 @@ export class EffectsRenderer {
     const sizeMul = (tune && typeof tune.size === 'number') ? tune.size : 1;
     const aim = (tune && typeof tune.aim === 'number') ? tune.aim : off.aim;
 
-    const spr = off.behind ? lo : hi;
+    /* v2.3.1870: a facing may override BOTH the grip and the side for one
+       weapon type — see BLOCK_OFFHAND.north, where a staff and a bow come to
+       the front so the shaft reads as one object rather than two ends poking
+       past the shoulders. */
+    const over = (off.byType && off.byType[wpn.type]) || null;
+    const behind = over && typeof over.behind === 'boolean' ? over.behind : !!off.behind;
+    const spr = behind ? lo : hi;
     if (spr.texture !== tex) spr.texture = tex;
     const tw = tex.width || 64, th = tex.height || 64;
     /* Anchor on the GRIP, so every transform below pivots in the hand: the
@@ -5813,8 +5819,12 @@ export class EffectsRenderer {
     /* The hand, in the bow frame's own pixels, through the transform this
        stand-in was just placed with — identical mapping to the away-facing
        shield's (v2.3.1833). */
-    spr.x = sp.x + (off.hand[0] + dx - cfg.fw / 2) * sgn;
-    spr.y = sp.y + (off.hand[1] + dy - cfg.feetY) * s;
+    /* v2.3.1870: a facing may name a different grip for a given weapon TYPE —
+       see BLOCK_OFFHAND.north, where the long weapons come in off the
+       shoulder and the blade does not. */
+    const hand = (over && over.hand) || off.hand;
+    spr.x = sp.x + (hand[0] + dx - cfg.fw / 2) * sgn;
+    spr.y = sp.y + (hand[1] + dy - cfg.feetY) * s;
     spr.visible = true;
 
     /* QA probe (mp-blockweapon): a headless run cannot read the WebGL canvas,
@@ -5822,7 +5832,7 @@ export class EffectsRenderer {
        and a size — all three readable here and none of them off a screenshot. */
     if (typeof window !== 'undefined') {
       window.__btBlockOffHand = {
-        on: true, sheet: fmap[0], mirror: mir, behind: !!off.behind,
+        on: true, sheet: fmap[0], mirror: mir, behind: behind,
         type: wpn.type, gearBase: wpn.gearBase || null, slot,
         /* WHICH ART.  null here means the neutral icon, and for a greatsword
            that is the bamboo pole — a silent downgrade that a position check
@@ -5831,6 +5841,9 @@ export class EffectsRenderer {
         x: +spr.x.toFixed(1), y: +spr.y.toFixed(1),
         bodyX: sp.x, bodyFootY: sp.y, bodyH: bodyH || null,
         px: +px.toFixed(1), rotation: spr.rotation,
+        /* v2.3.1870: which grip this type actually used, so a per-type
+           override is visible to a test rather than inferred from x/y. */
+        handUsed: hand, byType: !!over,
         /* Whether the GRIP resolved.  Without it the sprite pivots on its
            frame's bottom edge instead of the hilt, which is a placement bug
            that still reports a plausible x/y — so the probe has to say. */
@@ -5844,7 +5857,7 @@ export class EffectsRenderer {
         /* Which clone drew it — the lo/hi choice IS the z-order here, so a
            test that only read a position could not tell a weapon in front of
            the chest from one lost behind the back. */
-        clone: off.behind ? 'lo' : 'hi',
+        clone: behind ? 'lo' : 'hi',
       };
     }
   }
