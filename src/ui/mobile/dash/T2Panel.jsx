@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
    channel cards it styled became divider rows (see the channel map). */
 import { COL, panelStyle } from './common.js';
 import { spendConfirmBus } from './spendConfirmBus.js';
-import { prog3Live, prog3SkillLevel, prog3XpRequired, PROG3 } from '@/data/prog3.js'; /* v2.3.1901 */
+import { prog3HasSkills, prog3SkillLevel, prog3XpRequired, PROG3 } from '@/data/prog3.js'; /* v2.3.1901, v2.3.1902 */
 import {
   WEAPON_CATEGORIES,
   WEAPON_CATEGORY_META,
@@ -160,7 +160,7 @@ export const T2Panel = () => {
        legacy allocation model, which prog3 supersedes with prog3.atk/pool.
        That is a real question for the owner, not something to quietly
        redefine inside a display fix. */
-    : prog3Live(R) ? (() => {
+    : prog3HasSkills(R) ? (() => {   /* v2.3.1902: the blob, not the cap */
         const _l = prog3SkillLevel(R, activeCat);
         const _r = (R.prog3.sk && R.prog3.sk[activeCat]) || {};
         return { level: _l, xp: Math.max(0, Math.floor(_r.xp || 0)), _p3: true };

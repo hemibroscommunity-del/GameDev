@@ -477,6 +477,27 @@ if (changedServer.length) {
   add('PASS', 'server-tests', 'no server/ changes — suite skipped');
 }
 
+/* ---- 8. prog3 blob-vs-cap ------------------------------------------
+   v2.3.1902.  A tiny unit check, run whenever src/data/prog3.js or a panel
+   that reads a trained level changes.  It exists because the v2.3.1901 fix
+   for "combat skills say 0" was gated on caps.prog3 and therefore could not
+   reach the owner, whose session had the cap OFF — a test that never runs is
+   how that ships twice. */
+{
+  const touched = changed.filter((f) => f === 'src/data/prog3.js'
+    || f === 'src/ui/panels/StatScreenPanel.jsx'
+    || f === 'src/ui/mobile/dash/T2Panel.jsx');
+  if (touched.length) {
+    const r = spawnSync('node', ['tools/dev/check-prog3-blob.mjs'],
+      { cwd: root, encoding: 'utf8', timeout: 60 * 1000 });
+    if (r.status === 0) add('PASS', 'prog3-blob', 'the trained level reads the blob, not caps.prog3');
+    else {
+      const tail = ((r.stdout || '') + (r.stderr || '')).trim().split('\n').slice(-8).join('\n    ');
+      add('FAIL', 'prog3-blob', `check-prog3-blob.mjs exited ${r.status ?? 'timeout'}:\n    ${tail}`);
+    }
+  } else add('PASS', 'prog3-blob', 'no prog3 / trained-level panel changes — check skipped');
+}
+
 /* ---- report -------------------------------------------------------- */
 console.log(`precheck vs ${baseRef} (merge-base ${mergeBase.slice(0, 8)}) — ${changed.length} changed file(s)\n`);
 for (const r of results) console.log(`${r.level.padEnd(4)} [${r.check}] ${r.msg}`);

@@ -1,6 +1,6 @@
 import React from 'react';
 import { BT_AUDIO, calcBlockReduction, calcCritChance, calcCritMult, calcDisplayDmgRange, calcMoveSpeed, getActiveWeapon, getDefenseBlockBonus, getWeaponCritDmgStat, getWeaponCritStat, weaponXpRequired, xpRequired } from '@/data/index.js';
-import { prog3Live, prog3SkillLevel, prog3XpRequired, PROG3 } from '@/data/prog3.js'; /* v2.3.1901 */
+import { prog3HasSkills, prog3SkillLevel, prog3XpRequired, PROG3 } from '@/data/prog3.js'; /* v2.3.1901, v2.3.1902 */
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
 /* === StatScreenPanel — character stats / allocation === */
@@ -74,7 +74,13 @@ export function StatScreenPanel(props) {
      Defense/HP/Endurance below are NOT part of this: defenseSkill is still
      the live track under prog3 (heroModel reads it with no branch), and
      HP/Endurance are allocated body stats that legitimately start at 0. */
-  var _p3Live = prog3Live(liveRpg);
+  /* v2.3.1902: prog3HasSkills, not prog3Live — see prog3.js.  The owner
+     reported "still says lvl 0" AFTER v2.3.1901, and reported Crit Dmg and
+     Defense rendering as "—" on the hero sheet, which HeroExpanded prints on
+     exactly one condition: prog3Live false.  So the cap gate was off for that
+     session and v2.3.1901 fell straight back through to the zeroed legacy
+     map.  The LEVEL does not need the cap — it is already in the blob. */
+  var _p3Live = prog3HasSkills(liveRpg);
   var _combatSk = function (cat, legacy) {
     if (!_p3Live) {
       return { level: legacy.level || 0, xp: legacy.xp || 0,
