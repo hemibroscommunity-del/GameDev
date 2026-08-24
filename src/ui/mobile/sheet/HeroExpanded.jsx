@@ -162,11 +162,24 @@ export const HeroExpanded = () => {
      spells it out. */
   const compactVital = (kind, cur, max) => (
     <div key={kind} title={VITAL_LABEL[kind]} style={{
-      flex: 1, minWidth: 0, display: 'flex', alignItems: 'center',
-      justifyContent: 'center', gap: 4,
+      /* v2.3.1889: the icon sits ABOVE the number rather than in front of it
+         (owner).  Stacking costs ~13px of height, which this row did not
+         obviously have — the sheet body is 191px with 191px of content.  It
+         fits because the room is INSIDE the column rather than at the sheet
+         level: the stats block above is flex:1 and vertically centred, so it
+         was holding a gap it did not need, and the stack simply takes it.
+         mp-charfit is what says that is true rather than hoped.
+
+         Stacking also buys the numbers their width back: side by side, the
+         icon and a seven-glyph "118/118" shared an even third of the row and
+         very nearly touched the next group (the reason the gap went to 10px
+         at v2.3.1888).  One above the other, each group is as wide as its
+         number and the crowding cannot recur. */
+      flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center', gap: 0,
     }}>
       <img src={VITAL_ICONS[kind]} alt="" draggable={false}
-        style={{ width: 14, height: 14, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
+        style={{ width: 12, height: 12, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
       <span style={{
         fontSize: 10.5, fontWeight: 700, color: COL.text2,
         fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
@@ -201,12 +214,16 @@ export const HeroExpanded = () => {
       background: COL.wellSoft,
       border: `1px solid ${COL.tileBor}`,
       borderRadius: 8,
-      /* v2.3.1888: back to 4px/5px.  It was squeezed to 2px at v2.3.1883 to
-         buy the last of the 17px the two group headings needed; dropping the
-         three vital BARS for one icon row hands ~28px back, and this is the
-         first place it goes — a 2px tile reads as a cramped box rather than a
-         considered one. */
-      padding: '4px 3px 5px',
+      /* v2.3.1888: back from the 2px it was squeezed to at v2.3.1883, which
+         bought the last of the 17px the two group headings needed; dropping
+         the three vital BARS for one icon row handed ~28px back and this was
+         the first place it went — a 2px tile reads as a cramped box rather
+         than a considered one.
+         v2.3.1889: 4/5 -> 3/4.  Stacking the vital icons above their numbers
+         (owner) costs ~13px; spacing covered all but 4 of it, and this is the
+         last 4.  Still half again what it had before v2.3.1888, so the tiles
+         keep the change that mattered. */
+      padding: '3px 3px 4px',
       minWidth: 0,
       textAlign: 'center',
     }}>
@@ -765,7 +782,7 @@ export const HeroExpanded = () => {
                       thing you came for goes first. */}
                   <div style={{
                     flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column',
-                    justifyContent: 'center', gap: 3,
+                    justifyContent: 'center', gap: 2,
                   }}>
                     {groupHead('Offense')}
                     <div style={{
@@ -786,13 +803,15 @@ export const HeroExpanded = () => {
                   {/* The three resources, on one row under the rule.  Their own
                       divider, so they read as a footer to the stats rather than
                       as a third stat group. */}
-                  <div style={{ height: 1, background: COL.tileBor, flex: 'none', marginTop: 4 }} />
+                  <div style={{ height: 1, background: COL.tileBor, flex: 'none', marginTop: 3 }} />
                   <div style={{
                     flex: 'none', display: 'flex', alignItems: 'center',
-                    /* 10, not 4: each group is an even third and "118/118" is
-                       seven glyphs, so at a small gap the numbers run into the
-                       next icon and the row reads as one string. */
-                    gap: 10, marginTop: 4,
+                    /* v2.3.1889: back to 6.  The 10 was there because a
+                       side-by-side icon and a seven-glyph number filled their
+                       third and ran into the next group; stacked, each group
+                       is only as wide as its number and the crowding is gone,
+                       so the row does not need the extra air. */
+                    gap: 6, marginTop: 2,
                   }}>
                     {compactVital('hp', R.hp || 0, R.maxHp || 100)}
                     {compactVital('stamina', R.stamina || 0, R.maxStamina || 100)}
