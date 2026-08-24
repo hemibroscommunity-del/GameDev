@@ -51,9 +51,13 @@ const FILES = [
      which a multiply tint cannot do.  Its steel rim and boss are near-neutral
      and light, so the saturation gate leaves them as metal. */
   ['icons/shield.webp', 'icons/items/shield.png'],
-  ['shields/wood-shield-front.webp', 'sprites/shields/wood-shield-front.png'],
-  ['shields/wood-shield-3q.webp', 'sprites/shields/wood-shield-3q.png'],
-  ['shields/wood-shield-side.webp', 'sprites/shields/wood-shield-side.png'],
+  /* v2.3.1875: the three shield SPRITES also get the halo peel (see DEHALO
+     below).  The icon above deliberately does not — it is higher-res painted
+     art whose edge really does carry light neutral highlights, and the peel
+     rule cannot tell those from a halo. */
+  ['shields/wood-shield-front.webp', 'sprites/shields/wood-shield-front.png', { dehalo: true }],
+  ['shields/wood-shield-3q.webp', 'sprites/shields/wood-shield-3q.png', { dehalo: true }],
+  ['shields/wood-shield-side.webp', 'sprites/shields/wood-shield-side.png', { dehalo: true }],
   /* v2.3.1825 (owner: "you need to change the bow attack art (each
      direction) to match the pine bow").  These are the bow-only layer of the
      five bowshot poses — the pose sheets are authored with the weapon
@@ -71,7 +75,7 @@ const FILES = [
 ];
 
 const PAGE = `<!doctype html><meta charset="utf-8"><body><script>
-window.__pine = (src) => new Promise((res) => {
+window.__pine = (src, opts) => new Promise((res) => {
   const img = new Image();
   img.onerror = () => res(null);
   img.onload = () => {
@@ -80,6 +84,68 @@ window.__pine = (src) => new Promise((res) => {
     const c = cv.getContext('2d', { willReadFrequently: true });
     c.drawImage(img, 0, 0);
     const d = c.getImageData(0, 0, cv.width, cv.height); const p = d.data;
+    const W = cv.width, H = cv.height;
+    let peeled = 0, passes = 0;
+    /* ═══ v2.3.1875: PEEL THE BAKED GREY HALO ═══
+       Owner: "There's very slight grayish pixels around the shield (pine
+       shield).  I noticed them in the southwest idle version of the character
+       that shows in the dashboard's blown up character view."
+
+       Measured before touching anything, and the obvious suspect was wrong.
+       The shield art has BINARY alpha (0 or 255, no soft edge at all), so the
+       fringe is not antialiasing in the file, and it survives with
+       imageSmoothingEnabled = false, so it is not the portrait's 2.8x upscale
+       either.  It is baked into the PIXELS: the source carries a one-pixel
+       ring of mid grey, rgb ~ (93,87,84), sitting OUTSIDE the shield's dark
+       keyline — the remains of the original artwork's antialias against
+       whatever background it was cut from, flattened to opaque at some point
+       long before this repo.
+
+       It only became visible now because the pine screen curve below lifts
+       that ring from 93 to 187: the keyline guard spares mx < 60, and the
+       halo is brighter than that, so it gets screened like wood.  Twice as
+       bright, one pixel outside the outline, and the equip screen draws the
+       shield at ~2.8x — which is exactly where the owner saw it.
+
+       The peel is safe because the silhouette separates cleanly.  Every
+       edge pixel on all three views is either the dark keyline (mean rgb
+       15,5,3) or the halo (mean 91,83,79); there are no light and no
+       saturated edge pixels, so no metal rim or wood face can be eaten.
+       Counts: 3q 53 of 959 opaque px, side 18 of 339, front 1 of 1393 —
+       which is why the owner saw it on the 3/4 view (the equip screen's
+       southwest) and not head-on.
+
+       Iterated rather than single-pass so a two-pixel halo could not leave
+       half of itself behind, and rail-guarded: if a future re-cut of the art
+       ever made this rule eat the shield, the run fails loudly instead of
+       shipping a dissolved sprite. */
+    if (opts && opts.dehalo) {
+      const HALO_LUM = 60;    /* brighter than the keyline (which tops out ~59) */
+      const HALO_SAT = 30;    /* neutral — wood and rust are well above this */
+      const MAX_FRAC = 0.15;  /* rail: never dissolve more than this share */
+      let opaque0 = 0;
+      for (let i = 3; i < p.length; i += 4) if (p[i] !== 0) opaque0++;
+      const A = (x, y) => (x < 0 || y < 0 || x >= W || y >= H) ? 0 : p[(y * W + x) * 4 + 3];
+      for (passes = 1; passes <= 4; passes++) {
+        const kill = [];
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+          const i = (y * W + x) * 4;
+          if (p[i + 3] === 0) continue;
+          /* interior pixels are never halo — only the silhouette ring is */
+          if (A(x - 1, y) && A(x + 1, y) && A(x, y - 1) && A(x, y + 1)) continue;
+          const r = p[i], g = p[i + 1], b = p[i + 2];
+          const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+          if (mx >= HALO_LUM && mx - mn < HALO_SAT) kill.push(i);
+        }
+        if (!kill.length) break;
+        /* Collected first, cleared after: clearing inside the scan would let
+           this pass see its own holes and eat a second ring in one go. */
+        for (const i of kill) { p[i + 3] = 0; peeled++; }
+      }
+      if (peeled > opaque0 * MAX_FRAC) {
+        return res({ error: 'dehalo peeled ' + peeled + '/' + opaque0 + ' px (> ' + (MAX_FRAC * 100) + '%) — refusing' });
+      }
+    }
     /* ═══ v2.3.1825: THE CURVE, AND WHY IT IS NOT A SINGLE SCREEN ═══
        Owner: "The pine bow looks like the black outline was keyed out during
        recoloring to make it pine.  Add the outline back in."
@@ -125,7 +191,7 @@ window.__pine = (src) => new Promise((res) => {
       p[i + 2] = lift(b, WARM[2]);
     }
     c.putImageData(d, 0, 0);
-    res({ w: cv.width, h: cv.height, png: cv.toDataURL('image/png') });
+    res({ w: cv.width, h: cv.height, peeled, passes, png: cv.toDataURL('image/png') });
   };
   img.src = src;
 });
@@ -148,15 +214,19 @@ const page = await browser.newPage();
 await page.goto('http://127.0.0.1:4272/__pine.html');
 
 let wrote = 0;
-for (const [src, dest] of FILES) {
-  const got = await page.evaluate((s) => window.__pine(s), '/' + src);
+let failed = 0;
+for (const [src, dest, opts] of FILES) {
+  const got = await page.evaluate(([s, o]) => window.__pine(s, o), ['/' + src, opts || null]);
   if (!got) { console.log(`  MISSING SOURCE  ${src}`); continue; }
+  if (got.error) { console.log(`  FAILED  ${dest}: ${got.error}`); failed++; continue; }
   const out = path.join(PUB, dest);
   fs.mkdirSync(path.dirname(out), { recursive: true });
   fs.writeFileSync(out, Buffer.from(got.png.split(',')[1], 'base64'));
-  console.log(`  wrote ${dest}  (${got.w}x${got.h})`);
+  const halo = got.peeled ? `  [halo: peeled ${got.peeled}px in ${got.passes} pass(es)]` : '';
+  console.log(`  wrote ${dest}  (${got.w}x${got.h})${halo}`);
   wrote++;
 }
 console.log(`${wrote} file(s) written from tools/gear/src-art`);
+if (failed) { console.error(`${failed} file(s) FAILED — see above`); process.exitCode = 1; }
 await browser.close();
 srv.close();
