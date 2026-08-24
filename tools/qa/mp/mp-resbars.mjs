@@ -103,8 +103,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
       /* v2.3.1897: the "-N" rides the same sample window as the chunk — one
          evaluation, so the two readings describe the same frames and cannot
          be blamed on each other's timing. */
-      if (b && b.mpSpentX != null) num.push({ t: Math.round(performance.now() - t0), x: b.mpSpentX, txt: b.mpSpentText, amt: b.mpSpent, right: b.barRight });
-      if (performance.now() - t0 < 500) requestAnimationFrame(tick);
+      if (b && b.mpSpentX != null) num.push({ t: Math.round(performance.now() - t0), x: b.mpSpentX, txt: b.mpSpentText, amt: b.mpSpent, right: b.barRight, a: b.mpSpentA, barA: b.mp });
+      /* v2.3.1898: 2200ms, not 500 — the number now drifts across the bar's
+         whole hold+fade, and a 500ms window would sample the first quarter of
+         it and call a 26px drift a 6px one.  The chunk's own samples simply
+         stop arriving after 420ms (mpGhostX goes null), which is correct. */
+      if (performance.now() - t0 < 2200) requestAnimationFrame(tick);
       else res({ seen, num });
     };
     requestAnimationFrame(tick);
@@ -134,12 +138,38 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...positioned to the RIGHT of the bar, clear of its border',
     num.length >= 3 && num.every((s2) => s2.x > s2.right),
     { first: num[0], right: num[0] && num[0].right });
-  rec.ok('...and it GLIDES right (x strictly increases, then settles)',
-    num.length >= 3 && num[num.length - 1].x > num[0].x + 2,
-    { first: num[0], last: num[num.length - 1] });
+  /* v2.3.1898, owner: "I saw the number appear but not gliding.  I want the
+     numbers to slowly move right then fade."  Two failure modes to exclude,
+     and "x went up" excludes neither on its own:
+       - it barely moves (the old 13px/420ms, which read as parked), so
+         require most of the travel to actually happen; and
+       - it moves in one jump and then sits, so require it to be STILL MOVING
+         in the back half — that is the difference between a glide and a pop. */
+  const mid = num[Math.floor(num.length / 2)];
+  rec.ok('...and it GLIDES right, covering real ground',
+    num.length >= 8 && num[num.length - 1].x - num[0].x > 18,
+    { first: num[0], last: num[num.length - 1], travelled: num.length ? +(num[num.length - 1].x - num[0].x).toFixed(2) : null });
+  rec.ok('...still moving in the SECOND half (a glide, not a pop-and-park)',
+    num.length >= 8 && num[num.length - 1].x - mid.x > 4,
+    { mid, last: num[num.length - 1] });
   rec.ok('...never drifting so far it leaves the character behind',
-    num.length >= 3 && num[num.length - 1].x < num[0].right + 40,
+    num.length >= 3 && num[num.length - 1].x < num[0].right + 60,
     { last: num[num.length - 1], right: num[0] && num[0].right });
+
+  /* v2.3.1898, owner: "the glide numbers need to match the same timing as the
+     resource bars for appearing and fading."  Asserted as an IDENTITY on every
+     sampled frame rather than by checking two timestamps: same alpha, always,
+     is the only form of this that cannot drift when the fade is retuned. */
+  const drift = num.filter((s2) => Math.abs(s2.a - s2.barA) > 0.02);
+  rec.ok('...sharing the BAR\'s alpha exactly, frame for frame',
+    num.length >= 8 && drift.length === 0,
+    { samples: num.length, mismatched: drift.slice(0, 3) });
+  /* And that alpha is genuinely a fade, not a constant 1 the identity above
+     would also satisfy — the vacuous-pass trap this file keeps hitting. */
+  const faded = num.filter((s2) => s2.a < 0.9);
+  rec.ok('...and that shared alpha really does fade within the window',
+    faded.length >= 2 && num[0].a > 0.9,
+    { first: num[0] && num[0].a, last: num[num.length - 1] && num[num.length - 1].a, fadingSamples: faded.length });
 
   await P.ctx.close().catch(() => {});
 }

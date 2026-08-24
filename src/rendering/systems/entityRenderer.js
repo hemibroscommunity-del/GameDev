@@ -4619,12 +4619,22 @@ const RES_GHOST_HEX = { mana: '#9CC8F2', stamina: '#F0D9A6' };
    resource bar (as a negative number)").  The ghost chunk stays — it is the
    MASS that leaves — and this is the same gesture continued past the bar's
    edge with a figure on it, so you can read HOW MUCH left rather than
-   estimate it from a sliver.  It rides out over RES_SLIDE_MS and then HOLDS
-   at rest, fading with the bar rather than on its own timer: a number that
-   vanished at 420ms would be gone before you looked at it, and the bar is
-   still up for another 1.6s with nothing to explain the gap it just grew. */
+   estimate it from a sliver.
+
+   v2.3.1898 (owner: "I saw the number appear but not gliding.  I want the
+   numbers to slowly move right then fade", and "the glide numbers need to
+   match the same timing as the resource bars for appearing and fading"):
+   it used to ride the CHUNK's clock — 13px over RES_SLIDE_MS.  420ms is
+   under a third of a second of travel across thirteen pixels, which lands
+   before the eye gets there: you see a number appear, already parked.  It now
+   drifts across the bar's WHOLE life instead, 26px over the full hold+fade,
+   so it is still moving while it fades out.  Tying it to RES_HOLD_MS +
+   RES_FADE_MS rather than a duration of its own is what makes "match the
+   bar's timing" true by construction — one clock, so the two cannot drift
+   apart when someone retunes the fade. */
 const RES_SPENT_GAP = 6;       /* clear of the white keyline before it starts */
-const RES_SPENT_TRAVEL = 13;   /* how far right of that it glides */
+const RES_SPENT_TRAVEL = 26;   /* how far right of that it drifts */
+const RES_SPENT_GLIDE_MS = RES_HOLD_MS + RES_FADE_MS;
 
 /* One bar.  Returns its alpha, so the caller can decide about the plate. */
 function _drawResourceBar(gfx, kind, cur, max, y, now) {
@@ -4675,6 +4685,7 @@ function _drawResourceBar(gfx, kind, cur, max, y, now) {
   }
   const slide = since / RES_SLIDE_MS;
   gfx._resSlideT = slide;
+  gfx._resSpentT = since / RES_SPENT_GLIDE_MS;   /* v2.3.1898 */
   gfx._resGhostX = null; gfx._resGhostW = 0;
   if (slide < 1) {
     const fromW = RES_BAR_W * (Math.min(m, gfx._resFrom) / m);
@@ -4727,9 +4738,13 @@ function _drawResourceSpent(label, gfx, kind, y, alpha) {
   const txt = '-' + amt;
   if (label.text !== txt) label.text = txt;
   if (label.style.fill !== RES_GHOST_HEX[kind]) label.style.fill = RES_GHOST_HEX[kind];
-  /* Eased so it decelerates into its resting spot instead of stopping dead. */
-  const t = Math.min(1, Math.max(0, gfx._resSlideT == null ? 1 : gfx._resSlideT));
-  const ease = 1 - (1 - t) * (1 - t);
+  /* v2.3.1898: the bar's clock, and very close to linear.  A strong ease-out
+     over two seconds spends most of its travel in the first quarter and then
+     sits still for the rest — which is the "appears but does not glide" the
+     owner reported, just slower.  The mild exponent keeps a little
+     deceleration at the end without ever stopping. */
+  const t = Math.min(1, Math.max(0, gfx._resSpentT == null ? 1 : gfx._resSpentT));
+  const ease = Math.pow(t, 0.85);
   label.x = RES_BAR_W / 2 + RES_BORDER + RES_SPENT_GAP + RES_SPENT_TRAVEL * ease;
   label.y = y + RES_BAR_H / 2;
   label.alpha = alpha;
@@ -9358,7 +9373,7 @@ export class EntityRenderer {
         _g.clear(); _g.alpha = 0;
         _g._resLast = null; _g._resSpentAt = 0; _g._resFrom = 0;
         _g._resGhostX = null; _g._resGhostW = 0;
-        _g._resSpentAmt = 0; _g._resSlideT = 1;
+        _g._resSpentAmt = 0; _g._resSlideT = 1; _g._resSpentT = 1;
       }
       if (d._resMpLabel) d._resMpLabel.visible = false;
       if (d._resEnLabel) d._resEnLabel.visible = false;
@@ -9413,6 +9428,8 @@ export class EntityRenderer {
           enSpentText: d._resEnSpent && d._resEnSpent.visible ? d._resEnSpent.text : null,
           mpSpentX: d._resMpSpent && d._resMpSpent.visible ? +d._resMpSpent.x.toFixed(2) : null,
           enSpentX: d._resEnSpent && d._resEnSpent.visible ? +d._resEnSpent.x.toFixed(2) : null,
+          mpSpentA: d._resMpSpent && d._resMpSpent.visible ? +d._resMpSpent.alpha.toFixed(3) : null,
+          enSpentA: d._resEnSpent && d._resEnSpent.visible ? +d._resEnSpent.alpha.toFixed(3) : null,
           barRight: RES_BAR_W / 2 + RES_BORDER,
         };
       }
