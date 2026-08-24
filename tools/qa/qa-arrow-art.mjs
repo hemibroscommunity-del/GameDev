@@ -45,9 +45,43 @@ const ART = '/public/sprites/projectiles/arrow-pine.png';
    loss rather than on some fraction of one; the darkness ceilings sit between
    the original (76 / 43) and the sharpened line (64 / 0), so the guard also
    fails if a future pass quietly gives the outline back. */
+/* ═══ v2.3.1885: THE SIZE IS DERIVED, NOT WRITTEN DOWN ═══
+ * This guard used to hard-code the two widths the arrow lands in (23 and 35
+ * device px).  Those came from ARROW_PINE.lenPx being 17.5 -- and when
+ * v2.3.1881 tripled it to 52.5 for the owner ("The arrow needs to be about 3x
+ * larger"), the guard went on measuring a size the arrow no longer renders at
+ * and failed all three of its checks against perfectly good art.  It is not on
+ * the PR path (lint-build and playable are), so nothing caught it.
+ *
+ * So it reads lenPx out of the renderer instead.  A guard that restates a
+ * constant it is supposed to be guarding will go stale the first time that
+ * constant moves, which is exactly the moment you need it.
+ *
+ * WORLD_SCALE 0.667 is the phone value measured off a running client
+ * (S._worldScaleX at 390px wide); it is a property of the camera, not of the
+ * arrow, so it is not derived from anything here. */
+const WORLD_SCALE = 0.667;
+const FX = fs.readFileSync(new URL('../../src/rendering/systems/effectsRenderer.js', import.meta.url), 'utf8');
+const _lenM = FX.match(/lenPx:\s*([0-9.]+)/);
+if (!_lenM) {
+  console.error('qa-arrow-art: could not read ARROW_PINE.lenPx from effectsRenderer.js');
+  process.exit(1);
+}
+const LEN_PX = parseFloat(_lenM[1]);
+
 const CASES = [
-  { px: 23, minSteel: 6, maxShaftDark: 70, label: 'DPR-2 phone' },
-  { px: 35, minSteel: 12, maxShaftDark: 20, label: 'DPR-3 phone' },
+  /* v2.3.1885: maxShaftDark tightened 70/20 -> 8/8.  The old numbers were
+     calibrated when the arrow was 17.5 world px, where the keyline was fighting
+     for half a pixel and 20 was a real bar to clear.  At 52.5 the keyline gets
+     whole pixels and the SHIPPED art scores 0 at both ratios — but so did the
+     pre-v2.3.1881 texture, at 26.1 and 18, which means the guard passed
+     everything and discriminated nothing.  Controlled: the old art now fails
+     both cases and the shipped art passes both with room.
+     minSteel stays where it is.  It exists to catch the v2.3.1876 regression
+     (a dilated rim burying the head), which is a collapse to near-zero rather
+     than a drift, so a loose bar is the right shape for it. */
+  { dpr: 2, minSteel: 6, maxShaftDark: 8, label: 'DPR-2 phone' },
+  { dpr: 3, minSteel: 12, maxShaftDark: 8, label: 'DPR-3 phone' },
 ];
 
 const PAGE = `<!doctype html><meta charset="utf-8"><body><script>
@@ -102,6 +136,7 @@ await page.goto('http://127.0.0.1:4313/__arrow.html');
 
 let failed = 0;
 for (const c of CASES) {
+  c.px = Math.round(LEN_PX * WORLD_SCALE * c.dpr);
   const r = await page.evaluate(([s, w]) => window.__arrowArt(s, w), [ART, c.px]);
   const headOk = r.steel >= c.minSteel;
   const lineOk = r.shaftDark <= c.maxShaftDark;
