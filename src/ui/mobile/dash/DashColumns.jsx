@@ -10,6 +10,7 @@ import { requestT2Category } from './T2Panel.jsx';
 import { heroSectionBus } from '../sheet/heroSectionBus.js';
 import { prog3Live, prog3Pool, prog3SkillLevel, prog3CatFor } from '../../../data/prog3.js';
 import { buildSkillUnspent, STAT_TO_WEAPON_CAT } from '../../../data/gameSystems.js';
+import { registerXpCard, displayXp, xpCounting } from '../../xpLanding.js'; /* v2.3.1874 */
 import { dashTileSize, dashPanelWidths, combatPillWidth, combatPillHeight, BAG_VIEW_COLS, DASH_GAP, DASH_ROWS, BAG_HEADER_H } from '../sheet/sheetGeometry.js';
 import { playVw } from '../playViewport.js';
 
@@ -113,6 +114,26 @@ export const DashColumns = ({ R }) => {
   const rpg = R || {};
   const [bagFilter, setBagFilter] = React.useState(bagFilterBus.get());
   React.useEffect(() => bagFilterBus.subscribe(setBagFilter), []);
+  /* ═══ v2.3.1874: RE-RENDER WHILE A NUMBER IS COUNTING ═══
+     The count-up is computed in render (displayXp reads a clock), so without
+     something to drive frames it would show one value and stop.  This ticks
+     ONLY while xpLanding says a card is held or mid-count — a few hundred ms
+     after a kill — and otherwise the dashboard renders exactly as often as it
+     did before.  A permanent rAF here would be the whole dashboard
+     re-rendering forever for an animation that runs for a fraction of a
+     second, on the platform whose frame budget everything else in this file
+     is tuned around. */
+  const [, _xpTick] = React.useState(0);
+  React.useEffect(() => {
+    let raf = 0, alive = true;
+    const step = () => {
+      if (!alive) return;
+      if (xpCounting()) { _xpTick((v) => (v + 1) % 1000000); }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => { alive = false; cancelAnimationFrame(raf); };
+  }, []);
 
   /* ── BAG ── */
   /* v2.3.1653: the dashboard's bag IS the bag now, so it obeys the filter
@@ -310,6 +331,14 @@ export const DashColumns = ({ R }) => {
             requestT2Category(cat); dashboardPanelBus.push('t2');
           }
         }}
+        /* v2.3.1874: the card publishes its own rect each render, so an XP
+           label can fly to where the card ACTUALLY is.  A ref callback rather
+           than a measured constant: the dashboard's card geometry changes
+           with viewport width (dashPanelWidths) and with the sheet's state,
+           and a hard-coded point would be right on one phone and wrong on the
+           next.  Cheap — getBoundingClientRect on three small elements, on a
+           component that only re-renders when the dashboard does. */
+        ref={p3cat ? ((el) => { if (el) registerXpCard(p3cat, el.getBoundingClientRect()); }) : undefined}
         aria-label={`${s.label} level ${lvl}`}
         title={`${s.label} — Lv ${lvl}${unspent > 0 ? `, ${unspent} unspent` : ''}`}
         style={{
@@ -422,7 +451,13 @@ export const DashColumns = ({ R }) => {
             textShadow: '0 1px 3px rgba(9,14,17,.92), 0 0 2px rgba(9,14,17,.9)',
             whiteSpace: 'nowrap', overflow: 'hidden',
             pointerEvents: 'none',
-          }}>{xpShort(xp.prog)}<span style={{ opacity: .62 }}>/{xpShort(xp.thresh)}</span></div>
+          }}
+          /* v2.3.1874: names the XP pair so it can be read on its own.  The
+             card's textContent runs "LV 1" straight into "0/280", and a regex
+             over the whole card splices those into "10/280" — which is how
+             mp-xpfly first read a fresh character's 0 XP as 10. */
+          data-xppair={p3cat || undefined}
+          >{xpShort(displayXp(p3cat, xp.prog))}<span style={{ opacity: .62 }}>/{xpShort(xp.thresh)}</span></div>
         )}
         {unspent > 0 && (
           <span aria-hidden="true" style={{

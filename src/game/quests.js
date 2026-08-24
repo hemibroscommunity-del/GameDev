@@ -14,6 +14,7 @@ import { QUEST_STATUS, QUEST_AP_REWARD, createDefaultCompStats, BT_AUDIO, getNpc
 import { _objectSpread } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
+import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx'; /* v2.3.1874: quest XP flies to its skill card */
 export function acceptQuest(S, questPanel, deps) {
   var setRpgState = deps.setRpgState,
     setQuestPanel = deps.setQuestPanel;
@@ -133,6 +134,25 @@ export function turnInQuest(S, questPanel, deps, xpCat) {
     localStorage.setItem('bt_rpg', JSON.stringify(R));
   } catch (e) {}
   pushDmgPopup(S, S.player.x, S.player.y - 40, 'Quest Complete! +' + questPanel.quest.reward.gold + 'G +' + questPanel.quest.reward.xp + 'XP', '#f5c542');
+  /* ═══ v2.3.1874: the quest's XP flies to the skill it was banked into ═══
+     Owner: "When you kill a monster OR COMPLETE A QUEST show the combat skill
+     xp over the character then have the xp jump down into whatever combat
+     skill earned the xp".
+     `xpCat` is the skill the player picked at turn-in (QuestPanel's chooser),
+     and it is the same value sent to the server as `quest_turn_in.xpCat` —
+     so the label lands on the card the worker actually credits, rather than
+     on the equipped weapon, which for a quest is usually not the same thing.
+     Only when there IS xp: a gold-only quest would otherwise fly a "+0 XP". */
+  if (questPanel.quest.reward.xp > 0) {
+    try {
+      pushHudPopup(S, {
+        target: 'xpBar',
+        text: '+' + questPanel.quest.reward.xp + ' XP',
+        color: '#60a5fa',
+        cat: (typeof xpCat === 'string' && xpCat) ? xpCat : undefined,
+      });
+    } catch (e) { /* feedback only — never break a turn-in */ }
+  }
   /* ═══ v2.3.1746: the owner's quest fanfare ═══
      Owner: "play this sound upon quest completion."  It REPLACES the synth
      levelUp() arpeggio here rather than stacking with it — two fanfares at
