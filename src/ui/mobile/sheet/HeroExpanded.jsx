@@ -11,7 +11,7 @@ import {
   prog3Live, prog3Pts, prog3AtkPts, prog3StatCap, prog3SkillLevel,
   prog3ActiveCat, PROG3_ATK_META, PROG3_BODY_META, PROG3_SKILL_META,
 } from '../../../data/prog3.js';
-import { VitalBar, VITAL_ICONS } from './VitalBar.jsx'; /* v2.3.1311 */
+import { VitalBar, VITAL_ICONS, VITAL_LABEL } from './VitalBar.jsx'; /* v2.3.1311; VITAL_LABEL v2.3.1883 */
 import { getEquippedSlots, getEquipContribs, GHOST_SRC } from './equipModel.js'; /* v2.3.1653 */
 import { previewStatPoint, overallDps } from './statPreview.js';                 /* v2.3.1766 */
 import { itemDetailBus } from '../dash/itemDetailBus.js';                        /* v2.3.1653 */
@@ -147,13 +147,27 @@ export const HeroExpanded = () => {
      exact numbers stay, under the bar rather than beside it. */
   const compactVital = (kind, cur, max) => (
     <div key={kind} style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+      {/* v2.3.1883: 13 -> 12.  The icon is what sets this row's height, so
+          three of them are the last 3px the two group headings needed.  The
+          bar is 9px and the readout 9.5, so 12 is still the tallest thing in
+          the row and the row still reads as icon-led. */}
       <img src={VITAL_ICONS[kind]} alt="" draggable={false}
-        style={{ width: 13, height: 13, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
+        style={{ width: 12, height: 12, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
+      {/* v2.3.1883: the LABEL and the MAX, both from the owner's reference
+          ("HP ---- 118/118").  The bare current value could not say whether
+          118 was full or nearly dead without reading the bar's fill, and the
+          bar is 9px tall.  The label is 20px and the readout right-aligned in
+          a fixed 52px so the three bars start and end on the same two
+          columns — ragged ends read as three different widgets. */}
+      <span style={{
+        flex: 'none', width: 20, fontSize: 9, fontWeight: 700,
+        letterSpacing: '.04em', color: COL.muted,
+      }}>{VITAL_LABEL[kind]}</span>
       <VitalBar kind={kind} cur={cur} max={max} thick={9} />
       <span style={{
-        flex: 'none', fontSize: 10, fontWeight: 700, color: COL.text2,
-        fontVariantNumeric: 'tabular-nums',
-      }}>{Math.ceil(cur)}</span>
+        flex: 'none', width: 52, textAlign: 'right', fontSize: 9.5, fontWeight: 700,
+        color: COL.text2, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+      }}>{Math.ceil(cur)}/{Math.ceil(max)}</span>
     </div>
   );
 
@@ -167,22 +181,79 @@ export const HeroExpanded = () => {
     const n = (v || 0) * 100;
     return n > 0 && n < 10 ? n.toFixed(1) : Math.round(n);
   };
-  /* v2.3.1697: `span` lets one cell take two of the grid's columns —
-     see the aggregate grid below, where DAMAGE keeps its old width while
-     the rest halve to make room for the armour readout. */
-  const cell = (label, value, span) => (
-    <div key={label} style={{
+  /* v2.3.1883b: NO ICON.  Owner: "Don't use any icons to represent the stats
+     to save room."  The tile carried one from v2.3.1878 until now, beside the
+     value, and it cost ~14px of a ~46px cell (11px of art plus its 3px gap) —
+     which is why that version had to abbreviate four of the seven labels to
+     fit them.  Spent on the text instead, the words fit: DEFENSE is back to
+     its full spelling in the same pass.
+     `span` went with it.  It existed so DAMAGE could take two columns for a
+     wide range like "120-160" (v2.3.1697); its row now holds four cells
+     rather than eight and the grid gives that column 1.25fr, so every caller
+     was passing 0 and a parameter nothing sets is just a thing to get wrong.
+     `title` stays: it is the untruncated label for a long-press, and it costs
+     no pixels. */
+  const cell = (label, value) => (
+    <div key={label} title={label} style={{
       background: COL.wellSoft,
       border: `1px solid ${COL.tileBor}`,
       borderRadius: 8,
-      padding: '4px 2px 5px',
+      /* v2.3.1883: 3px/4px -> 2px.  The two group headings and the rule
+         between them cost 17px of a 146px column and this is where the last
+         of it came from; the tile still clears its 8.5px label and 13px
+         value with room, and every other cell dimension is untouched. */
+      padding: '2px 2px 2px',
       minWidth: 0,
       textAlign: 'center',
-      gridColumn: span ? `span ${span}` : undefined,
     }}>
       <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
-      <div style={{ fontSize: 13, fontWeight: 800, color: COL.text, fontVariantNumeric: 'tabular-nums', marginTop: 1, whiteSpace: 'nowrap' }}>{value}</div>
+      <div style={{ fontSize: 13, fontWeight: 800, color: COL.text, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', marginTop: 1 }}>{value}</div>
     </div>
+  );
+
+  /* v2.3.1878: the seven aggregate stats, as one list, because they are now
+     rendered in the column beside the gear (see the note there) and a second
+     hand-kept copy of this list is exactly how a stat ends up on one screen
+     and not the other.
+
+     The set and the wording are unchanged from the block this replaced:
+     v2.3.1668 removed Block and Speed (a `return 0` stub and a constant) and
+     put Defense and Crit Dmg in their places; v2.3.1697 added Armour, which
+     had cut real damage since v2.3.1679 while no screen in the game said so.
+     One decimal below 10% so a single point does not render as "0%", which
+     reads as "that did nothing".  Armour is never '—' and is not prog3-gated:
+     mitigation applies to every player the server damages, and 0% is the
+     honest reading when nothing is worn. */
+  /* v2.3.1883: the same seven, split into the two groups the owner drew.
+     Nothing is added or dropped — OFFENSE is the four that decide what you
+     hit for and DEFENSE the three that decide what reaches you, which is the
+     reading the flat 4x2 grid gave no way to see.  Still ONE list per group
+     and no second copy anywhere, for the reason the v2.3.1878 note gives. */
+  const offenseCells = () => [
+    cell('Damage', d.dmgText),
+    cell('DPS', d.dps.toFixed(1)),
+    cell('Crit', `${pct1(d.crit)}%`),
+    cell('C.Dmg', p3 ? `+${Math.round(d.critDmg)}` : '—'),
+  ];
+  const defenseCells = () => [
+    /* v2.3.1883: 'Def' -> 'Defense', which is what the owner's reference
+       calls it.  It was abbreviated at v2.3.1878 because it shared a 4-column
+       row where it wanted 46px of the 26 it had; this row holds three, so the
+       word fits and mp-charfit's ellipsis check is what keeps that honest. */
+    cell('Defense', p3 ? `${pct1(d.defPct)}%` : '—'),
+    cell('Dodge', `${pct1(d.dodge)}%`),
+    cell('Armor', `${pct1(d.armorDr)}%`),
+  ];
+  /* Module header, 10/700 uppercase .12em — the Lantern Slate step for this
+     (11/600 uppercase .12em) taken one notch down, because these two sit
+     inside a 146px column rather than at the head of a panel and every pixel
+     here was already spoken for. */
+  const groupHead = (text) => (
+    <div style={{
+      fontSize: 10, fontWeight: 700, letterSpacing: '.12em',
+      textTransform: 'uppercase', color: COL.muted,
+      lineHeight: 1, flex: 'none',
+    }}>{text}</div>
   );
 
   /* v2.3.1660: one definition (heroModel) — under prog3 this is THE
@@ -648,83 +719,105 @@ export const HeroExpanded = () => {
                   )}
                 </div>
               ) : (
+                /* ═══ v2.3.1878: THE STATS MOVED UP HERE ═══
+                    Owner: "Do a layout design change to make room for the
+                    stats you have to scroll to see on the char menu",
+                    with a reference shot showing them beside the gear.
+
+                    They were in a block BELOW this row, and measured on a
+                    390x844 iPhone that block was entirely past the fold: the
+                    sheet body is 191px tall, the Equipment tab wanted 299,
+                    and all seven stats sat in the 108px that did not fit.
+                    Nothing cued that they were there — this panel's
+                    scroll-edge fade is deliberately off (see the v2.3.1697
+                    note on the grid) — so the tab read as though the game
+                    simply had no stat readout.
+
+                    The room was already in this column and being wasted.  It
+                    is 3*EQ_W + 2*DASH_GAP = 146px tall because it matches the
+                    gear grid beside it, and it was spending all of that on
+                    three ~14px bars centred in it: ~85px of empty column, in
+                    a tab that was 108px short.  So the bars go to the TOP and
+                    the stats take the space under them, which is very nearly
+                    the whole deficit and is why the tab now fits with no
+                    scroll at all rather than merely scrolling less.
+
+                    The item card still takes this whole column when a slot is
+                    selected (v2.3.1843, the owner's own suggestion) — that is
+                    the branch above, and it is unchanged.  Tapping a slot now
+                    covers the stats as well as the vitals, which is the same
+                    trade the owner already accepted for the vitals: both come
+                    straight back when the slot is tapped closed. */
                 <>
-                  {compactVital('hp', R.hp || 0, R.maxHp || 100)}
-                  {compactVital('stamina', R.stamina || 0, R.maxStamina || 100)}
-                  {compactVital('mana', R.mana || 0, R.maxMana || 100)}
+                  <div style={{ flex: 'none', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    {compactVital('hp', R.hp || 0, R.maxHp || 100)}
+                    {compactVital('stamina', R.stamina || 0, R.maxStamina || 100)}
+                    {compactVital('mana', R.mana || 0, R.maxMana || 100)}
+                  </div>
+                  {/* ═══ v2.3.1883: OFFENSE, THEN DEFENSE ═══
+                      Owner: "Change the panel area with the resource bars and
+                      combat stats on the player menu to be more organized
+                      like this", with a reference showing the seven split
+                      under two headings.
+
+                      They were one undifferentiated 4x2 grid, which is why
+                      the reference exists: read left to right it went damage,
+                      dps, crit, crit-dmg, def, dodge, armor with nothing
+                      marking where the offensive four stop and the defensive
+                      three begin, so the second row's meaning had to be
+                      recalled rather than seen.
+
+                      DAMAGE no longer spans two columns — it does not need to
+                      now that its row holds four cells instead of eight, and
+                      the 1.25fr first column gives a wide range like "120-160"
+                      more room than the span ever did while keeping the other
+                      three on a common width.
+
+                      The divider is the reference's own rule and it is doing
+                      work: two headings alone leave the groups sharing an
+                      edge, and at this size the DEFENSE heading reads as a
+                      caption on the row above it as readily as a heading for
+                      the row below. */}
+                  <div style={{
+                    flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column',
+                    justifyContent: 'center', marginTop: 2, gap: 2,
+                  }}>
+                    {groupHead('Offense')}
+                    <div style={{
+                      display: 'grid', gridTemplateColumns: '1.25fr 1fr 1fr 1fr',
+                      gridAutoRows: 'min-content', gap: 4,
+                    }}>
+                      {offenseCells()}
+                    </div>
+                    <div style={{ height: 1, background: COL.tileBor, flex: 'none' }} />
+                    {groupHead('Defense')}
+                    <div style={{
+                      display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
+                      gridAutoRows: 'min-content', gap: 4,
+                    }}>
+                      {defenseCells()}
+                    </div>
+                  </div>
                 </>
               )}
             </div>
           </div>
 
-          {/* v2.3.1843: the scrollIntoView v2.3.1842 added here is GONE.  It
-              worked — the card came into view — but the screenshot showed the
-              cost: the scroll pushed the row up behind the subtab bar and cut
-              off the character's head and the HP bar.  The card moved into the
-              row instead (over the vitals, the owner's suggestion), so there
-              is nothing left to scroll to. */}
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 6 }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              {/* The header names what the numbers below are ABOUT, which is
-                  the whole point of a contextual panel: without it, a card
-                  that changes when you tap a slot reads as the screen
-                  glitching rather than as an answer to the tap. */}
-              <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                gap: 6, marginBottom: 4, minHeight: 18,
-              }}>
-                <span style={{
-                  fontSize: 9.5, fontWeight: 800, letterSpacing: '.06em',
-                  textTransform: 'uppercase',
-                  color: COL.muted,
-                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                }}>Your stats</span>
-              </div>
+          {/* v2.3.1878: the "Your stats" block that stood here is GONE — the
+              seven cells moved into the vitals column above, where there was
+              already ~85px of unused height.  It is not merely relocated: the
+              block had a header, its own 6px top margin and a full-width
+              4-column grid, and all of it sat past the fold on a 390x844
+              phone.  Dropping the header with it is deliberate — the tiles
+              are self-labelling and the column they now live in is plainly
+              the character's, so a heading spends height to say what the
+              content already says.
 
-              {/* v2.3.1843: ALWAYS the whole character now.  The per-item card
-                  moved up into the row (over the vitals) so that tapping a slot
-                  shows it without scrolling — see the note there.  This block
-                  keeps the one job it is good at: the aggregate. */}
-              {(
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 5 }}>
-                  {/* v2.3.1668: every cell here now moves when you spend
-                      a point.  Block and Speed were removed — Speed was
-                      the constant 5.0 and Block read a fixed 25% from a
-                      `return 0` stub while describing a mechanic that is
-                      actually full invulnerability (see heroModel).
-                      Defense and Crit Dmg take their places: both are
-                      real allocated stats, and Defense had no readout
-                      anywhere in the game before this.
-                      One decimal on the percentages, because the caps are
-                      30-40% and whole numbers made a 1-point investment
-                      render as "0%" — which reads as "that did nothing".
-
-                      v2.3.1697: ARMOUR joins them — worn armour has cut
-                      incoming damage for real since v2.3.1679 and no
-                      screen in the game said so, which is the same
-                      invisible-stat problem Defense had.
-                      THREE columns became FOUR rather than three columns
-                      becoming three ROWS, deliberately: this panel's body
-                      is measured in single pixels (v2.3.1653 note above),
-                      its scroll-edge fade is off, and a third row would
-                      have pushed the last cells below a fold with no cue
-                      that they exist.  DAMAGE spans two columns so a
-                      wide range ("120–160") keeps the width it had; every
-                      other value is five characters or fewer. */}
-                  {cell('Damage', d.dmgText, 2)}
-                  {cell('DPS', d.dps.toFixed(1))}
-                  {cell('Crit', `${pct1(d.crit)}%`)}
-                  {cell('Crit Dmg', p3 ? `+${Math.round(d.critDmg)}` : '—')}
-                  {cell('Defense', p3 ? `${pct1(d.defPct)}%` : '—')}
-                  {cell('Dodge', `${pct1(d.dodge)}%`)}
-                  {/* Not prog3-gated and never '—': armour mitigation
-                      applies to every player the server damages, and 0%
-                      is the honest reading when nothing is worn. */}
-                  {cell('Armour', `${pct1(d.armorDr)}%`)}
-                </div>
-              )}
-            </div>
-          </div>
+              v2.3.1843's note, kept because the reasoning still binds: the
+              scrollIntoView v2.3.1842 added here was removed because the
+              scroll pushed this row up behind the subtab bar and cut off the
+              character's head and the HP bar.  The card moves into the row
+              instead.  Nothing in this tab scrolls now. */}
         </>
       )}
 
