@@ -100,7 +100,41 @@ export function InfoPanel(props) {
       color: stateRef.current._realtimeStatus === 'connected' ? '#59BF91' : '#D95C54',
       marginLeft: 4
     }
-  }, stateRef.current._realtimeStatus === 'connected' ? '●' : '○')), /*#__PURE__*/React.createElement("button", {
+  }, stateRef.current._realtimeStatus === 'connected' ? '●' : '○')),
+  /* ═══ v2.3.1902: THE THREE FACTS THAT EXPLAIN A "WRONG NUMBERS" REPORT ═══
+     The owner reported combat skills at 0, and Crit Dmg / Defense rendering
+     as "—".  Both come from the same place: HeroExpanded prints those dashes
+     only when prog3Live is false, and prog3Live is (cap AND blob).  Working
+     that out took a round trip and a fix that could not reach them, because
+     nothing on screen said which of the two halves was missing.
+
+     The dot above answers "am I connected"; it does NOT answer "did this
+     worker advertise prog3" or "does my character carry a trained-skill
+     record", and those are the two that decide what every combat readout
+     shows.  One line, only when something is actually off — a permanent
+     green row would be noise, and this panel is the owner's, not a
+     developer console. */
+  (function () {
+    var _S = stateRef.current || {};
+    var _cap = !!(_S._serverCaps && _S._serverCaps.prog3);
+    var _blob = !!(_S.rpg && _S.rpg.prog3 && _S.rpg.prog3.sk);
+    var _conn = _S._realtimeStatus === 'connected';
+    if (_cap && _blob && _conn) return null;
+    var _why = !_conn ? 'not connected to the server'
+      : !_cap ? 'server has not sent combat rules yet'
+      : 'character has no trained-skill record';
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 10, color: '#D9A441', marginTop: -4, marginBottom: 8,
+        lineHeight: 1.35,
+      }
+    }, "⚠ Combat numbers may read low — " + _why + ".",
+      /*#__PURE__*/React.createElement("div", {
+        style: { color: '#8C8578', fontVariantNumeric: 'tabular-nums' }
+      }, "link " + (_conn ? 'ok' : 'off')
+        + " · rules " + (_cap ? 'ok' : 'off')
+        + " · skills " + (_blob ? 'ok' : 'off')));
+  })(), /*#__PURE__*/React.createElement("button", {
     onClick: function onClick() {
       BT_AUDIO.muted = !BT_AUDIO.muted;
       setPlayerCount(function (c) {

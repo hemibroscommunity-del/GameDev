@@ -127,5 +127,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
       (k) => rows[k] && /\b1\b/.test(rows[k]) && !/\b0\b/.test(rows[k].replace(/\/\s*\d+/g, ''))),
     rows);
 
+  /* ── THE INFO PANEL'S DIAGNOSTIC LINE (v2.3.1902) ──
+     A healthy session must NOT show the warning — a row that is always
+     present is a row nobody reads, and this panel belongs to the owner
+     rather than to a developer console. */
+  await P.page.evaluate(() => {
+    const all = Array.from(document.querySelectorAll('*'));
+    const hits = all.filter((el) => {
+      const t = (el.textContent || '').trim();
+      return t.includes('\u2139') && !Array.from(el.children).some(
+        (c) => (c.textContent || '').includes('\u2139'));
+    });
+    const hit = hits[hits.length - 1];
+    if (hit) { hit.click(); (hit.parentElement || hit).click(); }
+  });
+  await P.page.waitForTimeout(700);
+  const diag = await P.page.evaluate(() => {
+    const t = document.body.innerText || '';
+    const m = t.match(/link (ok|off) · rules (ok|off) · skills (ok|off)/);
+    return { warned: /Combat numbers may read low/.test(t), triple: m ? m[0] : null };
+  });
+  console.log('    info panel: ' + JSON.stringify(diag));
+  rec.ok('a healthy session shows NO combat-diagnostic warning',
+    diag.warned === false && diag.triple === null, diag);
+
   await P.ctx.close().catch(() => {});
 }
