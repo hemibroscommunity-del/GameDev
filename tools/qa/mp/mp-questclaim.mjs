@@ -128,18 +128,34 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('C: THE FIX — finishing it while stood next to him opens the claim, unmoved',
     await open(), await probe());
 
-  /* ── D. a dismissed panel is one step away, not a hike ──
-     The latch releases at 90px now rather than 110, so this is deliberately a
-     SMALL step: at 100 the OLD radius would still hold it and this would not
-     re-open.  That is what makes this assertion discriminating rather than a
-     restatement of B. */
+  /* ── D. a dismissed panel is a short step away, not a hike ──
+     v2.3.1886 note: this used to step to a hard-coded 100px, chosen because
+     it cleared the release radius of the day.  That is the same mistake the
+     bug it now sits beside was made of — a distance written down in one place
+     and left behind when the radius moved (NPC_PROX_OPEN stayed 56 for the
+     185 versions after _nearNpc went to 90).  So it no longer names a
+     distance: it walks outward until the latch actually lets go, and asserts
+     that the distance it found is a step rather than a trek.  That survives
+     the next radius change, and it still fails loudly if recovery ever needs
+     crossing the town. */
   await H.closeNpcDialogue(P);
   await P.page.waitForTimeout(700);
-  await place(100, 0);
-  await P.page.waitForTimeout(700);
+  let released = null;
+  for (const d of [100, 120, 130, 140, 160, 200, 260]) {
+    await place(d, 0);
+    await P.page.waitForTimeout(450);
+    const stillLatched = await P.page.evaluate(() => !!(window._gameState.current._npcProxLatch));
+    if (!stillLatched) { released = d; break; }
+  }
+  rec.ok('D: the latch does let go when you step away at all', released !== null,
+    { released, note: 'never released out to 260px' });
+  /* ~5 tiles.  Beyond this "walk away and come back" stops being a step and
+     starts being the hike that made the owner report it in the first place. */
+  rec.ok('D: ...within a short step, not a hike across town',
+    released !== null && released <= 160, { releasedAt: released, budget: 160 });
   await place(0, 34);
   await P.page.waitForTimeout(1100);
-  rec.ok('D: stepping just out of range and back re-opens it', await open(), await probe());
+  rec.ok('D: ...and returning re-opens the claim', await open(), await probe());
 
   await P.page.evaluate(() => { try { cancelAnimationFrame(window.__qRaf); } catch (e) {} });
   await P.ctx.close().catch(() => {});
