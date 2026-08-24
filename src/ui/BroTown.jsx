@@ -4664,7 +4664,40 @@ export var BroTown = function BroTown(_ref0) {
              so the latch now lets go at the same distance the game stops
              considering him nearby.  56 open / 90 release still leaves ~1
              tile of hysteresis, so nobody on the boundary flickers. */
-          var NPC_PROX_OPEN = 56, NPC_PROX_CLEAR = 90;
+          /* ═══ v2.3.1886: WALKING UP TO HIM MEANS 90px, NOT 56 ═══
+             Owner: "Created a new character and first quest didn't trigger by
+             walking up to mayor bro.  It should activate by proximity."
+
+             Measured before changing anything, by sweeping the distance: the
+             dialogue opened at 40 and 56px and was DEAD from 64px out.  A hard
+             cliff at 56 — under two tiles, TILE being 32.
+
+             This is v2.3.1717's incident, in the one place that pass did not
+             reach.  That note reads: "A judge on a fresh character could not
+             talk to Mayor Bro at all.  Measured: E works at 55px and dies by
+             65, which is under two tiles — standing what LOOKS like next to
+             him was out of range, and the refusal is silent, so it reads as a
+             broken NPC rather than 'step closer'."  It raised the DETECTION
+             radius 60 -> 90 and stopped there; the proximity opener, added
+             later at v2.3.1701, wrote its own 56 and inherited the bug.  So a
+             player standing 60-90px away — close enough that the game calls
+             Mayor Bro their nearest NPC, close enough for the tap and the
+             E-key to work — got nothing from walking up.  Silently, again.
+
+             90 is not a new number: it is exactly _nearNpc's radius, so "he
+             is the NPC you are standing with" and "walking up to him opens
+             his quest" are now the same statement rather than two thresholds
+             that can drift apart.  That is what stops this recurring a third
+             time.
+
+             CLEAR 90 -> 125 to keep the hysteresis: it must exceed OPEN or
+             anyone on the boundary flickers, and 35px (~1 tile) is the same
+             margin the old 56/90 pair had.  This does cost some of what
+             v2.3.1884 bought — recovering a panel you dismissed is a longer
+             step now — but an opener that does not fire when you walk up is
+             the worse failure of the two, and it is the one that was
+             reported. */
+          var NPC_PROX_OPEN = 90, NPC_PROX_CLEAR = 125;
           var _px = S.player ? S.player.x : 0, _py = S.player ? S.player.y : 0;
           var _latched = S._npcProxLatch || null;
           var _pn = S._nearNpc;
