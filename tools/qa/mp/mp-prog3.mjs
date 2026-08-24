@@ -192,18 +192,32 @@ export async function run({ browser, wsPort, webPort, rec }) {
     S._hudPopups.push({ id: 'qa-xp', target: 'xpBar', text: '+12 XP',
       color: '#60a5fa', ts: Date.now() });
   });
+  /* ═══ v2.3.1874: THE READOUT MOVED, THE QUESTION DID NOT ═══
+     The transient top-centre bar this used to read is retired — a kill's XP
+     now flies from the character into the combat CARD for its skill (see
+     XpFlyOverlay / mp-xpfly).  The owner report behind these assertions is
+     unchanged though ("an XP bar ... which would be fine if it represented
+     one of the three active combat skills you're actually earning xp in"), so
+     they are re-pointed at the card rather than deleted: the two tracks are
+     still seeded with different levels above, and the card can still only
+     show the right one by reading prog3. */
+  /* Back to the resting dashboard first: the cards live there, and this
+     scenario has been sitting on the Build screen.  The bar these assertions
+     used to read floated over everything, so it needed no such step — the
+     card is part of the dashboard and only exists when the dashboard does. */
+  await P.page.evaluate(() => { try { window.__broDashPanelBus.toBar(); } catch (e) {} });
   await P.page.waitForTimeout(700);
-  const barText = await P.page.evaluate(() => {
-    const hit = Array.from(document.querySelectorAll('div, span'))
-      .map((e) => (e.innerText || '').trim())
-      .filter((t) => /\bLv \d+/.test(t) && /MELEE|BOW|MAGIC|SWORD|STAFF/i.test(t));
-    return hit.length ? hit[hit.length - 1].replace(/\s+/g, ' ').slice(0, 80) : null;
+  const cardText = await P.page.evaluate(() => {
+    const el = [...document.querySelectorAll('[role="button"][aria-label*="level"]')]
+      .find((e) => /Melee level/i.test(e.getAttribute('aria-label') || ''));
+    if (!el) return null;
+    return { aria: el.getAttribute('aria-label'), title: el.getAttribute('title') || '' };
   });
-  rec.ok('the kill XP bar appears', !!barText, barText);
+  rec.ok('the melee combat card is on screen to receive the XP', !!cardText, cardText);
   rec.ok('...showing the prog3 trained level, not the retired weapon-skill one',
-    !!barText && /Lv 5\b/.test(barText) && !/Lv 40\b/.test(barText), barText);
-  rec.ok('...named the way every other screen names it (MELEE, not SWORD)',
-    !!barText && /MELEE/i.test(barText), barText);
+    !!cardText && /level 5\b/i.test(cardText.aria) && !/level 40\b/i.test(cardText.aria), cardText);
+  rec.ok('...named the way every other screen names it (Melee, not Sword)',
+    !!cardText && /Melee/i.test(cardText.aria), cardText);
 
   await P.ctx.close().catch(() => {});
 }
