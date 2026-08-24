@@ -4571,14 +4571,46 @@ function createOtherPlayerDisplay() {
  * mid-slide re-bases it instead of leaving two ghosts disagreeing about where
  * the edge is.
  */
-const RES_BAR_W = 46;          /* a touch narrower than the name plate */
-const RES_BAR_H = 4;
-const RES_MP_Y = 40;           /* the plate's own y (38) plus its top inset */
-const RES_EN_Y = 48;           /* one bar + 4px of air, always reserved */
+/* v2.3.1896 (owner: "thick white border ... black fill when it's spent ...
+   large enough so that you can fit the numbers on each bar").  The bar grew
+   from 46x4 to 66x14 to hold an 8px readout: 14 less two 2px borders leaves
+   10px of interior, and 8px of text centred in 10 is the smallest that stays
+   legible at this scale.  The width follows so "118 / 118" is not cramped
+   against the ends. */
+/* v2.3.1896c: 66x14 -> 72x16, and the readout 8px -> 10 bold (owner: "space
+   to make the numbers bolder and larger").  16 less two 2px borders leaves
+   12px of interior, which is what 10px text needs to sit centred without
+   crowding the keyline; the width follows so "118 / 118" keeps its air. */
+const RES_BAR_W = 72;
+const RES_BAR_H = 16;
+const RES_BORDER = 2;          /* the white keyline, drawn OUTSIDE the track */
+/* v2.3.1896c: 40 -> 52 (owner: "move the bars down a notch so they don't cover
+   the player's feet").  Not guessed — blockGeomProbe puts the boots at y 41.6
+   in this same display-local space, and the bar was starting at 40 with a 2px
+   border above that, so it genuinely overlapped them.  52 clears the feet by
+   ~8px.  The plate still has to hide: it sits at 38 and stands ~29 tall, so it
+   would reach into the bars wherever they start below it. */
+const RES_MP_Y = 52;
+/* v2.3.1896b: the gap has to clear BOTH borders, not just the bar.  At
+   +3 the MP border's bottom edge (y + H + BORDER) landed 1px BELOW the
+   energy border's top (y - BORDER) and the two rounded outlines merged into
+   one lozenge — visible the moment they were photographed together.  Bar +
+   two borders + 3px of real air. */
+/* v2.3.1896c: derived from RES_MP_Y, not from a repeated literal.  It said
+   `40 + ...` while MP moved to 52, so the energy bar climbed INTO the MP bar
+   and clipped its readout — caught in the screenshot, not by the suite, which
+   only asserts enY > mpY and was still true.  Deriving it makes the two
+   impossible to separate again. */
+const RES_EN_Y = RES_MP_Y + RES_BAR_H + RES_BORDER * 2 + 3;
 const RES_HOLD_MS = 1000;      /* full alpha for a second after the last spend */
 const RES_FADE_MS = 1000;      /* then a second of fade — gone at 2s */
 const RES_SLIDE_MS = 420;      /* how long the spent chunk takes to leave */
-const RES_TRACK = 0x101B22;
+/* v2.3.1896: the spent portion is BLACK (owner), and the border white.  The
+   black is what makes the fill read as a quantity against any ground — the
+   old 0x101B22 track was near-black already, but on the sand it sat close
+   enough to the terrain to blur the empty end. */
+const RES_TRACK = 0x000000;
+const RES_BORDER_COL = 0xFFFFFF;
 const RES_FILL = { mana: 0x5B99DE, stamina: 0xD8A85F };
 const RES_GHOST = { mana: 0x9CC8F2, stamina: 0xF0D9A6 };
 
@@ -4610,7 +4642,14 @@ function _drawResourceBar(gfx, kind, cur, max, y, now) {
 
   const x0 = -RES_BAR_W / 2;
   const fillW = RES_BAR_W * (v / m);
-  gfx.roundRect(x0, y, RES_BAR_W, RES_BAR_H, RES_BAR_H / 2).fill({ color: RES_TRACK, alpha: 0.85 });
+  /* v2.3.1896: border first and OUTSIDE the track, so the white keyline is a
+     full RES_BORDER thick on every side.  Drawn as a filled rounded rect under
+     an inset one rather than as a stroke: a stroke straddles the path and
+     would give RES_BORDER/2 of white and let the fill touch it. */
+  gfx.roundRect(x0 - RES_BORDER, y - RES_BORDER,
+    RES_BAR_W + RES_BORDER * 2, RES_BAR_H + RES_BORDER * 2, (RES_BAR_H / 2) + RES_BORDER)
+    .fill({ color: RES_BORDER_COL });
+  gfx.roundRect(x0, y, RES_BAR_W, RES_BAR_H, RES_BAR_H / 2).fill({ color: RES_TRACK });
   if (fillW > 0.5) {
     gfx.roundRect(x0, y, fillW, RES_BAR_H, RES_BAR_H / 2).fill({ color: RES_FILL[kind] });
   }
@@ -4631,6 +4670,24 @@ function _drawResourceBar(gfx, kind, cur, max, y, now) {
     }
   }
   return alpha;
+}
+
+/* v2.3.1896: the readout ON the bar (owner: "fit the numbers on each bar (or
+   wherever works best for readability)").  Centred inside the bar rather than
+   beside it — beside would have to pick a side, and either side collides with
+   something (the figure above, the other bar below).  It shares the bar's own
+   alpha so the number cannot outlive the thing it labels, which is the class
+   of bug the stale probes in this file keep producing.  Text nodes are made
+   once and parked; Pixi Text is expensive to churn. */
+function _drawResourceLabel(label, cur, max, y, alpha) {
+  if (!label) return;
+  if (alpha <= 0.01) { label.visible = false; return; }
+  const txt = Math.ceil(cur) + ' / ' + Math.ceil(max);
+  if (label.text !== txt) label.text = txt;
+  label.x = 0;
+  label.y = y + RES_BAR_H / 2;
+  label.alpha = alpha;
+  label.visible = true;
 }
 
 export class EntityRenderer {
@@ -9203,37 +9260,85 @@ export class EntityRenderer {
        and cleared since v2.3.214 for exactly this reason (the pickup and
        death paths already reference it, and it is in the death keep-list).
        The legacy pill sprite and its two labels stay off. */
-    const _resAlphaMp = _drawResourceBar(d._hudMpEmpty, 'mana',
-      R.mana, R.maxMana, RES_MP_Y, now);
-    if (d._hudMpSprite && d._hudMpSprite.visible) d._hudMpSprite.visible = false;
-    if (d._hudMpTextFull && d._hudMpTextFull.visible) d._hudMpTextFull.visible = false;
-    if (d._hudMpTextEmpty && d._hudMpTextEmpty.visible) d._hudMpTextEmpty.visible = false;
-
-    /* ═══ v2.3.1895: ENERGY, BENEATH THE MP BAR ═══
-       Owner: "Do the same thing for energy but beneath the mp bar."
-
-       This replaces the bare "⚡42%" number v2.3.1400 put under the feet.
-       That readout answered a different question — it was a standing gauge,
-       deliberately understated, visible whenever energy was below max.  The
-       ask here is the same SPEND behaviour as MP, so it gets the same
-       renderer and the same timings rather than a second set that could
-       drift.  RES_EN_Y is fixed, so this bar holds its position whether or
-       not the MP bar above it is drawn. */
-    const _resAlphaEn = _drawResourceBar(d._hudStamEmpty, 'stamina',
-      R.stamina, R.maxStamina, RES_EN_Y, now);
-    if (d._hudStamSprite && d._hudStamSprite.visible) d._hudStamSprite.visible = false;
-    if (d._hudStamTextFull && d._hudStamTextFull.visible) d._hudStamTextFull.visible = false;
-    if (d._hudStamTextEmpty && d._hudStamTextEmpty.visible) d._hudStamTextEmpty.visible = false;
-    /* One answer for both bars: the plate hides while EITHER is up, or it
-       would flicker back in the gap between an MP spend and an energy one. */
-    this._resourceBarsUp = (_resAlphaMp > 0.01) || (_resAlphaEn > 0.01);
-    if (typeof window !== 'undefined') {
-      window.__btResourceBars = {
-        mp: +_resAlphaMp.toFixed(3), en: +_resAlphaEn.toFixed(3),
-        mpY: RES_MP_Y, enY: RES_EN_Y, plateHidden: this._resourceBarsUp,
-        mpGhostX: d._hudMpEmpty._resGhostX, mpGhostW: d._hudMpEmpty._resGhostW,
-        enGhostX: d._hudStamEmpty._resGhostX, enGhostW: d._hudStamEmpty._resGhostW,
+    /* v2.3.1896: the two readouts, made once.  Added AFTER the bar Graphics so
+       they draw over it; both live on the player display, so they inherit its
+       transform and are hidden on death by the keep-list sweep (v2.3.1887)
+       without needing to be named there. */
+    if (!d._resMpLabel) {
+      const mk = () => {
+        const t = new Text({ text: '', resolution: 2, style: {
+          fontFamily: 'Source Sans 3, sans-serif', fontSize: 10, fontWeight: '800',
+          fill: '#FFFFFF', align: 'center', letterSpacing: 0.2,
+        } });
+        t.anchor.set(0.5, 0.5);
+        t.visible = false;
+        d.addChild(t);
+        return t;
       };
+      d._resMpLabel = mk();
+      d._resEnLabel = mk();
+    }
+    /* v2.3.1896d: a corpse wears no spend bars.  _updatePlayerHud runs AFTER
+       _updatePlayer in the same frame, and _hudMpEmpty/_hudStamEmpty are BOTH
+       named in the death keep-list (they were the old floating gauges) — so
+       the sweep that undresses the body walks straight past them and this pass
+       would then re-draw them over the corpse for the rest of the 2s fade.
+       The labels are not in that list, so the sweep hides them and this pass
+       shows them again: the same node, hidden and shown twice per frame.
+       Cut it off at the source instead of adding two more names to the list —
+       hide, reset, and let the next spend after the respawn re-arm cleanly.
+       (Same rule as v2.3.1887: hide by exception, not by list.) */
+    if (S._dying) {
+      for (const _g of [d._hudMpEmpty, d._hudStamEmpty]) {
+        if (!_g) continue;
+        _g.clear(); _g.alpha = 0;
+        _g._resLast = null; _g._resSpentAt = 0; _g._resFrom = 0;
+        _g._resGhostX = null; _g._resGhostW = 0;
+      }
+      if (d._resMpLabel) d._resMpLabel.visible = false;
+      if (d._resEnLabel) d._resEnLabel.visible = false;
+      this._resourceBarsUp = false;
+      if (typeof window !== 'undefined') {
+        window.__btResourceBars = {
+          mp: 0, en: 0, mpY: RES_MP_Y, enY: RES_EN_Y, plateHidden: false,
+          mpGhostX: null, mpGhostW: 0, enGhostX: null, enGhostW: 0, dead: true,
+        };
+      }
+    } else {
+      const _resAlphaMp = _drawResourceBar(d._hudMpEmpty, 'mana',
+        R.mana, R.maxMana, RES_MP_Y, now);
+      _drawResourceLabel(d._resMpLabel, R.mana, R.maxMana, RES_MP_Y, _resAlphaMp);
+      if (d._hudMpSprite && d._hudMpSprite.visible) d._hudMpSprite.visible = false;
+      if (d._hudMpTextFull && d._hudMpTextFull.visible) d._hudMpTextFull.visible = false;
+      if (d._hudMpTextEmpty && d._hudMpTextEmpty.visible) d._hudMpTextEmpty.visible = false;
+
+      /* ═══ v2.3.1895: ENERGY, BENEATH THE MP BAR ═══
+         Owner: "Do the same thing for energy but beneath the mp bar."
+
+         This replaces the bare "⚡42%" number v2.3.1400 put under the feet.
+         That readout answered a different question — it was a standing gauge,
+         deliberately understated, visible whenever energy was below max.  The
+         ask here is the same SPEND behaviour as MP, so it gets the same
+         renderer and the same timings rather than a second set that could
+         drift.  RES_EN_Y is fixed, so this bar holds its position whether or
+         not the MP bar above it is drawn. */
+      const _resAlphaEn = _drawResourceBar(d._hudStamEmpty, 'stamina',
+        R.stamina, R.maxStamina, RES_EN_Y, now);
+      _drawResourceLabel(d._resEnLabel, R.stamina, R.maxStamina, RES_EN_Y, _resAlphaEn);
+      if (d._hudStamSprite && d._hudStamSprite.visible) d._hudStamSprite.visible = false;
+      if (d._hudStamTextFull && d._hudStamTextFull.visible) d._hudStamTextFull.visible = false;
+      if (d._hudStamTextEmpty && d._hudStamTextEmpty.visible) d._hudStamTextEmpty.visible = false;
+      /* One answer for both bars: the plate hides while EITHER is up, or it
+         would flicker back in the gap between an MP spend and an energy one. */
+      this._resourceBarsUp = (_resAlphaMp > 0.01) || (_resAlphaEn > 0.01);
+      if (typeof window !== 'undefined') {
+        window.__btResourceBars = {
+          mp: +_resAlphaMp.toFixed(3), en: +_resAlphaEn.toFixed(3),
+          mpY: RES_MP_Y, enY: RES_EN_Y, plateHidden: this._resourceBarsUp,
+          mpGhostX: d._hudMpEmpty._resGhostX, mpGhostW: d._hudMpEmpty._resGhostW,
+          enGhostX: d._hudStamEmpty._resGhostX, enGhostW: d._hudStamEmpty._resGhostW,
+        };
+      }
     }
 
     /* HP: quartile-colored progress RING with a muted-gray center holding
