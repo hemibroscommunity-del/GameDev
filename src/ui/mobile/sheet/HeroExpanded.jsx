@@ -11,7 +11,7 @@ import {
   prog3Live, prog3Pts, prog3AtkPts, prog3StatCap, prog3SkillLevel,
   prog3ActiveCat, PROG3_ATK_META, PROG3_BODY_META, PROG3_SKILL_META,
 } from '../../../data/prog3.js';
-import { VitalBar, VITAL_ICONS, VITAL_LABEL } from './VitalBar.jsx'; /* v2.3.1311; VITAL_LABEL v2.3.1883 */
+import { VitalBar, VITAL_ICONS, VITAL_LABEL, VITAL_TINT } from './VitalBar.jsx'; /* v2.3.1311; VITAL_LABEL v2.3.1883 */
 import { getEquippedSlots, getEquipContribs, GHOST_SRC } from './equipModel.js'; /* v2.3.1653 */
 import { previewStatPoint, overallDps } from './statPreview.js';                 /* v2.3.1766 */
 import { itemDetailBus } from '../dash/itemDetailBus.js';                        /* v2.3.1653 */
@@ -145,29 +145,113 @@ export const HeroExpanded = () => {
      the fold, which is the one thing this screen must not do.
      Nothing is lost that the world HUD does not already show live — the
      exact numbers stay, under the bar rather than beside it. */
+  /* ═══ v2.3.1888: NO BAR — AN ICON AND THE NUMBERS ═══
+     Owner: "get rid of the bars and just use icons to represent combat
+     resources and the numbers (e.g. in 100/100 format)."
+
+     So the icon IS the label now: the HP/EN/MP word goes with the bar it used
+     to sit beside, because an icon that has to be captioned is not doing its
+     job. What is left is small enough that the three fit on ONE row instead of
+     three stacked ones, and that is the whole point — it hands ~28px back to
+     the combat stats above, which is the room the owner asked them to have
+     ("the combat stats and resources extend a little farther down"). The sheet
+     itself has none to give: measured, its body is 191px tall with 191px of
+     content in it.
+
+     `title` carries the full word for a long-press, since the icon no longer
+     spells it out. */
+  /* ═══ v2.3.1891: ONE RESOURCE PER ROW, ABOVE THE STATS ═══
+     Owner: "Try putting the combat resources on their own rows above the
+     offense and defense section.  Right now the numbers run together too
+     much."
+
+     They did, and the cause is arithmetic rather than taste: three groups
+     sharing one row get an even third of ~180px, and "118/118" is seven
+     tabular glyphs plus a 12px icon.  That very nearly fills a third, so
+     whatever gap is left between them reads as smaller than the gap INSIDE
+     each group — and the eye then groups the wrong things.  v2.3.1888 and
+     v2.3.1890 both answered it by widening the gap (4 -> 10 -> 12), which
+     treats the symptom; a row each removes the competition entirely.
+
+     Shaped like a stat row on purpose — icon left, number right, the same
+     baseline and the same right edge as Damage/DPS/Crit below. The icon is
+     doing the job the label does down there, so the two blocks read as one
+     sheet rather than as a widget stacked on a list. */
+  /* ═══ v2.3.1892: HP / EN / MP, CENTRED, ONE PER ROW ═══
+     Owner: "Try aligning combat resources to the center of that top section
+     and instead of icons just use the letter abbreviations.  Then make them
+     larger.  Try a couple different styles to see what works best."
+
+     Five were built and photographed side by side rather than argued about,
+     and two of the obvious ones were broken in ways only a render shows:
+
+       A  letter + number, all three on one centred row, large
+          — overflowed the column HORIZONTALLY.  The vertical overflow check
+            cannot see that, which is why it was shot rather than measured.
+       B  three centred rows at 14px — the most readable of the lot, but 16px
+          too tall: "Crit Dmg" fell off the bottom.
+       C  letter over value, three columns — the numbers collided into
+          "118/118100/100102/102".  Each column is a third of ~180px and a
+          seven-glyph number does not fit in it.
+       D  tinted letter chips over the values — fits, and the chips read well,
+          but the NUMBERS underneath still nearly touch: the same complaint
+          that started this ("the numbers run together too much"), because it
+          is still three numbers sharing one row.
+       E  B, tuned until it fits.  Kept.
+
+     So the letter carries the colour the icon used to (VITAL_TINT, taken off
+     the top stop of that resource's own bar gradient) — without it the three
+     are three identical grey numbers and the glance is gone. */
   const compactVital = (kind, cur, max) => (
-    <div key={kind} style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
-      {/* v2.3.1883: 13 -> 12.  The icon is what sets this row's height, so
-          three of them are the last 3px the two group headings needed.  The
-          bar is 9px and the readout 9.5, so 12 is still the tallest thing in
-          the row and the row still reads as icon-led. */}
-      <img src={VITAL_ICONS[kind]} alt="" draggable={false}
-        style={{ width: 12, height: 12, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
-      {/* v2.3.1883: the LABEL and the MAX, both from the owner's reference
-          ("HP ---- 118/118").  The bare current value could not say whether
-          118 was full or nearly dead without reading the bar's fill, and the
-          bar is 9px tall.  The label is 20px and the readout right-aligned in
-          a fixed 52px so the three bars start and end on the same two
-          columns — ragged ends read as three different widgets. */}
+    <div key={kind} title={VITAL_LABEL[kind]} style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      /* v2.3.1893: 1.12 -> 1.30 (owner: "increase the vertical padding just a
+         bit, looks like there's a little room above the divider").  There is,
+         and it is the ONLY room: measured, the column is 146px with 146px of
+         content in it and no slack below the stats — the single piece of air
+         is a 12px gap between the last resource row and the rule.  This
+         spends about eight of those twelve across the three rows and leaves
+         the rest, because a rule sitting flush against the text above it
+         reads as a mistake rather than as a divider. */
+      gap: 5, lineHeight: 1.30,
+    }}>
       <span style={{
-        flex: 'none', width: 20, fontSize: 9, fontWeight: 700,
-        letterSpacing: '.04em', color: COL.muted,
+        fontSize: 11.5, fontWeight: 800, color: VITAL_TINT[kind],
+        letterSpacing: '.06em',
       }}>{VITAL_LABEL[kind]}</span>
-      <VitalBar kind={kind} cur={cur} max={max} thick={9} />
+      {/* v2.3.1893: the icon comes back, AFTER the letter (owner).  It is the
+          colour cue at a glance; the letter is what you read.  Sized to the
+          letter's cap height rather than the number's, so it sits with the
+          word it follows instead of looming over it. */}
+      {/* v2.3.1894: 12 -> 18 (owner: "make the combat resource icons larger").
+          The row is align-items:center, so its height is max(icon, line box),
+          and the line box is 14px of number at 1.30 leading = 18.2px.  18 is
+          therefore the LARGEST the icon can be while still sitting inside the
+          height the row already had — measured at 18.0 against a row of 18.2,
+          with the column at 146px of content in 146px.  That is the only
+          reason a 50% larger icon costs nothing here; anything above 18.2
+          starts driving the row height and pushes the stats off the bottom.
+
+          NOTE THE COUPLING: this 18 is tied to `lineHeight: 1.30` and the
+          14px value above.  Shrink either and the icon becomes what sets the
+          row height.  mp-charfit catches it, but the fix is to move this
+          number, not to fight the layout. */}
+      <img src={VITAL_ICONS[kind]} alt="" draggable={false}
+        style={{ width: 18, height: 18, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
+      {/* v2.3.1893: the slash gets air on both sides (owner: "increase the
+          space between the first and second number").  Rendered as its own
+          span rather than as spaces in the string: the numbers are tabular
+          and a literal space is not, so padding is the only way to move the
+          two apart without the gap jittering as the values change.  The
+          separator is also dimmed — it is punctuation, not data. */}
       <span style={{
-        flex: 'none', width: 52, textAlign: 'right', fontSize: 9.5, fontWeight: 700,
-        color: COL.text2, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
-      }}>{Math.ceil(cur)}/{Math.ceil(max)}</span>
+        fontSize: 14, fontWeight: 800, color: COL.text,
+        fontVariantNumeric: 'tabular-nums', display: 'flex', alignItems: 'baseline',
+      }}>
+        {Math.ceil(cur)}
+        <span style={{ padding: '0 4px', opacity: 0.5, fontWeight: 700 }}>/</span>
+        {Math.ceil(max)}
+      </span>
     </div>
   );
 
@@ -193,56 +277,64 @@ export const HeroExpanded = () => {
      was passing 0 and a parameter nothing sets is just a thing to get wrong.
      `title` stays: it is the untruncated label for a long-press, and it costs
      no pixels. */
-  const cell = (label, value) => (
-    <div key={label} title={label} style={{
-      background: COL.wellSoft,
-      border: `1px solid ${COL.tileBor}`,
-      borderRadius: 8,
-      /* v2.3.1883: 3px/4px -> 2px.  The two group headings and the rule
-         between them cost 17px of a 146px column and this is where the last
-         of it came from; the tile still clears its 8.5px label and 13px
-         value with room, and every other cell dimension is untouched. */
-      padding: '2px 2px 2px',
-      minWidth: 0,
-      textAlign: 'center',
+  /* ═══ v2.3.1890: A LIST ROW, NOT A CARD ═══
+     Owner: "The bigger problem isn't rows vs. columns — it's that every stat
+     is being treated as its own card.  The borders, padding, headers, and
+     gaps are eating most of your space.  I'd switch to a character-sheet/list
+     format and get rid of the individual stat boxes entirely."
+
+     Right, and it is measurable: seven tiles were spending 2 borders + 7px of
+     padding + a 4px grid gap EACH on chrome, in a column 146px tall.  A row
+     spends none of it — label left, value right, and the eye reads down the
+     values in one column instead of hopping between boxes.
+
+     The labels get their words back in the same move.  DEF / C.DMG were
+     abbreviations forced by a ~46px tile (v2.3.1878); a list row is as wide
+     as its half of the column, so "Crit Dmg" and "Defense" simply fit. */
+  /* `sheetRow`, not `statRow`: that name is already taken by the item card's
+     own row renderer further down (v2.3.1846), and the two are different
+     shapes — this one takes (label, value), that one takes a { k, v }. */
+  const sheetRow = (label, value) => (
+    <div key={label} style={{
+      display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+      /* v2.3.1890b: the list left real vertical air where the boxes' chrome
+         used to be — spent on legibility, which is the point of dropping
+         them.  charfit is the ceiling. */
+      /* v2.3.1891: 1.5 -> 1.34.  Moving the resources onto rows of their
+         own (owner) needed 21px; the resources found most of it and this
+         is the rest.  Still well above the boxed layout it replaced. */
+      /* v2.3.1892: 1.34 -> 1.18.  Three centred resource rows at 14px are
+         what the owner asked for and they do not fit at 1.34 — this is the
+         6px they were short, and it is taken here rather than from the
+         resources because the resources are the thing being made larger. */
+      gap: 6, minWidth: 0, lineHeight: 1.18,
     }}>
-      <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
-      <div style={{ fontSize: 13, fontWeight: 800, color: COL.text, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', marginTop: 1 }}>{value}</div>
+      <span style={{
+        fontSize: 10.5, fontWeight: 600, color: COL.muted,
+        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+      }}>{label}</span>
+      <span style={{
+        fontSize: 13, fontWeight: 800, color: COL.text,
+        fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', flex: 'none',
+      }}>{value}</span>
     </div>
   );
 
-  /* v2.3.1878: the seven aggregate stats, as one list, because they are now
-     rendered in the column beside the gear (see the note there) and a second
-     hand-kept copy of this list is exactly how a stat ends up on one screen
-     and not the other.
-
-     The set and the wording are unchanged from the block this replaced:
-     v2.3.1668 removed Block and Speed (a `return 0` stub and a constant) and
-     put Defense and Crit Dmg in their places; v2.3.1697 added Armour, which
-     had cut real damage since v2.3.1679 while no screen in the game said so.
-     One decimal below 10% so a single point does not render as "0%", which
-     reads as "that did nothing".  Armour is never '—' and is not prog3-gated:
-     mitigation applies to every player the server damages, and 0% is the
-     honest reading when nothing is worn. */
   /* v2.3.1883: the same seven, split into the two groups the owner drew.
      Nothing is added or dropped — OFFENSE is the four that decide what you
      hit for and DEFENSE the three that decide what reaches you, which is the
      reading the flat 4x2 grid gave no way to see.  Still ONE list per group
      and no second copy anywhere, for the reason the v2.3.1878 note gives. */
   const offenseCells = () => [
-    cell('Damage', d.dmgText),
-    cell('DPS', d.dps.toFixed(1)),
-    cell('Crit', `${pct1(d.crit)}%`),
-    cell('C.Dmg', p3 ? `+${Math.round(d.critDmg)}` : '—'),
+    sheetRow('Damage', d.dmgText),
+    sheetRow('DPS', d.dps.toFixed(1)),
+    sheetRow('Crit', `${pct1(d.crit)}%`),
+    sheetRow('Crit Dmg', p3 ? `+${Math.round(d.critDmg)}` : '—'),
   ];
   const defenseCells = () => [
-    /* v2.3.1883: 'Def' -> 'Defense', which is what the owner's reference
-       calls it.  It was abbreviated at v2.3.1878 because it shared a 4-column
-       row where it wanted 46px of the 26 it had; this row holds three, so the
-       word fits and mp-charfit's ellipsis check is what keeps that honest. */
-    cell('Defense', p3 ? `${pct1(d.defPct)}%` : '—'),
-    cell('Dodge', `${pct1(d.dodge)}%`),
-    cell('Armor', `${pct1(d.armorDr)}%`),
+    sheetRow('Defense', p3 ? `${pct1(d.defPct)}%` : '—'),
+    sheetRow('Dodge', `${pct1(d.dodge)}%`),
+    sheetRow('Armor', `${pct1(d.armorDr)}%`),
   ];
   /* Module header, 10/700 uppercase .12em — the Lantern Slate step for this
      (11/600 uppercase .12em) taken one notch down, because these two sit
@@ -563,7 +655,15 @@ export const HeroExpanded = () => {
             <div style={{
               flex: 1, minWidth: 0, height: 3 * EQ_W + 2 * DASH_GAP,
               display: 'flex', flexDirection: 'column',
-              justifyContent: 'center', gap: selSlot ? 0 : 10,
+              /* v2.3.1893: 10 -> 6 on the stats branch.  That flex gap is
+                 where the "room above the divider" actually lives — it sits
+                 between EVERY child, so 10px above the rule and 10px below it
+                 again, while the three resource rows were squeezed to 1.12
+                 leading.  Moving four of those ten into the rows' line-height
+                 spends the same pixels on the thing being read instead of on
+                 the space around a 1px line.  Column height is unchanged; the
+                 item-card branch still gets 0. */
+              justifyContent: 'center', gap: selSlot ? 0 : 6,
             }}>
               {selSlot ? (
                 /* ═══ v2.3.1844: THE ITEM CARD IS A CARD ═══
@@ -749,53 +849,35 @@ export const HeroExpanded = () => {
                     trade the owner already accepted for the vitals: both come
                     straight back when the slot is tapped closed. */
                 <>
-                  <div style={{ flex: 'none', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  {/* Centred in its section, as asked. */}
+                  <div style={{
+                    flex: 'none', display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', justifyContent: 'center',
+                  }}>
                     {compactVital('hp', R.hp || 0, R.maxHp || 100)}
                     {compactVital('stamina', R.stamina || 0, R.maxStamina || 100)}
                     {compactVital('mana', R.mana || 0, R.maxMana || 100)}
                   </div>
-                  {/* ═══ v2.3.1883: OFFENSE, THEN DEFENSE ═══
-                      Owner: "Change the panel area with the resource bars and
-                      combat stats on the player menu to be more organized
-                      like this", with a reference showing the seven split
-                      under two headings.
+                  <div style={{ height: 1, background: COL.tileBor, flex: 'none', margin: '2px 0' }} />
+                  {/* ═══ v2.3.1890: TWO COLUMNS, NOT A GRID OF BOXES ═══
+                      Owner: "every stat is being treated as its own card...
+                      I'd switch to a character-sheet/list format".
 
-                      They were one undifferentiated 4x2 grid, which is why
-                      the reference exists: read left to right it went damage,
-                      dps, crit, crit-dmg, def, dodge, armor with nothing
-                      marking where the offensive four stop and the defensive
-                      three begin, so the second row's meaning had to be
-                      recalled rather than seen.
-
-                      DAMAGE no longer spans two columns — it does not need to
-                      now that its row holds four cells instead of eight, and
-                      the 1.25fr first column gives a wide range like "120-160"
-                      more room than the span ever did while keeping the other
-                      three on a common width.
-
-                      The divider is the reference's own rule and it is doing
-                      work: two headings alone leave the groups sharing an
-                      edge, and at this size the DEFENSE heading reads as a
-                      caption on the row above it as readily as a heading for
-                      the row below. */}
+                      Side by side rather than stacked because offense has four
+                      rows and defense three: stacked they cost 7 rows plus two
+                      headings, and beside each other they cost 4 plus one. In
+                      a 146px column that difference is most of the budget. */}
                   <div style={{
-                    flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column',
-                    justifyContent: 'center', marginTop: 2, gap: 2,
+                    flex: 1, minHeight: 0, display: 'flex',
+                    alignItems: 'flex-start', gap: 12,
                   }}>
-                    {groupHead('Offense')}
-                    <div style={{
-                      display: 'grid', gridTemplateColumns: '1.25fr 1fr 1fr 1fr',
-                      gridAutoRows: 'min-content', gap: 4,
-                    }}>
-                      {offenseCells()}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      {groupHead('Offense')}
+                      <div style={{ marginTop: 2 }}>{offenseCells()}</div>
                     </div>
-                    <div style={{ height: 1, background: COL.tileBor, flex: 'none' }} />
-                    {groupHead('Defense')}
-                    <div style={{
-                      display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
-                      gridAutoRows: 'min-content', gap: 4,
-                    }}>
-                      {defenseCells()}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      {groupHead('Defense')}
+                      <div style={{ marginTop: 2 }}>{defenseCells()}</div>
                     </div>
                   </div>
                 </>
