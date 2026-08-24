@@ -171,5 +171,73 @@ export async function run({ browser, wsPort, webPort, rec }) {
     faded.length >= 2 && num[0].a > 0.9,
     { first: num[0] && num[0].a, last: num[num.length - 1] && num[num.length - 1].a, fadingSamples: faded.length });
 
+  /* ── 8. A BURST OF SPENDS (v2.3.1899) ──
+     Owner: "The spent energy numbers glide and fade correctly but not the mp
+     numbers.  It's still the quick still pop up."
+
+     Both bars run identical code, so the fault was in the DATA, not the
+     drawing: mana gets spent REPEATEDLY (town regen pays 10% of max every
+     ~670ms, so you can cast again immediately), and every further spend used
+     to snap the number back to its origin — it restarted before it had
+     travelled far enough to read as motion.  Energy only looked right
+     because it was being spent once.
+
+     Sections 6-7 above spend ONCE and would pass with this fully broken,
+     which is exactly how it shipped.  This drives three spends and a
+     fractional regen dip through one rAF window. */
+  /* Refill the pool FIRST.  The sections above spend mana repeatedly and the
+     idle harness character barely regenerates, so by here the pool was empty
+     — every step below then clamped at 0, no drop was ever detected, and the
+     accumulation check measured nothing.  (It failed loudly rather than
+     passing vacuously only because it asserts a RISE; "amt > 0" would have
+     sailed through on a stuck value.)  A rise is a refill, not a spend, so
+     this reveals no bar. */
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    if (S && S.rpg) S.rpg.mana = S.rpg.maxMana || 100;
+  });
+  await P.page.waitForTimeout(2500);
+  const burst = await P.page.evaluate(() => new Promise((res) => {
+    const S = window._gameState.current;
+    const seen = [];
+    const floor0 = 0;
+    let pin = Math.max(floor0, (S.rpg.mana || 0) - 20);
+    const t0 = performance.now();
+    /* Each step is a further spend landing while the bar is still up, except
+       the 0.4 dip — that is the shape town regen actually delivers (mana
+       arrives fractional: 77 -> 77.1 -> 90 -> 90.1), and a sub-half-unit dip
+       used to round to an amount of 0 and BLANK a live number mid-glide. */
+    const steps = [{ at: 600, d: 15 }, { at: 1100, d: 0.4 }, { at: 1500, d: 12 }];
+    let next = 0;
+    const tick = () => {
+      const el = performance.now() - t0;
+      if (next < steps.length && el >= steps[next].at) { pin = Math.max(floor0, pin - steps[next].d); next++; }
+      const s2 = window._gameState.current;
+      if (s2 && s2.rpg) s2.rpg.mana = pin;
+      const b = window.__btResourceBars;
+      if (b && b.mp > 0.01) seen.push({ t: Math.round(el), x: b.mpSpentX, amt: b.mpSpent, a: b.mpSpentA, barA: b.mp, mana: Math.round((s2.rpg.mana || 0) * 10) / 10, pin: Math.round(pin * 10) / 10 });
+      if (el < 2400) requestAnimationFrame(tick); else res(seen);
+    };
+    requestAnimationFrame(tick);
+  }));
+  const backwards = burst.filter((f, i) => i > 0 && f.x != null && burst[i - 1].x != null && f.x < burst[i - 1].x - 0.01);
+  const blanked = burst.filter((f) => f.barA > 0.01 && (f.x == null || !f.amt));
+  console.log(`    burst samples: ${burst.length}, amt ${burst.length ? burst[0].amt + ' -> ' + burst[burst.length - 1].amt : 'n/a'}, x ${burst.length ? burst[0].x + ' -> ' + burst[burst.length - 1].x : 'n/a'}`);
+  rec.ok('the pool actually had mana to spend (fixture guard)',
+    burst.length > 0 && burst[0].pin > 5, { first: burst[0] });
+  rec.ok('a burst of spends keeps the number on screen throughout',
+    burst.length >= 12, { n: burst.length });
+  rec.ok('...and it NEVER snaps back to the origin (the reported "still pop up")',
+    burst.length >= 12 && backwards.length === 0,
+    { jumps: backwards.slice(0, 3) });
+  rec.ok('...still covering ground across the whole burst',
+    burst.length >= 12 && burst[burst.length - 1].x - burst[0].x > 12,
+    { first: burst[0], last: burst[burst.length - 1] });
+  rec.ok('...ACCUMULATING the amount rather than showing only the newest spend',
+    burst.length >= 12 && burst[burst.length - 1].amt > burst[0].amt + 20,
+    { first: burst[0] && burst[0].amt, last: burst[burst.length - 1] && burst[burst.length - 1].amt });
+  rec.ok('...and a fractional regen dip never BLANKS a live number',
+    blanked.length === 0, { blanked: blanked.slice(0, 3) });
+
   await P.ctx.close().catch(() => {});
 }

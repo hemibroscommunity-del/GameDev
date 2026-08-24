@@ -4636,6 +4636,32 @@ const RES_SPENT_GAP = 6;       /* clear of the white keyline before it starts */
 const RES_SPENT_TRAVEL = 26;   /* how far right of that it drifts */
 const RES_SPENT_GLIDE_MS = RES_HOLD_MS + RES_FADE_MS;
 
+/* v2.3.1899: how far along its travel the number is, 0..1.
+   Owner: "The spent energy numbers glide and fade correctly but not the mp
+   numbers.  It's still the quick still pop up."
+
+   Both bars run identical code, so the difference was never in the drawing —
+   it was in the DATA.  A trace of three real specials in town showed the MP
+   number snapping back to its origin on every further spend (t=739, t=1357):
+   in real play you cast repeatedly, so it restarts before it has travelled
+   far enough to look like motion.  Energy looked fine only because it was
+   being spent once.  The reason MP is the one that shows it is town regen —
+   the hub pays 10% of maxMana every ~670ms (v2.3.1414), so mana is topped up
+   and spendable again immediately, and casts land close together.
+
+   So the glide no longer restarts.  A spend that lands while the bar is
+   still on screen picks up from where the number currently IS and glides on
+   toward the far end; only a spend arriving after the bar has gone starts
+   over at the origin.  The travel is therefore monotonic — it can never jump
+   backwards — and every spend still produces visible movement, because there
+   is always ground left between here and the end. */
+function _resGlideProgress(gfx, now) {
+  if (!gfx._resGlideAt) return 0;
+  const base = gfx._resGlideBase || 0;
+  const t = Math.min(1, Math.max(0, (now - gfx._resGlideAt) / RES_SPENT_GLIDE_MS));
+  return base + (1 - base) * t;
+}
+
 /* One bar.  Returns its alpha, so the caller can decide about the plate. */
 function _drawResourceBar(gfx, kind, cur, max, y, now) {
   const m = Math.max(1, max || 1);
@@ -4643,9 +4669,22 @@ function _drawResourceBar(gfx, kind, cur, max, y, now) {
   /* Seed on the first frame so arriving at partial MP does not read as a
      spend and flash the bar for nothing — the same trap the HP ring hit at
      v2.3.1682. */
-  if (gfx._resLast == null) { gfx._resLast = v; gfx._resSpentAt = 0; gfx._resFrom = v; gfx._resSpentAmt = 0; }
+  if (gfx._resLast == null) {
+    gfx._resLast = v; gfx._resSpentAt = 0; gfx._resFrom = v;
+    gfx._resSpentAmt = 0; gfx._resSpentRaw = 0;
+    gfx._resGlideAt = 0; gfx._resGlideBase = 0;
+  }
   if (v < gfx._resLast - 0.01) {
+    /* Was the bar still on screen when this spend landed?  Read BEFORE
+       _resSpentAt is overwritten below — it is the whole test. */
+    const _prevSince = now - (gfx._resSpentAt || 0);
+    const _wasUp = !!gfx._resSpentAt && _prevSince <= RES_HOLD_MS + RES_FADE_MS;
     gfx._resFrom = gfx._resLast;         /* re-base the chunk on every spend */
+    /* The FADE still re-arms on every spend — that is the owner's original
+       rule ("disappear after 2 seconds if no further mp is used").  Only the
+       GLIDE is now continuous across the burst. */
+    gfx._resGlideBase = _wasUp ? _resGlideProgress(gfx, now) : 0;
+    gfx._resGlideAt = now;
     gfx._resSpentAt = now;
     /* v2.3.1897: LATCHED here, not recomputed per frame.  Mana and stamina
        regenerate server-side, so a regen tick arrives as a rise and lands in
@@ -4654,7 +4693,16 @@ function _drawResourceBar(gfx, kind, cur, max, y, now) {
        most of the time.  The chunk can afford that (it is gone in 420ms); a
        number the player is still reading cannot.  A further spend re-latches,
        matching the chunk, which also shows only the newest spend. */
-    gfx._resSpentAmt = Math.max(0, Math.round(gfx._resLast - v));
+    /* v2.3.1899: ACCUMULATE the raw drop and round only for display, instead
+       of overwriting with a freshly-rounded single step.  Overwriting had a
+       second failure the owner's report did not even mention but the trace
+       caught at t=1460: mana arrives fractional (77 -> 77.1 -> 90 -> 90.1
+       under town regen), so a sub-half-unit dip is a "spend" by the 0.01 test
+       and Math.round()s to 0 — which BLANKED a live number mid-glide while
+       its bar stayed up.  Accumulated, that same dip adds 0.4 to a running
+       total instead of erasing it, and a burst reads as the total spent. */
+    gfx._resSpentRaw = (_wasUp ? (gfx._resSpentRaw || 0) : 0) + (gfx._resLast - v);
+    gfx._resSpentAmt = Math.max(0, Math.round(gfx._resSpentRaw));
   } else if (v > gfx._resLast + 0.01) {
     gfx._resFrom = v;                    /* refill: no chunk, and no reveal */
   }
@@ -4685,7 +4733,7 @@ function _drawResourceBar(gfx, kind, cur, max, y, now) {
   }
   const slide = since / RES_SLIDE_MS;
   gfx._resSlideT = slide;
-  gfx._resSpentT = since / RES_SPENT_GLIDE_MS;   /* v2.3.1898 */
+  gfx._resSpentT = _resGlideProgress(gfx, now);   /* v2.3.1899 */
   gfx._resGhostX = null; gfx._resGhostW = 0;
   if (slide < 1) {
     const fromW = RES_BAR_W * (Math.min(m, gfx._resFrom) / m);
@@ -9373,7 +9421,9 @@ export class EntityRenderer {
         _g.clear(); _g.alpha = 0;
         _g._resLast = null; _g._resSpentAt = 0; _g._resFrom = 0;
         _g._resGhostX = null; _g._resGhostW = 0;
-        _g._resSpentAmt = 0; _g._resSlideT = 1; _g._resSpentT = 1;
+        _g._resSpentAmt = 0; _g._resSpentRaw = 0;
+        _g._resSlideT = 1; _g._resSpentT = 1;
+        _g._resGlideAt = 0; _g._resGlideBase = 0;
       }
       if (d._resMpLabel) d._resMpLabel.visible = false;
       if (d._resEnLabel) d._resEnLabel.visible = false;
