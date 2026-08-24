@@ -88,20 +88,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
      The data checks above prove the server is right and the legacy map is
      zeroed; they do NOT prove the screen the owner was looking at reads the
      right one. Open it and read the rendered numbers. */
-  await P.page.evaluate(() => {
-    /* The MenuBar's stat-screen toggle is the crossed-swords glyph
-       (MenuBar.jsx: { e: '\u2694\uFE0F', fn: tog(showStatScreen, ...) }).
-       Click the INNERMOST element carrying it, or the click lands on a
-       wrapper that has no handler and the panel never opens. */
-    const all = Array.from(document.querySelectorAll('*'));
-    const hits = all.filter((el) => {
-      const t = (el.textContent || '').trim();
-      return t.includes('\u2694') && !Array.from(el.children).some(
-        (c) => (c.textContent || '').includes('\u2694'));
-    });
-    const hit = hits[hits.length - 1];
-    if (hit) { hit.click(); (hit.parentElement || hit).click(); }
-  });
+  /* window._uiPanels is the app's own panel registry (BroTown.jsx) — drive it
+     rather than hunting for an emoji, which found the wrong node and made the
+     info-panel assertions read the STAT screen's text instead. */
+  await P.page.evaluate(() => window._uiPanels.stats(true));
   await P.page.waitForTimeout(900);
   const rows = await P.page.evaluate(() => {
     const card = document.querySelector('.bt-inspect-card');
@@ -131,25 +121,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
      A healthy session must NOT show the warning — a row that is always
      present is a row nobody reads, and this panel belongs to the owner
      rather than to a developer console. */
-  await P.page.evaluate(() => {
-    const all = Array.from(document.querySelectorAll('*'));
-    const hits = all.filter((el) => {
-      const t = (el.textContent || '').trim();
-      return t.includes('\u2139') && !Array.from(el.children).some(
-        (c) => (c.textContent || '').includes('\u2139'));
-    });
-    const hit = hits[hits.length - 1];
-    if (hit) { hit.click(); (hit.parentElement || hit).click(); }
-  });
+  await P.page.evaluate(() => { window._uiPanels.stats(false); window._uiPanels.info(true); });
   await P.page.waitForTimeout(700);
   const diag = await P.page.evaluate(() => {
-    const t = document.body.innerText || '';
+    /* Scope to the info panel, so this cannot pass or fail on some other
+       panel's text — the bug this very assertion had a moment ago. */
+    const host = Array.from(document.querySelectorAll('div')).filter((el) =>
+      /online/.test(el.textContent || '') && /build /.test(el.textContent || ''));
+    const t = (host.length ? host[host.length - 1] : document.body).innerText || '';
     const m = t.match(/link (ok|off) · rules (ok|off) · skills (ok|off)/);
-    return { warned: /Combat numbers may read low/.test(t), triple: m ? m[0] : null };
+    const b = t.match(/build \S+ \([^)]*\)/);
+    return { warned: /Combat numbers may read low/.test(t), triple: m ? m[0] : null, build: b ? b[0] : null };
   });
   console.log('    info panel: ' + JSON.stringify(diag));
   rec.ok('a healthy session shows NO combat-diagnostic warning',
     diag.warned === false && diag.triple === null, diag);
+  /* v2.3.1903: the build id is ALWAYS there — a "still broken" report is not
+     actionable without knowing which bundle produced it. */
+  rec.ok('...but the build id is always shown',
+    !!diag.build && /^build \S+ \(\S+\)$/.test(diag.build), diag.build);
 
   await P.ctx.close().catch(() => {});
 }

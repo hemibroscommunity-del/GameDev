@@ -1,4 +1,5 @@
 import React from 'react';
+import { BUILD_INFO } from '../BuildBadge.jsx'; /* v2.3.1903 */
 import { BT_AUDIO } from '@/data/index.js';
 import { verifyBro, hasWallet, broVerifySupported, onBroState, getBroState, BRO_PENDING, BRO_OK } from '@/networking/broWallet.js';
 
@@ -134,7 +135,19 @@ export function InfoPanel(props) {
       }, "link " + (_conn ? 'ok' : 'off')
         + " · rules " + (_cap ? 'ok' : 'off')
         + " · skills " + (_blob ? 'ok' : 'off')));
-  })(), /*#__PURE__*/React.createElement("button", {
+  })(),
+  /* v2.3.1903: the BUILD, always shown.  A report of "still says 0" cannot be
+     acted on without knowing which bundle produced it — twice now a fix has
+     been evaluated with no way to tell whether it was even loaded, and iPhone
+     Safari caches a preview bundle happily.  The version already exists on the
+     loading screen (index.html) where it flashes past; here it holds still.
+     Muted and one line, so it costs the panel almost nothing. */
+  /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10, color: '#6E685E', marginTop: -2, marginBottom: 8,
+      fontVariantNumeric: 'tabular-nums',
+    }
+  }, "build " + BUILD_INFO.version + " (" + BUILD_INFO.sha + ")"), /*#__PURE__*/React.createElement("button", {
     onClick: function onClick() {
       BT_AUDIO.muted = !BT_AUDIO.muted;
       setPlayerCount(function (c) {
