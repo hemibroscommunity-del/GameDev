@@ -233,11 +233,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...still covering ground across the whole burst',
     burst.length >= 12 && burst[burst.length - 1].x - burst[0].x > 12,
     { first: burst[0], last: burst[burst.length - 1] });
-  rec.ok('...ACCUMULATING the amount rather than showing only the newest spend',
-    burst.length >= 12 && burst[burst.length - 1].amt > burst[0].amt + 20,
-    { first: burst[0] && burst[0].amt, last: burst[burst.length - 1] && burst[burst.length - 1].amt });
+  /* v2.3.1900, owner: "Successive expenditures of mp and energy are treated
+     cumulatively (numbers keep adding up the more you spend) I just want the
+     expended amount."  The fixture spends 20, then 15, then a 0.4 regen dip,
+     then 12 — so the distinct amounts the number shows must be exactly
+     [20, 15, 12]: each spend on its own, the dip changing nothing.  Asserting
+     the whole sequence rather than just the last value is what separates
+     "per-spend" from "accumulating" AND from "stuck on the first". */
+  const amts = burst.map((f) => f.amt).filter((a, i, arr) => i === 0 || a !== arr[i - 1]);
+  rec.ok('...showing THIS spend, not a running total',
+    JSON.stringify(amts) === JSON.stringify([20, 15, 12]), { amts });
   rec.ok('...and a fractional regen dip never BLANKS a live number',
     blanked.length === 0, { blanked: blanked.slice(0, 3) });
+  /* The dip is the reason the amount is not overwritten blindly: it rounds to
+     0.  Prove the fixture actually delivered one, or the guard above is
+     testing nothing. */
+  rec.ok('...(the fixture really did deliver a sub-unit dip)',
+    burst.some((f, i) => i > 0 && f.mana < burst[i - 1].mana - 0.01 && f.mana > burst[i - 1].mana - 1),
+    { manas: burst.map((f) => f.mana).slice(0, 24) });
 
   await P.ctx.close().catch(() => {});
 }

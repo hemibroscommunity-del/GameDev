@@ -4671,7 +4671,7 @@ function _drawResourceBar(gfx, kind, cur, max, y, now) {
      v2.3.1682. */
   if (gfx._resLast == null) {
     gfx._resLast = v; gfx._resSpentAt = 0; gfx._resFrom = v;
-    gfx._resSpentAmt = 0; gfx._resSpentRaw = 0;
+    gfx._resSpentAmt = 0;
     gfx._resGlideAt = 0; gfx._resGlideBase = 0;
   }
   if (v < gfx._resLast - 0.01) {
@@ -4693,16 +4693,24 @@ function _drawResourceBar(gfx, kind, cur, max, y, now) {
        most of the time.  The chunk can afford that (it is gone in 420ms); a
        number the player is still reading cannot.  A further spend re-latches,
        matching the chunk, which also shows only the newest spend. */
-    /* v2.3.1899: ACCUMULATE the raw drop and round only for display, instead
-       of overwriting with a freshly-rounded single step.  Overwriting had a
-       second failure the owner's report did not even mention but the trace
-       caught at t=1460: mana arrives fractional (77 -> 77.1 -> 90 -> 90.1
-       under town regen), so a sub-half-unit dip is a "spend" by the 0.01 test
-       and Math.round()s to 0 — which BLANKED a live number mid-glide while
-       its bar stayed up.  Accumulated, that same dip adds 0.4 to a running
-       total instead of erasing it, and a burst reads as the total spent. */
-    gfx._resSpentRaw = (_wasUp ? (gfx._resSpentRaw || 0) : 0) + (gfx._resLast - v);
-    gfx._resSpentAmt = Math.max(0, Math.round(gfx._resSpentRaw));
+    /* v2.3.1900 (owner: "Successive expenditures of mp and energy are treated
+       cumulatively (numbers keep adding up the more you spend) I just want
+       the expended amount"): the number is THIS spend, not a running total.
+       v2.3.1899 accumulated, which was the wrong answer to a real problem —
+       so keep the guard and drop the total.
+
+       The real problem: mana arrives fractional under town regen (77 -> 77.1
+       -> 90 -> 90.1), so a sub-half-unit dip counts as a spend by the 0.01
+       test above and Math.round()s to ZERO.  Overwriting blindly with that
+       BLANKED a live number mid-glide while its bar stayed up (caught at
+       t=1460 in the three-cast trace).  So a drop that does not round to at
+       least 1 leaves the displayed amount alone: real costs are whole
+       numbers, and anything under a unit is regen jitter, not an expenditure
+       worth announcing.  It still re-arms the bar, which is the pre-existing
+       behaviour of the 0.01 test and not this change's business. */
+    const _rounded = Math.round(gfx._resLast - v);
+    if (_rounded >= 1) gfx._resSpentAmt = _rounded;
+    else if (!_wasUp) gfx._resSpentAmt = 0;
   } else if (v > gfx._resLast + 0.01) {
     gfx._resFrom = v;                    /* refill: no chunk, and no reveal */
   }
@@ -9421,7 +9429,7 @@ export class EntityRenderer {
         _g.clear(); _g.alpha = 0;
         _g._resLast = null; _g._resSpentAt = 0; _g._resFrom = 0;
         _g._resGhostX = null; _g._resGhostW = 0;
-        _g._resSpentAmt = 0; _g._resSpentRaw = 0;
+        _g._resSpentAmt = 0;
         _g._resSlideT = 1; _g._resSpentT = 1;
         _g._resGlideAt = 0; _g._resGlideBase = 0;
       }
