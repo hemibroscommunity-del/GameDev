@@ -83,9 +83,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
      wire would read two settled frames and call a working slide broken (the
      same mistake that misread the screenshots of this feature first time). */
   await P.page.waitForTimeout(2500);
-  const slide = await P.page.evaluate(() => new Promise((res) => {
+  const sampled = await P.page.evaluate(() => new Promise((res) => {
     const S = window._gameState.current;
     const seen = [];
+    const num = [];
     /* PIN the spent value for the sample window.  Mana is server-authoritative:
        a bare local subtraction is overwritten by the next player_state delta,
        mana pops back up, and the chunk correctly collapses — which is the
@@ -99,11 +100,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (s2 && s2.rpg) s2.rpg.mana = target;
       const b = window.__btResourceBars;
       if (b && b.mpGhostX != null) seen.push({ t: Math.round(performance.now() - t0), x: +b.mpGhostX.toFixed(2), w: +b.mpGhostW.toFixed(2) });
+      /* v2.3.1897: the "-N" rides the same sample window as the chunk — one
+         evaluation, so the two readings describe the same frames and cannot
+         be blamed on each other's timing. */
+      if (b && b.mpSpentX != null) num.push({ t: Math.round(performance.now() - t0), x: b.mpSpentX, txt: b.mpSpentText, amt: b.mpSpent, right: b.barRight });
       if (performance.now() - t0 < 500) requestAnimationFrame(tick);
-      else res(seen);
+      else res({ seen, num });
     };
     requestAnimationFrame(tick);
   }));
+  const slide = sampled.seen;
+  const num = sampled.num;
   console.log(`    slide samples: ${slide.length}, x ${slide.length ? slide[0].x + ' -> ' + slide[slide.length - 1].x : 'n/a'}`);
   rec.ok('the spent chunk is drawn at all', slide.length >= 3, { n: slide.length });
   rec.ok('...and it SLIDES RIGHT (x strictly increases)',
@@ -112,6 +119,27 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...keeping its width — it is the amount spent, not a shrinking wipe',
     slide.length >= 3 && Math.abs(slide[slide.length - 1].w - slide[0].w) < 0.5,
     { first: slide[0], last: slide[slide.length - 1] });
+
+  /* ── 7. THE SPENT NUMBER (v2.3.1897) ──
+     Owner: "I want the resource number spent to glide to the right of the
+     resource bar (as a negative number)".  Three separate claims, so three
+     separate assertions: it is a NEGATIVE number, it is RIGHT OF the bar, and
+     it GLIDES.  Asserting only that a text node exists would pass on a "-0"
+     parked on top of the bar. */
+  console.log(`    spent-number samples: ${num.length}, ${num.length ? num[0].txt + ' x ' + num[0].x + ' -> ' + num[num.length - 1].x + ' (bar right edge ' + num[0].right + ')' : 'n/a'}`);
+  rec.ok('the spent NUMBER is drawn', num.length >= 3, { n: num.length });
+  rec.ok('...reading as a negative number of the amount spent',
+    num.length >= 3 && /^-\d+$/.test(num[0].txt) && num[0].txt === '-40',
+    { txt: num.length ? num[0].txt : null, amt: num.length ? num[0].amt : null });
+  rec.ok('...positioned to the RIGHT of the bar, clear of its border',
+    num.length >= 3 && num.every((s2) => s2.x > s2.right),
+    { first: num[0], right: num[0] && num[0].right });
+  rec.ok('...and it GLIDES right (x strictly increases, then settles)',
+    num.length >= 3 && num[num.length - 1].x > num[0].x + 2,
+    { first: num[0], last: num[num.length - 1] });
+  rec.ok('...never drifting so far it leaves the character behind',
+    num.length >= 3 && num[num.length - 1].x < num[0].right + 40,
+    { last: num[num.length - 1], right: num[0] && num[0].right });
 
   await P.ctx.close().catch(() => {});
 }

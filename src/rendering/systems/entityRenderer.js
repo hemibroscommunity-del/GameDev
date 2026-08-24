@@ -4613,6 +4613,18 @@ const RES_TRACK = 0x000000;
 const RES_BORDER_COL = 0xFFFFFF;
 const RES_FILL = { mana: 0x5B99DE, stamina: 0xD8A85F };
 const RES_GHOST = { mana: 0x9CC8F2, stamina: 0xF0D9A6 };
+const RES_GHOST_HEX = { mana: '#9CC8F2', stamina: '#F0D9A6' };
+/* v2.3.1897: the spent amount, as a number, gliding off the bar's right end
+   (owner: "I want the resource number spent to glide to the right of the
+   resource bar (as a negative number)").  The ghost chunk stays — it is the
+   MASS that leaves — and this is the same gesture continued past the bar's
+   edge with a figure on it, so you can read HOW MUCH left rather than
+   estimate it from a sliver.  It rides out over RES_SLIDE_MS and then HOLDS
+   at rest, fading with the bar rather than on its own timer: a number that
+   vanished at 420ms would be gone before you looked at it, and the bar is
+   still up for another 1.6s with nothing to explain the gap it just grew. */
+const RES_SPENT_GAP = 6;       /* clear of the white keyline before it starts */
+const RES_SPENT_TRAVEL = 13;   /* how far right of that it glides */
 
 /* One bar.  Returns its alpha, so the caller can decide about the plate. */
 function _drawResourceBar(gfx, kind, cur, max, y, now) {
@@ -4621,10 +4633,18 @@ function _drawResourceBar(gfx, kind, cur, max, y, now) {
   /* Seed on the first frame so arriving at partial MP does not read as a
      spend and flash the bar for nothing — the same trap the HP ring hit at
      v2.3.1682. */
-  if (gfx._resLast == null) { gfx._resLast = v; gfx._resSpentAt = 0; gfx._resFrom = v; }
+  if (gfx._resLast == null) { gfx._resLast = v; gfx._resSpentAt = 0; gfx._resFrom = v; gfx._resSpentAmt = 0; }
   if (v < gfx._resLast - 0.01) {
     gfx._resFrom = gfx._resLast;         /* re-base the chunk on every spend */
     gfx._resSpentAt = now;
+    /* v2.3.1897: LATCHED here, not recomputed per frame.  Mana and stamina
+       regenerate server-side, so a regen tick arrives as a rise and lands in
+       the refill branch below — recomputed each frame, the "-N" would blink
+       out the first time the server topped you up, which inside a 2s hold is
+       most of the time.  The chunk can afford that (it is gone in 420ms); a
+       number the player is still reading cannot.  A further spend re-latches,
+       matching the chunk, which also shows only the newest spend. */
+    gfx._resSpentAmt = Math.max(0, Math.round(gfx._resLast - v));
   } else if (v > gfx._resLast + 0.01) {
     gfx._resFrom = v;                    /* refill: no chunk, and no reveal */
   }
@@ -4654,6 +4674,7 @@ function _drawResourceBar(gfx, kind, cur, max, y, now) {
     gfx.roundRect(x0, y, fillW, RES_BAR_H, RES_BAR_H / 2).fill({ color: RES_FILL[kind] });
   }
   const slide = since / RES_SLIDE_MS;
+  gfx._resSlideT = slide;
   gfx._resGhostX = null; gfx._resGhostW = 0;
   if (slide < 1) {
     const fromW = RES_BAR_W * (Math.min(m, gfx._resFrom) / m);
@@ -4685,6 +4706,31 @@ function _drawResourceLabel(label, cur, max, y, alpha) {
   const txt = Math.ceil(cur) + ' / ' + Math.ceil(max);
   if (label.text !== txt) label.text = txt;
   label.x = 0;
+  label.y = y + RES_BAR_H / 2;
+  label.alpha = alpha;
+  label.visible = true;
+}
+
+/* v2.3.1897: the "-N" that glides off the bar's right end.  Left-anchored at
+   the keyline and travelling outward, so it reads as the amount LEAVING the
+   bar rather than a second gauge parked beside it.  It carries a black stroke
+   because unlike the on-bar readout it sits over open terrain, not over the
+   bar's own black track — white-on-sand is the one place this text has no
+   ground of its own. */
+function _drawResourceSpent(label, gfx, kind, y, alpha) {
+  if (!label) return;
+  const amt = gfx && gfx._resSpentAmt;
+  /* No chunk (a refill, or the seed frame) means nothing to announce.  Gated
+     on the bar's own alpha too, so the number cannot outlive the bar — the
+     class of bug the stale probes in this file keep producing. */
+  if (alpha <= 0.01 || !amt) { label.visible = false; return; }
+  const txt = '-' + amt;
+  if (label.text !== txt) label.text = txt;
+  if (label.style.fill !== RES_GHOST_HEX[kind]) label.style.fill = RES_GHOST_HEX[kind];
+  /* Eased so it decelerates into its resting spot instead of stopping dead. */
+  const t = Math.min(1, Math.max(0, gfx._resSlideT == null ? 1 : gfx._resSlideT));
+  const ease = 1 - (1 - t) * (1 - t);
+  label.x = RES_BAR_W / 2 + RES_BORDER + RES_SPENT_GAP + RES_SPENT_TRAVEL * ease;
   label.y = y + RES_BAR_H / 2;
   label.alpha = alpha;
   label.visible = true;
@@ -9277,6 +9323,24 @@ export class EntityRenderer {
       };
       d._resMpLabel = mk();
       d._resEnLabel = mk();
+      /* v2.3.1897: the gliding "-N" pair.  Made in the SAME lazy block as the
+         on-bar readouts rather than a second `if (!d._resMpSpent)` gate — two
+         gates for four nodes go out of step the first time someone reorders
+         them.  Bigger and stroked because these leave the bar and fly over
+         open terrain; the on-bar pair always has the black track behind it. */
+      const mkSpent = () => {
+        const t = new Text({ text: '', resolution: 2, style: {
+          fontFamily: 'Source Sans 3, sans-serif', fontSize: 12, fontWeight: '800',
+          fill: '#FFFFFF', align: 'left', letterSpacing: 0.2,
+          stroke: { color: '#000000', width: 3, join: 'round' },
+        } });
+        t.anchor.set(0, 0.5);
+        t.visible = false;
+        d.addChild(t);
+        return t;
+      };
+      d._resMpSpent = mkSpent();
+      d._resEnSpent = mkSpent();
     }
     /* v2.3.1896d: a corpse wears no spend bars.  _updatePlayerHud runs AFTER
        _updatePlayer in the same frame, and _hudMpEmpty/_hudStamEmpty are BOTH
@@ -9294,9 +9358,12 @@ export class EntityRenderer {
         _g.clear(); _g.alpha = 0;
         _g._resLast = null; _g._resSpentAt = 0; _g._resFrom = 0;
         _g._resGhostX = null; _g._resGhostW = 0;
+        _g._resSpentAmt = 0; _g._resSlideT = 1;
       }
       if (d._resMpLabel) d._resMpLabel.visible = false;
       if (d._resEnLabel) d._resEnLabel.visible = false;
+      if (d._resMpSpent) d._resMpSpent.visible = false;
+      if (d._resEnSpent) d._resEnSpent.visible = false;
       this._resourceBarsUp = false;
       if (typeof window !== 'undefined') {
         window.__btResourceBars = {
@@ -9308,6 +9375,7 @@ export class EntityRenderer {
       const _resAlphaMp = _drawResourceBar(d._hudMpEmpty, 'mana',
         R.mana, R.maxMana, RES_MP_Y, now);
       _drawResourceLabel(d._resMpLabel, R.mana, R.maxMana, RES_MP_Y, _resAlphaMp);
+      _drawResourceSpent(d._resMpSpent, d._hudMpEmpty, 'mana', RES_MP_Y, _resAlphaMp);
       if (d._hudMpSprite && d._hudMpSprite.visible) d._hudMpSprite.visible = false;
       if (d._hudMpTextFull && d._hudMpTextFull.visible) d._hudMpTextFull.visible = false;
       if (d._hudMpTextEmpty && d._hudMpTextEmpty.visible) d._hudMpTextEmpty.visible = false;
@@ -9325,6 +9393,7 @@ export class EntityRenderer {
       const _resAlphaEn = _drawResourceBar(d._hudStamEmpty, 'stamina',
         R.stamina, R.maxStamina, RES_EN_Y, now);
       _drawResourceLabel(d._resEnLabel, R.stamina, R.maxStamina, RES_EN_Y, _resAlphaEn);
+      _drawResourceSpent(d._resEnSpent, d._hudStamEmpty, 'stamina', RES_EN_Y, _resAlphaEn);
       if (d._hudStamSprite && d._hudStamSprite.visible) d._hudStamSprite.visible = false;
       if (d._hudStamTextFull && d._hudStamTextFull.visible) d._hudStamTextFull.visible = false;
       if (d._hudStamTextEmpty && d._hudStamTextEmpty.visible) d._hudStamTextEmpty.visible = false;
@@ -9337,6 +9406,14 @@ export class EntityRenderer {
           mpY: RES_MP_Y, enY: RES_EN_Y, plateHidden: this._resourceBarsUp,
           mpGhostX: d._hudMpEmpty._resGhostX, mpGhostW: d._hudMpEmpty._resGhostW,
           enGhostX: d._hudStamEmpty._resGhostX, enGhostW: d._hudStamEmpty._resGhostW,
+          /* v2.3.1897: the gliding "-N" — text, x, and the bar edge it starts
+             from, so the suite can prove it is RIGHT OF the bar and moving. */
+          mpSpent: d._hudMpEmpty._resSpentAmt, enSpent: d._hudStamEmpty._resSpentAmt,
+          mpSpentText: d._resMpSpent && d._resMpSpent.visible ? d._resMpSpent.text : null,
+          enSpentText: d._resEnSpent && d._resEnSpent.visible ? d._resEnSpent.text : null,
+          mpSpentX: d._resMpSpent && d._resMpSpent.visible ? +d._resMpSpent.x.toFixed(2) : null,
+          enSpentX: d._resEnSpent && d._resEnSpent.visible ? +d._resEnSpent.x.toFixed(2) : null,
+          barRight: RES_BAR_W / 2 + RES_BORDER,
         };
       }
     }
