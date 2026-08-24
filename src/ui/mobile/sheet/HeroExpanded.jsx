@@ -205,7 +205,15 @@ export const HeroExpanded = () => {
   const compactVital = (kind, cur, max) => (
     <div key={kind} title={VITAL_LABEL[kind]} style={{
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      gap: 5, lineHeight: 1.12,
+      /* v2.3.1893: 1.12 -> 1.30 (owner: "increase the vertical padding just a
+         bit, looks like there's a little room above the divider").  There is,
+         and it is the ONLY room: measured, the column is 146px with 146px of
+         content in it and no slack below the stats — the single piece of air
+         is a 12px gap between the last resource row and the rule.  This
+         spends about eight of those twelve across the three rows and leaves
+         the rest, because a rule sitting flush against the text above it
+         reads as a mistake rather than as a divider. */
+      gap: 5, lineHeight: 1.30,
     }}>
       <span style={{
         fontSize: 11.5, fontWeight: 800, color: VITAL_TINT[kind],
@@ -634,7 +642,15 @@ export const HeroExpanded = () => {
             <div style={{
               flex: 1, minWidth: 0, height: 3 * EQ_W + 2 * DASH_GAP,
               display: 'flex', flexDirection: 'column',
-              justifyContent: 'center', gap: selSlot ? 0 : 10,
+              /* v2.3.1893: 10 -> 6 on the stats branch.  That flex gap is
+                 where the "room above the divider" actually lives — it sits
+                 between EVERY child, so 10px above the rule and 10px below it
+                 again, while the three resource rows were squeezed to 1.12
+                 leading.  Moving four of those ten into the rows' line-height
+                 spends the same pixels on the thing being read instead of on
+                 the space around a 1px line.  Column height is unchanged; the
+                 item-card branch still gets 0. */
+              justifyContent: 'center', gap: selSlot ? 0 : 6,
             }}>
               {selSlot ? (
                 /* ═══ v2.3.1844: THE ITEM CARD IS A CARD ═══
