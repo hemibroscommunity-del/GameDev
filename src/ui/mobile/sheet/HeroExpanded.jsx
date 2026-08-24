@@ -170,20 +170,68 @@ export const HeroExpanded = () => {
   /* v2.3.1697: `span` lets one cell take two of the grid's columns —
      see the aggregate grid below, where DAMAGE keeps its old width while
      the rest halve to make room for the armour readout. */
-  const cell = (label, value, span) => (
-    <div key={label} style={{
+  /* v2.3.1878: the tile carries an ICON now, per the owner's reference
+     shot, and the label moved beside it.  The icons are the ones heroModel
+     and VitalBar already ship (/icons/ui/hero/*) rather than new art, so a
+     stat reads the same here as it does anywhere else in the sheet.
+     `title` is the untruncated label — these tiles are ~46px wide in the
+     column they moved into, so CRIT DMG is exactly at the edge of fitting
+     and a long-press deserves to answer what it says. */
+  const cell = (label, value, span, icon) => (
+    <div key={label} title={label} style={{
       background: COL.wellSoft,
       border: `1px solid ${COL.tileBor}`,
       borderRadius: 8,
-      padding: '4px 2px 5px',
+      padding: '3px 2px 4px',
       minWidth: 0,
       textAlign: 'center',
       gridColumn: span ? `span ${span}` : undefined,
     }}>
+      {/* The icon sits with the VALUE, not with the label, and that is a fit
+          decision rather than a taste one.  These cells are ~46px wide in the
+          column they moved into; an icon on the label row leaves 26px of text,
+          and measured in the browser DEFENSE wants 46, ARMOUR 44, DODGE 36 and
+          CRIT DMG 50 — four of the seven ellipsised.  Beside the short numeric
+          value the same icon costs nothing, and the label gets the full cell.
+          The labels are abbreviated to the owner's reference shot for the same
+          reason (DEF, DODGE, ARMOR, C.DMG); DAMAGE keeps its word because it
+          spans two columns for its range values and has the room. */}
       <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
-      <div style={{ fontSize: 13, fontWeight: 800, color: COL.text, fontVariantNumeric: 'tabular-nums', marginTop: 1, whiteSpace: 'nowrap' }}>{value}</div>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        gap: 3, minWidth: 0, marginTop: 1,
+      }}>
+        {icon && (
+          <img src={`/icons/ui/hero/${icon}.webp?v=2.3.1878`} alt="" draggable={false}
+            style={{ width: 11, height: 11, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
+        )}
+        <span style={{ fontSize: 13, fontWeight: 800, color: COL.text, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{value}</span>
+      </div>
     </div>
   );
+
+  /* v2.3.1878: the seven aggregate stats, as one list, because they are now
+     rendered in the column beside the gear (see the note there) and a second
+     hand-kept copy of this list is exactly how a stat ends up on one screen
+     and not the other.
+
+     The set and the wording are unchanged from the block this replaced:
+     v2.3.1668 removed Block and Speed (a `return 0` stub and a constant) and
+     put Defense and Crit Dmg in their places; v2.3.1697 added Armour, which
+     had cut real damage since v2.3.1679 while no screen in the game said so.
+     One decimal below 10% so a single point does not render as "0%", which
+     reads as "that did nothing".  Armour is never '—' and is not prog3-gated:
+     mitigation applies to every player the server damages, and 0% is the
+     honest reading when nothing is worn. */
+  const statCells = () => [
+    cell('Damage', d.dmgText, 2, 'damage'),
+    cell('DPS', d.dps.toFixed(1), 0, 'dps'),
+    cell('Crit', `${pct1(d.crit)}%`, 0, 'crit'),
+    cell('C.Dmg', p3 ? `+${Math.round(d.critDmg)}` : '—', 0, 'crit'),
+    cell('Def', p3 ? `${pct1(d.defPct)}%` : '—', 0, 'defense'),
+    cell('Dodge', `${pct1(d.dodge)}%`, 0, 'dodge'),
+    cell('Armor', `${pct1(d.armorDr)}%`, 0, 'damage-reduction'),
+  ];
 
   /* v2.3.1660: one definition (heroModel) — under prog3 this is THE
      pool, so the tab badge and the points chip both show it. */
@@ -648,83 +696,77 @@ export const HeroExpanded = () => {
                   )}
                 </div>
               ) : (
+                /* ═══ v2.3.1878: THE STATS MOVED UP HERE ═══
+                    Owner: "Do a layout design change to make room for the
+                    stats you have to scroll to see on the char menu",
+                    with a reference shot showing them beside the gear.
+
+                    They were in a block BELOW this row, and measured on a
+                    390x844 iPhone that block was entirely past the fold: the
+                    sheet body is 191px tall, the Equipment tab wanted 299,
+                    and all seven stats sat in the 108px that did not fit.
+                    Nothing cued that they were there — this panel's
+                    scroll-edge fade is deliberately off (see the v2.3.1697
+                    note on the grid) — so the tab read as though the game
+                    simply had no stat readout.
+
+                    The room was already in this column and being wasted.  It
+                    is 3*EQ_W + 2*DASH_GAP = 146px tall because it matches the
+                    gear grid beside it, and it was spending all of that on
+                    three ~14px bars centred in it: ~85px of empty column, in
+                    a tab that was 108px short.  So the bars go to the TOP and
+                    the stats take the space under them, which is very nearly
+                    the whole deficit and is why the tab now fits with no
+                    scroll at all rather than merely scrolling less.
+
+                    The item card still takes this whole column when a slot is
+                    selected (v2.3.1843, the owner's own suggestion) — that is
+                    the branch above, and it is unchanged.  Tapping a slot now
+                    covers the stats as well as the vitals, which is the same
+                    trade the owner already accepted for the vitals: both come
+                    straight back when the slot is tapped closed. */
                 <>
-                  {compactVital('hp', R.hp || 0, R.maxHp || 100)}
-                  {compactVital('stamina', R.stamina || 0, R.maxStamina || 100)}
-                  {compactVital('mana', R.mana || 0, R.maxMana || 100)}
+                  <div style={{ flex: 'none', display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    {compactVital('hp', R.hp || 0, R.maxHp || 100)}
+                    {compactVital('stamina', R.stamina || 0, R.maxStamina || 100)}
+                    {compactVital('mana', R.mana || 0, R.maxMana || 100)}
+                  </div>
+                  {/* Four columns and two rows, which is 8 cells for 7 stats
+                      with DAMAGE spanning two — the same arrangement and the
+                      same reasons as the block this replaces (a wide range
+                      like "120-160" keeps its width; nothing else is over
+                      five characters).  Kept at four rather than widened to
+                      three-and-a-bit, because the cells are ~46px here and
+                      three rows would not clear the vitals. */}
+                  <div style={{
+                    flex: 1, minHeight: 0, display: 'grid',
+                    gridTemplateColumns: 'repeat(4, 1fr)',
+                    gridAutoRows: 'min-content',
+                    alignContent: 'center',
+                    gap: 4, marginTop: 6,
+                  }}>
+                    {statCells()}
+                  </div>
                 </>
               )}
             </div>
           </div>
 
-          {/* v2.3.1843: the scrollIntoView v2.3.1842 added here is GONE.  It
-              worked — the card came into view — but the screenshot showed the
-              cost: the scroll pushed the row up behind the subtab bar and cut
-              off the character's head and the HP bar.  The card moved into the
-              row instead (over the vitals, the owner's suggestion), so there
-              is nothing left to scroll to. */}
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 6 }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              {/* The header names what the numbers below are ABOUT, which is
-                  the whole point of a contextual panel: without it, a card
-                  that changes when you tap a slot reads as the screen
-                  glitching rather than as an answer to the tap. */}
-              <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                gap: 6, marginBottom: 4, minHeight: 18,
-              }}>
-                <span style={{
-                  fontSize: 9.5, fontWeight: 800, letterSpacing: '.06em',
-                  textTransform: 'uppercase',
-                  color: COL.muted,
-                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                }}>Your stats</span>
-              </div>
+          {/* v2.3.1878: the "Your stats" block that stood here is GONE — the
+              seven cells moved into the vitals column above, where there was
+              already ~85px of unused height.  It is not merely relocated: the
+              block had a header, its own 6px top margin and a full-width
+              4-column grid, and all of it sat past the fold on a 390x844
+              phone.  Dropping the header with it is deliberate — the tiles
+              are self-labelling and the column they now live in is plainly
+              the character's, so a heading spends height to say what the
+              content already says.
 
-              {/* v2.3.1843: ALWAYS the whole character now.  The per-item card
-                  moved up into the row (over the vitals) so that tapping a slot
-                  shows it without scrolling — see the note there.  This block
-                  keeps the one job it is good at: the aggregate. */}
-              {(
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 5 }}>
-                  {/* v2.3.1668: every cell here now moves when you spend
-                      a point.  Block and Speed were removed — Speed was
-                      the constant 5.0 and Block read a fixed 25% from a
-                      `return 0` stub while describing a mechanic that is
-                      actually full invulnerability (see heroModel).
-                      Defense and Crit Dmg take their places: both are
-                      real allocated stats, and Defense had no readout
-                      anywhere in the game before this.
-                      One decimal on the percentages, because the caps are
-                      30-40% and whole numbers made a 1-point investment
-                      render as "0%" — which reads as "that did nothing".
-
-                      v2.3.1697: ARMOUR joins them — worn armour has cut
-                      incoming damage for real since v2.3.1679 and no
-                      screen in the game said so, which is the same
-                      invisible-stat problem Defense had.
-                      THREE columns became FOUR rather than three columns
-                      becoming three ROWS, deliberately: this panel's body
-                      is measured in single pixels (v2.3.1653 note above),
-                      its scroll-edge fade is off, and a third row would
-                      have pushed the last cells below a fold with no cue
-                      that they exist.  DAMAGE spans two columns so a
-                      wide range ("120–160") keeps the width it had; every
-                      other value is five characters or fewer. */}
-                  {cell('Damage', d.dmgText, 2)}
-                  {cell('DPS', d.dps.toFixed(1))}
-                  {cell('Crit', `${pct1(d.crit)}%`)}
-                  {cell('Crit Dmg', p3 ? `+${Math.round(d.critDmg)}` : '—')}
-                  {cell('Defense', p3 ? `${pct1(d.defPct)}%` : '—')}
-                  {cell('Dodge', `${pct1(d.dodge)}%`)}
-                  {/* Not prog3-gated and never '—': armour mitigation
-                      applies to every player the server damages, and 0%
-                      is the honest reading when nothing is worn. */}
-                  {cell('Armour', `${pct1(d.armorDr)}%`)}
-                </div>
-              )}
-            </div>
-          </div>
+              v2.3.1843's note, kept because the reasoning still binds: the
+              scrollIntoView v2.3.1842 added here was removed because the
+              scroll pushed this row up behind the subtab bar and cut off the
+              character's head and the HP bar.  The card moves into the row
+              instead.  Nothing in this tab scrolls now. */}
         </>
       )}
 

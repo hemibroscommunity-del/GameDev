@@ -57,6 +57,7 @@ const SCENARIOS = {
   keylogin: () => import('./mp-keylogin.mjs'), /* v2.3.1823: the login door joins you */
   ccload: () => import('./mp-ccload.mjs'), /* v2.3.1818: the creator opens with a character, and no keyboard */
   zonegate: () => import('./mp-zonegate.mjs'), /* v2.3.1817: a zone opens when a quest sends you there */
+  charfit: () => import('./mp-charfit.mjs'),   /* v2.3.1878: the character tab fits on a phone */
   heroview: () => import('./mp-heroview.mjs'), /* v2.3.1815: the equip screen's character view */
   charlock: () => import('./mp-charlock.mjs'), /* v2.3.1814: permanent name+look, and the login door in front of the creator */
   townmap: () => import('./mp-townmap.mjs'), /* v2.3.1777: the clifftop plateau + its edges */
