@@ -11,7 +11,8 @@
     "qa": "node tools/qa/run-all.mjs",
     "precheck": "node tools/dev/precheck.mjs",
     "session-brief": "node tools/dev/session-brief.mjs",
-    "qa:gear-sheet": "node tools/qa/qa-gear-sheet.mjs"
+    "qa:gear-sheet": "node tools/qa/qa-gear-sheet.mjs",
+    "qa:arrow-art": "node tools/qa/qa-arrow-art.mjs"
   },
   "dependencies": {
     "pixi.js": "^8.6.6",

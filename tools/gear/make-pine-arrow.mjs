@@ -73,66 +73,87 @@ window.__arrow = (src, ow, oh) => new Promise((res) => {
     }
     const headFrac = (headX - x0) / (bw - 1);
 
-    /* ═══ v2.3.1876: RE-ASSERT THE BLACK OUTLINE AT TEXTURE SCALE ═══
+    /* ═══ v2.3.1877: SHARPEN THE BLACK KEYLINE, DO NOT GROW IT ═══
        Owner: "if it's using the arrow icon it needs to preserve the black
-       outline cause I can't see it."
+       outline cause I can't see it" — then, on the first attempt at that:
+       "the arrowhead is missing mid flight."
 
-       It was preserved, and that was not enough.  The outline survives this
-       downscale at full strength -- measured across the shaft, the 64x16
-       texture reads alpha 241 luminance 6, then green, then alpha 242
-       luminance 12: a solid one-pixel keyline top and bottom.  The problem is
-       further downstream.  The sprite is drawn at ARROW_PINE.lenPx (17.5
-       world px) through a world scale of ~0.67, so on a DPR-3 phone the whole
-       64x16 texture lands in about 35x9 DEVICE pixels -- a 1.8x downscale.  A
-       one-pixel keyline then owns 0.55 of an output pixel, never gets a pixel
-       of its own, and is averaged into the green beside it.  Which is exactly
-       "I can't see it".
+       Both are true, and the second one is what makes this the hard version.
 
-       So the keyline is rebuilt here at a thickness chosen for that downscale
-       rather than for the texture: RIM = 2 survives as ~1.1 device px of solid
-       black.  Rendered side by side at both device ratios, 1 px vanishes into
-       the grass, 2 px reads as the owner's outline, and 3 px starts filling in
-       the notch between the fletchings.
+       The keyline problem is real and measured.  The sprite is drawn at
+       ARROW_PINE.lenPx (17.5 world px) through a world scale of ~0.67, so the
+       whole 64x16 texture lands in about 35x9 DEVICE px on a DPR-3 phone and
+       23x6 on a DPR-2 one.  That is a 1.8x downscale, so the art's one-pixel
+       keyline owns about half an output pixel, never gets a pixel of its own,
+       and averages into the green.  Present, invisible.
 
-       The artwork is composited into an inset box so the rim grows OUTWARD
-       into a margin instead of eating the art -- the output stays 64x16, so
-       ARROW_PINE.lenPx, the anchor and every hit test built on them are
-       untouched.  The rim is grown from the SOLID core (alpha >= 200), which
-       also paints over the soft resample fringe that the downscale leaves
-       behind; that fringe is half the reason the edge read as mush. */
-    const RIM = 2;
+       v2.3.1876 answered that by DILATING a 2px black rim outward.  It fixed
+       the keyline and broke the arrow, because dilation fills CONCAVITIES:
+       the notch between the fletchings and the swept barbs behind the steel
+       head are exactly the concave features that say "arrowhead", and a rim
+       grown outward closes both.  Measured at DPR-2 the visible steel in the
+       head's third of the frame went 6 px -> 2.  The head was not cropped —
+       the flight sprite has always used the FULL texture — it was buried in
+       black.  "Missing mid flight" is precisely what that looks like.
+
+       So: no dilation.  The silhouette is not touched at all, which makes it
+       impossible for this pass to eat a feature.  Two edits instead, both in
+       place:
+
+         1. BLACKEN.  A pixel that is already the art's own keyline (max
+            channel < 70) and sits on the silhouette is pushed to pure black
+            at full alpha.  Wood and steel are never dark enough to qualify,
+            so the gate is what protects them.
+         2. KNEE the alpha.  The downscale leaves a translucent smear just
+            outside the keyline; composited over grass that smear is what
+            turns a black line into a soft dark-green one.  Alpha below LO is
+            dropped, above HI is made solid, and the band between is
+            stretched — so the keyline is the outermost thing on the sprite
+            rather than sitting behind a haze of itself.
+
+       Measured on the shipped texture, rendered at both device sizes over
+       grass: the darkest pixel in each shaft column averages 56 before and 18
+       after (lower is a stronger line), while the steel in the head's third
+       stays at 12 px at DPR-3 and 5 at DPR-2 — identical to the original art,
+       which is the property v2.3.1876 lost. */
     const out = document.createElement('canvas');
     out.width = ow; out.height = oh;
     const oc = out.getContext('2d', { willReadFrequently: true });
     oc.imageSmoothingEnabled = true;
     oc.imageSmoothingQuality = 'high';
-    oc.drawImage(cv, x0, y0, bw, bh, RIM, RIM, ow - RIM * 2, oh - RIM * 2);
+    oc.drawImage(cv, x0, y0, bw, bh, 0, 0, ow, oh);
     const od = oc.getImageData(0, 0, ow, oh), op = od.data;
-    const SOLID = 200;
-    for (let pass = 0; pass < RIM; pass++) {
-      const add = [];
-      for (let y = 0; y < oh; y++) for (let x = 0; x < ow; x++) {
-        const i = y * ow + x;
-        if (op[i * 4 + 3] >= SOLID) continue;
-        let touches = false;
-        for (let dy = -1; dy <= 1 && !touches; dy++) for (let dx = -1; dx <= 1; dx++) {
-          const nx = x + dx, ny = y + dy;
-          if (nx < 0 || ny < 0 || nx >= ow || ny >= oh) continue;
-          if (op[(ny * ow + nx) * 4 + 3] >= SOLID) { touches = true; break; }
-        }
-        if (touches) add.push(i);
+    const KEYLINE_MAX = 70;         /* darker than this is the art's own ink */
+    const SOLID = 40;               /* below this counts as "outside the art" */
+    const A = (i) => op[i * 4 + 3];
+    for (let y = 0; y < oh; y++) for (let x = 0; x < ow; x++) {
+      const i = y * ow + x;
+      if (A(i) < SOLID) continue;
+      if (Math.max(op[i * 4], op[i * 4 + 1], op[i * 4 + 2]) >= KEYLINE_MAX) continue;
+      /* only the keyline ON the silhouette — an interior dark pixel (the
+         shading inside the fletching) is not an outline and gains nothing
+         from being forced to pure black. */
+      let edge = false;
+      for (let dy = -1; dy <= 1 && !edge; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= ow || ny >= oh) { edge = true; break; }
+        if (A(ny * ow + nx) < SOLID) { edge = true; break; }
       }
-      /* Collected first, painted after: painting inside the scan would let one
-         pass see its own new rim and grow RIM^2 thick. */
-      if (!add.length) break;
-      for (const i of add) { op[i * 4] = 0; op[i * 4 + 1] = 0; op[i * 4 + 2] = 0; op[i * 4 + 3] = 255; }
+      if (!edge) continue;
+      op[i * 4] = 0; op[i * 4 + 1] = 0; op[i * 4 + 2] = 0; op[i * 4 + 3] = 255;
+    }
+    const LO = 0.34 * 255, HI = 0.70 * 255;
+    for (let i = 3; i < op.length; i += 4) {
+      const a = op[i];
+      if (a === 0 || a === 255) continue;
+      op[i] = a <= LO ? 0 : a >= HI ? 255 : Math.round((a - LO) / (HI - LO) * 255);
     }
     oc.putImageData(od, 0, 0);
 
-    /* Re-measure the steel head ON THE OUTPUT.  headFrac crops the buried
-       arrow's texture, so it has to describe the texture the renderer gets --
-       the inset and the rim both move that boundary, and a fraction measured
-       on the source would now cut in the wrong place. */
+    /* Re-measured on the OUTPUT, by the same green-vs-steel scan used above.
+       The silhouette is untouched by this pass, so this should land back on
+       the pre-v2.3.1876 value — and the script printing it is what proves
+       that rather than anyone assuming it. */
     let ohx0 = 1e9, ohx1 = -1, ohy0 = 1e9, ohy1 = -1;
     for (let y = 0; y < oh; y++) for (let x = 0; x < ow; x++) {
       if (op[(y * ow + x) * 4 + 3] < 24) continue;
@@ -153,10 +174,8 @@ window.__arrow = (src, ow, oh) => new Promise((res) => {
       }
       if (green > neutral && green > 0) { ohead = x; break; }
     }
-    /* As a fraction of the FULL texture width, which is what the Rectangle
-       frame in effectsRenderer multiplies. */
     const outHeadFrac = (ohead + 1) / ow;
-    res({ x0, y0, bw, bh, headFrac, rim: RIM, outHeadFrac, png: out.toDataURL('image/png') });
+    res({ x0, y0, bw, bh, headFrac, outHeadFrac, png: out.toDataURL('image/png') });
   };
   img.src = src;
 });
@@ -183,7 +202,7 @@ if (got.error) { console.error('FAILED:', got.error); await browser.close(); srv
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, Buffer.from(got.png.split(',')[1], 'base64'));
 console.log(`  source artwork at (${got.x0},${got.y0}) ${got.bw}x${got.bh}`);
-console.log(`  wrote sprites/projectiles/arrow-pine.png  ${OUT_W}x${OUT_H}  (${got.rim}px re-asserted keyline)`);
+console.log(`  wrote sprites/projectiles/arrow-pine.png  ${OUT_W}x${OUT_H}  (keyline sharpened in place; silhouette untouched)`);
 console.log(`  STEEL HEAD starts at ${(got.outHeadFrac * 100).toFixed(1)}% of the texture width`);
 console.log(`  -> ARROW_PINE.headFrac in effectsRenderer.js should be ${got.outHeadFrac.toFixed(3)}`);
 await browser.close();

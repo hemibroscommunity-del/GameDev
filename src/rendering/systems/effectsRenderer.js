@@ -282,13 +282,22 @@ const SWORD_SLASH = { frames: [], anchor: { x: 0.5, y: 0.5 } };
  * frame, not a second PNG: the crop must move with the art if it is ever
  * re-cut, and one file cannot go stale against the other.
  *
- * v2.3.1876: the black keyline is REBUILT at texture scale rather than
- * inherited from the downscale — see make-pine-arrow.mjs.  It always survived
- * the downscale at full strength; what it did not survive is being drawn at
- * 17.5 world px through a ~0.67 world scale, which puts the whole 64x16
- * texture into ~35x9 device px on a phone and leaves a one-pixel keyline
- * owning half an output pixel.  Owner: "it needs to preserve the black
- * outline cause I can't see it."
+ * v2.3.1876/1877: the black keyline is SHARPENED at texture scale rather
+ * than inherited from the downscale — see make-pine-arrow.mjs.  It always
+ * survived the downscale at full strength; what it did not survive is being
+ * drawn at 17.5 world px through a ~0.67 world scale, which puts the whole
+ * 64x16 texture into ~35x9 device px on a phone and leaves a one-pixel
+ * keyline owning half an output pixel.  Owner: "it needs to preserve the
+ * black outline cause I can't see it."
+ *
+ * v2.3.1877 is the CORRECTION to the first attempt at that, and the reason
+ * the flight sprite is worth a second look here: v2.3.1876 grew the keyline
+ * by dilating a rim outward, which filled the concave notch between the
+ * fletchings and the swept barbs behind the steel head — so the arrowhead
+ * read as gone in flight even though this path has always handed it the FULL
+ * texture.  Owner: "the arrowhead is missing mid flight.  It should only get
+ * stuck in the monster without the arrowhead."  The silhouette is no longer
+ * touched at all.
  *
  * Art noses RIGHT like the magic bolt and the special arrow, so rotation is
  * the travel angle with no offset.  The anchor is where the OLD polygon
@@ -297,18 +306,18 @@ const SWORD_SLASH = { frames: [], anchor: { x: 0.5, y: 0.5 } };
  * hit tests and the stuck-arrow hand-off all still line up. */
 const ARROW_PINE = {
   full: null, noHead: null,
-  /* v2.3.1876: 0.739 -> 0.719.  Re-measured, not nudged: the keyline is now
-     re-asserted at texture scale (tools/gear/make-pine-arrow.mjs), which insets
-     the artwork by 2px and grows a rim into the margin, so the steel head
-     starts at a different fraction of the same 64px width.  The script prints
-     this number; it is not a value anyone picked. */
-  headFrac: 0.719,
+  /* v2.3.1877: 0.734.  Re-measured, not nudged — the script prints it.
+     It moved to 0.719 at v2.3.1876 because that pass insets the artwork to
+     grow a rim; that pass is gone (it buried the arrowhead), so this lands
+     back beside the original 0.739, off only by the alpha knee changing which
+     columns clear the opacity gate the scan uses. */
+  headFrac: 0.734,
   anchor: { x: 0.457, y: 0.5 },
   /* World length of the whole arrow at scale 1 — the polygon it replaces
      ran from -8 to +9.5. */
   lenPx: 17.5,
 };
-_fxLoad('/sprites/projectiles/arrow-pine.png?v=2.3.1876').then((tex) => {
+_fxLoad('/sprites/projectiles/arrow-pine.png?v=2.3.1877').then((tex) => {
   if (!tex || !tex.source) return;
   const w = tex.source.width, h = tex.source.height;
   ARROW_PINE.full = new Texture({ source: tex.source, frame: new Rectangle(0, 0, w, h) });
