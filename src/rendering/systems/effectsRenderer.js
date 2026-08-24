@@ -306,18 +306,39 @@ const SWORD_SLASH = { frames: [], anchor: { x: 0.5, y: 0.5 } };
  * hit tests and the stuck-arrow hand-off all still line up. */
 const ARROW_PINE = {
   full: null, noHead: null,
-  /* v2.3.1877: 0.734.  Re-measured, not nudged — the script prints it.
-     It moved to 0.719 at v2.3.1876 because that pass insets the artwork to
-     grow a rim; that pass is gone (it buried the arrowhead), so this lands
-     back beside the original 0.739, off only by the alpha knee changing which
-     columns clear the opacity gate the scan uses. */
-  headFrac: 0.734,
+  /* v2.3.1881: 0.742.  Re-measured, not nudged — the script prints it, and it
+     has to be re-read whenever the sheet is re-cut because it is measured in
+     COLUMNS: at 128 wide the scan resolves the steel/wood boundary a little
+     more finely than it could at 64 (0.734), which is the whole of the move.
+     For the history: 0.719 at v2.3.1876 was the outlier, caused by a rim pass
+     that inset the artwork — that pass is gone, it buried the arrowhead. */
+  headFrac: 0.742,
   anchor: { x: 0.457, y: 0.5 },
-  /* World length of the whole arrow at scale 1 — the polygon it replaces
-     ran from -8 to +9.5. */
-  lenPx: 17.5,
+  /* ═══ v2.3.1881: THREE TIMES THE ARROW ═══
+     Owner: "The arrow needs to be about 3x larger.  It's too small."
+
+     17.5 -> 52.5.  The old number was never a design choice about how big an
+     arrow should look — it is the length of the four-polygon arrow this art
+     replaced (it ran from -8 to +9.5), carried forward at v2.3.1825 so the
+     art swap would not silently resize the missile.  Nobody had picked it
+     since.
+
+     This is the ONLY size knob: `anchor` is a fraction of the length, and the
+     buried-arrow crop is a fraction of the texture, so the pivot stays 0.457
+     along the shaft and the head still starts at headFrac.  The trail, the
+     hit tests and the stuck-arrow hand-off all key off those fractions rather
+     than off pixels, which is what makes tripling this a one-line change
+     instead of a re-tune.  Hit RADII are untouched on purpose — the owner
+     asked for a bigger arrow, not a bigger hitbox, and combat is settled
+     server-side regardless of what this sprite measures.
+
+     The texture is re-cut to 128x32 to match (make-pine-arrow.mjs): at 52.5
+     world px through a ~0.67 world scale this lands near 105 device px on a
+     DPR-3 phone, so the old 64px sheet would have been upscaled 1.6x and gone
+     soft exactly as it finally got big enough to look at. */
+  lenPx: 52.5,
 };
-_fxLoad('/sprites/projectiles/arrow-pine.png?v=2.3.1877').then((tex) => {
+_fxLoad('/sprites/projectiles/arrow-pine.png?v=2.3.1881').then((tex) => {
   if (!tex || !tex.source) return;
   const w = tex.source.width, h = tex.source.height;
   ARROW_PINE.full = new Texture({ source: tex.source, frame: new Rectangle(0, 0, w, h) });
@@ -2872,9 +2893,15 @@ export class EffectsRenderer {
        re-cut, which is exactly how the bow ended up pine while its own
        attack art stayed brown for two months. */
     if (ARROW_PINE.noHead) {
-      /* Scaled to the 11px stub the polygons drew: the cropped texture is
-         0.739 of the full length, so ask for the scale that makes it 11. */
-      const k = 11 / (ARROW_PINE.lenPx * ARROW_PINE.headFrac);
+      /* v2.3.1881: the stub is a FRACTION of the arrow, not 11 world px.
+         It was pinned to the 11px the polygons drew — which is written so it
+         holds whatever lenPx says, and that is exactly the bug once lenPx
+         tripled: the arrow in flight would have grown 3x while the shaft
+         sticking out of the monster stayed the old size, so a hit would shrink
+         its own arrow on impact.  11/17.5 is the ratio it always had; keeping
+         the RATIO is what keeps the two reading as one missile. */
+      const STUB_FRAC = 11 / 17.5;
+      const k = (ARROW_PINE.lenPx * STUB_FRAC) / (ARROW_PINE.lenPx * ARROW_PINE.headFrac);
       this._placeArrowSprite(cx, cy, ang, 0.9, k, false, true);
       this._arrowsDrawn = (this._arrowsDrawn || 0) + 1;
       return;

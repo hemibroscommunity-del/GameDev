@@ -32,7 +32,14 @@ import { fileURLToPath } from 'url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const SRC = 'tools/gear/src-art/arrow-pine.png';
 const OUT = path.join(ROOT, 'public/sprites/projectiles/arrow-pine.png');
-const OUT_W = 64, OUT_H = 16;
+/* v2.3.1881: 64x16 -> 128x32.  The arrow is drawn at ARROW_PINE.lenPx, which
+   the owner tripled to 52.5 ("The arrow needs to be about 3x larger"); through
+   a ~0.67 world scale that is ~105 device px on a DPR-3 phone, so the old
+   sheet would have been UPSCALED 1.6x and gone soft just as it got big enough
+   to see.  128 keeps it a downscale.  Nothing else keys off these numbers —
+   headFrac is a fraction of the width and the sprite scale divides by the
+   texture's own width. */
+const OUT_W = 128, OUT_H = 32;
 
 const PAGE = `<!doctype html><meta charset="utf-8"><body><script>
 window.__arrow = (src, ow, oh) => new Promise((res) => {
