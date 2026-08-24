@@ -12,7 +12,8 @@
     "precheck": "node tools/dev/precheck.mjs",
     "session-brief": "node tools/dev/session-brief.mjs",
     "qa:gear-sheet": "node tools/qa/qa-gear-sheet.mjs",
-    "qa:shield-halo": "node tools/qa/qa-shield-halo.mjs"
+    "qa:shield-halo": "node tools/qa/qa-shield-halo.mjs",
+    "qa:arrow-art": "node tools/qa/qa-arrow-art.mjs"
   },
   "dependencies": {
     "pixi.js": "^8.6.6",

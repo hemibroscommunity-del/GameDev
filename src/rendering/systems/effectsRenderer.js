@@ -282,6 +282,23 @@ const SWORD_SLASH = { frames: [], anchor: { x: 0.5, y: 0.5 } };
  * frame, not a second PNG: the crop must move with the art if it is ever
  * re-cut, and one file cannot go stale against the other.
  *
+ * v2.3.1876/1877: the black keyline is SHARPENED at texture scale rather
+ * than inherited from the downscale — see make-pine-arrow.mjs.  It always
+ * survived the downscale at full strength; what it did not survive is being
+ * drawn at 17.5 world px through a ~0.67 world scale, which puts the whole
+ * 64x16 texture into ~35x9 device px on a phone and leaves a one-pixel
+ * keyline owning half an output pixel.  Owner: "it needs to preserve the
+ * black outline cause I can't see it."
+ *
+ * v2.3.1877 is the CORRECTION to the first attempt at that, and the reason
+ * the flight sprite is worth a second look here: v2.3.1876 grew the keyline
+ * by dilating a rim outward, which filled the concave notch between the
+ * fletchings and the swept barbs behind the steel head — so the arrowhead
+ * read as gone in flight even though this path has always handed it the FULL
+ * texture.  Owner: "the arrowhead is missing mid flight.  It should only get
+ * stuck in the monster without the arrowhead."  The silhouette is no longer
+ * touched at all.
+ *
  * Art noses RIGHT like the magic bolt and the special arrow, so rotation is
  * the travel angle with no offset.  The anchor is where the OLD polygon
  * arrow had its origin: it spanned -8..+9.5 of its 17.5px length, i.e. the
@@ -289,13 +306,39 @@ const SWORD_SLASH = { frames: [], anchor: { x: 0.5, y: 0.5 } };
  * hit tests and the stuck-arrow hand-off all still line up. */
 const ARROW_PINE = {
   full: null, noHead: null,
-  headFrac: 0.739,
+  /* v2.3.1881: 0.742.  Re-measured, not nudged — the script prints it, and it
+     has to be re-read whenever the sheet is re-cut because it is measured in
+     COLUMNS: at 128 wide the scan resolves the steel/wood boundary a little
+     more finely than it could at 64 (0.734), which is the whole of the move.
+     For the history: 0.719 at v2.3.1876 was the outlier, caused by a rim pass
+     that inset the artwork — that pass is gone, it buried the arrowhead. */
+  headFrac: 0.742,
   anchor: { x: 0.457, y: 0.5 },
-  /* World length of the whole arrow at scale 1 — the polygon it replaces
-     ran from -8 to +9.5. */
-  lenPx: 17.5,
+  /* ═══ v2.3.1881: THREE TIMES THE ARROW ═══
+     Owner: "The arrow needs to be about 3x larger.  It's too small."
+
+     17.5 -> 52.5.  The old number was never a design choice about how big an
+     arrow should look — it is the length of the four-polygon arrow this art
+     replaced (it ran from -8 to +9.5), carried forward at v2.3.1825 so the
+     art swap would not silently resize the missile.  Nobody had picked it
+     since.
+
+     This is the ONLY size knob: `anchor` is a fraction of the length, and the
+     buried-arrow crop is a fraction of the texture, so the pivot stays 0.457
+     along the shaft and the head still starts at headFrac.  The trail, the
+     hit tests and the stuck-arrow hand-off all key off those fractions rather
+     than off pixels, which is what makes tripling this a one-line change
+     instead of a re-tune.  Hit RADII are untouched on purpose — the owner
+     asked for a bigger arrow, not a bigger hitbox, and combat is settled
+     server-side regardless of what this sprite measures.
+
+     The texture is re-cut to 128x32 to match (make-pine-arrow.mjs): at 52.5
+     world px through a ~0.67 world scale this lands near 105 device px on a
+     DPR-3 phone, so the old 64px sheet would have been upscaled 1.6x and gone
+     soft exactly as it finally got big enough to look at. */
+  lenPx: 52.5,
 };
-_fxLoad('/sprites/projectiles/arrow-pine.png?v=2.3.1825').then((tex) => {
+_fxLoad('/sprites/projectiles/arrow-pine.png?v=2.3.1881').then((tex) => {
   if (!tex || !tex.source) return;
   const w = tex.source.width, h = tex.source.height;
   ARROW_PINE.full = new Texture({ source: tex.source, frame: new Rectangle(0, 0, w, h) });
@@ -2302,6 +2345,28 @@ export class EffectsRenderer {
          v2.3.1425/1426: a special stuck in a monster (a.stuckIn — the
          bow special arrow since v2.3.1426) is the same pose. */
       const _stuckPose = a.planted || a.planting || a.stuckIn;
+      /* ═══ v2.3.1879: ARRIVED IS NOT THE SAME AS SPENT ═══
+         Owner: "the arrowhead is missing mid flight.  It should only get
+         stuck in the monster without the arrowhead."
+
+         `_stuckPose` above is three states wearing one name, and for the
+         motion trail and the aim-bend that is right — a falling arrow wants
+         no trail and no bend just as much as an embedded one does.  For the
+         HEAD it is wrong, and v2.3.1765's note here ("the buried head is the
+         same fact, so it rides the same variable") is the mistake: `planting`
+         is not arrival.  It is the SPENT arc — an arrow that reached the
+         screen edge or its 675px range and is now falling ~26px through open
+         air before it plants (projectiles.js).  It is airborne for that whole
+         drop, in plain view, and it was being drawn with its tip cut off.
+         Photographed at v2.3.1879 before this changed: a headless green shaft
+         hanging in the middle of the ground texture, stuck in nothing.
+
+         So the head is gated on ARRIVAL only.  `planted` is the ~2s pose after
+         it lands, `stuckIn` is the bow special embedded in a monster
+         (v2.3.1426) — both are things it is actually in.  A falling arrow
+         keeps its head until it lands, which is what the owner is describing
+         and also just what an arrow does. */
+      const _headless = a.planted || a.stuckIn;
       const _angB = a.ang + (_stuckPose ? 0 : bend);
 
       /* Motion-blur trail — push the current position into a small
@@ -2389,11 +2454,10 @@ export class EffectsRenderer {
            local-coords-friendly.  ang_eff = a.ang + bend so arrows
            in flight visibly tilt in the direction the player is
            rotating their aim. */
-        /* v2.3.1765: `_stuckPose` is already the "it has arrived" flag this
-           loop computes for the motion trail and the aim-bend; the buried head
-           is the same fact, so it rides the same variable rather than a second
-           one that could disagree with it. */
-        this._drawArrow(gfx, a._renderX, a._renderY, _angB, elemColor, fadeA, 1, _stuckPose);
+        /* v2.3.1765 buried the head on `_stuckPose`; v2.3.1879 splits
+           `_headless` out of it — see the note where both are computed.  The
+           two deliberately differ by `planting`, and only there. */
+        this._drawArrow(gfx, a._renderX, a._renderY, _angB, elemColor, fadeA, 1, _headless);
       }
     }
 
@@ -2829,9 +2893,15 @@ export class EffectsRenderer {
        re-cut, which is exactly how the bow ended up pine while its own
        attack art stayed brown for two months. */
     if (ARROW_PINE.noHead) {
-      /* Scaled to the 11px stub the polygons drew: the cropped texture is
-         0.739 of the full length, so ask for the scale that makes it 11. */
-      const k = 11 / (ARROW_PINE.lenPx * ARROW_PINE.headFrac);
+      /* v2.3.1881: the stub is a FRACTION of the arrow, not 11 world px.
+         It was pinned to the 11px the polygons drew — which is written so it
+         holds whatever lenPx says, and that is exactly the bug once lenPx
+         tripled: the arrow in flight would have grown 3x while the shaft
+         sticking out of the monster stayed the old size, so a hit would shrink
+         its own arrow on impact.  11/17.5 is the ratio it always had; keeping
+         the RATIO is what keeps the two reading as one missile. */
+      const STUB_FRAC = 11 / 17.5;
+      const k = (ARROW_PINE.lenPx * STUB_FRAC) / (ARROW_PINE.lenPx * ARROW_PINE.headFrac);
       this._placeArrowSprite(cx, cy, ang, 0.9, k, false, true);
       this._arrowsDrawn = (this._arrowsDrawn || 0) + 1;
       return;

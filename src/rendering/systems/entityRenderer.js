@@ -5531,12 +5531,15 @@ export class EntityRenderer {
           display._stunTimerText.visible = false;
         }
       }
-      const stuckCount = (m._stuckArrows && m._stuckArrows.length) || 0;
       /* Hash of "did the dynamic state change?" — pulse animations need
          per-frame redraw, so we still rebuild every frame when any of
-         {aggro flash, threat arrow, stun, statuses, stuck arrows}
-         is active.  When NONE are active, skip entirely. */
-      const dynActive = numStatuses > 0 || aggroFlash || threatArrow || stunActive || stuckCount > 0;
+         {aggro flash, threat arrow, stun, statuses} is active.  When NONE
+         are active, skip entirely.
+         v2.3.1876: stuck arrows dropped out of this list along with the
+         draw below — nothing on dynGfx depends on them any more, so keeping
+         them here would rebuild this Graphics every frame for art drawn by
+         another renderer entirely. */
+      const dynActive = numStatuses > 0 || aggroFlash || threatArrow || stunActive;
       if (dynActive || display._dynKey !== '') {
         const dynGfx = display._dynGfx;
         dynGfx.clear();
@@ -5684,16 +5687,27 @@ export class EntityRenderer {
           }
         }
 
-        if (stuckCount > 0) {
-          for (const sa of m._stuckArrows) {
-            if (!sa || !Number.isFinite(sa.ang) || !Number.isFinite(sa.ox) || !Number.isFinite(sa.oy)) continue;
-            const ax = Math.cos(sa.ang) * (size * 0.5) + sa.ox;
-            const ay = Math.sin(sa.ang) * (size * 0.5) + sa.oy;
-            dynGfx.moveTo(ax - Math.cos(sa.ang) * 5, ay - Math.sin(sa.ang) * 5);
-            dynGfx.lineTo(ax + Math.cos(sa.ang) * 5, ay + Math.sin(sa.ang) * 5);
-            dynGfx.stroke({ color: cssColorToHex(sa.color || '#8B6914'), width: 1.5, alpha: 0.8 });
-          }
-        }
+        /* v2.3.1876: the stuck arrow is NOT drawn here any more.
+           Owner: "I think the arrows for the bow are still procedurally
+           drawn."  They were — here.  This block (v2.3.1424) painted each
+           entry of m._stuckArrows as a 10px brown line, and it was never
+           removed when v2.3.1825 gave stuck arrows the painted pine texture
+           in effectsRenderer's own _stuckArrows loop.  So every arrow in a
+           monster drew TWICE, from the same array: the pine arrow at
+           (m.x + ox, m.y + oy), and a tan #8B6914 stick shifted out to the
+           body's edge by cos(ang) * size/2.
+
+           Established by reading both call paths, NOT by screenshot, and the
+           distinction matters.  effectsRenderer._updateProjectiles is called
+           unconditionally every frame and walks S.monsters directly, so the
+           painted arrow does not depend on a monster DISPLAY existing; this
+           block did.  Nothing gates the two against each other, so for a real
+           monster both ran on the same array.  It could not be captured here:
+           a harness-injected monster gets no display (monsterDisplays reads
+           empty, so this block never fired), and the town the harness spawns
+           into has no real monsters to shoot.
+           effectsRenderer is the surviving copy because it draws the ART, and
+           because it is the one that does not need a display to work. */
       }
     }
 
