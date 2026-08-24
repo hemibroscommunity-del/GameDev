@@ -10,7 +10,9 @@
 
 import { Assets } from 'pixi.js';
 
-const SPRITE_VERSION = '2.3.1774'; /* v2.3.1774: pine repaint (see BlockRing) */
+const SPRITE_VERSION = '2.3.1875'; /* v2.3.1875: halo peel — bumped so a cached
+   shield with the grey rim is not served over the cleaned art (see BlockRing).
+   v2.3.1774: pine repaint. */
 
 const SHEETS = {
   front: { url: `/sprites/shields/wood-shield-front.png?v=${SPRITE_VERSION}`, tex: null },

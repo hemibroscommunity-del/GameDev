@@ -20,7 +20,10 @@ const COMMITMENT_GAP_MS = 75;
 // Wood-shield sprite URLs — match the version used by the Pixi loader so the
 // browser cache is shared with the in-game shield. When equip slots exist, the
 // `equippedShield` lookup should swap these out.
-const SHIELD_SPRITE_VERSION = '2.3.1774'; /* v2.3.1774: pine repaint — bumped so a cached wood-brown shield is not served over it */
+/* v2.3.1875: the shield art lost its baked grey halo (tools/gear/make-pine-wood.mjs
+   DEHALO) — bumped so a cached rimmed shield is not served over the cleaned one.
+   v2.3.1774: pine repaint — bumped so a cached wood-brown shield is not served over it. */
+const SHIELD_SPRITE_VERSION = '2.3.1875';
 const SHIELD_SPRITES = {
   front: `/sprites/shields/wood-shield-front.png?v=${SHIELD_SPRITE_VERSION}`,
   '3q':  `/sprites/shields/wood-shield-3q.png?v=${SHIELD_SPRITE_VERSION}`,
