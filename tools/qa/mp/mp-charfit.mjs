@@ -37,7 +37,7 @@ import * as H from './harness.mjs';
    build and the failure it reports is the real one. */
 const STATS = [
   ['Damage'], ['DPS'], ['Crit'],
-  ['C.Dmg', 'Crit Dmg'], ['Def', 'Defense'], ['Dodge'], ['Armor', 'Armour'],
+  ['C.Dmg', 'Crit Dmg'], ['Defense', 'Def'], ['Dodge'], ['Armor', 'Armour'],
 ];
 const FLAT = STATS.flat();
 
