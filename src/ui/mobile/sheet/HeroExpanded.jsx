@@ -175,8 +175,8 @@ export const HeroExpanded = () => {
          very nearly touched the next group (the reason the gap went to 10px
          at v2.3.1888).  One above the other, each group is as wide as its
          number and the crowding cannot recur. */
-      flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center', gap: 0,
+      flex: 1, minWidth: 0, display: 'flex',
+      alignItems: 'center', justifyContent: 'center', gap: 4,
     }}>
       <img src={VITAL_ICONS[kind]} alt="" draggable={false}
         style={{ width: 12, height: 12, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
@@ -209,61 +209,57 @@ export const HeroExpanded = () => {
      was passing 0 and a parameter nothing sets is just a thing to get wrong.
      `title` stays: it is the untruncated label for a long-press, and it costs
      no pixels. */
-  const cell = (label, value) => (
-    <div key={label} title={label} style={{
-      background: COL.wellSoft,
-      border: `1px solid ${COL.tileBor}`,
-      borderRadius: 8,
-      /* v2.3.1888: back from the 2px it was squeezed to at v2.3.1883, which
-         bought the last of the 17px the two group headings needed; dropping
-         the three vital BARS for one icon row handed ~28px back and this was
-         the first place it went — a 2px tile reads as a cramped box rather
-         than a considered one.
-         v2.3.1889: 4/5 -> 3/4.  Stacking the vital icons above their numbers
-         (owner) costs ~13px; spacing covered all but 4 of it, and this is the
-         last 4.  Still half again what it had before v2.3.1888, so the tiles
-         keep the change that mattered. */
-      padding: '3px 3px 4px',
-      minWidth: 0,
-      textAlign: 'center',
+  /* ═══ v2.3.1890: A LIST ROW, NOT A CARD ═══
+     Owner: "The bigger problem isn't rows vs. columns — it's that every stat
+     is being treated as its own card.  The borders, padding, headers, and
+     gaps are eating most of your space.  I'd switch to a character-sheet/list
+     format and get rid of the individual stat boxes entirely."
+
+     Right, and it is measurable: seven tiles were spending 2 borders + 7px of
+     padding + a 4px grid gap EACH on chrome, in a column 146px tall.  A row
+     spends none of it — label left, value right, and the eye reads down the
+     values in one column instead of hopping between boxes.
+
+     The labels get their words back in the same move.  DEF / C.DMG were
+     abbreviations forced by a ~46px tile (v2.3.1878); a list row is as wide
+     as its half of the column, so "Crit Dmg" and "Defense" simply fit. */
+  /* `sheetRow`, not `statRow`: that name is already taken by the item card's
+     own row renderer further down (v2.3.1846), and the two are different
+     shapes — this one takes (label, value), that one takes a { k, v }. */
+  const sheetRow = (label, value) => (
+    <div key={label} style={{
+      display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+      /* v2.3.1890b: the list left real vertical air where the boxes' chrome
+         used to be — spent on legibility, which is the point of dropping
+         them.  charfit is the ceiling. */
+      gap: 6, minWidth: 0, lineHeight: 1.5,
     }}>
-      <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
-      <div style={{ fontSize: 13, fontWeight: 800, color: COL.text, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', marginTop: 1 }}>{value}</div>
+      <span style={{
+        fontSize: 10.5, fontWeight: 600, color: COL.muted,
+        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+      }}>{label}</span>
+      <span style={{
+        fontSize: 13, fontWeight: 800, color: COL.text,
+        fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', flex: 'none',
+      }}>{value}</span>
     </div>
   );
 
-  /* v2.3.1878: the seven aggregate stats, as one list, because they are now
-     rendered in the column beside the gear (see the note there) and a second
-     hand-kept copy of this list is exactly how a stat ends up on one screen
-     and not the other.
-
-     The set and the wording are unchanged from the block this replaced:
-     v2.3.1668 removed Block and Speed (a `return 0` stub and a constant) and
-     put Defense and Crit Dmg in their places; v2.3.1697 added Armour, which
-     had cut real damage since v2.3.1679 while no screen in the game said so.
-     One decimal below 10% so a single point does not render as "0%", which
-     reads as "that did nothing".  Armour is never '—' and is not prog3-gated:
-     mitigation applies to every player the server damages, and 0% is the
-     honest reading when nothing is worn. */
   /* v2.3.1883: the same seven, split into the two groups the owner drew.
      Nothing is added or dropped — OFFENSE is the four that decide what you
      hit for and DEFENSE the three that decide what reaches you, which is the
      reading the flat 4x2 grid gave no way to see.  Still ONE list per group
      and no second copy anywhere, for the reason the v2.3.1878 note gives. */
   const offenseCells = () => [
-    cell('Damage', d.dmgText),
-    cell('DPS', d.dps.toFixed(1)),
-    cell('Crit', `${pct1(d.crit)}%`),
-    cell('C.Dmg', p3 ? `+${Math.round(d.critDmg)}` : '—'),
+    sheetRow('Damage', d.dmgText),
+    sheetRow('DPS', d.dps.toFixed(1)),
+    sheetRow('Crit', `${pct1(d.crit)}%`),
+    sheetRow('Crit Dmg', p3 ? `+${Math.round(d.critDmg)}` : '—'),
   ];
   const defenseCells = () => [
-    /* v2.3.1883: 'Def' -> 'Defense', which is what the owner's reference
-       calls it.  It was abbreviated at v2.3.1878 because it shared a 4-column
-       row where it wanted 46px of the 26 it had; this row holds three, so the
-       word fits and mp-charfit's ellipsis check is what keeps that honest. */
-    cell('Defense', p3 ? `${pct1(d.defPct)}%` : '—'),
-    cell('Dodge', `${pct1(d.dodge)}%`),
-    cell('Armor', `${pct1(d.armorDr)}%`),
+    sheetRow('Defense', p3 ? `${pct1(d.defPct)}%` : '—'),
+    sheetRow('Dodge', `${pct1(d.dodge)}%`),
+    sheetRow('Armor', `${pct1(d.armorDr)}%`),
   ];
   /* Module header, 10/700 uppercase .12em — the Lantern Slate step for this
      (11/600 uppercase .12em) taken one notch down, because these two sit
@@ -770,48 +766,43 @@ export const HeroExpanded = () => {
                     trade the owner already accepted for the vitals: both come
                     straight back when the slot is tapped closed. */
                 <>
-                  {/* ═══ v2.3.1888: THE STATS COME FIRST ═══
-                      Owner: "Swap places on the combat stats with the resource
-                      bars (so stats are above)."
+                  {/* ═══ v2.3.1890: TWO COLUMNS, NOT A GRID OF BOXES ═══
+                      Owner's reference: OFFENSE and DEFENSE side by side, each
+                      a plain list of label -> value, a rule, then the vitals.
 
-                      They were under the vitals because v2.3.1878 put the
-                      vitals at the top of this column to free the space below
-                      them.  Reading order is the better argument: the seven
-                      numbers are what you opened the Equipment tab to compare,
-                      and the three resources are a readout you glance at.  The
-                      thing you came for goes first. */}
+                      Side by side rather than stacked because offense has four
+                      rows and defense three: stacked they cost 7 rows plus two
+                      headings, and beside each other they cost 4 plus one. In
+                      a 146px column that difference is most of the budget, and
+                      it is why the boxes had to be squeezed to 2px padding
+                      three versions ago. */}
                   <div style={{
-                    flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column',
-                    justifyContent: 'center', gap: 2,
+                    flex: 1, minHeight: 0, display: 'flex',
+                    alignItems: 'flex-start', gap: 12,
                   }}>
-                    {groupHead('Offense')}
-                    <div style={{
-                      display: 'grid', gridTemplateColumns: '1.25fr 1fr 1fr 1fr',
-                      gridAutoRows: 'min-content', gap: 4,
-                    }}>
-                      {offenseCells()}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      {groupHead('Offense')}
+                      <div style={{ marginTop: 3 }}>{offenseCells()}</div>
                     </div>
-                    <div style={{ height: 1, background: COL.tileBor, flex: 'none' }} />
-                    {groupHead('Defense')}
-                    <div style={{
-                      display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
-                      gridAutoRows: 'min-content', gap: 4,
-                    }}>
-                      {defenseCells()}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      {groupHead('Defense')}
+                      <div style={{ marginTop: 3 }}>{defenseCells()}</div>
                     </div>
                   </div>
-                  {/* The three resources, on one row under the rule.  Their own
-                      divider, so they read as a footer to the stats rather than
-                      as a third stat group. */}
                   <div style={{ height: 1, background: COL.tileBor, flex: 'none', marginTop: 3 }} />
+                  {/* The three resources under the rule, as the reference draws
+                      them: icon then number, on one line.  v2.3.1889 had put
+                      the icon ABOVE its number; the list format gives the row
+                      its width back, so they go back inline and the ~13px that
+                      stacking cost returns to the stats. */}
                   <div style={{
                     flex: 'none', display: 'flex', alignItems: 'center',
-                    /* v2.3.1889: back to 6.  The 10 was there because a
-                       side-by-side icon and a seven-glyph number filled their
-                       third and ran into the next group; stacked, each group
-                       is only as wide as its number and the crowding is gone,
-                       so the row does not need the extra air. */
-                    gap: 6, marginTop: 2,
+                    /* 12, not 6: each group is an even third and "118/118" is
+                       seven glyphs, so at a small gap the number runs into the
+                       NEXT group's icon and the row reads as one string.  Same
+                       measurement as v2.3.1888 — the list format changed the
+                       row's height, not its width. */
+                    gap: 12, marginTop: 4,
                   }}>
                     {compactVital('hp', R.hp || 0, R.maxHp || 100)}
                     {compactVital('stamina', R.stamina || 0, R.maxStamina || 100)}
