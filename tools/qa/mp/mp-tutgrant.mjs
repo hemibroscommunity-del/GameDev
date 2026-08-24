@@ -141,5 +141,46 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...but the build id is always shown',
     !!diag.build && /^build \S+ \(\S+\)$/.test(diag.build), diag.build);
 
+  /* ── AN INVESTED CHARACTER (v2.3.1904) ──
+     Everything above runs on a FRESH character, where the legacy fields and
+     the prog3 allocations are both 0 — so Defense/HP/Endurance agreed for
+     the wrong reason and the bug hid behind the fixture. v2.3.1901 even
+     recorded "those legitimately start at 0" as a reason NOT to touch them.
+
+     Allocate real prog3 body points and require the rows to show them. With
+     the legacy read this renders "Defense 0 · HP 0 · Endurance 0" against
+     def:40 hp:25 stam:30 — which on the owner's real character is every
+     combat row reading zero at once. */
+  await P.page.evaluate(() => {
+    const R = window._gameState.current.rpg;
+    R.prog3 = R.prog3 || {};
+    R.prog3.alloc = Object.assign({}, R.prog3.alloc, { def: 40, hp: 25, stam: 30 });
+  });
+  await P.page.evaluate(() => { window._uiPanels.info(false); window._uiPanels.stats(false); });
+  await P.page.waitForTimeout(300);
+  await P.page.evaluate(() => window._uiPanels.stats(true));
+  await P.page.waitForTimeout(900);
+  const inv = await P.page.evaluate(() => {
+    const card = document.querySelector('.bt-inspect-card');
+    if (!card) return null;
+    const out = {};
+    for (const label of ['Melee', 'Defense', 'HP', 'Endurance']) {
+      const c = Array.from(card.querySelectorAll('*')).filter((el) => {
+        const t = (el.textContent || '').trim();
+        return t.startsWith(label) && !Array.from(el.children).some(
+          (k) => (k.textContent || '').trim().startsWith(label));
+      });
+      out[label] = c.length ? (c[c.length - 1].textContent || '').trim().slice(0, 30) : null;
+    }
+    return out;
+  });
+  console.log('    invested rows: ' + JSON.stringify(inv));
+  rec.ok('an INVESTED character shows its allocated Defense, not 0',
+    !!inv && /\b40\b/.test(inv.Defense || ''), inv);
+  rec.ok('...its allocated HP', !!inv && /\b25\b/.test(inv.HP || ''), inv);
+  rec.ok('...and its allocated Endurance', !!inv && /\b30\b/.test(inv.Endurance || ''), inv);
+  rec.ok('...while the weapon skills still read their trained level',
+    !!inv && /\b1\b/.test(inv.Melee || ''), inv);
+
   await P.ctx.close().catch(() => {});
 }

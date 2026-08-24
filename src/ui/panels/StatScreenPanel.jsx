@@ -1,6 +1,6 @@
 import React from 'react';
 import { BT_AUDIO, calcBlockReduction, calcCritChance, calcCritMult, calcDisplayDmgRange, calcMoveSpeed, getActiveWeapon, getDefenseBlockBonus, getWeaponCritDmgStat, getWeaponCritStat, weaponXpRequired, xpRequired } from '@/data/index.js';
-import { prog3HasSkills, prog3SkillLevel, prog3XpRequired, PROG3 } from '@/data/prog3.js'; /* v2.3.1901, v2.3.1902 */
+import { prog3HasSkills, prog3SkillLevel, prog3XpRequired, prog3Pts, PROG3 } from '@/data/prog3.js'; /* v2.3.1901, v2.3.1902 */
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
 /* === StatScreenPanel — character stats / allocation === */
@@ -102,6 +102,34 @@ export function StatScreenPanel(props) {
   var _bProg = liveRpg._buildProg || {};
   var _hpLvl = liveRpg.vitality || 0;
   var _enLvl = liveRpg.endurance || 0;
+  /* ═══ v2.3.1904: THE OTHER THREE ROWS WERE READING CORPSES TOO ═══
+     v2.3.1901/1902 fixed Melee/Bow/Magic and I wrote at the time that
+     Defense/HP/Endurance were fine because they legitimately start at 0.
+     That was true and beside the point: they start at 0 on a FRESH
+     character, which is the only character the test built, so both the bug
+     and the test agreed for the wrong reason.
+
+     Under prog3 these three are ALLOCATED POINTS in prog3.alloc
+     (def / hp / stam), not the legacy defenseSkill/vitality/endurance
+     fields — which stay at 0 forever on a prog3 character. Measured with 40
+     def, 25 hp and 30 stam actually allocated, this screen rendered
+     "Defense 0 · HP 0 · Endurance 0". On an INVESTED character all six rows
+     read zero, which is exactly the owner's "all my combat skills were lvl
+     0" and why fixing only three of them did not answer the report.
+
+     The number is the allocated points, and `need` is 0 so the bar stays
+     EMPTY: allocated stats have no XP track, and xpPct already guards
+     need > 0. Drawing a fill against an invented threshold would be the
+     same lie in a new place.
+
+     NOT changed: the lock buttons. They burn XP that would train a stat,
+     which is a legacy-training concept with no prog3 meaning — a real
+     question for the owner rather than something to redefine here. */
+  var _p3Body = _p3Live ? {
+    def: prog3Pts(liveRpg, 'def'),
+    hp: prog3Pts(liveRpg, 'hp'),
+    stam: prog3Pts(liveRpg, 'stam'),
+  } : null;
   return React.createElement("div", {
     className: "bt-inspect",
     onClick: function onClick() {
@@ -288,7 +316,7 @@ export function StatScreenPanel(props) {
         Bow→agility, Magic→mind, HP→vitality, Endurance→endurance);
         _statLocks has no defense key, so the Defense row renders a
         spacer instead of a lock. */
-  ['melee', 'Melee', 'power', '⚔️', '/icons/ui/combat-melee.webp?v=2.3.1232', '#E35D5B', _swSk.level || 0, _swSk.xp || 0, _swSk.need], ['bow', 'Bow', 'agility', '🏹', '/icons/ui/combat-bow.webp?v=2.3.1232', '#599FE5', _bwSk.level || 0, _bwSk.xp || 0, _bwSk.need], ['magic', 'Magic', 'mind', '✨', '/icons/ui/combat-magic.webp?v=2.3.1232', '#9A78D0', _stSk.level || 0, _stSk.xp || 0, _stSk.need], ['defense', 'Defense', null, '🛡️', '/icons/ui/combat-defense.webp?v=2.3.1232', '#4F8FDE', _dfSk.level || 0, _dfSk.xp || 0, weaponXpRequired(_dfSk.level || 0)], ['hp', 'HP', 'vitality', '❤️', '/icons/ui/stat-vitality.webp?v=2.3.1232', '#55B98A', _hpLvl, _bProg.vitality || 0, Math.max(200, Math.floor(xpRequired(_hpLvl)))], ['endurance', 'Endurance', 'endurance', '⚡', '/icons/ui/stat-endurance.webp?v=2.3.1232', '#DFAE4E', _enLvl, _bProg.endurance || 0, Math.max(200, Math.floor(xpRequired(_enLvl)))]].map(function (_ref80) {
+  ['melee', 'Melee', 'power', '⚔️', '/icons/ui/combat-melee.webp?v=2.3.1232', '#E35D5B', _swSk.level || 0, _swSk.xp || 0, _swSk.need], ['bow', 'Bow', 'agility', '🏹', '/icons/ui/combat-bow.webp?v=2.3.1232', '#599FE5', _bwSk.level || 0, _bwSk.xp || 0, _bwSk.need], ['magic', 'Magic', 'mind', '✨', '/icons/ui/combat-magic.webp?v=2.3.1232', '#9A78D0', _stSk.level || 0, _stSk.xp || 0, _stSk.need], ['defense', 'Defense', null, '🛡️', '/icons/ui/combat-defense.webp?v=2.3.1232', '#4F8FDE', _p3Body ? _p3Body.def : (_dfSk.level || 0), _p3Body ? 0 : (_dfSk.xp || 0), _p3Body ? 0 : weaponXpRequired(_dfSk.level || 0)], ['hp', 'HP', 'vitality', '❤️', '/icons/ui/stat-vitality.webp?v=2.3.1232', '#55B98A', _p3Body ? _p3Body.hp : _hpLvl, _p3Body ? 0 : (_bProg.vitality || 0), _p3Body ? 0 : Math.max(200, Math.floor(xpRequired(_hpLvl)))], ['endurance', 'Endurance', 'endurance', '⚡', '/icons/ui/stat-endurance.webp?v=2.3.1232', '#DFAE4E', _p3Body ? _p3Body.stam : _enLvl, _p3Body ? 0 : (_bProg.endurance || 0), _p3Body ? 0 : Math.max(200, Math.floor(xpRequired(_enLvl)))]].map(function (_ref80) {
     var _ref81 = _slicedToArray(_ref80, 9),
       id = _ref81[0],
       label = _ref81[1],
