@@ -11,7 +11,7 @@ import {
   prog3Live, prog3Pts, prog3AtkPts, prog3StatCap, prog3SkillLevel,
   prog3ActiveCat, PROG3_ATK_META, PROG3_BODY_META, PROG3_SKILL_META,
 } from '../../../data/prog3.js';
-import { VitalBar, VITAL_ICONS, VITAL_LABEL } from './VitalBar.jsx'; /* v2.3.1311; VITAL_LABEL v2.3.1883 */
+import { VitalBar, VITAL_ICONS, VITAL_LABEL, VITAL_TINT } from './VitalBar.jsx'; /* v2.3.1311; VITAL_LABEL v2.3.1883 */
 import { getEquippedSlots, getEquipContribs, GHOST_SRC } from './equipModel.js'; /* v2.3.1653 */
 import { previewStatPoint, overallDps } from './statPreview.js';                 /* v2.3.1766 */
 import { itemDetailBus } from '../dash/itemDetailBus.js';                        /* v2.3.1653 */
@@ -177,26 +177,60 @@ export const HeroExpanded = () => {
      baseline and the same right edge as Damage/DPS/Crit below. The icon is
      doing the job the label does down there, so the two blocks read as one
      sheet rather than as a widget stacked on a list. */
+  /* ═══ v2.3.1892: HP / EN / MP, CENTRED, ONE PER ROW ═══
+     Owner: "Try aligning combat resources to the center of that top section
+     and instead of icons just use the letter abbreviations.  Then make them
+     larger.  Try a couple different styles to see what works best."
+
+     Five were built and photographed side by side rather than argued about,
+     and two of the obvious ones were broken in ways only a render shows:
+
+       A  letter + number, all three on one centred row, large
+          — overflowed the column HORIZONTALLY.  The vertical overflow check
+            cannot see that, which is why it was shot rather than measured.
+       B  three centred rows at 14px — the most readable of the lot, but 16px
+          too tall: "Crit Dmg" fell off the bottom.
+       C  letter over value, three columns — the numbers collided into
+          "118/118100/100102/102".  Each column is a third of ~180px and a
+          seven-glyph number does not fit in it.
+       D  tinted letter chips over the values — fits, and the chips read well,
+          but the NUMBERS underneath still nearly touch: the same complaint
+          that started this ("the numbers run together too much"), because it
+          is still three numbers sharing one row.
+       E  B, tuned until it fits.  Kept.
+
+     So the letter carries the colour the icon used to (VITAL_TINT, taken off
+     the top stop of that resource's own bar gradient) — without it the three
+     are three identical grey numbers and the glance is gone. */
   const compactVital = (kind, cur, max) => (
     <div key={kind} title={VITAL_LABEL[kind]} style={{
-      /* v2.3.1891b: the pair is grouped LEFT, not pushed to the two ends.
-         Spread across the full width the icon and its own number sat
-         ~250px apart and stopped reading as one thing — the same failure
-         as the crowding, at the other extreme.  A stat row can justify
-         to its ends because it has a WORD holding the left end down; an
-         icon cannot do that alone. */
-      display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
-      /* v2.3.1891: three full-width rows cost 21px the column did not
-         have.  The resources pay most of it rather than the stats: this is
-         a glance readout and those are what you compare. */
-      gap: 6, minWidth: 0, lineHeight: 1.2,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      gap: 5, lineHeight: 1.12,
     }}>
-      <img src={VITAL_ICONS[kind]} alt="" draggable={false}
-        style={{ width: 11, height: 11, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
       <span style={{
-        fontSize: 10.5, fontWeight: 800, color: COL.text2,
-        fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', flex: 'none',
-      }}>{Math.ceil(cur)}/{Math.ceil(max)}</span>
+        fontSize: 11.5, fontWeight: 800, color: VITAL_TINT[kind],
+        letterSpacing: '.06em',
+      }}>{VITAL_LABEL[kind]}</span>
+      {/* v2.3.1893: the icon comes back, AFTER the letter (owner).  It is the
+          colour cue at a glance; the letter is what you read.  Sized to the
+          letter's cap height rather than the number's, so it sits with the
+          word it follows instead of looming over it. */}
+      <img src={VITAL_ICONS[kind]} alt="" draggable={false}
+        style={{ width: 12, height: 12, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
+      {/* v2.3.1893: the slash gets air on both sides (owner: "increase the
+          space between the first and second number").  Rendered as its own
+          span rather than as spaces in the string: the numbers are tabular
+          and a literal space is not, so padding is the only way to move the
+          two apart without the gap jittering as the values change.  The
+          separator is also dimmed — it is punctuation, not data. */}
+      <span style={{
+        fontSize: 14, fontWeight: 800, color: COL.text,
+        fontVariantNumeric: 'tabular-nums', display: 'flex', alignItems: 'baseline',
+      }}>
+        {Math.ceil(cur)}
+        <span style={{ padding: '0 4px', opacity: 0.5, fontWeight: 700 }}>/</span>
+        {Math.ceil(max)}
+      </span>
     </div>
   );
 
@@ -248,7 +282,11 @@ export const HeroExpanded = () => {
       /* v2.3.1891: 1.5 -> 1.34.  Moving the resources onto rows of their
          own (owner) needed 21px; the resources found most of it and this
          is the rest.  Still well above the boxed layout it replaced. */
-      gap: 6, minWidth: 0, lineHeight: 1.34,
+      /* v2.3.1892: 1.34 -> 1.18.  Three centred resource rows at 14px are
+         what the owner asked for and they do not fit at 1.34 — this is the
+         6px they were short, and it is taken here rather than from the
+         resources because the resources are the thing being made larger. */
+      gap: 6, minWidth: 0, lineHeight: 1.18,
     }}>
       <span style={{
         fontSize: 10.5, fontWeight: 600, color: COL.muted,
@@ -782,12 +820,11 @@ export const HeroExpanded = () => {
                     trade the owner already accepted for the vitals: both come
                     straight back when the slot is tapped closed. */
                 <>
-                  {/* v2.3.1891: the three resources come FIRST now (owner),
-                      each on a FULL-WIDTH row of its own.  Two-across was
-                      tried first and rejected on re-reading the request: it
-                      puts MP back alongside HP, which is the crowding this is
-                      meant to remove, just less of it. */}
-                  <div style={{ flex: 'none' }}>
+                  {/* Centred in its section, as asked. */}
+                  <div style={{
+                    flex: 'none', display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', justifyContent: 'center',
+                  }}>
                     {compactVital('hp', R.hp || 0, R.maxHp || 100)}
                     {compactVital('stamina', R.stamina || 0, R.maxStamina || 100)}
                     {compactVital('mana', R.mana || 0, R.maxMana || 100)}

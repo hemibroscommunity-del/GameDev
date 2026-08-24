@@ -24,6 +24,12 @@ export const VITAL_ICONS = {
    one place. */
 export const VITAL_LABEL = { hp: 'HP', stamina: 'EN', mana: 'MP' };
 
+/* v2.3.1892: the letter's colour, taken off the top stop of the bar's own
+   gradient below.  Dropping the icons for HP/EN/MP (owner) would otherwise
+   drop the colour coding with them, and the colour is what makes the three
+   readable at a glance rather than three identical grey numbers. */
+export const VITAL_TINT = { hp: '#E06A5E', stamina: '#E9BF77', mana: '#74ACE8' };
+
 const FILL = {
   hp:      'linear-gradient(180deg, #E06A5E 0%, #C74A3E 55%, #A93A30 100%)',
   stamina: 'linear-gradient(180deg, #E9BF77 0%, #D8A85F 55%, #B98A44 100%)',
