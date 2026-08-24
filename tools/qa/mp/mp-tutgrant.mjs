@@ -58,11 +58,31 @@ export async function run({ browser, wsPort, webPort, rec }) {
       (k) => before.weaponSkills[k] && (before.weaponSkills[k].level || 0) === 0),
     before.weaponSkills);
 
-  /* ── ACCEPT ── */
+  /* ── ACCEPT, THROUGH THE REAL DIALOGUE ──
+     Walk to Mayor Bro and tap Accept the way a player does, rather than
+     sending quest_accept down the channel. The distinction is the whole
+     history of this bug: at v2.3.1684 the in-world dialogue gated its send
+     on `_serverMonsters`, which is FALSE in town, so tapping the Mayor set
+     the quest active locally and told the worker nothing — "the same button,
+     two code paths, one of them mute". A test that sends the message itself
+     cannot see that class of failure, and the owner's report is specifically
+     about accepting FROM MAYOR BRO. */
   await P.page.evaluate(() => {
-    const S = window._gameState.current;
-    if (S && S.channel) S.channel.send({ type: 'quest_accept', payload: { questId: 'tut_1' } });
+    const S = window._gameState && window._gameState.current;
+    const npc = (S && S.npcs || []).find((n) => n && n.id === 'mayor_bro');
+    if (S && npc && S.player) { S.player.x = npc.x + 420; S.player.y = npc.y; }
   });
+  await P.page.waitForTimeout(600);
+  await H.closeNpcDialogue(P);
+  await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    const npc = (S && S.npcs || []).find((n) => n && n.id === 'mayor_bro');
+    if (S && npc && S.player) { S.player.x = npc.x; S.player.y = npc.y + 34; }
+  });
+  await P.page.waitForTimeout(1400);
+  await H.advanceNpcDialogue(P);
+  rec.ok('the Mayor offered the quest and it could be accepted (guard)',
+    await H.confirmQuestOffer(P));
   await P.page.waitForTimeout(3000);
 
   const after = await bag(P);
@@ -74,7 +94,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!after.shield || (after.shieldStash || []).length > 0,
     { shield: after.shield, shieldStash: after.shieldStash });
 
-  /* ── RE-ACCEPT must not re-pay (and must not be how the owner lost them) ── */
+  /* ── RE-ACCEPT must not re-pay (and must not be how the owner lost them) ──
+     A direct send here on purpose: this one is about the SERVER's guard, not
+     about which button reaches it. */
   await P.page.evaluate(() => {
     const S = window._gameState.current;
     if (S && S.channel) S.channel.send({ type: 'quest_accept', payload: { questId: 'tut_1' } });
