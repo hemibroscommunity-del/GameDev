@@ -587,6 +587,79 @@ export async function initPixiRenderer(canvas) {
           ? +(Math.abs(pd._facialHairSprite.scale.y) / Math.abs(sb.scale.y)).toFixed(5) : 0,
       };
     },
+    /* v2.3.1882: where the block pieces sit in the PLAYER DISPLAY'S OWN local
+       space — the space SOUTH_BLOCK_OFFHAND.x/y are written in.  Tuning that
+       constant off a screenshot means dividing out the world scale and the
+       device ratio by hand, twice, and the shield is drawn at a size that
+       makes an eyeballed answer look plausible while being wrong.  This
+       reports the head and torso in the units the constant uses, so a
+       placement can be stated as "below the chin, right of the ribs" and
+       checked as a number. */
+    blockGeomProbe: () => {
+      const pd = entityRenderer.playerDisplay;
+      const sb = pd && pd._spriteBody;
+      if (!pd || !sb || !sb.texture) return null;
+      const tex = sb.texture;
+      const src = tex.source && tex.source.resource;
+      if (!src) return { err: 'texture source is not readable' };
+      const fr = tex.frame || { x: 0, y: 0, width: tex.width, height: tex.height };
+      let painted = null;
+      try {
+        const cv = document.createElement('canvas');
+        cv.width = Math.max(1, Math.round(fr.width));
+        cv.height = Math.max(1, Math.round(fr.height));
+        const c = cv.getContext('2d', { willReadFrequently: true });
+        c.drawImage(src, fr.x, fr.y, fr.width, fr.height, 0, 0, cv.width, cv.height);
+        const p = c.getImageData(0, 0, cv.width, cv.height).data;
+        let top = -1, bot = -1, l = cv.width, r = -1;
+        /* Widest painted row, which on these sheets is the shoulders — the
+           landmark that separates "head" from "torso" without needing to know
+           anything about the drawing. */
+        let bestRow = -1, bestW = -1;
+        for (let y = 0; y < cv.height; y++) {
+          let rl = -1, rr = -1;
+          for (let x = 0; x < cv.width; x++) {
+            if (p[(y * cv.width + x) * 4 + 3] < 24) continue;
+            if (rl < 0) rl = x;
+            rr = x;
+          }
+          if (rl < 0) continue;
+          if (top < 0) top = y;
+          bot = y;
+          if (rl < l) l = rl;
+          if (rr > r) r = rr;
+          if (rr - rl > bestW) { bestW = rr - rl; bestRow = y; }
+        }
+        painted = { top, bot, l, r, shoulderRow: bestRow, shoulderW: bestW,
+          cellH: cv.height, cellW: cv.width };
+      } catch (e) {
+        return { err: 'texture is tainted or unreadable: ' + (e && e.message) };
+      }
+      /* Texture px -> display-local units, straight off the sprite's own
+         transform rather than multiplied out by hand. */
+      const kx = Math.abs(sb.scale.x), ky = Math.abs(sb.scale.y);
+      const cx = (painted.cellW - 1) / 2, cy = (painted.cellH - 1) / 2;
+      const loc = (tx, ty) => ({ x: +((tx - cx) * kx + sb.x).toFixed(1),
+        y: +((ty - cy) * ky + sb.y).toFixed(1) });
+      const sh = pd._shieldSprite;
+      const wc = pd._weaponContainer, ws = pd._weaponSprite;
+      return {
+        facing: pd._lastFacingKey || null,
+        pose: pd._lastPoseKey || null,
+        crown: loc(cx, painted.top),                    /* top of the head */
+        chin: loc(cx, painted.shoulderRow),             /* where shoulders start */
+        feet: loc(cx, painted.bot),
+        bodyLeft: loc(painted.l, painted.shoulderRow).x,
+        bodyRight: loc(painted.r, painted.shoulderRow).x,
+        shield: sh && sh.visible
+          ? { x: +sh.x.toFixed(1), y: +sh.y.toFixed(1),
+            w: +sh.width.toFixed(1), h: +sh.height.toFixed(1) } : null,
+        weapon: ws && ws.visible
+          ? { x: +ws.x.toFixed(1), y: +ws.y.toFixed(1),
+            w: +ws.width.toFixed(1), h: +ws.height.toFixed(1),
+            containerX: wc ? +wc.x.toFixed(1) : null, containerY: wc ? +wc.y.toFixed(1) : null } : null,
+      };
+    },
     namePillProbe: () => {
       const pd = entityRenderer.playerDisplay;
       const pill = pd && pd._namePill;

@@ -244,6 +244,38 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('south: the shield is actually drawn (guard)', sw.shieldVisible === true, sw);
     rec.ok('south: ...and the weapon sits UNDER it, so the shield occludes it',
       sw.wcIdx >= 0 && sw.shieldIdx >= 0 && sw.wcIdx < sw.shieldIdx, sw);
+
+    /* ── WHERE IT HANGS (v2.3.1882) ──
+       Owner: "The south block sword needs its position to move.  It should be
+       just below the head on the right side of the body (right side from
+       camera perspective)."
+
+       Asserted against the FIGURE rather than against the numbers the
+       constant happens to hold: blockGeomProbe reports the body in the same
+       display-local space SOUTH_BLOCK_OFFHAND is written in, so this says
+       "outboard of the right ribs, below the shoulder line" and stays true if
+       the body art is ever re-cut at a different size.  Pinning x === 17
+       would only restate the constant back to itself. */
+    const g = await P.page.evaluate(() => {
+      const r = window._pixiRenderer;
+      return r && r.blockGeomProbe ? r.blockGeomProbe() : null;
+    });
+    rec.ok('south: the body could be measured (guard for the placement below)',
+      !!(g && typeof g.bodyRight === 'number' && g.chin && g.crown), g);
+    if (g && typeof g.bodyRight === 'number' && g.chin) {
+      rec.ok('south: the grip is on the CAMERA\'S RIGHT, outboard of the ribs',
+        sw.x > g.bodyRight, { gripX: sw.x, bodyRight: g.bodyRight, bodyLeft: g.bodyLeft });
+      rec.ok('south: ...and BELOW the head, not up beside it',
+        sw.y > g.chin.y, { gripY: sw.y, chinY: g.chin.y, crownY: g.crown.y });
+      /* Not so far down that it has left the shield behind — the occlusion
+         above is only meaningful while the two actually overlap. */
+      if (g.shield) {
+        rec.ok('south: ...and still inside the shield\'s disc, so it is cut by it',
+          sw.x > g.shield.x - g.shield.w / 2 && sw.x < g.shield.x + g.shield.w / 2
+          && sw.y > g.shield.y - g.shield.h / 2 && sw.y < g.shield.y + g.shield.h / 2,
+          { gripX: sw.x, gripY: sw.y, shield: g.shield });
+      }
+    }
   }
 
   /* ── SOUTH, JOGGING: FROZEN ON TOP, STRIDING BELOW (v2.3.1872) ──

@@ -3686,12 +3686,33 @@ function _hideBlockCaret(display) {
  * to hiding the sprite rather than leaving a stale icon on screen.
  */
 const SOUTH_BLOCK_OFFHAND_ENABLED = true;
-/* Display-local, so it rides the figure's own transform.  x is negative =
- * the player's off side (screen left), opposite the arm the shield boss sits
- * on; y is negative = up from the feet, at about chest height.  Tuned against
- * the 72px shield: far enough out that the hilt clears its edge, close enough
- * that the hand still reads as the body's. */
-const SOUTH_BLOCK_OFFHAND = { x: -11, y: -34 };
+/* ═══ v2.3.1882: JUST BELOW THE HEAD, ON THE CAMERA'S RIGHT ═══
+ * Owner: "The south block sword needs its position to move.  It should be
+ * just below the head on the right side of the body (right side from camera
+ * perspective)."
+ *
+ * Was { x: -11, y: -34 }, which put the grip at screen LEFT and at HEAD
+ * height — above the shoulders, clear of the body, with the blade sweeping
+ * further left again.  Nothing was holding it, and that is what it looked
+ * like: a sword hanging in the air beside his ear.
+ *
+ * The new numbers are read off the figure rather than guessed, via
+ * blockGeomProbe (pixiRenderer), which reports the body in THIS space —
+ * display-local, the same units this constant is written in.  For the south
+ * stand at the time of writing: crown y -42.5, shoulders y -15.7, feet y
+ * 41.6, torso x -13.9..+13.9, and the shield a 72px disc centred (4.2, 15.4),
+ * i.e. spanning y -20.6..+51.4.  So:
+ *   x +17  — just outside the right ribs (13.9), so it reads as beside him
+ *            rather than painted on his chest.  POSITIVE is the camera's
+ *            right, which is the player's own left hand: the off hand, which
+ *            is the one not carrying the shield.
+ *   y -13  — a couple of units below the shoulder line at -15.7, which is
+ *            "just below the head" stated as a number.
+ * That lands the grip inside the shield's top-right quadrant, so the disc
+ * cuts the hilt and the blade runs out past its edge — the occlusion the
+ * owner asked for at v2.3.1871 and the reason this sprite is parked directly
+ * beneath the shield in the child list. */
+const SOUTH_BLOCK_OFFHAND = { x: 17, y: -13 };
 /* Per-type, because the two kinds of art hang from the grip in opposite
  * directions.  The posed greatsword and bow are drawn hilt-high with the
  * blade falling away, so the default puts the grip up by the shoulder and the
@@ -3700,11 +3721,20 @@ const SOUTH_BLOCK_OFFHAND = { x: -11, y: -34 };
  * straight across the face.  Dropped and pushed out, it rises clear of the
  * head and its lower end tucks behind the shield's top edge instead. */
 const SOUTH_BLOCK_OFFHAND_BY_TYPE = {
-  staff: { x: -25, y: -20, px: 40 },
+  /* v2.3.1882: mirrored with the default (x -25 -> +25).  Its own offset from
+     the grip is unchanged — it still stands further out and lower than a
+     blade does, because it is AIMED and rises head-up out of the fist rather
+     than hanging from a hilt. */
+  staff: { x: 25, y: -20, px: 40 },
 };
 /* Aimed down and out, so the blade leaves the silhouette below the shield
- * instead of climbing across the face. */
-const SOUTH_BLOCK_OFFHAND_AIM = Math.PI * 0.72;
+ * instead of climbing across the face.
+ * v2.3.1882: 0.72pi -> 0.28pi, which is the SAME angle mirrored about the
+ * vertical (pi - 0.72pi).  It has to move with the grip: "down and out" is
+ * defined relative to which side he holds it on, and a blade still sweeping
+ * down-LEFT from a grip that is now on the RIGHT would be pointing back
+ * across his own chest — the one direction this constant exists to avoid. */
+const SOUTH_BLOCK_OFFHAND_AIM = Math.PI * 0.28;
 function _placeSouthBlockWeapon(display, wpn, bobY) {
   const spr = display && display._weaponSprite;
   if (!spr || !wpn || !wpn.type) return false;
