@@ -5843,15 +5843,18 @@ export class EntityRenderer {
           display.alpha = 0.45;
           display.rotation = Math.PI / 2;
         }
-        /* Hide weapon + shield on the corpse. */
-        if (display._weaponContainer) display._weaponContainer.visible = false;
-        if (display._shieldSprite) display._shieldSprite.visible = false;
-        if (display._nftFront) display._nftFront.visible = false;
-        if (display._nftBack) display._nftBack.visible = false;
-        if (display._headwearSprite) display._headwearSprite.visible = false;
-        if (display._facialHairSprite) display._facialHairSprite.visible = false;
-        if (display._shirtSprite) display._shirtSprite.visible = false;
-        if (display._hairSprite) display._hairSprite.visible = false;
+        /* v2.3.1887: hide by EXCEPTION here too — see the note on the local
+           corpse below.  A peer's corpse had the same floating slung shield
+           for the same reason: this was a hand-written list of what to hide,
+           and the back shield was added long after it. */
+        const _rKeep = [
+          _spriteBody, display._namePill, display._comboText,
+          display._handCapMask, display._handArmMask,
+        ];
+        for (let i = 0; i < display.children.length; i++) {
+          const _c = display.children[i];
+          if (_c && _c.visible && _rKeep.indexOf(_c) < 0) _c.visible = false;
+        }
         continue;
       }
       /* Living — restore visibility of containers that might have been
@@ -6597,23 +6600,50 @@ export class EntityRenderer {
       if (display._handArmSprite) display._handArmSprite.visible = false;
       if (display._nftFront) display._nftFront.visible = false;
       if (display._nftBack) display._nftBack.visible = false;
-      /* v2.3.1473 (owner: "upon death don't display the character armor
-         or any other worn pieces"): the corpse sheet is a whole figure
-         (player -> skeleton -> bone pile), so EVERY worn layer has to go
-         with it — armour and head traits were still being drawn over the
-         skeleton, leaving a floating cuirass and hair/crown on the bones.
-         Body regions go too: the death frame replaces the body outright,
-         and a leftover region sprite reads as a stray limb. */
-      const _deathHide = [
-        display._gearShirt, display._gearLegs, display._gearChest,
-        display._gearShoulders, display._gearHead,
-        display._bodyHead, display._bodyTorso, display._bodyLegs,
-        display._hairSprite, display._facialHairSprite,
-        display._headwearSprite, display._shirtSprite, display._traitFace,
+      /* ═══ v2.3.1887: HIDE BY EXCEPTION, NOT BY LIST ═══
+         Owner: "When I died my shield stayed visible while the death
+         animation played.  Also hide the shield when this death animation
+         plays."
+
+         The shield in question is the SLUNG one (_shieldBackLo/_shieldBackHi,
+         v2.3.1782) — the held one was already hidden two lines up, which is
+         why this reads as "the shield" being half-fixed.
+
+         The real defect is the shape of the fix it replaces.  v2.3.1473
+         answered "upon death don't display the character armor or any other
+         worn pieces" with a hand-written list of layers to hide, and that
+         list is only correct until the next layer is added.  The back shield
+         arrived 300 versions later and nobody thought to add it, so a corpse
+         wore a floating shield for two months.  Adding two more names would
+         buy exactly as long.
+
+         So it is inverted: a small KEEP set of things that legitimately
+         outlive the body — the corpse sheet itself, the name plate, the combo
+         counter, the floating vitals, and the two MASKS (a mask paints
+         nothing, and hiding one can only disturb the sprite it clips) — and
+         everything else in the display goes.  A worn layer added tomorrow is
+         hidden on death by default, which is the safe direction and the one
+         the owner's rule asks for.  mp-deathshield pins it. */
+      const _deathKeep = [
+        _selfSpriteBody, display._namePill, display._comboText,
+        display._handCapMask, display._handArmMask,
+        display._hudHpBarFrame, display._hudHpBarFill, display._hudHpRing,
+        display._hudHpText, display._hudHpMaxText,
+        display._hudMpEmpty, display._hudMpSprite, display._hudMpTextEmpty, display._hudMpTextFull,
+        display._hudStamEmpty, display._hudStamSprite, display._hudStamTextEmpty, display._hudStamTextFull,
       ];
-      for (let i = 0; i < _deathHide.length; i++) {
-        const _s = _deathHide[i];
-        if (_s && _s.visible) _s.visible = false;
+      for (let i = 0; i < display.children.length; i++) {
+        const _c = display.children[i];
+        if (_c && _c.visible && _deathKeep.indexOf(_c) < 0) _c.visible = false;
+      }
+      /* v2.3.1887: the back-shield probe is written on the LIVING path only,
+         and this branch returns before reaching it — so it kept reporting the
+         last living frame's `on: true` over a corpse with no shield on it.
+         A probe that survives the thing it describes is worse than no probe:
+         it is what a test believes.  Stamped here so the reading matches the
+         screen.  (Same trap as __btSouthBlockWeapon, v2.3.1871.) */
+      if (typeof window !== 'undefined') {
+        window.__btBackShield = { on: false, dead: true, behind: false, front: false };
       }
       return;
     }

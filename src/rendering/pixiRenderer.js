@@ -595,6 +595,10 @@ export async function initPixiRenderer(canvas) {
        reports the head and torso in the units the constant uses, so a
        placement can be stated as "below the chin, right of the ribs" and
        checked as a number. */
+    /* v2.3.1887: the raw player display, for a QA pass that needs to walk
+       its children.  Read-only use only — this hands out the live container,
+       so a scenario that mutated it would be testing its own edit. */
+    playerDisplayRaw: () => entityRenderer.playerDisplay || null,
     blockGeomProbe: () => {
       const pd = entityRenderer.playerDisplay;
       const sb = pd && pd._spriteBody;

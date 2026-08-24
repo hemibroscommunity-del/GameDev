@@ -95,6 +95,7 @@ const SCENARIOS = {
   hpbar: () => import('./mp-hpbar.mjs'), /* v2.3.1682: the contextual player HP bar */
   questclaim: () => import('./mp-questclaim.mjs'), /* v2.3.1884: the claim opens when it becomes claimable under your feet */
   freshquest: () => import('./mp-freshquest.mjs'),
+  deathshield: () => import('./mp-deathshield.mjs'),
   questprox: () => import('./mp-questprox.mjs'), /* v2.3.1701: the giver's dialogue opens on approach */
   questlegs: () => import('./mp-questlegs.mjs'), /* v2.3.1701: the quest greaves equip to the LEGS */
   authority: () => import('./mp-authority.mjs'), /* v2.3.1702: ability spends, firemaking + local-AI HP */
