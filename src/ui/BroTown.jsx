@@ -111,6 +111,27 @@ export var QUEST_MSG_LONG_MS = 4200;
 /* ONE place decides, so the queue gate, the expiry sweep, the render gate and
    the CSS fade cannot drift apart — a banner that is drawn while considered
    expired (or held with no fade) is the failure that split constants cause. */
+/* v2.3.1884: is this NPC's quest ready to HAND IN right now?
+ *
+ * The proximity latch (v2.3.1701) records that you have already been shown
+ * this NPC; what it could not express is that the NEWS changed while you stood
+ * there.  This is the ONLY change of news that releases it — see the note in
+ * the proximity opener for why it is deliberately just this one.
+ *
+ * Defined ONCE, at module scope, because THREE doors arm the latch
+ * (proximity, tap, desktop E-key) and a hand-copied condition in any of them
+ * would latch a state the others cannot recognise, which reads as the dialogue
+ * re-opening at random.  Module scope also side-steps the fact that the game
+ * loop is written ABOVE the component body: a `var` helper there is hoisted
+ * but unassigned, and would only work because the loop happens to run later.
+ *
+ * `check` is quest-authored and runs every frame, so it is wrapped — a throw
+ * here would take the whole render loop down over a cosmetic re-open. */
+function _npcQuestReady(S, npcQ) {
+  if (!npcQ || npcQ.status !== 'active' || typeof npcQ.quest.check !== 'function') return false;
+  try { return !!npcQ.quest.check(S.rpg, S); } catch (e) { return false; }
+}
+
 export function questMsgMs(kind) {
   return (kind === 'completed' || kind === 'reward') ? QUEST_MSG_LONG_MS : QUEST_MSG_MS;
 }
@@ -4602,16 +4623,63 @@ export var BroTown = function BroTown(_ref0) {
            TILE is 32, so OPEN is ~1.75 tiles (you are standing with him) and
            CLEAR ~3.4 tiles (you have plainly walked off). */
         {
-          var NPC_PROX_OPEN = 56, NPC_PROX_CLEAR = 110;
+          /* ═══ v2.3.1884: THE LATCH HOLDS A SITUATION, NOT JUST AN NPC ═══
+             Owner: "Walking up to claim the quest reward after completing
+             'into the blue' doesn't pop up automatically when walking close
+             to mayor bro.  Make it so that it does."
+
+             Three readings of that were possible, so all three were MEASURED
+             before anything changed (mp-questclaim), and only one was broken:
+               A. approaching him with a claimable reward  — already worked
+               B. the same, after a zone round trip        — already worked
+               C. the reward becoming claimable while you
+                  are already standing next to him         — BROKEN
+
+             (C) is the fix.  The latch held the NPC and nothing else, so once
+             it had shown you anything about Mayor Bro it stayed armed until
+             you left a 110px radius.  "You have already seen this NPC" is not
+             the same claim as "you have already seen this NEWS", and a quest
+             turning claimable is new news.  It now holds { npc, ready } and
+             releases on ONE transition: not-ready -> ready.
+
+             ONE transition, not any change, and THAT IS LOAD-BEARING.  The
+             first cut of this released on any change of quest/status, which
+             also fires on active -> turnedIn -> next quest offered — so
+             handing in a quest while stood on him re-opened the panel with
+             the next offer the instant you closed it.  That is the v2.3.1701
+             trap wearing a different hat, and mp-questline caught it: three of
+             its equip assertions failed because the re-opened dialogue was
+             sitting over the gear it was trying to tap.  Ready is the only
+             news the player is standing there FOR.
+
+             What this deliberately does NOT do is re-open a claim you
+             dismissed while standing still.  That is the frame-after-frame
+             re-open the latch exists to prevent, and mp-questprox asserts it.
+             Recovering a dismissed panel is a step out and back, which the
+             90px release below makes cheap.
+
+             NPC_PROX_CLEAR 110 -> 90.  Not a new number: 90 is the radius
+             _nearNpc already uses to decide who you are standing next to
+             (raised from 60 at v2.3.1717 for this same family of complaint),
+             so the latch now lets go at the same distance the game stops
+             considering him nearby.  56 open / 90 release still leaves ~1
+             tile of hysteresis, so nobody on the boundary flickers. */
+          var NPC_PROX_OPEN = 56, NPC_PROX_CLEAR = 90;
           var _px = S.player ? S.player.x : 0, _py = S.player ? S.player.y : 0;
           var _latched = S._npcProxLatch || null;
-          if (_latched) {
-            var _ld = Math.sqrt(Math.pow(_latched.x - _px, 2) + Math.pow(_latched.y - _py, 2));
-            /* Released by walking away, or by anything that ends this visit
-               to town (zone change nulls S.npcs). */
-            if (!S.npcs || S.currentZone !== 'town' || _ld > NPC_PROX_CLEAR) S._npcProxLatch = null;
-          }
           var _pn = S._nearNpc;
+          /* Resolved BEFORE the latch check so the latch can be compared
+             against it.  One small table walk per frame. */
+          var _pq = (_pn && S.currentZone === 'town') ? getNpcQuest(S.rpg, _pn.name) : null;
+          var _pqReady = _npcQuestReady(S, _pq);
+          if (_latched) {
+            var _ld = Math.sqrt(Math.pow(_latched.npc.x - _px, 2) + Math.pow(_latched.npc.y - _py, 2));
+            /* Released by walking away, by anything that ends this visit to
+               town (zone change nulls S.npcs), or by the quest becoming
+               claimable under your feet. */
+            if (!S.npcs || S.currentZone !== 'town' || _ld > NPC_PROX_CLEAR
+              || (_pn === _latched.npc && _pqReady && !_latched.ready)) S._npcProxLatch = null;
+          }
           if (_pn && !S._npcProxLatch && S.currentZone === 'town') {
             var _pd = Math.sqrt(Math.pow(_pn.x - _px, 2) + Math.pow(_pn.y - _py, 2));
             /* Every gate that means "not now": something else is on screen,
@@ -4621,12 +4689,9 @@ export var BroTown = function BroTown(_ref0) {
               /* the bottom sheet counts as an open panel — the nav rail's
                  destinations render over the world just like the modals do. */
               && dashboardPanelBus.state.mode === 'bar';
-            if (_pOk) {
-              var _pq = getNpcQuest(S.rpg, _pn.name);
-              if (_pq) {
-                S._npcProxLatch = _pn;
-                setQuestPanel({ npc: _pn.name, quest: _pq.quest, status: _pq.status, npcRef: _pn });
-              }
+            if (_pOk && _pq) {
+              S._npcProxLatch = { npc: _pn, ready: _pqReady };
+              setQuestPanel({ npc: _pn.name, quest: _pq.quest, status: _pq.status, npcRef: _pn });
             }
           }
         }
@@ -6428,7 +6493,9 @@ export var BroTown = function BroTown(_ref0) {
   var _desktopNpcQuest = useCallback(function (npc, npcQ) {
     /* v2.3.1701: the E-key door arms the proximity latch too (see the tap
        handler) — the desktop player is standing next to him by definition. */
-    stateRef.current._npcProxLatch = npc;
+    /* v2.3.1884: same shape as the proximity door — { npc, ready }.  A bare
+       npc here would crash the loop's `_latched.npc.x` read. */
+    stateRef.current._npcProxLatch = { npc: npc, ready: _npcQuestReady(stateRef.current, npcQ) };
     setQuestPanel({
       npc: npc.name,
       quest: npcQ.quest,
@@ -8280,7 +8347,7 @@ export var BroTown = function BroTown(_ref0) {
                    uses, so closing a dialogue you opened by hand while
                    standing on him does not get one straight back from the
                    loop.  Both doors, one latch. */
-                S._npcProxLatch = npc;
+                S._npcProxLatch = { npc: npc, ready: _npcQuestReady(S, npcQ) };
                 setQuestPanel({
                   npc: npc.name,
                   quest: npcQ.quest,
