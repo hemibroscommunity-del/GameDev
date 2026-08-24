@@ -145,28 +145,31 @@ export const HeroExpanded = () => {
      the fold, which is the one thing this screen must not do.
      Nothing is lost that the world HUD does not already show live — the
      exact numbers stay, under the bar rather than beside it. */
+  /* ═══ v2.3.1888: NO BAR — AN ICON AND THE NUMBERS ═══
+     Owner: "get rid of the bars and just use icons to represent combat
+     resources and the numbers (e.g. in 100/100 format)."
+
+     So the icon IS the label now: the HP/EN/MP word goes with the bar it used
+     to sit beside, because an icon that has to be captioned is not doing its
+     job. What is left is small enough that the three fit on ONE row instead of
+     three stacked ones, and that is the whole point — it hands ~28px back to
+     the combat stats above, which is the room the owner asked them to have
+     ("the combat stats and resources extend a little farther down"). The sheet
+     itself has none to give: measured, its body is 191px tall with 191px of
+     content in it.
+
+     `title` carries the full word for a long-press, since the icon no longer
+     spells it out. */
   const compactVital = (kind, cur, max) => (
-    <div key={kind} style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
-      {/* v2.3.1883: 13 -> 12.  The icon is what sets this row's height, so
-          three of them are the last 3px the two group headings needed.  The
-          bar is 9px and the readout 9.5, so 12 is still the tallest thing in
-          the row and the row still reads as icon-led. */}
+    <div key={kind} title={VITAL_LABEL[kind]} style={{
+      flex: 1, minWidth: 0, display: 'flex', alignItems: 'center',
+      justifyContent: 'center', gap: 4,
+    }}>
       <img src={VITAL_ICONS[kind]} alt="" draggable={false}
-        style={{ width: 12, height: 12, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
-      {/* v2.3.1883: the LABEL and the MAX, both from the owner's reference
-          ("HP ---- 118/118").  The bare current value could not say whether
-          118 was full or nearly dead without reading the bar's fill, and the
-          bar is 9px tall.  The label is 20px and the readout right-aligned in
-          a fixed 52px so the three bars start and end on the same two
-          columns — ragged ends read as three different widgets. */}
+        style={{ width: 14, height: 14, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
       <span style={{
-        flex: 'none', width: 20, fontSize: 9, fontWeight: 700,
-        letterSpacing: '.04em', color: COL.muted,
-      }}>{VITAL_LABEL[kind]}</span>
-      <VitalBar kind={kind} cur={cur} max={max} thick={9} />
-      <span style={{
-        flex: 'none', width: 52, textAlign: 'right', fontSize: 9.5, fontWeight: 700,
-        color: COL.text2, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+        fontSize: 10.5, fontWeight: 700, color: COL.text2,
+        fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
       }}>{Math.ceil(cur)}/{Math.ceil(max)}</span>
     </div>
   );
@@ -198,11 +201,12 @@ export const HeroExpanded = () => {
       background: COL.wellSoft,
       border: `1px solid ${COL.tileBor}`,
       borderRadius: 8,
-      /* v2.3.1883: 3px/4px -> 2px.  The two group headings and the rule
-         between them cost 17px of a 146px column and this is where the last
-         of it came from; the tile still clears its 8.5px label and 13px
-         value with room, and every other cell dimension is untouched. */
-      padding: '2px 2px 2px',
+      /* v2.3.1888: back to 4px/5px.  It was squeezed to 2px at v2.3.1883 to
+         buy the last of the 17px the two group headings needed; dropping the
+         three vital BARS for one icon row hands ~28px back, and this is the
+         first place it goes — a 2px tile reads as a cramped box rather than a
+         considered one. */
+      padding: '4px 3px 5px',
       minWidth: 0,
       textAlign: 'center',
     }}>
@@ -749,38 +753,19 @@ export const HeroExpanded = () => {
                     trade the owner already accepted for the vitals: both come
                     straight back when the slot is tapped closed. */
                 <>
-                  <div style={{ flex: 'none', display: 'flex', flexDirection: 'column', gap: 3 }}>
-                    {compactVital('hp', R.hp || 0, R.maxHp || 100)}
-                    {compactVital('stamina', R.stamina || 0, R.maxStamina || 100)}
-                    {compactVital('mana', R.mana || 0, R.maxMana || 100)}
-                  </div>
-                  {/* ═══ v2.3.1883: OFFENSE, THEN DEFENSE ═══
-                      Owner: "Change the panel area with the resource bars and
-                      combat stats on the player menu to be more organized
-                      like this", with a reference showing the seven split
-                      under two headings.
+                  {/* ═══ v2.3.1888: THE STATS COME FIRST ═══
+                      Owner: "Swap places on the combat stats with the resource
+                      bars (so stats are above)."
 
-                      They were one undifferentiated 4x2 grid, which is why
-                      the reference exists: read left to right it went damage,
-                      dps, crit, crit-dmg, def, dodge, armor with nothing
-                      marking where the offensive four stop and the defensive
-                      three begin, so the second row's meaning had to be
-                      recalled rather than seen.
-
-                      DAMAGE no longer spans two columns — it does not need to
-                      now that its row holds four cells instead of eight, and
-                      the 1.25fr first column gives a wide range like "120-160"
-                      more room than the span ever did while keeping the other
-                      three on a common width.
-
-                      The divider is the reference's own rule and it is doing
-                      work: two headings alone leave the groups sharing an
-                      edge, and at this size the DEFENSE heading reads as a
-                      caption on the row above it as readily as a heading for
-                      the row below. */}
+                      They were under the vitals because v2.3.1878 put the
+                      vitals at the top of this column to free the space below
+                      them.  Reading order is the better argument: the seven
+                      numbers are what you opened the Equipment tab to compare,
+                      and the three resources are a readout you glance at.  The
+                      thing you came for goes first. */}
                   <div style={{
                     flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column',
-                    justifyContent: 'center', marginTop: 2, gap: 2,
+                    justifyContent: 'center', gap: 3,
                   }}>
                     {groupHead('Offense')}
                     <div style={{
@@ -797,6 +782,21 @@ export const HeroExpanded = () => {
                     }}>
                       {defenseCells()}
                     </div>
+                  </div>
+                  {/* The three resources, on one row under the rule.  Their own
+                      divider, so they read as a footer to the stats rather than
+                      as a third stat group. */}
+                  <div style={{ height: 1, background: COL.tileBor, flex: 'none', marginTop: 4 }} />
+                  <div style={{
+                    flex: 'none', display: 'flex', alignItems: 'center',
+                    /* 10, not 4: each group is an even third and "118/118" is
+                       seven glyphs, so at a small gap the numbers run into the
+                       next icon and the row reads as one string. */
+                    gap: 10, marginTop: 4,
+                  }}>
+                    {compactVital('hp', R.hp || 0, R.maxHp || 100)}
+                    {compactVital('stamina', R.stamina || 0, R.maxStamina || 100)}
+                    {compactVital('mana', R.mana || 0, R.maxMana || 100)}
                   </div>
                 </>
               )}
