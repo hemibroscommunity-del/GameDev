@@ -4546,6 +4546,93 @@ function createOtherPlayerDisplay() {
 /**
  * Manages all entity rendering.
  */
+/* ═══ v2.3.1895: THE SPEND BARS UNDER THE CHARACTER ═══
+ * Owner: "Instead of the special attack counter I want to see what it looks
+ * like to have the mp bar below the character (name plate will disappear when
+ * mp is used).  The amount of mp used will slide right.  The resource bar will
+ * begin fading after 1 second and disappear after 2 seconds if no further mp
+ * is used.  Do the same thing for energy but beneath the mp bar.  Reserve the
+ * space for whenever mp and energy is used (they stay in those positions)."
+ *
+ * Geometry is FIXED, not laid out: MP always draws at RES_MP_Y and energy at
+ * RES_EN_Y whether or not the other is up.  That is the "reserve the space"
+ * requirement, and it is why these are two independent draws rather than a
+ * stack — a stack would slide the energy bar upward on the frames where MP is
+ * hidden, which is the jitter the request rules out.
+ *
+ * The bars sit where the NAME PLATE sits, so the plate hides while either is
+ * up.  Both therefore share one visibility answer rather than each hiding the
+ * plate on its own, or the plate would flicker back between two spends.
+ *
+ * THE SLIDING CHUNK.  On a spend, the segment between the new fill edge and
+ * the old one is kept and animated RIGHT while fading, so the amount that just
+ * left is legible as a quantity rather than as a jump.  It is measured from
+ * the CURRENT edge every frame rather than from a cached x, so a second spend
+ * mid-slide re-bases it instead of leaving two ghosts disagreeing about where
+ * the edge is.
+ */
+const RES_BAR_W = 46;          /* a touch narrower than the name plate */
+const RES_BAR_H = 4;
+const RES_MP_Y = 40;           /* the plate's own y (38) plus its top inset */
+const RES_EN_Y = 48;           /* one bar + 4px of air, always reserved */
+const RES_HOLD_MS = 1000;      /* full alpha for a second after the last spend */
+const RES_FADE_MS = 1000;      /* then a second of fade — gone at 2s */
+const RES_SLIDE_MS = 420;      /* how long the spent chunk takes to leave */
+const RES_TRACK = 0x101B22;
+const RES_FILL = { mana: 0x5B99DE, stamina: 0xD8A85F };
+const RES_GHOST = { mana: 0x9CC8F2, stamina: 0xF0D9A6 };
+
+/* One bar.  Returns its alpha, so the caller can decide about the plate. */
+function _drawResourceBar(gfx, kind, cur, max, y, now) {
+  const m = Math.max(1, max || 1);
+  const v = Math.max(0, Math.min(m, cur || 0));
+  /* Seed on the first frame so arriving at partial MP does not read as a
+     spend and flash the bar for nothing — the same trap the HP ring hit at
+     v2.3.1682. */
+  if (gfx._resLast == null) { gfx._resLast = v; gfx._resSpentAt = 0; gfx._resFrom = v; }
+  if (v < gfx._resLast - 0.01) {
+    gfx._resFrom = gfx._resLast;         /* re-base the chunk on every spend */
+    gfx._resSpentAt = now;
+  } else if (v > gfx._resLast + 0.01) {
+    gfx._resFrom = v;                    /* refill: no chunk, and no reveal */
+  }
+  gfx._resLast = v;
+
+  const since = now - (gfx._resSpentAt || 0);
+  let alpha = 0;
+  if (gfx._resSpentAt) {
+    if (since <= RES_HOLD_MS) alpha = 1;
+    else if (since <= RES_HOLD_MS + RES_FADE_MS) alpha = 1 - (since - RES_HOLD_MS) / RES_FADE_MS;
+  }
+  gfx.clear();
+  if (alpha <= 0.01) { gfx.alpha = 0; return 0; }
+  gfx.alpha = alpha;
+
+  const x0 = -RES_BAR_W / 2;
+  const fillW = RES_BAR_W * (v / m);
+  gfx.roundRect(x0, y, RES_BAR_W, RES_BAR_H, RES_BAR_H / 2).fill({ color: RES_TRACK, alpha: 0.85 });
+  if (fillW > 0.5) {
+    gfx.roundRect(x0, y, fillW, RES_BAR_H, RES_BAR_H / 2).fill({ color: RES_FILL[kind] });
+  }
+  const slide = since / RES_SLIDE_MS;
+  gfx._resGhostX = null; gfx._resGhostW = 0;
+  if (slide < 1) {
+    const fromW = RES_BAR_W * (Math.min(m, gfx._resFrom) / m);
+    const chunkW = Math.max(0, fromW - fillW);
+    if (chunkW > 0.5) {
+      const travel = (RES_BAR_W - fillW) * slide;
+      gfx.roundRect(x0 + fillW + travel, y, chunkW, RES_BAR_H, RES_BAR_H / 2)
+        .fill({ color: RES_GHOST[kind], alpha: (1 - slide) * 0.9 });
+      /* Published so "the amount used slides right" can be MEASURED.  A
+         screenshot cannot check it: a harness round-trip costs ~900ms and the
+         slide is 420, so every frame it can catch is already settled. */
+      gfx._resGhostX = x0 + fillW + travel;
+      gfx._resGhostW = chunkW;
+    }
+  }
+  return alpha;
+}
+
 export class EntityRenderer {
   constructor(entityLayer, playerLayer, monsterUiLayer, gestureLayer) {
     this.entityLayer = entityLayer;
@@ -8671,7 +8758,16 @@ export class EntityRenderer {
        lives in the pill below the feet now, built here. */
     if (display._nameText.visible) display._nameText.visible = false;
     /* Hidden while dying so the plate doesn't hover over a corpse. */
-    _updateNamePill(display, S.myName || 'Anon', (S.rpg && S.rpg.level) || 1, !S._dying, S.rpg && S.rpg._bro);
+    /* v2.3.1895: ...and hidden while a resource bar is up (owner: "name plate
+       will disappear when mp is used").  The bars occupy the plate's own y,
+       so this is not a preference — they would overlap.
+       ONE FRAME STALE, deliberately: update() runs _updatePlayer before
+       _updatePlayerHud, so this reads the flag the previous frame's HUD pass
+       set.  16ms against a bar that holds for 1000, and reordering update()
+       to fix it would move the HUD pass ahead of the body placement it reads
+       positions from — a real risk to buy an invisible one. */
+    _updateNamePill(display, S.myName || 'Anon', (S.rpg && S.rpg.level) || 1,
+      !S._dying && !this._resourceBarsUp, S.rpg && S.rpg._bro);
 
     /* v2.3.1193: my own threat skull — reads the formerly ORPHANED
        S._pvpSkullType / S._pvpSkullUntil anchors (InspectPlayerPanel
@@ -9096,62 +9192,48 @@ export class EntityRenderer {
     const HOLD_MS = 2500;
     const FADE_STEP = 16.7 / 300; /* ~300 ms fade-in / fade-out */
 
-    /* v2.3.214: in-world MP segment bar replaced by SpecialChargePie
-       anchored above the right joystick (src/ui/mobile/SpecialChargePie).
-       Keep the Graphics node hidden + legacy sprite/text nodes off so
-       no HUD pixels render above the player.  Pickup-pose / death paths
-       still reference _hudMpEmpty so we leave the field in place. */
-    {
-      d._hudMpEmpty.clear();
-      d._hudMpEmpty.alpha = 0;
-      if (d._hudMpSprite && d._hudMpSprite.visible) d._hudMpSprite.visible = false;
-      if (d._hudMpTextFull && d._hudMpTextFull.visible) d._hudMpTextFull.visible = false;
-      if (d._hudMpTextEmpty && d._hudMpTextEmpty.visible) d._hudMpTextEmpty.visible = false;
-    }
+    /* ═══ v2.3.1895: THE MP BAR IS BACK, UNDER THE FEET ═══
+       Owner: "Instead of the special attack counter I want to see what it
+       looks like to have the mp bar below the character."
 
-    /* Stamina — v2.3.1400 (owner): the 64px horizontal pill above the
-       head is retired for a bare percentage NUMBER below the player's
-       feet.  "Energy percentage shouldn't draw much attention" — no bar,
-       no icon, small text, and it keeps the old visibility contract:
-       fades in while below max, holds HOLD_MS once refilled, fades out.
-       The pill sprite/overlay/split labels stay allocated but hidden
-       (pickup/death paths still reference them). */
-    {
-      const max = R.maxStamina || 1;
-      const cur = Math.max(0, Math.min(max, R.stamina || 0));
-      const pct = cur / max;
-      const full = cur >= max - 0.01;
-      const b = d._hudStamSprite;
-      if (!full) b._lastNotFullAt = now;
-      const sinceChange = now - (b._lastNotFullAt || 0);
-      const targetAlpha = (!full || sinceChange < HOLD_MS) ? 1 : 0;
-      /* raw fade tracked separately — reading label.alpha back would
-         re-apply the 0.8 dim each frame and trap the fade at ~0.22 */
-      const a = (b._fadeA != null) ? b._fadeA : 0;
-      const delta = targetAlpha - a;
-      const newAlpha = a + Math.max(-FADE_STEP, Math.min(FADE_STEP, delta));
-      b._fadeA = newAlpha;
+       v2.3.214 had retired this in-world bar for SpecialChargePie above the
+       right joystick; the pie is removed with this change, so the readout
+       comes back to the character — but as a SPEND bar rather than a standing
+       gauge.  It is drawn on _hudMpEmpty, which has been sitting allocated
+       and cleared since v2.3.214 for exactly this reason (the pickup and
+       death paths already reference it, and it is in the death keep-list).
+       The legacy pill sprite and its two labels stay off. */
+    const _resAlphaMp = _drawResourceBar(d._hudMpEmpty, 'mana',
+      R.mana, R.maxMana, RES_MP_Y, now);
+    if (d._hudMpSprite && d._hudMpSprite.visible) d._hudMpSprite.visible = false;
+    if (d._hudMpTextFull && d._hudMpTextFull.visible) d._hudMpTextFull.visible = false;
+    if (d._hudMpTextEmpty && d._hudMpTextEmpty.visible) d._hudMpTextEmpty.visible = false;
 
-      if (b.visible) b.visible = false;
-      d._hudStamEmpty.clear();
-      if (d._hudStamTextEmpty.visible) d._hudStamTextEmpty.visible = false;
+    /* ═══ v2.3.1895: ENERGY, BENEATH THE MP BAR ═══
+       Owner: "Do the same thing for energy but beneath the mp bar."
 
-      const label = d._hudStamTextFull;
-      if (!label._energyStyled) {
-        /* one-time restyle: the shared pill-number style (8px) reads as a
-           speck on its own.  11px, still quiet.  Pixi clones the plain
-           style object per Text, so this can't leak to the MP labels. */
-        label._energyStyled = true;
-        label.style.fontSize = 11;
-      }
-      /* small ⚡ marks it as ENERGY without pulling focus (owner) */
-      const pctStr = '⚡' + Math.round(pct * 100) + '%';
-      if (label.text !== pctStr) label.text = pctStr;
-      label.x = 0;
-      label.y = 86;                     /* just under the feet (container origin
-                                           sits near the head; name tag is -28) */
-      label.alpha = newAlpha * 0.8;     /* deliberately understated */
-      label.visible = newAlpha > 0.02;
+       This replaces the bare "⚡42%" number v2.3.1400 put under the feet.
+       That readout answered a different question — it was a standing gauge,
+       deliberately understated, visible whenever energy was below max.  The
+       ask here is the same SPEND behaviour as MP, so it gets the same
+       renderer and the same timings rather than a second set that could
+       drift.  RES_EN_Y is fixed, so this bar holds its position whether or
+       not the MP bar above it is drawn. */
+    const _resAlphaEn = _drawResourceBar(d._hudStamEmpty, 'stamina',
+      R.stamina, R.maxStamina, RES_EN_Y, now);
+    if (d._hudStamSprite && d._hudStamSprite.visible) d._hudStamSprite.visible = false;
+    if (d._hudStamTextFull && d._hudStamTextFull.visible) d._hudStamTextFull.visible = false;
+    if (d._hudStamTextEmpty && d._hudStamTextEmpty.visible) d._hudStamTextEmpty.visible = false;
+    /* One answer for both bars: the plate hides while EITHER is up, or it
+       would flicker back in the gap between an MP spend and an energy one. */
+    this._resourceBarsUp = (_resAlphaMp > 0.01) || (_resAlphaEn > 0.01);
+    if (typeof window !== 'undefined') {
+      window.__btResourceBars = {
+        mp: +_resAlphaMp.toFixed(3), en: +_resAlphaEn.toFixed(3),
+        mpY: RES_MP_Y, enY: RES_EN_Y, plateHidden: this._resourceBarsUp,
+        mpGhostX: d._hudMpEmpty._resGhostX, mpGhostW: d._hudMpEmpty._resGhostW,
+        enGhostX: d._hudStamEmpty._resGhostX, enGhostW: d._hudStamEmpty._resGhostW,
+      };
     }
 
     /* HP: quartile-colored progress RING with a muted-gray center holding
