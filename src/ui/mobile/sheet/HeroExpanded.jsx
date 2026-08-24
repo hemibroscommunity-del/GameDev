@@ -160,29 +160,42 @@ export const HeroExpanded = () => {
 
      `title` carries the full word for a long-press, since the icon no longer
      spells it out. */
+  /* ═══ v2.3.1891: ONE RESOURCE PER ROW, ABOVE THE STATS ═══
+     Owner: "Try putting the combat resources on their own rows above the
+     offense and defense section.  Right now the numbers run together too
+     much."
+
+     They did, and the cause is arithmetic rather than taste: three groups
+     sharing one row get an even third of ~180px, and "118/118" is seven
+     tabular glyphs plus a 12px icon.  That very nearly fills a third, so
+     whatever gap is left between them reads as smaller than the gap INSIDE
+     each group — and the eye then groups the wrong things.  v2.3.1888 and
+     v2.3.1890 both answered it by widening the gap (4 -> 10 -> 12), which
+     treats the symptom; a row each removes the competition entirely.
+
+     Shaped like a stat row on purpose — icon left, number right, the same
+     baseline and the same right edge as Damage/DPS/Crit below. The icon is
+     doing the job the label does down there, so the two blocks read as one
+     sheet rather than as a widget stacked on a list. */
   const compactVital = (kind, cur, max) => (
     <div key={kind} title={VITAL_LABEL[kind]} style={{
-      /* v2.3.1889: the icon sits ABOVE the number rather than in front of it
-         (owner).  Stacking costs ~13px of height, which this row did not
-         obviously have — the sheet body is 191px with 191px of content.  It
-         fits because the room is INSIDE the column rather than at the sheet
-         level: the stats block above is flex:1 and vertically centred, so it
-         was holding a gap it did not need, and the stack simply takes it.
-         mp-charfit is what says that is true rather than hoped.
-
-         Stacking also buys the numbers their width back: side by side, the
-         icon and a seven-glyph "118/118" shared an even third of the row and
-         very nearly touched the next group (the reason the gap went to 10px
-         at v2.3.1888).  One above the other, each group is as wide as its
-         number and the crowding cannot recur. */
-      flex: 1, minWidth: 0, display: 'flex',
-      alignItems: 'center', justifyContent: 'center', gap: 4,
+      /* v2.3.1891b: the pair is grouped LEFT, not pushed to the two ends.
+         Spread across the full width the icon and its own number sat
+         ~250px apart and stopped reading as one thing — the same failure
+         as the crowding, at the other extreme.  A stat row can justify
+         to its ends because it has a WORD holding the left end down; an
+         icon cannot do that alone. */
+      display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
+      /* v2.3.1891: three full-width rows cost 21px the column did not
+         have.  The resources pay most of it rather than the stats: this is
+         a glance readout and those are what you compare. */
+      gap: 6, minWidth: 0, lineHeight: 1.2,
     }}>
       <img src={VITAL_ICONS[kind]} alt="" draggable={false}
-        style={{ width: 12, height: 12, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
+        style={{ width: 11, height: 11, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
       <span style={{
-        fontSize: 10.5, fontWeight: 700, color: COL.text2,
-        fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+        fontSize: 10.5, fontWeight: 800, color: COL.text2,
+        fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', flex: 'none',
       }}>{Math.ceil(cur)}/{Math.ceil(max)}</span>
     </div>
   );
@@ -232,7 +245,10 @@ export const HeroExpanded = () => {
       /* v2.3.1890b: the list left real vertical air where the boxes' chrome
          used to be — spent on legibility, which is the point of dropping
          them.  charfit is the ceiling. */
-      gap: 6, minWidth: 0, lineHeight: 1.5,
+      /* v2.3.1891: 1.5 -> 1.34.  Moving the resources onto rows of their
+         own (owner) needed 21px; the resources found most of it and this
+         is the rest.  Still well above the boxed layout it replaced. */
+      gap: 6, minWidth: 0, lineHeight: 1.34,
     }}>
       <span style={{
         fontSize: 10.5, fontWeight: 600, color: COL.muted,
@@ -766,47 +782,37 @@ export const HeroExpanded = () => {
                     trade the owner already accepted for the vitals: both come
                     straight back when the slot is tapped closed. */
                 <>
+                  {/* v2.3.1891: the three resources come FIRST now (owner),
+                      each on a FULL-WIDTH row of its own.  Two-across was
+                      tried first and rejected on re-reading the request: it
+                      puts MP back alongside HP, which is the crowding this is
+                      meant to remove, just less of it. */}
+                  <div style={{ flex: 'none' }}>
+                    {compactVital('hp', R.hp || 0, R.maxHp || 100)}
+                    {compactVital('stamina', R.stamina || 0, R.maxStamina || 100)}
+                    {compactVital('mana', R.mana || 0, R.maxMana || 100)}
+                  </div>
+                  <div style={{ height: 1, background: COL.tileBor, flex: 'none', margin: '2px 0' }} />
                   {/* ═══ v2.3.1890: TWO COLUMNS, NOT A GRID OF BOXES ═══
-                      Owner's reference: OFFENSE and DEFENSE side by side, each
-                      a plain list of label -> value, a rule, then the vitals.
+                      Owner: "every stat is being treated as its own card...
+                      I'd switch to a character-sheet/list format".
 
                       Side by side rather than stacked because offense has four
                       rows and defense three: stacked they cost 7 rows plus two
                       headings, and beside each other they cost 4 plus one. In
-                      a 146px column that difference is most of the budget, and
-                      it is why the boxes had to be squeezed to 2px padding
-                      three versions ago. */}
+                      a 146px column that difference is most of the budget. */}
                   <div style={{
                     flex: 1, minHeight: 0, display: 'flex',
                     alignItems: 'flex-start', gap: 12,
                   }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       {groupHead('Offense')}
-                      <div style={{ marginTop: 3 }}>{offenseCells()}</div>
+                      <div style={{ marginTop: 2 }}>{offenseCells()}</div>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       {groupHead('Defense')}
-                      <div style={{ marginTop: 3 }}>{defenseCells()}</div>
+                      <div style={{ marginTop: 2 }}>{defenseCells()}</div>
                     </div>
-                  </div>
-                  <div style={{ height: 1, background: COL.tileBor, flex: 'none', marginTop: 3 }} />
-                  {/* The three resources under the rule, as the reference draws
-                      them: icon then number, on one line.  v2.3.1889 had put
-                      the icon ABOVE its number; the list format gives the row
-                      its width back, so they go back inline and the ~13px that
-                      stacking cost returns to the stats. */}
-                  <div style={{
-                    flex: 'none', display: 'flex', alignItems: 'center',
-                    /* 12, not 6: each group is an even third and "118/118" is
-                       seven glyphs, so at a small gap the number runs into the
-                       NEXT group's icon and the row reads as one string.  Same
-                       measurement as v2.3.1888 — the list format changed the
-                       row's height, not its width. */
-                    gap: 12, marginTop: 4,
-                  }}>
-                    {compactVital('hp', R.hp || 0, R.maxHp || 100)}
-                    {compactVital('stamina', R.stamina || 0, R.maxStamina || 100)}
-                    {compactVital('mana', R.mana || 0, R.maxMana || 100)}
                   </div>
                 </>
               )}
