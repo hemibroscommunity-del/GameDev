@@ -223,8 +223,21 @@ export const HeroExpanded = () => {
           colour cue at a glance; the letter is what you read.  Sized to the
           letter's cap height rather than the number's, so it sits with the
           word it follows instead of looming over it. */}
+      {/* v2.3.1894: 12 -> 18 (owner: "make the combat resource icons larger").
+          The row is align-items:center, so its height is max(icon, line box),
+          and the line box is 14px of number at 1.30 leading = 18.2px.  18 is
+          therefore the LARGEST the icon can be while still sitting inside the
+          height the row already had — measured at 18.0 against a row of 18.2,
+          with the column at 146px of content in 146px.  That is the only
+          reason a 50% larger icon costs nothing here; anything above 18.2
+          starts driving the row height and pushes the stats off the bottom.
+
+          NOTE THE COUPLING: this 18 is tied to `lineHeight: 1.30` and the
+          14px value above.  Shrink either and the icon becomes what sets the
+          row height.  mp-charfit catches it, but the fix is to move this
+          number, not to fight the layout. */}
       <img src={VITAL_ICONS[kind]} alt="" draggable={false}
-        style={{ width: 12, height: 12, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
+        style={{ width: 18, height: 18, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
       {/* v2.3.1893: the slash gets air on both sides (owner: "increase the
           space between the first and second number").  Rendered as its own
           span rather than as spaces in the string: the numbers are tabular
