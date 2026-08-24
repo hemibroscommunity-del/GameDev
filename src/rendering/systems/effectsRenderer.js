@@ -2324,6 +2324,28 @@ export class EffectsRenderer {
          v2.3.1425/1426: a special stuck in a monster (a.stuckIn — the
          bow special arrow since v2.3.1426) is the same pose. */
       const _stuckPose = a.planted || a.planting || a.stuckIn;
+      /* ═══ v2.3.1879: ARRIVED IS NOT THE SAME AS SPENT ═══
+         Owner: "the arrowhead is missing mid flight.  It should only get
+         stuck in the monster without the arrowhead."
+
+         `_stuckPose` above is three states wearing one name, and for the
+         motion trail and the aim-bend that is right — a falling arrow wants
+         no trail and no bend just as much as an embedded one does.  For the
+         HEAD it is wrong, and v2.3.1765's note here ("the buried head is the
+         same fact, so it rides the same variable") is the mistake: `planting`
+         is not arrival.  It is the SPENT arc — an arrow that reached the
+         screen edge or its 675px range and is now falling ~26px through open
+         air before it plants (projectiles.js).  It is airborne for that whole
+         drop, in plain view, and it was being drawn with its tip cut off.
+         Photographed at v2.3.1879 before this changed: a headless green shaft
+         hanging in the middle of the ground texture, stuck in nothing.
+
+         So the head is gated on ARRIVAL only.  `planted` is the ~2s pose after
+         it lands, `stuckIn` is the bow special embedded in a monster
+         (v2.3.1426) — both are things it is actually in.  A falling arrow
+         keeps its head until it lands, which is what the owner is describing
+         and also just what an arrow does. */
+      const _headless = a.planted || a.stuckIn;
       const _angB = a.ang + (_stuckPose ? 0 : bend);
 
       /* Motion-blur trail — push the current position into a small
@@ -2411,11 +2433,10 @@ export class EffectsRenderer {
            local-coords-friendly.  ang_eff = a.ang + bend so arrows
            in flight visibly tilt in the direction the player is
            rotating their aim. */
-        /* v2.3.1765: `_stuckPose` is already the "it has arrived" flag this
-           loop computes for the motion trail and the aim-bend; the buried head
-           is the same fact, so it rides the same variable rather than a second
-           one that could disagree with it. */
-        this._drawArrow(gfx, a._renderX, a._renderY, _angB, elemColor, fadeA, 1, _stuckPose);
+        /* v2.3.1765 buried the head on `_stuckPose`; v2.3.1879 splits
+           `_headless` out of it — see the note where both are computed.  The
+           two deliberately differ by `planting`, and only there. */
+        this._drawArrow(gfx, a._renderX, a._renderY, _angB, elemColor, fadeA, 1, _headless);
       }
     }
 
