@@ -5546,6 +5546,7 @@ export var BroTown = function BroTown(_ref0) {
                 fhc: getFacialHairColor(),
                 st: getShirt(),
                 stc: getShirtColor(),
+                ec: getEyeColor(),   /* v2.3.1930 */
                 eqc: getEquip('chest'),
                 eql: getEquip('legs'),
                 eqs: getEquip('shoulders'),

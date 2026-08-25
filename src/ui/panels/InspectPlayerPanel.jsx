@@ -117,7 +117,8 @@ export function InspectPlayerPanel(props) {
           headwear: o.headwear,
           hatColor: hatColorTarget(o.hatColor, o.headwear), /* v2.3.1927 */
           shirt: o.shirt,
-          shirtColor: shirtColorTarget(o.shirtColor)
+          shirtColor: shirtColorTarget(o.shirtColor),
+          eyeColor: o.eyeColor   /* v2.3.1930: THEIR eyes, off the wire */
         }, true).then(function (url) {
           if (alive && url) setGenPortrait(url);
         }).catch(function () {});

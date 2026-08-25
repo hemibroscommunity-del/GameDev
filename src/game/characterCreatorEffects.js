@@ -31,6 +31,7 @@ export function wireCharacterPortrait(previewCanvasRef, sel) {
     facialHair: facialHairSel, facialHairColor: facialHairColorTarget(beardColorSel),
     headwear: headwearSel, hatColor: hatColorTarget(hatColorSel, headwearSel), /* v2.3.1927 */
     shirt: shirtSel, shirtColor: shirtColorTarget(shirtColorSel),
+    eyeColor: sel.eyeColor,   /* v2.3.1930: the creator's own live selection */
     /* v2.3.1300: baked contact shadow — login preview only (exports and
        headshots keep a clean figure). */
     groundShadow: true,
