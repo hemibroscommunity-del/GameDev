@@ -244,8 +244,36 @@ export const HeroExpanded = () => {
           and a literal space is not, so padding is the only way to move the
           two apart without the gap jittering as the values change.  The
           separator is also dimmed — it is punctuation, not data. */}
+      {/* ═══ v2.3.1910: TALL, NARROW NUMERALS ═══
+          Owner: "very tall and thin numbers for the combat resource numbers
+          might look good to fill that space. Like a raleway font. Space isn't
+          well filled right now in that top half."
+
+          Raleway's digits are noticeably narrower than Source Sans 3's at the
+          same size, which is the whole trick here: the row is width-bound (a
+          letter, an icon, and two numbers with a slash, centred in a column
+          that also has to hold the offense/defense table below), so a narrower
+          face buys height for free. 14 -> 19px is about a third taller and
+          still fits the same line, where 19px of Source Sans 3 would not.
+
+          THE COUPLING moves with it. The v2.3.1894 note says the 18px icon is
+          sized to the row's line box (14 x 1.30 = 18.2) and that anything
+          taller starts driving the row height — at 19 x 1.30 = 24.7 the NUMBER
+          is now what sets it, which is the intended direction: the rows grow
+          into the air the owner is pointing at rather than the icon growing
+          into the stats. mp-charfit is the gate on how far that can go. */}
       <span style={{
-        fontSize: 14, fontWeight: 800, color: COL.text,
+        fontSize: 19, fontWeight: 700, color: COL.text,
+        fontFamily: "Raleway, 'Source Sans 3', sans-serif",
+        /* The leading, NOT the row, absorbs the extra size. At the row's 1.30
+           a 19px number makes a 24.7px line box, the number becomes what sets
+           the row height, three rows grow 6px each and 18px of overflow pushes
+           Crit Dmg off the bottom of the sheet — mp-charfit reported exactly
+           that (146 -> 164 scrollHeight) on the first attempt. Digits have no
+           descenders, so tightening the leading to sit inside the box the row
+           already had costs nothing visually and is what lets the glyphs grow
+           into the air rather than the layout. */
+        lineHeight: 0.95,
         fontVariantNumeric: 'tabular-nums', display: 'flex', alignItems: 'baseline',
       }}>
         {Math.ceil(cur)}
