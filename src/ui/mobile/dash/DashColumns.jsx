@@ -8,7 +8,7 @@ import { COMBAT_SKILLS, skillLevel, weaponSkillProgress } from '../sheet/heroMod
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { requestT2Category } from './T2Panel.jsx';
 import { heroSectionBus } from '../sheet/heroSectionBus.js';
-import { prog3Live, prog3Pool, prog3SkillLevel, prog3CatFor } from '../../../data/prog3.js';
+import { prog3Live, prog3HasSkills, prog3Pool, prog3SkillLevel, prog3CatFor } from '../../../data/prog3.js';
 import { buildSkillUnspent, STAT_TO_WEAPON_CAT } from '../../../data/gameSystems.js';
 import { registerXpCard, displayXp, xpCounting } from '../../xpLanding.js'; /* v2.3.1874 */
 import { dashTileSize, dashPanelWidths, combatPillWidth, combatPillHeight, BAG_VIEW_COLS, DASH_GAP, DASH_ROWS, BAG_HEADER_H } from '../sheet/sheetGeometry.js';
@@ -298,7 +298,28 @@ export const DashColumns = ({ R }) => {
     const p3 = prog3Live(rpg);
     const cat = STAT_TO_WEAPON_CAT[s.key];
     const p3cat = cat ? prog3CatFor(cat) : null;
-    const lvl = (p3 && p3cat) ? prog3SkillLevel(rpg, p3cat) : skillLevel(rpg, s.key);
+    /* ═══ v2.3.1922: THE LEVEL READS THE BLOB, NOT THE CAP ═══
+       Owner, on a returning character: "the combat stats appear as 0 (this
+       is an old character reload that I haven't seen in a while)" — three
+       cards reading LV 0 while the Build panel beside them said Lv 3.
+
+       The two halves of this card disagreed about what to trust.  The XP
+       below is keyed on `p3cat` alone and so came from the prog3 blob (a
+       real 68/455); the LEVEL was keyed on `p3` — prog3Live, which is cap
+       AND blob — and with the cap not yet in fell back to skillLevel()
+       reading the legacy `weaponSkills` corpse, which prog3 characters
+       carry zeroed.  Hence a real XP bar under a level of nothing.  Note
+       prog3SkillLevel floors at 1, so a rendered 0 could ONLY have come
+       from the legacy branch.
+
+       The cap is genuinely absent for a moment on every load: `_enabled`
+       is a module variable set from state_sync, and flipping it does not
+       re-render anything, so whatever painted first keeps its answer.
+       prog3HasSkills asks the only question a READOUT has — is the level
+       in the blob — and has no timing hole.  Same correction as v2.3.1902
+       made to the stat screen; this card was missed then. */
+    const p3Read = prog3HasSkills(rpg);
+    const lvl = (p3Read && p3cat) ? prog3SkillLevel(rpg, p3cat) : skillLevel(rpg, s.key);
     /* ═══ v2.3.1687: THE +1 BELONGS TO THE SKILL THAT EARNED IT ═══
        Owner: "When I level up it shows melee, bow, and magic as +1
        simultaneously. This is not correct. Only the combat skill that

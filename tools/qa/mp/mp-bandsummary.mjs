@@ -450,6 +450,42 @@ export async function run({ browser, wsPort, webPort, rec }) {
     narrow.map((p) => p.pairText));
   await N.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/bandsummary-360.png' });
 
+  /* ═══ v2.3.1922: THE CARD MUST AGREE WITH THE CHARACTER ═══
+     Owner, on a returning character: "the combat stats appear as 0" — three
+     cards reading LV 0 beside a Build panel reading Lv 3.  The card's XP came
+     from the prog3 blob while its LEVEL fell back to the legacy `weaponSkills`
+     corpse, which prog3 characters carry zeroed.
+
+     Honest limit, stated rather than papered over: the bug only appears while
+     caps.prog3 is not yet in, and the cap is a module variable set from
+     state_sync that no page-side hook can clear — so THIS harness (where the
+     worker advertises the cap immediately) cannot reproduce the race.  What it
+     can pin is the invariant the owner actually noticed: whatever the card
+     prints must be what the character has.  A future change that reaches the
+     legacy branch under any condition this suite can create fails here. */
+  await N.page.evaluate(() => {
+    const R = window._gameState.current.rpg;
+    if (!R.prog3) R.prog3 = {};
+    if (!R.prog3.sk) R.prog3.sk = {};
+    R.prog3.sk.sword = { level: 8, xp: 120 };
+    R.prog3.sk.bow = { level: 3, xp: 40 };
+    R.prog3.sk.staff = { level: 1, xp: 10 };
+    try { window.__broDashPanelBus.toBar(); } catch (e) {}
+  });
+  await N.page.waitForTimeout(700);
+  const levelled = await readPills(N);
+  const wantLv = await N.page.evaluate(() => {
+    const R = window._gameState.current.rpg;
+    return ['sword', 'bow', 'staff'].map((k) => (R.prog3.sk[k] || {}).level);
+  });
+  rec.ok('the cards print the level the character actually has',
+    levelled.length === 3 && levelled.every((p, i) => p.lvlText === 'LV ' + wantLv[i]),
+    { got: levelled.map((p) => p.lvlText), want: wantLv.map((v) => 'LV ' + v) });
+  /* The specific shape of the failure: prog3SkillLevel floors at 1, so a
+     rendered 0 can ONLY have come from the legacy corpse. */
+  rec.ok('...and never LV 0, which only the legacy fallback can produce',
+    levelled.every((p) => p.lvlText !== 'LV 0'), levelled.map((p) => p.lvlText));
+
   /* ═══ v2.3.1920: THE WIDEST PAIR THE FORMATTER CAN PRODUCE ═══
      Owner: "It looks like there's room to make the 3 combat skill xp numbers
      a little bigger and chunkier", and there was — but "0/280" is the pair a

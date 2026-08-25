@@ -203,8 +203,34 @@ export const HeroExpanded = () => {
      the top stop of that resource's own bar gradient) — without it the three
      are three identical grey numbers and the glance is gone. */
   const compactVital = (kind, cur, max) => (
+    /* ═══ v2.3.1922: THE NUMBER MOVES INSIDE THE BAR ═══
+       Owner: "Those numbers for the combat resources are too large: the
+       resource bars also need to be fatter.  Actually I think having the
+       numbers inside each resource bar would look better and save space."
+
+       All three asks are the same ask, and it is a good one: the row's width
+       was being split between a number and a bar that each wanted to be big,
+       so both were small.  Stacked in depth instead of side by side, the bar
+       gets the whole width AND the number stops competing for it — which is
+       what lets 7px of bar become 18px of bar in a row that did not grow.
+
+       WHY THE ROW DOES NOT GROW.  The height here is max(icon, bar, line
+       box), and the previous version's tallest member was the 19px number:
+       at the v2.3.1916 leading of 0.95 that is an 18.05px line box, against
+       an 18px icon.  So 18 was already the row's height, and an 18px bar is
+       exactly the largest one that is free.  The number inside it drops to
+       12px — smaller as asked, and about as large as an 18px trough can hold
+       with any air above and below.
+
+       THE COUPLING, restated because it has moved twice now (v2.3.1894 sized
+       the icon to the number, v2.3.1916 sized the leading to the icon): the
+       row height is now set by the ICON and the BAR together, both at 18, and
+       the number no longer participates.  That is the more stable of the two
+       arrangements — the number is the thing the owner keeps resizing.  Push
+       either 18 up and the three rows grow together and Crit Dmg goes off the
+       bottom of the sheet; mp-charfit is the gate that catches it. */
     <div key={kind} title={VITAL_LABEL[kind]} style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
       /* v2.3.1893: 1.12 -> 1.30 (owner: "increase the vertical padding just a
          bit, looks like there's a little room above the divider").  There is,
          and it is the ONLY room: measured, the column is 146px with 146px of
@@ -220,66 +246,47 @@ export const HeroExpanded = () => {
         letterSpacing: '.06em',
       }}>{VITAL_LABEL[kind]}</span>
       {/* v2.3.1893: the icon comes back, AFTER the letter (owner).  It is the
-          colour cue at a glance; the letter is what you read.  Sized to the
-          letter's cap height rather than the number's, so it sits with the
-          word it follows instead of looming over it. */}
-      {/* v2.3.1894: 12 -> 18 (owner: "make the combat resource icons larger").
-          The row is align-items:center, so its height is max(icon, line box),
-          and the line box is 14px of number at 1.30 leading = 18.2px.  18 is
-          therefore the LARGEST the icon can be while still sitting inside the
-          height the row already had — measured at 18.0 against a row of 18.2,
-          with the column at 146px of content in 146px.  That is the only
-          reason a 50% larger icon costs nothing here; anything above 18.2
-          starts driving the row height and pushes the stats off the bottom.
-
-          NOTE THE COUPLING: this 18 is tied to `lineHeight: 1.30` and the
-          14px value above.  Shrink either and the icon becomes what sets the
-          row height.  mp-charfit catches it, but the fix is to move this
-          number, not to fight the layout. */}
+          colour cue at a glance; the letter is what you read.
+          v2.3.1894 took it 12 -> 18; v2.3.1922 leaves it there and makes the
+          bar match, so the two tallest things in the row are the same height
+          and the row reads as one band rather than as an icon beside a line.
+          v2.3.1922 also changed WHICH heart this is — see VITAL_ICONS. */}
       <img src={VITAL_ICONS[kind]} alt="" draggable={false}
         style={{ width: 18, height: 18, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
-      {/* v2.3.1893: the slash gets air on both sides (owner: "increase the
-          space between the first and second number").  Rendered as its own
-          span rather than as spaces in the string: the numbers are tabular
-          and a literal space is not, so padding is the only way to move the
-          two apart without the gap jittering as the values change.  The
-          separator is also dimmed — it is punctuation, not data. */}
-      {/* ═══ v2.3.1916: TALL, NARROW NUMERALS ═══
-          Owner: "very tall and thin numbers for the combat resource numbers
-          might look good to fill that space. Like a raleway font. Space isn't
-          well filled right now in that top half."
-
-          Raleway's digits are noticeably narrower than Source Sans 3's at the
-          same size, which is the whole trick here: the row is width-bound (a
-          letter, an icon, and two numbers with a slash, centred in a column
-          that also has to hold the offense/defense table below), so a narrower
-          face buys height for free. 14 -> 19px is about a third taller and
-          still fits the same line, where 19px of Source Sans 3 would not.
-
-          THE COUPLING moves with it. The v2.3.1894 note says the 18px icon is
-          sized to the row's line box (14 x 1.30 = 18.2) and that anything
-          taller starts driving the row height — at 19 x 1.30 = 24.7 the NUMBER
-          is now what sets it, which is the intended direction: the rows grow
-          into the air the owner is pointing at rather than the icon growing
-          into the stats. mp-charfit is the gate on how far that can go. */}
-      <span style={{
-        fontSize: 19, fontWeight: 700, color: COL.text,
-        fontFamily: "Raleway, 'Source Sans 3', sans-serif",
-        /* The leading, NOT the row, absorbs the extra size. At the row's 1.30
-           a 19px number makes a 24.7px line box, the number becomes what sets
-           the row height, three rows grow 6px each and 18px of overflow pushes
-           Crit Dmg off the bottom of the sheet — mp-charfit reported exactly
-           that (146 -> 164 scrollHeight) on the first attempt. Digits have no
-           descenders, so tightening the leading to sit inside the box the row
-           already had costs nothing visually and is what lets the glyphs grow
-           into the air rather than the layout. */
-        lineHeight: 0.95,
-        fontVariantNumeric: 'tabular-nums', display: 'flex', alignItems: 'baseline',
-      }}>
-        {Math.ceil(cur)}
-        <span style={{ padding: '0 4px', opacity: 0.5, fontWeight: 700 }}>/</span>
-        {Math.ceil(max)}
-      </span>
+      {/* v2.3.1922: the bar takes the rest of the row and carries the numbers.
+          VitalBar is flex:1, so no width is guessed here — it shrinks rather
+          than overflowing when a max HP reaches four digits. */}
+      <VitalBar
+        kind={kind} cur={cur} max={max} thick={18}
+        inset={(
+          <span style={{
+            /* 19 -> 12 (owner: "too large").  It is also no longer the thing
+               that sets the row height, so this number is now free to move
+               without the layout arguing back — see the note at the top.
+               No fontFamily, per v2.3.1922's earlier pass: it inherits the
+               same face as the offense/defense table below, because two
+               typefaces in one column read as two designs. */
+            fontSize: 12, fontWeight: 800, lineHeight: 1,
+            color: '#FFFFFF',
+            fontVariantNumeric: 'tabular-nums',
+            /* The halo, not a background plate: a plate would cover the fill
+               it sits on and undo the point of putting the number there. */
+            textShadow: '0 1px 2px rgba(0,0,0,.85), 0 0 3px rgba(0,0,0,.7)',
+            display: 'flex', alignItems: 'center',
+          }}>
+            {Math.ceil(cur)}
+            {/* v2.3.1893: the slash gets air on both sides (owner: "increase
+                the space between the first and second number").  Rendered as
+                its own span rather than as spaces in the string: the numbers
+                are tabular and a literal space is not, so padding is the only
+                way to move the two apart without the gap jittering as the
+                values change.  The separator is dimmed — it is punctuation,
+                not data. */}
+            <span style={{ padding: '0 4px', opacity: 0.6, fontWeight: 700 }}>/</span>
+            {Math.ceil(max)}
+          </span>
+        )}
+      />
     </div>
   );
 
@@ -890,9 +897,15 @@ export const HeroExpanded = () => {
                     straight back when the slot is tapped closed. */
                 <>
                   {/* Centred in its section, as asked. */}
+                  {/* v2.3.1922: STRETCH, not centre.  The rows carry a
+                      flex:1 bar now, and a column that shrink-wraps its
+                      children gives that bar nothing to fill — the bars came
+                      out hairlines on the first attempt.  The rows are
+                      left-aligned internally, so stretching is also what puts
+                      the three letters in a column. */}
                   <div style={{
                     flex: 'none', display: 'flex', flexDirection: 'column',
-                    alignItems: 'center', justifyContent: 'center',
+                    alignItems: 'stretch', justifyContent: 'center',
                   }}>
                     {compactVital('hp', R.hp || 0, R.maxHp || 100)}
                     {compactVital('stamina', R.stamina || 0, R.maxStamina || 100)}

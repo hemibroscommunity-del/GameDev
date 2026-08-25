@@ -758,6 +758,10 @@ export const BottomDashboard = () => {
      same rules, same sources, just evaluated before the return. */
   /* v2.3.1290: bar mode = NOTHING lit — the resting state has no open
      destination (the remembered root only matters for resume). */
+  /* v2.3.1922: inside a drilled child (Weapons, Settings, Friends, a quest
+     detail...) rather than at a destination's root — the condition the old
+     in-flow header rendered on, now read by the toolbar row instead. */
+  const drill = mode === 'expanded' && stack.length > 1;
   const litId = mode === 'bar' ? null
     : DESTINATIONS.map(d => d.id).includes(rootId) ? rootId
     /* legacy drill roots (inventory push, tutorial ids...) light More */
@@ -862,58 +866,40 @@ export const BottomDashboard = () => {
               already names the destination, and the freed 44px goes to
               content (the Bag's second item row was the motivating
               case).  DRILL children (Settings, Build, quest detail...)
-              keep a slim header: their titles are NOT on the toolbar
-              and the back-chip is the way out.  44px minimum so back
-              meets the 44pt touch rule (Lantern Slate §9). */}
-          {stack.length > 1 && (
-            <div style={{
-              height: 44,
-              flex: '0 0 44px',
-              display: 'flex',
-              alignItems: 'center',
-              /* v2.3.1689 (owner: "The exit button when you're inside one of
-                 the 'more' menu items ... appears behind the character icon
-                 in the top row of the dashboard. It needs to be moved").
-                 Measured: the back chip sat at x8 y516 (34×34) and the Hero
-                 portrait at x4 y517 (40×40) — the same row, near-exactly
-                 overlapping, so the one control that gets you OUT of Guild /
-                 Friends / Codex was underneath the portrait.
-                 The portrait's right edge is 44, so the header starts past
-                 it. Left padding rather than a z-index bump on purpose:
-                 stacking the chip ON the portrait would fix the tap and keep
-                 the mess. */
-              padding: '0 8px 0 52px',
-              borderBottom: `1px solid ${COL.divider}`,
-              gap: 8,
-            }}>
-              <button
-                onPointerUp={(e) => { e.stopPropagation(); dashboardPanelBus.pop(); }}
-                className="bt-chisel bt-chisel--chip"
-                style={chipStyle}
-              >◂</button>
-              {/* v2.3.692: match the LOADOUT / BUILD ColHeader treatment
-                  (14px, .08em tracking, uppercase, centered) so every open
-                  panel title reads consistently. */}
-              <div style={{
-                flex: 1,
-                fontSize: 13,
-                fontWeight: 700,
-                letterSpacing: '.10em',
-                textTransform: 'uppercase',
-                textAlign: 'center',
-                color: COL.text,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}>{active.title}</div>
-              {/* v2.3.1307: the header ▾ chevron chip (v2.3.1290) is
-                  removed — the owner made the toolbar-icon swipe the ONE
-                  resize control, and a second down-path here undercut
-                  that.  A width-matched spacer keeps the title centered
-                  against the back-chip. */}
-              <span style={{ width: 32, flex: '0 0 32px' }} aria-hidden="true" />
-            </div>
-          )}
+              still need their title and a way out — their titles are NOT
+              on the toolbar and the back-chip is the way out — but at
+              v2.3.1922 both moved INTO the toolbar row rather than
+              standing in a header of their own here; see below. */}
+          {/* ═══ v2.3.1922: THE DRILL HEADER MOVED UP INTO THE TOOLBAR ROW ═══
+              The 44px header that stood here is gone — not deleted, RELOCATED
+              into the absolute nav row further down this file, where the back
+              chip and the title now sit beside the gold and the nav buttons.
+
+              It had to move because it was never really a row.  Measured on a
+              390x844 phone with Weapons drilled open: the header occupied
+              y601..645 and the absolute nav row (zIndex 3) occupied y601..653
+              — the SAME pixels.  So the header was drawn underneath the
+              toolbar, and both of the owner's reports are that one fact seen
+              from two sides:
+
+                "The gold amount is over the back button."  The chip sat at
+                x52..86 and the gold group at x67..115 — 19px of overlap, with
+                the coin painted on top of the glyph.  v2.3.1689 had already
+                fixed this once by padding the header 52px past the Hero
+                PORTRAIT (right edge 44); the portrait later gave that corner
+                up to the gold readout (v2.3.1635), and a hand-tuned offset
+                against one neighbour does not survive a new neighbour.
+
+                "The char stats should be raised up to fit the window better."
+                The band paid for the toolbar TWICE — 44px of invisible header
+                in the flex flow, then the 52px marginTop below that reserves
+                the toolbar's real height.  Panel bodies got 147px of a 243px
+                band; they now get 191, which is the whole of the Weapons
+                sheet's fifth channel row that was falling off the bottom.
+
+              The title moved with it rather than being dropped: it is the one
+              thing the toolbar does NOT already say for a drill (v2.3.1350's
+              reasoning for why root panels have no header at all). */}
           {/* v2.3.1229: panels render in a flex body ABOVE the persistent
               toolbar (spec §9: the toolbar stays visible in panel mode;
               its lit item identifies the panel).  v2.3.1307b: the toolbar
@@ -930,6 +916,10 @@ export const BottomDashboard = () => {
               under the persistent navigation. */}
           {/* v2.3.1642: reserve the nav group's ROW at the band's top,
               not the retired rail's width down its left. */}
+          {/* v2.3.1922: this marginTop is now the band's ONLY reservation for
+              the toolbar row — the 44px drill header that used to stack on
+              top of it has moved into that row.  One overlay, one
+              reservation. */}
           <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', marginTop: 'calc(var(--dash-h, 145px) - var(--cols-h, 93px))' }}>
             {Active && <Active />}
           </div>
@@ -1019,6 +1009,47 @@ export const BottomDashboard = () => {
             chips that displaced it here have moved into the Bag panel as
             their own header row, so the two are no longer competing for
             one row and the HUD never moves or disappears. */}
+        {/* v2.3.1922: the drill back-chip, FIRST in the row.  Laid out as a
+            flex sibling of the gold readout and the nav buttons rather than
+            positioned against them, which is the whole point — the row now
+            allocates the space instead of the chip guessing an offset that
+            goes stale the next time this corner is rearranged.  34px against
+            the 44px touch rule is the pre-existing chipStyle; the row is 52px
+            tall and centres it, so the tappable area is the row's height. */}
+        {drill && (
+          <button
+            onPointerUp={(e) => { e.stopPropagation(); dashboardPanelBus.pop(); }}
+            className="bt-chisel bt-chisel--chip"
+            style={{ ...chipStyle, flex: 'none' }}
+          >◂</button>
+        )}
+        {/* v2.3.692: the LOADOUT / BUILD ColHeader treatment (13px, .10em
+            tracking, uppercase) so every open panel title reads the same.
+            v2.3.1922: it sits NEXT TO the back chip and takes its natural
+            width, rather than centring in the row on flex:1.
+
+            Centred was what the old standalone header could afford; in a
+            shared row it is not.  Measured: between the gold readout's right
+            edge (111) and the nav group's left (185) there is ~62px, and
+            IdentityStrip flexes into the same leftover — so a centred title
+            rendered "BUILD" as "B U...".  Beside the chip it has ~145px and
+            needs about 50, and back-chip-then-label is the pattern a phone
+            user already reads as "where this goes back to".  maxWidth keeps a
+            long drill title from ever pushing the gold off its own row; the
+            ellipsis is the backstop, not the plan. */}
+        {drill && (
+          <div style={{
+            flex: 'none', minWidth: 0, maxWidth: 132,
+            fontSize: 13,
+            fontWeight: 700,
+            letterSpacing: '.10em',
+            textTransform: 'uppercase',
+            color: COL.text,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}>{active ? active.title : ''}</div>
+        )}
         <IdentityStrip band />
         {/* Track 3, right-aligned.  The group is WIDER than the narrow
             track (132 vs 90 at 390w) and deliberately overflows it to the
