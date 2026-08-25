@@ -187,10 +187,15 @@ export async function stopWorker(w) {
    "passed" three assertions about marks that were never drawn.)  isMobile
    flips the emulated pointer to coarse and turns on the meta viewport, which
    together are the closest this harness gets to the primary platform. */
-export async function newPlayer(browser, { name, wsPort, webPort, guest = false, viewport, touch = false, phrase = null }) {
+export async function newPlayer(browser, { name, wsPort, webPort, guest = false, viewport, touch = false, phrase = null, dpr = null }) {
   const ctx = await browser.newContext(Object.assign(
     { viewport: viewport || { width: 1000, height: 780 } },
     touch ? { hasTouch: true, isMobile: true, deviceScaleFactor: 2 } : null,
+    /* v2.3.1907: opt-in higher backing-store resolution, for scenarios that
+       have to LOOK at the figure. The player is ~40 CSS px tall on a phone
+       viewport; at dpr 2 a hand is a handful of pixels. Layout is unchanged —
+       only the capture resolution moves. */
+    dpr ? { deviceScaleFactor: dpr } : null,
   ));
   const page = await ctx.newPage();
   const logs = [];
