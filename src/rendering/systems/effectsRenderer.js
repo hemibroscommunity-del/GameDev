@@ -3562,9 +3562,12 @@ export class EffectsRenderer {
     kill(l._pixiShardSprite);
     kill(l._pixiOwnerLabel);
     kill(l._pixiWpnLabel);
+    kill(l._pixiRareLabel);   /* v2.3.1924: the iron/gem label — a Text left
+                                 on lootLayer after its pile despawns is a
+                                 leak AND a name floating over empty ground. */
     l._pixiSprite = l._pixiLabel = l._pixiTimer = l._pixiCount = l._pixiIcon = null;
     l._pixiCoinSprite = l._pixiCoinLabel = l._pixiShardSprite = l._pixiOwnerLabel = null;
-    l._pixiWpnLabel = null;
+    l._pixiWpnLabel = l._pixiRareLabel = null;
   }
 
   /** Renders a stroked "[killer]'s loot" label above an MP loot pile
@@ -3782,6 +3785,41 @@ export class EffectsRenderer {
       } else if (l._pixiWpnLabel && !l._pixiWpnLabel.destroyed) {
         /* Claimed (weaponClaimedNow broadcast) -- hide the label. */
         l._pixiWpnLabel.visible = false;
+      }
+
+      /* ═══ v2.3.1924: THE RARE PILE SAYS WHAT IS ON IT ═══
+         An iron piece is a 1-in-500 event and the gem 1-in-200, and a pile
+         that looks like every other pile of coins is one a player walks past.
+         Built on the weapon label above rather than beside it — same layer,
+         same anchor, same alpha, one row LOWER so a corpse carrying both
+         reads as two lines instead of one on top of the other.
+
+         No "?" here, unlike the weapon: an armour drop has nothing hidden to
+         reveal at pickup (its fields are fixed in MONSTER_ARMOR_DROPS), so
+         the pile can name it outright — see _serializePile's note. */
+      const _rareStr = l.armor && l.armor.length
+        ? l.armor.map((a) => (a && a.name) || 'Armor').join(' + ')
+        : (l.gem ? 'Rare Gem' : null);
+      if (_rareStr) {
+        const rColor = 0xF5C542;
+        const rPulse = 0.32 + Math.sin(age * 4.6) * 0.16;
+        gfx.circle(l.x, l.y + bob, 15);
+        gfx.fill({ color: rColor, alpha: rPulse * alpha });
+        gfx.circle(l.x, l.y + bob, 13);
+        gfx.stroke({ color: rColor, width: 2, alpha });
+        if (!l._pixiRareLabel || l._pixiRareLabel.destroyed) {
+          l._pixiRareLabel = new Text({ text: '', style: { ...LABEL_STYLE, fontSize: 7, fontWeight: '700' } });
+          l._pixiRareLabel.anchor.set(0.5, 0);
+          this.lootLayer.addChild(l._pixiRareLabel);
+        }
+        if (l._pixiRareLabel.text !== _rareStr) l._pixiRareLabel.text = _rareStr;
+        l._pixiRareLabel.style.fill = '#F5C542';
+        l._pixiRareLabel.x = l.x;
+        l._pixiRareLabel.y = l.y + (l.hasWeapon ? 48 : 38) + bob;
+        l._pixiRareLabel.alpha = alpha;
+        l._pixiRareLabel.visible = true;
+      } else if (l._pixiRareLabel && !l._pixiRareLabel.destroyed) {
+        l._pixiRareLabel.visible = false;
       }
 
       if (l.isWeapon && l.weapon) {

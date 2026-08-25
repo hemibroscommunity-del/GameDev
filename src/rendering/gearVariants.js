@@ -19,6 +19,14 @@ import { materialTint, metalIconPath } from './traits/materialTints.js';
 export const GEAR_VARIANTS = {
   copperplate: { slot: 'chest', art: 'steelplate', material: 'copper', name: 'Copper Plate' },
   coppergreaves: { slot: 'legs', art: 'steelgreaves', material: 'copper', name: 'Copper Greaves' },
+  /* v2.3.1924: iron becomes obtainable — monsters drop the two pieces at
+     1-in-500 each (server/src/data.js MONSTER_ARMOR_DROPS).  The metal has
+     had a tint since v2.3.1760 and finished icon art (chest-plate-iron.png /
+     greaves-iron.png) the whole time, and no way to get any of it; these two
+     rows are the entire client cost of tier two, which is the "adding a metal
+     is one line" claim at the top of this file being cashed. */
+  ironplate: { slot: 'chest', art: 'steelplate', material: 'iron', name: 'Iron Plate' },
+  irongreaves: { slot: 'legs', art: 'steelgreaves', material: 'iron', name: 'Iron Greaves' },
 };
 
 /** The art set a gear id draws from.  Non-variants are their own art. */
@@ -54,8 +62,8 @@ export function gearTint(item) {
    A piece with NO material is deliberately steel: that is every pre-v2.3.1758
    save, and it renders exactly as it always did. */
 const ART_BY_MATERIAL = {
-  chest: { copper: 'copperplate' },
-  legs: { copper: 'coppergreaves' },
+  chest: { copper: 'copperplate', iron: 'ironplate' },   /* v2.3.1924: iron */
+  legs: { copper: 'coppergreaves', iron: 'irongreaves' },
 };
 const ART_DEFAULT = { chest: 'steelplate', legs: 'steelgreaves' };
 const ICON_DEFAULT = { chest: '/icons/items/chest-plate.webp', legs: '/icons/items/greaves.webp' };
