@@ -44,6 +44,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('accepting the quest stars the way OUT of town',
     !!going && !!going.route && going.route.zoneId === 'worldview', going);
 
+  /* v2.3.1908, owner: "Make the mini map star for quest more yellow and
+     slightly larger." Asserted as a RELATION to the NPC pin, not as literal
+     hex: the point is that the star is the louder of the two and is no longer
+     sharing C_QUEST — a bare `=== 0xf5ce3c` would pass just as well if someone
+     repainted the pins to match and undid the distinction. */
+  const star = await P.page.evaluate(() => (window.__btMinimap || {}).questStar || null);
+  console.log('    star: ' + JSON.stringify(star));
+  rec.ok('the star is drawn LARGER than an NPC quest pin',
+    !!star && star.px > star.pinPx, star);
+  rec.ok('...and in its own gold, not the pin gold',
+    !!star && star.color !== star.pinColor, star);
+  rec.ok('...which is yellower than the pin (more green, less red)',
+    !!star && (() => {
+      const g = (c) => ({ r: (c >> 16) & 255, g: (c >> 8) & 255, b: c & 255 });
+      const a = g(star.color), b = g(star.pinColor);
+      return (a.g - a.r) > (b.g - b.r) && a.g > b.g;
+    })(), star);
+
   /* ── THE BUG: four snowmen in the bag, and it still says "go to Frost" ──
      The objective is satisfied here, so the next step is the Mayor. The star
      must stop selling a trip that is already done. */

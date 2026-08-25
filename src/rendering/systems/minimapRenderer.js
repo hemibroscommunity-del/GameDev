@@ -108,6 +108,22 @@ const C_NODE       = 0x8d9b98;   /* COL.muted — quiet, they are scenery until 
 const C_EXIT       = 0xeac675;   /* COL.focus — brighter brass, the thing you look for */
 const C_BUILDING   = 0xf4f0e7;   /* COL.text — landmarks read as chrome, not as a faction */
 const C_QUEST      = 0xd8aa58;   /* COL.accent — gold '!', same as the in-world badge */
+/* ═══ v2.3.1908: THE ROUTE STAR GETS ITS OWN GOLD, AND ITS OWN SIZE ═══
+   Owner: "Make the mini map star for quest more yellow and slightly larger."
+
+   NOT by moving C_QUEST. That value is shared with the NPC quest pins, and
+   its comment says why: it is the same gold as the '!' badge over the giver's
+   head, so the map and the world agree about what a quest marker looks like.
+   Recolouring it to brighten the star would silently repaint Mayor Bro's
+   badge too and break that agreement.
+
+   The star is answering a different question from the pins — "this is the way
+   to go" rather than "this person has something" — so it can afford to be the
+   loudest thing on the map. Brighter and yellower than the brass (more green,
+   less red), and 14 -> 18px, which reads as bigger beside the portals it sits
+   among without crowding them. */
+const C_QUEST_STAR = 0xf5ce3c;
+const STAR_ICON_PX = 18;
 const C_QUEST_DONE = 0x58b97b;   /* COL.xp — green '?', same as the in-world badge */
 
 /* v2.3.1783: which glyph a building gets, keyed off the ACTION its door
@@ -710,7 +726,7 @@ export class MinimapRenderer {
        thing you can act on right now outranks the thing you travel to. */
     const routeTo = questRouteExit(zoneId, S.rpg, S);   /* v2.3.1906: S for the spoke return tile */
     if (routeTo) {
-      this._mark(routeTo.x, routeTo.y, 'star', C_QUEST, BIG_ICON_PX, 0, -9);
+      this._mark(routeTo.x, routeTo.y, 'star', C_QUEST_STAR, STAR_ICON_PX, 0, -9);
     }
 
     /* '❗' = he has work for you, '❓' = you can hand it in.  Read straight off
@@ -750,6 +766,10 @@ export class MinimapRenderer {
            star" is not the claim worth testing — "is it on the RIGHT portal"
            is. */
         questRoute: routeTo ? { x: Math.round(routeTo.x), y: Math.round(routeTo.y), zoneId: routeTo.zoneId } : null,
+        /* v2.3.1908: the star's own colour and size, so "more yellow and
+           slightly larger" is assertable rather than eyeballed — and so a
+           later tidy-up cannot quietly fold it back into C_QUEST. */
+        questStar: { color: C_QUEST_STAR, px: STAR_ICON_PX, pinColor: C_QUEST, pinPx: BIG_ICON_PX },
         visible: true, zone: zoneId,
         panX: this.pan.x, panY: this.pan.y,
         spanW, spanH, markers: this._used,
