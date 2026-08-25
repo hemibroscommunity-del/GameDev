@@ -1877,6 +1877,29 @@ export var BroTown = function BroTown(_ref0) {
     return /*#__PURE__*/React.createElement("img", { key: 'ck', src: '/ui/welcome/cc/cc-selected.webp?v=' + BUILD_INFO.version, alt: '',
       style: { position: 'absolute', right: -4, bottom: -4, width: 17, height: 17, pointerEvents: 'none' } });
   };
+  /* ═══ v2.3.1932: THE OPTION TILES SHOW THE THREE-QUARTER VIEW ═══
+   *
+   * Owner: "For the trait picker option previews (options within each trait
+   * category) can you actually show the southwest orientation instead of the
+   * current south face?"
+   *
+   * `thumb.png` is the SOUTH view — dead-on and symmetric, so a swept fringe
+   * reads as a blob and an angled helmet reads as a plain dome.  `thumb-sw.png`
+   * is the same tight crop taken from the southwest art
+   * (tools/ui/make-southwest-thumbs.mjs), which is the angle the character
+   * sheet already draws for the same reason: three-quarter shows the front AND
+   * the side.  The picker now agrees with the figure it is dressing.
+   *
+   * onError falls back to thumb.png rather than leaving a broken tile.  All 49
+   * traits have southwest art today and the generator asserts it (--check), but
+   * a trait added without it should look old, not broken. */
+  var _thumbSrc = function (cat, id) { return '/sprites/traits/' + cat + '/' + id + '/thumb-sw.png?v=' + BUILD_INFO.version; };
+  var _thumbFallback = function (e, cat, id) {
+    var el = e && e.currentTarget;
+    if (!el || el.dataset.fellBack) return;
+    el.dataset.fellBack = '1';
+    el.src = '/sprites/traits/' + cat + '/' + id + '/thumb.png?v=' + BUILD_INFO.version;
+  };
   var _swatchTile = function (opt, selId, onSet, size, thumbCat, thumbItem) {
     /* The 'default' option = keep the item's original color (no recolor).
        v2.3.711: the old diagonal-slash cue read poorly (owner feedback).
@@ -1886,8 +1909,13 @@ export var BroTown = function BroTown(_ref0) {
        shoes) keep a plain swatch: their catalog 'default' swatches ARE the
        sprite's native colors, so the swatch is accurate as-is. */
     var sel = selId === opt.id;
+    /* v2.3.1932: southwest here too.  This tile is the SAME item as the strip
+       above it ("this is what you get"), so leaving it facing south would put
+       two different angles of one hat side by side. */
     var inner = opt.id === 'default' && thumbCat && thumbItem && thumbItem !== 'none'
-      ? /*#__PURE__*/React.createElement("img", { src: '/sprites/traits/' + thumbCat + '/' + thumbItem + '/thumb.png?v=' + BUILD_INFO.version, alt: 'Original', style: { width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated' } })
+      ? /*#__PURE__*/React.createElement("img", { src: _thumbSrc(thumbCat, thumbItem), alt: 'Original',
+          onError: function (e) { _thumbFallback(e, thumbCat, thumbItem); },
+          style: { width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated' } })
       : /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', borderRadius: 5, background: opt.swatch, border: '1px solid rgba(0,0,0,0.35)', boxSizing: 'border-box' } });
     return /*#__PURE__*/React.createElement("button", {
       key: 'c_' + opt.id, type: 'button', title: opt.id === 'default' ? 'Original color' : opt.name,
@@ -1907,7 +1935,9 @@ export var BroTown = function BroTown(_ref0) {
       ? /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' } },
           /*#__PURE__*/React.createElement("img", { src: '/ui/welcome/cc/cc-no-hair.webp?v=' + BUILD_INFO.version, alt: 'None', draggable: false, style: { width: '68%', height: '68%', objectFit: 'contain' } }),
           /*#__PURE__*/React.createElement("span", { style: { fontSize: 9, fontWeight: 700, letterSpacing: '.06em', color: '#3a4450', lineHeight: 1 } }, "None"))
-      : /*#__PURE__*/React.createElement("img", { src: '/sprites/traits/' + cat + '/' + opt.id + '/thumb.png?v=' + BUILD_INFO.version, alt: opt.name, decoding: 'async', style: { width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated' } }),
+      : /*#__PURE__*/React.createElement("img", { src: _thumbSrc(cat, opt.id), alt: opt.name, decoding: 'async',
+          onError: function (e) { _thumbFallback(e, cat, opt.id); },
+          style: { width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated' } }),
     sel ? _checkBadge() : null);
   };
   /* v2.3.797: the collapsed-pill kit (_swOf/_miniThumb/_miniSwatch summary
@@ -5546,6 +5576,7 @@ export var BroTown = function BroTown(_ref0) {
                 fhc: getFacialHairColor(),
                 st: getShirt(),
                 stc: getShirtColor(),
+                ec: getEyeColor(),   /* v2.3.1930 */
                 eqc: getEquip('chest'),
                 eql: getEquip('legs'),
                 eqs: getEquip('shoulders'),

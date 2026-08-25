@@ -17,7 +17,7 @@
 
 import { skinTarget, pantsTarget, shoesTarget, recolorBodyToCanvas } from './playerSkins.js';
 import EYE_MASK from './eyeMask.json';                              /* v2.3.1928 */
-import { getEyeColor, eyeColorTarget } from './traits/eyeColorCatalog.js';
+import { eyeColorTarget } from './traits/eyeColorCatalog.js';
 import { SPRITE_VERSION } from './playerSprites.js';
 import { getHatRef } from './traits/hatColorCatalog.js';
 import { materialIndex } from './traits/traitMaterials.js'; /* v2.3.1926 */
@@ -476,12 +476,17 @@ export async function drawCharacterPortrait(canvas, opts) {
     ctx.drawImage(shieldImg, -sPx / 2, -sPx / 2, sPx, sPx);
     ctx.restore();
   }
-  /* v2.3.1928: eye colour.  `opts.eyeColor` when the caller has one (the
-     inspect card passes another player's, which is 'default' until eye colour
-     is on the wire), otherwise this device's own selection.  The portrait is
-     where this feature actually reads -- the world figure is ~77px tall, so
-     the iris is about one screen pixel there. */
-  const _eyeId = (opts && opts.eyeColor) || getEyeColor();
+  /* v2.3.1928: eye colour.  The portrait is where this feature actually reads
+     -- the world figure is ~77px tall, so the iris is about one screen pixel
+     there, and this draws at the full 256 frame.
+     v2.3.1930: NO FALLBACK TO getEyeColor().  It used to end `|| getEyeColor()`,
+     which was silently wrong for every portrait of SOMEONE ELSE: the inspect
+     card and the friends list never passed the field, so they drew a stranger
+     wearing this device's eye colour.  Nobody would have reported it as an eye
+     bug -- it just made other people's faces subtly wrong.  Every caller now
+     names whose eyes it means, including the creator (its own live selection),
+     and an omission costs the effect rather than borrowing yours. */
+  const _eyeId = (opts && opts.eyeColor) || null;
   ctx.drawImage(recolorBodyToCanvas(bodyImg, skinTarget(skin), pantsTarget(pants), shoesTarget(shoes), null, FRAME,
     eyeColorTarget(_eyeId), EYE_MASK[`stand-${DIR}`]), 0, 0);
   if (shirtImg) {

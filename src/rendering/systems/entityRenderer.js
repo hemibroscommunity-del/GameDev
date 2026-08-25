@@ -53,6 +53,7 @@ import { getHeadwear, HEADWEAR_CATALOG, headwearUnderHair } from '../traits/head
 import { getFacialHair, FACIALHAIR_CATALOG } from '../traits/facialHairCatalog.js';
 import { getHair, HAIR_CATALOG } from '../traits/hairCatalog.js';
 import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant } from '../playerSkins.js';
+import { getEyeColor } from '../traits/eyeColorCatalog.js';   /* v2.3.1930: eye colour is per-player now, so every draw names whose eyes it means */
 import { DISPLAY_DS, downscaleByFactor } from '../spriteScale.js'; /* v2.3.1120: display-texture downscale + lockstep transform compensation */
 import { getHairColor, getColoredHairTextures } from '../traits/hairColorCatalog.js';
 import { getHatColor, getColoredHatTextures } from '../traits/hatColorCatalog.js';
@@ -1406,7 +1407,7 @@ function _placeSouthBlockLegs(display, sb, o) {
   if (!o || !o.active || !sb || !o.standTex) return park();
   const cut = jogWaistRow(o.dir, o.jogFrame);
   if (!cut || cut <= 0 || cut >= 256) return park();
-  const jogRaw = getBodyFrame(o.skin, o.pants, o.shoes, 'jog', o.dir, o.jogFrame, o.shirtT, o.shirtKey);
+  const jogRaw = getBodyFrame(o.skin, o.pants, o.shoes, 'jog', o.dir, o.jogFrame, o.shirtT, o.shirtKey, o.eyeId);
   if (!jogRaw) return park();
   /* The jog half's mask needs the jog frame's OWN gear silhouettes; reusing
      the standing frame's would erase the body along last frame's plate edge. */
@@ -2306,7 +2307,7 @@ export async function prewarmMaskedBodyFrames(opts) {
       const fc = playerFrameCount(pose, dir) || 1;
       for (let f = 0; f < fc; f++) {
         prewarmProgress.done++;
-        const tex = getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, shirtT, shirtKey);
+        const tex = getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, shirtT, shirtKey, getEyeColor());
         if (!tex) continue;
         const worn = [];
         for (const sl of slots) {
@@ -2395,7 +2396,7 @@ export async function prewarmAltWornSets(opts) {
         for (let f = 0; f < fc; f++) {
           if (seq !== _altPrewarmSeq) return;
           if (fast) prewarmProgress.done++;
-          const tex = getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, sT, sK);
+          const tex = getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, sT, sK, getEyeColor());
           if (!tex) continue;
           const worn = [];
           for (const [sl, id] of set.worn) {
@@ -6593,8 +6594,10 @@ export class EntityRenderer {
         const _oEq = other.equip || {};
         const _oShirtEquip = _oEq.shirt !== undefined ? _oEq.shirt
           : ((other.shirt && other.shirt !== 'none') ? 'tshirt' : 'none');
-        let tex = getBodyFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, _oShirtT, _oShirtKey);
-        if (!tex) tex = getBodyFrame(other.skin, other.pants, other.shoes, 'stand', dir, 0, _oShirtT, _oShirtKey);
+        /* v2.3.1930: THEIR eye colour, off the wire (`ec`) -- not getEyeColor(),
+           which is this device's own and would put your eyes on their face. */
+        let tex = getBodyFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, _oShirtT, _oShirtKey, other.eyeColor);
+        if (!tex) tex = getBodyFrame(other.skin, other.pants, other.shoes, 'stand', dir, 0, _oShirtT, _oShirtKey, other.eyeColor);
         if (tex) {
           /* Reassign texture whenever it differs — same self-heal as
              the local player path, fixes invisible-after-zone-change. */
@@ -7706,8 +7709,8 @@ export class EntityRenderer {
          trade for keeping the rod art intact for everyone. */
       let tex = pose === 'fish'
         ? getFrame('fish', 'south', frameIdx)
-        : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _shirtT, _shirtKey);
-      if (!tex) tex = getBodyFrame(getSkin(), getPants(), getShoes(), 'stand', dir, 0, _shirtT, _shirtKey);
+        : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _shirtT, _shirtKey, getEyeColor());
+      if (!tex) tex = getBodyFrame(getSkin(), getPants(), getShoes(), 'stand', dir, 0, _shirtT, _shirtKey, getEyeColor());
       /* v2.3.291: mannequin swap removed -- user wants helmet stickered
          to the NORMAL character body as a rigid assembly.  Trait + body
          share frame-coords so they move together pixel-perfect. */
@@ -7851,7 +7854,7 @@ export class EntityRenderer {
           _sbActive = _placeSouthBlockLegs(display, spriteBody, {
             active: true, standTex: spriteBody.texture, dir, jogFrame: _jFrame,
             skin: getSkin(), pants: getPants(), shoes: getShoes(),
-            shirtT: _shirtT, shirtKey: _shirtKey,
+            shirtT: _shirtT, shirtKey: _shirtKey, eyeId: getEyeColor(),   /* v2.3.1930 */
           });
           /* The greaves stride with the legs they are worn over — otherwise a
              bro in leg armour blocks with static plates over moving shins. */

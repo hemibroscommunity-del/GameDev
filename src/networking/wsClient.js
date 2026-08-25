@@ -33,6 +33,7 @@ import { getHatColor } from '@/rendering/traits/hatColorCatalog.js';
 import { getFacialHairColor } from '@/rendering/traits/facialHairColorCatalog.js';
 import { getShirt } from '@/rendering/traits/shirtCatalog.js';
 import { getShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
+import { getEyeColor } from '@/rendering/traits/eyeColorCatalog.js';   /* v2.3.1930 */
 import { getEquip, syncArmorLayers, migrateTier1Armor } from '@/rendering/gearCatalog.js'; /* v2.3.1761 */
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 
@@ -182,6 +183,7 @@ export function setupWebSocket(ctx) {
             fhc: getFacialHairColor(),
             st: getShirt(),
             stc: getShirtColor(),
+            ec: getEyeColor(),   /* v2.3.1930: eye colour, so peers draw your eyes */
             eqc: getEquip('chest'),
             eql: getEquip('legs'),
             eqs: getEquip('shoulders'),
@@ -352,7 +354,7 @@ export function setupWebSocket(ctx) {
                       dir: data.d || 'down', bt: '#2563eb', bl: '#1e3a5f',
                       headwear: null, facialhair: null, hair: null, skin: null,
                       hairColor: null, hatColor: null, facialHairColor: null,
-                      shirt: null, shirtColor: null,
+                      shirt: null, shirtColor: null, eyeColor: null,   /* v2.3.1930 */
                       equip: { chest: 'none', legs: 'none', shoulders: 'none', shirt: 'none' },
                       pants: null, shoes: null, rpgLv: 1, rpgHp: 50, rpgMaxHp: 50,
                       bodySize: 'slim', zone: data.z || 'town',
@@ -761,6 +763,7 @@ export function setupWebSocket(ctx) {
                   facialHairColor: _data.fhc || null,
                   shirt: _data.st || null,
                   shirtColor: _data.stc || null,
+                  eyeColor: _data.ec || null,   /* v2.3.1930 */
                   equip: { chest: _data.eqc || 'none', legs: _data.eql || 'none', shoulders: _data.eqs || 'none',
                     /* v2.3.756: layered shirt; old clients send no eqst -> infer from their legacy shirt style */
                     shirt: _data.eqst !== undefined ? (_data.eqst || 'none') : ((_data.st && _data.st !== 'none') ? 'tshirt' : 'none') },
@@ -1702,6 +1705,7 @@ export function setupWebSocket(ctx) {
                 facialHairColor: (msg.data && msg.data.fhc) || null,
                 shirt: (msg.data && msg.data.st) || null,
                 shirtColor: (msg.data && msg.data.stc) || null,
+                eyeColor: (msg.data && msg.data.ec) || null,   /* v2.3.1930 */
                 equip: { chest: (msg.data && msg.data.eqc) || 'none', legs: (msg.data && msg.data.eql) || 'none', shoulders: (msg.data && msg.data.eqs) || 'none',
                   shirt: (msg.data && msg.data.eqst !== undefined) ? (msg.data.eqst || 'none') : ((msg.data && msg.data.st && msg.data.st !== 'none') ? 'tshirt' : 'none') },
                 pants: (msg.data && msg.data.pt) || null,

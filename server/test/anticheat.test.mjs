@@ -521,6 +521,7 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
       x: 9000, y: 9000,
       // honest cosmetics riding along must still land
       name: 'Tracker', color: '#abc', rpgLv: 500,
+      ec: 'ice',   /* v2.3.1930: eye colour, relayed to peers */
     },
   }));
 
@@ -537,6 +538,13 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
     psT.x === honestX && psT.y === honestY, { x: psT.x, y: psT.y });
   check('track: honest cosmetics still land', psT.name === 'Tracker' && psT.rpgLv === 500,
     { name: psT.name, rpgLv: psT.rpgLv });
+  /* v2.3.1930: `ec` rides the SAME allowlist as every other cosmetic.  It is in
+     this suite rather than a new one because the property under test is the
+     allowlist itself: relaying eye colour means adding a key to
+     TRACK_COSMETIC_KEYS, and the whole point of §7 is that a key not on that
+     list never reaches playerState.  Value safety is the client's: it maps `ec`
+     through EYE_COLOR_CATALOG and answers null for anything unknown. */
+  check('track: eye colour is relayed as a cosmetic (v2.3.1930)', psT.ec === 'ice', psT.ec);
 
   // A forged rpgLv is fine as a DISPLAY value (above) but must never
   // become the player's rank on the global board — v2.3.1178 closed

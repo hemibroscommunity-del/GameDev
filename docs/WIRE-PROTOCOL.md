@@ -236,8 +236,15 @@ v2.3.1465 pass did not reach it.
 | Group | Keys | Bound |
 |---|---|---|
 | Presence | `x`, `y` (finite numbers), `d` (≤16 chars), `z` | `z` must pass `_validZone` |
-| Cosmetics | `name`, `color`, `avatar`, `bt`, `bl`, `hw`, `fh`, `hr`, `sk`, `hc`, `htc`, `fhc`, `st`, `stc`, `eqc`, `eql`, `eqs`, `eqst`, `pt`, `sh`, `bs` | truncated to 64 chars, `avatar` to 512 |
+| Cosmetics | `name`, `color`, `avatar`, `bt`, `bl`, `hw`, `fh`, `hr`, `sk`, `hc`, `htc`, `fhc`, `st`, `stc`, `ec`, `eqc`, `eql`, `eqs`, `eqst`, `pt`, `sh`, `bs`, `wpnMat` | truncated to 64 chars, `avatar` to 512 |
 | Bootstrap | anything matching `/^rpg[A-Z][A-Za-z0-9]*$/` | scalars pass; containers capped at 8 KB |
+
+`ec` is the eye colour (v2.3.1930) and `wpnMat` the weapon's blacksmith
+tier (v2.3.1760); both were in the code allowlist before this table named
+them. Like every cosmetic here they are DISPLAY-ONLY and unvalidated
+server-side: the receiving client maps the string through its own catalog
+and answers null for anything unknown, so a forged value can only ever
+select something that catalog already contains.
 
 Three consumers share the sanitized copy — `session.data`, the
 `playerState` spread, and the `player_join` broadcast. All three must

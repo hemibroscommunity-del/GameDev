@@ -419,6 +419,13 @@ export const TRACK_COSMETIC_KEYS = new Set([
   'name', 'color', 'avatar', 'aw', 'dir', 'zone',
   // Body / appearance.
   'bt', 'bl', 'hw', 'fh', 'hr', 'sk', 'hc', 'htc', 'fhc', 'st', 'stc',
+  /* v2.3.1930: 'ec' is the eye colour, relayed so peers draw the eyes you
+     picked.  Display-only, exactly like 'stc' and 'wpnMat' beside it: the
+     receiving client maps it through its own EYE_COLOR_CATALOG and answers
+     null for anything it does not recognise, so a forged value can only ever
+     select a colour that catalog already contains -- it cannot paint an
+     arbitrary RGB, and it reaches nothing but a canvas. */
+  'ec',
   'pt', 'sh', 'bs', 'mask', 'cape', 'pet',
   // Live equipment visuals (armour on/off for remote renderers).
   'eqc', 'eql', 'eqs',

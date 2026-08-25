@@ -746,20 +746,28 @@ export function bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eyeKey,
     + '/' + (shirtT ? (shirtKey || 'shirt') : 'none') + '/' + (eyeKey || 'none')
     + '|' + pose + '/' + dir;
 }
-/** The eye target for a sheet, or null when that sheet has no eyes in it. */
-function eyeFor(pose, dir) {
-  if (!EYE_MASK[`${pose}-${dir}`]) return null;
-  const id = getEyeColor();
-  const t = eyeColorTarget(id);
-  return t ? { id, t } : null;
+/** The eye target for a sheet, or null when that sheet has no eyes in it.
+ *  `eyeId` is always passed in -- see getBodyFrame. */
+function eyeFor(pose, dir, eyeId) {
+  if (!eyeId || !EYE_MASK[`${pose}-${dir}`]) return null;
+  const t = eyeColorTarget(eyeId);
+  return t ? { id: eyeId, t } : null;
 }
 
-export function getBodyFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, shirtT, shirtKey) {
+/* v2.3.1930: `eyeId` IS AN ARGUMENT, and v2.3.1928 was wrong to make it a
+   store read.  That version reasoned that every caller would otherwise have to
+   learn about eye colour and they all draw the same character -- which was true
+   only while the colour could not travel between players.  The moment it does,
+   "the same character" is false: this function draws REMOTE players too, from
+   their own skin/pants/shoes, and a store read would have painted every one of
+   them with THIS device's eyes.
+   Undefined means no eye recolour, deliberately, rather than defaulting to the
+   local player: a call site that has not been updated then loses the effect,
+   which is invisible, instead of putting your eyes on a stranger's face, which
+   is a bug someone would have to reproduce to understand. */
+export function getBodyFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, shirtT, shirtKey, eyeId) {
   const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
-  /* v2.3.1928: eye colour reads from its own store rather than the argument
-     list, because every caller of getBodyFrame would otherwise have to learn
-     about it; there are a dozen and they all draw the same character. */
-  const eye = eyeFor(pose, dir);
+  const eye = eyeFor(pose, dir, eyeId);
   if (!skinT && !pantsT && !shoesT && !shirtT && !eye) return getFrame(pose, dir, frameIdx);
   const sheetKey = bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eye && eye.id, pose, dir);
   const entry = _bodySheets[sheetKey];
@@ -907,7 +915,7 @@ export function prewarmBody(skinId, pantsId, shoesId, shirtT, shirtKey) {
   const anyEye = !!eyeColorTarget(getEyeColor());
   if (!skinT && !pantsT && !shoesT && !shirtT && !anyEye) return; /* default combo: nothing to bake */
   for (const dir of SOURCE_DIRS) {
-    const eye = eyeFor('stand', dir);
+    const eye = eyeFor('stand', dir, getEyeColor());   /* local player */
     const key = bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eye && eye.id, 'stand', dir);
     if (_bodySheets[key] === undefined) buildBodySheet(key, 'stand', dir, skinT, pantsT, shoesT, shirtT, eye && eye.t);
   }
@@ -929,7 +937,7 @@ export function preloadBodyAll() {
   if (!skinT && !pantsT && !shoesT && !anyEye) return Promise.resolve(); /* default combo */
   const tasks = [];
   const prewarm = (pose, dir) => {
-    const eye = eyeFor(pose, dir);
+    const eye = eyeFor(pose, dir, getEyeColor());   /* local player */
     const key = bodySheetKey(skinId, pantsId, shoesId, null, null, eye && eye.id, pose, dir);
     if (_bodySheets[key] === undefined) tasks.push(buildBodySheet(key, pose, dir, skinT, pantsT, shoesT, null, eye && eye.t));
   };
@@ -998,7 +1006,7 @@ export function preloadBodyVariant(shirtT, shirtKey) {
   const tasks = [];
   for (const pose of ['stand', 'jog', 'hit']) {   /* v2.3.1477: hit ships gear now */
     for (const dir of SOURCE_DIRS) {
-      const eye = eyeFor(pose, dir);
+      const eye = eyeFor(pose, dir, getEyeColor());   /* local player */
       const key = bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eye && eye.id, pose, dir);
       if (_bodySheets[key] === undefined) tasks.push(buildBodySheet(key, pose, dir, skinT, pantsT, shoesT, shirtT, eye && eye.t));
     }

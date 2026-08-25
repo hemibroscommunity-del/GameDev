@@ -219,7 +219,8 @@ check('death clears the consent pair', !room._pvpConsent.has(room._pvpPairKey('b
   room.sessions.set(wsF, baseSession());
   await room.webSocketMessage(wsF, JSON.stringify({
     type: 'join', id: 'bp_finn', phrase: 'frost-tundra-amber-vigil-5', name: 'Finn',
-    data: { x: 10, y: 10, z: 'town', name: 'Finn', hr: 'long', hc: 'ash', sk: 'tan', st: 'tunic' },
+    data: { x: 10, y: 10, z: 'town', name: 'Finn', hr: 'long', hc: 'ash', sk: 'tan', st: 'tunic',
+      ec: 'violet' /* v2.3.1930 */ },
   }));
   const charF = state._store.get('char:bp_finn');
   check('char record stamped in its own storage key on first join',
@@ -229,13 +230,22 @@ check('death clears the consent pair', !room._pvpConsent.has(room._pvpPairKey('b
     charF);
   check('...and NOT carrying the top-level name inside the look blob',
     !!(charF && charF.look.name === undefined), charF && charF.look);
+  /* v2.3.1930: eye colour joins the permanent look for the same reason every
+     other trait is in it -- it is part of the face, and the face is stored
+     against the identity rather than the device (v2.3.1814).  This asserts
+     the ALLOWLIST admitted it: `ec` is only in the look because it was added
+     to JOIN_COSMETIC_KEYS, and an unlisted key is dropped, so a missing entry
+     here is exactly how the feature would silently not persist. */
+  check('...including the eye colour (v2.3.1930)',
+    !!(charF && charF.look.ec === 'violet'), charF && charF.look);
 
   /* THE POINT OF THE WHOLE THING: rejoin claiming a different face. */
   const wsF2 = fakeWs('finn-2');
   room.sessions.set(wsF2, baseSession());
   await room.webSocketMessage(wsF2, JSON.stringify({
     type: 'join', id: 'bp_finn', phrase: 'frost-tundra-amber-vigil-5', name: 'Impostor',
-    data: { x: 10, y: 10, z: 'town', name: 'Impostor', hr: 'bald', hc: 'pink', sk: 'pale', st: 'robe' },
+    data: { x: 10, y: 10, z: 'town', name: 'Impostor', hr: 'bald', hc: 'pink', sk: 'pale', st: 'robe',
+      ec: 'red' /* v2.3.1930: a restyle attempt on the eyes too */ },
   }));
   const charF2 = state._store.get('char:bp_finn');
   check('a later join CANNOT restyle the character (stored record wins)',
@@ -243,7 +253,8 @@ check('death clears the consent pair', !room._pvpConsent.has(room._pvpPairKey('b
     charF2);
   check('...and the live session wears the stored look, not the claimed one',
     room.sessions.get(wsF2).data.hr === 'long'
-    && room.sessions.get(wsF2).data.name === 'Finn',
+    && room.sessions.get(wsF2).data.name === 'Finn'
+    && room.sessions.get(wsF2).data.ec === 'violet',   /* v2.3.1930 */
     room.sessions.get(wsF2).data);
   /* The echo is how a NEW DEVICE gets the look at all — it exists nowhere
      locally after a Login Key switch. */

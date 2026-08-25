@@ -207,35 +207,18 @@ export function NameModal(props) {
      no painted icon and are not worth inventing one for -- they show the first
      real entry from their own catalog, which is both self-explanatory and
      stays correct if the catalogs change. */
-  var _firstThumb = function (cat, catalog) {
-    var e = catalog.find(function (o) { return o.id !== 'none'; });
-    return e ? '/sprites/traits/' + cat + '/' + e.id + '/thumb.png?v=' + BUILD_INFO.version : null;
-  };
-  /* v2.3.1929: the Eyes tab's icon.  Every other tab stands for itself with
-     either the owner's painted art in /ui/welcome/cc/ or a real thumbnail from
-     its own catalog; eye colour has neither, because there is no eye sprite --
-     it is a mask over the face already painted into the body sheet.  An inline
-     SVG rather than a twelfth webp: it is a few hundred bytes, it cannot 404,
-     and game.css already ships data-URI icons (the lock mask).  Built through
-     encodeURIComponent so the markup below stays readable as markup instead of
-     as a wall of percent escapes. */
-  var EYE_TAB_ICON = 'data:image/svg+xml,' + encodeURIComponent(
-    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'>"
-    + "<path d='M2 16c4-6.5 8.4-9.8 14-9.8S26 9.5 30 16c-4 6.5-8.4 9.8-14 9.8S6 22.5 2 16z'"
-    + " fill='#EEF2EB' stroke='#0d1216' stroke-width='2.2' stroke-linejoin='round'/>"
-    + "<circle cx='16' cy='16' r='5.6' fill='#4a7fd4'/>"
-    + "<circle cx='16' cy='16' r='2.3' fill='#101619'/></svg>");
+  var _TAB_ICON = function (n) { return '/ui/welcome/cc/cc-tab-' + n + '.png?v=' + BUILD_INFO.version; };
   var _TABS = [
-    { t: 'hair', label: 'Hair', img: _firstThumb('hair', HAIR_CATALOG), pixel: true },
-    { t: 'hat', label: 'Hats', img: _firstThumb('headwear', HEADWEAR_CATALOG), pixel: true },
-    { t: 'skin', label: 'Skin', img: '/ui/welcome/cc/cc-head.webp?v=' + BUILD_INFO.version },
+    { t: 'hair', label: 'Hair', img: _TAB_ICON('hair') },
+    { t: 'hat', label: 'Hats', img: _TAB_ICON('hat') },
+    { t: 'skin', label: 'Skin', img: _TAB_ICON('skin') },
     /* v2.3.1929: Eyes sits with the face traits, and lands the row at a clean
        four-and-four in the 4-column grid rather than the old 4+3. */
-    { t: 'eyes', label: 'Eyes', img: EYE_TAB_ICON },
-    { t: 'beard', label: 'Beard', img: _firstThumb('facialhair', FACIALHAIR_CATALOG), pixel: true },
-    { t: 'shirt', label: 'Shirt', img: '/ui/welcome/cc/cc-shirt.webp?v=' + BUILD_INFO.version },
-    { t: 'pants', label: 'Pants', img: '/ui/welcome/cc/cc-pants.webp?v=' + BUILD_INFO.version },
-    { t: 'shoes', label: 'Shoes', img: '/ui/welcome/cc/cc-shoes.webp?v=' + BUILD_INFO.version }
+    { t: 'eyes', label: 'Eyes', img: _TAB_ICON('eyes') },
+    { t: 'beard', label: 'Beard', img: _TAB_ICON('beard') },
+    { t: 'shirt', label: 'Shirt', img: _TAB_ICON('shirt') },
+    { t: 'pants', label: 'Pants', img: _TAB_ICON('pants') },
+    { t: 'shoes', label: 'Shoes', img: _TAB_ICON('shoes') }
   ].filter(function (x) { return !!_typeDefs[x.t]; });
   var _activeType = _typeDefs[activeCat] ? activeCat : 'hair';
   var _def = _typeDefs[_activeType];
@@ -701,9 +684,10 @@ export function NameModal(props) {
       className: 'bt-cc-tab' + (on ? ' bt-cc-tab--on' : ''),
       onClick: function () { setActiveCat(x.t); }
     }, x.img ? /*#__PURE__*/React.createElement("img", {
-      /* v2.3.1308: the owner's painted category art.  v2.3.1525: the three
-         catalog-thumb tabs render pixelated, like the tiles they stand for. */
-      className: "bt-cc-tab-icon" + (x.pixel ? " bt-cc-tab-icon--pixel" : ""),
+      /* v2.3.1308: the owner's painted category art.
+         v2.3.1931: one sheet for all eight, and no per-tab pixel flag — the
+         catalog-thumb tabs that needed `pixelated` are gone (see _TABS). */
+      className: "bt-cc-tab-icon",
       src: x.img, alt: '', draggable: false, decoding: 'async'
     }) : null,
     /*#__PURE__*/React.createElement("span", { className: "bt-cc-tab-label" }, x.label));
