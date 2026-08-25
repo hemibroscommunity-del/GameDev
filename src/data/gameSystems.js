@@ -1929,7 +1929,20 @@ export const EXTRACT_JITTER    = 0.15;       /* ±15% jitter on each open delay 
 /* Phase-2 is a sustained gesture: the player repeats the skill motion to fill a
    meter. REPS_TARGET reps complete the extraction. Per-skill so each can be tuned
    independently (e.g. fishing reels feel right a touch shorter). */
-export const EXTRACT_REPS_TARGET = { mining: 3, woodcutting: 3, fishing: 2, cooking: 1 };
+/* v2.3.1915 (owner: "increase the speed of the fishing gesture a bit"):
+   fishing 2 -> 1.5 full finger-circles.
+
+   Expressed as the TARGET rather than as a gain on the accumulator, because
+   the accumulator is also what drives the crank's rotation — one finger
+   circle is one crank turn (ExtractionSwipeLayer's cueFrame01), and that
+   1:1 mapping is what makes the reel follow the finger. Multiplying the
+   accumulator would have sped the meter and spun the crank at the same time,
+   so the handle would no longer track the hand turning it.
+
+   Fishing is the only circular gesture, so lowering it does not touch the
+   stroke skills' feel. 1.5 keeps a full turn plus a half — still plainly a
+   cranking motion rather than a flick. */
+export const EXTRACT_REPS_TARGET = { mining: 3, woodcutting: 3, fishing: 1.5, cooking: 1 };
 export const EXTRACT_REPS_DEFAULT = 3;
 
 export function computeOpenDelay(skillLevel, nodeTier) {

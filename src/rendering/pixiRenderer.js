@@ -481,6 +481,13 @@ export async function initPixiRenderer(canvas) {
     arrowProbe: () => ({
       arrows: effectsRenderer._arrowsDrawn || 0,
       heads: effectsRenderer._arrowHeadsDrawn || 0,
+      /* v2.3.1915: how many of those were drawn UNDER the player, and which
+         container each pool hangs off. A screenshot cannot tell an arrow
+         behind the boots from one in front of them at this size, and the
+         layer name is the fact the fix actually turns on. */
+      ground: effectsRenderer._groundArrowsDrawn || 0,
+      groundLayer: effectsRenderer.groundArrowLayer && effectsRenderer.groundArrowLayer.label || null,
+      flyingLayer: effectsRenderer.projectileLayer && effectsRenderer.projectileLayer.label || null,
     }),
     /* v2.3.1765: read-only probe of the name plate's position relative to the
        character, for the QA harness.  Owner: "Move the standing nameplate down

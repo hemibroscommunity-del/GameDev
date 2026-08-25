@@ -103,11 +103,19 @@ export var QUEST_MSG_MS = 2200;
    required item lands, which is usually mid-fight or mid-harvest with your
    eyes somewhere else, so 2.2s routinely expired before the player looked up.
 
-   4200 is a little under twice as long: enough to look up, find the banner
+   4200 was a little under twice as long: enough to look up, find the banner
    and read a title plus a reward line, without holding the screen so long
    that the next banner stacks up behind it (the queue gate waits out the
-   current one, so an over-long hold delays whatever follows). */
-export var QUEST_MSG_LONG_MS = 4200;
+   current one, so an over-long hold delays whatever follows).
+
+   v2.3.1915 (owner: "Make the quest complete message stay for another
+   second"): 4200 -> 5200. The reasoning above is unchanged and so is the
+   ceiling it describes — the queue gate still waits out the current banner,
+   so this costs a second on anything queued behind a completion. That is
+   affordable because completions do not arrive back to back: the next banner
+   after a QUEST COMPLETED! is the accept of the following step, which needs a
+   walk to the giver first. */
+export var QUEST_MSG_LONG_MS = 5200;
 /* ONE place decides, so the queue gate, the expiry sweep, the render gate and
    the CSS fade cannot drift apart — a banner that is drawn while considered
    expired (or held with no fade) is the failure that split constants cause. */
@@ -8947,7 +8955,11 @@ export var BroTown = function BroTown(_ref0) {
         : '0 0 30px rgba(216,169,77,.8), 0 0 60px rgba(216,169,77,.4), 0 2px 4px rgba(0,0,0,.6)',
       letterSpacing: '.15em'
     }
-  }, levelUpMsg.kind === 'warning' ? "⚠️ DANGER" : "LEVEL UP!"), /*#__PURE__*/React.createElement("div", {
+  }, levelUpMsg.kind === 'warning' ? "⚠️ DANGER"
+    /* A life skill gets the same banner and the same place on screen — that
+       is the part that decides whether it is seen — but says which kind of
+       level it is rather than claiming a character level. */
+    : levelUpMsg.kind === 'life' ? "SKILL UP!" : "LEVEL UP!"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 20,
       fontWeight: 700,
@@ -8955,7 +8967,14 @@ export var BroTown = function BroTown(_ref0) {
       textShadow: '0 2px 8px rgba(0,0,0,.7)',
       marginTop: 6
     }
-  }, levelUpMsg.kind === 'warning' ? levelUpMsg.text : "Level " + levelUpMsg.level), /*#__PURE__*/React.createElement("div", {
+  }, levelUpMsg.kind === 'warning' ? levelUpMsg.text
+    /* v2.3.1915: a life-skill level names the SKILL and, when more than one
+       arrived at once, says how many. "Level 7" is useless to someone who
+       last looked at 5 — which is the owner's report exactly. */
+    : levelUpMsg.kind === 'life'
+      ? (levelUpMsg.label || 'Skill') + " Level " + levelUpMsg.level
+        + ((levelUpMsg.gained || 1) > 1 ? "  (+" + levelUpMsg.gained + ")" : "")
+      : "Level " + levelUpMsg.level), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: 'rgba(255,255,255,.6)',
@@ -8970,7 +8989,11 @@ export var BroTown = function BroTown(_ref0) {
        stronger" is a claim; "+1.5 damage · +6 max HP" is the reason the
        owner asked for the retune in the first place.  The old line stays as
        the fallback for legacy level-ups, which really do only refill. */
-    : (levelUpMsg.gains || "You got stronger! HP \xB7 Stamina \xB7 Mana refilled")))),
+    : levelUpMsg.kind === 'life'
+      /* A life-skill level does NOT refill the pools (celebrateLevelUps does
+         that, and only for character levels), so it must not say it did. */
+      ? "Keep at it \u2014 better yields and faster gathers"
+      : (levelUpMsg.gains || "You got stronger! HP \xB7 Stamina \xB7 Mana refilled")))),
   /* ═══ v2.3.1745: QUEST ACCEPTED! / QUEST COMPLETED! ═══
      Owner: "...that appear over the quest modal menu the moment you accept
      or turn in the quest."

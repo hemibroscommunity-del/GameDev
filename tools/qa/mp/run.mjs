@@ -24,6 +24,7 @@ const SCENARIOS = {
   chatfont: () => import('./mp-chatfont.mjs'), /* v2.3.1912: the chat font, measured on the glass */
   afk: () => import('./mp-afk.mjs'), /* v2.3.1913: idle characters log out after 2 min */
   tutgrant: () => import('./mp-tutgrant.mjs'), /* v2.3.1901: the first quest's sword + shield */
+  skillup: () => import('./mp-skillup.mjs'), /* v2.3.1915: life-skill level banner */
   fishhand: () => import('./mp-fishhand.mjs'), /* v2.3.1914: the reeling hand over the shirt */
   previewweapon: () => import('./mp-previewweapon.mjs'), /* v2.3.1914: the preview follows the active weapon */
   questchain: () => import('./mp-questchain.mjs'), /* v2.3.1914: proximity turn-in across the whole chain */

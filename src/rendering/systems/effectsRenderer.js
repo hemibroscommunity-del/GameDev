@@ -829,6 +829,19 @@ export class EffectsRenderer {
        front of them). */
     this.gestureLayer = layers.gestureFront || layers.gatherNodesFront || layers.gatherNodes;
     this.projectileLayer = layers.projectiles;
+    /* ═══ v2.3.1915: A SPENT ARROW IS SCENERY, NOT A PROJECTILE ═══
+       Owner: "For arrows on the ground make the character in the layer in
+       front of them."
+
+       'projectiles' sits ABOVE 'player' in WORLD_LAYER_NAMES, which is right
+       for something in flight and wrong for something lying in the dirt — an
+       arrow you already shot was painting over your boots. groundLoot sits
+       below entities and player, next to the other things on the floor, which
+       is where a spent arrow belongs.
+
+       Fallback to the projectile layer so an older scene graph without
+       groundLoot keeps drawing arrows somewhere rather than nowhere. */
+    this.groundArrowLayer = layers.groundLoot || layers.projectiles;
     this.telegraphLayer = layers.telegraphs;
     this.overlayLayer = layers.overlayWorld;
     this.hudLayer = layers.hud;
@@ -870,6 +883,12 @@ export class EffectsRenderer {
        refilled every frame, never reaped.  See _placeArrowSprite. */
     this.arrowSprites = [];
     this._arrowSpriteN = 0;
+    /* v2.3.1915: a SECOND pool, parented under the player. Two pools rather
+       than reparenting one sprite per frame: Pixi reparenting is a remove +
+       add on both containers every frame an arrow lands, and the pools are
+       refilled from zero anyway. */
+    this.groundArrowSprites = [];
+    this._groundArrowSpriteN = 0;
 
     // Chat bubble texts
     this.chatTexts = new Map();
@@ -2301,6 +2320,7 @@ export class EffectsRenderer {
        chose, and a screenshot cannot separate a buried head from an arrow that
        was never drawn — which is the exact distinction the owner's fix makes. */
     this._arrowsDrawn = 0;
+    this._groundArrowsDrawn = 0;   /* v2.3.1915 */
     /* v2.3.1825: the painted-arrow pool is refilled from zero every frame,
        in lockstep with the Graphics clear above — the two draw the same
        arrows and must be reset together or a stale sprite outlives the
@@ -2457,7 +2477,9 @@ export class EffectsRenderer {
         /* v2.3.1765 buried the head on `_stuckPose`; v2.3.1879 splits
            `_headless` out of it — see the note where both are computed.  The
            two deliberately differ by `planting`, and only there. */
-        this._drawArrow(gfx, a._renderX, a._renderY, _angB, elemColor, fadeA, 1, _headless);
+        /* v2.3.1915: a PLANTED arrow draws under the player. `planting` is
+           still falling — in the air, so it stays in front until it lands. */
+        this._drawArrow(gfx, a._renderX, a._renderY, _angB, elemColor, fadeA, 1, _headless, !!a.planted);
       }
     }
 
@@ -2791,14 +2813,15 @@ export class EffectsRenderer {
    *  strip + brown arrowhead + brown fletching.  Matches the stuck-
    *  arrow rendering so a live arrow and a stuck one read as the
    *  same wooden missile. */
-  _drawArrow(gfx, cx, cy, ang, headColor /* unused — kept for signature compat */, alpha, scale, buried) {
+  _drawArrow(gfx, cx, cy, ang, headColor /* unused — kept for signature compat */, alpha, scale, buried, ground) {
     /* v2.3.1825: the painted pine arrow, when it has loaded.  Falls through
        to the polygons below until it does — an in-flight load must never
        blank a live arrow, the same contract the special-projectile sprites
        keep. */
     if (ARROW_PINE.full) {
-      this._placeArrowSprite(cx, cy, ang, alpha, scale || 1, !!buried);
+      this._placeArrowSprite(cx, cy, ang, alpha, scale || 1, !!buried, false, !!ground);
       this._arrowsDrawn = (this._arrowsDrawn || 0) + 1;
+      if (ground) this._groundArrowsDrawn = (this._groundArrowsDrawn || 0) + 1;
       if (!buried) this._arrowHeadsDrawn = (this._arrowHeadsDrawn || 0) + 1;
       return;
     }
@@ -2843,16 +2866,19 @@ export class EffectsRenderer {
    *  The counter is reset by _resetArrowSprites at the top of the
    *  projectile pass; anything left over from a busier frame is hidden
    *  rather than destroyed, so a volley does not churn the GPU. */
-  _placeArrowSprite(cx, cy, ang, alpha, scale, buried, stuck) {
+  _placeArrowSprite(cx, cy, ang, alpha, scale, buried, stuck, ground) {
     const tex = buried || stuck ? ARROW_PINE.noHead : ARROW_PINE.full;
     if (!tex) return;
-    let sprite = this.arrowSprites[this._arrowSpriteN];
+    /* v2.3.1915: planted arrows come from the pool under the player. */
+    const pool = ground ? this.groundArrowSprites : this.arrowSprites;
+    const n = ground ? this._groundArrowSpriteN : this._arrowSpriteN;
+    let sprite = pool[n];
     if (!sprite) {
       sprite = new Sprite(tex);
-      this.projectileLayer.addChild(sprite);
-      this.arrowSprites.push(sprite);
+      (ground ? this.groundArrowLayer : this.projectileLayer).addChild(sprite);
+      pool.push(sprite);
     }
-    this._arrowSpriteN++;
+    if (ground) this._groundArrowSpriteN++; else this._arrowSpriteN++;
     if (sprite.texture !== tex) sprite.texture = tex;
     /* A STUCK arrow is pinned by its cut end, not its middle: (cx, cy) is the
        impact point and the shaft has to run backwards out of it.  Anchoring
@@ -2881,6 +2907,13 @@ export class EffectsRenderer {
       if (this.arrowSprites[i].visible) this.arrowSprites[i].visible = false;
     }
     this._arrowSpriteN = 0;
+    /* v2.3.1915: the ground pool is reset in lockstep with the flying one —
+       they are refilled together every frame, and a pool that kept its
+       counter would leave last frame's landed arrows on screen forever. */
+    for (let i = this._groundArrowSpriteN; i < this.groundArrowSprites.length; i++) {
+      if (this.groundArrowSprites[i].visible) this.groundArrowSprites[i].visible = false;
+    }
+    this._groundArrowSpriteN = 0;
   }
 
   /** Stuck arrow on a monster — half-length, fletching at the air end,
