@@ -28,9 +28,18 @@ and no new table anywhere.
 
 Iron was already fully authored and simply unobtainable: it has had a
 material and a tint since v2.3.1760 and finished icons
-(`chest-plate-iron.png`, `greaves-iron.png`) the whole time. `tierMult` is
-**1.25 — iron's own `BLACKSMITH_TIERS` multiplier**, so armour and weapons
-price the metal from one number instead of two hand-kept ones.
+(`chest-plate-iron.png`, `greaves-iron.png`) the whole time.
+
+**Two ladders, one metal (v2.3.1925b).** The armour pieces carry
+`tierMult: 2.0` and the greatsword `1.25`, and that is deliberate:
+
+- `getArmorPieceDr` is `base + perTier × (tierMult − 1)`, with copper at
+  exactly 1.0 and `_armorDrMult` clamping at 8 — *eight whole steps*. Iron is
+  tier two, so 2.0. (v2.3.1924 shipped 1.25 off the blacksmith table; that is
+  a quarter of one step and moved a full set from 44.0% to 45.6%. At 2.0 it is
+  **50.3%**.)
+- A weapon multiplies its base damage by `tierMult` straight off
+  `BLACKSMITH_TIERS`, where iron genuinely is 1.25.
 
 The gem is a plain stackable. `prettyName('rare_gem')` already renders
 "Rare Gem"; the only client addition is one `thumbFor` row pointing at

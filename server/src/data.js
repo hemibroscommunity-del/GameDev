@@ -766,8 +766,27 @@ export const GEM_RAW_MONSTER_DROP = 0.05;
  * is — `{name, tierMult, slot, mat}` (quests.js _grantQuestItem) — so the
  * client needs no new table for it: `mat` picks the art and the icon
  * (gearVariants.js), and `tierMult` is what getArmorPieceDr turns into damage
- * reduction.  1.25 is iron's own BLACKSMITH_TIERS multiplier, so armour and
- * weapons price the metal identically instead of by two hand-kept numbers.
+ * reduction.
+ *
+ * ═══ v2.3.1925b: 1.25 -> 2.0.  ARMOUR TIERS ARE STEPS, NOT MULTIPLIERS ═══
+ * v2.3.1924 took 1.25 from iron's BLACKSMITH_TIERS row, reasoning that armour
+ * and weapons should price the metal from one number.  The owner asked what
+ * that actually bought and the answer was almost nothing: getArmorPieceDr is
+ * `base + perTier x (tierMult - 1)`, so 1.25 is a QUARTER of one step —
+ * chest 30.00% -> 31.25%, legs 20.00% -> 20.88%, the set 44.0% -> 45.6%.  A
+ * whole tier of progression worth 1.6 points.
+ *
+ * The two ladders are simply not the same scale, and the armour one says so
+ * out loud: _armorDrMult's comment reads "+5% / +3.5% per tier step" and
+ * clamps tierMult at 8 — i.e. eight WHOLE steps, with copper sitting at
+ * exactly 1.0 and drawing no bonus at all.  On that scale tier two is 2.0.
+ * Chest 35%, legs 23.5%, the set 50.3%: a step you can feel, and the ladder
+ * still has six rungs above it before the 0.75 cap.
+ *
+ * The GREATSWORD keeps 1.25 (MONSTER_IRON_WEAPON_DROP below) and that is not
+ * an inconsistency — weapons multiply their base damage by tierMult directly
+ * off the blacksmith table, which is where 1.25 is the right number.  One
+ * metal, two ladders, each read on its own terms.
  *
  * ONE-IN-FIVE-HUNDRED IS PER PIECE, and the two roll INDEPENDENTLY: rolling
  * once and picking a side would quietly halve each.  Both landing on one
@@ -775,8 +794,8 @@ export const GEM_RAW_MONSTER_DROP = 0.05;
  * carries an array rather than a piece.
  */
 export const MONSTER_ARMOR_DROPS = [
-  { slot: 'armor',     chance: 1 / 500, name: 'Iron Torso',   mat: 'iron', tierMult: 1.25 },
-  { slot: 'legsArmor', chance: 1 / 500, name: 'Iron Greaves', mat: 'iron', tierMult: 1.25 },
+  { slot: 'armor',     chance: 1 / 500, name: 'Iron Torso',   mat: 'iron', tierMult: 2.0 },
+  { slot: 'legsArmor', chance: 1 / 500, name: 'Iron Greaves', mat: 'iron', tierMult: 2.0 },
 ];
 
 /* The gem is a plain stackable, not the elemental raw_<element> the Gem

@@ -85,8 +85,29 @@ check('the rare gem drops at 1 in 200', RARE_GEM_MONSTER_DROP === 1 / 200, RARE_
 /* Iron, not a third copper: the metal is what picks the art, the icon and
    (through tierMult) the damage reduction. */
 check('both pieces are IRON', chest.mat === 'iron' && legs.mat === 'iron', { c: chest.mat, l: legs.mat });
-check('...priced at iron’s own tier multiplier, not a hand-picked number',
-  chest.tierMult === 1.25 && legs.tierMult === 1.25, { c: chest.tierMult, l: legs.tierMult });
+/* v2.3.1925b: 2.0, not the blacksmith table's 1.25.  Armour's ladder is
+   WHOLE steps — getArmorPieceDr is `base + perTier x (tierMult - 1)`, copper
+   sits at exactly 1.0, and _armorDrMult clamps at 8 — so 1.25 was a quarter
+   of one step and bought 1.6 points across the whole set.  Asserted as a
+   number rather than as `=== BLACKSMITH_TIERS.iron.tierMult`, because the two
+   ladders are deliberately no longer tied and a test that read the weapon
+   table would quietly re-tie them. */
+check('the armour is priced on the ARMOUR tier ladder, a whole step above copper',
+  chest.tierMult === 2.0 && legs.tierMult === 2.0, { c: chest.tierMult, l: legs.tierMult });
+/* ...and the step is worth having.  This is the number the owner asked for
+   and the reason it moved: at 1.25 a full iron set was 45.6% against copper's
+   44.0%. */
+{
+  const drCopperSet = 1 - (1 - getArmorPieceDr({ tierMult: 1.0 }, 'chest')) * (1 - getArmorPieceDr({ tierMult: 1.0 }, 'legs'));
+  const drIronSet = 1 - (1 - getArmorPieceDr({ tierMult: chest.tierMult }, 'chest')) * (1 - getArmorPieceDr({ tierMult: legs.tierMult }, 'legs'));
+  check('...so a full iron set beats a full copper set by a step you can feel',
+    drIronSet - drCopperSet > 0.05, { copper: drCopperSet, iron: drIronSet });
+}
+/* The GREATSWORD keeps the blacksmith number, and that is not an
+   inconsistency: a weapon multiplies its base damage by tierMult straight off
+   that table.  One metal, two ladders. */
+check('the iron greatsword still prices off the BLACKSMITH ladder',
+  MONSTER_IRON_WEAPON_DROP.tierMult === 1.25, MONSTER_IRON_WEAPON_DROP.tierMult);
 
 /* ── 1b. ...and in the ROLL.  Stub Math.random either side of each
    threshold; a table read alone cannot catch an off-by-one comparison. ── */
@@ -120,7 +141,7 @@ check('it is a greatsword (guard)', !!blade && blade.type === 'greatsword', blad
    this is a nameless grey greatsword that says "iron" nowhere. */
 check('...carrying gearBase iron, which is what names and tints it',
   !!blade && blade.gearBase === 'iron', blade && blade.gearBase);
-check('...at iron’s own tier multiplier', !!blade && blade.tierMult === 1.25, blade && blade.tierMult);
+check('...at iron’s blacksmith multiplier', !!blade && blade.tierMult === 1.25, blade && blade.tierMult);
 /* Every field the forge sets, set here too — a dropped blade and a crafted
    one must not be tellable apart by anything downstream. */
 const FORGE_FIELDS = ['type', 'tier', 'tierMult', 'element1', 'element2', 'name',
@@ -371,11 +392,16 @@ check('...and nothing for the normal piece on the same pickup',
    card says one thing and the hits say another — so they are compared
    directly rather than each being checked against a hand-written expectation. */
 const DR_CASES = [
-  { tierMult: 1.25, quality: 'normal' },
-  { tierMult: 1.25, quality: 'rare' },
-  { tierMult: 1.25, quality: 'elite' },
-  { tierMult: 1.25, quality: 'godly' },
+  { tierMult: 2.0, quality: 'normal' },
+  { tierMult: 2.0, quality: 'rare' },
+  { tierMult: 2.0, quality: 'elite' },
+  { tierMult: 2.0, quality: 'godly' },
   { tierMult: 1.00, quality: 'normal' },
+  /* The top of the ladder, where the clamp is the only thing left holding
+     it: tierMult 8 x godly would be 24 without the [0,8] clamp inside both
+     implementations, so this case is really asking whether BOTH of them
+     clamp — one that forgot would diverge here and nowhere else. */
+  { tierMult: 8, quality: 'godly' },
 ];
 const drBad = [];
 for (const c of DR_CASES) {
@@ -387,8 +413,8 @@ check('server and client compute the SAME armour reduction at every grade',
   drBad.length === 0, drBad);
 /* And it actually moves — a grade that changed nothing would pass the parity
    check above by both sides ignoring it. */
-const drNormal = 1 - room._armorDrMult({ armor: { tierMult: 1.25, quality: 'normal' }, legsArmor: null });
-const drGodly = 1 - room._armorDrMult({ armor: { tierMult: 1.25, quality: 'godly' }, legsArmor: null });
+const drNormal = 1 - room._armorDrMult({ armor: { tierMult: 2.0, quality: 'normal' }, legsArmor: null });
+const drGodly = 1 - room._armorDrMult({ armor: { tierMult: 2.0, quality: 'godly' }, legsArmor: null });
 check('a godly chest mitigates measurably more than a normal one',
   drGodly > drNormal + 0.05, { normal: drNormal, godly: drGodly });
 /* ...and cannot escape the ladder the formula was built for.  Multiplying the

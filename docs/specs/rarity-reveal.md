@@ -41,10 +41,18 @@ straight into the clamp, with the clamp doing all the work. That is the exact
 failure `_armorDrMult`'s own comment records for multiplying the base by an
 8× tierMult.
 
-Multiplying the **tier** puts a godly iron chest at tm 3.75 → **43.75%**,
-comfortably inside the ladder the formula was built for, and keeps quality
-meaning what it means on a weapon: *the item is exceptional, your character is
-unchanged*.
+Multiplying the **tier** puts a godly iron chest at tm 6.0 → **55%**, inside
+the ladder the formula was built for, and keeps quality meaning what it means
+on a weapon: *the item is exceptional, your character is unchanged*.
+
+**Where that lands, stated because it is close to the ceiling.** With iron at
+tier step 2.0 (v2.3.1925b), a full *godly* iron set is 55% + 37.5% combining
+to **71.9%** — just under the 0.75 cap. That is intended rather than
+overlooked: godly is 1 in 400,000 and *should* read as skipping several tiers,
+and the cap is what holds the top no matter what tier or grade arrives. Both
+implementations clamp `tierMult` to [0,8] before the arithmetic, and
+`drops.test.mjs` includes a `tierMult: 8 × godly` case precisely to catch an
+implementation that forgot to.
 
 Both sides implement it and `drops.test.mjs` compares them **directly** —
 `_armorDrMult` against the client's `getArmorPieceDr` across every grade —

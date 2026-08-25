@@ -27,6 +27,7 @@
  * rather than hidden.
  */
 import * as H from './harness.mjs';
+import { MONSTER_ARMOR_DROPS } from '../../../server/src/data.js';
 
 /* The exact blob the worker mints for the iron greatsword (server/src/
    index.js _rollIronWeaponForKill).  Pinned field-for-field against the
@@ -45,10 +46,15 @@ const IRON_BLADE = {
 const CREDIT = {
   lootId: 'mk-test', zone: 'town', coins: 0, skull: null, shard: null,
   gem: 'rare_gem',
-  armor: [
-    { name: 'Iron Torso', mat: 'iron', slot: 'armor', tierMult: 1.25 },
-    { name: 'Iron Greaves', mat: 'iron', slot: 'legsArmor', tierMult: 1.25 },
-  ],
+  /* Built FROM the server's own table rather than typed out, and that is the
+     point of this fixture: it claims to be "exactly what the worker sends",
+     and a hand-copied tierMult stopped being that the moment the armour ladder
+     was retuned (v2.3.1925b, 1.25 -> 2.0 — caught by this very assertion
+     failing against its own stale copy).  The credit's SHAPE is still pinned
+     independently by server/test/drops.test.mjs. */
+  armor: MONSTER_ARMOR_DROPS.map((d) => ({
+    name: d.name, mat: d.mat, slot: d.slot, tierMult: d.tierMult, quality: 'normal',
+  })),
   weapon: null, weaponStashed: false, weaponSoldFor: null, viaPet: false,
 };
 
@@ -86,8 +92,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!torso && torso.m === 'iron' && !!greaves && greaves.m === 'iron', { torso, greaves });
   /* tierMult is what getArmorPieceDr turns into damage reduction — a piece
      that arrives at 1 is cosmetic iron over copper stats. */
-  rec.ok('...and iron’s tier multiplier, so they actually mitigate more',
-    !!torso && torso.t === 1.25 && !!greaves && greaves.t === 1.25, { torso, greaves });
+  /* v2.3.1925b: 2.0 — a whole step on the ARMOUR ladder, not the blacksmith
+     table's 1.25.  This is the field getArmorPieceDr turns into mitigation,
+     so a piece that arrived at the old number would be cosmetic iron wearing
+     nearly-copper stats. */
+  rec.ok('...and a whole armour tier step, so they actually mitigate more',
+    !!torso && torso.t === 2.0 && !!greaves && greaves.t === 2.0, { torso, greaves });
 
   /* A resend must not mint a second copy — a reconnect replays credits. */
   const twice = await P.page.evaluate((credit) => {
