@@ -71,10 +71,30 @@ export async function checkAccountLogin(phrase) {
      parseable JSON with settled:true before trusting the answer; on
      anything else report 'unavailable' and the UI refuses to switch. */
   try {
+    /* ═══ v2.3.1921: A REQUEST THAT NEVER ANSWERS MUST STILL END ═══
+       Owner: "it just keeps saying checking for character on login menu."
+
+       This is the boot check, and BroTown.jsx holds bootPhase at 'checking'
+       until the promise settles.  It handles a REJECTION fine — the catch
+       below returns 'unavailable' and the door appears — but a bare fetch
+       does not reject when the far end accepts the connection and then says
+       nothing, which is exactly what a worker does mid-deploy or a phone
+       does on a stalled cell handoff.  Nothing settles, the catch never
+       runs, and the player is left on "Checking for your character…" with
+       no way forward but a manual reload.  A dead screen, from a blip.
+
+       8 seconds: long enough for a cold worker start on a slow phone (the
+       lobby fetch next door uses 3, but that one has a fallback room to
+       fall back TO, and this one decides whether you see your character),
+       short enough that nobody sits looking at a lie.  On timeout the abort
+       lands in the same catch as any other failure, so the caller's
+       existing 'unavailable' road — the login door, with Continue and
+       Create both live — is the road out. */
     const res = await fetch(BT_API_BASE + '/api/account/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phrase }),
+      signal: AbortSignal.timeout(8000),
     });
     const json = await res.json();
     if (!json || json.settled !== true) return { ok: false, reason: 'unavailable' };
