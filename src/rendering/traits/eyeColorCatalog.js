@@ -31,6 +31,13 @@ export const EYE_COLOR_CATALOG = [
   { id: 'ice',     name: 'Ice',     swatch: '#8fbcd4', target: [143, 188, 212] },
   { id: 'violet',  name: 'Violet',  swatch: '#965ac8', target: [150, 90, 200] },
   { id: 'red',     name: 'Red',     swatch: '#b23a30', target: [178, 58, 48] },
+  /* v2.3.1929, owner: "let the player choose white eyes (just for fun)".
+     The odd one out on purpose -- it paints the iris the same value as the
+     sclera beside it, so the eye reads as a blank white oval rather than as
+     an eye with a pale iris.  That IS the effect being asked for.  Not pure
+     #ffffff: a hair of cool grey keeps the iris a shade under the sclera, so
+     the eye still has an edge instead of bleeding into the highlight. */
+  { id: 'white',   name: 'White',   swatch: '#eef1f5', target: [238, 241, 245] },
 ];
 
 /** RGB the iris should be painted, or null for the art's own colour. */

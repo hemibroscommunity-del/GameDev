@@ -56,15 +56,62 @@ function limits(fw) {
   return {
     minRun: Math.max(1, Math.round(2 * k)),
     maxRun: Math.max(2, Math.round(6 * k)),
-    minRows: Math.max(2, Math.round(4 * k)),
+    minRows: Math.max(3, Math.round(4 * k)),
     maxGap: Math.max(1, Math.round(2 * k)),
+    /* v2.3.1929: how many ANTI-ALIASED columns may sit between the eye and the
+       skin around it.  See skinBeside below for why one is needed at all. */
+    blend: Math.max(1, Math.round(1 * k)),
   };
 }
 
 /** Iris pixels in one frame, as [x,y] in FRAME-LOCAL coordinates. */
 export function irisIn(px, x0, x1, h) {
-  const { minRun: MIN_RUN, maxRun: MAX_RUN, minRows: MIN_ROWS, maxGap: MAX_GAP } = limits(x1 - x0);
-  const at = (x, y) => { const i = (y * px.width + x) * 4; return [px.data[i], px.data[i + 1], px.data[i + 2], px.data[i + 3]]; };
+  const { minRun: MIN_RUN, maxRun: MAX_RUN, minRows: MIN_ROWS, maxGap: MAX_GAP, blend: BLEND } = limits(x1 - x0);
+  /* v2.3.1929: OUT OF BOUNDS READS AS THE NEXT ROW.  The data is one flat array,
+     so an x past the right edge silently returns a pixel from the row below
+     instead of nothing -- and the scan below used to run to (i+1)*fw even when
+     the sheet ended sooner.  bow-south is 390 wide with fw=234, so chunk 1 ran
+     to 468 and "found" an eye at x=442, 52px off the end of the image, out of
+     wrapped-around pixels.  It shipped in v2.3.1928 and painted nothing visible
+     only because those coordinates fall outside the canvas at runtime too.
+     Both ends are clamped now, and x1 is clamped by the caller as well. */
+  const at = (x, y) => {
+    if (x < 0 || y < 0 || x >= px.width || y >= px.height) return [0, 0, 0, 0];
+    const i = (y * px.width + x) * 4;
+    return [px.data[i], px.data[i + 1], px.data[i + 2], px.data[i + 3]];
+  };
+  /* ── v2.3.1929: SKIN BESIDE THE EYE, ACROSS THE BLEND ──
+   *
+   * Owner: "On Southwest one eye is still black (the other colored correctly)."
+   *
+   * Both tests below used to demand skin in the pixel IMMEDIATELY beside the
+   * eye.  That holds for the near eye of a three-quarter view and fails for the
+   * far one, because the far eye is drawn against the curve of the cheek and
+   * the artist anti-aliased the join.  stand-southwest, rows 45-50: the near
+   * eye reads `sssssWWW?###ssss` and passes, the far eye reads
+   * `ssss?WWW?###ssss` -- one blend column at the sclera's outer edge -- and
+   * was thrown out on four of its six rows.  Two surviving rows are not a
+   * contiguous column of MIN_ROWS, so the whole eye vanished and shipped black
+   * while its twin recoloured.  Nothing was wrong with the eye; the test was
+   * asking the art to be aliased.
+   *
+   * Crossing ONE blend column costs nothing that keeps armour out.  The
+   * discriminator was never the distance, it was that the neighbour is SKIN --
+   * and a pixel that is neither white, dark, nor transparent is the only thing
+   * allowed in between, so a steel plate (whose neighbours are more steel)
+   * still fails on the first step. */
+  const skinBeside = (from, step, y) => {
+    for (let o = 0; o <= BLEND; o++) {
+      const p = from + step * o;
+      if (p < x0 || p >= x1) return false;
+      const c = at(p, y);
+      if (isSkin(...c)) return true;
+      /* only an anti-aliased column may be crossed: white, dark or transparent
+         means this is not a face edge and the walk stops here */
+      if (isWhite(...c) || isDark(...c) || c[3] <= 40) return false;
+    }
+    return false;
+  };
   /* rows first: collect candidate iris runs with skin on the far side */
   const rows = new Map();   /* y -> [[from,to], ...] */
   for (let y = 0; y < h; y++) {
@@ -72,17 +119,16 @@ export function irisIn(px, x0, x1, h) {
     for (let x = x0; x < x1; x++) {
       if (isWhite(...at(x, y))) { run++; continue; }
       if (run >= MIN_RUN && run <= MAX_RUN) {
-        /* skin immediately OUTSIDE the sclera — a face, not a plate */
-        const outer = x - run - 1;
-        if (outer >= x0 && isSkin(...at(outer, y))) {
+        /* skin OUTSIDE the sclera — a face, not a plate (v2.3.1929: across at
+           most one anti-aliased column; see skinBeside) */
+        if (skinBeside(x - run - 1, -1, y)) {
           let s = -1;
           for (let g = 0; g <= MAX_GAP && x + g < x1; g++) if (isDark(...at(x + g, y))) { s = x + g; break; }
           if (s >= 0) {
             let e = s;
             while (e + 1 < x1 && isDark(...at(e + 1, y)) && e - s + 1 < MAX_RUN) e++;
             if (e - s + 1 >= MIN_RUN) {
-              const beyond = e + 1;
-              if (beyond < x1 && isSkin(...at(beyond, y))) {
+              if (skinBeside(e + 1, 1, y)) {
                 if (!rows.has(y)) rows.set(y, []);
                 rows.get(y).push([s, e]);
               }
@@ -123,12 +169,19 @@ if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(im
   const report = [];
   for (const f of fs.readdirSync(DIR).filter((n) => n.endsWith('.png')).sort()) {
     const px = decode(fs.readFileSync(path.join(DIR, f)));
-    const fw = px.height, n = Math.max(1, Math.round(px.width / fw));
+    /* v2.3.1929: CEIL, not round, and the last chunk is short.
+       These sheets are NOT all an integer number of square frames: bow-southwest
+       is 462x233 and holds THREE 154px poses, bow-south 390x234.  The chunking
+       here is not the animation's frame grid and does not need to be -- it only
+       has to agree with _paintEyes, which walks the UPSCALED canvas in 256px
+       steps while `f * 256 < width`.  That is ceil(width/fw) chunks, with the
+       final one running only to the image edge. */
+    const fw = px.height, n = Math.max(1, Math.ceil(px.width / fw));
     const base = f.replace(/\.png$/, '');
     const per = [];
     let hit = 0;
     for (let i = 0; i < n; i++) {
-      const pts = irisIn(px, i * fw, (i + 1) * fw, px.height).map(([x, y]) => [x - i * fw, y]);
+      const pts = irisIn(px, i * fw, Math.min((i + 1) * fw, px.width), px.height).map(([x, y]) => [x - i * fw, y]);
       if (pts.length) { hit++; pixels += pts.length; }
       per.push(pts);
     }
