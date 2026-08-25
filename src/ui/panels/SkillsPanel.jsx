@@ -1,5 +1,5 @@
 import React from 'react';
-import { LIFE_SKILL_XP, QUEST_CHAINS, QUEST_STATUS, ZONE_RESOURCES, createDefaultCompStats } from '@/data/index.js';
+import { LIFE_SKILL_XP, QUEST_CHAINS, QUEST_STATUS, ZONE_RESOURCES, createDefaultCompStats, questObjectiveDone } from '@/data/index.js';
 import { _slicedToArray } from '@/lib/babelHelpers.js';
 
 /* ═══ SkillsPanel — life-skill levels / resources / quest progress ═══ */
@@ -343,7 +343,8 @@ export function SkillsPanel(props) {
         padding: 4
       })
     }, active.map(function (q, _qi) {
-      var done = q.check(rpgState, stateRef.current);
+      /* v2.3.1914: live rpg, not the snapshot — one answer everywhere. */
+      var done = questObjectiveDone(q, stateRef.current, rpgState);
       return /*#__PURE__*/React.createElement("div", {
         key: q.id,
         style: {

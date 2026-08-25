@@ -2551,14 +2551,66 @@ function _fishTopFrame(bodyTex) {
     ctx.drawImage(bres, bf.x, bf.y, bf.width, bf.height, 0, 0, W, H);
     const img = ctx.getImageData(0, 0, W, H); const d = img.data;
     const headBot = Math.round(H * 0.35);   // keep the whole head band as-is
+    /* ═══ v2.3.1914: THE HAND COMES UP WITH THE ROD ═══
+       Owner: "When fishing that hand needs to be over the shirt during the reel
+       animation instead of under it."
+
+       Below the head band this kept ONLY the rod's magenta pixels and erased
+       everything else, so the plate/shirt could show through the torso. That
+       erased the GRIPPING HAND too — it stayed down in the body layer, under
+       the shirt, and on the reel frames where the hand crosses the chest it
+       disappeared behind the tee. A hand that goes behind the shirt it is
+       holding a rod in front of reads as broken, which is what was reported.
+
+       So: the rod, plus any opaque pixel within GRIP_R of a rod pixel. The
+       radius is what keeps this from undoing v2.3.1123 — a hand's worth of
+       skin rides up with the rod, the forearm and torso do not, and the plate
+       still shows through everywhere else. Keyed on PROXIMITY rather than on
+       skin colour deliberately: the body is recoloured per player, so a colour
+       test would work for one skin tone and quietly fail for the rest. */
+    const GRIP_R = Math.max(4, Math.round(H * 0.055));
+    const rodXs = [], rodYs = [];
+    const isRodAt = (o) => {
+      const r = d[o], g = d[o + 1], b = d[o + 2], a = d[o + 3];
+      return a > 60 && r > 140 && g < 115 && b > 60 && b < 195 && (r - g) > 60 && b > g + 22;
+    };
     for (let y = headBot + 1; y < H; y++) {
       for (let x = 0; x < W; x++) {
-        const o = (y * W + x) * 4;
-        const r = d[o], g = d[o + 1], b = d[o + 2], a = d[o + 3];
-        /* below the head band, keep ONLY the rod (magenta: high R, low G, B>G) */
-        const isRod = a > 60 && r > 140 && g < 115 && b > 60 && b < 195 && (r - g) > 60 && b > g + 22;
-        if (!isRod) d[o + 3] = 0;
+        if (isRodAt((y * W + x) * 4)) { rodXs.push(x); rodYs.push(y); }
       }
+    }
+    const keep = new Uint8Array(W * H);
+    for (let i = 0; i < rodXs.length; i++) {
+      const rx = rodXs[i], ry = rodYs[i];
+      const y0 = Math.max(headBot + 1, ry - GRIP_R), y1 = Math.min(H - 1, ry + GRIP_R);
+      const x0 = Math.max(0, rx - GRIP_R), x1 = Math.min(W - 1, rx + GRIP_R);
+      for (let y = y0; y <= y1; y++) {
+        const row = y * W;
+        for (let x = x0; x <= x1; x++) keep[row + x] = 1;
+      }
+    }
+    for (let y = headBot + 1; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const idx = y * W + x, o = idx * 4;
+        if (!keep[idx] || d[o + 3] <= 60) d[o + 3] = 0;
+      }
+    }
+    /* v2.3.1914 QA probe: how much of this overlay is rod and how much is the
+       grip that now rides with it. A screenshot cannot separate "the hand is
+       over the shirt" from "the hand happens to be outside the shirt on this
+       frame", and the whole fix is a bounded amount of extra coverage — too
+       little is the old bug, too much undoes v2.3.1123 and paints the torso
+       over the plate. Counting both is the only way to assert the bound. */
+    if (typeof window !== 'undefined') {
+      let rod = 0, grip = 0;
+      for (let y = headBot + 1; y < H; y++) {
+        for (let x = 0; x < W; x++) {
+          const idx = y * W + x, o = idx * 4;
+          if (d[o + 3] <= 0) continue;
+          if (isRodAt(o)) rod++; else grip++;
+        }
+      }
+      window.__btFishTop = { rod, grip, gripR: GRIP_R, w: W, h: H };
     }
     ctx.putImageData(img, 0, 0);
     const tex = new Texture({ source: Texture.from(cv).source });
@@ -7539,8 +7591,18 @@ export class EntityRenderer {
           if ((pose !== 'jog' || _fsT) && _needHead) _placePickupHead(display, spriteBody, getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _jogPhase);
           display._headBehindGear = (pose === 'jog' && dir === 'east' && !!_fsT); /* v2.3.1553 */
           spriteBody.visible = !(pose === 'pickup' && _legsW && _chestW && !!getPickupHeadFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx));
-          /* v2.3.1123: lift the angler's head above the fishing chest plate. */
-          if (pose === 'fish' && _chestW) _placeFishHead(display, spriteBody, tex);
+          /* v2.3.1123: lift the angler's head above the fishing chest plate.
+             v2.3.1914 (owner: "When fishing that hand needs to be over the
+             shirt during the reel animation instead of under it"): ...and above
+             the SHIRT. This gated on chest ARMOUR only, so an angler in a plain
+             tee — which is everyone, from the first minute of the game — never
+             built the overlay at all and the gripping hand stayed buried under
+             the shirt art. The shirt is placed by _placeGear rather than
+             collected into _worn (that list is chest+legs, for the body mask),
+             so it needed asking about separately rather than being covered by
+             _chestW. */
+          const _shirtW = (() => { const _si = getEquip('shirt'); return !!(_si && _si !== 'none'); })();
+          if (pose === 'fish' && (_chestW || _shirtW)) _placeFishHead(display, spriteBody, tex);
         } catch (e) { if (display._bodyHead) display._bodyHead.visible = false; spriteBody.visible = true; }
         /* ═══ v2.3.1872: THE SOUTH BLOCK'S JOGGING LEGS ═══
            Placed HERE, after the masked/fullset body has been resolved, because

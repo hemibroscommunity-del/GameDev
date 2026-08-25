@@ -6212,6 +6212,39 @@ export function npcHasQuestChain(npcName) {
   return !!_npcHasQuestCache[npcName];
 }
 
+/* ═══ v2.3.1914: ONE ANSWER TO "IS THIS OBJECTIVE DONE" ═══
+ *
+ * Owner: "After completing quest into the blue the quest reward doesn't pop up
+ * by proximity to mayor bro. Same proximity turn in quest reward issue with
+ * the next quest bro ascendant."
+ *
+ * It popped up. It just said the wrong thing. BroTown's proximity opener asks
+ * check(S.rpg) — the LIVE rpg object — to decide whether a reward is claimable,
+ * and opens the panel because it is. QuestPanel then asked check(rpgState) —
+ * the React SNAPSHOT — to decide what to draw, and drew his progress line with
+ * a Close button. Measured across all three later steps (mp-questchain): the
+ * latch records ready=true in the same frame the panel renders "Six, from the
+ * blue ones."
+ *
+ * The snapshot lags in-place S.rpg mutations — that is the documented
+ * v2.3.1207 convention, and it is why InventoryPanel and StatScreenPanel both
+ * read stateRef.current.rpg instead. Inventory arrives from player_state as an
+ * in-place write, so "you picked up the sixth remnant" is exactly the kind of
+ * change the snapshot has not seen yet.
+ *
+ * So the check gets ONE implementation that every caller shares, rather than
+ * four hand-copies of `q.check(...)` that can disagree about which rpg they
+ * mean. Wrapped, because check is quest-authored code running on live state
+ * and some callers run it every frame; a throw must not take the render loop
+ * down over a cosmetic readout.
+ */
+export function questObjectiveDone(quest, S, rpgFallback) {
+  if (!quest || typeof quest.check !== 'function') return false;
+  var rpg = (S && S.rpg) || rpgFallback || null;
+  if (!rpg) return false;
+  try { return !!quest.check(rpg, S); } catch (e) { return false; }
+}
+
 export function getNpcQuest(rpg, npcName) {
   var questState = rpg._quests || {};
   /* Find first incomplete quest for this NPC */
