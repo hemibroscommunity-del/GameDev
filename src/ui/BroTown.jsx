@@ -1938,7 +1938,7 @@ export var BroTown = function BroTown(_ref0) {
     /* v2.3.1927: roll from what THIS hat offers -- rolling a colour its picker
        hides is the same broken-button problem the v2.3.1494 note describes. */
     if (recolorEnabled('hat')) { var htc = rpick(hatColorsFor(ht)); setHatColor(htc); setHatColorSel(htc); }
-    var ec = rpick(EYE_COLOR_CATALOG); setEyeColor(ec); setEyeColorSel(ec);
+    if (recolorEnabled('eyes')) { var ec = rpick(EYE_COLOR_CATALOG); setEyeColor(ec); setEyeColorSel(ec); }
   };
   /* v2.3.711: RANDOMIZE rolls a few quick looks before settling -- the
      slot-machine beat makes the button feel fun instead of a dry reroll. */

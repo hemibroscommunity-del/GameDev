@@ -20,6 +20,8 @@
  * change.  `null` = the art's own dark, i.e. no recolour at all.
  */
 
+import { recolorEnabled } from './recolorOptions.js';
+
 export const EYE_COLOR_CATALOG = [
   { id: 'default', name: 'Default', swatch: '#2b2620', target: null },
   { id: 'brown',   name: 'Brown',   swatch: '#7a4a22', target: [122, 74, 34] },
@@ -33,6 +35,11 @@ export const EYE_COLOR_CATALOG = [
 
 /** RGB the iris should be painted, or null for the art's own colour. */
 export function eyeColorTarget(id) {
+  /* v2.3.1929: the same switch every other colour category answers to (the
+     v2.3.1494 pattern -- skinTarget/hairColorTarget/hatColorTarget all open
+     with this line).  Dropping the tab without it would hide the control while
+     a previously-saved pick kept painting, which is the harder bug to see. */
+  if (!recolorEnabled('eyes')) return null;
   const e = EYE_COLOR_CATALOG.find((c) => c.id === id);
   return (e && e.target) || null;
 }
