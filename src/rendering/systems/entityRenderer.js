@@ -49,7 +49,7 @@ import { getDeathFrame as getPlayerDeathFrame, hasDeathSprites as hasPlayerDeath
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
 import { getAnchor, getJogForwardHand, getWeaponHandle, getHeadAnchor } from '../playerAnchors.js';
 import { getNftTextures } from '../nftAvatars.js';
-import { getHeadwear, HEADWEAR_CATALOG, headwearUnderHair } from '../traits/headwearCatalog.js'; /* v2.3.1764: hair over headphones */
+import { getHeadwear, HEADWEAR_CATALOG, headwearUnderHair, headwearBehindBeard } from '../traits/headwearCatalog.js'; /* v2.3.1764: hair over headphones; v2.3.1934: beard over a drape */
 import { getFacialHair, FACIALHAIR_CATALOG } from '../traits/facialHairCatalog.js';
 import { getHair, HAIR_CATALOG } from '../traits/hairCatalog.js';
 import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant } from '../playerSkins.js';
@@ -2958,7 +2958,7 @@ export function hideSkillTraits(sprites) {
      above the beard on the toward-camera facings via the block below.
    Shared by local + remote (remote displays simply lack the hand/shield
    sprites, so those are skipped). */
-function _orderTraitsAndWeapon(display, facingIdx) {
+function _orderTraitsAndWeapon(display, facingIdx, hatId) {
   /* --- Pickup head overlay above the worn plate (v2.3.1055) ---
      _placePickupHead put the head-only sheet on _bodyHead; lift it above the
      body + worn gear so the raised arm/pauldron plate can't cover it. Same
@@ -3028,6 +3028,16 @@ function _orderTraitsAndWeapon(display, facingIdx) {
                        display._handCapSprite, display._handArmSprite,
                        display._shieldSprite]) {
         if (s && s.visible) ref = Math.max(ref, display.getChildIndex(s));
+      }
+      /* v2.3.1934: ...and above the HAT, for the pieces that declare it
+         (headwearBehindBeard).  Headwear is normally above facial hair so a
+         brim or a cheek guard can overlap the face; a keffiyeh's side drape is
+         the exception the owner hit -- it was covering the beard on southwest.
+         Joining this list rather than getting its own pass means the beard
+         still lands above the gear it already had to clear. */
+      if (headwearBehindBeard(hatId)) {
+        const hw = display._headwearSprite;
+        if (hw && hw.visible && hw.parent === display) ref = Math.max(ref, display.getChildIndex(hw));
       }
       const fhIdx = display.getChildIndex(beard);
       if (fhIdx < ref) display.setChildIndex(beard, ref);
@@ -6964,8 +6974,10 @@ export class EntityRenderer {
           };
         } catch (e) { /* never breaks the frame */ }
       }
-      /* v2.3.354: beard z-order for remote players (same rule as local). */
-      _orderTraitsAndWeapon(display, facingIdx);
+      /* v2.3.354: beard z-order for remote players (same rule as local).
+         v2.3.1934: THEIR hat id, so a peer in a keffiyeh gets the same
+         beard-over-the-drape order the local player does. */
+      _orderTraitsAndWeapon(display, facingIdx, other.headwear);
 
       /* v2.3.1011: while this remote is mid sword/greatsword swing, the
          effectsRenderer stand-in (_updateRemoteSwordSwings) replaces their
@@ -8864,7 +8876,7 @@ export class EntityRenderer {
 
       /* v2.3.354: beard z-order, computed AFTER the weapon / shield / arm
          swaps so it has the final say on the facial-hair layer. */
-      _orderTraitsAndWeapon(display, facingIdx);
+      _orderTraitsAndWeapon(display, facingIdx, getHeadwear());   /* v2.3.1934 */
 
       /* Swing trail.  v2.3.252: armed swings back to the legacy
          fan-shaped arc sector per user request (the bamboo stick now
