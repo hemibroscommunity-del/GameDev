@@ -12,6 +12,7 @@ import { Texture } from 'pixi.js';
 import { recolorHairToCanvas } from '../characterPortrait.js';
 import { headwearIsSolid } from './headwearCatalog.js';
 import { recolorEnabled, SOLID_ONLY_HAT_COLOR } from './recolorOptions.js';
+import { segmentMaterials, mainMaterial } from './traitMaterials.js'; /* v2.3.1926 */
 
 export const HAT_COLOR_CATALOG = [
   { id: 'default', name: 'Default', swatch: '#7c6cff', target: null },
@@ -81,7 +82,14 @@ function loadImg(url) {
    hat's facings share ONE recolour reference. Keying every direction off the
    same ref makes the chosen hat colour land on the same tone per angle instead
    of drifting with each sheet's own outline-to-fabric pixel ratio. */
-function _pooledRef(imgs) {
+/* v2.3.1926: returns the MATERIAL PROFILE as well, from the same single read of
+   the pixels -- which material is the hat's own colour, so a recolour can leave
+   the eyes, the teeth, the band and the outline alone (traitMaterials.js).
+   `ref` is byte-for-byte the number this function always returned; the recolour
+   of the hat's own material is therefore unchanged, and the only difference
+   anywhere is the materials that are now skipped. */
+function _pooledProfile(imgs, hatId) {
+  const chunks = [];
   let sum = 0, n = 0, maxL = 1;
   for (const img of imgs) {
     if (!img) continue;
@@ -90,6 +98,7 @@ function _pooledRef(imgs) {
     const ctx = cv.getContext('2d', { willReadFrequently: true });
     ctx.drawImage(img, 0, 0);
     const d = ctx.getImageData(0, 0, cv.width, cv.height).data;
+    chunks.push(d);
     for (let i = 0; i < d.length; i += 4) {
       if (d[i + 3] > 30) {
         const l = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
@@ -97,18 +106,22 @@ function _pooledRef(imgs) {
       }
     }
   }
-  return Math.max(1, n ? (sum / n) * 1.15 : maxL);
+  const mats = segmentMaterials(chunks);
+  return { ref: Math.max(1, n ? (sum / n) * 1.15 : maxL), mats, main: mainMaterial(hatId, mats) };
 }
 
-/* hatId -> shared pooled reference luminance (cached across colours + reused by
-   the character-creator portrait so its hat shade matches the in-game one). */
-const _refCache = {};
+/* hatId -> shared pooled recolour profile (reference luminance + the hat's
+   materials), cached across colours and reused by the character-creator
+   portrait so its hat shade matches the in-game one.
+   Object.create(null): keyed by a trait id that reaches here from a saved
+   appearance, and a plain {} silently no-ops on '__proto__' (CLAUDE.md rule 4). */
+const _refCache = Object.create(null);
 export function getHatRef(hatId) {
   if (!hatId || hatId === 'none') return Promise.resolve(0);
   if (_refCache[hatId]) return Promise.resolve(_refCache[hatId]);
   return Promise.all(DIRS.map(dir =>
     loadImg(`/sprites/traits/headwear/${hatId}/${dir}.png?v=${TRAIT_VER}`).then(img => img).catch(() => null)
-  )).then(imgs => (_refCache[hatId] = _pooledRef(imgs)));
+  )).then(imgs => (_refCache[hatId] = _pooledProfile(imgs, hatId)));
 }
 
 /* v2.3.1119: bound the recolor cache (see hairColorCatalog for rationale) --
@@ -140,10 +153,10 @@ function build(hatId, colorId) {
   Promise.all(DIRS.map(dir =>
     loadImg(`/sprites/traits/headwear/${hatId}/${dir}.png?v=${TRAIT_VER}`).then(img => ({ dir, img })).catch(() => ({ dir, img: null }))
   )).then(loaded => {
-    const ref = _refCache[hatId] || (_refCache[hatId] = _pooledRef(loaded.map(l => l.img)));
+    const prof = _refCache[hatId] || (_refCache[hatId] = _pooledProfile(loaded.map(l => l.img), hatId));
     for (const { dir, img } of loaded) {
       if (!img) continue; /* dir missing -> renderer falls back */
-      const cv = recolorHairToCanvas(img, target, ref);
+      const cv = recolorHairToCanvas(img, target, prof);
       const t = Texture.from(cv);
       if (t && t.source) { t.source.scaleMode = 'linear'; t.source.autoGenerateMipmaps = true; }
       tex[dir] = t;

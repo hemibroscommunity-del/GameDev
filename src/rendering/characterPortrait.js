@@ -18,6 +18,7 @@
 import { skinTarget, pantsTarget, shoesTarget, recolorBodyToCanvas } from './playerSkins.js';
 import { SPRITE_VERSION } from './playerSprites.js';
 import { getHatRef } from './traits/hatColorCatalog.js';
+import { materialIndex } from './traits/traitMaterials.js'; /* v2.3.1926 */
 import { headwearIsSolid } from './traits/headwearCatalog.js';
 import { SOLID_ONLY_HAT_COLOR } from './traits/recolorOptions.js'; /* v2.3.1109: shared per-hat recolour reference (call-time use; cyclic import is safe) */
 import { upscaleToFrameHeight } from './spriteScale.js'; /* v2.3.1110: restore downscaled shirt sheet to 256 frame */
@@ -168,7 +169,15 @@ export function recolorHairToCanvas(img, hairColor, refOverride) {
      a multi-direction trait (e.g. a hat across its 5 facings) so the recoloured
      tone is identical per angle instead of drifting with each sheet's own
      outline-vs-fabric pixel mix. */
-  let ref = refOverride;
+  /* v2.3.1926: refOverride is either a plain reference number (hair, beard,
+     shirt — unchanged) or a MATERIAL PROFILE from traitMaterials.js, which
+     carries the reference plus which material is the trait's own colour.  With
+     a profile, only that material is recoloured and every other one — the
+     Kermit hat's eyes, the shark's teeth, the black outline — keeps what it
+     was drawn with.  A single-material trait recolours every pixel, so its
+     output is identical either way. */
+  const prof = (refOverride && typeof refOverride === 'object') ? refOverride : null;
+  let ref = prof ? prof.ref : refOverride;
   if (!ref) {
     let sum = 0, n = 0, maxL = 1;
     for (let i = 0; i < d.length; i += 4) {
@@ -180,8 +189,13 @@ export function recolorHairToCanvas(img, hairColor, refOverride) {
     ref = Math.max(1, n ? (sum / n) * 1.15 : maxL);
   }
   const tr = hairColor[0], tg = hairColor[1], tb = hairColor[2];
+  /* main < 0 means "no material is special here" -- either the trait has none
+     or its entry says 'all' -- so every pixel recolours, which is today's map. */
+  const main = prof ? prof.main : -1;
+  const mats = (prof && main >= 0) ? prof.mats : null;
   for (let i = 0; i < d.length; i += 4) {
     if (d[i + 3] > 30) {
+      if (mats && materialIndex(d[i], d[i + 1], d[i + 2], mats) !== main) continue;
       const k = (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) / ref;
       d[i] = Math.min(255, Math.round(tr * k));
       d[i + 1] = Math.min(255, Math.round(tg * k));
