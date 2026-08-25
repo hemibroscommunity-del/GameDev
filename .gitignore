@@ -49,3 +49,7 @@ tools/qa/mp/out/
 # server/**.mjs or anything else real.  Zero root-level .mjs files are tracked
 # today, and a genuinely permanent one belongs in tools/ anyway.
 /*.mjs
+
+# v2.3.1923: generated headwear preview sheets (tools/qa/preview-headwear.mjs).
+# Regenerate on demand; 4MB of PNGs has no business in the history.
+preview/
