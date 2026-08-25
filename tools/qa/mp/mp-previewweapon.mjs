@@ -1,4 +1,4 @@
-/* THE CHARACTER PREVIEW FOLLOWS THE WEAPON YOU ARE HOLDING (v2.3.1907).
+/* THE CHARACTER PREVIEW FOLLOWS THE WEAPON YOU ARE HOLDING (v2.3.1914).
  *
  * Owner: "When different weapons are equipped like pine bow and staff the
  * character preview doesn't update on the character dashboard."

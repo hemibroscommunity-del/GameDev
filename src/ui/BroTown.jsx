@@ -129,7 +129,7 @@ export var QUEST_MSG_LONG_MS = 4200;
  * here would take the whole render loop down over a cosmetic re-open. */
 function _npcQuestReady(S, npcQ) {
   if (!npcQ || npcQ.status !== 'active') return false;
-  /* v2.3.1907: the shared implementation, so the opener and the panel it
+  /* v2.3.1914: the shared implementation, so the opener and the panel it
      opens cannot answer this differently — which is exactly what they were
      doing (see questObjectiveDone). */
   return DATA.questObjectiveDone(npcQ.quest, S, S && S.rpg);
@@ -9201,7 +9201,7 @@ export var BroTown = function BroTown(_ref0) {
     }).filter(Boolean);
     if (activeQuests.length === 0) return null;
     var q = activeQuests[0];
-    /* v2.3.1907: live rpg, not the snapshot — one answer everywhere. */
+    /* v2.3.1914: live rpg, not the snapshot — one answer everywhere. */
     var done = DATA.questObjectiveDone(q, stateRef.current, rpgState);
     return /*#__PURE__*/React.createElement("div", {
       /* v2.3.1714: tap to fold the objective away, leaving just the title.

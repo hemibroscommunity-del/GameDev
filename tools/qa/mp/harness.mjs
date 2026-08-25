@@ -193,7 +193,7 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
     touch ? { hasTouch: true, isMobile: true, deviceScaleFactor: 2 } : null,
     /* v2.3.1906: opt-in higher backing-store resolution, for scenarios that
        have to LOOK at the figure. The player is ~40 CSS px tall on a phone
-       viewport; at dpr 2 a shoulder — or a hand (v2.3.1907, which arrived at
+       viewport; at dpr 2 a shoulder — or a hand (v2.3.1914, which arrived at
        the identical option independently) — is a handful of pixels. Layout is
        unchanged, only the capture resolution moves. */
     dpr ? { deviceScaleFactor: dpr } : null,

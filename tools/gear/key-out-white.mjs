@@ -1,4 +1,4 @@
-/* ═══ v2.3.1907: KEY OUT BACKGROUND WHITE THAT LEAKED PAST THE OUTLINE ═══
+/* ═══ v2.3.1914: KEY OUT BACKGROUND WHITE THAT LEAKED PAST THE OUTLINE ═══
  *
  * Owner: "On the 'learn a trade' quest modal window the fishing pole has white
  * that wasn't keyed out in the spaces between the fishing pole."

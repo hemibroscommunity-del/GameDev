@@ -6212,7 +6212,7 @@ export function npcHasQuestChain(npcName) {
   return !!_npcHasQuestCache[npcName];
 }
 
-/* ═══ v2.3.1907: ONE ANSWER TO "IS THIS OBJECTIVE DONE" ═══
+/* ═══ v2.3.1914: ONE ANSWER TO "IS THIS OBJECTIVE DONE" ═══
  *
  * Owner: "After completing quest into the blue the quest reward doesn't pop up
  * by proximity to mayor bro. Same proximity turn in quest reward issue with

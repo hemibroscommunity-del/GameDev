@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { COL, QUALITY_COLOR, panelStyle, getState } from '../dash/common.js';
-import { buildSkillUnspent, STAT_TO_WEAPON_CAT, getActiveWeapon } from '../../../data/gameSystems.js'; /* v2.3.1907: getActiveWeapon */
+import { buildSkillUnspent, STAT_TO_WEAPON_CAT, getActiveWeapon } from '../../../data/gameSystems.js'; /* v2.3.1914: getActiveWeapon */
 import { requestT2Category } from '../dash/T2Panel.jsx';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { CharacterView, FIGURE_W_FRAC } from './CharacterView.jsx'; /* v2.3.1815: the equip screen's own figure */
@@ -623,7 +623,7 @@ export const HeroExpanded = () => {
               background: COL.wellSoft, border: `1px solid ${COL.tileBor}`,
               borderRadius: 8, overflow: 'hidden',
             }}>
-              {/* ═══ v2.3.1907: THE ACTIVE WEAPON, NOT THE MELEE SLOT ═══
+              {/* ═══ v2.3.1914: THE ACTIVE WEAPON, NOT THE MELEE SLOT ═══
                   Owner: "When different weapons are equipped like pine bow and
                   staff the character preview doesn't update on the character
                   dashboard."

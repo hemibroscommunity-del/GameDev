@@ -343,7 +343,7 @@ export function SkillsPanel(props) {
         padding: 4
       })
     }, active.map(function (q, _qi) {
-      /* v2.3.1907: live rpg, not the snapshot — one answer everywhere. */
+      /* v2.3.1914: live rpg, not the snapshot — one answer everywhere. */
       var done = questObjectiveDone(q, stateRef.current, rpgState);
       return /*#__PURE__*/React.createElement("div", {
         key: q.id,
