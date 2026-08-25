@@ -16,7 +16,10 @@ import { generateMockProfile } from './mobile/mockProfile.js';
 import { setEquip, getEquip, GEAR_CATALOG, GEAR_SLOTS, gearInventoryItems } from '@/rendering/gearCatalog.js';
 import { BlockRing } from './mobile/BlockRing.jsx';
 import { ZoneHeader } from './mobile/ZoneHeader.jsx'; /* v2.3.1333 */
-import { SpecialChargePie } from './mobile/SpecialChargePie.jsx';
+/* v2.3.1895: SpecialChargePie retired — the special-charge readout moved
+   back under the character as the MP spend bar (entityRenderer
+   _drawResourceBar).  The component file is left in place; nothing renders
+   it, so deleting it is a separate tidy-up rather than part of this change. */
 import { ElementBurstButton } from './mobile/ElementBurstButton.jsx'; /* v2.3.1734 */
 import { blockRingBus } from './mobile/blockRingBus.js';
 /* v2.3.1287: MoreOverlay deleted (unmounted since the BottomDashboard
@@ -632,7 +635,6 @@ export const GameApp = () => {
       {/* the bottom dashboard nests their content inside the --dash-h band. */}
       {/* Their buses still exist and are exercised by debug commands.      */}
       <BlockRing />
-      <SpecialChargePie />
       {/* v2.3.1734: Element Burst's touch input (COMBAT-OVERHAUL-PLAN
           PR 6).  Self-hiding — it mounts always and renders nothing
           until the character is level 6 with an enchanted weapon in
