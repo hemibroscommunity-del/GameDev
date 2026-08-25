@@ -180,7 +180,7 @@ import { FACIALHAIR_CATALOG, getFacialHair, setFacialHair } from '@/rendering/tr
 import { HAIR_CATALOG, getHair, setHair } from '@/rendering/traits/hairCatalog.js';
 import { SKIN_CATALOG, PANTS_CATALOG, SHOES_CATALOG, getSkin, setSkin, getPants, setPants, getShoes, setShoes } from '@/rendering/playerSkins.js';
 import { HAIR_COLOR_CATALOG, getHairColor, setHairColor } from '@/rendering/traits/hairColorCatalog.js';
-import { HAT_COLOR_CATALOG, getHatColor, setHatColor } from '@/rendering/traits/hatColorCatalog.js';
+import { HAT_COLOR_CATALOG, hatColorsFor, getHatColor, setHatColor } from '@/rendering/traits/hatColorCatalog.js';
 import { FACIALHAIR_COLOR_CATALOG, getFacialHairColor, setFacialHairColor } from '@/rendering/traits/facialHairColorCatalog.js';
 import { SHIRT_CATALOG, getShirt, setShirt } from '@/rendering/traits/shirtCatalog.js';
 import { SHIRT_COLOR_CATALOG, getShirtColor, setShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
@@ -1929,7 +1929,9 @@ export var BroTown = function BroTown(_ref0) {
     var st = rpick(SHIRT_CATALOG); setShirt(st); setShirtSel(st);
     if (recolorEnabled('shirt')) { var stc = rpick(SHIRT_COLOR_CATALOG); setShirtColor(stc); setShirtColorSel(stc); }
     var ht = rpick(HEADWEAR_CATALOG); setHeadwear(ht); setHeadwearSel(ht);
-    if (recolorEnabled('hat')) { var htc = rpick(HAT_COLOR_CATALOG); setHatColor(htc); setHatColorSel(htc); }
+    /* v2.3.1927: roll from what THIS hat offers -- rolling a colour its picker
+       hides is the same broken-button problem the v2.3.1494 note describes. */
+    if (recolorEnabled('hat')) { var htc = rpick(hatColorsFor(ht)); setHatColor(htc); setHatColorSel(htc); }
   };
   /* v2.3.711: RANDOMIZE rolls a few quick looks before settling -- the
      slot-machine beat makes the button feel fun instead of a dry reroll. */

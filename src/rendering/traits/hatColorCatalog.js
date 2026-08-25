@@ -29,8 +29,39 @@ export const HAT_COLOR_CATALOG = [
   { id: 'gray',    name: 'Gray',    swatch: '#8a8a92', target: [140, 140, 148] },
 ];
 
-export function hatColorTarget(id) {
+/* v2.3.1927: colours a particular hat does not offer.
+ *
+ * Owner, after reviewing all 39 hats in all 11 colours: "keep all of them
+ * except the yellow recolor for crown (the default is already yellow)."  It is
+ * not that yellow looks wrong on the crown -- it is that the crown IS gold, so
+ * the swatch is a control that appears to do nothing, which reads as broken.
+ *
+ * The list is per hat rather than a rule, because that is the only thing that
+ * can be right here: whether a colour is worth offering is a look at the art,
+ * not something derivable from it.  Add ids as they are reviewed.
+ *
+ * Object.create(null): keyed by a trait id that arrives from a saved
+ * appearance, and a plain {} silently no-ops on '__proto__' (CLAUDE.md rule 4). */
+const HAT_COLOR_EXCLUDE = Object.create(null);
+HAT_COLOR_EXCLUDE.crown = ['yellow'];
+
+/** True if `colorId` is deliberately not offered on `hatId`. */
+export function hatColorExcluded(hatId, colorId) {
+  const skip = hatId && HAT_COLOR_EXCLUDE[hatId];
+  return !!(skip && skip.indexOf(colorId) >= 0);
+}
+
+/** The colours a hat's picker should show. */
+export function hatColorsFor(hatId) {
+  const skip = hatId && HAT_COLOR_EXCLUDE[hatId];
+  return skip ? HAT_COLOR_CATALOG.filter(c => skip.indexOf(c.id) < 0) : HAT_COLOR_CATALOG;
+}
+
+/* `hatId` is optional: without it no exclusion applies, so a caller that has
+   no hat in hand keeps the behaviour it always had. */
+export function hatColorTarget(id, hatId) {
   if (!recolorEnabled('hat')) return null;  /* v2.3.1494 */
+  if (hatColorExcluded(hatId, id)) return null;
   const e = HAT_COLOR_CATALOG.find(c => c.id === id);
   return (e && e.target) || null;
 }
@@ -169,7 +200,10 @@ function build(hatId, colorId) {
 /** Recolored hat texture map for (hatId, colorId), or null for the default
  *  color / while baking (caller falls back to the native-color textures). */
 export function getColoredHatTextures(hatId, colorId) {
-  if (!hatId || hatId === 'none' || !colorId || colorId === 'default' || !hatColorTarget(colorId)) return null;
+  /* v2.3.1927: an excluded colour renders as the hat's native art, so a saved
+     appearance that still names one falls back cleanly instead of showing a
+     colour the picker no longer offers. */
+  if (!hatId || hatId === 'none' || !colorId || colorId === 'default' || !hatColorTarget(colorId, hatId)) return null;
   /* v2.3.1493: enforce what line 3 of this file has always claimed -- recolor
      is for `solid` hats only.  It was never checked anywhere, so the picker was
      offered on every hat, and the retint is a brightness-ratio pass over EVERY
