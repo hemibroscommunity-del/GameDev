@@ -746,6 +746,48 @@ export const GEM_CUT_TIERS = {
 };
 export const GEM_RAW_MONSTER_DROP = 0.05;
 
+/* ═══ v2.3.1924: THE THREE KILL DROPS THE OWNER ASKED FOR ═══
+ *
+ * Owner: "make it so monsters now have a 1 in 500 chance to drop an iron
+ * chest and 1 in 500 of dropping iron legs.  Add a 1 in 200 chance to drop a
+ * rare gem."
+ *
+ * WHY THESE ARE SERVER CONSTANTS AND NOT MIRRORED CLIENT-SIDE.  Loot is
+ * server-authoritative (CLAUDE.md wire section) and these rates are rolled in
+ * exactly one place — _spawnLootForKill.  A client copy would be a number
+ * nothing reads, i.e. a mirror with no consumer and one more thing to drift;
+ * the GOLD_NUGGET_DROP.lifeSkill precedent above is the same call made for
+ * the same reason.  What the client DOES receive is the minted piece.
+ *
+ * WHY IRON, AND WHY THESE FIELDS.  Copper is tier one and arrives from the
+ * Mayor's quests (v2.3.1758, "the second tier of armor will be iron"); iron
+ * has had a material, a tint and finished icon art since v2.3.1760 and no way
+ * whatsoever to obtain it.  A dropped piece is the same record a quest piece
+ * is — `{name, tierMult, slot, mat}` (quests.js _grantQuestItem) — so the
+ * client needs no new table for it: `mat` picks the art and the icon
+ * (gearVariants.js), and `tierMult` is what getArmorPieceDr turns into damage
+ * reduction.  1.25 is iron's own BLACKSMITH_TIERS multiplier, so armour and
+ * weapons price the metal identically instead of by two hand-kept numbers.
+ *
+ * ONE-IN-FIVE-HUNDRED IS PER PIECE, and the two roll INDEPENDENTLY: rolling
+ * once and picking a side would quietly halve each.  Both landing on one
+ * corpse is a 1-in-250,000 event that costs nothing to support, so the pile
+ * carries an array rather than a piece.
+ */
+export const MONSTER_ARMOR_DROPS = [
+  { slot: 'armor',     chance: 1 / 500, name: 'Iron Torso',   mat: 'iron', tierMult: 1.25 },
+  { slot: 'legsArmor', chance: 1 / 500, name: 'Iron Greaves', mat: 'iron', tierMult: 1.25 },
+];
+
+/* The gem is a plain stackable, not the elemental raw_<element> the Gem
+ * Cutter consumes (GEM_RAW_MONSTER_DROP above).  Deliberately a different
+ * thing: those are a crafting currency gated on the zone's element and held
+ * in lifeSkills.gems, while this is an item that lands in your bag from any
+ * monster anywhere.  Keeping them apart is what stops a change to one rate
+ * silently retuning the amulet economy. */
+export const RARE_GEM_MONSTER_DROP = 1 / 200;
+export const RARE_GEM_KEY = 'rare_gem';
+
 /* v2.3.1209 (amulet-forge successor slice A): server-settled gem
  * EXTRACTION (amulet.js _handleAmuletForge op:'extract').  ForgePanel's
  * two Extract buttons (equipped weapon/shield/amulet + weapon stash)

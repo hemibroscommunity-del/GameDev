@@ -94,6 +94,7 @@ const FISHING_POLE_THUMB = `/icons/items/fishing-pole.png${ITEMS_V}`;
    is no webp encoder in the build — the format is per-file, not a rule. */
 const WOODCUTTING_AXE_THUMB = `/icons/items/woodcutting-axe.png${ITEMS_V}`;
 const MINING_PICKAXE_THUMB  = `/icons/items/mining-pickaxe.png${ITEMS_V}`;
+const RARE_GEM_THUMB        = `/icons/ui/cur-gem.webp${ITEMS_V}`; /* v2.3.1924 */
 /* Elemental shards: one webp per zone, /icons/items/<key>.webp
    following the keys defined in src/data/shards.js (shard_meadow,
    shard_ember, ...).  thumbFor() takes the shard_ prefix branch
@@ -110,6 +111,11 @@ export const thumbFor = (key) => {
   if (ORE_THUMBS[k])                return ORE_THUMBS[k];
   if (k.startsWith('ore_'))         return ORE_THUMB_DEFAULT;
   if (k.startsWith('shard_'))       return `/icons/items/${k}.webp${ITEMS_V}`;
+  /* v2.3.1924: the rare gem monsters drop at 1-in-200 (server/src/data.js
+     RARE_GEM_KEY).  It borrows the gem icon this panel ALREADY uses for its
+     GEM stat row — one gem picture in the bag, not two that have to be told
+     apart.  prettyName turns the key into "Rare Gem" with no table entry. */
+  if (k === 'rare_gem')             return RARE_GEM_THUMB;
   if (k === 'fishing_pole')         return FISHING_POLE_THUMB;
   /* v2.3.1689: the three gathering tools all have real art now.  These sit
      ABOVE no prefix rule on purpose — 'woodcutting_axe' does not match
