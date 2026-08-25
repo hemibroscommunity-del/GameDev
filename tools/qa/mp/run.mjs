@@ -22,6 +22,7 @@ const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
   tutgrant: () => import('./mp-tutgrant.mjs'), /* v2.3.1901: the first quest's sword + shield */
+  skillup: () => import('./mp-skillup.mjs'), /* v2.3.1909: life-skill level banner */
   fishhand: () => import('./mp-fishhand.mjs'),
   previewweapon: () => import('./mp-previewweapon.mjs'), /* v2.3.1907: the preview follows the active weapon */
   questchain: () => import('./mp-questchain.mjs'), /* v2.3.1907: proximity turn-in across the whole chain */

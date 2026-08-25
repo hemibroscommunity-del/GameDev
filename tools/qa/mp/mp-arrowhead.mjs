@@ -89,5 +89,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and only a LANDED arrow loses it', !!landed && landed.arrows > 0 && landed.heads === 0, landed);
 
   await P.page.evaluate(() => { try { clearInterval(window.__pin); } catch (e) {} });
+  /* ── v2.3.1909: A SPENT ARROW DRAWS UNDER THE PLAYER ──
+     Owner: "For arrows on the ground make the character in the layer in front
+     of them."
+
+     Asserted on the LAYER each pool hangs off, not on pixels: at this size a
+     screenshot cannot tell an arrow behind the boots from one in front, and
+     the layer is the fact the fix turns on. WORLD_LAYER_NAMES is ordered, so
+     "below the player" is checkable as an index rather than trusted. */
+  const order = await P.page.evaluate(() => (window.__btLayerOrder || null));
+  const inAir = await read('flying');
+  rec.ok('an arrow in FLIGHT is still drawn above the player',
+    !!inAir && inAir.ground === 0, inAir);
+  const landed2 = await read('planted');
+  console.log('    planted: ' + JSON.stringify(landed2));
+  rec.ok('a PLANTED arrow is drawn from the ground pool',
+    !!landed2 && landed2.ground > 0, landed2);
+  rec.ok('...and that pool hangs off a layer BELOW the player',
+    !!order && !!landed2 && order.indexOf(landed2.groundLayer) >= 0
+      && order.indexOf(landed2.groundLayer) < order.indexOf('player'),
+    { order, landed: landed2 });
+  rec.ok('...while the flying pool stays above it',
+    !!order && !!landed2 && order.indexOf(landed2.flyingLayer) > order.indexOf('player'),
+    { order, landed: landed2 });
+
   await P.ctx.close().catch(() => {});
 }
