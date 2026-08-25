@@ -512,3 +512,66 @@ stay evicted (close 4006 → banner, no reconnect).
 **Receipt:** `server/src/index.js` `_moveActivitySig`,
 `server/src/tick.js` `_tickPingAndAfk`, `test/afk.test.mjs`,
 `tools/qa/mp/mp-afk.mjs`.
+
+---
+
+## §25 — `node --check` on a `.js` server file proves nothing (v2.3.1925)
+
+**The trap:** you add a method to the `GameRoom` class in
+`server/src/index.js`, write it in the object-literal style the mixin
+modules use — trailing comma between methods — and reach for the fast
+local check:
+
+```
+$ node --check server/src/index.js
+$            # silence. ship it.
+```
+
+It is not valid. A class body takes no commas between members, and the
+module fails to load at all. `node --check` said nothing because the
+file has a `.js` extension and `server/package.json` declares no
+`"type": "module"`, so **Node parsed it as a CommonJS script** — a
+grammar in which the same text is legal enough to get past a syntax
+check.
+
+Reproduced deliberately:
+
+```
+$ printf 'export class A {\n  foo() { return 1; },\n  bar() {}\n}\n' > t.mjs
+$ node --check t.mjs
+t.mjs:2
+  foo() { return 1; },
+                     ^        # caught
+$ cp t.mjs t.js && node --check t.js
+$                             # silent
+```
+
+**This bit twice in one day** — once on `OPEN_PVP: false` written into
+the class body (v2.3.1917) and once on the reveal helpers (v2.3.1925).
+Both times the "check" passed and `npm test` caught it, which is the
+right outcome by the slowest road available.
+
+**The repo's own gate was never the problem.** `tools/dev/precheck.mjs`
+copies every changed source to a temp **`.mjs`** before checking it,
+precisely so ESM parses as ESM regardless of the nearest
+`package.json` — it would have caught both. The weak step was the
+*ad-hoc* command typed in between.
+
+**Rules this leaves:**
+- Never `node --check` a server file by its own path. Either run
+  `node tools/dev/precheck.mjs`, or `cp` it to `.mjs` first — the same
+  thing precheck does, for the same reason.
+- A cheaper and stronger one-liner for a server module, because it
+  proves the thing you actually care about (it loads):
+  `node -e "import('./src/index.js').then(()=>console.log('OK')).catch(e=>console.log('FAIL:',e.message))"`
+- Extension and `package.json` decide the GRAMMAR, not the syntax you
+  wrote. A tool that reports "parses fine" has told you it parses under
+  *some* grammar, and silence from a linter you pointed at the wrong
+  dialect is not evidence.
+- Watch for it specifically when moving code between `server/src/*.js`
+  mixin modules (object literals, commas required) and the `GameRoom`
+  class body in `index.js` (class members, commas forbidden). The two
+  styles sit feet apart and look identical at a glance.
+
+**Receipt:** `server/src/index.js` `_isMysteryGrade` / `_revealLadder`
+/ `_revealsFor`, `tools/dev/precheck.mjs` (the temp-`.mjs` copy).

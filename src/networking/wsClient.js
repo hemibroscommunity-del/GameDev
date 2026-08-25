@@ -18,6 +18,7 @@
 import { processGameEvent } from '@/networking/gameEvents.js';
 import { stashPendingZoneNodes } from '@/networking/nodeSync.js'; /* v2.3.1301: node self-heal */
 import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking/index.js';
+import { revealBus } from '@/ui/reveal/revealBus.js'; /* v2.3.1925 */
 import { applyCharacterRecord, hasStoredCharacter, publishCharRecord } from '@/game/characterRecord.js'; /* v2.3.1814: the stored name+look */
 import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, DEATH_GOLD_PENALTY, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, PROG3_SKILL_META, PROG3 } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
@@ -1827,6 +1828,14 @@ export function setupWebSocket(ctx) {
              someone else has already taken stops drawing. */
           armor: (!p.armorClaimed && Array.isArray(p.armor) && p.armor.length) ? p.armor : null,
           gem: (!p.inventoryClaimed && p.gem) ? p.gem : null,
+          /* v2.3.1925: does this pile hold a grade nobody has seen yet?  The
+             server computes it (it is the only side that can see what it is
+             hiding) and the renderer draws a question mark instead of a name.
+             Weapon and armour are tracked separately because their claim
+             lanes are separate — a claimed blade must stop advertising a
+             secret while an unclaimed breastplate keeps its own. */
+          mystery: !!p.mystery,
+          weaponMystery: !!p.weaponMystery && !p.weaponClaimed,
           weaponTier: p.weaponTier || null,
           weaponType: p.weaponType || null,
           weaponName: p.weaponName || null,
@@ -1932,7 +1941,13 @@ export function setupWebSocket(ctx) {
             if (_pcHeld) continue;
             R[_pcKey].push({ name: _pcName, tierMult: _pcTm,
               slot: _pcLegs ? 'legsArmor' : 'armor',
-              mat: _pc.mat ? String(_pc.mat).slice(0, 16) : undefined });
+              mat: _pc.mat ? String(_pc.mat).slice(0, 16) : undefined,
+              /* v2.3.1925: the GRADE travels with the piece.  It is what
+                 getArmorPieceDr multiplies the tier by, so a piece that
+                 arrives without it is a rare breastplate wearing normal
+                 stats — the same class of bug as v2.3.1758 dropping `mat`
+                 and rendering iron as steel. */
+              quality: typeof _pc.quality === 'string' ? _pc.quality : undefined });
             _gotArmor++;
             pushDmgPopup(S, S.player.x, S.player.y - 46 - _ai * 14, 'BAG: ' + _pcName, '#f5c542', { ts: Date.now() + 2 + _ai });
           }
@@ -1958,6 +1973,14 @@ export function setupWebSocket(ctx) {
             pushDmgPopup(S, S.player.x, S.player.y - 34, '+' + payload.weaponSoldFor + 'G (sold, stash full)', '#f5c542', { ts: Date.now() + 1 });
           }
           if (_wQual && _wQual !== 'normal') { try { BT_AUDIO.collect && BT_AUDIO.collect(); } catch (e) {} }
+        }
+        /* ═══ v2.3.1925: HAND THE HIDDEN GRADES TO THE CEREMONY ═══
+           Straight onto the queue, unexamined.  This handler deliberately
+           does not decide anything about a grade — the server sends the
+           ladder to PLAY and the answer is its last rung, so the only thing
+           the client owns is the animation.  Empty ~90% of the time. */
+        if (Array.isArray(payload.reveals) && payload.reveals.length) {
+          try { revealBus.push(payload.reveals); } catch (e) { /* never block a credit on a flourish */ }
         }
         /* Death-drop pickup: server bundles the dead player's whole
            general inventory under payload.items.  Authoritative R.inventory

@@ -38,7 +38,7 @@
 import {
   ELEMENT_STATUS, applyElementStatus, resolveElementCollision, fractureDmgMult,
 } from './elemental.js';
-import { AMULET_TIER_POWER, t2CounterRate } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
+import { AMULET_TIER_POWER, t2CounterRate, QUALITY_GRADES /* v2.3.1925 */ } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
 import { BLOCK_COSTS_STAMINA, BLOCK_STAMINA_COST } from './data.js'; // v2.3.1919: a blocked PvP hit costs stamina too
 import { LIVEOPS } from './liveops.js';
 import { PROG3 } from './prog3.js'; // v2.3.1659: the trained-skill combat rebuild config
@@ -87,7 +87,19 @@ export const combatMethods = {
     const MAX_DR = 0.75;
     const piece = (a, base, perTier) => {
       if (!a) return 0;
-      const tm = Math.max(0, Math.min(8, Number(a.tierMult) || 1));
+      /* ═══ v2.3.1925: QUALITY MULTIPLIES THE TIER, NOT THE REDUCTION ═══
+         Owner extended the rarity ladder to armour.  Quality had to enter
+         this formula somewhere, and where matters enormously: multiplying the
+         REDUCTION would put a godly chest at 0.30 x 3 = 90%, i.e. straight
+         into the 0.75 clamp with the clamp doing all the work — the exact
+         failure the comment above records for multiplying the base by an 8x
+         tierMult.  Multiplying the TIER instead lands a godly iron chest at
+         tm 3.75 -> 43.75%, comfortably inside the ladder this formula was
+         built for, and it keeps quality meaning the same thing it means on a
+         weapon: the ITEM is exceptional, your character is unchanged.
+         Clamped by the same [0,8] as before, so no grade can escape it. */
+      const q = QUALITY_GRADES[a && a.quality] ? QUALITY_GRADES[a.quality].mult : 1;
+      const tm = Math.max(0, Math.min(8, (Number(a.tierMult) || 1) * q));
       return base + perTier * (tm - 1);
     };
     const chest = piece(ps.armor, 0.30, 0.05);

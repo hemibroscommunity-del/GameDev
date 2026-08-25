@@ -3775,7 +3775,12 @@ export class EffectsRenderer {
           l._pixiWpnLabel.anchor.set(0.5, 0);
           this.lootLayer.addChild(l._pixiWpnLabel);
         }
-        const wStr = (l.weaponName || 'Weapon') + ' ?';
+        /* v2.3.1925: the "?" is earned now.  It used to sit on EVERY weapon
+           drop because quality was always withheld and the pile could not say
+           whether anything was withheld worth having — so ~90% of the question
+           marks in the game were asking about a Normal.  weaponMystery is the
+           bit that was missing. */
+        const wStr = (l.weaponName || 'Weapon') + (l.weaponMystery ? ' ?' : '');
         if (l._pixiWpnLabel.text !== wStr) l._pixiWpnLabel.text = wStr;
         l._pixiWpnLabel.style.fill = l.weaponTierColor || '#8B9695' /* v2.3.1233: Lantern common grey (was navy-palette #8890b8) */;
         l._pixiWpnLabel.x = l.x;
@@ -3797,12 +3802,27 @@ export class EffectsRenderer {
          No "?" here, unlike the weapon: an armour drop has nothing hidden to
          reveal at pickup (its fields are fixed in MONSTER_ARMOR_DROPS), so
          the pile can name it outright — see _serializePile's note. */
+      /* ═══ v2.3.1925: A MYSTERY PILE SAYS "?" AND NOTHING ELSE ═══
+         GDD §4.6b.ii: a rare-or-better drop shows the item KIND and nothing
+         about the grade, so a Rare and a Godly are indistinguishable on the
+         ground.  The pulse is what makes it worth walking to; the question
+         mark is what makes it worth walking to NOW.
+
+         Note the label still names the piece — "Iron Greaves ?" — because
+         the spec hides the GRADE, not the item.  What the player does not
+         know is whether that breastplate is a 1-in-11 or a 1-in-400,000. */
+      const _mysteryHere = !!l.mystery
+        || (l.armor && l.armor.some((a) => a && a.mystery));
       const _rareStr = l.armor && l.armor.length
-        ? l.armor.map((a) => (a && a.name) || 'Armor').join(' + ')
+        ? l.armor.map((a) => ((a && a.name) || 'Armor') + (a && a.mystery ? ' ?' : '')).join(' + ')
         : (l.gem ? 'Rare Gem' : null);
       if (_rareStr) {
+        /* A mystery pulses faster and harder than a plain rare drop — the
+           only cue the player gets that this one is worth hurrying for. */
         const rColor = 0xF5C542;
-        const rPulse = 0.32 + Math.sin(age * 4.6) * 0.16;
+        const rPulse = _mysteryHere
+          ? 0.40 + Math.sin(age * 7.5) * 0.26
+          : 0.32 + Math.sin(age * 4.6) * 0.16;
         gfx.circle(l.x, l.y + bob, 15);
         gfx.fill({ color: rColor, alpha: rPulse * alpha });
         gfx.circle(l.x, l.y + bob, 13);
