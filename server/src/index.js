@@ -28,7 +28,8 @@ import { tickElementStatuses, elementMoveMult } from './elemental.js';
 import {
   ARCHETYPES, ZONES,
   MONSTER_HP_CURVE, monsterHpFlat, RARITY_TIERS, BLOCK_COSTS_STAMINA, BLOCK_STAMINA_COST, BLOCK_ARC_HALF,
-  MONSTER_ARMOR_DROPS, RARE_GEM_MONSTER_DROP, RARE_GEM_KEY /* v2.3.1924 */ } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
+  MONSTER_ARMOR_DROPS, RARE_GEM_MONSTER_DROP, RARE_GEM_KEY,
+  MONSTER_IRON_WEAPON_DROP /* v2.3.1924b */ } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
 // v2.3.1118 (heavy-systems PR3): order book folded into the GameRoom --
 // escrow-at-placement settlement under one DO's input gates.  Methods
 // are mixed into the class below (see market.js header for why).
@@ -2966,6 +2967,42 @@ export class GameRoom {
     return out.length ? out : null;
   }
 
+  /* ═══ v2.3.1924b: THE IRON GREATSWORD ═══
+     Owner: "Also add iron greatsword 1 in 500 chance to drop."
+
+     Flat, like the two armour pieces and unlike the ordinary weapon roll
+     above, for the same reason: that one is a cubic level curve because the
+     TIER it mints scales with the monster, and this mints one fixed item.
+
+     Built here rather than in _rollWeaponDropForKill because they answer
+     different questions — that function decides what RARITY a random weapon
+     is, and this one is not random. */
+  _rollIronWeaponForKill() {
+    const d = MONSTER_IRON_WEAPON_DROP;
+    if (Math.random() >= d.chance) return null;
+    return {
+      type: d.type,
+      tier: 'common',
+      tierMult: d.tierMult,
+      element1: null,
+      element2: null,
+      /* Verbatim the forge's own string (gear.js: `tierKey + ' ' + type`).
+         The client rebuilds the display name from gearBase — the itemcard
+         suite pins that it never prints this raw — so matching the forge is
+         what keeps a dropped blade indistinguishable from a crafted one. */
+      name: d.gearBase + ' ' + d.type,
+      gearBase: d.gearBase,
+      isVolatile: false,
+      reforgeBonus: null,
+      hardenBonus: null,
+      /* Rolled, like the forge's and like the ordinary drop's — which also
+         hands this the pile's hidden-until-pickup reveal for free. */
+      quality: this._rollWeaponQuality(),
+      hardness: 0,
+      temper: 0,
+    };
+  }
+
   /* v2.3.1924: "Add a 1 in 200 chance to drop a rare gem."  A plain
      stackable that lands in the bag — NOT the elemental raw_<element> the
      Gem Cutter eats (_gemRawOnKill, amulet.js), which is zone-gated and
@@ -2994,14 +3031,36 @@ export class GameRoom {
     // v2.3.1150: disable_weapon_drops kill switch -- caps.weaponDrops
     // stays true so clients do NOT fall back to legacy local minting;
     // drops just stop rolling until the flag clears.
-    const weapon = (recipients && recipients.length > 0 && !this._flagOn('disable_weapon_drops'))
-      ? this._rollWeaponDropForKill(zone, monster) : null;
+    const anyClaimant = !!(recipients && recipients.length > 0);
+    const wpnDropsOn = anyClaimant && !this._flagOn('disable_weapon_drops');
+    /* ═══ v2.3.1924b: THE IRON GREATSWORD TAKES THE WEAPON SLOT ═══
+       A pile carries ONE weapon (its own claim lane, v2.3.1141), so when both
+       rolls land, one of them has to win.  The iron blade wins, which keeps
+       the owner's number EXACT: 1 in 500 kills drop it, full stop.
+
+       THE COST, MEASURED RATHER THAN WAVED AT, because it is a real if tiny
+       one: on a kill where both hit, an ordinary weapon that would have
+       dropped is replaced.  The ordinary rate runs 0.05% at level 1 to ~3% at
+       level 100, so the overlap is 1-in-2,000,000 kills at the bottom and
+       1-in-17,000 at the very top — and only at the top can the thing
+       replaced be rarer than iron (an elemental or fusion roll).  The
+       alternative orderings both cost more than that: letting the ordinary
+       roll win makes the owner's 1-in-500 quietly 1-in-515 at level 100, and
+       carrying two weapons means reworking an established claim lane and its
+       client credit on both sides for an event this rare.
+
+       Also gated by disable_weapon_drops (v2.3.1150): that kill switch exists
+       to stop weapons entering the economy, and a drop that ignored it would
+       be a hole in the lever rather than a new feature. */
+    const ironWeapon = wpnDropsOn ? this._rollIronWeaponForKill() : null;
+    const weapon = ironWeapon
+      || (wpnDropsOn ? this._rollWeaponDropForKill(zone, monster) : null);
     /* v2.3.1924: both gated on there being someone who could claim them, the
        same condition the weapon roll uses — rolling loot for an empty
        recipient list mints an item nobody can ever pick up and then counts it
        against the player's odds. */
-    const armor = (recipients && recipients.length > 0) ? this._rollArmorDropsForKill() : null;
-    const gem = (recipients && recipients.length > 0) ? this._rollRareGemForKill() : null;
+    const armor = anyClaimant ? this._rollArmorDropsForKill() : null;
+    const gem = anyClaimant ? this._rollRareGemForKill() : null;
     /* v2.3.1924: !armor && !gem are BELT-AND-BRACES and cannot fire today —
        this early-out is recipient-gated, and both new rolls are themselves
        gated on there being a recipient, so any pile that could carry them has

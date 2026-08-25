@@ -211,9 +211,20 @@ check('forged harden_result dropped by deny-list', room.eventBuffer.filter((e) =
 check('caps.weaponDrops advertised', sync && sync.caps && sync.caps.weaponDrops === true, sync && sync.caps);
 
 const wdMon = { id: 'wd-1', arch: 'fodder', level: 25, x: 100, y: 100, gold: 5, xp: 5 };
+/* v2.3.1924b: a SECOND weapon roll now runs in _spawnLootForKill and runs
+   FIRST — the flat 1-in-500 iron greatsword — and a pile carries one weapon,
+   so with Math.random forced to 0 the iron blade wins the slot and the shift/
+   godly chain below never reaches the pile.  That is the intended behaviour
+   (drops.test.mjs pins which weapon wins, in both directions); what THIS
+   suite owns is the ORDINARY drop's rarity + quality chain, so the new roll
+   is silenced here rather than the assertions being loosened to accept
+   either blade — an "or" here would have stopped testing the chain at all. */
+const realIronRoll = room._rollIronWeaponForKill;
+room._rollIronWeaponForKill = () => null;
 Math.random = () => 0;
 const wdPile = room._spawnLootForKill('frost', wdMon, 'bp_hd_p', ['bp_hd_p'], { bp_hd_p: 1 });
 Math.random = realRandom;
+room._rollIronWeaponForKill = realIronRoll;
 check('forced roll mints a weapon on the pile (shift/godly chain)',
   !!wdPile && !!wdPile.weapon && wdPile.weapon.tier === 'shift' && wdPile.weapon.quality === 'godly'
   && wdPile.weapon.hardness === 0 && wdPile.weapon.temper === 0 && wdPile.weapon.hardenBonus === null

@@ -28,13 +28,19 @@
  *      arrive in the private credit for the client's own stash.  Pinned
  *      because "it works" and "the worker silently grew an armour store"
  *      look identical from the client.
- *   6. A PILE THAT WOULD OTHERWISE BE EMPTY still spawns for these.  The
+ *   6. THE IRON GREATSWORD IS THE FORGE'S OWN OBJECT.  It has to be
+ *      indistinguishable from a crafted one — same fields, `gearBase` set
+ *      (which is what the client rebuilds the name and the tint from) — or it
+ *      arrives as a nameless grey blade.  And because a pile carries ONE
+ *      weapon, the ordering when both weapon rolls land is a real decision
+ *      with a real cost; it is pinned so it cannot drift silently.
+ *   7. A PILE THAT WOULD OTHERWISE BE EMPTY still spawns for these.  The
  *      early-out in _spawnLootForKill lists what counts as "nothing of
  *      value", and a new drop not added to it is a drop that vanishes on
  *      any monster with no gold and no skull.
  */
 import { GameRoom } from '../src/index.js';
-import { MONSTER_ARMOR_DROPS, RARE_GEM_MONSTER_DROP, RARE_GEM_KEY } from '../src/data.js';
+import { MONSTER_ARMOR_DROPS, RARE_GEM_MONSTER_DROP, RARE_GEM_KEY, MONSTER_IRON_WEAPON_DROP } from '../src/data.js';
 
 function makeState() {
   const store = new Map();
@@ -94,6 +100,32 @@ check('a roll just UNDER 1/200 mints the gem',
 check('a roll just OVER 1/200 mints nothing',
   withRandom([1 / 200 + 1e-9], () => room._rollRareGemForKill()) === null);
 
+/* ── 1c. the iron greatsword ──────────────────────────────────────────── */
+check('the iron greatsword drops at 1 in 500', MONSTER_IRON_WEAPON_DROP.chance === 1 / 500,
+  MONSTER_IRON_WEAPON_DROP.chance);
+check('a roll just UNDER 1/500 mints the blade',
+  !!withRandom([1 / 500 - 1e-9], () => room._rollIronWeaponForKill()));
+check('a roll just OVER 1/500 mints nothing',
+  withRandom([1 / 500 + 1e-9], () => room._rollIronWeaponForKill()) === null);
+
+const blade = withRandom([0], () => room._rollIronWeaponForKill());
+check('it is a greatsword (guard)', !!blade && blade.type === 'greatsword', blade);
+/* Claim 6.  `gearBase` is the field the client rebuilds the display name AND
+   the blade's tint and icon from (materialTints weaponMaterial); without it
+   this is a nameless grey greatsword that says "iron" nowhere. */
+check('...carrying gearBase iron, which is what names and tints it',
+  !!blade && blade.gearBase === 'iron', blade && blade.gearBase);
+check('...at iron’s own tier multiplier', !!blade && blade.tierMult === 1.25, blade && blade.tierMult);
+/* Every field the forge sets, set here too — a dropped blade and a crafted
+   one must not be tellable apart by anything downstream. */
+const FORGE_FIELDS = ['type', 'tier', 'tierMult', 'element1', 'element2', 'name',
+  'gearBase', 'isVolatile', 'reforgeBonus', 'hardenBonus', 'quality', 'hardness', 'temper'];
+const missing = FORGE_FIELDS.filter((f) => !(f in (blade || {})));
+check('...and every field the forge mint sets, so nothing downstream can tell them apart',
+  missing.length === 0, missing);
+check('...with a quality actually rolled, not left undefined',
+  !!blade && typeof blade.quality === 'string' && blade.quality.length > 0, blade && blade.quality);
+
 /* ── 2. independence ──────────────────────────────────────────────────── */
 const both = withRandom([0, 0], () => room._rollArmorDropsForKill());
 check('when both pieces pass their own roll, BOTH are minted',
@@ -116,6 +148,11 @@ check('the second piece can drop without the first',
    below is built with those two silenced rather than with a longer array.) */
 room._rollShardForKill = () => null;
 room._rollWeaponDropForKill = () => null;
+/* v2.3.1924b: the iron blade rolls in this function too, and BEFORE the
+   armour — silenced here for the same reason, so the sequence below belongs
+   to the lanes under test.  Its own behaviour, including which weapon wins
+   when both rolls land, gets its own section at the bottom. */
+room._rollIronWeaponForKill = () => null;
 
 /* A monster worth NOTHING otherwise — no gold, no skull-bearing archetype —
    so the pile can only exist because of the new drops (claim 6). */
@@ -201,6 +238,44 @@ const wireMiss = nothing && room._serializePile(nothing);
 check('...and the broadcast advertises neither',
   !!wireMiss && wireMiss.armor === null && wireMiss.gem === null,
   wireMiss && { armor: wireMiss.armor, gem: wireMiss.gem });
+
+/* ── 6b. WHICH WEAPON WINS ────────────────────────────────────────────────
+   A pile carries ONE weapon.  When both weapon rolls land the iron blade
+   takes the slot, which is what keeps the owner's 1-in-500 exact — and it
+   costs an ordinary drop that would have happened on the same corpse.  That
+   is a deliberate trade with a measured price (see the note at the roll
+   site), so it is pinned in BOTH directions: silently flipping it would make
+   the owner's number 1-in-515 at level 100, and silently dropping the
+   ordinary roll entirely would gut weapon drops. */
+room.loot = {};
+room._rollIronWeaponForKill = GameRoom.prototype._rollIronWeaponForKill;
+room._rollWeaponDropForKill = () => ({ type: 'sword', tier: 'elemental', tierMult: 2, name: 'Flame Sword' });
+const D = mkPlayer('pD');
+const bothWeapons = withRandom([0], () =>
+  room._spawnLootForKill('town', { ...monster, id: 'm4' }, 'pD', ['pD'], { pD: 1 }));
+check('when both weapon rolls land, the IRON blade takes the slot',
+  !!bothWeapons && bothWeapons.weapon && bothWeapons.weapon.gearBase === 'iron',
+  bothWeapons && bothWeapons.weapon);
+
+/* ...and the ordinary drop is untouched when the iron roll misses. */
+room.loot = {};
+const ordinaryOnly = withRandom([1], () =>
+  room._spawnLootForKill('town', { ...monster, id: 'm5' }, 'pD', ['pD'], { pD: 1 }));
+check('when the iron roll misses, the ordinary weapon drop still lands',
+  !!ordinaryOnly && ordinaryOnly.weapon && ordinaryOnly.weapon.name === 'Flame Sword',
+  ordinaryOnly && ordinaryOnly.weapon);
+
+/* The kill switch covers it.  disable_weapon_drops exists to stop weapons
+   entering the economy (v2.3.1150); a drop that ignored the lever would be a
+   hole in it rather than a feature. */
+room.loot = {};
+const realFlag = room._flagOn;
+room._flagOn = (f) => f === 'disable_weapon_drops';
+const flagged = withRandom([0], () =>
+  room._spawnLootForKill('town', { ...monster, id: 'm6' }, 'pD', ['pD'], { pD: 1 }));
+room._flagOn = realFlag;
+check('disable_weapon_drops stops the iron blade too, not just the ordinary roll',
+  !!flagged && !flagged.weapon, flagged && flagged.weapon);
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 if (failures > 0) process.exit(1);

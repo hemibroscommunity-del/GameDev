@@ -788,6 +788,24 @@ export const MONSTER_ARMOR_DROPS = [
 export const RARE_GEM_MONSTER_DROP = 1 / 200;
 export const RARE_GEM_KEY = 'rare_gem';
 
+/* ═══ v2.3.1924b: THE IRON GREATSWORD ═══
+ * Owner: "Also add iron greatsword 1 in 500 chance to drop."
+ *
+ * Minted in the FORGE's shape, field for field (gear.js _handleForgeWeapon):
+ * `gearBase` is what the client rebuilds the display name from and what
+ * weaponMaterial() turns into the blade's tint and its icon, so a dropped one
+ * and a crafted one are the same object — the same principle quest weapons
+ * are held to (quests.js).  Quality is still ROLLED, exactly as both the
+ * forge and the ordinary weapon drop roll it, which is also what gives this
+ * the pile's existing hidden-until-pickup reveal for free.
+ *
+ * tierMult 1.25 is iron's own BLACKSMITH_TIERS row — the same number the two
+ * armour pieces above take, and the same one the forge would charge ore for.
+ */
+export const MONSTER_IRON_WEAPON_DROP = {
+  chance: 1 / 500, type: 'greatsword', gearBase: 'iron', tierMult: 1.25,
+};
+
 /* v2.3.1209 (amulet-forge successor slice A): server-settled gem
  * EXTRACTION (amulet.js _handleAmuletForge op:'extract').  ForgePanel's
  * two Extract buttons (equipped weapon/shield/amulet + weapon stash)

@@ -1,8 +1,9 @@
-# Monster drops — iron armour and the rare gem (v2.3.1924)
+# Monster drops — iron gear and the rare gem (v2.3.1924)
 
 Owner: *"make it so monsters now have a 1 in 500 chance to drop an iron
 chest and 1 in 500 of dropping iron legs. Add a 1 in 200 chance to drop a
-rare gem (find a gem icon to use)."*
+rare gem (find a gem icon to use)."* — then: *"Also add iron greatsword 1 in
+500 chance to drop."*
 
 ## What ships
 
@@ -10,6 +11,7 @@ rare gem (find a gem icon to use)."*
 |---|---|---|---|
 | Iron Torso | 1 / 500 | per kill, own roll | client `armorStash` (via the private credit) |
 | Iron Greaves | 1 / 500 | per kill, own roll | client `legsStash` |
+| Iron Greatsword | 1 / 500 | per kill, own roll | server `weaponStash` (the existing weapon lane) |
 | Rare Gem (`rare_gem`) | 1 / 200 | per kill | server `ps.inventory` |
 
 All three roll on **any** monster in any zone, only when the pile has at
@@ -34,6 +36,37 @@ The gem is a plain stackable. `prettyName('rare_gem')` already renders
 "Rare Gem"; the only client addition is one `thumbFor` row pointing at
 `/icons/ui/cur-gem.webp`, the gem picture the bag panel already uses for its
 GEM stat row.
+
+## The iron greatsword, and which weapon wins
+
+Minted in the **forge's own shape**, field for field (`gear.js
+_handleForgeWeapon`): `gearBase: 'iron'` is what the client rebuilds the
+display name from and what `weaponMaterial()` turns into the blade's tint and
+its icon, so a dropped blade and a crafted one are the same object. Quality
+is still **rolled**, exactly as the forge and the ordinary weapon drop roll
+it — which also hands this the pile's existing hidden-until-pickup reveal for
+free.
+
+Flat rate, like the armour and unlike the ordinary weapon drop next door:
+that one is a cubic level curve because the *rarity tier* it mints scales
+with the monster, and this mints one fixed item.
+
+**A pile carries one weapon** (its own claim lane, v2.3.1141), so when both
+weapon rolls land, one has to win. **The iron blade wins**, which keeps the
+owner's number exact: 1 in 500 kills drop it, full stop.
+
+The cost, stated rather than waved at: on a kill where both hit, an ordinary
+weapon that would have dropped is replaced. The ordinary rate runs 0.05% at
+level 1 to ~3% at level 100, so the overlap is 1-in-2,000,000 kills at the
+bottom and 1-in-17,000 at the very top — and only at the top can the thing
+replaced be rarer than iron. Both alternatives cost more than that: letting
+the ordinary roll win makes the owner's 1-in-500 quietly 1-in-515 at level
+100, and carrying two weapons means reworking an established claim lane and
+its client credit on both sides for an event this rare.
+
+It is gated by `disable_weapon_drops` (v2.3.1150) along with the ordinary
+roll — that kill switch exists to stop weapons entering the economy, and a
+drop that ignored it would be a hole in the lever rather than a new feature.
 
 ### The rare gem is NOT the elemental gem
 
@@ -89,13 +122,16 @@ The worker still learns what ends up worn, because equipping sends
 
 ## Tests
 
-`server/test/drops.test.mjs` (22 assertions) — the rates read from the table
+`server/test/drops.test.mjs` (33 assertions) — the rates read from the table
 **and** from the roll with `Math.random` stubbed either side of each
 threshold; independence (both pieces mint when both pass, one can mint
 alone); the three claim lanes not eating each other; the gem credited to the
-authoritative inventory; the armour deliberately **not** stashed server-side.
+authoritative inventory; the armour deliberately **not** stashed server-side;
+the blade carrying every field the forge mint sets (without `gearBase` it is
+a nameless grey greatsword); and which weapon wins, pinned in **both**
+directions plus the kill switch.
 
-`tools/qa/mp/mp-drops.mjs` (10 assertions) — the halves no server test can
+`tools/qa/mp/mp-drops.mjs` (12 assertions) — the halves no server test can
 see: the chest piece into `armorStash` and the legs piece into `legsStash`
 (filing legs under the chest stash equips them to the torso and mitigates
 nothing — v2.3.1701), both carrying `mat` and `tierMult`, no duplication on a

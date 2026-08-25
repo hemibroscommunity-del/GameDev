@@ -28,6 +28,18 @@
  */
 import * as H from './harness.mjs';
 
+/* The exact blob the worker mints for the iron greatsword (server/src/
+   index.js _rollIronWeaponForKill).  Pinned field-for-field against the
+   forge's own mint by server/test/drops.test.mjs — so what this scenario
+   answers is the half that test cannot: does the CLIENT name it and draw it
+   as iron, or as a nameless grey greatsword? */
+const IRON_BLADE = {
+  type: 'greatsword', tier: 'common', tierMult: 1.25,
+  element1: null, element2: null, name: 'iron greatsword', gearBase: 'iron',
+  isVolatile: false, reforgeBonus: null, hardenBonus: null,
+  quality: 'normal', hardness: 0, temper: 0,
+};
+
 /* Exactly what the worker sends for a pickup that claimed both pieces plus
    the gem (server/src/index.js _handleLootPickup). */
 const CREDIT = {
@@ -115,6 +127,43 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and the bag draws it as a picture, not a fallback glyph', tile.drawn === true, tile);
   rec.ok('...using the gem art', !!tile.src && /cur-gem\.webp/.test(tile.src), tile.src);
   await P.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/drops-bag.png' });
+
+  /* ── the iron greatsword, as the player sees it ───────────────────────── */
+  /* Seeded into the worn slot the way mp-itemcard seeds its weapons: the
+     credit path deliberately does NOT write weaponStash (that is the
+     worker's, echoed by player_state), so the only way to look at a dropped
+     blade is to put the minted blob where a real one lands.  The blob is the
+     server's; what is under test here is naming and art.
+
+     THIS IS THE FAILURE MODE WORTH CATCHING.  The worker stores `gearBase`
+     and a lowercase working name — "iron greatsword" — because the client
+     rebuilds the display name from the metal.  If that rebuild does not
+     happen, the player is handed a weapon literally captioned "iron
+     greatsword" in the middle of a UI that says PINE BOW and COPPER GREAT
+     SWORD; if the icon rule does not fire, it is drawn as plain steel. */
+  await P.page.evaluate((blade) => {
+    const S = window._gameState.current;
+    S.rpg.weapon = blade;
+    S.rpg.activeSlot = 'melee';
+  }, IRON_BLADE);
+  await P.page.evaluate(() => { window.__broDashPanelBus.open('hero'); });
+  await P.page.waitForTimeout(1100);
+
+  const seen = await P.page.evaluate(() => {
+    const cell = document.querySelector('[role="button"][aria-label="Weapon"]');
+    const img = cell && cell.querySelector('img');
+    return {
+      src: img ? img.getAttribute('src') : null,
+      /* Anything on screen still showing the raw stored string is the bug. */
+      rawName: /iron greatsword/.test(document.body.innerText || ''),
+      text: (document.body.innerText || '').replace(/\s+/g, ' ').slice(0, 240),
+    };
+  });
+  console.log('    iron blade on screen', JSON.stringify({ src: seen.src, rawName: seen.rawName }));
+  rec.ok('the worn weapon cell draws the IRON greatsword art',
+    !!seen.src && /great-sword-iron/.test(seen.src), seen.src);
+  rec.ok('...and no screen shows the raw stored name', seen.rawName === false, seen.text);
+  await P.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/drops-blade.png' });
 
   await P.ctx.close().catch(() => {});
 }
