@@ -2,6 +2,7 @@ import React from 'react';
 import { acceptQuest, turnInQuest } from '@/game/quests.js';
 import { NPC_DATA } from '@/data/gameDisplay.js';
 import { prog3Live, PROG3_SKILL_META } from '@/data/prog3.js';
+import { questObjectiveDone } from '@/data/index.js'; /* v2.3.1907 */
 /* v2.3.1820: the two screens this panel now drives — he talks, then you
    choose.  See the note above the render for why the old single card was
    split rather than restyled. */
@@ -244,8 +245,12 @@ export function QuestPanel(props) {
   React.useEffect(function () { setStage('talk'); }, [_subject]);
 
   var _isOffer = questPanel.status === 'available';
+  /* v2.3.1907: the LIVE rpg, not the React snapshot — see questObjectiveDone.
+     BroTown opened this panel because check(S.rpg) said the reward was ready;
+     asking the snapshot the same question got a different answer and drew his
+     progress line over a finished quest. */
   var _canTurnIn = questPanel.status === 'active'
-    && questPanel.quest.check(rpgState, stateRef.current);
+    && questObjectiveDone(questPanel.quest, stateRef.current, rpgState);
 
   /* Which of the three things he says.  Same selection the old card made in
      one line, kept identical so no dialogue string changes meaning here. */
