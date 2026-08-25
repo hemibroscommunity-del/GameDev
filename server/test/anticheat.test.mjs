@@ -523,6 +523,7 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
       name: 'Tracker', color: '#abc', rpgLv: 500,
       ec: 'ice',   /* v2.3.1930: eye colour, relayed to peers */
       sa: 'a'.repeat(256),   /* v2.3.1939: a drawn shirt */
+      pa: 'b'.repeat(256), ta: 'c'.repeat(256),   /* v2.3.1940: pants print + tattoo */
     },
   }));
 
@@ -552,6 +553,13 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
      string that is not exactly 256, so a silent cut means no print at all. */
   check('track: a drawn shirt is relayed whole (v2.3.1939)',
     psT.sa === 'a'.repeat(256), psT.sa && psT.sa.length);
+  /* v2.3.1940: the pants print and the tattoo travel the same way and are
+     asserted separately -- they were added a version later, so an allowlist or
+     cap that only remembered the shirt would still pass the line above. */
+  check('track: a drawn pants print is relayed whole (v2.3.1940)',
+    psT.pa === 'b'.repeat(256), psT.pa && psT.pa.length);
+  check('track: a tattoo is relayed whole (v2.3.1940)',
+    psT.ta === 'c'.repeat(256), psT.ta && psT.ta.length);
 
   // A forged rpgLv is fine as a DISPLAY value (above) but must never
   // become the player's rank on the global board — v2.3.1178 closed

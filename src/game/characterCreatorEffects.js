@@ -5,7 +5,7 @@ import { setHairColor, hairColorTarget } from '@/rendering/traits/hairColorCatal
 import { hatColorTarget } from '@/rendering/traits/hatColorCatalog.js';
 import { facialHairColorTarget } from '@/rendering/traits/facialHairColorCatalog.js';
 import { shirtColorTarget } from '@/rendering/traits/shirtColorCatalog.js';
-import { onShirtArtChange } from '@/rendering/traits/shirtArt.js';   /* v2.3.1938 */
+import { onArtChange } from '@/rendering/traits/playerArt.js';   /* v2.3.1938; v2.3.1940 renamed — it covers pants and tattoos too */
 
 /* === characterCreatorEffects — effect bodies for the character creator ===
    v2.3.897: extracted verbatim from three BroTown.jsx useEffects (the
@@ -17,11 +17,13 @@ import { onShirtArtChange } from '@/rendering/traits/shirtArt.js';   /* v2.3.193
 
 /* Redraw the live preview portrait whenever a selection changes, and warm
    the other 7 angles for the current look.
-   v2.3.1938: now RETURNS a cleanup, because the shirt drawing is not a
-   `sel` value -- it changes stroke by stroke inside the paint panel, so this
-   subscribes to the drawing store and redraws instead of waiting for the
-   effect's dep list to change.  Callers already used the return value as a
-   cleanup, so a real one slots straight in. */
+   v2.3.1938: now RETURNS a cleanup, because a drawing is not a `sel` value --
+   it changes stroke by stroke inside the paint panel, so this subscribes to the
+   drawing store and redraws instead of waiting for the effect's dep list to
+   change.  Callers already used the return value as a cleanup, so a real one
+   slots straight in.  v2.3.1940: one subscription covers all four drawings
+   (shirt front/back, pants, tattoo) -- the store notifies per canvas and the
+   portrait redraws whole either way. */
 export function wireCharacterPortrait(previewCanvasRef, sel) {
   var previewDir = sel.previewDir,
     skinSel = sel.skinSel, pantsSel = sel.pantsSel, shoesSel = sel.shoesSel,
@@ -61,9 +63,9 @@ export function wireCharacterPortrait(previewCanvasRef, sel) {
   prewarmPortraitDirs({ hair: hairSel, facialHair: facialHairSel, headwear: headwearSel });
   }
   draw();
-  /* Redraw on every stroke in the shirt designer -- the drawing is not one of
-     the `sel` values, so nothing else would re-run this. */
-  var _offArt = onShirtArtChange(function () { try { draw(); } catch (e) { /* ignore */ } });
+  /* Redraw on every stroke in the designer -- a drawing is not one of the
+     `sel` values, so nothing else would re-run this. */
+  var _offArt = onArtChange(function () { try { draw(); } catch (e) { /* ignore */ } });
   return function () { try { _offArt(); } catch (e) { /* ignore */ } };
 }
 

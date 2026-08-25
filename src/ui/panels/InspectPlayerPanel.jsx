@@ -121,7 +121,12 @@ export function InspectPlayerPanel(props) {
           eyeColor: o.eyeColor,   /* v2.3.1930: THEIR eyes, off the wire */
           /* v2.3.1939: THEIR drawn shirt.  The card draws south, which is a
              front-facing view, so it is the front design that belongs here. */
-          shirtArt: o.shirtArtFront || null
+          shirtArt: o.shirtArtFront || null,
+          /* v2.3.1940: THEIR pants print and tattoo.  Passed explicitly (rather
+             than left to default to this device's own) for exactly the reason
+             the eye colour is -- this card draws a stranger. */
+          pantsArt: o.pantsArt || null,
+          tattooArt: o.tattooArt || null
         }, true).then(function (url) {
           if (alive && url) setGenPortrait(url);
         }).catch(function () {});

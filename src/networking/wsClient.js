@@ -34,7 +34,7 @@ import { getFacialHairColor } from '@/rendering/traits/facialHairColorCatalog.js
 import { getShirt } from '@/rendering/traits/shirtCatalog.js';
 import { getShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
 import { getEyeColor } from '@/rendering/traits/eyeColorCatalog.js';   /* v2.3.1930 */
-import { getShirtArt, artHasInk } from '@/rendering/traits/shirtArt.js';   /* v2.3.1939 */
+import { getShirtArt, getArt, artHasInk } from '@/rendering/traits/playerArt.js';   /* v2.3.1939; v2.3.1940 + pants/tattoo */
 import { getEquip, syncArmorLayers, migrateTier1Armor } from '@/rendering/gearCatalog.js'; /* v2.3.1761 */
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 
@@ -190,6 +190,9 @@ export function setupWebSocket(ctx) {
                that in every join frame. */
             sa: artHasInk(getShirtArt('front')) ? getShirtArt('front') : undefined,
             sb: artHasInk(getShirtArt('back')) ? getShirtArt('back') : undefined,
+            /* v2.3.1940: the drawn pants print and the chest tattoo, same deal. */
+            pa: artHasInk(getArt('pants')) ? getArt('pants') : undefined,
+            ta: artHasInk(getArt('tattoo')) ? getArt('tattoo') : undefined,
             eqc: getEquip('chest'),
             eql: getEquip('legs'),
             eqs: getEquip('shoulders'),
@@ -362,6 +365,7 @@ export function setupWebSocket(ctx) {
                       hairColor: null, hatColor: null, facialHairColor: null,
                       shirt: null, shirtColor: null, eyeColor: null,
                       shirtArtFront: null, shirtArtBack: null,   /* v2.3.1939 */
+                      pantsArt: null, tattooArt: null,   /* v2.3.1940 */
                       equip: { chest: 'none', legs: 'none', shoulders: 'none', shirt: 'none' },
                       pants: null, shoes: null, rpgLv: 1, rpgHp: 50, rpgMaxHp: 50,
                       bodySize: 'slim', zone: data.z || 'town',
@@ -772,6 +776,7 @@ export function setupWebSocket(ctx) {
                   shirtColor: _data.stc || null,
                   eyeColor: _data.ec || null,   /* v2.3.1930 */
                   shirtArtFront: _data.sa || null, shirtArtBack: _data.sb || null,   /* v2.3.1939 */
+                  pantsArt: _data.pa || null, tattooArt: _data.ta || null,   /* v2.3.1940 */
                   equip: { chest: _data.eqc || 'none', legs: _data.eql || 'none', shoulders: _data.eqs || 'none',
                     /* v2.3.756: layered shirt; old clients send no eqst -> infer from their legacy shirt style */
                     shirt: _data.eqst !== undefined ? (_data.eqst || 'none') : ((_data.st && _data.st !== 'none') ? 'tshirt' : 'none') },
@@ -1716,6 +1721,8 @@ export function setupWebSocket(ctx) {
                 eyeColor: (msg.data && msg.data.ec) || null,   /* v2.3.1930 */
                 shirtArtFront: (msg.data && msg.data.sa) || null,
                 shirtArtBack: (msg.data && msg.data.sb) || null,   /* v2.3.1939 */
+                pantsArt: (msg.data && msg.data.pa) || null,
+                tattooArt: (msg.data && msg.data.ta) || null,   /* v2.3.1940 */
                 equip: { chest: (msg.data && msg.data.eqc) || 'none', legs: (msg.data && msg.data.eql) || 'none', shoulders: (msg.data && msg.data.eqs) || 'none',
                   shirt: (msg.data && msg.data.eqst !== undefined) ? (msg.data.eqst || 'none') : ((msg.data && msg.data.st && msg.data.st !== 'none') ? 'tshirt' : 'none') },
                 pants: (msg.data && msg.data.pt) || null,

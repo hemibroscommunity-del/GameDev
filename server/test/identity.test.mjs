@@ -221,7 +221,8 @@ check('death clears the consent pair', !room._pvpConsent.has(room._pvpPairKey('b
     type: 'join', id: 'bp_finn', phrase: 'frost-tundra-amber-vigil-5', name: 'Finn',
     data: { x: 10, y: 10, z: 'town', name: 'Finn', hr: 'long', hc: 'ash', sk: 'tan', st: 'tunic',
       ec: 'violet' /* v2.3.1930 */,
-      sa: 'b'.repeat(256) /* v2.3.1939: a drawn shirt, 256 chars */ },
+      sa: 'b'.repeat(256) /* v2.3.1939: a drawn shirt, 256 chars */,
+      pa: 'c'.repeat(256), ta: 'd'.repeat(256) /* v2.3.1940: pants print + tattoo */ },
   }));
   const charF = state._store.get('char:bp_finn');
   check('char record stamped in its own storage key on first join',
@@ -246,6 +247,16 @@ check('death clears the consent pair', !room._pvpConsent.has(room._pvpPairKey('b
   check('...and the drawn shirt, untruncated (v2.3.1939)',
     !!(charF && charF.look.sa === 'b'.repeat(256)),
     charF && charF.look.sa && charF.look.sa.length);
+  /* v2.3.1940: the pants print and the tattoo are the same shape as the shirt
+     and need the same two things -- a place on the allowlist and the larger
+     cap.  Asserted separately from `sa` because they were added later and
+     either one could be missed on its own. */
+  check('...and the drawn pants print, untruncated (v2.3.1940)',
+    !!(charF && charF.look.pa === 'c'.repeat(256)),
+    charF && charF.look.pa && charF.look.pa.length);
+  check('...and the tattoo, untruncated (v2.3.1940)',
+    !!(charF && charF.look.ta === 'd'.repeat(256)),
+    charF && charF.look.ta && charF.look.ta.length);
 
   /* THE POINT OF THE WHOLE THING: rejoin claiming a different face. */
   const wsF2 = fakeWs('finn-2');

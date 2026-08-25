@@ -64,9 +64,22 @@ const JOIN_COSMETIC_KEYS = [
      characters each (16x16, one char per cell) -- see the cap below, which has
      to admit them: the flat 64 would truncate a drawing into an invalid string
      and the print would silently never appear. */
-  'sa', 'sb',
+  /* v2.3.1940: the drawn pants print (`pa`) and the chest tattoo (`ta`).  Same
+     shape, same cap, same reasoning. */
+  'sa', 'sb', 'pa', 'ta',
   'eqc', 'eql', 'eqs', 'eqst', 'pt', 'sh', 'bs', 'wpnMat', /* v2.3.1760 */
 ];
+/* v2.3.1940: THE DRAWING KEYS, IN ONE PLACE.  These are the cosmetics whose
+   value is a fixed 256-character grid rather than a short id, so they need the
+   larger cap in BOTH gates -- the join sanitiser here and the `track` handler in
+   index.js.  v2.3.1939 shipped with those two caps spelled out separately and
+   the second one was missed, which truncated every drawing to 64 characters on
+   the live-update path: the client's sanitiser rejects anything that is not
+   exactly 256 hex characters, so peers saw the print appear on join and vanish
+   two seconds later.  index.js imports this rather than repeating it. */
+export const DRAWING_KEYS = new Set(['sa', 'sb', 'pa', 'ta']);
+/** Cap for one cosmetic key: drawings and avatars get the large bound. */
+export function cosmeticCap(k) { return (k === 'avatar' || DRAWING_KEYS.has(k)) ? 512 : 64; }
 /* rpg* bootstrap seeds: admitted by prefix, then re-read and clamped by
  * the explicit ingest in _handleJoin (stored-wins on every reconnect).
  * Anchored + capitalised so a crafted 'rpg' or 'rpgo' can't sneak in. */
@@ -120,13 +133,13 @@ export const joinMethods = {
          2 s `track` relay healed it.  A silent drop is the wrong shape
          for a cosmetic anyway -- a truncated string degrades visibly,
          a missing one looks like the feature is broken. */
-      /* v2.3.1939: the shirt drawings join `avatar` above the flat 64.  They
-         are a fixed 256 chars and a truncated one is not a shorter drawing, it
-         is an invalid one -- the client's sanitiser rejects any string that is
-         not exactly 256 hex characters, so a 64-char cut means no print at all
+      /* v2.3.1939: the drawings join `avatar` above the flat 64.  They are a
+         fixed 256 chars and a truncated one is not a shorter drawing, it is an
+         invalid one -- the client's sanitiser rejects any string that is not
+         exactly 256 hex characters, so a 64-char cut means no print at all
          rather than a degraded one.  512 keeps them inside the same bound
          `avatar` already established. */
-      const _cap = (k === 'avatar' || k === 'sa' || k === 'sb') ? 512 : 64;
+      const _cap = cosmeticCap(k);
       if (typeof v === 'string') out[k] = v.length > _cap ? v.slice(0, _cap) : v;
       else if (typeof v === 'number' && Number.isFinite(v)) out[k] = v;
     }

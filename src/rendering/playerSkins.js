@@ -25,6 +25,11 @@ import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless We
 import { recolorEnabled } from './traits/recolorOptions.js';
 import EYE_MASK from './eyeMask.json';                      /* v2.3.1928 */
 import { getEyeColor, eyeColorTarget } from './traits/eyeColorCatalog.js';
+/* v2.3.1940: drawn pants prints + skin tattoos.  Unlike the shirt (its own
+   sprite, stamped in gearSheets) these live INSIDE the body sheet, because
+   that is where the pants pixels and the bare skin actually are. */
+import { getArt, artHasInk, artHash, onArtChange } from './traits/playerArt.js';
+import { stampRegion, PANTS_BOX, TATTOO_BOX } from './playerDecal.js';
 
 /* ── Catalogs ── `target` = the LIT color for that choice; null = native. */
 /* v2.3.1513: seven more tones at the light end (owner: "more white tan and
@@ -147,6 +152,10 @@ const SKIN_REF = 149;   // lit luminance of each region (measured from the sheet
 const PANTS_REF = 112;
 const SHOES_REF = 75;
 const SOURCE_DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
+/* The three base dirs the renderer also shows FLIPPED (east->west,
+   northeast->northwest, southwest->southeast).  Only matters to drawings, which
+   have a handedness the shipped art does not. */
+const MIRRORED_SOURCE_DIRS = ['east', 'northeast', 'southwest'];
 const POSES = ['stand', 'jog', 'hit', 'pickup', 'attack'];
 
 /* v2.3.407: recolor LAZILY, one sheet at a time, keyed
@@ -518,7 +527,13 @@ function _torsoBands(d, w, h, frameW, frames) {
   return shirtPx;
 }
 
-export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH, eyeT, eyeRects) {
+/* `art` (v2.3.1940) is `{ pants, tattoo, mirror }` — the player's own drawings,
+   or null/absent for everyone who has not drawn anything, which is the entire
+   default path and costs nothing.  `mirror` pre-flips the drawing because three
+   of the eight screen facings are drawn by flipping a base-dir sheet, so a
+   drawing baked straight in would read backwards on those (owner, on the shirt:
+   "Your smiley face rotated the opposite direction"). */
+export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH, eyeT, eyeRects, art) {
   /* v2.3.1108: when the caller knows this sheet's logical frame height, restore
      a downscaled-on-disk sheet to it (nearest-neighbour, exact palette) so the
      skin/pants/shoes pixel thresholds + frame math are unchanged. The attack
@@ -534,6 +549,20 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
   const w = cv.width, h = cv.height;
   const frames = Math.max(1, Math.floor(w / FRAME_W));
   const shirtPx = shirtT ? _torsoBands(d, w, h, FRAME_W, frames) : null;
+  /* v2.3.1940: the two drawn regions.  Both masks are collected DURING the
+     classification pass below, on the ORIGINAL pixels — after the retint a pale
+     skin no longer passes _isSkin (alabaster is r-g=13, the test wants >25), so
+     classifying afterwards would find no skin at all on exactly the players who
+     picked a light tone.  Same reason _torsoBands runs up here. */
+  const wantPantsArt = !!(art && artHasInk(art.pants));
+  const wantTattoo = !!(art && artHasInk(art.tattoo));
+  const pantsPx = wantPantsArt ? new Uint8Array(w * h) : null;
+  /* A tattoo goes on the CHEST, so it is bare skin intersected with the torso
+     band — the same tracker the baked shirt used, reused rather than re-guessed.
+     (It also means the tattoo hides under a shirt or a breastplate, which is
+     what a chest tattoo does.) */
+  const torsoPx = wantTattoo ? (shirtPx || _torsoBands(d, w, h, FRAME_W, frames)) : null;
+  const tattooPx = wantTattoo ? new Uint8Array(w * h) : null;
   /* Flat shirt fill colour (no per-pixel shading -> no resurfacing of the
      body's contour lines).  Computed once. */
   let sf0 = 0, sf1 = 0, sf2 = 0;
@@ -550,9 +579,11 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
          outline + arm definition. */
       d[i] = sf0; d[i + 1] = sf1; d[i + 2] = sf2;
     } else if (_isSkin(r, g, b, a)) {
+      if (tattooPx && torsoPx[i >> 2]) tattooPx[i >> 2] = 1;
       if (skinT) _retint(d, i, skinT, SKIN_REF);
     } else if (a > 180 && g >= r - 10 && g > b + 8 && r < 150) {
-      /* pants (green) */ if (pantsT) _retint(d, i, pantsT, PANTS_REF);
+      /* pants (green) */ if (pantsPx) pantsPx[i >> 2] = 1;
+      if (pantsT) _retint(d, i, pantsT, PANTS_REF);
     } else if (a > 180) {
       const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
       if ((mx - mn) < 28 && mx >= 45 && mx < 140) {
@@ -560,6 +591,10 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
       }
     }
   }
+  /* v2.3.1940: the drawings, after every retint (so the retint cannot repaint
+     them) and before the eyes (which own their own pixels either way). */
+  if (pantsPx) stampRegion(d, w, h, FRAME_W, pantsPx, art.pants, !!art.mirror, PANTS_BOX);
+  if (tattooPx) stampRegion(d, w, h, FRAME_W, tattooPx, art.tattoo, !!art.mirror, TATTOO_BOX);
   /* v2.3.1928: the iris last, so it overwrites rather than being classified.
      Its pixels are near-black and would otherwise fall through every branch
      above untouched, which is exactly why the eye needed its own mask. */
@@ -683,7 +718,7 @@ function loadImg(url) { return loadWebpOrPng(url); }
    'loading' persists across the backoff so the base-sheet fallback
    keeps the player visible; &r=N bypasses a poisoned cache entry. */
 const _BODY_RETRY_MS = [2000, 6000];
-function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT, attempt = 0) {
+function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT, art, attempt = 0) {
   _bodySheets[sheetKey] = 'loading';
   /* Returns an always-resolving promise so a full preload can await it. */
   const bust = attempt > 0 ? `&r=${attempt}` : '';
@@ -691,7 +726,7 @@ function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT
     /* body poses are 256px frames; restore if stored smaller on disk.  Recolour
        runs at full 256 (exact skin/pants/shoes pixel thresholds). */
     const full = recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, FRAME_H,
-      eyeT, EYE_MASK[`${pose}-${dir}`]);
+      eyeT, EYE_MASK[`${pose}-${dir}`], art);
     /* v2.3.1120: count frames at full 256-space width, then downscale the DISPLAY
        texture to 256/DISPLAY_DS px (the figure shows ~100px on a phone).  Mipmaps
        off -- renders ~1:1 post-downscale, so the mip chain is wasted VRAM. */
@@ -725,7 +760,7 @@ function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT
     _bodySheets[sheetKey] = out;
   }).catch(() => {
     if (attempt < _BODY_RETRY_MS.length) {
-      setTimeout(() => buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT, attempt + 1), _BODY_RETRY_MS[attempt]);
+      setTimeout(() => buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT, art, attempt + 1), _BODY_RETRY_MS[attempt]);
       return; /* stays 'loading' during the backoff */
     }
     _bodySheets[sheetKey] = []; /* missing -> caller falls back */
@@ -741,10 +776,33 @@ function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT
    segment and there are five prewarm sites besides getBodyFrame; a key built by
    hand in six places is a bug waiting for the sixth to be missed, and a
    prewarmed sheet under a key nobody asks for is silently wasted work. */
-export function bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eyeKey, pose, dir) {
+export function bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eyeKey, pose, dir, art) {
   return (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default')
     + '/' + (shirtT ? (shirtKey || 'shirt') : 'none') + '/' + (eyeKey || 'none')
+    + bodyArtSeg(art)
     + '|' + pose + '/' + dir;
+}
+/* v2.3.1940: the drawings' contribution to the key, and DELIBERATELY EMPTY when
+   nothing is drawn.  Every player who has not opened the designer keeps the
+   exact key they had before this version, so their sheets are shared and
+   prewarmed as they always were — only someone who actually drew something pays
+   for the extra bakes (including the mirrored ones, which is why `mirror` is in
+   here: a pre-flipped bake must not be handed to an unflipped facing). */
+export function bodyArtSeg(art) {
+  if (!art) return '';
+  const p = artHasInk(art.pants) ? artHash(art.pants) : '';
+  const t = artHasInk(art.tattoo) ? artHash(art.tattoo) : '';
+  if (!p && !t) return '';
+  /* '#' is the marker: no catalog id contains one, so _dropArtSheets can find
+     every drawn bake by substring without matching e.g. '/default/'. */
+  return '/#art' + p + '.' + t + (art.mirror ? 'm' : 'n');
+}
+/** The local player's own drawings, in the shape the bake wants.  `mirror` is
+ *  per-facing, so callers that know the facing pass it in. */
+export function localBodyArt(mirror) {
+  const p = getArt('pants'), t = getArt('tattoo');
+  if (!artHasInk(p) && !artHasInk(t)) return null;
+  return { pants: p, tattoo: t, mirror: !!mirror };
 }
 /** The eye target for a sheet, or null when that sheet has no eyes in it.
  *  `eyeId` is always passed in -- see getBodyFrame. */
@@ -765,13 +823,17 @@ function eyeFor(pose, dir, eyeId) {
    local player: a call site that has not been updated then loses the effect,
    which is invisible, instead of putting your eyes on a stranger's face, which
    is a bug someone would have to reproduce to understand. */
-export function getBodyFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, shirtT, shirtKey, eyeId) {
+export function getBodyFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, shirtT, shirtKey, eyeId, art) {
   const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
   const eye = eyeFor(pose, dir, eyeId);
-  if (!skinT && !pantsT && !shoesT && !shirtT && !eye) return getFrame(pose, dir, frameIdx);
-  const sheetKey = bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eye && eye.id, pose, dir);
+  /* v2.3.1940: `art` is the ninth thing that can make this player's body differ
+     from the shipped sheet, and like the rest of them it is PASSED IN, not read
+     from a store — this function draws remote players too (v2.3.1930). */
+  const _art = bodyArtSeg(art) ? art : null;
+  if (!skinT && !pantsT && !shoesT && !shirtT && !eye && !_art) return getFrame(pose, dir, frameIdx);
+  const sheetKey = bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eye && eye.id, pose, dir, _art);
   const entry = _bodySheets[sheetKey];
-  if (entry === undefined) { buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eye && eye.t); return getFrame(pose, dir, frameIdx); }
+  if (entry === undefined) { buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eye && eye.t, _art); return getFrame(pose, dir, frameIdx); }
   if (entry === 'loading' || !entry.length) return getFrame(pose, dir, frameIdx);
   return entry[((frameIdx % entry.length) + entry.length) % entry.length];
 }
@@ -913,11 +975,12 @@ export function getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx
 export function prewarmBody(skinId, pantsId, shoesId, shirtT, shirtKey) {
   const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
   const anyEye = !!eyeColorTarget(getEyeColor());
-  if (!skinT && !pantsT && !shoesT && !shirtT && !anyEye) return; /* default combo: nothing to bake */
+  const art = localBodyArt(false);   /* v2.3.1940 */
+  if (!skinT && !pantsT && !shoesT && !shirtT && !anyEye && !art) return; /* default combo: nothing to bake */
   for (const dir of SOURCE_DIRS) {
     const eye = eyeFor('stand', dir, getEyeColor());   /* local player */
-    const key = bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eye && eye.id, 'stand', dir);
-    if (_bodySheets[key] === undefined) buildBodySheet(key, 'stand', dir, skinT, pantsT, shoesT, shirtT, eye && eye.t);
+    const key = bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eye && eye.id, 'stand', dir, art);
+    if (_bodySheets[key] === undefined) buildBodySheet(key, 'stand', dir, skinT, pantsT, shoesT, shirtT, eye && eye.t, art);
   }
 }
 /** Preload the recolored body for the current combo across all base dirs for
@@ -934,12 +997,22 @@ export function preloadBodyAll() {
   const skinId = _skinStore.get(), pantsId = _pantsStore.get(), shoesId = _shoesStore.get();
   const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
   const anyEye = !!eyeColorTarget(getEyeColor());
-  if (!skinT && !pantsT && !shoesT && !anyEye) return Promise.resolve(); /* default combo */
+  const art = localBodyArt(false), artM = localBodyArt(true);   /* v2.3.1940 */
+  if (!skinT && !pantsT && !shoesT && !anyEye && !art) return Promise.resolve(); /* default combo */
   const tasks = [];
-  const prewarm = (pose, dir) => {
+  const bake = (pose, dir, a) => {
     const eye = eyeFor(pose, dir, getEyeColor());   /* local player */
-    const key = bodySheetKey(skinId, pantsId, shoesId, null, null, eye && eye.id, pose, dir);
-    if (_bodySheets[key] === undefined) tasks.push(buildBodySheet(key, pose, dir, skinT, pantsT, shoesT, null, eye && eye.t));
+    const key = bodySheetKey(skinId, pantsId, shoesId, null, null, eye && eye.id, pose, dir, a);
+    if (_bodySheets[key] === undefined) tasks.push(buildBodySheet(key, pose, dir, skinT, pantsT, shoesT, null, eye && eye.t, a));
+  };
+  /* v2.3.1940: a drawn player needs the MIRRORED bake of the three flippable
+     facings too (west/northwest/southeast are drawn by flipping east/northeast/
+     southwest), or the first time they turn that way the drawing would pop in a
+     frame late — animation-preload law, CLAUDE.md.  Undrawn players get exactly
+     one bake per facing as before, because artM is null for them. */
+  const prewarm = (pose, dir) => {
+    bake(pose, dir, art);
+    if (artM && MIRRORED_SOURCE_DIRS.indexOf(dir) !== -1) bake(pose, dir, artM);
   };
   /* v2.3.1477: + 'hit'.  The recoil sheets used to bake on the FIRST HIT
      TAKEN -- a 1536x256 recolour on the spot, right as a monster connects.
@@ -1002,13 +1075,16 @@ export function preloadJogHeadOverlays() {
 export function preloadBodyVariant(shirtT, shirtKey) {
   const skinId = _skinStore.get(), pantsId = _pantsStore.get(), shoesId = _shoesStore.get();
   const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
-  if (!skinT && !pantsT && !shoesT && !shirtT) return Promise.resolve();
+  const art = localBodyArt(false), artM = localBodyArt(true);   /* v2.3.1940 */
+  if (!skinT && !pantsT && !shoesT && !shirtT && !art) return Promise.resolve();
   const tasks = [];
   for (const pose of ['stand', 'jog', 'hit']) {   /* v2.3.1477: hit ships gear now */
     for (const dir of SOURCE_DIRS) {
       const eye = eyeFor(pose, dir, getEyeColor());   /* local player */
-      const key = bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eye && eye.id, pose, dir);
-      if (_bodySheets[key] === undefined) tasks.push(buildBodySheet(key, pose, dir, skinT, pantsT, shoesT, shirtT, eye && eye.t));
+      for (const a of (artM && MIRRORED_SOURCE_DIRS.indexOf(dir) !== -1) ? [art, artM] : [art]) {
+        const key = bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eye && eye.id, pose, dir, a);
+        if (_bodySheets[key] === undefined) tasks.push(buildBodySheet(key, pose, dir, skinT, pantsT, shoesT, shirtT, eye && eye.t, a));
+      }
     }
   }
   return Promise.all(tasks).catch(() => {});
@@ -1026,4 +1102,31 @@ function _prewarmCurrent() {
 _skinStore.on(_prewarmCurrent);
 _pantsStore.on(_prewarmCurrent);
 _shoesStore.on(_prewarmCurrent);
+
+/* ═══ v2.3.1940: A DRAWING CHANGES THE SHEET KEY, SO IT MUST ALSO FREE THE OLD
+   ONE ═══
+   Skin/pants/shoes have a fixed handful of ids, so their sheets accumulate to a
+   small, bounded set.  A drawing does not: every stroke is a different 256-char
+   string and therefore a different key, so re-prewarming on each one would bake
+   five sheets per stroke and never release any of them.  Drop the previous
+   drawing's bakes first (they can no longer be asked for -- nothing else spells
+   that key), and debounce, so a fast scribble bakes once at the end of it
+   rather than once per pixel. */
+function _dropArtSheets() {
+  for (const key of Object.keys(_bodySheets)) {
+    if (key.indexOf('/#art') === -1) continue;   /* bodyArtSeg's marker */
+    const entry = _bodySheets[key];
+    if (Array.isArray(entry) && entry[0] && entry[0].source) {
+      try { entry[0].source.destroy(); } catch (e) { /* already gone */ }
+    }
+    delete _bodySheets[key];
+  }
+}
+let _artPrewarmT = null;
+function _onArtChanged() {
+  if (_artPrewarmT) clearTimeout(_artPrewarmT);
+  _artPrewarmT = setTimeout(() => { _artPrewarmT = null; _dropArtSheets(); _prewarmCurrent(); }, 500);
+}
+onArtChange(_onArtChanged);
+
 _prewarmCurrent();

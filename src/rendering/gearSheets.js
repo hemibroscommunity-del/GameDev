@@ -14,7 +14,8 @@
  */
 
 import { Rectangle, Texture } from 'pixi.js';
-import { stampShirtArt } from './shirtDecal.js';   /* v2.3.1938: drawn shirts */
+import { stampShirtArt } from './playerDecal.js';   /* v2.3.1938: drawn shirts */
+import { artHash } from './traits/playerArt.js';   /* v2.3.1940: shared drawing key */
 import { GEAR_SLOTS, GEAR_CATALOG } from './gearCatalog.js';
 import { upscaleToFrameHeight, antialiasUpscaledCanvas, downscaleByFactor, DISPLAY_DS } from './spriteScale.js'; /* v2.3.1110 upscale; v2.3.1341 AA; v2.3.1408 fullset display-downscale */
 import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless WebP, fall back to PNG */
@@ -214,14 +215,8 @@ const _artSeen = new Map();          /* artKey -> last use (a counter, not a clo
 let _artTick = 0;
 const MAX_ART_KEYS = 8;              /* distinct drawings kept baked at once */
 
-/** Short stable key for a drawing.  FNV-1a: 8 hex chars is plenty to separate
- *  a handful of live drawings, and collisions only ever mean two players share
- *  a print for a frame. */
-function artKeyOf(art) {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < art.length; i++) { h ^= art.charCodeAt(i); h = Math.imul(h, 0x01000193); }
-  return (h >>> 0).toString(16);
-}
+/* v2.3.1940: the drawing key moved to playerArt.js — the BODY sheet caches by
+   it now too (pants prints and tattoos), and one spelling is the point. */
 
 function touchArt(k) {
   _artSeen.set(k, ++_artTick);
@@ -246,7 +241,7 @@ function touchArt(k) {
 export function getShirtArtFrame(item, pose, dir, frameIdx, art, mirror) {
   if (!item || item === 'none' || !art) return null;
   item = gearArt(item);
-  const ak = artKeyOf(art);
+  const ak = artHash(art);
   /* the mirror flag is part of the key: a mirrored facing bakes a pre-flipped
      print, and the two must not share a texture */
   const key = 'shirtart/' + ak + '/' + (mirror ? 'm' : 'n') + '/' + item + '/' + pose + '/' + dir;

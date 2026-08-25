@@ -1,11 +1,16 @@
-/* ═══ v2.3.1938: DRAW YOUR OWN SHIRT ═══
+/* ═══ v2.3.1938: DRAW YOUR OWN — SHIRT, PANTS, TATTOOS ═══
  *
  * Owner: "allowing people to customize their own t shirts ... a drawing
  * feature with your finger (or mouse if on desktop)".
  *
- * This file is the DRAWING itself — the grid, its encoding, and where it is
- * kept.  Nothing here knows how to render a character; shirtDecal.js stamps it
- * onto the shirt art, and the creator paints into it.
+ * This file is the DRAWINGS themselves — the grid, its encoding, and where they
+ * are kept.  Nothing here knows how to render a character; playerDecal.js
+ * stamps them, and the creator paints into them.
+ *
+ * v2.3.1940 (owner: "allow drawing on pants too.  Also allow drawing in the
+ * form of tattoos on the character skin") — one grid, four canvases.  The shirt
+ * is a separate sprite; pants and skin are REGIONS OF THE BODY SHEET, which is
+ * why the stamper takes a region rather than assuming the whole sprite.
  *
  * ── WHY 16x16, AND WHY ONE HEX CHARACTER PER PIXEL ──
  * The shirt's chest reads about 20 device pixels across on a phone, so a finer
@@ -66,66 +71,96 @@ export function artWith(s, x, y, idx) {
   return s.slice(0, i) + ch + s.slice(i + 1);
 }
 
-/* ── FRONT AND BACK ──
+/* ── THE FOUR CANVASES ──
  *
- * Owner: "It actually makes sense to have a front and back custom t shirt."
- * Right, and it also answers a question the single-drawing version could not:
- * what a print should do when you turn around.  With one drawing the back of
- * the shirt showed the front's design; with two, each side shows its own.
+ * Owner: "It actually makes sense to have a front and back custom t shirt",
+ * then "allow drawing on pants too.  Also allow drawing in the form of tattoos
+ * on the character skin."
  *
- * Which side a facing gets is fixed by the art's five base directions:
+ * Which shirt side a facing gets is fixed by the art's five base directions:
  *
  *   south, southwest   -> FRONT   (and southeast, drawn as mirrored southwest)
  *   north, northeast   -> BACK    (and northwest, drawn as mirrored northeast)
  *   east               -> FRONT   (and west; a profile shows the chest edge-on,
  *                                  and the front is what is turned toward you)
+ *
+ * Pants and tattoo have ONE canvas each rather than two.  A leg print reads the
+ * same from either side at this size, and a chest tattoo is a chest tattoo —
+ * splitting them would double the wire cost and the UI for a distinction nobody
+ * could see on a 20-pixel torso.
  */
+export const CANVASES = ['shirtFront', 'shirtBack', 'pants', 'tattoo'];
 export const SHIRT_SIDES = ['front', 'back'];
 
-/** Which drawing a facing shows. */
+/** Which shirt drawing a facing shows. */
 export function sideForDir(dir) {
   return (dir === 'north' || dir === 'northeast' || dir === 'northwest') ? 'back' : 'front';
 }
 
 /* ── selection store (localStorage) ── */
-const STORAGE_KEY = { front: 'bt-shirtart', back: 'bt-shirtart-back' };
-const _active = { front: emptyArt(), back: emptyArt() };
-for (const side of SHIRT_SIDES) {
+const STORAGE_KEY = {
+  shirtFront: 'bt-shirtart', shirtBack: 'bt-shirtart-back',
+  pants: 'bt-pantsart', tattoo: 'bt-tattooart',
+};
+const _active = Object.create(null);   /* CLAUDE.md rule 4 */
+for (const id of CANVASES) {
+  _active[id] = emptyArt();
   try {
-    const saved = typeof localStorage !== 'undefined' && localStorage.getItem(STORAGE_KEY[side]);
-    if (isValidArt(saved)) _active[side] = saved;
+    const saved = typeof localStorage !== 'undefined' && localStorage.getItem(STORAGE_KEY[id]);
+    if (isValidArt(saved)) _active[id] = saved;
   } catch (e) { /* localStorage unavailable (SSR / privacy mode) */ }
 }
 
 const _listeners = new Set();
 
-/** The drawing for one side, always a valid 256-char string. */
-export function getShirtArt(side) { return _active[side === 'back' ? 'back' : 'front']; }
+/** One canvas's drawing, always a valid 256-char string. */
+export function getArt(id) { return _active[id] || emptyArt(); }
 
-/** The drawing a FACING shows, or null when that side is blank. */
-export function shirtArtForDir(dir) {
-  const a = getShirtArt(sideForDir(dir));
+/** One canvas's drawing, or null when it is blank — what renderers want. */
+export function inkedArt(id) {
+  const a = getArt(id);
   return artHasInk(a) ? a : null;
 }
 
-/** Replace one side's drawing and persist it.  Invalid input is ignored rather
- *  than stored, so a corrupted localStorage value cannot poison the renderer. */
-export function setShirtArt(side, s) {
-  const k = side === 'back' ? 'back' : 'front';
-  if (!isValidArt(s) || s === _active[k]) return;
-  _active[k] = s;
-  try { localStorage.setItem(STORAGE_KEY[k], s); } catch (e) { /* ignore */ }
-  _listeners.forEach((fn) => { try { fn(k, s); } catch (e) { /* ignore */ } });
+/** The shirt drawing a FACING shows, or null when that side is blank. */
+export function shirtArtForDir(dir) {
+  return inkedArt(sideForDir(dir) === 'back' ? 'shirtBack' : 'shirtFront');
 }
 
-export function onShirtArtChange(fn) {
+/** Replace one canvas and persist it.  Invalid input is ignored rather than
+ *  stored, so a corrupted localStorage value cannot poison the renderer. */
+export function setArt(id, s) {
+  if (!STORAGE_KEY[id] || !isValidArt(s) || s === _active[id]) return;
+  _active[id] = s;
+  try { localStorage.setItem(STORAGE_KEY[id], s); } catch (e) { /* ignore */ }
+  _listeners.forEach((fn) => { try { fn(id, s); } catch (e) { /* ignore */ } });
+}
+
+export function onArtChange(fn) {
   _listeners.add(fn);
   return () => _listeners.delete(fn);
 }
+
+/* v2.3.1938 names, kept so the shirt call sites read as shirt code. */
+export function getShirtArt(side) { return getArt(side === 'back' ? 'shirtBack' : 'shirtFront'); }
+export function setShirtArt(side, s) { setArt(side === 'back' ? 'shirtBack' : 'shirtFront', s); }
+export const onShirtArtChange = onArtChange;
 
 /** Sanitise a drawing that arrived from ANOTHER player.  Returns null unless it
  *  is exactly the shape this file defines — the renderer never sees anything
  *  else, so a peer cannot make the client allocate or paint something odd. */
 export function sanitizeShirtArt(s) {
   return (isValidArt(s) && artHasInk(s)) ? s : null;
+}
+export const sanitizeArt = sanitizeShirtArt;
+
+/** Short stable key for a drawing.  FNV-1a; 8 hex chars is plenty to separate
+ *  the handful of drawings alive at once, and a collision only ever means two
+ *  players briefly share a bake.  Lives here rather than in either renderer
+ *  because BOTH of them cache by it (the shirt sheet and the body sheet), and
+ *  two spellings of "which drawing is this" is one spelling too many. */
+export function artHash(s) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  return (h >>> 0).toString(16);
 }

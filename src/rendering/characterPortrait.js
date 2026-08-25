@@ -18,8 +18,8 @@
 import { skinTarget, pantsTarget, shoesTarget, recolorBodyToCanvas } from './playerSkins.js';
 import EYE_MASK from './eyeMask.json';                              /* v2.3.1928 */
 import { eyeColorTarget } from './traits/eyeColorCatalog.js';
-import { shirtArtForDir, sanitizeShirtArt } from './traits/shirtArt.js';   /* v2.3.1938 */
-import { stampShirtArt } from './shirtDecal.js';   /* v2.3.1938 */
+import { shirtArtForDir, sanitizeShirtArt, inkedArt } from './traits/playerArt.js';   /* v2.3.1938; v2.3.1940 + pants/tattoo */
+import { stampShirtArt } from './playerDecal.js';   /* v2.3.1938 */
 import { SPRITE_VERSION } from './playerSprites.js';
 import { getHatRef } from './traits/hatColorCatalog.js';
 import { materialIndex } from './traits/traitMaterials.js'; /* v2.3.1926 */
@@ -489,8 +489,17 @@ export async function drawCharacterPortrait(canvas, opts) {
      names whose eyes it means, including the creator (its own live selection),
      and an omission costs the effect rather than borrowing yours. */
   const _eyeId = (opts && opts.eyeColor) || null;
+  /* v2.3.1940: the drawn pants print and the chest tattoo.  These are baked
+     INTO the body (they are regions of the body sheet, not separate sprites),
+     so unlike the shirt print they go in with the recolour rather than after it.
+     Same caller contract as `shirtArt`: an explicit value means "this player's",
+     absent means this device's own.  No mirror -- see the shirt note below. */
+  const _pantsArt = (opts && opts.pantsArt !== undefined) ? sanitizeShirtArt(opts.pantsArt) : inkedArt('pants');
+  const _tattooArt = (opts && opts.tattooArt !== undefined) ? sanitizeShirtArt(opts.tattooArt) : inkedArt('tattoo');
+  const _bodyArt = (_pantsArt || _tattooArt)
+    ? { pants: _pantsArt || '', tattoo: _tattooArt || '', mirror: false } : null;
   ctx.drawImage(recolorBodyToCanvas(bodyImg, skinTarget(skin), pantsTarget(pants), shoesTarget(shoes), null, FRAME,
-    eyeColorTarget(_eyeId), EYE_MASK[`stand-${DIR}`]), 0, 0);
+    eyeColorTarget(_eyeId), EYE_MASK[`stand-${DIR}`], _bodyArt), 0, 0);
   if (shirtImg) {
     /* v2.3.1110: restore a downscaled-on-disk shirt sheet to the 256px frame
        (these drawImage calls read a 256x256 source rect). No-op at native. */

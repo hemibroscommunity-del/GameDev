@@ -52,7 +52,7 @@ import { getNftTextures } from '../nftAvatars.js';
 import { getHeadwear, HEADWEAR_CATALOG, headwearUnderHair, headwearBehindBeard } from '../traits/headwearCatalog.js'; /* v2.3.1764: hair over headphones; v2.3.1934: beard over a drape */
 import { getFacialHair, FACIALHAIR_CATALOG } from '../traits/facialHairCatalog.js';
 import { getHair, HAIR_CATALOG } from '../traits/hairCatalog.js';
-import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant } from '../playerSkins.js';
+import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo */
 import { getEyeColor } from '../traits/eyeColorCatalog.js';   /* v2.3.1930: eye colour is per-player now, so every draw names whose eyes it means */
 import { DISPLAY_DS, downscaleByFactor } from '../spriteScale.js'; /* v2.3.1120: display-texture downscale + lockstep transform compensation */
 import { getHairColor, getColoredHairTextures } from '../traits/hairColorCatalog.js';
@@ -61,7 +61,7 @@ import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/faci
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { getGearFrame, getGearFramePhased, getLoadedGearSources, getShirtArtFrame } from '../gearSheets.js';   /* v2.3.1938 */
-import { sideForDir, getShirtArt, sanitizeShirtArt, artHasInk } from '../traits/shirtArt.js';   /* v2.3.1938 */
+import { sideForDir, getShirtArt, sanitizeShirtArt, artHasInk } from '../traits/playerArt.js';   /* v2.3.1938 */
 import { AIM_CARET, AIM_CARET_EDGE, AIM_CARET_HOT } from '../aimCaret.js'; /* v2.3.1799 */
 import { BLOCK_ARM_ENABLED, BLOCK_ARM_FACING, BLOCK_ARM_CUT, blockArmTexture, blockArmSleeveTexture } from '../blockArm.js'; /* v2.3.1785, sleeve v2.3.1789, ENABLED v2.3.1798 */
 import { gearTint, gearArt, gearMaterial } from '../gearVariants.js'; /* v2.3.1757: material recolor */
@@ -1217,6 +1217,15 @@ function _shirtArtPair(front, back) {
   return (f || b) ? { front: f, back: b } : null;
 }
 
+/* v2.3.1940: the same idea for the two drawings that live INSIDE the body sheet
+   (pants print, chest tattoo) rather than on a gear sprite.  Peer strings are
+   sanitised here, at the one place a remote's drawings enter the renderer;
+   `mirror` rides along because it is part of the bake, not of the drawing. */
+function _remoteBodyArt(other, mirror) {
+  const p = sanitizeShirtArt(other.pantsArt), t = sanitizeShirtArt(other.tattooArt);
+  return (p || t) ? { pants: p || '', tattoo: t || '', mirror: !!mirror } : null;
+}
+
 function _placeGear(display, equip, pose, dir, frameIdx, legsFrom) {
   _lastGearDisplay = display;
   const sb = display._spriteBody;
@@ -1431,7 +1440,7 @@ function _placeSouthBlockLegs(display, sb, o) {
   if (!o || !o.active || !sb || !o.standTex) return park();
   const cut = jogWaistRow(o.dir, o.jogFrame);
   if (!cut || cut <= 0 || cut >= 256) return park();
-  const jogRaw = getBodyFrame(o.skin, o.pants, o.shoes, 'jog', o.dir, o.jogFrame, o.shirtT, o.shirtKey, o.eyeId);
+  const jogRaw = getBodyFrame(o.skin, o.pants, o.shoes, 'jog', o.dir, o.jogFrame, o.shirtT, o.shirtKey, o.eyeId, o.bodyArt);
   if (!jogRaw) return park();
   /* The jog half's mask needs the jog frame's OWN gear silhouettes; reusing
      the standing frame's would erase the body along last frame's plate edge. */
@@ -2331,7 +2340,7 @@ export async function prewarmMaskedBodyFrames(opts) {
       const fc = playerFrameCount(pose, dir) || 1;
       for (let f = 0; f < fc; f++) {
         prewarmProgress.done++;
-        const tex = getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, shirtT, shirtKey, getEyeColor());
+        const tex = getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, shirtT, shirtKey, getEyeColor(), localBodyArt(false));
         if (!tex) continue;
         const worn = [];
         for (const sl of slots) {
@@ -2420,7 +2429,7 @@ export async function prewarmAltWornSets(opts) {
         for (let f = 0; f < fc; f++) {
           if (seq !== _altPrewarmSeq) return;
           if (fast) prewarmProgress.done++;
-          const tex = getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, sT, sK, getEyeColor());
+          const tex = getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, sT, sK, getEyeColor(), localBodyArt(false));
           if (!tex) continue;
           const worn = [];
           for (const [sl, id] of set.worn) {
@@ -6630,8 +6639,12 @@ export class EntityRenderer {
           : ((other.shirt && other.shirt !== 'none') ? 'tshirt' : 'none');
         /* v2.3.1930: THEIR eye colour, off the wire (`ec`) -- not getEyeColor(),
            which is this device's own and would put your eyes on their face. */
-        let tex = getBodyFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, _oShirtT, _oShirtKey, other.eyeColor);
-        if (!tex) tex = getBodyFrame(other.skin, other.pants, other.shoes, 'stand', dir, 0, _oShirtT, _oShirtKey, other.eyeColor);
+        /* v2.3.1940: THEIR drawings, sanitised, for the same reason as the eyes
+           above -- a peer's pants print must not be built from my local store,
+           and anything that is not exactly a well-formed drawing becomes null. */
+        const _oBodyArt = _remoteBodyArt(other, mirror);
+        let tex = getBodyFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, _oShirtT, _oShirtKey, other.eyeColor, _oBodyArt);
+        if (!tex) tex = getBodyFrame(other.skin, other.pants, other.shoes, 'stand', dir, 0, _oShirtT, _oShirtKey, other.eyeColor, _oBodyArt);
         if (tex) {
           /* Reassign texture whenever it differs — same self-heal as
              the local player path, fixes invisible-after-zone-change. */
@@ -7749,10 +7762,13 @@ export class EntityRenderer {
          for upright poses) would mis-paint them.  The pose is brief and
          south-only, so skipping the per-player retint is an acceptable
          trade for keeping the rod art intact for everyone. */
+      /* v2.3.1940: my own drawn pants print / tattoo, pre-flipped for the three
+         mirrored facings (the sheet is drawn with scale.x -1 there). */
+      const _bodyArt = localBodyArt(mirror);
       let tex = pose === 'fish'
         ? getFrame('fish', 'south', frameIdx)
-        : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _shirtT, _shirtKey, getEyeColor());
-      if (!tex) tex = getBodyFrame(getSkin(), getPants(), getShoes(), 'stand', dir, 0, _shirtT, _shirtKey, getEyeColor());
+        : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _shirtT, _shirtKey, getEyeColor(), _bodyArt);
+      if (!tex) tex = getBodyFrame(getSkin(), getPants(), getShoes(), 'stand', dir, 0, _shirtT, _shirtKey, getEyeColor(), _bodyArt);
       /* v2.3.291: mannequin swap removed -- user wants helmet stickered
          to the NORMAL character body as a rigid assembly.  Trait + body
          share frame-coords so they move together pixel-perfect. */
@@ -7899,6 +7915,7 @@ export class EntityRenderer {
             active: true, standTex: spriteBody.texture, dir, jogFrame: _jFrame,
             skin: getSkin(), pants: getPants(), shoes: getShoes(),
             shirtT: _shirtT, shirtKey: _shirtKey, eyeId: getEyeColor(),   /* v2.3.1930 */
+            bodyArt: _bodyArt,   /* v2.3.1940 */
           });
           /* The greaves stride with the legs they are worn over — otherwise a
              bro in leg armour blocks with static plates over moving shins. */

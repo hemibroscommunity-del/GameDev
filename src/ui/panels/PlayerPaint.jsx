@@ -1,8 +1,8 @@
 import React from 'react';
 import {
   ART_W, ART_H, ART_PALETTE, emptyArt, artWith, artColorAt,
-  getShirtArt, setShirtArt, SHIRT_SIDES,
-} from '@/rendering/traits/shirtArt.js';
+  getArt, setArt as storeArt, SHIRT_SIDES,
+} from '@/rendering/traits/playerArt.js';
 
 /* ═══ v2.3.1938: DRAW YOUR OWN SHIRT ═══
  *
@@ -25,24 +25,56 @@ import {
  * The primary platform is iPhone Safari, so the grid is sized in `min(vw,vh)`
  * units to stay square and thumb-reachable in landscape, and touch-action is
  * none so a drawing stroke never scrolls the page underneath it.
+ *
+ * ═══ v2.3.1940: THE SAME PANEL DRAWS PANTS AND TATTOOS ═══
+ * Owner: "allow drawing on pants too.  Also allow drawing in the form of
+ * tattoos on the character skin."  The three targets differ only in WHICH
+ * drawing they edit and what the caption says, so this takes a `target` prop
+ * rather than being copied twice — the grid, the palette, the stroke handling
+ * and the live-preview wiring are all one implementation.
+ *
+ * Only the shirt gets front/back tabs.  Pants and tattoos are one drawing each
+ * (see playerArt.js for why), so their tab strip would be a row with one
+ * button in it, and it is simply not rendered.
  */
 
 const CELL_PX = 18;            /* on-screen size of one cell at rest */
 
-export function ShirtPaint({ onClose }) {
+/* Per-target copy.  `note` is the one thing a player cannot work out by looking
+   at the grid: WHERE the drawing ends up and what can hide it. */
+const TARGETS = {
+  shirt: {
+    label: 'shirt',
+    note: 'Front and back are separate — the back shows when you walk away.',
+  },
+  pants: {
+    label: 'pants',
+    note: 'Sits on the upper leg. Leg armour covers it.',
+  },
+  tattoo: {
+    label: 'tattoo',
+    note: 'Inked on your chest — it shows when you are bare-chested, and a shirt or breastplate covers it.',
+  },
+};
+
+export function PlayerPaint({ target = 'shirt', onClose }) {
+  const cfg = TARGETS[target] || TARGETS.shirt;
+  const isShirt = target === 'shirt';
   const [side, setSide] = React.useState('front');
-  const [art, setArt] = React.useState(() => getShirtArt('front'));
+  /* Which stored drawing this panel is editing right now. */
+  const artId = isShirt ? (side === 'back' ? 'shirtBack' : 'shirtFront') : target;
+  const [art, setArtState] = React.useState(() => getArt(artId));
   const [ink, setInk] = React.useState(1);        /* palette index; 0 = eraser */
   const cvRef = React.useRef(null);
   const paintingRef = React.useRef(false);
   const lastRef = React.useRef('');
 
-  /* Switching side loads that side's drawing. */
-  React.useEffect(() => { setArt(getShirtArt(side)); }, [side]);
+  /* Switching side (or opening on a different target) loads that drawing. */
+  React.useEffect(() => { setArtState(getArt(artId)); }, [artId]);
 
-  /* Persist as you draw: the shirt updates live behind the panel, which is the
-     whole point of drawing on a character rather than in a vacuum. */
-  React.useEffect(() => { setShirtArt(side, art); }, [side, art]);
+  /* Persist as you draw: the character updates live behind the panel, which is
+     the whole point of drawing on a character rather than in a vacuum. */
+  React.useEffect(() => { storeArt(artId, art); }, [artId, art]);
 
   React.useEffect(() => {
     const cv = cvRef.current;
@@ -76,7 +108,7 @@ export function ShirtPaint({ onClose }) {
     const k = cell[0] + ',' + cell[1];
     if (k === lastRef.current) return;      /* same cell: nothing to redraw */
     lastRef.current = k;
-    setArt((a) => artWith(a, cell[0], cell[1], ink));
+    setArtState((a) => artWith(a, cell[0], cell[1], ink));
   };
   const down = (e) => {
     paintingRef.current = true;
@@ -89,28 +121,32 @@ export function ShirtPaint({ onClose }) {
 
   const size = ART_W * CELL_PX;
   return (
-    <div className="bt-modal-scrim" role="dialog" aria-label="Draw your shirt"
+    <div className="bt-modal-scrim" role="dialog" aria-label={'Draw your ' + cfg.label}
       style={{ position: 'fixed', inset: 0, background: 'rgba(6,10,14,.72)',
         display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
       <div style={{ background: 'var(--ui-panel, #16202a)', border: '1px solid rgba(229,237,233,.26)',
         borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 10,
         maxHeight: '96vh', overflow: 'auto' }}>
 
-        <div style={{ display: 'flex', gap: 6 }}>
-          {SHIRT_SIDES.map((s) => (
-            <button key={s} type="button" onClick={() => setSide(s)}
-              className={'bt-cc-tab' + (side === s ? ' bt-cc-tab--on' : '')}
-              style={{ flex: 1, minHeight: 34, textTransform: 'capitalize' }}>
-              <span className="bt-cc-tab-label">{s}</span>
-            </button>
-          ))}
-        </div>
+        {isShirt && (
+          <div style={{ display: 'flex', gap: 6 }}>
+            {SHIRT_SIDES.map((s) => (
+              <button key={s} type="button" onClick={() => setSide(s)}
+                className={'bt-cc-tab' + (side === s ? ' bt-cc-tab--on' : '')}
+                style={{ flex: 1, minHeight: 34, textTransform: 'capitalize' }}>
+                <span className="bt-cc-tab-label">{s}</span>
+              </button>
+            ))}
+          </div>
+        )}
 
         <canvas ref={cvRef} width={size} height={size}
           onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
           style={{ width: 'min(72vw, 72vh, 288px)', height: 'min(72vw, 72vh, 288px)',
             imageRendering: 'pixelated', touchAction: 'none', cursor: 'crosshair',
             borderRadius: 8, border: '1px solid rgba(229,237,233,.28)', display: 'block' }} />
+
+        <div style={{ fontSize: 12, lineHeight: 1.35, opacity: .78, maxWidth: 288 }}>{cfg.note}</div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 5 }}>
           {ART_PALETTE.map((c, i) => (
@@ -128,8 +164,8 @@ export function ShirtPaint({ onClose }) {
 
         <div style={{ display: 'flex', gap: 8 }}>
           <button type="button" className="bt-cc-tab" style={{ flex: 1, minHeight: 38 }}
-            onClick={() => setArt(emptyArt())}>
-            <span className="bt-cc-tab-label">Clear {side}</span>
+            onClick={() => setArtState(emptyArt())}>
+            <span className="bt-cc-tab-label">Clear {isShirt ? side : cfg.label}</span>
           </button>
           <button type="button" className="bt-cc-tab bt-cc-tab--on" style={{ flex: 1, minHeight: 38 }}
             onClick={onClose}>
