@@ -59,7 +59,67 @@
  *     its `mul` divided by the same factor, printed at the end for a hand
  *     edit, so the running hat renders exactly as it does today.
  *
- *   node tools/fit-headwear-scale.mjs [--write]
+ * ═══ THE SEAT PASS (--seat, v2.3.1925) ═══
+ *
+ * Owner: "are you able to determine what each seat should be too?  I think they
+ * have varying lengths by direction in terms of distance from eyes relative to
+ * head (don't even know if that's the best way to determine it)."
+ *
+ * It is the best way, and it turns out not to need the eyes.  The eyes are only
+ * painted on three of the five stand sheets — northeast and north are turned
+ * away — but where they ARE painted, the crown-to-eye distance is 0.465 / 0.462
+ * / 0.489 of that facing's head WIDTH (south / southwest / east).  A 5% spread
+ * across three facings means the head is drawn PROPORTIONALLY at each angle,
+ * just at different sizes, so head width is a valid vertical ruler too and it
+ * exists on all five facings.  Measuring the eyes would answer the same
+ * question on three fifths of the problem.
+ *
+ * So the seat of a hat is its bottom edge's depth below the crown, expressed in
+ * head-widths — the number that says "this brim crosses the face just above the
+ * eyes" independent of how big the head is drawn:
+ *
+ *     seat[dir] = (crownNudgeY + bboxH * scale) / headWidth[dir]
+ *
+ * On the current art the median hat's seat moves 0.26 head-widths as the
+ * character turns — a quarter of a head, ~5px on screen.  Unlike the size
+ * drift, this is NOT one mechanism: the common mode is only 0.17 head-widths
+ * end to end (south sits 4px high, northeast 3px low) and the rest is per-hat,
+ * left behind by hand-nudging and import noise.  So there is nothing to derive
+ * and the pass simply brings each facing onto the hat's own median, under the
+ * same aspect guard and a bound in real pixels.
+ *
+ * A LOWER-BRIM RULER WAS TRIED AND DROPPED: measuring the lowest hat pixel
+ * INSIDE the head's own column span (ignoring brim that overhangs past the
+ * head) sounds more like what the eye judges, but it measured no better —
+ * median spread 0.288 head-widths against bbox bottom's 0.262 — so the simpler
+ * number wins.
+ *
+ * ═══ WHY --seat DOES NOT WRITE ═══
+ *
+ * It measured cleanly and it was wrong, and that is worth keeping rather than
+ * deleting.  Fitting each facing onto the hat's own median seat and rendering
+ * the result made the biggest movers WORSE, every one of them:
+ *
+ *     army-helmet south   +12.5px  brought the rim down over the eyes
+ *     golden-bucket south -12.5px  lifted the bucket off the head
+ *     spartan-helmet SW   -14px    floated the helmet above the skull
+ *     beanie south        +10.9px  pulled the beanie over the eyes
+ *
+ * The reason is that most of the drift is not error, it is PERSPECTIVE.  The
+ * lowest point of a hat seen from the FRONT is its front rim, which sits above
+ * the eyebrows; seen from BEHIND it is the back rim, which sits lower because
+ * the skull slopes away.  So the seat SHOULD read deeper on north than on
+ * south, and the systematic component measured across all 39 hats is exactly
+ * that shape and that sign (south -0.095 head-widths, northeast +0.073) — the
+ * art being right, not a registration error.  A pass that flattens it is
+ * removing the drawing.
+ *
+ * Individual hats really are mis-seated (chinese-hat east sits over the face,
+ * spartan-helmet southwest floats).  Those are visible, few, and a judgement
+ * call — this mode exists to RANK them, not to fix them.  --write is refused
+ * deliberately; the numbers are the deliverable.
+ *
+ *   node tools/fit-headwear-scale.mjs [--seat] [--write]
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -80,8 +140,20 @@ const DEADBAND = 0.05;     /* below 5% is not worth a diff */
    to judge off the contact sheet. */
 const CLAMP = [0.85, 1.15];
 const SKIP = new Set(['halo']);
+/* Seat moves are bounded in REAL pixels rather than as a ratio: what a viewer
+   notices is a hat shifting N pixels on the head, and 14 in the 256 frame is
+   ~6 on screen — enough to close most of the drift, small enough that a wrong
+   call is a nudge rather than a hat over the eyes. */
+const SEAT_MAX_PX = 14;
+const SEAT_DEADBAND_PX = 2;
+const SEAT = process.argv.includes('--seat');
 
 const WRITE = process.argv.includes('--write');
+if (SEAT && WRITE) {
+  console.error('--seat is measurement only; see "WHY --seat DOES NOT WRITE" at the top of this file.');
+  console.error('Flattening the seat across facings removes perspective, not error — verified by rendering.');
+  process.exit(2);
+}
 const tops = JSON.parse(fs.readFileSync(path.join(REPO, 'public/sprites/player/body-tops.json'), 'utf8'));
 const med = (a) => { const s = [...a].sort((x, y) => x - y); return s.length % 2 ? s[s.length >> 1] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2; };
 
@@ -120,11 +192,14 @@ for (const d of DIRS) headW[d] = headWidth(d);
 const items = fs.readdirSync(HW).filter((f) => fs.statSync(path.join(HW, f)).isDirectory()).sort();
 const pct = (v) => `${v >= 0 ? '+' : ''}${(v * 100).toFixed(1)}%`;
 const changes = [];
+const seats = [];   /* SEAT mode only: each hat's per-facing seat, for the ranking at the end */
 
 console.log('head width drawn in each stand sheet (256-space):',
   DIRS.map((d) => `${d} ${headW[d]}`).join('   '));
 console.log(`\nshape guard: a facing whose aspect is >${(ASPECT_TOL * 100) | 0}% off the hat's median aspect is left alone (marked ~).`);
 console.log(`deadband ${(DEADBAND * 100) | 0}%.\n`);
+console.log(SEAT ? 'SEAT PASS — 256-space px to move each facing (positive = down the face)\n'
+  : 'SIZE PASS — per-facing scale change');
 console.log('item'.padEnd(19) + DIRS.map((d) => d.slice(0, 9).padStart(11)).join(''));
 
 for (const it of items) {
@@ -160,6 +235,48 @@ for (const it of items) {
      rendering: south-anchored, the helmet swallowed the head on every other
      facing. */
   const pool = SKIP.has(it) ? [] : stable;
+
+  /* ── SEAT PASS ── how far the hat's bottom edge sits below the crown, in
+     head-widths, brought onto the hat's own median.  Same aspect guard: a
+     facing whose silhouette changes shape is measuring a different edge, so
+     its depth means something different too. */
+  if (SEAT) {
+    const seat = {};
+    for (const d of present) {
+      const nudge = (meta.crownNudge && meta.crownNudge[d]) || [0, 0];
+      seat[d] = (nudge[1] + meta.bboxes[d][3] * cur[d]) / headW[d];
+    }
+    const tgt = pool.length ? med(pool.map((d) => seat[d])) : null;
+    const cells2 = [];
+    for (const d of DIRS) {
+      if (seat[d] == null) { cells2.push(''.padStart(11)); continue; }
+      if (!pool.includes(d)) { cells2.push('~'.padStart(11)); continue; }
+      let dy = (tgt - seat[d]) * headW[d];
+      dy = Math.max(-SEAT_MAX_PX, Math.min(SEAT_MAX_PX, dy));
+      if (Math.abs(dy) < SEAT_DEADBAND_PX) { cells2.push('·'.padStart(11)); continue; }
+      const nudge = meta.crownNudge[d];
+      const newY = Math.round(nudge[1] + dy);
+      changes.push({ item: it, dir: d, seat: true, nudgeBefore: nudge[1], nudgeAfter: newY,
+        dy: +dy.toFixed(1), before: +seat[d].toFixed(2), after: +tgt.toFixed(2) });
+      cells2.push(`${dy > 0 ? '+' : ''}${dy.toFixed(1)}px`.padStart(11));
+      if (WRITE) meta.crownNudge[d] = [nudge[0], newY];
+    }
+    seats.push({ it, s: seat, mid: med(present.map((d) => seat[d])) });
+    console.log(it.padEnd(19) + cells2.join(''));
+    if (WRITE && changes.some((c) => c.item === it)) {
+      const tag = ' v2.3.1925: per-facing SEAT fitted by tools/fit-headwear-scale.mjs --seat.'
+        + ' The hat\'s bottom edge sits at a constant depth below the crown measured in head-widths'
+        + ' (the crown-to-eye distance is 0.46-0.49 head-widths on every facing that paints eyes,'
+        + ' so the head is drawn proportionally and width is a valid vertical ruler), brought onto'
+        + ' this hat\'s own median and bounded to 14px in the 256 frame.';
+      if (!String(meta.note || '').includes('SEAT fitted')) meta.note = (meta.note || '') + tag;
+      const json = JSON.stringify(meta, null, 2).replace(/[\u0080-\uffff]/g,
+        (c) => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
+      fs.writeFileSync(file, json + '\n');
+    }
+    continue;
+  }
+
   const target = pool.length ? med(pool.map((d) => ratio[d])) : null;
 
   const cells = [];
@@ -211,14 +328,34 @@ for (const it of items) {
   }
 }
 
-console.log(`\n${changes.length} facing scales change across ${new Set(changes.map((c) => c.item)).size} hats.`);
-const big = changes.filter((c) => Math.abs(c.f - 1) >= 0.15).sort((a, b) => Math.abs(b.f - 1) - Math.abs(a.f - 1));
-if (big.length) {
-  console.log('\nlargest moves:');
-  for (const c of big) console.log(`  ${c.item.padEnd(19)} ${c.dir.padEnd(10)} scale ${c.before} -> ${c.after}  (${pct(c.f - 1)})   nudgeY ${c.nudgeBefore} -> ${c.nudgeAfter}`);
+console.log(SEAT
+  ? `\n${changes.length} facings measured off their hat's median across ${new Set(changes.map((c) => c.item)).size} hats — NOT applied, see below.`
+  : `\n${changes.length} facing scales change across ${new Set(changes.map((c) => c.item)).size} hats.`);
+if (SEAT) {
+  /* THE RANKING THIS MODE EXISTS FOR.  Take the perspective out first — the
+     median facing-offset across all 39 hats, which is the front-rim/back-rim
+     effect every hat shares — and what is LEFT is the part that is actually
+     this hat being mis-seated.  That is the list worth a human's eye. */
+  const cm = Object.create(null);
+  for (const d of DIRS) cm[d] = med(seats.map((r) => r.s[d] - r.mid).filter((v) => v === v));
+  console.log('\nPERSPECTIVE (median across all 39 hats — this part is the drawing, not an error):');
+  for (const d of DIRS) console.log(`  ${d.padEnd(11)}${cm[d] >= 0 ? '+' : ''}${cm[d].toFixed(3)} head-widths  =  ${cm[d] >= 0 ? '+' : ''}${(cm[d] * headW[d]).toFixed(1)}px`);
+  const resid = seats.map((r) => {
+    const v = DIRS.map((d) => r.s[d] - cm[d]).filter((x) => x === x);
+    return { it: r.it, sp: Math.max(...v) - Math.min(...v) };
+  }).sort((a, b) => b.sp - a.sp);
+  console.log('\nMIS-SEATED, worst first (drift left after perspective is removed, head-widths):');
+  for (const r of resid.slice(0, 12)) console.log(`  ${r.it.padEnd(19)}${r.sp.toFixed(2)}`);
+  console.log(`  ... median across the set ${med(resid.map((r) => r.sp)).toFixed(2)}`);
+} else {
+  const big = changes.filter((c) => Math.abs(c.f - 1) >= 0.15).sort((a, b) => Math.abs(b.f - 1) - Math.abs(a.f - 1));
+  if (big.length) {
+    console.log('\nlargest moves:');
+    for (const c of big) console.log(`  ${c.item.padEnd(19)} ${c.dir.padEnd(10)} scale ${c.before} -> ${c.after}  (${pct(c.f - 1)})   nudgeY ${c.nudgeBefore} -> ${c.nudgeAfter}`);
+  }
 }
 const JOG = ['old-school-helmet', 'top-hat', 'purple-hat', 'beanie', 'red-cap', 'shark-hat', 'bandana', 'sombrero', 'bucket-hat', 'fedora', 'wizard-hat'];
-const jogHits = changes.filter((c) => c.dir === 'east' && JOG.includes(c.item));
+const jogHits = SEAT ? [] : changes.filter((c) => c.dir === 'east' && JOG.includes(c.item));
 if (jogHits.length) {
   console.log('\nJOG_EW_HAT_TUNE compensation — divide each `mul` by this so jog-east renders unchanged:');
   for (const c of jogHits) console.log(`  ${c.item.padEnd(19)} east x${c.f.toFixed(3)}  ->  mul / ${c.f.toFixed(3)}`);
@@ -226,8 +363,15 @@ if (jogHits.length) {
 const jsonAt = process.argv.indexOf('--json');
 if (jsonAt > 0 && process.argv[jsonAt + 1]) {
   const byItem = Object.create(null);   /* client-free, but the habit is the rule */
-  for (const c of changes) (byItem[c.item] = byItem[c.item] || Object.create(null))[c.dir] = { scale: c.after, nudgeY: c.nudgeAfter };
+  for (const c of changes) {
+    const e = (byItem[c.item] = byItem[c.item] || Object.create(null));
+    /* a seat row carries no scale — c.after there is a seat fraction, not a
+       multiplier, and writing it as `scale` would corrupt any preview built
+       from this file. */
+    e[c.dir] = c.seat ? { nudgeY: c.nudgeAfter } : { scale: c.after, nudgeY: c.nudgeAfter };
+  }
   fs.writeFileSync(process.argv[jsonAt + 1], JSON.stringify(byItem, null, 1));
   console.log('proposal written to', process.argv[jsonAt + 1]);
 }
-console.log(WRITE ? '\nWROTE meta.json for every hat above.' : '\nDRY RUN — pass --write to apply.');
+console.log(SEAT ? '\nMEASUREMENT ONLY — --seat never writes; see the header for why.'
+  : WRITE ? '\nWROTE meta.json for every hat above.' : '\nDRY RUN — pass --write to apply.');
