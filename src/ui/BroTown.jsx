@@ -373,6 +373,13 @@ var BLOCK_COSTS_STAMINA = false;
 
 var NODE_REACH_PAD = 56;   /* px of slack outside the sprite box */
 
+/* v2.3.1913: how long a character may sit with no player input before the
+   page hangs up (owner: "Game should be logging out characters after 2
+   mins").  Kept equal to the worker's IDLE_TIMEOUT_MS (server/src/index.js)
+   and to the AWAY flag's threshold below -- three names for one deadline,
+   and they must not drift apart. */
+var IDLE_LOGOUT_MS = 120000;
+
 /* The node's art box in WORLD px.  Prefers the renderer's live Pixi
    sprite (exact bounds, anchor and tier scale); falls back to nominal
    art sizes for the procedural campfire and for the frame or two before
@@ -5473,6 +5480,25 @@ export var BroTown = function BroTown(_ref0) {
               S._lastBroadcastBlocking = _blockNow; /* v2.3.1110 */
               S._lastBroadcastBa = _baNow; /* v2.3.1726 */
             }
+            /* ═══ v2.3.1913: LOG OUT AN IDLE CHARACTER ═══
+               Owner: "Sometimes I login to the game and see characters I
+               played in separate window hours ago just idle.  Game should
+               be logging out characters after 2 mins."
+               _lastInputAt (v2.3.1324) is stamped by window-capture
+               touchstart/pointerdown/keydown, so it counts a thumb on a
+               panel just as much as a thumb on the joystick -- which is
+               the reason the hang-up lives HERE and not only in the
+               worker's AFK sweep: the worker can only see packets, and a
+               player reading the market sends none.  The worker's sweep
+               (v2.3.1913, server/src/tick.js) stays as the backstop for a
+               page that is frozen, old, or lying.
+               Rides the 2 s track slot rather than its own timer: this is
+               a 2-minute deadline, 2 s of granularity is free, and a
+               frozen page runs neither. */
+            if (S.channel && S.channel.idleLogout &&
+                Date.now() - (S._lastInputAt || Date.now()) > IDLE_LOGOUT_MS) {
+              S.channel.idleLogout();
+            }
             if (S.channel && (!S._lastTrack || Date.now() - S._lastTrack > 2000)) {
               var _rpg$lifeSkills7, _rpg$lifeSkills$pets, _rpg$_anniversaryItem, _rpg$armor, _rpg$shield, _rpg$amulet, _rpg$_compStats, _rpg$_compStats2, _rpg$_compStats3, _rpg$_compStats4, _rpg$_compStats5, _rpg$_compStats6, _rpg$_compStats7, _rpg$_compStats8, _S$_clanData2, _S$_clanData3, _S$_clanData4;
               S._lastTrack = Date.now();
@@ -5487,7 +5513,7 @@ export var BroTown = function BroTown(_ref0) {
                 /* v2.3.1324: away flag — 2min without input.  Peers get
                    it via the player_update Object.assign for free; the
                    server never interprets it (friends.md). */
-                aw: Date.now() - (S._lastInputAt || Date.now()) > 120000 ? 1 : 0,
+                aw: Date.now() - (S._lastInputAt || Date.now()) > IDLE_LOGOUT_MS ? 1 : 0,
                 dir: P.dir,
                 bt: S.bodyTorso,
                 bl: S.bodyLegs,
@@ -6949,6 +6975,11 @@ export var BroTown = function BroTown(_ref0) {
     window.addEventListener('touchstart', _stampInput, { passive: true, capture: true });
     window.addEventListener('pointerdown', _stampInput, { passive: true, capture: true });
     window.addEventListener('keydown', _stampInput, { passive: true, capture: true });
+    /* v2.3.1913: wheel too, now that this clock decides whether to log the
+       character out and not just whether to show peers an AWAY pip.  A
+       desktop player scrolling a long panel is present, and scrolling is
+       the one common input that fires none of the three above. */
+    window.addEventListener('wheel', _stampInput, { passive: true, capture: true });
     /* v2.3.1323 (Friends round): the dash Friends views open a friend's
        profile via this bridge — same InspectPlayerPanel the world-tap
        flow uses, built from the live S.others peer entry.  Returns true
@@ -7446,6 +7477,7 @@ export var BroTown = function BroTown(_ref0) {
       window.removeEventListener('touchstart', _stampInput, { capture: true });
       window.removeEventListener('pointerdown', _stampInput, { capture: true });
       window.removeEventListener('keydown', _stampInput, { capture: true });
+      window.removeEventListener('wheel', _stampInput, { capture: true }); /* v2.3.1913 */
       lBase.removeEventListener('touchstart', lS);
       window.removeEventListener('touchmove', gM);
       window.removeEventListener('touchmove', lM);

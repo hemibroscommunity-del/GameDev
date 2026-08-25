@@ -460,3 +460,55 @@ for: not "smoother than its surroundings" (that is blur) but "the same".
   matching the neighbourhood does.
 
 **Receipt:** `tools/maps/build-town-v17.mjs` and its header.
+
+## §24 — Reading a timeout's constant instead of its clock (v2.3.1913)
+
+**Tempting:** the owner reports characters idling in the world for
+hours, so go looking for the AFK timeout. You find it immediately —
+`IDLE_TIMEOUT_MS = 120000`, "2 minutes", right there in the GameRoom
+constructor — with a sweep beside it that closes the socket, calls
+`webSocketClose`, releases `playerState` and deletes the session. It is
+correct, it is thorough, it has a 20-line comment explaining the four
+things it fixed (v2.3.1621). The obvious readings are that the value is
+too high, that the sweep needs a re-audit, or that Durable Object
+hibernation is eating the tick.
+
+**Wrong:** all three. The sweep was flawless and had never run once.
+What decides whether it runs is not the constant and not the sweep — it
+is the ONE line that stamps the clock, `if (msg.type !== 'pong')
+session.lastRecv = Date.now()`, whose comment carefully explains why
+pongs are excluded and takes for granted that everything else is a
+player doing something. It isn't. The client sends a `move` at >=1 Hz
+standing still (the keepalive the peer ghost-sweep depends on,
+v2.3.1107) and a `track` every 2 s on a bare timer. Both are
+`!== 'pong'`. An abandoned tab therefore refreshed its own AFK clock
+twice a second, forever, and no amount of staring at the eviction code
+would ever have shown it.
+
+**The second half of the trap:** having fixed the clock, the sweep
+starts firing — and the ghost still comes back, because `onclose`
+auto-reconnects on any close code it doesn't recognise. Sweep and
+reconnect then trade the same corpse every two minutes and the symptom
+is unchanged. An eviction is only an eviction if the far end agrees to
+stay evicted (close 4006 → banner, no reconnect).
+
+**Rules this leaves:**
+- A timeout has two halves: the deadline and the thing that resets it.
+  The bug is in the reset far more often than in the deadline, and the
+  reset is usually one line somewhere else with no comment on it.
+- "Is this handler correct?" is the wrong question. "Has this handler
+  ever run?" is the one that finds it — and it is answerable by a test
+  that drives real traffic at it, which is why `test/afk.test.mjs`
+  replays two minutes of genuine keepalive rather than asserting on the
+  constant.
+- A heartbeat is not evidence of a human. Anything sent on a timer —
+  ping, pong, keepalive, telemetry — must be excluded from every
+  liveness judgement by name, not by "it isn't a pong".
+- Server-side liveness cannot see a thumb. A player reading a panel
+  sends nothing; the page knows they are there and the worker cannot.
+  Where both can act, let the page decide and keep the worker as the
+  backstop for a page that is frozen, old, or lying.
+
+**Receipt:** `server/src/index.js` `_moveActivitySig`,
+`server/src/tick.js` `_tickPingAndAfk`, `test/afk.test.mjs`,
+`tools/qa/mp/mp-afk.mjs`.
