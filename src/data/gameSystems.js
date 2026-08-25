@@ -1929,7 +1929,7 @@ export const EXTRACT_JITTER    = 0.15;       /* ±15% jitter on each open delay 
 /* Phase-2 is a sustained gesture: the player repeats the skill motion to fill a
    meter. REPS_TARGET reps complete the extraction. Per-skill so each can be tuned
    independently (e.g. fishing reels feel right a touch shorter). */
-/* v2.3.1909 (owner: "increase the speed of the fishing gesture a bit"):
+/* v2.3.1915 (owner: "increase the speed of the fishing gesture a bit"):
    fishing 2 -> 1.5 full finger-circles.
 
    Expressed as the TARGET rather than as a gain on the accumulator, because
@@ -6225,7 +6225,7 @@ export function npcHasQuestChain(npcName) {
   return !!_npcHasQuestCache[npcName];
 }
 
-/* ═══ v2.3.1907: ONE ANSWER TO "IS THIS OBJECTIVE DONE" ═══
+/* ═══ v2.3.1914: ONE ANSWER TO "IS THIS OBJECTIVE DONE" ═══
  *
  * Owner: "After completing quest into the blue the quest reward doesn't pop up
  * by proximity to mayor bro. Same proximity turn in quest reward issue with

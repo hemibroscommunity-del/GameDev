@@ -481,7 +481,7 @@ export async function initPixiRenderer(canvas) {
     arrowProbe: () => ({
       arrows: effectsRenderer._arrowsDrawn || 0,
       heads: effectsRenderer._arrowHeadsDrawn || 0,
-      /* v2.3.1909: how many of those were drawn UNDER the player, and which
+      /* v2.3.1915: how many of those were drawn UNDER the player, and which
          container each pool hangs off. A screenshot cannot tell an arrow
          behind the boots from one in front of them at this size, and the
          layer name is the fact the fix actually turns on. */

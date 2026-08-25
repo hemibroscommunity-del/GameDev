@@ -16,7 +16,7 @@
    setRpgState, threaded via deps; succeedExtraction forwards deps to the
    appliers. All other refs are module imports below. */
 import { BT_AUDIO, EXTRACT_WINDOW_MS, MINIGAME_REWARDS, addLifeSkillXp, computeOpenDelay, createDefaultCompStats, migrateLifeSkills } from '@/data/index.js';
-import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.1909 */
+import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.1915 */
 import { rollHarvestShard, shardByKey } from '@/data/shards.js';
 import { _objectSpread } from '@/lib/babelHelpers.js';
 
@@ -235,7 +235,7 @@ function applyFishingReward(S, node, result, deps) {
       }
     }
     if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
-    /* v2.3.1909: the level BEFORE the award, so a multi-level jump can say
+    /* v2.3.1915: the level BEFORE the award, so a multi-level jump can say
        so. The owner's report was not "I missed a level", it was "I missed
        TWO" — and a banner reading Level 7 tells someone who last looked at
        5 nothing about what happened in between. */
@@ -250,7 +250,7 @@ function applyFishingReward(S, node, result, deps) {
     pushDmgPopup(S, node.x, node.y - 22, baseName + (yieldQty > 1 ? ' x' + yieldQty : ''), node.color);
     pushDmgPopup(S, node.x, node.y - 38, '+' + xpAmt + ' Fishing XP', '#00d4b8');
     if (leveled) {
-      /* v2.3.1909: the BANNER, not just a world popup — see
+      /* v2.3.1915: the BANNER, not just a world popup — see
          celebrateLifeSkillLevel. The popup stays as the in-world echo. */
       celebrateLifeSkillLevel(S, 'fishing', R.lifeSkills.fishing.level, _fishLvlBefore);
       pushDmgPopup(S, S.player.x, S.player.y - 50, 'Fishing Level ' + R.lifeSkills.fishing.level + '!', '#f5c542');
@@ -331,7 +331,7 @@ function applyWoodReward(S, node, result, deps) {
       }
     }
     if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
-    /* v2.3.1909: the level BEFORE the award, so a multi-level jump can say
+    /* v2.3.1915: the level BEFORE the award, so a multi-level jump can say
        so. The owner's report was not "I missed a level", it was "I missed
        TWO" — and a banner reading Level 7 tells someone who last looked at
        5 nothing about what happened in between. */
@@ -343,7 +343,7 @@ function applyWoodReward(S, node, result, deps) {
     pushDmgPopup(S, node.x, node.y - 22, baseName + (yieldQty > 1 ? ' x' + yieldQty : ''), node.color);
     pushDmgPopup(S, node.x, node.y - 38, '+' + xpAmt + ' Woodcutting XP', '#00d4b8');
     if (leveled) {
-      /* v2.3.1909 */
+      /* v2.3.1915 */
       celebrateLifeSkillLevel(S, 'woodcutting', R.lifeSkills.woodcutting.level, _wcLvlBefore);
       pushDmgPopup(S, S.player.x, S.player.y - 50, 'Woodcutting Level ' + R.lifeSkills.woodcutting.level + '!', '#f5c542');
       BT_AUDIO.collect();
@@ -409,7 +409,7 @@ function applyMiningReward(S, node, result, deps) {
       }
     }
     if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
-    /* v2.3.1909: the level BEFORE the award, so a multi-level jump can say
+    /* v2.3.1915: the level BEFORE the award, so a multi-level jump can say
        so. The owner's report was not "I missed a level", it was "I missed
        TWO" — and a banner reading Level 7 tells someone who last looked at
        5 nothing about what happened in between. */
@@ -421,7 +421,7 @@ function applyMiningReward(S, node, result, deps) {
     pushDmgPopup(S, node.x, node.y - 22, baseName + (yieldQty > 1 ? ' x' + yieldQty : ''), node.color);
     pushDmgPopup(S, node.x, node.y - 38, '+' + xpAmt + ' Mining XP', '#00d4b8');
     if (leveled) {
-      /* v2.3.1909 */
+      /* v2.3.1915 */
       celebrateLifeSkillLevel(S, 'mining', R.lifeSkills.mining.level, _mnLvlBefore);
       pushDmgPopup(S, S.player.x, S.player.y - 50, 'Mining Level ' + R.lifeSkills.mining.level + '!', '#f5c542');
       BT_AUDIO.collect();

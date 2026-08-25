@@ -89,7 +89,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and only a LANDED arrow loses it', !!landed && landed.arrows > 0 && landed.heads === 0, landed);
 
   await P.page.evaluate(() => { try { clearInterval(window.__pin); } catch (e) {} });
-  /* ── v2.3.1909: A SPENT ARROW DRAWS UNDER THE PLAYER ──
+  /* ── v2.3.1915: A SPENT ARROW DRAWS UNDER THE PLAYER ──
      Owner: "For arrows on the ground make the character in the layer in front
      of them."
 

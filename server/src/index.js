@@ -3370,9 +3370,28 @@ export class GameRoom {
     }
     const [client, server] = Object.values(new WebSocketPair());
     this.state.acceptWebSocket(server);
-    this.sessions.set(server, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
+    this.sessions.set(server, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now(), moveSig: '' });
     if (!this.tickInterval && this.sessions.size === 1) this.startTickLoop();
     return new Response(null, { status: 101, webSocket: client });
+  }
+
+  /* v2.3.1913: AFK activity signature for a `move` packet.
+     Everything the player themself controls, and nothing the server or
+     the world controls.  Positions are rounded to whole pixels so float
+     noise on a stationary body can't read as movement (a walking player
+     crosses a pixel boundary many times a second, so real motion is
+     never missed), and the shield angle to ~3 deg -- the same hysteresis
+     the client uses before it bothers to broadcast a new one
+     (v2.3.1726).  `dead` is deliberately absent: dying is something that
+     happens TO you, and a corpse should age out like anything else. */
+  _moveActivitySig(msg) {
+    const n = (v) => (Number.isFinite(+v) ? Math.round(+v) : 0);
+    return n(msg.x) + ',' + n(msg.y) + ',' +
+      (msg.d || '') + ',' + (msg.f || '') + ',' +
+      (msg.z || '') + ',' + (msg.ex || '') + ',' +
+      (msg.blocking ? 1 : 0) + ',' + (msg.dodging ? 1 : 0) + ',' +
+      (Number.isFinite(+msg.ba) ? Math.round(+msg.ba * 20) : '') + ',' +
+      (msg.eqc || '') + ',' + (msg.eql || '') + ',' + (msg.eqs || '');
   }
 
   async webSocketMessage(ws, message) {
@@ -3406,12 +3425,55 @@ export class GameRoom {
     }
     let msg;
     try { msg = JSON.parse(message); } catch { return; }
-    // Reset the AFK clock on real input only.  Pong replies are
-    // keepalive heartbeats, not player activity -- counting them would
-    // mean the timeout fires only on TCP death, not on AFK players
-    // (the original 45 s behavior, which never actually kicked anyone
-    // who had a live tab open).
-    if (msg.type !== 'pong') session.lastRecv = Date.now();
+    /* Reset the AFK clock on real input only.  Pong replies are
+       keepalive heartbeats, not player activity -- counting them would
+       mean the timeout fires only on TCP death, not on AFK players
+       (the original 45 s behavior, which never actually kicked anyone
+       who had a live tab open).
+
+       v2.3.1913: `move` and `track` are heartbeats TOO, and that is why
+       the 2-minute sweep had still never kicked anyone.  Owner:
+       "Sometimes I login to the game and see characters I played in
+       separate window hours ago just idle."  The client sends a move at
+       >=1 Hz even standing still (the idle keepalive the peer
+       ghost-sweep relies on -- see TRACK_STATE_EXCLUDED above) and a
+       `track` every 2 s on a bare timer.  Both are type !== 'pong', so
+       both stamped lastRecv, so an abandoned-but-open tab refreshed the
+       AFK clock twice a second forever.  The v2.3.1621 eviction was
+       correct and simply never ran.
+
+       So: judge a move by whether ANYTHING about the player changed.
+       The idle keepalive is by construction the packet where nothing
+       did -- same tile, same facing, same shield, same harvest, same
+       zone -- so a signature compare separates it from real input at
+       one string build per move.  `track` arriving proves nothing (it
+       is a bare timer), but the AWAY flag it carries does -- see below.
+       Everything else -- attacks, harvest strikes, zone changes, chat,
+       panel actions -- is input and stamps the clock. */
+    if (msg.type === 'pong') {
+      /* keepalive, never activity */
+    } else if (msg.type === 'track') {
+      /* `track` is a 2 s telemetry timer, so its ARRIVAL says nothing.
+         Its `aw` flag does: the client stamps _lastInputAt from
+         window-capture touchstart/pointerdown/keydown/wheel and sends
+         aw:0 while that is under two minutes old (v2.3.1324, added for
+         the peers' AWAY pip).  That is the one thing the worker cannot
+         work out for itself -- a player reading the market panel is
+         right there with a thumb on the glass and puts NOTHING on the
+         socket, and evicting them would be a worse bug than the one
+         this version fixes.  Read explicitly as 0: absent means an old
+         client that never sent the flag, which is no evidence either
+         way, and moves alone then decide. */
+      if (msg.data && msg.data.aw === 0) session.lastRecv = Date.now();
+    } else if (msg.type === 'move') {
+      const _sig = this._moveActivitySig(msg);
+      if (_sig !== session.moveSig) {
+        session.moveSig = _sig;
+        session.lastRecv = Date.now();
+      }
+    } else {
+      session.lastRecv = Date.now();
+    }
 
     switch (msg.type) {
       case 'join':

@@ -2551,7 +2551,7 @@ function _fishTopFrame(bodyTex) {
     ctx.drawImage(bres, bf.x, bf.y, bf.width, bf.height, 0, 0, W, H);
     const img = ctx.getImageData(0, 0, W, H); const d = img.data;
     const headBot = Math.round(H * 0.35);   // keep the whole head band as-is
-    /* ═══ v2.3.1907: THE HAND COMES UP WITH THE ROD ═══
+    /* ═══ v2.3.1914: THE HAND COMES UP WITH THE ROD ═══
        Owner: "When fishing that hand needs to be over the shirt during the reel
        animation instead of under it."
 
@@ -2595,7 +2595,7 @@ function _fishTopFrame(bodyTex) {
         if (!keep[idx] || d[o + 3] <= 60) d[o + 3] = 0;
       }
     }
-    /* v2.3.1907 QA probe: how much of this overlay is rod and how much is the
+    /* v2.3.1914 QA probe: how much of this overlay is rod and how much is the
        grip that now rides with it. A screenshot cannot separate "the hand is
        over the shirt" from "the hand happens to be outside the shirt on this
        frame", and the whole fix is a bounded amount of extra coverage — too
@@ -7592,7 +7592,7 @@ export class EntityRenderer {
           display._headBehindGear = (pose === 'jog' && dir === 'east' && !!_fsT); /* v2.3.1553 */
           spriteBody.visible = !(pose === 'pickup' && _legsW && _chestW && !!getPickupHeadFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx));
           /* v2.3.1123: lift the angler's head above the fishing chest plate.
-             v2.3.1907 (owner: "When fishing that hand needs to be over the
+             v2.3.1914 (owner: "When fishing that hand needs to be over the
              shirt during the reel animation instead of under it"): ...and above
              the SHIRT. This gated on chest ARMOUR only, so an angler in a plain
              tee — which is everyone, from the first minute of the game — never

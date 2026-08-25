@@ -27,7 +27,7 @@
 import { BT_AUDIO } from '@/data/index.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 
-/* ═══ v2.3.1909: A LIFE SKILL LEVEL IS A LEVEL ═══
+/* ═══ v2.3.1915: A LIFE SKILL LEVEL IS A LEVEL ═══
  *
  * Owner: "Leveling up the life skills needs a bigger celebration message I
  * didn't even notice my woodcutting went up 2 levels."

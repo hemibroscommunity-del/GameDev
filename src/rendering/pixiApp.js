@@ -59,7 +59,7 @@ const WORLD_LAYER_NAMES = [
 ];
 const SCREEN_LAYER_NAMES = ['atmosphere', 'screenFX', 'hud'];
 export const LAYER_NAMES = [...WORLD_LAYER_NAMES, ...SCREEN_LAYER_NAMES];
-/* v2.3.1909: the world stack, published for QA. "Arrows draw under the
+/* v2.3.1915: the world stack, published for QA. "Arrows draw under the
    player" is a statement about ORDER, and a scenario that hard-coded the
    order would keep passing after someone reordered the layers — which is
    the only way this can silently regress. */
