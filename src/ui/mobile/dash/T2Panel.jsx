@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
    channel cards it styled became divider rows (see the channel map). */
 import { COL, panelStyle } from './common.js';
 import { spendConfirmBus } from './spendConfirmBus.js';
+import { prog3HasSkills, prog3SkillLevel, prog3XpRequired, PROG3 } from '@/data/prog3.js'; /* v2.3.1901, v2.3.1902 */
 import {
   WEAPON_CATEGORIES,
   WEAPON_CATEGORY_META,
@@ -148,7 +149,23 @@ export const T2Panel = () => {
      Defense fields, a grid tab, or the weapon maps. */
   const sk = gridTab
     ? { level: R[gridTab.stat] || 0, xp: (R._buildProg && R._buildProg[gridTab.stat]) || 0 }
-    : isDef ? (R.defenseSkill || { level: 0, xp: 0 }) : (skills[activeCat] || { level: 0, xp: 0 });
+    : isDef ? (R.defenseSkill || { level: 0, xp: 0 })
+    /* v2.3.1901 (owner: "all my combat skills were lvl 0, I thought they
+       started at 1?"): under prog3 the trained level lives in prog3.sk, and
+       the legacy `weaponSkills` map left behind by v2.3.1659 sits beside it
+       at all zeros — so these three tabs read 0 on a character the server
+       considers level 1. Verified on a fresh character in mp-tutgrant.
+       SCOPE: this fixes the LEVEL and its XP curve only. The rest of this
+       panel — weaponSpecs, weaponUnspent, the channel grids — is still the
+       legacy allocation model, which prog3 supersedes with prog3.atk/pool.
+       That is a real question for the owner, not something to quietly
+       redefine inside a display fix. */
+    : prog3HasSkills(R) ? (() => {   /* v2.3.1902: the blob, not the cap */
+        const _l = prog3SkillLevel(R, activeCat);
+        const _r = (R.prog3.sk && R.prog3.sk[activeCat]) || {};
+        return { level: _l, xp: Math.max(0, Math.floor(_r.xp || 0)), _p3: true };
+      })()
+    : (skills[activeCat] || { level: 0, xp: 0 });
   const catSpecs = gridTab ? (R[gridTab.specKey] || {}) : isDef ? (R.defenseSpec || {}) : (specs[activeCat] || {});
   const unspent = gridTab ? (R[gridTab.poolKey] || 0) : isDef ? (R.defenseUnspent || 0) : (pools[activeCat] || 0);
   let channels = gridTab
@@ -170,6 +187,10 @@ export const T2Panel = () => {
      threshold); weapon/defense tabs keep their damage-driven curve. */
   const need = gridTab
     ? Math.max(200, Math.floor(xpRequired(sk.level || 0)))
+    /* v2.3.1901: a prog3 level has to be measured on the prog3 curve — the
+       legacy one would draw a fill against a threshold this skill never
+       uses, which is the same class of lie as the level itself. */
+    : sk._p3 ? (sk.level >= PROG3.LEVEL_CAP ? 1 : Math.max(1, Math.floor(prog3XpRequired(sk.level || 1))))
     : weaponXpRequired(sk.level || 0);
   const xpPct = need > 0 ? Math.max(0, Math.min(100, ((sk.xp || 0) / need) * 100)) : 0;
 

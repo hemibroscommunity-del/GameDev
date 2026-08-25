@@ -182,6 +182,24 @@ export function prog3Live(rpg) {
   return !!(_enabled && rpg && rpg.prog3 && rpg.prog3.sk);
 }
 
+/* v2.3.1902: does the BLOB carry trained skills, regardless of whether this
+   worker advertises caps.prog3?
+
+   prog3Live answers "may I run prog3 MATH and send prog3 MESSAGES" — it
+   rightly requires the cap, because derived pools and allocation have to
+   match the worker that will echo them (rule 19).  Reading a level that is
+   already sitting in the blob is a different question, and gating it on the
+   cap is what made the stat screen report 0 for a character the server had
+   at 1: with the cap off, the display fell back to the legacy `weaponSkills`
+   map that v2.3.1659 left behind at all zeros.
+
+   A stale corpse is never a better answer than the real record.  If the blob
+   has prog3.sk, that IS the trained level; if it has no blob at all, there is
+   nothing to read and the legacy path still applies. */
+export function prog3HasSkills(rpg) {
+  return !!(rpg && rpg.prog3 && rpg.prog3.sk);
+}
+
 export function prog3SkillLevel(rpg, cat) {
   var sk = rpg && rpg.prog3 && rpg.prog3.sk && rpg.prog3.sk[cat];
   return sk ? Math.max(1, Math.min(PROG3.LEVEL_CAP, sk.level || 1)) : 1;
