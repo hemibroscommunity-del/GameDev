@@ -3254,8 +3254,35 @@ export class EffectsRenderer {
              sat below every step of the documented type scale (11 caption /
              13 body / 15 emphasized, UI-BIBLE Part 2) once you account for
              it being drawn at the world scale (0.8), i.e. ~8.8 effective px.
-             14 lands near the body step after that scaling. */
-          fontSize: 14,
+             14 lands near the body step after that scaling.
+
+             ═══ v2.3.1912: 14 -> 21, and 400 -> 700 ═══
+             Owner: "Chat font (like tap on player to chat) should be
+             chunkier and larger."  Two separate things, and one of them
+             was a silent regression.
+
+             LARGER: this text lives in the WORLD layer, so what a player
+             reads is fontSize x the world scale -- and that scale moved
+             underneath it.  v2.3.1780 zoomed the world out, WORLD_ZOOM
+             1.25 -> 1.5, which took the scale from 0.8 to 0.667 and shrank
+             every chat bubble by 17% without touching a line of chat code.
+             Measured on the real render (tools/qa/mp/mp-chatfont.mjs):
+             9.3 effective px -- BELOW the 11px caption step, i.e. the
+             smallest type anywhere in the game, and visibly smaller than
+             the nameplate directly beneath it.  21 x 0.667 = 14 effective,
+             one step above the 11.2 the v2.3.1719 bump was aiming at.
+             Any future WORLD_ZOOM change moves this again; the QA
+             scenario asserts the EFFECTIVE number for that reason.
+
+             CHUNKIER: 700, the heaviest weight index.html loads for this
+             family.  At 9.3 px a 400 face never got a full-ink pixel --
+             measured stroke density was 9.6 ink px per row, i.e. the
+             glyphs were all anti-aliasing and no stroke.  Weight is what
+             "chunky" actually means, so it is set here rather than faked
+             with a stroke outline (which at this size closes up counters
+             and reads as mud). */
+          fontSize: 21,
+          fontWeight: '700',
           fill: '#000000',
           align: 'center',
           wordWrap: true,
@@ -3264,8 +3291,14 @@ export class EffectsRenderer {
              — wrapped into a narrow tall column at 140 while the bubble stayed
              the same width, so length showed up as HEIGHT only.  220 lets a
              long line actually get wider before it wraps, and still leaves
-             room on a 390px phone. */
-          wordWrapWidth: 220,
+             room on a 390px phone.
+             v2.3.1912: 220 -> 320, tracking the 14 -> 21 size bump.  Wrap
+             width is in WORLD px and the font grew 1.5x, so leaving it at
+             220 would have put half again as many line breaks into the same
+             message — trading the width the owner asked for back for
+             height.  320 world px is 213 screen px at the 0.667 scale,
+             ~55% of a 390px phone. */
+          wordWrapWidth: 320,
         },
       });
       txt.anchor.set(0.5, 0);
@@ -3298,8 +3331,11 @@ export class EffectsRenderer {
          got a bubble clamped to 160 while its text wrapped at 140, so every
          long message produced an identically-sized box.  The cap now sits
          just above the wrap width (220 + 2*8 = 236) so the bubble hugs a
-         short message and grows with a long one up to the wrap point. */
-      const bw = Math.min(240, tw + padX * 2);
+         short message and grows with a long one up to the wrap point.
+         v2.3.1912: 240 -> 336, keeping that same relationship to the wider
+         wrap (320 + 2*8 = 336).  A cap below the wrap width silently
+         re-creates the v2.3.1719 bug, so these two move together. */
+      const bw = Math.min(336, tw + padX * 2);
       const bh = th + padY * 2;
       entry.bg.clear();
       entry.bg.roundRect(-bw / 2, -bh - tipH, bw, bh, radius);
@@ -3319,6 +3355,24 @@ export class EffectsRenderer {
     entry.container.y = sy - 32;
     entry.container.alpha = age > totalMs - 500 ? (totalMs - age) / 500 : 1;
     entry.container.visible = true;
+    /* v2.3.1912: QA probe (tools/qa/mp/mp-chatfont.mjs).  Reports the
+       EFFECTIVE size — the style size multiplied by the world transform
+       — because that is the number the player actually reads and the
+       one that silently changed when WORLD_ZOOM went 1.25 -> 1.5.  Reads
+       last frame's worldTransform rather than calling getBounds(), which
+       would be real work on the hot path for a debug field. */
+    if (typeof window !== 'undefined') {
+      const _wt = entry.container.worldTransform;
+      const _sc = _wt ? Math.abs(_wt.a) : 1;
+      window.__btChatBubble = {
+        key,
+        fontSize: entry.text.style.fontSize,
+        fontWeight: String(entry.text.style.fontWeight || '400'),
+        worldScale: _sc,
+        effectivePx: entry.text.style.fontSize * _sc,
+        wrapWidth: entry.text.style.wordWrapWidth,
+      };
+    }
     return entry;
   }
 
