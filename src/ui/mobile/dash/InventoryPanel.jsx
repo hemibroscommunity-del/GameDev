@@ -243,7 +243,10 @@ const STAT_ICON = {
   DMG:   '/icons/ui/hero/damage.webp?v=2.3.1323',
   DPS:   '/icons/ui/hero/dps.webp?v=2.3.1323',
   BLOCK: '/icons/ui/hero/defense.webp?v=2.3.1323',
-  HP:    '/icons/ui/hero/hp.webp?v=2.3.1323',
+  /* v2.3.1922: the plain heart (hp-heart.webp) — see VITAL_ICONS in
+     sheet/VitalBar.jsx for why the ECG one had to go.  Swapped here too so
+     HP is one mark across the game rather than two. */
+  HP:    '/icons/ui/hero/hp-heart.webp?v=2.3.1922',
   GEM:   '/icons/ui/cur-gem.webp?v=2.3.1224',
   STAM:  '/icons/ui/hero/stamina.webp?v=2.3.1323',
 };

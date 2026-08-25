@@ -98,7 +98,7 @@ export const PROG3_ATK_META = [
 ];
 export const PROG3_BODY_META = [
   { key: 'def',   label: 'Defense', perText: '−0.4% damage taken', pct: true, unit: '% less damage', iconSrc: '/icons/ui/hero/defense.webp?v=2.3.1694' },
-  { key: 'hp',    label: 'Max HP',  perText: '+8 max HP',          unit: ' HP', iconSrc: '/icons/ui/hero/hp.webp?v=2.3.1694' },
+  { key: 'hp',    label: 'Max HP',  perText: '+8 max HP',          unit: ' HP', iconSrc: '/icons/ui/hero/hp-heart.webp?v=2.3.1922' } /* v2.3.1922: plain heart */,
   { key: 'dodge', label: 'Dodge',   perText: '+0.4% dodge',        pct: true, unit: '%', iconSrc: '/icons/ui/hero/dodge.webp?v=2.3.1694' },
   { key: 'stam',  label: 'Stamina', perText: '+3 max stamina',     unit: ' stamina', iconSrc: '/icons/ui/hero/stamina.webp?v=2.3.1694' },
 ];
