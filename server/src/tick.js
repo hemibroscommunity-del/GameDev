@@ -16,6 +16,69 @@
  * last-leave) stay in index.js untouched. */
 
 export const tickMethods = {
+  /* v2.3.1913: RTT ping + AFK eviction, hoisted out of the tick loop
+     (body unchanged apart from the close code below) so it can be
+     called directly from a test without starting the real 22 ms
+     interval.  Called once per ~3 s from startTickLoop. */
+  _tickPingAndAfk(nowMs) {
+    const pingMsg = JSON.stringify({ type: 'ping', ts: nowMs });
+    for (const [ws, session] of this.sessions) {
+      if (nowMs - session.lastRecv > this.IDLE_TIMEOUT_MS) {
+        /* v2.3.1621: EVICTING MEANS REMOVING IT.  This used to call
+           ws.close() and nothing else, delegating all cleanup to
+           webSocketClose -- but this repo's own note at index.js:568
+           says that handler "only fires on TCP close", and the whole
+           point of the AFK sweep is the case where the peer has
+           STOPPED ANSWERING (crashed tab, slept phone, half-open
+           TCP).  Exactly then the close handshake never completes,
+           so the session stayed in the map forever and:
+             - sessions.size never reached 0, so the tick's
+               setInterval was never cleared (index.js webSocketClose)
+               -- and a DO with a live interval cannot hibernate, so
+               it bills wall-clock GB-s indefinitely with nobody
+               playing.  That is the most expensive shape available
+               on this axis: 0.125 GB x 86,400 s = 10,800 GB-s/day.
+             - this branch re-ran every ~3 s forever, re-closing the
+               same dead socket (measured: 50,940 redundant close()
+               calls against 60 sockets over 30 simulated minutes).
+             - the MAX_PLAYERS admission gate kept counting the
+               corpse, so real players got "Room full" 503s.
+             - playerState[id] was never released, and peers never
+               got player_leave.
+           The v2.3.702 reconnect eviction (join.js:136) already does
+           exactly this -- sessions.delete BEFORE close -- so the
+           convention exists; this path just never adopted it.
+           webSocketClose does the real work (playerState, duel/party/
+           trade disconnect, botfp flush, player_leave) and is
+           idempotent: if the runtime DOES later fire it on TCP close,
+           the second call finds no session and returns immediately.
+           So this is correct under either runtime behavior, which is
+           why it is worth doing without settling which one holds.
+           Unawaited, matching webSocketError (index.js) -- with the
+           rejection swallowed, since we are inside setInterval. */
+        /* v2.3.1913: close code 4006, not a bare 1000.  The client
+           auto-reconnects on any close it doesn't recognise, so an
+           abandoned tab used to rejoin ~1 s after every eviction and
+           put the ghost straight back -- the sweep and the reconnect
+           would have simply traded the same corpse forever.  4006
+           tells wsClient's onclose "you were idle": it stops, shows
+           the resume banner, and waits for a human.  An older client
+           that doesn't know the code still reconnects (status quo,
+           not worse), so this is deploy-order safe in both
+           directions. */
+        try { ws.close(4006, 'idle timeout'); } catch {}
+        try {
+          const _p = this.webSocketClose(ws);
+          if (_p && _p.catch) _p.catch(() => {});
+        } catch {}
+        this.sessions.delete(ws); // belt-and-braces: deterministic in both paths
+        continue;
+      }
+      session.lastPing = nowMs;
+      try { ws.send(pingMsg); } catch {}
+    }
+  },
+
   startTickLoop() {
     let pingCounter = 0;
     let regenCounter = 0;
@@ -158,57 +221,15 @@ export const tickMethods = {
       // updates to the same player collapse to one wire emit.
       this._flushPendingPlayerStates();
 
-      // Periodic ping for RTT estimation + idle-session eviction (every ~3s at 30Hz)
+      /* Periodic ping for RTT estimation + idle-session eviction
+         (every ~3s at 30Hz).  Body hoisted to _tickPingAndAfk
+         (v2.3.1913) so the AFK sweep can be exercised directly by
+         test/afk.test.mjs -- this suite never starts the real 22 ms
+         interval (the tick.test.mjs convention). */
       pingCounter++;
       if (pingCounter >= 90) {
         pingCounter = 0;
-        const nowMs = Date.now();
-        const pingMsg = JSON.stringify({ type: 'ping', ts: nowMs });
-        for (const [ws, session] of this.sessions) {
-          if (nowMs - session.lastRecv > this.IDLE_TIMEOUT_MS) {
-            /* v2.3.1621: EVICTING MEANS REMOVING IT.  This used to call
-               ws.close() and nothing else, delegating all cleanup to
-               webSocketClose -- but this repo's own note at index.js:568
-               says that handler "only fires on TCP close", and the whole
-               point of the AFK sweep is the case where the peer has
-               STOPPED ANSWERING (crashed tab, slept phone, half-open
-               TCP).  Exactly then the close handshake never completes,
-               so the session stayed in the map forever and:
-                 - sessions.size never reached 0, so the tick's
-                   setInterval was never cleared (index.js webSocketClose)
-                   -- and a DO with a live interval cannot hibernate, so
-                   it bills wall-clock GB-s indefinitely with nobody
-                   playing.  That is the most expensive shape available
-                   on this axis: 0.125 GB x 86,400 s = 10,800 GB-s/day.
-                 - this branch re-ran every ~3 s forever, re-closing the
-                   same dead socket (measured: 50,940 redundant close()
-                   calls against 60 sockets over 30 simulated minutes).
-                 - the MAX_PLAYERS admission gate kept counting the
-                   corpse, so real players got "Room full" 503s.
-                 - playerState[id] was never released, and peers never
-                   got player_leave.
-               The v2.3.702 reconnect eviction (join.js:136) already does
-               exactly this -- sessions.delete BEFORE close -- so the
-               convention exists; this path just never adopted it.
-               webSocketClose does the real work (playerState, duel/party/
-               trade disconnect, botfp flush, player_leave) and is
-               idempotent: if the runtime DOES later fire it on TCP close,
-               the second call finds no session and returns immediately.
-               So this is correct under either runtime behavior, which is
-               why it is worth doing without settling which one holds.
-               Unawaited, matching webSocketError (index.js) -- with the
-               rejection swallowed, since we are inside setInterval. */
-            try { ws.close(1000, 'idle timeout'); } catch {}
-            try {
-              const _p = this.webSocketClose(ws);
-              if (_p && _p.catch) _p.catch(() => {});
-            } catch {}
-            this.sessions.delete(ws); // belt-and-braces: deterministic in both paths
-            continue;
-          }
-          session.lastPing = nowMs;
-          try { ws.send(pingMsg); } catch {}
-        }
+        this._tickPingAndAfk(Date.now());
       }
 
       /* ═══ v2.3.1575: INTEREST MANAGEMENT ═══

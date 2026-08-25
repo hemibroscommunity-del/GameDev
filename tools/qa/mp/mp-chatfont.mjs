@@ -93,29 +93,37 @@ function measureInk(img, { yTo }) {
   });
 }
 
+/* Say it the way a player does — the composer, then Send — and then make
+   sure the composer is SHUT before looking at the pixels.  It is a fixed
+   overlay across the upper third, a taller bubble grows upward INTO it,
+   and measuring a bubble through the panel covering it measures the
+   panel.  In real play Send closes the composer by itself; the harness
+   re-opens it for the next message, so it has to be closed explicitly. */
+async function say(P, text) {
+  await P.page.evaluate(() => window.__broChatBubbleBus && window.__broChatBubbleBus.setOpen(true));
+  await P.page.waitForFunction(() =>
+    [...document.querySelectorAll('button')].some((b) => b.offsetParent && b.textContent.trim() === 'Send'),
+  null, { timeout: 8000 });
+  const input = P.page.locator('button:has-text("Send")').locator('xpath=preceding-sibling::input[1]').first();
+  await input.fill(text);
+  await H.clickText(P, 'Send');
+  await P.page.evaluate(() => window.__broChatBubbleBus && window.__broChatBubbleBus.setOpen(false));
+  await P.page.waitForTimeout(900);
+}
+
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Talker', wsPort, webPort,
     viewport: { width: 390, height: 844 } });
   await H.enterWorld(P);
   await P.page.waitForTimeout(2500);
 
-  /* Say it the way a player does: the composer, then Send. */
-  await P.page.evaluate(() => window.__broLegacyUI && window.__broLegacyUI.chat());
-  await P.page.waitForFunction(() =>
-    [...document.querySelectorAll('button')].some((b) => b.offsetParent && b.textContent.trim() === 'Send'),
-  null, { timeout: 8000 });
-  const input = P.page.locator('button:has-text("Send")').locator('xpath=preceding-sibling::input[1]').first();
-  await input.fill(SAY);
-  await H.clickText(P, 'Send');
-  await P.page.waitForTimeout(1200);
+  await say(P, SAY);
 
   const probe = await P.page.evaluate(() => window.__btChatBubble || null);
   rec.ok('a bubble was drawn (guard)', !!probe, probe);
   if (!probe) return;
   console.log('   probe:', JSON.stringify(probe));
 
-  /* Only the play area — the composer is DOM text at 1:1 and would swamp
-     the world measurement if it were still on screen. */
   if (process.env.BT_SHOT) await P.page.screenshot({ path: process.env.BT_SHOT });
   const img = await H.screenshotPixels(P);
   const ink = measureInk(img, { yTo: Math.round(img.height * 0.55) });
@@ -146,23 +154,31 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the style asks for a heavy weight', probe.fontWeight === '700', probe);
 
   /* ── and it still has to fit a phone ── */
-  await P.page.evaluate(() => window.__broLegacyUI && window.__broLegacyUI.chat());
-  await P.page.waitForTimeout(300);
-  await P.page.evaluate(() => window.__broLegacyUI && window.__broLegacyUI.chat());
-  await P.page.waitForFunction(() =>
-    [...document.querySelectorAll('button')].some((b) => b.offsetParent && b.textContent.trim() === 'Send'),
-  null, { timeout: 8000 }).catch(() => {});
   const long = 'the quick brown fox jumps over the lazy dog and keeps on running all the way to the frozen shore';
-  const input2 = P.page.locator('button:has-text("Send")').locator('xpath=preceding-sibling::input[1]').first();
-  await input2.fill(long);
-  await H.clickText(P, 'Send');
-  await P.page.waitForTimeout(1200);
+  await say(P, long);
 
+  if (process.env.BT_SHOT2) await P.page.screenshot({ path: process.env.BT_SHOT2 });
   const img2 = await H.screenshotPixels(P);
   const ink2 = measureInk(img2, { yTo: Math.round(img2.height * 0.55) });
   console.log('   long:', JSON.stringify(ink2));
   rec.ok('a long message still fits the phone with a margin',
     !!ink2 && ink2.inkSpan > 0 && ink2.inkSpan <= img2.width - 24, { inkSpan: ink2 && ink2.inkSpan, screen: img2.width });
-  rec.ok('...and a long message is TALLER than a short one, i.e. it wrapped',
-    !!ink2 && ink2.bubbleRows > ink.bubbleRows, { long: ink2 && ink2.bubbleRows, short: ink.bubbleRows });
+
+  /* THAT IT WRAPPED, proved by WIDTH rather than by height.  The first cut
+     compared the two bubbles' pixel heights and was a coin flip: bubble
+     height is measured off a stack of light rows, and whether a passing
+     NPC's own bubble or a lighter patch of ground joins that stack moves
+     it by several rows between runs on identical code.  It passed, then
+     failed, then passed again on the same build.
+     Width is deterministic.  Laid out on one line this message would be
+     several times the screen; the wrap box is wordWrapWidth WORLD px, so
+     if the text stopped at that box it wrapped, and if it is also far
+     wider than the short message then it used the extra width first —
+     which is the property v2.3.1719 added and this version had to keep
+     while the font grew. */
+  const wrapPx = probe.wrapWidth * probe.worldScale;
+  rec.ok('...and it wrapped at the wrap box rather than running off the world',
+    !!ink2 && ink2.inkSpan <= wrapPx + 20, { inkSpan: ink2 && ink2.inkSpan, wrapPx: Math.round(wrapPx) });
+  rec.ok('...having first got WIDER than a short message (>= 2x its span)',
+    !!ink2 && ink2.inkSpan >= ink.inkSpan * 2, { long: ink2 && ink2.inkSpan, short: ink.inkSpan });
 }
