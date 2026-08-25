@@ -815,6 +815,13 @@ export class GameRoom {
     // consuming a session slot + tick bandwidth.
     this.IDLE_TIMEOUT_MS = 120000; // 2 minutes
 
+    /* v2.3.1917: open-world PvP master switch -- see _pvpAllowed.  false
+       = the wilderness `lawless` flag and the threat system are both
+       inert and the ONLY way to fight another player is a duel or an
+       arena match, which are opt-in.  Owner: "remove the option to kill
+       other players for now." */
+    this.OPEN_PVP = false;
+
     /* v2.3.1620: leaderboard report throttle.  See reportToLeaderboard
        for the full rationale -- in short, `track` arrives every 2 s and
        the Leaderboard DO writes a row unconditionally, so this used to
@@ -2276,13 +2283,28 @@ export class GameRoom {
      Server-side because it is the only place that counts: the client's own
      gate (monsterCombat's pvpLocked test) decides what is worth SENDING,
      and a client is never the authority on whether damage lands. */
+  /* ═══ v2.3.1917: OPEN PvP IS OFF ═══
+     Owner: "Also remove the option to kill other players for now."
+
+     "For now" is load-bearing, so this is ONE flag rather than a deletion
+     of the machine.  Flip it back to true and the wilderness is lawless
+     again exactly as it was; nothing else has to be remembered.
+
+     What it gates is only the NON-CONSENSUAL routes -- the `lawless`
+     zone flag below (which is every wilderness zone, server/src/data.js)
+     and the threat system's consent grant (threat.js).  Duels and arena
+     matches are opt-in by construction and keep working: both register a
+     _pvpConsent pair, and that check sits ABOVE this flag on purpose.
+     The flag itself is set in the constructor with the other tunables,
+     which is where this class keeps them. */
   _pvpAllowed(attackerId, targetId, zone) {
     const zc = ZONES[zone];
-    /* Explicit consent (duel / answered threat) wins over everything. */
+    /* Explicit consent (duel / arena) wins over everything. */
     if (this._pvpConsent) {
       const until = this._pvpConsent.get(this._pvpPairKey(attackerId, targetId));
       if (until && until > Date.now()) return true;
     }
+    if (!this.OPEN_PVP) return false;   /* v2.3.1917 */
     if (zc && zc.lawless) {
       /* Compared by party ID, not object identity: _partyByPlayer stores the
          same object for every member today, but an id comparison stays true

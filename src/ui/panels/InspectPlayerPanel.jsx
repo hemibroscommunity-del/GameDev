@@ -11,6 +11,12 @@ import { hairColorTarget } from '../../rendering/traits/hairColorCatalog.js';
 import { hatColorTarget } from '../../rendering/traits/hatColorCatalog.js';
 import { facialHairColorTarget } from '../../rendering/traits/facialHairColorCatalog.js';
 import { shirtColorTarget } from '../../rendering/traits/shirtColorCatalog.js';
+
+/* v2.3.1917: mirrors GameRoom.OPEN_PVP (server/src/index.js).  While it is
+   false the worker refuses pvp_threat and every non-consensual hit, so the
+   Threat button below is not rendered.  One constant on each side, named
+   the same, so re-enabling is two edits and a search finds both. */
+var PVP_OPEN = false;
 /* === InspectPlayerPanel — the inspectPlayer modal === */
 /* v2.3.887: extracted verbatim from the inspectPlayer JSX subtree in
    BroTown.jsx (the player-inspect / social-actions popup: view another
@@ -807,7 +813,17 @@ export function InspectPlayerPanel(props) {
       pushDmgPopup(S, S.player.x, S.player.y - 30, 'Duel sent', '#a78bfa');
       setInspectPlayer(null);
     }
-  }, "Duel"), /*#__PURE__*/React.createElement("button", {
+  }, "Duel"), /* ═══ v2.3.1917: THREAT IS GONE FROM THE CARD ═══
+    Owner: "Also remove the option to kill other players for now."  Threat
+    was the button that started a non-consensual fight: ignore it (or let
+    the countdown run out) and the pair could damage each other anywhere.
+    The worker refuses pvp_threat outright now (GameRoom.OPEN_PVP, and
+    server/src/threat.js), so leaving the button would post a message into
+    a void and light a red skull over a head nobody can act on.  Duel is
+    the remaining way to fight someone, which is the point — it needs their
+    yes.  The handler is kept below the flag rather than deleted so turning
+    the system back on is one constant. */
+  false && /*#__PURE__*/React.createElement("button", {
     className: "bt-inspect-tp",
     style: {
       flex: 1,

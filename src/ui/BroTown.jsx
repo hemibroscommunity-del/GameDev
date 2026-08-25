@@ -8484,8 +8484,32 @@ export var BroTown = function BroTown(_ref0) {
             });
             return;
           }
+          /* ═══ v2.3.1917: YOU CAN ONLY AIM AT A DUEL OPPONENT ═══
+             Owner: "Also remove the option to kill other players for now."
+             The server is where that is actually enforced (GameRoom.OPEN_PVP
+             -> _pvpAllowed), but a lock-on that can never land a hit is worse
+             than no lock-on: the reticle says "attacking this" and every
+             swing silently does nothing.  So the tap stops aiming unless
+             there is a live duel with this player, exactly as the v2.3.1745
+             party-mate case above already does — inspect, don't target. */
+          var _isDuelOpponent = false;
+          try {
+            var _ad = S._inDuel || S._activeDuel;
+            if (_ad) {
+              var _oppId = _ad.opponent || _ad.partnerId;
+              _isDuelOpponent = String(_oppId) === String(id);
+            }
+          } catch (e) { _isDuelOpponent = false; }
           if (S.lockedTarget && S.lockedTarget.id === id) {
             S.lockedTarget = null;
+          } else if (!_isDuelOpponent) {
+            if (S.lockedTarget && S.lockedTarget.id === id) S.lockedTarget = null;
+            setInspectPlayer({
+              id: id, name: o.name, color: o.color, avatar: o.avatar, bro: o.bro,
+              x: o.x, y: o.y, rpgLv: o.rpgLv, rpgData: o.rpgData, pet: o.pet,
+              rep: o.rep, clanTag: o.clanTag, clanColor1: o.clanColor1
+            });
+            return;
           } else {
             S.lockedTarget = {
               type: 'player',

@@ -68,6 +68,13 @@ function check(name, cond, detail) {
 
 const state = makeState();
 const room = new GameRoom(state, mockEnv);
+/* v2.3.1917: the threat machine is SWITCHED OFF in production (owner:
+   "remove the option to kill other players for now") -- GameRoom.OPEN_PVP
+   is false and _handleThreat refuses pvp_threat at the door.  The machine
+   is still here to be switched back on, so it is still tested here: the
+   fixture opts in, and the OFF behaviour gets its own section at the
+   bottom.  An untested feature is not a feature you can re-enable. */
+room.OPEN_PVP = true;
 const baseSession = () => ({ id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
 async function join(ws, id) {
   room.sessions.set(ws, baseSession());
@@ -277,6 +284,41 @@ check('forged threat_penalty / gear_locked dropped by deny-list', room.eventBuff
   room._lastBountySweep = 0;
   await room._bountySweep();
   check('the orphan sweep deletes a stale bounty', !state._store.get('bounty:' + G));
+}
+
+
+/* ── v2.3.1917: and with the switch OFF, none of the above can start ── */
+{
+  room.OPEN_PVP = false;
+  const w = fakeWs('off');
+  await join(w, P('off'));
+  const tgt = fakeWs('offt');
+  await join(tgt, P('offt'));
+  room.playerState[P('off')].coins = 1000;
+  /* Clear the in-memory cooldown so a refusal here cannot be mistaken for
+     the cooldown doing the refusing. */
+  room.playerState[P('off')]._threatCdUntil = 0;
+  room.eventBuffer.length = 0;
+  await threat(w, P('offt'));
+  check('OPEN_PVP off: a threat is refused, not relayed', relayed('pvp_threat').length === 0, room.eventBuffer);
+  check('...and no countdown record is opened', !room._threats || !room._threats.has(P('off') + '>' + P('offt')));
+  /* The reason this is refused at the door and not at the consent grant:
+     Call Guards would otherwise still fine the threatener 10% and gear-lock
+     them for 30 minutes over a fight the server would then refuse to run. */
+  const coinsBefore = room.playerState[P('off')].coins;
+  await respond(tgt, P('off'), 'guards');
+  check('...so Call Guards cannot fine anyone either',
+    room.playerState[P('off')].coins === coinsBefore, { before: coinsBefore, after: room.playerState[P('off')].coins });
+  check('...and grants no gear lock', !room.playerState[P('off')]._gearLockUntil);
+  /* The whole point of the switch: consent still opens the gate, so duels
+     and arena matches are untouched. */
+  room.playerState[P('off')].z = room.playerState[P('offt')].z = 'meadow';
+  check('OPEN_PVP off: a lawless zone alone does NOT allow a hit',
+    room._pvpAllowed(P('off'), P('offt'), 'meadow') === false);
+  if (!room._pvpConsent) room._pvpConsent = new Map();
+  room._pvpConsent.set(room._pvpPairKey(P('off'), P('offt')), Date.now() + 60000);
+  check('...but a duel pair still does', room._pvpAllowed(P('off'), P('offt'), 'meadow') === true);
+  check('...in town as well as the wilderness', room._pvpAllowed(P('off'), P('offt'), 'town') === true);
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

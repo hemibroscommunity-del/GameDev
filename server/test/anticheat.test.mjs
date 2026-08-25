@@ -110,6 +110,13 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
   psB.z = psA.z = 'meadow';
   psA.dying = false; psA.dead = false;
   room.stateHistory.pb = [];               // force current-state resolution
+  /* v2.3.1917: PvP needs CONSENT now -- OPEN_PVP is off, so the `lawless`
+     meadow flag these clamps used to ride no longer opens the gate on its
+     own.  Register the pair the way a duel does; this section is about
+     the range/damage/crit clamps, not about who is allowed to swing, and
+     the gate itself is covered by its own section below. */
+  room._pvpConsent = new Map();
+  room._pvpConsent.set(room._pvpPairKey('pa', 'pb'), Date.now() + 600000);
 
   const dmgCap = room._maxDmgForAttacker(psA, false);
 

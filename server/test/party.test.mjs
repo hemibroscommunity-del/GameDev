@@ -285,6 +285,12 @@ check('forged decline (no live invite) sends nothing', msgsOfType(wss.c, 'party_
 // as its answer -- consent must still beat the party shield, or two
 // teammates could never duel each other on purpose.
 {
+  /* v2.3.1917: open PvP is OFF in production, which would make every
+     assertion in this section trivially true and stop it pinning
+     anything.  The party shield lives INSIDE the lawless branch and has
+     to keep working for the day the switch flips back, so this section
+     opts in and tests the machine; the off-state is asserted at the end. */
+  room.OPEN_PVP = true;
   for (const n of ['i', 'j', 'k'] ) { wss[n] = fakeWs(n); await join(wss[n], P(n), n.toUpperCase()); }
   const I = P('i'), J = P('j'), K = P('k');
   await cmd(wss.i, 'party_invite', { target: J });
@@ -313,6 +319,16 @@ check('forged decline (no live invite) sends nothing', msgsOfType(wss.c, 'party_
   await cmd(wss.j, 'party_leave', {});
   check('leaving the party makes the pair damageable again in the wild',
     room._pvpAllowed(I, J, 'meadow') === true, { pi: !!room._partyOf(I), pj: !!room._partyOf(J) });
+
+  /* v2.3.1917: and with the production switch back off, the wilderness
+     shields EVERYONE, party or not -- while a duel still cuts through. */
+  room.OPEN_PVP = false;
+  check('OPEN_PVP off: strangers in the wild cannot damage each other either',
+    room._pvpAllowed(I, K, 'meadow') === false && room._pvpAllowed(K, J, 'meadow') === false);
+  room._pvpConsent.set(room._pvpPairKey(I, K), Date.now() + 60000);
+  check('...and a duel between them still lands (consent is checked first)',
+    room._pvpAllowed(I, K, 'meadow') === true);
+  room._pvpConsent.delete(room._pvpPairKey(I, K));
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

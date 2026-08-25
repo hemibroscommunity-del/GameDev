@@ -312,13 +312,38 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
   };
 
+  /* v2.3.1917: the opponent's health bar (owner: "During duels make it so
+     that the hp and combat resource bars appear (as if you're battling any
+     other monster)").  Sampled DURING the fight for the same reason the
+     banners are: it hides a few seconds after the last hit, so a single
+     look after the duel ends would always find it gone. */
+  const barSeen = [];
+  const corpseSeen = [];
+  const sampleBar = async () => {
+    const b = await A.page.evaluate(() => window.__btPeerHpBar || null).catch(() => null);
+    if (b) barSeen.push(b);
+    /* The corpse is transient in exactly the way the banners are: the loser
+       respawns five seconds after dying and the respawn broadcast clears
+       _isDead on every peer.  Reading it once, after the end-of-duel
+       bookkeeping, lands after that window as often as not — which is how
+       the first cut of this check "failed" against a corpse that had been
+       and gone.  Accumulate instead. */
+    const c = await H.readState(A, (S) => {
+      const o = S.others && S.others[Object.keys(S.others)[0]];
+      return o ? { isDead: !!o._isDead, hp: o.rpgHp } : null;
+    }).catch(() => null);
+    if (c) corpseSeen.push(c);
+  };
+
   let ended = false;
   for (let round = 0; round < 10 && !ended; round++) {
     await closeIn(A, wsPort, aId, bId);   /* re-close: either side may drift */
+    await sampleBar();
     await swingAt(A, 6, seen, sampleBanners);
+    await sampleBar();
     ended = await H.readState(A, (S) => !S._inDuel)
       && await H.readState(B, (S) => !S._inDuel);
-    if (ended) { await sampleBanners(); await A.page.waitForTimeout(400); await sampleBanners(); }
+    if (ended) { await sampleBanners(); await sampleBar(); await A.page.waitForTimeout(400); await sampleBanners(); await sampleBar(); }
   }
   rec.ok('a duel can be fought to a finish', ended,
     { aHp: await H.readState(A, (S) => (S.rpg || {}).hp), bHp: await H.readState(B, (S) => (S.rpg || {}).hp) });
@@ -339,6 +364,63 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     const [ea, eb] = await Promise.all([duelState(A), duelState(B)]);
     rec.ok('the duel state is cleared on both sides', !ea.inDuel && !eb.inDuel, { ea, eb });
+
+    /* ── v2.3.1917: the opponent read like a monster while you fought ── */
+    const armed = barSeen.filter((b) => b.shown);
+    rec.ok('the opponent carried a health bar during the duel',
+      armed.length > 0, { samples: barSeen.length, shown: armed.length, last: barSeen[barSeen.length - 1] });
+    /* Not just "a bar appeared" — it has to have tracked a real, falling
+       fraction.  A bar pinned at 1.0 or at 0 would satisfy the check above
+       and tell the player nothing. */
+    if (armed.length) {
+      const fracs = armed.map((b) => b.frac);
+      rec.ok('...showing a real fraction, not pinned',
+        Math.min.apply(null, fracs) < 0.999 && Math.max.apply(null, fracs) > 0, fracs);
+      rec.ok('...counting the same HP the server has',
+        armed.every((b) => b.hp >= 0 && b.hp <= b.maxHp && b.maxHp > 1), armed[armed.length - 1]);
+    }
+
+    /* ── v2.3.1917: "On death play the death animation and just have them
+       spawn in the town." ── */
+    const bDeath = await H.readState(B, (S) => ({
+      dying: !!S._dying, deathStart: S._deathStart || 0, zone: S.currentZone,
+      hp: (S.rpg || {}).hp, maxHp: (S.rpg || {}).maxHp,
+      x: Math.round(S.player.x), y: Math.round(S.player.y),
+    }));
+    /* STRICTLY _dying, not "_dying OR they are in town".  This duel is
+       fought in town on purpose (that is the bug report the scenario
+       exists for), so any assertion that accepts `zone === 'town'` as
+       evidence is trivially true and pins nothing — the first cut of
+       these three checks did exactly that and passed without testing
+       anything.  _dying + _deathStart are what drive the crumble
+       animation, and a duel ended by forfeit or timeout would clear the
+       duel state without setting either. */
+    rec.ok('the loser actually died rather than just losing the duel',
+      bDeath.dying === true && bDeath.deathStart > 0, bDeath);
+    /* And the peer sees the corpse — the remote death sprite is driven
+       off _isDead, so this is the animation the owner asked for, observed
+       from the side that is meant to see it. */
+    await sampleBar();
+    rec.ok('...and the winner sees the death animation on them',
+      corpseSeen.some((c) => c.isDead === true),
+      { samples: corpseSeen.length, last: corpseSeen[corpseSeen.length - 1] });
+
+    /* Respawn.  "Spawn in the town" cannot be read off the zone name here
+       either — they never left it.  What IS observable is the MOVE: the
+       respawn puts you at the town's centre tile, and a duel is not fought
+       there, so the position changing to the centre is the real evidence.
+       Death timer is 5 s server-side. */
+    await B.page.waitForTimeout(7000);
+    const bAfter = await H.readState(B, (S) => ({
+      dying: !!S._dying, zone: S.currentZone,
+      hp: (S.rpg || {}).hp, maxHp: (S.rpg || {}).maxHp,
+      x: Math.round(S.player.x), y: Math.round(S.player.y),
+      cx: Math.round((S._zoneW || 0) / 2), cy: Math.round((S._zoneH || 0) / 2),
+    }));
+    rec.ok('the loser respawns in town', bAfter.zone === 'town', bAfter);
+    rec.ok('...moved to the town spawn, not left where they fell',
+      bAfter.x !== bDeath.x || bAfter.y !== bDeath.y, { died: [bDeath.x, bDeath.y], spawned: [bAfter.x, bAfter.y] });
+    rec.ok('...alive again, at full health', bAfter.dying === false && bAfter.hp === bAfter.maxHp, bAfter);
   }
 
   await A.ctx.close(); await B.ctx.close();
