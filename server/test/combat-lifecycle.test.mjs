@@ -385,7 +385,12 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   check('bulwark: helper mult floors at -100% (mult 0)', Math.abs(room._blockStaminaMult(psA) - 0) < 1e-9
     && Math.abs(room._blockStaminaMult({ defenseSpec: { bulwark: 999 } }) - 0) < 1e-9,
     room._blockStaminaMult(psA));
-  psA.blocking = false; psA.defenseSpec = {};
+  /* v2.3.1919: clear the GUARD BREAK too.  The bulwark section above drains
+     the bar to zero, which now stamps _guardBrokenUntil — and a broken guard
+     deliberately suppresses the hub top-off the next section tests (a break
+     that refills you instantly is not a break).  Same reset as the two
+     fields beside it, for the same reason: this fixture is reused. */
+  psA.blocking = false; psA.defenseSpec = {}; psA._guardBrokenUntil = 0;
 
   // v2.3.1414: WORLD VIEW joins the safe-zone regen list, and hubs top
   // off stamina/mana at the HP pace (10%/tick) — all combat resources

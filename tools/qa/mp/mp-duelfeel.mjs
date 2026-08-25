@@ -171,18 +171,36 @@ async function equipFromStash(P, wantType, slot, activeSlot) {
   }, { wantType, slot, activeSlot });
 }
 
+/* Send the handshake the REAL panels send, field for field.
+ *
+ * This matters more than it looks.  The first cut omitted `from` on the
+ * accept, and the challenger's handler reads exactly that field to fill
+ * S._inDuel.opponent — so the challenger ended up in a duel whose opponent
+ * was `undefined`.  Melee did not care (its gate gets the target from the
+ * mouse aim) but the ranged path looks the opponent up in S.others, found
+ * nothing, and dropped every arrow: 836 impact tests, 836 misses, zero
+ * player_attack on the wire.  It reads exactly like "bows do no damage in
+ * duels" and it is entirely this function's fault.
+ * Verified against src/ui/panels/DuelRequestPanel.jsx and the challenge
+ * send in InspectPlayerPanel.jsx. */
 async function reDuel(A, B, aId, bId) {
   await A.page.evaluate((t) => {
     const S = window._gameState.current;
-    S.channel.send({ type: 'broadcast', event: 'duel_request', payload: { id: S.myId, target: t, wager: 0 } });
+    S.channel.send({ type: 'broadcast', event: 'duel_request', payload: {
+      target: t, from: S.myId, fromName: S.myName, wager: 0,
+    } });
   }, bId);
   await A.page.waitForTimeout(700);
   await B.page.evaluate((t) => {
     const S = window._gameState.current;
-    S.channel.send({ type: 'broadcast', event: 'duel_accept', payload: { id: S.myId, target: t } });
+    S.channel.send({ type: 'broadcast', event: 'duel_accept', payload: {
+      target: t, from: S.myId, fromName: S.myName, wager: 0,
+    } });
   }, aId);
   await A.page.waitForTimeout(900);
-  return await H.readState(A, (S) => !!S._inDuel);
+  /* Assert the SHAPE, not just the flag: "in a duel" with an undefined
+     opponent is the failure this function just caused. */
+  return await H.readState(A, (S) => !!(S._inDuel && S._inDuel.opponent));
 }
 
 export async function run({ browser, wsPort, webPort, rec }) {
@@ -265,7 +283,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
     const ready = !!(b && !b.dying && fullHp && b.hp >= fullHp);
     await A.page.waitForTimeout(600);
-    let live = await H.readState(A, (S) => !!S._inDuel);
+    let live = await H.readState(A, (S) => !!(S._inDuel && S._inDuel.opponent && S.others && S.others[S._inDuel.opponent]));
     if (!live) live = await reDuel(A, B, aId, bId);
     const near = await closeIn(A, wsPort, aId, bId, want);
     return { live, near, ready, hp: b ? b.hp : null, fullHp };
@@ -328,6 +346,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     report[label] = await fight(A, wsPort, aId, bId, 40000, { keepDistance: reach });
     report[label].setup = setup;
     report[label].foughtAt = setup.near && setup.near.d;
+    report[label].proj = await A.page.evaluate(() => window.__btPvpProj || null).catch(() => null);
+    await A.page.evaluate(() => { window.__btPvpProj = null; });
     console.log('   ' + label + '         :', JSON.stringify(report[label]));
   }
 
@@ -345,6 +365,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
     report.swordBlocked.dps < report.sword.dps,
     { openDps: report.sword.dps, blockedDps: report.swordBlocked.dps,
       openTtk: report.sword.ttkSecs, blockedTtk: report.swordBlocked.ttkSecs });
+  /* ═══ v2.3.1919: ...but it does NOT make you unkillable ═══
+     Owner: "Just make the shield have stamina cost that would prohibit
+     holding the shield up the whole time."  Before this version the
+     blocking round never ended — 40 seconds of continuous attack at 1.5
+     damage a swing — so THIS is the assertion that encodes the fix: a
+     defender who does nothing but hold the shield still dies. */
+  rec.ok('...but holding it does not make you unkillable',
+    report.swordBlocked.died === true, report.swordBlocked);
+  /* And it is still worth raising.  A shield that changed nothing would
+     pass the assertion above just as well. */
+  rec.ok('...while still buying real time (>= 1.4x the unguarded fight)',
+    report.swordBlocked.ttkSecs != null && report.sword.ttkSecs != null
+      && report.swordBlocked.ttkSecs >= report.sword.ttkSecs * 1.4,
+    { openTtk: report.sword.ttkSecs, blockedTtk: report.swordBlocked.ttkSecs });
 
   for (const label of ['bow', 'staff']) {
     const e = report[label + 'Equip'] && report[label + 'Equip'].equipped;
