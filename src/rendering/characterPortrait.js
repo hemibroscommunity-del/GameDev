@@ -16,6 +16,8 @@
  */
 
 import { skinTarget, pantsTarget, shoesTarget, recolorBodyToCanvas } from './playerSkins.js';
+import EYE_MASK from './eyeMask.json';                              /* v2.3.1928 */
+import { getEyeColor, eyeColorTarget } from './traits/eyeColorCatalog.js';
 import { SPRITE_VERSION } from './playerSprites.js';
 import { getHatRef } from './traits/hatColorCatalog.js';
 import { materialIndex } from './traits/traitMaterials.js'; /* v2.3.1926 */
@@ -474,7 +476,14 @@ export async function drawCharacterPortrait(canvas, opts) {
     ctx.drawImage(shieldImg, -sPx / 2, -sPx / 2, sPx, sPx);
     ctx.restore();
   }
-  ctx.drawImage(recolorBodyToCanvas(bodyImg, skinTarget(skin), pantsTarget(pants), shoesTarget(shoes), null, FRAME), 0, 0);
+  /* v2.3.1928: eye colour.  `opts.eyeColor` when the caller has one (the
+     inspect card passes another player's, which is 'default' until eye colour
+     is on the wire), otherwise this device's own selection.  The portrait is
+     where this feature actually reads -- the world figure is ~77px tall, so
+     the iris is about one screen pixel there. */
+  const _eyeId = (opts && opts.eyeColor) || getEyeColor();
+  ctx.drawImage(recolorBodyToCanvas(bodyImg, skinTarget(skin), pantsTarget(pants), shoesTarget(shoes), null, FRAME,
+    eyeColorTarget(_eyeId), EYE_MASK[`stand-${DIR}`]), 0, 0);
   if (shirtImg) {
     /* v2.3.1110: restore a downscaled-on-disk shirt sheet to the 256px frame
        (these drawImage calls read a 256x256 source rect). No-op at native. */

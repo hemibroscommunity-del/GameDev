@@ -11,6 +11,7 @@ import { FACIALHAIR_COLOR_CATALOG, setFacialHairColor } from '@/rendering/traits
 import { HAIR_CATALOG, setHair } from '@/rendering/traits/hairCatalog.js';
 import { HAIR_COLOR_CATALOG, setHairColor } from '@/rendering/traits/hairColorCatalog.js';
 import { HAT_COLOR_CATALOG, hatColorsFor, setHatColor } from '@/rendering/traits/hatColorCatalog.js';
+import { EYE_COLOR_CATALOG, setEyeColor } from '@/rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
 import { HEADWEAR_CATALOG, headwearIsSolid, setHeadwear } from '@/rendering/traits/headwearCatalog.js';
 import { SHIRT_CATALOG, setShirt } from '@/rendering/traits/shirtCatalog.js';
 import { SHIRT_COLOR_CATALOG, setShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
@@ -94,6 +95,8 @@ export function NameModal(props) {
     hairColorSel = props.hairColorSel,
     hairSel = props.hairSel,
     hatColorSel = props.hatColorSel,
+    eyeColorSel = props.eyeColorSel,
+    setEyeColorSel = props.setEyeColorSel,
     headwearSel = props.headwearSel,
     joinTown = props.joinTown,
     nameInput = props.nameInput,
@@ -144,6 +147,21 @@ export function NameModal(props) {
          offer -- the crown's yellow, which is the colour it already is. */
       colors: (recolorEnabled('hat') && (!SOLID_ONLY_HAT_COLOR || headwearIsSolid(headwearSel))) ? hatColorsFor(headwearSel) : null,
       colorSel: hatColorSel, setColor: function (id) { setHatColor(id); setHatColorSel(id); } },
+    /* v2.3.1928: eye colour.  A swatch-only category like Skin Tone -- there is
+       no sprite to pick, only a colour, and the iris it paints is found from a
+       reviewed mask rather than searched for at runtime.
+       v2.3.1929: SHIPPED UNREACHABLE, and this is the shape mistake that did it.
+       It was built as a COLORS row hanging off an empty catalog -- the shape a
+       trait with a sprite uses, where you pick a hairstyle and then a colour for
+       it.  A swatch-only category has no sprite step: its picker IS the item
+       strip, which is how Skin Tone, Pants and Shoes are built.  With
+       `catalog: null` the strip below had nothing to map, so the tab could not
+       have rendered even if one existed -- and none did, because the entry was
+       never added to _TABS either.  Two halves of one wrong shape, and because
+       the second half hid the first, nothing threw and it looked shipped.
+       Now the same shape as skin: catalog + sel + set, no colors row. */
+    eyes: { label: 'Eyes', kind: 'swatch', spriteCat: null, catalog: EYE_COLOR_CATALOG, sel: eyeColorSel,
+      set: function (id) { setEyeColor(id); setEyeColorSel(id); }, colors: null },
     /* v2.3.1308 (round-7): 'Skin' → 'Skin Tone' — it recolors the whole
        body, and the plain label read as head-only inside the Head group. */
     skin: { label: 'Skin Tone', kind: 'swatch', spriteCat: null, catalog: SKIN_CATALOG, sel: skinSel,
@@ -174,7 +192,7 @@ export function NameModal(props) {
   /* v2.3.1494: drop disabled recolor-only types from the defs -- activeCat is
      remembered across sessions, so a stale 'skin' would otherwise select a tab
      that is no longer offered. */
-  ['skin', 'pants', 'shoes'].forEach(function (t) {
+  ['skin', 'pants', 'shoes', 'eyes'].forEach(function (t) {
     if (!recolorEnabled(t)) delete _typeDefs[t];
   });
   /* v2.3.1525: the tabs are FLAT (owner). Head was a container for four
@@ -193,10 +211,27 @@ export function NameModal(props) {
     var e = catalog.find(function (o) { return o.id !== 'none'; });
     return e ? '/sprites/traits/' + cat + '/' + e.id + '/thumb.png?v=' + BUILD_INFO.version : null;
   };
+  /* v2.3.1929: the Eyes tab's icon.  Every other tab stands for itself with
+     either the owner's painted art in /ui/welcome/cc/ or a real thumbnail from
+     its own catalog; eye colour has neither, because there is no eye sprite --
+     it is a mask over the face already painted into the body sheet.  An inline
+     SVG rather than a twelfth webp: it is a few hundred bytes, it cannot 404,
+     and game.css already ships data-URI icons (the lock mask).  Built through
+     encodeURIComponent so the markup below stays readable as markup instead of
+     as a wall of percent escapes. */
+  var EYE_TAB_ICON = 'data:image/svg+xml,' + encodeURIComponent(
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'>"
+    + "<path d='M2 16c4-6.5 8.4-9.8 14-9.8S26 9.5 30 16c-4 6.5-8.4 9.8-14 9.8S6 22.5 2 16z'"
+    + " fill='#EEF2EB' stroke='#0d1216' stroke-width='2.2' stroke-linejoin='round'/>"
+    + "<circle cx='16' cy='16' r='5.6' fill='#4a7fd4'/>"
+    + "<circle cx='16' cy='16' r='2.3' fill='#101619'/></svg>");
   var _TABS = [
     { t: 'hair', label: 'Hair', img: _firstThumb('hair', HAIR_CATALOG), pixel: true },
     { t: 'hat', label: 'Hats', img: _firstThumb('headwear', HEADWEAR_CATALOG), pixel: true },
     { t: 'skin', label: 'Skin', img: '/ui/welcome/cc/cc-head.webp?v=' + BUILD_INFO.version },
+    /* v2.3.1929: Eyes sits with the face traits, and lands the row at a clean
+       four-and-four in the 4-column grid rather than the old 4+3. */
+    { t: 'eyes', label: 'Eyes', img: EYE_TAB_ICON },
     { t: 'beard', label: 'Beard', img: _firstThumb('facialhair', FACIALHAIR_CATALOG), pixel: true },
     { t: 'shirt', label: 'Shirt', img: '/ui/welcome/cc/cc-shirt.webp?v=' + BUILD_INFO.version },
     { t: 'pants', label: 'Pants', img: '/ui/welcome/cc/cc-pants.webp?v=' + BUILD_INFO.version },

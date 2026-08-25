@@ -23,6 +23,8 @@ import { getFrame, SPRITE_VERSION, stripDetachedComponents } from './playerSprit
 import { upscaleToFrameHeight, bakeDisplayCanvas, DISPLAY_DS } from './spriteScale.js'; /* v2.3.1108: normalize downscaled sheets to the 256px frame before recolour; v2.3.1120: downscale the final DISPLAY texture for VRAM; v2.3.1237: bakeDisplayCanvas smooths nearest-upscaled sheets at DISPLAY_DS=1 (jog-shimmer fix) */
 import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless WebP, fall back to PNG */
 import { recolorEnabled } from './traits/recolorOptions.js';
+import EYE_MASK from './eyeMask.json';                      /* v2.3.1928 */
+import { getEyeColor, eyeColorTarget } from './traits/eyeColorCatalog.js';
 
 /* ── Catalogs ── `target` = the LIT color for that choice; null = native. */
 /* v2.3.1513: seven more tones at the light end (owner: "more white tan and
@@ -167,6 +169,33 @@ function _retint(d, i, target, ref) {
    DEFAULT-colored source (always tan skin / green pants), so they're stable
    regardless of the chosen skin or shirt color. */
 function _isSkin(r, g, b, a) { return a > 40 && r > g && g >= b && (r - b) > 30 && r > 90 && (r - g) > 25; }
+
+/* v2.3.1928: paint the iris.  The rectangles come from EYE_MASK, which
+   tools/eyes/extract-eye-mask.mjs derived offline and a human reviewed — the
+   runtime never searches for an eye, because "a short white run with a dark run
+   beside it" also describes a highlight on a steel pauldron.  Coordinates are
+   256-space and frame-local, which is why this runs AFTER upscaleToFrameHeight
+   and not before.  The iris is REPLACED, not ratio-retinted: it is near-black,
+   so `target * luminance / ref` would put it straight back to near-black. */
+function _paintEyes(d, w, h, rects, frameW) {
+  if (!rects) return;
+  for (let f = 0; f * frameW < w; f++) {
+    const per = rects[f];
+    if (!per) continue;
+    for (const [rx, ry, rw, rh] of per) {
+      for (let y = ry; y < ry + rh && y < h; y++) {
+        for (let x = rx; x < rx + rw; x++) {
+          const px = f * frameW + x;
+          if (px >= w) break;
+          const i = (y * w + px) * 4;
+          if (d[i + 3] < 40) continue;
+          d[i] = _eyeT[0]; d[i + 1] = _eyeT[1]; d[i + 2] = _eyeT[2];
+        }
+      }
+    }
+  }
+}
+let _eyeT = null;
 function _isPants(r, g, b, a) { return a > 180 && g >= r - 10 && g > b + 8 && r < 150; }
 
 /* Fraction of the crown->waist span at which the shirt collar sits.  Anchored
@@ -489,7 +518,7 @@ function _torsoBands(d, w, h, frameW, frames) {
   return shirtPx;
 }
 
-export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH) {
+export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH, eyeT, eyeRects) {
   /* v2.3.1108: when the caller knows this sheet's logical frame height, restore
      a downscaled-on-disk sheet to it (nearest-neighbour, exact palette) so the
      skin/pants/shoes pixel thresholds + frame math are unchanged. The attack
@@ -531,6 +560,10 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH)
       }
     }
   }
+  /* v2.3.1928: the iris last, so it overwrites rather than being classified.
+     Its pixels are near-black and would otherwise fall through every branch
+     above untouched, which is exactly why the eye needed its own mask. */
+  if (eyeT && eyeRects) { _eyeT = eyeT; _paintEyes(d, cv.width, cv.height, eyeRects, FRAME_W); }
   ctx.putImageData(imgData, 0, 0);
   return cv;
 }
@@ -650,14 +683,15 @@ function loadImg(url) { return loadWebpOrPng(url); }
    'loading' persists across the backoff so the base-sheet fallback
    keeps the player visible; &r=N bypasses a poisoned cache entry. */
 const _BODY_RETRY_MS = [2000, 6000];
-function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, attempt = 0) {
+function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT, attempt = 0) {
   _bodySheets[sheetKey] = 'loading';
   /* Returns an always-resolving promise so a full preload can await it. */
   const bust = attempt > 0 ? `&r=${attempt}` : '';
   return loadImg(`/sprites/player/${pose}-${dir}.png?v=${SPRITE_VERSION}${bust}`).then(img => {
     /* body poses are 256px frames; restore if stored smaller on disk.  Recolour
        runs at full 256 (exact skin/pants/shoes pixel thresholds). */
-    const full = recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, FRAME_H);
+    const full = recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, FRAME_H,
+      eyeT, EYE_MASK[`${pose}-${dir}`]);
     /* v2.3.1120: count frames at full 256-space width, then downscale the DISPLAY
        texture to 256/DISPLAY_DS px (the figure shows ~100px on a phone).  Mipmaps
        off -- renders ~1:1 post-downscale, so the mip chain is wasted VRAM. */
@@ -691,7 +725,7 @@ function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, atte
     _bodySheets[sheetKey] = out;
   }).catch(() => {
     if (attempt < _BODY_RETRY_MS.length) {
-      setTimeout(() => buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, attempt + 1), _BODY_RETRY_MS[attempt]);
+      setTimeout(() => buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT, attempt + 1), _BODY_RETRY_MS[attempt]);
       return; /* stays 'loading' during the backoff */
     }
     _bodySheets[sheetKey] = []; /* missing -> caller falls back */
@@ -703,13 +737,33 @@ function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, atte
  *  back to the default sheets when nothing is recolored or while a sheet is
  *  still baking, so the player is never invisible.  Each (pose,dir) sheet is
  *  recolored lazily on first use.  Mirroring is handled by the caller. */
+/* v2.3.1928: ONE place that spells the sheet key.  It grew an eye-colour
+   segment and there are five prewarm sites besides getBodyFrame; a key built by
+   hand in six places is a bug waiting for the sixth to be missed, and a
+   prewarmed sheet under a key nobody asks for is silently wasted work. */
+export function bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eyeKey, pose, dir) {
+  return (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default')
+    + '/' + (shirtT ? (shirtKey || 'shirt') : 'none') + '/' + (eyeKey || 'none')
+    + '|' + pose + '/' + dir;
+}
+/** The eye target for a sheet, or null when that sheet has no eyes in it. */
+function eyeFor(pose, dir) {
+  if (!EYE_MASK[`${pose}-${dir}`]) return null;
+  const id = getEyeColor();
+  const t = eyeColorTarget(id);
+  return t ? { id, t } : null;
+}
+
 export function getBodyFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, shirtT, shirtKey) {
   const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
-  if (!skinT && !pantsT && !shoesT && !shirtT) return getFrame(pose, dir, frameIdx);
-  const sheetKey = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default')
-    + '/' + (shirtT ? (shirtKey || 'shirt') : 'none') + '|' + pose + '/' + dir;
+  /* v2.3.1928: eye colour reads from its own store rather than the argument
+     list, because every caller of getBodyFrame would otherwise have to learn
+     about it; there are a dozen and they all draw the same character. */
+  const eye = eyeFor(pose, dir);
+  if (!skinT && !pantsT && !shoesT && !shirtT && !eye) return getFrame(pose, dir, frameIdx);
+  const sheetKey = bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eye && eye.id, pose, dir);
   const entry = _bodySheets[sheetKey];
-  if (entry === undefined) { buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT); return getFrame(pose, dir, frameIdx); }
+  if (entry === undefined) { buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eye && eye.t); return getFrame(pose, dir, frameIdx); }
   if (entry === 'loading' || !entry.length) return getFrame(pose, dir, frameIdx);
   return entry[((frameIdx % entry.length) + entry.length) % entry.length];
 }
@@ -850,11 +904,12 @@ export function getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx
    before the player presses Play and spawns. */
 export function prewarmBody(skinId, pantsId, shoesId, shirtT, shirtKey) {
   const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
-  if (!skinT && !pantsT && !shoesT && !shirtT) return; /* default combo: nothing to bake */
-  const shKey = shirtT ? (shirtKey || 'shirt') : 'none';
+  const anyEye = !!eyeColorTarget(getEyeColor());
+  if (!skinT && !pantsT && !shoesT && !shirtT && !anyEye) return; /* default combo: nothing to bake */
   for (const dir of SOURCE_DIRS) {
-    const key = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '/' + shKey + '|stand/' + dir;
-    if (_bodySheets[key] === undefined) buildBodySheet(key, 'stand', dir, skinT, pantsT, shoesT, shirtT);
+    const eye = eyeFor('stand', dir);
+    const key = bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eye && eye.id, 'stand', dir);
+    if (_bodySheets[key] === undefined) buildBodySheet(key, 'stand', dir, skinT, pantsT, shoesT, shirtT, eye && eye.t);
   }
 }
 /** Preload the recolored body for the current combo across all base dirs for
@@ -870,11 +925,13 @@ export function preloadBodyAll() {
      below (_torsoBands etc.) is dormant: no caller passes shirtT anymore. */
   const skinId = _skinStore.get(), pantsId = _pantsStore.get(), shoesId = _shoesStore.get();
   const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
-  if (!skinT && !pantsT && !shoesT) return Promise.resolve(); /* default combo */
+  const anyEye = !!eyeColorTarget(getEyeColor());
+  if (!skinT && !pantsT && !shoesT && !anyEye) return Promise.resolve(); /* default combo */
   const tasks = [];
   const prewarm = (pose, dir) => {
-    const key = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '/none|' + pose + '/' + dir;
-    if (_bodySheets[key] === undefined) tasks.push(buildBodySheet(key, pose, dir, skinT, pantsT, shoesT, null));
+    const eye = eyeFor(pose, dir);
+    const key = bodySheetKey(skinId, pantsId, shoesId, null, null, eye && eye.id, pose, dir);
+    if (_bodySheets[key] === undefined) tasks.push(buildBodySheet(key, pose, dir, skinT, pantsT, shoesT, null, eye && eye.t));
   };
   /* v2.3.1477: + 'hit'.  The recoil sheets used to bake on the FIRST HIT
      TAKEN -- a 1536x256 recolour on the spot, right as a monster connects.
@@ -938,12 +995,12 @@ export function preloadBodyVariant(shirtT, shirtKey) {
   const skinId = _skinStore.get(), pantsId = _pantsStore.get(), shoesId = _shoesStore.get();
   const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
   if (!skinT && !pantsT && !shoesT && !shirtT) return Promise.resolve();
-  const shKey = shirtT ? (shirtKey || 'shirt') : 'none';
   const tasks = [];
   for (const pose of ['stand', 'jog', 'hit']) {   /* v2.3.1477: hit ships gear now */
     for (const dir of SOURCE_DIRS) {
-      const key = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '/' + shKey + '|' + pose + '/' + dir;
-      if (_bodySheets[key] === undefined) tasks.push(buildBodySheet(key, pose, dir, skinT, pantsT, shoesT, shirtT));
+      const eye = eyeFor(pose, dir);
+      const key = bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eye && eye.id, pose, dir);
+      if (_bodySheets[key] === undefined) tasks.push(buildBodySheet(key, pose, dir, skinT, pantsT, shoesT, shirtT, eye && eye.t));
     }
   }
   return Promise.all(tasks).catch(() => {});

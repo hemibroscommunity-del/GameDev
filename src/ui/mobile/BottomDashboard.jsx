@@ -16,6 +16,7 @@ import { getFacialHairColor, facialHairColorTarget, onFacialHairColorChange } fr
 import { getHeadwear, onHeadwearChange } from '../../rendering/traits/headwearCatalog.js';
 import { getShirt, onShirtChange } from '../../rendering/traits/shirtCatalog.js';
 import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rendering/traits/shirtColorCatalog.js';
+import { getEyeColor, onEyeColorChange } from '../../rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
 import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { barHeight, expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.1325 slot-derived bar */
@@ -705,6 +706,7 @@ export const BottomDashboard = () => {
         hair: getHair(), hairColor: hairColorTarget(getHairColor()),
         facialHair: getFacialHair(), facialHairColor: facialHairColorTarget(getFacialHairColor()),
         headwear: getHeadwear(), hatColor: hatColorTarget(getHatColor(), getHeadwear()), /* v2.3.1927 */
+        eyeColor: getEyeColor(),
         shirt: getShirt(), shirtColor: shirtColorTarget(getShirtColor()),
       }, true).then(url => { if (alive && url && mine === seq) setProfilePortrait(url); });
     };
@@ -712,7 +714,7 @@ export const BottomDashboard = () => {
     const unsubs = [onSkinChange(regen), onHairChange(regen), onHairColorChange(regen),
       onHeadwearChange(regen), onHatColorChange(regen),
       onFacialHairChange(regen), onFacialHairColorChange(regen),
-      onShirtChange(regen), onShirtColorChange(regen),
+      onShirtChange(regen), onShirtColorChange(regen), onEyeColorChange(regen), /* v2.3.1928 */
       onPantsChange(regen), onShoesChange(regen)];
     return () => { alive = false; unsubs.forEach(u => u && u()); };
   }, []);

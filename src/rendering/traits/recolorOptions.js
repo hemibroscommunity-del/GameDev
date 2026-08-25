@@ -36,6 +36,11 @@ export const RECOLOR_ENABLED = {
   pants: true,
   shoes: true,
   shirt: true,
+  /* v2.3.1929: eye colour.  Listed so it has the same one-word off switch
+     as every other colour category rather than being the one that cannot be
+     turned off.  It paints a masked iris on the REAL head, so if the baked-head
+     hats above ever come back it is in the same exposure class as `skin`. */
+  eyes: true,
 };
 
 /* v2.3.1499: whether hat color is restricted to hats flagged `solid`.
