@@ -175,6 +175,8 @@ import { perfTracker } from '@/debug/perfTracker.js';
 import { t1StatsPayload } from '@/game/t1Sync.js'; /* v2.3.1633: shared T1 report gate */
 import * as DATA from '@/data/index.js';
 import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId } from '@/networking/index.js';
+/* v2.3.1923: the device's character roster — see src/networking/charRoster.js */
+import { rememberChar, ensureChar, activateChar, inRoster } from '@/networking/charRoster.js';
 import { HEADWEAR_CATALOG, getHeadwear, setHeadwear } from '@/rendering/traits/headwearCatalog.js';
 import { FACIALHAIR_CATALOG, getFacialHair, setFacialHair } from '@/rendering/traits/facialHairCatalog.js';
 import { HAIR_CATALOG, getHair, setHair } from '@/rendering/traits/hairCatalog.js';
@@ -1658,13 +1660,11 @@ export var BroTown = function BroTown(_ref0) {
     _useState190 = _slicedToArray(_useState189, 2),
     bootPhase = _useState190[0],
     setBootPhase = _useState190[1];
-  /* v2.3.1861: the name of the character this device's key already holds, or
-     null.  Filled by the boot check only on the forced-login road (a logout),
-     because that is the one way to reach the door still holding a character —
-     every other road either has no key or walks straight into the world. */
-  var _useStateExisting = useState(null),
-    existingName = _useStateExisting[0],
-    setExistingName = _useStateExisting[1];
+  /* v2.3.1861 held the name of the character this device's key already had,
+     so the door could warn before overwriting it.  v2.3.1923 retired both the
+     overwrite and the warning — a device keeps up to ten characters now — so
+     the state is gone and the boot check's lookup feeds the ROSTER instead,
+     which is a place the answer is still worth something. */
   var showWelcome = bootPhase === 'create';
   var setShowWelcome = function setShowWelcome(v) { setBootPhase(v ? 'create' : null); };
   /* Bro Town intro video — overlays the game for ~4 s after character
@@ -5905,6 +5905,16 @@ export var BroTown = function BroTown(_ref0) {
               sessionStorage.setItem('bt_resume', _strHb);
               localStorage.setItem('bt_resume', _strHb);
             }
+            /* v2.3.1923: keep the roster row's LEVEL honest.  The PLAY stamp
+               catches the name once; without this a two-hour session that
+               took a character from 3 to 12 would still be offering "LV 3" in
+               the picker until the next join.  Free — this block is already
+               throttled to one write per 30s, and the same guest guard
+               applies for the same reason. */
+            if (!/[?&]guest=1\b/.test(window.location.search)) {
+              var _hbPf = getBtPassphrase();
+              if (_hbPf && S.myName) rememberChar(_hbPf, { name: S.myName, level: (S.rpg && S.rpg.level) || 0 });
+            }
           } catch (e) {}
         }
         if (document.visibilityState === 'visible') {
@@ -7594,7 +7604,14 @@ export var BroTown = function BroTown(_ref0) {
             checkAccountLogin(_p).then(function (res) {
               if (!alive) return;
               if (res && res.ok && res.exists && res.preview && res.preview.hasChar) {
-                setExistingName(res.preview.name || 'your character');
+                /* v2.3.1923: the roster self-heals here.  This is the answer
+                   to "does the key on this device have a character", asked on
+                   every load — so any key the migration could not vouch for
+                   locally (charRoster.js) gets its row, with its name, the
+                   first time the player passes through the door.
+                   ensureChar, NOT rememberChar: standing at the door is not
+                   playing, and the list is sorted by when you last played. */
+                try { ensureChar(_p, { name: res.preview.name || '', level: res.preview.level || 0 }); } catch (e2) {}
               }
             }).catch(function () {});
           }
@@ -7612,6 +7629,11 @@ export var BroTown = function BroTown(_ref0) {
              joinTown's `nameInput.trim() || 'Anon'` cannot stamp 'Anon'
              over a real character in the window before that arrives. */
           if (res.preview.name) setNameInput(res.preview.name);
+          /* v2.3.1923: same self-heal as the forced-login road above, on the
+             road most players actually take — straight in.  Also ensureChar:
+             the play stamp is joinTown's job a moment from now, and doing it
+             twice from two places is how the two start disagreeing. */
+          try { ensureChar(phrase, { name: res.preview.name || '', level: res.preview.level || 0 }); } catch (e2) {}
           setBootPhase(null);
           try { window.__btBootRoute = 'resume'; } catch (e) {}
         } else {
@@ -7738,6 +7760,26 @@ export var BroTown = function BroTown(_ref0) {
     } catch (e) {}
     try {
       localStorage.setItem('bt_rpg', JSON.stringify(S.rpg));
+    } catch (e) {}
+    /* ═══ v2.3.1923: THE ROSTER LEARNS WHO THIS KEY IS ═══
+       Stamped here, on PLAY, because this is the moment both halves are known
+       at once — the name is settled and the rpg blob is loaded — and it is
+       also what puts the row at the top of the picker's list ("most recent at
+       the top", owner).  A roster filled this way needs no network to draw
+       itself; the lookup pass in CharacterPicker exists only for rows this
+       never ran for.
+
+       GUESTS ARE EXCLUDED, and this is the one place it matters.  ?guest=1
+       keeps the device's real passphrase in localStorage and only swaps the
+       ID (the myId initialiser at the top of this file), so a guest session
+       is a DIFFERENT character playing under the same key on this device.
+       Stamping here would write the throwaway's name and level onto the real
+       character's row — the row the player later taps to continue. */
+    try {
+      if (!/[?&]guest=1\b/.test(window.location.search)) {
+        var _rosterPf = getBtPassphrase();
+        if (_rosterPf) rememberChar(_rosterPf, { name: S.myName, level: (S.rpg && S.rpg.level) || 0 });
+      }
     } catch (e) {}
     /* Optional server registration */
     var pid = getBtPlayerId();
@@ -7901,12 +7943,35 @@ export var BroTown = function BroTown(_ref0) {
   if (bootPhase === 'checking' || bootPhase === 'login') {
     return /*#__PURE__*/React.createElement(LoginScreen, {
       checking: bootPhase === 'checking',
-      /* v2.3.1861: null on a device with nothing to lose — the door's
-         Create button then behaves exactly as it always has. */
-      existingName: existingName,
-      /* "Continue as <name>" — the same road a returning player takes, which
-         is bootPhase null (the auto-join effect above owns it from there). */
-      onContinue: function onContinue() { setBootPhase(null); },
+      /* ═══ v2.3.1923: PLAYING A ROW FROM THE PICKER ═══
+         Two roads, and which one is taken is decided by activateChar rather
+         than by this handler: it returns true only when the ACTIVE key
+         actually changed.
+
+         When it did, this MUST reload and cannot simply drop the pre-game
+         screen.  S.myId was derived from the old phrase when this component's
+         state object was built (the myId initialiser at the top of this
+         file), and the module-level identity helpers have already read it —
+         so continuing in place would join the world as the character the
+         player just navigated away from.  Same reasoning v2.3.1861 records
+         for the create road, and the same fix.
+
+         When it did not — the tapped row IS the character this device is
+         already on — there is nothing to reload for, and bootPhase null is
+         the ordinary returning-player road (the auto-join effect owns it). */
+      onPlay: function onPlay(phrase) {
+        var switched = false;
+        try { switched = activateChar(phrase); } catch (e) { switched = false; }
+        if (!switched) { setBootPhase(null); return; }
+        try {
+          /* Plain '/' deliberately: this door is most often reached BY
+             LOGGING OUT, which navigates to '/?noresume=1&login=1'
+             (v2.3.1840).  Reloading with those still on would land the
+             player back on the door they just chose a character from. */
+          var _gp = /[?&]guest=1\b/.test(window.location.search) ? '/?guest=1' : '/';
+          window.location.href = _gp;
+        } catch (e) { setBootPhase(null); }
+      },
       onCreateNew: function onCreateNew() {
         /* ═══ v2.3.1861: REPLACING A CHARACTER ═══
            Owner: "...otherwise it'll be overwritten with the new character."
@@ -7924,11 +7989,58 @@ export var BroTown = function BroTown(_ref0) {
            already stashes it (v2.3.1143), so a player who replaces a
            character they meant to keep is one devtools read from recovering
            it rather than nothing at all. */
-        if (existingName) {
+        /* ═══ v2.3.1923: THE CONDITION IS THE ROSTER, NOT THE WARNING ═══
+           This used to fire only when the door had managed to look up a name
+           for the current key (`existingName`), because the mint was tied to
+           the "you already have a character" dialog that asked permission to
+           replace it.  Nothing is replaced any more — the outgoing key stays
+           on the device as a row in the picker — so the mint is no longer a
+           destructive act needing consent, it is simply what CREATE means:
+           a new character needs a key that is not already somebody.
+
+           Asking the roster instead of the lookup also closes the hole the
+           old condition had.  `existingName` is set by a NETWORK call, so a
+           device whose check was slow or offline fell through to the else
+           branch and built the new character on a key that already had one —
+           and the worker, which locks char:<id> on first join, handed the OLD
+           character straight back (charLock, v2.3.1861).  inRoster is local
+           and always knows. */
+        /* ═══ v2.3.1923b: ...AND THE KEY THAT MOVED UNDER THE SESSION ═══
+           There is a second way to arrive here needing a reload, and it is
+           three taps away: Continue -> delete the character this device is on
+           -> Back -> Create.  The delete removed `bt_passphrase`, but S.myId
+           was derived from it when this page loaded and is still the DELETED
+           character's id.  A create road that only asks localStorage sees
+           "no key, nothing taken, go ahead", runs the creator on that stale
+           id, and the worker hands the deleted character back — the v2.3.1861
+           charLock bug, through a door that did not exist when it was fixed.
+           Measured in mp-roster before this line existed: same bp_ id before
+           the delete and inside the creator after it.
+
+           So the question is not only "is this key taken" but "is this key
+           still the one this session IS".  Either answer means reload; only
+           the mint differs, because a key that is nobody yet is a perfectly
+           good key to build a character on. */
+        var _curPf = null;
+        try { _curPf = localStorage.getItem('bt_passphrase'); } catch (e) { _curPf = null; }
+        var _taken = false;
+        try { _taken = inRoster(_curPf); } catch (e) { _taken = false; }
+        var _stale = !_curPf || !stateRef.current
+          || passphraseToId(_curPf) !== stateRef.current.myId;
+        if (_taken || _stale) {
           try {
-            var _prev = localStorage.getItem('bt_passphrase');
-            if (_prev) localStorage.setItem('bt_passphrase_prev', _prev);
-            localStorage.setItem('bt_passphrase', generatePassphrase());
+            var _prev = _curPf;
+            /* Mint only when the current key is somebody, or when there is
+               no key at all.  A key that exists and belongs to nobody is
+               already what a new character needs — replacing it would just
+               strand it. */
+            if (_taken || !_curPf) {
+              /* Kept for one more release: the stash predates the roster and
+                 something else may still read it.  It is no longer the only
+                 copy of the outgoing key — the roster row is. */
+              if (_prev) localStorage.setItem('bt_passphrase_prev', _prev);
+              localStorage.setItem('bt_passphrase', generatePassphrase());
+            }
             /* The stale per-character caches belong to the character being
                left behind; carrying them into a new one is how a "new"
                character shows up wearing old progress. */

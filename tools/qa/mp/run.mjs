@@ -21,6 +21,7 @@ import * as H from './harness.mjs';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  roster: () => import('./mp-roster.mjs'), /* v2.3.1923: the device's character list — order, delete, the ten cap */
   drillback: () => import('./mp-drillback.mjs'), /* v2.3.1922: the drill back-chip is not under the gold, and is paid for once */
   bootstall: () => import('./mp-bootstall.mjs'), /* v2.3.1921: a worker that never answers must not strand the login door */
   duelfeel: () => import('./mp-duelfeel.mjs'), /* v2.3.1918: play-test — TTK, blocking, weapon switching */

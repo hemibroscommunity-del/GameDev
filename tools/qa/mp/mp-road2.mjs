@@ -4,6 +4,12 @@
  * create a character."  So: log out, tap Create Character, tap "Continue as
  * <name>" on the warning — and the screen goes black.
  *
+ * v2.3.1923: that warning is retired (the device keeps up to ten characters
+ * now, so creating one destroys nothing to warn about).  The road walks
+ * through its replacement — Continue -> your row in the character picker —
+ * because the thing under test was never the dialog: it is the handoff from a
+ * pre-game screen to the world, and whether the world arrives.
+ *
  * Everything else is stripped out so this runs in about a minute and can be
  * re-run after each hypothesis.  The one thing it does that no existing test
  * did is watch the PRE-GAME PHASE over time.  A single reading after the tap
@@ -108,15 +114,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(3500);
   console.log('  AT DOOR', JSON.stringify(await snap()));
 
-  const create = await P.page.$('[data-tut="login-create"]');
-  rec.ok('the door offers Create Character (guard)', !!create, {});
-  if (!create) return;
-  await create.click();
+  /* v2.3.1923: through the picker now.  The owner's original road was
+     Create Character -> "Continue as <name>" on the overwrite warning; the
+     roster retired that warning (a device keeps ten characters, so making one
+     destroys nothing).  Continuing an existing character is a row in the
+     picker, and it is the same handoff — pre-game screen to world — that went
+     black. */
+  const open = await P.page.$('[data-tut="login-key"]');
+  rec.ok('the door offers Continue (guard)', !!open, {});
+  if (!open) return;
+  await open.click();
   await P.page.waitForTimeout(700);
-  console.log('  WARN OPEN', JSON.stringify(await snap()));
+  console.log('  PICKER OPEN', JSON.stringify(await snap()));
 
-  const cont = await P.page.$('[data-tut="login-existing-continue"]');
-  rec.ok('the pop-up offers Continue (guard)', !!cont, {});
+  const cont = await P.page.$('[data-tut="char-row"][data-char-name="Returner"]');
+  rec.ok('the picker lists this device\'s character (guard)', !!cont, {});
   if (!cont) return;
   await cont.click();
 

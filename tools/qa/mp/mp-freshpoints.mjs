@@ -160,94 +160,97 @@ export async function run({ browser, wsPort, webPort, rec }) {
      id, same name, same progress.  That is how a "brand new character" turns
      up with combat points already on it.
 
-     Now it asks first.  Both answers are tested, because a dialog that
-     appears is not the fix — a dialog whose buttons do what they say is. */
+     ═══ REWRITTEN AT v2.3.1923 ═══
+     v2.3.1861 answered that with a dialog — "you already have a character,
+     continue or overwrite?" — and this scenario tested both of its buttons.
+     That dialog is GONE, and by the owner's instruction: a device now keeps
+     up to ten characters, so making one destroys nothing and there is
+     nothing to ask permission for.  Create goes straight to the creator on a
+     fresh key, and the character you were on is still there — as a row in the
+     picker rather than as a stashed spare.
+
+     The two assertions that mattered survive the rewrite unchanged in
+     substance, because the bug they guard has not gone anywhere: the creator
+     must run on a NEW identity (or the worker hands the old character back),
+     and the old key must still exist afterwards (or logging out and making a
+     second character silently destroys the first). */
   const doorCreate = await P.page.$('[data-tut="login-create"]');
   rec.ok('the door has a Create Character button (guard)', !!doorCreate, {});
   if (doorCreate) {
-    await doorCreate.click();
-    await P.page.waitForTimeout(900);
-    const warn = await P.page.evaluate(() => {
-      const el = document.querySelector('[data-tut="login-existing-warn"]');
-      if (!el) return { shown: false };
-      return { shown: true, text: (el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 160),
-        namesIt: /Newbie/.test(el.textContent || '') };
-    });
-    rec.ok('it warns that a character already exists', warn.shown === true, warn);
-    /* NAMED, not counted: "you have a character" is abstract until it is
-       your bro's name about to be written over. */
-    rec.ok('...and names the character at risk', warn.namesIt === true, warn);
-    await P.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/existingwarn.png' });
+    await Promise.all([
+      P.page.waitForNavigation({ waitUntil: 'domcontentloaded' }).catch(() => {}),
+      doorCreate.click(),
+    ]);
+    await P.page.waitForTimeout(3000);
+    const fresh = await P.page.evaluate(() => ({
+      route: window.__btBootRoute || null,
+      myId: window._gameState.current.myId,
+      key: (() => { try { return localStorage.getItem('bt_passphrase'); } catch (e) { return null; } })(),
+      roster: (() => { try { return (window.__btRoster.read() || []).map((e) => ({ n: e.name, p: e.phrase })); } catch (e) { return null; } })(),
+      rpgCache: (() => { try { return localStorage.getItem('bt_rpg'); } catch (e) { return null; } })(),
+      inCreator: !!document.querySelector('.bt-cc-shell'),
+    }));
+    console.log('    after Create', JSON.stringify({ ...fresh, key: !!fresh.key }));
 
-    /* ── answer 1: Continue ── */
-    const cont = await P.page.$('[data-tut="login-existing-continue"]');
-    rec.ok('the dialog offers Continue (guard)', !!cont, {});
-    if (cont) {
-      await cont.click();
-      await P.page.waitForTimeout(4000);
+    /* v2.3.1923: no dialog on the way — the cap is the only thing that can
+       stop this, and one character is not ten. */
+    rec.ok('Create Character goes straight to the CREATOR, no overwrite dialog',
+      fresh.route === 'create-forced' && fresh.inCreator === true, fresh);
+    /* THE ONE THAT WOULD HAVE CAUGHT THE ORIGINAL BUG. */
+    rec.ok('...on a NEW identity, so the old character cannot be handed back',
+      !!fresh.myId && fresh.myId !== idBefore.myId, { before: idBefore.myId, now: fresh.myId });
+    /* v2.3.1923: the old key is KEPT — and now somewhere a player can reach
+       rather than in a stash only devtools could read. */
+    rec.ok('...with the old character kept as a roster row, not destroyed',
+      !!fresh.roster && fresh.roster.some((e) => e.p === idBefore.key && e.n === 'Newbie'),
+      fresh.roster);
+    /* The stale cache is what carried old progress into a "new"
+       character; it has to be gone, not merely overwritten later. */
+    rec.ok('...and no stale character cache left behind',
+      fresh.rpgCache === null, { rpgCache: fresh.rpgCache });
+  }
+
+  /* ═══ AND THE ROAD BACK: CONTINUE -> THE PICKER -> THE OLD CHARACTER ═══
+     The other half of what the retired dialog used to do.  "Continue as
+     Newbie" was a button on a warning; it is now a row in a list, and the
+     claim to prove is the same one: it puts you back in the SAME character,
+     not a lookalike.  Asserted on the bp_ id, because the name would match
+     on a freshly created Newbie too. */
+  await P.page.goto(`http://localhost:${webPort}/?login=1`, { waitUntil: 'domcontentloaded' });
+  await P.page.waitForTimeout(2500);
+  const contBtn = await P.page.$('[data-tut="login-key"]');
+  rec.ok('the door offers Continue (guard)', !!contBtn, {});
+  if (contBtn) {
+    await contBtn.click();
+    await P.page.waitForTimeout(900);
+    const rows = await P.page.evaluate(() => {
+      const open = !!document.querySelector('[data-tut="char-picker"]');
+      const list = [...document.querySelectorAll('[data-tut="char-row"]')]
+        .map((el) => ({ name: el.getAttribute('data-char-name'),
+          text: (el.textContent || '').replace(/\s+/g, ' ').trim() }));
+      return { open, list };
+    });
+    console.log('    picker rows', JSON.stringify(rows));
+    rec.ok('Continue opens the character picker', rows.open === true, rows);
+    rec.ok('...listing the character this device made', rows.list.some((r) => r.name === 'Newbie'), rows.list);
+    await P.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/picker.png' });
+
+    const row = await P.page.$('[data-tut="char-row"][data-char-name="Newbie"]');
+    if (row) {
+      await Promise.all([
+        P.page.waitForNavigation({ waitUntil: 'domcontentloaded' }).catch(() => {}),
+        row.click(),
+      ]);
+      await P.page.waitForTimeout(4500);
       const back = await P.page.evaluate(() => {
         const S = window._gameState.current;
         return { myId: S.myId, name: S.myName, inWorld: !!document.querySelector('canvas') };
       });
-      console.log('    after Continue', JSON.stringify(back));
-      rec.ok('Continue puts you back in the SAME character',
+      console.log('    after picking Newbie', JSON.stringify(back));
+      rec.ok('picking the row puts you back in the SAME character',
         back.myId === idBefore.myId && back.name === 'Newbie', { before: idBefore.myId, back });
-    }
-  }
-
-  /* ── answer 2: Create new ──
-     A second logout, then take the other branch.  Asserted on the IDENTITY,
-     which is what actually changed: a new key means the worker has no
-     stored record to hand back, so the creator's character is the one that
-     lives.  This is the assertion that fails on the old code. */
-  await P.page.evaluate(() => { try { window.__broDashPanelBus.toBar(); } catch (e) {} });
-  await P.page.waitForTimeout(600);
-  const chip2 = await P.page.$('[aria-label="Log out to the character screen"]');
-  if (chip2) {
-    await chip2.click();
-    await P.page.waitForTimeout(700);
-    const c2 = await P.page.$('text=Log Out');
-    if (c2) {
-      await Promise.all([
-        P.page.waitForNavigation({ waitUntil: 'domcontentloaded' }).catch(() => {}),
-        c2.click(),
-      ]);
-      await P.page.waitForTimeout(3500);
-    }
-  }
-  const create2 = await P.page.$('[data-tut="login-create"]');
-  rec.ok('back at the door for the second answer (guard)', !!create2, {});
-  if (create2) {
-    await create2.click();
-    await P.page.waitForTimeout(900);
-    const replace = await P.page.$('[data-tut="login-existing-replace"]');
-    rec.ok('the dialog offers Create new character (guard)', !!replace, {});
-    if (replace) {
-      await Promise.all([
-        P.page.waitForNavigation({ waitUntil: 'domcontentloaded' }).catch(() => {}),
-        replace.click(),
-      ]);
-      await P.page.waitForTimeout(3000);
-      const fresh = await P.page.evaluate(() => ({
-        route: window.__btBootRoute || null,
-        myId: window._gameState.current.myId,
-        key: (() => { try { return localStorage.getItem('bt_passphrase'); } catch (e) { return null; } })(),
-        prev: (() => { try { return localStorage.getItem('bt_passphrase_prev'); } catch (e) { return null; } })(),
-        rpgCache: (() => { try { return localStorage.getItem('bt_rpg'); } catch (e) { return null; } })(),
-        inCreator: !!document.querySelector('.bt-cc-shell'),
-      }));
-      console.log('    after Create new', JSON.stringify({ ...fresh, key: !!fresh.key, prev: !!fresh.prev }));
-      rec.ok('choosing Create new lands in the CREATOR, not back at the door',
-        fresh.route === 'create-forced' && fresh.inCreator === true, fresh);
-      /* THE ONE THAT WOULD HAVE CAUGHT THE ORIGINAL BUG. */
-      rec.ok('...on a NEW identity, so the old character cannot be handed back',
-        !!fresh.myId && fresh.myId !== idBefore.myId, { before: idBefore.myId, now: fresh.myId });
-      rec.ok('...with the old key stashed, not destroyed',
-        !!fresh.prev && fresh.prev === idBefore.key, { stashed: !!fresh.prev });
-      /* The stale cache is what carried old progress into a "new"
-         character; it has to be gone, not merely overwritten later. */
-      rec.ok('...and no stale character cache left behind',
-        fresh.rpgCache === null, { rpgCache: fresh.rpgCache });
+    } else {
+      rec.ok('picking the row puts you back in the SAME character', false, 'no Newbie row to click');
     }
   }
 

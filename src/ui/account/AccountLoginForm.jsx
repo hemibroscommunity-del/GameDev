@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { normalizeLoginKey, checkAccountLogin, applyAccountLogin, getBtPassphrase } from '@/networking/index.js';
+import { rememberChar } from '@/networking/charRoster.js'; /* v2.3.1923 */
 
 /* v2.3.1143: Login Key entry flow (see docs/specs/account-login.md).
    State machine: idle -> checking -> confirm | error -> switching.
@@ -42,6 +43,23 @@ const ERROR_COPY = {
  * straight to the switch, and only the login door passes it.  The in-game
  * panel is untouched.
  */
+/* ═══ v2.3.1923: A KEY THAT WORKS JOINS THE ROSTER ═══
+   applyAccountLogin RELOADS the page, so this has to happen before it or it
+   does not happen at all.  The preview the server just returned carries the
+   name and level, which is why a character brought over by key arrives in
+   the picker already labelled instead of needing its own lookup.
+
+   This is also what retires the old one-in-one-out behaviour: before the
+   roster, switching keys stashed the outgoing one in `bt_passphrase_prev`
+   and the NEXT switch overwrote that stash, losing the first character for
+   anyone who had not written its key down.  Both keys are now rows in a
+   list. */
+function _remember(key, preview) {
+  try {
+    rememberChar(key, { name: (preview && preview.name) || '', level: (preview && preview.level) || 0 });
+  } catch (e) { /* a roster write must never block a login that already worked */ }
+}
+
 export const AccountLoginForm = ({ immediate = false }) => {
   const [input, setInput] = useState('');
   const [phase, setPhase] = useState('idle'); // idle | checking | confirm | switching
@@ -65,6 +83,7 @@ export const AccountLoginForm = ({ immediate = false }) => {
       if (immediate) {
         setFound({ key, preview: res.preview || {} });
         setPhase('switching');
+        _remember(key, res.preview);
         applyAccountLogin(key);
         return;
       }
@@ -80,6 +99,7 @@ export const AccountLoginForm = ({ immediate = false }) => {
   const confirm = () => {
     if (!found) return;
     setPhase('switching');
+    _remember(found.key, found.preview);
     applyAccountLogin(found.key); // stashes the old key, writes, reloads
   };
 

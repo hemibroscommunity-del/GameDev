@@ -1,6 +1,7 @@
 import React from 'react';
 import { BUILD_INFO } from '../BuildBadge.jsx';
-import { AccountModal } from '../account/AccountModal.jsx';
+import { CharacterPicker } from './CharacterPicker.jsx';                 /* v2.3.1923 */
+import { rosterFull, ROSTER_MAX } from '@/networking/charRoster.js';     /* v2.3.1923 */
 
 /* ═══ v2.3.1814: THE LOGIN SCREEN ═══
  *
@@ -43,11 +44,42 @@ import { AccountModal } from '../account/AccountModal.jsx';
  * and ask to continue otherwise it'll be overwritten with the new
  * character."  So the button asks first, and both answers now do what they
  * say.
+ *
+ * ═══ v2.3.1923: ...AND THEN THERE WAS NO OVERWRITING LEFT TO WARN ABOUT ═══
+ * Owner: "'Continue' is a better button for launching a window that allows
+ * you to enter your passkey if you have a specific character you want to play
+ * on another device.  Otherwise it makes sense to just present you with a
+ * list of characters you've made (in order of most recent at the top) to
+ * choose from to continue playing. ... Up to 10 characters per device.
+ * Otherwise it won't let you create new ones."
+ *
+ * Two things change on this screen, and the second is a consequence of the
+ * first.
+ *
+ * THE KEY BUTTON BECOMES "CONTINUE".  It was named after its mechanism
+ * because its mechanism was all it had: the only way back in was to type a
+ * Login Key.  Now the device keeps a roster of the characters it has made
+ * (src/networking/charRoster.js), so the common road back is picking one off
+ * a list and the key box is the road for a character that lives somewhere
+ * else.  "Continue" is the name of the thing the player wants; the window
+ * behind it holds both ways to get it.
+ *
+ * THE v2.3.1861 OVERWRITE WARNING IS RETIRED.  It existed because a device
+ * held exactly one character and making another replaced it — the dialog was
+ * honest about a genuinely destructive act.  With up to ten per device,
+ * creating a character no longer costs you one, so the warning would be
+ * describing something that does not happen.  What replaces it is the cap:
+ * at ten, Create says why it cannot and points at the picker, where deleting
+ * a character is how a slot is freed.
  */
-export const LoginScreen = ({ onCreateNew, onContinue, existingName, checking }) => {
-  const [showAccount, setShowAccount] = React.useState(false);
-  /* v2.3.1861: the "you already have one" gate — see the button below. */
-  const [warnExisting, setWarnExisting] = React.useState(false);
+export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
+  const [showPicker, setShowPicker] = React.useState(false);
+  /* v2.3.1923: the "this device is full" gate — see the Create button. */
+  const [warnFull, setWarnFull] = React.useState(false);
+  /* No roster count is held here on purpose.  The picker owns the list while
+     it is open and mutates it (delete); a second copy on this screen would
+     only exist to go stale.  The one question this screen asks — is the
+     device full — is asked at the moment Create is pressed. */
 
   /* ═══ v2.3.1818: WARM THE CHARACTER WHILE NOBODY IS WAITING ═══
      Owner: "loading character assets seems slow (no char in image)."
@@ -158,14 +190,17 @@ export const LoginScreen = ({ onCreateNew, onContinue, existingName, checking })
           {/* The plate art carries its own label, so the <button> keeps a
               visually-hidden text node: that is what screen readers announce
               and what the QA scenario matches on. */}
+          {/* v2.3.1923: "Continue" (was "Log in with your Key").  Same plate
+              art, same single-gold-primary slot; what changed is what is
+              behind it — the character list first, the key box under it. */}
           <button
             type="button"
             className="bt-login-btn bt-login-btn--key"
             data-tut="login-key"
             disabled={checking}
-            onClick={() => setShowAccount(true)}
+            onClick={() => setShowPicker(true)}
           >
-            <span>Log in with your Key</span>
+            <span>Continue</span>
           </button>
 
           <button
@@ -173,22 +208,21 @@ export const LoginScreen = ({ onCreateNew, onContinue, existingName, checking })
             className="bt-login-btn bt-login-btn--new"
             data-tut="login-create"
             disabled={checking}
-            /* v2.3.1861: ask first when this device already holds a
-               character.  `existingName` is the name the boot check found
-               against this key — its presence IS the condition, so a device
-               with nothing to lose still gets the straight-through path it
-               has always had. */
-            onClick={() => { if (existingName) setWarnExisting(true); else onCreateNew(); }}
+            /* v2.3.1923: the cap, not the overwrite warning.  Creating a
+               character costs nothing you already have until the tenth one,
+               and at that point the answer is a real refusal with a way
+               out — not a dialog asking permission to destroy something. */
+            onClick={() => { if (rosterFull()) setWarnFull(true); else onCreateNew(); }}
           >
             <span>Create Character</span>
           </button>
         </div>
 
-        {warnExisting && (
+        {warnFull && (
           <div
             className="bt-login-warn-scrim"
-            data-tut="login-existing-warn"
-            onPointerDown={() => setWarnExisting(false)}
+            data-tut="login-full-warn"
+            onPointerDown={() => setWarnFull(false)}
             style={{
               position: 'fixed', inset: 0, zIndex: 9600,
               background: 'rgba(5, 9, 12, 0.62)',
@@ -210,33 +244,32 @@ export const LoginScreen = ({ onCreateNew, onContinue, existingName, checking })
               }}
             >
               <div style={{ fontSize: 16, fontWeight: 800, color: '#F4F0E7' }}>
-                You already have a character
+                This device is full
               </div>
-              {/* Named, not just counted: "you have a character" is abstract
-                  until it is YOUR bro's name about to be written over. */}
               <div style={{ fontSize: 13, color: '#B6C1BE', marginTop: 6, lineHeight: 1.35 }}>
-                <b style={{ color: '#F4F0E7' }}>{existingName}</b> is saved to this device.
-                Making a new one replaces them here — they can only be reached
-                again with their Login Key.
+                You have all <b style={{ color: '#F4F0E7' }}>{ROSTER_MAX}</b> characters
+                this device can hold. Delete one under Continue to make room.
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 14 }}>
+                {/* The way out, not just the refusal: the control that frees
+                    a slot lives one screen away and this is the only place
+                    the player is told so. */}
                 <button
                   type="button"
-                  data-tut="login-existing-continue"
+                  data-tut="login-full-manage"
                   className="bt-chisel bt-chisel--chip"
                   style={{ minHeight: 44, fontSize: 14, fontWeight: 800, color: '#F4F0E7' }}
-                  onClick={() => { setWarnExisting(false); onContinue && onContinue(); }}
+                  onClick={() => { setWarnFull(false); setShowPicker(true); }}
                 >
-                  Continue as {existingName}
+                  Manage characters
                 </button>
                 <button
                   type="button"
-                  data-tut="login-existing-replace"
-                  className="bt-chisel bt-chisel--danger"
-                  style={{ minHeight: 40, fontSize: 13, fontWeight: 800 }}
-                  onClick={() => { setWarnExisting(false); onCreateNew(); }}
+                  className="bt-chisel bt-chisel--chip"
+                  style={{ minHeight: 40, fontSize: 13, fontWeight: 800, color: '#B6C1BE' }}
+                  onClick={() => setWarnFull(false)}
                 >
-                  Create new character
+                  Never mind
                 </button>
               </div>
             </div>
@@ -258,7 +291,12 @@ export const LoginScreen = ({ onCreateNew, onContinue, existingName, checking })
         </div>
       </div>
 
-      {showAccount && <AccountModal loginDoor onClose={() => setShowAccount(false)} />}
+      {showPicker && (
+        <CharacterPicker
+          onPlay={onPlay}
+          onClose={() => setShowPicker(false)}
+        />
+      )}
     </div>
   );
 };

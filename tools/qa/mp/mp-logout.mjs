@@ -54,7 +54,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
       url: location.search,
       route: window.__btBootRoute || null,
       hasCreate: /Create Character/i.test(txt),
-      hasKey: /Log in with your Key/i.test(txt),
+      /* v2.3.1923: the button is "Continue" now — it opens the character
+         picker, and the Login Key box lives inside that.  Matched on the
+         BUTTON rather than on the word, because "Continue" is a common
+         enough string that body text could satisfy it by accident. */
+      hasKey: !!document.querySelector('[data-tut="login-key"]'),
+      keyLabel: ((document.querySelector('[data-tut="login-key"]') || {}).textContent || '').trim(),
       /* The world is a canvas; the door is not. */
       canvases: document.querySelectorAll('canvas').length,
       keyStillThere: (() => {
@@ -67,7 +72,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('logging out lands on the door, not back in the world',
     landed.route === 'login-forced', landed);
   rec.ok('...offering Create Character', !!landed.hasCreate, landed);
-  rec.ok('...and Log in with your Key', !!landed.hasKey, landed);
+  rec.ok('...and Continue (which holds the picker and the Login Key box)',
+    !!landed.hasKey && /continue/i.test(landed.keyLabel || ''), landed);
   /* THE ONE THAT MATTERS MOST: characters are permanent and the passphrase IS
      the character, so forcing the login screen by wiping the key would throw
      the character away to fix a routing bug. */
