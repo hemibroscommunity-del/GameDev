@@ -1,7 +1,7 @@
 {
   "category": "headwear",
   "fullFrame": true,
-  "note": "Generated on the headwear mannequin (tools/make_headwear_mannequin.py) and imported by tools/import_headwear.py. The hat was drawn ON the head, so it lands in the 256 frame at its true position relative to the body: anchors are its own bbox top-centre, crownNudge is anchor minus body-tops stand-<dir>-0, scale is 1. No by-eye tuning \u2014 adjust only if on-device review disagrees. jog fitted by tools/tune_headwear.py --fit-pose jog: the jog sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(jog)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face. mine fitted by tools/tune_headwear.py --fit-pose mine: the mine sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(mine)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face. fish fitted by tools/tune_headwear.py --fit-pose fish: the fish sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(fish)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face. hit fitted by tools/tune_headwear.py --fit-pose hit: the hit sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(hit)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face. pickup fitted by tools/tune_headwear.py --fit-pose pickup: the pickup sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(pickup)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face. v2.3.1514: nudged by hand dx +0 dy -5 on southwest. v2.3.1514: nudged by hand dx +0 dy +2 on northeast,north. v2.3.1527: hair-clip mask rebuilt from the current art by tools/make_hairmask.py. v2.3.1529: hair-clip mask rebuilt from the current art by tools/make_hairmask.py.",
+  "note": "Generated on the headwear mannequin (tools/make_headwear_mannequin.py) and imported by tools/import_headwear.py. The hat was drawn ON the head, so it lands in the 256 frame at its true position relative to the body: anchors are its own bbox top-centre, crownNudge is anchor minus body-tops stand-<dir>-0, scale is 1. No by-eye tuning \u2014 adjust only if on-device review disagrees. jog fitted by tools/tune_headwear.py --fit-pose jog: the jog sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(jog)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face. mine fitted by tools/tune_headwear.py --fit-pose mine: the mine sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(mine)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face. fish fitted by tools/tune_headwear.py --fit-pose fish: the fish sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(fish)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face. hit fitted by tools/tune_headwear.py --fit-pose hit: the hit sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(hit)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face. pickup fitted by tools/tune_headwear.py --fit-pose pickup: the pickup sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(pickup)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face. v2.3.1514: nudged by hand dx +0 dy -5 on southwest. v2.3.1514: nudged by hand dx +0 dy +2 on northeast,north. v2.3.1527: hair-clip mask rebuilt from the current art by tools/make_hairmask.py. v2.3.1529: hair-clip mask rebuilt from the current art by tools/make_hairmask.py. v2.3.1924: per-facing size fitted by tools/fit-headwear-scale.mjs. The five stand sheets draw the head at five different widths (43/52/45/44/41 in the 256 frame) and BODY_DIR_SCALE cancels out of the hat/head ratio, so a hat drawn one size renders a different size on every facing. scale[dir] now moves the facings that disagree onto the median of the ones that agree, measured as drawn WIDTH over head width, bounded to 15%, and skipped entirely on a facing whose aspect ratio says the silhouette itself changed. A facing that GREW carries a crownNudge Y that holds its bottom edge still.",
   "bboxes": {
     "south": [
       100,
@@ -67,7 +67,7 @@
     ],
     "east": [
       1,
-      -25
+      -29
     ],
     "northeast": [
       1,
@@ -79,9 +79,9 @@
     ]
   },
   "scale": {
-    "south": 1,
+    "south": 0.883,
     "southwest": 1,
-    "east": 1,
+    "east": 1.098,
     "northeast": 1,
     "north": 1
   },
@@ -106,7 +106,7 @@
       "southwest": 0.942,
       "east": 1.022,
       "northeast": 0.955,
-      "north": 1.0
+      "north": 1
     },
     "pickup": {
       "south": 1.07

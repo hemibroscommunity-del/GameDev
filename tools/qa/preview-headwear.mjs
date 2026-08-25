@@ -111,6 +111,15 @@ export function placement(meta, dir, texW) {
   };
 }
 
+/* v2.3.1924: everything below is the SHEET RUN and only fires when this file
+   is the process entry point.  tools/fit-headwear-scale.mjs imports
+   `placement` above so the before/after montage it renders is the same
+   arithmetic this sheet is drawn with — one placement function, not two that
+   drift apart.  Without the guard, importing it wrote a 4MB sheet as a side
+   effect (and mkdir'd over the caller's output path). */
+const ENTRY = process.argv[1] && path.resolve(process.argv[1]) === path.resolve(path.dirname(new URL(import.meta.url).pathname), 'preview-headwear.mjs');
+if (ENTRY) {
+
 const items = fs.readdirSync(HW).filter((d) => fs.statSync(path.join(HW, d)).isDirectory()).sort();
 fs.mkdirSync(OUT, { recursive: true });
 
@@ -235,4 +244,6 @@ const dev = report.map((r) => {
 }).sort((a, b) => Math.abs(b.off) - Math.abs(a.off));
 for (const d of dev.slice(0, 14)) {
   console.log(`  ${d.item.padEnd(20)} east ratio ${String(d.east).padEnd(5)} vs median ${String(d.med).padEnd(5)} → ${d.off > 0 ? '+' : ''}${(d.off * 100).toFixed(0)}%`);
+}
+
 }

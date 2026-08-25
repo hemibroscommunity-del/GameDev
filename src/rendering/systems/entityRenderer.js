@@ -742,14 +742,27 @@ function bodyDirScale(pose, dir) {
    v2.3.1354 (owner round 2, cumulative): helmet 1.20->1.15 +2px down,
    top-hat +3px, purple +1px, beanie 1.20->1.25 +2px down, shark-hat
    +2px down, wide-brims 10->7px (owner: "up 3px"). */
+/* v2.3.1924: five `mul` values below were REBASED, not retuned.  The per-facing
+   stand fit (tools/fit-headwear-scale.mjs) moved scale[east] on five of these
+   hats, and jog-east renders scale[east] * 0.67 * mul — so leaving `mul` alone
+   would have dragged the running hat along with the standing one.  Each was
+   divided by exactly the factor its east scale moved by, which holds the jog
+   frames pixel-identical to what they render today:
+       bandana    x0.947 -> 1.10 / 0.947 = 1.162
+       red-cap    x0.908 -> 1.10 / 0.908 = 1.211
+       shark-hat  x0.850 -> 1.00 / 0.850 = 1.176
+       top-hat    x1.077 -> 1.10 / 1.077 = 1.022
+       wizard-hat x1.136 -> 1.40 / 1.136 = 1.232
+   These eleven numbers are the owner's own by-eye round from v2.3.1353-1355 and
+   the intent is to preserve that judgement exactly, not to re-open it. */
 const JOG_EW_HAT_TUNE = {
   'old-school-helmet': { mul: 1.15, dy: 2 },
-  'top-hat':           { mul: 1.10, dy: 3 },
+  'top-hat':           { mul: 1.022, dy: 3 },
   'purple-hat':        { mul: 1.10, dy: 1 },
   'beanie':            { mul: 1.25, dy: 2 },
-  'red-cap':           { mul: 1.10, dy: 0 },
-  'shark-hat':         { mul: 1.00, dy: 2 },
-  'bandana':           { mul: 1.10, dy: 0 },
+  'red-cap':           { mul: 1.211, dy: 0 },
+  'shark-hat':         { mul: 1.176, dy: 2 },
+  'bandana':           { mul: 1.162, dy: 0 },
   'sombrero':          { mul: 1.20, dy: 6 }, /* v2.3.1355: owner round 3, up 1px */
   'bucket-hat':        { mul: 1.20, dy: 6 },
   'fedora':            { mul: 1.20, dy: 6 },
@@ -768,7 +781,7 @@ const JOG_EW_HAT_TUNE = {
      back the last ~2px, which is the part of the -37 lift that _placeTrait
      applies unscaled while the head around it is 6% smaller.  Verified frame by
      frame against the standing reference over the whole 28-frame cycle. */
-  'wizard-hat':        { mul: 1.40, dy: 3 },
+  'wizard-hat':        { mul: 1.232, dy: 3 },
 };
 /* v2.3.1354: IDLE (stand pose, every facing — a hat that reads small
    idling east reads small on every idle facing; per-dir splits would
