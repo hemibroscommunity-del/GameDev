@@ -4546,6 +4546,267 @@ function createOtherPlayerDisplay() {
 /**
  * Manages all entity rendering.
  */
+/* ═══ v2.3.1895: THE SPEND BARS UNDER THE CHARACTER ═══
+ * Owner: "Instead of the special attack counter I want to see what it looks
+ * like to have the mp bar below the character (name plate will disappear when
+ * mp is used).  The amount of mp used will slide right.  The resource bar will
+ * begin fading after 1 second and disappear after 2 seconds if no further mp
+ * is used.  Do the same thing for energy but beneath the mp bar.  Reserve the
+ * space for whenever mp and energy is used (they stay in those positions)."
+ *
+ * Geometry is FIXED, not laid out: MP always draws at RES_MP_Y and energy at
+ * RES_EN_Y whether or not the other is up.  That is the "reserve the space"
+ * requirement, and it is why these are two independent draws rather than a
+ * stack — a stack would slide the energy bar upward on the frames where MP is
+ * hidden, which is the jitter the request rules out.
+ *
+ * The bars sit where the NAME PLATE sits, so the plate hides while either is
+ * up.  Both therefore share one visibility answer rather than each hiding the
+ * plate on its own, or the plate would flicker back between two spends.
+ *
+ * THE SLIDING CHUNK.  On a spend, the segment between the new fill edge and
+ * the old one is kept and animated RIGHT while fading, so the amount that just
+ * left is legible as a quantity rather than as a jump.  It is measured from
+ * the CURRENT edge every frame rather than from a cached x, so a second spend
+ * mid-slide re-bases it instead of leaving two ghosts disagreeing about where
+ * the edge is.
+ */
+/* v2.3.1896 (owner: "thick white border ... black fill when it's spent ...
+   large enough so that you can fit the numbers on each bar").  The bar grew
+   from 46x4 to 66x14 to hold an 8px readout: 14 less two 2px borders leaves
+   10px of interior, and 8px of text centred in 10 is the smallest that stays
+   legible at this scale.  The width follows so "118 / 118" is not cramped
+   against the ends. */
+/* v2.3.1896c: 66x14 -> 72x16, and the readout 8px -> 10 bold (owner: "space
+   to make the numbers bolder and larger").  16 less two 2px borders leaves
+   12px of interior, which is what 10px text needs to sit centred without
+   crowding the keyline; the width follows so "118 / 118" keeps its air. */
+const RES_BAR_W = 72;
+const RES_BAR_H = 16;
+const RES_BORDER = 2;          /* the white keyline, drawn OUTSIDE the track */
+/* v2.3.1896c: 40 -> 52 (owner: "move the bars down a notch so they don't cover
+   the player's feet").  Not guessed — blockGeomProbe puts the boots at y 41.6
+   in this same display-local space, and the bar was starting at 40 with a 2px
+   border above that, so it genuinely overlapped them.  52 clears the feet by
+   ~8px.  The plate still has to hide: it sits at 38 and stands ~29 tall, so it
+   would reach into the bars wherever they start below it. */
+const RES_MP_Y = 52;
+/* v2.3.1896b: the gap has to clear BOTH borders, not just the bar.  At
+   +3 the MP border's bottom edge (y + H + BORDER) landed 1px BELOW the
+   energy border's top (y - BORDER) and the two rounded outlines merged into
+   one lozenge — visible the moment they were photographed together.  Bar +
+   two borders + 3px of real air. */
+/* v2.3.1896c: derived from RES_MP_Y, not from a repeated literal.  It said
+   `40 + ...` while MP moved to 52, so the energy bar climbed INTO the MP bar
+   and clipped its readout — caught in the screenshot, not by the suite, which
+   only asserts enY > mpY and was still true.  Deriving it makes the two
+   impossible to separate again. */
+const RES_EN_Y = RES_MP_Y + RES_BAR_H + RES_BORDER * 2 + 3;
+const RES_HOLD_MS = 1000;      /* full alpha for a second after the last spend */
+const RES_FADE_MS = 1000;      /* then a second of fade — gone at 2s */
+const RES_SLIDE_MS = 420;      /* how long the spent chunk takes to leave */
+/* v2.3.1896: the spent portion is BLACK (owner), and the border white.  The
+   black is what makes the fill read as a quantity against any ground — the
+   old 0x101B22 track was near-black already, but on the sand it sat close
+   enough to the terrain to blur the empty end. */
+const RES_TRACK = 0x000000;
+const RES_BORDER_COL = 0xFFFFFF;
+const RES_FILL = { mana: 0x5B99DE, stamina: 0xD8A85F };
+const RES_GHOST = { mana: 0x9CC8F2, stamina: 0xF0D9A6 };
+const RES_GHOST_HEX = { mana: '#9CC8F2', stamina: '#F0D9A6' };
+/* v2.3.1897: the spent amount, as a number, gliding off the bar's right end
+   (owner: "I want the resource number spent to glide to the right of the
+   resource bar (as a negative number)").  The ghost chunk stays — it is the
+   MASS that leaves — and this is the same gesture continued past the bar's
+   edge with a figure on it, so you can read HOW MUCH left rather than
+   estimate it from a sliver.
+
+   v2.3.1898 (owner: "I saw the number appear but not gliding.  I want the
+   numbers to slowly move right then fade", and "the glide numbers need to
+   match the same timing as the resource bars for appearing and fading"):
+   it used to ride the CHUNK's clock — 13px over RES_SLIDE_MS.  420ms is
+   under a third of a second of travel across thirteen pixels, which lands
+   before the eye gets there: you see a number appear, already parked.  It now
+   drifts across the bar's WHOLE life instead, 26px over the full hold+fade,
+   so it is still moving while it fades out.  Tying it to RES_HOLD_MS +
+   RES_FADE_MS rather than a duration of its own is what makes "match the
+   bar's timing" true by construction — one clock, so the two cannot drift
+   apart when someone retunes the fade. */
+const RES_SPENT_GAP = 6;       /* clear of the white keyline before it starts */
+const RES_SPENT_TRAVEL = 26;   /* how far right of that it drifts */
+const RES_SPENT_GLIDE_MS = RES_HOLD_MS + RES_FADE_MS;
+
+/* v2.3.1899: how far along its travel the number is, 0..1.
+   Owner: "The spent energy numbers glide and fade correctly but not the mp
+   numbers.  It's still the quick still pop up."
+
+   Both bars run identical code, so the difference was never in the drawing —
+   it was in the DATA.  A trace of three real specials in town showed the MP
+   number snapping back to its origin on every further spend (t=739, t=1357):
+   in real play you cast repeatedly, so it restarts before it has travelled
+   far enough to look like motion.  Energy looked fine only because it was
+   being spent once.  The reason MP is the one that shows it is town regen —
+   the hub pays 10% of maxMana every ~670ms (v2.3.1414), so mana is topped up
+   and spendable again immediately, and casts land close together.
+
+   So the glide no longer restarts.  A spend that lands while the bar is
+   still on screen picks up from where the number currently IS and glides on
+   toward the far end; only a spend arriving after the bar has gone starts
+   over at the origin.  The travel is therefore monotonic — it can never jump
+   backwards — and every spend still produces visible movement, because there
+   is always ground left between here and the end. */
+function _resGlideProgress(gfx, now) {
+  if (!gfx._resGlideAt) return 0;
+  const base = gfx._resGlideBase || 0;
+  const t = Math.min(1, Math.max(0, (now - gfx._resGlideAt) / RES_SPENT_GLIDE_MS));
+  return base + (1 - base) * t;
+}
+
+/* One bar.  Returns its alpha, so the caller can decide about the plate. */
+function _drawResourceBar(gfx, kind, cur, max, y, now) {
+  const m = Math.max(1, max || 1);
+  const v = Math.max(0, Math.min(m, cur || 0));
+  /* Seed on the first frame so arriving at partial MP does not read as a
+     spend and flash the bar for nothing — the same trap the HP ring hit at
+     v2.3.1682. */
+  if (gfx._resLast == null) {
+    gfx._resLast = v; gfx._resSpentAt = 0; gfx._resFrom = v;
+    gfx._resSpentAmt = 0;
+    gfx._resGlideAt = 0; gfx._resGlideBase = 0;
+  }
+  if (v < gfx._resLast - 0.01) {
+    /* Was the bar still on screen when this spend landed?  Read BEFORE
+       _resSpentAt is overwritten below — it is the whole test. */
+    const _prevSince = now - (gfx._resSpentAt || 0);
+    const _wasUp = !!gfx._resSpentAt && _prevSince <= RES_HOLD_MS + RES_FADE_MS;
+    gfx._resFrom = gfx._resLast;         /* re-base the chunk on every spend */
+    /* The FADE still re-arms on every spend — that is the owner's original
+       rule ("disappear after 2 seconds if no further mp is used").  Only the
+       GLIDE is now continuous across the burst. */
+    gfx._resGlideBase = _wasUp ? _resGlideProgress(gfx, now) : 0;
+    gfx._resGlideAt = now;
+    gfx._resSpentAt = now;
+    /* v2.3.1897: LATCHED here, not recomputed per frame.  Mana and stamina
+       regenerate server-side, so a regen tick arrives as a rise and lands in
+       the refill branch below — recomputed each frame, the "-N" would blink
+       out the first time the server topped you up, which inside a 2s hold is
+       most of the time.  The chunk can afford that (it is gone in 420ms); a
+       number the player is still reading cannot.  A further spend re-latches,
+       matching the chunk, which also shows only the newest spend. */
+    /* v2.3.1900 (owner: "Successive expenditures of mp and energy are treated
+       cumulatively (numbers keep adding up the more you spend) I just want
+       the expended amount"): the number is THIS spend, not a running total.
+       v2.3.1899 accumulated, which was the wrong answer to a real problem —
+       so keep the guard and drop the total.
+
+       The real problem: mana arrives fractional under town regen (77 -> 77.1
+       -> 90 -> 90.1), so a sub-half-unit dip counts as a spend by the 0.01
+       test above and Math.round()s to ZERO.  Overwriting blindly with that
+       BLANKED a live number mid-glide while its bar stayed up (caught at
+       t=1460 in the three-cast trace).  So a drop that does not round to at
+       least 1 leaves the displayed amount alone: real costs are whole
+       numbers, and anything under a unit is regen jitter, not an expenditure
+       worth announcing.  It still re-arms the bar, which is the pre-existing
+       behaviour of the 0.01 test and not this change's business. */
+    const _rounded = Math.round(gfx._resLast - v);
+    if (_rounded >= 1) gfx._resSpentAmt = _rounded;
+    else if (!_wasUp) gfx._resSpentAmt = 0;
+  } else if (v > gfx._resLast + 0.01) {
+    gfx._resFrom = v;                    /* refill: no chunk, and no reveal */
+  }
+  gfx._resLast = v;
+
+  const since = now - (gfx._resSpentAt || 0);
+  let alpha = 0;
+  if (gfx._resSpentAt) {
+    if (since <= RES_HOLD_MS) alpha = 1;
+    else if (since <= RES_HOLD_MS + RES_FADE_MS) alpha = 1 - (since - RES_HOLD_MS) / RES_FADE_MS;
+  }
+  gfx.clear();
+  if (alpha <= 0.01) { gfx.alpha = 0; return 0; }
+  gfx.alpha = alpha;
+
+  const x0 = -RES_BAR_W / 2;
+  const fillW = RES_BAR_W * (v / m);
+  /* v2.3.1896: border first and OUTSIDE the track, so the white keyline is a
+     full RES_BORDER thick on every side.  Drawn as a filled rounded rect under
+     an inset one rather than as a stroke: a stroke straddles the path and
+     would give RES_BORDER/2 of white and let the fill touch it. */
+  gfx.roundRect(x0 - RES_BORDER, y - RES_BORDER,
+    RES_BAR_W + RES_BORDER * 2, RES_BAR_H + RES_BORDER * 2, (RES_BAR_H / 2) + RES_BORDER)
+    .fill({ color: RES_BORDER_COL });
+  gfx.roundRect(x0, y, RES_BAR_W, RES_BAR_H, RES_BAR_H / 2).fill({ color: RES_TRACK });
+  if (fillW > 0.5) {
+    gfx.roundRect(x0, y, fillW, RES_BAR_H, RES_BAR_H / 2).fill({ color: RES_FILL[kind] });
+  }
+  const slide = since / RES_SLIDE_MS;
+  gfx._resSlideT = slide;
+  gfx._resSpentT = _resGlideProgress(gfx, now);   /* v2.3.1899 */
+  gfx._resGhostX = null; gfx._resGhostW = 0;
+  if (slide < 1) {
+    const fromW = RES_BAR_W * (Math.min(m, gfx._resFrom) / m);
+    const chunkW = Math.max(0, fromW - fillW);
+    if (chunkW > 0.5) {
+      const travel = (RES_BAR_W - fillW) * slide;
+      gfx.roundRect(x0 + fillW + travel, y, chunkW, RES_BAR_H, RES_BAR_H / 2)
+        .fill({ color: RES_GHOST[kind], alpha: (1 - slide) * 0.9 });
+      /* Published so "the amount used slides right" can be MEASURED.  A
+         screenshot cannot check it: a harness round-trip costs ~900ms and the
+         slide is 420, so every frame it can catch is already settled. */
+      gfx._resGhostX = x0 + fillW + travel;
+      gfx._resGhostW = chunkW;
+    }
+  }
+  return alpha;
+}
+
+/* v2.3.1896: the readout ON the bar (owner: "fit the numbers on each bar (or
+   wherever works best for readability)").  Centred inside the bar rather than
+   beside it — beside would have to pick a side, and either side collides with
+   something (the figure above, the other bar below).  It shares the bar's own
+   alpha so the number cannot outlive the thing it labels, which is the class
+   of bug the stale probes in this file keep producing.  Text nodes are made
+   once and parked; Pixi Text is expensive to churn. */
+function _drawResourceLabel(label, cur, max, y, alpha) {
+  if (!label) return;
+  if (alpha <= 0.01) { label.visible = false; return; }
+  const txt = Math.ceil(cur) + ' / ' + Math.ceil(max);
+  if (label.text !== txt) label.text = txt;
+  label.x = 0;
+  label.y = y + RES_BAR_H / 2;
+  label.alpha = alpha;
+  label.visible = true;
+}
+
+/* v2.3.1897: the "-N" that glides off the bar's right end.  Left-anchored at
+   the keyline and travelling outward, so it reads as the amount LEAVING the
+   bar rather than a second gauge parked beside it.  It carries a black stroke
+   because unlike the on-bar readout it sits over open terrain, not over the
+   bar's own black track — white-on-sand is the one place this text has no
+   ground of its own. */
+function _drawResourceSpent(label, gfx, kind, y, alpha) {
+  if (!label) return;
+  const amt = gfx && gfx._resSpentAmt;
+  /* No chunk (a refill, or the seed frame) means nothing to announce.  Gated
+     on the bar's own alpha too, so the number cannot outlive the bar — the
+     class of bug the stale probes in this file keep producing. */
+  if (alpha <= 0.01 || !amt) { label.visible = false; return; }
+  const txt = '-' + amt;
+  if (label.text !== txt) label.text = txt;
+  if (label.style.fill !== RES_GHOST_HEX[kind]) label.style.fill = RES_GHOST_HEX[kind];
+  /* v2.3.1898: the bar's clock, and very close to linear.  A strong ease-out
+     over two seconds spends most of its travel in the first quarter and then
+     sits still for the rest — which is the "appears but does not glide" the
+     owner reported, just slower.  The mild exponent keeps a little
+     deceleration at the end without ever stopping. */
+  const t = Math.min(1, Math.max(0, gfx._resSpentT == null ? 1 : gfx._resSpentT));
+  const ease = Math.pow(t, 0.85);
+  label.x = RES_BAR_W / 2 + RES_BORDER + RES_SPENT_GAP + RES_SPENT_TRAVEL * ease;
+  label.y = y + RES_BAR_H / 2;
+  label.alpha = alpha;
+  label.visible = true;
+}
+
 export class EntityRenderer {
   constructor(entityLayer, playerLayer, monsterUiLayer, gestureLayer) {
     this.entityLayer = entityLayer;
@@ -8671,7 +8932,16 @@ export class EntityRenderer {
        lives in the pill below the feet now, built here. */
     if (display._nameText.visible) display._nameText.visible = false;
     /* Hidden while dying so the plate doesn't hover over a corpse. */
-    _updateNamePill(display, S.myName || 'Anon', (S.rpg && S.rpg.level) || 1, !S._dying, S.rpg && S.rpg._bro);
+    /* v2.3.1895: ...and hidden while a resource bar is up (owner: "name plate
+       will disappear when mp is used").  The bars occupy the plate's own y,
+       so this is not a preference — they would overlap.
+       ONE FRAME STALE, deliberately: update() runs _updatePlayer before
+       _updatePlayerHud, so this reads the flag the previous frame's HUD pass
+       set.  16ms against a bar that holds for 1000, and reordering update()
+       to fix it would move the HUD pass ahead of the body placement it reads
+       positions from — a real risk to buy an invisible one. */
+    _updateNamePill(display, S.myName || 'Anon', (S.rpg && S.rpg.level) || 1,
+      !S._dying && !this._resourceBarsUp, S.rpg && S.rpg._bro);
 
     /* v2.3.1193: my own threat skull — reads the formerly ORPHANED
        S._pvpSkullType / S._pvpSkullUntil anchors (InspectPlayerPanel
@@ -9096,62 +9366,131 @@ export class EntityRenderer {
     const HOLD_MS = 2500;
     const FADE_STEP = 16.7 / 300; /* ~300 ms fade-in / fade-out */
 
-    /* v2.3.214: in-world MP segment bar replaced by SpecialChargePie
-       anchored above the right joystick (src/ui/mobile/SpecialChargePie).
-       Keep the Graphics node hidden + legacy sprite/text nodes off so
-       no HUD pixels render above the player.  Pickup-pose / death paths
-       still reference _hudMpEmpty so we leave the field in place. */
-    {
-      d._hudMpEmpty.clear();
-      d._hudMpEmpty.alpha = 0;
+    /* ═══ v2.3.1895: THE MP BAR IS BACK, UNDER THE FEET ═══
+       Owner: "Instead of the special attack counter I want to see what it
+       looks like to have the mp bar below the character."
+
+       v2.3.214 had retired this in-world bar for SpecialChargePie above the
+       right joystick; the pie is removed with this change, so the readout
+       comes back to the character — but as a SPEND bar rather than a standing
+       gauge.  It is drawn on _hudMpEmpty, which has been sitting allocated
+       and cleared since v2.3.214 for exactly this reason (the pickup and
+       death paths already reference it, and it is in the death keep-list).
+       The legacy pill sprite and its two labels stay off. */
+    /* v2.3.1896: the two readouts, made once.  Added AFTER the bar Graphics so
+       they draw over it; both live on the player display, so they inherit its
+       transform and are hidden on death by the keep-list sweep (v2.3.1887)
+       without needing to be named there. */
+    if (!d._resMpLabel) {
+      const mk = () => {
+        const t = new Text({ text: '', resolution: 2, style: {
+          fontFamily: 'Source Sans 3, sans-serif', fontSize: 10, fontWeight: '800',
+          fill: '#FFFFFF', align: 'center', letterSpacing: 0.2,
+        } });
+        t.anchor.set(0.5, 0.5);
+        t.visible = false;
+        d.addChild(t);
+        return t;
+      };
+      d._resMpLabel = mk();
+      d._resEnLabel = mk();
+      /* v2.3.1897: the gliding "-N" pair.  Made in the SAME lazy block as the
+         on-bar readouts rather than a second `if (!d._resMpSpent)` gate — two
+         gates for four nodes go out of step the first time someone reorders
+         them.  Bigger and stroked because these leave the bar and fly over
+         open terrain; the on-bar pair always has the black track behind it. */
+      const mkSpent = () => {
+        const t = new Text({ text: '', resolution: 2, style: {
+          fontFamily: 'Source Sans 3, sans-serif', fontSize: 12, fontWeight: '800',
+          fill: '#FFFFFF', align: 'left', letterSpacing: 0.2,
+          stroke: { color: '#000000', width: 3, join: 'round' },
+        } });
+        t.anchor.set(0, 0.5);
+        t.visible = false;
+        d.addChild(t);
+        return t;
+      };
+      d._resMpSpent = mkSpent();
+      d._resEnSpent = mkSpent();
+    }
+    /* v2.3.1896d: a corpse wears no spend bars.  _updatePlayerHud runs AFTER
+       _updatePlayer in the same frame, and _hudMpEmpty/_hudStamEmpty are BOTH
+       named in the death keep-list (they were the old floating gauges) — so
+       the sweep that undresses the body walks straight past them and this pass
+       would then re-draw them over the corpse for the rest of the 2s fade.
+       The labels are not in that list, so the sweep hides them and this pass
+       shows them again: the same node, hidden and shown twice per frame.
+       Cut it off at the source instead of adding two more names to the list —
+       hide, reset, and let the next spend after the respawn re-arm cleanly.
+       (Same rule as v2.3.1887: hide by exception, not by list.) */
+    if (S._dying) {
+      for (const _g of [d._hudMpEmpty, d._hudStamEmpty]) {
+        if (!_g) continue;
+        _g.clear(); _g.alpha = 0;
+        _g._resLast = null; _g._resSpentAt = 0; _g._resFrom = 0;
+        _g._resGhostX = null; _g._resGhostW = 0;
+        _g._resSpentAmt = 0;
+        _g._resSlideT = 1; _g._resSpentT = 1;
+        _g._resGlideAt = 0; _g._resGlideBase = 0;
+      }
+      if (d._resMpLabel) d._resMpLabel.visible = false;
+      if (d._resEnLabel) d._resEnLabel.visible = false;
+      if (d._resMpSpent) d._resMpSpent.visible = false;
+      if (d._resEnSpent) d._resEnSpent.visible = false;
+      this._resourceBarsUp = false;
+      if (typeof window !== 'undefined') {
+        window.__btResourceBars = {
+          mp: 0, en: 0, mpY: RES_MP_Y, enY: RES_EN_Y, plateHidden: false,
+          mpGhostX: null, mpGhostW: 0, enGhostX: null, enGhostW: 0, dead: true,
+        };
+      }
+    } else {
+      const _resAlphaMp = _drawResourceBar(d._hudMpEmpty, 'mana',
+        R.mana, R.maxMana, RES_MP_Y, now);
+      _drawResourceLabel(d._resMpLabel, R.mana, R.maxMana, RES_MP_Y, _resAlphaMp);
+      _drawResourceSpent(d._resMpSpent, d._hudMpEmpty, 'mana', RES_MP_Y, _resAlphaMp);
       if (d._hudMpSprite && d._hudMpSprite.visible) d._hudMpSprite.visible = false;
       if (d._hudMpTextFull && d._hudMpTextFull.visible) d._hudMpTextFull.visible = false;
       if (d._hudMpTextEmpty && d._hudMpTextEmpty.visible) d._hudMpTextEmpty.visible = false;
-    }
 
-    /* Stamina — v2.3.1400 (owner): the 64px horizontal pill above the
-       head is retired for a bare percentage NUMBER below the player's
-       feet.  "Energy percentage shouldn't draw much attention" — no bar,
-       no icon, small text, and it keeps the old visibility contract:
-       fades in while below max, holds HOLD_MS once refilled, fades out.
-       The pill sprite/overlay/split labels stay allocated but hidden
-       (pickup/death paths still reference them). */
-    {
-      const max = R.maxStamina || 1;
-      const cur = Math.max(0, Math.min(max, R.stamina || 0));
-      const pct = cur / max;
-      const full = cur >= max - 0.01;
-      const b = d._hudStamSprite;
-      if (!full) b._lastNotFullAt = now;
-      const sinceChange = now - (b._lastNotFullAt || 0);
-      const targetAlpha = (!full || sinceChange < HOLD_MS) ? 1 : 0;
-      /* raw fade tracked separately — reading label.alpha back would
-         re-apply the 0.8 dim each frame and trap the fade at ~0.22 */
-      const a = (b._fadeA != null) ? b._fadeA : 0;
-      const delta = targetAlpha - a;
-      const newAlpha = a + Math.max(-FADE_STEP, Math.min(FADE_STEP, delta));
-      b._fadeA = newAlpha;
+      /* ═══ v2.3.1895: ENERGY, BENEATH THE MP BAR ═══
+         Owner: "Do the same thing for energy but beneath the mp bar."
 
-      if (b.visible) b.visible = false;
-      d._hudStamEmpty.clear();
-      if (d._hudStamTextEmpty.visible) d._hudStamTextEmpty.visible = false;
-
-      const label = d._hudStamTextFull;
-      if (!label._energyStyled) {
-        /* one-time restyle: the shared pill-number style (8px) reads as a
-           speck on its own.  11px, still quiet.  Pixi clones the plain
-           style object per Text, so this can't leak to the MP labels. */
-        label._energyStyled = true;
-        label.style.fontSize = 11;
+         This replaces the bare "⚡42%" number v2.3.1400 put under the feet.
+         That readout answered a different question — it was a standing gauge,
+         deliberately understated, visible whenever energy was below max.  The
+         ask here is the same SPEND behaviour as MP, so it gets the same
+         renderer and the same timings rather than a second set that could
+         drift.  RES_EN_Y is fixed, so this bar holds its position whether or
+         not the MP bar above it is drawn. */
+      const _resAlphaEn = _drawResourceBar(d._hudStamEmpty, 'stamina',
+        R.stamina, R.maxStamina, RES_EN_Y, now);
+      _drawResourceLabel(d._resEnLabel, R.stamina, R.maxStamina, RES_EN_Y, _resAlphaEn);
+      _drawResourceSpent(d._resEnSpent, d._hudStamEmpty, 'stamina', RES_EN_Y, _resAlphaEn);
+      if (d._hudStamSprite && d._hudStamSprite.visible) d._hudStamSprite.visible = false;
+      if (d._hudStamTextFull && d._hudStamTextFull.visible) d._hudStamTextFull.visible = false;
+      if (d._hudStamTextEmpty && d._hudStamTextEmpty.visible) d._hudStamTextEmpty.visible = false;
+      /* One answer for both bars: the plate hides while EITHER is up, or it
+         would flicker back in the gap between an MP spend and an energy one. */
+      this._resourceBarsUp = (_resAlphaMp > 0.01) || (_resAlphaEn > 0.01);
+      if (typeof window !== 'undefined') {
+        window.__btResourceBars = {
+          mp: +_resAlphaMp.toFixed(3), en: +_resAlphaEn.toFixed(3),
+          mpY: RES_MP_Y, enY: RES_EN_Y, plateHidden: this._resourceBarsUp,
+          mpGhostX: d._hudMpEmpty._resGhostX, mpGhostW: d._hudMpEmpty._resGhostW,
+          enGhostX: d._hudStamEmpty._resGhostX, enGhostW: d._hudStamEmpty._resGhostW,
+          /* v2.3.1897: the gliding "-N" — text, x, and the bar edge it starts
+             from, so the suite can prove it is RIGHT OF the bar and moving. */
+          mpSpent: d._hudMpEmpty._resSpentAmt, enSpent: d._hudStamEmpty._resSpentAmt,
+          mpSpentText: d._resMpSpent && d._resMpSpent.visible ? d._resMpSpent.text : null,
+          enSpentText: d._resEnSpent && d._resEnSpent.visible ? d._resEnSpent.text : null,
+          mpSpentX: d._resMpSpent && d._resMpSpent.visible ? +d._resMpSpent.x.toFixed(2) : null,
+          enSpentX: d._resEnSpent && d._resEnSpent.visible ? +d._resEnSpent.x.toFixed(2) : null,
+          mpSpentA: d._resMpSpent && d._resMpSpent.visible ? +d._resMpSpent.alpha.toFixed(3) : null,
+          enSpentA: d._resEnSpent && d._resEnSpent.visible ? +d._resEnSpent.alpha.toFixed(3) : null,
+          barRight: RES_BAR_W / 2 + RES_BORDER,
+        };
       }
-      /* small ⚡ marks it as ENERGY without pulling focus (owner) */
-      const pctStr = '⚡' + Math.round(pct * 100) + '%';
-      if (label.text !== pctStr) label.text = pctStr;
-      label.x = 0;
-      label.y = 86;                     /* just under the feet (container origin
-                                           sits near the head; name tag is -28) */
-      label.alpha = newAlpha * 0.8;     /* deliberately understated */
-      label.visible = newAlpha > 0.02;
     }
 
     /* HP: quartile-colored progress RING with a muted-gray center holding
