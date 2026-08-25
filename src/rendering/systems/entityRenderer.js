@@ -120,6 +120,12 @@ function _ensureHudBarTextures() {
    x 5%..95%, y 21%..79% — ghost/flash rectangles use these fractions. */
 const HPBAR_ASPECT = 104 / 363;
 const HPBAR_IN_X = 0.05, HPBAR_IN_W = 0.90, HPBAR_IN_Y = 0.21, HPBAR_IN_H = 0.58;
+/* v2.3.1917: the peer bar rides ABOVE the name plate (which sits at
+   y = -34), and holds for a few seconds after the last reported hit so it
+   does not strobe between exchanges — long enough to cover a missed swing
+   or a dodge, short enough that a peer who walked away loses it. */
+const PEER_HPBAR_Y = -48;
+const PEER_HPBAR_HOLD_MS = 8000;
 const MONSTER_HPBAR_W = 44;
 const MONSTER_HPBAR_H = Math.round(MONSTER_HPBAR_W * HPBAR_ASPECT); /* 13 */
 const PLAYER_HPBAR_W = 76;
@@ -4592,6 +4598,39 @@ function createOtherPlayerDisplay() {
 
   container._shieldBackLo = shieldBackLo;   /* v2.3.1790 */
   container._shieldBackHi = shieldBackHi;   /* v2.3.1790 */
+
+  /* ═══ v2.3.1917: A DUEL OPPONENT WEARS A HEALTH BAR ═══
+     Owner: "During duels make it so that the hp and combat resource bars
+     appear (as if you're battling any other monster)."  Until now a duel
+     showed you a small "DUEL" badge in the corner and nothing else: you
+     fought a stranger with no idea whether you were winning, which is the
+     one thing every monster fight tells you at a glance.
+
+     "As if you're battling any other monster" is taken literally — the
+     same bar art, the same 44x13 geometry, the same ghost-trail and
+     white damage flash, the same hide-at-full rule.  Built here (frame /
+     fill / fx / number) and driven in _updateOtherPlayers; the nodes cost
+     nothing while alpha is 0, which is what they are for every peer who
+     is not in a fight. */
+  const duelBar = new Sprite();
+  duelBar.anchor.set(0.5, 0.5);
+  duelBar.alpha = 0;
+  container.addChild(duelBar);
+  const duelBarFill = new Sprite();
+  duelBarFill.anchor.set(0, 0.5);
+  duelBarFill.alpha = 0;
+  container.addChild(duelBarFill);
+  const duelBarFx = new Graphics();
+  duelBarFx.alpha = 0;
+  container.addChild(duelBarFx);
+  const duelBarText = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 9 } });
+  duelBarText.anchor.set(0.5, 0.5);
+  duelBarText.alpha = 0;
+  container.addChild(duelBarText);
+  container._duelBar = duelBar;
+  container._duelBarFill = duelBarFill;
+  container._duelBarFx = duelBarFx;
+  container._duelBarText = duelBarText;
   return container;
 }
 
@@ -6080,6 +6119,115 @@ export class EntityRenderer {
     return zonePlayerScale(S.currentZone, x, y, TILE);
   }
 
+  /* ═══ v2.3.1917: the duel opponent's health bar ═══
+     Owner: "During duels make it so that the hp and combat resource bars
+     appear (as if you're battling any other monster)."
+
+     WHEN it shows is decided by evidence, not by asking who is duelling
+     whom: the server stamps `_hpSeenAt` on a peer every time it reports
+     their HP changing (a pvp_hit), so a peer carries a bar while they are
+     in a fight and loses it a few seconds after the fight stops.  That
+     covers your own opponent without the client having to track duel
+     pairs, and it covers a duel you are STANDING AND WATCHING for free —
+     which is what a duel in a town square is for.
+
+     The rest is the monster's bar, deliberately: same art, same 44x13
+     box, same ghost trail and damage flash, same hide-at-full rule.  A
+     second bar style for players would be a second thing to keep in sync
+     for no reason the owner asked for. */
+  _drawPeerHpBar(display, other, now) {
+    const bar = display._duelBar;
+    if (!bar) return;
+    const seen = other._hpSeenAt || 0;
+    const maxHp = Math.max(1, other.rpgMaxHp || 0);
+    const hp = Math.max(0, Math.min(maxHp, other.rpgHp != null ? other.rpgHp : maxHp));
+    const frac = hp / maxHp;
+    /* Hidden unless: recently hit, actually hurt, and not a corpse.  A
+       corpse is excluded because the death animation IS the health
+       report at that point, and a bar over a bone pile reads as a
+       fight still in progress. */
+    const show = (now - seen) < PEER_HPBAR_HOLD_MS && frac < 0.999 && !other._isDead;
+    /* v2.3.1917: QA probe (tools/qa/mp/mp-duel.mjs).  Reports the LAST peer
+       considered this frame, which in a duel is the opponent — enough to
+       assert the bar armed, tracked a real fraction, and hid again. */
+    if (typeof window !== 'undefined') {
+      window.__btPeerHpBar = { shown: show, hp, maxHp, frac: +frac.toFixed(3), sinceHitMs: now - seen, dead: !!other._isDead };
+    }
+    if (!show) {
+      if (bar.alpha !== 0) {
+        bar.alpha = 0;
+        display._duelBarFill.alpha = 0;
+        display._duelBarText.alpha = 0;
+        display._duelBarFx.alpha = 0;
+        display._duelBarFx.clear();
+        display._peerGhost = null;   /* so the next fight starts clean */
+      }
+      return;
+    }
+    _ensureHudBarTextures();
+    const frameTex = _hudBarTex.barFrame;
+    if (!frameTex) return;           /* art not in yet — no bar beats a broken one */
+    if (bar.texture !== frameTex) { bar.texture = frameTex; bar.tint = 0xffffff; }
+    bar.width = MONSTER_HPBAR_W;
+    bar.height = MONSTER_HPBAR_H;
+    bar.x = 0;
+    bar.y = PEER_HPBAR_Y;
+    bar.alpha = 1;
+
+    const fill = display._duelBarFill;
+    const fillTex = _hpFillTexFor(display, frac);
+    if (fill && fillTex) {
+      if (fill.texture !== fillTex) fill.texture = fillTex;
+      fill.width = Math.max(1, MONSTER_HPBAR_W * frac);
+      fill.height = MONSTER_HPBAR_H;
+      fill.x = -MONSTER_HPBAR_W / 2;
+      fill.y = PEER_HPBAR_Y;
+      fill.alpha = 1;
+    }
+
+    /* Ghost trail + white damage flash — the v2.3.458 constants the
+       monster bar and the player widget both use. */
+    if (display._peerGhost == null) display._peerGhost = frac;
+    const tookDmg = (display._peerLastFrac != null) && (frac < display._peerLastFrac - 0.0005);
+    if (tookDmg) {
+      display._peerGhostDrainAt = now + HP_GHOST_HOLD_MS;
+      display._peerFlashUntil = now + HPBAR_FLASH_MS;
+    }
+    if (frac >= display._peerGhost) display._peerGhost = frac;
+    else if (now >= (display._peerGhostDrainAt || 0)) {
+      display._peerGhost = Math.max(frac, display._peerGhost - HP_GHOST_DRAIN_M);
+    }
+    display._peerLastFrac = frac;
+
+    const fx = display._duelBarFx;
+    if (fx) {
+      fx.clear();
+      fx.alpha = 1;
+      const inL = -MONSTER_HPBAR_W / 2 + MONSTER_HPBAR_W * HPBAR_IN_X;
+      const inW = MONSTER_HPBAR_W * HPBAR_IN_W;
+      const inT = PEER_HPBAR_Y - MONSTER_HPBAR_H / 2 + MONSTER_HPBAR_H * HPBAR_IN_Y;
+      const inH = MONSTER_HPBAR_H * HPBAR_IN_H;
+      if (display._peerGhost > frac + 0.001) {
+        fx.rect(inL + inW * frac, inT, inW * (display._peerGhost - frac), inH);
+        fx.fill({ color: HP_GHOST_WHITE, alpha: 0.92 });
+      }
+      const fl = (display._peerFlashUntil || 0) - now;
+      if (fl > 0 && frac > 0) {
+        fx.rect(inL, inT, inW * frac, inH);
+        fx.fill({ color: 0xffffff, alpha: 0.85 * (fl / HPBAR_FLASH_MS) });
+      }
+    }
+
+    const txt = display._duelBarText;
+    if (txt) {
+      const str = String(Math.ceil(hp));
+      if (txt.text !== str) txt.text = str;
+      txt.x = 0;
+      txt.y = PEER_HPBAR_Y;
+      txt.alpha = 1;
+    }
+  }
+
   _updateOtherPlayers(S, now) {
     const others = S.others || {};
     const activeIds = new Set();
@@ -6111,6 +6259,12 @@ export class EntityRenderer {
         const pscale = this._zonePscale(S, display.x, display.y) * PLAYER_SIZE_MULT; /* v2.3.1274 */
         if (display.scale.x !== pscale) display.scale.set(pscale);
       }
+
+      /* v2.3.1917: health bar for a peer in a fight — see _drawPeerHpBar.
+         Drawn every frame for every visible peer; it costs one comparison
+         against a timestamp for the overwhelming majority who are not
+         fighting, and self-hides. */
+      this._drawPeerHpBar(display, other, now);
 
       /* Death state — play the death sprite animation (player crumbles
          into a skeleton then a pile of bones) until player_respawned

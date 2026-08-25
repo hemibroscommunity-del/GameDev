@@ -1298,6 +1298,19 @@ export const combatMethods = {
           // (Second Wind saved the target mid-window) routine.  New
           // clients prefer this flag; old clients ignore it.
           died: targetPs.hp <= 0,
+          /* v2.3.1917: the target's REMAINING hp, so a duel opponent can
+             carry a health bar the way a monster does (owner: "During
+             duels make it so that the hp and combat resource bars appear
+             (as if you're battling any other monster)").
+             It has to ride THIS event and not the 2 s `track` relay that
+             feeds S.others: track is a bare telemetry timer, so a bar fed
+             from it would sit still through four or five exchanges and
+             then jump.  pvp_hit fires on the hit itself, which is exactly
+             when the number changed, and it is authoritative — dmgTaken
+             alone would leave each client integrating its own running
+             total and drifting from the server's. */
+          hp: Math.max(0, Math.round(targetPs.hp)),
+          maxHp: Math.max(1, Math.round(targetPs.maxHp || 1)),
           ts: Date.now(),
           rewindTicks: rewindTicks,
         }

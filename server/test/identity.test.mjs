@@ -161,7 +161,13 @@ const duelHits = room.eventBuffer.filter((e) => e.type === 'pvp_hit');
 check('duel handshake enables town PvP for the pair', duelHits.length === 1 && duelHits[0].payload.target === 'bp_bob', room.eventBuffer.map((e) => e.type));
 check('duel hit applies damage', room.playerState['bp_bob'].hp < room.playerState['bp_bob'].maxHp, room.playerState['bp_bob'].hp);
 
-// Lawless wilderness: no consent needed.  carol & dave, fresh pair.
+/* Lawless wilderness: it USED to need no consent.  v2.3.1917 turned that
+   off (owner: "remove the option to kill other players for now") -- this
+   assertion is the old one inverted, deliberately, because it is the whole
+   point of the change: standing next to a stranger in the meadow with a
+   drawn sword now does nothing at all.  Flip GameRoom.OPEN_PVP back to
+   true and the original behaviour returns; test/threat.test.mjs covers
+   that direction. */
 const wsC = fakeWs('carol'); const wsD = fakeWs('dave');
 await join(wsC, 'bp_carol', 'echo-flare-ghost-haze-1', 'meadow');
 await join(wsD, 'bp_dave', 'orbit-prism-quest-ridge-2', 'meadow');
@@ -169,7 +175,23 @@ room.playerState['bp_carol'].x = -100000; room.playerState['bp_carol'].y = -1000
 room.playerState['bp_dave'].x = -99960; room.playerState['bp_dave'].y = -100000;
 room.eventBuffer.length = 0;
 await room.webSocketMessage(wsC, JSON.stringify({ type: 'player_attack', payload: { ...atk } }));
-check('lawless zone allows PvP without consent', room.eventBuffer.filter((e) => e.type === 'pvp_hit' && e.payload.target === 'bp_dave').length === 1, room.eventBuffer.map((e) => e.type));
+check('a lawless zone no longer allows PvP without consent',
+  room.eventBuffer.filter((e) => e.type === 'pvp_hit' && e.payload.target === 'bp_dave').length === 0,
+  room.eventBuffer.map((e) => e.type));
+check('...and the victim takes no damage from it',
+  room.playerState['bp_dave'].hp === room.playerState['bp_dave'].maxHp,
+  { hp: room.playerState['bp_dave'].hp, maxHp: room.playerState['bp_dave'].maxHp });
+/* Guard: the refusal must be the CONSENT gate, not a broken fixture --
+   the same swing lands the moment the pair agree to a duel. */
+if (!room._pvpConsent) room._pvpConsent = new Map();
+room._pvpConsent.set(room._pvpPairKey('bp_carol', 'bp_dave'), Date.now() + 60000);
+room._pvpHitLanes = new Map();
+room.eventBuffer.length = 0;
+await room.webSocketMessage(wsC, JSON.stringify({ type: 'player_attack', payload: { ...atk } }));
+check('...but the identical swing lands once they duel (guard)',
+  room.eventBuffer.filter((e) => e.type === 'pvp_hit' && e.payload.target === 'bp_dave').length === 1,
+  room.eventBuffer.map((e) => e.type));
+room._pvpConsent.delete(room._pvpPairKey('bp_carol', 'bp_dave'));
 
 // ── 8. death clears consent ──
 room.playerState['bp_bob'].hp = 1;

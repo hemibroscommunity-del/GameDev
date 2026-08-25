@@ -1890,6 +1890,19 @@ export function processGameEvent(type, payload, S, deps) {
               var _R2$armor, _R2$_shieldBonus;
               // §16.12 — Server-authoritative PvP hit (lag-compensated)
               // Server already decided this is a hit. Defender applies own defense calc.
+              /* v2.3.1917: stamp the target's authoritative HP onto the peer
+                 record FIRST, before any of the my-target / my-hit branching
+                 below, so the health bar is fed on every hit no matter who is
+                 watching.  Spectators included — a duel is something a room
+                 gathers to watch.  `hp` is absent on an old worker, in which
+                 case nothing is written and the bar simply never arms
+                 (deploy-order safe: no bar beats a wrong bar). */
+              if (payload.hp !== undefined && S.others && S.others[payload.target]) {
+                var _pvB = S.others[payload.target];
+                _pvB.rpgHp = payload.hp;
+                if (payload.maxHp) _pvB.rpgMaxHp = payload.maxHp;
+                _pvB._hpSeenAt = Date.now();
+              }
               if (payload.target !== S.myId) {
                 // Not targeted at us — if we're the attacker, show hit confirmation
                 if (payload.attacker === S.myId) {

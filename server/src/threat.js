@@ -85,6 +85,17 @@ export const threatMethods = {
     const now = Date.now();
 
     if (msg.type === 'pvp_threat') {
+      /* v2.3.1917: refused outright while open PvP is off (owner: "remove
+         the option to kill other players for now", GameRoom.OPEN_PVP in
+         index.js).  Stopped HERE, at the door, rather than at the two
+         consent grants further down: a threat that can never lead to a
+         fight is just a red skull and a countdown pointed at someone who
+         has no way to be hurt, and the Call-Guards branch would still
+         levy 10% of the threatener's gold and gear-lock them for half an
+         hour over a fight the server would refuse to run.  No threat
+         means neither half can fire.  Returning null is the same silent
+         refusal every other invalid relay gets. */
+      if (!this.OPEN_PVP) return null;
       const aPs = this.playerState[fromId];
       const tPs = this.playerState[target];
       if (!aPs || !tPs || aPs.dying || tPs.dying) return null;
