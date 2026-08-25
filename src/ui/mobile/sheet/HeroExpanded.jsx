@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { COL, QUALITY_COLOR, panelStyle, getState } from '../dash/common.js';
-import { buildSkillUnspent, STAT_TO_WEAPON_CAT } from '../../../data/gameSystems.js';
+import { buildSkillUnspent, STAT_TO_WEAPON_CAT, getActiveWeapon } from '../../../data/gameSystems.js'; /* v2.3.1907: getActiveWeapon */
 import { requestT2Category } from '../dash/T2Panel.jsx';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { CharacterView, FIGURE_W_FRAC } from './CharacterView.jsx'; /* v2.3.1815: the equip screen's own figure */
@@ -623,9 +623,21 @@ export const HeroExpanded = () => {
               background: COL.wellSoft, border: `1px solid ${COL.tileBor}`,
               borderRadius: 8, overflow: 'hidden',
             }}>
+              {/* ═══ v2.3.1907: THE ACTIVE WEAPON, NOT THE MELEE SLOT ═══
+                  Owner: "When different weapons are equipped like pine bow and
+                  staff the character preview doesn't update on the character
+                  dashboard."
+
+                  It never could. There are THREE weapon slots — weapon (melee),
+                  rangedWeapon and staffWeapon, chosen by rpg.activeSlot — and
+                  this was wired to the melee one, so equipping or swapping to a
+                  bow or a staff changed a field the preview does not read.
+                  getActiveWeapon is what the world figure draws and what
+                  playerActions fires, so the preview now shows the thing you are
+                  actually holding rather than a fourth opinion about it. */}
               <CharacterView
                 size={3 * EQ_W + 2 * DASH_GAP}
-                weapon={R.weapon}
+                weapon={getActiveWeapon(R)}
                 shield={R.shield}
                 crop
               />
