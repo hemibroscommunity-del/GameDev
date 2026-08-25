@@ -57,7 +57,15 @@ const _ALL = [
   { id: 'army-helmet', name: 'Army Helmet' },
   { id: 'axe-head', name: 'Axe On Head' },
   { id: 'golden-bucket', name: 'Golden Bucket' },
-  { id: 'arabian-robe', name: 'Arabian Robe' },
+  /* v2.3.1934 (owner: "Beard Southwest view is layered behind Arab hat. It
+     should be in front of").  `beardOver` flips the beard above this piece.
+     Declared on the ENTRY for the same reason `underHair` is a few lines down:
+     layering is a property of the thing you are wearing, not of the renderer.
+     A keffiyeh DRAPES down the sides of the head and a beard grows in front of
+     cloth.  The default -- beard under headwear -- stays right for everything
+     physically in front of the face (a brim, a helmet's cheek guard, a
+     headphone cup), which is why this is one entry and not a rule. */
+  { id: 'arabian-robe', name: 'Arabian Robe', beardOver: true },
   /* v2.3.1764 (owner: "Layer the hair on top of headphones").  Headphones are
      worn ON THE EARS, so hair falls over the band — unlike a hat or a helmet,
      which cover it.  `underHair` flips the draw order for this piece only; the
@@ -143,6 +151,18 @@ export function setHeadwear(id) {
 export function headwearUnderHair(id) {
   const e = _ALL.find((h) => h && h.id === id);
   return !!(e && e.underHair);
+}
+
+/** v2.3.1934: TRUE when facial hair renders ABOVE this headwear instead of
+ *  below it.  Measured before it was written: rendering the beard alone and
+ *  then with each hat, 25 (hat, facing) pairs overlap the beard at all, and for
+ *  nearly all of them the hat covering the beard is CORRECT -- the spartan and
+ *  old-school helmets hide 256px of it behind a face guard on east, headphones
+ *  behind an ear cup, the shark hat behind its jaw.  Only draping cloth is the
+ *  exception, so only draping cloth carries the flag. */
+export function headwearBehindBeard(id) {
+  const e = _ALL.find((h) => h && h.id === id);
+  return !!(e && e.beardOver);
 }
 
 /** Subscribe to selection changes.  Returns an unsubscribe fn. */

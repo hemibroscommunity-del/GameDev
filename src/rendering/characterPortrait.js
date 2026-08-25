@@ -21,7 +21,7 @@ import { eyeColorTarget } from './traits/eyeColorCatalog.js';
 import { SPRITE_VERSION } from './playerSprites.js';
 import { getHatRef } from './traits/hatColorCatalog.js';
 import { materialIndex } from './traits/traitMaterials.js'; /* v2.3.1926 */
-import { headwearIsSolid } from './traits/headwearCatalog.js';
+import { headwearIsSolid, headwearBehindBeard } from './traits/headwearCatalog.js';   /* v2.3.1934 */
 import { SOLID_ONLY_HAT_COLOR } from './traits/recolorOptions.js'; /* v2.3.1109: shared per-hat recolour reference (call-time use; cyclic import is safe) */
 import { upscaleToFrameHeight } from './spriteScale.js'; /* v2.3.1110: restore downscaled shirt sheet to 256 frame */
 /* v2.3.1815: worn armour in the portrait.  gearArt resolves a recoloured set
@@ -603,8 +603,15 @@ export async function drawCharacterPortrait(canvas, opts) {
     }
   }
   /* Beard BELOW hair so hair strands lay over the beard (per user -- the NW
-     view had the beard covering the hair). */
-  if (fhImg && fhMeta) placeTrait(ctx, facialHairColor ? recolorHairToCanvas(fhImg, facialHairColor) : fhImg, fhMeta, crown, DIR);
+     view had the beard covering the hair).
+     v2.3.1934: ...and below the HAT too, except for the few the beard hangs in
+     front of (headwearBehindBeard).  Drawn after the hat in that case -- see
+     the drawBeard call below the headwear line. */
+  const _beardOverHat = wantHw && headwearBehindBeard(headwear);
+  const drawBeard = () => {
+    if (fhImg && fhMeta) placeTrait(ctx, facialHairColor ? recolorHairToCanvas(fhImg, facialHairColor) : fhImg, fhMeta, crown, DIR);
+  };
+  if (!_beardOverHat) drawBeard();
   if (hairImg && hairMeta) {
     /* Render hair to its own canvas so it can be clipped to the hat's
        silhouette mask (same as the in-game _clipHairToHat) before
@@ -625,6 +632,11 @@ export async function drawCharacterPortrait(canvas, opts) {
   const _hwCol = hatColor && (!SOLID_ONLY_HAT_COLOR || headwearIsSolid(headwear));
   if (hwImg && hwMeta) placeTrait(ctx, _hwCol ? recolorHairToCanvas(hwImg, hatColor, hatRef) : hwImg, hwMeta, crown, DIR,
     floatLift(hwMeta, hairMeta, DIR)); /* v2.3.1561 */
+  /* v2.3.1934: the beard goes on LAST for draping headwear.  Deliberately
+     after the hair-clip block as well, so the beard is not clipped to the
+     hat's silhouette the way hair is -- it is in front of the hat, not under
+     it, which is the whole point. */
+  if (_beardOverHat) drawBeard();
   ctx.restore();
   if (canvas.__pseq !== seq) return;   /* a newer draw superseded this one */
   /* v2.3.1580: blit 1:1 -- `work` is already FRAME*S, so this adds no
