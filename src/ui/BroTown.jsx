@@ -185,6 +185,7 @@ import { SKIN_CATALOG, PANTS_CATALOG, SHOES_CATALOG, getSkin, setSkin, getPants,
 import { HAIR_COLOR_CATALOG, getHairColor, setHairColor } from '@/rendering/traits/hairColorCatalog.js';
 import { HAT_COLOR_CATALOG, hatColorsFor, getHatColor, setHatColor } from '@/rendering/traits/hatColorCatalog.js';
 import { EYE_COLOR_CATALOG, getEyeColor, setEyeColor } from '@/rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
+import { getShirtArt, artHasInk } from '@/rendering/traits/shirtArt.js'; /* v2.3.1939 */
 import { FACIALHAIR_COLOR_CATALOG, getFacialHairColor, setFacialHairColor } from '@/rendering/traits/facialHairColorCatalog.js';
 import { SHIRT_CATALOG, getShirt, setShirt } from '@/rendering/traits/shirtCatalog.js';
 import { SHIRT_COLOR_CATALOG, getShirtColor, setShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
@@ -5577,6 +5578,9 @@ export var BroTown = function BroTown(_ref0) {
                 st: getShirt(),
                 stc: getShirtColor(),
                 ec: getEyeColor(),   /* v2.3.1930 */
+                /* v2.3.1939: the drawn shirt, only when drawn */
+                sa: artHasInk(getShirtArt('front')) ? getShirtArt('front') : undefined,
+                sb: artHasInk(getShirtArt('back')) ? getShirtArt('back') : undefined,
                 eqc: getEquip('chest'),
                 eql: getEquip('legs'),
                 eqs: getEquip('shoulders'),

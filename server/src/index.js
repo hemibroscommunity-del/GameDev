@@ -426,6 +426,11 @@ export const TRACK_COSMETIC_KEYS = new Set([
      select a colour that catalog already contains -- it cannot paint an
      arbitrary RGB, and it reaches nothing but a canvas. */
   'ec',
+  /* v2.3.1939: the drawn shirt, front and back.  Display-only like every
+     cosmetic here: the receiving client rejects anything that is not exactly
+     256 hex characters, so a forged value paints nothing rather than something
+     unexpected. */
+  'sa', 'sb',
   'pt', 'sh', 'bs', 'mask', 'cape', 'pet',
   // Live equipment visuals (armour on/off for remote renderers).
   'eqc', 'eql', 'eqs',
@@ -3874,7 +3879,14 @@ export class GameRoom {
                stays as-is -- it is a documented client-reported posture
                (see reportToLeaderboard), out of scope here. */
             if (typeof _tv === 'string') {
-              const _tcap = (k === 'avatar') ? 512 : 64;
+              /* v2.3.1939: the shirt drawings share `avatar`'s larger bound
+                 for the same reason they do on the join path -- they are a
+                 fixed 256 chars, and the client rejects anything that is not
+                 exactly that, so a 64-char cut is not a smaller drawing but no
+                 drawing at all.  Kept in lockstep with _sanitizeJoinData: if
+                 these two caps ever disagree, the join print and the track
+                 print disagree too. */
+              const _tcap = (k === 'avatar' || k === 'sa' || k === 'sb') ? 512 : 64;
               clean[k] = _tv.length > _tcap ? _tv.slice(0, _tcap) : _tv;
             } else {
               clean[k] = _tv;

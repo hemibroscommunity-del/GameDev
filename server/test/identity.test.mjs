@@ -220,7 +220,8 @@ check('death clears the consent pair', !room._pvpConsent.has(room._pvpPairKey('b
   await room.webSocketMessage(wsF, JSON.stringify({
     type: 'join', id: 'bp_finn', phrase: 'frost-tundra-amber-vigil-5', name: 'Finn',
     data: { x: 10, y: 10, z: 'town', name: 'Finn', hr: 'long', hc: 'ash', sk: 'tan', st: 'tunic',
-      ec: 'violet' /* v2.3.1930 */ },
+      ec: 'violet' /* v2.3.1930 */,
+      sa: 'b'.repeat(256) /* v2.3.1939: a drawn shirt, 256 chars */ },
   }));
   const charF = state._store.get('char:bp_finn');
   check('char record stamped in its own storage key on first join',
@@ -238,6 +239,13 @@ check('death clears the consent pair', !room._pvpConsent.has(room._pvpPairKey('b
      here is exactly how the feature would silently not persist. */
   check('...including the eye colour (v2.3.1930)',
     !!(charF && charF.look.ec === 'violet'), charF && charF.look);
+  /* v2.3.1939: a drawn shirt survives the join path AT FULL LENGTH.  Cosmetics
+     are truncated at 64 by default and this one is 256, so without its own
+     larger bound (alongside `avatar`) the drawing would arrive invalid and the
+     print would silently never appear. */
+  check('...and the drawn shirt, untruncated (v2.3.1939)',
+    !!(charF && charF.look.sa === 'b'.repeat(256)),
+    charF && charF.look.sa && charF.look.sa.length);
 
   /* THE POINT OF THE WHOLE THING: rejoin claiming a different face. */
   const wsF2 = fakeWs('finn-2');

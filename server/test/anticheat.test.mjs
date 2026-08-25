@@ -522,6 +522,7 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
       // honest cosmetics riding along must still land
       name: 'Tracker', color: '#abc', rpgLv: 500,
       ec: 'ice',   /* v2.3.1930: eye colour, relayed to peers */
+      sa: 'a'.repeat(256),   /* v2.3.1939: a drawn shirt */
     },
   }));
 
@@ -545,6 +546,12 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
      list never reaches playerState.  Value safety is the client's: it maps `ec`
      through EYE_COLOR_CATALOG and answers null for anything unknown. */
   check('track: eye colour is relayed as a cosmetic (v2.3.1930)', psT.ec === 'ice', psT.ec);
+  /* v2.3.1939: the drawn shirt rides the same allowlist.  Checked for FULL
+     LENGTH, not just presence: the join path caps most cosmetics at 64 chars,
+     and a truncated drawing is not a smaller drawing -- the client rejects any
+     string that is not exactly 256, so a silent cut means no print at all. */
+  check('track: a drawn shirt is relayed whole (v2.3.1939)',
+    psT.sa === 'a'.repeat(256), psT.sa && psT.sa.length);
 
   // A forged rpgLv is fine as a DISPLAY value (above) but must never
   // become the player's rank on the global board — v2.3.1178 closed
