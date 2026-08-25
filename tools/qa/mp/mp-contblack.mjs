@@ -8,7 +8,9 @@
  *
  * So this measures the SCREEN, on each way back into a character:
  *   1. the plain resume — reload holding the key;
- *   2. the login door's "Continue as <name>";
+ *   2. the login door's Continue -> picking your character (v2.3.1923; was
+ *      the overwrite warning's "Continue as <name>" until the roster
+ *      retired it);
  *   3. the login door's key entry, which is the other button in the game
  *      that says Continue.
  * ...and it distinguishes the two ways a screen can be black, because they
@@ -184,7 +186,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('ROAD 1 (reload with the key): the screen is not black', r1.ok, { ...r1, ...i1 });
   rec.ok('ROAD 1: ...and it is the same character', i1.myId === idBefore.myId, { i1, idBefore });
 
-  /* ── ROAD 2: the door's "Continue as <name>" ──
+  /* ── ROAD 2: the door's Continue -> your character in the picker ──
      Reachable only after a logout, which is the point: logout KEEPS the key
      (the passphrase is the character), so this is the one screen in the game
      where you stand at the door already holding a character. */
@@ -194,13 +196,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('logged out to the door (guard)', out === true, {});
   const atDoor = await identity(R);
   console.log('    at the door', JSON.stringify(atDoor));
-  const create = await R.page.$('[data-tut="login-create"]');
-  rec.ok('the door offers Create Character (guard)', !!create, atDoor);
-  if (create) {
-    await create.click();
+  /* v2.3.1923: the road is the same road, through the screen that replaced
+     the dialog.  It used to be Create Character -> "Continue as <name>" on an
+     overwrite warning; a device now keeps up to ten characters, so there is
+     nothing to warn about and continuing is a row in the picker behind the
+     door's Continue button.  What is being tested here has not changed: a
+     pre-game screen handing off to the world, and whether the world paints. */
+  const cont0 = await R.page.$('[data-tut="login-key"]');
+  rec.ok('the door offers Continue (guard)', !!cont0, atDoor);
+  if (cont0) {
+    await cont0.click();
     await R.page.waitForTimeout(800);
-    const cont = await R.page.$('[data-tut="login-existing-continue"]');
-    rec.ok('the dialog offers "Continue as <name>" (guard)', !!cont, {});
+    const cont = await R.page.$('[data-tut="char-row"][data-char-name="Returner"]');
+    rec.ok('the picker lists the character this device holds (guard)', !!cont, {});
     if (cont) {
       await cont.click();
       const r2 = await litWithin(R, 45000);
@@ -209,7 +217,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       /* A canvas AND no lit pixels is the failure the owner described; no
          canvas at all would mean it never left the door, which is a
          different bug and gets its own line rather than being folded in. */
-      rec.ok('ROAD 2 ("Continue as <name>"): it leaves the door for the world', r2.canvas === true, { ...r2, ...i2 });
+      rec.ok('ROAD 2 (picking your character): it leaves the door for the world', r2.canvas === true, { ...r2, ...i2 });
       rec.ok('ROAD 2: ...and the world is not black', r2.ok, { ...r2, ...i2 });
       rec.ok('ROAD 2: ...and it is the same character', i2.myId === rBefore.myId, { i2, rBefore });
     }

@@ -60,8 +60,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
        while it runs, so "the text is on screen" does not tell you whether
        the player can act.  Enabled-ness does. */
     doorLive: (() => {
-      const btns = [...document.querySelectorAll('button')]
-        .filter((b) => /Create Character|Log in with your Key/i.test(b.textContent || ''));
+      /* v2.3.1923: the door's two buttons by their data-tut handles rather
+         than by their labels.  The key button was renamed "Log in with your
+         Key" -> "Continue" when it started opening the character picker, and
+         a label match that silently degrades to finding only ONE of the two
+         still reports a live door — which is the half of this check that
+         would have gone quiet. */
+      const btns = [...document.querySelectorAll('[data-tut="login-create"], [data-tut="login-key"]')];
       return { n: btns.length, enabled: btns.filter((b) => !b.disabled).length };
     })(),
   }));
