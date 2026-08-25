@@ -39,6 +39,7 @@ import {
   ELEMENT_STATUS, applyElementStatus, resolveElementCollision, fractureDmgMult,
 } from './elemental.js';
 import { AMULET_TIER_POWER, t2CounterRate } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
+import { BLOCK_COSTS_STAMINA, BLOCK_STAMINA_COST } from './data.js'; // v2.3.1919: a blocked PvP hit costs stamina too
 import { LIVEOPS } from './liveops.js';
 import { PROG3 } from './prog3.js'; // v2.3.1659: the trained-skill combat rebuild config
 
@@ -1246,6 +1247,32 @@ export const combatMethods = {
          before this deploy have no `ba` and keep the omni fail-open, same
          as an old client — the pinned compatibility behavior. */
       const blocked = this._blockArcCovers(checkState, attackerPs.x, attackerPs.y);
+
+      /* ═══ v2.3.1919: A BLOCKED PvP HIT COSTS STAMINA ═══
+         Owner: "Just make the shield have stamina cost that would prohibit
+         holding the shield up the whole time."
+         A blocked hit is FULL invulnerability (see the note below), and in
+         PvP it was also completely free — the monster path has charged
+         BLOCK_STAMINA_COST since v2.3.1731 and this one never did.  So the
+         answer to any duel was to raise the shield and wait.  Same constant
+         and the same Bulwark efficiency multiplier as the monster site, so
+         there is one price for absorbing a hit whoever threw it.
+         Charged on the ABSORB, which is what the drain in _tickPlayerRegen
+         cannot see: a defender who is actually being attacked runs the bar
+         down far faster than one merely holding it up. */
+      if (blocked && BLOCK_COSTS_STAMINA && typeof targetPs.stamina === 'number') {
+        const _cost = Math.max(1, Math.round(BLOCK_STAMINA_COST * this._blockStaminaMult(targetPs)));
+        targetPs.stamina = Math.max(0, targetPs.stamina - _cost);
+        if (targetPs.stamina <= 0) {
+          /* Guard broken by the hit itself.  Latched the same way the hold
+             drain latches it (movement.js), or the client's next packet
+             would re-raise the shield a few milliseconds later. */
+          targetPs.blocking = false;
+          targetPs.blockStartT = 0;
+          targetPs._guardBrokenUntil = Date.now() + this.GUARD_BREAK_MS;
+        }
+        this._queuePlayerStateFlush(targetId);
+      }
 
       // Crit roll
       const isCrit = Math.random() * 100 < critChance;

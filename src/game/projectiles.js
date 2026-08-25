@@ -788,6 +788,17 @@ export function updateArrows(S, deps) {
                         && S.lockedTarget && S.lockedTarget.type === 'player' && S.lockedTarget.id))) {
               var _pvpTid = S._inDuel ? S._inDuel.opponent : S.lockedTarget.id;
               var _pvpO = _pvpTid != null ? S.others[_pvpTid] : null;
+              /* v2.3.1919: QA probe.  Arrows and magic were measured doing
+                 ZERO damage in duels (tools/qa/mp/mp-duelfeel.mjs: 64
+                 projectiles sent, 0 HP removed) while the wire showed no
+                 player_attack at all — so the miss is HERE, in the impact
+                 test, not on the server.  Reports how close the projectile
+                 actually got, which is the number that decides it. */
+              if (typeof window !== 'undefined') {
+                var _pq = window.__btPvpProj || (window.__btPvpProj = { gated: 0, noTarget: 0, tested: 0, hits: 0, closest: 1e9 });
+                _pq.gated++;
+                if (!_pvpO) _pq.noTarget++;
+              }
               if (_pvpO && !a.hitIds.has('p_' + _pvpTid)) {
                 var _pvpX = (typeof _pvpO.renderX === 'number') ? _pvpO.renderX : _pvpO.x;
                 var _pvpY = (typeof _pvpO.renderY === 'number') ? _pvpO.renderY : _pvpO.y;
@@ -795,7 +806,14 @@ export function updateArrows(S, deps) {
                    as monsterBodyOffsetY; player sprites are fodder-scale. */
                 var _pvpHitR = a.isStaff ? 34 : 22;
                 if (a.isSpecial) _pvpHitR *= 1.5;
-                if (Math.sqrt(Math.pow(_pvpX - a._renderX, 2) + Math.pow(_pvpY - 24 - a._renderY, 2)) < _pvpHitR) {
+                var _pvpGap = Math.sqrt(Math.pow(_pvpX - a._renderX, 2) + Math.pow(_pvpY - 24 - a._renderY, 2));
+                if (typeof window !== 'undefined' && window.__btPvpProj) {
+                  window.__btPvpProj.tested++;
+                  if (_pvpGap < window.__btPvpProj.closest) window.__btPvpProj.closest = Math.round(_pvpGap);
+                  window.__btPvpProj.radius = _pvpHitR;
+                }
+                if (_pvpGap < _pvpHitR) {
+                  if (typeof window !== 'undefined' && window.__btPvpProj) window.__btPvpProj.hits++;
                   a.hitIds.add('p_' + _pvpTid);
                   var _pvpDx = _pvpX - P.x, _pvpDy = _pvpY - P.y;
                   var _pvpDist = Math.sqrt(_pvpDx * _pvpDx + _pvpDy * _pvpDy);

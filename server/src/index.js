@@ -822,6 +822,15 @@ export class GameRoom {
        other players for now." */
     this.OPEN_PVP = false;
 
+    /* v2.3.1919: how long a broken guard stays broken.  Long enough that
+       turtling is a real risk rather than a rhythm — you cannot simply
+       re-raise on the next frame — and short enough that one mistake does
+       not decide the whole duel.  The shield's hold drain (5 per ~670ms
+       tick) empties a 100 bar in about 13 seconds, so a full-stamina player
+       still gets a long, deliberate block; what they no longer get is an
+       indefinite one. */
+    this.GUARD_BREAK_MS = 3000;
+
     /* v2.3.1620: leaderboard report throttle.  See reportToLeaderboard
        for the full rationale -- in short, `track` arrives every 2 s and
        the Leaderboard DO writes a row unconditionally, so this used to
@@ -2745,13 +2754,28 @@ export class GameRoom {
            is skipped entirely, so a blocking player falls through to the
            regen arm below and their stamina refills while they hold: exactly
            the demo behaviour the owner asked for. */
-        if (BLOCK_COSTS_STAMINA && ps.blocking && ps.stamina > 0) {
+        /* ═══ v2.3.1919: `ps.stamina > 0` WAS THE LEAK ═══
+           With it, a blocker at zero stamina fell out of this branch and
+           into the REGEN arm below — refilling while still holding the
+           shield.  Pair that with the client re-asserting `blocking` on
+           every move packet (now latched, movement.js) and the result was a
+           shield that could be held for the whole fight and cost nothing:
+           measured at 1.5 damage a swing over 40 seconds, against 11.8
+           unguarded.  Both halves had to go, or fixing either alone just
+           moves the free block somewhere else.
+           Holding now means never regenerating, and hitting zero starts a
+           real guard break the client cannot cancel. */
+        if (BLOCK_COSTS_STAMINA && ps.blocking) {
           const beforeSt = ps.stamina;
           ps.stamina = Math.max(0, ps.stamina - Math.max(1, Math.round(5 * this._blockStaminaMult(ps))));
           if (ps.stamina !== beforeSt) changed = true;
           if (ps.stamina <= 0) {
-            // Auto-release shield to match client's drop-at-0 behavior.
+            /* Drop the shield AND lock it down.  Before the latch this
+               assignment survived milliseconds. */
             ps.blocking = false;
+            ps.blockStartT = 0;
+            ps._guardBrokenUntil = Date.now() + this.GUARD_BREAK_MS;
+            changed = true;
           }
         } else if (ps.stamina < ps.maxStamina) {
           const stAmuletMult = 1 + (ps.amuletStaminaRegen || 0) / 100;
@@ -2787,8 +2811,17 @@ export class GameRoom {
          standing in a hub (owner: "heal and restore all combat resources
          when in worldview and in town").  Skipped while blocking (the
          drain above must win) and during an arena match (same posture
-         as the HP gate). */
-      if (inHub && !ps._arenaMatch && !ps.blocking) {
+         as the HP gate).
+         v2.3.1919: and skipped while the GUARD IS BROKEN.  The break clears
+         ps.blocking, which is what makes it a break — and this block, later
+         in the SAME tick, then saw a non-blocking player and topped them
+         straight back up.  Town is a hub and town is where duels are
+         fought, so the guard break refunded itself instantly exactly where
+         it mattered: the drain ran 100 -> 0 and the bar was back at 10
+         before the next tick.  Caught by test/blockcost.test.mjs, which
+         watched the whole sequence rather than the end state. */
+      if (inHub && !ps._arenaMatch && !ps.blocking
+          && !(ps._guardBrokenUntil && Date.now() < ps._guardBrokenUntil)) {
         if (typeof ps.maxStamina === 'number' && typeof ps.stamina === 'number' && ps.stamina < ps.maxStamina) {
           const beforeSt2 = ps.stamina;
           ps.stamina = Math.min(ps.maxStamina, ps.stamina + Math.max(1, Math.ceil(ps.maxStamina * 0.10)));

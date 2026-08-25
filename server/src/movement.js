@@ -332,8 +332,25 @@ export const movementMethods = {
            notices that a hit arrived within PARRY_WINDOW_MS of the shield
            going up.  Only a false->true transition re-arms it, so holding
            the shield does not keep the window open. */
+        /* ═══ v2.3.1919: A BROKEN GUARD STAYS BROKEN ═══
+           Owner: "Just make the shield have stamina cost that would prohibit
+           holding the shield up the whole time."
+
+           The stamina drain and the auto-release at zero both already
+           existed (index.js _tickPlayerRegen) and neither did anything,
+           because `blocking` is re-asserted by the CLIENT on every move
+           packet — at 22ms while active.  The tick would set
+           ps.blocking = false on the break and the next packet, milliseconds
+           later, set it straight back to true.  Measured in a real duel
+           (tools/qa/mp/mp-duelfeel.mjs): a defender held block for the full
+           40-second round taking 1.5 damage a swing, against 11.8 unguarded.
+
+           So the break gets a LATCH the client cannot clear.  While it is
+           live no incoming packet may raise the shield, which is the whole
+           difference between a guard break and a suggestion. */
         const _wasBlocking = !!ps.blocking;
-        ps.blocking = !!msg.blocking;
+        const _guardBroken = ps._guardBrokenUntil && Date.now() < ps._guardBrokenUntil;
+        ps.blocking = _guardBroken ? false : !!msg.blocking;
         if (ps.blocking && !_wasBlocking) ps.blockStartT = Date.now();
         else if (!ps.blocking) ps.blockStartT = 0;
       }
