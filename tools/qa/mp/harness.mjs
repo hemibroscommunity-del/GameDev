@@ -191,10 +191,11 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
   const ctx = await browser.newContext(Object.assign(
     { viewport: viewport || { width: 1000, height: 780 } },
     touch ? { hasTouch: true, isMobile: true, deviceScaleFactor: 2 } : null,
-    /* v2.3.1907: opt-in higher backing-store resolution, for scenarios that
+    /* v2.3.1906: opt-in higher backing-store resolution, for scenarios that
        have to LOOK at the figure. The player is ~40 CSS px tall on a phone
-       viewport; at dpr 2 a hand is a handful of pixels. Layout is unchanged —
-       only the capture resolution moves. */
+       viewport; at dpr 2 a shoulder — or a hand (v2.3.1907, which arrived at
+       the identical option independently) — is a handful of pixels. Layout is
+       unchanged, only the capture resolution moves. */
     dpr ? { deviceScaleFactor: dpr } : null,
   ));
   const page = await ctx.newPage();

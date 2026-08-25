@@ -21,10 +21,12 @@ import * as H from './harness.mjs';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  chatfont: () => import('./mp-chatfont.mjs'), /* v2.3.1912: the chat font, measured on the glass */
   tutgrant: () => import('./mp-tutgrant.mjs'), /* v2.3.1901: the first quest's sword + shield */
-  fishhand: () => import('./mp-fishhand.mjs'),
+  fishhand: () => import('./mp-fishhand.mjs'), /* v2.3.1907: the reeling hand over the shirt */
   previewweapon: () => import('./mp-previewweapon.mjs'), /* v2.3.1907: the preview follows the active weapon */
   questchain: () => import('./mp-questchain.mjs'), /* v2.3.1907: proximity turn-in across the whole chain */
+  queststar: () => import('./mp-queststar.mjs'), /* v2.3.1906: the star after the objective is done */
   freshpoints: () => import('./mp-freshpoints.mjs'), /* v2.3.1860: a new character has nothing to spend */
   bandsummary: () => import('./mp-bandsummary.mjs'), /* v2.3.1848: the band's compact summary */
   itemcard: () => import('./mp-itemcard.mjs'), /* v2.3.1845: the item card's art, name and rarity */
