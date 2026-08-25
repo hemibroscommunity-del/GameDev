@@ -281,6 +281,16 @@ Summary of the wire-visible changes:
   legacy/guest ids). Rejected auth → server sends `join_rejected
   {reason:'auth'}` then closes with code 4003; the client mints a fresh
   identity once and reconnects.
+- v2.3.1911 (AFK): a session with no PLAYER INPUT for
+  `IDLE_TIMEOUT_MS` (2 min) is evicted and closed with code 4006,
+  reason `idle timeout`; the client shows a resume banner and must NOT
+  auto-reconnect. Input is judged server-side: `pong` and `track` are
+  pure heartbeats and never count, and a `move` counts only when
+  something the player controls changed (position, facing, zone,
+  harvest, shield up/angle, dodge) — the client's 1 Hz idle keepalive
+  is by construction the move where nothing did. The client hangs up
+  first, at the same 2 minutes, off its own `_lastInputAt` (which also
+  sees taps that put nothing on the wire); the sweep is the backstop.
 - `state_sync` gains `caps` (e.g. `{trade: true, questTrack: true}`) —
   the server's capability advertisement. Clients store `S._serverCaps`
   and run legacy client-side credit paths ONLY when the server hasn't

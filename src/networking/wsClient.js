@@ -2095,19 +2095,19 @@ export function setupWebSocket(ctx) {
           S._realtimeStatus = 'rejected';
           return;
         }
+        /* v2.3.1911: AFK logout (worker sweep or our own idleLogout).
+           This MUST NOT auto-reconnect -- an abandoned tab that rejoins a
+           second after every eviction is the ghost the owner is
+           reporting, just with extra steps.  Same shape as the
+           superseded banner below: stop, say why, wait for a human. */
+        if ((event && event.code === 4006) || (event && event.reason === 'idle timeout')) {
+          S._realtimeStatus = 'idle';
+          showResumeBanner('You were away, so your character logged out.', "I'm back");
+          return;
+        }
         if (event && event.reason === 'superseded by reconnect') {
           S._realtimeStatus = 'superseded';
-          try {
-            var _el = document.createElement('div');
-            _el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#1b2536;color:#fff;font:13px/1.5 sans-serif;padding:10px 12px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.5);';
-            _el.textContent = 'This account connected from another window. ';
-            var _btn = document.createElement('button');
-            _btn.textContent = 'Play here instead';
-            _btn.style.cssText = 'margin-left:8px;padding:4px 12px;border-radius:6px;border:1px solid rgba(255,255,255,.3);background:#3dd497;color:#08231a;font-weight:700;cursor:pointer;';
-            _btn.onclick = function () { _el.remove(); connect(); };
-            _el.appendChild(_btn);
-            document.body.appendChild(_el);
-          } catch (e) { /* DOM unavailable */ }
+          showResumeBanner('This account connected from another window.', 'Play here instead');
           return;
         }
         scheduleReconnect();
@@ -2115,6 +2115,32 @@ export function setupWebSocket(ctx) {
       ws.onerror = function () {
         S._realtimeStatus = 'disconnected';
       };
+    }
+    /* v2.3.1911: the "we stopped on purpose, tap to come back" banner.
+       Extracted from the v2.3.771 superseded branch so the AFK logout
+       gets the identical treatment instead of a second copy of it.
+       Plain DOM rather than React state because onclose can fire from
+       anywhere, including after the game view has torn down. */
+    function showResumeBanner(text, label) {
+      try {
+        if (document.getElementById('bt-resume-banner')) return;
+        var _el = document.createElement('div');
+        _el.id = 'bt-resume-banner';
+        _el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#1b2536;color:#fff;font:13px/1.5 sans-serif;padding:10px 12px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.5);';
+        _el.textContent = text + ' ';
+        var _btn = document.createElement('button');
+        _btn.textContent = label;
+        _btn.style.cssText = 'margin-left:8px;padding:4px 12px;border-radius:6px;border:1px solid rgba(255,255,255,.3);background:#3dd497;color:#08231a;font-weight:700;cursor:pointer;';
+        _btn.onclick = function () {
+          _el.remove();
+          /* clear the AFK clock first, or the idle check would hang up
+             again on its very next frame. */
+          try { stateRef.current._lastInputAt = Date.now(); } catch (e) {}
+          connect();
+        };
+        _el.appendChild(_btn);
+        document.body.appendChild(_el);
+      } catch (e) { /* DOM unavailable */ }
     }
     function scheduleReconnect() {
       if (reconnectTimer) clearTimeout(reconnectTimer);
@@ -2145,7 +2171,11 @@ export function setupWebSocket(ctx) {
           ct.recordCrash('resume', tag + ' wsState=' + (ws ? ws.readyState : 'none'));
         }).catch(function () {});
       } catch (e) {}
-      if (S._realtimeStatus !== 'superseded') {
+      /* v2.3.1911: 'idle' joins 'superseded' here.  Both are deliberate
+         hang-ups with a banner offering the way back, and silently
+         reconnecting behind that banner would leave it lying on screen
+         while the character was already in the world again. */
+      if (S._realtimeStatus !== 'superseded' && S._realtimeStatus !== 'idle') {
         var _hiddenMs = _hiddenAt ? (Date.now() - _hiddenAt) : 0;
         var _frozenMs = Date.now() - _lastAliveAt - 1100; /* heartbeat period + slack */
         var _awayMs = Math.max(_hiddenMs, _frozenMs);
@@ -2697,6 +2727,43 @@ export function setupWebSocket(ctx) {
         if (reconnectTimer) clearTimeout(reconnectTimer);
         reconnectDelay = 1000;
         try { connect(); } catch (e) {}
+      },
+      /* v2.3.1911: LOG OUT AN IDLE CHARACTER.  Owner: "Sometimes I login
+         to the game and see characters I played in separate window hours
+         ago just idle.  Game should be logging out characters after 2
+         mins."  The worker now evicts an idle session on its own (a
+         standing-still `move` no longer counts as input), but the client
+         says it first and says it better: the worker can only see what
+         arrives on the socket, while the page can see the player's
+         THUMB -- a tap that scrolls the market panel is activity even
+         though it sends nothing.  So the page hangs up at exactly two
+         idle minutes and the worker's sweep stays as the backstop for a
+         page that is frozen, old, or lying.
+         Closed with the same 4006 the worker uses so onclose takes the
+         one branch either way. */
+      idleLogout: function idleLogout() {
+        if (!ws || ws.readyState !== WebSocket.OPEN) return;
+        /* Detach the handlers and drive the banner from HERE rather than
+           waiting for onclose, following the v2.3.778 resume-resync
+           pattern a few hundred lines up.  Measured in tools/qa/mp/
+           mp-afk.mjs: on a close WE initiate, the socket goes to CLOSING
+           immediately but the close EVENT can be many seconds behind it
+           (the peer has to finish the handshake), and for 13 s the page
+           sat there logged out with no banner and _realtimeStatus still
+           reading 'connected' -- a silent death, which is the one thing
+           this feature must not be.  A server-initiated eviction still
+           lands in onclose normally; that path is unchanged. */
+        S._realtimeStatus = 'idle';
+        var _old = ws;
+        ws = null;
+        try {
+          _old.onclose = null;
+          _old.onmessage = null;
+          _old.onerror = null;
+          _old.close(4006, 'idle timeout');
+        } catch (e) {}
+        if (reconnectTimer) clearTimeout(reconnectTimer);
+        showResumeBanner('You were away, so your character logged out.', "I'm back");
       }
     };
     S.channel = channelShim;
