@@ -11,6 +11,7 @@ import { FACIALHAIR_COLOR_CATALOG, setFacialHairColor } from '@/rendering/traits
 import { HAIR_CATALOG, setHair } from '@/rendering/traits/hairCatalog.js';
 import { HAIR_COLOR_CATALOG, setHairColor } from '@/rendering/traits/hairColorCatalog.js';
 import { HAT_COLOR_CATALOG, hatColorsFor, setHatColor } from '@/rendering/traits/hatColorCatalog.js';
+import { EYE_COLOR_CATALOG, setEyeColor } from '@/rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
 import { HEADWEAR_CATALOG, headwearIsSolid, setHeadwear } from '@/rendering/traits/headwearCatalog.js';
 import { SHIRT_CATALOG, setShirt } from '@/rendering/traits/shirtCatalog.js';
 import { SHIRT_COLOR_CATALOG, setShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
@@ -94,6 +95,8 @@ export function NameModal(props) {
     hairColorSel = props.hairColorSel,
     hairSel = props.hairSel,
     hatColorSel = props.hatColorSel,
+    eyeColorSel = props.eyeColorSel,
+    setEyeColorSel = props.setEyeColorSel,
     headwearSel = props.headwearSel,
     joinTown = props.joinTown,
     nameInput = props.nameInput,
@@ -144,6 +147,12 @@ export function NameModal(props) {
          offer -- the crown's yellow, which is the colour it already is. */
       colors: (recolorEnabled('hat') && (!SOLID_ONLY_HAT_COLOR || headwearIsSolid(headwearSel))) ? hatColorsFor(headwearSel) : null,
       colorSel: hatColorSel, setColor: function (id) { setHatColor(id); setHatColorSel(id); } },
+    /* v2.3.1928: eye colour.  A swatch-only category like Skin Tone -- there is
+       no sprite to pick, only a colour, and the iris it paints is found from a
+       reviewed mask rather than searched for at runtime. */
+    eyes: { label: 'Eyes', kind: 'swatch', spriteCat: null, catalog: null, sel: null,
+      set: function () {}, colors: EYE_COLOR_CATALOG,
+      colorSel: eyeColorSel, setColor: function (id) { setEyeColor(id); setEyeColorSel(id); } },
     /* v2.3.1308 (round-7): 'Skin' → 'Skin Tone' — it recolors the whole
        body, and the plain label read as head-only inside the Head group. */
     skin: { label: 'Skin Tone', kind: 'swatch', spriteCat: null, catalog: SKIN_CATALOG, sel: skinSel,

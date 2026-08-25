@@ -8,6 +8,7 @@ import { getFacialHairColor, onFacialHairColorChange, facialHairColorTarget } fr
 import { getHeadwear, onHeadwearChange } from '@/rendering/traits/headwearCatalog.js';
 import { getHatColor, onHatColorChange, hatColorTarget } from '@/rendering/traits/hatColorCatalog.js';
 import { getShirtColor, onShirtColorChange, shirtColorTarget } from '@/rendering/traits/shirtColorCatalog.js';
+import { getEyeColor, onEyeColorChange } from '@/rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
 import { getEquip, onEquipChange } from '@/rendering/gearCatalog.js';
 
 /* ═══ v2.3.1815: YOUR CHARACTER, ON THE EQUIP SCREEN ═══
@@ -76,7 +77,7 @@ export const CharacterView = ({ size, weapon, shield, crop }) => {
       onHairChange, onHairColorChange,
       onFacialHairChange, onFacialHairColorChange,
       onHeadwearChange, onHatColorChange,
-      onShirtColorChange,
+      onShirtColorChange, onEyeColorChange,   /* v2.3.1928 */
     ].map((sub) => { try { return sub(bump); } catch (e) { return null; } });
     for (const slot of ['chest', 'legs', 'shoulders', 'shirt']) {
       try { offs.push(onEquipChange(slot, bump)); } catch (e) { /* slot may not exist */ }
@@ -101,6 +102,7 @@ export const CharacterView = ({ size, weapon, shield, crop }) => {
       hairColor: hair === 'long' ? null : hairColorTarget(getHairColor()),
       facialHair: getFacialHair(), facialHairColor: facialHairColorTarget(getFacialHairColor()),
       headwear: getHeadwear(), hatColor: hatColorTarget(getHatColor(), getHeadwear()), /* v2.3.1927 */
+        eyeColor: getEyeColor(),
       /* The shirt is a GEAR SLOT, not a trait — getShirt() is a different
          wardrobe with the same word on it, and reading the trait one here
          drew a bare-chested figure while the world sprite wore a tee.

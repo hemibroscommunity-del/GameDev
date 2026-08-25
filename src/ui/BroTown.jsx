@@ -184,6 +184,7 @@ import { HAIR_CATALOG, getHair, setHair } from '@/rendering/traits/hairCatalog.j
 import { SKIN_CATALOG, PANTS_CATALOG, SHOES_CATALOG, getSkin, setSkin, getPants, setPants, getShoes, setShoes } from '@/rendering/playerSkins.js';
 import { HAIR_COLOR_CATALOG, getHairColor, setHairColor } from '@/rendering/traits/hairColorCatalog.js';
 import { HAT_COLOR_CATALOG, hatColorsFor, getHatColor, setHatColor } from '@/rendering/traits/hatColorCatalog.js';
+import { EYE_COLOR_CATALOG, getEyeColor, setEyeColor } from '@/rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
 import { FACIALHAIR_COLOR_CATALOG, getFacialHairColor, setFacialHairColor } from '@/rendering/traits/facialHairColorCatalog.js';
 import { SHIRT_CATALOG, getShirt, setShirt } from '@/rendering/traits/shirtCatalog.js';
 import { SHIRT_COLOR_CATALOG, getShirtColor, setShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
@@ -1728,6 +1729,10 @@ export var BroTown = function BroTown(_ref0) {
   var _hatColorSelState = useState(getHatColor()),
     hatColorSel = _hatColorSelState[0],
     setHatColorSel = _hatColorSelState[1];
+  /* v2.3.1928: eye colour, same shape as every other creator selection. */
+  var _eyeColorSelState = useState(getEyeColor()),
+    eyeColorSel = _eyeColorSelState[0],
+    setEyeColorSel = _eyeColorSelState[1];
   var _beardColorSelState = useState(getFacialHairColor()),
     beardColorSel = _beardColorSelState[0],
     setBeardColorSel = _beardColorSelState[1];
@@ -1780,7 +1785,7 @@ export var BroTown = function BroTown(_ref0) {
       skinSel: skinSel, pantsSel: pantsSel, shoesSel: shoesSel,
       hairSel: hairSel, hairColorSel: hairColorSel,
       facialHairSel: facialHairSel, beardColorSel: beardColorSel,
-      headwearSel: headwearSel, hatColorSel: hatColorSel,
+      headwearSel: headwearSel, hatColorSel: hatColorSel, eyeColor: eyeColorSel,
       shirtSel: shirtSel, shirtColorSel: shirtColorSel,
     });
     /* ═══ v2.3.1818: showNameModal IS A DEPENDENCY ═══
@@ -1804,7 +1809,7 @@ export var BroTown = function BroTown(_ref0) {
 
        Listing the mount flag is the whole fix: the effect re-runs when the
        creator appears, the ref is attached by then, and the portrait draws. */
-  }, [showNameModal, previewDir, skinSel, pantsSel, shoesSel, hairSel, hairColorSel, facialHairSel, beardColorSel, headwearSel, hatColorSel, shirtSel, shirtColorSel]);
+  }, [showNameModal, previewDir, skinSel, pantsSel, shoesSel, hairSel, hairColorSel, facialHairSel, beardColorSel, headwearSel, hatColorSel, shirtSel, shirtColorSel, eyeColorSel]);
   /* v2.3.715: the welcome modal is dead network time -- start pulling the
      heavy in-game sheets (network/decode only; the CPU bakes still run
      behind the intro overlay via preloadPlayerAssets in joinTown) and warm
@@ -1933,6 +1938,7 @@ export var BroTown = function BroTown(_ref0) {
     /* v2.3.1927: roll from what THIS hat offers -- rolling a colour its picker
        hides is the same broken-button problem the v2.3.1494 note describes. */
     if (recolorEnabled('hat')) { var htc = rpick(hatColorsFor(ht)); setHatColor(htc); setHatColorSel(htc); }
+    var ec = rpick(EYE_COLOR_CATALOG); setEyeColor(ec); setEyeColorSel(ec);
   };
   /* v2.3.711: RANDOMIZE rolls a few quick looks before settling -- the
      slot-machine beat makes the button feel fun instead of a dry reroll. */
@@ -8067,7 +8073,7 @@ export var BroTown = function BroTown(_ref0) {
     });
   }
   if (showNameModal) {
-    return /*#__PURE__*/React.createElement(NameModal, { _dragRotX: _dragRotX, _swatchTile: _swatchTile, _thumbTile: _thumbTile, activeCat: activeCat, beardColorSel: beardColorSel, facialHairSel: facialHairSel, hairColorSel: hairColorSel, hairSel: hairSel, hatColorSel: hatColorSel, headwearSel: headwearSel, joinTown: joinTown, nameInput: nameInput, pantsSel: pantsSel, previewCanvasRef: previewCanvasRef, previewDir: previewDir, randomizeWithFlair: randomizeWithFlair, rollRandomName: rollRandomName, rotatePreview: rotatePreview, setActiveCat: setActiveCat, setBeardColorSel: setBeardColorSel, setFacialHairSel: setFacialHairSel, setHairColorSel: setHairColorSel, setHairSel: setHairSel, setHatColorSel: setHatColorSel, setHeadwearSel: setHeadwearSel, setNameInput: setNameInput, setPantsSel: setPantsSel, setShirtColorSel: setShirtColorSel, setShirtSel: setShirtSel, setShoesSel: setShoesSel, setSkinSel: setSkinSel, shirtColorSel: shirtColorSel, shirtSel: shirtSel, shoesSel: shoesSel, skinSel: skinSel });
+    return /*#__PURE__*/React.createElement(NameModal, { _dragRotX: _dragRotX, _swatchTile: _swatchTile, _thumbTile: _thumbTile, activeCat: activeCat, beardColorSel: beardColorSel, facialHairSel: facialHairSel, hairColorSel: hairColorSel, hairSel: hairSel, hatColorSel: hatColorSel, eyeColorSel: eyeColorSel, setEyeColorSel: setEyeColorSel, headwearSel: headwearSel, joinTown: joinTown, nameInput: nameInput, pantsSel: pantsSel, previewCanvasRef: previewCanvasRef, previewDir: previewDir, randomizeWithFlair: randomizeWithFlair, rollRandomName: rollRandomName, rotatePreview: rotatePreview, setActiveCat: setActiveCat, setBeardColorSel: setBeardColorSel, setFacialHairSel: setFacialHairSel, setHairColorSel: setHairColorSel, setHairSel: setHairSel, setHatColorSel: setHatColorSel, setHeadwearSel: setHeadwearSel, setNameInput: setNameInput, setPantsSel: setPantsSel, setShirtColorSel: setShirtColorSel, setShirtSel: setShirtSel, setShoesSel: setShoesSel, setSkinSel: setSkinSel, shirtColorSel: shirtColorSel, shirtSel: shirtSel, shoesSel: shoesSel, skinSel: skinSel });
   }
   return /*#__PURE__*/React.createElement(React.Fragment, null, /* v2.3.1925: the mystery-reveal ceremony.  Mounted at the top of the in-world fragment and ALWAYS mounted — it renders null until a hidden grade arrives on the loot credit, and mounting it conditionally would mean the queue it subscribes to could fill before anyone was listening. */ /*#__PURE__*/React.createElement(RevealOverlay, null), showIntro && /*#__PURE__*/React.createElement(IntroVideo, {
     waitFor: introWaitRef.current,
