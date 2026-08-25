@@ -1,7 +1,7 @@
 {
   "category": "headwear",
   "fullFrame": true,
-  "note": "Red beanie. Sources: S=IMG_8818, SW=IMG_8796 (detached bottom blob removed), N=IMG_8810 (bottom ghost cleaned). East built from West=IMG_8798 flipped; northeast from Northwest=IMG_8809 flipped (beanie is left-right symmetric, renderer mirrors E/NE back to W/NW). crownNudge/scale start at defaults -- tune per direction after on-device review. v2.3.1527: hair-clip mask rebuilt from the current art by tools/make_hairmask.py. v2.3.1529: hair-clip mask rebuilt from the current art by tools/make_hairmask.py.",
+  "note": "Red beanie. Sources: S=IMG_8818, SW=IMG_8796 (detached bottom blob removed), N=IMG_8810 (bottom ghost cleaned). East built from West=IMG_8798 flipped; northeast from Northwest=IMG_8809 flipped (beanie is left-right symmetric, renderer mirrors E/NE back to W/NW). crownNudge/scale start at defaults -- tune per direction after on-device review. v2.3.1527: hair-clip mask rebuilt from the current art by tools/make_hairmask.py. v2.3.1529: hair-clip mask rebuilt from the current art by tools/make_hairmask.py. v2.3.1925: per-facing size fitted by tools/fit-headwear-scale.mjs. The five stand sheets draw the head at five different widths (43/52/45/44/41 in the 256 frame) and BODY_DIR_SCALE cancels out of the hat/head ratio, so a hat drawn one size renders a different size on every facing. scale[dir] now moves the facings that disagree onto the median of the ones that agree, measured as drawn WIDTH over head width, bounded to 15%, and skipped entirely on a facing whose aspect ratio says the silhouette itself changed. A facing that GREW carries a crownNudge Y that holds its bottom edge still.",
   "bboxes_source": {
     "south": [
       487,
@@ -114,7 +114,8 @@
     "southwest": 0.887,
     "north": 0.966,
     "east": 0.937,
-    "northeast": 0.966
+    "northeast": 0.966,
+    "south": 0.879
   },
   "scaleByPose": {
     "jog": {

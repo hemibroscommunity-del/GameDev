@@ -21,10 +21,38 @@
  * fixing the body must not break the trait scale: traits are placed through
  * the same bodyScale, so hat-height / body-height must stay constant across
  * facings even as both change.
+ *
+ * v2.3.1925: with the AUTHORED per-facing scale divided back out — see
+ * authoredScale() below.  meta.scale[dir] is a different number per facing now
+ * (each hat is fitted to the head its facing is drawn on), so the raw
+ * traitScale/bodyScale ratio is expected to vary and only the remainder is the
+ * renderer's business.
  */
+import fs from 'node:fs';
 import * as H from './harness.mjs';
 
 const DIRS = ['south', 'southeast', 'east', 'northeast', 'north', 'northwest', 'west', 'southwest'];
+/* Only five facings have art; the other three are those five mirrored. */
+const STORED = { south: 'south', southwest: 'southwest', southeast: 'southwest', east: 'east', west: 'east', northeast: 'northeast', northwest: 'northeast', north: 'north' };
+
+/* v2.3.1925: the authored per-facing size multiplier, read STRAIGHT OFF DISK
+   rather than out of the renderer, so the assertion below stays an independent
+   check.  It exists because `scale[dir]` is no longer the same number on every
+   facing — tools/fit-headwear-scale.mjs fits each hat to the head its facing is
+   drawn on, and nine hats carried hand-tuned per-facing scales before that.
+   The old assertion compared raw traitScale/bodyScale and only passed because
+   the hat it happens to equip (the first catalog entry) had a flat scale; on
+   bandana or red-cap it would always have failed. */
+function authoredScale(kind, id, dir) {
+  if (!id) return 1;
+  try {
+    const m = JSON.parse(fs.readFileSync(`public/sprites/traits/${kind}/${id}/meta.json`, 'utf8'));
+    const d = STORED[dir] || dir;
+    const base = (m.scale && m.scale[d] != null) ? m.scale[d] : 1;
+    const byPose = m.scaleByPose && m.scaleByPose.stand && m.scaleByPose.stand[d];
+    return base * (byPose == null ? 1 : byPose);
+  } catch (e) { return 1; }
+}
 
 /* Pin the facing from INSIDE a rAF: _facingAngle is slewed by the game loop,
    so a value written from evaluate() is overwritten before the next draw. */
@@ -119,19 +147,27 @@ export async function run({ browser, wsPort, webPort, rec }) {
      scale edit ever moved one without the other, THIS is the number that
      changes — and a hat that no longer tracks the body is exactly the
      failure the owner was guarding against. */
-  const worn = rows.filter((r) => r.hatScaleRatio > 0);
+  /* v2.3.1925: divide the AUTHORED per-facing multiplier back out first.  What
+     is being tested is that _placeTrait still multiplies the trait by the
+     body's scale — so the number that has to be flat is the ratio with the
+     one factor the meta deliberately varies removed.  Leaving it in tests the
+     art, not the renderer. */
+  const worn = rows.filter((r) => r.hatScaleRatio > 0)
+    .map((r) => ({ ...r, hatFit: +(r.hatScaleRatio / authoredScale('headwear', dressed && dressed.hat, r.want)).toFixed(5) }));
   if (worn.length >= 2) {
-    const hr = worn.map((r) => r.hatScaleRatio);
+    const hr = worn.map((r) => r.hatFit);
     const spreadH = (Math.max(...hr) - Math.min(...hr)) / ((Math.max(...hr) + Math.min(...hr)) / 2);
     rec.ok('the hat is scaled by the body, in every direction',
       spreadH < 0.02,
-      { spreadPct: +(spreadH * 100).toFixed(2), all: worn.map((r) => `${r.want}=${r.hatScaleRatio}`) });
+      { spreadPct: +(spreadH * 100).toFixed(2), hat: dressed && dressed.hat,
+        all: worn.map((r) => `${r.want}=${r.hatFit}`) });
 
-    const br = rows.filter((r) => r.beardScaleRatio > 0).map((r) => r.beardScaleRatio);
+    const br = rows.filter((r) => r.beardScaleRatio > 0)
+      .map((r) => +(r.beardScaleRatio / authoredScale('facialhair', dressed && dressed.beard, r.want)).toFixed(5));
     if (br.length >= 2) {
       const spreadB = (Math.max(...br) - Math.min(...br)) / ((Math.max(...br) + Math.min(...br)) / 2);
       rec.ok('...and so is the beard', spreadB < 0.02,
-        { spreadPct: +(spreadB * 100).toFixed(2), all: br });
+        { spreadPct: +(spreadB * 100).toFixed(2), beard: dressed && dressed.beard, all: br });
     }
   } else {
     rec.skip('the traits are scaled by the body',

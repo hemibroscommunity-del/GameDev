@@ -12,6 +12,7 @@ import { Texture } from 'pixi.js';
 import { recolorHairToCanvas } from '../characterPortrait.js';
 import { headwearIsSolid } from './headwearCatalog.js';
 import { recolorEnabled, SOLID_ONLY_HAT_COLOR } from './recolorOptions.js';
+import { segmentMaterials, mainMaterial } from './traitMaterials.js'; /* v2.3.1926 */
 
 export const HAT_COLOR_CATALOG = [
   { id: 'default', name: 'Default', swatch: '#7c6cff', target: null },
@@ -28,8 +29,39 @@ export const HAT_COLOR_CATALOG = [
   { id: 'gray',    name: 'Gray',    swatch: '#8a8a92', target: [140, 140, 148] },
 ];
 
-export function hatColorTarget(id) {
+/* v2.3.1927: colours a particular hat does not offer.
+ *
+ * Owner, after reviewing all 39 hats in all 11 colours: "keep all of them
+ * except the yellow recolor for crown (the default is already yellow)."  It is
+ * not that yellow looks wrong on the crown -- it is that the crown IS gold, so
+ * the swatch is a control that appears to do nothing, which reads as broken.
+ *
+ * The list is per hat rather than a rule, because that is the only thing that
+ * can be right here: whether a colour is worth offering is a look at the art,
+ * not something derivable from it.  Add ids as they are reviewed.
+ *
+ * Object.create(null): keyed by a trait id that arrives from a saved
+ * appearance, and a plain {} silently no-ops on '__proto__' (CLAUDE.md rule 4). */
+const HAT_COLOR_EXCLUDE = Object.create(null);
+HAT_COLOR_EXCLUDE.crown = ['yellow'];
+
+/** True if `colorId` is deliberately not offered on `hatId`. */
+export function hatColorExcluded(hatId, colorId) {
+  const skip = hatId && HAT_COLOR_EXCLUDE[hatId];
+  return !!(skip && skip.indexOf(colorId) >= 0);
+}
+
+/** The colours a hat's picker should show. */
+export function hatColorsFor(hatId) {
+  const skip = hatId && HAT_COLOR_EXCLUDE[hatId];
+  return skip ? HAT_COLOR_CATALOG.filter(c => skip.indexOf(c.id) < 0) : HAT_COLOR_CATALOG;
+}
+
+/* `hatId` is optional: without it no exclusion applies, so a caller that has
+   no hat in hand keeps the behaviour it always had. */
+export function hatColorTarget(id, hatId) {
   if (!recolorEnabled('hat')) return null;  /* v2.3.1494 */
+  if (hatColorExcluded(hatId, id)) return null;
   const e = HAT_COLOR_CATALOG.find(c => c.id === id);
   return (e && e.target) || null;
 }
@@ -81,7 +113,14 @@ function loadImg(url) {
    hat's facings share ONE recolour reference. Keying every direction off the
    same ref makes the chosen hat colour land on the same tone per angle instead
    of drifting with each sheet's own outline-to-fabric pixel ratio. */
-function _pooledRef(imgs) {
+/* v2.3.1926: returns the MATERIAL PROFILE as well, from the same single read of
+   the pixels -- which material is the hat's own colour, so a recolour can leave
+   the eyes, the teeth, the band and the outline alone (traitMaterials.js).
+   `ref` is byte-for-byte the number this function always returned; the recolour
+   of the hat's own material is therefore unchanged, and the only difference
+   anywhere is the materials that are now skipped. */
+function _pooledProfile(imgs, hatId) {
+  const chunks = [];
   let sum = 0, n = 0, maxL = 1;
   for (const img of imgs) {
     if (!img) continue;
@@ -90,6 +129,7 @@ function _pooledRef(imgs) {
     const ctx = cv.getContext('2d', { willReadFrequently: true });
     ctx.drawImage(img, 0, 0);
     const d = ctx.getImageData(0, 0, cv.width, cv.height).data;
+    chunks.push(d);
     for (let i = 0; i < d.length; i += 4) {
       if (d[i + 3] > 30) {
         const l = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
@@ -97,18 +137,22 @@ function _pooledRef(imgs) {
       }
     }
   }
-  return Math.max(1, n ? (sum / n) * 1.15 : maxL);
+  const mats = segmentMaterials(chunks);
+  return { ref: Math.max(1, n ? (sum / n) * 1.15 : maxL), mats, main: mainMaterial(hatId, mats) };
 }
 
-/* hatId -> shared pooled reference luminance (cached across colours + reused by
-   the character-creator portrait so its hat shade matches the in-game one). */
-const _refCache = {};
+/* hatId -> shared pooled recolour profile (reference luminance + the hat's
+   materials), cached across colours and reused by the character-creator
+   portrait so its hat shade matches the in-game one.
+   Object.create(null): keyed by a trait id that reaches here from a saved
+   appearance, and a plain {} silently no-ops on '__proto__' (CLAUDE.md rule 4). */
+const _refCache = Object.create(null);
 export function getHatRef(hatId) {
   if (!hatId || hatId === 'none') return Promise.resolve(0);
   if (_refCache[hatId]) return Promise.resolve(_refCache[hatId]);
   return Promise.all(DIRS.map(dir =>
     loadImg(`/sprites/traits/headwear/${hatId}/${dir}.png?v=${TRAIT_VER}`).then(img => img).catch(() => null)
-  )).then(imgs => (_refCache[hatId] = _pooledRef(imgs)));
+  )).then(imgs => (_refCache[hatId] = _pooledProfile(imgs, hatId)));
 }
 
 /* v2.3.1119: bound the recolor cache (see hairColorCatalog for rationale) --
@@ -140,10 +184,10 @@ function build(hatId, colorId) {
   Promise.all(DIRS.map(dir =>
     loadImg(`/sprites/traits/headwear/${hatId}/${dir}.png?v=${TRAIT_VER}`).then(img => ({ dir, img })).catch(() => ({ dir, img: null }))
   )).then(loaded => {
-    const ref = _refCache[hatId] || (_refCache[hatId] = _pooledRef(loaded.map(l => l.img)));
+    const prof = _refCache[hatId] || (_refCache[hatId] = _pooledProfile(loaded.map(l => l.img), hatId));
     for (const { dir, img } of loaded) {
       if (!img) continue; /* dir missing -> renderer falls back */
-      const cv = recolorHairToCanvas(img, target, ref);
+      const cv = recolorHairToCanvas(img, target, prof);
       const t = Texture.from(cv);
       if (t && t.source) { t.source.scaleMode = 'linear'; t.source.autoGenerateMipmaps = true; }
       tex[dir] = t;
@@ -156,7 +200,10 @@ function build(hatId, colorId) {
 /** Recolored hat texture map for (hatId, colorId), or null for the default
  *  color / while baking (caller falls back to the native-color textures). */
 export function getColoredHatTextures(hatId, colorId) {
-  if (!hatId || hatId === 'none' || !colorId || colorId === 'default' || !hatColorTarget(colorId)) return null;
+  /* v2.3.1927: an excluded colour renders as the hat's native art, so a saved
+     appearance that still names one falls back cleanly instead of showing a
+     colour the picker no longer offers. */
+  if (!hatId || hatId === 'none' || !colorId || colorId === 'default' || !hatColorTarget(colorId, hatId)) return null;
   /* v2.3.1493: enforce what line 3 of this file has always claimed -- recolor
      is for `solid` hats only.  It was never checked anywhere, so the picker was
      offered on every hat, and the retint is a brightness-ratio pass over EVERY

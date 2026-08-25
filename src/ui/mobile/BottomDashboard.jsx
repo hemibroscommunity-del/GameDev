@@ -704,7 +704,7 @@ export const BottomDashboard = () => {
         skin: getSkin(), pants: getPants(), shoes: getShoes(),
         hair: getHair(), hairColor: hairColorTarget(getHairColor()),
         facialHair: getFacialHair(), facialHairColor: facialHairColorTarget(getFacialHairColor()),
-        headwear: getHeadwear(), hatColor: hatColorTarget(getHatColor()),
+        headwear: getHeadwear(), hatColor: hatColorTarget(getHatColor(), getHeadwear()), /* v2.3.1927 */
         shirt: getShirt(), shirtColor: shirtColorTarget(getShirtColor()),
       }, true).then(url => { if (alive && url && mine === seq) setProfilePortrait(url); });
     };

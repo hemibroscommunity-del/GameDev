@@ -29,7 +29,7 @@ export function wireCharacterPortrait(previewCanvasRef, sel) {
     skin: skinSel, pants: pantsSel, shoes: shoesSel,
     hair: hairSel, hairColor: hairSel === 'long' ? null : hairColorTarget(hairColorSel),
     facialHair: facialHairSel, facialHairColor: facialHairColorTarget(beardColorSel),
-    headwear: headwearSel, hatColor: hatColorTarget(hatColorSel),
+    headwear: headwearSel, hatColor: hatColorTarget(hatColorSel, headwearSel), /* v2.3.1927 */
     shirt: shirtSel, shirtColor: shirtColorTarget(shirtColorSel),
     /* v2.3.1300: baked contact shadow — login preview only (exports and
        headshots keep a clean figure). */

@@ -115,7 +115,7 @@ export function InspectPlayerPanel(props) {
           facialHair: o.facialhair,
           facialHairColor: facialHairColorTarget(o.facialHairColor),
           headwear: o.headwear,
-          hatColor: hatColorTarget(o.hatColor),
+          hatColor: hatColorTarget(o.hatColor, o.headwear), /* v2.3.1927 */
           shirt: o.shirt,
           shirtColor: shirtColorTarget(o.shirtColor)
         }, true).then(function (url) {

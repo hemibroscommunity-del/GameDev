@@ -100,7 +100,7 @@ export const CharacterView = ({ size, weapon, shield, crop }) => {
          disagree about the same head. */
       hairColor: hair === 'long' ? null : hairColorTarget(getHairColor()),
       facialHair: getFacialHair(), facialHairColor: facialHairColorTarget(getFacialHairColor()),
-      headwear: getHeadwear(), hatColor: hatColorTarget(getHatColor()),
+      headwear: getHeadwear(), hatColor: hatColorTarget(getHatColor(), getHeadwear()), /* v2.3.1927 */
       /* The shirt is a GEAR SLOT, not a trait — getShirt() is a different
          wardrobe with the same word on it, and reading the trait one here
          drew a bare-chested figure while the world sprite wore a tee.

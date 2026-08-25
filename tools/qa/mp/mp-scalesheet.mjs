@@ -21,6 +21,25 @@ import * as H from './harness.mjs';
 import fs from 'fs';
 
 const DIRS = ['south', 'southeast', 'east', 'northeast', 'north', 'northwest', 'west', 'southwest'];
+/* Only five facings have art; the other three are those five mirrored. */
+const STORED = { south: 'south', southwest: 'southwest', southeast: 'southwest', east: 'east', west: 'east', northeast: 'northeast', northwest: 'northeast', north: 'north' };
+
+/* v2.3.1925: the authored per-facing size multiplier, read STRAIGHT OFF DISK so
+   the assertion stays independent of the renderer it is checking.  scale[dir] is
+   a different number per facing now (tools/fit-headwear-scale.mjs fits each hat
+   to the head its facing is drawn on), so the raw traitScale/bodyScale ratio is
+   MEANT to vary; only what is left after dividing that out is the renderer's. */
+function authoredScale(kind, id, dir, pose) {
+  if (!id) return 1;
+  try {
+    const m = JSON.parse(fs.readFileSync(`public/sprites/traits/${kind}/${id}/meta.json`, 'utf8'));
+    const d = STORED[dir] || dir;
+    const base = (m.scale && m.scale[d] != null) ? m.scale[d] : 1;
+    const byPose = m.scaleByPose && m.scaleByPose[pose] && m.scaleByPose[pose][d];
+    return base * (byPose == null ? 1 : byPose);
+  } catch (e) { return 1; }
+}
+
 const ANG = {
   east: 0, southeast: Math.PI / 4, south: Math.PI / 2, southwest: 3 * Math.PI / 4,
   west: Math.PI, northwest: -3 * Math.PI / 4, north: -Math.PI / 2, northeast: -Math.PI / 4,
@@ -241,19 +260,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
      The beard is measured on fewer facings by design — turned away from the
      camera there is no beard on screen to measure. */
   const EW = new Set(['east', 'west']);
-  for (const [what, key, minSeen] of [['hat', 'hatScaleRatio', 8], ['beard', 'beardScaleRatio', 2]]) {
-    const worn = rows.filter((r) => r.moving && r[key] > 0);
+  for (const [what, kind, key, minSeen] of [['hat', 'headwear', 'hatScaleRatio', 8], ['beard', 'facialhair', 'beardScaleRatio', 2]]) {
+    const id = dressed && (what === 'hat' ? dressed.hat : dressed.beard);
+    const worn = rows.filter((r) => r.moving && r[key] > 0)
+      .map((r) => ({ ...r, fit: +(r[key] / authoredScale(kind, id, r.want, 'jog')).toFixed(5) }));
     rec.ok(`jogging: the ${what} is on screen to be measured (guard)`,
       worn.length >= minSeen, { measured: worn.length, need: minSeen,
         all: worn.map((r) => `${r.want}=${r[key]}`) });
     for (const [group, want] of [['the six unturned facings', false], ['east/west', true]]) {
       const g = worn.filter((r) => EW.has(r.want) === want);
       if (g.length < 2) continue;
-      const v = g.map((r) => r[key]);
+      const v = g.map((r) => r.fit);
       const spread = (Math.max(...v) - Math.min(...v)) / (Math.max(...v) || 1);
       rec.ok(`jogging: the ${what} keeps one size relative to the body across ${group}`,
-        spread < 0.02, { spreadPct: +(spread * 100).toFixed(2),
-          all: g.map((r) => `${r.want}=${r[key]}`) });
+        spread < 0.02, { spreadPct: +(spread * 100).toFixed(2), [what]: id,
+          all: g.map((r) => `${r.want}=${r.fit}`) });
     }
   }
 

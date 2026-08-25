@@ -1,7 +1,7 @@
 {
   "category": "headwear",
   "fullFrame": true,
-  "note": "Blue shark with white belly. Sources S=IMG_8908, SW=IMG_8909 (pectoral fin is a legit detached comp -- kept; white specks <200px removed), N=7E28325D (1024 src padded to 1254; source was lighter+more-saturated than the rest AND had two enclosed transparent HOLES in the lower belly (gaps between body and lower fins) that showed through the head -- reprocessed: blue shifted +29,+11,-40 to match S/SW/E tone, then the enclosed holes filled with grayish-white [206,209,213] (dilated 1px for AA) so there's no see-through and it reads as the belly), E from W=IMG_8911 flipped, NE from NW=IMG_8913 flipped (white+black specks beneath the belly removed). Renderer mirrors E/NE back to W/NW. Despeck = drop opaque components <200px (keeps body+fin). NOT solid (blue body + white belly two-tone -- recolor would wreck the belly). scale.north 1.22 compensates the 1024->1254 pad shrink. crownNudge at defaults -- tune on-device. v2.3.1514: nudged by hand dx +0 dy +5 on north. v2.3.1527: hair-clip mask rebuilt from the current art by tools/make_hairmask.py. v2.3.1529: hair-clip mask rebuilt from the current art by tools/make_hairmask.py.",
+  "note": "Blue shark with white belly. Sources S=IMG_8908, SW=IMG_8909 (pectoral fin is a legit detached comp -- kept; white specks <200px removed), N=7E28325D (1024 src padded to 1254; source was lighter+more-saturated than the rest AND had two enclosed transparent HOLES in the lower belly (gaps between body and lower fins) that showed through the head -- reprocessed: blue shifted +29,+11,-40 to match S/SW/E tone, then the enclosed holes filled with grayish-white [206,209,213] (dilated 1px for AA) so there's no see-through and it reads as the belly), E from W=IMG_8911 flipped, NE from NW=IMG_8913 flipped (white+black specks beneath the belly removed). Renderer mirrors E/NE back to W/NW. Despeck = drop opaque components <200px (keeps body+fin). NOT solid (blue body + white belly two-tone -- recolor would wreck the belly). scale.north 1.22 compensates the 1024->1254 pad shrink. crownNudge at defaults -- tune on-device. v2.3.1514: nudged by hand dx +0 dy +5 on north. v2.3.1527: hair-clip mask rebuilt from the current art by tools/make_hairmask.py. v2.3.1529: hair-clip mask rebuilt from the current art by tools/make_hairmask.py. v2.3.1925: per-facing size fitted by tools/fit-headwear-scale.mjs. The five stand sheets draw the head at five different widths (43/52/45/44/41 in the 256 frame) and BODY_DIR_SCALE cancels out of the hat/head ratio, so a hat drawn one size renders a different size on every facing. scale[dir] now moves the facings that disagree onto the median of the ones that agree, measured as drawn WIDTH over head width, bounded to 15%, and skipped entirely on a facing whose aspect ratio says the silhouette itself changed. A facing that GREW carries a crownNudge Y that holds its bottom edge still.",
   "bboxes_source": {
     "south": [
       444,
@@ -99,7 +99,7 @@
     ],
     "north": [
       0,
-      -13
+      -18
     ],
     "east": [
       0,
@@ -111,7 +111,8 @@
     ]
   },
   "scale": {
-    "north": 1.22
+    "north": 1.3,
+    "east": 0.85
   },
   "clipsHair": true
 }

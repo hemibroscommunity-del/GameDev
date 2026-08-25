@@ -21,6 +21,8 @@ this is telling _placeTrait where the head is, not redrawing anything.
                           existing scale, about the anchor, which is the pivot
                           _placeTrait scales around
     [--show]              print the current values and change nothing
+    --tag v2.3.NNNN       required on a write; recorded in the trait's note
+    [--reason "..."]      why, recorded next to the numbers
 """
 import argparse
 import json
@@ -46,6 +48,13 @@ def main():
     ap.add_argument('--dirs', default=','.join(DIRS))
     ap.add_argument('--scale', type=float, default=None)
     ap.add_argument('--show', action='store_true')
+    # v2.3.1925: the version tag used to be HARDCODED into the note this writes,
+    # so every nudge since v2.3.1514 has been stamping that tag onto work from a
+    # different version -- the note is this repo's institutional memory and a
+    # wrong tag in it points a future reader at the wrong incident.  Required on
+    # a write; --show still needs nothing.
+    ap.add_argument('--tag', help='version tag to record in the note, e.g. v2.3.1925')
+    ap.add_argument('--reason', help='why, recorded in the note alongside the numbers')
     args = ap.parse_args()
 
     path = trait_meta(args.id)
@@ -72,8 +81,12 @@ def main():
     what = f'dx {args.dx:+d} dy {args.dy:+d}'
     if args.scale is not None:
         what += f' scale x{args.scale}'
-    meta['note'] = (meta.get('note', '') + f' v2.3.1514: nudged by hand '
-                    f'{what} on {",".join(want)}.')
+    if not args.tag:
+        raise SystemExit('--tag is required for a write (e.g. --tag v2.3.1925); '
+                         'it is recorded in the trait note')
+    reason = f' ({args.reason})' if args.reason else ''
+    meta['note'] = (meta.get('note', '') + f' {args.tag}: nudged by hand '
+                    f'{what} on {",".join(want)}{reason}.')
     with open(path, 'w') as fh:
         json.dump(meta, fh, indent=2)
         fh.write('\n')
