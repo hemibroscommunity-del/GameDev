@@ -41,6 +41,11 @@
  */
 import { GameRoom } from '../src/index.js';
 import { MONSTER_ARMOR_DROPS, RARE_GEM_MONSTER_DROP, RARE_GEM_KEY, MONSTER_IRON_WEAPON_DROP } from '../src/data.js';
+/* v2.3.1925: the CLIENT's own armour formula, imported so the two can be
+   compared directly.  mirror-audit.test.mjs already reaches across the same
+   boundary for the constant tables; this reaches for the function, because
+   what has to agree here is the arithmetic, not a number. */
+import { getArmorPieceDr } from '../../src/data/gameSystems.js';
 
 function makeState() {
   const store = new Map();
@@ -276,6 +281,121 @@ const flagged = withRandom([0], () =>
 room._flagOn = realFlag;
 check('disable_weapon_drops stops the iron blade too, not just the ordinary roll',
   !!flagged && !flagged.weapon, flagged && flagged.weapon);
+
+/* ── 8. v2.3.1925: THE RARITY LADDER ─────────────────────────────────────
+   Owner: "I also want the drop to consider a rarity system ... If it's on
+   rare tier or above, the item becomes a silhouette with a question mark.
+   You get to roll again to see if it reaches the next tier."
+
+   Four claims, and the first two are the security ones — a grade that leaks
+   onto the pile broadcast means every other client in the zone knows what is
+   in someone else's mystery, and a client that can compute the ladder itself
+   holds the answer before the animation reaches it. */
+room._rollShardForKill = () => null;
+room._rollWeaponDropForKill = () => null;
+room._rollIronWeaponForKill = () => null;
+room.loot = {};
+const E = mkPlayer('pE');
+
+/* Force both armour rolls to hit, then stamp a known grade on each so the
+   assertions are about the PLUMBING, not about waiting for a 1-in-400,000. */
+/* Four zeros then a one: each piece now burns TWO randoms — its drop roll and
+   its quality roll — so the sequence is chest-drop, chest-grade, legs-drop,
+   legs-grade, and the trailing 1 makes the gem miss.  (The first cut of this
+   passed [0,0,1] and got one piece: the quality roll had eaten the legs' drop
+   roll.  Worth the note — every stubbed sequence in this file is coupled to
+   how many randoms the code under it draws.) */
+const gPile = withRandom([0, 0, 0, 0, 1], () =>
+  room._spawnLootForKill('town', { ...monster, id: 'm7' }, 'pE', ['pE'], { pE: 1 }));
+check('an armour pile spawned to grade (guard)', !!gPile && !!gPile.armor && gPile.armor.length === 2, gPile && gPile.armor);
+check('every dropped piece carries a quality grade',
+  !!gPile && gPile.armor.every((a) => typeof a.quality === 'string' && a.quality), gPile && gPile.armor.map((a) => a.quality));
+gPile.armor[0].quality = 'godly';
+gPile.armor[1].quality = 'normal';
+
+/* 1. THE GRADE NEVER REACHES THE WIRE. */
+const gWire = room._serializePile(gPile);
+check('the broadcast strips the grade from every piece',
+  gWire.armor.every((a) => a.quality === undefined), gWire.armor);
+check('...but still names the piece, so you know WHAT dropped',
+  gWire.armor.every((a) => typeof a.name === 'string' && a.name.length > 0), gWire.armor);
+/* GDD §4.6b.ii: rare and godly are indistinguishable on the ground.  Both
+   pieces are on this pile — one godly, one normal — so the flags must
+   separate them by "is there a secret", never by which secret. */
+check('...marking only the rare-or-better piece as a mystery',
+  gWire.armor[0].mystery === true && gWire.armor[1].mystery === false,
+  gWire.armor.map((a) => a.mystery));
+check('...and the pile advertises that it holds one', gWire.mystery === true, gWire.mystery);
+
+/* A pile of ordinary drops must NOT pulse — normal is ~90% of everything and
+   a question mark over every kill is just a slower pickup. */
+gPile.armor[0].quality = 'normal';
+check('a pile with nothing above normal is not a mystery',
+  room._serializePile(gPile).mystery === false, room._serializePile(gPile).mystery);
+gPile.armor[0].quality = 'godly';
+
+/* 2. THE LADDER IS THE SERVER'S. */
+check('a rare plays one stage, landing on rare',
+  JSON.stringify(room._revealLadder('rare')) === JSON.stringify(['rare']), room._revealLadder('rare'));
+check('an elite plays one stage that escalates past rare',
+  JSON.stringify(room._revealLadder('elite')) === JSON.stringify(['elite']), room._revealLadder('elite'));
+check('a godly plays TWO stages — elite, then the escalation',
+  JSON.stringify(room._revealLadder('godly')) === JSON.stringify(['elite', 'godly']), room._revealLadder('godly'));
+check('a normal has no ceremony at all', room._revealLadder('normal') === null, room._revealLadder('normal'));
+
+/* 3. THE CREDIT CARRIES THE CEREMONY, AND ONLY FOR HIDDEN GRADES. */
+/* Capture what the picker is actually SENT.  Up to here the suite has read
+   server state with no socket; the reveal only exists on the wire, so this is
+   the one section that has to listen to it. */
+let credit = null;
+room._wsBySessionId = () => ({ send: (str) => {
+  const m = JSON.parse(str);
+  if (m.type === 'loot_credit') credit = m.payload;
+} });
+room._handleLootPickup({ id: 'pE', name: 'E' }, { lootId: gPile.lootId, zone: 'town' });
+room._wsBySessionId = () => null;
+check('the private credit carries a reveal for the godly piece',
+  !!credit && Array.isArray(credit.reveals) && credit.reveals.length === 1, credit && credit.reveals);
+check('...naming the true grade, which only the picker learns',
+  !!credit && credit.reveals[0].quality === 'godly', credit && credit.reveals[0]);
+check('...with the two-stage ladder to play',
+  !!credit && JSON.stringify(credit.reveals[0].ladder) === JSON.stringify(['elite', 'godly']),
+  credit && credit.reveals[0].ladder);
+/* The normal piece is on the same pickup and must not get a ceremony. */
+check('...and nothing for the normal piece on the same pickup',
+  !!credit && credit.reveals.length === 1, credit && credit.reveals);
+
+/* 4. QUALITY REACHES THE DAMAGE MATHS, AND BOTH SIDES AGREE.
+   The server's number is what damage is computed with; the client's is what
+   the item card promises.  A drift between them is invisible on screen — the
+   card says one thing and the hits say another — so they are compared
+   directly rather than each being checked against a hand-written expectation. */
+const DR_CASES = [
+  { tierMult: 1.25, quality: 'normal' },
+  { tierMult: 1.25, quality: 'rare' },
+  { tierMult: 1.25, quality: 'elite' },
+  { tierMult: 1.25, quality: 'godly' },
+  { tierMult: 1.00, quality: 'normal' },
+];
+const drBad = [];
+for (const c of DR_CASES) {
+  const srv = room._armorDrMult({ armor: { ...c }, legsArmor: null });
+  const cli = 1 - getArmorPieceDr({ ...c }, 'chest');
+  if (Math.abs(srv - cli) > 1e-9) drBad.push({ c, srv, cli });
+}
+check('server and client compute the SAME armour reduction at every grade',
+  drBad.length === 0, drBad);
+/* And it actually moves — a grade that changed nothing would pass the parity
+   check above by both sides ignoring it. */
+const drNormal = 1 - room._armorDrMult({ armor: { tierMult: 1.25, quality: 'normal' }, legsArmor: null });
+const drGodly = 1 - room._armorDrMult({ armor: { tierMult: 1.25, quality: 'godly' }, legsArmor: null });
+check('a godly chest mitigates measurably more than a normal one',
+  drGodly > drNormal + 0.05, { normal: drNormal, godly: drGodly });
+/* ...and cannot escape the ladder the formula was built for.  Multiplying the
+   REDUCTION instead of the tier would put this at 0.90 and leave the 0.75
+   clamp doing all the work. */
+check('...without running straight into the 0.75 clamp',
+  drGodly < 0.70, drGodly);
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 if (failures > 0) process.exit(1);

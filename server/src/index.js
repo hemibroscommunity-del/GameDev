@@ -2962,7 +2962,15 @@ export class GameRoom {
     const out = [];
     for (const d of MONSTER_ARMOR_DROPS) {
       if (Math.random() >= d.chance) continue;
-      out.push({ name: d.name, mat: d.mat, slot: d.slot, tierMult: d.tierMult });
+      /* ═══ v2.3.1925: ARMOUR ROLLS QUALITY TOO ═══
+         Owner: "I also want the drop to consider a rarity system."  Quality
+         has been weapon-only since v2.3.1131; GDD §4.6b is explicit that the
+         rates apply to "all weapon drops regardless of source", and the owner
+         has now extended the ladder to armour.  Same roller, deliberately:
+         one distribution means normal/rare/elite/godly mean the same thing on
+         a breastplate as on a blade, and there is one place to retune. */
+      out.push({ name: d.name, mat: d.mat, slot: d.slot, tierMult: d.tierMult,
+        quality: this._rollWeaponQuality() });
     }
     return out.length ? out : null;
   }
@@ -3009,6 +3017,97 @@ export class GameRoom {
      lives in lifeSkills.  Two different things on purpose; see RARE_GEM_KEY. */
   _rollRareGemForKill() {
     return Math.random() < RARE_GEM_MONSTER_DROP ? RARE_GEM_KEY : null;
+  }
+
+  /* ═══ v2.3.1925: THE MYSTERY GRADES ═══
+     GDD §4.6b.ii: "Drops at Rare grade and above appear in the world as
+     mystery icons ... Normal drops appear immediately as their normal
+     icons."  Normal is ~90% of everything, so gating on grade is what keeps
+     the ceremony meaning something — a question mark over every kill is just
+     a slower pickup. */
+  _isMysteryGrade(q) {
+    return q === 'rare' || q === 'elite' || q === 'godly';
+  }
+
+  /* A pile carries a mystery when ANY unclaimed thing on it does.  Claimed
+     lanes are excluded: once someone has taken the blade, the pile should
+     stop advertising a secret it no longer holds. */
+  _pileHasMystery(p) {
+    if (!p) return false;
+    if (!p.weaponClaimed && p.weapon && this._isMysteryGrade(p.weapon.quality)) return true;
+    if (!p.armorClaimed && Array.isArray(p.armor)) {
+      for (const a of p.armor) if (a && this._isMysteryGrade(a.quality)) return true;
+    }
+    return false;
+  }
+
+  /* The public face of one armour piece: everything EXCEPT the grade.  Name
+     and metal stay (you can see it is an iron breastplate); `mystery` says
+     only that there is something to find out.  Written as a strip rather than
+     a pick so a field added to the piece later is public by accident in the
+     harmless direction, never the grade by omission — `quality` is deleted
+     explicitly and drops.test.mjs asserts it never reaches the wire. */
+  _mysteryPiece(a) {
+    if (!a) return a;
+    const out = { ...a };
+    delete out.quality;
+    out.mystery = this._isMysteryGrade(a.quality);
+    return out;
+  }
+
+  /* Build the credit's reveal list.  Kept beside _revealLadder rather than
+     inline at the pickup site because it is the ONLY place that decides what
+     a player is shown about a grade, and one place is what makes "the client
+     never holds the answer before the animation reaches it" checkable. */
+  _revealsFor(weapon, armorPieces) {
+    const out = [];
+    if (weapon && this._isMysteryGrade(weapon.quality)) {
+      out.push({
+        kind: 'weapon',
+        name: weapon.name || 'Weapon',
+        itemType: weapon.type || null,
+        mat: weapon.gearBase || null,
+        quality: weapon.quality,
+        ladder: this._revealLadder(weapon.quality),
+      });
+    }
+    for (const a of (armorPieces || [])) {
+      if (!a || !this._isMysteryGrade(a.quality)) continue;
+      out.push({
+        kind: a.slot === 'legsArmor' ? 'legs' : 'armor',
+        name: a.name || 'Armor',
+        itemType: null,
+        mat: a.mat || null,
+        quality: a.quality,
+        ladder: this._revealLadder(a.quality),
+      });
+    }
+    return out.length ? out : null;
+  }
+
+  /* ═══ THE REVEAL LADDER ═══
+     The animation the client plays is a PRESENTATION of a grade this worker
+     already committed at mint — it is not a second chance at a better roll,
+     and it cannot be, because the item is already in the pile.  §4.6b.ii puts
+     it exactly right: the player cannot distinguish "the server is showing me
+     the real rolls" from "the server is showing me outcomes calibrated to
+     land on the pre-committed result", because the two produce mathematically
+     equivalent animations.
+
+     So the server sends the LADDER — how many stages to play and what each
+     one resolves to — and the client animates it.  Sending the shape rather
+     than letting the client derive it from the grade matters for the same
+     reason the grade itself is withheld: the client should never hold the
+     answer before the animation reaches it.
+
+       rare  -> ['rare']                    one stage, settles on the floor
+       elite -> ['elite']                   one stage, escalates past rare
+       godly -> ['elite', 'godly']          two stages
+     Normal returns null: no ceremony, nothing hidden. */
+  _revealLadder(q) {
+    if (!this._isMysteryGrade(q)) return null;
+    if (q === 'godly') return ['elite', 'godly'];
+    return [q];
   }
 
   // Pile shape (server-side, full):
@@ -3135,17 +3234,30 @@ export class GameRoom {
       // That withholding IS the §4.6b.ii mystery-reveal contract.
       hasWeapon: !!p.weapon,
       weaponClaimed: !!p.weaponClaimed,
+      /* v2.3.1925: is the blade's grade worth a reveal?  The pile has hidden
+         `quality` since v2.3.1141; what it could never say is whether there
+         was anything worth hiding, so every drop looked the same on the
+         ground.  This is the one bit §4.6b.ii asks for. */
+      weaponMystery: this._isMysteryGrade(p.weapon && p.weapon.quality),
       weaponTier: p.weapon ? p.weapon.tier : null,
       weaponType: p.weapon ? p.weapon.type : null,
       weaponName: p.weapon ? p.weapon.name : null,
-      /* v2.3.1924: the armour goes out in FULL, unlike the weapon.  The
-         withholding above exists because a weapon's quality is rolled at mint
-         and revealed at pickup (§4.6b.ii); a dropped armour piece has no
-         hidden roll at all — every field is fixed by MONSTER_ARMOR_DROPS — so
-         there is nothing to keep back and a pile that can say "Iron Greaves"
-         is worth walking to.  The gem is broadcast for the same reason. */
-      armor: p.armor || null,
+      /* ═══ v2.3.1925: THE ARMOUR NO LONGER GOES OUT IN FULL ═══
+         v2.3.1924 broadcast it whole, and its reasoning was sound at the
+         time: "a dropped armour piece has no hidden roll at all — every field
+         is fixed by MONSTER_ARMOR_DROPS".  That stopped being true the moment
+         armour started rolling quality, so the same argument now points the
+         other way and the piece is stripped exactly like the weapon.
+
+         `_mysteryPiece` keeps the NAME and the metal — GDD §4.6b.ii: the
+         player "knows what KIND of item dropped" and nothing about the grade,
+         so a Rare and a Godly are indistinguishable on the ground. */
+      armor: Array.isArray(p.armor) ? p.armor.map((a) => this._mysteryPiece(a)) : null,
       armorClaimed: !!p.armorClaimed,
+      /* Is there anything on this pile whose grade is still unknown?  One
+         flag for the renderer, computed here because the server is the only
+         side that can see the grades it is hiding. */
+      mystery: this._pileHasMystery(p),
       gem: p.gem || null,
       // Death-drop fields (null for normal monster-kill piles).
       isDeathDrop: p.isDeathDrop || false,
@@ -3501,6 +3613,15 @@ export class GameRoom {
                claim block above for why that store is the client's). */
             gem: gemForMe,
             armor: armorForMe,
+            /* ═══ v2.3.1925: THE REVEAL ═══
+               One entry per thing on this pickup whose grade was hidden, in
+               the order the client should play them.  Almost always empty
+               (normal is ~90%) and almost never longer than one — two
+               mysteries needs two rare-or-better rolls landing on one corpse.
+               Supported anyway because "usually one" is not "only one", and a
+               ceremony that silently dropped the second item's grade would
+               hand the player an elite they never saw revealed. */
+            reveals: this._revealsFor(weaponForMe, armorForMe),
             // v2.3.1141: full blob incl. quality -- the private reveal.
             weapon: weaponForMe,
             weaponStashed,

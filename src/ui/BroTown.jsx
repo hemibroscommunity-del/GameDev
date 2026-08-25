@@ -56,6 +56,7 @@ import { ActiveWarBanner, EndedWarBanner } from './panels/WarBanner.jsx';
    observed ladder + the tutorial-banner-under-dashboard incident. */
 import { Z_ABOVE_DASH_PROMPT } from './zLayers.js';
 import { MenuBar } from './panels/MenuBar.jsx';
+import { RevealOverlay } from './reveal/RevealOverlay.jsx'; /* v2.3.1925 */
 /* v2.3.872: buildingPanel sub-panels (decomposed individually). */
 import { ForgePanel } from './panels/buildings/ForgePanel.jsx';
 import { WoodworkPanel } from './panels/buildings/WoodworkPanel.jsx';
@@ -7954,7 +7955,7 @@ export var BroTown = function BroTown(_ref0) {
   if (showNameModal) {
     return /*#__PURE__*/React.createElement(NameModal, { _dragRotX: _dragRotX, _swatchTile: _swatchTile, _thumbTile: _thumbTile, activeCat: activeCat, beardColorSel: beardColorSel, facialHairSel: facialHairSel, hairColorSel: hairColorSel, hairSel: hairSel, hatColorSel: hatColorSel, headwearSel: headwearSel, joinTown: joinTown, nameInput: nameInput, pantsSel: pantsSel, previewCanvasRef: previewCanvasRef, previewDir: previewDir, randomizeWithFlair: randomizeWithFlair, rollRandomName: rollRandomName, rotatePreview: rotatePreview, setActiveCat: setActiveCat, setBeardColorSel: setBeardColorSel, setFacialHairSel: setFacialHairSel, setHairColorSel: setHairColorSel, setHairSel: setHairSel, setHatColorSel: setHatColorSel, setHeadwearSel: setHeadwearSel, setNameInput: setNameInput, setPantsSel: setPantsSel, setShirtColorSel: setShirtColorSel, setShirtSel: setShirtSel, setShoesSel: setShoesSel, setSkinSel: setSkinSel, shirtColorSel: shirtColorSel, shirtSel: shirtSel, shoesSel: shoesSel, skinSel: skinSel });
   }
-  return /*#__PURE__*/React.createElement(React.Fragment, null, showIntro && /*#__PURE__*/React.createElement(IntroVideo, {
+  return /*#__PURE__*/React.createElement(React.Fragment, null, /* v2.3.1925: the mystery-reveal ceremony.  Mounted at the top of the in-world fragment and ALWAYS mounted — it renders null until a hidden grade arrives on the loot credit, and mounting it conditionally would mean the queue it subscribes to could fill before anyone was listening. */ /*#__PURE__*/React.createElement(RevealOverlay, null), showIntro && /*#__PURE__*/React.createElement(IntroVideo, {
     waitFor: introWaitRef.current,
     themeAudio: themeAudioRef,
     /* v2.3.1219: when the loading intro fades, greet a brand-new player with

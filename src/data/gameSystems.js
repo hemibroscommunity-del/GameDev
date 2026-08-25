@@ -4674,7 +4674,13 @@ export const ARMOR_DR = {
 export function getArmorPieceDr(item, slot) {
   var cfg = ARMOR_DR[slot];
   if (!item || !cfg) return 0;
-  var tm = Math.max(0, Math.min(8, Number(item.tierMult) || 1));
+  /* v2.3.1925: quality multiplies the TIER, mirroring the server's
+     _armorDrMult exactly — see the long note there for why it cannot
+     multiply the reduction instead.  This pair has to agree to the digit:
+     the server's number is what damage is actually computed with, and this
+     one is what the item card promises. */
+  var q = QUALITY_MULTS[item.quality] || 1;
+  var tm = Math.max(0, Math.min(8, (Number(item.tierMult) || 1) * q));
   return cfg.base + cfg.perTier * (tm - 1);
 }
 
