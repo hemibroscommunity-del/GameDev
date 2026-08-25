@@ -45,6 +45,7 @@ import { decode, encode } from '../png.mjs';
 const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..');
 const ROOT = path.join(REPO, 'public/sprites/traits');
 const DRY = process.argv.includes('--dry');
+const ALLOW_DRIFT = process.argv.includes('--allow-anchor-drift');
 const TARGETS = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 if (!TARGETS.length) { console.error('usage: repair-keyed-art.mjs <cat/id> [...] [--dry]'); process.exit(2); }
 
@@ -75,6 +76,39 @@ GRAFT['headwear/barbarian-helmet'] = [{
   toX: 101, width: 11, mirror: true,
   why: 'far ear strap, eaten whole by the key; stub at x101-103 y46-49 survived',
 }];
+
+/* ── TRIM: art that is there and should not be ──
+ *
+ * Owner: "The fez hat has a string below it."  It does — a tassel cord drawn
+ * down the front of the fez and continuing BELOW the brim, so it hangs over
+ * the forehead when worn.  Unlike the crumbs and holes above, this is not key
+ * damage: it is deliberate art the owner does not want.
+ *
+ * The rule is the hat's own silhouette: a fez's brim IS its bottom edge, so
+ * anything below it is the dangle.  The art agrees — northeast has nothing
+ * below its brim at all, which is what the other four should look like.  The
+ * brim is found per facing (the lowest row still at 70% of the widest row)
+ * rather than hardcoded, so a redraw does not silently trim the wrong rows.
+ *
+ * Opt-in per item, and it has to be: "below the widest part" describes a
+ * cowboy hat's crown-and-brim exactly as well, and would behead it.
+ */
+/* ── ITEMS WITH NO LEGITIMATELY DETACHED PART ──
+ *
+ * The size cap in the strip pass exists to protect art that is SUPPOSED to be
+ * a separate island: cat-ears carries a 262px island above its band that is the
+ * ears, and eating it would be a disaster.  The cap cannot tell that from a big
+ * crumb, so for items that have no detached part at all it is told.
+ *
+ * naruto-headband is one connected band. Owner: "the k band has residue black
+ * crumbs above it" -- and with the default cap two survived, a 46px bar on
+ * south and a 32px bar on east, both sitting at the top of the frame well clear
+ * of the band. Anything not touching the band is residue here, by construction.
+ */
+const STRIP_ALL = new Set(['headwear/naruto-headband']);
+
+const TRIM = Object.create(null);   /* CLAUDE.md rule 4 */
+TRIM['headwear/fez-hat'] = { belowBrim: 0.7, why: 'tassel cord hanging past the brim' };
 
 const A = (p, i) => p.data[i * 4 + 3];
 
@@ -143,17 +177,40 @@ function graft(p, g) {
   return n;
 }
 
-function repair(file, grafts) {
+/** Erase everything below the sprite's brim.  Returns the pixel count. */
+function trimBelowBrim(p, frac) {
+  const W = p.width, H = p.height;
+  const rows = [];
+  for (let y = 0; y < H; y++) {
+    let a = Infinity, b = -1;
+    for (let x = 0; x < W; x++) if (A(p, y * W + x) > 40) { if (x < a) a = x; if (x > b) b = x; }
+    if (b >= 0) rows.push({ y, w: b - a + 1 });
+  }
+  if (!rows.length) return 0;
+  const maxW = Math.max(...rows.map((r) => r.w));
+  let brim = rows[0].y;
+  for (const r of rows) if (r.w >= maxW * frac) brim = r.y;
+  let n = 0;
+  for (let y = brim + 1; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const i = y * W + x;
+      if (A(p, i) > 40) { p.data[i * 4 + 3] = 0; n++; }
+    }
+  }
+  return n;
+}
+
+function repair(file, grafts, trim, stripAll) {
   const p = decode(fs.readFileSync(file));
   const W = p.width, H = p.height;
-  let stripped = 0, filled = 0, grafted = 0;
+  let stripped = 0, filled = 0, grafted = 0, trimmed = 0;
 
   const comps = components(p);
   if (comps.length > 1) {
     /* Keep the sprite; drop islands. A crumb is small AND detached; a genuinely
        separate part (a horn tip the outline does not reach) would be large, so
        the cap keeps this from eating real art. */
-    const CAP = Math.max(12, Math.round(comps[0].length * 0.04));
+    const CAP = stripAll ? Infinity : Math.max(12, Math.round(comps[0].length * 0.04));
     for (let c = 1; c < comps.length; c++) {
       if (comps[c].length > CAP) continue;
       for (const i of comps[c]) { p.data[i * 4 + 3] = 0; stripped++; }
@@ -187,8 +244,10 @@ function repair(file, grafts) {
   }
   /* grafts run AFTER the repair, so the near strap they copy is already whole */
   for (const g of (grafts || [])) grafted += graft(p, g);
-  if (!DRY && (stripped || filled || grafted)) fs.writeFileSync(file, encode({ width: W, height: H, data: p.data }));
-  return { stripped, filled, grafted, unfilled: todo.length };
+  /* trim runs LAST: it reads the silhouette, and the passes above change it */
+  if (trim && trim.belowBrim) trimmed = trimBelowBrim(p, trim.belowBrim);
+  if (!DRY && (stripped || filled || grafted || trimmed)) fs.writeFileSync(file, encode({ width: W, height: H, data: p.data }));
+  return { stripped, filled, grafted, trimmed, unfilled: todo.length };
 }
 
 /* meta.bboxes is documented as the art's own bbox, and stripping crumbs that
@@ -204,7 +263,7 @@ function refreshMetaHeights(base, t) {
   if (!fs.existsSync(mf)) return;
   const meta = JSON.parse(fs.readFileSync(mf, 'utf8'));
   if (!meta.bboxes) return;
-  const changed = [];
+  const changed = [], drift = [];
   for (const f of Object.keys(meta.bboxes)) {
     const src = ['hi/' + f + '.png', f + '.png'].map((r) => path.join(base, r)).find((x) => fs.existsSync(x));
     if (!src) continue;
@@ -218,9 +277,25 @@ function refreshMetaHeights(base, t) {
     const now = [Math.round(x0 * k), Math.round(y0 * k), Math.round((x1 - x0 + 1) * k), Math.round((y1 - y0 + 1) * k)];
     const was = meta.bboxes[f];
     if (was[0] !== now[0] || was[1] !== now[1] || was[2] !== now[2]) {
-      console.error(`REFUSING to touch ${t} meta: ${f} bbox origin/width moved ${JSON.stringify(was.slice(0, 3))} -> ${JSON.stringify(now.slice(0, 3))}; anchors/crownNudge derive from those and are hand-tuned.`);
-      process.exitCode = 1;
-      return;
+      /* v2.3.1936: the origin moving is NOT automatically a relocation, and the
+         naruto headband is the case that shows why: its crumbs WERE the topmost
+         pixels, so removing them raised the bbox top 7px.  The art does not
+         move — `anchors` is an ABSOLUTE texture coordinate that _placeTrait
+         pins to the crown (headwear.anchor.set(anchorPx / W)), not something
+         re-derived from the bbox at draw time.  Verified per file: every
+         surviving pixel is byte-identical AND at the same coordinate.
+         Still refused BY DEFAULT, because the invariant in meta.note ("anchors
+         are the hat bbox top-centre") stops holding, and any future tool that
+         re-derives anchors from the bbox WOULD then move the hat.  Pass
+         --allow-anchor-drift to accept that, and the note below records it. */
+      if (!ALLOW_DRIFT) {
+        console.error(`REFUSING to touch ${t} meta: ${f} bbox origin/width moved ${JSON.stringify(was.slice(0, 3))} -> ${JSON.stringify(now.slice(0, 3))}; anchors/crownNudge derive from those and are hand-tuned. Re-run with --allow-anchor-drift only if you have checked the art does not move.`);
+        process.exitCode = 1;
+        return;
+      }
+      drift.push(`${f} ${JSON.stringify(was.slice(0, 3))}->${JSON.stringify(now.slice(0, 3))}`);
+      meta.bboxes[f][0] = now[0]; meta.bboxes[f][1] = now[1]; meta.bboxes[f][2] = now[2];
+      changed.push(`${f} origin/width`);
     }
     /* `was` ALIASES meta.bboxes[f]; read the old height out before mutating or
        the log prints the new value on both sides of the arrow. */
@@ -228,7 +303,10 @@ function refreshMetaHeights(base, t) {
     if (wasH !== now[3]) { meta.bboxes[f][3] = now[3]; changed.push(`${f} h ${wasH}->${now[3]}`); }
   }
   if (!changed.length || DRY) return;
-  meta.note = (meta.note ? meta.note + ' ' : '') + `v2.3.1933: bbox heights refreshed after green-key repair (${changed.join(', ')}); origin/width unchanged so anchors and crownNudge are untouched.`;
+  meta.note = (meta.note ? meta.note + ' ' : '') + `v2.3.1933: bboxes refreshed after art repair (${changed.join(', ')}).`
+    + (drift.length
+      ? ` v2.3.1936: the bbox ORIGIN moved on ${drift.join('; ')} because the removed pixels were the topmost ones. anchors and crownNudge are deliberately UNCHANGED and the art does not move: anchors is an absolute texture coordinate that _placeTrait pins to the crown, not a value re-derived from the bbox. It is therefore no longer this hat's bbox top-centre -- do NOT re-derive anchors from bboxes for this trait.`
+      : ' Origin/width unchanged, so anchors and crownNudge are untouched.');
   fs.writeFileSync(mf, JSON.stringify(meta, null, 2) + '\n');
   console.log(`${t}/meta.json`.padEnd(46) + changed.join(', '));
 }
@@ -241,9 +319,9 @@ for (const t of TARGETS) {
       const file = path.join(base, rel);
       if (!fs.existsSync(file)) continue;
       const gs = (GRAFT[t] || []).filter((g) => g.facing === f);
-      const r = repair(file, gs);
-      if (r.stripped || r.filled || r.grafted) {
-        console.log(`${t}/${rel}`.padEnd(46) + `stripped ${r.stripped}, filled ${r.filled}, grafted ${r.grafted}`
+      const r = repair(file, gs, TRIM[t], STRIP_ALL.has(t));
+      if (r.stripped || r.filled || r.grafted || r.trimmed) {
+        console.log(`${t}/${rel}`.padEnd(44) + `stripped ${r.stripped}, filled ${r.filled}, grafted ${r.grafted}, trimmed ${r.trimmed}`
           + (r.unfilled ? `, ${r.unfilled} UNFILLED` : ''));
       }
     }
