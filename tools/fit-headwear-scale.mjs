@@ -139,7 +139,20 @@ const DEADBAND = 0.05;     /* below 5% is not worth a diff */
    redesigned by a script, and anything still visibly off is left for a human
    to judge off the contact sheet. */
 const CLAMP = [0.85, 1.15];
-const SKIP = new Set(['halo']);
+/* ── ITEMS THIS PASS MUST NOT TOUCH ──
+ * The whole method is "normalise the hat's WIDTH against the HEAD's width",
+ * which assumes the thing is worn ON the head and sized by it.  Anything sized
+ * by something else measures wrong, and the fitter has no way to tell from
+ * pixels alone — so it is told.
+ *   halo         floats above the head; its size has nothing to do with a skull
+ *   arabian-robe DRAPES over the head AND the shoulders.  v2.3.1927 read its
+ *                south frame as an oversized hat and shrank it to 0.85; owner:
+ *                "the south view is actually a miniaturised version of the
+ *                original art. It's supposed to frame the neck and shoulders,
+ *                not the face."  Correct — squeezing a shoulder-width drape to
+ *                head width folds it inward across the cheeks.
+ * A new drape or floating piece belongs here too. */
+const SKIP = new Set(['halo', 'arabian-robe']);
 /* Seat moves are bounded in REAL pixels rather than as a ratio: what a viewer
    notices is a hat shifting N pixels on the head, and 14 in the 256 frame is
    ~6 on screen — enough to close most of the drift, small enough that a wrong
