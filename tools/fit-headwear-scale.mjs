@@ -1,4 +1,4 @@
-/* ═══ v2.3.1924: PER-FACING HEADWEAR SIZE FIT ═══
+/* ═══ v2.3.1925: PER-FACING HEADWEAR SIZE FIT ═══
  *
  * Owner: "the biggest issue is just the size of the hat relative to the head
  * per direction is inconsistent."
@@ -194,7 +194,7 @@ for (const it of items) {
   }
   console.log(it.padEnd(19) + cells.join(''));
   if (WRITE && changes.some((c) => c.item === it)) {
-    const tag = ' v2.3.1924: per-facing size fitted by tools/fit-headwear-scale.mjs. The five stand'
+    const tag = ' v2.3.1925: per-facing size fitted by tools/fit-headwear-scale.mjs. The five stand'
       + ' sheets draw the head at five different widths (43/52/45/44/41 in the 256 frame) and'
       + ' BODY_DIR_SCALE cancels out of the hat/head ratio, so a hat drawn one size renders a'
       + ' different size on every facing. scale[dir] now moves the facings that disagree onto the'

@@ -22,7 +22,7 @@
  * the same bodyScale, so hat-height / body-height must stay constant across
  * facings even as both change.
  *
- * v2.3.1924: with the AUTHORED per-facing scale divided back out — see
+ * v2.3.1925: with the AUTHORED per-facing scale divided back out — see
  * authoredScale() below.  meta.scale[dir] is a different number per facing now
  * (each hat is fitted to the head its facing is drawn on), so the raw
  * traitScale/bodyScale ratio is expected to vary and only the remainder is the
@@ -35,7 +35,7 @@ const DIRS = ['south', 'southeast', 'east', 'northeast', 'north', 'northwest', '
 /* Only five facings have art; the other three are those five mirrored. */
 const STORED = { south: 'south', southwest: 'southwest', southeast: 'southwest', east: 'east', west: 'east', northeast: 'northeast', northwest: 'northeast', north: 'north' };
 
-/* v2.3.1924: the authored per-facing size multiplier, read STRAIGHT OFF DISK
+/* v2.3.1925: the authored per-facing size multiplier, read STRAIGHT OFF DISK
    rather than out of the renderer, so the assertion below stays an independent
    check.  It exists because `scale[dir]` is no longer the same number on every
    facing — tools/fit-headwear-scale.mjs fits each hat to the head its facing is
@@ -147,7 +147,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      scale edit ever moved one without the other, THIS is the number that
      changes — and a hat that no longer tracks the body is exactly the
      failure the owner was guarding against. */
-  /* v2.3.1924: divide the AUTHORED per-facing multiplier back out first.  What
+  /* v2.3.1925: divide the AUTHORED per-facing multiplier back out first.  What
      is being tested is that _placeTrait still multiplies the trait by the
      body's scale — so the number that has to be flat is the ratio with the
      one factor the meta deliberately varies removed.  Leaving it in tests the

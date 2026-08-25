@@ -742,7 +742,7 @@ function bodyDirScale(pose, dir) {
    v2.3.1354 (owner round 2, cumulative): helmet 1.20->1.15 +2px down,
    top-hat +3px, purple +1px, beanie 1.20->1.25 +2px down, shark-hat
    +2px down, wide-brims 10->7px (owner: "up 3px"). */
-/* v2.3.1924: five `mul` values below were REBASED, not retuned.  The per-facing
+/* v2.3.1925: five `mul` values below were REBASED, not retuned.  The per-facing
    stand fit (tools/fit-headwear-scale.mjs) moved scale[east] on five of these
    hats, and jog-east renders scale[east] * 0.67 * mul — so leaving `mul` alone
    would have dragged the running hat along with the standing one.  Each was

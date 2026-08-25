@@ -111,7 +111,7 @@ export function placement(meta, dir, texW) {
   };
 }
 
-/* v2.3.1924: everything below is the SHEET RUN and only fires when this file
+/* v2.3.1925: everything below is the SHEET RUN and only fires when this file
    is the process entry point.  tools/fit-headwear-scale.mjs imports
    `placement` above so the before/after montage it renders is the same
    arithmetic this sheet is drawn with — one placement function, not two that

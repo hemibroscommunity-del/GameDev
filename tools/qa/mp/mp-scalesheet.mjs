@@ -24,7 +24,7 @@ const DIRS = ['south', 'southeast', 'east', 'northeast', 'north', 'northwest', '
 /* Only five facings have art; the other three are those five mirrored. */
 const STORED = { south: 'south', southwest: 'southwest', southeast: 'southwest', east: 'east', west: 'east', northeast: 'northeast', northwest: 'northeast', north: 'north' };
 
-/* v2.3.1924: the authored per-facing size multiplier, read STRAIGHT OFF DISK so
+/* v2.3.1925: the authored per-facing size multiplier, read STRAIGHT OFF DISK so
    the assertion stays independent of the renderer it is checking.  scale[dir] is
    a different number per facing now (tools/fit-headwear-scale.mjs fits each hat
    to the head its facing is drawn on), so the raw traitScale/bodyScale ratio is
