@@ -67,6 +67,7 @@ import { materialTint, weaponTint } from '../traits/materialTints.js'; /* v2.3.1
 import { combatGearUrls } from '../combatGear.js';
 import { getEquip, onEquipChange, isWearingArmor } from '../gearCatalog.js'; /* v2.3.1407: GEAR_CATALOG import dropped with the speculative all-states prewarm */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
+import { monsterDisplayName } from '@/data/gameDisplay.js'; /* v2.3.1918: monster name plates */
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
 const COLLISION_GLOW_RANGE_PX = 80;
@@ -3443,10 +3444,29 @@ function createMonsterDisplay(monster) {
   const hpUi = new Container();
   container._hpUi = hpUi;
 
-  const lvlText = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 8 } });
-  lvlText.anchor.set(0.5, 1);
-  lvlText.y = -size - 12;
-  hpUi.addChild(lvlText);
+  /* ═══ v2.3.1918: MONSTERS GET THE PLAYER'S NAME PLATE ═══
+     Owner: "Give monsters a name plate with their name and level beneath it
+     similar to how the player has their name plate.  Remove current the
+     level text that's on top of the monster."
+
+     Both halves of that, and the same component for both — _attachNamePill
+     is what draws the player's and every peer's plate, so a monster's is
+     the same rounded slate pill with the name over a gold LV line.  A
+     second plate implementation would be a second thing to keep in sync
+     for a label the owner asked to MATCH.
+
+     Lives on _hpUi rather than the body container: _hpUi is the sibling
+     that already carries the above-head UI, is mirrored to the monster's
+     position every frame, and sits in monsterUiLayer so the plate draws
+     over gather nodes instead of behind a bush.  It also hides itself with
+     the monster on death, which is what a corpse's plate should do.
+
+     The plate hangs BELOW the origin.  Monster art is anchored on its base
+     row (the same origin the procedural circle straddles), so +size clears
+     the feet for the small archetypes and for the 96px sprites alike —
+     they all stand ON this line, only their tops differ. */
+  _attachNamePill(hpUi, 10, MONSTER_SIZE_MULT);
+  hpUi._namePill.y = size + 6;
 
   /* Single dynamic Graphics for everything that DOES change per frame:
      status icons, aggro alert, stuck arrows, threat arrow, stun pip.
@@ -3476,13 +3496,11 @@ function createMonsterDisplay(monster) {
   container._isSnowman = isSnowman;
   container._hpHeart = hpHeart;
   container._hpText = hpText;
-  container._lvlText = lvlText;
   container._dynGfx = dynGfx;
   container._size = size;
   container._monster = monster;
   /* Dirty-flag cache values — skip redraws when nothing relevant changed. */
   container._lastHpPct = -1;
-  container._lastLvl = -1;
   container._dynKey = '';
   /* Slime animation cache — skip texture reassignment when state +
      frame haven't changed. */
@@ -3516,7 +3534,7 @@ function createMonsterDisplay(monster) {
    A rounded-rect rebuild at 60fps for a label that changes on level-up
    would be pure waste — and with up to 50 players in a room it would be
    50x that waste. */
-function _attachNamePill(container, nameSize) {
+function _attachNamePill(container, nameSize, sizeMult) {
   const pill = new Container();
   /* Feet sit ~24 below centre (sheetGeometry FEET_OFFSET).
      v2.3.1765 (owner: "Move the standing nameplate down about 3-10 pixels it
@@ -3545,8 +3563,13 @@ function _attachNamePill(container, nameSize) {
      the only thing that changes.  Capped at 4: beyond that the texture cost
      climbs for detail no screen resolves, and every player in the room
      carries one of these. */
+  /* v2.3.1918: the multiplier is a parameter now.  A monster's plate lives
+     in _hpUi, which is scaled by MONSTER_SIZE_MULT rather than
+     PLAYER_SIZE_MULT, and rasterising at the wrong one puts the whole
+     v2.3.1821 argument back where it started — glyphs generated for a
+     smaller box and then enlarged, i.e. bigger and blurrier. */
   const _pillRes = Math.min(4, Math.max(1,
-    ((typeof window !== 'undefined' && window.devicePixelRatio) || 1) * PLAYER_SIZE_MULT));
+    ((typeof window !== 'undefined' && window.devicePixelRatio) || 1) * (sizeMult || PLAYER_SIZE_MULT)));
   const nameT = new Text({ text: '', resolution: _pillRes, style: {
     fontFamily: 'Source Sans 3, sans-serif', fontSize: nameSize, fontWeight: '700',
     fill: '#F4F0E7', align: 'center',
@@ -5768,11 +5791,17 @@ export class EntityRenderer {
         } else {
           visualTopY = -size;
         }
-        /* lvlText sits at y=-size-12 with anchor (0.5, 1) — occupies
-           y=[-size-22, -size-12].  Heart hugs whichever is higher
-           (sprite top or lvl text band) with a 2 px gap. */
-        const lvlTopY = -size - 22;
-        const topY = Math.min(visualTopY, lvlTopY);
+        /* Minimum headroom over the body.  This used to be derived from the
+           level text's band (it sat at y=-size-12 with anchor (0.5,1), so
+           it occupied y=[-size-22, -size-12]) and the bar hugged whichever
+           was higher.  v2.3.1918 moved the level onto the plate under the
+           monster, but the NUMBER stays exactly as it was: for the small
+           procedural archetypes visualTopY is only -size, and letting the
+           bar drop those 22 px onto the body would be a silent regression
+           of the damage-number overlap reported three times
+           (v2.3.1402/1403/1638). */
+        const minHeadroomY = -size - 22;
+        const topY = Math.min(visualTopY, minHeadroomY);
         const barY = topY - 2 - MONSTER_HPBAR_H / 2;
         /* v2.3.1338: stamp the bar-top anchor on the game monster so
            combat popups spawn ABOVE the health bar (owner: damage
@@ -5875,17 +5904,48 @@ export class EntityRenderer {
       }
       display._lastHpPct = hpPct;
 
-      // Level text — only update when level or danger state changes.
-      // v2.3.1144: red fill when the monster is 5+ combat levels above
-      // the player.  Zones unpinned in v2.3.1140 with NO entry gating
-      // (owner call: death is the teacher) — this tint is the one danger
-      // signal a player gets before engaging.
-      const _plvlDanger = m.level != null && m.level >= ((S.rpg && S.rpg.level) || 1) + 5;
-      if (m.level !== display._lastLvl || _plvlDanger !== display._lastLvlDanger) {
-        display._lastLvl = m.level;
-        display._lastLvlDanger = _plvlDanger;
-        display._lvlText.text = `Lv${m.level}`;
-        display._lvlText.style.fill = _plvlDanger ? '#ef4444' : '#ffffff';
+      /* v2.3.1918: the name plate, replacing the "Lv3" tag that used to sit
+         on top of the monster.  Driven through _updateNamePill, the same
+         function the player's and every peer's plate goes through, so its
+         _pillKey cache does the work: the rounded-rect is rebuilt only when
+         the text changes, which for a monster is never after the first
+         frame.
+         v2.3.1144's DANGER TINT is carried over rather than dropped — red
+         when the monster is 5+ combat levels above you is the one warning a
+         player gets before engaging, and zones were unpinned with no entry
+         gating on the owner's call that death is the teacher.  It moves from
+         the whole level string to the plate's LV line, which is where the
+         level now lives. */
+      /* v2.3.1918: QA probe (tools/qa/mp/mp-monsterplate.mjs).  Reports what
+         is ACTUALLY attached and where, because "the Text node is gone from
+         the factory" and "the label is gone from the screen" are different
+         claims, and a plate parented to the wrong container would satisfy
+         the first while failing the second. */
+      if (typeof window !== 'undefined') {
+        const _pl = window.__btMonsterPlates || (window.__btMonsterPlates = { frame: 0, plates: [] });
+        if (_pl.frame !== now) { _pl.frame = now; _pl.plates = []; }
+        const _pui = display._hpUi;
+        const _pillNode = _pui && _pui._namePill;
+        _pl.plates.push({
+          id: m.id,
+          arch: m.archetype || m.type,
+          hasPill: !!_pillNode,
+          visible: !!(_pillNode && _pillNode.visible),
+          name: _pui && _pui._pillName ? _pui._pillName.text : null,
+          level: _pui && _pui._pillLevel ? _pui._pillLevel.text : null,
+          levelFill: _pui && _pui._pillLevel ? String(_pui._pillLevel.style.fill) : null,
+          y: _pillNode ? _pillNode.y : null,
+          hasOldLvlText: !!display._lvlText,
+        });
+      }
+      const _plateUi = display._hpUi;
+      if (_plateUi && _plateUi._namePill) {
+        const _plvlDanger = m.level != null && m.level >= ((S.rpg && S.rpg.level) || 1) + 5;
+        _updateNamePill(_plateUi, monsterDisplayName(m.archetype || m.type), m.level == null ? 1 : m.level, true, null);
+        if (_plvlDanger !== _plateUi._lastLvlDanger) {
+          _plateUi._lastLvlDanger = _plvlDanger;
+          _plateUi._pillLevel.style.fill = _plvlDanger ? '#ef4444' : '#D8AA58';
+        }
       }
 
       /* Single dynamic Graphics — clear once and redraw all dynamic bits

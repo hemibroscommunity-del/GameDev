@@ -3571,3 +3571,53 @@ export const NPC_DATA = [{
   _questMarker: null,
   _hitThisSwing: false,
 }];
+
+/* ═══ v2.3.1918: MONSTER DISPLAY NAMES ═══
+ * Owner: "Give monsters a name plate with their name and level beneath it
+ * similar to how the player has their name plate."
+ *
+ * There was no player-facing monster name anywhere in the codebase before
+ * this — monsters were only ever an `archetype` string plus a "Lv3" tag
+ * over their head.  This is that missing table, and it is CLIENT-ONLY
+ * cosmetic: it is not mirrored in server/src/data.js and must not be, or
+ * test/mirror-audit.test.mjs will (correctly) start pinning a label.
+ *
+ * Keys are whatever lands on monster.archetype after applyZoneVariant, so
+ * both the base archetypes and every zone variant appear here.
+ */
+export const MONSTER_DISPLAY_NAMES = {
+  /* base archetypes (server/src/data.js spawn tables) */
+  fodder: 'Slime',
+  brute: 'Brute',
+  stalker: 'Stalker',
+  hexer: 'Hexer',
+  volatile: 'Volatile',
+  snowman: 'Snowman',
+  swarm: 'Swarm',
+  sentinel: 'Sentinel',
+  /* zone variants (src/data/monsterVariants.js) */
+  mummy: 'Mummy',
+  skeleton: 'Skeleton',
+  fireGoblin: 'Fire Goblin',
+  fishman: 'Fishman',
+  rockmonster: 'Rock Monster',
+  mossSlime: 'Moss Slime',
+  blueSlime: 'Blue Slime',
+  mireWisp: 'Mire Wisp',
+  thornShambler: 'Thorn Shambler',
+  bogLurker: 'Bog Lurker',
+};
+
+/* The name to put on the plate.  Falls back to a title-cased version of the
+ * archetype key rather than to an empty string, because the failure mode of
+ * a missing entry should be a slightly-off name ("Fire Goblin" spelled from
+ * `fireGoblin`) and not a blank plate floating under a monster — a new
+ * archetype added server-side would otherwise ship as a nameless one. */
+export function monsterDisplayName(arch) {
+  if (!arch) return 'Monster';
+  const known = MONSTER_DISPLAY_NAMES[arch];
+  if (known) return known;
+  return String(arch)
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/^./, (c) => c.toUpperCase());
+}
