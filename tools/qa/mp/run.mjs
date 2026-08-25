@@ -21,6 +21,7 @@ import * as H from './harness.mjs';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  monsterplate: () => import('./mp-monsterplate.mjs'), /* v2.3.1918: monsters get the player's name plate */
   chatfont: () => import('./mp-chatfont.mjs'), /* v2.3.1912: the chat font, measured on the glass */
   afk: () => import('./mp-afk.mjs'), /* v2.3.1913: idle characters log out after 2 min */
   tutgrant: () => import('./mp-tutgrant.mjs'), /* v2.3.1901: the first quest's sword + shield */
