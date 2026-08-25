@@ -14,6 +14,7 @@
  */
 
 import { Rectangle, Texture } from 'pixi.js';
+import { stampShirtArt } from './shirtDecal.js';   /* v2.3.1938: drawn shirts */
 import { GEAR_SLOTS, GEAR_CATALOG } from './gearCatalog.js';
 import { upscaleToFrameHeight, antialiasUpscaledCanvas, downscaleByFactor, DISPLAY_DS } from './spriteScale.js'; /* v2.3.1110 upscale; v2.3.1341 AA; v2.3.1408 fullset display-downscale */
 import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless WebP, fall back to PNG */
@@ -65,7 +66,7 @@ function loadImg(url) { return loadWebpOrPng(url); }
    failure is only distinguishable from expected-missing art by eye —
    flip window.__spriteLog = true to see them. */
 const _GEAR_RETRY_MS = [2000, 6000];
-function buildSheet(key, slot, item, pose, dir, attempt = 0) {
+function buildSheet(key, slot, item, pose, dir, attempt = 0, stampArt = null) {
   _sheets[key] = 'loading';
   /* Returns a promise that ALWAYS resolves (missing sheet -> []), so callers
      that want to await a full preload don't hang on a 404. */
@@ -130,6 +131,12 @@ function buildSheet(key, slot, item, pose, dir, attempt = 0) {
       if (_fsDs > 1) img = downscaleByFactor(img, _fsDs);
     }
     const fw = FRAME_W / _fsDs, fh = FRAME_H / _fsDs;
+    /* v2.3.1938: the player's drawing, stamped into the sheet itself.  Baked
+       here rather than drawn as a second sprite because the decal has to follow
+       the torso through ~20 pose sheets x 5 facings x up to 26 frames — as part
+       of the sheet it inherits every transform the shirt already gets, and the
+       renderer keeps treating the shirt as one texture. */
+    if (stampArt) img = stampShirtArt(img, stampArt.art, fh, stampArt.mirror);
     const src = Texture.from(img).source;
     src.scaleMode = 'linear';
     /* v2.3.1385: the v2.3.1384 fullset mips-off (invisible-knight memory
@@ -151,7 +158,7 @@ function buildSheet(key, slot, item, pose, dir, attempt = 0) {
          gate (preloadGear/preloadFullsetFigures awaiters) waits through
          the backoff instead of passing with a sheet still re-fetching. */
       return new Promise((res) => setTimeout(res, _GEAR_RETRY_MS[attempt]))
-        .then(() => buildSheet(key, slot, item, pose, dir, attempt + 1));
+        .then(() => buildSheet(key, slot, item, pose, dir, attempt + 1, stampArt));
     }
     _sheets[key] = []; /* missing -> caller hides the slot */
     try { if (window.__spriteLog) console.warn('[sprite] gear sheet failed', key); } catch (e) { /* ignore */ }
@@ -186,6 +193,66 @@ export function getGearFrame(slot, item, pose, dir, frameIdx) {
   const key = slot + '/' + item + '/' + pose + '/' + dir;
   const entry = _sheets[key];
   if (entry === undefined) { buildSheet(key, slot, item, pose, dir); return null; }
+  if (entry === 'loading' || !entry.length) return null;
+  return entry[((frameIdx % entry.length) + entry.length) % entry.length];
+}
+
+/* ═══ v2.3.1938: DRAWN SHIRTS ═══
+ *
+ * A drawn shirt is a SECOND bake of the same sheet, keyed by the drawing, so
+ * two players wearing the same tee with different prints do not share a texture
+ * while everyone with no drawing keeps sharing the original.
+ *
+ * CAPPED, and that is not optional.  These sheets are keyed by a string that
+ * arrives from other players, and this game has a documented history of iOS
+ * losing the WebGL context to texture memory (v2.3.1117, v2.3.1434).  Without a
+ * bound, a busy town of players with distinct drawings would grow the cache
+ * until something died.  Least-recently-used wins; a dropped sheet simply
+ * re-bakes if that player is still on screen.
+ */
+const _artSeen = new Map();          /* artKey -> last use (a counter, not a clock) */
+let _artTick = 0;
+const MAX_ART_KEYS = 8;              /* distinct drawings kept baked at once */
+
+/** Short stable key for a drawing.  FNV-1a: 8 hex chars is plenty to separate
+ *  a handful of live drawings, and collisions only ever mean two players share
+ *  a print for a frame. */
+function artKeyOf(art) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < art.length; i++) { h ^= art.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  return (h >>> 0).toString(16);
+}
+
+function touchArt(k) {
+  _artSeen.set(k, ++_artTick);
+  if (_artSeen.size <= MAX_ART_KEYS) return;
+  let oldest = null, oldestAt = Infinity;
+  for (const [key, at] of _artSeen) if (at < oldestAt) { oldestAt = at; oldest = key; }
+  if (oldest === null) return;
+  _artSeen.delete(oldest);
+  const pre = 'shirtart/' + oldest + '/';
+  for (const key of Object.keys(_sheets)) {
+    if (!key.startsWith(pre)) continue;
+    const entry = _sheets[key];
+    if (Array.isArray(entry) && entry[0] && entry[0].source) {
+      try { entry[0].source.destroy(); } catch (e) { /* already gone */ }
+    }
+    delete _sheets[key];
+  }
+}
+
+/** Shirt frame with `art` printed on it, or null while it bakes (the caller
+ *  falls back to the plain shirt for those frames, so nothing flickers off). */
+export function getShirtArtFrame(item, pose, dir, frameIdx, art, mirror) {
+  if (!item || item === 'none' || !art) return null;
+  item = gearArt(item);
+  const ak = artKeyOf(art);
+  /* the mirror flag is part of the key: a mirrored facing bakes a pre-flipped
+     print, and the two must not share a texture */
+  const key = 'shirtart/' + ak + '/' + (mirror ? 'm' : 'n') + '/' + item + '/' + pose + '/' + dir;
+  const entry = _sheets[key];
+  if (entry === undefined) { touchArt(ak); buildSheet(key, 'shirt', item, pose, dir, 0, { art, mirror: !!mirror }); return null; }
+  touchArt(ak);
   if (entry === 'loading' || !entry.length) return null;
   return entry[((frameIdx % entry.length) + entry.length) % entry.length];
 }

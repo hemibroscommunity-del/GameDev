@@ -1,4 +1,5 @@
 import React from 'react';
+import { ShirtPaint } from './ShirtPaint.jsx';   /* v2.3.1938 */
 import { BUILD_INFO } from '../BuildBadge.jsx';
 /* v2.3.1143: account login -- "Already have a character?" entry point
    for a player on a NEW device, who lands on this splash with a fresh
@@ -243,6 +244,10 @@ export function NameModal(props) {
     : null;
   /* Reset both strips to their start whenever the type changes — the
      content width changes with the catalog. */
+  /* v2.3.1938: the shirt designer opens as a modal OVER the creator rather than
+     as a row inside the drawer -- a 16x16 grid needs thumb-sized cells, and the
+     drawer's height is fixed by the constant-size guarantee (v2.3.1252). */
+  var _paintState = React.useState(false), showPaint = _paintState[0], setShowPaint = _paintState[1];
   var _stripRef = React.useRef(null);
   var _colorRowRef = React.useRef(null);
   /* v2.3.1254: scroll affordance — per-strip "more content to the
@@ -720,7 +725,18 @@ export function NameModal(props) {
     className: "bt-cc-colors-row", ref: _colorRowRef, onScroll: _measureMore, role: _colors ? 'radiogroup' : undefined, "aria-label": _colors ? _def.label + ' colors' : undefined
   }, _colors || /*#__PURE__*/React.createElement("div", null)), /*#__PURE__*/React.createElement("span", {
     className: "bt-cc-more" + (scrollMore.colors ? " bt-cc-more--on" : ""), "aria-hidden": true
-  }, "›")))))), showAccount && /*#__PURE__*/React.createElement(AccountModal, {
+  }, "›")),
+  /* v2.3.1938: the way in to the shirt designer.  It sits INSIDE the colour
+     block, directly under the swatches, because that is where someone is
+     already deciding how their top looks -- and only when a shirt is actually
+     worn, since a print with nothing to print on is a dead button. */
+  _activeType === 'shirt' && _def.sel && _def.sel !== 'none' && /*#__PURE__*/React.createElement("button", {
+    type: 'button', className: 'bt-cc-tab', style: { width: '100%', minHeight: 38, marginTop: 6 },
+    onClick: function () { setShowPaint(true); }
+  }, /*#__PURE__*/React.createElement("span", { className: 'bt-cc-tab-label' }, "Draw on this shirt")))))),
+  showPaint && /*#__PURE__*/React.createElement(ShirtPaint, {
+    onClose: function () { setShowPaint(false); }
+  }), showAccount && /*#__PURE__*/React.createElement(AccountModal, {
     onClose: function () { setShowAccount(false); }
   }));
 }

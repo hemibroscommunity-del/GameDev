@@ -60,7 +60,8 @@ import { getHatColor, getColoredHatTextures } from '../traits/hatColorCatalog.js
 import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/facialHairColorCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
-import { getGearFrame, getGearFramePhased, getLoadedGearSources } from '../gearSheets.js';
+import { getGearFrame, getGearFramePhased, getLoadedGearSources, getShirtArtFrame } from '../gearSheets.js';   /* v2.3.1938 */
+import { sideForDir, getShirtArt, sanitizeShirtArt, artHasInk } from '../traits/shirtArt.js';   /* v2.3.1938 */
 import { AIM_CARET, AIM_CARET_EDGE, AIM_CARET_HOT } from '../aimCaret.js'; /* v2.3.1799 */
 import { BLOCK_ARM_ENABLED, BLOCK_ARM_FACING, BLOCK_ARM_CUT, blockArmTexture, blockArmSleeveTexture } from '../blockArm.js'; /* v2.3.1785, sleeve v2.3.1789, ENABLED v2.3.1798 */
 import { gearTint, gearArt, gearMaterial } from '../gearVariants.js'; /* v2.3.1757: material recolor */
@@ -1205,6 +1206,17 @@ if (typeof window !== 'undefined') {
  * the chest and shirt hold the standing frame while the greaves animate with
  * the jog, or a bro in leg armour blocks with static plates over striding
  * legs.  Null on every other call site, so the normal path is byte-identical. */
+/* v2.3.1938: the pair of drawings a display wears, or null when both sides are
+   blank (the overwhelmingly common case, and the one that must cost nothing).
+   Returned as {front, back} so _placeGear can pick per facing without knowing
+   where the drawings came from -- the local player's own store, or a peer's
+   off the wire. */
+function _shirtArtPair(front, back) {
+  const f = artHasInk(front) ? front : null;
+  const b = artHasInk(back) ? back : null;
+  return (f || b) ? { front: f, back: b } : null;
+}
+
 function _placeGear(display, equip, pose, dir, frameIdx, legsFrom) {
   _lastGearDisplay = display;
   const sb = display._spriteBody;
@@ -1231,7 +1243,19 @@ function _placeGear(display, equip, pose, dir, frameIdx, legsFrom) {
     const _from = (legsFrom && _slotName === 'legs') ? legsFrom : null;
     const _gPose = _from ? _from.pose : pose;
     const _gFrame = _from ? _from.frameIdx : frameIdx;
-    const tex = (sb && item && item !== 'none' && !hiddenUnderChest) ? getGearFrame(_slotName, item, _gPose, dir, _gFrame) : null;
+    let tex = (sb && item && item !== 'none' && !hiddenUnderChest) ? getGearFrame(_slotName, item, _gPose, dir, _gFrame) : null;
+    /* v2.3.1938: a drawn shirt swaps in a second bake of the same sheet with
+       the print on it.  Falls through to the plain frame while that bakes, so
+       putting a drawing on never blinks the shirt off. */
+    if (tex && _slotName === 'shirt' && display._shirtArt) {
+      /* Mirroring never changes WHICH side shows: every mirror pair stays in
+         the same hemisphere (east/west and southwest/southeast are both front,
+         northeast/northwest both back), so the base dir decides the side and
+         the mirror flag only pre-flips the print. */
+      const printed = getShirtArtFrame(item, _gPose, dir, _gFrame,
+        display._shirtArt[sideForDir(dir)], display._shirtArtMirror);
+      if (printed) tex = printed;
+    }
     if (tex) {
       if (spr.texture !== tex) spr.texture = tex;
       spr.x = sb.x; spr.y = sb.y;
@@ -6643,6 +6667,12 @@ export class EntityRenderer {
           useSprite = true;
           /* v2.3.504: this remote player's layered gear (their equip is
              broadcast over the network). */
+          /* v2.3.1938: THEIR drawings, sanitised -- a peer-supplied string
+             reaches a canvas here, so anything not exactly a 256-char hex
+             drawing becomes null rather than being handed to the stamper. */
+          display._shirtArt = _shirtArtPair(sanitizeShirtArt(other.shirtArtFront),
+            sanitizeShirtArt(other.shirtArtBack));
+          display._shirtArtMirror = mirror;
           _placeGear(display, {
             shirt: _oShirtEquip, legs: _oEq.legs, chest: _oEq.chest,
             shoulders: _oEq.shoulders,
@@ -7757,6 +7787,8 @@ export class EntityRenderer {
         spriteBody.scale.x = (mirror ? -1 : 1) * bodyScale * DISPLAY_DS;
         spriteBody.scale.y = bodyScale * DISPLAY_DS;
         spriteBody.tint = 0xffffff;
+        display._shirtArt = _shirtArtPair(getShirtArt('front'), getShirtArt('back'));   /* v2.3.1938 */
+        display._shirtArtMirror = mirror;
         _placeGear(display, {
           shirt: getEquip('shirt'), legs: getEquip('legs'),
           chest: getEquip('chest'), shoulders: getEquip('shoulders'),
@@ -7871,6 +7903,8 @@ export class EntityRenderer {
           /* The greaves stride with the legs they are worn over — otherwise a
              bro in leg armour blocks with static plates over moving shins. */
           if (_sbActive) {
+            display._shirtArt = _shirtArtPair(getShirtArt('front'), getShirtArt('back'));   /* v2.3.1938 */
+            display._shirtArtMirror = mirror;
             _placeGear(display, {
               shirt: getEquip('shirt'), legs: getEquip('legs'),
               chest: getEquip('chest'), shoulders: getEquip('shoulders'),

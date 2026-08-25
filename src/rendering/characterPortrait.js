@@ -18,6 +18,8 @@
 import { skinTarget, pantsTarget, shoesTarget, recolorBodyToCanvas } from './playerSkins.js';
 import EYE_MASK from './eyeMask.json';                              /* v2.3.1928 */
 import { eyeColorTarget } from './traits/eyeColorCatalog.js';
+import { shirtArtForDir, sanitizeShirtArt } from './traits/shirtArt.js';   /* v2.3.1938 */
+import { stampShirtArt } from './shirtDecal.js';   /* v2.3.1938 */
 import { SPRITE_VERSION } from './playerSprites.js';
 import { getHatRef } from './traits/hatColorCatalog.js';
 import { materialIndex } from './traits/traitMaterials.js'; /* v2.3.1926 */
@@ -506,6 +508,18 @@ export async function drawCharacterPortrait(canvas, opts) {
       sctx.drawImage(shirtUp, 0, 0, FRAME, FRAME, 0, 0, FRAME, FRAME);
       layer = sc;
     }
+    /* v2.3.1938: the player's own drawing, stamped on the fabric.  AFTER the
+       tint, so the drawing keeps its own colours instead of being multiplied by
+       the shirt colour — a print does not take the dye of the shirt under it.
+       `opts.shirtArt` when the caller has one (the inspect card passes another
+       player's), otherwise this device's; null/empty is a no-op inside
+       stampShirtArt, so an undrawn shirt costs one early return. */
+    /* v2.3.1938: front or back by FACING -- north/northeast show the back
+       design, everything else the front (a profile turns the chest toward you).
+       No mirror here: this compositor draws the five base directions as-is and
+       never flips one, which the world renderer does. */
+    const _art = (opts && opts.shirtArt !== undefined) ? sanitizeShirtArt(opts.shirtArt) : shirtArtForDir(DIR);
+    if (_art) layer = stampShirtArt(layer, _art, FRAME, false);
     ctx.drawImage(layer, 0, 0, FRAME, FRAME, 0, 0, FRAME, FRAME);
   }
   /* ═══ v2.3.1815: THE ARMOUR, in the renderer's own slot order ═══
