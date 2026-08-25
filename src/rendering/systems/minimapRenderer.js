@@ -708,7 +708,7 @@ export class MinimapRenderer {
        Above the plain portals (drawn after) and below the NPC quest pins
        (drawn next), which is the same precedence the pins already have — the
        thing you can act on right now outranks the thing you travel to. */
-    const routeTo = questRouteExit(zoneId, S.rpg);
+    const routeTo = questRouteExit(zoneId, S.rpg, S);   /* v2.3.1906: S for the spoke return tile */
     if (routeTo) {
       this._mark(routeTo.x, routeTo.y, 'star', C_QUEST, BIG_ICON_PX, 0, -9);
     }

@@ -24,17 +24,45 @@ import { QUEST_CHAINS, QUEST_STATUS } from '@/data/gameSystems.js';
 import { TOWN_EXITS, WORLDVIEW_EXITS } from '@/data/effects.js';
 import { TILE } from '@/data/constants.js';
 
+/* v2.3.1906: where the quest givers stand.  Every live NPC is spawned by
+   BroTown's _spawnTownNpcs, which is town-only, so a finished objective always
+   routes back to town.  Named rather than inlined so the day an NPC stands
+   somewhere else, the search for what to change lands here. */
+const QUEST_HOME_ZONE = 'town';
+
 /** The zone the player's ACTIVE Mayor Bro step points at, or null.
  *  Null covers three ordinary cases and they are deliberately not
  *  distinguished: no quest running, a quest with no zone (cook / mine
  *  "any zone" steps), and a quest whose zone is not a place you travel to. */
-export function questTargetZone(rpg) {
+export function questTargetZone(rpg, S) {
   const quests = (rpg && rpg._quests) || null;
   if (!quests) return null;
   for (const qid of Object.keys(quests)) {
     if (quests[qid] !== QUEST_STATUS.active) continue;
     const q = QUEST_CHAINS[qid];
-    if (q && q.zone) return q.zone;
+    if (!q) continue;
+    /* ═══ v2.3.1906: A FINISHED OBJECTIVE POINTS HOME ═══
+       Owner: "The star on minimap for cold reception quest when it's complete
+       needs to be updated.  It still shows you to go to the frozen shore even
+       when complete.  Should lead back to mayor bro."
+
+       A quest stays `active` right through to the turn-in — `complete` is a
+       status the client computes, never one stored in _quests — so "active"
+       alone was answering "is this quest running", when the star needs to
+       answer "what is my next step".  With four snowmen already in the bag
+       the next step is the Mayor, and the star was still selling the trip
+       that is already done.
+
+       q.check is the same predicate QuestPanel uses to offer Claim Reward
+       (and BroTown for the '❓' badge), so the map cannot disagree with the
+       button about whether a quest is finished. Wrapped because it is
+       arbitrary per-quest code running on live state — a throw here would
+       take the whole minimap down, and an unreadable objective should read
+       as "not done yet" rather than blank the star. */
+    let done = false;
+    try { done = !!(q.check && q.check(rpg, S)); } catch (e) { done = false; }
+    if (done) return QUEST_HOME_ZONE;      /* hand it in */
+    if (q.zone) return q.zone;
   }
   return null;
 }
@@ -45,8 +73,8 @@ export function questTargetZone(rpg) {
  *  Returning null when you are ALREADY in the target zone is the important
  *  one: a star on the exit you just came through would be pointing at the way
  *  home while the quest is telling you to hunt here. */
-export function questRouteExit(currentZone, rpg) {
-  const target = questTargetZone(rpg);
+export function questRouteExit(currentZone, rpg, S) {
+  const target = questTargetZone(rpg, S);
   if (!target || !currentZone) return null;
   if (currentZone === target) return null;          /* you are there — hunt, don't travel */
 
@@ -65,13 +93,49 @@ export function questRouteExit(currentZone, rpg) {
     const e = TOWN_EXITS.find((x) => x && x.zoneId === 'worldview');
     return e ? at(e) : null;
   }
-  /* Standing in some OTHER spoke with a quest pointing at a different one.
-     The way on is back through the World View, but a spoke's return portal is
-     a painted tile rather than a declared exit, so there is no coordinate to
-     star here without guessing at one.  Deliberately nothing: a star in the
-     wrong place is worse than no star, and the zone header already carries a
-     way back. */
-  return null;
+  /* ═══ v2.3.1906: THE SPOKE'S WAY OUT IS TILE 9 ═══
+     This used to return nothing, on the reasoning that "a spoke's return
+     portal is a painted tile rather than a declared exit, so there is no
+     coordinate to star here without guessing at one".  The first half is
+     true and the conclusion was not: the tile IS the coordinate.
+     zoneTransitions triggers the return by scanning S.map for tile 9 within
+     RETURN_R of the player, so starring the nearest 9 marks exactly the
+     thing that will fire — no guessing, and the map and the trigger read the
+     same source.
+
+     It needs the map, which is why S is threaded in. Without it (an older
+     caller) this still returns null and keeps the old behaviour rather than
+     inventing a position.
+
+     This matters most for the case the owner reported: standing in Frost
+     Ridge holding four snowmen, the next step is the Mayor, and "deliberately
+     nothing" left the one screen where you actually need directions blank. */
+  const home = _nearestReturnTile(S);
+  return home ? { x: home.x, y: home.y, zoneId: (S && S._enteredFromHub === 'worldview') ? 'worldview' : 'town' } : null;
+}
+
+/* The nearest tile-9 return marker in the zone you are standing in, as world
+   coordinates — or null when there is no map to read or no marker on it.
+   Nearest rather than first so a zone with markers on two edges stars the one
+   you would actually walk to. */
+function _nearestReturnTile(S) {
+  const map = S && S.map;
+  if (!Array.isArray(map)) return null;
+  const P = (S && S.player) || null;
+  const px = P ? P.x / TILE : 0;
+  const py = P ? P.y / TILE : 0;
+  let best = null;
+  let bestD = Infinity;
+  for (let ty = 0; ty < map.length; ty++) {
+    const row = map[ty];
+    if (!row) continue;
+    for (let tx = 0; tx < row.length; tx++) {
+      if (row[tx] !== 9) continue;
+      const d = Math.abs(tx - px) + Math.abs(ty - py);
+      if (d < bestD) { bestD = d; best = { x: (tx + 0.5) * TILE, y: (ty + 0.5) * TILE }; }
+    }
+  }
+  return best;
 }
 
 /* ═══ v2.3.1817: WHICH QUEST OPENS A ZONE ═══
