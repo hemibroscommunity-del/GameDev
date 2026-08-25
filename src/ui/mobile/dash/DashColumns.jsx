@@ -270,8 +270,19 @@ export const DashColumns = ({ R }) => {
   const badgeFs = tight ? 10.5 : 12;
   /* v2.3.1862: the pair spans the card now, not the column — ~88px at 390
      instead of 41 — so this is sized against the CARD.  Measured, as ever:
-     mp-bandsummary reports needed-vs-available for every text node. */
-  const chipFs = tight ? 10.5 : 12;
+     mp-bandsummary reports needed-vs-available for every text node.
+     ═══ v2.3.1920: 12 -> 14 (10.5 -> 12 tight), and 800 -> 900 ═══
+     Owner: "It looks like there's room to make the 3 combat skill xp numbers
+     a little bigger and chunkier."  There is, and the reason is v2.3.1862:
+     moving the pair out of the 41px right-hand column and across the whole
+     card left it sized for the box it used to live in.
+     Sized against the WIDEST pair the formatter can produce, not against the
+     "0/280" a fresh character shows: xpShort caps each side at four
+     characters ("9.9k"), so the worst case is ~9 glyphs — and at 14px/900
+     with tabular figures that is ~72px against the card's ~88 at 390 and
+     ~74 at 360.  mp-bandsummary now drives those numbers rather than
+     trusting the arithmetic. */
+  const chipFs = tight ? 12 : 14;
   const barH = tight ? 5 : 6;
   const combatPill = (s) => {
     /* ═══ v2.3.1668: these pills were the last live route into the
@@ -445,7 +456,7 @@ export const DashColumns = ({ R }) => {
                digit.  3px of inset, which is the card's own padding. */
             position: 'absolute', left: 3, right: 3, bottom: 1,
             textAlign: 'right',
-            fontSize: chipFs, fontWeight: 800, lineHeight: 1,
+            fontSize: chipFs, fontWeight: 900, lineHeight: 1,  /* v2.3.1920: chunkier */
             color: COL.text, fontVariantNumeric: 'tabular-nums',
             letterSpacing: '-0.01em',
             textShadow: '0 1px 3px rgba(9,14,17,.92), 0 0 2px rgba(9,14,17,.9)',

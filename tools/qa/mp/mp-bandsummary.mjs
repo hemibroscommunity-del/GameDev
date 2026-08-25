@@ -449,7 +449,40 @@ export async function run({ browser, wsPort, webPort, rec }) {
       && narrow[1].pairText === '210/280' && narrow[2].pairText === '140/280',
     narrow.map((p) => p.pairText));
   await N.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/bandsummary-360.png' });
-  await N.ctx.close().catch(() => {});
 
+  /* ═══ v2.3.1920: THE WIDEST PAIR THE FORMATTER CAN PRODUCE ═══
+     Owner: "It looks like there's room to make the 3 combat skill xp numbers
+     a little bigger and chunkier", and there was — but "0/280" is the pair a
+     FRESH character shows, and sizing type against the shortest string it
+     will ever hold is how you ship a number that fits on day one and clips
+     at level 20.  xpShort caps each side at four characters ("9.9k"), so the
+     worst case is roughly "9.9k/9.9k".  Driven here at BOTH widths, on the
+     narrow phone first because 360 is where the card is 80px, not 94. */
+  const WIDEST = 9990;   /* -> "9.9k", the longest xpShort output */
+  for (const [who, label] of [[N, '360'], [P, '390']]) {
+    await who.page.evaluate((xp) => {
+      const R = window._gameState.current.rpg;
+      if (!R.prog3) R.prog3 = {};
+      if (!R.prog3.sk) R.prog3.sk = {};
+      /* A level high enough that the threshold is four characters too, so
+         BOTH halves of the pair are at their widest. */
+      for (const k of ['sword', 'bow', 'staff']) R.prog3.sk[k] = { level: 20, xp };
+      try { window.__broDashPanelBus.toBar(); } catch (e) {}
+    }, WIDEST);
+    await who.page.waitForTimeout(700);
+    const wide = await readPills(who);
+    rec.ok(`the widest possible XP pair still fits at ${label}`,
+      wide.length === 3 && wide.every((p) => p.clipped === false),
+      wide.map((p) => ({ pair: p.pairText, pill: p.pillW, rows: p.rows.filter((r) => r.over > 0) })));
+    /* Not clipped is not the same as not OVERLAPPING: the pair is absolutely
+       positioned across the card's bottom, so it can run under the level and
+       the bar without either box reporting an overflow. */
+    rec.ok(`...without colliding with the level at ${label}`,
+      wide.length === 3 && wide.every((p) => p.pair && p.lvl && p.pair.t >= p.lvl.b - 1),
+      wide.map((p) => ({ pair: p.pair, lvl: p.lvl })));
+    await who.page.screenshot({ path: `/home/user/GameDev/tools/qa/mp/out/bandsummary-wide-${label}.png` });
+  }
+
+  await N.ctx.close().catch(() => {});
   await P.ctx.close().catch(() => {});
 }
