@@ -1820,6 +1820,13 @@ export function setupWebSocket(ctx) {
              whose pickup path equips/stashes locally, while these
              piles claim through the server loot_pickup flow. */
           hasWeapon: !!p.hasWeapon && !p.weaponClaimed,
+          /* v2.3.1924: the armour pieces and the gem ride the broadcast in
+             full — unlike the weapon there is nothing hidden to reveal at
+             pickup (server/src/index.js _serializePile), so the pile can name
+             what is on it.  Same `&& !claimed` shape as hasWeapon so a piece
+             someone else has already taken stops drawing. */
+          armor: (!p.armorClaimed && Array.isArray(p.armor) && p.armor.length) ? p.armor : null,
+          gem: (!p.inventoryClaimed && p.gem) ? p.gem : null,
           weaponTier: p.weaponTier || null,
           weaponType: p.weaponType || null,
           weaponName: p.weaponName || null,
@@ -1883,6 +1890,56 @@ export function setupWebSocket(ctx) {
              doesn't replicate it. */
           if (!R.skulls) R.skulls = {};
           R.skulls[payload.skull] = (R.skulls[payload.skull] || 0) + 1;
+        }
+        /* v2.3.1924: the rare gem.  Popup ONLY — the authoritative
+           R.inventory write rides the player_state that follows on this same
+           socket flush (the shard above is credited the same way, and the
+           whole reason this handler is "purely cosmetic": a client that
+           credits itself is overwritten by the echo, rule 20). */
+        if (payload.gem) {
+          pushDmgPopup(S, S.player.x, S.player.y - 26, '+ RARE GEM', '#f5c542', { ts: Date.now() + 1 });
+          try { BT_AUDIO.collect && BT_AUDIO.collect(); } catch (e) {}
+        }
+        /* ═══ v2.3.1924: DROPPED ARMOUR GOES TO THE BAG ═══
+           Unlike the coins, the shard and the gem, this one is NOT cosmetic:
+           there is no server-side armour stash (handoff rule 1 forbids adding
+           one to the rpg blob), so the client's own armourStash / legsStash IS
+           the store and no player_state echo is coming to do it.
+
+           Written to match the quest-armour adopt (quest_reward_stashed,
+           v2.3.1695/1701/1758) field for field, including its guard: a repeat
+           of this event — a resend, or a reconnect that replays it — must not
+           mint a second copy.  `slot` decides which stash, because a legs
+           piece in armorStash equips to the TORSO and mitigates nothing
+           (v2.3.1701); `mat` travels because it is what picks the art and the
+           icon, and dropping it puts an iron-named piece on the character in
+           steel (v2.3.1758).  Both bugs have happened; neither is theoretical. */
+        if (Array.isArray(payload.armor) && payload.armor.length) {
+          var _gotArmor = 0;
+          for (var _ai = 0; _ai < payload.armor.length; _ai++) {
+            var _pc = payload.armor[_ai];
+            if (!_pc) continue;
+            var _pcLegs = _pc.slot === 'legsArmor';
+            var _pcName = String(_pc.name || 'Armor');
+            var _pcTm = Number(_pc.tierMult) || 1;
+            var _pcKey = _pcLegs ? 'legsStash' : 'armorStash';
+            if (!Array.isArray(R[_pcKey])) R[_pcKey] = [];
+            var _pcWorn = _pcLegs ? R.legsArmor : R.armor;
+            var _pcHeld = (_pcWorn && _pcWorn.name === _pcName && (Number(_pcWorn.tierMult) || 1) === _pcTm)
+              || R[_pcKey].some(function (a) {
+                return a && a.name === _pcName && (Number(a.tierMult) || 1) === _pcTm;
+              });
+            if (_pcHeld) continue;
+            R[_pcKey].push({ name: _pcName, tierMult: _pcTm,
+              slot: _pcLegs ? 'legsArmor' : 'armor',
+              mat: _pc.mat ? String(_pc.mat).slice(0, 16) : undefined });
+            _gotArmor++;
+            pushDmgPopup(S, S.player.x, S.player.y - 46 - _ai * 14, 'BAG: ' + _pcName, '#f5c542', { ts: Date.now() + 2 + _ai });
+          }
+          if (_gotArmor > 0) {
+            try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
+            try { BT_AUDIO.collect && BT_AUDIO.collect(); } catch (e) {}
+          }
         }
         /* v2.3.1141: server-minted weapon drop credit.  THE quality
            reveal moment (§4.6b.ii) -- the pile broadcast never carried
@@ -2056,6 +2113,15 @@ export function setupWebSocket(ctx) {
         _buildServerPile: _buildServerPile
       };
       try { window.__btDispatch = function (e) { processGameEvent(e.type, e.payload, S, _gameEventDeps); }; } catch (e) {}
+      /* v2.3.1924: the same QA/debug seam for the private loot credit, which
+         is NOT a game event — it arrives on the socket and is handled in this
+         file's own switch, so __btDispatch above cannot reach it.  It is the
+         only way a headless run can exercise the handler that routes a
+         dropped armour piece into the bag: the alternative is killing
+         monsters until a 1-in-500 lands.  The payload SHAPE this is driven
+         with is not invented for the test — server/test/drops.test.mjs pins
+         what the worker actually emits. */
+      try { window.__btLootCredit = function (p) { _applyLootCredit(p, S); }; } catch (e) {}
 
 
       ws.onclose = function (event) {

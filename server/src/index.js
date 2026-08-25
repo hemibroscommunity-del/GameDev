@@ -27,7 +27,9 @@ import { tickElementStatuses, elementMoveMult } from './elemental.js';
 // lookup methods stay (call sites unchanged); only the literals moved.
 import {
   ARCHETYPES, ZONES,
-  MONSTER_HP_CURVE, monsterHpFlat, RARITY_TIERS, BLOCK_COSTS_STAMINA, BLOCK_STAMINA_COST, BLOCK_ARC_HALF } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
+  MONSTER_HP_CURVE, monsterHpFlat, RARITY_TIERS, BLOCK_COSTS_STAMINA, BLOCK_STAMINA_COST, BLOCK_ARC_HALF,
+  MONSTER_ARMOR_DROPS, RARE_GEM_MONSTER_DROP, RARE_GEM_KEY,
+  MONSTER_IRON_WEAPON_DROP /* v2.3.1924b */ } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
 // v2.3.1118 (heavy-systems PR3): order book folded into the GameRoom --
 // escrow-at-placement settlement under one DO's input gates.  Methods
 // are mixed into the class below (see market.js header for why).
@@ -2941,10 +2943,78 @@ export class GameRoom {
     };
   }
 
+  /* ═══ v2.3.1924: THE IRON PIECES ═══
+     Owner: "monsters now have a 1 in 500 chance to drop an iron chest and 1
+     in 500 of dropping iron legs."
+
+     Flat rates, deliberately: the weapon roll above is a cubic level curve
+     because a weapon's TIER scales with the monster, and these two do not —
+     an iron torso is an iron torso off a slime or off a boss.  A curve here
+     would mean the owner's number was true at exactly one monster level and
+     nowhere else.
+
+     Each piece rolls on its OWN chance (see MONSTER_ARMOR_DROPS) and the
+     result is an ARRAY, so a corpse that hits both keeps both rather than
+     one silently shadowing the other.  The minted record is the same shape a
+     quest piece is, so nothing downstream can tell them apart — see the
+     constant's note for why that matters. */
+  _rollArmorDropsForKill() {
+    const out = [];
+    for (const d of MONSTER_ARMOR_DROPS) {
+      if (Math.random() >= d.chance) continue;
+      out.push({ name: d.name, mat: d.mat, slot: d.slot, tierMult: d.tierMult });
+    }
+    return out.length ? out : null;
+  }
+
+  /* ═══ v2.3.1924b: THE IRON GREATSWORD ═══
+     Owner: "Also add iron greatsword 1 in 500 chance to drop."
+
+     Flat, like the two armour pieces and unlike the ordinary weapon roll
+     above, for the same reason: that one is a cubic level curve because the
+     TIER it mints scales with the monster, and this mints one fixed item.
+
+     Built here rather than in _rollWeaponDropForKill because they answer
+     different questions — that function decides what RARITY a random weapon
+     is, and this one is not random. */
+  _rollIronWeaponForKill() {
+    const d = MONSTER_IRON_WEAPON_DROP;
+    if (Math.random() >= d.chance) return null;
+    return {
+      type: d.type,
+      tier: 'common',
+      tierMult: d.tierMult,
+      element1: null,
+      element2: null,
+      /* Verbatim the forge's own string (gear.js: `tierKey + ' ' + type`).
+         The client rebuilds the display name from gearBase — the itemcard
+         suite pins that it never prints this raw — so matching the forge is
+         what keeps a dropped blade indistinguishable from a crafted one. */
+      name: d.gearBase + ' ' + d.type,
+      gearBase: d.gearBase,
+      isVolatile: false,
+      reforgeBonus: null,
+      hardenBonus: null,
+      /* Rolled, like the forge's and like the ordinary drop's — which also
+         hands this the pile's hidden-until-pickup reveal for free. */
+      quality: this._rollWeaponQuality(),
+      hardness: 0,
+      temper: 0,
+    };
+  }
+
+  /* v2.3.1924: "Add a 1 in 200 chance to drop a rare gem."  A plain
+     stackable that lands in the bag — NOT the elemental raw_<element> the
+     Gem Cutter eats (_gemRawOnKill, amulet.js), which is zone-gated and
+     lives in lifeSkills.  Two different things on purpose; see RARE_GEM_KEY. */
+  _rollRareGemForKill() {
+    return Math.random() < RARE_GEM_MONSTER_DROP ? RARE_GEM_KEY : null;
+  }
+
   // Pile shape (server-side, full):
-  //   { lootId, zone, x, y, coins, skull, shard, weapon, weaponClaimed,
-  //     recipients, shares: {pid: number}, killerName, ts,
-  //     inventoryClaimed, claimedBy: {pid: true} }
+  //   { lootId, zone, x, y, coins, skull, shard, gem, weapon, weaponClaimed,
+  //     armor, armorClaimed, recipients, shares: {pid: number}, killerName,
+  //     ts, inventoryClaimed, claimedBy: {pid: true} }
   _spawnLootForKill(zone, monster, killerSessionId, recipients, shares) {
     const lootId = 'mk-' + monster.id;
     // Use the variant if set (e.g. ember fodder -> fireGoblin, sky
@@ -2961,9 +3031,43 @@ export class GameRoom {
     // v2.3.1150: disable_weapon_drops kill switch -- caps.weaponDrops
     // stays true so clients do NOT fall back to legacy local minting;
     // drops just stop rolling until the flag clears.
-    const weapon = (recipients && recipients.length > 0 && !this._flagOn('disable_weapon_drops'))
-      ? this._rollWeaponDropForKill(zone, monster) : null;
-    if (!skull && (!recipients || recipients.length === 0) && monster.gold <= 0 && !shard && !weapon) {
+    const anyClaimant = !!(recipients && recipients.length > 0);
+    const wpnDropsOn = anyClaimant && !this._flagOn('disable_weapon_drops');
+    /* ═══ v2.3.1924b: THE IRON GREATSWORD TAKES THE WEAPON SLOT ═══
+       A pile carries ONE weapon (its own claim lane, v2.3.1141), so when both
+       rolls land, one of them has to win.  The iron blade wins, which keeps
+       the owner's number EXACT: 1 in 500 kills drop it, full stop.
+
+       THE COST, MEASURED RATHER THAN WAVED AT, because it is a real if tiny
+       one: on a kill where both hit, an ordinary weapon that would have
+       dropped is replaced.  The ordinary rate runs 0.05% at level 1 to ~3% at
+       level 100, so the overlap is 1-in-2,000,000 kills at the bottom and
+       1-in-17,000 at the very top — and only at the top can the thing
+       replaced be rarer than iron (an elemental or fusion roll).  The
+       alternative orderings both cost more than that: letting the ordinary
+       roll win makes the owner's 1-in-500 quietly 1-in-515 at level 100, and
+       carrying two weapons means reworking an established claim lane and its
+       client credit on both sides for an event this rare.
+
+       Also gated by disable_weapon_drops (v2.3.1150): that kill switch exists
+       to stop weapons entering the economy, and a drop that ignored it would
+       be a hole in the lever rather than a new feature. */
+    const ironWeapon = wpnDropsOn ? this._rollIronWeaponForKill() : null;
+    const weapon = ironWeapon
+      || (wpnDropsOn ? this._rollWeaponDropForKill(zone, monster) : null);
+    /* v2.3.1924: both gated on there being someone who could claim them, the
+       same condition the weapon roll uses — rolling loot for an empty
+       recipient list mints an item nobody can ever pick up and then counts it
+       against the player's odds. */
+    const armor = anyClaimant ? this._rollArmorDropsForKill() : null;
+    const gem = anyClaimant ? this._rollRareGemForKill() : null;
+    /* v2.3.1924: !armor && !gem are BELT-AND-BRACES and cannot fire today —
+       this early-out is recipient-gated, and both new rolls are themselves
+       gated on there being a recipient, so any pile that could carry them has
+       already failed the second term.  They are here so the condition stays
+       correct if that gating is ever loosened; drops.test.mjs says so rather
+       than pretending to cover it. */
+    if (!skull && (!recipients || recipients.length === 0) && monster.gold <= 0 && !shard && !weapon && !armor && !gem) {
       // Nothing of value would drop -- skip the pile entirely.
       return null;
     }
@@ -2984,6 +3088,12 @@ export class GameRoom {
          so there is no stored shape to migrate. */
       skullArch: monster.arch,
       shard,
+      /* v2.3.1924: the gem rides the SHARED inventory slot (skull/shard), so
+         one pile hands its one-of items to one picker — the rule that has
+         governed this pile since it existed.  The armour gets its OWN claim
+         flag for the same reason the weapon did at v2.3.1141: it must not
+         consume, or be consumed by, that slot. */
+      gem,
       recipients: recipients.slice(),
       shares: { ...shares },
       killerName,
@@ -2994,6 +3104,8 @@ export class GameRoom {
       // (or be consumed by) the skull/shard inventoryClaimed slot.
       weapon,
       weaponClaimed: false,
+      armor,
+      armorClaimed: false,
     };
     if (!this.loot[zone]) this.loot[zone] = [];
     this.loot[zone].push(pile);
@@ -3026,6 +3138,15 @@ export class GameRoom {
       weaponTier: p.weapon ? p.weapon.tier : null,
       weaponType: p.weapon ? p.weapon.type : null,
       weaponName: p.weapon ? p.weapon.name : null,
+      /* v2.3.1924: the armour goes out in FULL, unlike the weapon.  The
+         withholding above exists because a weapon's quality is rolled at mint
+         and revealed at pickup (§4.6b.ii); a dropped armour piece has no
+         hidden roll at all — every field is fixed by MONSTER_ARMOR_DROPS — so
+         there is nothing to keep back and a pile that can say "Iron Greaves"
+         is worth walking to.  The gem is broadcast for the same reason. */
+      armor: p.armor || null,
+      armorClaimed: !!p.armorClaimed,
+      gem: p.gem || null,
       // Death-drop fields (null for normal monster-kill piles).
       isDeathDrop: p.isDeathDrop || false,
       deathItems: p.deathItems || null,
@@ -3283,11 +3404,13 @@ export class GameRoom {
     // First picker also gets the one-of inventory drop.
     let skullForMe = null;
     let shardForMe = null;
+    let gemForMe = null;      /* v2.3.1924 */
     let inventoryClaimedNow = false;
     if (!pile.inventoryClaimed) {
-      if (pile.skull || pile.shard) inventoryClaimedNow = true;
+      if (pile.skull || pile.shard || pile.gem) inventoryClaimedNow = true;
       skullForMe = pile.skull || null;
       shardForMe = pile.shard || null;
+      gemForMe = pile.gem || null;
       pile.inventoryClaimed = true;
     }
     // v2.3.1141: weapon claim -- first eligible picker takes it (own
@@ -3311,6 +3434,23 @@ export class GameRoom {
         ps.coins = (ps.coins || 0) + weaponSoldFor;
       }
     }
+    /* ═══ v2.3.1924: ARMOUR CLAIM ═══
+       Modelled on the weapon lane directly above: first eligible picker takes
+       it, own flag, independent of the skull/shard/gem slot.
+
+       There is NO server-side armour stash and handoff rule 1 forbids adding
+       one to the rpg blob, so — exactly as v2.3.1695 settled for quest
+       armour — the pieces are handed to the client's own armourStash /
+       legsStash through the private credit below, and the player equips them.
+       Which means, unlike the weapon, there is no stash-full fallback to
+       auto-sell into: the bag that receives these is not the worker's to
+       measure.  The worker still learns what ends up worn, because equipping
+       sends stats_update. */
+    let armorForMe = null;
+    if (pile.armor && pile.armor.length && !pile.armorClaimed) {
+      pile.armorClaimed = true;
+      armorForMe = pile.armor.slice();
+    }
     pile.claimedBy[session.id] = true;
 
     // Apply the grant to server-tracked playerState (the authoritative
@@ -3328,6 +3468,14 @@ export class GameRoom {
     if (shardForMe) {
       if (!ps.inventory) ps.inventory = {};
       ps.inventory[shardForMe] = (ps.inventory[shardForMe] || 0) + 1;
+    }
+    /* v2.3.1924: the gem is a plain stackable, credited exactly like the
+       shard — server-side, before the credit goes out, so the player_state
+       that follows carries the authoritative count and a client that tried to
+       self-credit is simply overwritten (rule 20). */
+    if (gemForMe) {
+      if (!ps.inventory) ps.inventory = {};
+      ps.inventory[gemForMe] = (ps.inventory[gemForMe] || 0) + 1;
     }
     this._saveRpg(session.id, ps);
 
@@ -3348,6 +3496,11 @@ export class GameRoom {
             coins: coinsForMe,
             skull: skullForMe,
             shard: shardForMe,
+            /* v2.3.1924: the gem key (popup) and the armour pieces (which the
+               client routes into its own armourStash / legsStash -- see the
+               claim block above for why that store is the client's). */
+            gem: gemForMe,
+            armor: armorForMe,
             // v2.3.1141: full blob incl. quality -- the private reveal.
             weapon: weaponForMe,
             weaponStashed,
@@ -3366,7 +3519,9 @@ export class GameRoom {
     // if the client wants it).
     this.eventBuffer.push({
       type: 'loot_claimed',
-      payload: { lootId, zone, byPlayer: session.id, inventoryClaimedNow, weaponClaimedNow: !!weaponForMe },
+      /* v2.3.1924: armorClaimedNow rides the same broadcast as the weapon's
+         so watchers can drop the piece's label off the pile they can see. */
+      payload: { lootId, zone, byPlayer: session.id, inventoryClaimedNow, weaponClaimedNow: !!weaponForMe, armorClaimedNow: !!armorForMe },
     });
 
     // If every recipient has now claimed, the pile is fully spent --
