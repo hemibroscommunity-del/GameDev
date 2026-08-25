@@ -1,4 +1,4 @@
-/* Idle characters log out (v2.3.1911)
+/* Idle characters log out (v2.3.1913)
  *
  * Owner: "Sometimes I login to the game and see characters I played in
  * separate window hours ago just idle.  Game should be logging out
@@ -15,7 +15,7 @@
  *
  *   B. THE WORKER evicts anyway, for a page that is frozen or old.
  *      Simulated by stubbing out S.channel.idleLogout — the page then
- *      behaves EXACTLY like a pre-v2.3.1911 build: genuinely idle, still
+ *      behaves EXACTLY like a pre-v2.3.1913 build: genuinely idle, still
  *      pumping the 1 Hz keepalive and the 2 s track, and never hanging
  *      up.  Only the server sweep can end it, which is the owner's bug
  *      stated as a test.
@@ -97,7 +97,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the watcher can see the other character (guard)',
     sawGhost.others.includes(gId), { gId, others: sawGhost.others });
 
-  /* Become the pre-v2.3.1911 client: the page never hangs up.  Everything
+  /* Become the pre-v2.3.1913 client: the page never hangs up.  Everything
      else is left completely alone — this player really is idle, really is
      sending the keepalive and the track, and really does report aw:1 once
      it has been two minutes.  Only the worker can end this. */

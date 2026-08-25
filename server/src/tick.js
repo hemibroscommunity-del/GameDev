@@ -16,7 +16,7 @@
  * last-leave) stay in index.js untouched. */
 
 export const tickMethods = {
-  /* v2.3.1911: RTT ping + AFK eviction, hoisted out of the tick loop
+  /* v2.3.1913: RTT ping + AFK eviction, hoisted out of the tick loop
      (body unchanged apart from the close code below) so it can be
      called directly from a test without starting the real 22 ms
      interval.  Called once per ~3 s from startTickLoop. */
@@ -56,7 +56,7 @@ export const tickMethods = {
            why it is worth doing without settling which one holds.
            Unawaited, matching webSocketError (index.js) -- with the
            rejection swallowed, since we are inside setInterval. */
-        /* v2.3.1911: close code 4006, not a bare 1000.  The client
+        /* v2.3.1913: close code 4006, not a bare 1000.  The client
            auto-reconnects on any close it doesn't recognise, so an
            abandoned tab used to rejoin ~1 s after every eviction and
            put the ghost straight back -- the sweep and the reconnect
@@ -223,7 +223,7 @@ export const tickMethods = {
 
       /* Periodic ping for RTT estimation + idle-session eviction
          (every ~3s at 30Hz).  Body hoisted to _tickPingAndAfk
-         (v2.3.1911) so the AFK sweep can be exercised directly by
+         (v2.3.1913) so the AFK sweep can be exercised directly by
          test/afk.test.mjs -- this suite never starts the real 22 ms
          interval (the tick.test.mjs convention). */
       pingCounter++;

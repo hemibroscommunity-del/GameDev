@@ -1,4 +1,4 @@
-/* AFK / idle-logout suite (v2.3.1911).
+/* AFK / idle-logout suite (v2.3.1913).
  *
  * Owner report: "Sometimes I login to the game and see characters I
  * played in separate window hours ago just idle.  Game should be
@@ -185,7 +185,7 @@ check('a chat message DOES reset the clock',
   await join(ghost, 'bp_afk_c');
   const g = room.sessions.get(ghost);
   /* Two simulated minutes of a tab nobody is touching: the client's own
-     1 Hz keepalive and 2 s track, and nothing else.  Before v2.3.1911
+     1 Hz keepalive and 2 s track, and nothing else.  Before v2.3.1913
      this kept the session alive indefinitely. */
   /* Prime the pose the way a played-then-abandoned tab would have: the
      first move after a join is genuinely new information to the server

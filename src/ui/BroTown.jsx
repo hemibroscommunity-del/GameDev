@@ -373,7 +373,7 @@ var BLOCK_COSTS_STAMINA = false;
 
 var NODE_REACH_PAD = 56;   /* px of slack outside the sprite box */
 
-/* v2.3.1911: how long a character may sit with no player input before the
+/* v2.3.1913: how long a character may sit with no player input before the
    page hangs up (owner: "Game should be logging out characters after 2
    mins").  Kept equal to the worker's IDLE_TIMEOUT_MS (server/src/index.js)
    and to the AWAY flag's threshold below -- three names for one deadline,
@@ -5480,7 +5480,7 @@ export var BroTown = function BroTown(_ref0) {
               S._lastBroadcastBlocking = _blockNow; /* v2.3.1110 */
               S._lastBroadcastBa = _baNow; /* v2.3.1726 */
             }
-            /* ═══ v2.3.1911: LOG OUT AN IDLE CHARACTER ═══
+            /* ═══ v2.3.1913: LOG OUT AN IDLE CHARACTER ═══
                Owner: "Sometimes I login to the game and see characters I
                played in separate window hours ago just idle.  Game should
                be logging out characters after 2 mins."
@@ -5490,7 +5490,7 @@ export var BroTown = function BroTown(_ref0) {
                the reason the hang-up lives HERE and not only in the
                worker's AFK sweep: the worker can only see packets, and a
                player reading the market sends none.  The worker's sweep
-               (v2.3.1911, server/src/tick.js) stays as the backstop for a
+               (v2.3.1913, server/src/tick.js) stays as the backstop for a
                page that is frozen, old, or lying.
                Rides the 2 s track slot rather than its own timer: this is
                a 2-minute deadline, 2 s of granularity is free, and a
@@ -6975,7 +6975,7 @@ export var BroTown = function BroTown(_ref0) {
     window.addEventListener('touchstart', _stampInput, { passive: true, capture: true });
     window.addEventListener('pointerdown', _stampInput, { passive: true, capture: true });
     window.addEventListener('keydown', _stampInput, { passive: true, capture: true });
-    /* v2.3.1911: wheel too, now that this clock decides whether to log the
+    /* v2.3.1913: wheel too, now that this clock decides whether to log the
        character out and not just whether to show peers an AWAY pip.  A
        desktop player scrolling a long panel is present, and scrolling is
        the one common input that fires none of the three above. */
@@ -7477,7 +7477,7 @@ export var BroTown = function BroTown(_ref0) {
       window.removeEventListener('touchstart', _stampInput, { capture: true });
       window.removeEventListener('pointerdown', _stampInput, { capture: true });
       window.removeEventListener('keydown', _stampInput, { capture: true });
-      window.removeEventListener('wheel', _stampInput, { capture: true }); /* v2.3.1911 */
+      window.removeEventListener('wheel', _stampInput, { capture: true }); /* v2.3.1913 */
       lBase.removeEventListener('touchstart', lS);
       window.removeEventListener('touchmove', gM);
       window.removeEventListener('touchmove', lM);

@@ -3375,7 +3375,7 @@ export class GameRoom {
     return new Response(null, { status: 101, webSocket: client });
   }
 
-  /* v2.3.1911: AFK activity signature for a `move` packet.
+  /* v2.3.1913: AFK activity signature for a `move` packet.
      Everything the player themself controls, and nothing the server or
      the world controls.  Positions are rounded to whole pixels so float
      noise on a stationary body can't read as movement (a walking player
@@ -3431,7 +3431,7 @@ export class GameRoom {
        (the original 45 s behavior, which never actually kicked anyone
        who had a live tab open).
 
-       v2.3.1911: `move` and `track` are heartbeats TOO, and that is why
+       v2.3.1913: `move` and `track` are heartbeats TOO, and that is why
        the 2-minute sweep had still never kicked anyone.  Owner:
        "Sometimes I login to the game and see characters I played in
        separate window hours ago just idle."  The client sends a move at

@@ -461,7 +461,7 @@ for: not "smoother than its surroundings" (that is blur) but "the same".
 
 **Receipt:** `tools/maps/build-town-v17.mjs` and its header.
 
-## §24 — Reading a timeout's constant instead of its clock (v2.3.1911)
+## §24 — Reading a timeout's constant instead of its clock (v2.3.1913)
 
 **Tempting:** the owner reports characters idling in the world for
 hours, so go looking for the AFK timeout. You find it immediately —

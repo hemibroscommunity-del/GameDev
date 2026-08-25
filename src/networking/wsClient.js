@@ -2095,7 +2095,7 @@ export function setupWebSocket(ctx) {
           S._realtimeStatus = 'rejected';
           return;
         }
-        /* v2.3.1911: AFK logout (worker sweep or our own idleLogout).
+        /* v2.3.1913: AFK logout (worker sweep or our own idleLogout).
            This MUST NOT auto-reconnect -- an abandoned tab that rejoins a
            second after every eviction is the ghost the owner is
            reporting, just with extra steps.  Same shape as the
@@ -2116,7 +2116,7 @@ export function setupWebSocket(ctx) {
         S._realtimeStatus = 'disconnected';
       };
     }
-    /* v2.3.1911: the "we stopped on purpose, tap to come back" banner.
+    /* v2.3.1913: the "we stopped on purpose, tap to come back" banner.
        Extracted from the v2.3.771 superseded branch so the AFK logout
        gets the identical treatment instead of a second copy of it.
        Plain DOM rather than React state because onclose can fire from
@@ -2171,7 +2171,7 @@ export function setupWebSocket(ctx) {
           ct.recordCrash('resume', tag + ' wsState=' + (ws ? ws.readyState : 'none'));
         }).catch(function () {});
       } catch (e) {}
-      /* v2.3.1911: 'idle' joins 'superseded' here.  Both are deliberate
+      /* v2.3.1913: 'idle' joins 'superseded' here.  Both are deliberate
          hang-ups with a banner offering the way back, and silently
          reconnecting behind that banner would leave it lying on screen
          while the character was already in the world again. */
@@ -2728,7 +2728,7 @@ export function setupWebSocket(ctx) {
         reconnectDelay = 1000;
         try { connect(); } catch (e) {}
       },
-      /* v2.3.1911: LOG OUT AN IDLE CHARACTER.  Owner: "Sometimes I login
+      /* v2.3.1913: LOG OUT AN IDLE CHARACTER.  Owner: "Sometimes I login
          to the game and see characters I played in separate window hours
          ago just idle.  Game should be logging out characters after 2
          mins."  The worker now evicts an idle session on its own (a

@@ -281,7 +281,7 @@ Summary of the wire-visible changes:
   legacy/guest ids). Rejected auth → server sends `join_rejected
   {reason:'auth'}` then closes with code 4003; the client mints a fresh
   identity once and reconnects.
-- v2.3.1911 (AFK): a session with no PLAYER INPUT for
+- v2.3.1913 (AFK): a session with no PLAYER INPUT for
   `IDLE_TIMEOUT_MS` (2 min) is evicted and closed with code 4006,
   reason `idle timeout`; the client shows a resume banner and must NOT
   auto-reconnect. Input is judged server-side: `pong` and `track` are
