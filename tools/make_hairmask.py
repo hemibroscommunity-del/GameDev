@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """v2.3.1532: rebuild a hat's hair-clip mask from the hat it actually is now.
 
+v2.3.1957: part 1 bounds the hair's WIDTH to the hat's -- the owner's rule, see
+"The mask" below -- and bald_px is re-aimed to match it.
+
 What a hairmask is for
 ----------------------
 When a hat declares `clipsHair`, the renderer masks the hair sprite to the
@@ -23,8 +26,8 @@ The mask
 --------
 Two parts, and the second one is v2.3.1529 (owner):
 
-  1. In a column the hat occupies, everything from the hat's topmost pixel
-     downward. Hair above the hat's outline is cut.
+  1. AT AND ABOVE THE HAT, the hair is no wider than the hat is at that row or
+     any row above it.
   2. Everywhere BELOW the hat's lowest pixel, full width.
 
 Part 2 is what lets hair show beside a brim. Without it the mask was only ever
@@ -33,6 +36,30 @@ below the brim in plain view -- showed no hair at all, which read as the hat
 shaving you. Filling below the hat's bottom edge means the brim still cuts
 everything that would poke up past it while the hair under and beside it
 survives.
+
+Part 1 is v2.3.1957, and it is the owner's own rule, quoted:
+
+    "For the hair mask it's best to clip the width of the hair and any hair
+    above it based on the width equal to and above the hat item.  Other
+    headwear (like bandana, other open top headwear, etc) would be the
+    exceptions to that rule."
+
+It used to say "in a column the hat occupies, everything from the hat's topmost
+pixel downward", which bounds the hair vertically and not at all horizontally:
+a column stayed open to the bottom of the frame once the hat had touched it, so
+an afro under a beanie kept its full un-hatted width and the hat read as
+perched on a ball. It also left a vertical CORRIDOR either side of an eared hat
+where hair floated in mid-air with nothing under it (measured on mickey-ears:
+86px south, 99 southwest, 119 east).
+
+Bounding the width closes both. The bound accumulates DOWNWARD -- the widest
+the hat has been at this row or above -- so a dome, whose widest row is its
+bottom, is unaffected at its own bottom edge, while an ear stops counting the
+moment it ends.
+
+WHAT THIS DELIBERATELY ALLOWS: skin beside the hat where the hair used to
+bulge. That is the point. It is also why bald_px below had to be re-aimed --
+see the note there.
 
 Run from the repo root:
     python3 tools/make_hairmask.py --all-with-masks [--apply]
@@ -113,7 +140,20 @@ def bald_px(hid, meta, masks):
         skull = body[:, :, 3] > ALPHA_T
         skull[:by, :] = False
         skull[by + SKULL_ROWS:, :] = False
-        n = int((skull & (msk[:, :, 3] <= ALPHA_T) & (hat[:, :, 3] <= ALPHA_T)).sum())
+        # v2.3.1957: only UNDER THE HAT.  The width rule intentionally leaves
+        # skin beside a cap -- that is the hair being pressed down rather than
+        # ballooning -- so counting it made the guard refuse 21 of 31 real
+        # caps.  What the guard is actually for is the shape it was written
+        # against: a BAND, which leaves the whole dome above it bare.  That
+        # dome is inside the band's own columns, so scoping the count to the
+        # hat's horizontal span keeps every band refused and stops punishing
+        # caps for doing the thing the owner asked for.
+        span = np.zeros(FRAME, bool)
+        hcols = np.nonzero((hat[:, :, 3] > ALPHA_T).any(axis=0))[0]
+        if len(hcols):
+            span[hcols.min():hcols.max() + 1] = True
+        n = int((skull & span[None, :]
+                 & (msk[:, :, 3] <= ALPHA_T) & (hat[:, :, 3] <= ALPHA_T)).sum())
         if n > worst:
             worst, worst_d = n, d
     return worst, worst_d
@@ -139,10 +179,17 @@ def build(hid, apply_it, set_clips):
         if len(rows):
             # everything below the hat's lowest pixel, at full width
             mask[rows.max() + 1:, :] = (255, 255, 255, 255)
-        for x in range(w):
-            col = np.nonzero(m[:, x])[0]
-            if len(col):
-                mask[col.min():, x] = (255, 255, 255, 255)
+        # v2.3.1957: at and above the hat, no wider than the hat has been at
+        # this row or above it.  `lo`/`hi` accumulate as the scan goes down.
+        if len(rows):
+            lo, hi_ = w, -1
+            for y in range(int(rows.min()), int(rows.max()) + 1):
+                r = np.nonzero(m[y, :])[0]
+                if len(r):
+                    lo = min(lo, int(r.min()))
+                    hi_ = max(hi_, int(r.max()))
+                if hi_ >= 0:
+                    mask[y, lo:hi_ + 1] = (255, 255, 255, 255)
         made.append((d, int(m.sum()), int((mask[:, :, 3] > 0).sum()), w))
         masks[d] = mask
         if apply_it:
@@ -156,8 +203,9 @@ def build(hid, apply_it, set_clips):
               f'(limit {BALD_T}) -- this is a band, not a cap; clipping would shave the crown')
     if apply_it and set_clips:
         meta['clipsHair'] = True
-        meta['note'] = (meta.get('note', '') + ' v2.3.1532: hair-clip mask rebuilt from '
-                        'the current art by tools/make_hairmask.py'
+        meta['note'] = (meta.get('note', '') + ' v2.3.1957: hair-clip mask rebuilt by '
+                        'tools/make_hairmask.py under the WIDTH rule (owner: clip the hair to '
+                        'the hat\'s width at and above the hat)'
                         + ('' if was else ', and clipsHair switched on') + '.')
         with open(mp, 'w') as fh:
             json.dump(meta, fh, indent=2)
