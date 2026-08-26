@@ -201,6 +201,18 @@ for (const [label, page] of [['A', A], ['B', B]]) {
 
 /* ── 4. A leaves via the strip's Leave button → disband on both
        (a party left with one member is just a player) ── */
+/* v2.3.1966: hide the desktop keyboard legend before reaching for the roster.
+   The legend is `.bt-kb-hints`, bottom-left, and its KEY CHIPS take pointer
+   events (game.css: `.bt-kb-hints .bt-kb-key{pointer-events:auto}`) — so where
+   a chip overlaps the party roster's Leave button, the click lands on the chip.
+   H is the game's own control for this and the legend says so ("Hide these
+   (H)"), which is what a desktop player does; the harness does the same rather
+   than reaching past the UI with a synthetic event.
+   NOT swept under the carpet: the overlap itself is a real desktop-only
+   annoyance (there is no keyboard legend on the primary platform, iPhone).  It
+   is geometry, not stacking — see the note in the v2.3.1966 commit. */
+await A.keyboard.press('h');
+await A.waitForTimeout(400);
 await A.locator('button[title="Leave party"]').first().click({ timeout: 5000 });
 for (const [label, page] of [['A', A], ['B', B]]) {
   const gone = await pollUntil(async () => {

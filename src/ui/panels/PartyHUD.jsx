@@ -1,5 +1,7 @@
 import React from 'react';
+import { createPortal } from 'react-dom';   /* v2.3.1966 */
 import { ZONES } from '@/data/index.js';
+import { Z_ABOVE_DASH_PROMPT } from '@/ui/zLayers.js';   /* v2.3.1966 */
 
 /* === PartyHUD — the party roster overlay (v2.3.1185, handoff item D) ===
 
@@ -46,10 +48,36 @@ export function PartyHUD(props) {
 
   /* ── incoming invite card ── */
   if (party.invite) {
-    return /*#__PURE__*/React.createElement("div", {
+    /* ═══ v2.3.1966: PORTALED, AND AT 40 ═══
+       A party invite that arrived while your dashboard was open was drawn
+       BEHIND it, and the Join button was not merely hidden but untappable —
+       a real pointer landed on the tray.  Measured at 844x390 (the primary
+       platform, iPhone landscape): the tray owns y 125..390 and the card sat
+       at y 90..190, so all you got was a 35px sliver of the words "Party
+       Invite" above the tray edge and no way to accept.
+
+       src/ui/zLayers.js rule 1, verbatim: "Anything the player must be able
+       to READ or TAP while the dashboard is visible goes ABOVE Z_DASHBOARD
+       (30). Player-decision prompts must never render under chrome."  An
+       invite is the textbook case, and it was sitting ON 30 — a tie, which
+       DOM order then loses.  Z_ABOVE_DASH_PROMPT (34) is the registry's named
+       rung for exactly this, above the tray and below the contextual
+       .bt-interact-prompt at 35.
+
+       RAISING THE Z ALONE DOES NOT FIX IT, and that is the other half of the
+       lesson: tried 34's equivalent in place first and the click was still
+       intercepted by the tray.  DuelRequestPanel hit the same wall in
+       v2.3.1235 and its comment says why — the wrap is its own stacking
+       context, so a child's z-index is only meaningful among its siblings.
+       The fix it settled on, and the one used here, is to portal to
+       document.body so the number means what it says.
+
+       Found by qa-party-smoke, which had been failing on exactly this click,
+       unwatched, since the smoke job left the PR path on 2026-07-16. */
+    return createPortal(/*#__PURE__*/React.createElement("div", {
       style: {
-        position: 'absolute', top: 90, left: '50%', transform: 'translateX(-50%)',
-        zIndex: 30,
+        position: 'fixed', top: 90, left: '50%', transform: 'translateX(-50%)',
+        zIndex: Z_ABOVE_DASH_PROMPT,
         /* v2.3.1232: world card, left-aligned; blur removed */
         background: 'linear-gradient(180deg, rgba(35,48,57,.94), rgba(17,25,29,.94))',
         border: '1px solid rgba(238,242,235,.24)',
@@ -92,7 +120,7 @@ export function PartyHUD(props) {
         send('party_decline', { target: party.from });
         setParty(null);
       }
-    }, "Decline")));
+    }, "Decline"))), document.body);
   }
 
   if (!party.members || !party.members.length) return null;
