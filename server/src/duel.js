@@ -49,8 +49,37 @@ export const duelMethods = {
    * plain {} an id of '__proto__' makes the clock assignment a silent
    * no-op (inherited accessor) -- that player would never forfeit and
    * the duel would stick forever, the very bug this map fixes. */
+  /* ═══ v2.3.1973: EVERY DUEL GETS A DEADLINE ═══
+   * The shot clock below (`_tickDuels`, v2.3.1126) was written for arena
+   * matches and only ever fired when `expiresAt` was set — and the ONLY
+   * caller that set it was `_arenaTryActivate`.  A social duel therefore
+   * had no clock at all, and its own comment named the consequence
+   * exactly: "a duel where nobody died stayed 'active' FOREVER -- the
+   * consent pair silently expired while _duelFor kept blocking both
+   * players from any new duel (latent deadlock)".  That deadlock was
+   * fixed for the arena and left standing for the duel it was written
+   * about.  Measured against the real GameRoom: challenge, accept, then
+   * an hour of ticks — duel still active, consent long gone, both players
+   * refused every later duel, and the wagers still parked in
+   * `duelEscrow:` (the sweep skips a "live" duel, rule 6).
+   *
+   * It is reachable by ACCIDENT, not only by trying: two players duel,
+   * neither dies, they wander off.  Since v2.3.1917 turned open PvP off,
+   * a duel is the only PvP in the game, so the state this leaves is "PvP
+   * is permanently broken for those two accounts" — for the life of the
+   * DO, which is until the next deploy.
+   *
+   * CONSENT_MS is the right constant and not a new one: it is already
+   * commented "10 min duel cap", and it is when `_pvpAllowed`'s consent
+   * pair lapses — after that neither player can damage the other, so a
+   * duel outliving it is unfinishable by construction.  Defaulted HERE
+   * rather than at the one call site because this factory is the single
+   * owner of the record shape (v2.3.1175, same reasoning); `fields` wins,
+   * so the arena's shorter MATCH_MS clock is untouched. */
   _makeDuel(fields) {
-    return Object.assign({ status: 'active', away: Object.create(null) }, fields);
+    const d = Object.assign({ status: 'active', away: Object.create(null) }, fields);
+    if (!d.expiresAt) d.expiresAt = (d.startedAt || Date.now()) + DUEL.CONSENT_MS;
+    return d;
   },
 
   _duelFor(playerId) {
@@ -97,6 +126,25 @@ export const duelMethods = {
       return null;
     };
     if (!psA || !psB || psA.dying || psB.dying) return declineBoth();
+    /* ═══ v2.3.1973: A DUEL NEEDS BOTH OF YOU IN THE SAME PLACE ═══
+     * Nothing checked the zone, and the handshake relay is not zone-scoped
+     * (the tick's interest management deliberately leaves `events`
+     * room-wide -- see the v2.3.1575 note in tick.js), so a challenge
+     * crosses zones and an accept from another map was honoured: escrow
+     * debited, consent pair registered, duel active.  Neither player can
+     * then land a hit -- combat.js gates every PvP swing on the ATTACKER's
+     * zone and walks only the players in it -- so the fight is unwinnable
+     * by construction and can only end on the clock above.
+     * Checked BEFORE any escrow moves, so nothing has to be unwound, and
+     * answered with declineBoth() rather than a silent null: both players
+     * pressed a button and are owed an outcome they can see.  A no-op in
+     * normal play -- the only way to open the challenge is the inspect card
+     * on a peer you are standing next to -- so what this catches is a
+     * player who walked through a portal between the challenge and the
+     * accept, and a forged cross-zone challenge.  Note it gates only the
+     * START: a duel already under way survives one side zoning out, which
+     * is what the disconnect/forfeit clocks are for. */
+    if (psA.z !== psB.z) return declineBoth();
     // The accepter's client echoes back the wager it was shown; the
     // CHALLENGE's number is authoritative (an edited accept can't
     // inflate the opponent's stake).
@@ -222,7 +270,17 @@ export const duelMethods = {
         // brackets, which set expiresAt ~3 min).  Tiebreak needs no
         // new state: the server owns hp -- higher hp/maxHp fraction
         // wins, coin flip on an exact tie.
-        if (d.status === 'active' && d.expiresAt && now > d.expiresAt) {
+        /* v2.3.1973: no longer OPTIONAL -- _makeDuel defaults expiresAt, and
+           this fallback covers any record that did not come through it (the
+           `away` lazy-init above tolerates hand-built records for the same
+           reason).  A duel with no deadline at all is the deadlock the
+           paragraph above describes, so there must be no way to build one.
+           Stamped onto the record rather than computed inline, and falling
+           back to NOW (not to 0) when startedAt is missing too -- an
+           un-stamped record must get a fresh ten minutes, never an instant
+           timeout that would end a fight the moment it is noticed. */
+        if (d.status === 'active' && !d.expiresAt) d.expiresAt = (d.startedAt || now) + DUEL.CONSENT_MS;
+        if (d.status === 'active' && now > d.expiresAt) {
           const psA = this.playerState[d.a], psB = this.playerState[d.b];
           const fA = psA ? (psA.hp || 0) / (psA.maxHp || 100) : -1;
           const fB = psB ? (psB.hp || 0) / (psB.maxHp || 100) : -1;
