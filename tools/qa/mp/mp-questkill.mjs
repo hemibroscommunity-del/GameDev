@@ -67,10 +67,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the quest is active on the worker (guard: the rest is meaningless without it)',
     !!armedSrv && (armedSrv._quests || {}).tut_1 === 'active', armedSrv && armedSrv._quests);
 
+  /* Out from under the Quests panel the way mp-tutorial does it — a reload,
+     which also proves the accept survived the round trip rather than living in
+     the client's optimistic copy.  Everything below runs on a clean screen. */
+  await P.page.reload();
+  await P.page.waitForTimeout(9000);
+  await H.waitFor(P, (S) => !!(S.myId && S.currentZone), (v) => !!v,
+    { timeout: 60000, label: 'back in the world' }).catch(() => {});
+
   /* Equip the greatsword — quest weapons land in the STASH since v2.3.1683,
      and the auto-attack loop refuses to fire on an empty slot (v2.3.212), so
      an unequipped run would "fail" by never swinging. */
-  await H.clickText(P, 'Close').catch(() => {});
   await P.page.evaluate(() => {
     const S = window._gameState && window._gameState.current;
     const R = S && S.rpg;
@@ -156,7 +163,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const P0 = S.player;
       /* A pile on the ground beats a live monster: it expires, and the whole
          point of the kill was what fell out of it. */
-      const piles = (S.loot || []).filter((l) => l && !l._collected);
+      /* S.groundLoot, not S.loot — the worker's map is `this.loot[zone]` and
+         the client's mirror has a different name; reading the wrong one would
+         make this loop quietly never pick anything up. */
+      const piles = (S.groundLoot || []).filter((l) => l && !l._collected);
       if (piles.length) {
         let best = piles[0], bd = Infinity;
         for (const l of piles) {
@@ -199,16 +209,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
     got >= WANT.count, { got, want: WANT.count, log });
 
   /* And the client agrees the quest is now ready to hand in — the same
-     predicate QuestPanel gates Claim Reward on, so this is the button. */
-  const ready = await P.page.evaluate(() => {
-    const F = window._gameFns || {};
-    const S = window._gameState && window._gameState.current;
-    const q = F.QUEST_CHAINS && F.QUEST_CHAINS.tut_1;
-    if (!q || !S) return null;
-    try { return !!q.check(S.rpg || {}, S); } catch (e) { return 'threw:' + e.message; }
-  });
+     predicate QuestPanel gates Claim Reward on, so this is the button.
+
+     POLLED, not sampled once, and the reason is a real property of the wire
+     rather than test slop: `loot_credit` is cosmetic for a stackable (wsClient
+     "the authoritative R.inventory write rides the player_state that follows
+     on this same socket flush"), so the client's bag learns about the fourth
+     remnant on the next `_flushPendingPlayerStates`, not on the pickup.  A
+     single read the instant the WORKER reaches four is therefore a race the
+     client can lose, and it did on the first run of this file
+     (`{ready:false, got:4}` with four remnants sitting in the worker's blob).
+     Waiting is the honest test — a genuine mismatch, which is what this
+     assertion is for, still fails, it just takes ten seconds to say so. */
+  let ready = null;
+  for (let i = 0; i < 20; i++) {
+    ready = await P.page.evaluate(() => {
+      const F = window._gameFns || {};
+      const S = window._gameState && window._gameState.current;
+      const q = F.QUEST_CHAINS && F.QUEST_CHAINS.tut_1;
+      if (!q || !S) return null;
+      try { return !!q.check(S.rpg || {}, S); } catch (e) { return 'threw:' + e.message; }
+    });
+    if (ready === true) break;
+    await P.page.waitForTimeout(500);
+  }
+  const clientHeld = await H.readState(P, (S) => (S.rpg && S.rpg.inventory && S.rpg.inventory.snowman) || 0);
   rec.ok('...which makes the turn-in claimable without any seeding',
-    ready === true, { ready, got });
+    ready === true, { ready, workerHeld: got, clientHeld });
 
   await P.ctx.close().catch(() => {});
 }
