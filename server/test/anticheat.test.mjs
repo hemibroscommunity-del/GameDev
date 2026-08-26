@@ -525,6 +525,7 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
       sa: 'a'.repeat(256),   /* v2.3.1939: a drawn shirt */
       pa: 'b'.repeat(256), ta: 'c'.repeat(256),   /* v2.3.1940: pants print + tattoo */
       sp: 'stripe-v:3', pp: 'camo:6',   /* v2.3.1941: clothing patterns */
+      fp: 'check:9',   /* v2.3.1944: shoes */
     },
   }));
 
@@ -566,6 +567,11 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
      for anything unknown, so a forged value paints nothing. */
   check('track: clothing patterns are relayed (v2.3.1941)',
     psT.sp === 'stripe-v:3' && psT.pp === 'camo:6', { sp: psT.sp, pp: psT.pp });
+  /* v2.3.1944: the shoe pattern rides the same allowlist.  Note the server does
+     NOT know that shoes only offer four of the nine tiles — that is the
+     client's catalog rule, applied on the way IN to a canvas, so a forged
+     'camo' on shoes paints nothing rather than being rejected here. */
+  check('track: the shoe pattern is relayed (v2.3.1944)', psT.fp === 'check:9', psT.fp);
 
   // A forged rpgLv is fine as a DISPLAY value (above) but must never
   // become the player's rank on the global board — v2.3.1178 closed

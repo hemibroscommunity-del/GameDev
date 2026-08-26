@@ -504,9 +504,13 @@ export async function drawCharacterPortrait(canvas, opts) {
   const _tattooArt = (opts && opts.tattooArt !== undefined) ? sanitizeShirtArt(opts.tattooArt) : inkedArt('tattoo');
   /* v2.3.1941: the trouser pattern rides the same object. */
   const _pantsPat = (opts && opts.pantsPattern !== undefined)
-    ? sanitizePattern(opts.pantsPattern) : getPattern('pants');
-  const _bodyArt = (_pantsArt || _tattooArt || parsePattern(_pantsPat))
-    ? { pants: _pantsArt || '', tattoo: _tattooArt || '', pantsPattern: _pantsPat, mirror: false } : null;
+    ? sanitizePattern(opts.pantsPattern, 'pants') : getPattern('pants');
+  /* v2.3.1944: and the shoes'. */
+  const _shoesPat = (opts && opts.shoesPattern !== undefined)
+    ? sanitizePattern(opts.shoesPattern, 'shoes') : getPattern('shoes');
+  const _bodyArt = (_pantsArt || _tattooArt || parsePattern(_pantsPat, 'pants') || parsePattern(_shoesPat, 'shoes'))
+    ? { pants: _pantsArt || '', tattoo: _tattooArt || '',
+      pantsPattern: _pantsPat, shoesPattern: _shoesPat, mirror: false } : null;
   ctx.drawImage(recolorBodyToCanvas(bodyImg, skinTarget(skin), pantsTarget(pants), shoesTarget(shoes), null, FRAME,
     eyeColorTarget(_eyeId), EYE_MASK[`stand-${DIR}`], _bodyArt), 0, 0);
   if (shirtImg) {
@@ -525,7 +529,7 @@ export async function drawCharacterPortrait(canvas, opts) {
        never flips one, which the world renderer does. */
     const _art = (opts && opts.shirtArt !== undefined) ? sanitizeShirtArt(opts.shirtArt) : shirtArtForDir(DIR);
     const _shirtPat = (opts && opts.shirtPattern !== undefined)
-      ? sanitizePattern(opts.shirtPattern) : getPattern('shirt');
+      ? sanitizePattern(opts.shirtPattern, 'shirt') : getPattern('shirt');
     /* v2.3.1941: colour, pattern and print now come from composeShirt -- the
        SAME function the world renderer bakes with -- so the login preview and
        the character in the world cannot disagree about what a shirt looks like.
@@ -533,7 +537,7 @@ export async function drawCharacterPortrait(canvas, opts) {
        stamped then applied a sprite tint over the whole texture (which
        multiplied the print by the shirt colour). */
     const layer = composeShirt(shirtUp, FRAME, {
-      tint: shirtColor || null, pattern: parsePattern(_shirtPat),
+      tint: shirtColor || null, pattern: parsePattern(_shirtPat, 'shirt'),
       art: _art, mirror: false,
     });
     ctx.drawImage(layer, 0, 0, FRAME, FRAME, 0, 0, FRAME, FRAME);

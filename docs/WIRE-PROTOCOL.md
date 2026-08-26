@@ -236,7 +236,7 @@ v2.3.1465 pass did not reach it.
 | Group | Keys | Bound |
 |---|---|---|
 | Presence | `x`, `y` (finite numbers), `d` (≤16 chars), `z` | `z` must pass `_validZone` |
-| Cosmetics | `name`, `color`, `avatar`, `bt`, `bl`, `hw`, `fh`, `hr`, `sk`, `hc`, `htc`, `fhc`, `st`, `stc`, `ec`, `sa`, `sb`, `pa`, `ta`, `sp`, `pp`, `eqc`, `eql`, `eqs`, `eqst`, `pt`, `sh`, `bs`, `wpnMat` | truncated to 64 chars; `avatar` and the four drawing keys to 512 |
+| Cosmetics | `name`, `color`, `avatar`, `bt`, `bl`, `hw`, `fh`, `hr`, `sk`, `hc`, `htc`, `fhc`, `st`, `stc`, `ec`, `sa`, `sb`, `pa`, `ta`, `sp`, `pp`, `fp`, `eqc`, `eql`, `eqs`, `eqst`, `pt`, `sh`, `bs`, `wpnMat` | truncated to 64 chars; `avatar` and the four drawing keys to 512 |
 | Bootstrap | anything matching `/^rpg[A-Z][A-Za-z0-9]*$/` | scalars pass; containers capped at 8 KB |
 
 `ec` is the eye colour (v2.3.1930) and `wpnMat` the weapon's blacksmith
@@ -249,11 +249,15 @@ rejects any string that is not exactly that, so a truncated drawing is not a
 smaller drawing — it is no drawing at all.  `join.js` exports `cosmeticCap`
 and BOTH gates call it (the join sanitiser and the `track` handler), because
 v2.3.1939 shipped the two caps spelled out separately and the second one was
-missed: prints appeared on join and vanished on the first 2 s relay.  `sp`/`pp`
-are the shirt and trouser PATTERNS (v2.3.1941) — a tile id and a palette index,
-e.g. `stripe-v:3`.  They are deliberately not drawings: a pattern repeats across
+missed: prints appeared on join and vanished on the first 2 s relay.  `sp`/`pp`/`fp`
+are the shirt, trouser and shoe PATTERNS (v2.3.1941, v2.3.1944) — a tile id and
+a palette index, e.g. `stripe-v:3`.  They are deliberately not drawings: a pattern repeats across
 a whole garment, so it needs about a dozen characters rather than 256, sits
-inside the flat 64-char cap, and needs none of the special handling above. Like every cosmetic here they are DISPLAY-ONLY and unvalidated
+inside the flat 64-char cap, and needs none of the special handling above.
+Note the server does not know that shoes offer only four of the nine tiles —
+that is a client catalog rule applied on the way in to a canvas, so a forged
+`fp` naming a tile shoes do not offer paints nothing rather than being
+rejected here. Like every cosmetic here they are DISPLAY-ONLY and unvalidated
 server-side: the receiving client maps the string through its own catalog
 and answers null for anything unknown, so a forged value can only ever
 select something that catalog already contains.

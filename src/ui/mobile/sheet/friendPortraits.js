@@ -22,7 +22,7 @@ export function friendPortrait(fid, peer, onReady) {
     peer.pants, peer.shoes, peer.bodySize, peer.eyeColor,   /* v2.3.1930 */
     peer.shirtArtFront,   /* v2.3.1939 */
     peer.pantsArt, peer.tattooArt,   /* v2.3.1940 */
-    peer.shirtPattern, peer.pantsPattern,   /* v2.3.1941 */
+    peer.shirtPattern, peer.pantsPattern, peer.shoesPattern,   /* v2.3.1941; v2.3.1944 */
   ].join('|');
   if (c && (c.key === key || c.pending === key)) return c.url || null;
   cache[fid] = { ...(c || {}), pending: key };
@@ -39,6 +39,7 @@ export function friendPortrait(fid, peer, onReady) {
        gets a fresh portrait instead of the stale one. */
     pantsArt: peer.pantsArt || null, tattooArt: peer.tattooArt || null,
     shirtPattern: peer.shirtPattern || '', pantsPattern: peer.pantsPattern || '',   /* v2.3.1941 */
+    shoesPattern: peer.shoesPattern || '',   /* v2.3.1944 */
   }, true).then(url => {
     if (url) { cache[fid] = { key, url }; if (onReady) onReady(); }
     else if (cache[fid]) cache[fid].pending = null;

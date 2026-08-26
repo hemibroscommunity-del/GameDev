@@ -432,7 +432,7 @@ export const TRACK_COSMETIC_KEYS = new Set([
      unexpected. */
   /* v2.3.1940: + the drawn pants print and the chest tattoo.
      v2.3.1941: + the shirt and trouser patterns. */
-  'sa', 'sb', 'pa', 'ta', 'sp', 'pp',
+  'sa', 'sb', 'pa', 'ta', 'sp', 'pp', 'fp',
   'pt', 'sh', 'bs', 'mask', 'cape', 'pet',
   // Live equipment visuals (armour on/off for remote renderers).
   'eqc', 'eql', 'eqs',

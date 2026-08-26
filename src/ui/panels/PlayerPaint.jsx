@@ -4,7 +4,7 @@ import {
   getArt, setArt as storeArt,
 } from '@/rendering/traits/playerArt.js';
 import {
-  PATTERN_CATALOG, getPattern, setPattern, parsePattern, formatPattern, patternInk,
+  patternsFor, getPattern, setPattern, parsePattern, formatPattern, patternInk,
 } from '@/rendering/traits/patternCatalog.js';   /* v2.3.1941 */
 
 /* ═══ v2.3.1938: DRAW YOUR OWN SHIRT ═══
@@ -63,6 +63,15 @@ const TARGETS = {
     pattern: null,
     note: 'Inked on your chest — it shows when you are bare-chested, and a shirt or breastplate covers it.',
   },
+  /* v2.3.1944: shoes are pattern-ONLY.  A boot is about eight screen pixels, so
+     there is nothing to draw on -- and the four tiles offered are the ones that
+     survive at that size (see patternCatalog). */
+  shoes: {
+    label: 'shoes',
+    pattern: 'shoes',
+    drawing: false,
+    note: 'Boots are small, so these are the patterns that still read at that size.',
+  },
 };
 
 /* ── the pattern swatch ──
@@ -109,10 +118,11 @@ export function PlayerPaint({ target = 'shirt', onClose }) {
      different screens rather than one crowded one.  Opening on 'pattern' is
      deliberate: picking a ready-made pattern is the thing most people want, and
      drawing freehand is the thing some people want. */
-  const MODES = cfg.pattern
+  const canDraw = cfg.drawing !== false;
+  const MODES = (cfg.pattern && canDraw)
     ? (isShirt ? ['pattern', 'front', 'back'] : ['pattern', 'drawing'])
     : null;
-  const [mode, setMode] = React.useState(MODES ? 'pattern' : 'draw');
+  const [mode, setMode] = React.useState(cfg.pattern ? 'pattern' : 'draw');
   const side = mode === 'back' ? 'back' : 'front';
   const onPattern = mode === 'pattern';
   /* Which stored drawing this panel is editing right now. */
@@ -120,7 +130,7 @@ export function PlayerPaint({ target = 'shirt', onClose }) {
 
   /* ── the garment's pattern ── */
   const [pat, setPat] = React.useState(() => (cfg.pattern ? getPattern(cfg.pattern) : ''));
-  const parsed = parsePattern(pat);
+  const parsed = parsePattern(pat, cfg.pattern);
   const patId = parsed ? parsed.id : '';
   const patColor = parsed ? parsed.colorIdx : 1;
   React.useEffect(() => { if (cfg.pattern) setPattern(cfg.pattern, pat); }, [cfg.pattern, pat]);
@@ -187,7 +197,10 @@ export function PlayerPaint({ target = 'shirt', onClose }) {
 
   const size = ART_W * CELL_PX;
   return (
-    <div className="bt-modal-scrim" role="dialog" aria-label={'Draw your ' + cfg.label}
+    <div className="bt-modal-scrim" role="dialog"
+      /* v2.3.1944: shoes cannot be drawn on, so "Draw your shoes" was wrong for
+         a screen reader as well as for the eye. */
+      aria-label={(canDraw ? 'Draw your ' : 'Pattern your ') + cfg.label}
       style={{ position: 'fixed', inset: 0, background: 'rgba(6,10,14,.72)',
         display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
       <div style={{ background: 'var(--ui-panel, #16202a)', border: '1px solid rgba(229,237,233,.26)',
@@ -213,7 +226,7 @@ export function PlayerPaint({ target = 'shirt', onClose }) {
           <div style={{ width: 'min(72vw, 72vh, 288px)', display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6, justifyItems: 'center' }}>
               <PatternSwatch tile={null} color={null} on={!patId} onPick={() => pickTile('')} />
-              {PATTERN_CATALOG.map((t) => (
+              {patternsFor(cfg.pattern).map((t) => (
                 <PatternSwatch key={t.id} tile={t} color={ART_PALETTE[patColor]}
                   on={patId === t.id} onPick={() => pickTile(t.id)} />
               ))}

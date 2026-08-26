@@ -329,6 +329,64 @@ export function litFabricMask(base, mask, n, minLum) {
    average (62) and the interior's (104). */
 export const SHIRT_LIT_MIN = 96;
 export const PANTS_LIT_MIN = 80;
+/* v2.3.1944: the boots are FLAT gray by construction — the classifier that
+   finds them demands a channel spread under 28 and a max of 45-140 — so unlike
+   the trousers there is no lit/shaded split to protect, only the near-black
+   outline pixels that creep in at the edges.  Low, and doing little. */
+export const SHOES_LIT_MIN = 52;
+
+/* ═══ v2.3.1944: A CLASSIFIED REGION HAS SPECKS IN IT, AND A TILE PAINTS THEM ═══
+ *
+ * The trouser and boot regions are found by a per-pixel colour test over
+ * hand-painted art, and both tests accept a scatter of stray pixels nowhere
+ * near the garment.  Measured on the shipped stand sheets: the BOOT test picks
+ * up 9-91px as high as row 29-37 -- the head and shoulders -- while the boots
+ * themselves peak at row 210-222.  The trouser test does the same on southwest
+ * and east.
+ *
+ * stampRegion already copes, because it measures a BOX from the region's bulk
+ * and a stray outside that box is never reached.  stampPattern does not: it
+ * tiles over every masked pixel, so those specks come out wearing the pattern
+ * colour -- white dots on the character's head.  That shipped in v2.3.1941 and
+ * this is the fix for it, not only for the shoes that exposed it.
+ *
+ * The rule is deliberately NOT the "bulk rows" threshold stampRegion uses.
+ * That drops any row carrying less than a share of the peak, which is right for
+ * finding a box and wrong for a mask: a boot's toe rows are genuinely thin and
+ * would be dropped with the specks.  Instead: keep the contiguous BAND of rows
+ * that contains the busiest row, allowing small gaps.  The garment is one
+ * connected run; the specks are marooned dozens of empty rows away.
+ */
+const BAND_GAP = 4;          /* rows of nothing that do not end the garment */
+
+/** A copy of `mask` with everything outside the garment's own row band removed,
+ *  measured per frame.  Returns the input unchanged if it is empty. */
+export function regionBand(mask, w, h, frameW) {
+  const frames = Math.max(1, Math.floor(w / frameW));
+  const out = new Uint8Array(w * h);
+  let kept = 0;
+  for (let f = 0; f < frames; f++) {
+    const x0 = f * frameW, x1 = Math.min(w, x0 + frameW);
+    const rows = new Int32Array(h);
+    let peak = 0, peakRow = -1;
+    for (let y = 0; y < h; y++) {
+      for (let x = x0; x < x1; x++) if (mask[y * w + x]) rows[y]++;
+      if (rows[y] > peak) { peak = rows[y]; peakRow = y; }
+    }
+    if (peakRow < 0) continue;
+    let top = peakRow, bot = peakRow;
+    for (let y = peakRow - 1, gap = 0; y >= 0; y--) {
+      if (rows[y]) { top = y; gap = 0; } else if (++gap > BAND_GAP) break;
+    }
+    for (let y = peakRow + 1, gap = 0; y < h; y++) {
+      if (rows[y]) { bot = y; gap = 0; } else if (++gap > BAND_GAP) break;
+    }
+    for (let y = top; y <= bot; y++) {
+      for (let x = x0; x < x1; x++) if (mask[y * w + x]) { out[y * w + x] = 1; kept++; }
+    }
+  }
+  return kept ? out : mask;
+}
 
 /** Tile `pat` (a parsed pattern from patternCatalog) across every pixel of
  *  `mask`, in place on the pixel array.  Returns the number of pixels painted. */

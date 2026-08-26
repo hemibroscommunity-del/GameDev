@@ -198,6 +198,7 @@ export function setupWebSocket(ctx) {
                unlike the drawings they need no special length handling. */
             sp: getPattern('shirt') || undefined,
             pp: getPattern('pants') || undefined,
+            fp: getPattern('shoes') || undefined,   /* v2.3.1944: footwear */
             eqc: getEquip('chest'),
             eql: getEquip('legs'),
             eqs: getEquip('shoulders'),
@@ -371,7 +372,7 @@ export function setupWebSocket(ctx) {
                       shirt: null, shirtColor: null, eyeColor: null,
                       shirtArtFront: null, shirtArtBack: null,   /* v2.3.1939 */
                       pantsArt: null, tattooArt: null,   /* v2.3.1940 */
-                      shirtPattern: null, pantsPattern: null,   /* v2.3.1941 */
+                      shirtPattern: null, pantsPattern: null, shoesPattern: null,   /* v2.3.1941; v2.3.1944 */
                       equip: { chest: 'none', legs: 'none', shoulders: 'none', shirt: 'none' },
                       pants: null, shoes: null, rpgLv: 1, rpgHp: 50, rpgMaxHp: 50,
                       bodySize: 'slim', zone: data.z || 'town',
@@ -784,6 +785,7 @@ export function setupWebSocket(ctx) {
                   shirtArtFront: _data.sa || null, shirtArtBack: _data.sb || null,   /* v2.3.1939 */
                   pantsArt: _data.pa || null, tattooArt: _data.ta || null,   /* v2.3.1940 */
                   shirtPattern: _data.sp || null, pantsPattern: _data.pp || null,   /* v2.3.1941 */
+                  shoesPattern: _data.fp || null,   /* v2.3.1944 */
                   equip: { chest: _data.eqc || 'none', legs: _data.eql || 'none', shoulders: _data.eqs || 'none',
                     /* v2.3.756: layered shirt; old clients send no eqst -> infer from their legacy shirt style */
                     shirt: _data.eqst !== undefined ? (_data.eqst || 'none') : ((_data.st && _data.st !== 'none') ? 'tshirt' : 'none') },
@@ -1732,6 +1734,7 @@ export function setupWebSocket(ctx) {
                 tattooArt: (msg.data && msg.data.ta) || null,   /* v2.3.1940 */
                 shirtPattern: (msg.data && msg.data.sp) || null,
                 pantsPattern: (msg.data && msg.data.pp) || null,   /* v2.3.1941 */
+                shoesPattern: (msg.data && msg.data.fp) || null,   /* v2.3.1944 */
                 equip: { chest: (msg.data && msg.data.eqc) || 'none', legs: (msg.data && msg.data.eql) || 'none', shoulders: (msg.data && msg.data.eqs) || 'none',
                   shirt: (msg.data && msg.data.eqst !== undefined) ? (msg.data.eqst || 'none') : ((msg.data && msg.data.st && msg.data.st !== 'none') ? 'tshirt' : 'none') },
                 pants: (msg.data && msg.data.pt) || null,
