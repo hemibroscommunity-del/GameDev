@@ -25,6 +25,7 @@ import { SPRITE_VERSION } from './playerSprites.js';
 import { getHatRef } from './traits/hatColorCatalog.js';
 import { materialIndex } from './traits/traitMaterials.js'; /* v2.3.1926 */
 import { headwearIsSolid, headwearBehindBeard } from './traits/headwearCatalog.js';   /* v2.3.1934 */
+import { bandFit } from './traits/bandFit.js';   /* v2.3.1943 */
 import { SOLID_ONLY_HAT_COLOR } from './traits/recolorOptions.js'; /* v2.3.1109: shared per-hat recolour reference (call-time use; cyclic import is safe) */
 import { upscaleToFrameHeight } from './spriteScale.js'; /* v2.3.1110: restore downscaled shirt sheet to 256 frame */
 /* v2.3.1815: worn armour in the portrait.  gearArt resolves a recoloured set
@@ -236,7 +237,7 @@ function floatLift(meta, hairMeta, dir) {
 
 /* Place one trait sprite (already recolored if needed) onto ctx using the
    stand/<dir> meta math.  Mirrors entityRenderer._placeTrait. */
-function placeTrait(ctx, traitImg, meta, crown, dir, liftY) {
+function placeTrait(ctx, traitImg, meta, crown, dir, liftY, mulX) {
   if (!traitImg || !meta || !meta.fullFrame || !meta.anchors || !meta.anchors[dir]) return;
   const anchor = meta.anchors[dir];
   const cn = (meta.crownNudge && meta.crownNudge[dir]) || [0, 0];
@@ -244,6 +245,10 @@ function placeTrait(ctx, traitImg, meta, crown, dir, liftY) {
   const sc = (meta.scale && meta.scale[dir]) || 1;
   const sbp = (meta.scaleByPose && meta.scaleByPose.stand && meta.scaleByPose.stand[dir]) || 1;
   const dscale = sc * sbp;
+  /* v2.3.1943: `mulX` widens a trait without making it taller — the band refit,
+     which depends on the hair worn under the hat and so cannot live in meta.
+     Mirrors entityRenderer's tune.mulX so both renderers agree. */
+  const dscaleX = dscale * (mulX || 1);
   const tx = crown[0] + cn[0] + pn[0];
   const ty = crown[1] + cn[1] + pn[1] + (liftY || 0); /* v2.3.1561: float-above-hair clearance */
   /* v2.3.1526: same normalisation as entityRenderer._placeTrait. meta is in
@@ -256,7 +261,7 @@ function placeTrait(ctx, traitImg, meta, crown, dir, liftY) {
      only softens edges that the display-side downscale would have kept. */
   ctx.imageSmoothingEnabled = norm <= 1;
   ctx.translate(tx, ty);
-  ctx.scale(dscale * norm, dscale * norm);
+  ctx.scale(dscaleX * norm, dscale * norm);
   ctx.drawImage(traitImg, -anchor[0] / norm, -anchor[1] / norm);
   ctx.restore();
 }
@@ -655,8 +660,9 @@ export async function drawCharacterPortrait(canvas, opts) {
      creator preview would still show a recolored hat the game refuses to
      render, which is worse than not offering the color at all. */
   const _hwCol = hatColor && (!SOLID_ONLY_HAT_COLOR || headwearIsSolid(headwear));
+  /* v2.3.1943: the band refit, same numbers the world renderer uses. */
   if (hwImg && hwMeta) placeTrait(ctx, _hwCol ? recolorHairToCanvas(hwImg, hatColor, hatRef) : hwImg, hwMeta, crown, DIR,
-    floatLift(hwMeta, hairMeta, DIR)); /* v2.3.1561 */
+    floatLift(hwMeta, hairMeta, DIR), bandFit(headwear, hair, DIR)); /* v2.3.1561; v2.3.1943 */
   /* v2.3.1934: the beard goes on LAST for draping headwear.  Deliberately
      after the hair-clip block as well, so the beard is not clipped to the
      hat's silhouette the way hair is -- it is in front of the hat, not under

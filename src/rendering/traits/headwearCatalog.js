@@ -84,7 +84,7 @@ const _ALL = [
      (Bucket Hat, Bandana) or with each other (two cowboy hats), so the label
      carries the colour that tells them apart in the picker. */
   { id: 'bucket-hat-2', name: 'Dark Bucket Hat' },
-  { id: 'bandana-2', name: 'Red Bandana' },
+  { id: 'bandana-2', name: 'Red Bandana', band: true },
   { id: 'asian-hat', name: 'Asian Hat' },
   { id: 'fez-hat', name: 'Fez Hat' },
   { id: 'russian-hat', name: 'Russian Hat' },
@@ -92,14 +92,14 @@ const _ALL = [
   { id: 'folded-brim', name: 'Folded Brim' },
   { id: 'gray-hat', name: 'Gray Hat' },
   { id: 'safety-helmet', name: 'Safety Helmet' },
-  { id: 'naruto-headband', name: 'Naruto Headband' },
+  { id: 'naruto-headband', name: 'Naruto Headband', band: true },
   /* v2.3.1514: renamed from 'Grey Cowboy Hat' (owner). The id is deliberately
      left alone -- a saved appearance stores the id, so changing it would drop
      the hat off anyone already wearing it. */
   { id: 'cowboy-hat-2', name: 'Sheriff Hat' },
   { id: 'chinese-hat', name: 'Chinese Hat' },
   { id: 'spartan-helmet', name: 'Spartan Helmet' },
-  { id: 'bandana-blue', name: 'Blue Bandana' },
+  { id: 'bandana-blue', name: 'Blue Bandana', band: true },
   { id: 'kermit-hat', name: 'Kermit Hat' },
   /* v2.3.1490: floats clear of the scalp, like new-idea — it only imports at
      all because the core test is open at the top (see import_headwear.py). */
@@ -110,6 +110,10 @@ const _ALL = [
    The export is what everything reads (pickers, RANDOMIZE, thumbnails, and the
    startup preload), so filtering here holds them back completely, textures
    included.  One flag in pendingTraits.js releases them. */
+/* v2.3.1943: `band: true` marks a thin strip meant to ENCIRCLE the head, as
+   opposed to a hat that sits on it.  A band is refitted to big hair (see
+   traits/bandFit.js); a hat is not, because a hat rests on top of whatever is
+   there and does not need to reach around it. */
 export const HEADWEAR_CATALOG = withoutPending(_ALL, PENDING_HEADWEAR);
 
 
@@ -117,6 +121,13 @@ export const HEADWEAR_CATALOG = withoutPending(_ALL, PENDING_HEADWEAR);
 export function headwearIsSolid(id) {
   const e = HEADWEAR_CATALOG.find(h => h.id === id);
   return !!(e && e.solid);
+}
+
+/** True if the hat is a BAND — a strip that encircles the head, so it has to
+ *  reach around whatever hair is under it.  See traits/bandFit.js. */
+export function headwearIsBand(id) {
+  const e = HEADWEAR_CATALOG.find(h => h.id === id);
+  return !!(e && e.band);
 }
 
 const STORAGE_KEY = 'bt-headwear';

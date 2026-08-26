@@ -63,6 +63,7 @@ import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { getGearFrame, getGearFramePhased, getLoadedGearSources, getShirtLookFrame } from '../gearSheets.js';   /* v2.3.1938; v2.3.1941 renamed — it bakes colour + pattern + print now */
 import { sideForDir, getShirtArt, sanitizeShirtArt, artHasInk } from '../traits/playerArt.js';   /* v2.3.1938 */
 import { getPattern, parsePattern, sanitizePattern } from '../traits/patternCatalog.js';   /* v2.3.1941 */
+import { bandFit } from '../traits/bandFit.js';   /* v2.3.1943 */
 import { AIM_CARET, AIM_CARET_EDGE, AIM_CARET_HOT } from '../aimCaret.js'; /* v2.3.1799 */
 import { BLOCK_ARM_ENABLED, BLOCK_ARM_FACING, BLOCK_ARM_CUT, blockArmTexture, blockArmSleeveTexture } from '../blockArm.js'; /* v2.3.1785, sleeve v2.3.1789, ENABLED v2.3.1798 */
 import { gearTint, gearArt, gearMaterial } from '../gearVariants.js'; /* v2.3.1757: material recolor */
@@ -1040,7 +1041,9 @@ function _placeTrait(sprite, entry, display, pose, dir, mirror, frameIdx, bodySc
      clearance), so it scales with the body — unlike tune.dy above. */
   headwear.y = bodyCrownY + (nudge[1] + poseN[1] + ((tune && tune.dy256) || 0)) * absBodyScale
     + ((tune && tune.dy) || 0);
-  headwear.scale.x = m * absBodyScale * dscale * norm;
+  /* v2.3.1943: tune.mulX widens a trait WITHOUT making it taller — the band
+     refit.  Defaults to 1, so every other trait is untouched. */
+  headwear.scale.x = m * absBodyScale * dscale * norm * ((tune && tune.mulX) || 1);
   headwear.scale.y = absBodyScale * dscale * norm;
   headwear.visible = true;
 }
@@ -1062,6 +1065,11 @@ function _placeHeadwear(display, hatId, hatColorId, pose, dir, mirror, frameIdx,
   let tune = hatPoseTune(hatId, pose, dir); /* v2.3.1353/1354 */
   const lift = _floatAboveHairLift(entry && entry.meta, hairId, pose, dir, mirror);
   if (lift) tune = { ...(tune || {}), dy256: lift };
+  /* v2.3.1943: a BAND has to reach around the hair, not just sit on the head.
+     HORIZONTAL only (see traits/bandFit.js), so it needs no vertical
+     compensation -- the band stays exactly where it already sat. */
+  const fitX = bandFit(hatId, hairId, dir);
+  if (fitX !== 1) tune = { ...(tune || {}), mulX: fitX };
   _placeTrait(display._headwearSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale, tune);
 }
 function _placeFacialHair(display, fhId, fhColorId, pose, dir, mirror, frameIdx, bodyScale) {
@@ -2828,7 +2836,7 @@ function _orderHairOverHat(display, hatId) {
    stand-in's own transform), a scale, and the trait direction (south for the
    front-facing cook/fire, east for the side-facing chopper).  No 256-frame /
    spriteBody assumptions — placement is purely world-space. */
-function _placeStandaloneTrait(sprite, entry, dir, mirror, cwx, cwy, scaleVal, liftY) {
+function _placeStandaloneTrait(sprite, entry, dir, mirror, cwx, cwy, scaleVal, liftY, mulX) {
   if (!sprite) return;
   /* v2.3.1305: same native-color fallback as _placeTrait — see there. */
   const tex = entry && (entry.tex[dir] || (entry.fallbackTex && entry.fallbackTex[dir]));
@@ -2860,7 +2868,10 @@ function _placeStandaloneTrait(sprite, entry, dir, mirror, cwx, cwy, scaleVal, l
      units as crownNudge) — the stand-in poses composite through here, so
      without it the halo would sink back onto the hair mid-chop/mid-swing. */
   sprite.y = cwy + (nudge[1] + (liftY || 0)) * scaleVal;
-  sprite.scale.x = m * scaleVal * dscale * norm;
+  /* v2.3.1943: mulX is the band refit — the stand-in poses composite through
+     here, so without it a headband would snap back to its bare-head width for
+     the quarter-second of every swing, chop and cook. */
+  sprite.scale.x = m * scaleVal * dscale * norm * (mulX || 1);
   sprite.scale.y = scaleVal * dscale * norm;
   sprite.visible = true;
 }
@@ -2958,7 +2969,8 @@ export function placeSkillTraits(sprites, cwx, cwy, dir, mirror, scaleVal) {
   const hwCol = getColoredHatTextures(getHeadwear(), getHatColor());
   if (hwCol && hwEntry) hwEntry = { tex: hwCol, meta: hwEntry.meta, fallbackTex: hwEntry.tex }; /* v2.3.1305 */
   _placeStandaloneTrait(sprites.hat, hwEntry, dir, mirror, cwx, cwy, scaleVal,
-    _floatAboveHairLift(hwEntry && hwEntry.meta, getHair(), 'stand', dir, mirror)); /* v2.3.1561 */
+    _floatAboveHairLift(hwEntry && hwEntry.meta, getHair(), 'stand', dir, mirror),
+    bandFit(getHeadwear(), getHair(), dir)); /* v2.3.1561; v2.3.1943 */
   _clipStandInHair(sprites, getHeadwear(), getHair(), dir, mirror, cwx, cwy, scaleVal); /* v2.3.1776 */
 }
 
@@ -2983,7 +2995,8 @@ export function placeSkillTraitsFor(sprites, looks, cwx, cwy, dir, mirror, scale
   const hwCol2 = getColoredHatTextures(looks.headwear, looks.hatColor);
   if (hwCol2 && hwEntry2) hwEntry2 = { tex: hwCol2, meta: hwEntry2.meta, fallbackTex: hwEntry2.tex }; /* v2.3.1305 */
   _placeStandaloneTrait(sprites.hat, hwEntry2, dir, mirror, cwx, cwy, scaleVal,
-    _floatAboveHairLift(hwEntry2 && hwEntry2.meta, looks.hair, 'stand', dir, mirror)); /* v2.3.1561 */
+    _floatAboveHairLift(hwEntry2 && hwEntry2.meta, looks.hair, 'stand', dir, mirror),
+    bandFit(looks.headwear, looks.hair, dir)); /* v2.3.1561; v2.3.1943 */
   _clipStandInHair(sprites, looks.headwear, looks.hair, dir, mirror, cwx, cwy, scaleVal); /* v2.3.1776 */
 }
 
