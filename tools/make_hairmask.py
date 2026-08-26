@@ -309,41 +309,49 @@ def build(hid, apply_it, set_clips):
         m = a[:, :, 3] > ALPHA_T
         h, w = m.shape
         mask = np.zeros((h, w, 4), np.uint8)
-        rows = np.nonzero(m.any(axis=1))[0]
+        # ═══ v2.3.1977: THE HAT'S OUTLINE, NOT ITS LAST STRAY PIXEL ═══
+        # Owner: "The hair mask is inconsistent depending on the direction
+        # (southwest vs south etc).  It's also removing too much hair where it
+        # meets the hat border so there's a strip of skin showing."
+        #
+        # Both are the same measurement bug.  `rows` decided where the hat ENDS,
+        # and it was taken from the raw alpha, which on these sheets trails off
+        # into isolated one- and two-pixel specks below the real edge.  MEASURED,
+        # rows of hat below the last solid row:
+        #     devil-horns  south 1   southwest 4   east 5
+        #     beanie/cowboy/mickey   1 everywhere
+        # Part 2 (everything below the hat, full width) therefore started BELOW
+        # the strays rather than below the outline, and the rows in between were
+        # left to part 1, which keeps only the two or three columns those specks
+        # occupy.  That is the strip of bare skin -- and because the speck tail
+        # is a different length on every facing, the strip is a different height
+        # on every facing, which is the inconsistency.
+        #
+        # The eroded hat is already the honest shape for this (a lone speck has
+        # empty space on all four sides and does not survive); it is what the
+        # width rule has measured on since v2.3.1963.  The boundary now uses it
+        # too, so part 1 and part 2 tile at the same row on every direction.
+        # Erring one row HIGH is free: the hat is drawn over the hair, so any
+        # hair this re-allows inside the hat's own bottom edge is hidden by the
+        # hat itself -- while erring low is exactly the reported bug.
+        rows = np.nonzero(_solid(m).any(axis=1))[0]
+        if not len(rows):
+            rows = np.nonzero(m.any(axis=1))[0]
         if len(rows):
-            # ═══ v2.3.1976: PART 2 IS CLIPPED FOR AN ENCLOSED HAT ═══
-            # Owner, twice: "be more conservative on clipping when the hair is
-            # equal to or beneath the lowest outline of the hat -- I see a
-            # floating detached Afro hair beneath the hat", then "Mickey ears
-            # and devil horns are still wrong.  Hair from Afro is on the
-            # sides."  Both describe the same thing: an afro's side volume
-            # reappearing under the hat as a puff with nothing above it to
-            # belong to.
+            # ═══ v2.3.1977: EVERYTHING BELOW THE HAT'S OUTLINE IS HAIR ═══
+            # Owner: "Make it so that all hair shows beneath the bottom outline
+            # of the headwear."  Flat rule, no exceptions, including the
+            # enclosed hats.
             #
-            # (I read the first note the other way round and opened part 2 per
-            # COLUMN, which keeps MORE hair and made it worse.  Reverted.
-            # "Conservative on clipping" means clip more, not keep more.)
-            #
-            # For an ENCLOSED hat the hat covers the scalp, so there is no
-            # honest reason for hair to appear beside it at all: part 2 is
-            # bounded to the hat's own footprint instead of the full frame.
-            # Everything else keeps the full-width rule, which is what makes
-            # the hair frame the face under a beanie or a cowboy hat.
-            bot_all = int(rows.max())
-            if enclosed:
-                # Bounded to the hat's own column span.  A tighter bound (the
-                # cap's FOOTPRINT across its bottom rows, excluding the horns
-                # and ears, which are the widest part and nowhere near the
-                # head) was written and then dropped: the owner looked at the
-                # render this produces and said "the image looks correct, I
-                # don't think you should change it".  His eye on the art is the
-                # acceptance test; leaving the tighter version in as dead
-                # cleverness would only invite someone to switch it on.
-                cols = np.nonzero(m.any(axis=0))[0]
-                lo_c, hi_c = int(cols.min()), int(cols.max())
-                mask[bot_all + 1:, lo_c:hi_c + 1] = (255, 255, 255, 255)
-            else:
-                mask[bot_all + 1:, :] = (255, 255, 255, 255)
+            # v2.3.1976 bounded part 2 to an enclosed hat's own column span, to
+            # answer "hair from Afro is on the sides".  That was the wrong lever:
+            # the side hair it was aimed at is BESIDE THE CAP, at the cap's own
+            # rows, and part 1 is what governs there -- the enclosed branch below
+            # already cuts it.  Bounding part 2 as well went on to cut hair below
+            # the cap's bottom edge too, which is hair that has nothing in front
+            # of it, and that is the strip of bare skin the owner is now looking
+            # at.  Two rules were doing one job and the second one only did harm.
+            mask[int(rows.max()) + 1:, :] = (255, 255, 255, 255)
         # v2.3.1957: at and above the hat, no wider than the hat has been at
         # this row or above it.
         # v2.3.1963: measured on the SOLID hat and then pulled in — see

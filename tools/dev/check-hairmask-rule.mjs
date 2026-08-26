@@ -208,31 +208,39 @@ function ruleRows(w, h, m, top, bot, openTop, enclosed) {
 function ruleMask(hatBits, openTop, enclosed) {
   const { w, h, m } = hatBits;
   const out = new Uint8Array(w * h);
+  /* ═══ v2.3.1977: THE HAT'S OUTLINE, NOT ITS LAST STRAY PIXEL ═══
+     Owner: "The hair mask is inconsistent depending on the direction ... it's
+     also removing too much hair where it meets the hat border so there's a
+     strip of skin showing."  Both were one measurement bug: the hat's bottom
+     came from the RAW alpha, which trails off into isolated specks below the
+     real edge — 1 row past solid on devil-horns/south but 4 on southwest and 5
+     on east.  Part 2 started below the specks, so the rows between were left to
+     part 1 and clipped to the two or three columns a speck occupies: a strip of
+     bare skin, a different height on every facing.  Measured on the eroded hat
+     instead, which a lone speck does not survive. */
+  const sm0 = solid(w, h, m);
   let top = -1, bot = -1;
   for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) if (m[y * w + x]) { if (top < 0) top = y; bot = y; break; }
+    for (let x = 0; x < w; x++) if (sm0[y * w + x]) { if (top < 0) top = y; bot = y; break; }
+  }
+  if (bot < 0) {
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) if (m[y * w + x]) { if (top < 0) top = y; bot = y; break; }
+    }
   }
   if (bot < 0) return { w, h, m: out, top, bot, rows: [], part2: new Uint8Array(w * h) };
 
-  /* ═══ PART 2, AND WHY IT IS NOT PER COLUMN (v2.3.1976) ═══
-     Owner: "be more conservative on clipping when the hair is equal to or
-     beneath the lowest outline of the hat -- I see a floating detached Afro
-     hair beneath the hat."  I first read "conservative" as KEEP MORE and
-     opened part 2 per column; he came straight back with "Mickey ears and
-     devil horns are still wrong.  Hair from Afro is on the sides."  It means
-     clip more.  Reverted, and written down because the wrong reading is the
-     tempting one.
-     For an ENCLOSED hat the cap covers the scalp, so part 2 is bounded to the
-     hat's own column span rather than the full frame — that is what takes the
-     afro off the sides.  Everything else keeps full width, which is what makes
-     hair frame the face under a beanie or a cowboy hat. */
+  /* ═══ PART 2: EVERYTHING BELOW THE OUTLINE, FULL WIDTH (v2.3.1977) ═══
+     Owner: "Make it so that all hair shows beneath the bottom outline of the
+     headwear."  No exceptions, including the enclosed hats — v2.3.1976 bounded
+     part 2 to an enclosed hat's span to answer "hair from Afro is on the
+     sides", but that side hair is BESIDE THE CAP at the cap's own rows, which
+     is part 1's business and which the enclosed branch already cuts.  Bounding
+     part 2 as well went on to cut hair below the cap, where nothing is in front
+     of it — the bare skin above.  Two rules doing one job; the second only did
+     harm. */
   const part2 = new Uint8Array(w * h);
-  let lo = w, hi = -1;
-  for (let y = top; y <= bot; y++) {
-    for (let x = 0; x < w; x++) if (m[y * w + x]) { if (x < lo) lo = x; if (x > hi) hi = x; }
-  }
-  const p2lo = enclosed ? lo : 0, p2hi = enclosed ? hi : w - 1;
-  for (let y = bot + 1; y < h; y++) for (let x = p2lo; x <= p2hi; x++) part2[y * w + x] = 1;
+  for (let y = bot + 1; y < h; y++) for (let x = 0; x < w; x++) part2[y * w + x] = 1;
   for (let i = 0; i < w * h; i++) if (part2[i]) out[i] = 1;
 
   const rows = ruleRows(w, h, m, top, bot, openTop, enclosed);                        /* part 1 */
@@ -445,19 +453,18 @@ for (const hid of hats) {
           }
           if (ph) holeBroken.push(`${hid}/${d} row ${y}: ${ph} hole(s) in part 1's run ${prl}..${prr}`);
         }
-      } else if (on !== (enclosed ? p2Width : w)) {
+      } else if (on !== w) {
         /* BELOW THE HAT: full width, so hair still frames the face.  The disk
            state one commit before v2.3.1957 violated exactly this — every mask
            was a corridor the width of the hat running to the bottom of the
            frame, so a top hat cut the hair off the sides of the head below its
            own brim.
-           v2.3.1976: an ENCLOSED hat is the deliberate exception — the cap
-           covers the scalp, so below it the mask is the hat's own span and NOT
-           the full frame, which is what keeps an afro off the sides of a pair
-           of horns or a set of mouse ears (owner, twice). Still asserted, just
-           against the width the rule actually claims, so a corridor narrower
-           than the hat is still caught. */
-        belowBroken.push(`${hid}/${d} row ${y}: ${on}/${enclosed ? p2Width : w}px opaque below the hat's lowest row ${bot}`);
+           v2.3.1977: no exceptions, not even the enclosed hats. Owner: "Make
+           it so that all hair shows beneath the bottom outline of the
+           headwear."  The v2.3.1976 span bound for enclosed hats is gone — it
+           was aimed at side hair that part 1 already handles, and all it added
+           was a strip of bare skin under the cap. */
+        belowBroken.push(`${hid}/${d} row ${y}: ${on}/${w}px opaque below the hat's lowest row ${bot}`);
       }
     }
   }
@@ -473,6 +480,49 @@ ok('that width is one unbroken run — the gaps of an open-top hat keep their ha
   holeBroken.length === 0, holeBroken.slice(0, 6));
 ok('below the hat\'s lowest pixel the mask is full width — hair still frames the face',
   belowBroken.length === 0, belowBroken.slice(0, 6));
+
+/* ══ 5b. no strip of bare skin under the hat, and the SAME on every facing ══ */
+/* v2.3.1977, and this is the owner's report turned into an assertion rather
+   than a fix he has to re-check by eye: "The hair mask is inconsistent
+   depending on the direction (southwest vs south etc).  It's also removing too
+   much hair where it meets the hat border so there's a strip of skin showing."
+   Both were one bug — the hat's bottom was taken from raw alpha that trails off
+   into specks, so the mask stayed clipped for a few rows under the real outline
+   and for a DIFFERENT few on each facing.  The number below is those rows.  It
+   must be 0, and it must be 0 everywhere, which is what makes the facings
+   agree. */
+{
+  const strips = [];
+  for (const hid of hats) {
+    for (const d of DIRS) {
+      const artP = path.join(HW, hid, d + '.png'), mskP = path.join(HW, hid, 'hairmask', d + '.png');
+      if (!fs.existsSync(artP) || !fs.existsSync(mskP)) continue;
+      const hat = bits(img(artP));
+      const got = bits(img(mskP));
+      const { w, h } = got;
+      const sm = solid(w, h, hat.m);
+      let bot = -1;
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (sm[y * w + x]) { bot = y; break; }
+      for (let y = h - 1; y >= 0 && bot < 0; y--) for (let x = 0; x < w; x++) if (hat.m[y * w + x]) { bot = y; break; }
+      let b2 = -1;
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (sm[y * w + x]) { b2 = y; break; }
+      /* last solid row */
+      let last = -1;
+      for (let y = 0; y < h; y++) { let any = 0; for (let x = 0; x < w; x++) if (sm[y * w + x]) { any = 1; break; } if (any) last = y; }
+      if (last < 0) continue;
+      let full = -1;
+      for (let y = last + 1; y < h && full < 0; y++) {
+        let n = 0;
+        for (let x = 0; x < w; x++) if (got.m[y * w + x]) n++;
+        if (n === w) full = y;
+      }
+      const strip = full < 0 ? 99 : full - (last + 1);
+      if (strip !== 0) strips.push(`${hid}/${d}: ${strip} row(s) of clipped skin under the outline`);
+    }
+  }
+  ok('no hat leaves a strip of clipped skin under its own bottom outline, on any facing',
+    strips.length === 0, strips.slice(0, 8));
+}
 
 /* ══ 6. the shipping hats do not shave the head ══════════════════════════ */
 /* The width rule can only be checked for "not too loose" by the properties

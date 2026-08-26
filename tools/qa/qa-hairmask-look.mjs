@@ -180,7 +180,18 @@ const M = await page.evaluate(async ({ closed, openTop }) => {
        "hat" — rows where part 2 has already opened to full width.  Without the
        margin the red cap's band reaches into them and reads as a 6px-wide
        overhang that is really the hair under the brim. */
-    const EDGE = 4;
+    /* v2.3.1977: 4 -> 6.  The margin exists because the 128px mask is drawn
+       into a 256 frame, so the RENDERED hat silhouette runs a few rows past the
+       last row the mask calls "hat" — and this assertion must not read those
+       rows, where part 2 has legitimately opened to full width, as hair
+       ballooning beside the cap.  v2.3.1977 moved the mask's own boundary UP
+       onto the hat's solid outline (off the stray pixels below it), which
+       widens that discrepancy by exactly the length of the speck tail: 1 row on
+       most hats, 4-5 on devil-horns' turned facings.  red-cap failed at 4 with
+       hair 92..162 against a hat 97..155 — entirely in those bottom rows.
+       Raising the margin keeps the guard pointed at what it is for (hair above
+       the hat) rather than at the boundary the owner asked to move. */
+    const EDGE = 6;
     let bareAbove = 0, wornAbove = 0, wl = F, wr = -1, gapAvail = 0, gapKept = 0;
     for (let y = 0; y <= hBot - EDGE; y++) {
       let rl = -1, rr = -1;
