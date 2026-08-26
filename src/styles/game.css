@@ -1640,7 +1640,7 @@ input{font-family:inherit}
    horizontal scroller was the right shape under a character; in a tall column
    it wasted the height that is the whole reason for the rebuild, and hid most
    of the catalog behind a swipe. */
-.bt-cc-strip{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:repeat(auto-fill,var(--cc-tile));grid-auto-rows:var(--cc-tile);gap:6px;justify-content:center;align-content:start;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;touch-action:pan-y;padding:2px;scrollbar-width:none;box-sizing:border-box}
+.bt-cc-strip{flex:0 1 auto;min-height:0;display:grid;grid-template-columns:repeat(auto-fill,var(--cc-tile));grid-auto-rows:var(--cc-tile);gap:6px;justify-content:center;align-content:start;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;touch-action:pan-y;padding:2px;scrollbar-width:none;box-sizing:border-box}
 .bt-cc-strip::-webkit-scrollbar{display:none}
 .bt-cc-strip>*{flex:none!important;width:var(--cc-tile)!important;height:var(--cc-tile)!important}
 /* Colors: fixed-size swatches so a long catalog scrolls with six-ish
@@ -1668,7 +1668,18 @@ input{font-family:inherit}
 /* v2.3.1524: the items wrap is the pane's flexible region; the colours wrap
    stays fixed. The chevron overlay signalled horizontal overflow and has
    nothing to say about a vertical grid. */
-.bt-cc-panel>.bt-cc-scroll{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+/* v2.3.1956 (owner: "Move the tattoo and pattern option button to directly
+   beneath the color options instead of sitting at the bottom of the
+   container").  The options strip used to GROW into all the spare height, so
+   on a short catalogue — Skin is thirteen swatches — everything under it was
+   shoved to the floor of the pane with a hand's width of nothing in between,
+   and the Design button read as unrelated to the tab it belongs to.
+   `0 1 auto` lets it hug its content and still shrink-and-scroll on a long
+   catalogue; with nothing left growing, the spare height collects at the
+   bottom of the column where it is invisible.  The v2.3.1252 constant-size
+   guarantee is untouched: the pane's OUTER height is unchanged, so the stage
+   and the character do not move. */
+.bt-cc-panel>.bt-cc-scroll{flex:0 1 auto;min-height:0;display:flex;flex-direction:column}
 .bt-cc-more{display:none}
 .bt-cc-more{position:absolute;top:0;right:0;bottom:0;width:26px;display:flex;align-items:center;justify-content:flex-end;padding-right:2px;pointer-events:none;opacity:0;transition:opacity 160ms ease;background:linear-gradient(to right,rgba(30,46,52,0),var(--ui-sheet) 80%);color:var(--ui-text-secondary);font-size:15px;font-weight:700;line-height:1}
 .bt-cc-more--on{opacity:1}

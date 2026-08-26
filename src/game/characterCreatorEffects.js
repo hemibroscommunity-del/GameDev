@@ -103,11 +103,17 @@ const FOCUS_FULL = { cy: 0.49, h: 0.99 };
    little".  These frames keep the whole head (or the whole garment) in shot
    with room around it, so the move reads as attention rather than as a jump
    cut, and nothing lands under the rotate controls. */
+/* v2.3.1956: `crown` marks a frame whose SUBJECT reaches the top of the head.
+   Those frames are grown upward until the whole head is inside them (see
+   fitCrown), because the alternative is what the owner hit: the frame's top
+   edge cut through the hair, the dissolve did its job on that edge, and the
+   hair tab faded the hair.  A frame without the flag is meant to cut — a boot
+   frame that contained the head would not be a boot frame. */
 const CAT_FOCUS = {
-  hair: { cy: 0.30, h: 0.44 },
-  hat: { cy: 0.28, h: 0.46 },
-  eyes: { cy: 0.31, h: 0.36 },
-  beard: { cy: 0.33, h: 0.38 },
+  hair: { cy: 0.30, h: 0.44, crown: true },
+  hat: { cy: 0.28, h: 0.46, crown: true },
+  eyes: { cy: 0.31, h: 0.36, crown: true },
+  beard: { cy: 0.33, h: 0.38, crown: true },
   /* Skin is the whole body, so it gets the whole body. */
   skin: FOCUS_FULL,
   shirt: { cy: 0.47, h: 0.56 },
@@ -126,12 +132,6 @@ const FIG_CX = 0.4975;
 const CAM_EASE = 0.18;
 /* The figure's measured vertical bounds in the composite: feet at 0.977, and
    nothing above 0.05 even with a sombrero over an afro. */
-/* v2.3.1953: 0 rather than 0.05.  With a build in play a `tall` figure's
-   crown reaches the very top of the composite (that is what PORTRAIT_FIT is
-   sized for), so the old bound would have declared the head to be below a
-   frame edge it is actually crossing and skipped the dissolve — the one thing
-   v2.3.1309 settled must never happen. */
-const FIG_TOP = 0;
 const FIG_BOT = 0.977;
 /* How much of the canvas a cut edge dissolves over. */
 const FADE_BAND = 0.13;
@@ -142,6 +142,10 @@ let _offCanvas = null;
 /* Where the camera is RIGHT NOW, kept across re-wirings so changing a trait
    mid-glide does not snap it back to the start. */
 let _cam = null;
+/* v2.3.1956: the composite's measured alpha bounds, refreshed on every draw
+   and read by the blit.  Kept beside _cam and for the same reason: the blit
+   runs many times per draw. */
+let _figBounds = null;
 
 /* v2.3.1953: `buildK` is PORTRAIT_FIT times this player's height multiplier —
    how much the composite's figure has been scaled about its FEET relative to
@@ -163,7 +167,26 @@ export function focusForCat(cat, zoomedOut, buildK) {
   if (!f || f === FOCUS_FULL) return FOCUS_FULL;
   const k = (typeof buildK === 'number' && buildK > 0) ? buildK : 1;
   if (k === 1) return f;
-  return { cy: FIG_BOT + (f.cy - FIG_BOT) * k, h: f.h * k };
+  return { cy: FIG_BOT + (f.cy - FIG_BOT) * k, h: f.h * k, crown: f.crown };
+}
+
+/* ═══ v2.3.1956: A CROWN FRAME CONTAINS THE CROWN ═══
+ * Grow the frame UPWARD — bottom pinned — until the figure's measured top is
+ * inside it with a little air.  Upward rather than recentred because the
+ * bottom edge is what makes a hair frame a hair frame: it is placed to keep
+ * the face in shot, and shifting it to make room for a sombrero would swing
+ * the camera off the subject.  A hat that needs more room simply gets a wider
+ * shot, which is what a camera does.
+ */
+const CROWN_AIR = 0.02;
+function fitCrown(t, bounds) {
+  if (!t || !t.crown || !bounds) return t;
+  const bot = t.cy + t.h / 2;
+  const wantTop = bounds.top - CROWN_AIR;
+  const top = t.cy - t.h / 2;
+  if (top <= wantTop) return t;
+  const h = bot - wantTop;
+  return { cy: wantTop + h / 2, h: h, crown: true };
 }
 
 export function wireCharacterPortrait(previewCanvasRef, sel) {
@@ -198,8 +221,50 @@ export function wireCharacterPortrait(previewCanvasRef, sel) {
     /* v2.3.715: warm the other 7 angles for whatever is selected NOW, so
        rotating never waits on the network. */
     prewarmPortraitDirs({ hair: hairSel, facialHair: facialHairSel, headwear: headwearSel });
+    _figBounds = measureFigure(off);
     blit();
   });
+  }
+
+  /* ═══ v2.3.1956: WHERE THE FIGURE ACTUALLY STARTS AND ENDS ═══
+   *
+   * Owner: "The hair at the top of character preview (during the trait picker)
+   * becomes transparent but it should not be (that's the trait you're zooming
+   * in to change).  Same with hats."
+   *
+   * The dissolve below only belongs on an edge the figure CROSSES.  It used to
+   * be gated on two constants — a worst-case crown at 0.05 and the feet at
+   * 0.977 — and v2.3.1953 had to drop the crown one to 0 when builds arrived,
+   * because a tall bro's hat really can reach the top of the composite.  With
+   * the gate at 0 the top fade turned on for every zoomed frame, including the
+   * two frames that exist to show you the top of the head.  So the hair tab
+   * dissolved the hair and the hat tab dissolved the hat: the fade ate the one
+   * thing you had opened the tab to look at.
+   *
+   * Measured instead of assumed.  One alpha scan per COMPOSITE (not per blit —
+   * the camera eases over many frames and the pixels do not change), with a
+   * column stride, because the question is only which row the figure starts
+   * and ends on.  That also retires both constants: a hat, a build, a hairstyle
+   * and a facing all move these rows, and now they simply move them.
+   */
+  function measureFigure(cv) {
+    try {
+      const c = cv.getContext('2d', { willReadFrequently: true });
+      const S = cv.width;
+      const d = c.getImageData(0, 0, S, S).data;
+      /* every 4th column: a silhouette this size has no 4px-wide gaps at its
+         extremes, and it cuts the scan to a quarter. */
+      const STEP = 4;
+      let top = -1, bot = -1;
+      for (let y = 0; y < S && top < 0; y++) {
+        for (let x = 0; x < S; x += STEP) if (d[(y * S + x) * 4 + 3] > 8) { top = y; break; }
+      }
+      for (let y = S - 1; y >= 0 && bot < 0; y--) {
+        for (let x = 0; x < S; x += STEP) if (d[(y * S + x) * 4 + 3] > 8) { bot = y; break; }
+      }
+      if (top < 0) return null;
+      return { top: top / S, bot: bot / S };
+    } catch (e) { return null; }   /* tainted or zero-sized: fall back below */
   }
 
   /* ── the camera ──
@@ -208,9 +273,9 @@ export function wireCharacterPortrait(previewCanvasRef, sel) {
   /* v2.3.1953: how much the composite's figure has been scaled about its feet
      — the portrait's global fit times this player's own height.  The category
      frames were measured against an unscaled figure, so they ride it. */
-  var target = focusForCat(sel.activeCat, sel.zoomedOut,
+  var rawTarget = focusForCat(sel.activeCat, sel.zoomedOut,
     PORTRAIT_FIT * heightMul(sel.buildHeight));
-  if (!_cam) _cam = { cy: target.cy, h: target.h };
+  if (!_cam) _cam = { cy: rawTarget.cy, h: rawTarget.h };
   var raf = 0;
   function blit() {
     if (!off.width || !visible) return;
@@ -235,21 +300,24 @@ export function wireCharacterPortrait(previewCanvasRef, sel) {
        definition — so the cut edge is faded and the body dissolves instead.
 
        Per EDGE, not both: fading an edge the figure does not reach is at best
-       invisible and at worst eats the top of a tall hat.  MEASURED bounds
-       (v2.3.1947): the feet land at 0.977 down the composite every time, and
-       nothing reaches above 0.05 even with a sombrero over an afro. */
+       invisible and at worst eats the top of a tall hat — or, as the owner
+       found, the hair on the hair tab.  v2.3.1956: the bounds are MEASURED off
+       this composite (see measureFigure) rather than taken from constants, so
+       the gate is exactly "does the figure cross this edge".  The old numbers
+       are the fallback for a composite that could not be read. */
+    const fb = _figBounds || { top: 0.05, bot: FIG_BOT };
     const top = _cam.cy - _cam.h / 2, bot = _cam.cy + _cam.h / 2;
     const band = Math.round(h * FADE_BAND);
     if (band > 2) {
       ctx.globalCompositeOperation = 'destination-out';
-      if (bot < FIG_BOT) {          /* the body continues below the frame */
+      if (bot < fb.bot) {           /* the body continues below the frame */
         const g = ctx.createLinearGradient(0, h - band, 0, h);
         g.addColorStop(0, 'rgba(0,0,0,0)');
         g.addColorStop(1, 'rgba(0,0,0,1)');
         ctx.fillStyle = g;
         ctx.fillRect(0, h - band, w, band);
       }
-      if (top > FIG_TOP) {          /* ...and above it */
+      if (top > fb.top) {           /* ...and above it */
         const g2 = ctx.createLinearGradient(0, band, 0, 0);
         g2.addColorStop(0, 'rgba(0,0,0,0)');
         g2.addColorStop(1, 'rgba(0,0,0,1)');
@@ -261,6 +329,10 @@ export function wireCharacterPortrait(previewCanvasRef, sel) {
   }
   function step() {
     raf = 0;
+    /* Re-fitted every frame rather than once: the composite is redrawn while
+       the ease is running (picking a hat IS the thing that changes how much
+       headroom the frame needs), so the target has to follow the new bounds. */
+    var target = fitCrown(rawTarget, _figBounds);
     var dcy = target.cy - _cam.cy, dh = target.h - _cam.h;
     /* Close enough to stop: below a quarter of a percent of the frame nobody
        can see the remaining difference, and an ease that never terminates
