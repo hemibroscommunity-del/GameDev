@@ -208,6 +208,7 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
   const frames = Math.max(1, Math.floor(w / frameW));
   const fillW = box.fillW, fillH = box.fillH, cy = box.cy;
   const eachPiece = !!(opts && opts.eachPiece);
+  const underSkin = !!(opts && opts.underSkin);   /* v2.3.1950 */
   let painted = 0;
   let scratch = null, seenBuf = null;
   /* The mask is its own array, so painting colours into `d` can never change
@@ -277,6 +278,21 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
     for (let y = 0; y < h; y++) if (rowN[y] >= rowMin) { if (y < ty) ty = y; if (y > by) by = y; }
     for (let x = 0; x < colN.length; x++) if (colN[x] >= colMin) { if (x < lx) lx = x + x0; if (x + x0 > rx) rx = x + x0; }
     if (rx < 0 || by < 0) { release(); continue; }
+    /* v2.3.1950: the region's own mean brightness, so ink can be shaded BY the
+       body rather than pasted flat over it — see INK_TUNE. */
+    let refLum = 0;
+    if (underSkin) {
+      let n = 0, sum = 0;
+      for (let y = ty; y <= by; y++) {
+        for (let x = lx; x <= rx; x++) {
+          if (!confine[y * w + x]) continue;
+          const i = (y * w + x) * 4;
+          sum += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+          n++;
+        }
+      }
+      refLum = n ? sum / n : 128;
+    }
     const bw = rx - lx + 1, bh = by - ty + 1;
     const dw = Math.max(ART_W, Math.round(bw * fillW));
     const dh = Math.max(ART_H, Math.round(bh * fillH));
@@ -296,7 +312,40 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
             if (x < x0 || x >= x1) continue;
             if (!confine[y * w + x]) continue;   /* confined to the region */
             const i = (y * w + x) * 4;
-            d[i] = R; d[i + 1] = G; d[i + 2] = B;
+            if (underSkin) {
+              const sr = d[i], sg = d[i + 1], sb = d[i + 2];
+              /* Shade the ink by how light or dark THIS pixel of the body is
+                 relative to the region's average, so the mark follows the
+                 muscle shading and the contour lines instead of flattening
+                 them.  Clamped: a contour line is near-black and would
+                 otherwise take the ink to zero. */
+              let sh = 1;
+              if (INK_TUNE.shade > 0 && refLum > 0) {
+                const lum = 0.299 * sr + 0.587 * sg + 0.114 * sb;
+                sh = 1 + (lum / refLum - 1) * INK_TUNE.shade;
+                if (sh < 0.55) sh = 0.55; else if (sh > 1.45) sh = 1.45;
+              }
+              /* v2.3.1950: a FIXED alpha cannot work.  Measured on the three
+                 skin tones: black ink at 0.6 alpha reads beautifully on pale
+                 skin and all but disappears on dark skin, because black on
+                 dark brown has almost no contrast to begin with.  So the ink
+                 gets more opaque exactly where it would otherwise vanish —
+                 which is also how real ink behaves, more of it being what you
+                 need to show up.  Full translucency where the ink and the skin
+                 are far apart, opaque where they are close. */
+              let A = INK_TUNE.alpha;
+              if (INK_TUNE.contrast > 0) {
+                const lumI = 0.299 * R * sh + 0.587 * G * sh + 0.114 * B * sh;
+                const lumS = 0.299 * sr + 0.587 * sg + 0.114 * sb;
+                const c = Math.abs(lumI - lumS) / 255 / INK_TUNE.contrast;
+                if (c < 1) A = A + (1 - A) * (1 - c);
+              }
+              d[i] = sr + (R * sh - sr) * A;
+              d[i + 1] = sg + (G * sh - sg) * A;
+              d[i + 2] = sb + (B * sh - sb) * A;
+            } else {
+              d[i] = R; d[i + 1] = G; d[i + 2] = B;
+            }
             painted++;
           }
         }
@@ -321,6 +370,40 @@ export const TATTOO_BOX = { fillW: 0.70, fillH: 0.55, cy: 0.50 };  /* chest */
    A face is small and mostly eyes, so the ink covers less of it and sits low —
    a cheek/jaw mark rather than a mask over the eyes.  An arm is a narrow
    vertical strip, so its box is nearly the full width of the limb. */
+/* ═══ v2.3.1950: INK UNDER SKIN ═══
+   Owner: "what effect can make these really look like tattoos instead of just
+   black lines on the character?  Maybe making them have some semi transparency?"
+
+   Right diagnosis.  A tattoo was REPLACING the skin pixel outright, so it
+   ignored every bit of the body's shading and read as a sticker stuck on.  Ink
+   is under skin: some skin shows through it, and the body's own light and
+   shadow fall across it.
+
+   These three numbers were CHOSEN BY RENDERING, not guessed — every
+   combination on the same figure, on alabaster / tan / ebony, with black ink
+   and with white, on the chest and then on the face and arms:
+
+     alpha 0.60     how much skin shows through.  0.85 still read as paint;
+                    0.50 lost the face mark on dark skin.
+     shade 1.0      the ink is modulated by how light or dark the body is at
+                    that pixel, relative to the region's average, so a mark
+                    follows the arm's curve instead of flattening it.
+     contrast 0.35  the window over which alpha ramps back to opaque.
+
+   THE THIRD ONE IS THE INTERESTING ONE.  A fixed alpha cannot work here: black
+   ink at 0.60 looks beautiful on pale skin and all but vanishes on dark skin,
+   because black on dark brown has almost no contrast to start with — and the
+   palette has fifteen colours against every skin tone.  So the ink is allowed
+   to go opaque exactly where it would otherwise disappear, and stays
+   translucent where ink and skin are far apart.  Which is also how real ink
+   behaves: more of it is what you need in order to show up.
+
+   Frozen because these are measured values, and because a mutable global that
+   any module could change would silently re-tune every character in the game.
+   Applied ONLY where `underSkin` is set — the three skin canvases.  A shirt
+   print is ink ON fabric, not under skin, and stays opaque. */
+export const INK_TUNE = Object.freeze({ alpha: 0.60, shade: 1.0, contrast: 0.35 });
+
 export const FACE_BOX = { fillW: 0.62, fillH: 0.46, cy: 0.60 };
 export const ARM_BOX = { fillW: 0.92, fillH: 0.40, cy: 0.42 };
 

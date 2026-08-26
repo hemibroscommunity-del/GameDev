@@ -643,14 +643,17 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
       litFabricMask(base, regionFromFeet(d, shoesPx, w, h, FRAME_W, SHOES_MAX_UP), w * h, SHOES_LIT_MIN),
       shoesPat, !!art.mirror);
   }
-  if (tattooPx) stampRegion(d, w, h, FRAME_W, tattooPx, art.tattoo, !!art.mirror, TATTOO_BOX);
+  /* v2.3.1950: `underSkin` on all three -- ink sits UNDER skin, so it takes the
+     body's shading and lets some skin through.  A shirt print does not: it is
+     ink ON fabric, and stays opaque. */
+  if (tattooPx) stampRegion(d, w, h, FRAME_W, tattooPx, art.tattoo, !!art.mirror, TATTOO_BOX, { underSkin: true });
   /* v2.3.1949: face and arms.  `eachPiece` for the arms only -- a figure has
      two of them and the largest-piece rule would ink whichever happens to be
      nearer the camera. */
   if (skinPx) {
     const reg = splitSkinRegions(skinPx, torsoPx, w, h, FRAME_W);
-    if (wantFaceTat) stampRegion(d, w, h, FRAME_W, reg.face, art.tattooFace, !!art.mirror, FACE_BOX);
-    if (wantArmTat) stampRegion(d, w, h, FRAME_W, reg.arms, art.tattooArm, !!art.mirror, ARM_BOX, { eachPiece: true });
+    if (wantFaceTat) stampRegion(d, w, h, FRAME_W, reg.face, art.tattooFace, !!art.mirror, FACE_BOX, { underSkin: true });
+    if (wantArmTat) stampRegion(d, w, h, FRAME_W, reg.arms, art.tattooArm, !!art.mirror, ARM_BOX, { eachPiece: true, underSkin: true });
   }
   /* v2.3.1928: the iris last, so it overwrites rather than being classified.
      Its pixels are near-black and would otherwise fall through every branch

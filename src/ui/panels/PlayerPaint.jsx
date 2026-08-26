@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   ART_W, ART_H, ART_PALETTE, emptyArt, artColorAt, artWithCells,
-  getArt, setArt as storeArt,
+  getArt, setArt as storeArt, copyArt, getSlots, setSlot, SLOT_COUNT,
 } from '@/rendering/traits/playerArt.js';
 import {
   TOOLS, toolById, shapeCells, lineCells, fillCells, expandCells, mirrorCells,
@@ -130,6 +130,45 @@ function ToolIcon({ id }) {
   return (
     <svg className="bt-paint-tool-icon" viewBox="0 0 24 24" width="20" height="20"
       aria-hidden="true" focusable="false">{kids[id] || kids.pen}</svg>
+  );
+}
+
+/* ── a saved design ──
+   v2.3.1950 (owner: "Design slots, so you can try something without losing what
+   you had.")
+
+   ONE control does both jobs, and which one it does is never ambiguous: an
+   EMPTY slot has nothing to load, so tapping it saves; a FULL slot has
+   something to load, so tapping it loads.  Only overwriting needs a second
+   step, and that is the rare case — the Save button below arms it.
+
+   Drawn from the same codec the grid draws from, so a thumbnail can never
+   disagree with what the slot actually holds. */
+function SlotChip({ art, on, arming, onPick }) {
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    const cv = ref.current;
+    if (!cv) return;
+    const ctx = cv.getContext('2d');
+    const S = cv.width / ART_W;
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.fillStyle = '#243039';
+    ctx.fillRect(0, 0, cv.width, cv.height);
+    if (!art) return;
+    for (let y = 0; y < ART_H; y++) {
+      for (let x = 0; x < ART_W; x++) {
+        const c = artColorAt(art, x, y);
+        if (c) { ctx.fillStyle = c; ctx.fillRect(x * S, y * S, S, S); }
+      }
+    }
+  }, [art]);
+  const label = arming ? 'Save here' : (art ? 'Load this design' : 'Empty — tap to save this design here');
+  return (
+    <button type="button" onClick={onPick} title={label} aria-label={label}
+      className={'bt-paint-slot' + (on ? ' bt-paint-slot--on' : '')}>
+      <canvas ref={ref} width={ART_W * 3} height={ART_H * 3} />
+      {!art && !arming && <span className="bt-paint-slot-plus">+</span>}
+    </button>
   );
 }
 
@@ -383,7 +422,16 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
      pre-gesture drawing is pushed when the gesture starts (or, for a shape,
      when it commits), so one tap of Undo removes one thing you did. */
   const histRef = React.useRef([]);
+  const redoRef = React.useRef([]);                /* v2.3.1950 */
   const [undoN, setUndoN] = React.useState(0);
+  const [redoN, setRedoN] = React.useState(0);
+  /* A copy changes the side you are NOT looking at, so without a word of
+     feedback the button appears to do nothing at all. */
+  const [copied, setCopied] = React.useState(false);
+  /* The slots for THIS canvas, mirrored into state so a save repaints the row.
+     `arming` is the overwrite step: tap Save, then tap the slot to replace. */
+  const [slots, setSlots] = React.useState([]);
+  const [arming, setArming] = React.useState(false);
   const cvRef = React.useRef(null);
   const paintingRef = React.useRef(false);
   const lastRef = React.useRef('');
@@ -414,7 +462,12 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   React.useEffect(() => {
     setArtState(getArt(artId));
     histRef.current = [];
+    redoRef.current = [];
     setUndoN(0);
+    setRedoN(0);
+    setCopied(false);
+    setSlots(getSlots(artId));
+    setArming(false);
   }, [artId]);
 
   const HIST_MAX = 40;
@@ -423,14 +476,49 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
     if (h[h.length - 1] === a) return;     /* nothing changed since last time */
     h.push(a);
     if (h.length > HIST_MAX) h.shift();
+    /* v2.3.1950: a NEW action discards the redo stack.  Undoing three strokes
+       and then drawing a fourth means the three you undid are no longer a
+       future you can return to -- keeping them would let Redo paste in work
+       that never followed from what is now on the grid. */
+    redoRef.current = [];
     setUndoN(h.length);
+    setRedoN(0);
   };
   const undo = () => {
     const h = histRef.current;
     if (!h.length) return;
+    redoRef.current.push(art);
+    if (redoRef.current.length > HIST_MAX) redoRef.current.shift();
     setArtState(h.pop());
     setDraft(null);
     setUndoN(h.length);
+    setRedoN(redoRef.current.length);
+  };
+  const redo = () => {
+    const r = redoRef.current;
+    if (!r.length) return;
+    /* Straight onto the undo stack, WITHOUT pushHist -- that would wipe the
+       rest of the redo stack and make a second Redo impossible. */
+    const h = histRef.current;
+    h.push(art);
+    if (h.length > HIST_MAX) h.shift();
+    setArtState(r.pop());
+    setDraft(null);
+    setUndoN(h.length);
+    setRedoN(r.length);
+  };
+
+  const saveToSlot = (i) => {
+    setSlot(artId, i, art);
+    setSlots(getSlots(artId));
+    setArming(false);
+  };
+  const loadSlot = (i) => {
+    const v = slots[i];
+    if (!v) { saveToSlot(i); return; }   /* empty: the only sensible action */
+    pushHist(art);                        /* so a mis-tap is one Undo away */
+    setArtState(v);
+    setDraft(null);
   };
 
   /* Persist as you draw: the character updates live behind the panel, which is
@@ -602,6 +690,26 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
         </div>
         <div className="bt-paint-note">
           {onPattern ? 'A pattern fills the whole garment. Anything you draw goes on top of it.' : scfg.note}
+          {/* v2.3.1950 (owner: "Copy front -> back for shirts.  One tap,
+              obvious want.").  It sits under the caption rather than in the
+              button row: that row is Undo/Redo/Clear/Done, and this is a
+              once-per-design action, not one you reach for mid-stroke.  The
+              copy is banked for undo like any other change, so a mis-tap does
+              not cost you the side it overwrote -- and it SAYS it copied,
+              because the thing it changes is the side you are not looking at. */}
+          {isShirt && !onPattern && (
+            <button type="button" className="bt-paint-copy"
+              title={'Put this drawing on the ' + (side === 'front' ? 'back' : 'front') + ' as well'}
+              onClick={() => {
+                const from = side === 'front' ? 'shirtFront' : 'shirtBack';
+                const to = side === 'front' ? 'shirtBack' : 'shirtFront';
+                pushHist(getArt(to));       /* what the OTHER side had */
+                copyArt(from, to);
+                setCopied(true);
+              }}>
+              {copied ? 'Copied \u2713' : ('Copy to ' + (side === 'front' ? 'back' : 'front'))}
+            </button>
+          )}
         </div>
 
         <div className="bt-paint-main">
@@ -672,8 +780,8 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                   <button key={n} type="button" disabled={!tdef.brush}
                     onClick={() => setBrush(n)} aria-pressed={brush === n}
                     aria-label={'Brush ' + n + ' wide'}
-                    className={'bt-paint-size' + (brush === n && tdef.brush ? ' bt-paint-size--on' : '')
-                      + (tdef.brush ? '' : ' bt-cc-ghost')}>
+                    style={tdef.brush ? undefined : { opacity: 0.38 }}
+                    className={'bt-paint-size' + (brush === n && tdef.brush ? ' bt-paint-size--on' : '')}>
                     <span className="bt-paint-dot-well">
                       <span className="bt-paint-dot" style={{ width: 5 + (n - 1) * 6, height: 5 + (n - 1) * 6 }} />
                     </span>
@@ -729,22 +837,62 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
           </div>
         )}
 
+        {!onPattern && (
+          <div className="bt-paint-slots">
+            {Array.from({ length: SLOT_COUNT }, (_, i) => (
+              <SlotChip key={i} art={slots[i] || ''} arming={arming}
+                on={arming && !!slots[i]}
+                onPick={() => (arming ? saveToSlot(i) : loadSlot(i))} />
+            ))}
+            <button type="button"
+              className={'bt-paint-save' + (arming ? ' bt-paint-save--on' : '')}
+              aria-pressed={arming}
+              onClick={() => setArming((a) => !a)}
+              title={arming ? 'Now tap the slot to replace' : 'Save this design over one of the slots'}>
+              {arming ? 'Tap a slot' : 'Save'}
+            </button>
+          </div>
+        )}
+
         <div className="bt-paint-btn" style={{ display: 'flex', gap: 8 }}>
+          {/* v2.3.1950: DIMMED, not ghosted.  `.bt-cc-ghost` is visibility:hidden,
+              which is right for the creator's design button (it holds a slot in
+              a grid and must not make the rows jump) and wrong here: these two
+              start disabled on every fresh canvas, so ghosting them means a
+              player never learns the panel HAS an undo until they happen to
+              draw something. Dim and unclickable says "here, but nothing to
+              undo yet". */}
           {!onPattern && (
-            <button type="button" className={'bt-cc-tab' + (undoN ? '' : ' bt-cc-ghost')}
-              disabled={!undoN} onClick={undo} style={{ flex: 1, minHeight: 38 }}
-              title="Undo the last thing you did">
+            <button type="button" className="bt-cc-tab"
+              disabled={!undoN} onClick={undo}
+              style={{ flex: 1, minHeight: 38, opacity: undoN ? 1 : 0.38,
+                cursor: undoN ? 'pointer' : 'default' }}
+              title={undoN ? 'Undo the last thing you did' : 'Nothing to undo yet'}>
               <span className="bt-cc-tab-label">Undo</span>
             </button>
           )}
+          {!onPattern && (
+            <button type="button" className="bt-cc-tab"
+              disabled={!redoN} onClick={redo}
+              style={{ flex: 1, minHeight: 38, opacity: redoN ? 1 : 0.38,
+                cursor: redoN ? 'pointer' : 'default' }}
+              title={redoN ? 'Put back what you just undid' : 'Nothing to redo'}>
+              <span className="bt-cc-tab-label">Redo</span>
+            </button>
+          )}
           <button type="button" className="bt-cc-tab" style={{ flex: 1, minHeight: 38 }}
+            /* v2.3.1950: a bare "Clear" now that Redo makes four buttons in this
+               row -- "Clear arm tattoo" does not fit a quarter of a phone.  The
+               mode strip above says which canvas you are on, and the title
+               carries the whole sentence. */
+            title={onPattern ? 'Remove the pattern' : ('Erase the whole ' + (isShirt ? side + ' of the shirt' : scfg.label))}
             onClick={() => {
               if (onPattern) { pickTile(''); return; }
               pushHist(art);
               setArtState(emptyArt());
             }}>
             <span className="bt-cc-tab-label">
-              {onPattern ? 'No pattern' : ('Clear ' + (isShirt ? side : scfg.label))}
+              {onPattern ? 'No pattern' : 'Clear'}
             </span>
           </button>
           <button type="button" className="bt-cc-tab bt-cc-tab--on" style={{ flex: 1, minHeight: 38 }}
