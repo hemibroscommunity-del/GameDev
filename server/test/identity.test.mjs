@@ -223,6 +223,7 @@ check('death clears the consent pair', !room._pvpConsent.has(room._pvpPairKey('b
       ec: 'violet' /* v2.3.1930 */,
       sa: 'b'.repeat(256) /* v2.3.1939: a drawn shirt, 256 chars */,
       pa: 'c'.repeat(256), ta: 'd'.repeat(256) /* v2.3.1940: pants print + tattoo */,
+      tf: 'e'.repeat(256), tm: 'f'.repeat(256) /* v2.3.1949: face + arm tattoos */,
       sp: 'check:7', pp: 'dots:2' /* v2.3.1941: clothing patterns */,
       fp: 'stripe-h:4' /* v2.3.1944: shoes */ },
   }));
@@ -259,6 +260,14 @@ check('death clears the consent pair', !room._pvpConsent.has(room._pvpPairKey('b
   check('...and the tattoo, untruncated (v2.3.1940)',
     !!(charF && charF.look.ta === 'd'.repeat(256)),
     charF && charF.look.ta && charF.look.ta.length);
+  /* v2.3.1949: the face and arm tattoos are stored in the same permanent look,
+     so this is what makes them survive logging in on a NEW DEVICE -- the join
+     data is the only place they travel from, and an unlisted key is dropped
+     without a word.  Asserting the whole set at once, because the failure mode
+     is always the same: one key added to one gate. */
+  check('...and the face + arm tattoos, untruncated (v2.3.1949)',
+    !!(charF && charF.look.tf === 'e'.repeat(256) && charF.look.tm === 'f'.repeat(256)),
+    charF && { tf: charF.look.tf && charF.look.tf.length, tm: charF.look.tm && charF.look.tm.length });
   /* v2.3.1941: the clothing patterns are SHORT, so unlike the drawings above
      the cap is not the interesting part -- the allowlist is.  An unlisted key
      is dropped, which is exactly how a pattern would silently fail to persist
