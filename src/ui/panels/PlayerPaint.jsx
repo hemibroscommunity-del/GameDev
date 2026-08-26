@@ -1,12 +1,15 @@
 import React from 'react';
 import {
   ART_W, ART_H, ART_PALETTE, emptyArt, artColorAt, artWithCells,
-  getArt, setArt as storeArt, copyArt, getSlots, setSlot, SLOT_COUNT,
+  getArt, getSlots, setSlot, SLOT_COUNT,
 } from '@/rendering/traits/playerArt.js';
 import {
-  TOOLS, toolById, shapeCells, lineCells, fillCells, expandCells, mirrorCells,
-  BRUSH_SIZES, LETTERS, letterCells,
+  TOOLS, toolById, lineCells, expandCells, mirrorCells,
+  BRUSH_SIZES, LETTERS,
 } from '@/rendering/traits/artTools.js';   /* v2.3.1948; v2.3.1949 mirror */
+import {
+  getDoc, saveDoc, appendOp, appendToDoc, copyDoc, replay,
+} from '@/rendering/traits/artOps.js';   /* v2.3.1967: the canvas is an op list */
 import {
   patternsFor, getPattern, setPattern, parsePattern, formatPattern, patternInk,
 } from '@/rendering/traits/patternCatalog.js';   /* v2.3.1941 */
@@ -111,6 +114,10 @@ const TOOL_HINT = {
   ellipse: 'Drag for a circle outline',
   fill: 'Tap an area to flood it — with the eraser chosen, to clear it',
   letter: 'Pick a letter, then tap to place it',
+  /* v2.3.1967 (owner: "add a hand shape to tap the existing shape to reselect
+     and edit it").  The hint says TAP, because nothing about a hand icon tells
+     you that the thing under it is still an object rather than pixels. */
+  select: 'Tap something you already drew to pick it up again',
 };
 
 function ToolIcon({ id }) {
@@ -128,12 +135,48 @@ function ToolIcon({ id }) {
       fill="currentColor" stroke="none" />],
     letter: [<text key="a" x="12" y="17.6" textAnchor="middle" fontSize="16" fontWeight="700"
       fill="currentColor" stroke="none" fontFamily="inherit">A</text>],
+    /* v2.3.1967: the owner asked for "a hand shape", so it is a hand — a
+       tapping hand with the index finger out, drawn in the same one-viewBox
+       stroke style as its five neighbours rather than shipped as an asset (an
+       asset that is never fetched cannot hitch on first use, which is what the
+       animation-preload law exists to prevent). */
+    select: [
+      <path key="a" d="M9.6 13.2V6.1a1.75 1.75 0 0 1 3.5 0v5.3" {...stroke} />,
+      <path key="b" d="M13.1 11.4v-1a1.75 1.75 0 0 1 3.5 0v1.3" {...stroke} />,
+      <path key="c" d="M16.6 11.7a1.75 1.75 0 0 1 3.5 0v3.4a5.6 5.6 0 0 1-5.6 5.6h-1.2a5 5 0 0 1-3.5-1.5l-3.1-3.1a1.75 1.75 0 0 1 2.5-2.5l1.4 1.4" {...stroke} />,
+    ],
   };
   return (
     <svg className="bt-paint-tool-icon" viewBox="0 0 24 24" width="20" height="20"
       aria-hidden="true" focusable="false">{kids[id] || kids.pen}</svg>
   );
 }
+
+/* v2.3.1967: what the layer readout calls the thing you have picked up.  Named
+   at all because "Layer 3 of 5" alone does not tell you WHICH of the five you
+   are holding when two of them overlap — and named by what the player made
+   ("circle", "letter A"), not by the op kind, which is an implementation
+   detail they never chose.  A chain of comparisons rather than a lookup table:
+   the key comes off a stored op, and a plain object indexed by a value that
+   round-tripped through localStorage is the '__proto__' trap (TRAPS #6). */
+function selName(op) {
+  if (!op) return '';
+  if (op.k === 's') return op.t === 'rect' ? 'box' : op.t === 'ellipse' ? 'circle' : 'line';
+  if (op.k === 't') return 'letter ' + op.g;
+  if (op.k === 'f') return 'fill';
+  return 'brush stroke';
+}
+
+/* The four layer steps.  A table rather than four near-identical buttons in the
+   markup, so the disabled rule and the chip styling are written once — and so
+   the wording stays parallel, which is what makes a row of four read as one
+   control with four strengths instead of four unrelated actions. */
+const LAYER_MOVES = [
+  { k: 'bb', d: 'back', label: 'To back', tip: 'Send it behind everything else' },
+  { k: 'b1', d: -1, label: 'Back', tip: 'One step further back' },
+  { k: 'f1', d: 1, label: 'Forward', tip: 'One step further forward' },
+  { k: 'ff', d: 'front', label: 'To front', tip: 'Bring it in front of everything else' },
+];
 
 /* ── a saved design ──
    v2.3.1950 (owner: "Design slots, so you can try something without losing what
@@ -436,7 +479,38 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   const patColor = parsed ? parsed.colorIdx : 1;
   React.useEffect(() => { if (cfg.pattern) setPattern(cfg.pattern, pat); }, [cfg.pattern, pat]);
   const pickTile = (id) => setPat(id ? formatPattern(id, patColor) : '');
-  const pickPatColor = (i) => { if (patId && i > 0) setPat(formatPattern(patId, i)); };  const [art, setArtState] = React.useState(() => getArt(artId));
+  const pickPatColor = (i) => { if (patId && i > 0) setPat(formatPattern(patId, i)); };
+  /* ═══ v2.3.1967: THE CANVAS IS AN OP LIST, AND THE ART IS DERIVED ═══
+     Owner, play-testing: "During the tattoo editor can you add a hand shape to
+     tap the existing shape to reselect and edit it? Also can you add an option
+     to change layers?"
+
+     Neither is possible against a flat 256-character string: a placed shape had
+     stopped being a shape, and a flat string has exactly one layer.  So this
+     panel no longer edits the string at all.  It holds {base, ops} (artOps.js)
+     and REPLAYS it — every stroke, shape, letter and fill is an entry in an
+     ordered list, the drawing is what that list renders to, re-selecting is
+     finding an entry, and changing layers is moving one.
+
+     `doc.id` is the canvas the doc belongs to.  It is on the object rather than
+     tracked beside it because the persist effect below has to be able to tell
+     that it is looking at the canvas we just LEFT: switching tabs re-renders
+     once with the new artId and the old doc still in state, and a persist in
+     that window writes the old drawing onto the new canvas. */
+  const [doc, setDoc] = React.useState(() => ({ id: artId, ...getDoc(artId) }));
+  /* The drawing, and — from the same pass — which cells each op painted.  The
+     hit test and the selection outline both read that, so what you tap is
+     exactly what you see. */
+  const painted = React.useMemo(() => {
+    const out = [];
+    return { art: replay(doc.base, doc.ops, out), cells: out };
+  }, [doc]);
+  const art = painted.art;
+  /* Pointer handlers must read the CURRENT doc: a value captured in a handler's
+     closure is a render behind (the same reason the draft used to live in a
+     ref).  Assigned during render, so they are never stale. */
+  const docRef = React.useRef(doc); docRef.current = doc;
+  const paintedRef = React.useRef(painted); paintedRef.current = painted;
   const [ink, setInk] = React.useState(1);        /* palette index; 0 = eraser */
   /* v2.3.1948 (owner: "any drawing tools like lines, shapes, eraser, fill?",
      then "a small eraser for erasing areas ... different brush size options ...
@@ -450,10 +524,18 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
      back means starting over, and hand-matching the other half of a face is
      not something anybody manages on a 16-cell grid. */
   const [mirror, setMirror] = React.useState(false);
+  /* ── v2.3.1967: which op is selected ──
+     An index into doc.ops, -1 for none.  ONE selection serves both halves of
+     the owner's note: it is what the hand tool picks up, and it is what the
+     layer buttons move. */
+  const [sel, setSel] = React.useState(-1);
+  const selRef = React.useRef(-1); selRef.current = sel;
   /* One entry per ACTION, not per cell: a drag paints dozens of cells and an
      undo that stepped back through them one at a time would be useless.  The
      pre-gesture drawing is pushed when the gesture starts (or, for a shape,
-     when it commits), so one tap of Undo removes one thing you did. */
+     when it commits), so one tap of Undo removes one thing you did.
+     v2.3.1967: an entry is a whole {id, base, ops} snapshot now, id included —
+     see `snapshot` for the two-canvas bug that fixes. */
   const histRef = React.useRef([]);
   const redoRef = React.useRef([]);                /* v2.3.1950 */
   const [undoN, setUndoN] = React.useState(0);
@@ -473,22 +555,36 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
      So a shape no longer commits when you lift your finger.  It becomes
      PENDING: still adjustable, with a handle on the free corner, until you
      place it.  `ratio` is the aspect it was drawn at, remembered so the lock
-     preserves what you made rather than forcing a square. */
-  const pendRef = React.useRef(null);      /* {x0,y0,x1,y1,ratio} or null */
-  const [pendTick, setPendTick] = React.useState(0);
+     preserves what you made rather than forcing a square.
+
+     v2.3.1967: the geometry now lives in the OP, and this ref holds only what
+     the op does not carry — the aspect it was drawn at, whether it is brand new
+     (so Cancel knows whether to bin it or to put it back), the op object it
+     looked like when it was picked up, and which undo entry was banked for this
+     selection.  A re-selected shape and a freshly drawn one therefore land in
+     exactly the same state, which is the point: one way to adjust a shape, not
+     two.  The old draft-cells overlay is gone with it — a pending shape is a
+     real op in the list now, so the grid already shows it where it will land,
+     at its own layer, and there is nothing left to preview separately. */
+  const pendRef = React.useRef(null);      /* {ratio, isNew, orig, hist} or null */
   const [lockRatio, setLockRatio] = React.useState(true);
   const dragHandleRef = React.useRef(false);
-  const setPend = (b) => { pendRef.current = b; setPendTick((t) => t + 1); };
   const cvRef = React.useRef(null);
   const paintingRef = React.useRef(false);
   const lastRef = React.useRef('');
   const prevCellRef = React.useRef(null);
-  /* The shape being dragged, before it is committed.  A ref plus a counter
-     rather than state: `up` has to read the CURRENT draft to commit it, and a
-     state value captured in that handler's closure is one render behind. */
-  const draftRef = React.useRef(null);
-  const [draftTick, setDraftTick] = React.useState(0);
-  const setDraft = (cells) => { draftRef.current = cells; setDraftTick((t) => t + 1); };
+  const anchorRef = React.useRef(null);
+  /* The freehand stroke in flight: which op is collecting it, and the cells it
+     has already taken (a drag re-crosses its own cells constantly). */
+  const strokeRef = React.useRef(null);    /* {idx, seen:Set, hist} or null */
+  /* v2.3.1965: the body surface re-reads the skin canvases through this. */
+  const [bodyTick, setBodyTick] = React.useState(0);
+
+  /* The selected op, and whether it is one with a handle.  Read from render
+     state (not a ref) because the controls below are rendered from it; the
+     bounds check matters because Undo can shorten the list under a selection. */
+  const selOp = (doc.id === artId && sel >= 0 && sel < doc.ops.length) ? doc.ops[sel] : null;
+  const selOpRef = React.useRef(null); selOpRef.current = selOp;
 
   const tdef = toolById(tool);
   /* The alphabet does not fit the strip's width, so re-opening the tool must
@@ -507,7 +603,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   /* Switching side (or opening on a different target) loads that drawing --
      and its history, which belongs to that canvas and not to this panel. */
   React.useEffect(() => {
-    setArtState(getArt(artId));
+    setDoc({ id: artId, ...getDoc(artId) });
     histRef.current = [];
     redoRef.current = [];
     setUndoN(0);
@@ -516,14 +612,31 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
     setSlots(getSlots(artId));
     setArming(false);
     pendRef.current = null;
-    setDraft(null);
+    strokeRef.current = null;
+    setSel(-1);
   }, [artId]);
 
   const HIST_MAX = 40;
-  const pushHist = (a) => {
+  /* ── v2.3.1967: an undo entry knows which canvas it belongs to ──
+     Two things in this panel change a canvas that is NOT the one on screen:
+     Copy-to-back, and a body-surface stroke that lands on a different skin
+     region.  Both used to bank the OTHER canvas's drawing onto THIS canvas's
+     undo stack, so one tap of Undo after a copy pasted the back's old drawing
+     onto the FRONT — losing the front and not restoring the back — and the
+     body surface's cross-canvas stroke gave up and banked nothing at all.
+     With the id on the entry, Undo puts each change back where it came from. */
+  const snapshot = (id) => (id === artId ? docRef.current : { id, ...getDoc(id) });
+  const applySnap = (d) => {
+    if (d.id === artId) setDoc(d);
+    else saveDoc(d.id, d.base, d.ops);
+    pendRef.current = null;
+    setSel(-1);
+    setBodyTick((t) => t + 1);
+  };
+  const pushHist = (d) => {
     const h = histRef.current;
-    if (h[h.length - 1] === a) return;     /* nothing changed since last time */
-    h.push(a);
+    if (h[h.length - 1] === d) return;     /* nothing changed since last time */
+    h.push(d);
     if (h.length > HIST_MAX) h.shift();
     /* v2.3.1950: a NEW action discards the redo stack.  Undoing three strokes
        and then drawing a fourth means the three you undid are no longer a
@@ -533,13 +646,22 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
     setUndoN(h.length);
     setRedoN(0);
   };
+  /* Take an entry back OFF the stack, for an action that turned out not to
+     happen: a cancelled adjustment, or a stroke that touched no cell.  Leaving
+     it there would cost the player a tap of Undo that visibly does nothing. */
+  const unbank = (entry) => {
+    const h = histRef.current;
+    if (!entry || h[h.length - 1] !== entry) return;
+    h.pop();
+    setUndoN(h.length);
+  };
   const undo = () => {
     const h = histRef.current;
     if (!h.length) return;
-    redoRef.current.push(art);
+    const prev = h.pop();
+    redoRef.current.push(snapshot(prev.id));
     if (redoRef.current.length > HIST_MAX) redoRef.current.shift();
-    setArtState(h.pop());
-    setDraft(null);
+    applySnap(prev);
     setUndoN(h.length);
     setRedoN(redoRef.current.length);
   };
@@ -548,14 +670,34 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
     if (!r.length) return;
     /* Straight onto the undo stack, WITHOUT pushHist -- that would wipe the
        rest of the redo stack and make a second Redo impossible. */
+    const next = r.pop();
     const h = histRef.current;
-    h.push(art);
+    h.push(snapshot(next.id));
     if (h.length > HIST_MAX) h.shift();
-    setArtState(r.pop());
-    setDraft(null);
+    applySnap(next);
     setUndoN(h.length);
     setRedoN(r.length);
   };
+
+  /* ── v2.3.1967: the three ways the op list changes ──
+     None of them mutates.  Undo snapshots share these arrays and these op
+     objects, so an in-place edit would quietly rewrite history as well as the
+     drawing — which is the same class of bug as the flat string's, one level
+     up. */
+  const addOp = (op) => {
+    /* Belt and braces: if a stroke somehow lands in the one render where the
+       canvas has changed and the doc has not caught up yet (the body surface
+       moves `spot` on pointer DOWN), take the target canvas's doc from the
+       store rather than appending this op to the doc for a DIFFERENT canvas —
+       which would write one skin region's whole drawing onto another. */
+    const d = docRef.current.id === artId ? docRef.current : { id: artId, ...getDoc(artId) };
+    pushHist(d);
+    const next = appendToDoc(d, op);
+    setDoc({ id: artId, base: next.base, ops: next.ops });
+    return next.ops.length - 1;
+  };
+  const setOp = (i, next) => setDoc((d) => ({ ...d, ops: d.ops.map((o, k) => (k === i ? next : o)) }));
+  const dropOp = (i) => setDoc((d) => ({ ...d, ops: d.ops.filter((o, k) => k !== i) }));
 
   const saveToSlot = (i) => {
     setSlot(artId, i, art);
@@ -565,34 +707,91 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   const loadSlot = (i) => {
     const v = slots[i];
     if (!v) { saveToSlot(i); return; }   /* empty: the only sensible action */
-    pushHist(art);                        /* so a mis-tap is one Undo away */
-    setArtState(v);
-    setDraft(null);
+    pushHist(docRef.current);             /* so a mis-tap is one Undo away */
+    /* A loaded design arrives FLAT: a slot holds 256 characters, so we know its
+       pixels and not its pieces.  It becomes the base with nothing selectable
+       on top of it — the same rule artOps applies to any drawing it cannot
+       account for. */
+    setDoc({ id: artId, base: v, ops: [] });
+    pendRef.current = null;
+    setSel(-1);
   };
 
   /* Persist as you draw: the character updates live behind the panel, which is
-     the whole point of drawing on a character rather than in a vacuum. */
-  React.useEffect(() => { storeArt(artId, art); }, [artId, art]);
+     the whole point of drawing on a character rather than in a vacuum.
+     v2.3.1967: through saveDoc, which stores the op list AND the 256-character
+     drawing it renders to — the drawing is still what every renderer, slot and
+     wire path reads.  The `doc.id` guard is the fix for a real (if brief) bug:
+     switching tabs renders once with the new artId and the previous canvas's
+     doc still in state, and this effect used to write that stale drawing onto
+     the canvas being opened before the reset effect's state landed. */
+  React.useEffect(() => {
+    if (doc.id !== artId) return;
+    saveDoc(artId, doc.base, doc.ops, art);
+  }, [artId, doc, art]);
 
   /* ── v2.3.1965: the body surface's two hooks ─────────────────────────────
-     `bodyArts` is read from the STORE rather than from `art`, because the
-     surface shows all three skin canvases at once and `art` is only the one
-     this panel has selected.  `bodyTick` re-reads it after a stroke lands. */
-  const [bodyTick, setBodyTick] = React.useState(0);
+     The surface shows all three skin canvases at once and `art` is only the one
+     this panel has selected, so the other two come from the STORE.  `bodyTick`
+     re-reads them after a stroke lands.
+     v2.3.1967: the SELECTED one comes from the live doc instead.  The store is
+     written by the effect above, which runs after this render, so reading it
+     here showed the body surface a stroke-old picture of the canvas you were
+     actually inking. */
+  const liveArt = (id) => (id === artId ? art : getArt(id));
   const bodyArts = React.useMemo(() => ({
-    tattoo: getArt('tattoo'), tattooFace: getArt('tattooFace'), tattooArm: getArt('tattooArm'),
+    tattoo: liveArt('tattoo'), tattooFace: liveArt('tattooFace'), tattooArm: liveArt('tattooArm'),
+    /* liveArt reads only `art`/`artId` and the store; bodyTick is the store's
+       own change signal.  (No react-hooks plugin in this repo's flat config —
+       the deps are stated by hand and checked by hand.) */
   }), [bodyTick, art, artId]);
-  /* A stroke lands on whichever canvas the finger was over.  onRegion fires on
-     pointer DOWN and moves `spot`, so by the time this runs artId is already
-     that canvas and the stroke banks for undo like any other change.  The
-     `else` is the belt-and-braces path for a stroke that somehow lands before
-     React has flushed: write it through to the store so no ink is ever lost,
-     even though that one cannot be undone. */
-  const inkFromBody = React.useCallback((tgt, after, before) => {
-    if (tgt === artId) { pushHist(before); setArtState(after); }
-    else { storeArt(tgt, after); setBodySpot(tgt); }
+  /* ── v2.3.1967: a body stroke is an OP, like every other edit ─────────────
+     This is the subtle half of the op list, and getting it wrong is how a
+     shape gets silently destroyed.  The body surface hands over the CELLS it
+     inked (it used to hand over a whole replacement art string), and they are
+     appended to the target canvas's list as a freehand op.  Two consequences,
+     both of them the point:
+
+       - a rectangle placed on the `chest` tab SURVIVES a stroke made on the
+         `body` tab, because the stroke goes on top of it in the same list
+         instead of replacing the string it was baked into;
+       - and the stroke lands ON TOP, in the order it was made, so inking over
+         a shape looks like inking over a shape.
+
+     A whole-string handover could not do either: replaying the list would have
+     overwritten the stroke, and flattening the list to keep the stroke would
+     have thrown the shapes away.
+
+     A stroke on the region you are NOT editing goes straight to that canvas's
+     stored list (`appendOp`) — onRegion moves `spot` on pointer DOWN, so this
+     is the rare path, and v2.3.1967 banks it for undo too now that an undo
+     entry knows which canvas it belongs to. */
+  const inkFromBody = React.useCallback((tgt, cells, inkIdx) => {
+    if (!cells || !cells.length) return;
+    const before = liveArt(tgt);
+    /* Re-inking cells that already carry that colour changes nothing; an op for
+       it would be an undo step that does nothing when you take it. */
+    if (artWithCells(before, cells, inkIdx) === before) return;
+    const op = { k: 'c', c: cells.map((c) => c[1] * ART_W + c[0]), i: inkIdx };
+    if (tgt === artId) addOp(op);
+    else {
+      pushHist(snapshot(tgt));
+      appendOp(tgt, op);
+      setBodySpot(tgt);
+    }
     setBodyTick((t) => t + 1);
-  }, [artId]);
+  }, [artId, art]);
+
+  /* v2.3.1967: where the drag handle sits for an op — the corner you dragged TO
+     for a shape, the letter's own centre for a letter.  null for a freehand
+     stroke or a fill: those have nothing to drag, so they get a selection
+     outline and the layer buttons and no handle. */
+  const handleCell = (op) => {
+    if (!op) return null;
+    if (op.k === 's') return [op.a[2], op.a[3]];
+    if (op.k === 't') return [op.x, op.y];
+    return null;
+  };
 
   /* v2.3.1941: `onPattern` is a DEPENDENCY, not decoration.  The grid canvas is
      unmounted on the pattern screen, so coming back to a drawing re-creates it
@@ -614,25 +813,46 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
         if (c) { ctx.fillStyle = c; ctx.fillRect(x * S, y * S, S, S); }
       }
     }
-    /* v2.3.1948: the shape under your finger, drawn but not yet committed.  It
-       is painted with exactly the code that will commit it, so the preview
-       cannot disagree with the result.  With the eraser chosen it paints the
-       checkerboard back in, which is what erasing those cells will look like. */
-    const d = draftRef.current;
-    if (d) {
-      const col = ART_PALETTE[ink];
-      for (let i = 0; i < d.length; i++) {
-        const x = d[i][0], y = d[i][1];
-        ctx.fillStyle = col || checker(x, y);
-        ctx.fillRect(x * S, y * S, S, S);
+    /* v2.3.1948 drew the uncommitted shape as a separate overlay.  v2.3.1967
+       does not need to: a shape being dragged is already an op in the list, so
+       the loop above painted it — in its real colour, at its real layer, behind
+       whatever is meant to be in front of it.  A preview that IS the drawing
+       cannot disagree with the result.
+
+       What is left to draw is the two things that are not part of the drawing:
+       WHICH op is selected, and the handle that adjusts it. */
+    const selCells = (sel >= 0 && sel < painted.cells.length) ? painted.cells[sel] : null;
+    if (selCells && selCells.length) {
+      /* An outline around the selection's own cells rather than a bounding box:
+         a circle's box is mostly not the circle, and on a 16-cell grid a box
+         drawn round one shape covers the three next to it.  Only the edges with
+         no neighbour in the set are stroked, so the ring hugs the shape. */
+      const has = new Uint8Array(ART_W * ART_H);
+      for (let i = 0; i < selCells.length; i++) has[selCells[i][1] * ART_W + selCells[i][0]] = 1;
+      ctx.save();
+      ctx.lineWidth = Math.max(1.5, S * 0.11);
+      ctx.strokeStyle = '#D8AA58';
+      ctx.beginPath();
+      for (let i = 0; i < selCells.length; i++) {
+        const x = selCells[i][0], y = selCells[i][1];
+        const px = x * S, py = y * S;
+        if (y === 0 || !has[(y - 1) * ART_W + x]) { ctx.moveTo(px, py); ctx.lineTo(px + S, py); }
+        if (y === ART_H - 1 || !has[(y + 1) * ART_W + x]) { ctx.moveTo(px, py + S); ctx.lineTo(px + S, py + S); }
+        if (x === 0 || !has[y * ART_W + x - 1]) { ctx.moveTo(px, py); ctx.lineTo(px, py + S); }
+        if (x === ART_W - 1 || !has[y * ART_W + x + 1]) { ctx.moveTo(px + S, py); ctx.lineTo(px + S, py + S); }
       }
+      ctx.stroke();
+      ctx.restore();
     }
     /* v2.3.1951: the resize handle, on the corner you dragged TO.  Drawn last
        so it is never hidden under the shape's own cells, and drawn as a ring
-       rather than a blob so it does not read as part of the drawing. */
-    const pend = pendRef.current;
-    if (pend) {
-      const hx = (pend.x1 + 0.5) * S, hy = (pend.y1 + 0.5) * S;
+       rather than a blob so it does not read as part of the drawing.
+       v2.3.1967: it sits on the selected OP now — the far corner of a shape, or
+       a letter's own centre, since a letter has no size to drag and its handle
+       moves it instead. */
+    const hcell = handleCell(selOp);
+    if (hcell) {
+      const hx = (hcell[0] + 0.5) * S, hy = (hcell[1] + 0.5) * S;
       const r = Math.max(7, S * 0.62);
       ctx.beginPath();
       ctx.arc(hx, hy, r, 0, Math.PI * 2);
@@ -646,7 +866,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
       ctx.fillStyle = '#D8AA58';
       ctx.fill();
     }
-  }, [art, onPattern, draftTick, pendTick, ink]);
+  }, [art, painted, onPattern, sel, selOp]);
 
   /* Which cell the pointer is over.  `clamp` pins a drag that has wandered off
      the grid to the nearest edge cell instead of dropping it: pointer capture
@@ -667,6 +887,8 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   };
 
   const paintPen = (e) => {
+    const st = strokeRef.current;
+    if (!st) return;
     const cell = cellAt(e, false);
     if (!cell) { prevCellRef.current = null; return; }
     const k = cell[0] + ',' + cell[1];
@@ -681,34 +903,123 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
       : [cell];
     lastRef.current = k;
     prevCellRef.current = cell;
+    /* v2.3.1967: the cells go into the stroke's OWN op rather than into the
+       string.  The op stores what the stroke FINISHED with — already widened by
+       the brush and already mirrored — because the pen is the one tool with
+       nothing left to adjust afterwards, and storing the result means a replay
+       can never disagree with what appeared under the finger. */
     const cells = mirrorCells(expandCells(path, brush), mirror);
-    setArtState((a) => artWithCells(a, cells, ink));
+    const add = [];
+    for (let i = 0; i < cells.length; i++) {
+      const idx = cells[i][1] * ART_W + cells[i][0];
+      if (st.seen.has(idx)) continue;       /* a drag re-crosses its own cells */
+      st.seen.add(idx);
+      add.push(idx);
+    }
+    if (!add.length) return;
+    setDoc((d) => ({ ...d, ops: d.ops.map((o, i) => (i === st.idx ? { ...o, c: o.c.concat(add) } : o)) }));
   };
 
-  /* Commit whatever shape is pending.  Called by starting a new gesture, by
-     Place, by switching tool, and by Done — anything that means "I am finished
-     with this one". */
-  const placePending = () => {
-    const d = draftRef.current;
-    if (!pendRef.current || !d || !d.length) { setPend(null); return; }
-    pushHist(art);
-    setArtState((a) => artWithCells(a, d, ink));
-    setPend(null);
-    setDraft(null);
+  /* ── v2.3.1967: selection ─────────────────────────────────────────────────
+     Topmost first: the LAST op that painted the cell you tapped is the one on
+     top of the pile there, which is the one you meant.  A box OUTLINE owns only
+     its border cells, so a tap through the middle of one reaches whatever is
+     behind it — which is right, because there is nothing of the box there. */
+  const hitTest = (x, y) => {
+    const cells = paintedRef.current.cells;
+    for (let i = cells.length - 1; i >= 0; i--) {
+      const list = cells[i];
+      for (let k = 0; k < list.length; k++) {
+        if (list[k][0] === x && list[k][1] === y) return i;
+      }
+    }
+    return -1;
   };
-  const cancelPending = () => { setPend(null); setDraft(null); };
+  const selectOp = (i) => {
+    if (i < 0) { pendRef.current = null; setSel(-1); return; }
+    const op = docRef.current.ops[i];
+    if (!op) return;
+    /* A re-selected shape returns to EXACTLY the state a freshly drawn one is
+       in — the same corner handle, the same Place/Cancel, the same ratio lock —
+       so there is one way to adjust a shape and not two.  `orig` is what it
+       looked like when it was picked up, which is what Cancel means here. */
+    pendRef.current = {
+      isNew: false,
+      orig: op,
+      hist: null,
+      ratio: op.k === 's'
+        ? (Math.abs(op.a[2] - op.a[0]) + 1) / (Math.abs(op.a[3] - op.a[1]) + 1)
+        : 1,
+    };
+    setSel(i);
+  };
+  /* Bank ONE undo entry per selection, on the first adjustment: picking a shape
+     up and putting it down unchanged should not cost a tap of Undo. */
+  const bankPend = () => {
+    const p = pendRef.current;
+    if (!p || p.hist) return;
+    pushHist(docRef.current);
+    p.hist = histRef.current[histRef.current.length - 1];
+  };
+
+  /* Finished with the selection.  Called by starting a new gesture, by Place,
+     by switching tool, and by Done — anything that means "I am done with this
+     one".  The op stays exactly where it is; there is nothing to commit any
+     more, which is the whole difference v2.3.1967 makes. */
+  const placePending = () => { pendRef.current = null; setSel(-1); };
+  /* Cancel means "as it was".  For a shape you have just drawn, that is nothing
+     at all, so it is removed; for one you picked up, it is the geometry it had
+     when you picked it up.  Either way the undo entry banked for this selection
+     comes back off the stack — the action did not happen. */
+  const cancelPending = () => {
+    const p = pendRef.current, i = selRef.current;
+    if (p && i >= 0) {
+      if (p.isNew) dropOp(i);
+      else if (p.orig) setOp(i, p.orig);
+      unbank(p.hist);
+    }
+    pendRef.current = null;
+    setSel(-1);
+  };
 
   /* Is this pointer on the handle?  Generous: the handle is drawn about
      two-thirds of a cell and a finger is a lot wider than that. */
   const onHandle = (e) => {
-    const pend = pendRef.current;
+    const h = handleCell(selOpRef.current);
     const cv = cvRef.current;
-    if (!pend || !cv) return false;
+    if (!h || !cv) return false;
     const r = cv.getBoundingClientRect();
     const cw = r.width / ART_W, ch = r.height / ART_H;
-    const hx = r.left + (pend.x1 + 0.5) * cw, hy = r.top + (pend.y1 + 0.5) * ch;
+    const hx = r.left + (h[0] + 0.5) * cw, hy = r.top + (h[1] + 0.5) * ch;
     const dx = e.clientX - hx, dy = e.clientY - hy;
     return Math.hypot(dx, dy) <= Math.max(22, cw * 1.3);
+  };
+
+  /* ── v2.3.1967: LAYERS ────────────────────────────────────────────────────
+     Owner: "Also can you add an option to change layers?"  Moving an op in the
+     list IS the layer change — everything after it in the list paints over it —
+     so this is a splice, and the drawing re-renders from the new order.  The
+     selection follows the op rather than the slot, so the readout above the
+     buttons ("Layer 3 of 5") names where the thing you are holding ended up.
+
+     `to` is 'front', 'back', or a signed step. */
+  const moveSel = (to) => {
+    const i = selRef.current;
+    const d = docRef.current;
+    if (i < 0 || i >= d.ops.length) return;
+    const n = d.ops.length;
+    const j = Math.max(0, Math.min(n - 1,
+      to === 'front' ? n - 1 : to === 'back' ? 0 : i + to));
+    if (j === i) return;
+    pushHist(d);
+    const ops = d.ops.slice();
+    const moved = ops.splice(i, 1)[0];
+    ops.splice(j, 0, moved);
+    setDoc({ ...d, ops });
+    setSel(j);
+    /* The layer move is its own undo step and stands on its own: a later Cancel
+       reverts the GEOMETRY it was picked up with, not the ordering. */
+    if (pendRef.current) pendRef.current.hist = null;
   };
 
   /* Resize to a new far corner, honouring the ratio lock.  The lock keeps the
@@ -717,24 +1028,40 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
      means for a shape you made yourself. */
   const resizeTo = (cx, cy) => {
     const pend = pendRef.current;
-    if (!pend) return;
-    let nx = cx, ny = cy;
-    if (lockRatio && pend.ratio > 0) {
-      const sx = nx >= pend.x0 ? 1 : -1, sy = ny >= pend.y0 ? 1 : -1;
-      const w = Math.abs(nx - pend.x0) + 1, h = Math.abs(ny - pend.y0) + 1;
-      /* Follow whichever axis the finger moved further along, so the shape
-         tracks the finger instead of fighting it. */
-      const useW = w >= h * pend.ratio;
-      const nw = useW ? w : Math.max(1, Math.round(h * pend.ratio));
-      const nh = useW ? Math.max(1, Math.round(w / pend.ratio)) : h;
-      nx = pend.x0 + sx * (nw - 1);
-      ny = pend.y0 + sy * (nh - 1);
-      nx = Math.max(0, Math.min(ART_W - 1, nx));
-      ny = Math.max(0, Math.min(ART_H - 1, ny));
-    }
-    const box = { x0: pend.x0, y0: pend.y0, x1: nx, y1: ny, ratio: pend.ratio };
-    pendRef.current = box;
-    setDraft(mirrorCells(expandCells(shapeCells(tool, box.x0, box.y0, box.x1, box.y1), brush), mirror));
+    const i = selRef.current;
+    if (!pend || i < 0) return;
+    /* Read the op INSIDE the updater: two pointermoves can arrive between
+       renders, and a shape resized from a render-old copy of itself snaps back
+       a frame every time the finger moves fast. */
+    setDoc((d) => {
+      const op = d.ops[i];
+      if (!op) return d;
+      /* A letter has no size, so its handle MOVES it.  That is the only edit a
+         letter has, and giving it to the same handle keeps one gesture for
+         "adjust the thing you picked up". */
+      if (op.k === 't') {
+        if (op.x === cx && op.y === cy) return d;
+        return { ...d, ops: d.ops.map((o, k) => (k === i ? { ...o, x: cx, y: cy } : o)) };
+      }
+      if (op.k !== 's') return d;
+      const x0 = op.a[0], y0 = op.a[1];
+      let nx = cx, ny = cy;
+      if (lockRatio && pend.ratio > 0) {
+        const sx = nx >= x0 ? 1 : -1, sy = ny >= y0 ? 1 : -1;
+        const w = Math.abs(nx - x0) + 1, h = Math.abs(ny - y0) + 1;
+        /* Follow whichever axis the finger moved further along, so the shape
+           tracks the finger instead of fighting it. */
+        const useW = w >= h * pend.ratio;
+        const nw = useW ? w : Math.max(1, Math.round(h * pend.ratio));
+        const nh = useW ? Math.max(1, Math.round(w / pend.ratio)) : h;
+        nx = x0 + sx * (nw - 1);
+        ny = y0 + sy * (nh - 1);
+        nx = Math.max(0, Math.min(ART_W - 1, nx));
+        ny = Math.max(0, Math.min(ART_H - 1, ny));
+      }
+      if (op.a[2] === nx && op.a[3] === ny) return d;
+      return { ...d, ops: d.ops.map((o, k) => (k === i ? { ...o, a: [x0, y0, nx, ny] } : o)) };
+    });
   };
 
   const down = (e) => {
@@ -742,40 +1069,54 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
     /* v2.3.1951: the handle wins over everything — it is the only thing on the
        grid that is not a drawing gesture. */
     if (onHandle(e)) {
+      bankPend();
       dragHandleRef.current = true;
       paintingRef.current = true;
       lastRef.current = '';
       return;
     }
-    /* Anywhere else means "done with that one". */
-    if (pendRef.current) placePending();
-    if (tdef.drag === 'once') {
-      /* Fill and Letters are a TAP, not a drag: they commit where you touch. */
+    /* v2.3.1967: the hand tool picks up what is already there instead of
+       putting anything down.  A tap on nothing clears the selection, which is
+       the only way to say "never mind" without moving something. */
+    if (tdef.drag === 'pick') {
       const c = cellAt(e, false);
-      if (!c) return;
-      pushHist(art);
-      if (tool === 'fill') {
-        setArtState((a) => artWithCells(a, mirrorCells(fillCells(a, c[0], c[1]), mirror), ink));
-      } else {
-        setArtState((a) => artWithCells(a, mirrorCells(letterCells(letter, c[0], c[1]), mirror), ink));
-      }
+      selectOp(c ? hitTest(c[0], c[1]) : -1);
       return;
     }
-    /* A drag is ONE undoable action, so the drawing is banked here, before the
-       first cell of it is painted. */
-    pushHist(art);
+    /* Anywhere else means "done with that one". */
+    if (selRef.current >= 0) placePending();
+    if (tdef.drag === 'once') {
+      /* Fill and Letters are a TAP, not a drag: they commit where you touch.
+         A fill is stored as an op like everything else, and it is re-run in
+         sequence on every replay rather than resolved once — it floods against
+         the grid AS IT WAS at that point in the list, so re-ordering the ops
+         above it genuinely changes what it fills. */
+      const c = cellAt(e, false);
+      if (!c) return;
+      addOp(tool === 'fill'
+        ? { k: 'f', x: c[0], y: c[1], i: ink, m: mirror ? 1 : 0 }
+        : { k: 't', g: letter, x: c[0], y: c[1], i: ink, m: mirror ? 1 : 0 });
+      return;
+    }
     paintingRef.current = true;
     lastRef.current = '';
     prevCellRef.current = null;
     if (tdef.drag === 'shape') {
+      /* A drag is ONE undoable action, and `addOp` banks the drawing before the
+         shape joins it.  The shape is a real op from the first frame — which is
+         why there is no draft overlay any more: what you are dragging out IS
+         the drawing, at its own layer. */
       const c = cellAt(e, true);
       anchorRef.current = c;
-      setDraft(mirrorCells(expandCells(shapeCells(tool, c[0], c[1], c[0], c[1]), brush), mirror));
+      const i = addOp({ k: 's', t: tool, a: [c[0], c[1], c[0], c[1]], i: ink, b: brush, m: mirror ? 1 : 0 });
+      pendRef.current = { isNew: true, orig: null, ratio: 1, hist: histRef.current[histRef.current.length - 1] };
+      setSel(i);
       return;
     }
+    const idx = addOp({ k: 'c', c: [], i: ink });
+    strokeRef.current = { idx, seen: new Set(), hist: histRef.current[histRef.current.length - 1] };
     paintPen(e);
   };
-  const anchorRef = React.useRef(null);
   const move = (e) => {
     if (!paintingRef.current) return;
     if (dragHandleRef.current) {
@@ -788,35 +1129,46 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
     }
     if (tdef.drag === 'shape') {
       const a = anchorRef.current;
-      if (!a) return;
+      const i = selRef.current;
+      if (!a || i < 0) return;
       const c = cellAt(e, true);
       const k = c[0] + ',' + c[1];
       if (k === lastRef.current) return;
       lastRef.current = k;
-      setDraft(mirrorCells(expandCells(shapeCells(tool, a[0], a[1], c[0], c[1]), brush), mirror));
+      setDoc((d) => {
+        const op = d.ops[i];
+        if (!op || op.k !== 's') return d;
+        return { ...d, ops: d.ops.map((o, n) => (n === i ? { ...o, a: [a[0], a[1], c[0], c[1]] } : o)) };
+      });
       return;
     }
     paintPen(e);
   };
   const up = () => {
-    const d = draftRef.current;
     if (dragHandleRef.current) {
-      /* Still pending — the whole point is that you can keep adjusting it. */
+      /* Still selected — the whole point is that you can keep adjusting it. */
       dragHandleRef.current = false;
       paintingRef.current = false;
       lastRef.current = '';
       return;
     }
-    if (paintingRef.current && tdef.drag === 'shape' && d && d.length) {
-      /* v2.3.1951: a shape no longer lands on release.  It becomes pending,
-         with a handle, until you place it. */
+    if (paintingRef.current && tdef.drag === 'shape') {
+      /* v2.3.1951: a shape does not land on release.  It stays selected, with
+         its handle, until you place it.  Only the ASPECT is settled here —
+         remembered from the anchor and the last cell rather than read back out
+         of the doc, because the last move's state may not have flushed yet. */
       const a = anchorRef.current;
-      const c = lastRef.current ? lastRef.current.split(',').map(Number) : [a[0], a[1]];
-      const w = Math.abs(c[0] - a[0]) + 1, h = Math.abs(c[1] - a[1]) + 1;
-      setPend({ x0: a[0], y0: a[1], x1: c[0], y1: c[1], ratio: w / h });
-    } else if (paintingRef.current && d && d.length) {
-      setArtState((a) => artWithCells(a, d, ink));
-      setDraft(null);
+      if (a && pendRef.current) {
+        const c = lastRef.current ? lastRef.current.split(',').map(Number) : [a[0], a[1]];
+        const w = Math.abs(c[0] - a[0]) + 1, h = Math.abs(c[1] - a[1]) + 1;
+        pendRef.current.ratio = w / h;
+      }
+    } else if (strokeRef.current) {
+      /* A stroke that touched no cell at all (a press that started off the
+         grid) leaves an empty op and a dead undo step behind it. */
+      const st = strokeRef.current;
+      if (!st.seen.size) { dropOp(st.idx); unbank(st.hist); }
+      strokeRef.current = null;
     }
     paintingRef.current = false;
     anchorRef.current = null;
@@ -888,8 +1240,13 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
               onClick={() => {
                 const from = side === 'front' ? 'shirtFront' : 'shirtBack';
                 const to = side === 'front' ? 'shirtBack' : 'shirtFront';
-                pushHist(getArt(to));       /* what the OTHER side had */
-                copyArt(from, to);
+                /* v2.3.1967: the OTHER side's whole doc, tagged with its id, so
+                   Undo puts the back back rather than pasting it over the front
+                   (which is what banking a bare string did).  And the copy
+                   carries the op list, so the other side arrives with its
+                   shapes still separable instead of as a flat print. */
+                pushHist(snapshot(to));
+                copyDoc(from, to);
                 setCopied(true);
               }}>
               {copied ? 'Copied \u2713' : ('Copy to ' + (side === 'front' ? 'back' : 'front'))}
@@ -917,7 +1274,10 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
             <BodyInk look={look} arts={bodyArts} ink={ink} brush={brush}
               onInk={inkFromBody} onRegion={setBodySpot} />
           ) : (
-            <canvas ref={cvRef} width={size} height={size}
+            /* v2.3.1967: a class, so a headless scenario can aim at the flat
+               grid without guessing which canvas in the panel it is (the panel
+               holds a worn preview and, on the body tab, the figure). */
+            <canvas ref={cvRef} width={size} height={size} className="bt-paint-grid"
               onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
               style={{ width: '100%', aspectRatio: '1 / 1',
                 imageRendering: 'pixelated', touchAction: 'none', cursor: 'crosshair',
@@ -946,9 +1306,8 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                 onClick={() => {
                   /* v2.3.1951: a pending shape belongs to you -- reaching for
                      another tool places it rather than binning it. */
-                  if (pendRef.current) placePending();
+                  if (selRef.current >= 0) placePending();
                   setTool(t.id);
-                  setDraft(null);
                 }}
                 className={'bt-paint-tool' + (tool === t.id ? ' bt-paint-tool--on' : '')}
                 aria-pressed={tool === t.id} title={TOOL_HINT[t.id]}>
@@ -968,30 +1327,46 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
              the row keeps its height either way, so nothing below it jumps when
              you change tool. */
           <div className="bt-paint-opts">
-            {(pendRef.current && !onBody) ? (
+            {(selOp && !onBody) ? (
               /* v2.3.1951: while a shape is pending the row belongs to IT.
                  Contextual rather than three more permanent buttons: the row
                  already swaps for the letter tool, the controls only mean
                  anything while there is a shape to adjust, and appearing
-                 exactly when you make one is how you find out they exist. */
-              <div className="bt-paint-opts-main bt-paint-shapeops">
-                <button type="button" onClick={() => setLockRatio((v) => !v)}
-                  aria-pressed={lockRatio}
-                  className={'bt-paint-size' + (lockRatio ? ' bt-paint-size--on' : '')}
-                  title={lockRatio
-                    ? 'Keeping the proportions you drew — tap to size width and height freely'
-                    : 'Width and height are free — tap to keep the proportions you drew'}>
+                 exactly when you make one is how you find out they exist.
+                 v2.3.1967: the same row serves anything you PICK UP with the
+                 hand now, so the column count follows what was picked: a box
+                 can be resized, a letter can only be moved, and a brush stroke
+                 or a fill can only be re-layered (the row under this one) — so
+                 those get one wide Done rather than a Cancel with nothing to
+                 cancel. */
+              <div className="bt-paint-opts-main bt-paint-shapeops"
+                style={{ gridTemplateColumns: 'repeat(' + (selOp.k === 's' ? 3 : selOp.k === 't' ? 2 : 1) + ', 1fr)' }}>
+                {selOp.k === 's' && (
+                  <button type="button" onClick={() => setLockRatio((v) => !v)}
+                    aria-pressed={lockRatio}
+                    className={'bt-paint-size' + (lockRatio ? ' bt-paint-size--on' : '')}
+                    title={lockRatio
+                      ? 'Keeping the proportions you drew — tap to size width and height freely'
+                      : 'Width and height are free — tap to keep the proportions you drew'}>
+                    <span className="bt-paint-tool-label">
+                      {lockRatio ? '\u2713 Keep shape' : 'Free size'}
+                    </span>
+                  </button>
+                )}
+                <button type="button" onClick={placePending}
+                  className="bt-paint-size bt-paint-size--on"
+                  title="Finished with this one">
                   <span className="bt-paint-tool-label">
-                    {lockRatio ? '\u2713 Keep shape' : 'Free size'}
+                    {(selOp.k === 's' || selOp.k === 't') ? 'Place' : 'Done'}
                   </span>
                 </button>
-                <button type="button" onClick={placePending}
-                  className="bt-paint-size bt-paint-size--on">
-                  <span className="bt-paint-tool-label">Place</span>
-                </button>
-                <button type="button" onClick={cancelPending} className="bt-paint-size">
-                  <span className="bt-paint-tool-label">Cancel</span>
-                </button>
+                {(selOp.k === 's' || selOp.k === 't') && (
+                  <button type="button" onClick={cancelPending} className="bt-paint-size"
+                    title={(pendRef.current && pendRef.current.isNew)
+                      ? 'Throw this one away' : 'Put it back the way you found it'}>
+                    <span className="bt-paint-tool-label">Cancel</span>
+                  </button>
+                )}
               </div>
             ) : (tool === 'letter' && !onBody) ? (
               <div className="bt-paint-letters" ref={stripRef}>
@@ -1034,6 +1409,53 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
               </svg>
               <span className="bt-paint-tool-label">Mirror</span>
             </button>
+          </div>
+        )}
+
+        {/* ═══ v2.3.1967: THE LAYER ROW ═══
+            Owner: "Also can you add an option to change layers?"
+
+            ALWAYS RENDERED, not conditional on having something picked up.
+            The first cut showed it only while something was selected, and that
+            is a reflow in the middle of a GESTURE: a shape is selected from its
+            first cell, so pointer-down would have grown the panel by a row — and
+            the panel is a centred flex child, so on any viewport where it fits,
+            growing it re-centres it and slides the grid out from under the
+            finger that is still drawing.  This is the same rule the brush-width
+            row already follows a few lines up ("the row keeps its height either
+            way, so nothing below it jumps"), and this is why it is a rule.
+            mp-shapelayer pins the panel's height across a selection.
+
+            Being always-on also makes the feature findable: the controls are
+            visible before you have used the hand, with a caption that says what
+            to do, rather than hiding until you have already guessed.
+
+            The readout is not decoration.  The owner reads the RESULT, not the
+            code, and two overlapping shapes of the same colour can swap order
+            with very little visibly happening — so the row names which layer
+            the thing you are holding is on and how many there are, and that
+            sentence changes on every tap.  Four steps rather than two because
+            "one step back" is the move you actually want when a drawing has
+            five pieces in it and only one of them is in the way. */}
+        {!onPattern && !onBody && (
+          <div className="bt-paint-layers">
+            <div className="bt-paint-layer-at">
+              {selOp
+                ? ('Layer ' + (sel + 1) + ' of ' + doc.ops.length + ' \u00b7 ' + selName(selOp))
+                : 'Layers: pick the hand, tap something you drew'}
+            </div>
+            <div className="bt-paint-layer-btns">
+              {LAYER_MOVES.map((m) => {
+                const off = !selOp || (m.d === 'back' || m.d === -1 ? sel <= 0 : sel >= doc.ops.length - 1);
+                return (
+                  <button key={m.k} type="button" className="bt-paint-size" disabled={off}
+                    style={off ? { opacity: 0.38, cursor: 'default' } : undefined}
+                    onClick={() => moveSel(m.d)} title={m.tip}>
+                    <span className="bt-paint-tool-label">{m.label}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -1116,16 +1538,19 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
             title={onPattern ? 'Remove the pattern' : ('Erase the whole ' + (isShirt ? side + ' of the shirt' : scfg.label))}
             onClick={() => {
               if (onPattern) { pickTile(''); return; }
-              cancelPending();      /* clearing an empty grid should leave it empty */
-              pushHist(art);
-              setArtState(emptyArt());
+              placePending();       /* nothing is selected on an empty grid */
+              pushHist(docRef.current);
+              /* v2.3.1967: Clear empties the LIST as well as the drawing.
+                 Leaving the ops behind and blanking the base would put every
+                 shape straight back on the next replay. */
+              setDoc({ id: artId, base: emptyArt(), ops: [] });
             }}>
             <span className="bt-cc-tab-label">
               {onPattern ? 'No pattern' : 'Clear'}
             </span>
           </button>
           <button type="button" className="bt-cc-tab bt-cc-tab--on" style={{ flex: 1, minHeight: 38 }}
-            onClick={() => { if (pendRef.current) placePending(); onClose(); }}>
+            onClick={() => { if (selRef.current >= 0) placePending(); onClose(); }}>
             <span className="bt-cc-tab-label">Done</span>
           </button>
         </div>
