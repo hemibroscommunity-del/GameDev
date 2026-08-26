@@ -2231,7 +2231,14 @@ body:has(.bt-inspect) .bt-kb-chip{display:none}
   cursor:pointer;-webkit-tap-highlight-color:transparent;
   transition:transform .09s ease-out,filter .18s ease-out;
 }
-.bt-login-btn--key{background-image:url('/ui/welcome/title/btn-login.png');aspect-ratio:815/259}
+/* v2.3.1954 (owner: "change the label from login with your key to just
+   'Continue' on splash screen").  The label is painted INTO the plate, so the
+   rename is the change: this stylesheet cannot append the build version the
+   way the JSX art() helper does, and an edit in place would be served from
+   cache to every returning player — on the one screen where the stale word is
+   the whole bug.  Same plate, same size, new word.  See
+   tools/ui/relabel-login-plate.mjs for how the lettering was recomposed. */
+.bt-login-btn--key{background-image:url('/ui/welcome/title/btn-continue.png');aspect-ratio:815/259}
 .bt-login-btn--new{background-image:url('/ui/welcome/title/btn-create.png');aspect-ratio:799/212}
 .bt-login-btn:active{transform:translateY(1px) scale(.995)}
 .bt-login-btn:disabled{opacity:.55;cursor:default;animation:none}
