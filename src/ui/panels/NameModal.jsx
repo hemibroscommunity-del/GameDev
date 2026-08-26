@@ -758,11 +758,29 @@ export function NameModal(props) {
     var _on = !!_p && !(_activeType === 'shirt' && (!_def.sel || _def.sel === 'none'));
     return /*#__PURE__*/React.createElement("button", {
       type: 'button', disabled: !_on,
-      className: 'bt-cc-tab' + (_on ? '' : ' bt-cc-ghost'),
+      className: 'bt-cc-draw' + (_on ? '' : ' bt-cc-ghost'),
       "aria-hidden": _on ? undefined : true,
-      style: { width: '100%', minHeight: 38, marginTop: 6 },
       onClick: function () { if (_on) setShowPaint(_p.target); }
-    }, /*#__PURE__*/React.createElement("span", { className: 'bt-cc-tab-label' },
+    },
+    /* v2.3.1946: a pencil, drawn inline rather than shipped as art -- it is
+       four strokes, it inherits the button's own colour, and it stays crisp at
+       any density without a second asset to preload (the animation-preload law
+       exists because assets that load late hitch; one that is never fetched
+       cannot).  aria-hidden because the label beside it already says it. */
+    /*#__PURE__*/React.createElement("svg", {
+      className: 'bt-cc-draw-icon', viewBox: '0 0 24 24', width: 22, height: 22,
+      "aria-hidden": true, focusable: 'false'
+    },
+    /*#__PURE__*/React.createElement("path", {
+      d: 'M4 20.5h4.2L20 8.7a2 2 0 0 0 0-2.8l-1.9-1.9a2 2 0 0 0-2.8 0L3.5 15.8V20a.5.5 0 0 0 .5.5Z',
+      fill: 'none', stroke: 'currentColor', strokeWidth: 1.9,
+      strokeLinecap: 'round', strokeLinejoin: 'round'
+    }),
+    /*#__PURE__*/React.createElement("path", {
+      d: 'M14.6 5.7 18.9 10',
+      fill: 'none', stroke: 'currentColor', strokeWidth: 1.9, strokeLinecap: 'round'
+    })),
+    /*#__PURE__*/React.createElement("span", { className: 'bt-cc-tab-label' },
       _on ? _p.label : 'Draw'));
   }())))),
   showPaint && /*#__PURE__*/React.createElement(PlayerPaint, {
