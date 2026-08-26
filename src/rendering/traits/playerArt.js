@@ -52,8 +52,26 @@ export function isValidArt(s) {
   return typeof s === 'string' && s.length === ART_LEN && /^[0-9a-f]+$/.test(s);
 }
 
-/** True if anything is actually painted. */
-export function artHasInk(s) { return isValidArt(s) && /[^0]/.test(s); }
+/** True if anything is actually painted.
+ *
+ *  v2.3.1945: "not zero" is NOT the same as "paints something", and the gap was
+ *  reachable.  The palette holds 15 entries, so indices 0-e; the character 'f'
+ *  is a well-formed hex digit that no colour answers to, and artColorAt maps it
+ *  to transparent.  A drawing of 256 'f's therefore passed isValidArt, passed
+ *  the old non-zero test, travelled the wire, and made every client that saw it
+ *  bake a whole extra body sheet AND shirt sheet to render nothing at all.
+ *  The picker cannot produce one (artWith clamps), so this only ever arrives
+ *  hand-edited or from a peer -- which is exactly the input that has to be
+ *  checked.  Now a cell counts only if the palette actually has a colour for
+ *  it, which is the same rule artColorAt paints by. */
+export function artHasInk(s) {
+  if (!isValidArt(s)) return false;
+  for (let i = 0; i < s.length; i++) {
+    const c = HEX.indexOf(s[i]);
+    if (c > 0 && c < ART_PALETTE.length) return true;
+  }
+  return false;
+}
 
 /** Palette colour for a cell character, or null for transparent/unknown. */
 export function artColorAt(s, x, y) {
