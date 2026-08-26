@@ -203,12 +203,52 @@ function _largestPiece(mask, w, h, x0, x1) {
  *        the behaviour is exactly what it was: largest piece only, confined to
  *        the whole mask, which keeps the shipped chest/trouser bakes identical.
  */
+/* ═══ v2.3.1962: WHERE THE 16x16 GRID LANDS, IN ONE PLACE ═══
+ *
+ * The drawing is a 16x16 grid fitted into a box inside the region's measured
+ * bulk rectangle.  That arithmetic used to live inline in stampRegion and
+ * nowhere else, which was fine while the only thing that needed it was the
+ * stamp itself.  The designer now needs the SAME numbers to run backwards —
+ * the owner wants to draw on the character rather than on a detached grid, so
+ * a touch on the body has to resolve to a cell — and a second copy of a fit
+ * like this is precisely how the hat and its hair-mask drifted apart
+ * (v2.3.1959).  One function, used by both directions.
+ *
+ * `fillW`/`fillH` are the share of the region the grid covers and `cy` is where
+ * its centre sits down the region, so the caller's BOX constants keep meaning
+ * exactly what they meant.
+ */
+export function gridFit(lx, rx, ty, by, box) {
+  const bw = rx - lx + 1, bh = by - ty + 1;
+  const dw = Math.max(ART_W, Math.round(bw * box.fillW));
+  const dh = Math.max(ART_H, Math.round(bh * box.fillH));
+  const ox = Math.round((lx + rx + 1) / 2 - dw / 2);
+  const oy = Math.round(ty + bh * box.cy - dh / 2);
+  return { ox, oy, cw: dw / ART_W, ch: dh / ART_H };
+}
+
+/** The inverse of gridFit: which grid cell a pixel of the SHEET falls in, or
+ *  null when it falls outside the grid entirely.  Deliberately does NOT consult
+ *  the region mask — a touch just off the arm should still resolve to the cell
+ *  it is nearest, or the last few pixels of every stroke would be swallowed.
+ *  What the mask governs is where the ink SHOWS, which the live preview says
+ *  better than a rejected touch would. */
+export function cellAt(g, x, y) {
+  const gx = Math.floor((x - g.ox) / g.cw);
+  const gy = Math.floor((y - g.oy) / g.ch);
+  if (gx < 0 || gy < 0 || gx >= ART_W || gy >= ART_H) return null;
+  return { gx, gy };
+}
+
 export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
   if (!artHasInk(art)) return 0;
   const frames = Math.max(1, Math.floor(w / frameW));
-  const fillW = box.fillW, fillH = box.fillH, cy = box.cy;
   const eachPiece = !!(opts && opts.eachPiece);
   const underSkin = !!(opts && opts.underSkin);   /* v2.3.1950 */
+  /* v2.3.1962: when the caller passes an array, every grid this stamp fits is
+     pushed into it.  The designer reads them to turn a touch on the body back
+     into a cell; the game passes nothing and the array never exists. */
+  const report = (opts && opts.report) || null;
   let painted = 0;
   let scratch = null, seenBuf = null;
   /* The mask is its own array, so painting colours into `d` can never change
@@ -293,12 +333,8 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
       }
       refLum = n ? sum / n : 128;
     }
-    const bw = rx - lx + 1, bh = by - ty + 1;
-    const dw = Math.max(ART_W, Math.round(bw * fillW));
-    const dh = Math.max(ART_H, Math.round(bh * fillH));
-    const ox = Math.round((lx + rx + 1) / 2 - dw / 2);
-    const oy = Math.round(ty + bh * cy - dh / 2);
-    const cw = dw / ART_W, ch = dh / ART_H;
+    const { ox, oy, cw, ch } = gridFit(lx, rx, ty, by, box);
+    if (report) report.push({ ox, oy, cw, ch, lx, rx, ty, by, frame: f });
     for (let gy = 0; gy < ART_H; gy++) {
       for (let gx = 0; gx < ART_W; gx++) {
         const col = artColorAt(art, mirror ? (ART_W - 1 - gx) : gx, gy);

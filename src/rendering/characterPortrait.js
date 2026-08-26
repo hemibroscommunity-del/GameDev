@@ -547,9 +547,22 @@ export async function drawCharacterPortrait(canvas, opts) {
     || parsePattern(_pantsPat, 'pants') || parsePattern(_shoesPat, 'shoes'))
     ? { pants: _pantsArt || '', tattoo: _tattooArt || '',
       tattooFace: _faceArt || '', tattooArm: _armArt || '',
-      pantsPattern: _pantsPat, shoesPattern: _shoesPat, mirror: false } : null;
-  ctx.drawImage(recolorBodyToCanvas(bodyImg, skinTarget(skin), pantsTarget(pants), shoesTarget(shoes), null, FRAME,
-    eyeColorTarget(_eyeId), EYE_MASK[`stand-${DIR}`], _bodyArt), 0, 0);
+      pantsPattern: _pantsPat, shoesPattern: _shoesPat, mirror: false,
+      /* v2.3.1962: the designer asks for the grids the stamps fitted, so a
+         touch on the body can be run backwards into a cell.  Nothing else
+         passes it, and without it not a byte of this changes. */
+      report: !!(opts && opts.reportGrids) } : null;
+  const _bodyCv = recolorBodyToCanvas(bodyImg, skinTarget(skin), pantsTarget(pants), shoesTarget(shoes), null, FRAME,
+    eyeColorTarget(_eyeId), EYE_MASK[`stand-${DIR}`], _bodyArt);
+  ctx.drawImage(_bodyCv, 0, 0);
+  /* Stamped on the OUTPUT canvas, beside __btDir, because that is where the
+     caller can reach it.  The body is drawn at (0,0) into the 256 frame before
+     the zoom transform, so these grids are in the same 256-space every other
+     placement in this file is written in — the caller only has to undo the
+     zoom, which it authored. */
+  if (opts && opts.reportGrids) {
+    try { canvas.__btGrids = _bodyCv.__btGrids || null; } catch (e) { /* ignore */ }
+  }
   if (shirtImg) {
     /* v2.3.1110: restore a downscaled-on-disk shirt sheet to the 256px frame
        (these drawImage calls read a 256x256 source rect). No-op at native. */
