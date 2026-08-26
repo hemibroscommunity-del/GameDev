@@ -18,6 +18,9 @@
 import { processGameEvent } from '@/networking/gameEvents.js';
 import { stashPendingZoneNodes } from '@/networking/nodeSync.js'; /* v2.3.1301: node self-heal */
 import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking/index.js';
+/* v2.3.1961: the ONE wire-key -> peer-field rename table, read by the join
+   snapshot, both self-heal placeholders and the 2s track relay below. */
+import { peerCosmeticsFromWire, applyPeerCosmetics } from '@/networking/peerCosmetics.js';
 import { revealBus } from '@/ui/reveal/revealBus.js'; /* v2.3.1925 */
 import { applyCharacterRecord, hasStoredCharacter, publishCharRecord } from '@/game/characterRecord.js'; /* v2.3.1814: the stored name+look */
 import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, DEATH_GOLD_PENALTY, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, PROG3_SKILL_META, PROG3 } from '@/data/index.js';
@@ -372,25 +375,32 @@ export function setupWebSocket(ctx) {
                      cosmetics; the peer's 2s track relay (player_update)
                      fills in name/avatar/gear moments later.  With the 1 Hz
                      idle keepalive every live player appears in a tick at
-                     least once per second, so a resumed tab converges fast. */
+                     least once per second, so a resumed tab converges fast.
+                     v2.3.1961: that promise was only half true from the day it
+                     was written.  The relay wrote the SHORT wire keys onto the
+                     peer (Object.assign of msg.data), so only the fields whose
+                     wire name IS the field name -- name, avatar, and gear via
+                     its own rebuild -- ever arrived; skin, hair, headwear,
+                     shirt, pants, shoes, body size and every drawing stayed at
+                     the nulls below, and a peer found this way rendered as a
+                     bald default body for the whole session.  The relay maps
+                     through peerCosmetics.js now, so it really does converge. */
                   if (!S.others[pid]) {
-                    S.others[pid] = {
+                    /* v2.3.1961: the empty cosmetic set comes from the one
+                       rename table (peerCosmetics.js) instead of a hand-written
+                       null list — the same table the relay below now reads, so
+                       a placeholder can never be missing a field the relay
+                       fills or vice versa.  Called with `{}`: a tick delta
+                       carries position, not a look. */
+                    S.others[pid] = Object.assign({
                       x: data.x, y: data.y, _serverX: data.x, _serverY: data.y,
                       renderX: data.x, renderY: data.y,
                       name: 'Anon', color: '#888', avatar: null,
                       dir: data.d || 'down', bt: '#2563eb', bl: '#1e3a5f',
-                      headwear: null, facialhair: null, hair: null, skin: null,
-                      hairColor: null, hatColor: null, facialHairColor: null,
-                      shirt: null, shirtColor: null, eyeColor: null,
-                      shirtArtFront: null, shirtArtBack: null,   /* v2.3.1939 */
-                      pantsArt: null, tattooArt: null,   /* v2.3.1940 */
-                      faceTattooArt: null, armTattooArt: null,   /* v2.3.1949 */
-                      shirtPattern: null, pantsPattern: null, shoesPattern: null,   /* v2.3.1941; v2.3.1944 */
-                      buildHeight: null, buildFrame: null,   /* v2.3.1953 */
                       equip: { chest: 'none', legs: 'none', shoulders: 'none', shirt: 'none' },
-                      pants: null, shoes: null, rpgLv: 1, rpgHp: 50, rpgMaxHp: 50,
-                      bodySize: 'slim', zone: data.z || 'town',
-                    };
+                      rpgLv: 1, rpgHp: 50, rpgMaxHp: 50,
+                      zone: data.z || 'town',
+                    }, peerCosmeticsFromWire({}));
                     setPlayerCount(Object.keys(S.others).length + 1);
                   }
                   if (S.others[pid]) {
@@ -773,7 +783,14 @@ export function setupWebSocket(ctx) {
                   _pid = _Object$entries6$_i[0],
                   _data = _Object$entries6$_i[1];
                 if (_pid === S.myId) continue;
-                others[_pid] = {
+                /* v2.3.1961: the cosmetic half of this literal (headwear ...
+                   bodySize, every field the wire RENAMES) comes from
+                   peerCosmetics.js, which the `player_update` relay reads too.
+                   It used to be ~14 hand-written `_data.xx || null` lines here,
+                   a near-identical set in `player_join`, and nothing at all on
+                   the relay -- three lists to remember, which is why keys kept
+                   shipping into some of them and not the others. */
+                others[_pid] = Object.assign({
                   x: _data.x || 0,
                   y: _data.y || 0,
                   _serverX: _data.x || 0,
@@ -786,33 +803,14 @@ export function setupWebSocket(ctx) {
                   dir: _data.d || 'down',
                   bt: _data.bt || '#2563eb',
                   bl: _data.bl || '#1e3a5f',
-                  headwear: _data.hw || null,
-                  facialhair: _data.fh || null,
-                  hair: _data.hr || null,
-                  skin: _data.sk || null,
-                  hairColor: _data.hc || null,
-                  hatColor: _data.htc || null,
-                  facialHairColor: _data.fhc || null,
-                  shirt: _data.st || null,
-                  shirtColor: _data.stc || null,
-                  eyeColor: _data.ec || null,   /* v2.3.1930 */
-                  shirtArtFront: _data.sa || null, shirtArtBack: _data.sb || null,   /* v2.3.1939 */
-                  pantsArt: _data.pa || null, tattooArt: _data.ta || null,   /* v2.3.1940 */
-                  faceTattooArt: _data.tf || null, armTattooArt: _data.tm || null,   /* v2.3.1949 */
-                  buildHeight: _data.hg || null, buildFrame: _data.fr || null,   /* v2.3.1953 */
-                  shirtPattern: _data.sp || null, pantsPattern: _data.pp || null,   /* v2.3.1941 */
-                  shoesPattern: _data.fp || null,   /* v2.3.1944 */
                   equip: { chest: _data.eqc || 'none', legs: _data.eql || 'none', shoulders: _data.eqs || 'none',
                     /* v2.3.756: layered shirt; old clients send no eqst -> infer from their legacy shirt style */
                     shirt: _data.eqst !== undefined ? (_data.eqst || 'none') : ((_data.st && _data.st !== 'none') ? 'tshirt' : 'none') },
-                  pants: _data.pt || null,
-                  shoes: _data.sh || null,
                   rpgLv: _data.rpgLv || 1,
                   rpgHp: _data.rpgHp || 50,
                   rpgMaxHp: _data.rpgMaxHp || 50,
-                  bodySize: _data.bs || 'slim',
                   zone: _data.z || 'town'
-                };
+                }, peerCosmeticsFromWire(_data));
               }
               S.others = others;
               setPlayerCount(msg.playerCount || Object.keys(others).length + 1);
@@ -1720,7 +1718,7 @@ export function setupWebSocket(ctx) {
             }
           case 'player_join':
             {
-              var _msg$data, _msg$data2, _msg$data3, _msg$data4, _msg$data5, _msg$data6, _msg$data7, _msg$data8, _msg$data9, _msg$data0, _msg$data1, _msg$data10, _msg$data11, _msg$data12;
+              var _msg$data, _msg$data2, _msg$data3, _msg$data4, _msg$data5, _msg$data6, _msg$data7, _msg$data8, _msg$data9, _msg$data0, _msg$data1, _msg$data10, _msg$data12;
               S.others[msg.id] = {
                 x: ((_msg$data = msg.data) === null || _msg$data === void 0 ? void 0 : _msg$data.x) || 0,
                 y: ((_msg$data2 = msg.data) === null || _msg$data2 === void 0 ? void 0 : _msg$data2.y) || 0,
@@ -1734,37 +1732,17 @@ export function setupWebSocket(ctx) {
                 dir: ((_msg$data7 = msg.data) === null || _msg$data7 === void 0 ? void 0 : _msg$data7.d) || 'down',
                 bt: ((_msg$data8 = msg.data) === null || _msg$data8 === void 0 ? void 0 : _msg$data8.bt) || '#2563eb',
                 bl: ((_msg$data9 = msg.data) === null || _msg$data9 === void 0 ? void 0 : _msg$data9.bl) || '#1e3a5f',
-                headwear: (msg.data && msg.data.hw) || null,
-                facialhair: (msg.data && msg.data.fh) || null,
-                hair: (msg.data && msg.data.hr) || null,
-                skin: (msg.data && msg.data.sk) || null,
-                hairColor: (msg.data && msg.data.hc) || null,
-                hatColor: (msg.data && msg.data.htc) || null,
-                facialHairColor: (msg.data && msg.data.fhc) || null,
-                shirt: (msg.data && msg.data.st) || null,
-                shirtColor: (msg.data && msg.data.stc) || null,
-                eyeColor: (msg.data && msg.data.ec) || null,   /* v2.3.1930 */
-                shirtArtFront: (msg.data && msg.data.sa) || null,
-                shirtArtBack: (msg.data && msg.data.sb) || null,   /* v2.3.1939 */
-                pantsArt: (msg.data && msg.data.pa) || null,
-                tattooArt: (msg.data && msg.data.ta) || null,   /* v2.3.1940 */
-                faceTattooArt: (msg.data && msg.data.tf) || null,
-                armTattooArt: (msg.data && msg.data.tm) || null,   /* v2.3.1949 */
-                buildHeight: (msg.data && msg.data.hg) || null,
-                buildFrame: (msg.data && msg.data.fr) || null,   /* v2.3.1953 */
-                shirtPattern: (msg.data && msg.data.sp) || null,
-                pantsPattern: (msg.data && msg.data.pp) || null,   /* v2.3.1941 */
-                shoesPattern: (msg.data && msg.data.fp) || null,   /* v2.3.1944 */
                 equip: { chest: (msg.data && msg.data.eqc) || 'none', legs: (msg.data && msg.data.eql) || 'none', shoulders: (msg.data && msg.data.eqs) || 'none',
                   shirt: (msg.data && msg.data.eqst !== undefined) ? (msg.data.eqst || 'none') : ((msg.data && msg.data.st && msg.data.st !== 'none') ? 'tshirt' : 'none') },
-                pants: (msg.data && msg.data.pt) || null,
-                shoes: (msg.data && msg.data.sh) || null,
                 rpgLv: ((_msg$data0 = msg.data) === null || _msg$data0 === void 0 ? void 0 : _msg$data0.rpgLv) || 1,
                 rpgHp: ((_msg$data1 = msg.data) === null || _msg$data1 === void 0 ? void 0 : _msg$data1.rpgHp) || 50,
                 rpgMaxHp: ((_msg$data10 = msg.data) === null || _msg$data10 === void 0 ? void 0 : _msg$data10.rpgMaxHp) || 50,
-                bodySize: ((_msg$data11 = msg.data) === null || _msg$data11 === void 0 ? void 0 : _msg$data11.bs) || 'slim',
                 zone: ((_msg$data12 = msg.data) === null || _msg$data12 === void 0 ? void 0 : _msg$data12.z) || 'town'
               };
+              /* v2.3.1961: the look comes from the shared rename table, not
+                 from twenty more `msg.data.xx || null` lines that have to stay
+                 in step with the state_sync loop above and the relay below. */
+              Object.assign(S.others[msg.id], peerCosmeticsFromWire(msg.data));
               setPlayerCount(function (prev) {
                 setJoinFlash(true);
                 setTimeout(function () {
@@ -1791,21 +1769,52 @@ export function setupWebSocket(ctx) {
             {
               /* v2.3.1112: create unknown peers from the track relay too --
                  it carries the full cosmetics, so a peer discovered this way
-                 renders correctly immediately (see the tick-create note). */
+                 renders correctly immediately (see the tick-create note).
+                 v2.3.1961: "renders correctly immediately" was only true of the
+                 fields the wire does not rename -- the placeholder's cosmetics
+                 now come from the same table the mapping below reads. */
               if (!S.others[msg.id] && msg.id !== S.myId && msg.data) {
-                S.others[msg.id] = {
+                S.others[msg.id] = Object.assign({
                   x: 0, y: 0, renderX: 0, renderY: 0, name: 'Anon', color: '#888',
                   avatar: null, dir: 'down', bt: '#2563eb', bl: '#1e3a5f',
                   equip: { chest: 'none', legs: 'none', shoulders: 'none', shirt: 'none' },
-                  rpgLv: 1, rpgHp: 50, rpgMaxHp: 50, bodySize: 'slim', zone: 'town',
-                };
+                  rpgLv: 1, rpgHp: 50, rpgMaxHp: 50, zone: 'town',
+                }, peerCosmeticsFromWire({}));
                 setPlayerCount(Object.keys(S.others).length + 1);
               }
               if (S.others[msg.id]) {
                 Object.assign(S.others[msg.id], msg.data);
+                /* ═══ v2.3.1961: THE RELAY SPEAKS THE SHORT WIRE NAMES ═══
+                   The Object.assign above copies `msg.data` verbatim, so it
+                   lands `sa`, `hr`, `st`, `bs` ... on the peer object -- and
+                   the renderer reads `shirtArtFront`, `hair`, `shirt`,
+                   `bodySize`.  Everything the wire RENAMES therefore arrived
+                   once, in the join snapshot, and was never refreshed again;
+                   only the same-named fields (name, avatar, dir, zone, rpgLv,
+                   wpnType ...) and `equip`, which has its own rebuild just
+                   below, tracked a peer after that.  Two things that costs,
+                   both reachable: a peer created by the self-heal above or by
+                   a tick delta (a suspended iOS tab misses the join) never got
+                   a look at all, and the in-world T-Shirt toggle
+                   (ItemDetailPopup) moved `st` that nobody else could see.
+                   One table now serves the join snapshot, both placeholders and
+                   this relay (src/networking/peerCosmetics.js), because a
+                   per-key list somebody must remember to extend in four places
+                   is exactly how v2.3.1939 and v2.3.1949 each half-shipped a
+                   key.  Delta semantics: only keys the payload carries are
+                   written -- see the note on applyPeerCosmetics. */
+                applyPeerCosmetics(S.others[msg.id], msg.data);
                 /* v2.3.599: track relays carry flat eqc/eql/eqs; rebuild the
                    nested other.equip the renderer reads so armour on/off syncs
-                   (covers the standing-still case via the 2s track). */
+                   (covers the standing-still case via the 2s track).
+                   v2.3.1961: `shirt` is deliberately NOT carried over here, and
+                   that is not an oversight to tidy up.  `eqst` is on neither
+                   the track payload nor TRACK_COSMETIC_KEYS, so the relay has
+                   no news about the under-shirt; dropping the key lets the
+                   renderer's v2.3.756 fallback derive it from `st`, which the
+                   mapping above keeps current, so taking the t-shirt off in the
+                   loadout shows on peers.  Preserving the join-time value here
+                   would pin it to whatever it was at join instead. */
                 var _ud = msg.data || {};
                 /* v2.3.1953: the relay carries the WIRE names (hg/fr); the
                    renderer reads the long ones, exactly as it does for every

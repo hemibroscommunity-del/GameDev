@@ -5679,6 +5679,15 @@ export var BroTown = function BroTown(_ref0) {
                    next join.  Omitted entirely at average/medium. */
                 hg: wireHeight(),
                 fr: wireFrame(),
+                /* v2.3.1961: the face and arm tattoos, which v2.3.1949 put on
+                   the join frame and on BOTH server gates (JOIN_COSMETIC_KEYS
+                   and TRACK_COSMETIC_KEYS) but not here -- so the two newest
+                   canvases were the only ones the relay could not carry.  No
+                   allowlist moves for this: the worker has admitted them since
+                   v2.3.1949; this is the sender finally sending them.  Same
+                   only-when-drawn rule as the four above. */
+                tf: artHasInk(getArt('tattooFace')) ? getArt('tattooFace') : undefined,
+                tm: artHasInk(getArt('tattooArm')) ? getArt('tattooArm') : undefined,
                 /* v2.3.1941: clothing patterns. */
                 sp: getPattern('shirt') || undefined,
                 pp: getPattern('pants') || undefined,
