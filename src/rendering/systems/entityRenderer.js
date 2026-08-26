@@ -3679,7 +3679,9 @@ function createMonsterDisplay(monster) {
  * build.  Their POSITIONS still ride the scale, which is what you want: the
  * plate under a tall bro sits under his actual boots.
  *
- * Returns nothing; sets scale on the display and its ui layer.
+ * Sets the scale on the display and the inverse on its ui layer, and RETURNS
+ * the lift to add to display.y — a return rather than a mutation because the
+ * caller owns that assignment and has just written the world position into it.
  */
 /* ── HOW FAR THE BOOTS ARE BELOW THE DISPLAY'S ORIGIN, in container units ──
  * Derived from the numbers that already govern it rather than restated as a
