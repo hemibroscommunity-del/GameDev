@@ -209,6 +209,7 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
   const fillW = box.fillW, fillH = box.fillH, cy = box.cy;
   const eachPiece = !!(opts && opts.eachPiece);
   let painted = 0;
+  let scratch = null, seenBuf = null;
   /* The mask is its own array, so painting colours into `d` can never change
      what counts as region -- every frame is measured and filled against the
      classification the caller made BEFORE any retinting. */
@@ -244,10 +245,23 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
     /* v2.3.1949: a figure has two arms, and the single-piece rule above would
        ink only the bigger one.  When each piece is stamped it is also its own
        confinement, so one arm's box can never bleed onto the other. */
-    const pieceList = eachPiece ? framePieces(mask, w, h, x0, x1) : [_largestPiece(mask, w, h, x0, x1)];
+    if (eachPiece && !seenBuf) seenBuf = new Uint8Array(w * h);
+    const pieceList = eachPiece ? framePieces(mask, w, h, x0, x1, seenBuf) : [null];
     for (let pi = 0; pi < pieceList.length; pi++) {
-    const piece = pieceList[pi];
-    const confine = eachPiece ? piece : mask;
+    /* One scratch mask for the whole sheet, painted from this piece's cell
+       list and wiped again by the same list — O(piece), not O(sheet). */
+    if (eachPiece) {
+      if (!scratch) scratch = new Uint8Array(w * h);
+      const cs = pieceList[pi];
+      for (let i = 0; i < cs.length; i++) scratch[cs[i]] = 1;
+    }
+    const piece = eachPiece ? scratch : _largestPiece(mask, w, h, x0, x1);
+    const confine = eachPiece ? scratch : mask;
+    const release = () => {
+      if (!eachPiece) return;
+      const cs = pieceList[pi];
+      for (let i = 0; i < cs.length; i++) scratch[cs[i]] = 0;
+    };
     const rowN = new Int32Array(h), colN = new Int32Array(x1 - x0);
     let peakRow = 0, peakCol = 0;
     for (let y = 0; y < h; y++) {
@@ -257,12 +271,12 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
         if (++colN[x - x0] > peakCol) peakCol = colN[x - x0];
       }
     }
-    if (!peakRow) continue;   /* this piece has nothing in this frame */
+    if (!peakRow) { release(); continue; }   /* this piece has nothing here */
     const rowMin = Math.max(2, peakRow * REGION_KEEP), colMin = Math.max(2, peakCol * REGION_KEEP);
     let lx = Infinity, rx = -1, ty = Infinity, by = -1;
     for (let y = 0; y < h; y++) if (rowN[y] >= rowMin) { if (y < ty) ty = y; if (y > by) by = y; }
     for (let x = 0; x < colN.length; x++) if (colN[x] >= colMin) { if (x < lx) lx = x + x0; if (x + x0 > rx) rx = x + x0; }
-    if (rx < 0 || by < 0) continue;
+    if (rx < 0 || by < 0) { release(); continue; }
     const bw = rx - lx + 1, bh = by - ty + 1;
     const dw = Math.max(ART_W, Math.round(bw * fillW));
     const dh = Math.max(ART_H, Math.round(bh * fillH));
@@ -288,6 +302,7 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
         }
       }
     }
+    release();
     }
   }
   return painted;
@@ -364,10 +379,22 @@ export function splitSkinRegions(skin, torso, w, h, frameW) {
 const PIECE_KEEP = 0.35;
 
 /** Every connected piece of `mask` in one frame that is a real share of the
- *  largest, as its own mask.  A figure has TWO arms, and _largestPiece — right
- *  for a print on one trouser leg — would tattoo only the bigger one. */
-export function framePieces(mask, w, h, x0, x1) {
-  const seen = new Uint8Array(w * h);
+ *  largest, each as a LIST OF CELL INDICES.  A figure has TWO arms, and
+ *  _largestPiece — right for a print on one trouser leg — would tattoo only the
+ *  bigger one.
+ *
+ *  Cell lists rather than a mask per piece, deliberately: a full-sheet
+ *  Uint8Array is 458 KB on a jog strip, and one per piece per frame came to
+ *  ~13 MB of garbage for a single bake — measured at +34 ms on jog-east, which
+ *  is two dropped frames the moment a tattooed player walks on screen.  The
+ *  caller paints one reusable scratch mask from the list and clears just the
+ *  cells it set. */
+export function framePieces(mask, w, h, x0, x1, seenBuf) {
+  /* `seenBuf` is the caller's reusable visited-map.  A fresh Uint8Array per
+     FRAME is 458 KB on a jog strip and 6 MB across the sheet, for a buffer whose
+     only job is to be zero at the start — so it is wiped by the cells that were
+     set, which is O(region) rather than O(sheet). */
+  const seen = seenBuf || new Uint8Array(w * h);
   const found = [];
   for (let y = 0; y < h; y++) {
     for (let x = x0; x < x1; x++) {
@@ -386,15 +413,13 @@ export function framePieces(mask, w, h, x0, x1) {
       found.push(cells);
     }
   }
+  /* Wipe only what was marked, so the buffer is reusable next frame. */
+  if (seenBuf) for (const c of found) for (let i = 0; i < c.length; i++) seen[c[i]] = 0;
   if (!found.length) return [];
   let best = 0;
   for (const c of found) if (c.length > best) best = c.length;
   const keep = Math.max(8, best * PIECE_KEEP);
-  return found.filter((c) => c.length >= keep).map((cells) => {
-    const m = new Uint8Array(w * h);
-    for (let i = 0; i < cells.length; i++) m[cells[i]] = 1;
-    return m;
-  });
+  return found.filter((c) => c.length >= keep);
 }
 
 /* ═══ v2.3.1941: PATTERNS ═══
