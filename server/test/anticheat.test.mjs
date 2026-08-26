@@ -573,6 +573,86 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
      'camo' on shoes paints nothing rather than being rejected here. */
   check('track: the shoe pattern is relayed (v2.3.1944)', psT.fp === 'check:9', psT.fp);
 
+  /* ═══ v2.3.1945: THE COSMETIC GATE UNDER HOSTILE INPUT ═══
+     Every one of these keys is a string a PEER controls and the receiving
+     client hands to a canvas.  The server's job is not to understand them --
+     the client's catalogs do that -- but it must never crash, never let one
+     grow without bound, and never let a key name reach an object prototype. */
+  const wsH = fakeWs('hostile-1');
+  room.sessions.set(wsH, baseSession());
+  await room.webSocketMessage(wsH, JSON.stringify({
+    type: 'join', id: 'hz', name: 'Hostile', protocolVersion: 2,
+    data: { x: 10, y: 10, z: 'meadow' },
+  }));
+  const psH = room.playerState.hz;
+  /* A payload big enough to be a denial-of-service is refused WHOLESALE,
+     before JSON.parse -- the size gate above the parser (MAX_INBOUND_BYTES)
+     gets to it first.  Asserted so nobody "fixes" that into a truncation. */
+  let hugeThrew = null;
+  try {
+    await room.webSocketMessage(wsH, JSON.stringify({ type: 'track', data: { sa: 'a'.repeat(50000) } }));
+  } catch (e) { hugeThrew = e.message; }
+  check('track: a denial-of-service sized payload does not throw', hugeThrew === null, hugeThrew);
+  check('track: ...and is dropped whole, never parsed or stored',
+    psH.sa === undefined && (room.sessions.get(wsH).oversize || 0) > 0,
+    { sa: psH.sa, oversize: room.sessions.get(wsH).oversize });
+
+  /* Under that gate, the per-key cap is what bounds a cosmetic. */
+  const HOSTILE = {
+    sa: 'a'.repeat(2000),           // past the 512 cap, inside the message gate
+    sb: '\u0000'.repeat(300),        // NULs
+    pa: 1234,                       // not a string at all
+    ta: { toString: 'nope' },       // an object
+    sp: '__proto__:3',
+    pp: 'constructor:9',
+    fp: '\u003cscript\u003ealert(1)\u003c/script\u003e',
+    ec: '__proto__',
+  };
+  let hostileThrew = null;
+  try {
+    await room.webSocketMessage(wsH, JSON.stringify({ type: 'track', data: HOSTILE }));
+  } catch (e) { hostileThrew = e.message; }
+  check('track: a hostile cosmetic payload does not throw', hostileThrew === null, hostileThrew);
+  check('track: an oversized drawing is CAPPED, not stored whole',
+    typeof psH.sa === 'string' && psH.sa.length === 512, psH.sa && psH.sa.length);
+  check('track: an OBJECT under a cosmetic key is dropped, never relayed (v2.3.1945)',
+    psH.ta === undefined, psH.ta);
+  /* ...while the one documented nested blob still does land, and is bounded. */
+  await room.webSocketMessage(wsH, JSON.stringify({ type: 'track',
+    data: { rpgData: { level: 12, kills: 340 } } }));
+  check('track: ...while `rpgData`, the documented nested blob, still lands',
+    !!(psH.rpgData && psH.rpgData.level === 12), psH.rpgData);
+  await room.webSocketMessage(wsH, JSON.stringify({ type: 'track',
+    data: { rpgData: { pad: 'z'.repeat(9000) } } }));
+  check('track: ...and an oversized one is refused, leaving the old value',
+    !!(psH.rpgData && psH.rpgData.level === 12 && psH.rpgData.pad === undefined), psH.rpgData);
+  check('track: every stored cosmetic stays inside the cap',
+    ['sa','sb','pa','ta','sp','pp','fp','ec'].every((k) => typeof psH[k] !== 'string' || psH[k].length <= 512),
+    Object.fromEntries(['sa','sb','pa','ta','sp','pp','fp','ec'].map((k) => [k, typeof psH[k] === 'string' ? psH[k].length : typeof psH[k]])));
+  check('track: no cosmetic key reached Object.prototype',
+    Object.prototype.sp === undefined && Object.prototype.polluted === undefined
+    && ({}).sa === undefined, 'prototype clean');
+
+  /* And the same shapes through JOIN, which is the other gate. */
+  const wsH2 = fakeWs('hostile-2');
+  room.sessions.set(wsH2, baseSession());
+  let joinThrew = null;
+  try {
+    await room.webSocketMessage(wsH2, JSON.stringify({
+      type: 'join', id: 'hz2', name: 'Hostile2', protocolVersion: 2,
+      data: Object.assign({ x: 10, y: 10, z: 'meadow' }, HOSTILE),
+    }));
+  } catch (e) { joinThrew = e.message; }
+  check('join: a hostile cosmetic payload does not throw', joinThrew === null, joinThrew);
+  const psH2 = room.playerState.hz2;
+  check('join: the oversized drawing is capped there too',
+    !!(psH2 && typeof psH2.sa === 'string' && psH2.sa.length === 512),
+    psH2 && psH2.sa && psH2.sa.length);
+  check('join: an OBJECT under a cosmetic key never lands',
+    !!(psH2 && psH2.ta === undefined), psH2 && psH2.ta);
+  check('join: no cosmetic key reached Object.prototype',
+    ({}).sa === undefined && ({}).fp === undefined, 'prototype clean');
+
   // A forged rpgLv is fine as a DISPLAY value (above) but must never
   // become the player's rank on the global board — v2.3.1178 closed
   // this same forge on the public HTTP route; the WS path kept it.

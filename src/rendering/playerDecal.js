@@ -163,6 +163,39 @@ export function stampShirtArt(sheet, art, frameH, mirror, clip) {
  *  `box` places it inside each frame's region: fractions of the region's own
  *  width/height, and how far down its centre sits. */
 const REGION_KEEP = 0.15;   /* a row/column counts as part of the region at 15% of the peak */
+/** The largest 4-connected piece of `mask` within one frame's columns.
+ *  Returns the input when there is only one piece, so the common case costs a
+ *  scan and no allocation. */
+function _largestPiece(mask, w, h, x0, x1) {
+  const seen = new Uint8Array(w * h);
+  let best = null, bestN = 0, pieces = 0;
+  for (let y = 0; y < h; y++) {
+    for (let x = x0; x < x1; x++) {
+      const p0 = y * w + x;
+      if (!mask[p0] || seen[p0]) continue;
+      pieces++;
+      /* A plain growable array, deliberately: a fixed-size stack would have to
+         silently drop cells when it filled, and an under-filled component is a
+         wrong answer that looks like a right one. */
+      const cells = [p0];
+      seen[p0] = 1;
+      for (let i = 0; i < cells.length; i++) {
+        const q = cells[i];
+        const qy = (q / w) | 0, qx = q - qy * w;
+        if (qx > x0 && mask[q - 1] && !seen[q - 1]) { seen[q - 1] = 1; cells.push(q - 1); }
+        if (qx < x1 - 1 && mask[q + 1] && !seen[q + 1]) { seen[q + 1] = 1; cells.push(q + 1); }
+        if (qy > 0 && mask[q - w] && !seen[q - w]) { seen[q - w] = 1; cells.push(q - w); }
+        if (qy < h - 1 && mask[q + w] && !seen[q + w]) { seen[q + w] = 1; cells.push(q + w); }
+      }
+      if (cells.length > bestN) { bestN = cells.length; best = cells; }
+    }
+  }
+  if (pieces <= 1 || !best) return mask;
+  const out = new Uint8Array(w * h);
+  for (let i = 0; i < best.length; i++) out[best[i]] = 1;
+  return out;
+}
+
 export function stampRegion(d, w, h, frameW, mask, art, mirror, box) {
   if (!artHasInk(art)) return 0;
   const frames = Math.max(1, Math.floor(w / frameW));
@@ -186,11 +219,26 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box) {
        region itself is tens.  A fraction of the peak (rather than a fixed
        count) keeps this working for a thin profile view as well as a broad
        front one. */
+    /* ── AND MEASURE IT ON ONE PIECE, NOT ON ALL OF THEM (v2.3.1945) ──
+       The bulk rule above handles specks; it does not handle the region
+       SPLITTING.  A standing figure's trousers are one blob, but a running
+       one's are two legs with a gap between them, and a box measured across
+       both centres in that gap -- where the mask rejects nearly all of it.
+       Measured with a solid 10x10 drawing through a full cycle, the print's
+       visible area collapsed from 465px on the standing frame to 4px mid-
+       stride on jog-east, and to 2-3px on jog-northeast and hit.  A print you
+       drew on your trousers all but vanished whenever you ran.
+       So the box is measured on the LARGEST connected piece of the region in
+       that frame -- one leg -- which is where a print sits anyway.  On every
+       single-piece frame (all five standing facings, and the tattoo's torso)
+       the largest piece IS the whole region, so those are unchanged to the
+       pixel; only the frames that were broken move. */
+    const piece = _largestPiece(mask, w, h, x0, x1);
     const rowN = new Int32Array(h), colN = new Int32Array(x1 - x0);
     let peakRow = 0, peakCol = 0;
     for (let y = 0; y < h; y++) {
       for (let x = x0; x < x1; x++) {
-        if (!mask[y * w + x]) continue;
+        if (!piece[y * w + x]) continue;
         if (++rowN[y] > peakRow) peakRow = rowN[y];
         if (++colN[x - x0] > peakCol) peakCol = colN[x - x0];
       }
@@ -335,53 +383,60 @@ export const PANTS_LIT_MIN = 80;
    outline pixels that creep in at the edges.  Low, and doing little. */
 export const SHOES_LIT_MIN = 52;
 
-/* ═══ v2.3.1944: A CLASSIFIED REGION HAS SPECKS IN IT, AND A TILE PAINTS THEM ═══
+/* ═══ v2.3.1945: A CLASSIFIED REGION HAS SPECKS IN IT, AND A TILE PAINTS THEM ═══
  *
  * The trouser and boot regions are found by a per-pixel colour test over
- * hand-painted art, and both tests accept a scatter of stray pixels nowhere
- * near the garment.  Measured on the shipped stand sheets: the BOOT test picks
- * up 9-91px as high as row 29-37 -- the head and shoulders -- while the boots
- * themselves peak at row 210-222.  The trouser test does the same on southwest
- * and east.
+ * hand-painted art, and both tests accept a scatter of pixels nowhere near the
+ * garment.  stampRegion copes, because it measures a BOX from the region's bulk
+ * and never reaches a speck outside it.  stampPattern does not: it tiles every
+ * masked pixel, so the specks come out wearing the pattern colour.
  *
- * stampRegion already copes, because it measures a BOX from the region's bulk
- * and a stray outside that box is never reached.  stampPattern does not: it
- * tiles over every masked pixel, so those specks come out wearing the pattern
- * colour -- white dots on the character's head.  That shipped in v2.3.1941 and
- * this is the fix for it, not only for the shoes that exposed it.
+ * ── WHY THIS IS POSITIONAL, AFTER A ROW-BAND RULE FAILED ──
+ * v2.3.1944 kept the contiguous band of rows holding the busiest row.  That
+ * works on the STAND sheets, where the specks are a handful of pixels marooned
+ * far from the garment, and it fails on the animation sheets, where they are
+ * neither few nor marooned: on jog-south the boot test picks up runs of 12-20px
+ * at rows 34-51 -- as dense as a boot -- so on five of the 26 frames the band
+ * centred on the SPECKS and dropped the boots entirely.  A patterned shoe put
+ * its stripes on the character's head and left the feet plain.
  *
- * The rule is deliberately NOT the "bulk rows" threshold stampRegion uses.
- * That drops any row carrying less than a share of the peak, which is right for
- * finding a box and wrong for a mask: a boot's toe rows are genuinely thin and
- * would be dropped with the specks.  Instead: keep the contiguous BAND of rows
- * that contains the busiest row, allowing small gaps.  The garment is one
- * connected run; the specks are marooned dozens of empty rows away.
+ * Density cannot separate them and neither can size: measured per frame, a
+ * boot fragments into components of 132/112/88px while a speck run reaches
+ * 60px, so any size floor either keeps specks or eats a boot.
+ *
+ * POSITION separates them completely, because it is the one thing the art
+ * guarantees: boots are at the feet and trousers are on the legs.  Measured
+ * over 156 frames -- every facing of stand, jog and hit -- as the height a
+ * garment reaches UP FROM THE FEET, as a fraction of the figure's own height:
+ *
+ *     boots      max 0.255   (deepest: jog-southwest frame 19)
+ *     trousers   max 0.567   (deepest: hit-south frame 5)
+ *
+ * The ceilings below sit well clear of both, and the figure's extent is
+ * measured per frame from its own alpha, so a pose that stands taller or
+ * crouches lower carries the cut with it rather than fighting it.
  */
-const BAND_GAP = 4;          /* rows of nothing that do not end the garment */
+export const SHOES_MAX_UP = 0.35;    /* measured max 0.255 */
+export const PANTS_MAX_UP = 0.68;    /* measured max 0.567 */
 
-/** A copy of `mask` with everything outside the garment's own row band removed,
- *  measured per frame.  Returns the input unchanged if it is empty. */
-export function regionBand(mask, w, h, frameW) {
+/** A copy of `mask` keeping only what lies within `maxUp` of the figure's feet,
+ *  measured per frame from the figure's own opaque extent in `d`.
+ *  Returns the input unchanged if that would leave nothing. */
+export function regionFromFeet(d, mask, w, h, frameW, maxUp) {
   const frames = Math.max(1, Math.floor(w / frameW));
   const out = new Uint8Array(w * h);
   let kept = 0;
   for (let f = 0; f < frames; f++) {
     const x0 = f * frameW, x1 = Math.min(w, x0 + frameW);
-    const rows = new Int32Array(h);
-    let peak = 0, peakRow = -1;
+    let top = -1, bot = -1;
     for (let y = 0; y < h; y++) {
-      for (let x = x0; x < x1; x++) if (mask[y * w + x]) rows[y]++;
-      if (rows[y] > peak) { peak = rows[y]; peakRow = y; }
+      let any = false;
+      for (let x = x0; x < x1; x++) if (d[(y * w + x) * 4 + 3] > 40) { any = true; break; }
+      if (any) { if (top < 0) top = y; bot = y; }
     }
-    if (peakRow < 0) continue;
-    let top = peakRow, bot = peakRow;
-    for (let y = peakRow - 1, gap = 0; y >= 0; y--) {
-      if (rows[y]) { top = y; gap = 0; } else if (++gap > BAND_GAP) break;
-    }
-    for (let y = peakRow + 1, gap = 0; y < h; y++) {
-      if (rows[y]) { bot = y; gap = 0; } else if (++gap > BAND_GAP) break;
-    }
-    for (let y = top; y <= bot; y++) {
+    if (bot < 0) continue;
+    const limit = bot - (bot - top + 1) * maxUp;
+    for (let y = Math.max(0, Math.ceil(limit)); y <= bot; y++) {
       for (let x = x0; x < x1; x++) if (mask[y * w + x]) { out[y * w + x] = 1; kept++; }
     }
   }

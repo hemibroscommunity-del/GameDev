@@ -410,6 +410,12 @@ export const PRIVILEGED_EVENTS = new Set([
  * stat block is nested under rpgData so it can never reach ps.power).
  * That disjointness is why this fix changes nothing for an honest
  * client -- only forged keys stop working. */
+/* v2.3.1945: the bound on the ONE track cosmetic that is legitimately nested
+   (`rpgData`).  Same size and same reasoning as JOIN_RPG_MAX_BYTES: big enough
+   that a real inspect-card blob never approaches it, small enough that it
+   actually binds. */
+export const TRACK_BLOB_MAX_BYTES = 8192;
+
 export const TRACK_COSMETIC_KEYS = new Set([
   // Position hint (relayed to peers; NOT merged into player state --
   // see TRACK_STATE_EXCLUDED below).
@@ -3890,8 +3896,30 @@ export class GameRoom {
                  print disagree too. */
               const _tcap = cosmeticCap(k);
               clean[k] = _tv.length > _tcap ? _tv.slice(0, _tcap) : _tv;
-            } else {
+            } else if (_tv === null || typeof _tv === 'boolean'
+                || (typeof _tv === 'number' && Number.isFinite(_tv))) {
+              /* scalars are self-bounding */
               clean[k] = _tv;
+            } else if (k === 'rpgData' && typeof _tv === 'object') {
+              /* ═══ v2.3.1945: THE CAP BOUNDED STRINGS ONLY ═══
+                 Everything that was not a string fell through to a blind copy,
+                 so a peer could park an OBJECT under any cosmetic key -- `ta`,
+                 `sa`, `sp`, any of them -- and it rode session.data,
+                 playerState, the player_update fan-out, and the state_sync
+                 every later joiner receives.  That is precisely the blob
+                 channel the string cap exists to close, reachable by sending
+                 the same key with a different type.  Found by fuzzing the
+                 gate, not in the wild.
+                 The join sanitiser never had the hole: it admits strings and
+                 finite numbers and drops the rest.  This now matches it, with
+                 the one documented exception -- `rpgData` is a nested
+                 inspect-card blob by design -- bounded by serialized size the
+                 same way _sanitizeJoinData bounds an rpg* container.
+                 Non-finite numbers go too: NaN and Infinity survive neither
+                 JSON round-trip nor arithmetic on the receiving side. */
+              let _approx = 0;
+              try { _approx = JSON.stringify(_tv).length; } catch { continue; }  /* cyclic: drop */
+              if (_approx <= TRACK_BLOB_MAX_BYTES) clean[k] = _tv;
             }
           }
           // v2.3.1125: the registry owns the clan tag -- override the
