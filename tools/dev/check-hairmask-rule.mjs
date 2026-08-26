@@ -148,35 +148,73 @@ function solid(w, h, m) {
   return any ? e : m;
 }
 
-/** The accumulated, inset width bound per row, as the rule states it.
- *  Returns {lo, hi} arrays indexed by row; hi < lo means "no bound yet". */
-function widthBound(w, h, m, top, bot) {
-  const sm = solid(w, h, m);
-  const lo = new Int32Array(h).fill(w), hi = new Int32Array(h).fill(-1);
-  let l = w, r = -1;
-  for (let y = top; y <= bot; y++) {
-    let rl = -1, rr = -1;
-    for (let x = 0; x < w; x++) if (sm[y * w + x]) { if (rl < 0) rl = x; rr = x; }
-    if (rl >= 0) { l = Math.min(l, rl + INSET); r = Math.max(r, rr - INSET); }
-    lo[y] = l; hi[y] = r;
+/** `cols` with each contiguous run pulled in by INSET on both sides.
+ *  Mirrors _inset_runs() in tools/make_hairmask.py — keep the two in step. */
+function insetRuns(cols, w) {
+  const out = new Uint8Array(w);
+  let x = 0;
+  while (x < w) {
+    if (!cols[x]) { x++; continue; }
+    let j = x; while (j < w && cols[j]) j++;
+    for (let k = x + INSET; k < j - INSET; k++) out[k] = 1;
+    x = j;
   }
-  return { lo, hi };
+  return out;
 }
 
-function ruleMask(hatBits) {
+/* ═══ v2.3.1974: THE RULE, PER COLUMN ═══
+   Owner: "Some hair still pokes out of the top of the cowboy hat and wizard
+   hat."  The v2.3.1957 rule took ONE run per row, spanning the hat's whole
+   horizontal reach, so any gap inside that span kept its hair — the crease
+   between a cowboy crown's two peaks, and the wedge between a brim tip and the
+   crown.  That spanning is deliberate for a hat with real HOLES (a crown's
+   spikes, devil horns) and wrong for a closed one, and the two cannot be told
+   apart by shape — see the long note in tools/make_hairmask.py for the three
+   discriminators that were tried and measured down.  So `openTop` in the hat's
+   meta records the intent, and everything else takes both conditions below. */
+function ruleRows(w, h, m, top, bot, openTop) {
+  const sm = solid(w, h, m);
+  const rows = [];
+  if (openTop) {
+    let l = w, r = -1;
+    for (let y = top; y <= bot; y++) {
+      let rl = -1, rr = -1;
+      for (let x = 0; x < w; x++) if (sm[y * w + x]) { if (rl < 0) rl = x; rr = x; }
+      if (rl >= 0) { l = Math.min(l, rl + INSET); r = Math.max(r, rr - INSET); }
+      const keep = new Uint8Array(w);
+      for (let x = l; x <= r; x++) if (x >= 0 && x < w) keep[x] = 1;
+      rows[y] = keep;
+    }
+    return rows;
+  }
+  const seen = new Uint8Array(w);
+  for (let y = top; y <= bot; y++) {
+    let rl = -1, rr = -1;
+    for (let x = 0; x < w; x++) if (sm[y * w + x]) { seen[x] = 1; if (rl < 0) rl = x; rr = x; }
+    /* (a) the hat has reached this column at this row or above, AND
+       (b) the column is inside the hat's own extent at this row. */
+    const both = new Uint8Array(w);
+    for (let x = rl; x <= rr && rl >= 0; x++) if (seen[x]) both[x] = 1;
+    rows[y] = insetRuns(both, w);
+  }
+  return rows;
+}
+
+function ruleMask(hatBits, openTop) {
   const { w, h, m } = hatBits;
   const out = new Uint8Array(w * h);
   let top = -1, bot = -1;
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) if (m[y * w + x]) { if (top < 0) top = y; bot = y; break; }
   }
-  if (bot < 0) return { w, h, m: out, top, bot };
+  if (bot < 0) return { w, h, m: out, top, bot, rows: [] };
   for (let y = bot + 1; y < h; y++) for (let x = 0; x < w; x++) out[y * w + x] = 1;   /* part 2 */
-  const { lo, hi } = widthBound(w, h, m, top, bot);                                   /* part 1 */
+  const rows = ruleRows(w, h, m, top, bot, openTop);                                  /* part 1 */
   for (let y = top; y <= bot; y++) {
-    if (hi[y] >= lo[y]) for (let x = lo[y]; x <= hi[y]; x++) out[y * w + x] = 1;
+    const keep = rows[y];
+    if (keep) for (let x = 0; x < w; x++) if (keep[x]) out[y * w + x] = 1;
   }
-  return { w, h, m: out, top, bot };
+  return { w, h, m: out, top, bot, rows };
 }
 
 /* ── where the game puts a trait ────────────────────────────────────────── */
@@ -223,7 +261,7 @@ const toImg = (g) => {
  * whole skull and real caps get refused; count nothing and bands get through
  * and shave the crown.
  */
-function baldPx(hid, meta, masks) {
+function baldPx(hid, meta, masks, mode = 'dome') {
   let worst = 0, worstDir = '';
   for (const d of Object.keys(masks)) {
     if (!meta.anchors || !meta.anchors[d]) continue;
@@ -236,10 +274,39 @@ function baldPx(hid, meta, masks) {
     const msk = place(mk, meta, d);
     const body = bits(load256(path.join(REPO, `public/sprites/player/stand-${d}.png`)));
     const by = tops[`stand-${d}-0`][1];
-    let lo = FRAME, hi = -1;
-    for (let i = 0; i < hat.length; i++) if (hat[i]) { const x = i % FRAME; if (x < lo) lo = x; if (x > hi) hi = x; }
+    let lo = FRAME, hi = -1, hatTop = FRAME;
+    for (let i = 0; i < hat.length; i++) {
+      if (!hat[i]) continue;
+      const x = i % FRAME, y = (i / FRAME) | 0;
+      if (x < lo) lo = x; if (x > hi) hi = x; if (y < hatTop) hatTop = y;
+    }
+    /* ═══ v2.3.1974: ABOVE THE HAT, not merely inside its span ═══
+       The scoping has now been got wrong three times, so here is the shape the
+       guard is actually for, stated once: a BAND across the forehead leaves a
+       bare dome ABOVE ITSELF.  That is the failure — the Naruto Headband and
+       the two bandanas, measured at 380-603px when they shipped clipping.
+       Restricting to the hat's horizontal span (v2.3.1957) was an improvement
+       on counting the whole skull, but it still counts the wrong pixels: a
+       wide brim spans the entire head, so every FACE and TEMPLE pixel under it
+       fell inside the span and got counted as "bare scalp".  Under the
+       per-column rule that pushed five perfectly good hats over the limit
+       (cowboy-hat-2 580px, barbarian-helmet 507, chinese-hat 495) while all
+       five RENDER correctly with no bald patch anywhere — checked by drawing
+       them on the head and looking.
+       Skin at or below the hat's own top row is skin the hat is sitting on or
+       in front of; it is not a dome. Count only what is ABOVE the hat. */
     let n = 0;
-    for (let y = by; y < Math.min(FRAME, by + SKULL_ROWS); y++) {
+    /* 'span' mirrors tools/make_hairmask.py's bald_px EXACTLY — it is the gate
+       that decides whether clipsHair may be switched on, and the assertion
+       about bands has to ask the same question the generator asks, or it is
+       testing something the generator does not do.
+       'dome' is the property claim about the art actually shipped: no hat
+       leaves a bare dome ABOVE ITSELF.  See the note above for why the span
+       form cannot answer that one (a wide brim spans the whole face). */
+    const yEnd = mode === 'span'
+      ? Math.min(FRAME, by + SKULL_ROWS)
+      : Math.min(FRAME, by + SKULL_ROWS, hatTop);
+    for (let y = by; y < yEnd; y++) {
       for (let x = lo; x <= hi; x++) {
         const i = y * FRAME + x;
         if (body.m[i] && !msk[i] && !hat[i]) n++;
@@ -271,7 +338,8 @@ for (const hid of hats) {
     if (!fs.existsSync(artP) || !fs.existsSync(mskP)) continue;
     frames++;
     const hat = bits(img(artP));
-    const want = ruleMask(hat);
+    const openTop = !!meta.openTop;
+    const want = ruleMask(hat, openTop);
     const got = bits(img(mskP));
     if (got.w !== want.w || got.h !== want.h) { drifted.push(`${hid}/${d}: mask ${got.w}x${got.h} vs art ${want.w}x${want.h}`); continue; }
     let n = 0;
@@ -281,12 +349,11 @@ for (const hid of hats) {
     /* ══ 2-5. the rule as PROPERTIES of the committed mask ═══════════════ */
     const { w, h, m } = got;
     const { top, bot } = want;
-    /* the accumulated bound the rule talks about: the widest the SOLID hat has
-       been at this row or any row above it, inset by INSET each side */
-    const bound = bot >= 0 ? widthBound(w, h, hat.m, top, bot) : null;
+    /* v2.3.1974: the rule's own per-row column set (see ruleRows). */
     for (let y = 0; y < h; y++) {
-      const lo = bound && y >= top && y <= bot ? bound.lo[y] : w;
-      const hi = bound && y >= top && y <= bot ? bound.hi[y] : -1;
+      const keep = (y >= top && y <= bot) ? want.rows[y] : null;
+      let lo = w, hi = -1;
+      if (keep) for (let x = 0; x < w; x++) if (keep[x]) { if (x < lo) lo = x; hi = x; }
       let rl = -1, rr = -1, on = 0, holes = 0, seenGap = false;
       for (let x = 0; x < w; x++) {
         if (m[y * w + x]) { if (rl < 0) rl = x; rr = x; on++; if (seenGap) { holes++; seenGap = false; } }
@@ -308,13 +375,21 @@ for (const hid of hats) {
              the gaps of an open-top hat — between a crown's spikes, between
              the devil horns — which the owner's "exceptions" clause says
              must survive. */
-        /* v2.3.1963: at the very tip of a tapered hat the eroded span can be
-           narrower than 2*INSET, so the bound comes out empty (hi < lo) and
-           the mask row is legitimately blank.  Assert the span only where
-           there IS one; an empty bound must leave the row empty. */
-        if (hi >= lo && (rl !== lo || rr !== hi)) spanBroken.push(`${hid}/${d} row ${y}: mask ${rl}..${rr}, hat-so-far ${lo}..${hi}`);
-        if (hi < lo && on) spanBroken.push(`${hid}/${d} row ${y}: ${on}px of mask where the inset bound is empty (${lo}..${hi})`);
-        if (holes) holeBroken.push(`${hid}/${d} row ${y}: ${holes} hole(s) in the mask run ${rl}..${rr}`);
+        /* v2.3.1974: compared COLUMN BY COLUMN against the rule, not as a
+           span.  A closed hat's row is legitimately several runs now (a brim
+           either side of a crown), so "first opaque .. last opaque" says
+           almost nothing; the columns themselves are the claim. */
+        if (keep) {
+          let bad = 0;
+          for (let x = 0; x < w; x++) if (!!keep[x] !== !!m[y * w + x]) bad++;
+          if (bad) spanBroken.push(`${hid}/${d} row ${y}: ${bad} column(s) differ from the rule`);
+        } else if (on) {
+          spanBroken.push(`${hid}/${d} row ${y}: ${on}px of mask where the rule keeps nothing`);
+        }
+        /* An OPEN-TOP hat's row must still be ONE unbroken run — that is what
+           puts hair between a crown's spikes, and losing it is the revert this
+           file exists to catch.  A closed hat's row may have gaps by design. */
+        if (openTop && holes) holeBroken.push(`${hid}/${d} row ${y}: ${holes} hole(s) in the mask run ${rl}..${rr}`);
       } else if (on !== w) {
         /* BELOW THE HAT: full width, so hair still frames the face.  The disk
            state one commit before v2.3.1957 violated exactly this — every mask
@@ -356,7 +431,7 @@ for (const hid of hats) {
   worstCaps.push([hid, n, d]);
 }
 worstCaps.sort((a, b) => b[1] - a[1]);
-ok(`no shipping hat leaves more than ${BALD_T}px of bare scalp under its own span (worst: ${worstCaps[0][0]} ${worstCaps[0][1]}px on ${worstCaps[0][2] || 'n/a'})`,
+ok(`no shipping hat leaves a bare dome ABOVE itself (worst: ${worstCaps[0][0]} ${worstCaps[0][1]}px on ${worstCaps[0][2] || 'n/a'}, limit ${BALD_T})`,
   worstCaps[0][1] < BALD_T, worstCaps.slice(0, 5));
 
 /* ══ 7. the guard still refuses the shapes it was written against ════════ */
@@ -374,7 +449,7 @@ for (const hid of ['naruto-headband', 'bandana-2', 'bandana-blue']) {
     const p = path.join(HW, hid, d + '.png');
     if (fs.existsSync(p)) masks[d] = toImg(ruleMask(bits(img(p))));
   }
-  const [n, d] = baldPx(hid, meta, masks);
+  const [n, d] = baldPx(hid, meta, masks, 'span');
   ok(`${hid} is still REFUSED a hair clip — it is a band, and clipping to it bares the crown (${n}px on ${d || 'n/a'}, limit ${BALD_T})`,
     n >= BALD_T, { bald: n, dir: d, limit: BALD_T });
 }

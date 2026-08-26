@@ -108,6 +108,48 @@ BALD_T = 150         # exposed scalp px above which a hat must NOT clip hair
 # leaves hair standing proud of the hat, which is the thing being reported.
 INSET = 1
 
+# ═══ v2.3.1974: THE CREASE IN A COWBOY HAT IS NOT A GAP BETWEEN DEVIL HORNS ═══
+#
+# Owner: "Some hair still pokes out of the top of the cowboy hat and wizard hat."
+# Reproduced and MAPPED pixel by pixel rather than guessed at.  Two leaks on the
+# cowboy hat, 82 stray hair pixels between them, and both are the same mechanism:
+#
+#   rows 29-32  the crease between the crown's two peaks fills with hair
+#   rows 50-53  the gap between each brim tip and the crown fills with hair
+#
+# The v2.3.1957 rule took ONE run per row, spanning from the leftmost column the
+# hat had reached to the rightmost.  Any gap inside that span keeps its hair.
+# That is not a bug in the implementation, it is the whole point of it: it is
+# what makes a crown's spikes and a pair of devil horns show hair BETWEEN them,
+# which is the owner's own stated exception ("other headwear ... open top
+# headwear ... would be the exceptions to that rule").
+#
+# So the same geometry is wanted in one case and wrong in the other, and I tried
+# and DISCARDED three ways to tell them apart by shape alone:
+#   - "is the gap open to the sky above it"     — both are.  A cowboy crease is
+#                                                 as open to the sky as a gap
+#                                                 between two horns.
+#   - "does the hat enclose the gap from below" — both do.
+#   - "is there head underneath it"             — measured: devil-horns' WANTED
+#                                                 hair is 626px outside the head
+#                                                 against 6 inside, while the
+#                                                 cowboy's UNWANTED hair is 74
+#                                                 outside against 8.  The two
+#                                                 cases are indistinguishable.
+#
+# They differ by INTENT, not by shape, so intent is what is recorded: `openTop`
+# in the hat's meta.json.  The default is closed, which is the safe direction —
+# a hat wrongly marked closed loses a little hair it could have kept, a hat
+# wrongly left open keeps hair standing on top of it, which is the report.
+#
+# And with the exception carved out, the rule for every other hat becomes a more
+# literal reading of what the owner asked for in the first place — "clip the
+# width of the hair and any hair above it based on the width equal to and above
+# the hat item" — applied PER COLUMN instead of as one span: a column keeps its
+# hair only where the hat itself has reached that column, at that row or above
+# it.  For a hat with no gaps (a beanie, a helmet) that is identical to the old
+# rule and the frames come out byte-for-byte the same.
+
 
 def _solid(m):
     """The hat minus its outline and its loose pixels.
@@ -132,6 +174,36 @@ def _solid(m):
     # np.roll wraps, so the frame's own border can leak in from the far side.
     e[0, :] = e[-1, :] = e[:, 0] = e[:, -1] = False
     return e if e.any() else m
+
+
+def _inset_runs(cols, inset):
+    """`cols` with each contiguous run pulled in by `inset` on both sides.
+
+    v2.3.1974.  The old rule had ONE run per row, so the inset was two
+    integers.  Per column there can be several runs (a hat brim either side of
+    a crown), and each needs its own edges pulled in -- insetting only the
+    outermost pair would leave the inner edges of every gap un-inset, which is
+    where an outline pixel does its damage.
+    """
+    out = cols.copy()
+    if inset <= 0:
+        return out
+    w = len(cols)
+    x = 0
+    while x < w:
+        if not cols[x]:
+            x += 1
+            continue
+        j = x
+        while j < w and cols[j]:
+            j += 1
+        # run is [x, j)
+        a, b = x + inset, j - inset
+        out[x:j] = False
+        if b > a:
+            out[a:b] = True
+        x = j
+    return out
 
 
 def _load256(p):
@@ -215,6 +287,9 @@ def build(hid, apply_it, set_clips):
     if not os.path.isfile(mp):
         raise SystemExit(f'no hat called {hid}')
     meta = json.load(open(mp))
+    # v2.3.1974: does this hat have real HOLES you should see hair through?
+    # See "The crease in a cowboy hat is not a gap between devil horns".
+    open_top = bool(meta.get('openTop'))
     made = []
     masks = {}
     for d in DIRS:
@@ -230,19 +305,60 @@ def build(hid, apply_it, set_clips):
             # everything below the hat's lowest pixel, at full width
             mask[rows.max() + 1:, :] = (255, 255, 255, 255)
         # v2.3.1957: at and above the hat, no wider than the hat has been at
-        # this row or above it.  `lo`/`hi` accumulate as the scan goes down.
+        # this row or above it.
         # v2.3.1963: measured on the SOLID hat and then pulled in — see
         # "Over-cutting on purpose".
+        # v2.3.1974: PER COLUMN, not one span across the whole row — see
+        # "The crease in a cowboy hat is not a gap between devil horns".
         solid = _solid(m)
         if len(rows):
-            lo, hi_ = w, -1
-            for y in range(int(rows.min()), int(rows.max()) + 1):
-                r = np.nonzero(solid[y, :])[0]
-                if len(r):
-                    lo = min(lo, int(r.min()) + INSET)
-                    hi_ = max(hi_, int(r.max()) - INSET)
-                if hi_ >= lo:
-                    mask[y, lo:hi_ + 1] = (255, 255, 255, 255)
+            y0, y1 = int(rows.min()), int(rows.max())
+            if open_top:
+                # The old whole-row span: everything between the leftmost and
+                # rightmost column the hat has reached keeps its hair, gaps
+                # included.  That is what makes a crown's spikes and a pair of
+                # horns show hair BETWEEN them, which is the owner's stated
+                # exception, so those hats keep it.
+                lo, hi_ = w, -1
+                for y in range(y0, y1 + 1):
+                    r = np.nonzero(solid[y, :])[0]
+                    if len(r):
+                        lo = min(lo, int(r.min()) + INSET)
+                        hi_ = max(hi_, int(r.max()) - INSET)
+                    if hi_ >= lo:
+                        mask[y, lo:hi_ + 1] = (255, 255, 255, 255)
+            else:
+                # A closed hat.  Two conditions, and it takes both:
+                #
+                #   (a) the hat has REACHED this column, at this row or above
+                #       it -- the owner's "the width equal to and above the hat
+                #       item", read per column instead of as one span.  This
+                #       cuts the crease between a cowboy crown's two peaks and
+                #       the wedge between a brim tip and the crown, because the
+                #       hat has never occupied those columns higher up.
+                #
+                #   (b) the column is inside the hat's OWN extent at this row.
+                #       Needed for a hat that LEANS: the wizard hat's tip sits
+                #       right of where its middle does, so (a) alone keeps a
+                #       notch of hair beside the cone at the rows where it has
+                #       receded -- 36 stray pixels, measured.
+                #
+                # (a) without (b) leaves the wizard's notch; (b) without (a) is
+                # brutal -- it cuts every column the hat does not literally
+                # cover, which shaves visible BALD SCALP under the hats that
+                # drape or gap (measured: arabian-robe 676px, cowboy-hat-2
+                # 620px, russian-hat 512px).  A column a hood covered higher up
+                # stays available lower down, which is what keeps hair in the
+                # gap between its panels.
+                seen = np.zeros(w, bool)
+                for y in range(y0, y1 + 1):
+                    seen |= solid[y, :]
+                    r = np.nonzero(solid[y, :])[0]
+                    row_span = np.zeros(w, bool)
+                    if len(r):
+                        row_span[int(r.min()):int(r.max()) + 1] = True
+                    keep = _inset_runs(seen & row_span, INSET)
+                    mask[y, keep] = (255, 255, 255, 255)
         made.append((d, int(m.sum()), int((mask[:, :, 3] > 0).sum()), w))
         masks[d] = mask
         if apply_it:
