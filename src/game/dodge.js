@@ -10,7 +10,7 @@
    was `var X = function...` in the component; `export var` here keeps the
    bodies byte-identical and the cross-calls resolve within the module. */
 import { BT_AUDIO, ELEMENTS, LUNGE_DAMAGE_MULT, LUNGE_DIRECTION_THRESHOLD, LUNGE_IFRAMES_MS, LUNGE_STAMINA_FRACTION, RETREAT_SHOT_DAMAGE_MULT, RETREAT_SHOT_STAMINA_FRACTION, RETREAT_STAFF_CONE_RAD, applyStatus, calcWeaponDmg, getActiveWeapon } from '@/data/index.js';
-import { addBuildUse, pushDmgPopup } from '@/game/combatHelpers.js';
+import { addBuildUse, pushDmgPopup, lockAimPoint } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 
 export var triggerContextualDodge = function (S, R, ang) {
@@ -150,7 +150,14 @@ export var doRetreatShot = function (S, R, ang) {
     S._hasDodged = true;
     /* Fire a setup shot at the locked target. */
     var P = S.player;
-    var aimAng = Math.atan2(lt.y - P.y, lt.x - P.x);
+    /* v2.3.1979: the retreat shot aimed at the target's FEET (lt.y raw), the
+       one aim site that never got the v2.3.1111 body-centre fix -- so it flew
+       under the hit circle by the full body offset.  Same helper as every
+       other aim now; it also reads the rendered position and refuses a target
+       whose position is not a number. */
+    var _rLock = lockAimPoint(lt);
+    var aimAng = _rLock ? Math.atan2(_rLock.y - P.y, _rLock.x - P.x)
+                        : Math.atan2((lt.y || P.y) - P.y, (lt.x || P.x) - P.x);
     var activeWpn = getActiveWeapon(R);
     var pDmg = calcWeaponDmg(activeWpn.type || 'bow', R || {}, activeWpn.tierMult || 1, activeWpn);
     var shotDmg = Math.max(1, Math.round(pDmg * (RETREAT_SHOT_DAMAGE_MULT || 0.5)));

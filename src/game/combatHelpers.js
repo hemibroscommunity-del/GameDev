@@ -8,7 +8,53 @@
    globalThis assignments run. The defensive typeof guards in the code are kept
    verbatim. window._gameState / window._setLevelUpMsg stay as runtime lookups
    by design (they are wired up inside the BroTown component each render). */
-import { xpRequired, recalcDerived, BT_AUDIO, BLOCK_ARC_HALF } from '@/data/index.js';
+import { xpRequired, recalcDerived, BT_AUDIO, BLOCK_ARC_HALF, monsterBodyOffsetY } from '@/data/index.js';
+
+/* ═══ v2.3.1979: WHERE A LOCKED TARGET ACTUALLY IS, FOR AIMING ═══
+   Owner: "Tap to lock on enemy sometimes does not hit the target.  I was
+   locked on to a blue slime shooting with bow and the arrows were on a flight
+   path that wasn't targeted at its center and flew beside it without damaging
+   it."
+
+   Measured (tools/qa/mp/mp-lockaim.mjs, before the fix): a locked bow shot's
+   flight line passed 9.4, 11.2, 17.1, 17.1 and 32.0 px to the SIDE of the
+   slime's hit centre on five headings, against a 27 px body.  Four connected
+   anyway; the 32 px one drew no blood.  That is exactly what "sometimes does
+   not hit" feels like from the inside -- the aim is wrong every single time
+   and the body is just big enough to absorb most of it.
+
+   Two separate errors put it there, and both are about aiming at a DIFFERENT
+   point than the hit-test measures from:
+
+   1. THE ORIGIN.  Every aim site computed atan2(target - PLAYER), but a bow
+      arrow does not launch from the player -- projectiles.js nocks it at the
+      teal bow grip (v2.3.937) and freezes that offset at release, so the
+      flight line is the aim line shifted sideways by 20-44 px.  Parallel
+      lines never meet: the arrow arrived beside the slime by exactly the
+      perpendicular share of the grip offset, at every range.  Aim has to
+      start where the arrow starts.
+
+   2. THE TARGET POINT.  The aim read m.x / m.y (the logic position) while
+      the hit-test reads m.renderX / m.renderY (v2.3.1111, because server
+      monsters draw ~4 frames behind their logic position).  On a walking
+      monster the aim led the hitbox.  Same scenario, with the two positions
+      pulled 26 px apart by hand: 38.6 px of miss and no damage at all.
+
+   And a landmine found while measuring: the old sites wrote
+   `(lt.x || 0)` / `(monsterBodyY(lt) || 0)`.  A monster whose position had
+   gone NaN therefore aimed at 0 -- the WORLD ORIGIN -- and the whole volley
+   flew off toward the top-left corner of the map at a constant bearing.
+   Returning null here says "no usable lock" so callers fall back to the
+   facing, instead of confidently shooting at nothing. */
+export function lockAimPoint(t) {
+  if (!t) return null;
+  var x = (typeof t.renderX === 'number' && isFinite(t.renderX)) ? t.renderX : t.x;
+  var y = (typeof t.renderY === 'number' && isFinite(t.renderY)) ? t.renderY : t.y;
+  if (typeof x !== 'number' || typeof y !== 'number' || !isFinite(x) || !isFinite(y)) return null;
+  /* Same body-centre offset the projectile hit-test applies (0 for NPCs and
+     anything without an archetype, i.e. aim at the feet as before). */
+  return { x: x, y: y - (monsterBodyOffsetY(t.archetype || t.type) || 0) };
+}
 
 /* Use-trained Tier-1 stat progression (GDD §1.1, §1.2, §1.4).
    Per-level budget = 5 T1 points; threshold per +1 stat = xpRequired/5.
