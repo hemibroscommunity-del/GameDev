@@ -120,12 +120,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
      * break immediately.  So record both.  `held` is what the room believes it
      * has; `seen` is what the observer's browser has built. */
     let held = null;
-    try {
-      const r = await fetch(`http://127.0.0.1:${wsPort}/api/admin/overview`,
-        { headers: { Authorization: `Bearer ${H.ADMIN_KEY}` } });
-      const j = await r.json();
-      held = { sessions: j.sessions, players: j.players };
-    } catch { /* the row still means something without it */ }
+    for (let attempt = 0; attempt < 3 && !held; attempt++) {
+      /* Bounded and RETRIED: the first cut had neither, and the 7-peer step
+         came back `held: null` — eight browser contexts on four cores is
+         exactly when this request is slowest, and exactly when its answer
+         matters most.  A blank row here silently downgrades the whole
+         assertion below to "no opinion", which is the failure mode this
+         probe exists to avoid. */
+      try {
+        const r = await fetch(`http://127.0.0.1:${wsPort}/api/admin/overview`,
+          { headers: { Authorization: `Bearer ${H.ADMIN_KEY}` }, signal: AbortSignal.timeout(8000) });
+        const j = await r.json();
+        if (typeof j.players === 'number') held = { sessions: j.sessions, players: j.players };
+      } catch { await P.page.waitForTimeout(1000); }
+    }
+    if (!held) console.log(`   WARNING: the worker did not answer /overview at ${peers.length} peers — the room-side check has no opinion on this row.`);
     const s = await sample(P, 4000, `${peers.length} peer(s)`);
     rows.push({ peers: peers.length, seen, held, ...s });
     console.log('   ' + JSON.stringify(rows[rows.length - 1]));
@@ -147,18 +156,38 @@ export async function run({ browser, wsPort, webPort, rec }) {
      failing on it would make the scenario a machine-load detector.  When the
      room DOES hold everyone and the observer does not, the gap is printed
      loudly so a real regression still gets noticed by a human reading it. */
-  const roomKept = rows.every((r) => !r.held || r.held.players >= r.peers);
+  /* COUNT THE OBSERVER.  `held.players` is everyone in the room, which is the
+     peers PLUS the observer; `r.peers` is only the ones this file started.
+     Comparing them directly is off by one in the direction that hides a bug —
+     it would call a room that had silently dropped exactly one peer healthy —
+     which is the opposite of what an assertion is for.  Caught by a run where
+     held.players was 3 against 3 peers: the honest reading is 3 of an expected
+     4, i.e. one peer really was missing, and the browser seeing 2 was then
+     FAITHFUL rather than blind. */
+  const inRoom = (r) => (r.held ? r.held.players - 1 : r.peers);   /* peers, observer excluded */
+  const roomKept = rows.every((r) => !r.held || inRoom(r) >= r.peers);
+  /* WHEN THIS GOES RED, READ THE AFK CLOCK FIRST.  v2.3.1913 made liveness
+     rest on `track`'s `aw` flag (real touch/key input), not on the keepalive
+     move, so a scripted peer is evicted four minutes after its last click —
+     and on a slow box, starting the NEXT peer can take longer than that.  The
+     detail carries both numbers so that reading is available immediately
+     rather than after an hour of looking at the roster code. */
   rec.ok('the ROOM still holds every peer that joined (the presence roster is unconditional)',
-    rows.length > 0 && roomKept, rows.map((r) => [r.peers, r.held && r.held.players]));
-  const blind = rows.filter((r) => r.seen < r.peers);
+    rows.length > 0 && roomKept,
+    { rows: rows.map((r) => ({ started: r.peers, inRoom: inRoom(r), heldTotal: r.held && r.held.players })),
+      firstSuspect: 'peers AFK-evicted (close 4006) while later peers were still booting — see v2.3.1913 / afk.test.mjs' });
+  /* Judged against what the room ACTUALLY holds, not against what this file
+     tried to start — otherwise a peer the room already lost gets counted
+     against the renderer as well, and one fault reads as two. */
+  const blind = rows.filter((r) => r.seen < inRoom(r));
   if (blind.length && roomKept) {
     console.log('   NOTE: the worker holds every peer but this observer had not built them all'
-      + ` — ${blind.map((r) => `${r.seen}/${r.peers}`).join(', ')}.`
+      + ` — ${blind.map((r) => `${r.seen}/${inRoom(r)}`).join(', ')}.`
       + ' On a contended box that is Chrome throttling the peers\' background pages;'
       + ' on an idle machine it would be a real peer-visibility bug worth chasing.');
   } else if (blind.length) {
-    rec.ok('every peer that joined is visible to the observer', false,
-      rows.map((r) => [r.peers, r.seen, r.held && r.held.players]));
+    rec.ok('every peer the room holds is visible to the observer', false,
+      rows.map((r) => ({ started: r.peers, inRoom: inRoom(r), seen: r.seen })));
   }
 
   const base = rows[0];
