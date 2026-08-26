@@ -25,7 +25,7 @@ import { SPRITE_VERSION } from './playerSprites.js';
 import { getHatRef } from './traits/hatColorCatalog.js';
 import { materialIndex } from './traits/traitMaterials.js'; /* v2.3.1926 */
 import { headwearIsSolid, headwearBehindBeard } from './traits/headwearCatalog.js';   /* v2.3.1934 */
-import { bandFit } from './traits/bandFit.js';   /* v2.3.1943 */
+import { hatHairFit } from './traits/hatHairFit.js';   /* v2.3.1943 band refit + v2.3.1561 float lift, in one place since v2.3.1959 */
 import { buildScale, getBuildHeight, getBuildFrame, DEFAULT_HEIGHT, DEFAULT_FRAME, PORTRAIT_FIT } from './traits/buildCatalog.js';   /* v2.3.1953 */
 import { SOLID_ONLY_HAT_COLOR } from './traits/recolorOptions.js'; /* v2.3.1109: shared per-hat recolour reference (call-time use; cyclic import is safe) */
 import { upscaleToFrameHeight } from './spriteScale.js'; /* v2.3.1110: restore downscaled shirt sheet to 256 frame */
@@ -213,28 +213,17 @@ export function recolorHairToCanvas(img, hairColor, refOverride) {
   return cv;
 }
 
-/* v2.3.1561: mirror of entityRenderer._floatAboveHairLift — the halo is not
-   worn, it floats, so its clearance has to be measured against the HAIR being
-   drawn under it rather than baked into its meta as a fixed crown offset.
-   entityRenderer.js is the source of truth for the two constants; this file
-   deliberately re-implements the placement math (see placeTrait below) and
-   this follows the same convention.  The character-creation preview is where
-   the owner spotted the halo sitting on the hair, so the portrait needs this
-   as much as the world renderer does. */
-const FLOAT_BASE = 12;
-const FLOAT_GAP = 5;
-function floatLift(meta, hairMeta, dir) {
-  if (!(meta && meta.floatsAboveHair)) return 0;
-  const topOf = (m) => {
-    const cn = (m.crownNudge && m.crownNudge[dir]) || [0, 0];
-    const pn = (m.poseNudge && m.poseNudge.stand && m.poseNudge.stand[dir]) || [0, 0];
-    return cn[1] + pn[1];
-  };
-  const bbox = (meta.bboxes && meta.bboxes[dir]) || null;
-  const bottom = topOf(meta) + ((bbox && bbox[3]) || 0);
-  const hairTop = hairMeta ? topOf(hairMeta) : 0;
-  return Math.min(0, Math.min(-FLOAT_BASE, hairTop - FLOAT_GAP) - bottom);
-}
+/* v2.3.1561's local copy of the float-above-hair lift is GONE (v2.3.1959).
+   This file deliberately re-implements the trait PLACEMENT math (see
+   placeTrait below), and the lift followed that convention — but the lift is
+   not placement math, it is a number derived from two meta.json files, and
+   the same number has to reach the hat AND the hair mask the hat clips the
+   hair to.  It reached only the hat here, exactly as it did in the world
+   renderer, so both copies carried the same bug.  traits/hatHairFit.js is now
+   the single source for it and for the v2.3.1943 band refit; the portrait
+   passes DIR as both the direction and the screen direction because this
+   canvas mirrors the whole composite rather than individual traits, which
+   makes its answer identical to the world renderer's unmirrored one. */
 
 /* Place one trait sprite (already recolored if needed) onto ctx using the
    stand/<dir> meta math.  Mirrors entityRenderer._placeTrait. */
@@ -268,11 +257,16 @@ function placeTrait(ctx, traitImg, meta, crown, dir, liftY, mulX) {
 }
 
 /* Render one trait to its own native FRAME canvas (used for hair so it can
-   be mask-clipped before compositing). */
-function renderTraitCanvas(traitImg, meta, crown, dir) {
+   be mask-clipped before compositing).
+   v2.3.1959: it forwards liftY/mulX now.  It took neither, which meant the
+   hair MASK — the only other thing that goes through here — was placed as if
+   the hat had no float lift and no band refit, while the hat itself was
+   placed with both.  A canvas that cannot express the hat's own placement
+   cannot hold the hat's own silhouette. */
+function renderTraitCanvas(traitImg, meta, crown, dir, liftY, mulX) {
   const cv = document.createElement('canvas');
   cv.width = FRAME; cv.height = FRAME;
-  placeTrait(cv.getContext('2d'), traitImg, meta, crown, dir);
+  placeTrait(cv.getContext('2d'), traitImg, meta, crown, dir, liftY, mulX);
   return cv;
 }
 
@@ -696,6 +690,12 @@ export async function drawCharacterPortrait(canvas, opts) {
     if (fhImg && fhMeta) placeTrait(ctx, facialHairColor ? recolorHairToCanvas(fhImg, facialHairColor) : fhImg, fhMeta, crown, DIR);
   };
   if (!_beardOverHat) drawBeard();
+  /* v2.3.1959: the hat's hair-dependent adjustments — the float lift and the
+     band refit — computed ONCE, here, above both the mask that clips the hair
+     and the hat itself.  They used to be computed only at the hat's own
+     placement line below, which is how the mask ended up landing somewhere
+     the hat was not. */
+  const _hwFit = hatHairFit(headwear, hwMeta, hair, hairMeta, 'stand', DIR, DIR);
   if (hairImg && hairMeta) {
     /* Render hair to its own canvas so it can be clipped to the hat's
        silhouette mask (same as the in-game _clipHairToHat) before
@@ -703,7 +703,7 @@ export async function drawCharacterPortrait(canvas, opts) {
        helmet while the forehead hair under the brim still shows. */
     const hairCv = renderTraitCanvas(recolorHairToCanvas(hairImg, hairColor), hairMeta, crown, DIR);
     if (hwImg && hwMeta && hwMeta.clipsHair && maskImg) {
-      const maskCv = renderTraitCanvas(maskImg, hwMeta, crown, DIR);
+      const maskCv = renderTraitCanvas(maskImg, hwMeta, crown, DIR, _hwFit.dy256, _hwFit.mulX);
       const hctx = hairCv.getContext('2d');
       hctx.globalCompositeOperation = 'destination-in';
       hctx.drawImage(maskCv, 0, 0);
@@ -714,9 +714,10 @@ export async function drawCharacterPortrait(canvas, opts) {
      creator preview would still show a recolored hat the game refuses to
      render, which is worse than not offering the color at all. */
   const _hwCol = hatColor && (!SOLID_ONLY_HAT_COLOR || headwearIsSolid(headwear));
-  /* v2.3.1943: the band refit, same numbers the world renderer uses. */
+  /* v2.3.1943: the band refit, same numbers the world renderer uses — and
+     since v2.3.1959 the same object the hair mask above was placed with. */
   if (hwImg && hwMeta) placeTrait(ctx, _hwCol ? recolorHairToCanvas(hwImg, hatColor, hatRef) : hwImg, hwMeta, crown, DIR,
-    floatLift(hwMeta, hairMeta, DIR), bandFit(headwear, hair, DIR)); /* v2.3.1561; v2.3.1943 */
+    _hwFit.dy256, _hwFit.mulX); /* v2.3.1561; v2.3.1943 */
   /* v2.3.1934: the beard goes on LAST for draping headwear.  Deliberately
      after the hair-clip block as well, so the beard is not clipped to the
      hat's silhouette the way hair is -- it is in front of the hat, not under
