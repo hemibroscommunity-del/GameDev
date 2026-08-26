@@ -301,7 +301,9 @@ export function NameModal(props) {
   /* v2.3.1307 (ChatGPT round-7): preview zoom — tapping the character
      toggles full-body <-> close-up (swipes still rotate at either zoom;
      a tap is a pointer journey under 8px with no rotation fired). */
-  var _zmS = React.useState(false), previewZoom = _zmS[0], setPreviewZoom = _zmS[1];
+  /* v2.3.1951: lifted to BroTown — it now also drives the preview camera, and
+     that wiring lives up there beside activeCat. */
+  var previewZoom = props.previewZoom, setPreviewZoom = props.setPreviewZoom;
   var _dragMoved = React.useRef(false);
   /* v2.3.1308: category-aware framing — while the drawer is open the
      preview frames the region being edited (round-7 §preview).  Tap

@@ -49,17 +49,97 @@ export function portraitLook(sel) {
   };
 }
 
+/* ═══ v2.3.1951: THE PREVIEW LOOKS AT WHAT YOU ARE CHANGING ═══
+ *
+ * Owner: "When it comes time to change eye color have the character get larger
+ * (same effect as when you tap on him to zoom in a little).  I actually think
+ * zooming and panning the camera a little within the character preview to
+ * focus on the area being changed is a smart feature."
+ *
+ * Category framing DID exist once (v2.3.1308) and was retired in v2.3.1524 —
+ * but for a different reason than this.  Back then the frames existed to slide
+ * the character's legs behind a drawer that covered him, and when the pickers
+ * moved into their own column there was nothing left to hide behind.  Focusing
+ * on the thing you are editing is a new job, so this is a new mechanism.
+ *
+ * ── WHY THE CONTENT MOVES AND THE CANVAS DOES NOT ──
+ * The old frames grew the canvas BOX (height %, bottom %).  That cannot do this
+ * one: the column already renders the stage at scale(2) with overflow visible
+ * and the bro deliberately spilling behind the picker pane (v2.3.1524), so
+ * zooming the box further would push him further over the UI around him.
+ * Instead the figure is composited off-screen at full size and a CROP of it is
+ * blitted into the visible canvas.  The canvas's box never changes, so no
+ * layout moves and no new overflow appears — only the pixels inside it pan and
+ * zoom, which is exactly what "moving the camera" means.
+ *
+ * The crop rectangle is eased rather than cut, because a jump between two
+ * framings reads as a glitch and a glide reads as a camera.
+ *
+ * MEASURED (v2.3.1947): the composite always puts the figure at x centre
+ * 0.4975 with its feet at 0.977; the TOP moves with hats and hair, which is why
+ * every frame below is stated against the canvas and anchored on the feet.
+ */
+const FOCUS_FULL = { cy: 0.55, h: 0.95 };
+/* ── HOW FAR IS "a little"? ──
+   The first pass took the eye frame to 0.17 of the canvas and it was wrong in
+   three ways at once, all visible in one render: the head filled the panel and
+   was cut off at both sides, the two rotate buttons — which live at a fixed
+   27% up the stage — landed squarely on the eyes, and the whole thing read as
+   a face transplant rather than a camera nudge.  The owner asked for "a
+   little".  These frames keep the whole head (or the whole garment) in shot
+   with room around it, so the move reads as attention rather than as a jump
+   cut, and nothing lands under the rotate controls. */
+const CAT_FOCUS = {
+  hair: { cy: 0.30, h: 0.44 },
+  hat: { cy: 0.28, h: 0.46 },
+  eyes: { cy: 0.31, h: 0.36 },
+  beard: { cy: 0.33, h: 0.38 },
+  /* Skin is the whole body, so it gets the whole body. */
+  skin: FOCUS_FULL,
+  shirt: { cy: 0.47, h: 0.56 },
+  pants: { cy: 0.66, h: 0.52 },
+  shoes: { cy: 0.80, h: 0.44 },
+};
+/* Measured in v2.3.1947: the figure is centred here in every composite. */
+const FIG_CX = 0.4975;
+/* Per-frame approach fraction.  0.18 lands a category change in ~200ms at
+   60fps, which is the same 180ms the retired frames used and reads as a camera
+   move rather than a cut. */
+const CAM_EASE = 0.18;
+/* The figure's measured vertical bounds in the composite: feet at 0.977, and
+   nothing above 0.05 even with a sombrero over an afro. */
+const FIG_TOP = 0.05;
+const FIG_BOT = 0.977;
+/* How much of the canvas a cut edge dissolves over. */
+const FADE_BAND = 0.13;
+/* One offscreen composite for the whole session: it is re-drawn in place on
+   every change, and a new one per wiring would churn a 768px canvas every time
+   a trait is picked. */
+let _offCanvas = null;
+/* Where the camera is RIGHT NOW, kept across re-wirings so changing a trait
+   mid-glide does not snap it back to the start. */
+let _cam = null;
+
+export function focusForCat(cat, zoomedOut) {
+  if (zoomedOut) return FOCUS_FULL;
+  return CAT_FOCUS[cat] || FOCUS_FULL;
+}
+
 export function wireCharacterPortrait(previewCanvasRef, sel) {
   /* v2.3.1947: only the three the PREWARM needs are unpacked now; everything
      else the draw wants goes through portraitLook(sel). */
   var hairSel = sel.hairSel, facialHairSel = sel.facialHairSel,
     headwearSel = sel.headwearSel;
   if (!previewCanvasRef.current) return;
+  var visible = previewCanvasRef.current;
+  /* v2.3.1951: the figure is composited HERE and blitted, cropped, into the
+     canvas on screen.  One offscreen per wiring, reused across redraws. */
+  var off = _offCanvas || (_offCanvas = document.createElement('canvas'));
   /* v2.3.1938: the draw is a closure so the shirt-drawing subscription below
      can re-run just the DRAW.  Calling wireCharacterPortrait itself would
      re-subscribe on every stroke and pile up listeners. */
   function draw() {
-  drawCharacterPortrait(previewCanvasRef.current, Object.assign(portraitLook(sel), {
+  return drawCharacterPortrait(off, Object.assign(portraitLook(sel), {
     /* v2.3.1300: baked contact shadow — login preview only (exports and
        headshots keep a clean figure). */
     groundShadow: true,
@@ -73,12 +153,83 @@ export function wireCharacterPortrait(previewCanvasRef, sel) {
        Every other caller omits `scale` and keeps the exact 256 path,
        because portraitDataUrl's headshot crop uses raw pixel coords. */
     scale: Math.round(window.devicePixelRatio || 1),
-  }));
-  /* v2.3.715: warm the other 7 angles for whatever is selected NOW, so
-     rotating never waits on the network. */
-  prewarmPortraitDirs({ hair: hairSel, facialHair: facialHairSel, headwear: headwearSel });
+  })).then(function () {
+    /* v2.3.715: warm the other 7 angles for whatever is selected NOW, so
+       rotating never waits on the network. */
+    prewarmPortraitDirs({ hair: hairSel, facialHair: facialHairSel, headwear: headwearSel });
+    blit();
+  });
+  }
+
+  /* ── the camera ──
+     `_cam` is where it is now; `target` is where the category wants it.  The
+     ease runs only while they differ, so a still preview costs nothing. */
+  var target = focusForCat(sel.activeCat, sel.zoomedOut);
+  if (!_cam) _cam = { cy: target.cy, h: target.h };
+  var raf = 0;
+  function blit() {
+    if (!off.width || !visible) return;
+    var box = visible.getBoundingClientRect();
+    if (!box.width || !box.height) return;
+    var dpr = Math.min(3, Math.round(window.devicePixelRatio || 1));
+    var w = Math.round(box.width * dpr), h = Math.round(box.height * dpr);
+    if (visible.width !== w || visible.height !== h) { visible.width = w; visible.height = h; }
+    var ctx = visible.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, w, h);
+    var S = off.width;                       /* the composite is square */
+    var winH = _cam.h * S;
+    var winW = winH * (box.width / box.height);
+    ctx.drawImage(off, FIG_CX * S - winW / 2, _cam.cy * S - winH / 2, winW, winH, 0, 0, w, h);
+    /* ── DO NOT SLICE HIM OFF AGAINST THIN AIR ──
+       v2.3.1309 (owner) settled this once already for the retired frames: a
+       frame that cuts the sprite leaves a hard horizontal edge with the
+       pedestal art showing through underneath, and it reads as the character
+       having been chopped in half.  A zoomed camera always cuts somewhere — a
+       head frame ends mid-torso and a boot frame starts mid-torso, by
+       definition — so the cut edge is faded and the body dissolves instead.
+
+       Per EDGE, not both: fading an edge the figure does not reach is at best
+       invisible and at worst eats the top of a tall hat.  MEASURED bounds
+       (v2.3.1947): the feet land at 0.977 down the composite every time, and
+       nothing reaches above 0.05 even with a sombrero over an afro. */
+    const top = _cam.cy - _cam.h / 2, bot = _cam.cy + _cam.h / 2;
+    const band = Math.round(h * FADE_BAND);
+    if (band > 2) {
+      ctx.globalCompositeOperation = 'destination-out';
+      if (bot < FIG_BOT) {          /* the body continues below the frame */
+        const g = ctx.createLinearGradient(0, h - band, 0, h);
+        g.addColorStop(0, 'rgba(0,0,0,0)');
+        g.addColorStop(1, 'rgba(0,0,0,1)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, h - band, w, band);
+      }
+      if (top > FIG_TOP) {          /* ...and above it */
+        const g2 = ctx.createLinearGradient(0, band, 0, 0);
+        g2.addColorStop(0, 'rgba(0,0,0,0)');
+        g2.addColorStop(1, 'rgba(0,0,0,1)');
+        ctx.fillStyle = g2;
+        ctx.fillRect(0, 0, w, band);
+      }
+      ctx.globalCompositeOperation = 'source-over';
+    }
+  }
+  function step() {
+    raf = 0;
+    var dcy = target.cy - _cam.cy, dh = target.h - _cam.h;
+    /* Close enough to stop: below a quarter of a percent of the frame nobody
+       can see the remaining difference, and an ease that never terminates
+       keeps a rAF alive behind a screen the player has left. */
+    if (Math.abs(dcy) < 0.0015 && Math.abs(dh) < 0.0015) {
+      _cam.cy = target.cy; _cam.h = target.h; blit(); return;
+    }
+    _cam.cy += dcy * CAM_EASE; _cam.h += dh * CAM_EASE;
+    blit();
+    raf = requestAnimationFrame(step);
   }
   draw();
+  if (raf) cancelAnimationFrame(raf);
+  raf = requestAnimationFrame(step);
   /* Redraw on every stroke in the designer -- a drawing is not one of the
      `sel` values, so nothing else would re-run this. */
   var _redraw = function () { try { draw(); } catch (e) { /* ignore */ } };
@@ -86,7 +237,13 @@ export function wireCharacterPortrait(previewCanvasRef, sel) {
   /* v2.3.1941: patterns live in their own store for the same reason -- they are
      not `sel` values either, and they change from inside the same panel. */
   var _offPat = onPatternChange(_redraw);
+  /* The visible canvas is sized from its own layout box, so a rotate or a
+     resize has to re-blit even when nothing was redrawn. */
+  var _onResize = function () { try { blit(); } catch (e) { /* ignore */ } };
+  window.addEventListener('resize', _onResize);
   return function () {
+    if (raf) cancelAnimationFrame(raf);
+    window.removeEventListener('resize', _onResize);
     try { _offArt(); } catch (e) { /* ignore */ }
     try { _offPat(); } catch (e) { /* ignore */ }
   };

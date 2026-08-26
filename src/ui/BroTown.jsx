@@ -1766,6 +1766,13 @@ export var BroTown = function BroTown(_ref0) {
   /* Live character preview on the login screen -- redraws whenever any
      cosmetic selection (or the preview angle) changes. */
   var previewCanvasRef = useRef(null);
+  /* v2.3.1951: the tap-zoom moved up here from NameModal.  It was local while
+     it only resized a box inside that component; it now also tells the preview
+     camera to pull back to the whole figure, and that wiring lives in this
+     file beside activeCat, which was lifted for the same reason. */
+  var _zmState = useState(false),
+    previewZoom = _zmState[0],
+    setPreviewZoom = _zmState[1];
   /* v2.3.711: drag-to-rotate -- horizontal swipes on the preview canvas step
      the facing every 26px of travel; the corner buttons remain for
      discoverability.  Holds the last x where a step fired. */
@@ -1789,6 +1796,9 @@ export var BroTown = function BroTown(_ref0) {
       facialHairSel: facialHairSel, beardColorSel: beardColorSel,
       headwearSel: headwearSel, hatColorSel: hatColorSel, eyeColor: eyeColorSel,
       shirtSel: shirtSel, shirtColorSel: shirtColorSel,
+      /* v2.3.1951: which tab is open drives where the preview camera looks,
+         and the tap-zoom overrides it with the whole figure. */
+      activeCat: activeCat, zoomedOut: previewZoom,
     });
     /* ═══ v2.3.1818: showNameModal IS A DEPENDENCY ═══
        Owner: "loading character assets seems slow (no char in image)."
@@ -1811,7 +1821,7 @@ export var BroTown = function BroTown(_ref0) {
 
        Listing the mount flag is the whole fix: the effect re-runs when the
        creator appears, the ref is attached by then, and the portrait draws. */
-  }, [showNameModal, previewDir, skinSel, pantsSel, shoesSel, hairSel, hairColorSel, facialHairSel, beardColorSel, headwearSel, hatColorSel, shirtSel, shirtColorSel, eyeColorSel]);
+  }, [showNameModal, previewDir, skinSel, pantsSel, shoesSel, hairSel, hairColorSel, facialHairSel, beardColorSel, headwearSel, hatColorSel, shirtSel, shirtColorSel, eyeColorSel, activeCat, previewZoom]);
   /* v2.3.715: the welcome modal is dead network time -- start pulling the
      heavy in-game sheets (network/decode only; the CPU bakes still run
      behind the intro overlay via preloadPlayerAssets in joinTown) and warm
@@ -8116,7 +8126,7 @@ export var BroTown = function BroTown(_ref0) {
     });
   }
   if (showNameModal) {
-    return /*#__PURE__*/React.createElement(NameModal, { _dragRotX: _dragRotX, _swatchTile: _swatchTile, _thumbTile: _thumbTile, activeCat: activeCat, beardColorSel: beardColorSel, facialHairSel: facialHairSel, hairColorSel: hairColorSel, hairSel: hairSel, hatColorSel: hatColorSel, eyeColorSel: eyeColorSel, setEyeColorSel: setEyeColorSel, headwearSel: headwearSel, joinTown: joinTown, nameInput: nameInput, pantsSel: pantsSel, previewCanvasRef: previewCanvasRef, previewDir: previewDir, randomizeWithFlair: randomizeWithFlair, rollRandomName: rollRandomName, rotatePreview: rotatePreview, setActiveCat: setActiveCat, setBeardColorSel: setBeardColorSel, setFacialHairSel: setFacialHairSel, setHairColorSel: setHairColorSel, setHairSel: setHairSel, setHatColorSel: setHatColorSel, setHeadwearSel: setHeadwearSel, setNameInput: setNameInput, setPantsSel: setPantsSel, setShirtColorSel: setShirtColorSel, setShirtSel: setShirtSel, setShoesSel: setShoesSel, setSkinSel: setSkinSel, shirtColorSel: shirtColorSel, shirtSel: shirtSel, shoesSel: shoesSel, skinSel: skinSel });
+    return /*#__PURE__*/React.createElement(NameModal, { _dragRotX: _dragRotX, _swatchTile: _swatchTile, _thumbTile: _thumbTile, activeCat: activeCat, beardColorSel: beardColorSel, facialHairSel: facialHairSel, hairColorSel: hairColorSel, hairSel: hairSel, hatColorSel: hatColorSel, eyeColorSel: eyeColorSel, setEyeColorSel: setEyeColorSel, headwearSel: headwearSel, joinTown: joinTown, nameInput: nameInput, pantsSel: pantsSel, previewCanvasRef: previewCanvasRef, previewDir: previewDir, previewZoom: previewZoom, setPreviewZoom: setPreviewZoom, randomizeWithFlair: randomizeWithFlair, rollRandomName: rollRandomName, rotatePreview: rotatePreview, setActiveCat: setActiveCat, setBeardColorSel: setBeardColorSel, setFacialHairSel: setFacialHairSel, setHairColorSel: setHairColorSel, setHairSel: setHairSel, setHatColorSel: setHatColorSel, setHeadwearSel: setHeadwearSel, setNameInput: setNameInput, setPantsSel: setPantsSel, setShirtColorSel: setShirtColorSel, setShirtSel: setShirtSel, setShoesSel: setShoesSel, setSkinSel: setSkinSel, shirtColorSel: shirtColorSel, shirtSel: shirtSel, shoesSel: shoesSel, skinSel: skinSel });
   }
   return /*#__PURE__*/React.createElement(React.Fragment, null, /* v2.3.1925: the mystery-reveal ceremony.  Mounted at the top of the in-world fragment and ALWAYS mounted — it renders null until a hidden grade arrives on the loot credit, and mounting it conditionally would mean the queue it subscribes to could fill before anyone was listening. */ /*#__PURE__*/React.createElement(RevealOverlay, null), showIntro && /*#__PURE__*/React.createElement(IntroVideo, {
     waitFor: introWaitRef.current,

@@ -432,6 +432,20 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
      `arming` is the overwrite step: tap Save, then tap the slot to replace. */
   const [slots, setSlots] = React.useState([]);
   const [arming, setArming] = React.useState(false);
+  /* ═══ v2.3.1951: A SHAPE YOU CAN STILL RESIZE ═══
+     Owner: "For shapes in editor it's helpful to have a drag handle on the
+     corner so you can size it how you want (default is to keep shape ratio so
+     proportions are consistent at each size but you can untick that option)."
+
+     So a shape no longer commits when you lift your finger.  It becomes
+     PENDING: still adjustable, with a handle on the free corner, until you
+     place it.  `ratio` is the aspect it was drawn at, remembered so the lock
+     preserves what you made rather than forcing a square. */
+  const pendRef = React.useRef(null);      /* {x0,y0,x1,y1,ratio} or null */
+  const [pendTick, setPendTick] = React.useState(0);
+  const [lockRatio, setLockRatio] = React.useState(true);
+  const dragHandleRef = React.useRef(false);
+  const setPend = (b) => { pendRef.current = b; setPendTick((t) => t + 1); };
   const cvRef = React.useRef(null);
   const paintingRef = React.useRef(false);
   const lastRef = React.useRef('');
@@ -468,6 +482,8 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
     setCopied(false);
     setSlots(getSlots(artId));
     setArming(false);
+    pendRef.current = null;
+    setDraft(null);
   }, [artId]);
 
   const HIST_MAX = 40;
@@ -558,7 +574,26 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
         ctx.fillRect(x * S, y * S, S, S);
       }
     }
-  }, [art, onPattern, draftTick, ink]);
+    /* v2.3.1951: the resize handle, on the corner you dragged TO.  Drawn last
+       so it is never hidden under the shape's own cells, and drawn as a ring
+       rather than a blob so it does not read as part of the drawing. */
+    const pend = pendRef.current;
+    if (pend) {
+      const hx = (pend.x1 + 0.5) * S, hy = (pend.y1 + 0.5) * S;
+      const r = Math.max(7, S * 0.62);
+      ctx.beginPath();
+      ctx.arc(hx, hy, r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(10,14,18,.55)';
+      ctx.fill();
+      ctx.lineWidth = Math.max(2, S * 0.14);
+      ctx.strokeStyle = '#D8AA58';
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(hx, hy, Math.max(2, r * 0.28), 0, Math.PI * 2);
+      ctx.fillStyle = '#D8AA58';
+      ctx.fill();
+    }
+  }, [art, onPattern, draftTick, pendTick, ink]);
 
   /* Which cell the pointer is over.  `clamp` pins a drag that has wandered off
      the grid to the nearest edge cell instead of dropping it: pointer capture
@@ -597,8 +632,70 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
     setArtState((a) => artWithCells(a, cells, ink));
   };
 
+  /* Commit whatever shape is pending.  Called by starting a new gesture, by
+     Place, by switching tool, and by Done — anything that means "I am finished
+     with this one". */
+  const placePending = () => {
+    const d = draftRef.current;
+    if (!pendRef.current || !d || !d.length) { setPend(null); return; }
+    pushHist(art);
+    setArtState((a) => artWithCells(a, d, ink));
+    setPend(null);
+    setDraft(null);
+  };
+  const cancelPending = () => { setPend(null); setDraft(null); };
+
+  /* Is this pointer on the handle?  Generous: the handle is drawn about
+     two-thirds of a cell and a finger is a lot wider than that. */
+  const onHandle = (e) => {
+    const pend = pendRef.current;
+    const cv = cvRef.current;
+    if (!pend || !cv) return false;
+    const r = cv.getBoundingClientRect();
+    const cw = r.width / ART_W, ch = r.height / ART_H;
+    const hx = r.left + (pend.x1 + 0.5) * cw, hy = r.top + (pend.y1 + 0.5) * ch;
+    const dx = e.clientX - hx, dy = e.clientY - hy;
+    return Math.hypot(dx, dy) <= Math.max(22, cw * 1.3);
+  };
+
+  /* Resize to a new far corner, honouring the ratio lock.  The lock keeps the
+     aspect the shape was DRAWN at rather than forcing a square: a 2:1 oval
+     stays a 2:1 oval at every size, which is what "proportions are consistent"
+     means for a shape you made yourself. */
+  const resizeTo = (cx, cy) => {
+    const pend = pendRef.current;
+    if (!pend) return;
+    let nx = cx, ny = cy;
+    if (lockRatio && pend.ratio > 0) {
+      const sx = nx >= pend.x0 ? 1 : -1, sy = ny >= pend.y0 ? 1 : -1;
+      const w = Math.abs(nx - pend.x0) + 1, h = Math.abs(ny - pend.y0) + 1;
+      /* Follow whichever axis the finger moved further along, so the shape
+         tracks the finger instead of fighting it. */
+      const useW = w >= h * pend.ratio;
+      const nw = useW ? w : Math.max(1, Math.round(h * pend.ratio));
+      const nh = useW ? Math.max(1, Math.round(w / pend.ratio)) : h;
+      nx = pend.x0 + sx * (nw - 1);
+      ny = pend.y0 + sy * (nh - 1);
+      nx = Math.max(0, Math.min(ART_W - 1, nx));
+      ny = Math.max(0, Math.min(ART_H - 1, ny));
+    }
+    const box = { x0: pend.x0, y0: pend.y0, x1: nx, y1: ny, ratio: pend.ratio };
+    pendRef.current = box;
+    setDraft(mirrorCells(expandCells(shapeCells(tool, box.x0, box.y0, box.x1, box.y1), brush), mirror));
+  };
+
   const down = (e) => {
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) { /* not supported */ }
+    /* v2.3.1951: the handle wins over everything — it is the only thing on the
+       grid that is not a drawing gesture. */
+    if (onHandle(e)) {
+      dragHandleRef.current = true;
+      paintingRef.current = true;
+      lastRef.current = '';
+      return;
+    }
+    /* Anywhere else means "done with that one". */
+    if (pendRef.current) placePending();
     if (tdef.drag === 'once') {
       /* Fill and Letters are a TAP, not a drag: they commit where you touch. */
       const c = cellAt(e, false);
@@ -628,6 +725,14 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   const anchorRef = React.useRef(null);
   const move = (e) => {
     if (!paintingRef.current) return;
+    if (dragHandleRef.current) {
+      const c = cellAt(e, true);
+      const k = c[0] + ',' + c[1];
+      if (k === lastRef.current) return;
+      lastRef.current = k;
+      resizeTo(c[0], c[1]);
+      return;
+    }
     if (tdef.drag === 'shape') {
       const a = anchorRef.current;
       if (!a) return;
@@ -642,12 +747,28 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   };
   const up = () => {
     const d = draftRef.current;
-    if (paintingRef.current && d && d.length) setArtState((a) => artWithCells(a, d, ink));
+    if (dragHandleRef.current) {
+      /* Still pending — the whole point is that you can keep adjusting it. */
+      dragHandleRef.current = false;
+      paintingRef.current = false;
+      lastRef.current = '';
+      return;
+    }
+    if (paintingRef.current && tdef.drag === 'shape' && d && d.length) {
+      /* v2.3.1951: a shape no longer lands on release.  It becomes pending,
+         with a handle, until you place it. */
+      const a = anchorRef.current;
+      const c = lastRef.current ? lastRef.current.split(',').map(Number) : [a[0], a[1]];
+      const w = Math.abs(c[0] - a[0]) + 1, h = Math.abs(c[1] - a[1]) + 1;
+      setPend({ x0: a[0], y0: a[1], x1: c[0], y1: c[1], ratio: w / h });
+    } else if (paintingRef.current && d && d.length) {
+      setArtState((a) => artWithCells(a, d, ink));
+      setDraft(null);
+    }
     paintingRef.current = false;
     anchorRef.current = null;
     lastRef.current = '';
     prevCellRef.current = null;
-    if (d) setDraft(null);
   };
 
   const size = ART_W * CELL_PX;
@@ -746,7 +867,14 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
         {!onPattern && (
           <div className="bt-paint-tools">
             {TOOLS.map((t) => (
-              <button key={t.id} type="button" onClick={() => { setTool(t.id); setDraft(null); }}
+              <button key={t.id} type="button"
+                onClick={() => {
+                  /* v2.3.1951: a pending shape belongs to you -- reaching for
+                     another tool places it rather than binning it. */
+                  if (pendRef.current) placePending();
+                  setTool(t.id);
+                  setDraft(null);
+                }}
                 className={'bt-paint-tool' + (tool === t.id ? ' bt-paint-tool--on' : '')}
                 aria-pressed={tool === t.id} title={TOOL_HINT[t.id]}>
                 <ToolIcon id={t.id} />
@@ -765,7 +893,32 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
              the row keeps its height either way, so nothing below it jumps when
              you change tool. */
           <div className="bt-paint-opts">
-            {tool === 'letter' ? (
+            {pendRef.current ? (
+              /* v2.3.1951: while a shape is pending the row belongs to IT.
+                 Contextual rather than three more permanent buttons: the row
+                 already swaps for the letter tool, the controls only mean
+                 anything while there is a shape to adjust, and appearing
+                 exactly when you make one is how you find out they exist. */
+              <div className="bt-paint-opts-main bt-paint-shapeops">
+                <button type="button" onClick={() => setLockRatio((v) => !v)}
+                  aria-pressed={lockRatio}
+                  className={'bt-paint-size' + (lockRatio ? ' bt-paint-size--on' : '')}
+                  title={lockRatio
+                    ? 'Keeping the proportions you drew — tap to size width and height freely'
+                    : 'Width and height are free — tap to keep the proportions you drew'}>
+                  <span className="bt-paint-tool-label">
+                    {lockRatio ? '\u2713 Keep shape' : 'Free size'}
+                  </span>
+                </button>
+                <button type="button" onClick={placePending}
+                  className="bt-paint-size bt-paint-size--on">
+                  <span className="bt-paint-tool-label">Place</span>
+                </button>
+                <button type="button" onClick={cancelPending} className="bt-paint-size">
+                  <span className="bt-paint-tool-label">Cancel</span>
+                </button>
+              </div>
+            ) : tool === 'letter' ? (
               <div className="bt-paint-letters" ref={stripRef}>
                 {LETTERS.map((ch) => (
                   <button key={ch} type="button" onClick={() => setLetter(ch)}
@@ -888,6 +1041,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
             title={onPattern ? 'Remove the pattern' : ('Erase the whole ' + (isShirt ? side + ' of the shirt' : scfg.label))}
             onClick={() => {
               if (onPattern) { pickTile(''); return; }
+              cancelPending();      /* clearing an empty grid should leave it empty */
               pushHist(art);
               setArtState(emptyArt());
             }}>
@@ -896,7 +1050,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
             </span>
           </button>
           <button type="button" className="bt-cc-tab bt-cc-tab--on" style={{ flex: 1, minHeight: 38 }}
-            onClick={onClose}>
+            onClick={() => { if (pendRef.current) placePending(); onClose(); }}>
             <span className="bt-cc-tab-label">Done</span>
           </button>
         </div>

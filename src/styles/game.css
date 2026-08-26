@@ -1507,6 +1507,10 @@ input{font-family:inherit}
   color:var(--ui-text);font-size:13px;
 }
 .bt-paint-save--on{background:var(--ui-brass-soft);border-color:var(--ui-brass)}
+/* v2.3.1951: the pending-shape controls borrow the brush-size chip so the row
+   keeps its height and the panel below it never jumps. */
+.bt-paint-shapeops .bt-paint-size{padding:4px 3px}
+.bt-paint-shapeops .bt-paint-tool-label{font-size:11px;line-height:1.15;text-align:center}
 
 /* ── short viewports: the same markup, three columns ──
    MEASURED (v2.3.1947): on iPhone landscape (844x390) the single-grid panel
