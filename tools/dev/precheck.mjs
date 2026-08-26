@@ -73,6 +73,13 @@
  *                      mask in both. No shipped hat combination reaches
  *                      the mismatch, so the probe manufactures the case
  *                      (v2.3.1959).
+ *  10. hairmask-rule  — FAIL: if the headwear art, a hair-clip mask or
+ *                      tools/make_hairmask.py changed, every committed
+ *                      hairmask/<dir>.png must still be the v2.3.1957
+ *                      width rule applied to the hat art beside it
+ *                      (tools/dev/check-hairmask-rule.mjs). Catches both
+ *                      an edit to the rule and art recut without a
+ *                      rebuild — neither of which anything else sees.
  *
  * Output is terse and actionable on purpose — the reader is usually an
  * AI session deciding whether it may push.
@@ -571,6 +578,32 @@ if (changedServer.length) {
       add('FAIL', 'hairmask-parity', `check-hairmask-parity.mjs exited ${r.status ?? 'timeout'}:\n    ${tail}`);
     }
   } else add('PASS', 'hairmask-parity', 'no trait-placement changes — check skipped');
+}
+
+/* ---- 10. hairmask rule ----------------------------------------------
+   v2.3.1960.  The hair-clip masks are a LOOK decision baked into 155 PNGs and
+   nothing on the PR path ever looked at them, so both ways they rot were
+   silent: someone edits the width rule in make_hairmask.py, or someone recuts
+   a hat's art and forgets to rebuild the mask beside it.  Gated on the three
+   inputs the masks are a function of — the generator, the headwear folder, and
+   the body/crown table the "does this shave the head" measurement stands on.
+   ~1s, node-only; the generator itself needs python + numpy + Pillow, which
+   this gate deliberately does not. */
+{
+  const touched = changed.filter((f) => f === 'tools/make_hairmask.py'
+    || f.startsWith('public/sprites/traits/headwear/')
+    || f.startsWith('public/sprites/player/stand-')
+    || f === 'public/sprites/player/body-tops.json'
+    || f === 'tools/dev/check-hairmask-rule.mjs');
+  if (touched.length) {
+    const r = spawnSync('node', ['tools/dev/check-hairmask-rule.mjs'],
+      { cwd: root, encoding: 'utf8', timeout: 120 * 1000 });
+    if (r.status === 0) add('PASS', 'hairmask-rule', 'every hair-clip mask is the width rule applied to the hat art on disk');
+    else {
+      const tail = ((r.stdout || '') + (r.stderr || '')).trim().split('\n').slice(-10).join('\n    ');
+      add('FAIL', 'hairmask-rule', `check-hairmask-rule.mjs exited ${r.status ?? 'timeout'}:\n    ${tail}`);
+    }
+  } else add('PASS', 'hairmask-rule', 'no headwear art / hairmask / generator changes — check skipped');
 }
 
 /* ---- report -------------------------------------------------------- */
