@@ -82,6 +82,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
     }
     if (peers.length < want) break;
+    /* ═══ KEEP THEM LOGGED IN, AND KEEP THEM DIRTY ═══
+     * Two separate reasons a scripted peer disappears, both of which the
+     * first version of this file walked straight into (it reported 1 peer
+     * seen out of 3, and again 1 out of 7 — the last one to join):
+     *   - AFK.  v2.3.1913 deliberately stopped the >=1 Hz keepalive move
+     *     and the 2 s `track` timer from stamping the activity clock, so
+     *     liveness now rests on `track`'s `aw` flag, which the client
+     *     derives from real touch/key/wheel input.  A peer that joins and
+     *     never touches anything goes `aw:1` two minutes after its last
+     *     click and is evicted two minutes after that (close 4006).
+     *     Building a crowd takes longer than that, so the early peers were
+     *     being logged out while the later ones were still starting.
+     *   - DIRTINESS.  tick.js only fans out players it has marked dirty,
+     *     and a player standing perfectly still never is (the same reason
+     *     waitMutualSight nudges, harness.mjs).
+     * One real key press per peer per step fixes both: it is genuine input
+     * for the AFK clock AND it moves them, which is what a crowd does. */
+    for (const Q of peers) await H.nudge(Q, ['w', 'a', 's', 'd'][peers.indexOf(Q) % 4], 200);
     /* WAIT for the observer to have them all, do not just pause and hope.
        The room rosters every player unconditionally at 1 Hz
        (PRESENCE_REFRESH_TICKS, tick.js), so on a healthy box this resolves in
@@ -103,8 +121,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   const base = rows[0];
   const top = rows[rows.length - 1];
-  rec.ok('the client reported real frame samples at every step',
-    rows.every((r) => (r.frames || 0) > 5), rows.map((r) => r.frames));
+  /* A guard, not a target: it exists so the ratio below is not computed from
+     an empty sample.  Deliberately tiny — a contended box renders single
+     figures of frames in four seconds, and failing on that would be this
+     file reporting on the machine instead of on the game. */
+  rec.ok('the client reported frame samples at every step',
+    rows.every((r) => (r.frames || 0) >= 3), rows.map((r) => r.frames));
 
   /* THE SHAPE ASSERTION.  Per-peer entity cost must not blow up: rendering
      N peers should cost roughly N times one peer, not N-squared.  Compared as
