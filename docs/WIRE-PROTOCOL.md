@@ -236,20 +236,27 @@ v2.3.1465 pass did not reach it.
 | Group | Keys | Bound |
 |---|---|---|
 | Presence | `x`, `y` (finite numbers), `d` (≤16 chars), `z` | `z` must pass `_validZone` |
-| Cosmetics | `name`, `color`, `avatar`, `bt`, `bl`, `hw`, `fh`, `hr`, `sk`, `hc`, `htc`, `fhc`, `st`, `stc`, `ec`, `sa`, `sb`, `pa`, `ta`, `sp`, `pp`, `fp`, `eqc`, `eql`, `eqs`, `eqst`, `pt`, `sh`, `bs`, `wpnMat` | truncated to 64 chars; `avatar` and the four drawing keys to 512 |
+| Cosmetics | `name`, `color`, `avatar`, `bt`, `bl`, `hw`, `fh`, `hr`, `sk`, `hc`, `htc`, `fhc`, `st`, `stc`, `ec`, `sa`, `sb`, `pa`, `ta`, `tf`, `tm`, `sp`, `pp`, `fp`, `eqc`, `eql`, `eqs`, `eqst`, `pt`, `sh`, `bs`, `wpnMat` | truncated to 64 chars; `avatar` and the six drawing keys to 512 |
 | Bootstrap | anything matching `/^rpg[A-Z][A-Za-z0-9]*$/` | scalars pass; containers capped at 8 KB |
 
 `ec` is the eye colour (v2.3.1930) and `wpnMat` the weapon's blacksmith
 tier (v2.3.1760); both were in the code allowlist before this table named
 them.  `sa`/`sb` are the player's drawn shirt, front and back (v2.3.1939),
-and `pa`/`ta` their drawn pants print and chest tattoo (v2.3.1940).  Those
-four are the reason the cap is not a flat 64: each is exactly 256 hex
+`pa`/`ta` their drawn pants print and chest tattoo (v2.3.1940), and `tf`/`tm`
+their FACE and ARM tattoos (v2.3.1949 — `tm` rather than a suffixed `ta`
+because these keys are two letters by convention and `ta` was taken; one arm
+drawing covers both arms, since at eight-odd pixels an arm a left/right
+distinction is invisible and would double the bytes for nothing).  Those
+six are the reason the cap is not a flat 64: each is exactly 256 hex
 characters (a 16x16 grid, one character per cell) and the receiving client
 rejects any string that is not exactly that, so a truncated drawing is not a
 smaller drawing — it is no drawing at all.  `join.js` exports `cosmeticCap`
 and BOTH gates call it (the join sanitiser and the `track` handler), because
 v2.3.1939 shipped the two caps spelled out separately and the second one was
-missed: prints appeared on join and vanished on the first 2 s relay.  `sp`/`pp`/`fp`
+missed: prints appeared on join and vanished on the first 2 s relay.  The
+anticheat suite now asserts the WHOLE drawing-key set survives the `track`
+gate at 256 characters, rather than only the newest member, so the next key
+cannot repeat it.  `sp`/`pp`/`fp`
 are the shirt, trouser and shoe PATTERNS (v2.3.1941, v2.3.1944) — a tile id and
 a palette index, e.g. `stripe-v:3`.  They are deliberately not drawings: a pattern repeats across
 a whole garment, so it needs about a dozen characters rather than 256, sits

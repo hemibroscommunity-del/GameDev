@@ -250,6 +250,30 @@ export function letterCells(ch, x, y) {
   return out;
 }
 
+/* ── mirror ──
+   v2.3.1949: symmetry, which is what most face and chest designs actually want
+   and what is hardest to do by hand on a grid this small.  It is a modifier on
+   the CELLS, not on the tools, so one implementation covers all six: pen, line,
+   box, circle, fill and letters.  Applied last, after the brush, so a wide
+   stroke mirrors at its full width.  A cell on the centre column of an
+   even-width grid maps to its own neighbour rather than to itself, which is
+   correct — there is no centre CELL in 16, only a centre EDGE. */
+export function mirrorCells(cells, on) {
+  if (!on) return cells;
+  const seen = new Uint8Array(ART_W * ART_H);
+  const out = [];
+  for (let i = 0; i < cells.length; i++) {
+    const x = cells[i][0], y = cells[i][1];
+    for (const nx of [x, ART_W - 1 - x]) {
+      if (nx < 0 || nx >= ART_W) continue;
+      const idx = y * ART_W + nx;
+      if (seen[idx]) continue;
+      seen[idx] = 1; out.push([nx, y]);
+    }
+  }
+  return out;
+}
+
 /* ── the toolbar ──
    `drag` says whether the tool previews a shape while the finger is down (line,
    box, circle) or paints as it goes (pen) or fires once on touch (fill).  The

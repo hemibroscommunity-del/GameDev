@@ -502,14 +502,21 @@ export async function drawCharacterPortrait(canvas, opts) {
      absent means this device's own.  No mirror -- see the shirt note below. */
   const _pantsArt = (opts && opts.pantsArt !== undefined) ? sanitizeShirtArt(opts.pantsArt) : inkedArt('pants');
   const _tattooArt = (opts && opts.tattooArt !== undefined) ? sanitizeShirtArt(opts.tattooArt) : inkedArt('tattoo');
+  /* v2.3.1949: the face and arm canvases follow the same caller contract -- an
+     explicit value (even '') means "this player's", undefined means "read the
+     local store", which is what keeps every preview live for free. */
+  const _faceArt = (opts && opts.faceTattooArt !== undefined) ? sanitizeShirtArt(opts.faceTattooArt) : inkedArt('tattooFace');
+  const _armArt = (opts && opts.armTattooArt !== undefined) ? sanitizeShirtArt(opts.armTattooArt) : inkedArt('tattooArm');
   /* v2.3.1941: the trouser pattern rides the same object. */
   const _pantsPat = (opts && opts.pantsPattern !== undefined)
     ? sanitizePattern(opts.pantsPattern, 'pants') : getPattern('pants');
   /* v2.3.1944: and the shoes'. */
   const _shoesPat = (opts && opts.shoesPattern !== undefined)
     ? sanitizePattern(opts.shoesPattern, 'shoes') : getPattern('shoes');
-  const _bodyArt = (_pantsArt || _tattooArt || parsePattern(_pantsPat, 'pants') || parsePattern(_shoesPat, 'shoes'))
+  const _bodyArt = (_pantsArt || _tattooArt || _faceArt || _armArt
+    || parsePattern(_pantsPat, 'pants') || parsePattern(_shoesPat, 'shoes'))
     ? { pants: _pantsArt || '', tattoo: _tattooArt || '',
+      tattooFace: _faceArt || '', tattooArm: _armArt || '',
       pantsPattern: _pantsPat, shoesPattern: _shoesPat, mirror: false } : null;
   ctx.drawImage(recolorBodyToCanvas(bodyImg, skinTarget(skin), pantsTarget(pants), shoesTarget(shoes), null, FRAME,
     eyeColorTarget(_eyeId), EYE_MASK[`stand-${DIR}`], _bodyArt), 0, 0);

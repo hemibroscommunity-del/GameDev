@@ -221,7 +221,10 @@ export function NameModal(props) {
        drawing, and most people will want the patterns. */
     shirt: { target: 'shirt', label: 'Pattern or draw on this shirt' },
     pants: { target: 'pants', label: 'Pattern or draw on these pants' },
-    skin: { target: 'tattoo', label: 'Draw a tattoo' },
+    /* v2.3.1949: one button, three canvases -- the panel's mode strip picks
+       chest, face or arms.  The label says so, because a face tattoo nobody
+       knows exists is a face tattoo nobody draws. */
+    skin: { target: 'tattoo', label: 'Tattoo your chest, face or arms' },
     /* v2.3.1944: shoes are pattern-only — no drawing on an eight-pixel boot. */
     shoes: { target: 'shoes', label: 'Pattern these shoes' },
   };

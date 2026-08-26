@@ -66,7 +66,10 @@ const JOIN_COSMETIC_KEYS = [
      and the print would silently never appear. */
   /* v2.3.1940: the drawn pants print (`pa`) and the chest tattoo (`ta`).  Same
      shape, same cap, same reasoning. */
-  'sa', 'sb', 'pa', 'ta',
+  /* v2.3.1949: the face (`tf`) and arm (`tm`) tattoos.  Same shape and cap
+     again.  `tm` rather than `ta`+suffix because these are two-letter keys by
+     convention and `ta` was taken by the chest. */
+  'sa', 'sb', 'pa', 'ta', 'tf', 'tm',
   /* v2.3.1941: clothing patterns -- a tile id and a palette index, e.g.
      "stripe-v:3".  Short, so unlike the drawings above they sit inside the flat
      64-char cap with room to spare and need no special case. */
@@ -81,7 +84,7 @@ const JOIN_COSMETIC_KEYS = [
    the live-update path: the client's sanitiser rejects anything that is not
    exactly 256 hex characters, so peers saw the print appear on join and vanish
    two seconds later.  index.js imports this rather than repeating it. */
-export const DRAWING_KEYS = new Set(['sa', 'sb', 'pa', 'ta']);
+export const DRAWING_KEYS = new Set(['sa', 'sb', 'pa', 'ta', 'tf', 'tm']);
 /** Cap for one cosmetic key: drawings and avatars get the large bound. */
 export function cosmeticCap(k) { return (k === 'avatar' || DRAWING_KEYS.has(k)) ? 512 : 64; }
 /* rpg* bootstrap seeds: admitted by prefix, then re-read and clamped by

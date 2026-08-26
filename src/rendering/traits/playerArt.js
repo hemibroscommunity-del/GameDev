@@ -136,7 +136,12 @@ export function artWithCells(s, cells, idx) {
  * splitting them would double the wire cost and the UI for a distinction nobody
  * could see on a 20-pixel torso.
  */
-export const CANVASES = ['shirtFront', 'shirtBack', 'pants', 'tattoo'];
+/* v2.3.1949 (owner: "Allow tattoos on the face and arms too").  Three skin
+   canvases, not one: they land on regions of very different shape and size, so
+   one drawing stretched across all three would be a smear on two of them.
+   ONE arm drawing covers BOTH arms — at eight-odd pixels an arm, a left/right
+   distinction is invisible and would double the wire cost for nothing. */
+export const CANVASES = ['shirtFront', 'shirtBack', 'pants', 'tattoo', 'tattooFace', 'tattooArm'];
 export const SHIRT_SIDES = ['front', 'back'];
 
 /** Which shirt drawing a facing shows. */
@@ -148,6 +153,7 @@ export function sideForDir(dir) {
 const STORAGE_KEY = {
   shirtFront: 'bt-shirtart', shirtBack: 'bt-shirtart-back',
   pants: 'bt-pantsart', tattoo: 'bt-tattooart',
+  tattooFace: 'bt-facetattoo', tattooArm: 'bt-armtattoo',   /* v2.3.1949 */
 };
 const _active = Object.create(null);   /* CLAUDE.md rule 4 */
 for (const id of CANVASES) {

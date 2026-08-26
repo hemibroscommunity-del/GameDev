@@ -196,10 +196,18 @@ function _largestPiece(mask, w, h, x0, x1) {
   return out;
 }
 
-export function stampRegion(d, w, h, frameW, mask, art, mirror, box) {
+/**
+ * Paint `art` into the region `mask` marks out, one box per frame.
+ * @param {object} [opts] `{ eachPiece: true }` stamps EVERY limb-sized piece of
+ *        the region rather than only the largest — see framePieces.  Omitted,
+ *        the behaviour is exactly what it was: largest piece only, confined to
+ *        the whole mask, which keeps the shipped chest/trouser bakes identical.
+ */
+export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
   if (!artHasInk(art)) return 0;
   const frames = Math.max(1, Math.floor(w / frameW));
   const fillW = box.fillW, fillH = box.fillH, cy = box.cy;
+  const eachPiece = !!(opts && opts.eachPiece);
   let painted = 0;
   /* The mask is its own array, so painting colours into `d` can never change
      what counts as region -- every frame is measured and filled against the
@@ -233,7 +241,13 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box) {
        single-piece frame (all five standing facings, and the tattoo's torso)
        the largest piece IS the whole region, so those are unchanged to the
        pixel; only the frames that were broken move. */
-    const piece = _largestPiece(mask, w, h, x0, x1);
+    /* v2.3.1949: a figure has two arms, and the single-piece rule above would
+       ink only the bigger one.  When each piece is stamped it is also its own
+       confinement, so one arm's box can never bleed onto the other. */
+    const pieceList = eachPiece ? framePieces(mask, w, h, x0, x1) : [_largestPiece(mask, w, h, x0, x1)];
+    for (let pi = 0; pi < pieceList.length; pi++) {
+    const piece = pieceList[pi];
+    const confine = eachPiece ? piece : mask;
     const rowN = new Int32Array(h), colN = new Int32Array(x1 - x0);
     let peakRow = 0, peakCol = 0;
     for (let y = 0; y < h; y++) {
@@ -243,7 +257,7 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box) {
         if (++colN[x - x0] > peakCol) peakCol = colN[x - x0];
       }
     }
-    if (!peakRow) continue;
+    if (!peakRow) continue;   /* this piece has nothing in this frame */
     const rowMin = Math.max(2, peakRow * REGION_KEEP), colMin = Math.max(2, peakCol * REGION_KEEP);
     let lx = Infinity, rx = -1, ty = Infinity, by = -1;
     for (let y = 0; y < h; y++) if (rowN[y] >= rowMin) { if (y < ty) ty = y; if (y > by) by = y; }
@@ -266,13 +280,14 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box) {
           if (y < 0 || y >= h) continue;
           for (let x = px; x < px + pw; x++) {
             if (x < x0 || x >= x1) continue;
-            if (!mask[y * w + x]) continue;      /* confined to the region */
+            if (!confine[y * w + x]) continue;   /* confined to the region */
             const i = (y * w + x) * 4;
             d[i] = R; d[i + 1] = G; d[i + 2] = B;
             painted++;
           }
         }
       }
+    }
     }
   }
   return painted;
@@ -287,6 +302,100 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box) {
    the same idea one region up. */
 export const PANTS_BOX = { fillW: 0.78, fillH: 0.62, cy: 0.45 };   /* across the shorts */
 export const TATTOO_BOX = { fillW: 0.70, fillH: 0.55, cy: 0.50 };  /* chest */
+/* v2.3.1949 (owner: "Allow tattoos on the face and arms too").
+   A face is small and mostly eyes, so the ink covers less of it and sits low —
+   a cheek/jaw mark rather than a mask over the eyes.  An arm is a narrow
+   vertical strip, so its box is nearly the full width of the limb. */
+export const FACE_BOX = { fillW: 0.62, fillH: 0.46, cy: 0.60 };
+export const ARM_BOX = { fillW: 0.92, fillH: 0.40, cy: 0.42 };
+
+/* ═══ v2.3.1949: THE OTHER TWO SKIN REGIONS ═══
+ *
+ * The chest tattoo has always been "bare skin ∩ the torso band" — the band the
+ * shirt tracker already computes.  The face and the arms fall out of the SAME
+ * two masks by position, so neither needs a new colour test (and a new colour
+ * test over hand-painted art is exactly what produced the speck-chasing in
+ * v2.3.1944/1945):
+ *
+ *   face = skin ABOVE the torso band       — the band starts at the neck seed
+ *                                            row, so everything skin-coloured
+ *                                            above it is head.
+ *   arms = skin BESIDE the torso band      — within the band's own rows but not
+ *                                            in it.  With a shirt on, the band
+ *                                            IS the shirt, so this is the bare
+ *                                            forearm; bare-chested, it is the
+ *                                            upper arm outside the torso fill.
+ *
+ * Bounding the arms by the torso's own last row is what keeps them off the
+ * SHINS: the art wears shorts, so a bare lower leg is skin too, and an
+ * unbounded "skin that is not torso and not head" mask reaches the ankles.
+ */
+export function splitSkinRegions(skin, torso, w, h, frameW) {
+  const frames = Math.max(1, Math.floor(w / frameW));
+  const face = new Uint8Array(w * h);
+  const arms = new Uint8Array(w * h);
+  for (let f = 0; f < frames; f++) {
+    const x0 = f * frameW, x1 = Math.min(w, x0 + frameW);
+    let top = -1, bot = -1;
+    for (let y = 0; y < h; y++) {
+      for (let x = x0; x < x1; x++) {
+        if (!torso[y * w + x]) continue;
+        if (top < 0) top = y;
+        bot = y;
+        break;
+      }
+    }
+    if (top < 0) continue;            /* no torso in this frame: place nothing */
+    for (let y = 0; y < h; y++) {
+      const row = y * w;
+      for (let x = x0; x < x1; x++) {
+        if (!skin[row + x]) continue;
+        if (y < top) face[row + x] = 1;
+        else if (y <= bot && !torso[row + x]) arms[row + x] = 1;
+      }
+    }
+  }
+  return { face, arms };
+}
+
+/* How much of a frame's biggest piece a second piece must reach to count as a
+   limb of its own rather than a speck.  Two arms are within a few pixels of
+   each other; a stray run of classified skin is a fraction of one. */
+const PIECE_KEEP = 0.35;
+
+/** Every connected piece of `mask` in one frame that is a real share of the
+ *  largest, as its own mask.  A figure has TWO arms, and _largestPiece — right
+ *  for a print on one trouser leg — would tattoo only the bigger one. */
+export function framePieces(mask, w, h, x0, x1) {
+  const seen = new Uint8Array(w * h);
+  const found = [];
+  for (let y = 0; y < h; y++) {
+    for (let x = x0; x < x1; x++) {
+      const p0 = y * w + x;
+      if (!mask[p0] || seen[p0]) continue;
+      const cells = [p0];
+      seen[p0] = 1;
+      for (let i = 0; i < cells.length; i++) {
+        const q = cells[i];
+        const qy = (q / w) | 0, qx = q - qy * w;
+        if (qx > x0 && mask[q - 1] && !seen[q - 1]) { seen[q - 1] = 1; cells.push(q - 1); }
+        if (qx < x1 - 1 && mask[q + 1] && !seen[q + 1]) { seen[q + 1] = 1; cells.push(q + 1); }
+        if (qy > 0 && mask[q - w] && !seen[q - w]) { seen[q - w] = 1; cells.push(q - w); }
+        if (qy < h - 1 && mask[q + w] && !seen[q + w]) { seen[q + w] = 1; cells.push(q + w); }
+      }
+      found.push(cells);
+    }
+  }
+  if (!found.length) return [];
+  let best = 0;
+  for (const c of found) if (c.length > best) best = c.length;
+  const keep = Math.max(8, best * PIECE_KEEP);
+  return found.filter((c) => c.length >= keep).map((cells) => {
+    const m = new Uint8Array(w * h);
+    for (let i = 0; i < cells.length; i++) m[cells[i]] = 1;
+    return m;
+  });
+}
 
 /* ═══ v2.3.1941: PATTERNS ═══
  *

@@ -4,9 +4,9 @@ import {
   getArt, setArt as storeArt,
 } from '@/rendering/traits/playerArt.js';
 import {
-  TOOLS, toolById, shapeCells, lineCells, fillCells, expandCells,
+  TOOLS, toolById, shapeCells, lineCells, fillCells, expandCells, mirrorCells,
   BRUSH_SIZES, LETTERS, letterCells,
-} from '@/rendering/traits/artTools.js';   /* v2.3.1948 */
+} from '@/rendering/traits/artTools.js';   /* v2.3.1948; v2.3.1949 mirror */
 import {
   patternsFor, getPattern, setPattern, parsePattern, formatPattern, patternInk,
 } from '@/rendering/traits/patternCatalog.js';   /* v2.3.1941 */
@@ -68,6 +68,19 @@ const TARGETS = {
     pattern: null,
     note: 'Inked on your chest — it shows when you are bare-chested, and a shirt or breastplate covers it.',
   },
+  /* v2.3.1949 (owner: "Allow tattoos on the face and arms too").  Three skin
+     canvases rather than one drawing stretched over three very differently
+     shaped regions. */
+  tattooFace: {
+    label: 'face tattoo',
+    pattern: null,
+    note: 'On your face. A hat or a beard can cover part of it.',
+  },
+  tattooArm: {
+    label: 'arm tattoo',
+    pattern: null,
+    note: 'Goes on BOTH arms. Sleeves cover the upper arm, so it shows below them.',
+  },
   /* v2.3.1944: shoes are pattern-ONLY.  A boot is about eight screen pixels, so
      there is nothing to draw on -- and the four tiles offered are the ones that
      survive at that size (see patternCatalog). */
@@ -78,6 +91,9 @@ const TARGETS = {
     note: 'Boots are small, so these are the patterns that still read at that size.',
   },
 };
+
+/* Which canvas each tattoo mode paints. */
+const TATTOO_SPOT = { chest: 'tattoo', face: 'tattooFace', arms: 'tattooArm' };
 
 /* ── the toolbar's icons ──
    Drawn inline rather than shipped as art, for the reason the creator's pencil
@@ -206,6 +222,11 @@ const FOCUS = {
      recognisably yours, which a floating torso does not. */
   shirt: { cy: 0.43, h: 0.45 },
   tattoo: { cy: 0.43, h: 0.45 },
+  /* v2.3.1949: a face tattoo is a few pixels on a head the size of a thumbnail,
+     so this one goes right in.  The arms need most of the torso's height
+     because they run its full length. */
+  tattooFace: { cy: 0.255, h: 0.20 },
+  tattooArm: { cy: 0.46, h: 0.40 },
   /* Trousers, plus the boot tops.  Centring higher put a third of the pane on
      shirt hem. */
   pants: { cy: 0.69, h: 0.35 },
@@ -262,6 +283,15 @@ function WornPreview({ look, target, side, art, pat }) {
            blank chest — which reads as broken rather than as "covered".  The
            caption under it says a shirt hides it. */
         opts.shirt = 'none';
+      } else if (target === 'tattooFace') {
+        opts.faceTattooArt = art;
+        /* v2.3.1949: a hat hides a face tattoo the same way, so the pane takes
+           it off while you work.  The caption says so. */
+        opts.headwear = 'none';
+      } else if (target === 'tattooArm') {
+        opts.armTattooArt = art;
+        /* Sleeves cover the upper arm; bare-chested you see the whole limb. */
+        opts.shirt = 'none';
       }
       return drawCharacterPortrait(offRef.current, opts);
     };
@@ -306,14 +336,26 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
      deliberate: picking a ready-made pattern is the thing most people want, and
      drawing freehand is the thing some people want. */
   const canDraw = cfg.drawing !== false;
-  const MODES = (cfg.pattern && canDraw)
-    ? (isShirt ? ['pattern', 'front', 'back'] : ['pattern', 'drawing'])
-    : null;
-  const [mode, setMode] = React.useState(cfg.pattern ? 'pattern' : 'draw');
+  /* v2.3.1949: the skin tab now opens on THREE canvases (owner: "Allow tattoos
+     on the face and arms too").  They ride the mode strip the shirt's front/back
+     already uses rather than adding three buttons to the creator: same one way
+     in, and the spot you are inking is the thing you switch, not the thing you
+     navigate to. */
+  const isTattoo = target === 'tattoo';
+  const MODES = isTattoo ? ['chest', 'face', 'arms']
+    : (cfg.pattern && canDraw)
+      ? (isShirt ? ['pattern', 'front', 'back'] : ['pattern', 'drawing'])
+      : null;
+  const [mode, setMode] = React.useState(isTattoo ? 'chest' : (cfg.pattern ? 'pattern' : 'draw'));
   const side = mode === 'back' ? 'back' : 'front';
   const onPattern = mode === 'pattern';
+  /* WHERE on the body this panel is currently painting.  For everything but a
+     tattoo that is just the target; for a tattoo the mode picks it, and the
+     caption, the preview's camera and the Clear button all follow it. */
+  const spot = isTattoo ? (TATTOO_SPOT[mode] || 'tattoo') : target;
+  const scfg = TARGETS[spot] || cfg;
   /* Which stored drawing this panel is editing right now. */
-  const artId = isShirt ? (side === 'back' ? 'shirtBack' : 'shirtFront') : target;
+  const artId = isShirt ? (side === 'back' ? 'shirtBack' : 'shirtFront') : spot;
 
   /* ── the garment's pattern ── */
   const [pat, setPat] = React.useState(() => (cfg.pattern ? getPattern(cfg.pattern) : ''));
@@ -330,6 +372,18 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   const [tool, setTool] = React.useState('pen');
   const [brush, setBrush] = React.useState(1);
   const [letter, setLetter] = React.useState('A');
+  /* v2.3.1949: symmetry, and a way back.  Neither was asked for by name -- the
+     owner asked what else was missing -- and between them they are the two
+     things a pixel editor is unusable without: a mis-stroke you cannot take
+     back means starting over, and hand-matching the other half of a face is
+     not something anybody manages on a 16-cell grid. */
+  const [mirror, setMirror] = React.useState(false);
+  /* One entry per ACTION, not per cell: a drag paints dozens of cells and an
+     undo that stepped back through them one at a time would be useless.  The
+     pre-gesture drawing is pushed when the gesture starts (or, for a shape,
+     when it commits), so one tap of Undo removes one thing you did. */
+  const histRef = React.useRef([]);
+  const [undoN, setUndoN] = React.useState(0);
   const cvRef = React.useRef(null);
   const paintingRef = React.useRef(false);
   const lastRef = React.useRef('');
@@ -355,8 +409,29 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
     }
   }, [tool]);
 
-  /* Switching side (or opening on a different target) loads that drawing. */
-  React.useEffect(() => { setArtState(getArt(artId)); }, [artId]);
+  /* Switching side (or opening on a different target) loads that drawing --
+     and its history, which belongs to that canvas and not to this panel. */
+  React.useEffect(() => {
+    setArtState(getArt(artId));
+    histRef.current = [];
+    setUndoN(0);
+  }, [artId]);
+
+  const HIST_MAX = 40;
+  const pushHist = (a) => {
+    const h = histRef.current;
+    if (h[h.length - 1] === a) return;     /* nothing changed since last time */
+    h.push(a);
+    if (h.length > HIST_MAX) h.shift();
+    setUndoN(h.length);
+  };
+  const undo = () => {
+    const h = histRef.current;
+    if (!h.length) return;
+    setArtState(h.pop());
+    setDraft(null);
+    setUndoN(h.length);
+  };
 
   /* Persist as you draw: the character updates live behind the panel, which is
      the whole point of drawing on a character rather than in a vacuum. */
@@ -430,7 +505,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
       : [cell];
     lastRef.current = k;
     prevCellRef.current = cell;
-    const cells = expandCells(path, brush);
+    const cells = mirrorCells(expandCells(path, brush), mirror);
     setArtState((a) => artWithCells(a, cells, ink));
   };
 
@@ -440,17 +515,24 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
       /* Fill and Letters are a TAP, not a drag: they commit where you touch. */
       const c = cellAt(e, false);
       if (!c) return;
-      if (tool === 'fill') setArtState((a) => artWithCells(a, fillCells(a, c[0], c[1]), ink));
-      else setArtState((a) => artWithCells(a, letterCells(letter, c[0], c[1]), ink));
+      pushHist(art);
+      if (tool === 'fill') {
+        setArtState((a) => artWithCells(a, mirrorCells(fillCells(a, c[0], c[1]), mirror), ink));
+      } else {
+        setArtState((a) => artWithCells(a, mirrorCells(letterCells(letter, c[0], c[1]), mirror), ink));
+      }
       return;
     }
+    /* A drag is ONE undoable action, so the drawing is banked here, before the
+       first cell of it is painted. */
+    pushHist(art);
     paintingRef.current = true;
     lastRef.current = '';
     prevCellRef.current = null;
     if (tdef.drag === 'shape') {
       const c = cellAt(e, true);
       anchorRef.current = c;
-      setDraft(expandCells(shapeCells(tool, c[0], c[1], c[0], c[1]), brush));
+      setDraft(mirrorCells(expandCells(shapeCells(tool, c[0], c[1], c[0], c[1]), brush), mirror));
       return;
     }
     paintPen(e);
@@ -465,7 +547,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
       const k = c[0] + ',' + c[1];
       if (k === lastRef.current) return;
       lastRef.current = k;
-      setDraft(expandCells(shapeCells(tool, a[0], a[1], c[0], c[1]), brush));
+      setDraft(mirrorCells(expandCells(shapeCells(tool, a[0], a[1], c[0], c[1]), brush), mirror));
       return;
     }
     paintPen(e);
@@ -516,10 +598,10 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
 
         {/* v2.3.1947: the character wearing what you are making. */}
         <div className="bt-paint-side">
-          <WornPreview look={look} target={target} side={side} art={art} pat={pat} />
+          <WornPreview look={look} target={spot} side={side} art={art} pat={pat} />
         </div>
         <div className="bt-paint-note">
-          {onPattern ? 'A pattern fills the whole garment. Anything you draw goes on top of it.' : cfg.note}
+          {onPattern ? 'A pattern fills the whole garment. Anything you draw goes on top of it.' : scfg.note}
         </div>
 
         <div className="bt-paint-main">
@@ -574,31 +656,49 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
              the widths ghost the way the designer button on the creator does —
              the row keeps its height either way, so nothing below it jumps when
              you change tool. */
-          tool === 'letter' ? (
-            <div className="bt-paint-opts bt-paint-letters" ref={stripRef}>
-              {LETTERS.map((ch) => (
-                <button key={ch} type="button" onClick={() => setLetter(ch)}
-                  data-on={letter === ch ? '1' : undefined}
-                  className={'bt-paint-letter' + (letter === ch ? ' bt-paint-letter--on' : '')}
-                  aria-pressed={letter === ch} aria-label={'Letter ' + ch}>{ch}</button>
-              ))}
-            </div>
-          ) : (
-            <div className="bt-paint-opts">
-              {BRUSH_SIZES.map((n) => (
-                <button key={n} type="button" disabled={!tdef.brush}
-                  onClick={() => setBrush(n)} aria-pressed={brush === n}
-                  aria-label={'Brush ' + n + ' wide'}
-                  className={'bt-paint-size' + (brush === n && tdef.brush ? ' bt-paint-size--on' : '')
-                    + (tdef.brush ? '' : ' bt-cc-ghost')}>
-                  <span className="bt-paint-dot-well">
-                    <span className="bt-paint-dot" style={{ width: 5 + (n - 1) * 6, height: 5 + (n - 1) * 6 }} />
-                  </span>
-                  <span className="bt-paint-tool-label">{n === 1 ? 'Fine' : n === 2 ? 'Medium' : 'Thick'}</span>
-                </button>
-              ))}
-            </div>
-          )
+          <div className="bt-paint-opts">
+            {tool === 'letter' ? (
+              <div className="bt-paint-letters" ref={stripRef}>
+                {LETTERS.map((ch) => (
+                  <button key={ch} type="button" onClick={() => setLetter(ch)}
+                    data-on={letter === ch ? '1' : undefined}
+                    className={'bt-paint-letter' + (letter === ch ? ' bt-paint-letter--on' : '')}
+                    aria-pressed={letter === ch} aria-label={'Letter ' + ch}>{ch}</button>
+                ))}
+              </div>
+            ) : (
+              <div className="bt-paint-opts-main">
+                {BRUSH_SIZES.map((n) => (
+                  <button key={n} type="button" disabled={!tdef.brush}
+                    onClick={() => setBrush(n)} aria-pressed={brush === n}
+                    aria-label={'Brush ' + n + ' wide'}
+                    className={'bt-paint-size' + (brush === n && tdef.brush ? ' bt-paint-size--on' : '')
+                      + (tdef.brush ? '' : ' bt-cc-ghost')}>
+                    <span className="bt-paint-dot-well">
+                      <span className="bt-paint-dot" style={{ width: 5 + (n - 1) * 6, height: 5 + (n - 1) * 6 }} />
+                    </span>
+                    <span className="bt-paint-tool-label">{n === 1 ? 'Fine' : n === 2 ? 'Medium' : 'Thick'}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {/* v2.3.1949: Mirror keeps the SAME place whichever tool is up --
+                it is a modifier on all six, so hiding it behind a tool choice
+                would leave it silently on.  Its own cell, outside the part of
+                the row that changes. */}
+            <button type="button" onClick={() => setMirror((m) => !m)}
+              aria-pressed={mirror} title="Mirror: paint both halves at once"
+              className={'bt-paint-size bt-paint-mirror' + (mirror ? ' bt-paint-size--on' : '')}>
+              <svg className="bt-paint-tool-icon" viewBox="0 0 24 24" width="20" height="20"
+                aria-hidden="true" focusable="false">
+                <path d="M12 3v18" fill="none" stroke="currentColor" strokeWidth="1.6"
+                  strokeLinecap="round" strokeDasharray="2.4 2.4" />
+                <path d="M9.6 6.4 4.4 12l5.2 5.6Z" fill="currentColor" stroke="none" />
+                <path d="M14.4 6.4 19.6 12l-5.2 5.6Z" fill="currentColor" stroke="none" />
+              </svg>
+              <span className="bt-paint-tool-label">Mirror</span>
+            </button>
+          </div>
         )}
 
         {onPattern ? (
@@ -630,10 +730,21 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
         )}
 
         <div className="bt-paint-btn" style={{ display: 'flex', gap: 8 }}>
+          {!onPattern && (
+            <button type="button" className={'bt-cc-tab' + (undoN ? '' : ' bt-cc-ghost')}
+              disabled={!undoN} onClick={undo} style={{ flex: 1, minHeight: 38 }}
+              title="Undo the last thing you did">
+              <span className="bt-cc-tab-label">Undo</span>
+            </button>
+          )}
           <button type="button" className="bt-cc-tab" style={{ flex: 1, minHeight: 38 }}
-            onClick={() => (onPattern ? pickTile('') : setArtState(emptyArt()))}>
+            onClick={() => {
+              if (onPattern) { pickTile(''); return; }
+              pushHist(art);
+              setArtState(emptyArt());
+            }}>
             <span className="bt-cc-tab-label">
-              {onPattern ? 'No pattern' : ('Clear ' + (isShirt ? side : cfg.label))}
+              {onPattern ? 'No pattern' : ('Clear ' + (isShirt ? side : scfg.label))}
             </span>
           </button>
           <button type="button" className="bt-cc-tab bt-cc-tab--on" style={{ flex: 1, minHeight: 38 }}

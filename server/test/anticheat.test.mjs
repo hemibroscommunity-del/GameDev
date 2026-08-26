@@ -524,6 +524,7 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
       ec: 'ice',   /* v2.3.1930: eye colour, relayed to peers */
       sa: 'a'.repeat(256),   /* v2.3.1939: a drawn shirt */
       pa: 'b'.repeat(256), ta: 'c'.repeat(256),   /* v2.3.1940: pants print + tattoo */
+      tf: 'd'.repeat(256), tm: 'e'.repeat(256),   /* v2.3.1949: face + arm tattoos */
       sp: 'stripe-v:3', pp: 'camo:6',   /* v2.3.1941: clothing patterns */
       fp: 'check:9',   /* v2.3.1944: shoes */
     },
@@ -542,6 +543,16 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
     psT.x === honestX && psT.y === honestY, { x: psT.x, y: psT.y });
   check('track: honest cosmetics still land', psT.name === 'Tracker' && psT.rpgLv === 500,
     { name: psT.name, rpgLv: psT.rpgLv });
+  /* v2.3.1949: EVERY drawing key must survive the track gate at its full 256
+     characters.  This is the shape of the v2.3.1939 incident exactly: that
+     version added a drawing key to the join gate and missed the track one, so
+     the drawing arrived on join and was truncated to 64 two seconds later --
+     the client rejects anything that is not exactly 256 hex chars, so peers
+     watched prints appear and vanish.  Asserting the whole set, rather than
+     the newest member, is what stops the next key repeating it. */
+  check('track: every drawing key survives at its full 256 chars (v2.3.1939 incident)',
+    ['sa', 'pa', 'ta', 'tf', 'tm'].every((k) => typeof psT[k] === 'string' && psT[k].length === 256),
+    Object.fromEntries(['sa', 'pa', 'ta', 'tf', 'tm'].map((k) => [k, psT[k] && psT[k].length])));
   /* v2.3.1930: `ec` rides the SAME allowlist as every other cosmetic.  It is in
      this suite rather than a new one because the property under test is the
      allowlist itself: relaying eye colour means adding a key to
@@ -603,6 +614,8 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
     sb: '\u0000'.repeat(300),        // NULs
     pa: 1234,                       // not a string at all
     ta: { toString: 'nope' },       // an object
+    tf: 'f'.repeat(2000),           // v2.3.1949: face tattoo, past the cap
+    tm: [1, 2, 3],                  // v2.3.1949: arm tattoo, an array
     sp: '__proto__:3',
     pp: 'constructor:9',
     fp: '\u003cscript\u003ealert(1)\u003c/script\u003e',
@@ -627,8 +640,10 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
   check('track: ...and an oversized one is refused, leaving the old value',
     !!(psH.rpgData && psH.rpgData.level === 12 && psH.rpgData.pad === undefined), psH.rpgData);
   check('track: every stored cosmetic stays inside the cap',
-    ['sa','sb','pa','ta','sp','pp','fp','ec'].every((k) => typeof psH[k] !== 'string' || psH[k].length <= 512),
-    Object.fromEntries(['sa','sb','pa','ta','sp','pp','fp','ec'].map((k) => [k, typeof psH[k] === 'string' ? psH[k].length : typeof psH[k]])));
+    ['sa','sb','pa','ta','tf','tm','sp','pp','fp','ec'].every((k) => typeof psH[k] !== 'string' || psH[k].length <= 512),
+    Object.fromEntries(['sa','sb','pa','ta','tf','tm','sp','pp','fp','ec'].map((k) => [k, typeof psH[k] === 'string' ? psH[k].length : typeof psH[k]])));
+  check('track: an ARRAY under a drawing key is dropped, never relayed',
+    psH.tm === undefined, psH.tm);
   check('track: no cosmetic key reached Object.prototype',
     Object.prototype.sp === undefined && Object.prototype.polluted === undefined
     && ({}).sa === undefined, 'prototype clean');
