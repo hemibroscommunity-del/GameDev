@@ -48,6 +48,13 @@ import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
    display state derived from the relayed, server-validated handshake —
    never sent back to the server, and time-bounded (≤10-min consent
    window) so reconnects/deploys just let stale marks age out. */
+/* v2.3.1970: mirrors PARTY.INVITE_TTL in server/src/party.js -- the window the
+   worker keeps a recorded invite for.  Mirrored rather than imported because
+   the client has no copy of the server's config objects; if that number moves,
+   move this one (a client clock that is SHORTER would hide a still-valid
+   invite, which is the failure worth avoiding). */
+var PARTY_INVITE_TTL_MS = 60000;
+
 function _setThreatMark(S, pid, type, until) {
   if (!pid || typeof pid !== 'string' || pid === S.myId) return;
   if (!S._threatMarks) S._threatMarks = {};
@@ -2526,9 +2533,32 @@ export function processGameEvent(type, payload, S, deps) {
                  (accepting sends party_accept, validated against the
                  inviter's own recorded invite server-side). */
               if (!payload || !payload.from) break;
-              if (setParty) setParty({ invite: true, from: payload.from, fromName: payload.fromName || 'Someone', partySize: payload.partySize || 1, ts: Date.now() });
+              var _piTs = Date.now();
+              if (setParty) setParty({ invite: true, from: payload.from, fromName: payload.fromName || 'Someone', partySize: payload.partySize || 1, ts: _piTs });
               pushDmgPopup(S, S.player.x, S.player.y - 40, '🎪 ' + (payload.fromName || 'Someone') + ' invites you to a party!', '#fbbf24');
               BT_AUDIO.beep(600, 0.06, 0.08, 'sine');
+              /* ═══ v2.3.1970: AN IGNORED INVITE HAS TO GO AWAY BY ITSELF ═══
+                 The server drops the recorded invite after PARTY.INVITE_TTL
+                 (party.js, 60 s) and _handlePartyAccept answers a late Join
+                 with party_error 'expired'.  The CARD had no such clock: the
+                 stub carried a `ts` that nothing ever read, so an invite
+                 nobody answered sat on screen for the rest of the session.
+                 That is not cosmetic on the primary platform -- v2.3.1966
+                 portalled this card to document.body at Z_ABOVE_DASH_PROMPT
+                 precisely so it outranks the dashboard, which means a dead
+                 invite parks a 240px panel over the top-centre of a 390px
+                 phone and nothing but tapping it will move it.  A demo crowd
+                 invites strangers constantly and most of them will never
+                 answer, so this is the common case, not the edge one.
+                 Cleared with the functional setter and an identity check, so
+                 a NEWER invite (or a party you have since joined -- the same
+                 slot holds the roster) can never be swept away by an older
+                 invite's timer. */
+              setTimeout(function () {
+                if (setParty) setParty(function (cur) {
+                  return (cur && cur.invite && cur.from === payload.from && cur.ts === _piTs) ? null : cur;
+                });
+              }, PARTY_INVITE_TTL_MS);
               break;
             }
           case 'party_state':

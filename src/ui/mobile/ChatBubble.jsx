@@ -19,7 +19,7 @@ const sendThroughGameState = (text) => {
       payload: { id: S.myId, name: S.myName, text: t, color: S.myColor },
     });
   } catch {}
-  if (!S.chatBubbles) S.chatBubbles = {};
+  if (!S.chatBubbles) S.chatBubbles = Object.create(null);   /* v2.3.1970: see BroTown.jsx -- keyed by a wire id */
   S.chatBubbles[S.myId] = { text: t, ts: Date.now() };
   if (!S.chatLog) S.chatLog = [];
   S.chatLog = [...S.chatLog.slice(-40), {

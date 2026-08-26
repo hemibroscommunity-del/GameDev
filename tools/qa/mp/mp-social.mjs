@@ -1,12 +1,23 @@
-/* The inspect card's social actions: friend, mute, block, and the PvP threat.
+/* The inspect card's social actions: friend, mute, block.
  *
  * Friend/mute/block are CLIENT-LOCAL lists persisted to localStorage (they are
  * not server state), so the assertions check the button flips AND that the
  * list survives into storage — a toggle that only changes a label would look
  * identical on screen and lose the friend on reload.
  *
- * The threat is the one that crosses the wire, and it is the PvP consent
- * primitive: it must reach the target's screen with a decision to make.
+ * ═══ v2.3.1970: THE THREAT HALF OF THIS FILE WAS TESTING A DELETED FEATURE ═══
+ * This scenario used to assert a "Threat" button, click it, and check the
+ * consent panel and the cooldown.  v2.3.1917 removed the button (owner: "Also
+ * remove the option to kill other players for now") and turned the worker's
+ * answer off with it — GameRoom.OPEN_PVP is false and threat.js returns null
+ * before doing anything, so pvp_threat now goes nowhere.  The scenario had
+ * been failing on that click ever since, and because H.clickText THROWS on a
+ * missing button it took the whole run down with it: the two assertions after
+ * the threat block never ran at all.
+ * Asserted ABSENT rather than simply deleted, exactly as the v2.3.1744 TP
+ * removal on the line below is — a silently-restored way to start a
+ * non-consensual fight is the kind of thing that comes back in a refactor,
+ * and this file is where it would be noticed.
  */
 import * as H from './harness.mjs';
 
@@ -22,9 +33,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.openInspect(A, bId);
   const btns = await H.buttonTexts(A);
   for (const [label, pat] of [['Add Friend', /Add Friend/], ['Mute', /Mute/], ['Block', /Block/],
-    ['Trade', /^Trade$/], ['Duel', /^Duel$/], ['Threat', /^Threat$/]]) {
+    ['Trade', /^Trade$/], ['Duel', /^Duel$/]]) {
     rec.ok(`the inspect card offers "${label}"`, btns.some((t) => pat.test(t)), btns);
   }
+  /* v2.3.1970: and Threat is GONE (v2.3.1917) — see the header. */
+  rec.ok('the inspect card no longer offers "Threat"', !btns.some((t) => /^Threat$/.test(t)), btns);
   /* v2.3.1744: TP is removed (owner: "remove it").  Asserted absent rather
      than just dropped from the list above — a silently-restored free
      teleport is exactly the kind of thing that comes back in a refactor. */
@@ -60,27 +73,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('blocking flips the button to "Blocked"',
     (await H.buttonTexts(A)).some((t) => /Blocked/.test(t)));
 
-  /* ── PvP threat: the consent primitive, and it has to cross ── */
-  await H.openInspect(A, bId);
-  await H.clickText(A, 'Threat');
-  const threatened = await H.waitUi(B, () => [...document.querySelectorAll('button')]
-    .some((b) => /Call Guards|Ignore/.test(b.textContent)),
-  { label: 'B sees the threat', timeout: 20000 }).then(() => true).catch(() => false);
-  rec.ok('a PvP threat reaches the target with a choice', threatened);
-  if (threatened) {
-    await H.clickText(B, 'Ignore');
-    await B.page.waitForTimeout(1200);
-    const gone = await B.page.evaluate(() => ![...document.querySelectorAll('button')]
-      .some((b) => /Call Guards/.test(b.textContent)));
-    rec.ok('dismissing the threat closes the panel', gone);
-  }
-
-  /* ── the threat cooldown must actually block a second one ── */
-  await H.openInspect(A, bId);
-  await H.clickText(A, 'Threat');
-  await A.page.waitForTimeout(800);
-  const cooling = await H.readState(A, (S) => !!(S._pvpThreatCdUntil && Date.now() < S._pvpThreatCdUntil));
-  rec.ok('issuing a threat starts a cooldown', cooling);
+  /* ── v2.3.1970: blocking has to SUPPRESS, not just re-label ──
+     The block list was only ever checked for its label here, while mute got
+     the real test (mp-chat.mjs).  Block is the stronger of the two — it drops
+     the line entirely rather than logging it as '[muted]' — and it is the one
+     a demo crowd reaches for, so it gets the same treatment: say something,
+     and prove it does not arrive. */
+  await A.page.keyboard.press('Escape').catch(() => {});
+  const before = await H.readState(A, (S) => (S.chatLog || []).length);
+  await B.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    if (S && S.channel) S.channel.send({ type: 'broadcast', event: 'chat',
+      payload: { id: S.myId, name: S.myName, text: 'blocked line', color: '#fff' } });
+  });
+  await A.page.waitForTimeout(2500);
+  const after = await H.readState(A, (S) => (S.chatLog || []).map((c) => c.text));
+  rec.ok('a blocked player\'s line never reaches the log at all',
+    after.length === before && !after.some((t) => /blocked line/.test(t)), after.slice(-3));
 
   await A.ctx.close(); await B.ctx.close();
 }

@@ -7233,7 +7233,34 @@ export class EntityRenderer {
          the last party_state snapshot (gameEvents.js). */
       const _inParty = S._party && S._party.members
         && S._party.members.some((m) => m.id === id);
-      const nextName = (_inParty ? '\u{1F389} ' : '') + (other.name || 'Anon');
+      /* ═══ v2.3.1970: A PEER'S NAME IS A TEXTURE, SO IT NEEDS A CEILING ═══
+         This line and _updateNamePill below are the only two places a peer's
+         name becomes pixels, and NAME_STYLE has no wordWrap -- so whatever
+         arrives is laid out as ONE line.  The server now clamps the name at
+         join (join.js sanitizeDisplayName, same version), which is where the
+         rule is actually enforced; this is the other half of TRAPS #19's
+         "fix both or you fix neither", because the worker and the client ship
+         independently and a client that meets an un-upgraded worker must not
+         be the thing that breaks.  The creator's own input stops at 20 chars,
+         so 48 is generous for anything honest and still a bounded texture:
+         before this, an unbounded name was a Text some tens of thousands of
+         px wide, past the max texture size of every iOS GPU -- painted over
+         that player's head on every other screen in the room, and (unlike a
+         chat bubble) persisting for as long as they stood there.
+         Clamped HERE rather than at the three ingest roads (state_sync,
+         player_join, the `track` relay's Object.assign) on purpose: TRAPS #13's
+         lesson is to close the class, and the class is "a name reaching the
+         renderer", which is exactly one line.
+         Change-cached on the RAW string, the same idiom `_lastName` right
+         below uses: a peer's name changes about never, and this is the per-
+         remote-player hot path -- the regex should run when the name moves,
+         not sixty times a second per peer. */
+      const _rawName = typeof other.name === 'string' ? other.name : '';
+      if (display._lastRawName !== _rawName) {
+        display._lastRawName = _rawName;
+        display._safeName = _rawName.replace(/[\x00-\x1f\x7f]/g, ' ').slice(0, 48).trim() || 'Anon';
+      }
+      const nextName = (_inParty ? '\u{1F389} ' : '') + display._safeName;
       if (display._lastName !== nextName) {
         display._lastName = nextName;
         display._nameText.text = nextName;
