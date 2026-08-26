@@ -1,5 +1,5 @@
 import React from 'react';
-import { ART_W, ART_H, ART_PALETTE, artWithCells } from '@/rendering/traits/playerArt.js';
+import { ART_W, ART_H, ART_PALETTE } from '@/rendering/traits/playerArt.js';
 import { expandCells } from '@/rendering/traits/artTools.js';
 import { cellAt } from '@/rendering/playerDecal.js';   /* v2.3.1962 */
 import { drawCharacterPortrait } from '@/rendering/characterPortrait.js';
@@ -302,13 +302,20 @@ export default function BodyInk({
     });
   }, []);
 
+  /* v2.3.1967: hand over the CELLS, not a finished art string.
+     A whole replacement string was the right shape while a canvas WAS a string;
+     it is exactly wrong now that a canvas is an ordered op list (artOps.js),
+     because a string says "the drawing is now this" and there is no way to
+     honour that without either throwing the list away — destroying every shape
+     placed on the flat tab — or replaying over the top of it and losing the
+     stroke.  Cells say "these cells, in this colour, now", which is an op like
+     any other: it lands ON TOP, in the order it was made, and everything
+     underneath it survives.  The panel owns what that means for undo. */
   const applyStroke = React.useCallback(() => {
     const st = strokeRef.current;
     if (!st || !st.cells.length) return;
-    const A = artsRef.current || {};
-    const before = A[st.target] || '';
-    const after = artWithCells(before, expandCells(st.cells, brush), ink);
-    if (after !== before && onInk) onInk(st.target, after, before);
+    const cells = expandCells(st.cells, brush);
+    if (cells.length && onInk) onInk(st.target, cells, ink);
   }, [brush, ink, onInk]);
 
   const addCell = React.useCallback((h) => {

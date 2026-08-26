@@ -276,8 +276,9 @@ export function mirrorCells(cells, on) {
 
 /* ── the toolbar ──
    `drag` says whether the tool previews a shape while the finger is down (line,
-   box, circle) or paints as it goes (pen) or fires once on touch (fill).  The
-   panel reads only this flag, so adding a sixth shape is a table entry. */
+   box, circle) or paints as it goes (pen) or fires once on touch (fill) or
+   picks up what is already there (select, v2.3.1967).  The panel reads only
+   this flag, so adding a seventh tool is a table entry. */
 export const TOOLS = [
   { id: 'pen', name: 'Pen', drag: 'paint', brush: true },
   { id: 'line', name: 'Line', drag: 'shape', brush: true },
@@ -285,6 +286,15 @@ export const TOOLS = [
   { id: 'ellipse', name: 'Circle', drag: 'shape', brush: true },
   { id: 'fill', name: 'Fill', drag: 'once', brush: false },
   { id: 'letter', name: 'Letters', drag: 'once', brush: false },
+  /* v2.3.1967 (owner: "add a hand shape to tap the existing shape to reselect
+     and edit it").  `drag: 'pick'` is the only value that does not paint: it
+     picks up something already on the grid, which is possible at all because a
+     canvas is an ordered op list now (artOps.js) rather than a flat string.
+     LAST rather than first, unlike the arrow in a desktop editor: the first six
+     make marks and this one manages the marks you already made, and putting it
+     first would move the pen out from under a thumb that has learned where it
+     is. */
+  { id: 'select', name: 'Select', drag: 'pick', brush: false },
 ];
 export function toolById(id) { return TOOLS.find((t) => t.id === id) || TOOLS[0]; }
 

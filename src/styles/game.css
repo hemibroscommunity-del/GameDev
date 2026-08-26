@@ -1413,7 +1413,15 @@ input{font-family:inherit}
 .bt-paint-note{grid-area:note;width:calc(var(--paint-size) * .62);
   font-size:11px;line-height:1.3;opacity:.78}
 .bt-paint-main{grid-area:main;width:var(--paint-size)}
-.bt-paint-tools{display:grid;grid-template-columns:repeat(6,1fr);gap:5px}
+/* v2.3.1967: SEVEN tools, not six -- the hand joined them (owner: "add a hand
+   shape to tap the existing shape to reselect and edit it").  MEASURED rather
+   than nudged: --paint-size tops out at 288px, so at six columns a tool got
+   43px and at seven with the old 5px gap it gets 36.9px, which wraps "Letters"
+   onto a second line and grows the whole row.  A 4px gap and a notch off the
+   label give 37.7px against a 32px "Letters", so the row keeps its height and
+   nothing below it moves. */
+.bt-paint-tools{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.bt-paint-tools .bt-paint-tool-label{font-size:8.5px;white-space:nowrap}
 /* v2.3.1949: the options row is a flex pair now -- a variable part (brush
    widths, or the alphabet) and a Mirror toggle that never moves. */
 .bt-paint-opts{display:flex;gap:5px;min-width:0}
@@ -1516,6 +1524,19 @@ input{font-family:inherit}
    keeps its height and the panel below it never jumps. */
 .bt-paint-shapeops .bt-paint-size{padding:4px 3px}
 .bt-paint-shapeops .bt-paint-tool-label{font-size:11px;line-height:1.15;text-align:center}
+/* v2.3.1967: the layer row -- a readout over four steps.  The readout is a row
+   of its own rather than a fifth chip: it is a sentence that CHANGES on every
+   tap ("Layer 2 of 4 - circle"), which is how the owner sees what the button
+   did, and squeezing it into the strip would have cost each button a quarter of
+   its width for a label nobody could read. */
+.bt-paint-layers{display:flex;flex-direction:column;gap:4px;min-width:0}
+.bt-paint-layer-at{
+  font-size:10px;line-height:1.2;letter-spacing:.01em;color:var(--ui-text);
+  opacity:.78;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.bt-paint-layer-btns{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.bt-paint-layer-btns .bt-paint-size{padding:4px 2px;min-height:38px}
+.bt-paint-layer-btns .bt-paint-tool-label{font-size:10.5px;line-height:1.15;text-align:center}
 
 /* ── short viewports: the same markup, three columns ──
    MEASURED (v2.3.1947): on iPhone landscape (844x390) the single-grid panel
