@@ -290,6 +290,15 @@ def build(hid, apply_it, set_clips):
     # v2.3.1974: does this hat have real HOLES you should see hair through?
     # See "The crease in a cowboy hat is not a gap between devil horns".
     open_top = bool(meta.get('openTop'))
+    # v2.3.1976: owner, on devil-horns — "There should be no hair between the
+    # horns.  I understand it to be a fully enclosed hat."  An enclosed hat
+    # covers the scalp completely, so inside its own horizontal extent the ONLY
+    # place hair may show is where the hat is not drawn AND the hat is not
+    # standing in front of it -- which, for a hat that encloses, is nowhere.
+    # The default rule keeps a column the hat has reached at any row above,
+    # which is right for a cowboy crown and wrong for a pair of horns: the gap
+    # between them is sky, but the scalp under it is under the cap.
+    enclosed = bool(meta.get('enclosed'))
     made = []
     masks = {}
     for d in DIRS:
@@ -302,8 +311,39 @@ def build(hid, apply_it, set_clips):
         mask = np.zeros((h, w, 4), np.uint8)
         rows = np.nonzero(m.any(axis=1))[0]
         if len(rows):
-            # everything below the hat's lowest pixel, at full width
-            mask[rows.max() + 1:, :] = (255, 255, 255, 255)
+            # ═══ v2.3.1976: PART 2 IS CLIPPED FOR AN ENCLOSED HAT ═══
+            # Owner, twice: "be more conservative on clipping when the hair is
+            # equal to or beneath the lowest outline of the hat -- I see a
+            # floating detached Afro hair beneath the hat", then "Mickey ears
+            # and devil horns are still wrong.  Hair from Afro is on the
+            # sides."  Both describe the same thing: an afro's side volume
+            # reappearing under the hat as a puff with nothing above it to
+            # belong to.
+            #
+            # (I read the first note the other way round and opened part 2 per
+            # COLUMN, which keeps MORE hair and made it worse.  Reverted.
+            # "Conservative on clipping" means clip more, not keep more.)
+            #
+            # For an ENCLOSED hat the hat covers the scalp, so there is no
+            # honest reason for hair to appear beside it at all: part 2 is
+            # bounded to the hat's own footprint instead of the full frame.
+            # Everything else keeps the full-width rule, which is what makes
+            # the hair frame the face under a beanie or a cowboy hat.
+            bot_all = int(rows.max())
+            if enclosed:
+                # Bounded to the hat's own column span.  A tighter bound (the
+                # cap's FOOTPRINT across its bottom rows, excluding the horns
+                # and ears, which are the widest part and nowhere near the
+                # head) was written and then dropped: the owner looked at the
+                # render this produces and said "the image looks correct, I
+                # don't think you should change it".  His eye on the art is the
+                # acceptance test; leaving the tighter version in as dead
+                # cleverness would only invite someone to switch it on.
+                cols = np.nonzero(m.any(axis=0))[0]
+                lo_c, hi_c = int(cols.min()), int(cols.max())
+                mask[bot_all + 1:, lo_c:hi_c + 1] = (255, 255, 255, 255)
+            else:
+                mask[bot_all + 1:, :] = (255, 255, 255, 255)
         # v2.3.1957: at and above the hat, no wider than the hat has been at
         # this row or above it.
         # v2.3.1963: measured on the SOLID hat and then pulled in — see
@@ -357,7 +397,11 @@ def build(hid, apply_it, set_clips):
                     row_span = np.zeros(w, bool)
                     if len(r):
                         row_span[int(r.min()):int(r.max()) + 1] = True
-                    keep = _inset_runs(seen & row_span, INSET)
+                    # An enclosed hat keeps only where the hat itself is on
+                    # this row; everything else inside its span is scalp the
+                    # hat is covering.  See `enclosed` above.
+                    allow = solid[y, :] if enclosed else (seen & row_span)
+                    keep = _inset_runs(allow, INSET)
                     mask[y, keep] = (255, 255, 255, 255)
         made.append((d, int(m.sum()), int((mask[:, :, 3] > 0).sum()), w))
         masks[d] = mask

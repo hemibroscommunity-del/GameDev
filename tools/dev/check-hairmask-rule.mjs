@@ -172,7 +172,7 @@ function insetRuns(cols, w) {
    apart by shape — see the long note in tools/make_hairmask.py for the three
    discriminators that were tried and measured down.  So `openTop` in the hat's
    meta records the intent, and everything else takes both conditions below. */
-function ruleRows(w, h, m, top, bot, openTop) {
+function ruleRows(w, h, m, top, bot, openTop, enclosed) {
   const sm = solid(w, h, m);
   const rows = [];
   if (openTop) {
@@ -194,27 +194,53 @@ function ruleRows(w, h, m, top, bot, openTop) {
     /* (a) the hat has reached this column at this row or above, AND
        (b) the column is inside the hat's own extent at this row. */
     const both = new Uint8Array(w);
-    for (let x = rl; x <= rr && rl >= 0; x++) if (seen[x]) both[x] = 1;
+    /* v2.3.1976: an ENCLOSED hat keeps only where the hat itself is on this
+       row — the gap between a pair of horns is sky, but the scalp under it is
+       under the cap, so no hair may show there. (Owner: "There should be no
+       hair between the horns. I understand it to be a fully enclosed hat.") */
+    if (enclosed) { for (let x = 0; x < w; x++) if (sm[y * w + x]) both[x] = 1; }
+    else for (let x = rl; x <= rr && rl >= 0; x++) if (seen[x]) both[x] = 1;
     rows[y] = insetRuns(both, w);
   }
   return rows;
 }
 
-function ruleMask(hatBits, openTop) {
+function ruleMask(hatBits, openTop, enclosed) {
   const { w, h, m } = hatBits;
   const out = new Uint8Array(w * h);
   let top = -1, bot = -1;
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) if (m[y * w + x]) { if (top < 0) top = y; bot = y; break; }
   }
-  if (bot < 0) return { w, h, m: out, top, bot, rows: [] };
-  for (let y = bot + 1; y < h; y++) for (let x = 0; x < w; x++) out[y * w + x] = 1;   /* part 2 */
-  const rows = ruleRows(w, h, m, top, bot, openTop);                                  /* part 1 */
+  if (bot < 0) return { w, h, m: out, top, bot, rows: [], part2: new Uint8Array(w * h) };
+
+  /* ═══ PART 2, AND WHY IT IS NOT PER COLUMN (v2.3.1976) ═══
+     Owner: "be more conservative on clipping when the hair is equal to or
+     beneath the lowest outline of the hat -- I see a floating detached Afro
+     hair beneath the hat."  I first read "conservative" as KEEP MORE and
+     opened part 2 per column; he came straight back with "Mickey ears and
+     devil horns are still wrong.  Hair from Afro is on the sides."  It means
+     clip more.  Reverted, and written down because the wrong reading is the
+     tempting one.
+     For an ENCLOSED hat the cap covers the scalp, so part 2 is bounded to the
+     hat's own column span rather than the full frame — that is what takes the
+     afro off the sides.  Everything else keeps full width, which is what makes
+     hair frame the face under a beanie or a cowboy hat. */
+  const part2 = new Uint8Array(w * h);
+  let lo = w, hi = -1;
+  for (let y = top; y <= bot; y++) {
+    for (let x = 0; x < w; x++) if (m[y * w + x]) { if (x < lo) lo = x; if (x > hi) hi = x; }
+  }
+  const p2lo = enclosed ? lo : 0, p2hi = enclosed ? hi : w - 1;
+  for (let y = bot + 1; y < h; y++) for (let x = p2lo; x <= p2hi; x++) part2[y * w + x] = 1;
+  for (let i = 0; i < w * h; i++) if (part2[i]) out[i] = 1;
+
+  const rows = ruleRows(w, h, m, top, bot, openTop, enclosed);                        /* part 1 */
   for (let y = top; y <= bot; y++) {
     const keep = rows[y];
     if (keep) for (let x = 0; x < w; x++) if (keep[x]) out[y * w + x] = 1;
   }
-  return { w, h, m: out, top, bot, rows };
+  return { w, h, m: out, top, bot, rows, part2 };
 }
 
 /* ── where the game puts a trait ────────────────────────────────────────── */
@@ -339,7 +365,8 @@ for (const hid of hats) {
     frames++;
     const hat = bits(img(artP));
     const openTop = !!meta.openTop;
-    const want = ruleMask(hat, openTop);
+    const enclosed = !!meta.enclosed;
+    const want = ruleMask(hat, openTop, enclosed);
     const got = bits(img(mskP));
     if (got.w !== want.w || got.h !== want.h) { drifted.push(`${hid}/${d}: mask ${got.w}x${got.h} vs art ${want.w}x${want.h}`); continue; }
     let n = 0;
@@ -349,9 +376,27 @@ for (const hid of hats) {
     /* ══ 2-5. the rule as PROPERTIES of the committed mask ═══════════════ */
     const { w, h, m } = got;
     const { top, bot } = want;
+    /* how wide part 2 is allowed to be — the whole frame, or the hat's own
+       span for an enclosed hat (v2.3.1976) */
+    let p2Width = w;
+    if (enclosed && bot >= 0) {
+      let plo = w, phi = -1;
+      for (let y = top; y <= bot; y++) {
+        for (let x = 0; x < w; x++) if (hat.m[y * w + x]) { if (x < plo) plo = x; if (x > phi) phi = x; }
+      }
+      p2Width = phi >= plo ? (phi - plo + 1) : w;
+    }
     /* v2.3.1974: the rule's own per-row column set (see ruleRows). */
     for (let y = 0; y < h; y++) {
-      const keep = (y >= top && y <= bot) ? want.rows[y] : null;
+      /* v2.3.1976: part 2 now opens PER COLUMN, so a row at or above the
+         hat's lowest pixel can legitimately carry open columns that part 1
+         did not put there. Compare against both. */
+      const p1 = (y >= top && y <= bot) ? want.rows[y] : null;
+      let keep = p1;
+      if (p1) {
+        keep = new Uint8Array(w);
+        for (let x = 0; x < w; x++) keep[x] = (p1[x] || want.part2[y * w + x]) ? 1 : 0;
+      }
       let lo = w, hi = -1;
       if (keep) for (let x = 0; x < w; x++) if (keep[x]) { if (x < lo) lo = x; hi = x; }
       let rl = -1, rr = -1, on = 0, holes = 0, seenGap = false;
@@ -386,17 +431,33 @@ for (const hid of hats) {
         } else if (on) {
           spanBroken.push(`${hid}/${d} row ${y}: ${on}px of mask where the rule keeps nothing`);
         }
-        /* An OPEN-TOP hat's row must still be ONE unbroken run — that is what
-           puts hair between a crown's spikes, and losing it is the revert this
-           file exists to catch.  A closed hat's row may have gaps by design. */
-        if (openTop && holes) holeBroken.push(`${hid}/${d} row ${y}: ${holes} hole(s) in the mask run ${rl}..${rr}`);
-      } else if (on !== w) {
+        /* An OPEN-TOP hat's PART 1 must still be ONE unbroken run — that is
+           what puts hair between a crown's spikes, and losing it is the revert
+           this file exists to catch. Measured on part 1 alone (v2.3.1976):
+           per-column part 2 opens a spike's own column early, which shows as a
+           hole in the finished row and is correct. A closed hat's row may have
+           gaps by design. */
+        if (openTop && p1) {
+          let prl = -1, prr = -1, ph = 0, pgap = false;
+          for (let x = 0; x < w; x++) {
+            if (p1[x]) { if (prl < 0) prl = x; prr = x; if (pgap) { ph++; pgap = false; } }
+            else if (prl >= 0) pgap = true;
+          }
+          if (ph) holeBroken.push(`${hid}/${d} row ${y}: ${ph} hole(s) in part 1's run ${prl}..${prr}`);
+        }
+      } else if (on !== (enclosed ? p2Width : w)) {
         /* BELOW THE HAT: full width, so hair still frames the face.  The disk
            state one commit before v2.3.1957 violated exactly this — every mask
            was a corridor the width of the hat running to the bottom of the
            frame, so a top hat cut the hair off the sides of the head below its
-           own brim. */
-        belowBroken.push(`${hid}/${d} row ${y}: ${on}/${w}px opaque below the hat's lowest row ${bot}`);
+           own brim.
+           v2.3.1976: an ENCLOSED hat is the deliberate exception — the cap
+           covers the scalp, so below it the mask is the hat's own span and NOT
+           the full frame, which is what keeps an afro off the sides of a pair
+           of horns or a set of mouse ears (owner, twice). Still asserted, just
+           against the width the rule actually claims, so a corridor narrower
+           than the hat is still caught. */
+        belowBroken.push(`${hid}/${d} row ${y}: ${on}/${enclosed ? p2Width : w}px opaque below the hat's lowest row ${bot}`);
       }
     }
   }

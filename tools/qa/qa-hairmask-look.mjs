@@ -88,8 +88,40 @@ await page.goto(BASE + '/__hairmask.html');
      closed  — the shape the rule is aimed at, a cap the hair must sit under.
      openTop — the "exceptions" clause, where the outermost pixels are points
                and the hair between them has to survive. */
-const CLOSED = ['beanie', 'top-hat', 'red-cap'];
-const OPEN_TOP = ['crown', 'evil-crown', 'devil-horns', 'mickey-ears'];
+/* v2.3.1976: devil-horns moved OPEN_TOP -> CLOSED.  Owner: "For devil horns I
+   would actually rather it clip, I don't think it has a hole on the top."  He
+   is right about his own art and it is worth writing down why the first guess
+   was wrong: the horns spread wide and read like a crown's spikes, but the
+   piece between them is a solid red skull-cap, not a gap.  Rendered both ways
+   to check — clipped, the cap covers the crown and the hair shows at the
+   sides, with no bald patch anywhere, which is the whole worry with a
+   band-shaped hat.
+   Note the generator REFUSES to switch clipsHair on for this shape ("787px of
+   bare scalp ... this is a band, not a cap").  That refusal is the v2.3.1974
+   span-scoped over-count — a wide horn span sweeps in cheeks and temples that
+   the hat is standing in front of — and it is harmless here because
+   devil-horns already had clipsHair on.  It is left as-is rather than re-aimed
+   a day before a demo; see the two-metric note in check-hairmask-rule.mjs.
+   v2.3.1976: the first cut of this left 81px of hair standing between the
+   horns, because the default closed rule keeps a column the hat has reached at
+   any row ABOVE — right for a cowboy crown, wrong for horns, where the gap is
+   sky but the scalp under it is under the cap.  The owner said so plainly
+   ("There should be no hair between the horns.  I understand it to be a fully
+   enclosed hat"), and `enclosed` in the hat's meta now says it too: 81px -> 1px.
+   mickey-ears followed for the same reason and on the same evidence — owner:
+   "Mickey ears and devil horns are still wrong.  Hair from Afro is on the
+   sides."  Ears on a solid cap, not spikes on a band.
+   AND THE OTHER HALF OF THAT NOTE, which I first read backwards: "be more
+   conservative on clipping when the hair is equal to or beneath the lowest
+   outline of the hat -- I see a floating detached Afro hair beneath the hat"
+   means clip MORE, not keep more.  Opening part 2 per column (keeping more)
+   made it worse and had to be reverted; for an enclosed hat part 2 is now
+   BOUNDED to the hat's own span instead of the full frame.  The owner's eye on
+   the render is the acceptance test here: a tighter footprint bound was tried
+   after that and he said "the image looks correct, I don't think you should
+   change it". */
+const CLOSED = ['beanie', 'top-hat', 'red-cap', 'devil-horns', 'mickey-ears'];
+const OPEN_TOP = ['crown', 'evil-crown'];
 
 const M = await page.evaluate(async ({ closed, openTop }) => {
   const cp = await import('/rendering/characterPortrait.js');
