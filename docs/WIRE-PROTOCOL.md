@@ -280,6 +280,19 @@ are not identical (join carries `eqst`; track carries `mask`, `cape`,
 `pet`). Both paths truncate strings to the same bounds, so a value can be
 clipped but never dropped.
 
+**And two client-side halves, v2.3.1961.** A server that admits a key
+relays nothing if the sender never sends it and paints nothing if the
+receiver never maps it — `tf`/`tm` cleared both server gates in v2.3.1949
+and were still missing from the client's `track` payload until v2.3.1961,
+so the two newest canvases could reach a peer only on their join frame.
+So: (3) send it from the `track` payload in `src/ui/BroTown.jsx` beside
+`sa`/`ta`, and (4) if the wire name differs from the field the renderer
+reads off a peer — `sa` → `shirtArtFront`, `hr` → `hair` — add the pair to
+`PEER_COSMETIC_FIELDS` in `src/networking/peerCosmetics.js`. That one table
+feeds the `state_sync` snapshot, `player_join`, both self-heal placeholders
+and the `player_update` relay; before it existed the relay wrote the SHORT
+keys onto peers and every renamed cosmetic was frozen at its join value.
+
 ## Peer-relayed broadcast events (client ↔ client)
 
 Sent via `channelShim.send({...})`, hit the server's default branch, pass the
