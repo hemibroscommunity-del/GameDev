@@ -48,6 +48,12 @@
  *                      is skipped (item H, v2.3.1214).
  *   7. server-tests  — if server/ changed, runs `cd server && npm test`
  *                      (zero-dep, sandbox-safe).
+ *   7. worker-entry-exports — FAIL: server/src/index.js is the Worker's
+ *                      ENTRY module; workerd registers every named export as
+ *                      a handler, so a PRIMITIVE export refuses to boot the
+ *                      whole service (v2.3.1945 cost a red `playable` to
+ *                      find). Sets/objects are fine — they coerce to a
+ *                      handler with no handlers in it.
  *   8. shim-allowlist — WARN: repo-wide. Every `.send({ type: 'x' })` in
  *                      src/ must have a passthrough line in
  *                      `channelShim.send` (src/networking/wsClient.js),
@@ -404,6 +410,42 @@ function sanitize(src, { jsxText = false } = {}) {
     for (const [f, ls] of perFile) add('WARN', 'proto-safety', `${f}:${ls.join(',')} — plain {} literal(s) indexed nearby by an id-shaped key`);
     add('WARN', 'proto-safety', `heuristic, review each: a client-supplied id like '__proto__' silently no-ops on a plain object — use Object.create(null) or Map. This recurred 3× on 2026-07-07 alone (duel.away v2.3.1175, party meta v2.3.1185, amulet tiers v2.3.1192)`);
   } else add('PASS', 'proto-safety', `no plain-{} id-keyed map pattern in ${changedServerSrc.length} changed server file(s)`);
+}
+
+/* ---- 7. worker-entry-exports (FAIL) -------------------------------- */
+/* v2.3.1945: server/src/index.js is the Worker's ENTRY module, and workerd
+   registers every named export as a handler.  A primitive export is not one,
+   so it refuses to boot the whole service:
+
+     Uncaught TypeError: Incorrect type for map entry 'TRACK_BLOB_MAX_BYTES':
+     the provided value is not of type 'function or ExportedHandler'
+
+   That is a total server outage on deploy, from a line that looks like an
+   ordinary constant -- and the node suite cannot see it, because importing the
+   module in node is not booting a worker.  It cost a red `playable` to find.
+   The Sets already exported here are fine: an object coerces to a handler with
+   no handlers in it, a number cannot. */
+{
+  const entry = 'server/src/index.js';
+  const bad = [];
+  if (existsSync(entry)) {
+    const lines = sanitize(read(entry)).split('\n');
+    for (let li = 0; li < lines.length; li++) {
+      const m = /^\s*export\s+(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(.+)$/.exec(lines[li]);
+      if (!m) continue;
+      const rhs = m[2].trim();
+      /* primitives only -- anything object-shaped (new X, {, [, (, function,
+         class, an identifier, a call) is left alone. */
+      if (/^(?:-?\d[\d_.eE+-]*|0x[\da-fA-F_]+|'|"|`|true\b|false\b|null\b|undefined\b)/.test(rhs)) {
+        bad.push(`${li + 1}: export const ${m[1]} = ${rhs.slice(0, 40)}`);
+      }
+    }
+  }
+  if (bad.length) {
+    add('FAIL', 'worker-entry-exports', `${entry} exports ${bad.length} primitive(s) — workerd will refuse to boot the service`);
+    for (const b of bad) add('FAIL', 'worker-entry-exports', `  ${b}`);
+    add('FAIL', 'worker-entry-exports', '  drop the `export` (module-local const) or move it to a non-entry module such as server/src/join.js');
+  } else add('PASS', 'worker-entry-exports', `${entry} exports no primitives`);
 }
 
 /* ---- 8. shim-allowlist (WARN) -------------------------------------- */

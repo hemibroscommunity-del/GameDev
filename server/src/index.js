@@ -413,8 +413,23 @@ export const PRIVILEGED_EVENTS = new Set([
 /* v2.3.1945: the bound on the ONE track cosmetic that is legitimately nested
    (`rpgData`).  Same size and same reasoning as JOIN_RPG_MAX_BYTES: big enough
    that a real inspect-card blob never approaches it, small enough that it
-   actually binds. */
-export const TRACK_BLOB_MAX_BYTES = 8192;
+   actually binds.
+
+   NOT EXPORTED, and that is not a style choice.  This file is the Worker's
+   ENTRY module, and the runtime treats every named export as a handler to
+   register: a plain number is not one, so `export const TRACK_BLOB_MAX_BYTES =
+   8192` made workerd refuse to boot at all --
+
+     Uncaught TypeError: Incorrect type for map entry 'TRACK_BLOB_MAX_BYTES':
+     the provided value is not of type 'function or ExportedHandler'
+
+   -- which would have taken the whole server down on deploy.  The Sets beside
+   it get away with it because an object can be coerced to a handler with no
+   handlers in it; a primitive cannot.  The node test suite never sees this,
+   because importing the module in node is not booting a worker; the `playable`
+   check, which boots a real one, is what caught it.  Keep entry-module exports
+   to handlers, Durable Object classes, and the Sets that already live here. */
+const TRACK_BLOB_MAX_BYTES = 8192;
 
 export const TRACK_COSMETIC_KEYS = new Set([
   // Position hint (relayed to peers; NOT merged into player state --
