@@ -165,6 +165,7 @@ import { firemakingBus } from './mobile/firemakingBus.js';
 import { eatBus } from './mobile/eatBus.js';
 import { blockRingBus } from './mobile/blockRingBus.js';
 import { chatBubbleBus } from './mobile/chatBubbleBus.js'; /* v2.3.1287: self-tap opens chat */
+import { chatLogBus } from './mobile/chatLogBus.js'; /* v2.3.1980: the world-chat feed listens here */
 import { controlsTutorialBus } from './mobile/controlsTutorialBus.js';
 /* v2.3.1796: the questline teaches the controls by flashing the real one
    (owner).  Sibling of, not replacement for, ControlsTutorial above — see
@@ -1650,6 +1651,19 @@ export var BroTown = function BroTown(_ref0) {
     _useState188 = _slicedToArray(_useState187, 2),
     joinFlash = _useState188[0],
     setJoinFlash = _useState188[1];
+  /* ═══ v2.3.1980: PUBLISH THE ONLINE COUNT ONTO THE GAME STATE ═══
+     `playerCount` is the authoritative room population -- the worker
+     broadcasts it on every join and leave (`player_count`, getPlayerCount()
+     over all sessions, so it is WORLD-wide and not the zone you happen to be
+     standing in) and the client's own join/leave/ghost-sweep paths keep it
+     honest in between.  All of that lands in this one React state, which the
+     chat window cannot reach: ChatBubble is mounted by GameApp, outside this
+     component.  Mirroring it onto stateRef is how every other cross-boundary
+     read in this file is done, and it means the feed shows the SERVER's
+     number rather than recounting S.others and disagreeing with it. */
+  useEffect(function () {
+    if (stateRef.current) stateRef.current._playerCount = playerCount;
+  }, [playerCount]);
   /* ═══ v2.3.1814: WHICH PRE-GAME SCREEN, IF ANY ═══
      Owner: "character selections in terms of names and traits picked during
      login should be permanent.  When you load a character using the key it
@@ -2244,19 +2258,32 @@ export var BroTown = function BroTown(_ref0) {
   }(), [nfts]);
   var frameRef = useRef(0);
 
+  /* ═══ v2.3.1980: EVERY WRITE TO THE CHAT LOG ANNOUNCES ITSELF ═══
+     The log is written from four modules (game/chat.js on send and on every
+     received line, networking/gameEvents.js for party chat and operator
+     announcements, networking/wsClient.js for the welcome line) and all four
+     were handed THIS setter -- so wrapping it once here is the whole of it.
+     The world-chat feed lives in ChatBubble, which GameApp mounts outside
+     this component and which therefore cannot see `chatLog` as a prop; it
+     reads S.chatLog and re-renders on the bump. */
+  var noteChatLog = useCallback(function (v) {
+    setChatLog(v);
+    try { chatLogBus.bump(); } catch (e) { /* the log still wrote; only the feed misses a frame */ }
+  }, []);
+
   /* Send chat message — input-widget concerns stay here; the network/state
      body lives in src/game/chat.js (v2.3.767, REBUILD-PLAN Phase 2). */
   var sendChat = useCallback(function () {
     var text = chatInput.trim();
     if (!text) return;
-    sendChatMessage(stateRef.current, text, { setChatLog: setChatLog });
+    sendChatMessage(stateRef.current, text, { setChatLog: noteChatLog });
     setChatInput('');
     chatInputValRef.current = '';
     /* Keep keyboard open by re-focusing */
     requestAnimationFrame(function () {
       if (chatInputRef.current) chatInputRef.current.focus();
     });
-  }, [chatInput]);
+  }, [chatInput, noteChatLog]);
   /* Ambient background music — gentle chiptune loop */
   useEffect(function () {
     return wireTownMusic(showNameModal, showLogin);
@@ -2439,7 +2466,7 @@ export var BroTown = function BroTown(_ref0) {
       showLogin: showLogin,
       preGame: bootPhase !== null,   /* v2.3.1814: also the boot check + login door */
       setPlayerCount: setPlayerCount,
-      setChatLog: setChatLog,
+      setChatLog: noteChatLog,   /* v2.3.1980: wrapped -- see noteChatLog */
       setUnreadChats: setUnreadChats,
       setJoinFlash: setJoinFlash,
       setRpgState: setRpgState,

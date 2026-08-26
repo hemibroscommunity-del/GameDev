@@ -112,5 +112,7 @@ module-evaluation time (they're assigned when BroTown.jsx evaluates / renders):
 `bt_room`, `bt_room_code` (room override), `bt_blocked`, `bt_muted`,
 `bt_friends`, `bt_clan` (social), `bt_stats`, `bt_bestiary`, `bt_codex`,
 `bt_materials`, `bt_zones`, `bt_tutorial`, `bt_lastBuilding` (progress/UX),
-`bt-gear-v2-*` (gear stash, `src/rendering/gearCatalog.js`), `bt-crashlog`
-(crash capture read by `tools/qa/qa-smoke.mjs`).
+`bt_chatfeed` (v2.3.1980 — is the world-chat feed open in the chat window,
+`src/ui/mobile/ChatBubble.jsx`), `bt-gear-v2-*` (gear stash,
+`src/rendering/gearCatalog.js`), `bt-crashlog` (crash capture read by
+`tools/qa/qa-smoke.mjs`).

@@ -28,6 +28,7 @@ const SCENARIOS = {
   bodyink: () => import('./mp-bodyink.mjs'), /* v2.3.1965: ink lands where the finger was, at any zoom */
   cosmrelay: () => import('./mp-cosmrelay.mjs'), /* v2.3.1961: a peer's look after the join frame — the self-heal, and a cosmetic changed mid-session */
   build: () => import('./mp-build.mjs'), /* v2.3.1953: height x frame — the shape, the boots, the plate, and the wire */
+  chatfeed: () => import('./mp-chatfeed.mjs'), /* v2.3.1980: players-online count + the world chat feed */
   lockaim: () => import('./mp-lockaim.mjs'), /* v2.3.1979: a locked-on bow shot has to actually hit */
   lockon: () => import('./mp-lockon.mjs'), /* v2.3.1952: locking on raises block/dodge/special around the right joystick */
   tattoos: () => import('./mp-tattoos.mjs'), /* v2.3.1949: face + arm tattoos survive both server gates, end to end */
