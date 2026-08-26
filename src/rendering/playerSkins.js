@@ -29,7 +29,7 @@ import { getEyeColor, eyeColorTarget } from './traits/eyeColorCatalog.js';
    sprite, stamped in gearSheets) these live INSIDE the body sheet, because
    that is where the pants pixels and the bare skin actually are. */
 import { getArt, artHasInk, artHash, onArtChange } from './traits/playerArt.js';
-import { stampRegion, stampPattern, PANTS_BOX, TATTOO_BOX } from './playerDecal.js';
+import { stampRegion, stampPattern, litFabricMask, PANTS_LIT_MIN, PANTS_BOX, TATTOO_BOX } from './playerDecal.js';
 import { getPattern, parsePattern, patternKey, onPatternChange } from './traits/patternCatalog.js';   /* v2.3.1941 */
 
 /* ── Catalogs ── `target` = the LIT color for that choice; null = native. */
@@ -560,6 +560,10 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
   /* v2.3.1941: a pattern wants the same trouser mask a print does. */
   const pantsPat = art ? parsePattern(art.pantsPattern) : null;
   const pantsPx = (wantPantsArt || pantsPat) ? new Uint8Array(w * h) : null;
+  /* A copy of the source pixels, kept only when something will be painted on
+     the trousers: the retint below overwrites `d` in place, and v2.3.1942's
+     lit-fabric test has to be asked of the ORIGINAL art. */
+  const base = pantsPx ? new Uint8ClampedArray(d) : null;
   /* A tattoo goes on the CHEST, so it is bare skin intersected with the torso
      band — the same tracker the baked shirt used, reused rather than re-guessed.
      (It also means the tattoo hides under a shirt or a breastplate, which is
@@ -596,10 +600,20 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
   }
   /* v2.3.1940: the drawings, after every retint (so the retint cannot repaint
      them) and before the eyes (which own their own pixels either way). */
+  /* v2.3.1942 (owner: "keep it contained within the black outlines ...
+     otherwise it makes the clothes appear floating or like one dimensional").
+     The trousers' black outline is already outside `pantsPx` -- the green test
+     rejects it -- but the region's own dark RIM is the shading that rounds the
+     legs, and painting over it is what read as flat.  Measured on the ORIGINAL
+     pixels (`base`), because by now `d` carries the player's chosen trouser
+     colour and a dark one would fail a darkness test everywhere.
+     One mask for both the pattern and the print: the print is measured from it
+     too, so the drawing sits inside the shading rather than across it. */
+  const pantsPaint = pantsPx ? litFabricMask(base, pantsPx, w * h, PANTS_LIT_MIN) : null;
   /* Pattern first, print over it: a print is ON the fabric, and the fabric is
      what the pattern is. */
-  if (pantsPat) stampPattern(d, w, h, FRAME_W, pantsPx, pantsPat, !!art.mirror);
-  if (wantPantsArt) stampRegion(d, w, h, FRAME_W, pantsPx, art.pants, !!art.mirror, PANTS_BOX);
+  if (pantsPat) stampPattern(d, w, h, FRAME_W, pantsPaint, pantsPat, !!art.mirror);
+  if (wantPantsArt) stampRegion(d, w, h, FRAME_W, pantsPaint, art.pants, !!art.mirror, PANTS_BOX);
   if (tattooPx) stampRegion(d, w, h, FRAME_W, tattooPx, art.tattoo, !!art.mirror, TATTOO_BOX);
   /* v2.3.1928: the iris last, so it overwrites rather than being classified.
      Its pixels are near-black and would otherwise fall through every branch

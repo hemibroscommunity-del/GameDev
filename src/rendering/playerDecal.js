@@ -81,7 +81,7 @@ export function chestBox(data, W, H, x0, fw) {
  *        draws mirrored — so the print still reads the right way round
  * @returns {HTMLCanvasElement} a NEW canvas; the input is never mutated
  */
-export function stampShirtArt(sheet, art, frameH, mirror) {
+export function stampShirtArt(sheet, art, frameH, mirror, clip) {
   const W = sheet.naturalWidth || sheet.width;
   const H = sheet.naturalHeight || sheet.height;
   const cv = document.createElement('canvas');
@@ -129,9 +129,14 @@ export function stampShirtArt(sheet, art, frameH, mirror) {
       }
     }
   }
-  /* Clip the paint to the fabric. */
+  /* Clip the paint to the fabric.
+     v2.3.1942 (owner: "keep it contained within the black outlines ... otherwise
+     it makes the clothes appear floating or like one dimensional"): `clip`, when
+     given, is the LIT fabric rather than the whole sprite, so a print stops at
+     the garment's own outline instead of painting over it.  Defaults to the
+     sheet, which is the pre-v2.3.1942 behaviour. */
   octx.globalCompositeOperation = 'destination-in';
-  octx.drawImage(sheet, 0, 0);
+  octx.drawImage(clip || sheet, 0, 0);
   ctx.drawImage(ov, 0, 0);
   return cv;
 }
@@ -259,6 +264,72 @@ export const TATTOO_BOX = { fillW: 0.70, fillH: 0.55, cy: 0.50 };  /* chest */
  * facings exactly as the drawing is.
  */
 
+/* ═══ v2.3.1942: PAINT THE FABRIC, NOT THE LINE ART ═══
+ *
+ * Owner: "For the patterns can you keep it contained within the black outlines
+ * of the shirt and pants?  Otherwise it makes the clothes appear floating or
+ * like one dimensional."
+ *
+ * Exactly right, and it is one rule for both garments even though they were
+ * failing for two different reasons.  Measured on the shipped art:
+ *
+ *   SHIRT (its own sprite, masked by plain alpha).  The sheet is sharply
+ *   bimodal: 96 of 673 opaque pixels on stand-south are the outline at
+ *   luminance 0-31, 563 are white fabric at 224-255, and only ~14 sit anywhere
+ *   between.  The pattern was painting the outline flat along with the fabric.
+ *
+ *   TROUSERS (a classified region of the body sheet).  The true black outline
+ *   is already OUTSIDE the region — the green test rejects it — but the
+ *   region's own rim is the dark shading just inside that outline, and it is
+ *   what gives the legs their roundness: 253 rim pixels averaging luminance 62
+ *   against an interior averaging 104.  The pattern was flattening that.
+ *
+ * So: a pattern or a print only paints the LIT part of a garment, and the line
+ * art and shading show through it the way they show through dye.
+ *
+ * ── WHY THE TEST RUNS ON THE ORIGINAL ART ──
+ * Both garments are recoloured — the shirt by a tint, the trousers by a retint
+ * — so "is this pixel dark" asked after the colour is applied would answer yes
+ * to the whole garment on a black shirt and paint nothing at all.  The source
+ * art is fixed, so the threshold is measured against that and holds for every
+ * colour a player can pick.
+ *
+ * ── AND WHY IT FAILS SAFE ──
+ * If a future sheet is dark-based, this rule would mask nearly everything out
+ * and the pattern would silently vanish.  Both callers fall back to the plain
+ * region when the lit mask comes out too small to be a garment.
+ */
+const LIT_MIN = 4;              /* below this share of the region, distrust the rule */
+
+/** Luminance of the pixel at byte offset `i`. */
+function _lum(d, i) { return 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]; }
+
+/** Drop the darkest pixels of `mask` (outline + shading), measured on `base`
+ *  — the ORIGINAL, un-recoloured pixels.  Returns the original mask unchanged
+ *  if the result would be too small to be a garment. */
+export function litFabricMask(base, mask, n, minLum) {
+  const lit = new Uint8Array(n);
+  let kept = 0, had = 0;
+  for (let p = 0; p < n; p++) {
+    if (!mask[p]) continue;
+    had++;
+    if (_lum(base, p * 4) < minLum) continue;
+    lit[p] = 1; kept++;
+  }
+  /* Nothing recognisable left -> the threshold is wrong for this art; paint the
+     whole region rather than dropping the feature on the floor. */
+  if (!had || kept * LIT_MIN < had) return mask;
+  return lit;
+}
+
+/* Thresholds, from the measurements in the block above.  The shirt's sits in
+   the middle of a nearly empty gap (32-223 holds ~14 of 673 pixels), so it is
+   not a tuned number — anything in that band gives the same answer.  The
+   trousers' is a real split of a continuous range, chosen between the rim's
+   average (62) and the interior's (104). */
+export const SHIRT_LIT_MIN = 96;
+export const PANTS_LIT_MIN = 80;
+
 /** Tile `pat` (a parsed pattern from patternCatalog) across every pixel of
  *  `mask`, in place on the pixel array.  Returns the number of pixels painted. */
 export function stampPattern(d, w, h, frameW, mask, pat, mirror) {
@@ -321,6 +392,13 @@ export function composeShirt(sheet, frameH, opts) {
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(sheet, 0, 0);
 
+  /* v2.3.1942: the lit fabric, read BEFORE the tint (see litFabricMask). */
+  const base = ctx.getImageData(0, 0, W, H).data;
+  const alpha = new Uint8Array(W * H);
+  for (let p = 0; p < W * H; p++) if (base[p * 4 + 3] > 40) alpha[p] = 1;
+  const lit = (o.pattern || (o.art && artHasInk(o.art)))
+    ? litFabricMask(base, alpha, W * H, SHIRT_LIT_MIN) : alpha;
+
   if (o.tint) {
     ctx.globalCompositeOperation = 'multiply';
     ctx.fillStyle = `rgb(${o.tint[0]},${o.tint[1]},${o.tint[2]})`;
@@ -332,16 +410,27 @@ export function composeShirt(sheet, frameH, opts) {
   }
 
   if (o.pattern) {
-    /* The shirt IS its own sprite, so its own alpha is the region mask. */
     const id = ctx.getImageData(0, 0, W, H);
-    const mask = new Uint8Array(W * H);
-    for (let p = 0; p < W * H; p++) if (id.data[p * 4 + 3] > 40) mask[p] = 1;
-    stampPattern(id.data, W, H, frameH || H, mask, o.pattern, !!o.mirror);
+    stampPattern(id.data, W, H, frameH || H, lit, o.pattern, !!o.mirror);
     ctx.putImageData(id, 0, 0);
   }
 
   if (o.art && artHasInk(o.art)) {
-    return stampShirtArt(cv, o.art, frameH, !!o.mirror);
+    /* The print is clipped to the same lit fabric, so it stops at the outline
+       and at the seam lines rather than erasing them. */
+    return stampShirtArt(cv, o.art, frameH, !!o.mirror, _maskCanvas(lit, W, H));
   }
+  return cv;
+}
+
+/** A canvas that is opaque exactly where `mask` is set — a clip source for the
+ *  2D compositor, which cannot take a byte array. */
+function _maskCanvas(mask, W, H) {
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  const id = ctx.createImageData(W, H);
+  for (let p = 0; p < W * H; p++) if (mask[p]) id.data[p * 4 + 3] = 255;
+  ctx.putImageData(id, 0, 0);
   return cv;
 }
