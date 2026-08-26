@@ -61,6 +61,25 @@ WHAT THIS DELIBERATELY ALLOWS: skin beside the hat where the hair used to
 bulge. That is the point. It is also why bald_px below had to be re-aimed --
 see the note there.
 
+Over-cutting on purpose (v2.3.1963)
+-----------------------------------
+Owner: "hair in the space between the width of the base of the hat and its
+narrowest point at the top of the hat should be clipped. Make the hair mask
+liberal (over cut rather than undercut) since your width detector is grabbing
+some outlines and ghost pixels."
+
+The wedge that names -- between a hat's wide base and its narrow crown -- is
+already what the accumulating bound is for. What stopped it being cut cleanly
+is the second half of the sentence: the row extent was taken from the
+outermost opaque pixel, which is the dark 1px outline, or a stray the green-key
+import left behind that nothing on screen can see. One such pixel widens the
+bound for that row AND every row under it, because the bound only ever grows.
+
+So the extent is now measured on the ERODED hat (see _solid) and then pulled in
+by INSET on each side. Both push the same way, deliberately: an over-cut costs
+a pixel of hair at the hat's edge, where the hat is drawn over it anyway; an
+under-cut leaves hair standing proud of the hat, which is the report.
+
 Run from the repo root:
     python3 tools/make_hairmask.py --all-with-masks [--apply]
     python3 tools/make_hairmask.py --ids beanie,top-hat --apply
@@ -82,6 +101,37 @@ ALPHA_T = 16
 FRAME = 256
 SKULL_ROWS = 26      # 256-space rows below the crown that count as scalp
 BALD_T = 150         # exposed scalp px above which a hat must NOT clip hair
+# v2.3.1963: pull the accumulated width in by this much on each side, on top of
+# the erode.  The owner asked for a mask that over-cuts rather than under-cuts,
+# and the two failures are not symmetric: an over-cut loses a pixel of hair at
+# the hat's edge, where the hat is drawn over it anyway, while an under-cut
+# leaves hair standing proud of the hat, which is the thing being reported.
+INSET = 1
+
+
+def _solid(m):
+    """The hat minus its outline and its loose pixels.
+
+    v2.3.1963.  Owner: "Make the hair mask liberal (over cut rather than
+    undercut) since your width detector is grabbing some outlines and ghost
+    pixels."  Exactly right, and it is why the wedge either side of a tapered
+    hat was not being cut cleanly: the per-row extent is taken from the
+    OUTERMOST opaque pixel in that row, and the outermost pixel is the dark
+    1px outline -- or, worse, a stray left by the green-key import that nothing
+    on screen can see.  One such pixel widens the accumulated bound for that
+    row and every row beneath it, and the bound never narrows again.
+
+    A 4-neighbour erode drops both: an outline pixel has empty space on one
+    side, and a lone speck has it on all four.  The hat's body is many pixels
+    thick and survives.  Frames that erode to nothing (a hat one pixel thick
+    somewhere) fall back to the raw mask rather than vanishing.
+    """
+    e = (m
+         & np.roll(m, 1, axis=0) & np.roll(m, -1, axis=0)
+         & np.roll(m, 1, axis=1) & np.roll(m, -1, axis=1))
+    # np.roll wraps, so the frame's own border can leak in from the far side.
+    e[0, :] = e[-1, :] = e[:, 0] = e[:, -1] = False
+    return e if e.any() else m
 
 
 def _load256(p):
@@ -181,14 +231,17 @@ def build(hid, apply_it, set_clips):
             mask[rows.max() + 1:, :] = (255, 255, 255, 255)
         # v2.3.1957: at and above the hat, no wider than the hat has been at
         # this row or above it.  `lo`/`hi` accumulate as the scan goes down.
+        # v2.3.1963: measured on the SOLID hat and then pulled in — see
+        # "Over-cutting on purpose".
+        solid = _solid(m)
         if len(rows):
             lo, hi_ = w, -1
             for y in range(int(rows.min()), int(rows.max()) + 1):
-                r = np.nonzero(m[y, :])[0]
+                r = np.nonzero(solid[y, :])[0]
                 if len(r):
-                    lo = min(lo, int(r.min()))
-                    hi_ = max(hi_, int(r.max()))
-                if hi_ >= 0:
+                    lo = min(lo, int(r.min()) + INSET)
+                    hi_ = max(hi_, int(r.max()) - INSET)
+                if hi_ >= lo:
                     mask[y, lo:hi_ + 1] = (255, 255, 255, 255)
         made.append((d, int(m.sum()), int((mask[:, :, 3] > 0).sum()), w))
         masks[d] = mask

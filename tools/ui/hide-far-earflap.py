@@ -26,16 +26,31 @@ machinery with no visible output. Erasing the flap is the same picture.
 
 Which flap is the far one
 -------------------------
-Not hard-coded: a facing that draws TWO flaps under the brow band is a
-three-quarter view, and the NEAR flap is the one that reaches the head's
-silhouette edge -- it is on the side turned toward the camera, so it hangs off
-the outline. The far flap is the one that reaches neither edge. Measured
-per facing against the actual stand sheet, so a re-cut hat is re-judged rather
-than re-broken.
+v2.3.1963 -- THIS WAS WRONG THE FIRST TIME, and the owner caught it: "for the
+barbarian hat you went the wrong direction. It was supposed to be the other
+way around (my left)."
 
-A facing with ONE flap is a profile (east/west) and is left alone: the single
-flap IS the near ear, and in profile the near ear does sit over the side of
-the head.
+The first version reasoned that the NEAR flap is the one reaching the head's
+silhouette edge, because the near side is turned toward the camera. That is
+true in profile and FALSE on a three-quarter view, which is where it did the
+damage: on southwest the barbarian helmet's flaps place at x 96..108 (touching
+the head's left edge, head spans 96..163) and x 131..158 (well inboard) -- and
+it is the one ON THE EDGE that is far. On a three-quarter turn the receding
+side of the skull is narrower, so a flap hanging off it clears the outline,
+while the near flap sits over the cheek that is facing you.
+
+So the discriminator is not geometry, it is the ART: the body sprite draws the
+character's own ear on the side that is VISIBLE. Rendered bare-headed at every
+facing and read off directly --
+
+    southwest : eyes sit left in the head, ear drawn on the RIGHT  -> near = right
+    east      : eyes sit right in the head, ear drawn on the LEFT  -> near = left
+    south     : symmetric, no turn                                 -> neither, leave both
+
+-- and southeast / west are those two mirrored, so fixing the base frames fixes
+all four. Keep the flap on the side the sprite puts its ear; erase the other.
+
+A facing with ONE flap is left alone: there is nothing to choose between.
 
 What this does NOT touch
 ------------------------
@@ -70,11 +85,12 @@ BODY_TOPS = 'public/sprites/player/body-tops.json'
 DIRS = ['south', 'southwest', 'east', 'northeast', 'north']
 ALPHA_T = 16
 FRAME = 256
-# A flap counts as reaching the silhouette when it comes within this many
-# 256-frame pixels of the head's outline on that side.  2px, because the head
-# outline is a hard pixel edge and the flap is drawn to overlap it, not to
-# touch it exactly.
-EDGE_SLOP = 2
+# v2.3.1963: which side of each turned facing is TOWARD the camera, read off
+# the bare body sprite -- the side it paints the character's own ear on.  See
+# "Which flap is the far one".  A facing absent from this table is not a turned
+# view and keeps both flaps.  southeast/west are these two mirrored and are
+# never authored separately.
+NEAR_SIDE = {'southwest': 'right', 'east': 'left'}
 # Rows of the helmet that count as the BAND: any row at least this share of the
 # helmet's widest row.  Below the band there is nothing but flaps.
 BAND_SHARE = 0.55
@@ -171,29 +187,38 @@ def judge(hid, d, meta, tops, verbose):
     hcols = np.nonzero(head.any(axis=0))[0]
     hl, hr = int(hcols.min()), int(hcols.max())
 
-    reach = []
-    for c in comps:
-        probe = np.zeros_like(art)
-        for (y, x) in c:
-            probe[y, x] = art[y, x]
-        pl = _place(_load256_from(probe), meta, d, tops)
-        cols = np.nonzero((pl[:, :, 3] > ALPHA_T).any(axis=0))[0]
-        if not len(cols):
-            reach.append(None)
-            continue
-        reach.append((int(cols.min()) - hl, hr - int(cols.max())))
+    near = NEAR_SIDE.get(d)
+    if near is None:
+        return [], f'{d} is not a turned facing — both flaps belong, leaving them'
 
-    far = [i for i, r in enumerate(reach)
-           if r is not None and r[0] > EDGE_SLOP and r[1] > EDGE_SLOP]
+    # comps are sorted left-to-right, so with exactly two the near one is
+    # index 0 for 'left' and the last for 'right'.  More than two means this is
+    # not the shape this rule was written for; refuse rather than guess.
+    if len(comps) != 2:
+        return [], f'{len(comps)} flaps under the band — refusing, this rule expects two'
+    keep = 0 if near == 'left' else len(comps) - 1
+    far = [i for i in range(len(comps)) if i != keep]
+
     if verbose:
-        for i, r in enumerate(reach):
+        for i, c in enumerate(comps):
+            xs = [x for _, x in c]
             side = 'left ' if i == 0 else 'right'
-            gap = 'off-frame' if r is None else f'{r[0]:+3d} from left edge, {r[1]:+3d} from right edge'
-            print(f'      flap {i} ({side}) {gap}{"   <- FAR, behind the head" if i in far else ""}')
-    if len(far) == len(comps):
-        return [], 'every flap is inboard — refusing (that is not a three-quarter view)'
+            pl = _place(_load256_from(_only(art, c)), meta, d, tops)
+            cols = np.nonzero((pl[:, :, 3] > ALPHA_T).any(axis=0))[0]
+            edge = ('off-frame' if not len(cols)
+                    else f'{int(cols.min()) - hl:+3d} from left edge, {hr - int(cols.max()):+3d} from right edge')
+            print(f'      flap {i} ({side}) art x {min(xs)}..{max(xs)}  placed {edge}'
+                  f'{"   <- KEEP (sprite draws its ear this side)" if i == keep else "   <- FAR, behind the head"}')
     px = [q for i in far for q in comps[i]]
-    return px, (f'{len(far)} far flap(s), {len(px)}px' if far else 'both flaps reach an edge')
+    return px, f'near side is {near}; erasing the {"right" if near == "left" else "left"} flap, {len(px)}px'
+
+
+def _only(art, comp):
+    """A copy of the frame carrying just this one component."""
+    probe = np.zeros_like(art)
+    for (y, x) in comp:
+        probe[y, x] = art[y, x]
+    return probe
 
 
 def _load256_from(art):
