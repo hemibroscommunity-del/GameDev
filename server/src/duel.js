@@ -96,6 +96,19 @@ export const duelMethods = {
     const payload = msg.payload || {};
     const target = payload.target;
     if (!target || typeof target !== 'string' || target === fromId) return null;
+    /* v2.3.1973: bound the MAP KEY.  `target` is client-supplied and goes
+       straight into a `challenger>target` key that lives for CHALLENGE_TTL
+       (2 min), and nothing capped its length — so one socket sending
+       duel_request with a ~16 KB target (the MAX_INBOUND_BYTES ceiling)
+       parks 16 KB of key per message.  At the relay bucket's sustained
+       4/s that is ~7 MB of DO memory per attacker in rolling residence,
+       and the DO has 128 MB.  Every other handshake in this room already
+       had exactly this guard -- trade.js:78, clans.js:161 (v2.3.1622),
+       friends.js:116 -- and party.js gets it for free by requiring a live
+       playerState first; the duel handshake was the one that was missed.
+       64 is the same number they use, and a real id is `bp_<hash>`, well
+       under it, so no legitimate challenge changes. */
+    if (target.length > 64) return null;
     if (!this._duelChallenges) this._duelChallenges = new Map(); // 'challenger>target' -> {wager, ts}
     if (!this._duels) this._duels = new Map();
     const now = Date.now();

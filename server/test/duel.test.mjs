@@ -428,5 +428,18 @@ await room._interceptDuel('bp_duel_a', chalMsg('bp_duel_b', 40));
 const accSame = await room._interceptDuel('bp_duel_b', acceptMsg('bp_duel_a', 40));
 check('the same pair in ONE zone still duels', accSame !== null && !!room._duelFor('bp_duel_a'));
 
+/* ── 14. v2.3.1973: the challenge map key is bounded ──
+ * `target` rides straight into a Map key that lives for CHALLENGE_TTL, and
+ * every other handshake in the room already bounds it (trade.js:78,
+ * clans.js:161, friends.js:116).  A 16 KB target at the relay bucket's
+ * sustained rate is megabytes of DO memory per attacker. */
+room._duelChallenges.clear();
+const longTarget = 'bp_' + 'z'.repeat(20000);
+const fatChal = await room._interceptDuel('bp_duel_a', chalMsg(longTarget, 0));
+check('an over-long duel target is refused', fatChal === null);
+check('...and parks nothing in the challenge map', room._duelChallenges.size === 0, room._duelChallenges.size);
+const okChal = await room._interceptDuel('bp_duel_a', chalMsg('bp_duel_b', 0));
+check('...while a real id still records a challenge', okChal !== null && room._duelChallenges.size === 1);
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
