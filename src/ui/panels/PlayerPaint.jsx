@@ -11,6 +11,7 @@ import {
   patternsFor, getPattern, setPattern, parsePattern, formatPattern, patternInk,
 } from '@/rendering/traits/patternCatalog.js';   /* v2.3.1941 */
 import { drawCharacterPortrait } from '@/rendering/characterPortrait.js';   /* v2.3.1947 */
+import { heightMul, PORTRAIT_FIT, getBuildHeight } from '@/rendering/traits/buildCatalog.js';   /* v2.3.1953 */
 
 /* ═══ v2.3.1938: DRAW YOUR OWN SHIRT ═══
  *
@@ -273,6 +274,20 @@ const FOCUS = {
      stopped at 0.947 sliced the soles off. */
   shoes: { cy: 0.865, h: 0.27 },
 };
+/* v2.3.1953: every frame above was measured against a figure drawn at full
+   size and average build.  The composite now draws through PORTRAIT_FIT times
+   the player's own height (buildCatalog), scaled about the FEET — so a tall
+   bro's chest is higher up the canvas than a short one's, and a fixed frame
+   would point at his stomach.  Same feet-anchored mapping the creator's camera
+   uses: move the window's centre with the figure and scale the window by the
+   same factor.  0.977 is the measured foot line quoted above. */
+const FIG_BOT = 0.977;
+function focusFor(target, heightId) {
+  const f = FOCUS[target] || FOCUS.shirt;
+  const k = PORTRAIT_FIT * heightMul(heightId);
+  if (k === 1) return f;
+  return { cy: FIG_BOT + (f.cy - FIG_BOT) * k, h: f.h * k };
+}
 
 function WornPreview({ look, target, side, art, pat }) {
   const boxRef = React.useRef(null);
@@ -281,6 +296,10 @@ function WornPreview({ look, target, side, art, pat }) {
   const dirtyRef = React.useRef(false);
 
   /* Blit the finished composite into the visible box, cropped to the garment. */
+  /* The build the composite is being drawn at — explicit from the caller when
+     it has one, this device's own store otherwise (which is the same rule
+     drawCharacterPortrait itself follows for every drawing and pattern). */
+  const buildH = (look && look.buildHeight) || getBuildHeight();
   const blit = React.useCallback(() => {
     const box = boxRef.current, off = offRef.current;
     if (!box || !off || !off.width) return;
@@ -292,12 +311,12 @@ function WornPreview({ look, target, side, art, pat }) {
     const ctx = box.getContext('2d');
     ctx.imageSmoothingEnabled = false;
     ctx.clearRect(0, 0, w, h);
-    const f = FOCUS[target] || FOCUS.shirt;
+    const f = focusFor(target, buildH);
     const S = off.width;                       /* the composite is square */
     const winH = f.h * S;
     const winW = winH * (cssW / cssH);
     ctx.drawImage(off, FIG_CX * S - winW / 2, f.cy * S - winH / 2, winW, winH, 0, 0, w, h);
-  }, [target]);
+  }, [target, buildH]);
 
   React.useEffect(() => {
     if (!look) return undefined;

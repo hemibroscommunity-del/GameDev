@@ -186,6 +186,7 @@ import { SKIN_CATALOG, PANTS_CATALOG, SHOES_CATALOG, getSkin, setSkin, getPants,
 import { HAIR_COLOR_CATALOG, getHairColor, setHairColor } from '@/rendering/traits/hairColorCatalog.js';
 import { HAT_COLOR_CATALOG, hatColorsFor, getHatColor, setHatColor } from '@/rendering/traits/hatColorCatalog.js';
 import { EYE_COLOR_CATALOG, getEyeColor, setEyeColor } from '@/rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
+import { HEIGHT_CATALOG, FRAME_CATALOG, getBuildHeight, setBuildHeight, getBuildFrame, setBuildFrame, wireHeight, wireFrame } from '@/rendering/traits/buildCatalog.js'; /* v2.3.1953 */
 import { getShirtArt, getArt, artHasInk } from '@/rendering/traits/playerArt.js'; /* v2.3.1939; v2.3.1940 + pants/tattoo */
 import { getPattern } from '@/rendering/traits/patternCatalog.js'; /* v2.3.1941 */
 import { FACIALHAIR_COLOR_CATALOG, getFacialHairColor, setFacialHairColor } from '@/rendering/traits/facialHairColorCatalog.js';
@@ -1736,6 +1737,15 @@ export var BroTown = function BroTown(_ref0) {
   var _eyeColorSelState = useState(getEyeColor()),
     eyeColorSel = _eyeColorSelState[0],
     setEyeColorSel = _eyeColorSelState[1];
+  /* v2.3.1953: height + frame, mirrored into React the same way every other
+     pick is — the store is the truth, this is what re-renders the tiles and
+     re-runs the preview draw. */
+  var _heightSelState = useState(getBuildHeight()),
+    heightSel = _heightSelState[0],
+    setHeightSel = _heightSelState[1];
+  var _frameSelState = useState(getBuildFrame()),
+    frameSel = _frameSelState[0],
+    setFrameSel = _frameSelState[1];
   var _beardColorSelState = useState(getFacialHairColor()),
     beardColorSel = _beardColorSelState[0],
     setBeardColorSel = _beardColorSelState[1];
@@ -1797,6 +1807,7 @@ export var BroTown = function BroTown(_ref0) {
       facialHairSel: facialHairSel, beardColorSel: beardColorSel,
       headwearSel: headwearSel, hatColorSel: hatColorSel, eyeColor: eyeColorSel,
       shirtSel: shirtSel, shirtColorSel: shirtColorSel,
+      buildHeight: heightSel, buildFrame: frameSel,   /* v2.3.1953 */
       /* v2.3.1951: which tab is open drives where the preview camera looks,
          and the tap-zoom overrides it with the whole figure. */
       activeCat: activeCat, zoomedOut: previewZoom,
@@ -1822,7 +1833,7 @@ export var BroTown = function BroTown(_ref0) {
 
        Listing the mount flag is the whole fix: the effect re-runs when the
        creator appears, the ref is attached by then, and the portrait draws. */
-  }, [showNameModal, previewDir, skinSel, pantsSel, shoesSel, hairSel, hairColorSel, facialHairSel, beardColorSel, headwearSel, hatColorSel, shirtSel, shirtColorSel, eyeColorSel, activeCat, previewZoom]);
+  }, [showNameModal, previewDir, skinSel, pantsSel, shoesSel, hairSel, hairColorSel, facialHairSel, beardColorSel, headwearSel, hatColorSel, shirtSel, shirtColorSel, eyeColorSel, heightSel, frameSel, activeCat, previewZoom]);
   /* v2.3.715: the welcome modal is dead network time -- start pulling the
      heavy in-game sheets (network/decode only; the CPU bakes still run
      behind the intro overlay via preloadPlayerAssets in joinTown) and warm
@@ -1935,6 +1946,68 @@ export var BroTown = function BroTown(_ref0) {
       onClick: function () { onSet(opt.id); }, style: _apTileStyle(sel, size || 32)
     }, inner, sel ? _checkBadge() : null);
   };
+  /* ═══ v2.3.1953: THE BUILD TILE ═══
+     Height and frame have no sprite to show and no colour to swatch — they are
+     two numbers — so the tile draws what they DO: a stick silhouette scaled by
+     that option's own multiplier, with a ghost of the average build behind it
+     so the difference is visible in the tile rather than only on the stage.
+     Inline SVG rather than art: it is five shapes, it scales to any density,
+     and the animation-preload law's whole reason (an asset that loads late
+     hitches) does not apply to one that is never fetched.  Same precedent as
+     the designer's pencil (v2.3.1946). */
+  var _buildTile = function (opt, selId, onSet, axis, size) {
+    var sel = selId === opt.id;
+    /* ═══ THE ICON EXAGGERATES.  DELIBERATELY. ═══
+       A 12% difference is plain on a 300px character and invisible on a 30px
+       glyph, so the tile draws the option at 2.2x its real deviation from
+       average.  This is an ICON, not a preview — the preview is the bro on the
+       stage, who moves the moment you tap, and who moves by the REAL amount.
+       Understating the choice in the picker would make three of these tiles
+       look identical, which is worse than overstating it. */
+    var _ex = 1 + (opt.mul - 1) * 2.2;
+    var sx = axis === 'frame' ? _ex : 1;
+    var sy = axis === 'frame' ? 1 : _ex;
+    var _figure = function () {
+      return /*#__PURE__*/React.createElement("g", {
+        /* Anchored on the FEET, like everything else in this feature: a figure
+           that grew about its middle would float above the tile's baseline and
+           the three of them would no longer line up. */
+        transform: 'translate(20,36) scale(' + sx + ',' + sy + ') translate(-20,-36)',
+        fill: '#3a4450'
+      },
+      /*#__PURE__*/React.createElement("circle", { cx: 20, cy: 9.5, r: 5 }),
+      /*#__PURE__*/React.createElement("rect", { x: 13, y: 15.5, width: 14, height: 11.5, rx: 3 }),
+      /*#__PURE__*/React.createElement("rect", { x: 14.8, y: 27, width: 4.2, height: 9, rx: 1.4 }),
+      /*#__PURE__*/React.createElement("rect", { x: 21, y: 27, width: 4.2, height: 9, rx: 1.4 }));
+    };
+    return /*#__PURE__*/React.createElement("button", {
+      key: 'b_' + opt.id, type: 'button', title: opt.name,
+      onClick: function () { onSet(opt.id); }, style: _apTileStyle(sel, size || 52)
+    },
+    /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start' } },
+      /*#__PURE__*/React.createElement("span", {
+        /* Caption ABOVE the silhouette: the selected tile's check badge sits
+           in the bottom-right corner, and a caption under the figure ran into
+           it — "Average" came back as "Averag(check)".  Above it, the badge has
+           the corner to itself and the label is never clipped. */
+        style: { fontSize: 8, fontWeight: 800, letterSpacing: '.02em', color: '#3a4450', lineHeight: 1, flex: '0 0 auto' }
+      }, opt.name),
+      /*#__PURE__*/React.createElement("svg", {
+        /* Headroom above and to the sides so the exaggerated `tall` and
+           `large` figures are drawn whole rather than cropped at the box. */
+        viewBox: '-4 -8 48 46', "aria-hidden": true, focusable: 'false',
+        preserveAspectRatio: 'xMidYMax meet',
+        /* overflow visible so a `tall` figure is not clipped by its own box —
+           the ghost behind it is the reference, and a silhouette cropped at
+           the crown would understate exactly the thing being picked. */
+        style: { overflow: 'visible', display: 'block', flex: '1 1 auto', width: '100%', minHeight: 0 }
+      },
+      /* No ghost-of-average behind it: the first cut drew one and on `Short`
+         its head floated above the real figure's, reading as a second head.
+         Three tiles in a row ARE the comparison. */
+      _figure())),
+    sel ? _checkBadge() : null);
+  };
   var _thumbTile = function (cat, opt, selId, onSet, size) {
     var sz = size || 50;
     var sel = selId === opt.id;
@@ -1968,6 +2041,11 @@ export var BroTown = function BroTown(_ref0) {
     if (recolorEnabled('skin')) { var sk = rpick(SKIN_CATALOG); setSkin(sk); setSkinSel(sk); }
     if (recolorEnabled('pants')) { var pt = rpick(PANTS_CATALOG); setPants(pt); setPantsSel(pt); }
     if (recolorEnabled('shoes')) { var sh = rpick(SHOES_CATALOG); setShoes(sh); setShoesSel(sh); }
+    /* v2.3.1953: roll the build too.  Randomize is how most people first see
+       what the creator can do, and a feature it never touches is a feature
+       half the players never learn exists. */
+    var bh = rpick(HEIGHT_CATALOG); setBuildHeight(bh); setHeightSel(bh);
+    var bf = rpick(FRAME_CATALOG); setBuildFrame(bf); setFrameSel(bf);
     var hr = rpick(HAIR_CATALOG); setHair(hr); setHairSel(hr);
     if (recolorEnabled('hair')) {
       var hcCat = hr === 'long' ? HAIR_COLOR_CATALOG.filter(function (c) { return LONG_HAIR_COLORS.indexOf(c.id) >= 0; }) : HAIR_COLOR_CATALOG;
@@ -5596,6 +5674,11 @@ export var BroTown = function BroTown(_ref0) {
                 /* v2.3.1940: the drawn pants print and the chest tattoo. */
                 pa: artHasInk(getArt('pants')) ? getArt('pants') : undefined,
                 ta: artHasInk(getArt('tattoo')) ? getArt('tattoo') : undefined,
+                /* v2.3.1953: height and frame, so a build changed mid-session
+                   reaches everyone on the next relay rather than only on their
+                   next join.  Omitted entirely at average/medium. */
+                hg: wireHeight(),
+                fr: wireFrame(),
                 /* v2.3.1941: clothing patterns. */
                 sp: getPattern('shirt') || undefined,
                 pp: getPattern('pants') || undefined,
@@ -8127,7 +8210,7 @@ export var BroTown = function BroTown(_ref0) {
     });
   }
   if (showNameModal) {
-    return /*#__PURE__*/React.createElement(NameModal, { _dragRotX: _dragRotX, _swatchTile: _swatchTile, _thumbTile: _thumbTile, activeCat: activeCat, beardColorSel: beardColorSel, facialHairSel: facialHairSel, hairColorSel: hairColorSel, hairSel: hairSel, hatColorSel: hatColorSel, eyeColorSel: eyeColorSel, setEyeColorSel: setEyeColorSel, headwearSel: headwearSel, joinTown: joinTown, nameInput: nameInput, pantsSel: pantsSel, previewCanvasRef: previewCanvasRef, previewDir: previewDir, previewZoom: previewZoom, setPreviewZoom: setPreviewZoom, randomizeWithFlair: randomizeWithFlair, rollRandomName: rollRandomName, rotatePreview: rotatePreview, setActiveCat: setActiveCat, setBeardColorSel: setBeardColorSel, setFacialHairSel: setFacialHairSel, setHairColorSel: setHairColorSel, setHairSel: setHairSel, setHatColorSel: setHatColorSel, setHeadwearSel: setHeadwearSel, setNameInput: setNameInput, setPantsSel: setPantsSel, setShirtColorSel: setShirtColorSel, setShirtSel: setShirtSel, setShoesSel: setShoesSel, setSkinSel: setSkinSel, shirtColorSel: shirtColorSel, shirtSel: shirtSel, shoesSel: shoesSel, skinSel: skinSel });
+    return /*#__PURE__*/React.createElement(NameModal, { _dragRotX: _dragRotX, _swatchTile: _swatchTile, _thumbTile: _thumbTile, _buildTile: _buildTile, activeCat: activeCat, heightSel: heightSel, setHeightSel: setHeightSel, frameSel: frameSel, setFrameSel: setFrameSel, beardColorSel: beardColorSel, facialHairSel: facialHairSel, hairColorSel: hairColorSel, hairSel: hairSel, hatColorSel: hatColorSel, eyeColorSel: eyeColorSel, setEyeColorSel: setEyeColorSel, headwearSel: headwearSel, joinTown: joinTown, nameInput: nameInput, pantsSel: pantsSel, previewCanvasRef: previewCanvasRef, previewDir: previewDir, previewZoom: previewZoom, setPreviewZoom: setPreviewZoom, randomizeWithFlair: randomizeWithFlair, rollRandomName: rollRandomName, rotatePreview: rotatePreview, setActiveCat: setActiveCat, setBeardColorSel: setBeardColorSel, setFacialHairSel: setFacialHairSel, setHairColorSel: setHairColorSel, setHairSel: setHairSel, setHatColorSel: setHatColorSel, setHeadwearSel: setHeadwearSel, setNameInput: setNameInput, setPantsSel: setPantsSel, setShirtColorSel: setShirtColorSel, setShirtSel: setShirtSel, setShoesSel: setShoesSel, setSkinSel: setSkinSel, shirtColorSel: shirtColorSel, shirtSel: shirtSel, shoesSel: shoesSel, skinSel: skinSel });
   }
   return /*#__PURE__*/React.createElement(React.Fragment, null, /* v2.3.1925: the mystery-reveal ceremony.  Mounted at the top of the in-world fragment and ALWAYS mounted — it renders null until a hidden grade arrives on the loot credit, and mounting it conditionally would mean the queue it subscribes to could fill before anyone was listening. */ /*#__PURE__*/React.createElement(RevealOverlay, null), showIntro && /*#__PURE__*/React.createElement(IntroVideo, {
     waitFor: introWaitRef.current,

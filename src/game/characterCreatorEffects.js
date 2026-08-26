@@ -7,6 +7,7 @@ import { facialHairColorTarget } from '@/rendering/traits/facialHairColorCatalog
 import { shirtColorTarget } from '@/rendering/traits/shirtColorCatalog.js';
 import { onArtChange } from '@/rendering/traits/playerArt.js';   /* v2.3.1938; v2.3.1940 renamed — it covers pants and tattoos too */
 import { onPatternChange } from '@/rendering/traits/patternCatalog.js';   /* v2.3.1941 */
+import { heightMul, PORTRAIT_FIT } from '@/rendering/traits/buildCatalog.js';   /* v2.3.1953 */
 
 /* === characterCreatorEffects — effect bodies for the character creator ===
    v2.3.897: extracted verbatim from three BroTown.jsx useEffects (the
@@ -46,6 +47,11 @@ export function portraitLook(sel) {
     headwear: sel.headwearSel, hatColor: hatColorTarget(sel.hatColorSel, sel.headwearSel), /* v2.3.1927 */
     shirt: sel.shirtSel, shirtColor: shirtColorTarget(sel.shirtColorSel),
     eyeColor: sel.eyeColor,   /* v2.3.1930: the creator's own live selection */
+    /* v2.3.1953: height + frame.  Passed EXPLICITLY rather than left to the
+       portrait's store fallback so the preview redraws the moment a build tile
+       is tapped — the store write and this draw are the same tick, and the
+       fallback would race it. */
+    buildHeight: sel.buildHeight, buildFrame: sel.buildFrame,
   };
 }
 
@@ -79,7 +85,15 @@ export function portraitLook(sel) {
  * 0.4975 with its feet at 0.977; the TOP moves with hats and hair, which is why
  * every frame below is stated against the canvas and anchored on the feet.
  */
-const FOCUS_FULL = { cy: 0.55, h: 0.95 };
+/* v2.3.1953: the stage frame now has to contain the TALLEST build, because
+   the composite draws every figure through PORTRAIT_FIT and a `tall` bro
+   reaches y~0 (see buildCatalog).  0.99 tall, centred so it spans roughly
+   [0, 0.985] — the whole composite, feet included.  Was { 0.55, 0.95 }: an
+   average figure is ~10% smaller on the stage than it was, which is the
+   unavoidable cost of a build system in a fixed box, and short/average/tall
+   now fill 72% / 82% / 92% of it respectively — the difference you can
+   actually see, which is the point. */
+const FOCUS_FULL = { cy: 0.49, h: 0.99 };
 /* ── HOW FAR IS "a little"? ──
    The first pass took the eye frame to 0.17 of the canvas and it was wrong in
    three ways at once, all visible in one render: the head filled the panel and
@@ -99,6 +113,10 @@ const CAT_FOCUS = {
   shirt: { cy: 0.47, h: 0.56 },
   pants: { cy: 0.66, h: 0.52 },
   shoes: { cy: 0.80, h: 0.44 },
+  /* v2.3.1953: build is a SILHOUETTE, which is the one thing you cannot judge
+     zoomed in — the whole figure, stated rather than left to the fallback so
+     nobody later "fixes" it into a torso crop. */
+  build: FOCUS_FULL,
 };
 /* Measured in v2.3.1947: the figure is centred here in every composite. */
 const FIG_CX = 0.4975;
@@ -108,7 +126,12 @@ const FIG_CX = 0.4975;
 const CAM_EASE = 0.18;
 /* The figure's measured vertical bounds in the composite: feet at 0.977, and
    nothing above 0.05 even with a sombrero over an afro. */
-const FIG_TOP = 0.05;
+/* v2.3.1953: 0 rather than 0.05.  With a build in play a `tall` figure's
+   crown reaches the very top of the composite (that is what PORTRAIT_FIT is
+   sized for), so the old bound would have declared the head to be below a
+   frame edge it is actually crossing and skipped the dissolve — the one thing
+   v2.3.1309 settled must never happen. */
+const FIG_TOP = 0;
 const FIG_BOT = 0.977;
 /* How much of the canvas a cut edge dissolves over. */
 const FADE_BAND = 0.13;
@@ -120,9 +143,27 @@ let _offCanvas = null;
    mid-glide does not snap it back to the start. */
 let _cam = null;
 
-export function focusForCat(cat, zoomedOut) {
+/* v2.3.1953: `buildK` is PORTRAIT_FIT times this player's height multiplier —
+   how much the composite's figure has been scaled about its FEET relative to
+   the frames below, which were measured before builds existed.
+ *
+ * The CATEGORY frames are anchored on BODY PARTS (the hair frame is where the
+ * hair is), so they ride the same feet-anchored transform the figure does:
+ * a tall bro's head is higher up the canvas, and a frame that stayed put would
+ * miss it.  Mapping is exact — scale a point about the feet, scale the window
+ * by the same factor.
+ *
+ * FOCUS_FULL deliberately does NOT ride it: it is the STAGE, a fixed frame the
+ * figure is measured against.  Scaling it with the build would cancel the
+ * growth exactly, and tapping `tall` would change nothing on screen — which is
+ * the one outcome this feature cannot have. */
+export function focusForCat(cat, zoomedOut, buildK) {
   if (zoomedOut) return FOCUS_FULL;
-  return CAT_FOCUS[cat] || FOCUS_FULL;
+  const f = CAT_FOCUS[cat];
+  if (!f || f === FOCUS_FULL) return FOCUS_FULL;
+  const k = (typeof buildK === 'number' && buildK > 0) ? buildK : 1;
+  if (k === 1) return f;
+  return { cy: FIG_BOT + (f.cy - FIG_BOT) * k, h: f.h * k };
 }
 
 export function wireCharacterPortrait(previewCanvasRef, sel) {
@@ -164,7 +205,11 @@ export function wireCharacterPortrait(previewCanvasRef, sel) {
   /* ── the camera ──
      `_cam` is where it is now; `target` is where the category wants it.  The
      ease runs only while they differ, so a still preview costs nothing. */
-  var target = focusForCat(sel.activeCat, sel.zoomedOut);
+  /* v2.3.1953: how much the composite's figure has been scaled about its feet
+     — the portrait's global fit times this player's own height.  The category
+     frames were measured against an unscaled figure, so they ride it. */
+  var target = focusForCat(sel.activeCat, sel.zoomedOut,
+    PORTRAIT_FIT * heightMul(sel.buildHeight));
   if (!_cam) _cam = { cy: target.cy, h: target.h };
   var raf = 0;
   function blit() {

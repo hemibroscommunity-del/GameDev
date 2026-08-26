@@ -1320,7 +1320,12 @@ input{font-family:inherit}
 /* v2.3.1525: seven FLAT tabs (Head and its subtype row are retired). Four per
    row, so they wrap to a fixed two-row block — shorter than the tabs row plus
    the reserved two-row subtab row it replaces. */
-.bt-cc-tabs{flex:0 0 auto;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+/* v2.3.1953: THREE columns, not four.  The Build tab makes nine, and nine in a
+   4-wide grid is 4+4+1 — one lonely tab on its own row.  Three columns is a
+   clean 3x3 and makes every tab ~30% WIDER, which the labels and the 44px
+   touch-target floor both wanted anyway; the extra row costs ~56px in a
+   picker column that had several hundred spare (measured at 390x844). */
+.bt-cc-tabs{flex:0 0 auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
 /* v2.3.1576: the unselected tabs were background:transparent with a
    TRANSPARENT border — literally 1.00:1, so the category row read as
    floating labels rather than a row of controls, and only the selected

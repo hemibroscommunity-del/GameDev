@@ -527,6 +527,7 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
       tf: 'd'.repeat(256), tm: 'e'.repeat(256),   /* v2.3.1949: face + arm tattoos */
       sp: 'stripe-v:3', pp: 'camo:6',   /* v2.3.1941: clothing patterns */
       fp: 'check:9',   /* v2.3.1944: shoes */
+      hg: 'tall', fr: 'large',   /* v2.3.1953: height + frame */
     },
   }));
 
@@ -573,6 +574,15 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
     psT.pa === 'b'.repeat(256), psT.pa && psT.pa.length);
   check('track: a tattoo is relayed whole (v2.3.1940)',
     psT.ta === 'c'.repeat(256), psT.ta && psT.ta.length);
+  /* v2.3.1953: the build rides the same allowlist as every other cosmetic.
+     It is asserted here for the reason `ec` is: relaying it means adding two
+     keys to TRACK_COSMETIC_KEYS, and §7's whole property is that a key not on
+     that list never reaches playerState.  Value safety is the client's — it
+     maps both through HEIGHT_CATALOG / FRAME_CATALOG and falls back to the
+     default for anything unknown, so a forged value can only ever select a
+     build the catalog already contains, and reaches nothing but a transform. */
+  check('track: height and frame are relayed as cosmetics (v2.3.1953)',
+    psT.hg === 'tall' && psT.fr === 'large', { hg: psT.hg, fr: psT.fr });
   /* v2.3.1941: patterns ride the same allowlist.  Display-only like the rest:
      the receiving client maps the id through PATTERN_CATALOG and answers null
      for anything unknown, so a forged value paints nothing. */

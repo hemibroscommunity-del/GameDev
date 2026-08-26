@@ -26,6 +26,7 @@ import { getHatRef } from './traits/hatColorCatalog.js';
 import { materialIndex } from './traits/traitMaterials.js'; /* v2.3.1926 */
 import { headwearIsSolid, headwearBehindBeard } from './traits/headwearCatalog.js';   /* v2.3.1934 */
 import { bandFit } from './traits/bandFit.js';   /* v2.3.1943 */
+import { buildScale, getBuildHeight, getBuildFrame, DEFAULT_HEIGHT, DEFAULT_FRAME, PORTRAIT_FIT } from './traits/buildCatalog.js';   /* v2.3.1953 */
 import { SOLID_ONLY_HAT_COLOR } from './traits/recolorOptions.js'; /* v2.3.1109: shared per-hat recolour reference (call-time use; cyclic import is safe) */
 import { upscaleToFrameHeight } from './spriteScale.js'; /* v2.3.1110: restore downscaled shirt sheet to 256 frame */
 /* v2.3.1815: worn armour in the portrait.  gearArt resolves a recoloured set
@@ -427,6 +428,35 @@ export async function drawCharacterPortrait(canvas, opts) {
   ctx.translate(ZCX, ZCY);
   ctx.scale(Z, Z);
   ctx.translate(-ZCX, -ZCY);
+  /* ═══ v2.3.1953: HEIGHT x FRAME ═══
+     The same two numbers the world renderer scales the display container by
+     (buildCatalog.js), applied to the canvas instead — so the creator preview,
+     the character sheet, the inspect card and the friend portraits all show the
+     build the player picked, and all agree with what everyone sees in town.
+     Anchored on the BOOTS and the centre line, for the same reason the world
+     anchors on the feet: growing a figure about its middle sinks it into the
+     pedestal.  Inside the zoom transform and BEFORE the ground shadow, so the
+     shadow widens with a broad bro and stays under him at every angle.
+     `look.buildHeight`/`buildFrame` when the caller has them (a peer, or the
+     designer's preview); the local player's own store otherwise — the same
+     opts-or-store rule the drawings and patterns above follow. */
+  {
+    const _bh = (opts && opts.buildHeight !== undefined) ? opts.buildHeight : getBuildHeight();
+    const _bf = (opts && opts.buildFrame !== undefined) ? opts.buildFrame : getBuildFrame();
+    const _bs = buildScale(_bh, _bf);
+    /* PORTRAIT_FIT is the headroom the tallest build needs — see the note on
+       it in buildCatalog.  Applied to every build so they share one reference;
+       skipped only by the headshot path, which crops in raw pixels and renders
+       at the default build anyway. */
+    const _fit = (opts && opts.buildFit === false) ? 1 : PORTRAIT_FIT;
+    const _fx = _fit * _bs.sx, _fy = _fit * _bs.sy;
+    if (_fx !== 1 || _fy !== 1) {
+      const _footY = FOOT_ROW[DIR] || 221;
+      ctx.translate(FRAME / 2, _footY);
+      ctx.scale(_fx, _fy);
+      ctx.translate(-FRAME / 2, -_footY);
+    }
+  }
   /* v2.3.1300: OPT-IN ground shadow (login preview passes groundShadow;
      portraitDataUrl/headshot exports don't, so they stay clean) — a soft
      3/4-squashed contact ellipse painted FIRST so every figure layer
@@ -717,7 +747,19 @@ const HEAD_CROP = { x: 80, y: 16, s: 96 };
 export async function portraitDataUrl(opts, headshot) {
   try {
     const cv = document.createElement('canvas');
-    await drawCharacterPortrait(cv, opts);
+    /* ═══ v2.3.1953: A HEADSHOT HAS NO SILHOUETTE ═══
+       Build is a whole-figure property: a 13% taller bro reads as tall because
+       you can see how much of him there is.  Crop to head-and-shoulders and
+       that context is gone — the same stretch just reads as a long face.  The
+       crop is also stated in RAW PIXELS (HEAD_CROP), and a tall figure's crown
+       lands ABOVE its top edge, so the profile picture would be scalped.
+       So every headshot renders at the default build.  All three callers of
+       this path are headshots (profile picture, inspect card, friend tiles);
+       the full-figure previews go through drawCharacterPortrait directly and
+       DO carry the build. */
+    await drawCharacterPortrait(cv, headshot
+      ? { ...(opts || {}), buildHeight: DEFAULT_HEIGHT, buildFrame: DEFAULT_FRAME, buildFit: false }
+      : opts);
     if (!headshot) return cv.toDataURL('image/png');
     const out = document.createElement('canvas');
     out.width = HEAD_CROP.s; out.height = HEAD_CROP.s;

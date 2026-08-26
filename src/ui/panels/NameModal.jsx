@@ -21,6 +21,7 @@ import { HEADWEAR_CATALOG, headwearIsSolid, setHeadwear } from '@/rendering/trai
 import { SHIRT_CATALOG, setShirt } from '@/rendering/traits/shirtCatalog.js';
 import { SHIRT_COLOR_CATALOG, setShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
 import { recolorEnabled, SOLID_ONLY_HAT_COLOR } from '@/rendering/traits/recolorOptions.js';
+import { HEIGHT_CATALOG, FRAME_CATALOG, setBuildHeight, setBuildFrame } from '@/rendering/traits/buildCatalog.js';   /* v2.3.1953 */
 
 /* === NameModal — the character-creator / name-entry splash screen === */
 /* v2.3.888: extracted verbatim from the `if (showNameModal) { ... }`
@@ -94,6 +95,11 @@ export function NameModal(props) {
   var _dragRotX = props._dragRotX,
     _swatchTile = props._swatchTile,
     _thumbTile = props._thumbTile,
+    _buildTile = props._buildTile,           /* v2.3.1953 */
+    heightSel = props.heightSel,
+    setHeightSel = props.setHeightSel,
+    frameSel = props.frameSel,
+    setFrameSel = props.setFrameSel,
     activeCat = props.activeCat,
     beardColorSel = props.beardColorSel,
     facialHairSel = props.facialHairSel,
@@ -180,7 +186,23 @@ export function NameModal(props) {
     pants: { label: 'Pants', kind: 'swatch', spriteCat: null, catalog: PANTS_CATALOG, sel: pantsSel,
       set: function (id) { setPants(id); setPantsSel(id); }, colors: null },
     shoes: { label: 'Shoes', kind: 'swatch', spriteCat: null, catalog: SHOES_CATALOG, sel: shoesSel,
-      set: function (id) { setShoes(id); setShoesSel(id); }, colors: null }
+      set: function (id) { setShoes(id); setShoesSel(id); }, colors: null },
+    /* ═══ v2.3.1953: BUILD ═══
+       Owner: "is there a way to add 'height' to your character as an option?"
+       ... "Maybe also frame wideness (thin, medium, large)".
+
+       It fits the EXISTING two-row shape exactly, which is why it needed no
+       new layout: the options strip carries the three heights and the row
+       below it — the one every other tab uses for colours — carries the three
+       frames.  The v2.3.1252 constant-height guarantee therefore holds for
+       free, so opening this tab does not resize the stage or the character.
+       `kind: 'build'` only tells the renderer below to use _buildTile (a
+       labelled silhouette) instead of a swatch or a sprite thumb; everything
+       else about the tab is the same machinery. */
+    build: { label: 'Build', kind: 'build', spriteCat: null, catalog: HEIGHT_CATALOG, sel: heightSel,
+      set: function (id) { setBuildHeight(id); setHeightSel(id); },
+      colors: FRAME_CATALOG, colorSel: frameSel,
+      setColor: function (id) { setBuildFrame(id); setFrameSel(id); } }
   };
   /* v2.3.1251: primary groups reuse the existing painted category art
      in /ui/welcome/cat/ — no emoji, no new assets.  A group with one
@@ -239,23 +261,57 @@ export function NameModal(props) {
     { t: 'beard', label: 'Beard', img: _TAB_ICON('beard') },
     { t: 'shirt', label: 'Shirt', img: _TAB_ICON('shirt') },
     { t: 'pants', label: 'Pants', img: _TAB_ICON('pants') },
-    { t: 'shoes', label: 'Shoes', img: _TAB_ICON('shoes') }
+    { t: 'shoes', label: 'Shoes', img: _TAB_ICON('shoes') },
+    /* v2.3.1953: the ninth tab.  No painted icon — there is no art for
+       "build" and inventing a ninth sheet entry for two numbers is not worth
+       it, so it draws its own two-figure glyph inline (same reasoning as the
+       designer's pencil, v2.3.1946).  Nine tabs also lands the grid on a clean
+       3x3 rather than the 4+4+1 an eighth-plus-one would have made; the tabs
+       get WIDER in three columns, which is a better touch target than they had
+       (see .bt-cc-tabs in game.css). */
+    { t: 'build', label: 'Build', img: null, glyph: 'build' }
   ].filter(function (x) { return !!_typeDefs[x.t]; });
   var _activeType = _typeDefs[activeCat] ? activeCat : 'hair';
   var _def = _typeDefs[_activeType];
   var _onPick = function (id) { _def.set(id); };
-  var _items = _def.catalog.map(function (o) {
-    return _def.kind === 'thumb'
-      ? _thumbTile(_def.spriteCat, o, _def.sel, _onPick, 44)
-      : _swatchTile(o, _def.sel, _onPick, 40);
-  });
+  /* ═══ v2.3.1953: BOTH BUILD ROWS LIVE IN THE OPTIONS GRID ═══
+     The first cut put heights in the strip and frames in the colour row.  It
+     worked and it read badly: the colour row is pinned near the BOTTOM of the
+     pane (that is what makes every tab the same height, v2.3.1252), so the two
+     halves of one control sat 700px apart with nothing between them, and the
+     frame tiles came out swatch-sized because .bt-cc-colors-row forces
+     --cc-swatch on its children.
+     Six tiles in one grid instead: the strip is a 3-wide wrapping grid at this
+     column width, so heights land on the first row and frames on the second,
+     adjacent, same size, and reading top to bottom as one control.  The
+     captions say which is which — no header row needed, and none available
+     without breaking the constant-height rule. */
+  var _items = (_def.kind === 'build')
+    ? HEIGHT_CATALOG.map(function (o) { return _buildTile(o, heightSel, _def.set, 'height'); })
+      .concat(FRAME_CATALOG.map(function (o) { return _buildTile(o, frameSel, _def.setColor, 'frame'); }))
+    : _def.catalog.map(function (o) {
+      return _def.kind === 'thumb'
+        ? _thumbTile(_def.spriteCat, o, _def.sel, _onPick, 44)
+        : _swatchTile(o, _def.sel, _onPick, 40);
+    });
   /* Colors sit DIRECTLY below the options (handoff) and go blank when
      the type has none or the pick is 'none'.  v2.3.1253: the 'default'
      entry gets NO tile at all (owner) — no color selected IS the
      default; tapping the selected swatch again unselects it, which
      sets the store back to 'default' (the sprite's native color). */
   var _colorList = _def.colors ? _def.colors.filter(function (o) { return o.id !== 'default'; }) : null;
-  var _colors = (_colorList && _colorList.length > 0 && _def.sel !== 'none')
+  /* v2.3.1953: on the Build tab this row is the FRAME, not a colour, and two
+     of the rules above do not apply to it.  There is no 'default' entry to
+     drop (medium is a real option you can pick, not the absence of one), and
+     tap-the-pick-again-to-unset would set the store to 'default', which is not
+     a frame id — the figure would keep its width and the tile would lose its
+     ring, which reads as a broken button.  So the build row is always the full
+     catalog and always a plain set. */
+  var _colors = (_def.kind === 'build')
+    /* Both build rows are up in the grid (see _items).  The block still
+       renders — ghosted — because every tab must reserve the same height. */
+    ? null
+    : (_colorList && _colorList.length > 0 && _def.sel !== 'none')
     ? _colorList.map(function (o) {
         return _swatchTile(o, _def.colorSel, function (id) {
           _def.setColor(id === _def.colorSel ? 'default' : id);
@@ -711,7 +767,18 @@ export function NameModal(props) {
       key: x.t, type: 'button', role: 'tab', "aria-selected": on ? 'true' : 'false',
       className: 'bt-cc-tab' + (on ? ' bt-cc-tab--on' : ''),
       onClick: function () { setActiveCat(x.t); }
-    }, x.img ? /*#__PURE__*/React.createElement("img", {
+    }, x.glyph === 'build' ? /*#__PURE__*/React.createElement("svg", {
+      /* v2.3.1953: two figures, one short and one tall, which is the whole
+         idea of the tab in one glyph.  currentColor, so it dims and brightens
+         with the tab exactly as the painted icons' opacity does. */
+      className: "bt-cc-tab-icon", viewBox: '0 0 30 30', "aria-hidden": true, focusable: 'false'
+    },
+    /*#__PURE__*/React.createElement("g", { fill: 'currentColor' },
+      /*#__PURE__*/React.createElement("circle", { cx: 9, cy: 11, r: 3 }),
+      /*#__PURE__*/React.createElement("rect", { x: 5.5, y: 15, width: 7, height: 11, rx: 2.4 }),
+      /*#__PURE__*/React.createElement("circle", { cx: 21, cy: 6.5, r: 3.4 }),
+      /*#__PURE__*/React.createElement("rect", { x: 17, y: 11, width: 8, height: 15, rx: 2.6 }))
+    ) : x.img ? /*#__PURE__*/React.createElement("img", {
       /* v2.3.1308: the owner's painted category art.
          v2.3.1931: one sheet for all eight, and no per-tab pixel flag — the
          catalog-thumb tabs that needed `pixelated` are gone (see _TABS). */
@@ -801,7 +868,8 @@ export function NameModal(props) {
       hairSel: hairSel, hairColorSel: hairColorSel,
       facialHairSel: facialHairSel, beardColorSel: beardColorSel,
       headwearSel: headwearSel, hatColorSel: hatColorSel, eyeColor: eyeColorSel,
-      shirtSel: shirtSel, shirtColorSel: shirtColorSel
+      shirtSel: shirtSel, shirtColorSel: shirtColorSel,
+      buildHeight: heightSel, buildFrame: frameSel   /* v2.3.1953 */
     }),
     onClose: function () { setShowPaint(null); }
   }), showAccount && /*#__PURE__*/React.createElement(AccountModal, {

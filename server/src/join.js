@@ -74,6 +74,10 @@ const JOIN_COSMETIC_KEYS = [
      "stripe-v:3".  Short, so unlike the drawings above they sit inside the flat
      64-char cap with room to spare and need no special case. */
   'sp', 'pp', 'fp',
+  /* v2.3.1953: height and frame -- short catalog ids, well inside the flat cap.
+     See the note in index.js's TRACK_COSMETIC_KEYS for why a forged value is
+     inert. */
+  'hg', 'fr',
   'eqc', 'eql', 'eqs', 'eqst', 'pt', 'sh', 'bs', 'wpnMat', /* v2.3.1760 */
 ];
 /* v2.3.1940: THE DRAWING KEYS, IN ONE PLACE.  These are the cosmetics whose

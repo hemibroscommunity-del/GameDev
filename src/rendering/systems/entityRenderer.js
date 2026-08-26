@@ -55,6 +55,7 @@ import { getHair, HAIR_CATALOG } from '../traits/hairCatalog.js';
 import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo */
 import { getEyeColor } from '../traits/eyeColorCatalog.js';   /* v2.3.1930: eye colour is per-player now, so every draw names whose eyes it means */
 import { DISPLAY_DS, downscaleByFactor } from '../spriteScale.js'; /* v2.3.1120: display-texture downscale + lockstep transform compensation */
+import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.1953: height x frame render scale */
 import { getHairColor, getColoredHairTextures } from '../traits/hairColorCatalog.js';
 import { getHatColor, getColoredHatTextures } from '../traits/hatColorCatalog.js';
 import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/facialHairColorCatalog.js';
@@ -3636,7 +3637,108 @@ function createMonsterDisplay(monster) {
    A rounded-rect rebuild at 60fps for a label that changes on level-up
    would be pure waste — and with up to 50 players in a room it would be
    50x that waste. */
-function _attachNamePill(container, nameSize, sizeMult) {
+/* v2.3.1953: `host` is where the pill NODE is added; `container` still owns the
+   refs.  Player displays pass their _uiLayer so the plate rides the build-scale
+   correction with the rest of the HUD; monsters (and any caller that omits it)
+   are unchanged. */
+/* v2.3.1953: the v2.3.1887 hide-by-EXCEPTION sweep, made to descend one level.
+   The HUD moved into display._uiLayer (see createPlayerDisplay), so a flat pass
+   over display.children would have seen ONE opaque child in place of eighteen
+   and hidden the name plate and the vitals with it.  Running the same keep-set
+   over both levels leaves the rule literally unchanged: everything that is not
+   named survives death nowhere, and everything named survives wherever it
+   lives. */
+/* ═══ v2.3.1953: HEIGHT AND FRAME, APPLIED IN ONE PLACE ═══
+ *
+ * Owner: "is there a way to add 'height' to your character as an option?" and
+ * then "Maybe also frame wideness (thin, medium, large)".
+ *
+ * ── WHY THE CONTAINER AND NOT THE SPRITES ──
+ * The figure is not one sprite: it is the body, three body REGIONS, four gear
+ * layers, a shirt, hair, a beard, a hat, two shield clones, a weapon container
+ * and a block arm, and every one of them is placed from the body's transform in
+ * 256-space with per-facing anchors, nudges and dir-scales.  Scaling them
+ * individually would mean threading a second axis through every placement
+ * helper, and the first thing to go wrong would be a beard that drifts off the
+ * chin at `tall` — a silent, per-facing bug of exactly the kind this file's
+ * comment history is full of.  The display CONTAINER is above all of it, so one
+ * non-uniform scale moves the whole figure with its alignment intact, by
+ * construction rather than by care.
+ *
+ * ── THE FEET STAY ON THE GROUND ──
+ * The container's origin is the sprite CENTRE, not the boots (feet sit
+ * FEET_OFFSET=24 units below it, sheetGeometry).  Scaling about the centre
+ * would push a tall bro's boots ~3px INTO the floor and lift a short one off
+ * it.  So the display is nudged up by exactly the growth below the origin,
+ * which pins the feet to the world position the server knows about — the only
+ * point of the figure that has to agree with anything.
+ *
+ * ── AND THE HUD DOES NOT STRETCH ──
+ * display._uiLayer carries the inverse, so the name plate, level, threat
+ * skull, floating vitals and duel bar are the same size and shape on every
+ * build.  Their POSITIONS still ride the scale, which is what you want: the
+ * plate under a tall bro sits under his actual boots.
+ *
+ * Returns nothing; sets scale on the display and its ui layer.
+ */
+/* ── HOW FAR THE BOOTS ARE BELOW THE DISPLAY'S ORIGIN, in container units ──
+ * Derived from the numbers that already govern it rather than restated as a
+ * constant: BODY_ROWS carries each facing's MEASURED foot row in 256-frame
+ * units, the cell centre is 128, and one 256-space unit is
+ * bodyDirScale * LOCAL_SCALE container units.
+ *
+ * The first cut used sheetGeometry's FEET_OFFSET = 24 -- which is a TOUCH
+ * anchor, a different measurement of a different thing -- and the boots came
+ * out 2.9 world px low on a tall bro.  The real figure is ~41.6 (south stand:
+ * (221-128) * 1.061 * 0.421875), and mp-build measured exactly that before
+ * this was fixed, which is how it was found.
+ *
+ * pose/dir come from the display's own animation cache, i.e. the frame that
+ * was last DRAWN.  One frame of lag on a correction whose per-facing spread is
+ * under a container unit is invisible, and it avoids reordering this call to
+ * after the pose is chosen -- which would mean applying the lift after
+ * display.y has already been read by the zone-scale lookup. */
+const BODY_CELL_MID = 128;
+const LOCAL_BODY_SCALE = 0.421875;   /* the local player's LOCAL_SCALE, v2.3.741 */
+function _feetOffsetUnits(display) {
+  const pose = (display && display._animPose) === 'jog' ? 'jog' : 'stand';
+  const dir = (display && display._animDir) || 'south';
+  const rows = bodyRows(pose, dir);
+  return (rows.feet - BODY_CELL_MID) * bodyDirScale(pose, dir) * LOCAL_BODY_SCALE;
+}
+function _applyBuildScale(display, pscale, heightId, frameId) {
+  const b = buildScale(heightId, frameId);
+  const sx = pscale * b.sx, sy = pscale * b.sy;
+  if (display.scale.x !== sx || display.scale.y !== sy) { display.scale.x = sx; display.scale.y = sy; }
+  const ui = display._uiLayer;
+  if (ui) {
+    /* Guard against a zero from a future catalog entry: an inverse of 0 is
+       Infinity, and one Infinity in a transform blanks the whole display. */
+    const ix = b.sx ? 1 / b.sx : 1, iy = b.sy ? 1 / b.sy : 1;
+    if (ui.scale.x !== ix || ui.scale.y !== iy) { ui.scale.x = ix; ui.scale.y = iy; }
+  }
+  /* The lift, in WORLD units: the feet sit 24 container units below the
+     origin, so growth below the origin is 24 * (sy - 1) container units, times
+     the zone/player scale that turns container units into world ones. */
+  return -_feetOffsetUnits(display) * (b.sy - 1) * pscale;
+}
+
+function _hideExceptDeep(display, keep) {
+  const ui = display._uiLayer;
+  for (let i = 0; i < display.children.length; i++) {
+    const c = display.children[i];
+    if (c === ui) continue;                       /* swept on its own terms below */
+    if (c && c.visible && keep.indexOf(c) < 0) c.visible = false;
+  }
+  if (ui) {
+    for (let i = 0; i < ui.children.length; i++) {
+      const c = ui.children[i];
+      if (c && c.visible && keep.indexOf(c) < 0) c.visible = false;
+    }
+  }
+}
+
+function _attachNamePill(container, nameSize, sizeMult, host) {
   const pill = new Container();
   /* Feet sit ~24 below centre (sheetGeometry FEET_OFFSET).
      v2.3.1765 (owner: "Move the standing nameplate down about 3-10 pixels it
@@ -3699,7 +3801,7 @@ function _attachNamePill(container, nameSize, sizeMult) {
   container._broBadge = broBadge;
 
   pill.visible = false;
-  container.addChild(pill);
+  (host || container).addChild(pill);
   container._namePill = pill;
   container._pillBg = bg;
   container._pillName = nameT;
@@ -4367,10 +4469,25 @@ function createPlayerDisplay() {
   blockCaretGfx.visible = false;
   container.addChild(blockCaretGfx);
 
+  /* ═══ v2.3.1953: THE HUD LIVES IN ITS OWN LAYER ═══
+     Everything from here down is UI drawn at the character's position — the
+     name plate, the combo badge, the threat skull, the floating vitals — not
+     part of the figure.  It moved into one sub-container so the build scale
+     (height x frame, buildCatalog.js) can be CANCELLED on it with a single
+     inverse transform: the display is scaled non-uniformly to make a bro
+     short or broad, and a name plate that stretched 17% wider with him would
+     be a bug, not a feature.  One node to invert instead of eighteen, and a
+     HUD node added later inherits the correction by being added here.
+     Z-order is unchanged: these were already the last children, so a single
+     container in their place draws in exactly the same order. */
+  const uiLayer = new Container();
+  container.addChild(uiLayer);
+  container._uiLayer = uiLayer;
+
   // §5.9.5 Combo Chain count badge — sits above the bars.
   const comboText = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 10 } });
   comboText.anchor.set(0.5, 1);
-  container.addChild(comboText);
+  uiLayer.addChild(comboText);
 
   // Stun countdown timer -- floats above the stun-star ring for any
   // variant with blockStunMs (skeleton: 5 s).  Hidden when m._stunUntil
@@ -4379,7 +4496,7 @@ function createPlayerDisplay() {
   const stunTimerText = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 11, fontWeight: '800', fill: '#fbbf24' } });
   stunTimerText.anchor.set(0.5, 1);
   stunTimerText.visible = false;
-  container.addChild(stunTimerText);
+  uiLayer.addChild(stunTimerText);
 
   const nameText = new Text({ text: '', style: NAME_STYLE });
   nameText.anchor.set(0.5, 1);
@@ -4387,7 +4504,7 @@ function createPlayerDisplay() {
      sword tip that pokes ~5 px above the head when the right arm
      is fully extended (W jog cycles, etc). */
   nameText.y = -38;
-  container.addChild(nameText);
+  uiLayer.addChild(nameText);
 
   /* v2.3.1564: name + level pill below the feet — see _mintNamePill.
      v2.3.1566 (owner: "make it consistent and beneath other players too"):
@@ -4396,7 +4513,7 @@ function createPlayerDisplay() {
   /* v2.3.1681 (owner: "Player name and level in the pill beneath character
      need to be slightly larger for legibility").  10 -> 13; the plate sizes
      itself off this number, so the background grows with the text. */
-  _attachNamePill(container, 13);
+  _attachNamePill(container, 13, undefined, uiLayer);
 
   /* v2.3.1193: the local player's own threat skull (red = my threat
      countdown is running, white = ignored/expired fight window).  One
@@ -4408,7 +4525,7 @@ function createPlayerDisplay() {
   skullText.anchor.set(0.5, 1);
   skullText.visible = false;
   skullText.y = -52;
-  container.addChild(skullText);
+  uiLayer.addChild(skullText);
 
   /* Combat-bar HUD anchored above the head (v2.3.107).  Each bar
      is a pill-shaped Sprite using the same /icons/ui/bar-*.webp
@@ -4446,26 +4563,26 @@ function createPlayerDisplay() {
   const hudMpSprite = new Sprite();
   hudMpSprite.anchor.set(0.5, 0.5);
   hudMpSprite.alpha = 0;
-  container.addChild(hudMpSprite);
+  uiLayer.addChild(hudMpSprite);
   const hudMpEmpty = new Graphics();
   hudMpEmpty.alpha = 0;
-  container.addChild(hudMpEmpty);
+  uiLayer.addChild(hudMpEmpty);
   const hudMpTextFull  = new Text({ text: '', style: _hudNumStyleFull });
   const hudMpTextEmpty = new Text({ text: '', style: _hudNumStyleEmpty });
-  hudMpTextFull.anchor.set(0.5, 0.5);  hudMpTextFull.alpha = 0;  container.addChild(hudMpTextFull);
-  hudMpTextEmpty.anchor.set(0.5, 0.5); hudMpTextEmpty.alpha = 0; container.addChild(hudMpTextEmpty);
+  hudMpTextFull.anchor.set(0.5, 0.5);  hudMpTextFull.alpha = 0;  uiLayer.addChild(hudMpTextFull);
+  hudMpTextEmpty.anchor.set(0.5, 0.5); hudMpTextEmpty.alpha = 0; uiLayer.addChild(hudMpTextEmpty);
 
   const hudStamSprite = new Sprite();
   hudStamSprite.anchor.set(0.5, 0.5);
   hudStamSprite.alpha = 0;
-  container.addChild(hudStamSprite);
+  uiLayer.addChild(hudStamSprite);
   const hudStamEmpty = new Graphics();
   hudStamEmpty.alpha = 0;
-  container.addChild(hudStamEmpty);
+  uiLayer.addChild(hudStamEmpty);
   const hudStamTextFull  = new Text({ text: '', style: _hudNumStyleFull });
   const hudStamTextEmpty = new Text({ text: '', style: _hudNumStyleEmpty });
-  hudStamTextFull.anchor.set(0.5, 0.5);  hudStamTextFull.alpha = 0;  container.addChild(hudStamTextFull);
-  hudStamTextEmpty.anchor.set(0.5, 0.5); hudStamTextEmpty.alpha = 0; container.addChild(hudStamTextEmpty);
+  hudStamTextFull.anchor.set(0.5, 0.5);  hudStamTextFull.alpha = 0;  uiLayer.addChild(hudStamTextFull);
+  hudStamTextEmpty.anchor.set(0.5, 0.5); hudStamTextEmpty.alpha = 0; uiLayer.addChild(hudStamTextEmpty);
 
   /* Above-head HP indicator: v2.3.458 quartile RING, replaced visually in
      v2.3.1273 by the owner's BAR art (frame + cropped fill sprites below);
@@ -4474,22 +4591,22 @@ function createPlayerDisplay() {
   const hudHpBarFrame = new Sprite();
   hudHpBarFrame.anchor.set(0.5, 0.5);
   hudHpBarFrame.alpha = 0;
-  container.addChild(hudHpBarFrame);
+  uiLayer.addChild(hudHpBarFrame);
   const hudHpBarFill = new Sprite();
   hudHpBarFill.anchor.set(0, 0.5);
   hudHpBarFill.alpha = 0;
-  container.addChild(hudHpBarFill);
+  uiLayer.addChild(hudHpBarFill);
   const hudHpRing = new Graphics();
   hudHpRing.alpha = 0;
-  container.addChild(hudHpRing);
+  uiLayer.addChild(hudHpRing);
   const hudHpText = new Text({ text: '', style: PLAYER_HP_NUM_STYLE });
   hudHpText.anchor.set(0.5, 0.5);
   hudHpText.alpha = 0;
-  container.addChild(hudHpText);
+  uiLayer.addChild(hudHpText);
   const hudHpMaxText = new Text({ text: '', style: HP_RING_MAX_STYLE });
   hudHpMaxText.anchor.set(0.5, 0.5);
   hudHpMaxText.alpha = 0;
-  container.addChild(hudHpMaxText);
+  uiLayer.addChild(hudHpMaxText);
 
   container._body = body;
   container._spriteBody = spriteBody;
@@ -4674,6 +4791,13 @@ function createOtherPlayerDisplay() {
   weaponSprite.visible = false;
   weaponContainer.addChild(weaponSprite);
 
+  /* v2.3.1953: the HUD layer — see the note in createPlayerDisplay.  Same
+     reason on a peer: their name plate and duel bar must not stretch with
+     their build. */
+  const uiLayer = new Container();
+  container.addChild(uiLayer);
+  container._uiLayer = uiLayer;
+
   const nameText = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 9 } });
   nameText.anchor.set(0.5, 1);
   /* Was -24; bumped to -34 to match the local player nameplate's
@@ -4683,11 +4807,11 @@ function createOtherPlayerDisplay() {
      stale reference keep working; it is simply never made visible. */
   nameText.y = -34;
   nameText.visible = false;
-  container.addChild(nameText);
+  uiLayer.addChild(nameText);
 
   /* v2.3.1566 (owner): same plate the local player gets, one size down —
      a remote name should not out-shout your own. */
-  _attachNamePill(container, 12);   /* v2.3.1681: 9 -> 12, still one down from your own */
+  _attachNamePill(container, 12, undefined, uiLayer);   /* v2.3.1681: 9 -> 12, still one down from your own */
 
   /* v2.3.1193: threat skull above the nameplate (red = active threat
      countdown, white = ignored/expired fight window — see
@@ -4698,7 +4822,7 @@ function createOtherPlayerDisplay() {
   skullText.anchor.set(0.5, 1);
   skullText.visible = false;
   skullText.y = -58;
-  container.addChild(skullText);
+  uiLayer.addChild(skullText);
 
   container._body = body;
   container._spriteBody = spriteBody;
@@ -4740,18 +4864,18 @@ function createOtherPlayerDisplay() {
   const duelBar = new Sprite();
   duelBar.anchor.set(0.5, 0.5);
   duelBar.alpha = 0;
-  container.addChild(duelBar);
+  uiLayer.addChild(duelBar);
   const duelBarFill = new Sprite();
   duelBarFill.anchor.set(0, 0.5);
   duelBarFill.alpha = 0;
-  container.addChild(duelBarFill);
+  uiLayer.addChild(duelBarFill);
   const duelBarFx = new Graphics();
   duelBarFx.alpha = 0;
-  container.addChild(duelBarFx);
+  uiLayer.addChild(duelBarFx);
   const duelBarText = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 9 } });
   duelBarText.anchor.set(0.5, 0.5);
   duelBarText.alpha = 0;
-  container.addChild(duelBarText);
+  uiLayer.addChild(duelBarText);
   container._duelBar = duelBar;
   container._duelBarFill = duelBarFill;
   container._duelBarFx = duelBarFx;
@@ -6419,7 +6543,10 @@ export class EntityRenderer {
          here doesn't disturb facing. */
       {
         const pscale = this._zonePscale(S, display.x, display.y) * PLAYER_SIZE_MULT; /* v2.3.1274 */
-        if (display.scale.x !== pscale) display.scale.set(pscale);
+        /* v2.3.1953: ...times this bro's own build.  Computed from the
+           UNLIFTED y above, because _zonePscale reads the position to work out
+           how far up a vista map he is standing; the lift is applied after. */
+        display.y += _applyBuildScale(display, pscale, other.buildHeight, other.buildFrame);
       }
 
       /* v2.3.1917: health bar for a peer in a fight — see _drawPeerHpBar.
@@ -6480,10 +6607,7 @@ export class EntityRenderer {
           _spriteBody, display._namePill, display._comboText,
           display._handCapMask, display._handArmMask,
         ];
-        for (let i = 0; i < display.children.length; i++) {
-          const _c = display.children[i];
-          if (_c && _c.visible && _rKeep.indexOf(_c) < 0) _c.visible = false;
-        }
+        _hideExceptDeep(display, _rKeep);
         continue;
       }
       /* Living — restore visibility of containers that might have been
@@ -7197,7 +7321,10 @@ export class EntityRenderer {
        _zonePscale and shared with the remote-player path. */
     {
       const pscale = this._zonePscale(S, P.x, P.y) * PLAYER_SIZE_MULT; /* v2.3.1274 */
-      if (display.scale.x !== pscale) display.scale.set(pscale);
+      /* v2.3.1953: your own build.  Read from the store rather than from S,
+         the same way this path reads your skin, shirt art and patterns — the
+         creator writes it there and the store is the one copy. */
+      display.y += _applyBuildScale(display, pscale, getBuildHeight(), getBuildFrame());
     }
 
     /* Self death visual — play the death sprite animation (player ->
@@ -7277,10 +7404,7 @@ export class EntityRenderer {
         display._hudMpEmpty, display._hudMpSprite, display._hudMpTextEmpty, display._hudMpTextFull,
         display._hudStamEmpty, display._hudStamSprite, display._hudStamTextEmpty, display._hudStamTextFull,
       ];
-      for (let i = 0; i < display.children.length; i++) {
-        const _c = display.children[i];
-        if (_c && _c.visible && _deathKeep.indexOf(_c) < 0) _c.visible = false;
-      }
+      _hideExceptDeep(display, _deathKeep);
       /* v2.3.1887: the back-shield probe is written on the LIVING path only,
          and this branch returns before reaching it — so it kept reporting the
          last living frame's `on: true` over a corpse with no shield on it.

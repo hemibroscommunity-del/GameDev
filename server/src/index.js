@@ -454,6 +454,15 @@ export const TRACK_COSMETIC_KEYS = new Set([
   /* v2.3.1940: + the drawn pants print and the chest tattoo.
      v2.3.1941: + the shirt and trouser patterns. */
   'sa', 'sb', 'pa', 'ta', 'tf', 'tm', 'sp', 'pp', 'fp',   /* v2.3.1949: +face/arm tattoos */
+  /* v2.3.1953: 'hg' is the height and 'fr' the frame -- two short catalog ids
+     ('tall', 'large'), relayed so peers see the build you picked.  Display-only
+     in the strictest sense available: they reach a RENDER SCALE on the
+     receiving client and nothing else, and that client maps them through its
+     own HEIGHT_CATALOG / FRAME_CATALOG, answering the default for anything it
+     does not recognise -- so a forged value can only ever select a build the
+     catalog already contains.  It cannot touch a hitbox, because no hitbox on
+     either side reads a display object. */
+  'hg', 'fr',
   'pt', 'sh', 'bs', 'mask', 'cape', 'pet',
   // Live equipment visuals (armour on/off for remote renderers).
   'eqc', 'eql', 'eqs',

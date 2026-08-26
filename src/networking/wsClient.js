@@ -34,6 +34,7 @@ import { getFacialHairColor } from '@/rendering/traits/facialHairColorCatalog.js
 import { getShirt } from '@/rendering/traits/shirtCatalog.js';
 import { getShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
 import { getEyeColor } from '@/rendering/traits/eyeColorCatalog.js';   /* v2.3.1930 */
+import { wireHeight, wireFrame } from '@/rendering/traits/buildCatalog.js';   /* v2.3.1953 */
 import { getShirtArt, getArt, artHasInk } from '@/rendering/traits/playerArt.js';   /* v2.3.1939; v2.3.1940 + pants/tattoo */
 import { getPattern } from '@/rendering/traits/patternCatalog.js';   /* v2.3.1941 */
 import { getEquip, syncArmorLayers, migrateTier1Armor } from '@/rendering/gearCatalog.js'; /* v2.3.1761 */
@@ -201,6 +202,12 @@ export function setupWebSocket(ctx) {
             tm: artHasInk(getArt('tattooArm')) ? getArt('tattooArm') : undefined,
             /* v2.3.1941: clothing patterns.  Short ids ("stripe-v:3"), so
                unlike the drawings they need no special length handling. */
+            /* v2.3.1953: height and frame.  `undefined` unless you actually
+               picked something other than average/medium, so a player who
+               never opened the Build tab puts nothing on the wire and renders
+               on every other client exactly as they do today. */
+            hg: wireHeight(),
+            fr: wireFrame(),
             sp: getPattern('shirt') || undefined,
             pp: getPattern('pants') || undefined,
             fp: getPattern('shoes') || undefined,   /* v2.3.1944: footwear */
@@ -379,6 +386,7 @@ export function setupWebSocket(ctx) {
                       pantsArt: null, tattooArt: null,   /* v2.3.1940 */
                       faceTattooArt: null, armTattooArt: null,   /* v2.3.1949 */
                       shirtPattern: null, pantsPattern: null, shoesPattern: null,   /* v2.3.1941; v2.3.1944 */
+                      buildHeight: null, buildFrame: null,   /* v2.3.1953 */
                       equip: { chest: 'none', legs: 'none', shoulders: 'none', shirt: 'none' },
                       pants: null, shoes: null, rpgLv: 1, rpgHp: 50, rpgMaxHp: 50,
                       bodySize: 'slim', zone: data.z || 'town',
@@ -791,6 +799,7 @@ export function setupWebSocket(ctx) {
                   shirtArtFront: _data.sa || null, shirtArtBack: _data.sb || null,   /* v2.3.1939 */
                   pantsArt: _data.pa || null, tattooArt: _data.ta || null,   /* v2.3.1940 */
                   faceTattooArt: _data.tf || null, armTattooArt: _data.tm || null,   /* v2.3.1949 */
+                  buildHeight: _data.hg || null, buildFrame: _data.fr || null,   /* v2.3.1953 */
                   shirtPattern: _data.sp || null, pantsPattern: _data.pp || null,   /* v2.3.1941 */
                   shoesPattern: _data.fp || null,   /* v2.3.1944 */
                   equip: { chest: _data.eqc || 'none', legs: _data.eql || 'none', shoulders: _data.eqs || 'none',
@@ -1741,6 +1750,8 @@ export function setupWebSocket(ctx) {
                 tattooArt: (msg.data && msg.data.ta) || null,   /* v2.3.1940 */
                 faceTattooArt: (msg.data && msg.data.tf) || null,
                 armTattooArt: (msg.data && msg.data.tm) || null,   /* v2.3.1949 */
+                buildHeight: (msg.data && msg.data.hg) || null,
+                buildFrame: (msg.data && msg.data.fr) || null,   /* v2.3.1953 */
                 shirtPattern: (msg.data && msg.data.sp) || null,
                 pantsPattern: (msg.data && msg.data.pp) || null,   /* v2.3.1941 */
                 shoesPattern: (msg.data && msg.data.fp) || null,   /* v2.3.1944 */
@@ -1796,6 +1807,15 @@ export function setupWebSocket(ctx) {
                    nested other.equip the renderer reads so armour on/off syncs
                    (covers the standing-still case via the 2s track). */
                 var _ud = msg.data || {};
+                /* v2.3.1953: the relay carries the WIRE names (hg/fr); the
+                   renderer reads the long ones, exactly as it does for every
+                   other cosmetic.  Mapped here so a build changed mid-session
+                   lands on the next 2s relay.  `undefined` means "not sent"
+                   (average/medium) and must clear a previous pick, so the
+                   assignment is unconditional rather than guarded on presence
+                   — otherwise going back to Average would never take. */
+                S.others[msg.id].buildHeight = _ud.hg || null;
+                S.others[msg.id].buildFrame = _ud.fr || null;
                 if (_ud.eqc !== undefined || _ud.eql !== undefined || _ud.eqs !== undefined) {
                   var _oe6 = S.others[msg.id].equip || { head: 'none', chest: 'none', legs: 'none', shoulders: 'none' };
                   S.others[msg.id].equip = {
