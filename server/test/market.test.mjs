@@ -280,5 +280,107 @@ const room4 = new GameRoom(state, mockEnv);
 await room4._mktEnsureIndex();
 check('rebuild converges a refund-stamped leftover to a delete', !state._store.has('mkt_order:ghost1') && !room4._mktOrderCounts.get('bp_mkt_cb'));
 
+/* ═══ v2.3.1971: A LISTING THAT CANNOT BE WRITTEN MUST NOT TAKE THE ITEM ═══
+   category / subtype / tierKey / element1 / element2 / tierLabel /
+   playerName were checked for TRUTHINESS only, and this is the HTTP
+   surface -- `await request.json()` on a POST body, not a 16 KB WS frame
+   -- so nothing bounded their length.  All of them ride into
+   `mkt_order:<uuid>` (128 KB DO value ceiling) and the first five are
+   concatenated into `mkt_hist:<key>` (2 KB DO key ceiling).  Oversize
+   either and `storage.put` throws -- AFTER `weaponStash.splice()` and
+   `_saveRpg` have already run, so the seller's weapon is gone from live
+   state and from disk with no order record for any sweep to find.
+   Escrow that cannot be written is escrow that never existed, so the
+   bound has to come BEFORE the splice.  Asserted on the stash, which is
+   the thing that was being destroyed. */
+{
+  const VICTIM = 'bp_mkt_bounds';
+  const wsV = fakeWs('bounds');
+  await join(wsV, VICTIM);
+  const vP = room.playerState[VICTIM];
+  vP.coins = 0;
+  const bad = [
+    ['a 200 KB category', { category: 'x'.repeat(200000) }],
+    ['a 5 KB tierKey', { tierKey: 'w'.repeat(5000) }],
+    ['a subtype with separators in it', { subtype: 'sword:iron:none' }],
+    ['a non-string category', { category: { toString: () => 'weapon' } }],
+    ['an empty-after-trim subtype', { subtype: '   ' }],
+    ['a 5 KB element', { element1: 'e'.repeat(5000) }],
+  ];
+  for (const [label, over] of bad) {
+    vP.weaponStash = [wpn('Do Not Destroy')];
+    const res = await room._mktPlaceOrder(ORD({ playerId: VICTIM, stashIndex: 0, ...over }));
+    check('refused: ' + label, res.ok === false, res);
+    check('...and the weapon is STILL in the stash', vP.weaponStash.length === 1
+      && vP.weaponStash[0].name === 'Do Not Destroy', vP.weaponStash);
+  }
+
+  // The free-text display fields are truncated, not refused — they are a
+  // label and a name, and a long one is rudeness, not an attack.
+  vP.weaponStash = [wpn('Long Label Sword')];
+  const longText = await room._mktPlaceOrder(ORD({
+    playerId: VICTIM, stashIndex: 0, price: 777,
+    tierLabel: 'L'.repeat(9000), playerName: 'N'.repeat(9000),
+  }));
+  check('an over-long display label is truncated, not refused', longText.ok === true, longText.error);
+  check('...tierLabel bounded to 32', longText.order.tierLabel.length === 32, longText.order.tierLabel.length);
+  check('...playerName bounded to 24', longText.order.playerName.length === 24, longText.order.playerName.length);
+  check('...and the whole record is small enough to store',
+    JSON.stringify(longText.order).length < 4096, JSON.stringify(longText.order).length);
+  await room._mktCancelOrder(longText.order.id, VICTIM);
+
+  // The honest client's real values must still be accepted, including the
+  // woodworking `ww_` prefix and a two-element weapon.
+  vP.weaponStash = [wpn('Honest Sword')];
+  const honest = await room._mktPlaceOrder(ORD({
+    playerId: VICTIM, stashIndex: 0, price: 42,
+    category: 'weapon', subtype: 'greatsword', tierKey: 'ww_pine',
+    element1: 'fire', element2: 'ice',
+  }));
+  check('a real listing (ww_ tier, two elements) is still accepted', honest.ok === true, honest.error);
+  await room._mktCancelOrder(honest.order.id, VICTIM);
+
+  /* ═══ v2.3.1971: THE CLASS, not just the instance ═══
+     The escrow leaves live state (splice / coin debit + _saveRpg) BEFORE
+     the `mkt_order:` record lands, and that record is what cancel,
+     expiry-refund and the rebuild sweep all key off.  A put that throws
+     for ANY reason therefore leaves the player short with nothing naming
+     what they lost.  Forced here by making the next put fail, which is
+     the only way to reach the branch on purpose. */
+  const realPut = state.storage.put;
+  const failNextPut = (pred) => { state.storage.put = async (k, v) => { if (pred(k)) throw new Error('storage full'); return realPut.call(state.storage, k, v); }; };
+
+  vP.weaponStash = [wpn('Rescued Blade')];
+  failNextPut((k) => k.startsWith('mkt_order:'));
+  let threw = false;
+  try { await room._mktPlaceOrder(ORD({ playerId: VICTIM, stashIndex: 0, price: 55 })); } catch (e) { threw = true; }
+  state.storage.put = realPut;
+  check('a failed listing write still reports failure to the caller', threw);
+  check('...and the weapon is BACK in the stash, not destroyed',
+    vP.weaponStash.length === 1 && vP.weaponStash[0].name === 'Rescued Blade', vP.weaponStash);
+  check('...and the order left nothing in the book', !room._mktOrderCounts.get(VICTIM),
+    room._mktOrderCounts.get(VICTIM));
+
+  vP.coins = 300;
+  failNextPut((k) => k.startsWith('mkt_order:'));
+  threw = false;
+  try { await room._mktPlaceOrder(ORD({ type: 'buy', playerId: VICTIM, price: 120 })); } catch (e) { threw = true; }
+  state.storage.put = realPut;
+  check('a failed BUY write refunds the escrowed gold', threw && vP.coins === 300, vP.coins);
+  check('...and leaves no phantom order in the book', !room._mktOrderCounts.get(VICTIM),
+    room._mktOrderCounts.get(VICTIM));
+
+  // Rule 3: an unwind into a FULL stash mails the weapon, never truncates it.
+  vP.weaponStash = [wpn('u1'), wpn('u2'), wpn('u3'), wpn('u4'), wpn('u5'), wpn('u6'), wpn('u7'), wpn('u8'), wpn('Overflow Rescue')];
+  failNextPut((k) => k.startsWith('mkt_order:'));
+  try { await room._mktPlaceOrder(ORD({ playerId: VICTIM, stashIndex: 8, price: 55 })); } catch (e) { /* expected */ }
+  state.storage.put = realPut;
+  const vInbox = state._store.get('inbox:' + VICTIM) || [];
+  check('an unwind into a full stash mails the weapon (rule 3)',
+    vP.weaponStash.length === 8
+      && vInbox.some((e) => e.kind === 'weapon' && e.payload.weapon.name === 'Overflow Rescue'),
+    { stash: vP.weaponStash.length, inbox: vInbox.length });
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

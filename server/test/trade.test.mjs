@@ -180,5 +180,61 @@ check('relay path settles and annotates', relayed.length === 1 && relayed[0].pay
   check('offer sweep: a 64-char target is still accepted', ok !== null, ok);
 }
 
+/* ═══ v2.3.1971: AN Object.prototype NAME IS NOT AN ITEM ═══
+   The ownership gate was `(inv[k] || 0) < v`.  For k = 'constructor' the
+   lookup returns an inherited FUNCTION -- truthy, so `||` never fires --
+   and `Object < 7` is a NaN comparison, i.e. FALSE, i.e. a pass.  The
+   giver was then debited `inv.constructor -= 7` (NaN, saved as null) and
+   the taker credited `Object + 7` (a STRING in a count field).  Nothing
+   of value duplicates -- no real item is named `toString` -- but it
+   writes junk into a stranger's persisted character every time they
+   accept, and a shadowed `hasOwnProperty` is a crash waiting for a bag
+   render.  Measured on the live trade2 path before the fix; pinned here
+   too because both lanes share `_sanitizeTradeOffer`. */
+{
+  room.playerState['bp_tr_sender'] = { coins: 100, inventory: { wood: 3 }, z: 'town' };
+  room.playerState['bp_tr_recipient'] = { coins: 0, inventory: {}, z: 'town' };
+  const s2 = room.playerState['bp_tr_sender'], r2 = room.playerState['bp_tr_recipient'];
+
+  const protoOffer = room._sanitizeTradeOffer({
+    constructor: 7, toString: 3, hasOwnProperty: 2, valueOf: 1, __proto__: 5, wood: 1,
+  });
+  check('sanitizer drops every Object.prototype key, keeps the real item',
+    protoOffer && Object.keys(protoOffer).join(',') === 'wood' && protoOffer.wood === 1, protoOffer);
+  check('...and an offer of NOTHING BUT prototype keys is dropped entirely',
+    room._sanitizeTradeOffer({ constructor: 9, toString: 4 }) === null);
+
+  await room._interceptTrade('bp_tr_sender', offerMsg({ constructor: 7, wood: 1 }, 'bp_tr_recipient'));
+  await room._interceptTrade('bp_tr_recipient', acceptMsg('bp_tr_sender'));
+  check('a settled trade leaves NO prototype key on the giver',
+    Object.keys(s2.inventory).join(',') === 'wood' && s2.inventory.wood === 2,
+    s2.inventory);
+  check('...and none on the taker, who gets only the real item',
+    Object.keys(r2.inventory).join(',') === 'wood' && r2.inventory.wood === 1,
+    r2.inventory);
+  check('...with no NaN and no string left in either count field',
+    typeof s2.inventory.wood === 'number' && typeof r2.inventory.wood === 'number'
+      && !Number.isNaN(s2.inventory.wood) && !Number.isNaN(r2.inventory.wood));
+
+  /* Second gate: even if a crafted key somehow reached the settlement
+     site, the ownership check must now REFUSE it rather than debit NaN. */
+  check('_invCount reports 0 for an inherited key, not the function',
+    room._invCount(s2, 'constructor') === 0 && room._invCount(s2, 'toString') === 0);
+  check('_invCount heals a count that is already junk to 0',
+    room._invCount({ inventory: { wood: 'function Object() {}4' } }, 'wood') === 0);
+  check('_invCount still reads a real count', room._invCount(s2, 'wood') === 2);
+
+  /* The key cap was a `break`, so an offer whose 21st key came before
+     `_gold` in insertion order silently dropped the GOLD leg.  A player
+     staging a wide bag plus coins lost the coins from the offer. */
+  const wide = {};
+  for (let i = 0; i < 30; i++) wide['itm' + i] = 2;
+  wide._gold = 40;
+  const capped = room._sanitizeTradeOffer(wide);
+  const itemKeys = Object.keys(capped).filter((k) => k !== '_gold');
+  check('the 20-item cap still holds', itemKeys.length === 20, itemKeys.length);
+  check('...but gold past the cap is no longer silently dropped', capped._gold === 40, capped._gold);
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

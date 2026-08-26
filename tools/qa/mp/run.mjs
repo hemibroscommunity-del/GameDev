@@ -91,6 +91,7 @@ const SCENARIOS = {
   spawnfx: () => import('./mp-spawnfx.mjs'), /* v2.3.1765: the respawn silhouette */
   presence: () => import('./mp-presence.mjs'),
   trade: () => import('./mp-trade.mjs'),
+  tradeatk: () => import('./mp-tradeatk.mjs'), /* v2.3.1971: the trade window attacked — prototype-key offers, coin/item conservation, replayed confirms, a tab that dies mid-handshake */
   duel: () => import('./mp-duel.mjs'),
   party: () => import('./mp-party.mjs'),
   social: () => import('./mp-social.mjs'),

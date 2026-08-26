@@ -223,9 +223,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
      last-second swap being accepted by someone reading a stale summary. */
   await tap(B, 'Back');
   await B.page.waitForTimeout(600);
+  /* ═══ v2.3.1971: THIS SEND WAS GOING NOWHERE ═══
+     `channel.send({type:'trade2_set', …})` matches NO branch of the
+     channelShim (wsClient.js): the shim forwards a trade2 command only via
+     its last branch, `msg.type === 'broadcast' && msg.event`, with the type
+     riding in `event` — which is how the shipped Trade button sends it
+     (InspectPlayerPanel.jsx).  A `{type:'trade2_set'}` object fell off the
+     bottom of the shim and was dropped IN THE BROWSER; the worker never saw
+     an edit, and the assertion below passed only because B's `Back` on the
+     line above had already left the review screen for its own reasons.
+     TRAPS #18 in its third form: the shim is the leg that goes missing.
+     Corrected to the shape the game actually uses, so the edit lands and
+     the anti-switch rule is what is being measured. */
   await B.page.evaluate(() => {
     const S = window._gameState && window._gameState.current;
-    if (S && S.channel) S.channel.send({ type: 'trade2_set', payload: { offer: { _gold: 3 } } });
+    if (S && S.channel) S.channel.send({ type: 'broadcast', event: 'trade2_set', payload: { offer: { _gold: 3 } } });
   });
   await A.page.waitForTimeout(1200);
   rec.ok('an edit drags BOTH players back off the review screen',
@@ -259,9 +271,47 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!acceptBtn, acceptBtn);
   /* BOTH sides back to the offer stage, or the review screen (which has no
      gold field) is still up when the anti-switch step tries to edit. */
-  await tap(A, 'Back');
-  await tap(B, 'Back');
-  await A.page.waitForTimeout(800);
+  /* ═══ v2.3.1971: BACK OUT ONE AT A TIME ═══
+     These two taps used to fire with no wait between them, and that made the
+     rest of the scenario a coin toss: A's Back un-readies A, the worker
+     re-broadcasts, and B's review screen collapses to the offer stage — at
+     which point B's `Back` button no longer exists and the tap is a no-op,
+     leaving B READY.  The very next step readies A again, both flags are set,
+     the pair snap straight back to review, and `Ready ✓` is never drawn —
+     which is exactly how this failed ("readying locks the button to Ready ✓",
+     then a 30 s timeout on the gold field, which the review screen does not
+     have).  Awaiting each Back separately, and checking B actually left,
+     makes the state deterministic instead of racing the echo. */
+  /* ═══ v2.3.1971: THE SECOND PLAYER UN-READIES ON A DIFFERENT BUTTON ═══
+     These two taps used to fire back to back on the same button name, and
+     that is what made the rest of this scenario a coin toss.  `stage` is
+     derived from BOTH ready flags (trade2.js `_t2Wire`), so the moment A
+     backs out the review screen collapses for BOTH players — and with it B's
+     `Back` button.  B's tap then matched nothing, B stayed READY on the
+     worker, and the very next `tap(A, 'Ready to trade')` put the pair
+     straight back on the review screen: no `Ready ✓`, then a 30 s timeout on
+     the gold field that the review screen does not have.  Observed exactly
+     that, twice, with A's card reading "Confirm with Buyer … Accept Back".
+     The UI is not at fault and needs no change — at the offer stage the
+     button becomes the toggle "Ready ✓ — waiting" (TradeWindowPanel.jsx:820,
+     `ready: !iReady`), which is B's real way back.  Take whichever control is
+     actually on screen, then assert BOTH flags really cleared by reading the
+     buttons rather than the stage, since the stage hides B's flag. */
+  const unready = async (P) => {
+    if (await tap(P, '^Back$')) return 'back';
+    if (await tap(P, 'Ready ✓')) return 'toggle';
+    return 'none';
+  };
+  const aOut = await unready(A);
+  await A.page.waitForTimeout(700);
+  const bOut = await unready(B);
+  await B.page.waitForTimeout(700);
+  const readyMarks = await Promise.all([A, B].map((P) => P.page.evaluate(() =>
+    [...document.querySelectorAll('button')].filter((b) => b.offsetParent)
+      .some((b) => /Ready ✓/.test(b.textContent || '')))));
+  rec.ok('both sides can leave the review stage and drop their ready',
+    !/YOU GIVE/.test(await cardText(A)) && !readyMarks[0] && !readyMarks[1],
+    { aOut, bOut, readyMarks, a: (await cardText(A)).slice(0, 60) });
 
   /* ── the staged offer must be visible ON B's SCREEN ── */
   /* An expression, not a function literal: page.evaluate given a STRING
@@ -278,7 +328,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const locked = await H.waitUi(A, () => [...document.querySelectorAll('button')]
     .some((b) => /Ready ✓/.test(b.textContent)), { label: 'A ready locks', timeout: 12000 })
     .then(() => true).catch(() => false);
-  rec.ok('readying locks the button to "Ready ✓"', locked);
+  /* v2.3.1971: say WHAT was on screen when this fails.  It reported a bare
+     `undefined`, which tells the next reader nothing about whether the button
+     was missing, disabled, or differently worded. */
+  rec.ok('readying locks the button to "Ready ✓"', locked,
+    locked ? undefined : await A.page.evaluate(() => ({
+      buttons: [...document.querySelectorAll('button')].filter((b) => b.offsetParent)
+        .map((b) => (b.textContent || '').trim() + (b.disabled ? ' [disabled]' : '')),
+      card: ((document.querySelector('.bt-inspect-card') || {}).innerText || '').replace(/\s+/g, ' ').slice(0, 200),
+    })));
 
   /* ── ANTI-SWITCH: change the offer after readying; both readies reset ── */
   await goldInput.fill('120');
@@ -304,10 +362,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await A.page.waitForTimeout(3000);
   const aCoins1 = await coins(A), bCoins1 = await coins(B);
   const aWood1 = await wood(A), bWood1 = await wood(B);
-  rec.ok('gold actually moved A -> B', aCoins1 === aCoins0 - 120 && bCoins1 === bCoins0 + 120,
-    { aCoins0, aCoins1, bCoins0, bCoins1 });
+  /* ═══ v2.3.1971: BOTH LANES OF THE SWAP, AND THE SUM ═══
+     A gives 120; B gives the 3 gold B staged during the anti-switch step
+     above — which only started actually reaching the worker once that send
+     was fixed to the shape the channelShim forwards.  So the net is 117,
+     not 120, and the old one-sided expectation was reading a trade that had
+     never had a second side.  Asserting the NET both ways, plus the sum,
+     because a duplication bug shows up in the sum and nowhere else: a
+     one-sided check passes just as happily when the coins are minted as
+     when they are moved. */
+  const B_STAKE = 3, A_STAKE = 120;
+  rec.ok('gold moved BOTH ways — A gives 120, B gives 3',
+    aCoins1 === aCoins0 - A_STAKE + B_STAKE && bCoins1 === bCoins0 + A_STAKE - B_STAKE,
+    { aCoins0, aCoins1, bCoins0, bCoins1, expectA: aCoins0 - A_STAKE + B_STAKE, expectB: bCoins0 + A_STAKE - B_STAKE });
+  rec.ok('...and no coin was minted or eaten: the two purses still sum the same',
+    aCoins1 + bCoins1 === aCoins0 + bCoins0,
+    { before: aCoins0 + bCoins0, after: aCoins1 + bCoins1 });
   rec.ok('the item actually moved A -> B', aWood1 === aWood0 - 1 && bWood1 === 1,
     { aWood0, aWood1, bWood1 });
+  rec.ok('...and the logs sum the same too', aWood1 + bWood1 === aWood0,
+    { before: aWood0, after: aWood1 + bWood1 });
 
   await A.ctx.close(); await B.ctx.close();
 }
