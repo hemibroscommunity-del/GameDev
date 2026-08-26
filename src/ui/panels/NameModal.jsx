@@ -246,7 +246,7 @@ export function NameModal(props) {
     /* v2.3.1949: one button, three canvases -- the panel's mode strip picks
        chest, face or arms.  The label says so, because a face tattoo nobody
        knows exists is a face tattoo nobody draws. */
-    skin: { target: 'tattoo', label: 'Tattoo your chest, face or arms' },
+    skin: { target: 'tattoo', label: 'Tattoo your body or face' },   /* v2.3.1978: two screens, not three */
     /* v2.3.1944: shoes are pattern-only — no drawing on an eight-pixel boot. */
     shoes: { target: 'shoes', label: 'Pattern these shoes' },
   };

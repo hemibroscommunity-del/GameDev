@@ -55,7 +55,10 @@ import { drawCharacterPortrait } from '@/rendering/characterPortrait.js';
  * feature that does not exist for the person carrying a coffee.
  */
 
-const MIN_Z = 1, MAX_Z = 8;
+const MIN_Z = 1, MAX_Z = 16;
+/* How much of the editor the framed region fills. Short of 1 so the region's
+   own edges are reachable with a finger rather than pinned to the bezel. */
+const FIT = 0.86;
 
 /* Region priority, most specific first — see "WHICH REGION YOU ARE ON". */
 const REGIONS = [
@@ -73,7 +76,7 @@ function unproject(m, x, y) {
 }
 
 export default function BodyInk({
-  look, arts, ink = 1, brush = 1, dir = 'south',
+  look, arts, ink = 1, brush = 1, dir = 'south', region = 'tattoo',
   onInk, onRegion,
 }) {
   const boxRef = React.useRef(null);
@@ -93,7 +96,6 @@ export default function BodyInk({
   viewRef.current = view;
 
   const [pan, setPan] = React.useState(false);
-  const [hot, setHot] = React.useState(null);        /* region key under the pointer */
 
   /* Live stroke state. Refs, not state: a pointermove handler must read the
      CURRENT values, and a state value captured in its closure is a render
@@ -129,20 +131,18 @@ export default function BodyInk({
     const oy = w.sy + ((clientY - r.top) / r.height) * w.sh;
     const p = unproject(m, ox, oy);
     if (!p) return null;
-    for (let i = 0; i < REGIONS.length; i++) {
-      const R = REGIONS[i];
-      const list = grids[R.key] || [];
-      for (let k = 0; k < list.length; k++) {
-        const g = list[k];
-        /* The skin mask's own extent decides the region; the grid box only
-           decides the cell. */
-        if (p.x < g.lx || p.x > g.rx + 1 || p.y < g.ty || p.y > g.by + 1) continue;
-        const c = cellAt(g, p.x, p.y);
-        if (c) return { region: R.key, target: R.target, gx: c.gx, gy: c.gy };
-      }
+    /* v2.3.1978: ONE region, chosen by the tab, not by where the finger lands.
+       The editor is framed on that region and nothing else is reachable, so a
+       stroke cannot wander onto a canvas you did not mean to edit. */
+    const R = REGIONS.find((q) => q.key === region) || REGIONS[0];
+    const list = grids[R.key] || [];
+    for (let k = 0; k < list.length; k++) {
+      const g = list[k];
+      const c = cellAt(g, p.x, p.y);
+      if (c) return { region: R.key, target: R.target, gx: c.gx, gy: c.gy };
     }
     return null;
-  }, [windowFor]);
+  }, [windowFor, region]);
 
   /* ── blit: offscreen -> visible, plus the grid and the live stroke ─────── */
   const blit = React.useCallback(() => {
@@ -194,7 +194,7 @@ export default function BodyInk({
 
     /* The grid of the region under the pointer only. All three at once is a
        thicket, and the one you are working on is the one worth seeing. */
-    const R = REGIONS.find((q) => q.key === hot);
+    const R = REGIONS.find((q) => q.key === region);
     const list = (R && grids[R.key]) || [];
     if (list.length) {
       ctx.save();
@@ -234,7 +234,46 @@ export default function BodyInk({
       }
       ctx.restore();
     }
-  }, [windowFor, hot, ink]);
+  }, [windowFor, region, ink]);
+
+  /* ═══ v2.3.1978: THE REGION FILLS THE EDITOR ═══
+     Owner: "In the editor show the actual full upper torso region where you
+     can just draw the tattoo directly on.  It will be full zoom but fitting
+     within the editor window."  So the view is not something to set up by
+     pinching before you can start — it is computed from the region's own
+     extent the moment the composite reports it, and again whenever the tab
+     changes. The manual zoom and pan stay for nudging, but nobody has to use
+     them to draw. */
+  const fitRegion = React.useCallback(() => {
+    const off = offRef.current, grids = gridsRef.current, m = xformRef.current;
+    if (!off || !off.width || !grids || !m) return;
+    const R = REGIONS.find((q) => q.key === region) || REGIONS[0];
+    const list = grids[R.key] || [];
+    if (!list.length) return;
+    /* Union of the region's pieces — the arms report two grids, and framing
+       one of them would put the other off screen. */
+    let lx = Infinity, rx = -Infinity, ty = Infinity, by = -Infinity;
+    for (let k = 0; k < list.length; k++) {
+      const g = list[k];
+      if (g.lx < lx) lx = g.lx; if (g.rx + 1 > rx) rx = g.rx + 1;
+      if (g.ty < ty) ty = g.ty; if (g.by + 1 > by) by = g.by + 1;
+    }
+    if (!(rx > lx && by > ty)) return;
+    const P = (x, y) => ({ x: m.a * x + m.c * y + m.e, y: m.b * x + m.d * y + m.f });
+    const p0 = P(lx, ty), p1 = P(rx, by);
+    const bw = Math.abs(p1.x - p0.x), bh = Math.abs(p1.y - p0.y);
+    if (!bw || !bh) return;
+    const z = Math.max(MIN_Z, Math.min(MAX_Z,
+      Math.min(off.width * FIT / bw, off.height * FIT / bh)));
+    const cx = ((p0.x + p1.x) / 2) / off.width;
+    const cy = ((p0.y + p1.y) / 2) / off.height;
+    setView((v) => (Math.abs(v.z - z) < 0.01 && Math.abs(v.cx - cx) < 0.002
+      && Math.abs(v.cy - cy) < 0.002) ? v : { z, cx, cy });
+  }, [region]);
+
+  /* Re-frame when the tab changes. The composite path calls it too, for the
+     first one, where the grids do not exist yet at mount. */
+  React.useEffect(() => { fitRegion(); }, [region, fitRegion]);
 
   /* ── the composite ────────────────────────────────────────────────────── */
   React.useEffect(() => {
@@ -260,6 +299,7 @@ export default function BodyInk({
         const off = offRef.current;
         gridsRef.current = (off && off.__btGrids) || null;
         xformRef.current = (off && off.__btGridXform) || null;
+        fitRegion();
       });
     };
     const run = () => {
@@ -283,10 +323,10 @@ export default function BodyInk({
       if (raf) cancelAnimationFrame(raf);
       window.removeEventListener('resize', onResize);
     };
-  }, [look, dir, arts, blit]);
+  }, [look, dir, arts, blit, fitRegion]);
 
   /* View changes need no new composite, only a re-blit. */
-  React.useEffect(() => { try { blit(); } catch (e) { /* ignore */ } }, [view, hot, blit]);
+  React.useEffect(() => { try { blit(); } catch (e) { /* ignore */ } }, [view, blit]);
 
   /* ── pointer handling ─────────────────────────────────────────────────── */
   const zoomBy = React.useCallback((k, ax, ay) => {
@@ -348,7 +388,6 @@ export default function BodyInk({
     paintingRef.current = true;
     strokeRef.current = { target: h.target, cells: [], seen: new Set() };
     lastCellRef.current = h;
-    setHot(h.region);
     if (onRegion) onRegion(h.target);
     addCell(h);
   };
@@ -380,8 +419,6 @@ export default function BodyInk({
     if (!paintingRef.current) {
       /* Not painting: still track which region the pointer is over, so the
          grid overlay follows a hovering mouse. */
-      const h = hitAt(e.clientX, e.clientY);
-      if (h && h.region !== hot) setHot(h.region);
       return;
     }
     const h = hitAt(e.clientX, e.clientY);
@@ -413,13 +450,11 @@ export default function BodyInk({
     if (kickRef.current) kickRef.current();
   };
 
-  const hotLabel = (REGIONS.find((q) => q.key === hot) || {}).label || null;
 
   return (
     <div className="bt-bodyink">
       <canvas ref={boxRef} className="bt-bodyink-cv"
         onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
-        onPointerLeave={() => { if (!paintingRef.current) setHot(null); }}
         aria-label="Your character — drag to tattoo the part you are over"
         style={{ width: '100%', aspectRatio: '1 / 1', imageRendering: 'pixelated',
           touchAction: 'none', cursor: pan ? 'grab' : 'crosshair', borderRadius: 8,
@@ -437,7 +472,13 @@ export default function BodyInk({
           disabled={view.z >= MAX_Z - 0.001}>
           <span className="bt-paint-tool-label">+</span>
         </button>
-        <span className="bt-bodyink-where">{hotLabel || 'Skin'}</span>
+        {/* v2.3.1978: the region readout is gone — the tab above says Body or
+            Face, and the editor is framed on that one region, so naming it
+            again in the corner was telling you something you chose. */}
+        <button type="button" className="bt-paint-size" onClick={fitRegion}
+          title="Frame the whole area again">
+          <span className="bt-paint-tool-label">Fit</span>
+        </button>
       </div>
     </div>
   );

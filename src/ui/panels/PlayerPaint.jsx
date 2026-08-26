@@ -98,7 +98,15 @@ const TARGETS = {
 };
 
 /* Which canvas each tattoo mode paints. */
-const TATTOO_SPOT = { chest: 'tattoo', face: 'tattooFace', arms: 'tattooArm' };
+/* v2.3.1978: TWO TATTOO SCREENS, BODY AND FACE.
+   Owner: "For the tattoos just do two options: body and face."  The chest /
+   face / arms split plus the v2.3.1965 free-roaming Body tab was four tabs for
+   what is really one decision — which half of you are you drawing on.
+   The ARM canvas keeps rendering and keeps its data; it simply has no editor
+   any more.  Nothing is deleted: a player who inked their arms before this
+   still wears them, and the wire, the renderer and both server gates are
+   untouched.  Say the word if it should be cleared instead. */
+const TATTOO_SPOT = { body: 'tattoo', face: 'tattooFace' };
 
 /* ── the toolbar's icons ──
    Drawn inline rather than shipped as art, for the reason the creator's pencil
@@ -306,10 +314,16 @@ const FOCUS = {
      recognisably yours, which a floating torso does not. */
   shirt: { cy: 0.43, h: 0.45 },
   tattoo: { cy: 0.43, h: 0.45 },
-  /* v2.3.1949: a face tattoo is a few pixels on a head the size of a thumbnail,
-     so this one goes right in.  The arms need most of the torso's height
-     because they run its full length. */
-  tattooFace: { cy: 0.255, h: 0.20 },
+  /* v2.3.1978: the face preview shows the WHOLE UPPER BODY, same frame as the
+     body tab.  Owner: "If body, show full upper body including head in
+     preview ... For face, same idea ... In the preview it shows the full upper
+     body."  The v2.3.1949 frame went right in on the head (cy 0.255, h 0.20),
+     which is the wrong job now: the editor beside it is already the head at
+     full zoom, so a second close-up said nothing.  What the preview is for is
+     the thing the editor cannot show you — what it looks like ON you.
+     tattooArm keeps its frame: the arm canvas still renders, it just has no
+     editor any more (see TATTOO_SPOT). */
+  tattooFace: { cy: 0.43, h: 0.45 },
   tattooArm: { cy: 0.46, h: 0.40 },
   /* Trousers, plus the boot tops.  Centring higher put a third of the pane on
      shirt hem. */
@@ -452,7 +466,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
      behind it rather than being deleted: a 16x16 grid is a better tool for a
      deliberate, symmetrical design than a finger on a zoomed limb, and
      throwing it away to answer the note would be a trade, not a fix. */
-  const MODES = isTattoo ? ['body', 'chest', 'face', 'arms']
+  const MODES = isTattoo ? ['body', 'face']
     : (cfg.pattern && canDraw)
       ? (isShirt ? ['pattern', 'front', 'back'] : ['pattern', 'drawing'])
       : null;
@@ -460,14 +474,15 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   /* Which skin canvas the body surface last touched.  It drives `spot`, so the
      palette, Undo, Clear and the caption all follow your finger from the chest
      to the face without you telling them you moved. */
-  const [bodySpot, setBodySpot] = React.useState('tattoo');
   const side = mode === 'back' ? 'back' : 'front';
   const onPattern = mode === 'pattern';
   /* WHERE on the body this panel is currently painting.  For everything but a
      tattoo that is just the target; for a tattoo the mode picks it, and the
      caption, the preview's camera and the Clear button all follow it. */
-  const onBody = isTattoo && mode === 'body';
-  const spot = isTattoo ? (onBody ? bodySpot : (TATTOO_SPOT[mode] || 'tattoo')) : target;
+  /* Both tattoo screens are the draw-on-your-character surface now; the tab
+     only says WHICH region it is framed on. */
+  const onBody = isTattoo;
+  const spot = isTattoo ? (TATTOO_SPOT[mode] || 'tattoo') : target;
   const scfg = TARGETS[spot] || cfg;
   /* Which stored drawing this panel is editing right now. */
   const artId = isShirt ? (side === 'back' ? 'shirtBack' : 'shirtFront') : spot;
@@ -773,11 +788,14 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
        it would be an undo step that does nothing when you take it. */
     if (artWithCells(before, cells, inkIdx) === before) return;
     const op = { k: 'c', c: cells.map((c) => c[1] * ART_W + c[0]), i: inkIdx };
+    /* v2.3.1978: the surface is framed on ONE region, chosen by the tab, so a
+       stroke always lands on the canvas this panel already has selected. The
+       else-branch is kept as a belt: if that ever stops being true, the ink is
+       still banked and stored rather than dropped. */
     if (tgt === artId) addOp(op);
     else {
       pushHist(snapshot(tgt));
       appendOp(tgt, op);
-      setBodySpot(tgt);
     }
     setBodyTick((t) => t + 1);
   }, [artId, art]);
@@ -1272,7 +1290,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
           ) : onBody ? (
             /* v2.3.1965: the character IS the canvas — see BodyInk.jsx. */
             <BodyInk look={look} arts={bodyArts} ink={ink} brush={brush}
-              onInk={inkFromBody} onRegion={setBodySpot} />
+              region={mode === 'face' ? 'face' : 'tattoo'} onInk={inkFromBody} />
           ) : (
             /* v2.3.1967: a class, so a headless scenario can aim at the flat
                grid without guessing which canvas in the panel it is (the panel

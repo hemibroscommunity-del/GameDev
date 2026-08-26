@@ -33,7 +33,7 @@
  */
 import * as H from './harness.mjs';
 
-const ART_KEY = 'bt-tattooart';
+const ART_KEY = 'bt-pantsart';   /* v2.3.1978: the pants grid — see openGrid */
 const OPS_KEY = 'bt-artops';
 const KEYS = [ART_KEY, 'bt-facetattoo', 'bt-armtattoo', OPS_KEY, 'bt-artslots'];
 
@@ -63,21 +63,30 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const created = await page.$('[data-tut="login-create"]');
     if (created) await created.click();
     await page.waitForSelector('input.bt-cc-name', { timeout: 30000 });
-    const skinTab = await page.$('[data-cc-tab="skin"]') || await page.$('button:has-text("Skin")');
-    if (!skinTab) return false;
-    await skinTab.click();
+    /* v2.3.1978: THE PANTS DESIGNER, NOT THE SKIN ONE.
+       Owner: "For the tattoos just do two options: body and face."  Both of
+       those are now the draw-on-your-character surface, so the skin designer
+       has no flat 16x16 grid any more and therefore no shape tools — this
+       scenario used to reach them through the skin tab's second tab, which is
+       the Face screen now.  The shape tools, the hand/select tool and the layer
+       controls all still exist; they live on the garment designers, which are
+       still a grid.  Pants rather than the shirt because the shirt's Design
+       button is dead until a shirt is actually worn (NameModal's _PAINT_FROM_TAB),
+       and this scenario is about shapes, not about getting dressed first. */
+    const tab = await page.$('[data-cc-tab="pants"]') || await page.$('button:has-text("Pants")');
+    if (!tab) return false;
+    await tab.click();
     await page.waitForTimeout(300);
     await page.click('button.bt-cc-draw');
-    /* v2.3.1965 opens the skin designer on the BODY surface; the shape tools
-       live on the flat grid behind the second tab. */
     await page.waitForSelector('.bt-paint-tabs', { timeout: 20000 });
+    /* pants open on the PATTERN screen; the drawing grid is the second tab */
     await page.click('.bt-paint-tabs button:nth-child(2)');
     await page.waitForSelector('canvas.bt-paint-grid', { timeout: 20000 });
     await page.waitForTimeout(400);
     return true;
   };
   const opened = await openGrid();
-  rec.ok('the tattoo designer has a flat grid tab with the shape tools on it', !!opened);
+  rec.ok('a garment designer has a flat grid with the shape tools on it', !!opened);
   if (!opened) return;
 
   /* MEASURED PER GESTURE, not once.  The designer's panel is wider than the
@@ -251,7 +260,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     try { return localStorage.getItem(k) || ''; } catch (e) { return ''; }
   }, OPS_KEY);
   let ops = null;
-  try { ops = JSON.parse(stored).tattoo; } catch (e) { ops = null; }
+  try { ops = JSON.parse(stored).pants; } catch (e) { ops = null; }   /* v2.3.1978 */
   rec.ok('the op list is stored beside the drawing, not on the wire',
     !!ops && Array.isArray(ops.o) && ops.o.length === 2,
     { kinds: ops && ops.o && ops.o.map((o) => o.k), len: stored.length });
