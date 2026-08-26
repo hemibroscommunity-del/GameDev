@@ -43,6 +43,7 @@
  * whether the scene (noise up) or the metric (armor down) moved.
  */
 import { chromium } from 'playwright-core';
+import { legacyLogin } from './legacy-login.mjs';
 import { existsSync } from 'node:fs';
 import { GEAR_CATALOG, GEAR_SLOTS } from '../../src/rendering/gearCatalog.js';
 
@@ -91,10 +92,11 @@ if (process.env.QA_WS_URL) {
    floating debug button out of the crop (window.debug stays exposed). */
 await page.goto(URL + (URL.includes('?') ? '&' : '?') + 'noresume=1&nodebug=1', { waitUntil: 'domcontentloaded', timeout: 60000 });
 await sleep(6000);
+/* v2.3.1964: the splash has no name box — it has a login door.
+   legacyLogin takes the same route a player takes (see
+   tools/qa/legacy-login.mjs for what broke and when). */
 try {
-  const input = page.locator('input').first();
-  await input.fill('GearBot', { timeout: 60000 });
-  await input.press('Enter');
+  await legacyLogin(page, 'GearBot');
 } catch (e) { console.log('login flow issue:', e.message); }
 
 let joined = false;
