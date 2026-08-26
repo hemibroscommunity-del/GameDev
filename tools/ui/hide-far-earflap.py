@@ -1,5 +1,37 @@
 #!/usr/bin/env python3
 """v2.3.1955: put a helmet's FAR ear flap behind the head, where it belongs.
+   v2.3.1958: ...and it was picking the WRONG flap.  Read that section first.
+
+WRITTEN IN PARALLEL WITH v2.3.1963, WHICH REACHED THE SAME PLACE
+----------------------------------------------------------------
+Two sessions were handed the owner's "you went the wrong direction" report at
+the same time.  v2.3.1963 (branch claude/dodge-roll-grok-prompt-xb24zn) landed
+first and reached the SAME discriminator from the same evidence -- the body
+sprite paints the character's ear on the side that faces the camera, so that
+side is near -- which is worth knowing on its own: it was derived twice,
+independently, off the same stand sheets.  Take that as the settled part.
+
+This file differs from v2.3.1963 in exactly two places, and both differences
+come from RENDERING the proposed erase on the head rather than from a further
+argument:
+
+  1. EAST IS NOT A TURNED FACING.  v2.3.1963 carries NEAR_SIDE['east'] =
+     'left' -- the ear is drawn on the viewer's left in profile, so the
+     viewer's right is treated as far.  But a profile has no far side in the
+     frame at all: the far half of the head is behind the skull and is not
+     drawn, so every piece of hat in an east frame is on the near side by
+     construction.  Run it over the catalogue and it offers up two erases,
+     both of which were rendered and both of which are damage: shark-hat east
+     loses 38px of the shark's lower JAW, spartan-helmet east loses 28px off
+     the bottom of the near CHEEK GUARD, leaving the helmet cut off square
+     above the jaw.  (These are the same two erases v2.3.1955 proposed, at the
+     same pixel counts -- on a profile the old rule and the new one happen to
+     agree, so flipping the polarity did not rescue them.)  east is therefore
+     absent from NEAR_SIDE here and refused by name.
+  2. ERASE WHAT THE HEAD COVERS, NOT THE WHOLE FLAP -- see below.
+
+If these are not wanted, the two lines to change are NEAR_SIDE and the
+`covered` intersection in judge(); nothing else here depends on them.
 
 Owner, with a screenshot of the Barbarian Helmet on a three-quarter view:
 "Barbarian ears need to be hidden based on correct layering. Left ear (my
@@ -18,24 +50,94 @@ Why the art and not a z-order
 -----------------------------
 Drawing part of a hat under the head would need the two-clone trick the slung
 shield uses (v2.3.1782: a LOW copy before the body and a HIGH copy after), in
-three renderers -- the world, the portrait, and the attack stand-ins. MEASURED
-first: the far flap, placed, lands entirely inside the head's silhouette
-(southwest: flap x 131..158 against a head spanning 96..163). Entirely hidden
-means there is nothing for a lower layer to show, so the layer would be
-machinery with no visible output. Erasing the flap is the same picture.
+three renderers -- the world, the portrait, and the attack stand-ins. That is
+three places to keep in step for one hat detail, so this tool bakes the same
+result into the art instead: erase exactly the pixels the head would have
+covered, which is by definition what the LOW copy would have had hidden.
 
-Which flap is the far one
--------------------------
-Not hard-coded: a facing that draws TWO flaps under the brow band is a
-three-quarter view, and the NEAR flap is the one that reaches the head's
-silhouette edge -- it is on the side turned toward the camera, so it hangs off
-the outline. The far flap is the one that reaches neither edge. Measured
-per facing against the actual stand sheet, so a re-cut hat is re-judged rather
-than re-broken.
+v2.3.1958 corrected the measurement this paragraph used to lean on. It read
+"the far flap lands ENTIRELY inside the head's silhouette (southwest: flap x
+131..158 against a head spanning 96..163), so a lower layer would have nothing
+to show" -- but x 131..158 is the viewer-RIGHT flap, which is the NEAR ear (see
+below), and the actual far flap is 83% covered, not 100%. The 17% that hangs
+past the outline is precisely the sliver you are supposed to see of a flap
+behind a head, so it stays.
 
-A facing with ONE flap is a profile (east/west) and is left alone: the single
-flap IS the near ear, and in profile the near ear does sit over the side of
-the head.
+Which flap is the far one -- v2.3.1955's answer, and why it was backwards
+------------------------------------------------------------------------
+v2.3.1955 reasoned it out per flap: "a facing that draws TWO flaps under the
+brow band is a three-quarter view, and the NEAR flap is the one that reaches
+the head's silhouette edge -- it is on the side turned toward the camera, so
+it hangs off the outline."  That shipped, and the owner came straight back:
+"for the barbarian hat you went the wrong direction.  It was supposed to be
+the other way around (my left)."
+
+The heuristic is not merely unlucky, it is inverted BY CONSTRUCTION for this
+art, and the stand sheet says so.  On southwest, barbarian-helmet's two flaps
+place at x 96..110 and x 137..156 against a head spanning 96..163.  The rule
+read "the left one touches 96, so the left one is near" -- but the head's own
+outline is not symmetric about the face: on a three-quarter the SKULL bulges
+out on the near side, past the ear, to x 163, while the near ear guard stops
+at 156.  The near flap therefore sits INBOARD and the far flap, drawn as a
+sliver peeking round the far cheek, is the one flush with the outline.  Every
+three-quarter hat in the catalogue is drawn that way.
+
+Which side is near -- measured, not reasoned
+--------------------------------------------
+The body sheet already answers it, and it is a FIXED PER-FACING FACT rather
+than anything to measure per flap:
+
+  * stand-southwest paints exactly ONE ear, a "C" on the VIEWER'S RIGHT at
+    x 148..151.  A sprite draws the near ear and lets the skull hide the far
+    one -- so on southwest the near side is the viewer's right.
+  * the same sheet's eye whites sit 8.3px LEFT of the head's centre (x 121.2
+    against a mid of 129.5): the face is turned toward the viewer's left,
+    which is the same statement.  A head turned to its own right presents its
+    LEFT side, and that side lands on the viewer's right.
+  * stand-northeast likewise paints its one ear on the viewer's RIGHT.
+  * stand-south paints an ear on BOTH sides and centres the eyes (-2.0px):
+    dead-on, both ear pieces belong, there is no far side.
+  * stand-east/west are profiles: the eyes sit 9.5px to the nose's side and
+    only ONE side of the head exists in the frame at all.  Everything drawn
+    is near.
+
+So the far flap is the one on the VIEWER'S LEFT, on southwest and northeast,
+and on no other stored facing.  The three mirrored views (southeast, west,
+northwest) come out right for free because mirroring flips head and hat
+together.  NEAR_SIDE below is that table; it is the whole discriminator.
+
+The artist's own convention corroborates it: on every three-quarter frame the
+near flap is drawn full and the far one as a sliver.  barbarian-helmet
+southwest 86px right vs 69px left, old-school-helmet 107 vs 30, russian-hat
+201 vs 53.  v2.3.1955 erased the big one each time.
+
+Erase what the head COVERS, not the whole flap
+----------------------------------------------
+v2.3.1955 removed a far flap outright, and v2.3.1963 kept that part.  It is
+right only when the flap lands entirely inside the head, and whether it does
+is a property of the HAT, not of the rule.  Measured against the placed head
+silhouette on southwest: barbarian-helmet's far flap is 83% covered
+(264 of 318 placed px), old-school-helmet's 53% (64 of 120), and russian-hat's
+only 13% (28 of 212) -- russian-hat's far flap hangs down past the jaw, beside
+the neck, where nothing occludes it.  Rendered three ways, deleting it whole
+takes that visible sliver with it and the ushanka comes out with a flap on one
+side and a bare temple on the other; clipping to the head changes 28px and is
+indistinguishable from the shipped frame.
+
+So the erase is intersected with the head mask: exactly the pixels the LOW
+copy of a z-order would have had hidden, and not one more.  The part of a far
+flap that clears the outline is not a mistake -- it is the sliver you are
+supposed to see of something behind a head.
+
+A facing with no far side (south, east, north) is refused outright, by NAME.
+v2.3.1955 inferred "profile" from the flap COUNT, and that misfires on any
+hat whose art happens to leave two disconnected pieces below the band:
+shark-hat east offers up the shark's tail fin and its lower JAW, spartan-
+helmet east its neck guard and the near cheek guard (100% inside the head, so
+the old rule was maximally confident about it), and golden-bucket south the
+two lower corners of the bucket rim.  All four were rendered on the head and
+all four came out damaged -- a bucket with a corner bitten off, a shark with
+no chin.  Counting pieces cannot tell you where the camera is; the facing can.
 
 What this does NOT touch
 ------------------------
@@ -50,6 +152,18 @@ has nothing to do with an ear flap. (The flap that was erased sat inside the
 head, so the mask barely wants to change anyway: 15px on southwest.) That
 staleness is worth knowing about on its own and is written down here rather
 than fixed in passing.
+
+RENDER IT BEFORE YOU APPLY IT -- the report is not the acceptance test
+----------------------------------------------------------------------
+What NEAR_SIDE settles is which SIDE is hidden.  What nothing here settles is
+whether the piece hanging below the band is an ear flap at all: "connected
+component under the widest row" also catches a bucket's rim corners, a shark's
+tail fin and a spartan neck guard, and it flags all three with the same
+confidence it flags a real ear cup.  v2.3.1958 caught four such false
+positives only by drawing the hat on the head and looking at it -- the numbers
+said nothing was wrong.  Render the hat on the body at every facing the player
+can see (the five stored ones plus the mirrored southeast and west), before
+and after, and compare, every time.
 
 Run from the repo root:
     python3 tools/ui/hide-far-earflap.py --ids barbarian-helmet          # report
@@ -70,11 +184,22 @@ BODY_TOPS = 'public/sprites/player/body-tops.json'
 DIRS = ['south', 'southwest', 'east', 'northeast', 'north']
 ALPHA_T = 16
 FRAME = 256
-# A flap counts as reaching the silhouette when it comes within this many
-# 256-frame pixels of the head's outline on that side.  2px, because the head
-# outline is a hard pixel edge and the flap is drawn to overlap it, not to
-# touch it exactly.
-EDGE_SLOP = 2
+# v2.3.1958: which side of the head faces the camera on each STORED facing,
+# and therefore which side a far ear flap is on.  None means the facing has no
+# far side and is refused outright.  Measured off the stand sheets themselves
+# -- see "Which side is near" in the docstring -- because a per-flap heuristic
+# is what got v2.3.1955 the wrong ear.  The three mirrored views inherit their
+# answer from the frame they mirror, so they are not listed.
+#   south      dead-on, an ear painted on each side, eyes centred to -2.0px
+#   southwest  one painted ear on the VIEWER'S RIGHT, eyes 8.3px left of mid
+#   east       profile: the far half of the head is not in the frame at all,
+#              so nothing drawn in an east frame can be on the far side.
+#              v2.3.1963 lists east as 'left'; rendering its two candidates
+#              showed a bitten-off shark jaw and a cut-off cheek guard
+#   northeast  one painted ear on the VIEWER'S RIGHT, face turned away
+#   north      dead-behind, symmetric
+NEAR_SIDE = {'south': None, 'southwest': 'right', 'east': None,
+             'northeast': 'right', 'north': None}
 # Rows of the helmet that count as the BAND: any row at least this share of the
 # helmet's widest row.  Below the band there is nothing but flaps.
 BAND_SHARE = 0.55
@@ -82,6 +207,13 @@ BAND_SHARE = 0.55
 # it --all reports one- and two-pixel "flaps" on half the catalogue, which
 # makes the report useless as a shopping list.
 MIN_FLAP = 12
+# The version tag stamped into a hat's meta.json note when a flap is erased.
+# v2.3.1958: this was the string literal 'v2.3.1955' inside main(), which was
+# right on the day the tool was written and wrong on the second run -- the
+# five hats judged in v2.3.1958 would have claimed to have been edited in
+# v2.3.1955, and the note is the only record on disk of WHEN a frame lost
+# pixels.  Bump it when you run the tool; it is the run's tag, not the tool's.
+RUN_TAG = 'v2.3.1958'
 
 
 def _load256(path):
@@ -153,15 +285,23 @@ def flaps(art_mask):
 
 
 def judge(hid, d, meta, tops, verbose):
-    """-> (list of art-space pixels to erase, note)."""
+    """-> (list of art-space pixels to erase, note).
+
+       v2.3.1958: the far flap is the one on the side the camera CANNOT see,
+       which NEAR_SIDE states per facing, and the pixels erased are only the
+       ones the head would have covered.  The previous per-flap "which one
+       reaches the silhouette edge" test lives on in the docstring as the
+       thing that shipped the wrong ear on barbarian-helmet."""
+    near = NEAR_SIDE.get(d)
+    if near is None:
+        return [], f'{d} has no far side (dead-on, profile or dead-behind) - refusing'
     p = f'{HEADWEAR}/{hid}/{d}.png'
     if not os.path.isfile(p) or d not in meta.get('anchors', {}):
         return [], 'no frame'
     art = np.array(Image.open(p).convert('RGBA'))
-    m = art[:, :, 3] > ALPHA_T
-    band_bot, comps = flaps(m)
-    if len(comps) < 2:
-        return [], f'{len(comps)} flap(s) — profile or none, left alone'
+    band_bot, comps = flaps(art[:, :, 3] > ALPHA_T)
+    if not comps:
+        return [], 'nothing hangs below the band'
 
     body = _load256(BODY.format(dir=d))
     head = body[:, :, 3] > ALPHA_T
@@ -169,31 +309,42 @@ def judge(hid, d, meta, tops, verbose):
     head[:by, :] = False
     head[by + 70:, :] = False
     hcols = np.nonzero(head.any(axis=0))[0]
-    hl, hr = int(hcols.min()), int(hcols.max())
+    mid = (int(hcols.min()) + int(hcols.max())) / 2
 
-    reach = []
-    for c in comps:
+    px = []
+    for i, c in enumerate(comps):
+        # ONE placement per flap, with each of its art pixels carrying its own
+        # index in R/G, so the pixels that land inside the head can be mapped
+        # straight back to art space.  Placing them one at a time would be the
+        # obvious way and is 300x the work for the same answer.
         probe = np.zeros_like(art)
-        for (y, x) in c:
-            probe[y, x] = art[y, x]
+        for k, (y, x) in enumerate(c):
+            probe[y, x] = (k & 255, (k >> 8) & 255, 0, 255)
         pl = _place(_load256_from(probe), meta, d, tops)
-        cols = np.nonzero((pl[:, :, 3] > ALPHA_T).any(axis=0))[0]
-        if not len(cols):
-            reach.append(None)
+        hit = pl[:, :, 3] > ALPHA_T
+        if not hit.any():
+            if verbose:
+                print(f'      flap {i} places off-frame, ignored')
             continue
-        reach.append((int(cols.min()) - hl, hr - int(cols.max())))
-
-    far = [i for i, r in enumerate(reach)
-           if r is not None and r[0] > EDGE_SLOP and r[1] > EDGE_SLOP]
-    if verbose:
-        for i, r in enumerate(reach):
-            side = 'left ' if i == 0 else 'right'
-            gap = 'off-frame' if r is None else f'{r[0]:+3d} from left edge, {r[1]:+3d} from right edge'
-            print(f'      flap {i} ({side}) {gap}{"   <- FAR, behind the head" if i in far else ""}')
-    if len(far) == len(comps):
-        return [], 'every flap is inboard — refusing (that is not a three-quarter view)'
-    px = [q for i in far for q in comps[i]]
-    return px, (f'{len(far)} far flap(s), {len(px)}px' if far else 'both flaps reach an edge')
+        cx = float(np.nonzero(hit)[1].mean())
+        side = 'left' if cx < mid else 'right'
+        covered = hit & head
+        # A NEAREST downscale can drop source pixels, so an index that never
+        # appears is simply not erased.  That errs toward leaving art alone,
+        # which is the safe direction for an operation with no undo.
+        idx = sorted(set((pl[:, :, 0][covered].astype(int)
+                          | (pl[:, :, 1][covered].astype(int) << 8)).tolist()))
+        far = side != near
+        if verbose:
+            print(f'      flap {i} ({side:<5}) {len(c):4d}px art, placed centre '
+                  f'{cx:5.1f} vs head mid {mid:5.1f}, {int(covered.sum())}/{int(hit.sum())} '
+                  f'px behind the head'
+                  f'{"   <- FAR side, hiding what the head covers" if far else ""}')
+        if far:
+            px += [c[k] for k in idx if k < len(c)]
+    if not px:
+        return [], 'nothing on the far side that the head covers'
+    return px, f'far flap on the viewer-{"left" if near == "right" else "right"}, {len(px)}px covered'
 
 
 def _load256_from(art):
@@ -255,10 +406,13 @@ def main():
             elif args.ids:
                 print(f'  {hid:<20} {d:<10} {note}')
         if touched and args.apply:
-            meta['note'] = (meta.get('note', '') + ' v2.3.1955: the FAR ear flap was erased from the '
-                            'three-quarter frames by tools/ui/hide-far-earflap.py -- it sits on the '
-                            'other side of the skull, so the head hides it; drawn over the cheek it '
-                            'read as a sticker (owner report).')
+            meta['note'] = (meta.get('note', '') + f' {RUN_TAG}: the part of the FAR ear flap '
+                            'that the head covers was erased from the three-quarter frames by '
+                            'tools/ui/hide-far-earflap.py -- the flap is on the other side of the '
+                            'skull, so the head hides it; drawn over the cheek it read as a sticker '
+                            '(owner report).  FAR means the viewer-LEFT flap on southwest and '
+                            'northeast, which is what the stand sheet\'s own single painted ear '
+                            'says; v2.3.1955 took the viewer-RIGHT one and had it backwards.')
             with open(mp, 'w') as fh:
                 json.dump(meta, fh, indent=2)
                 fh.write('\n')
