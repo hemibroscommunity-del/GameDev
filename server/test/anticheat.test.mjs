@@ -524,6 +524,7 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
       ec: 'ice',   /* v2.3.1930: eye colour, relayed to peers */
       sa: 'a'.repeat(256),   /* v2.3.1939: a drawn shirt */
       pa: 'b'.repeat(256), ta: 'c'.repeat(256),   /* v2.3.1940: pants print + tattoo */
+      sp: 'stripe-v:3', pp: 'camo:6',   /* v2.3.1941: clothing patterns */
     },
   }));
 
@@ -560,6 +561,11 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
     psT.pa === 'b'.repeat(256), psT.pa && psT.pa.length);
   check('track: a tattoo is relayed whole (v2.3.1940)',
     psT.ta === 'c'.repeat(256), psT.ta && psT.ta.length);
+  /* v2.3.1941: patterns ride the same allowlist.  Display-only like the rest:
+     the receiving client maps the id through PATTERN_CATALOG and answers null
+     for anything unknown, so a forged value paints nothing. */
+  check('track: clothing patterns are relayed (v2.3.1941)',
+    psT.sp === 'stripe-v:3' && psT.pp === 'camo:6', { sp: psT.sp, pp: psT.pp });
 
   // A forged rpgLv is fine as a DISPLAY value (above) but must never
   // become the player's rank on the global board — v2.3.1178 closed

@@ -37,6 +37,7 @@
  * correct after the sprite's own mirror.
  */
 import { ART_W, ART_H, artColorAt, artHasInk } from './traits/playerArt.js';
+import { patternInk } from './traits/patternCatalog.js';   /* v2.3.1941 */
 
 /* The decal covers this much of the chest box.  Under 1 so the drawing sits
    INSIDE the shirt with fabric visible around it, which is what reads as a
@@ -233,3 +234,114 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box) {
    the same idea one region up. */
 export const PANTS_BOX = { fillW: 0.78, fillH: 0.62, cy: 0.45 };   /* across the shorts */
 export const TATTOO_BOX = { fillW: 0.70, fillH: 0.55, cy: 0.50 };  /* chest */
+
+/* ═══ v2.3.1941: PATTERNS ═══
+ *
+ * Owner: "patterns for clothing like shirt and pants."
+ *
+ * A pattern is a small tile repeated across the WHOLE garment, so unlike the
+ * drawing above there is no box to measure and no chest to find — every pixel
+ * of the region gets a tile cell.  Two things are worth stating because both
+ * were decisions, not defaults:
+ *
+ * ── THE TILE IS ANCHORED TO THE FRAME, NOT TO THE GARMENT ──
+ * Anchoring to the garment's own bounding box would make the pattern move WITH
+ * the shirt, which sounds more correct and looks worse: the box shifts a pixel
+ * or two between animation frames, so the whole pattern would jump by a cell
+ * fraction every frame and stripes would crawl over a jogging player.  Anchored
+ * to the frame origin the pattern is rock steady and the garment moves through
+ * it by the same pixel or two — invisible at this scale, where one tile cell is
+ * two or three pixels to begin with.
+ *
+ * ── MIRRORING, SAME RULE AS THE DRAWING ──
+ * Three facings are drawn flipped.  A vertical stripe does not care, but a
+ * diagonal or a chevron reverses, so the tile is read pre-flipped on those
+ * facings exactly as the drawing is.
+ */
+
+/** Tile `pat` (a parsed pattern from patternCatalog) across every pixel of
+ *  `mask`, in place on the pixel array.  Returns the number of pixels painted. */
+export function stampPattern(d, w, h, frameW, mask, pat, mirror) {
+  if (!pat) return 0;
+  const tile = pat.tile;
+  const R = parseInt(pat.color.slice(1, 3), 16);
+  const G = parseInt(pat.color.slice(3, 5), 16);
+  const B = parseInt(pat.color.slice(5, 7), 16);
+  const cell = Math.max(1, tile.cell);
+  const tw = tile.w * cell, th = tile.h * cell;
+  let painted = 0;
+  for (let y = 0; y < h; y++) {
+    const ty = Math.floor((((y % th) + th) % th) / cell);
+    for (let x = 0; x < w; x++) {
+      if (!mask[y * w + x]) continue;
+      /* phase within the FRAME, so every frame of a strip tiles identically */
+      const fx = x % frameW;
+      const sx = mirror ? (frameW - 1 - fx) : fx;
+      const tx = Math.floor((((sx % tw) + tw) % tw) / cell);
+      if (!patternInk(tile, tx, ty)) continue;
+      const i = (y * w + x) * 4;
+      d[i] = R; d[i + 1] = G; d[i + 2] = B;
+      painted++;
+    }
+  }
+  return painted;
+}
+
+/* ═══ v2.3.1941: ONE PLACE THAT DRESSES A SHIRT SHEET ═══
+ *
+ * Colour, pattern and print in a fixed order, because the order is the whole
+ * correctness argument and it was previously spread across two files that
+ * disagreed.
+ *
+ *   1. TINT the white-base fabric.
+ *   2. PATTERN over the tinted fabric.
+ *   3. PRINT over the pattern.
+ *
+ * ── WHY THE TINT MOVED IN HERE ──
+ * The world renderer coloured the shirt with a multiplicative sprite tint
+ * applied to the FINISHED texture, so a print baked into that texture got
+ * multiplied by the shirt colour too: a drawing on a black shirt came out
+ * black.  The login portrait did it the other way round (tint, then stamp) and
+ * looked right, so the two disagreed about what a player's own shirt looks
+ * like.  Baking the tint here fixes both at once and is what makes patterns
+ * possible at all — a pattern IS colour, and a pattern multiplied by the shirt
+ * under it is invisible on any dark shirt.
+ *
+ * The caller must therefore draw the returned texture with NO tint.  It costs
+ * nothing in sheets: a player has one shirt colour, so the tint does not
+ * multiply the cache, it just joins the key.
+ */
+export function composeShirt(sheet, frameH, opts) {
+  const o = opts || {};
+  const W = sheet.naturalWidth || sheet.width;
+  const H = sheet.naturalHeight || sheet.height;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(sheet, 0, 0);
+
+  if (o.tint) {
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = `rgb(${o.tint[0]},${o.tint[1]},${o.tint[2]})`;
+    ctx.fillRect(0, 0, W, H);
+    /* multiply paints the transparent surround too; clip back to the fabric */
+    ctx.globalCompositeOperation = 'destination-in';
+    ctx.drawImage(sheet, 0, 0);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  if (o.pattern) {
+    /* The shirt IS its own sprite, so its own alpha is the region mask. */
+    const id = ctx.getImageData(0, 0, W, H);
+    const mask = new Uint8Array(W * H);
+    for (let p = 0; p < W * H; p++) if (id.data[p * 4 + 3] > 40) mask[p] = 1;
+    stampPattern(id.data, W, H, frameH || H, mask, o.pattern, !!o.mirror);
+    ctx.putImageData(id, 0, 0);
+  }
+
+  if (o.art && artHasInk(o.art)) {
+    return stampShirtArt(cv, o.art, frameH, !!o.mirror);
+  }
+  return cv;
+}

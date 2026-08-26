@@ -430,8 +430,9 @@ export const TRACK_COSMETIC_KEYS = new Set([
      cosmetic here: the receiving client rejects anything that is not exactly
      256 hex characters, so a forged value paints nothing rather than something
      unexpected. */
-  /* v2.3.1940: + the drawn pants print and the chest tattoo. */
-  'sa', 'sb', 'pa', 'ta',
+  /* v2.3.1940: + the drawn pants print and the chest tattoo.
+     v2.3.1941: + the shirt and trouser patterns. */
+  'sa', 'sb', 'pa', 'ta', 'sp', 'pp',
   'pt', 'sh', 'bs', 'mask', 'cape', 'pet',
   // Live equipment visuals (armour on/off for remote renderers).
   'eqc', 'eql', 'eqs',

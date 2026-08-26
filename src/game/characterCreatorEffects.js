@@ -6,6 +6,7 @@ import { hatColorTarget } from '@/rendering/traits/hatColorCatalog.js';
 import { facialHairColorTarget } from '@/rendering/traits/facialHairColorCatalog.js';
 import { shirtColorTarget } from '@/rendering/traits/shirtColorCatalog.js';
 import { onArtChange } from '@/rendering/traits/playerArt.js';   /* v2.3.1938; v2.3.1940 renamed — it covers pants and tattoos too */
+import { onPatternChange } from '@/rendering/traits/patternCatalog.js';   /* v2.3.1941 */
 
 /* === characterCreatorEffects — effect bodies for the character creator ===
    v2.3.897: extracted verbatim from three BroTown.jsx useEffects (the
@@ -65,8 +66,15 @@ export function wireCharacterPortrait(previewCanvasRef, sel) {
   draw();
   /* Redraw on every stroke in the designer -- a drawing is not one of the
      `sel` values, so nothing else would re-run this. */
-  var _offArt = onArtChange(function () { try { draw(); } catch (e) { /* ignore */ } });
-  return function () { try { _offArt(); } catch (e) { /* ignore */ } };
+  var _redraw = function () { try { draw(); } catch (e) { /* ignore */ } };
+  var _offArt = onArtChange(_redraw);
+  /* v2.3.1941: patterns live in their own store for the same reason -- they are
+     not `sel` values either, and they change from inside the same panel. */
+  var _offPat = onPatternChange(_redraw);
+  return function () {
+    try { _offArt(); } catch (e) { /* ignore */ }
+    try { _offPat(); } catch (e) { /* ignore */ }
+  };
 }
 
 /* The welcome modal is dead network time: 2.5s after it opens, start

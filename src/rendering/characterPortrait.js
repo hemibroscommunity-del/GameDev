@@ -19,7 +19,8 @@ import { skinTarget, pantsTarget, shoesTarget, recolorBodyToCanvas } from './pla
 import EYE_MASK from './eyeMask.json';                              /* v2.3.1928 */
 import { eyeColorTarget } from './traits/eyeColorCatalog.js';
 import { shirtArtForDir, sanitizeShirtArt, inkedArt } from './traits/playerArt.js';   /* v2.3.1938; v2.3.1940 + pants/tattoo */
-import { stampShirtArt } from './playerDecal.js';   /* v2.3.1938 */
+import { getPattern, parsePattern, sanitizePattern } from './traits/patternCatalog.js';   /* v2.3.1941 */
+import { composeShirt } from './playerDecal.js';   /* v2.3.1938; v2.3.1941 one compositor for colour + pattern + print */
 import { SPRITE_VERSION } from './playerSprites.js';
 import { getHatRef } from './traits/hatColorCatalog.js';
 import { materialIndex } from './traits/traitMaterials.js'; /* v2.3.1926 */
@@ -496,39 +497,40 @@ export async function drawCharacterPortrait(canvas, opts) {
      absent means this device's own.  No mirror -- see the shirt note below. */
   const _pantsArt = (opts && opts.pantsArt !== undefined) ? sanitizeShirtArt(opts.pantsArt) : inkedArt('pants');
   const _tattooArt = (opts && opts.tattooArt !== undefined) ? sanitizeShirtArt(opts.tattooArt) : inkedArt('tattoo');
-  const _bodyArt = (_pantsArt || _tattooArt)
-    ? { pants: _pantsArt || '', tattoo: _tattooArt || '', mirror: false } : null;
+  /* v2.3.1941: the trouser pattern rides the same object. */
+  const _pantsPat = (opts && opts.pantsPattern !== undefined)
+    ? sanitizePattern(opts.pantsPattern) : getPattern('pants');
+  const _bodyArt = (_pantsArt || _tattooArt || parsePattern(_pantsPat))
+    ? { pants: _pantsArt || '', tattoo: _tattooArt || '', pantsPattern: _pantsPat, mirror: false } : null;
   ctx.drawImage(recolorBodyToCanvas(bodyImg, skinTarget(skin), pantsTarget(pants), shoesTarget(shoes), null, FRAME,
     eyeColorTarget(_eyeId), EYE_MASK[`stand-${DIR}`], _bodyArt), 0, 0);
   if (shirtImg) {
     /* v2.3.1110: restore a downscaled-on-disk shirt sheet to the 256px frame
        (these drawImage calls read a 256x256 source rect). No-op at native. */
     const shirtUp = upscaleToFrameHeight(shirtImg, FRAME);
-    let layer = shirtUp;
-    if (shirtColor) {
-      const sc = document.createElement('canvas');
-      sc.width = FRAME; sc.height = FRAME;
-      const sctx = sc.getContext('2d');
-      sctx.drawImage(shirtUp, 0, 0, FRAME, FRAME, 0, 0, FRAME, FRAME);
-      sctx.globalCompositeOperation = 'multiply';
-      sctx.fillStyle = `rgb(${shirtColor[0]},${shirtColor[1]},${shirtColor[2]})`;
-      sctx.fillRect(0, 0, FRAME, FRAME);
-      sctx.globalCompositeOperation = 'destination-in';
-      sctx.drawImage(shirtUp, 0, 0, FRAME, FRAME, 0, 0, FRAME, FRAME);
-      layer = sc;
-    }
-    /* v2.3.1938: the player's own drawing, stamped on the fabric.  AFTER the
+    /* v2.3.1938: the player's own drawing, stamped on the fabric AFTER the
        tint, so the drawing keeps its own colours instead of being multiplied by
        the shirt colour — a print does not take the dye of the shirt under it.
        `opts.shirtArt` when the caller has one (the inspect card passes another
        player's), otherwise this device's; null/empty is a no-op inside
-       stampShirtArt, so an undrawn shirt costs one early return. */
+       composeShirt, so an undrawn plain shirt costs one early return. */
     /* v2.3.1938: front or back by FACING -- north/northeast show the back
        design, everything else the front (a profile turns the chest toward you).
        No mirror here: this compositor draws the five base directions as-is and
        never flips one, which the world renderer does. */
     const _art = (opts && opts.shirtArt !== undefined) ? sanitizeShirtArt(opts.shirtArt) : shirtArtForDir(DIR);
-    if (_art) layer = stampShirtArt(layer, _art, FRAME, false);
+    const _shirtPat = (opts && opts.shirtPattern !== undefined)
+      ? sanitizePattern(opts.shirtPattern) : getPattern('shirt');
+    /* v2.3.1941: colour, pattern and print now come from composeShirt -- the
+       SAME function the world renderer bakes with -- so the login preview and
+       the character in the world cannot disagree about what a shirt looks like.
+       They used to: this file tinted then stamped (right), while the renderer
+       stamped then applied a sprite tint over the whole texture (which
+       multiplied the print by the shirt colour). */
+    const layer = composeShirt(shirtUp, FRAME, {
+      tint: shirtColor || null, pattern: parsePattern(_shirtPat),
+      art: _art, mirror: false,
+    });
     ctx.drawImage(layer, 0, 0, FRAME, FRAME, 0, 0, FRAME, FRAME);
   }
   /* ═══ v2.3.1815: THE ARMOUR, in the renderer's own slot order ═══

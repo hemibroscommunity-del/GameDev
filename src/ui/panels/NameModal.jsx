@@ -212,8 +212,11 @@ export function NameModal(props) {
      'skin' maps to the TATTOO drawing -- the tab is where you pick your skin
      tone, so it is where "something drawn on your skin" belongs. */
   var _PAINT_FROM_TAB = {
-    shirt: { target: 'shirt', label: 'Draw on this shirt' },
-    pants: { target: 'pants', label: 'Draw on these pants' },
+    /* v2.3.1941: "Design" rather than "Draw" for the two garments -- the panel
+       behind this button now offers ready-made patterns as well as freehand
+       drawing, and most people will want the patterns. */
+    shirt: { target: 'shirt', label: 'Pattern or draw on this shirt' },
+    pants: { target: 'pants', label: 'Pattern or draw on these pants' },
     skin: { target: 'tattoo', label: 'Draw a tattoo' },
   };
   var _TAB_ICON = function (n) { return '/ui/welcome/cc/cc-tab-' + n + '.png?v=' + BUILD_INFO.version; };

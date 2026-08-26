@@ -14,7 +14,7 @@
  */
 
 import { Rectangle, Texture } from 'pixi.js';
-import { stampShirtArt } from './playerDecal.js';   /* v2.3.1938: drawn shirts */
+import { composeShirt } from './playerDecal.js';   /* v2.3.1938 drawn shirts; v2.3.1941 colour + pattern + print, in one place */
 import { artHash } from './traits/playerArt.js';   /* v2.3.1940: shared drawing key */
 import { GEAR_SLOTS, GEAR_CATALOG } from './gearCatalog.js';
 import { upscaleToFrameHeight, antialiasUpscaledCanvas, downscaleByFactor, DISPLAY_DS } from './spriteScale.js'; /* v2.3.1110 upscale; v2.3.1341 AA; v2.3.1408 fullset display-downscale */
@@ -137,7 +137,13 @@ function buildSheet(key, slot, item, pose, dir, attempt = 0, stampArt = null) {
        the torso through ~20 pose sheets x 5 facings x up to 26 frames — as part
        of the sheet it inherits every transform the shirt already gets, and the
        renderer keeps treating the shirt as one texture. */
-    if (stampArt) img = stampShirtArt(img, stampArt.art, fh, stampArt.mirror);
+    /* v2.3.1941: and the shirt COLOUR and PATTERN with it.  The colour used to
+       be a multiplicative sprite tint applied to the finished texture, which
+       multiplied the print too (a drawing on a black shirt came out black) and
+       made a pattern impossible: a pattern is colour, and colour times a dark
+       shirt is nothing.  composeShirt does tint -> pattern -> print in that
+       order and the draw site uses no tint on the result. */
+    if (stampArt) img = composeShirt(img, fh, stampArt);
     const src = Texture.from(img).source;
     src.scaleMode = 'linear';
     /* v2.3.1385: the v2.3.1384 fullset mips-off (invisible-knight memory
@@ -236,17 +242,35 @@ function touchArt(k) {
   }
 }
 
-/** Shirt frame with `art` printed on it, or null while it bakes (the caller
- *  falls back to the plain shirt for those frames, so nothing flickers off). */
-export function getShirtArtFrame(item, pose, dir, frameIdx, art, mirror) {
-  if (!item || item === 'none' || !art) return null;
+/** A DRESSED shirt frame — colour, pattern and print baked in — or null while
+ *  it bakes (the caller falls back to the plain tinted shirt for those frames,
+ *  so putting a pattern on never blinks the shirt off).
+ *
+ *  v2.3.1941: `look` is `{ art, pattern, tint, mirror }`.  Returns null when
+ *  there is nothing to bake, i.e. a plain coloured shirt keeps the shared sheet
+ *  and the plain sprite tint exactly as before this version. */
+export function getShirtLookFrame(item, pose, dir, frameIdx, look) {
+  if (!item || item === 'none' || !look) return null;
+  if (!look.art && !look.pattern) return null;
   item = gearArt(item);
-  const ak = artHash(art);
-  /* the mirror flag is part of the key: a mirrored facing bakes a pre-flipped
-     print, and the two must not share a texture */
-  const key = 'shirtart/' + ak + '/' + (mirror ? 'm' : 'n') + '/' + item + '/' + pose + '/' + dir;
+  /* ONE cache identity for the whole dressed look.  The drawing is hashed
+     because it is 256 characters; the pattern and the tint are already short,
+     so they go in as they are and stay readable in the QA sheet dump.
+     The mirror flag is part of it too: a mirrored facing bakes a pre-flipped
+     print AND a pre-flipped tile, and the two must not share a texture. */
+  const ak = (look.art ? artHash(look.art) : 'x')
+    + '.' + (look.pattern ? (look.pattern.id + '-' + look.pattern.colorIdx) : 'x')
+    + '.' + (look.tint ? look.tint.join('_') : 'x');
+  const key = 'shirtart/' + ak + '/' + (look.mirror ? 'm' : 'n') + '/' + item + '/' + pose + '/' + dir;
   const entry = _sheets[key];
-  if (entry === undefined) { touchArt(ak); buildSheet(key, 'shirt', item, pose, dir, 0, { art, mirror: !!mirror }); return null; }
+  if (entry === undefined) {
+    touchArt(ak);
+    buildSheet(key, 'shirt', item, pose, dir, 0, {
+      art: look.art || null, pattern: look.pattern || null,
+      tint: look.tint || null, mirror: !!look.mirror,
+    });
+    return null;
+  }
   touchArt(ak);
   if (entry === 'loading' || !entry.length) return null;
   return entry[((frameIdx % entry.length) + entry.length) % entry.length];

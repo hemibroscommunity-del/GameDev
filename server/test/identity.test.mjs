@@ -222,7 +222,8 @@ check('death clears the consent pair', !room._pvpConsent.has(room._pvpPairKey('b
     data: { x: 10, y: 10, z: 'town', name: 'Finn', hr: 'long', hc: 'ash', sk: 'tan', st: 'tunic',
       ec: 'violet' /* v2.3.1930 */,
       sa: 'b'.repeat(256) /* v2.3.1939: a drawn shirt, 256 chars */,
-      pa: 'c'.repeat(256), ta: 'd'.repeat(256) /* v2.3.1940: pants print + tattoo */ },
+      pa: 'c'.repeat(256), ta: 'd'.repeat(256) /* v2.3.1940: pants print + tattoo */,
+      sp: 'check:7', pp: 'dots:2' /* v2.3.1941: clothing patterns */ },
   }));
   const charF = state._store.get('char:bp_finn');
   check('char record stamped in its own storage key on first join',
@@ -257,6 +258,13 @@ check('death clears the consent pair', !room._pvpConsent.has(room._pvpPairKey('b
   check('...and the tattoo, untruncated (v2.3.1940)',
     !!(charF && charF.look.ta === 'd'.repeat(256)),
     charF && charF.look.ta && charF.look.ta.length);
+  /* v2.3.1941: the clothing patterns are SHORT, so unlike the drawings above
+     the cap is not the interesting part -- the allowlist is.  An unlisted key
+     is dropped, which is exactly how a pattern would silently fail to persist
+     across a login on a new device. */
+  check('...and both clothing patterns (v2.3.1941)',
+    !!(charF && charF.look.sp === 'check:7' && charF.look.pp === 'dots:2'),
+    charF && charF.look);
 
   /* THE POINT OF THE WHOLE THING: rejoin claiming a different face. */
   const wsF2 = fakeWs('finn-2');

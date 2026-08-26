@@ -60,8 +60,9 @@ import { getHatColor, getColoredHatTextures } from '../traits/hatColorCatalog.js
 import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/facialHairColorCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
-import { getGearFrame, getGearFramePhased, getLoadedGearSources, getShirtArtFrame } from '../gearSheets.js';   /* v2.3.1938 */
+import { getGearFrame, getGearFramePhased, getLoadedGearSources, getShirtLookFrame } from '../gearSheets.js';   /* v2.3.1938; v2.3.1941 renamed — it bakes colour + pattern + print now */
 import { sideForDir, getShirtArt, sanitizeShirtArt, artHasInk } from '../traits/playerArt.js';   /* v2.3.1938 */
+import { getPattern, parsePattern, sanitizePattern } from '../traits/patternCatalog.js';   /* v2.3.1941 */
 import { AIM_CARET, AIM_CARET_EDGE, AIM_CARET_HOT } from '../aimCaret.js'; /* v2.3.1799 */
 import { BLOCK_ARM_ENABLED, BLOCK_ARM_FACING, BLOCK_ARM_CUT, blockArmTexture, blockArmSleeveTexture } from '../blockArm.js'; /* v2.3.1785, sleeve v2.3.1789, ENABLED v2.3.1798 */
 import { gearTint, gearArt, gearMaterial } from '../gearVariants.js'; /* v2.3.1757: material recolor */
@@ -1217,13 +1218,28 @@ function _shirtArtPair(front, back) {
   return (f || b) ? { front: f, back: b } : null;
 }
 
+/* v2.3.1941: everything about a shirt that is NOT the shipped sheet -- its
+   drawings, its pattern, and its colour -- gathered into one object, because
+   they now bake together (see gearSheets.getShirtLookFrame).
+   Returns null when there is neither a drawing nor a pattern, and that null is
+   load-bearing: it is what keeps a plain coloured shirt on the shared sheet
+   with the cheap sprite tint, exactly as it was before any of this existed. */
+function _shirtLook(front, back, patternStr, tint) {
+  const art = _shirtArtPair(front, back);
+  const pattern = parsePattern(patternStr);
+  return (art || pattern) ? { art, pattern, tint: tint || null } : null;
+}
+
 /* v2.3.1940: the same idea for the two drawings that live INSIDE the body sheet
    (pants print, chest tattoo) rather than on a gear sprite.  Peer strings are
    sanitised here, at the one place a remote's drawings enter the renderer;
    `mirror` rides along because it is part of the bake, not of the drawing. */
 function _remoteBodyArt(other, mirror) {
   const p = sanitizeShirtArt(other.pantsArt), t = sanitizeShirtArt(other.tattooArt);
-  return (p || t) ? { pants: p || '', tattoo: t || '', mirror: !!mirror } : null;
+  const q = sanitizePattern(other.pantsPattern);   /* v2.3.1941 */
+  return (p || t || q)
+    ? { pants: p || '', tattoo: t || '', pantsPattern: q, mirror: !!mirror }
+    : null;
 }
 
 function _placeGear(display, equip, pose, dir, frameIdx, legsFrom) {
@@ -1255,15 +1271,24 @@ function _placeGear(display, equip, pose, dir, frameIdx, legsFrom) {
     let tex = (sb && item && item !== 'none' && !hiddenUnderChest) ? getGearFrame(_slotName, item, _gPose, dir, _gFrame) : null;
     /* v2.3.1938: a drawn shirt swaps in a second bake of the same sheet with
        the print on it.  Falls through to the plain frame while that bakes, so
-       putting a drawing on never blinks the shirt off. */
-    if (tex && _slotName === 'shirt' && display._shirtArt) {
+       putting a drawing on never blinks the shirt off.
+       v2.3.1941: a PATTERNED shirt does the same, and the bake now carries the
+       shirt COLOUR as well -- so when this swap happens the sprite must be
+       drawn untinted or the colour would be applied twice (and the pattern and
+       print would be multiplied by it).  `_shirtBaked` carries that decision
+       the few lines down to where the tint is set. */
+    let _shirtBaked = false;
+    if (tex && _slotName === 'shirt' && display._shirtLook) {
       /* Mirroring never changes WHICH side shows: every mirror pair stays in
          the same hemisphere (east/west and southwest/southeast are both front,
          northeast/northwest both back), so the base dir decides the side and
          the mirror flag only pre-flips the print. */
-      const printed = getShirtArtFrame(item, _gPose, dir, _gFrame,
-        display._shirtArt[sideForDir(dir)], display._shirtArtMirror);
-      if (printed) tex = printed;
+      const _L = display._shirtLook;
+      const dressed = getShirtLookFrame(item, _gPose, dir, _gFrame, {
+        art: _L.art ? _L.art[sideForDir(dir)] : null,
+        pattern: _L.pattern, tint: _L.tint, mirror: display._shirtArtMirror,
+      });
+      if (dressed) { tex = dressed; _shirtBaked = true; }
     }
     if (tex) {
       if (spr.texture !== tex) spr.texture = tex;
@@ -1300,7 +1325,8 @@ function _placeGear(display, equip, pose, dir, frameIdx, legsFrom) {
       const _gnorm = 256 / ((tex.frame && tex.frame.width) || 256);
       spr.scale.x = sb.scale.x * _gnorm / DISPLAY_DS; spr.scale.y = sb.scale.y * _gnorm / DISPLAY_DS;
       if (_GEAR_SLOTS[s][0] === 'shirt') {
-        const t = equip && equip.shirtTint;
+        /* v2.3.1941: a dressed bake already HAS the colour in its pixels. */
+        const t = _shirtBaked ? null : (equip && equip.shirtTint);
         spr.tint = t ? ((t[0] << 16) | (t[1] << 8) | t[2]) : 0xffffff;
       } else {
         /* v2.3.1757: the material recolor rides the SAME per-sprite tint the
@@ -6683,13 +6709,15 @@ export class EntityRenderer {
           /* v2.3.1938: THEIR drawings, sanitised -- a peer-supplied string
              reaches a canvas here, so anything not exactly a 256-char hex
              drawing becomes null rather than being handed to the stamper. */
-          display._shirtArt = _shirtArtPair(sanitizeShirtArt(other.shirtArtFront),
-            sanitizeShirtArt(other.shirtArtBack));
+          const _oTint = shirtFill(other.shirt || 'tshirt', other.shirtColor);
+          display._shirtLook = _shirtLook(sanitizeShirtArt(other.shirtArtFront),
+            sanitizeShirtArt(other.shirtArtBack),
+            sanitizePattern(other.shirtPattern), _oTint);   /* v2.3.1941 */
           display._shirtArtMirror = mirror;
           _placeGear(display, {
             shirt: _oShirtEquip, legs: _oEq.legs, chest: _oEq.chest,
             shoulders: _oEq.shoulders,
-            shirtTint: shirtFill(other.shirt || 'tshirt', other.shirtColor),
+            shirtTint: _oTint,
           }, pose, dir, frameIdx);
           /* v2.3.613: no helmet -- head/face always shows.  Mask the body under
              the remote's worn chest/legs plate (dilated) so it can't poke past a
@@ -7803,13 +7831,15 @@ export class EntityRenderer {
         spriteBody.scale.x = (mirror ? -1 : 1) * bodyScale * DISPLAY_DS;
         spriteBody.scale.y = bodyScale * DISPLAY_DS;
         spriteBody.tint = 0xffffff;
-        display._shirtArt = _shirtArtPair(getShirtArt('front'), getShirtArt('back'));   /* v2.3.1938 */
+        const _myTint = shirtFill(_shId, _shCol);
+        display._shirtLook = _shirtLook(getShirtArt('front'), getShirtArt('back'),
+          getPattern('shirt'), _myTint);   /* v2.3.1938; v2.3.1941 */
         display._shirtArtMirror = mirror;
         _placeGear(display, {
           shirt: getEquip('shirt'), legs: getEquip('legs'),
           chest: getEquip('chest'), shoulders: getEquip('shoulders'),
           /* white-base sheet x picked colour; null colour -> white tee */
-          shirtTint: shirtFill(_shId, _shCol),
+          shirtTint: _myTint,
         }, pose, dir, frameIdx);
         /* v2.3.613: no helmet -- the head/face always shows.  The body is one
            sprite; erase the body under the worn chest/legs plate (dilated to
@@ -7920,12 +7950,14 @@ export class EntityRenderer {
           /* The greaves stride with the legs they are worn over — otherwise a
              bro in leg armour blocks with static plates over moving shins. */
           if (_sbActive) {
-            display._shirtArt = _shirtArtPair(getShirtArt('front'), getShirtArt('back'));   /* v2.3.1938 */
+            const _sbTint = shirtFill(_shId, _shCol);
+            display._shirtLook = _shirtLook(getShirtArt('front'), getShirtArt('back'),
+              getPattern('shirt'), _sbTint);   /* v2.3.1938; v2.3.1941 */
             display._shirtArtMirror = mirror;
             _placeGear(display, {
               shirt: getEquip('shirt'), legs: getEquip('legs'),
               chest: getEquip('chest'), shoulders: getEquip('shoulders'),
-              shirtTint: shirtFill(_shId, _shCol),
+              shirtTint: _sbTint,
             }, pose, dir, frameIdx, { pose: 'jog', frameIdx: _jFrame });
           }
         }

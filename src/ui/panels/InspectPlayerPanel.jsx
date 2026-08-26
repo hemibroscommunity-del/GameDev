@@ -126,7 +126,10 @@ export function InspectPlayerPanel(props) {
              than left to default to this device's own) for exactly the reason
              the eye colour is -- this card draws a stranger. */
           pantsArt: o.pantsArt || null,
-          tattooArt: o.tattooArt || null
+          tattooArt: o.tattooArt || null,
+          /* v2.3.1941: and THEIR clothing patterns. */
+          shirtPattern: o.shirtPattern || '',
+          pantsPattern: o.pantsPattern || ''
         }, true).then(function (url) {
           if (alive && url) setGenPortrait(url);
         }).catch(function () {});

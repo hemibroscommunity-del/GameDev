@@ -29,7 +29,8 @@ import { getEyeColor, eyeColorTarget } from './traits/eyeColorCatalog.js';
    sprite, stamped in gearSheets) these live INSIDE the body sheet, because
    that is where the pants pixels and the bare skin actually are. */
 import { getArt, artHasInk, artHash, onArtChange } from './traits/playerArt.js';
-import { stampRegion, PANTS_BOX, TATTOO_BOX } from './playerDecal.js';
+import { stampRegion, stampPattern, PANTS_BOX, TATTOO_BOX } from './playerDecal.js';
+import { getPattern, parsePattern, patternKey, onPatternChange } from './traits/patternCatalog.js';   /* v2.3.1941 */
 
 /* ── Catalogs ── `target` = the LIT color for that choice; null = native. */
 /* v2.3.1513: seven more tones at the light end (owner: "more white tan and
@@ -556,7 +557,9 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
      picked a light tone.  Same reason _torsoBands runs up here. */
   const wantPantsArt = !!(art && artHasInk(art.pants));
   const wantTattoo = !!(art && artHasInk(art.tattoo));
-  const pantsPx = wantPantsArt ? new Uint8Array(w * h) : null;
+  /* v2.3.1941: a pattern wants the same trouser mask a print does. */
+  const pantsPat = art ? parsePattern(art.pantsPattern) : null;
+  const pantsPx = (wantPantsArt || pantsPat) ? new Uint8Array(w * h) : null;
   /* A tattoo goes on the CHEST, so it is bare skin intersected with the torso
      band — the same tracker the baked shirt used, reused rather than re-guessed.
      (It also means the tattoo hides under a shirt or a breastplate, which is
@@ -593,7 +596,10 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
   }
   /* v2.3.1940: the drawings, after every retint (so the retint cannot repaint
      them) and before the eyes (which own their own pixels either way). */
-  if (pantsPx) stampRegion(d, w, h, FRAME_W, pantsPx, art.pants, !!art.mirror, PANTS_BOX);
+  /* Pattern first, print over it: a print is ON the fabric, and the fabric is
+     what the pattern is. */
+  if (pantsPat) stampPattern(d, w, h, FRAME_W, pantsPx, pantsPat, !!art.mirror);
+  if (wantPantsArt) stampRegion(d, w, h, FRAME_W, pantsPx, art.pants, !!art.mirror, PANTS_BOX);
   if (tattooPx) stampRegion(d, w, h, FRAME_W, tattooPx, art.tattoo, !!art.mirror, TATTOO_BOX);
   /* v2.3.1928: the iris last, so it overwrites rather than being classified.
      Its pixels are near-black and would otherwise fall through every branch
@@ -792,17 +798,20 @@ export function bodyArtSeg(art) {
   if (!art) return '';
   const p = artHasInk(art.pants) ? artHash(art.pants) : '';
   const t = artHasInk(art.tattoo) ? artHash(art.tattoo) : '';
-  if (!p && !t) return '';
+  /* v2.3.1941: the trouser pattern joins the same segment.  It is already a
+     short string ("stripe-v:3"), so it goes in whole rather than hashed. */
+  const q = parsePattern(art.pantsPattern) ? patternKey(art.pantsPattern) : '';
+  if (!p && !t && !q) return '';
   /* '#' is the marker: no catalog id contains one, so _dropArtSheets can find
      every drawn bake by substring without matching e.g. '/default/'. */
-  return '/#art' + p + '.' + t + (art.mirror ? 'm' : 'n');
+  return '/#art' + p + '.' + t + '.' + q + (art.mirror ? 'm' : 'n');
 }
 /** The local player's own drawings, in the shape the bake wants.  `mirror` is
  *  per-facing, so callers that know the facing pass it in. */
 export function localBodyArt(mirror) {
-  const p = getArt('pants'), t = getArt('tattoo');
-  if (!artHasInk(p) && !artHasInk(t)) return null;
-  return { pants: p, tattoo: t, mirror: !!mirror };
+  const p = getArt('pants'), t = getArt('tattoo'), q = getPattern('pants');
+  if (!artHasInk(p) && !artHasInk(t) && !parsePattern(q)) return null;
+  return { pants: p, tattoo: t, pantsPattern: q, mirror: !!mirror };
 }
 /** The eye target for a sheet, or null when that sheet has no eyes in it.
  *  `eyeId` is always passed in -- see getBodyFrame. */
@@ -1128,5 +1137,6 @@ function _onArtChanged() {
   _artPrewarmT = setTimeout(() => { _artPrewarmT = null; _dropArtSheets(); _prewarmCurrent(); }, 500);
 }
 onArtChange(_onArtChanged);
+onPatternChange(_onArtChanged);   /* v2.3.1941: a trouser pattern is part of the same bake */
 
 _prewarmCurrent();

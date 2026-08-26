@@ -67,6 +67,10 @@ const JOIN_COSMETIC_KEYS = [
   /* v2.3.1940: the drawn pants print (`pa`) and the chest tattoo (`ta`).  Same
      shape, same cap, same reasoning. */
   'sa', 'sb', 'pa', 'ta',
+  /* v2.3.1941: clothing patterns -- a tile id and a palette index, e.g.
+     "stripe-v:3".  Short, so unlike the drawings above they sit inside the flat
+     64-char cap with room to spare and need no special case. */
+  'sp', 'pp',
   'eqc', 'eql', 'eqs', 'eqst', 'pt', 'sh', 'bs', 'wpnMat', /* v2.3.1760 */
 ];
 /* v2.3.1940: THE DRAWING KEYS, IN ONE PLACE.  These are the cosmetics whose
