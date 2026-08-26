@@ -218,6 +218,8 @@ export function NameModal(props) {
     shirt: { target: 'shirt', label: 'Pattern or draw on this shirt' },
     pants: { target: 'pants', label: 'Pattern or draw on these pants' },
     skin: { target: 'tattoo', label: 'Draw a tattoo' },
+    /* v2.3.1944: shoes are pattern-only — no drawing on an eight-pixel boot. */
+    shoes: { target: 'shoes', label: 'Pattern these shoes' },
   };
   var _TAB_ICON = function (n) { return '/ui/welcome/cc/cc-tab-' + n + '.png?v=' + BUILD_INFO.version; };
   var _TABS = [

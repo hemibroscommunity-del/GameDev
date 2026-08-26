@@ -129,7 +129,8 @@ export function InspectPlayerPanel(props) {
           tattooArt: o.tattooArt || null,
           /* v2.3.1941: and THEIR clothing patterns. */
           shirtPattern: o.shirtPattern || '',
-          pantsPattern: o.pantsPattern || ''
+          pantsPattern: o.pantsPattern || '',
+          shoesPattern: o.shoesPattern || ''
         }, true).then(function (url) {
           if (alive && url) setGenPortrait(url);
         }).catch(function () {});

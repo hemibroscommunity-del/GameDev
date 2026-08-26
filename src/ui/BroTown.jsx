@@ -5588,6 +5588,7 @@ export var BroTown = function BroTown(_ref0) {
                 /* v2.3.1941: clothing patterns. */
                 sp: getPattern('shirt') || undefined,
                 pp: getPattern('pants') || undefined,
+                fp: getPattern('shoes') || undefined,   /* v2.3.1944 */
                 eqc: getEquip('chest'),
                 eql: getEquip('legs'),
                 eqs: getEquip('shoulders'),

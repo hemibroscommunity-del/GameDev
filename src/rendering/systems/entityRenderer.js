@@ -1234,7 +1234,7 @@ function _shirtArtPair(front, back) {
    with the cheap sprite tint, exactly as it was before any of this existed. */
 function _shirtLook(front, back, patternStr, tint) {
   const art = _shirtArtPair(front, back);
-  const pattern = parsePattern(patternStr);
+  const pattern = parsePattern(patternStr, 'shirt');
   return (art || pattern) ? { art, pattern, tint: tint || null } : null;
 }
 
@@ -1244,9 +1244,10 @@ function _shirtLook(front, back, patternStr, tint) {
    `mirror` rides along because it is part of the bake, not of the drawing. */
 function _remoteBodyArt(other, mirror) {
   const p = sanitizeShirtArt(other.pantsArt), t = sanitizeShirtArt(other.tattooArt);
-  const q = sanitizePattern(other.pantsPattern);   /* v2.3.1941 */
-  return (p || t || q)
-    ? { pants: p || '', tattoo: t || '', pantsPattern: q, mirror: !!mirror }
+  const q = sanitizePattern(other.pantsPattern, 'pants');   /* v2.3.1941 */
+  const f = sanitizePattern(other.shoesPattern, 'shoes');   /* v2.3.1944 */
+  return (p || t || q || f)
+    ? { pants: p || '', tattoo: t || '', pantsPattern: q, shoesPattern: f, mirror: !!mirror }
     : null;
 }
 
@@ -6725,7 +6726,7 @@ export class EntityRenderer {
           const _oTint = shirtFill(other.shirt || 'tshirt', other.shirtColor);
           display._shirtLook = _shirtLook(sanitizeShirtArt(other.shirtArtFront),
             sanitizeShirtArt(other.shirtArtBack),
-            sanitizePattern(other.shirtPattern), _oTint);   /* v2.3.1941 */
+            sanitizePattern(other.shirtPattern, 'shirt'), _oTint);   /* v2.3.1941 */
           display._shirtArtMirror = mirror;
           _placeGear(display, {
             shirt: _oShirtEquip, legs: _oEq.legs, chest: _oEq.chest,

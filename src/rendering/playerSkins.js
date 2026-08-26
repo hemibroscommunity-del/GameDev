@@ -29,7 +29,7 @@ import { getEyeColor, eyeColorTarget } from './traits/eyeColorCatalog.js';
    sprite, stamped in gearSheets) these live INSIDE the body sheet, because
    that is where the pants pixels and the bare skin actually are. */
 import { getArt, artHasInk, artHash, onArtChange } from './traits/playerArt.js';
-import { stampRegion, stampPattern, litFabricMask, PANTS_LIT_MIN, PANTS_BOX, TATTOO_BOX } from './playerDecal.js';
+import { stampRegion, stampPattern, litFabricMask, regionBand, PANTS_LIT_MIN, SHOES_LIT_MIN, PANTS_BOX, TATTOO_BOX } from './playerDecal.js';
 import { getPattern, parsePattern, patternKey, onPatternChange } from './traits/patternCatalog.js';   /* v2.3.1941 */
 
 /* ── Catalogs ── `target` = the LIT color for that choice; null = native. */
@@ -558,12 +558,17 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
   const wantPantsArt = !!(art && artHasInk(art.pants));
   const wantTattoo = !!(art && artHasInk(art.tattoo));
   /* v2.3.1941: a pattern wants the same trouser mask a print does. */
-  const pantsPat = art ? parsePattern(art.pantsPattern) : null;
+  const pantsPat = art ? parsePattern(art.pantsPattern, 'pants') : null;
   const pantsPx = (wantPantsArt || pantsPat) ? new Uint8Array(w * h) : null;
+  /* v2.3.1944: shoes take a pattern too (owner: "Do the shoes too but in
+     patterns that would look good at a small size").  Only a pattern -- a boot
+     is about eight screen pixels, so there is nothing to draw ON. */
+  const shoesPat = art ? parsePattern(art.shoesPattern, 'shoes') : null;
+  const shoesPx = shoesPat ? new Uint8Array(w * h) : null;
   /* A copy of the source pixels, kept only when something will be painted on
      the trousers: the retint below overwrites `d` in place, and v2.3.1942's
      lit-fabric test has to be asked of the ORIGINAL art. */
-  const base = pantsPx ? new Uint8ClampedArray(d) : null;
+  const base = (pantsPx || shoesPx) ? new Uint8ClampedArray(d) : null;
   /* A tattoo goes on the CHEST, so it is bare skin intersected with the torso
      band — the same tracker the baked shirt used, reused rather than re-guessed.
      (It also means the tattoo hides under a shirt or a breastplate, which is
@@ -594,7 +599,8 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
     } else if (a > 180) {
       const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
       if ((mx - mn) < 28 && mx >= 45 && mx < 140) {
-        /* boots (flat gray) */ if (shoesT) _retint(d, i, shoesT, SHOES_REF);
+        /* boots (flat gray) */ if (shoesPx) shoesPx[i >> 2] = 1;
+        if (shoesT) _retint(d, i, shoesT, SHOES_REF);
       }
     }
   }
@@ -609,11 +615,22 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
      colour and a dark one would fail a darkness test everywhere.
      One mask for both the pattern and the print: the print is measured from it
      too, so the drawing sits inside the shading rather than across it. */
-  const pantsPaint = pantsPx ? litFabricMask(base, pantsPx, w * h, PANTS_LIT_MIN) : null;
+  /* v2.3.1944: and BANDED first -- both colour tests accept a scatter of specks
+     far from the garment (the boot test as high as row 29, the trousers' on
+     southwest and east), and a tile paints every masked pixel.  Without this
+     a patterned trouser leg puts a coloured dot on the character's head, which
+     v2.3.1941 shipped.  See regionBand. */
+  const pantsPaint = pantsPx
+    ? litFabricMask(base, regionBand(pantsPx, w, h, FRAME_W), w * h, PANTS_LIT_MIN) : null;
   /* Pattern first, print over it: a print is ON the fabric, and the fabric is
      what the pattern is. */
   if (pantsPat) stampPattern(d, w, h, FRAME_W, pantsPaint, pantsPat, !!art.mirror);
   if (wantPantsArt) stampRegion(d, w, h, FRAME_W, pantsPaint, art.pants, !!art.mirror, PANTS_BOX);
+  if (shoesPat) {
+    stampPattern(d, w, h, FRAME_W,
+      litFabricMask(base, regionBand(shoesPx, w, h, FRAME_W), w * h, SHOES_LIT_MIN),
+      shoesPat, !!art.mirror);
+  }
   if (tattooPx) stampRegion(d, w, h, FRAME_W, tattooPx, art.tattoo, !!art.mirror, TATTOO_BOX);
   /* v2.3.1928: the iris last, so it overwrites rather than being classified.
      Its pixels are near-black and would otherwise fall through every branch
@@ -814,18 +831,20 @@ export function bodyArtSeg(art) {
   const t = artHasInk(art.tattoo) ? artHash(art.tattoo) : '';
   /* v2.3.1941: the trouser pattern joins the same segment.  It is already a
      short string ("stripe-v:3"), so it goes in whole rather than hashed. */
-  const q = parsePattern(art.pantsPattern) ? patternKey(art.pantsPattern) : '';
-  if (!p && !t && !q) return '';
+  const q = parsePattern(art.pantsPattern, 'pants') ? patternKey(art.pantsPattern, 'pants') : '';
+  const f = parsePattern(art.shoesPattern, 'shoes') ? patternKey(art.shoesPattern, 'shoes') : '';   /* v2.3.1944 */
+  if (!p && !t && !q && !f) return '';
   /* '#' is the marker: no catalog id contains one, so _dropArtSheets can find
      every drawn bake by substring without matching e.g. '/default/'. */
-  return '/#art' + p + '.' + t + '.' + q + (art.mirror ? 'm' : 'n');
+  return '/#art' + p + '.' + t + '.' + q + '.' + f + (art.mirror ? 'm' : 'n');
 }
 /** The local player's own drawings, in the shape the bake wants.  `mirror` is
  *  per-facing, so callers that know the facing pass it in. */
 export function localBodyArt(mirror) {
-  const p = getArt('pants'), t = getArt('tattoo'), q = getPattern('pants');
-  if (!artHasInk(p) && !artHasInk(t) && !parsePattern(q)) return null;
-  return { pants: p, tattoo: t, pantsPattern: q, mirror: !!mirror };
+  const p = getArt('pants'), t = getArt('tattoo');
+  const q = getPattern('pants'), f = getPattern('shoes');   /* v2.3.1944 */
+  if (!artHasInk(p) && !artHasInk(t) && !parsePattern(q, 'pants') && !parsePattern(f, 'shoes')) return null;
+  return { pants: p, tattoo: t, pantsPattern: q, shoesPattern: f, mirror: !!mirror };
 }
 /** The eye target for a sheet, or null when that sheet has no eyes in it.
  *  `eyeId` is always passed in -- see getBodyFrame. */

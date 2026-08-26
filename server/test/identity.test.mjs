@@ -223,7 +223,8 @@ check('death clears the consent pair', !room._pvpConsent.has(room._pvpPairKey('b
       ec: 'violet' /* v2.3.1930 */,
       sa: 'b'.repeat(256) /* v2.3.1939: a drawn shirt, 256 chars */,
       pa: 'c'.repeat(256), ta: 'd'.repeat(256) /* v2.3.1940: pants print + tattoo */,
-      sp: 'check:7', pp: 'dots:2' /* v2.3.1941: clothing patterns */ },
+      sp: 'check:7', pp: 'dots:2' /* v2.3.1941: clothing patterns */,
+      fp: 'stripe-h:4' /* v2.3.1944: shoes */ },
   }));
   const charF = state._store.get('char:bp_finn');
   check('char record stamped in its own storage key on first join',
@@ -265,6 +266,8 @@ check('death clears the consent pair', !room._pvpConsent.has(room._pvpPairKey('b
   check('...and both clothing patterns (v2.3.1941)',
     !!(charF && charF.look.sp === 'check:7' && charF.look.pp === 'dots:2'),
     charF && charF.look);
+  check('...and the shoe pattern (v2.3.1944)',
+    !!(charF && charF.look.fp === 'stripe-h:4'), charF && charF.look);
 
   /* THE POINT OF THE WHOLE THING: rejoin claiming a different face. */
   const wsF2 = fakeWs('finn-2');
