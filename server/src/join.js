@@ -74,6 +74,10 @@ const JOIN_COSMETIC_KEYS = [
      "stripe-v:3".  Short, so unlike the drawings above they sit inside the flat
      64-char cap with room to spare and need no special case. */
   'sp', 'pp', 'fp',
+  /* v2.3.1953: height and frame -- short catalog ids, well inside the flat cap.
+     See the note in index.js's TRACK_COSMETIC_KEYS for why a forged value is
+     inert. */
+  'hg', 'fr',
   'eqc', 'eql', 'eqs', 'eqst', 'pt', 'sh', 'bs', 'wpnMat', /* v2.3.1760 */
 ];
 /* v2.3.1940: THE DRAWING KEYS, IN ONE PLACE.  These are the cosmetics whose
@@ -87,6 +91,39 @@ const JOIN_COSMETIC_KEYS = [
 export const DRAWING_KEYS = new Set(['sa', 'sb', 'pa', 'ta', 'tf', 'tm']);
 /** Cap for one cosmetic key: drawings and avatars get the large bound. */
 export function cosmeticCap(k) { return (k === 'avatar' || DRAWING_KEYS.has(k)) ? 512 : 64; }
+/* ═══ v2.3.1970: THE TOP-LEVEL `name` WAS THE ONE THAT GOT AWAY ═══
+ *
+ * A join carries the display name TWICE: `msg.data.name`, which goes
+ * through _sanitizeJoinData and is capped at cosmeticCap('name') = 64,
+ * and the top-level `msg.name`, which went straight into
+ * `session.name = msg.name || 'Anon'` with no type check, no cap and no
+ * control-char strip.  That is the copy the room actually publishes:
+ *   - getAllPlayerData() (index.js) builds every state_sync entry as
+ *     `{...playerState, name: s.name, ...s.data}`, so an attacker who
+ *     simply OMITS data.name leaves the raw one standing;
+ *   - _reportToLeaderboard PREFERS it (`session.name || session.data?.name`),
+ *     so it is the name on the global hiscores board unconditionally;
+ *   - the death-drop pile's ownerName and the party/friends name
+ *     fallbacks read it too.
+ * The client renders a peer's name into a PIXI Text nameplate with no
+ * wrap and no clamp (entityRenderer `display._nameText.text = nextName`),
+ * so an unbounded name is not cosmetic: it is a texture wider than any
+ * iOS GPU will allocate, painted over that player's head on EVERY other
+ * screen in the room, and it persists — unlike a chat bubble it does not
+ * age out after 5 s.  The creator's own input has maxLength 20, so
+ * nothing honest is anywhere near this bound; the gap was purely that
+ * the wire field nobody re-read was trusted (TRAPS #13: audit by what a
+ * handler WRITES, not by which era it came from).
+ *
+ * Same shape as every other text lane in this server — clamp the RAW
+ * length first so padding cannot smuggle a long line past the trim,
+ * strip control chars (a newline in a name breaks the leaderboard row
+ * and the nameplate alike), and fall back rather than admit empty. */
+export function sanitizeDisplayName(v) {
+  if (typeof v !== 'string') return 'Anon';
+  const s = v.slice(0, cosmeticCap('name')).replace(/[\x00-\x1f\x7f]/g, ' ').trim();
+  return s || 'Anon';
+}
 /* rpg* bootstrap seeds: admitted by prefix, then re-read and clamped by
  * the explicit ingest in _handleJoin (stored-wins on every reconnect).
  * Anchored + capitalised so a crafted 'rpg' or 'rpgo' can't sneak in. */
@@ -342,7 +379,9 @@ export const joinMethods = {
       }
     }
     session.id = msg.id;
-    session.name = msg.name || 'Anon';
+    /* v2.3.1970: see sanitizeDisplayName above -- this is the copy the
+       state_sync nameplate and the hiscores row are built from. */
+    session.name = sanitizeDisplayName(msg.name);
     /* v2.3.1627: sanitize ONCE, here, and use the clean copy for both
        consumers.  session.data must be the filtered object too, not
        just the playerState spread below: getAllPlayerData() (index.js)
@@ -385,7 +424,19 @@ export const joinMethods = {
         for (const k of JOIN_COSMETIC_KEYS) {
           if (session.char.look[k] !== undefined) cleanJoinData[k] = session.char.look[k];
         }
-        if (session.char.name) cleanJoinData.name = session.char.name;
+        if (session.char.name) {
+          cleanJoinData.name = session.char.name;
+          /* v2.3.1970: and the SESSION name follows the record too.  The
+             stored name already won for the nameplate (getAllPlayerData
+             spreads `...s.data` last), but session.name is a separate
+             copy and _reportToLeaderboard prefers it -- so a hand-edited
+             join could stand on the board under one name while its
+             nameplate showed the permanent one.  "Names are permanent"
+             (v2.3.1814, owner directive) has to mean everywhere the name
+             is published, not just the one reader that happened to be
+             ordered correctly. */
+          session.name = sanitizeDisplayName(session.char.name);
+        }
       }
     }
     session.data = cleanJoinData;

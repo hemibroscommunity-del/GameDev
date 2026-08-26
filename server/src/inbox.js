@@ -25,6 +25,28 @@
  * validation and the commit that depends on it. */
 
 export const inboxMethods = {
+  /* ═══ v2.3.1971: HOW MANY OF `k` DOES THIS PLAYER ACTUALLY HOLD ═══
+   *
+   * Every ownership gate in the economy was spelled `(inv[k] || 0) < n`,
+   * which is wrong twice for a client-supplied key:
+   *   - `constructor` (and the other ten Object.prototype members) is
+   *     INHERITED and truthy, so `||` never fires and `Object < 7` is a
+   *     NaN comparison -- false -- so the gate passes on goods nobody
+   *     owns and the debit below writes NaN into a persisted blob.
+   *   - a count that is already junk (a string or NaN left by an older
+   *     build, or by a hand-edited blob) sails through the same way.
+   * Own property, coerced to a number, or zero.  Read it INSTEAD of
+   * indexing `ps.inventory` anywhere a client chose the key; the
+   * sanitizer (trade.js `_sanitizeTradeOffer`) is the first gate and
+   * this is the second, because the first is one edit away from being
+   * widened by someone who does not know why it is there. */
+  _invCount(ps, k) {
+    const inv = ps && ps.inventory;
+    if (!inv || typeof k !== 'string') return 0;
+    if (!Object.prototype.hasOwnProperty.call(inv, k)) return 0;
+    return Number(inv[k]) || 0;
+  },
+
   // Idempotency journal.  Settlement callers pass a deterministic opId
   // (e.g. 'refund:<orderId>'); a retry after a crash or double-fire
   // finds the stamp and reports already-applied instead of paying twice.
@@ -88,8 +110,15 @@ export const inboxMethods = {
     if (entry.kind === 'item') {
       const k = typeof p.invKey === 'string' ? p.invKey : '';
       if (!k) return true;
+      /* v2.3.1971: never credit onto an Object.prototype name.  Producers
+         all pass server-chosen keys today, but this is the one funnel every
+         payout in the game goes through -- if a future producer ever forwards
+         a client key, the corruption lands in a stranger's saved blob, not in
+         the caller.  `_invCount` also heals an already-junk count to 0 rather
+         than concatenating onto it. */
+      if (Object.prototype.hasOwnProperty.call(Object.prototype, k)) return true;
       if (!ps.inventory) ps.inventory = {};
-      ps.inventory[k] = (ps.inventory[k] || 0) + Math.max(1, Math.floor(p.count || 1));
+      ps.inventory[k] = this._invCount(ps, k) + Math.max(1, Math.floor(p.count || 1));
       return true;
     }
     if (entry.kind === 'weapon') {
@@ -210,19 +239,21 @@ export const inboxMethods = {
     if (!k || c <= 0) return { ok: false, reason: 'bad_item' };
     if (await this._opSeen(opId)) return { ok: true, dup: true };
     const ps = this.playerState[playerId];
+    // v2.3.1971: own-property counts on both branches (see _invCount) --
+    // `(inv.constructor || 0) < c` was false, so this debited NaN.
     if (ps) {
-      if (!ps.inventory || (ps.inventory[k] || 0) < c) return { ok: false, reason: 'insufficient_items' };
+      if (this._invCount(ps, k) < c) return { ok: false, reason: 'insufficient_items' };
       await this._opStamp(opId);
-      ps.inventory[k] -= c;
+      ps.inventory[k] = this._invCount(ps, k) - c;
       if (ps.inventory[k] <= 0) delete ps.inventory[k];
       this._saveRpg(playerId, ps);
       this._queuePlayerStateFlush(playerId);
       return { ok: true };
     }
     const stored = await this._loadRpg(playerId);
-    if (!stored || !stored.inventory || (stored.inventory[k] || 0) < c) return { ok: false, reason: 'insufficient_items' };
+    if (this._invCount(stored, k) < c) return { ok: false, reason: 'insufficient_items' };
     await this._opStamp(opId);
-    stored.inventory[k] -= c;
+    stored.inventory[k] = this._invCount(stored, k) - c;
     if (stored.inventory[k] <= 0) delete stored.inventory[k];
     await this.state.storage.put('rpg:' + playerId, stored);
     return { ok: true };

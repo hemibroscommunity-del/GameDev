@@ -223,11 +223,18 @@ export const trade2Methods = {
       { id: s.a, ps: psA, gives: s.offers[s.a] || {}, getsFrom: s.b },
       { id: s.b, ps: psB, gives: s.offers[s.b] || {}, getsFrom: s.a },
     ];
+    /* v2.3.1971: own-property counts (inbox.js `_invCount`).  This gate
+       was `(inv[k] || 0) < v`, which is a NaN comparison -- and therefore
+       false, and therefore a PASS -- for every Object.prototype member.
+       Staging {constructor: 7} debited NaN out of the giver's saved blob
+       and credited the taker a string where a count belongs.  The
+       sanitizer now drops the key before it gets here; this is the second
+       gate, deliberately. */
     for (const side of sides) {
       if ((side.gives._gold || 0) > (side.ps.coins || 0)) return this._t2Cancel(s, 'insufficient:' + side.id);
       for (const [k, v] of Object.entries(side.gives)) {
         if (k === '_gold') continue;
-        if (((side.ps.inventory && side.ps.inventory[k]) || 0) < v) return this._t2Cancel(s, 'insufficient:' + side.id);
+        if (this._invCount(side.ps, k) < v) return this._t2Cancel(s, 'insufficient:' + side.id);
       }
     }
     // Debit BOTH synchronously before any credit -- atomicity.
@@ -235,7 +242,7 @@ export const trade2Methods = {
       if (side.gives._gold) side.ps.coins -= side.gives._gold;
       for (const [k, v] of Object.entries(side.gives)) {
         if (k === '_gold') continue;
-        side.ps.inventory[k] -= v;
+        side.ps.inventory[k] = this._invCount(side.ps, k) - v;
         if (side.ps.inventory[k] <= 0) delete side.ps.inventory[k];
       }
     }

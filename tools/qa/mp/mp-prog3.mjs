@@ -48,41 +48,72 @@ export async function run({ browser, wsPort, webPort, rec }) {
     adopted && adopted.maxHp === expectHp, { ...adopted, expectHp });
   rec.ok('the allocation pool starts empty', adopted && adopted.pool === 0 && adopted.sword === 1, adopted);
 
-  /* ── v2.3.1697: the Overview aggregate grid (Character opens here) ──
+  /* ── v2.3.1697: the aggregate stat readout (Character opens here) ──
      Armour became a SEVENTH cell in a grid that had six, and the fix for
      "seven into a 3-wide grid" was a fourth COLUMN rather than a third row
      — this panel's body is measured in single pixels and its scroll-edge
      fade is deliberately off, so anything below the fold is invisible with
      no cue.  Narrower columns move the risk from vertical to HORIZONTAL,
-     so both are measured here: the grid must not overflow its column, and
-     no cell's own text may overflow the cell. */
+     so both are measured here: the block must not overflow its column, and
+     no cell's own text may overflow the cell.
+
+     ═══ v2.3.1972: THIS WAS FAILING ON THE SPELLING AND ON THE SHAPE ═══
+     Both halves went red against a perfectly working screen, and both were
+     this file being stale rather than the panel being broken:
+       - the cell is labelled "Armor", not "Armour", and always has been
+         (HeroExpanded's defenseCells);
+       - it is a <span> inside a two-span row, so a `querySelectorAll('div')`
+         search for a childless div could never have matched it under EITHER
+         spelling;
+       - and the flat 4x2 grid became two COLUMNS at v2.3.1890 (owner:
+         "every stat is being treated as its own card... I'd switch to a
+         character-sheet/list format"), Offense 4 + Defense 3, so
+         `grid.children.length === 7` was asking about a container that no
+         longer exists.
+     Rewritten to find the ROW by its label span and count the seven rows
+     inside the two-column block that holds them — which keeps the two things
+     the assertions were actually for (the number is real, nothing is
+     clipped) while letting the layout be whatever the owner last drew. */
   await H.openDest(P, 'Character');
   await P.page.waitForTimeout(700);
   const armourCell = await P.page.evaluate(() => {
-    const label = [...document.querySelectorAll('div')]
-      .find((d) => d.children.length === 0 && d.textContent.trim() === 'Armour');
-    if (!label) return { err: 'no ARMOUR cell on the Overview grid' };
-    const cell = label.parentElement;
-    const grid = cell.parentElement;
-    const over = [...grid.children]
-      .flatMap((c) => [...c.children])
+    /* A stat row is a div of exactly two spans: label, then value. */
+    const rows = [...document.querySelectorAll('div')].filter((d) =>
+      d.children.length === 2 && d.children[0].tagName === 'SPAN' && d.children[1].tagName === 'SPAN');
+    const row = rows.find((d) => (d.children[0].textContent || '').trim() === 'Armor');
+    if (!row) return { err: 'no ARMOR row on the character sheet',
+      sawRows: rows.map((d) => (d.children[0].textContent || '').trim()).slice(0, 20) };
+    /* row -> the group's list wrapper -> the group column -> the two-column
+       block that holds Offense and Defense together. */
+    const block = row.parentElement.parentElement.parentElement;
+    const statRows = rows.filter((d) => block.contains(d));
+    const over = statRows
+      .flatMap((d) => [...d.children])
       .filter((t) => t.scrollWidth > t.clientWidth + 1)
       .map((t) => t.textContent.trim());
     return {
-      value: (cell.lastElementChild || {}).textContent,
-      cells: grid.children.length,
-      gridOverflowX: grid.scrollWidth - grid.clientWidth,
+      value: (row.children[1].textContent || '').trim(),
+      cells: statRows.length,
+      gridOverflowX: block.scrollWidth - block.clientWidth,
       clipped: over,
     };
   });
-  rec.ok('the Overview grid shows an ARMOUR cell with a real percentage',
+  rec.ok('the character sheet shows an ARMOR row with a real percentage',
     !armourCell.err && /^\d+(\.\d)?%$/.test(String(armourCell.value || '')), armourCell);
-  rec.ok('...and the seven-cell grid still fits its column, uncropped',
+  rec.ok('...and all seven stats still fit their column, uncropped',
     !armourCell.err && armourCell.cells === 7
     && armourCell.gridOverflowX <= 1 && armourCell.clipped.length === 0, armourCell);
 
-  /* ── the Build tab renders the allocation screen ── */
-  await P.page.locator('[aria-label="Build"], [aria-label^="Build —"]').first()
+  /* ── the Build tab renders the allocation screen ──
+     v2.3.1972: "Points" is in the selector because v2.3.1849 renamed the tab
+     (owner: "instead of build name it points") and the aria-label only falls
+     back to "Build — N points" when there IS a badge.  This scenario's
+     character has an EMPTY pool by design (asserted above), so the badge is
+     absent and the label reads "Points" — which is why every Build assertion
+     below it went red at once while the screen was fine.  All three spellings
+     are listed rather than swapped, so the file survives the rename going
+     either way. */
+  await P.page.locator('[aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]').first()
     .click({ timeout: 8000 }).catch(() => {});
   await P.page.waitForTimeout(500);
   const disabled = await P.page.locator('[role="button"][aria-disabled="true"][aria-label*=" of "]').count().catch(() => 0);

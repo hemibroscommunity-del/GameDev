@@ -280,6 +280,19 @@ are not identical (join carries `eqst`; track carries `mask`, `cape`,
 `pet`). Both paths truncate strings to the same bounds, so a value can be
 clipped but never dropped.
 
+**And two client-side halves, v2.3.1961.** A server that admits a key
+relays nothing if the sender never sends it and paints nothing if the
+receiver never maps it — `tf`/`tm` cleared both server gates in v2.3.1949
+and were still missing from the client's `track` payload until v2.3.1961,
+so the two newest canvases could reach a peer only on their join frame.
+So: (3) send it from the `track` payload in `src/ui/BroTown.jsx` beside
+`sa`/`ta`, and (4) if the wire name differs from the field the renderer
+reads off a peer — `sa` → `shirtArtFront`, `hr` → `hair` — add the pair to
+`PEER_COSMETIC_FIELDS` in `src/networking/peerCosmetics.js`. That one table
+feeds the `state_sync` snapshot, `player_join`, both self-heal placeholders
+and the `player_update` relay; before it existed the relay wrote the SHORT
+keys onto peers and every renamed cosmetic was frozen at its join value.
+
 ## Peer-relayed broadcast events (client ↔ client)
 
 Sent via `channelShim.send({...})`, hit the server's default branch, pass the
@@ -290,6 +303,35 @@ gameplay authority must instead get a real server case.
 | Event | Purpose | Dispatcher case |
 |---|---|---|
 | `chat` / `emote` | Chat lines and emotes | ~3091 / ~3122 |
+
+### `chat` is clamped and its sender is stamped (v2.3.1970)
+
+`chat` is still a relay — it keeps the `eventBuffer` fan-out, the relay
+token bucket and its deliberately un-zone-scoped reach — but the payload is
+no longer whatever the sender wrote. `_sanitizeChatRelay` (index.js) REBUILDS
+it from an allowlist before the rebroadcast:
+
+| Field | Rule |
+|---|---|
+| `id` | **stamped** from `session.id`; a claimed id is discarded |
+| `name` | **stamped** from server state (`playerState.name`, else the sanitized `session.name`) |
+| `text` | clamped to `CHAT_RELAY.TEXT_MAX` (200, matching `PARTY.CHAT_MAX`), control chars stripped, trimmed; an empty result relays **nothing** |
+| `color` | clamped to `CHAT_RELAY.COLOR_MAX` (32), control chars stripped |
+| anything else | dropped |
+
+Why: the only bound before this was the 16 KB frame gate, and the only thing
+that renders a chat line is a PIXI Text bubble whose background is sized from
+the measured text — so one message was a ~17,000px texture on every screen in
+the world. The identity half was already on the record in the v2.3.1150
+`server_announce` note ("any client could impersonate the server there").
+Clients clamp on receipt as well (`src/game/chat.js clampChatText`), because
+worker and client ship independently. Pinned by `anticheat.test.mjs` §9 and
+`tools/qa/mp/mp-socialgrief.mjs`.
+
+The top-level `join.name` is sanitized the same way (`sanitizeDisplayName`,
+join.js): it is the copy `getAllPlayerData()` publishes in every `state_sync`
+and the one `_reportToLeaderboard` prefers, and the client draws it into an
+unwrapped nameplate Text.
 | `player_swing` / `player_projectile` / `player_shield` | Remote attack/projectile/shield visuals | ~3134 / ~3142 / ~3155 |
 | `player_hurt_by_monster` / `monster_dmg_at` / `player_died_to_monster` | Peer combat-feedback visuals (drive the peer damage-number smoothing queue) | ~3646 / ~3666 / ~3683 |
 | `player_respawned` | Peer corpse-clear (deliberately not privileged — see Security model) | ~3721 |

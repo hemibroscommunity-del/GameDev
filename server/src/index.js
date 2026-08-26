@@ -251,6 +251,45 @@ export default {
 //  GAME ROOM — One per room, handles WebSocket multiplayer
 // ═══════════════════════════════════════
 
+/* ═══ v2.3.1970: THE ROOM-CHAT RELAY, THE LAST UNCLAMPED TEXT LANE ═══
+ *
+ * Every other line of player text in this server is clamped, control-
+ * stripped and stamped with the SERVER's idea of who sent it: party chat
+ * at PARTY.CHAT_MAX = 200 (party.js), a friend DM at FRIENDS.DM_MAX = 280
+ * (friends.js).  Room `chat` had none of it, for the oldest reason there
+ * is -- it has no case in the router switch, so it falls through to the
+ * default branch and relays byte-for-byte.  Its only bound was the
+ * v2.3.1618 frame gate, MAX_INBOUND_BYTES = 16 KB.
+ *
+ * That is a room-wide client crash, not untidiness.  The one thing that
+ * RENDERS a chat line is the overhead bubble (client
+ * effectsRenderer._renderChatBubble): a PIXI Text at fontSize 21 with
+ * wordWrapWidth 320, plus a background Graphics sized from the measured
+ * text.  16 KB is ~640 wrapped lines -- a text texture and a rounded rect
+ * on the order of 17,000 px tall, past the max texture size of every iOS
+ * GPU, which is the primary platform.  One socket, one message, and chat
+ * is the ONE relay v2.3.1575's interest management deliberately did not
+ * zone-scope, so it reaches every player in the world.
+ *
+ * Identity is the other half, and it was already on the record: the
+ * v2.3.1150 server_announce entry in PRIVILEGED_EVENTS says in so many
+ * words that "any client could impersonate the server" on this relay.
+ * The client reads payload.id / payload.name straight off the wire and
+ * only falls back to the server-stamped msg.from when they are ABSENT,
+ * so a forged pair wins.  party_chat already solved this by stamping
+ * `from` from the session (v2.3.1212); this does the same thing.
+ *
+ * Deliberately NOT a dedicated case in the switch: keeping it on the
+ * default path preserves everything about chat's DELIVERY (eventBuffer
+ * fan-out, the relay token bucket, room-wide reach) and changes only
+ * what is allowed to ride it.  And the payload is REBUILT from an
+ * allowlist rather than filtered in place, so the next field somebody
+ * adds to the send is dropped instead of trusted (rule 16 / TRAPS #13). */
+export const CHAT_RELAY = {
+  TEXT_MAX: 200,   // matches PARTY.CHAT_MAX -- one line looks the same in either lane
+  COLOR_MAX: 32,   // a CSS colour, nothing more
+};
+
 // Event types the worker emits itself (server -> client).  The default
 // branch of webSocketMessage rebroadcasts unknown msg.type values to
 // every client, so we MUST refuse to rebroadcast any of these from a
@@ -454,6 +493,15 @@ export const TRACK_COSMETIC_KEYS = new Set([
   /* v2.3.1940: + the drawn pants print and the chest tattoo.
      v2.3.1941: + the shirt and trouser patterns. */
   'sa', 'sb', 'pa', 'ta', 'tf', 'tm', 'sp', 'pp', 'fp',   /* v2.3.1949: +face/arm tattoos */
+  /* v2.3.1953: 'hg' is the height and 'fr' the frame -- two short catalog ids
+     ('tall', 'large'), relayed so peers see the build you picked.  Display-only
+     in the strictest sense available: they reach a RENDER SCALE on the
+     receiving client and nothing else, and that client maps them through its
+     own HEIGHT_CATALOG / FRAME_CATALOG, answering the default for anything it
+     does not recognise -- so a forged value can only ever select a build the
+     catalog already contains.  It cannot touch a hitbox, because no hitbox on
+     either side reads a display object. */
+  'hg', 'fr',
   'pt', 'sh', 'bs', 'mask', 'cape', 'pet',
   // Live equipment visuals (armour on/off for remote renderers).
   'eqc', 'eql', 'eqs',
@@ -3760,6 +3808,30 @@ export class GameRoom {
       (msg.eqc || '') + ',' + (msg.eql || '') + ',' + (msg.eqs || '');
   }
 
+  /* v2.3.1970: sanitise a room-chat relay in place (see CHAT_RELAY
+     above).  Returns false when there is nothing left worth relaying,
+     matching _handlePartyChat's "drop, don't answer" posture -- a
+     refusal is both a signal to a flooder and a second message to fan
+     out (the v2.3.1134 lane rule). */
+  _sanitizeChatRelay(session, msg) {
+    const p = msg && msg.payload;
+    if (!p || typeof p !== 'object') return false;
+    /* Clamp the RAW length FIRST so a padded string cannot smuggle a long
+       line past the trim -- the ordering _handlePartyChat documents. */
+    let text = typeof p.text === 'string' ? p.text : '';
+    text = text.slice(0, CHAT_RELAY.TEXT_MAX).replace(/[\x00-\x1f\x7f]/g, ' ').trim();
+    if (!text) return false;
+    const ps = this.playerState[session.id];
+    /* The server's own copy of who this is.  session.name is itself
+       sanitised at join (join.js sanitizeDisplayName, same version), and
+       ps.name is the stored permanent character name where there is one. */
+    const name = (ps && typeof ps.name === 'string' && ps.name) || session.name || 'Bro';
+    const color = typeof p.color === 'string'
+      ? p.color.slice(0, CHAT_RELAY.COLOR_MAX).replace(/[\x00-\x1f\x7f]/g, '') : '';
+    msg.payload = { id: session.id, name, text, color };
+    return true;
+  }
+
   async webSocketMessage(ws, message) {
     const session = this.sessions.get(ws);
     if (!session) return;
@@ -4437,6 +4509,11 @@ export class GameRoom {
           session.relayTokens -= 1;
         }
         if (session.id) {
+          /* v2.3.1970: room chat is a relay, but not a blank cheque --
+             clamp the line, strip control chars and stamp the sender
+             before it is fanned out.  False means there is nothing left
+             to say, so nothing is relayed (see CHAT_RELAY above). */
+          if (msg.type === 'chat' && !this._sanitizeChatRelay(session, msg)) break;
           // v2.3.1119: trades keep the relay handshake but the room now
           // settles them -- the intercept validates at commit, moves the
           // goods, and annotates the accept with settled:true (or drops

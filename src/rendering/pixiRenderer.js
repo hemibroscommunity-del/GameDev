@@ -710,6 +710,111 @@ export async function initPixiRenderer(canvas) {
         boxGap: +(pb.y - (bb.y + bb.height)).toFixed(1),
       };
     },
+    /* ═══ v2.3.1953: BUILD PROBE ═══
+       Height and frame are a non-uniform scale on the display container, and
+       every claim the feature makes is a fact about a transform that no
+       screenshot and no game-state read can settle:
+         - is the figure actually 13% taller and 17% wider, ON SCREEN;
+         - do the BOOTS stay where the server says the player is (the scale is
+           about the sprite's centre, so growth has to be compensated or a tall
+           bro sinks into the floor);
+         - and is the name plate the SAME SIZE on every build (it rides
+           _uiLayer, which carries the inverse).
+       `peerName` reports the same three for one remote player instead, which
+       is how a scenario checks that a build survived the wire rather than
+       just the store.  Read-only; returns null when there is nothing to
+       measure. */
+    buildProbe: (peerName) => {
+      let pd = entityRenderer.playerDisplay;
+      if (peerName) {
+        pd = null;
+        for (const d of entityRenderer.otherPlayerDisplays.values()) {
+          if (d && d._pillName && d._pillName.text
+              && String(d._pillName.text).indexOf(peerName) >= 0) { pd = d; break; }
+        }
+      }
+      if (!pd) return null;
+      const sb = pd._spriteBody;
+      const ui = pd._uiLayer;
+      const pill = pd._namePill;
+      /* Screen pixels per ONE container unit, measured through the live
+         transform chain (which carries the camera zoom as well) rather than
+         multiplied out of the factors by hand. */
+      const o = pd.toGlobal({ x: 0, y: 0 });
+      const unitX = pd.toGlobal({ x: 1, y: 0 }).x - o.x;
+      const unitY = pd.toGlobal({ x: 0, y: 1 }).y - o.y;
+      let fig = null;
+      if (sb && sb.texture && sb.texture.source && sb.texture.source.resource) {
+        const tex = sb.texture;
+        const fr = tex.frame || { x: 0, y: 0, width: tex.width, height: tex.height };
+        try {
+          const cv = document.createElement('canvas');
+          cv.width = Math.max(1, Math.round(fr.width));
+          cv.height = Math.max(1, Math.round(fr.height));
+          const c = cv.getContext('2d', { willReadFrequently: true });
+          c.drawImage(tex.source.resource, fr.x, fr.y, fr.width, fr.height, 0, 0, cv.width, cv.height);
+          const px = c.getImageData(0, 0, cv.width, cv.height).data;
+          let top = -1, bot = -1, l = cv.width, r = -1;
+          for (let y = 0; y < cv.height; y++) {
+            for (let x = 0; x < cv.width; x++) {
+              if (px[(y * cv.width + x) * 4 + 3] < 24) continue;
+              if (top < 0) top = y;
+              bot = y; if (x < l) l = x; if (x > r) r = x;
+            }
+          }
+          /* sb carries the body's own scale on top of the container's, so
+             these are converted through sb rather than through pd. */
+          const sUnitX = sb.toGlobal({ x: 1, y: 0 }).x - sb.toGlobal({ x: 0, y: 0 }).x;
+          const sUnitY = sb.toGlobal({ x: 0, y: 1 }).y - sb.toGlobal({ x: 0, y: 0 }).y;
+          fig = {
+            heightPx: +((bot - top + 1) * Math.abs(sUnitY)).toFixed(2),
+            widthPx: +((r - l + 1) * Math.abs(sUnitX)).toFixed(2),
+            /* Absolute screen y of the lowest painted row — the boots. */
+            feetScreenY: +(sb.toGlobal({ x: 0, y: bot - (cv.height - 1) / 2 }).y).toFixed(2),
+          };
+        } catch (e) { fig = { err: 'texture unreadable' }; }
+      }
+      return {
+        scaleX: +pd.scale.x.toFixed(5), scaleY: +pd.scale.y.toFixed(5),
+        uiScaleX: ui ? +ui.scale.x.toFixed(5) : null,
+        uiScaleY: ui ? +ui.scale.y.toFixed(5) : null,
+        /* What the container's scale is worth on screen — scaleX/scaleY times
+           the camera, which is what the eye actually sees. */
+        unitPxX: +unitX.toFixed(5), unitPxY: +unitY.toFixed(5),
+        /* The plate's ACCUMULATED transform, not its painted bounds.  Bounds
+           depend on the NAME in it — "Ref" and "Bigg" make different-width
+           plates for reasons that have nothing to do with build — so comparing
+           two players' plate widths measures their names.  The world transform
+           is what "is it stretched" actually asks: it must be the plain zone
+           scale on every build, with the container's non-uniform part fully
+           cancelled by _uiLayer. */
+        pillScaleX: pill ? +pill.worldTransform.a.toFixed(5) : null,
+        pillScaleY: pill ? +pill.worldTransform.d.toFixed(5) : null,
+        pillW: pill && pill.visible ? +pill.getBounds().width.toFixed(2) : null,
+        pillH: pill && pill.visible ? +pill.getBounds().height.toFixed(2) : null,
+        originScreenY: +o.y.toFixed(2),
+        /* ── the boots, against the position the SERVER knows ──
+           The container's origin is the sprite's centre and is nudged upward
+           to absorb the build's growth (see _applyBuildScale), so the boots'
+           offset from the ORIGIN necessarily grows with the scale.  The claim
+           being tested is the other one: that the boots land the same distance
+           below the player's WORLD y whatever the build.  Both numbers are in
+           the parent's (world) space so they subtract cleanly. */
+        worldY: (() => {
+          try {
+            const S = window._gameState && window._gameState.current;
+            if (!S) return null;
+            if (!peerName) return S.player ? +(S.player.y).toFixed(2) : null;
+            const o2 = Object.values(S.others || {})
+              .find((x) => x && String(x.name || '').indexOf(peerName) >= 0);
+            return o2 ? +((o2.renderY != null ? o2.renderY : o2.y)).toFixed(2) : null;
+          } catch (e) { return null; }
+        })(),
+        feetWorldY: (fig && sb && !fig.err)
+          ? +(pd.parent.toLocal({ x: 0, y: fig.feetScreenY }).y).toFixed(2) : null,
+        fig,
+      };
+    },
     /* v2.3.1765: read-only probe of WHICH LAYER the extraction cue draws on,
        for the QA harness — same shape and same reason as the two probes above.
        "Is the white gesture in front of the tree" is a depth fact about the

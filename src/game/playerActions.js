@@ -8,8 +8,8 @@
    `stateRef.current._tutorialStep` read became `S._tutorialStep` (same
    object). raiseShield takes setShieldUp via deps (its only React
    setter). All other references are module imports below. */
-import { SWING_COOLDOWN, SPECIAL_ATK_MULT, specialAtkMultFor, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, calcWeaponDmg, monsterBodyY, swingCooldownMult, specialManaCost, burstRefusal, burstWeapon, PROG3, ELEMENTS } from '@/data/index.js';
-import { addBuildUse, clearSwingHitFlags, pushDmgPopup, isPlayerDead } from '@/game/combatHelpers.js';
+import { SWING_COOLDOWN, SPECIAL_ATK_MULT, specialAtkMultFor, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, calcWeaponDmg, swingCooldownMult, specialManaCost, burstRefusal, burstWeapon, PROG3, ELEMENTS } from '@/data/index.js';
+import { addBuildUse, clearSwingHitFlags, pushDmgPopup, isPlayerDead, lockAimPoint } from '@/game/combatHelpers.js';
 
 export function swingAttack(S) {
     /* v2.3.1473: a corpse doesn't swing (see isPlayerDead). */
@@ -130,11 +130,13 @@ export function specialAttack(S) {
     var hasElement = activeWpn.element2 || activeWpn.element1;
     /* Aim direction — use finger swipe direction from right joystick, or locked target, or facing */
     var aimAng = S._aimAngle || 0;
-    if (S.lockedTarget && S.lockedTarget.ref) {
-      var lt = S.lockedTarget.ref;
-      /* v2.3.1111: aim at the body centre (see monsterCombat aim note). */
-      aimAng = Math.atan2((monsterBodyY(lt) || 0) - S.player.y, (lt.x || 0) - S.player.x);
-    }
+    /* v2.3.1111: aim at the body centre (see monsterCombat aim note).
+       v2.3.1979: through lockAimPoint, which reads the RENDERED position the
+       hit-test uses and returns null (rather than the world origin) when the
+       target has no usable position.  Both specials launch from the player at
+       dist 14 -- no grip offset to correct for, unlike the auto-attack. */
+    var _sLock = lockAimPoint(S.lockedTarget && S.lockedTarget.ref);
+    if (_sLock) aimAng = Math.atan2(_sLock.y - S.player.y, _sLock.x - S.player.x);
     if (activeWpn.type === 'bow') {
       /* BOW heavy — large elemental arrow in swipe direction.  Renders
          in effectsRenderer as a regular arrow with a bright halo ring;

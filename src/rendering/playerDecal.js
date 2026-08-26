@@ -203,11 +203,59 @@ function _largestPiece(mask, w, h, x0, x1) {
  *        the behaviour is exactly what it was: largest piece only, confined to
  *        the whole mask, which keeps the shipped chest/trouser bakes identical.
  */
+/* ═══ v2.3.1962: WHERE THE 16x16 GRID LANDS, IN ONE PLACE ═══
+ *
+ * The drawing is a 16x16 grid fitted into a box inside the region's measured
+ * bulk rectangle.  That arithmetic used to live inline in stampRegion and
+ * nowhere else, which was fine while the only thing that needed it was the
+ * stamp itself.  The designer now needs the SAME numbers to run backwards —
+ * the owner wants to draw on the character rather than on a detached grid, so
+ * a touch on the body has to resolve to a cell — and a second copy of a fit
+ * like this is precisely how the hat and its hair-mask drifted apart
+ * (v2.3.1959).  One function, used by both directions.
+ *
+ * `fillW`/`fillH` are the share of the region the grid covers and `cy` is where
+ * its centre sits down the region, so the caller's BOX constants keep meaning
+ * exactly what they meant.
+ */
+export function gridFit(lx, rx, ty, by, box) {
+  const bw = rx - lx + 1, bh = by - ty + 1;
+  const dw = Math.max(ART_W, Math.round(bw * box.fillW));
+  const dh = Math.max(ART_H, Math.round(bh * box.fillH));
+  const ox = Math.round((lx + rx + 1) / 2 - dw / 2);
+  const oy = Math.round(ty + bh * box.cy - dh / 2);
+  return { ox, oy, cw: dw / ART_W, ch: dh / ART_H };
+}
+
+/** The inverse of gridFit: which grid cell a pixel of the SHEET falls in, or
+ *  null when it falls outside the grid entirely.  Deliberately does NOT consult
+ *  the region mask — a touch just off the arm should still resolve to the cell
+ *  it is nearest, or the last few pixels of every stroke would be swallowed.
+ *  What the mask governs is where the ink SHOWS, which the live preview says
+ *  better than a rejected touch would. */
+export function cellAt(g, x, y) {
+  const gx = Math.floor((x - g.ox) / g.cw);
+  const gy = Math.floor((y - g.oy) / g.ch);
+  if (gx < 0 || gy < 0 || gx >= ART_W || gy >= ART_H) return null;
+  return { gx, gy };
+}
+
 export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
-  if (!artHasInk(art)) return 0;
+  /* v2.3.1965: a blank canvas still has to report its grid.  The body-ink
+     surface turns a finger into a cell using the grid this stamp fitted, so
+     with this early return in front of the report a character who has never
+     drawn anything reported no grids at all — and could therefore never make
+     the FIRST mark, on any region, forever.  Nothing is painted either way:
+     every cell of a blank drawing gives artColorAt null and is skipped, so the
+     only cost of measuring it is measuring it, and only the designer asks. */
+  if (!artHasInk(art) && !(opts && opts.report)) return 0;
   const frames = Math.max(1, Math.floor(w / frameW));
-  const fillW = box.fillW, fillH = box.fillH, cy = box.cy;
   const eachPiece = !!(opts && opts.eachPiece);
+  const underSkin = !!(opts && opts.underSkin);   /* v2.3.1950 */
+  /* v2.3.1962: when the caller passes an array, every grid this stamp fits is
+     pushed into it.  The designer reads them to turn a touch on the body back
+     into a cell; the game passes nothing and the array never exists. */
+  const report = (opts && opts.report) || null;
   let painted = 0;
   let scratch = null, seenBuf = null;
   /* The mask is its own array, so painting colours into `d` can never change
@@ -277,12 +325,23 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
     for (let y = 0; y < h; y++) if (rowN[y] >= rowMin) { if (y < ty) ty = y; if (y > by) by = y; }
     for (let x = 0; x < colN.length; x++) if (colN[x] >= colMin) { if (x < lx) lx = x + x0; if (x + x0 > rx) rx = x + x0; }
     if (rx < 0 || by < 0) { release(); continue; }
-    const bw = rx - lx + 1, bh = by - ty + 1;
-    const dw = Math.max(ART_W, Math.round(bw * fillW));
-    const dh = Math.max(ART_H, Math.round(bh * fillH));
-    const ox = Math.round((lx + rx + 1) / 2 - dw / 2);
-    const oy = Math.round(ty + bh * cy - dh / 2);
-    const cw = dw / ART_W, ch = dh / ART_H;
+    /* v2.3.1950: the region's own mean brightness, so ink can be shaded BY the
+       body rather than pasted flat over it — see INK_TUNE. */
+    let refLum = 0;
+    if (underSkin) {
+      let n = 0, sum = 0;
+      for (let y = ty; y <= by; y++) {
+        for (let x = lx; x <= rx; x++) {
+          if (!confine[y * w + x]) continue;
+          const i = (y * w + x) * 4;
+          sum += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+          n++;
+        }
+      }
+      refLum = n ? sum / n : 128;
+    }
+    const { ox, oy, cw, ch } = gridFit(lx, rx, ty, by, box);
+    if (report) report.push({ ox, oy, cw, ch, lx, rx, ty, by, frame: f });
     for (let gy = 0; gy < ART_H; gy++) {
       for (let gx = 0; gx < ART_W; gx++) {
         const col = artColorAt(art, mirror ? (ART_W - 1 - gx) : gx, gy);
@@ -296,7 +355,40 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
             if (x < x0 || x >= x1) continue;
             if (!confine[y * w + x]) continue;   /* confined to the region */
             const i = (y * w + x) * 4;
-            d[i] = R; d[i + 1] = G; d[i + 2] = B;
+            if (underSkin) {
+              const sr = d[i], sg = d[i + 1], sb = d[i + 2];
+              /* Shade the ink by how light or dark THIS pixel of the body is
+                 relative to the region's average, so the mark follows the
+                 muscle shading and the contour lines instead of flattening
+                 them.  Clamped: a contour line is near-black and would
+                 otherwise take the ink to zero. */
+              let sh = 1;
+              if (INK_TUNE.shade > 0 && refLum > 0) {
+                const lum = 0.299 * sr + 0.587 * sg + 0.114 * sb;
+                sh = 1 + (lum / refLum - 1) * INK_TUNE.shade;
+                if (sh < 0.55) sh = 0.55; else if (sh > 1.45) sh = 1.45;
+              }
+              /* v2.3.1950: a FIXED alpha cannot work.  Measured on the three
+                 skin tones: black ink at 0.6 alpha reads beautifully on pale
+                 skin and all but disappears on dark skin, because black on
+                 dark brown has almost no contrast to begin with.  So the ink
+                 gets more opaque exactly where it would otherwise vanish —
+                 which is also how real ink behaves, more of it being what you
+                 need to show up.  Full translucency where the ink and the skin
+                 are far apart, opaque where they are close. */
+              let A = INK_TUNE.alpha;
+              if (INK_TUNE.contrast > 0) {
+                const lumI = 0.299 * R * sh + 0.587 * G * sh + 0.114 * B * sh;
+                const lumS = 0.299 * sr + 0.587 * sg + 0.114 * sb;
+                const c = Math.abs(lumI - lumS) / 255 / INK_TUNE.contrast;
+                if (c < 1) A = A + (1 - A) * (1 - c);
+              }
+              d[i] = sr + (R * sh - sr) * A;
+              d[i + 1] = sg + (G * sh - sg) * A;
+              d[i + 2] = sb + (B * sh - sb) * A;
+            } else {
+              d[i] = R; d[i + 1] = G; d[i + 2] = B;
+            }
             painted++;
           }
         }
@@ -321,7 +413,62 @@ export const TATTOO_BOX = { fillW: 0.70, fillH: 0.55, cy: 0.50 };  /* chest */
    A face is small and mostly eyes, so the ink covers less of it and sits low —
    a cheek/jaw mark rather than a mask over the eyes.  An arm is a narrow
    vertical strip, so its box is nearly the full width of the limb. */
-export const FACE_BOX = { fillW: 0.62, fillH: 0.46, cy: 0.60 };
+/* ═══ v2.3.1950: INK UNDER SKIN ═══
+   Owner: "what effect can make these really look like tattoos instead of just
+   black lines on the character?  Maybe making them have some semi transparency?"
+
+   Right diagnosis.  A tattoo was REPLACING the skin pixel outright, so it
+   ignored every bit of the body's shading and read as a sticker stuck on.  Ink
+   is under skin: some skin shows through it, and the body's own light and
+   shadow fall across it.
+
+   These three numbers were CHOSEN BY RENDERING, not guessed — every
+   combination on the same figure, on alabaster / tan / ebony, with black ink
+   and with white, on the chest and then on the face and arms:
+
+     alpha 0.60     how much skin shows through.  0.85 still read as paint;
+                    0.50 lost the face mark on dark skin.
+     shade 1.0      the ink is modulated by how light or dark the body is at
+                    that pixel, relative to the region's average, so a mark
+                    follows the arm's curve instead of flattening it.
+     contrast 0.35  the window over which alpha ramps back to opaque.
+
+   THE THIRD ONE IS THE INTERESTING ONE.  A fixed alpha cannot work here: black
+   ink at 0.60 looks beautiful on pale skin and all but vanishes on dark skin,
+   because black on dark brown has almost no contrast to start with — and the
+   palette has fifteen colours against every skin tone.  So the ink is allowed
+   to go opaque exactly where it would otherwise disappear, and stays
+   translucent where ink and skin are far apart.  Which is also how real ink
+   behaves: more of it is what you need in order to show up.
+
+   Frozen because these are measured values, and because a mutable global that
+   any module could change would silently re-tune every character in the game.
+   Applied ONLY where `underSkin` is set — the three skin canvases.  A shirt
+   print is ink ON fabric, not under skin, and stays opaque. */
+export const INK_TUNE = Object.freeze({ alpha: 0.60, shade: 1.0, contrast: 0.35 });
+
+/* ═══ v2.3.1965: THE FOREHEAD IS PART OF THE FACE ═══
+   Owner, play-testing: "allow the user to zoom in on any part of the
+   character skin to tattoo it ... whatever zoomed in body part you want
+   (including forehead etc)."  The forehead was not reachable at all.
+   MEASURED before moving it: the face REGION (head skin) runs rows 36..77 of
+   the sheet, and the old box put its 16 rows at 52..71 — brow to upper lip.
+   Everything above row 52, which is the whole forehead, had no cell over it,
+   so no drawing could put ink there however hard you tried.
+   The new numbers were chosen by RENDERING a full-grid tattoo at each
+   candidate and looking (bald and under an afro), not by arithmetic:
+     0.62/0.46/0.60  eyes to upper lip — the old reach.
+     0.78/0.63/0.515 forehead to chin, temple to temple. THIS ONE.
+     0.78/0.72/0.475 no further coverage: the skin mask clips the crown
+                     anyway, so the extra rows are spent on nothing and every
+                     cell gets coarser for it.
+   The crown and the ears stay outside on purpose — the crown is under hair
+   for all but a bald character, and ink there would read as a mistake.
+   TWO CONSEQUENCES, stated rather than discovered later: the 16 rows now
+   spread over 26 sheet px instead of 19, so a cell is coarser; and an
+   existing face tattoo keeps its cells but covers more face than it did, so
+   it moves. Both are the price of reaching the forehead at all. */
+export const FACE_BOX = { fillW: 0.78, fillH: 0.63, cy: 0.515 };
 export const ARM_BOX = { fillW: 0.92, fillH: 0.40, cy: 0.42 };
 
 /* ═══ v2.3.1949: THE OTHER TWO SKIN REGIONS ═══

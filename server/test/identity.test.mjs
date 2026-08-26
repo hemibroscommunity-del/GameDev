@@ -225,7 +225,8 @@ check('death clears the consent pair', !room._pvpConsent.has(room._pvpPairKey('b
       pa: 'c'.repeat(256), ta: 'd'.repeat(256) /* v2.3.1940: pants print + tattoo */,
       tf: 'e'.repeat(256), tm: 'f'.repeat(256) /* v2.3.1949: face + arm tattoos */,
       sp: 'check:7', pp: 'dots:2' /* v2.3.1941: clothing patterns */,
-      fp: 'stripe-h:4' /* v2.3.1944: shoes */ },
+      fp: 'stripe-h:4' /* v2.3.1944: shoes */,
+      hg: 'short', fr: 'thin' /* v2.3.1953: height + frame */ },
   }));
   const charF = state._store.get('char:bp_finn');
   check('char record stamped in its own storage key on first join',
@@ -268,6 +269,13 @@ check('death clears the consent pair', !room._pvpConsent.has(room._pvpPairKey('b
   check('...and the face + arm tattoos, untruncated (v2.3.1949)',
     !!(charF && charF.look.tf === 'e'.repeat(256) && charF.look.tm === 'f'.repeat(256)),
     charF && { tf: charF.look.tf && charF.look.tf.length, tm: charF.look.tm && charF.look.tm.length });
+  /* v2.3.1953: height and frame belong to the permanent look for the same
+     reason the face does -- they are what you look like, not what this browser
+     remembers.  Without this the build would be a device setting: log in on a
+     new phone and your bro would be back to average, silently. */
+  check('...and the height + frame (v2.3.1953)',
+    !!(charF && charF.look.hg === 'short' && charF.look.fr === 'thin'),
+    charF && { hg: charF.look.hg, fr: charF.look.fr });
   /* v2.3.1941: the clothing patterns are SHORT, so unlike the drawings above
      the cap is not the interesting part -- the allowlist is.  An unlisted key
      is dropped, which is exactly how a pattern would silently fail to persist

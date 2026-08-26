@@ -32,12 +32,12 @@ import {
   getShieldStats, getWeaponCritDmgStat, getWeaponCritStat, meleeSwingSfx, recalcDerived, resolveCollision,
   getEvasionPts, poiseStunFlatMs, rollPassiveDodge, getWeaponCritFlat, spawnElementStatusFX, spawnWeaponHitFX, swingCooldownMult, tickStatuses, updateZoneDimensions,
   trainDefense, applyIronSkin, applyResilience, /* v2.3.1314 */
-  monsterBodyY, monsterBodyOffsetY, monsterMeleeHitRadius, monsterProceduralRadius, TOWN_SPAWN /* v2.3.1777 */
+  monsterBodyOffsetY, monsterMeleeHitRadius, monsterProceduralRadius, TOWN_SPAWN /* v2.3.1777 */
 } from '@/data/index.js';
 import { MONSTER_VARIANTS, baseArchetypeOf, hitShapeOf, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
 import { rollMonsterShard } from '@/data/shards.js';
-import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc } from '@/game/combatHelpers.js';
+import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
 import { btRpc, getBtPlayerId, syncRpgToServer } from '@/networking/index.js';
@@ -1245,16 +1245,29 @@ export function updateMonsterCombat(S, deps) {
               var _S$rpg0, _S$rpg1;
               if (((_S$rpg0 = S.rpg) === null || _S$rpg0 === void 0 ? void 0 : _S$rpg0.activeSlot) === 'ranged' || ((_S$rpg1 = S.rpg) === null || _S$rpg1 === void 0 ? void 0 : _S$rpg1.activeSlot) === 'staff') {
                 var _S$rpg10;
+                var isStaff = ((_S$rpg10 = S.rpg) === null || _S$rpg10 === void 0 ? void 0 : _S$rpg10.activeSlot) === 'staff';
+                /* v2.3.1979: a bow arrow leaves from the GRIP, so the shot is
+                   measured from the grip.  Measured from the player's feet (as
+                   it was), the arrow's flight line came out PARALLEL to the
+                   line that hits, passing 9-32px to the side of a 27px slime
+                   -- the owner's "flew beside it without damaging it".
+                   Staff bolts have no grip offset (fromGrip is false and they
+                   start at dist 14 from the player), so they keep the player
+                   origin. */
+                var _shotX = (!isStaff && typeof S._bowGripX === 'number') ? S._bowGripX : P.x;
+                var _shotY = (!isStaff && typeof S._bowGripY === 'number') ? S._bowGripY : P.y;
                 var arrAngle;
-                if (S.lockedTarget && S.lockedTarget.ref) {
-                  var _lt = S.lockedTarget.ref;
-                  /* v2.3.1111: aim at the BODY CENTRE, not the feet -- the
-                     projectile hit-test uses the body-centre Y, and a
-                     feet-aimed shot rode below the hit circle for the tall
-                     archetypes (fodder gap 40 > arrow radius 26; mummy/
-                     skeleton 48 > 40) -- locked bow shots systematically
-                     missed while wider staff bolts mostly connected. */
-                  arrAngle = Math.atan2((monsterBodyY(_lt) || 0) - P.y, (_lt.x || 0) - P.x);
+                /* v2.3.1111: aim at the BODY CENTRE, not the feet -- the
+                   projectile hit-test uses the body-centre Y, and a
+                   feet-aimed shot rode below the hit circle for the tall
+                   archetypes (fodder gap 40 > arrow radius 26; mummy/
+                   skeleton 48 > 40) -- locked bow shots systematically
+                   missed while wider staff bolts mostly connected.
+                   v2.3.1979: ...and at the RENDERED position the hit-test
+                   uses, so the shot does not lead a walking monster's hitbox. */
+                var _lockPt = lockAimPoint(S.lockedTarget && S.lockedTarget.ref);
+                if (_lockPt) {
+                  arrAngle = Math.atan2(_lockPt.y - _shotY, _lockPt.x - _shotX);
                 } else if (S._aiming && S._aimAngle != null) {
                   arrAngle = S._aimAngle;
                 } else {
@@ -1262,7 +1275,6 @@ export function updateMonsterCombat(S, deps) {
                   arrAngle = fd === 'right' ? 0 : fd === 'up' ? -Math.PI / 2 : fd === 'left' ? Math.PI : Math.PI / 2;
                 }
                 if (!S.arrows) S.arrows = [];
-                var isStaff = ((_S$rpg10 = S.rpg) === null || _S$rpg10 === void 0 ? void 0 : _S$rpg10.activeSlot) === 'staff';
                 S.arrows.push({
                   ang: arrAngle,
                   /* v2.3.937: bow shots nock at the teal grip and launch at the

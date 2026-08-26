@@ -46,6 +46,7 @@
  * workflow retry) for ~10 consecutive CI runs.
  */
 import { chromium } from 'playwright-core';
+import { legacyLogin } from './legacy-login.mjs';
 import { existsSync } from 'node:fs';
 
 const SHELL = '/tmp/chrome-headless-shell-linux64/chrome-headless-shell';
@@ -77,9 +78,10 @@ async function startSession(label) {
   }
   await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await sleep(6000);
-  const input = page.locator('input').first();
-  await input.fill(label, { timeout: 60000 });
-  await input.press('Enter');
+  /* v2.3.1964: the splash has no name box — it has a login door.
+     legacyLogin takes the same route a player takes (see
+     tools/qa/legacy-login.mjs for what broke and when). */
+  await legacyLogin(page, label);
   for (let i = 0; i < 60; i++) {
     const joined = await page.evaluate(() => window._gameState?.current?.player?.x != null).catch(() => false);
     if (joined) return page;

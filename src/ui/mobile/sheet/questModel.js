@@ -1,4 +1,4 @@
-import { QUEST_CHAINS, QUEST_STATUS, getNpcQuest, NPC_DATA } from '../../../data/gameSystems.js';
+import { QUEST_CHAINS, QUEST_STATUS, getNpcQuest, NPC_DATA, questReachable } from '../../../data/gameSystems.js';
 
 /* ═══ v2.3.1681: ONLY QUESTS SOMEBODY CAN ACTUALLY GIVE YOU ═══
  * Owner: "There's a 'first purchase' 'first spark' and other quests that are
@@ -45,6 +45,15 @@ export function deriveQuestLog(S) {
        since left the world.  Hiding it is the honest call: it can never be
        turned in, so listing it would be a permanent unfinishable row. */
     if (!giverExists(quest)) continue;
+    /* v2.3.1972: and the same call for a quest whose OBJECTIVE left the world
+       rather than its giver (mayor_1 wants three building doors; town has had
+       none since v2.3.1813).  Hiding it is the same honest call the line above
+       makes — it can never be turned in — and it matters more here than in the
+       `upcoming` list below, because a save that already holds it 'active'
+       would otherwise show a permanent unfinishable row AND suppress every
+       offer behind it (`if (active.length) upcoming.length = 0`).  See
+       questReachable in gameSystems.js. */
+    if (!questReachable(quest)) continue;
     const st = qs[qid];
     if (st === QUEST_STATUS.active || st === QUEST_STATUS.complete) {
       let ready = st === QUEST_STATUS.complete;

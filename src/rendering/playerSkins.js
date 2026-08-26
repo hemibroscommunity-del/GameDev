@@ -555,13 +555,25 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
      skin no longer passes _isSkin (alabaster is r-g=13, the test wants >25), so
      classifying afterwards would find no skin at all on exactly the players who
      picked a light tone.  Same reason _torsoBands runs up here. */
-  const wantPantsArt = !!(art && artHasInk(art.pants));
-  const wantTattoo = !!(art && artHasInk(art.tattoo));
+  /* v2.3.1965: THE DESIGNER WANTS EVERY REGION, INKED OR NOT.
+     Each `want` below gates a mask, and the mask is what stampRegion measures
+     the grid from — so keyed on ink alone, a character who has drawn nothing
+     produced no masks, no grids and therefore no way for the body-ink surface
+     to turn a finger into a cell.  The FIRST mark was unmakeable, on every
+     region, forever; and the second one on a region was unmakeable too until
+     you had inked that region some other way.
+     `art.report` is set by the designer and by nothing else (the game passes
+     no `report`), so the extra classification is paid on the one screen that
+     needs it and nowhere else.  Blank art paints nothing either way: every
+     cell of it gives artColorAt null and is skipped. */
+  const wantReport = !!(art && art.report);
+  const wantPantsArt = !!(art && artHasInk(art.pants)) || wantReport;
+  const wantTattoo = !!(art && artHasInk(art.tattoo)) || wantReport;
   /* v2.3.1949: the face and the arms.  Both are derived from the SAME two masks
      the chest tattoo already needs (bare skin, and the torso band), so wanting
      one of them costs a second Uint8Array and no extra classification. */
-  const wantFaceTat = !!(art && artHasInk(art.tattooFace));
-  const wantArmTat = !!(art && artHasInk(art.tattooArm));
+  const wantFaceTat = !!(art && artHasInk(art.tattooFace)) || wantReport;
+  const wantArmTat = !!(art && artHasInk(art.tattooArm)) || wantReport;
   /* v2.3.1941: a pattern wants the same trouser mask a print does. */
   const pantsPat = art ? parsePattern(art.pantsPattern, 'pants') : null;
   const pantsPx = (wantPantsArt || pantsPat) ? new Uint8Array(w * h) : null;
@@ -637,26 +649,43 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
   /* Pattern first, print over it: a print is ON the fabric, and the fabric is
      what the pattern is. */
   if (pantsPat) stampPattern(d, w, h, FRAME_W, pantsPaint, pantsPat, !!art.mirror);
-  if (wantPantsArt) stampRegion(d, w, h, FRAME_W, pantsPaint, art.pants, !!art.mirror, PANTS_BOX);
+  /* v2.3.1962: when the caller asks (`art.report`), every grid these stamps fit
+     is collected and handed back on the canvas.  The designer needs the same
+     numbers the stamp used in order to run a touch backwards into a cell — see
+     gridFit/cellAt in playerDecal.  The game never asks, so it never pays. */
+  const _rep = art && art.report ? { pants: [], tattoo: [], face: [], arms: [] } : null;
+  if (wantPantsArt) stampRegion(d, w, h, FRAME_W, pantsPaint, art.pants, !!art.mirror, PANTS_BOX,
+    _rep ? { report: _rep.pants } : undefined);
   if (shoesPat) {
     stampPattern(d, w, h, FRAME_W,
       litFabricMask(base, regionFromFeet(d, shoesPx, w, h, FRAME_W, SHOES_MAX_UP), w * h, SHOES_LIT_MIN),
       shoesPat, !!art.mirror);
   }
-  if (tattooPx) stampRegion(d, w, h, FRAME_W, tattooPx, art.tattoo, !!art.mirror, TATTOO_BOX);
+  /* v2.3.1950: `underSkin` on all three -- ink sits UNDER skin, so it takes the
+     body's shading and lets some skin through.  A shirt print does not: it is
+     ink ON fabric, and stays opaque. */
+  if (tattooPx) stampRegion(d, w, h, FRAME_W, tattooPx, art.tattoo, !!art.mirror, TATTOO_BOX,
+    { underSkin: true, report: _rep && _rep.tattoo });
   /* v2.3.1949: face and arms.  `eachPiece` for the arms only -- a figure has
      two of them and the largest-piece rule would ink whichever happens to be
      nearer the camera. */
   if (skinPx) {
     const reg = splitSkinRegions(skinPx, torsoPx, w, h, FRAME_W);
-    if (wantFaceTat) stampRegion(d, w, h, FRAME_W, reg.face, art.tattooFace, !!art.mirror, FACE_BOX);
-    if (wantArmTat) stampRegion(d, w, h, FRAME_W, reg.arms, art.tattooArm, !!art.mirror, ARM_BOX, { eachPiece: true });
+    if (wantFaceTat) stampRegion(d, w, h, FRAME_W, reg.face, art.tattooFace, !!art.mirror, FACE_BOX,
+      { underSkin: true, report: _rep && _rep.face });
+    if (wantArmTat) stampRegion(d, w, h, FRAME_W, reg.arms, art.tattooArm, !!art.mirror, ARM_BOX,
+      { eachPiece: true, underSkin: true, report: _rep && _rep.arms });
   }
   /* v2.3.1928: the iris last, so it overwrites rather than being classified.
      Its pixels are near-black and would otherwise fall through every branch
      above untouched, which is exactly why the eye needed its own mask. */
   if (eyeT && eyeRects) { _eyeT = eyeT; _paintEyes(d, cv.width, cv.height, eyeRects, FRAME_W); }
   ctx.putImageData(imgData, 0, 0);
+  /* v2.3.1962: hand the grids back on the canvas rather than through a second
+     return value — `canvas.__btDir` (v2.3.1815) set the precedent, and every
+     caller of this function ignores extra properties.  Only present when the
+     caller asked. */
+  if (_rep) { try { cv.__btGrids = _rep; } catch (e) { /* frozen: no probe, no harm */ } }
   return cv;
 }
 

@@ -193,6 +193,13 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
           {/* v2.3.1923: "Continue" (was "Log in with your Key").  Same plate
               art, same single-gold-primary slot; what changed is what is
               behind it — the character list first, the key box under it. */}
+          {/* v2.3.1954: ...and the PLATE says it too now.  v2.3.1923 renamed
+              only this hidden text node, so for a whole version the screen
+              reader said "Continue" while the button still read LOG IN WITH
+              YOUR KEY — the owner's report.  The word is painted into the
+              artwork (btn-continue.png, recomposed from the plate's own
+              lettering by tools/ui/relabel-login-plate.mjs), so the two have
+              to be changed together; mp-keylogin asserts the pair. */}
           <button
             type="button"
             className="bt-login-btn bt-login-btn--key"

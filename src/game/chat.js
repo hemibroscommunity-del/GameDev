@@ -14,6 +14,34 @@
 import { BT_AUDIO } from '@/data/index.js';
 import { _toConsumableArray } from '@/lib/babelHelpers.js';
 
+/* ═══ v2.3.1970: A RECEIVED LINE IS UNTRUSTED TEXT ═══
+   The worker clamps room chat at CHAT_RELAY.TEXT_MAX = 200 and stamps the
+   sender as of the same version (server/src/index.js _sanitizeChatRelay);
+   party chat and friend DMs were already clamped server-side.  This is the
+   CLIENT half of that, and it is not belt-and-braces for its own sake:
+   worker and client deploy independently (handoff rule 19), so a client
+   that meets an un-upgraded worker still has to survive whatever it hands
+   over — and what a chat line reaches is a PIXI Text in the world layer
+   (effectsRenderer._renderChatBubble, fontSize 21, wordWrapWidth 320) whose
+   background Graphics is sized from the MEASURED text.  16 KB — the old
+   ceiling, which was just the v2.3.1618 frame gate — is ~640 wrapped lines,
+   i.e. a texture and a rounded rect some 17,000 px tall, past the max
+   texture size of every iOS GPU.  Room chat is also the one relay
+   v2.3.1575 deliberately did not zone-scope, so one line reached every
+   player in the world.
+   Control chars go too: the bubble is a single Text object and an embedded
+   newline is free vertical space nobody typed. */
+var CHAT_TEXT_MAX = 200;   /* mirrors CHAT_RELAY.TEXT_MAX / PARTY.CHAT_MAX */
+var CHAT_NAME_MAX = 48;    /* mirrors the nameplate clamp in entityRenderer */
+export function clampChatText(v) {
+  if (typeof v !== 'string') return '';
+  return v.slice(0, CHAT_TEXT_MAX).replace(/[\x00-\x1f\x7f]/g, ' ').trim();
+}
+function clampChatName(v) {
+  if (typeof v !== 'string') return 'Bro';
+  return v.slice(0, CHAT_NAME_MAX).replace(/[\x00-\x1f\x7f]/g, ' ').trim() || 'Bro';
+}
+
 /* Send a chat line: broadcast to the room, local echo into the chat log +
    own overhead bubble. `text` is already trimmed/validated by the caller.
    deps = { setChatLog } */
@@ -90,6 +118,13 @@ export function handleChatEvent(payload, S, deps) {
   var setChatLog = deps.setChatLog,
     setUnreadChats = deps.setUnreadChats;
   if (!payload || payload.id === S.myId) return;
+  /* v2.3.1970: clamp before anything else touches it (see clampChatText).
+     An empty line after the trim is nothing to render, and dropping it here
+     also drops the sound and the unread badge that would otherwise fire for
+     a message with no message in it. */
+  var _text = clampChatText(payload.text);
+  if (!_text) return;
+  var _name = clampChatName(payload.name);
   try {
     var bl = JSON.parse(localStorage.getItem('bt_blocked') || '[]');
     if (bl.includes(payload.id)) return;
@@ -100,14 +135,14 @@ export function handleChatEvent(payload, S, deps) {
     isMuted = ml.includes(payload.id);
   } catch (e) {}
   if (!isMuted && payload.id) S.chatBubbles[payload.id] = {
-    text: payload.text,
+    text: _text,
     ts: Date.now()
   };
   BT_AUDIO.chatReceive();
   S.chatLog = [].concat(_toConsumableArray(S.chatLog.slice(-40)), [{
     id: payload.id,
-    name: payload.name,
-    text: isMuted ? '[muted]' : payload.text,
+    name: _name,
+    text: isMuted ? '[muted]' : _text,
     color: payload.color,
     ts: Date.now(),
     muted: isMuted
@@ -128,6 +163,10 @@ export function handlePartyChatEvent(payload, S, deps) {
   var setChatLog = deps.setChatLog,
     setUnreadChats = deps.setUnreadChats;
   if (!payload || !payload.from || payload.from === S.myId) return;
+  /* v2.3.1970: same clamp as room chat -- the worker already bounds this
+     lane at PARTY.CHAT_MAX, so this is purely the deploy-order half. */
+  var _ptext = clampChatText(payload.text);
+  if (!_ptext) return;
   try {
     var bl = JSON.parse(localStorage.getItem('bt_blocked') || '[]');
     if (bl.includes(payload.from)) return;
@@ -137,12 +176,12 @@ export function handlePartyChatEvent(payload, S, deps) {
     var ml = JSON.parse(localStorage.getItem('bt_muted') || '[]');
     isMuted = ml.includes(payload.from);
   } catch (e) {}
-  if (!isMuted) S.chatBubbles[payload.from] = { text: payload.text, ts: Date.now() };
+  if (!isMuted) S.chatBubbles[payload.from] = { text: _ptext, ts: Date.now() };
   BT_AUDIO.chatReceive();
   S.chatLog = [].concat(_toConsumableArray(S.chatLog.slice(-40)), [{
     id: payload.from,
-    name: '🛡 ' + (payload.fromName || 'Bro'),
-    text: isMuted ? '[muted]' : payload.text,
+    name: '🛡 ' + clampChatName(payload.fromName),
+    text: isMuted ? '[muted]' : _ptext,
     color: '#3dd497',
     ts: Date.now(),
     party: true,

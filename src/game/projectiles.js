@@ -17,12 +17,12 @@ import {
   WEAPON_TYPES, WELL_RESTED_XP_MULT, ZONES, applyStatus, awardWeaponXp, calcWeaponDmg,
   discoverCollision, getActiveWeapon, getCollisionDeathFX, getElementDeathFX, recalcDerived,
   getEvasionPts, resolveCollision, rollPassiveDodge, spawnWeaponHitFX, staffAoeMult,
-  monsterBodyY, monsterBodyOffsetY, monsterProceduralRadius, trainDefense, applyIronSkin, applyResilience, /* v2.3.1314 */
+  monsterBodyOffsetY, monsterProceduralRadius, trainDefense, applyIronSkin, applyResilience, /* v2.3.1314 */
 } from '@/data/index.js';
 import { baseArchetypeOf, hitShapeOf, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
 import { rollMonsterShard } from '@/data/shards.js';
-import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc } from '@/game/combatHelpers.js';
+import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
@@ -35,17 +35,17 @@ export function updateArrows(S, deps) {
     setLevelUpMsg = deps.setLevelUpMsg;
         /* ── Arrow projectile simulation + hit detection + kills ── */
         if (S.arrows && S.arrows.length > 0) {
-          var curAim;
-          if (S.lockedTarget && S.lockedTarget.ref) {
-            var lt2 = S.lockedTarget.ref;
-            /* v2.3.1111: home toward the body centre the hit-test uses. */
-            curAim = Math.atan2((monsterBodyY(lt2) || 0) - P.y, (lt2.x || 0) - P.x);
-          } else if (S._aiming) {
-            curAim = S._aimAngle || 0;
-          } else {
-            var fd2 = S._facing || 'down';
-            curAim = fd2 === 'right' ? 0 : fd2 === 'up' ? -Math.PI / 2 : fd2 === 'left' ? Math.PI : Math.PI / 2;
-          }
+          /* v2.3.1111: home toward the body centre the hit-test uses.
+             v2.3.1979: ...and from the point the arrow is actually FLYING
+             from, not from the player's feet.  A bow arrow launches at the
+             grip (see the _ox/_oy freeze below), so an angle measured from the
+             player gives the arrow a flight line PARALLEL to the one that
+             would hit -- it arrives beside the target by the perpendicular
+             share of the grip offset, measured at 9-32px against a 27px
+             slime.  The angle is therefore per-ARROW now, resolved once the
+             arrow's own origin is known.  See lockAimPoint in combatHelpers. */
+          var lockPt = lockAimPoint(S.lockedTarget && S.lockedTarget.ref);
+          var freeAim = S._aiming ? (S._aimAngle || 0) : null;
           S.arrows = S.arrows.filter(function (a) {
             var _S$rpg15;
             /* v2.3.1425: STUCK-IN-MONSTER -- a special projectile that
@@ -196,7 +196,8 @@ export function updateArrows(S, deps) {
             var _pdt = S._dtScale || 1;
             if (_released) a.dist += (a.isStaff ? 5 : 8 * (a._rangeMult || 1)) * _pdt;
             a.life -= _pdt;
-            if (S._aiming || S.lockedTarget && S.lockedTarget.ref) a.ang = curAim;
+            if (lockPt) a.ang = Math.atan2(lockPt.y - (P.y + _oy), lockPt.x - (P.x + _ox));
+            else if (freeAim !== null) a.ang = freeAim;
             a._renderX = P.x + _ox + Math.cos(a.ang) * a.dist;
             a._renderY = P.y + _oy + Math.sin(a.ang) * a.dist;
             if (a.life <= 0) return false;

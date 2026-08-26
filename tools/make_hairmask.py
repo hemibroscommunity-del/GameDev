@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """v2.3.1532: rebuild a hat's hair-clip mask from the hat it actually is now.
 
+v2.3.1957: part 1 bounds the hair's WIDTH to the hat's -- the owner's rule, see
+"The mask" below -- and bald_px is re-aimed to match it.
+
 What a hairmask is for
 ----------------------
 When a hat declares `clipsHair`, the renderer masks the hair sprite to the
@@ -23,8 +26,8 @@ The mask
 --------
 Two parts, and the second one is v2.3.1529 (owner):
 
-  1. In a column the hat occupies, everything from the hat's topmost pixel
-     downward. Hair above the hat's outline is cut.
+  1. AT AND ABOVE THE HAT, the hair is no wider than the hat is at that row or
+     any row above it.
   2. Everywhere BELOW the hat's lowest pixel, full width.
 
 Part 2 is what lets hair show beside a brim. Without it the mask was only ever
@@ -33,6 +36,49 @@ below the brim in plain view -- showed no hair at all, which read as the hat
 shaving you. Filling below the hat's bottom edge means the brim still cuts
 everything that would poke up past it while the hair under and beside it
 survives.
+
+Part 1 is v2.3.1957, and it is the owner's own rule, quoted:
+
+    "For the hair mask it's best to clip the width of the hair and any hair
+    above it based on the width equal to and above the hat item.  Other
+    headwear (like bandana, other open top headwear, etc) would be the
+    exceptions to that rule."
+
+It used to say "in a column the hat occupies, everything from the hat's topmost
+pixel downward", which bounds the hair vertically and not at all horizontally:
+a column stayed open to the bottom of the frame once the hat had touched it, so
+an afro under a beanie kept its full un-hatted width and the hat read as
+perched on a ball. It also left a vertical CORRIDOR either side of an eared hat
+where hair floated in mid-air with nothing under it (measured on mickey-ears:
+86px south, 99 southwest, 119 east).
+
+Bounding the width closes both. The bound accumulates DOWNWARD -- the widest
+the hat has been at this row or above -- so a dome, whose widest row is its
+bottom, is unaffected at its own bottom edge, while an ear stops counting the
+moment it ends.
+
+WHAT THIS DELIBERATELY ALLOWS: skin beside the hat where the hair used to
+bulge. That is the point. It is also why bald_px below had to be re-aimed --
+see the note there.
+
+Over-cutting on purpose (v2.3.1963)
+-----------------------------------
+Owner: "hair in the space between the width of the base of the hat and its
+narrowest point at the top of the hat should be clipped. Make the hair mask
+liberal (over cut rather than undercut) since your width detector is grabbing
+some outlines and ghost pixels."
+
+The wedge that names -- between a hat's wide base and its narrow crown -- is
+already what the accumulating bound is for. What stopped it being cut cleanly
+is the second half of the sentence: the row extent was taken from the
+outermost opaque pixel, which is the dark 1px outline, or a stray the green-key
+import left behind that nothing on screen can see. One such pixel widens the
+bound for that row AND every row under it, because the bound only ever grows.
+
+So the extent is now measured on the ERODED hat (see _solid) and then pulled in
+by INSET on each side. Both push the same way, deliberately: an over-cut costs
+a pixel of hair at the hat's edge, where the hat is drawn over it anyway; an
+under-cut leaves hair standing proud of the hat, which is the report.
 
 Run from the repo root:
     python3 tools/make_hairmask.py --all-with-masks [--apply]
@@ -55,6 +101,109 @@ ALPHA_T = 16
 FRAME = 256
 SKULL_ROWS = 26      # 256-space rows below the crown that count as scalp
 BALD_T = 150         # exposed scalp px above which a hat must NOT clip hair
+# v2.3.1963: pull the accumulated width in by this much on each side, on top of
+# the erode.  The owner asked for a mask that over-cuts rather than under-cuts,
+# and the two failures are not symmetric: an over-cut loses a pixel of hair at
+# the hat's edge, where the hat is drawn over it anyway, while an under-cut
+# leaves hair standing proud of the hat, which is the thing being reported.
+INSET = 1
+
+# ═══ v2.3.1974: THE CREASE IN A COWBOY HAT IS NOT A GAP BETWEEN DEVIL HORNS ═══
+#
+# Owner: "Some hair still pokes out of the top of the cowboy hat and wizard hat."
+# Reproduced and MAPPED pixel by pixel rather than guessed at.  Two leaks on the
+# cowboy hat, 82 stray hair pixels between them, and both are the same mechanism:
+#
+#   rows 29-32  the crease between the crown's two peaks fills with hair
+#   rows 50-53  the gap between each brim tip and the crown fills with hair
+#
+# The v2.3.1957 rule took ONE run per row, spanning from the leftmost column the
+# hat had reached to the rightmost.  Any gap inside that span keeps its hair.
+# That is not a bug in the implementation, it is the whole point of it: it is
+# what makes a crown's spikes and a pair of devil horns show hair BETWEEN them,
+# which is the owner's own stated exception ("other headwear ... open top
+# headwear ... would be the exceptions to that rule").
+#
+# So the same geometry is wanted in one case and wrong in the other, and I tried
+# and DISCARDED three ways to tell them apart by shape alone:
+#   - "is the gap open to the sky above it"     — both are.  A cowboy crease is
+#                                                 as open to the sky as a gap
+#                                                 between two horns.
+#   - "does the hat enclose the gap from below" — both do.
+#   - "is there head underneath it"             — measured: devil-horns' WANTED
+#                                                 hair is 626px outside the head
+#                                                 against 6 inside, while the
+#                                                 cowboy's UNWANTED hair is 74
+#                                                 outside against 8.  The two
+#                                                 cases are indistinguishable.
+#
+# They differ by INTENT, not by shape, so intent is what is recorded: `openTop`
+# in the hat's meta.json.  The default is closed, which is the safe direction —
+# a hat wrongly marked closed loses a little hair it could have kept, a hat
+# wrongly left open keeps hair standing on top of it, which is the report.
+#
+# And with the exception carved out, the rule for every other hat becomes a more
+# literal reading of what the owner asked for in the first place — "clip the
+# width of the hair and any hair above it based on the width equal to and above
+# the hat item" — applied PER COLUMN instead of as one span: a column keeps its
+# hair only where the hat itself has reached that column, at that row or above
+# it.  For a hat with no gaps (a beanie, a helmet) that is identical to the old
+# rule and the frames come out byte-for-byte the same.
+
+
+def _solid(m):
+    """The hat minus its outline and its loose pixels.
+
+    v2.3.1963.  Owner: "Make the hair mask liberal (over cut rather than
+    undercut) since your width detector is grabbing some outlines and ghost
+    pixels."  Exactly right, and it is why the wedge either side of a tapered
+    hat was not being cut cleanly: the per-row extent is taken from the
+    OUTERMOST opaque pixel in that row, and the outermost pixel is the dark
+    1px outline -- or, worse, a stray left by the green-key import that nothing
+    on screen can see.  One such pixel widens the accumulated bound for that
+    row and every row beneath it, and the bound never narrows again.
+
+    A 4-neighbour erode drops both: an outline pixel has empty space on one
+    side, and a lone speck has it on all four.  The hat's body is many pixels
+    thick and survives.  Frames that erode to nothing (a hat one pixel thick
+    somewhere) fall back to the raw mask rather than vanishing.
+    """
+    e = (m
+         & np.roll(m, 1, axis=0) & np.roll(m, -1, axis=0)
+         & np.roll(m, 1, axis=1) & np.roll(m, -1, axis=1))
+    # np.roll wraps, so the frame's own border can leak in from the far side.
+    e[0, :] = e[-1, :] = e[:, 0] = e[:, -1] = False
+    return e if e.any() else m
+
+
+def _inset_runs(cols, inset):
+    """`cols` with each contiguous run pulled in by `inset` on both sides.
+
+    v2.3.1974.  The old rule had ONE run per row, so the inset was two
+    integers.  Per column there can be several runs (a hat brim either side of
+    a crown), and each needs its own edges pulled in -- insetting only the
+    outermost pair would leave the inner edges of every gap un-inset, which is
+    where an outline pixel does its damage.
+    """
+    out = cols.copy()
+    if inset <= 0:
+        return out
+    w = len(cols)
+    x = 0
+    while x < w:
+        if not cols[x]:
+            x += 1
+            continue
+        j = x
+        while j < w and cols[j]:
+            j += 1
+        # run is [x, j)
+        a, b = x + inset, j - inset
+        out[x:j] = False
+        if b > a:
+            out[a:b] = True
+        x = j
+    return out
 
 
 def _load256(p):
@@ -113,7 +262,20 @@ def bald_px(hid, meta, masks):
         skull = body[:, :, 3] > ALPHA_T
         skull[:by, :] = False
         skull[by + SKULL_ROWS:, :] = False
-        n = int((skull & (msk[:, :, 3] <= ALPHA_T) & (hat[:, :, 3] <= ALPHA_T)).sum())
+        # v2.3.1957: only UNDER THE HAT.  The width rule intentionally leaves
+        # skin beside a cap -- that is the hair being pressed down rather than
+        # ballooning -- so counting it made the guard refuse 21 of 31 real
+        # caps.  What the guard is actually for is the shape it was written
+        # against: a BAND, which leaves the whole dome above it bare.  That
+        # dome is inside the band's own columns, so scoping the count to the
+        # hat's horizontal span keeps every band refused and stops punishing
+        # caps for doing the thing the owner asked for.
+        span = np.zeros(FRAME, bool)
+        hcols = np.nonzero((hat[:, :, 3] > ALPHA_T).any(axis=0))[0]
+        if len(hcols):
+            span[hcols.min():hcols.max() + 1] = True
+        n = int((skull & span[None, :]
+                 & (msk[:, :, 3] <= ALPHA_T) & (hat[:, :, 3] <= ALPHA_T)).sum())
         if n > worst:
             worst, worst_d = n, d
     return worst, worst_d
@@ -125,6 +287,18 @@ def build(hid, apply_it, set_clips):
     if not os.path.isfile(mp):
         raise SystemExit(f'no hat called {hid}')
     meta = json.load(open(mp))
+    # v2.3.1974: does this hat have real HOLES you should see hair through?
+    # See "The crease in a cowboy hat is not a gap between devil horns".
+    open_top = bool(meta.get('openTop'))
+    # v2.3.1976: owner, on devil-horns — "There should be no hair between the
+    # horns.  I understand it to be a fully enclosed hat."  An enclosed hat
+    # covers the scalp completely, so inside its own horizontal extent the ONLY
+    # place hair may show is where the hat is not drawn AND the hat is not
+    # standing in front of it -- which, for a hat that encloses, is nowhere.
+    # The default rule keeps a column the hat has reached at any row above,
+    # which is right for a cowboy crown and wrong for a pair of horns: the gap
+    # between them is sky, but the scalp under it is under the cap.
+    enclosed = bool(meta.get('enclosed'))
     made = []
     masks = {}
     for d in DIRS:
@@ -135,14 +309,108 @@ def build(hid, apply_it, set_clips):
         m = a[:, :, 3] > ALPHA_T
         h, w = m.shape
         mask = np.zeros((h, w, 4), np.uint8)
-        rows = np.nonzero(m.any(axis=1))[0]
+        # ═══ v2.3.1977: THE HAT'S OUTLINE, NOT ITS LAST STRAY PIXEL ═══
+        # Owner: "The hair mask is inconsistent depending on the direction
+        # (southwest vs south etc).  It's also removing too much hair where it
+        # meets the hat border so there's a strip of skin showing."
+        #
+        # Both are the same measurement bug.  `rows` decided where the hat ENDS,
+        # and it was taken from the raw alpha, which on these sheets trails off
+        # into isolated one- and two-pixel specks below the real edge.  MEASURED,
+        # rows of hat below the last solid row:
+        #     devil-horns  south 1   southwest 4   east 5
+        #     beanie/cowboy/mickey   1 everywhere
+        # Part 2 (everything below the hat, full width) therefore started BELOW
+        # the strays rather than below the outline, and the rows in between were
+        # left to part 1, which keeps only the two or three columns those specks
+        # occupy.  That is the strip of bare skin -- and because the speck tail
+        # is a different length on every facing, the strip is a different height
+        # on every facing, which is the inconsistency.
+        #
+        # The eroded hat is already the honest shape for this (a lone speck has
+        # empty space on all four sides and does not survive); it is what the
+        # width rule has measured on since v2.3.1963.  The boundary now uses it
+        # too, so part 1 and part 2 tile at the same row on every direction.
+        # Erring one row HIGH is free: the hat is drawn over the hair, so any
+        # hair this re-allows inside the hat's own bottom edge is hidden by the
+        # hat itself -- while erring low is exactly the reported bug.
+        rows = np.nonzero(_solid(m).any(axis=1))[0]
+        if not len(rows):
+            rows = np.nonzero(m.any(axis=1))[0]
         if len(rows):
-            # everything below the hat's lowest pixel, at full width
-            mask[rows.max() + 1:, :] = (255, 255, 255, 255)
-        for x in range(w):
-            col = np.nonzero(m[:, x])[0]
-            if len(col):
-                mask[col.min():, x] = (255, 255, 255, 255)
+            # ═══ v2.3.1977: EVERYTHING BELOW THE HAT'S OUTLINE IS HAIR ═══
+            # Owner: "Make it so that all hair shows beneath the bottom outline
+            # of the headwear."  Flat rule, no exceptions, including the
+            # enclosed hats.
+            #
+            # v2.3.1976 bounded part 2 to an enclosed hat's own column span, to
+            # answer "hair from Afro is on the sides".  That was the wrong lever:
+            # the side hair it was aimed at is BESIDE THE CAP, at the cap's own
+            # rows, and part 1 is what governs there -- the enclosed branch below
+            # already cuts it.  Bounding part 2 as well went on to cut hair below
+            # the cap's bottom edge too, which is hair that has nothing in front
+            # of it, and that is the strip of bare skin the owner is now looking
+            # at.  Two rules were doing one job and the second one only did harm.
+            mask[int(rows.max()) + 1:, :] = (255, 255, 255, 255)
+        # v2.3.1957: at and above the hat, no wider than the hat has been at
+        # this row or above it.
+        # v2.3.1963: measured on the SOLID hat and then pulled in — see
+        # "Over-cutting on purpose".
+        # v2.3.1974: PER COLUMN, not one span across the whole row — see
+        # "The crease in a cowboy hat is not a gap between devil horns".
+        solid = _solid(m)
+        if len(rows):
+            y0, y1 = int(rows.min()), int(rows.max())
+            if open_top:
+                # The old whole-row span: everything between the leftmost and
+                # rightmost column the hat has reached keeps its hair, gaps
+                # included.  That is what makes a crown's spikes and a pair of
+                # horns show hair BETWEEN them, which is the owner's stated
+                # exception, so those hats keep it.
+                lo, hi_ = w, -1
+                for y in range(y0, y1 + 1):
+                    r = np.nonzero(solid[y, :])[0]
+                    if len(r):
+                        lo = min(lo, int(r.min()) + INSET)
+                        hi_ = max(hi_, int(r.max()) - INSET)
+                    if hi_ >= lo:
+                        mask[y, lo:hi_ + 1] = (255, 255, 255, 255)
+            else:
+                # A closed hat.  Two conditions, and it takes both:
+                #
+                #   (a) the hat has REACHED this column, at this row or above
+                #       it -- the owner's "the width equal to and above the hat
+                #       item", read per column instead of as one span.  This
+                #       cuts the crease between a cowboy crown's two peaks and
+                #       the wedge between a brim tip and the crown, because the
+                #       hat has never occupied those columns higher up.
+                #
+                #   (b) the column is inside the hat's OWN extent at this row.
+                #       Needed for a hat that LEANS: the wizard hat's tip sits
+                #       right of where its middle does, so (a) alone keeps a
+                #       notch of hair beside the cone at the rows where it has
+                #       receded -- 36 stray pixels, measured.
+                #
+                # (a) without (b) leaves the wizard's notch; (b) without (a) is
+                # brutal -- it cuts every column the hat does not literally
+                # cover, which shaves visible BALD SCALP under the hats that
+                # drape or gap (measured: arabian-robe 676px, cowboy-hat-2
+                # 620px, russian-hat 512px).  A column a hood covered higher up
+                # stays available lower down, which is what keeps hair in the
+                # gap between its panels.
+                seen = np.zeros(w, bool)
+                for y in range(y0, y1 + 1):
+                    seen |= solid[y, :]
+                    r = np.nonzero(solid[y, :])[0]
+                    row_span = np.zeros(w, bool)
+                    if len(r):
+                        row_span[int(r.min()):int(r.max()) + 1] = True
+                    # An enclosed hat keeps only where the hat itself is on
+                    # this row; everything else inside its span is scalp the
+                    # hat is covering.  See `enclosed` above.
+                    allow = solid[y, :] if enclosed else (seen & row_span)
+                    keep = _inset_runs(allow, INSET)
+                    mask[y, keep] = (255, 255, 255, 255)
         made.append((d, int(m.sum()), int((mask[:, :, 3] > 0).sum()), w))
         masks[d] = mask
         if apply_it:
@@ -156,8 +424,9 @@ def build(hid, apply_it, set_clips):
               f'(limit {BALD_T}) -- this is a band, not a cap; clipping would shave the crown')
     if apply_it and set_clips:
         meta['clipsHair'] = True
-        meta['note'] = (meta.get('note', '') + ' v2.3.1532: hair-clip mask rebuilt from '
-                        'the current art by tools/make_hairmask.py'
+        meta['note'] = (meta.get('note', '') + ' v2.3.1957: hair-clip mask rebuilt by '
+                        'tools/make_hairmask.py under the WIDTH rule (owner: clip the hair to '
+                        'the hat\'s width at and above the hat)'
                         + ('' if was else ', and clipsHair switched on') + '.')
         with open(mp, 'w') as fh:
             json.dump(meta, fh, indent=2)

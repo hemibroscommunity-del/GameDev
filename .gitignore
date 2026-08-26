@@ -53,3 +53,6 @@ tools/qa/mp/out/
 # v2.3.1923: generated headwear preview sheets (tools/qa/preview-headwear.mjs).
 # Regenerate on demand; 4MB of PNGs has no business in the history.
 preview/
+
+# v2.3.1979: mp-lockon writes a debug screenshot next to itself on every run.
+tools/qa/mp/.last-*.png

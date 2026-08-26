@@ -40,6 +40,7 @@
  * one workflow retry) for ~10 consecutive CI runs.
  */
 import { chromium } from 'playwright-core';
+import { legacyLogin } from './legacy-login.mjs';
 import { existsSync } from 'node:fs';
 
 const SHELL = '/tmp/chrome-headless-shell-linux64/chrome-headless-shell';
@@ -94,9 +95,10 @@ async function startSession(label) {
   });
   await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await sleep(6000);
-  const input = page.locator('input').first();
-  await input.fill(label, { timeout: 60000 });
-  await input.press('Enter');
+  /* v2.3.1964: the splash has no name box — it has a login door.
+     legacyLogin takes the same route a player takes (see
+     tools/qa/legacy-login.mjs for what broke and when). */
+  await legacyLogin(page, label);
   for (let i = 0; i < 60; i++) {
     const joined = await page.evaluate(() => window._gameState?.current?.player?.x != null).catch(() => false);
     if (joined) return page;
@@ -199,6 +201,18 @@ for (const [label, page] of [['A', A], ['B', B]]) {
 
 /* ── 4. A leaves via the strip's Leave button → disband on both
        (a party left with one member is just a player) ── */
+/* v2.3.1966: hide the desktop keyboard legend before reaching for the roster.
+   The legend is `.bt-kb-hints`, bottom-left, and its KEY CHIPS take pointer
+   events (game.css: `.bt-kb-hints .bt-kb-key{pointer-events:auto}`) — so where
+   a chip overlaps the party roster's Leave button, the click lands on the chip.
+   H is the game's own control for this and the legend says so ("Hide these
+   (H)"), which is what a desktop player does; the harness does the same rather
+   than reaching past the UI with a synthetic event.
+   NOT swept under the carpet: the overlap itself is a real desktop-only
+   annoyance (there is no keyboard legend on the primary platform, iPhone).  It
+   is geometry, not stacking — see the note in the v2.3.1966 commit. */
+await A.keyboard.press('h');
+await A.waitForTimeout(400);
 await A.locator('button[title="Leave party"]').first().click({ timeout: 5000 });
 for (const [label, page] of [['A', A], ['B', B]]) {
   const gone = await pollUntil(async () => {

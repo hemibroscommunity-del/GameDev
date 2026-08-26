@@ -1320,7 +1320,12 @@ input{font-family:inherit}
 /* v2.3.1525: seven FLAT tabs (Head and its subtype row are retired). Four per
    row, so they wrap to a fixed two-row block — shorter than the tabs row plus
    the reserved two-row subtab row it replaces. */
-.bt-cc-tabs{flex:0 0 auto;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+/* v2.3.1953: THREE columns, not four.  The Build tab makes nine, and nine in a
+   4-wide grid is 4+4+1 — one lonely tab on its own row.  Three columns is a
+   clean 3x3 and makes every tab ~30% WIDER, which the labels and the 44px
+   touch-target floor both wanted anyway; the extra row costs ~56px in a
+   picker column that had several hundred spare (measured at 390x844). */
+.bt-cc-tabs{flex:0 0 auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
 /* v2.3.1576: the unselected tabs were background:transparent with a
    TRANSPARENT border — literally 1.00:1, so the category row read as
    floating labels rather than a row of controls, and only the selected
@@ -1398,29 +1403,41 @@ input{font-family:inherit}
   display:grid;align-items:start;justify-content:start;
   grid-template-columns:auto auto;
   grid-template-areas:
-    "tabs  tabs"
-    "side  main"
-    "note  main"
-    "tools tools"
-    "opts  opts"
-    "pal   pal"
-    "btn   btn";
+    "tabs tabs"
+    "side main"
+    "note main"
+    "ctl  ctl";
 }
 .bt-paint-tabs{grid-area:tabs}
 .bt-paint-side{grid-area:side;width:calc(var(--paint-size) * .62)}
 .bt-paint-note{grid-area:note;width:calc(var(--paint-size) * .62);
   font-size:11px;line-height:1.3;opacity:.78}
 .bt-paint-main{grid-area:main;width:var(--paint-size)}
-.bt-paint-tools{grid-area:tools;display:grid;grid-template-columns:repeat(6,1fr);gap:5}
+/* v2.3.1967: SEVEN tools, not six -- the hand joined them (owner: "add a hand
+   shape to tap the existing shape to reselect and edit it").  MEASURED rather
+   than nudged: --paint-size tops out at 288px, so at six columns a tool got
+   43px and at seven with the old 5px gap it gets 36.9px, which wraps "Letters"
+   onto a second line and grows the whole row.  A 4px gap and a notch off the
+   label give 37.7px against a 32px "Letters", so the row keeps its height and
+   nothing below it moves. */
+.bt-paint-tools{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.bt-paint-tools .bt-paint-tool-label{font-size:8.5px;white-space:nowrap}
 /* v2.3.1949: the options row is a flex pair now -- a variable part (brush
    widths, or the alphabet) and a Mirror toggle that never moves. */
-.bt-paint-opts{grid-area:opts;display:flex;gap:5px;min-width:0}
+.bt-paint-opts{display:flex;gap:5px;min-width:0}
 .bt-paint-opts-main{flex:1 1 auto;min-width:0;display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
 .bt-paint-mirror{flex:0 0 auto;width:62px}
-.bt-paint-pal{grid-area:pal}
-.bt-paint-btn{grid-area:btn}
-/* Stacked: the wrapper vanishes and its children take their own areas. */
-.bt-paint-ctl{display:contents}
+/* ═══ v2.3.1950: THE CONTROLS ARE ONE COLUMN IN BOTH LAYOUTS ═══
+   They used to be four separate grid areas in the stacked layout and a flex
+   column in the wide one.  The stacked half was subtly wrong: a declared grid
+   row that holds nothing still contributes its two gaps, so the pattern screen
+   — which has no toolbar, no tool options and no slot row — opened 30px of
+   dead air above its buttons.  A flex column puts a gap only BETWEEN children
+   that exist, so the empty rows cost nothing and the wide layout needs no
+   special case beyond its own gap. */
+.bt-paint-ctl{
+  grid-area:ctl;display:flex;flex-direction:column;gap:10px;min-width:0;
+}
 /* The preview is pixel art zoomed in: pixelated on the way up, and a ground
    that is darker than the panel so a pale shirt still has an edge. */
 .bt-paint-pv{
@@ -1468,6 +1485,58 @@ input{font-family:inherit}
   color:var(--ui-text);font-size:17px;font-weight:700;line-height:1;
 }
 .bt-paint-letter--on{background:var(--ui-brass-soft);border-color:var(--ui-brass)}
+/* v2.3.1950: copy-to-the-other-side.  Quiet, because it is a once-per-design
+   action sitting under the caption rather than a control you work in. */
+.bt-paint-copy{
+  width:100%;min-height:34px;border-radius:8px;cursor:pointer;
+  background:rgba(229,237,233,.06);border:1px solid rgba(229,237,233,.20);
+  color:var(--ui-text);font-size:12px;letter-spacing:.01em;
+  transition:transform 90ms cubic-bezier(.2,.8,.2,1);
+}
+.bt-paint-copy:active{transform:scale(.98)}
+
+/* v2.3.1950: the saved-design row.  Three thumbnails and an arming button, on
+   one line, sized so a slot stays a comfortable target on a phone. */
+.bt-paint-slots{display:flex;gap:6px;align-items:stretch}
+.bt-paint-slot{
+  flex:0 0 auto;width:46px;min-height:46px;padding:3px;position:relative;
+  border-radius:8px;cursor:pointer;line-height:0;
+  background:rgba(229,237,233,.06);border:1px solid rgba(229,237,233,.20);
+  transition:transform 90ms cubic-bezier(.2,.8,.2,1);
+}
+.bt-paint-slot:active{transform:scale(.97)}
+.bt-paint-slot--on{border-color:var(--ui-brass);background:var(--ui-brass-soft)}
+.bt-paint-slot canvas{
+  width:100%;aspect-ratio:1/1;display:block;image-rendering:pixelated;border-radius:5px;
+}
+/* the "nothing here yet" mark, over the empty checker */
+.bt-paint-slot-plus{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:20px;line-height:1;color:rgba(229,237,233,.45);pointer-events:none;
+}
+.bt-paint-save{
+  flex:1 1 auto;min-height:46px;border-radius:8px;cursor:pointer;
+  background:rgba(229,237,233,.06);border:1px solid rgba(229,237,233,.20);
+  color:var(--ui-text);font-size:13px;
+}
+.bt-paint-save--on{background:var(--ui-brass-soft);border-color:var(--ui-brass)}
+/* v2.3.1951: the pending-shape controls borrow the brush-size chip so the row
+   keeps its height and the panel below it never jumps. */
+.bt-paint-shapeops .bt-paint-size{padding:4px 3px}
+.bt-paint-shapeops .bt-paint-tool-label{font-size:11px;line-height:1.15;text-align:center}
+/* v2.3.1967: the layer row -- a readout over four steps.  The readout is a row
+   of its own rather than a fifth chip: it is a sentence that CHANGES on every
+   tap ("Layer 2 of 4 - circle"), which is how the owner sees what the button
+   did, and squeezing it into the strip would have cost each button a quarter of
+   its width for a label nobody could read. */
+.bt-paint-layers{display:flex;flex-direction:column;gap:4px;min-width:0}
+.bt-paint-layer-at{
+  font-size:10px;line-height:1.2;letter-spacing:.01em;color:var(--ui-text);
+  opacity:.78;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.bt-paint-layer-btns{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.bt-paint-layer-btns .bt-paint-size{padding:4px 2px;min-height:38px}
+.bt-paint-layer-btns .bt-paint-tool-label{font-size:10.5px;line-height:1.15;text-align:center}
 
 /* ── short viewports: the same markup, three columns ──
    MEASURED (v2.3.1947): on iPhone landscape (844x390) the single-grid panel
@@ -1487,13 +1556,10 @@ input{font-family:inherit}
       "side main ctl"
       "note main ctl";
   }
-  /* The controls become ONE column of their own rather than four blocks sharing
-     rows with the preview: a 44px tool row in the same row as a 140px preview
-     gets a 96px hole under it, which is exactly what that looked like. */
-  .bt-paint-ctl{
-    display:flex;flex-direction:column;gap:8px;
-    grid-area:ctl;align-self:start;min-width:0;
-  }
+  /* Beside the drawing rather than under it, and hugging the top: the controls
+     are shorter than the grid, and stretching them would strand each one at the
+     top of an oversized row. */
+  .bt-paint-ctl{gap:8px;align-self:start}
 }
 /* Short AND narrow: keep the stack, just tighten it. */
 @media (max-height:460px) and (max-width:659px){
@@ -1595,7 +1661,7 @@ input{font-family:inherit}
    horizontal scroller was the right shape under a character; in a tall column
    it wasted the height that is the whole reason for the rebuild, and hid most
    of the catalog behind a swipe. */
-.bt-cc-strip{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:repeat(auto-fill,var(--cc-tile));grid-auto-rows:var(--cc-tile);gap:6px;justify-content:center;align-content:start;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;touch-action:pan-y;padding:2px;scrollbar-width:none;box-sizing:border-box}
+.bt-cc-strip{flex:0 1 auto;min-height:0;display:grid;grid-template-columns:repeat(auto-fill,var(--cc-tile));grid-auto-rows:var(--cc-tile);gap:6px;justify-content:center;align-content:start;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;touch-action:pan-y;padding:2px;scrollbar-width:none;box-sizing:border-box}
 .bt-cc-strip::-webkit-scrollbar{display:none}
 .bt-cc-strip>*{flex:none!important;width:var(--cc-tile)!important;height:var(--cc-tile)!important}
 /* Colors: fixed-size swatches so a long catalog scrolls with six-ish
@@ -1623,7 +1689,18 @@ input{font-family:inherit}
 /* v2.3.1524: the items wrap is the pane's flexible region; the colours wrap
    stays fixed. The chevron overlay signalled horizontal overflow and has
    nothing to say about a vertical grid. */
-.bt-cc-panel>.bt-cc-scroll{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+/* v2.3.1956 (owner: "Move the tattoo and pattern option button to directly
+   beneath the color options instead of sitting at the bottom of the
+   container").  The options strip used to GROW into all the spare height, so
+   on a short catalogue — Skin is thirteen swatches — everything under it was
+   shoved to the floor of the pane with a hand's width of nothing in between,
+   and the Design button read as unrelated to the tab it belongs to.
+   `0 1 auto` lets it hug its content and still shrink-and-scroll on a long
+   catalogue; with nothing left growing, the spare height collects at the
+   bottom of the column where it is invisible.  The v2.3.1252 constant-size
+   guarantee is untouched: the pane's OUTER height is unchanged, so the stage
+   and the character do not move. */
+.bt-cc-panel>.bt-cc-scroll{flex:0 1 auto;min-height:0;display:flex;flex-direction:column}
 .bt-cc-more{display:none}
 .bt-cc-more{position:absolute;top:0;right:0;bottom:0;width:26px;display:flex;align-items:center;justify-content:flex-end;padding-right:2px;pointer-events:none;opacity:0;transition:opacity 160ms ease;background:linear-gradient(to right,rgba(30,46,52,0),var(--ui-sheet) 80%);color:var(--ui-text-secondary);font-size:15px;font-weight:700;line-height:1}
 .bt-cc-more--on{opacity:1}
@@ -2186,7 +2263,14 @@ body:has(.bt-inspect) .bt-kb-chip{display:none}
   cursor:pointer;-webkit-tap-highlight-color:transparent;
   transition:transform .09s ease-out,filter .18s ease-out;
 }
-.bt-login-btn--key{background-image:url('/ui/welcome/title/btn-login.png');aspect-ratio:815/259}
+/* v2.3.1954 (owner: "change the label from login with your key to just
+   'Continue' on splash screen").  The label is painted INTO the plate, so the
+   rename is the change: this stylesheet cannot append the build version the
+   way the JSX art() helper does, and an edit in place would be served from
+   cache to every returning player — on the one screen where the stale word is
+   the whole bug.  Same plate, same size, new word.  See
+   tools/ui/relabel-login-plate.mjs for how the lettering was recomposed. */
+.bt-login-btn--key{background-image:url('/ui/welcome/title/btn-continue.png');aspect-ratio:815/259}
 .bt-login-btn--new{background-image:url('/ui/welcome/title/btn-create.png');aspect-ratio:799/212}
 .bt-login-btn:active{transform:translateY(1px) scale(.995)}
 .bt-login-btn:disabled{opacity:.55;cursor:default;animation:none}
@@ -2378,4 +2462,22 @@ body:has(.bt-inspect) .bt-kb-chip{display:none}
 @media (max-height:520px){
   .bt-npcdlg-art{flex-basis:30%;max-width:140px}
   .bt-npcdlg-text{min-height:64px;font-size:13px}
+}
+
+/* ═══ v2.3.1965: THE BODY-INK SURFACE ═══
+   Owner: "allow the user to zoom in on any part of the character skin to
+   tattoo it ... with the live preview of what it looks like on the character."
+   The canvas is the character, so it takes the same square well the 16x16 grid
+   had; the bar under it carries the three things a finger needs that a grid
+   did not — pan instead of ink, and the two zoom steps for the hand that is
+   holding the phone. */
+.bt-bodyink{display:flex;flex-direction:column;gap:6px}
+.bt-bodyink-cv{background:rgba(9,13,17,.55)}
+.bt-bodyink-bar{display:flex;align-items:center;gap:6px}
+.bt-bodyink-bar .bt-paint-size{flex:0 0 auto;min-width:48px}
+/* The region under your finger, named. It is the one thing the surface knows
+   and you cannot see: Undo, Clear and the palette all act on THIS canvas. */
+.bt-bodyink-where{
+  margin-left:auto;font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--ui-brass);opacity:.85;padding-right:2px;
 }

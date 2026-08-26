@@ -25,7 +25,8 @@ import { SPRITE_VERSION } from './playerSprites.js';
 import { getHatRef } from './traits/hatColorCatalog.js';
 import { materialIndex } from './traits/traitMaterials.js'; /* v2.3.1926 */
 import { headwearIsSolid, headwearBehindBeard } from './traits/headwearCatalog.js';   /* v2.3.1934 */
-import { bandFit } from './traits/bandFit.js';   /* v2.3.1943 */
+import { hatHairFit } from './traits/hatHairFit.js';   /* v2.3.1943 band refit + v2.3.1561 float lift, in one place since v2.3.1959 */
+import { buildScale, getBuildHeight, getBuildFrame, DEFAULT_HEIGHT, DEFAULT_FRAME, PORTRAIT_FIT } from './traits/buildCatalog.js';   /* v2.3.1953 */
 import { SOLID_ONLY_HAT_COLOR } from './traits/recolorOptions.js'; /* v2.3.1109: shared per-hat recolour reference (call-time use; cyclic import is safe) */
 import { upscaleToFrameHeight } from './spriteScale.js'; /* v2.3.1110: restore downscaled shirt sheet to 256 frame */
 /* v2.3.1815: worn armour in the portrait.  gearArt resolves a recoloured set
@@ -212,28 +213,17 @@ export function recolorHairToCanvas(img, hairColor, refOverride) {
   return cv;
 }
 
-/* v2.3.1561: mirror of entityRenderer._floatAboveHairLift — the halo is not
-   worn, it floats, so its clearance has to be measured against the HAIR being
-   drawn under it rather than baked into its meta as a fixed crown offset.
-   entityRenderer.js is the source of truth for the two constants; this file
-   deliberately re-implements the placement math (see placeTrait below) and
-   this follows the same convention.  The character-creation preview is where
-   the owner spotted the halo sitting on the hair, so the portrait needs this
-   as much as the world renderer does. */
-const FLOAT_BASE = 12;
-const FLOAT_GAP = 5;
-function floatLift(meta, hairMeta, dir) {
-  if (!(meta && meta.floatsAboveHair)) return 0;
-  const topOf = (m) => {
-    const cn = (m.crownNudge && m.crownNudge[dir]) || [0, 0];
-    const pn = (m.poseNudge && m.poseNudge.stand && m.poseNudge.stand[dir]) || [0, 0];
-    return cn[1] + pn[1];
-  };
-  const bbox = (meta.bboxes && meta.bboxes[dir]) || null;
-  const bottom = topOf(meta) + ((bbox && bbox[3]) || 0);
-  const hairTop = hairMeta ? topOf(hairMeta) : 0;
-  return Math.min(0, Math.min(-FLOAT_BASE, hairTop - FLOAT_GAP) - bottom);
-}
+/* v2.3.1561's local copy of the float-above-hair lift is GONE (v2.3.1959).
+   This file deliberately re-implements the trait PLACEMENT math (see
+   placeTrait below), and the lift followed that convention — but the lift is
+   not placement math, it is a number derived from two meta.json files, and
+   the same number has to reach the hat AND the hair mask the hat clips the
+   hair to.  It reached only the hat here, exactly as it did in the world
+   renderer, so both copies carried the same bug.  traits/hatHairFit.js is now
+   the single source for it and for the v2.3.1943 band refit; the portrait
+   passes DIR as both the direction and the screen direction because this
+   canvas mirrors the whole composite rather than individual traits, which
+   makes its answer identical to the world renderer's unmirrored one. */
 
 /* Place one trait sprite (already recolored if needed) onto ctx using the
    stand/<dir> meta math.  Mirrors entityRenderer._placeTrait. */
@@ -267,11 +257,16 @@ function placeTrait(ctx, traitImg, meta, crown, dir, liftY, mulX) {
 }
 
 /* Render one trait to its own native FRAME canvas (used for hair so it can
-   be mask-clipped before compositing). */
-function renderTraitCanvas(traitImg, meta, crown, dir) {
+   be mask-clipped before compositing).
+   v2.3.1959: it forwards liftY/mulX now.  It took neither, which meant the
+   hair MASK — the only other thing that goes through here — was placed as if
+   the hat had no float lift and no band refit, while the hat itself was
+   placed with both.  A canvas that cannot express the hat's own placement
+   cannot hold the hat's own silhouette. */
+function renderTraitCanvas(traitImg, meta, crown, dir, liftY, mulX) {
   const cv = document.createElement('canvas');
   cv.width = FRAME; cv.height = FRAME;
-  placeTrait(cv.getContext('2d'), traitImg, meta, crown, dir);
+  placeTrait(cv.getContext('2d'), traitImg, meta, crown, dir, liftY, mulX);
   return cv;
 }
 
@@ -427,6 +422,35 @@ export async function drawCharacterPortrait(canvas, opts) {
   ctx.translate(ZCX, ZCY);
   ctx.scale(Z, Z);
   ctx.translate(-ZCX, -ZCY);
+  /* ═══ v2.3.1953: HEIGHT x FRAME ═══
+     The same two numbers the world renderer scales the display container by
+     (buildCatalog.js), applied to the canvas instead — so the creator preview,
+     the character sheet, the inspect card and the friend portraits all show the
+     build the player picked, and all agree with what everyone sees in town.
+     Anchored on the BOOTS and the centre line, for the same reason the world
+     anchors on the feet: growing a figure about its middle sinks it into the
+     pedestal.  Inside the zoom transform and BEFORE the ground shadow, so the
+     shadow widens with a broad bro and stays under him at every angle.
+     `look.buildHeight`/`buildFrame` when the caller has them (a peer, or the
+     designer's preview); the local player's own store otherwise — the same
+     opts-or-store rule the drawings and patterns above follow. */
+  {
+    const _bh = (opts && opts.buildHeight !== undefined) ? opts.buildHeight : getBuildHeight();
+    const _bf = (opts && opts.buildFrame !== undefined) ? opts.buildFrame : getBuildFrame();
+    const _bs = buildScale(_bh, _bf);
+    /* PORTRAIT_FIT is the headroom the tallest build needs — see the note on
+       it in buildCatalog.  Applied to every build so they share one reference;
+       skipped only by the headshot path, which crops in raw pixels and renders
+       at the default build anyway. */
+    const _fit = (opts && opts.buildFit === false) ? 1 : PORTRAIT_FIT;
+    const _fx = _fit * _bs.sx, _fy = _fit * _bs.sy;
+    if (_fx !== 1 || _fy !== 1) {
+      const _footY = FOOT_ROW[DIR] || 221;
+      ctx.translate(FRAME / 2, _footY);
+      ctx.scale(_fx, _fy);
+      ctx.translate(-FRAME / 2, -_footY);
+    }
+  }
   /* v2.3.1300: OPT-IN ground shadow (login preview passes groundShadow;
      portraitDataUrl/headshot exports don't, so they stay clean) — a soft
      3/4-squashed contact ellipse painted FIRST so every figure layer
@@ -513,13 +537,41 @@ export async function drawCharacterPortrait(canvas, opts) {
   /* v2.3.1944: and the shoes'. */
   const _shoesPat = (opts && opts.shoesPattern !== undefined)
     ? sanitizePattern(opts.shoesPattern, 'shoes') : getPattern('shoes');
+  /* v2.3.1965: `|| opts.reportGrids` — the designer needs the grids even when
+     nothing is drawn yet, which is precisely the state a player is in when
+     they open it for the first time.  Without it the body-ink surface has no
+     grid to hit-test against and the first mark can never be made. */
   const _bodyArt = (_pantsArt || _tattooArt || _faceArt || _armArt
-    || parsePattern(_pantsPat, 'pants') || parsePattern(_shoesPat, 'shoes'))
+    || parsePattern(_pantsPat, 'pants') || parsePattern(_shoesPat, 'shoes')
+    || (opts && opts.reportGrids))
     ? { pants: _pantsArt || '', tattoo: _tattooArt || '',
       tattooFace: _faceArt || '', tattooArm: _armArt || '',
-      pantsPattern: _pantsPat, shoesPattern: _shoesPat, mirror: false } : null;
-  ctx.drawImage(recolorBodyToCanvas(bodyImg, skinTarget(skin), pantsTarget(pants), shoesTarget(shoes), null, FRAME,
-    eyeColorTarget(_eyeId), EYE_MASK[`stand-${DIR}`], _bodyArt), 0, 0);
+      pantsPattern: _pantsPat, shoesPattern: _shoesPat, mirror: false,
+      /* v2.3.1962: the designer asks for the grids the stamps fitted, so a
+         touch on the body can be run backwards into a cell.  Nothing else
+         passes it, and without it not a byte of this changes. */
+      report: !!(opts && opts.reportGrids) } : null;
+  const _bodyCv = recolorBodyToCanvas(bodyImg, skinTarget(skin), pantsTarget(pants), shoesTarget(shoes), null, FRAME,
+    eyeColorTarget(_eyeId), EYE_MASK[`stand-${DIR}`], _bodyArt);
+  ctx.drawImage(_bodyCv, 0, 0);
+  /* Stamped on the OUTPUT canvas, beside __btDir, because that is where the
+     caller can reach it.  The grids are in the BODY SHEET's own 256-space.
+     v2.3.1965: ...and the matrix that maps that space onto this canvas is
+     reported WITH them.  The v2.3.1962 note here said the caller "only has to
+     undo the zoom, which it authored", which was true and is a bad deal: the
+     chain above this point is a mirror, a per-direction zoom tweak, a 10px
+     drop, PORTRAIT_FIT and the build's two axes, and a caller re-deriving all
+     six silently mis-hits the moment any of them is tuned.  getTransform() at
+     the exact call that draws the body is correct by construction and cannot
+     drift from it.  The body-ink surface inverts this to turn a finger on the
+     canvas back into a cell. */
+  if (opts && opts.reportGrids) {
+    try {
+      canvas.__btGrids = _bodyCv.__btGrids || null;
+      const _m = ctx.getTransform();
+      canvas.__btGridXform = { a: _m.a, b: _m.b, c: _m.c, d: _m.d, e: _m.e, f: _m.f };
+    } catch (e) { /* no DOMMatrix (very old Safari): the caller falls back */ }
+  }
   if (shirtImg) {
     /* v2.3.1110: restore a downscaled-on-disk shirt sheet to the 256px frame
        (these drawImage calls read a 256x256 source rect). No-op at native. */
@@ -653,6 +705,12 @@ export async function drawCharacterPortrait(canvas, opts) {
     if (fhImg && fhMeta) placeTrait(ctx, facialHairColor ? recolorHairToCanvas(fhImg, facialHairColor) : fhImg, fhMeta, crown, DIR);
   };
   if (!_beardOverHat) drawBeard();
+  /* v2.3.1959: the hat's hair-dependent adjustments — the float lift and the
+     band refit — computed ONCE, here, above both the mask that clips the hair
+     and the hat itself.  They used to be computed only at the hat's own
+     placement line below, which is how the mask ended up landing somewhere
+     the hat was not. */
+  const _hwFit = hatHairFit(headwear, hwMeta, hair, hairMeta, 'stand', DIR, DIR);
   if (hairImg && hairMeta) {
     /* Render hair to its own canvas so it can be clipped to the hat's
        silhouette mask (same as the in-game _clipHairToHat) before
@@ -660,7 +718,7 @@ export async function drawCharacterPortrait(canvas, opts) {
        helmet while the forehead hair under the brim still shows. */
     const hairCv = renderTraitCanvas(recolorHairToCanvas(hairImg, hairColor), hairMeta, crown, DIR);
     if (hwImg && hwMeta && hwMeta.clipsHair && maskImg) {
-      const maskCv = renderTraitCanvas(maskImg, hwMeta, crown, DIR);
+      const maskCv = renderTraitCanvas(maskImg, hwMeta, crown, DIR, _hwFit.dy256, _hwFit.mulX);
       const hctx = hairCv.getContext('2d');
       hctx.globalCompositeOperation = 'destination-in';
       hctx.drawImage(maskCv, 0, 0);
@@ -671,9 +729,10 @@ export async function drawCharacterPortrait(canvas, opts) {
      creator preview would still show a recolored hat the game refuses to
      render, which is worse than not offering the color at all. */
   const _hwCol = hatColor && (!SOLID_ONLY_HAT_COLOR || headwearIsSolid(headwear));
-  /* v2.3.1943: the band refit, same numbers the world renderer uses. */
+  /* v2.3.1943: the band refit, same numbers the world renderer uses — and
+     since v2.3.1959 the same object the hair mask above was placed with. */
   if (hwImg && hwMeta) placeTrait(ctx, _hwCol ? recolorHairToCanvas(hwImg, hatColor, hatRef) : hwImg, hwMeta, crown, DIR,
-    floatLift(hwMeta, hairMeta, DIR), bandFit(headwear, hair, DIR)); /* v2.3.1561; v2.3.1943 */
+    _hwFit.dy256, _hwFit.mulX); /* v2.3.1561; v2.3.1943 */
   /* v2.3.1934: the beard goes on LAST for draping headwear.  Deliberately
      after the hair-clip block as well, so the beard is not clipped to the
      hat's silhouette the way hair is -- it is in front of the hat, not under
@@ -717,7 +776,19 @@ const HEAD_CROP = { x: 80, y: 16, s: 96 };
 export async function portraitDataUrl(opts, headshot) {
   try {
     const cv = document.createElement('canvas');
-    await drawCharacterPortrait(cv, opts);
+    /* ═══ v2.3.1953: A HEADSHOT HAS NO SILHOUETTE ═══
+       Build is a whole-figure property: a 13% taller bro reads as tall because
+       you can see how much of him there is.  Crop to head-and-shoulders and
+       that context is gone — the same stretch just reads as a long face.  The
+       crop is also stated in RAW PIXELS (HEAD_CROP), and a tall figure's crown
+       lands ABOVE its top edge, so the profile picture would be scalped.
+       So every headshot renders at the default build.  All three callers of
+       this path are headshots (profile picture, inspect card, friend tiles);
+       the full-figure previews go through drawCharacterPortrait directly and
+       DO carry the build. */
+    await drawCharacterPortrait(cv, headshot
+      ? { ...(opts || {}), buildHeight: DEFAULT_HEIGHT, buildFrame: DEFAULT_FRAME, buildFit: false }
+      : opts);
     if (!headshot) return cv.toDataURL('image/png');
     const out = document.createElement('canvas');
     out.width = HEAD_CROP.s; out.height = HEAD_CROP.s;

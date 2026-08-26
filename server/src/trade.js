@@ -38,11 +38,44 @@
 export const TRADE_OFFER_TTL = 120000; // 2 min to accept
 
 export const tradeMethods = {
-  // Sanitize a client offer shape: { itemKey: qty, ..., _gold: n }.
-  // Returns null when nothing survives (empty gift = drop the message).
+  /* ═══ v2.3.1971: AN INVENTORY KEY OFF Object.prototype IS NOT AN ITEM ═══
+   *
+   * The offer key is client-supplied and both lanes settle it with the
+   * same shape: `(ps.inventory[k] || 0) < v` to prove ownership, then
+   * `ps.inventory[k] -= v` to debit.  For k = 'constructor' (or any of
+   * the other ten Object.prototype members) the lookup returns an
+   * inherited FUNCTION, `Object < 7` is false because the comparison is
+   * NaN, and the ownership gate passes on goods nobody holds.  Measured
+   * on the live path (trade2_set {constructor:7,toString:3}, both
+   * confirm):
+   *   giver's blob    inventory.constructor = NaN  -> saved as null
+   *   taker's blob    inventory.constructor = "function Object() { …}7"
+   *                   -- a STRING in a count field, on both sides,
+   *                   persisted by _saveRpg and echoed to the client.
+   * Nothing of VALUE duplicates (no real item is named `toString`), but
+   * it writes junk into a stranger's saved character every time they
+   * accept, and `hasOwnProperty`/`toString` shadowed by a string is the
+   * kind of thing that turns a bag render into a crash.
+   *
+   * Closed at the sanitizer because it is the ONE choke point both lanes
+   * share (gift `trade_offer` and `trade2_set` alike), so neither can
+   * grow the hole back independently.  `Object.create(null)` on top is
+   * the standing repo law for a map keyed by client ids -- three
+   * incidents in one day (duel.away v2.3.1175, party meta v2.3.1185,
+   * amulet tiers v2.3.1192) -- and the two together mean a crafted key
+   * cannot reach a settlement site at all.  Belt-and-braces own-property
+   * gates at the settlement sites themselves: trade.js/_interceptTrade,
+   * trade2.js/_handleTrade2Confirm, inbox.js/_invCount.
+   *
+   * ALSO v2.3.1971: the key cap was a `break`, so an offer whose 21st
+   * key came before `_gold` in insertion order silently dropped the GOLD
+   * -- the loop stopped scanning before it ever saw it.  `continue`
+   * keeps the same 20-item ceiling while letting the gold leg through;
+   * the payload is bounded by the 16 KB inbound frame cap, so the extra
+   * iterations are free. */
   _sanitizeTradeOffer(raw) {
     if (!raw || typeof raw !== 'object') return null;
-    const out = {};
+    const out = Object.create(null);
     let keys = 0;
     for (const [k, v] of Object.entries(raw)) {
       if (k === '_gold') {
@@ -50,8 +83,10 @@ export const tradeMethods = {
         if (g > 0) out._gold = Math.min(999999, g);
         continue;
       }
-      if (keys >= 20) break; // inventory keys are a small closed set; 20 is generous
+      if (keys >= 20) continue; // inventory keys are a small closed set; 20 is generous
       if (typeof k !== 'string' || k.length > 32) continue;
+      // The gate above: an Object.prototype member is never an item.
+      if (Object.prototype.hasOwnProperty.call(Object.prototype, k)) continue;
       const n = Math.floor(Number(v) || 0);
       if (n <= 0) continue;
       out[k] = Math.min(9999, n);
@@ -104,15 +139,18 @@ export const tradeMethods = {
     // Validate-at-commit: the sender may have spent the goods since
     // offering (the classic trade-window scam, plus honest races).
     if ((offer._gold || 0) > (senderPs.coins || 0)) return rejectAccepter();
+    // v2.3.1971: own-property counts (inbox.js `_invCount`).  The old
+    // `(inv[k] || 0) < v` passed on any Object.prototype name and then
+    // debited NaN into the sender's saved blob -- see the sanitizer header.
     for (const [k, v] of Object.entries(offer)) {
       if (k === '_gold') continue;
-      if (((senderPs.inventory && senderPs.inventory[k]) || 0) < v) return rejectAccepter();
+      if (this._invCount(senderPs, k) < v) return rejectAccepter();
     }
     // Debit the sender synchronously (no awaits yet).
     if (offer._gold) senderPs.coins -= offer._gold;
     for (const [k, v] of Object.entries(offer)) {
       if (k === '_gold') continue;
-      senderPs.inventory[k] -= v;
+      senderPs.inventory[k] = this._invCount(senderPs, k) - v;
       if (senderPs.inventory[k] <= 0) delete senderPs.inventory[k];
     }
     this._saveRpg(target, senderPs);

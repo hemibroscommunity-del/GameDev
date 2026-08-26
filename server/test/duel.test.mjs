@@ -356,5 +356,90 @@ psB.hp = 40; psB.dying = false; psB.dead = false;
 room._tickPlayerRegen();
 check('regen resumes once the duel is over', psA.hp > 40, psA.hp);
 
+/* ── 12. v2.3.1973: a duel nobody wins still ENDS ──
+ *
+ * The shot clock existed from v2.3.1126 but only ran when `expiresAt` was
+ * set, and only the arena set it.  A social duel had no clock, so "neither
+ * player dies" meant the record sat active for the life of the DO: the
+ * consent pair lapsed at CONSENT_MS (so neither could hit the other any
+ * more), `_duelFor` went on refusing both of them every later duel, and
+ * the wagers stayed parked in `duelEscrow:` because the sweep skips a
+ * duel it can still see.  With open PvP off (v2.3.1917) a duel is the only
+ * PvP there is, so that state is "PvP is over for these two accounts".
+ *
+ * Asserted through the tick, not against the constant -- TRAPS §24: the
+ * question is whether the handler ever RUNS, and only driving the clock
+ * past the deadline answers it. */
+psA.z = psB.z = 'town';
+psA.hp = 100; psA.maxHp = 100; psA.dying = false; psA.dead = false;
+psB.hp = 60;  psB.maxHp = 100; psB.dying = false; psB.dead = false;
+psA.coins = 500; psB.coins = 500;
+await room._interceptDuel('bp_duel_a', chalMsg('bp_duel_b', 25));
+const accClock = await room._interceptDuel('bp_duel_b', acceptMsg('bp_duel_a', 25));
+check('a social duel starts for the shot-clock check', accClock !== null && !!room._duelFor('bp_duel_a'));
+const dClock = room._duelFor('bp_duel_a');
+check('...and carries a deadline of its own (not the arena\'s)',
+  typeof dClock.expiresAt === 'number' && dClock.expiresAt > Date.now(), dClock.expiresAt);
+const clockStart = Date.now();
+room._tickDuels(clockStart + 60000);          // one minute in: still a fight
+check('...which has not fired a minute in', !!room._duelFor('bp_duel_a'));
+room.eventBuffer.length = 0;
+room._tickDuels(clockStart + 3600000);        // an hour in: it is over
+check('a duel nobody wins resolves on the clock instead of sticking forever',
+  !room._duelFor('bp_duel_a') && !room._duelFor('bp_duel_b'));
+const endClock = room.eventBuffer.find((e) => e.type === 'duel_end');
+check('...emitting duel_end with how:timeout', endClock && endClock.payload.how === 'timeout', endClock && endClock.payload);
+check('...to the healthier player (server hp, no new state)',
+  endClock && endClock.payload.winner === 'bp_duel_a', endClock && endClock.payload);
+check('...and BOTH players can duel again afterwards',
+  !room._duelFor('bp_duel_a') && !room._duelFor('bp_duel_b'));
+
+/* ── 13. v2.3.1973: a duel needs both of you in the same place ──
+ *
+ * The handshake relay is room-wide (tick.js leaves `events` un-scoped on
+ * purpose), so a challenge crosses zones.  The accept used to be honoured
+ * from another map: escrow debited, consent registered, duel active -- and
+ * unwinnable, because combat.js walks only the attacker's own zone.  The
+ * refusal has to land BEFORE the escrow, and has to be visible: both
+ * players pressed a button. */
+psA.dying = false; psA.dead = false; psB.dying = false; psB.dead = false;
+psA.coins = 500; psB.coins = 500;
+psA.z = 'town'; psB.z = 'meadow';
+room.eventBuffer.length = 0;
+/* Counted as a DELTA: §12's pot settle is fire-and-forget (it credits, then
+   deletes) so its record can still be in flight here, and an absolute count
+   would fail on somebody else's paperwork rather than on this refusal. */
+const escrowBefore = [...state._store.keys()].filter((k) => k.startsWith('duelEscrow:')).length;
+await room._interceptDuel('bp_duel_a', chalMsg('bp_duel_b', 40));
+const accCross = await room._interceptDuel('bp_duel_b', acceptMsg('bp_duel_a', 40));
+check('an accept from another zone is refused', accCross === null);
+check('...with no duel created', !room._duelFor('bp_duel_a') && !room._duelFor('bp_duel_b'));
+check('...and no gold taken from either side', psA.coins === 500 && psB.coins === 500, { a: psA.coins, b: psB.coins });
+check('...and nothing escrowed for it',
+  [...state._store.keys()].filter((k) => k.startsWith('duelEscrow:')).length === escrowBefore,
+  [...state._store.keys()].filter((k) => k.startsWith('duelEscrow:')));
+check('...answered with a decline to BOTH, not silence',
+  room.eventBuffer.filter((e) => e.type === 'duel_decline').length === 2,
+  room.eventBuffer.map((e) => e.type));
+// ...and the same pair, standing together, still duels normally.
+psB.z = 'town';
+room.eventBuffer.length = 0;
+await room._interceptDuel('bp_duel_a', chalMsg('bp_duel_b', 40));
+const accSame = await room._interceptDuel('bp_duel_b', acceptMsg('bp_duel_a', 40));
+check('the same pair in ONE zone still duels', accSame !== null && !!room._duelFor('bp_duel_a'));
+
+/* ── 14. v2.3.1973: the challenge map key is bounded ──
+ * `target` rides straight into a Map key that lives for CHALLENGE_TTL, and
+ * every other handshake in the room already bounds it (trade.js:78,
+ * clans.js:161, friends.js:116).  A 16 KB target at the relay bucket's
+ * sustained rate is megabytes of DO memory per attacker. */
+room._duelChallenges.clear();
+const longTarget = 'bp_' + 'z'.repeat(20000);
+const fatChal = await room._interceptDuel('bp_duel_a', chalMsg(longTarget, 0));
+check('an over-long duel target is refused', fatChal === null);
+check('...and parks nothing in the challenge map', room._duelChallenges.size === 0, room._duelChallenges.size);
+const okChal = await room._interceptDuel('bp_duel_a', chalMsg('bp_duel_b', 0));
+check('...while a real id still records a challenge', okChal !== null && room._duelChallenges.size === 1);
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

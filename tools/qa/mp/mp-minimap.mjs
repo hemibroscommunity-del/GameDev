@@ -324,22 +324,43 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!(fromTown && fromTown.x > 0 && fromTown.y > 0
        && fromTown.x < 52 * 32 && fromTown.y < 55 * 32), fromTown);
 
+  /* ═══ v2.3.1970: WAIT FOR THE PROBE, NOT FOR A STOPWATCH ═══
+     These two steps poke S.currentZone directly rather than walking a portal,
+     and window.__btMinimap is only rewritten by minimapRenderer.update() —
+     which returns EARLY, leaving the probe frozen on its last value, whenever
+     `!P || !zone || S._zoneLoading`.  So a flat 400ms wait reads whatever the
+     previous step left behind if the box happened to be held back, and the
+     value it left behind here is `null`: exactly what "nothing is starred"
+     looks like.  That is what made 'from the World View it stars the FROST
+     spoke' fail while the ember GUARD two lines later passed — the guard runs
+     after a setQuests round trip, by which time the probe had caught up.
+     Waiting on the probe's own `zone` field removes the race without weakening
+     either assertion: it says "the minimap has actually redrawn in the zone I
+     asked about", which is the precondition both checks assume. */
+  const zoneShown = async (z) => {
+    for (let i = 0; i < 40; i++) {
+      if ((await P.page.evaluate(() => (window.__btMinimap || {}).zone || null)) === z) return true;
+      await P.page.waitForTimeout(100);
+    }
+    return false;
+  };
+
   /* Already IN the target zone: the star must go away.  Otherwise it points
      at the way home while the quest says hunt here. */
   await P.page.evaluate(() => { window._gameState.current.currentZone = 'frost'; });
-  await P.page.waitForTimeout(400);
+  rec.ok('the minimap redrew in frost (guard for the poke)', await zoneShown('frost'));
   rec.ok('standing in the target zone stars nothing', (await route()) === null, await route());
 
   /* From the hub the spoke itself is present, so it is starred directly. */
   await P.page.evaluate(() => { window._gameState.current.currentZone = 'worldview'; });
-  await P.page.waitForTimeout(400);
+  rec.ok('the minimap redrew in the World View (guard for the poke)', await zoneShown('worldview'));
   const fromHub = await route();
   rec.ok('from the World View it stars the FROST spoke itself',
     !!(fromHub && fromHub.zoneId === 'frost'), fromHub);
   /* GUARD: a different quest must move the star, or the check above is
      satisfied by a hardcoded frost. */
   await setQuests({ tut_4: 'active' });
-  await P.page.waitForTimeout(400);
+  await P.page.waitForTimeout(800);
   const emberHub = await route();
   rec.ok('...and a different quest stars a different spoke (guard)',
     !!(emberHub && emberHub.zoneId === 'ember'), { fromHub, emberHub });

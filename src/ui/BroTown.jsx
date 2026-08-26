@@ -48,6 +48,7 @@ import { UpdateBanner } from './panels/UpdateBanner.jsx';
 import { startBuildWatch } from '@/game/buildWatch.js';
 import { TouchControls } from './panels/TouchControls.jsx';
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
+import { LockOnActions } from './panels/LockOnActions.jsx'; /* v2.3.1952 */
 import { DuelRequestPanel } from './panels/DuelRequestPanel.jsx';
 import { ThreatIncomingPanel } from './panels/ThreatIncomingPanel.jsx';
 import { ChatPanel } from './panels/ChatPanel.jsx';
@@ -185,6 +186,7 @@ import { SKIN_CATALOG, PANTS_CATALOG, SHOES_CATALOG, getSkin, setSkin, getPants,
 import { HAIR_COLOR_CATALOG, getHairColor, setHairColor } from '@/rendering/traits/hairColorCatalog.js';
 import { HAT_COLOR_CATALOG, hatColorsFor, getHatColor, setHatColor } from '@/rendering/traits/hatColorCatalog.js';
 import { EYE_COLOR_CATALOG, getEyeColor, setEyeColor } from '@/rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
+import { HEIGHT_CATALOG, FRAME_CATALOG, getBuildHeight, setBuildHeight, getBuildFrame, setBuildFrame, wireHeight, wireFrame } from '@/rendering/traits/buildCatalog.js'; /* v2.3.1953 */
 import { getShirtArt, getArt, artHasInk } from '@/rendering/traits/playerArt.js'; /* v2.3.1939; v2.3.1940 + pants/tattoo */
 import { getPattern } from '@/rendering/traits/patternCatalog.js'; /* v2.3.1941 */
 import { FACIALHAIR_COLOR_CATALOG, getFacialHairColor, setFacialHairColor } from '@/rendering/traits/facialHairColorCatalog.js';
@@ -677,7 +679,16 @@ export var BroTown = function BroTown(_ref0) {
     currentZone: 'town',
     /* zone ID — starts in town */
     chatLog: [],
-    chatBubbles: {},
+    /* v2.3.1970: null-prototype -- this map is keyed by the sender id off
+       a chat payload, and until the same version that id was whatever the
+       wire said (the worker now stamps it, but the client has to hold
+       against an un-upgraded one).  On a plain {} the key '__proto__' is
+       not a no-op here, it is worse: the value is an object, so the
+       assignment REPLACES this map's prototype and every later lookup
+       reads through a bubble instead of Object.prototype.  Rule 4 /
+       TRAPS #6 -- three incidents in one day (duel.away v2.3.1175, party
+       meta v2.3.1185, amulet tiers v2.3.1192). */
+    chatBubbles: Object.create(null),
     /* {playerId: {text, ts}} */
     /* v2.3.1116: persistent identity -- stable id derived from a stored
        passphrase (silently generated on first boot) instead of a fresh
@@ -1735,6 +1746,15 @@ export var BroTown = function BroTown(_ref0) {
   var _eyeColorSelState = useState(getEyeColor()),
     eyeColorSel = _eyeColorSelState[0],
     setEyeColorSel = _eyeColorSelState[1];
+  /* v2.3.1953: height + frame, mirrored into React the same way every other
+     pick is — the store is the truth, this is what re-renders the tiles and
+     re-runs the preview draw. */
+  var _heightSelState = useState(getBuildHeight()),
+    heightSel = _heightSelState[0],
+    setHeightSel = _heightSelState[1];
+  var _frameSelState = useState(getBuildFrame()),
+    frameSel = _frameSelState[0],
+    setFrameSel = _frameSelState[1];
   var _beardColorSelState = useState(getFacialHairColor()),
     beardColorSel = _beardColorSelState[0],
     setBeardColorSel = _beardColorSelState[1];
@@ -1766,6 +1786,13 @@ export var BroTown = function BroTown(_ref0) {
   /* Live character preview on the login screen -- redraws whenever any
      cosmetic selection (or the preview angle) changes. */
   var previewCanvasRef = useRef(null);
+  /* v2.3.1951: the tap-zoom moved up here from NameModal.  It was local while
+     it only resized a box inside that component; it now also tells the preview
+     camera to pull back to the whole figure, and that wiring lives in this
+     file beside activeCat, which was lifted for the same reason. */
+  var _zmState = useState(false),
+    previewZoom = _zmState[0],
+    setPreviewZoom = _zmState[1];
   /* v2.3.711: drag-to-rotate -- horizontal swipes on the preview canvas step
      the facing every 26px of travel; the corner buttons remain for
      discoverability.  Holds the last x where a step fired. */
@@ -1789,6 +1816,10 @@ export var BroTown = function BroTown(_ref0) {
       facialHairSel: facialHairSel, beardColorSel: beardColorSel,
       headwearSel: headwearSel, hatColorSel: hatColorSel, eyeColor: eyeColorSel,
       shirtSel: shirtSel, shirtColorSel: shirtColorSel,
+      buildHeight: heightSel, buildFrame: frameSel,   /* v2.3.1953 */
+      /* v2.3.1951: which tab is open drives where the preview camera looks,
+         and the tap-zoom overrides it with the whole figure. */
+      activeCat: activeCat, zoomedOut: previewZoom,
     });
     /* ═══ v2.3.1818: showNameModal IS A DEPENDENCY ═══
        Owner: "loading character assets seems slow (no char in image)."
@@ -1811,7 +1842,7 @@ export var BroTown = function BroTown(_ref0) {
 
        Listing the mount flag is the whole fix: the effect re-runs when the
        creator appears, the ref is attached by then, and the portrait draws. */
-  }, [showNameModal, previewDir, skinSel, pantsSel, shoesSel, hairSel, hairColorSel, facialHairSel, beardColorSel, headwearSel, hatColorSel, shirtSel, shirtColorSel, eyeColorSel]);
+  }, [showNameModal, previewDir, skinSel, pantsSel, shoesSel, hairSel, hairColorSel, facialHairSel, beardColorSel, headwearSel, hatColorSel, shirtSel, shirtColorSel, eyeColorSel, heightSel, frameSel, activeCat, previewZoom]);
   /* v2.3.715: the welcome modal is dead network time -- start pulling the
      heavy in-game sheets (network/decode only; the CPU bakes still run
      behind the intro overlay via preloadPlayerAssets in joinTown) and warm
@@ -1924,6 +1955,68 @@ export var BroTown = function BroTown(_ref0) {
       onClick: function () { onSet(opt.id); }, style: _apTileStyle(sel, size || 32)
     }, inner, sel ? _checkBadge() : null);
   };
+  /* ═══ v2.3.1953: THE BUILD TILE ═══
+     Height and frame have no sprite to show and no colour to swatch — they are
+     two numbers — so the tile draws what they DO: a stick silhouette scaled by
+     that option's own multiplier, with a ghost of the average build behind it
+     so the difference is visible in the tile rather than only on the stage.
+     Inline SVG rather than art: it is five shapes, it scales to any density,
+     and the animation-preload law's whole reason (an asset that loads late
+     hitches) does not apply to one that is never fetched.  Same precedent as
+     the designer's pencil (v2.3.1946). */
+  var _buildTile = function (opt, selId, onSet, axis, size) {
+    var sel = selId === opt.id;
+    /* ═══ THE ICON EXAGGERATES.  DELIBERATELY. ═══
+       A 12% difference is plain on a 300px character and invisible on a 30px
+       glyph, so the tile draws the option at 2.2x its real deviation from
+       average.  This is an ICON, not a preview — the preview is the bro on the
+       stage, who moves the moment you tap, and who moves by the REAL amount.
+       Understating the choice in the picker would make three of these tiles
+       look identical, which is worse than overstating it. */
+    var _ex = 1 + (opt.mul - 1) * 2.2;
+    var sx = axis === 'frame' ? _ex : 1;
+    var sy = axis === 'frame' ? 1 : _ex;
+    var _figure = function () {
+      return /*#__PURE__*/React.createElement("g", {
+        /* Anchored on the FEET, like everything else in this feature: a figure
+           that grew about its middle would float above the tile's baseline and
+           the three of them would no longer line up. */
+        transform: 'translate(20,36) scale(' + sx + ',' + sy + ') translate(-20,-36)',
+        fill: '#3a4450'
+      },
+      /*#__PURE__*/React.createElement("circle", { cx: 20, cy: 9.5, r: 5 }),
+      /*#__PURE__*/React.createElement("rect", { x: 13, y: 15.5, width: 14, height: 11.5, rx: 3 }),
+      /*#__PURE__*/React.createElement("rect", { x: 14.8, y: 27, width: 4.2, height: 9, rx: 1.4 }),
+      /*#__PURE__*/React.createElement("rect", { x: 21, y: 27, width: 4.2, height: 9, rx: 1.4 }));
+    };
+    return /*#__PURE__*/React.createElement("button", {
+      key: 'b_' + opt.id, type: 'button', title: opt.name,
+      onClick: function () { onSet(opt.id); }, style: _apTileStyle(sel, size || 52)
+    },
+    /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start' } },
+      /*#__PURE__*/React.createElement("span", {
+        /* Caption ABOVE the silhouette: the selected tile's check badge sits
+           in the bottom-right corner, and a caption under the figure ran into
+           it — "Average" came back as "Averag(check)".  Above it, the badge has
+           the corner to itself and the label is never clipped. */
+        style: { fontSize: 8, fontWeight: 800, letterSpacing: '.02em', color: '#3a4450', lineHeight: 1, flex: '0 0 auto' }
+      }, opt.name),
+      /*#__PURE__*/React.createElement("svg", {
+        /* Headroom above and to the sides so the exaggerated `tall` and
+           `large` figures are drawn whole rather than cropped at the box. */
+        viewBox: '-4 -8 48 46', "aria-hidden": true, focusable: 'false',
+        preserveAspectRatio: 'xMidYMax meet',
+        /* overflow visible so a `tall` figure is not clipped by its own box —
+           the ghost behind it is the reference, and a silhouette cropped at
+           the crown would understate exactly the thing being picked. */
+        style: { overflow: 'visible', display: 'block', flex: '1 1 auto', width: '100%', minHeight: 0 }
+      },
+      /* No ghost-of-average behind it: the first cut drew one and on `Short`
+         its head floated above the real figure's, reading as a second head.
+         Three tiles in a row ARE the comparison. */
+      _figure())),
+    sel ? _checkBadge() : null);
+  };
   var _thumbTile = function (cat, opt, selId, onSet, size) {
     var sz = size || 50;
     var sel = selId === opt.id;
@@ -1957,6 +2050,11 @@ export var BroTown = function BroTown(_ref0) {
     if (recolorEnabled('skin')) { var sk = rpick(SKIN_CATALOG); setSkin(sk); setSkinSel(sk); }
     if (recolorEnabled('pants')) { var pt = rpick(PANTS_CATALOG); setPants(pt); setPantsSel(pt); }
     if (recolorEnabled('shoes')) { var sh = rpick(SHOES_CATALOG); setShoes(sh); setShoesSel(sh); }
+    /* v2.3.1953: roll the build too.  Randomize is how most people first see
+       what the creator can do, and a feature it never touches is a feature
+       half the players never learn exists. */
+    var bh = rpick(HEIGHT_CATALOG); setBuildHeight(bh); setHeightSel(bh);
+    var bf = rpick(FRAME_CATALOG); setBuildFrame(bf); setFrameSel(bf);
     var hr = rpick(HAIR_CATALOG); setHair(hr); setHairSel(hr);
     if (recolorEnabled('hair')) {
       var hcCat = hr === 'long' ? HAIR_COLOR_CATALOG.filter(function (c) { return LONG_HAIR_COLORS.indexOf(c.id) >= 0; }) : HAIR_COLOR_CATALOG;
@@ -2666,6 +2764,74 @@ export var BroTown = function BroTown(_ref0) {
     if (vv) vv.addEventListener('resize', resize);
     var resizeObs = window.ResizeObserver ? new ResizeObserver(resize) : null;
     if (resizeObs && canvas.parentElement) resizeObs.observe(canvas.parentElement);
+
+    /* ═══ v2.3.1975: A WATCHDOG, BECAUSE THE SPECIAL CASES KEEP RUNNING OUT ═══
+       Owner, with a screenshot from the FIRST person ever to play-test the
+       game: the world squashed into a band at the top, joysticks floating in
+       the page background below it, dashboard fine. Unplayable, and the THIRD
+       time this exact symptom has reached him.
+
+       Every previous fix identified the trigger and special-cased it — the
+       judging session, then v2.3.1715's #root measurement, then v2.3.1740's
+       keyboard guard firing on browser chrome. Each was correct. Each time a
+       new trigger turned up, because every one of them is a different way of
+       reaching the SAME state: resize() ran once against a viewport that was
+       not the real one, and nothing ever fired again to correct it.
+
+       That is the thing worth fixing. resize() is edge-triggered — a window
+       resize, a visualViewport resize, or a ResizeObserver on the parent — and
+       every one of those is the browser PROMISING to tell us. The failure mode
+       is the browser not making that call: an in-app browser whose chrome
+       settles without an event, a viewport reported small for one frame during
+       load, a devicePixelRatio that changes under us. There is no list of
+       those to complete; the list is "everything we have not seen yet".
+
+       So this asserts the invariant directly, on a timer, instead of trusting
+       the events: if the canvas is not the size the layout says it should be,
+       size it. It is level-triggered, so it cannot be defeated by a missing
+       event, and it self-heals rather than requiring a reload.
+
+       MEASURED against the owner's screenshot: the world band is ~12% of the
+       page viewport where it should be ~56%. The tolerance below is 8% of the
+       expected height, which is far looser than any rounding this code does
+       (DASH_OVERLAP and the Math.round in vh are single pixels) and far
+       tighter than any failure that has ever been reported.
+
+       Two things it deliberately does NOT do:
+         - It does not fight the keyboard. While a text field is focused the
+           guard above is doing its job on purpose (v2.3.130: the chat keyboard
+           must float over the world, not resize the scene), so the watchdog
+           stands down and picks it up on the next tick after the blur.
+         - It does not run forever at speed. A wrong size is a startup-shaped
+           failure, so it checks briskly while that is being decided and then
+           settles to a slow heartbeat that costs two reads a second. */
+    var wdTicks = 0;
+    var watchdog = setInterval(function () {
+      wdTicks++;
+      /* Fast for the first ~12s, then a slow heartbeat. */
+      if (wdTicks > 24 && (wdTicks % 4)) return;
+      var _ae2 = document.activeElement;
+      if (_ae2 && (_ae2.tagName === 'INPUT' || _ae2.tagName === 'TEXTAREA' || _ae2.isContentEditable)) return;
+      var vvNow = window.visualViewport;
+      var haveH = canvas.getBoundingClientRect().height;
+      if (!haveH) return;                       /* not laid out yet */
+      var fullH = vvNow ? vvNow.height : window.innerHeight;
+      var wantH = Math.max(120, fullH - barHeight(vvNow ? vvNow.width : window.innerWidth, fullH) + DASH_OVERLAP);
+      if (Math.abs(haveH - wantH) <= wantH * 0.08) return;
+      /* Say it once, loudly, with the numbers: if this ever fires in the wild
+         the log is the whole diagnosis, and silence here would hide the very
+         thing three fixes have failed to see. */
+      if (!window.__btResizeHealed) {
+        window.__btResizeHealed = { at: Date.now(), had: Math.round(haveH), want: Math.round(wantH) };
+        try {
+          console.warn('[canvas-watchdog] canvas was ' + Math.round(haveH) + 'px, should be '
+            + Math.round(wantH) + 'px — resizing. innerH=' + window.innerHeight
+            + ' vvH=' + (vvNow ? Math.round(vvNow.height) : 'n/a')
+            + ' dpr=' + (window.devicePixelRatio || 1));
+        } catch (e) { /* ignore */ }
+      }
+      resize();
+    }, 500);
 
     /* Initialize PixiJS renderer (async).  By this point the canvas has
        been resized so createPixiApp reads non-zero clientWidth/Height.
@@ -5585,6 +5751,20 @@ export var BroTown = function BroTown(_ref0) {
                 /* v2.3.1940: the drawn pants print and the chest tattoo. */
                 pa: artHasInk(getArt('pants')) ? getArt('pants') : undefined,
                 ta: artHasInk(getArt('tattoo')) ? getArt('tattoo') : undefined,
+                /* v2.3.1953: height and frame, so a build changed mid-session
+                   reaches everyone on the next relay rather than only on their
+                   next join.  Omitted entirely at average/medium. */
+                hg: wireHeight(),
+                fr: wireFrame(),
+                /* v2.3.1961: the face and arm tattoos, which v2.3.1949 put on
+                   the join frame and on BOTH server gates (JOIN_COSMETIC_KEYS
+                   and TRACK_COSMETIC_KEYS) but not here -- so the two newest
+                   canvases were the only ones the relay could not carry.  No
+                   allowlist moves for this: the worker has admitted them since
+                   v2.3.1949; this is the sender finally sending them.  Same
+                   only-when-drawn rule as the four above. */
+                tf: artHasInk(getArt('tattooFace')) ? getArt('tattooFace') : undefined,
+                tm: artHasInk(getArt('tattooArm')) ? getArt('tattooArm') : undefined,
                 /* v2.3.1941: clothing patterns. */
                 sp: getPattern('shirt') || undefined,
                 pp: getPattern('pants') || undefined,
@@ -5802,6 +5982,7 @@ export var BroTown = function BroTown(_ref0) {
       window.removeEventListener('resize', resize);
       if (resizeObs) resizeObs.disconnect();
       if (vv) vv.removeEventListener('resize', resize);
+      clearInterval(watchdog);   /* v2.3.1975 */
       window._rebuildRenderer = null;
       /* v2.3.772: destroy() can throw mid-teardown when the GL context is
          already dead (the very case the epoch rebuild handles) -- never
@@ -8116,7 +8297,7 @@ export var BroTown = function BroTown(_ref0) {
     });
   }
   if (showNameModal) {
-    return /*#__PURE__*/React.createElement(NameModal, { _dragRotX: _dragRotX, _swatchTile: _swatchTile, _thumbTile: _thumbTile, activeCat: activeCat, beardColorSel: beardColorSel, facialHairSel: facialHairSel, hairColorSel: hairColorSel, hairSel: hairSel, hatColorSel: hatColorSel, eyeColorSel: eyeColorSel, setEyeColorSel: setEyeColorSel, headwearSel: headwearSel, joinTown: joinTown, nameInput: nameInput, pantsSel: pantsSel, previewCanvasRef: previewCanvasRef, previewDir: previewDir, randomizeWithFlair: randomizeWithFlair, rollRandomName: rollRandomName, rotatePreview: rotatePreview, setActiveCat: setActiveCat, setBeardColorSel: setBeardColorSel, setFacialHairSel: setFacialHairSel, setHairColorSel: setHairColorSel, setHairSel: setHairSel, setHatColorSel: setHatColorSel, setHeadwearSel: setHeadwearSel, setNameInput: setNameInput, setPantsSel: setPantsSel, setShirtColorSel: setShirtColorSel, setShirtSel: setShirtSel, setShoesSel: setShoesSel, setSkinSel: setSkinSel, shirtColorSel: shirtColorSel, shirtSel: shirtSel, shoesSel: shoesSel, skinSel: skinSel });
+    return /*#__PURE__*/React.createElement(NameModal, { _dragRotX: _dragRotX, _swatchTile: _swatchTile, _thumbTile: _thumbTile, _buildTile: _buildTile, activeCat: activeCat, heightSel: heightSel, setHeightSel: setHeightSel, frameSel: frameSel, setFrameSel: setFrameSel, beardColorSel: beardColorSel, facialHairSel: facialHairSel, hairColorSel: hairColorSel, hairSel: hairSel, hatColorSel: hatColorSel, eyeColorSel: eyeColorSel, setEyeColorSel: setEyeColorSel, headwearSel: headwearSel, joinTown: joinTown, nameInput: nameInput, pantsSel: pantsSel, previewCanvasRef: previewCanvasRef, previewDir: previewDir, previewZoom: previewZoom, setPreviewZoom: setPreviewZoom, randomizeWithFlair: randomizeWithFlair, rollRandomName: rollRandomName, rotatePreview: rotatePreview, setActiveCat: setActiveCat, setBeardColorSel: setBeardColorSel, setFacialHairSel: setFacialHairSel, setHairColorSel: setHairColorSel, setHairSel: setHairSel, setHatColorSel: setHatColorSel, setHeadwearSel: setHeadwearSel, setNameInput: setNameInput, setPantsSel: setPantsSel, setShirtColorSel: setShirtColorSel, setShirtSel: setShirtSel, setShoesSel: setShoesSel, setSkinSel: setSkinSel, shirtColorSel: shirtColorSel, shirtSel: shirtSel, shoesSel: shoesSel, skinSel: skinSel });
   }
   return /*#__PURE__*/React.createElement(React.Fragment, null, /* v2.3.1925: the mystery-reveal ceremony.  Mounted at the top of the in-world fragment and ALWAYS mounted — it renders null until a hidden grade arrives on the loot credit, and mounting it conditionally would mean the queue it subscribes to could fill before anyone was listening. */ /*#__PURE__*/React.createElement(RevealOverlay, null), showIntro && /*#__PURE__*/React.createElement(IntroVideo, {
     waitFor: introWaitRef.current,
@@ -10879,7 +11060,7 @@ export var BroTown = function BroTown(_ref0) {
      and z-index 6 so they sit over the world canvas but under all HUD
      (z>=20).  bt-desktop-hide drops them on desktop so the mouse reaches the
      canvas. */
-  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rStickRef: rStickRef, rKnobRef: rKnobRef, rJoyPreviewRef: rJoyPreviewRef, shieldJoyRef: shieldJoyRef, autoAttack: autoAttack, isLandscape: isLandscape, shieldUp: shieldUp }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until their milestone level unlocks them (AbilityButtons.jsx). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
+  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rStickRef: rStickRef, rKnobRef: rKnobRef, rJoyPreviewRef: rJoyPreviewRef, shieldJoyRef: shieldJoyRef, autoAttack: autoAttack, isLandscape: isLandscape, shieldUp: shieldUp }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until their milestone level unlocks them (AbilityButtons.jsx). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.1952: locking on to a monster raises block / dodge / special around the right joystick (LockOnActions.jsx). */ /*#__PURE__*/React.createElement(LockOnActions, { stateRef: stateRef, isLandscape: isLandscape, doSpecialAttack: doSpecialAttack })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
      Not a style choice — a hard requirement this cost a round of QA to
      find.  .brotown-wrap is position:fixed, and Chrome treats that as its
      own stacking context, so EVERY element inside it is confined to one
