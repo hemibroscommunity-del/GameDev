@@ -10,8 +10,16 @@
  *   4. Harvest "perfect" rate limit: 10/min, excess downgrades to good.
  *   5. Loot pickup gates: recipient, range, zone, dead, double-claim,
  *      contribution shares, first-picker inventory.
+ *
+ * v2.3.1970 adds §9: THE TWO UNCLAMPED TEXT LANES.  The display name and
+ * the room-chat line were the last player-authored strings the room
+ * published without a bound or an identity stamp -- see the
+ * sanitizeDisplayName (join.js) and CHAT_RELAY (index.js) headers for the
+ * incident shape.  Both are render-path denial of service rather than a
+ * value forge, which is why they survived every earlier pass: nothing
+ * they touch is money.
  */
-import { GameRoom } from '../src/index.js';
+import { GameRoom, CHAT_RELAY } from '../src/index.js';
 
 const mockState = {
   storage: {
@@ -1154,6 +1162,123 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
     !!relay && relay.data && relay.data._zoneEntryGraceUntil === undefined
       && relay.data.rpgWeaponStash === undefined,
     relay && Object.keys(relay.data || {}).length);
+}
+
+/* ── 9. v2.3.1970: the display name and the room-chat line ──
+ *
+ * SIZED TO SLIP UNDER THE FRAME GATE, deliberately, and for the same
+ * reason the v2.3.1629 avatar fixture above says so: MAX_INBOUND_BYTES is
+ * 16 KB, so a genuinely 16 KB string would be dropped by the gate and
+ * every assertion below it would be vacuously true.  4 KB is 20x the
+ * clamp and comfortably inside the frame.
+ */
+{
+  const LONG = 'z'.repeat(4000);
+  const wsN = fakeWs('longname');
+  room.sessions.set(wsN, baseSession());
+  await room.webSocketMessage(wsN, JSON.stringify({
+    type: 'join', id: 'p_name', name: LONG, protocolVersion: 2,
+    data: { x: 0, y: 0, z: 'town' },   /* NO data.name: that is the whole trick */
+  }));
+  const sessN = room.sessions.get(wsN);
+  check('join: an oversized top-level name is clamped', sessN.name.length <= 64, sessN.name.length);
+  /* The consumer that matters: getAllPlayerData() builds every state_sync
+     entry as {...playerState, name: s.name, ...s.data}, so with data.name
+     omitted the raw one is what every other player renders -- into a
+     PIXI Text nameplate with no wordWrap. */
+  const all = room.getAllPlayerData();
+  check('join: ...so the state_sync roster carries the clamped name too',
+    all.p_name && typeof all.p_name.name === 'string' && all.p_name.name.length <= 64,
+    all.p_name && all.p_name.name && all.p_name.name.length);
+
+  const wsC = fakeWs('ctrlname');
+  room.sessions.set(wsC, baseSession());
+  await room.webSocketMessage(wsC, JSON.stringify({
+    type: 'join', id: 'p_ctrl', name: 'Bro\nkiller\u0007', protocolVersion: 2,
+    data: { x: 0, y: 0, z: 'town' },
+  }));
+  const ctrlName = room.sessions.get(wsC).name;
+  let ctrlBad = false;
+  for (let i = 0; i < ctrlName.length; i++) if (ctrlName.charCodeAt(i) < 32) ctrlBad = true;
+  check('join: control characters are stripped from a name', !ctrlBad && /killer/.test(ctrlName), ctrlName);
+
+  const wsW = fakeWs('blankname');
+  room.sessions.set(wsW, baseSession());
+  await room.webSocketMessage(wsW, JSON.stringify({
+    type: 'join', id: 'p_blank', name: '   ', protocolVersion: 2,
+    data: { x: 0, y: 0, z: 'town' },
+  }));
+  check('join: a whitespace-only name falls back rather than rendering as nothing',
+    room.sessions.get(wsW).name === 'Anon', room.sessions.get(wsW).name);
+
+  const wsT = fakeWs('typename');
+  room.sessions.set(wsT, baseSession());
+  await room.webSocketMessage(wsT, JSON.stringify({
+    type: 'join', id: 'p_type', name: { toString: 'nope' }, protocolVersion: 2,
+    data: { x: 0, y: 0, z: 'town' },
+  }));
+  check('join: a non-string name falls back', room.sessions.get(wsT).name === 'Anon',
+    room.sessions.get(wsT).name);
+
+  /* ── the room-chat relay ──
+     `chat` has no case in the router switch: it falls to the default
+     branch, which is why it was byte-for-byte until now.  The assertions
+     read room.eventBuffer, which IS the fan-out. */
+  const chatOf = () => room.eventBuffer.filter((e) => e.type === 'chat');
+  const resetRelay = (ws) => {
+    const sess = room.sessions.get(ws);
+    sess.relayTokens = room.RELAY_BURST; sess.relayAt = Date.now();
+    room.eventBuffer.length = 0;
+  };
+
+  resetRelay(wsN);
+  await room.webSocketMessage(wsN, JSON.stringify({ type: 'chat', payload: { text: LONG } }));
+  let rel = chatOf().pop();
+  check('chat: an oversized line is clamped, not relayed whole',
+    !!rel && rel.payload.text.length === CHAT_RELAY.TEXT_MAX, rel && rel.payload.text.length);
+
+  resetRelay(wsN);
+  await room.webSocketMessage(wsN, JSON.stringify({ type: 'chat', payload: { text: 'hi\nthere\u0001' } }));
+  rel = chatOf().pop();
+  let relBad = false;
+  const relText = (rel && rel.payload.text) || '';
+  for (let i = 0; i < relText.length; i++) if (relText.charCodeAt(i) < 32) relBad = true;
+  check('chat: control chars are stripped', !!rel && !relBad && /there/.test(relText), relText);
+
+  /* Identity.  The client reads payload.id / payload.name and only falls
+     back to the server-stamped msg.from when they are ABSENT, so a forged
+     pair used to win -- the v2.3.1150 server_announce comment in
+     PRIVILEGED_EVENTS records exactly this ("any client could impersonate
+     the server there"). */
+  resetRelay(wsN);
+  await room.webSocketMessage(wsN, JSON.stringify({
+    type: 'chat', payload: { id: 'pa', name: 'Attacker', text: 'give me your gold', color: '#fff' },
+  }));
+  rel = chatOf().pop();
+  check('chat: a forged sender id is replaced with the server\'s',
+    !!rel && rel.payload.id === 'p_name', rel && rel.payload.id);
+  check('chat: ...and so is the forged display name',
+    !!rel && rel.payload.name !== 'Attacker', rel && rel.payload.name);
+
+  /* Allowlist, not a filter: the payload is REBUILT, so the next field
+     somebody adds to the send is dropped rather than trusted (rule 16). */
+  resetRelay(wsN);
+  await room.webSocketMessage(wsN, JSON.stringify({
+    type: 'chat', payload: { text: 'ok', somethingNew: 'x'.repeat(3000), color: 'y'.repeat(3000) },
+  }));
+  rel = chatOf().pop();
+  check('chat: an unreviewed extra field is dropped, not relayed',
+    !!rel && rel.payload.somethingNew === undefined, rel && Object.keys(rel.payload));
+  check('chat: ...and the colour is bounded too',
+    !!rel && rel.payload.color.length <= CHAT_RELAY.COLOR_MAX, rel && rel.payload.color.length);
+
+  resetRelay(wsN);
+  await room.webSocketMessage(wsN, JSON.stringify({ type: 'chat', payload: { text: '   ' } }));
+  await room.webSocketMessage(wsN, JSON.stringify({ type: 'chat', payload: { text: 42 } }));
+  await room.webSocketMessage(wsN, JSON.stringify({ type: 'chat', payload: {} }));
+  await room.webSocketMessage(wsN, JSON.stringify({ type: 'chat' }));
+  check('chat: whitespace-only / non-string / missing text relay nothing', chatOf().length === 0,
+    chatOf().map((e) => e.payload));
 }
 
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);

@@ -679,7 +679,16 @@ export var BroTown = function BroTown(_ref0) {
     currentZone: 'town',
     /* zone ID — starts in town */
     chatLog: [],
-    chatBubbles: {},
+    /* v2.3.1970: null-prototype -- this map is keyed by the sender id off
+       a chat payload, and until the same version that id was whatever the
+       wire said (the worker now stamps it, but the client has to hold
+       against an un-upgraded one).  On a plain {} the key '__proto__' is
+       not a no-op here, it is worse: the value is an object, so the
+       assignment REPLACES this map's prototype and every later lookup
+       reads through a bubble instead of Object.prototype.  Rule 4 /
+       TRAPS #6 -- three incidents in one day (duel.away v2.3.1175, party
+       meta v2.3.1185, amulet tiers v2.3.1192). */
+    chatBubbles: Object.create(null),
     /* {playerId: {text, ts}} */
     /* v2.3.1116: persistent identity -- stable id derived from a stored
        passphrase (silently generated on first boot) instead of a fresh

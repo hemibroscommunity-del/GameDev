@@ -27,6 +27,11 @@
  *
  * v2.3.1212 (item D follow-up, party chat): a party-scoped, server-
  * validated relay.  Checks:
+ *   12. v2.3.1970 -- the paths a demo crowd finds and a scripted test
+ *       never did: two players inviting each OTHER at the same moment;
+ *       an inviter who closes the tab before the invite is answered;
+ *       a leader who drops out of a three; and whether a member who
+ *       changes zone or dies is still on the roster afterwards.
  *   10. Chat relays to party members only (server-stamped sender +
  *       trimmed), a non-member never receives it, a forged from/name is
  *       ignored, a partyless sender is dropped, control chars stripped +
@@ -329,6 +334,154 @@ check('forged decline (no live invite) sends nothing', msgsOfType(wss.c, 'party_
   check('...and a duel between them still lands (consent is checked first)',
     room._pvpAllowed(I, K, 'meadow') === true);
   room._pvpConsent.delete(room._pvpPairKey(I, K));
+}
+
+
+/* ── 12. v2.3.1970: the ugly paths ──
+ *
+ * Everything above tests a party being built the way the UI builds one.
+ * These are the shapes a room full of strangers produces in the first ten
+ * minutes, and none of them had a check.  All four turned out to already
+ * behave correctly -- which is exactly why they are worth pinning: the
+ * DO's one-event-at-a-time guarantee and the accept-time re-checks are
+ * what make them correct, and both are the kind of property a later
+ * refactor removes without noticing.
+ */
+{
+  for (const n of ['m', 'n', 'o', 'q', 'r'] ) { wss[n] = fakeWs(n); await join(wss[n], P(n), n.toUpperCase()); }
+  const M = P('m'), N = P('n'), O = P('o'), Q = P('q'), R = P('r');
+
+  /* ── invite spam ──
+     party_invite is an explicit router case, so the default branch's
+     relay token bucket never sees it, and every delivered party_invited
+     costs the TARGET a popup and a beep.  A live invite means their card
+     is already up; re-sending is noise, and refreshing the timestamp
+     would defeat INVITE_TTL. */
+  wss.n.sent.length = 0;
+  for (let i = 0; i < 12; i++) await cmd(wss.m, 'party_invite', { target: N });
+  check('a griefer hammering invite delivers exactly ONE card',
+    msgsOfType(wss.n, 'party_invited').length === 1,
+    msgsOfType(wss.n, 'party_invited').length);
+  /* A cooldown, not a one-shot: a genuine re-send after the gap must still
+     get through, because that is qa-party-smoke's recovery path (it
+     re-invites once after 8s when no card appears). */
+  room._partyInvites.set(M + '>' + N, Date.now() - PARTY.INVITE_REPEAT_MS - 1);
+  wss.n.sent.length = 0;
+  await cmd(wss.m, 'party_invite', { target: N });
+  check('...but a real re-send after the cooldown still delivers',
+    msgsOfType(wss.n, 'party_invited').length === 1,
+    msgsOfType(wss.n, 'party_invited').length);
+  await cmd(wss.n, 'party_decline', { target: M });
+  wss.n.sent.length = 0;
+  await cmd(wss.m, 'party_invite', { target: N });
+  check('...and a decline lets you ask again straight away, cooldown or not',
+    msgsOfType(wss.n, 'party_invited').length === 1,
+    msgsOfType(wss.n, 'party_invited').length);
+  room._partyInvites.delete(M + '>' + N);   /* clean slate for the mutual check */
+
+  /* ── two players invite each other at the same moment ──
+     Both invites are recorded ('M>N' and 'N>M'), both cards go up, both
+     players tap Join.  The DO serialises them, so the first accept builds
+     the party and the second must meet the already-partied gate rather
+     than building a SECOND party around the same two people -- which
+     would leave _partyByPlayer pointing each of them at a different
+     roster and both HUDs showing a party the other is not in. */
+  await cmd(wss.m, 'party_invite', { target: N });
+  await cmd(wss.n, 'party_invite', { target: M });
+  check('mutual invites are both recorded (both cards go up)',
+    room._partyInvites.has(M + '>' + N) && room._partyInvites.has(N + '>' + M));
+  wss.m.sent.length = 0; wss.n.sent.length = 0;
+  const partiesBeforeMutual = room._parties.size;
+  await cmd(wss.n, 'party_accept', { target: M });   // N taps Join first
+  await cmd(wss.m, 'party_accept', { target: N });   // M taps Join a beat later
+  check('simultaneous mutual accepts build exactly ONE party',
+    room._parties.size === partiesBeforeMutual + 1, room._parties.size - partiesBeforeMutual);
+  check('...holding both players, on the same roster object',
+    !!room._partyOf(M) && room._partyOf(M) === room._partyOf(N)
+      && room._partyOf(M).members.length === 2,
+    room._partyOf(M) && room._partyOf(M).members);
+  check("...and the losing accept is answered 'busy', not silently dropped",
+    lastErr(wss.m) && lastErr(wss.m).reason === 'busy', lastErr(wss.m));
+  await cmd(wss.m, 'party_leave');   // back to clean
+
+  /* ── the inviter closes the tab before the invite is answered ──
+     The invite outlives the socket (it is a Map entry with a TTL, not a
+     session field), so the accept has to notice the inviter is gone.
+     Answered rather than dropped: the accepter really did tap Join. */
+  await cmd(wss.o, 'party_invite', { target: Q });
+  await room.webSocketClose(wss.o);
+  wss.q.sent.length = 0;
+  const partiesBeforeGone = room._parties.size;
+  await cmd(wss.q, 'party_accept', { target: O });
+  check("accepting a vanished inviter answers 'target-gone'",
+    lastErr(wss.q) && lastErr(wss.q).reason === 'target-gone', lastErr(wss.q));
+  check('...and leaves no half-built party behind',
+    room._parties.size === partiesBeforeGone && !room._partyOf(Q) && !room._partyOf(O),
+    { n: room._parties.size, q: !!room._partyOf(Q) });
+
+  /* ── the leader drops out of a three ──
+     A disconnect is NOT a leave (iOS suspends tabs; the duel-grace
+     lesson), so the leader keeps the crown while away and the party
+     keeps its shape.  Only the grace sweep promotes -- and with three
+     members it must promote rather than disband. */
+  const wsO2 = fakeWs('o2'); await join(wsO2, O, 'O');
+  await cmd(wsO2, 'party_invite', { target: Q });
+  await cmd(wss.q, 'party_accept', { target: O });
+  await cmd(wsO2, 'party_invite', { target: R });
+  await cmd(wss.r, 'party_accept', { target: O });
+  check('a three formed for the leader-drop check',
+    room._partyOf(O) && room._partyOf(O).members.length === 3 && room._partyOf(O).leader === O,
+    room._partyOf(O) && room._partyOf(O).members.map((m) => m.id));
+  wss.q.sent.length = 0;
+  await room.webSocketClose(wsO2);
+  let pQ = lastParty(wss.q);
+  const oAway = pQ && pQ.members.find((m) => m.id === O);
+  check("a disconnected LEADER is 'away', still leader, party intact",
+    !!oAway && oAway.away === true && pQ.leader === O && pQ.members.length === 3,
+    pQ && { leader: pQ.leader, n: pQ.members.length });
+  const p3 = room._partyOf(Q);
+  p3.meta[O].awaySince = Date.now() - PARTY.OFFLINE_GRACE_MS - 1000;
+  wss.q.sent.length = 0;
+  room._tickParties(Date.now());
+  pQ = lastParty(wss.q);
+  check('grace expiry promotes rather than stranding the remaining two',
+    !!pQ && pQ.state === 'open' && pQ.members.length === 2 && pQ.leader === Q
+      && !room._partyOf(O),
+    pQ && { leader: pQ.leader, n: pQ.members.length });
+
+  /* ── a member changes zone, then dies ──
+     The roster is re-derived from live playerState on every echo, so
+     neither should drop anyone; what they SHOULD do is show up in the
+     wire fields the HUD paints (the zone tag and the skull). */
+  room.playerState[R].z = 'frost';
+  room._partyOf(Q).lastVitals = 0;
+  wss.q.sent.length = 0;
+  room._tickParties(Date.now());
+  let rWire = (lastParty(wss.q) || { members: [] }).members.find((m) => m.id === R);
+  check('a member who changed zone is still on the roster, tagged with the zone',
+    !!rWire && rWire.zone === 'frost' && rWire.away === false, rWire);
+  room.playerState[R].dying = true;
+  room._partyOf(Q).lastVitals = 0;
+  wss.q.sent.length = 0;
+  room._tickParties(Date.now());
+  rWire = (lastParty(wss.q) || { members: [] }).members.find((m) => m.id === R);
+  check('a dead member is marked dead, NOT removed', !!rWire && rWire.dead === true, rWire);
+  room.playerState[R].dying = false;
+
+  /* ── the no-ops.  A double-tapped Leave and a kick aimed at someone who
+     already left are both things a laggy phone produces, and neither may
+     disturb the party that is left. */
+  await cmd(wss.r, 'party_leave');
+  check('a two-member party disbands when one leaves (guard)', !room._partyOf(Q));
+  wss.q.sent.length = 0;
+  /* Counted, not compared to zero: §10's F+G party is still standing and
+     is meant to be -- the point is that these two commands move NOTHING. */
+  const partiesAtEnd = room._parties.size;
+  await cmd(wss.q, 'party_leave');       // already partyless
+  await cmd(wss.q, 'party_kick', { target: R });
+  check('leaving twice / kicking from no party does nothing at all',
+    msgsOfType(wss.q, 'party_state').length === 0 && room._parties.size === partiesAtEnd,
+    { sent: msgsOfType(wss.q, 'party_state').length, before: partiesAtEnd, after: room._parties.size });
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

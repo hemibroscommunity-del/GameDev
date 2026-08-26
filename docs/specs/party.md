@@ -44,6 +44,10 @@ unknown types instead of validating them.
 | `VITALS_MS` | 2s | roster re-echo cadence (live HP/zone) |
 | `OFFLINE_GRACE_MS` | 120s | 'away' window before a dropped member is removed |
 
+Client mirror: `PARTY_INVITE_TTL_MS` in `src/networking/gameEvents.js`
+(v2.3.1970) must track `INVITE_TTL`; a shorter client clock would hide a
+still-valid invite.
+
 ## Storage: none, deliberately
 
 A party holds no escrowed value, so per handoff rule 11 in-memory is the
@@ -72,6 +76,17 @@ input-gate interleaving to reason about at all.
   member disbands (a solo "party" is just a player).
 - **Capacity is checked at accept too** — the invite's snapshot is not
   authoritative; a party can fill between invite and accept.
+- **The invite CARD expires on the client too (v2.3.1970).** The worker
+  forgets a recorded invite after `INVITE_TTL` and answers a late Join
+  with `party_error {reason:'expired'}`, but the card carried a `ts` that
+  nothing read — an invite nobody answered sat on screen for the rest of
+  the session. Since v2.3.1966 that card is portalled to `document.body`
+  above the dashboard on purpose, so a dead one parks a 240px panel over
+  the top of a 390px phone. `gameEvents.js` now clears the stub after
+  `PARTY_INVITE_TTL_MS` (mirrors `INVITE_TTL`), using the functional
+  setter plus a `{from, ts}` identity check so a newer invite — or the
+  roster, which shares the same state slot — is never swept away by an
+  older invite's timer.
 
 ## Client anchors
 
