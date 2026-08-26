@@ -11,6 +11,7 @@ import {
   patternsFor, getPattern, setPattern, parsePattern, formatPattern, patternInk,
 } from '@/rendering/traits/patternCatalog.js';   /* v2.3.1941 */
 import { drawCharacterPortrait } from '@/rendering/characterPortrait.js';   /* v2.3.1947 */
+import BodyInk from '@/ui/panels/BodyInk.jsx';   /* v2.3.1965 */
 import { heightMul, PORTRAIT_FIT, getBuildHeight } from '@/rendering/traits/buildCatalog.js';   /* v2.3.1953 */
 
 /* ═══ v2.3.1938: DRAW YOUR OWN SHIRT ═══
@@ -400,17 +401,30 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
      in, and the spot you are inking is the thing you switch, not the thing you
      navigate to. */
   const isTattoo = target === 'tattoo';
-  const MODES = isTattoo ? ['chest', 'face', 'arms']
+  /* v2.3.1965 (owner: "just allow the user to zoom in on any part of the
+     character skin to tattoo it ... you're just making the tattoo on whatever
+     zoomed in body part you want").  `body` is the FIRST tab and the one this
+     panel opens on, because inking the character directly is what the owner
+     asked for and what most people want.  The three per-region grids stay
+     behind it rather than being deleted: a 16x16 grid is a better tool for a
+     deliberate, symmetrical design than a finger on a zoomed limb, and
+     throwing it away to answer the note would be a trade, not a fix. */
+  const MODES = isTattoo ? ['body', 'chest', 'face', 'arms']
     : (cfg.pattern && canDraw)
       ? (isShirt ? ['pattern', 'front', 'back'] : ['pattern', 'drawing'])
       : null;
-  const [mode, setMode] = React.useState(isTattoo ? 'chest' : (cfg.pattern ? 'pattern' : 'draw'));
+  const [mode, setMode] = React.useState(isTattoo ? 'body' : (cfg.pattern ? 'pattern' : 'draw'));
+  /* Which skin canvas the body surface last touched.  It drives `spot`, so the
+     palette, Undo, Clear and the caption all follow your finger from the chest
+     to the face without you telling them you moved. */
+  const [bodySpot, setBodySpot] = React.useState('tattoo');
   const side = mode === 'back' ? 'back' : 'front';
   const onPattern = mode === 'pattern';
   /* WHERE on the body this panel is currently painting.  For everything but a
      tattoo that is just the target; for a tattoo the mode picks it, and the
      caption, the preview's camera and the Clear button all follow it. */
-  const spot = isTattoo ? (TATTOO_SPOT[mode] || 'tattoo') : target;
+  const onBody = isTattoo && mode === 'body';
+  const spot = isTattoo ? (onBody ? bodySpot : (TATTOO_SPOT[mode] || 'tattoo')) : target;
   const scfg = TARGETS[spot] || cfg;
   /* Which stored drawing this panel is editing right now. */
   const artId = isShirt ? (side === 'back' ? 'shirtBack' : 'shirtFront') : spot;
@@ -559,6 +573,26 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   /* Persist as you draw: the character updates live behind the panel, which is
      the whole point of drawing on a character rather than in a vacuum. */
   React.useEffect(() => { storeArt(artId, art); }, [artId, art]);
+
+  /* ── v2.3.1965: the body surface's two hooks ─────────────────────────────
+     `bodyArts` is read from the STORE rather than from `art`, because the
+     surface shows all three skin canvases at once and `art` is only the one
+     this panel has selected.  `bodyTick` re-reads it after a stroke lands. */
+  const [bodyTick, setBodyTick] = React.useState(0);
+  const bodyArts = React.useMemo(() => ({
+    tattoo: getArt('tattoo'), tattooFace: getArt('tattooFace'), tattooArm: getArt('tattooArm'),
+  }), [bodyTick, art, artId]);
+  /* A stroke lands on whichever canvas the finger was over.  onRegion fires on
+     pointer DOWN and moves `spot`, so by the time this runs artId is already
+     that canvas and the stroke banks for undo like any other change.  The
+     `else` is the belt-and-braces path for a stroke that somehow lands before
+     React has flushed: write it through to the store so no ink is ever lost,
+     even though that one cannot be undone. */
+  const inkFromBody = React.useCallback((tgt, after, before) => {
+    if (tgt === artId) { pushHist(before); setArtState(after); }
+    else { storeArt(tgt, after); setBodySpot(tgt); }
+    setBodyTick((t) => t + 1);
+  }, [artId]);
 
   /* v2.3.1941: `onPattern` is a DEPENDENCY, not decoration.  The grid canvas is
      unmounted on the pattern screen, so coming back to a drawing re-creates it
@@ -817,8 +851,19 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
             {MODES.map((m) => (
               <button key={m} type="button" onClick={() => setMode(m)}
                 className={'bt-cc-tab' + (mode === m ? ' bt-cc-tab--on' : '')}
-                style={{ flex: 1, minHeight: 34, textTransform: 'capitalize' }}>
-                <span className="bt-cc-tab-label">{m}</span>
+                style={{ flex: 1, minHeight: 34, textTransform: 'capitalize',
+                  /* see the label note below: the 2px side padding is what
+                     "chest" overruns by one pixel at four tabs */
+                  ...(MODES.length > 3 ? { paddingLeft: 1, paddingRight: 1 } : null) }}>
+                {/* v2.3.1965: the skin strip is FOUR tabs now, and at four the
+                    labels ellipsised to "Ch…" / "Ar…".  MEASURED rather than
+                    nudged: the button comes out 34px wide with 2px of padding
+                    each side, so a label has 30px, and "chest" wants 31px at
+                    the clamp's 12px and 28px at 10px.  A notch smaller only
+                    where there are four of them, rather than shrinking the
+                    shirt's three for company. */}
+                <span className="bt-cc-tab-label"
+                  style={MODES.length > 3 ? { fontSize: '10px', letterSpacing: 0 } : undefined}>{m}</span>
               </button>
             ))}
           </div>
@@ -867,6 +912,10 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                   on={patId === t.id} onPick={() => pickTile(t.id)} />
               ))}
             </div>
+          ) : onBody ? (
+            /* v2.3.1965: the character IS the canvas — see BodyInk.jsx. */
+            <BodyInk look={look} arts={bodyArts} ink={ink} brush={brush}
+              onInk={inkFromBody} onRegion={setBodySpot} />
           ) : (
             <canvas ref={cvRef} width={size} height={size}
               onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
@@ -883,7 +932,14 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
             tool row, so each control got stranded at the top of an oversized
             row with a gap under it. */}
         <div className="bt-paint-ctl">
-        {!onPattern && (
+        {/* v2.3.1965: the shape tools are a GRID tool -- rect/ellipse/line are
+            dragged out in cell space, and on a zoomed limb the drag you make
+            with your finger is a path across skin, not a box in a 16x16.  The
+            body surface offers the pen and the eraser (palette slot 0), the
+            brush widths and Mirror; the tab beside it is where a deliberate
+            shape gets made.  Hidden rather than disabled: a row of six dead
+            buttons reads as broken. */}
+        {!onPattern && !onBody && (
           <div className="bt-paint-tools">
             {TOOLS.map((t) => (
               <button key={t.id} type="button"
@@ -912,7 +968,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
              the row keeps its height either way, so nothing below it jumps when
              you change tool. */
           <div className="bt-paint-opts">
-            {pendRef.current ? (
+            {(pendRef.current && !onBody) ? (
               /* v2.3.1951: while a shape is pending the row belongs to IT.
                  Contextual rather than three more permanent buttons: the row
                  already swaps for the letter tool, the controls only mean
@@ -937,7 +993,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                   <span className="bt-paint-tool-label">Cancel</span>
                 </button>
               </div>
-            ) : tool === 'letter' ? (
+            ) : (tool === 'letter' && !onBody) ? (
               <div className="bt-paint-letters" ref={stripRef}>
                 {LETTERS.map((ch) => (
                   <button key={ch} type="button" onClick={() => setLetter(ch)}
@@ -949,11 +1005,11 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
             ) : (
               <div className="bt-paint-opts-main">
                 {BRUSH_SIZES.map((n) => (
-                  <button key={n} type="button" disabled={!tdef.brush}
+                  <button key={n} type="button" disabled={!onBody && !tdef.brush}
                     onClick={() => setBrush(n)} aria-pressed={brush === n}
                     aria-label={'Brush ' + n + ' wide'}
-                    style={tdef.brush ? undefined : { opacity: 0.38 }}
-                    className={'bt-paint-size' + (brush === n && tdef.brush ? ' bt-paint-size--on' : '')}>
+                    style={(onBody || tdef.brush) ? undefined : { opacity: 0.38 }}
+                    className={'bt-paint-size' + (brush === n && (onBody || tdef.brush) ? ' bt-paint-size--on' : '')}>
                     <span className="bt-paint-dot-well">
                       <span className="bt-paint-dot" style={{ width: 5 + (n - 1) * 6, height: 5 + (n - 1) * 6 }} />
                     </span>

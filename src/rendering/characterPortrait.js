@@ -537,8 +537,13 @@ export async function drawCharacterPortrait(canvas, opts) {
   /* v2.3.1944: and the shoes'. */
   const _shoesPat = (opts && opts.shoesPattern !== undefined)
     ? sanitizePattern(opts.shoesPattern, 'shoes') : getPattern('shoes');
+  /* v2.3.1965: `|| opts.reportGrids` — the designer needs the grids even when
+     nothing is drawn yet, which is precisely the state a player is in when
+     they open it for the first time.  Without it the body-ink surface has no
+     grid to hit-test against and the first mark can never be made. */
   const _bodyArt = (_pantsArt || _tattooArt || _faceArt || _armArt
-    || parsePattern(_pantsPat, 'pants') || parsePattern(_shoesPat, 'shoes'))
+    || parsePattern(_pantsPat, 'pants') || parsePattern(_shoesPat, 'shoes')
+    || (opts && opts.reportGrids))
     ? { pants: _pantsArt || '', tattoo: _tattooArt || '',
       tattooFace: _faceArt || '', tattooArm: _armArt || '',
       pantsPattern: _pantsPat, shoesPattern: _shoesPat, mirror: false,
@@ -550,12 +555,22 @@ export async function drawCharacterPortrait(canvas, opts) {
     eyeColorTarget(_eyeId), EYE_MASK[`stand-${DIR}`], _bodyArt);
   ctx.drawImage(_bodyCv, 0, 0);
   /* Stamped on the OUTPUT canvas, beside __btDir, because that is where the
-     caller can reach it.  The body is drawn at (0,0) into the 256 frame before
-     the zoom transform, so these grids are in the same 256-space every other
-     placement in this file is written in — the caller only has to undo the
-     zoom, which it authored. */
+     caller can reach it.  The grids are in the BODY SHEET's own 256-space.
+     v2.3.1965: ...and the matrix that maps that space onto this canvas is
+     reported WITH them.  The v2.3.1962 note here said the caller "only has to
+     undo the zoom, which it authored", which was true and is a bad deal: the
+     chain above this point is a mirror, a per-direction zoom tweak, a 10px
+     drop, PORTRAIT_FIT and the build's two axes, and a caller re-deriving all
+     six silently mis-hits the moment any of them is tuned.  getTransform() at
+     the exact call that draws the body is correct by construction and cannot
+     drift from it.  The body-ink surface inverts this to turn a finger on the
+     canvas back into a cell. */
   if (opts && opts.reportGrids) {
-    try { canvas.__btGrids = _bodyCv.__btGrids || null; } catch (e) { /* ignore */ }
+    try {
+      canvas.__btGrids = _bodyCv.__btGrids || null;
+      const _m = ctx.getTransform();
+      canvas.__btGridXform = { a: _m.a, b: _m.b, c: _m.c, d: _m.d, e: _m.e, f: _m.f };
+    } catch (e) { /* no DOMMatrix (very old Safari): the caller falls back */ }
   }
   if (shirtImg) {
     /* v2.3.1110: restore a downscaled-on-disk shirt sheet to the 256px frame

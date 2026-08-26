@@ -2442,3 +2442,21 @@ body:has(.bt-inspect) .bt-kb-chip{display:none}
   .bt-npcdlg-art{flex-basis:30%;max-width:140px}
   .bt-npcdlg-text{min-height:64px;font-size:13px}
 }
+
+/* ═══ v2.3.1965: THE BODY-INK SURFACE ═══
+   Owner: "allow the user to zoom in on any part of the character skin to
+   tattoo it ... with the live preview of what it looks like on the character."
+   The canvas is the character, so it takes the same square well the 16x16 grid
+   had; the bar under it carries the three things a finger needs that a grid
+   did not — pan instead of ink, and the two zoom steps for the hand that is
+   holding the phone. */
+.bt-bodyink{display:flex;flex-direction:column;gap:6px}
+.bt-bodyink-cv{background:rgba(9,13,17,.55)}
+.bt-bodyink-bar{display:flex;align-items:center;gap:6px}
+.bt-bodyink-bar .bt-paint-size{flex:0 0 auto;min-width:48px}
+/* The region under your finger, named. It is the one thing the surface knows
+   and you cannot see: Undo, Clear and the palette all act on THIS canvas. */
+.bt-bodyink-where{
+  margin-left:auto;font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--ui-brass);opacity:.85;padding-right:2px;
+}

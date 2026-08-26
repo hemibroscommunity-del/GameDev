@@ -241,7 +241,14 @@ export function cellAt(g, x, y) {
 }
 
 export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
-  if (!artHasInk(art)) return 0;
+  /* v2.3.1965: a blank canvas still has to report its grid.  The body-ink
+     surface turns a finger into a cell using the grid this stamp fitted, so
+     with this early return in front of the report a character who has never
+     drawn anything reported no grids at all — and could therefore never make
+     the FIRST mark, on any region, forever.  Nothing is painted either way:
+     every cell of a blank drawing gives artColorAt null and is skipped, so the
+     only cost of measuring it is measuring it, and only the designer asks. */
+  if (!artHasInk(art) && !(opts && opts.report)) return 0;
   const frames = Math.max(1, Math.floor(w / frameW));
   const eachPiece = !!(opts && opts.eachPiece);
   const underSkin = !!(opts && opts.underSkin);   /* v2.3.1950 */
@@ -440,7 +447,28 @@ export const TATTOO_BOX = { fillW: 0.70, fillH: 0.55, cy: 0.50 };  /* chest */
    print is ink ON fabric, not under skin, and stays opaque. */
 export const INK_TUNE = Object.freeze({ alpha: 0.60, shade: 1.0, contrast: 0.35 });
 
-export const FACE_BOX = { fillW: 0.62, fillH: 0.46, cy: 0.60 };
+/* ═══ v2.3.1965: THE FOREHEAD IS PART OF THE FACE ═══
+   Owner, play-testing: "allow the user to zoom in on any part of the
+   character skin to tattoo it ... whatever zoomed in body part you want
+   (including forehead etc)."  The forehead was not reachable at all.
+   MEASURED before moving it: the face REGION (head skin) runs rows 36..77 of
+   the sheet, and the old box put its 16 rows at 52..71 — brow to upper lip.
+   Everything above row 52, which is the whole forehead, had no cell over it,
+   so no drawing could put ink there however hard you tried.
+   The new numbers were chosen by RENDERING a full-grid tattoo at each
+   candidate and looking (bald and under an afro), not by arithmetic:
+     0.62/0.46/0.60  eyes to upper lip — the old reach.
+     0.78/0.63/0.515 forehead to chin, temple to temple. THIS ONE.
+     0.78/0.72/0.475 no further coverage: the skin mask clips the crown
+                     anyway, so the extra rows are spent on nothing and every
+                     cell gets coarser for it.
+   The crown and the ears stay outside on purpose — the crown is under hair
+   for all but a bald character, and ink there would read as a mistake.
+   TWO CONSEQUENCES, stated rather than discovered later: the 16 rows now
+   spread over 26 sheet px instead of 19, so a cell is coarser; and an
+   existing face tattoo keeps its cells but covers more face than it did, so
+   it moves. Both are the price of reaching the forehead at all. */
+export const FACE_BOX = { fillW: 0.78, fillH: 0.63, cy: 0.515 };
 export const ARM_BOX = { fillW: 0.92, fillH: 0.40, cy: 0.42 };
 
 /* ═══ v2.3.1949: THE OTHER TWO SKIN REGIONS ═══

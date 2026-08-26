@@ -555,13 +555,25 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
      skin no longer passes _isSkin (alabaster is r-g=13, the test wants >25), so
      classifying afterwards would find no skin at all on exactly the players who
      picked a light tone.  Same reason _torsoBands runs up here. */
-  const wantPantsArt = !!(art && artHasInk(art.pants));
-  const wantTattoo = !!(art && artHasInk(art.tattoo));
+  /* v2.3.1965: THE DESIGNER WANTS EVERY REGION, INKED OR NOT.
+     Each `want` below gates a mask, and the mask is what stampRegion measures
+     the grid from — so keyed on ink alone, a character who has drawn nothing
+     produced no masks, no grids and therefore no way for the body-ink surface
+     to turn a finger into a cell.  The FIRST mark was unmakeable, on every
+     region, forever; and the second one on a region was unmakeable too until
+     you had inked that region some other way.
+     `art.report` is set by the designer and by nothing else (the game passes
+     no `report`), so the extra classification is paid on the one screen that
+     needs it and nowhere else.  Blank art paints nothing either way: every
+     cell of it gives artColorAt null and is skipped. */
+  const wantReport = !!(art && art.report);
+  const wantPantsArt = !!(art && artHasInk(art.pants)) || wantReport;
+  const wantTattoo = !!(art && artHasInk(art.tattoo)) || wantReport;
   /* v2.3.1949: the face and the arms.  Both are derived from the SAME two masks
      the chest tattoo already needs (bare skin, and the torso band), so wanting
      one of them costs a second Uint8Array and no extra classification. */
-  const wantFaceTat = !!(art && artHasInk(art.tattooFace));
-  const wantArmTat = !!(art && artHasInk(art.tattooArm));
+  const wantFaceTat = !!(art && artHasInk(art.tattooFace)) || wantReport;
+  const wantArmTat = !!(art && artHasInk(art.tattooArm)) || wantReport;
   /* v2.3.1941: a pattern wants the same trouser mask a print does. */
   const pantsPat = art ? parsePattern(art.pantsPattern, 'pants') : null;
   const pantsPx = (wantPantsArt || pantsPat) ? new Uint8Array(w * h) : null;
