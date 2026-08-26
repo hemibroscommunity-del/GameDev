@@ -1376,6 +1376,42 @@ input{font-family:inherit}
 @media (max-width:360px){
   .bt-cc-draw .bt-cc-tab-label{font-size:14px}
 }
+
+/* ═══ v2.3.1947: THE DESIGNER'S TWO PANES ═══
+   Owner: "can you also provide another pane of a preview of what it looks like
+   on character?"  The panel is a scrim over the creator, so the live figure it
+   was covering now sits inside it.
+
+   ONE variable drives both panes, so they can never disagree about how tall the
+   row is.  52vw/52vh rather than the 72 the grid used alone: on the primary
+   platform (iPhone, 390 in its short axis either way round) that is 202px, and
+   202 + 125 + 10 + 28 of padding = 365 fits a portrait phone's width, while the
+   column height 202 + tabs + colours + buttons fits landscape's 374px of usable
+   height -- which the single 281px grid did NOT, so this scrolls LESS than
+   before rather than more.  The left column is .62 of the box so the caption
+   under the preview has a readable measure instead of two words a line. */
+.bt-paint{--paint-size:min(52vw,52vh,288px);padding:14px;gap:10px}
+.bt-paint-row{display:flex;gap:10px;align-items:flex-start}
+.bt-paint-side{flex:0 0 auto;width:calc(var(--paint-size) * .62);
+  display:flex;flex-direction:column;gap:8px}
+.bt-paint-main{flex:0 0 auto;width:var(--paint-size)}
+/* The preview is pixel art zoomed in: pixelated on the way up, and a ground
+   that is darker than the panel so a pale shirt still has an edge. */
+.bt-paint-pv{
+  width:100%;aspect-ratio:1/1;display:block;image-rendering:pixelated;
+  border-radius:8px;border:1px solid rgba(229,237,233,.28);
+  background:radial-gradient(ellipse at 50% 76%,#2c3b45 0%,#151f27 72%);
+}
+/* MEASURED, not guessed: on iPhone landscape (844x390) the single-grid panel
+   this replaces needed 536px in the 372px a 96vh sheet gets -- 164px of it
+   below the fold, which is where the Done button was.  Two panes brought that
+   to 414px; tightening the box on short viewports (the same 460px breakpoint
+   the designer button uses) closes the last 42 and the whole panel fits with
+   nothing to scroll. */
+@media (max-height:460px){
+  .bt-paint{--paint-size:min(52vw,44vh,288px);padding:11px;gap:7px}
+  .bt-paint-row{gap:8px}
+}
 .bt-cc-tab-icon{width:30px;height:30px;object-fit:contain;opacity:.92;pointer-events:none}
 /* v2.3.1931: .bt-cc-tab-icon--pixel is retired with the catalog-thumb tabs.
    The tab row is one icon sheet now and every icon downscales smoothly --

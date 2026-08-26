@@ -1,5 +1,9 @@
 import React from 'react';
 import { PlayerPaint } from './PlayerPaint.jsx';   /* v2.3.1938; v2.3.1940 pants + tattoos */
+/* v2.3.1947: the designer shows the character wearing what you are making, and
+   it has to be the SAME character the stage behind it is showing -- so it gets
+   the look from the one function that builds it, not a second copy. */
+import { portraitLook } from '@/game/characterCreatorEffects.js';
 import { BUILD_INFO } from '../BuildBadge.jsx';
 /* v2.3.1143: account login -- "Already have a character?" entry point
    for a player on a NEW device, who lands on this splash with a fresh
@@ -785,6 +789,15 @@ export function NameModal(props) {
   }())))),
   showPaint && /*#__PURE__*/React.createElement(PlayerPaint, {
     target: showPaint,
+    /* v2.3.1947: no `previewDir` -- the designer points the figure itself (a
+       shirt BACK has to face away), so it supplies its own facing. */
+    look: portraitLook({
+      skinSel: skinSel, pantsSel: pantsSel, shoesSel: shoesSel,
+      hairSel: hairSel, hairColorSel: hairColorSel,
+      facialHairSel: facialHairSel, beardColorSel: beardColorSel,
+      headwearSel: headwearSel, hatColorSel: hatColorSel, eyeColor: eyeColorSel,
+      shirtSel: shirtSel, shirtColorSel: shirtColorSel
+    }),
     onClose: function () { setShowPaint(null); }
   }), showAccount && /*#__PURE__*/React.createElement(AccountModal, {
     onClose: function () { setShowAccount(false); }

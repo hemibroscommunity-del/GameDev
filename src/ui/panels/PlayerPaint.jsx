@@ -6,6 +6,7 @@ import {
 import {
   patternsFor, getPattern, setPattern, parsePattern, formatPattern, patternInk,
 } from '@/rendering/traits/patternCatalog.js';   /* v2.3.1941 */
+import { drawCharacterPortrait } from '@/rendering/characterPortrait.js';   /* v2.3.1947 */
 
 /* ═══ v2.3.1938: DRAW YOUR OWN SHIRT ═══
  *
@@ -104,13 +105,157 @@ function PatternSwatch({ tile, color, on, onPick }) {
     <button type="button" onClick={onPick} title={tile ? tile.name : 'Plain'}
       style={{ padding: 0, lineHeight: 0, borderRadius: 7, cursor: 'pointer',
         border: on ? '2px solid #D8AA58' : '1px solid rgba(0,0,0,.4)', boxSizing: 'border-box' }}>
+      {/* v2.3.1947: sizes off its grid column rather than a fixed 44px — the
+          pattern pane shares the panel with the worn preview now. */}
       <canvas ref={ref} width={S * N} height={S * N}
-        style={{ width: 44, height: 44, imageRendering: 'pixelated', borderRadius: 6, display: 'block' }} />
+        style={{ width: '100%', aspectRatio: '1 / 1', imageRendering: 'pixelated',
+          borderRadius: 6, display: 'block' }} />
     </button>
   );
 }
 
-export function PlayerPaint({ target = 'shirt', onClose }) {
+/* ═══ v2.3.1947: THE WORN PREVIEW ═══
+ *
+ * Owner: "can you also provide another pane of a preview of what it looks like
+ * on character?"
+ *
+ * The designer is a full-screen scrim, so the creator's own live figure — which
+ * has always updated stroke by stroke — is COVERED by the very panel you are
+ * drawing in.  You were drawing blind and finding out when you closed it.  This
+ * is that figure, brought inside the panel and pointed at the part you are
+ * editing.
+ *
+ * ── WHY IT ZOOMS INSTEAD OF SHOWING THE WHOLE BODY ──
+ * A print gets about 30x18 pixels of shirt, and a boot pattern about eight
+ * pixels of boot.  A whole figure in a 125px box renders that print four pixels
+ * tall, which tells you nothing.  So the camera points at the garment: chest for
+ * a shirt or a tattoo, thighs for trousers, feet for boots.  Nearest-neighbour
+ * on the way up, because the thing being previewed IS pixels and smoothing it
+ * would be a lie about how it looks in the game.
+ *
+ * ── WHY THE DRAWING IS PASSED IN RATHER THAN READ FROM THE STORE ──
+ * drawCharacterPortrait falls back to the live store for any drawing/pattern
+ * the caller omits, which is how the creator's stage stays current for free.
+ * It would NOT work here: this is a child component, and React flushes a
+ * child's effects BEFORE its parent's, so the panel's own "persist to the
+ * store" effect has not run yet when this one draws — every frame would be one
+ * stroke stale.  Passing the value being edited explicitly sidesteps the
+ * ordering question entirely; everything NOT being edited still comes from the
+ * store, which is what you want.
+ */
+
+/* ── where to point the camera ──
+   drawCharacterPortrait always composites into the same square (256, times a
+   device-scale multiplier) and always puts the figure in the same place in it,
+   so the crop is arithmetic rather than an alpha scan of a 600k-pixel canvas on
+   every stroke.
+
+   MEASURED (v2.3.1947, alpha bbox over four looks incl. a hatted afro and a
+   north facing): the figure is centred at x 0.4975 and its FEET land at 0.977
+   down the canvas every time.  The top does NOT: a bare head starts at 0.152
+   and a cowboy hat over an afro at 0.055.  So these are stated against the
+   canvas and anchored on the feet — hang them off the silhouette's top instead
+   and putting a hat on would swing the camera a tenth of a frame.
+
+   `cy`/`h` are the window's centre and height as canvas fractions. */
+const FIG_CX = 0.4975;
+const FOCUS = {
+  /* The shirt frame keeps the HEAD in shot on purpose: the figure stays
+     recognisably yours, which a floating torso does not. */
+  shirt: { cy: 0.43, h: 0.45 },
+  tattoo: { cy: 0.43, h: 0.45 },
+  /* Trousers, plus the boot tops.  Centring higher put a third of the pane on
+     shirt hem. */
+  pants: { cy: 0.69, h: 0.35 },
+  /* Down to 1.0, not to the boots: the feet sit at 0.977 and a frame that
+     stopped at 0.947 sliced the soles off. */
+  shoes: { cy: 0.865, h: 0.27 },
+};
+
+function WornPreview({ look, target, side, art, pat }) {
+  const boxRef = React.useRef(null);
+  const offRef = React.useRef(null);
+  const busyRef = React.useRef(false);
+  const dirtyRef = React.useRef(false);
+
+  /* Blit the finished composite into the visible box, cropped to the garment. */
+  const blit = React.useCallback(() => {
+    const box = boxRef.current, off = offRef.current;
+    if (!box || !off || !off.width) return;
+    const cssW = box.clientWidth, cssH = box.clientHeight;
+    if (!cssW || !cssH) return;
+    const dpr = Math.min(2, Math.round((typeof window !== 'undefined' && window.devicePixelRatio) || 1));
+    const w = Math.round(cssW * dpr), h = Math.round(cssH * dpr);
+    if (box.width !== w || box.height !== h) { box.width = w; box.height = h; }
+    const ctx = box.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, w, h);
+    const f = FOCUS[target] || FOCUS.shirt;
+    const S = off.width;                       /* the composite is square */
+    const winH = f.h * S;
+    const winW = winH * (cssW / cssH);
+    ctx.drawImage(off, FIG_CX * S - winW / 2, f.cy * S - winH / 2, winW, winH, 0, 0, w, h);
+  }, [target]);
+
+  React.useEffect(() => {
+    if (!look) return undefined;
+    let alive = true;
+    let raf = 0;
+    const draw = () => {
+      if (!offRef.current) offRef.current = document.createElement('canvas');
+      const opts = Object.assign({}, look, {
+        /* Face the side being edited.  A shirt BACK you cannot see is the one
+           drawing in this panel that most needed a preview. */
+        dir: side === 'back' ? 'north' : 'south',
+        /* Half the creator stage's resolution: this box is ~125px, and the
+           composite cost is paid on every stroke. */
+        scale: Math.min(2, Math.round((typeof window !== 'undefined' && window.devicePixelRatio) || 1)),
+      });
+      if (target === 'shirt') { opts.shirtArt = art; opts.shirtPattern = pat; }
+      else if (target === 'pants') { opts.pantsArt = art; opts.pantsPattern = pat; }
+      else if (target === 'shoes') { opts.shoesPattern = pat; }
+      else if (target === 'tattoo') {
+        opts.tattooArt = art;
+        /* A tattoo is under the shirt, so with a shirt on this pane would be a
+           blank chest — which reads as broken rather than as "covered".  The
+           caption under it says a shirt hides it. */
+        opts.shirt = 'none';
+      }
+      return drawCharacterPortrait(offRef.current, opts);
+    };
+    /* One composite in flight at a time, coalesced to a frame: a drag paints
+       many cells per frame and each one would otherwise re-bake a sheet. */
+    const run = () => {
+      raf = 0;
+      if (!alive || busyRef.current) { dirtyRef.current = true; return; }
+      busyRef.current = true;
+      Promise.resolve().then(draw).then(() => { if (alive) blit(); })
+        .catch(() => { /* a missing sprite must not take the panel down */ })
+        .then(() => {
+          busyRef.current = false;
+          if (alive && dirtyRef.current) { dirtyRef.current = false; kick(); }
+        });
+    };
+    const kick = () => { if (!raf) raf = requestAnimationFrame(run); };
+    kick();
+    /* Rotating the phone resizes the box; the composite is still good. */
+    const onResize = () => { try { blit(); } catch (e) { /* ignore */ } };
+    window.addEventListener('resize', onResize);
+    return () => {
+      alive = false;
+      if (raf) cancelAnimationFrame(raf);
+      window.removeEventListener('resize', onResize);
+    };
+  }, [look, target, side, art, pat, blit]);
+
+  if (!look) return null;
+  return (
+    <canvas ref={boxRef} className="bt-paint-pv"
+      aria-label="Preview on your character" role="img" />
+  );
+}
+
+export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   const cfg = TARGETS[target] || TARGETS.shirt;
   const isShirt = target === 'shirt';
   /* v2.3.1941: the panel has MODES now, not just shirt sides.  A garment can be
@@ -203,9 +348,13 @@ export function PlayerPaint({ target = 'shirt', onClose }) {
       aria-label={(canDraw ? 'Draw your ' : 'Pattern your ') + cfg.label}
       style={{ position: 'fixed', inset: 0, background: 'rgba(6,10,14,.72)',
         display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-      <div style={{ background: 'var(--ui-panel, #16202a)', border: '1px solid rgba(229,237,233,.26)',
-        borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 10,
-        maxHeight: '96vh', overflow: 'auto' }}>
+      {/* v2.3.1947: padding and gap live in the stylesheet, not here -- a short
+          viewport (iPhone landscape) has to tighten them, and a media query
+          cannot reach an inline style. */}
+      <div className="bt-paint"
+        style={{ background: 'var(--ui-panel, #16202a)', border: '1px solid rgba(229,237,233,.26)',
+          borderRadius: 12, display: 'flex', flexDirection: 'column',
+          maxHeight: '96vh', overflow: 'auto' }}>
 
         {MODES && (
           <div style={{ display: 'flex', gap: 6 }}>
@@ -219,42 +368,57 @@ export function PlayerPaint({ target = 'shirt', onClose }) {
           </div>
         )}
 
-        {onPattern ? (
-          /* v2.3.1941: the pattern screen — a tile, then a colour for it.  Both
-             rows are the same width as the drawing grid they replace, so
-             switching modes does not resize the panel under your thumb. */
-          <div style={{ width: 'min(72vw, 72vh, 288px)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6, justifyItems: 'center' }}>
-              <PatternSwatch tile={null} color={null} on={!patId} onPick={() => pickTile('')} />
-              {patternsFor(cfg.pattern).map((t) => (
-                <PatternSwatch key={t.id} tile={t} color={ART_PALETTE[patColor]}
-                  on={patId === t.id} onPick={() => pickTile(t.id)} />
-              ))}
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 5, opacity: patId ? 1 : .35 }}>
-              {ART_PALETTE.map((c, i) => (i === 0 ? null : (
-                <button key={i} type="button" title="Pattern colour" disabled={!patId}
-                  onClick={() => pickPatColor(i)}
-                  style={{ aspectRatio: '1 / 1', minHeight: 26, borderRadius: 6,
-                    cursor: patId ? 'pointer' : 'default', background: c,
-                    border: patColor === i && patId ? '2px solid #D8AA58' : '1px solid rgba(0,0,0,.4)',
-                    boxSizing: 'border-box' }} />
-              )))}
+        {/* v2.3.1947: two panes.  Left is the character wearing what you are
+            making, with the caption under it; right is the thing you work in.
+            Both modes fill the same right-hand box so switching between
+            "pattern" and "draw" does not resize the panel under your thumb, and
+            the colour rows below span BOTH panes — which makes each swatch
+            wider than it was when they were penned into the grid's width. */}
+        <div className="bt-paint-row">
+          <div className="bt-paint-side">
+            <WornPreview look={look} target={target} side={side} art={art} pat={pat} />
+            <div style={{ fontSize: 11, lineHeight: 1.3, opacity: .78 }}>
+              {onPattern ? 'A pattern fills the whole garment. Anything you draw goes on top of it.' : cfg.note}
             </div>
           </div>
-        ) : (
-          <canvas ref={cvRef} width={size} height={size}
-            onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
-            style={{ width: 'min(72vw, 72vh, 288px)', height: 'min(72vw, 72vh, 288px)',
-              imageRendering: 'pixelated', touchAction: 'none', cursor: 'crosshair',
-              borderRadius: 8, border: '1px solid rgba(229,237,233,.28)', display: 'block' }} />
-        )}
 
-        <div style={{ fontSize: 12, lineHeight: 1.35, opacity: .78, maxWidth: 288 }}>
-          {onPattern ? 'A pattern fills the whole garment. Anything you draw goes on top of it.' : cfg.note}
+          <div className="bt-paint-main">
+            {onPattern ? (
+              /* v2.3.1941: the pattern screen — a tile, then a colour for it. */
+              /* v2.3.1947: shoes offer five choices, not ten (only four tiles
+                 survive at boot size), and five in a 5-wide grid is one thin
+                 row against a two-row preview column.  Three wide gives them
+                 two rows, a bigger thumb target, and a balanced panel. */
+              <div style={{ display: 'grid', gap: 6,
+                gridTemplateColumns: 'repeat(' + (patternsFor(cfg.pattern).length + 1 <= 6 ? 3 : 5) + ', 1fr)' }}>
+                <PatternSwatch tile={null} color={null} on={!patId} onPick={() => pickTile('')} />
+                {patternsFor(cfg.pattern).map((t) => (
+                  <PatternSwatch key={t.id} tile={t} color={ART_PALETTE[patColor]}
+                    on={patId === t.id} onPick={() => pickTile(t.id)} />
+                ))}
+              </div>
+            ) : (
+              <canvas ref={cvRef} width={size} height={size}
+                onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
+                style={{ width: '100%', aspectRatio: '1 / 1',
+                  imageRendering: 'pixelated', touchAction: 'none', cursor: 'crosshair',
+                  borderRadius: 8, border: '1px solid rgba(229,237,233,.28)', display: 'block' }} />
+            )}
+          </div>
         </div>
 
-        {!onPattern && (
+        {onPattern ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 5, opacity: patId ? 1 : .35 }}>
+            {ART_PALETTE.map((c, i) => (i === 0 ? null : (
+              <button key={i} type="button" title="Pattern colour" disabled={!patId}
+                onClick={() => pickPatColor(i)}
+                style={{ aspectRatio: '1 / 1', minHeight: 26, borderRadius: 6,
+                  cursor: patId ? 'pointer' : 'default', background: c,
+                  border: patColor === i && patId ? '2px solid #D8AA58' : '1px solid rgba(0,0,0,.4)',
+                  boxSizing: 'border-box' }} />
+            )))}
+          </div>
+        ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 5 }}>
             {ART_PALETTE.map((c, i) => (
               <button key={i} type="button" title={i === 0 ? 'Eraser' : 'Colour'}
