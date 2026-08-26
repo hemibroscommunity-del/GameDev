@@ -2765,6 +2765,74 @@ export var BroTown = function BroTown(_ref0) {
     var resizeObs = window.ResizeObserver ? new ResizeObserver(resize) : null;
     if (resizeObs && canvas.parentElement) resizeObs.observe(canvas.parentElement);
 
+    /* ═══ v2.3.1975: A WATCHDOG, BECAUSE THE SPECIAL CASES KEEP RUNNING OUT ═══
+       Owner, with a screenshot from the FIRST person ever to play-test the
+       game: the world squashed into a band at the top, joysticks floating in
+       the page background below it, dashboard fine. Unplayable, and the THIRD
+       time this exact symptom has reached him.
+
+       Every previous fix identified the trigger and special-cased it — the
+       judging session, then v2.3.1715's #root measurement, then v2.3.1740's
+       keyboard guard firing on browser chrome. Each was correct. Each time a
+       new trigger turned up, because every one of them is a different way of
+       reaching the SAME state: resize() ran once against a viewport that was
+       not the real one, and nothing ever fired again to correct it.
+
+       That is the thing worth fixing. resize() is edge-triggered — a window
+       resize, a visualViewport resize, or a ResizeObserver on the parent — and
+       every one of those is the browser PROMISING to tell us. The failure mode
+       is the browser not making that call: an in-app browser whose chrome
+       settles without an event, a viewport reported small for one frame during
+       load, a devicePixelRatio that changes under us. There is no list of
+       those to complete; the list is "everything we have not seen yet".
+
+       So this asserts the invariant directly, on a timer, instead of trusting
+       the events: if the canvas is not the size the layout says it should be,
+       size it. It is level-triggered, so it cannot be defeated by a missing
+       event, and it self-heals rather than requiring a reload.
+
+       MEASURED against the owner's screenshot: the world band is ~12% of the
+       page viewport where it should be ~56%. The tolerance below is 8% of the
+       expected height, which is far looser than any rounding this code does
+       (DASH_OVERLAP and the Math.round in vh are single pixels) and far
+       tighter than any failure that has ever been reported.
+
+       Two things it deliberately does NOT do:
+         - It does not fight the keyboard. While a text field is focused the
+           guard above is doing its job on purpose (v2.3.130: the chat keyboard
+           must float over the world, not resize the scene), so the watchdog
+           stands down and picks it up on the next tick after the blur.
+         - It does not run forever at speed. A wrong size is a startup-shaped
+           failure, so it checks briskly while that is being decided and then
+           settles to a slow heartbeat that costs two reads a second. */
+    var wdTicks = 0;
+    var watchdog = setInterval(function () {
+      wdTicks++;
+      /* Fast for the first ~12s, then a slow heartbeat. */
+      if (wdTicks > 24 && (wdTicks % 4)) return;
+      var _ae2 = document.activeElement;
+      if (_ae2 && (_ae2.tagName === 'INPUT' || _ae2.tagName === 'TEXTAREA' || _ae2.isContentEditable)) return;
+      var vvNow = window.visualViewport;
+      var haveH = canvas.getBoundingClientRect().height;
+      if (!haveH) return;                       /* not laid out yet */
+      var fullH = vvNow ? vvNow.height : window.innerHeight;
+      var wantH = Math.max(120, fullH - barHeight(vvNow ? vvNow.width : window.innerWidth, fullH) + DASH_OVERLAP);
+      if (Math.abs(haveH - wantH) <= wantH * 0.08) return;
+      /* Say it once, loudly, with the numbers: if this ever fires in the wild
+         the log is the whole diagnosis, and silence here would hide the very
+         thing three fixes have failed to see. */
+      if (!window.__btResizeHealed) {
+        window.__btResizeHealed = { at: Date.now(), had: Math.round(haveH), want: Math.round(wantH) };
+        try {
+          console.warn('[canvas-watchdog] canvas was ' + Math.round(haveH) + 'px, should be '
+            + Math.round(wantH) + 'px — resizing. innerH=' + window.innerHeight
+            + ' vvH=' + (vvNow ? Math.round(vvNow.height) : 'n/a')
+            + ' dpr=' + (window.devicePixelRatio || 1));
+        } catch (e) { /* ignore */ }
+      }
+      resize();
+    }, 500);
+
     /* Initialize PixiJS renderer (async).  By this point the canvas has
        been resized so createPixiApp reads non-zero clientWidth/Height.
        No fallback path — if Pixi fails to init, the game logs and the
@@ -5914,6 +5982,7 @@ export var BroTown = function BroTown(_ref0) {
       window.removeEventListener('resize', resize);
       if (resizeObs) resizeObs.disconnect();
       if (vv) vv.removeEventListener('resize', resize);
+      clearInterval(watchdog);   /* v2.3.1975 */
       window._rebuildRenderer = null;
       /* v2.3.772: destroy() can throw mid-teardown when the GL context is
          already dead (the very case the epoch rebuild handles) -- never

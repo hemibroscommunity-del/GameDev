@@ -21,6 +21,7 @@ import * as H from './harness.mjs';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  firstrun: () => import('./mp-firstrun.mjs'), /* v2.3.1975: a first-time player gets a whole screen, not a strip */
   shapelayer: () => import('./mp-shapelayer.mjs'), /* v2.3.1967: a placed shape can be picked up again, and layers move in the ART */
   crowd: () => import('./mp-crowd.mjs'), /* v2.3.1973: what a crowd in one zone costs the PHONE (BT_CROWD=n) */
   socialgrief: () => import('./mp-socialgrief.mjs'), /* v2.3.1970: chat length + forged senders, and the party invites nobody answers */
