@@ -25,26 +25,41 @@ import { onPatternChange } from '@/rendering/traits/patternCatalog.js';   /* v2.
    slots straight in.  v2.3.1940: one subscription covers all four drawings
    (shirt front/back, pants, tattoo) -- the store notifies per canvas and the
    portrait redraws whole either way. */
+/* ═══ v2.3.1947: ONE PLACE THAT TURNS SELECTIONS INTO PORTRAIT OPTIONS ═══
+   The designer panel (PlayerPaint) grew its own character preview, and it has
+   to show the SAME character the creator's stage is showing behind it — same
+   skin, same recolour targets, same everything.  Two copies of this mapping
+   would drift the first time a colour catalog changed, and the drift would be
+   invisible until someone noticed the little preview wearing last month's hat
+   colour.  So the mapping is a function, and both previews call it.
+
+   Note what is deliberately NOT here: the drawings and the patterns.  Leaving
+   `shirtArt`/`pantsArt`/`tattooArt`/`*Pattern` OUT of the options is what makes
+   drawCharacterPortrait read them from the live store, so a stroke shows up in
+   every preview without anyone threading it through. */
+export function portraitLook(sel) {
+  return {
+    dir: sel.previewDir,
+    skin: sel.skinSel, pants: sel.pantsSel, shoes: sel.shoesSel,
+    hair: sel.hairSel, hairColor: sel.hairSel === 'long' ? null : hairColorTarget(sel.hairColorSel),
+    facialHair: sel.facialHairSel, facialHairColor: facialHairColorTarget(sel.beardColorSel),
+    headwear: sel.headwearSel, hatColor: hatColorTarget(sel.hatColorSel, sel.headwearSel), /* v2.3.1927 */
+    shirt: sel.shirtSel, shirtColor: shirtColorTarget(sel.shirtColorSel),
+    eyeColor: sel.eyeColor,   /* v2.3.1930: the creator's own live selection */
+  };
+}
+
 export function wireCharacterPortrait(previewCanvasRef, sel) {
-  var previewDir = sel.previewDir,
-    skinSel = sel.skinSel, pantsSel = sel.pantsSel, shoesSel = sel.shoesSel,
-    hairSel = sel.hairSel, hairColorSel = sel.hairColorSel,
-    facialHairSel = sel.facialHairSel, beardColorSel = sel.beardColorSel,
-    headwearSel = sel.headwearSel, hatColorSel = sel.hatColorSel,
-    shirtSel = sel.shirtSel, shirtColorSel = sel.shirtColorSel;
+  /* v2.3.1947: only the three the PREWARM needs are unpacked now; everything
+     else the draw wants goes through portraitLook(sel). */
+  var hairSel = sel.hairSel, facialHairSel = sel.facialHairSel,
+    headwearSel = sel.headwearSel;
   if (!previewCanvasRef.current) return;
   /* v2.3.1938: the draw is a closure so the shirt-drawing subscription below
      can re-run just the DRAW.  Calling wireCharacterPortrait itself would
      re-subscribe on every stroke and pile up listeners. */
   function draw() {
-  drawCharacterPortrait(previewCanvasRef.current, {
-    dir: previewDir,
-    skin: skinSel, pants: pantsSel, shoes: shoesSel,
-    hair: hairSel, hairColor: hairSel === 'long' ? null : hairColorTarget(hairColorSel),
-    facialHair: facialHairSel, facialHairColor: facialHairColorTarget(beardColorSel),
-    headwear: headwearSel, hatColor: hatColorTarget(hatColorSel, headwearSel), /* v2.3.1927 */
-    shirt: shirtSel, shirtColor: shirtColorTarget(shirtColorSel),
-    eyeColor: sel.eyeColor,   /* v2.3.1930: the creator's own live selection */
+  drawCharacterPortrait(previewCanvasRef.current, Object.assign(portraitLook(sel), {
     /* v2.3.1300: baked contact shadow — login preview only (exports and
        headshots keep a clean figure). */
     groundShadow: true,
@@ -58,7 +73,7 @@ export function wireCharacterPortrait(previewCanvasRef, sel) {
        Every other caller omits `scale` and keeps the exact 256 path,
        because portraitDataUrl's headshot crop uses raw pixel coords. */
     scale: Math.round(window.devicePixelRatio || 1),
-  });
+  }));
   /* v2.3.715: warm the other 7 angles for whatever is selected NOW, so
      rotating never waits on the network. */
   prewarmPortraitDirs({ hair: hairSel, facialHair: facialHairSel, headwear: headwearSel });

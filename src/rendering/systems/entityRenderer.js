@@ -1244,10 +1244,15 @@ function _shirtLook(front, back, patternStr, tint) {
    `mirror` rides along because it is part of the bake, not of the drawing. */
 function _remoteBodyArt(other, mirror) {
   const p = sanitizeShirtArt(other.pantsArt), t = sanitizeShirtArt(other.tattooArt);
+  /* v2.3.1949: face and arm tattoos ride the same sanitiser -- a peer string
+     that is not a well-formed 256-char drawing answers null and is dropped
+     here, before it can reach a bake key or a canvas. */
+  const ft = sanitizeShirtArt(other.faceTattooArt), at = sanitizeShirtArt(other.armTattooArt);
   const q = sanitizePattern(other.pantsPattern, 'pants');   /* v2.3.1941 */
   const f = sanitizePattern(other.shoesPattern, 'shoes');   /* v2.3.1944 */
-  return (p || t || q || f)
-    ? { pants: p || '', tattoo: t || '', pantsPattern: q, shoesPattern: f, mirror: !!mirror }
+  return (p || t || ft || at || q || f)
+    ? { pants: p || '', tattoo: t || '', tattooFace: ft || '', tattooArm: at || '',
+      pantsPattern: q, shoesPattern: f, mirror: !!mirror }
     : null;
 }
 

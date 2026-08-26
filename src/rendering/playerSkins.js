@@ -29,7 +29,7 @@ import { getEyeColor, eyeColorTarget } from './traits/eyeColorCatalog.js';
    sprite, stamped in gearSheets) these live INSIDE the body sheet, because
    that is where the pants pixels and the bare skin actually are. */
 import { getArt, artHasInk, artHash, onArtChange } from './traits/playerArt.js';
-import { stampRegion, stampPattern, litFabricMask, regionFromFeet, PANTS_LIT_MIN, SHOES_LIT_MIN, PANTS_MAX_UP, SHOES_MAX_UP, PANTS_BOX, TATTOO_BOX } from './playerDecal.js';
+import { stampRegion, stampPattern, litFabricMask, regionFromFeet, splitSkinRegions, PANTS_LIT_MIN, SHOES_LIT_MIN, PANTS_MAX_UP, SHOES_MAX_UP, PANTS_BOX, TATTOO_BOX, FACE_BOX, ARM_BOX } from './playerDecal.js';
 import { getPattern, parsePattern, patternKey, onPatternChange } from './traits/patternCatalog.js';   /* v2.3.1941 */
 
 /* ── Catalogs ── `target` = the LIT color for that choice; null = native. */
@@ -557,6 +557,11 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
      picked a light tone.  Same reason _torsoBands runs up here. */
   const wantPantsArt = !!(art && artHasInk(art.pants));
   const wantTattoo = !!(art && artHasInk(art.tattoo));
+  /* v2.3.1949: the face and the arms.  Both are derived from the SAME two masks
+     the chest tattoo already needs (bare skin, and the torso band), so wanting
+     one of them costs a second Uint8Array and no extra classification. */
+  const wantFaceTat = !!(art && artHasInk(art.tattooFace));
+  const wantArmTat = !!(art && artHasInk(art.tattooArm));
   /* v2.3.1941: a pattern wants the same trouser mask a print does. */
   const pantsPat = art ? parsePattern(art.pantsPattern, 'pants') : null;
   const pantsPx = (wantPantsArt || pantsPat) ? new Uint8Array(w * h) : null;
@@ -573,8 +578,12 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
      band — the same tracker the baked shirt used, reused rather than re-guessed.
      (It also means the tattoo hides under a shirt or a breastplate, which is
      what a chest tattoo does.) */
-  const torsoPx = wantTattoo ? (shirtPx || _torsoBands(d, w, h, FRAME_W, frames)) : null;
+  const anyTat = wantTattoo || wantFaceTat || wantArmTat;
+  const torsoPx = anyTat ? (shirtPx || _torsoBands(d, w, h, FRAME_W, frames)) : null;
   const tattooPx = wantTattoo ? new Uint8Array(w * h) : null;
+  /* Every bare-skin pixel, kept only when a face or arm tattoo is wanted:
+     splitSkinRegions slices it against the torso band once the pass is done. */
+  const skinPx = (wantFaceTat || wantArmTat) ? new Uint8Array(w * h) : null;
   /* Flat shirt fill colour (no per-pixel shading -> no resurfacing of the
      body's contour lines).  Computed once. */
   let sf0 = 0, sf1 = 0, sf2 = 0;
@@ -592,6 +601,7 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
       d[i] = sf0; d[i + 1] = sf1; d[i + 2] = sf2;
     } else if (_isSkin(r, g, b, a)) {
       if (tattooPx && torsoPx[i >> 2]) tattooPx[i >> 2] = 1;
+      if (skinPx) skinPx[i >> 2] = 1;              /* v2.3.1949 */
       if (skinT) _retint(d, i, skinT, SKIN_REF);
     } else if (a > 180 && g >= r - 10 && g > b + 8 && r < 150) {
       /* pants (green) */ if (pantsPx) pantsPx[i >> 2] = 1;
@@ -634,6 +644,14 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
       shoesPat, !!art.mirror);
   }
   if (tattooPx) stampRegion(d, w, h, FRAME_W, tattooPx, art.tattoo, !!art.mirror, TATTOO_BOX);
+  /* v2.3.1949: face and arms.  `eachPiece` for the arms only -- a figure has
+     two of them and the largest-piece rule would ink whichever happens to be
+     nearer the camera. */
+  if (skinPx) {
+    const reg = splitSkinRegions(skinPx, torsoPx, w, h, FRAME_W);
+    if (wantFaceTat) stampRegion(d, w, h, FRAME_W, reg.face, art.tattooFace, !!art.mirror, FACE_BOX);
+    if (wantArmTat) stampRegion(d, w, h, FRAME_W, reg.arms, art.tattooArm, !!art.mirror, ARM_BOX, { eachPiece: true });
+  }
   /* v2.3.1928: the iris last, so it overwrites rather than being classified.
      Its pixels are near-black and would otherwise fall through every branch
      above untouched, which is exactly why the eye needed its own mask. */
@@ -831,22 +849,29 @@ export function bodyArtSeg(art) {
   if (!art) return '';
   const p = artHasInk(art.pants) ? artHash(art.pants) : '';
   const t = artHasInk(art.tattoo) ? artHash(art.tattoo) : '';
+  /* v2.3.1949: two more skin canvases join the key.  Anyone who has not drawn
+     one keeps the exact key they had, so existing sheets stay shared. */
+  const ft = artHasInk(art.tattooFace) ? artHash(art.tattooFace) : '';
+  const at = artHasInk(art.tattooArm) ? artHash(art.tattooArm) : '';
   /* v2.3.1941: the trouser pattern joins the same segment.  It is already a
      short string ("stripe-v:3"), so it goes in whole rather than hashed. */
   const q = parsePattern(art.pantsPattern, 'pants') ? patternKey(art.pantsPattern, 'pants') : '';
   const f = parsePattern(art.shoesPattern, 'shoes') ? patternKey(art.shoesPattern, 'shoes') : '';   /* v2.3.1944 */
-  if (!p && !t && !q && !f) return '';
+  if (!p && !t && !q && !f && !ft && !at) return '';
   /* '#' is the marker: no catalog id contains one, so _dropArtSheets can find
      every drawn bake by substring without matching e.g. '/default/'. */
-  return '/#art' + p + '.' + t + '.' + q + '.' + f + (art.mirror ? 'm' : 'n');
+  return '/#art' + p + '.' + t + '.' + q + '.' + f + '.' + ft + '.' + at + (art.mirror ? 'm' : 'n');
 }
 /** The local player's own drawings, in the shape the bake wants.  `mirror` is
  *  per-facing, so callers that know the facing pass it in. */
 export function localBodyArt(mirror) {
   const p = getArt('pants'), t = getArt('tattoo');
+  const ft = getArt('tattooFace'), at = getArt('tattooArm');   /* v2.3.1949 */
   const q = getPattern('pants'), f = getPattern('shoes');   /* v2.3.1944 */
-  if (!artHasInk(p) && !artHasInk(t) && !parsePattern(q, 'pants') && !parsePattern(f, 'shoes')) return null;
-  return { pants: p, tattoo: t, pantsPattern: q, shoesPattern: f, mirror: !!mirror };
+  if (!artHasInk(p) && !artHasInk(t) && !artHasInk(ft) && !artHasInk(at)
+    && !parsePattern(q, 'pants') && !parsePattern(f, 'shoes')) return null;
+  return { pants: p, tattoo: t, tattooFace: ft, tattooArm: at,
+    pantsPattern: q, shoesPattern: f, mirror: !!mirror };
 }
 /** The eye target for a sheet, or null when that sheet has no eyes in it.
  *  `eyeId` is always passed in -- see getBodyFrame. */

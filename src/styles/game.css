@@ -1376,6 +1376,129 @@ input{font-family:inherit}
 @media (max-width:360px){
   .bt-cc-draw .bt-cc-tab-label{font-size:14px}
 }
+
+/* ═══ v2.3.1947: THE DESIGNER'S PANES ═══
+   Owner: "can you also provide another pane of a preview of what it looks like
+   on character?"  The panel is a scrim over the creator, so the live figure it
+   was covering now sits inside it.
+
+   v2.3.1948 ("any drawing tools like lines, shapes, eraser, fill?", then
+   "different brush size options ... perhaps letters you can place?"): three
+   more control rows had to go somewhere.  Stacked under the grid they do not
+   fit a 390px-tall phone held sideways -- but that phone has 844px of WIDTH
+   doing nothing.  So the panel is a GRID with named areas, and the short-and-
+   wide case re-flows the SAME markup into three columns
+   (preview | drawing | controls) instead of duplicating it.
+
+   ONE variable drives the two pixel panes so they can never disagree about how
+   tall the row is. */
+.bt-paint{
+  --paint-size:min(52vw,52vh,288px);
+  padding:14px;gap:10px;
+  display:grid;align-items:start;justify-content:start;
+  grid-template-columns:auto auto;
+  grid-template-areas:
+    "tabs  tabs"
+    "side  main"
+    "note  main"
+    "tools tools"
+    "opts  opts"
+    "pal   pal"
+    "btn   btn";
+}
+.bt-paint-tabs{grid-area:tabs}
+.bt-paint-side{grid-area:side;width:calc(var(--paint-size) * .62)}
+.bt-paint-note{grid-area:note;width:calc(var(--paint-size) * .62);
+  font-size:11px;line-height:1.3;opacity:.78}
+.bt-paint-main{grid-area:main;width:var(--paint-size)}
+.bt-paint-tools{grid-area:tools;display:grid;grid-template-columns:repeat(6,1fr);gap:5}
+/* v2.3.1949: the options row is a flex pair now -- a variable part (brush
+   widths, or the alphabet) and a Mirror toggle that never moves. */
+.bt-paint-opts{grid-area:opts;display:flex;gap:5px;min-width:0}
+.bt-paint-opts-main{flex:1 1 auto;min-width:0;display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.bt-paint-mirror{flex:0 0 auto;width:62px}
+.bt-paint-pal{grid-area:pal}
+.bt-paint-btn{grid-area:btn}
+/* Stacked: the wrapper vanishes and its children take their own areas. */
+.bt-paint-ctl{display:contents}
+/* The preview is pixel art zoomed in: pixelated on the way up, and a ground
+   that is darker than the panel so a pale shirt still has an edge. */
+.bt-paint-pv{
+  width:100%;aspect-ratio:1/1;display:block;image-rendering:pixelated;
+  border-radius:8px;border:1px solid rgba(229,237,233,.28);
+  background:radial-gradient(ellipse at 50% 76%,#2c3b45 0%,#151f27 72%);
+}
+
+/* ── v2.3.1948: the toolbar and its options ──
+   Icon over a word, because an icon alone is a guessing game for a tool nobody
+   has met before and a word alone is a wall of text at six across. */
+.bt-paint-tool,.bt-paint-size{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  min-height:44px;padding:4px 2px;border-radius:9px;cursor:pointer;
+  background:rgba(229,237,233,.06);border:1px solid rgba(229,237,233,.20);
+  color:var(--ui-text);
+  transition:transform 90ms cubic-bezier(.2,.8,.2,1),background 90ms cubic-bezier(.2,.8,.2,1);
+}
+.bt-paint-tool:active,.bt-paint-size:active{transform:scale(.97)}
+.bt-paint-tool--on,.bt-paint-size--on{
+  background:var(--ui-brass-soft);border-color:var(--ui-brass);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.10);
+}
+.bt-paint-tool--on .bt-paint-tool-icon{color:var(--ui-brass)}
+.bt-paint-tool-label{font-size:9px;letter-spacing:.02em;opacity:.9;line-height:1}
+.bt-paint-tool-icon{display:block}
+/* A fixed-height well for the dot, so Fine/Medium/Thick sit on one baseline
+   instead of stepping down as the dot grows. */
+.bt-paint-size .bt-paint-dot-well{display:flex;align-items:center;justify-content:center;height:20px}
+.bt-paint-size .bt-paint-dot{display:block;border-radius:50%;background:currentColor}
+.bt-paint-size[disabled]{cursor:default}
+
+/* The alphabet strip.  It scrolls sideways rather than wrapping to four rows:
+   the row has to keep the same height whichever tool is selected, or every
+   control below it jumps when you switch tool. */
+.bt-paint-letters{
+  flex:1 1 auto;min-width:0;
+  display:flex;gap:5px;
+  overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;
+  scrollbar-width:thin;padding-bottom:2px;
+}
+.bt-paint-letter{
+  flex:0 0 auto;width:36px;min-height:44px;border-radius:9px;cursor:pointer;
+  background:rgba(229,237,233,.06);border:1px solid rgba(229,237,233,.20);
+  color:var(--ui-text);font-size:17px;font-weight:700;line-height:1;
+}
+.bt-paint-letter--on{background:var(--ui-brass-soft);border-color:var(--ui-brass)}
+
+/* ── short viewports: the same markup, three columns ──
+   MEASURED (v2.3.1947): on iPhone landscape (844x390) the single-grid panel
+   this replaces needed 536px in the 372px a 96vh sheet gets -- 164px of it
+   below the fold, which is where the Done button was.  Stacked, the toolbar
+   rows would put it back there.  Sideways there is width to spare, so the
+   controls move beside the drawing instead of under it.
+   `min-width` guards the case this does NOT suit: a viewport that is short AND
+   narrow has no spare width, so it keeps the stacked layout and scrolls. */
+@media (max-height:460px) and (min-width:660px){
+  .bt-paint{
+    --paint-size:min(34vw,58vh,300px);
+    padding:11px;gap:8px;
+    grid-template-columns:auto auto minmax(230px,272px);
+    grid-template-areas:
+      "tabs main ctl"
+      "side main ctl"
+      "note main ctl";
+  }
+  /* The controls become ONE column of their own rather than four blocks sharing
+     rows with the preview: a 44px tool row in the same row as a 140px preview
+     gets a 96px hole under it, which is exactly what that looked like. */
+  .bt-paint-ctl{
+    display:flex;flex-direction:column;gap:8px;
+    grid-area:ctl;align-self:start;min-width:0;
+  }
+}
+/* Short AND narrow: keep the stack, just tighten it. */
+@media (max-height:460px) and (max-width:659px){
+  .bt-paint{--paint-size:min(52vw,44vh,288px);padding:11px;gap:7px}
+}
 .bt-cc-tab-icon{width:30px;height:30px;object-fit:contain;opacity:.92;pointer-events:none}
 /* v2.3.1931: .bt-cc-tab-icon--pixel is retired with the catalog-thumb tabs.
    The tab row is one icon sheet now and every icon downscales smoothly --

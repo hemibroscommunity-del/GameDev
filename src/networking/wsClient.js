@@ -194,6 +194,11 @@ export function setupWebSocket(ctx) {
             /* v2.3.1940: the drawn pants print and the chest tattoo, same deal. */
             pa: artHasInk(getArt('pants')) ? getArt('pants') : undefined,
             ta: artHasInk(getArt('tattoo')) ? getArt('tattoo') : undefined,
+            /* v2.3.1949: face and arm tattoos.  Same rule -- only sent when
+               something is actually drawn, so nobody who has not opened the
+               designer pays a byte for them. */
+            tf: artHasInk(getArt('tattooFace')) ? getArt('tattooFace') : undefined,
+            tm: artHasInk(getArt('tattooArm')) ? getArt('tattooArm') : undefined,
             /* v2.3.1941: clothing patterns.  Short ids ("stripe-v:3"), so
                unlike the drawings they need no special length handling. */
             sp: getPattern('shirt') || undefined,
@@ -372,6 +377,7 @@ export function setupWebSocket(ctx) {
                       shirt: null, shirtColor: null, eyeColor: null,
                       shirtArtFront: null, shirtArtBack: null,   /* v2.3.1939 */
                       pantsArt: null, tattooArt: null,   /* v2.3.1940 */
+                      faceTattooArt: null, armTattooArt: null,   /* v2.3.1949 */
                       shirtPattern: null, pantsPattern: null, shoesPattern: null,   /* v2.3.1941; v2.3.1944 */
                       equip: { chest: 'none', legs: 'none', shoulders: 'none', shirt: 'none' },
                       pants: null, shoes: null, rpgLv: 1, rpgHp: 50, rpgMaxHp: 50,
@@ -784,6 +790,7 @@ export function setupWebSocket(ctx) {
                   eyeColor: _data.ec || null,   /* v2.3.1930 */
                   shirtArtFront: _data.sa || null, shirtArtBack: _data.sb || null,   /* v2.3.1939 */
                   pantsArt: _data.pa || null, tattooArt: _data.ta || null,   /* v2.3.1940 */
+                  faceTattooArt: _data.tf || null, armTattooArt: _data.tm || null,   /* v2.3.1949 */
                   shirtPattern: _data.sp || null, pantsPattern: _data.pp || null,   /* v2.3.1941 */
                   shoesPattern: _data.fp || null,   /* v2.3.1944 */
                   equip: { chest: _data.eqc || 'none', legs: _data.eql || 'none', shoulders: _data.eqs || 'none',
@@ -1732,6 +1739,8 @@ export function setupWebSocket(ctx) {
                 shirtArtBack: (msg.data && msg.data.sb) || null,   /* v2.3.1939 */
                 pantsArt: (msg.data && msg.data.pa) || null,
                 tattooArt: (msg.data && msg.data.ta) || null,   /* v2.3.1940 */
+                faceTattooArt: (msg.data && msg.data.tf) || null,
+                armTattooArt: (msg.data && msg.data.tm) || null,   /* v2.3.1949 */
                 shirtPattern: (msg.data && msg.data.sp) || null,
                 pantsPattern: (msg.data && msg.data.pp) || null,   /* v2.3.1941 */
                 shoesPattern: (msg.data && msg.data.fp) || null,   /* v2.3.1944 */
