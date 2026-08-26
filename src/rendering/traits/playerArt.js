@@ -89,6 +89,35 @@ export function artWith(s, x, y, idx) {
   return s.slice(0, i) + ch + s.slice(i + 1);
 }
 
+/** The palette index a cell RENDERS as: 0 for transparent, and 0 for any hex
+ *  digit the palette has no colour for.  The picker cannot produce one of those
+ *  (artWith clamps), but a hand-edited localStorage value can, and the fill tool
+ *  has to agree with the eye about what counts as one region — 'f' and '0' both
+ *  paint nothing, so they are the same region. */
+export function artInkAt(s, x, y) {
+  if (!isValidArt(s) || x < 0 || y < 0 || x >= ART_W || y >= ART_H) return 0;
+  const i = HEX.indexOf(s[y * ART_W + x]);
+  return (i > 0 && i < ART_PALETTE.length) ? i : 0;
+}
+
+/** A copy of `s` with EVERY cell in `cells` set to `idx`.
+ *
+ *  v2.3.1948: artWith rebuilds the whole 256-char string per cell, which is
+ *  fine for a pen stroke (one cell per pointer event) and wasteful for a tool
+ *  that commits a filled shape — a bucket fill can touch all 256 at once.  One
+ *  array, one join. */
+export function artWithCells(s, cells, idx) {
+  if (!isValidArt(s) || !cells || !cells.length) return s;
+  const ch = HEX[Math.max(0, Math.min(ART_PALETTE.length - 1, idx | 0))];
+  const out = s.split('');
+  for (let i = 0; i < cells.length; i++) {
+    const x = cells[i][0], y = cells[i][1];
+    if (x < 0 || y < 0 || x >= ART_W || y >= ART_H) continue;
+    out[y * ART_W + x] = ch;
+  }
+  return out.join('');
+}
+
 /* ── THE FOUR CANVASES ──
  *
  * Owner: "It actually makes sense to have a front and back custom t shirt",

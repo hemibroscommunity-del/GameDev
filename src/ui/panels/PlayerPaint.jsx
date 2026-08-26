@@ -1,8 +1,12 @@
 import React from 'react';
 import {
-  ART_W, ART_H, ART_PALETTE, emptyArt, artWith, artColorAt,
+  ART_W, ART_H, ART_PALETTE, emptyArt, artColorAt, artWithCells,
   getArt, setArt as storeArt,
 } from '@/rendering/traits/playerArt.js';
+import {
+  TOOLS, toolById, shapeCells, lineCells, fillCells, expandCells,
+  BRUSH_SIZES, LETTERS, letterCells,
+} from '@/rendering/traits/artTools.js';   /* v2.3.1948 */
 import {
   patternsFor, getPattern, setPattern, parsePattern, formatPattern, patternInk,
 } from '@/rendering/traits/patternCatalog.js';   /* v2.3.1941 */
@@ -74,6 +78,44 @@ const TARGETS = {
     note: 'Boots are small, so these are the patterns that still read at that size.',
   },
 };
+
+/* ── the toolbar's icons ──
+   Drawn inline rather than shipped as art, for the reason the creator's pencil
+   is (v2.3.1946): they are a handful of strokes, they inherit the button's own
+   colour, they stay crisp at any pixel density, and an asset that is never
+   fetched cannot hitch on first use — which the animation-preload law exists to
+   prevent.  One 24x24 viewBox for all of them so they sit on the same optical
+   size. */
+const TOOL_HINT = {
+  pen: 'Draw freehand',
+  line: 'Drag for a straight line',
+  rect: 'Drag for a box outline',
+  ellipse: 'Drag for a circle outline',
+  fill: 'Tap an area to flood it — with the eraser chosen, to clear it',
+  letter: 'Pick a letter, then tap to place it',
+};
+
+function ToolIcon({ id }) {
+  const stroke = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.9, strokeLinecap: 'round', strokeLinejoin: 'round' };
+  const kids = {
+    pen: [
+      <path key="a" d="M4 20.5h4.2L20 8.7a2 2 0 0 0 0-2.8l-1.9-1.9a2 2 0 0 0-2.8 0L3.5 15.8V20a.5.5 0 0 0 .5.5Z" {...stroke} />,
+      <path key="b" d="M14.6 5.7 18.9 10" {...stroke} />,
+    ],
+    line: [<path key="a" d="M4.5 19.5 19.5 4.5" {...stroke} />],
+    rect: [<rect key="a" x="4.5" y="5.5" width="15" height="13" rx="1.5" {...stroke} />],
+    ellipse: [<circle key="a" cx="12" cy="12" r="7.5" {...stroke} />],
+    /* a drop, because a tilted bucket is unreadable at 20px */
+    fill: [<path key="a" d="M12 3.5c0 0-5.8 6.7-5.8 10.2a5.8 5.8 0 0 0 11.6 0C17.8 10.2 12 3.5 12 3.5Z"
+      fill="currentColor" stroke="none" />],
+    letter: [<text key="a" x="12" y="17.6" textAnchor="middle" fontSize="16" fontWeight="700"
+      fill="currentColor" stroke="none" fontFamily="inherit">A</text>],
+  };
+  return (
+    <svg className="bt-paint-tool-icon" viewBox="0 0 24 24" width="20" height="20"
+      aria-hidden="true" focusable="false">{kids[id] || kids.pen}</svg>
+  );
+}
 
 /* ── the pattern swatch ──
    Drawn rather than shipped as art: the tile IS the picture, so rendering it
@@ -280,12 +322,38 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   const patColor = parsed ? parsed.colorIdx : 1;
   React.useEffect(() => { if (cfg.pattern) setPattern(cfg.pattern, pat); }, [cfg.pattern, pat]);
   const pickTile = (id) => setPat(id ? formatPattern(id, patColor) : '');
-  const pickPatColor = (i) => { if (patId && i > 0) setPat(formatPattern(patId, i)); };
-  const [art, setArtState] = React.useState(() => getArt(artId));
+  const pickPatColor = (i) => { if (patId && i > 0) setPat(formatPattern(patId, i)); };  const [art, setArtState] = React.useState(() => getArt(artId));
   const [ink, setInk] = React.useState(1);        /* palette index; 0 = eraser */
+  /* v2.3.1948 (owner: "any drawing tools like lines, shapes, eraser, fill?",
+     then "a small eraser for erasing areas ... different brush size options ...
+     perhaps letters you can place?"). */
+  const [tool, setTool] = React.useState('pen');
+  const [brush, setBrush] = React.useState(1);
+  const [letter, setLetter] = React.useState('A');
   const cvRef = React.useRef(null);
   const paintingRef = React.useRef(false);
   const lastRef = React.useRef('');
+  const prevCellRef = React.useRef(null);
+  /* The shape being dragged, before it is committed.  A ref plus a counter
+     rather than state: `up` has to read the CURRENT draft to commit it, and a
+     state value captured in that handler's closure is one render behind. */
+  const draftRef = React.useRef(null);
+  const [draftTick, setDraftTick] = React.useState(0);
+  const setDraft = (cells) => { draftRef.current = cells; setDraftTick((t) => t + 1); };
+
+  const tdef = toolById(tool);
+  /* The alphabet does not fit the strip's width, so re-opening the tool must
+     bring the letter you last used back into view rather than showing A again
+     while a Q is loaded. */
+  const stripRef = React.useRef(null);
+  React.useEffect(() => {
+    const strip = stripRef.current;
+    if (!strip) return;
+    const on = strip.querySelector('[data-on]');
+    if (on && on.scrollIntoView) {
+      try { on.scrollIntoView({ block: 'nearest', inline: 'center' }); } catch (e) { /* older Safari */ }
+    }
+  }, [tool]);
 
   /* Switching side (or opening on a different target) loads that drawing. */
   React.useEffect(() => { setArtState(getArt(artId)); }, [artId]);
@@ -302,43 +370,115 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
     if (!cv) return;
     const ctx = cv.getContext('2d');
     const S = cv.width / ART_W;
+    const checker = (x, y) => (((x + y) % 2) ? '#2b3640' : '#243039');
     ctx.clearRect(0, 0, cv.width, cv.height);
     for (let y = 0; y < ART_H; y++) {
       for (let x = 0; x < ART_W; x++) {
         /* checkerboard under the art so transparent cells read as empty
            rather than as "black" — the palette contains a near-black. */
-        ctx.fillStyle = ((x + y) % 2) ? '#2b3640' : '#243039';
+        ctx.fillStyle = checker(x, y);
         ctx.fillRect(x * S, y * S, S, S);
         const c = artColorAt(art, x, y);
         if (c) { ctx.fillStyle = c; ctx.fillRect(x * S, y * S, S, S); }
       }
     }
-  }, [art, onPattern]);
+    /* v2.3.1948: the shape under your finger, drawn but not yet committed.  It
+       is painted with exactly the code that will commit it, so the preview
+       cannot disagree with the result.  With the eraser chosen it paints the
+       checkerboard back in, which is what erasing those cells will look like. */
+    const d = draftRef.current;
+    if (d) {
+      const col = ART_PALETTE[ink];
+      for (let i = 0; i < d.length; i++) {
+        const x = d[i][0], y = d[i][1];
+        ctx.fillStyle = col || checker(x, y);
+        ctx.fillRect(x * S, y * S, S, S);
+      }
+    }
+  }, [art, onPattern, draftTick, ink]);
 
-  const cellAt = (e) => {
+  /* Which cell the pointer is over.  `clamp` pins a drag that has wandered off
+     the grid to the nearest edge cell instead of dropping it: pointer capture
+     keeps the events coming, and a shape whose corner you dragged past the edge
+     should still have a corner. */
+  const cellAt = (e, clamp) => {
     const cv = cvRef.current;
     if (!cv) return null;
     const r = cv.getBoundingClientRect();
-    const x = Math.floor(((e.clientX - r.left) / r.width) * ART_W);
-    const y = Math.floor(((e.clientY - r.top) / r.height) * ART_H);
+    let x = Math.floor(((e.clientX - r.left) / r.width) * ART_W);
+    let y = Math.floor(((e.clientY - r.top) / r.height) * ART_H);
+    if (clamp) {
+      x = Math.max(0, Math.min(ART_W - 1, x));
+      y = Math.max(0, Math.min(ART_H - 1, y));
+      return [x, y];
+    }
     return (x >= 0 && y >= 0 && x < ART_W && y < ART_H) ? [x, y] : null;
   };
-  const paint = (e) => {
-    const cell = cellAt(e);
-    if (!cell) return;
+
+  const paintPen = (e) => {
+    const cell = cellAt(e, false);
+    if (!cell) { prevCellRef.current = null; return; }
     const k = cell[0] + ',' + cell[1];
     if (k === lastRef.current) return;      /* same cell: nothing to redraw */
+    /* v2.3.1948: JOIN UP THE SAMPLES.  A pointer event fires per frame at best,
+       so a quick flick used to leave a dotted trail of the cells that happened
+       to be sampled.  Bresenham between this sample and the last makes the pen
+       draw the line your finger actually travelled. */
+    const prev = prevCellRef.current;
+    const path = (prev && (Math.abs(prev[0] - cell[0]) > 1 || Math.abs(prev[1] - cell[1]) > 1))
+      ? lineCells(prev[0], prev[1], cell[0], cell[1])
+      : [cell];
     lastRef.current = k;
-    setArtState((a) => artWith(a, cell[0], cell[1], ink));
+    prevCellRef.current = cell;
+    const cells = expandCells(path, brush);
+    setArtState((a) => artWithCells(a, cells, ink));
   };
+
   const down = (e) => {
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) { /* not supported */ }
+    if (tdef.drag === 'once') {
+      /* Fill and Letters are a TAP, not a drag: they commit where you touch. */
+      const c = cellAt(e, false);
+      if (!c) return;
+      if (tool === 'fill') setArtState((a) => artWithCells(a, fillCells(a, c[0], c[1]), ink));
+      else setArtState((a) => artWithCells(a, letterCells(letter, c[0], c[1]), ink));
+      return;
+    }
     paintingRef.current = true;
     lastRef.current = '';
-    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) { /* not supported */ }
-    paint(e);
+    prevCellRef.current = null;
+    if (tdef.drag === 'shape') {
+      const c = cellAt(e, true);
+      anchorRef.current = c;
+      setDraft(expandCells(shapeCells(tool, c[0], c[1], c[0], c[1]), brush));
+      return;
+    }
+    paintPen(e);
   };
-  const move = (e) => { if (paintingRef.current) paint(e); };
-  const up = () => { paintingRef.current = false; lastRef.current = ''; };
+  const anchorRef = React.useRef(null);
+  const move = (e) => {
+    if (!paintingRef.current) return;
+    if (tdef.drag === 'shape') {
+      const a = anchorRef.current;
+      if (!a) return;
+      const c = cellAt(e, true);
+      const k = c[0] + ',' + c[1];
+      if (k === lastRef.current) return;
+      lastRef.current = k;
+      setDraft(expandCells(shapeCells(tool, a[0], a[1], c[0], c[1]), brush));
+      return;
+    }
+    paintPen(e);
+  };
+  const up = () => {
+    const d = draftRef.current;
+    if (paintingRef.current && d && d.length) setArtState((a) => artWithCells(a, d, ink));
+    paintingRef.current = false;
+    anchorRef.current = null;
+    lastRef.current = '';
+    prevCellRef.current = null;
+    if (d) setDraft(null);
+  };
 
   const size = ART_W * CELL_PX;
   return (
@@ -350,14 +490,20 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
         display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
       {/* v2.3.1947: padding and gap live in the stylesheet, not here -- a short
           viewport (iPhone landscape) has to tighten them, and a media query
-          cannot reach an inline style. */}
+          cannot reach an inline style.
+          v2.3.1948: and the panel is a GRID now, not a column.  The tool row,
+          the tool-options row and the palette do not fit under the grid on a
+          390px-tall phone held sideways, but that phone has 844px of WIDTH
+          going spare -- so on a short, wide viewport the same DOM re-flows into
+          three columns (preview | drawing | controls) via grid-template-areas.
+          Regrouping like that is exactly what named areas are for; the
+          alternative was a second copy of the markup. */}
       <div className="bt-paint"
         style={{ background: 'var(--ui-panel, #16202a)', border: '1px solid rgba(229,237,233,.26)',
-          borderRadius: 12, display: 'flex', flexDirection: 'column',
-          maxHeight: '96vh', overflow: 'auto' }}>
+          borderRadius: 12, maxHeight: '96vh', maxWidth: '98vw', overflow: 'auto' }}>
 
         {MODES && (
-          <div style={{ display: 'flex', gap: 6 }}>
+          <div className="bt-paint-tabs" style={{ display: 'flex', gap: 6 }}>
             {MODES.map((m) => (
               <button key={m} type="button" onClick={() => setMode(m)}
                 className={'bt-cc-tab' + (mode === m ? ' bt-cc-tab--on' : '')}
@@ -368,47 +514,95 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
           </div>
         )}
 
-        {/* v2.3.1947: two panes.  Left is the character wearing what you are
-            making, with the caption under it; right is the thing you work in.
-            Both modes fill the same right-hand box so switching between
-            "pattern" and "draw" does not resize the panel under your thumb, and
-            the colour rows below span BOTH panes — which makes each swatch
-            wider than it was when they were penned into the grid's width. */}
-        <div className="bt-paint-row">
-          <div className="bt-paint-side">
-            <WornPreview look={look} target={target} side={side} art={art} pat={pat} />
-            <div style={{ fontSize: 11, lineHeight: 1.3, opacity: .78 }}>
-              {onPattern ? 'A pattern fills the whole garment. Anything you draw goes on top of it.' : cfg.note}
-            </div>
-          </div>
-
-          <div className="bt-paint-main">
-            {onPattern ? (
-              /* v2.3.1941: the pattern screen — a tile, then a colour for it. */
-              /* v2.3.1947: shoes offer five choices, not ten (only four tiles
-                 survive at boot size), and five in a 5-wide grid is one thin
-                 row against a two-row preview column.  Three wide gives them
-                 two rows, a bigger thumb target, and a balanced panel. */
-              <div style={{ display: 'grid', gap: 6,
-                gridTemplateColumns: 'repeat(' + (patternsFor(cfg.pattern).length + 1 <= 6 ? 3 : 5) + ', 1fr)' }}>
-                <PatternSwatch tile={null} color={null} on={!patId} onPick={() => pickTile('')} />
-                {patternsFor(cfg.pattern).map((t) => (
-                  <PatternSwatch key={t.id} tile={t} color={ART_PALETTE[patColor]}
-                    on={patId === t.id} onPick={() => pickTile(t.id)} />
-                ))}
-              </div>
-            ) : (
-              <canvas ref={cvRef} width={size} height={size}
-                onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
-                style={{ width: '100%', aspectRatio: '1 / 1',
-                  imageRendering: 'pixelated', touchAction: 'none', cursor: 'crosshair',
-                  borderRadius: 8, border: '1px solid rgba(229,237,233,.28)', display: 'block' }} />
-            )}
-          </div>
+        {/* v2.3.1947: the character wearing what you are making. */}
+        <div className="bt-paint-side">
+          <WornPreview look={look} target={target} side={side} art={art} pat={pat} />
+        </div>
+        <div className="bt-paint-note">
+          {onPattern ? 'A pattern fills the whole garment. Anything you draw goes on top of it.' : cfg.note}
         </div>
 
+        <div className="bt-paint-main">
+          {onPattern ? (
+            /* v2.3.1941: the pattern screen — a tile, then a colour for it.
+               v2.3.1947: shoes offer five choices, not ten (only four tiles
+               survive at boot size), and five in a 5-wide grid is one thin row
+               against a two-row preview column.  Three wide gives them two
+               rows, a bigger thumb target, and a balanced panel. */
+            <div style={{ display: 'grid', gap: 6,
+              gridTemplateColumns: 'repeat(' + (patternsFor(cfg.pattern).length + 1 <= 6 ? 3 : 5) + ', 1fr)' }}>
+              <PatternSwatch tile={null} color={null} on={!patId} onPick={() => pickTile('')} />
+              {patternsFor(cfg.pattern).map((t) => (
+                <PatternSwatch key={t.id} tile={t} color={ART_PALETTE[patColor]}
+                  on={patId === t.id} onPick={() => pickTile(t.id)} />
+              ))}
+            </div>
+          ) : (
+            <canvas ref={cvRef} width={size} height={size}
+              onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
+              style={{ width: '100%', aspectRatio: '1 / 1',
+                imageRendering: 'pixelated', touchAction: 'none', cursor: 'crosshair',
+                borderRadius: 8, border: '1px solid rgba(229,237,233,.28)', display: 'block' }} />
+          )}
+        </div>
+
+        {/* v2.3.1948: a wrapper that is `display:contents` in the stacked layout —
+            so these four take their own grid areas — and a real flex column in
+            the three-column one.  Without it the controls share ROWS with the
+            preview beside them, and the preview is 140px tall against a 44px
+            tool row, so each control got stranded at the top of an oversized
+            row with a gap under it. */}
+        <div className="bt-paint-ctl">
+        {!onPattern && (
+          <div className="bt-paint-tools">
+            {TOOLS.map((t) => (
+              <button key={t.id} type="button" onClick={() => { setTool(t.id); setDraft(null); }}
+                className={'bt-paint-tool' + (tool === t.id ? ' bt-paint-tool--on' : '')}
+                aria-pressed={tool === t.id} title={TOOL_HINT[t.id]}>
+                <ToolIcon id={t.id} />
+                <span className="bt-paint-tool-label">{t.name}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {!onPattern && (
+          /* ── the tool's own options ──
+             One row that belongs to whichever tool is selected, rather than a
+             row per tool: brush width for the four that draw a stroke, the
+             alphabet for the one that stamps a letter.  Fill has no options, so
+             the widths ghost the way the designer button on the creator does —
+             the row keeps its height either way, so nothing below it jumps when
+             you change tool. */
+          tool === 'letter' ? (
+            <div className="bt-paint-opts bt-paint-letters" ref={stripRef}>
+              {LETTERS.map((ch) => (
+                <button key={ch} type="button" onClick={() => setLetter(ch)}
+                  data-on={letter === ch ? '1' : undefined}
+                  className={'bt-paint-letter' + (letter === ch ? ' bt-paint-letter--on' : '')}
+                  aria-pressed={letter === ch} aria-label={'Letter ' + ch}>{ch}</button>
+              ))}
+            </div>
+          ) : (
+            <div className="bt-paint-opts">
+              {BRUSH_SIZES.map((n) => (
+                <button key={n} type="button" disabled={!tdef.brush}
+                  onClick={() => setBrush(n)} aria-pressed={brush === n}
+                  aria-label={'Brush ' + n + ' wide'}
+                  className={'bt-paint-size' + (brush === n && tdef.brush ? ' bt-paint-size--on' : '')
+                    + (tdef.brush ? '' : ' bt-cc-ghost')}>
+                  <span className="bt-paint-dot-well">
+                    <span className="bt-paint-dot" style={{ width: 5 + (n - 1) * 6, height: 5 + (n - 1) * 6 }} />
+                  </span>
+                  <span className="bt-paint-tool-label">{n === 1 ? 'Fine' : n === 2 ? 'Medium' : 'Thick'}</span>
+                </button>
+              ))}
+            </div>
+          )
+        )}
+
         {onPattern ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 5, opacity: patId ? 1 : .35 }}>
+          <div className="bt-paint-pal" style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 5, opacity: patId ? 1 : .35 }}>
             {ART_PALETTE.map((c, i) => (i === 0 ? null : (
               <button key={i} type="button" title="Pattern colour" disabled={!patId}
                 onClick={() => pickPatColor(i)}
@@ -419,9 +613,10 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
             )))}
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 5 }}>
+          <div className="bt-paint-pal" style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 5 }}>
             {ART_PALETTE.map((c, i) => (
-              <button key={i} type="button" title={i === 0 ? 'Eraser' : 'Colour'}
+              <button key={i} type="button" title={i === 0 ? 'Eraser — works with every tool' : 'Colour'}
+                aria-label={i === 0 ? 'Eraser' : 'Colour ' + i}
                 onClick={() => setInk(i)}
                 style={{ aspectRatio: '1 / 1', minHeight: 26, borderRadius: 6, cursor: 'pointer',
                   background: c || 'transparent',
@@ -434,7 +629,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="bt-paint-btn" style={{ display: 'flex', gap: 8 }}>
           <button type="button" className="bt-cc-tab" style={{ flex: 1, minHeight: 38 }}
             onClick={() => (onPattern ? pickTile('') : setArtState(emptyArt()))}>
             <span className="bt-cc-tab-label">
@@ -445,6 +640,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
             onClick={onClose}>
             <span className="bt-cc-tab-label">Done</span>
           </button>
+        </div>
         </div>
       </div>
     </div>
