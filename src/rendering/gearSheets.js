@@ -14,6 +14,8 @@
  */
 
 import { Rectangle, Texture } from 'pixi.js';
+import { composeShirt } from './playerDecal.js';   /* v2.3.1938 drawn shirts; v2.3.1941 colour + pattern + print, in one place */
+import { artHash } from './traits/playerArt.js';   /* v2.3.1940: shared drawing key */
 import { GEAR_SLOTS, GEAR_CATALOG } from './gearCatalog.js';
 import { upscaleToFrameHeight, antialiasUpscaledCanvas, downscaleByFactor, DISPLAY_DS } from './spriteScale.js'; /* v2.3.1110 upscale; v2.3.1341 AA; v2.3.1408 fullset display-downscale */
 import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless WebP, fall back to PNG */
@@ -65,7 +67,7 @@ function loadImg(url) { return loadWebpOrPng(url); }
    failure is only distinguishable from expected-missing art by eye —
    flip window.__spriteLog = true to see them. */
 const _GEAR_RETRY_MS = [2000, 6000];
-function buildSheet(key, slot, item, pose, dir, attempt = 0) {
+function buildSheet(key, slot, item, pose, dir, attempt = 0, stampArt = null) {
   _sheets[key] = 'loading';
   /* Returns a promise that ALWAYS resolves (missing sheet -> []), so callers
      that want to await a full preload don't hang on a 404. */
@@ -130,6 +132,18 @@ function buildSheet(key, slot, item, pose, dir, attempt = 0) {
       if (_fsDs > 1) img = downscaleByFactor(img, _fsDs);
     }
     const fw = FRAME_W / _fsDs, fh = FRAME_H / _fsDs;
+    /* v2.3.1938: the player's drawing, stamped into the sheet itself.  Baked
+       here rather than drawn as a second sprite because the decal has to follow
+       the torso through ~20 pose sheets x 5 facings x up to 26 frames — as part
+       of the sheet it inherits every transform the shirt already gets, and the
+       renderer keeps treating the shirt as one texture. */
+    /* v2.3.1941: and the shirt COLOUR and PATTERN with it.  The colour used to
+       be a multiplicative sprite tint applied to the finished texture, which
+       multiplied the print too (a drawing on a black shirt came out black) and
+       made a pattern impossible: a pattern is colour, and colour times a dark
+       shirt is nothing.  composeShirt does tint -> pattern -> print in that
+       order and the draw site uses no tint on the result. */
+    if (stampArt) img = composeShirt(img, fh, stampArt);
     const src = Texture.from(img).source;
     src.scaleMode = 'linear';
     /* v2.3.1385: the v2.3.1384 fullset mips-off (invisible-knight memory
@@ -151,7 +165,7 @@ function buildSheet(key, slot, item, pose, dir, attempt = 0) {
          gate (preloadGear/preloadFullsetFigures awaiters) waits through
          the backoff instead of passing with a sheet still re-fetching. */
       return new Promise((res) => setTimeout(res, _GEAR_RETRY_MS[attempt]))
-        .then(() => buildSheet(key, slot, item, pose, dir, attempt + 1));
+        .then(() => buildSheet(key, slot, item, pose, dir, attempt + 1, stampArt));
     }
     _sheets[key] = []; /* missing -> caller hides the slot */
     try { if (window.__spriteLog) console.warn('[sprite] gear sheet failed', key); } catch (e) { /* ignore */ }
@@ -186,6 +200,78 @@ export function getGearFrame(slot, item, pose, dir, frameIdx) {
   const key = slot + '/' + item + '/' + pose + '/' + dir;
   const entry = _sheets[key];
   if (entry === undefined) { buildSheet(key, slot, item, pose, dir); return null; }
+  if (entry === 'loading' || !entry.length) return null;
+  return entry[((frameIdx % entry.length) + entry.length) % entry.length];
+}
+
+/* ═══ v2.3.1938: DRAWN SHIRTS ═══
+ *
+ * A drawn shirt is a SECOND bake of the same sheet, keyed by the drawing, so
+ * two players wearing the same tee with different prints do not share a texture
+ * while everyone with no drawing keeps sharing the original.
+ *
+ * CAPPED, and that is not optional.  These sheets are keyed by a string that
+ * arrives from other players, and this game has a documented history of iOS
+ * losing the WebGL context to texture memory (v2.3.1117, v2.3.1434).  Without a
+ * bound, a busy town of players with distinct drawings would grow the cache
+ * until something died.  Least-recently-used wins; a dropped sheet simply
+ * re-bakes if that player is still on screen.
+ */
+const _artSeen = new Map();          /* artKey -> last use (a counter, not a clock) */
+let _artTick = 0;
+const MAX_ART_KEYS = 8;              /* distinct drawings kept baked at once */
+
+/* v2.3.1940: the drawing key moved to playerArt.js — the BODY sheet caches by
+   it now too (pants prints and tattoos), and one spelling is the point. */
+
+function touchArt(k) {
+  _artSeen.set(k, ++_artTick);
+  if (_artSeen.size <= MAX_ART_KEYS) return;
+  let oldest = null, oldestAt = Infinity;
+  for (const [key, at] of _artSeen) if (at < oldestAt) { oldestAt = at; oldest = key; }
+  if (oldest === null) return;
+  _artSeen.delete(oldest);
+  const pre = 'shirtart/' + oldest + '/';
+  for (const key of Object.keys(_sheets)) {
+    if (!key.startsWith(pre)) continue;
+    const entry = _sheets[key];
+    if (Array.isArray(entry) && entry[0] && entry[0].source) {
+      try { entry[0].source.destroy(); } catch (e) { /* already gone */ }
+    }
+    delete _sheets[key];
+  }
+}
+
+/** A DRESSED shirt frame — colour, pattern and print baked in — or null while
+ *  it bakes (the caller falls back to the plain tinted shirt for those frames,
+ *  so putting a pattern on never blinks the shirt off).
+ *
+ *  v2.3.1941: `look` is `{ art, pattern, tint, mirror }`.  Returns null when
+ *  there is nothing to bake, i.e. a plain coloured shirt keeps the shared sheet
+ *  and the plain sprite tint exactly as before this version. */
+export function getShirtLookFrame(item, pose, dir, frameIdx, look) {
+  if (!item || item === 'none' || !look) return null;
+  if (!look.art && !look.pattern) return null;
+  item = gearArt(item);
+  /* ONE cache identity for the whole dressed look.  The drawing is hashed
+     because it is 256 characters; the pattern and the tint are already short,
+     so they go in as they are and stay readable in the QA sheet dump.
+     The mirror flag is part of it too: a mirrored facing bakes a pre-flipped
+     print AND a pre-flipped tile, and the two must not share a texture. */
+  const ak = (look.art ? artHash(look.art) : 'x')
+    + '.' + (look.pattern ? (look.pattern.id + '-' + look.pattern.colorIdx) : 'x')
+    + '.' + (look.tint ? look.tint.join('_') : 'x');
+  const key = 'shirtart/' + ak + '/' + (look.mirror ? 'm' : 'n') + '/' + item + '/' + pose + '/' + dir;
+  const entry = _sheets[key];
+  if (entry === undefined) {
+    touchArt(ak);
+    buildSheet(key, 'shirt', item, pose, dir, 0, {
+      art: look.art || null, pattern: look.pattern || null,
+      tint: look.tint || null, mirror: !!look.mirror,
+    });
+    return null;
+  }
+  touchArt(ak);
   if (entry === 'loading' || !entry.length) return null;
   return entry[((frameIdx % entry.length) + entry.length) % entry.length];
 }

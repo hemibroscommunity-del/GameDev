@@ -112,7 +112,7 @@ import { movementMethods } from './movement.js';
 // v2.3.1172 (P4 decomposition): rpg-blob load/save + player_state emit -- see persistence.js.
 import { persistenceMethods } from './persistence.js';
 // v2.3.1173 (P4 decomposition): identity gate + join bootstrap -- see join.js.
-import { joinMethods } from './join.js';
+import { joinMethods, cosmeticCap } from './join.js';   /* v2.3.1940: ONE cap rule for the drawing keys */
 // v2.3.1174 (P4 decomposition): the 45Hz tick loop -- see tick.js.
 import { tickMethods } from './tick.js';
 // v2.3.1178: per-session tokens for the mutating HTTP economy
@@ -426,6 +426,13 @@ export const TRACK_COSMETIC_KEYS = new Set([
      select a colour that catalog already contains -- it cannot paint an
      arbitrary RGB, and it reaches nothing but a canvas. */
   'ec',
+  /* v2.3.1939: the drawn shirt, front and back.  Display-only like every
+     cosmetic here: the receiving client rejects anything that is not exactly
+     256 hex characters, so a forged value paints nothing rather than something
+     unexpected. */
+  /* v2.3.1940: + the drawn pants print and the chest tattoo.
+     v2.3.1941: + the shirt and trouser patterns. */
+  'sa', 'sb', 'pa', 'ta', 'sp', 'pp',
   'pt', 'sh', 'bs', 'mask', 'cape', 'pet',
   // Live equipment visuals (armour on/off for remote renderers).
   'eqc', 'eql', 'eqs',
@@ -3874,7 +3881,14 @@ export class GameRoom {
                stays as-is -- it is a documented client-reported posture
                (see reportToLeaderboard), out of scope here. */
             if (typeof _tv === 'string') {
-              const _tcap = (k === 'avatar') ? 512 : 64;
+              /* v2.3.1939: the shirt drawings share `avatar`'s larger bound
+                 for the same reason they do on the join path -- they are a
+                 fixed 256 chars, and the client rejects anything that is not
+                 exactly that, so a 64-char cut is not a smaller drawing but no
+                 drawing at all.  Kept in lockstep with _sanitizeJoinData: if
+                 these two caps ever disagree, the join print and the track
+                 print disagree too. */
+              const _tcap = cosmeticCap(k);
               clean[k] = _tv.length > _tcap ? _tv.slice(0, _tcap) : _tv;
             } else {
               clean[k] = _tv;

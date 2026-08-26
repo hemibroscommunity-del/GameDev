@@ -1,37 +1,37 @@
 {
   "category": "headwear",
   "fullFrame": true,
-  "note": "Imported by tools/import_headwear_green.py from a sheet whose person was painted flat #00FF00. The hat is simply everything that is neither the magenta backdrop nor the green person, so no head can leak into the frame and no colour heuristic can eat a hat pixel. The green silhouette also registers the cell against the mannequin on the WHOLE body rather than the torso alone. anchors are the hat bbox top-centre, crownNudge is anchor minus body-tops stand-<dir>-0, scale is 1. v2.3.1514: nudged by hand dx +0 dy +10 on south. v2.3.1514: nudged by hand dx +0 dy +3 on north. v2.3.1527: hair-clip mask rebuilt from the current art by tools/make_hairmask.py, and clipsHair switched on. v2.3.1529: hair-clip mask rebuilt from the current art by tools/make_hairmask.py. v2.3.1532: clipsHair OFF and the hairmask folder DELETED. This is a band across the forehead, not a cap -- it leaves the whole crown bare, so clipping the hair to it shaved the scalp (owner: \"dont hair clip the Naruto headwear on some angles the hair is bald\"; measured worst-case exposed scalp: naruto-headband 603px, bandana-2 393px, bandana-blue 380px, against 65px for the worst real cap). The folder is deleted rather than kept because make_hairmask.py treats the presence of a hairmask folder as the record that a hat covers the skull, and --all-with-masks would switch the flag straight back on. Nothing pokes through: the hair layer renders BELOW headwear, so the band draws over it. v2.3.1925: per-facing size fitted by tools/fit-headwear-scale.mjs. The five stand sheets draw the head at five different widths (43/52/45/44/41 in the 256 frame) and BODY_DIR_SCALE cancels out of the hat/head ratio, so a hat drawn one size renders a different size on every facing. scale[dir] now moves the facings that disagree onto the median of the ones that agree, measured as drawn WIDTH over head width, bounded to 15%, and skipped entirely on a facing whose aspect ratio says the silhouette itself changed. A facing that GREW carries a crownNudge Y that holds its bottom edge still.",
+  "note": "Imported by tools/import_headwear_green.py from a sheet whose person was painted flat #00FF00. The hat is simply everything that is neither the magenta backdrop nor the green person, so no head can leak into the frame and no colour heuristic can eat a hat pixel. The green silhouette also registers the cell against the mannequin on the WHOLE body rather than the torso alone. anchors are the hat bbox top-centre, crownNudge is anchor minus body-tops stand-<dir>-0, scale is 1. v2.3.1514: nudged by hand dx +0 dy +10 on south. v2.3.1514: nudged by hand dx +0 dy +3 on north. v2.3.1527: hair-clip mask rebuilt from the current art by tools/make_hairmask.py, and clipsHair switched on. v2.3.1529: hair-clip mask rebuilt from the current art by tools/make_hairmask.py. v2.3.1532: clipsHair OFF and the hairmask folder DELETED. This is a band across the forehead, not a cap -- it leaves the whole crown bare, so clipping the hair to it shaved the scalp (owner: \"dont hair clip the Naruto headwear on some angles the hair is bald\"; measured worst-case exposed scalp: naruto-headband 603px, bandana-2 393px, bandana-blue 380px, against 65px for the worst real cap). The folder is deleted rather than kept because make_hairmask.py treats the presence of a hairmask folder as the record that a hat covers the skull, and --all-with-masks would switch the flag straight back on. Nothing pokes through: the hair layer renders BELOW headwear, so the band draws over it. v2.3.1925: per-facing size fitted by tools/fit-headwear-scale.mjs. The five stand sheets draw the head at five different widths (43/52/45/44/41 in the 256 frame) and BODY_DIR_SCALE cancels out of the hat/head ratio, so a hat drawn one size renders a different size on every facing. scale[dir] now moves the facings that disagree onto the median of the ones that agree, measured as drawn WIDTH over head width, bounded to 15%, and skipped entirely on a facing whose aspect ratio says the silhouette itself changed. A facing that GREW carries a crownNudge Y that holds its bottom edge still. v2.3.1933: bboxes refreshed after art repair (south origin/width, south h 32->23, southwest origin/width, southwest h 44->33, east origin/width, east h 33->26, northeast origin/width, northeast h 37->33, north origin/width, north h 35->30). v2.3.1936: the bbox ORIGIN moved on south [103,6,50]->[103,15,50]; southwest [93,6,70]->[93,13,70]; east [103,6,50]->[103,13,50]; northeast [103,6,50]->[103,10,50]; north [105,6,46]->[105,11,46] because the removed pixels were the topmost ones. anchors and crownNudge are deliberately UNCHANGED and the art does not move: anchors is an absolute texture coordinate that _placeTrait pins to the crown, not a value re-derived from the bbox. It is therefore no longer this hat's bbox top-centre -- do NOT re-derive anchors from bboxes for this trait.",
   "bboxes": {
     "south": [
       103,
-      6,
+      15,
       50,
-      32
+      23
     ],
     "southwest": [
       93,
-      6,
+      13,
       70,
-      44
+      33
     ],
     "east": [
       103,
-      6,
+      13,
       50,
-      33
+      26
     ],
     "northeast": [
       103,
-      6,
+      10,
       50,
-      37
+      33
     ],
     "north": [
       105,
-      6,
+      11,
       46,
-      35
+      30
     ]
   },
   "anchors": {

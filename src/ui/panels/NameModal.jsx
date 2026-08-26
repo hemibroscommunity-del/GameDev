@@ -1,4 +1,5 @@
 import React from 'react';
+import { PlayerPaint } from './PlayerPaint.jsx';   /* v2.3.1938; v2.3.1940 pants + tattoos */
 import { BUILD_INFO } from '../BuildBadge.jsx';
 /* v2.3.1143: account login -- "Already have a character?" entry point
    for a player on a NEW device, who lands on this splash with a fresh
@@ -207,6 +208,17 @@ export function NameModal(props) {
      no painted icon and are not worth inventing one for -- they show the first
      real entry from their own catalog, which is both self-explanatory and
      stays correct if the catalogs change. */
+  /* v2.3.1940: which customiser tabs offer a drawing, and what the button says.
+     'skin' maps to the TATTOO drawing -- the tab is where you pick your skin
+     tone, so it is where "something drawn on your skin" belongs. */
+  var _PAINT_FROM_TAB = {
+    /* v2.3.1941: "Design" rather than "Draw" for the two garments -- the panel
+       behind this button now offers ready-made patterns as well as freehand
+       drawing, and most people will want the patterns. */
+    shirt: { target: 'shirt', label: 'Pattern or draw on this shirt' },
+    pants: { target: 'pants', label: 'Pattern or draw on these pants' },
+    skin: { target: 'tattoo', label: 'Draw a tattoo' },
+  };
   var _TAB_ICON = function (n) { return '/ui/welcome/cc/cc-tab-' + n + '.png?v=' + BUILD_INFO.version; };
   var _TABS = [
     { t: 'hair', label: 'Hair', img: _TAB_ICON('hair') },
@@ -243,6 +255,11 @@ export function NameModal(props) {
     : null;
   /* Reset both strips to their start whenever the type changes — the
      content width changes with the catalog. */
+  /* v2.3.1938: the shirt designer opens as a modal OVER the creator rather than
+     as a row inside the drawer -- a 16x16 grid needs thumb-sized cells, and the
+     drawer's height is fixed by the constant-size guarantee (v2.3.1252). */
+  /* v2.3.1940: which designer is open ('shirt' | 'pants' | 'tattoo'), or null. */
+  var _paintState = React.useState(null), showPaint = _paintState[0], setShowPaint = _paintState[1];
   var _stripRef = React.useRef(null);
   var _colorRowRef = React.useRef(null);
   /* v2.3.1254: scroll affordance — per-strip "more content to the
@@ -720,7 +737,36 @@ export function NameModal(props) {
     className: "bt-cc-colors-row", ref: _colorRowRef, onScroll: _measureMore, role: _colors ? 'radiogroup' : undefined, "aria-label": _colors ? _def.label + ' colors' : undefined
   }, _colors || /*#__PURE__*/React.createElement("div", null)), /*#__PURE__*/React.createElement("span", {
     className: "bt-cc-more" + (scrollMore.colors ? " bt-cc-more--on" : ""), "aria-hidden": true
-  }, "›")))))), showAccount && /*#__PURE__*/React.createElement(AccountModal, {
+  }, "›"))),
+  /* ═══ v2.3.1938: THE WAY IN TO THE DESIGNER ═══
+     v2.3.1940 moved it OUT of the colour block and made it always present.
+     Two bugs, one cause: the colour block renders as a `.bt-cc-ghost`
+     (visibility:hidden) on any category that has no colour row, and SKIN is
+     exactly such a category -- its swatches ARE its options -- so "Draw a
+     tattoo" was in the DOM, clickable by script, and invisible to a human.
+     Sitting outside also keeps v2.3.1252's rule intact: the sheet must be the
+     same height on every tab so the stage and the character never resize, which
+     is why the row is rendered on ALL eight tabs and simply ghosted on the five
+     that have nothing to draw, rather than appearing and disappearing.
+     Three categories have a drawing: shirt, pants, and skin (whose drawing is a
+     tattoo).  The shirt's is live only when a shirt is actually worn -- a print
+     with nothing to print on is a dead button -- and it ghosts the same way. */
+  (function () {
+    var _p = _PAINT_FROM_TAB[_activeType];
+    var _on = !!_p && !(_activeType === 'shirt' && (!_def.sel || _def.sel === 'none'));
+    return /*#__PURE__*/React.createElement("button", {
+      type: 'button', disabled: !_on,
+      className: 'bt-cc-tab' + (_on ? '' : ' bt-cc-ghost'),
+      "aria-hidden": _on ? undefined : true,
+      style: { width: '100%', minHeight: 38, marginTop: 6 },
+      onClick: function () { if (_on) setShowPaint(_p.target); }
+    }, /*#__PURE__*/React.createElement("span", { className: 'bt-cc-tab-label' },
+      _on ? _p.label : 'Draw'));
+  }())))),
+  showPaint && /*#__PURE__*/React.createElement(PlayerPaint, {
+    target: showPaint,
+    onClose: function () { setShowPaint(null); }
+  }), showAccount && /*#__PURE__*/React.createElement(AccountModal, {
     onClose: function () { setShowAccount(false); }
   }));
 }

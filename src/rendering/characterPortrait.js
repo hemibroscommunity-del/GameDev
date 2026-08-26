@@ -18,10 +18,14 @@
 import { skinTarget, pantsTarget, shoesTarget, recolorBodyToCanvas } from './playerSkins.js';
 import EYE_MASK from './eyeMask.json';                              /* v2.3.1928 */
 import { eyeColorTarget } from './traits/eyeColorCatalog.js';
+import { shirtArtForDir, sanitizeShirtArt, inkedArt } from './traits/playerArt.js';   /* v2.3.1938; v2.3.1940 + pants/tattoo */
+import { getPattern, parsePattern, sanitizePattern } from './traits/patternCatalog.js';   /* v2.3.1941 */
+import { composeShirt } from './playerDecal.js';   /* v2.3.1938; v2.3.1941 one compositor for colour + pattern + print */
 import { SPRITE_VERSION } from './playerSprites.js';
 import { getHatRef } from './traits/hatColorCatalog.js';
 import { materialIndex } from './traits/traitMaterials.js'; /* v2.3.1926 */
 import { headwearIsSolid, headwearBehindBeard } from './traits/headwearCatalog.js';   /* v2.3.1934 */
+import { bandFit } from './traits/bandFit.js';   /* v2.3.1943 */
 import { SOLID_ONLY_HAT_COLOR } from './traits/recolorOptions.js'; /* v2.3.1109: shared per-hat recolour reference (call-time use; cyclic import is safe) */
 import { upscaleToFrameHeight } from './spriteScale.js'; /* v2.3.1110: restore downscaled shirt sheet to 256 frame */
 /* v2.3.1815: worn armour in the portrait.  gearArt resolves a recoloured set
@@ -233,7 +237,7 @@ function floatLift(meta, hairMeta, dir) {
 
 /* Place one trait sprite (already recolored if needed) onto ctx using the
    stand/<dir> meta math.  Mirrors entityRenderer._placeTrait. */
-function placeTrait(ctx, traitImg, meta, crown, dir, liftY) {
+function placeTrait(ctx, traitImg, meta, crown, dir, liftY, mulX) {
   if (!traitImg || !meta || !meta.fullFrame || !meta.anchors || !meta.anchors[dir]) return;
   const anchor = meta.anchors[dir];
   const cn = (meta.crownNudge && meta.crownNudge[dir]) || [0, 0];
@@ -241,6 +245,10 @@ function placeTrait(ctx, traitImg, meta, crown, dir, liftY) {
   const sc = (meta.scale && meta.scale[dir]) || 1;
   const sbp = (meta.scaleByPose && meta.scaleByPose.stand && meta.scaleByPose.stand[dir]) || 1;
   const dscale = sc * sbp;
+  /* v2.3.1943: `mulX` widens a trait without making it taller — the band refit,
+     which depends on the hair worn under the hat and so cannot live in meta.
+     Mirrors entityRenderer's tune.mulX so both renderers agree. */
+  const dscaleX = dscale * (mulX || 1);
   const tx = crown[0] + cn[0] + pn[0];
   const ty = crown[1] + cn[1] + pn[1] + (liftY || 0); /* v2.3.1561: float-above-hair clearance */
   /* v2.3.1526: same normalisation as entityRenderer._placeTrait. meta is in
@@ -253,7 +261,7 @@ function placeTrait(ctx, traitImg, meta, crown, dir, liftY) {
      only softens edges that the display-side downscale would have kept. */
   ctx.imageSmoothingEnabled = norm <= 1;
   ctx.translate(tx, ty);
-  ctx.scale(dscale * norm, dscale * norm);
+  ctx.scale(dscaleX * norm, dscale * norm);
   ctx.drawImage(traitImg, -anchor[0] / norm, -anchor[1] / norm);
   ctx.restore();
 }
@@ -487,25 +495,47 @@ export async function drawCharacterPortrait(canvas, opts) {
      names whose eyes it means, including the creator (its own live selection),
      and an omission costs the effect rather than borrowing yours. */
   const _eyeId = (opts && opts.eyeColor) || null;
+  /* v2.3.1940: the drawn pants print and the chest tattoo.  These are baked
+     INTO the body (they are regions of the body sheet, not separate sprites),
+     so unlike the shirt print they go in with the recolour rather than after it.
+     Same caller contract as `shirtArt`: an explicit value means "this player's",
+     absent means this device's own.  No mirror -- see the shirt note below. */
+  const _pantsArt = (opts && opts.pantsArt !== undefined) ? sanitizeShirtArt(opts.pantsArt) : inkedArt('pants');
+  const _tattooArt = (opts && opts.tattooArt !== undefined) ? sanitizeShirtArt(opts.tattooArt) : inkedArt('tattoo');
+  /* v2.3.1941: the trouser pattern rides the same object. */
+  const _pantsPat = (opts && opts.pantsPattern !== undefined)
+    ? sanitizePattern(opts.pantsPattern) : getPattern('pants');
+  const _bodyArt = (_pantsArt || _tattooArt || parsePattern(_pantsPat))
+    ? { pants: _pantsArt || '', tattoo: _tattooArt || '', pantsPattern: _pantsPat, mirror: false } : null;
   ctx.drawImage(recolorBodyToCanvas(bodyImg, skinTarget(skin), pantsTarget(pants), shoesTarget(shoes), null, FRAME,
-    eyeColorTarget(_eyeId), EYE_MASK[`stand-${DIR}`]), 0, 0);
+    eyeColorTarget(_eyeId), EYE_MASK[`stand-${DIR}`], _bodyArt), 0, 0);
   if (shirtImg) {
     /* v2.3.1110: restore a downscaled-on-disk shirt sheet to the 256px frame
        (these drawImage calls read a 256x256 source rect). No-op at native. */
     const shirtUp = upscaleToFrameHeight(shirtImg, FRAME);
-    let layer = shirtUp;
-    if (shirtColor) {
-      const sc = document.createElement('canvas');
-      sc.width = FRAME; sc.height = FRAME;
-      const sctx = sc.getContext('2d');
-      sctx.drawImage(shirtUp, 0, 0, FRAME, FRAME, 0, 0, FRAME, FRAME);
-      sctx.globalCompositeOperation = 'multiply';
-      sctx.fillStyle = `rgb(${shirtColor[0]},${shirtColor[1]},${shirtColor[2]})`;
-      sctx.fillRect(0, 0, FRAME, FRAME);
-      sctx.globalCompositeOperation = 'destination-in';
-      sctx.drawImage(shirtUp, 0, 0, FRAME, FRAME, 0, 0, FRAME, FRAME);
-      layer = sc;
-    }
+    /* v2.3.1938: the player's own drawing, stamped on the fabric AFTER the
+       tint, so the drawing keeps its own colours instead of being multiplied by
+       the shirt colour — a print does not take the dye of the shirt under it.
+       `opts.shirtArt` when the caller has one (the inspect card passes another
+       player's), otherwise this device's; null/empty is a no-op inside
+       composeShirt, so an undrawn plain shirt costs one early return. */
+    /* v2.3.1938: front or back by FACING -- north/northeast show the back
+       design, everything else the front (a profile turns the chest toward you).
+       No mirror here: this compositor draws the five base directions as-is and
+       never flips one, which the world renderer does. */
+    const _art = (opts && opts.shirtArt !== undefined) ? sanitizeShirtArt(opts.shirtArt) : shirtArtForDir(DIR);
+    const _shirtPat = (opts && opts.shirtPattern !== undefined)
+      ? sanitizePattern(opts.shirtPattern) : getPattern('shirt');
+    /* v2.3.1941: colour, pattern and print now come from composeShirt -- the
+       SAME function the world renderer bakes with -- so the login preview and
+       the character in the world cannot disagree about what a shirt looks like.
+       They used to: this file tinted then stamped (right), while the renderer
+       stamped then applied a sprite tint over the whole texture (which
+       multiplied the print by the shirt colour). */
+    const layer = composeShirt(shirtUp, FRAME, {
+      tint: shirtColor || null, pattern: parsePattern(_shirtPat),
+      art: _art, mirror: false,
+    });
     ctx.drawImage(layer, 0, 0, FRAME, FRAME, 0, 0, FRAME, FRAME);
   }
   /* ═══ v2.3.1815: THE ARMOUR, in the renderer's own slot order ═══
@@ -630,8 +660,9 @@ export async function drawCharacterPortrait(canvas, opts) {
      creator preview would still show a recolored hat the game refuses to
      render, which is worse than not offering the color at all. */
   const _hwCol = hatColor && (!SOLID_ONLY_HAT_COLOR || headwearIsSolid(headwear));
+  /* v2.3.1943: the band refit, same numbers the world renderer uses. */
   if (hwImg && hwMeta) placeTrait(ctx, _hwCol ? recolorHairToCanvas(hwImg, hatColor, hatRef) : hwImg, hwMeta, crown, DIR,
-    floatLift(hwMeta, hairMeta, DIR)); /* v2.3.1561 */
+    floatLift(hwMeta, hairMeta, DIR), bandFit(headwear, hair, DIR)); /* v2.3.1561; v2.3.1943 */
   /* v2.3.1934: the beard goes on LAST for draping headwear.  Deliberately
      after the hair-clip block as well, so the beard is not clipped to the
      hat's silhouette the way hair is -- it is in front of the hat, not under

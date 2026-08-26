@@ -5,6 +5,8 @@ import { setHairColor, hairColorTarget } from '@/rendering/traits/hairColorCatal
 import { hatColorTarget } from '@/rendering/traits/hatColorCatalog.js';
 import { facialHairColorTarget } from '@/rendering/traits/facialHairColorCatalog.js';
 import { shirtColorTarget } from '@/rendering/traits/shirtColorCatalog.js';
+import { onArtChange } from '@/rendering/traits/playerArt.js';   /* v2.3.1938; v2.3.1940 renamed — it covers pants and tattoos too */
+import { onPatternChange } from '@/rendering/traits/patternCatalog.js';   /* v2.3.1941 */
 
 /* === characterCreatorEffects — effect bodies for the character creator ===
    v2.3.897: extracted verbatim from three BroTown.jsx useEffects (the
@@ -15,7 +17,14 @@ import { shirtColorTarget } from '@/rendering/traits/shirtColorCatalog.js';
    original local names at the top). */
 
 /* Redraw the live preview portrait whenever a selection changes, and warm
-   the other 7 angles for the current look. No cleanup (matches original). */
+   the other 7 angles for the current look.
+   v2.3.1938: now RETURNS a cleanup, because a drawing is not a `sel` value --
+   it changes stroke by stroke inside the paint panel, so this subscribes to the
+   drawing store and redraws instead of waiting for the effect's dep list to
+   change.  Callers already used the return value as a cleanup, so a real one
+   slots straight in.  v2.3.1940: one subscription covers all four drawings
+   (shirt front/back, pants, tattoo) -- the store notifies per canvas and the
+   portrait redraws whole either way. */
 export function wireCharacterPortrait(previewCanvasRef, sel) {
   var previewDir = sel.previewDir,
     skinSel = sel.skinSel, pantsSel = sel.pantsSel, shoesSel = sel.shoesSel,
@@ -24,6 +33,10 @@ export function wireCharacterPortrait(previewCanvasRef, sel) {
     headwearSel = sel.headwearSel, hatColorSel = sel.hatColorSel,
     shirtSel = sel.shirtSel, shirtColorSel = sel.shirtColorSel;
   if (!previewCanvasRef.current) return;
+  /* v2.3.1938: the draw is a closure so the shirt-drawing subscription below
+     can re-run just the DRAW.  Calling wireCharacterPortrait itself would
+     re-subscribe on every stroke and pile up listeners. */
+  function draw() {
   drawCharacterPortrait(previewCanvasRef.current, {
     dir: previewDir,
     skin: skinSel, pants: pantsSel, shoes: shoesSel,
@@ -49,6 +62,19 @@ export function wireCharacterPortrait(previewCanvasRef, sel) {
   /* v2.3.715: warm the other 7 angles for whatever is selected NOW, so
      rotating never waits on the network. */
   prewarmPortraitDirs({ hair: hairSel, facialHair: facialHairSel, headwear: headwearSel });
+  }
+  draw();
+  /* Redraw on every stroke in the designer -- a drawing is not one of the
+     `sel` values, so nothing else would re-run this. */
+  var _redraw = function () { try { draw(); } catch (e) { /* ignore */ } };
+  var _offArt = onArtChange(_redraw);
+  /* v2.3.1941: patterns live in their own store for the same reason -- they are
+     not `sel` values either, and they change from inside the same panel. */
+  var _offPat = onPatternChange(_redraw);
+  return function () {
+    try { _offArt(); } catch (e) { /* ignore */ }
+    try { _offPat(); } catch (e) { /* ignore */ }
+  };
 }
 
 /* The welcome modal is dead network time: 2.5s after it opens, start

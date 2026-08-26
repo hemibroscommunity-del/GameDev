@@ -1,0 +1,83 @@
+{
+  "hairSwell": {
+    "afro": {
+      "south": 1.49,
+      "southwest": 1.42,
+      "east": 1.53,
+      "northeast": 1.43,
+      "north": 1.46
+    },
+    "blonde-hair": {
+      "south": 1.16,
+      "southwest": 1.12,
+      "east": 0.93,
+      "northeast": 1.09,
+      "north": 1.07
+    },
+    "dirty-blonde": {
+      "south": 1.02,
+      "southwest": 0.96,
+      "east": 0.8,
+      "northeast": 1.05,
+      "north": 1.07
+    },
+    "flat-top": {
+      "south": 1.07,
+      "southwest": 1.04,
+      "east": 1.11,
+      "northeast": 1.09,
+      "north": 1.02
+    },
+    "long": {
+      "south": 1.4,
+      "southwest": 1.19,
+      "east": 0.71,
+      "northeast": 1.23,
+      "north": 1.37
+    },
+    "slick-back-hair": {
+      "south": 1.12,
+      "southwest": 0.42,
+      "east": 0.6,
+      "northeast": 1,
+      "north": 1.1
+    },
+    "split-hair": {
+      "south": 1.21,
+      "southwest": 1.17,
+      "east": 1.16,
+      "northeast": 1.32,
+      "north": 1.32
+    },
+    "wavy": {
+      "south": 1.44,
+      "southwest": 1.31,
+      "east": 1.18,
+      "northeast": 1.32,
+      "north": 1.41
+    }
+  },
+  "bandRow": {
+    "naruto-headband": {
+      "south": 16,
+      "southwest": 22,
+      "east": 16,
+      "northeast": 8,
+      "north": 10
+    },
+    "bandana-blue": {
+      "south": 4,
+      "southwest": 6,
+      "east": 4,
+      "northeast": 0,
+      "north": 0
+    },
+    "bandana-2": {
+      "south": 4,
+      "southwest": 8,
+      "east": 4,
+      "northeast": 2,
+      "north": 0
+    }
+  }
+}
