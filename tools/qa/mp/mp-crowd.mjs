@@ -82,8 +82,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
     }
     if (peers.length < want) break;
-    /* Let the observer actually receive and build them before sampling. */
-    await P.page.waitForTimeout(3000);
+    /* WAIT for the observer to have them all, do not just pause and hope.
+       The room rosters every player unconditionally at 1 Hz
+       (PRESENCE_REFRESH_TICKS, tick.js), so on a healthy box this resolves in
+       about a second — but a loaded machine can starve the page's message
+       pump for far longer, and a fixed sleep turns that into a "peers are
+       missing" result that is really "the box is busy".  A timeout here still
+       reports what was actually seen, so a genuine shortfall is not hidden. */
+    const need = peers.length;
+    await H.waitFor(P, (S) => Object.keys(S.others || {}).length, (n) => n >= need,
+      { timeout: 30000, label: `observer sees ${need} peers` }).catch(() => {});
     const seen = await H.readState(P, (S) => Object.keys(S.others || {}).length);
     const s = await sample(P, 4000, `${peers.length} peer(s)`);
     rows.push({ peers: peers.length, seen, ...s });
