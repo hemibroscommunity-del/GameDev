@@ -408,7 +408,41 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
    numbers fill the shorts and sit just below the belt line.  The chest box is
    the same idea one region up. */
 export const PANTS_BOX = { fillW: 0.78, fillH: 0.62, cy: 0.45 };   /* across the shorts */
-export const TATTOO_BOX = { fillW: 0.70, fillH: 0.55, cy: 0.50 };  /* chest */
+/* ═══ v2.3.1994: EVERY SKIN PIXEL IS TATTOOABLE ═══
+ *
+ * Owner: "Can you just make anywhere where skin is showing be tattooable?
+ * It's confusing trying to draw on skin and not being able to (only certain
+ * areas allowed)."
+ *
+ * The three skin boxes below used to be INSET rectangles inside their regions —
+ * the chest grid covered 70% x 55% of the torso, the face 78% x 63% of the
+ * head, the arm 92% x 40% of the limb.  The designer frames the whole REGION
+ * (BodyInk's fitRegion measures lx..rx / ty..by, the region's own bulk box),
+ * so what the owner saw was the whole chest with only a rectangle in the
+ * middle of it accepting ink, and no line drawn anywhere to say where that
+ * rectangle was.  Every touch outside it silently did nothing.  That is
+ * exactly the report.
+ *
+ * So the three skin grids now COVER their region: fill 1.0 x 1.0 centred.
+ * `gridFit` then puts the 16x16 exactly on lx..rx / ty..by, which is the box
+ * the editor frames — what you can see is what you can ink, and the two can no
+ * longer drift apart because they are now the same rectangle.
+ *
+ * WHAT THIS COSTS, STATED RATHER THAN DISCOVERED LATER (the same two prices
+ * v2.3.1965 paid to reach the forehead):
+ *   - a cell is COARSER.  The face's 16 rows now spread over the head's full
+ *     ~42 sheet rows instead of 26, and the chest's over the whole torso.
+ *   - an EXISTING skin drawing keeps its cells and therefore MOVES, outward
+ *     from the middle of the region towards its edges.
+ * Neither is avoidable while the ask is "all of it": a 16x16 stretched over
+ * more body is a coarser 16x16.  The mask still confines the paint, so cells
+ * that now sit over the crown, the ears or a shoulder seam paint nothing
+ * there — they simply stop being cells you cannot reach.
+ *
+ * PANTS_BOX is deliberately NOT changed: trousers are not skin, the print
+ * there was tuned against the leg gap (see above), and nobody reported it.
+ */
+export const TATTOO_BOX = { fillW: 1, fillH: 1, cy: 0.50 };  /* the whole bare torso */
 /* v2.3.1949 (owner: "Allow tattoos on the face and arms too").
    A face is small and mostly eyes, so the ink covers less of it and sits low —
    a cheek/jaw mark rather than a mask over the eyes.  An arm is a narrow
@@ -468,8 +502,17 @@ export const INK_TUNE = Object.freeze({ alpha: 0.60, shade: 1.0, contrast: 0.35 
    spread over 26 sheet px instead of 19, so a cell is coarser; and an
    existing face tattoo keeps its cells but covers more face than it did, so
    it moves. Both are the price of reaching the forehead at all. */
-export const FACE_BOX = { fillW: 0.78, fillH: 0.63, cy: 0.515 };
-export const ARM_BOX = { fillW: 0.92, fillH: 0.40, cy: 0.42 };
+/* v2.3.1994: and the crown and the ears come inside after all — see the
+   TATTOO_BOX note above.  "Ink there would read as a mistake" was a judgement
+   made on the player's behalf, and the owner's answer to it is that being
+   unable to draw where the skin plainly is reads as broken, which is worse.  A
+   bald character can now ink his own scalp; a haired one paints under hair
+   that covers it, which is the same rule a hat already follows. */
+export const FACE_BOX = { fillW: 1, fillH: 1, cy: 0.50 };
+/* v2.3.1994: the whole limb, shoulder to hand, rather than a band across the
+   middle 40% of it.  `eachPiece` still gives each arm its own box, so this is
+   the whole of EACH arm and not one box stretched across both. */
+export const ARM_BOX = { fillW: 1, fillH: 1, cy: 0.50 };
 
 /* ═══ v2.3.1949: THE OTHER TWO SKIN REGIONS ═══
  *
