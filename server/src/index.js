@@ -140,6 +140,9 @@ import { chainScoreMethods } from './chainscore.js';
 // v2.3.1734: Element Burst (COMBAT-OVERHAUL-PLAN PR 6) -- the elemental
 // nova + its four server-side gates -- see burst.js.
 import { burstMethods } from './burst.js';
+// v2.3.1983: population-scaled spawns -- monsters and gather nodes sized to
+// how many players are standing in THAT zone -- see spawnscale.js.
+import { spawnScaleMethods } from './spawnscale.js';
 
 export default {
   async fetch(request, env) {
@@ -1102,76 +1105,90 @@ export class GameRoom {
       for (let i = 0; i < spawn.count; i++) {
         const x = margin + Math.random() * (W - margin * 2);
         const y = margin + Math.random() * (H - margin * 2);
-        const depthPct = Math.max(0, Math.min(1, y / H));
-        const baseLvl = zone.level[0] || 1;
-        const maxLvl = zone.level[1] || 10;
-        // v2.3.1147: entrance ramp -- the shallowest 15% of a zone
-        // spawns up to 4 levels BELOW the band floor so walking into a
-        // mid/high band isn't an instant wall (hollows entry reads
-        // L34-38 instead of flat 38).  Mirrors spawnMonstersForZone in
-        // src/data/gameSystems.js; the client's applyZoneVariant level
-        // clamp was relaxed to minLv-4 to match.
-        const ramp = depthPct < 0.15 ? Math.round((1 - depthPct / 0.15) * 4) : 0;
-        const lvl = Math.max(1, Math.round(baseLvl + depthPct * (maxLvl - baseLvl)) - ramp);
-        const a = this._getArchetype(spawn.arch);
-        // baseline-10 rescale: 60 ÷ 4.8; HP curve centralized v2.3.1140 (BF-1)
-        const baseHp = this._monsterStat(MONSTER_HP_CURVE.base, lvl, MONSTER_HP_CURVE.ramp, MONSTER_HP_CURVE.plateau, MONSTER_HP_CURVE.endgame);
-        const baseDmg = this._monsterStat(12, lvl, 1.045, 1.025, 1.018);
-        const baseXp = this._monsterStat(10, lvl, 1.045, 1.025, 1.018);
-        const baseGold = this._monsterStat(5, lvl, 1.035, 1.020, 1.015);
-        /* v2.3.1535: a spawn entry may pin its own variant (verdant's single
-           blueSlime among mossSlimes).  Falls back to the whole-archetype
-           zone map for every other spawn, so nothing else changes. */
-        const variantKey = spawn.variant || this._variantForArchInZone(spawn.arch, zoneId);
-        // Variant speed override: if this (arch, zone) maps to a variant
-        // with its own spd (e.g. ember fodder -> fireGoblin spd 1.5),
-        // use it.  This is what makes server-driven AI move the variant
-        // at the right pace, so the client can stop running its own AI
-        // for the variant (was the `clientSideMovement: true` escape
-        // hatch on the client side).
-        const variantSpd = variantKey ? this._variantSpeed(variantKey) : null;
-        const finalSpd = (variantSpd != null) ? variantSpd : (0.5 * a.spdMult);
-        /* v2.3.1535: variant HP trade (blue slime = fast but squishy).
-           Multiplies the archetype's own hpMult; absent for every other
-           variant, so they stay exactly as they spawned before. */
-        const variantHpMult = variantKey ? this._variantHpMult(variantKey) : null;
-        const hpMult = a.hpMult * ((variantHpMult != null) ? variantHpMult : 1);
-        const spawnHp = Math.max(1, Math.ceil(baseHp * hpMult) + monsterHpFlat(lvl));
-        monsters.push({
-          id: 'sm-' + zoneId + '-' + idx,
-          arch: spawn.arch,
-          // Variant tag used at kill time for skull / inventory key
-          // resolution AND for visual / AI dispatch on the client.
-          // Server's AI uses m.spd directly (set above with variant
-          // override applied), so variant is also the source of truth
-          // for movement pace -- not just cosmetics.
-          variant: variantKey,
-          // Mid-fight transforms (mummy -> skeleton) mutate m.variant
-          // + m.spd; the respawn path resets to these spawn values so
-          // a re-spawned mummy starts back in mummy form instead of
-          // re-spawning as a skeleton.
-          spawnVariant: variantKey,
-          spawnSpd: finalSpd,
-          level: lvl,
-          element: zone.element || null,
-          hp: spawnHp, /* v2.3.1364: Lv1-2 -> flatLow; v2.3.1535: + variant hp mult */
-          maxHp: spawnHp,
-          dmg: Math.ceil(baseDmg * a.dmgMult),
-          xp: Math.ceil(baseXp),
-          gold: Math.ceil(baseGold),
-          spd: finalSpd,
-          emoji: a.emoji,
-          color: a.color,
-          x, y, spawnX: x, spawnY: y,
-          alive: true,
-          targetId: null, // player being chased
-          atkCd: 0,
-          respawnAt: 0,
-        });
+        const m = this._makeZoneMonster(zoneId, zone, spawn, 'sm-' + zoneId + '-' + idx, x, y);
+        if (m) monsters.push(m);
         idx++;
       }
     }
     return monsters;
+  }
+
+  /* v2.3.1983: ONE monster, built from a spawn entry at a given point.
+     Hoisted verbatim out of the _spawnZoneMonsters double loop (only the
+     id and the push/return changed) so the population scaler
+     (spawnscale.js) can add a monster mid-session that is identical in
+     every respect to an authored one — same entrance ramp, same variant
+     resolution, same hp/dmg/xp/gold curves.  A second copy of this math
+     would drift, and drifted monster stats desync client damage
+     prediction from monster_hit (the v2.3.1144 lockstep lesson). */
+  _makeZoneMonster(zoneId, zone, spawn, id, x, y) {
+    const H = zone.h * this.TILE;
+    const depthPct = Math.max(0, Math.min(1, y / H));
+    const baseLvl = zone.level[0] || 1;
+    const maxLvl = zone.level[1] || 10;
+    // v2.3.1147: entrance ramp -- the shallowest 15% of a zone
+    // spawns up to 4 levels BELOW the band floor so walking into a
+    // mid/high band isn't an instant wall (hollows entry reads
+    // L34-38 instead of flat 38).  Mirrors spawnMonstersForZone in
+    // src/data/gameSystems.js; the client's applyZoneVariant level
+    // clamp was relaxed to minLv-4 to match.
+    const ramp = depthPct < 0.15 ? Math.round((1 - depthPct / 0.15) * 4) : 0;
+    const lvl = Math.max(1, Math.round(baseLvl + depthPct * (maxLvl - baseLvl)) - ramp);
+    const a = this._getArchetype(spawn.arch);
+    // baseline-10 rescale: 60 ÷ 4.8; HP curve centralized v2.3.1140 (BF-1)
+    const baseHp = this._monsterStat(MONSTER_HP_CURVE.base, lvl, MONSTER_HP_CURVE.ramp, MONSTER_HP_CURVE.plateau, MONSTER_HP_CURVE.endgame);
+    const baseDmg = this._monsterStat(12, lvl, 1.045, 1.025, 1.018);
+    const baseXp = this._monsterStat(10, lvl, 1.045, 1.025, 1.018);
+    const baseGold = this._monsterStat(5, lvl, 1.035, 1.020, 1.015);
+    /* v2.3.1535: a spawn entry may pin its own variant (verdant's single
+       blueSlime among mossSlimes).  Falls back to the whole-archetype
+       zone map for every other spawn, so nothing else changes. */
+    const variantKey = spawn.variant || this._variantForArchInZone(spawn.arch, zoneId);
+    // Variant speed override: if this (arch, zone) maps to a variant
+    // with its own spd (e.g. ember fodder -> fireGoblin spd 1.5),
+    // use it.  This is what makes server-driven AI move the variant
+    // at the right pace, so the client can stop running its own AI
+    // for the variant (was the `clientSideMovement: true` escape
+    // hatch on the client side).
+    const variantSpd = variantKey ? this._variantSpeed(variantKey) : null;
+    const finalSpd = (variantSpd != null) ? variantSpd : (0.5 * a.spdMult);
+    /* v2.3.1535: variant HP trade (blue slime = fast but squishy).
+       Multiplies the archetype's own hpMult; absent for every other
+       variant, so they stay exactly as they spawned before. */
+    const variantHpMult = variantKey ? this._variantHpMult(variantKey) : null;
+    const hpMult = a.hpMult * ((variantHpMult != null) ? variantHpMult : 1);
+    const spawnHp = Math.max(1, Math.ceil(baseHp * hpMult) + monsterHpFlat(lvl));
+    return {
+      id,
+      arch: spawn.arch,
+      // Variant tag used at kill time for skull / inventory key
+      // resolution AND for visual / AI dispatch on the client.
+      // Server's AI uses m.spd directly (set above with variant
+      // override applied), so variant is also the source of truth
+      // for movement pace -- not just cosmetics.
+      variant: variantKey,
+      // Mid-fight transforms (mummy -> skeleton) mutate m.variant
+      // + m.spd; the respawn path resets to these spawn values so
+      // a re-spawned mummy starts back in mummy form instead of
+      // re-spawning as a skeleton.
+      spawnVariant: variantKey,
+      spawnSpd: finalSpd,
+      level: lvl,
+      element: zone.element || null,
+      hp: spawnHp, /* v2.3.1364: Lv1-2 -> flatLow; v2.3.1535: + variant hp mult */
+      maxHp: spawnHp,
+      dmg: Math.ceil(baseDmg * a.dmgMult),
+      xp: Math.ceil(baseXp),
+      gold: Math.ceil(baseGold),
+      spd: finalSpd,
+      emoji: a.emoji,
+      color: a.color,
+      x, y, spawnX: x, spawnY: y,
+      alive: true,
+      targetId: null, // player being chased
+      atkCd: 0,
+      respawnAt: 0,
+    };
   }
 
   // Mark a single monster / node as changed this tick.  Adds the zone
@@ -4771,3 +4788,5 @@ Object.assign(GameRoom.prototype, friendsMethods);
 Object.assign(GameRoom.prototype, prog3Methods); /* v2.3.1659 */
 Object.assign(GameRoom.prototype, chainScoreMethods); /* v2.3.1664 */
 Object.assign(GameRoom.prototype, burstMethods); /* v2.3.1734 */
+// v2.3.1983: population-scaled spawns -- see spawnscale.js.
+Object.assign(GameRoom.prototype, spawnScaleMethods);

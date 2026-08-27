@@ -935,9 +935,20 @@ export const joinMethods = {
        wire blob -- _sanitizeJoinData already dropped an unlisted id, so
        this can no longer hand _ensureZoneMonsters a forged zone. */
     const joinZone = this.playerState[msg.id]?.z || 'town';
-    const zoneMonsters = (joinZone !== 'town' && joinZone !== 'farm_home') ? this._ensureZoneMonsters(joinZone) : [];
-    const zoneNodes = (joinZone !== 'town' && joinZone !== 'farm_home') ? this._ensureZoneNodes(joinZone) : [];
-    const zoneLootForJoin = (joinZone !== 'town' && joinZone !== 'farm_home') ? this._zoneLootForWire(joinZone) : [];
+    const _joinInWorld = (joinZone !== 'town' && joinZone !== 'farm_home');
+    if (_joinInWorld) {
+      this._ensureZoneMonsters(joinZone);
+      this._ensureZoneNodes(joinZone);
+      /* v2.3.1983: this player is already in playerState, so scaling here
+         counts them — their own state_sync below then carries the world
+         their arrival just grew, and everyone else in the zone gets the
+         roster push from inside (this socket is excluded; it is about to
+         receive the same lists in state_sync). */
+      this._spawnScaleZone(joinZone, Date.now(), undefined, ws);
+    }
+    const zoneMonsters = _joinInWorld ? (this.monsters[joinZone] || []) : [];
+    const zoneNodes = _joinInWorld ? (this.nodes[joinZone] || []) : [];
+    const zoneLootForJoin = _joinInWorld ? this._zoneLootForWire(joinZone) : [];
     // v2.3.1150: warm the live-ops flag cache before anything gated
     // can run, and let operator flags OVERRIDE the baked caps
     // (spread last).  Empty flags = identity, so deploy-order

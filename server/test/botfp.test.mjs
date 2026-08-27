@@ -20,6 +20,10 @@
  *   10. /api/botstat is 404 without a configured+presented ADMIN_KEY.
  *   11. state_sync advertises caps.botfp. */
 import { GameRoom } from '../src/index.js';
+/* v2.3.1983: read the cap instead of hardcoding it — population-scaled
+   node counts moved it (270 -> 810) and this suite is about the CLAMP
+   behaviour, not the number. */
+import { BOTFP } from '../src/botfp.js';
 
 function makeState() {
   const store = new Map();
@@ -240,9 +244,9 @@ const invKey = room._harvestInvKey(n0.nodeType, n0.tierLvl);
   const psG = room.playerState.bp_bot_g;
   psG.z = 'meadow'; psG.x = n0.x; psG.y = n0.y; psG.inventory = { woodcutting_axe: 1, fishing_pole: 1, mining_pickaxe: 1 };
   const recG = room._botfpRecord('bp_bot_g', Date.now());
-  recG.hour.bySkill[skillName] = 270;
+  recG.hour.bySkill[skillName] = BOTFP.HARVEST_HOUR_CAP;
   await strike(wsG, 'bp_bot_g', n0, humanFp());
-  check('hourcap: 271st harvest depletes the node but grants nothing',
+  check('hourcap: the over-cap harvest depletes the node but grants nothing',
     n0.alive === false && (psG.inventory[invKey] || 0) === 0 && recG.counters.capClamps === 1,
     { inv: psG.inventory, clamps: recG.counters.capClamps });
   recG.hour.hourStart = Date.now() - 3700000;   // lazy rollover

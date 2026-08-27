@@ -201,9 +201,21 @@ for (const _pid of ['p1', 'p2']) {
 await room.webSocketMessage(ws1, JSON.stringify({ type: 'move', x: 1, y: 1, z: 'frost' }));
 await room.webSocketMessage(ws2, JSON.stringify({ type: 'move', x: 1, y: 1, z: 'frost' }));
 
-check('v1 zone change sends legacy trio', msgsOfType(ws1, 'zone_monsters').length === 1
-  && msgsOfType(ws1, 'zone_nodes').length === 1 && msgsOfType(ws1, 'zone_loot').length === 1
+/* v2.3.1983: p1 (v1) now gets TWO zone_monsters here, and that is the
+   feature, not drift.  p1 walks into frost alone (trio #1), then p2 walks
+   in — frost's population goes 1 -> 2, the spawn scaler grows the zone, and
+   every client already standing there is re-sent the roster so the new
+   monsters actually exist for them.  A v1 client has no other way to learn
+   about a new entity (the per-entity tick delta can only UPDATE ids the
+   client already knows), so this resend IS the deploy-order-safe path.
+   zone_loot stays at one: the roster push carries monsters + nodes only. */
+const p1zm = msgsOfType(ws1, 'zone_monsters');
+check('v1 zone change sends legacy trio', p1zm.length >= 1
+  && msgsOfType(ws1, 'zone_nodes').length >= 1 && msgsOfType(ws1, 'zone_loot').length === 1
   && msgsOfType(ws1, 'zone_state').length === 0);
+check('v1 client is re-sent a GROWN roster when a second player arrives',
+  p1zm.length === 2 && p1zm[1].monsters.length > p1zm[0].monsters.length,
+  { counts: p1zm.map((m) => m.monsters.length) });
 const zs = msgsOfType(ws2, 'zone_state');
 check('v2 zone change sends one zone_state', zs.length === 1 && msgsOfType(ws2, 'zone_monsters').length === 0
   && msgsOfType(ws2, 'zone_nodes').length === 0 && msgsOfType(ws2, 'zone_loot').length === 0);
