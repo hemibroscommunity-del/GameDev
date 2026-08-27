@@ -1068,6 +1068,20 @@ export function setupWebSocket(ctx) {
                  (currently loot pickup + harvest; future: sales /
                  quest / etc.). */
               if (!msg.payload || !S.rpg) break;
+              /* ═══ v2.3.2027: THE CAPE COMES FROM THE WORKER ═══
+                 Same closure as the coins/inventory overwrite above: a cosmetic
+                 the client chooses for itself is a cosmetic anyone can choose,
+                 and this one is a contest prize. The worker echoes the cape its
+                 LEDGER says you own -- null included, so losing or never having
+                 one takes it off. setCape ignores an id that is not in the
+                 catalog, so a hostile echo cannot make the renderer ask for a
+                 texture that does not exist. */
+              try {
+                var _capeId = (typeof msg.payload.cape === 'string' && msg.payload.cape) ? msg.payload.cape : 'none';
+                import('@/rendering/traits/capeCatalog.js')
+                  .then(function (m) { m.setCape(_capeId); })
+                  .catch(function () { /* module split not loaded yet: next echo carries it */ });
+              } catch (e) { /* never let a cosmetic break the state sync */ }
               if (typeof msg.payload.coins === 'number') {
                 S.rpg.coins = msg.payload.coins;
               }
@@ -2743,6 +2757,16 @@ export function setupWebSocket(ctx) {
         if (!ws || ws.readyState !== WebSocket.OPEN) return;
         /* Direct message types — sent immediately to server, not as broadcast events */
         if (msg.type === 'monster_damage') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
+        /* v2.3.2026: opening a golden ticket.  This list is an ALLOWLIST — a
+           type with no line here is silently dropped and the feature runs on
+           nothing, which is what TRAPS #18 and the harvest handshake below
+           record.  The redeem is the only way a cape is granted, so a missing
+           case would mean tickets that never open, in public, during the
+           event. */
+        if (msg.type === 'cape_redeem') {
           ws.send(JSON.stringify(msg));
           return;
         }

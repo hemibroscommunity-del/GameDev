@@ -40,6 +40,7 @@ import { preloadStartZoneMap, loadWalkabilityMaps } from './tiledMaps.js';
 import { effectsAnimationsReady, ensureImpactTex } from './systems/effectsRenderer.js';
 import { fxStripsReady } from './fxStrips.js'; /* v2.3.1735: stun ring + whirl vortex (preloading is law) */
 import { preloadTraits } from './systems/entityRenderer.js';
+import { preloadCapes } from './capeSprites.js'; /* v2.3.2023: cosmetic capes are GLOBAL, not per-zone */
 import { preloadFullsetFigures } from './gearSheets.js'; /* v2.3.1376: fullset knight figures */
 import { preloadJogHeadOverlays } from './playerSkins.js'; /* v2.3.1376: their head overlays */
 import { ZONE_VARIANT_MAP, MONSTER_VARIANTS, variantsForZone } from '../data/monsterVariants.js'; /* v2.3.1405: per-zone variant scoping */
@@ -110,6 +111,10 @@ export async function preloadWorldAnimations() {
        texture load is a regression, and these two are global (not per-zone). */
     fxStrips: fxStripsReady(),
     traits: preloadTraits(),
+    /* v2.3.2023: five stills per cape.  Global rather than per-zone -- a cape
+       is worn everywhere, so it belongs on the gate with the player's own
+       art, not behind a zone overlay. */
+    capes: preloadCapes(),
     /* v2.3.1672: NPC art.  GLOBAL, not per-zone: the only NPC art today is
        Mayor Bro, who stands in town — and town is a resident hub that is
        never freed (see the ZONE-ASSET EXCEPTION in CLAUDE.md), so there is no

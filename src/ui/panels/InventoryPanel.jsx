@@ -531,7 +531,56 @@ export function InventoryPanel(props) {
       fontSize: 12,
       color: 'var(--ui-text-muted)'
     }
-  }, "Craft at the Blacksmith from ore"))))), function () {
+  }, "Craft at the Blacksmith from ore"))))), /* ═══ v2.3.2026: THE GOLDEN TICKET ═══
+     Opening it is the reward half of the event drop, so it gets its own row
+     rather than sitting in the generic grid where a winner might not notice it.
+
+     IT DOES NOT CONSUME ANYTHING LOCALLY.  cooking.js:71 records what that
+     costs: the firemaking handler deleted a log client-side, sent no message,
+     and the worker's next player_state echo handed the log straight back --
+     one log lit unlimited campfires.  A ticket opened the same way is a cape
+     minted per tap, live, during the event.  So this SENDS and waits; the
+     consume, the grant and the echo are all the worker's.
+
+     Gated on caps.eventCapes (deploy-order safety, rule 19): against an old
+     worker the flag is absent and the button never appears, so nothing is sent
+     that would be relayed to the room as an unknown broadcast. */
+  function () {
+    var inv = rpgState.inventory || {};
+    /* Read _serverCaps.eventCapes DIRECTLY, not through an alias: the
+       caps-audit suite greps for that literal, and an aliased read is a gate
+       the audit cannot see -- which is precisely the "gate that gates nothing"
+       it exists to catch. */
+    var S0 = stateRef.current;
+    if (!S0 || !S0._serverCaps || !S0._serverCaps.eventCapes) return null;
+    var tickets = Object.entries(inv).filter(function (e) {
+      return e[1] > 0 && String(e[0]).startsWith('goldticket_');
+    });
+    if (tickets.length === 0) return null;
+    return /*#__PURE__*/React.createElement(React.Fragment, null,
+      /*#__PURE__*/React.createElement("div", {
+        style: { fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
+          letterSpacing: '.14em', color: 'var(--ui-text-muted)',
+          fontVariantNumeric: 'tabular-nums', marginTop: 4, marginBottom: 4 }
+      }, "Golden Ticket"),
+      tickets.map(function (t) {
+        var key = t[0], qty = t[1];
+        return /*#__PURE__*/React.createElement("button", {
+          key: key,
+          style: { padding: '0 12px', minHeight: 44, borderRadius: 999, fontSize: 12,
+            cursor: 'pointer', background: 'var(--ui-raised)',
+            border: '1px solid var(--ui-line-strong)', color: 'var(--ui-text)',
+            fontWeight: 800, fontVariantNumeric: 'tabular-nums' },
+          onClick: function () {
+            var S = stateRef.current;
+            if (!S || !S.channel) return;
+            /* opId so a retry on a flaky phone cannot redeem twice. */
+            var opId = key + ':' + (S.playerId || 'me') + ':' + Date.now();
+            try { S.channel.send({ type: 'cape_redeem', payload: { invKey: key, opId: opId } }); } catch (e) {}
+          }
+        }, "Open Golden Ticket", qty > 1 ? ' \xD7' + qty : '');
+      }));
+  }(), function () {
     var inv = rpgState.inventory || {};
     var cookedFish = Object.entries(inv).filter(function (_ref160) {
       var _ref161 = _slicedToArray(_ref160, 2),

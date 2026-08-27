@@ -313,6 +313,11 @@ export const persistenceMethods = {
     if (!ps || !ws) return;
     try {
       const full = {
+          /* v2.3.2027: the owner's OWN cape, from the ledger.  Without this the
+             local player would have to take its cape from localStorage, which
+             means anyone could wear the contest prize by editing a key. Old
+             clients ignore the unknown field (deploy-order safe). */
+          cape: (typeof this._capeOwnedBy === 'function' ? this._capeOwnedBy(playerId) : null) || null,
           coins: ps.coins || 0,
           inventory: ps.inventory || {},
           lifeSkills: ps.lifeSkills || {},

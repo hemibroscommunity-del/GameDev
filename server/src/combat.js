@@ -880,6 +880,24 @@ export const combatMethods = {
   // pass slot 'dot' so melee lifesteal correctly denies ('not-melee').
   _resolveMonsterKill(zone, m, killerId, killerPs, slot) {
       m.alive = false;
+      /* ═══ v2.3.2026: THE GOLDEN TICKET ROLLS HERE ═══
+       * On the SERVER, on a real kill, because the server is authoritative for
+       * all loot and a client-decided prize is not a prize.  Gated on the
+       * event live-flag so it costs nothing when no event is running and can
+       * be closed without a deploy -- which matters when the alternative is
+       * deploying mid-session.
+       * The claim itself is synchronous by design (eventcapes.js): "first
+       * three" read across an await is how four people win. */
+      if (killerId && killerPs && this._capeEventOpen && this._capeEventOpen()) {
+        try {
+          const tk = this._claimCapeTicket('crimson', killerId, killerPs);
+          if (tk) {
+            this._saveRpg(killerId, killerPs);
+            const kws = this._wsBySessionId(killerId);
+            if (kws) this._sendPlayerState(kws, killerId);
+          }
+        } catch (e) { /* a cosmetic must never break a kill */ }
+      }
       // v2.3.1127: dungeon-instance monsters never respawn -- a cleared
       // wave must STAY cleared or _tickDungeons can't advance (the
       // respawn check requires respawnAt > 0, so 0 means "stay dead").

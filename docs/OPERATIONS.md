@@ -159,6 +159,53 @@ clients it supports — that's an emergency lever with side effects (old
 client fallbacks can wake up). Stick to the `disable_*` switches and
 `xp_mult` unless a PR tells you otherwise.
 
+## Running the cape contest (v2.3.2026)
+
+The contest is OFF until you switch it on, and nothing about it happens
+until you do — no tickets drop, and the roll costs nothing on every kill.
+
+**Start the event:**
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" \
+  -d '{"name":"event_capes","value":true}' "https://WORKER/api/admin/flags"
+```
+
+**End the event** (do this when the window closes — otherwise tickets keep
+dropping until all three are gone):
+```
+curl -X DELETE -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/flags?name=event_capes"
+```
+
+**Change the drop rate** while the event is running. The default is 1 in 200
+(`0.005`). Set the number as a *chance per kill*, so `0.02` is 1 in 50:
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" \
+  -d '{"name":"event_cape_rate","value":0.02}' "https://WORKER/api/admin/flags"
+```
+Tune this against the length of YOUR window, not against forever. Only three
+tickets exist no matter what you set, so the cap already guarantees scarcity —
+a rate so low that nobody finds one during the session means the thing you
+announced never happens. If an hour goes by with no winners, raise it.
+
+**See who has won so far:** the winners are in the ledger, not in a flag
+listing. The simplest check is the admin log, which records every flag change,
+plus watching your own chat — but if you want the authoritative list, ask in a
+session and it can be read out of storage.
+
+Three things worth knowing so nothing surprises you mid-event:
+
+* **Ending the event does not take anyone's ticket away.** The flag stops the
+  *drop*. A ticket already won can still be opened for its cape a week later,
+  which is deliberate — a winner who happens to be offline when you close the
+  window must not lose their prize.
+* **Tickets can be traded** between players in the trade window. They cannot be
+  sold on the marketplace (that is weapons-only). If someone ends up holding
+  two, they still only get one cape, and the spare stays in their bag to trade
+  on rather than being eaten.
+* **One cape per account.** A player who has already redeemed cannot win a
+  second ticket, so the three winners are three different people.
+
+
 ## Testing safely
 
 Add `&room=qa1` (or `?room=qa1` if it's the first parameter) to any command
