@@ -54,41 +54,47 @@ await join(B, 'buyer');
 const psA = room.playerState.seller, psB = room.playerState.buyer;
 
 /* ── THE PRICE FALLS AS THE PILE GROWS ── */
-const p0 = room._shopBuyPrice('bone', 0);
-const p12 = room._shopBuyPrice('bone', 12);
-const p100 = room._shopBuyPrice('bone', 100);
-check('he pays most for a thing he has none of', p0 > p12 && p12 > p100, { p0, p12, p100 });
+const p0 = room._shopBuyPrice('slime-remnants', 0);
+/* Read at SOFTEN itself rather than at a hardcoded number. The first version
+   of this line asserted "about half" at a literal 12, which was only true
+   while SOFTEN happened to be 12 -- so widening the curve (a change to the
+   GAME) turned this into a failure about nothing. A constant's own value is
+   what a claim about that constant should be measured against. */
+const pSoft = room._shopBuyPrice('slime-remnants', SHOP.SOFTEN);
+const pMany = room._shopBuyPrice('slime-remnants', SHOP.SOFTEN * 8);
+check('he pays most for a thing he has none of', p0 > pSoft && pSoft > pMany, { p0, pSoft, pMany });
 check('...and the fall is real, not a rounding wobble: at SOFTEN he offers about half',
-  p12 <= Math.ceil(p0 / 2) && p12 >= Math.floor(p0 / 2) - 1, { p0, p12, SOFTEN: SHOP.SOFTEN });
+  pSoft <= Math.ceil(p0 / 2) && pSoft >= Math.floor(p0 / 2) - 1,
+  { p0, pSoft, SOFTEN: SHOP.SOFTEN });
 check('...but he never offers nothing, however much he is holding',
-  room._shopBuyPrice('bone', 100000) >= SHOP.MIN_BUY, room._shopBuyPrice('bone', 100000));
+  room._shopBuyPrice('slime-remnants', 100000) >= SHOP.MIN_BUY, room._shopBuyPrice('slime-remnants', 100000));
 
 /* What he CHARGES must NOT fall with stock, or a glut would be cheap to buy
    and cheap to sell and the two would cancel out. */
 check('what he charges does not move with his stock',
-  room._shopSellPrice('bone') === room._shopSellPrice('bone'), null);
+  room._shopSellPrice('slime-remnants') === room._shopSellPrice('slime-remnants'), null);
 check('...and he charges more than he pays, so buy-then-sell-back is a loss',
-  room._shopSellPrice('bone') > room._shopBuyPrice('bone', 0),
-  { sell: room._shopSellPrice('bone'), buy: p0 });
+  room._shopSellPrice('slime-remnants') > room._shopBuyPrice('slime-remnants', 0),
+  { sell: room._shopSellPrice('slime-remnants'), buy: p0 });
 
 /* ── A BULK SALE CANNOT DODGE THE DECAY ──
    The one that matters: if a stack were priced at the opening offer, selling
    100 at once would beat selling 1 a hundred times and the rule would be
    decorative. */
-psA.inventory = { bone: 100 };
+psA.inventory = { 'slime-remnants': 100 };
 psA.coins = 0;
-const bulk = await room._shopSell(psA, 'bone', 100);
+const bulk = await room._shopSell(psA, 'slime-remnants', 100);
 check('a hundred-unit sale settles', bulk.ok && bulk.sold === 100, bulk);
 check('...and pays LESS than a hundred times the opening offer, because each '
     + 'unit is priced against the pile as it grows',
   bulk.paid < p0 * 100, { paid: bulk.paid, naive: p0 * 100 });
 check('...and the coins actually reached the player', psA.coins === bulk.paid, { coins: psA.coins, paid: bulk.paid });
-check('...and the goods actually left the bag', !psA.inventory.bone, psA.inventory);
+check('...and the goods actually left the bag', !psA.inventory['slime-remnants'], psA.inventory);
 check('...and his next offer is lower than his first', bulk.nextBuy < p0, { nextBuy: bulk.nextBuy, p0 });
 
 /* ── THE PILE IS PUBLIC ── */
 const listB = await room._shopList();
-const boneLine = listB.items.find((i) => i.key === 'bone');
+const boneLine = listB.items.find((i) => i.key === 'slime-remnants');
 check('another player sees the pile the first one filled', !!boneLine && boneLine.qty === 100, listB.items);
 check('...with both prices on the line, so a seller can see why the offer moved',
   !!boneLine && boneLine.buy > 0 && boneLine.sell > 0, boneLine);
@@ -96,25 +102,25 @@ check('...with both prices on the line, so a seller can see why the offer moved'
 /* ── BUYING DRAINS IT AND RECOVERS THE PRICE ── */
 psB.coins = 10000;
 psB.inventory = {};
-const buy = await room._shopBuy(psB, 'bone', 40);
+const buy = await room._shopBuy(psB, 'slime-remnants', 40);
 check('a second player can buy out of the pile', buy.ok && buy.bought === 40, buy);
 check('...paying his asking price, not the seller offer',
-  buy.cost === room._shopSellPrice('bone') * 40, buy);
-check('...the goods land in the buyer bag', psB.inventory.bone === 40, psB.inventory);
+  buy.cost === room._shopSellPrice('slime-remnants') * 40, buy);
+check('...the goods land in the buyer bag', psB.inventory['slime-remnants'] === 40, psB.inventory);
 check('...the coins leave the buyer purse', psB.coins === 10000 - buy.cost, { coins: psB.coins });
 check('...and draining the pile RAISES what he will pay the next seller',
   buy.nextBuy > bulk.nextBuy, { after: buy.nextBuy, before: bulk.nextBuy });
 
 /* ── REFUSALS ── */
 psB.coins = 1;
-check('he will not sell to an empty purse', !(await room._shopBuy(psB, 'bone', 40)).ok);
+check('he will not sell to an empty purse', !(await room._shopBuy(psB, 'slime-remnants', 40)).ok);
 check('he will not sell what he has not got', !(await room._shopBuy(psB, 'nothing_at_all', 1)).ok);
-psA.inventory = { bone: 2 };
-check('you cannot sell more than you carry', !(await room._shopSell(psA, 'bone', 5)).ok);
-check('a zero or negative quantity is refused', !(await room._shopSell(psA, 'bone', 0)).ok
-  && !(await room._shopSell(psA, 'bone', -3)).ok);
+psA.inventory = { 'slime-remnants': 2 };
+check('you cannot sell more than you carry', !(await room._shopSell(psA, 'slime-remnants', 5)).ok);
+check('a zero or negative quantity is refused', !(await room._shopSell(psA, 'slime-remnants', 0)).ok
+  && !(await room._shopSell(psA, 'slime-remnants', -3)).ok);
 check('a single action is capped, so a fat-fingered quantity cannot empty a bag',
-  !(await room._shopSell(psA, 'bone', SHOP.MAX_QTY_PER_OP + 1)).ok);
+  !(await room._shopSell(psA, 'slime-remnants', SHOP.MAX_QTY_PER_OP + 1)).ok);
 
 /* ── THE STOCK RECORD SURVIVES A RESTART ──
    It is one shared record; if it lived only in memory the pile would vanish on
@@ -122,7 +128,7 @@ check('a single action is capped, so a fat-fingered quantity cannot empty a bag'
 const room2 = new GameRoom(state, mockEnv);
 const after = await room2._shopList();
 check('the pile survives a room restart (it is storage, not memory)',
-  !!after.items.find((i) => i.key === 'bone' && i.qty === 60), after.items);
+  !!after.items.find((i) => i.key === 'slime-remnants' && i.qty === 60), after.items);
 
 /* ── '__proto__' IS AN ITEM KEY LIKE ANY OTHER ──
    CLAUDE.md rule 4: a plain {} silently no-ops on it, and the keys here come

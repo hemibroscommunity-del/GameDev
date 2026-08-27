@@ -48,11 +48,18 @@
 
 export const SHOP = {
   /* Coins he pays for the FIRST unit of something he has none of, before the
-     stock decay applies. Keyed by the family prefix an inventory key starts
-     with, because the game mints keys like `wood_pine_log`, `ore_copper` and
-     `fish_trout` -- matching on prefix means a new tier of an existing
-     material is priced sensibly on the day it ships rather than falling to the
-     default and looking broken. */
+     stock decay applies. Keyed by a family SUBSTRING of the inventory key,
+     because the game mints keys like `wood_pine_log`, `slime-remnants` and
+     `shard_ember` -- matching on family means a new tier or a new monster is
+     priced sensibly on the day it ships rather than falling to the default
+     and looking broken.
+     THESE ARE THE GAME'S REAL KEYS. The first cut of this table priced
+     `bone`, `hide`, `tooth`, `claw`, `pelt` and `feather` -- none of which
+     exist in this game. Every one of them would have matched nothing and every
+     real item would have fallen to BASE_DEFAULT, so the whole table would have
+     been decoration and every price identical. Read out of remnantInvKey
+     (monsterVariants.js), _harvestInvKey (gathering.js), ZONE_SHARDS
+     (shards.js) and the legacy SHOP_PRICES, rather than imagined. */
   /* The numbers are large enough for the DECAY TO BE VISIBLE, which is not a
      cosmetic concern -- it is the owner's whole rule. The first cut priced a
      bone at 6, which made his opening offer 3 and put him on the 1-coin floor
@@ -66,19 +73,41 @@ export const SHOP = {
      hunting worth a few hundred -- and the decay is what stops the tenth
      afternoon being worth as much as the first. */
   BASE: {
-    bone: 24, hide: 28, tooth: 20, claw: 32, scale: 36, remains: 16,
-    ore_: 40, wood_: 24, fish_: 28, herb_: 24, gem_: 160, shard: 100,
-    slime: 12, essence: 72, ectoplasm: 56, pelt: 32, feather: 16,
+    /* Monster remains. remnantInvKey (src/data/monsterVariants.js) resolves
+       every variant down to a handful of these, so matching on 'remnants'
+       covers slime-remnants, skeleton-remnants and fire-goblin-remnants at
+       once -- and covers whatever the next monster resolves to on the day it
+       ships, which is the point of matching on family rather than on a list. */
+    remnants: 18, snowman: 26,
+    /* Gathered materials. The keys are built as <resType>_<name> by
+       gathering.js _harvestInvKey, so these three prefixes catch every tier
+       of every node: wood_pine_log, ore_copper, fish_trout and their
+       successors. */
+    ore_: 40, wood_: 24, fish_: 28,
+    /* Zone shards (ZONE_SHARDS, all 'shard_<zone>'). Rare -- one roll per
+       kill -- so they are worth an order more than the remains beside them. */
+    shard_: 110,
+    /* The legacy town shop's own keys, priced in the same family so the two
+       cannot disagree about what a slime is worth while they both exist. */
+    slime: 14, bat: 16, skeleton: 22, crab: 16, golem: 40,
+    logs: 20, rawfish: 20, cookedfish: 34, rarefish: 90,
   },
   BASE_DEFAULT: 20,
   /* He buys at half his asking price before decay -- the ordinary shopkeeper
      spread, and the thing that stops buy-then-sell-back being a money loop. */
   BUY_RATE: 0.5,
-  /* How many of a thing he needs before his offer halves. Small enough that a
-     single big farming run visibly moves the price (which is the feedback the
-     rule exists to give) and large enough that a first sale is not instantly
-     worthless. */
-  SOFTEN: 12,
+  /* How many of a thing he needs before his offer HALVES. Big enough that the
+     curve still has somewhere to fall at a realistic pile size: at 12 the
+     offer reached the 1-coin floor by about a hundred units, and past that
+     point buying the pile back down could not raise the price again because
+     it was already floored -- the rule silently stopped working at exactly the
+     stock levels a popular farm produces. Caught by the assertion that
+     draining a pile raises the next offer, which is the half of the owner's
+     rule that is easy to forget to check.
+     At 40, on an 18-coin item: 9 coins at an empty pile, 7 after ten sold,
+     4 after forty, 2 after a hundred. Visible movement across the range a
+     player actually generates, and still above the floor. */
+  SOFTEN: 40,
   /* He never offers zero: a price of 0 reads as "broken", not as "worthless",
      and an item you cannot give away clutters a bag forever. */
   MIN_BUY: 1,
