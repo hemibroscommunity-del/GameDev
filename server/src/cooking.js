@@ -322,8 +322,27 @@ export const cookingMethods = {
     } else if (item.effect === 'trap') {
       if (!ps.inventory) ps.inventory = {};
       ps.inventory.basic_trap = (ps.inventory.basic_trap || 0) + 1;
+    } else if (item.effect === 'dmgBuff') {
+      /* ═══ v2.3.2056: THE BUFF IS REAL NOW ═══
+       * Owner: "Make it worthwhile to buy a potion."
+       *
+       * It was not worth anything AT ALL. The line that used to sit here said
+       * "dmgBuff: no-op server-side (transient buff state)" -- and the server
+       * is authoritative for damage (CLAUDE.md wire section: client damage
+       * popups are prediction, `monster_hit` is the truth). So the tonic set a
+       * timer on the CLIENT, the client drew bigger numbers, and the damage
+       * the room actually applied was unchanged. Thirty-five coins for a
+       * visual effect.
+       *
+       * Nothing new is needed to fix it: ps._buffs.damage already exists for
+       * cooked food and combat.js already reads it at x1.20. This is the one
+       * line that was missing. */
+      if (!ps._buffs) ps._buffs = {};
+      const durMs = Math.max(1, Math.floor(item.duration || 60)) * 1000;
+      /* Extend from NOW rather than stacking: two tonics in a row give you
+         ten minutes, not a 20% that quietly became 44%. */
+      ps._buffs.damage = Date.now() + durMs;
     }
-    // dmgBuff: no-op server-side (transient buff state).
     this._saveRpg(session.id, ps);
     const ws = this._wsBySessionId(session.id);
     if (ws) this._sendPlayerState(ws, session.id);

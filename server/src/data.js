@@ -387,7 +387,13 @@ export const SHOP_ITEMS = {
       basicTrap:     { cost: 20, effect: 'trap' },
       staminaSalts:  { cost: 12, effect: 'stamina', power: 60 },
       manaShard:     { cost: 18, effect: 'mana', power: 40 },
-      whetstone:     { cost: 35, effect: 'dmgBuff' },
+      /* v2.3.2056: `duration` in SECONDS, like a cook recipe. 60s was the
+         old client-only timer and it was never worth 35 coins even in theory:
+         at x1.20 you kill 20% faster, so the buff pays for itself only if you
+         land about twenty kills inside it -- one every three seconds at 60s,
+         which nobody does. At 300s that is a kill every fifteen seconds, which
+         is what actually farming looks like. */
+      whetstone:     { cost: 35, effect: 'dmgBuff', duration: 300 },
     };
 
 /* v2.3.1120: declarative quest objectives.  An entry WITH `objective`

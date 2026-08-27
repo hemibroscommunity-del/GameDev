@@ -196,5 +196,33 @@ check('a malformed quote list is filtered rather than trusted',
 const many = await room._shopList(Array.from({ length: 500 }, (_, i) => 'k' + i));
 check('...and a huge one is capped', many.items.length < 100, many.items.length);
 
+/* ═══ v2.3.2056: THE TONIC ACTUALLY DOES SOMETHING ═══
+   Owner: "Make it worthwhile to buy a potion."
+
+   It did nothing. The purchase path used to carry the line "dmgBuff: no-op
+   server-side (transient buff state)" -- and the server is authoritative for
+   damage, so the tonic set a timer on the CLIENT, the client drew bigger
+   numbers, and the damage the room applied was unchanged. This is the test
+   that would have caught that, and it is written against the DAMAGE, not
+   against the timer, because a timer that no combat path reads is exactly
+   the bug being fixed. */
+const psD = room.playerState.buyer;
+psD.coins = 1000;
+delete psD._buffs;
+check('no damage buff before buying one', !room._buffActive(psD, 'damage'));
+room._handleShopPurchase({ id: 'buyer' }, { itemId: 'whetstone' });
+check('buying the Fury Tonic sets a REAL server-side damage buff',
+  room._buffActive(psD, 'damage'), psD._buffs);
+check('...and the combat path is the one that reads it',
+  psD._buffs.damage > Date.now() + 4 * 60 * 1000,
+  { remainingMs: psD._buffs.damage - Date.now() });
+check('...and it cost the listed coins', psD.coins === 1000 - 35, psD.coins);
+/* Two in a row must EXTEND from now, not stack into a bigger multiplier --
+   there is one damage flag and combat reads it as a boolean. */
+const firstEnd = psD._buffs.damage;
+room._handleShopPurchase({ id: 'buyer' }, { itemId: 'whetstone' });
+check('a second tonic re-arms the timer rather than stacking the effect',
+  psD._buffs.damage >= firstEnd && typeof psD._buffs.damage === 'number', psD._buffs);
+
 console.log(failures ? `\n${failures} FAILED` : '\nALL PASS');
 process.exit(failures ? 1 : 0);

@@ -113,7 +113,11 @@ export function VendorPanel(props) {
         art: '/icons/items/potion-fury.webp',
         icon: '🧪',
         cost: 35,
-        desc: '+15% damage for 60s',
+        /* v2.3.2056: the label was wrong twice. The multiplier is x1.20 in
+           BOTH the server's combat path and the client's prediction, never
+           1.15; and the duration is five minutes now, because sixty seconds
+           of it was never worth 35 coins. */
+        desc: '+20% damage for 5 min',
         effect: 'dmgBuff'
       }].map(function (item) {
         var canAfford = rpgState.coins >= item.cost;
@@ -212,7 +216,11 @@ export function VendorPanel(props) {
               try { S.channel.send({ type: 'shop_purchase', payload: { itemId: item.id } }); } catch (e) {}
             }
             if (item.effect === 'dmgBuff') {
-              stateRef.current._dmgBuff = Date.now() + 60000;
+              /* Local PREDICTION only, and it is overwritten by the server's
+                 own _buffs.damage on the next player_state (wsClient mirrors
+                 it). Kept in step with the server's duration so the HUD timer
+                 does not visibly jump when that echo lands. */
+              stateRef.current._dmgBuff = Date.now() + 300000;
             }
             setRpgState(_objectSpread({}, R));
             try {
