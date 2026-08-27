@@ -1,8 +1,11 @@
 # Event Capes + Merch Draw — build brief
 
-Written for a parallel session picking this up cold. Everything below was
-verified against the tree at `origin/main` (high-water v2.3.1949) on
-2026-08-27; file:line references are real, not remembered.
+**v2.3.1950** — written for a parallel session picking this up cold.
+Everything below was verified against the tree at `origin/main` (high-water
+v2.3.1949) on 2026-08-27; file:line references are real, not remembered.
+
+Implementers: claim your own tag above this one, and renumber before merge
+if a parallel session beat you to it.
 
 ---
 
