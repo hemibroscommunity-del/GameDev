@@ -23,7 +23,40 @@
  * FACE. The owner caught it in play. See docs/TRAPS.md for the full postmortem
  * and the rules it leaves. The diagnosis below stands; only the fix was wrong.
  *
- * ── WHAT IT TURNED OUT TO BE ──
+ * ── v2.3.1999: THE DIAGNOSIS BELOW IS WRONG ABOUT WHICH ARM ──
+ * Re-measured from the sheets, and then looked at. The claim below is that
+ * the sleeve goes missing on frames 8-11, where the near arm crosses the
+ * chest. It does not. Counting bare skin in the top 8 rows of the shirt's own
+ * band, with neck columns excluded, over one 14-frame cycle of jog-east:
+ *
+ *     frame   0  1  2  3  4  5  6  7  8  9 10 11 12 13
+ *     bare    4  8  6  4  6  3  3  0  0  2  0  0  0  1
+ *     armRow  5  3  4  4  4  5  3  8 10  5 11  8  8  7
+ *
+ * `armRow` is how far down the shirt's band the outer arm first shows bare.
+ * The frames the old note accuses (7-12) are the BEST ones — the arm stays
+ * covered to row 8-11 and nothing bare reaches the shoulder. The frames that
+ * are wrong are 0-6, and it is the TRAILING arm, the one swinging behind,
+ * not the one crossing in front: it is bare from the shoulder joint down,
+ * while the leading arm on the same frame carries a correct white sleeve.
+ * Rendered at 20x, frames 1-4, that is unmistakable.
+ *
+ * This matters beyond bookkeeping. v2.3.1986 built a "crossing arm" detector
+ * to fix frames it had no business touching, and that detector is what found
+ * the jaw and painted the face. The wrong target came first; the wrong
+ * mechanism followed it.
+ *
+ * One measured consequence for whoever fixes it: most of the bare trailing
+ * arm lies OUTSIDE the shirt's own bounding box (that is why the counts above
+ * are single digits — they only see inside it). So this cannot be closed by a
+ * fill rule that grows the shirt within its silhouette, the way the v2.3.1995
+ * keyline work did. It needs the shoulder EXTENDED over the arm, which is new
+ * art, which is the direction that adds pixels — the dangerous one. Whatever
+ * does it must hold the invariant v2.3.1986 lacked: never write above the
+ * shirt's own topmost row in that frame, and never on a column whose skin
+ * continues up out of the collar. Both are cheap to assert per frame.
+ *
+ * ── WHAT THE v2.3.1986 SESSION BELIEVED (kept for the record) ──
  * v2.3.1986 diagnosed it. The tee's coverage is PROPORTIONALLY constant across
  * the cycle (0.63-0.71 of the torso band, both halves), so the shirt was never
  * shrinking and the near arm crossing the chest for half the stride is correct
