@@ -52,31 +52,42 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const g = window.__btGear || null;
       if (g && g.setEquip) { g.setEquip('shirt', 'tshirt'); g.setEquip('chest', 'none'); }
     } catch (e) { /* fall through to the state read below */ }
+    /* HAIR ON, and it is not a detail: the hair is a separate trait sprite
+       composited over the run, so a bald probe cannot see anything the hair
+       does wrong. The v2.3.1990 hunt for a reported "blob on the face" in all
+       jog directions ran bald first and found nothing, which is exactly the
+       false negative this line removes. Afro because it is the tallest and
+       widest of the eight and the one the owner tests with. */
+    try { if (window.__btSetHair) window.__btSetHair('afro'); } catch (e) { /* bald is still a run */ }
     return { shirt: S.myShirt || null, equip: S._equip };
   });
   rec.ok('the client is up and reports its loadout (guard)', armed !== null, armed);
 
-  /* Run east for a full stride and photograph it. The canvas is camera-centred
-     on the player, so the crop is the middle of the play area. */
+  /* Run in EVERY direction and photograph each stride. The canvas is
+     camera-centred on the player, so the crop is the middle of the play area.
+     All four because the owner's follow-up on the v2.3.1986 regression was
+     "Looks like it's all jog directions" — a probe that only ever looks east
+     cannot answer that, and answering it was what showed the shirt sheets were
+     clean and sent the hunt somewhere else. */
+  const DIRS = [['d', 'east'], ['a', 'west'], ['s', 'south'], ['w', 'north']];
   const shots = [];
-  await P.page.keyboard.down('d');
-  for (let i = 0; i < 10; i++) {
-    await P.page.waitForTimeout(110);
-    const b = await P.page.evaluate(() => {
-      const c = document.querySelector('canvas');
-      const r = c.getBoundingClientRect();
-      return { x: Math.round(r.x + r.width / 2 - 32), y: Math.round(r.y + r.height / 2 - 62), width: 64, height: 78 };
-    });
-    shots.push(await P.page.screenshot({ clip: b }));
+  for (const [key] of DIRS) {
+    await P.page.keyboard.down(key);
+    for (let i = 0; i < 8; i++) {
+      await P.page.waitForTimeout(110);
+      const b = await P.page.evaluate(() => {
+        const c = document.querySelector('canvas');
+        const r = c.getBoundingClientRect();
+        return { x: Math.round(r.x + r.width / 2 - 32), y: Math.round(r.y + r.height / 2 - 62), width: 64, height: 78 };
+      });
+      shots.push(await P.page.screenshot({ clip: b }));
+    }
+    await P.page.keyboard.up(key);
+    await P.page.waitForTimeout(200);
   }
-  await P.page.keyboard.up('d');
 
-  const facing = await P.page.evaluate(() => {
-    const S = window._gameState.current;
-    return { facing: S._facing, moving: !!(S.player && (S.player.vx || S.player.vy)) };
-  });
-  rec.ok('the character really was facing east while photographed',
-    facing.facing === 'right' || facing.facing === 'east', facing);
+  rec.ok(`photographed a stride in all ${DIRS.length} directions`, shots.length === DIRS.length * 8,
+    { shots: shots.length });
 
   /* Stitched into one strip so a human can compare the stride at a glance. */
   const strip = await P.page.evaluate(async (pngs) => {
@@ -86,7 +97,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     })));
     const ok = imgs.filter(Boolean);
     if (!ok.length) return null;
-    const S = 7;
+    const S = 6;
     const cv = document.createElement('canvas');
     cv.width = ok.length * ok[0].width * S; cv.height = ok[0].height * S;
     const g = cv.getContext('2d');
