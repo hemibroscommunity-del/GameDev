@@ -11,6 +11,7 @@
      (destructured to the original names so the body is untouched).
    S is stateRef.current. */
 import { _onBroNonce, _onBroResult } from './broWallet.js'; /* v2.3.1576 */
+import { shopBus } from '../ui/mobile/shopBus.js';   /* v2.3.2050 */
 import { BT_AUDIO, ZONES, TILE, ARENA_CHAMPION_REWARD, ARENA_WIN_REWARD, CLAN_WAR_REWARDS, createDefaultCompStats, recalcDerived, DEATH_GOLD_PENALTY, PVP_THREAT_CONSENT_MS, updateZoneDimensions, generateZoneMap, trainDefense, getGuildRank, SKILL_GUILDS } from '@/data/index.js';
 import { MONSTER_VARIANTS, maybeTransformMonster, isRemnantSkull, xpMultFor } from '@/data/monsterVariants.js';
 import { prog3Live } from '@/data/prog3.js'; /* v2.3.1727: the kill-XP popup is a legacy number under prog3 */
@@ -166,6 +167,31 @@ export function processGameEvent(type, payload, S, deps) {
               } catch (_e) {}
               break;
             }
+          /* ═══ v2.3.2050: SHOPKEEPER BRO'S TWO ANSWERS ═══
+             Both are server-emitted (PRIVILEGED_EVENTS), so what arrives here
+             is the room's own arithmetic and not another client's claim.
+             `shop_state` is BROADCAST on every sale, not just to the player
+             who made it: the pile is public, so someone with the window open
+             watches it move as other people trade. */
+          case 'shop_state': {
+            const _sp = payload || {};
+            shopBus.setStock(_sp.items || []);
+            break;
+          }
+          case 'shop_result': {
+            const _sr = payload || {};
+            if (_sr.ok && _sr.kind === 'shop_sell') {
+              shopBus.setNote(`Sold ${_sr.sold} for ${_sr.paid} coins.`, true);
+            } else if (_sr.ok && _sr.kind === 'shop_buy') {
+              shopBus.setNote(`Bought ${_sr.bought} for ${_sr.cost} coins.`, true);
+            } else {
+              /* His refusal, in his words -- "He's full of those" reads as a
+                 shopkeeper; "error" reads as a broken game. */
+              shopBus.setNote(_sr.error || 'He shakes his head.', false);
+            }
+            break;
+          }
+
           case 'chat':
             {
               /* v2.3.767: body moved to src/game/chat.js (Phase 2). */

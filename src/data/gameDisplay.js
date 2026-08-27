@@ -3512,6 +3512,7 @@ export const NPC_DATA = [{
      level, and what you actually want to know about him is what he does. */
   namePlate: true,
   plateRole: 'Shopkeeper',
+  shop: true,          /* v2.3.2050: walking up to him opens his trade window */
   x: 700, y: 1060,
   spawnX: 700, spawnY: 1060,
   renderX: 700, renderY: 1060,

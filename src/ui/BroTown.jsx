@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { shopBus } from './mobile/shopBus.js';   /* v2.3.2050: Shopkeeper Bro's window */
 import { zonePlayerScale } from '@/data/zones.js'; /* v2.3.1574: the one copy of the vista perspective curve */
 import { ExtractionSwipeLayer } from './ExtractionSwipeLayer.jsx';
 /* v2.3.855: first UI-panel extraction — the info/online-count popup. */
@@ -5070,6 +5071,14 @@ export var BroTown = function BroTown(_ref0) {
             if (_pOk && _pq) {
               S._npcProxLatch = { npc: _pn, ready: _pqReady };
               setQuestPanel({ npc: _pn.name, quest: _pq.quest, status: _pq.status, npcRef: _pn });
+            } else if (_pOk && _pn.shop && !shopBus.open) {
+              /* v2.3.2050: walking up to a shopkeeper opens his window, the
+                 same proximity gate a quest giver uses -- _pOk already means
+                 "close enough, not in combat, nothing else open". The latch is
+                 what stops it reopening every frame after you close it while
+                 still standing next to him. */
+              S._npcProxLatch = { npc: _pn, ready: false };
+              shopBus.setOpen(true);
             }
           }
         }
