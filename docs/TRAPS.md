@@ -575,3 +575,53 @@ precisely so ESM parses as ESM regardless of the nearest
 
 **Receipt:** `server/src/index.js` `_isMysteryGrade` / `_revealLadder`
 / `_revealsFor`, `tools/dev/precheck.mjs` (the temp-`.mjs` copy).
+
+---
+
+## A skin blob on a character sheet is NOT the body part you think it is
+*(v2.3.1990, after shipping v2.3.1986 and having the owner catch it in play)*
+
+**The trap.** Wanting to find "the arm that crosses the chest" on
+`jog-east`, I isolated skin-coloured pixels, cut away everything above a
+neck line (the tee's top row + 8), took connected components of what was
+left, and picked the blob that sat inside the shirt's x-span. That reads
+as careful. It is wrong, and the way it is wrong is silent.
+
+**Why.** The head, the neck, the torso and both arms are ONE connected
+skin region. Cutting horizontally above a neck line does not sever the
+head from the body — it removes the top of the skull and leaves the JAW
+still joined to the neck and the torso. On frames 9, 10 and 11 the blob
+my rule selected as "the crossing arm" was therefore the jaw-and-neck
+mass, and painting its top rows shirt-coloured put a white blob **on the
+character's face**. Measured after the report: 7, 23 and 37 pixels of
+head-connected skin painted over, worst on frame 11 across the chin.
+
+**Why the verification missed it.** Two ways, both instructive:
+- The before/after contact sheet was cropped to the torso (y 40-76) to
+  make the sleeve legible. The blob landed at y 53-57 — inside the crop,
+  but read as "sleeve" because that is what I was looking for.
+- The in-game stride strip DID contain it, at roughly two screen pixels.
+  A 37-pixel artifact on a 128-pixel frame is invisible at game size in a
+  strip and obvious to a player watching one character run.
+
+**Rules this leaves:**
+- Never identify a body part by connectivity alone on a sheet where the
+  skin is one region. Anchor to something that actually marks the part:
+  the head sheet (`jog-<dir>-head.png`), the measured crown, or an
+  explicit per-frame region — and then ASSERT the result does not
+  intersect the head before writing a pixel.
+- Any tool that recolours body pixels must state, as an assertion and not
+  a comment, which regions it is forbidden to touch. "It looked right in
+  the preview" is not that assertion.
+- Verify art changes against the WHOLE figure, not a crop chosen to make
+  the change legible. The crop that proves your fix is the crop that
+  hides your side effect.
+- An in-game screenshot at game size is necessary but not sufficient for
+  a change measured in tens of pixels. Diff the sheets and report where
+  the changed pixels landed relative to named regions.
+
+**Receipt:** `public/sprites/gear/shirt/tshirt/jog-east.png` (reverted to
+its pre-v2.3.1986 bytes), `tools/gear/sleeve_crossing_arm.py` (deleted).
+The underlying defect it tried to fix — the tee has no sleeve on the arm
+that crosses the chest, frames 8-11 — is REAL and still open; see
+`tools/qa/mp/mp-shirtarm.mjs`.

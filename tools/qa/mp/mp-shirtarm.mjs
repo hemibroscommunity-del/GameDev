@@ -15,18 +15,26 @@
  * Captures a strip of the character across a full stride, cropped to the
  * figure and zoomed, so the frames can be compared side by side.
  *
- * ── WHAT IT TURNED OUT TO BE, AND WHAT THE STRIP SHOULD SHOW NOW ──
- * v2.3.1986 answered it. The tee's coverage is PROPORTIONALLY constant across
+ * ── STATUS: STILL OPEN (v2.3.1990) ──
+ * v2.3.1986 attempted a fix and was REVERTED the same night: its "crossing
+ * arm" detector picked the jaw-and-neck mass on frames 9-11 (the head, neck,
+ * torso and arms are one connected skin region, so a horizontal neck cut does
+ * not sever the head) and painted a shirt-coloured blob on the character's
+ * FACE. The owner caught it in play. See docs/TRAPS.md for the full postmortem
+ * and the rules it leaves. The diagnosis below stands; only the fix was wrong.
+ *
+ * ── WHAT IT TURNED OUT TO BE ──
+ * v2.3.1986 diagnosed it. The tee's coverage is PROPORTIONALLY constant across
  * the cycle (0.63-0.71 of the torso band, both halves), so the shirt was never
  * shrinking and the near arm crossing the chest for half the stride is correct
  * animation. What was missing was the SLEEVE: on frames 8-11 the arm tucks in
  * front of the torso and the artist's deliberate cut-out took the sleeve with
  * it, leaving the arm bare from the shoulder JOINT down — the character read
  * as wearing a tank top for those four frames.
- * tools/gear/sleeve_crossing_arm.py puts a short sleeve back on exactly those
- * frames. So in this strip EVERY figure should show white at the shoulder of
- * the near arm; a figure whose arm is skin-coloured all the way up to the neck
- * is the bug returning.
+ * So in this strip, the figures whose near arm tucks in front of the torso
+ * still show that arm bare to the shoulder joint. That is the open bug. When
+ * it is fixed, they should show white at the shoulder — and the fix must
+ * assert it never touches the head, which is exactly what v2.3.1986 did not do.
  */
 import * as H from './harness.mjs';
 
