@@ -775,3 +775,70 @@ opening measures its true length and is refused.
 the pinned source rev), `tools/qa/mp/mp-shirtkeyline.mjs` (per-column
 outline widths and a near-black budget per sheet),
 `src/rendering/characterPortrait.js` (`SHIRT_ART_VER`).
+
+---
+
+## §28 — A test that reports "not found" is worse than no test (v2.3.2000)
+
+Found by sweeping ~59 scenarios in one night: **three were dead.** Not
+failing — *dead*. They ran, they reported, and what they reported was
+that they could not find the thing they were written to measure. From
+the outside that looks identical to coverage.
+
+The three:
+
+| scenario | asserts | what happened |
+|---|---|---|
+| `layer` | quest turn-in is legible (owner: "all faded like you can barely see it") | v2.3.1827 split the turn-in into two screens; the strings it matched — "Redeem Reward", "Choose a skill to train" — exist nowhere in the codebase now |
+| `hudface` | the HUD portrait matches the character | the owner deliberately REMOVED that portrait at v2.3.1848-1850 ("the band is a summary, not a head") |
+| `statpeek` | what a stat point buys | the Build section still exists; the scenario cannot open it |
+
+**Why none of them was noticed.** CI's `playable` job runs `questline`
+and nothing else (owner directive, 2026-07-16 — no live players, CI
+speed wins). The other ~133 scenarios run only when somebody types
+their name. So a scenario can rot for months and the only signal is
+that nobody has looked.
+
+**The mechanism is almost always the same: selecting UI by LABEL.**
+Labels are owner-facing copy and change constantly; a rename turns
+every `:has-text("...")` and every `/Redeem Reward/` into a silent
+miss. The codebase already knew this and said so — QuestOfferPanel.jsx
+keeps `bt-quest-turnin` on the confirm button explicitly *"because that
+class is what the QA harnesses click by: renaming the LABEL in
+v2.3.1764 broke three scenarios at once, each swallowing the miss with
+.catch()"*. `layer` was one of the three that never got the memo.
+
+**Rules this leaves:**
+- Select by a STABLE CLASS or a data attribute, never by label text.
+  If a control has no stable hook, add one — that is cheaper than the
+  test quietly dying.
+- A "cannot find it" result must fail LOUDLY and distinctly from "found
+  it and it is wrong". Guard assertions that name the thing they could
+  not find (`{err: 'no claim panel', buttons: [...]}`) turn a mystery
+  into a diagnosis.
+- **Prove a new scenario is non-vacuous.** Run it against the broken
+  state and require it to FAIL there, on the specific cases reported.
+  v2.3.1993's hair scenario did this properly (fails on exactly the
+  four reported hat/facings against the old masks); it is the only
+  thing that separates a real test from one that passes because it
+  measured nothing.
+- Assert the PRECONDITIONS a measurement depends on, not just the
+  measurement. v2.3.2001's camera-framing assertions exist because a
+  pinning assumption stopped holding and the scenario went on
+  confidently reporting nonsense (a mask untouched in months read as
+  "45% bare scalp").
+- **Sweep periodically.** These three cost one night of wall-clock to
+  find and would not have surfaced any other way. Yield is not uniform:
+  all three were UI-surface scenarios reaching into the DOM. The
+  multiplayer and economy scenarios (117 assertions across trade,
+  party, social, friends, chat, clan, market, arena) were perfect,
+  because they assert against game state and the wire, which a UI
+  redesign cannot silently blind.
+- Distinguish dead from FLAKY before acting. `peershield` failed 3
+  assertions in a 14-scenario batch and passed 9/9 alone — it is
+  load-sensitive, not rotten. One isolated re-run separates them.
+
+**Receipt:** `tools/qa/mp/mp-layer.mjs` (rewritten to select by class),
+`tools/qa/mp/mp-hairmask.mjs` (asserts its own framing),
+`tools/qa/mp/run.mjs` (warns when dist/ is stale — a different way to
+measure the wrong thing confidently).
