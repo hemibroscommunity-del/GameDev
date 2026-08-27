@@ -145,5 +145,35 @@ check("a '__proto__' item key does not corrupt the pile",
 check('shop_state cannot be forged by a client', PRIVILEGED_EVENTS.has('shop_state'));
 check('shop_result cannot be forged by a client', PRIVILEGED_EVENTS.has('shop_result'));
 
+/* ═══ v2.3.2051: THE STAPLES ═══
+   The old town shop sold three consumables out of infinite stock and was
+   their ONLY source. Retiring it without these would not have replaced a shop,
+   it would have deleted traps, whetstones and antidotes -- and the
+   player-supplied pile can never cover them, because nobody can sell him a
+   whetstone they were never able to buy. */
+const listS = await room._shopList();
+for (const k of ['trap_basic', 'whetstone', 'antidote']) {
+  check(`he always stocks ${k}, with no pile needed`,
+    !!listS.items.find((i) => i.key === k && i.staple), listS.items.map((i) => i.key));
+}
+check('...at the OLD shop\'s prices, so a replacement is not a silent reprice',
+  listS.items.find((i) => i.key === 'whetstone').sell === 50
+  && listS.items.find((i) => i.key === 'trap_basic').sell === 20
+  && listS.items.find((i) => i.key === 'antidote').sell === 30,
+  listS.items.filter((i) => i.staple));
+
+psB.coins = 500; psB.inventory = {};
+const bs = await room._shopBuy(psB, 'whetstone', 2);
+check('a staple can be bought when he holds no pile of it at all',
+  bs.ok && bs.bought === 2 && psB.inventory.whetstone === 2, bs);
+check('...and costs the listed price', bs.cost === 100, bs);
+/* Infinite stock means the decay has nothing to read -- and a staple that got
+   cheaper to sell as you bought more would be a money printer. */
+const bs2 = await room._shopBuy(psB, 'whetstone', 2);
+check('...and buying more does not move its price', bs2.cost === 100, bs2);
+const ss = await room._shopSell(psB, 'whetstone', 1);
+check('he buys a staple back BELOW cost, so buy-then-sell-back is a loss '
+    + 'rather than a loop', ss.ok && ss.paid < 50, ss);
+
 console.log(failures ? `\n${failures} FAILED` : '\nALL PASS');
 process.exit(failures ? 1 : 0);

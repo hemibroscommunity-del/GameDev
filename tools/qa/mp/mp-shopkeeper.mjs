@@ -117,6 +117,27 @@ export async function run({ browser, wsPort, webPort, rec }) {
     (await bag(B)) === bBag0 + 1, { before: bBag0, after: await bag(B) });
   rec.ok('...and it costs them coins', (await purse(B)) < bCoins0, { before: bCoins0, after: await purse(B) });
 
+  /* ── HE STILL SELLS WHAT THE OLD TOWN SHOP SOLD (v2.3.2051) ──
+     That shop was the only source of these three, so a replacement that
+     dropped them would have deleted them from the game rather than moved
+     them. Bought here through the real UI, from a pile he holds none of. */
+  const staple = await A.page.evaluate(() => {
+    const b = document.querySelector('[data-shop-buy="whetstone"]');
+    const row = document.querySelector('[data-shop-row="whetstone"]');
+    return { present: !!b, disabled: b ? b.disabled : null, label: b ? b.textContent.trim() : null,
+      text: row ? row.textContent.replace(/\s+/g, ' ') : null };
+  });
+  rec.ok('he stocks the old town shop\'s consumables, at its prices',
+    staple.present && /50g/.test(staple.label || ''), staple);
+  rec.ok('...listed as always in stock rather than with a count he does not have',
+    /always in stock/.test(staple.text || ''), staple);
+  const wBefore = await H.readState(A, (S) => ((S.rpg || {}).inventory || {}).whetstone || 0);
+  await A.page.click('[data-shop-buy="whetstone"]');
+  await A.page.waitForTimeout(1500);
+  rec.ok('...and one can actually be bought', 
+    (await H.readState(A, (S) => ((S.rpg || {}).inventory || {}).whetstone || 0)) === wBefore + 1,
+    { wBefore });
+
   await A.page.screenshot({ path: H.REPO + '/tools/qa/mp/out/shopkeeper-panel.png' }).catch(() => {});
   for (const P of [A, B]) {
     const errs = P.logs.filter((l) => String(l).startsWith('pageerror'));

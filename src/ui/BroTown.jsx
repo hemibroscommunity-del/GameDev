@@ -25,7 +25,6 @@ import { EncyclopediaPanel } from './panels/EncyclopediaPanel.jsx';
 /* v2.3.865: skills panel extraction. */
 import { SkillsPanel } from './panels/SkillsPanel.jsx';
 /* v2.3.866: shop panel extraction. */
-import { ShopPanel } from './panels/ShopPanel.jsx';
 /* v2.3.869: stat screen panel extraction. */
 import { StatScreenPanel } from './panels/StatScreenPanel.jsx';
 /* v2.3.870: quest panel extraction (logic already in @/game/quests.js). */
@@ -10457,20 +10456,18 @@ export var BroTown = function BroTown(_ref0) {
       display: 'flex',
       alignItems: 'center'
     }
-  }, "\u26A0\uFE0F Dark! Monsters hear you.")), showEmotes && /*#__PURE__*/React.createElement(EmotePanel, { sendEmote: sendEmote }), nearBuilding === 0 && /*#__PURE__*/React.createElement("button", {
-    className: "bt-interact-prompt",
-    style: {
-      bottom: 160
-    },
-    onTouchStart: function onTouchStart(e) {
-      e.preventDefault();
-      setShowShop(true);
-    },
-    onMouseDown: function onMouseDown(e) {
-      e.preventDefault();
-      setShowShop(true);
-    }
-  }, "\uD83C\uDFEA Open Shop"), showShop && rpgState && /*#__PURE__*/React.createElement(ShopPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setShowShop: setShowShop }), nearBuilding !== null && BUILDINGS[nearBuilding] && /*#__PURE__*/React.createElement("button", {
+  }, "\u26A0\uFE0F Dark! Monsters hear you.")), showEmotes && /*#__PURE__*/React.createElement(EmotePanel, { sendEmote: sendEmote }), /* v2.3.2051 (owner: "Yeah replace it"): the building-side town shop is
+     RETIRED -- both the "Open Shop" prompt and the ShopPanel it opened.
+     Shopkeeper Bro does this job now, and does it server-side: the old
+     panel credited coins and edited the bag in the CLIENT and then told
+     the server, which is the same self-credit shape the marketplace note
+     calls free duplication for anyone with devtools.
+     Its three consumables were not dropped with it -- traps, whetstones
+     and antidotes are staples on his list at the SAME prices (shop.js
+     SHOP.STAPLES), because this shop was their only source and deleting
+     it without them would have removed them from the game rather than
+     moved them. */
+    null, nearBuilding !== null && BUILDINGS[nearBuilding] && /*#__PURE__*/React.createElement("button", {
     className: "bt-interact-prompt",
     onTouchStart: function onTouchStart(e) {
       e.preventDefault();

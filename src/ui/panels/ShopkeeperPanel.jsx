@@ -135,8 +135,12 @@ export function ShopkeeperPanel() {
                   overflow: 'hidden', textOverflow: 'ellipsis' }}>{prettyKey(r.key)}</div>
                 <div style={{ fontSize: 11, color: 'var(--ui-text-muted, #8FA3A0)',
                   fontVariantNumeric: 'tabular-nums' }}>
-                  {/* His count first: it is the number that sets the price. */}
-                  he holds {r.qty}{mine ? ` · you have ${mine}` : ''}
+                  {/* His count first: it is the number that sets the price.
+                      A STAPLE has no count -- he makes those, so there is no
+                      pile for the decay to read and a number would be a lie
+                      that never changes. */}
+                  {r.staple ? 'always in stock' : `he holds ${r.qty}`}
+                  {mine ? ` · you have ${mine}` : ''}
                 </div>
               </div>
               <button
@@ -152,11 +156,11 @@ export function ShopkeeperPanel() {
               </button>
               <button
                 type="button" data-shop-buy={r.key}
-                disabled={!r.qty || shopBus.busy || (r.sell != null && coins < r.sell)}
+                disabled={(!r.staple && !r.qty) || shopBus.busy || (r.sell != null && coins < r.sell)}
                 onClick={() => act('shop_buy', r.key)}
                 className="button-secondary"
                 style={{ minHeight: 40, minWidth: 78, padding: '0 8px', fontSize: 12,
-                  opacity: (!r.qty || shopBus.busy || (r.sell != null && coins < r.sell)) ? 0.45 : 1 }}
+                  opacity: ((!r.staple && !r.qty) || shopBus.busy || (r.sell != null && coins < r.sell)) ? 0.45 : 1 }}
               >
                 Buy {r.sell != null ? `${r.sell}g` : ''}
               </button>

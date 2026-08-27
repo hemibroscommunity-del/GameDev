@@ -118,6 +118,25 @@ export const SHOP = {
   /* Most a player can move in one action, so a fat-fingered quantity cannot
      empty a bag or a purse in a single tap. */
   MAX_QTY_PER_OP: 100,
+
+  /* ═══ v2.3.2051: THE GOODS HE MAKES, NOT THE ONES HE IS BROUGHT ═══
+   * Owner: replace the old town shop with him.
+   *
+   * That shop sold three consumables out of INFINITE stock and was their only
+   * source in the game. Retiring it without these would not have replaced a
+   * shop, it would have deleted traps, whetstones and antidotes -- and the
+   * player-supplied pile can never cover them, because nobody can sell him a
+   * whetstone they were never able to buy.
+   *
+   * Prices are the old shop's, unchanged (SHOP_ITEMS_FOR_SALE in
+   * gameSystems.js): a replacement that quietly re-prices the consumables is a
+   * balance change smuggled in as a refactor.
+   *
+   * They do NOT decay. Decay is a statement about scarcity, and a man who can
+   * always make another whetstone is not scarce -- so a staple is one price
+   * both ways, forever, and his buy-back is the ordinary spread below cost so
+   * buying one and selling it straight back is a loss rather than a loop. */
+  STAPLES: { trap_basic: 20, whetstone: 50, antidote: 30 },
 };
 
 export const shopMethods = {
@@ -184,9 +203,26 @@ export const shopMethods = {
   /** The public listing: every line carries BOTH prices, because a player
    *  deciding whether to sell needs to see what he is already holding -- that
    *  is the number that sets their offer. */
+  _shopStaple(key) {
+    return Object.prototype.hasOwnProperty.call(SHOP.STAPLES, key) ? SHOP.STAPLES[key] : null;
+  },
+
   async _shopList() {
     const stock = await this._shopStock();
     const items = [];
+    /* Staples first and always present, stock or no stock: they are what the
+       shop IS, and a player looking for an antidote should not have to hope
+       someone sold him one. `qty: null` rather than a number -- the panel
+       shows "always in stock" instead of a count, because a count would be a
+       lie that changes nothing. */
+    for (const k in SHOP.STAPLES) {
+      items.push({
+        key: k, qty: null, staple: true,
+        buy: Math.max(SHOP.MIN_BUY, Math.floor(SHOP.STAPLES[k] * SHOP.BUY_RATE)),
+        sell: SHOP.STAPLES[k],
+        full: false,
+      });
+    }
     for (const k in stock) {
       items.push({
         key: k,
@@ -210,6 +246,18 @@ export const shopMethods = {
     if (!ps.inventory) ps.inventory = {};
     const have = Math.floor(Number(ps.inventory[key]) || 0);
     if (have < want) return { ok: false, error: "You don't have that many" };
+
+    /* A staple sells at one flat price however many you bring: there is no
+       pile to grow, so there is nothing for the decay to read. */
+    const stapleVal = this._shopStaple(key);
+    if (stapleVal !== null) {
+      const unit = Math.max(SHOP.MIN_BUY, Math.floor(stapleVal * SHOP.BUY_RATE));
+      ps.inventory[key] = have - want;
+      if (ps.inventory[key] <= 0) delete ps.inventory[key];
+      ps.coins = Math.max(0, Math.floor(Number(ps.coins) || 0) + unit * want);
+      return { ok: true, sold: want, paid: unit * want, coins: ps.coins,
+        stock: null, nextBuy: unit, staple: true, settled: true };
+    }
 
     const stock = await this._shopStock();
     let held = stock[key] || 0;
@@ -243,6 +291,19 @@ export const shopMethods = {
     if (!ps || typeof key !== 'string' || !key) return { ok: false, error: 'Bad request' };
     const want = Math.floor(Number(qty) || 0);
     if (!(want >= 1 && want <= SHOP.MAX_QTY_PER_OP)) return { ok: false, error: 'Bad quantity' };
+
+    const stapleCost = this._shopStaple(key);
+    if (stapleCost !== null) {
+      const cost = stapleCost * want;
+      const purse = Math.floor(Number(ps.coins) || 0);
+      if (purse < cost) return { ok: false, error: 'Not enough coins' };
+      ps.coins = purse - cost;
+      if (!ps.inventory) ps.inventory = {};
+      ps.inventory[key] = (Math.floor(Number(ps.inventory[key]) || 0)) + want;
+      return { ok: true, bought: want, cost, coins: ps.coins, stock: null,
+        nextBuy: Math.max(SHOP.MIN_BUY, Math.floor(stapleCost * SHOP.BUY_RATE)),
+        staple: true, settled: true };
+    }
 
     const stock = await this._shopStock();
     const held = stock[key] || 0;
