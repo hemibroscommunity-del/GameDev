@@ -12,6 +12,7 @@
  * hits, and requires exactly three to survive.
  */
 import { GameRoom } from '../src/index.js';
+import { EVENT_LIVE } from '../src/eventcapes.js';
 
 function makeState() {
   const store = new Map();
@@ -226,18 +227,29 @@ await room._capeLedgersLoad();
   r7._opSeen = async () => false; r7._opStamp = async () => {};
   await r7._capeLedgersLoad();
 
-  /* v2.3.2028: the event is LIVE with no flags set at all -- that is the
-     whole point of the flip, and it is asserted here rather than assumed
-     because every other test in this file mocks the room by hand and would
-     not notice if the default went back to off. */
+  /* ── v2.3.2029: the two switches, driven separately ──
+     EVENT_LIVE is the owner's start button (a source constant, flipped by
+     merging).  disable_event_capes is the operator's emergency stop.  Both
+     branches of the first one are driven here via `_eventLive`, because a
+     module constant cannot be stubbed and the branch that is NOT currently
+     shipped is precisely the one that has to work on the day. */
   r7._liveFlags = undefined;
-  check('with no flags set at all, the event is OPEN', r7._capeEventOpen() === true,
+
+  r7._eventLive = false;
+  check('EVENT_LIVE false keeps the event closed', r7._capeEventOpen() === false,
     r7._capeEventOpen());
+  check('...and no ticket can drop while it is closed at the kill site',
+    !(r7._capeEventOpen() && r7._claimCapeTicket('crimson', 'nobody', { inventory: {} }, always)),
+    'a ticket dropped with the event closed');
+
+  r7._eventLive = true;
+  check('EVENT_LIVE true with no flags set opens the event',
+    r7._capeEventOpen() === true, r7._capeEventOpen());
 
   const p7 = { inventory: {} };
   r7.playerState.latecomer = p7;
   const tkt = r7._claimCapeTicket('crimson', 'latecomer', p7, always);
-  check('a ticket drops with no flag set', tkt === 'goldticket_crimson', tkt);
+  check('a ticket drops once the event is live', tkt === 'goldticket_crimson', tkt);
 
   r7._liveFlags = { disable_event_capes: true };   /* the kill switch */
   /* _claimCapeTicket is deliberately NOT self-gating -- the guard lives at the
@@ -247,14 +259,32 @@ await room._capeLedgersLoad();
      returned: the claim is unguarded, so it does hand out a second ticket
      here.  An assertion that cannot fail is worse than no assertion, because
      it reads as coverage. */
-  check('the kill switch closes the event', r7._capeEventOpen() === false,
-    r7._capeEventOpen());
+  check('the kill switch closes the event even while EVENT_LIVE is true',
+    r7._capeEventOpen() === false, r7._capeEventOpen());
   await r7._handleCapeRedeem({ id: 'latecomer' }, { invKey: tkt, opId: 'late1' });
   const led7 = await r7._capeLedger('crimson');
   check('a ticket redeems AFTER the kill switch is thrown -- it never expires',
     led7.redeemed.indexOf('latecomer') >= 0 && !p7.inventory[tkt], [led7.redeemed, p7.inventory]);
   check('...and the cape is what the player is then wearing',
     r7._capeOwnedBy('latecomer') === 'crimson', r7._capeOwnedBy('latecomer'));
+}
+
+/* ── what is ACTUALLY SHIPPED right now ──
+ * Everything above overrides the constant to test both branches, which means
+ * none of it would notice the shipped value being wrong.  This is the only
+ * assertion that reads the real one.  It is deliberately not `=== false`:
+ * flipping EVENT_LIVE to true IS the owner's start button, and a test that
+ * fails when they push the button would be a test telling them not to hold
+ * their own event.  It asserts the type instead -- that the switch is a
+ * boolean and the gate agrees with it on a room with nothing else set. */
+{
+  const s8 = makeState();
+  const r8 = new GameRoom(s8, mockEnv);
+  await r8._capeLedgersLoad();
+  check('EVENT_LIVE is a boolean', typeof EVENT_LIVE === 'boolean', typeof EVENT_LIVE);
+  check('a fresh room with no overrides agrees with the shipped EVENT_LIVE',
+    r8._capeEventOpen() === EVENT_LIVE, { open: r8._capeEventOpen(), EVENT_LIVE });
+  console.log(`      (shipped state: the contest is ${EVENT_LIVE ? 'RUNNING' : 'not running'})`);
 }
 
 console.log(failures ? `\n${failures} FAILURE(S)` : '\neventcapes: ALL PASS');

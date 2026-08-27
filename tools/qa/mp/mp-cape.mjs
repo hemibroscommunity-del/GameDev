@@ -74,21 +74,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
    * is a contest prize), so the test follows the real path instead of the
    * convenient one.
    *
-   * v2.3.2028: the event no longer needs opening -- it is live by default and
-   * only `disable_event_capes` closes it -- so the only flag set here is
-   * `event_cape_rate`, through the operator API rather than a test hook,
-   * because it makes the drop certain instead of 1-in-200. A test-only back
-   * door would prove the back door works. */
-  const flag = async (name, value) => {
-    const r = await fetch(`http://127.0.0.1:${wsPort}/api/admin/flags`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${H.ADMIN_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, value }),
-    });
-    return r.ok;
-  };
-  const okB = await flag('event_cape_rate', 1);
-  rec.ok('the rate flag could be set through the operator API (guard)', okB, { okB });
+   * v2.3.2029: no flag is set here at all any more. This scenario seeds the
+   * TICKET and tests everything after it, so the drop rate never mattered --
+   * the `event_cape_rate` write this used to do was vestigial from an earlier
+   * draft that took the drop. Worth stating rather than deleting quietly: the
+   * event now ships CLOSED (EVENT_LIVE, eventcapes.js) and this file passes
+   * anyway, which is itself the proof of the never-expires property -- a
+   * ticket redeems, and its cape renders, with the contest shut. */
 
   /* The TICKET is seeded through POST /api/admin/grant -- the shipped operator
      surface the harness already uses for gold, not a test backdoor. The drop

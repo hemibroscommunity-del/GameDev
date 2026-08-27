@@ -48,6 +48,26 @@ export const CAPE_LEDGER_KEY = (capeId) => `capegrant:${capeId}`;
    guard _handleEatRequest uses (a plain {} no-ops on '__proto__'). */
 export const TICKET_PREFIX = 'goldticket_';
 
+/* ═══ v2.3.2029: THE SWITCH IS THIS LINE ═══
+ *
+ * false = no ticket can drop.  true = the contest is running.
+ *
+ * Owner's call, and it is the right one for how they actually work: they do
+ * not want to run a curl command against the production worker to start their
+ * own event, so the start button is a one-line code change that goes live by
+ * merging a PR.  Flip this to true, merge, done.
+ *
+ * THE COST, so nobody is surprised by it on the day: merging deploys the
+ * worker, which briefly disconnects everyone online and cold-starts the room
+ * (CLAUDE.md, Deployment).  Merge the enable BEFORE players gather, not while
+ * they are standing around waiting for it.
+ *
+ * Everything else about the contest is unchanged and needs no switch: the cap
+ * of three ends it on its own, tickets already won never expire, and
+ * disable_event_capes remains as a no-deploy emergency stop for an operator
+ * who has the admin key. */
+export const EVENT_LIVE = false;
+
 export const EVENT_CAPES = {
   /* id -> the cape granted, its ticket, and how many exist. */
   crimson: { cape: 'crimson', ticket: `${TICKET_PREFIX}crimson`, cap: 3 },
@@ -80,29 +100,44 @@ export const eventCapeMethods = {
     } catch (e) { /* storage unavailable: the in-memory ledger still holds the cap */ }
   },
 
-  /** Is the event open?  ON BY DEFAULT since v2.3.2028, with a kill switch.
+  /** Is the event open?  EVENT_LIVE (above) AND not emergency-stopped.
    *
-   *  It shipped the other way round -- off until an `event_capes` flag was
-   *  set -- and that was wrong for this game.  Flipping that flag needs the
-   *  ADMIN_KEY secret and a curl command against the live worker, which is a
-   *  real barrier for an owner who does not work in a terminal, to buy an
-   *  ability (start the event to the minute, from a phone, without a deploy)
-   *  that a five-person demo does not need.  The owner said so plainly: the
-   *  drop should be live from the build.  A prize nobody can switch on is
-   *  not scarce, it is absent.
+   *  Three versions, and the shape of the argument is worth keeping because
+   *  the obvious answer was wrong twice:
    *
-   *  So it now matches how every other switchable system here already works:
-   *  on by default, off via `disable_*` (disable_jackpot cadence.js:123,
-   *  disable_dungeons dungeon.js:226, disable_threats threat.js:80,
-   *  disable_weapon_drops index.js:3263).  The kill switch still needs the
-   *  admin key -- but needing the key to STOP something is the safe
-   *  direction, and the cap of three ends the event on its own anyway.
+   *  v2.3.2026 shipped it as an opt-in live-ops flag.  Wrong, because
+   *  flipping that flag needs the ADMIN_KEY secret and a curl command against
+   *  the production worker -- a real barrier for an owner who does not work
+   *  in a terminal, to buy an ability (start to the minute, from a phone, no
+   *  deploy) that a five-person demo does not need.
+   *
+   *  v2.3.2028 made it live-by-default with a `disable_*` kill switch,
+   *  matching disable_jackpot (cadence.js), disable_dungeons (dungeon.js),
+   *  disable_threats (threat.js), disable_weapon_drops (index.js).  Also
+   *  wrong, but only in timing: it meant the contest started the moment it
+   *  merged, and the owner wants to choose the moment.
+   *
+   *  v2.3.2029 splits the two things that were being conflated.  WHETHER the
+   *  contest runs is EVENT_LIVE, a source constant the owner starts by
+   *  merging a PR -- no key, no terminal.  Stopping it EARLY once running is
+   *  still disable_event_capes, which needs the key but needs no deploy.  The
+   *  convention above governs the emergency stop, which is what it was always
+   *  for; it was never meant to be the start button.
    *
    *  _flagOn (liveops.js), not a hand-rolled read: the cache is `_liveFlags`
    *  and `this.liveflags` is nothing at all, so a hand-rolled version was
    *  permanently false and the drop would never have fired at all. */
   _capeEventOpen() {
-    if (typeof this._flagOn !== 'function') return true;   /* no live-ops: still live */
+    /* `this._eventLive` overrides the shipped constant.  It exists so the
+       suite can drive BOTH branches -- a module constant cannot be stubbed,
+       and a test that can only ever see the shipped value would assert
+       nothing about the other one, which is the branch that matters on the
+       day.  It is a room-instance field: no wire payload assigns onto the
+       room (no Object.assign(this, ...) anywhere in server/src), so a client
+       cannot reach it. */
+    const live = (typeof this._eventLive === 'boolean') ? this._eventLive : EVENT_LIVE;
+    if (!live) return false;
+    if (typeof this._flagOn !== 'function') return true;   /* no live-ops: the constant decides */
     return !this._flagOn('disable_event_capes');
   },
 
@@ -127,8 +162,8 @@ export const eventCapeMethods = {
        It is also what lets the scenario drive the real drop end to end
        instead of a test-only back door. */
     const rate = (typeof this._flagNum === 'function')
-      ? this._flagNum('event_cape_rate', 1 / 200, 0, 1)
-      : 1 / 200;
+      ? this._flagNum('event_cape_rate', 1 / 100, 0, 1)
+      : 1 / 100;
     if (roll >= rate) return null;
     led.issued.push(playerId);
     if (!ps.inventory) ps.inventory = {};
