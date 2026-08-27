@@ -1239,6 +1239,14 @@ export function setupWebSocket(ctx) {
               if (msg.payload._buffs && typeof msg.payload._buffs === 'object') {
                 var _sb = msg.payload._buffs;
                 if (typeof _sb.damage === 'number') S._dmgBuff = _sb.damage;
+                /* v2.3.2058: the damage buff's MAGNITUDE now travels with its
+                   timer, because two different things set it -- cooked food at
+                   x1.20 and the Fury Tonic at x2. Mirrored unconditionally
+                   (not behind a typeof guard) so that a meal, which sends no
+                   damageMul, CLEARS a tonic's leftover multiplier here exactly
+                   as it does on the server. Prediction must agree with the
+                   authority or the popups lie. */
+                S._dmgBuffMul = typeof _sb.damageMul === 'number' ? _sb.damageMul : 0;
                 if (typeof _sb.regen === 'number') S._regenBuff = _sb.regen;
                 if (typeof _sb.resist === 'number') S._resistBuff = _sb.resist;
                 if (typeof _sb.spd === 'number') S._spdBuff = _sb.spd;
@@ -2805,7 +2813,8 @@ export function setupWebSocket(ctx) {
         /* v2.3.2047: Shopkeeper Bro. Three asks, no answers -- the client
            never states a price or a coin total, it names an item and a
            quantity and takes whatever the server echoes back. */
-        if (msg.type === 'shop_list' || msg.type === 'shop_sell' || msg.type === 'shop_buy') {
+        if (msg.type === 'shop_list' || msg.type === 'shop_sell' || msg.type === 'shop_buy'
+            || msg.type === 'shop_quote') {
           ws.send(JSON.stringify(msg));
           return;
         }

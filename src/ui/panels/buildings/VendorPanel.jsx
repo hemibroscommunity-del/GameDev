@@ -113,11 +113,12 @@ export function VendorPanel(props) {
         art: '/icons/items/potion-fury.webp',
         icon: '🧪',
         cost: 35,
-        /* v2.3.2056: the label was wrong twice. The multiplier is x1.20 in
-           BOTH the server's combat path and the client's prediction, never
-           1.15; and the duration is five minutes now, because sixty seconds
-           of it was never worth 35 coins. */
-        desc: '+20% damage for 5 min',
+        /* v2.3.2058 (owner: "make it 2x and 3 minutes"). The label has been
+           wrong twice before -- it read 1.15 when the code said 1.20, and it
+           read 5 min after the duration moved -- so it is now written from
+           the same two numbers the server table carries (SHOP_ITEMS.whetstone
+           mult/duration in server/src/data.js). Change one, change both. */
+        desc: 'Double damage for 3 min',
         effect: 'dmgBuff'
       }].map(function (item) {
         var canAfford = rpgState.coins >= item.cost;
@@ -220,7 +221,10 @@ export function VendorPanel(props) {
                  own _buffs.damage on the next player_state (wsClient mirrors
                  it). Kept in step with the server's duration so the HUD timer
                  does not visibly jump when that echo lands. */
-              stateRef.current._dmgBuff = Date.now() + 300000;
+              stateRef.current._dmgBuff = Date.now() + 180000;
+              /* v2.3.2058: predict the MAGNITUDE too, or the popups show the
+                 cooked-food 1.20 for a beat until the server's echo lands. */
+              stateRef.current._dmgBuffMul = 2.0;
             }
             setRpgState(_objectSpread({}, R));
             try {

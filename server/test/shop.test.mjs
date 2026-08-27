@@ -214,7 +214,7 @@ room._handleShopPurchase({ id: 'buyer' }, { itemId: 'whetstone' });
 check('buying the Fury Tonic sets a REAL server-side damage buff',
   room._buffActive(psD, 'damage'), psD._buffs);
 check('...and the combat path is the one that reads it',
-  psD._buffs.damage > Date.now() + 4 * 60 * 1000,
+  psD._buffs.damage > Date.now() + 2.5 * 60 * 1000,
   { remainingMs: psD._buffs.damage - Date.now() });
 check('...and it cost the listed coins', psD.coins === 1000 - 35, psD.coins);
 /* Two in a row must EXTEND from now, not stack into a bigger multiplier --
@@ -223,6 +223,75 @@ const firstEnd = psD._buffs.damage;
 room._handleShopPurchase({ id: 'buyer' }, { itemId: 'whetstone' });
 check('a second tonic re-arms the timer rather than stacking the effect',
   psD._buffs.damage >= firstEnd && typeof psD._buffs.damage === 'number', psD._buffs);
+
+/* ═══ v2.3.2058: TWO TIMES, FOR THREE MINUTES ═══
+   Owner: "make it 2x and 3 minutes."
+
+   x1.20 in combat.js is the COOKED-FOOD magnitude, shared by every recipe in
+   the game, so the tonic could not simply raise that constant -- doing so
+   would have silently doubled every meal too. The magnitude now rides on
+   _buffs.damageMul beside the timer, and these assertions are written against
+   the DAMAGE THE ROOM ACTUALLY COMPUTES, not against the field, because a
+   field nothing reads is the shape of the v2.3.2056 bug.
+
+   Math.random is pinned so _computeAttackDamage is deterministic: variance
+   resolves to a fixed roll and, at 0.99, no crit branch fires (crit chance
+   caps at 0.30, and a bare test player has no crit channel to accumulate). */
+const _realRandom = Math.random;
+Math.random = () => 0.99;
+const swing = (ps) => room._computeAttackDamage(ps, 'primary', false).dmg;
+/* Compared as an ABSOLUTE distance, not a ratio: the damage is rounded to a
+   whole number and the test player's baseline is small, so one rounding step
+   on a 14 shows up as a 7% ratio error while still being exactly right. +-1.5
+   is a rounding step and change, and 1.20 vs 2.0 stay far apart even at 14
+   (17 vs 28), so the tolerance cannot let the wrong multiplier through. */
+const times = (got, base, mul) => Math.abs(got - base * mul) <= 1.5;
+
+const psM = room.playerState.buyer;
+delete psM._buffs;
+const plainDmg = swing(psM);
+check('a swing with no damage buff is the baseline', plainDmg > 0, plainDmg);
+
+/* Cooked food: sets the timer and states NO magnitude -> the 1.20 fallback. */
+psM._buffs = { damage: Date.now() + 60000 };
+const foodDmg = swing(psM);
+check('a cooked meal is still exactly the x1.20 it always was',
+  times(foodDmg, plainDmg, 1.20), { plainDmg, foodDmg });
+
+/* The tonic: bought through the real purchase path, not hand-set. */
+psM.coins = 1000;
+delete psM._buffs;
+room._handleShopPurchase({ id: 'buyer' }, { itemId: 'whetstone' });
+const tonicDmg = swing(psM);
+check('the Fury Tonic doubles the damage the room applies',
+  times(tonicDmg, plainDmg, 2.0), { plainDmg, tonicDmg, buffs: psM._buffs });
+
+/* The regression that nearly shipped: _pruneBuffs read every key in _buffs as
+   an endsAt, and `damageMul: 2` is a number that is very much <= now -- so the
+   _saveRpg on the line after the purchase deleted the multiplier and the
+   tonic quietly degraded to a cooked fish. */
+room._pruneBuffs(psM);
+check('...and the multiplier survives a save (it is not an expiring timer)',
+  times(swing(psM), plainDmg, 2.0), psM._buffs);
+
+/* The other half, and it goes through the REAL cook handler rather than a
+   hand-written mimic of it -- recipe 2 is the game's damage-buff meal
+   (2x herb_firebloom, 90s). A test that re-implements the line it is
+   checking passes no matter what cooking.js does. */
+psM.inventory = Object.assign(Object.create(null), psM.inventory, { herb_firebloom: 2 });
+room._handleCookRecipe({ id: 'buyer' }, { recipeIdx: 2 });
+check('the meal really was cooked (or the next check is vacuous)',
+  psM._buffs.damage > Date.now(), psM._buffs);
+check('a meal eaten during a tonic does NOT inherit the x2',
+  times(swing(psM), plainDmg, 1.20), psM._buffs);
+
+/* Persisted state is attacker-controlled once a blob is restored, so the read
+   is bounded rather than trusted. */
+psM._buffs = { damage: Date.now() + 60000, damageMul: 9999 };
+check('an absurd stored multiplier is rejected, not applied',
+  times(swing(psM), plainDmg, 1.20), { got: swing(psM), plainDmg });
+Math.random = _realRandom;
+delete psM._buffs;
 
 console.log(failures ? `\n${failures} FAILED` : '\nALL PASS');
 process.exit(failures ? 1 : 0);

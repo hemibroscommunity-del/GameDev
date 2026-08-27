@@ -9667,12 +9667,18 @@ export var BroTown = function BroTown(_ref0) {
     }
     if (S._dmgBuff && Date.now() < S._dmgBuff) {
       var _rem2 = Math.ceil((S._dmgBuff - Date.now()) / 1000);
+      /* v2.3.2058: the chip used to say "+20%" for every damage buff, which
+         became a lie the moment the Fury Tonic started doubling. Read the
+         same magnitude the damage math reads, with the same 1..4 bound and
+         the same cooked-food fallback. */
+      var _dbm2 = Number(S._dmgBuffMul);
+      var _dmul2 = (_dbm2 >= 1 && _dbm2 <= 4) ? _dbm2 : 1.20;
       effects.push({
         icon: '⚔️',
         label: 'Dmg+',
         color: '#ea580c',
         time: _rem2 + 's',
-        desc: '+20%'
+        desc: _dmul2 >= 2 ? 'x' + (Math.round(_dmul2 * 100) / 100) : '+' + Math.round((_dmul2 - 1) * 100) + '%'
       });
     }
     if (S._regenBuff && Date.now() < S._regenBuff) {
@@ -10804,8 +10810,13 @@ export var BroTown = function BroTown(_ref0) {
         if (best.buff === 'heal') R.hp = Math.min(R.maxHp, R.hp + best.power);
         if (best.buff === 'regen') S._regenBuff = Date.now() + dur;
         if (best.buff === 'resist') S._resistBuff = Date.now() + dur;
-        if (best.buff === 'damage') S._dmgBuff = Date.now() + dur;
+        /* v2.3.2058: cleared with the timer -- a meal states its own
+             magnitude (the 1.20 fallback), it must not inherit a Fury
+             Tonic's x2 that is still ticking. Mirrors the server's
+             `delete ps._buffs.damageMul` in cooking.js. */
+        if (best.buff === 'damage') { S._dmgBuffMul = 0; S._dmgBuff = Date.now() + dur; }
         if (best.buff === 'all') {
+          S._dmgBuffMul = 0;   /* v2.3.2058: see above */
           S._dmgBuff = Date.now() + dur;
           S._spdBuff = Date.now() + dur;
           S._hpBuff = Date.now() + dur;

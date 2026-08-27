@@ -21,6 +21,14 @@
 
 import { RPG_SCHEMA_VERSION, runRpgMigrations, healLifeSkills } from './migrations.js';
 
+/* v2.3.2058: ps._buffs is otherwise a pure {name: endsAt} map -- _pruneBuffs
+   and _buffActive both read every value as a timestamp. These keys are the
+   exception: a MAGNITUDE that rides alongside a timer, so a buff can state its
+   own strength instead of every reader hardcoding one constant. Map is
+   magnitude key -> the timer key that owns it. Anything added here must also
+   be handled by whatever reads it (see combat.js's bounded damageMul read). */
+const BUFF_MAGNITUDES = { damageMul: 'damage' };
+
 export const persistenceMethods = {
   async _loadRpg(playerId) {
     try {
@@ -58,9 +66,21 @@ export const persistenceMethods = {
     if (!ps || !ps._buffs) return;
     const now = Date.now();
     for (const k of Object.keys(ps._buffs)) {
+      if (BUFF_MAGNITUDES[k]) continue;   /* v2.3.2058: not a timer -- see below */
       if (typeof ps._buffs[k] !== 'number' || ps._buffs[k] <= now) {
         delete ps._buffs[k];
       }
+    }
+    /* v2.3.2058: a magnitude is only meaningful while ITS timer is live, and
+       the loop above cannot judge it -- `damageMul: 2` is a number, and it is
+       very much <= now, so the original prune would have deleted it on the
+       first _saveRpg after the purchase (which is the line right after the
+       Fury Tonic sets it). The buff would have silently fallen back to the
+       cooked-food 1.20 before the player_state echo even left the room.
+       Prune it WITH its owner instead, which also keeps _buffs' invariant
+       intact everywhere else: every OTHER key in here is an endsAt. */
+    for (const mk of Object.keys(BUFF_MAGNITUDES)) {
+      if (mk in ps._buffs && !(BUFF_MAGNITUDES[mk] in ps._buffs)) delete ps._buffs[mk];
     }
   },
 

@@ -665,8 +665,13 @@ export function CookPanel(props) {
         }
         if (recipe.buff === 'regen') S._regenBuff = Date.now() + dur;
         if (recipe.buff === 'resist') S._resistBuff = Date.now() + dur;
-        if (recipe.buff === 'damage') S._dmgBuff = Date.now() + dur;
+        /* v2.3.2058: cleared with the timer -- a meal states its own
+             magnitude (the 1.20 fallback), it must not inherit a Fury
+             Tonic's x2 that is still ticking. Mirrors the server's
+             `delete ps._buffs.damageMul` in cooking.js. */
+        if (recipe.buff === 'damage') { S._dmgBuffMul = 0; S._dmgBuff = Date.now() + dur; }
         if (recipe.buff === 'all') {
+          S._dmgBuffMul = 0;   /* v2.3.2058: see above */
           S._dmgBuff = Date.now() + dur;
           S._spdBuff = Date.now() + dur;
           S._hpBuff = Date.now() + dur;

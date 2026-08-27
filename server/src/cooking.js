@@ -234,10 +234,16 @@ export const cookingMethods = {
     } else if (recipe.buff === 'resist') {
       ps._buffs.resist = endsAt;
     } else if (recipe.buff === 'damage') {
+      /* v2.3.2058: CLEARED, not left. A potion may have set damageMul to 2.0,
+         and a meal eaten before it expired would otherwise inherit the
+         potion's multiplier -- a cooked fish quietly worth double. Every
+         writer of _buffs.damage must state its own magnitude. */
+      delete ps._buffs.damageMul;
       ps._buffs.damage = endsAt;
     } else if (recipe.buff === 'all') {
       // 'all' buff sets all four sub-buffs.  Mirrors the client at
       // BroTown.jsx ~29766: damage + spd + hp + mana all extended.
+      delete ps._buffs.damageMul;   /* v2.3.2058: see the note above */
       ps._buffs.damage = endsAt;
       ps._buffs.spd = endsAt;
       ps._buffs.hp = endsAt;
@@ -338,9 +344,13 @@ export const cookingMethods = {
        * cooked food and combat.js already reads it at x1.20. This is the one
        * line that was missing. */
       if (!ps._buffs) ps._buffs = {};
+      /* v2.3.2058: the magnitude rides WITH the timer. combat.js reads
+         _buffs.damageMul when it is set and falls back to its own 1.20, so a
+         cooked meal is untouched and this potion is its own thing. */
+      ps._buffs.damageMul = Number(item.mult) > 0 ? Number(item.mult) : 1.20;
       const durMs = Math.max(1, Math.floor(item.duration || 60)) * 1000;
       /* Extend from NOW rather than stacking: two tonics in a row give you
-         ten minutes, not a 20% that quietly became 44%. */
+         six minutes of x2, not a x2 that quietly became x4. */
       ps._buffs.damage = Date.now() + durMs;
     }
     this._saveRpg(session.id, ps);

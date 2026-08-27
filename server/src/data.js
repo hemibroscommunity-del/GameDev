@@ -393,7 +393,11 @@ export const SHOP_ITEMS = {
          land about twenty kills inside it -- one every three seconds at 60s,
          which nobody does. At 300s that is a kill every fifteen seconds, which
          is what actually farming looks like. */
-      whetstone:     { cost: 35, effect: 'dmgBuff', duration: 300 },
+      /* v2.3.2058 (owner: "make it 2x and 3 minutes"). `mult` is the potion's
+         OWN multiplier: combat's x1.20 is the COOKED-FOOD buff and is shared
+         with every recipe in the game, so doubling that constant would have
+         silently doubled every meal too. Carried on the item instead. */
+      whetstone:     { cost: 35, effect: 'dmgBuff', duration: 180, mult: 2.0 },
     };
 
 /* v2.3.1120: declarative quest objectives.  An entry WITH `objective`
