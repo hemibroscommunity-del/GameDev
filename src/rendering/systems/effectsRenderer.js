@@ -2162,7 +2162,15 @@ export class EffectsRenderer {
       }
       const text = dmg._pixiText;
       text.x = dmg.x;
-      text.y = dmg.y + (dmg._stackOffset || 0) - age * 40;
+      /* v2.3.1985: the climb rate is per-popup now.  40 px/s is right for a
+         damage number, which exists to be glanced at and get out of the way,
+         and wrong for anything you are meant to READ: at 40 px/s a popup held
+         for four seconds has travelled 160 px and left the character it
+         belongs to.  A popup that asks for a longer life almost always wants
+         a slower climb with it, so `rise` sits next to `ttl` at the push
+         site.  Unset behaves exactly as before. */
+      const rise = (typeof dmg.rise === 'number') ? dmg.rise : 40;
+      text.y = dmg.y + (dmg._stackOffset || 0) - age * rise;
       /* Fade over 80% of ttl so longer-lived popups (kill messages with
          ttl=2.5) actually stay visible, not invisible most of their life. */
       text.alpha = Math.max(0, 1 - age / (ttl * 0.8));

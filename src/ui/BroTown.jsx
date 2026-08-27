@@ -5401,7 +5401,45 @@ export var BroTown = function BroTown(_ref0) {
           var _dnNow = Date.now();
           var _dnW = 0;
           for (var _dnR = 0; _dnR < _dn.length; _dnR++) {
-            if (_dnNow - _dn[_dnR].ts < 1200) {
+            /* ═══ v2.3.1985: THE POPUP'S OWN ttl DECIDES, NOT A FLAT 1200ms ═══
+               Owner: "Make the quest complete message (like actually right
+               after getting the 4th snowman remains) stay longer on screen.
+               It's there for half a second or less."
+
+               It was, and this line is why. Popups have carried a per-popup
+               `ttl` since long before now — 1.5s by default, 2.5s on a kill
+               banner, 5s on an operator announcement, and (v2.3.1985) 4.5s on
+               the quest-complete floater — and the renderer honours it. This
+               prune did not: it dropped EVERY entry at a flat 1200ms and
+               destroyed its Pixi objects, so no popup in the game has ever
+               outlived 1.2 seconds whatever it asked for. Worse for reading
+               it, the renderer fades a popup out over ttl * 0.8, so a 1.5s
+               default was still fading on the assumption it had 1.5s while
+               this deleted it at 1.2 — the last visible third of every
+               message was spent nearly transparent, then it vanished.
+
+               The v2.3.1741 note below is right that TWO TTLs that must stay
+               ordered is a bug waiting to come back, and it is the reason
+               this prune owns the destroy. The answer to that is not a second
+               constant: it is to read the SAME number the renderer reads.
+               Now there is one ttl per popup and two places that agree on it,
+               which is what v2.3.1741 was reaching for.
+
+               The leak fix is untouched — whoever drops the entry still
+               releases what it owns, on the line below.
+
+               WHAT THIS COSTS. An ordinary damage number now lives 1.5s
+               instead of 1.2s, so the steady-state population of the
+               damageNumbers layer rises by a quarter. That is bounded on both
+               sides: MAX_LIVE_POPUPS (24, combatHelpers) still caps the
+               default-ttl popups, and only they are eligible to be aged out
+               early, so a long-lived message can never be squeezed by a busy
+               fight. Two other popups get the life they always asked for and
+               never had: the kill banner (2.5s) and the operator announcement
+               (5s, gameEvents.js), which is the only on-screen surface a
+               server announcement has. */
+            var _dnTtl = ((_dn[_dnR].ttl || 1.5) * 1000);
+            if (_dnNow - _dn[_dnR].ts < _dnTtl) {
               if (_dnW !== _dnR) _dn[_dnW] = _dn[_dnR];
               _dnW++;
             } else {
