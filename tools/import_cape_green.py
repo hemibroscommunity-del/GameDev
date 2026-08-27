@@ -175,32 +175,43 @@ def stance_extent(mask, frac=0.25):
     return None if not len(bxs) else (int(bxs.max() - bxs.min() + 1), int(y1))
 
 
-def fit(green_cell, body):
+def fit(green_cell, body, blob=None):
     """Best (w, h, x, y) placing the cell's green onto the body.
 
-    v2.3.2022b: SCALE COMES FROM THE STANCE, not from the green's bounding box.
-    The first cut searched scales that made the green bbox 55-125% of the body's
-    HEIGHT, which is sound only while the green bbox IS the figure.  On north
-    the cape covers everything but the shins, so that bbox is a short wide pair
-    of legs, and forcing it to body height blew the cell up to 201x102 with 81%
-    of it hanging outside the body.  Every other facing fitted at 0.1-1.5%, so
-    the failure was specific and the metric caught it.
+    v2.3.2022b seeded the scale from the STANCE — the spread of the lowest
+    quarter — because the legs are drawn on every facing however much the cape
+    hides.  v2.3.2022d: that holds only while the generator keeps the figure's
+    PROPORTIONS, and a re-generated northeast sheet did not.  Its boots came
+    back 94px wide against the body's 57, seeding 0.61, while the same cell's
+    figure height said 0.28.  The cape rendered at over twice size and filled
+    the whole 256 frame.
 
-    The legs are drawn on every facing, so their spread is a scale that does not
-    care how much the cape hides: seed from it, then refine locally on the
-    inside-minus-spill score, still feet-anchored."""
+    So the seed is the FIGURE'S HEIGHT — the cape+person blob, crown to hem —
+    against the body's own height.  A hood overhangs the skull a little and a
+    hem may fall past the soles, so the estimate runs slightly small and the
+    local search corrects it; what matters is that height cannot be thrown off
+    by one limb being drawn fat, which is what happened here.  Stance is kept
+    as the fallback for a cell with no blob to measure.
+
+    Both seeds are only seeds: the score that picks the answer is still
+    inside-minus-spill against the real body, feet-anchored."""
     ys, xs = np.where(green_cell)
     if not len(ys):
         return None
-    gs = stance_extent(green_cell)
-    bs = stance_extent(body)
-    if gs is None or bs is None:
-        return None
-    seed = bs[0] / max(1, gs[0])
-    crop = green_cell[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
     bys, bxs = np.where(body)
+    bodyH = bys.max() - bys.min() + 1
+    seed = None
+    if blob is not None and blob.any():
+        lys, _ = np.where(blob)
+        seed = bodyH / max(1, lys.max() - lys.min() + 1)
+    if seed is None:
+        gs, bs = stance_extent(green_cell), stance_extent(body)
+        if gs is None or bs is None:
+            return None
+        seed = bs[0] / max(1, gs[0])
+    crop = green_cell[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
     best = None
-    for k in np.linspace(seed * 0.80, seed * 1.20, 17):
+    for k in np.linspace(seed * 0.78, seed * 1.28, 21):
         tw = max(2, int(round(crop.shape[1] * k)))
         th = max(2, int(round(crop.shape[0] * k)))
         sm = np.array(Image.fromarray((crop * 255).astype(np.uint8))
@@ -228,6 +239,11 @@ def main():
     ap.add_argument('--art', required=True)
     ap.add_argument('--id', required=True)
     ap.add_argument('--name', required=True)
+    ap.add_argument('--only', help='comma-separated facings to import, e.g. northeast. '
+                                   'The rest are left on disk untouched and their meta is merged '
+                                   'forward -- a re-generated sheet is usually a fix for ONE cell, '
+                                   'and re-importing all five would swap four verified frames for '
+                                   'four unverified ones from a different generation.')
     ap.add_argument('--debug')
     a = ap.parse_args()
 
@@ -241,6 +257,10 @@ def main():
     if len(runs) != 5:
         raise SystemExit(f'expected 5 figure cells, found {len(runs)}: {runs}')
 
+    only = set(x.strip() for x in a.only.split(',')) if a.only else None
+    if only and (only - set(DIRS)):
+        raise SystemExit(f'--only: unknown facing(s) {sorted(only - set(DIRS))}')
+
     outdir = OUT.format(id=a.id)
     os.makedirs(outdir, exist_ok=True)
     if a.debug:
@@ -253,7 +273,15 @@ def main():
                      '(the one landmark a cape never covers), scoring inside-minus-spill so a cape '
                      'that hides most of the body still fits at its true scale rather than at zero.')}
 
+    prev_path = f'{outdir}/meta.json'
+    if only and os.path.exists(prev_path):
+        prev = json.load(open(prev_path))
+        meta['fits'].update(prev.get('fits', {}))
+        meta['anchors'].update(prev.get('anchors', {}))
+
     for (x0c, x1c), d in zip(runs, DIRS):
+        if only and d not in only:
+            continue
         cellm = slice(top, bot), slice(x0c, x1c)
         cg = grn[cellm]
         cmag = mag[cellm]
@@ -286,7 +314,7 @@ def main():
         body_im = np.array(Image.open(BODY.format(dir=d)).convert('RGBA').crop((0, 0, FRAME, FRAME)))
         body = body_im[:, :, 3] > 16
 
-        f = fit(cg, body)
+        f = fit(cg, body, blob)
         if f is None:
             raise SystemExit(f'{d}: no green found in the cell')
         sco, tw, th, X, Y, inside, spill = f

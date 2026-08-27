@@ -82,6 +82,20 @@ pipeline taught, recorded because every one of these cost a debugging round:
 * **Reach across the whole transition.** That ring runs 3-4px wide, so dilating
   each key by 2 gives two disjoint halves whose intersection is empty; it
   dropped 18 pixels of 718. Radius 4 reaches across and takes it to 14.
+* **Scale from the figure's HEIGHT, not from a limb.** v2.3.2022b seeded the
+  scale from the stance — the spread of the lowest quarter — on the reasoning
+  that legs are drawn on every facing however much the cape hides. True, but it
+  assumes the generator kept the figure's PROPORTIONS. A re-generated northeast
+  came back with boots 94px wide against the body's 57, seeding 0.61 while the
+  same cell's height said 0.28; the cape rendered at over twice size and filled
+  the frame. Height cannot be thrown off by one limb being drawn fat.
+* **Re-generate one cell, import one cell.** A second sheet is usually a fix for
+  a single facing, and its other four cells are a *different generation* — same
+  prompt, different proportions. `--only northeast` replaces that frame and
+  merges the existing meta forward, so four verified frames are not swapped for
+  four unverified ones. This is how the owner's northeast correction (hood up,
+  no face — right for a figure turned away) was taken without disturbing the
+  rest.
 
 The **green-screen key** is the load-bearing part. The generator paints the
 person flat `#00FF00` and leaves the cape alone, so the import is a fact rather

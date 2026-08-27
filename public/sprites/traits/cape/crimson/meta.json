@@ -22,10 +22,10 @@
    "spillShare": 0.0066
   },
   "northeast": {
-   "scale": 0.351,
-   "inside": 1959,
-   "spill": 13,
-   "spillShare": 0.0066
+   "scale": 0.3725,
+   "inside": 1465,
+   "spill": 21,
+   "spillShare": 0.0141
   },
   "north": {
    "scale": 0.375,
@@ -49,7 +49,7 @@
   ],
   "northeast": [
    122,
-   15
+   1
   ],
   "north": [
    126,
