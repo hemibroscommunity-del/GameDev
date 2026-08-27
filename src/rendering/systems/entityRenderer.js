@@ -56,6 +56,8 @@ import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadB
 import { getEyeColor } from '../traits/eyeColorCatalog.js';   /* v2.3.1930: eye colour is per-player now, so every draw names whose eyes it means */
 import { DISPLAY_DS, downscaleByFactor } from '../spriteScale.js'; /* v2.3.1120: display-texture downscale + lockstep transform compensation */
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.1953: height x frame render scale */
+import { getCapeTexture } from '../capeSprites.js'; /* v2.3.2023: the cosmetic cape */
+import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2023 */
 import { getHairColor, getColoredHairTextures } from '../traits/hairColorCatalog.js';
 import { getHatColor, getColoredHatTextures } from '../traits/hatColorCatalog.js';
 import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/facialHairColorCatalog.js';
@@ -1251,6 +1253,46 @@ function _remoteBodyArt(other, mirror) {
     ? { pants: p || '', tattoo: t || '', tattooFace: ft || '', tattooArm: at || '',
       pantsPattern: q, shoesPattern: f, mirror: !!mirror }
     : null;
+}
+
+/* ═══ v2.3.2023: THE CAPE ═══
+ * A full-frame sticker, so it takes the BODY SPRITE'S transform exactly as a
+ * full-frame armour piece does below — import_cape_green.py already fitted
+ * each frame into a 256 frame against the real stand-<dir> body, so there is
+ * no anchor, no nudge table and no per-facing exception to get wrong.  The
+ * mirror is free: sb.scale.x already carries its sign for W / NW / SE.
+ *
+ * HIDDEN DURING ATTACKS, ON PURPOSE — AND `pose` IS NOT WHAT SAYS SO.
+ * During a swing or a bow shot the real body is HIDDEN and the whole figure is
+ * redrawn by a stand-in in another layer (effectsRenderer, nodeLayer), and the
+ * trap v2.3.1784 records is that `pose` STILL READS 'stand' or 'jog'
+ * throughout.  So a pose list cannot catch a swing: measured, the pose never
+ * left 'stand' across a full attack.  The load-bearing test is
+ * `sb.visible` — is the real body being drawn at all — which tracks the
+ * stand-in swap directly instead of inferring it.  The pose list below is
+ * belt-and-braces for the poses that DO rename themselves (dodge, pickup),
+ * and on its own it would have been the back shield's bug over again.
+ *
+ * A sprite that keeps drawing against a body that is no longer there hangs in
+ * mid-air beside the swing.  The shield had to be drawn TWICE to fix that,
+ * which means two renderers holding one piece of geometry, and "the moment a
+ * value is copied into two renderers it starts to drift".  For a cosmetic
+ * cape that is not worth it: a swing is a few frames, and a missing cape
+ * reads far better than a floating one. */
+const _CAPE_HIDDEN_POSES = { dodge: 1, swing: 1, bowshot: 1, fire: 1, chop: 1, mine: 1, fish: 1, cook: 1, pickup: 1, hit: 1 };
+
+function _placeCape(display, capeId, pose, dir) {
+  const spr = display && display._capeSprite;
+  if (!spr) return;
+  const sb = display._spriteBody;
+  const tex = (!capeId || capeId === 'none' || _CAPE_HIDDEN_POSES[pose]) ? null : getCapeTexture(capeId, dir);
+  if (!tex || !sb || !sb.visible) { if (spr.visible) spr.visible = false; return; }
+  if (spr.texture !== tex) spr.texture = tex;
+  spr.x = sb.x; spr.y = sb.y;
+  const norm = 256 / ((tex.frame && tex.frame.width) || 256);
+  spr.scale.x = sb.scale.x * norm / DISPLAY_DS;
+  spr.scale.y = sb.scale.y * norm / DISPLAY_DS;
+  if (!spr.visible) spr.visible = true;
 }
 
 function _placeGear(display, equip, pose, dir, frameIdx, legsFrom) {
@@ -4352,6 +4394,16 @@ function createPlayerDisplay() {
   /* v2.3.266: standalone-item sticker layer.  One sprite for headwear
      (helmet / hat / hood / etc.); future: glasses, beard, etc. each
      get their own.  Anchor + position set per-frame from meta.json. */
+  /* v2.3.2023: the cape.  ABOVE the body and gear, because the art was
+     authored that way -- the generator drew it on the mannequin with the front
+     panels over the chest and the hood over the skull, so the picture states
+     its own z-order and the body shows through the opening it left.  Added
+     before headwear so a hat still draws over the hood's edge. */
+  const capeSprite = new Sprite();
+  capeSprite.anchor.set(0.5, 0.5);
+  capeSprite.visible = false;
+  container.addChild(capeSprite);
+
   const headwearSprite = new Sprite();
   headwearSprite.visible = false;
   container.addChild(headwearSprite);
@@ -4627,6 +4679,7 @@ function createPlayerDisplay() {
   container._facialHairSprite = facialHairSprite;
   container._hairSprite = hairSprite;
   container._hairMask = hairMask;
+  container._capeSprite = capeSprite;                 /* v2.3.2023 */
   container._headwearSprite = headwearSprite;
   container._nftFront = nftFront;
   container._nftBack = nftBack;
@@ -4768,6 +4821,16 @@ function createOtherPlayerDisplay() {
 
   /* v2.3.321: headwear sprite for remote players (above body, below
      weapon/NFT) so other players' hats render.  Driven by other.headwear. */
+  /* v2.3.2023: the cape.  ABOVE the body and gear, because the art was
+     authored that way -- the generator drew it on the mannequin with the front
+     panels over the chest and the hood over the skull, so the picture states
+     its own z-order and the body shows through the opening it left.  Added
+     before headwear so a hat still draws over the hood's edge. */
+  const capeSprite = new Sprite();
+  capeSprite.anchor.set(0.5, 0.5);
+  capeSprite.visible = false;
+  container.addChild(capeSprite);
+
   const headwearSprite = new Sprite();
   headwearSprite.visible = false;
   container.addChild(headwearSprite);
@@ -4843,6 +4906,7 @@ function createOtherPlayerDisplay() {
   container._facialHairSprite = facialHairSprite;
   container._hairSprite = hairSprite;
   container._hairMask = hairMask;
+  container._capeSprite = capeSprite;                 /* v2.3.2023 */
   container._headwearSprite = headwearSprite;
   container._nftFront = nftFront;
   container._nftBack = nftBack;
@@ -6924,6 +6988,7 @@ export class EntityRenderer {
           if (display._shirtSprite) display._shirtSprite.visible = false;
           /* always show the remote's hair/hat/beard (no helmet to hide them). */
           _crownOverride = _fsR ? _fullsetCrown(dir, _rJogPhase) : null; /* v2.3.1389 */
+          _placeCape(display, other.cape, pose, dir);   /* v2.3.2023 */
           _placeHeadwear(display, other.headwear, other.hatColor, pose, dir, mirror, frameIdx, sizeMul, other.hair); /* v2.3.1561: hair id for the floating halo */
           _placeFacialHair(display, other.facialhair, other.facialHairColor, pose, dir, mirror, frameIdx, sizeMul);
           _placeHair(display, other.hair, other.hairColor, other.headwear, pose, dir, mirror, frameIdx, sizeMul);
@@ -8183,6 +8248,7 @@ export class EntityRenderer {
            traits to the DRAWN head's crown (FULLSET_CROWN — armor-synced,
            left-shifted) instead of the body sheet's. */
         _crownOverride = _fsT ? _fullsetCrown(dir, _jogPhase) : null;
+        _placeCape(display, getCape(), pose, dir);   /* v2.3.2023 */
         _placeHeadwear(display, getHeadwear(), getHatColor(), pose, dir, mirror, frameIdx, bodyScale, getHair()); /* v2.3.1561: hair id for the floating halo */
         _placeFacialHair(display, getFacialHair(), getFacialHairColor(), pose, dir, mirror, frameIdx, bodyScale);
         _placeHair(display, getHair(), getHairColor(), getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);

@@ -85,6 +85,7 @@ const SCENARIOS = {
   idleface: () => import('./mp-idleface.mjs'), /* v2.3.1837: idle keeps the last TURN, not the last walk */
   turnshield: () => import('./mp-turnshield.mjs'), /* v2.3.1836: shield side while turning */
   hudface: () => import('./mp-hudface.mjs'), /* v2.3.1835: the HUD portrait tracks the worn cosmetics */
+  cape: () => import('./mp-cape.mjs'),
   specshield: () => import('./mp-specshield.mjs'), /* v2.3.1834: shield layering during a special */
   scalesheet: () => import('./mp-scalesheet.mjs'), /* v2.3.1830: size per direction, both poses */
   bodysize: () => import('./mp-bodysize.mjs'), /* v2.3.1826: the same character in every direction */
