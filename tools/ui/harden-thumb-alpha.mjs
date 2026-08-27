@@ -105,3 +105,15 @@ for (const cat of cats) {
 }
 console.log(`\n${DRY ? '[dry] ' : ''}${changed} of ${files} thumbnail(s) had soft alpha; ${promoted}px made solid, ${cleared}px cleared, threshold ${T}`);
 await browser.close();
+
+/* v2.3.2016: WHAT "no soft alpha left" MEANS, checked against the file on disk.
+ * Re-running this and then re-reading the PNGs reports 14 of 49 thumb-sw files
+ * as still carrying non-255 alpha -- which reads like the tool did not take.
+ * It did.  Those pixels are alpha 250-254: the canvas -> PNG round trip stores
+ * premultiplied colour and rounds coming back out, and 250 is not translucent
+ * by any measure a player can see.  The defect this tool exists for is a pixel
+ * at LOW alpha (top-hat's row 0 was a ghost line across the crown), so the
+ * honest test for "did it work" is `0 < a < 200`, not `a < 255`.  On that test
+ * every thumbnail in the repo is clean.  Written down because the strict test
+ * raises a false alarm that costs twenty minutes to chase, and it already has
+ * once. */
