@@ -339,7 +339,22 @@ export function NameModal(props) {
        renders — ghosted — because every tab must reserve the same height. */
     ? null
     : (_colorList && _colorList.length > 0 && _def.sel !== 'none')
-    ? _colorList.map(function (o) {
+    /* v2.3.2035: the 'default' entry is FILTERED OUT of the swatch row -- the
+       text button above is what picks it now.
+       This is the owner's actual complaint, not tidiness.  Every catalog's
+       default entry carries a HARD-CODED swatch that has nothing to do with
+       the item you picked: shirt is #3a5bd0 (blue), hat is #7c6cff (purple),
+       hair and beard #5a3a22 (brown).  So the Shirt tab drew a solid blue
+       square labelled Default over a shirt that is not blue -- "a random
+       color like blue even if it doesn't match default item color".
+       _swatchTile CAN draw the item's own thumbnail for the default tile
+       instead (its thumbCat/thumbItem branch, "this is what you get"), but
+       this call site never passed them, so it always fell through to the
+       flat swatch.  Wiring those args would fix the lie for trait colours and
+       leave it for the body ones, and would still spend a swatch-sized tile
+       saying "no colour".  A word says it for every category at once. */
+    ? _colorList.filter(function (o) { return o && o.id !== 'default'; })
+      .map(function (o) {
         return _swatchTile(o, _def.colorSel, function (id) {
           _def.setColor(id === _def.colorSel ? 'default' : id);
         });
@@ -706,7 +721,13 @@ export function NameModal(props) {
     /* v2.3.2008: the owner's painted randomize icon (a bro inside two turning
        arrows) replaces cc-random-look.webp, which was a generic pair of
        arrows with no bro in it. */
-    className: "bt-cc-action-icon", src: '/ui/welcome/cc/cc-randomize.png?v=' + BUILD_INFO.version, alt: '', draggable: false }),
+    className: "bt-cc-action-icon", src: '/ui/welcome/cc/cc-randomize.png?v=' + BUILD_INFO.version, alt: '', draggable: false,
+    /* v2.3.2035 (owner: "make the randomize look icon larger").  20 -> 30,
+       stated HERE rather than on .bt-cc-action-icon: that class is shared with
+       the name-reroll die above, which the owner did not ask to change and
+       which pins its own 22px inline.  Sizing the shared class appeared to
+       work only because that inline style masked it. */
+    style: { width: 30, height: 30, objectFit: 'contain' } }),
   /*#__PURE__*/React.createElement("span", null, "Randomize Look"))),
   /*#__PURE__*/React.createElement("button", {
     onClick: function () { if (_nameValid) joinTown(); },
@@ -833,6 +854,41 @@ export function NameModal(props) {
         v2.3.1308 tried a tiny absolute contextual label here; v2.3.1310
         removes it (owner: redundant, overlapped the swatches, barely
         readable).  The swatch row reads as colors on its own. */
+  /* ═══ v2.3.2035: DEFAULT IS A BUTTON YOU CAN SEE ═══
+     Owner: "make the default color its own text button above the color
+     options (right now it's a random color like blue even if it doesn't
+     match default item color)".
+
+     v2.3.1253 removed the default SWATCH and made the rule "unpicked =
+     default, re-tap your pick to unselect".  That is tidy and undiscoverable:
+     nothing on screen says a default exists, the only way back is to remember
+     which swatch you chose and tap it again, and -- the owner's actual
+     complaint -- the swatch row offers no tile that means "however this item
+     was painted", so the eye reads the nearest blue as if it were that.
+
+     A TEXT button, not a swatch, on purpose: the whole point is that the
+     default is not one of these colours.  Any tile we drew would have to be
+     SOME colour and would lie about that for every item whose art is not that
+     colour, which is the bug being fixed rather than a fix for it.
+
+     Placed above the row rather than absolutely positioned over it -- v2.3.1310
+     retired an absolute label here precisely because it overlapped the
+     swatches.  The constant-sheet-height guarantee (v2.3.1252/1253) survives
+     because this row is ALWAYS rendered, and the whole block already ghosts
+     as a unit on categories with no colours, so no category differs from
+     another.  It costs the stage ~22px once, on every tab equally. */
+  /*#__PURE__*/React.createElement("div", { className: "bt-cc-colors-head" },
+    /*#__PURE__*/React.createElement("button", {
+      type: 'button',
+      className: "bt-cc-defcolor" + ((!_def.colorSel || _def.colorSel === 'default') ? " bt-cc-defcolor--on" : ""),
+      /* Not aria-pressed: this is one option in the same radiogroup as the
+         swatches below, and a toggle-shaped label beside radio-shaped ones
+         reads wrong to a screen reader. */
+      role: _colors ? 'radio' : undefined,
+      "aria-checked": _colors ? (!_def.colorSel || _def.colorSel === 'default') : undefined,
+      tabIndex: _colors ? 0 : -1,
+      onClick: function () { if (_colors) _def.setColor('default'); }
+    }, "Default")),
   /*#__PURE__*/React.createElement("div", { className: "bt-cc-scroll" },
   /*#__PURE__*/React.createElement("div", {
     className: "bt-cc-colors-row", ref: _colorRowRef, onScroll: _measureMore, role: _colors ? 'radiogroup' : undefined, "aria-label": _colors ? _def.label + ' colors' : undefined
@@ -872,7 +928,14 @@ export function NameModal(props) {
       ? /*#__PURE__*/React.createElement("img", {
         className: 'bt-cc-draw-icon', src: '/ui/welcome/cc/' + _p.icon + '.png?v=' + BUILD_INFO.version,
         alt: '', draggable: false, "aria-hidden": true,
-        style: { width: 26, height: 26, objectFit: 'contain', flex: 'none' }
+        /* v2.3.2035 (owner: "make the tattoo body or face icon larger").
+           26 -> 34.  The art is 128x121 natural so this is still a
+           downscale.  Sized against the SMALL-screen button, not the big
+           one: .bt-cc-draw is min-height 54px normally but 44px under
+           max-height:720px (game.css), and 34 keeps 5px of breathing room
+           inside that 44 -- picking 40 would have looked right on this
+           desk and crushed the button on an iPhone SE. */
+        style: { width: 34, height: 34, objectFit: 'contain', flex: 'none' }
       })
       : /*#__PURE__*/React.createElement("svg", {
       className: 'bt-cc-draw-icon', viewBox: '0 0 24 24', width: 22, height: 22,
