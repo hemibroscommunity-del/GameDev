@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  cosmpose: () => import('./mp-cosmpose.mjs'), /* v2.3.2041: do tattoos + clothing patterns survive every activity, on both screens? */
   rehearsal: () => import('./mp-rehearsal.mjs'), /* v2.3.2040: four characters, every interaction, every frame scanned for a black band */
   chatcompose: () => import('./mp-chatcompose.mjs'), /* v2.3.2039: selection, the dictation wait, and seeing your message */
   loginkey: () => import('./mp-loginkey.mjs'), /* v2.3.2038: can you get your login key back from inside the game? */
