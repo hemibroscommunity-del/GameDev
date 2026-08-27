@@ -106,7 +106,9 @@
         <input id="to" type="datetime-local">
       </div>
     </div>
-    <p class="note">Wait <b>10 minutes</b> after the last player stops before loading.
+    <p class="note" id="window" style="color:var(--ink)"></p>
+    <p class="note">Already set to the contest window — change it only if the event
+    ran long or short. Wait <b>10 minutes</b> after the last player stops before loading.
     The server only refreshes a player's "last seen" every 10 minutes, so anyone who
     quit in the last few minutes may not have been written down yet.</p>
     <button id="load">Load entrants</button>
@@ -254,16 +256,50 @@
   }
   function localToMs(v) { var t = new Date(v).getTime(); return isFinite(t) ? t : null; }
 
-  /* Default window: the last 6 hours, which is the shape of a demo session. */
+  /* ── THE EVENT WINDOW ──
+     v2.3.2031: pinned to the owner's announced contest, 9-11am PDT on
+     2026-08-28.  Stored as ABSOLUTE UTC INSTANTS and rendered into whatever
+     timezone the viewer is in, rather than as "09:00 local" -- this page is
+     being shared with the Hemi team, and a hardcoded local time would read
+     as 9am to everyone regardless of where they actually are, quietly
+     selecting the wrong two hours of players.
+
+     Worth being careful here for a reason that already bit once: 9am PDT is
+     16:00 UTC, not 14:00 (PDT is UTC-7).  The two got crossed while setting
+     the time, two hours apart, so the numbers below are the single source of
+     truth and the panel prints both readings back to you. */
+  window.__eventWindow = {
+    startMs: Date.UTC(2026, 7, 28, 16, 0, 0),   /* 2026-08-28 16:00 UTC = 9am PDT */
+    endMs:   Date.UTC(2026, 7, 28, 18, 0, 0),   /* 2026-08-28 18:00 UTC = 11am PDT */
+  };
+
+  function toLocalInput(ms) {
+    var d = new Date(ms), p = function (x) { return String(x).padStart(2, '0'); };
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
+           'T' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+
   (function seedDates() {
-    var now = new Date(), then = new Date(Date.now() - 6 * 3600e3);
-    var fmt = function (d) {
-      var p = function (x) { return String(x).padStart(2, '0'); };
-      return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
-             'T' + p(d.getHours()) + ':' + p(d.getMinutes());
+    var w = window.__eventWindow;
+    $('from').value = toLocalInput(w.startMs);
+    $('to').value = toLocalInput(w.endMs);
+
+    var utc = function (ms) {
+      var d = new Date(ms), p = function (x) { return String(x).padStart(2, '0'); };
+      return p(d.getUTCHours()) + ':' + p(d.getUTCMinutes());
     };
-    $('from').value = fmt(then);
-    $('to').value = fmt(now);
+    var loc = function (ms) {
+      return new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    };
+    var zone = '';
+    try { zone = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) {}
+    var day = new Date(w.startMs).toLocaleDateString([], {
+      weekday: 'long', day: 'numeric', month: 'long',
+    });
+    $('window').innerHTML =
+      '<b>' + esc(day) + '</b> · ' + esc(utc(w.startMs)) + '–' + esc(utc(w.endMs)) + ' UTC' +
+      (zone ? ' · ' + esc(loc(w.startMs)) + '–' + esc(loc(w.endMs)) + ' your time (' +
+              esc(zone) + ')' : '');
   })();
 
   /* ── 1 ── */

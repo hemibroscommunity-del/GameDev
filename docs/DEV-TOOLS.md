@@ -136,9 +136,22 @@ Two things about it are load-bearing rather than cosmetic, and both are tested:
   server returned rows, so two people drawing from the same data number the
   list identically and get the same winner.
 
+**The event window is pinned as absolute UTC** (v2.3.2031: 2026-08-28
+16:00–18:00 UTC, i.e. 9–11am PDT) and rendered into whatever timezone the
+viewer is in. The page is shared outside the team, and a hardcoded "09:00
+local" would read as 9am to everyone regardless of where they are, quietly
+selecting the wrong two hours of players. The panel prints the window back in
+both UTC and the viewer's own zone, because the two readings of this event's
+time were once given two hours apart (9am PDT is 16:00 UTC, not 14:00).
+
 `node tools/qa/draw-page.mjs` drives the page in a real browser with both the
 leaderboard and the block explorers stubbed — no internet, no live worker
-needed. 31 assertions. Both properties above were mutation-checked: reading
+needed. 37 assertions. Every browser context is pinned to `Europe/London` on
+purpose: run the suite in `America/Los_Angeles` and a page hardcoding "09:00
+local" would pass everything. That pinning immediately caught a bug in the
+suite itself, where fixture dates were formatted in node's timezone and parsed
+in the browser's — an hour's drift that silently swapped one entrant for
+another that should have been excluded. Both properties above were mutation-checked: reading
 the forgeable field, or committing to the current tip instead of a future
 block, each turns the suite red.
 

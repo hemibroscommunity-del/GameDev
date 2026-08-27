@@ -95,8 +95,15 @@ let TIP = 900000;
 let MINED = false;
 const offSite = [];
 
+/* Every context runs in Europe/London ON PURPOSE. The event window is stored
+   as absolute UTC and rendered into the viewer's zone; if this test happened
+   to run in America/Los_Angeles, a page that wrongly hardcoded "09:00 local"
+   would pass every assertion below. In London (UTC+1 in August) 16:00 UTC
+   renders as 17:00, so the round-trip check bites wherever CI runs. */
+const TZ = 'Europe/London';
+
 async function newPage() {
-  const ctx = await browser.newContext();
+  const ctx = await browser.newContext({ timezoneId: TZ });
   const page = await ctx.newPage();
 
   await page.route('**/api/leaderboard/top*', (route) =>
@@ -125,6 +132,20 @@ async function newPage() {
 
   await page.goto(ORIGIN, { waitUntil: 'load' });
   return { ctx, page };
+}
+
+/* Fill the two datetime-local inputs so they parse back to the given UTC
+   instants IN THE BROWSER.  See the note at its first call site. */
+async function setWindow(page, fromMs, toMs) {
+  await page.evaluate(([a, b]) => {
+    const f = (ms) => {
+      const d = new Date(ms), p = (x) => String(x).padStart(2, '0');
+      return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
+             'T' + p(d.getHours()) + ':' + p(d.getMinutes());
+    };
+    document.getElementById('from').value = f(a);
+    document.getElementById('to').value = f(b);
+  }, [fromMs, toMs]);
 }
 
 console.log('draw-page:');
@@ -174,19 +195,52 @@ console.log('draw-page:');
   await ctx.close();
 }
 
+/* ── 1b. the announced contest window is pinned to the right INSTANT ──
+ * The owner gave the time twice and the two readings were two hours apart
+ * (9am PDT is 16:00 UTC, not 14:00). The window is now stored as absolute
+ * UTC and rendered into the viewer's zone, so this asserts the instant --
+ * not the rendered string, which correctly differs per timezone. A page
+ * hardcoding "09:00 local" would pass a naive string check and silently
+ * select the wrong two hours for anyone outside California. */
+{
+  const { ctx, page } = await newPage();
+  const w = await page.evaluate(() => window.__eventWindow);
+  ok('the window starts at 16:00 UTC on 2026-08-28 (9am PDT)',
+    w.startMs === Date.UTC(2026, 7, 28, 16, 0, 0), new Date(w.startMs).toISOString());
+  ok('...and ends at 18:00 UTC (11am PDT)',
+    w.endMs === Date.UTC(2026, 7, 28, 18, 0, 0), new Date(w.endMs).toISOString());
+  ok('the window is two hours long', w.endMs - w.startMs === 2 * 3600e3);
+
+  /* The inputs must round-trip back to those instants through the browser's
+     own local-time parsing -- that is the step where a timezone bug lands. */
+  const back = await page.evaluate(() => [
+    new Date(document.getElementById('from').value).getTime(),
+    new Date(document.getElementById('to').value).getTime(),
+  ]);
+  ok('the date inputs round-trip to the same instants in this browser zone',
+    back[0] === w.startMs && back[1] === w.endMs, { back, w });
+
+  const shown = await page.locator('#window').textContent();
+  ok('the panel states the window in UTC so the reading cannot be mistaken',
+    /16:00.*18:00 UTC/.test(shown), shown);
+  ok('...and also in the viewer\'s own zone, which here is NOT Pacific',
+    shown.includes(TZ) && /17:00|5:00/.test(shown), shown);
+  await ctx.close();
+}
+
 /* ── 2. the real flow in the page, and the guard that matters ── */
 {
   TIP = 900000; MINED = false;
   const { ctx, page } = await newPage();
 
-  /* Point the window inputs at the fixture hour. */
-  const iso = (ms) => {
-    const d = new Date(ms), p = (x) => String(x).padStart(2, '0');
-    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
-           'T' + p(d.getHours()) + ':' + p(d.getMinutes());
-  };
-  await page.fill('#from', iso(T0));
-  await page.fill('#to', iso(T1));
+  /* Point the window inputs at the fixture hour.  The formatting MUST happen
+     inside the browser: a datetime-local input is parsed in the BROWSER's
+     zone, and node here is not in the browser's zone.  Formatting in node
+     shifted the window by an hour and silently swapped a real entrant for one
+     that should have been excluded -- caught only because the contexts above
+     are pinned to Europe/London.  A test whose fixtures move with the
+     machine's timezone is a test that lies somewhere. */
+  await setWindow(page, T0, T1);
   await page.click('#load');
   await page.waitForSelector('#out1 table');
 
@@ -244,7 +298,7 @@ console.log('draw-page:');
 /* ── 3. the 100-row cap has to be loud ── */
 {
   TIP = 900000; MINED = false;
-  const ctx = await browser.newContext();
+  const ctx = await browser.newContext({ timezoneId: TZ });
   const page = await ctx.newPage();
   const many = [];
   for (let i = 0; i < 100; i++) {
@@ -255,13 +309,7 @@ console.log('draw-page:');
     route.fulfill({ status: 200, contentType: 'application/json',
       body: JSON.stringify({ ok: true, results: many }) }));
   await page.goto(ORIGIN, { waitUntil: 'load' });
-  const iso = (ms) => {
-    const d = new Date(ms), p = (x) => String(x).padStart(2, '0');
-    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
-           'T' + p(d.getHours()) + ':' + p(d.getMinutes());
-  };
-  await page.fill('#from', iso(T0));
-  await page.fill('#to', iso(T1));
+  await setWindow(page, T0, T1);
   await page.click('#load');
   await page.waitForSelector('#out1 table');
   const warn = await page.locator('#out1 .warn').count();
