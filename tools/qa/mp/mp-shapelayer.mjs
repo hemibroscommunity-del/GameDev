@@ -141,8 +141,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const tool = async (n) => { await page.click(`.bt-paint-tools .bt-paint-tool:nth-child(${n})`); await page.waitForTimeout(150); };
   const colour = async (n) => { await page.click(`.bt-paint-pal button:nth-child(${n})`); await page.waitForTimeout(150); };
   const PEN = 1, BOX = 3, SELECT = 7;
+  /* v2.3.1994: Clear is a TRASH CAN now (owner: "Change clear to a trash can
+     icon"), so it has no text to match on and `:has-text("Clear")` silently
+     matched nothing — which is not a failure, it is four ops where there should
+     have been two, and five confusing assertion failures downstream of a Clear
+     that never happened.  Falling back to the aria-label is the right selector
+     anyway: it is what a screen reader reads and what survives the next icon. */
   const btn = async (label) => {
-    const el = await page.$(`.bt-paint-ctl button:has-text("${label}")`);
+    const el = await page.$(`.bt-paint-ctl button:has-text("${label}")`)
+      || await page.$(`.bt-paint-ctl button[aria-label*="${label}" i]`);
     if (!el) return false;
     await el.click();
     await page.waitForTimeout(300);
@@ -212,7 +219,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     { cell: at(a3, 12, 7), expected: RED, note: 'the box edge now runs through this cell' });
 
   /* ── 4. two overlapping shapes, and the layer buttons ─────────────────── */
-  await btn('Clear');
+  await btn('Erase the whole');
   await colour(2);                       /* palette index 1 */
   await tool(BOX);
   await drag(2, 2, 9, 9);                /* box A, dark — its RIGHT edge is x=9 */
@@ -287,27 +294,65 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
 
   /* ── 6. the things the op list had to keep working ────────────────────────
-     Mirror and the design slots both go through code this change rewrote:
-     mirroring is stored ON the op now (so it survives a replay rather than
-     being applied once at commit time), and a slot holds 256 characters with no
-     op list behind them, so loading one has to FLATTEN — arrive as a base with
-     nothing selectable on it — or the shapes that were on the grid before would
-     replay straight back over the design you just loaded. */
-  await btn('Clear');
-  await page.click('.bt-paint-mirror');
-  await page.waitForTimeout(150);
-  await tool(PEN);
-  await drag(3, 3, 3, 6);                /* a short vertical stroke, left of centre */
-  const m1 = await art();
-  rec.ok('Mirror still paints both halves, and survives the replay',
-    at(m1, 3, 4) !== '0' && at(m1, 12, 4) === at(m1, 3, 4),
-    { left: at(m1, 3, 4), right: at(m1, 12, 4) });
-  await page.click('.bt-paint-mirror');
-  await page.waitForTimeout(150);
+     The design slots go through code the op list rewrote: a slot holds 256
+     characters with no op list behind them, so loading one has to FLATTEN —
+     arrive as a base with nothing selectable on it — or the shapes that were on
+     the grid before would replay straight back over the design you just loaded.
+
+     ═══ v2.3.1994: THE MIRROR CONTROL IS GONE, THE MIRROR DATA IS NOT ═══
+     Owner: "Swap out the mirror for 'fill'."  The button is retired and Fill,
+     which has been a real tool since v2.3.1948, is what sits in the tool row
+     instead.  What must NOT change is what a drawing made before today does,
+     and that is a live risk rather than a theoretical one: `m` is still on the
+     op, artOps still replays it, and artOps' DROP RULE bins any op list that
+     does not re-render to the stored drawing — so if replay had quietly
+     stopped honouring `m`, every mirrored drawing in the world would have
+     silently flattened into an un-editable base and nobody would have seen an
+     error.  So a legacy mirrored op is injected here and checked twice: the
+     ink is on both halves, AND it is still an OP (the hand can pick it up),
+     which is what the drop rule would have taken away. */
+  const mirrorArt = (() => {
+    const a = new Array(256).fill('0');
+    for (let y = 3; y <= 6; y++) { a[y * 16 + 3] = '1'; a[y * 16 + 12] = '1'; }
+    return a.join('');
+  })();
+  await btn('Done');
+  await page.evaluate(([k, opsKey, art]) => {
+    localStorage.setItem(k, art);
+    /* One canvas's row; every other canvas falls back to "whatever is drawn,
+       flat", which is what artOps does for a missing row anyway. */
+    /* A LINE, not a freehand stroke: sanitizeOp drops `m` from a 'c' op on
+       purpose (a pen stroke stores the cells it FINISHED with, already
+       mirrored), so a freehand op is not the one that can regress here. The
+       three ops that carry a live `m` are the shape, the letter and the fill. */
+    localStorage.setItem(opsKey, JSON.stringify({
+      pants: { b: '0'.repeat(256), o: [{ k: 's', t: 'line', a: [3, 3, 3, 6], i: 1, b: 1, m: 1 }] },
+    }));
+  }, ['bt-pantsart', OPS_KEY, mirrorArt]);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(1400);
+  const remirror = await openGrid();
+  rec.ok('the designer reopens on the injected legacy drawing (guard)', !!remirror);
+  let m1 = null;
+  if (remirror) {
+    box = await gridBox();
+    m1 = await art();
+    rec.ok('a drawing MIRRORED before v2.3.1994 still replays both halves',
+      at(m1, 3, 4) !== '0' && at(m1, 12, 4) === at(m1, 3, 4),
+      { left: at(m1, 3, 4), right: at(m1, 12, 4) });
+    await tool(SELECT);
+    await tap(12, 4);                    /* the MIRRORED half — the op owns it too */
+    const mlabel = await page.textContent('.bt-paint-layer-at').catch(() => null);
+    rec.ok('...and it is still an OP, not flattened by the drop rule',
+      !!mlabel && /layer\s*1\s*of\s*1/i.test(mlabel), { label: mlabel });
+  }
+  const noMirror = await page.$('.bt-paint-mirror');
+  rec.ok('the Mirror button is gone and Fill is a tool in its place',
+    !noMirror && tools.some((t) => /fill/i.test(t)), { mirrorButton: !!noMirror, tools });
 
   await page.click('.bt-paint-slots .bt-paint-slot:nth-child(1)');
   await page.waitForTimeout(350);
-  await btn('Clear');
+  await btn('Erase the whole');
   const cleared = await art();
   rec.ok('Clear empties the drawing (and the list under it)', inked(cleared) === 0, { n: inked(cleared) });
   await page.click('.bt-paint-slots .bt-paint-slot:nth-child(1)');

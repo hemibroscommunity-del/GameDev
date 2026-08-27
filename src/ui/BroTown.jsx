@@ -1821,9 +1821,29 @@ export var BroTown = function BroTown(_ref0) {
      it only resized a box inside that component; it now also tells the preview
      camera to pull back to the whole figure, and that wiring lives in this
      file beside activeCat, which was lifted for the same reason. */
-  var _zmState = useState(false),
+  /* ═══ v2.3.1994: THE CREATOR OPENS ON THE WHOLE CHARACTER ═══
+     Owner: "When first getting to the character design screen have the
+     character zoomed out normally instead of zooming in by default for his
+     hair."
+
+     `previewZoom` true means the WHOLE FIGURE (focusForCat returns FOCUS_FULL,
+     and NameModal gives the stage its taller frame) -- the name is a leftover
+     from when tapping the character was the only thing that moved the camera.
+     It started false, so the very first thing a new player saw was a close-up
+     of the top of a head, because `activeCat` starts on 'hair' and v2.3.1951
+     wired the camera to follow the open category.  That is the right behaviour
+     for a category you CHOSE and the wrong one for the category that merely
+     happens to be first.
+     So the camera starts pulled back and the category framing engages the
+     moment you pick a tab (setActiveCat below) -- the feature is kept, it just
+     stops firing before anyone has asked it to. */
+  var _zmState = useState(true),
     previewZoom = _zmState[0],
     setPreviewZoom = _zmState[1];
+  /* Picking a trait category IS the "aim the camera here" gesture, so it ends
+     the opening wide shot.  One place, so the two states can never disagree
+     about whether the camera has been aimed yet. */
+  var pickPreviewCat = function (c) { setActiveCat(c); setPreviewZoom(false); };
   /* v2.3.711: drag-to-rotate -- horizontal swipes on the preview canvas step
      the facing every 26px of travel; the corner buttons remain for
      discoverability.  Holds the last x where a step fired. */
@@ -8381,7 +8401,7 @@ export var BroTown = function BroTown(_ref0) {
     });
   }
   if (showNameModal) {
-    return /*#__PURE__*/React.createElement(NameModal, { _dragRotX: _dragRotX, _swatchTile: _swatchTile, _thumbTile: _thumbTile, _buildTile: _buildTile, activeCat: activeCat, heightSel: heightSel, setHeightSel: setHeightSel, frameSel: frameSel, setFrameSel: setFrameSel, beardColorSel: beardColorSel, facialHairSel: facialHairSel, hairColorSel: hairColorSel, hairSel: hairSel, hatColorSel: hatColorSel, eyeColorSel: eyeColorSel, setEyeColorSel: setEyeColorSel, headwearSel: headwearSel, joinTown: joinTown, nameInput: nameInput, pantsSel: pantsSel, previewCanvasRef: previewCanvasRef, previewDir: previewDir, previewZoom: previewZoom, setPreviewZoom: setPreviewZoom, randomizeWithFlair: randomizeWithFlair, rollRandomName: rollRandomName, rotatePreview: rotatePreview, setActiveCat: setActiveCat, setBeardColorSel: setBeardColorSel, setFacialHairSel: setFacialHairSel, setHairColorSel: setHairColorSel, setHairSel: setHairSel, setHatColorSel: setHatColorSel, setHeadwearSel: setHeadwearSel, setNameInput: setNameInput, setPantsSel: setPantsSel, setShirtColorSel: setShirtColorSel, setShirtSel: setShirtSel, setShoesSel: setShoesSel, setSkinSel: setSkinSel, shirtColorSel: shirtColorSel, shirtSel: shirtSel, shoesSel: shoesSel, skinSel: skinSel });
+    return /*#__PURE__*/React.createElement(NameModal, { _dragRotX: _dragRotX, _swatchTile: _swatchTile, _thumbTile: _thumbTile, _buildTile: _buildTile, activeCat: activeCat, heightSel: heightSel, setHeightSel: setHeightSel, frameSel: frameSel, setFrameSel: setFrameSel, beardColorSel: beardColorSel, facialHairSel: facialHairSel, hairColorSel: hairColorSel, hairSel: hairSel, hatColorSel: hatColorSel, eyeColorSel: eyeColorSel, setEyeColorSel: setEyeColorSel, headwearSel: headwearSel, joinTown: joinTown, nameInput: nameInput, pantsSel: pantsSel, previewCanvasRef: previewCanvasRef, previewDir: previewDir, previewZoom: previewZoom, setPreviewZoom: setPreviewZoom, randomizeWithFlair: randomizeWithFlair, rollRandomName: rollRandomName, rotatePreview: rotatePreview, setActiveCat: pickPreviewCat, setBeardColorSel: setBeardColorSel, setFacialHairSel: setFacialHairSel, setHairColorSel: setHairColorSel, setHairSel: setHairSel, setHatColorSel: setHatColorSel, setHeadwearSel: setHeadwearSel, setNameInput: setNameInput, setPantsSel: setPantsSel, setShirtColorSel: setShirtColorSel, setShirtSel: setShirtSel, setShoesSel: setShoesSel, setSkinSel: setSkinSel, shirtColorSel: shirtColorSel, shirtSel: shirtSel, shoesSel: shoesSel, skinSel: skinSel });
   }
   return /*#__PURE__*/React.createElement(React.Fragment, null, /* v2.3.1925: the mystery-reveal ceremony.  Mounted at the top of the in-world fragment and ALWAYS mounted — it renders null until a hidden grade arrives on the loot credit, and mounting it conditionally would mean the queue it subscribes to could fill before anyone was listening. */ /*#__PURE__*/React.createElement(RevealOverlay, null), showIntro && /*#__PURE__*/React.createElement(IntroVideo, {
     waitFor: introWaitRef.current,

@@ -28,6 +28,8 @@ const SCENARIOS = {
   shapelayer: () => import('./mp-shapelayer.mjs'), /* v2.3.1967: a placed shape can be picked up again, and layers move in the ART */
   crowd: () => import('./mp-crowd.mjs'), /* v2.3.1973: what a crowd in one zone costs the PHONE (BT_CROWD=n) */
   socialgrief: () => import('./mp-socialgrief.mjs'), /* v2.3.1970: chat length + forged senders, and the party invites nobody answers */
+  skinworld: () => import('./mp-skinworld.mjs'), /* v2.3.1994: the widened skin boxes, measured on the character in the world */
+  skinink: () => import('./mp-skinink.mjs'), /* v2.3.1994: the skin editor IS the shirt editor, the zoom stays put, and every skin pixel takes ink */
   bodyink: () => import('./mp-bodyink.mjs'), /* v2.3.1965: ink lands where the finger was, at any zoom */
   cosmrelay: () => import('./mp-cosmrelay.mjs'), /* v2.3.1961: a peer's look after the join frame — the self-heal, and a cosmetic changed mid-session */
   build: () => import('./mp-build.mjs'), /* v2.3.1953: height x frame — the shape, the boots, the plate, and the wire */
