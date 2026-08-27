@@ -66,6 +66,50 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const peers = [];
   const rows = [];
   let joinFailedAt = 0;
+  const t0 = Date.now();
+  /* ═══ v2.3.2020: THE KEEP-ALIVE HAS TO RUN *WHILE* THE CROWD IS BUILDING ═══
+   * The per-step nudge below already exists because a scripted peer ages out
+   * (see its comment).  It is not enough, and the gap is a matter of
+   * arithmetic rather than luck: it fires only AFTER every peer for a step has
+   * booted, so peers 1-3 sit untouched for however long peers 4-7 take to
+   * start.  A peer goes `aw:1` two minutes after its last real input and is
+   * evicted two minutes after that (IDLE_TIMEOUT_MS = 120000, index.js; the
+   * clock resets on real input ONLY, not on pongs).  Booting four more Chrome
+   * contexts on a two-core box takes longer than that four-minute window, so
+   * the early peers were being evicted mid-build — on THIS branch and on
+   * origin/main identically, which is how it was shown not to be a
+   * regression.
+   *
+   * The scenario then reported {started: 7, heldTotal: 3} under an assertion
+   * whose text is "the presence roster is unconditional", i.e. the launch
+   * blocker: players are being dropped. They were not. The room was doing
+   * exactly what v2.3.1913 designed it to do, to peers this file left idle.
+   * A false launch-blocker is worse than a missing test — it either gets
+   * believed and panics a release, or gets dismissed and takes the real
+   * signal with it.
+   *
+   * So every existing peer gets a real key press each time a new one joins.
+   * That is genuine input for the AFK clock, it costs ~0.5s per peer per
+   * join at n<=7, and it keeps the thing under test (does the ROOM hold
+   * concurrent players?) independent of the feature next door (does it evict
+   * IDLE ones?). */
+  /* ...AND THE OBSERVER IS A PLAYER TOO.  Fixing only the peers moved
+     {started: 7, heldTotal: 3} to {started: 7, heldTotal: 7} — every peer
+     held, and the assertion STILL red, because the room is peers PLUS the
+     observer and the observer had been evicted on the same clock.  It is the
+     one session in this file that never presses anything: its whole job is to
+     watch.  The step rows say it plainly once you count them — at 3 peers the
+     room held exactly 3, which is the peers and nobody else.
+     Its nudge ALTERNATES w/s so the net displacement over a run is about
+     zero: this session has to stay where it can see the crowd, and walking it
+     across the zone to keep it awake would trade this bug for a worse one. */
+  let beat = 0;
+  const keepAlive = async () => {
+    for (let i = 0; i < peers.length; i++) {
+      await H.nudge(peers[i], ['w', 'a', 's', 'd'][i % 4], 120).catch(() => {});
+    }
+    await H.nudge(P, (beat++ % 2) ? 's' : 'w', 120).catch(() => {});
+  };
   for (const want of STEPS) {
     while (peers.length < want) {
       const n = peers.length + 1;
@@ -76,6 +120,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const Q = await H.newPlayer(browser, { name: 'Crowd' + n, wsPort, webPort, guest: true });
         await H.enterWorld(Q);
         peers.push(Q);
+        /* ...and immediately stamp everyone's activity clock, including the
+           one that just arrived, before starting the next (slow) boot. */
+        await keepAlive();
       } catch (e) {
         joinFailedAt = joinFailedAt || n;
         break;
@@ -111,6 +158,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await H.waitFor(P, (S) => Object.keys(S.others || {}).length, (n) => n >= need,
       { timeout: 30000, label: `observer sees ${need} peers` }).catch(() => {});
     const seen = await H.readState(P, (S) => Object.keys(S.others || {}).length);
+    /* Printed because the whole diagnosis above turns on it: if this exceeds
+       the four-minute idle-to-eviction window between steps, read any
+       shortfall as the AFK sweep before reading it as a dropped player. */
+    const elapsed = Math.round((Date.now() - t0) / 1000);
     /* ═══ ASK THE WORKER TOO, NOT ONLY THE BROWSER ═══
      * `seen` alone cannot tell "the room lost these players" apart from "this
      * page never got round to processing them", and those are completely
@@ -136,7 +187,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
     if (!held) console.log(`   WARNING: the worker did not answer /overview at ${peers.length} peers — the room-side check has no opinion on this row.`);
     const s = await sample(P, 4000, `${peers.length} peer(s)`);
-    rows.push({ peers: peers.length, seen, held, ...s });
+    rows.push({ peers: peers.length, seen, held, elapsed, ...s });
     console.log('   ' + JSON.stringify(rows[rows.length - 1]));
   }
 
