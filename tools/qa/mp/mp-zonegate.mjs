@@ -89,10 +89,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* Poll rather than read once: the zone change re-registers the player with
      the room, so a single read can land in the gap and come back empty — which
      is indistinguishable from "the worker disagrees" if you assert on it. */
+  /* v2.3.2012: poll for the ZONE IT IS ASSERTING, not merely for a non-empty
+     read.  The old loop broke on `srvFrost.zone` being truthy at all, and the
+     first non-empty read after a zone change is normally the OLD zone -- so it
+     asserted on a stale value and reported "workerZone: worldview" as a
+     client/server disagreement.  (The ember case above could not see this: it
+     asserts `zone !== 'ember'`, which a stale 'worldview' satisfies.)
+     Still bounded, and it keeps the LAST read either way, so a worker that
+     genuinely never agrees still fails with the value it actually returned. */
   let srvFrost = null;
-  for (let i = 0; i < 10; i++) {
-    srvFrost = await H.serverPlayer(wsPort, myId);
-    if (srvFrost && srvFrost.zone) break;
+  for (let i = 0; i < 16; i++) {
+    const got = await H.serverPlayer(wsPort, myId);
+    if (got && got.zone) srvFrost = got;
+    if (srvFrost && srvFrost.zone === 'frost') break;
     await P.page.waitForTimeout(500);
   }
   rec.ok('...and the WORKER put you there too (the client is not pretending)',

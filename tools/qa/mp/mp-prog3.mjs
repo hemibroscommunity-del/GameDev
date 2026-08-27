@@ -134,6 +134,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
      The v2.3.1660 list needed 352px against a 145px body, so five of
      seven stats sat below a fold with no scroll cue — this assertion is
      what stops that regressing quietly. */
+  /* v2.3.2012: when this fails it now says WHAT is too tall.  "scrollH 223,
+     clientH 203" tells you the screen does not fit and nothing about where the
+     20px went, and this layout has a documented history of exactly that
+     argument -- v2.3.1922's own comments track a 146 -> 164 overflow through
+     a font-size change three rows deep.  The child list turns the next
+     failure into a diagnosis instead of a hunt. */
   const fit = await P.page.evaluate(() => {
     const btn = document.querySelector('[aria-label*="Crit"], [aria-label*="Defense"]');
     if (!btn) return { err: 'no stat cell found' };
@@ -141,7 +147,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     let el = btn.parentElement;
     while (el && getComputedStyle(el).overflowY !== 'auto') el = el.parentElement;
     if (!el) return { err: 'no scroll container' };
-    return { scrollH: el.scrollHeight, clientH: el.clientHeight };
+    const over = el.scrollHeight - el.clientHeight;
+    const kids = over > 1 ? [...el.children].map((k) => {
+      const cs = getComputedStyle(k);
+      return {
+        tag: k.tagName.toLowerCase() + (k.className && typeof k.className === 'string' ? '.' + k.className.trim().split(/\s+/)[0] : ''),
+        h: Math.round(k.getBoundingClientRect().height),
+        flex: cs.flex,
+        mb: cs.marginBottom,
+      };
+    }) : undefined;
+    return { scrollH: el.scrollHeight, clientH: el.clientHeight, over: over > 0 ? over : 0, kids };
   });
   rec.ok('the Build screen fits without scrolling',
     !fit.err && fit.scrollH <= fit.clientH + 1, fit);
