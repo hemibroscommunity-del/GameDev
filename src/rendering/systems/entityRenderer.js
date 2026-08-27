@@ -1302,7 +1302,7 @@ const _CAPE_HIDDEN_POSES = { dodge: 1, swing: 1, bowshot: 1, fire: 1, chop: 1, m
  * three-quarter angles and the amount that reads correctly is not a projection
  * of anything — it is a look.  Mirrored facings negate it, for the same reason
  * the body's own scale.x carries its sign. */
-const _CAPE_JOG_TILT = { east: 0.15, northeast: 0.10, southwest: -0.10, north: 0, south: 0 };
+const _CAPE_JOG_TILT = { east: 0.30, northeast: 0.20, southwest: -0.20, north: 0, south: 0 };   /* v2.3.2025: owner, "angled more with jog" -- doubled */
 /* Where the cape swings FROM: the shoulders, not the middle of the frame.
    Pivoting about the centre would swing the hood as far as the hem and take
    the hood off the head, which is the thing v2.3.2023b just fixed. */
