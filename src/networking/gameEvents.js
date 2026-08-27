@@ -872,6 +872,18 @@ export function processGameEvent(type, payload, S, deps) {
               for (var _ie = 0; _ie < _inbEntries.length; _ie++) {
                 var _e = _inbEntries[_ie] || {};
                 var _ep = _e.payload || {};
+                /* v2.3.2037 (owner: "remove the 25 gold message").  The daily
+                   login reward is 25 gold (CADENCE.DAILY_BASE_GOLD) and it
+                   rides _creditPlayer like any other delivery, so it printed
+                   "📫 You received +25 gold (Daily reward — day 1)" into chat
+                   on EVERY login -- the first thing anyone read, every time.
+                   Only the LINE is dropped; the gold is still paid, and the
+                   coin counter still moves. Filtered on `source`, which
+                   inbox.js already puts on the wire, rather than on the text
+                   or the amount: a real delivery of 25 gold from a trade is
+                   still worth announcing, and a match on "25" would have
+                   silenced that too. */
+                if (_e.source === 'daily') continue;
                 var _what = _e.kind === 'gold' ? '+' + (_ep.amount || 0) + ' gold'
                   : _e.kind === 'item' ? (_ep.count || 1) + '× ' + (_ep.invKey || 'item')
                   : _e.kind === 'weapon' ? ((_ep.weapon && _ep.weapon.name) || 'a weapon')

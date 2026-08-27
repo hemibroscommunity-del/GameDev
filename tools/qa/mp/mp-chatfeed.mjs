@@ -24,15 +24,19 @@ const openChat = (P) => P.page.evaluate(() => {
   window.__broChatBubbleBus.setOpen(true);
 });
 
+/* v2.3.2037: the feed left this window. It used to be an inline list behind
+   a "World chat" toggle inside the composer; it is now the always-on World
+   Chat section in the lower left (WorldChatFeed.jsx), so the reader points
+   there and the toggle fields are gone. Everything this file exists to prove
+   -- the online count, cross-player delivery, and above all that "/p" does
+   not leak to the room -- is unchanged and still checked below. */
 const readHeader = (P) => P.page.evaluate(() => {
   const c = document.querySelector('[data-chat-online]');
-  const t = document.querySelector('[data-chat-feed]');
-  const list = document.querySelector('[data-chat-feed-list]');
+  const list = document.querySelector('[data-world-chat-lines]');
   return {
     online: c ? +c.getAttribute('data-chat-online') : null,
     onlineText: c ? c.textContent.trim() : null,
-    toggle: t ? t.getAttribute('data-chat-feed') : null,
-    listCount: list ? +list.getAttribute('data-chat-feed-list') : null,
+    listCount: list ? +list.getAttribute('data-world-chat-lines') : null,
     listText: list ? list.textContent : null,
   };
 });
@@ -63,18 +67,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     h.online === 2, h);
   rec.ok('...and says so in words, not just an attribute',
     !!h.onlineText && /2\s*online/.test(h.onlineText), { text: h.onlineText });
-  rec.ok('the chat window has a world-chat toggle', h.toggle !== null, h);
-  rec.ok('...which starts off, so the composer is the same size it always was',
-    h.toggle === 'off' && h.listCount === null, h);
-
+  /* v2.3.2037: no toggle to check any more. mp-worldchat.mjs asserts it is
+     gone and that the section replacing it is placed and readable; this file
+     keeps to what only two live players can show. */
   await A.page.screenshot({ path: H.REPO + '/tools/qa/mp/.last-chatfeed-closed.png' }).catch(() => {});
-
-  /* ── THE TOGGLE OPENS THE FEED ── */
-  await A.page.click('[data-chat-feed]');
-  await A.page.waitForTimeout(500);
-  h = await readHeader(A);
-  rec.ok('tapping the toggle opens the world chat feed',
-    h.toggle === 'on' && h.listCount !== null, h);
 
   /* ── A LINE FROM THE OTHER PLAYER LANDS IN IT ──
      The point of the whole feature: before this, a message you did not
@@ -124,23 +120,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
      wrong (same reason mp-lockon keeps one). Git-ignored. */
   await A.page.screenshot({ path: H.REPO + '/tools/qa/mp/.last-chatfeed.png' }).catch(() => {});
 
-  /* ── THE TOGGLE IS REMEMBERED ── */
-  const pref = await A.page.evaluate(() => { try { return localStorage.getItem('bt_chatfeed'); } catch (e) { return null; } });
-  rec.ok('the feed being open is remembered for next time', pref === '1', { pref });
-
-  /* ── AND IT CLOSES AGAIN ── */
-  await A.page.click('[data-chat-feed]');
-  await A.page.waitForTimeout(400);
-  h = await readHeader(A);
-  rec.ok('tapping the toggle again closes the feed',
-    h.toggle === 'off' && h.listCount === null, h);
-
   /* ── THE COUNT FOLLOWS THE ROOM, WHILE THE WINDOW IS OPEN ──
      Polled rather than read once: the worker announces the leave when it
      notices the socket is gone, and the client has a 10s ghost sweep behind
      that, so the honest claim is "it drops", not "it drops within 2.5s".
      Reading it once was how the first run of this scenario found that the
-     count never updated at all while the window stayed open. */
+     count never updated at all while the window stayed open.
+
+     v2.3.2037: the composer is REOPENED first. Sending now always closes it
+     (the feed it used to stay open for has moved to the lower-left World Chat
+     section), so by this point the window carrying the count is gone and the
+     old wording -- "without reopening the window" -- described a state that
+     no longer happens. Reopening restores what this block is actually about:
+     the count updating live while you are looking at it, rather than being
+     frozen at whatever it was when the window opened. */
+  await openChat(A);
+  await A.page.waitForTimeout(500);
   await B.ctx.close();
   let dropped = null;
   for (let i = 0; i < 30; i++) {
@@ -148,7 +143,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     dropped = await readHeader(A);
     if (dropped.online === 1) break;
   }
-  rec.ok('the count drops when someone leaves, without reopening the window',
+  rec.ok('the count drops while you are looking at it, not frozen at the '
+       + 'value it had when the window opened',
     dropped && dropped.online === 1, dropped);
 
   const errs = A.logs.filter((l) => String(l).startsWith('pageerror'));

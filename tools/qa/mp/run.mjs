@@ -94,6 +94,7 @@ const SCENARIOS = {
   questloop: () => import('./mp-questloop.mjs'), /* v2.3.1828: the hand-in must not repeat */
   keylogin: () => import('./mp-keylogin.mjs'), /* v2.3.1823: the login door joins you */
   ccsize: () => import('./mp-ccsize.mjs'), /* v2.3.2035: creator icon sizes + the Default colour button, MEASURED at 390x844 */
+  worldchat: () => import('./mp-worldchat.mjs'), /* v2.3.2037 */
   ccload: () => import('./mp-ccload.mjs'), /* v2.3.1818: the creator opens with a character, and no keyboard */
   zonegate: () => import('./mp-zonegate.mjs'), /* v2.3.1817: a zone opens when a quest sends you there */
   arrowhead: () => import('./mp-arrowhead.mjs'),   /* v2.3.1879: only an ARRIVED arrow loses its head */

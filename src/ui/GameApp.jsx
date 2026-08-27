@@ -4,6 +4,7 @@ import { DebugOverlay } from '../debug/DebugOverlay.jsx';
 import { wheelBus } from './mobile/wheelBus.js';
 import { BottomDashboard } from './mobile/BottomDashboard.jsx';
 import { ChatBubble } from './mobile/ChatBubble.jsx';
+import { WorldChatFeed } from './mobile/WorldChatFeed.jsx'; /* v2.3.2037 */
 import { XpFlyOverlay } from './XpFlyOverlay.jsx';
 import { InventorySurface } from './mobile/InventorySurface.jsx';
 import { inventoryBus } from './mobile/inventoryBus.js';
@@ -631,6 +632,11 @@ export const GameApp = () => {
       }} />
       <BottomDashboard />
       <ChatBubble />
+      {/* v2.3.2037: the World Chat section, lower left above the dashboard.
+          Mounted beside ChatBubble because it reads the same log off the game
+          state and the same bus -- and, like it, has no path to BroTown's
+          React state. */}
+      <WorldChatFeed />
       {/* InventorySurface, InspectCard, MoreOverlay are no longer mounted — */}
       {/* the bottom dashboard nests their content inside the --dash-h band. */}
       {/* Their buses still exist and are exercised by debug commands.      */}
