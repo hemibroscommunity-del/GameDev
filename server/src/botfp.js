@@ -94,7 +94,33 @@ export const BOTFP = {
   // _getZoneNodeConfig owns this number: nodes × (3600 / respawnSeconds)
   // must stay well under HARVEST_HOUR_CAP.  node-respawn.test.mjs asserts
   // exactly that against the live constants, so the two cannot drift.
-  HARVEST_HOUR_CAP: 270,
+  //
+  // v2.3.1983: 270 -> 810, and this IS the derivation above being re-run,
+  // not the cap being loosened to make something pass.  Population-scaled
+  // spawns (spawnscale.js) give a zone up to SPAWN_SCALE.NODE_MAX = 3 nodes
+  // per skill once 9+ players are sharing it, so the world supply this
+  // number is derived FROM tripled: 3 nodes x 180 respawns/hour = 540/h
+  // physical, x the documented 50% margin = 810.  NODE_RESPAWN_TIME is
+  // untouched at 20s precisely because the arithmetic is anchored to it.
+  //
+  // Why the derivation had to be re-run rather than the scaling avoided:
+  // throughput = nodes x 3600/respawnSeconds, so ANY increase in what a
+  // crowded zone supplies pushes the physical ceiling above a cap sized for
+  // one node.  Leaving it at 270 would have converted a clamp documented as
+  // "zero false-positive risk by design" into one that silently withholds
+  // resources from a real player grinding in a busy zone — the cap's whole
+  // value is that it can only ever fire on the impossible.
+  //
+  // What it costs: a bot's per-skill hourly take triples.  Bounded, and
+  // bounded on purpose — 3 nodes only exist while 9 other people are
+  // standing in the zone competing for them (a lone harvester still sees
+  // exactly one node and the old 180/h ceiling), a fleet manufacturing that
+  // crowd is what FLEET_MIN_IDS correlates, and the cap was never the
+  // bound on the world anyway: a teleporting bot touring all 9 wilderness
+  // zones could reach 9 x 180 = 1620/h at BASE density, so 810 still clips
+  // the multi-zone tourist by half.
+  // Whoever changes SPAWN_SCALE.NODE_MAX owns this number next.
+  HARVEST_HOUR_CAP: 810,
   // Sustained human cooking ≈ 450/h (one ~8s minigame each incl. open
   // delay); the only prior bound was _cookRateOk's 20/min = 1200/h.
   COOK_HOUR_CAP: 700,

@@ -136,6 +136,13 @@ export const tickMethods = {
         }
       };
 
+      /* v2.3.1983: population-scaled spawns.  Self-throttled to one pass
+         per SPAWN_SCALE.SCALE_MS (2s, ~1 tick in 90) — a per-tick re-scan
+         of every zone would be the wrong shape even with the budget to
+         spare.  Runs BEFORE monster AI so a zone that just grew ticks its
+         new monsters in the same frame they were announced. */
+      guard('spawnScale', () => this._tickSpawnScale(Date.now()));
+
       // Monster AI tick
       guard('monsters', () => this._tickMonsters());
 

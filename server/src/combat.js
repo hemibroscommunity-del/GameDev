@@ -883,7 +883,12 @@ export const combatMethods = {
       // v2.3.1127: dungeon-instance monsters never respawn -- a cleared
       // wave must STAY cleared or _tickDungeons can't advance (the
       // respawn check requires respawnAt > 0, so 0 means "stay dead").
-      m.respawnAt = m.noRespawn ? 0 : Date.now() + this.RESPAWN_TIME;
+      /* v2.3.1983: the respawn clock is population-scaled
+         (_monsterRespawnMs, spawnscale.js) — RESPAWN_TIME verbatim solo and
+         in every unscalable zone, down to a 6s floor in a crowded one.  Of
+         the two supply dials this is the one the owner tunes by feel
+         (v2.3.1592 / v2.3.1739), so it is the one a crowd needs moved. */
+      m.respawnAt = m.noRespawn ? 0 : Date.now() + this._monsterRespawnMs(zone);
 
       // GDD §7 — contribution-weighted XP/gold distribution.
       // DPS share = dmgByPlayer[id] / m.maxHp.  We also require the

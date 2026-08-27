@@ -119,8 +119,8 @@ sends). All of these are in `PRIVILEGED_EVENTS` unless noted.
 |---|---|---|
 | `tick` | Batched per-tick frame: `players` (id → x/y/dir/facing/zone/vx/vy + live equip fields), `events` (array fed to `_processGameEvent`), `monsters`/`nodes` (zone → entity list; v2 = dirty entities only). **Zone-scoped since v2.3.1575** — see below | ~2048 |
 | `state_sync` | Full room snapshot on join: players, zone monsters, etc. | ~2223 |
-| `zone_state` | v2 zone change: `{ zone, monsters, nodes, loot }` merged | ~2352 |
-| `zone_monsters` / `zone_nodes` / `zone_loot` | v1 legacy zone-change trio (kept as fallback) | ~2732 / ~2727 / ~2347 |
+| `zone_state` | v2 zone change: `{ zone, monsters, nodes, loot }` merged. **v2.3.1983: also sent MID-SESSION**, unprompted, when population-scaled spawns change a zone's roster — the client already replaces its lists wholesale on it, and a per-entity `tick` delta cannot introduce an entity, so this resend is how a new monster becomes real on any client (`docs/specs/spawn-scaling.md`) | ~2352 |
+| `zone_monsters` / `zone_nodes` / `zone_loot` | v1 legacy zone-change trio (kept as fallback). v2.3.1983: `zone_monsters` + `zone_nodes` are the v1 half of the mid-session roster push above (no `zone_loot` — piles are unaffected) | ~2732 / ~2727 / ~2347 |
 | `player_state` | Authoritative pool/progression mirror (hp, coins, xp, inventory…); v2 sends field deltas | ~2421 |
 | `player_died` | Server-confirmed own death | ~2567 |
 | `player_respawned` | Respawn confirm (server→self) / corpse-clear visual (peer broadcast) | ~2619 and [dispatcher] ~3721 (see Quirks) |
