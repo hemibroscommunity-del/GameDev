@@ -205,15 +205,19 @@ await room._capeLedgersLoad();
  * the tidy-looking direction: a `if (!this._capeEventOpen()) return;` at the
  * top of _handleCapeRedeem reads like correct hygiene and would quietly strand
  * every winner who was offline when the window closed -- and every ticket
- * traded on afterwards, which the owner also allowed.  So: win it open, close
- * the event, redeem anyway.
+ * traded on afterwards, which the owner also allowed.  So: win it live, throw
+ * the kill switch, redeem anyway.
  *
- * Injecting that guard was measured: it fails seven assertions here, five of
- * which are the older redeem tests catching it by accident (no test sets
- * _liveFlags, so the flag is false throughout the file).  Accidental coverage
- * is still coverage, but it is not a STATEMENT -- it would evaporate the day
- * someone made the other tests set the flag for realism, and nothing in their
- * names says the never-expires property is what broke.  This block says it. */
+ * v2.3.2028 MADE THIS BLOCK LOAD-BEARING, and re-measuring is how that was
+ * noticed rather than guessed.  Under the old opt-in flag, injecting the
+ * guard failed seven assertions -- five of them older redeem tests catching
+ * it by accident, because no test set _liveFlags and the flag was therefore
+ * false file-wide.  Now that the event is open by default, those five pass
+ * with the guard injected: the event is open when they run, so the guard
+ * lets them through.  Re-measured after the flip, exactly TWO assertions
+ * fail, and both are in this block.  The accidental coverage is gone and
+ * this is the only thing standing between a tidy-looking one-line guard and
+ * a stranded winner. */
 {
   const s7 = makeState();
   const r7 = new GameRoom(s7, mockEnv);
@@ -222,25 +226,32 @@ await room._capeLedgersLoad();
   r7._opSeen = async () => false; r7._opStamp = async () => {};
   await r7._capeLedgersLoad();
 
-  r7._liveFlags = { event_capes: true };
+  /* v2.3.2028: the event is LIVE with no flags set at all -- that is the
+     whole point of the flip, and it is asserted here rather than assumed
+     because every other test in this file mocks the room by hand and would
+     not notice if the default went back to off. */
+  r7._liveFlags = undefined;
+  check('with no flags set at all, the event is OPEN', r7._capeEventOpen() === true,
+    r7._capeEventOpen());
+
   const p7 = { inventory: {} };
   r7.playerState.latecomer = p7;
   const tkt = r7._claimCapeTicket('crimson', 'latecomer', p7, always);
-  check('a ticket drops while the event flag is open', tkt === 'goldticket_crimson', tkt);
+  check('a ticket drops with no flag set', tkt === 'goldticket_crimson', tkt);
 
-  r7._liveFlags = { event_capes: false };          /* the window closes */
+  r7._liveFlags = { disable_event_capes: true };   /* the kill switch */
   /* _claimCapeTicket is deliberately NOT self-gating -- the guard lives at the
-     kill site (combat.js:891), so what this asserts is the flag read itself
+     kill site (combat.js), so what this asserts is the flag read itself
      flipping both ways.  The first draft of this line ORed in
      `|| !r7._capeEventOpen()`, which made it pass no matter what the claim
      returned: the claim is unguarded, so it does hand out a second ticket
      here.  An assertion that cannot fail is worse than no assertion, because
      it reads as coverage. */
-  check('the event flag reads closed once it is cleared', r7._capeEventOpen() === false,
+  check('the kill switch closes the event', r7._capeEventOpen() === false,
     r7._capeEventOpen());
   await r7._handleCapeRedeem({ id: 'latecomer' }, { invKey: tkt, opId: 'late1' });
   const led7 = await r7._capeLedger('crimson');
-  check('a ticket redeems AFTER the event closes -- it never expires',
+  check('a ticket redeems AFTER the kill switch is thrown -- it never expires',
     led7.redeemed.indexOf('latecomer') >= 0 && !p7.inventory[tkt], [led7.redeemed, p7.inventory]);
   check('...and the cape is what the player is then wearing',
     r7._capeOwnedBy('latecomer') === 'crimson', r7._capeOwnedBy('latecomer'));

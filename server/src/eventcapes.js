@@ -80,13 +80,30 @@ export const eventCapeMethods = {
     } catch (e) { /* storage unavailable: the in-memory ledger still holds the cap */ }
   },
 
-  /** Is the event open?  A live-ops flag, so it can be shut without a deploy —
-   *  which matters when the alternative is deploying mid-session. */
+  /** Is the event open?  ON BY DEFAULT since v2.3.2028, with a kill switch.
+   *
+   *  It shipped the other way round -- off until an `event_capes` flag was
+   *  set -- and that was wrong for this game.  Flipping that flag needs the
+   *  ADMIN_KEY secret and a curl command against the live worker, which is a
+   *  real barrier for an owner who does not work in a terminal, to buy an
+   *  ability (start the event to the minute, from a phone, without a deploy)
+   *  that a five-person demo does not need.  The owner said so plainly: the
+   *  drop should be live from the build.  A prize nobody can switch on is
+   *  not scarce, it is absent.
+   *
+   *  So it now matches how every other switchable system here already works:
+   *  on by default, off via `disable_*` (disable_jackpot cadence.js:123,
+   *  disable_dungeons dungeon.js:226, disable_threats threat.js:80,
+   *  disable_weapon_drops index.js:3263).  The kill switch still needs the
+   *  admin key -- but needing the key to STOP something is the safe
+   *  direction, and the cap of three ends the event on its own anyway.
+   *
+   *  _flagOn (liveops.js), not a hand-rolled read: the cache is `_liveFlags`
+   *  and `this.liveflags` is nothing at all, so a hand-rolled version was
+   *  permanently false and the drop would never have fired at all. */
   _capeEventOpen() {
-    /* _flagOn (liveops.js), not a hand-rolled read: the cache is `_liveFlags`
-       and `this.liveflags` is nothing at all, so the hand-rolled version was
-       permanently false and the drop would simply never have fired. */
-    return typeof this._flagOn === 'function' ? this._flagOn('event_capes') : false;
+    if (typeof this._flagOn !== 'function') return true;   /* no live-ops: still live */
+    return !this._flagOn('disable_event_capes');
   },
 
   /** Roll for a ticket on a monster kill.  Returns the ticket key if one was
