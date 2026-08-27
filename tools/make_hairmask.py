@@ -9,6 +9,15 @@ the standing FIGURE is drawn behind it.  Cutting hair that has only sky behind
 it costs nothing; cutting hair with a head behind it is a bald spot, which is
 what three owner reports were.  See "(c)" in build().
 
+v2.3.2010: and `enclosed` stops being an exception to it.  That flag's premise
+was that the cap covers the scalp completely; on the facings where the cap
+narrows on its way down it does not, and the enclosed rule shaved the head
+under it (mickey-ears east 9.47% bare scalp, devil-horns southwest 18.27%).
+The body test is what v2.3.1976 lacked: the gap between a pair of horns is SKY,
+so "no hair between the horns" survives clause (c) unaided.  `enclosed` now
+means one thing only -- this hat's footprint on a row is its own pixels rather
+than the filled span between them.
+
 What a hairmask is for
 ----------------------
 When a hat declares `clipsHair`, the renderer masks the hair sprite to the
@@ -506,7 +515,49 @@ def build(hid, apply_it, set_clips):
                 # byte-for-byte what it was -- which is why the wizard's notch,
                 # the cowboy's crease and every unaffected facing come out
                 # identical.
-                body = None if enclosed else body_cols(meta, d, h, w)
+                # ═══ v2.3.2010: AN ENCLOSED HAT DOES NOT ENCLOSE AS MUCH AS
+                #     IT CLAIMS, SO IT GETS (c) TOO ═══
+                #
+                # Owner, on mickey-ears: "East hair doesn't work well with
+                # Mickey hat it's erasing too much.  Check the others.  It
+                # should allow hair up until the border."
+                #
+                # v2.3.1993 gave the CLOSED branch a third clause -- keep a
+                # column wherever the standing figure is drawn behind it -- and
+                # deliberately withheld it from `enclosed`, whose whole premise
+                # (v2.3.1976) is that the cap covers the scalp completely, so
+                # there is no scalp left to protect.  Measured on the shipped
+                # art, that premise is false on exactly the facings where the
+                # cap narrows on its way down, which is the same shape the
+                # v2.3.1993 reports were:
+                #
+                #   mickey-ears east   the cap body ends at art row 21 and only
+                #                      a 2-4px sliver of strap continues to row
+                #                      26.  `solid[y]` is all the enclosed rule
+                #                      keeps, so the mask goes 10 -> 6 -> 3 -> 1
+                #                      -> 0 columns wide across those rows while
+                #                      the head under them is at FULL width: a
+                #                      bare band right under the brim, measured
+                #                      at 8,545 px, 9.47% of the visible hair
+                #   devil-horns SW     the same, worse -- 8,112 px, 18.27%, the
+                #                      highest in the game and never reported
+                #
+                # And the reason the exception can simply go is that (c) is
+                # gated on the BODY, which is the discriminator v2.3.1976 did
+                # not have.  The gap between a pair of horns, or between two
+                # mouse ears, is SKY -- measured at the time as 626 px outside
+                # the head against 6 inside -- so the body test excludes it on
+                # its own, and "there should be no hair between the horns"
+                # survives without needing a rule that also shaves the skull.
+                #
+                # `enclosed` therefore stops meaning "a different rule" and goes
+                # back to meaning the one thing it actually says: inside its own
+                # span, this hat's footprint is its OWN PIXELS, not the filled
+                # span between them.  That is the only term that differs now.
+                # (`seen & solid[y]` is `solid[y]`, so a hat with no body behind
+                # it -- no anchor, no stand sheet -- comes out byte-identical to
+                # the old enclosed rule.)
+                body = body_cols(meta, d, h, w)
                 seen = np.zeros(w, bool)
                 for y in range(y0, y1 + 1):
                     seen |= solid[y, :]
@@ -514,14 +565,13 @@ def build(hid, apply_it, set_clips):
                     row_span = np.zeros(w, bool)
                     if len(r):
                         row_span[int(r.min()):int(r.max()) + 1] = True
-                    # An enclosed hat keeps only where the hat itself is on
-                    # this row; everything else inside its span is scalp the
-                    # hat is covering.  See `enclosed` above.
-                    if enclosed:
-                        allow = solid[y, :]
-                    else:
-                        reach = row_span if body is None else (row_span | body[y, :])
-                        allow = seen & reach
+                    # The hat's footprint on this row: its own pixels for an
+                    # enclosed hat, the filled span between them for every
+                    # other.  See `enclosed` above.
+                    reach = solid[y, :] if enclosed else row_span
+                    if body is not None:
+                        reach = reach | body[y, :]
+                    allow = seen & reach
                     keep = _inset_runs(allow, INSET)
                     mask[y, keep] = (255, 255, 255, 255)
         made.append((d, int(m.sum()), int((mask[:, :, 3] > 0).sum()), w))
@@ -542,10 +592,11 @@ def build(hid, apply_it, set_clips):
         # rebuilt fourteen times carried the same sentence fourteen times
         # (bucket-hat, before this).  A repeat says nothing a reader did not
         # already have, and it buries the sentences that DO differ.
-        sentence = (' v2.3.1993: hair-clip mask rebuilt by tools/make_hairmask.py; the width '
-                    'rule now also keeps a column wherever the standing figure is drawn '
-                    'behind it, so a hat that narrows or tilts on its way down (chin strap, '
-                    'tilted rim, keffiyeh) no longer shaves the scalp underneath it')
+        sentence = (' v2.3.2010: hair-clip mask rebuilt by tools/make_hairmask.py; the width '
+                    'rule keeps a column wherever the standing figure is drawn behind it, '
+                    'on every hat including the `enclosed` ones, so a hat that narrows or '
+                    'tilts on its way down (chin strap, tilted rim, keffiyeh, a cap whose '
+                    'brim slopes) no longer shaves the scalp underneath it')
         note = meta.get('note', '')
         if sentence not in note:
             meta['note'] = note + sentence + ('' if was else ', and clipsHair switched on') + '.'

@@ -250,16 +250,22 @@ function ruleRows(w, h, m, top, bot, openTop, enclosed, body) {
     /* (a) the hat has reached this column at this row or above, AND
        (b) the column is inside the hat's own extent at this row. */
     const both = new Uint8Array(w);
-    /* v2.3.1976: an ENCLOSED hat keeps only where the hat itself is on this
-       row — the gap between a pair of horns is sky, but the scalp under it is
-       under the cap, so no hair may show there. (Owner: "There should be no
-       hair between the horns. I understand it to be a fully enclosed hat.") */
+    /* v2.3.1976: an ENCLOSED hat's footprint on a row is its OWN PIXELS, not
+       the filled span between them — the gap between a pair of horns is sky,
+       and no hair may show there. (Owner: "There should be no hair between the
+       horns. I understand it to be a fully enclosed hat.")
+       v2.3.2010: that is now ALL the flag means.  It used to also exempt the
+       hat from (c), on the premise that an enclosed cap covers the scalp
+       completely; measured on the shipped art it does not, wherever the cap
+       narrows on its way down, and the enclosed rule shaved the head under it
+       (mickey-ears east 9.47% bare scalp, devil-horns southwest 18.27%).  (c)
+       is gated on the BODY, and the gap between two horns is sky, so applying
+       it to an enclosed hat cannot put hair back between them — which is why
+       the exception could go rather than being special-cased again. */
     if (enclosed) { for (let x = 0; x < w; x++) if (sm[y * w + x]) both[x] = 1; }
-    else {
-      for (let x = rl; x <= rr && rl >= 0; x++) if (seen[x]) both[x] = 1;
-      /* (c) v2.3.1993 — see bodyCols above. */
-      if (body) for (let x = 0; x < w; x++) if (seen[x] && body[y * w + x]) both[x] = 1;
-    }
+    else for (let x = rl; x <= rr && rl >= 0; x++) if (seen[x]) both[x] = 1;
+    /* (c) v2.3.1993, every hat since v2.3.2010 — see bodyCols above. */
+    if (body) for (let x = 0; x < w; x++) if (seen[x] && body[y * w + x]) both[x] = 1;
     rows[y] = insetRuns(both, w);
   }
   return rows;
@@ -267,9 +273,9 @@ function ruleRows(w, h, m, top, bot, openTop, enclosed, body) {
 
 function ruleMask(hatBits, openTop, enclosed, meta, dir) {
   const { w, h, m } = hatBits;
-  /* v2.3.1993: the standing figure behind this frame — null for an enclosed
-     hat (its own branch never consults it) and for a caller with no meta. */
-  const body = (!enclosed && meta && dir) ? bodyCols(meta, dir, w, h) : null;
+  /* v2.3.1993: the standing figure behind this frame — null only for a caller
+     with no meta to place it by.  v2.3.2010: enclosed hats consult it too. */
+  const body = (meta && dir) ? bodyCols(meta, dir, w, h) : null;
   const out = new Uint8Array(w * h);
   /* ═══ v2.3.1977: THE HAT'S OUTLINE, NOT ITS LAST STRAY PIXEL ═══
      Owner: "The hair mask is inconsistent depending on the direction ... it's
