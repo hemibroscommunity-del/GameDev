@@ -84,6 +84,13 @@ const TRAIT_VER = '2.3.1561';            // cache-bust for body-tops.json (match
    pull the SAME cached bytes rather than a second copy under a different
    query string. */
 const GEAR_ART_VER = '2.3.1656';
+/* v2.3.1995: the tee's own cache-bust.  It was the LITERAL '2.3.760' on the
+   shirt URL below, so every re-bake of these sheets since — v2.3.1873's seal
+   included — reached the world (gearSheets bumps GEAR_VERSION) and NOT the
+   preview, which is the surface the owner reviews the shirt on.  Bump this
+   with any shirt-sheet regen; it is separate from GEAR_ART_VER so re-baking
+   the tee does not make every player re-download the armour art too. */
+const SHIRT_ART_VER = '2.3.1995';
 
 /* v2.3.1579: the portrait prefers the 256px `hi/` art.
  *
@@ -358,7 +365,7 @@ export async function drawCharacterPortrait(canvas, opts) {
     /* v2.3.757: the LAYERED shirt sheet (white-base, tinted below) -- the
        baked torso-retint shirt is retired, so the preview composites the
        same layer the game renders. */
-    wantShirt ? loadImage(`/sprites/gear/shirt/tshirt/stand-${DIR}.png?v=2.3.760`).catch(() => null) : null,
+    wantShirt ? loadImage(`/sprites/gear/shirt/tshirt/stand-${DIR}.png?v=${SHIRT_ART_VER}`).catch(() => null) : null,
     /* v2.3.1815: in the SAME concurrent batch as everything else — a
        sequential await here would put the armour a round-trip behind the
        body, and the figure would visibly dress itself. */
