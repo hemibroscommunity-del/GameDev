@@ -16,13 +16,17 @@ Two live events, one day apart.
 | Time | 17:00 UTC / 10:00 PT | 15:00 UTC / 08:00 PT |
 | Prizes | 100k HAIR (best review) + 3 capes | 3 OG capes + Hemi merch |
 
-Capes are **monster drops, one per account, three in existence per cape
-type**. Merch is a **random draw** among players who hit a level bar.
+Capes are earned in **two steps**: a Golden Ticket drops from a monster,
+and the player **opens the ticket in their inventory** to redeem it for the
+cape. Three tickets exist per event, one per account. Merch is a **random
+draw** among players who hit a level bar.
 
-Today's capes are being awarded **manually** — the drop mechanic does not
-exist yet and shipping it an hour before a live session is not worth the
-risk (a `server/**` deploy cold-starts the room and disconnects everyone).
-The work below targets **tomorrow's** event.
+The two-step is the point — the drop is the moment, the open is the reward.
+Do not collapse it into a direct cape drop.
+
+Owner decision (2026-08-27): the ticket→cape flow ships before the events
+run; the session time moves if it has to. Nothing here is to be awarded
+manually.
 
 ---
 
@@ -93,22 +97,105 @@ so they go in the global manifest, not `preloadZoneAssets`.
 
 ---
 
-## 4. Part B — the drop mechanic (server)
+## 4. Part B — ticket drop + cape redemption (server)
 
 Read `docs/ARCHITECTURE-HANDOFF.md` before touching `server/`. It is
 load-bearing and the conventions below come from it.
 
-### Behaviour
+### The flow
 
-- Cape drops from a monster kill, server-rolled. **Never client-decided** —
-  the server is authoritative for all loot.
-- **One per account**: refuse if the player's `_anniversaryItems` already
-  holds that cape id.
-- **Three in existence per cape type**: a persistent grant counter, checked
-  and incremented in the same DO turn as the award.
+```
+monster kill → server rolls ticket → ticket lands in inventory
+            → player taps "Open" in the bag
+            → client sends redeem → server consumes ticket, grants cape
+            → player_state echo → cape renders
+```
+
+### Step 1 — the ticket drop
+
+- Server-rolled on a monster kill. **Never client-decided** — the server is
+  authoritative for all loot.
+- The ticket is an ordinary **inventory item** (an `inventory` key), so it
+  persists, survives disconnect, and shows in the bag with no new storage.
+- **One per account**: refuse if the player already holds a ticket or has
+  already redeemed one.
+- **Three in existence per event**: a persistent grant ledger, checked and
+  incremented in the same DO turn as the award. The DO is single-threaded,
+  so a read-modify-write inside one turn is safe — do not split it across
+  an `await` boundary that could interleave.
 - Tune the rate against the **event window**, not against forever. Scarcity
-  is guaranteed by the cap of three; a rate so low nobody finds one during
-  the session means the announced hook never lands.
+  is guaranteed by the cap of three; a rate so low that nobody finds one
+  during the session means the announced hook never lands.
+
+### Step 2 — the redemption
+
+**Follow `_handleEatRequest` (`server/src/cooking.js:57`).** It is the
+closest existing pattern and the shape is identical: validate ownership,
+consume one, persist, echo. Read it before writing the handler.
+
+```
+_handleTicketRedeem(session, payload):
+  guard session / dying / dead / disconnected
+  verify ps.inventory holds the ticket   ← ownership check
+  verify the cape is not already in ps._anniversaryItems
+  consume the ticket (decrement, delete at 0)
+  push the cape into ps._anniversaryItems
+  this._saveRpg(session.id, ps)
+  this._sendPlayerState(ws, session.id)
+```
+
+### The bug this flow invites — read `cooking.js:71`
+
+The firemaking incident (v2.3.1702) is the exact failure mode waiting here.
+The client deleted a log locally, sent **nothing**, the worker still held
+the log, and its next `player_state` echo — inventory rides every one —
+handed it straight back. One log lit unlimited campfires.
+
+A ticket "opened" client-side with no server message does the same thing:
+the player keeps the ticket and can redeem it again. That is how three
+tickets become five capes, in public, during the event.
+
+**The client must never grant the cape or delete the ticket on its own.**
+It sends the redeem and waits for the echo. Everything else is the server's.
+
+### Conventions this must satisfy
+
+1. **Storage key** — the grant ledger needs a new prefix (suggest
+   `capegrant:<capeId>` holding the grantee list, so the count and the
+   winners are one record). It **must** be added to the rule-2 registry
+   table in `docs/ARCHITECTURE-HANDOFF.md` (~line 52) **in the same PR** —
+   `tools/dev/precheck.mjs` parses that table and fails the push otherwise.
+
+2. **Client→server type** — the redeem is a new inbound type. Precheck
+   enforces that every client→server message type has a `channelShim`
+   passthrough case (`src/networking/wsClient.js:2586`); the shim is an
+   **allowlist**, and a type with no case there is silently dropped. Add
+   the case in the same PR. Route it in the `index.js` switch alongside
+   `case 'eat_request':` (`server/src/index.js:4078`).
+
+3. **Privileged event** — any new server-emitted type must be added to
+   `PRIVILEGED_EVENTS` (`server/src/index.js:261`) or clients can forge it.
+
+4. **Caps flag** — add one (e.g. `eventCapes`) to the `caps` object at
+   `server/src/join.js:964`. Deploy-order safety, rule 19: old client + new
+   worker and new client + old worker must both work. An old client must
+   simply never send the redeem rather than sending something the worker
+   relays as an unknown broadcast.
+
+5. **Proto-safety** — any map keyed by a client-supplied id must be
+   `Object.create(null)` or a `Map`. Plain `{}` silently no-ops on
+   `'__proto__'`. This bit the repo three times in one day (v2.3.1175,
+   v2.3.1185, v2.3.1192). Note `_handleEatRequest` guards this by
+   validating the key prefix before touching `ps.inventory` — do the same.
+
+6. **opId idempotency** — the redeem is economy-settlement-shaped. Follow
+   the `oplog:<opId>` pattern so a retried redeem cannot grant twice.
+
+7. **Tests** — `cd server && npm test`. Add a suite or extend the nearest.
+   Cover at minimum: ticket drop respects the global cap of three; a second
+   ticket is refused for an account that has one; redeem consumes the ticket
+   and grants exactly one cape; a replayed redeem grants nothing; a redeem
+   from a player who holds no ticket is refused.
 
 ### Conventions this must satisfy
 
@@ -227,6 +314,15 @@ arbitrary.
 
 ## 7. Open decisions — not for the implementer to guess
 
+- **Is the ticket tradeable?** It is an inventory item, so unless it is
+  excluded from the marketplace and from trade it can be sold. That may be
+  desirable (a Golden Ticket with a market price is a story) or a disaster
+  (a reviewer's prize bought by a whale). `ANNIVERSARY_ITEMS` calls capes
+  "discontinued **tradeable** cosmetics", so the precedent leans tradeable —
+  but the cape and the ticket can differ. Decide before launch; retrofitting
+  a ban after someone has sold one is ugly.
+- **Does an unopened ticket expire?** If a winner never opens it, is that
+  cape burned or reclaimed?
 - **Level threshold** for draw eligibility.
 - **How many merch winners.** Rick401's offer ("happy to help on that end")
   is an offer, not a confirmed quantity. Merch must not appear in any
