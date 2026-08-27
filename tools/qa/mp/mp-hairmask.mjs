@@ -238,10 +238,34 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return { w, frame: await frameId() };
   };
 
+  /* ═══ v2.3.2006: ROTATE BY DRAG — THE CIRCLES ARE GONE ═══
+     Owner removed the two rotate buttons ("just keep behavior for using
+     finger to turn"), so this drives the gesture that remains.  It is also
+     the better probe: the drag IS the control now, and a scenario that
+     rotated through a button was not exercising it at all.
+
+     The handler (NameModal's canvas) steps ONE facing per 26px of travel and
+     re-bases its origin each step, so a single 40px move is exactly one step
+     clockwise -- the same direction the "Rotate left" button gave.  The move
+     must land in one go: two 20px moves would each fall under the threshold
+     and rotate nothing.  pointerup with the drag flag set is NOT a tap, so
+     this does not toggle the zoom the way a click on the canvas would. */
+  const rotateOnce = async (pg) => {
+    const c = await pg.$('canvas[title^="Live preview"]');
+    if (!c) throw new Error('no preview canvas to drag');
+    const b = await c.boundingBox();
+    const y = b.y + b.height / 2, x0 = b.x + b.width / 2 - 20;
+    await pg.mouse.move(x0, y);
+    await pg.mouse.down();
+    await pg.mouse.move(x0 + 40, y);
+    await pg.mouse.up();
+    await pg.waitForTimeout(150);
+  };
+
   let cur = 'southwest';
   const face = async (d) => {
     const n = (DIRS.indexOf(d) - DIRS.indexOf(cur) + 8) % 8;
-    for (let i = 0; i < n; i++) { await page.click('button[title="Rotate left"]'); await page.waitForTimeout(150); }
+    for (let i = 0; i < n; i++) await rotateOnce(page);
     cur = d;
     await settle();
   };

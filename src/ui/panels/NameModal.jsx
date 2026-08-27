@@ -9,7 +9,6 @@ import { BUILD_INFO } from '../BuildBadge.jsx';
    for a player on a NEW device, who lands on this splash with a fresh
    silent identity and needs a way in with their saved Login Key before
    pressing PLAY (which would start binding progress to the fresh one). */
-import { AccountModal } from '../account/AccountModal.jsx';
 import { PANTS_CATALOG, SHOES_CATALOG, SKIN_CATALOG, setPants, setShoes, setSkin } from '@/rendering/playerSkins.js';
 import { FACIALHAIR_CATALOG, setFacialHair } from '@/rendering/traits/facialHairCatalog.js';
 import { FACIALHAIR_COLOR_CATALOG, setFacialHairColor } from '@/rendering/traits/facialHairColorCatalog.js';
@@ -250,9 +249,14 @@ export function NameModal(props) {
     /* v2.3.1949: one button, three canvases -- the panel's mode strip picks
        chest, face or arms.  The label says so, because a face tattoo nobody
        knows exists is a face tattoo nobody draws. */
-    skin: { target: 'tattoo', label: 'Tattoo your body or face' },   /* v2.3.1978: two screens, not three */
+    /* v2.3.2008: `icon` is the owner's painted art for the two tabs whose
+       drawing is not a pencil stroke -- a tattoo gun for skin, a patterned
+       sneaker for shoes.  shirt and pants keep the inline pencil: a print on a
+       garment IS drawing, and the pencil says that better than a second shirt
+       icon would beside a tab already showing shirts. */
+    skin: { target: 'tattoo', label: 'Tattoo your body or face', icon: 'cc-draw-tattoo' },   /* v2.3.1978: two screens, not three */
     /* v2.3.1944: shoes are pattern-only — no drawing on an eight-pixel boot. */
-    shoes: { target: 'shoes', label: 'Pattern these shoes' },
+    shoes: { target: 'shoes', label: 'Pattern these shoes', icon: 'cc-draw-shoes' },
   };
   var _TAB_ICON = function (n) { return '/ui/welcome/cc/cc-tab-' + n + '.png?v=' + BUILD_INFO.version; };
   var _TABS = [
@@ -304,7 +308,25 @@ export function NameModal(props) {
      entry gets NO tile at all (owner) — no color selected IS the
      default; tapping the selected swatch again unselects it, which
      sets the store back to 'default' (the sprite's native color). */
-  var _colorList = _def.colors ? _def.colors.filter(function (o) { return o.id !== 'default'; }) : null;
+  /* ═══ v2.3.2007: THE DEFAULT COLOUR IS BACK IN THE ROW ═══
+     Owner: "I don't see a way to get a hat color back to its default color.
+     Add that to color picker."
+
+     There has always BEEN a way -- v2.3.1253 removed the tile on the reasoning
+     that "unpicked = default, and re-tapping the picked swatch unselects back
+     to default".  The gesture works.  Nothing on the screen says it exists,
+     which is the same thing as it not existing: the owner went looking for the
+     control and could not find it, and he wrote this picker's requirements.
+
+     `_swatchTile` has rendered this entry properly since v2.3.711 -- for a
+     trait colour it draws the ITEM'S OWN thumbnail in its original colours
+     ("this is what you get") rather than a swatch, and titles it "Original
+     color".  So this is one filter coming off, not a control being built.
+
+     The row's height is fixed in game.css (v2.3.1253's constant-height rule),
+     and it already scrolls horizontally, so one more tile cannot move the
+     stage -- which was the whole reason the tile was dropped. */
+  var _colorList = _def.colors || null;
   /* v2.3.1953: on the Build tab this row is the FRAME, not a colour, and two
      of the rules above do not apply to it.  There is no 'default' entry to
      drop (medium is a real option you can pick, not the absence of one), and
@@ -355,7 +377,6 @@ export function NameModal(props) {
      row appears/disappears with it and the user may be mid-browse. */
   React.useEffect(function () { _measureMore(); }, [_def.sel]);
   /* v2.3.1143: Login Key overlay toggle (self-contained -- no BroTown prop). */
-  var _acS = React.useState(false), showAccount = _acS[0], setShowAccount = _acS[1];
   /* v2.3.1524: the Customize DRAWER is retired. The pickers are the point of
      this screen (owner), so they now own a permanent right-hand column instead
      of hiding behind a button; there is no open/closed state left to hold. */
@@ -552,29 +573,22 @@ export function NameModal(props) {
          order stacks pillars < canvas < rotate buttons. */
       background: 'transparent'
     }
-  }), /*#__PURE__*/React.createElement("button", {
-    /* v2.3.712/722 rotate circles.  v2.3.1251: 44 → 50px (handoff
-       48–52px) and dropped to the platform's baseline so they read as
-       part of the pedestal, not the stage corners. */
-    type: 'button', title: 'Rotate left', onClick: function () { rotatePreview(1); },
-    /* v2.3.1254: inset top-light / bottom-shade bevel — the hairline-
-       gradient recipe reads as a sliver on a circle, so circles use
-       soft inset shadows instead.
-       v2.3.1524: size moves to .bt-cc-rot so it can track the character
-       column — two fixed 50px circles covered the whole stage once the
-       column narrowed on a 320-class screen. */
-    className: "bt-cc-rot bt-cc-rot--l"
-  }, /*#__PURE__*/React.createElement("img", {
-    /* v2.3.1307 (round-7): the owner's painted rotate icons replace the
-       ↺/↻ glyphs, which read as Undo/Redo. */
-    src: '/ui/welcome/cc/cc-rotate-left.webp?v=' + BUILD_INFO.version, alt: 'Rotate left', draggable: false
   })),
-  /*#__PURE__*/React.createElement("button", {
-    type: 'button', title: 'Rotate right', onClick: function () { rotatePreview(-1); },
-    className: "bt-cc-rot bt-cc-rot--r"
-  }, /*#__PURE__*/React.createElement("img", {
-    src: '/ui/welcome/cc/cc-rotate-right.webp?v=' + BUILD_INFO.version, alt: 'Rotate right', draggable: false
-  }))),
+  /* ═══ v2.3.2006: THE ROTATE CIRCLES ARE GONE — DRAG THE BRO ═══
+     Owner: "Remove the two buttons for turning the bro on trait picker page
+     and just keep behavior for using finger to turn."
+
+     The drag has been the real control since v2.3.711 (horizontal swipe on
+     the stage, one facing per 26px of travel); the circles were the discover-
+     ability crutch for it and they cost the stage two 50px targets sitting on
+     top of the character.  `rotatePreview` is untouched and still the only
+     way a facing changes -- the drag handler on .bt-cc-stage calls it, so
+     nothing about the rotation itself moved.
+
+     The painted icons (cc-rotate-left/right.webp) stay on disk: they are
+     slices of the owner's title sheet, not generated, and deleting art to
+     save two files nobody serves is not worth the regret if this comes back.
+     .bt-cc-rot's rules stay in game.css for the same reason. */
   /* v2.3.1276: the always-visible sheet (.bt-cc-menu) was retired for a
      slide-up drawer.  v2.3.1524: the drawer is retired in turn — the pickers
      are the permanent right-hand column (.bt-cc-panel) further down. */
@@ -679,9 +693,15 @@ export function NameModal(props) {
        open. Randomize rerolls the whole look. */
     className: "bt-cc-actions"
   }, /*#__PURE__*/React.createElement("button", {
-    type: 'button', className: "bt-cc-btn", onClick: randomizeWithFlair
+    /* v2.3.2006: --hero, not a change to .bt-cc-btn itself -- that class is
+       also the account modal's action and the quest claim screen's "Later",
+       and neither of those is a screen's headline control. */
+    type: 'button', className: "bt-cc-btn bt-cc-btn--hero", onClick: randomizeWithFlair
   }, /*#__PURE__*/React.createElement("img", {
-    className: "bt-cc-action-icon", src: '/ui/welcome/cc/cc-random-look.webp?v=' + BUILD_INFO.version, alt: '', draggable: false }),
+    /* v2.3.2008: the owner's painted randomize icon (a bro inside two turning
+       arrows) replaces cc-random-look.webp, which was a generic pair of
+       arrows with no bro in it. */
+    className: "bt-cc-action-icon", src: '/ui/welcome/cc/cc-randomize.png?v=' + BUILD_INFO.version, alt: '', draggable: false }),
   /*#__PURE__*/React.createElement("span", null, "Randomize Look"))),
   /*#__PURE__*/React.createElement("button", {
     onClick: function () { if (_nameValid) joinTown(); },
@@ -701,37 +721,30 @@ export function NameModal(props) {
        own :active translateY(2px), and scaling a child by transform
        reflows nothing.  See .bt-cc-play-label in game.css for why it
        only breathes once the name is valid. */
-  }, /*#__PURE__*/React.createElement("span", { className: "bt-cc-play-label" }, "Enter Bro Town")),
-  /*#__PURE__*/React.createElement("button", {
-    /* v2.3.1143: returning-player door.  v2.3.1307 (round-7): promoted
-       from footer text to a real secondary action \u2014 full-width 44px
-       bordered row with the painted key icon. */
-    type: 'button',
-    className: "bt-cc-login",
-    onClick: function () { setShowAccount(true); },
-    /* v2.3.1576: the fill/border/colour moved OUT of these inline styles
-       into .bt-cc-login (game.css).  They were inline, so the stylesheet
-       could not reach them — this row was painted rgba(17,25,29,.55),
-       DARKER than the pane behind it (1.26:1), which is why the
-       returning-player door was the hardest thing on the screen to find.
-       Layout-only properties stay here. */
-    style: {
-      width: '100%',
-      cursor: 'pointer',
-      padding: '0 10px',
-      minHeight: 44,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 7
-    }
-  }, /*#__PURE__*/React.createElement("img", {
-    src: '/ui/welcome/cc/cc-login-key.webp?v=' + BUILD_INFO.version, alt: '', draggable: false,
-    style: { width: 20, height: 20, objectFit: 'contain' }
-  }), /*#__PURE__*/React.createElement("span", null, "Already have a Bro?"),
-  /*#__PURE__*/React.createElement("span", {
-    style: { color: '#EAC675', fontWeight: 700 }
-  }, "Log in with key")), /*#__PURE__*/React.createElement("div", {
+  },
+  /* v2.3.2008: the town gate, left of the label.  It rides INSIDE the
+     breathing label's row but is not part of the label span -- v2.3.1577's
+     animation scales that span, and a scaling gate would pulse against a
+     static one on the plate beside it. */
+  /*#__PURE__*/React.createElement("img", {
+    className: "bt-cc-play-icon",
+    src: '/ui/welcome/cc/cc-enter-town.png?v=' + BUILD_INFO.version,
+    alt: '', draggable: false, "aria-hidden": true
+  }),
+  /*#__PURE__*/React.createElement("span", { className: "bt-cc-play-label" }, "Enter Bro Town")),
+  /* ═══ v2.3.2006: THE RETURNING-PLAYER ROW IS GONE FROM HERE ═══
+     Owner: "Remove button already have bro on trait creator screen."
+
+     It was never the only door and it is not the door anyone arrives at: you
+     reach this screen by pressing CREATE CHARACTER on the splash, and the
+     splash's other plate -- the gold one, "Continue" -- is the returning
+     player's way in.  Offering it again at the bottom of the creator asked a
+     player who has already answered that question to answer it twice.
+
+     The AccountModal it opened goes with it (nothing else in this file set
+     showAccount), so the state and its render are removed too rather than
+     left as a modal no gesture can reach. */
+  /*#__PURE__*/React.createElement("div", {
     /* v2.3.1675 (owner: "put the little Hemi bros logo to the left of the
        version number").  Mark and version share one baseline row now — it
        reads as a single signature line rather than two stacked scraps, which
@@ -847,8 +860,16 @@ export function NameModal(props) {
        four strokes, it inherits the button's own colour, and it stays crisp at
        any density without a second asset to preload (the animation-preload law
        exists because assets that load late hitch; one that is never fetched
-       cannot).  aria-hidden because the label beside it already says it. */
-    /*#__PURE__*/React.createElement("svg", {
+       cannot).  aria-hidden because the label beside it already says it.
+       v2.3.2008: the two tabs that carry painted art use it instead; the
+       pencil stays the fallback and the answer for shirt and pants. */
+    (_on && _p.icon)
+      ? /*#__PURE__*/React.createElement("img", {
+        className: 'bt-cc-draw-icon', src: '/ui/welcome/cc/' + _p.icon + '.png?v=' + BUILD_INFO.version,
+        alt: '', draggable: false, "aria-hidden": true,
+        style: { width: 26, height: 26, objectFit: 'contain', flex: 'none' }
+      })
+      : /*#__PURE__*/React.createElement("svg", {
       className: 'bt-cc-draw-icon', viewBox: '0 0 24 24', width: 22, height: 22,
       "aria-hidden": true, focusable: 'false'
     },
@@ -877,7 +898,5 @@ export function NameModal(props) {
       buildHeight: heightSel, buildFrame: frameSel   /* v2.3.1953 */
     }),
     onClose: function () { setShowPaint(null); }
-  }), showAccount && /*#__PURE__*/React.createElement(AccountModal, {
-    onClose: function () { setShowAccount(false); }
   }));
 }

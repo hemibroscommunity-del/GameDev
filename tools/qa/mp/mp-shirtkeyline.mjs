@@ -227,26 +227,88 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return { w: c.width, h: c.height, px: Array.from(d) };
     });
 
+  /* ═══ v2.3.2006: ROTATE BY DRAG — THE CIRCLES ARE GONE ═══
+       Owner removed the two rotate buttons ("just keep behavior for using
+       finger to turn"), so this drives the gesture that remains.  It is also
+       the better probe: the drag IS the control now, and a scenario that
+       rotated through a button was not exercising it at all.
+
+       The handler (NameModal's canvas) steps ONE facing per 26px of travel and
+       re-bases its origin each step, so a single 40px move is exactly one step
+       clockwise -- the same direction the "Rotate left" button gave.  The move
+       must land in one go: two 20px moves would each fall under the threshold
+       and rotate nothing.  pointerup with the drag flag set is NOT a tap, so
+       this does not toggle the zoom the way a click on the canvas would. */
+    const rotateOnce = async (pg) => {
+      const c = await pg.$('canvas[title^="Live preview"]');
+      if (!c) throw new Error('no preview canvas to drag');
+      const b = await c.boundingBox();
+      const y = b.y + b.height / 2, x0 = b.x + b.width / 2 - 20;
+      await pg.mouse.move(x0, y);
+      await pg.mouse.down();
+      await pg.mouse.move(x0 + 40, y);
+      await pg.mouse.up();
+      await pg.waitForTimeout(150);
+    };
+
+    /* ═══ v2.3.2006: THE FRAME IS ASKED FOR, NOT ASSUMED ═══
+       This used to blind-tap the canvas to toggle between the close frame and
+       the whole-figure one.  A blind toggle only works if you already know
+       which state you are in, and two changes broke that: v2.3.1994 made
+       picking a trait category re-aim the camera, and v2.3.2006 made ROTATION
+       a drag on this very canvas.  The measured cost of assuming: the south
+       shot came back 46773 shirt pixels against this morning's 41601 -- the
+       same tee, photographed at a different size, silently.
+
+       Same shape as mp-hairmask's fix: read the frame, tap only if it is not
+       the one wanted, and fail loudly if the tap did not take.  The stage's
+       inline height is written straight from NameModal's frame preset, so it
+       is an exact string ("92%" wide, "54.5%" at rest) rather than a measured
+       box that a mid-animation read could catch between values. */
+    const frameId = () => P.page.evaluate(() => {
+      const c = document.querySelector('canvas[title^="Live preview"]');
+      const st = c && c.closest('[style*="height"]');
+      return (c && c.style.height) || (st && st.style.height) || '';
+    });
+    const tapCanvas = async () => {
+      await P.page.click('canvas[title^="Live preview"]');
+      await P.page.waitForTimeout(420);
+    };
+    let WIDE = '', NARROW = '';
+    {
+      const a = await frameId();
+      await tapCanvas();
+      const b = await frameId();
+      const num = (v) => parseFloat(v) || 0;
+      if (a && b && a !== b) { WIDE = num(a) > num(b) ? a : b; NARROW = WIDE === a ? b : a; }
+      rec.ok('the two preview frames are distinguishable and the tap toggles (guard)',
+        !!WIDE && !!NARROW, { a, b, WIDE, NARROW });
+    }
+    const ensureFrame = async (want, why) => {
+      if (!WIDE) return;
+      if ((await frameId()) !== want) await tapCanvas();
+      const got = await frameId();
+      if (got !== want) rec.ok(`frame for ${why}`, false, { got, want });
+    };
+
     let facing = 'southwest';
     const out = Object.create(null);
     for (const want of WANT) {
       while (facing !== want) {
-        /* rotatePreview(+1) steps clockwise through DIRS; the left button is +1 */
-        await P.page.click('button[title="Rotate left"]');
+        /* v2.3.2006: a rightward drag steps clockwise through DIRS, which is
+           what the retired "Rotate left" button did. */
+        await rotateOnce(P.page);
         facing = DIRS[(DIRS.indexOf(facing) + 1) % DIRS.length];
-        await P.page.waitForTimeout(140);
       }
+      await ensureFrame(NARROW, `${want} close`);
       await P.page.waitForTimeout(450);
       if (shirt !== 'none') await shot(`keyline-${want}-close`);
-      /* Tap the canvas: a pointer journey that does not rotate is a tap, and a
-         tap pulls the camera back to the whole figure (v2.3.1951), which is
-         where the hem is. */
-      await P.page.click('canvas[title^="Live preview"]');
-      await P.page.waitForTimeout(500);
+      /* The whole-figure frame is where the hem is, and it is also the frame
+         the two passes must SHARE for their difference to mean anything. */
+      await ensureFrame(WIDE, `${want} full`);
+      await P.page.waitForTimeout(400);
       if (shirt !== 'none') await shot(`keyline-${want}-full`);
       out[want] = await bitmap();
-      await P.page.click('canvas[title^="Live preview"]');
-      await P.page.waitForTimeout(350);
     }
     return out;
   };
