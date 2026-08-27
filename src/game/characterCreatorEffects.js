@@ -109,21 +109,72 @@ const FOCUS_FULL = { cy: 0.49, h: 0.99 };
    edge cut through the hair, the dissolve did its job on that edge, and the
    hair tab faded the hair.  A frame without the flag is meant to cut — a boot
    frame that contained the head would not be a boot frame. */
-const CAT_FOCUS = {
+/* ═══ v2.3.2021: ONLY THE EYES ARE WORTH A CLOSE-UP ═══
+ * Owner: "On character preview don't zoom to feature anymore except for eyes.
+ * The art is rough and generally doesn't look good blown up" — on the TRAIT
+ * PICKER specifically.
+ *
+ * The camera move was added so a tab change read as attention rather than a
+ * jump cut, and as a piece of motion it worked.  What it could not fix is the
+ * subject: these sprites are drawn at 256px and the picker was pushing a head
+ * crop to roughly a third of the canvas height, so the panel was resampling
+ * pixel art two to three times its native size.  Every soft edge, every stray
+ * antialiased pixel and every keyline irregularity — the exact things four
+ * sessions of hair-mask and keyline work have been chasing — got magnified and
+ * put centre stage on the first screen a new player ever sees.
+ *
+ * EYES KEEP IT, and that is not an inconsistency: eyes are a handful of pixels
+ * on a face and are genuinely unjudgeable at full-figure size, which is the
+ * same argument that gave `build` the whole figure (you cannot judge a
+ * silhouette zoomed in).  Each category gets the shot its subject actually
+ * needs.
+ *
+ * The frames are kept rather than deleted so this is one line to reverse per
+ * category if the art is redrawn later, and so the `crown` machinery
+ * (v2.3.1956) that keeps a tall hat inside its frame stays exercised by the
+ * eye frame instead of going dead. */
+const RETIRED_FOCUS = {
   hair: { cy: 0.30, h: 0.44, crown: true },
   hat: { cy: 0.28, h: 0.46, crown: true },
-  eyes: { cy: 0.31, h: 0.36, crown: true },
   beard: { cy: 0.33, h: 0.38, crown: true },
-  /* Skin is the whole body, so it gets the whole body. */
-  skin: FOCUS_FULL,
   shirt: { cy: 0.47, h: 0.56 },
   pants: { cy: 0.66, h: 0.52 },
   shoes: { cy: 0.80, h: 0.44 },
+};
+const CAT_FOCUS = {
+  hair: FOCUS_FULL,
+  hat: FOCUS_FULL,
+  /* The one close-up left: a few pixels on a face, unjudgeable full-figure. */
+  eyes: { cy: 0.31, h: 0.36, crown: true },
+  beard: FOCUS_FULL,
+  /* Skin is the whole body, so it gets the whole body. */
+  skin: FOCUS_FULL,
+  shirt: FOCUS_FULL,
+  pants: FOCUS_FULL,
+  shoes: FOCUS_FULL,
   /* v2.3.1953: build is a SILHOUETTE, which is the one thing you cannot judge
      zoomed in — the whole figure, stated rather than left to the fallback so
      nobody later "fixes" it into a torso crop. */
   build: FOCUS_FULL,
 };
+/** v2.3.2021: does this category still get a CLOSE-UP?  Exported so the stage
+ *  box and the camera cannot disagree about it.
+ *
+ *  The stage has two frames (NameModal `_frame`): a tall one at rest and a
+ *  short one, and the short one only ever made sense PAIRED WITH A CROP — a
+ *  head filling a shorter box.  With the crops retired, leaving it keyed on
+ *  `previewZoom` alone would mean picking a tab shrank the character instead
+ *  of zooming to the feature: strictly worse than either behaviour, and the
+ *  sort of thing that falls out of changing one of two coupled numbers.
+ *
+ *  So the box asks the same question the camera answers.  Only 'eyes' says yes
+ *  today; if the art is redrawn and a category gets its close-up back, both
+ *  follow from the one table above. */
+export function categoryCrops(cat) {
+  const f = CAT_FOCUS[cat];
+  return !!f && f !== FOCUS_FULL;
+}
+
 /* Measured in v2.3.1947: the figure is centred here in every composite. */
 const FIG_CX = 0.4975;
 /* Per-frame approach fraction.  0.18 lands a category change in ~200ms at

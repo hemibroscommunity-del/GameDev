@@ -3,7 +3,7 @@ import { PlayerPaint } from './PlayerPaint.jsx';   /* v2.3.1938; v2.3.1940 pants
 /* v2.3.1947: the designer shows the character wearing what you are making, and
    it has to be the SAME character the stage behind it is showing -- so it gets
    the look from the one function that builds it, not a second copy. */
-import { portraitLook } from '@/game/characterCreatorEffects.js';
+import { portraitLook, categoryCrops } from '@/game/characterCreatorEffects.js';
 import { BUILD_INFO } from '../BuildBadge.jsx';
 /* v2.3.1143: account login -- "Already have a character?" entry point
    for a player on a NEW device, who lands on this splash with a fresh
@@ -406,7 +406,12 @@ export function NameModal(props) {
      covered the character; the pickers now sit BESIDE it in their own column
      and never overlap it, so there is nothing to hide behind and nothing to
      measure. Rest, and the tap zoom. */
-  var _frame = previewZoom ? { h: 92, b: '2%' } : { h: 54.5, b: '18.2%' };
+  /* v2.3.2021: the short frame is for a CROPPED camera, and only 'eyes' crops
+     now.  Keyed on previewZoom alone, picking any other tab would shrink the
+     character in a shorter box rather than zoom to anything — see
+     categoryCrops(). */
+  var _frame = (previewZoom || !categoryCrops(_activeType))
+    ? { h: 92, b: '2%' } : { h: 54.5, b: '18.2%' };
   /* v2.3.1307: name validity gates ENTER (round-7).  Local rules only:
      names are not unique server-side, so there is no availability
      check to run — trimmed length is the honest contract. */
