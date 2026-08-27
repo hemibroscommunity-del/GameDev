@@ -71,9 +71,20 @@ to touch the stored key. Both deploy orders are safe.
   "only way back" warning), `AccountLoginForm` (idle → checking →
   confirm | error → switching), `AccountModal` (overlay composing both).
 - Entry points:
-  - **In game:** More → **Account** tile → `AccountPanel`
+  - **In game:** More → **Login Key** tile → `AccountPanel`
     (`src/ui/mobile/dash/AccountPanel.jsx`; the BottomDashboard is
     mounted on all platforms, so this covers desktop too).
+    *v2.3.2038:* this line described a tile that did not exist. The
+    launcher tile was folded into Settings at v2.3.1291 and the spec was
+    never updated, so for ~750 versions the only real in-game route was
+    More → Settings → **Account** row — three taps, behind a gear. The
+    tile is back (it fills the 5-wide grid's empty tenth cell), named
+    **Login Key** rather than *Account* because that is what the card,
+    the login door and a player about to wipe their browser all call it;
+    the panel header and the Settings row were renamed to match. The
+    Settings row **stays** — promoting a destination should not orphan
+    the route people already learned. Both are walked by
+    `tools/qa/mp/mp-loginkey.mjs`.
   - **Welcome screen:** "Already have a character? Log in with your
     Login Key" link under PLAY in `NameModal.jsx` → `AccountModal`.
     This is the path a returning player on a NEW device actually hits.

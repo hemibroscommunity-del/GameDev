@@ -200,7 +200,10 @@ export const SettingsPanel = () => {
       {/* v2.3.1291 (ChatGPT round-3 §1): Account, Controls and Feedback
           fold in here as drill rows — they left the More launcher.  The
           panels themselves are unchanged (PANELS registry push). */}
-      <LinkRow label="Account — login key & device transfer"
+      {/* v2.3.2038: renamed with the tile and the panel header. This row stays
+          -- it is where the path has lived since v2.3.1291 and anyone who
+          learned it here should still find it. */}
+      <LinkRow label="Login Key — save it, or continue a character"
         onTap={() => dashboardPanelBus.push('account')} />
       <LinkRow label="Controls — replay the tutorial"
         onTap={() => controlsTutorialBus.open()} />

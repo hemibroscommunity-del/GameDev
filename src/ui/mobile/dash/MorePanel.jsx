@@ -6,6 +6,8 @@ import { readyQuestCount } from '../sheet/questModel.js';
 import { getFriendRows } from '../sheet/friendsModel.js';
 import { friendsSrv } from '../sheet/friendsSync.js';
 import { hasUnseenLevelUps } from '../sheet/skillsModel.js';
+/* v2.3.2038: the Login Key tile's status line reads the real credential. */
+import { getBtPassphrase } from '@/networking/index.js';
 
 // v2.3.1224: swapped to the UI Bible icon set (docs/UI-BIBLE.md Part 4,
 // sliced by tools/process_icon_sheets.py); every tile has a real icon.
@@ -37,6 +39,23 @@ export const TILES = [
   { id: 'clan',        src: '/icons/ui/panel-clan.webp?v=2.3.1224',        label: 'Clan',     glyph: '🛡', group: 'Community', iconScale: 1 },
   { id: 'guild',       src: '/icons/ui/panel-guild.webp?v=2.3.1224',       label: 'Guild',    glyph: '⚒', group: 'Community', iconScale: 1 },
   { id: 'settings',    src: '/icons/ui/panel-settings.webp?v=2.3.1224',    label: 'Settings', glyph: '⚙', group: 'System',    iconScale: 1, iconFilter: 'brightness(1.18) contrast(1.05)' },
+  /* v2.3.2038 (owner: "is the character key retrievable once inside the
+     game?").  It WAS -- More -> Settings -> Account has been wired through
+     the panel registry since v2.3.1291 and a headless walk reaches it -- but
+     three taps deep, behind a gear, under a row whose first word is
+     "Account".  For the one string that is the ONLY way back to a character
+     (no email recovery) that is too far to find while you still have the
+     phone that holds it.  Promoted to a top-level tile.
+
+     'Login Key', not 'Account'.  Nobody who is about to wipe a browser goes
+     looking for an account page; they go looking for the key, which is also
+     what the card, the login door and the owner all call it.  The panel
+     header was renamed to match (BottomDashboard PANELS) so what you tapped
+     and what opens carry the same name.
+
+     It costs no row: the grid is 5 across and the roster was nine, so this
+     lands in the empty tenth cell and nothing above it moves. */
+  { id: 'account',     src: '/icons/ui/panel-account.webp?v=2.3.2038',     label: 'Login Key', glyph: '🔑', group: 'System',    iconScale: 1 },
 ];
 
 /* v2.3.1299 (round-6): one short LIVE status line per destination —
@@ -84,7 +103,13 @@ function statusFor(id, S) {
       const g = R.guild || S?._guild;
       return g && g.name ? g.name : 'Not joined · profession guilds';
     }
-    case 'settings': return 'Audio · Controls · Account · Feedback';
+    case 'settings': return 'Audio · Controls · Login Key · Feedback';
+    /* v2.3.2038: real state, like every line above -- a guest tab genuinely
+       has no key, and saying "save it somewhere safe" there would be a lie. */
+    case 'account': {
+      try { return getBtPassphrase() ? 'Save it — it is your only way back' : 'Guest tab — no key'; }
+      catch (_e) { return 'Save it — it is your only way back'; }
+    }
     default: return '';
   }
 }
@@ -180,11 +205,17 @@ export const MorePanel = () => {
         height: '100%', boxSizing: 'border-box',
       }}>
         {['quests', 'skills', 'social', 'clan', 'guild',
-          'journey', 'encyclopedia', 'leaderboard', 'settings'].map(id => {
+          'journey', 'encyclopedia', 'leaderboard', 'settings', 'account'].map(id => {
           const t = tile(id);
           if (!t) return null;
           return (
             <button key={id} className="bt-more-card"
+              /* v2.3.2038: a hook that is the destination ID, not the label.
+                 TRAPS §29 -- labels are owner-facing copy and get rewritten
+                 (this very change renames one), and a selector keyed to a
+                 renamed label does not fail loudly, it quietly finds nothing
+                 and asserts nothing. */
+              data-more-tile={id}
               onPointerUp={(e) => { e.stopPropagation(); open(id); }}
               title={`${t.label} — ${statusFor(id, S)}`}
               style={{
