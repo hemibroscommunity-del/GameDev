@@ -61,8 +61,21 @@ const freePort = () => new Promise((r) => {
 });
 
 const PORT = await freePort();
+/* v2.3.2018: DETACHED, so the whole group can be killed.  `npx` FORKS vite
+   rather than exec'ing it, so `vite.kill()` reaps the npx wrapper and leaves
+   the real dev server orphaned — measured, a 23-minute-old vite was still
+   holding a port and burning CPU long after this tool printed its summary and
+   exited 0.  Two of those plus a hung probe were running at once, which is a
+   fine way to make an unrelated QA scenario flake and then spend an hour
+   blaming the scenario.  Detached puts vite in its own process GROUP; the
+   negative pid below kills the group. */
 const vite = spawn('npx', ['vite', '--port', String(PORT), '--host', '127.0.0.1', '--no-open'],
-  { cwd: REPO, stdio: ['ignore', 'pipe', 'pipe'] });
+  { cwd: REPO, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
+const killVite = () => { try { process.kill(-vite.pid, 'SIGKILL'); } catch { try { killVite(); } catch { /* already gone */ } } };
+/* and it runs on the ways out that are NOT the happy path, too. */
+process.on('exit', killVite);
+process.on('SIGINT', () => { killVite(); process.exit(130); });
+process.on('uncaughtException', (e) => { killVite(); console.log('FAIL  uncaught: ' + (e && e.message)); process.exit(1); });
 let viteLog = '';
 vite.stdout.on('data', (d) => { viteLog += d; });
 vite.stderr.on('data', (d) => { viteLog += d; });
@@ -72,7 +85,7 @@ for (let i = 0; i < 80 && !up; i++) {
   try { up = (await fetch(BASE + '/index.html')).ok; } catch { /* still booting */ }
   if (!up) await new Promise((r) => setTimeout(r, 500));
 }
-if (!up) { console.log('FAIL  vite dev server never came up\n' + viteLog.slice(-800)); vite.kill('SIGKILL'); process.exit(1); }
+if (!up) { console.log('FAIL  vite dev server never came up\n' + viteLog.slice(-800)); killVite(); process.exit(1); }
 
 const browser = await chromium.launch({ executablePath: EXE, headless: true, args: ['--no-sandbox'] });
 const page = await browser.newPage();
@@ -289,6 +302,6 @@ for (const H of CLOSED.filter((h) => h !== 'beanie')) {
 }
 
 await browser.close();
-vite.kill('SIGKILL');
+killVite();
 console.log(failures ? `\n${failures} FAILED` : '\nhairmask-look: ALL PASS');
 process.exit(failures ? 1 : 0);
