@@ -187,7 +187,7 @@ export async function stopWorker(w) {
    "passed" three assertions about marks that were never drawn.)  isMobile
    flips the emulated pointer to coarse and turns on the meta viewport, which
    together are the closest this harness gets to the primary platform. */
-export async function newPlayer(browser, { name, wsPort, webPort, guest = false, viewport, touch = false, phrase = null, dpr = null }) {
+export async function newPlayer(browser, { name, wsPort, webPort, guest = false, viewport, touch = false, phrase = null, dpr = null, init = null }) {
   const ctx = await browser.newContext(Object.assign(
     { viewport: viewport || { width: 1000, height: 780 } },
     touch ? { hasTouch: true, isMobile: true, deviceScaleFactor: 2 } : null,
@@ -213,6 +213,17 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
       try { localStorage.setItem('bt_passphrase', ph); } catch (e) {}
     }, phrase);
   }
+  /* v2.3.2039: `init` is arbitrary JS run before the bundle does. It exists
+     for scenarios that must stand in for a BROWSER API the sandbox cannot
+     provide -- mp-chatcompose replaces webkitSpeechRecognition, which needs a
+     microphone and a recognition backend that headless Chromium has neither
+     of. It has to run pre-load, not post-load: modules that read a global at
+     module scope (ChatBubble resolves SpeechRec once, at import) have already
+     looked by the time the page is interactive.
+
+     Use it ONLY for platform APIs. Stubbing our own code here would let a
+     scenario pass by replacing the thing it claims to test. */
+  if (init) await page.addInitScript(init);
   await page.goto(`http://localhost:${webPort}/${guest ? '?guest=1' : ''}`, { waitUntil: 'domcontentloaded' });
   return { ctx, page, logs, name };
 }

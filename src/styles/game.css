@@ -2630,3 +2630,32 @@ body:has(.bt-inspect) .bt-kb-chip{display:none}
   margin-left:auto;font-size:10px;letter-spacing:.06em;text-transform:uppercase;
   color:var(--ui-brass);opacity:.85;padding-right:2px;
 }
+
+/* ═══ v2.3.2039: THE CHAT COMPOSER DOES NOT SELECT ═══
+   Owner: "make the chat window shell not selectable (if I long press on it
+   the whole game area highlights)."
+
+   `.brotown-wrap` above already carries this exact recipe, and it is easy to
+   assume everything drawn over the world inherits it.  ChatBubble is mounted
+   as a SIBLING of <BroTown> in GameApp, not inside its wrap, so it never has:
+   a long press anchored a document selection in the card and, with no rule to
+   stop it, the drag ran across the whole play area.
+
+   IN CSS RATHER THAN INLINE, deliberately.  `-webkit-touch-callout` does not
+   exist in desktop Chromium, so assigning it through React's inline `style`
+   is silently dropped by the CSSOM there and cannot be read back — a
+   declaration in a stylesheet ships literally to every browser and is applied
+   by the ones that implement it.  That also makes it checkable
+   (mp-chatcompose reads the rule text), which an unobservable inline property
+   is not.
+
+   The textarea opts back IN.  An inherited `none` does not merely stop
+   selection on iOS, it makes a field uneditable — trading a cosmetic bug for
+   a total one. */
+.bt-chat-noselect{
+  -webkit-touch-callout:none;-webkit-user-select:none;user-select:none;
+  -webkit-tap-highlight-color:transparent;
+}
+.bt-chat-noselect textarea,.bt-chat-noselect input{
+  -webkit-user-select:text;user-select:text;-webkit-touch-callout:default;
+}
