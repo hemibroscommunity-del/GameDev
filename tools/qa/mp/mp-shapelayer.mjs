@@ -346,9 +346,40 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('...and it is still an OP, not flattened by the drop rule',
       !!mlabel && /layer\s*1\s*of\s*1/i.test(mlabel), { label: mlabel });
   }
-  const noMirror = await page.$('.bt-paint-mirror');
-  rec.ok('the Mirror button is gone and Fill is a tool in its place',
-    !noMirror && tools.some((t) => /fill/i.test(t)), { mirrorButton: !!noMirror, tools });
+  /* v2.3.2004: BOTH, not either.  v2.3.1994 read "swap out the mirror for
+     fill" as a trade and retired the button; the owner's answer was "Mirror is
+     actually a nice feature if you have room in ui add it back in".  So the
+     assertion flips from "gone" to "back", and it checks FILL as well -- the
+     failure this guards against is a future session reading one of the two
+     owner notes without the other and trading them again. */
+  const mirrorBtn = await page.$('.bt-paint-mirror');
+  rec.ok('Mirror is back AND Fill is a tool — the row carries both',
+    !!mirrorBtn && tools.some((t) => /fill/i.test(t)), { mirrorButton: !!mirrorBtn, tools });
+
+  /* And it has to WORK, not just render: a button that sets no state would
+     satisfy the assertion above.  Draw one cell with Mirror on and require the
+     opposite half to paint too. */
+  if (mirrorBtn) {
+    await page.click('.bt-paint-mirror');
+    await page.waitForTimeout(150);
+    const pressed = await page.getAttribute('.bt-paint-mirror', 'aria-pressed');
+    await tool(PEN);
+    box = await gridBox();
+    await tap(3, 9);
+    await page.waitForTimeout(250);
+    const mm = await art();
+    rec.ok('...and turning it on paints both halves of a new stroke',
+      pressed === 'true' && at(mm, 3, 9) !== '0' && at(mm, 12, 9) === at(mm, 3, 9),
+      { pressed, left: at(mm, 3, 9), right: at(mm, 12, 9) });
+    await page.click('.bt-paint-mirror');        /* leave it off for what follows */
+    await page.waitForTimeout(150);
+    /* AND take the stroke back.  The slot assertions below count ops, so a
+       probe that leaves its own mark on the grid makes the next test fail with
+       a number that has nothing to do with slots (measured: 10 where 8 was
+       expected).  A probe cleans up after itself or it is not a probe. */
+    await btn('Undo');
+    await page.waitForTimeout(250);
+  }
 
   await page.click('.bt-paint-slots .bt-paint-slot:nth-child(1)');
   await page.waitForTimeout(350);

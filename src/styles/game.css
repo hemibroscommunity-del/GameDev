@@ -1428,10 +1428,14 @@ input{font-family:inherit}
    'fill'"), so the row is the variable part alone -- kept as a flex wrapper
    rather than collapsed into it, because the wrapper is what the shape-ops
    grid and the alphabet strip both swap INTO, and flattening it would move
-   two other layouts to save one line.  .bt-paint-mirror went with the
-   button; no rule is left addressing a class nothing renders. */
+   two other layouts to save one line.
+   v2.3.2004: .bt-paint-mirror is back with its button -- a fixed 62px cell
+   beside the flexing variable half, which is the v2.3.1949 geometry unchanged.
+   The widths grid simply flexes 62px narrower, exactly as it already does when
+   the alphabet strip swaps in, so no other row loses anything. */
 .bt-paint-opts{display:flex;gap:5px;min-width:0}
 .bt-paint-opts-main{flex:1 1 auto;min-width:0;display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.bt-paint-mirror{flex:0 0 auto;width:62px}
 /* ═══ v2.3.1950: THE CONTROLS ARE ONE COLUMN IN BOTH LAYOUTS ═══
    They used to be four separate grid areas in the stacked layout and a flex
    column in the wide one.  The stacked half was subtly wrong: a declared grid

@@ -4,9 +4,9 @@ import {
   getArt, getSlots, setSlot, SLOT_COUNT,
 } from '@/rendering/traits/playerArt.js';
 import {
-  TOOLS, toolById, lineCells, expandCells,
+  TOOLS, toolById, lineCells, expandCells, mirrorCells,
   BRUSH_SIZES, LETTERS,
-} from '@/rendering/traits/artTools.js';   /* v2.3.1948 */
+} from '@/rendering/traits/artTools.js';   /* v2.3.1948; v2.3.1949 mirror, back v2.3.2004 */
 import {
   getDoc, saveDoc, appendToDoc, copyDoc, replay,
 } from '@/rendering/traits/artOps.js';   /* v2.3.1967: the canvas is an op list */
@@ -566,22 +566,29 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   const [tool, setTool] = React.useState('pen');
   const [brush, setBrush] = React.useState(1);
   const [letter, setLetter] = React.useState('A');
-  /* ═══ v2.3.1994: MIRROR IS RETIRED, AND FILL TOOK ITS PLACE ═══
-     Owner: "Swap out the mirror for 'fill'."
+  /* ═══ v2.3.2004: MIRROR IS BACK, ALONGSIDE FILL ═══
+     Owner: "Mirror is actually a nice feature if you have room in ui add it
+     back in."
 
-     v2.3.1949 added Mirror on the reasoning that hand-matching the other half
-     of a face is not something anybody manages on a 16-cell grid.  That was a
-     guess about what the player would want, and the player has now said.  Fill
-     is not new — it has been in the TOOLS table since v2.3.1948 — but it was in
-     the tool row, which the skin editor did not show, so on the one screen the
-     owner was looking at the choice really was "mirror, or nothing".  The tool
-     row is on every screen now (see the parity note below), so Fill is where it
-     belongs and the dedicated cell Mirror held is gone rather than being filled
-     with a second copy of a button that already exists.
+     v2.3.1994 read "swap out the mirror for fill" as a trade, and it was not
+     one.  The real problem then was that the skin editor showed no tool row at
+     all, so Fill -- which had been in the TOOLS table since v2.3.1948 -- was
+     unreachable there, and the only thing on that screen was Mirror.  The tool
+     row is on every screen now, so Fill is where it belongs AND the cell
+     Mirror held is free to hold Mirror again.  Both, not either.
 
-     THE DATA IS NOT TOUCHED.  An op still carries `m`, artOps still replays it,
-     and a drawing made before today keeps its mirrored halves exactly as they
-     are — nothing in this panel SETS it any more, which is the whole change. */
+     ROOM, since that was the owner's condition.  .bt-paint-opts is a flex row:
+     the variable half (brush widths, or the alphabet, or the shape controls)
+     flexes, and this is a fixed 62px cell beside it that never moves whichever
+     tool is up -- the v2.3.1949 placement, restored rather than reinvented.
+     Nothing else on the row loses a pixel it was using; the widths grid simply
+     flexes 62px narrower, which is what it already does when the alphabet
+     swaps in.
+
+     The DATA never went away: an op has always carried `m`, artOps has always
+     replayed it, and drawings made while it was unsettable kept their mirrored
+     halves.  v2.3.1994 stopped this panel SETTING it; this sets it again. */
+  const [mirror, setMirror] = React.useState(false);
   /* ── v2.3.1967: which op is selected ──
      An index into doc.ops, -1 for none.  ONE selection serves both halves of
      the owner's note: it is what the hand tool picks up, and it is what the
@@ -1015,7 +1022,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
        the brush and already mirrored — because the pen is the one tool with
        nothing left to adjust afterwards, and storing the result means a replay
        can never disagree with what appeared under the finger. */
-    const cells = expandCells(path, brush);   /* v2.3.1994: no mirror stage */
+    const cells = mirrorCells(expandCells(path, brush), mirror);   /* v2.3.2004: mirror stage back */
     const add = [];
     for (let i = 0; i < cells.length; i++) {
       const idx = cells[i][1] * ART_W + cells[i][0];
@@ -1215,8 +1222,8 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
       const c = cellAt(e, false);
       if (!c) return;
       setLiveIdx(addOp(tool === 'fill'
-        ? { k: 'f', x: c[0], y: c[1], i: ink }
-        : { k: 't', g: letter, x: c[0], y: c[1], i: ink }));
+        ? { k: 'f', x: c[0], y: c[1], i: ink, m: mirror ? 1 : 0 }
+        : { k: 't', g: letter, x: c[0], y: c[1], i: ink, m: mirror ? 1 : 0 }));   /* v2.3.2004 */
       return;
     }
     paintingRef.current = true;
@@ -1232,7 +1239,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
          composite has reported its grids there is no cell under anything. */
       if (!c) { paintingRef.current = false; return; }
       anchorRef.current = c;
-      const i = addOp({ k: 's', t: tool, a: [c[0], c[1], c[0], c[1]], i: ink, b: brush });
+      const i = addOp({ k: 's', t: tool, a: [c[0], c[1], c[0], c[1]], i: ink, b: brush, m: mirror ? 1 : 0 });   /* v2.3.2004 */
       setLiveIdx(i);
       pendRef.current = { isNew: true, orig: null, ratio: 1, hist: histRef.current[histRef.current.length - 1] };
       setSel(i);
@@ -1547,10 +1554,18 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                 ))}
               </div>
             )}
-            {/* v2.3.1994: the Mirror cell that stood here is gone (owner:
-                "Swap out the mirror for 'fill'") -- Fill is a real tool in the
-                row above, and a second copy of it in a fixed cell would be two
-                buttons for one thing.  The row is the variable part alone now. */}
+            {/* v2.3.1949: Mirror keeps the SAME place whichever tool is up --
+                a fixed cell beside the variable half, so it never moves under
+                your thumb when the row swaps to the alphabet or the shape
+                controls.  Restored v2.3.2004 (owner: "Mirror is actually a nice
+                feature if you have room in ui add it back in"); it is NOT a
+                second copy of Fill, which is a tool in the row above -- Mirror
+                is a modifier that paints both halves of whatever tool is up. */}
+            <button type="button" onClick={() => setMirror((m) => !m)}
+              aria-pressed={mirror} title="Mirror: paint both halves at once"
+              className={'bt-paint-size bt-paint-mirror' + (mirror ? ' bt-paint-size--on' : '')}>
+              <span className="bt-paint-tool-label">Mirror</span>
+            </button>
           </div>
         )}
 

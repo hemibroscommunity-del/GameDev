@@ -144,8 +144,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the skin editor has the shirt editor\'s whole tool row (7 tools)',
     ui.tools.length === 7 && ui.tools.join(',').toLowerCase().includes('fill'), ui.tools);
   rec.ok('...and the layer row', ui.layers, ui);
-  rec.ok('Mirror is gone, Fill is a tool (owner: "Swap out the mirror for fill")',
-    !ui.mirror && ui.tools.some((t) => /fill/i.test(t)), ui);
+  /* v2.3.2004: BOTH.  v2.3.1994 read "swap out the mirror for fill" as a trade
+     and retired the button; the owner's answer was "Mirror is actually a nice
+     feature if you have room in ui add it back in".  Mirror is not a tool and
+     never was -- it is a modifier in its own fixed cell, which is why the row
+     above still counts SEVEN tools with Fill among them. */
+  rec.ok('Mirror is back in its own cell, and Fill is still a tool',
+    ui.mirror && ui.tools.some((t) => /fill/i.test(t)), ui);
   rec.ok('the pan button is a picture of panning, not the word "Move"',
     ui.panIcon && !ui.panWord, ui);
   rec.ok('"Fit" is now "100%"', ui.zoomBack.includes('100%') && !ui.zoomBack.includes('Fit'), ui.zoomBack);
