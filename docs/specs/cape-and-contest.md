@@ -1,0 +1,220 @@
+# The cape, and the contest that awards it (v2.3.2022)
+
+Owner: *"a contest for the first 3 people to get a rare drop for a limited time
+(maybe 1 in 200 chance from any monster) can get a special cosmetic. I'm
+thinking a cape. You get this ticket that can be exchanged or consumed for a
+cape."*
+
+Two systems that ship separately and are testable separately. **Build them in
+that order** — a cape with no contest is a cosmetic you can hand out by hand; a
+contest with no cape awards nothing.
+
+---
+
+## 1. Why a cape is five pictures and not five hundred
+
+This is the decision the whole spec rests on, so it is measured rather than
+asserted. A t-shirt — a garment that deforms with the body — is **41 sheets and
+512 frames**:
+
+| sheet | frames |
+|---|---|
+| jog × 5 facings | 121 |
+| swing × 3 | 92 |
+| pickup-south | 58 |
+| fish-south | 32 |
+| hit × 5 | 30 |
+| dodge × 2, fire, mine, stand × 5, … | the rest |
+
+No generator draws 512 frames of anything coherently, and the repo has the
+receipts for trying: `tools/qa/mp/mp-shirtarm.mjs` documents three separate
+attempts to fix **one arm on one facing** by rule, all abandoned, and TRAPS §30
+records the fourth.
+
+So a cape is built like **headwear** (5 stills + a `meta.json`) and the
+**sheathed shield** (`src/rendering/backShield.js` — one texture, placed by
+shared geometry, drawn behind the body). Five pictures. It will not flap, and
+that is the trade being made deliberately.
+
+**One body size, not nine.** `_applyBuildScale` (`entityRenderer.js`) scales the
+entire player container, so anything parented to it rides the height builds for
+free. Art is drawn once.
+
+**Five directions, not eight.** `west` / `northwest` / `southeast` are mirrored
+at runtime (`resolveDirection`, `playerSprites.js`) and **must not be drawn** —
+drawing them produces two sources of truth for one facing.
+
+---
+
+## 2. The art pipeline
+
+Already built, and reused rather than reinvented:
+
+    tools/make_cape_mannequin.py   ->  the reference sheet (5 figures, magenta)
+    <image generator>              ->  cape drawn on it, person flattened green
+    tools/import_cape_green.py     ->  5 PNGs + meta.json          (TO WRITE)
+
+The **green-screen key** is the load-bearing part. The generator paints the
+person flat `#00FF00` and leaves the cape alone, so the import is a fact rather
+than a guess:
+
+> cape = every pixel that is neither the magenta backdrop nor the green person
+
+`tools/import_headwear_green.py`'s header records what the guessing version
+did: it inferred which pixels were hat by subtracting a rebuilt mannequin and
+rescuing the result with colour tests and connectivity rules, and *"the whole
+batch shipped with the drawn head still inside each hat frame, and the erase
+written to remove it tore holes in the hats instead."*
+
+The green silhouette also gives **registration** — the importer fits each cell's
+silhouette against the real body, so the fit score doubles as a fidelity check
+on how faithfully the generator redrew the figure.
+
+### Measured advice, carried over from 15 headwear sheets (v2.3.1506)
+
+These are about the generator, not about hats, so they apply unchanged:
+
+* **One at a time beats batching.** Ten sheets in one go came back with east
+  fits of 0.767–0.880. Sent individually, three of four landed 0.947–0.967.
+* **East is always the weakest cell**, however the sheet was produced. Check it
+  first.
+* **A sheet drawn narrow and tall is the failure that matters.** The fitter
+  scales it up to match the shoulders, and everything bottom-anchored lifts
+  off. On hats that put them 7–9px above the skull; on a cape it will float the
+  collar off the shoulders. Sheets scoring 0.95+ land within 2px.
+
+### The prompt
+
+> Here is a reference sheet with five pixel-art characters on a magenta
+> background, each facing a different direction.
+>
+> Draw the same **hooded cape** on all five figures, matching each figure's
+> facing and perspective. The cape hangs from the shoulders to about mid-calf.
+> Colours: deep crimson outer, gold trim, a gold clasp at the throat.
+>
+> Rules:
+> 1. Paint every character **flat pure green (#00FF00)** — no shading, no
+>    outline, no skin, no clothing detail. The person becomes a solid green
+>    silhouette.
+> 2. The **cape** stays in full colour with its own black outline, in the same
+>    chunky pixel-art style as the reference.
+> 3. Keep the **magenta background exactly as it is** (#FF00FF).
+> 4. Do **not** move, resize, re-pose or re-draw the figures. Same position,
+>    same proportions, same cell.
+> 5. Keep all five cells, in the same order and layout. Do not add directions.
+> 6. On NORTH (back turned) the cape covers most of the body — that is correct.
+>    On EAST (profile) it should read as a side-on drape, not a flat rectangle.
+>
+> Output one image the same size as the reference.
+
+**Do this once per cape design, not batched**, per the measured note above.
+
+---
+
+## 3. Rendering: what is actually hard
+
+Not the art. Three things, and the second has already bitten this repo once.
+
+### 3.1 A cape draws BEHIND the body
+
+The pattern exists. `backShield.js` keeps a **LOW clone below the body and a
+HIGH clone above it**, and picking a facing only toggles `visible`. No renderer
+computes a child index, which is *"the property that keeps the armour combos
+working — a plate, greaves and a helmet all sit between the two clones by
+construction, whatever order the gear layers are added in."*
+
+A cape needs the same two-clone treatment: behind on south/southwest/east,
+in front on north (you are looking at the back of the cape, and it covers the
+body).
+
+### 3.2 ⚠ Attack animations hide the real body
+
+**This is the trap.** From `backShield.js`:
+
+> During a sword swing or a bow shot the player's real body is HIDDEN
+> (`entityRenderer._updatePlayer`) and the whole figure is redrawn by a stand-in
+> in a different layer (`effectsRenderer`, `nodeLayer`) — but `pose` stays
+> 'stand' or 'jog' throughout, so the v2.3.1782 back shield kept drawing in the
+> player container against a body that was no longer there. **A shield hanging
+> in the air beside a swing is the bug the owner is describing.**
+
+A cape drawn only in the walking render will do exactly this. It must be drawn
+in the walking render *and* in each attack stand-in, and — the lesson the
+shield paid for — **the geometry lives in one module that both callers ask**,
+because *"the moment a value is copied into two renderers it starts to drift."*
+
+**Cheaper alternative worth an owner decision:** hide the cape during attack
+poses. One `visible = false`, no stand-in work, and in a game where swings last
+a few frames it may not read as missing. Recommended for v1.
+
+### 3.3 The rest
+
+* **Preloading is LAW** (CLAUDE.md). The cape is a global asset, so it
+  registers in `preloadWorldAnimations()` — not per-zone, not lazy.
+* **Remote players.** Headwear already does per-player textures cached by id;
+  a cape follows that path, and the cosmetic must ride the wire so other
+  players see it. New server-emitted fields need the `PRIVILEGED_EVENTS`
+  treatment (`server/src/index.js`).
+* **The creator preview** composites through `drawCharacterPortrait`, which is
+  a separate path from the world renderer. A cape that renders in-world and not
+  in the preview is a half-shipped cosmetic.
+
+---
+
+## 4. The contest
+
+Server work. Read `docs/ARCHITECTURE-HANDOFF.md` first — this touches loot,
+storage keys and idempotency, all of which it governs.
+
+### 4.1 The drop
+
+The server is authoritative for loot, so the 1-in-200 roll happens there and
+nowhere else. It is gated on a **window**: `CONTEST_START` / `CONTEST_END`
+timestamps, so the roll is skipped entirely outside it.
+
+### 4.2 ⚠ "First 3" must be an atomic server-side claim
+
+**The part to get right.** A naive implementation reads a counter, sees `2`,
+and grants. Two players who kill at the same tick both read `2` and both
+become the third winner — and you have four capes and an unhappy thread.
+
+The claim must be a single atomic read-modify-write in Durable Object storage,
+in the same code path that grants the ticket. The GameRoom is a single-threaded
+DO, which makes this straightforward *provided the whole claim sits inside one
+uninterrupted block* — an `await` in the middle of it reintroduces exactly the
+race it exists to prevent. (`ARCHITECTURE-HANDOFF.md`, DO concurrency rules.)
+
+The counter is also the thing to **test adversarially**: a suite that fires N
+simultaneous claims and asserts exactly 3 succeed.
+
+### 4.3 The ticket, and redemption
+
+* The ticket is a normal inventory item, so it survives logout via the existing
+  persistence and can be seen, and (owner's ask) **exchanged or consumed**.
+* Redemption is an `opId`-idempotent endpoint: a double-tap or a retry on a
+  flaky phone connection must not consume two tickets or grant two capes.
+  This is a convention the handoff doc already sets; follow it rather than
+  inventing one.
+* Decide up front whether the ticket is **tradeable**. If it is, it enters the
+  market and the economy suites need a case. Recommended: **not** tradeable for
+  v1 — it is a contest prize, and making it tradeable turns a fairness
+  question into a market question on the week of a demo.
+
+### 4.4 What a winner keeps
+
+The cosmetic is granted to the persistent `bp_` identity, not the session, so
+it survives a device change. Same store the wardrobe already uses.
+
+---
+
+## 5. Suggested order
+
+| phase | what | testable by |
+|---|---|---|
+| 1 | Cape art: mannequin → generate → import → 5 PNGs + meta | the importer's own fit score |
+| 2 | Cape renders in-world (behind body, hidden during attacks) + creator preview | a new `mp-cape` scenario, the four-render method `mp-hairmask` uses |
+| 3 | Contest: window, roll, atomic claim, ticket item | a server suite firing simultaneous claims |
+| 4 | Redemption: consume ticket → grant cosmetic, opId-idempotent | extend the nearest existing suite |
+
+Phases 1–2 ship a cape you can grant by hand, which is worth having on its own
+and de-risks the contest entirely.
