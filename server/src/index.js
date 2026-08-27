@@ -326,6 +326,13 @@ export const PRIVILEGED_EVENTS = new Set([
   // grant anything (credits are server-persisted before it's sent) but
   // it drives "you received X" UI, so don't let clients spoof it.
   'inbox_delivered', 'join_rejected',
+  /* v2.3.1982: the room-full refusal (join.js _roomFullRefusal).  Server-
+     emitted only -- a forged one would put "the world is full" in front of
+     every other player in the room, which is a one-message denial of
+     service on a demo day.  It rides its own socket and is closed
+     immediately after, so it never reaches the rebroadcast branch from the
+     server side; the deny-list is what stops a CLIENT sending it. */
+  'room_full',
   /* v2.3.1576: Hemi Bro ownership. Both are server-emitted only -- a forged
      bro_verify_result would let a client show peers a badge it never earned,
      and a forged bro_nonce would let it choose the text it 'signed'. */
@@ -545,6 +552,13 @@ export class GameRoom {
     this.tickInterval = null;
     this.tickSeq = 0;
     this.TICK_RATE = 22; // 45Hz (22ms)
+    /* The hard ceiling on concurrent sockets in this room.  It is a
+       RECEIVER-side number, not a server one (see the refusal comment in
+       fetch() below): ~4KB/s of download per co-located moving peer is
+       what an iPhone on cellular can carry, so ~20 people in one zone is
+       the real comfort limit and 60 in the room is the ceiling above it.
+       v2.3.1982: `_roomCap()` (join.js) is the read path -- the
+       `max_players` live-ops flag can only LOWER this, never raise it. */
     this.MAX_PLAYERS = 60;
     this.EVENTS_PER_TICK_CAP = 500;
     /* ═══ v2.3.1618: inbound abuse bounds ═══
@@ -3779,8 +3793,29 @@ export class GameRoom {
     if (request.headers.get('Upgrade') !== 'websocket') {
       return new Response('Expected WebSocket', { status: 426 });
     }
-    if (this.sessions.size >= this.MAX_PLAYERS) {
-      return new Response('Room full', { status: 503 });
+    /* ═══ v2.3.1982: THE 61st PLAYER IS TOLD WHY ═══
+       This gate used to answer a bare `503 Room full` to a socket that
+       had not been upgraded yet, so the refusal reached the client as a
+       failed handshake and NOTHING ELSE.  wsClient's onclose cannot tell
+       that apart from a dropped cell connection, so it fell into the
+       ordinary reconnect backoff and retried every 10s forever behind a
+       loading screen that never said a word.  To that player the game is
+       simply broken, with no idea whether waiting would help.
+
+       The cap itself is NOT the bug and is not being raised: the headless
+       capacity campaign measured the worker at 0.16ms of its 22ms tick
+       with 60 players (server/test/load-crowd.mjs), so CPU is nowhere
+       near the wall — what binds is per-client DOWNLOAD bandwidth, ~4KB/s
+       per co-located moving peer on a phone (tools/qa/mp/mp-crowd.mjs).
+       Sixty is a receiver-side number.  The fix is a MESSAGE.
+
+       `_roomFullRefusal` (join.js) owns the answer, including the
+       deploy-order split: only a client that asked for the wire refusal
+       (`?rf=1`) gets the upgraded socket + `room_full`; everything else
+       still gets the byte-identical 503 it got before. */
+    await this._liveFlagsEnsure();
+    if (this.sessions.size >= this._roomCap()) {
+      return this._roomFullRefusal(url);
     }
     const [client, server] = Object.values(new WebSocketPair());
     this.state.acceptWebSocket(server);

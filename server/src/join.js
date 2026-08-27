@@ -141,7 +141,106 @@ const JOIN_RPG_PREFIX_RE = /^rpg[A-Z][A-Za-z0-9]*$/;
  * scaling with it. */
 const JOIN_RPG_MAX_BYTES = 8 * 1024;
 
+/* ═══ v2.3.1982: THE ROOM-FULL REFUSAL ═══
+ *
+ * Measured by the headless capacity campaign and left unfixed: at the
+ * MAX_PLAYERS ceiling the 61st player's socket got a bare `503 Room
+ * full` from the DO's fetch(), BEFORE the WebSocket upgrade.  A failed
+ * handshake carries no body a browser will show and no close code, so
+ * wsClient saw it as an ordinary connection failure, fell into the
+ * generic reconnect backoff, and retried every 10s forever behind a
+ * loading screen that never said why.  The player cannot tell a full
+ * world from a broken game, and cannot tell whether waiting helps.
+ *
+ * So the refusal becomes a real answer on the wire, in the same shape
+ * every other join refusal already uses (`join_rejected` + a 4xxx close
+ * code, below): a `room_full` message carrying the numbers, then close
+ * 4009.  BOTH halves are the signal on purpose -- if the message is lost
+ * the close code alone still says "full", and if the close code is
+ * mangled the message alone does.
+ *
+ * DEPLOY-ORDER SAFETY (handoff rule 19), and why the gate is a QUERY
+ * PARAM rather than a caps flag.  caps ride in `state_sync`, which a
+ * refused joiner by definition never receives -- there is no session to
+ * advertise into.  The client therefore opts IN on the URL (`?rf=1`,
+ * wsClient.js) and the two directions come out safe:
+ *   - NEW client + OLD worker: the param is ignored, the handshake fails
+ *     as it always did, and the client falls back to today's silent
+ *     retry (it only paints the screen on an explicit signal).
+ *   - OLD client + NEW worker: no `rf=1`, so it gets the byte-identical
+ *     503 it got before.  This half is not cosmetic: an old client that
+ *     received `join_rejected` with an unknown reason would set
+ *     `_joinRejectedFatal` and stop retrying ALTOGETHER (v2.3.1181),
+ *     which is strictly worse than the silent loop.  That is exactly why
+ *     this is a NEW type on an opt-in channel and not a new
+ *     `join_rejected` reason.
+ *
+ * The cap is not raised here and should not be: 60 players cost the
+ * worker 0.16ms of a 22ms tick, so nothing on the server is straining.
+ * The binding constraint is the RECEIVER -- ~4KB/s of download per
+ * co-located moving peer on a phone.  Sixty is a bandwidth number.     */
+const ROOM_FULL = {
+  /* What we ask the client to wait between attempts.  Sent on the wire so
+     a future worker can slow the herd down without a client deploy; the
+     client clamps it (never trust a wire number).  FIXED, not exponential
+     -- see the client's _roomFullRetry for the reasoning. */
+  RETRY_MS: 5000,
+  CLOSE_CODE: 4009,
+};
+
 export const joinMethods = {
+  /* v2.3.1982: the live admission ceiling.  `max_players` is a live-ops
+     value flag (liveops.js), clamped [1, MAX_PLAYERS] at READ time, so
+     the operator can throttle a room DOWN for a demo -- or a headless
+     test can drive it to 1 -- without ever being able to push it ABOVE
+     the bandwidth-derived ceiling.  Synchronous like every other
+     _flagNum read; fetch() awaits _liveFlagsEnsure before calling it. */
+  _roomCap() {
+    return this._flagNum('max_players', this.MAX_PLAYERS, 1, this.MAX_PLAYERS);
+  },
+
+  /* The answer to a joiner we have no room for.  Returns a Response; the
+     caller returns it straight out of fetch().  NOTE what it does NOT do:
+     it never touches this.sessions, so a refused socket cannot itself
+     push the room over the cap, and the DO's hibernation handlers
+     (webSocketMessage/Close) are never wired to it -- `accept()` rather
+     than `state.acceptWebSocket()` keeps this socket outside the room's
+     bookkeeping entirely. */
+  _roomFullRefusal(url) {
+    const cap = this._roomCap();
+    /* Old clients (and anything that isn't our client) keep the exact
+       refusal they have always had. */
+    if (!url || url.searchParams.get('rf') !== '1') {
+      return new Response('Room full', { status: 503 });
+    }
+    const payload = {
+      type: 'room_full',
+      /* `reason` mirrors join_rejected's field so the client's refusal
+         handling reads the same way for both. */
+      reason: 'full',
+      /* SOCKETS, not getPlayerCount().  The cap counts sockets, and a
+         connection that has not sent its `join` yet is a player walking
+         through the door — it is holding the seat this joiner wants.
+         getPlayerCount() (joined players only) would tell someone we
+         just turned away that the world has 59 of 60 people in it, which
+         reads as a bug in the refusal rather than as a full world. */
+      count: this.sessions.size,
+      cap,
+      retryMs: ROOM_FULL.RETRY_MS,
+    };
+    const [client, server] = Object.values(new WebSocketPair());
+    try {
+      server.accept();
+      server.send(JSON.stringify(payload));
+      server.close(ROOM_FULL.CLOSE_CODE, 'room full');
+    } catch (e) {
+      /* If the upgrade could not be completed there is nothing to say on
+         it; the 503 is still a truthful answer. */
+      return new Response('Room full', { status: 503 });
+    }
+    return new Response(null, { status: 101, webSocket: client });
+  },
+
   /* v2.3.1627: build a clean copy of join.data.  Never mutates the
      caller's object, never iterates client keys, and drops anything not
      named above.  `z` is additionally validated against the zone
