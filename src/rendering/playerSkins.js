@@ -28,7 +28,7 @@ import { getEyeColor, eyeColorTarget } from './traits/eyeColorCatalog.js';
 /* v2.3.1940: drawn pants prints + skin tattoos.  Unlike the shirt (its own
    sprite, stamped in gearSheets) these live INSIDE the body sheet, because
    that is where the pants pixels and the bare skin actually are. */
-import { getArt, artHasInk, artHash, onArtChange } from './traits/playerArt.js';
+import { getArt, artHasInk, artHash, onArtChange, sideForDir, emptyArt } from './traits/playerArt.js';   /* v2.3.2042: sideForDir/emptyArt -- a face tattoo does not revolve to the back of a head */
 import { stampRegion, stampPattern, litFabricMask, regionFromFeet, splitSkinRegions, PANTS_LIT_MIN, SHOES_LIT_MIN, PANTS_MAX_UP, SHOES_MAX_UP, PANTS_BOX, TATTOO_BOX, FACE_BOX, ARM_BOX } from './playerDecal.js';
 import { getPattern, parsePattern, patternKey, onPatternChange } from './traits/patternCatalog.js';   /* v2.3.1941 */
 
@@ -888,6 +888,7 @@ function loadImg(url) { return loadWebpOrPng(url); }
    keeps the player visible; &r=N bypasses a poisoned cache entry. */
 const _BODY_RETRY_MS = [2000, 6000];
 function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT, art, attempt = 0) {
+  art = artForFacing(art, dir);   /* v2.3.2042: the bake must match the key above */
   _bodySheets[sheetKey] = 'loading';
   /* Returns an always-resolving promise so a full preload can await it. */
   const bust = attempt > 0 ? `&r=${attempt}` : '';
@@ -947,6 +948,7 @@ function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT
    hand in six places is a bug waiting for the sixth to be missed, and a
    prewarmed sheet under a key nobody asks for is silently wasted work. */
 export function bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eyeKey, pose, dir, art) {
+  art = artForFacing(art, dir);   /* v2.3.2042: see artForFacing -- key and bake must agree */
   return (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default')
     + '/' + (shirtT ? (shirtKey || 'shirt') : 'none') + '/' + (eyeKey || 'none')
     + bodyArtSeg(art)
@@ -958,6 +960,42 @@ export function bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eyeKey,
    prewarmed as they always were — only someone who actually drew something pays
    for the extra bakes (including the mirrored ones, which is why `mirror` is in
    here: a pre-flipped bake must not be handed to an unflipped facing). */
+/* ═══ v2.3.2042: A FACE TATTOO DOES NOT REVOLVE ROUND TO THE BACK ═══
+ *
+ * Owner: "face tattoos don't revolve around to your back nor do front shirt
+ * designs revolve to back, they're separate."
+ *
+ * The SHIRT was already right: entityRenderer picks `_L.art[sideForDir(dir)]`,
+ * so the front drawing shows from the front and the back drawing from behind,
+ * and there are two separate canvases behind that (bt-shirtart /
+ * bt-shirtart-back). The FACE was not. The stamp at the bottom of
+ * recolorBodyToCanvas fires whenever a face tattoo exists, with no idea which
+ * way the character is pointing -- and `north` and `northeast` are real
+ * back-view sheets (playerSprites SOURCE_DIRS), so the drawing meant for a
+ * face was landing on the back of a head.
+ *
+ * There is no "back of head" canvas to add, and there should not be: a face
+ * tattoo has nowhere to go when you turn round. It simply stops being visible,
+ * which is what this does.
+ *
+ * WHY IT LIVES INSIDE bodySheetKey AND buildBodySheet rather than at the call
+ * sites. Three places pair a facing with an art object -- getBodyFrame,
+ * prewarmBody and preloadBodyAll -- and the key and the bake MUST agree or the
+ * preloaded sheet is filed under one name and looked up under another. That is
+ * not a cosmetic slip: it is a cache miss on the first turn, i.e. a bake in
+ * the middle of play, which is precisely what the animation-preload law in
+ * CLAUDE.md exists to prevent. Applying the transform inside the two functions
+ * that consume (dir, art) makes them agree by construction, so a fourth call
+ * site added later cannot get it wrong.
+ *
+ * The arm tattoo deliberately stays. Arms are visible from behind, and an arm
+ * drawing on a back-facing arm is the same arm. */
+export function artForFacing(art, dir) {
+  if (!art || !artHasInk(art.tattooFace)) return art;
+  if (sideForDir(dir) !== 'back') return art;
+  return { ...art, tattooFace: emptyArt() };
+}
+
 export function bodyArtSeg(art) {
   if (!art) return '';
   const p = artHasInk(art.pants) ? artHash(art.pants) : '';
@@ -1011,7 +1049,11 @@ export function getBodyFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, shir
   /* v2.3.1940: `art` is the ninth thing that can make this player's body differ
      from the shipped sheet, and like the rest of them it is PASSED IN, not read
      from a store — this function draws remote players too (v2.3.1930). */
-  const _art = bodyArtSeg(art) ? art : null;
+  /* v2.3.2042: resolve the facing BEFORE the gate, so a player whose only
+     drawing is a face tattoo falls back to the shipped sheet when facing
+     away rather than baking a copy identical to it. */
+  const _dirArt = artForFacing(art, dir);
+  const _art = bodyArtSeg(_dirArt) ? _dirArt : null;
   if (!skinT && !pantsT && !shoesT && !shirtT && !eye && !_art) return getFrame(pose, dir, frameIdx);
   const sheetKey = bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eye && eye.id, pose, dir, _art);
   const entry = _bodySheets[sheetKey];
