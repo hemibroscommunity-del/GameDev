@@ -1,0 +1,449 @@
+<!doctype html>
+<!-- ═══ v2.3.2030: THE PRIZE DRAW ═══
+
+  One page, one job: turn "who played during the event" into "who won the
+  merch", in a way a losing entrant can check for themselves.
+
+  WHY A BITCOIN BLOCK HASH.  The organiser picks the winner and there is real
+  value on the line, so "I promise it was random" is worth nothing -- it is
+  unfalsifiable in both directions.  A block hash is unknowable before the
+  block is mined (so it cannot be steered) and permanent afterward (so anyone
+  can re-check it years later).  Hemi is a Bitcoin L2, so it reads as fitting
+  rather than arbitrary.
+
+  THE ORDER OF OPERATIONS IS THE SECURITY PROPERTY, NOT THE ARITHMETIC.
+  The modulo is trivial and nobody needs to trust it.  What matters is that
+  the entry list and the rule are fixed BEFORE the hash exists.  If you get to
+  choose which digits to use after seeing the hash, you can fish for a
+  preferred winner, and the whole exercise becomes theatre.
+
+  So this page will not let you draw against a block that already exists.
+  Locking requires a target height ABOVE the current chain tip, the lock is
+  stamped with the tip it was taken at, and the draw panel refuses to open
+  until that block is mined.  That refusal is the product.  Everything else
+  here is a table and a division.
+
+  SELF-CONTAINED.  No external scripts, styles or fonts.  It makes exactly two
+  kinds of network request, both plain public GETs with no key: the game's own
+  read-only leaderboard, and a Bitcoin block explorer (mempool.space, falling
+  back to blockstream.info -- two independent operators, because a draw that
+  cannot be completed when one explorer is down is a bad draw).
+
+  The pure functions are exposed on window.__draw for tools/qa/draw-page.mjs,
+  which drives this page in a real browser with both APIs stubbed.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>BroTown — prize draw</title>
+<style>
+  :root { --bg:#121B20; --card:#202C32; --line:rgba(238,242,235,.14); --ink:#F7F2E7;
+          --mut:#96A2A0; --brass:#D8A85F; --ok:#59BF91; --bad:#E06A5E;
+          --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); padding:24px 16px 80px;
+         font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:760px; margin:0 auto; }
+  h1 { font-size:24px; margin:0 0 4px; letter-spacing:.2px; }
+  .sub { color:var(--mut); margin:0 0 24px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px;
+          padding:18px; margin:0 0 16px; }
+  .card.off { opacity:.45; pointer-events:none; }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:.9px; color:var(--brass);
+       margin:0 0 12px; font-weight:600; }
+  label { display:block; font-size:12px; color:var(--mut); margin:10px 0 4px; }
+  input { width:100%; background:#18242A; color:var(--ink); border:1px solid var(--line);
+          border-radius:6px; padding:9px 10px; font:14px/1.3 var(--mono); }
+  input:focus { outline:2px solid var(--brass); outline-offset:-1px; }
+  .row { display:flex; gap:12px; flex-wrap:wrap; }
+  .row > div { flex:1 1 200px; }
+  button { background:var(--brass); color:#1A1208; border:0; border-radius:7px;
+           padding:11px 18px; font:600 14px/1 system-ui,sans-serif; cursor:pointer;
+           margin-top:14px; }
+  button:disabled { background:#4A4A46; color:#8A8A84; cursor:not-allowed; }
+  button.ghost { background:transparent; color:var(--mut); border:1px solid var(--line); }
+  table { width:100%; border-collapse:collapse; margin-top:12px; font-size:14px; }
+  th,td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); }
+  th { font-size:11px; text-transform:uppercase; letter-spacing:.6px; color:var(--mut); font-weight:600; }
+  td.n, th.n { text-align:right; font-variant-numeric:tabular-nums; font-family:var(--mono); }
+  tr.win td { background:rgba(216,168,95,.14); }
+  .scroll { overflow-x:auto; }
+  .note { font-size:13px; color:var(--mut); margin:10px 0 0; }
+  .warn { border-left:3px solid var(--bad); background:rgba(224,106,94,.1); padding:10px 12px;
+          border-radius:0 6px 6px 0; margin:12px 0 0; font-size:13px; }
+  .good { border-left:3px solid var(--ok); background:rgba(89,191,145,.1); padding:10px 12px;
+          border-radius:0 6px 6px 0; margin:12px 0 0; font-size:13px; }
+  pre { background:#18242A; border:1px solid var(--line); border-radius:6px; padding:12px;
+        font:13px/1.5 var(--mono); overflow-x:auto; white-space:pre-wrap; margin:12px 0 0; }
+  .maths { font-family:var(--mono); font-size:14px; line-height:1.9; }
+  .maths b { color:var(--brass); font-weight:600; }
+  .big { font-size:20px; font-weight:700; }
+  code { font-family:var(--mono); background:#18242A; padding:1px 5px; border-radius:4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Prize draw</h1>
+  <p class="sub">Everyone who played during the event goes in the hat. The winner is
+  chosen by a Bitcoin block that hasn't been mined yet, so nobody — including you —
+  can know or steer the result in advance.</p>
+
+  <!-- ── 1 ────────────────────────────────────────────────────────── -->
+  <div class="card" id="c1">
+    <h2>1 · Who played</h2>
+    <label for="api">Game server</label>
+    <input id="api" value="https://brotown-server.hemibroscommunity.workers.dev">
+    <div class="row">
+      <div>
+        <label for="from">Event started</label>
+        <input id="from" type="datetime-local">
+      </div>
+      <div>
+        <label for="to">Event ended</label>
+        <input id="to" type="datetime-local">
+      </div>
+    </div>
+    <p class="note">Wait <b>10 minutes</b> after the last player stops before loading.
+    The server only refreshes a player's "last seen" every 10 minutes, so anyone who
+    quit in the last few minutes may not have been written down yet.</p>
+    <button id="load">Load entrants</button>
+    <div id="out1"></div>
+  </div>
+
+  <!-- ── 2 ────────────────────────────────────────────────────────── -->
+  <div class="card off" id="c2">
+    <h2>2 · Lock it in</h2>
+    <p class="note">This fixes the list and names a future Bitcoin block. Post the text
+    below <b>before</b> that block is mined — that is what makes the draw checkable.</p>
+    <div class="row">
+      <div>
+        <label for="ahead">Blocks to wait (10 min each)</label>
+        <input id="ahead" type="number" min="1" max="20" value="3">
+      </div>
+    </div>
+    <button id="lock">Lock list &amp; pick block</button>
+    <div id="out2"></div>
+  </div>
+
+  <!-- ── 3 ────────────────────────────────────────────────────────── -->
+  <div class="card off" id="c3">
+    <h2>3 · Draw</h2>
+    <div id="out3"></div>
+  </div>
+
+  <p class="note">Nothing here is saved anywhere except this browser. Clearing the lock
+  discards the commitment and starts over.</p>
+  <button class="ghost" id="reset">Clear and start over</button>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var LS = 'brotown_draw_lock_v1';
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* ═══ PURE LOGIC ═══ exposed for the QA harness, which tests these
+     directly instead of asserting on rendered text. */
+
+  /* Everyone whose last-seen falls inside the window.  There is deliberately
+     NO level threshold (owner's decision): showing up is the qualification. */
+  function entrantsFrom(rows, fromMs, toMs) {
+    return (rows || [])
+      .filter(function (r) {
+        var t = r && r.lastSeen;
+        return typeof t === 'number' && t >= fromMs && t <= toMs;
+      })
+      /* Stable, content-derived order.  It must NOT depend on the order the
+         server happened to return rows in, or two people running this page
+         against the same data could number the list differently and get
+         different winners from the same hash. */
+      .sort(function (a, b) {
+        return String(a.id || '') < String(b.id || '') ? -1 : 1;
+      })
+      .map(function (r) {
+        return {
+          id: String(r.id || ''),
+          name: String(r.name || 'Anon'),
+          /* Server-authoritative only.  `level` is build-point gated on the
+             worker and `series.kills` is svKills -- the same object the chain
+             attestation signs.  The row ALSO carries top-level kills /
+             playtime / goldEarned / ap, and those ride the client-reported
+             rpgData blob (leaderboard.js: "still a client-reported claim").
+             A prize keyed on a forgeable number is not a prize. */
+          level: (typeof r.level === 'number') ? r.level : 0,
+          kills: (r.series && typeof r.series.kills === 'number') ? r.series.kills : 0,
+        };
+      });
+  }
+
+  /* index = last 8 hex chars of the block hash, as a number, mod N.
+     8 hex chars is 32 bits, so parseInt is exact -- no BigInt needed.  The
+     modulo bias across 2^32 with a handful of entrants is far below the noise
+     of anything else here; resist the urge to over-engineer it. */
+  function drawFrom(hash, n, k) {
+    var tail = String(hash).slice(-8).toLowerCase();
+    var num = parseInt(tail, 16);
+    if (!isFinite(num) || n <= 0) return null;
+    var start = num % n;
+    var picks = [];
+    for (var step = 0; step < n && picks.length < k; step++) {
+      var i = (start + step) % n;
+      if (picks.indexOf(i) < 0) picks.push(i);
+    }
+    return { tail: tail, num: num, n: n, start: start, picks: picks };
+  }
+
+  window.__draw = { entrantsFrom: entrantsFrom, drawFrom: drawFrom };
+
+  /* ═══ NETWORK ═══ two explorers, tried in order.  A draw that cannot be
+     completed because one explorer is having a bad day is a bad draw. */
+
+  var EXPLORERS = ['https://mempool.space/api', 'https://blockstream.info/api'];
+
+  function btcText(path) {
+    var i = 0;
+    function attempt() {
+      var base = EXPLORERS[i];
+      return fetch(base + path, { cache: 'no-store' })
+        .then(function (r) {
+          if (!r.ok) throw new Error(base + ' -> HTTP ' + r.status);
+          return r.text();
+        })
+        .then(function (t) { return { text: t.trim(), source: base }; })
+        .catch(function (e) {
+          i++;
+          if (i < EXPLORERS.length) return attempt();
+          throw e;
+        });
+    }
+    return attempt();
+  }
+
+  var tipHeight = function () {
+    return btcText('/blocks/tip/height').then(function (r) {
+      var h = parseInt(r.text, 10);
+      if (!isFinite(h) || h <= 0) throw new Error('bad tip height: ' + r.text);
+      return { height: h, source: r.source };
+    });
+  };
+
+  /* Resolves to null (not an error) when the block does not exist yet -- that
+     is the normal, expected state while waiting, not a failure. */
+  var hashAtHeight = function (h) {
+    return btcText('/block-height/' + h)
+      .then(function (r) {
+        var s = r.text;
+        return /^[0-9a-f]{64}$/i.test(s) ? { hash: s, source: r.source } : null;
+      })
+      .catch(function () { return null; });
+  };
+
+  /* ═══ STATE ═══ */
+  var entrants = null;
+  var lock = null;
+  try { lock = JSON.parse(localStorage.getItem(LS) || 'null'); } catch (e) { lock = null; }
+
+  function esc(s) {
+    return String(s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+  function localToMs(v) { var t = new Date(v).getTime(); return isFinite(t) ? t : null; }
+
+  /* Default window: the last 6 hours, which is the shape of a demo session. */
+  (function seedDates() {
+    var now = new Date(), then = new Date(Date.now() - 6 * 3600e3);
+    var fmt = function (d) {
+      var p = function (x) { return String(x).padStart(2, '0'); };
+      return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
+             'T' + p(d.getHours()) + ':' + p(d.getMinutes());
+    };
+    $('from').value = fmt(then);
+    $('to').value = fmt(now);
+  })();
+
+  /* ── 1 ── */
+  $('load').onclick = function () {
+    var base = $('api').value.replace(/\/+$/, '');
+    var f = localToMs($('from').value), t = localToMs($('to').value);
+    if (f === null || t === null || t <= f) {
+      $('out1').innerHTML = '<div class="warn">Set an event start and end, with the end after the start.</div>';
+      return;
+    }
+    $('load').disabled = true;
+    $('out1').innerHTML = '<p class="note">Loading…</p>';
+    fetch(base + '/api/leaderboard/top?category=level&limit=100', { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        var rows = (j && j.results) || [];
+        entrants = entrantsFrom(rows, f, t);
+        renderEntrants(rows.length, f, t);
+      })
+      .catch(function (e) {
+        $('out1').innerHTML = '<div class="warn">Could not reach the game server: ' +
+          esc(e.message) + '</div>';
+      })
+      .then(function () { $('load').disabled = false; });
+  };
+
+  function renderEntrants(returned, f, t) {
+    var h = '';
+    if (!entrants.length) {
+      h = '<div class="warn">Nobody was seen playing between those two times. ' +
+          'Widen the window, or check the server address.</div>';
+    } else {
+      h += '<p class="note" style="margin-top:16px"><b>' + entrants.length +
+           '</b> entrant' + (entrants.length === 1 ? '' : 's') + ', numbered 1 to ' +
+           entrants.length + '.</p>';
+      h += '<div class="scroll"><table><thead><tr><th class="n">#</th><th>Player</th>' +
+           '<th class="n">Level</th><th class="n">Kills</th></tr></thead><tbody>';
+      entrants.forEach(function (e, i) {
+        h += '<tr><td class="n">' + (i + 1) + '</td><td>' + esc(e.name) +
+             '</td><td class="n">' + e.level + '</td><td class="n">' + e.kills + '</td></tr>';
+      });
+      h += '</tbody></table></div>';
+      /* The cap is a real hazard, not a footnote: above 100 the server
+         silently returns the top 100 BY LEVEL, which quietly turns a random
+         draw into a skill contest without anything looking wrong. */
+      if (returned >= 95) {
+        h += '<div class="warn"><b>' + returned + ' rows came back and the server ' +
+             'only ever returns 100.</b> Above that it silently keeps the highest ' +
+             'levels and drops the rest, so this would stop being a random draw. ' +
+             'Do not run the draw from this list — ask for the contest leaderboard ' +
+             'to be built first.</div>';
+      }
+    }
+    $('out1').innerHTML = h;
+    $('c2').className = entrants.length ? 'card' : 'card off';
+  }
+
+  /* ── 2 ── */
+  $('lock').onclick = function () {
+    if (!entrants || !entrants.length) return;
+    var ahead = Math.max(1, Math.min(20, parseInt($('ahead').value, 10) || 3));
+    $('lock').disabled = true;
+    $('out2').innerHTML = '<p class="note">Asking Bitcoin how far along it is…</p>';
+    tipHeight().then(function (tip) {
+      lock = {
+        at: Date.now(),
+        tipWhenLocked: tip.height,
+        target: tip.height + ahead,
+        entrants: entrants,
+        rule: 'last 8 hex characters of the block hash, as a number, modulo the number of entrants',
+      };
+      try { localStorage.setItem(LS, JSON.stringify(lock)); } catch (e) {}
+      renderLock();
+      pollDraw();
+    }).catch(function (e) {
+      $('out2').innerHTML = '<div class="warn">Could not reach either block explorer: ' +
+        esc(e.message) + '</div>';
+      $('lock').disabled = false;
+    });
+  };
+
+  function announcement() {
+    var lines = [];
+    lines.push('PRIZE DRAW — ' + lock.entrants.length + ' entrants');
+    lines.push('');
+    lock.entrants.forEach(function (e, i) { lines.push((i + 1) + '. ' + e.name); });
+    lines.push('');
+    lines.push('The winner is decided by Bitcoin block #' + lock.target + ', which has not');
+    lines.push('been mined yet. When it is, take the ' + lock.rule + '.');
+    lines.push('');
+    lines.push('(Chain tip when this was posted: #' + lock.tipWhenLocked + '.)');
+    return lines.join('\n');
+  }
+
+  function renderLock() {
+    $('out2').innerHTML =
+      '<div class="good">Locked. The winner will be decided by block <b>#' + lock.target +
+      '</b>, which does not exist yet — the chain was at #' + lock.tipWhenLocked +
+      ' when you locked.</div>' +
+      '<p class="note">Post this now, before that block is mined:</p>' +
+      '<pre id="ann">' + esc(announcement()) + '</pre>' +
+      '<button id="copy">Copy the announcement</button>';
+    $('copy').onclick = function () {
+      navigator.clipboard.writeText(announcement()).then(function () {
+        $('copy').textContent = 'Copied';
+      }, function () {
+        $('copy').textContent = 'Select the text above and copy it';
+      });
+    };
+    $('c2').className = 'card';
+    $('lock').disabled = true;
+    $('c3').className = 'card';
+  }
+
+  /* ── 3 ── */
+  var pollTimer = null;
+  function pollDraw() {
+    if (!lock) return;
+    $('c3').className = 'card';
+    var tick = function () {
+      hashAtHeight(lock.target).then(function (got) {
+        if (got) { clearTimeout(pollTimer); renderDraw(got); return; }
+        tipHeight().then(function (tip) {
+          var togo = lock.target - tip.height;
+          $('out3').innerHTML =
+            '<p class="note">Waiting for block <b>#' + lock.target + '</b>. The chain is at #' +
+            tip.height + ' — <b>' + (togo > 0 ? togo : 1) + '</b> block' +
+            (togo === 1 ? '' : 's') + ' to go, roughly <b>' +
+            (togo > 0 ? togo * 10 : 10) + ' minutes</b>.</p>' +
+            '<p class="note">Leave this page open. It checks every 30 seconds and draws by itself.</p>';
+        }).catch(function () {
+          $('out3').innerHTML = '<p class="note">Waiting for block #' + lock.target + '…</p>';
+        });
+        pollTimer = setTimeout(tick, 30000);
+      });
+    };
+    tick();
+  }
+
+  function renderDraw(got) {
+    var n = lock.entrants.length;
+    var k = Math.min(1, n);   /* one merch winner; the capes are their own contest */
+    var d = drawFrom(got.hash, n, k);
+    var h = '';
+    h += '<p class="note">Block <b>#' + lock.target + '</b> was mined. Its hash:</p>';
+    h += '<pre>' + esc(got.hash) + '</pre>';
+    h += '<p class="note">Source: ' + esc(got.source) + ' — anyone can look up the same block ' +
+         'and repeat every step below.</p>';
+    h += '<div class="maths">' +
+         'last 8 characters &nbsp;→&nbsp; <b>' + esc(d.tail) + '</b><br>' +
+         'as a number &nbsp;→&nbsp; <b>' + d.num.toLocaleString('en-US') + '</b><br>' +
+         d.num.toLocaleString('en-US') + ' ÷ ' + n + ' &nbsp;→&nbsp; remainder <b>' + d.start + '</b><br>' +
+         'remainder ' + d.start + ' &nbsp;→&nbsp; entrant number <b>' + (d.start + 1) + '</b>' +
+         '</div>';
+    h += '<p class="big" style="margin-top:18px">Winner: ' +
+         esc(lock.entrants[d.picks[0]].name) + '</p>';
+    h += '<div class="scroll"><table><thead><tr><th class="n">#</th><th>Player</th></tr></thead><tbody>';
+    lock.entrants.forEach(function (e, i) {
+      h += '<tr class="' + (d.picks.indexOf(i) >= 0 ? 'win' : '') + '"><td class="n">' +
+           (i + 1) + '</td><td>' + esc(e.name) + '</td></tr>';
+    });
+    h += '</tbody></table></div>';
+    $('out3').innerHTML = h;
+  }
+
+  $('reset').onclick = function () {
+    try { localStorage.removeItem(LS); } catch (e) {}
+    clearTimeout(pollTimer);
+    location.reload();
+  };
+
+  /* A lock survives a refresh: losing the commitment while waiting half an
+     hour for a block would mean starting the whole draw again. */
+  if (lock && lock.entrants && lock.entrants.length) {
+    entrants = lock.entrants;
+    $('c2').className = 'card';
+    renderLock();
+    pollDraw();
+  }
+})();
+</script>
+</body>
+</html>

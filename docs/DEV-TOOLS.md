@@ -115,6 +115,35 @@ Notes for anyone extending it:
   killed by process group. Both exist because a leaked wrangler used to
   poison the next run before a single assertion ran.
 
+## `public/tools/draw.html` — the prize draw (v2.3.2030)
+
+A standalone page (no build step, same pattern as `anchor.html` and
+`deploy-scores.html`) that picks the merch winner from a Bitcoin block hash.
+Open it, set the event window, load the entrants, lock, and it draws by itself
+when the block is mined.
+
+Two things about it are load-bearing rather than cosmetic, and both are tested:
+
+* **It refuses to draw against a block that already exists.** Locking requires
+  a target height strictly above the current chain tip, and the tip at lock
+  time is recorded in the commitment. If you can pick the block *after* seeing
+  the hash you can fish for a winner, which makes the whole exercise theatre.
+  The refusal is the product; the modulo is not.
+* **Entrants read `series.kills` and `level`, never the top-level
+  `kills`/`playtime`/`goldEarned`/`ap`.** Those ride the client-reported
+  `rpgData` blob (see the comment at `leaderboard.js:56`) and are forgeable by
+  a modified client. Entrant ordering is by row id, not by the order the
+  server returned rows, so two people drawing from the same data number the
+  list identically and get the same winner.
+
+`node tools/qa/draw-page.mjs` drives the page in a real browser with both the
+leaderboard and the block explorers stubbed — no internet, no live worker
+needed. 31 assertions. Both properties above were mutation-checked: reading
+the forgeable field, or committing to the current tip instead of a future
+block, each turns the suite red.
+
+Not on the CI path (same as `deploy-page.mjs`) — run it when the page changes.
+
 ## `.claude/settings.json`
 
 Holds the SessionStart hook wiring only. If you add settings, keep the
