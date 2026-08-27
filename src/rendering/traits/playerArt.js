@@ -150,7 +150,13 @@ export function artWithCells(s, cells, idx) {
    one drawing stretched across all three would be a smear on two of them.
    ONE arm drawing covers BOTH arms — at eight-odd pixels an arm, a left/right
    distinction is invisible and would double the wire cost for nothing. */
-export const CANVASES = ['shirtFront', 'shirtBack', 'pants', 'tattoo', 'tattooFace', 'tattooArm'];
+/* v2.3.2043: `tattooHeadBack` -- the back of the head, the face's other side.
+   Owner: "I'd like the front back for shirt and front back for face and back
+   of head area."  The shirt has had two canvases since v2.3.1939 and the
+   head had one, so turning round showed either a face where no face is
+   (before v2.3.2042) or nothing at all (after it).  This is the canvas that
+   makes the head work the way the shirt already does. */
+export const CANVASES = ['shirtFront', 'shirtBack', 'pants', 'tattoo', 'tattooFace', 'tattooArm', 'tattooHeadBack'];
 export const SHIRT_SIDES = ['front', 'back'];
 
 /** Which shirt drawing a facing shows. */
@@ -163,6 +169,7 @@ const STORAGE_KEY = {
   shirtFront: 'bt-shirtart', shirtBack: 'bt-shirtart-back',
   pants: 'bt-pantsart', tattoo: 'bt-tattooart',
   tattooFace: 'bt-facetattoo', tattooArm: 'bt-armtattoo',   /* v2.3.1949 */
+  tattooHeadBack: 'bt-headbackart',   /* v2.3.2043 */
 };
 const _active = Object.create(null);   /* CLAUDE.md rule 4 */
 for (const id of CANVASES) {
@@ -250,6 +257,14 @@ export function inkedArt(id) {
 /** The shirt drawing a FACING shows, or null when that side is blank. */
 export function shirtArtForDir(dir) {
   return inkedArt(sideForDir(dir) === 'back' ? 'shirtBack' : 'shirtFront');
+}
+
+/** v2.3.2043: the HEAD drawing a facing shows -- the face from the front, the
+ *  back-of-head canvas from behind.  Deliberately the same shape as
+ *  shirtArtForDir above: the two garments now behave identically, and a reader
+ *  who has understood one has understood the other. */
+export function headArtForDir(dir) {
+  return inkedArt(sideForDir(dir) === 'back' ? 'tattooHeadBack' : 'tattooFace');
 }
 
 /** Replace one canvas and persist it.  Invalid input is ignored rather than

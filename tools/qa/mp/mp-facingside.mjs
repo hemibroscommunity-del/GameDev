@@ -43,9 +43,18 @@ import * as H from './harness.mjs';
 const SHOTS = H.REPO + '/tools/qa/mp/out';
 
 const ALL = (ch) => ch.repeat(256);
-const PINK = ALL('b');   /* 11 #d76ba8 -- the face tattoo */
+const PINK = ALL('b');   /* 11 #d76ba8 -- the FACE tattoo */
 const GREEN = ALL('6');  /* 6  #5aa84f -- the shirt FRONT print */
 const BLUE = ALL('8');   /* 8  #3f7fd0 -- the shirt BACK print */
+/* v2.3.2043: 3 #c8402f -- the BACK OF THE HEAD. A fourth colour rather than
+   reusing pink, for the same reason there are three already: pink on the back
+   of a head could be the new canvas working OR the face revolving round, and
+   those are opposite outcomes.
+   RED, after amber (#f2c94c) was tried and rejected -- it is the colour of the
+   town's golden cobblestones, and the control caught it immediately by
+   reporting 28,419 "back of head" pixels on a character with no drawings at
+   all. Which is what the control is for. */
+const RED = ALL('3');
 
 /* `r > b` is not decoration. Without it the BLUE back-print's lighter pixels
    satisfy the pink test -- a lit blue like (150,160,200) clears both `b > g+24`
@@ -56,6 +65,11 @@ const BLUE = ALL('8');   /* 8  #3f7fd0 -- the shirt BACK print */
 const isPink  = (r, g, b) => b > g + 24 && r > 110 && r >= b;
 const isGreen = (r, g, b) => g > r + 20 && g > b + 20 && g > 70;
 const isBlue  = (r, g, b) => b > r + 34 && b > g + 22 && b > 80;
+/* Red (200,64,47): strong red with BOTH other channels far below it. The two
+   margins are what keep it off the ground (a gold cobble is ~(230,190,90) --
+   high red, but green nowhere near 90 below it) and off skin (~(205,134,75),
+   same reason). */
+const isRed = (r, g, b) => r > 140 && r - g > 90 && r - b > 100;
 
 /* The whole figure. Same box mp-skinworld measures the character in, and for
    the same reason: it is derived from the player's world position and the
@@ -91,9 +105,10 @@ async function read(P, tag) {
   if (tag) await P.page.screenshot({ path: `${SHOTS}/facingside-${tag}.png`, clip: b.figure }).catch(() => {});
   return {
     facing: b.facing,
-    pink: px.count(isPink),     /* the face tattoo -- the only ink on skin here */
+    pink: px.count(isPink),     /* the FACE tattoo */
     green: px.count(isGreen),   /* the shirt FRONT print */
     blue: px.count(isBlue),     /* the shirt BACK print */
+    red: px.count(isRed),       /* the BACK OF THE HEAD drawing */
   };
 }
 
@@ -111,17 +126,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await face(P, 's');
   const plain = await read(P, '00-control');
   rec.ok('a plain character can be located (guard)', !!plain, plain);
-  rec.ok('with no drawings at all, none of the three colours appears on him — '
+  rec.ok('with no drawings at all, none of the four colours appears on him — '
        + 'so the measure reads art, not scenery',
-    !!plain && plain.pink < 10 && plain.green < 10 && plain.blue < 10, plain);
+    !!plain && plain.pink < 10 && plain.green < 10 && plain.blue < 10
+    && plain.red < 10, plain);
 
   /* Seeded before the world, the way a returning player arrives: the art store
      reads once at module load and the creator sends it in the join frame. */
-  await P.page.evaluate(([f, g, b]) => {
+  await P.page.evaluate(([f, g, b, h]) => {
     localStorage.setItem('bt-facetattoo', f);
     localStorage.setItem('bt-shirtart', g);
     localStorage.setItem('bt-shirtart-back', b);
-  }, [PINK, GREEN, BLUE]);
+    localStorage.setItem('bt-headbackart', h);   /* v2.3.2043 */
+  }, [PINK, GREEN, BLUE, RED]);
   await P.page.reload({ waitUntil: 'domcontentloaded' });
   await H.enterWorld(P);
   await P.page.waitForTimeout(3000);
@@ -130,9 +147,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     face: (localStorage.getItem('bt-facetattoo') || '').length,
     front: (localStorage.getItem('bt-shirtart') || '').length,
     back: (localStorage.getItem('bt-shirtart-back') || '').length,
+    head: (localStorage.getItem('bt-headbackart') || '').length,
   }));
-  rec.ok('the face tattoo and BOTH shirt sides survived the reload (guard)',
-    seeded.face === 256 && seeded.front === 256 && seeded.back === 256, seeded);
+  rec.ok('all four drawings survived the reload (guard)',
+    seeded.face === 256 && seeded.front === 256 && seeded.back === 256
+    && seeded.head === 256, seeded);
 
   /* ── FACING THE CAMERA ── */
   await face(P, 's');
@@ -145,6 +164,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!front && front.green >= 10, front);
   rec.ok('...and the BACK print is nowhere on him',
     !!front && front.blue < 10, front);
+  rec.ok('...and neither is the back-of-head drawing',
+    !!front && front.red < 10, front);
 
   /* ── TURNED AWAY ── */
   await face(P, 'w');
@@ -158,6 +179,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!back && back.blue >= 10, back);
   rec.ok('...and the FRONT print has gone with the front',
     !!back && back.green < 10, back);
+  /* v2.3.2043: the head is not merely BLANK from behind any more -- it carries
+     its own drawing. Asserted as a separate colour from the face precisely so
+     "the back canvas is showing" cannot be confused with "the face revolved". */
+  rec.ok('...and the BACK OF THE HEAD carries its own drawing',
+    !!back && back.red >= 10, back);
 
   /* ── AND BACK AGAIN ──
      A one-way check would pass on a build that simply stopped drawing the face
@@ -170,8 +196,37 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!again && again.pink >= 10, again);
   rec.ok('...and the front print with it',
     !!again && again.green >= 10, again);
+  rec.ok('...and the back-of-head drawing goes away again',
+    !!again && again.red < 10, again);
 
-  const errs = P.logs.filter((l) => String(l).startsWith('pageerror'));
-  rec.ok('no page errors while turning around', errs.length === 0, errs.slice(0, 3));
+  /* ── AND ANOTHER PLAYER SEES THE SAME TWO SIDES ──
+     v2.3.2043 added a wire key, and a drawing key has to clear TWO server
+     gates -- the join sanitiser and the `track` handler. v2.3.1939 shipped one
+     into the first and not the second, and the symptom was a drawing that
+     appeared when a peer joined and vanished on the first two-second relay. So
+     this watches a peer through a relay, not just the join frame. */
+  const B = await H.newPlayer(browser, { name: 'Watcher', wsPort, webPort, guest: true, dpr: 2 });
+  await H.enterWorld(B);
+  await H.waitMutualSight(P, B).catch(() => {});
+  await B.page.waitForTimeout(5000);   /* past the two-second relay */
+  const pid = await H.readState(P, (S) => S.myId);
+  const peer = await B.page.evaluate((id) => {
+    const o = ((window._gameState.current || {}).others || {})[id];
+    if (!o) return null;
+    const len = (v) => (typeof v === 'string' ? v.length : null);
+    return { face: len(o.faceTattooArt), front: len(o.shirtArtFront),
+             back: len(o.shirtArtBack), head: len(o.headBackTattooArt) };
+  }, pid);
+  rec.ok('another player receives all four drawings, at full length, AFTER the '
+       + 'relay has run — both server gates pass the new key',
+    !!peer && peer.face === 256 && peer.front === 256
+    && peer.back === 256 && peer.head === 256, peer);
+
+  for (const C of [P, B]) {
+    const errs = C.logs.filter((l) => String(l).startsWith('pageerror'));
+    rec.ok(`no page errors on ${C.name}'s client while turning around`,
+      errs.length === 0, errs.slice(0, 3));
+  }
+  await B.ctx.close();
   await P.ctx.close();
 }

@@ -69,7 +69,9 @@ const JOIN_COSMETIC_KEYS = [
   /* v2.3.1949: the face (`tf`) and arm (`tm`) tattoos.  Same shape and cap
      again.  `tm` rather than `ta`+suffix because these are two-letter keys by
      convention and `ta` was taken by the chest. */
-  'sa', 'sb', 'pa', 'ta', 'tf', 'tm',
+  /* v2.3.2043: `tb` is the BACK OF THE HEAD -- the face canvas's other side,
+     matching what `sb` is to `sa`. Same 256-char shape, same cap. */
+  'sa', 'sb', 'pa', 'ta', 'tf', 'tm', 'tb',
   /* v2.3.1941: clothing patterns -- a tile id and a palette index, e.g.
      "stripe-v:3".  Short, so unlike the drawings above they sit inside the flat
      64-char cap with room to spare and need no special case. */
@@ -88,7 +90,7 @@ const JOIN_COSMETIC_KEYS = [
    the live-update path: the client's sanitiser rejects anything that is not
    exactly 256 hex characters, so peers saw the print appear on join and vanish
    two seconds later.  index.js imports this rather than repeating it. */
-export const DRAWING_KEYS = new Set(['sa', 'sb', 'pa', 'ta', 'tf', 'tm']);
+export const DRAWING_KEYS = new Set(['sa', 'sb', 'pa', 'ta', 'tf', 'tm', 'tb']);   /* v2.3.2043: +tb */
 /** Cap for one cosmetic key: drawings and avatars get the large bound. */
 export function cosmeticCap(k) { return (k === 'avatar' || DRAWING_KEYS.has(k)) ? 512 : 64; }
 /* ═══ v2.3.1970: THE TOP-LEVEL `name` WAS THE ONE THAT GOT AWAY ═══

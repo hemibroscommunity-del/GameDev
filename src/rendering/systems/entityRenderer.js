@@ -1247,10 +1247,15 @@ function _remoteBodyArt(other, mirror) {
      that is not a well-formed 256-char drawing answers null and is dropped
      here, before it can reach a bake key or a canvas. */
   const ft = sanitizeShirtArt(other.faceTattooArt), at = sanitizeShirtArt(other.armTattooArt);
+  /* v2.3.2043: and the back of their head, through the same sanitiser. Peers
+     draw it via artForFacing exactly as the local player does, so a remote who
+     turns away shows THEIR back canvas rather than a blank head. */
+  const hb = sanitizeShirtArt(other.headBackTattooArt);
   const q = sanitizePattern(other.pantsPattern, 'pants');   /* v2.3.1941 */
   const f = sanitizePattern(other.shoesPattern, 'shoes');   /* v2.3.1944 */
-  return (p || t || ft || at || q || f)
+  return (p || t || ft || at || hb || q || f)
     ? { pants: p || '', tattoo: t || '', tattooFace: ft || '', tattooArm: at || '',
+      tattooHeadBack: hb || '',
       pantsPattern: q, shoesPattern: f, mirror: !!mirror }
     : null;
 }

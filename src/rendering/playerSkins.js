@@ -991,9 +991,17 @@ export function bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eyeKey,
  * The arm tattoo deliberately stays. Arms are visible from behind, and an arm
  * drawing on a back-facing arm is the same arm. */
 export function artForFacing(art, dir) {
-  if (!art || !artHasInk(art.tattooFace)) return art;
+  if (!art) return art;
   if (sideForDir(dir) !== 'back') return art;
-  return { ...art, tattooFace: emptyArt() };
+  /* v2.3.2043: from behind, the head shows its OWN canvas rather than nothing.
+     v2.3.2042 blanked the face here, which was right as far as it went -- a
+     face has nowhere to go when you turn round -- but it left the back of the
+     head as the one surface you could not draw on. The swap is the same one
+     the shirt has been doing since v2.3.1939 (sideForDir picks front or back);
+     an empty back canvas falls through to emptyArt and behaves exactly like
+     v2.3.2042 did, so nobody who has not drawn one sees any change. */
+  const back = art.tattooHeadBack;
+  return { ...art, tattooFace: artHasInk(back) ? back : emptyArt() };
 }
 
 export function bodyArtSeg(art) {
@@ -1004,24 +1012,30 @@ export function bodyArtSeg(art) {
      one keeps the exact key they had, so existing sheets stay shared. */
   const ft = artHasInk(art.tattooFace) ? artHash(art.tattooFace) : '';
   const at = artHasInk(art.tattooArm) ? artHash(art.tattooArm) : '';
+  /* v2.3.2043: the back-of-head canvas joins the key. artForFacing has already
+     resolved WHICH head drawing this bake uses by the time a key is computed,
+     so this only has to keep two different back drawings from sharing a sheet.
+     Anyone who has not drawn one keeps the exact key they had. */
+  const hb = artHasInk(art.tattooHeadBack) ? artHash(art.tattooHeadBack) : '';
   /* v2.3.1941: the trouser pattern joins the same segment.  It is already a
      short string ("stripe-v:3"), so it goes in whole rather than hashed. */
   const q = parsePattern(art.pantsPattern, 'pants') ? patternKey(art.pantsPattern, 'pants') : '';
   const f = parsePattern(art.shoesPattern, 'shoes') ? patternKey(art.shoesPattern, 'shoes') : '';   /* v2.3.1944 */
-  if (!p && !t && !q && !f && !ft && !at) return '';
+  if (!p && !t && !q && !f && !ft && !at && !hb) return '';
   /* '#' is the marker: no catalog id contains one, so _dropArtSheets can find
      every drawn bake by substring without matching e.g. '/default/'. */
-  return '/#art' + p + '.' + t + '.' + q + '.' + f + '.' + ft + '.' + at + (art.mirror ? 'm' : 'n');
+  return '/#art' + p + '.' + t + '.' + q + '.' + f + '.' + ft + '.' + at + '.' + hb + (art.mirror ? 'm' : 'n');
 }
 /** The local player's own drawings, in the shape the bake wants.  `mirror` is
  *  per-facing, so callers that know the facing pass it in. */
 export function localBodyArt(mirror) {
   const p = getArt('pants'), t = getArt('tattoo');
   const ft = getArt('tattooFace'), at = getArt('tattooArm');   /* v2.3.1949 */
+  const hb = getArt('tattooHeadBack');   /* v2.3.2043 */
   const q = getPattern('pants'), f = getPattern('shoes');   /* v2.3.1944 */
-  if (!artHasInk(p) && !artHasInk(t) && !artHasInk(ft) && !artHasInk(at)
+  if (!artHasInk(p) && !artHasInk(t) && !artHasInk(ft) && !artHasInk(at) && !artHasInk(hb)
     && !parsePattern(q, 'pants') && !parsePattern(f, 'shoes')) return null;
-  return { pants: p, tattoo: t, tattooFace: ft, tattooArm: at,
+  return { pants: p, tattoo: t, tattooFace: ft, tattooArm: at, tattooHeadBack: hb,
     pantsPattern: q, shoesPattern: f, mirror: !!mirror };
 }
 /** The eye target for a sheet, or null when that sheet has no eyes in it.

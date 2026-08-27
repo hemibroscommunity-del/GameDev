@@ -533,6 +533,7 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
       sa: 'a'.repeat(256),   /* v2.3.1939: a drawn shirt */
       pa: 'b'.repeat(256), ta: 'c'.repeat(256),   /* v2.3.1940: pants print + tattoo */
       tf: 'd'.repeat(256), tm: 'e'.repeat(256),   /* v2.3.1949: face + arm tattoos */
+      tb: 'f'.repeat(256),   /* v2.3.2043: the back-of-head drawing */
       sp: 'stripe-v:3', pp: 'camo:6',   /* v2.3.1941: clothing patterns */
       fp: 'check:9',   /* v2.3.1944: shoes */
       hg: 'tall', fr: 'large',   /* v2.3.1953: height + frame */
@@ -560,8 +561,8 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
      watched prints appear and vanish.  Asserting the whole set, rather than
      the newest member, is what stops the next key repeating it. */
   check('track: every drawing key survives at its full 256 chars (v2.3.1939 incident)',
-    ['sa', 'pa', 'ta', 'tf', 'tm'].every((k) => typeof psT[k] === 'string' && psT[k].length === 256),
-    Object.fromEntries(['sa', 'pa', 'ta', 'tf', 'tm'].map((k) => [k, psT[k] && psT[k].length])));
+    ['sa', 'pa', 'ta', 'tf', 'tm', 'tb'].every((k) => typeof psT[k] === 'string' && psT[k].length === 256),
+    Object.fromEntries(['sa', 'pa', 'ta', 'tf', 'tm', 'tb'].map((k) => [k, psT[k] && psT[k].length])));
   /* v2.3.1930: `ec` rides the SAME allowlist as every other cosmetic.  It is in
      this suite rather than a new one because the property under test is the
      allowlist itself: relaying eye colour means adding a key to
@@ -582,6 +583,13 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
     psT.pa === 'b'.repeat(256), psT.pa && psT.pa.length);
   check('track: a tattoo is relayed whole (v2.3.1940)',
     psT.ta === 'c'.repeat(256), psT.ta && psT.ta.length);
+  /* v2.3.2043: `tb` by name, not only through the loop above. The v2.3.1939
+     incident was one key present in the join sanitiser and missing from this
+     gate, and the failure mode is specific: the drawing appears when a peer
+     joins and vanishes on the first two-second relay. A key checked only as
+     part of a list is a key whose absence reads as "the list is shorter". */
+  check('track: the back-of-head drawing survives intact (v2.3.2043)',
+    psT.tb === 'f'.repeat(256), psT.tb && psT.tb.length);
   /* v2.3.1953: the build rides the same allowlist as every other cosmetic.
      It is asserted here for the reason `ec` is: relaying it means adding two
      keys to TRACK_COSMETIC_KEYS, and §7's whole property is that a key not on

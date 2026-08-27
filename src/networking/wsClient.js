@@ -278,6 +278,7 @@ export function setupWebSocket(ctx) {
                designer pays a byte for them. */
             tf: artHasInk(getArt('tattooFace')) ? getArt('tattooFace') : undefined,
             tm: artHasInk(getArt('tattooArm')) ? getArt('tattooArm') : undefined,
+            tb: artHasInk(getArt('tattooHeadBack')) ? getArt('tattooHeadBack') : undefined,   /* v2.3.2043 */
             /* v2.3.1941: clothing patterns.  Short ids ("stripe-v:3"), so
                unlike the drawings they need no special length handling. */
             /* v2.3.1953: height and frame.  `undefined` unless you actually

@@ -517,7 +517,11 @@ export const TRACK_COSMETIC_KEYS = new Set([
      unexpected. */
   /* v2.3.1940: + the drawn pants print and the chest tattoo.
      v2.3.1941: + the shirt and trouser patterns. */
-  'sa', 'sb', 'pa', 'ta', 'tf', 'tm', 'sp', 'pp', 'fp',   /* v2.3.1949: +face/arm tattoos */
+  /* v2.3.2043: +`tb`, the back-of-head drawing. Added to BOTH gates in the
+     same change on purpose -- v2.3.1939 put a drawing key in the join
+     sanitiser and not here, and the result was a print that appeared on
+     join and vanished on the first two-second relay. See DRAWING_KEYS. */
+  'sa', 'sb', 'pa', 'ta', 'tf', 'tm', 'tb', 'sp', 'pp', 'fp',   /* v2.3.1949: +face/arm tattoos */
   /* v2.3.1953: 'hg' is the height and 'fr' the frame -- two short catalog ids
      ('tall', 'large'), relayed so peers see the build you picked.  Display-only
      in the strictest sense available: they reach a RENDER SCALE on the
