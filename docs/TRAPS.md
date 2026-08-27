@@ -842,3 +842,63 @@ v2.3.1764 broke three scenarios at once, each swallowing the miss with
 `tools/qa/mp/mp-hairmask.mjs` (asserts its own framing),
 `tools/qa/mp/run.mjs` (warns when dist/ is stale — a different way to
 measure the wrong thing confidently).
+
+---
+
+## §29 — A scenario that selects UI by its LABEL is a test with an expiry date (v2.3.2013)
+
+§28 recorded three dead tests found in one sweep. Chasing the rest
+turned up the mechanism they share, and it is narrow enough to state as
+a rule: **every one of them reached for a string the owner is entitled
+to change.**
+
+Four scenarios, four renames, none of which was a mistake by the person
+who made it:
+
+| scenario | what it selected | what changed | cost |
+|---|---|---|---|
+| `layer` | `/Redeem Reward\|Choose a skill to train/` | v2.3.1827 split the turn-in into two screens | 4 assertions, silent for months |
+| `zonefx` | `clickText(A, 'Accept')` | same v2.3.1827 split — Accept moved to screen two | 4 assertions, **and it invented two bugs** |
+| `townlock` | `clickText(P, 'Accept')` | latent: same flow, different door | would have broken next |
+| `statpeek` | `[role="button"][title="Build"]` | v2.3.1849 renamed the tab to "Points" | 5 assertions |
+
+**The worst outcome is not the silence.** `zonefx` arms its tester by
+accepting a quest, because the town gate refuses an unarmed character.
+The accept matched nothing and was wrapped in `.catch(() => {})`, so the
+run continued with an unarmed player who never left town — and then four
+assertions reported that "an emote from another zone appears over your
+map" and "a chat bubble from another zone is drawn over your ground".
+Both players were in the SAME zone. The renderer was correct. A test
+that cannot reach its own precondition does not go quiet; it starts
+describing a world that does not exist, in the confident language of a
+bug report.
+
+**Rules this leaves:**
+- Select by a STABLE HOOK — a class or a `data-` attribute carrying an
+  ID, never `title`, `aria-label`, or button text. Where none exists,
+  ADD one: `bt-quest-turnin` exists on the claim button for exactly this
+  reason, and v2.3.2013 added `data-section` to the hero tabs after
+  `title="Build"` became `title="Points"`.
+- An ID and a LABEL are different things and the label is display copy.
+  `SECTION_LABEL` in HeroExpanded.jsx says so in its own comment — "the
+  label is a display concern and lives in a display table" — and the
+  test was reaching for the display concern.
+- **Never `.catch(() => {})` a setup step.** A guard that cannot fail is
+  not a guard. Two of the four swallowed their miss, and those two are
+  the ones that produced false accusations rather than plain failures.
+  If a step is genuinely optional, assert which branch you took.
+- A GUARD failing invalidates everything after it. When triaging, read
+  the failures in order and stop at the first guard: the four scary
+  zonefx failures were downstream of two boring ones.
+- Fix the flow in the HARNESS, not in each scenario. `acceptQuestFromGiver`
+  exists because this flow's labels have now moved twice and broken five
+  scenarios between them.
+- ...but scope the helper to the path it actually drives. Applying
+  `acceptQuestFromGiver` to `townlock` — which accepts from the QUESTS
+  DASH, a different door with no dialogue — took it from 27/27 to 22/27.
+  Check its prior state before "fixing" a test: a failing test is not
+  proof it was already failing.
+
+**Receipt:** `tools/qa/mp/harness.mjs` (`acceptQuestFromGiver`, and why
+it throws), `tools/qa/mp/mp-statpeek.mjs` + `HeroExpanded.jsx`
+(`data-section`), `tools/qa/mp/mp-layer.mjs`, `tools/qa/mp/mp-zonefx.mjs`.
