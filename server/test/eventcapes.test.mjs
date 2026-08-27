@@ -161,5 +161,90 @@ await room._capeLedgersLoad();
     r5._capeOwnedBy('nobody') === null && !({}).goldticket_crimson, true);
 }
 
+/* ── OWNER DECISIONS (2026-08-27): the ticket is TRADEABLE and never expires ──
+ * Tradeable needed checking rather than assuming, and the answer is that it
+ * already is: the marketplace is weapons-only (kind:'weapon' throughout
+ * market.js) so a ticket cannot be listed there, but the player-to-player
+ * trade window moves arbitrary inventory keys -- _sanitizeTradeOffer accepts
+ * any string key under 32 chars that is not an Object.prototype member
+ * (v2.3.1971). `goldticket_crimson` is 18. So no code was needed; what IS
+ * needed is a test, because "tradeable" is now a property someone could
+ * remove by tightening that sanitizer without realising a prize depends on it.
+ *
+ * The risk tradability introduces is a second ticket in one pair of hands.
+ * That must not mint a second cape -- and it must not BURN the ticket either,
+ * or a player who bought one is simply out of pocket. */
+{
+  const s6 = makeState();
+  const r6 = new GameRoom(s6, mockEnv);
+  r6.playerState = Object.create(null);
+  r6._saveRpg = () => {}; r6._sendPlayerState = () => {}; r6._wsBySessionId = () => null;
+  const seen6 = new Set();
+  r6._opSeen = async (k) => seen6.has(k);
+  r6._opStamp = async (k) => { seen6.add(k); };
+  await r6._capeLedgersLoad();
+
+  check('a ticket key survives the trade sanitizer, so the ticket is tradeable',
+    !!(r6._sanitizeTradeOffer({ goldticket_crimson: 1 }) || {}).goldticket_crimson,
+    r6._sanitizeTradeOffer({ goldticket_crimson: 1 }));
+
+  const sess = { id: 'collector' };
+  const p = { inventory: { goldticket_crimson: 2 } };   /* bought a second one */
+  r6.playerState.collector = p;
+  await r6._handleCapeRedeem(sess, { invKey: 'goldticket_crimson', opId: 'c1' });
+  await r6._handleCapeRedeem(sess, { invKey: 'goldticket_crimson', opId: 'c2' });
+  const led6 = await r6._capeLedger('crimson');
+  check('holding two tickets still grants exactly one cape',
+    led6.redeemed.filter((x) => x === 'collector').length === 1, led6.redeemed);
+  check('...and the second ticket is NOT burned, so it can be traded on',
+    p.inventory.goldticket_crimson === 1, p.inventory);
+}
+
+/* ── the ticket never expires (owner decision, 2026-08-27) ──
+ * The event flag gates the DROP, not the REDEEM.  This is easy to get wrong in
+ * the tidy-looking direction: a `if (!this._capeEventOpen()) return;` at the
+ * top of _handleCapeRedeem reads like correct hygiene and would quietly strand
+ * every winner who was offline when the window closed -- and every ticket
+ * traded on afterwards, which the owner also allowed.  So: win it open, close
+ * the event, redeem anyway.
+ *
+ * Injecting that guard was measured: it fails seven assertions here, five of
+ * which are the older redeem tests catching it by accident (no test sets
+ * _liveFlags, so the flag is false throughout the file).  Accidental coverage
+ * is still coverage, but it is not a STATEMENT -- it would evaporate the day
+ * someone made the other tests set the flag for realism, and nothing in their
+ * names says the never-expires property is what broke.  This block says it. */
+{
+  const s7 = makeState();
+  const r7 = new GameRoom(s7, mockEnv);
+  r7.playerState = Object.create(null);
+  r7._saveRpg = () => {}; r7._sendPlayerState = () => {}; r7._wsBySessionId = () => null;
+  r7._opSeen = async () => false; r7._opStamp = async () => {};
+  await r7._capeLedgersLoad();
+
+  r7._liveFlags = { event_capes: true };
+  const p7 = { inventory: {} };
+  r7.playerState.latecomer = p7;
+  const tkt = r7._claimCapeTicket('crimson', 'latecomer', p7, always);
+  check('a ticket drops while the event flag is open', tkt === 'goldticket_crimson', tkt);
+
+  r7._liveFlags = { event_capes: false };          /* the window closes */
+  /* _claimCapeTicket is deliberately NOT self-gating -- the guard lives at the
+     kill site (combat.js:891), so what this asserts is the flag read itself
+     flipping both ways.  The first draft of this line ORed in
+     `|| !r7._capeEventOpen()`, which made it pass no matter what the claim
+     returned: the claim is unguarded, so it does hand out a second ticket
+     here.  An assertion that cannot fail is worse than no assertion, because
+     it reads as coverage. */
+  check('the event flag reads closed once it is cleared', r7._capeEventOpen() === false,
+    r7._capeEventOpen());
+  await r7._handleCapeRedeem({ id: 'latecomer' }, { invKey: tkt, opId: 'late1' });
+  const led7 = await r7._capeLedger('crimson');
+  check('a ticket redeems AFTER the event closes -- it never expires',
+    led7.redeemed.indexOf('latecomer') >= 0 && !p7.inventory[tkt], [led7.redeemed, p7.inventory]);
+  check('...and the cape is what the player is then wearing',
+    r7._capeOwnedBy('latecomer') === 'crimson', r7._capeOwnedBy('latecomer'));
+}
+
 console.log(failures ? `\n${failures} FAILURE(S)` : '\neventcapes: ALL PASS');
 process.exit(failures ? 1 : 0);

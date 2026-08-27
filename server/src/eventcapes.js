@@ -187,6 +187,11 @@ export const eventCapeMethods = {
     if (ps.dying || ps.dead || ps.disconnected) return;
     /* Idempotency: a retried redeem on a flaky phone must not grant twice. */
     if (opId && typeof opId === 'string' && await this._opSeen('capered:' + opId)) return;
+    /* precheck's proto-safety heuristic flags this plain {} -- it is safe here
+       and the reason is the LINE ORDER above, not the object: _capeForTicket
+       has already rejected invKey unless it exactly equals a ticket string in
+       EVENT_CAPES, so '__proto__' returns null and we are gone before this
+       point.  Keep the validation first if this is ever reordered. */
     if (!ps.inventory) ps.inventory = {};
     if ((ps.inventory[invKey] || 0) <= 0) return;         /* ownership */
     const led = await this._capeLedger(capeId);

@@ -212,8 +212,17 @@ storage keys and idempotency, all of which it governs.
 ### 4.1 The drop
 
 The server is authoritative for loot, so the 1-in-200 roll happens there and
-nowhere else. It is gated on a **window**: `CONTEST_START` / `CONTEST_END`
-timestamps, so the roll is skipped entirely outside it.
+nowhere else.
+
+**Shipped as a live-ops flag, not baked timestamps (v2.3.2026).** The spec
+originally called for `CONTEST_START` / `CONTEST_END` constants. Hard dates in
+the source mean the only way to start the event, extend it, or shut it off is
+a worker deploy — and a deploy disconnects every live player and cold-starts
+the room (`CLAUDE.md`, Deployment). Doing that *during* the event is the exact
+thing you do not want to be forced into. So the gate is `_flagOn('event_capes')`
+and the rate is `_flagNum('event_cape_rate', 1/200, 0, 1)`, both flipped from
+`/api/admin/flags` with no deploy. Open the flag when the event starts, close
+it when it ends.
 
 ### 4.2 ⚠ "First 3" must be an atomic server-side claim
 
@@ -238,15 +247,45 @@ simultaneous claims and asserts exactly 3 succeed.
   flaky phone connection must not consume two tickets or grant two capes.
   This is a convention the handoff doc already sets; follow it rather than
   inventing one.
-* Decide up front whether the ticket is **tradeable**. If it is, it enters the
-  market and the economy suites need a case. Recommended: **not** tradeable for
-  v1 — it is a contest prize, and making it tradeable turns a fairness
-  question into a market question on the week of a demo.
+* **The ticket is TRADEABLE** (owner decision, 2026-08-27 — overriding this
+  spec's earlier recommendation). This needed *checking* rather than
+  implementing, and the answer is that it already was: `market.js` is
+  weapons-only (`kind:'weapon'` throughout), so a ticket cannot be listed on
+  the order book, but the player-to-player **trade window** moves arbitrary
+  inventory keys — `_sanitizeTradeOffer` accepts any string key under 32
+  characters that is not an `Object.prototype` member, and
+  `goldticket_crimson` is 18. **No code change was required.** What the
+  decision did require is a test, because tradability is now a property a
+  future tightening of that sanitizer could silently remove from a live prize.
+  `eventcapes.test.mjs` pins it.
+* **The ticket never expires** (owner decision, 2026-08-27). The event flag
+  gates the *drop*, not the *redeem*: `_handleCapeRedeem` deliberately does
+  not call `_capeEventOpen()`, so a winner who is offline when the window
+  closes — or who is traded a ticket a month later — can still open it. Pinned
+  by a test that closes the flag and redeems anyway.
+* Tradability's real risk is **two tickets in one pair of hands**. That must
+  not mint two capes (the ledger's one-per-account rule handles it) *and* must
+  not burn the spare, or a player who bought one is out of pocket for nothing.
+  Both halves are asserted.
 
 ### 4.4 What a winner keeps
 
 The cosmetic is granted to the persistent `bp_` identity, not the session, so
-it survives a device change. Same store the wardrobe already uses.
+it survives a device change.
+
+**Not the same store the wardrobe uses**, though — that line was wrong, and
+following it would have shipped a cape that vanished. Rule 1 of
+`ARCHITECTURE-HANDOFF.md`: `_saveRpg` rewrites `rpg:<playerId>` from a fixed
+field list and silently drops anything foreign, so a `ps._capes` array would
+have looked correct for exactly one session. Ownership lives in the ledger
+(`capegrant:<capeId>`), which already had to record who redeemed — one record,
+so the count and the owners cannot disagree.
+
+### 4.5 The merch draw has no level threshold
+
+Owner decision, 2026-08-27. Everyone seen during the event window is an entry;
+there is no minimum level to qualify. (Part C of the parallel session's brief —
+the static `public/tools/draw.html` — is not built yet.)
 
 ---
 
