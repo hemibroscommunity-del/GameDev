@@ -380,6 +380,7 @@ Summary of the wire-visible changes:
 
 | Type | Purpose | Spec |
 |---|---|---|
+| `room_full` | v2.3.1982 admission refusal at the player cap: `{reason:'full', count, cap, retryMs}` on an upgraded socket the worker closes immediately with code **4009**. OPT-IN — sent only when the connect URL carries `?rf=1`; everything else keeps the legacy `503 Room full` on the un-upgraded handshake. Deliberately NOT a `join_rejected` reason: an old client treats an unknown reason as fatal and stops retrying (v2.3.1181) | room-full.md |
 | `join_rejected` | Join refusal: `reason:'auth'` (close 4003 — client mints a fresh id once) or `reason:'frozen'` (v2.3.1148 operator freeze, close 4004 — client shows a banner, stops reconnecting, must NOT mint) | identity.md / admin.md |
 | `inbox_delivered` | Offline-mail delivery: `{entries: [{kind, payload, note, source}], queued}` | inbox-escrow.md |
 | `duel_end` | Server duel resolution: `{winner, loser, wager, how: kill\|death\|forfeit\|timeout}` | duels.md |
