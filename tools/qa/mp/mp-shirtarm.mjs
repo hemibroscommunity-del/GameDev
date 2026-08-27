@@ -14,6 +14,19 @@
  *
  * Captures a strip of the character across a full stride, cropped to the
  * figure and zoomed, so the frames can be compared side by side.
+ *
+ * ── WHAT IT TURNED OUT TO BE, AND WHAT THE STRIP SHOULD SHOW NOW ──
+ * v2.3.1986 answered it. The tee's coverage is PROPORTIONALLY constant across
+ * the cycle (0.63-0.71 of the torso band, both halves), so the shirt was never
+ * shrinking and the near arm crossing the chest for half the stride is correct
+ * animation. What was missing was the SLEEVE: on frames 8-11 the arm tucks in
+ * front of the torso and the artist's deliberate cut-out took the sleeve with
+ * it, leaving the arm bare from the shoulder JOINT down — the character read
+ * as wearing a tank top for those four frames.
+ * tools/gear/sleeve_crossing_arm.py puts a short sleeve back on exactly those
+ * frames. So in this strip EVERY figure should show white at the shoulder of
+ * the near arm; a figure whose arm is skin-coloured all the way up to the neck
+ * is the bug returning.
  */
 import * as H from './harness.mjs';
 
