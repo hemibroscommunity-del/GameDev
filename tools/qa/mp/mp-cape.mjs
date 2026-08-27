@@ -33,12 +33,21 @@ const raw = (P) => P.page.evaluate(() => {
        0.8952, both landing on 114.6px.  Comparing the numbers would fail on a
        correct build, which is the wrong way round for a test. */
     pose: pd._animPose || null,
+    /* CENTRES, not raw x/y.  v2.3.2024 moved the cape's anchor to the
+       shoulders so it can pivot there while running, which means its `y` is no
+       longer its middle.  Comparing raw y would fail on a correct build — the
+       same trap as comparing raw scale when the two sprites draw from
+       differently-sized textures.  centre = pos + (0.5 - anchor) * drawn. */
     cape: c ? { visible: !!c.visible, tex: !!(c.texture && c.texture.frame),
-                x: Math.round(c.x), y: Math.round(c.y),
+                x: Math.round(c.x + (0.5 - c.anchor.x) * Math.abs(c.scale.x * ((c.texture && c.texture.frame && c.texture.frame.width) || 0))),
+                y: Math.round(c.y + (0.5 - c.anchor.y) * Math.abs(c.scale.y * ((c.texture && c.texture.frame && c.texture.frame.height) || 0))),
+                rot: +Number(c.rotation || 0).toFixed(3),
                 w: +Math.abs(Number(c.scale.x) * ((c.texture && c.texture.frame && c.texture.frame.width) || 0)).toFixed(2),
                 h: +Math.abs(Number(c.scale.y) * ((c.texture && c.texture.frame && c.texture.frame.height) || 0)).toFixed(2),
                 mirror: Number(c.scale.x) < 0 } : null,
-    body: b ? { visible: !!b.visible, x: Math.round(b.x), y: Math.round(b.y),
+    body: b ? { visible: !!b.visible,
+                x: Math.round(b.x + (0.5 - b.anchor.x) * Math.abs(b.scale.x * ((b.texture && b.texture.frame && b.texture.frame.width) || 0))),
+                y: Math.round(b.y + (0.5 - b.anchor.y) * Math.abs(b.scale.y * ((b.texture && b.texture.frame && b.texture.frame.height) || 0))),
                 w: +Math.abs(Number(b.scale.x) * ((b.texture && b.texture.frame && b.texture.frame.width) || 0)).toFixed(2),
                 h: +Math.abs(Number(b.scale.y) * ((b.texture && b.texture.frame && b.texture.frame.height) || 0)).toFixed(2),
                 mirror: Number(b.scale.x) < 0 } : null,
@@ -67,7 +76,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* THE REGISTRATION. Same origin, same scale — a full-frame sticker on a
      256 frame, so any divergence is the cape coming off the character. */
   rec.ok('the cape sits exactly on the body sprite, not near it',
-    !!(worn && worn.cape && worn.body && worn.cape.x === worn.body.x && worn.cape.y === worn.body.y),
+    !!(worn && worn.cape && worn.body
+       && Math.abs(worn.cape.x - worn.body.x) <= 1 && Math.abs(worn.cape.y - worn.body.y) <= 1),
     { cape: worn && worn.cape, body: worn && worn.body });
   rec.ok('...and is DRAWN the same size as the body, mirror included',
     !!(worn && worn.cape && worn.body && worn.body.w > 0
@@ -105,13 +115,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const off = jog.map((s) => [s.cape.x - s.body.x, s.cape.y - s.body.y]);
     rec.ok('while jogging the cape follows the frame\'s crown, not the frame origin',
       off.some(([dx, dy]) => dx !== 0 || dy !== 0), { offsets: off });
+    rec.ok('...and it is TILTED while running, so the back is covered '
+      + '(owner: "the back of the character doesn\'t stick out while running")',
+      jog.some((s) => Math.abs(s.cape.rot) > 0.01), { rots: jog.map((s) => s.cape.rot), dir: jog[0].dir });
     rec.ok('...and it is still drawn at the body\'s size while it does so',
       jog.every((s) => Math.abs(s.cape.w - s.body.w) < 1.5), jog.map((s) => [s.cape.w, s.body.w]));
   }
   const back = await raw(P);
   rec.ok('...and standing again there is no offset — the art is fitted to THIS pose',
     !!(back && back.cape && back.body && back.pose === 'stand'
-       && back.cape.x === back.body.x && back.cape.y === back.body.y),
+       && Math.abs(back.cape.x - back.body.x) <= 1 && Math.abs(back.cape.y - back.body.y) <= 1
+       && Math.abs(back.cape.rot) < 0.001),
     back);
 
   /* ── THE INVARIANT THAT MATTERS ──

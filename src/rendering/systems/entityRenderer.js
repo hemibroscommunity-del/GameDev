@@ -1281,6 +1281,33 @@ function _remoteBodyArt(other, mirror) {
  * reads far better than a floating one. */
 const _CAPE_HIDDEN_POSES = { dodge: 1, swing: 1, bowshot: 1, fire: 1, chop: 1, mine: 1, fish: 1, cook: 1, pickup: 1, hit: 1 };
 
+/* ═══ v2.3.2024: THE CAPE TRAILS WHEN HE RUNS ═══
+ * Owner: "The cape needs to be rotated so the back of the character doesn't
+ * stick out while running."
+ *
+ * The art is a standing cape, hanging straight down.  A running figure leans
+ * into the direction of travel, so a vertical cape stops covering the back and
+ * the character's shoulders and arm show behind it.  Tilting the cape the
+ * other way — the hem swinging back along the line of travel — both covers the
+ * back and reads as the cape streaming behind him, which is what a cape does.
+ *
+ * Radians, per BASE facing, applied only while jogging.  The sign follows the
+ * direction of travel: running east the hem trails west, so the bottom swings
+ * left; running southwest it trails north-east, so the bottom swings the other
+ * way.  North and south move toward or away from the camera, where a
+ * horizontal tilt would be a lie, so they stay at zero and rely on the crown
+ * offset alone.
+ *
+ * A TABLE, not a formula, because the five facings are drawn at five different
+ * three-quarter angles and the amount that reads correctly is not a projection
+ * of anything — it is a look.  Mirrored facings negate it, for the same reason
+ * the body's own scale.x carries its sign. */
+const _CAPE_JOG_TILT = { east: 0.15, northeast: 0.10, southwest: -0.10, north: 0, south: 0 };
+/* Where the cape swings FROM: the shoulders, not the middle of the frame.
+   Pivoting about the centre would swing the hood as far as the hem and take
+   the hood off the head, which is the thing v2.3.2023b just fixed. */
+const _CAPE_PIVOT_Y = 0.27;
+
 function _placeCape(display, capeId, pose, dir, mirror, frameIdx) {
   const spr = display && display._capeSprite;
   if (!spr) return;
@@ -1311,7 +1338,15 @@ function _placeCape(display, capeId, pose, dir, mirror, frameIdx) {
     dx = (nowTop[0] - standTop[0]) * Math.abs(spr.scale.x) * (mirror ? -1 : 1);
     dy = (nowTop[1] - standTop[1]) * Math.abs(spr.scale.y);
   }
-  spr.x = sb.x + dx; spr.y = sb.y + dy;
+  /* v2.3.2024: swing it from the shoulders while running.  The anchor moves off
+     centre so the rotation pivots there, and y is compensated by the same
+     amount so the cape does not also jump up the screen when it tilts. */
+  const tilt = (pose === 'jog') ? ((_CAPE_JOG_TILT[dir] || 0) * (mirror ? -1 : 1)) : 0;
+  if (spr.anchor.y !== _CAPE_PIVOT_Y) spr.anchor.set(0.5, _CAPE_PIVOT_Y);
+  if (spr.rotation !== tilt) spr.rotation = tilt;
+  const drawnH = Math.abs(spr.scale.y) * ((tex.frame && tex.frame.height) || 256);
+  spr.x = sb.x + dx;
+  spr.y = sb.y + dy - (0.5 - _CAPE_PIVOT_Y) * drawnH;
   if (!spr.visible) spr.visible = true;
 }
 
