@@ -490,6 +490,58 @@ export async function clickText(P, text, { timeout = 6000 } = {}) {
   return true;
 }
 
+/* ═══ v2.3.2011: ACCEPTING FROM THE IN-WORLD GIVER IS TWO SCREENS ═══
+ *
+ * v2.3.1827 ("the quest reward was unclaimable") split the in-world quest
+ * flow: the giver speaks through NpcDialogue, whose last button says "See the
+ * quest", and only THAT opens QuestOfferPanel where "Accept Quest" lives.
+ *
+ * Scenarios written before that still did `clickText(P, 'Accept')`, which on
+ * screen one matches nothing.  Two of them wrapped it in `.catch(() => {})`,
+ * so the miss was silent and the run continued with an unarmed character --
+ * mp-zonefx then failed FOUR assertions that read like real cross-zone
+ * rendering bugs ("an emote from another zone appears over your map") when the
+ * truth was that its tester never left town, so both players were in the same
+ * zone and the emote was correct.
+ *
+ * It lives in the harness rather than in each scenario because this is the
+ * THIRD time this flow's labels have moved (v2.3.1764 renamed the turn-in and
+ * broke three scenarios at once; v2.3.1827 moved the accept).  One place to
+ * fix beats four places to forget -- and QuestOfferPanel.jsx says the same
+ * thing about its own confirm class.
+ *
+ * SELECTED BY CLASS, and it THROWS.  A helper that swallows its own failure is
+ * how four assertions came to describe a fiction.
+ *
+ * THE GIVER, NOT THE DASH.  There are two doors to an offer and only this one
+ * grew a second screen: the QUESTS dash panel still shows an Accept directly,
+ * with no NpcDialogue to page through.  mp-townlock uses that door and passes
+ * 27/27 with a plain clickText -- switching it to this helper took it to
+ * 22/27, which is how the name earned its suffix.  If you are here because an
+ * accept is failing, check WHICH door the scenario knocks on first.
+ */
+export async function acceptQuestFromGiver(P, { timeout = 12000 } = {}) {
+  /* screen one: page through whatever the giver says.  The CTA reads "Next"
+     until the last chunk, then becomes the one that opens the offer. */
+  for (let i = 0; i < 10; i++) {
+    const done = await P.page.evaluate(() => {
+      const b = document.querySelector('.bt-npcdlg-next');
+      if (!b) return true;                       /* no dialogue (or past it) */
+      const last = !/next/i.test(b.textContent || '');
+      b.click();
+      return last;
+    });
+    await P.page.waitForTimeout(320);
+    if (done) break;
+  }
+  /* screen two: the offer panel's own confirm. */
+  const go = P.page.locator('.bt-qoffer .bt-qoffer-go').first();
+  await go.waitFor({ state: 'visible', timeout });
+  await go.click();
+  await P.page.waitForTimeout(600);
+  return true;
+}
+
 /** Open a dashboard destination by tapping its NAV RAIL button.
  *
  *  v2.3.1637: the toolbar ribbon carried a text label under every icon, so
