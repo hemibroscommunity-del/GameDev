@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  rehearsal: () => import('./mp-rehearsal.mjs'), /* v2.3.2040: four characters, every interaction, every frame scanned for a black band */
   chatcompose: () => import('./mp-chatcompose.mjs'), /* v2.3.2039: selection, the dictation wait, and seeing your message */
   loginkey: () => import('./mp-loginkey.mjs'), /* v2.3.2038: can you get your login key back from inside the game? */
   roomfull: () => import('./mp-roomfull.mjs'), /* v2.3.1982: the 61st player is told why, waits visibly, and walks in when a seat opens */
