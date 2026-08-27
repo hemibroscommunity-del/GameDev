@@ -144,9 +144,23 @@ selecting the wrong two hours of players. The panel prints the window back in
 both UTC and the viewer's own zone, because the two readings of this event's
 time were once given two hours apart (9am PDT is 16:00 UTC, not 14:00).
 
+**Entry needs a minimum level** (v2.3.2032, default 5, editable on the page).
+This is anti-Sybil, not elitism: identity here is deliberately cheap — a silent
+passphrase per browser, no email, `?guest=1` mints another in the same tab — so
+with presence alone as the qualification a fake entry costs about ten seconds
+in an incognito window. Level cannot be faked (character level is the sum of
+the three trained skill levels, all awarded server-side from damage actually
+dealt, `prog3.js`). A fresh character is already level **3**, so level 5 is two
+level-ups — measured at roughly **37–41 starter slimes** (~38 HP each,
+XP = damage × 0.4, 560–605 XP needed), i.e. real minutes per throwaway account.
+
+The threshold is an input rather than a constant because it has a real cost: a
+genuine latecomer may not clear it. The page names everyone it excluded and
+their level, so a shortened list never looks like a complete one.
+
 `node tools/qa/draw-page.mjs` drives the page in a real browser with both the
 leaderboard and the block explorers stubbed — no internet, no live worker
-needed. 37 assertions. Every browser context is pinned to `Europe/London` on
+needed. 48 assertions. Every browser context is pinned to `Europe/London` on
 purpose: run the suite in `America/Los_Angeles` and a page hardcoding "09:00
 local" would pass everything. That pinning immediately caught a bug in the
 suite itself, where fixture dates were formatted in node's timezone and parsed

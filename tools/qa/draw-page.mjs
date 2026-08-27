@@ -59,6 +59,10 @@ const ROWS = [
     series: { kills: 7 } },
   { id: 'bp_alpha', name: 'Alpha', level: 40, lastSeen: T0 + 60e3,
     kills: 0, series: { kills: 512 } },
+  /* Level 3 is what a FRESH character is (character level = sum of the three
+     trained skill levels), so Mike is exactly the throwaway account the level
+     floor exists to stop -- and exactly the genuine latecomer it might catch
+     by accident. He must be an entrant at floor 0 and excluded at floor 5. */
   { id: 'bp_mike',  name: 'Mike',  level: 3,  lastSeen: T1 - 60e3,
     kills: 4, series: { kills: 1 } },
   /* Outside the window in both directions -- must not be entrants. */
@@ -72,6 +76,10 @@ const ROWS = [
 /* Expected entrants: inside the window, sorted by id.
    bp_alpha, bp_mike, bp_nots, bp_zulu, and the id-less row (id '' sorts first). */
 const EXPECT_ORDER = ['NoId', 'Alpha', 'Mike', 'NoSeries', 'Zulu'];
+/* With the level-5 floor: Mike (lv 3) and NoId (lv 5 -> stays) ... NoId and
+   NoSeries are both level 5, which is ON the boundary and must PASS (>=, not
+   >). Only Mike (3) drops. */
+const EXPECT_GATED = ['NoId', 'Alpha', 'NoSeries', 'Zulu'];
 
 /* A real-looking hash whose last 8 chars we control. 0x0000000b = 11.
    11 % 5 = 1 -> index 1 -> the SECOND entrant, 'Alpha'. Worked out here by
@@ -228,6 +236,58 @@ console.log('draw-page:');
   await ctx.close();
 }
 
+/* ── 1c. the level floor (v2.3.2032) ──
+ * Anti-Sybil, and the assertions that matter are the boundary and the
+ * visibility. ">= 5" versus "> 5" is a one-character bug that silently drops
+ * every player sitting exactly on the announced threshold, and an exclusion
+ * that is not reported turns a shortened list into one that looks complete. */
+{
+  const { ctx, page } = await newPage();
+  const gated = await page.evaluate(([rows, a, b]) =>
+    window.__draw.entrantsFrom(rows, a, b, 5), [ROWS, T0, T1]);
+  ok('the level floor drops the fresh level-3 account',
+    JSON.stringify(gated.map((e) => e.name)) === JSON.stringify(EXPECT_GATED),
+    gated.map((e) => e.name));
+  ok('a player exactly ON the threshold qualifies (>=, not >)',
+    gated.some((e) => e.name === 'NoSeries' && e.level === 5), gated);
+
+  const none = await page.evaluate(([rows, a, b]) =>
+    window.__draw.entrantsFrom(rows, a, b, 0), [ROWS, T0, T1]);
+  ok('a floor of 0 lets everyone who played through',
+    none.length === EXPECT_ORDER.length, none.length);
+
+  const ex = await page.evaluate(([rows, a, b]) =>
+    window.__draw.excludedBy(rows, a, b, 5), [ROWS, T0, T1]);
+  ok('the excluded player is reported back, not silently dropped',
+    ex.length === 1 && ex[0].name === 'Mike' && ex[0].level === 3, ex);
+  ok('a player outside the window is not reported as level-excluded',
+    !ex.some((e) => e.name === 'TooEarly' || e.name === 'TooLate'), ex);
+
+  /* And in the page itself, at its shipped default. */
+  await setWindow(page, T0, T1);
+  await page.click('#load');
+  await page.waitForSelector('#out1 table');
+  ok('the shipped default floor is 5', (await page.inputValue('#minlv')) === '5');
+  ok('the rendered list is the gated one',
+    (await page.locator('#out1 tbody tr').count()) === EXPECT_GATED.length,
+    await page.locator('#out1 tbody tr').count());
+  const shown = await page.locator('#out1').textContent();
+  ok('the page names who it excluded and why',
+    /1 player was excluded for being below level 5/.test(shown) && /Mike \(lv 3\)/.test(shown),
+    shown.slice(0, 400));
+  ok('...and tells the operator how to undo it',
+    /Lower the minimum/.test(shown), shown.slice(0, 400));
+
+  /* The published commitment has to state the rule that was applied. */
+  await page.click('#lock');
+  await page.waitForSelector('#ann');
+  const ann = await page.locator('#ann').textContent();
+  ok('the announcement states the level rule, so entrants can check it',
+    /reached level 5/.test(ann), ann);
+  ok('...and Mike is not in the published list', !/Mike/.test(ann), ann);
+  await ctx.close();
+}
+
 /* ── 2. the real flow in the page, and the guard that matters ── */
 {
   TIP = 900000; MINED = false;
@@ -241,6 +301,7 @@ console.log('draw-page:');
      are pinned to Europe/London.  A test whose fixtures move with the
      machine's timezone is a test that lies somewhere. */
   await setWindow(page, T0, T1);
+  await page.fill('#minlv', '0');          /* the gate has its own block below */
   await page.click('#load');
   await page.waitForSelector('#out1 table');
 
@@ -303,7 +364,7 @@ console.log('draw-page:');
   const many = [];
   for (let i = 0; i < 100; i++) {
     many.push({ id: 'bp_' + String(i).padStart(3, '0'), name: 'P' + i,
-      level: 100 - i, lastSeen: T0 + 1000, series: { kills: 1 } });
+      level: 100, lastSeen: T0 + 1000, series: { kills: 1 } });
   }
   await page.route('**/api/leaderboard/top*', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json',
