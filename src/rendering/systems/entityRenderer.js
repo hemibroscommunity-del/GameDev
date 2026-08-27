@@ -3966,7 +3966,10 @@ function _updateNamePill(display, name, level, visible, broId) {
   if (display._pillKey !== key) {
     display._pillKey = key;
     display._pillName.text = name;
-    display._pillLevel.text = 'LV ' + level;
+    /* v2.3.2048: a STRING second line passes through verbatim. An NPC has no
+       level, and "LV undefined" under a shopkeeper is worse than no plate.
+       Every existing caller passes a number and is unaffected. */
+    display._pillLevel.text = (typeof level === 'string') ? level : ('LV ' + level);
     /* Sized to whichever line is wider, so a long name and a two-digit
        level both sit inside with equal padding. */
     /* v2.3.1576: the badge sits inside the plate, so it has to be paid for
@@ -9844,6 +9847,23 @@ export class EntityRenderer {
         display.addChild(nameText);
         display._nameText = nameText;
 
+        /* ═══ v2.3.2048: A PROPER PLATE, UNDER HIM ═══
+           Owner: "Give his name a proper name plate like the main character.
+           Make it below him."
+           The SAME _attachNamePill the player and every peer use, so there is
+           one plate implementation rather than a second that drifts -- which
+           is the reason that function exists at all (see its note).
+           OPT-IN per NPC (`namePlate` in NPC_DATA) rather than applied to all
+           of them: Mayor Bro and Blacksmith Bro carry a quest marker, and
+           their name sits in a hand-tuned stack above the head with the '!'
+           that has its own incident history. Flipping those to a plate is one
+           word each when the owner wants it, and not a silent side effect of
+           this ask. */
+        if (npc.namePlate) {
+          _attachNamePill(display, 9, 1);
+          nameText.visible = false;
+        }
+
         /* Quest marker — badge above the head, pulses vertically.
            Hidden by default; populated when npc._questMarker is set. */
         /* v2.3.1675 (owner: "I can't see the exclamation point on mayor bro it
@@ -9920,6 +9940,13 @@ export class EntityRenderer {
       display.x = npc.x;
       display.y = npc.y;
 
+      /* v2.3.2048: keep the plate's text current. Cheap: _updateNamePill
+         rebuilds the rounded rect only when the string changes (_pillKey),
+         so this is a string comparison per frame and nothing more. */
+      if (display._namePill) {
+        _updateNamePill(display, npc.name, npc.plateRole || '', true, null);
+      }
+
       /* ═══ v2.3.2046: ANIMATE HIM IF HE HAS A WALK CYCLE ═══
          Velocity is derived HERE, from the position the renderer is already
          given, rather than read off a field the walk code would have to
@@ -9978,6 +10005,11 @@ export class EntityRenderer {
         display._nameText.y = -(top + GAP + MARK_PX + GAP);
         for (const c of display.children) {
           if (c === display._fig || c === display._nameText || c === display._questMarker) continue;
+          /* v2.3.2048: the name plate is anchored BELOW the feet on purpose,
+             so it must not be swept up with the above-head furniture. Without
+             this exclusion the "below him" plate lands over his hat, which is
+             the opposite of what was asked for. */
+          if (c === display._namePill) continue;
           if (c === display._body || c === display._avatar) continue;
           c.y -= (top + MARK_PX + 24);
         }

@@ -3505,6 +3505,13 @@ export const NPC_DATA = [{
   },
   avatar: '🎩',
   color: '#c9a227',
+  /* v2.3.2048 (owner: "Give his name a proper name plate like the main
+     character. Make it below him"). Opt-in, so the two quest givers keep the
+     above-head name their '!' marker stack is tuned around. `plateRole` is the
+     plate's second line, where a player's reads "LV 3" -- a shopkeeper has no
+     level, and what you actually want to know about him is what he does. */
+  namePlate: true,
+  plateRole: 'Shopkeeper',
   x: 700, y: 1060,
   spawnX: 700, spawnY: 1060,
   renderX: 700, renderY: 1060,
