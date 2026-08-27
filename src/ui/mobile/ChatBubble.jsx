@@ -55,14 +55,36 @@ const sendThroughGameState = (text) => {
   }
 };
 
-/* Remembered per device, like the block/mute lists next to it. */
-const FEED_KEY = 'bt_chatfeed';
-const readFeedPref = () => {
-  try { return localStorage.getItem(FEED_KEY) === '1'; } catch (e) { return false; }
-};
-const writeFeedPref = (v) => {
-  try { localStorage.setItem(FEED_KEY, v ? '1' : '0'); } catch (e) { /* private mode */ }
-};
+/* v2.3.2037: the bt_chatfeed preference is gone with the toggle it
+   remembered. Nothing reads the key any more; an old value left in
+   localStorage is inert. */
+
+/* ═══ v2.3.2037: SPEAK INSTEAD OF TYPE ═══
+ * Owner: "is it possible to have a microphone button on the chat window? It
+ * would be easier for people to speak to text and then just send it."
+ *
+ * Yes, and with no dependency and no server: the Web Speech API is built into
+ * the browser. On the primary platform it is `webkitSpeechRecognition` (iOS
+ * Safari has shipped it since 14.5), Chrome uses the same prefixed name, and
+ * Firefox has neither.
+ *
+ * SO THE BUTTON IS CONDITIONAL, not decorative. `supported` is resolved once
+ * from the constructor actually existing, and the control does not render at
+ * all where it does not. A mic button that silently does nothing on a third
+ * of phones is worse than no mic button, because the player concludes the
+ * game is broken rather than that the feature is absent.
+ *
+ * It fills the INPUT rather than sending: the owner asked to "speak to text
+ * and then just send it", and dictation mishears things. Landing the words in
+ * the box lets you fix them before anyone else sees them.
+ *
+ * interimResults is off deliberately -- watching the text rewrite itself
+ * mid-sentence is unsettling, and there is nothing to do with a half-word.
+ * continuous is off too: one utterance, one line, which is the shape of a
+ * chat message. */
+const SpeechRec = (typeof window !== 'undefined')
+  ? (window.SpeechRecognition || window.webkitSpeechRecognition || null)
+  : null;
 
 /* How many people are in the room, world-wide. BroTown mirrors the
    server's `player_count` onto the game state (see its _playerCount note);
@@ -78,16 +100,21 @@ export const ChatBubble = () => {
   const [, force] = useState(0);
   const inputRef = useRef(null);
   const [val, setVal] = useState('');
-  /* v2.3.1980: the world-chat feed. `logV` exists to re-render on a new
-     message -- the messages themselves are read off the game state, so
-     there is no second copy of the log to keep in step. */
-  const [feedOn, setFeedOn] = useState(readFeedPref);
-  const [logV, setLogV] = useState(0);
   const [online, setOnline] = useState(1);
-  const feedRef = useRef(null);
+  /* 'idle' | 'listening'. Kept as state rather than a ref because the button
+     has to LOOK different while it is listening -- a mic you cannot tell is
+     on is a mic people talk at and then wonder about. */
+  const [micOn, setMicOn] = useState(false);
+  const recRef = useRef(null);
+
+  /* Stop the recogniser if the composer closes mid-sentence. Without this the
+     browser keeps the mic hot and iOS shows the recording indicator over a
+     game the player has already gone back to. */
+  useEffect(() => () => {
+    try { if (recRef.current) recRef.current.abort(); } catch (e) { /* already gone */ }
+  }, []);
 
   useEffect(() => chatBubbleBus.subscribe(() => force(v => v + 1)), []);
-  useEffect(() => chatLogBus.subscribe(() => setLogV(v => v + 1)), []);
 
   /* ═══ v2.3.1980: THE COUNT HAS TO CHANGE WHILE YOU ARE LOOKING AT IT ═══
      The number itself is BroTown's (mirrored onto the game state from the
@@ -119,40 +146,51 @@ export const ChatBubble = () => {
     }
   }, [chatBubbleBus.open]);
 
-  /* Newest at the bottom, so the newest is what you see -- on open, and on
-     every arriving line. Not conditional on being scrolled to the bottom
-     already: the feed is four to six lines tall, so there is no reading
-     position worth preserving, and a chat that does not follow the
-     conversation is the more surprising of the two behaviours here. */
-  useEffect(() => {
-    const el = feedRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [logV, feedOn, chatBubbleBus.open]);
-
   if (!chatBubbleBus.open) return null;
 
-  const S = window._gameState && window._gameState.current;
-  /* Oldest first so it reads downward like every other chat. The log is
-     already capped at 40-50 entries by its writers; 30 is what fits. */
-  const lines = feedOn ? ((S && S.chatLog) || []).slice(-30) : [];
-  const toggleFeed = () => {
-    setFeedOn((v) => { writeFeedPref(!v); return !v; });
-    /* Re-focusing keeps the keyboard up: on iOS the toggle steals focus and
-       the keyboard collapses, which shifts the whole composer mid-tap. */
-    requestAnimationFrame(() => { try { inputRef.current?.focus(); } catch (e) {} });
+  const dictate = () => {
+    if (!SpeechRec) return;
+    if (micOn) {
+      try { recRef.current && recRef.current.stop(); } catch (e) {}
+      return;
+    }
+    let rec;
+    try { rec = new SpeechRec(); } catch (e) { return; }
+    recRef.current = rec;
+    rec.lang = (typeof navigator !== 'undefined' && navigator.language) || 'en-US';
+    rec.interimResults = false;
+    rec.continuous = false;
+    rec.maxAlternatives = 1;
+    rec.onresult = (ev) => {
+      let said = '';
+      try { said = ((ev.results[0] || [])[0] || {}).transcript || ''; } catch (e) { said = ''; }
+      said = said.trim();
+      if (!said) return;
+      /* APPEND, never replace: dictating a second time after fixing a word by
+         hand should add to the sentence, not silently eat what is there. The
+         120 cap is the input's own maxLength -- enforced here too, because
+         setting .value past it in code is not blocked by the attribute. */
+      setVal((cur) => (cur ? (cur.replace(/\s+$/, '') + ' ' + said) : said).slice(0, 120));
+    };
+    rec.onend = () => { setMicOn(false); recRef.current = null; };
+    /* Permission refused, no network, no speech heard -- all land here, and
+       all mean the same thing to the player: the button is no longer lit. */
+    rec.onerror = () => { setMicOn(false); };
+    try { rec.start(); setMicOn(true); } catch (e) { setMicOn(false); }
   };
 
   const close = () => chatBubbleBus.setOpen(false);
   const submit = () => {
     sendThroughGameState(val);
     setVal('');
-    /* v2.3.1980: sending closes the BUBBLE, as it always has -- one line,
-       then back to the game. It must not close the FEED: you opened that to
-       follow a conversation, and a window that shuts every time you answer
-       cannot hold one. Caught by mp-chatfeed, which could not read its own
-       messages back. */
-    if (!feedOn) { close(); return; }
-    requestAnimationFrame(() => { try { inputRef.current?.focus(); } catch (e) {} });
+    /* v2.3.2037: sending closes the composer again, unconditionally.
+       v2.3.1980 kept it open when the inline feed was showing, because
+       closing would have hidden the conversation you had just joined. The
+       feed is no longer in here -- it is the always-on World Chat section in
+       the lower left -- so the reason to stay open went with it, and the
+       original "one line, then back to the game" is the right behaviour on a
+       phone where this card covers the world. */
+    close();
   };
 
   return (
@@ -192,9 +230,12 @@ export const ChatBubble = () => {
              what keeps the composer clear of the iOS soft keyboard, and the
              card grows UPWARD from it (translate -100%). The feed's height
              cap below is what stops that growth running off the top. */
-          minWidth: feedOn ? 280 : 220,
-          maxWidth: feedOn ? 'min(560px, 94vw)' : '70vw',
-          width: feedOn ? '94vw' : undefined,
+          /* v2.3.2037: back to the narrow composer. The wide variant existed
+             only to fit the inline feed, which now lives elsewhere -- a card
+             that stayed 94vw wide to hold an input and two buttons would
+             cover the world for no reason. */
+          minWidth: 220,
+          maxWidth: '70vw',
           padding: '8px 10px',
           /* v2.3.1233: Lantern Slate — world-floating card (gradient fill,
              strong border, radius 12, panel shadow; docs/LANTERN-SLATE-SPEC.md
@@ -233,76 +274,19 @@ export const ChatBubble = () => {
               {' online'}
             </span>
           </div>
-          <button
-            onClick={toggleFeed}
-            data-chat-feed={feedOn ? 'on' : 'off'}
-            aria-pressed={feedOn}
-            aria-label="World chat"
-            /* Quiet raised secondary when off, lit hairline when on. NOT the
-               gold primary: Send is this surface's one primary (Lantern
-               Slate rule), and a second gold control would compete with it. */
-            style={{
-              flex: '0 0 auto',
-              height: 26,
-              padding: '0 9px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 5,
-              background: feedOn ? '#1B2E33' : '#293B41',
-              border: feedOn ? '1px solid rgba(234,198,117,.55)' : '1px solid rgba(229,237,233,.20)',
-              borderRadius: 8,
-              color: feedOn ? '#EAC675' : '#B6C1BE',
-              fontFamily: 'inherit',
-              fontSize: 11,
-              fontWeight: 700,
-              letterSpacing: '.02em',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            <span style={{ fontSize: 12, lineHeight: 1 }}>{feedOn ? '▾' : '▸'}</span>
-            World chat
-          </button>
         </div>
 
-        {feedOn && (
-          <div
-            ref={feedRef}
-            data-chat-feed-list={lines.length}
-            /* The height cap is arithmetic, not taste: the card's bottom edge
-               is at 25vh and it grows upward, so anything past
-               (25vh - the chrome around the feed) leaves the screen. 104px is
-               that chrome (16 padding + 24 header + 12 gaps + 44 composer +
-               8 margin); the 64px floor keeps it usable on a short phone. */
-            style={{
-              maxHeight: 'max(64px, calc(25vh - 104px))',
-              overflowY: 'auto',
-              overflowX: 'hidden',
-              WebkitOverflowScrolling: 'touch',
-              overscrollBehavior: 'contain',
-              marginBottom: 6,
-              padding: '6px 8px',
-              background: '#111E23',
-              border: '1px solid rgba(229,237,233,.11)',
-              borderRadius: 8,
-              fontSize: 13,
-              lineHeight: 1.35,
-            }}
-          >
-            {lines.length === 0 ? (
-              <div style={{ color: '#667875', fontStyle: 'italic' }}>Nothing said yet.</div>
-            ) : lines.map((m, i) => (
-              /* ts+i, not ts: two lines can land in the same millisecond, and
-                 an index alone re-keys every row when the log rolls over. */
-              <div key={(m.ts || 0) + '-' + i} style={{ marginBottom: 3, wordBreak: 'break-word' }}>
-                {m.name ? (
-                  <span style={{ color: m.color || '#8FB8C9', fontWeight: 700 }}>{m.name}: </span>
-                ) : null}
-                <span style={{ color: m.muted ? '#667875' : (m.name ? '#F4F0E7' : '#EAC675') }}>{m.text}</span>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* ═══ v2.3.2037: THE FEED MOVED OUT ═══
+            Owner: "Just have the chat appear in the lower left area above the
+            dashboards in a new 'World Chat' section", clarified as "by chat
+            appear I mean sent messages. Keep chat window where it is."
+            So the list that used to live here -- behind a "World chat" toggle
+            (v2.3.1980) -- is now WorldChatFeed.jsx, always on screen in the
+            lower left. The toggle went with it: with every line being world
+            chat and the feed no longer inside this card, it had nothing left
+            to switch between, and a control with one setting reads as a
+            choice that isn't one.
+            What stays here is the composer, exactly where it was. */}
 
         {/* v2.3.1013: input + Send button (Send carried over from the
             short-lived always-on chat bar).  Enter still submits. */}
@@ -339,6 +323,44 @@ export const ChatBubble = () => {
               boxSizing: 'border-box',
             }}
           />
+          {SpeechRec ? (
+            <button
+              type="button"
+              onClick={dictate}
+              data-chat-mic={micOn ? 'on' : 'off'}
+              aria-pressed={micOn}
+              aria-label={micOn ? 'Stop dictating' : 'Speak your message'}
+              /* Quiet secondary, not a second primary: Send is this surface's
+                 one gold control (Lantern Slate), and the mic is the way IN to
+                 a message rather than the way out. It goes red while live --
+                 the one place a warning colour is right here, because an open
+                 mic is a thing you want to notice. 44px square is the touch
+                 floor, matching the input's height beside it. */
+              style={{
+                flex: '0 0 auto',
+                width: 44,
+                height: 44,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: micOn ? 'rgba(224,106,94,.22)' : '#293B41',
+                border: micOn ? '1px solid rgba(224,106,94,.75)' : '1px solid rgba(229,237,233,.20)',
+                borderRadius: 8,
+                color: micOn ? '#E06A5E' : '#B6C1BE',
+                cursor: 'pointer',
+                padding: 0,
+              }}
+            >
+              {/* Inline SVG, not an emoji: 🎤 renders as a different object on
+                  every platform and cannot take the live colour above. */}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"
+                   stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <rect x="9" y="2" width="6" height="11" rx="3" fill="currentColor" stroke="none" />
+                <path d="M5 11a7 7 0 0 0 14 0" />
+                <path d="M12 18v3" />
+              </svg>
+            </button>
+          ) : null}
           <button
             onClick={submit}
             aria-label="Send"

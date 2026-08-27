@@ -28,7 +28,11 @@
               title, death-drop notice, status effects — top-anchored)
       20-22   banners + toasts (farm/sleep/rested banners, achievement,
               level-up overlay, ActiveWarBanner)
-      25      topbar / chat strip
+      25      topbar / chat strip; WorldChatFeed (v2.3.2037 -- the lower-left
+              World Chat section.  It sits at 25 rather than above the
+              dashboard because it CLEARS the band geometrically with
+              `bottom: calc(var(--dash-h) + 8px)`, which is rule 2: a higher z
+              would float it ON TOP of the dashboard controls instead.)
       28      ping readout; EndedWarBanner (pre-v2.3.1205)
       30      DASHBOARD (BottomDashboard, joystick visuals,
               top-right player card)
