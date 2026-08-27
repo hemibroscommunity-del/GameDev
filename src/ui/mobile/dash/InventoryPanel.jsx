@@ -134,6 +134,18 @@ export const thumbFor = (key) => {
 // glance tool, not a crafting deep-dive.
 export const iconFor = (key) => {
   const k = (key || '').toLowerCase();
+  /* v2.3.2052: the three town-shop consumables, by EXACT key and above every
+     pattern below. They had no entry at all, so a whetstone in your bag drew
+     the '◇' fallback -- and it did so before Shopkeeper Bro existed; putting
+     them on his shelf is just what made it visible. The glyphs are the ones
+     the old shop used in its own item names (SHOP_ITEMS_FOR_SALE), so nothing
+     is being invented here, only reconnected.
+     Exact matches, because 'whetstone' contains 'stone' and would otherwise
+     be handed the pickaxe by the ore rule three lines down -- which is how it
+     would have gone wrong quietly. */
+  if (k === 'whetstone')  return '🪨';
+  if (k === 'antidote')   return '🍃';
+  if (k === 'trap_basic') return '🪤';
   if (/sword/.test(k))   return '⚔';
   if (/bow/.test(k))     return '🏹';
   if (/staff|wand/.test(k)) return '🪄';

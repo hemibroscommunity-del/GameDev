@@ -220,6 +220,14 @@ const NPC_SPRITE_SCALE = 120 / 256;
    Keyed by client-visible strings, so Object.create(null) (CLAUDE.md rule 4). */
 const NPC_SCALE_MULT = Object.assign(Object.create(null), {
   '/sprites/npc/mayor-bro.webp': 1.10,
+  /* v2.3.2052 (owner: "make shopkeeper larger his sprite is bit small").
+     Measured rather than nudged: at 1.0 he drew 120px against Mayor Bro's 132,
+     so he read as the smallest figure in the town square despite being a
+     broad man in a heavy coat. 1.30 puts him at ~156 -- the biggest of the
+     three, which is what a man in that coat should look like standing next to
+     a mayor. Keyed on the south strip because that is his NPC_DATA `sprite`,
+     which is what npcSpriteScale is handed. */
+  '/sprites/npc/shopkeeper-bro-walk-south.webp': 1.30,
 });
 const npcSpriteScale = (src) => NPC_SPRITE_SCALE * (NPC_SCALE_MULT[src] || 1);
 

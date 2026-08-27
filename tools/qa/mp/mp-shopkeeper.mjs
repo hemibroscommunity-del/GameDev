@@ -138,6 +138,42 @@ export async function run({ browser, wsPort, webPort, rec }) {
     (await H.readState(A, (S) => ((S.rpg || {}).inventory || {}).whetstone || 0)) === wBefore + 1,
     { wBefore });
 
+  /* ── HIS PILE LOOKS LIKE AN INVENTORY (v2.3.2052) ──
+     Owner: "show his inventory similar to how my inventory is shown with the
+     actual item thumbnail". Asserted as a REAL loaded image, not just an <img>
+     tag: a broken src still renders an element, and a row of broken images is
+     exactly the failure this would otherwise miss. */
+  const thumb = await A.page.evaluate(() => {
+    const row = document.querySelector('[data-shop-row="slime-remnants"]');
+    const img = row && row.querySelector('img');
+    if (!img) return { img: false };
+    return { img: true, src: img.getAttribute('src'),
+      loaded: img.complete && img.naturalWidth > 0, w: img.naturalWidth };
+  });
+  rec.ok('his stock shows the item\'s real thumbnail, the same picture the bag uses',
+    thumb.img && thumb.loaded && thumb.w > 0, thumb);
+
+  /* The staples have no painted art, so they fall to a glyph -- but it must be
+     the RIGHT glyph. 'whetstone' contains 'stone', and iconFor's ore rule would
+     hand it a pickaxe if the exact match were not above it. */
+  const glyphs = await A.page.evaluate(() => {
+    const g = (k) => {
+      const row = document.querySelector(`[data-shop-row="${k}"]`);
+      const tile = row && row.firstElementChild;
+      return tile ? tile.textContent.trim().replace(/\d+$/, '') : null;
+    };
+    return { whetstone: g('whetstone'), antidote: g('antidote'), trap: g('trap_basic') };
+  });
+  rec.ok('the consumables show their own glyphs, not a bare diamond',
+    glyphs.whetstone === '🪨' && glyphs.antidote === '🍃' && glyphs.trap === '🪤', glyphs);
+
+  const sizes = await A.page.evaluate(() =>
+    ((window.__btNpcSprites && window.__btNpcSprites()) || [])
+      .reduce((o, n) => { o[n.id] = Math.round(n.height); return o; }, {}));
+  rec.ok(`the shopkeeper is drawn larger than he was (${sizes.shopkeeper_bro}px, `
+       + `against Mayor Bro's ${sizes.mayor_bro})`,
+    sizes.shopkeeper_bro > 140 && sizes.shopkeeper_bro > sizes.mayor_bro, sizes);
+
   await A.page.screenshot({ path: H.REPO + '/tools/qa/mp/out/shopkeeper-panel.png' }).catch(() => {});
   for (const P of [A, B]) {
     const errs = P.logs.filter((l) => String(l).startsWith('pageerror'));

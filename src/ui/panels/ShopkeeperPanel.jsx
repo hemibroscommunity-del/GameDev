@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { shopBus } from '../mobile/shopBus.js';
+/* v2.3.2052 (owner: "show his inventory similar to how my inventory is shown
+   with the actual item thumbnail"). The SAME resolver the bag uses, so a slime
+   in his pile is the picture you already know from your own bag -- and so a
+   thumbnail added for a new material appears in both places at once instead of
+   only in the one somebody remembered to update. */
+import { thumbFor, iconFor } from '../mobile/dash/InventoryPanel.jsx';
 
 /* ═══ v2.3.2050: TRADING WITH SHOPKEEPER BRO ═══
  *
@@ -130,6 +136,26 @@ export function ShopkeeperPanel() {
               display: 'flex', alignItems: 'center', gap: 8, minHeight: 44,
               padding: '6px 0', borderTop: '1px solid var(--ui-line, rgba(229,237,233,.10))',
             }}>
+              {/* The item, as an object you recognise, not a word. Same tile
+                  recipe as the bag: square, dark, hairline, count badge at the
+                  bottom right -- his stock reads like an inventory because it
+                  IS one. */}
+              <div style={{
+                position: 'relative', width: 38, height: 38, flex: 'none',
+                background: '#111E23',
+                border: '1px solid rgba(229,237,233,.14)',
+                borderRadius: 6, display: 'flex',
+                alignItems: 'center', justifyContent: 'center', fontSize: 18,
+              }}>
+                {thumbFor(r.key)
+                  ? <img src={thumbFor(r.key)} alt="" draggable={false}
+                      style={{ width: '85%', height: '85%', objectFit: 'contain' }} />
+                  : <span>{iconFor(r.key)}</span>}
+                {/* HIS count on the tile, where your bag puts yours -- it is
+                    his inventory being shown, and it is also the number that
+                    sets the price. A staple has none: he makes those. */}
+                {!r.staple && r.qty > 1 ? <span className="bt-item-qty">{r.qty}</span> : null}
+              </div>
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap',
                   overflow: 'hidden', textOverflow: 'ellipsis' }}>{prettyKey(r.key)}</div>
