@@ -1,5 +1,6 @@
 /* THE HAT PRESSES THE HAIR DOWN; IT DOES NOT SHAVE THE HEAD (v2.3.1993,
- * re-pinned to the preview's wide frame in v2.3.2001).
+ * re-pinned to the preview's wide frame in v2.3.2001, the two `enclosed`
+ * hats added in v2.3.2010).
  *
  * Three owner reports off the character-design preview, all on the same
  * subsystem — the mask that carves hair away so it sits under a hat:
@@ -90,6 +91,26 @@ const REPORTED = [
   ['Golden Bucket', ['east'], ['south', 'southwest']],
   ['Barbarian Helmet', ['east', 'northeast'], ['south']],
   ['Arabian Robe', ['east'], ['south', 'southwest']],
+  /* v2.3.2010.  Owner: "East hair doesn't work well with Mickey hat it's
+     erasing too much ... It should allow hair up until the border.  Check south
+     view too there's a strip".
+     EAST is here; SOUTH is in the good column deliberately, and it is worth
+     saying why rather than quietly listing it as fixed.  South's bare scalp was
+     0.20% before the fix and 0.12% after — this file's metric cannot see the
+     strip, and an assertion that passes on the broken masks is worse than none
+     (TRAPS §28).  The strip was a different thing: the cap's bottom row is
+     ANTI-ALIASED (7 of its 25 pixels are alpha 128/191) and the old mask kept
+     ONE column of hair across it, so the translucent brim edge had nothing
+     behind it and read as a pale seam along the underside, worst at the two
+     ends.  1,801 preview pixels changed there.  What pins it is the mask PNG
+     itself: precheck's [hairmask-rule] re-derives all 155 frames from the hat
+     art with an independent implementation on every push, and that row is one
+     of them. */
+  ['Mickey Ears', ['east'], ['south', 'northeast']],
+  /* Not reported by anyone — the sweep that answered "check the others" found
+     devil-horns southwest at 18.27%, the worst in the game, on the same
+     `enclosed` rule.  It is in the file so it stays fixed. */
+  ['Devil Horns', ['southwest', 'east', 'northeast'], ['south']],
 ];
 const CONTROL = 'Bucket Hat';        /* measured clean before and after */
 const DIRS = ['south', 'southeast', 'east', 'northeast', 'north', 'northwest', 'west', 'southwest'];
@@ -110,7 +131,19 @@ const DIRS = ['south', 'southeast', 'east', 'northeast', 'north', 'northwest', '
        and the facings the owner called GOOD, before AND after:
                 golden-bucket south 0.71%, southwest 0.24%, barbarian south 0.16%
 
-   2% sits an order of magnitude clear on both sides of the gap. */
+   v2.3.2010 adds the two `enclosed` hats on the same scale:
+
+       before   mickey-ears east 9.47%    devil-horns southwest 18.27%
+                mickey-ears south 0.20%   devil-horns northeast 4.27%
+       after    0.37% / 0.12%             0.09% / 0.07%
+
+   2% sits an order of magnitude clear on both sides of the gap.  The rest of
+   the game's 195 hat/facing pairs top out around 7%, and that residue is a
+   2-4px sliver of EAR at the silhouette edge — the ear sticks out past the
+   cap, so the width rule cuts the hair off it.  Present before and after all
+   of this work, never reported, and deliberately not chased: letting hair out
+   over the ears is letting it out past the hat's width, which is the thing the
+   owner asked to be clipped in the first place (v2.3.1957). */
 const BALD_SHARE = 0.02;
 
 export async function run({ browser, wsPort, webPort, rec }) {
