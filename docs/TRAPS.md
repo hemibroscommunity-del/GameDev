@@ -834,9 +834,25 @@ v2.3.1764 broke three scenarios at once, each swallowing the miss with
   party, social, friends, chat, clan, market, arena) were perfect,
   because they assert against game state and the wire, which a UI
   redesign cannot silently blind.
-- Distinguish dead from FLAKY before acting. `peershield` failed 3
-  assertions in a 14-scenario batch and passed 9/9 alone — it is
-  load-sensitive, not rotten. One isolated re-run separates them.
+- Distinguish dead from FLAKY before acting, and the suite is MORE
+  load-sensitive than it looks. Four separate scares traced to batch
+  size alone, every one of them passing in isolation:
+
+  | scenario | in a batch | alone |
+  |---|---|---|
+  | `peershield` | 3 fail (batch of 14) | 9/9 |
+  | `freshquest` | TypeError (batch of 13) | pass |
+  | `zonechurn` | frame cost 94 -> 136 | pass |
+  | `questkill` | died mid-quest, 3 of 4 kills (batch of 8) | 11/11 |
+
+  `questkill` is the one to remember, because it does not read like
+  flake — it reads like a BALANCE bug ("the character survived the
+  errand: died true"). A saturated machine starves the combat loop, so
+  the player takes hits without landing them and dies doing the first
+  kill quest. Anything measuring TIME (frame cost), a RACE (a boot
+  route, a relay) or a FIGHT is suspect in a large batch. One isolated
+  re-run costs a minute and separates them; keep combat and multi-client
+  scenarios in batches of ~4.
 
 **Receipt:** `tools/qa/mp/mp-layer.mjs` (rewritten to select by class),
 `tools/qa/mp/mp-hairmask.mjs` (asserts its own framing),
