@@ -1,4 +1,5 @@
-/* THE HAT PRESSES THE HAIR DOWN; IT DOES NOT SHAVE THE HEAD (v2.3.1993).
+/* THE HAT PRESSES THE HAIR DOWN; IT DOES NOT SHAVE THE HEAD (v2.3.1993,
+ * re-pinned to the preview's wide frame in v2.3.2001).
  *
  * Three owner reports off the character-design preview, all on the same
  * subsystem — the mask that carves hair away so it sits under a hat:
@@ -31,15 +32,39 @@
  * "confirms" things that are not on screen).  Every number here is a
  * before/after difference of four real renders of the same figure.
  *
- * WHY THE PREVIEW IS ZOOMED OUT FIRST.
+ * WHY THE PREVIEW IS ZOOMED OUT, AND WHY THAT IS CHECKED RATHER THAN ASSUMED.
  * The creator's preview camera FRAMES THE HEAD on the hair and hat tabs, and
  * v2.3.1956 grows that frame until the whole head fits — so putting a hat on
  * MOVES THE CAMERA, and A and C would be photographed from a different
  * distance than B and D.  Every diff would then be garbage that still looked
  * like a picture of a bro.  Tapping the character toggles the zoomed-out
- * frame (v2.3.1307), and `focusForCat` returns FOCUS_FULL for it whatever tab
- * is open — a frame fitCrown leaves alone — so all four renders share one
- * camera by construction and no tab change can move it.
+ * frame (v2.3.1307), for which `focusForCat` returns FOCUS_FULL — a frame
+ * fitCrown leaves alone — so in that frame, and only in that frame, all four
+ * renders share one camera whatever tab is open.
+ *
+ * ═══ v2.3.2001: AND THE FRAME IS RE-ESTABLISHED PER SHOT, NOT ONCE ═══
+ * The first cut tapped once at the top of the run and wrote "no tab change can
+ * move it" in this comment.  v2.3.1994 then made picking a category BE the
+ * "aim the camera here" gesture (`pickPreviewCat` — setActiveCat plus
+ * setPreviewZoom(false)), for an owner ask about the opening shot.  That is
+ * correct product behaviour and it silently retired the invariant: every
+ * pick() in this file zooms back IN, so the four comparison renders were taken
+ * at three different framings and the arithmetic reported confident nonsense —
+ * 45.66% bare scalp on bucket-hat south, whose mask had not been touched in
+ * months.  Ten of fifteen assertions failed and NOT ONE of them was about the
+ * masks.
+ *
+ * So the frame is now (1) re-established immediately before every read rather
+ * than once, (2) TOGGLED ONLY WHEN IT NEEDS TO BE — a tap is a toggle, so a
+ * blind tap is right half the time and inverts the bug the other half, and
+ * (3) ASSERTED, per stored frame and again across the four of them.  The
+ * readout is the canvas element's own inline `height`, which NameModal sets
+ * straight from the frame preset (`_frame.h + '%'`): an exact string, not a
+ * measurement, so no CSS transition can be caught mid-flight and no constant
+ * has to be hardcoded here — the two values are learned by toggling once and
+ * looking.  The class of bug being defended against is precisely a pinning
+ * assumption that stopped holding without saying so, and the defence is that
+ * the scenario now fails on the framing itself instead of blaming the art.
  *
  * THE GOOD FACINGS ARE ASSERTED TOO.  The owner named south and southwest as
  * correct on the bucket, so they are measured with the same threshold the
@@ -97,10 +122,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await page.click('[data-tut="login-create"]');
   await page.waitForSelector('input.bt-cc-name', { timeout: 30000 });
   await page.waitForTimeout(2500);   /* the first composite fetches its sheets */
-  /* Zoom out and stay there — see the header.  A tap is a pointer journey with
-     no rotation in it, which is what a plain click is. */
-  await page.click('canvas[title^="Live preview"]');
-  await page.waitForTimeout(600);
+
+  /* ── the frame, read straight off the element that carries it ──
+     NameModal writes the frame preset into the canvas's inline height
+     (`_frame.h + '%'`), so this is an exact statement of which frame the
+     stage is in — not a measurement that a 180ms CSS ease could catch
+     halfway.  A tap is a pointer journey with no rotation in it, which is
+     what a plain click is. */
+  const frameId = () => page.evaluate(() => {
+    const el = document.querySelector('canvas[title^="Live preview"]');
+    return (el && el.style && el.style.height) || '';
+  });
+  const tapCanvas = async () => {
+    await page.click('canvas[title^="Live preview"]');
+    await page.waitForTimeout(260);   /* the height/bottom ease is 180ms */
+  };
 
   const tab = async (t) => {
     await page.click(`button[role="tab"]:has-text("${t}")`);
@@ -163,9 +199,44 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
     last = prev;
   };
-  /* Read the preview at rest.  The camera is pinned (see the header), so this
-     is only ever waiting on the composite, never on a camera move. */
-  const shot = async (slot) => { await settle(); return store(slot); };
+  /* ── v2.3.2001: THE WIDE FRAME, RE-ESTABLISHED AND THEN PROVED ──
+     Learned rather than hardcoded: toggle once and look at what the two
+     frames call themselves.  If the tap does not change the readout at all
+     the tap is not landing, and that is a scenario failure worth saying out
+     loud rather than a silent pass on garbage. */
+  let WIDE = '', NARROW = '', calibrated = false;
+  const calibrate = async () => {
+    const a = await frameId();
+    await tapCanvas();
+    const b = await frameId();
+    const num = (v) => parseFloat(v) || 0;
+    if (!a || !b || a === b) return { a, b, ok: false };
+    /* The wide frame is the taller one: NameModal gives the stage 92% of its
+       height zoomed out against 54.5% at rest. */
+    WIDE = num(a) > num(b) ? a : b;
+    NARROW = WIDE === a ? b : a;
+    calibrated = true;
+    return { wide: WIDE, narrow: NARROW, ok: true };
+  };
+  /* A tap TOGGLES, so ask first.  Tapping blind is right half the time and
+     inverts the problem the other half. */
+  const wideFails = [];
+  const ensureWide = async (why) => {
+    if (!calibrated) return true;
+    if ((await frameId()) !== WIDE) await tapCanvas();
+    const got = await frameId();
+    if (got !== WIDE) { wideFails.push(`${why}: frame ${got || 'none'} (wanted ${WIDE})`); return false; }
+    return true;
+  };
+  /* Read the preview at rest, in the wide frame.  Both halves matter: the
+     frame is what makes the four renders comparable, and settle() is what
+     makes each one finished. */
+  const shot = async (slot, why) => {
+    await ensureWide(why);
+    await settle();
+    const w = await store(slot);
+    return { w, frame: await frameId() };
+  };
 
   let cur = 'southwest';
   const face = async (d) => {
@@ -206,22 +277,64 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const facings = [...new Set(REPORTED.flatMap((r) => [...r[1], ...r[2]]))];
   const out = Object.create(null);   /* keyed by strings this file supplies, but the rule is the rule */
 
+  /* v2.3.2001: learn the two frames before measuring anything, and say so if
+     they cannot be told apart — every number below is taken in the wide one. */
+  const cal = await calibrate();
+  rec.ok('the preview\'s two framings are distinguishable and the tap toggles between them '
+    + '(guard: without this every render below could be at a different camera)',
+    cal.ok === true, cal);
+  await ensureWide('calibration');
+
   for (const d of facings) {
     await face(d);
     await pick('Hair', 'None'); await pick('Hats', 'None');
-    await shot('D');
+    const fD = await shot('D', `${d} D`);
     await pick('Hair', HAIR);
-    await shot('B');
+    const fB = await shot('B', `${d} B`);
     for (const hat of hats) {
       await pick('Hats', hat);
-      await shot('A');
+      const fA = await shot('A', `${hat} ${d} A`);
       await pick('Hair', 'None');
-      await shot('C');
+      const fC = await shot('C', `${hat} ${d} C`);
       await pick('Hair', HAIR);
-      out[`${hat}|${d}`] = await classify();
+      const m = await classify();
+      /* v2.3.2001: the framing of the four renders travels WITH the numbers,
+         so a measurement taken at a camera that moved cannot be read as a
+         statement about the art. */
+      out[`${hat}|${d}`] = m && Object.assign(m, {
+        frames: [fD.frame, fB.frame, fA.frame, fC.frame],
+        widths: [fD.w, fB.w, fA.w, fC.w],
+      });
     }
     await pick('Hats', 'None');
   }
+
+  /* ══ v2.3.2001: THE FRAMING, ASSERTED BEFORE ANY NUMBER IS BELIEVED ══
+     Two claims, and it takes both.  The first is that every read happened in
+     the wide frame — the one whose camera does not move with the open tab.
+     The second is that the four renders of a measurement agree with each
+     other AND came back the same size; that is what makes subtracting them
+     mean anything, and a camera that moved between them shows up here as
+     either a different frame id or a different bitmap width.
+     These are stated FIRST and separately from the art assertions on purpose:
+     when v2.3.1994 moved the camera out from under this file, ten failures
+     all pointed at masks that were fine.  A framing failure should read as a
+     framing failure. */
+  rec.ok('every render was taken in the wide frame, the one whose camera does not '
+    + 'follow the open tab (v2.3.1994 made picking a category re-aim it)',
+    wideFails.length === 0, { wanted: WIDE, narrow: NARROW, failed: wideFails.slice(0, 8) });
+  const framed = Object.entries(out).filter(([, v]) => v
+    && v.frames && v.frames.every((f) => f === v.frames[0])
+    && v.widths && v.widths.every((x) => x && x === v.widths[0])
+    && !v.mismatched);
+  rec.ok('...and the four renders of each measurement share one frame and one size, '
+    + 'which is what makes subtracting them mean anything',
+    framed.length === Object.keys(out).length,
+    Object.fromEntries(Object.entries(out)
+      .filter(([, v]) => !v || !v.frames || v.mismatched
+        || !v.frames.every((f) => f === v.frames[0])
+        || !v.widths.every((x) => x && x === v.widths[0]))
+      .map(([k, v]) => [k, v && { frames: v.frames, widths: v.widths, mismatched: v.mismatched }])));
 
   /* ── the guard: the measurement has to be able to SEE hair at all ── */
   const sane = Object.entries(out).filter(([, v]) => v && v.vis > 3000);
