@@ -132,6 +132,25 @@ export const thumbFor = (key) => {
 // Friendly icon for a key — looks up by simple pattern.  Falls back to
 // a tier-coloured ◇.  We keep things lightweight: the bag is a dashboard
 // glance tool, not a crafting deep-dive.
+/* ═══ v2.3.2054: DISPLAY NAMES THAT ARE NOT THE KEY ═══
+ * Owner, on the whetstone: "I'd rather it be called something else and look
+ * more like a Potion."
+ *
+ * Names are otherwise DERIVED from the inventory key (prettyName), which is
+ * why renaming one has to live somewhere. This is that somewhere -- the same
+ * module that already owns the item's picture and its glyph, so the three
+ * facts about how an item PRESENTS sit together.
+ *
+ * THE KEY STAYS 'whetstone'. It is in players' saved inventories and in the
+ * server's own effect table (server/src/data.js: cost 35, effect dmgBuff), so
+ * changing it would need a storage migration to avoid quietly deleting the
+ * item out of every bag that holds one -- a lot of risk for a word. The key is
+ * an identifier; this is the label. They are allowed to differ, and this map
+ * is where anyone looking for the mismatch will find it explained. */
+export const ITEM_NAMES = Object.assign(Object.create(null), {
+  whetstone: 'Fury Tonic',
+});
+
 export const iconFor = (key) => {
   const k = (key || '').toLowerCase();
   /* v2.3.2052: the three town-shop consumables, by EXACT key and above every
@@ -143,7 +162,10 @@ export const iconFor = (key) => {
      Exact matches, because 'whetstone' contains 'stone' and would otherwise
      be handed the pickaxe by the ore rule three lines down -- which is how it
      would have gone wrong quietly. */
-  if (k === 'whetstone')  return '🪨';
+  /* v2.3.2054: a potion, not a rock -- see ITEM_NAMES above. The potion
+     pattern three lines down would not match 'whetstone', so it is named
+     here explicitly rather than by renaming the key. */
+  if (k === 'whetstone')  return '🧪';
   if (k === 'antidote')   return '🍃';
   if (k === 'trap_basic') return '🪤';
   if (/sword/.test(k))   return '⚔';

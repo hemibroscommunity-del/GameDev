@@ -101,8 +101,12 @@ export function VendorPanel(props) {
         effect: 'mana'
       }, {
         id: 'whetstone',
-        name: 'Whetstone',
-        icon: '🪨',
+        /* v2.3.2054 (owner: "I'd rather it be called something else and look
+           more like a Potion"). The id stays -- it is the key in saved bags
+           and in the server's effect table; only the label and glyph move.
+           See ITEM_NAMES in dash/InventoryPanel.jsx. */
+        name: 'Fury Tonic',
+        icon: '🧪',
         cost: 35,
         desc: '+15% damage for 60s',
         effect: 'dmgBuff'

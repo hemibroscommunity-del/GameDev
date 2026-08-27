@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { ITEM_NAMES } from './InventoryPanel.jsx';   /* v2.3.2054 */
 import { gearIdIcon, armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.1758: one armour art table */
 import { weaponMaterial, metalIconPath } from '@/rendering/traits/materialTints.js'; /* v2.3.1760 */
 import { COL, getState } from './common.js';
@@ -342,6 +343,8 @@ function gearThumb(gearId) {
 
 function prettyName(key) {
   if (!key) return '';
+  /* v2.3.2054: an explicit label wins over the key-derived one. */
+  if (ITEM_NAMES[key]) return ITEM_NAMES[key];
   return key
     .replace(/^cooked_fish_/, 'Cooked ')
     .replace(/^burnt_/, 'Burnt ')

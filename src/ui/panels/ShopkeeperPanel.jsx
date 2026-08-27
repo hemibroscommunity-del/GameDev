@@ -5,7 +5,7 @@ import { shopBus } from '../mobile/shopBus.js';
    in his pile is the picture you already know from your own bag -- and so a
    thumbnail added for a new material appears in both places at once instead of
    only in the one somebody remembered to update. */
-import { thumbFor, iconFor } from '../mobile/dash/InventoryPanel.jsx';
+import { thumbFor, iconFor, ITEM_NAMES } from '../mobile/dash/InventoryPanel.jsx';
 
 /* ═══ v2.3.2050: TRADING WITH SHOPKEEPER BRO ═══
  *
@@ -41,6 +41,7 @@ import { thumbFor, iconFor } from '../mobile/dash/InventoryPanel.jsx';
    machine-shaped ('slime-remnants', 'wood_pine_log', 'shard_ember') and
    showing them raw makes a shop look like a database. */
 function prettyKey(k) {
+  if (ITEM_NAMES[k]) return ITEM_NAMES[k];   /* v2.3.2054 */
   return String(k || '')
     .replace(/[_-]+/g, ' ')
     .replace(/\bremnants\b/i, 'remains')

@@ -286,7 +286,6 @@ const {
   getDungeonCreatorUnlocks, validateCustomDungeon, createDefaultDungeonConfig,
   hasUnlock, getNpcQuest, npcHasQuestChain, /* v2.3.1773 */
   discoverMonster, discoverMaterial, discoverZone, discoverCollision,
-  SHOP_PRICES, SHOP_ITEMS_FOR_SALE,
   getGuildRank, getGuildQuest, GUILD_RANKS, GUILD_QUESTS, SKILL_GUILDS,
   meetsStatReq, meetsGearReq, getGearStatReq, STAT_LABELS,
   LIFE_SKILLS, RESOURCE_TIERS, DEPTH_CONFIG, DEPTH_TIERS,
