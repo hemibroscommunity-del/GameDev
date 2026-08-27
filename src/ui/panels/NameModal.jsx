@@ -21,7 +21,7 @@ import { HEADWEAR_CATALOG, headwearIsSolid, setHeadwear } from '@/rendering/trai
 import { SHIRT_CATALOG, setShirt } from '@/rendering/traits/shirtCatalog.js';
 import { SHIRT_COLOR_CATALOG, setShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
 import { recolorEnabled, SOLID_ONLY_HAT_COLOR } from '@/rendering/traits/recolorOptions.js';
-import { HEIGHT_CATALOG, FRAME_CATALOG, setBuildHeight, setBuildFrame } from '@/rendering/traits/buildCatalog.js';   /* v2.3.1953 */
+import { HEIGHT_CATALOG, setBuildHeight } from '@/rendering/traits/buildCatalog.js';   /* v2.3.1953; v2.3.1996: frame picker removed */
 
 /* === NameModal — the character-creator / name-entry splash screen === */
 /* v2.3.888: extracted verbatim from the `if (showNameModal) { ... }`
@@ -98,8 +98,7 @@ export function NameModal(props) {
     _buildTile = props._buildTile,           /* v2.3.1953 */
     heightSel = props.heightSel,
     setHeightSel = props.setHeightSel,
-    frameSel = props.frameSel,
-    setFrameSel = props.setFrameSel,
+    frameSel = props.frameSel,          /* v2.3.1996: read-only now — locked to medium, no picker */
     activeCat = props.activeCat,
     beardColorSel = props.beardColorSel,
     facialHairSel = props.facialHairSel,
@@ -199,10 +198,15 @@ export function NameModal(props) {
        `kind: 'build'` only tells the renderer below to use _buildTile (a
        labelled silhouette) instead of a swatch or a sprite thumb; everything
        else about the tab is the same machinery. */
+    /* v2.3.1996: HEIGHT ONLY.  The frame row (thin/medium/large) is gone by
+       owner directive -- "keep the medium build only and only allow the height
+       to change" -- and with it this tab's `colors`/`setColor`, so the colour
+       row below the options goes blank here the way it already does for every
+       other type that has none.  The lock itself is in FRAME_CATALOG, not
+       here; dropping the picker alone would have left the store and the wire
+       still able to carry a wide build. */
     build: { label: 'Build', kind: 'build', spriteCat: null, catalog: HEIGHT_CATALOG, sel: heightSel,
-      set: function (id) { setBuildHeight(id); setHeightSel(id); },
-      colors: FRAME_CATALOG, colorSel: frameSel,
-      setColor: function (id) { setBuildFrame(id); setFrameSel(id); } }
+      set: function (id) { setBuildHeight(id); setHeightSel(id); } }
   };
   /* v2.3.1251: primary groups reuse the existing painted category art
      in /ui/welcome/cat/ — no emoji, no new assets.  A group with one
@@ -287,8 +291,9 @@ export function NameModal(props) {
      captions say which is which — no header row needed, and none available
      without breaking the constant-height rule. */
   var _items = (_def.kind === 'build')
+    /* v2.3.1996: one row of three heights.  Was six tiles wrapping onto two
+       rows; the second row was the frame axis, now locked to medium. */
     ? HEIGHT_CATALOG.map(function (o) { return _buildTile(o, heightSel, _def.set, 'height'); })
-      .concat(FRAME_CATALOG.map(function (o) { return _buildTile(o, frameSel, _def.setColor, 'frame'); }))
     : _def.catalog.map(function (o) {
       return _def.kind === 'thumb'
         ? _thumbTile(_def.spriteCat, o, _def.sel, _onPick, 44)

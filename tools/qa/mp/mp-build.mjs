@@ -1,5 +1,16 @@
 /* HEIGHT AND FRAME, ON THE GLASS AND ACROSS THE WIRE (v2.3.1953).
  *
+ * ── v2.3.1996: THE FRAME AXIS IS LOCKED TO MEDIUM ──
+ * Owner: "keep the medium build only and only allow the height to change".
+ * The frame assertions below were NOT deleted -- they were INVERTED, because
+ * "a wide build no longer widens" is the claim that now needs proving, and it
+ * is the one with a migration behind it.  B still seeds `bt-frame: 'large'`
+ * into localStorage and still reloads, so this measures exactly the returning
+ * player who picked Large before today: the catalog must refuse the saved id
+ * and render them medium, on their own screen AND on a peer's, on join AND
+ * after the relay cycles.  A frame that came back to life anywhere fails here.
+ * Every height assertion is untouched.
+ *
  * Owner: "is there a way to add 'height' to your character as an option?" ...
  * "Yes build the heights too ... Maybe also frame wideness (thin, medium,
  * large)".
@@ -37,7 +48,10 @@ import * as H from './harness.mjs';
 
 /* The catalog's own numbers, restated so a change to them fails HERE rather
    than silently redefining what the test is asserting. */
-const TALL = 1.13, LARGE = 1.17;
+const TALL = 1.13;
+/* v2.3.1996: this was `LARGE = 1.17`.  The frame axis is locked now, so the
+   width a 'large' save must measure is 1 -- the same as an average bro. */
+const LOCKED_W = 1;
 const TOL = 0.02;          /* 2% -- one screen pixel on a ~78px figure is 1.3% */
 
 const probe = (P, peer) => P.page.evaluate((n) => (window._pixiRenderer && window._pixiRenderer.buildProbe
@@ -57,7 +71,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and their HUD layer carries no correction',
     ref.uiScaleX === 1 && ref.uiScaleY === 1, { x: ref.uiScaleX, y: ref.uiScaleY });
 
-  /* ── B: tall + large, same viewport, same zone ── */
+  /* ── B: tall, plus a 'large' frame left over from before the lock ── */
   const B = await H.newPlayer(browser, { name: 'Bigg', wsPort, webPort, guest: true });
   await B.page.evaluate(() => {
     localStorage.setItem('bt-height', 'tall');
@@ -76,9 +90,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const wR = big.fig.widthPx / ref.fig.widthPx;
     rec.ok(`tall is ${TALL}x taller on screen (measured ${hR.toFixed(3)})`,
       Math.abs(hR - TALL) < TOL, { ref: ref.fig.heightPx, big: big.fig.heightPx, ratio: +hR.toFixed(4) });
-    rec.ok(`large is ${LARGE}x wider on screen (measured ${wR.toFixed(3)})`,
-      Math.abs(wR - LARGE) < TOL, { ref: ref.fig.widthPx, big: big.fig.widthPx, ratio: +wR.toFixed(4) });
-    rec.ok('height and frame are INDEPENDENT — the height change did not widen him',
+    rec.ok(`a saved 'large' frame does NOT widen him — locked to medium (measured ${wR.toFixed(3)}x)`,
+      Math.abs(wR - LOCKED_W) < TOL, { ref: ref.fig.widthPx, big: big.fig.widthPx, ratio: +wR.toFixed(4) });
+    rec.ok('the height change did not widen him either — the axes stay independent',
       Math.abs(hR - wR) > 0.02, { hR: +hR.toFixed(4), wR: +wR.toFixed(4) });
 
     /* 2. the boots.  Measured against the player's own WORLD y, which is the
@@ -116,8 +130,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const wR = seen.fig.widthPx / ref.fig.widthPx;
     rec.ok('A sees B TALL — the height crossed the wire',
       Math.abs(hR - TALL) < TOL, { ratio: +hR.toFixed(4), peer: seen.fig.heightPx, self: ref.fig.heightPx });
-    rec.ok('A sees B LARGE — the frame crossed the wire',
-      Math.abs(wR - LARGE) < TOL, { ratio: +wR.toFixed(4) });
+    rec.ok('A sees B at MEDIUM width — the locked frame reaches no peer either',
+      Math.abs(wR - LOCKED_W) < TOL, { ratio: +wR.toFixed(4) });
     /* And the same on the remote path, which is a different factory and a
        different update loop — the plate must come out square there too.
        `plainSeen` below is the same measurement for a peer with NO build, so
@@ -139,10 +153,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
      arrives on join and is then overwritten by an absent value. */
   await A.page.waitForTimeout(6500);
   const after = await probe(A, 'Bigg');
-  rec.ok('...and B is STILL tall and large after the relay cycles (v2.3.1939 incident)',
+  rec.ok('...and B is STILL tall, and still NOT wide, after the relay cycles (v2.3.1939 incident)',
     !!(after && after.fig)
     && Math.abs(after.fig.heightPx / ref.fig.heightPx - TALL) < TOL
-    && Math.abs(after.fig.widthPx / ref.fig.widthPx - LARGE) < TOL,
+    && Math.abs(after.fig.widthPx / ref.fig.widthPx - LOCKED_W) < TOL,
     after && after.fig);
 
   /* A peer who never picked a build must carry nothing — the absence is what
@@ -152,6 +166,41 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!plain && Math.abs(plain.scaleX - plain.scaleY) < 1e-4 && plain.uiScaleX === 1,
     plain && { sx: plain.scaleX, sy: plain.scaleY, ui: plain.uiScaleX });
 
-  const errs = [...(A.logs || []), ...(B.logs || [])].filter((l) => /error|uncaught/i.test(l));
-  rec.ok('no page errors on either client', errs.length === 0, errs.slice(0, 3));
+  /* ── 5. v2.3.1996: THE PICKER OFFERS HEIGHT AND NOTHING ELSE ──
+     Everything above measures the RENDERER, which is where the lock has to
+     hold.  This measures the SCREEN, which is where the owner reported it:
+     the Build tab used to carry six tiles wrapping onto two rows -- three
+     heights then three frames -- and must now carry the three heights alone.
+     Asserted by the tiles' own titles (which _buildTile sets from the catalog
+     entry's name) rather than by counting buttons, so a tile that came back
+     under a new label still fails. */
+  const C = await H.newPlayer(browser, { name: 'Picker', wsPort, webPort, guest: true,
+    viewport: { width: 390, height: 844 }, touch: true });
+  await C.page.waitForSelector('[data-tut="login-create"]', { timeout: 30000 });
+  await C.page.click('[data-tut="login-create"]');
+  await C.page.waitForSelector('input.bt-cc-name', { timeout: 30000 });
+  await H.clickText(C, 'Build').catch(() => {});
+  await C.page.waitForTimeout(600);
+
+  const tile = (t) => C.page.$('button[title="' + t + '"]');
+  const has = async (t) => !!(await tile(t));
+  const heights = { Short: await has('Short'), Average: await has('Average'), Tall: await has('Tall') };
+  const frames = { Thin: await has('Thin'), Medium: await has('Medium'), Large: await has('Large') };
+
+  rec.ok('the Build tab still offers all three heights',
+    heights.Short && heights.Average && heights.Tall, heights);
+  rec.ok('...and offers NO frame tile at all — thin, medium and large are gone from the picker',
+    !frames.Thin && !frames.Medium && !frames.Large, frames);
+
+  /* Tapping a height must still take.  A tab that renders its tiles but has
+     lost its setter would pass both assertions above. */
+  await C.page.click('button[title="Tall"]').catch(() => {});
+  await C.page.waitForTimeout(400);
+  const picked = await C.page.evaluate(() => { try { return localStorage.getItem('bt-height'); } catch (e) { return null; } });
+  rec.ok('tapping Tall still writes the height through', picked === 'tall', { 'bt-height': picked });
+
+  await C.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/build-tab.png' });
+
+  const errs = [...(A.logs || []), ...(B.logs || []), ...(C.logs || [])].filter((l) => /error|uncaught/i.test(l));
+  rec.ok('no page errors on any client', errs.length === 0, errs.slice(0, 3));
 }

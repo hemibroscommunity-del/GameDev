@@ -187,7 +187,7 @@ import { SKIN_CATALOG, PANTS_CATALOG, SHOES_CATALOG, getSkin, setSkin, getPants,
 import { HAIR_COLOR_CATALOG, getHairColor, setHairColor } from '@/rendering/traits/hairColorCatalog.js';
 import { HAT_COLOR_CATALOG, hatColorsFor, getHatColor, setHatColor } from '@/rendering/traits/hatColorCatalog.js';
 import { EYE_COLOR_CATALOG, getEyeColor, setEyeColor } from '@/rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
-import { HEIGHT_CATALOG, FRAME_CATALOG, getBuildHeight, setBuildHeight, getBuildFrame, setBuildFrame, wireHeight, wireFrame } from '@/rendering/traits/buildCatalog.js'; /* v2.3.1953 */
+import { HEIGHT_CATALOG, getBuildHeight, setBuildHeight, getBuildFrame, wireHeight, wireFrame } from '@/rendering/traits/buildCatalog.js'; /* v2.3.1953; v2.3.1996: frame locked to medium — no FRAME_CATALOG/setBuildFrame here */
 import { getShirtArt, getArt, artHasInk } from '@/rendering/traits/playerArt.js'; /* v2.3.1939; v2.3.1940 + pants/tattoo */
 import { getPattern } from '@/rendering/traits/patternCatalog.js'; /* v2.3.1941 */
 import { FACIALHAIR_COLOR_CATALOG, getFacialHairColor, setFacialHairColor } from '@/rendering/traits/facialHairColorCatalog.js';
@@ -1778,6 +1778,11 @@ export var BroTown = function BroTown(_ref0) {
   var _heightSelState = useState(getBuildHeight()),
     heightSel = _heightSelState[0],
     setHeightSel = _heightSelState[1];
+  /* v2.3.1996: frame is locked to medium, so getBuildFrame() only ever answers
+     'medium' and this state never changes.  Kept rather than deleted because
+     the preview and the portrait still take a buildFrame, and because putting
+     a second frame back is then FRAME_CATALOG plus a picker -- not a re-thread
+     of every call site.  setFrameSel is passed down for the same reason. */
   var _frameSelState = useState(getBuildFrame()),
     frameSel = _frameSelState[0],
     setFrameSel = _frameSelState[1];
@@ -2080,7 +2085,9 @@ export var BroTown = function BroTown(_ref0) {
        what the creator can do, and a feature it never touches is a feature
        half the players never learn exists. */
     var bh = rpick(HEIGHT_CATALOG); setBuildHeight(bh); setHeightSel(bh);
-    var bf = rpick(FRAME_CATALOG); setBuildFrame(bf); setFrameSel(bf);
+    /* v2.3.1996: no frame roll -- the axis is locked to medium (FRAME_CATALOG),
+       so rolling it would pick 'medium' every time and the only thing it could
+       still do is surprise a player whose saved build was Thin or Large. */
     var hr = rpick(HAIR_CATALOG); setHair(hr); setHairSel(hr);
     if (recolorEnabled('hair')) {
       var hcCat = hr === 'long' ? HAIR_COLOR_CATALOG.filter(function (c) { return LONG_HAIR_COLORS.indexOf(c.id) >= 0; }) : HAIR_COLOR_CATALOG;

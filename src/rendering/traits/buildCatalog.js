@@ -13,6 +13,9 @@
  * load time and nothing on the wire, and the two axes are independent, so
  * three heights x three frames is NINE silhouettes from one sheet:
  * short+large reads as a stocky bloke, tall+thin reads as lanky.
+ *   v2.3.1996: the frame axis is now LOCKED to medium by owner directive,
+ *   so what ships is the THREE heights.  See FRAME_CATALOG below for why
+ *   the lock lives in the catalog rather than in the picker.
  *
  * ── THE NUMBERS ARE MEASURED, NOT GUESSED ──
  * Rendered as a 3x3 contact sheet at several spreads (scratch probe
@@ -40,10 +43,35 @@ export const HEIGHT_CATALOG = [
   { id: 'tall',    name: 'Tall',    mul: 1.13 },
 ];
 
+/* ═══ v2.3.1996: FRAME IS LOCKED TO MEDIUM ═══
+ *
+ * Owner: "keep the medium build only and only allow the height to change".
+ *
+ * The catalog is the ONE place that decides what a frame id may be, so
+ * emptying it to a single entry locks the axis everywhere at once rather than
+ * hiding a picker that the store, the wire and the renderer would all still
+ * honour.  Every consumer already answers the default for an id it does not
+ * recognise -- that was the deploy-order safety property v2.3.1953 was built
+ * with -- so this one edit is enough to hold the lock:
+ *
+ *   - frameMul('thin'|'large')  -> 1 (not found -> 1), so a peer on an older
+ *     client who still has a wide build selected renders MEDIUM here.
+ *   - sanitizeFrame(anything)   -> 'medium'.
+ *   - setBuildFrame('large')    -> rejected; the store keeps 'medium'.
+ *   - the localStorage read below fails its `some()` check, so a player who
+ *     picked Thin or Large before today loads medium instead of being stuck
+ *     on a build the game no longer offers.
+ *   - wireFrame() is now always undefined, so 'fr' drops off the join frame
+ *     entirely -- there is nothing to relay when there is only one answer.
+ *
+ * The plumbing STAYS (buildScale still multiplies sx; 'fr' is still an allowed
+ * cosmetic key on the server).  It costs nothing at 1.00, and putting a second
+ * frame back later is then this array plus the picker, not a protocol change.
+ * The height axis is untouched: short / average / tall all still pick, still
+ * relay, still render.
+ */
 export const FRAME_CATALOG = [
-  { id: 'thin',   name: 'Thin',   mul: 0.87 },
   { id: 'medium', name: 'Medium', mul: 1.00 },
-  { id: 'large',  name: 'Large',  mul: 1.17 },
 ];
 
 export const DEFAULT_HEIGHT = 'average';
