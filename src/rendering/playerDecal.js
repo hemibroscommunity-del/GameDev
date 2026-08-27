@@ -256,6 +256,7 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
      pushed into it.  The designer reads them to turn a touch on the body back
      into a cell; the game passes nothing and the array never exists. */
   const report = (opts && opts.report) || null;
+  const profile = !!(opts && opts.profile);   /* v2.3.1992: histograms in the report */
   let painted = 0;
   let scratch = null, seenBuf = null;
   /* The mask is its own array, so painting colours into `d` can never change
@@ -321,10 +322,44 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
     }
     if (!peakRow) { release(); continue; }   /* this piece has nothing here */
     const rowMin = Math.max(2, peakRow * REGION_KEEP), colMin = Math.max(2, peakCol * REGION_KEEP);
-    let lx = Infinity, rx = -1, ty = Infinity, by = -1;
+    let ty = Infinity, by = -1;
     for (let y = 0; y < h; y++) if (rowN[y] >= rowMin) { if (y < ty) ty = y; if (y > by) by = y; }
-    for (let x = 0; x < colN.length; x++) if (colN[x] >= colMin) { if (x < lx) lx = x + x0; if (x + x0 > rx) rx = x + x0; }
-    if (rx < 0 || by < 0) { release(); continue; }
+    /* ── THE COLUMN EXTENT IS MEASURED IN THE FRAME'S OWN SPACE (v2.3.1992) ──
+       Owner: "the face tattoo only showing on idle and disappears during jog
+       but then pops up on one frame."
+       `colN` is indexed from the LEFT EDGE OF THIS FRAME (`x - x0` above); `lx`
+       and `rx` are coordinates on the whole SHEET.  The line that walked the
+       histogram compared the two directly — `if (x < lx) lx = x + x0` — so on
+       frame 0, where x0 is 0 and the two spaces coincide, it was right, and on
+       every later frame `lx` held a sheet coordinate while `x` counted from 0,
+       so every kept column looked further left than the one before it and both
+       ends walked to the LAST one.  Measured on jog-east: frame 0 fits
+       lx 128 -> rx 163, and frame 1, whose kept columns are the same 36-wide
+       run, fits lx 419 -> rx 419 — a single column.
+       gridFit then clamps that 1px box back up to a 16px grid (Math.max(ART_W,
+       ...)), so the paint did not vanish so much as get crushed: rendered and
+       looked at, the face band on frame 1 is a narrow sliver jammed against the
+       leading edge of the face, half of it off the head and clipped away by the
+       mask.  That is also why nothing ever threw — every piece of arithmetic
+       downstream was valid, it was just measuring the wrong thing.
+       THE ONE FRAME IT WORKED ON IS FRAME 0 OF THE STRIP, which is what the
+       owner saw pop up, and it is also why every STANDING facing was fine —
+       those sheets are one frame, so x0 is always 0.
+       So the histogram is now walked entirely in local space and converted to
+       sheet coordinates ONCE, at the end.  The two spaces can no longer meet
+       in a comparison.
+       REGION_KEEP IS UNCHANGED, deliberately.  With the indices agreeing it
+       measured well on all 40 sheet/region pairs — it keeps 74-100% of the
+       true column run on the face, 59-100% on the chest and 76-100% on the
+       trousers (median 0.95), never collapsing below 4px on any of the three.
+       Swapping it for a mass quantile (the other candidate) trims MORE:
+       stand-south's face goes 45px -> 38px at 2% tails, which would move every
+       already-correct tattoo on every standing frame for no gain here.  The
+       stray-rejection v2.3.1945 added it for is exactly what it still does. */
+    let cLo = Infinity, cHi = -1;
+    for (let x = 0; x < colN.length; x++) if (colN[x] >= colMin) { if (x < cLo) cLo = x; if (x > cHi) cHi = x; }
+    if (cHi < 0 || by < 0) { release(); continue; }
+    const lx = cLo + x0, rx = cHi + x0;
     /* v2.3.1950: the region's own mean brightness, so ink can be shaded BY the
        body rather than pasted flat over it — see INK_TUNE. */
     let refLum = 0;
@@ -341,7 +376,16 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
       refLum = n ? sum / n : 128;
     }
     const { ox, oy, cw, ch } = gridFit(lx, rx, ty, by, box);
-    if (report) report.push({ ox, oy, cw, ch, lx, rx, ty, by, frame: f });
+    /* v2.3.1992: with `profile` set, the report carries the row/column HISTOGRAMS
+       the extent was measured from, not just the extent.  The vanishing face
+       tattoo was three wrong readings deep before anyone looked at the shape of
+       colN — a profile head's columns are a spike, a standing torso's are a
+       plateau — and no amount of staring at lx/rx says which one you have.
+       Diagnostic only, gated by the caller (window.__btGridProbe), and it
+       allocates two small arrays per frame when asked and none when not. */
+    if (report) report.push(profile
+      ? { ox, oy, cw, ch, lx, rx, ty, by, frame: f, rowN: Array.from(rowN), colN: Array.from(colN) }
+      : { ox, oy, cw, ch, lx, rx, ty, by, frame: f });
     for (let gy = 0; gy < ART_H; gy++) {
       for (let gx = 0; gx < ART_W; gx++) {
         const col = artColorAt(art, mirror ? (ART_W - 1 - gx) : gx, gy);

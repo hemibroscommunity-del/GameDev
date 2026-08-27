@@ -664,10 +664,18 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
      grid stampRegion actually fitted per frame can be read from outside.  The
      region mask was already verified correct and the tattoo still did not
      appear, which leaves the FIT as the thing to look at. */
-  const _rep = (art && art.report) || (typeof window !== 'undefined' && window.__btGridProbe && _bakeTag === 'jog-east')
+  /* v2.3.1992: the probe now reports on EVERY sheet it bakes, not only the east
+     run strip, and each report carries its row/column histograms.  The rule that
+     decides the extent has to hold for a broad front-on torso and a narrow
+     profile head at once, so "is it fixed?" is a question about all five facings
+     in both poses — the single-sheet probe is what let a rule that suits one
+     shape look correct. */
+  const _probe = typeof window !== 'undefined' && !!window.__btGridProbe;
+  const _rep = (art && art.report) || _probe
     ? { pants: [], tattoo: [], face: [], arms: [] } : null;
+  const _stampOpt = (arr) => (_rep ? { report: arr, profile: _probe } : undefined);
   if (wantPantsArt) stampRegion(d, w, h, FRAME_W, pantsPaint, art.pants, !!art.mirror, PANTS_BOX,
-    _rep ? { report: _rep.pants } : undefined);
+    _stampOpt(_rep && _rep.pants));
   if (shoesPat) {
     stampPattern(d, w, h, FRAME_W,
       litFabricMask(base, regionFromFeet(d, shoesPx, w, h, FRAME_W, SHOES_MAX_UP), w * h, SHOES_LIT_MIN),
@@ -677,7 +685,7 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
      body's shading and lets some skin through.  A shirt print does not: it is
      ink ON fabric, and stays opaque. */
   if (tattooPx) stampRegion(d, w, h, FRAME_W, tattooPx, art.tattoo, !!art.mirror, TATTOO_BOX,
-    { underSkin: true, report: _rep && _rep.tattoo });
+    { underSkin: true, report: _rep && _rep.tattoo, profile: _probe });
   /* v2.3.1949: face and arms.  `eachPiece` for the arms only -- a figure has
      two of them and the largest-piece rule would ink whichever happens to be
      nearer the camera. */
@@ -739,9 +747,9 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
       } catch (e) { /* a probe must never break a bake */ }
     }
     if (wantFaceTat) stampRegion(d, w, h, FRAME_W, reg.face, art.tattooFace, !!art.mirror, FACE_BOX,
-      { underSkin: true, report: _rep && _rep.face });
+      { underSkin: true, report: _rep && _rep.face, profile: _probe });
     if (wantArmTat) stampRegion(d, w, h, FRAME_W, reg.arms, art.tattooArm, !!art.mirror, ARM_BOX,
-      { eachPiece: true, underSkin: true, report: _rep && _rep.arms });
+      { eachPiece: true, underSkin: true, report: _rep && _rep.arms, profile: _probe });
   }
   /* v2.3.1928: the iris last, so it overwrites rather than being classified.
      Its pixels are near-black and would otherwise fall through every branch
@@ -753,6 +761,14 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
      caller of this function ignores extra properties.  Only present when the
      caller asked. */
   if (_rep) { try { cv.__btGrids = _rep; } catch (e) { /* frozen: no probe, no harm */ } }
+  /* v2.3.1992: and, for the probe only, the same grids keyed by SHEET, so a
+     scenario can ask of stand-south and jog-northeast exactly what v2.3.1991
+     could only ask of jog-east.  A rule for fitting a box has to hold for a
+     broad front-on torso and a narrow profile head at the same time; one sheet
+     cannot show that. */
+  if (_rep && _probe) {
+    try { window.__btGridsByTag = window.__btGridsByTag || {}; window.__btGridsByTag[_bakeTag] = _rep; } catch (e) { /* ignore */ }
+  }
   return cv;
 }
 

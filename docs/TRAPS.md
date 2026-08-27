@@ -625,3 +625,88 @@ its pre-v2.3.1986 bytes), `tools/gear/sleeve_crossing_arm.py` (deleted).
 The underlying defect it tried to fix — the tee has no sleeve on the arm
 that crosses the chest, frames 8-11 — is REAL and still open; see
 `tools/qa/mp/mp-shirtarm.mjs`.
+
+---
+
+## §26 — A histogram index is not a sheet coordinate (v2.3.1992)
+
+*(the vanishing face tattoo, after three wrong readings and one right
+measurement)*
+
+**The report.** "The face tattoo only shows on idle and disappears
+during jog but then pops up on one frame."
+
+**The tempting readings, in the order they were tried and dropped:**
+the shirt bake is painting over the face; the hair is covering it; the
+face REGION collapses on run frames (it is defined as "skin above the
+torso band", so a band that starts too high would eat the head). All
+three are plausible and all three are wrong — the region mask, dumped
+painted red over the baked sheet, is exactly the head on all 28 run
+frames and a consistent size.
+
+**The fourth reading, which was closer and still wrong:** the fit's
+column-keep rule (`REGION_KEEP`, "a column counts at 15% of the peak")
+collapses on a narrow profile head, because a profile's column
+histogram is a spike where a front-on torso's is a plateau. That story
+fits the symptom exactly. It is testable in one line, and it is false:
+on the frame that fails, the kept columns are the same healthy 36-wide
+run as on the frame that works.
+
+**What it actually was.** One line, and a units error:
+
+```js
+const rowN = new Int32Array(h), colN = new Int32Array(x1 - x0);
+...
+if (++colN[x - x0] > peakCol) ...              // colN is indexed FROM THE FRAME
+...
+for (let x = 0; x < colN.length; x++) if (colN[x] >= colMin) {
+  if (x < lx) lx = x + x0;                     // lx is a coordinate ON THE SHEET
+  if (x + x0 > rx) rx = x + x0;
+}
+```
+
+`x` counts from the frame's left edge; `lx` holds a sheet coordinate.
+On **frame 0** the two spaces coincide (`x0` is 0) and the loop is
+correct. On every later frame `lx` is already ~256 or more while `x` is
+still counting from 0, so every kept column tests "further left than
+the last" and **both ends of the extent walk to the last kept column**:
+`lx 419 -> rx 419`, a one-pixel-wide box.
+
+**Why nothing ever threw, and why it read as "sometimes".**
+`gridFit` clamps the box back up (`Math.max(ART_W, ...)`), so a
+1px extent still produced a valid 16px grid — rendered and looked at,
+the face band on frame 1 is a narrow sliver jammed against the leading
+edge of the face, half of it off the head and clipped away by the mask. Valid arithmetic on a wrong
+measurement paints something plausible somewhere wrong, which is much
+harder to see than a crash. And the two "works" cases in the report are
+the two cases where `x0` is 0: **a standing sheet is ONE frame**, and
+the frame that "pops up" is **frame 0 of the run strip**.
+
+The same fit serves the chest tattoo, the arm tattoo and the trouser
+print, and all four were broken on every jog, hit, mine and pickup
+frame. Nobody had reported the other three: a print on a moving thigh
+is a smaller thing to notice losing than a mark on a face.
+
+**Rules this leaves:**
+- A per-frame histogram and a per-sheet coordinate must never meet in a
+  comparison. Walk the histogram entirely in its own space and convert
+  ONCE at the end — which is also the shape that makes the mistake
+  impossible to write, rather than merely absent today.
+- "It works on the first frame / the first item / the first tab" is not
+  a hint about timing. It is very often a hint that an offset is zero
+  there, and that the code has two coordinate spaces in it.
+- A clamp downstream of a measurement (`Math.max(MIN, measured)`) turns
+  a degenerate measurement into a plausible output. Any such clamp is a
+  place where a bug will be silent, so the assertion belongs UPSTREAM
+  of it, on the measurement.
+- Do not gate a geometric fit on the box's SIZE — a chest legitimately
+  narrows to 39% of its widest mid-stride. Gate it on MASS: what share
+  of the region's own pixels does the fitted box span? Measured on the
+  shipped art that is 0.003-0.006 when broken and 0.82-1.00 when right,
+  and there is nothing to tune between those two numbers.
+- A theory that explains the symptom perfectly is worth exactly one
+  measurement, and the measurement is cheaper than the theory.
+
+**Receipt:** `src/rendering/playerDecal.js` `stampRegion` (the column
+extent), `tools/qa/mp/mp-facetat.mjs` (the mass gate, on all four
+regions across every sheet the game bakes).
