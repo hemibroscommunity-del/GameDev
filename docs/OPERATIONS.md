@@ -142,7 +142,7 @@ curl -X POST -H "Authorization: Bearer YOUR_KEY" \
 **Turn a broken system off** while you investigate (players stay
 connected; only that feature stops). The switches that exist today:
 `disable_jackpot`, `disable_weapon_drops`, `disable_dungeons`,
-`disable_threats`:
+`disable_threats`, `disable_event_capes`:
 ```
 curl -X POST -H "Authorization: Bearer YOUR_KEY" \
   -d '{"name":"disable_dungeons","value":true}' "https://WORKER/api/admin/flags"
@@ -159,52 +159,52 @@ clients it supports — that's an emergency lever with side effects (old
 client fallbacks can wake up). Stick to the `disable_*` switches and
 `xp_mult` unless a PR tells you otherwise.
 
-## Running the cape contest (v2.3.2026)
+## Running the cape contest (v2.3.2028)
 
-The contest is OFF until you switch it on, and nothing about it happens
-until you do — no tickets drop, and the roll costs nothing on every kill.
+**The contest is already running.** It went live with the build — you do not
+need to switch anything on, and you do not need your admin key to hold the
+event. Three golden tickets exist; when all three have been found, the drop
+stops on its own. Nothing below is required reading unless something needs
+changing.
 
-**Start the event:**
-```
-curl -X POST -H "Authorization: Bearer YOUR_KEY" \
-  -d '{"name":"event_capes","value":true}' "https://WORKER/api/admin/flags"
-```
+Everything in this section needs the admin key. If you would rather not touch
+a terminal at all, you can ignore the whole section: the event runs and ends
+by itself.
 
-**End the event** (do this when the window closes — otherwise tickets keep
-dropping until all three are gone):
-```
-curl -X DELETE -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/flags?name=event_capes"
-```
-
-**Change the drop rate** while the event is running. The default is 1 in 200
-(`0.005`). Set the number as a *chance per kill*, so `0.02` is 1 in 50:
+**Change the drop rate.** The default is 1 in 200 kills (`0.005`). Set it as a
+chance per kill, so `0.02` is 1 in 50:
 ```
 curl -X POST -H "Authorization: Bearer YOUR_KEY" \
   -d '{"name":"event_cape_rate","value":0.02}' "https://WORKER/api/admin/flags"
 ```
-Tune this against the length of YOUR window, not against forever. Only three
-tickets exist no matter what you set, so the cap already guarantees scarcity —
-a rate so low that nobody finds one during the session means the thing you
-announced never happens. If an hour goes by with no winners, raise it.
+Useful conversions: `0.01` = 1 in 100, `0.02` = 1 in 50, `0.05` = 1 in 20.
+Takes effect immediately, no deploy. If a session goes by with nobody finding
+a ticket, raise it — only three exist however easy you make them, so a higher
+rate does not make the prize less rare, it just means the contest actually
+happens.
 
-**See who has won so far:** the winners are in the ledger, not in a flag
-listing. The simplest check is the admin log, which records every flag change,
-plus watching your own chat — but if you want the authoritative list, ask in a
-session and it can be read out of storage.
+**Stop the contest early**, before all three tickets are found:
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" \
+  -d '{"name":"disable_event_capes","value":true}' "https://WORKER/api/admin/flags"
+```
+And to start it again:
+```
+curl -X DELETE -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/flags?name=disable_event_capes"
+```
 
 Three things worth knowing so nothing surprises you mid-event:
 
-* **Ending the event does not take anyone's ticket away.** The flag stops the
-  *drop*. A ticket already won can still be opened for its cape a week later,
-  which is deliberate — a winner who happens to be offline when you close the
-  window must not lose their prize.
+* **Stopping the contest does not take anyone's ticket away.** The switch stops
+  the *drop*. A ticket already won can still be opened for its cape a week
+  later, which is deliberate — a winner who happens to be offline must not
+  lose their prize.
 * **Tickets can be traded** between players in the trade window. They cannot be
   sold on the marketplace (that is weapons-only). If someone ends up holding
   two, they still only get one cape, and the spare stays in their bag to trade
   on rather than being eaten.
 * **One cape per account.** A player who has already redeemed cannot win a
   second ticket, so the three winners are three different people.
-
 
 ## Testing safely
 

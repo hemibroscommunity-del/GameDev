@@ -74,10 +74,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
    * is a contest prize), so the test follows the real path instead of the
    * convenient one.
    *
-   * Both flags go through the operator API, not a test hook: `event_capes`
-   * opens the event and `event_cape_rate` makes the drop certain, and both are
-   * flags the owner will use for real on the day. A test-only back door would
-   * prove the back door works. */
+   * v2.3.2028: the event no longer needs opening -- it is live by default and
+   * only `disable_event_capes` closes it -- so the only flag set here is
+   * `event_cape_rate`, through the operator API rather than a test hook,
+   * because it makes the drop certain instead of 1-in-200. A test-only back
+   * door would prove the back door works. */
   const flag = async (name, value) => {
     const r = await fetch(`http://127.0.0.1:${wsPort}/api/admin/flags`, {
       method: 'POST',
@@ -86,9 +87,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     return r.ok;
   };
-  const okA = await flag('event_capes', true);
   const okB = await flag('event_cape_rate', 1);
-  rec.ok('the event flags could be set through the operator API (guard)', okA && okB, { okA, okB });
+  rec.ok('the rate flag could be set through the operator API (guard)', okB, { okB });
 
   /* The TICKET is seeded through POST /api/admin/grant -- the shipped operator
      surface the harness already uses for gold, not a test backdoor. The drop

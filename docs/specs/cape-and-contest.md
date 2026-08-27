@@ -214,15 +214,35 @@ storage keys and idempotency, all of which it governs.
 The server is authoritative for loot, so the 1-in-200 roll happens there and
 nowhere else.
 
-**Shipped as a live-ops flag, not baked timestamps (v2.3.2026).** The spec
-originally called for `CONTEST_START` / `CONTEST_END` constants. Hard dates in
-the source mean the only way to start the event, extend it, or shut it off is
-a worker deploy — and a deploy disconnects every live player and cold-starts
-the room (`CLAUDE.md`, Deployment). Doing that *during* the event is the exact
-thing you do not want to be forced into. So the gate is `_flagOn('event_capes')`
-and the rate is `_flagNum('event_cape_rate', 1/200, 0, 1)`, both flipped from
-`/api/admin/flags` with no deploy. Open the flag when the event starts, close
-it when it ends.
+**Live by default, with a kill switch (v2.3.2028).** This went through two
+versions and the second one is the lesson.
+
+The spec originally called for `CONTEST_START` / `CONTEST_END` constants. Hard
+dates in the source mean the only way to start, extend or shut the event is a
+worker deploy, which disconnects every live player (`CLAUDE.md`, Deployment).
+So v2.3.2026 replaced them with an opt-in live-ops flag: `_flagOn('event_capes')`
+to open, `_flagNum('event_cape_rate', 1/200, 0, 1)` for the rate.
+
+That fixed the wrong half of the problem. Flipping a live-ops flag needs the
+`ADMIN_KEY` secret and a curl command against the production worker — fine
+for an operator who lives in a terminal, a real barrier for this owner, who
+does not. The ability being bought (start the event to the minute, from a
+phone, mid-session, without a deploy) is worth that barrier for a large live
+game. **This is a five-person demo.** The owner asked for the drop to be live
+from the build, and was right: a prize nobody can switch on is not scarce, it
+is absent.
+
+So `_capeEventOpen()` is now `!_flagOn('disable_event_capes')` — on by
+default, off by a kill switch — which is also how every other switchable
+system in this server already works (`disable_jackpot` cadence.js,
+`disable_dungeons` dungeon.js, `disable_threats` threat.js,
+`disable_weapon_drops` index.js). The opt-in flag was the odd one out.
+
+Needing the key to STOP something is the safe direction: the failure mode of
+a lost key is now "the event runs as announced", not "the event never
+happens". The cap of three ends it anyway. The rate flag is unchanged and
+still tunable without a deploy, which is the part that genuinely benefits
+from being live-adjustable.
 
 ### 4.2 ⚠ "First 3" must be an atomic server-side claim
 

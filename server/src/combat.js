@@ -882,10 +882,11 @@ export const combatMethods = {
       m.alive = false;
       /* ═══ v2.3.2026: THE GOLDEN TICKET ROLLS HERE ═══
        * On the SERVER, on a real kill, because the server is authoritative for
-       * all loot and a client-decided prize is not a prize.  Gated on the
-       * event live-flag so it costs nothing when no event is running and can
-       * be closed without a deploy -- which matters when the alternative is
-       * deploying mid-session.
+       * all loot and a client-decided prize is not a prize.
+       * v2.3.2028: LIVE by default -- _capeEventOpen() is now
+       * !disable_event_capes rather than an opt-in flag, so the drop runs the
+       * moment this deploys.  The cap of three ends the event on its own; the
+       * kill switch exists only to stop it early.
        * The claim itself is synchronous by design (eventcapes.js): "first
        * three" read across an await is how four people win. */
       if (killerId && killerPs && this._capeEventOpen && this._capeEventOpen()) {
