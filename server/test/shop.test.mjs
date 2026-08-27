@@ -175,5 +175,26 @@ check('...and he does NOT restock them on the next read (the seed is once, '
     + 'not a respawn)',
   !after2.items.some((i) => i.key === 'cooked_fish_trout'), after2.items);
 
+/* ═══ v2.3.2055: HE QUOTES FOR THINGS HE HOLDS NONE OF ═══
+   Without this the Sell button on anything new read as a bare "Sell" with no
+   number -- which is the commonest row there is, since the point of him is
+   selling him something he has not got. The client cannot fill that in (it
+   computes no prices, deliberately), so the ask carries the keys. */
+const quoted = await room._shopList(['whetstone', 'manaShard', 'not_a_real_thing']);
+const qw = quoted.items.find((i) => i.key === 'whetstone');
+check('he quotes for an item he holds none of', !!qw && qw.qty === 0 && qw.buy > 0, quoted.items);
+check('...at a price that reflects what the item is worth, not a flat default',
+  qw.buy !== quoted.items.find((i) => i.key === 'manaShard').buy,
+  { whetstone: qw.buy, manaShard: quoted.items.find((i) => i.key === 'manaShard').buy });
+check('...and below what the vendor charges for it, so flipping is a loss',
+  qw.buy < 35, qw);
+/* The key list arrives from a client, so it is bounded and type-checked. */
+const junk = await room._shopList([123, null, {}, 'x'.repeat(500), 'ok_key']);
+check('a malformed quote list is filtered rather than trusted',
+  junk.items.some((i) => i.key === 'ok_key')
+  && !junk.items.some((i) => typeof i.key !== 'string' || i.key.length > 64), junk.items.length);
+const many = await room._shopList(Array.from({ length: 500 }, (_, i) => 'k' + i));
+check('...and a huge one is capped', many.items.length < 100, many.items.length);
+
 console.log(failures ? `\n${failures} FAILED` : '\nALL PASS');
 process.exit(failures ? 1 : 0);

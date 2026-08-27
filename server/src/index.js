@@ -4157,7 +4157,8 @@ export class GameRoom {
          A forged price is therefore not a thing that exists to forge. */
       case 'shop_list':
         if (session.id) {
-          this._shopList().then((r) => this._shopSend(session.id, 'shop_state', r))
+          this._shopList(((msg.payload || msg) || {}).keys)
+            .then((r) => this._shopSend(session.id, 'shop_state', r))
             .catch(() => { /* a failed read leaves the panel on its last list */ });
         }
         break;

@@ -87,6 +87,7 @@ export function VendorPanel(props) {
         effect: 'trap'
       }, {
         id: 'staminaSalts',
+        art: '/icons/items/potion-stamina.webp',   /* v2.3.2055 */
         name: 'Stamina Salts',
         icon: '⚡',
         cost: 12,
@@ -94,6 +95,7 @@ export function VendorPanel(props) {
         effect: 'stamina'
       }, {
         id: 'manaShard',
+        art: '/icons/items/potion-mana.webp',   /* v2.3.2055 */
         name: 'Mana Shard',
         icon: '💠',
         cost: 18,
@@ -106,6 +108,9 @@ export function VendorPanel(props) {
            and in the server's effect table; only the label and glyph move.
            See ITEM_NAMES in dash/InventoryPanel.jsx. */
         name: 'Fury Tonic',
+        /* v2.3.2055: real art now (owner-supplied). The glyph stays as the
+           fallback for anywhere the image cannot resolve. */
+        art: '/icons/items/potion-fury.webp',
         icon: '🧪',
         cost: 35,
         desc: '+15% damage for 60s',
@@ -126,12 +131,22 @@ export function VendorPanel(props) {
             minHeight: 44,
             borderTop: '1px solid ' + LS.divider
           }
-        }, /*#__PURE__*/React.createElement("span", {
-          style: {
-            fontSize: 20,
-            flexShrink: 0
-          }
-        }, item.icon), /*#__PURE__*/React.createElement("div", {
+        }, item.art
+          /* v2.3.2055: real art where an item has it; the glyph stays as the
+             fallback for the ones that do not (the trap and the minnow), so a
+             row never renders empty. */
+          ? /*#__PURE__*/React.createElement("img", {
+            src: item.art,
+            alt: '',
+            draggable: false,
+            style: { width: 30, height: 30, objectFit: 'contain', flexShrink: 0 }
+          })
+          : /*#__PURE__*/React.createElement("span", {
+            style: {
+              fontSize: 20,
+              flexShrink: 0
+            }
+          }, item.icon), /*#__PURE__*/React.createElement("div", {
           style: {
             flex: 1,
             minWidth: 0

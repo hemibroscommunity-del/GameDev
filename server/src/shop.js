@@ -90,6 +90,14 @@ export const SHOP = {
     /* Zone shards (ZONE_SHARDS, all 'shard_<zone>'). Rare -- one roll per
        kill -- so they are worth an order more than the remains beside them. */
     shard_: 110,
+    /* v2.3.2055: the vendor building's consumables, priced at THEIR OWN COST
+       (SHOP_ITEMS, server/src/data.js). Without these they all fell to
+       BASE_DEFAULT and he offered a flat 10g for a 35g tonic and a 12g salt
+       alike -- not an exploit, since his half-of-cost spread keeps every one
+       a loss to flip, but flat pricing that makes the expensive thing feel
+       worthless. Lowercased-exact: the keys are camelCase, and 'whetstone'
+       is caught by no family rule at all. */
+    whetstone: 35, manashard: 18, staminasalts: 12, basictrap: 20, cookedminnow: 8,
     /* The legacy town shop's own keys, priced in the same family so the two
        cannot disagree about what a slime is worth while they both exist. */
     slime: 14, bat: 16, skeleton: 22, crab: 16, golem: 40,
@@ -218,9 +226,29 @@ export const shopMethods = {
   /** The public listing: every line carries BOTH prices, because a player
    *  deciding whether to sell needs to see what he is already holding -- that
    *  is the number that sets their offer. */
-  async _shopList() {
+  /** @param keys optional item keys the asking player is CARRYING. He quotes
+   *  for those too, at qty 0.
+   *
+   *  Without this the panel showed a bare "Sell" with no number on anything
+   *  he did not already hold -- which is the commonest case by far, since the
+   *  whole point of him is selling him something new. The client cannot fill
+   *  that number in itself (it computes no prices, deliberately), so the ask
+   *  has to carry the keys and the answer has to carry the quotes. */
+  async _shopList(keys) {
     const stock = await this._shopStock();
     const items = [];
+    if (Array.isArray(keys)) {
+      /* Bounded and type-checked: this list arrives from a client. 60 is well
+         past a full bag and far short of anything worth flooding us with. */
+      const seen = Object.create(null);   /* CLAUDE.md rule 4 */
+      for (const k of keys.slice(0, 60)) {
+        if (typeof k !== 'string' || !k || k.length > 64) continue;
+        if (seen[k] || stock[k]) continue;      /* held keys are listed below */
+        seen[k] = 1;
+        items.push({ key: k, qty: 0, buy: this._shopBuyPrice(k, 0),
+          sell: this._shopSellPrice(k), full: false, quote: true });
+      }
+    }
     for (const k in stock) {
       items.push({
         key: k,

@@ -61,7 +61,20 @@ export function ShopkeeperPanel() {
   /* Ask once on open. The server broadcasts every later change, so there is
      no polling here -- a shop window that re-asked on a timer would be a
      message per second per player for a list that rarely moves. */
-  useEffect(() => { if (shopBus.open) send('shop_list', {}); }, [shopBus.open]);
+  useEffect(() => {
+    if (!shopBus.open) return;
+    /* The keys you are CARRYING ride along, so he can quote for things he
+       holds none of -- otherwise the Sell button on those rows has no number
+       on it, and that is the commonest row there is. The prices still come
+       back from him; this only tells him what to price. */
+    let keys = [];
+    try {
+      const S0 = window._gameState && window._gameState.current;
+      keys = Object.keys((S0 && S0.rpg && S0.rpg.inventory) || {})
+        .filter((k) => ((S0.rpg.inventory[k] || 0) > 0));
+    } catch (e) { keys = []; }
+    send('shop_list', { keys });
+  }, [shopBus.open]);
 
   if (!shopBus.open) return null;
 
@@ -73,6 +86,10 @@ export function ShopkeeperPanel() {
      above on why the second half matters. */
   const rows = shopBus.stock.slice();
   const held = new Set(rows.map((r) => r.key));
+  /* v2.3.2055: a FALLBACK now. The server quotes for what you carry (see the
+     shop_list ask above), so these rows normally arrive priced; this only
+     covers the frames before that answer lands, and anything picked up while
+     the window is already open. */
   for (const k in inv) {
     if ((inv[k] || 0) > 0 && !held.has(k)) rows.push({ key: k, qty: 0, buy: null, sell: null, mine: true });
   }

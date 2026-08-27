@@ -95,6 +95,23 @@ const FISHING_POLE_THUMB = `/icons/items/fishing-pole.png${ITEMS_V}`;
 const WOODCUTTING_AXE_THUMB = `/icons/items/woodcutting-axe.png${ITEMS_V}`;
 const MINING_PICKAXE_THUMB  = `/icons/items/mining-pickaxe.png${ITEMS_V}`;
 const RARE_GEM_THUMB        = `/icons/ui/cur-gem.webp${ITEMS_V}`; /* v2.3.1924 */
+/* ═══ v2.3.2055: THE POTIONS, AS REAL ART ═══
+ * Owner-supplied. Three of the five map onto consumables that actually exist
+ * (SHOP_ITEMS in server/src/data.js), and those are the three wired here:
+ *   whetstone    -> the purple one with the flexing arm. It IS the damage
+ *                   buff, so the art says what the item does without a word.
+ *   manaShard    -> blue.
+ *   staminaSalts -> gold.
+ * The red and green bottles are in the folder and deliberately UNUSED: there
+ * is no health potion and no antidote item in this game (the antidote lived
+ * only in the retired town shop's list and was never a real key), and
+ * inventing two consumables to justify art is a game-design change nobody
+ * asked for. They are staged, not wired. */
+const POTION_THUMBS = {
+  whetstone:    `/icons/items/potion-fury.webp${ITEMS_V}`,
+  manashard:    `/icons/items/potion-mana.webp${ITEMS_V}`,
+  staminasalts: `/icons/items/potion-stamina.webp${ITEMS_V}`,
+};
 /* Elemental shards: one webp per zone, /icons/items/<key>.webp
    following the keys defined in src/data/shards.js (shard_meadow,
    shard_ember, ...).  thumbFor() takes the shard_ prefix branch
@@ -102,6 +119,11 @@ const RARE_GEM_THUMB        = `/icons/ui/cur-gem.webp${ITEMS_V}`; /* v2.3.1924 *
    no new code in the inventory panel. */
 export const thumbFor = (key) => {
   const k = (key || '').toLowerCase();
+  /* v2.3.2055: FIRST, and lowercased-exact. The keys are camelCase
+     ('manaShard', 'staminaSalts'), so they are matched on the lowered form --
+     and above every prefix rule below, because 'whetstone' contains 'stone'
+     and would otherwise be handed the ore picture. */
+  if (POTION_THUMBS[k]) return POTION_THUMBS[k];
   if (COOKED_FISH_THUMBS[k])        return COOKED_FISH_THUMBS[k];
   if (k.startsWith('cooked_fish_')) return COOKED_FISH_THUMB_DEFAULT;
   if (k.startsWith('burnt_'))       return BURNT_DUST_THUMB;
@@ -149,6 +171,10 @@ export const thumbFor = (key) => {
  * is where anyone looking for the mismatch will find it explained. */
 export const ITEM_NAMES = Object.assign(Object.create(null), {
   whetstone: 'Fury Tonic',
+  /* v2.3.2055: the other two consumables read as keys in the bag otherwise
+     ('ManaShard', 'StaminaSalts' out of prettyName). */
+  manaShard: 'Mana Draught',
+  staminaSalts: 'Stamina Salts',
 });
 
 export const iconFor = (key) => {
