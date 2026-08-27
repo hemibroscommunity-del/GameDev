@@ -56,6 +56,40 @@
  * shirt's own topmost row in that frame, and never on a column whose skin
  * continues up out of the collar. Both are cheap to assert per frame.
  *
+ * ── v2.3.2016: A GENERATED SLEEVE WAS TRIED AND REJECTED ──
+ * The diagnosis above is right, and the fix it asks for — extend the shoulder
+ * over the trailing arm — was built and measured before being thrown away.
+ * Recorded so the next session does not rebuild it.
+ *
+ * The method, which is sound as far as it goes: breadth-first distance from
+ * the shirt's own edge ALONG the arm (not a row band — the trailing arm runs
+ * diagonally), fill to depth 4-5, black hem at full depth. It satisfied both
+ * invariants this file demands, and satisfied them by CONSTRUCTION rather
+ * than by luck: never writing above the shirt's top row, and never on a
+ * column with body pixels above that row. That second test is what separates
+ * arm from head without a flood fill — on frame 1 the trailing arm occupies
+ * columns 44-56 and not one has skin above row 44, while every column the
+ * head sits in does. It never went near the face. It also left the body's own
+ * black keyline pixels alone (10 of the 42 it covered on frame 1), so it did
+ * not strip the arm's outline the way the pine bow lost its ink (v2.3.2010).
+ *
+ * It still has to be thrown away, because IT LOOKS WORSE THAN THE BUG. At
+ * depth 4 and depth 5, and with the preserved ink limited to the true outer
+ * silhouette, all three variants read as a ragged, spiky left edge on the
+ * shirt with detached white pips out on the arm's antialiased fringe — not as
+ * a sleeve. The reason is geometric and is the thing to beat: a sleeve on an
+ * arm swung back-and-down is a band running PERPENDICULAR TO THE ARM'S AXIS,
+ * and every cheap rule available here (dilate the shirt leftward, grow a
+ * geodesic cap from the shoulder) produces a band that is roughly vertical
+ * instead. On the good frames the arm is near-vertical, which is exactly why
+ * the artist's own sleeve reads correctly there and why a rule tuned on those
+ * frames flatters itself.
+ *
+ * So whatever closes this needs the arm's AXIS, not just its silhouette — or
+ * it needs to be drawn by hand, which for seven frames on one facing is
+ * probably the cheaper honest answer. Until then the bare arm stays: it is a
+ * coherent silhouette, and the generated sleeve is not.
+ *
  * ── WHAT THE v2.3.1986 SESSION BELIEVED (kept for the record) ──
  * v2.3.1986 diagnosed it. The tee's coverage is PROPORTIONALLY constant across
  * the cycle (0.63-0.71 of the torso band, both halves), so the shirt was never

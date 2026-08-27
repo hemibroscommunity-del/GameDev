@@ -918,3 +918,42 @@ bug report.
 **Receipt:** `tools/qa/mp/harness.mjs` (`acceptQuestFromGiver`, and why
 it throws), `tools/qa/mp/mp-statpeek.mjs` + `HeroExpanded.jsx`
 (`data-section`), `tools/qa/mp/mp-layer.mjs`, `tools/qa/mp/mp-zonefx.mjs`.
+
+## §30 — A generated sleeve for the bare trailing arm looks worse than the bare arm (v2.3.2016)
+
+**The plausible-but-wrong move:** the owner has reported the bare arm on
+jog-east three times, `mp-shirtarm.mjs` diagnoses it correctly (frames 0-6,
+the TRAILING arm, and the fix has to ADD art because most of the bare arm
+lies outside the shirt's own bounding box), and the obvious next step is to
+generate the sleeve — grow a cap from the shirt's shoulder along the arm,
+fill it, hem it in black. It is easy to build in an hour and it passes
+every safety test this repo knows how to write.
+
+**Why it fails, and it is not a safety failure.** It was built at depth 4
+and depth 5, with preserved ink both at every dark body pixel and limited to
+the true outer silhouette. All three satisfy the two invariants v2.3.1986
+lacked — never write above the shirt's top row, never write on a column with
+body pixels above that row — and satisfy them by construction, so nothing
+goes near the face this time. It also leaves the body's own black keyline
+alone, so the arm keeps its outline. It is simply BAD ART: a ragged spiky
+left edge on the shirt with detached white pips out on the arm's antialiased
+fringe.
+
+The geometry is the lesson. A sleeve on an arm swung back-and-down is a band
+running PERPENDICULAR TO THE ARM'S AXIS. Every cheap rule available — dilate
+the shirt sideways, grow a geodesic cap from the shoulder — produces a band
+that is roughly vertical instead. On the frames where the arm is near
+vertical the same rule looks fine, which is exactly the trap: tune on those
+frames and the rule flatters itself, then falls apart on the frames that
+actually needed it.
+
+**What this leaves.** Closing this needs the arm's AXIS, not just its
+silhouette — or seven hand-drawn frames on one facing, which is probably the
+cheaper honest answer. Until one of those happens the bare arm STAYS. It is
+at least a coherent silhouette; the generated sleeve is not. Shipping a
+worse-looking fix to close a cosmetic report is a net loss, and this
+subsystem has already had one fix reverted in play (v2.3.1986's shirt blob
+on the character's face).
+
+**Receipt:** `tools/qa/mp/mp-shirtarm.mjs` header, section
+"v2.3.2016: A GENERATED SLEEVE WAS TRIED AND REJECTED".
