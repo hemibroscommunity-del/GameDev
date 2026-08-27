@@ -710,3 +710,68 @@ is a smaller thing to notice losing than a mark on a face.
 **Receipt:** `src/rendering/playerDecal.js` `stampRegion` (the column
 extent), `tools/qa/mp/mp-facetat.mjs` (the mass gate, on all four
 regions across every sheet the game bakes).
+
+---
+
+## §27 — A run clipped by the scan window is not a sliver (v2.3.1995)
+
+Owner, on the character preview: *"The shirt neckline south view has too
+large of a black outline. Northeast there's a big black outline where
+the shirt meets the waistline. Minor but Southwest his shoulders have a
+pretty big black outline too."*
+
+All three were manufactured by our own tool, and the tempting reading —
+"the artist drew a heavy keyline" — is wrong. `seal-shirt-edges.mjs`
+(v2.3.1873) fills gaps of bare skin showing through the tee's edges. Its
+one safety rule is a SIZE test: a gap at most 2px wide is a sliver and
+gets filled; anything wider is art the artist meant (the neck, the
+forearms, the bare belly, the cut-out crossing arm) and is left alone.
+That rule is sound. What broke it is that the tool **measured the gaps
+inside the shirt's own bounding box.**
+
+A garment OPENING is body that runs *out* of that box. The neck hole
+continues up into the head; the belly continues down into the trousers;
+the shoulder line continues out past the sleeve. Clipping the scan at
+the box turned each of those long runs into a 1-2px stub, the stub
+passed the sliver test, and the pixel it copied its colour from — at an
+opening — is the tee's own black keyline. So it filled them BLACK.
+Measured: **4176 of the 6267 pixels that pass wrote were near-black**
+(59-86% per sheet), and on `stand-south` it closed the top two rows of
+an 8px-wide neck hole outright.
+
+The fix is one line of intent: **measure the run across the whole frame,
+write only inside the bounding box.** A real sliver is bounded within
+MAXW px however far the window reaches, so it still measures short. An
+opening measures its true length and is refused.
+
+**Rules this leaves:**
+- A threshold is only as honest as the window the measurement was taken
+  in. If a scan is clipped by a region, every length it reports is a
+  LOWER BOUND — and a rule of the form "short means X" will fire on
+  anything the clip truncated. Measure in the largest space available
+  and restrict the WRITE, not the measurement.
+- When a tool fills from a neighbouring pixel, ask what that neighbour
+  is at the boundary the rule is most likely to misfire on. Here the
+  donor at every opening was the keyline, so the failure mode was not
+  "a few stray pixels" but "a black bar", which is why it was visible
+  from across the room and still survived three sessions.
+- A one-pass art tool that reads its own output is a footgun with a
+  comment taped to it. v2.3.1873 had to warn in capitals never to run
+  it twice. The tool now reads its source from a pinned git rev, so
+  running it ten times produces the same ten files — the warning became
+  unnecessary rather than louder.
+- Prefer a fix that can only REMOVE. The new art is a strict subset of
+  the old (measured: **0 adds, 2583 drops** across ten sheets), so it is
+  structurally incapable of putting a pixel somewhere new. That is the
+  property v2.3.1986 lacked when it painted the character's face, and
+  it is worth choosing the shape of a fix to get it.
+- A stale cache-bust hides a whole class of art bug. `characterPortrait`
+  requested the tee at a hardcoded `?v=2.3.760`, so every re-bake since
+  — including the one that CAUSED this report — could serve a cached
+  older sheet to the preview. If art changes and one surface disagrees
+  with another, check the version strings before the pixels.
+
+**Receipt:** `tools/gear/seal-shirt-edges.mjs` (the whole-frame scan and
+the pinned source rev), `tools/qa/mp/mp-shirtkeyline.mjs` (per-column
+outline widths and a near-black budget per sheet),
+`src/rendering/characterPortrait.js` (`SHIRT_ART_VER`).

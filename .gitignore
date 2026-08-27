@@ -56,3 +56,9 @@ preview/
 
 # v2.3.1979: mp-lockon writes a debug screenshot next to itself on every run.
 tools/qa/mp/.last-*.png
+
+# v2.3.1997: mp-ccload writes a creator screenshot here on every run.  It was
+# TRACKED, so any QA run left a phantom "modified" file in the working tree and
+# it got swept into two unrelated commits as binary churn (4266debf, 5195ef93).
+# Same reasoning as .last-*.png above: regenerate it, don't version it.
+tools/maps/.cc.png
