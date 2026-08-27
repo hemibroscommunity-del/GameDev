@@ -177,6 +177,25 @@ not have to switch it off.
 Everything below is optional and needs the admin key. Skip it unless something
 needs changing mid-event.
 
+**See who has won, and how many tickets are left.** This is the ledger — the
+one record that decides the contest — and it also tells you whether the drop is
+running right now:
+```
+curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/capes"
+```
+Worth running once BEFORE the event starts, to confirm all three are still
+available. If `issued` is not empty and the contest has not started, a ticket
+leaked (v2.3.2028 briefly ran the contest in production on 2026-08-27, between
+17:33 and 17:44 UTC) — clear it with the reset below.
+
+**Clear the ledger** — only for that situation, before a contest starts. It
+voids tickets people may legitimately hold, so it makes you name the cape and
+say `confirm=yes`:
+```
+curl -X DELETE -H "Authorization: Bearer YOUR_KEY" \
+  "https://WORKER/api/admin/capes?cape=crimson&confirm=yes"
+```
+
 **Change the drop rate.** The default is 1 in 100 kills (`0.01`). Set it as a
 chance per kill, so `0.02` is 1 in 50:
 ```
