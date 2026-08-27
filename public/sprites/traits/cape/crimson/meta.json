@@ -1,0 +1,60 @@
+{
+ "category": "cape",
+ "name": "Crimson Cape",
+ "fullFrame": true,
+ "fits": {
+  "south": {
+   "scale": 0.3544,
+   "inside": 4881,
+   "spill": 35,
+   "spillShare": 0.0071
+  },
+  "southwest": {
+   "scale": 0.3631,
+   "inside": 5290,
+   "spill": 29,
+   "spillShare": 0.0055
+  },
+  "east": {
+   "scale": 0.3556,
+   "inside": 1970,
+   "spill": 13,
+   "spillShare": 0.0066
+  },
+  "northeast": {
+   "scale": 0.351,
+   "inside": 1959,
+   "spill": 13,
+   "spillShare": 0.0066
+  },
+  "north": {
+   "scale": 0.375,
+   "inside": 1221,
+   "spill": 8,
+   "spillShare": 0.0065
+  }
+ },
+ "anchors": {
+  "south": [
+   127,
+   12
+  ],
+  "southwest": [
+   131,
+   11
+  ],
+  "east": [
+   114,
+   11
+  ],
+  "northeast": [
+   122,
+   15
+  ],
+  "north": [
+   126,
+   1
+  ]
+ },
+ "note": "Imported by tools/import_cape_green.py from a sheet whose person was painted flat #00FF00. The cape is everything that is neither the magenta backdrop nor the green person, so no colour heuristic can eat a cape pixel. Registered by fitting the GREEN silhouette against the real stand-<dir> body, feet-anchored (the one landmark a cape never covers), scoring inside-minus-spill so a cape that hides most of the body still fits at its true scale rather than at zero."
+}

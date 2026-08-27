@@ -52,7 +52,36 @@ Already built, and reused rather than reinvented:
 
     tools/make_cape_mannequin.py   ->  the reference sheet (5 figures, magenta)
     <image generator>              ->  cape drawn on it, person flattened green
-    tools/import_cape_green.py     ->  5 PNGs + meta.json          (TO WRITE)
+    tools/import_cape_green.py     ->  5 PNGs + meta.json          (BUILT, v2.3.2022)
+
+**Phase 1 is done.** The first real cape (`crimson`) is imported and sits
+correctly on the body in all five facings. What the first pass through the
+pipeline taught, recorded because every one of these cost a debugging round:
+
+* **The generator does not return your sheet.** It came back 1853x849 for a
+  2798x1130 reference — resized, and resized NON-UNIFORMLY (0.662 across,
+  0.751 down), with the cell outlines only partly redrawn. The mannequin's JSON
+  sidecar is therefore a convenience when the generator behaves and never a
+  correctness dependency: the importer finds the cells and fits each one.
+* **A cape hides the body it has to be registered against.** Fitting the green
+  silhouette works for a hat because green is nearly the whole body. On north a
+  cape leaves only the shins, so scaling the green's bounding box to the body's
+  height blew that cell up to 201x102 with 81% hanging outside. **Scale comes
+  from the stance** — the horizontal spread of the lowest quarter — because the
+  legs are drawn on every facing whatever the cape covers.
+* **Fit on the green, but crop the BLOB.** The transform is fitted on the green
+  because that is what can be matched; it must be applied to the whole
+  cape+person blob. Cropping the source to the green threw away everything
+  above the shins on north and wrote a 265px cape — a hem and nothing else.
+* **The generator outlines the person.** That outline is neither key colour, so
+  it survives keying as a dark ring tracing the face, shin and boot: 718 stray
+  pixels on east. It cannot be removed by darkness, because the cape's own
+  outline is also black and removing that is the pine-bow defect (v2.3.2010).
+  What separates them is what they sit between — only the person's ring has a
+  key colour within reach on BOTH sides.
+* **Reach across the whole transition.** That ring runs 3-4px wide, so dilating
+  each key by 2 gives two disjoint halves whose intersection is empty; it
+  dropped 18 pixels of 718. Radius 4 reaches across and takes it to 14.
 
 The **green-screen key** is the load-bearing part. The generator paints the
 person flat `#00FF00` and leaves the cape alone, so the import is a fact rather
