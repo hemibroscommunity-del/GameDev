@@ -65,9 +65,75 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('with no cape owned, nothing is drawn', !!bare && bare.cape && bare.cape.visible === false,
     bare && bare.cape);
 
-  await P.page.evaluate(() => { try { localStorage.setItem('bt_cape', 'crimson'); } catch (e) { /* private mode */ } });
-  await P.page.reload({ waitUntil: 'domcontentloaded' });
-  await P.page.waitForTimeout(9000);        /* the stored identity resumes on its own */
+  /* ═══ v2.3.2027: THE CAPE IS GRANTED BY THE WORKER NOW ═══
+   * The first version of this file set localStorage and reloaded, which was
+   * right when the cape was a client-side choice and is wrong now: the worker
+   * echoes the cape its LEDGER says you own, null included, so a locally-set
+   * cape is taken straight back off. That is the point of the change (a
+   * cosmetic you can choose for yourself is one anyone can choose, and this one
+   * is a contest prize), so the test follows the real path instead of the
+   * convenient one.
+   *
+   * Both flags go through the operator API, not a test hook: `event_capes`
+   * opens the event and `event_cape_rate` makes the drop certain, and both are
+   * flags the owner will use for real on the day. A test-only back door would
+   * prove the back door works. */
+  const flag = async (name, value) => {
+    const r = await fetch(`http://127.0.0.1:${wsPort}/api/admin/flags`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${H.ADMIN_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, value }),
+    });
+    return r.ok;
+  };
+  const okA = await flag('event_capes', true);
+  const okB = await flag('event_cape_rate', 1);
+  rec.ok('the event flags could be set through the operator API (guard)', okA && okB, { okA, okB });
+
+  /* The TICKET is seeded through POST /api/admin/grant -- the shipped operator
+     surface the harness already uses for gold, not a test backdoor. The drop
+     roll, the cap of three and the one-per-account refusal are covered
+     exhaustively by server/test/eventcapes.test.mjs, where they can be driven
+     deterministically; what only a real browser can answer is the half after
+     the ticket exists: does the Open button appear, does the worker grant on
+     it, and does the cape then RENDER on the character. */
+  const pid = await P.page.evaluate(() => (window._gameState && window._gameState.current && window._gameState.current.myId) || null);
+  rec.ok('the player has an id to grant against (guard)', !!pid, { pid });
+  const granted = await H.grant(wsPort, pid, 'item', { invKey: 'goldticket_crimson', count: 1 })
+    .then((r) => r).catch((e) => ({ ok: false, error: String(e) }));
+  rec.ok('a golden ticket could be granted through the operator API (guard)',
+    !!granted && granted.ok !== false, granted);
+  await P.page.waitForTimeout(1800);
+  const heldTicket = await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    return (S && S.rpg && S.rpg.inventory && S.rpg.inventory.goldticket_crimson) || 0;
+  });
+  rec.ok('the ticket reached the player\'s bag (guard: the Open button needs one to exist)',
+    heldTicket > 0, { heldTicket });
+
+  /* REDEEM through the channel, with the exact message the Open button sends.
+     WHAT THIS DOES NOT COVER, said plainly rather than implied: the button's
+     own wiring. Reaching it means opening the bag panel and finding a control
+     by its label, which is the brittleness that killed five scenarios this
+     week (TRAPS §29). What is covered is everything after the tap — the
+     worker consuming the ticket, the ledger granting, the echo, and the cape
+     appearing on the character — which is where the interesting failures are.
+     The button's gate is separately pinned by the caps-audit suite, which
+     fails if _serverCaps.eventCapes is advertised and never read. */
+  await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    if (S && S.channel) {
+      S.channel.send({ type: 'cape_redeem',
+        payload: { invKey: 'goldticket_crimson', opId: 'mp-cape-' + Date.now() } });
+    }
+  });
+  await P.page.waitForTimeout(2500);
+  const spent = await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    return (S && S.rpg && S.rpg.inventory && S.rpg.inventory.goldticket_crimson) || 0;
+  });
+  rec.ok('the worker consumed the ticket on redeem (the client never touches it)',
+    spent === 0, { left: spent });
 
   const worn = await raw(P);
   rec.ok('the cape is drawn once it is worn', !!(worn && worn.cape && worn.cape.visible && worn.cape.tex), worn && worn.cape);

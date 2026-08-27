@@ -1068,6 +1068,20 @@ export function setupWebSocket(ctx) {
                  (currently loot pickup + harvest; future: sales /
                  quest / etc.). */
               if (!msg.payload || !S.rpg) break;
+              /* ═══ v2.3.2027: THE CAPE COMES FROM THE WORKER ═══
+                 Same closure as the coins/inventory overwrite above: a cosmetic
+                 the client chooses for itself is a cosmetic anyone can choose,
+                 and this one is a contest prize. The worker echoes the cape its
+                 LEDGER says you own -- null included, so losing or never having
+                 one takes it off. setCape ignores an id that is not in the
+                 catalog, so a hostile echo cannot make the renderer ask for a
+                 texture that does not exist. */
+              try {
+                var _capeId = (typeof msg.payload.cape === 'string' && msg.payload.cape) ? msg.payload.cape : 'none';
+                import('@/rendering/traits/capeCatalog.js')
+                  .then(function (m) { m.setCape(_capeId); })
+                  .catch(function () { /* module split not loaded yet: next echo carries it */ });
+              } catch (e) { /* never let a cosmetic break the state sync */ }
               if (typeof msg.payload.coins === 'number') {
                 S.rpg.coins = msg.payload.coins;
               }

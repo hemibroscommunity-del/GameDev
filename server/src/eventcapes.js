@@ -101,7 +101,18 @@ export const eventCapeMethods = {
     if (led.issued.indexOf(playerId) >= 0) return null;      /* one per account */
     if (led.redeemed.indexOf(playerId) >= 0) return null;
     const roll = (typeof rollFn === 'function') ? rollFn() : Math.random();
-    if (roll >= (this._capeDropRate || 1 / 200)) return null;
+    /* v2.3.2027: the rate is a live-ops NUMBER, clamped at read.  The brief
+       asks for it to be tuned against the event WINDOW rather than against
+       forever -- scarcity is already guaranteed by the cap of three, and a
+       rate so low nobody finds one during the session means the announced
+       hook never lands.  A flag means that tuning does not need a deploy,
+       which is the difference between adjusting mid-event and not adjusting.
+       It is also what lets the scenario drive the real drop end to end
+       instead of a test-only back door. */
+    const rate = (typeof this._flagNum === 'function')
+      ? this._flagNum('event_cape_rate', 1 / 200, 0, 1)
+      : 1 / 200;
+    if (roll >= rate) return null;
     led.issued.push(playerId);
     if (!ps.inventory) ps.inventory = {};
     ps.inventory[def.ticket] = (ps.inventory[def.ticket] || 0) + 1;
@@ -141,6 +152,26 @@ export const eventCapeMethods = {
    *  synchronous claim both have something to read. */
   async _capeLedgersLoad() {
     for (const id of Object.keys(EVENT_CAPES)) await this._capeLedger(id);
+  },
+
+  /** Overwrite whatever the client claimed about its cape with what the
+   *  ledger says.  Same shape and same reason as _clanStampTag (clans.js):
+   *  the relay used to blind-merge client-supplied cosmetics, and that was
+   *  the tag-FORGERY hole.  A cape is a contest prize, so a client that can
+   *  assert one can award itself the prize -- and the old wire made this
+   *  worse than usual by sending a BOOLEAN, so every cape looked identical
+   *  and there was nothing to forge carefully.
+   *
+   *  Deploy-order safe in both directions (rule 19): an old client sends
+   *  `cape: true` and has it replaced by an id or dropped; an old client
+   *  RECEIVING an id still sees a truthy value where it expected `true`, and
+   *  a new client receiving `true` from an old worker finds no texture for it
+   *  and simply draws nothing. */
+  _capeStamp(playerId, data) {
+    if (!data) return;
+    const owned = this._capeOwnedBy(playerId);
+    if (owned) data.cape = owned;
+    else if (data.cape) delete data.cape;      /* claimed one, owns none */
   },
 
   /** cape_redeem: consume one ticket, grant the cape.  Shaped after

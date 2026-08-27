@@ -4086,6 +4086,10 @@ export class GameRoom {
           // client-supplied cosmetics BEFORE they merge/broadcast (this
           // blind merge was the tag-forgery hole).
           this._clanStampTag(session.id, clean);
+          /* v2.3.2027: the ledger owns the cape, for the same reason the
+             registry owns the clan tag -- a blind merge of a client-supplied
+             cosmetic is a forgery hole, and this cosmetic is a contest prize. */
+          this._capeStamp(session.id, clean);
           session.data = { ...session.data, ...clean };
           const _trackPs = this.playerState[session.id];
           if (_trackPs) {
@@ -4225,7 +4229,15 @@ export class GameRoom {
            The client never consumes it or grants the cape -- see the
            firemaking incident in cooking.js, where a client-side consume with
            no wire message let one log light unlimited campfires. */
-        this._handleCapeRedeem(session, data);
+        if (session.id) {
+          /* `msg.payload || msg`, matching eat_request below: this switch does
+             NOT have a `data` binding, so the first cut handed the handler
+             undefined and every redeem returned at the invKey check -- the
+             ticket stayed in the bag and no cape was ever granted.  Silent,
+             and only the end-to-end scenario caught it. */
+          const _p = this._handleCapeRedeem(session, msg.payload || msg);
+          if (_p && _p.catch) _p.catch(() => {});
+        }
         break;
       case 'eat_request':
         // Player clicked Eat on a cooked_fish_* inventory item.
