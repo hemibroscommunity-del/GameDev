@@ -145,35 +145,35 @@ check("a '__proto__' item key does not corrupt the pile",
 check('shop_state cannot be forged by a client', PRIVILEGED_EVENTS.has('shop_state'));
 check('shop_result cannot be forged by a client', PRIVILEGED_EVENTS.has('shop_result'));
 
-/* ═══ v2.3.2051: THE STAPLES ═══
-   The old town shop sold three consumables out of infinite stock and was
-   their ONLY source. Retiring it without these would not have replaced a shop,
-   it would have deleted traps, whetstones and antidotes -- and the
-   player-supplied pile can never cover them, because nobody can sell him a
-   whetstone they were never able to buy. */
-const listS = await room._shopList();
-for (const k of ['trap_basic', 'whetstone', 'antidote']) {
-  check(`he always stocks ${k}, with no pile needed`,
-    !!listS.items.find((i) => i.key === k && i.staple), listS.items.map((i) => i.key));
-}
-check('...at the OLD shop\'s prices, so a replacement is not a silent reprice',
-  listS.items.find((i) => i.key === 'whetstone').sell === 50
-  && listS.items.find((i) => i.key === 'trap_basic').sell === 20
-  && listS.items.find((i) => i.key === 'antidote').sell === 30,
-  listS.items.filter((i) => i.staple));
+/* ═══ v2.3.2053: WHAT HE STARTS WITH ═══
+   Owner: the consumables go, and "his inventory can just start with a few
+   cooked fish". A SEED, not a staple: it is ordinary stock, priced by the same
+   decay, and it runs out. */
+const fresh = makeState();
+const room3 = new GameRoom(fresh, mockEnv);
+const seeded = await room3._shopList();
+const fish = seeded.items.find((i) => i.key === 'cooked_fish_trout');
+check('a brand-new world finds a few cooked fish on him', !!fish && fish.qty > 0,
+  seeded.items);
+check('...priced above the raw fish they were made from',
+  room3._shopBaseValue('cooked_fish_trout') > room3._shopBaseValue('fish_trout'),
+  { cooked: room3._shopBaseValue('cooked_fish_trout'), raw: room3._shopBaseValue('fish_trout') });
+check('...and nothing else, so the retired consumables are really gone',
+  !seeded.items.some((i) => ['whetstone', 'antidote', 'trap_basic'].includes(i.key)),
+  seeded.items.map((i) => i.key));
 
-psB.coins = 500; psB.inventory = {};
-const bs = await room._shopBuy(psB, 'whetstone', 2);
-check('a staple can be bought when he holds no pile of it at all',
-  bs.ok && bs.bought === 2 && psB.inventory.whetstone === 2, bs);
-check('...and costs the listed price', bs.cost === 100, bs);
-/* Infinite stock means the decay has nothing to read -- and a staple that got
-   cheaper to sell as you bought more would be a money printer. */
-const bs2 = await room._shopBuy(psB, 'whetstone', 2);
-check('...and buying more does not move its price', bs2.cost === 100, bs2);
-const ss = await room._shopSell(psB, 'whetstone', 1);
-check('he buys a staple back BELOW cost, so buy-then-sell-back is a loss '
-    + 'rather than a loop', ss.ok && ss.paid < 50, ss);
+/* The seed is written ONCE. A pile players have emptied is a stored {}, which
+   is not the same as "never seeded" -- if that distinction were missed he
+   would silently restock every time someone cleared him out, which is a money
+   printer rather than a shop. */
+const psC = { coins: 10000, inventory: {} };
+const bought = await room3._shopBuy(psC, 'cooked_fish_trout', fish.qty);
+check('the seeded fish can all be bought', bought.ok && bought.bought === fish.qty, bought);
+const room4 = new GameRoom(fresh, mockEnv);
+const after2 = await room4._shopList();
+check('...and he does NOT restock them on the next read (the seed is once, '
+    + 'not a respawn)',
+  !after2.items.some((i) => i.key === 'cooked_fish_trout'), after2.items);
 
 console.log(failures ? `\n${failures} FAILED` : '\nALL PASS');
 process.exit(failures ? 1 : 0);

@@ -153,8 +153,8 @@ export function ShopkeeperPanel() {
                   : <span>{iconFor(r.key)}</span>}
                 {/* HIS count on the tile, where your bag puts yours -- it is
                     his inventory being shown, and it is also the number that
-                    sets the price. A staple has none: he makes those. */}
-                {!r.staple && r.qty > 1 ? <span className="bt-item-qty">{r.qty}</span> : null}
+                    sets the price. */}
+                {r.qty > 1 ? <span className="bt-item-qty">{r.qty}</span> : null}
               </div>
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap',
@@ -162,11 +162,10 @@ export function ShopkeeperPanel() {
                 <div style={{ fontSize: 11, color: 'var(--ui-text-muted, #8FA3A0)',
                   fontVariantNumeric: 'tabular-nums' }}>
                   {/* His count first: it is the number that sets the price.
-                      A STAPLE has no count -- he makes those, so there is no
-                      pile for the decay to read and a number would be a lie
-                      that never changes. */}
-                  {r.staple ? 'always in stock' : `he holds ${r.qty}`}
-                  {mine ? ` · you have ${mine}` : ''}
+                     v2.3.2053: the "always in stock" case went with the
+                     staples -- everything he has now is a pile that can run
+                     out, so every row has a real count. */}
+                  {`he holds ${r.qty}`}{mine ? ` · you have ${mine}` : ''}
                 </div>
               </div>
               <button
@@ -182,11 +181,11 @@ export function ShopkeeperPanel() {
               </button>
               <button
                 type="button" data-shop-buy={r.key}
-                disabled={(!r.staple && !r.qty) || shopBus.busy || (r.sell != null && coins < r.sell)}
+                disabled={!r.qty || shopBus.busy || (r.sell != null && coins < r.sell)}
                 onClick={() => act('shop_buy', r.key)}
                 className="button-secondary"
                 style={{ minHeight: 40, minWidth: 78, padding: '0 8px', fontSize: 12,
-                  opacity: ((!r.staple && !r.qty) || shopBus.busy || (r.sell != null && coins < r.sell)) ? 0.45 : 1 }}
+                  opacity: (!r.qty || shopBus.busy || (r.sell != null && coins < r.sell)) ? 0.45 : 1 }}
               >
                 Buy {r.sell != null ? `${r.sell}g` : ''}
               </button>

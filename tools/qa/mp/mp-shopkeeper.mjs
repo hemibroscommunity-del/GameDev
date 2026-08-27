@@ -117,26 +117,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
     (await bag(B)) === bBag0 + 1, { before: bBag0, after: await bag(B) });
   rec.ok('...and it costs them coins', (await purse(B)) < bCoins0, { before: bCoins0, after: await purse(B) });
 
-  /* ── HE STILL SELLS WHAT THE OLD TOWN SHOP SOLD (v2.3.2051) ──
-     That shop was the only source of these three, so a replacement that
-     dropped them would have deleted them from the game rather than moved
-     them. Bought here through the real UI, from a pile he holds none of. */
-  const staple = await A.page.evaluate(() => {
-    const b = document.querySelector('[data-shop-buy="whetstone"]');
-    const row = document.querySelector('[data-shop-row="whetstone"]');
-    return { present: !!b, disabled: b ? b.disabled : null, label: b ? b.textContent.trim() : null,
-      text: row ? row.textContent.replace(/\s+/g, ' ') : null };
+  /* ── WHAT HE STARTS WITH (v2.3.2053) ──
+     Owner: the consumables go; he starts with a few cooked fish instead. This
+     is stock, not a staple -- it has a real count and it can run out. */
+  const seed = await A.page.evaluate(() => {
+    const row = document.querySelector('[data-shop-row="cooked_fish_trout"]');
+    const gone = ['whetstone', 'antidote', 'trap_basic']
+      .filter((k) => document.querySelector(`[data-shop-row="${k}"]`));
+    return { row: !!row, text: row ? row.textContent.replace(/\s+/g, ' ') : null, gone };
   });
-  rec.ok('he stocks the old town shop\'s consumables, at its prices',
-    staple.present && /50g/.test(staple.label || ''), staple);
-  rec.ok('...listed as always in stock rather than with a count he does not have',
-    /always in stock/.test(staple.text || ''), staple);
-  const wBefore = await H.readState(A, (S) => ((S.rpg || {}).inventory || {}).whetstone || 0);
-  await A.page.click('[data-shop-buy="whetstone"]');
-  await A.page.waitForTimeout(1500);
-  rec.ok('...and one can actually be bought', 
-    (await H.readState(A, (S) => ((S.rpg || {}).inventory || {}).whetstone || 0)) === wBefore + 1,
-    { wBefore });
+  rec.ok('he starts with cooked fish on him', seed.row, seed);
+  rec.ok('...with a real count, not "always in stock" -- it is a pile that runs out',
+    /he holds \d+/.test(seed.text || '') && !/always in stock/.test(seed.text || ''), seed);
+  rec.ok('...and the retired consumables are gone from his shelf',
+    seed.gone.length === 0, seed);
 
   /* ── HIS PILE LOOKS LIKE AN INVENTORY (v2.3.2052) ──
      Owner: "show his inventory similar to how my inventory is shown with the
@@ -152,20 +146,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   rec.ok('his stock shows the item\'s real thumbnail, the same picture the bag uses',
     thumb.img && thumb.loaded && thumb.w > 0, thumb);
-
-  /* The staples have no painted art, so they fall to a glyph -- but it must be
-     the RIGHT glyph. 'whetstone' contains 'stone', and iconFor's ore rule would
-     hand it a pickaxe if the exact match were not above it. */
-  const glyphs = await A.page.evaluate(() => {
-    const g = (k) => {
-      const row = document.querySelector(`[data-shop-row="${k}"]`);
-      const tile = row && row.firstElementChild;
-      return tile ? tile.textContent.trim().replace(/\d+$/, '') : null;
-    };
-    return { whetstone: g('whetstone'), antidote: g('antidote'), trap: g('trap_basic') };
-  });
-  rec.ok('the consumables show their own glyphs, not a bare diamond',
-    glyphs.whetstone === '🪨' && glyphs.antidote === '🍃' && glyphs.trap === '🪤', glyphs);
 
   const sizes = await A.page.evaluate(() =>
     ((window.__btNpcSprites && window.__btNpcSprites()) || [])

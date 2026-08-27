@@ -84,6 +84,9 @@ export const SHOP = {
        of every node: wood_pine_log, ore_copper, fish_trout and their
        successors. */
     ore_: 40, wood_: 24, fish_: 28,
+    /* Longer than 'fish_', so the longest-match rule below prefers it: a
+       cooked fish is worth more than the raw one it came from. */
+    cooked_fish: 45,
     /* Zone shards (ZONE_SHARDS, all 'shard_<zone>'). Rare -- one roll per
        kill -- so they are worth an order more than the remains beside them. */
     shard_: 110,
@@ -119,24 +122,29 @@ export const SHOP = {
      empty a bag or a purse in a single tap. */
   MAX_QTY_PER_OP: 100,
 
-  /* ═══ v2.3.2051: THE GOODS HE MAKES, NOT THE ONES HE IS BROUGHT ═══
-   * Owner: replace the old town shop with him.
+  /* ═══ v2.3.2053: WHAT HE HAS ON HIM WHEN THE WORLD IS NEW ═══
+   * Owner: "I don't have any use for those items yet you can remove them...
+   * He's mainly there to buy extra remnants from the players. So actually his
+   * inventory can just start with a few cooked fish."
    *
-   * That shop sold three consumables out of INFINITE stock and was their only
-   * source in the game. Retiring it without these would not have replaced a
-   * shop, it would have deleted traps, whetstones and antidotes -- and the
-   * player-supplied pile can never cover them, because nobody can sell him a
-   * whetstone they were never able to buy.
+   * v2.3.2051 gave him the retired town shop's three consumables as
+   * always-in-stock staples, on the reasoning that shop was their only source.
+   * That was over-cautious: the VENDOR BUILDING (VendorPanel) still sells
+   * whetstones at 35g and they still carry their dmgBuff effect
+   * (server/src/data.js), so that one was never at risk. Traps and antidotes
+   * genuinely were only in the retired shop -- and the owner does not want
+   * them, so they go rather than being preserved for their own sake.
    *
-   * Prices are the old shop's, unchanged (SHOP_ITEMS_FOR_SALE in
-   * gameSystems.js): a replacement that quietly re-prices the consumables is a
-   * balance change smuggled in as a refactor.
+   * A SEED, NOT A STAPLE. The distinction matters: a staple never runs out and
+   * has no price movement, which made him a vending machine. These are just
+   * stock, priced by the same decay as everything else, and when players buy
+   * them they are gone. He is a man who buys remains and happens to have had
+   * lunch on him, not a shop with a permanent shelf.
    *
-   * They do NOT decay. Decay is a statement about scarcity, and a man who can
-   * always make another whetstone is not scarce -- so a staple is one price
-   * both ways, forever, and his buy-back is the ordinary spread below cost so
-   * buying one and selling it straight back is a loss rather than a loop. */
-  STAPLES: { trap_basic: 20, whetstone: 50, antidote: 30 },
+   * Written ONCE, on the first read of a world that has never had a pile. A
+   * pile that has been emptied is a written record of {}, which is not the
+   * same as no record -- so clearing him out does not quietly restock him. */
+  SEED: { cooked_fish_trout: 6 },
 };
 
 export const shopMethods = {
@@ -182,7 +190,14 @@ export const shopMethods = {
     /* Object.create(null): the keys are inventory ids that originate from
        clients, and a plain {} silently no-ops on '__proto__' (CLAUDE.md rule
        4 -- three incidents in one day). */
-    const raw = (await this.state.storage.get('shop_stock')) || {};
+    let raw = await this.state.storage.get('shop_stock');
+    /* UNDEFINED, not falsy: a pile players have emptied is a stored {}, and
+       treating that as "never seeded" would restock him every time someone
+       cleared him out. See SHOP.SEED. */
+    if (raw === undefined) {
+      raw = { ...SHOP.SEED };
+      await this.state.storage.put('shop_stock', raw);
+    }
     const out = Object.create(null);
     for (const k in raw) {
       const n = Math.floor(Number(raw[k]) || 0);
@@ -203,26 +218,9 @@ export const shopMethods = {
   /** The public listing: every line carries BOTH prices, because a player
    *  deciding whether to sell needs to see what he is already holding -- that
    *  is the number that sets their offer. */
-  _shopStaple(key) {
-    return Object.prototype.hasOwnProperty.call(SHOP.STAPLES, key) ? SHOP.STAPLES[key] : null;
-  },
-
   async _shopList() {
     const stock = await this._shopStock();
     const items = [];
-    /* Staples first and always present, stock or no stock: they are what the
-       shop IS, and a player looking for an antidote should not have to hope
-       someone sold him one. `qty: null` rather than a number -- the panel
-       shows "always in stock" instead of a count, because a count would be a
-       lie that changes nothing. */
-    for (const k in SHOP.STAPLES) {
-      items.push({
-        key: k, qty: null, staple: true,
-        buy: Math.max(SHOP.MIN_BUY, Math.floor(SHOP.STAPLES[k] * SHOP.BUY_RATE)),
-        sell: SHOP.STAPLES[k],
-        full: false,
-      });
-    }
     for (const k in stock) {
       items.push({
         key: k,
@@ -246,18 +244,6 @@ export const shopMethods = {
     if (!ps.inventory) ps.inventory = {};
     const have = Math.floor(Number(ps.inventory[key]) || 0);
     if (have < want) return { ok: false, error: "You don't have that many" };
-
-    /* A staple sells at one flat price however many you bring: there is no
-       pile to grow, so there is nothing for the decay to read. */
-    const stapleVal = this._shopStaple(key);
-    if (stapleVal !== null) {
-      const unit = Math.max(SHOP.MIN_BUY, Math.floor(stapleVal * SHOP.BUY_RATE));
-      ps.inventory[key] = have - want;
-      if (ps.inventory[key] <= 0) delete ps.inventory[key];
-      ps.coins = Math.max(0, Math.floor(Number(ps.coins) || 0) + unit * want);
-      return { ok: true, sold: want, paid: unit * want, coins: ps.coins,
-        stock: null, nextBuy: unit, staple: true, settled: true };
-    }
 
     const stock = await this._shopStock();
     let held = stock[key] || 0;
@@ -291,19 +277,6 @@ export const shopMethods = {
     if (!ps || typeof key !== 'string' || !key) return { ok: false, error: 'Bad request' };
     const want = Math.floor(Number(qty) || 0);
     if (!(want >= 1 && want <= SHOP.MAX_QTY_PER_OP)) return { ok: false, error: 'Bad quantity' };
-
-    const stapleCost = this._shopStaple(key);
-    if (stapleCost !== null) {
-      const cost = stapleCost * want;
-      const purse = Math.floor(Number(ps.coins) || 0);
-      if (purse < cost) return { ok: false, error: 'Not enough coins' };
-      ps.coins = purse - cost;
-      if (!ps.inventory) ps.inventory = {};
-      ps.inventory[key] = (Math.floor(Number(ps.inventory[key]) || 0)) + want;
-      return { ok: true, bought: want, cost, coins: ps.coins, stock: null,
-        nextBuy: Math.max(SHOP.MIN_BUY, Math.floor(stapleCost * SHOP.BUY_RATE)),
-        staple: true, settled: true };
-    }
 
     const stock = await this._shopStock();
     const held = stock[key] || 0;
