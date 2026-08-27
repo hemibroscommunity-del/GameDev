@@ -214,35 +214,43 @@ storage keys and idempotency, all of which it governs.
 The server is authoritative for loot, so the 1-in-200 roll happens there and
 nowhere else.
 
-**Live by default, with a kill switch (v2.3.2028).** This went through two
-versions and the second one is the lesson.
+**A source constant to start, a live-ops flag to stop (v2.3.2029).** Three
+versions; the argument is recorded because the obvious answer was wrong twice.
 
-The spec originally called for `CONTEST_START` / `CONTEST_END` constants. Hard
-dates in the source mean the only way to start, extend or shut the event is a
-worker deploy, which disconnects every live player (`CLAUDE.md`, Deployment).
-So v2.3.2026 replaced them with an opt-in live-ops flag: `_flagOn('event_capes')`
-to open, `_flagNum('event_cape_rate', 1/200, 0, 1)` for the rate.
+`CONTEST_START` / `CONTEST_END` constants (the original spec) would have meant
+a worker deploy to start, extend or shut the event, and a deploy disconnects
+every live player (`CLAUDE.md`, Deployment).
 
-That fixed the wrong half of the problem. Flipping a live-ops flag needs the
-`ADMIN_KEY` secret and a curl command against the production worker — fine
-for an operator who lives in a terminal, a real barrier for this owner, who
-does not. The ability being bought (start the event to the minute, from a
-phone, mid-session, without a deploy) is worth that barrier for a large live
-game. **This is a five-person demo.** The owner asked for the drop to be live
-from the build, and was right: a prize nobody can switch on is not scarce, it
-is absent.
+v2.3.2026 made it an opt-in live-ops flag, `_flagOn('event_capes')`. Wrong:
+flipping it needs the `ADMIN_KEY` secret and a curl command against the
+production worker. That is a fine trade for a large live game and a real
+barrier for this owner, who does not work in a terminal.
 
-So `_capeEventOpen()` is now `!_flagOn('disable_event_capes')` — on by
-default, off by a kill switch — which is also how every other switchable
-system in this server already works (`disable_jackpot` cadence.js,
-`disable_dungeons` dungeon.js, `disable_threats` threat.js,
-`disable_weapon_drops` index.js). The opt-in flag was the odd one out.
+v2.3.2028 made it live-by-default with a `disable_event_capes` kill switch,
+matching `disable_jackpot` / `disable_dungeons` / `disable_threats` /
+`disable_weapon_drops`. Wrong only in timing — it meant the contest began the
+moment it merged, and the owner wants to pick the moment.
 
-Needing the key to STOP something is the safe direction: the failure mode of
-a lost key is now "the event runs as announced", not "the event never
-happens". The cap of three ends it anyway. The rate flag is unchanged and
-still tunable without a deploy, which is the part that genuinely benefits
-from being live-adjustable.
+v2.3.2029 stops conflating two different questions:
+
+| question | mechanism | who | needs a deploy |
+|---|---|---|---|
+| does the contest run at all? | `EVENT_LIVE` constant | owner, by merging a PR | yes — that IS the switch |
+| stop it early once running? | `disable_event_capes` flag | operator with the key | no |
+
+The deploy is not a cost here, it is the mechanism: the owner's start button
+is a merge, which is a thing they already do comfortably. The one real
+consequence — a deploy briefly disconnects everyone — is handled by merging
+the enable *before* players gather, and that instruction lives in
+`docs/OPERATIONS.md` rather than only here.
+
+The rate stays `_flagNum('event_cape_rate', 1/100, 0, 1)`: adjustable
+mid-event without a deploy, which is genuinely where that property earns its
+keep. **Default raised from 1/200 to 1/100 (owner's call, 2026-08-27)** —
+sized to the session rather than to forever. Five players need roughly 300
+kills between them for three winners at 1/100; the cap of three is what
+guarantees scarcity, so a rate nobody hits during the demo just means the
+announced hook never lands.
 
 ### 4.2 ⚠ "First 3" must be an atomic server-side claim
 

@@ -159,36 +159,42 @@ clients it supports — that's an emergency lever with side effects (old
 client fallbacks can wake up). Stick to the `disable_*` switches and
 `xp_mult` unless a PR tells you otherwise.
 
-## Running the cape contest (v2.3.2028)
+## Running the cape contest (v2.3.2029)
 
-**The contest is already running.** It went live with the build — you do not
-need to switch anything on, and you do not need your admin key to hold the
-event. Three golden tickets exist; when all three have been found, the drop
-stops on its own. Nothing below is required reading unless something needs
-changing.
+**The contest is currently OFF, and starting it is not your job — it is a code
+change.** Ask in a session for the cape event to be switched on; that ships a
+one-line change (`EVENT_LIVE` in `server/src/eventcapes.js`) and merging it
+starts the contest. No terminal, no admin key, nothing for you to run.
 
-Everything in this section needs the admin key. If you would rather not touch
-a terminal at all, you can ignore the whole section: the event runs and ends
-by itself.
+One thing to plan around: merging deploys the worker, which briefly
+disconnects everyone online and cold-starts the room. **Switch it on before
+players gather**, not while they are standing around waiting for it. Fifteen
+minutes of margin is plenty.
 
-**Change the drop rate.** The default is 1 in 200 kills (`0.005`). Set it as a
+Once it is running, it ends by itself when the third ticket is found. You do
+not have to switch it off.
+
+Everything below is optional and needs the admin key. Skip it unless something
+needs changing mid-event.
+
+**Change the drop rate.** The default is 1 in 100 kills (`0.01`). Set it as a
 chance per kill, so `0.02` is 1 in 50:
 ```
 curl -X POST -H "Authorization: Bearer YOUR_KEY" \
   -d '{"name":"event_cape_rate","value":0.02}' "https://WORKER/api/admin/flags"
 ```
-Useful conversions: `0.01` = 1 in 100, `0.02` = 1 in 50, `0.05` = 1 in 20.
-Takes effect immediately, no deploy. If a session goes by with nobody finding
-a ticket, raise it — only three exist however easy you make them, so a higher
-rate does not make the prize less rare, it just means the contest actually
-happens.
+Conversions: `0.01` = 1 in 100, `0.02` = 1 in 50, `0.05` = 1 in 20. Takes
+effect immediately, no deploy. Only three tickets exist however easy you make
+them, so a higher rate does not make the prize less rare — it just means the
+contest actually finishes inside your session.
 
 **Stop the contest early**, before all three tickets are found:
 ```
 curl -X POST -H "Authorization: Bearer YOUR_KEY" \
   -d '{"name":"disable_event_capes","value":true}' "https://WORKER/api/admin/flags"
 ```
-And to start it again:
+This is the emergency stop — it works without a deploy, so it does not
+disconnect anyone. Undo it by deleting the flag:
 ```
 curl -X DELETE -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/flags?name=disable_event_capes"
 ```
