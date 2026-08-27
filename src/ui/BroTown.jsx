@@ -187,7 +187,7 @@ import { SKIN_CATALOG, PANTS_CATALOG, SHOES_CATALOG, getSkin, setSkin, getPants,
 import { HAIR_COLOR_CATALOG, getHairColor, setHairColor } from '@/rendering/traits/hairColorCatalog.js';
 import { HAT_COLOR_CATALOG, hatColorsFor, getHatColor, setHatColor } from '@/rendering/traits/hatColorCatalog.js';
 import { EYE_COLOR_CATALOG, getEyeColor, setEyeColor } from '@/rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
-import { HEIGHT_CATALOG, getBuildHeight, setBuildHeight, getBuildFrame, wireHeight, wireFrame } from '@/rendering/traits/buildCatalog.js'; /* v2.3.1953; v2.3.1996: frame locked to medium — no FRAME_CATALOG/setBuildFrame here */
+import { HEIGHT_CATALOG, DEFAULT_HEIGHT, getBuildHeight, setBuildHeight, getBuildFrame, wireHeight, wireFrame } from '@/rendering/traits/buildCatalog.js'; /* v2.3.1953; v2.3.1996: frame locked to medium — no FRAME_CATALOG/setBuildFrame here */
 import { getShirtArt, getArt, artHasInk } from '@/rendering/traits/playerArt.js'; /* v2.3.1939; v2.3.1940 + pants/tattoo */
 import { getPattern } from '@/rendering/traits/patternCatalog.js'; /* v2.3.1941 */
 import { FACIALHAIR_COLOR_CATALOG, getFacialHairColor, setFacialHairColor } from '@/rendering/traits/facialHairColorCatalog.js';
@@ -2123,6 +2123,56 @@ export var BroTown = function BroTown(_ref0) {
     if (recolorEnabled('hat')) { var htc = rpick(hatColorsFor(ht)); setHatColor(htc); setHatColorSel(htc); }
     if (recolorEnabled('eyes')) { var ec = rpick(EYE_COLOR_CATALOG); setEyeColor(ec); setEyeColorSel(ec); }
   };
+  /* ═══ v2.3.2036: RESET — BACK TO THE BARE DEFAULT ═══
+   *
+   * Owner: "add a reset button so you can make the character back to the
+   * default", and then, plainly, "bald shirtless character is what I wanted
+   * for reset".
+   *
+   * These are the stores' OWN defaults, not a snapshot: hair, shirt, headwear
+   * and beard are 'none' (hairCatalog.js, shirtCatalog.js, etc.), and every
+   * colour is 'default', meaning the sprite's native paint.
+   *
+   * IT IS NOT AS NAKED AS IT SOUNDS, which is worth writing down because the
+   * word "shirtless" invites the obvious worry. Skin, pants and shoes are
+   * RECOLOUR-only catalogs -- their 'default' is the base sprite's own
+   * colours, and the trousers and boots are painted into the body art itself.
+   * There is no 'none' to set them to, so reset cannot undress the legs.
+   *
+   * Deliberately CONSTANTS rather than the opening look. An earlier draft
+   * snapshotted the look when the creator opened and restored that. For a
+   * brand-new player the two are identical -- a fresh character opens bald and
+   * shirtless -- which is why they can look like the same feature. They part
+   * company for a returning player, whose saved character loads first: a
+   * snapshot would hand back the look they arrived in, and constants hand back
+   * a blank slate. The owner asked for the blank slate.
+   *
+   * Both halves of every trait are written -- the catalog store AND the React
+   * selection state -- exactly as randomizeAppearance does above. Writing only
+   * the store leaves the picker's tick on the old tile; writing only the state
+   * leaves the character unchanged. That is how this goes subtly wrong, so the
+   * pairs are kept literally side by side.
+   *
+   * NOT COVERED, said plainly rather than implied: painted tattoos and shirt
+   * or pants designs. Those live in their own canvases behind the designer
+   * modal, not in this trait state, and silently wiping someone's drawing from
+   * a button labelled Reset would be worse than leaving it. */
+  var resetLook = function () {
+    setSkin('default'); setSkinSel('default');
+    setPants('default'); setPantsSel('default');
+    setShoes('default'); setShoesSel('default');
+    setBuildHeight(DEFAULT_HEIGHT); setHeightSel(DEFAULT_HEIGHT);
+    setHair('none'); setHairSel('none');
+    setHairColor('default'); setHairColorSel('default');
+    setFacialHair('none'); setFacialHairSel('none');
+    setFacialHairColor('default'); setBeardColorSel('default');
+    setShirt('none'); setShirtSel('none');
+    setShirtColor('default'); setShirtColorSel('default');
+    setHeadwear('none'); setHeadwearSel('none');
+    setHatColor('default'); setHatColorSel('default');
+    setEyeColor('default'); setEyeColorSel('default');
+  };
+
   /* v2.3.711: RANDOMIZE rolls a few quick looks before settling -- the
      slot-machine beat makes the button feel fun instead of a dry reroll. */
   var randomizeWithFlair = function () {
@@ -8401,7 +8451,7 @@ export var BroTown = function BroTown(_ref0) {
     });
   }
   if (showNameModal) {
-    return /*#__PURE__*/React.createElement(NameModal, { _dragRotX: _dragRotX, _swatchTile: _swatchTile, _thumbTile: _thumbTile, _buildTile: _buildTile, activeCat: activeCat, heightSel: heightSel, setHeightSel: setHeightSel, frameSel: frameSel, setFrameSel: setFrameSel, beardColorSel: beardColorSel, facialHairSel: facialHairSel, hairColorSel: hairColorSel, hairSel: hairSel, hatColorSel: hatColorSel, eyeColorSel: eyeColorSel, setEyeColorSel: setEyeColorSel, headwearSel: headwearSel, joinTown: joinTown, nameInput: nameInput, pantsSel: pantsSel, previewCanvasRef: previewCanvasRef, previewDir: previewDir, previewZoom: previewZoom, setPreviewZoom: setPreviewZoom, randomizeWithFlair: randomizeWithFlair, rollRandomName: rollRandomName, rotatePreview: rotatePreview, setActiveCat: pickPreviewCat, setBeardColorSel: setBeardColorSel, setFacialHairSel: setFacialHairSel, setHairColorSel: setHairColorSel, setHairSel: setHairSel, setHatColorSel: setHatColorSel, setHeadwearSel: setHeadwearSel, setNameInput: setNameInput, setPantsSel: setPantsSel, setShirtColorSel: setShirtColorSel, setShirtSel: setShirtSel, setShoesSel: setShoesSel, setSkinSel: setSkinSel, shirtColorSel: shirtColorSel, shirtSel: shirtSel, shoesSel: shoesSel, skinSel: skinSel });
+    return /*#__PURE__*/React.createElement(NameModal, { _dragRotX: _dragRotX, _swatchTile: _swatchTile, _thumbTile: _thumbTile, _buildTile: _buildTile, activeCat: activeCat, heightSel: heightSel, setHeightSel: setHeightSel, frameSel: frameSel, setFrameSel: setFrameSel, beardColorSel: beardColorSel, facialHairSel: facialHairSel, hairColorSel: hairColorSel, hairSel: hairSel, hatColorSel: hatColorSel, eyeColorSel: eyeColorSel, setEyeColorSel: setEyeColorSel, headwearSel: headwearSel, joinTown: joinTown, nameInput: nameInput, pantsSel: pantsSel, previewCanvasRef: previewCanvasRef, previewDir: previewDir, previewZoom: previewZoom, setPreviewZoom: setPreviewZoom, randomizeWithFlair: randomizeWithFlair, resetLook: resetLook, rollRandomName: rollRandomName, rotatePreview: rotatePreview, setActiveCat: pickPreviewCat, setBeardColorSel: setBeardColorSel, setFacialHairSel: setFacialHairSel, setHairColorSel: setHairColorSel, setHairSel: setHairSel, setHatColorSel: setHatColorSel, setHeadwearSel: setHeadwearSel, setNameInput: setNameInput, setPantsSel: setPantsSel, setShirtColorSel: setShirtColorSel, setShirtSel: setShirtSel, setShoesSel: setShoesSel, setSkinSel: setSkinSel, shirtColorSel: shirtColorSel, shirtSel: shirtSel, shoesSel: shoesSel, skinSel: skinSel });
   }
   return /*#__PURE__*/React.createElement(React.Fragment, null, /* v2.3.1925: the mystery-reveal ceremony.  Mounted at the top of the in-world fragment and ALWAYS mounted — it renders null until a hidden grade arrives on the loot credit, and mounting it conditionally would mean the queue it subscribes to could fill before anyone was listening. */ /*#__PURE__*/React.createElement(RevealOverlay, null), showIntro && /*#__PURE__*/React.createElement(IntroVideo, {
     waitFor: introWaitRef.current,

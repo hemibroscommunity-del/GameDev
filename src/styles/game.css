@@ -968,7 +968,31 @@ input{font-family:inherit}
    upper space instead of leaving a dead gap under the version line. */
 .bt-cc-namewrap{margin-top:auto}
 .bt-cc-actions{display:grid;grid-template-columns:1fr;gap:8px}
+/* v2.3.2036: Reset STACKS under Randomize rather than sitting beside it.
+   Side by side was the first attempt and it was wrong for a measured reason:
+   this whole action column is 172px wide, not the ~340 the screenshot
+   suggested. Reset took 53px plus the gap, leaving Randomize 121px, of which
+   the 30px icon and padding left 62px of label -- so "Randomize Look" wrapped
+   onto two lines. Shrinking Reset twice did not recover it, because the
+   problem was never Reset's width.
+   Making my own change degrade the control next to it is not a trade worth
+   taking for a button that is used once in a while, so Reset gets its own
+   full-width row and is styled quieter than the hero above it. */
+.bt-cc-reset{
+  min-height:40px;font-size:12px;letter-spacing:.04em;
+  background:rgba(255,255,255,.05);border:1px solid rgba(238,242,235,.18);
+  color:var(--ui-text-dim,#96A2A0);box-shadow:none;
+}
+.bt-cc-reset:active{transform:scale(.98);background:rgba(255,255,255,.09)}
 .bt-cc-actions>button{min-height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;font-family:'Source Sans 3',sans-serif;font-size:13px;font-weight:700;letter-spacing:.02em;padding:6px 10px}
+/* v2.3.2035: LEFT AT 20.  This class has two users -- the name-reroll die
+   inside the name input and the Randomize Look icon -- and only the owner's
+   "make the randomize look icon larger" applies to one of them.  Sizing the
+   shared class looked right and was not: the die carries its own inline 22px
+   so it silently ignored the change, which means the rule would have become
+   a trap that fires whenever someone tidies that inline style away.  The
+   Randomize icon now states its own size inline, the same way the die does
+   (NameModal.jsx), so each says what it is. */
 .bt-cc-action-icon{width:20px;height:20px;object-fit:contain;pointer-events:none}
 @media (max-height:720px){
   .bt-cc-cta{display:none}
@@ -1771,6 +1795,28 @@ input{font-family:inherit}
    pad that grew with them would take the room back off the tiles every time
    you changed category. Anything past two rows scrolls within the pad. */
 .bt-cc-colors{flex:0 0 auto;display:flex;flex-direction:column;min-width:0}
+/* v2.3.2035: the DEFAULT colour button, above the swatches.  Fixed height so
+   the row cannot vary with font metrics -- the constant-sheet-height
+   guarantee (v2.3.1252) is the reason every row in this drawer is pinned, and
+   a text row that grew with a longer label would reintroduce exactly the
+   stage-resize v2.3.1253 chased out.  Deliberately NOT swatch-shaped: it is
+   the absence of a colour choice, and anything square-and-coloured here would
+   claim to BE a colour. */
+.bt-cc-colors-head{flex:0 0 auto;height:22px;display:flex;align-items:center;justify-content:center;margin:0 0 4px}
+.bt-cc-defcolor{
+  height:22px;padding:0 14px;border-radius:11px;cursor:pointer;
+  font:600 12px/1 inherit;letter-spacing:.04em;text-transform:uppercase;
+  background:rgba(255,255,255,.05);border:1px solid rgba(238,242,235,.20);
+  color:var(--ui-text-dim,#96A2A0);
+  transition:background 90ms cubic-bezier(.2,.8,.2,1),color 90ms cubic-bezier(.2,.8,.2,1),border-color 90ms cubic-bezier(.2,.8,.2,1);
+}
+/* The picked state matches how a chosen swatch reads (brass ring + lift), so
+   "Default" and a colour tile are visibly the same KIND of choice. */
+.bt-cc-defcolor--on{
+  background:var(--ui-brass-soft);border-color:var(--ui-brass);color:var(--ui-text);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 1px 5px rgba(5,8,10,.28);
+}
+.bt-cc-defcolor:active{transform:scale(.97)}
 .bt-cc-colors-row{display:grid;grid-template-columns:repeat(auto-fill,var(--cc-swatch));grid-auto-rows:var(--cc-swatch);gap:5px;justify-content:center;align-content:start;height:calc(var(--cc-swatch)*2 + 9px);min-width:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;touch-action:pan-y;padding:2px;scrollbar-width:none;box-sizing:border-box}
 .bt-cc-colors-row::-webkit-scrollbar{display:none}
 .bt-cc-colors-row>*{flex:none!important;width:var(--cc-swatch)!important;height:var(--cc-swatch)!important}
