@@ -34,6 +34,7 @@ import {
 // escrow-at-placement settlement under one DO's input gates.  Methods
 // are mixed into the class below (see market.js header for why).
 import { marketMethods } from './market.js';
+import { shopMethods } from './shop.js';   /* v2.3.2047: Shopkeeper Bro's public pile */
 // v2.3.1119 (heavy-systems PR4): server-settled trades -- the relay
 // handshake stays, but the room intercepts it and moves the goods
 // itself (see trade.js header for the duplication engine this kills).
@@ -308,6 +309,13 @@ export const CHAT_RELAY = {
 // v2.3.1151: exported so test/wire-audit.test.mjs can verify every
 // server-emitted type is registered here (rule 13's mechanical check).
 export const PRIVILEGED_EVENTS = new Set([
+  /* v2.3.2047: the shopkeeper's two answers. Both are SERVER-EMITTED and
+     both carry money -- `shop_result` names coins paid and `shop_state` is
+     the public pile every client prices against. Forgeable, they would let
+     one player fake a sale receipt on another's screen or advertise a pile
+     that is not there, so they are denied on the relay like every other
+     server-emitted type (CLAUDE.md wire section). */
+  'shop_state', 'shop_result',
   // Pool / progression mirrors
   'player_state', 'player_died',
   // 'player_respawned' intentionally OMITTED: the client broadcasts it
@@ -4142,6 +4150,46 @@ export class GameRoom {
         }
         break;
 
+      /* ═══ v2.3.2047: SHOPKEEPER BRO ═══
+         Three messages, all settled server-side. The client never computes a
+         price or moves a coin: it asks, and the authoritative player_state
+         echo that follows is what its bag and purse become (handoff rule 20).
+         A forged price is therefore not a thing that exists to forge. */
+      case 'shop_list':
+        if (session.id) {
+          this._shopList().then((r) => this._shopSend(session.id, 'shop_state', r))
+            .catch(() => { /* a failed read leaves the panel on its last list */ });
+        }
+        break;
+
+      case 'shop_sell':
+      case 'shop_buy': {
+        if (!session.id) break;
+        const _sp = msg.payload || msg;
+        const _ps = this.playerState[session.id];
+        if (!_ps) break;
+        const _sid = session.id, _kind = msg.type;
+        (_kind === 'shop_sell'
+          ? this._shopSell(_ps, _sp.key, _sp.qty)
+          : this._shopBuy(_ps, _sp.key, _sp.qty)
+        ).then(async (r) => {
+          this._shopSend(_sid, 'shop_result', Object.assign({ kind: _kind }, r));
+          if (r && r.ok) {
+            /* The bag and purse the client must end up with, from the server's
+               own copy -- the same echo every other economy path leans on. */
+            const ws = this._wsBySessionId(_sid);
+            if (ws) this._sendPlayerState(ws, _sid);
+          }
+          /* Everyone's view of the pile, not just this player's: it is a
+             PUBLIC inventory, so a sale has to change what the next player
+             sees without them reopening the panel. */
+          this.broadcastAll({ type: 'shop_state', payload: await this._shopList() });
+        }).catch(() => {
+          this._shopSend(_sid, 'shop_result', { ok: false, error: 'Shop unavailable' });
+        });
+        break;
+      }
+
       case 'loot_pickup':
         // Client requests to pick up a loot pile.  Server validates
         // (range, recipient, single-claim) and emits a private
@@ -4816,6 +4864,7 @@ export class GameRoom {
 Object.assign(GameRoom.prototype, broVerifyMethods); /* v2.3.1576 */
 Object.assign(GameRoom.prototype, eventCapeMethods); /* v2.3.2026 */
 Object.assign(GameRoom.prototype, marketMethods);
+Object.assign(GameRoom.prototype, shopMethods);   /* v2.3.2047 */
 // v2.3.1119: trade settlement mixin (same pattern).
 Object.assign(GameRoom.prototype, tradeMethods);
 // v2.3.1121: duel machine mixin.

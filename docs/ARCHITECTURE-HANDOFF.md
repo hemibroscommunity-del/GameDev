@@ -71,6 +71,7 @@ extended.
    | `trade2wpn:<pid>:<seq>` | `{pid, sid, seq, weapon, ts}` weapon escrowed into a live trade window | trading.md |
    | `harden_ledger:<pid>` | last 50 hardening attempts (§17.5) | hardening.md |
    | `harden_h5_log` | global H5-mint timestamps, 90-day window (INV-27) | hardening.md |
+   | `shop_stock` | Shopkeeper Bro's ONE public pile: `{itemKey: qty}`; his buy price decays with the qty held | shop.js (v2.3.2047) |
    | `botstat:<playerId>` | anti-bot evidence: counters, hour caps, replay-hash tail, shadow flags | anticheat-botfp.md |
    | `device:<deviceId>` | identity list per device nonce (fleet correlation) | anticheat-botfp.md |
    | `frozen:<pid>` | `{ts, note}` operator freeze — join gate | admin.md |

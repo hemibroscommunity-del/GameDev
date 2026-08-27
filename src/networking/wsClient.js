@@ -2802,6 +2802,13 @@ export function setupWebSocket(ctx) {
           ws.send(JSON.stringify(msg));
           return;
         }
+        /* v2.3.2047: Shopkeeper Bro. Three asks, no answers -- the client
+           never states a price or a coin total, it names an item and a
+           quantity and takes whatever the server echoes back. */
+        if (msg.type === 'shop_list' || msg.type === 'shop_sell' || msg.type === 'shop_buy') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
         if (msg.type === 'stat_allocate') {
           ws.send(JSON.stringify(msg));
           return;
