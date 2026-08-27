@@ -2746,6 +2746,16 @@ export function setupWebSocket(ctx) {
           ws.send(JSON.stringify(msg));
           return;
         }
+        /* v2.3.2026: opening a golden ticket.  This list is an ALLOWLIST — a
+           type with no line here is silently dropped and the feature runs on
+           nothing, which is what TRAPS #18 and the harvest handshake below
+           record.  The redeem is the only way a cape is granted, so a missing
+           case would mean tickets that never open, in public, during the
+           event. */
+        if (msg.type === 'cape_redeem') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
         /* v2.3.1704: THE HARVEST HANDSHAKE'S MISSING HALF.  TRAPS #18 again,
            and this one had been silently dead since v2.3.229: the client has
            always sent `extraction_start` (lifeSkillRewards.js startExtraction)

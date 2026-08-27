@@ -101,6 +101,8 @@ import { gambleMethods } from './gamble.js';
 import { inboxMethods } from './inbox.js';
 // v2.3.1166 (P4 decomposition): cooking / eating / NPC shop -- see cooking.js.
 import { cookingMethods } from './cooking.js';
+// v2.3.2026: event capes -- golden ticket drop + redemption. See eventcapes.js.
+import { eventCapeMethods } from './eventcapes.js';
 // v2.3.1168 (P4 decomposition): gather nodes + harvest + extraction validation -- see gathering.js.
 import { gatheringMethods } from './gathering.js';
 // v2.3.1169 (P4 decomposition): equipment store (sanitizers/sell/forge/equip) -- see gear.js.
@@ -4218,6 +4220,13 @@ export class GameRoom {
         }
         break;
 
+      case 'cape_redeem':
+        /* v2.3.2026: the player tapped Open on a golden ticket in the bag.
+           The client never consumes it or grants the cape -- see the
+           firemaking incident in cooking.js, where a client-side consume with
+           no wire message let one log light unlimited campfires. */
+        this._handleCapeRedeem(session, data);
+        break;
       case 'eat_request':
         // Player clicked Eat on a cooked_fish_* inventory item.
         // Server validates ownership, consumes 1, heals hp, emits
@@ -4789,6 +4798,7 @@ export class GameRoom {
 // v2.3.1118: mix the marketplace methods into GameRoom (see the
 // market.js header for the fold rationale + re-extraction path).
 Object.assign(GameRoom.prototype, broVerifyMethods); /* v2.3.1576 */
+Object.assign(GameRoom.prototype, eventCapeMethods); /* v2.3.2026 */
 Object.assign(GameRoom.prototype, marketMethods);
 // v2.3.1119: trade settlement mixin (same pattern).
 Object.assign(GameRoom.prototype, tradeMethods);
