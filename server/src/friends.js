@@ -219,6 +219,14 @@ export const friendsMethods = {
       return this._friendsSend(from, 'friend_error', { reason: 'not-friends', target: to });
     }
     const wire = { from, fromName: this._friendsNameOf(from), text, ts: Date.now() };
+    /* v2.3.1981: a mute silences EVERY lane, including this one, and the
+       line is dropped rather than backlogged -- a mute that still filled
+       your inbox for the next login would be a mute in name only
+       (chatmod.js).  Remembered first, because a DM is the lane where the
+       nastiest things get said and the report path can only quote lines
+       the server actually saw. */
+    this._chatModRemember(from, text, this.playerState[from] && this.playerState[from].z, 'dm');
+    if (this._chatModMuted(to, from)) return;
     if (!this._friendsSend(to, 'friend_dm', wire)) {
       const box = (await this.state.storage.get('friend_msg:' + to)) || [];
       box.push(wire);

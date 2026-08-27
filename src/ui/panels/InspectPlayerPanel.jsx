@@ -3,6 +3,10 @@ import { BT_AUDIO, PVP_THREAT_BASE_COUNTDOWN, PVP_THREAT_COOLDOWN, REPUTATION, Z
 import { _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
+/* v2.3.1981: server-backed mute + the report send (server/src/chatmod.js).
+   setMuted still writes the localStorage list this panel's mutedList prop
+   is built from, so nothing here changed shape — it just persists now. */
+import { setMuted, reportPlayer, chatMuteSettled } from '@/game/chatMute.js';
 /* v2.3.1235: Checkpoint B — real pixel-portrait generator + the color-id →
    RGB target transforms it expects (same set the BottomDashboard player
    card uses). */
@@ -95,6 +99,16 @@ export function InspectPlayerPanel(props) {
   var _pp = React.useState(null);
   var genPortrait = _pp[0],
     setGenPortrait = _pp[1];
+  /* v2.3.1981: the report row's two states — collapsed to one line, or
+     open showing the reason chips.  Kept in the panel (not in S) because
+     it is pure UI and must reset when the card closes, which it does:
+     BroTown unmounts this component with `inspectPlayer &&`. */
+  var _rp = React.useState(false);
+  var reportOpen = _rp[0],
+    setReportOpen = _rp[1];
+  var _rs = React.useState(false);
+  var reportSent = _rs[0],
+    setReportSent = _rs[1];
   React.useEffect(function () {
     var alive = true;
     setGenPortrait(null);
@@ -665,23 +679,21 @@ export function InspectPlayerPanel(props) {
         color: isMuted ? '#D8AA58' : '#B6C1BE'
       },
       onClick: function onClick() {
-        if (isMuted) {
-          var updated = mutedList.filter(function (m) {
-            return m !== inspectPlayer.id;
-          });
-          setMutedList(updated);
-          try {
-            localStorage.setItem('bt_muted', JSON.stringify(updated));
-          } catch (e) {}
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Unmuted', '#D8A94D');
-        } else {
-          var _updated2 = [].concat(_toConsumableArray(mutedList), [inspectPlayer.id]);
-          setMutedList(_updated2);
-          try {
-            localStorage.setItem('bt_muted', JSON.stringify(_updated2));
-          } catch (e) {}
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Muted', '#D8A94D');
-        }
+        /* v2.3.1981: the mute goes to the WORKER now (chatMute.js
+           setMuted), which writes it to Durable Object storage against
+           this player's `bp_` identity and stops fanning the muted
+           player's chat out to this socket at all.  setMuted still
+           writes the localStorage list first — that is the prediction,
+           the legacy fallback against a worker without caps.chatMute,
+           and what this panel's `mutedList` prop is built from — so the
+           button behaves identically either way, it just no longer
+           forgets on the next device. */
+        var _mS = stateRef.current;
+        var _mNext = setMuted(_mS, inspectPlayer.id, !isMuted, inspectPlayer.name);
+        setMutedList(_mNext);
+        var _mDurable = chatMuteSettled(_mS);
+        pushDmgPopup(_mS, _mS.player.x, _mS.player.y - 30,
+          isMuted ? 'Unmuted' : (_mDurable ? 'Muted — their chat stops here' : 'Muted'), '#D8A94D');
       }
     }, isMuted ? '🔇 Muted' : '🔇 Mute');
   }(), function (_ZONES$stateRef$curre, _stateRef$current39) {
@@ -725,7 +737,91 @@ export function InspectPlayerPanel(props) {
         }
       }
     }, isBlocked ? '🚫 Blocked' : '🚫 Block');
-  }()), /* v2.3.1235: rollout micro-fix §1 — sticky 24px fade pinned to the
+  }()), /* ═══ v2.3.1981: REPORT ═══
+    Until now a player being harassed on a public server had exactly one
+    tool — hide it from themselves — and no way to tell the operator
+    anything at all.  This sends a report the WORKER writes to storage
+    with its own copy of what the reported player said (chatmod.js): the
+    payload carries only who and why, so nothing typed here can end up
+    as evidence against somebody else.
+    Two taps by design (row opens -> reason chip commits): a one-tap
+    report next to Mute would be mis-fired constantly on a 390px phone,
+    and the reason is what makes the record actionable.  Hidden entirely
+    against a worker that cannot store it, for the reason in
+    chatMute.js — a report button that quietly does nothing is worse
+    than no button. */
+  chatMuteSettled(stateRef.current) && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 6
+    }
+  }, !reportOpen && /*#__PURE__*/React.createElement("button", {
+    style: Object.assign({}, LS_SECONDARY, {
+      width: '100%',
+      color: reportSent ? '#8D9B98' : '#B6C1BE',
+      fontSize: 11
+    }),
+    disabled: reportSent,
+    onClick: function onClick() {
+      if (!reportSent) setReportOpen(true);
+    }
+  }, reportSent ? '⚑ Reported' : '⚑ Report to moderators'), reportOpen && /*#__PURE__*/React.createElement("div", {
+    /* The row lives in the card's SCROLL body, and on a 390x844 phone it
+       opens below the fold — measured: only the first two chips were on
+       screen, with no cue that two more and a Cancel existed.  A callback
+       ref scrolls it into view once, on mount. */
+    ref: function (el) {
+      if (el && el.scrollIntoView) {
+        try { el.scrollIntoView({ block: 'nearest' }); } catch (e) {}
+      }
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#8D9B98',
+      marginBottom: 6
+    }
+  }, "Why are you reporting ", inspectPlayer.name, "?"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 6,
+      flexWrap: 'wrap'
+    }
+  }, [['spam', 'Spam'], ['abuse', 'Abuse'], ['harassment', 'Harassment'], ['cheating', 'Cheating']].map(function (r) {
+    return /*#__PURE__*/React.createElement("button", {
+      key: r[0],
+      style: {
+        flex: '1 1 45%',
+        minHeight: 44,
+        padding: '0 8px',
+        borderRadius: 10,
+        fontSize: 11,
+        fontWeight: 700,
+        cursor: 'pointer',
+        border: '1px solid rgba(229,237,233,0.20)',
+        background: '#293B41',
+        color: '#B6C1BE'
+      },
+      onClick: function onClick() {
+        var _rS = stateRef.current;
+        /* The ack (chat_report_ack -> gameEvents.js) is the real
+           confirmation; this only closes the row so the card can't be
+           used to fire a second one on the same tap-through. */
+        reportPlayer(_rS, inspectPlayer.id, r[0]);
+        setReportOpen(false);
+        setReportSent(true);
+      }
+    }, r[1]);
+  })), /*#__PURE__*/React.createElement("button", {
+    style: Object.assign({}, LS_SECONDARY, {
+      width: '100%',
+      marginTop: 6,
+      fontSize: 11,
+      color: '#8D9B98'
+    }),
+    onClick: function onClick() {
+      setReportOpen(false);
+    }
+  }, "Cancel"))), /* v2.3.1235: rollout micro-fix §1 — sticky 24px fade pinned to the
     visible bottom of the scroll body; visible only while content remains
     below (showFade), so reachability is signalled without a scrollbar.
     pointerEvents none — purely a visual cue. */

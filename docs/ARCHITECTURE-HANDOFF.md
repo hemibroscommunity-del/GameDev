@@ -85,6 +85,8 @@ extended.
    | `metrics:<yyyymmdd>` | daily economy snapshot (ring of 30) | liveops.md |
    | `friends:<pid>` | `{list, reqIn, reqOut}` mutual-friend graph + pending requests | friends.md |
    | `friend_msg:<pid>` | offline DM backlog, capped 50, cleared on join delivery | friends.md |
+   | `chat_mute:<pid>` | `{list: {mutedId: {name, at}}, at}` the muter's own chat-mute list; loaded into a null-proto map + a Set on join and enforced on the FAN-OUT (tick.js), so a muted line never reaches the socket | chat-moderation.md |
+   | `chat_report:<id>` | one abuse report: `{at, reason, by, byName, target, targetName, zone, targetOnline, lines}` — `lines` is the SERVER's copy of the recent chat, never the reporter's claim. Pruned past `CHATMOD.RETAIN_MS` on the admin read | chat-moderation.md |
    | `bro_link:<pid>` | `{tokenId, address, ts}` last verified Hemi Bro ownership link; re-earned after RECHECK_MS | broverify.js |
    | `chain_score:<pid>` | `{milestone, nonce, level, series, kills, txHash, at}` last score attestation written to the BroTownScores contract on Hemi. `series` (v2.3.1671) is the `{skillName: level}` map that was written, so the next checkpoint can send only what CHANGED | progression-onchain.md |
 

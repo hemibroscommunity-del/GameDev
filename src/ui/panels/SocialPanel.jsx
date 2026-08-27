@@ -1,4 +1,7 @@
 import React from 'react';
+/* v2.3.1981: unmuting is a server mutation now (server/src/chatmod.js);
+   setMuted keeps writing the localStorage mirror this panel reads. */
+import { setMuted } from '@/game/chatMute.js';
 
 /* ═══ SocialPanel — friends / muted / blocked lists ═══ */
 /* v2.3.860: moved verbatim from BroTown.jsx's JSX tree (UI-panel
@@ -290,7 +293,7 @@ export function SocialPanel(props) {
       color: '#8D9B98',
       marginBottom: 6
     }
-  }, "Muted players' chat appears as [muted]. They can still interact with you."), /*#__PURE__*/React.createElement("div", {
+  }, "Muted players' messages don't reach you. Saved to your account, so it follows you between devices. They can still interact with you."), /*#__PURE__*/React.createElement("div", {
     style: wellStyle
   }, mutedList.length === 0 && /*#__PURE__*/React.createElement("div", {
     style: emptyStyle
@@ -333,13 +336,12 @@ export function SocialPanel(props) {
         flexShrink: 0
       },
       onClick: function onClick() {
-        var updated = mutedList.filter(function (m) {
-          return m !== mid;
-        });
-        setMutedList(updated);
-        try {
-          localStorage.setItem('bt_muted', JSON.stringify(updated));
-        } catch (e) {}
+        /* v2.3.1981: unmute goes to the WORKER (chatMute.js setMuted),
+           which deletes the entry from chat_mute:<pid> and resumes fanning
+           that player's chat to this socket.  A local-only unmute against
+           a chatMute-capable worker would look like it worked and change
+           nothing — the worker would still be dropping the lines. */
+        setMutedList(setMuted(stateRef.current, mid, false));
       }
     }, "Unmute"));
   })))));

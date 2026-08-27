@@ -122,6 +122,11 @@ import { httpAuthMethods } from './httpauth.js';
 // cross-zone vitals HUD; memory-only, no combat/XP changes -- see party.js.
 import { partyMethods } from './party.js';
 import { friendsMethods } from './friends.js';
+/* v2.3.1981: server-side chat mute + abuse reports -- the mute list is a
+   storage fact enforced on the FAN-OUT (a muted line never reaches the
+   muter's socket), and a report is a durable record the operator reads
+   over the admin API.  See chatmod.js. */
+import { chatModMethods } from './chatmod.js';
 import { broVerifyMethods } from './broverify.js'; /* v2.3.1576: Hemi Bro ownership */
 // v2.3.1191 (P4 decomposition): the combat/damage core -- see combat.js.
 import { combatMethods } from './combat.js';
@@ -389,6 +394,14 @@ export const PRIVILEGED_EVENTS = new Set([
   // could paint a fake roster and a forged friend_dm a fake message.
   'friend_sync', 'friend_request_in', 'friend_accepted', 'friend_error',
   'friend_dm', 'friend_dm_backlog',
+  /* v2.3.1981: chat-moderation emissions (chatmod.js).  chat_mute_list is
+     the server's copy of who you have muted -- a forged one would let a
+     modified client paint (or silently EMPTY) somebody's mute list in
+     their own UI while the server kept enforcing something else, which is
+     the most confusing possible failure for a safety control.  A forged
+     chat_report_ack would tell a harassed player their report was filed
+     when nothing was written. */
+  'chat_mute_list', 'chat_report_ack',
   // Combat resolution
   'monster_attack', 'monster_hit', 'monster_kill', 'pvp_hit',
   /* v2.3.1640: display-only snowball. Carries no damage (the authoritative
@@ -3829,6 +3842,12 @@ export class GameRoom {
     const color = typeof p.color === 'string'
       ? p.color.slice(0, CHAT_RELAY.COLOR_MAX).replace(/[\x00-\x1f\x7f]/g, '') : '';
     msg.payload = { id: session.id, name, text, color };
+    /* v2.3.1981: remember the line AS SANITISED, for the report path.
+       This is the ONLY copy of a chat line a report may quote (chatmod.js
+       header): taking it here means the evidence is what the server
+       actually relayed, byte for byte, and never what a reporting client
+       claims somebody said. */
+    this._chatModRemember(session.id, text, (ps && ps.z) || null, 'room');
     return true;
   }
 
@@ -4282,6 +4301,18 @@ export class GameRoom {
         if (session.id) await this._handleFriendDm(session, msg.payload || msg);
         break;
 
+      /* v2.3.1981: chat moderation (chatmod.js).  Both are OWN validated
+         cases and neither rebroadcasts -- a mute is a private fact between
+         a player and the server, and a report must never be visible to the
+         person being reported (relaying it would make reporting dangerous,
+         which is the same as having no report button at all). */
+      case 'chat_mute':
+        if (session.id) await this._handleChatMute(session, msg.payload || msg);
+        break;
+      case 'chat_report':
+        if (session.id) await this._handleChatReport(session, msg.payload || msg);
+        break;
+
       case 'harden_weapon':
         // v2.3.1131: the §4.6c Blacksmith lottery -- gold cost, odds
         // ladder, temper pity bands, all server-rolled (hardening.js).
@@ -4585,6 +4616,11 @@ export class GameRoom {
       this._partyOnDisconnect(session.id); // v2.3.1185: mark 'away' (grace), don't remove -- reconnects are routine
       this._botfpFlush(session); // v2.3.1146: final botstat: write so evidence survives the disconnect
       this._clearPvpConsent(session.id); // v2.3.1116: consent doesn't survive a disconnect
+      /* v2.3.1981: drop the in-memory mute Set (chatmod.js).  The list
+         itself is durable in chat_mute:<pid> and reloads on the next
+         join -- this only releases the fan-out lookup copy, so a room
+         that has seen a thousand players does not hold a thousand Sets. */
+      this._chatModOnClose(session.id);
       this.broadcastAll({ type: 'player_leave', id: session.id });
       this.broadcastAll({ type: 'player_count', count: this.getPlayerCount() - 1 });
     }
@@ -4768,6 +4804,8 @@ Object.assign(GameRoom.prototype, combatMethods);
 Object.assign(GameRoom.prototype, amuletMethods);
 // v2.3.1323: mutual friendships + requests + DMs -- see friends.js.
 Object.assign(GameRoom.prototype, friendsMethods);
+// v2.3.1981: persistent chat mute + abuse reports -- see chatmod.js.
+Object.assign(GameRoom.prototype, chatModMethods);
 Object.assign(GameRoom.prototype, prog3Methods); /* v2.3.1659 */
 Object.assign(GameRoom.prototype, chainScoreMethods); /* v2.3.1664 */
 Object.assign(GameRoom.prototype, burstMethods); /* v2.3.1734 */
