@@ -217,13 +217,30 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const killed = await page.evaluate(() => (window.__btKillObservers ? window.__btKillObservers() : -1));
   rec.ok('the app\'s ResizeObservers are silenced, so only the watchdog can heal (guard)',
     killed > 0, { observersDisconnected: killed });
-  await page.evaluate(() => {
+  /* v2.3.2016: THE BREAK AND THE PROOF OF IT ARE ONE ROUND TRIP.
+     This used to break the canvas in one page.evaluate and measure it in the
+     next, which is a race the watchdog wins often enough to matter: it ticks
+     every 500ms, and if a tick lands inside that gap the canvas is already
+     healed by the time the guard reads it.  Observed once as
+     `canvasCssH: 615` — the HEALED height — reported as a guard failure while
+     every assertion after it passed.
+     That combination is the dangerous one, not the visible failure: had the
+     guard not been there, "a canvas stuck at a strip heals itself" would have
+     PASSED on a canvas that was never stuck, which is exactly the dead test
+     TRAPS §28 is about.  So the measurement moves inside the same evaluate as
+     the mutation, where no tick can run between them, and the guard keeps its
+     teeth. */
+  const broken = await page.evaluate(() => {
     const c = document.querySelector('canvas.brotown-canvas') || document.querySelector('canvas');
     window.__btResizeHealed = null;
     c.style.height = '150px';          /* the unsized-canvas default, and the owner's strip */
     c.height = Math.round(150 * (window.devicePixelRatio || 1));
+    /* Read back synchronously: getBoundingClientRect forces layout here and
+       now, so this is the size the canvas ACTUALLY took, not a size we assumed
+       it took. */
+    const cr = c.getBoundingClientRect();
+    return { canvasCssH: Math.round(cr.height), canvasCssW: Math.round(cr.width), canvasAttrH: c.height };
   });
-  const broken = await geometry(page);
   rec.ok('the canvas really is broken for the test (guard)',
     broken.canvasCssH !== null && broken.canvasCssH <= 160, broken);
 

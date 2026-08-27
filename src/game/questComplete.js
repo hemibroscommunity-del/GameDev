@@ -47,15 +47,52 @@ export function checkQuestComplete(S) {
     if (S._qcSeen.has(quest.id)) continue;
     S._qcSeen.add(quest.id);
 
+    /* ═══ v2.3.1985: IT HAS TO STILL BE THERE WHEN YOU LOOK UP ═══
+       Owner: "Make the quest complete message (like actually right after
+       getting the 4th snowman remains) stay longer on screen. It's there for
+       half a second or less."
+
+       It was, and for two compounding reasons, both of which came from these
+       two floaters being pushed with no ttl at all:
+
+       1. THE DEFAULT LIFE IS 1.5s, AND IT IS FADING FOR MOST OF IT.  The
+          renderer fades a popup to nothing over ttl * 0.8, so the last of
+          those 1.5 seconds is spent invisible and the readable window is
+          nearer one second.  This message fires the instant the last item
+          lands, which is mid-fight with your eyes on the monster — by the
+          time you look up it has gone.
+
+       2. A POPUP WITH NO TTL IS THE ONE THE BUFFER THROWS AWAY.  The live-
+          popup budget is 24 (MAX_LIVE_POPUPS, combatHelpers), and when it is
+          full the next push ages out the oldest popup that has no CUSTOM ttl
+          — precisely to protect the long-lived ones.  These had none, so
+          they were first in line, and killing the fourth snowman is exactly
+          the moment the buffer is full of damage numbers, XP and gold.  That
+          is the "half a second or less": not a fade, an eviction.
+
+       Naming a ttl fixes both — it is the longer life AND the eviction
+       exemption in one field.  4.5s matches the class of message this is
+       (the screen-space QUEST COMPLETED! banner the owner has already had
+       lengthened twice sits at 5.2s) without holding the world layer so long
+       that it overlaps the next kill.
+
+       `rise` is the other half and is why 4.5s is usable at all: at the
+       default 40 px/s these would climb 180 px in that time and be somewhere
+       over the trees.  12 px/s keeps them over the character who earned
+       them, drifting just enough to read as a floater rather than a fixture. */
+    var _qcTtl = 4.5;
+    var _qcRise = 12;
     /* Same floater the level-up uses, at the same height above the head, so
        the two read as the same class of event (owner: "similar to the level
        up text").  Gold, because it is an invitation to go somewhere rather
        than a stat that changed. */
-    pushDmgPopup(S, S.player.x, S.player.y - 70, 'Quest Complete!', '#f5c542');
+    pushDmgPopup(S, S.player.x, S.player.y - 70, 'Quest Complete!', '#f5c542',
+      { ttl: _qcTtl, rise: _qcRise });
     /* The instruction underneath is the useful half: "complete" means
        "collected", not "finished" — you still have to walk back. */
     pushDmgPopup(S, S.player.x, S.player.y - 55,
-      'Return to ' + (quest.npc || 'the quest giver'), '#ffe9bd');
+      'Return to ' + (quest.npc || 'the quest giver'), '#ffe9bd',
+      { ttl: _qcTtl, rise: _qcRise });
     try { if (BT_AUDIO && BT_AUDIO.beep) BT_AUDIO.beep(1180, 0.07, 0.10, 'sine'); } catch (e) { /* audio is never load-bearing */ }
   }
 }

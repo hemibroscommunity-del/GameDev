@@ -42,6 +42,9 @@ import { getShirtArt, getArt, artHasInk } from '@/rendering/traits/playerArt.js'
 import { getPattern } from '@/rendering/traits/patternCatalog.js';   /* v2.3.1941 */
 import { getEquip, syncArmorLayers, migrateTier1Armor } from '@/rendering/gearCatalog.js'; /* v2.3.1761 */
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
+/* v2.3.1982: the "the world is full" screen — plain DOM, see its header
+   for why it is not a React boot phase. */
+import { showRoomFull, hideRoomFull, roomFullOpen } from '@/ui/RoomFullScreen.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822 */
@@ -123,10 +126,74 @@ export function setupWebSocket(ctx) {
     var ws = null;
     var reconnectTimer = null;
     var reconnectDelay = 1000;
+    /* ═══ v2.3.1982: WAITING FOR A SPOT ═══
+       `_rfPending` is set by the room_full message and consumed by the
+       onclose that follows it (the worker sends, then closes 4009), so the
+       close handler can tell "the world is full" from "the cell dropped".
+       `_rfAttempts` climbs across attempts so the screen can show that
+       something is actually happening. */
+    var _rfPending = null;
+    var _rfAttempts = 0;
+    var RF_RETRY_MIN = 2000, RF_RETRY_MAX = 30000, RF_RETRY_DEFAULT = 5000;
+    /* ═══ WHY A FIXED CADENCE AND NOT BACKOFF ═══
+       Exponential backoff exists to protect a server that is struggling.
+       A full room is not struggling: at the cap the worker uses 0.16ms of
+       its 22ms tick (server/test/load-crowd.mjs) and a refusal costs it a
+       handshake, not a tick — the limit is the PLAYER'S download, and a
+       waiting player is downloading nothing.  What backoff would actually
+       buy is a worse product: back off to 10s+ and the freed slot sits
+       empty while the person who has waited longest happens to be mid-
+       sleep, so "who gets in" becomes arbitrary.  So: a fixed ~5s cadence
+       (the worker names it in `retryMs`, clamped here — never trust a wire
+       number) with ±20% jitter.  The jitter is the part that matters at
+       scale: after a worker deploy every waiter is released at the same
+       instant, and a lockstep herd would re-collide on every single retry
+       with the same losers losing each time. */
+    function _rfDelay(retryMs) {
+      var base = Math.max(RF_RETRY_MIN, Math.min(RF_RETRY_MAX,
+        (typeof retryMs === 'number' && isFinite(retryMs)) ? retryMs : RF_RETRY_DEFAULT));
+      return Math.round(base * (0.8 + Math.random() * 0.4));
+    }
+    /* Paint the screen and queue the next attempt.  Keeps retrying
+       FOREVER by design — the player is in a queue, not in an error. */
+    function _roomFullRetry(info) {
+      var d = _rfDelay(info && info.retryMs);
+      _rfAttempts++;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      reconnectTimer = setTimeout(function () { connect(); }, d);
+      showRoomFull({
+        count: info && info.count, cap: info && info.cap,
+        retryMs: d, nextAt: Date.now() + d, attempts: _rfAttempts,
+        onRetryNow: function () {
+          if (reconnectTimer) clearTimeout(reconnectTimer);
+          /* Re-arm the countdown before connecting: if the world is still
+             full the refusal will repaint it anyway, and if the tap lands
+             during a slow handshake the screen must not sit at 0s. */
+          showRoomFull({ count: info && info.count, cap: info && info.cap,
+            retryMs: RF_RETRY_DEFAULT, nextAt: Date.now() + RF_RETRY_DEFAULT,
+            attempts: _rfAttempts });
+          connect();
+        },
+      });
+    }
+    /* The world let us in (or we are talking to a worker that never
+       refuses).  Called from state_sync — the first message that only
+       exists for an ADMITTED session. */
+    function _roomFullCleared() {
+      _rfPending = null;
+      _rfAttempts = 0;
+      if (roomFullOpen()) hideRoomFull();
+    }
     function connect() {
       if (!WS_URL) {
         resolveRoom().then(function (room) {
-          WS_URL = WS_BASE + '/ws?room=' + encodeURIComponent(room);
+          /* v2.3.1982: `rf=1` opts this client IN to the room-full
+             refusal on the wire (join.js _roomFullRefusal).  It has to be
+             a URL param, not a caps flag: caps ride in state_sync and a
+             refused joiner never gets one.  An OLD worker ignores the
+             param and fails the handshake exactly as it always did, which
+             is the fallback this client still handles below. */
+          WS_URL = WS_BASE + '/ws?room=' + encodeURIComponent(room) + '&rf=1';
           S._currentRoom = room;
           connect();
         });
@@ -140,6 +207,14 @@ export function setupWebSocket(ctx) {
       }
       ws.onopen = function () {
         var _S$rpg, _S$rpg2, _S$rpg3, _S$rpgC, _S$rpgI, _S$rpgL, _S$rpgLV, _S$rpgXP, _S$rpgUT;
+        /* v2.3.1982: a refused joiner now gets a REAL upgraded socket that
+           the worker closes a beat later (join.js _roomFullRefusal), so
+           this handler can fire on a socket that is already CLOSING.
+           send() would then throw InvalidStateError out of an event
+           handler — an uncaught page error on the one path that is
+           supposed to stay calm — and there is nothing to join into
+           anyway.  Cheap, and true of any close that beats the open. */
+        if (ws.readyState !== 1) return;
         S._realtimeStatus = 'connected';
         reconnectDelay = 1000;
         ws.send(JSON.stringify({
@@ -611,6 +686,27 @@ export function setupWebSocket(ctx) {
               }
               break;
             }
+          case 'room_full':
+            {
+              /* v2.3.1982: the worker has no seat for us (join.js
+                 _roomFullRefusal).  It closes the socket immediately
+                 after this, so the work happens in onclose — all this
+                 does is record WHY, which is the whole difference
+                 between this and every other failed connection.  A
+                 deliberately separate type from join_rejected: an old
+                 client seeing an unknown join_rejected reason stops
+                 retrying for good (v2.3.1181), so the refusal could not
+                 ride that message without breaking the very players it
+                 is meant to help. */
+              _rfPending = {
+                count: +msg.count || 0,
+                cap: +msg.cap || 0,
+                retryMs: +msg.retryMs || 0,
+                at: Date.now(),
+              };
+              S._realtimeStatus = 'full';
+              break;
+            }
           case 'join_rejected':
             {
               /* v2.3.1148: the rejection REASON is load-bearing now.
@@ -700,6 +796,11 @@ export function setupWebSocket(ctx) {
                  the legacy client-side credit paths stay in place but
                  only run when the server hasn't claimed the job. */
               S._serverCaps = msg.caps || {};
+              /* v2.3.1982: we are IN.  state_sync is the first message
+                 that only exists for an admitted session, so this is the
+                 exact moment the "world is full" screen stops being true.
+                 Idempotent — a no-op on every ordinary join. */
+              _roomFullCleared();
               /* ═══ v2.3.1814: WEAR YOUR OWN FACE ═══
                  The character's name and look are stored against the identity
                  now (caps.charLock), and the worker echoes them here.  This is
@@ -2239,6 +2340,31 @@ export function setupWebSocket(ctx) {
           S._realtimeStatus = 'frozen';
           return;
         }
+        /* v2.3.1982: the world is full.  BOTH signals are accepted — the
+           room_full message we just received, and the 4009 close code —
+           because either one alone is enough to know, and a lost message
+           must not silently drop the player back into the anonymous
+           10-second loop this exists to replace.  This does NOT return
+           early the way frozen/reset do: it keeps retrying, forever, on
+           its own cadence, and enters the game the moment a slot frees. */
+        if (_rfPending || (event && event.code === 4009)) {
+          var _rf = _rfPending;
+          _rfPending = null;
+          S._realtimeStatus = 'full';
+          /* onopen pushed "<name> joined Bro Town!" into the chat log
+             optimistically, before the refusal could possibly be known.
+             That join never happened, and a player who waits out twenty
+             retries would otherwise walk in to twenty of them. */
+          try {
+            var _last = S.chatLog[S.chatLog.length - 1];
+            if (_last && _last.system && _last.text === S.myName + ' joined Bro Town!') {
+              S.chatLog = S.chatLog.slice(0, -1);
+              setChatLog(_toConsumableArray(S.chatLog));
+            }
+          } catch (e) {}
+          _roomFullRetry(_rf);
+          return;
+        }
         /* v2.3.1347: server closes 4005 after a character reset -- the
            character_reset_done handler is already reloading the page;
            don't race it with a reconnect (which would rejoin and
@@ -2931,6 +3057,12 @@ export function setupWebSocket(ctx) {
     return function () {
       stopBatchTimer();
       if (reconnectTimer) clearTimeout(reconnectTimer);
+      /* v2.3.1982: the retry loop this screen promises dies with this
+         effect, so the screen must not outlive it — a "trying again in
+         3s" that nothing is behind is the frozen screen we replaced.  If
+         the effect immediately re-runs (its deps are the pre-game
+         flags), the next refusal paints it again. */
+      hideRoomFull();
       clearInterval(_aliveTimer); /* v2.3.778 resync heartbeat */
       if (ws) {
         try {

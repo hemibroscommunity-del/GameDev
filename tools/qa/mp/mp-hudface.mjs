@@ -16,7 +16,22 @@
  */
 import * as H from './harness.mjs';
 
-const PORTRAIT = 'img[alt="Portrait"]';
+/* v2.3.2017: THE PORTRAIT MOVED, AND THIS FILE WENT QUIET RATHER THAN RED.
+ * It read `img[alt="Portrait"]`, which is IdentityStrip's portrait — and
+ * v2.3.1848/1849 took the head OUT of the band ("the band is a summary, not a
+ * head"), leaving that img rendered only in the hero sheet.  The HUD portrait
+ * the owner's report is about is now the nav rail's Character button, whose
+ * <img> carries alt="" ON PURPOSE: its parent is a button already labelled
+ * "Character", and alt text there makes a screen reader say it twice.
+ *
+ * So the selector could not be repaired by fixing the alt.  It is repointed at
+ * the rail, through `data-nav` — the destination's ID, not its LABEL.  The
+ * label is owner-facing copy and has already been rewritten (Hero ->
+ * Character); every one of the five scenarios TRAPS §29 covers died by
+ * selecting UI through a string the owner was free to rename, and this file
+ * was the fifth.  A missing hook now fails the guard on the first line instead
+ * of silently fingerprinting `null` against `null` and calling it a match. */
+const PORTRAIT = '.bt-navrail [data-nav="hero"] img';
 
 /* A cheap stable fingerprint of the data URL — the whole thing is ~10-40KB
    and comparing it wholesale would put a blob that size in every failure

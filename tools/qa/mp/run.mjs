@@ -17,17 +17,27 @@
  * Exits non-zero if any assertion failed, so it can gate a push.
  */
 import * as H from './harness.mjs';
+import { existsSync, statSync, readdirSync } from 'node:fs';   /* v2.3.1998: dist staleness check */
+import { join } from 'node:path';
 
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  roomfull: () => import('./mp-roomfull.mjs'), /* v2.3.1982: the 61st player is told why, waits visibly, and walks in when a seat opens */
+  hairmask: () => import('./mp-hairmask.mjs'), /* v2.3.1993: a hat presses the hair down, it does not shave the head */
   firstrun: () => import('./mp-firstrun.mjs'), /* v2.3.1975: a first-time player gets a whole screen, not a strip */
   shapelayer: () => import('./mp-shapelayer.mjs'), /* v2.3.1967: a placed shape can be picked up again, and layers move in the ART */
   crowd: () => import('./mp-crowd.mjs'), /* v2.3.1973: what a crowd in one zone costs the PHONE (BT_CROWD=n) */
   socialgrief: () => import('./mp-socialgrief.mjs'), /* v2.3.1970: chat length + forged senders, and the party invites nobody answers */
+  skinworld: () => import('./mp-skinworld.mjs'), /* v2.3.1994: the widened skin boxes, measured on the character in the world */
+  skinink: () => import('./mp-skinink.mjs'), /* v2.3.1994: the skin editor IS the shirt editor, the zoom stays put, and every skin pixel takes ink */
   bodyink: () => import('./mp-bodyink.mjs'), /* v2.3.1965: ink lands where the finger was, at any zoom */
   cosmrelay: () => import('./mp-cosmrelay.mjs'), /* v2.3.1961: a peer's look after the join frame — the self-heal, and a cosmetic changed mid-session */
   build: () => import('./mp-build.mjs'), /* v2.3.1953: height x frame — the shape, the boots, the plate, and the wire */
+  facetat: () => import('./mp-facetat.mjs'), /* v2.3.1991: does the face tattoo survive the run? */
+  questmsg: () => import('./mp-questmsg.mjs'), /* v2.3.1985: the quest-complete floater has to outlive a glance */
+  shirtarm: () => import('./mp-shirtarm.mjs'), /* v2.3.1984: the tee while jogging east */
+  chatfeed: () => import('./mp-chatfeed.mjs'), /* v2.3.1980: players-online count + the world chat feed */
   lockaim: () => import('./mp-lockaim.mjs'), /* v2.3.1979: a locked-on bow shot has to actually hit */
   lockon: () => import('./mp-lockon.mjs'), /* v2.3.1952: locking on raises block/dodge/special around the right joystick */
   tattoos: () => import('./mp-tattoos.mjs'), /* v2.3.1949: face + arm tattoos survive both server gates, end to end */
@@ -57,6 +67,7 @@ const SCENARIOS = {
   standinskin: () => import('./mp-standinskin.mjs'), /* v2.3.1788: attack stand-ins wear the walking skin */
   blockstance: () => import('./mp-blockstance.mjs'), /* v2.3.1798: shield size, planted stance, caret */
   blockarm: () => import('./mp-blockarm.mjs'), /* v2.3.1789: the raised shield is held by an arm */
+  shirtkeyline: () => import('./mp-shirtkeyline.mjs'), /* v2.3.1995: the tee's black outlines on the character preview */
   southshirt: () => import('./mp-southshirt.mjs'), /* v2.3.1873: shirt/skin sliver on the jog */
   xpfly: () => import('./mp-xpfly.mjs'), /* v2.3.1874: XP flies from the bro to its skill card */
   blockweapon: () => import('./mp-blockweapon.mjs'), /* v2.3.1864: the equipped weapon rides in the block's off hand */
@@ -147,6 +158,52 @@ const SCENARIOS = {
   desktopbox: () => import('./mp-desktopbox.mjs'), /* v2.3.1768: desktop is the same view, blown up — sits by `viewport` (its phone-side counterpart) rather than at the top of the list, so it does not collide with the frame-rate PRs' registry lines */
   viewport: () => import('./mp-viewport.mjs'), /* v2.3.1740: the game fills the phone */ /* v2.3.1734: element_burst survives the shim; the special costs the flat 25 */
 };
+
+/* ═══ v2.3.1998: IS dist/ OLDER THAN THE THING YOU CHANGED? ═══
+ *
+ * serveDist serves `dist`, NOT `public` and NOT `src`.  So a scenario run
+ * without a rebuild silently measures the PREVIOUS build, and it does not look
+ * like a stale test -- it looks like your change did not work.
+ *
+ * Cost, the day this was written: the v2.3.1995 shirt art was merged and the
+ * keyline scenario came back with three failures whose numbers were EXACTLY
+ * the pre-fix ones (12.4 / 16.3 / 12.6% black), because dist still held the
+ * old sheets.  Ten minutes went into "did the merge lose the art" before the
+ * md5s were compared.  Art is the worst case -- a source edit at least tends
+ * to fail loudly -- but the trap is the same for any file dist copies.
+ *
+ * Deliberately a WARNING and not a rebuild: `npm run build` is ~11s and some
+ * runs genuinely want the current dist (bisecting a build, or testing what
+ * shipped).  It names the newest offending file so the warning is actionable
+ * rather than a thing to scroll past. */
+function _distStaleness() {
+  const dist = join(H.REPO, 'dist', 'index.html');
+  if (!existsSync(dist)) return { missing: true };
+  const built = statSync(dist).mtimeMs;
+  let newest = null, newestAt = 0, n = 0;
+  const skip = new Set(['node_modules', '.git', 'dist', '.wrangler', 'out']);
+  const walk = (d) => {
+    let ents; try { ents = readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const e of ents) {
+      if (e.name.startsWith('.') || skip.has(e.name)) continue;
+      const full = join(d, e.name);
+      if (e.isDirectory()) { walk(full); continue; }
+      let st; try { st = statSync(full); } catch { continue; }
+      if (st.mtimeMs > built) { n++; if (st.mtimeMs > newestAt) { newestAt = st.mtimeMs; newest = full; } }
+    }
+  };
+  for (const root of ['public', 'src']) walk(join(H.REPO, root));
+  return { missing: false, n, newest, ageS: (Date.now() - built) / 1000 };
+}
+const _stale = _distStaleness();
+if (_stale.missing) {
+  console.log('\n  !! dist/index.html does not exist — run `npm run build` first.\n');
+} else if (_stale.n > 0) {
+  console.log(`\n  !! dist/ IS STALE: ${_stale.n} file(s) under public/ or src/ are newer than the last build.`);
+  console.log(`     newest: ${_stale.newest.replace(H.REPO + '/', '')}`);
+  console.log('     Scenarios serve dist/, so this run measures the PREVIOUS build.');
+  console.log('     Run `npm run build` unless you meant to test what is already built.\n');
+}
 
 const want = process.argv.slice(2).filter((a) => !a.startsWith('-'));
 const names = want.length ? want : Object.keys(SCENARIOS);

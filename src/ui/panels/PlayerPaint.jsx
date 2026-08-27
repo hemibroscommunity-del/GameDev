@@ -1,14 +1,14 @@
 import React from 'react';
 import {
-  ART_W, ART_H, ART_PALETTE, emptyArt, artColorAt, artWithCells,
+  ART_W, ART_H, ART_PALETTE, emptyArt, artColorAt,
   getArt, getSlots, setSlot, SLOT_COUNT,
 } from '@/rendering/traits/playerArt.js';
 import {
   TOOLS, toolById, lineCells, expandCells, mirrorCells,
   BRUSH_SIZES, LETTERS,
-} from '@/rendering/traits/artTools.js';   /* v2.3.1948; v2.3.1949 mirror */
+} from '@/rendering/traits/artTools.js';   /* v2.3.1948; v2.3.1949 mirror, back v2.3.2004 */
 import {
-  getDoc, saveDoc, appendOp, appendToDoc, copyDoc, replay,
+  getDoc, saveDoc, appendToDoc, copyDoc, replay,
 } from '@/rendering/traits/artOps.js';   /* v2.3.1967: the canvas is an op list */
 import {
   patternsFor, getPattern, setPattern, parsePattern, formatPattern, patternInk,
@@ -71,7 +71,9 @@ const TARGETS = {
   tattoo: {
     label: 'tattoo',
     pattern: null,
-    note: 'Inked on your chest — it shows when you are bare-chested, and a shirt or breastplate covers it.',
+    /* v2.3.1994: the Body screen reaches the arms as well now, so the caption
+       says where a stroke will land before you make it. */
+    note: 'Chest and arms. Draw straight on either — a shirt or breastplate covers the chest, sleeves cover the upper arm.',
   },
   /* v2.3.1949 (owner: "Allow tattoos on the face and arms too").  Three skin
      canvases rather than one drawing stretched over three very differently
@@ -107,6 +109,11 @@ const TARGETS = {
    still wears them, and the wire, the renderer and both server gates are
    untouched.  Say the word if it should be cleared instead. */
 const TATTOO_SPOT = { body: 'tattoo', face: 'tattooFace' };
+/* v2.3.1994: and which canvases each of those two screens can REACH — the tab
+   frames a view now rather than fencing one canvas off, so Body covers the
+   torso and both arms.  Beside TATTOO_SPOT because the two are one table read
+   two ways: the default, and the whole set. */
+const TAB_SPOTS = { body: ['tattoo', 'tattooArm'], face: ['tattooFace'] };
 
 /* ── the toolbar's icons ──
    Drawn inline rather than shipped as art, for the reason the creator's pencil
@@ -482,10 +489,36 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   /* Both tattoo screens are the draw-on-your-character surface now; the tab
      only says WHICH region it is framed on. */
   const onBody = isTattoo;
-  const spot = isTattoo ? (TATTOO_SPOT[mode] || 'tattoo') : target;
+  /* ═══ v2.3.1994: THE TAB FRAMES, THE FINGER CHOOSES ═══
+     Owner: "Can you just make anywhere where skin is showing be tattooable?"
+
+     v2.3.1978 pinned the surface to ONE canvas per tab, which left the ARMS
+     with no editor on any screen — a whole pair of limbs of plainly visible
+     skin that no gesture could reach.  The Body tab now frames the torso AND
+     both arms (BodyInk's TAB_REGIONS) and a stroke lands on whichever it
+     started over, so `spot` follows your finger again rather than the tab.
+
+     `bodySpot` is what the surface last reported.  It is checked against the
+     tab's own list rather than being reset by an effect: switching to Face
+     with an arm selected simply stops matching, and the tab's default answers
+     — no second render, and no window in which the panel is pointed at a
+     canvas the surface cannot reach. */
+  const [bodySpot, setBodySpot] = React.useState('tattoo');
+  const tabSpot = isTattoo ? (TATTOO_SPOT[mode] || 'tattoo') : target;
+  const spot = (isTattoo && (TAB_SPOTS[mode] || []).indexOf(bodySpot) >= 0) ? bodySpot : tabSpot;
   const scfg = TARGETS[spot] || cfg;
   /* Which stored drawing this panel is editing right now. */
   const artId = isShirt ? (side === 'back' ? 'shirtBack' : 'shirtFront') : spot;
+  /* v2.3.1994: and the same answer for code that runs BETWEEN renders.  A body
+     stroke can move the canvas on pointer DOWN, and every op mutator below
+     fires during that same gesture — a render-state `artId` is one render
+     behind at exactly that moment, which is how a stroke made on an arm would
+     be appended to the chest's list.  Assigned during render like the other
+     refs, and again, eagerly, by the region switch. */
+  const artIdRef = React.useRef(artId); artIdRef.current = artId;
+  /* v2.3.1994: the body surface's cell lookup (BodyInk's apiRef).  The panel
+     owns the tools; the surface owns the mapping. */
+  const bodyApiRef = React.useRef(null);
 
   /* ── the garment's pattern ── */
   const [pat, setPat] = React.useState(() => (cfg.pattern ? getPattern(cfg.pattern) : ''));
@@ -533,11 +566,28 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   const [tool, setTool] = React.useState('pen');
   const [brush, setBrush] = React.useState(1);
   const [letter, setLetter] = React.useState('A');
-  /* v2.3.1949: symmetry, and a way back.  Neither was asked for by name -- the
-     owner asked what else was missing -- and between them they are the two
-     things a pixel editor is unusable without: a mis-stroke you cannot take
-     back means starting over, and hand-matching the other half of a face is
-     not something anybody manages on a 16-cell grid. */
+  /* ═══ v2.3.2004: MIRROR IS BACK, ALONGSIDE FILL ═══
+     Owner: "Mirror is actually a nice feature if you have room in ui add it
+     back in."
+
+     v2.3.1994 read "swap out the mirror for fill" as a trade, and it was not
+     one.  The real problem then was that the skin editor showed no tool row at
+     all, so Fill -- which had been in the TOOLS table since v2.3.1948 -- was
+     unreachable there, and the only thing on that screen was Mirror.  The tool
+     row is on every screen now, so Fill is where it belongs AND the cell
+     Mirror held is free to hold Mirror again.  Both, not either.
+
+     ROOM, since that was the owner's condition.  .bt-paint-opts is a flex row:
+     the variable half (brush widths, or the alphabet, or the shape controls)
+     flexes, and this is a fixed 62px cell beside it that never moves whichever
+     tool is up -- the v2.3.1949 placement, restored rather than reinvented.
+     Nothing else on the row loses a pixel it was using; the widths grid simply
+     flexes 62px narrower, which is what it already does when the alphabet
+     swaps in.
+
+     The DATA never went away: an op has always carried `m`, artOps has always
+     replayed it, and drawings made while it was unsettable kept their mirrored
+     halves.  v2.3.1994 stopped this panel SETTING it; this sets it again. */
   const [mirror, setMirror] = React.useState(false);
   /* ── v2.3.1967: which op is selected ──
      An index into doc.ops, -1 for none.  ONE selection serves both halves of
@@ -594,6 +644,14 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   const strokeRef = React.useRef(null);    /* {idx, seen:Set, hist} or null */
   /* v2.3.1965: the body surface re-reads the skin canvases through this. */
   const [bodyTick, setBodyTick] = React.useState(0);
+  /* ── v2.3.1994: the op in flight, for the body surface's fast overlay ──
+     Re-compositing the figure costs 7-12ms on desktop and several times that
+     on the phone, so the truth arrives a frame or two behind the finger.  The
+     surface paints THIS op's cells straight onto the glass in the meantime.
+     An index rather than the cells: the cells are already computed once per
+     render by `painted`, and a second copy of them in state would be a second
+     thing that can disagree with the drawing. */
+  const [liveIdx, setLiveIdx] = React.useState(-1);
 
   /* The selected op, and whether it is one with a handle.  Read from render
      state (not a ref) because the controls below are rendered from it; the
@@ -618,6 +676,17 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   /* Switching side (or opening on a different target) loads that drawing --
      and its history, which belongs to that canvas and not to this panel. */
   React.useEffect(() => {
+    /* ── v2.3.1994: A CANVAS WE HAVE ALREADY MOVED TO IS NOT A TAB CHANGE ──
+       A body stroke can change `artId` mid-gesture (a finger that starts on an
+       arm), and `bodyRegion` does that switch SYNCHRONOUSLY — it loads the new
+       canvas's doc before the first op is appended.  Without this guard this
+       effect would then run on the very next commit and reload that canvas
+       from the STORE, which has not been written yet, wiping the stroke that
+       is still under the finger and clearing the history entry banked for it.
+       Comparing what we HOLD against what is wanted says the difference: on a
+       real tab change the held doc is the canvas we just left, and the whole
+       reset below is right. */
+    if (docRef.current.id === artId) return;
     setDoc({ id: artId, ...getDoc(artId) });
     histRef.current = [];
     redoRef.current = [];
@@ -640,9 +709,12 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
      onto the FRONT — losing the front and not restoring the back — and the
      body surface's cross-canvas stroke gave up and banked nothing at all.
      With the id on the entry, Undo puts each change back where it came from. */
-  const snapshot = (id) => (id === artId ? docRef.current : { id, ...getDoc(id) });
+  /* v2.3.1994: against artIdRef, not the render's artId — a body gesture can
+     move the canvas between renders, and comparing to a stale id here would
+     bank the wrong drawing for undo. */
+  const snapshot = (id) => (id === artIdRef.current ? docRef.current : { id, ...getDoc(id) });
   const applySnap = (d) => {
-    if (d.id === artId) setDoc(d);
+    if (d.id === artIdRef.current) { docRef.current = d; setDoc(d); }
     else saveDoc(d.id, d.base, d.ops);
     pendRef.current = null;
     setSel(-1);
@@ -704,11 +776,20 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
        canvas has changed and the doc has not caught up yet (the body surface
        moves `spot` on pointer DOWN), take the target canvas's doc from the
        store rather than appending this op to the doc for a DIFFERENT canvas —
-       which would write one skin region's whole drawing onto another. */
-    const d = docRef.current.id === artId ? docRef.current : { id: artId, ...getDoc(artId) };
+       which would write one skin region's whole drawing onto another.
+       v2.3.1994: the id comes off the REF, which the region switch sets before
+       the first op of a cross-canvas gesture is appended. */
+    const id = artIdRef.current;
+    const d = docRef.current.id === id ? docRef.current : { id, ...getDoc(id) };
     pushHist(d);
     const next = appendToDoc(d, op);
-    setDoc({ id: artId, base: next.base, ops: next.ops });
+    const nd = { id, base: next.base, ops: next.ops };
+    /* v2.3.1994: the ref moves NOW as well as at the next render.  A gesture
+       calls addOp and then reads docRef in the same tick (the shape tools bank
+       their pending state from it), and a ref that only caught up on render
+       handed them the list without the op they had just made. */
+    docRef.current = nd;
+    setDoc(nd);
     return next.ops.length - 1;
   };
   const setOp = (i, next) => setDoc((d) => ({ ...d, ops: d.ops.map((o, k) => (k === i ? next : o)) }));
@@ -760,56 +841,58 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
        own change signal.  (No react-hooks plugin in this repo's flat config —
        the deps are stated by hand and checked by hand.) */
   }), [bodyTick, art, artId]);
-  /* ── v2.3.1967: a body stroke is an OP, like every other edit ─────────────
-     This is the subtle half of the op list, and getting it wrong is how a
-     shape gets silently destroyed.  The body surface hands over the CELLS it
-     inked (it used to hand over a whole replacement art string), and they are
-     appended to the target canvas's list as a freehand op.  Two consequences,
-     both of them the point:
+  /* ═══ v2.3.1994: THE BODY SURFACE MOVES THE CANVAS, THE PANEL DOES THE REST ═══
+     The v2.3.1967 `inkFromBody` handover is gone with the surface's own pen.
+     BodyInk no longer collects a stroke and hands over finished cells; it
+     reports which cell of which skin canvas a pointer is on and forwards the
+     raw events, so the panel's tool handlers — pen, line, box, circle, fill,
+     letters, the hand — run on the body exactly as they run on the shirt.
+     One implementation of each tool, which is what "the same as the shirt
+     editor" has to mean if the two are not to drift.
 
-       - a rectangle placed on the `chest` tab SURVIVES a stroke made on the
-         `body` tab, because the stroke goes on top of it in the same list
-         instead of replacing the string it was baked into;
-       - and the stroke lands ON TOP, in the order it was made, so inking over
-         a shape looks like inking over a shape.
+     What is left for the panel to own is the one thing the surface CAN change
+     under it: which canvas the gesture is on.  A finger that comes down on an
+     arm has to move the whole editing context — doc, replayed cells, undo
+     target — before the first op is appended, and synchronously, because the
+     op is appended in this same tick.  Hence the three eager writes: React
+     state alone is a render too late here, and the drawing would land on the
+     canvas you were looking at a moment ago.
 
-     A whole-string handover could not do either: replaying the list would have
-     overwritten the stroke, and flattening the list to keep the stroke would
-     have thrown the shapes away.
-
-     A stroke on the region you are NOT editing goes straight to that canvas's
-     stored list (`appendOp`) — onRegion moves `spot` on pointer DOWN, so this
-     is the rare path, and v2.3.1967 banks it for undo too now that an undo
-     entry knows which canvas it belongs to. */
-  const inkFromBody = React.useCallback((tgt, cells, inkIdx) => {
-    if (!cells || !cells.length) return;
-    const before = liveArt(tgt);
-    /* Re-inking cells that already carry that colour changes nothing; an op for
-       it would be an undo step that does nothing when you take it. */
-    if (artWithCells(before, cells, inkIdx) === before) return;
-    const op = { k: 'c', c: cells.map((c) => c[1] * ART_W + c[0]), i: inkIdx };
-    /* v2.3.1978: the surface is framed on ONE region, chosen by the tab, so a
-       stroke always lands on the canvas this panel already has selected. The
-       else-branch is kept as a belt: if that ever stops being true, the ink is
-       still banked and stored rather than dropped. */
-    if (tgt === artId) addOp(op);
-    else {
-      pushHist(snapshot(tgt));
-      appendOp(tgt, op);
-    }
-    setBodyTick((t) => t + 1);
-  }, [artId, art]);
+     The reset effect above knows to leave this alone; the undo entries carry
+     their own canvas id (v2.3.1967), so a history that spans the chest and an
+     arm puts each change back where it came from. */
+  const bodyRegion = React.useCallback((tgt) => {
+    if (!tgt || tgt === artIdRef.current) return;
+    const d = { id: tgt, ...getDoc(tgt) };
+    artIdRef.current = tgt;
+    docRef.current = d;
+    /* The hit test reads `paintedRef`, so it has to describe the canvas we
+       just moved to — otherwise the hand tool would pick up an op by an index
+       from the drawing we LEFT. */
+    const out = [];
+    paintedRef.current = { art: replay(d.base, d.ops, out), cells: out };
+    pendRef.current = null;
+    setDoc(d);
+    setBodySpot(tgt);
+    setSel(-1);
+  }, []);
 
   /* v2.3.1967: where the drag handle sits for an op — the corner you dragged TO
      for a shape, the letter's own centre for a letter.  null for a freehand
      stroke or a fill: those have nothing to drag, so they get a selection
      outline and the layer buttons and no handle. */
+  /* v2.3.1994: MEMOISED where it is handed to the body surface, and that is not
+     tidiness.  It answers a fresh `[x, y]` every call, and BodyInk's blit —
+     and therefore the effect that owns the composite loop — depends on it: an
+     unmemoised handle would tear down and restart the composite on every
+     render, which during a shape drag is every pointermove. */
   const handleCell = (op) => {
     if (!op) return null;
     if (op.k === 's') return [op.a[2], op.a[3]];
     if (op.k === 't') return [op.x, op.y];
     return null;
   };
+  const selHandle = React.useMemo(() => handleCell(selOp), [selOp]);   /* v2.3.1994 */
 
   /* v2.3.1941: `onPattern` is a DEPENDENCY, not decoration.  The grid canvas is
      unmounted on the pattern screen, so coming back to a drawing re-creates it
@@ -891,6 +974,19 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
      keeps the events coming, and a shape whose corner you dragged past the edge
      should still have a corner. */
   const cellAt = (e, clamp) => {
+    /* ── v2.3.1994: ONE QUESTION, TWO SURFACES ──
+       Everything below this line works in cell space and does not care which
+       glass the finger is on.  The flat grid answers it from its own bounding
+       box; the body surface answers it by unprojecting the pointer through the
+       composite's matrix onto the body sheet and asking the reported grid (see
+       BodyInk).  Putting the fork HERE, in the one function every tool already
+       calls, is what makes every tool work on the character without a second
+       copy of any of them. */
+    if (onBody) {
+      const api = bodyApiRef.current;
+      const c = api && api.cellAt(e, clamp);
+      return c ? [c.gx, c.gy] : null;
+    }
     const cv = cvRef.current;
     if (!cv) return null;
     const r = cv.getBoundingClientRect();
@@ -926,7 +1022,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
        the brush and already mirrored — because the pen is the one tool with
        nothing left to adjust afterwards, and storing the result means a replay
        can never disagree with what appeared under the finger. */
-    const cells = mirrorCells(expandCells(path, brush), mirror);
+    const cells = mirrorCells(expandCells(path, brush), mirror);   /* v2.3.2004: mirror stage back */
     const add = [];
     for (let i = 0; i < cells.length; i++) {
       const idx = cells[i][1] * ART_W + cells[i][0];
@@ -1004,8 +1100,17 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
      two-thirds of a cell and a finger is a lot wider than that. */
   const onHandle = (e) => {
     const h = handleCell(selOpRef.current);
+    if (!h) return false;
+    /* v2.3.1994: the body surface knows where a cell landed on the glass after
+       the zoom and the pan, so it is asked rather than second-guessed. */
+    if (onBody) {
+      const api = bodyApiRef.current;
+      const c = api && api.cellCenter(artIdRef.current, h[0], h[1]);
+      if (!c) return false;
+      return Math.hypot(e.clientX - c.x, e.clientY - c.y) <= Math.max(22, c.w * 1.3);
+    }
     const cv = cvRef.current;
-    if (!h || !cv) return false;
+    if (!cv) return false;
     const r = cv.getBoundingClientRect();
     const cw = r.width / ART_W, ch = r.height / ART_H;
     const hx = r.left + (h[0] + 0.5) * cw, hy = r.top + (h[1] + 0.5) * ch;
@@ -1082,11 +1187,16 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
     });
   };
 
-  const down = (e) => {
+  const down = (e, info) => {
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) { /* not supported */ }
     /* v2.3.1951: the handle wins over everything — it is the only thing on the
-       grid that is not a drawing gesture. */
-    if (onHandle(e)) {
+       grid that is not a drawing gesture.
+       v2.3.1994: on the body surface the answer arrives WITH the event.  The
+       surface has to know whether this is a handle drag before it decides
+       anything, because a handle that happens to sit over an arm must not
+       re-target the canvas the shape lives on — so it asks once and tells us,
+       rather than both of us testing the same circle and disagreeing. */
+    if (info ? info.handle : onHandle(e)) {
       bankPend();
       dragHandleRef.current = true;
       paintingRef.current = true;
@@ -1111,9 +1221,9 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
          above it genuinely changes what it fills. */
       const c = cellAt(e, false);
       if (!c) return;
-      addOp(tool === 'fill'
+      setLiveIdx(addOp(tool === 'fill'
         ? { k: 'f', x: c[0], y: c[1], i: ink, m: mirror ? 1 : 0 }
-        : { k: 't', g: letter, x: c[0], y: c[1], i: ink, m: mirror ? 1 : 0 });
+        : { k: 't', g: letter, x: c[0], y: c[1], i: ink, m: mirror ? 1 : 0 }));   /* v2.3.2004 */
       return;
     }
     paintingRef.current = true;
@@ -1125,20 +1235,26 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
          why there is no draft overlay any more: what you are dragging out IS
          the drawing, at its own layer. */
       const c = cellAt(e, true);
+      /* v2.3.1994: the body surface can answer "nowhere" — before the first
+         composite has reported its grids there is no cell under anything. */
+      if (!c) { paintingRef.current = false; return; }
       anchorRef.current = c;
-      const i = addOp({ k: 's', t: tool, a: [c[0], c[1], c[0], c[1]], i: ink, b: brush, m: mirror ? 1 : 0 });
+      const i = addOp({ k: 's', t: tool, a: [c[0], c[1], c[0], c[1]], i: ink, b: brush, m: mirror ? 1 : 0 });   /* v2.3.2004 */
+      setLiveIdx(i);
       pendRef.current = { isNew: true, orig: null, ratio: 1, hist: histRef.current[histRef.current.length - 1] };
       setSel(i);
       return;
     }
     const idx = addOp({ k: 'c', c: [], i: ink });
     strokeRef.current = { idx, seen: new Set(), hist: histRef.current[histRef.current.length - 1] };
+    setLiveIdx(idx);
     paintPen(e);
   };
   const move = (e) => {
     if (!paintingRef.current) return;
     if (dragHandleRef.current) {
       const c = cellAt(e, true);
+      if (!c) return;
       const k = c[0] + ',' + c[1];
       if (k === lastRef.current) return;
       lastRef.current = k;
@@ -1150,6 +1266,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
       const i = selRef.current;
       if (!a || i < 0) return;
       const c = cellAt(e, true);
+      if (!c) return;
       const k = c[0] + ',' + c[1];
       if (k === lastRef.current) return;
       lastRef.current = k;
@@ -1163,6 +1280,9 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
     paintPen(e);
   };
   const up = () => {
+    /* v2.3.1994: the gesture is over, so the fast overlay the body surface
+       paints ahead of the composite has nothing left to be ahead of. */
+    setLiveIdx(-1);
     if (dragHandleRef.current) {
       /* Still selected — the whole point is that you can keep adjusting it. */
       dragHandleRef.current = false;
@@ -1288,9 +1408,18 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
               ))}
             </div>
           ) : onBody ? (
-            /* v2.3.1965: the character IS the canvas — see BodyInk.jsx. */
-            <BodyInk look={look} arts={bodyArts} ink={ink} brush={brush}
-              region={mode === 'face' ? 'face' : 'tattoo'} onInk={inkFromBody} />
+            /* v2.3.1965: the character IS the canvas — see BodyInk.jsx.
+               v2.3.1994: and the panel drives every tool on it.  The surface
+               reports cells and forwards pointers; the three overlays are the
+               same things the flat grid draws on itself (what is selected,
+               where its handle is, and the ink that has not been baked yet). */
+            <BodyInk look={look} arts={bodyArts} ink={ink}
+              region={mode === 'face' ? 'face' : 'tattoo'}
+              apiRef={bodyApiRef} activeTarget={artId}
+              onRegion={bodyRegion} onDown={down} onMove={move} onUp={up}
+              overlayCells={(liveIdx >= 0 && liveIdx < painted.cells.length) ? painted.cells[liveIdx] : null}
+              selCells={(sel >= 0 && sel < painted.cells.length) ? painted.cells[sel] : null}
+              handleCell={selHandle} />
           ) : (
             /* v2.3.1967: a class, so a headless scenario can aim at the flat
                grid without guessing which canvas in the panel it is (the panel
@@ -1310,14 +1439,24 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
             tool row, so each control got stranded at the top of an oversized
             row with a gap under it. */}
         <div className="bt-paint-ctl">
-        {/* v2.3.1965: the shape tools are a GRID tool -- rect/ellipse/line are
-            dragged out in cell space, and on a zoomed limb the drag you make
-            with your finger is a path across skin, not a box in a 16x16.  The
-            body surface offers the pen and the eraser (palette slot 0), the
-            brush widths and Mirror; the tab beside it is where a deliberate
-            shape gets made.  Hidden rather than disabled: a row of six dead
-            buttons reads as broken. */}
-        {!onPattern && !onBody && (
+        {/* ═══ v2.3.1994: THE SAME SEVEN TOOLS, ON EVERY SCREEN ═══
+            Owner: "Oh I see the shirt editor is where the more complex editor
+            is.  Make the skin tattoo editor be the same as that."
+
+            v2.3.1965 hid this row on the body, reasoning that "rect/ellipse/
+            line are dragged out in cell space, and on a zoomed limb the drag
+            you make with your finger is a path across skin, not a box in a
+            16x16".  That is simply not true, and the surface proves it: a body
+            drag resolves to a cell at both ends exactly as a grid drag does
+            (BodyInk reports the cell; `cellAt` forks on the surface and
+            nothing below it knows the difference), so a box dragged on the
+            chest is a box.  What was actually missing was the plumbing, and
+            the reasoning grew up to justify its absence — which is how the
+            owner ended up with a tattoo editor that had lost the fill, the
+            letters, the shapes, the hand and the layer row he had asked for on
+            the shirt.  THIS is the gate that mattered; the four below are the
+            same gate wearing different clothes. */}
+        {!onPattern && (
           <div className="bt-paint-tools">
             {TOOLS.map((t) => (
               <button key={t.id} type="button"
@@ -1345,7 +1484,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
              the row keeps its height either way, so nothing below it jumps when
              you change tool. */
           <div className="bt-paint-opts">
-            {(selOp && !onBody) ? (
+            {selOp ? (   /* v2.3.1994: a shape picked up on the body adjusts the same way */
               /* v2.3.1951: while a shape is pending the row belongs to IT.
                  Contextual rather than three more permanent buttons: the row
                  already swaps for the letter tool, the controls only mean
@@ -1386,7 +1525,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                   </button>
                 )}
               </div>
-            ) : (tool === 'letter' && !onBody) ? (
+            ) : tool === 'letter' ? (   /* v2.3.1994 (owner: "Add the letters back") */
               <div className="bt-paint-letters" ref={stripRef}>
                 {LETTERS.map((ch) => (
                   <button key={ch} type="button" onClick={() => setLetter(ch)}
@@ -1396,13 +1535,17 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                 ))}
               </div>
             ) : (
+              /* v2.3.1994: one rule on both surfaces -- the width belongs to the
+                 tools that draw a stroke, and ghosts for Fill, Letters and the
+                 hand.  The body used to force all three live because the only
+                 tool it had WAS a brush. */
               <div className="bt-paint-opts-main">
                 {BRUSH_SIZES.map((n) => (
-                  <button key={n} type="button" disabled={!onBody && !tdef.brush}
+                  <button key={n} type="button" disabled={!tdef.brush}
                     onClick={() => setBrush(n)} aria-pressed={brush === n}
                     aria-label={'Brush ' + n + ' wide'}
-                    style={(onBody || tdef.brush) ? undefined : { opacity: 0.38 }}
-                    className={'bt-paint-size' + (brush === n && (onBody || tdef.brush) ? ' bt-paint-size--on' : '')}>
+                    style={tdef.brush ? undefined : { opacity: 0.38 }}
+                    className={'bt-paint-size' + (brush === n && tdef.brush ? ' bt-paint-size--on' : '')}>
                     <span className="bt-paint-dot-well">
                       <span className="bt-paint-dot" style={{ width: 5 + (n - 1) * 6, height: 5 + (n - 1) * 6 }} />
                     </span>
@@ -1412,19 +1555,15 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
               </div>
             )}
             {/* v2.3.1949: Mirror keeps the SAME place whichever tool is up --
-                it is a modifier on all six, so hiding it behind a tool choice
-                would leave it silently on.  Its own cell, outside the part of
-                the row that changes. */}
+                a fixed cell beside the variable half, so it never moves under
+                your thumb when the row swaps to the alphabet or the shape
+                controls.  Restored v2.3.2004 (owner: "Mirror is actually a nice
+                feature if you have room in ui add it back in"); it is NOT a
+                second copy of Fill, which is a tool in the row above -- Mirror
+                is a modifier that paints both halves of whatever tool is up. */}
             <button type="button" onClick={() => setMirror((m) => !m)}
               aria-pressed={mirror} title="Mirror: paint both halves at once"
               className={'bt-paint-size bt-paint-mirror' + (mirror ? ' bt-paint-size--on' : '')}>
-              <svg className="bt-paint-tool-icon" viewBox="0 0 24 24" width="20" height="20"
-                aria-hidden="true" focusable="false">
-                <path d="M12 3v18" fill="none" stroke="currentColor" strokeWidth="1.6"
-                  strokeLinecap="round" strokeDasharray="2.4 2.4" />
-                <path d="M9.6 6.4 4.4 12l5.2 5.6Z" fill="currentColor" stroke="none" />
-                <path d="M14.4 6.4 19.6 12l-5.2 5.6Z" fill="currentColor" stroke="none" />
-              </svg>
               <span className="bt-paint-tool-label">Mirror</span>
             </button>
           </div>
@@ -1454,8 +1593,13 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
             the thing you are holding is on and how many there are, and that
             sentence changes on every tap.  Four steps rather than two because
             "one step back" is the move you actually want when a drawing has
-            five pieces in it and only one of them is in the way. */}
-        {!onPattern && !onBody && (
+            five pieces in it and only one of them is in the way.
+
+            v2.3.1994: and on the body too.  A tattoo made of a circle with a
+            letter over it has layers whether or not the panel offers to move
+            them, and hiding the row on the one screen where the pieces overlap
+            a curved surface was the wrong screen to hide it on. */}
+        {!onPattern && (
           <div className="bt-paint-layers">
             <div className="bt-paint-layer-at">
               {selOp
@@ -1554,6 +1698,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                mode strip above says which canvas you are on, and the title
                carries the whole sentence. */
             title={onPattern ? 'Remove the pattern' : ('Erase the whole ' + (isShirt ? side + ' of the shirt' : scfg.label))}
+            aria-label={onPattern ? 'Remove the pattern' : ('Erase the whole ' + (isShirt ? side + ' of the shirt' : scfg.label))}
             onClick={() => {
               if (onPattern) { pickTile(''); return; }
               placePending();       /* nothing is selected on an empty grid */
@@ -1563,9 +1708,31 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                  shape straight back on the next replay. */
               setDoc({ id: artId, base: emptyArt(), ops: [] });
             }}>
-            <span className="bt-cc-tab-label">
-              {onPattern ? 'No pattern' : 'Clear'}
-            </span>
+            {/* ── v2.3.1994: a bin, not the word "Clear" ──
+                Owner: "Change clear to a trash can icon."  Drawn inline in the
+                same one-viewBox stroke style as the tool icons, for the reason
+                every icon in this panel is (v2.3.1946): it inherits the
+                button's colour, it stays crisp at any pixel density, and an
+                asset that is never fetched cannot hitch on first use.  The
+                sentence it replaces has not gone anywhere — it is the title and
+                the aria-label, which is where "erase the whole face tattoo"
+                could always fit and a quarter of a phone's width could not.
+                The pattern screen keeps its words: "No pattern" is a state to
+                return to, not a thing to throw away. */}
+            {onPattern ? (
+              <span className="bt-cc-tab-label">No pattern</span>
+            ) : (
+              <svg className="bt-paint-tool-icon" viewBox="0 0 24 24" width="20" height="20"
+                aria-hidden="true" focusable="false" style={{ margin: '0 auto' }}>
+                <g fill="none" stroke="currentColor" strokeWidth="1.8"
+                  strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4.4 6.6h15.2" />
+                  <path d="M9.4 6.6V4.9a1.3 1.3 0 0 1 1.3-1.3h2.6a1.3 1.3 0 0 1 1.3 1.3v1.7" />
+                  <path d="M6.4 6.6l.9 12a1.6 1.6 0 0 0 1.6 1.5h6.2a1.6 1.6 0 0 0 1.6-1.5l.9-12" />
+                  <path d="M10.4 10.2v6.4M13.6 10.2v6.4" />
+                </g>
+              </svg>
+            )}
           </button>
           <button type="button" className="bt-cc-tab bt-cc-tab--on" style={{ flex: 1, minHeight: 38 }}
             onClick={() => { if (selRef.current >= 0) placePending(); onClose(); }}>

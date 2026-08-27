@@ -249,12 +249,31 @@ const out = await page.evaluate(async (src) => {
   const inkW = word.map((g) => g.ink1 - g.ink0 + 1);
   const total = inkW.reduce((a, b) => a + b, 0) + GAP * (word.length - 1);
 
-  /* Centred in the space the old words had — the key icon keeps its place, so
-     the word is centred between it and the plate's right frame, which is what
-     the original composition did. */
+  /* ═══ v2.3.2005: CENTRED IN THE BUTTON, NOT BESIDE THE KEY ═══
+     Owner: "Make the continue label on splash page text centered in the
+     button."
+
+     v2.3.1954 centred the word between the key icon and the right frame,
+     reasoning that it was "what the original composition did".  That was true
+     of the ORIGINAL word: LOG IN WITH YOUR KEY is long enough to fill that
+     span, so its centre and the plate's centre were near enough the same
+     point.  CONTINUE is less than half as wide, so the same rule pushes it
+     visibly right of the plate's middle -- measured, 48px on an 815px plate,
+     which is what the owner is looking at.
+
+     Centred on the PLATE now, between its two frames.  FRAME_LEFT mirrors the
+     FRAME_RIGHT inset that was already here, so the expression is symmetric
+     and the result is simply (W - total) / 2 -- stated the long way because
+     the two insets are the thing to change if the frame art ever changes.
+
+     The key keeps its place and is not crowded: it ends at keyBox.x1 and the
+     centred word starts well right of that.  Asserted below rather than
+     assumed, because "centred" that overlaps the key would be a worse bug
+     than the one being fixed. */
   const KEY_RIGHT = keyBox.x1;
-  const FRAME_RIGHT = W - 88;
-  let cx = Math.round(KEY_RIGHT + (FRAME_RIGHT - KEY_RIGHT - total) / 2);
+  const FRAME_LEFT = 88, FRAME_RIGHT = W - 88;
+  let cx = Math.round(FRAME_LEFT + (FRAME_RIGHT - FRAME_LEFT - total) / 2);
+  if (cx <= KEY_RIGHT + 8) return { err: 'centred word would touch the key', cx, KEY_RIGHT, total };
 
   const outData = new Uint8ClampedArray(erased);
   const put = (g, atInkX) => {

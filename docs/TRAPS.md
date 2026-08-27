@@ -575,3 +575,385 @@ precisely so ESM parses as ESM regardless of the nearest
 
 **Receipt:** `server/src/index.js` `_isMysteryGrade` / `_revealLadder`
 / `_revealsFor`, `tools/dev/precheck.mjs` (the temp-`.mjs` copy).
+
+---
+
+## A skin blob on a character sheet is NOT the body part you think it is
+*(v2.3.1990, after shipping v2.3.1986 and having the owner catch it in play)*
+
+**The trap.** Wanting to find "the arm that crosses the chest" on
+`jog-east`, I isolated skin-coloured pixels, cut away everything above a
+neck line (the tee's top row + 8), took connected components of what was
+left, and picked the blob that sat inside the shirt's x-span. That reads
+as careful. It is wrong, and the way it is wrong is silent.
+
+**Why.** The head, the neck, the torso and both arms are ONE connected
+skin region. Cutting horizontally above a neck line does not sever the
+head from the body — it removes the top of the skull and leaves the JAW
+still joined to the neck and the torso. On frames 9, 10 and 11 the blob
+my rule selected as "the crossing arm" was therefore the jaw-and-neck
+mass, and painting its top rows shirt-coloured put a white blob **on the
+character's face**. Measured after the report: 7, 23 and 37 pixels of
+head-connected skin painted over, worst on frame 11 across the chin.
+
+**Why the verification missed it.** Two ways, both instructive:
+- The before/after contact sheet was cropped to the torso (y 40-76) to
+  make the sleeve legible. The blob landed at y 53-57 — inside the crop,
+  but read as "sleeve" because that is what I was looking for.
+- The in-game stride strip DID contain it, at roughly two screen pixels.
+  A 37-pixel artifact on a 128-pixel frame is invisible at game size in a
+  strip and obvious to a player watching one character run.
+
+**Rules this leaves:**
+- Never identify a body part by connectivity alone on a sheet where the
+  skin is one region. Anchor to something that actually marks the part:
+  the head sheet (`jog-<dir>-head.png`), the measured crown, or an
+  explicit per-frame region — and then ASSERT the result does not
+  intersect the head before writing a pixel.
+- Any tool that recolours body pixels must state, as an assertion and not
+  a comment, which regions it is forbidden to touch. "It looked right in
+  the preview" is not that assertion.
+- Verify art changes against the WHOLE figure, not a crop chosen to make
+  the change legible. The crop that proves your fix is the crop that
+  hides your side effect.
+- An in-game screenshot at game size is necessary but not sufficient for
+  a change measured in tens of pixels. Diff the sheets and report where
+  the changed pixels landed relative to named regions.
+
+**Receipt:** `public/sprites/gear/shirt/tshirt/jog-east.png` (reverted to
+its pre-v2.3.1986 bytes), `tools/gear/sleeve_crossing_arm.py` (deleted).
+The underlying defect it tried to fix — the tee has no sleeve on the arm
+that crosses the chest, frames 8-11 — is REAL and still open; see
+`tools/qa/mp/mp-shirtarm.mjs`.
+
+---
+
+## §26 — A histogram index is not a sheet coordinate (v2.3.1992)
+
+*(the vanishing face tattoo, after three wrong readings and one right
+measurement)*
+
+**The report.** "The face tattoo only shows on idle and disappears
+during jog but then pops up on one frame."
+
+**The tempting readings, in the order they were tried and dropped:**
+the shirt bake is painting over the face; the hair is covering it; the
+face REGION collapses on run frames (it is defined as "skin above the
+torso band", so a band that starts too high would eat the head). All
+three are plausible and all three are wrong — the region mask, dumped
+painted red over the baked sheet, is exactly the head on all 28 run
+frames and a consistent size.
+
+**The fourth reading, which was closer and still wrong:** the fit's
+column-keep rule (`REGION_KEEP`, "a column counts at 15% of the peak")
+collapses on a narrow profile head, because a profile's column
+histogram is a spike where a front-on torso's is a plateau. That story
+fits the symptom exactly. It is testable in one line, and it is false:
+on the frame that fails, the kept columns are the same healthy 36-wide
+run as on the frame that works.
+
+**What it actually was.** One line, and a units error:
+
+```js
+const rowN = new Int32Array(h), colN = new Int32Array(x1 - x0);
+...
+if (++colN[x - x0] > peakCol) ...              // colN is indexed FROM THE FRAME
+...
+for (let x = 0; x < colN.length; x++) if (colN[x] >= colMin) {
+  if (x < lx) lx = x + x0;                     // lx is a coordinate ON THE SHEET
+  if (x + x0 > rx) rx = x + x0;
+}
+```
+
+`x` counts from the frame's left edge; `lx` holds a sheet coordinate.
+On **frame 0** the two spaces coincide (`x0` is 0) and the loop is
+correct. On every later frame `lx` is already ~256 or more while `x` is
+still counting from 0, so every kept column tests "further left than
+the last" and **both ends of the extent walk to the last kept column**:
+`lx 419 -> rx 419`, a one-pixel-wide box.
+
+**Why nothing ever threw, and why it read as "sometimes".**
+`gridFit` clamps the box back up (`Math.max(ART_W, ...)`), so a
+1px extent still produced a valid 16px grid — rendered and looked at,
+the face band on frame 1 is a narrow sliver jammed against the leading
+edge of the face, half of it off the head and clipped away by the mask. Valid arithmetic on a wrong
+measurement paints something plausible somewhere wrong, which is much
+harder to see than a crash. And the two "works" cases in the report are
+the two cases where `x0` is 0: **a standing sheet is ONE frame**, and
+the frame that "pops up" is **frame 0 of the run strip**.
+
+The same fit serves the chest tattoo, the arm tattoo and the trouser
+print, and all four were broken on every jog, hit, mine and pickup
+frame. Nobody had reported the other three: a print on a moving thigh
+is a smaller thing to notice losing than a mark on a face.
+
+**Rules this leaves:**
+- A per-frame histogram and a per-sheet coordinate must never meet in a
+  comparison. Walk the histogram entirely in its own space and convert
+  ONCE at the end — which is also the shape that makes the mistake
+  impossible to write, rather than merely absent today.
+- "It works on the first frame / the first item / the first tab" is not
+  a hint about timing. It is very often a hint that an offset is zero
+  there, and that the code has two coordinate spaces in it.
+- A clamp downstream of a measurement (`Math.max(MIN, measured)`) turns
+  a degenerate measurement into a plausible output. Any such clamp is a
+  place where a bug will be silent, so the assertion belongs UPSTREAM
+  of it, on the measurement.
+- Do not gate a geometric fit on the box's SIZE — a chest legitimately
+  narrows to 39% of its widest mid-stride. Gate it on MASS: what share
+  of the region's own pixels does the fitted box span? Measured on the
+  shipped art that is 0.003-0.006 when broken and 0.82-1.00 when right,
+  and there is nothing to tune between those two numbers.
+- A theory that explains the symptom perfectly is worth exactly one
+  measurement, and the measurement is cheaper than the theory.
+
+**Receipt:** `src/rendering/playerDecal.js` `stampRegion` (the column
+extent), `tools/qa/mp/mp-facetat.mjs` (the mass gate, on all four
+regions across every sheet the game bakes).
+
+---
+
+## §27 — A run clipped by the scan window is not a sliver (v2.3.1995)
+
+Owner, on the character preview: *"The shirt neckline south view has too
+large of a black outline. Northeast there's a big black outline where
+the shirt meets the waistline. Minor but Southwest his shoulders have a
+pretty big black outline too."*
+
+All three were manufactured by our own tool, and the tempting reading —
+"the artist drew a heavy keyline" — is wrong. `seal-shirt-edges.mjs`
+(v2.3.1873) fills gaps of bare skin showing through the tee's edges. Its
+one safety rule is a SIZE test: a gap at most 2px wide is a sliver and
+gets filled; anything wider is art the artist meant (the neck, the
+forearms, the bare belly, the cut-out crossing arm) and is left alone.
+That rule is sound. What broke it is that the tool **measured the gaps
+inside the shirt's own bounding box.**
+
+A garment OPENING is body that runs *out* of that box. The neck hole
+continues up into the head; the belly continues down into the trousers;
+the shoulder line continues out past the sleeve. Clipping the scan at
+the box turned each of those long runs into a 1-2px stub, the stub
+passed the sliver test, and the pixel it copied its colour from — at an
+opening — is the tee's own black keyline. So it filled them BLACK.
+Measured: **4176 of the 6267 pixels that pass wrote were near-black**
+(59-86% per sheet), and on `stand-south` it closed the top two rows of
+an 8px-wide neck hole outright.
+
+The fix is one line of intent: **measure the run across the whole frame,
+write only inside the bounding box.** A real sliver is bounded within
+MAXW px however far the window reaches, so it still measures short. An
+opening measures its true length and is refused.
+
+**Rules this leaves:**
+- A threshold is only as honest as the window the measurement was taken
+  in. If a scan is clipped by a region, every length it reports is a
+  LOWER BOUND — and a rule of the form "short means X" will fire on
+  anything the clip truncated. Measure in the largest space available
+  and restrict the WRITE, not the measurement.
+- When a tool fills from a neighbouring pixel, ask what that neighbour
+  is at the boundary the rule is most likely to misfire on. Here the
+  donor at every opening was the keyline, so the failure mode was not
+  "a few stray pixels" but "a black bar", which is why it was visible
+  from across the room and still survived three sessions.
+- A one-pass art tool that reads its own output is a footgun with a
+  comment taped to it. v2.3.1873 had to warn in capitals never to run
+  it twice. The tool now reads its source from a pinned git rev, so
+  running it ten times produces the same ten files — the warning became
+  unnecessary rather than louder.
+- Prefer a fix that can only REMOVE. The new art is a strict subset of
+  the old (measured: **0 adds, 2583 drops** across ten sheets), so it is
+  structurally incapable of putting a pixel somewhere new. That is the
+  property v2.3.1986 lacked when it painted the character's face, and
+  it is worth choosing the shape of a fix to get it.
+- A stale cache-bust hides a whole class of art bug. `characterPortrait`
+  requested the tee at a hardcoded `?v=2.3.760`, so every re-bake since
+  — including the one that CAUSED this report — could serve a cached
+  older sheet to the preview. If art changes and one surface disagrees
+  with another, check the version strings before the pixels.
+
+**Receipt:** `tools/gear/seal-shirt-edges.mjs` (the whole-frame scan and
+the pinned source rev), `tools/qa/mp/mp-shirtkeyline.mjs` (per-column
+outline widths and a near-black budget per sheet),
+`src/rendering/characterPortrait.js` (`SHIRT_ART_VER`).
+
+---
+
+## §28 — A test that reports "not found" is worse than no test (v2.3.2000)
+
+Found by sweeping ~59 scenarios in one night: **three were dead.** Not
+failing — *dead*. They ran, they reported, and what they reported was
+that they could not find the thing they were written to measure. From
+the outside that looks identical to coverage.
+
+The three:
+
+| scenario | asserts | what happened |
+|---|---|---|
+| `layer` | quest turn-in is legible (owner: "all faded like you can barely see it") | v2.3.1827 split the turn-in into two screens; the strings it matched — "Redeem Reward", "Choose a skill to train" — exist nowhere in the codebase now |
+| `hudface` | the HUD portrait matches the character | the owner deliberately REMOVED that portrait at v2.3.1848-1850 ("the band is a summary, not a head") |
+| `statpeek` | what a stat point buys | the Build section still exists; the scenario cannot open it |
+
+**Why none of them was noticed.** CI's `playable` job runs `questline`
+and nothing else (owner directive, 2026-07-16 — no live players, CI
+speed wins). The other ~133 scenarios run only when somebody types
+their name. So a scenario can rot for months and the only signal is
+that nobody has looked.
+
+**The mechanism is almost always the same: selecting UI by LABEL.**
+Labels are owner-facing copy and change constantly; a rename turns
+every `:has-text("...")` and every `/Redeem Reward/` into a silent
+miss. The codebase already knew this and said so — QuestOfferPanel.jsx
+keeps `bt-quest-turnin` on the confirm button explicitly *"because that
+class is what the QA harnesses click by: renaming the LABEL in
+v2.3.1764 broke three scenarios at once, each swallowing the miss with
+.catch()"*. `layer` was one of the three that never got the memo.
+
+**Rules this leaves:**
+- Select by a STABLE CLASS or a data attribute, never by label text.
+  If a control has no stable hook, add one — that is cheaper than the
+  test quietly dying.
+- A "cannot find it" result must fail LOUDLY and distinctly from "found
+  it and it is wrong". Guard assertions that name the thing they could
+  not find (`{err: 'no claim panel', buttons: [...]}`) turn a mystery
+  into a diagnosis.
+- **Prove a new scenario is non-vacuous.** Run it against the broken
+  state and require it to FAIL there, on the specific cases reported.
+  v2.3.1993's hair scenario did this properly (fails on exactly the
+  four reported hat/facings against the old masks); it is the only
+  thing that separates a real test from one that passes because it
+  measured nothing.
+- Assert the PRECONDITIONS a measurement depends on, not just the
+  measurement. v2.3.2001's camera-framing assertions exist because a
+  pinning assumption stopped holding and the scenario went on
+  confidently reporting nonsense (a mask untouched in months read as
+  "45% bare scalp").
+- **Sweep periodically.** These three cost one night of wall-clock to
+  find and would not have surfaced any other way. Yield is not uniform:
+  all three were UI-surface scenarios reaching into the DOM. The
+  multiplayer and economy scenarios (117 assertions across trade,
+  party, social, friends, chat, clan, market, arena) were perfect,
+  because they assert against game state and the wire, which a UI
+  redesign cannot silently blind.
+- Distinguish dead from FLAKY before acting, and the suite is MORE
+  load-sensitive than it looks. Four separate scares traced to batch
+  size alone, every one of them passing in isolation:
+
+  | scenario | in a batch | alone |
+  |---|---|---|
+  | `peershield` | 3 fail (batch of 14) | 9/9 |
+  | `freshquest` | TypeError (batch of 13) | pass |
+  | `zonechurn` | frame cost 94 -> 136 | pass |
+  | `questkill` | died mid-quest, 3 of 4 kills (batch of 8) | 11/11 |
+
+  `questkill` is the one to remember, because it does not read like
+  flake — it reads like a BALANCE bug ("the character survived the
+  errand: died true"). A saturated machine starves the combat loop, so
+  the player takes hits without landing them and dies doing the first
+  kill quest. Anything measuring TIME (frame cost), a RACE (a boot
+  route, a relay) or a FIGHT is suspect in a large batch. One isolated
+  re-run costs a minute and separates them; keep combat and multi-client
+  scenarios in batches of ~4.
+
+**Receipt:** `tools/qa/mp/mp-layer.mjs` (rewritten to select by class),
+`tools/qa/mp/mp-hairmask.mjs` (asserts its own framing),
+`tools/qa/mp/run.mjs` (warns when dist/ is stale — a different way to
+measure the wrong thing confidently).
+
+---
+
+## §29 — A scenario that selects UI by its LABEL is a test with an expiry date (v2.3.2013)
+
+§28 recorded three dead tests found in one sweep. Chasing the rest
+turned up the mechanism they share, and it is narrow enough to state as
+a rule: **every one of them reached for a string the owner is entitled
+to change.**
+
+Four scenarios, four renames, none of which was a mistake by the person
+who made it:
+
+| scenario | what it selected | what changed | cost |
+|---|---|---|---|
+| `layer` | `/Redeem Reward\|Choose a skill to train/` | v2.3.1827 split the turn-in into two screens | 4 assertions, silent for months |
+| `zonefx` | `clickText(A, 'Accept')` | same v2.3.1827 split — Accept moved to screen two | 4 assertions, **and it invented two bugs** |
+| `townlock` | `clickText(P, 'Accept')` | latent: same flow, different door | would have broken next |
+| `statpeek` | `[role="button"][title="Build"]` | v2.3.1849 renamed the tab to "Points" | 5 assertions |
+
+**The worst outcome is not the silence.** `zonefx` arms its tester by
+accepting a quest, because the town gate refuses an unarmed character.
+The accept matched nothing and was wrapped in `.catch(() => {})`, so the
+run continued with an unarmed player who never left town — and then four
+assertions reported that "an emote from another zone appears over your
+map" and "a chat bubble from another zone is drawn over your ground".
+Both players were in the SAME zone. The renderer was correct. A test
+that cannot reach its own precondition does not go quiet; it starts
+describing a world that does not exist, in the confident language of a
+bug report.
+
+**Rules this leaves:**
+- Select by a STABLE HOOK — a class or a `data-` attribute carrying an
+  ID, never `title`, `aria-label`, or button text. Where none exists,
+  ADD one: `bt-quest-turnin` exists on the claim button for exactly this
+  reason, and v2.3.2013 added `data-section` to the hero tabs after
+  `title="Build"` became `title="Points"`.
+- An ID and a LABEL are different things and the label is display copy.
+  `SECTION_LABEL` in HeroExpanded.jsx says so in its own comment — "the
+  label is a display concern and lives in a display table" — and the
+  test was reaching for the display concern.
+- **Never `.catch(() => {})` a setup step.** A guard that cannot fail is
+  not a guard. Two of the four swallowed their miss, and those two are
+  the ones that produced false accusations rather than plain failures.
+  If a step is genuinely optional, assert which branch you took.
+- A GUARD failing invalidates everything after it. When triaging, read
+  the failures in order and stop at the first guard: the four scary
+  zonefx failures were downstream of two boring ones.
+- Fix the flow in the HARNESS, not in each scenario. `acceptQuestFromGiver`
+  exists because this flow's labels have now moved twice and broken five
+  scenarios between them.
+- ...but scope the helper to the path it actually drives. Applying
+  `acceptQuestFromGiver` to `townlock` — which accepts from the QUESTS
+  DASH, a different door with no dialogue — took it from 27/27 to 22/27.
+  Check its prior state before "fixing" a test: a failing test is not
+  proof it was already failing.
+
+**Receipt:** `tools/qa/mp/harness.mjs` (`acceptQuestFromGiver`, and why
+it throws), `tools/qa/mp/mp-statpeek.mjs` + `HeroExpanded.jsx`
+(`data-section`), `tools/qa/mp/mp-layer.mjs`, `tools/qa/mp/mp-zonefx.mjs`.
+
+## §30 — A generated sleeve for the bare trailing arm looks worse than the bare arm (v2.3.2016)
+
+**The plausible-but-wrong move:** the owner has reported the bare arm on
+jog-east three times, `mp-shirtarm.mjs` diagnoses it correctly (frames 0-6,
+the TRAILING arm, and the fix has to ADD art because most of the bare arm
+lies outside the shirt's own bounding box), and the obvious next step is to
+generate the sleeve — grow a cap from the shirt's shoulder along the arm,
+fill it, hem it in black. It is easy to build in an hour and it passes
+every safety test this repo knows how to write.
+
+**Why it fails, and it is not a safety failure.** It was built at depth 4
+and depth 5, with preserved ink both at every dark body pixel and limited to
+the true outer silhouette. All three satisfy the two invariants v2.3.1986
+lacked — never write above the shirt's top row, never write on a column with
+body pixels above that row — and satisfy them by construction, so nothing
+goes near the face this time. It also leaves the body's own black keyline
+alone, so the arm keeps its outline. It is simply BAD ART: a ragged spiky
+left edge on the shirt with detached white pips out on the arm's antialiased
+fringe.
+
+The geometry is the lesson. A sleeve on an arm swung back-and-down is a band
+running PERPENDICULAR TO THE ARM'S AXIS. Every cheap rule available — dilate
+the shirt sideways, grow a geodesic cap from the shoulder — produces a band
+that is roughly vertical instead. On the frames where the arm is near
+vertical the same rule looks fine, which is exactly the trap: tune on those
+frames and the rule flatters itself, then falls apart on the frames that
+actually needed it.
+
+**What this leaves.** Closing this needs the arm's AXIS, not just its
+silhouette — or seven hand-drawn frames on one facing, which is probably the
+cheaper honest answer. Until one of those happens the bare arm STAYS. It is
+at least a coherent silhouette; the generated sleeve is not. Shipping a
+worse-looking fix to close a cosmetic report is a net loss, and this
+subsystem has already had one fix reverted in play (v2.3.1986's shirt blob
+on the character's face).
+
+**Receipt:** `tools/qa/mp/mp-shirtarm.mjs` header, section
+"v2.3.2016: A GENERATED SLEEVE WAS TRIED AND REJECTED".

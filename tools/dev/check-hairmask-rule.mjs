@@ -172,7 +172,63 @@ function insetRuns(cols, w) {
    apart by shape — see the long note in tools/make_hairmask.py for the three
    discriminators that were tried and measured down.  So `openTop` in the hat's
    meta records the intent, and everything else takes both conditions below. */
-function ruleRows(w, h, m, top, bot, openTop, enclosed) {
+/* ═══ v2.3.1993: (c) — AND WHEREVER THERE IS A HEAD BEHIND IT ═══
+   Owner: "Afro in bucket head ... east by the ear looks like too much hair got
+   erased where it meets the bucket outline" / "Barb helm east and northeast
+   hair isn't working right.  Giant bald spots" / "Arabian headwear isn't
+   working with hair mask".  (b) is the hat's extent AT THIS ROW and it
+   collapses the moment the silhouette narrows or tilts on its way down — a
+   chin strap, a tilted rim, a keffiyeh — so the head under those rows is
+   shaved.  Cutting hair that has only sky behind it costs nothing; cutting
+   hair with a head behind it is a bald spot, so a column is also kept where
+   the standing figure is drawn behind it.
+   The inverse of `place`, per pixel, in the hat art's own frame.  Mirrors
+   body_cols()/BODY_GROW in tools/make_hairmask.py — keep the two in step, and
+   note the shared floor(x+.5): numpy's rint and Math.round break ties in
+   opposite directions and that is a one-pixel disagreement per facing. */
+const BODY_GROW = 2;
+const _bodyCache = new Map();
+const bodyBits = (d) => {
+  if (!_bodyCache.has(d)) _bodyCache.set(d, bits(load256(path.join(REPO, `public/sprites/player/stand-${d}.png`))));
+  return _bodyCache.get(d);
+};
+function bodyCols(meta, d, w, h) {
+  if (!meta.anchors || !meta.anchors[d] || !tops[`stand-${d}-0`]) return null;
+  const a = meta.anchors[d];
+  const n = (meta.crownNudge && meta.crownNudge[d]) || [0, 0];
+  const sc = (meta.scale && meta.scale[d]) || 1;
+  const [bx, by] = tops[`stand-${d}-0`];
+  const dx = bx - (a[0] - n[0]) * sc, dy = by - (a[1] - n[1]) * sc;
+  const k = FRAME / w;
+  const body = bodyBits(d);
+  const out = new Uint8Array(w * h);
+  const ys = new Int32Array(h), xs = new Int32Array(w);
+  for (let y = 0; y < h; y++) ys[y] = Math.floor(y * k * sc + dy + 0.5);
+  for (let x = 0; x < w; x++) xs[x] = Math.floor(x * k * sc + dx + 0.5);
+  for (let y = 0; y < h; y++) {
+    const sy = ys[y];
+    if (sy < 0 || sy >= FRAME) continue;
+    for (let x = 0; x < w; x++) {
+      const sx = xs[x];
+      if (sx < 0 || sx >= FRAME) continue;
+      if (body.m[sy * FRAME + sx]) out[y * w + x] = 1;
+    }
+  }
+  for (let s = 1; s <= BODY_GROW; s++) {
+    const g = out.slice();
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        if (!out[y * w + x]) continue;
+        if (x + s < w) g[y * w + x + s] = 1;
+        if (x - s >= 0) g[y * w + x - s] = 1;
+      }
+    }
+    out.set(g);
+  }
+  return out;
+}
+
+function ruleRows(w, h, m, top, bot, openTop, enclosed, body) {
   const sm = solid(w, h, m);
   const rows = [];
   if (openTop) {
@@ -194,19 +250,32 @@ function ruleRows(w, h, m, top, bot, openTop, enclosed) {
     /* (a) the hat has reached this column at this row or above, AND
        (b) the column is inside the hat's own extent at this row. */
     const both = new Uint8Array(w);
-    /* v2.3.1976: an ENCLOSED hat keeps only where the hat itself is on this
-       row — the gap between a pair of horns is sky, but the scalp under it is
-       under the cap, so no hair may show there. (Owner: "There should be no
-       hair between the horns. I understand it to be a fully enclosed hat.") */
+    /* v2.3.1976: an ENCLOSED hat's footprint on a row is its OWN PIXELS, not
+       the filled span between them — the gap between a pair of horns is sky,
+       and no hair may show there. (Owner: "There should be no hair between the
+       horns. I understand it to be a fully enclosed hat.")
+       v2.3.2015: that is now ALL the flag means.  It used to also exempt the
+       hat from (c), on the premise that an enclosed cap covers the scalp
+       completely; measured on the shipped art it does not, wherever the cap
+       narrows on its way down, and the enclosed rule shaved the head under it
+       (mickey-ears east 9.47% bare scalp, devil-horns southwest 18.27%).  (c)
+       is gated on the BODY, and the gap between two horns is sky, so applying
+       it to an enclosed hat cannot put hair back between them — which is why
+       the exception could go rather than being special-cased again. */
     if (enclosed) { for (let x = 0; x < w; x++) if (sm[y * w + x]) both[x] = 1; }
     else for (let x = rl; x <= rr && rl >= 0; x++) if (seen[x]) both[x] = 1;
+    /* (c) v2.3.1993, every hat since v2.3.2015 — see bodyCols above. */
+    if (body) for (let x = 0; x < w; x++) if (seen[x] && body[y * w + x]) both[x] = 1;
     rows[y] = insetRuns(both, w);
   }
   return rows;
 }
 
-function ruleMask(hatBits, openTop, enclosed) {
+function ruleMask(hatBits, openTop, enclosed, meta, dir) {
   const { w, h, m } = hatBits;
+  /* v2.3.1993: the standing figure behind this frame — null only for a caller
+     with no meta to place it by.  v2.3.2015: enclosed hats consult it too. */
+  const body = (meta && dir) ? bodyCols(meta, dir, w, h) : null;
   const out = new Uint8Array(w * h);
   /* ═══ v2.3.1977: THE HAT'S OUTLINE, NOT ITS LAST STRAY PIXEL ═══
      Owner: "The hair mask is inconsistent depending on the direction ... it's
@@ -243,7 +312,7 @@ function ruleMask(hatBits, openTop, enclosed) {
   for (let y = bot + 1; y < h; y++) for (let x = 0; x < w; x++) part2[y * w + x] = 1;
   for (let i = 0; i < w * h; i++) if (part2[i]) out[i] = 1;
 
-  const rows = ruleRows(w, h, m, top, bot, openTop, enclosed);                        /* part 1 */
+  const rows = ruleRows(w, h, m, top, bot, openTop, enclosed, body);                  /* part 1 */
   for (let y = top; y <= bot; y++) {
     const keep = rows[y];
     if (keep) for (let x = 0; x < w; x++) if (keep[x]) out[y * w + x] = 1;
@@ -374,7 +443,7 @@ for (const hid of hats) {
     const hat = bits(img(artP));
     const openTop = !!meta.openTop;
     const enclosed = !!meta.enclosed;
-    const want = ruleMask(hat, openTop, enclosed);
+    const want = ruleMask(hat, openTop, enclosed, meta, d);
     const got = bits(img(mskP));
     if (got.w !== want.w || got.h !== want.h) { drifted.push(`${hid}/${d}: mask ${got.w}x${got.h} vs art ${want.w}x${want.h}`); continue; }
     let n = 0;
@@ -558,7 +627,7 @@ for (const hid of ['naruto-headband', 'bandana-2', 'bandana-blue']) {
   const masks = {};
   for (const d of DIRS) {
     const p = path.join(HW, hid, d + '.png');
-    if (fs.existsSync(p)) masks[d] = toImg(ruleMask(bits(img(p))));
+    if (fs.existsSync(p)) masks[d] = toImg(ruleMask(bits(img(p)), false, false, meta, d));
   }
   const [n, d] = baldPx(hid, meta, masks, 'span');
   ok(`${hid} is still REFUSED a hair clip — it is a band, and clipping to it bares the crown (${n}px on ${d || 'n/a'}, limit ${BALD_T})`,

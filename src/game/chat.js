@@ -113,7 +113,20 @@ export function sendChatMessage(S, text, deps) {
 
 /* Incoming peer chat ('chat' broadcast event). Honors the local block list
    (drop entirely) and mute list (log as '[muted]', no bubble, no unread).
-   deps = { setChatLog, setUnreadChats } */
+   deps = { setChatLog, setUnreadChats }
+
+   v2.3.1981: THIS IS NOW THE FALLBACK HALF, AND IT STAYS.  Against a
+   worker that advertises caps.chatMute the mute is enforced on the
+   fan-out (server/src/chatmod.js) — a muted player's line is never sent
+   to this socket, so the `bt_muted` test below simply never matches and
+   nothing reaches this log to relabel.  It is kept because worker and
+   client deploy independently (handoff rule 19): against an OLDER worker
+   this local list is the entire feature, exactly as it was, and against
+   a newer one it is a harmless second filter over an already-filtered
+   stream.  Do NOT delete it as "dead code now that the server does it" —
+   that would silently un-mute every player on any worker that predates
+   the flag, and mutes are one of the few controls where failing open is
+   a harm rather than an inconvenience. */
 export function handleChatEvent(payload, S, deps) {
   var setChatLog = deps.setChatLog,
     setUnreadChats = deps.setUnreadChats;

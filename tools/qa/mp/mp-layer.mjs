@@ -120,71 +120,144 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!standIns && Object.keys(standIns).length > 0 && wrong.length === 0,
     { standIns, wrong });
 
-  /* ── 3. the quest card's turn-in moment ──
-     tut_1 is already accepted above (it is where the sword came from), and the
-     giver's dialogue shows HIS active quest — so complete that one rather than
-     opening a second and wondering why the card shows the first. */
+  /* ── 3. the quest turn-in moment ──
+     v2.3.2000: REWRITTEN. This section had been failing since v2.3.1827 and
+     nobody saw it, because `layer` is not on the CI playable path (that runs
+     `questline` only), so the owner's original complaint — "when you turn in a
+     quest it needs to be more obvious that you're redeeming a reward, and the
+     choose a skill to train button is all faded like you can barely see it" —
+     has had NO regression cover for however long that is.
+
+     What broke it: v2.3.1827 ("the quest reward was unclaimable") split the
+     in-world turn-in into two screens. The giver now speaks through
+     NpcDialogue (`.bt-npcdlg`) whose last button says "Claim reward", and THAT
+     opens QuestOfferPanel (`.bt-qoffer`) which carries the payout, the skill
+     chooser and the confirm. The strings this section hunted for —
+     "Redeem Reward" and "Choose a skill to train" — exist nowhere in the
+     codebase any more, so `readBtn` returned {err} forever and three
+     assertions reported the same miss four times.
+
+     SELECTED BY CLASS, NOT BY LABEL, and that is the whole lesson. There is a
+     comment in QuestOfferPanel.jsx saying exactly this: `bt-quest-turnin` is
+     kept on the confirm button precisely "because that class is what the QA
+     harnesses click by: renaming the LABEL in v2.3.1764 broke three scenarios
+     at once". This scenario was one of the three that did not get the memo.
+     Labels are owner-facing copy and will change again; the classes are the
+     contract. */
   await H.grant(wsPort, myId, 'item', { invKey: 'snowman', count: 4 });
   await P.page.waitForTimeout(1800);
   /* The turn-in lives ONLY in the in-world dialogue: the dash list page had its
      Turn In button deliberately removed (QuestDetailPanel, v2.3.1685 incident),
-     so the door a player uses is Mayor Bro himself.  Walk up to him. */
+     so the door a player uses is Mayor Bro himself. Walk up to him. */
   await P.page.evaluate(() => {
     const S = window._gameState && window._gameState.current;
     const npc = (S && S.npcs || []).find((n) => n && n.id === 'mayor_bro');
     if (S && npc && S.player) { S.player.x = npc.x + 30; S.player.y = npc.y + 10; }
   });
   await P.page.waitForTimeout(2000);
-  const opened = await P.page.evaluate(() => !!document.querySelector('.bt-inspect-card'));
-  rec.ok('walking up to the giver opens his dialogue', opened,
-    await P.page.evaluate(() => {
-      const c = document.querySelector('.bt-inspect-card');
-      return { card: c ? (c.innerText || '').slice(0, 200) : null,
-        buttons: [...document.querySelectorAll('button')].filter((b) => b.offsetParent)
-          .map((b) => (b.textContent || '').trim()).slice(0, 12) };
-    }));
+  const spoke = await P.page.evaluate(() => !!document.querySelector('.bt-npcdlg'));
+  rec.ok('walking up to the giver opens his dialogue', spoke,
+    await P.page.evaluate(() => ({
+      dlg: (document.querySelector('.bt-npcdlg') || {}).innerText || null,
+      buttons: [...document.querySelectorAll('button')].filter((b) => b.offsetParent)
+        .map((b) => (b.textContent || '').trim()).slice(0, 12),
+    })));
 
-  /* The not-ready state first: a prog3 character must pick a skill, and the
-     complaint was that this prompt is the hardest thing on the card to read. */
-  const readBtn = () => P.page.evaluate(() => {
-    const b = [...document.querySelectorAll('button')].find((x) => x.offsetParent
-      && /Redeem Reward|Choose a skill to train/.test(x.textContent || ''));
-    if (!b) return { err: 'no turn-in button',
+  /* NpcDialogue pages its text, so the CTA only appears on the last chunk.
+     Click the panel to advance rather than guessing the chunk count. */
+  for (let i = 0; i < 8; i++) {
+    const done = await P.page.evaluate(() => {
+      const b = document.querySelector('.bt-npcdlg-next');
+      if (!b) return true;
+      if (/next/i.test(b.textContent || '')) { b.click(); return false; }
+      b.click(); return true;                       /* the real CTA */
+    });
+    await P.page.waitForTimeout(450);
+    if (done) break;
+  }
+  await P.page.waitForTimeout(900);
+
+  /* The claim screen. `.bt-qoffer` is the panel; `.bt-quest-turnin` is the
+     confirm, and it is the class the panel promises to keep. */
+  const claim = await P.page.evaluate(() => {
+    const panel = document.querySelector('.bt-qoffer');
+    if (!panel) return { err: 'no claim panel',
       buttons: [...document.querySelectorAll('button')].filter((x) => x.offsetParent)
-        .map((x) => (x.textContent || '').trim()).slice(0, 14),
-      card: (document.querySelector('.bt-inspect-card') || {}).innerText };
+        .map((x) => (x.textContent || '').trim()).slice(0, 14) };
+    const kicker = (panel.querySelector('.bt-qoffer-kicker') || {}).textContent || '';
+    const pay = (panel.querySelector('.bt-qoffer-pay') || {}).textContent || '';
+    const b = panel.querySelector('.bt-quest-turnin');
+    return { kicker: kicker.trim(), pay: pay.trim(), hasConfirm: !!b,
+      text: b ? (b.textContent || '').trim() : null,
+      /* aria-disabled, NOT .disabled.  The confirm stays focusable and
+         announced and guards its own onClick instead of setting the DOM
+         property (QuestOfferPanel: `aria-disabled` + `if (confirmDisabled)
+         return`).  Reading .disabled here reported false on a button that is
+         genuinely inert, which read as a product bug and is not one. */
+      disabled: b ? b.getAttribute('aria-disabled') === 'true' : null,
+      chooser: [...panel.querySelectorAll('button[aria-pressed]')].length };
+  });
+  rec.ok('the claim screen opens and says it is a reward, not a form',
+    !claim.err && /complete/i.test(claim.kicker) && claim.hasConfirm, claim);
+  rec.ok('...and it says what the reward PAYS',
+    !claim.err && /\d+\s*gold|\bXP\b/i.test(claim.pay), claim);
+
+  /* Contrast is the whole complaint: a control at half opacity over a dark
+     card is what "you can barely see it" means. Measured, not eyeballed.
+     Reads the same numbers the old section did, off the class instead. */
+  const legible = (sel) => P.page.evaluate((s) => {
+    const b = document.querySelector(s);
+    if (!b) return { err: 'missing ' + s };
     const cs = getComputedStyle(b);
-    /* Contrast is the whole complaint: a control at half opacity over a dark
-       card is what "you can barely see it" means.  Measured, not eyeballed. */
     const lum = (c) => {
-      const m = c.match(/\d+/g) || [0, 0, 0];
+      const m = c.match(/[\d.]+/g) || [0, 0, 0];
       const f = m.slice(0, 3).map((n) => {
         const v = Number(n) / 255;
         return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
       });
       return 0.2126 * f[0] + 0.7152 * f[1] + 0.0722 * f[2];
     };
-    const L1 = lum(cs.color), L2 = lum(cs.backgroundColor);
-    const ratio = (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05);
-    return { text: b.textContent.trim(), opacity: Number(cs.opacity),
-      contrast: Math.round(ratio * 10) / 10 };
-  });
-  const prompt = await readBtn();
-  rec.ok('the skill prompt is legible, not faded out (full opacity, ≥4.5:1)',
-    !prompt.err && prompt.opacity === 1 && prompt.contrast >= 4.5, prompt);
+    /* A transparent background composites onto the card behind it, so walk up
+       until something actually paints — otherwise every button scores against
+       rgba(0,0,0,0) and the ratio is meaningless. */
+    let bg = cs.backgroundColor, el = b.parentElement;
+    while (el && (bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent')) {
+      bg = getComputedStyle(el).backgroundColor; el = el.parentElement;
+    }
+    const L1 = lum(cs.color), L2 = lum(bg);
+    return { text: (b.textContent || '').trim(), opacity: Number(cs.opacity),
+      contrast: Math.round(((Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05)) * 10) / 10 };
+  }, sel);
 
-  /* Pick a skill, which is what turns the prompt into the redeem action. */
-  await P.page.evaluate(() => {
-    const b = [...document.querySelectorAll('button')].find((x) => x.offsetParent
-      && /^(Sword|Bow|Staff)$/i.test((x.textContent || '').trim()));
-    if (b) b.click();
-  });
-  await P.page.waitForTimeout(900);
-  const btn = await readBtn();
-  rec.ok('the turn-in control names REDEEMING a reward, and says what it pays',
-    !btn.err && /Redeem Reward/.test(btn.text) && /\d+g|\bXP\b/.test(btn.text), btn);
-  rec.ok('...and the redeem state is legible too',
-    !btn.err && btn.opacity === 1 && btn.contrast >= 4.5, btn);
+  const confirmLook = await legible('.bt-qoffer .bt-quest-turnin');
+  rec.ok('the claim button is legible, not faded out (full opacity, >=4.5:1)',
+    !confirmLook.err && confirmLook.opacity === 1 && confirmLook.contrast >= 4.5, confirmLook);
+
+  /* The skill chooser only exists under prog3 with XP to place. Assert it when
+     it is there rather than requiring it — a non-prog3 character turning in a
+     gold-only quest legitimately has none, and a hard requirement here would
+     make this scenario depend on progression state it does not control. */
+  if (!claim.err && claim.chooser > 0) {
+    const chooserLook = await legible('.bt-qoffer button[aria-pressed]');
+    rec.ok('the skill chooser is legible too (this is the "all faded" report)',
+      !chooserLook.err && chooserLook.opacity === 1 && chooserLook.contrast >= 4.5, chooserLook);
+    /* And it is a mechanism, not decoration: the confirm stays inert until a
+       skill is picked, because the worker refuses an XP payout with no
+       category (v2.3.1685). */
+    rec.ok('the claim button is inert until a skill is chosen', claim.disabled === true, claim);
+    await P.page.evaluate(() => {
+      const b = document.querySelector('.bt-qoffer button[aria-pressed]');
+      if (b) b.click();
+    });
+    await P.page.waitForTimeout(600);
+    const after = await P.page.evaluate(() => {
+      const b = document.querySelector('.bt-qoffer .bt-quest-turnin');
+      return b ? b.getAttribute('aria-disabled') === 'true' : null;
+    });
+    rec.ok('...and live once one is', after === false, { disabledAfterPick: after });
+  } else {
+    rec.ok('no skill chooser on this turn-in (not prog3, or no XP to place)', true, claim);
+  }
 
   await P.ctx.close().catch(() => {});
 }

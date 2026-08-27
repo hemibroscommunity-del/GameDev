@@ -105,6 +105,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(500);
   await H.clickText(P, 'Cold Reception').catch(() => {});
   await P.page.waitForTimeout(700);
+  /* v2.3.2011: NOT acceptQuestFromGiver.  This scenario accepts from the
+     QUESTS DASH (openDest above), where the offer is a panel with its own
+     Accept and there is no NpcDialogue to page through -- a different door
+     from the in-world giver, and it still works.  Measured: 27/27 with this
+     line, 22/27 when it was "helpfully" switched to the giver flow. */
   await H.clickText(P, 'Accept').catch(() => {});
   await P.page.waitForTimeout(2200);
 

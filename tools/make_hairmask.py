@@ -4,6 +4,20 @@
 v2.3.1957: part 1 bounds the hair's WIDTH to the hat's -- the owner's rule, see
 "The mask" below -- and bald_px is re-aimed to match it.
 
+v2.3.1993: the width bound gains a third clause -- a column is also kept where
+the standing FIGURE is drawn behind it.  Cutting hair that has only sky behind
+it costs nothing; cutting hair with a head behind it is a bald spot, which is
+what three owner reports were.  See "(c)" in build().
+
+v2.3.2015: and `enclosed` stops being an exception to it.  That flag's premise
+was that the cap covers the scalp completely; on the facings where the cap
+narrows on its way down it does not, and the enclosed rule shaved the head
+under it (mickey-ears east 9.47% bare scalp, devil-horns southwest 18.27%).
+The body test is what v2.3.1976 lacked: the gap between a pair of horns is SKY,
+so "no hair between the horns" survives clause (c) unaided.  `enclosed` now
+means one thing only -- this hat's footprint on a row is its own pixels rather
+than the filled span between them.
+
 What a hairmask is for
 ----------------------
 When a hat declares `clipsHair`, the renderer masks the hair sprite to the
@@ -206,6 +220,58 @@ def _inset_runs(cols, inset):
     return out
 
 
+# v2.3.1993: how far past the body's own outline the "there is a bro behind
+# this" test reaches, in the hat art's own pixels.  The hair sprite is drawn a
+# pixel or two proud of the skin it covers (its dark outline), so clipping
+# exactly to the skin would leave that outline shaved off against the head's
+# edge -- a hard, pale rim exactly where the fix is trying to stop showing skin.
+BODY_GROW = 2
+
+
+def body_cols(meta, d, h, w):
+    """For each row of THIS hat's art frame, which of its columns have BODY behind them.
+
+    v2.3.1993.  The mask is built in the hat's own frame, and `_place` is the
+    map from that frame onto the standing figure:
+
+        y_body = y_art256 * sc + by - (a1 - n1) * sc
+        x_body = x_art256 * sc + bx - (a0 - n0) * sc
+
+    so inverting it per pixel says, for any pixel of the mask, whether the
+    character is standing behind it.  Returns a (h, w) bool array in the art's
+    OWN pixels, or None when the crown table, the stand sheet or this facing's
+    anchor is missing -- the caller then keeps the old rule rather than guessing.
+    """
+    a = (meta.get('anchors') or {}).get(d)
+    if not a or not os.path.isfile(BODY_TOPS) or not os.path.isfile(BODY.format(dir=d)):
+        return None
+    tops = json.load(open(BODY_TOPS))
+    key = f'stand-{d}-0'
+    if key not in tops:
+        return None
+    body = _load256(BODY.format(dir=d))[:, :, 3] > ALPHA_T
+    n = meta.get('crownNudge', {}).get(d, [0, 0])
+    sc = meta.get('scale', {}).get(d, 1)
+    bx, by = tops[key]
+    dx, dy = bx - (a[0] - n[0]) * sc, by - (a[1] - n[1]) * sc
+    k = FRAME / float(w)                       # art pixel -> the meta's 256-space
+    # floor(x + .5), NOT np.rint: rint rounds halves to even and JS's
+    # Math.round rounds them up, and tools/dev/precheck.mjs re-implements this
+    # same map to check the committed masks.  A tie-breaking rule the two do
+    # not share is a one-pixel disagreement that only shows on some facings.
+    ys = np.floor(np.arange(h) * k * sc + dy + 0.5).astype(int)
+    xs = np.floor(np.arange(w) * k * sc + dx + 0.5).astype(int)
+    okr, okc = (ys >= 0) & (ys < FRAME), (xs >= 0) & (xs < FRAME)
+    out = np.zeros((h, w), bool)
+    out[np.ix_(okr, okc)] = body[np.ix_(ys[okr], xs[okc])]
+    for s in range(1, BODY_GROW + 1):          # widen sideways, no wraparound
+        g = out.copy()
+        g[:, s:] |= out[:, :-s]
+        g[:, :-s] |= out[:, s:]
+        out = g
+    return out
+
+
 def _load256(p):
     im = Image.open(p).convert('RGBA')
     if im.width != FRAME:
@@ -398,6 +464,100 @@ def build(hid, apply_it, set_clips):
                 # 620px, russian-hat 512px).  A column a hood covered higher up
                 # stays available lower down, which is what keeps hair in the
                 # gap between its panels.
+                # ═══ v2.3.1993: (c) — AND WHEREVER THERE IS A HEAD BEHIND IT ═══
+                #
+                # Three owner reports, one mechanism.  "Afro in bucket head
+                # looks good south and southwest but east by the ear looks like
+                # too much hair got erased where it meets the bucket outline" /
+                # "Barb helm east and northeast hair isn't working right.  Giant
+                # bald spots" / "Arabian headwear isn't working with hair mask".
+                #
+                # (b) is the hat's extent AT THIS ROW, and it collapses the
+                # moment the silhouette narrows or tilts on its way down -- so
+                # every column the hat covered higher up is thrown away for the
+                # rows underneath, and the head under them is shaved:
+                #
+                #   barbarian-helmet   below the brow band only the chin strap
+                #                      is left, ~8px wide, so the ten rows
+                #                      between the band and the strap's bottom
+                #                      keep a strap's width of hair and nothing
+                #                      else -- a bald BLOCK the width of the
+                #                      helmet (9,315 px of bare scalp measured
+                #                      on northeast, 3,898 on east)
+                #   golden-bucket      the rim is tilted on east, so under its
+                #                      right edge the row extent is the LEFT
+                #                      half of the bucket and the temple loses
+                #                      its hair (2,396 px, against 100 on south
+                #                      and 32 on southwest -- exactly the two
+                #                      facings the owner called good)
+                #   arabian-robe       the keffiyeh's own extent at head rows is
+                #                      a narrow band, so the mask keeps almost
+                #                      nothing: 100% of the visible hair gone on
+                #                      east and north, 8,083 px of bare scalp
+                #
+                # Dropping (b) is NOT the fix, and the first cut of this change
+                # measured why.  Loosening it to "the accumulated width, once
+                # you are below the crown" repaired every bald spot and then let
+                # the afro out through the sides of the barbarian helmet -- the
+                # HORNS are part of the accumulated width, so their columns were
+                # open at every row underneath (3,667 px of new hair beside the
+                # helmet on south alone, over open background).  That is the
+                # v2.3.1937 report coming back.
+                #
+                # What separates the two is not the row, it is what is BEHIND the
+                # pixel.  Cutting hair that has only sky behind it costs nothing
+                # -- that is the whole argument for the erode, the inset and the
+                # width rule.  Cutting hair with a HEAD behind it costs bare
+                # scalp, which is what all three reports are.  So the row clamp
+                # stands, and a third clause is unioned into it: a column is also
+                # kept where the standing figure is drawn behind it.  Above the
+                # hat there is no body, so `body` is empty there and the rule is
+                # byte-for-byte what it was -- which is why the wizard's notch,
+                # the cowboy's crease and every unaffected facing come out
+                # identical.
+                # ═══ v2.3.2015: AN ENCLOSED HAT DOES NOT ENCLOSE AS MUCH AS
+                #     IT CLAIMS, SO IT GETS (c) TOO ═══
+                #
+                # Owner, on mickey-ears: "East hair doesn't work well with
+                # Mickey hat it's erasing too much.  Check the others.  It
+                # should allow hair up until the border."
+                #
+                # v2.3.1993 gave the CLOSED branch a third clause -- keep a
+                # column wherever the standing figure is drawn behind it -- and
+                # deliberately withheld it from `enclosed`, whose whole premise
+                # (v2.3.1976) is that the cap covers the scalp completely, so
+                # there is no scalp left to protect.  Measured on the shipped
+                # art, that premise is false on exactly the facings where the
+                # cap narrows on its way down, which is the same shape the
+                # v2.3.1993 reports were:
+                #
+                #   mickey-ears east   the cap body ends at art row 21 and only
+                #                      a 2-4px sliver of strap continues to row
+                #                      26.  `solid[y]` is all the enclosed rule
+                #                      keeps, so the mask goes 10 -> 6 -> 3 -> 1
+                #                      -> 0 columns wide across those rows while
+                #                      the head under them is at FULL width: a
+                #                      bare band right under the brim, measured
+                #                      at 8,545 px, 9.47% of the visible hair
+                #   devil-horns SW     the same, worse -- 8,112 px, 18.27%, the
+                #                      highest in the game and never reported
+                #
+                # And the reason the exception can simply go is that (c) is
+                # gated on the BODY, which is the discriminator v2.3.1976 did
+                # not have.  The gap between a pair of horns, or between two
+                # mouse ears, is SKY -- measured at the time as 626 px outside
+                # the head against 6 inside -- so the body test excludes it on
+                # its own, and "there should be no hair between the horns"
+                # survives without needing a rule that also shaves the skull.
+                #
+                # `enclosed` therefore stops meaning "a different rule" and goes
+                # back to meaning the one thing it actually says: inside its own
+                # span, this hat's footprint is its OWN PIXELS, not the filled
+                # span between them.  That is the only term that differs now.
+                # (`seen & solid[y]` is `solid[y]`, so a hat with no body behind
+                # it -- no anchor, no stand sheet -- comes out byte-identical to
+                # the old enclosed rule.)
+                body = body_cols(meta, d, h, w)
                 seen = np.zeros(w, bool)
                 for y in range(y0, y1 + 1):
                     seen |= solid[y, :]
@@ -405,10 +565,13 @@ def build(hid, apply_it, set_clips):
                     row_span = np.zeros(w, bool)
                     if len(r):
                         row_span[int(r.min()):int(r.max()) + 1] = True
-                    # An enclosed hat keeps only where the hat itself is on
-                    # this row; everything else inside its span is scalp the
-                    # hat is covering.  See `enclosed` above.
-                    allow = solid[y, :] if enclosed else (seen & row_span)
+                    # The hat's footprint on this row: its own pixels for an
+                    # enclosed hat, the filled span between them for every
+                    # other.  See `enclosed` above.
+                    reach = solid[y, :] if enclosed else row_span
+                    if body is not None:
+                        reach = reach | body[y, :]
+                    allow = seen & reach
                     keep = _inset_runs(allow, INSET)
                     mask[y, keep] = (255, 255, 255, 255)
         made.append((d, int(m.sum()), int((mask[:, :, 3] > 0).sum()), w))
@@ -424,10 +587,19 @@ def build(hid, apply_it, set_clips):
               f'(limit {BALD_T}) -- this is a band, not a cap; clipping would shave the crown')
     if apply_it and set_clips:
         meta['clipsHair'] = True
-        meta['note'] = (meta.get('note', '') + ' v2.3.1957: hair-clip mask rebuilt by '
-                        'tools/make_hairmask.py under the WIDTH rule (owner: clip the hair to '
-                        'the hat\'s width at and above the hat)'
-                        + ('' if was else ', and clipsHair switched on') + '.')
+        # v2.3.1993: WRITE THE SENTENCE ONCE.  The note is the file's history,
+        # not a run log -- and this line appended unconditionally, so a hat
+        # rebuilt fourteen times carried the same sentence fourteen times
+        # (bucket-hat, before this).  A repeat says nothing a reader did not
+        # already have, and it buries the sentences that DO differ.
+        sentence = (' v2.3.2015: hair-clip mask rebuilt by tools/make_hairmask.py; the width '
+                    'rule keeps a column wherever the standing figure is drawn behind it, '
+                    'on every hat including the `enclosed` ones, so a hat that narrows or '
+                    'tilts on its way down (chin strap, tilted rim, keffiyeh, a cap whose '
+                    'brim slopes) no longer shaves the scalp underneath it')
+        note = meta.get('note', '')
+        if sentence not in note:
+            meta['note'] = note + sentence + ('' if was else ', and clipsHair switched on') + '.'
         with open(mp, 'w') as fh:
             json.dump(meta, fh, indent=2)
             fh.write('\n')

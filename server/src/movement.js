@@ -377,7 +377,7 @@ export const movementMethods = {
       if (ps.z !== 'town' && ps.z !== 'farm_home') {
         // Combat zone -- send the new zone's monster + gather +
         // loot state so the client can render them.
-        const newMonsters = this._ensureZoneMonsters(ps.z);
+        this._ensureZoneMonsters(ps.z);
         // Zone-entry damage immunity: replaces the prior
         // ENTRY_SAFE_RADIUS monster-shove (visually janky
         // teleport) with a 1500 ms grace window where incoming
@@ -387,18 +387,22 @@ export const movementMethods = {
         // walk/swing as normal but the player has a moment to
         // orient before hits land.
         ps._zoneEntryGraceUntil = Date.now() + this.ZONE_ENTRY_GRACE_MS;
-        const zoneMonstersWire = newMonsters.map(m => ({
-          id: m.id, arch: m.arch, level: m.level, element: m.element,
-          x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, dmg: m.dmg,
-          xp: m.xp, gold: m.gold, spd: m.spd, emoji: m.emoji, color: m.color,
-          alive: m.alive,
-        }));
-        const newNodes = this._ensureZoneNodes(ps.z);
-        const zoneNodesWire = newNodes.map(n => ({
-          id: n.id, nodeType: n.nodeType, x: n.x, y: n.y,
-          tierLvl: n.tierLvl, alive: n.alive, respawnAt: n.respawnAt,
-        }));
-        const zoneLootWire = this._zoneLootForWire(ps.z);
+        this._ensureZoneNodes(ps.z);
+        /* v2.3.1983: re-scale the zone to its NEW population before the
+           snapshot is built, so the arriving player's own frame already
+           carries the monsters/nodes their arrival just bought.  Doing it
+           on the 2s tick instead would show them the sparse world and then
+           re-sync it a moment later, which reads as a glitch.  `ws` is
+           excluded from the roster push — this snapshot IS their copy.
+           Everyone else already standing here gets theirs from inside. */
+        this._spawnScaleZone(ps.z, Date.now(), undefined, ws);
+        /* One shared definition of a zone snapshot (spawnscale.js), read
+           back AFTER the scale so a grow/trim can't leave a stale array
+           reference behind. */
+        const _zsnap = this._zoneSnapshotWire(ps.z);
+        const zoneMonstersWire = _zsnap.monsters;
+        const zoneNodesWire = _zsnap.nodes;
+        const zoneLootWire = _zsnap.loot;
         if (session.protocolVersion === 2) {
           // Protocol v2: one merged snapshot instead of three messages.
           ws.send(JSON.stringify({

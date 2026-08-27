@@ -534,6 +534,13 @@ function _torsoBands(d, w, h, frameW, frames) {
    of the eight screen facings are drawn by flipping a base-dir sheet, so a
    drawing baked straight in would read backwards on those (owner, on the shirt:
    "Your smiley face rotated the opposite direction"). */
+/* v2.3.1991: which sheet the bake below is for.  recolorBodyToCanvas takes an
+   IMAGE, not a pose and a direction, so the probe inside it cannot name what it
+   just measured -- and keying the probe by frame COUNT picked the 14-frame
+   MINING strip as "the biggest", which is how a first attempt at this
+   measurement ended up reporting on the wrong animation entirely.  buildBodySheet
+   knows, so buildBodySheet says. */
+let _bakeTag = '';
 export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH, eyeT, eyeRects, art) {
   /* v2.3.1108: when the caller knows this sheet's logical frame height, restore
      a downscaled-on-disk sheet to it (nearest-neighbour, exact palette) so the
@@ -653,9 +660,22 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
      is collected and handed back on the canvas.  The designer needs the same
      numbers the stamp used in order to run a touch backwards into a cell — see
      gridFit/cellAt in playerDecal.  The game never asks, so it never pays. */
-  const _rep = art && art.report ? { pants: [], tattoo: [], face: [], arms: [] } : null;
+  /* v2.3.1991: the probe forces the report on for the east run strip, so the
+     grid stampRegion actually fitted per frame can be read from outside.  The
+     region mask was already verified correct and the tattoo still did not
+     appear, which leaves the FIT as the thing to look at. */
+  /* v2.3.1992: the probe now reports on EVERY sheet it bakes, not only the east
+     run strip, and each report carries its row/column histograms.  The rule that
+     decides the extent has to hold for a broad front-on torso and a narrow
+     profile head at once, so "is it fixed?" is a question about all five facings
+     in both poses — the single-sheet probe is what let a rule that suits one
+     shape look correct. */
+  const _probe = typeof window !== 'undefined' && !!window.__btGridProbe;
+  const _rep = (art && art.report) || _probe
+    ? { pants: [], tattoo: [], face: [], arms: [] } : null;
+  const _stampOpt = (arr) => (_rep ? { report: arr, profile: _probe } : undefined);
   if (wantPantsArt) stampRegion(d, w, h, FRAME_W, pantsPaint, art.pants, !!art.mirror, PANTS_BOX,
-    _rep ? { report: _rep.pants } : undefined);
+    _stampOpt(_rep && _rep.pants));
   if (shoesPat) {
     stampPattern(d, w, h, FRAME_W,
       litFabricMask(base, regionFromFeet(d, shoesPx, w, h, FRAME_W, SHOES_MAX_UP), w * h, SHOES_LIT_MIN),
@@ -665,16 +685,71 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
      body's shading and lets some skin through.  A shirt print does not: it is
      ink ON fabric, and stays opaque. */
   if (tattooPx) stampRegion(d, w, h, FRAME_W, tattooPx, art.tattoo, !!art.mirror, TATTOO_BOX,
-    { underSkin: true, report: _rep && _rep.tattoo });
+    { underSkin: true, report: _rep && _rep.tattoo, profile: _probe });
   /* v2.3.1949: face and arms.  `eachPiece` for the arms only -- a figure has
      two of them and the largest-piece rule would ink whichever happens to be
      nearer the camera. */
   if (skinPx) {
     const reg = splitSkinRegions(skinPx, torsoPx, w, h, FRAME_W);
+    /* ═══ v2.3.1991: PER-FRAME REGION SIZES, FOR THE PROBE ═══
+       Owner: "the face tattoo only showing on idle and disappears during jog
+       but then pops up on one frame."  A tattoo is painted into whatever
+       `reg.face` says the face is, so a frame where that region collapses
+       paints nothing -- and the difference between poses is invisible from
+       outside the bake.  This publishes the per-frame count so a scenario can
+       measure it instead of a human counting frames in a screenshot.
+       Diagnostic only: it allocates one small array per bake and is read by
+       tools/qa/mp/mp-facetat.mjs. */
+    if (typeof window !== 'undefined' && window.__btGridProbe) {
+      try {
+        const _fr = Math.max(1, Math.floor(w / FRAME_W));
+        const _face = new Array(_fr).fill(0), _arms = new Array(_fr).fill(0), _skin = new Array(_fr).fill(0);
+        for (let y = 0; y < h; y++) {
+          for (let x = 0; x < w; x++) {
+            const i = y * w + x, f = Math.min(_fr - 1, Math.floor(x / FRAME_W));
+            if (reg.face[i]) _face[f]++;
+            if (reg.arms[i]) _arms[f]++;
+            if (skinPx[i]) _skin[f]++;
+          }
+        }
+        /* Keyed by frame COUNT, and accumulated rather than overwritten: one
+           bake runs per (pose, dir) and the last one to finish is whichever
+           sheet the renderer happened to want most recently.  Overwriting
+           reported `frames: 1` -- the portrait -- and said nothing at all
+           about the 28-frame jog sheet, which is the one the question is
+           about. */
+        window.__btSkinRegions = window.__btSkinRegions || {};
+        window.__btSkinRegions[_bakeTag || ('f' + _fr)] = { frames: _fr, face: _face, arms: _arms, skin: _skin };
+        /* The finished sheet itself, so a probe can look at what was actually
+           painted rather than at what the region said was paintable.  Only the
+           multi-frame strips: the portrait bakes constantly and would thrash
+           this.  Capped so a run strip does not sit in memory forever. */
+        if (_bakeTag === 'jog-east' && _rep) { try { window.__btFaceGrids = _rep.face; } catch (e) { /* ignore */ } }
+        if (_bakeTag === 'jog-east') {
+          try {
+            /* The region PAINTED RED over the sheet.  "The region exists and is
+               a healthy size" turned out to be true while the tattoo was still
+               invisible, so the count is not the answer -- WHERE it is, is. */
+            const _c2 = document.createElement('canvas');
+            _c2.width = cv.width; _c2.height = cv.height;
+            const _g2 = _c2.getContext('2d');
+            _g2.drawImage(cv, 0, 0);
+            const _id = _g2.getImageData(0, 0, _c2.width, _c2.height);
+            const _dd = _id.data;
+            for (let i = 0; i < reg.face.length; i++) {
+              if (!reg.face[i]) continue;
+              _dd[i * 4] = 255; _dd[i * 4 + 1] = 0; _dd[i * 4 + 2] = 0; _dd[i * 4 + 3] = 255;
+            }
+            _g2.putImageData(_id, 0, 0);
+            window.__btLastBake = { tag: _bakeTag, frames: _fr, png: cv.toDataURL('image/png'), region: _c2.toDataURL('image/png') };
+          } catch (e) { /* tainted or huge: skip */ }
+        }
+      } catch (e) { /* a probe must never break a bake */ }
+    }
     if (wantFaceTat) stampRegion(d, w, h, FRAME_W, reg.face, art.tattooFace, !!art.mirror, FACE_BOX,
-      { underSkin: true, report: _rep && _rep.face });
+      { underSkin: true, report: _rep && _rep.face, profile: _probe });
     if (wantArmTat) stampRegion(d, w, h, FRAME_W, reg.arms, art.tattooArm, !!art.mirror, ARM_BOX,
-      { eachPiece: true, underSkin: true, report: _rep && _rep.arms });
+      { eachPiece: true, underSkin: true, report: _rep && _rep.arms, profile: _probe });
   }
   /* v2.3.1928: the iris last, so it overwrites rather than being classified.
      Its pixels are near-black and would otherwise fall through every branch
@@ -686,6 +761,14 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
      caller of this function ignores extra properties.  Only present when the
      caller asked. */
   if (_rep) { try { cv.__btGrids = _rep; } catch (e) { /* frozen: no probe, no harm */ } }
+  /* v2.3.1992: and, for the probe only, the same grids keyed by SHEET, so a
+     scenario can ask of stand-south and jog-northeast exactly what v2.3.1991
+     could only ask of jog-east.  A rule for fitting a box has to hold for a
+     broad front-on torso and a narrow profile head at the same time; one sheet
+     cannot show that. */
+  if (_rep && _probe) {
+    try { window.__btGridsByTag = window.__btGridsByTag || {}; window.__btGridsByTag[_bakeTag] = _rep; } catch (e) { /* ignore */ }
+  }
   return cv;
 }
 
@@ -811,6 +894,7 @@ function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT
   return loadImg(`/sprites/player/${pose}-${dir}.png?v=${SPRITE_VERSION}${bust}`).then(img => {
     /* body poses are 256px frames; restore if stored smaller on disk.  Recolour
        runs at full 256 (exact skin/pants/shoes pixel thresholds). */
+    _bakeTag = `${pose}-${dir}`;
     const full = recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, FRAME_H,
       eyeT, EYE_MASK[`${pose}-${dir}`], art);
     /* v2.3.1120: count frames at full 256-space width, then downscale the DISPLAY

@@ -1039,7 +1039,82 @@ input{font-family:inherit}
    border-bottom IS the bevel; presses flat on tap).  Buttons are
    border-box, so the thicker bottom edge changes no layout. */
 /* v2.3.1524: type scale re-fitted to the left column (was full modal width). */
-.bt-cc-play{background:linear-gradient(180deg,#E2B765,#D2A14D);border:1px solid var(--ui-brass-highlight);border-bottom:4px solid #9C742D;border-radius:12px;box-shadow:inset 0 1px 0 rgba(255,255,255,.30),0 2px 6px rgba(0,0,0,.22);color:#172126;min-height:52px;max-width:500px;margin-left:auto;margin-right:auto;font-family:'Source Sans 3',sans-serif;font-size:clamp(12px,3.3vw,18px);font-weight:800;letter-spacing:.05em;text-transform:uppercase;box-sizing:border-box}
+/* v2.3.2008: the gate icon on ENTER BRO TOWN.  The plate is a flex row so the
+   icon and the label centre together; the icon is `flex:none` so a long label
+   never squeezes it, and it is sized in em so it tracks the button's own
+   clamp()ed font size instead of needing its own breakpoints. */
+.bt-cc-play{display:flex;align-items:center;justify-content:center;gap:.55em}
+.bt-cc-play-icon{width:1.9em;height:1.9em;object-fit:contain;flex:none;
+  filter:drop-shadow(0 1px 0 rgba(255,255,255,.25)) drop-shadow(0 1px 2px rgba(0,0,0,.35))}
+/* ═══ v2.3.2006: THE TWO HEADLINE BUTTONS SIT UP OFF THE SCREEN ═══
+   Owner: "Make buttons randomized look, enter bro town stand out more.
+   They're too flat."
+
+   Both were flat for the same reason and it was not the colour: their AMBIENT
+   shadow was doing nothing.  ENTER BRO TOWN carried `0 2px 6px rgba(0,0,0,.22)`
+   -- a 6px blur at 22% over a dark pane is invisible -- so the 4px brass lip
+   was the only depth cue, and a lip with no shadow under it reads as a border,
+   not as height.  What changed:
+
+     - the gradient spans a real range (#F5D18C -> #C08F2C instead of
+       #E2B765 -> #D2A14D), so the face is lit rather than tinted;
+     - a bright top inset and a dark bottom inset give the metal a curve;
+     - the lip keeps its 4px but now has a shadow beneath it to cast onto;
+     - a wide, low-opacity warm halo lifts it off the pane.  Lantern Slate
+       allows exactly ONE dominant gold on a surface and this is it, so the
+       halo is affordable here and nowhere else on the screen.
+
+   The press still travels the lip's full height, so the button lands. */
+/* ═══ v2.3.2006: THE RANDOMIZE KEY, RAISED ═══
+   Same owner note as .bt-cc-play above.  .bt-cc-btn already had a 3px lip and
+   a 6px ambient, which is right for a secondary control; this is the creator's
+   OTHER headline action, so it gets a taller lip, a brighter face and a deeper
+   ambient -- while .bt-cc-btn itself stays exactly as it was for the account
+   modal and the quest claim screen's "Later", which are not headline anything.
+
+   A brass hairline along the top edge is what ties it to the gold plate below
+   it without making a second gold button: the face stays slate, only the lit
+   edge is warm. */
+.bt-cc-btn--hero{
+  background:
+    linear-gradient(180deg,
+      rgba(255,255,255,.30) 0,
+      rgba(255,255,255,.22) var(--ui-hairline),
+      rgba(255,255,255,.09) var(--ui-hairline),
+      rgba(0,0,0,.14) calc(100% - var(--ui-hairline)),
+      rgba(0,0,0,.46) calc(100% - var(--ui-hairline)),
+      rgba(0,0,0,.46) 100%),
+    linear-gradient(180deg,#6E8C98 0%,#2C3E46 100%);
+  border:1px solid #96805A;
+  border-radius:12px;
+  min-height:52px;
+  box-shadow:
+    inset 0 2px 0 rgba(247,223,174,.48),
+    inset 0 -6px 11px rgba(0,0,0,.34),
+    inset 0 0 0 1px rgba(247,223,174,.14),
+    0 0 0 1.5px rgba(10,14,17,.66),
+    0 6px 0 #1E2A30,
+    0 7px 2px rgba(0,0,0,.30),
+    0 13px 24px rgba(5,8,10,.56);
+}
+/* v2.3.2009: travels the whole 6px block, matching the gold plate beside it. */
+.bt-cc-btn--hero:active{
+  transform:translateY(6px);
+  box-shadow:
+    inset 0 2px 0 rgba(247,223,174,.22),
+    inset 0 3px 9px rgba(0,0,0,.40),
+    0 0 0 1.5px rgba(10,14,17,.66),
+    0 1px 3px rgba(5,8,10,.40);
+}
+.bt-cc-play{background:linear-gradient(180deg,#FFE9B8 0,#F3CE81 30%,#DFAE58 62%,#B98524 100%);border:1px solid #FFF0C8;border-bottom:none;border-radius:13px;box-shadow:
+    inset 0 2px 0 rgba(255,255,255,.75),
+    inset 0 -7px 12px rgba(104,68,14,.42),
+    inset 0 0 0 1px rgba(255,236,190,.30),
+    0 0 0 1.5px rgba(26,17,4,.62),
+    0 7px 0 #7A5620,
+    0 8px 2px rgba(0,0,0,.32),
+    0 14px 26px rgba(5,8,10,.58),
+    0 0 30px rgba(240,200,120,.22);color:#1A1206;min-height:56px;max-width:500px;margin-left:auto;margin-right:auto;font-family:'Source Sans 3',sans-serif;font-size:clamp(12px,3.3vw,18px);font-weight:800;letter-spacing:.05em;text-transform:uppercase;box-sizing:border-box}
 /* The returning-player row: two labels side by side needs to wrap and shrink
    in a column a third of the screen wide. */
 /* v2.3.1576: the returning-player door is now a real secondary control
@@ -1067,7 +1142,18 @@ input{font-family:inherit}
 .bt-cc-login:active{transform:translateY(1px);box-shadow:inset 0 3px 7px rgba(0,0,0,.46)}
 .bt-cc-login img{width:16px!important;height:16px!important}
 .bt-cc-actions>button{font-size:clamp(11px,2.8vw,13px)}
-.bt-cc-play:active{transform:translateY(2px);border-bottom-width:2px;filter:brightness(1.05)}
+/* v2.3.2006: travels the whole 4px lip (was 2 of 4, which left the button
+   looking like it had stuck) and drops its ambient shadow while down, so the
+   press reads as the plate meeting the pane. */
+/* v2.3.2009: the press travels the WHOLE 7px block and the block goes with it,
+   so the plate visibly meets the pane instead of sliding down a static
+   shadow. */
+.bt-cc-play:active{transform:translateY(7px);filter:brightness(1.07);box-shadow:
+    inset 0 2px 0 rgba(255,255,255,.30),
+    inset 0 3px 9px rgba(80,52,10,.40),
+    0 0 0 1.5px rgba(26,17,4,.62),
+    0 0 0 rgba(0,0,0,0),
+    0 1px 3px rgba(5,8,10,.40)}
 /* v2.3.1577 (owner request): the ENTER label breathes.
    Gated on :not(:disabled) ON PURPOSE — the button is disabled until the
    name passes the v2.3.1307 rules, so the breath starts the moment the
@@ -1423,7 +1509,16 @@ input{font-family:inherit}
 .bt-paint-tools{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
 .bt-paint-tools .bt-paint-tool-label{font-size:8.5px;white-space:nowrap}
 /* v2.3.1949: the options row is a flex pair now -- a variable part (brush
-   widths, or the alphabet) and a Mirror toggle that never moves. */
+   widths, or the alphabet) and a Mirror toggle that never moves.
+   v2.3.1994: the Mirror cell is retired (owner: "Swap out the mirror for
+   'fill'"), so the row is the variable part alone -- kept as a flex wrapper
+   rather than collapsed into it, because the wrapper is what the shape-ops
+   grid and the alphabet strip both swap INTO, and flattening it would move
+   two other layouts to save one line.
+   v2.3.2004: .bt-paint-mirror is back with its button -- a fixed 62px cell
+   beside the flexing variable half, which is the v2.3.1949 geometry unchanged.
+   The widths grid simply flexes 62px narrower, exactly as it already does when
+   the alphabet strip swaps in, so no other row loses anything. */
 .bt-paint-opts{display:flex;gap:5px;min-width:0}
 .bt-paint-opts-main{flex:1 1 auto;min-width:0;display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
 .bt-paint-mirror{flex:0 0 auto;width:62px}
@@ -2270,7 +2365,15 @@ body:has(.bt-inspect) .bt-kb-chip{display:none}
    cache to every returning player — on the one screen where the stale word is
    the whole bug.  Same plate, same size, new word.  See
    tools/ui/relabel-login-plate.mjs for how the lettering was recomposed. */
-.bt-login-btn--key{background-image:url('/ui/welcome/title/btn-continue.png');aspect-ratio:815/259}
+/* v2.3.2005: the ?v= is the plate's ART version, and it has to move WITH the
+   art.  v2.3.1954 avoided a cache-bust by giving the repainted plate a new
+   FILENAME, which works once; this repaint keeps the name (same word, moved
+   205px left to centre it) so a returning browser would otherwise serve the
+   off-centre plate from cache forever.  Same failure TRAPS §27 records for
+   characterPortrait's hardcoded ?v=2.3.760, which silently withheld every
+   shirt re-bake from the creator preview.  Bump this whenever the PNG is
+   regenerated. */
+.bt-login-btn--key{background-image:url('/ui/welcome/title/btn-continue.png?v=2.3.2005');aspect-ratio:815/259}
 .bt-login-btn--new{background-image:url('/ui/welcome/title/btn-create.png');aspect-ratio:799/212}
 .bt-login-btn:active{transform:translateY(1px) scale(.995)}
 .bt-login-btn:disabled{opacity:.55;cursor:default;animation:none}

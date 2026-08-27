@@ -56,3 +56,13 @@ preview/
 
 # v2.3.1979: mp-lockon writes a debug screenshot next to itself on every run.
 tools/qa/mp/.last-*.png
+
+# v2.3.1997 / v2.3.2002: QA scenarios drop debug screenshots in tools/maps as
+# dotfiles, and three of them were TRACKED — .cc.png (mp-ccload), .hero.png
+# (mp-heroview) and .blade.png.  So any QA run left phantom "modified" files in
+# the working tree, and they were swept into unrelated commits as binary churn
+# (4266debf, 5195ef93 — .blade.png has no other commit and no code reference at
+# all, which is what an accident looks like).  Ignored as a CLASS rather than
+# one name at a time: the next scenario to add one should not need this edit.
+# Same reasoning as .last-*.png above — regenerate them, don't version them.
+tools/maps/.*.png

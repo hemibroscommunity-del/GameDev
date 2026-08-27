@@ -62,9 +62,8 @@ export const gatheringMethods = {
   _spawnZoneNodes(zoneId) {
     const zone = this._getZoneConfig(zoneId);
     if (!zone) return [];
-    const W = zone.w * this.TILE;
-    const H = zone.h * this.TILE;
-    const margin = 8 * this.TILE; // matches client lifeSkills.js inset
+    /* v2.3.1983: the dimensions/margin/gap arithmetic moved with the
+       placement itself into _placeGatherNode below. */
     const cfg = this._getZoneNodeConfig(zoneId);
     // Entry-level zones pin to tier 1 (the lowest of the shallow set).
     // _getShallowNodeTierLvls is still defined for future deeper-depth
@@ -79,32 +78,49 @@ export const gatheringMethods = {
        MIN_NODE_GAP from every already-placed node, keeping the
        best-spread candidate as a fallback so tiny zones still place all
        their nodes (mirror of client spawnGatherNodes; keep together). */
-    const MIN_NODE_GAP = 6 * this.TILE;
     const placeOne = (type) => {
-      let x = 0, y = 0, bestD = -1;
-      for (let att = 0; att < 40; att++) {
-        const cx = margin + Math.random() * (W - margin * 2);
-        const cy = margin + Math.random() * (H - margin * 2);
-        let dMin = Infinity;
-        for (const o of nodes) dMin = Math.min(dMin, Math.hypot(o.x - cx, o.y - cy));
-        if (dMin > bestD) { bestD = dMin; x = cx; y = cy; }
-        if (dMin >= MIN_NODE_GAP) break;
-      }
-      const tierLvl = 1;
-      nodes.push({
-        id: 'sn-' + zoneId + '-' + idx,
-        nodeType: type,
-        x, y,
-        tierLvl,
-        alive: true,
-        respawnAt: 0,
-      });
+      const n = this._placeGatherNode(zoneId, type, nodes, 'sn-' + zoneId + '-' + idx);
+      if (n) nodes.push(n);
       idx++;
     };
     for (let i = 0; i < cfg.treeCt; i++) placeOne('tree');
     for (let i = 0; i < cfg.fishCt; i++) placeOne('fishSpot');
     for (let i = 0; i < cfg.oreCt; i++) placeOne('oreVein');
     return nodes;
+  },
+
+  /* v2.3.1983: ONE node, placed by the v2.3.1444 minimum-gap rejection
+     sampler against whatever is already standing in the zone.  Hoisted
+     verbatim out of _spawnZoneNodes' `placeOne` closure (only the id and
+     the push/return changed) so the population scaler (spawnscale.js) can
+     add a node mid-session under the SAME spacing rule — a scaled-in vein
+     that landed on top of an existing tree would stack their prompt menus,
+     which is the exact bug v2.3.1444 fixed. */
+  _placeGatherNode(zoneId, type, existing, id) {
+    const zone = this._getZoneConfig(zoneId);
+    if (!zone) return null;
+    const W = zone.w * this.TILE;
+    const H = zone.h * this.TILE;
+    const margin = 8 * this.TILE; // matches client lifeSkills.js inset
+    const MIN_NODE_GAP = 6 * this.TILE;
+    let x = 0, y = 0, bestD = -1;
+    for (let att = 0; att < 40; att++) {
+      const cx = margin + Math.random() * (W - margin * 2);
+      const cy = margin + Math.random() * (H - margin * 2);
+      let dMin = Infinity;
+      for (const o of existing) dMin = Math.min(dMin, Math.hypot(o.x - cx, o.y - cy));
+      if (dMin > bestD) { bestD = dMin; x = cx; y = cy; }
+      if (dMin >= MIN_NODE_GAP) break;
+    }
+    const tierLvl = 1;
+    return {
+      id,
+      nodeType: type,
+      x, y,
+      tierLvl,
+      alive: true,
+      respawnAt: 0,
+    };
   },
 
   _ensureZoneNodes(zoneId) {

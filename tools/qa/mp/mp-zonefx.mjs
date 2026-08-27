@@ -44,7 +44,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   await place(A, 0, 34);
   await A.page.waitForTimeout(1200);
-  await H.clickText(A, 'Accept').catch(() => {});
+  /* v2.3.2011: two screens now — and it THROWS.  Swallowing this is what
+     made four assertions below describe a cross-zone bug that did not
+     exist: the tester was simply never armed, so never left town. */
+  await H.acceptQuestFromGiver(A);
   await A.page.waitForTimeout(1600);
   await A.page.evaluate(() => {
     const b = document.querySelector('.bt-inspect-close'); if (b) b.click();

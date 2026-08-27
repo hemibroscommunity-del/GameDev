@@ -165,6 +165,7 @@ import { firemakingBus } from './mobile/firemakingBus.js';
 import { eatBus } from './mobile/eatBus.js';
 import { blockRingBus } from './mobile/blockRingBus.js';
 import { chatBubbleBus } from './mobile/chatBubbleBus.js'; /* v2.3.1287: self-tap opens chat */
+import { chatLogBus } from './mobile/chatLogBus.js'; /* v2.3.1980: the world-chat feed listens here */
 import { controlsTutorialBus } from './mobile/controlsTutorialBus.js';
 /* v2.3.1796: the questline teaches the controls by flashing the real one
    (owner).  Sibling of, not replacement for, ControlsTutorial above — see
@@ -186,7 +187,7 @@ import { SKIN_CATALOG, PANTS_CATALOG, SHOES_CATALOG, getSkin, setSkin, getPants,
 import { HAIR_COLOR_CATALOG, getHairColor, setHairColor } from '@/rendering/traits/hairColorCatalog.js';
 import { HAT_COLOR_CATALOG, hatColorsFor, getHatColor, setHatColor } from '@/rendering/traits/hatColorCatalog.js';
 import { EYE_COLOR_CATALOG, getEyeColor, setEyeColor } from '@/rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
-import { HEIGHT_CATALOG, FRAME_CATALOG, getBuildHeight, setBuildHeight, getBuildFrame, setBuildFrame, wireHeight, wireFrame } from '@/rendering/traits/buildCatalog.js'; /* v2.3.1953 */
+import { HEIGHT_CATALOG, getBuildHeight, setBuildHeight, getBuildFrame, wireHeight, wireFrame } from '@/rendering/traits/buildCatalog.js'; /* v2.3.1953; v2.3.1996: frame locked to medium — no FRAME_CATALOG/setBuildFrame here */
 import { getShirtArt, getArt, artHasInk } from '@/rendering/traits/playerArt.js'; /* v2.3.1939; v2.3.1940 + pants/tattoo */
 import { getPattern } from '@/rendering/traits/patternCatalog.js'; /* v2.3.1941 */
 import { FACIALHAIR_COLOR_CATALOG, getFacialHairColor, setFacialHairColor } from '@/rendering/traits/facialHairColorCatalog.js';
@@ -206,6 +207,7 @@ import { releasePeerDamage, addBuildProg, pushDmgPopup, monsterPopupY } from '@/
 import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822: stuck-dead watchdog */
 /* v2.3.767: chat send + chat/emote handlers extracted behavior-frozen (REBUILD-PLAN Phase 2). */
 import { sendChatMessage } from '@/game/chat.js';
+import { subscribeMutes } from '@/game/chatMute.js'; /* v2.3.1981 */
 /* v2.3.787: zone transitions (town exits, tile-9 return, dungeon entrance/exit)
    extracted behavior-frozen (REBUILD-PLAN Phase 6). */
 import { handleZoneTransitions } from '@/game/zoneTransitions.js';
@@ -1558,6 +1560,17 @@ export var BroTown = function BroTown(_ref0) {
     _useState168 = _slicedToArray(_useState167, 2),
     mutedList = _useState168[0],
     setMutedList = _useState168[1];
+  /* v2.3.1981: the mute list is a SERVER fact now (server/src/chatmod.js).
+     It arrives as chat_mute_list on join and after every mutation, and
+     chatMute.js republishes it through the localStorage mirror this state
+     was seeded from — so without this subscription the Social panel and
+     the inspect card would keep showing whatever THIS browser last
+     remembered while the worker enforced something else.  A mute made on
+     a phone has to be visibly in force on the laptop; that is the whole
+     point of moving it off the device. */
+  useEffect(function () {
+    return subscribeMutes(function (list) { setMutedList(list); });
+  }, []);
   var _useState169 = useState(false),
     _useState170 = _slicedToArray(_useState169, 2),
     showSocialPanel = _useState170[0],
@@ -1650,6 +1663,19 @@ export var BroTown = function BroTown(_ref0) {
     _useState188 = _slicedToArray(_useState187, 2),
     joinFlash = _useState188[0],
     setJoinFlash = _useState188[1];
+  /* ═══ v2.3.1980: PUBLISH THE ONLINE COUNT ONTO THE GAME STATE ═══
+     `playerCount` is the authoritative room population -- the worker
+     broadcasts it on every join and leave (`player_count`, getPlayerCount()
+     over all sessions, so it is WORLD-wide and not the zone you happen to be
+     standing in) and the client's own join/leave/ghost-sweep paths keep it
+     honest in between.  All of that lands in this one React state, which the
+     chat window cannot reach: ChatBubble is mounted by GameApp, outside this
+     component.  Mirroring it onto stateRef is how every other cross-boundary
+     read in this file is done, and it means the feed shows the SERVER's
+     number rather than recounting S.others and disagreeing with it. */
+  useEffect(function () {
+    if (stateRef.current) stateRef.current._playerCount = playerCount;
+  }, [playerCount]);
   /* ═══ v2.3.1814: WHICH PRE-GAME SCREEN, IF ANY ═══
      Owner: "character selections in terms of names and traits picked during
      login should be permanent.  When you load a character using the key it
@@ -1752,6 +1778,11 @@ export var BroTown = function BroTown(_ref0) {
   var _heightSelState = useState(getBuildHeight()),
     heightSel = _heightSelState[0],
     setHeightSel = _heightSelState[1];
+  /* v2.3.1996: frame is locked to medium, so getBuildFrame() only ever answers
+     'medium' and this state never changes.  Kept rather than deleted because
+     the preview and the portrait still take a buildFrame, and because putting
+     a second frame back is then FRAME_CATALOG plus a picker -- not a re-thread
+     of every call site.  setFrameSel is passed down for the same reason. */
   var _frameSelState = useState(getBuildFrame()),
     frameSel = _frameSelState[0],
     setFrameSel = _frameSelState[1];
@@ -1790,9 +1821,29 @@ export var BroTown = function BroTown(_ref0) {
      it only resized a box inside that component; it now also tells the preview
      camera to pull back to the whole figure, and that wiring lives in this
      file beside activeCat, which was lifted for the same reason. */
-  var _zmState = useState(false),
+  /* ═══ v2.3.1994: THE CREATOR OPENS ON THE WHOLE CHARACTER ═══
+     Owner: "When first getting to the character design screen have the
+     character zoomed out normally instead of zooming in by default for his
+     hair."
+
+     `previewZoom` true means the WHOLE FIGURE (focusForCat returns FOCUS_FULL,
+     and NameModal gives the stage its taller frame) -- the name is a leftover
+     from when tapping the character was the only thing that moved the camera.
+     It started false, so the very first thing a new player saw was a close-up
+     of the top of a head, because `activeCat` starts on 'hair' and v2.3.1951
+     wired the camera to follow the open category.  That is the right behaviour
+     for a category you CHOSE and the wrong one for the category that merely
+     happens to be first.
+     So the camera starts pulled back and the category framing engages the
+     moment you pick a tab (setActiveCat below) -- the feature is kept, it just
+     stops firing before anyone has asked it to. */
+  var _zmState = useState(true),
     previewZoom = _zmState[0],
     setPreviewZoom = _zmState[1];
+  /* Picking a trait category IS the "aim the camera here" gesture, so it ends
+     the opening wide shot.  One place, so the two states can never disagree
+     about whether the camera has been aimed yet. */
+  var pickPreviewCat = function (c) { setActiveCat(c); setPreviewZoom(false); };
   /* v2.3.711: drag-to-rotate -- horizontal swipes on the preview canvas step
      the facing every 26px of travel; the corner buttons remain for
      discoverability.  Holds the last x where a step fired. */
@@ -2054,7 +2105,9 @@ export var BroTown = function BroTown(_ref0) {
        what the creator can do, and a feature it never touches is a feature
        half the players never learn exists. */
     var bh = rpick(HEIGHT_CATALOG); setBuildHeight(bh); setHeightSel(bh);
-    var bf = rpick(FRAME_CATALOG); setBuildFrame(bf); setFrameSel(bf);
+    /* v2.3.1996: no frame roll -- the axis is locked to medium (FRAME_CATALOG),
+       so rolling it would pick 'medium' every time and the only thing it could
+       still do is surprise a player whose saved build was Thin or Large. */
     var hr = rpick(HAIR_CATALOG); setHair(hr); setHairSel(hr);
     if (recolorEnabled('hair')) {
       var hcCat = hr === 'long' ? HAIR_COLOR_CATALOG.filter(function (c) { return LONG_HAIR_COLORS.indexOf(c.id) >= 0; }) : HAIR_COLOR_CATALOG;
@@ -2244,19 +2297,32 @@ export var BroTown = function BroTown(_ref0) {
   }(), [nfts]);
   var frameRef = useRef(0);
 
+  /* ═══ v2.3.1980: EVERY WRITE TO THE CHAT LOG ANNOUNCES ITSELF ═══
+     The log is written from four modules (game/chat.js on send and on every
+     received line, networking/gameEvents.js for party chat and operator
+     announcements, networking/wsClient.js for the welcome line) and all four
+     were handed THIS setter -- so wrapping it once here is the whole of it.
+     The world-chat feed lives in ChatBubble, which GameApp mounts outside
+     this component and which therefore cannot see `chatLog` as a prop; it
+     reads S.chatLog and re-renders on the bump. */
+  var noteChatLog = useCallback(function (v) {
+    setChatLog(v);
+    try { chatLogBus.bump(); } catch (e) { /* the log still wrote; only the feed misses a frame */ }
+  }, []);
+
   /* Send chat message — input-widget concerns stay here; the network/state
      body lives in src/game/chat.js (v2.3.767, REBUILD-PLAN Phase 2). */
   var sendChat = useCallback(function () {
     var text = chatInput.trim();
     if (!text) return;
-    sendChatMessage(stateRef.current, text, { setChatLog: setChatLog });
+    sendChatMessage(stateRef.current, text, { setChatLog: noteChatLog });
     setChatInput('');
     chatInputValRef.current = '';
     /* Keep keyboard open by re-focusing */
     requestAnimationFrame(function () {
       if (chatInputRef.current) chatInputRef.current.focus();
     });
-  }, [chatInput]);
+  }, [chatInput, noteChatLog]);
   /* Ambient background music — gentle chiptune loop */
   useEffect(function () {
     return wireTownMusic(showNameModal, showLogin);
@@ -2439,7 +2505,7 @@ export var BroTown = function BroTown(_ref0) {
       showLogin: showLogin,
       preGame: bootPhase !== null,   /* v2.3.1814: also the boot check + login door */
       setPlayerCount: setPlayerCount,
-      setChatLog: setChatLog,
+      setChatLog: noteChatLog,   /* v2.3.1980: wrapped -- see noteChatLog */
       setUnreadChats: setUnreadChats,
       setJoinFlash: setJoinFlash,
       setRpgState: setRpgState,
@@ -5374,7 +5440,45 @@ export var BroTown = function BroTown(_ref0) {
           var _dnNow = Date.now();
           var _dnW = 0;
           for (var _dnR = 0; _dnR < _dn.length; _dnR++) {
-            if (_dnNow - _dn[_dnR].ts < 1200) {
+            /* ═══ v2.3.1985: THE POPUP'S OWN ttl DECIDES, NOT A FLAT 1200ms ═══
+               Owner: "Make the quest complete message (like actually right
+               after getting the 4th snowman remains) stay longer on screen.
+               It's there for half a second or less."
+
+               It was, and this line is why. Popups have carried a per-popup
+               `ttl` since long before now — 1.5s by default, 2.5s on a kill
+               banner, 5s on an operator announcement, and (v2.3.1985) 4.5s on
+               the quest-complete floater — and the renderer honours it. This
+               prune did not: it dropped EVERY entry at a flat 1200ms and
+               destroyed its Pixi objects, so no popup in the game has ever
+               outlived 1.2 seconds whatever it asked for. Worse for reading
+               it, the renderer fades a popup out over ttl * 0.8, so a 1.5s
+               default was still fading on the assumption it had 1.5s while
+               this deleted it at 1.2 — the last visible third of every
+               message was spent nearly transparent, then it vanished.
+
+               The v2.3.1741 note below is right that TWO TTLs that must stay
+               ordered is a bug waiting to come back, and it is the reason
+               this prune owns the destroy. The answer to that is not a second
+               constant: it is to read the SAME number the renderer reads.
+               Now there is one ttl per popup and two places that agree on it,
+               which is what v2.3.1741 was reaching for.
+
+               The leak fix is untouched — whoever drops the entry still
+               releases what it owns, on the line below.
+
+               WHAT THIS COSTS. An ordinary damage number now lives 1.5s
+               instead of 1.2s, so the steady-state population of the
+               damageNumbers layer rises by a quarter. That is bounded on both
+               sides: MAX_LIVE_POPUPS (24, combatHelpers) still caps the
+               default-ttl popups, and only they are eligible to be aged out
+               early, so a long-lived message can never be squeezed by a busy
+               fight. Two other popups get the life they always asked for and
+               never had: the kill banner (2.5s) and the operator announcement
+               (5s, gameEvents.js), which is the only on-screen surface a
+               server announcement has. */
+            var _dnTtl = ((_dn[_dnR].ttl || 1.5) * 1000);
+            if (_dnNow - _dn[_dnR].ts < _dnTtl) {
               if (_dnW !== _dnR) _dn[_dnW] = _dn[_dnR];
               _dnW++;
             } else {
@@ -8297,7 +8401,7 @@ export var BroTown = function BroTown(_ref0) {
     });
   }
   if (showNameModal) {
-    return /*#__PURE__*/React.createElement(NameModal, { _dragRotX: _dragRotX, _swatchTile: _swatchTile, _thumbTile: _thumbTile, _buildTile: _buildTile, activeCat: activeCat, heightSel: heightSel, setHeightSel: setHeightSel, frameSel: frameSel, setFrameSel: setFrameSel, beardColorSel: beardColorSel, facialHairSel: facialHairSel, hairColorSel: hairColorSel, hairSel: hairSel, hatColorSel: hatColorSel, eyeColorSel: eyeColorSel, setEyeColorSel: setEyeColorSel, headwearSel: headwearSel, joinTown: joinTown, nameInput: nameInput, pantsSel: pantsSel, previewCanvasRef: previewCanvasRef, previewDir: previewDir, previewZoom: previewZoom, setPreviewZoom: setPreviewZoom, randomizeWithFlair: randomizeWithFlair, rollRandomName: rollRandomName, rotatePreview: rotatePreview, setActiveCat: setActiveCat, setBeardColorSel: setBeardColorSel, setFacialHairSel: setFacialHairSel, setHairColorSel: setHairColorSel, setHairSel: setHairSel, setHatColorSel: setHatColorSel, setHeadwearSel: setHeadwearSel, setNameInput: setNameInput, setPantsSel: setPantsSel, setShirtColorSel: setShirtColorSel, setShirtSel: setShirtSel, setShoesSel: setShoesSel, setSkinSel: setSkinSel, shirtColorSel: shirtColorSel, shirtSel: shirtSel, shoesSel: shoesSel, skinSel: skinSel });
+    return /*#__PURE__*/React.createElement(NameModal, { _dragRotX: _dragRotX, _swatchTile: _swatchTile, _thumbTile: _thumbTile, _buildTile: _buildTile, activeCat: activeCat, heightSel: heightSel, setHeightSel: setHeightSel, frameSel: frameSel, setFrameSel: setFrameSel, beardColorSel: beardColorSel, facialHairSel: facialHairSel, hairColorSel: hairColorSel, hairSel: hairSel, hatColorSel: hatColorSel, eyeColorSel: eyeColorSel, setEyeColorSel: setEyeColorSel, headwearSel: headwearSel, joinTown: joinTown, nameInput: nameInput, pantsSel: pantsSel, previewCanvasRef: previewCanvasRef, previewDir: previewDir, previewZoom: previewZoom, setPreviewZoom: setPreviewZoom, randomizeWithFlair: randomizeWithFlair, rollRandomName: rollRandomName, rotatePreview: rotatePreview, setActiveCat: pickPreviewCat, setBeardColorSel: setBeardColorSel, setFacialHairSel: setFacialHairSel, setHairColorSel: setHairColorSel, setHairSel: setHairSel, setHatColorSel: setHatColorSel, setHeadwearSel: setHeadwearSel, setNameInput: setNameInput, setPantsSel: setPantsSel, setShirtColorSel: setShirtColorSel, setShirtSel: setShirtSel, setShoesSel: setShoesSel, setSkinSel: setSkinSel, shirtColorSel: shirtColorSel, shirtSel: shirtSel, shoesSel: shoesSel, skinSel: skinSel });
   }
   return /*#__PURE__*/React.createElement(React.Fragment, null, /* v2.3.1925: the mystery-reveal ceremony.  Mounted at the top of the in-world fragment and ALWAYS mounted — it renders null until a hidden grade arrives on the loot credit, and mounting it conditionally would mean the queue it subscribes to could fill before anyone was listening. */ /*#__PURE__*/React.createElement(RevealOverlay, null), showIntro && /*#__PURE__*/React.createElement(IntroVideo, {
     waitFor: introWaitRef.current,

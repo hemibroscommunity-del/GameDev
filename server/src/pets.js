@@ -186,7 +186,7 @@ export const petMethods = {
     m.alive = false;
     m.hp = 0;
     m.targetId = null;
-    m.respawnAt = m.noRespawn ? 0 : Date.now() + this.RESPAWN_TIME;
+    m.respawnAt = m.noRespawn ? 0 : Date.now() + this._monsterRespawnMs(ps.z); // v2.3.1983: population-scaled, like the kill path
     this._markMonsterDirty(ps.z, m.id);
     this._addLifeSkillXp(ps, 'trapping', PETS.CAPTURE_XP_BASE + (m.level || 1) * PETS.CAPTURE_XP_PER_LVL);
     this._saveRpg(session.id, ps);
