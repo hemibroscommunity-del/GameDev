@@ -254,7 +254,7 @@ function ruleRows(w, h, m, top, bot, openTop, enclosed, body) {
        the filled span between them — the gap between a pair of horns is sky,
        and no hair may show there. (Owner: "There should be no hair between the
        horns. I understand it to be a fully enclosed hat.")
-       v2.3.2010: that is now ALL the flag means.  It used to also exempt the
+       v2.3.2015: that is now ALL the flag means.  It used to also exempt the
        hat from (c), on the premise that an enclosed cap covers the scalp
        completely; measured on the shipped art it does not, wherever the cap
        narrows on its way down, and the enclosed rule shaved the head under it
@@ -264,7 +264,7 @@ function ruleRows(w, h, m, top, bot, openTop, enclosed, body) {
        the exception could go rather than being special-cased again. */
     if (enclosed) { for (let x = 0; x < w; x++) if (sm[y * w + x]) both[x] = 1; }
     else for (let x = rl; x <= rr && rl >= 0; x++) if (seen[x]) both[x] = 1;
-    /* (c) v2.3.1993, every hat since v2.3.2010 — see bodyCols above. */
+    /* (c) v2.3.1993, every hat since v2.3.2015 — see bodyCols above. */
     if (body) for (let x = 0; x < w; x++) if (seen[x] && body[y * w + x]) both[x] = 1;
     rows[y] = insetRuns(both, w);
   }
@@ -274,7 +274,7 @@ function ruleRows(w, h, m, top, bot, openTop, enclosed, body) {
 function ruleMask(hatBits, openTop, enclosed, meta, dir) {
   const { w, h, m } = hatBits;
   /* v2.3.1993: the standing figure behind this frame — null only for a caller
-     with no meta to place it by.  v2.3.2010: enclosed hats consult it too. */
+     with no meta to place it by.  v2.3.2015: enclosed hats consult it too. */
   const body = (meta && dir) ? bodyCols(meta, dir, w, h) : null;
   const out = new Uint8Array(w * h);
   /* ═══ v2.3.1977: THE HAT'S OUTLINE, NOT ITS LAST STRAY PIXEL ═══

@@ -1,6 +1,6 @@
 /* THE HAT PRESSES THE HAIR DOWN; IT DOES NOT SHAVE THE HEAD (v2.3.1993,
  * re-pinned to the preview's wide frame in v2.3.2001, the two `enclosed`
- * hats added in v2.3.2010).
+ * hats added in v2.3.2015).
  *
  * Three owner reports off the character-design preview, all on the same
  * subsystem — the mask that carves hair away so it sits under a hat:
@@ -91,7 +91,7 @@ const REPORTED = [
   ['Golden Bucket', ['east'], ['south', 'southwest']],
   ['Barbarian Helmet', ['east', 'northeast'], ['south']],
   ['Arabian Robe', ['east'], ['south', 'southwest']],
-  /* v2.3.2010.  Owner: "East hair doesn't work well with Mickey hat it's
+  /* v2.3.2015.  Owner: "East hair doesn't work well with Mickey hat it's
      erasing too much ... It should allow hair up until the border.  Check south
      view too there's a strip".
      EAST is here; SOUTH is in the good column deliberately, and it is worth
@@ -131,7 +131,7 @@ const DIRS = ['south', 'southeast', 'east', 'northeast', 'north', 'northwest', '
        and the facings the owner called GOOD, before AND after:
                 golden-bucket south 0.71%, southwest 0.24%, barbarian south 0.16%
 
-   v2.3.2010 adds the two `enclosed` hats on the same scale:
+   v2.3.2015 adds the two `enclosed` hats on the same scale:
 
        before   mickey-ears east 9.47%    devil-horns southwest 18.27%
                 mickey-ears south 0.20%   devil-horns northeast 4.27%

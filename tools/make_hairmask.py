@@ -9,7 +9,7 @@ the standing FIGURE is drawn behind it.  Cutting hair that has only sky behind
 it costs nothing; cutting hair with a head behind it is a bald spot, which is
 what three owner reports were.  See "(c)" in build().
 
-v2.3.2010: and `enclosed` stops being an exception to it.  That flag's premise
+v2.3.2015: and `enclosed` stops being an exception to it.  That flag's premise
 was that the cap covers the scalp completely; on the facings where the cap
 narrows on its way down it does not, and the enclosed rule shaved the head
 under it (mickey-ears east 9.47% bare scalp, devil-horns southwest 18.27%).
@@ -515,7 +515,7 @@ def build(hid, apply_it, set_clips):
                 # byte-for-byte what it was -- which is why the wizard's notch,
                 # the cowboy's crease and every unaffected facing come out
                 # identical.
-                # ═══ v2.3.2010: AN ENCLOSED HAT DOES NOT ENCLOSE AS MUCH AS
+                # ═══ v2.3.2015: AN ENCLOSED HAT DOES NOT ENCLOSE AS MUCH AS
                 #     IT CLAIMS, SO IT GETS (c) TOO ═══
                 #
                 # Owner, on mickey-ears: "East hair doesn't work well with
@@ -592,7 +592,7 @@ def build(hid, apply_it, set_clips):
         # rebuilt fourteen times carried the same sentence fourteen times
         # (bucket-hat, before this).  A repeat says nothing a reader did not
         # already have, and it buries the sentences that DO differ.
-        sentence = (' v2.3.2010: hair-clip mask rebuilt by tools/make_hairmask.py; the width '
+        sentence = (' v2.3.2015: hair-clip mask rebuilt by tools/make_hairmask.py; the width '
                     'rule keeps a column wherever the standing figure is drawn behind it, '
                     'on every hat including the `enclosed` ones, so a hat that narrows or '
                     'tilts on its way down (chin strap, tilted rim, keffiyeh, a cap whose '
