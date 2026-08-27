@@ -1281,17 +1281,37 @@ function _remoteBodyArt(other, mirror) {
  * reads far better than a floating one. */
 const _CAPE_HIDDEN_POSES = { dodge: 1, swing: 1, bowshot: 1, fire: 1, chop: 1, mine: 1, fish: 1, cook: 1, pickup: 1, hit: 1 };
 
-function _placeCape(display, capeId, pose, dir) {
+function _placeCape(display, capeId, pose, dir, mirror, frameIdx) {
   const spr = display && display._capeSprite;
   if (!spr) return;
   const sb = display._spriteBody;
   const tex = (!capeId || capeId === 'none' || _CAPE_HIDDEN_POSES[pose]) ? null : getCapeTexture(capeId, dir);
   if (!tex || !sb || !sb.visible) { if (spr.visible) spr.visible = false; return; }
   if (spr.texture !== tex) spr.texture = tex;
-  spr.x = sb.x; spr.y = sb.y;
   const norm = 256 / ((tex.frame && tex.frame.width) || 256);
   spr.scale.x = sb.scale.x * norm / DISPLAY_DS;
   spr.scale.y = sb.scale.y * norm / DISPLAY_DS;
+  /* ═══ v2.3.2023b: THE CAPE FOLLOWS THE FRAME'S OWN CROWN ═══
+   * The art is a STANDING still, and the standing figure is not where the
+   * figure is on a jog frame: measured from body-tops.json, the crown moves
+   * +18x and +21y in 256-space between stand-east-0 and jog-east.  Pinned to
+   * the frame origin the hood stays over the standing head while the real head
+   * runs out from under it, and the owner's first question about the jog was
+   * exactly that -- the face pokes out in front of the hood.
+   * So the cape is offset by this frame's crown against the standing crown the
+   * art was fitted to.  It rides the same body-tops table hats are placed
+   * from, which means it also bobs with the stride rather than sitting rigid
+   * while the body moves under it.
+   * Mirrored facings flip the X term, for the same reason the body's own
+   * scale.x carries its sign. */
+  const nowTop = _lookupBodyTop(pose, dir, frameIdx);
+  const standTop = _lookupBodyTop('stand', dir, 0);
+  let dx = 0, dy = 0;
+  if (nowTop && standTop) {
+    dx = (nowTop[0] - standTop[0]) * Math.abs(spr.scale.x) * (mirror ? -1 : 1);
+    dy = (nowTop[1] - standTop[1]) * Math.abs(spr.scale.y);
+  }
+  spr.x = sb.x + dx; spr.y = sb.y + dy;
   if (!spr.visible) spr.visible = true;
 }
 
@@ -6988,7 +7008,7 @@ export class EntityRenderer {
           if (display._shirtSprite) display._shirtSprite.visible = false;
           /* always show the remote's hair/hat/beard (no helmet to hide them). */
           _crownOverride = _fsR ? _fullsetCrown(dir, _rJogPhase) : null; /* v2.3.1389 */
-          _placeCape(display, other.cape, pose, dir);   /* v2.3.2023 */
+          _placeCape(display, other.cape, pose, dir, mirror, frameIdx);   /* v2.3.2023 */
           _placeHeadwear(display, other.headwear, other.hatColor, pose, dir, mirror, frameIdx, sizeMul, other.hair); /* v2.3.1561: hair id for the floating halo */
           _placeFacialHair(display, other.facialhair, other.facialHairColor, pose, dir, mirror, frameIdx, sizeMul);
           _placeHair(display, other.hair, other.hairColor, other.headwear, pose, dir, mirror, frameIdx, sizeMul);
@@ -8248,7 +8268,7 @@ export class EntityRenderer {
            traits to the DRAWN head's crown (FULLSET_CROWN — armor-synced,
            left-shifted) instead of the body sheet's. */
         _crownOverride = _fsT ? _fullsetCrown(dir, _jogPhase) : null;
-        _placeCape(display, getCape(), pose, dir);   /* v2.3.2023 */
+        _placeCape(display, getCape(), pose, dir, mirror, frameIdx);   /* v2.3.2023 */
         _placeHeadwear(display, getHeadwear(), getHatColor(), pose, dir, mirror, frameIdx, bodyScale, getHair()); /* v2.3.1561: hair id for the floating halo */
         _placeFacialHair(display, getFacialHair(), getFacialHairColor(), pose, dir, mirror, frameIdx, bodyScale);
         _placeHair(display, getHair(), getHairColor(), getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);

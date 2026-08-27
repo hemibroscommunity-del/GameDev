@@ -76,6 +76,44 @@ export async function run({ browser, wsPort, webPort, rec }) {
        && worn.cape.mirror === worn.body.mirror),
     { cape: worn && worn.cape, body: worn && worn.body });
 
+  /* ── JOGGING ── owner: "Does it work while jogging too?"
+   * It did not, and nothing here would have said so.  The art is a STANDING
+   * still, and the standing figure is not where the figure is on a jog frame:
+   * body-tops.json puts the crown +18x +21y in 256-space between stand-east-0
+   * and jog-east.  Pinned to the frame origin the hood stayed over the
+   * standing head while the real head ran out from under it — the face poking
+   * out in front of the hood, plainly visible in a screenshot and invisible to
+   * every assertion above, because position and scale still agreed with the
+   * body exactly as they were asked to.
+   *
+   * So the cape is offset by this frame's crown against the standing crown.
+   * The test is that the offset EXISTS while jogging and is ZERO while
+   * standing: re-pinning the cape to the body origin is the regression, and it
+   * is the one a later "simplification" would reach for. */
+  await P.page.keyboard.down('d');
+  const jog = [];
+  for (let i = 0; i < 14 && jog.length < 3; i++) {
+    await P.page.waitForTimeout(160);
+    const s = await raw(P);
+    if (s && s.pose === 'jog' && s.cape && s.body) jog.push(s);
+  }
+  await P.page.keyboard.up('d');
+  await P.page.waitForTimeout(600);
+  rec.ok('the player actually jogged (guard: without this the offset check below proves nothing)',
+    jog.length > 0, { samples: jog.length });
+  if (jog.length) {
+    const off = jog.map((s) => [s.cape.x - s.body.x, s.cape.y - s.body.y]);
+    rec.ok('while jogging the cape follows the frame\'s crown, not the frame origin',
+      off.some(([dx, dy]) => dx !== 0 || dy !== 0), { offsets: off });
+    rec.ok('...and it is still drawn at the body\'s size while it does so',
+      jog.every((s) => Math.abs(s.cape.w - s.body.w) < 1.5), jog.map((s) => [s.cape.w, s.body.w]));
+  }
+  const back = await raw(P);
+  rec.ok('...and standing again there is no offset — the art is fitted to THIS pose',
+    !!(back && back.cape && back.body && back.pose === 'stand'
+       && back.cape.x === back.body.x && back.cape.y === back.body.y),
+    back);
+
   /* ── THE INVARIANT THAT MATTERS ──
    * Not "click and hope a monster was in range".  The first cut did that and
    * the pose never left 'stand' across six clicks, so the assertion was
