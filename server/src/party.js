@@ -130,9 +130,18 @@ export const partyMethods = {
       text,
       ts: Date.now(),
     };
+    /* v2.3.1981: this lane is per-recipient already, so the mute applies
+       right here -- a muted party member's line is not sent, rather than
+       sent and hidden (chatmod.js).  Remember it first: the report path
+       quotes the SERVER's copy of what was said, and party chat is a lane
+       harassment can hide in precisely because the room never sees it. */
+    this._chatModRemember(session.id, text, this.playerState[session.id] && this.playerState[session.id].z, 'party');
     // Deliver to every online member (the sender's own client already
     // echoed optimistically and drops from === myId, mirroring room chat).
-    for (const pid of p.members) this._partySend(pid, 'party_chat', wire);
+    for (const pid of p.members) {
+      if (this._chatModMuted(pid, session.id)) continue;
+      this._partySend(pid, 'party_chat', wire);
+    }
   },
 
   _handlePartyInvite(session, payload) {

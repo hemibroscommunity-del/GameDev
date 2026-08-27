@@ -314,6 +314,15 @@ export const adminMethods = {
       const cs = await this._chainScoreAdminRoute(request, url, path, json);
       if (cs) return cs;
 
+      /* v2.3.1981: player abuse reports (chatmod.js) -- same contract.
+         Reports need somewhere to BE READ or they are a write-only field
+         like the harden_h5_log this toolkit was built to fix; the auth,
+         the fail-closed 404 and the admin_log all come from here for
+         free, which is why it mounts under this surface rather than
+         growing a route (and a second secret) of its own. */
+      const cm = await this._chatModAdminRoute(request, url, path, json);
+      if (cm) return cm;
+
       return json({ ok: false, error: 'Not found' }, 404);
     } catch (err) {
       return json({ ok: false, error: err.message }, 500);

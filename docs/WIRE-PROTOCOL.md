@@ -137,6 +137,8 @@ sends). All of these are in `PRIVILEGED_EVENTS` unless noted.
 | `monster_kill` | Server-confirmed kill (drives loot/XP via credits) | [dispatcher] ~3222 |
 | `monster_transform` | Variant transform (e.g. remnant skull) | [dispatcher] ~3163 |
 | `pvp_hit` | Server-resolved PvP damage | [dispatcher] ~3890 |
+| `chat_mute_list` | v2.3.1981 the SERVER's copy of who you have muted — `{list:[{id,name,at}], settled:true, error?}`, on join and after every mutation. Privileged: a forged one could paint (or silently empty) a mute list in the UI while the worker enforced something else | [dispatcher] chatmod.js |
+| `chat_report_ack` | v2.3.1981 answer to one `chat_report` — `{ok, id?, lines?, error?}`. A forged one would tell a harassed player their report was filed when nothing was written | [dispatcher] chatmod.js |
 
 ## Client → server messages (accepted cases)
 
@@ -168,6 +170,8 @@ Server cases in `GameRoom.webSocketMessage`, `server/src/index.js`
 | `set_active_slot` | Switch weapon slot (melee/ranged/staff) | ~3971 |
 | `forge_weapon` | Blacksmithing forge | ~3991 |
 | `amulet_forge_request` | v2.3.1192 server amulet forge — `{op:'smelt'\|'craft'\|'gem', ...}` under `caps.amuletForge`; echo is `player_state` only (see `docs/specs/amulet-forge.md`) | amulet.js |
+| `chat_mute` | v2.3.1981 persistent chat mute — `{target, on, name?}` under `caps.chatMute`. Stored in `chat_mute:<pid>` against the stable `bp_` identity and enforced on the FAN-OUT: a muted player's `chat`/`emote` is filtered out of the muter's own tick frame (tick.js), and their party chat / friend DM is not sent. Answers `chat_mute_list`. Its own case, never rebroadcast — an old worker would relay it and announce your mute to the room, which is why the client gates the send on the cap | chatmod.js |
+| `chat_report` | v2.3.1981 abuse report — `{target, reason?}` under `caps.chatMute`. Stored in `chat_report:<id>` with the SERVER's copy of the recent chat; a client-supplied text/name is ignored outright (rule 16). Reason clamped to an allowlist; rate-limited per reporter (60 s per target, 5/h, 20/day). Answers `chat_report_ack`. Operator reads them at `GET /api/admin/reports` | chatmod.js |
 | `gem_cut_request` | v2.3.1198 server gem cutting — `{gem}` under `caps.gems`; answers private `gem_cut_result` + `player_state` echo (see `docs/specs/amulet-forge.md` "Gem income") | amulet.js |
 | `quest_accept` / `quest_turn_in` | Quest lifecycle | ~4000 / ~4009 |
 
@@ -303,6 +307,13 @@ gameplay authority must instead get a real server case.
 | Event | Purpose | Dispatcher case |
 |---|---|---|
 | `chat` / `emote` | Chat lines and emotes | ~3091 / ~3122 |
+
+> **v2.3.1981 — the relay is filtered PER RECIPIENT.** `chat` and `emote` are
+> the family a server-side mute suppresses: the tick fan-out drops them from
+> the muter's own frame (`MUTABLE_RELAY_TYPES`, chatmod.js), keyed on the
+> server-stamped `from`, never `payload.id`. Nothing else this player relays
+> is touched — mute is a chat control, block is an interaction control. See
+> `docs/specs/chat-moderation.md`.
 
 ### `chat` is clamped and its sender is stamped (v2.3.1970)
 

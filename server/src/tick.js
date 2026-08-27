@@ -347,6 +347,19 @@ export const tickMethods = {
         events = this.eventBuffer.splice(0, take);
       }
 
+      /* ═══ v2.3.1981: A MUTED LINE IS NEVER SENT ═══
+         Room chat and emotes are the one relay family that is deliberately
+         NOT zone-scoped, and they ride this shared `events` array -- one
+         push, fanned to every socket.  A mute therefore cannot be applied
+         where the message is produced; it has to be applied HERE, per
+         recipient, or the muted text is on the muter's wire and "mute" is
+         only a rendering choice their client happens to make (chatmod.js
+         header, point 2).
+         Cost on a normal tick: one pass over the batch that finds no
+         mutable type and returns null, after which every session takes
+         the untouched fast path below. */
+      const chatSpeakers = events ? this._chatModSpeakers(events) : null;
+
       /* v2.3.1735: `st` = _stunUntil, and it has to be here or the stun is
          an INVISIBLE mechanic in every server zone.  Shield Bash stamps
          m._stunUntil (abilities.js) and the tick already honours it fully —
@@ -379,7 +392,11 @@ export const tickMethods = {
          every entity in the zone (legacy behavior); v2 sessions get
          only the entities marked dirty this tick (client merges by id,
          so unsent entries keep their last-known state). */
-      const buildFor = (zone, pv) => {
+      /* v2.3.1981: `muted` is the recipient's mute Set, or null for the
+         (overwhelmingly common) unmuted case.  Sessions whose mutes do not
+         intersect this tick's speakers pass null and keep sharing the
+         plain per-(zone, protocolVersion) serialization. */
+      const buildFor = (zone, pv, muted) => {
         const d = { type: 'tick', seq, ts };
         let any = false;
 
@@ -394,7 +411,18 @@ export const tickMethods = {
         }
         if (hasPlayers) { d.players = players; any = true; }
 
-        if (events) { d.events = events; any = true; }
+        if (events) {
+          /* v2.3.1981: drop the muted speakers' chat/emote out of THIS
+             recipient's frame.  Everything else they do still relays --
+             mute is a chat control, not an invisible interaction block
+             (MUTABLE_RELAY_TYPES, chatmod.js).  An empty result leaves
+             `any` alone, so a tick whose only content was a muted line
+             produces no frame at all rather than an empty one. */
+          const ev = muted
+            ? events.filter((e) => { const sp = this._chatModSpeakerOf(e); return !(sp && muted.has(sp)); })
+            : events;
+          if (ev.length) { d.events = ev; any = true; }
+        }
 
         // Zone-scoped entities.  A session with no resolved zone (still
         // pre-join) simply gets none -- its state_sync carries the world.
@@ -453,9 +481,18 @@ export const tickMethods = {
         const ps = s.id ? this.playerState[s.id] : null;
         const zone = ps ? ps.z : null;
         const pv = s.protocolVersion === 2 ? 2 : 1;
-        const key = pv + '|' + zone;
+        /* v2.3.1981: '' for everyone who mutes nobody who spoke this tick,
+           so the cache key is byte-identical to what it was and the
+           "serialize once per group, send many" property is untouched.
+           A muter's key names exactly the intersection, so two players who
+           mute the same flooder still share ONE serialization. */
+        const muteKey = chatSpeakers ? this._chatModMuteKey(s.id, chatSpeakers) : '';
+        const key = pv + '|' + zone + muteKey;
         let msg = groupCache.get(key);
-        if (msg === undefined) { msg = buildFor(zone, pv); groupCache.set(key, msg); }
+        if (msg === undefined) {
+          msg = buildFor(zone, pv, muteKey ? this._chatModMuteSet(s.id) : null);
+          groupCache.set(key, msg);
+        }
         if (msg) { try { ws.send(msg); } catch {} }
       }
 

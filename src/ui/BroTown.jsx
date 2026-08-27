@@ -207,6 +207,7 @@ import { releasePeerDamage, addBuildProg, pushDmgPopup, monsterPopupY } from '@/
 import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822: stuck-dead watchdog */
 /* v2.3.767: chat send + chat/emote handlers extracted behavior-frozen (REBUILD-PLAN Phase 2). */
 import { sendChatMessage } from '@/game/chat.js';
+import { subscribeMutes } from '@/game/chatMute.js'; /* v2.3.1981 */
 /* v2.3.787: zone transitions (town exits, tile-9 return, dungeon entrance/exit)
    extracted behavior-frozen (REBUILD-PLAN Phase 6). */
 import { handleZoneTransitions } from '@/game/zoneTransitions.js';
@@ -1559,6 +1560,17 @@ export var BroTown = function BroTown(_ref0) {
     _useState168 = _slicedToArray(_useState167, 2),
     mutedList = _useState168[0],
     setMutedList = _useState168[1];
+  /* v2.3.1981: the mute list is a SERVER fact now (server/src/chatmod.js).
+     It arrives as chat_mute_list on join and after every mutation, and
+     chatMute.js republishes it through the localStorage mirror this state
+     was seeded from — so without this subscription the Social panel and
+     the inspect card would keep showing whatever THIS browser last
+     remembered while the worker enforced something else.  A mute made on
+     a phone has to be visibly in force on the laptop; that is the whole
+     point of moving it off the device. */
+  useEffect(function () {
+    return subscribeMutes(function (list) { setMutedList(list); });
+  }, []);
   var _useState169 = useState(false),
     _useState170 = _slicedToArray(_useState169, 2),
     showSocialPanel = _useState170[0],

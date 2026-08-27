@@ -27,6 +27,7 @@ import { BT_API_BASE } from '@/networking/index.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse, pushDmgPopup, monsterPopupY, isAttackInShieldArc } from '@/game/combatHelpers.js';
 import { handleChatEvent, handleEmoteEvent, handlePartyChatEvent } from '@/game/chat.js';
+import { applyServerMuteList } from '@/game/chatMute.js'; /* v2.3.1981 */
 import { pushAbilityRings } from '@/game/abilities.js'; /* v2.3.1735: a peer's bash draws the caster's own shockwave */
 import { friendsSrv } from '@/ui/mobile/sheet/friendsSync.js'; /* v2.3.1324 */
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
@@ -261,6 +262,35 @@ export function processGameEvent(type, payload, S, deps) {
           case 'friend_error':
             {
               friendsSrv.setError(payload || null);
+              break;
+            }
+          /* v2.3.1981: chat moderation (server/src/chatmod.js).  The mute
+             list is the SERVER's — it arrives on join and after every
+             mutation, and replaces this browser's localStorage mirror so
+             a mute made on one device is in force on the next. */
+          case 'chat_mute_list':
+            {
+              applyServerMuteList(payload, S);
+              if (payload && payload.error === 'list-full' && S.player) {
+                pushDmgPopup(S, S.player.x, S.player.y - 30, 'Mute list is full', '#D95C54');
+              }
+              break;
+            }
+          case 'chat_report_ack':
+            {
+              /* The only feedback a reporter gets, and it matters: without
+                 it the button is indistinguishable from a button that does
+                 nothing, which is how a safety control loses its users. */
+              var _rrOk = !!(payload && payload.ok);
+              /* Last ack, kept on S so a headless check can ask what the
+                 WORKER answered rather than racing the popup's 3s ttl
+                 (tools/qa/mp/mp-chat.mjs). */
+              S._lastReportAck = payload || null;
+              var _rrMsg = _rrOk ? 'Report sent to the moderators'
+                : (payload && payload.error) === 'duplicate' ? 'Already reported just now'
+                  : (payload && String(payload.error || '').indexOf('rate-') === 0) ? 'Too many reports — try later'
+                    : 'Report failed';
+              if (S.player) pushDmgPopup(S, S.player.x, S.player.y - 30, _rrMsg, _rrOk ? '#59BF91' : '#D95C54', { ttl: 3 });
               break;
             }
           case 'gamble_result':
