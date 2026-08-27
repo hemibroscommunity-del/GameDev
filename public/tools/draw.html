@@ -105,6 +105,10 @@
         <label for="to">Event ended</label>
         <input id="to" type="datetime-local">
       </div>
+      <div>
+        <label for="minlv">Minimum level to enter</label>
+        <input id="minlv" type="number" min="0" max="300" value="5">
+      </div>
     </div>
     <p class="note" id="window" style="color:var(--ink)"></p>
     <p class="note">Already set to the contest window — change it only if the event
@@ -151,13 +155,33 @@
   /* ═══ PURE LOGIC ═══ exposed for the QA harness, which tests these
      directly instead of asserting on rendered text. */
 
-  /* Everyone whose last-seen falls inside the window.  There is deliberately
-     NO level threshold (owner's decision): showing up is the qualification. */
-  function entrantsFrom(rows, fromMs, toMs) {
+  /* Everyone who played inside the window AND reached minLevel.
+   *
+   * v2.3.2032: the level floor is anti-Sybil, not elitism.  Identity in this
+   * game is deliberately cheap -- a silent passphrase per browser, no email,
+   * and ?guest=1 mints another in the same tab -- so with presence alone as
+   * the qualification a fake entry costs about ten seconds in an incognito
+   * window, and the raffle belongs to whoever can be bothered.
+   *
+   * Level is the right currency because it CANNOT BE FAKED: character level
+   * is the sum of the three trained skill levels and every point of it is
+   * awarded server-side from damage actually dealt (prog3.js).  A fresh
+   * character starts at 3, so level 5 is two level-ups -- which measured out
+   * at roughly 37-41 starter slimes (~38 HP each, XP = damage x 0.4, 560-605
+   * XP required).  That is real minutes per throwaway account, which is the
+   * entire point.
+   *
+   * The cost is real and is the owner's to weigh: someone who joins in the
+   * last twenty minutes may not clear it.  So the threshold is an INPUT, not
+   * a constant, and the panel says out loud who it excluded rather than
+   * quietly shortening the list. */
+  function entrantsFrom(rows, fromMs, toMs, minLevel) {
+    var floor = (typeof minLevel === 'number' && isFinite(minLevel)) ? minLevel : 0;
     return (rows || [])
       .filter(function (r) {
         var t = r && r.lastSeen;
-        return typeof t === 'number' && t >= fromMs && t <= toMs;
+        if (!(typeof t === 'number' && t >= fromMs && t <= toMs)) return false;
+        return (typeof r.level === 'number' ? r.level : 0) >= floor;
       })
       /* Stable, content-derived order.  It must NOT depend on the order the
          server happened to return rows in, or two people running this page
@@ -199,7 +223,21 @@
     return { tail: tail, num: num, n: n, start: start, picks: picks };
   }
 
-  window.__draw = { entrantsFrom: entrantsFrom, drawFrom: drawFrom };
+  /* Played in the window but missed the level floor.  Surfaced so a genuine
+     latecomer caught by the threshold is VISIBLE and the owner can lower it,
+     rather than vanishing from a list that looks complete. */
+  function excludedBy(rows, fromMs, toMs, minLevel) {
+    var floor = (typeof minLevel === 'number' && isFinite(minLevel)) ? minLevel : 0;
+    return (rows || []).filter(function (r) {
+      var t = r && r.lastSeen;
+      if (!(typeof t === 'number' && t >= fromMs && t <= toMs)) return false;
+      return (typeof r.level === 'number' ? r.level : 0) < floor;
+    }).map(function (r) {
+      return { name: String(r.name || 'Anon'), level: (typeof r.level === 'number') ? r.level : 0 };
+    }).sort(function (a, b) { return b.level - a.level; });
+  }
+
+  window.__draw = { entrantsFrom: entrantsFrom, drawFrom: drawFrom, excludedBy: excludedBy };
 
   /* ═══ NETWORK ═══ two explorers, tried in order.  A draw that cannot be
      completed because one explorer is having a bad day is a bad draw. */
@@ -306,6 +344,7 @@
   $('load').onclick = function () {
     var base = $('api').value.replace(/\/+$/, '');
     var f = localToMs($('from').value), t = localToMs($('to').value);
+    var minLv = Math.max(0, parseInt($('minlv').value, 10) || 0);
     if (f === null || t === null || t <= f) {
       $('out1').innerHTML = '<div class="warn">Set an event start and end, with the end after the start.</div>';
       return;
@@ -316,8 +355,8 @@
       .then(function (r) { return r.json(); })
       .then(function (j) {
         var rows = (j && j.results) || [];
-        entrants = entrantsFrom(rows, f, t);
-        renderEntrants(rows.length, f, t);
+        entrants = entrantsFrom(rows, f, t, minLv);
+        renderEntrants(rows.length, excludedBy(rows, f, t, minLv), minLv);
       })
       .catch(function (e) {
         $('out1').innerHTML = '<div class="warn">Could not reach the game server: ' +
@@ -326,11 +365,15 @@
       .then(function () { $('load').disabled = false; });
   };
 
-  function renderEntrants(returned, f, t) {
+  function renderEntrants(returned, excluded, minLv) {
     var h = '';
     if (!entrants.length) {
-      h = '<div class="warn">Nobody was seen playing between those two times. ' +
-          'Widen the window, or check the server address.</div>';
+      h = '<div class="warn">Nobody qualified. ' +
+          (excluded.length
+            ? excluded.length + ' player' + (excluded.length === 1 ? '' : 's') +
+              ' played but none reached level ' + minLv + ' — lower the minimum.'
+            : 'Nobody was seen playing between those two times. Widen the window, ' +
+              'or check the server address.') + '</div>';
     } else {
       h += '<p class="note" style="margin-top:16px"><b>' + entrants.length +
            '</b> entrant' + (entrants.length === 1 ? '' : 's') + ', numbered 1 to ' +
@@ -345,6 +388,15 @@
       /* The cap is a real hazard, not a footnote: above 100 the server
          silently returns the top 100 BY LEVEL, which quietly turns a random
          draw into a skill contest without anything looking wrong. */
+      /* Never a silent shortening: a real latecomer caught by the floor has
+         to be visible, or the list looks complete when it is not. */
+      if (excluded.length) {
+        h += '<p class="note"><b>' + excluded.length + '</b> player' +
+             (excluded.length === 1 ? ' was' : 's were') + ' excluded for being ' +
+             'below level ' + minLv + ': ' +
+             excluded.map(function (e) { return esc(e.name) + ' (lv ' + e.level + ')'; })
+               .join(', ') + '. Lower the minimum and reload if that is too harsh.</p>';
+      }
       if (returned >= 95) {
         h += '<div class="warn"><b>' + returned + ' rows came back and the server ' +
              'only ever returns 100.</b> Above that it silently keeps the highest ' +
@@ -368,6 +420,7 @@
         at: Date.now(),
         tipWhenLocked: tip.height,
         target: tip.height + ahead,
+        minLevel: Math.max(0, parseInt($('minlv').value, 10) || 0),
         entrants: entrants,
         rule: 'last 8 hex characters of the block hash, as a number, modulo the number of entrants',
       };
@@ -384,6 +437,10 @@
   function announcement() {
     var lines = [];
     lines.push('PRIZE DRAW — ' + lock.entrants.length + ' entrants');
+    if (lock.minLevel > 0) {
+      lines.push('(Everyone who played during the event and reached level ' +
+                 lock.minLevel + '.)');
+    }
     lines.push('');
     lock.entrants.forEach(function (e, i) { lines.push((i + 1) + '. ' + e.name); });
     lines.push('');
