@@ -72,6 +72,13 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait })
         const count = dots && dots[d.id];
         return (
           <div key={d.id}
+            /* v2.3.2017: a hook that is the destination ID, not its LABEL.
+               The label is owner-facing copy and has been rewritten many times
+               (Hero -> Character is the one that matters here), and a test that
+               selects UI by a renamed label does not fail loudly — it stops
+               finding anything and quietly asserts nothing.  That is TRAPS §29,
+               and mp-hudface is the fifth scenario it killed. */
+            data-nav={d.id}
             role="button" aria-label={d.label} aria-pressed={on} title={d.label}
             onPointerUp={(e) => {
               e.stopPropagation();
