@@ -309,6 +309,12 @@ export const adminMethods = {
       const lo = await this._liveopsRoutes(request, url, path, json);
       if (lo) return lo;
 
+      /* v2.3.2034: the cape-contest ledger (eventcapes.js) -- same contract.
+         Read-only by default; the reset needs the cape named AND confirm=yes,
+         because it voids tickets real people may hold. */
+      const cp = await this._capeAdminRoute(request, url, path, json);
+      if (cp) return cp;
+
       // v2.3.1682: on-chain relayer health (chainscore.js) -- same contract:
       // null for paths it doesn't own.
       const cs = await this._chainScoreAdminRoute(request, url, path, json);

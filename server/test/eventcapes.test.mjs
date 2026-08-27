@@ -287,5 +287,65 @@ await room._capeLedgersLoad();
   console.log(`      (shipped state: the contest is ${EVENT_LIVE ? 'RUNNING' : 'not running'})`);
 }
 
+/* ── v2.3.2034: the ledger is readable, and resettable on purpose ──
+ * Added because the owner asked "did testing eat one of the three?" and the
+ * honest answer was "no, and you had no way to check" -- the ledger decides
+ * who won and nothing could read it.  The reset exists for one situation
+ * (clearing an accidental issuance BEFORE a contest starts) and voids real
+ * tickets, so the guards on it are the point, not ceremony. */
+{
+  const s9 = makeState();
+  const r9 = new GameRoom(s9, mockEnv);
+  r9.playerState = Object.create(null);
+  r9._saveRpg = () => {}; r9._sendPlayerState = () => {}; r9._wsBySessionId = () => null;
+  r9._opSeen = async () => false; r9._opStamp = async () => {};
+  r9._adminLog = async () => {};
+  await r9._capeLedgersLoad();
+  const J = (o, st) => ({ status: st || 200, body: o });
+  const U = (q) => new URL('https://x/api/admin/capes' + (q || ''));
+
+  check('a path it does not own returns null, so the router falls through',
+    (await r9._capeAdminRoute({ method: 'GET' }, U(), '/economy', J)) === null);
+
+  r9._eventLive = true;
+  const p9 = { inventory: {} };
+  r9.playerState.winner = p9;
+  r9._claimCapeTicket('crimson', 'winner', p9, always);
+  const read = await r9._capeAdminRoute({ method: 'GET' }, U(), '/capes', J);
+  check('the ledger reads back who holds a ticket',
+    read.body.capes.crimson.issued.indexOf('winner') >= 0, read.body.capes);
+  check('...and how many are left, which is the number the owner actually wants',
+    read.body.capes.crimson.remaining === 2, read.body.capes.crimson);
+  check('...and whether the contest is running right now',
+    read.body.live === true, read.body.live);
+
+  const noName = await r9._capeAdminRoute({ method: 'DELETE' }, U('?confirm=yes'), '/capes', J);
+  check('a reset without naming a real cape is refused', noName.status === 400, noName.body);
+  /* EVENT_CAPES is a plain object literal, so EVENT_CAPES['__proto__'] is
+     Object.prototype and TRUTHY: the obvious `!EVENT_CAPES[capeId]` guard
+     waves this through.  Same shape as the three incidents on 2026-07-07. */
+  const proto = await r9._capeAdminRoute({ method: 'DELETE' },
+    U('?cape=__proto__&confirm=yes'), '/capes', J);
+  check('a reset for `__proto__` is refused (it is not a cape, however truthy)',
+    proto.status === 400, proto.body);
+  const noConf = await r9._capeAdminRoute({ method: 'DELETE' }, U('?cape=crimson'), '/capes', J);
+  check('a reset without confirm=yes is refused — it voids tickets people hold',
+    noConf.status === 400, noConf.body);
+  const stillThere = await r9._capeAdminRoute({ method: 'GET' }, U(), '/capes', J);
+  check('...and neither refusal touched the ledger',
+    stillThere.body.capes.crimson.issued.length === 1, stillThere.body.capes.crimson);
+
+  const done = await r9._capeAdminRoute({ method: 'DELETE' }, U('?cape=crimson&confirm=yes'), '/capes', J);
+  check('a confirmed reset clears the ledger and reports what it voided',
+    done.body.ok === true && done.body.cleared.issued.indexOf('winner') >= 0, done.body);
+  const after9 = await r9._capeAdminRoute({ method: 'GET' }, U(), '/capes', J);
+  check('...leaving all three available again',
+    after9.body.capes.crimson.remaining === 3 && after9.body.capes.crimson.issued.length === 0,
+    after9.body.capes.crimson);
+  check('...and the reset SURVIVES a reload, not just the cache',
+    JSON.stringify((await s9.storage.get('capegrant:crimson')) || {}) === JSON.stringify({ issued: [], redeemed: [] }),
+    await s9.storage.get('capegrant:crimson'));
+}
+
 console.log(failures ? `\n${failures} FAILURE(S)` : '\neventcapes: ALL PASS');
 process.exit(failures ? 1 : 0);

@@ -226,6 +226,82 @@ export const eventCapeMethods = {
     else if (data.cape) delete data.cape;      /* claimed one, owns none */
   },
 
+  /** ═══ v2.3.2034: THE LEDGER, VISIBLE AND RESETTABLE ═══
+   *
+   *  The owner asked whether QA testing had eaten any of the three tickets.
+   *  It had not -- the suites use an in-memory Map and a throwaway
+   *  --persist-to dir -- but answering it exposed something worse: THE OWNER
+   *  HAD NO WAY TO CHECK. The ledger is the one record that decides who won,
+   *  and nothing could read it. That is the write-only-field problem the
+   *  operator toolkit exists to fix (admin.js), applied to the contest.
+   *
+   *  It also has a live use beyond reassurance: v2.3.2028 ran the contest in
+   *  production for about ten minutes before v2.3.2029 turned it off, so a
+   *  real ticket could have been issued to a real player in that window. With
+   *  no reader, "did that happen?" was unanswerable.
+   *
+   *  GET    /api/admin/capes  -> the ledger for every cape
+   *  DELETE /api/admin/capes?cape=crimson&confirm=yes -> wipe that ledger
+   *
+   *  The delete is deliberately awkward. It hands back tickets that were
+   *  legitimately won, so it is for one situation only -- clearing an
+   *  accidental issuance BEFORE the contest starts -- and requires naming the
+   *  cape and passing confirm=yes so it cannot be a typo away from voiding a
+   *  live contest. It is written to admin_log like every other operator act. */
+  async _capeAdminRoute(request, url, path, json) {
+    if (path !== '/capes') return null;
+
+    if (request.method === 'GET') {
+      await this._capeLedgersLoad();
+      /* Plain {} is safe here and the reason is the SOURCE of the keys: they
+         come from Object.keys(EVENT_CAPES), our own constants, never from the
+         request.  Contrast the DELETE below, where the cape name IS supplied
+         by the caller and needs the hasOwnProperty guard. */
+      const out = {};
+      for (const id of Object.keys(EVENT_CAPES)) {
+        const def = EVENT_CAPES[id];
+        const led = (this._capeLedgers && this._capeLedgers[id]) || { issued: [], redeemed: [] };
+        out[id] = {
+          cap: def.cap,
+          ticket: def.ticket,
+          issued: led.issued.slice(),
+          redeemed: led.redeemed.slice(),
+          remaining: Math.max(0, def.cap - led.issued.length),
+        };
+      }
+      /* `live` answers the question the owner actually asks -- "is it running
+         right now?" -- without making them read a constant in a source file. */
+      return json({ ok: true, live: this._capeEventOpen(), capes: out });
+    }
+
+    if (request.method === 'DELETE') {
+      const capeId = url.searchParams.get('cape');
+      /* hasOwnProperty, NOT `!EVENT_CAPES[capeId]`.  EVENT_CAPES is a plain
+         object literal, so `EVENT_CAPES['__proto__']` is Object.prototype --
+         TRUTHY -- and the obvious guard waves `?cape=__proto__` straight
+         through to a reset of a cape that does not exist.  precheck's
+         proto-safety heuristic flagged this block and it was right: the
+         recurring incident (duel.away v2.3.1175, party meta v2.3.1185, amulet
+         tiers v2.3.1192) is this exact shape. */
+      if (!capeId || !Object.prototype.hasOwnProperty.call(EVENT_CAPES, capeId)) {
+        return json({ ok: false, error: 'name a real cape: ?cape=' + Object.keys(EVENT_CAPES).join('|') }, 400);
+      }
+      if (url.searchParams.get('confirm') !== 'yes') {
+        return json({ ok: false, error: 'this voids tickets people may have won — add &confirm=yes' }, 400);
+      }
+      const before = (this._capeLedgers && this._capeLedgers[capeId]) || { issued: [], redeemed: [] };
+      const cleared = { issued: before.issued.slice(), redeemed: before.redeemed.slice() };
+      const fresh = { issued: [], redeemed: [] };
+      if (!this._capeLedgers) this._capeLedgers = Object.create(null);
+      this._capeLedgers[capeId] = fresh;
+      await this.state.storage.put(CAPE_LEDGER_KEY(capeId), fresh);
+      await this._adminLog({ op: 'cape_ledger_reset', cape: capeId, cleared });
+      return json({ ok: true, cape: capeId, cleared });
+    }
+
+    return null;
+  },
+
   /** cape_redeem: consume one ticket, grant the cape.  Shaped after
    *  _handleEatRequest (cooking.js) -- validate ownership, consume one,
    *  persist, echo -- because it is the same kind of operation. */
