@@ -17,6 +17,8 @@
  * Exits non-zero if any assertion failed, so it can gate a push.
  */
 import * as H from './harness.mjs';
+import { existsSync, statSync, readdirSync } from 'node:fs';   /* v2.3.1998: dist staleness check */
+import { join } from 'node:path';
 
 const WS = await H.freePort(), WEB = await H.freePort();
 
@@ -153,6 +155,52 @@ const SCENARIOS = {
   desktopbox: () => import('./mp-desktopbox.mjs'), /* v2.3.1768: desktop is the same view, blown up — sits by `viewport` (its phone-side counterpart) rather than at the top of the list, so it does not collide with the frame-rate PRs' registry lines */
   viewport: () => import('./mp-viewport.mjs'), /* v2.3.1740: the game fills the phone */ /* v2.3.1734: element_burst survives the shim; the special costs the flat 25 */
 };
+
+/* ═══ v2.3.1998: IS dist/ OLDER THAN THE THING YOU CHANGED? ═══
+ *
+ * serveDist serves `dist`, NOT `public` and NOT `src`.  So a scenario run
+ * without a rebuild silently measures the PREVIOUS build, and it does not look
+ * like a stale test -- it looks like your change did not work.
+ *
+ * Cost, the day this was written: the v2.3.1995 shirt art was merged and the
+ * keyline scenario came back with three failures whose numbers were EXACTLY
+ * the pre-fix ones (12.4 / 16.3 / 12.6% black), because dist still held the
+ * old sheets.  Ten minutes went into "did the merge lose the art" before the
+ * md5s were compared.  Art is the worst case -- a source edit at least tends
+ * to fail loudly -- but the trap is the same for any file dist copies.
+ *
+ * Deliberately a WARNING and not a rebuild: `npm run build` is ~11s and some
+ * runs genuinely want the current dist (bisecting a build, or testing what
+ * shipped).  It names the newest offending file so the warning is actionable
+ * rather than a thing to scroll past. */
+function _distStaleness() {
+  const dist = join(H.REPO, 'dist', 'index.html');
+  if (!existsSync(dist)) return { missing: true };
+  const built = statSync(dist).mtimeMs;
+  let newest = null, newestAt = 0, n = 0;
+  const skip = new Set(['node_modules', '.git', 'dist', '.wrangler', 'out']);
+  const walk = (d) => {
+    let ents; try { ents = readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const e of ents) {
+      if (e.name.startsWith('.') || skip.has(e.name)) continue;
+      const full = join(d, e.name);
+      if (e.isDirectory()) { walk(full); continue; }
+      let st; try { st = statSync(full); } catch { continue; }
+      if (st.mtimeMs > built) { n++; if (st.mtimeMs > newestAt) { newestAt = st.mtimeMs; newest = full; } }
+    }
+  };
+  for (const root of ['public', 'src']) walk(join(H.REPO, root));
+  return { missing: false, n, newest, ageS: (Date.now() - built) / 1000 };
+}
+const _stale = _distStaleness();
+if (_stale.missing) {
+  console.log('\n  !! dist/index.html does not exist — run `npm run build` first.\n');
+} else if (_stale.n > 0) {
+  console.log(`\n  !! dist/ IS STALE: ${_stale.n} file(s) under public/ or src/ are newer than the last build.`);
+  console.log(`     newest: ${_stale.newest.replace(H.REPO + '/', '')}`);
+  console.log('     Scenarios serve dist/, so this run measures the PREVIOUS build.');
+  console.log('     Run `npm run build` unless you meant to test what is already built.\n');
+}
 
 const want = process.argv.slice(2).filter((a) => !a.startsWith('-'));
 const names = want.length ? want : Object.keys(SCENARIOS);
