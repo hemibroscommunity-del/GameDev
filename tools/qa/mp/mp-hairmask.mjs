@@ -238,18 +238,44 @@ export async function run({ browser, wsPort, webPort, rec }) {
      the tap is not landing, and that is a scenario failure worth saying out
      loud rather than a silent pass on garbage. */
   let WIDE = '', NARROW = '', calibrated = false;
+  /* ═══ v2.3.2021: THERE ARE NOW TWO VALID WORLDS, AND ONE IS BETTER ═══
+   * What this guard protects has never been "the tap works".  It is that the
+   * four renders below are taken at ONE camera, because subtracting two images
+   * shot at different framings produces confident nonsense (v2.3.2001 measured
+   * 45.66% bare scalp on a mask nobody had touched in months).
+   *
+   * That used to require a tap dance, because picking a category re-aimed the
+   * camera.  v2.3.2021 retired the per-category close-up on every tab except
+   * eyes — the owner's "the art is rough and doesn't look good blown up" — so
+   * on the tabs THIS file uses the framing no longer moves at all.  Two reads
+   * either side of a tap now return the same string, which the old guard
+   * reported as a failure when it is in fact the stronger guarantee: the
+   * invariant holds by construction instead of by careful tapping.
+   *
+   * So a constant frame is a PASS and is recorded as `constant: true`.  This
+   * does NOT soften anything — WIDE is still pinned to the frame actually
+   * observed, ensureWide() still checks every single shot against it, and the
+   * assertion that all four renders carry the same frame still runs and can
+   * still fail.  The only thing that changed is that "the tap toggles" stopped
+   * being a precondition for measuring, because the camera stopped moving. */
   const calibrate = async () => {
     const a = await frameId();
     await tapCanvas();
     const b = await frameId();
     const num = (v) => parseFloat(v) || 0;
-    if (!a || !b || a === b) return { a, b, ok: false };
+    if (!a || !b) return { a, b, ok: false, why: 'no frame could be read at all' };
+    if (a === b) {
+      /* The camera does not move on this tab.  Pin to it and carry on. */
+      WIDE = a; NARROW = '';
+      calibrated = true;
+      return { frame: a, constant: true, ok: true };
+    }
     /* The wide frame is the taller one: NameModal gives the stage 92% of its
        height zoomed out against 54.5% at rest. */
     WIDE = num(a) > num(b) ? a : b;
     NARROW = WIDE === a ? b : a;
     calibrated = true;
-    return { wide: WIDE, narrow: NARROW, ok: true };
+    return { wide: WIDE, narrow: NARROW, constant: false, ok: true };
   };
   /* A tap TOGGLES, so ask first.  Tapping blind is right half the time and
      inverts the problem the other half. */
@@ -337,7 +363,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.2001: learn the two frames before measuring anything, and say so if
      they cannot be told apart — every number below is taken in the wide one. */
   const cal = await calibrate();
-  rec.ok('the preview\'s two framings are distinguishable and the tap toggles between them '
+  rec.ok('the preview framing is pinned before anything is measured '
     + '(guard: without this every render below could be at a different camera)',
     cal.ok === true, cal);
   await ensureWide('calibration');

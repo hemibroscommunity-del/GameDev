@@ -274,21 +274,37 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.click('canvas[title^="Live preview"]');
       await P.page.waitForTimeout(420);
     };
-    let WIDE = '', NARROW = '';
+    /* v2.3.2021: a CONSTANT frame is a pass, and a better one — see the long
+       note in mp-hairmask.mjs.  This file's shots must all be taken at one
+       framing (an unnoticed re-aim cost it 46773 shirt pixels against the
+       morning's 41601, same tee, silently).  Since the per-category close-up
+       was retired on every tab but eyes, the framing on the tabs used here no
+       longer moves, so the invariant now holds by construction.  ensureFrame()
+       still checks every shot against the pinned frame, so nothing is
+       softened; the tap simply stopped being needed to get there. */
+    let WIDE = '', NARROW = '', CONSTANT = false;
     {
       const a = await frameId();
       await tapCanvas();
       const b = await frameId();
       const num = (v) => parseFloat(v) || 0;
       if (a && b && a !== b) { WIDE = num(a) > num(b) ? a : b; NARROW = WIDE === a ? b : a; }
-      rec.ok('the two preview frames are distinguishable and the tap toggles (guard)',
-        !!WIDE && !!NARROW, { a, b, WIDE, NARROW });
+      else if (a && b) { WIDE = a; CONSTANT = true; }
+      rec.ok('the preview framing is pinned before anything is measured (guard)',
+        !!WIDE, { a, b, WIDE, NARROW, constant: CONSTANT });
     }
     const ensureFrame = async (want, why) => {
       if (!WIDE) return;
-      if ((await frameId()) !== want) await tapCanvas();
+      /* With one frame there is nothing to toggle to, so every request
+         resolves to it and the tap is skipped.  The `close` call below is only
+         ever a SCREENSHOT for a human — the measurement (bitmap()) is taken
+         after the WIDE call, which is the frame the two passes have to share.
+         So a constant camera costs this file a redundant close-up artifact and
+         nothing else. */
+      const target = CONSTANT ? WIDE : want;
+      if (!CONSTANT && (await frameId()) !== target) await tapCanvas();
       const got = await frameId();
-      if (got !== want) rec.ok(`frame for ${why}`, false, { got, want });
+      if (got !== target) rec.ok(`frame for ${why}`, false, { got, want: target, constant: CONSTANT });
     };
 
     let facing = 'southwest';
