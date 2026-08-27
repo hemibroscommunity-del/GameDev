@@ -30,7 +30,18 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, 'assets', 'npc-source', 'shopkeeper-walk.png')
 OUT_DIR = os.path.join(ROOT, 'public', 'sprites', 'npc')
 COLS, ROWS = 4, 8
-FRAME = 128            # per-frame output size; NPCs draw far smaller than the player's 256
+# ── THE FRAME CONVENTION IS THE GAME'S, NOT THIS SCRIPT'S ──
+# entityRenderer places every NPC with anchor (0.5, NPC_FRAME_FEET_Y/256) and
+# derives the label headroom from (FEET_Y - TOP_Y), i.e. it assumes a 256px
+# frame with the figure's feet on y=223 and its hat on y=23. Emitting to that
+# same convention means a walking NPC needs NO renderer special case: the
+# anchor, the scale, the figure height and the name/marker placement all work
+# out unchanged. The first cut of this script wrote 128px frames with the
+# figure filling them, which would have forced a per-NPC scale multiplier and a
+# second anchor rule -- carrying an art decision into the renderer forever.
+FRAME = 256
+FEET_Y = 223           # must match entityRenderer NPC_FRAME_FEET_Y
+TOP_Y = 23             # must match entityRenderer NPC_FRAME_TOP_Y
 
 # ── ROW -> DIRECTION, READ OFF THE ART RATHER THAN ASSUMED ──
 # Guessing this wrong is a bug nobody spots in code review and everybody spots
@@ -114,12 +125,18 @@ def main():
 
     os.makedirs(OUT_DIR, exist_ok=True)
     bw, bh = box[2] - box[0], box[3] - box[1]
-    scale = min(FRAME / bw, FRAME / bh)
+    # Fit the figure to the 200px the convention allows between hat and feet,
+    # then place it so the feet land exactly on FEET_Y. Height drives the scale
+    # (a wide walk frame must not be squashed to fit); width is centred.
+    fig_h = FEET_Y - TOP_Y
+    scale = fig_h / bh
     tw, th = max(1, int(round(bw * scale))), max(1, int(round(bh * scale)))
-    ox, oy = (FRAME - tw) // 2, FRAME - th        # feet on the bottom edge
+    ox, oy = (FRAME - tw) // 2, FEET_Y - th
 
     # A labelled contact sheet, so the row -> direction mapping is READ off the
     # art rather than guessed. Written first and on every run.
+    print(f'figure {tw}x{th} placed at x={ox} y={oy} in a {FRAME}px frame '
+          f'(feet on {FEET_Y})')
     contact = Image.new('RGBA', (FRAME * COLS, FRAME * ROWS), (30, 40, 46, 255))
     strips = []
     for r, row in enumerate(cells):
@@ -131,6 +148,42 @@ def main():
         strips.append(strip)
     contact.convert('RGB').save(os.path.join(ROOT, 'tools', 'npc-contact.png'))
     print('contact sheet -> tools/npc-contact.png (rows top to bottom = 0..7)')
+
+    # ── THE DIALOGUE PORTRAIT, CROPPED FROM HIS OWN SOUTH FRAME ──
+    # Same reasoning as Mayor Bro's (gameDisplay.js NPC_DATA): a portrait drawn
+    # from the same art as the figure cannot drift from the man walking around
+    # the street. There is a shipped storekeeper-bro-head.webp, but it is a
+    # DIFFERENT character -- using it would put one face in the dialogue and
+    # another in the town.
+    head_src = strips[0].crop((0, 0, FRAME, FRAME))          # south, frame 0
+    hb = head_src.getbbox()
+    fig_top, fig_bot = hb[1], hb[3]
+    # CENTRED ON THE FACE, not on a fixed fraction of the figure. A band from
+    # the top produced a portrait that was almost entirely HAT -- his brim is
+    # as wide as his shoulders, so it dominates any crop anchored to the
+    # silhouette. The skin pixels are where his face actually is, so the box is
+    # placed on their centroid and sized to the head rather than to the figure.
+    px = head_src.load()
+    sx, sy, n = 0, 0, 0
+    for y in range(fig_top, fig_top + int((fig_bot - fig_top) * 0.55)):
+        for x in range(hb[0], hb[2]):
+            r, g, b, a = px[x, y]
+            if a > 128 and r > 150 and 90 < g < 200 and b < 160 and r - b > 45:
+                sx += x; sy += y; n += 1
+    if n:
+        cx, cy = sx / n, sy / n
+    else:                       # no skin found: fall back to the old band
+        cx, cy = (hb[0] + hb[2]) / 2, fig_top + (fig_bot - fig_top) * 0.2
+    side = int((fig_bot - fig_top) * 0.42)
+    # Lifted slightly above the face centroid so the hat still reads -- he is a
+    # man in a very large hat and cropping it off loses the character.
+    top = max(0, int(cy - side * 0.62))
+    left = max(0, int(cx - side / 2))
+    sq = head_src.crop((left, top, left + side, top + side))
+    sq = sq.resize((96, 96), Image.LANCZOS)                   # chip size, as Mayor Bro's
+    hp = os.path.join(OUT_DIR, 'shopkeeper-bro-head.webp')
+    sq.save(hp, 'WEBP', lossless=True, quality=100)
+    print('wrote', os.path.relpath(hp, ROOT))
 
     for d, strip in zip(DIRS, strips):
         out = os.path.join(OUT_DIR, f'shopkeeper-bro-walk-{d}.webp')

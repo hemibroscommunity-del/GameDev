@@ -3,7 +3,7 @@
  * Uses PixiJS Graphics for procedural shapes (matching the original Canvas 2D look).
  */
 import { Assets, ColorMatrixFilter, Container, Graphics, Rectangle, Sprite, Text, TextStyle, Texture } from 'pixi.js';
-import { getNpcTexture } from '../npcSprites.js'; /* v2.3.1672: NPC figure art */
+import { getNpcTexture, getNpcWalkFrame, hasNpcWalk } from '../npcSprites.js'; /* v2.3.1672: NPC figure art; v2.3.2046: walking NPCs */
 import { propsForZone, propFootprint } from '../../data/worldProps.js'; /* v2.3.1775: scenery; v2.3.1794: + footprint for the props probe */
 import { TILE } from '@/data/constants.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
@@ -247,6 +247,28 @@ const NPC_FRAME_FEET_Y = 223;
 const NPC_FRAME_TOP_Y = 23;
 /** Height of the drawn figure above the NPC's feet, in world px. */
 const npcFigureHeight = (src) => npcSpriteScale(src) * (NPC_FRAME_FEET_Y - NPC_FRAME_TOP_Y);
+
+/* ═══ v2.3.2046: WHICH WAY A WALKING NPC IS FACING ═══
+ * Straight from his movement, in the eight names the strips are filed under.
+ * Screen space, so +y is DOWN and therefore south -- getting that backwards is
+ * the classic version of this bug and it looks like the figure walking
+ * backwards up the street.
+ * The diagonal band is deliberately wide (22.5 degrees either side of each
+ * eighth): an NPC wandering to a point almost due south should read as south
+ * rather than flickering between south and southeast on sub-pixel jitter. */
+const NPC_DIRS_8 = ['east', 'southeast', 'south', 'southwest',
+                    'west', 'northwest', 'north', 'northeast'];
+function npcDirFromDelta(dx, dy) {
+  const a = Math.atan2(dy, dx);                    /* -pi..pi, +y is down */
+  const oct = Math.round(a / (Math.PI / 4));       /* -4..4 */
+  return NPC_DIRS_8[((oct % 8) + 8) % 8];
+}
+/* World px of travel per walk frame. Distance-driven rather than time-driven
+   so the feet match the speed: a time-driven cycle makes a slow NPC skate,
+   which is the thing you notice without being able to say why. Tuned to the
+   figure's own stride -- he is ~200px tall drawn at NPC scale, and a four
+   frame cycle over ~26px reads as a step rather than a shuffle. */
+const NPC_WALK_PX_PER_FRAME = 6.5;
 
 /* v2.3.1681: the quest badge behind the '!' (owner: "thick white outline or
    something to be more attention grabbing").  Radius in world px — the label
@@ -9877,7 +9899,13 @@ export class EntityRenderer {
            standing; anchoring at the frame centre instead would float him half
            a body above the street. */
         if (npc.sprite) {
-          const fig = new Sprite(getNpcTexture(npc.sprite) || Texture.EMPTY);
+          /* v2.3.2046: a walking NPC starts on his south frame, not on
+             `sprite` -- which for him names a four-frame STRIP, and binding it
+             raw would draw all four squashed into one body for the frame
+             before the first update corrects it. */
+          const fig = new Sprite(
+            (hasNpcWalk(npc.id) && getNpcWalkFrame(npc.id, 'south', 0))
+            || getNpcTexture(npc.sprite) || Texture.EMPTY);
           fig.anchor.set(0.5, NPC_FRAME_FEET_Y / 256);
           fig.scale.set(npcSpriteScale(npc.sprite));
           display.addChildAt(fig, 0);      // behind the bars and labels
@@ -9891,6 +9919,34 @@ export class EntityRenderer {
 
       display.x = npc.x;
       display.y = npc.y;
+
+      /* ═══ v2.3.2046: ANIMATE HIM IF HE HAS A WALK CYCLE ═══
+         Velocity is derived HERE, from the position the renderer is already
+         given, rather than read off a field the walk code would have to
+         publish: the NPC step lives in BroTown and this keeps the animation a
+         pure function of where he has actually got to, so it cannot disagree
+         with what is drawn.
+         The phase accumulates DISTANCE, so a slow wander steps slowly and a
+         stopped NPC holds frame 0 instead of marching on the spot. */
+      if (display._fig && hasNpcWalk(npc.id)) {
+        const hadLast = typeof display._lastX === 'number';
+        const dx = hadLast ? npc.x - display._lastX : 0;
+        const dy = hadLast ? npc.y - display._lastY : 0;
+        display._lastX = npc.x; display._lastY = npc.y;
+        const step = Math.hypot(dx, dy);
+        /* A floor, not `> 0`: an NPC steered toward a target he has essentially
+           reached jitters by fractions of a pixel forever, and without this he
+           would face a new random direction every frame while standing still. */
+        const moving = step > 0.08;
+        if (moving) {
+          display._walkDir = npcDirFromDelta(dx, dy);
+          display._walkPhase = (display._walkPhase || 0) + step;
+        }
+        const dir = display._walkDir || 'south';
+        const idx = moving ? Math.floor(display._walkPhase / NPC_WALK_PX_PER_FRAME) : 0;
+        const tex = getNpcWalkFrame(npc.id, dir, idx);
+        if (tex && display._fig.texture !== tex) display._fig.texture = tex;
+      }
 
       /* v2.3.1673: label headroom, POSITIONED rather than nudged.
          v2.3.1672 shifted every label up by the figure height, which kept the

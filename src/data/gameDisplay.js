@@ -3455,6 +3455,80 @@ export const NPC_DATA = [{
   _questMarker: null,
   _hitThisSwing: false,
 }, {
+  /* ═══ v2.3.2046: THE SHOPKEEPER, WHO ACTUALLY WALKS ═══
+     Owner: "Add this as a shopkeeper who walks around in the town."
+
+     THE FIRST NPC IN THE GAME THAT MOVES. Mayor Bro and Blacksmith Bro are
+     both pathRadius 0 -- pinned, because a quest giver who wanders is a quest
+     giver you have to hunt for. This one is meant to wander, so he carries a
+     `walk` strip set (npcSprites.js) and a radius to roam inside.
+
+     `walk` names one horizontal 4-frame strip per facing. The renderer picks
+     the facing from his actual movement and advances the frame by DISTANCE
+     travelled, so his feet match his speed instead of skating.
+
+     ROAMING IS SAFE HERE, and it is worth writing down why rather than
+     trusting it: the wander step (BroTown.jsx) clamps to the town bounds but
+     does NOT test walkability, so a radius over solid ground would walk him
+     into a wall. In town there is nothing to walk into -- TOWN_PROPS_ENABLED
+     is false and town's walkability mask is deliberately NOT loaded
+     (tiledMaps.js WALKABILITY_MAPS), so the whole zone is open ground. If
+     either of those is ever switched on, this radius needs re-checking; that
+     is the tripwire, stated here because the code cannot state it.
+
+     POSITION: south-west of the player's spawn at (815, 1010), far enough from
+     Mayor Bro at (900, 780) that the two are never on top of each other, and
+     close enough to spawn that a new player meets him without looking. The
+     radius keeps him inside a small patch of the plaza rather than roaming the
+     whole town, so "where is the shopkeeper" has an answer.
+
+     NAME: "Shopkeeper Bro", deliberately NOT "Trader Tix" -- there is a
+     dormant Trader Tix quest chain in gameSystems.js and getNpcQuest keys on
+     the NPC's NAME, so using it would silently switch that chain on. Exactly
+     the trap documented on Blacksmith Bro below. */
+  id: 'shopkeeper_bro',
+  name: 'Shopkeeper Bro',
+  /* The south strip. `sprite` is what npcSpriteScale keys on and what the
+     preloader lists; the renderer binds a sliced FRAME rather than this raw
+     strip (see entityRenderer v2.3.2046), so the four-in-one image is never
+     drawn. */
+  sprite: '/sprites/npc/shopkeeper-bro-walk-south.webp',
+  /* Cropped from his own south frame by tools/import_shopkeeper.py, so the
+     face in the dialogue chip cannot drift from the man in the street. NOT the
+     shipped storekeeper-bro-head.webp, which is a different character. */
+  portrait: '/sprites/npc/shopkeeper-bro-head.webp',
+  walk: {
+    base: '/sprites/npc/shopkeeper-bro-walk-',
+    frames: 4,
+    dirs: ['south', 'southwest', 'west', 'northwest',
+      'north', 'northeast', 'east', 'southeast'],
+  },
+  avatar: '🎩',
+  color: '#c9a227',
+  x: 700, y: 1060,
+  spawnX: 700, spawnY: 1060,
+  renderX: 700, renderY: 1060,
+  hp: 100, maxHp: 100,
+  noHp: true,          /* a shopkeeper in a safe town; a health bar reads as "fight this" */
+  alive: true,
+  respawnAt: 0,
+  pathRadius: 110,     /* he ambles round a patch of plaza, not the whole town */
+  moveTimer: 0,
+  targetX: 700, targetY: 1060,
+  chatTimer: 9000,
+  chatBubble: null,
+  /* REQUIRED -- the AI loop indexes this unguarded and an empty array throws. */
+  phrases: [
+    'Bones, hides, anything. I pay coin.',
+    'Everything on me is for sale.',
+    "The more I've got of a thing, the less I'll give you for it.",
+  ],
+  canFollow: false,
+  followZones: [],
+  _facing: 'down',
+  _questMarker: null,
+  _hitThisSwing: false,
+}, {
   /* ═══ v2.3.1773: THE BLACKSMITH, AT THE FOUNTAIN ═══
      Owner: "Add this npc to the game near the water fountain he'll be the
      blacksmith.  Size him about the same as mayor bro."

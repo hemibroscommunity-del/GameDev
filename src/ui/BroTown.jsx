@@ -579,7 +579,11 @@ function _spawnTownNpcs() {
   /* v2.3.1773: the blacksmith joins the mayor.  This allowlist is the gate —
      NPC_DATA carries the record, but a name missing from here never spawns,
      which is how the table can hold entries that are not live yet. */
-  var ACTIVE_NPCS = ['Mayor Bro', 'Blacksmith Bro', 'Storekeeper Bro']; /* v2.3.1775 */
+  /* v2.3.2046: + Shopkeeper Bro, the first NPC in the game that walks.
+     Note 'Storekeeper Bro' beside him is a DIFFERENT, older entry -- the two
+     names are one letter apart and getNpcQuest keys on the name, so they must
+     not be conflated. */
+  var ACTIVE_NPCS = ['Mayor Bro', 'Blacksmith Bro', 'Storekeeper Bro', 'Shopkeeper Bro']; /* v2.3.1775 */
   return NPC_DATA.filter(function (n) { return ACTIVE_NPCS.indexOf(n.name) >= 0; })
     .map(function (npc) { return _objectSpread({}, npc); });
 }
