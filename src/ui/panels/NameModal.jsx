@@ -113,6 +113,7 @@ export function NameModal(props) {
     previewCanvasRef = props.previewCanvasRef,
     previewDir = props.previewDir,
     randomizeWithFlair = props.randomizeWithFlair,
+    resetLook = props.resetLook,          /* v2.3.2036 */
     rollRandomName = props.rollRandomName,
     rotatePreview = props.rotatePreview,
     setActiveCat = props.setActiveCat,
@@ -712,7 +713,13 @@ export function NameModal(props) {
        and the drawer is now a permanent column, so the button had nothing to
        open. Randomize rerolls the whole look. */
     className: "bt-cc-actions"
-  }, /*#__PURE__*/React.createElement("button", {
+  }, /* v2.3.2036: Reset joins Randomize as the SECOND child of this grid --
+        no wrapper.  Checked rather than assumed: .bt-cc-actions holds only the
+        Randomize button (ENTER BRO TOWN is its sibling, not its child), so
+        making it two columns pairs exactly these two and moves nothing else.
+        The wrapper this replaced was written on the assumption that ENTER was
+        inside, and the paren it added did not balance -- the build said so. */
+  /*#__PURE__*/React.createElement("button", {
     /* v2.3.2006: --hero, not a change to .bt-cc-btn itself -- that class is
        also the account modal's action and the quest claim screen's "Later",
        and neither of those is a screen's headline control. */
@@ -728,7 +735,20 @@ export function NameModal(props) {
        which pins its own 22px inline.  Sizing the shared class appeared to
        work only because that inline style masked it. */
     style: { width: 30, height: 30, objectFit: 'contain' } }),
-  /*#__PURE__*/React.createElement("span", null, "Randomize Look"))),
+  /*#__PURE__*/React.createElement("span", null, "Randomize Look")),
+  /* ═══ v2.3.2036: RESET ═══
+     Owner: "add a reset button so you can make the character back to the
+     default" -- and, asked which default, "the look you opened with".
+     Beside Randomize rather than under it: they are the same kind of action
+     (change the whole character at once) and the pair reads as roll / undo.
+     Narrower than Randomize on purpose -- it is the escape hatch, not the
+     thing you are meant to reach for first. */
+  /*#__PURE__*/React.createElement("button", {
+    /* Not --hero: that is the headline treatment, and Reset is the quiet
+       escape hatch below it. */
+    type: 'button', className: "bt-cc-btn bt-cc-reset",
+    onClick: resetLook, title: 'Back to the look you started with'
+  }, /*#__PURE__*/React.createElement("span", null, "Reset"))),
   /*#__PURE__*/React.createElement("button", {
     onClick: function () { if (_nameValid) joinTown(); },
     disabled: !_nameValid,

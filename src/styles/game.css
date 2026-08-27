@@ -968,6 +968,22 @@ input{font-family:inherit}
    upper space instead of leaving a dead gap under the version line. */
 .bt-cc-namewrap{margin-top:auto}
 .bt-cc-actions{display:grid;grid-template-columns:1fr;gap:8px}
+/* v2.3.2036: Reset STACKS under Randomize rather than sitting beside it.
+   Side by side was the first attempt and it was wrong for a measured reason:
+   this whole action column is 172px wide, not the ~340 the screenshot
+   suggested. Reset took 53px plus the gap, leaving Randomize 121px, of which
+   the 30px icon and padding left 62px of label -- so "Randomize Look" wrapped
+   onto two lines. Shrinking Reset twice did not recover it, because the
+   problem was never Reset's width.
+   Making my own change degrade the control next to it is not a trade worth
+   taking for a button that is used once in a while, so Reset gets its own
+   full-width row and is styled quieter than the hero above it. */
+.bt-cc-reset{
+  min-height:40px;font-size:12px;letter-spacing:.04em;
+  background:rgba(255,255,255,.05);border:1px solid rgba(238,242,235,.18);
+  color:var(--ui-text-dim,#96A2A0);box-shadow:none;
+}
+.bt-cc-reset:active{transform:scale(.98);background:rgba(255,255,255,.09)}
 .bt-cc-actions>button{min-height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;font-family:'Source Sans 3',sans-serif;font-size:13px;font-weight:700;letter-spacing:.02em;padding:6px 10px}
 /* v2.3.2035: LEFT AT 20.  This class has two users -- the name-reroll die
    inside the name input and the Randomize Look icon -- and only the owner's

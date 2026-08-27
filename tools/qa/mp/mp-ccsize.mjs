@@ -37,6 +37,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForSelector('input.bt-cc-name', { timeout: 30000 });
   await P.page.waitForTimeout(1200);
 
+
   /* ── 1. the Randomize Look icon ──
      Addressed through its BUTTON, not by `.bt-cc-action-icon` alone: that
      class has two users and the name-reroll die comes first in the document,
@@ -173,4 +174,92 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!document.querySelector('.bt-cc-defcolor--on'));
   rec.ok('tapping Default puts the colour back — the way out that previously '
        + 'existed only as "re-tap the swatch you chose"', backOn, { backOn });
+
+  /* ── 4. Reset — v2.3.2036 ──
+     Owner: "bald shirtless character is what I wanted for reset". So the
+     contract is a fixed BARE state, not a snapshot of anything -- assert the
+     actual tiles, by name, rather than "it changed".
+
+     Read both halves, because writing only one is how a reset goes subtly
+     wrong: the picker's TICK proves the React selection state, and a
+     fingerprint of the PREVIEW CANVAS proves the trait store, since the figure
+     is drawn from the store and not from the tick. A reset that wrote the
+     store but not the tick leaves the picker lying; the reverse leaves the
+     character wrong. Either alone passes a one-sided test.
+
+     An earlier draft of this block read S.player.hair and friends. They do not
+     exist -- the player object carries x/y/vx/vy/dir and nothing else -- so it
+     compared {} to {} and PASSED VACUOUSLY, which is worse than failing. */
+  const look = () => P.page.evaluate(async () => {
+    const tickOf = async (label) => {
+      const b = [...document.querySelectorAll('.bt-cc-tab')]
+        .find((x) => (x.textContent || '').trim() === label);
+      if (b) b.click();
+      await new Promise((r) => setTimeout(r, 300));
+      const t = [...document.querySelectorAll('.bt-cc-strip > *')]
+        .find((el) => el.children.length > 1);      /* the check badge */
+      return t ? (t.getAttribute('title') || '?') : null;
+    };
+    const ticks = {};
+    for (const l of ['Hair', 'Shirt', 'Hats', 'Beard']) ticks[l] = await tickOf(l);
+    let px = null;
+    const c = document.querySelector('canvas');
+    if (c) {
+      try {
+        const o = document.createElement('canvas');
+        o.width = 24; o.height = 40;
+        const x = o.getContext('2d');
+        x.drawImage(c, 0, 0, 24, 40);
+        const d = x.getImageData(0, 0, 24, 40).data;
+        let h = 0;
+        for (let i = 0; i < d.length; i += 4) h = (h * 31 + d[i] + d[i + 1] * 3 + d[i + 2] * 7) >>> 0;
+        px = h;
+      } catch (e) { px = 'blocked'; }
+    }
+    return { ticks, px };
+  });
+
+  /* Dress the character up first, so Reset has something to strip. Randomize
+     is the honest way to do it -- it is the same button a player would have
+     pressed -- and it rolls hair, hat, beard and shirt among others. */
+  await P.page.click('.bt-cc-btn--hero:not(.bt-cc-reset)');
+  await P.page.waitForTimeout(1800);
+  const dressed = await look();
+  const anyWorn = ['Hair', 'Shirt', 'Hats', 'Beard']
+    .some((k) => dressed.ticks[k] && dressed.ticks[k] !== 'None');
+  rec.ok('Randomize put something ON the character (guard: stripping an '
+       + 'already-bare character proves nothing)', anyWorn, dressed.ticks);
+
+  await P.page.click('.bt-cc-reset');
+  await P.page.waitForTimeout(1500);
+  const bare = await look();
+
+  rec.ok('Reset leaves the character BALD', bare.ticks.Hair === 'None', bare.ticks);
+  rec.ok('...and SHIRTLESS', bare.ticks.Shirt === 'None', bare.ticks);
+  rec.ok('...with no hat', bare.ticks.Hats === 'None', bare.ticks);
+  rec.ok('...and no beard', bare.ticks.Beard === 'None', bare.ticks);
+  rec.ok('...and the CHARACTER actually changed with the ticks — the trait '
+       + 'store, not just the picker', bare.px !== dressed.px,
+    { dressedPx: dressed.px, barePx: bare.px });
+
+  /* Idempotent: a second Reset from an already-bare character is a no-op, not
+     a wobble. Cheap to check and the kind of thing that quietly is not true. */
+  await P.page.click('.bt-cc-reset');
+  await P.page.waitForTimeout(1200);
+  const bare2 = await look();
+  rec.ok('Reset twice is the same as Reset once',
+    JSON.stringify(bare2.ticks) === JSON.stringify(bare.ticks),
+    { bare: bare.ticks, bare2: bare2.ticks });
+
+  /* And the colour picks go back to Default with it -- the button added
+     earlier in this same version is the thing that shows it. */
+  await P.page.evaluate(() => {
+    const b = [...document.querySelectorAll('.bt-cc-tab')]
+      .find((x) => (x.textContent || '').trim() === 'Skin');
+    if (b) b.click();
+  });
+  await P.page.waitForTimeout(700);
+  const skinDefault = await P.page.evaluate(() =>
+    !!document.querySelector('.bt-cc-defcolor--on'));
+  rec.ok('...and colour picks are back to Default too', skinDefault, { skinDefault });
 }
