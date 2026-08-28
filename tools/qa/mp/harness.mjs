@@ -523,28 +523,52 @@ export async function clickSel(P, sel, { timeout = 6000 } = {}) {
 export async function coveringElement(P, locator) {
   const box = await locator.boundingBox().catch(() => null);
   if (!box) return null;
-  return P.page.evaluate(({ x, y }) => {
+  const target = await locator.elementHandle().catch(() => null);
+  return P.page.evaluate(({ x, y, want }) => {
     const el = document.elementFromPoint(x, y);
     if (!el) return 'nothing (the point is off-screen)';
+    /* An element that CONTAINS the button is not covering it -- the click would
+       land and bubble.  Saying which of the two it is saves the next reader the
+       wrong half of the search. */
+    const contains = !!(want && el.contains(want));
+    const desc = (n) => {
+      const cls = (typeof n.className === 'string' ? n.className : '').trim();
+      const r = n.getBoundingClientRect();
+      const cs = getComputedStyle(n);
+      return n.tagName.toLowerCase() + (n.id ? '#' + n.id : '')
+        + (cls ? '.' + cls.replace(/\s+/g, '.').slice(0, 50) : '')
+        + ` {${Math.round(r.width)}x${Math.round(r.height)} @${Math.round(r.x)},${Math.round(r.y)}`
+        + ` z:${cs.zIndex} pos:${cs.position} pe:${cs.pointerEvents}`
+        + (n.getAttribute && n.getAttribute('style') ? ` style="${n.getAttribute('style').slice(0, 70)}"` : '')
+        + '}';
+    };
     const chain = [];
-    for (let n = el, i = 0; n && i < 4; n = n.parentElement, i++) {
-      const cls = (n.className && String(n.className).slice(0, 60)) || '';
-      chain.push(n.tagName.toLowerCase() + (n.id ? '#' + n.id : '') + (cls ? '.' + cls.trim().replace(/\s+/g, '.') : ''));
-    }
-    const cs = getComputedStyle(el);
-    return chain.join(' < ') + `  [z-index ${cs.zIndex}, position ${cs.position}]`;
-  }, { x: box.x + box.width / 2, y: box.y + box.height / 2 });
+    for (let n = el, i = 0; n && i < 5; n = n.parentElement, i++) chain.push(desc(n));
+    return (contains ? 'AN ANCESTOR of the button (so not a cover): ' : 'a DIFFERENT element: ')
+      + chain.join('\n        < ');
+  }, { x: box.x + box.width / 2, y: box.y + box.height / 2, want: target });
 }
 
 export async function clickText(P, text, { timeout = 6000 } = {}) {
   const btn = P.page.locator(`button:visible`, { hasText: text }).first();
   await btn.waitFor({ state: 'visible', timeout });
+  /* v2.3.2084: SAMPLED BEFORE THE CLICK, not after it.  The first cut asked
+     elementFromPoint in the catch block and got nothing at all: a click that
+     times out has spent THIRTY SECONDS failing, and by then the panel has
+     moved on, so boundingBox answers null and the diagnostic reports nothing
+     about the moment that mattered.  The reading is cheap, so it is taken up
+     front and only PRINTED if the click then fails. */
+  const over = await coveringElement(P, btn).catch(() => null);
   try {
     await btn.click();
   } catch (e) {
-    const over = await coveringElement(P, btn).catch(() => null);
-    const err = new Error(String((e && e.message) || e)
-      + (over ? `\n  WHAT IS ACTUALLY AT THAT POINT: ${over}` : ''));
+    /* FIRST, not last.  The runner truncates a failure message at a couple of
+       hundred characters and Playwright's own call log is longer than that, so
+       anything appended is cut off before it is ever read -- which is how the
+       first two attempts at this diagnostic reported nothing while working
+       perfectly. */
+    const err = new Error(`COVERED BY: ${over || '(unreadable)'} — `
+      + String((e && e.message) || e));
     err.stack = (e && e.stack) || err.stack;
     throw err;
   }
