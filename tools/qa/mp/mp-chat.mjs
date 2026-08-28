@@ -21,8 +21,12 @@ async function say(P, text) {
       [...document.querySelectorAll('button')].some((b) => b.offsetParent && b.textContent.trim() === 'Send'),
     null, { timeout: 8000 });
   }
-  /* the input immediately before this Send button — never another panel's */
-  const input = P.page.locator('button:has-text("Send")').locator('xpath=preceding-sibling::input[1]').first();
+  /* v2.3.2078: was the input immediately before the Send button.  At
+     v2.3.2039 the composer became a <textarea> on its own row above the
+     controls, so that xpath matched nothing and `fill` sat there for its
+     full 30s timeout.  `[data-chat-input]` is the handle the markup offers
+     (TRAPS §29). */
+  const input = P.page.locator('[data-chat-input]').first();
   await input.fill(text);
   await H.clickText(P, 'Send');
   await P.page.waitForTimeout(1200);

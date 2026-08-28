@@ -74,6 +74,15 @@ export function ChatPanel(props) {
     }
   }, "✕"), /*#__PURE__*/React.createElement("input", {
     ref: chatInputRef,
+    /* v2.3.2078: the same handle ChatBubble's composer carries.  There are
+       TWO composers — this legacy panel (opened by __broLegacyUI.chat) and
+       the mobile ChatBubble textarea — and a scenario had no way to type
+       into whichever one was up except by shape: `the input immediately
+       before the Send button`.  That broke on ChatBubble at v2.3.2039 when
+       the composer became a <textarea> on its own row, and it would have
+       broken here on the next layout change.  One selector, both surfaces
+       (TRAPS §29). */
+    "data-chat-input": "",
     placeholder: "Tap to type…",
     value: chatInput,
     onChange: function onChange(e) {
