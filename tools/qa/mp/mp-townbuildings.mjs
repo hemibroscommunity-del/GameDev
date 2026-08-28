@@ -42,28 +42,43 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Townie', wsPort, webPort });
   await H.enterWorld(P);
   await P.page.waitForTimeout(2500);
-  /* ═══ v2.3.1813: TOWN'S PROPS ARE SWITCHED OFF ═══
-     Owner, sending the re-fused BroTown map: "You can just keep the buildings
-     and NPCS removed for now."  worldProps.js TOWN_PROPS_ENABLED is the switch.
+  /* ═══ v2.3.2078: THIS FILE IS WAITING FOR THE V16 BUILDINGS, NOT FOR PROPS ═══
+     The gate here used to be TOWN_PROPS_ENABLED, and the message said "town
+     props are switched off by directive".  That was true in v2.3.1813 and is
+     not true now: v2.3.2061 made the flag mean "the v16 set only", and twelve
+     town props draw regardless of it (mp-townprops and mp-townhill measure
+     them).  Read literally, this file's skip line claimed the town was empty
+     while it was furnished.
 
-     Skipped rather than deleted, and gated on the FLAG rather than on an empty
-     prop list — those look identical from out here, so a list-based guard would
-     turn a genuine drawing regression into a green run.  The moment the flag
-     goes back to true this whole file runs again, which is exactly when it
-     needs to: the props still carry their v16 positions and will need
-     re-measuring against the new map. */
+     What this file ACTUALLY needs is its five buildings, and two of them —
+     the bank and the enchanter — are among the four still carrying town_v16
+     coordinates up to x 2560 on a map 1674 wide.  Everything below is written
+     for that town: it walks to x > 2400, and it opens the bank's door.  So
+     the gate is now the buildings themselves, which means this un-skips on
+     the day they are re-measured and not a moment before — and the message
+     names them, so the next reader is not told the town is bare.
+
+     The DIRECTIVE is still checked alongside, because "held back on purpose"
+     and "stopped drawing" must not look the same from out here: a building
+     that vanished while the flag says it should be placed is a regression and
+     is reported as one. */
+  const drawn = await props(P);
+  const byId = Object.fromEntries(drawn.map((d) => [d.id, d]));
+  const held = BUILDINGS.filter((b) => !byId[b]);
   const propsOn = await P.page.evaluate(
     () => (window.__btTownPropsEnabled ? window.__btTownPropsEnabled() : true));
-  if (!propsOn) {
-    rec.ok('town props are switched off by directive — scenario skipped', true,
-      { flag: 'TOWN_PROPS_ENABLED=false', see: 'src/data/worldProps.js' });
+  if (held.length && !propsOn) {
+    rec.ok(`${held.length} of this scenario's buildings are held back until someone `
+         + `re-measures them against town_v17 — scenario skipped (${held.join(', ')})`,
+      true, { held, drawn: drawn.map((d) => d.id), flag: 'TOWN_PROPS_ENABLED=false',
+        see: 'src/data/worldProps.js — the "STILL UNPLACED" block' });
     await P.ctx.close().catch(() => {});
     return;
   }
+  rec.ok('every building this scenario needs is on the map (guard)',
+    held.length === 0, { held, flag: propsOn });
 
   /* ── 1. all five are on screen, and building-sized ── */
-  const drawn = await props(P);
-  const byId = Object.fromEntries(drawn.map((d) => [d.id, d]));
   const missing = BUILDINGS.filter((b) => !byId[b]);
   rec.ok('every building is drawn in town', missing.length === 0,
     { missing, drawn: drawn.map((d) => d.id) });

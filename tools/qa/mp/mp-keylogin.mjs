@@ -93,7 +93,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   const K = plates.key, C = plates.make;
   rec.ok('both buttons are painted plates, not CSS rectangles',
-    !!K && !!C && /btn-login\.png/.test(K.bg) && /btn-create\.png/.test(C.bg),
+    /* v2.3.1954: btn-continue.png, renamed from btn-login.png when the word
+       painted into it changed — game.css cannot cache-bust a url(), so the
+       rename IS the cache bust.  Matched by name rather than by "some png"
+       because the whole point of this line is that the plate is the OWNER'S
+       art and not a CSS rectangle. */
+    !!K && !!C && /btn-continue\.png/.test(K.bg) && /btn-create\.png/.test(C.bg),
     { key: K && K.bg, make: C && C.bg });
   /* The slices are cut so each plate is 94% of its box and dead-centred, so
      under one CSS width the two painted edges must line up.  This is the
@@ -113,7 +118,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       i.src = u;
     });
     return {
-      login: await one('/ui/welcome/title/btn-login.png'),
+      login: await one('/ui/welcome/title/btn-continue.png'),
       create: await one('/ui/welcome/title/btn-create.png'),
       logo: await one('/ui/welcome/title/logo.png'),
       banner: await one('/ui/welcome/title/banner.png'),
@@ -123,6 +128,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
     loaded.login > 0 && loaded.create > 0 && loaded.logo > 0 && loaded.banner > 0, loaded);
   rec.ok('the second action is named "Create Character" for a screen reader',
     !!C && /Create Character/i.test(C.label), { label: C && C.label });
+  /* v2.3.1954: and the FIRST one is named "Continue".  The plate's word is
+     painted art, so nothing can assert it directly — but the accessible name
+     and the artwork are supposed to say the same thing, and for a whole
+     version they did not: v2.3.1923 renamed the button to Continue and left
+     the plate reading LOG IN WITH YOUR KEY, which is the bug the owner
+     reported.  Pinning the name here means a future rename that forgets the
+     art fails on the pair rather than shipping the mismatch again. */
+  rec.ok('the first action is named "Continue" for a screen reader',
+    !!K && /^Continue$/i.test(K.label), { label: K && K.label });
 
   await B.page.click('[data-tut="login-key"]');
   await B.page.waitForTimeout(600);

@@ -57,6 +57,11 @@ const SLICES = [
      at different widths and ~8px out of line under one CSS width, because
      the sheet gives each plate a different glow margin — measured, not
      guessed: tools/qa/mp/mp-titlescreen.mjs asserts it. */
+  /* v2.3.1954: btn-login is now an INTERMEDIATE, not a shipped file.  The
+     splash button says "Continue", and the word is painted into the plate, so
+     this slice is fed through tools/ui/relabel-login-plate.mjs which writes
+     btn-continue.png — the one game.css actually loads.  Re-cutting the sheet
+     means re-running that too. */
   ['btn-login',    5, 448,  815, 259],
   ['btn-create',   8, 707,  799, 212],
   ['note',        96, 922,  634, 132],

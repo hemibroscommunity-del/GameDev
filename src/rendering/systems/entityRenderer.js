@@ -3,7 +3,7 @@
  * Uses PixiJS Graphics for procedural shapes (matching the original Canvas 2D look).
  */
 import { Assets, ColorMatrixFilter, Container, Graphics, Rectangle, Sprite, Text, TextStyle, Texture } from 'pixi.js';
-import { getNpcTexture } from '../npcSprites.js'; /* v2.3.1672: NPC figure art */
+import { getNpcTexture, getNpcWalkFrame, hasNpcWalk, getPropFrame, propFrameCount } from '../npcSprites.js'; /* v2.3.1672: NPC figure art; v2.3.2046: walking NPCs; v2.3.2061: animated props */
 import { propsForZone, propFootprint } from '../../data/worldProps.js'; /* v2.3.1775: scenery; v2.3.1794: + footprint for the props probe */
 import { TILE } from '@/data/constants.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
@@ -55,6 +55,9 @@ import { getHair, HAIR_CATALOG } from '../traits/hairCatalog.js';
 import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo */
 import { getEyeColor } from '../traits/eyeColorCatalog.js';   /* v2.3.1930: eye colour is per-player now, so every draw names whose eyes it means */
 import { DISPLAY_DS, downscaleByFactor } from '../spriteScale.js'; /* v2.3.1120: display-texture downscale + lockstep transform compensation */
+import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.1953: height x frame render scale */
+import { getCapeTexture } from '../capeSprites.js'; /* v2.3.2023: the cosmetic cape */
+import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2023 */
 import { getHairColor, getColoredHairTextures } from '../traits/hairColorCatalog.js';
 import { getHatColor, getColoredHatTextures } from '../traits/hatColorCatalog.js';
 import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/facialHairColorCatalog.js';
@@ -63,7 +66,7 @@ import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { getGearFrame, getGearFramePhased, getLoadedGearSources, getShirtLookFrame } from '../gearSheets.js';   /* v2.3.1938; v2.3.1941 renamed — it bakes colour + pattern + print now */
 import { sideForDir, getShirtArt, sanitizeShirtArt, artHasInk } from '../traits/playerArt.js';   /* v2.3.1938 */
 import { getPattern, parsePattern, sanitizePattern } from '../traits/patternCatalog.js';   /* v2.3.1941 */
-import { bandFit } from '../traits/bandFit.js';   /* v2.3.1943 */
+import { hatHairFit } from '../traits/hatHairFit.js';   /* v2.3.1943 band refit + v2.3.1561 float lift, in one place since v2.3.1959 */
 import { AIM_CARET, AIM_CARET_EDGE, AIM_CARET_HOT } from '../aimCaret.js'; /* v2.3.1799 */
 import { BLOCK_ARM_ENABLED, BLOCK_ARM_FACING, BLOCK_ARM_CUT, blockArmTexture, blockArmSleeveTexture } from '../blockArm.js'; /* v2.3.1785, sleeve v2.3.1789, ENABLED v2.3.1798 */
 import { gearTint, gearArt, gearMaterial } from '../gearVariants.js'; /* v2.3.1757: material recolor */
@@ -213,10 +216,70 @@ const NPC_SPRITE_SCALE = 120 / 256;
    only one drawn.  He is not: the blacksmith (v2.3.1773) and the storekeeper
    (v2.3.1775) render off the same constant, and the owner did NOT ask for
    those to change.  Owner: "Make mayor bro 10% larger" — so the 10% lives
-   here, keyed by sprite path, and everyone else keeps 1.0.
+   here, keyed by sprite path, and everyone else kept 1.0.  (They no longer
+   do; v2.3.2081 below is why, and the mayor's 10% survived it intact.) */
+/* ═══ v2.3.2081: THE ADULTS ARE ONE TOWN, MEASURED AT THE SHOULDER ═══
+   Owner: "Check sizes of NPCs."  tools/dev/npc-sizes.py draws every
+   townsperson beside a default player on one baseline, which is how this
+   was measured rather than nudged.  Before this pass:
+
+     You 111   Diego 119   Mayor 103   Blacksmith 94   Storekeeper 94
+
+   -- a 27% spread across four grown men, with the BLACKSMITH, who is drawn
+   as the burliest man in town, the shortest of them.
+
+   The number that misleads is the total height, because import_npc_walk.py
+   normalises every figure hat-to-feet into the same 200px band.  A tall hat
+   is therefore paid for out of the BODY: the mayor's stovepipe is a fifth of
+   his figure, Diego's crown another sixth, and the bare-headed blacksmith
+   spends all 200px on a man.  Compare the landmark a player actually reads
+   -- the SHOULDER line (tools/maps/out/npc-hatruler.png, a ruler render at a
+   common height) -- and the town was much worse than the totals said:
+
+     You 80   Diego 69   Mayor 65   Blacksmith 64   Storekeeper 60
+
+   The player's shoulders stood 15-33% above every adult in town while the
+   totals claimed Diego was the tallest person in it.
+
+   The mults below put the ordinary adults' shoulders on ~73 -- about 8%
+   under the player, so the hero is still the tallest man in the square, by a
+   head-and-shoulders margin rather than by a third.  Nothing shrinks and
+   nothing the owner set by eye is walked back: Diego keeps his v2.3.2052
+   1.30 ("make shopkeeper larger"), Lil Bro keeps his v2.3.2064 0.78, and the
+   mayor keeps being exactly 1.10x the blacksmith, the rule from v2.3.1822.
+   After:
+
+     You 111   Diego 119   Mayor 118   Blacksmith 107
+
+   (The storekeeper appears in both rows above because the pass was measured
+   against the town as it stood.  He is no longer in it -- v2.3.2091 removed
+   him -- and his mult is gone from the table below, where a key for a sprite
+   nobody draws would be a rule nothing obeys.)
+
    Keyed by client-visible strings, so Object.create(null) (CLAUDE.md rule 4). */
 const NPC_SCALE_MULT = Object.assign(Object.create(null), {
-  '/sprites/npc/mayor-bro.webp': 1.10,
+  /* 1.10 -> 1.254: still the blacksmith x 1.10 exactly (0.909 the other way,
+     which is what mp-blacksmith asserts), lifted with him. */
+  '/sprites/npc/mayor-bro.webp': 1.254,
+  /* 1.00 -> 1.14.  He was the shortest adult in town and is drawn as the
+     biggest-built one; his shoulder went 64 -> 73. */
+  '/sprites/npc/blacksmith-bro.webp': 1.14,
+  /* v2.3.2052 (owner: "make shopkeeper larger his sprite is bit small").
+     Measured rather than nudged: at 1.0 he drew 120px against Mayor Bro's 132,
+     so he read as the smallest figure in the town square despite being a
+     broad man in a heavy coat. 1.30 puts him at ~156 -- the biggest of the
+     three, which is what a man in that coat should look like standing next to
+     a mayor. Keyed on the south strip because that is his NPC_DATA `sprite`,
+     which is what npcSpriteScale is handed. */
+  '/sprites/npc/shopkeeper-bro-walk-south.webp': 1.30,
+  /* ═══ v2.3.2064: LIL BRO IS A CHILD, SO HE IS DRAWN AS ONE ═══
+     The import convention normalises EVERY figure to 200px between hat and
+     feet (import_npc_walk.py), which is what makes an NPC need no per-sprite
+     anchor -- and it also means a kid ships exactly as tall as the mayor. The
+     art is a child; the scale is where that gets said. 0.78 puts his head at
+     about an adult's shoulder, which is what the reference art looks like
+     beside the grown-ups in the same street. */
+  '/sprites/npc/lil-bro-walk-south.webp': 0.78,
 });
 const npcSpriteScale = (src) => NPC_SPRITE_SCALE * (NPC_SCALE_MULT[src] || 1);
 
@@ -227,14 +290,26 @@ const _npcDrawn = Object.create(null);
 const _propsDrawn = [];
 if (typeof window !== 'undefined') window.__btWorldProps = () => _propsDrawn.slice();
 /* v2.3.1775: the entity layer's child order — Pixi paints in this order, so it
-   is what decides whether the stall covers the storekeeper or the other way
-   round.  Labelled children only; the rest are unnamed graphics. */
+   is what decides whether a stall covers the vendor standing at it or the
+   other way round (Diego at the market stall since v2.3.2080; the example
+   used to be the storekeeper, who left town in v2.3.2091).  Labelled children
+   only; the rest are unnamed graphics. */
 let _entityLayerRef = null;
 if (typeof window !== 'undefined') {
   window.__btEntityOrder = () => (_entityLayerRef
     ? _entityLayerRef.children.map((c) => c.label).filter(Boolean) : null);
 }
 if (typeof window !== 'undefined') window.__btNpcSprites = () => Object.values(_npcDrawn);
+/* v2.3.2083: the peer half of __btPlayerDrawn — see the note at the peer draw
+   site.  A Map because the keys are player ids off the wire (CLAUDE.md rule 4:
+   a plain {} silently no-ops on '__proto__'). */
+if (typeof window !== 'undefined') {
+  const _peersDrawn = new Map();
+  window.__btPeersDrawn = (id) => (id == null
+    ? Object.fromEntries(_peersDrawn)
+    : (_peersDrawn.get(id) || null));
+  window.__btPeersDrawn._m = _peersDrawn;
+}
 
 /* The sprite frame's own geometry, in frame pixels: the figure's feet sit on
    y=223 and its top (hat) on y=23 — see the asset note in gameDisplay.js
@@ -242,8 +317,36 @@ if (typeof window !== 'undefined') window.__btNpcSprites = () => Object.values(_
    derived from them, and a magic 223 in four places is how they drift. */
 const NPC_FRAME_FEET_Y = 223;
 const NPC_FRAME_TOP_Y = 23;
+/* v2.3.2069: how far below the feet a name plate hangs, as a fraction of the
+   figure's own height. 38/121.9 is Shopkeeper Bro's shipped placement -- the
+   one the owner set by eye -- so he is unmoved by construction and every other
+   plate is spaced like his. See the note at the namePlate branch. */
+const NPC_PLATE_DROP_FRAC = 38 / 121.9;
+
 /** Height of the drawn figure above the NPC's feet, in world px. */
 const npcFigureHeight = (src) => npcSpriteScale(src) * (NPC_FRAME_FEET_Y - NPC_FRAME_TOP_Y);
+
+/* ═══ v2.3.2046: WHICH WAY A WALKING NPC IS FACING ═══
+ * Straight from his movement, in the eight names the strips are filed under.
+ * Screen space, so +y is DOWN and therefore south -- getting that backwards is
+ * the classic version of this bug and it looks like the figure walking
+ * backwards up the street.
+ * The diagonal band is deliberately wide (22.5 degrees either side of each
+ * eighth): an NPC wandering to a point almost due south should read as south
+ * rather than flickering between south and southeast on sub-pixel jitter. */
+const NPC_DIRS_8 = ['east', 'southeast', 'south', 'southwest',
+                    'west', 'northwest', 'north', 'northeast'];
+function npcDirFromDelta(dx, dy) {
+  const a = Math.atan2(dy, dx);                    /* -pi..pi, +y is down */
+  const oct = Math.round(a / (Math.PI / 4));       /* -4..4 */
+  return NPC_DIRS_8[((oct % 8) + 8) % 8];
+}
+/* World px of travel per walk frame. Distance-driven rather than time-driven
+   so the feet match the speed: a time-driven cycle makes a slow NPC skate,
+   which is the thing you notice without being able to say why. Tuned to the
+   figure's own stride -- he is ~200px tall drawn at NPC scale, and a four
+   frame cycle over ~26px reads as a step rather than a shuffle. */
+const NPC_WALK_PX_PER_FRAME = 6.5;
 
 /* v2.3.1681: the quest badge behind the '!' (owner: "thick white outline or
    something to be more attention grabbing").  Radius in world px — the label
@@ -801,51 +904,52 @@ function hatPoseTune(hatId, pose, dir) {
   return null;
 }
 
-/* v2.3.1561 (owner: "make the halo appear higher above the player's head —
-   it looks like it's almost laying flat on the hair").
+/* ═══ v2.3.1959: THE HAT'S HAIR-DEPENDENT ADJUSTMENTS, ASKED FOR ONCE ═══
+   The v2.3.1561 float lift (the halo rides above whatever hair is worn) and
+   the v2.3.1943 band refit (a band grows sideways to reach around big hair)
+   both moved to traits/hatHairFit.js — read that file for why each exists.
 
-   Every other hat is WORN: its crownNudge pins it a fixed distance from the
-   bare crown, which is right because a hat sits on the skull and the hair
-   tucks under it.  A halo is the one piece that is not worn — it floats —
-   and a fixed crown offset cannot float, because the hair between the crown
-   and the halo varies by 18px across the set (measured: slick-back tops out
-   5px above the crown, the afro 23px).  The halo's authored placement put
-   its underside 3px above the BARE crown, so on anything but the flattest
-   hair it was inside the hair; on the afro it was 14px inside it.
+   They moved because each was added HERE, at the hat's own placement call,
+   and each was left out of _clipHairToHat's placement of the hair MASK, which
+   is meant to land exactly where the hat lands.  Two adjustments, two
+   versions apart, the same omission both times: that is a pattern, not an
+   oversight, so the answer is one function that both placements ask rather
+   than two lines that both placements have to remember.
 
-   So a trait with `floatsAboveHair` in its meta gets an extra lift computed
-   against the hair actually being worn: park its underside at least
-   FLOAT_BASE above the bare crown AND at least FLOAT_GAP above the worn
-   hair's top, whichever is higher.  The lift is only ever upward (never a
-   drop), and a hat without the flag is untouched — this cannot move the
-   other 38 hats.
-
-   Both numbers are 256-space, like everything else in trait meta, so they
-   scale with the body the same way crownNudge does. */
-const FLOAT_BASE = 12;   /* clearance over a bare scalp */
-const FLOAT_GAP = 5;     /* clearance over the top of the worn hair */
-
-function _floatAboveHairLift(meta, hairId, pose, dir, mirror) {
-  if (!(meta && meta.floatsAboveHair)) return 0;
+   This wrapper is the renderer's side of that: it turns the ids the frame
+   loop carries into the two METAS the pure function wants.  Only a floating
+   hat needs the hair's meta, and _placeHair loads that hair every frame, so
+   the lookup is a map hit rather than a load — and every non-floating hat
+   skips it entirely. */
+function _hatHairFit(hatId, meta, hairId, pose, dir, mirror) {
   const screenDir = mirror ? (MIRROR_SCREEN_DIR[dir] || dir) : dir;
-  const pick = (o) => o && (o[screenDir] != null ? o[screenDir] : o[dir]);
-  const topOf = (m) => {
-    /* anchors are the art's own bbox top-centre, so crownNudge Y IS the
-       trait's top edge relative to the body crown (negative = above). */
-    const cn = pick(m.crownNudge) || [0, 0];
-    const pn = pick(m.poseNudge && m.poseNudge[pose]) || [0, 0];
-    return cn[1] + pn[1];
-  };
-  const bbox = pick(meta.bboxes) || null;
-  const bottom = topOf(meta) + ((bbox && bbox[3]) || 0);
-  /* Bare head reads as hairTop 0 (the crown itself).  The hair entry is
-     already cached — _placeHair loads it every frame — so this is a map
-     lookup, not a load. */
-  let hairTop = 0;
-  const hairEntry = (hairId && hairId !== 'none') ? _ensureHairLoaded(hairId) : null;
-  if (hairEntry && hairEntry.meta) hairTop = topOf(hairEntry.meta);
-  const target = Math.min(-FLOAT_BASE, hairTop - FLOAT_GAP);
-  return Math.min(0, target - bottom);
+  const hairEntry = (meta && meta.floatsAboveHair && hairId && hairId !== 'none')
+    ? _ensureHairLoaded(hairId) : null;
+  return hatHairFit(hatId, meta, hairId, hairEntry && hairEntry.meta, pose, dir, screenDir);
+}
+
+/* v2.3.1959: the COMPLETE tune a hat is placed with — the per-hat pose
+   correction (v2.3.1353/1354) plus both hair-dependent adjustments, merged
+   into the one object _placeTrait reads.  _placeHeadwear and _clipHairToHat
+   both call this, so the mask cannot be placed with a subset of what the hat
+   got, which is exactly what it was doing before.
+
+   It is RE-DERIVED for the mask rather than stashed off the hat's placement
+   on purpose.  Headwear is placed before hair at both call sites today (the
+   clip needs the hair sprite already placed and visible, so the clip cannot
+   be folded into _placeHeadwear either), but a stashed tune would make that
+   ordering silently load-bearing and would go stale the day someone reorders
+   the three trait placements.  This is a pure function of its arguments: two
+   calls with the same arguments cannot disagree, and it costs a handful of
+   table lookups on a path that already does far more per frame. */
+function _hatTune(hatId, meta, hairId, pose, dir, mirror) {
+  let tune = hatPoseTune(hatId, pose, dir); /* v2.3.1353/1354 */
+  const fit = _hatHairFit(hatId, meta, hairId, pose, dir, mirror);
+  /* v2.3.1561: dy256 is a 256-space lift, so it scales with the body. */
+  if (fit.dy256) tune = { ...(tune || {}), dy256: fit.dy256 };
+  /* v2.3.1943: mulX is HORIZONTAL only — the band stays where it sat. */
+  if (fit.mulX !== 1) tune = { ...(tune || {}), mulX: fit.mulX };
+  return tune;
 }
 /* v2.3.1454 (owner: east jog "hair sits up too high and is too small on
    the head", reading as an oval head): the v2.3.1349 global 0.67 was a
@@ -1059,17 +1163,12 @@ function _placeHeadwear(display, hatId, hatColorId, pose, dir, mirror, frameIdx,
   let entry = baseEntry;
   const colored = getColoredHatTextures(hatId, hatColorId);
   if (colored && baseEntry) entry = { tex: colored, meta: baseEntry.meta, fallbackTex: baseEntry.tex }; /* v2.3.1305 */
-  /* v2.3.1561: a floating trait (the halo) rides above the WORN HAIR, so
-     its lift depends on which hair is on the head this frame — merged into
-     the pose tune rather than baked into meta, which cannot know. */
-  let tune = hatPoseTune(hatId, pose, dir); /* v2.3.1353/1354 */
-  const lift = _floatAboveHairLift(entry && entry.meta, hairId, pose, dir, mirror);
-  if (lift) tune = { ...(tune || {}), dy256: lift };
-  /* v2.3.1943: a BAND has to reach around the hair, not just sit on the head.
-     HORIZONTAL only (see traits/bandFit.js), so it needs no vertical
-     compensation -- the band stays exactly where it already sat. */
-  const fitX = bandFit(hatId, hairId, dir);
-  if (fitX !== 1) tune = { ...(tune || {}), mulX: fitX };
+  /* v2.3.1561 float lift + v2.3.1943 band refit both depend on which hair is
+     on the head this frame, so they are merged into the pose tune rather than
+     baked into meta, which cannot know.  v2.3.1959: _hatTune owns that merge
+     and _clipHairToHat asks it the same question, so the hair MASK is placed
+     with the same numbers as the hat instead of a subset of them. */
+  const tune = _hatTune(hatId, entry && entry.meta, hairId, pose, dir, mirror);
   _placeTrait(display._headwearSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale, tune);
 }
 function _placeFacialHair(display, fhId, fhColorId, pose, dir, mirror, frameIdx, bodyScale) {
@@ -1248,12 +1347,112 @@ function _remoteBodyArt(other, mirror) {
      that is not a well-formed 256-char drawing answers null and is dropped
      here, before it can reach a bake key or a canvas. */
   const ft = sanitizeShirtArt(other.faceTattooArt), at = sanitizeShirtArt(other.armTattooArt);
+  /* v2.3.2043: and the back of their head, through the same sanitiser. Peers
+     draw it via artForFacing exactly as the local player does, so a remote who
+     turns away shows THEIR back canvas rather than a blank head. */
+  const hb = sanitizeShirtArt(other.headBackTattooArt);
   const q = sanitizePattern(other.pantsPattern, 'pants');   /* v2.3.1941 */
   const f = sanitizePattern(other.shoesPattern, 'shoes');   /* v2.3.1944 */
-  return (p || t || ft || at || q || f)
+  return (p || t || ft || at || hb || q || f)
     ? { pants: p || '', tattoo: t || '', tattooFace: ft || '', tattooArm: at || '',
+      tattooHeadBack: hb || '',
       pantsPattern: q, shoesPattern: f, mirror: !!mirror }
     : null;
+}
+
+/* ═══ v2.3.2023: THE CAPE ═══
+ * A full-frame sticker, so it takes the BODY SPRITE'S transform exactly as a
+ * full-frame armour piece does below — import_cape_green.py already fitted
+ * each frame into a 256 frame against the real stand-<dir> body, so there is
+ * no anchor, no nudge table and no per-facing exception to get wrong.  The
+ * mirror is free: sb.scale.x already carries its sign for W / NW / SE.
+ *
+ * HIDDEN DURING ATTACKS, ON PURPOSE — AND `pose` IS NOT WHAT SAYS SO.
+ * During a swing or a bow shot the real body is HIDDEN and the whole figure is
+ * redrawn by a stand-in in another layer (effectsRenderer, nodeLayer), and the
+ * trap v2.3.1784 records is that `pose` STILL READS 'stand' or 'jog'
+ * throughout.  So a pose list cannot catch a swing: measured, the pose never
+ * left 'stand' across a full attack.  The load-bearing test is
+ * `sb.visible` — is the real body being drawn at all — which tracks the
+ * stand-in swap directly instead of inferring it.  The pose list below is
+ * belt-and-braces for the poses that DO rename themselves (dodge, pickup),
+ * and on its own it would have been the back shield's bug over again.
+ *
+ * A sprite that keeps drawing against a body that is no longer there hangs in
+ * mid-air beside the swing.  The shield had to be drawn TWICE to fix that,
+ * which means two renderers holding one piece of geometry, and "the moment a
+ * value is copied into two renderers it starts to drift".  For a cosmetic
+ * cape that is not worth it: a swing is a few frames, and a missing cape
+ * reads far better than a floating one. */
+const _CAPE_HIDDEN_POSES = { dodge: 1, swing: 1, bowshot: 1, fire: 1, chop: 1, mine: 1, fish: 1, cook: 1, pickup: 1, hit: 1 };
+
+/* ═══ v2.3.2024: THE CAPE TRAILS WHEN HE RUNS ═══
+ * Owner: "The cape needs to be rotated so the back of the character doesn't
+ * stick out while running."
+ *
+ * The art is a standing cape, hanging straight down.  A running figure leans
+ * into the direction of travel, so a vertical cape stops covering the back and
+ * the character's shoulders and arm show behind it.  Tilting the cape the
+ * other way — the hem swinging back along the line of travel — both covers the
+ * back and reads as the cape streaming behind him, which is what a cape does.
+ *
+ * Radians, per BASE facing, applied only while jogging.  The sign follows the
+ * direction of travel: running east the hem trails west, so the bottom swings
+ * left; running southwest it trails north-east, so the bottom swings the other
+ * way.  North and south move toward or away from the camera, where a
+ * horizontal tilt would be a lie, so they stay at zero and rely on the crown
+ * offset alone.
+ *
+ * A TABLE, not a formula, because the five facings are drawn at five different
+ * three-quarter angles and the amount that reads correctly is not a projection
+ * of anything — it is a look.  Mirrored facings negate it, for the same reason
+ * the body's own scale.x carries its sign. */
+const _CAPE_JOG_TILT = { east: 0.30, northeast: 0.20, southwest: -0.20, north: 0, south: 0 };   /* v2.3.2025: owner, "angled more with jog" -- doubled */
+/* Where the cape swings FROM: the shoulders, not the middle of the frame.
+   Pivoting about the centre would swing the hood as far as the hem and take
+   the hood off the head, which is the thing v2.3.2023b just fixed. */
+const _CAPE_PIVOT_Y = 0.27;
+
+function _placeCape(display, capeId, pose, dir, mirror, frameIdx) {
+  const spr = display && display._capeSprite;
+  if (!spr) return;
+  const sb = display._spriteBody;
+  const tex = (!capeId || capeId === 'none' || _CAPE_HIDDEN_POSES[pose]) ? null : getCapeTexture(capeId, dir);
+  if (!tex || !sb || !sb.visible) { if (spr.visible) spr.visible = false; return; }
+  if (spr.texture !== tex) spr.texture = tex;
+  const norm = 256 / ((tex.frame && tex.frame.width) || 256);
+  spr.scale.x = sb.scale.x * norm / DISPLAY_DS;
+  spr.scale.y = sb.scale.y * norm / DISPLAY_DS;
+  /* ═══ v2.3.2023b: THE CAPE FOLLOWS THE FRAME'S OWN CROWN ═══
+   * The art is a STANDING still, and the standing figure is not where the
+   * figure is on a jog frame: measured from body-tops.json, the crown moves
+   * +18x and +21y in 256-space between stand-east-0 and jog-east.  Pinned to
+   * the frame origin the hood stays over the standing head while the real head
+   * runs out from under it, and the owner's first question about the jog was
+   * exactly that -- the face pokes out in front of the hood.
+   * So the cape is offset by this frame's crown against the standing crown the
+   * art was fitted to.  It rides the same body-tops table hats are placed
+   * from, which means it also bobs with the stride rather than sitting rigid
+   * while the body moves under it.
+   * Mirrored facings flip the X term, for the same reason the body's own
+   * scale.x carries its sign. */
+  const nowTop = _lookupBodyTop(pose, dir, frameIdx);
+  const standTop = _lookupBodyTop('stand', dir, 0);
+  let dx = 0, dy = 0;
+  if (nowTop && standTop) {
+    dx = (nowTop[0] - standTop[0]) * Math.abs(spr.scale.x) * (mirror ? -1 : 1);
+    dy = (nowTop[1] - standTop[1]) * Math.abs(spr.scale.y);
+  }
+  /* v2.3.2024: swing it from the shoulders while running.  The anchor moves off
+     centre so the rotation pivots there, and y is compensated by the same
+     amount so the cape does not also jump up the screen when it tilts. */
+  const tilt = (pose === 'jog') ? ((_CAPE_JOG_TILT[dir] || 0) * (mirror ? -1 : 1)) : 0;
+  if (spr.anchor.y !== _CAPE_PIVOT_Y) spr.anchor.set(0.5, _CAPE_PIVOT_Y);
+  if (spr.rotation !== tilt) spr.rotation = tilt;
+  const drawnH = Math.abs(spr.scale.y) * ((tex.frame && tex.frame.height) || 256);
+  spr.x = sb.x + dx;
+  spr.y = sb.y + dy - (0.5 - _CAPE_PIVOT_Y) * drawnH;
+  if (!spr.visible) spr.visible = true;
 }
 
 function _placeGear(display, equip, pose, dir, frameIdx, legsFrom) {
@@ -2758,7 +2957,7 @@ function _ensureHairMaskLoaded(hatId) {
    mask sprite (the helmet's downward-filled outline) exactly where the
    helmet renders -- same crown anchor + nudge + scale -- and masks the
    hair to it. */
-function _clipHairToHat(display, hatId, pose, dir, mirror, frameIdx, bodyScale) {
+function _clipHairToHat(display, hatId, hairId, pose, dir, mirror, frameIdx, bodyScale) {
   const hair = display._hairSprite;
   const maskSprite = display._hairMask;
   if (!hair || !maskSprite) return;
@@ -2772,9 +2971,17 @@ function _clipHairToHat(display, hatId, pose, dir, mirror, frameIdx, bodyScale) 
   }
   /* Reuse the trait placement with the helmet's meta but the mask texture
      so the silhouette lands exactly over the helmet — including the
-     v2.3.1353 per-hat jog tune, or the clip drifts off the resized hat. */
+     v2.3.1353 per-hat jog tune, or the clip drifts off the resized hat.
+     v2.3.1959: ...and the two HAIR-DEPENDENT adjustments as well, which this
+     line asked hatPoseTune alone for and therefore never got.  A hat that
+     floats (v2.3.1561) was masked at the height it would have sat at with no
+     hair under it, and a band widened to reach around big hair (v2.3.1943)
+     was masked at its un-widened width — in both cases the clip cuts the hair
+     to a silhouette the hat is not standing in.  _hatTune is the same call
+     _placeHeadwear makes, so the mask now moves with the hat by construction
+     rather than by two lists of adjustments staying in step. */
   _placeTrait(maskSprite, { tex: maskEntry.tex, meta }, display, pose, dir, mirror, frameIdx, bodyScale,
-    hatPoseTune(hatId, pose, dir));
+    _hatTune(hatId, meta, hairId, pose, dir, mirror));
   if (maskSprite.visible) {
     if (hair.mask !== maskSprite) hair.mask = maskSprite;
   } else if (hair.mask) {
@@ -2791,7 +2998,7 @@ function _placeHair(display, hairId, hairColorId, hatId, pose, dir, mirror, fram
   if (colored && baseEntry) entry = { tex: colored, meta: baseEntry.meta, fallbackTex: baseEntry.tex }; /* v2.3.1305 */
   _placeTrait(display._hairSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale,
     hairPoseTune(pose, dir)); /* v2.3.1454: jog-east size correction (hats keep their own tune) */
-  _clipHairToHat(display, hatId, pose, dir, mirror, frameIdx, bodyScale);
+  _clipHairToHat(display, hatId, hairId, pose, dir, mirror, frameIdx, bodyScale); /* v2.3.1959: hairId — the mask needs the hat's hair-dependent fit too */
   _orderHairOverHat(display, hatId);
 }
 
@@ -2919,7 +3126,12 @@ if (typeof window !== 'undefined') window.__btStandInHairClip = () => Object.ass
    container) so the mask goes through _placeStandaloneTrait.  The caller owns
    the mask sprite — it has to be in the scene graph for Pixi to use it, and
    the trait sets are parented by effectsRenderer. */
-function _clipStandInHair(sprites, hatId, hairId, dir, mirror, cwx, cwy, scaleVal) {
+/* v2.3.1959: `fit` is the {dy256, mulX} the CALLER already computed for the
+   hat sprite a few lines above — passed in rather than recomputed here, so on
+   this path the hat and its mask are placed from one value and there is
+   nothing for a future adjustment to fall behind on.  It used to recompute
+   only the float lift and knew nothing about the band refit. */
+function _clipStandInHair(sprites, hatId, dir, mirror, cwx, cwy, scaleVal, fit) {
   const hair = sprites && sprites.hair;
   const maskSprite = sprites && sprites.hairMask;
   if (!hair || !maskSprite) return;
@@ -2944,9 +3156,9 @@ function _clipStandInHair(sprites, hatId, hairId, dir, mirror, cwx, cwy, scaleVa
     return;
   }
   /* The mask must land exactly where the HAT lands, so it is placed with the
-     hat's meta and the hat's own float-above-hair lift — not the hair's. */
+     hat's meta and the hat's own hair-dependent fit — not the hair's. */
   _placeStandaloneTrait(maskSprite, { tex: maskEntry.tex, meta }, dir, mirror, cwx, cwy, scaleVal,
-    _floatAboveHairLift(meta, hairId, 'stand', dir, mirror));
+    fit && fit.dy256, fit && fit.mulX);
   if (maskSprite.visible) {
     if (hair.mask !== maskSprite) hair.mask = maskSprite;
   } else if (hair.mask) {
@@ -2974,10 +3186,11 @@ export function placeSkillTraits(sprites, cwx, cwy, dir, mirror, scaleVal) {
   let hwEntry = _ensureHeadwearLoaded(getHeadwear());
   const hwCol = getColoredHatTextures(getHeadwear(), getHatColor());
   if (hwCol && hwEntry) hwEntry = { tex: hwCol, meta: hwEntry.meta, fallbackTex: hwEntry.tex }; /* v2.3.1305 */
+  /* v2.3.1959: ONE fit for the hat and for the mask it clips the hair to. */
+  const hwFit = _hatHairFit(getHeadwear(), hwEntry && hwEntry.meta, getHair(), 'stand', dir, mirror);
   _placeStandaloneTrait(sprites.hat, hwEntry, dir, mirror, cwx, cwy, scaleVal,
-    _floatAboveHairLift(hwEntry && hwEntry.meta, getHair(), 'stand', dir, mirror),
-    bandFit(getHeadwear(), getHair(), dir)); /* v2.3.1561; v2.3.1943 */
-  _clipStandInHair(sprites, getHeadwear(), getHair(), dir, mirror, cwx, cwy, scaleVal); /* v2.3.1776 */
+    hwFit.dy256, hwFit.mulX); /* v2.3.1561; v2.3.1943 */
+  _clipStandInHair(sprites, getHeadwear(), dir, mirror, cwx, cwy, scaleVal, hwFit); /* v2.3.1776 */
 }
 
 /* v2.3.1011: like placeSkillTraits, but for an ARBITRARY player's appearance
@@ -3000,10 +3213,11 @@ export function placeSkillTraitsFor(sprites, looks, cwx, cwy, dir, mirror, scale
   let hwEntry2 = _ensureHeadwearLoaded(looks.headwear);
   const hwCol2 = getColoredHatTextures(looks.headwear, looks.hatColor);
   if (hwCol2 && hwEntry2) hwEntry2 = { tex: hwCol2, meta: hwEntry2.meta, fallbackTex: hwEntry2.tex }; /* v2.3.1305 */
+  /* v2.3.1959: ONE fit for the hat and for the mask it clips the hair to. */
+  const hwFit2 = _hatHairFit(looks.headwear, hwEntry2 && hwEntry2.meta, looks.hair, 'stand', dir, mirror);
   _placeStandaloneTrait(sprites.hat, hwEntry2, dir, mirror, cwx, cwy, scaleVal,
-    _floatAboveHairLift(hwEntry2 && hwEntry2.meta, looks.hair, 'stand', dir, mirror),
-    bandFit(looks.headwear, looks.hair, dir)); /* v2.3.1561; v2.3.1943 */
-  _clipStandInHair(sprites, looks.headwear, looks.hair, dir, mirror, cwx, cwy, scaleVal); /* v2.3.1776 */
+    hwFit2.dy256, hwFit2.mulX); /* v2.3.1561; v2.3.1943 */
+  _clipStandInHair(sprites, looks.headwear, dir, mirror, cwx, cwy, scaleVal, hwFit2); /* v2.3.1776 */
 }
 
 /** Hide all three skill-trait sprites (no stand-in active this frame). */
@@ -3636,7 +3850,110 @@ function createMonsterDisplay(monster) {
    A rounded-rect rebuild at 60fps for a label that changes on level-up
    would be pure waste — and with up to 50 players in a room it would be
    50x that waste. */
-function _attachNamePill(container, nameSize, sizeMult) {
+/* v2.3.1953: `host` is where the pill NODE is added; `container` still owns the
+   refs.  Player displays pass their _uiLayer so the plate rides the build-scale
+   correction with the rest of the HUD; monsters (and any caller that omits it)
+   are unchanged. */
+/* v2.3.1953: the v2.3.1887 hide-by-EXCEPTION sweep, made to descend one level.
+   The HUD moved into display._uiLayer (see createPlayerDisplay), so a flat pass
+   over display.children would have seen ONE opaque child in place of eighteen
+   and hidden the name plate and the vitals with it.  Running the same keep-set
+   over both levels leaves the rule literally unchanged: everything that is not
+   named survives death nowhere, and everything named survives wherever it
+   lives. */
+/* ═══ v2.3.1953: HEIGHT AND FRAME, APPLIED IN ONE PLACE ═══
+ *
+ * Owner: "is there a way to add 'height' to your character as an option?" and
+ * then "Maybe also frame wideness (thin, medium, large)".
+ *
+ * ── WHY THE CONTAINER AND NOT THE SPRITES ──
+ * The figure is not one sprite: it is the body, three body REGIONS, four gear
+ * layers, a shirt, hair, a beard, a hat, two shield clones, a weapon container
+ * and a block arm, and every one of them is placed from the body's transform in
+ * 256-space with per-facing anchors, nudges and dir-scales.  Scaling them
+ * individually would mean threading a second axis through every placement
+ * helper, and the first thing to go wrong would be a beard that drifts off the
+ * chin at `tall` — a silent, per-facing bug of exactly the kind this file's
+ * comment history is full of.  The display CONTAINER is above all of it, so one
+ * non-uniform scale moves the whole figure with its alignment intact, by
+ * construction rather than by care.
+ *
+ * ── THE FEET STAY ON THE GROUND ──
+ * The container's origin is the sprite CENTRE, not the boots (feet sit
+ * FEET_OFFSET=24 units below it, sheetGeometry).  Scaling about the centre
+ * would push a tall bro's boots ~3px INTO the floor and lift a short one off
+ * it.  So the display is nudged up by exactly the growth below the origin,
+ * which pins the feet to the world position the server knows about — the only
+ * point of the figure that has to agree with anything.
+ *
+ * ── AND THE HUD DOES NOT STRETCH ──
+ * display._uiLayer carries the inverse, so the name plate, level, threat
+ * skull, floating vitals and duel bar are the same size and shape on every
+ * build.  Their POSITIONS still ride the scale, which is what you want: the
+ * plate under a tall bro sits under his actual boots.
+ *
+ * Sets the scale on the display and the inverse on its ui layer, and RETURNS
+ * the lift to add to display.y — a return rather than a mutation because the
+ * caller owns that assignment and has just written the world position into it.
+ */
+/* ── HOW FAR THE BOOTS ARE BELOW THE DISPLAY'S ORIGIN, in container units ──
+ * Derived from the numbers that already govern it rather than restated as a
+ * constant: BODY_ROWS carries each facing's MEASURED foot row in 256-frame
+ * units, the cell centre is 128, and one 256-space unit is
+ * bodyDirScale * LOCAL_SCALE container units.
+ *
+ * The first cut used sheetGeometry's FEET_OFFSET = 24 -- which is a TOUCH
+ * anchor, a different measurement of a different thing -- and the boots came
+ * out 2.9 world px low on a tall bro.  The real figure is ~41.6 (south stand:
+ * (221-128) * 1.061 * 0.421875), and mp-build measured exactly that before
+ * this was fixed, which is how it was found.
+ *
+ * pose/dir come from the display's own animation cache, i.e. the frame that
+ * was last DRAWN.  One frame of lag on a correction whose per-facing spread is
+ * under a container unit is invisible, and it avoids reordering this call to
+ * after the pose is chosen -- which would mean applying the lift after
+ * display.y has already been read by the zone-scale lookup. */
+const BODY_CELL_MID = 128;
+const LOCAL_BODY_SCALE = 0.421875;   /* the local player's LOCAL_SCALE, v2.3.741 */
+function _feetOffsetUnits(display) {
+  const pose = (display && display._animPose) === 'jog' ? 'jog' : 'stand';
+  const dir = (display && display._animDir) || 'south';
+  const rows = bodyRows(pose, dir);
+  return (rows.feet - BODY_CELL_MID) * bodyDirScale(pose, dir) * LOCAL_BODY_SCALE;
+}
+function _applyBuildScale(display, pscale, heightId, frameId) {
+  const b = buildScale(heightId, frameId);
+  const sx = pscale * b.sx, sy = pscale * b.sy;
+  if (display.scale.x !== sx || display.scale.y !== sy) { display.scale.x = sx; display.scale.y = sy; }
+  const ui = display._uiLayer;
+  if (ui) {
+    /* Guard against a zero from a future catalog entry: an inverse of 0 is
+       Infinity, and one Infinity in a transform blanks the whole display. */
+    const ix = b.sx ? 1 / b.sx : 1, iy = b.sy ? 1 / b.sy : 1;
+    if (ui.scale.x !== ix || ui.scale.y !== iy) { ui.scale.x = ix; ui.scale.y = iy; }
+  }
+  /* The lift, in WORLD units: the feet sit 24 container units below the
+     origin, so growth below the origin is 24 * (sy - 1) container units, times
+     the zone/player scale that turns container units into world ones. */
+  return -_feetOffsetUnits(display) * (b.sy - 1) * pscale;
+}
+
+function _hideExceptDeep(display, keep) {
+  const ui = display._uiLayer;
+  for (let i = 0; i < display.children.length; i++) {
+    const c = display.children[i];
+    if (c === ui) continue;                       /* swept on its own terms below */
+    if (c && c.visible && keep.indexOf(c) < 0) c.visible = false;
+  }
+  if (ui) {
+    for (let i = 0; i < ui.children.length; i++) {
+      const c = ui.children[i];
+      if (c && c.visible && keep.indexOf(c) < 0) c.visible = false;
+    }
+  }
+}
+
+function _attachNamePill(container, nameSize, sizeMult, host) {
   const pill = new Container();
   /* Feet sit ~24 below centre (sheetGeometry FEET_OFFSET).
      v2.3.1765 (owner: "Move the standing nameplate down about 3-10 pixels it
@@ -3699,7 +4016,7 @@ function _attachNamePill(container, nameSize, sizeMult) {
   container._broBadge = broBadge;
 
   pill.visible = false;
-  container.addChild(pill);
+  (host || container).addChild(pill);
   container._namePill = pill;
   container._pillBg = bg;
   container._pillName = nameT;
@@ -3715,7 +4032,7 @@ function _attachNamePill(container, nameSize, sizeMult) {
    delays a badge rather than stalling the loading screen. */
 let _broBadgeTex = null;
 function _broBadgeTexture() {
-  if (!_broBadgeTex) _broBadgeTex = Texture.from('/icons/ui/verified-bro-small.png');
+  if (!_broBadgeTex) _broBadgeTex = Texture.from('/icons/ui/verified-bro-small.webp');
   return _broBadgeTex;
 }
 
@@ -3727,7 +4044,10 @@ function _updateNamePill(display, name, level, visible, broId) {
   if (display._pillKey !== key) {
     display._pillKey = key;
     display._pillName.text = name;
-    display._pillLevel.text = 'LV ' + level;
+    /* v2.3.2048: a STRING second line passes through verbatim. An NPC has no
+       level, and "LV undefined" under a shopkeeper is worse than no plate.
+       Every existing caller passes a number and is unaffected. */
+    display._pillLevel.text = (typeof level === 'string') ? level : ('LV ' + level);
     /* Sized to whichever line is wider, so a long name and a two-digit
        level both sit inside with equal padding. */
     /* v2.3.1576: the badge sits inside the plate, so it has to be paid for
@@ -4237,6 +4557,16 @@ function createPlayerDisplay() {
   /* v2.3.266: standalone-item sticker layer.  One sprite for headwear
      (helmet / hat / hood / etc.); future: glasses, beard, etc. each
      get their own.  Anchor + position set per-frame from meta.json. */
+  /* v2.3.2023: the cape.  ABOVE the body and gear, because the art was
+     authored that way -- the generator drew it on the mannequin with the front
+     panels over the chest and the hood over the skull, so the picture states
+     its own z-order and the body shows through the opening it left.  Added
+     before headwear so a hat still draws over the hood's edge. */
+  const capeSprite = new Sprite();
+  capeSprite.anchor.set(0.5, 0.5);
+  capeSprite.visible = false;
+  container.addChild(capeSprite);
+
   const headwearSprite = new Sprite();
   headwearSprite.visible = false;
   container.addChild(headwearSprite);
@@ -4367,10 +4697,25 @@ function createPlayerDisplay() {
   blockCaretGfx.visible = false;
   container.addChild(blockCaretGfx);
 
+  /* ═══ v2.3.1953: THE HUD LIVES IN ITS OWN LAYER ═══
+     Everything from here down is UI drawn at the character's position — the
+     name plate, the combo badge, the threat skull, the floating vitals — not
+     part of the figure.  It moved into one sub-container so the build scale
+     (height x frame, buildCatalog.js) can be CANCELLED on it with a single
+     inverse transform: the display is scaled non-uniformly to make a bro
+     short or broad, and a name plate that stretched 17% wider with him would
+     be a bug, not a feature.  One node to invert instead of eighteen, and a
+     HUD node added later inherits the correction by being added here.
+     Z-order is unchanged: these were already the last children, so a single
+     container in their place draws in exactly the same order. */
+  const uiLayer = new Container();
+  container.addChild(uiLayer);
+  container._uiLayer = uiLayer;
+
   // §5.9.5 Combo Chain count badge — sits above the bars.
   const comboText = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 10 } });
   comboText.anchor.set(0.5, 1);
-  container.addChild(comboText);
+  uiLayer.addChild(comboText);
 
   // Stun countdown timer -- floats above the stun-star ring for any
   // variant with blockStunMs (skeleton: 5 s).  Hidden when m._stunUntil
@@ -4379,7 +4724,7 @@ function createPlayerDisplay() {
   const stunTimerText = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 11, fontWeight: '800', fill: '#fbbf24' } });
   stunTimerText.anchor.set(0.5, 1);
   stunTimerText.visible = false;
-  container.addChild(stunTimerText);
+  uiLayer.addChild(stunTimerText);
 
   const nameText = new Text({ text: '', style: NAME_STYLE });
   nameText.anchor.set(0.5, 1);
@@ -4387,7 +4732,7 @@ function createPlayerDisplay() {
      sword tip that pokes ~5 px above the head when the right arm
      is fully extended (W jog cycles, etc). */
   nameText.y = -38;
-  container.addChild(nameText);
+  uiLayer.addChild(nameText);
 
   /* v2.3.1564: name + level pill below the feet — see _mintNamePill.
      v2.3.1566 (owner: "make it consistent and beneath other players too"):
@@ -4396,7 +4741,7 @@ function createPlayerDisplay() {
   /* v2.3.1681 (owner: "Player name and level in the pill beneath character
      need to be slightly larger for legibility").  10 -> 13; the plate sizes
      itself off this number, so the background grows with the text. */
-  _attachNamePill(container, 13);
+  _attachNamePill(container, 13, undefined, uiLayer);
 
   /* v2.3.1193: the local player's own threat skull (red = my threat
      countdown is running, white = ignored/expired fight window).  One
@@ -4408,7 +4753,7 @@ function createPlayerDisplay() {
   skullText.anchor.set(0.5, 1);
   skullText.visible = false;
   skullText.y = -52;
-  container.addChild(skullText);
+  uiLayer.addChild(skullText);
 
   /* Combat-bar HUD anchored above the head (v2.3.107).  Each bar
      is a pill-shaped Sprite using the same /icons/ui/bar-*.webp
@@ -4446,26 +4791,26 @@ function createPlayerDisplay() {
   const hudMpSprite = new Sprite();
   hudMpSprite.anchor.set(0.5, 0.5);
   hudMpSprite.alpha = 0;
-  container.addChild(hudMpSprite);
+  uiLayer.addChild(hudMpSprite);
   const hudMpEmpty = new Graphics();
   hudMpEmpty.alpha = 0;
-  container.addChild(hudMpEmpty);
+  uiLayer.addChild(hudMpEmpty);
   const hudMpTextFull  = new Text({ text: '', style: _hudNumStyleFull });
   const hudMpTextEmpty = new Text({ text: '', style: _hudNumStyleEmpty });
-  hudMpTextFull.anchor.set(0.5, 0.5);  hudMpTextFull.alpha = 0;  container.addChild(hudMpTextFull);
-  hudMpTextEmpty.anchor.set(0.5, 0.5); hudMpTextEmpty.alpha = 0; container.addChild(hudMpTextEmpty);
+  hudMpTextFull.anchor.set(0.5, 0.5);  hudMpTextFull.alpha = 0;  uiLayer.addChild(hudMpTextFull);
+  hudMpTextEmpty.anchor.set(0.5, 0.5); hudMpTextEmpty.alpha = 0; uiLayer.addChild(hudMpTextEmpty);
 
   const hudStamSprite = new Sprite();
   hudStamSprite.anchor.set(0.5, 0.5);
   hudStamSprite.alpha = 0;
-  container.addChild(hudStamSprite);
+  uiLayer.addChild(hudStamSprite);
   const hudStamEmpty = new Graphics();
   hudStamEmpty.alpha = 0;
-  container.addChild(hudStamEmpty);
+  uiLayer.addChild(hudStamEmpty);
   const hudStamTextFull  = new Text({ text: '', style: _hudNumStyleFull });
   const hudStamTextEmpty = new Text({ text: '', style: _hudNumStyleEmpty });
-  hudStamTextFull.anchor.set(0.5, 0.5);  hudStamTextFull.alpha = 0;  container.addChild(hudStamTextFull);
-  hudStamTextEmpty.anchor.set(0.5, 0.5); hudStamTextEmpty.alpha = 0; container.addChild(hudStamTextEmpty);
+  hudStamTextFull.anchor.set(0.5, 0.5);  hudStamTextFull.alpha = 0;  uiLayer.addChild(hudStamTextFull);
+  hudStamTextEmpty.anchor.set(0.5, 0.5); hudStamTextEmpty.alpha = 0; uiLayer.addChild(hudStamTextEmpty);
 
   /* Above-head HP indicator: v2.3.458 quartile RING, replaced visually in
      v2.3.1273 by the owner's BAR art (frame + cropped fill sprites below);
@@ -4474,22 +4819,22 @@ function createPlayerDisplay() {
   const hudHpBarFrame = new Sprite();
   hudHpBarFrame.anchor.set(0.5, 0.5);
   hudHpBarFrame.alpha = 0;
-  container.addChild(hudHpBarFrame);
+  uiLayer.addChild(hudHpBarFrame);
   const hudHpBarFill = new Sprite();
   hudHpBarFill.anchor.set(0, 0.5);
   hudHpBarFill.alpha = 0;
-  container.addChild(hudHpBarFill);
+  uiLayer.addChild(hudHpBarFill);
   const hudHpRing = new Graphics();
   hudHpRing.alpha = 0;
-  container.addChild(hudHpRing);
+  uiLayer.addChild(hudHpRing);
   const hudHpText = new Text({ text: '', style: PLAYER_HP_NUM_STYLE });
   hudHpText.anchor.set(0.5, 0.5);
   hudHpText.alpha = 0;
-  container.addChild(hudHpText);
+  uiLayer.addChild(hudHpText);
   const hudHpMaxText = new Text({ text: '', style: HP_RING_MAX_STYLE });
   hudHpMaxText.anchor.set(0.5, 0.5);
   hudHpMaxText.alpha = 0;
-  container.addChild(hudHpMaxText);
+  uiLayer.addChild(hudHpMaxText);
 
   container._body = body;
   container._spriteBody = spriteBody;
@@ -4497,6 +4842,7 @@ function createPlayerDisplay() {
   container._facialHairSprite = facialHairSprite;
   container._hairSprite = hairSprite;
   container._hairMask = hairMask;
+  container._capeSprite = capeSprite;                 /* v2.3.2023 */
   container._headwearSprite = headwearSprite;
   container._nftFront = nftFront;
   container._nftBack = nftBack;
@@ -4638,6 +4984,16 @@ function createOtherPlayerDisplay() {
 
   /* v2.3.321: headwear sprite for remote players (above body, below
      weapon/NFT) so other players' hats render.  Driven by other.headwear. */
+  /* v2.3.2023: the cape.  ABOVE the body and gear, because the art was
+     authored that way -- the generator drew it on the mannequin with the front
+     panels over the chest and the hood over the skull, so the picture states
+     its own z-order and the body shows through the opening it left.  Added
+     before headwear so a hat still draws over the hood's edge. */
+  const capeSprite = new Sprite();
+  capeSprite.anchor.set(0.5, 0.5);
+  capeSprite.visible = false;
+  container.addChild(capeSprite);
+
   const headwearSprite = new Sprite();
   headwearSprite.visible = false;
   container.addChild(headwearSprite);
@@ -4674,6 +5030,13 @@ function createOtherPlayerDisplay() {
   weaponSprite.visible = false;
   weaponContainer.addChild(weaponSprite);
 
+  /* v2.3.1953: the HUD layer — see the note in createPlayerDisplay.  Same
+     reason on a peer: their name plate and duel bar must not stretch with
+     their build. */
+  const uiLayer = new Container();
+  container.addChild(uiLayer);
+  container._uiLayer = uiLayer;
+
   const nameText = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 9 } });
   nameText.anchor.set(0.5, 1);
   /* Was -24; bumped to -34 to match the local player nameplate's
@@ -4683,11 +5046,11 @@ function createOtherPlayerDisplay() {
      stale reference keep working; it is simply never made visible. */
   nameText.y = -34;
   nameText.visible = false;
-  container.addChild(nameText);
+  uiLayer.addChild(nameText);
 
   /* v2.3.1566 (owner): same plate the local player gets, one size down —
      a remote name should not out-shout your own. */
-  _attachNamePill(container, 12);   /* v2.3.1681: 9 -> 12, still one down from your own */
+  _attachNamePill(container, 12, undefined, uiLayer);   /* v2.3.1681: 9 -> 12, still one down from your own */
 
   /* v2.3.1193: threat skull above the nameplate (red = active threat
      countdown, white = ignored/expired fight window — see
@@ -4698,7 +5061,7 @@ function createOtherPlayerDisplay() {
   skullText.anchor.set(0.5, 1);
   skullText.visible = false;
   skullText.y = -58;
-  container.addChild(skullText);
+  uiLayer.addChild(skullText);
 
   container._body = body;
   container._spriteBody = spriteBody;
@@ -4706,6 +5069,7 @@ function createOtherPlayerDisplay() {
   container._facialHairSprite = facialHairSprite;
   container._hairSprite = hairSprite;
   container._hairMask = hairMask;
+  container._capeSprite = capeSprite;                 /* v2.3.2023 */
   container._headwearSprite = headwearSprite;
   container._nftFront = nftFront;
   container._nftBack = nftBack;
@@ -4740,18 +5104,18 @@ function createOtherPlayerDisplay() {
   const duelBar = new Sprite();
   duelBar.anchor.set(0.5, 0.5);
   duelBar.alpha = 0;
-  container.addChild(duelBar);
+  uiLayer.addChild(duelBar);
   const duelBarFill = new Sprite();
   duelBarFill.anchor.set(0, 0.5);
   duelBarFill.alpha = 0;
-  container.addChild(duelBarFill);
+  uiLayer.addChild(duelBarFill);
   const duelBarFx = new Graphics();
   duelBarFx.alpha = 0;
-  container.addChild(duelBarFx);
+  uiLayer.addChild(duelBarFx);
   const duelBarText = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 9 } });
   duelBarText.anchor.set(0.5, 0.5);
   duelBarText.alpha = 0;
-  container.addChild(duelBarText);
+  uiLayer.addChild(duelBarText);
   container._duelBar = duelBar;
   container._duelBarFill = duelBarFill;
   container._duelBarFx = duelBarFx;
@@ -6409,6 +6773,29 @@ export class EntityRenderer {
       // Use pre-computed interpolated position
       display.x = other.renderX || other.x || 0;
       display.y = other.renderY || other.y || 0;
+      /* ═══ v2.3.2083: WHERE A PEER WAS ACTUALLY DRAWN ═══
+         The local player has had __btPlayerDrawn since v2.3.2078; a peer had
+         nothing, so a QA crop around another player was derived from
+         renderX/renderY read at some LATER instant than the frame it was
+         cropping.  For a peer standing still that is exact and for one running
+         it is not, and mp-cosmpose read "the other player cannot see his
+         tattoos" off a crop that had simply missed him.  Widening the crop is
+         the wrong fix and was tried: at this spawn the extra margin reaches the
+         grass and the no-art CONTROL starts counting green off the town, which
+         is TRAPS §34 and the exact bug the tight box exists for.  A crop needs
+         a better ANCHOR, not a bigger box. */
+      if (typeof window !== 'undefined') {
+        const _pd = (window.__btPeersDrawn && window.__btPeersDrawn._m) || null;
+        if (_pd) {
+          const _pb2 = display._spriteBody;
+          _pd.set(id, {
+            x: display.x, footY: display.y,
+            width: _pb2 && _pb2.texture ? Math.abs(_pb2.texture.width * _pb2.scale.x) : 0,
+            height: _pb2 && _pb2.texture ? Math.abs(_pb2.texture.height * _pb2.scale.y) : 0,
+            visible: display.visible,
+          });
+        }
+      }
 
       /* v2.3.1091: apply the same per-zone perspective shrink the local
          player gets, computed from THIS remote's own position, so other
@@ -6419,7 +6806,10 @@ export class EntityRenderer {
          here doesn't disturb facing. */
       {
         const pscale = this._zonePscale(S, display.x, display.y) * PLAYER_SIZE_MULT; /* v2.3.1274 */
-        if (display.scale.x !== pscale) display.scale.set(pscale);
+        /* v2.3.1953: ...times this bro's own build.  Computed from the
+           UNLIFTED y above, because _zonePscale reads the position to work out
+           how far up a vista map he is standing; the lift is applied after. */
+        display.y += _applyBuildScale(display, pscale, other.buildHeight, other.buildFrame);
       }
 
       /* v2.3.1917: health bar for a peer in a fight — see _drawPeerHpBar.
@@ -6480,10 +6870,7 @@ export class EntityRenderer {
           _spriteBody, display._namePill, display._comboText,
           display._handCapMask, display._handArmMask,
         ];
-        for (let i = 0; i < display.children.length; i++) {
-          const _c = display.children[i];
-          if (_c && _c.visible && _rKeep.indexOf(_c) < 0) _c.visible = false;
-        }
+        _hideExceptDeep(display, _rKeep);
         continue;
       }
       /* Living — restore visibility of containers that might have been
@@ -6787,6 +7174,7 @@ export class EntityRenderer {
           if (display._shirtSprite) display._shirtSprite.visible = false;
           /* always show the remote's hair/hat/beard (no helmet to hide them). */
           _crownOverride = _fsR ? _fullsetCrown(dir, _rJogPhase) : null; /* v2.3.1389 */
+          _placeCape(display, other.cape, pose, dir, mirror, frameIdx);   /* v2.3.2023 */
           _placeHeadwear(display, other.headwear, other.hatColor, pose, dir, mirror, frameIdx, sizeMul, other.hair); /* v2.3.1561: hair id for the floating halo */
           _placeFacialHair(display, other.facialhair, other.facialHairColor, pose, dir, mirror, frameIdx, sizeMul);
           _placeHair(display, other.hair, other.hairColor, other.headwear, pose, dir, mirror, frameIdx, sizeMul);
@@ -7096,7 +7484,34 @@ export class EntityRenderer {
          the last party_state snapshot (gameEvents.js). */
       const _inParty = S._party && S._party.members
         && S._party.members.some((m) => m.id === id);
-      const nextName = (_inParty ? '\u{1F389} ' : '') + (other.name || 'Anon');
+      /* ═══ v2.3.1970: A PEER'S NAME IS A TEXTURE, SO IT NEEDS A CEILING ═══
+         This line and _updateNamePill below are the only two places a peer's
+         name becomes pixels, and NAME_STYLE has no wordWrap -- so whatever
+         arrives is laid out as ONE line.  The server now clamps the name at
+         join (join.js sanitizeDisplayName, same version), which is where the
+         rule is actually enforced; this is the other half of TRAPS #19's
+         "fix both or you fix neither", because the worker and the client ship
+         independently and a client that meets an un-upgraded worker must not
+         be the thing that breaks.  The creator's own input stops at 20 chars,
+         so 48 is generous for anything honest and still a bounded texture:
+         before this, an unbounded name was a Text some tens of thousands of
+         px wide, past the max texture size of every iOS GPU -- painted over
+         that player's head on every other screen in the room, and (unlike a
+         chat bubble) persisting for as long as they stood there.
+         Clamped HERE rather than at the three ingest roads (state_sync,
+         player_join, the `track` relay's Object.assign) on purpose: TRAPS #13's
+         lesson is to close the class, and the class is "a name reaching the
+         renderer", which is exactly one line.
+         Change-cached on the RAW string, the same idiom `_lastName` right
+         below uses: a peer's name changes about never, and this is the per-
+         remote-player hot path -- the regex should run when the name moves,
+         not sixty times a second per peer. */
+      const _rawName = typeof other.name === 'string' ? other.name : '';
+      if (display._lastRawName !== _rawName) {
+        display._lastRawName = _rawName;
+        display._safeName = _rawName.replace(/[\x00-\x1f\x7f]/g, ' ').slice(0, 48).trim() || 'Anon';
+      }
+      const nextName = (_inParty ? '\u{1F389} ' : '') + display._safeName;
       if (display._lastName !== nextName) {
         display._lastName = nextName;
         display._nameText.text = nextName;
@@ -7164,6 +7579,30 @@ export class EntityRenderer {
     const P = S.player;
     const display = this.playerDisplay;
     if (typeof window !== 'undefined' && window.__btMaskDebug) window.__playerDisplay = display;
+    /* ═══ v2.3.2078: WHERE THE PLAYER IS ACTUALLY DRAWN ═══
+       The sibling of __btNpcSprites, for the local character.  Every
+       colour-probe scenario (mp-facingside, mp-cosmpose, mp-skinworld,
+       mp-southshirt) crops a fixed 88x104-ish box off the player's world
+       position and counts coloured pixels in it.  That box is roughly twice
+       the figure, and what fills the rest is whatever the town happens to
+       have behind him -- so when v2.3.2069 moved the fountain to the plaza
+       the CONTROL reading started finding 4455 blue pixels on a character
+       with no drawings on him at all, and four assertions in each scenario
+       failed for a reason that had nothing to do with the art.
+       Guessing a tighter fraction of the screen would just move the guess.
+       This reports the figure the renderer really drew -- its world footY
+       and its drawn width/height, exactly the three numbers _npcDrawn
+       carries -- so a crop can be derived instead of estimated. */
+    if (typeof window !== 'undefined') {
+      const _pb = display._spriteBody;
+      window.__btPlayerDrawn = () => ({
+        x: display.x,
+        footY: display.y,
+        width: _pb && _pb.texture ? Math.abs(_pb.texture.width * _pb.scale.x) : 0,
+        height: _pb && _pb.texture ? Math.abs(_pb.texture.height * _pb.scale.y) : 0,
+        visible: display.visible,
+      });
+    }
     /* Force visibility every frame — same defensive concern as the
        parent re-attach above.
        v2.3.846: ...except while a woodcutting chop is active — the chopper
@@ -7197,7 +7636,10 @@ export class EntityRenderer {
        _zonePscale and shared with the remote-player path. */
     {
       const pscale = this._zonePscale(S, P.x, P.y) * PLAYER_SIZE_MULT; /* v2.3.1274 */
-      if (display.scale.x !== pscale) display.scale.set(pscale);
+      /* v2.3.1953: your own build.  Read from the store rather than from S,
+         the same way this path reads your skin, shirt art and patterns — the
+         creator writes it there and the store is the one copy. */
+      display.y += _applyBuildScale(display, pscale, getBuildHeight(), getBuildFrame());
     }
 
     /* Self death visual — play the death sprite animation (player ->
@@ -7277,10 +7719,7 @@ export class EntityRenderer {
         display._hudMpEmpty, display._hudMpSprite, display._hudMpTextEmpty, display._hudMpTextFull,
         display._hudStamEmpty, display._hudStamSprite, display._hudStamTextEmpty, display._hudStamTextFull,
       ];
-      for (let i = 0; i < display.children.length; i++) {
-        const _c = display.children[i];
-        if (_c && _c.visible && _deathKeep.indexOf(_c) < 0) _c.visible = false;
-      }
+      _hideExceptDeep(display, _deathKeep);
       /* v2.3.1887: the back-shield probe is written on the LIVING path only,
          and this branch returns before reaching it — so it kept reporting the
          last living frame's `on: true` over a corpse with no shield on it.
@@ -8019,6 +8458,7 @@ export class EntityRenderer {
            traits to the DRAWN head's crown (FULLSET_CROWN — armor-synced,
            left-shifted) instead of the body sheet's. */
         _crownOverride = _fsT ? _fullsetCrown(dir, _jogPhase) : null;
+        _placeCape(display, getCape(), pose, dir, mirror, frameIdx);   /* v2.3.2023 */
         _placeHeadwear(display, getHeadwear(), getHatColor(), pose, dir, mirror, frameIdx, bodyScale, getHair()); /* v2.3.1561: hair id for the floating halo */
         _placeFacialHair(display, getFacialHair(), getFacialHairColor(), pose, dir, mirror, frameIdx, bodyScale);
         _placeHair(display, getHair(), getHairColor(), getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
@@ -9384,9 +9824,35 @@ export class EntityRenderer {
     }
   }
 
+  /* ═══ v2.3.2078: YOUR PET WAS INVISIBLE ═══
+     This read `S._activePet`, and NOTHING in the whole client has ever
+     written that field (checked across src/ and the history).  So `pet` was
+     undefined on every frame, the early return fired, and the pet display
+     was never shown to anybody.
+
+     The pet itself was not dormant, which is what made this hard to see: the
+     follow simulation runs every frame in BroTown.jsx (§18.1 PET FOLLOW +
+     AUTO-LOOT, keeping S._petX / S._petY), the auto-loot really collects
+     coins, and wsClient even floats a "PET +N G" popup at S._petX -- at a
+     position with nothing drawn on it.  A player who bought and activated a
+     pet got the loot, got the popup out of empty air, and never saw the
+     animal.
+
+     So the state this reads is the state the rest of the game keeps:
+     R.lifeSkills.activePet indexes R.lifeSkills.pets, exactly as PetHousePanel
+     and the peer-cosmetics wire (`pet:` in the join/move payload) already do.
+
+     And it draws the pet's OWN EMOJI rather than the anonymous 6px coloured
+     dot that was here.  The emoji is what every other surface shows for that
+     pet -- the pet house, the roster rows, the inspect card -- so the figure
+     on the ground now matches the one in the menus.  No asset load is
+     involved (Text falls back to the system emoji font), so this does not
+     touch the preload manifest. */
   _updatePet(S, now) {
-    const pet = S._activePet;
-    if (!pet) {
+    const _ls = S && S.rpg && S.rpg.lifeSkills;
+    const _idx = _ls ? _ls.activePet : null;
+    const pet = (_idx != null && _ls.pets) ? _ls.pets[_idx] : null;
+    if (!pet || !S.player) {
       if (this.petDisplay) { this.petDisplay.visible = false; }
       return;
     }
@@ -9397,6 +9863,10 @@ export class EntityRenderer {
       const petBody = new Graphics();
       this.petDisplay.addChild(petBody);
       this.petDisplay._body = petBody;
+      const petFace = new Text({ text: '', style: { fontSize: 15, align: 'center' } });
+      petFace.anchor.set(0.5, 0.5);
+      this.petDisplay.addChild(petFace);
+      this.petDisplay._faceText = petFace;
       const petName = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 7 } });
       petName.anchor.set(0.5, 1);
       petName.y = -12;
@@ -9406,19 +9876,44 @@ export class EntityRenderer {
     }
 
     this.petDisplay.visible = true;
-    this.petDisplay.x = pet.x || S.player.x + 20;
-    this.petDisplay.y = pet.y || S.player.y + 15;
+    /* The simulated follow position, which is also where the coin popup is
+       floated -- so the two finally agree.  Falls back to the spot the old
+       code used if the simulation has not seeded itself yet (one frame). */
+    this.petDisplay.x = (typeof S._petX === 'number') ? S._petX : S.player.x + 20;
+    this.petDisplay.y = (typeof S._petY === 'number') ? S._petY : S.player.y + 15;
 
+    const bounce = Math.sin(now / 300) * 2;
     const petBody = this.petDisplay._body;
     petBody.clear();
-    const bounce = Math.sin(now / 300) * 2;
-    petBody.circle(0, bounce, 6);
-    petBody.fill({ color: cssColorToHex(pet.color || '#f5c542') });
-    petBody.circle(0, bounce, 6);
-    petBody.stroke({ color: 0xffffff, width: 1, alpha: 0.3 });
+    /* A soft ground shadow under the emoji so it sits ON the world rather
+       than floating over it; the disc is only drawn as the pet itself when
+       the pet has no emoji to show. */
+    if (pet.emoji) {
+      petBody.ellipse(0, 7, 6, 2.5);
+      petBody.fill({ color: 0x000000, alpha: 0.25 });
+    } else {
+      petBody.circle(0, bounce, 6);
+      petBody.fill({ color: cssColorToHex(pet.color || '#f5c542') });
+      petBody.circle(0, bounce, 6);
+      petBody.stroke({ color: 0xffffff, width: 1, alpha: 0.3 });
+    }
+    this.petDisplay._faceText.text = pet.emoji || '';
+    this.petDisplay._faceText.visible = !!pet.emoji;
+    this.petDisplay._faceText.y = bounce;
 
     this.petDisplay._nameText.text = pet.name || '🐾';
     this.petDisplay._nameText.y = -10 + bounce;
+  }
+
+  /* v2.3.2078: what the pet display is doing, for a scenario to read.  The
+     bug above was invisible to the suite because nothing could see whether a
+     pet had been drawn at all. */
+  petDrawn() {
+    const d = this.petDisplay;
+    if (!d) return null;
+    return { visible: !!d.visible, x: d.x, y: d.y,
+      emoji: d._faceText ? d._faceText.text : null,
+      name: d._nameText ? d._nameText.text : null };
   }
 
   /* ═══ v2.3.1775: WORLD PROPS ═══
@@ -9455,12 +9950,39 @@ export class EntityRenderer {
         this.propDisplays.set(p.id, spr);
       }
       if (spr.texture === Texture.EMPTY) {
-        const t = getNpcTexture(p.sprite);
+        /* ═══ v2.3.2061: AN ANIMATED PROP TAKES ITS SIZE FROM ONE FRAME ═══
+           The fountain's art is an eight-frame STRIP, so `getNpcTexture` here
+           returns something eight times too wide. Scaling that to worldH would
+           have drawn the whole film reel at an eighth of the intended height,
+           which is why the frame is asked for first and the strip is only the
+           fallback for a prop that has no animation. */
+        const t = (p.anim && getPropFrame(p.id, 0)) || getNpcTexture(p.sprite);
         if (t) {
           spr.texture = t;
           const h = t.height || 1;
-          spr.scale.set((p.worldH || h) / h);
+          const k = (p.worldH || h) / h;
+          /* ═══ v2.3.2071: A PROP CAN FACE THE OTHER WAY ═══
+             Owner: "Position the benches so that lengthwise they face the
+             fountain."  The bench art is a single three-quarter view whose
+             seat faces south-EAST, so as drawn it can only ever be placed
+             north-west of the thing it looks at.  A mirrored copy faces
+             south-west and covers the other side, and mirroring is a sign on
+             the x scale rather than a second 51KB file of the same bench.
+             Anchor is (0.5, 1) — the centre — so the flip pivots about the
+             prop's own ground point and `x`/`y` still mean what they meant. */
+          spr.scale.set(p.flipX ? -k : k, k);
         }
+      }
+      /* The frame swap. Time-driven, not distance-driven like the walking
+         NPCs: a fountain runs at its own rate regardless of anything moving.
+         Driven off the shared wall clock rather than a per-prop accumulator so
+         two of the same prop stay in step and a dropped frame does not slow
+         the water down -- it skips, which is what a clock does and what an
+         accumulator does not. */
+      if (p.anim && propFrameCount(p.id) > 1) {
+        const fps = p.anim.fps > 0 ? p.anim.fps : 12;
+        const tex = getPropFrame(p.id, Math.floor(Date.now() * fps / 1000));
+        if (tex && spr.texture !== tex) spr.texture = tex;
       }
       spr.x = p.x;
       spr.y = p.y;
@@ -9481,10 +10003,30 @@ export class EntityRenderer {
            mp-townmap picked the anvil and failed for the right reason. */
         let _fp = null;
         try { _fp = propFootprint(_propById[id]) || null; } catch (e) { /* probe only */ }
-        _propsDrawn.push({ id, x: spr.x, y: spr.y,
-          width: spr.texture.width * spr.scale.x,
-          height: spr.texture.height * spr.scale.y,
-          blocks: !!_fp, footprint: _fp });
+        /* v2.3.2061: the FRAME an animated prop is showing, as its rectangle
+           within the shared strip source. A test that wants to prove the water
+           actually moves needs something it can sample twice and compare, and
+           the texture's frame origin is the smallest honest answer -- a
+           screenshot diff would also catch the player walking past. */
+        const _fr = spr.texture && spr.texture.frame;
+        /* v2.3.2087: report the ACTION too -- whether this prop is a DOOR and
+           which panel it opens.  mp-townhill asked exactly that of this probe
+           and got `{}` back, because the field was not here: a test reading a
+           field the game does not publish asserts nothing (TRAPS §33).  The
+           renderer has the prop in hand; four keystrokes make the question
+           answerable. */
+        const _act = (_propById[id] && _propById[id].action) || null;
+        _propsDrawn.push({ id, x: spr.x, y: spr.y, action: _act,
+          /* v2.3.2071: ABS, because a mirrored prop has a negative x scale and
+             a negative width is not a width.  The flip is reported as its own
+             field instead, so a test can assert the bench faces the fountain
+             without inferring it from a sign. */
+          width: Math.abs(spr.texture.width * spr.scale.x),
+          height: Math.abs(spr.texture.height * spr.scale.y),
+          flipX: spr.scale.x < 0,
+          blocks: !!_fp, footprint: _fp,
+          frameX: _fr ? Math.round(_fr.x) : null,
+          frameW: _fr ? Math.round(_fr.width) : null });
       }
     }
   }
@@ -9531,6 +10073,67 @@ export class EntityRenderer {
         nameText.y = -17;
         display.addChild(nameText);
         display._nameText = nameText;
+
+        /* ═══ v2.3.2048: A PROPER PLATE, UNDER HIM ═══
+           Owner: "Give his name a proper name plate like the main character.
+           Make it below him."
+           The SAME _attachNamePill the player and every peer use, so there is
+           one plate implementation rather than a second that drifts -- which
+           is the reason that function exists at all (see its note).
+
+           ═══ v2.3.2071: EVERY TOWNSPERSON, NOT TWO OF THEM ═══
+           Owner: "Make every persons name or title as a consistent name
+           plate." It was opt-in via `namePlate` in NPC_DATA, and only
+           Shopkeeper Bro and Lil Bro had opted in -- so Mayor Bro, Blacksmith
+           Bro and Storekeeper Bro kept the old above-head `nameText` and the
+           town had two different ways of labelling a person standing in it.
+
+           The flag is GONE rather than set to true on all five. A default
+           carried by a per-NPC boolean is a default that the sixth NPC will
+           miss, and "every person" is the requirement -- so the plate is what
+           an NPC gets, full stop, and there is no longer a way to add one
+           without it. `plateRole` stays optional: it is the gold sub-line
+           (the same slot a player's level sits in), and an NPC without a
+           title simply shows their name.
+
+           The v2.3.2048 note worried that the two quest givers keep a
+           hand-tuned above-head stack around their '!' badge. That worry does
+           not survive contact: the plate hangs BELOW the feet and the lift
+           loop below explicitly skips it, so the badge keeps its position and
+           the only thing that changes is the name moving out from under it --
+           which gives the '!' more room, not less. */
+        {
+          _attachNamePill(display, 9, 1);
+          nameText.visible = false;
+          /* ═══ v2.3.2069: THE PLATE HANGS OFF THE FIGURE'S OWN HEIGHT ═══
+             Owner: "Move the lil bro name plate up."
+
+             _attachNamePill drops the plate a flat 38 units below the
+             container origin, which for an NPC is the feet. v2.3.2064 scaled
+             that by the sprite's size multiplier and clamped it, which pulled
+             Lil Bro's in to 30 -- not enough, because the multiplier is not
+             the thing the eye compares against. What reads as "too far below
+             him" is the gap measured against HIS OWN HEIGHT, so that is what
+             it is derived from now.
+
+             The reference is Shopkeeper Bro, whose plate the owner placed by
+             eye at v2.3.2048 ("make it below him") and which must not move:
+             his figure stands 121.9 world px above his feet and his plate
+             sits 38 below them, so the ratio the owner actually approved is
+             38/121.9. Every plate uses it. Lil Bro's figure is 73.1, so his
+             lands at 23 -- seven pixels up from v2.3.2064 and half the drop
+             it started at.
+
+             v2.3.2071: now that every NPC has a plate, this ratio is what
+             keeps them consistent as a SET rather than merely present -- the
+             three that just gained one are all drawn at a different scale
+             from each other, so a flat 38 would have put their plates at
+             visibly different gaps below three different-sized people. */
+          if (display._namePill) {
+            const _figH = npcFigureHeight(npc.sprite);
+            display._namePill.y = Math.max(14, Math.round(_figH * NPC_PLATE_DROP_FRAC));
+          }
+        }
 
         /* Quest marker — badge above the head, pulses vertically.
            Hidden by default; populated when npc._questMarker is set. */
@@ -9587,7 +10190,13 @@ export class EntityRenderer {
            standing; anchoring at the frame centre instead would float him half
            a body above the street. */
         if (npc.sprite) {
-          const fig = new Sprite(getNpcTexture(npc.sprite) || Texture.EMPTY);
+          /* v2.3.2046: a walking NPC starts on his south frame, not on
+             `sprite` -- which for him names a four-frame STRIP, and binding it
+             raw would draw all four squashed into one body for the frame
+             before the first update corrects it. */
+          const fig = new Sprite(
+            (hasNpcWalk(npc.id) && getNpcWalkFrame(npc.id, 'south', 0))
+            || getNpcTexture(npc.sprite) || Texture.EMPTY);
           fig.anchor.set(0.5, NPC_FRAME_FEET_Y / 256);
           fig.scale.set(npcSpriteScale(npc.sprite));
           display.addChildAt(fig, 0);      // behind the bars and labels
@@ -9601,6 +10210,41 @@ export class EntityRenderer {
 
       display.x = npc.x;
       display.y = npc.y;
+
+      /* v2.3.2048: keep the plate's text current. Cheap: _updateNamePill
+         rebuilds the rounded rect only when the string changes (_pillKey),
+         so this is a string comparison per frame and nothing more. */
+      if (display._namePill) {
+        _updateNamePill(display, npc.name, npc.plateRole || '', true, null);
+      }
+
+      /* ═══ v2.3.2046: ANIMATE HIM IF HE HAS A WALK CYCLE ═══
+         Velocity is derived HERE, from the position the renderer is already
+         given, rather than read off a field the walk code would have to
+         publish: the NPC step lives in BroTown and this keeps the animation a
+         pure function of where he has actually got to, so it cannot disagree
+         with what is drawn.
+         The phase accumulates DISTANCE, so a slow wander steps slowly and a
+         stopped NPC holds frame 0 instead of marching on the spot. */
+      if (display._fig && hasNpcWalk(npc.id)) {
+        const hadLast = typeof display._lastX === 'number';
+        const dx = hadLast ? npc.x - display._lastX : 0;
+        const dy = hadLast ? npc.y - display._lastY : 0;
+        display._lastX = npc.x; display._lastY = npc.y;
+        const step = Math.hypot(dx, dy);
+        /* A floor, not `> 0`: an NPC steered toward a target he has essentially
+           reached jitters by fractions of a pixel forever, and without this he
+           would face a new random direction every frame while standing still. */
+        const moving = step > 0.08;
+        if (moving) {
+          display._walkDir = npcDirFromDelta(dx, dy);
+          display._walkPhase = (display._walkPhase || 0) + step;
+        }
+        const dir = display._walkDir || 'south';
+        const idx = moving ? Math.floor(display._walkPhase / NPC_WALK_PX_PER_FRAME) : 0;
+        const tex = getNpcWalkFrame(npc.id, dir, idx);
+        if (tex && display._fig.texture !== tex) display._fig.texture = tex;
+      }
 
       /* v2.3.1673: label headroom, POSITIONED rather than nudged.
          v2.3.1672 shifted every label up by the figure height, which kept the
@@ -9632,6 +10276,11 @@ export class EntityRenderer {
         display._nameText.y = -(top + GAP + MARK_PX + GAP);
         for (const c of display.children) {
           if (c === display._fig || c === display._nameText || c === display._questMarker) continue;
+          /* v2.3.2048: the name plate is anchored BELOW the feet on purpose,
+             so it must not be swept up with the above-head furniture. Without
+             this exclusion the "below him" plate lands over his hat, which is
+             the opposite of what was asked for. */
+          if (c === display._namePill) continue;
           if (c === display._body || c === display._avatar) continue;
           c.y -= (top + MARK_PX + 24);
         }
@@ -9665,6 +10314,24 @@ export class EntityRenderer {
             /* world y of the figure's feet — anchor is the frame's foot row */
             footY: display.y,
             src: display._figSrc,
+            /* v2.3.2064: the facing the renderer CHOSE, and the strip it bound
+               for it. A walk sheet's row order cannot be read off the code --
+               this one is not ordered like the shopkeeper's -- so a test needs
+               to see which way he was pointed and which file answered. */
+            walkDir: display._walkDir || null,
+            /* v2.3.2071: the PLATE as painted -- the two strings on it, how
+               far below the feet it hangs, and whether the old above-head
+               label is really gone. Owner: "Make every persons name or title
+               as a consistent name plate", and consistency is a property of
+               the SET, so a test needs every plate's actual numbers rather
+               than a flag saying one was requested. */
+            plate: display._namePill ? {
+              name: display._pillName ? display._pillName.text : null,
+              role: display._pillLevel ? display._pillLevel.text : null,
+              y: Math.round(display._namePill.y),
+              visible: display._namePill.visible,
+            } : null,
+            oldLabelHidden: display._nameText ? !display._nameText.visible : null,
           };
         }
       }

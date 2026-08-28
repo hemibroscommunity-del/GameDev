@@ -309,10 +309,25 @@ export const adminMethods = {
       const lo = await this._liveopsRoutes(request, url, path, json);
       if (lo) return lo;
 
+      /* v2.3.2034: the cape-contest ledger (eventcapes.js) -- same contract.
+         Read-only by default; the reset needs the cape named AND confirm=yes,
+         because it voids tickets real people may hold. */
+      const cp = await this._capeAdminRoute(request, url, path, json);
+      if (cp) return cp;
+
       // v2.3.1682: on-chain relayer health (chainscore.js) -- same contract:
       // null for paths it doesn't own.
       const cs = await this._chainScoreAdminRoute(request, url, path, json);
       if (cs) return cs;
+
+      /* v2.3.1981: player abuse reports (chatmod.js) -- same contract.
+         Reports need somewhere to BE READ or they are a write-only field
+         like the harden_h5_log this toolkit was built to fix; the auth,
+         the fail-closed 404 and the admin_log all come from here for
+         free, which is why it mounts under this surface rather than
+         growing a route (and a second secret) of its own. */
+      const cm = await this._chatModAdminRoute(request, url, path, json);
+      if (cm) return cm;
 
       return json({ ok: false, error: 'Not found' }, 404);
     } catch (err) {

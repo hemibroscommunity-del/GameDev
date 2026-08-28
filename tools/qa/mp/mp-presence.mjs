@@ -28,19 +28,48 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const bId = await H.readState(B, (S) => S.myId);
 
   rec.ok('the two players get distinct identities', aId !== bId, { aId, bId });
+  /* readState's callback is serialised to the page, so the id it needs to
+     compare against has to be put there rather than closed over. */
+  await A.page.evaluate((id) => { window.__qaBId = id; }, bId);
 
+  /* ═══ v2.3.2078: THE ROOM IS SHARED, AND NOT ONLY WITH US ═══
+     These three used to require the roster to hold EXACTLY one entry. The
+     worker runs one room for the whole batch and evicts an idle session after
+     IDLE_TIMEOUT_MS (120 s), so a scenario that ran a minute ago is still in
+     it: the sweep failed all three on a roster carrying "Inked" (mp-skinworld)
+     and "Wanderer" (mp-worldwalk) beside our own pair.
+     That is the harness's own crowd, not a presence bug, and a test that
+     cannot tell them apart reports the batch's schedule instead of the
+     game. Asserted on OUR pair by id — which is strictly stronger, because a
+     count of one would also pass if the one entry were a stranger. */
   const ra = await roster(A), rb = await roster(B);
-  rec.ok('the peer entry carries a name', ra.length === 1 && ra[0].name === 'Wanderer', ra);
-  rec.ok('the peer entry carries a position', ra.length === 1 && ra[0].hasPos, ra);
-  rec.ok('presence is mutual', rb.length === 1 && rb[0].id === aId, rb);
+  const bInA = ra.find((r) => r.id === bId) || null;
+  const aInB = rb.find((r) => r.id === aId) || null;
+  rec.ok('the peer entry carries a name',
+    !!bInA && bInA.name === 'Wanderer', { bInA, roster: ra });
+  rec.ok('the peer entry carries a position', !!bInA && bInA.hasPos, { bInA, roster: ra });
+  rec.ok('presence is mutual', !!aInB, { aInB, roster: rb });
 
-  const count = await H.readState(A, (S) => S.playerCount || null);
-  rec.ok('the room reports both players', count == null || count >= 2, { count });
+  /* v2.3.2078: this read `S.playerCount`, which exists nowhere in src/ — the
+     worker's `player_count` is written onto `S._playerCount` (BroTown.jsx
+     1705, and ChatBubble reads it there).  So `count` was null on every run
+     and the `count == null || ...` escape hatch made the assertion vacuous:
+     it would have passed with the room reporting nobody.  Read the real
+     field, and WAIT for it, because the count arrives on its own broadcast
+     rather than with the join. */
+  const count = await H.waitFor(A, (S) => S._playerCount,
+    (n) => typeof n === 'number' && n >= 2,
+    { timeout: 20000, label: 'the room counts both players' }).catch(() => null);
+  rec.ok('the room reports both players', typeof count === 'number' && count >= 2,
+    { count, raw: await H.readState(A, (S) => S._playerCount) });
 
   /* ── disconnect: close the PAGE but keep the browser profile ── */
   await B.page.close();
-  const dropped = await H.waitFor(A, (S) => Object.keys(S.others || {}).length,
-    (n) => n === 0, { timeout: 25000, label: 'B disappears' }).then(() => true).catch(() => false);
+  /* Again by id: other scenarios' leftovers are still in the room, so "the
+     roster is empty" is not the property — "B is gone from it" is. */
+  const dropped = await H.waitFor(A, (S) => !!(S.others || {})[window.__qaBId],
+    (v) => v === false, { timeout: 25000, label: 'B disappears' })
+    .then(() => true).catch(() => false);
   rec.ok('a disconnected player is removed from the roster', dropped, await roster(A));
 
   /* ── reconnecting on the SAME profile must be the SAME person ──

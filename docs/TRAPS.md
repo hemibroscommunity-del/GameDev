@@ -575,3 +575,893 @@ precisely so ESM parses as ESM regardless of the nearest
 
 **Receipt:** `server/src/index.js` `_isMysteryGrade` / `_revealLadder`
 / `_revealsFor`, `tools/dev/precheck.mjs` (the temp-`.mjs` copy).
+
+---
+
+## A skin blob on a character sheet is NOT the body part you think it is
+*(v2.3.1990, after shipping v2.3.1986 and having the owner catch it in play)*
+
+**The trap.** Wanting to find "the arm that crosses the chest" on
+`jog-east`, I isolated skin-coloured pixels, cut away everything above a
+neck line (the tee's top row + 8), took connected components of what was
+left, and picked the blob that sat inside the shirt's x-span. That reads
+as careful. It is wrong, and the way it is wrong is silent.
+
+**Why.** The head, the neck, the torso and both arms are ONE connected
+skin region. Cutting horizontally above a neck line does not sever the
+head from the body — it removes the top of the skull and leaves the JAW
+still joined to the neck and the torso. On frames 9, 10 and 11 the blob
+my rule selected as "the crossing arm" was therefore the jaw-and-neck
+mass, and painting its top rows shirt-coloured put a white blob **on the
+character's face**. Measured after the report: 7, 23 and 37 pixels of
+head-connected skin painted over, worst on frame 11 across the chin.
+
+**Why the verification missed it.** Two ways, both instructive:
+- The before/after contact sheet was cropped to the torso (y 40-76) to
+  make the sleeve legible. The blob landed at y 53-57 — inside the crop,
+  but read as "sleeve" because that is what I was looking for.
+- The in-game stride strip DID contain it, at roughly two screen pixels.
+  A 37-pixel artifact on a 128-pixel frame is invisible at game size in a
+  strip and obvious to a player watching one character run.
+
+**Rules this leaves:**
+- Never identify a body part by connectivity alone on a sheet where the
+  skin is one region. Anchor to something that actually marks the part:
+  the head sheet (`jog-<dir>-head.png`), the measured crown, or an
+  explicit per-frame region — and then ASSERT the result does not
+  intersect the head before writing a pixel.
+- Any tool that recolours body pixels must state, as an assertion and not
+  a comment, which regions it is forbidden to touch. "It looked right in
+  the preview" is not that assertion.
+- Verify art changes against the WHOLE figure, not a crop chosen to make
+  the change legible. The crop that proves your fix is the crop that
+  hides your side effect.
+- An in-game screenshot at game size is necessary but not sufficient for
+  a change measured in tens of pixels. Diff the sheets and report where
+  the changed pixels landed relative to named regions.
+
+**Receipt:** `public/sprites/gear/shirt/tshirt/jog-east.png` (reverted to
+its pre-v2.3.1986 bytes), `tools/gear/sleeve_crossing_arm.py` (deleted).
+The underlying defect it tried to fix — the tee has no sleeve on the arm
+that crosses the chest, frames 8-11 — is REAL and still open; see
+`tools/qa/mp/mp-shirtarm.mjs`.
+
+---
+
+## §26 — A histogram index is not a sheet coordinate (v2.3.1992)
+
+*(the vanishing face tattoo, after three wrong readings and one right
+measurement)*
+
+**The report.** "The face tattoo only shows on idle and disappears
+during jog but then pops up on one frame."
+
+**The tempting readings, in the order they were tried and dropped:**
+the shirt bake is painting over the face; the hair is covering it; the
+face REGION collapses on run frames (it is defined as "skin above the
+torso band", so a band that starts too high would eat the head). All
+three are plausible and all three are wrong — the region mask, dumped
+painted red over the baked sheet, is exactly the head on all 28 run
+frames and a consistent size.
+
+**The fourth reading, which was closer and still wrong:** the fit's
+column-keep rule (`REGION_KEEP`, "a column counts at 15% of the peak")
+collapses on a narrow profile head, because a profile's column
+histogram is a spike where a front-on torso's is a plateau. That story
+fits the symptom exactly. It is testable in one line, and it is false:
+on the frame that fails, the kept columns are the same healthy 36-wide
+run as on the frame that works.
+
+**What it actually was.** One line, and a units error:
+
+```js
+const rowN = new Int32Array(h), colN = new Int32Array(x1 - x0);
+...
+if (++colN[x - x0] > peakCol) ...              // colN is indexed FROM THE FRAME
+...
+for (let x = 0; x < colN.length; x++) if (colN[x] >= colMin) {
+  if (x < lx) lx = x + x0;                     // lx is a coordinate ON THE SHEET
+  if (x + x0 > rx) rx = x + x0;
+}
+```
+
+`x` counts from the frame's left edge; `lx` holds a sheet coordinate.
+On **frame 0** the two spaces coincide (`x0` is 0) and the loop is
+correct. On every later frame `lx` is already ~256 or more while `x` is
+still counting from 0, so every kept column tests "further left than
+the last" and **both ends of the extent walk to the last kept column**:
+`lx 419 -> rx 419`, a one-pixel-wide box.
+
+**Why nothing ever threw, and why it read as "sometimes".**
+`gridFit` clamps the box back up (`Math.max(ART_W, ...)`), so a
+1px extent still produced a valid 16px grid — rendered and looked at,
+the face band on frame 1 is a narrow sliver jammed against the leading
+edge of the face, half of it off the head and clipped away by the mask. Valid arithmetic on a wrong
+measurement paints something plausible somewhere wrong, which is much
+harder to see than a crash. And the two "works" cases in the report are
+the two cases where `x0` is 0: **a standing sheet is ONE frame**, and
+the frame that "pops up" is **frame 0 of the run strip**.
+
+The same fit serves the chest tattoo, the arm tattoo and the trouser
+print, and all four were broken on every jog, hit, mine and pickup
+frame. Nobody had reported the other three: a print on a moving thigh
+is a smaller thing to notice losing than a mark on a face.
+
+**Rules this leaves:**
+- A per-frame histogram and a per-sheet coordinate must never meet in a
+  comparison. Walk the histogram entirely in its own space and convert
+  ONCE at the end — which is also the shape that makes the mistake
+  impossible to write, rather than merely absent today.
+- "It works on the first frame / the first item / the first tab" is not
+  a hint about timing. It is very often a hint that an offset is zero
+  there, and that the code has two coordinate spaces in it.
+- A clamp downstream of a measurement (`Math.max(MIN, measured)`) turns
+  a degenerate measurement into a plausible output. Any such clamp is a
+  place where a bug will be silent, so the assertion belongs UPSTREAM
+  of it, on the measurement.
+- Do not gate a geometric fit on the box's SIZE — a chest legitimately
+  narrows to 39% of its widest mid-stride. Gate it on MASS: what share
+  of the region's own pixels does the fitted box span? Measured on the
+  shipped art that is 0.003-0.006 when broken and 0.82-1.00 when right,
+  and there is nothing to tune between those two numbers.
+- A theory that explains the symptom perfectly is worth exactly one
+  measurement, and the measurement is cheaper than the theory.
+
+**Receipt:** `src/rendering/playerDecal.js` `stampRegion` (the column
+extent), `tools/qa/mp/mp-facetat.mjs` (the mass gate, on all four
+regions across every sheet the game bakes).
+
+---
+
+## §27 — A run clipped by the scan window is not a sliver (v2.3.1995)
+
+Owner, on the character preview: *"The shirt neckline south view has too
+large of a black outline. Northeast there's a big black outline where
+the shirt meets the waistline. Minor but Southwest his shoulders have a
+pretty big black outline too."*
+
+All three were manufactured by our own tool, and the tempting reading —
+"the artist drew a heavy keyline" — is wrong. `seal-shirt-edges.mjs`
+(v2.3.1873) fills gaps of bare skin showing through the tee's edges. Its
+one safety rule is a SIZE test: a gap at most 2px wide is a sliver and
+gets filled; anything wider is art the artist meant (the neck, the
+forearms, the bare belly, the cut-out crossing arm) and is left alone.
+That rule is sound. What broke it is that the tool **measured the gaps
+inside the shirt's own bounding box.**
+
+A garment OPENING is body that runs *out* of that box. The neck hole
+continues up into the head; the belly continues down into the trousers;
+the shoulder line continues out past the sleeve. Clipping the scan at
+the box turned each of those long runs into a 1-2px stub, the stub
+passed the sliver test, and the pixel it copied its colour from — at an
+opening — is the tee's own black keyline. So it filled them BLACK.
+Measured: **4176 of the 6267 pixels that pass wrote were near-black**
+(59-86% per sheet), and on `stand-south` it closed the top two rows of
+an 8px-wide neck hole outright.
+
+The fix is one line of intent: **measure the run across the whole frame,
+write only inside the bounding box.** A real sliver is bounded within
+MAXW px however far the window reaches, so it still measures short. An
+opening measures its true length and is refused.
+
+**Rules this leaves:**
+- A threshold is only as honest as the window the measurement was taken
+  in. If a scan is clipped by a region, every length it reports is a
+  LOWER BOUND — and a rule of the form "short means X" will fire on
+  anything the clip truncated. Measure in the largest space available
+  and restrict the WRITE, not the measurement.
+- When a tool fills from a neighbouring pixel, ask what that neighbour
+  is at the boundary the rule is most likely to misfire on. Here the
+  donor at every opening was the keyline, so the failure mode was not
+  "a few stray pixels" but "a black bar", which is why it was visible
+  from across the room and still survived three sessions.
+- A one-pass art tool that reads its own output is a footgun with a
+  comment taped to it. v2.3.1873 had to warn in capitals never to run
+  it twice. The tool now reads its source from a pinned git rev, so
+  running it ten times produces the same ten files — the warning became
+  unnecessary rather than louder.
+- Prefer a fix that can only REMOVE. The new art is a strict subset of
+  the old (measured: **0 adds, 2583 drops** across ten sheets), so it is
+  structurally incapable of putting a pixel somewhere new. That is the
+  property v2.3.1986 lacked when it painted the character's face, and
+  it is worth choosing the shape of a fix to get it.
+- A stale cache-bust hides a whole class of art bug. `characterPortrait`
+  requested the tee at a hardcoded `?v=2.3.760`, so every re-bake since
+  — including the one that CAUSED this report — could serve a cached
+  older sheet to the preview. If art changes and one surface disagrees
+  with another, check the version strings before the pixels.
+
+**Receipt:** `tools/gear/seal-shirt-edges.mjs` (the whole-frame scan and
+the pinned source rev), `tools/qa/mp/mp-shirtkeyline.mjs` (per-column
+outline widths and a near-black budget per sheet),
+`src/rendering/characterPortrait.js` (`SHIRT_ART_VER`).
+
+---
+
+## §28 — A test that reports "not found" is worse than no test (v2.3.2000)
+
+Found by sweeping ~59 scenarios in one night: **three were dead.** Not
+failing — *dead*. They ran, they reported, and what they reported was
+that they could not find the thing they were written to measure. From
+the outside that looks identical to coverage.
+
+The three:
+
+| scenario | asserts | what happened |
+|---|---|---|
+| `layer` | quest turn-in is legible (owner: "all faded like you can barely see it") | v2.3.1827 split the turn-in into two screens; the strings it matched — "Redeem Reward", "Choose a skill to train" — exist nowhere in the codebase now |
+| `hudface` | the HUD portrait matches the character | the owner deliberately REMOVED that portrait at v2.3.1848-1850 ("the band is a summary, not a head") |
+| `statpeek` | what a stat point buys | the Build section still exists; the scenario cannot open it |
+
+**Why none of them was noticed.** CI's `playable` job runs `questline`
+and nothing else (owner directive, 2026-07-16 — no live players, CI
+speed wins). The other ~133 scenarios run only when somebody types
+their name. So a scenario can rot for months and the only signal is
+that nobody has looked.
+
+**The mechanism is almost always the same: selecting UI by LABEL.**
+Labels are owner-facing copy and change constantly; a rename turns
+every `:has-text("...")` and every `/Redeem Reward/` into a silent
+miss. The codebase already knew this and said so — QuestOfferPanel.jsx
+keeps `bt-quest-turnin` on the confirm button explicitly *"because that
+class is what the QA harnesses click by: renaming the LABEL in
+v2.3.1764 broke three scenarios at once, each swallowing the miss with
+.catch()"*. `layer` was one of the three that never got the memo.
+
+**Rules this leaves:**
+- Select by a STABLE CLASS or a data attribute, never by label text.
+  If a control has no stable hook, add one — that is cheaper than the
+  test quietly dying.
+- A "cannot find it" result must fail LOUDLY and distinctly from "found
+  it and it is wrong". Guard assertions that name the thing they could
+  not find (`{err: 'no claim panel', buttons: [...]}`) turn a mystery
+  into a diagnosis.
+- **Prove a new scenario is non-vacuous.** Run it against the broken
+  state and require it to FAIL there, on the specific cases reported.
+  v2.3.1993's hair scenario did this properly (fails on exactly the
+  four reported hat/facings against the old masks); it is the only
+  thing that separates a real test from one that passes because it
+  measured nothing.
+- Assert the PRECONDITIONS a measurement depends on, not just the
+  measurement. v2.3.2001's camera-framing assertions exist because a
+  pinning assumption stopped holding and the scenario went on
+  confidently reporting nonsense (a mask untouched in months read as
+  "45% bare scalp").
+- **Sweep periodically.** These three cost one night of wall-clock to
+  find and would not have surfaced any other way. Yield is not uniform:
+  all three were UI-surface scenarios reaching into the DOM. The
+  multiplayer and economy scenarios (117 assertions across trade,
+  party, social, friends, chat, clan, market, arena) were perfect,
+  because they assert against game state and the wire, which a UI
+  redesign cannot silently blind.
+- Distinguish dead from FLAKY before acting, and the suite is MORE
+  load-sensitive than it looks. Four separate scares traced to batch
+  size alone, every one of them passing in isolation:
+
+  | scenario | in a batch | alone |
+  |---|---|---|
+  | `peershield` | 3 fail (batch of 14) | 9/9 |
+  | `freshquest` | TypeError (batch of 13) | pass |
+  | `zonechurn` | frame cost 94 -> 136 | pass |
+  | `questkill` | died mid-quest, 3 of 4 kills (batch of 8) | 11/11 |
+
+  `questkill` is the one to remember, because it does not read like
+  flake — it reads like a BALANCE bug ("the character survived the
+  errand: died true"). A saturated machine starves the combat loop, so
+  the player takes hits without landing them and dies doing the first
+  kill quest. Anything measuring TIME (frame cost), a RACE (a boot
+  route, a relay) or a FIGHT is suspect in a large batch. One isolated
+  re-run costs a minute and separates them; keep combat and multi-client
+  scenarios in batches of ~4.
+
+**Receipt:** `tools/qa/mp/mp-layer.mjs` (rewritten to select by class),
+`tools/qa/mp/mp-hairmask.mjs` (asserts its own framing),
+`tools/qa/mp/run.mjs` (warns when dist/ is stale — a different way to
+measure the wrong thing confidently).
+
+---
+
+## §29 — A scenario that selects UI by its LABEL is a test with an expiry date (v2.3.2013)
+
+§28 recorded three dead tests found in one sweep. Chasing the rest
+turned up the mechanism they share, and it is narrow enough to state as
+a rule: **every one of them reached for a string the owner is entitled
+to change.**
+
+Four scenarios, four renames, none of which was a mistake by the person
+who made it:
+
+| scenario | what it selected | what changed | cost |
+|---|---|---|---|
+| `layer` | `/Redeem Reward\|Choose a skill to train/` | v2.3.1827 split the turn-in into two screens | 4 assertions, silent for months |
+| `zonefx` | `clickText(A, 'Accept')` | same v2.3.1827 split — Accept moved to screen two | 4 assertions, **and it invented two bugs** |
+| `townlock` | `clickText(P, 'Accept')` | latent: same flow, different door | would have broken next |
+| `statpeek` | `[role="button"][title="Build"]` | v2.3.1849 renamed the tab to "Points" | 5 assertions |
+
+**The worst outcome is not the silence.** `zonefx` arms its tester by
+accepting a quest, because the town gate refuses an unarmed character.
+The accept matched nothing and was wrapped in `.catch(() => {})`, so the
+run continued with an unarmed player who never left town — and then four
+assertions reported that "an emote from another zone appears over your
+map" and "a chat bubble from another zone is drawn over your ground".
+Both players were in the SAME zone. The renderer was correct. A test
+that cannot reach its own precondition does not go quiet; it starts
+describing a world that does not exist, in the confident language of a
+bug report.
+
+**Rules this leaves:**
+- Select by a STABLE HOOK — a class or a `data-` attribute carrying an
+  ID, never `title`, `aria-label`, or button text. Where none exists,
+  ADD one: `bt-quest-turnin` exists on the claim button for exactly this
+  reason, and v2.3.2013 added `data-section` to the hero tabs after
+  `title="Build"` became `title="Points"`.
+- An ID and a LABEL are different things and the label is display copy.
+  `SECTION_LABEL` in HeroExpanded.jsx says so in its own comment — "the
+  label is a display concern and lives in a display table" — and the
+  test was reaching for the display concern.
+- **Never `.catch(() => {})` a setup step.** A guard that cannot fail is
+  not a guard. Two of the four swallowed their miss, and those two are
+  the ones that produced false accusations rather than plain failures.
+  If a step is genuinely optional, assert which branch you took.
+- A GUARD failing invalidates everything after it. When triaging, read
+  the failures in order and stop at the first guard: the four scary
+  zonefx failures were downstream of two boring ones.
+- Fix the flow in the HARNESS, not in each scenario. `acceptQuestFromGiver`
+  exists because this flow's labels have now moved twice and broken five
+  scenarios between them.
+- ...but scope the helper to the path it actually drives. Applying
+  `acceptQuestFromGiver` to `townlock` — which accepts from the QUESTS
+  DASH, a different door with no dialogue — took it from 27/27 to 22/27.
+  Check its prior state before "fixing" a test: a failing test is not
+  proof it was already failing.
+
+**Receipt:** `tools/qa/mp/harness.mjs` (`acceptQuestFromGiver`, and why
+it throws), `tools/qa/mp/mp-statpeek.mjs` + `HeroExpanded.jsx`
+(`data-section`), `tools/qa/mp/mp-layer.mjs`, `tools/qa/mp/mp-zonefx.mjs`.
+
+## §30 — A generated sleeve for the bare trailing arm looks worse than the bare arm (v2.3.2016; CLOSED v2.3.2066)
+
+**The plausible-but-wrong move:** the owner has reported the bare arm on
+jog-east three times, `mp-shirtarm.mjs` diagnoses it correctly (frames 0-6,
+the TRAILING arm, and the fix has to ADD art because most of the bare arm
+lies outside the shirt's own bounding box), and the obvious next step is to
+generate the sleeve — grow a cap from the shirt's shoulder along the arm,
+fill it, hem it in black. It is easy to build in an hour and it passes
+every safety test this repo knows how to write.
+
+**Why it fails, and it is not a safety failure.** It was built at depth 4
+and depth 5, with preserved ink both at every dark body pixel and limited to
+the true outer silhouette. All three satisfy the two invariants v2.3.1986
+lacked — never write above the shirt's top row, never write on a column with
+body pixels above that row — and satisfy them by construction, so nothing
+goes near the face this time. It also leaves the body's own black keyline
+alone, so the arm keeps its outline. It is simply BAD ART: a ragged spiky
+left edge on the shirt with detached white pips out on the arm's antialiased
+fringe.
+
+The geometry is the lesson. A sleeve on an arm swung back-and-down is a band
+running PERPENDICULAR TO THE ARM'S AXIS. Every cheap rule available — dilate
+the shirt sideways, grow a geodesic cap from the shoulder — produces a band
+that is roughly vertical instead. On the frames where the arm is near
+vertical the same rule looks fine, which is exactly the trap: tune on those
+frames and the rule flatters itself, then falls apart on the frames that
+actually needed it.
+
+**What this leaves.** Closing this needs the arm's AXIS, not just its
+silhouette — or seven hand-drawn frames on one facing, which is probably the
+cheaper honest answer. Until one of those happens the bare arm STAYS (it did, until v2.3.2066 —
+see below). It is
+at least a coherent silhouette; the generated sleeve is not. Shipping a
+worse-looking fix to close a cosmetic report is a net loss, and this
+subsystem has already had one fix reverted in play (v2.3.1986's shirt blob
+on the character's face).
+
+**CLOSED in v2.3.2066, by taking the two conditions above literally.**
+`tools/gear/draw-trailing-sleeve.mjs` cuts the sleeve along the LIMB'S OWN
+PRINCIPAL AXIS rather than along the shirt's edge, so the hem runs
+perpendicular to the arm the way the paragraph above demands; and every written
+pixel takes THE BODY'S OWN ALPHA, which is what kills the pips — a sleeve pixel
+at the body's coverage composites to exactly the body's coverage in a different
+colour, so the figure's silhouette does not change and the antialiased fringe
+stays a fringe instead of becoming hard dots and holes. Bare shoulder over one
+jog-east cycle: 176 px to 19. Rendered at 20x on all 14 frames before shipping,
+which is what the note above was really asking for.
+
+Two things it left that are worth keeping:
+- The sleeve's own attempt at a FRAME GATE was wrong and the measurement killed
+  it. The first run of the tool painted a white slab across the middle of the
+  forearm on frames 11-13, and the obvious reading — "those frames are
+  different, gate them out" — does not survive the numbers: every shape
+  statistic tried separates frames 1 and 13 by less than it separates frame 1
+  from frame 2. The real fault was the ANCHOR. On those frames the trailing arm
+  hangs parallel to the shirt's back edge and touches it for its whole length,
+  so the seam is the entire arm and its centroid is halfway down the limb.
+  Anchoring on the seam's TOP rows fixed all three with no frame list at all.
+- The number is only "bare shoulder" ON A PROFILE. Run over the other jog
+  facings it reports northeast 100 and southwest 130, and southwest rendered at
+  14x is FINE — on a three-quarter view the window also catches the raised
+  fist, which a tee is supposed to leave bare. `mp-shirtarm` prints those as an
+  audit and gates on none of them.
+
+**Receipt:** `tools/gear/draw-trailing-sleeve.mjs` header;
+`tools/qa/mp/mp-shirtarm.mjs` header, section "v2.3.2066: CLOSED, AND NOW
+MEASURED RATHER THAN PHOTOGRAPHED".
+
+## §31 — `continue-on-error` turns a FAILED CI step green in the Actions UI (v2.3.2067)
+
+Handoff backlog item F says to promote the report-only CI trio "once a step
+holds green for ~10 consecutive CI runs" and to "check the Actions history per
+harness". Both halves of that instruction are traps, and the first one is the
+dangerous one, because following it produces a confident wrong answer rather
+than no answer.
+
+**A `continue-on-error: true` step that fails reports `conclusion: success`.**
+Not "failure, ignored" — success, in the web UI and in the REST/MCP job data.
+The most recent completed dispatch of the `smoke` job at the time of writing
+(run 1435 cancelled, run 1431 on 2026-08-26) shows every step green,
+including all three report-only steps. Its LOG says:
+
+```
+FAIL  A reached worldview  {"x":784,"y":1424,"zone":"town","hp":118}
+...
+6 GEAR-SMOKE CHECK(S) FAILED
+```
+
+Two of the three had never passed a single assertion of their own subject
+matter, and the history said ten-for-ten. Anyone counting green ticks would
+have promoted a check that cannot pass — and a BLOCKING step that always
+fails also SKIPS the steps after it, so promoting the middle one of three
+would have silently removed the third from the run.
+
+**The rule:** the pass/fail state of a report-only step lives ONLY in its
+output. Read the log (or the uploaded `qa-*.json` artifacts), or run the
+harness locally against a real worker — `cd server && npx wrangler dev --port
+8787 --local`, `npm run build`, `npx vite preview --port 4173`, then
+`QA_WS_URL=ws://127.0.0.1:8787 node tools/qa/<harness>.mjs`. All three of the
+trio reproduce their CI result locally, line for line.
+
+**Second half of the trap:** the `smoke` job left the PR path in v2.3.1333 and
+has been dispatched 7 times in total. "10 consecutive CI runs" is not a bar
+these checks can clear at that rate; whoever promotes one is making a
+judgement on locally gathered evidence, and should write down which.
+
+**Receipt:** handoff item F (rewritten v2.3.2067) and the report-only block in
+`.github/workflows/client-ci.yml`.
+
+## §32 — `S._serverMonsters` is FALSE in town, so a send gated on it never happens there (v2.3.2077)
+
+`S._serverMonsters` reads like "am I in multiplayer" and is not. It means
+**this zone has server-managed monsters**, and `wsClient.js` sets it false
+whenever the zone's monster list comes back empty — its own comment spells out
+which zones those are: *"Empty list means the server has no monsters for this
+zone (town, or a dungeon the server doesn't model)"*.
+
+So `if (S._serverMonsters && S.channel) channel.send(...)` is a send that
+**cannot happen in town** — and town is where the shops, the forge, the
+woodworker, the campfire and the vendor all are.
+
+**The failure is silent in both directions**, exactly as TRAPS §18 describes
+for the shim allowlist. The client predicts locally, decrements the bag, writes
+`localStorage`, and the screen looks correct. The worker — which owns
+inventory, coins and HP — never hears, and reconciles the whole thing away on
+the next `player_state`. Nothing throws, and any assertion written against
+client state passes throughout.
+
+**It has shipped four times:**
+
+| version | message | what was actually broken |
+|---|---|---|
+| v2.3.1702 | `ability_use` | specials did nothing server-side |
+| v2.3.2063 | `shop_purchase` | no purchase in the game's history had reached the worker — the vendor stands in town |
+| v2.3.2077 | `eat_request` ×3, `cook_recipe` ×2 | eating and cooking in town did not stick |
+| v2.3.2077 | `forge_weapon` ×2 | **forging had never reached the worker at all** — blacksmith and woodworker are both town buildings |
+
+**The rule:** the precondition for a client→server send is "am I connected",
+which is `S.channel`. The one legitimate use of the flag is a message that is
+*about* a server monster — you cannot damage one in a zone that has none — and
+`monster_damage` is allowlisted by name.
+
+**Do not trust a reading of this gate that assumes the message is sent.**
+Handoff item N called it "symmetry polish, not a hole" on the grounds that
+"the local heal is prediction, the echo is the tiebreaker". Sound reasoning,
+wrong premise: there is no echo when nothing is sent.
+
+**Mechanised.** `tools/dev/precheck.mjs` §8b (`town-gate`) FAILs on any
+client→server send gated on `_serverMonsters` outside the allowlist. It scans a
+seven-line window after each `.send(`, because two of the game's sends put the
+type several lines below the call and a single-line regex skips them.
+
+**Receipt:** `tools/dev/precheck.mjs` §8b; the note at the eatBus handler in
+`src/ui/BroTown.jsx`; `tools/qa/mp/mp-townmeal.mjs`, which asserts on the
+WORKER'S blob through the admin API rather than on client state — a test that
+checked the client would have passed throughout the bug.
+
+---
+
+## §33 — A test that reads a field the game does not have asserts nothing (v2.3.2078)
+
+**The move that looks right:** write the state read the way you remember the
+field being called — `S.lockedMonster`, `S.playerCount`, `S._dead`,
+`S.nodes` — inside `page.evaluate`, wrap it in `|| null`, and read the number
+back out.
+
+**Why it is wrong:** `page.evaluate` runs in the browser. A property that
+does not exist is `undefined`, not an error, and every idiom the suite uses
+to be defensive turns that `undefined` into a pass:
+
+| written as | with the field missing | what the assertion then means |
+|---|---|---|
+| `S.playerCount \|\| null` then `count == null \|\| count >= 2` | `null` | passes with the room reporting an empty world |
+| `S._dead` reported as `dead: !!S._dead` | `false` | a corpse is described as alive in the payload that exists to explain a refusal |
+| `S.lockedMonster = null` | writes a new property | the lock the next line depends on is never cleared |
+| `Object.values(S.nodes \|\| S.zoneNodes \|\| {})` | `[]` | "the zone has resource nodes" fails forever, for a reason no payload names |
+| `window.__btGear.setEquip(...)` inside `try {}` | TypeError, swallowed | the scenario about a character wearing a tee never puts one on |
+
+The audit that found these compared every `S.<field>` read in
+`tools/qa/mp/*.mjs` against every field `src/` ever touches. Eight scenarios
+were clearing `lockedMonster`; `grep -rn lockedMonster src/` returns 0 and
+`lockedTarget` returns 48.
+
+**What to do instead:** the field name is not a memory, it is a lookup.
+Before writing a state read, `grep` it in `src/`. If nothing writes it, it
+does not exist — find the one that does.
+
+**Mechanised, partly:** precheck §8c (`qa-handles`) FAILs on any
+`window.__X` a scenario reads that neither the shipped client (`src/`,
+`public/`) nor that same scenario defines. Self-assigned scratch pins
+(`__pin`, `__fa`, `__qRaf`) are exempt because they are assigned in the file
+that reads them, and comments are stripped first so a note recording a
+retired handle does not re-flag the fix that removed it. The `S.<field>`
+half is NOT mechanised — the state object is built at runtime and half the
+short names (`S.c`, `S.w`, `S.page`) are shadowed locals in the harness, so
+a static rule there is mostly noise. That half is still a `grep` you owe.
+
+**Related:** §18 (a client→server message with no shim passthrough never
+reaches the worker — the same "looks fine, does nothing" shape),
+§28 (a test that reports "not found" is worse than no test),
+§29 (selecting UI by its label is a test with an expiry date).
+
+---
+
+## §34 — Moving the scenery invalidates every colour probe near it (v2.3.2078)
+
+**The move that looks right:** measure a character's tattoo by counting
+coloured pixels in a box around them, anchored on the player's world
+position and the camera rather than a guessed fraction of the screen. That
+much is correct, and TRAPS §21 already requires the CONTROL frame that goes
+with it.
+
+**Why it broke anyway:** the box was about twice the figure, and what filled
+the rest was the town. v2.3.2069 moved the fountain into the plaza, the
+plaza is where the spawn is, and three scenarios each carrying their own
+copy of an `88 x 104` crop suddenly had running water in frame. The control
+— a character with no drawings on him at all — read **4455 blue** and
+**205 pink** pixels, and ten assertions failed naming shirt prints and face
+tattoos that had nothing to do with it.
+
+Two separate faults, and both matter:
+
+1. **The box was too generous.** A crop derived from the player's position
+   is only as honest as its size. `H.figureBox` is the one copy now, cut to
+   numbers measured off a real control render and anchored on
+   `window.__btPlayerDrawn` so the mining lift and the build scale are
+   included rather than approximated.
+
+2. **The classifier was too loose, in two of the three files.**
+   `b > g + 24 && r > 110` accepts a lit blue like `(150,160,200)`.
+   mp-facingside had already learned this in v2.3.2043 and added `r >= b`;
+   mp-cosmpose and mp-skinworld had not, and mp-skinworld's comment still
+   claimed "every OTHER thing on screen has more green in it than blue",
+   which the fountain made false. That one comparison takes the water from
+   205 matches to 0.
+
+**What to do instead:** when you move a prop, grep the QA suite for anything
+that counts pixels near where it landed. And when a control frame goes from
+0 to non-zero without the art changing, believe the control — it is doing
+exactly the job §21 gave it, and the failing assertions downstream are
+collateral, not the finding.
+
+`H.TOWN_CLEAN_SPOT` is a patch of town measured walkable, 110px clear of all
+twelve props, and zero pixels matching any of the four probe colours; reach
+it with `H.hopTo`, never a teleport (v2.3.1706: movement.js refuses the jump
+and, once refused, stays refused).
+
+**Related:** §21 (a colour count is evidence only against a control),
+§30 (a measure that clips the thing it measures).
+
+---
+
+## §35 — A test that COPIES a value out of the game stops testing the game (v2.3.2078)
+
+**The move that looks right:** you need the forge's position, or the shirt
+sheet's cache-bust, or a lane to walk down, or a flag saying whether the town
+draws props. All four are right there in `src/`. Copy the number into the
+scenario with a comment saying where it came from.
+
+**Why it is wrong:** the copy has no link back. Everything below was correct
+when written and silently wrong later, and none of them announced it:
+
+| the copy | what changed | what the test then reported |
+|---|---|---|
+| `const FORGE = { x: 1480, y: 545 }` | the forge moved to (480,900) and grew ~3× | a smith standing at his forge, 960px from it, FAIL |
+| `const BLACKSMITH = { x: 1400, y: 640 }` | same town re-fuse | never fired — the file was skipping itself |
+| `gearVer: '2.3.2066'` hand-copied | any re-bake | the sheet still fetched (the `?v=` is only a cache-bust on a static file), so the test kept measuring art while claiming to prove the bust shipped |
+| the sprint lane `(1000, 1600)` | v2.3.2073 made props solid | passed with COLLISION OFF — isSolid's never-trap hatch lets a player in a solid cell move, and the lane's start is grid-unwalkable |
+| the walk lane, east from spawn | same | 129px on one sample and 0 on the next: the player was standing against a bench |
+| `if (!TOWN_PROPS_ENABLED) skip` | v2.3.2061 made the flag mean "the v16 set only" | the whole scenario reported "switched off by directive — skipped" while twelve props were on screen and two other files were measuring them |
+
+The last one is the worst of the six, because a skip is not a failure. It had
+been dark for weeks and the sweep's summary counted it as a green line.
+
+**What to do instead:** ask the game. Every one of those values has a live
+handle — `window.__btWorldProps()`, `__btGearVersion()`, `__btNpcSprites()`,
+`propsForZone('town')` — and where a scenario needs geometry it does not
+have a handle for, add the probe rather than the constant. Where a lane is
+genuinely a choice, `node tools/dev/town-lanes.mjs` re-derives it from the
+walk grid and the placed footprints, and `node tools/dev/town-lanes.mjs X Y`
+answers whether one spot is clear.
+
+**And measure against the SHAPE, not the centre.** A distance to a
+building's centre is meaningless once the building is 470px wide: the centre
+is 235px from its own doorway, so the check either fails someone at the door
+or gets loosened until it passes someone across the plaza. Distance to the
+footprint box is what "standing at it" means.
+
+**A skip must name a condition that is still real.** Gate a skip on the thing
+the file is about — "are there props drawn" — not on a flag that happens to
+correlate with it today. And keep the two apart: "off by directive" and
+"stopped working" look identical from outside, which is the whole reason
+v2.3.1813 chose the flag in the first place; the answer is to require BOTH
+(the directive AND an empty list), not to pick one.
+
+**Related:** §29 (selecting UI by its label), §33 (reading a field the game
+does not have), §34 (moving the scenery under a colour probe).
+
+---
+
+## §36 — A spawn point has three constraints, and fixing one breaks another (v2.3.2078)
+
+**The move that looks right:** TOWN_SPAWN is inside the fountain's collision
+cell, so move it somewhere clear. Check the prop footprints, confirm the new
+spot is walkable, done.
+
+**Why it is wrong:** "clear" is three separate questions, and this version
+got each one wrong in turn while satisfying the previous ones.
+
+| attempt | clear of props? | can you walk out? | clear of the townsfolk? | what shipped |
+|---|---|---|---|---|
+| (815, 1010) | **no** — shares a 16px cell with the fountain | yes, by accident | yes | collision OFF for every player (the never-trap hatch), so you walked through everything |
+| (815, 975) | yes | **no** — 23px of corridor, then the basin | yes | boxed in against the fountain |
+| (815, 1140) | yes | yes | **no** — 99px from Diego | the shop drawer open on arrival, covering three of the inspect card's four actions |
+| (910, 1130) | yes | yes | yes — 170px | — |
+
+The three are genuinely independent:
+
+1. **Props.** The grid is stamped in 16px cells with `floor()` on both ends,
+   so a footprint that starts 2px into a cell blocks the whole cell. The
+   fountain's box starts at y 1018 and that is enough to poison y 1010.
+   And being *in* a blocked cell does not stop you — the never-trap hatch
+   lets you out, and takes the whole town's collision with it while you are
+   standing there.
+2. **A route.** Clear to stand on is not the same as clear to leave. North of
+   the basin the plaza is a 33px corridor for a 24px body.
+3. **The townsfolk.** Within `NPC_PROX_OPEN` (90px) a shopkeeper's drawer
+   opens by itself, and it stays open until `NPC_PROX_CLEAR` (125px). The
+   drawer is `position: fixed` at the bottom of the screen, where the inspect
+   card's pinned action row also lives, so a spawn inside that ring hands
+   every new player a card whose Trade, Duel and Add Friend cannot be
+   pressed.
+
+**What to do instead:** check all three, by walking. `node
+tools/dev/town-lanes.mjs X Y` answers the first; mp-townexit walks the other
+two and asserts the NPC gap (>125px) and that no shop drawer is up on
+arrival. A spawn is not a coordinate, it is the first ten seconds of the
+game.
+
+**And the third one is a live bug in its own right,** not only a spawn
+constraint: walking up to the shop and then tapping a player hits it too.
+Fixed by closing the drawer when the inspect card opens — one panel at a
+time, which is the rule the proximity gate already applies in the other
+direction.
+
+**Related:** §20 (a fixed wrap is its own stacking context — a control the
+dashboard paints over), §34 (moving the scenery under a probe), §35 (copying
+a value out of the game).
+
+---
+
+## §37 — Measuring a drawing against the box that defines it tests the arithmetic, not the art (v2.3.2082)
+
+**The move that looks right.** The owner asks whether tattoos land in the
+same place through an animation. The bake already publishes, per frame, the
+region box it measured and the grid it fitted into that box
+(`window.__btGridProbe` → `__btGridsByTag['<pose>-<dir>']`, from
+`stampRegion` in `src/rendering/playerDecal.js`). So: express the grid's
+origin as a fraction of the region box, take the spread across the frames of
+a sheet, and gate on it. Every number is real, every number comes from the
+running game, and the check passes on a sheet whose tattoo crawls all over
+the chest.
+
+**Why it cannot fail.** `gridFit` *centres* the grid on the box it was
+handed:
+
+```js
+const dw = Math.max(ART_W, Math.round(bw * box.fillW));
+const ox = Math.round((lx + rx + 1) / 2 - dw / 2);
+const oy = Math.round(ty + bh * box.cy - dh / 2);
+```
+
+so `(ox - lx) / bw` is `(1 - fillW) / 2` on every frame of every sheet, for
+every drawing, forever. The metric is a restatement of two lines of
+arithmetic. A region box that has wandered off the chest and onto the armpit
+carries its perfectly-centred grid along with it and reports no drift at all.
+
+**The rule.** A placement is only measurable against something that did not
+help place it. Two things placed the ink — the region mask and `gridFit` —
+so the reference has to be a third: the FIGURE. `stampRegion` reports each
+frame's own opaque extent under the probe (`fx0, fx1, fy0, fy1`), and
+`mp-inkplace` measures the ink's centre as a fraction of *that*, which is
+what a player is actually looking at.
+
+**The same trap, elsewhere in this repo.** §35 is its sibling — a test that
+copies a value out of the game and compares it to itself. This one does not
+copy anything; it derives both sides of the comparison from the same
+function. Ask of any placement check: *what would have to be broken for this
+number to move?* If the answer is "nothing that could plausibly break", the
+reference is wrong, not the threshold.
+
+**A corollary worth keeping.** The reference does not have to be perfect to
+be valid, only independent. The figure box wobbles too — arms swing out
+through a stride and widen it — so a correctly-placed tattoo still moves a
+few percent, and the gate sits above that wobble rather than at zero. An
+imperfect independent reference beats a perfect dependent one.
+
+**Related:** §33 (a test that reads a field the game does not have), §35 (a
+test that copies a value out of the game), §34 (moving the scenery under a
+colour probe).
+
+---
+
+## §38 — A sub-test that injects over the previous one's live state blames the wrong feature (v2.3.2083)
+
+**The symptom, and how convincing it was.** `mp-cosmpose` works the player on
+an ore vein and then on a fishing spot, by the same recipe: put the tool in
+the bag, inject a node under the player's feet, set `S._tapNode`, press the
+prompt. The ore vein worked every time. The fishing spot never did. The
+scenario wrote the conclusion into its own source — *"an injected fishSpot
+does not become workable the way an ore vein does — the recipe is identical
+and the rod is in the bag, so something else about fishing refuses it"* — and
+downgraded the assertion to a `skip`. That reasoning is airtight and the
+conclusion is wrong.
+
+**What was actually happening.** `BroTown.jsx`'s node-proximity block ends:
+
+```js
+S._nearNode = _tapN;
+/* v2.3.1432 (owner: "the contextual menu for cooking didn't go away") */
+if (S._extraction) S._nearNode = null;
+```
+
+A live harvest attempt suppresses the interact prompt **on purpose** — you are
+already doing the thing it offers. The ore sub-test soaks for six seconds with
+an extraction running, and the fishing spot was injected immediately after it.
+`_nearNode` was nulled by the *mining* attempt that had not finished. Nothing
+about fishing refused anything: ore passed because it ran first and fish
+failed because it ran second. **Swapping the two would have swapped the
+result** — which is the check that would have caught this in one run.
+
+**The rule.** Two sub-tests that write the same game state are one test unless
+the first is torn down and the teardown is *confirmed*. Injecting into a live
+state machine does not overwrite it; it queues behind it. Cancel, then read
+back that the cancel took, then inject.
+
+**And make the diagnostic name the state, not the feature.** The old failure
+message read `hasGatherTool or nodeReachDist refused it` — it named the two
+gates the author had in mind and never mentioned `S._extraction`, so every run
+pointed at gathering. A `why` that can only accuse the suspects you already
+thought of will keep accusing them. The replacement reports which of
+`_extraction` / `gatherNodes` / `_tapNode` actually differs, so the state says
+what happened instead of the author's prior.
+
+**Related:** §33 (a test that reads a field the game does not have), §37
+(measuring a drawing against the box that defines it).
+
+---
+
+## §39 — "Element is visible, enabled and stable" is what a COVERED button looks like (v2.3.2085)
+
+**The message that means the opposite of what it says.** A Playwright click
+on a control something else is sitting on top of reports this and then times
+out:
+
+```
+locator resolved to <button class="bt-inspect-tp">Trade</button>
+attempting click action
+  2 x waiting for element to be visible, enabled and stable
+    - element is visible, enabled and stable
+Timeout 30000ms exceeded
+```
+
+Every line is true. The button *is* visible, enabled and stable — it is
+simply not what the pointer would land on. Read as written it says "the
+button is fine and the click did nothing", which sends you to the handler,
+the event wiring, the disabled state: everywhere except the one place the
+answer is. mp-trade sat on this for weeks.
+
+**The browser will name the culprit for the asking.**
+`document.elementFromPoint` at the control's own centre. `H.clickText` does
+it now (v2.3.2084) and answered mp-trade in a single run. Three things had to
+be right before it said anything useful, and each wrong version *looked* like
+it worked:
+
+1. **Sample BEFORE the click.** In the catch block you are thirty seconds
+   late; the panel has moved on and `boundingBox()` answers null.
+2. **Put it FIRST in the message.** The runner truncates a failure at a couple
+   of hundred characters and Playwright's own call log is longer than that, so
+   an appended line is cut off before anyone reads it.
+3. **Say whether it is an ANCESTOR.** An element that *contains* the button is
+   not covering it — the click lands and bubbles. Naming which of the two it
+   is saves the reader the wrong half of the search.
+
+**And the fix is usually not a z-index.** The inspect card claims z 99800
+against the chat feed's 25 and loses anyway, because the feed's shell is
+styled `left: 8px` and *renders at x=295*: its `position: fixed` is captured
+by a transformed ancestor, which also scopes its z-index inside that
+ancestor's stacking context (§20). When two elements are in different
+stacking contexts, no number either side picks decides the argument. What
+decides it is one of them declining the tap.
+
+**The general shape, which this repo has now hit three times.** A control the
+player must press, with something invisible over it: the dashboard over the
+tutorial banner (v2.3.1205), the shop drawer over the inspect card's actions
+(v2.3.2078), the chat log over Trade (v2.3.2085). All three were reported as
+"the button does nothing". When a button does nothing, ask what is on top of
+it *before* you read its handler.
+
+**Related:** §20 (a fixed wrap is its own stacking context), §38 (a
+diagnostic that can only accuse the suspects you thought of).
+
+## §40 — A screenshot is not in CSS pixels, so a rect offset samples the wrong place (v2.3.2090)
+
+**The move that looks right.** You want to prove a control is actually
+visible rather than merely styled visible, so you read its box from the
+page, screenshot a strip across it, and sample a pixel "6px inside the left
+edge":
+
+```js
+const r = await rect('.bt-cc-defcolor');           // CSS pixels
+const px = await H.screenshotPixels(P, { x: r.x - 20, y: ..., width: r.w + 40, height: 3 });
+const fill = px.at(20 + 6, 1);                     // WRONG
+```
+
+**Why it is wrong.** `getBoundingClientRect` speaks CSS pixels. The returned
+image is `devicePixelRatio` times that in each axis — 2× on every harness
+that passes a `dpr`, and 2× by default on some of them. Indexing the image
+with a CSS offset therefore lands at *half* the intended distance in. The
+clip is right; the sampling is not.
+
+**What it looks like when it bites.** `mp-ccsize` sampled 6px into a
+near-white button on a dark panel and read `[29,45,51]` — the panel. Both
+samples fell outside the button, so the assertion reported a contrast of
+**1** for a control that measures **184**. That is the dangerous failure
+shape: not an obviously broken number, but a plausible one that says the
+change did not work, sending you back to the stylesheet to fix code that was
+already correct.
+
+**The fix is a ratio, not a constant.** Do not hard-code 2 — a scenario that
+sets `dpr: 1` or runs on a different viewport would then be wrong in the
+other direction. Derive it from the image the browser actually returned:
+
+```js
+const k = px.width / clipW;                        // whatever ratio was used
+const fill = px.at(Math.round((20 + 6) * k), Math.floor(px.height / 2));
+```
+
+**Where this does NOT apply.** Counting pixels that match a predicate inside
+a region (the brass-ring count in the same file) is scale-free — every pixel
+is still inside the same region, only more of them. It is *indexing* a
+specific coordinate that needs the ratio. Thresholds tuned against a count,
+though, are not portable across dpr: state the viewport the number came from.
+
+**Related:** §34 (a colour probe is only as good as what is behind it), §37
+(measuring a drawing against the box that defines it).

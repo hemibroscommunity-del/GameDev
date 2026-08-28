@@ -18,6 +18,9 @@
 import { processGameEvent } from '@/networking/gameEvents.js';
 import { stashPendingZoneNodes } from '@/networking/nodeSync.js'; /* v2.3.1301: node self-heal */
 import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking/index.js';
+/* v2.3.1961: the ONE wire-key -> peer-field rename table, read by the join
+   snapshot, both self-heal placeholders and the 2s track relay below. */
+import { peerCosmeticsFromWire, applyPeerCosmetics } from '@/networking/peerCosmetics.js';
 import { revealBus } from '@/ui/reveal/revealBus.js'; /* v2.3.1925 */
 import { applyCharacterRecord, hasStoredCharacter, publishCharRecord } from '@/game/characterRecord.js'; /* v2.3.1814: the stored name+look */
 import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, DEATH_GOLD_PENALTY, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, PROG3_SKILL_META, PROG3 } from '@/data/index.js';
@@ -34,10 +37,14 @@ import { getFacialHairColor } from '@/rendering/traits/facialHairColorCatalog.js
 import { getShirt } from '@/rendering/traits/shirtCatalog.js';
 import { getShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
 import { getEyeColor } from '@/rendering/traits/eyeColorCatalog.js';   /* v2.3.1930 */
+import { wireHeight, wireFrame } from '@/rendering/traits/buildCatalog.js';   /* v2.3.1953 */
 import { getShirtArt, getArt, artHasInk } from '@/rendering/traits/playerArt.js';   /* v2.3.1939; v2.3.1940 + pants/tattoo */
 import { getPattern } from '@/rendering/traits/patternCatalog.js';   /* v2.3.1941 */
 import { getEquip, syncArmorLayers, migrateTier1Armor } from '@/rendering/gearCatalog.js'; /* v2.3.1761 */
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
+/* v2.3.1982: the "the world is full" screen — plain DOM, see its header
+   for why it is not a React boot phase. */
+import { showRoomFull, hideRoomFull, roomFullOpen } from '@/ui/RoomFullScreen.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822 */
@@ -119,10 +126,74 @@ export function setupWebSocket(ctx) {
     var ws = null;
     var reconnectTimer = null;
     var reconnectDelay = 1000;
+    /* ═══ v2.3.1982: WAITING FOR A SPOT ═══
+       `_rfPending` is set by the room_full message and consumed by the
+       onclose that follows it (the worker sends, then closes 4009), so the
+       close handler can tell "the world is full" from "the cell dropped".
+       `_rfAttempts` climbs across attempts so the screen can show that
+       something is actually happening. */
+    var _rfPending = null;
+    var _rfAttempts = 0;
+    var RF_RETRY_MIN = 2000, RF_RETRY_MAX = 30000, RF_RETRY_DEFAULT = 5000;
+    /* ═══ WHY A FIXED CADENCE AND NOT BACKOFF ═══
+       Exponential backoff exists to protect a server that is struggling.
+       A full room is not struggling: at the cap the worker uses 0.16ms of
+       its 22ms tick (server/test/load-crowd.mjs) and a refusal costs it a
+       handshake, not a tick — the limit is the PLAYER'S download, and a
+       waiting player is downloading nothing.  What backoff would actually
+       buy is a worse product: back off to 10s+ and the freed slot sits
+       empty while the person who has waited longest happens to be mid-
+       sleep, so "who gets in" becomes arbitrary.  So: a fixed ~5s cadence
+       (the worker names it in `retryMs`, clamped here — never trust a wire
+       number) with ±20% jitter.  The jitter is the part that matters at
+       scale: after a worker deploy every waiter is released at the same
+       instant, and a lockstep herd would re-collide on every single retry
+       with the same losers losing each time. */
+    function _rfDelay(retryMs) {
+      var base = Math.max(RF_RETRY_MIN, Math.min(RF_RETRY_MAX,
+        (typeof retryMs === 'number' && isFinite(retryMs)) ? retryMs : RF_RETRY_DEFAULT));
+      return Math.round(base * (0.8 + Math.random() * 0.4));
+    }
+    /* Paint the screen and queue the next attempt.  Keeps retrying
+       FOREVER by design — the player is in a queue, not in an error. */
+    function _roomFullRetry(info) {
+      var d = _rfDelay(info && info.retryMs);
+      _rfAttempts++;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      reconnectTimer = setTimeout(function () { connect(); }, d);
+      showRoomFull({
+        count: info && info.count, cap: info && info.cap,
+        retryMs: d, nextAt: Date.now() + d, attempts: _rfAttempts,
+        onRetryNow: function () {
+          if (reconnectTimer) clearTimeout(reconnectTimer);
+          /* Re-arm the countdown before connecting: if the world is still
+             full the refusal will repaint it anyway, and if the tap lands
+             during a slow handshake the screen must not sit at 0s. */
+          showRoomFull({ count: info && info.count, cap: info && info.cap,
+            retryMs: RF_RETRY_DEFAULT, nextAt: Date.now() + RF_RETRY_DEFAULT,
+            attempts: _rfAttempts });
+          connect();
+        },
+      });
+    }
+    /* The world let us in (or we are talking to a worker that never
+       refuses).  Called from state_sync — the first message that only
+       exists for an ADMITTED session. */
+    function _roomFullCleared() {
+      _rfPending = null;
+      _rfAttempts = 0;
+      if (roomFullOpen()) hideRoomFull();
+    }
     function connect() {
       if (!WS_URL) {
         resolveRoom().then(function (room) {
-          WS_URL = WS_BASE + '/ws?room=' + encodeURIComponent(room);
+          /* v2.3.1982: `rf=1` opts this client IN to the room-full
+             refusal on the wire (join.js _roomFullRefusal).  It has to be
+             a URL param, not a caps flag: caps ride in state_sync and a
+             refused joiner never gets one.  An OLD worker ignores the
+             param and fails the handshake exactly as it always did, which
+             is the fallback this client still handles below. */
+          WS_URL = WS_BASE + '/ws?room=' + encodeURIComponent(room) + '&rf=1';
           S._currentRoom = room;
           connect();
         });
@@ -136,6 +207,14 @@ export function setupWebSocket(ctx) {
       }
       ws.onopen = function () {
         var _S$rpg, _S$rpg2, _S$rpg3, _S$rpgC, _S$rpgI, _S$rpgL, _S$rpgLV, _S$rpgXP, _S$rpgUT;
+        /* v2.3.1982: a refused joiner now gets a REAL upgraded socket that
+           the worker closes a beat later (join.js _roomFullRefusal), so
+           this handler can fire on a socket that is already CLOSING.
+           send() would then throw InvalidStateError out of an event
+           handler — an uncaught page error on the one path that is
+           supposed to stay calm — and there is nothing to join into
+           anyway.  Cheap, and true of any close that beats the open. */
+        if (ws.readyState !== 1) return;
         S._realtimeStatus = 'connected';
         reconnectDelay = 1000;
         ws.send(JSON.stringify({
@@ -199,8 +278,15 @@ export function setupWebSocket(ctx) {
                designer pays a byte for them. */
             tf: artHasInk(getArt('tattooFace')) ? getArt('tattooFace') : undefined,
             tm: artHasInk(getArt('tattooArm')) ? getArt('tattooArm') : undefined,
+            tb: artHasInk(getArt('tattooHeadBack')) ? getArt('tattooHeadBack') : undefined,   /* v2.3.2043 */
             /* v2.3.1941: clothing patterns.  Short ids ("stripe-v:3"), so
                unlike the drawings they need no special length handling. */
+            /* v2.3.1953: height and frame.  `undefined` unless you actually
+               picked something other than average/medium, so a player who
+               never opened the Build tab puts nothing on the wire and renders
+               on every other client exactly as they do today. */
+            hg: wireHeight(),
+            fr: wireFrame(),
             sp: getPattern('shirt') || undefined,
             pp: getPattern('pants') || undefined,
             fp: getPattern('shoes') || undefined,   /* v2.3.1944: footwear */
@@ -365,24 +451,32 @@ export function setupWebSocket(ctx) {
                      cosmetics; the peer's 2s track relay (player_update)
                      fills in name/avatar/gear moments later.  With the 1 Hz
                      idle keepalive every live player appears in a tick at
-                     least once per second, so a resumed tab converges fast. */
+                     least once per second, so a resumed tab converges fast.
+                     v2.3.1961: that promise was only half true from the day it
+                     was written.  The relay wrote the SHORT wire keys onto the
+                     peer (Object.assign of msg.data), so only the fields whose
+                     wire name IS the field name -- name, avatar, and gear via
+                     its own rebuild -- ever arrived; skin, hair, headwear,
+                     shirt, pants, shoes, body size and every drawing stayed at
+                     the nulls below, and a peer found this way rendered as a
+                     bald default body for the whole session.  The relay maps
+                     through peerCosmetics.js now, so it really does converge. */
                   if (!S.others[pid]) {
-                    S.others[pid] = {
+                    /* v2.3.1961: the empty cosmetic set comes from the one
+                       rename table (peerCosmetics.js) instead of a hand-written
+                       null list — the same table the relay below now reads, so
+                       a placeholder can never be missing a field the relay
+                       fills or vice versa.  Called with `{}`: a tick delta
+                       carries position, not a look. */
+                    S.others[pid] = Object.assign({
                       x: data.x, y: data.y, _serverX: data.x, _serverY: data.y,
                       renderX: data.x, renderY: data.y,
                       name: 'Anon', color: '#888', avatar: null,
                       dir: data.d || 'down', bt: '#2563eb', bl: '#1e3a5f',
-                      headwear: null, facialhair: null, hair: null, skin: null,
-                      hairColor: null, hatColor: null, facialHairColor: null,
-                      shirt: null, shirtColor: null, eyeColor: null,
-                      shirtArtFront: null, shirtArtBack: null,   /* v2.3.1939 */
-                      pantsArt: null, tattooArt: null,   /* v2.3.1940 */
-                      faceTattooArt: null, armTattooArt: null,   /* v2.3.1949 */
-                      shirtPattern: null, pantsPattern: null, shoesPattern: null,   /* v2.3.1941; v2.3.1944 */
                       equip: { chest: 'none', legs: 'none', shoulders: 'none', shirt: 'none' },
-                      pants: null, shoes: null, rpgLv: 1, rpgHp: 50, rpgMaxHp: 50,
-                      bodySize: 'slim', zone: data.z || 'town',
-                    };
+                      rpgLv: 1, rpgHp: 50, rpgMaxHp: 50,
+                      zone: data.z || 'town',
+                    }, peerCosmeticsFromWire({}));
                     setPlayerCount(Object.keys(S.others).length + 1);
                   }
                   if (S.others[pid]) {
@@ -593,6 +687,27 @@ export function setupWebSocket(ctx) {
               }
               break;
             }
+          case 'room_full':
+            {
+              /* v2.3.1982: the worker has no seat for us (join.js
+                 _roomFullRefusal).  It closes the socket immediately
+                 after this, so the work happens in onclose — all this
+                 does is record WHY, which is the whole difference
+                 between this and every other failed connection.  A
+                 deliberately separate type from join_rejected: an old
+                 client seeing an unknown join_rejected reason stops
+                 retrying for good (v2.3.1181), so the refusal could not
+                 ride that message without breaking the very players it
+                 is meant to help. */
+              _rfPending = {
+                count: +msg.count || 0,
+                cap: +msg.cap || 0,
+                retryMs: +msg.retryMs || 0,
+                at: Date.now(),
+              };
+              S._realtimeStatus = 'full';
+              break;
+            }
           case 'join_rejected':
             {
               /* v2.3.1148: the rejection REASON is load-bearing now.
@@ -682,6 +797,11 @@ export function setupWebSocket(ctx) {
                  the legacy client-side credit paths stay in place but
                  only run when the server hasn't claimed the job. */
               S._serverCaps = msg.caps || {};
+              /* v2.3.1982: we are IN.  state_sync is the first message
+                 that only exists for an admitted session, so this is the
+                 exact moment the "world is full" screen stops being true.
+                 Idempotent — a no-op on every ordinary join. */
+              _roomFullCleared();
               /* ═══ v2.3.1814: WEAR YOUR OWN FACE ═══
                  The character's name and look are stored against the identity
                  now (caps.charLock), and the worker echoes them here.  This is
@@ -765,7 +885,14 @@ export function setupWebSocket(ctx) {
                   _pid = _Object$entries6$_i[0],
                   _data = _Object$entries6$_i[1];
                 if (_pid === S.myId) continue;
-                others[_pid] = {
+                /* v2.3.1961: the cosmetic half of this literal (headwear ...
+                   bodySize, every field the wire RENAMES) comes from
+                   peerCosmetics.js, which the `player_update` relay reads too.
+                   It used to be ~14 hand-written `_data.xx || null` lines here,
+                   a near-identical set in `player_join`, and nothing at all on
+                   the relay -- three lists to remember, which is why keys kept
+                   shipping into some of them and not the others. */
+                others[_pid] = Object.assign({
                   x: _data.x || 0,
                   y: _data.y || 0,
                   _serverX: _data.x || 0,
@@ -778,32 +905,14 @@ export function setupWebSocket(ctx) {
                   dir: _data.d || 'down',
                   bt: _data.bt || '#2563eb',
                   bl: _data.bl || '#1e3a5f',
-                  headwear: _data.hw || null,
-                  facialhair: _data.fh || null,
-                  hair: _data.hr || null,
-                  skin: _data.sk || null,
-                  hairColor: _data.hc || null,
-                  hatColor: _data.htc || null,
-                  facialHairColor: _data.fhc || null,
-                  shirt: _data.st || null,
-                  shirtColor: _data.stc || null,
-                  eyeColor: _data.ec || null,   /* v2.3.1930 */
-                  shirtArtFront: _data.sa || null, shirtArtBack: _data.sb || null,   /* v2.3.1939 */
-                  pantsArt: _data.pa || null, tattooArt: _data.ta || null,   /* v2.3.1940 */
-                  faceTattooArt: _data.tf || null, armTattooArt: _data.tm || null,   /* v2.3.1949 */
-                  shirtPattern: _data.sp || null, pantsPattern: _data.pp || null,   /* v2.3.1941 */
-                  shoesPattern: _data.fp || null,   /* v2.3.1944 */
                   equip: { chest: _data.eqc || 'none', legs: _data.eql || 'none', shoulders: _data.eqs || 'none',
                     /* v2.3.756: layered shirt; old clients send no eqst -> infer from their legacy shirt style */
                     shirt: _data.eqst !== undefined ? (_data.eqst || 'none') : ((_data.st && _data.st !== 'none') ? 'tshirt' : 'none') },
-                  pants: _data.pt || null,
-                  shoes: _data.sh || null,
                   rpgLv: _data.rpgLv || 1,
                   rpgHp: _data.rpgHp || 50,
                   rpgMaxHp: _data.rpgMaxHp || 50,
-                  bodySize: _data.bs || 'slim',
                   zone: _data.z || 'town'
-                };
+                }, peerCosmeticsFromWire(_data));
               }
               S.others = others;
               setPlayerCount(msg.playerCount || Object.keys(others).length + 1);
@@ -960,6 +1069,50 @@ export function setupWebSocket(ctx) {
                  (currently loot pickup + harvest; future: sales /
                  quest / etc.). */
               if (!msg.payload || !S.rpg) break;
+              /* ═══ v2.3.2027: THE CAPE COMES FROM THE WORKER ═══
+                 Same closure as the coins/inventory overwrite above: a cosmetic
+                 the client chooses for itself is a cosmetic anyone can choose,
+                 and this one is a contest prize. The worker echoes the cape its
+                 LEDGER says you own -- null included, so losing or never having
+                 one takes it off. setCape ignores an id that is not in the
+                 catalog, so a hostile echo cannot make the renderer ask for a
+                 texture that does not exist. */
+              try {
+                var _capeId = (typeof msg.payload.cape === 'string' && msg.payload.cape) ? msg.payload.cape : 'none';
+                import('@/rendering/traits/capeCatalog.js')
+                  .then(function (m) {
+                    /* ═══ v2.3.2107: SAY SOMETHING WHEN IT ARRIVES ═══
+                       Owner: "When you open the golden ticket nothing
+                       happens." The redeem worked -- the ticket left the bag
+                       and this line put the cape on -- but every visible thing
+                       said otherwise: no message, and the prize showing only
+                       on a character sheet nobody had a reason to open.
+
+                       Fired on the EDGE, none -> a cape, so it announces the
+                       moment you win and stays quiet on the echo that arrives
+                       every couple of seconds for the rest of the session. */
+                    var _before = m.getCape();
+                    m.setCape(_capeId);
+                    /* v2.3.2109: the popup's Equip/Unequip needs to know which
+                       way round it currently is, and the only trustworthy
+                       answer is the worker's -- `cape` is now WORN rather than
+                       merely owned (_capeWornBy). Mirrored onto S.rpg so the
+                       popup can read it synchronously without importing a lazy
+                       split chunk. */
+                    if (S.rpg) S.rpg._capeWorn = (_capeId !== 'none');
+                    if (_before !== _capeId && _capeId !== 'none' && S.chatLog) {
+                      var _nm = (m.CAPE_CATALOG.find(function (c) { return c.id === _capeId; }) || {}).name || 'a cape';
+                      S.chatLog = S.chatLog.slice(-40).concat([
+                        { id: null, name: null, text: 'You claimed the ' + _nm + '!', ts: Date.now() },
+                      ]);
+                      /* setChatLog is this module's own binding (ctx, line
+                         ~74); `deps` is the gameEvents idiom and is not in
+                         scope here. */
+                      if (typeof setChatLog === 'function') setChatLog(S.chatLog.slice());
+                    }
+                  })
+                  .catch(function () { /* module split not loaded yet: next echo carries it */ });
+              } catch (e) { /* never let a cosmetic break the state sync */ }
               if (typeof msg.payload.coins === 'number') {
                 S.rpg.coins = msg.payload.coins;
               }
@@ -1115,12 +1268,44 @@ export function setupWebSocket(ctx) {
                  existing client-side UI + math reads the server values. */
               if (msg.payload._buffs && typeof msg.payload._buffs === 'object') {
                 var _sb = msg.payload._buffs;
+                /* ═══ v2.3.2063: ABSENT MEANS OFF ═══
+                   Every one of these was `if (typeof x === 'number')`, which
+                   mirrors a buff that IS running and silently keeps the last
+                   value for one that is not. That was survivable while buffs
+                   only ever expired on their own clock (the client's own
+                   `Date.now() < S._xBuff` check retired them). It stops being
+                   survivable now that one effect CANCELS another: the server
+                   clears _buffs wholesale, so the cancelled buff arrives as an
+                   absence, and a typeof guard would leave the old timer
+                   running on the client for its full duration -- the HUD chip
+                   still up, the speed still applied, and the server
+                   disagreeing with all of it. */
                 if (typeof _sb.damage === 'number') S._dmgBuff = _sb.damage;
+                else S._dmgBuff = 0;
+                /* v2.3.2058: the damage buff's MAGNITUDE now travels with its
+                   timer, because two different things set it -- cooked food at
+                   x1.20 and the Fury Tonic at x2. Mirrored unconditionally
+                   (not behind a typeof guard) so that a meal, which sends no
+                   damageMul, CLEARS a tonic's leftover multiplier here exactly
+                   as it does on the server. Prediction must agree with the
+                   authority or the popups lie. */
+                S._dmgBuffMul = typeof _sb.damageMul === 'number' ? _sb.damageMul : 0;
                 if (typeof _sb.regen === 'number') S._regenBuff = _sb.regen;
+                else S._regenBuff = 0;
                 if (typeof _sb.resist === 'number') S._resistBuff = _sb.resist;
+                else S._resistBuff = 0;
                 if (typeof _sb.spd === 'number') S._spdBuff = _sb.spd;
+                else S._spdBuff = 0;
+                /* v2.3.2062: magnitudes travel with their timers, and are
+                   mirrored UNCONDITIONALLY so a cooked meal -- which sends
+                   neither -- clears a potion's leftover strength here exactly
+                   as it does on the server. Same rule as damageMul. */
+                S._spdBuffMul = typeof _sb.spdMul === 'number' ? _sb.spdMul : 0;
+                S._manaFlat = typeof _sb.manaFlat === 'number' ? _sb.manaFlat : 0;
                 if (typeof _sb.hp === 'number') S._hpBuff = _sb.hp;
+                else S._hpBuff = 0;
                 if (typeof _sb.mana === 'number') S._manaBuff = _sb.mana;
+                else S._manaBuff = 0;
               }
               /* Equipment slots -- worker is the canonical owner.  An
                  equip_request swap, marketplace buy, or future server-
@@ -1711,7 +1896,7 @@ export function setupWebSocket(ctx) {
             }
           case 'player_join':
             {
-              var _msg$data, _msg$data2, _msg$data3, _msg$data4, _msg$data5, _msg$data6, _msg$data7, _msg$data8, _msg$data9, _msg$data0, _msg$data1, _msg$data10, _msg$data11, _msg$data12;
+              var _msg$data, _msg$data2, _msg$data3, _msg$data4, _msg$data5, _msg$data6, _msg$data7, _msg$data8, _msg$data9, _msg$data0, _msg$data1, _msg$data10, _msg$data12;
               S.others[msg.id] = {
                 x: ((_msg$data = msg.data) === null || _msg$data === void 0 ? void 0 : _msg$data.x) || 0,
                 y: ((_msg$data2 = msg.data) === null || _msg$data2 === void 0 ? void 0 : _msg$data2.y) || 0,
@@ -1725,35 +1910,17 @@ export function setupWebSocket(ctx) {
                 dir: ((_msg$data7 = msg.data) === null || _msg$data7 === void 0 ? void 0 : _msg$data7.d) || 'down',
                 bt: ((_msg$data8 = msg.data) === null || _msg$data8 === void 0 ? void 0 : _msg$data8.bt) || '#2563eb',
                 bl: ((_msg$data9 = msg.data) === null || _msg$data9 === void 0 ? void 0 : _msg$data9.bl) || '#1e3a5f',
-                headwear: (msg.data && msg.data.hw) || null,
-                facialhair: (msg.data && msg.data.fh) || null,
-                hair: (msg.data && msg.data.hr) || null,
-                skin: (msg.data && msg.data.sk) || null,
-                hairColor: (msg.data && msg.data.hc) || null,
-                hatColor: (msg.data && msg.data.htc) || null,
-                facialHairColor: (msg.data && msg.data.fhc) || null,
-                shirt: (msg.data && msg.data.st) || null,
-                shirtColor: (msg.data && msg.data.stc) || null,
-                eyeColor: (msg.data && msg.data.ec) || null,   /* v2.3.1930 */
-                shirtArtFront: (msg.data && msg.data.sa) || null,
-                shirtArtBack: (msg.data && msg.data.sb) || null,   /* v2.3.1939 */
-                pantsArt: (msg.data && msg.data.pa) || null,
-                tattooArt: (msg.data && msg.data.ta) || null,   /* v2.3.1940 */
-                faceTattooArt: (msg.data && msg.data.tf) || null,
-                armTattooArt: (msg.data && msg.data.tm) || null,   /* v2.3.1949 */
-                shirtPattern: (msg.data && msg.data.sp) || null,
-                pantsPattern: (msg.data && msg.data.pp) || null,   /* v2.3.1941 */
-                shoesPattern: (msg.data && msg.data.fp) || null,   /* v2.3.1944 */
                 equip: { chest: (msg.data && msg.data.eqc) || 'none', legs: (msg.data && msg.data.eql) || 'none', shoulders: (msg.data && msg.data.eqs) || 'none',
                   shirt: (msg.data && msg.data.eqst !== undefined) ? (msg.data.eqst || 'none') : ((msg.data && msg.data.st && msg.data.st !== 'none') ? 'tshirt' : 'none') },
-                pants: (msg.data && msg.data.pt) || null,
-                shoes: (msg.data && msg.data.sh) || null,
                 rpgLv: ((_msg$data0 = msg.data) === null || _msg$data0 === void 0 ? void 0 : _msg$data0.rpgLv) || 1,
                 rpgHp: ((_msg$data1 = msg.data) === null || _msg$data1 === void 0 ? void 0 : _msg$data1.rpgHp) || 50,
                 rpgMaxHp: ((_msg$data10 = msg.data) === null || _msg$data10 === void 0 ? void 0 : _msg$data10.rpgMaxHp) || 50,
-                bodySize: ((_msg$data11 = msg.data) === null || _msg$data11 === void 0 ? void 0 : _msg$data11.bs) || 'slim',
                 zone: ((_msg$data12 = msg.data) === null || _msg$data12 === void 0 ? void 0 : _msg$data12.z) || 'town'
               };
+              /* v2.3.1961: the look comes from the shared rename table, not
+                 from twenty more `msg.data.xx || null` lines that have to stay
+                 in step with the state_sync loop above and the relay below. */
+              Object.assign(S.others[msg.id], peerCosmeticsFromWire(msg.data));
               setPlayerCount(function (prev) {
                 setJoinFlash(true);
                 setTimeout(function () {
@@ -1780,28 +1947,87 @@ export function setupWebSocket(ctx) {
             {
               /* v2.3.1112: create unknown peers from the track relay too --
                  it carries the full cosmetics, so a peer discovered this way
-                 renders correctly immediately (see the tick-create note). */
+                 renders correctly immediately (see the tick-create note).
+                 v2.3.1961: "renders correctly immediately" was only true of the
+                 fields the wire does not rename -- the placeholder's cosmetics
+                 now come from the same table the mapping below reads. */
               if (!S.others[msg.id] && msg.id !== S.myId && msg.data) {
-                S.others[msg.id] = {
+                S.others[msg.id] = Object.assign({
                   x: 0, y: 0, renderX: 0, renderY: 0, name: 'Anon', color: '#888',
                   avatar: null, dir: 'down', bt: '#2563eb', bl: '#1e3a5f',
                   equip: { chest: 'none', legs: 'none', shoulders: 'none', shirt: 'none' },
-                  rpgLv: 1, rpgHp: 50, rpgMaxHp: 50, bodySize: 'slim', zone: 'town',
-                };
+                  rpgLv: 1, rpgHp: 50, rpgMaxHp: 50, zone: 'town',
+                }, peerCosmeticsFromWire({}));
                 setPlayerCount(Object.keys(S.others).length + 1);
               }
               if (S.others[msg.id]) {
                 Object.assign(S.others[msg.id], msg.data);
+                /* ═══ v2.3.1961: THE RELAY SPEAKS THE SHORT WIRE NAMES ═══
+                   The Object.assign above copies `msg.data` verbatim, so it
+                   lands `sa`, `hr`, `st`, `bs` ... on the peer object -- and
+                   the renderer reads `shirtArtFront`, `hair`, `shirt`,
+                   `bodySize`.  Everything the wire RENAMES therefore arrived
+                   once, in the join snapshot, and was never refreshed again;
+                   only the same-named fields (name, avatar, dir, zone, rpgLv,
+                   wpnType ...) and `equip`, which has its own rebuild just
+                   below, tracked a peer after that.  Two things that costs,
+                   both reachable: a peer created by the self-heal above or by
+                   a tick delta (a suspended iOS tab misses the join) never got
+                   a look at all, and the in-world T-Shirt toggle
+                   (ItemDetailPopup) moved `st` that nobody else could see.
+                   One table now serves the join snapshot, both placeholders and
+                   this relay (src/networking/peerCosmetics.js), because a
+                   per-key list somebody must remember to extend in four places
+                   is exactly how v2.3.1939 and v2.3.1949 each half-shipped a
+                   key.  Delta semantics: only keys the payload carries are
+                   written -- see the note on applyPeerCosmetics. */
+                applyPeerCosmetics(S.others[msg.id], msg.data);
                 /* v2.3.599: track relays carry flat eqc/eql/eqs; rebuild the
                    nested other.equip the renderer reads so armour on/off syncs
-                   (covers the standing-still case via the 2s track). */
+                   (covers the standing-still case via the 2s track).
+                   v2.3.1961 deliberately did NOT carry `shirt` here, on the
+                   grounds that "`eqst` is on neither the track payload nor
+                   TRACK_COSMETIC_KEYS, so the relay has no news about the
+                   under-shirt" -- dropping the key let the renderer's v2.3.756
+                   fallback derive it from `st`, which this relay does keep
+                   current.  The reasoning was sound and the premise it rests on
+                   was false: `st` and the gear slot DISAGREE ABOUT THE DEFAULT.
+                   The gear slot dresses every new player in a tshirt
+                   (gearCatalog: "worn by every new player by default"); `st` is
+                   'none' until somebody picks a style.  So the fallback dressed
+                   an ordinary player in nothing, and everyone was bare-chested
+                   on everyone else's screen from two seconds after joining.
+                   v2.3.2084 gives the relay the news it was missing -- `eqst`
+                   is on the track payload (BroTown) and on TRACK_COSMETIC_KEYS
+                   (server) now -- so the key is carried when it is sent and
+                   PRESERVED when it is not, exactly like the three beside it.
+                   An old worker that drops `eqst` leaves the old behaviour
+                   rather than a new failure, which is what makes this shippable
+                   in either order. */
                 var _ud = msg.data || {};
-                if (_ud.eqc !== undefined || _ud.eql !== undefined || _ud.eqs !== undefined) {
+                /* v2.3.1953: the relay carries the WIRE names (hg/fr); the
+                   renderer reads the long ones, exactly as it does for every
+                   other cosmetic.  Mapped here so a build changed mid-session
+                   lands on the next 2s relay.  `undefined` means "not sent"
+                   (average/medium) and must clear a previous pick, so the
+                   assignment is unconditional rather than guarded on presence
+                   — otherwise going back to Average would never take. */
+                S.others[msg.id].buildHeight = _ud.hg || null;
+                S.others[msg.id].buildFrame = _ud.fr || null;
+                if (_ud.eqc !== undefined || _ud.eql !== undefined
+                    || _ud.eqs !== undefined || _ud.eqst !== undefined) {
                   var _oe6 = S.others[msg.id].equip || { head: 'none', chest: 'none', legs: 'none', shoulders: 'none' };
                   S.others[msg.id].equip = {
                     chest: _ud.eqc !== undefined ? (_ud.eqc || 'none') : _oe6.chest,
                     legs: _ud.eql !== undefined ? (_ud.eql || 'none') : _oe6.legs,
                     shoulders: _ud.eqs !== undefined ? (_ud.eqs || 'none') : _oe6.shoulders,
+                    /* v2.3.2084: carried when sent, PRESERVED when not -- the
+                       key used to be dropped from the rebuild entirely, which
+                       is what put everyone in nothing.  `_oe6.shirt` is
+                       undefined for a peer whose join frame predates this, and
+                       undefined is exactly what the renderer's v2.3.756
+                       fallback expects, so an old client still reads as it did. */
+                    shirt: _ud.eqst !== undefined ? (_ud.eqst || 'none') : _oe6.shirt,
                   };
                 }
               }
@@ -2210,6 +2436,31 @@ export function setupWebSocket(ctx) {
           S._realtimeStatus = 'frozen';
           return;
         }
+        /* v2.3.1982: the world is full.  BOTH signals are accepted — the
+           room_full message we just received, and the 4009 close code —
+           because either one alone is enough to know, and a lost message
+           must not silently drop the player back into the anonymous
+           10-second loop this exists to replace.  This does NOT return
+           early the way frozen/reset do: it keeps retrying, forever, on
+           its own cadence, and enters the game the moment a slot frees. */
+        if (_rfPending || (event && event.code === 4009)) {
+          var _rf = _rfPending;
+          _rfPending = null;
+          S._realtimeStatus = 'full';
+          /* onopen pushed "<name> joined Bro Town!" into the chat log
+             optimistically, before the refusal could possibly be known.
+             That join never happened, and a player who waits out twenty
+             retries would otherwise walk in to twenty of them. */
+          try {
+            var _last = S.chatLog[S.chatLog.length - 1];
+            if (_last && _last.system && _last.text === S.myName + ' joined Bro Town!') {
+              S.chatLog = S.chatLog.slice(0, -1);
+              setChatLog(_toConsumableArray(S.chatLog));
+            }
+          } catch (e) {}
+          _roomFullRetry(_rf);
+          return;
+        }
         /* v2.3.1347: server closes 4005 after a character reset -- the
            character_reset_done handler is already reloading the page;
            don't race it with a reconnect (which would rejoin and
@@ -2591,6 +2842,23 @@ export function setupWebSocket(ctx) {
           ws.send(JSON.stringify(msg));
           return;
         }
+        /* v2.3.2026: opening a golden ticket.  This list is an ALLOWLIST — a
+           type with no line here is silently dropped and the feature runs on
+           nothing, which is what TRAPS #18 and the harvest handshake below
+           record.  The redeem is the only way a cape is granted, so a missing
+           case would mean tickets that never open, in public, during the
+           event. */
+        if (msg.type === 'cape_redeem') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
+        /* v2.3.2109: equipping/unequipping the cape you won. Same allowlist
+           rule as the redeem above -- a type with no line here is silently
+           dropped and the feature runs on nothing (TRAPS #18). */
+        if (msg.type === 'cape_equip') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
         /* v2.3.1704: THE HARVEST HANDSHAKE'S MISSING HALF.  TRAPS #18 again,
            and this one had been silently dead since v2.3.229: the client has
            always sent `extraction_start` (lifeSkillRewards.js startExtraction)
@@ -2619,6 +2887,14 @@ export function setupWebSocket(ctx) {
           return;
         }
         if (msg.type === 'loot_pickup') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
+        /* v2.3.2047: Shopkeeper Bro. Three asks, no answers -- the client
+           never states a price or a coin total, it names an item and a
+           quantity and takes whatever the server echoes back. */
+        if (msg.type === 'shop_list' || msg.type === 'shop_sell' || msg.type === 'shop_buy'
+            || msg.type === 'shop_quote') {
           ws.send(JSON.stringify(msg));
           return;
         }
@@ -2902,6 +3178,12 @@ export function setupWebSocket(ctx) {
     return function () {
       stopBatchTimer();
       if (reconnectTimer) clearTimeout(reconnectTimer);
+      /* v2.3.1982: the retry loop this screen promises dies with this
+         effect, so the screen must not outlive it — a "trying again in
+         3s" that nothing is behind is the frozen screen we replaced.  If
+         the effect immediately re-runs (its deps are the pre-game
+         flags), the next refusal paints it again. */
+      hideRoomFull();
       clearInterval(_aliveTimer); /* v2.3.778 resync heartbeat */
       if (ws) {
         try {

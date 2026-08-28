@@ -71,6 +71,7 @@ extended.
    | `trade2wpn:<pid>:<seq>` | `{pid, sid, seq, weapon, ts}` weapon escrowed into a live trade window | trading.md |
    | `harden_ledger:<pid>` | last 50 hardening attempts (§17.5) | hardening.md |
    | `harden_h5_log` | global H5-mint timestamps, 90-day window (INV-27) | hardening.md |
+   | `shop_stock` | Shopkeeper Bro's ONE public pile: `{itemKey: qty}`; his buy price decays with the qty held | shop.js (v2.3.2047) |
    | `botstat:<playerId>` | anti-bot evidence: counters, hour caps, replay-hash tail, shadow flags | anticheat-botfp.md |
    | `device:<deviceId>` | identity list per device nonce (fleet correlation) | anticheat-botfp.md |
    | `frozen:<pid>` | `{ts, note}` operator freeze — join gate | admin.md |
@@ -84,7 +85,10 @@ extended.
    | `motd` | `{text, ts}` sticky announcement, delivered on join | liveops.md |
    | `metrics:<yyyymmdd>` | daily economy snapshot (ring of 30) | liveops.md |
    | `friends:<pid>` | `{list, reqIn, reqOut}` mutual-friend graph + pending requests | friends.md |
+   | `capegrant:<capeId>` | `{issued, redeemed}` event-cape ticket ledger: the cap, who holds a ticket, and who redeemed. ALSO the ownership record — rule 1 forbids a cape field on the rpg blob | cape-and-contest.md |
    | `friend_msg:<pid>` | offline DM backlog, capped 50, cleared on join delivery | friends.md |
+   | `chat_mute:<pid>` | `{list: {mutedId: {name, at}}, at}` the muter's own chat-mute list; loaded into a null-proto map + a Set on join and enforced on the FAN-OUT (tick.js), so a muted line never reaches the socket | chat-moderation.md |
+   | `chat_report:<id>` | one abuse report: `{at, reason, by, byName, target, targetName, zone, targetOnline, lines}` — `lines` is the SERVER's copy of the recent chat, never the reporter's claim. Pruned past `CHATMOD.RETAIN_MS` on the admin read | chat-moderation.md |
    | `bro_link:<pid>` | `{tokenId, address, ts}` last verified Hemi Bro ownership link; re-earned after RECHECK_MS | broverify.js |
    | `chain_score:<pid>` | `{milestone, nonce, level, series, kills, txHash, at}` last score attestation written to the BroTownScores contract on Hemi. `series` (v2.3.1671) is the `{skillName: level}` map that was written, so the next checkpoint can send only what CHANGED | progression-onchain.md |
 
@@ -372,7 +376,7 @@ opId-idempotent, sweep checks the deliver stamp before refunding
 (rule 6). Gated on its own narrow `caps.trade2Weapons` (rule 19 /
 TRAPS #9). The item/gold path stays memory-only validate-at-commit.
 
-### F. Promote the report-only CI trio
+### F. Promote the report-only CI trio — REVIEWED v2.3.2067, none promoted
 qa-gear-smoke, qa-party-smoke, qa-combat-predict run
 `continue-on-error` in `.github/workflows/client-ci.yml`; the
 promotion criteria live as comments on those steps (~10 consecutive
@@ -382,16 +386,94 @@ harness; promote individually. Danger: a flaky BLOCKING check is
 worse than none — if one still flakes, tune it first (v2.3.1196b,
 commit 4d31448f, is the tuning pattern).
 
-### G. PNG → WebP conversion
-325 PNGs, ~20MB under `public/`. Needs a machine with `cwebp` — the
-sandbox has no lossless WebP encoder (`tools/webp_convert.mjs` drives
-canvas, whose WebP is lossy and would corrupt the recolor-keyed
-player/gear sheets). `find public -name '*.png' -exec sh -c
-'cwebp -lossless "$1" -o "${1%.png}.webp"' _ {} \;`, then delete the
-.png twins in a follow-up once verified; `loadWebpOrPng`
-(`src/rendering/webpImage.js`) already prefers .webp per-file.
-Danger: sprites/player + sprites/gear MUST be `-lossless` — the tint
+**v2.3.2067 — all three run against a real local stack, none promoted.**
+Two things about the criterion itself, before the per-harness state:
+
+1. **The Actions history cannot answer it.** A `continue-on-error` step
+   that FAILS is reported as `conclusion: success` by the UI and the
+   API. Run 1431 (2026-08-26) is a green `smoke` job whose log says
+   `6 GEAR-SMOKE CHECK(S) FAILED`. Count green runs from step OUTPUT
+   or the count is fiction.
+2. **There is almost no history to count.** The job left the PR path in
+   v2.3.1333 and has been dispatched 7 times ever, 3 of them since — so
+   "~10 consecutive CI runs" is, at the current rate, years away.
+   Promotion here is really a judgement on locally gathered evidence;
+   whoever promotes should say which evidence.
+
+Per harness:
+
+- **qa-combat-predict — BLOCKED, needs a rewrite, not a tune.** Its
+  v2.3.1190 route (town → worldview → ember) is shut by two HARD gates
+  added since: the Mayor gate (v2.3.1676 — quest `tut_1` must be
+  accepted before you may leave town) and the per-zone quest unlock
+  (v2.3.1817, enforced server-side in `movement.js`). It fails on
+  assertion one, identically in CI and locally, having ghost-hopped
+  onto the exit tile; its three reconciliation checks — the point of
+  the file — have never executed. Fixing it means giving it the
+  questline prologue `tools/qa/mp/mp-questline.mjs` already drives.
+- **qa-gear-smoke — REPAIRED, 12/12, still report-only.** It was
+  failing on itself, not on the game: a localStorage key the module
+  renamed (v2.3.1665), a sprite URL the renderer stopped requesting
+  (recolours draw their donor's sheets, v2.3.1757/1772), and a crop
+  that mapped world→screen without `S._worldScaleX/Y`, so at
+  WORLD_ZOOM it sampled ground 130px away from the bro — identical
+  bare and armoured, which is what its "armor does not render" verdict
+  was really reporting. All three fixed; the gating metric went
+  0.0034 → 0.2229 against a 0.0161 noise floor, stable over four
+  consecutive local runs. Left report-only because that sampling code
+  has zero CI runs behind it: the next step is a stabilization series
+  on the dispatched job, then delete the line.
+- **qa-party-smoke — BLOCKED by a live UI regression.** All 11 of its
+  own checks pass; it then dies clicking Leave, because the World Chat
+  feed (v2.3.2037) is drawn over the party roster and takes the tap.
+  At 844x390 with `--dash-h` 265px the feed sits at y 84..117 and the
+  Leave button at y 98..122 — a panel anchored `bottom: calc(--dash-h
+  + 8px)` is in the top-left HUD column, not the lower left, once the
+  band is two thirds of the screen. It covers the quest tracker and
+  the roster (zLayers: feed 25, roster 16, tracker 17-19). Where the
+  feed should go instead is an owner/design call, so it is reported
+  rather than guessed at — see `src/ui/mobile/WorldChatFeed.jsx`,
+  whose own header says "IT DOES NOT EAT TAPS".
+
+### G. PNG → WebP conversion — `public/icons` SHIPPED v2.3.2068
+**The "no lossless encoder here" claim was false.** Pillow in this
+sandbox is built with libwebp (`PIL.features.check('webp')` is true),
+so lossless VP8L encodes run locally — no `cwebp`, no CI round trip,
+no Chromium canvas. `tools/webp_convert.mjs` (the canvas driver) is
+only needed on a machine without Pillow, and its WebP is lossy.
+
+`public/icons` is done: 27 PNGs, 1,041,647 → 415,394 bytes (60.1%),
+by `python3 tools/webp_icons.py --convert` (run it with no flag to
+re-print the measurement). Alpha came back bit-identical on every
+file at every quality — libwebp compresses the alpha plane losslessly
+at its default `alpha_quality=100`, and the tool asserts it and
+refuses to write if it ever moves. Painted item art ships LOSSLESS
+(lossy q90 costs it 2.6–6.9/255 mean on opaque pixels — visible
+banding on those gradients); the `-3x` UI frames ship q90, judged at
+the 1/3 they are drawn at, where it costs 0.5–0.9/255 and 10–25× the
+bytes. Two traps found doing it, both invisible to a filename grep:
+- `metalIconPath()` (`traits/materialTints.js`) BUILDS the per-metal
+  icon name by concatenation, so `sword-copper` / `chest-plate-iron`
+  had no literal anywhere. It, and the two generators that write by
+  the same rule (`tools/gear/make-metal-icons.mjs`,
+  `make-pine-wood.mjs`, plus `tools/build-verified-badge.mjs`), now
+  end in the convert pass so the rule and the files cannot drift.
+- `public/icons/shards/*.png` must NOT be converted: a
+  `shard_<zone>.webp` of the same name already sits there and is the
+  LIVE art (256px, `effectsRenderer` + `data/shards.js`). The .png
+  twins are stale 128px sources from `tools/shards/build_shards.py`
+  that nothing references; converting them would overwrite live art
+  with an older picture at half the size. `webp_icons.py` skips that
+  directory by name.
+
+Remaining: `public/sprites` (~290 PNGs, ~19MB) and `public/ui`. Those
+are the ones `loadWebpOrPng` (`src/rendering/webpImage.js`) already
+prefers .webp for per-file, so they can convert without a reference
+edit — generate the .webp, verify, then delete the .png twins.
+Danger: sprites/player + sprites/gear MUST be lossless — the tint
 pipeline (playerSkins.js brightness-ratio retint) reads exact RGB.
+Monsters were tried and REVERTED once already (lossless saved ~8%,
+lossy q90 came out LARGER than the PNG — see `tools/optimize-sprites.mjs`).
 
 ### H. Proto-WARN triage — SHIPPED v2.3.1214
 All 16 flagged plain-`{}` sites triaged; the whole-tree sweep

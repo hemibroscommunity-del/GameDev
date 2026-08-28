@@ -38,7 +38,7 @@ async function face(P, idx) {
     const S = window._gameState.current;
     S._facingAngle = i * Math.PI / 4;
     S._aimAngle = undefined;
-    S.lockedMonster = null;
+    S.lockedTarget = null;
   }, idx);
   await P.page.waitForTimeout(320);
   return P.page.evaluate(() => window.__btBackShield || null);
@@ -168,7 +168,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (S && p && p.on) {
         const a = p.i * Math.PI / 4;
         S._facingAngle = a; S._aimAngle = a; S._mouseAimAngle = a;
-        S._shieldKb = false; S.lockedMonster = null;
+        S._shieldKb = false; S.lockedTarget = null;
         if (S.player) { S.player.vx = 0; S.player.vy = 0; }
         if (p.kind === 'sword') { S.isSwinging = true; S.swingTimer = Date.now(); S._swingAng = a; }
         else { S._bowShotAt = Date.now(); S._bowShotAng = a; }

@@ -13,6 +13,7 @@ import { buildSkillUnspent, STAT_TO_WEAPON_CAT } from '../../../data/gameSystems
 import { registerXpCard, displayXp, xpCounting } from '../../xpLanding.js'; /* v2.3.1874 */
 import { dashTileSize, dashPanelWidths, combatPillWidth, combatPillHeight, BAG_VIEW_COLS, DASH_GAP, DASH_ROWS, BAG_HEADER_H } from '../sheet/sheetGeometry.js';
 import { playVw } from '../playViewport.js';
+import { shopBus } from '../shopBus.js';   /* v2.3.2059 */
 
 /* v2.3.1636 (owner, with a reference screenshot of the pre-v2.3.1287
    dashboard): the THREE-COLUMN ROW — BAG / LOADOUT / BUILD restored as
@@ -114,6 +115,13 @@ export const DashColumns = ({ R }) => {
   const rpg = R || {};
   const [bagFilter, setBagFilter] = React.useState(bagFilterBus.get());
   React.useEffect(() => bagFilterBus.subscribe(setBagFilter), []);
+  /* v2.3.2059: the bag's tiles grow a gold quote and a selected ring while
+     Shopkeeper Bro's drawer is open (see ItemTile). Those come off shopBus,
+     which is outside React, so this row has to be told when it moves --
+     otherwise the prices would only appear on whatever re-render happened to
+     come next. Same pattern as the filter bus one line up. */
+  const [, _shopTick] = React.useState(0);
+  React.useEffect(() => shopBus.subscribe(() => _shopTick((n) => (n + 1) % 1000000)), []);
   /* ═══ v2.3.1874: RE-RENDER WHILE A NUMBER IS COUNTING ═══
      The count-up is computed in render (displayXp reads a clock), so without
      something to drive frames it would show one value and stop.  This ticks

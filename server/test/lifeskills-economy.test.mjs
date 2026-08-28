@@ -339,22 +339,40 @@ await send(ws, 'cook_recipe', { recipeIdx: 1 });
 check('recipe: missing one ingredient consumes NOTHING (dry-run rule)', econSnap(ps) === preRecipe);
 
 // ── 5. shop_purchase ──
-const TRAP = SHOP_ITEMS.basicTrap;
+/* v2.3.2069: this section used to buy a basicTrap, which is no longer on the
+   shelf (owner: "Remove the 20g trap from the shop it has no effect in the
+   game currently"). What it is actually testing is the PURCHASE PATH -- exact
+   debit, no phantom discount, and a clean no-op when you cannot afford it --
+   so it is repointed at a live item rather than deleted. The vehicle is now
+   the stamina salts, whose effect is observable on ps.stamina; the trap's own
+   line stays below as a guard that the removal is real. */
+const SALTS = SHOP_ITEMS.staminaSalts;
 ps.coins = 100; ps.inventory = {};
-await send(ws, 'shop_purchase', { itemId: 'basicTrap' });
-check('shop: exact debit + trap in inventory',
-  ps.coins === 100 - TRAP.cost && ps.inventory.basic_trap === 1, { coins: ps.coins, inv: ps.inventory });
+ps.maxStamina = 100; ps.stamina = 10;
+await send(ws, 'shop_purchase', { itemId: 'staminaSalts' });
+check('shop: exact debit + the effect actually lands',
+  ps.coins === 100 - SALTS.cost && ps.stamina === 10 + SALTS.power,
+  { coins: ps.coins, stamina: ps.stamina });
 // v2.3.1155: the influence discount retired with the stat — even a blob
 // carrying a stale influence value pays full price.
-ps.coins = 100; ps.influence = 50;
-await send(ws, 'shop_purchase', { itemId: 'basicTrap' });
+ps.coins = 100; ps.influence = 50; ps.stamina = 10;
+await send(ws, 'shop_purchase', { itemId: 'staminaSalts' });
 check('shop: retired influence discount no longer applies (full price)',
-  ps.coins === 100 - TRAP.cost, { coins: ps.coins });
+  ps.coins === 100 - SALTS.cost, { coins: ps.coins });
 delete ps.influence;
 ps.coins = 3;
 const preShop = econSnap(ps);
-await send(ws, 'shop_purchase', { itemId: 'basicTrap' });
+await send(ws, 'shop_purchase', { itemId: 'staminaSalts' });
 check('shop: insufficient coins is a clean no-op', econSnap(ps) === preShop);
+/* The removal, pinned: a purchase for an itemId the table no longer carries
+   must take nothing and give nothing. Without this the trap could be quietly
+   re-added and no test would notice. */
+ps.coins = 100;
+const preTrap = econSnap(ps);
+await send(ws, 'shop_purchase', { itemId: 'basicTrap' });
+check('shop: the trap is off the shelf — buying it is a no-op, and free',
+  !SHOP_ITEMS.basicTrap && econSnap(ps) === preTrap && ps.coins === 100,
+  { coins: ps.coins, inv: ps.inventory });
 
 // ── 6. harvest (extraction window + node_strike) ──
 ps.z = 'meadow';

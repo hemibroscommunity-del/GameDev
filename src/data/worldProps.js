@@ -19,89 +19,308 @@
  * same y sit on the same line.
  */
 export const WORLD_PROPS = [
+  /* ═══ v2.3.2065: THE TOWN, LAID OUT TO THE OWNER'S BLUEPRINT ═══
+     The owner supplied a mockup of where things go: mayor's house up the
+     stairs, blacksmith west, general store east, fountain dead centre, a
+     market stall and banners toward the south gate.
+
+     EVERY POSITION IS DERIVED, not eyeballed. The blueprint is a REDRAW of
+     town_v17, not a pixel overlay -- a different size and a slightly
+     different plateau -- so the two were registered by the one feature they
+     share: the cobble plateau's bounding box, found by colour in both
+     (a warm-sand test tight enough to exclude the yellow-green canopy, which
+     a looser one swallowed and which made the first registration span the
+     whole image). Blueprint pixels map through that box onto world pixels,
+     and every result was then SAMPLED on the live art -- a disc of ground
+     around each point, classified cobble / rock / foliage -- because the
+     blueprint's plateau is drawn a little wider than the real one and two
+     of these landed in the trees at the position it implied. The forge moved
+     50px east and the market stall 40px, on that evidence.
+
+     WHAT IS NOT HERE. The blueprint also shows a second (potion) stall and a
+     stone gate arch. There is no art for either -- the sheet the owner sent
+     carries lamps, benches and fence rails -- so inventing them from the
+     pieces to hand would have meant shipping something that is not what the
+     mockup shows. The banner rails below stand in for the gate's banners;
+     the arch and the potion stall are the two things still to draw.
+
+     ═══ WHAT BLOCKS: EVERYTHING, SINCE v2.3.2073 ═══
+     Owner: "It should be obvious but make sure the objects are unwalkable."
+
+     It used to be buildings and the fountain only. Lamps, benches, banner
+     rails, the anvil and the market stall were deliberately left walk-through
+     on the reasoning that they are thin dressing and "a plaza with a
+     walk-through bench is a smaller annoyance than one where you can wedge
+     yourself between a bench and a fountain". The owner's answer to that is
+     the line above, and they are right: a lamp post you stroll through is not
+     a lamp post.
+
+     The four that DID block were also blocking far less than they looked. The
+     footprint is a box `blockW` wide and `blockD` deep at the sprite's base,
+     and the forge's was 330 of its 551 px width and 110 of its 500 px height
+     -- so two thirds of the building was solid and the rest was air. Every
+     footprint is now measured off the art: `blockW` is the GROUND-FLOOR wall
+     width (the widest run of the sprite's bottom quarter, which excludes the
+     roof overhang), and `blockD` the depth of that base. An isometric roof
+     hangs over its walls, and blocking the roof's shadow leaves the player
+     bumping into thin air a body-length from the door.
+
+     UNWALKABLE MUST NOT MEAN IMPRISONING. Twelve footprints in one small
+     plaza can seal a corner without anyone noticing, so the whole grid is
+     flood-filled from the town exit -- the same 16 px cells the client builds
+     (installPropOnlyGrids), sampled at the player's own half-width -- and
+     every door, every townsperson and every walkable cell has to come back
+     reachable. It does: 100% of usable cells connect to the exit, and no
+     pocket is cut off. mp-plazaplate holds the in-game half of that.
+
+     `mapV` gates placement (see propIsPlaced): 17 is the map that ships. */
   {
-    /* Owner: "This anvil belongs near the blacksmith."  He stands at
-       (648, 812); this is a step to his west, past his sprite's left edge
-       (~590) and clear of the lamp post at (633, 890).
-       46 world px tall reads as an anvil at a smith's knee — a real one is
-       roughly a third of a person, and a person here is 120. */
-    id: 'anvil', zone: 'town',
-    sprite: '/sprites/props/anvil.png',
-    x: 1310, y: 660, worldH: 46,
+    /* ═══ UP THE STAIRS, as the blueprint has it -- BUT NOT AS FAR EAST ═══
+       The blueprint agrees with the v2.3.2061 placement in intent (top of the
+       ramp, above the stairs) and nudges it ~40px east. That nudge does NOT
+       survive contact with the real map: its terrace is drawn wider than the
+       one that exists, and at (790,450) the house's east edge lands on
+       x=874, where the ground samples 60% PINE. The centre point still reads
+       98% cobble, which is exactly why a centre-only check is not enough --
+       what matters is where the EDGES fall.
+
+       So this keeps the measured position: the terrace's clear cobble runs
+       x 660..830, and at worldH 165 the art is 159 wide and sits inside it.
+       The blueprint's own house is bigger; that is one of the details the
+       owner said to ignore. */
+    /* ═══ v2.3.2069: BIGGER, AND WHY NOT THE FULL 3x ═══
+       Owner: "Make the mayors house larger by about 3x."
+
+       165 -> 400 is 2.4x, and it is the most the map has room for. At a true
+       3x (495) the roof reaches y=-45 -- off the TOP of the world, because
+       this house stands on the northern terrace at y=470 and there is only
+       470px of map above it. There is no version of 3x here that is not
+       partly drawn outside the map.
+
+       The width is the other half. At 400 the art is 386 across, spanning
+       x 567..953, and the terrace's clear cobble is only x 660..830 -- so it
+       DOES overhang, onto the pines either side. That was rendered and
+       looked at rather than reasoned about: the house reads as nestled into
+       the trees, which is what a house on a wooded terrace should look like.
+       It is covering foliage, not a cliff face, which is the overhang that
+       reads as floating.
+
+       Nudged 10px east of the measured centre so the left edge sits on
+       greenery rather than the rocky shoulder at x 545 (10% cliff on a 30px
+       disc). The BLOCK stays much narrower than the art -- an isometric
+       roof overhangs its walls, and blocking the roof's shadow leaves the
+       player bumping into thin air a body-length from the door. */
+    id: 'mayor-house', zone: 'town', mapV: 17,
+    sprite: '/sprites/props/mayor-house.png',
+    x: 760, y: 470, worldH: 400, blockW: 330, blockD: 150,
+    /* No action: Mayor Bro stands outside handing out the tutorial, and a
+       door that opens a panel he already covers is a second, worse way to
+       talk to him. */
   },
   {
-    /* The storekeeper's stall, on the fountain's east shoulder — the mirror of
-       the blacksmith's corner, so the plaza has a trade on each side.
-       170 world px puts the canopy about a head and a half above a person,
-       which is what a market awning is.  It is drawn from its bottom edge, so
-       the counter meets the cobbles at y and the canopy rises from there. */
-    id: 'market-stall', zone: 'town',
-    sprite: '/sprites/props/market-stall.png',
-    x: 2560, y: 700, worldH: 170,
-  },
+    /* BLACKSMITH, west side. The blueprint's own position (300,810) samples
+       83% cobble -- the rest is the western tree line -- so it sits 50px east
+       at 98%. `action` makes the door work: ForgePanel has been unreachable
+       since the props were switched off. */
+    /* ═══ v2.3.2069: BIGGER, AND WHY NOT THE FULL 3x ═══
+       Owner: "Same with blacksmith house."
 
-  /* ═══ v2.3.1778: THE BUILDINGS ═══
-     Owner supplied the art and asked for them placed and "Not walkable".
+       200 -> 500 is 2.5x, and again it is what fits. This art is WIDER than
+       it is tall (1.10), so height is not the binding constraint here --
+       width is: at a true 3x it would be 661 across, and there is only
+       x 200..760 of clear cobble at this latitude before the west tree line
+       on one side and the fountain's own footprint on the other. Sampled at
+       3x, its left edge lands on ground that is 53% leaf and its right edge
+       reaches x=760, a hair from the fountain basin. 500 spans x 205..755
+       and both edges sample 98% open cobble.
 
-     `blockW` / `blockD` are the FOOTPRINT the building occupies on the
-     ground, in world px, measured from its bottom-centre — deliberately
-     smaller than the drawn sprite, because an isometric building's roof
-     overhangs its base and blocking the roof's shadow would leave the player
-     bumping into thin air a body-length from the wall.
-
-     `action` opens the building's panel.  Those panels have been UNREACHABLE
-     since v2.3.823, which forced `S.nearBuilding = null` every frame because
-     "the town buildings have no in-game art yet, so their Enter prompts were
-     floating over empty painted ground" — and left the note "Restore the
-     BUILDINGS proximity scan here when building art ships."  It has shipped.
-
-     Laid along the plateau's northern arc with their backs toward the cliff,
-     which is where a town puts its shopfronts and leaves the whole southern
-     half open to walk.  Every footprint was checked against the walk grid
-     before placement, and the grid re-checked for connectivity afterwards:
-     five solid blocks in a bowl is an easy way to wall the town in half. */
-  {
-    /* ═══ v2.3.1794: UP ON THE HILL ═══
-       Owner: "put mayor bros house up on the hill (above the stairs) and mayor
-       bro right outside the house."  It stood on the lower plaza at (1180,585),
-       in the row with the forge and the bank, which made the town's one
-       landmark just another shopfront.
-
-       Placed by reading the art rather than by eye: the walled courtyard at the
-       top of the stairs is sand from about x 750..1150 and y 120..300, with the
-       stair head at (960,300).  A prop's (x,y) is its BOTTOM-CENTRE
-       (anchor 0.5,1), so the base sits on the courtyard floor at y=300 and the
-       house draws upward from there.
-
-       worldH 300 -> 235 for the same reason: at 300 the roof reached y=0 and
-       stood over the cliffs and pines that ring the terrace.  235 fits between
-       the cliff line (~60) and the stair head, and a slightly smaller building
-       on a raised terrace reads as further away, which is what it is. */
-    id: 'mayor-house', zone: 'town', sprite: '/sprites/props/mayor-house.png',
-    x: 930, y: 300, worldH: 235, blockW: 165, blockD: 75,
-    /* No action: it is Mayor Bro's house, and he is standing outside it
-       handing out the tutorial.  A door that opens a panel he already covers
-       would be a second, worse way to talk to him. */
-  },
-  {
-    id: 'forge', zone: 'town', sprite: '/sprites/props/forge.png',
-    x: 1480, y: 545, worldH: 300, blockW: 220, blockD: 95,
+       Moved from (350,850) to (480,900): the extra width has to come from
+       somewhere, and taking it eastward keeps the building off the trees
+       while leaving the plaza's middle clear. */
+    id: 'forge', zone: 'town', mapV: 17, sprite: '/sprites/props/forge.png',
+    x: 480, y: 900, worldH: 500, blockW: 470, blockD: 200,
     action: 'forge', label: 'BLACKSMITH',
   },
   {
-    id: 'bank', zone: 'town', sprite: '/sprites/props/bank.png',
-    x: 1810, y: 505, worldH: 320, blockW: 220, blockD: 95,
+    /* GENERAL STORE, east side, mirroring the forge. Its shelf is where the
+       potions are bought from -- Shopkeeper Bro sells them too (v2.3.2063),
+       and having both is the blueprint's own arrangement: a shop you walk
+       into and a merchant who walks up to you. */
+    id: 'general-store', zone: 'town', mapV: 17,
+    sprite: '/sprites/props/general-store.png',
+    x: 1290, y: 800, worldH: 200, blockW: 190, blockD: 85,
+    action: 'shop', label: 'GENERAL STORE',
+  },
+  {
+    /* ═══ THE FOUNTAIN, MOVED TO THE MIDDLE ═══
+       v2.3.2061 put it at (830,1215), which was measured against open ground
+       rather than against a plan. The blueprint makes it the plaza's centre
+       piece with the buildings arranged around it, so it comes 135px north to
+       (860,1080) -- 99.5% open cobble on an 80px disc, and now equidistant
+       from the forge and the store. */
+    id: 'fountain', zone: 'town', mapV: 17,
+    mapIcon: null,   /* not a building: no roof glyph on the minimap */
+    sprite: '/sprites/props/fountain.webp',
+    anim: { frames: 8, fps: 12 },
+    x: 860, y: 1080, worldH: 170, blockW: 165, blockD: 62,
+  },
+  {
+    /* The market stall, south-west, where the blueprint's produce awning is.
+       Scenery: the counter is a painted front, there is nobody behind it, and
+       blocking a thing you cannot use only makes the plaza smaller. */
+    id: 'market-stall', zone: 'town', mapV: 17,
+    mapIcon: null,
+    sprite: '/sprites/props/market-stall.png',
+    x: 430, y: 1310, worldH: 150, blockW: 185, blockD: 60,
+  },
+  /* ═══ DRESSING ═══
+     From the owner's props sheet (tools/import_town_props.py). Sized against
+     a person, who is 120 world px tall here: a lamp stands head and shoulders
+     over one, a bench comes to the hip, a banner rail to the chest. None of
+     them block -- see the header note. */
+  {
+    /* v2.3.2073: moved off the anvil.  At (660,1000) its pole was drawn
+       straight through the anvil and the west bench -- three objects inside
+       forty pixels, which the layout render made obvious the moment they all
+       had footprints.  (590,1080) mirrors lamp-plaza-e about the fountain's
+       axis, so the plaza has a lamp at each shoulder instead of a pile on one
+       side. */
+    id: 'lamp-plaza-w', zone: 'town', mapV: 17, mapIcon: null,
+    sprite: '/sprites/props/lamp-post.webp',
+    x: 590, y: 1080, worldH: 150, blockW: 34, blockD: 20,
+  },
+  {
+    id: 'lamp-plaza-e', zone: 'town', mapV: 17, mapIcon: null,
+    sprite: '/sprites/props/lamp-post.webp',
+    x: 1130, y: 1080, worldH: 150, blockW: 34, blockD: 20,
+  },
+  /* ═══ v2.3.2071: BOTH BENCHES LOOK AT THE FOUNTAIN ═══
+     Owner: "Position the benches so that lengthwise they face the fountain.
+     Tallest back part should be furthest back from the fountains."
+
+     WHAT THE ART CAN DO decides where they go. The bench is one
+     three-quarter view: its length runs lower-left to upper-right, the
+     backrest is on the NORTH-WEST side and the seat faces SOUTH-EAST. There
+     is no rear view and no north-facing pose, so a bench can only ever sit
+     north-west of what it looks at -- or north-EAST of it, mirrored, which is
+     what `flipX` is for. That is why they are a pair on the fountain's north
+     side rather than ringing it: two benches at the head of the square
+     looking in at the water is the arrangement this art actually supports.
+
+     The old bench-e was the case that made the ask: at (1050, 1230) the
+     fountain was up and to its LEFT, so it had its back to the water and a
+     sitter faced away across the plaza.
+
+     Both are now 130 px either side of the fountain's axis at the same y, so
+     they mirror each other exactly. Measured, not eyeballed: the line to the
+     fountain leaves each one at 39 degrees below horizontal (the diagonal the
+     art's seat is drawn along), the ground under each base band samples 93%
+     and 97% cobble, and neither drawn rect touches another prop's.
+
+     THE WEST ONE SITS INSIDE SHOPKEEPER BRO'S PATROL, by about 20 px, and
+     that is the best the north-west quadrant allows -- a sweep of every
+     position in the plaza found seventeen spots that satisfy the owner's
+     geometry on that side and all seventeen are inside his 110 px wander
+     disc, because the forge, its anvil, the west lamp and the blacksmith
+     already own the rest of it. Benches are non-blocking dressing by design
+     (see the header), so he ambles past rather than getting stuck; worth an
+     owner's eye if he ever reads as standing IN it. */
+  {
+    /* ═══ v2.3.2088: ONE BENCH, AND IT FINALLY FACES THE WATER ═══
+       Owner: "Remove the banners and bench-e. Rotate bench-w clockwise (so
+       the seat portion faces the fountain)."
+
+       THE ART WAS READ BACKWARDS IN v2.3.2071.  That note says "the backrest
+       is on the NORTH-WEST side and the seat faces SOUTH-EAST", and the sprite
+       says the opposite: the backrest runs along the upper-right and the seat
+       opens toward the LOWER-LEFT.  So a bench placed north-west of the
+       fountain -- which is what both of them were, on that reasoning -- had
+       its back to the water, which is the fault the owner reported in the
+       first place.  Two benches were arranged symmetrically around a mistake.
+
+       AND THE FIX IS A MIRROR, NOT A ROTATION.  Rotating this sprite 90
+       degrees does not turn the bench, it tips it over: the art is a single
+       three-quarter view drawn against the ground plane, so a 2D rotation
+       rotates the perspective too and the bench ends up lying on its side.
+       Rendered all four options and looked at them.  `flipX` swings the seat
+       from lower-left to lower-RIGHT, and from (730, 975) the fountain at
+       (860, 1080) is exactly lower-right -- so the mirror is what the owner's
+       parenthetical actually asks for, and the rotation is what it cannot
+       have without new art. */
+    id: 'bench-w', zone: 'town', mapV: 17, mapIcon: null,
+    sprite: '/sprites/props/bench.webp',
+    x: 730, y: 975, worldH: 75, blockW: 72, blockD: 34, flipX: true,
+  },
+  /* ═══ v2.3.2088: THE GATE BANNERS ARE GONE ═══
+     Owner: "Remove the banners and bench-e."
+
+     v2.3.2078 had already taken their FOOTPRINTS off, because banner-gate-e
+     stood at x 810 with a 78px block and the World View trail-head is on the
+     stairs at world x 800..832 -- it had walled the town's only way out, and
+     five lanes walked south all stopped dead at y 1412.  The art stayed
+     because the owner had placed it.  Now the art goes too, so the south
+     approach is open ground and there is nothing left at the gate to walk
+     into or around.
+
+     The pair were standing in for a banner ARCH the blueprint wants and the
+     game does not have art for.  If that arch is ever drawn, it belongs here,
+     and it must clear x 800..832 or it repeats v2.3.2078 exactly. */
+  {
+    /* Owner: "This anvil belongs near the blacksmith." It follows the forge
+       west -- it was measured against the v16 town and has been off the map
+       since. A step from his door and clear of the wall, at (470,930) rather
+       than the (500,880) this was first placed at: sampling the EDGES rather
+       than the centre put its right-hand side 39% in a shrub. Centre-only
+       checks pass things that hang over scenery -- the mayor's house did the
+       same thing in this pass. */
+    id: 'anvil', zone: 'town', mapV: 17, mapIcon: null,
+    sprite: '/sprites/props/anvil.png',
+    x: 640, y: 960, worldH: 46, blockW: 46, blockD: 24,
+  },
+
+  /* ═══ STILL UNPLACED: measured against town_v16 (96x30 tiles) ═══
+     The map that ships is 52x55, so these x values run off the right-hand
+     edge of the world. They are a to-do, not a deletion: re-measure against
+     the current art, mark them mapV 17, and they come back. */
+  /* ═══ v2.3.2086: THE BANK AND THE ENCHANTER COME BACK ═══
+     The note above says exactly what to do -- "re-measure against the current
+     art, mark them mapV 17, and they come back" -- and this is that, done.
+     They had sat at x 1810 and x 2130, off the right edge of a 52x55 map,
+     since the v17 art landed.
+
+     WHY THEY WERE WORTH FINDING.  Twelve building panels are written and
+     working; only TWO had a door on the current map (forge and general-store,
+     the two with `action` above).  These two are the cheapest of the ten
+     missing: the art ships, the panels ship, and only the coordinates were
+     stale.  The other eight need either new art or a decision to reach them
+     another way, which is the owner's call and not a placement problem.
+
+     PLACED THE SAME WAY EVERY OTHER PROP HERE WAS: candidate anchors filtered
+     to those whose whole footprint AND a 70px standing apron in front of the
+     door are clear of every other footprint, then rendered and looked at
+     (tools/maps/render_town_layout.py).  Both sit on the east plaza, which is
+     the only quarter with room for a 220-wide building that is not already
+     spoken for -- the west half holds the forge (470 across) and the market
+     stall, and the north is the mayor's terrace. */
+  {
+    id: 'bank', zone: 'town', mapV: 17, sprite: '/sprites/props/bank.png',
+    x: 1230, y: 1290, worldH: 320, blockW: 220, blockD: 95,
     action: 'bank', label: 'BANK',
   },
   {
-    id: 'enchanter', zone: 'town', sprite: '/sprites/props/enchanter.png',
-    x: 2130, y: 525, worldH: 300, blockW: 220, blockD: 95,
+    /* NORTH-EAST, not stacked under the bank.  The first placement put it at
+       (1180, 1000), which the layout render showed crowding the general store:
+       220 of spire drawn through a shop 190 wide, and Storekeeper Bro standing
+       in the seam.  There is not room on the east flank for two 300px
+       buildings AND the store between the plaza and the wall -- the clear run
+       is about 550px and they want 620.
+       So it takes the empty quarter instead: the cobble between the mayor's
+       terrace and the store, which held nothing at all.  Art spans y 400..700
+       and x 940..1160, clear of the mayor's house (its art ends at x 925) and
+       of the store (its footprint starts at x 1195). */
+    id: 'enchanter', zone: 'town', mapV: 17, sprite: '/sprites/props/enchanter.png',
+    x: 1050, y: 700, worldH: 300, blockW: 220, blockD: 95,
     action: 'enchant', label: 'ENCHANTER',
-  },
-  {
-    id: 'general-store', zone: 'town', sprite: '/sprites/props/general-store.png',
-    x: 2440, y: 600, worldH: 300, blockW: 210, blockD: 95,
-    action: 'shop', label: 'GENERAL STORE',
   },
 ];
 
@@ -149,14 +368,45 @@ export function buildingPropNear(zoneId, x, y, range) {
  *  Flip to true to get them back exactly as they were. */
 export const TOWN_PROPS_ENABLED = false;
 
+/** ═══ v2.3.2061: THE TOWN MAP A PROP'S POSITION WAS MEASURED AGAINST ═══
+ *  Bump this when the town art is re-fused again, and every prop still
+ *  carrying the old number drops out of the world instead of standing in the
+ *  wrong place. That is the whole mechanism: TOWN_PROPS_ENABLED above is a
+ *  blanket "the v16 set is off", which was right while ALL of them were stale,
+ *  but it cannot express what is true now -- the mayor's house and the
+ *  fountain have been measured against town_v17 and the other six have not.
+ *  Flipping the blanket flag to ship two props would have dragged four
+ *  buildings back to coordinates up to 2560 on a map 1664 wide. */
+export const TOWN_MAP_V = 17;
+
+/** Is this prop's position good for the map that is actually loaded?
+ *  Town props declare `mapV`; anything measured against the CURRENT map draws
+ *  regardless of the blanket switch, and anything older is held behind it. */
+function propIsPlaced(p) {
+  if (!p || p.zone !== 'town') return true;
+  return p.mapV === TOWN_MAP_V ? true : TOWN_PROPS_ENABLED;
+}
+
 export function propsForZone(zoneId) {
-  if (zoneId === 'town' && !TOWN_PROPS_ENABLED) return [];
-  return WORLD_PROPS.filter((p) => p.zone === zoneId);
+  return WORLD_PROPS.filter((p) => p.zone === zoneId && propIsPlaced(p));
 }
 
 /** Every distinct prop sprite — the preload manifest's source list. */
 export function propSpriteSources() {
-  return [...new Set(WORLD_PROPS.map((p) => p.sprite).filter(Boolean))];
+  /* v2.3.2061: only the props that can actually be DRAWN. The four v16
+     buildings are held back until someone re-measures them (propIsPlaced), and
+     preloading ~1MB of art for objects no zone will ask for is a cost paid on
+     the startup gate -- the one place in this game where bytes are most
+     expensive. They come back with their positions, in the same change. */
+  return [...new Set(WORLD_PROPS.filter(propIsPlaced).map((p) => p.sprite).filter(Boolean))];
+}
+
+/** Props that are ANIMATED — `{id, sprite, frames}` — for the strip slicer.
+ *  Separate from propSpriteSources because the loader needs the frame count
+ *  to cut the strip, and the manifest only needs the url. */
+export function propAnimStrips() {
+  return WORLD_PROPS.filter((p) => propIsPlaced(p) && p.anim && p.anim.frames > 1)
+    .map((p) => ({ id: p.id, sprite: p.sprite, frames: p.anim.frames }));
 }
 
 /* v2.3.1813 dev probe, house style (__btWorldProps): the props switch itself.

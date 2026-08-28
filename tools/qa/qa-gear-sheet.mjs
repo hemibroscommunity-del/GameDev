@@ -151,6 +151,7 @@ if (DRY) { console.log('dry-run: no browser launched.'); process.exit(0); }
 
 /* ── browser boot (same pattern as qa-smoke.mjs) ─────────────────────── */
 const { chromium } = await import('playwright-core');
+const { legacyLogin } = await import('./legacy-login.mjs');
 const SHELL = '/tmp/chrome-headless-shell-linux64/chrome-headless-shell';
 const PWCHROME = '/opt/pw-browsers/chromium';
 const EXE = process.env.QA_CHROME || (existsSync(SHELL) ? SHELL : (existsSync(PWCHROME) ? PWCHROME : undefined));
@@ -170,10 +171,11 @@ if (process.env.QA_WS_URL) {
    which carries the `gear` equip command — is exposed unconditionally). */
 await page.goto(URL + (URL.includes('?') ? '&' : '?') + 'noresume=1&nodebug=1', { waitUntil: 'domcontentloaded', timeout: 60000 });
 await sleep(7000);
+/* v2.3.1964: the splash has no name box — it has a login door.
+   legacyLogin takes the same route a player takes (see
+   tools/qa/legacy-login.mjs for what broke and when). */
 try {
-  const input = page.locator('input').first();
-  await input.fill('GearQA', { timeout: 30000 });
-  await input.press('Enter');
+  await legacyLogin(page, 'GearQA');
 } catch (e) { console.log('login flow issue:', e.message); }
 
 let joined = false;

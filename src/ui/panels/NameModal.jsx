@@ -3,13 +3,12 @@ import { PlayerPaint } from './PlayerPaint.jsx';   /* v2.3.1938; v2.3.1940 pants
 /* v2.3.1947: the designer shows the character wearing what you are making, and
    it has to be the SAME character the stage behind it is showing -- so it gets
    the look from the one function that builds it, not a second copy. */
-import { portraitLook } from '@/game/characterCreatorEffects.js';
+import { portraitLook, categoryCrops } from '@/game/characterCreatorEffects.js';
 import { BUILD_INFO } from '../BuildBadge.jsx';
 /* v2.3.1143: account login -- "Already have a character?" entry point
    for a player on a NEW device, who lands on this splash with a fresh
    silent identity and needs a way in with their saved Login Key before
    pressing PLAY (which would start binding progress to the fresh one). */
-import { AccountModal } from '../account/AccountModal.jsx';
 import { PANTS_CATALOG, SHOES_CATALOG, SKIN_CATALOG, setPants, setShoes, setSkin } from '@/rendering/playerSkins.js';
 import { FACIALHAIR_CATALOG, setFacialHair } from '@/rendering/traits/facialHairCatalog.js';
 import { FACIALHAIR_COLOR_CATALOG, setFacialHairColor } from '@/rendering/traits/facialHairColorCatalog.js';
@@ -21,6 +20,7 @@ import { HEADWEAR_CATALOG, headwearIsSolid, setHeadwear } from '@/rendering/trai
 import { SHIRT_CATALOG, setShirt } from '@/rendering/traits/shirtCatalog.js';
 import { SHIRT_COLOR_CATALOG, setShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
 import { recolorEnabled, SOLID_ONLY_HAT_COLOR } from '@/rendering/traits/recolorOptions.js';
+import { HEIGHT_CATALOG, setBuildHeight } from '@/rendering/traits/buildCatalog.js';   /* v2.3.1953; v2.3.1996: frame picker removed */
 
 /* === NameModal — the character-creator / name-entry splash screen === */
 /* v2.3.888: extracted verbatim from the `if (showNameModal) { ... }`
@@ -94,6 +94,10 @@ export function NameModal(props) {
   var _dragRotX = props._dragRotX,
     _swatchTile = props._swatchTile,
     _thumbTile = props._thumbTile,
+    _buildTile = props._buildTile,           /* v2.3.1953 */
+    heightSel = props.heightSel,
+    setHeightSel = props.setHeightSel,
+    frameSel = props.frameSel,          /* v2.3.1996: read-only now — locked to medium, no picker */
     activeCat = props.activeCat,
     beardColorSel = props.beardColorSel,
     facialHairSel = props.facialHairSel,
@@ -109,6 +113,7 @@ export function NameModal(props) {
     previewCanvasRef = props.previewCanvasRef,
     previewDir = props.previewDir,
     randomizeWithFlair = props.randomizeWithFlair,
+    resetLook = props.resetLook,          /* v2.3.2036 */
     rollRandomName = props.rollRandomName,
     rotatePreview = props.rotatePreview,
     setActiveCat = props.setActiveCat,
@@ -180,7 +185,28 @@ export function NameModal(props) {
     pants: { label: 'Pants', kind: 'swatch', spriteCat: null, catalog: PANTS_CATALOG, sel: pantsSel,
       set: function (id) { setPants(id); setPantsSel(id); }, colors: null },
     shoes: { label: 'Shoes', kind: 'swatch', spriteCat: null, catalog: SHOES_CATALOG, sel: shoesSel,
-      set: function (id) { setShoes(id); setShoesSel(id); }, colors: null }
+      set: function (id) { setShoes(id); setShoesSel(id); }, colors: null },
+    /* ═══ v2.3.1953: BUILD ═══
+       Owner: "is there a way to add 'height' to your character as an option?"
+       ... "Maybe also frame wideness (thin, medium, large)".
+
+       It fits the EXISTING two-row shape exactly, which is why it needed no
+       new layout: the options strip carries the three heights and the row
+       below it — the one every other tab uses for colours — carries the three
+       frames.  The v2.3.1252 constant-height guarantee therefore holds for
+       free, so opening this tab does not resize the stage or the character.
+       `kind: 'build'` only tells the renderer below to use _buildTile (a
+       labelled silhouette) instead of a swatch or a sprite thumb; everything
+       else about the tab is the same machinery. */
+    /* v2.3.1996: HEIGHT ONLY.  The frame row (thin/medium/large) is gone by
+       owner directive -- "keep the medium build only and only allow the height
+       to change" -- and with it this tab's `colors`/`setColor`, so the colour
+       row below the options goes blank here the way it already does for every
+       other type that has none.  The lock itself is in FRAME_CATALOG, not
+       here; dropping the picker alone would have left the store and the wire
+       still able to carry a wide build. */
+    build: { label: 'Build', kind: 'build', spriteCat: null, catalog: HEIGHT_CATALOG, sel: heightSel,
+      set: function (id) { setBuildHeight(id); setHeightSel(id); } }
   };
   /* v2.3.1251: primary groups reuse the existing painted category art
      in /ui/welcome/cat/ — no emoji, no new assets.  A group with one
@@ -224,9 +250,14 @@ export function NameModal(props) {
     /* v2.3.1949: one button, three canvases -- the panel's mode strip picks
        chest, face or arms.  The label says so, because a face tattoo nobody
        knows exists is a face tattoo nobody draws. */
-    skin: { target: 'tattoo', label: 'Tattoo your chest, face or arms' },
+    /* v2.3.2008: `icon` is the owner's painted art for the two tabs whose
+       drawing is not a pencil stroke -- a tattoo gun for skin, a patterned
+       sneaker for shoes.  shirt and pants keep the inline pencil: a print on a
+       garment IS drawing, and the pencil says that better than a second shirt
+       icon would beside a tab already showing shirts. */
+    skin: { target: 'tattoo', label: 'Tattoo your body or face', icon: 'cc-draw-tattoo' },   /* v2.3.1978: two screens, not three */
     /* v2.3.1944: shoes are pattern-only — no drawing on an eight-pixel boot. */
-    shoes: { target: 'shoes', label: 'Pattern these shoes' },
+    shoes: { target: 'shoes', label: 'Pattern these shoes', icon: 'cc-draw-shoes' },
   };
   var _TAB_ICON = function (n) { return '/ui/welcome/cc/cc-tab-' + n + '.png?v=' + BUILD_INFO.version; };
   var _TABS = [
@@ -239,24 +270,92 @@ export function NameModal(props) {
     { t: 'beard', label: 'Beard', img: _TAB_ICON('beard') },
     { t: 'shirt', label: 'Shirt', img: _TAB_ICON('shirt') },
     { t: 'pants', label: 'Pants', img: _TAB_ICON('pants') },
-    { t: 'shoes', label: 'Shoes', img: _TAB_ICON('shoes') }
+    { t: 'shoes', label: 'Shoes', img: _TAB_ICON('shoes') },
+    /* v2.3.1953: the ninth tab.  No painted icon — there is no art for
+       "build" and inventing a ninth sheet entry for two numbers is not worth
+       it, so it draws its own two-figure glyph inline (same reasoning as the
+       designer's pencil, v2.3.1946).  Nine tabs also lands the grid on a clean
+       3x3 rather than the 4+4+1 an eighth-plus-one would have made; the tabs
+       get WIDER in three columns, which is a better touch target than they had
+       (see .bt-cc-tabs in game.css). */
+    { t: 'build', label: 'Build', img: null, glyph: 'build' }
   ].filter(function (x) { return !!_typeDefs[x.t]; });
   var _activeType = _typeDefs[activeCat] ? activeCat : 'hair';
   var _def = _typeDefs[_activeType];
   var _onPick = function (id) { _def.set(id); };
-  var _items = _def.catalog.map(function (o) {
-    return _def.kind === 'thumb'
-      ? _thumbTile(_def.spriteCat, o, _def.sel, _onPick, 44)
-      : _swatchTile(o, _def.sel, _onPick, 40);
-  });
+  /* ═══ v2.3.1953: BOTH BUILD ROWS LIVE IN THE OPTIONS GRID ═══
+     The first cut put heights in the strip and frames in the colour row.  It
+     worked and it read badly: the colour row is pinned near the BOTTOM of the
+     pane (that is what makes every tab the same height, v2.3.1252), so the two
+     halves of one control sat 700px apart with nothing between them, and the
+     frame tiles came out swatch-sized because .bt-cc-colors-row forces
+     --cc-swatch on its children.
+     Six tiles in one grid instead: the strip is a 3-wide wrapping grid at this
+     column width, so heights land on the first row and frames on the second,
+     adjacent, same size, and reading top to bottom as one control.  The
+     captions say which is which — no header row needed, and none available
+     without breaking the constant-height rule. */
+  var _items = (_def.kind === 'build')
+    /* v2.3.1996: one row of three heights.  Was six tiles wrapping onto two
+       rows; the second row was the frame axis, now locked to medium. */
+    ? HEIGHT_CATALOG.map(function (o) { return _buildTile(o, heightSel, _def.set, 'height'); })
+    : _def.catalog.map(function (o) {
+      return _def.kind === 'thumb'
+        ? _thumbTile(_def.spriteCat, o, _def.sel, _onPick, 44)
+        : _swatchTile(o, _def.sel, _onPick, 40);
+    });
   /* Colors sit DIRECTLY below the options (handoff) and go blank when
      the type has none or the pick is 'none'.  v2.3.1253: the 'default'
      entry gets NO tile at all (owner) — no color selected IS the
      default; tapping the selected swatch again unselects it, which
      sets the store back to 'default' (the sprite's native color). */
-  var _colorList = _def.colors ? _def.colors.filter(function (o) { return o.id !== 'default'; }) : null;
-  var _colors = (_colorList && _colorList.length > 0 && _def.sel !== 'none')
-    ? _colorList.map(function (o) {
+  /* ═══ v2.3.2007: THE DEFAULT COLOUR IS BACK IN THE ROW ═══
+     Owner: "I don't see a way to get a hat color back to its default color.
+     Add that to color picker."
+
+     There has always BEEN a way -- v2.3.1253 removed the tile on the reasoning
+     that "unpicked = default, and re-tapping the picked swatch unselects back
+     to default".  The gesture works.  Nothing on the screen says it exists,
+     which is the same thing as it not existing: the owner went looking for the
+     control and could not find it, and he wrote this picker's requirements.
+
+     `_swatchTile` has rendered this entry properly since v2.3.711 -- for a
+     trait colour it draws the ITEM'S OWN thumbnail in its original colours
+     ("this is what you get") rather than a swatch, and titles it "Original
+     color".  So this is one filter coming off, not a control being built.
+
+     The row's height is fixed in game.css (v2.3.1253's constant-height rule),
+     and it already scrolls horizontally, so one more tile cannot move the
+     stage -- which was the whole reason the tile was dropped. */
+  var _colorList = _def.colors || null;
+  /* v2.3.1953: on the Build tab this row is the FRAME, not a colour, and two
+     of the rules above do not apply to it.  There is no 'default' entry to
+     drop (medium is a real option you can pick, not the absence of one), and
+     tap-the-pick-again-to-unset would set the store to 'default', which is not
+     a frame id — the figure would keep its width and the tile would lose its
+     ring, which reads as a broken button.  So the build row is always the full
+     catalog and always a plain set. */
+  var _colors = (_def.kind === 'build')
+    /* Both build rows are up in the grid (see _items).  The block still
+       renders — ghosted — because every tab must reserve the same height. */
+    ? null
+    : (_colorList && _colorList.length > 0 && _def.sel !== 'none')
+    /* v2.3.2035: the 'default' entry is FILTERED OUT of the swatch row -- the
+       text button above is what picks it now.
+       This is the owner's actual complaint, not tidiness.  Every catalog's
+       default entry carries a HARD-CODED swatch that has nothing to do with
+       the item you picked: shirt is #3a5bd0 (blue), hat is #7c6cff (purple),
+       hair and beard #5a3a22 (brown).  So the Shirt tab drew a solid blue
+       square labelled Default over a shirt that is not blue -- "a random
+       color like blue even if it doesn't match default item color".
+       _swatchTile CAN draw the item's own thumbnail for the default tile
+       instead (its thumbCat/thumbItem branch, "this is what you get"), but
+       this call site never passed them, so it always fell through to the
+       flat swatch.  Wiring those args would fix the lie for trait colours and
+       leave it for the body ones, and would still spend a swatch-sized tile
+       saying "no colour".  A word says it for every category at once. */
+    ? _colorList.filter(function (o) { return o && o.id !== 'default'; })
+      .map(function (o) {
         return _swatchTile(o, _def.colorSel, function (id) {
           _def.setColor(id === _def.colorSel ? 'default' : id);
         });
@@ -294,14 +393,15 @@ export function NameModal(props) {
      row appears/disappears with it and the user may be mid-browse. */
   React.useEffect(function () { _measureMore(); }, [_def.sel]);
   /* v2.3.1143: Login Key overlay toggle (self-contained -- no BroTown prop). */
-  var _acS = React.useState(false), showAccount = _acS[0], setShowAccount = _acS[1];
   /* v2.3.1524: the Customize DRAWER is retired. The pickers are the point of
      this screen (owner), so they now own a permanent right-hand column instead
      of hiding behind a button; there is no open/closed state left to hold. */
   /* v2.3.1307 (ChatGPT round-7): preview zoom — tapping the character
      toggles full-body <-> close-up (swipes still rotate at either zoom;
      a tap is a pointer journey under 8px with no rotation fired). */
-  var _zmS = React.useState(false), previewZoom = _zmS[0], setPreviewZoom = _zmS[1];
+  /* v2.3.1951: lifted to BroTown — it now also drives the preview camera, and
+     that wiring lives up there beside activeCat. */
+  var previewZoom = props.previewZoom, setPreviewZoom = props.setPreviewZoom;
   var _dragMoved = React.useRef(false);
   /* v2.3.1308: category-aware framing — while the drawer is open the
      preview frames the region being edited (round-7 §preview).  Tap
@@ -322,7 +422,12 @@ export function NameModal(props) {
      covered the character; the pickers now sit BESIDE it in their own column
      and never overlap it, so there is nothing to hide behind and nothing to
      measure. Rest, and the tap zoom. */
-  var _frame = previewZoom ? { h: 92, b: '2%' } : { h: 54.5, b: '18.2%' };
+  /* v2.3.2021: the short frame is for a CROPPED camera, and only 'eyes' crops
+     now.  Keyed on previewZoom alone, picking any other tab would shrink the
+     character in a shorter box rather than zoom to anything — see
+     categoryCrops(). */
+  var _frame = (previewZoom || !categoryCrops(_activeType))
+    ? { h: 92, b: '2%' } : { h: 54.5, b: '18.2%' };
   /* v2.3.1307: name validity gates ENTER (round-7).  Local rules only:
      names are not unique server-side, so there is no availability
      check to run — trimmed length is the honest contract. */
@@ -489,29 +594,22 @@ export function NameModal(props) {
          order stacks pillars < canvas < rotate buttons. */
       background: 'transparent'
     }
-  }), /*#__PURE__*/React.createElement("button", {
-    /* v2.3.712/722 rotate circles.  v2.3.1251: 44 → 50px (handoff
-       48–52px) and dropped to the platform's baseline so they read as
-       part of the pedestal, not the stage corners. */
-    type: 'button', title: 'Rotate left', onClick: function () { rotatePreview(1); },
-    /* v2.3.1254: inset top-light / bottom-shade bevel — the hairline-
-       gradient recipe reads as a sliver on a circle, so circles use
-       soft inset shadows instead.
-       v2.3.1524: size moves to .bt-cc-rot so it can track the character
-       column — two fixed 50px circles covered the whole stage once the
-       column narrowed on a 320-class screen. */
-    className: "bt-cc-rot bt-cc-rot--l"
-  }, /*#__PURE__*/React.createElement("img", {
-    /* v2.3.1307 (round-7): the owner's painted rotate icons replace the
-       ↺/↻ glyphs, which read as Undo/Redo. */
-    src: '/ui/welcome/cc/cc-rotate-left.webp?v=' + BUILD_INFO.version, alt: 'Rotate left', draggable: false
   })),
-  /*#__PURE__*/React.createElement("button", {
-    type: 'button', title: 'Rotate right', onClick: function () { rotatePreview(-1); },
-    className: "bt-cc-rot bt-cc-rot--r"
-  }, /*#__PURE__*/React.createElement("img", {
-    src: '/ui/welcome/cc/cc-rotate-right.webp?v=' + BUILD_INFO.version, alt: 'Rotate right', draggable: false
-  }))),
+  /* ═══ v2.3.2006: THE ROTATE CIRCLES ARE GONE — DRAG THE BRO ═══
+     Owner: "Remove the two buttons for turning the bro on trait picker page
+     and just keep behavior for using finger to turn."
+
+     The drag has been the real control since v2.3.711 (horizontal swipe on
+     the stage, one facing per 26px of travel); the circles were the discover-
+     ability crutch for it and they cost the stage two 50px targets sitting on
+     top of the character.  `rotatePreview` is untouched and still the only
+     way a facing changes -- the drag handler on .bt-cc-stage calls it, so
+     nothing about the rotation itself moved.
+
+     The painted icons (cc-rotate-left/right.webp) stay on disk: they are
+     slices of the owner's title sheet, not generated, and deleting art to
+     save two files nobody serves is not worth the regret if this comes back.
+     .bt-cc-rot's rules stay in game.css for the same reason. */
   /* v2.3.1276: the always-visible sheet (.bt-cc-menu) was retired for a
      slide-up drawer.  v2.3.1524: the drawer is retired in turn — the pickers
      are the permanent right-hand column (.bt-cc-panel) further down. */
@@ -615,11 +713,46 @@ export function NameModal(props) {
        and the drawer is now a permanent column, so the button had nothing to
        open. Randomize rerolls the whole look. */
     className: "bt-cc-actions"
-  }, /*#__PURE__*/React.createElement("button", {
-    type: 'button', className: "bt-cc-btn", onClick: randomizeWithFlair
+  }, /* v2.3.2036: Reset joins Randomize as the SECOND child of this grid --
+        no wrapper.  Checked rather than assumed: .bt-cc-actions holds only the
+        Randomize button (ENTER BRO TOWN is its sibling, not its child), so
+        making it two columns pairs exactly these two and moves nothing else.
+        The wrapper this replaced was written on the assumption that ENTER was
+        inside, and the paren it added did not balance -- the build said so. */
+  /*#__PURE__*/React.createElement("button", {
+    /* v2.3.2006: --hero, not a change to .bt-cc-btn itself -- that class is
+       also the account modal's action and the quest claim screen's "Later",
+       and neither of those is a screen's headline control. */
+    type: 'button', className: "bt-cc-btn bt-cc-btn--hero", onClick: randomizeWithFlair,
+    /* v2.3.2114: a stable hook for mp-inkreset.  Both of these change the
+       whole character at once, which is exactly the kind of button whose
+       coverage is easy to believe in and hard to check by eye. */
+    'data-tut': 'cc-randomize'
   }, /*#__PURE__*/React.createElement("img", {
-    className: "bt-cc-action-icon", src: '/ui/welcome/cc/cc-random-look.webp?v=' + BUILD_INFO.version, alt: '', draggable: false }),
-  /*#__PURE__*/React.createElement("span", null, "Randomize Look"))),
+    /* v2.3.2008: the owner's painted randomize icon (a bro inside two turning
+       arrows) replaces cc-random-look.webp, which was a generic pair of
+       arrows with no bro in it. */
+    className: "bt-cc-action-icon", src: '/ui/welcome/cc/cc-randomize.png?v=' + BUILD_INFO.version, alt: '', draggable: false,
+    /* v2.3.2035 (owner: "make the randomize look icon larger").  20 -> 30,
+       stated HERE rather than on .bt-cc-action-icon: that class is shared with
+       the name-reroll die above, which the owner did not ask to change and
+       which pins its own 22px inline.  Sizing the shared class appeared to
+       work only because that inline style masked it. */
+    style: { width: 30, height: 30, objectFit: 'contain' } }),
+  /*#__PURE__*/React.createElement("span", null, "Randomize Look")),
+  /* ═══ v2.3.2036: RESET ═══
+     Owner: "add a reset button so you can make the character back to the
+     default" -- and, asked which default, "the look you opened with".
+     Beside Randomize rather than under it: they are the same kind of action
+     (change the whole character at once) and the pair reads as roll / undo.
+     Narrower than Randomize on purpose -- it is the escape hatch, not the
+     thing you are meant to reach for first. */
+  /*#__PURE__*/React.createElement("button", {
+    /* Not --hero: that is the headline treatment, and Reset is the quiet
+       escape hatch below it. */
+    type: 'button', className: "bt-cc-btn bt-cc-reset", 'data-tut': 'cc-reset',   /* v2.3.2114 */
+    onClick: resetLook, title: 'Back to the look you started with'
+  }, /*#__PURE__*/React.createElement("span", null, "Reset"))),
   /*#__PURE__*/React.createElement("button", {
     onClick: function () { if (_nameValid) joinTown(); },
     disabled: !_nameValid,
@@ -638,37 +771,30 @@ export function NameModal(props) {
        own :active translateY(2px), and scaling a child by transform
        reflows nothing.  See .bt-cc-play-label in game.css for why it
        only breathes once the name is valid. */
-  }, /*#__PURE__*/React.createElement("span", { className: "bt-cc-play-label" }, "Enter Bro Town")),
-  /*#__PURE__*/React.createElement("button", {
-    /* v2.3.1143: returning-player door.  v2.3.1307 (round-7): promoted
-       from footer text to a real secondary action \u2014 full-width 44px
-       bordered row with the painted key icon. */
-    type: 'button',
-    className: "bt-cc-login",
-    onClick: function () { setShowAccount(true); },
-    /* v2.3.1576: the fill/border/colour moved OUT of these inline styles
-       into .bt-cc-login (game.css).  They were inline, so the stylesheet
-       could not reach them — this row was painted rgba(17,25,29,.55),
-       DARKER than the pane behind it (1.26:1), which is why the
-       returning-player door was the hardest thing on the screen to find.
-       Layout-only properties stay here. */
-    style: {
-      width: '100%',
-      cursor: 'pointer',
-      padding: '0 10px',
-      minHeight: 44,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 7
-    }
-  }, /*#__PURE__*/React.createElement("img", {
-    src: '/ui/welcome/cc/cc-login-key.webp?v=' + BUILD_INFO.version, alt: '', draggable: false,
-    style: { width: 20, height: 20, objectFit: 'contain' }
-  }), /*#__PURE__*/React.createElement("span", null, "Already have a Bro?"),
-  /*#__PURE__*/React.createElement("span", {
-    style: { color: '#EAC675', fontWeight: 700 }
-  }, "Log in with key")), /*#__PURE__*/React.createElement("div", {
+  },
+  /* v2.3.2008: the town gate, left of the label.  It rides INSIDE the
+     breathing label's row but is not part of the label span -- v2.3.1577's
+     animation scales that span, and a scaling gate would pulse against a
+     static one on the plate beside it. */
+  /*#__PURE__*/React.createElement("img", {
+    className: "bt-cc-play-icon",
+    src: '/ui/welcome/cc/cc-enter-town.png?v=' + BUILD_INFO.version,
+    alt: '', draggable: false, "aria-hidden": true
+  }),
+  /*#__PURE__*/React.createElement("span", { className: "bt-cc-play-label" }, "Enter Bro Town")),
+  /* ═══ v2.3.2006: THE RETURNING-PLAYER ROW IS GONE FROM HERE ═══
+     Owner: "Remove button already have bro on trait creator screen."
+
+     It was never the only door and it is not the door anyone arrives at: you
+     reach this screen by pressing CREATE CHARACTER on the splash, and the
+     splash's other plate -- the gold one, "Continue" -- is the returning
+     player's way in.  Offering it again at the bottom of the creator asked a
+     player who has already answered that question to answer it twice.
+
+     The AccountModal it opened goes with it (nothing else in this file set
+     showAccount), so the state and its render are removed too rather than
+     left as a modal no gesture can reach. */
+  /*#__PURE__*/React.createElement("div", {
     /* v2.3.1675 (owner: "put the little Hemi bros logo to the left of the
        version number").  Mark and version share one baseline row now — it
        reads as a single signature line rather than two stacked scraps, which
@@ -709,7 +835,18 @@ export function NameModal(props) {
       key: x.t, type: 'button', role: 'tab', "aria-selected": on ? 'true' : 'false',
       className: 'bt-cc-tab' + (on ? ' bt-cc-tab--on' : ''),
       onClick: function () { setActiveCat(x.t); }
-    }, x.img ? /*#__PURE__*/React.createElement("img", {
+    }, x.glyph === 'build' ? /*#__PURE__*/React.createElement("svg", {
+      /* v2.3.1953: two figures, one short and one tall, which is the whole
+         idea of the tab in one glyph.  currentColor, so it dims and brightens
+         with the tab exactly as the painted icons' opacity does. */
+      className: "bt-cc-tab-icon", viewBox: '0 0 30 30', "aria-hidden": true, focusable: 'false'
+    },
+    /*#__PURE__*/React.createElement("g", { fill: 'currentColor' },
+      /*#__PURE__*/React.createElement("circle", { cx: 9, cy: 11, r: 3 }),
+      /*#__PURE__*/React.createElement("rect", { x: 5.5, y: 15, width: 7, height: 11, rx: 2.4 }),
+      /*#__PURE__*/React.createElement("circle", { cx: 21, cy: 6.5, r: 3.4 }),
+      /*#__PURE__*/React.createElement("rect", { x: 17, y: 11, width: 8, height: 15, rx: 2.6 }))
+    ) : x.img ? /*#__PURE__*/React.createElement("img", {
       /* v2.3.1308: the owner's painted category art.
          v2.3.1931: one sheet for all eight, and no per-tab pixel flag — the
          catalog-thumb tabs that needed `pixelated` are gone (see _TABS). */
@@ -741,6 +878,41 @@ export function NameModal(props) {
         v2.3.1308 tried a tiny absolute contextual label here; v2.3.1310
         removes it (owner: redundant, overlapped the swatches, barely
         readable).  The swatch row reads as colors on its own. */
+  /* ═══ v2.3.2035: DEFAULT IS A BUTTON YOU CAN SEE ═══
+     Owner: "make the default color its own text button above the color
+     options (right now it's a random color like blue even if it doesn't
+     match default item color)".
+
+     v2.3.1253 removed the default SWATCH and made the rule "unpicked =
+     default, re-tap your pick to unselect".  That is tidy and undiscoverable:
+     nothing on screen says a default exists, the only way back is to remember
+     which swatch you chose and tap it again, and -- the owner's actual
+     complaint -- the swatch row offers no tile that means "however this item
+     was painted", so the eye reads the nearest blue as if it were that.
+
+     A TEXT button, not a swatch, on purpose: the whole point is that the
+     default is not one of these colours.  Any tile we drew would have to be
+     SOME colour and would lie about that for every item whose art is not that
+     colour, which is the bug being fixed rather than a fix for it.
+
+     Placed above the row rather than absolutely positioned over it -- v2.3.1310
+     retired an absolute label here precisely because it overlapped the
+     swatches.  The constant-sheet-height guarantee (v2.3.1252/1253) survives
+     because this row is ALWAYS rendered, and the whole block already ghosts
+     as a unit on categories with no colours, so no category differs from
+     another.  It costs the stage ~22px once, on every tab equally. */
+  /*#__PURE__*/React.createElement("div", { className: "bt-cc-colors-head" },
+    /*#__PURE__*/React.createElement("button", {
+      type: 'button',
+      className: "bt-cc-defcolor" + ((!_def.colorSel || _def.colorSel === 'default') ? " bt-cc-defcolor--on" : ""),
+      /* Not aria-pressed: this is one option in the same radiogroup as the
+         swatches below, and a toggle-shaped label beside radio-shaped ones
+         reads wrong to a screen reader. */
+      role: _colors ? 'radio' : undefined,
+      "aria-checked": _colors ? (!_def.colorSel || _def.colorSel === 'default') : undefined,
+      tabIndex: _colors ? 0 : -1,
+      onClick: function () { if (_colors) _def.setColor('default'); }
+    }, "Default")),
   /*#__PURE__*/React.createElement("div", { className: "bt-cc-scroll" },
   /*#__PURE__*/React.createElement("div", {
     className: "bt-cc-colors-row", ref: _colorRowRef, onScroll: _measureMore, role: _colors ? 'radiogroup' : undefined, "aria-label": _colors ? _def.label + ' colors' : undefined
@@ -773,8 +945,23 @@ export function NameModal(props) {
        four strokes, it inherits the button's own colour, and it stays crisp at
        any density without a second asset to preload (the animation-preload law
        exists because assets that load late hitch; one that is never fetched
-       cannot).  aria-hidden because the label beside it already says it. */
-    /*#__PURE__*/React.createElement("svg", {
+       cannot).  aria-hidden because the label beside it already says it.
+       v2.3.2008: the two tabs that carry painted art use it instead; the
+       pencil stays the fallback and the answer for shirt and pants. */
+    (_on && _p.icon)
+      ? /*#__PURE__*/React.createElement("img", {
+        className: 'bt-cc-draw-icon', src: '/ui/welcome/cc/' + _p.icon + '.png?v=' + BUILD_INFO.version,
+        alt: '', draggable: false, "aria-hidden": true,
+        /* v2.3.2035 (owner: "make the tattoo body or face icon larger").
+           26 -> 34.  The art is 128x121 natural so this is still a
+           downscale.  Sized against the SMALL-screen button, not the big
+           one: .bt-cc-draw is min-height 54px normally but 44px under
+           max-height:720px (game.css), and 34 keeps 5px of breathing room
+           inside that 44 -- picking 40 would have looked right on this
+           desk and crushed the button on an iPhone SE. */
+        style: { width: 34, height: 34, objectFit: 'contain', flex: 'none' }
+      })
+      : /*#__PURE__*/React.createElement("svg", {
       className: 'bt-cc-draw-icon', viewBox: '0 0 24 24', width: 22, height: 22,
       "aria-hidden": true, focusable: 'false'
     },
@@ -799,10 +986,9 @@ export function NameModal(props) {
       hairSel: hairSel, hairColorSel: hairColorSel,
       facialHairSel: facialHairSel, beardColorSel: beardColorSel,
       headwearSel: headwearSel, hatColorSel: hatColorSel, eyeColor: eyeColorSel,
-      shirtSel: shirtSel, shirtColorSel: shirtColorSel
+      shirtSel: shirtSel, shirtColorSel: shirtColorSel,
+      buildHeight: heightSel, buildFrame: frameSel   /* v2.3.1953 */
     }),
     onClose: function () { setShowPaint(null); }
-  }), showAccount && /*#__PURE__*/React.createElement(AccountModal, {
-    onClose: function () { setShowAccount(false); }
   }));
 }

@@ -38,6 +38,43 @@ export const MARKET = {
 };
 
 export const marketMethods = {
+  /* ═══ v2.3.1971: BOUND THE TAXONOMY STRINGS BEFORE THEY ESCROW ═══
+   *
+   * category / subtype / tierKey / element1 / element2 arrive from the
+   * request body and were checked only for TRUTHINESS.  Two consequences,
+   * one of them destructive:
+   *
+   *  - `_mktIndexKey` concatenates all five into `mkt_hist:<key>`, a real
+   *    DO storage key (2 KB ceiling), and the whole order object goes into
+   *    `mkt_order:<uuid>` (128 KB value ceiling).  This is the HTTP
+   *    surface, not a WS frame, so nothing bounded the body: a 200 KB
+   *    `playerName` makes `storage.put` THROW -- and by then
+   *    `ps.weaponStash.splice(idx, 1)` and `_saveRpg` have already run, so
+   *    the seller's weapon is gone from live state and from disk with no
+   *    order to show for it and nothing for any sweep to find.  Escrow
+   *    that can't be written is escrow that never existed; validate
+   *    BEFORE the splice, which is what this does.
+   *  - the closed set is tiny and known (MKT_CATEGORIES in
+   *    src/data/gameSystems.js: weapon/armor/shield/amulet, subtypes
+   *    greatsword/sword/bow/staff/armor/shield/amulet, tiers from
+   *    BLACKSMITH_TIERS + `ww_`-prefixed woodworking keys), so a charset
+   *    + length bound costs an honest client nothing.
+   *
+   * Deliberately NOT an allowlist of the values themselves: the tier
+   * tables live client-side and mirroring them here would be one more
+   * table to drift (rule: mirror-audit pins the ones that already exist).
+   * The bound is what closes the destruction path; the mislabelling
+   * problem underneath it -- nothing checks the listed taxonomy against
+   * the escrowed weapon, so a modified client can advertise a copper
+   * blade as godly -- needs a taxonomy the server can derive, and is
+   * written up rather than guessed at. */
+  _mktField(v) {
+    if (typeof v !== 'string') return null;
+    const s = v.trim();
+    if (!s || s.length > 24 || !/^[A-Za-z0-9_-]+$/.test(s)) return null;
+    return s;
+  },
+
   _mktIndexKey(o) {
     return `${o.category}:${o.subtype}:${o.tierKey}:${o.element1 || 'none'}:${o.element2 || 'none'}`;
   },
@@ -180,11 +217,23 @@ export const marketMethods = {
    * the lagging blob).  Settlement credits go through _creditPlayer so
    * the counterparty can be offline.  No cross-DO awaits anywhere. */
   async _mktPlaceOrder(body) {
-    const { type, category, subtype, tierKey, element1, element2, price, tierLabel, playerName, playerId } = body || {};
-    if (!type || !category || !subtype || !tierKey || !price || !playerId) return { ok: false, error: 'Missing fields' };
+    const { type, price, tierLabel, playerName, playerId } = body || {};
+    if (!type || !price || !playerId) return { ok: false, error: 'Missing fields' };
     const p = Math.floor(price);
     if (!(p >= 1 && p <= 999999)) return { ok: false, error: 'Invalid price' };
     if (type !== 'buy' && type !== 'sell') return { ok: false, error: 'Invalid type' };
+    /* v2.3.1971: bound the taxonomy BEFORE anything is escrowed (see
+       `_mktField`) -- an unbounded field made the storage write throw
+       after the seller's weapon had already left the stash. */
+    const category = this._mktField(body.category);
+    const subtype = this._mktField(body.subtype);
+    const tierKey = this._mktField(body.tierKey);
+    if (!category || !subtype || !tierKey) return { ok: false, error: 'Missing fields' };
+    const element1 = body.element1 == null ? null : this._mktField(body.element1);
+    const element2 = body.element2 == null ? null : this._mktField(body.element2);
+    if ((body.element1 != null && !element1) || (body.element2 != null && !element2)) {
+      return { ok: false, error: 'Invalid element' };
+    }
 
     const ps = this.playerState[playerId];
     if (!ps) return { ok: false, error: 'Not in game' };
@@ -214,7 +263,13 @@ export const marketMethods = {
       id: crypto.randomUUID(), type, category, subtype, tierKey,
       element1: element1 || null, element2: element2 || null,
       price: p, item,
-      tierLabel: tierLabel || tierKey, playerName: playerName || 'Unknown', playerId,
+      /* v2.3.1971: these two are free text (a display label and a display
+         name), so they are truncated rather than charset-gated -- but they
+         ride into the same 128 KB `mkt_order:` value as everything else,
+         and an unbounded one was the destructive half of the bug above. */
+      tierLabel: (typeof tierLabel === 'string' && tierLabel) ? tierLabel.slice(0, 32) : tierKey,
+      playerName: (typeof playerName === 'string' && playerName) ? playerName.slice(0, 24) : 'Unknown',
+      playerId,
       ts: Date.now(), expires: Date.now() + MARKET.ORDER_EXPIRY,
     };
 
@@ -264,7 +319,51 @@ export const marketMethods = {
     }
 
     this._mktAddToIndex(order);
-    await this.state.storage.put('mkt_order:' + order.id, order);
+    /* ═══ v2.3.1971: ESCROW THAT CANNOT BE WRITTEN NEVER EXISTED ═══
+     * The escrow leaves the player's live state ABOVE (splice / coin
+     * debit + `_saveRpg`) and only becomes recoverable once this record
+     * lands -- the record is what cancel, expiry-refund and the rebuild
+     * sweep all key off.  If the put throws, the player is short the item
+     * or the gold and there is nothing left anywhere that names it.
+     * Measured with the real DO ceilings in place: an oversized field made
+     * this throw and left `stash: [] / order records: 0` -- the weapon
+     * gone from live state AND from the saved blob, unrecoverable.  The
+     * field bounds above close the one instance that was reachable; this
+     * closes the CLASS, because it is the only thing standing between a
+     * failed write and a destroyed item.
+     * Nothing is stamped or credited at this point, so unwinding is a
+     * plain restore -- no opId, no double-pay window (rule 5 does not
+     * apply to a leg that never landed).  The throw is re-raised so
+     * `_marketFetch` still answers 500 rather than claiming a listing
+     * that does not exist. */
+    try {
+      await this.state.storage.put('mkt_order:' + order.id, order);
+    } catch (err) {
+      this._mktRemoveFromIndex(order);
+      const back = this.playerState[playerId];
+      if (back) {
+        if (type === 'sell' && item) {
+          if (!Array.isArray(back.weaponStash)) back.weaponStash = [];
+          // Rule 3: never push past the cap -- _saveRpg truncates there and
+          // that would destroy the very weapon this is rescuing.
+          if (back.weaponStash.length < this.WEAPON_STASH_CAP) back.weaponStash.push(item);
+          else await this._creditPlayer(playerId, { opId: 'mktunwind:' + order.id, source: 'market', kind: 'weapon', payload: { weapon: item }, note: 'listing failed' });
+        } else if (type === 'buy') {
+          back.coins = (back.coins || 0) + p;
+        }
+        this._saveRpg(playerId, back);
+        this._queuePlayerStateFlush(playerId);
+      } else {
+        // Offline between the debit and the write: pay it into the mail.
+        await this._creditPlayer(playerId, {
+          opId: 'mktunwind:' + order.id, source: 'market',
+          kind: type === 'sell' ? 'weapon' : 'gold',
+          payload: type === 'sell' ? { weapon: item } : { amount: p },
+          note: 'listing failed',
+        });
+      }
+      throw err;
+    }
     return { ok: true, settled: true, matched: false, order };
   },
 

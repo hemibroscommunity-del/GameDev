@@ -180,25 +180,68 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
   if (propsOn) {
     for (const [key, what] of [
-      ['forge', 'the forge and the blacksmith'],
+      ['forge', 'the forge'],          /* v2.3.2072: the man no longer carries it */
       ['bank', 'the bank'],
       ['enchant', 'the enchanter'],
-      ['shop', 'the general store and the storekeeper'],
+      ['shop', 'the general store'],   /* v2.3.2091: the storekeeper is gone */
       ['house', "the mayor's house"],
     ]) {
       rec.ok(`${what} has its own symbol on the map`, (ic[key] || 0) > 0, { key, census: ic });
     }
-    /* A trade shared by a building AND the person who runs it draws the same
-       mark twice — that is the point, so you can find either one. */
-    rec.ok('the blacksmith and his forge share the anvil', (ic.forge || 0) >= 2, { forge: ic.forge });
-    rec.ok('the storekeeper and his store share the satchel', (ic.shop || 0) >= 2, { shop: ic.shop });
+    /* ═══ v2.3.2091: ONE GLYPH, ONE MEANING — THE OPPOSITE CLAIM ═══
+       These two asserted the reverse until now: that a trade shared by a
+       building AND the person who runs it draws its mark TWICE, "so you can
+       find either one".  v2.3.2072 retired that rule after the owner reported
+       "there's two blacksmith indicators on map" -- once the blueprint moved
+       each tradesman to his own door, the two marks landed a thumb's width
+       apart and neither meant anything the other did not.  NPC_ICON is an
+       empty map now: a BUILDING carries its trade, a PERSON carries the
+       person glyph.
+
+       Kept as assertions rather than deleted, because the failure they now
+       guard is real and easy to reintroduce: put one entry back in NPC_ICON
+       and the double marks come straight back. */
+    rec.ok('the anvil is drawn ONCE — the forge carries it, the blacksmith '
+         + 'standing at it does not carry it too', (ic.forge || 0) === 1, { forge: ic.forge });
+    rec.ok('...and so is the satchel — the general store carries it alone',
+      (ic.shop || 0) === 1, { shop: ic.shop });
     /* GUARD: they are genuinely DIFFERENT textures, not one glyph counted
        under several names. */
     rec.ok('at least six distinct symbols are actually in use (guard)',
       Object.keys(ic).length >= 6, { keys: Object.keys(ic) });
   } else {
-    rec.ok('building marks are absent because the buildings are switched off', true,
-      { flag: 'TOWN_PROPS_ENABLED=false', census: ic });
+    /* ═══ v2.3.2061: THIS WAS `rec.ok(..., true)` ═══
+       A placeholder that could not fail, and whose text became untrue the day
+       a building came back: the mayor's house is re-measured against town_v17
+       and draws its roof again, while the four shopfronts still carrying v16
+       coordinates do not. Stated as the two halves that are actually true now,
+       so the branch makes a claim instead of narrating one. */
+    /* Read PER PROP rather than off the icon census.  The reason has changed
+       twice and the method has not: it used to be that townsfolk carried their
+       trade's glyph, so a census counted marks that were not buildings
+       (v2.3.2072 ended that).  It is still the right read -- a census answers
+       "how many satchels" and this branch asks "which BUILDINGS are marked",
+       which is a question only the per-prop list can answer. */
+    const pm = await P.page.evaluate(() => (window.__btMinimapMarks ? window.__btMinimapMarks() : null));
+    rec.ok('the minimap reports which PROPS it marked (guard)', Array.isArray(pm), pm);
+    rec.ok("the mayor's house is on the map -- it is placed on the map that ships",
+      !!pm && pm.some((m) => m.id === 'mayor-house'), pm);
+    /* ═══ v2.3.2086: ALL FOUR SHOPFRONTS ARE ON THE MAP NOW ═══
+       This asserted the world of v2.3.2065: blacksmith and general store
+       measured onto town_v17 and marked, bank and enchanter still carrying
+       v16 coordinates and therefore correctly absent.  v2.3.2086 re-measured
+       the last two onto v17 (bank 1230,1290; enchanter 1050,700), so the
+       absence half went from a real guard to an assertion about a town that
+       no longer exists -- and it duly failed on a working map.
+
+       THE CLAIM THAT SURVIVES is the one that mattered all along: a building
+       is marked if and only if it is placed on the map that ships.  Naming all
+       four rather than counting them, so a prop that quietly loses its mark
+       fails here by name instead of hiding inside a total. */
+    for (const id of ['forge', 'general-store', 'bank', 'enchanter']) {
+      rec.ok(`the ${id} is marked -- the blueprint placed it on town_v17`,
+        !!pm && pm.some((m) => m.id === id), { want: id, marks: pm });
+    }
     /* Still a real distinctness claim, at the size the bare town supports:
        the marks that ARE drawn must not have collapsed onto one glyph. */
     rec.ok('...and the marks still drawn are distinct textures (guard)',
@@ -266,7 +309,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   for (const [name, idx] of [['east', 0], ['south', 2], ['north', 6]]) {
     await P.page.evaluate((i) => {
       const S = window._gameState.current;
-      S._facingAngle = i * Math.PI / 4; S._aimAngle = undefined; S.lockedMonster = null;
+      S._facingAngle = i * Math.PI / 4; S._aimAngle = undefined; S.lockedTarget = null;
     }, idx);
     await P.page.waitForTimeout(350);
     const m = await P.page.evaluate(() => window.__btMinimap || null);
@@ -324,22 +367,43 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!(fromTown && fromTown.x > 0 && fromTown.y > 0
        && fromTown.x < 52 * 32 && fromTown.y < 55 * 32), fromTown);
 
+  /* ═══ v2.3.1970: WAIT FOR THE PROBE, NOT FOR A STOPWATCH ═══
+     These two steps poke S.currentZone directly rather than walking a portal,
+     and window.__btMinimap is only rewritten by minimapRenderer.update() —
+     which returns EARLY, leaving the probe frozen on its last value, whenever
+     `!P || !zone || S._zoneLoading`.  So a flat 400ms wait reads whatever the
+     previous step left behind if the box happened to be held back, and the
+     value it left behind here is `null`: exactly what "nothing is starred"
+     looks like.  That is what made 'from the World View it stars the FROST
+     spoke' fail while the ember GUARD two lines later passed — the guard runs
+     after a setQuests round trip, by which time the probe had caught up.
+     Waiting on the probe's own `zone` field removes the race without weakening
+     either assertion: it says "the minimap has actually redrawn in the zone I
+     asked about", which is the precondition both checks assume. */
+  const zoneShown = async (z) => {
+    for (let i = 0; i < 40; i++) {
+      if ((await P.page.evaluate(() => (window.__btMinimap || {}).zone || null)) === z) return true;
+      await P.page.waitForTimeout(100);
+    }
+    return false;
+  };
+
   /* Already IN the target zone: the star must go away.  Otherwise it points
      at the way home while the quest says hunt here. */
   await P.page.evaluate(() => { window._gameState.current.currentZone = 'frost'; });
-  await P.page.waitForTimeout(400);
+  rec.ok('the minimap redrew in frost (guard for the poke)', await zoneShown('frost'));
   rec.ok('standing in the target zone stars nothing', (await route()) === null, await route());
 
   /* From the hub the spoke itself is present, so it is starred directly. */
   await P.page.evaluate(() => { window._gameState.current.currentZone = 'worldview'; });
-  await P.page.waitForTimeout(400);
+  rec.ok('the minimap redrew in the World View (guard for the poke)', await zoneShown('worldview'));
   const fromHub = await route();
   rec.ok('from the World View it stars the FROST spoke itself',
     !!(fromHub && fromHub.zoneId === 'frost'), fromHub);
   /* GUARD: a different quest must move the star, or the check above is
      satisfied by a hardcoded frost. */
   await setQuests({ tut_4: 'active' });
-  await P.page.waitForTimeout(400);
+  await P.page.waitForTimeout(800);
   const emberHub = await route();
   rec.ok('...and a different quest stars a different spoke (guard)',
     !!(emberHub && emberHub.zoneId === 'ember'), { fromHub, emberHub });

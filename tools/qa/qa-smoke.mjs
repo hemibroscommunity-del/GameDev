@@ -1,4 +1,5 @@
 import { chromium } from 'playwright-core';
+import { legacyLogin } from './legacy-login.mjs';
 import { existsSync } from 'node:fs';
 
 // v2.3.1105: browser resolution — QA_CHROME env > the session-side /tmp
@@ -32,12 +33,12 @@ await page.waitForTimeout(6000);
 await page.screenshot({ path: '/tmp/qa-login.png' });
 const bodyText = await page.evaluate(() => document.body.innerText.replace(/\n+/g, ' | ').slice(0, 400));
 log('flow', 'bodyText: ' + bodyText);
-// login: fill the name input if present, then press PLAY
+/* v2.3.1964: the splash has no name box — it has a login door.
+   legacyLogin takes the same route a player takes (see
+   tools/qa/legacy-login.mjs for what broke and when). */
 try {
-  const input = page.locator('input').first();
-  await input.fill('QA Bot');
-  await input.press('Enter');           // name field submits on Enter -> joinTown()
-  log('flow', 'submitted name (Enter)');
+  await legacyLogin(page, 'QA Bot');
+  log('flow', 'entered world through the login door');
 } catch (e) { log('flow', 'login flow issue: ' + e.message); }
 
 // wait for the join (player state appears)

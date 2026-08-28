@@ -49,10 +49,21 @@ the `_extractionMissing` posture — old clients never punished):
 
 ## Economic hourly caps (ANTICHEAT-SPEC §6 — the approved clamps)
 
-- Gathering: **270/hour/skill.** World supply is 6 nodes/skill on 2-min
-  respawns = 180/hour physical maximum — 270 is 50% above a rate no
-  human OR bot can even reach through the UI; it bounds handcrafted
-  packet spam.
+- Gathering: **810/hour/skill** (v2.3.1983; was 270). The number is
+  derived, never picked: world supply per skill per zone is
+  `nodes x 3600/respawnSeconds`, and the cap sits 50% above it so it can
+  only ever fire on the physically impossible. Population-scaled spawns
+  (`docs/specs/spawn-scaling.md`) grow a crowded zone to 3 nodes per
+  skill, so the supply it is derived from went 1 x 180 = 180/h to
+  3 x 180 = 540/h, and 540 x 1.5 = 810. `NODE_RESPAWN_TIME` is untouched
+  at 20s because the arithmetic is anchored to it.
+  A player ALONE still sees one node and the old 180/h ceiling
+  (`node-respawn.test.mjs` §3b pins exactly that), so the raise hands a
+  solo bot nothing; and the cap was never the bound on the world — a
+  teleporting bot touring all 9 wilderness zones could reach
+  9 x 180 = 1620/h at base density, so 810 still clips it by half.
+  Whoever changes `SPAWN_SCALE.NODE_MAX`, `_getZoneNodeConfig` or
+  `NODE_RESPAWN_TIME` owns this number next.
 - Cooking: **700/hour** (sustained human ≈ 450; the prior only bound was
   `_cookRateOk`'s 20/min = 1200/h burst rate).
 - Over-cap: harvest node still depletes but the grant is withheld

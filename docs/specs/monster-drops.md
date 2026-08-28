@@ -28,7 +28,8 @@ and no new table anywhere.
 
 Iron was already fully authored and simply unobtainable: it has had a
 material and a tint since v2.3.1760 and finished icons
-(`chest-plate-iron.png`, `greaves-iron.png`) the whole time.
+(`chest-plate-iron.webp`, `greaves-iron.webp` — .png until v2.3.2068) the
+whole time.
 
 **Two ladders, one metal (v2.3.1925b).** The armour pieces carry
 `tierMult: 2.0` and the greatsword `1.25`, and that is deliberate:

@@ -94,6 +94,115 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!after.shield || (after.shieldStash || []).length > 0,
     { shield: after.shield, shieldStash: after.shieldStash });
 
+  /* ═══ v2.3.2116: ...AND THEY HAVE TO BE VISIBLE IN THE BAG ═══
+     Owner, reporting this again on a fresh character: "the very first quest
+     receiving sword and shield does not work", and "it probably has something
+     to do with the item to inventory changes added from the cape."
+
+     Every assertion above reads S.rpg — the STATE.  That is the half this file
+     was written for (v2.3.1901, a server that granted nothing), and it is only
+     half of "no items were received": a grant that lands in the blob and never
+     draws is indistinguishable, from the player's chair, from one that never
+     happened.  The bag UI has been edited since (the golden ticket and the
+     cape, v2.3.2103/2107), which is exactly when a rendering gap can open
+     under passing state assertions.
+
+     So the bag is OPENED and the tiles are READ.  A stash weapon draws as a
+     tile like any gathered item does (bagModel.js puts both in one ordered
+     list), so "the sword is in the bag" is a claim about pixels here, not
+     about a field. */
+  /* The Mayor's dialogue is still up from the accept, and it sits OVER the
+     dashboard — a bag opened under it reads as an empty bag.  Close it first,
+     the way a player would, or this measures the wrong surface. */
+  await H.closeNpcDialogue(P);
+  await P.page.waitForTimeout(500);
+  await P.page.evaluate(() => { try { window.__broDashPanelBus.open('bag'); } catch (e) {} });
+  await P.page.waitForTimeout(1600);
+  const drawn = await P.page.evaluate(() => {
+    const vis = (el) => el && el.getBoundingClientRect().width > 0;
+    /* A stash tile carries data-tut="coach-gear" (it is what the questline's
+       "gear up" mark points at) and an inventory tile carries data-inv-key.
+       Neither renders the item's NAME — the name lives in the popup a tap
+       later — so counting the TILES is the honest probe.  Both counts are
+       reported so an empty bag is told apart from a bag that drew the wrong
+       kind of thing. */
+    return {
+      stashTiles: [...document.querySelectorAll('[data-tut="coach-gear"]')].filter(vis).length,
+      itemTiles: [...document.querySelectorAll('[data-inv-key]')].filter(vis).length,
+      text: (document.body.innerText || '').replace(/\s+/g, ' ').slice(0, 300),
+    };
+  });
+  console.log('    BAG RENDER: ' + JSON.stringify(drawn));
+  /* The sword AND the shield: two stash tiles, DRAWN, not just two entries in
+     the blob.  This is the half v2.3.1901 could not see, and a visible tile is
+     its own proof the panel is up — tiles only exist inside it, so a separate
+     "did the bag open" guard would only be a second way to say this. */
+  rec.ok('the SWORD and SHIELD are DRAWN as bag tiles, not just held in the blob',
+    drawn.stashTiles >= 2, drawn);
+
+  /* ═══ v2.3.2117: THE LOWER-LEFT CORNER BELONGS TO THE JOYSTICK ═══
+     Owner: "Hide the gold ticket message board, it covers the left joystick."
+
+     The world chat feed renders NOTHING when nobody has said anything, so what
+     kept a 260px panel parked over the joystick was the golden-ticket status
+     line — posted on every join, and in a quiet room the only line there is.
+     Measured as a RECTANGLE OVERLAP against the joystick disc rather than as
+     "is the panel present": the panel is allowed to exist, it is just not
+     allowed to sit on the control.  A pixel of overlap is a pixel the thumb
+     lands on. */
+  const corner = await P.page.evaluate(() => {
+    const vis = (el) => el && el.getBoundingClientRect().width > 0;
+    const disc = [...document.querySelectorAll('.bt-joystick-zone')].filter(vis)[0];
+    /* The feed's scrollable list is the part with pointerEvents:auto — the
+       half that can actually swallow a drag. */
+    const feed = [...document.querySelectorAll('*')].filter((el) => {
+      const t = (el.textContent || '');
+      return vis(el) && /Golden ticket event/i.test(t) && el.children.length === 0;
+    })[0];
+    const r = (el) => { const b = el.getBoundingClientRect(); return { l: b.left, t: b.top, r: b.right, b: b.bottom }; };
+    if (!disc) return { disc: null };
+    const d = r(disc);
+    if (!feed) return { disc: d, feed: null, overlap: 0 };
+    const f = r(feed);
+    const ox = Math.max(0, Math.min(d.r, f.r) - Math.max(d.l, f.l));
+    const oy = Math.max(0, Math.min(d.b, f.b) - Math.max(d.t, f.t));
+    return { disc: d, feed: f, overlap: Math.round(ox * oy) };
+  });
+  console.log('    CORNER: ' + JSON.stringify(corner));
+  rec.ok('the left joystick disc is on screen (guard)', !!corner.disc, corner);
+  rec.ok('the golden-ticket status no longer parks a panel on the left joystick',
+    !corner.feed && !corner.overlap, corner);
+
+  /* ═══ AND THE TILE HAS TO OPEN, AND SAY WHAT IT IS ═══
+     A tile is where the player's journey CONTINUES, not where it ends: the
+     name and the Equip button live in the popup a tap later (the tile itself
+     draws an <img> with an empty alt).  So "receiving the sword works" is only
+     answered by tapping it.  This is also the first point in the whole road
+     where the item's NAME is visible to a player at all, which is what they
+     would be looking for when they say nothing was received. */
+  await P.page.evaluate(() => {
+    const el = [...document.querySelectorAll('[data-tut="coach-gear"]')]
+      .find((e) => e.getBoundingClientRect().width > 0);
+    if (el) el.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+  });
+  await P.page.waitForTimeout(900);
+  const popup = await P.page.evaluate(() => {
+    const txt = (document.body.innerText || '').replace(/\s+/g, ' ');
+    return {
+      names: /Copper Great Sword|Pine Shield/i.test(txt),
+      equip: /\bEquip\b/i.test(txt),
+      text: txt.slice(0, 300),
+    };
+  });
+  console.log('    TILE POPUP: ' + JSON.stringify({ names: popup.names, equip: popup.equip }));
+  rec.ok('tapping the tile names the item the quest paid',
+    popup.names === true, { text: popup.text });
+  rec.ok('...and offers to equip it', popup.equip === true, { text: popup.text });
+  await P.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/tutgrant-popup.png' });
+  await P.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/tutgrant-bag.png' });
+  await P.page.evaluate(() => { try { window.__broDashPanelBus.open(null); } catch (e) {} });
+  await P.page.waitForTimeout(600);
+
   /* ── RE-ACCEPT must not re-pay (and must not be how the owner lost them) ──
      A direct send here on purpose: this one is about the SERVER's guard, not
      about which button reaches it. */

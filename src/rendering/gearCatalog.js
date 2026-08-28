@@ -139,6 +139,12 @@ export function setEquip(slot, id) { if (_stores[slot]) _stores[slot].set(id); }
 /* v2.3.1757: QA hook, same shape as traits/headwearCatalog's __btSetHeadwear —
    the material pipeline has to be drivable from a test without a quest chain. */
 if (typeof window !== 'undefined') window.__btSetGear = setEquip;
+/* v2.3.2067: and the READ side, for the same reason.  qa-gear-smoke verified
+   "the equip stuck" by reading the store's localStorage key directly, so the
+   v2.3.1665 key bump (-v2 -> -v3) turned every one of its equip assertions
+   into a silent false FAIL that outlived the reason for the bump.  A test that
+   asks the module what is equipped cannot go stale when the key moves again. */
+if (typeof window !== 'undefined') window.__btGetGear = getEquip;
 /* v2.3.1758: QA hook — re-derive the worn layers after a test wears a piece,
    which is what every real equip path does (equipActions, ItemDetailPopup). */
 if (typeof window !== 'undefined') window.__btSyncArmorLayers = (R) => syncArmorLayers(R);

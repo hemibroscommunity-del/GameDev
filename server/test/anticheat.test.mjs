@@ -10,8 +10,16 @@
  *   4. Harvest "perfect" rate limit: 10/min, excess downgrades to good.
  *   5. Loot pickup gates: recipient, range, zone, dead, double-claim,
  *      contribution shares, first-picker inventory.
+ *
+ * v2.3.1970 adds §9: THE TWO UNCLAMPED TEXT LANES.  The display name and
+ * the room-chat line were the last player-authored strings the room
+ * published without a bound or an identity stamp -- see the
+ * sanitizeDisplayName (join.js) and CHAT_RELAY (index.js) headers for the
+ * incident shape.  Both are render-path denial of service rather than a
+ * value forge, which is why they survived every earlier pass: nothing
+ * they touch is money.
  */
-import { GameRoom } from '../src/index.js';
+import { GameRoom, CHAT_RELAY } from '../src/index.js';
 
 const mockState = {
   storage: {
@@ -525,8 +533,12 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
       sa: 'a'.repeat(256),   /* v2.3.1939: a drawn shirt */
       pa: 'b'.repeat(256), ta: 'c'.repeat(256),   /* v2.3.1940: pants print + tattoo */
       tf: 'd'.repeat(256), tm: 'e'.repeat(256),   /* v2.3.1949: face + arm tattoos */
+      tb: 'f'.repeat(256),   /* v2.3.2043: the back-of-head drawing */
       sp: 'stripe-v:3', pp: 'camo:6',   /* v2.3.1941: clothing patterns */
       fp: 'check:9',   /* v2.3.1944: shoes */
+      hg: 'tall', fr: 'large',   /* v2.3.1953: height + frame */
+      eqc: 'steelplate', eql: 'steelgreaves', eqs: 'none',   /* v2.3.599: worn armour */
+      eqst: 'tshirt',   /* v2.3.2084: the under-shirt slot */
     },
   }));
 
@@ -551,8 +563,8 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
      watched prints appear and vanish.  Asserting the whole set, rather than
      the newest member, is what stops the next key repeating it. */
   check('track: every drawing key survives at its full 256 chars (v2.3.1939 incident)',
-    ['sa', 'pa', 'ta', 'tf', 'tm'].every((k) => typeof psT[k] === 'string' && psT[k].length === 256),
-    Object.fromEntries(['sa', 'pa', 'ta', 'tf', 'tm'].map((k) => [k, psT[k] && psT[k].length])));
+    ['sa', 'pa', 'ta', 'tf', 'tm', 'tb'].every((k) => typeof psT[k] === 'string' && psT[k].length === 256),
+    Object.fromEntries(['sa', 'pa', 'ta', 'tf', 'tm', 'tb'].map((k) => [k, psT[k] && psT[k].length])));
   /* v2.3.1930: `ec` rides the SAME allowlist as every other cosmetic.  It is in
      this suite rather than a new one because the property under test is the
      allowlist itself: relaying eye colour means adding a key to
@@ -560,6 +572,21 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
      list never reaches playerState.  Value safety is the client's: it maps `ec`
      through EYE_COLOR_CATALOG and answers null for anything unknown. */
   check('track: eye colour is relayed as a cosmetic (v2.3.1930)', psT.ec === 'ice', psT.ec);
+  /* ═══ v2.3.2084: EVERY EQUIPMENT SLOT, NOT THREE OF THE FOUR ═══
+     `eqst` was on JOIN_COSMETIC_KEYS from v2.3.756 and never on this gate, so
+     a peer's shirt arrived with the join frame and was dropped by the first
+     two-second relay -- the same shape as the v2.3.1939 drawing incident the
+     block above pins, and it survived far longer because the fallback that
+     covered for it (derive the garment from the legacy `st` style) LOOKED like
+     it worked.  It did not: the gear slot dresses every new player in a tshirt
+     and `st` is 'none' until somebody picks a style, so an ordinary player was
+     drawn bare-chested on every other screen.  Asserted as the whole SET, for
+     the same reason the drawings are: naming only the newest member is how the
+     next slot repeats it. */
+  check('track: every equipment slot is relayed, the shirt included (v2.3.2084)',
+    psT.eqc === 'steelplate' && psT.eql === 'steelgreaves'
+    && psT.eqs === 'none' && psT.eqst === 'tshirt',
+    { eqc: psT.eqc, eql: psT.eql, eqs: psT.eqs, eqst: psT.eqst });
   /* v2.3.1939: the drawn shirt rides the same allowlist.  Checked for FULL
      LENGTH, not just presence: the join path caps most cosmetics at 64 chars,
      and a truncated drawing is not a smaller drawing -- the client rejects any
@@ -573,6 +600,22 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
     psT.pa === 'b'.repeat(256), psT.pa && psT.pa.length);
   check('track: a tattoo is relayed whole (v2.3.1940)',
     psT.ta === 'c'.repeat(256), psT.ta && psT.ta.length);
+  /* v2.3.2043: `tb` by name, not only through the loop above. The v2.3.1939
+     incident was one key present in the join sanitiser and missing from this
+     gate, and the failure mode is specific: the drawing appears when a peer
+     joins and vanishes on the first two-second relay. A key checked only as
+     part of a list is a key whose absence reads as "the list is shorter". */
+  check('track: the back-of-head drawing survives intact (v2.3.2043)',
+    psT.tb === 'f'.repeat(256), psT.tb && psT.tb.length);
+  /* v2.3.1953: the build rides the same allowlist as every other cosmetic.
+     It is asserted here for the reason `ec` is: relaying it means adding two
+     keys to TRACK_COSMETIC_KEYS, and §7's whole property is that a key not on
+     that list never reaches playerState.  Value safety is the client's — it
+     maps both through HEIGHT_CATALOG / FRAME_CATALOG and falls back to the
+     default for anything unknown, so a forged value can only ever select a
+     build the catalog already contains, and reaches nothing but a transform. */
+  check('track: height and frame are relayed as cosmetics (v2.3.1953)',
+    psT.hg === 'tall' && psT.fr === 'large', { hg: psT.hg, fr: psT.fr });
   /* v2.3.1941: patterns ride the same allowlist.  Display-only like the rest:
      the receiving client maps the id through PATTERN_CATALOG and answers null
      for anything unknown, so a forged value paints nothing. */
@@ -1144,6 +1187,123 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
     !!relay && relay.data && relay.data._zoneEntryGraceUntil === undefined
       && relay.data.rpgWeaponStash === undefined,
     relay && Object.keys(relay.data || {}).length);
+}
+
+/* ── 9. v2.3.1970: the display name and the room-chat line ──
+ *
+ * SIZED TO SLIP UNDER THE FRAME GATE, deliberately, and for the same
+ * reason the v2.3.1629 avatar fixture above says so: MAX_INBOUND_BYTES is
+ * 16 KB, so a genuinely 16 KB string would be dropped by the gate and
+ * every assertion below it would be vacuously true.  4 KB is 20x the
+ * clamp and comfortably inside the frame.
+ */
+{
+  const LONG = 'z'.repeat(4000);
+  const wsN = fakeWs('longname');
+  room.sessions.set(wsN, baseSession());
+  await room.webSocketMessage(wsN, JSON.stringify({
+    type: 'join', id: 'p_name', name: LONG, protocolVersion: 2,
+    data: { x: 0, y: 0, z: 'town' },   /* NO data.name: that is the whole trick */
+  }));
+  const sessN = room.sessions.get(wsN);
+  check('join: an oversized top-level name is clamped', sessN.name.length <= 64, sessN.name.length);
+  /* The consumer that matters: getAllPlayerData() builds every state_sync
+     entry as {...playerState, name: s.name, ...s.data}, so with data.name
+     omitted the raw one is what every other player renders -- into a
+     PIXI Text nameplate with no wordWrap. */
+  const all = room.getAllPlayerData();
+  check('join: ...so the state_sync roster carries the clamped name too',
+    all.p_name && typeof all.p_name.name === 'string' && all.p_name.name.length <= 64,
+    all.p_name && all.p_name.name && all.p_name.name.length);
+
+  const wsC = fakeWs('ctrlname');
+  room.sessions.set(wsC, baseSession());
+  await room.webSocketMessage(wsC, JSON.stringify({
+    type: 'join', id: 'p_ctrl', name: 'Bro\nkiller\u0007', protocolVersion: 2,
+    data: { x: 0, y: 0, z: 'town' },
+  }));
+  const ctrlName = room.sessions.get(wsC).name;
+  let ctrlBad = false;
+  for (let i = 0; i < ctrlName.length; i++) if (ctrlName.charCodeAt(i) < 32) ctrlBad = true;
+  check('join: control characters are stripped from a name', !ctrlBad && /killer/.test(ctrlName), ctrlName);
+
+  const wsW = fakeWs('blankname');
+  room.sessions.set(wsW, baseSession());
+  await room.webSocketMessage(wsW, JSON.stringify({
+    type: 'join', id: 'p_blank', name: '   ', protocolVersion: 2,
+    data: { x: 0, y: 0, z: 'town' },
+  }));
+  check('join: a whitespace-only name falls back rather than rendering as nothing',
+    room.sessions.get(wsW).name === 'Anon', room.sessions.get(wsW).name);
+
+  const wsT = fakeWs('typename');
+  room.sessions.set(wsT, baseSession());
+  await room.webSocketMessage(wsT, JSON.stringify({
+    type: 'join', id: 'p_type', name: { toString: 'nope' }, protocolVersion: 2,
+    data: { x: 0, y: 0, z: 'town' },
+  }));
+  check('join: a non-string name falls back', room.sessions.get(wsT).name === 'Anon',
+    room.sessions.get(wsT).name);
+
+  /* ── the room-chat relay ──
+     `chat` has no case in the router switch: it falls to the default
+     branch, which is why it was byte-for-byte until now.  The assertions
+     read room.eventBuffer, which IS the fan-out. */
+  const chatOf = () => room.eventBuffer.filter((e) => e.type === 'chat');
+  const resetRelay = (ws) => {
+    const sess = room.sessions.get(ws);
+    sess.relayTokens = room.RELAY_BURST; sess.relayAt = Date.now();
+    room.eventBuffer.length = 0;
+  };
+
+  resetRelay(wsN);
+  await room.webSocketMessage(wsN, JSON.stringify({ type: 'chat', payload: { text: LONG } }));
+  let rel = chatOf().pop();
+  check('chat: an oversized line is clamped, not relayed whole',
+    !!rel && rel.payload.text.length === CHAT_RELAY.TEXT_MAX, rel && rel.payload.text.length);
+
+  resetRelay(wsN);
+  await room.webSocketMessage(wsN, JSON.stringify({ type: 'chat', payload: { text: 'hi\nthere\u0001' } }));
+  rel = chatOf().pop();
+  let relBad = false;
+  const relText = (rel && rel.payload.text) || '';
+  for (let i = 0; i < relText.length; i++) if (relText.charCodeAt(i) < 32) relBad = true;
+  check('chat: control chars are stripped', !!rel && !relBad && /there/.test(relText), relText);
+
+  /* Identity.  The client reads payload.id / payload.name and only falls
+     back to the server-stamped msg.from when they are ABSENT, so a forged
+     pair used to win -- the v2.3.1150 server_announce comment in
+     PRIVILEGED_EVENTS records exactly this ("any client could impersonate
+     the server there"). */
+  resetRelay(wsN);
+  await room.webSocketMessage(wsN, JSON.stringify({
+    type: 'chat', payload: { id: 'pa', name: 'Attacker', text: 'give me your gold', color: '#fff' },
+  }));
+  rel = chatOf().pop();
+  check('chat: a forged sender id is replaced with the server\'s',
+    !!rel && rel.payload.id === 'p_name', rel && rel.payload.id);
+  check('chat: ...and so is the forged display name',
+    !!rel && rel.payload.name !== 'Attacker', rel && rel.payload.name);
+
+  /* Allowlist, not a filter: the payload is REBUILT, so the next field
+     somebody adds to the send is dropped rather than trusted (rule 16). */
+  resetRelay(wsN);
+  await room.webSocketMessage(wsN, JSON.stringify({
+    type: 'chat', payload: { text: 'ok', somethingNew: 'x'.repeat(3000), color: 'y'.repeat(3000) },
+  }));
+  rel = chatOf().pop();
+  check('chat: an unreviewed extra field is dropped, not relayed',
+    !!rel && rel.payload.somethingNew === undefined, rel && Object.keys(rel.payload));
+  check('chat: ...and the colour is bounded too',
+    !!rel && rel.payload.color.length <= CHAT_RELAY.COLOR_MAX, rel && rel.payload.color.length);
+
+  resetRelay(wsN);
+  await room.webSocketMessage(wsN, JSON.stringify({ type: 'chat', payload: { text: '   ' } }));
+  await room.webSocketMessage(wsN, JSON.stringify({ type: 'chat', payload: { text: 42 } }));
+  await room.webSocketMessage(wsN, JSON.stringify({ type: 'chat', payload: {} }));
+  await room.webSocketMessage(wsN, JSON.stringify({ type: 'chat' }));
+  check('chat: whitespace-only / non-string / missing text relay nothing', chatOf().length === 0,
+    chatOf().map((e) => e.payload));
 }
 
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);

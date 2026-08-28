@@ -79,14 +79,8 @@ export function VendorPanel(props) {
         effect: 'healFish',
         power: 23
       }, {
-        id: 'basicTrap',
-        name: 'Basic Trap',
-        icon: '🪤',
-        cost: 20,
-        desc: 'Capture weakened monsters',
-        effect: 'trap'
-      }, {
         id: 'staminaSalts',
+        art: '/icons/items/potion-stamina.webp',   /* v2.3.2055 */
         name: 'Stamina Salts',
         icon: '⚡',
         cost: 12,
@@ -94,17 +88,50 @@ export function VendorPanel(props) {
         effect: 'stamina'
       }, {
         id: 'manaShard',
-        name: 'Mana Shard',
+        art: '/icons/items/potion-mana.webp',   /* v2.3.2055 */
+        /* v2.3.2062 (owner: "Make the mana potion refill at a quick rate so
+           you can just do special attacks constantly for 3 mins"). It was a
+           one-shot +40, which is not quite two specials. It is now a
+           three-minute regen surge that outpaces casting without pause, so
+           the name stops describing a lump of mana and starts describing a
+           drink. The id stays -- it is the key in the server's effect table
+           and in saved bags. See ITEM_NAMES in dash/InventoryPanel.jsx. */
+        name: 'Mana Draught',
         icon: '💠',
-        cost: 18,
-        desc: 'Restore 40 Mana',
-        effect: 'mana'
+        cost: 30,
+        desc: 'Cast specials nonstop for 3 min',
+        effect: 'manaSurge'
+      }, {
+        /* ═══ v2.3.2062: THE SWIFT DRAUGHT ═══
+           Owner: "Then do a speed potion that lets you run 1.5x speed 3 mins."
+           The green bottle is the one piece of the owner's potion set that
+           nothing had claimed (the file is named antidote; the art is simply
+           a green potion). */
+        id: 'swiftDraught',
+        art: '/icons/items/potion-antidote.webp',
+        name: 'Swift Draught',
+        icon: '🌿',
+        cost: 30,
+        desc: '1.5x run speed for 3 min',
+        effect: 'spdBuff'
       }, {
         id: 'whetstone',
-        name: 'Whetstone',
-        icon: '🪨',
+        /* v2.3.2054 (owner: "I'd rather it be called something else and look
+           more like a Potion"). The id stays -- it is the key in saved bags
+           and in the server's effect table; only the label and glyph move.
+           See ITEM_NAMES in dash/InventoryPanel.jsx. */
+        name: 'Fury Tonic',
+        /* v2.3.2055: real art now (owner-supplied). The glyph stays as the
+           fallback for anywhere the image cannot resolve. */
+        art: '/icons/items/potion-fury.webp',
+        icon: '🧪',
         cost: 35,
-        desc: '+15% damage for 60s',
+        /* v2.3.2058 (owner: "make it 2x and 3 minutes"). The label has been
+           wrong twice before -- it read 1.15 when the code said 1.20, and it
+           read 5 min after the duration moved -- so it is now written from
+           the same two numbers the server table carries (SHOP_ITEMS.whetstone
+           mult/duration in server/src/data.js). Change one, change both. */
+        desc: 'Double damage for 3 min',
         effect: 'dmgBuff'
       }].map(function (item) {
         var canAfford = rpgState.coins >= item.cost;
@@ -122,12 +149,22 @@ export function VendorPanel(props) {
             minHeight: 44,
             borderTop: '1px solid ' + LS.divider
           }
-        }, /*#__PURE__*/React.createElement("span", {
-          style: {
-            fontSize: 20,
-            flexShrink: 0
-          }
-        }, item.icon), /*#__PURE__*/React.createElement("div", {
+        }, item.art
+          /* v2.3.2055: real art where an item has it; the glyph stays as the
+             fallback for the ones that do not (the trap and the minnow), so a
+             row never renders empty. */
+          ? /*#__PURE__*/React.createElement("img", {
+            src: item.art,
+            alt: '',
+            draggable: false,
+            style: { width: 30, height: 30, objectFit: 'contain', flexShrink: 0 }
+          })
+          : /*#__PURE__*/React.createElement("span", {
+            style: {
+              fontSize: 20,
+              flexShrink: 0
+            }
+          }, item.icon), /*#__PURE__*/React.createElement("div", {
           style: {
             flex: 1,
             minWidth: 0
@@ -183,17 +220,56 @@ export function VendorPanel(props) {
             R._questFlags.boughtItem = true;
             if (item.effect === 'healFish') R.hp = Math.min(R.maxHp, R.hp + (item.power || 23));
             if (item.effect === 'mana') R.mana = Math.min(R.maxMana, (R.mana || 0) + 40);
+            /* v2.3.2062: the surge fills the pool on the drink, so the first
+               special lands immediately. The TIMER is predicted below with the
+               other buffs; the server's own _buffs echo overwrites both. */
+            if (item.effect === 'manaSurge') R.mana = R.maxMana;
             if (item.effect === 'stamina') R.stamina = Math.min(R.maxStamina, (R.stamina || 0) + 60);
             if (item.effect === 'cleanse') {/* clear all statuses */}
             if (item.effect === 'trap') {
               if (!R.inventory) R.inventory = {};
               R.inventory.basic_trap = (R.inventory.basic_trap || 0) + 1;
             }
-            if (S._serverMonsters && S.channel) {
+            /* ═══ v2.3.2062: `_serverMonsters` WAS THE GATE, AND IT IS FALSE HERE ═══
+               This is the v2.3.1702 bug again, in the one place it hurts most.
+               _serverMonsters means "this zone's monsters are server-driven";
+               it is FALSE in town and in every hub -- and the vendor's door is
+               IN TOWN, so it was false at literally every purchase anyone has
+               ever made. The worker never heard about a single one.
+
+               What that meant in practice: the client took your coins and
+               applied the effect locally, the server's copy of your purse and
+               your buffs never moved, and its next player_state echo put the
+               coins back and cleared the effect. Every potion in this panel
+               was a local illusion -- including the Fury Tonic that v2.3.2056
+               went to the trouble of making real server-side, which has never
+               once been armed on a live player.
+
+               _handleShopPurchase is zone-agnostic (it reads coins and pools,
+               nothing about monsters), so `S.channel` is the whole gate --
+               exactly the fix v2.3.1702 applied to ability_use. */
+            if (S.channel) {
               try { S.channel.send({ type: 'shop_purchase', payload: { itemId: item.id } }); } catch (e) {}
             }
+            if (item.effect === 'manaSurge') {
+              /* Prediction only, overwritten by the server's _buffs.mana on
+                 the next player_state. Kept in step with the server duration
+                 so the HUD timer does not jump when that echo lands. */
+              stateRef.current._manaBuff = Date.now() + 180000;
+            }
+            if (item.effect === 'spdBuff') {
+              stateRef.current._spdBuff = Date.now() + 180000;
+              stateRef.current._spdBuffMul = 1.5;
+            }
             if (item.effect === 'dmgBuff') {
-              stateRef.current._dmgBuff = Date.now() + 60000;
+              /* Local PREDICTION only, and it is overwritten by the server's
+                 own _buffs.damage on the next player_state (wsClient mirrors
+                 it). Kept in step with the server's duration so the HUD timer
+                 does not visibly jump when that echo lands. */
+              stateRef.current._dmgBuff = Date.now() + 180000;
+              /* v2.3.2058: predict the MAGNITUDE too, or the popups show the
+                 cooked-food 1.20 for a beat until the server's echo lands. */
+              stateRef.current._dmgBuffMul = 2.0;
             }
             setRpgState(_objectSpread({}, R));
             try {

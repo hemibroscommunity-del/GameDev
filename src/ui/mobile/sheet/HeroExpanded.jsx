@@ -551,6 +551,15 @@ export const HeroExpanded = () => {
               role="button"
               aria-label={badge ? `Build — ${badge} points` : (SECTION_LABEL[s] || s)}
               aria-pressed={on} title={SECTION_LABEL[s] || s}
+              /* v2.3.2013: the section's ID, which does not move.  `title` and
+                 `aria-label` both carry the LABEL, and the label is display
+                 copy the owner renames -- v2.3.1849 turned Build into
+                 "Points", which silently broke mp-statpeek's
+                 `[title="Build"]` and took five assertions with it: the
+                 section never opened, so every reading below it came back
+                 empty.  Same contract as bt-quest-turnin on the claim button,
+                 and for the same reason. */
+              data-section={s}
               onPointerUp={(e) => { e.stopPropagation(); setSection(s); }}
               style={{
                 position: 'relative',

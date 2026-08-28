@@ -51,10 +51,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (window.__broDashPanelBus) { window.__broDashPanelBus.open('hero'); window.__broDashPanelBus.expand(); }
   });
   await P.page.waitForTimeout(700);
-  /* The section tabs are ICON-ONLY — no text node to match on — so they are
-     found by their title attribute, which is what they carry for a11y. */
+  /* The section tabs are ICON-ONLY — no text node to match on.  v2.3.2013:
+     found by data-section, which is the section's ID, NOT by title.  title
+     carries the display LABEL, and the owner renamed Build to "Points" in
+     v2.3.1849 — so `[title="Build"]` matched nothing, this returned false, and
+     the five assertions below reported an empty strip as though the readout
+     were broken.  The section had simply never opened. */
   const openSection = (name) => P.page.evaluate((n) => {
-    const t = document.querySelector(`[role="button"][title="${n}"]`);
+    const t = document.querySelector(`[role="button"][data-section="${n}"]`);
     if (!t) return false;
     for (const type of ['pointerdown', 'pointerup']) {
       t.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 1, pointerType: 'touch' }));

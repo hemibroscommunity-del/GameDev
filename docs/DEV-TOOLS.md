@@ -115,6 +115,62 @@ Notes for anyone extending it:
   killed by process group. Both exist because a leaked wrangler used to
   poison the next run before a single assertion ran.
 
+## `public/tools/draw.html` — the prize draw (v2.3.2030)
+
+A standalone page (no build step, same pattern as `anchor.html` and
+`deploy-scores.html`) that picks the merch winner from a Bitcoin block hash.
+Open it, set the event window, load the entrants, lock, and it draws by itself
+when the block is mined.
+
+Two things about it are load-bearing rather than cosmetic, and both are tested:
+
+* **It refuses to draw against a block that already exists.** Locking requires
+  a target height strictly above the current chain tip, and the tip at lock
+  time is recorded in the commitment. If you can pick the block *after* seeing
+  the hash you can fish for a winner, which makes the whole exercise theatre.
+  The refusal is the product; the modulo is not.
+* **Entrants read `series.kills` and `level`, never the top-level
+  `kills`/`playtime`/`goldEarned`/`ap`.** Those ride the client-reported
+  `rpgData` blob (see the comment at `leaderboard.js:56`) and are forgeable by
+  a modified client. Entrant ordering is by row id, not by the order the
+  server returned rows, so two people drawing from the same data number the
+  list identically and get the same winner.
+
+**The event window is pinned as absolute UTC** (v2.3.2031: 2026-08-28
+16:00–18:00 UTC, i.e. 9–11am PDT) and rendered into whatever timezone the
+viewer is in. The page is shared outside the team, and a hardcoded "09:00
+local" would read as 9am to everyone regardless of where they are, quietly
+selecting the wrong two hours of players. The panel prints the window back in
+both UTC and the viewer's own zone, because the two readings of this event's
+time were once given two hours apart (9am PDT is 16:00 UTC, not 14:00).
+
+**Entry needs a minimum level** (v2.3.2032, default 5, editable on the page).
+This is anti-Sybil, not elitism: identity here is deliberately cheap — a silent
+passphrase per browser, no email, `?guest=1` mints another in the same tab — so
+with presence alone as the qualification a fake entry costs about ten seconds
+in an incognito window. Level cannot be faked (character level is the sum of
+the three trained skill levels, all awarded server-side from damage actually
+dealt, `prog3.js`). A fresh character is already level **3**, so level 5 is two
+level-ups — measured at roughly **37–41 starter slimes** (~38 HP each,
+XP = damage × 0.4, 560–605 XP needed), i.e. real minutes per throwaway account.
+
+The threshold is an input rather than a constant because it has a real cost: a
+genuine latecomer may not clear it. The page names everyone it excluded and
+their level, so a shortened list never looks like a complete one.
+
+`node tools/qa/draw-page.mjs` drives the page in a real browser with both the
+leaderboard and the block explorers stubbed — no internet, no live worker
+needed. 48 assertions. Every browser context is pinned to `Europe/London` on
+purpose: run the suite in `America/Los_Angeles` and a page hardcoding "09:00
+local" would pass everything. That pinning immediately caught a bug in the
+suite itself, where fixture dates were formatted in node's timezone and parsed
+in the browser's — an hour's drift that silently swapped one entrant for
+another that should have been excluded. Both properties above were mutation-checked: reading
+the forgeable field, or committing to the current tip instead of a future
+block, each turns the suite red.
+
+Not on the CI path (same as `deploy-page.mjs`) — run it when the page changes.
+
 ## `.claude/settings.json`
 
 Holds the SessionStart hook wiring only. If you add settings, keep the

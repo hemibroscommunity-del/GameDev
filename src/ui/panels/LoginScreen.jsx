@@ -1,7 +1,7 @@
 import React from 'react';
 import { BUILD_INFO } from '../BuildBadge.jsx';
 import { CharacterPicker } from './CharacterPicker.jsx';                 /* v2.3.1923 */
-import { rosterFull, ROSTER_MAX } from '@/networking/charRoster.js';     /* v2.3.1923 */
+import { rosterFull, rosterCount, ROSTER_MAX } from '@/networking/charRoster.js';  /* v2.3.1923, v2.3.2111 */
 
 /* ═══ v2.3.1814: THE LOGIN SCREEN ═══
  *
@@ -73,7 +73,39 @@ import { rosterFull, ROSTER_MAX } from '@/networking/charRoster.js';     /* v2.3
  * a character is how a slot is freed.
  */
 export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
-  const [showPicker, setShowPicker] = React.useState(false);
+  /* ═══ v2.3.2111: IF THIS DEVICE HAS CHARACTERS, THE LIST IS THE DOOR ═══
+     Owner: "Can you actually provide a list of characters like you did before
+     when people try to join the game ... People will probably have a bunch of
+     them."
+
+     Standing on this screen at all means the key this device holds has no
+     character behind it — the boot check routes straight into the world when
+     it does (BroTown.jsx).  So there are exactly three ways to be here, and
+     the list is the right answer to all of them: a build whose origin restored
+     a roster it cannot auto-adopt (v2.3.2110/2111), a logout, and a delete of
+     the character that was active.  In every one the player is looking for a
+     character they already have, and making them find the button that reveals
+     the list first was a tap spent on the only thing they came to do.
+
+     NOT WHILE `checking`, and that is not a nicety.  This screen is also what
+     renders during the boot check, whose usual answer is "straight into the
+     world" — opening the list under it would flash a list at someone who is
+     already on their way in, and hand them a row to tap in the window before
+     that resolves.  So the list waits for the check to settle into a real
+     door, and opens on that edge.
+
+     Once, tracked on a ref: a player who taps Back wanted this screen, and
+     re-opening the list under them on the next render would be the screen
+     arguing with them. */
+  const [showPicker, setShowPicker] = React.useState(function () {
+    try { return !checking && rosterCount() > 0; } catch (e) { return false; }
+  });
+  const autoOpened = React.useRef(!checking);
+  React.useEffect(function () {
+    if (checking || autoOpened.current) return;
+    autoOpened.current = true;
+    try { if (rosterCount() > 0) setShowPicker(true); } catch (e) {}
+  }, [checking]);
   /* v2.3.1923: the "this device is full" gate — see the Create button. */
   const [warnFull, setWarnFull] = React.useState(false);
   /* No roster count is held here on purpose.  The picker owns the list while
@@ -193,6 +225,13 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
           {/* v2.3.1923: "Continue" (was "Log in with your Key").  Same plate
               art, same single-gold-primary slot; what changed is what is
               behind it — the character list first, the key box under it. */}
+          {/* v2.3.1954: ...and the PLATE says it too now.  v2.3.1923 renamed
+              only this hidden text node, so for a whole version the screen
+              reader said "Continue" while the button still read LOG IN WITH
+              YOUR KEY — the owner's report.  The word is painted into the
+              artwork (btn-continue.png, recomposed from the plate's own
+              lettering by tools/ui/relabel-login-plate.mjs), so the two have
+              to be changed together; mp-keylogin asserts the pair. */}
           <button
             type="button"
             className="bt-login-btn bt-login-btn--key"

@@ -69,11 +69,17 @@ const JOIN_COSMETIC_KEYS = [
   /* v2.3.1949: the face (`tf`) and arm (`tm`) tattoos.  Same shape and cap
      again.  `tm` rather than `ta`+suffix because these are two-letter keys by
      convention and `ta` was taken by the chest. */
-  'sa', 'sb', 'pa', 'ta', 'tf', 'tm',
+  /* v2.3.2043: `tb` is the BACK OF THE HEAD -- the face canvas's other side,
+     matching what `sb` is to `sa`. Same 256-char shape, same cap. */
+  'sa', 'sb', 'pa', 'ta', 'tf', 'tm', 'tb',
   /* v2.3.1941: clothing patterns -- a tile id and a palette index, e.g.
      "stripe-v:3".  Short, so unlike the drawings above they sit inside the flat
      64-char cap with room to spare and need no special case. */
   'sp', 'pp', 'fp',
+  /* v2.3.1953: height and frame -- short catalog ids, well inside the flat cap.
+     See the note in index.js's TRACK_COSMETIC_KEYS for why a forged value is
+     inert. */
+  'hg', 'fr',
   'eqc', 'eql', 'eqs', 'eqst', 'pt', 'sh', 'bs', 'wpnMat', /* v2.3.1760 */
 ];
 /* v2.3.1940: THE DRAWING KEYS, IN ONE PLACE.  These are the cosmetics whose
@@ -84,9 +90,42 @@ const JOIN_COSMETIC_KEYS = [
    the live-update path: the client's sanitiser rejects anything that is not
    exactly 256 hex characters, so peers saw the print appear on join and vanish
    two seconds later.  index.js imports this rather than repeating it. */
-export const DRAWING_KEYS = new Set(['sa', 'sb', 'pa', 'ta', 'tf', 'tm']);
+export const DRAWING_KEYS = new Set(['sa', 'sb', 'pa', 'ta', 'tf', 'tm', 'tb']);   /* v2.3.2043: +tb */
 /** Cap for one cosmetic key: drawings and avatars get the large bound. */
 export function cosmeticCap(k) { return (k === 'avatar' || DRAWING_KEYS.has(k)) ? 512 : 64; }
+/* ═══ v2.3.1970: THE TOP-LEVEL `name` WAS THE ONE THAT GOT AWAY ═══
+ *
+ * A join carries the display name TWICE: `msg.data.name`, which goes
+ * through _sanitizeJoinData and is capped at cosmeticCap('name') = 64,
+ * and the top-level `msg.name`, which went straight into
+ * `session.name = msg.name || 'Anon'` with no type check, no cap and no
+ * control-char strip.  That is the copy the room actually publishes:
+ *   - getAllPlayerData() (index.js) builds every state_sync entry as
+ *     `{...playerState, name: s.name, ...s.data}`, so an attacker who
+ *     simply OMITS data.name leaves the raw one standing;
+ *   - _reportToLeaderboard PREFERS it (`session.name || session.data?.name`),
+ *     so it is the name on the global hiscores board unconditionally;
+ *   - the death-drop pile's ownerName and the party/friends name
+ *     fallbacks read it too.
+ * The client renders a peer's name into a PIXI Text nameplate with no
+ * wrap and no clamp (entityRenderer `display._nameText.text = nextName`),
+ * so an unbounded name is not cosmetic: it is a texture wider than any
+ * iOS GPU will allocate, painted over that player's head on EVERY other
+ * screen in the room, and it persists — unlike a chat bubble it does not
+ * age out after 5 s.  The creator's own input has maxLength 20, so
+ * nothing honest is anywhere near this bound; the gap was purely that
+ * the wire field nobody re-read was trusted (TRAPS #13: audit by what a
+ * handler WRITES, not by which era it came from).
+ *
+ * Same shape as every other text lane in this server — clamp the RAW
+ * length first so padding cannot smuggle a long line past the trim,
+ * strip control chars (a newline in a name breaks the leaderboard row
+ * and the nameplate alike), and fall back rather than admit empty. */
+export function sanitizeDisplayName(v) {
+  if (typeof v !== 'string') return 'Anon';
+  const s = v.slice(0, cosmeticCap('name')).replace(/[\x00-\x1f\x7f]/g, ' ').trim();
+  return s || 'Anon';
+}
 /* rpg* bootstrap seeds: admitted by prefix, then re-read and clamped by
  * the explicit ingest in _handleJoin (stored-wins on every reconnect).
  * Anchored + capitalised so a crafted 'rpg' or 'rpgo' can't sneak in. */
@@ -104,7 +143,106 @@ const JOIN_RPG_PREFIX_RE = /^rpg[A-Z][A-Za-z0-9]*$/;
  * scaling with it. */
 const JOIN_RPG_MAX_BYTES = 8 * 1024;
 
+/* ═══ v2.3.1982: THE ROOM-FULL REFUSAL ═══
+ *
+ * Measured by the headless capacity campaign and left unfixed: at the
+ * MAX_PLAYERS ceiling the 61st player's socket got a bare `503 Room
+ * full` from the DO's fetch(), BEFORE the WebSocket upgrade.  A failed
+ * handshake carries no body a browser will show and no close code, so
+ * wsClient saw it as an ordinary connection failure, fell into the
+ * generic reconnect backoff, and retried every 10s forever behind a
+ * loading screen that never said why.  The player cannot tell a full
+ * world from a broken game, and cannot tell whether waiting helps.
+ *
+ * So the refusal becomes a real answer on the wire, in the same shape
+ * every other join refusal already uses (`join_rejected` + a 4xxx close
+ * code, below): a `room_full` message carrying the numbers, then close
+ * 4009.  BOTH halves are the signal on purpose -- if the message is lost
+ * the close code alone still says "full", and if the close code is
+ * mangled the message alone does.
+ *
+ * DEPLOY-ORDER SAFETY (handoff rule 19), and why the gate is a QUERY
+ * PARAM rather than a caps flag.  caps ride in `state_sync`, which a
+ * refused joiner by definition never receives -- there is no session to
+ * advertise into.  The client therefore opts IN on the URL (`?rf=1`,
+ * wsClient.js) and the two directions come out safe:
+ *   - NEW client + OLD worker: the param is ignored, the handshake fails
+ *     as it always did, and the client falls back to today's silent
+ *     retry (it only paints the screen on an explicit signal).
+ *   - OLD client + NEW worker: no `rf=1`, so it gets the byte-identical
+ *     503 it got before.  This half is not cosmetic: an old client that
+ *     received `join_rejected` with an unknown reason would set
+ *     `_joinRejectedFatal` and stop retrying ALTOGETHER (v2.3.1181),
+ *     which is strictly worse than the silent loop.  That is exactly why
+ *     this is a NEW type on an opt-in channel and not a new
+ *     `join_rejected` reason.
+ *
+ * The cap is not raised here and should not be: 60 players cost the
+ * worker 0.16ms of a 22ms tick, so nothing on the server is straining.
+ * The binding constraint is the RECEIVER -- ~4KB/s of download per
+ * co-located moving peer on a phone.  Sixty is a bandwidth number.     */
+const ROOM_FULL = {
+  /* What we ask the client to wait between attempts.  Sent on the wire so
+     a future worker can slow the herd down without a client deploy; the
+     client clamps it (never trust a wire number).  FIXED, not exponential
+     -- see the client's _roomFullRetry for the reasoning. */
+  RETRY_MS: 5000,
+  CLOSE_CODE: 4009,
+};
+
 export const joinMethods = {
+  /* v2.3.1982: the live admission ceiling.  `max_players` is a live-ops
+     value flag (liveops.js), clamped [1, MAX_PLAYERS] at READ time, so
+     the operator can throttle a room DOWN for a demo -- or a headless
+     test can drive it to 1 -- without ever being able to push it ABOVE
+     the bandwidth-derived ceiling.  Synchronous like every other
+     _flagNum read; fetch() awaits _liveFlagsEnsure before calling it. */
+  _roomCap() {
+    return this._flagNum('max_players', this.MAX_PLAYERS, 1, this.MAX_PLAYERS);
+  },
+
+  /* The answer to a joiner we have no room for.  Returns a Response; the
+     caller returns it straight out of fetch().  NOTE what it does NOT do:
+     it never touches this.sessions, so a refused socket cannot itself
+     push the room over the cap, and the DO's hibernation handlers
+     (webSocketMessage/Close) are never wired to it -- `accept()` rather
+     than `state.acceptWebSocket()` keeps this socket outside the room's
+     bookkeeping entirely. */
+  _roomFullRefusal(url) {
+    const cap = this._roomCap();
+    /* Old clients (and anything that isn't our client) keep the exact
+       refusal they have always had. */
+    if (!url || url.searchParams.get('rf') !== '1') {
+      return new Response('Room full', { status: 503 });
+    }
+    const payload = {
+      type: 'room_full',
+      /* `reason` mirrors join_rejected's field so the client's refusal
+         handling reads the same way for both. */
+      reason: 'full',
+      /* SOCKETS, not getPlayerCount().  The cap counts sockets, and a
+         connection that has not sent its `join` yet is a player walking
+         through the door — it is holding the seat this joiner wants.
+         getPlayerCount() (joined players only) would tell someone we
+         just turned away that the world has 59 of 60 people in it, which
+         reads as a bug in the refusal rather than as a full world. */
+      count: this.sessions.size,
+      cap,
+      retryMs: ROOM_FULL.RETRY_MS,
+    };
+    const [client, server] = Object.values(new WebSocketPair());
+    try {
+      server.accept();
+      server.send(JSON.stringify(payload));
+      server.close(ROOM_FULL.CLOSE_CODE, 'room full');
+    } catch (e) {
+      /* If the upgrade could not be completed there is nothing to say on
+         it; the 503 is still a truthful answer. */
+      return new Response('Room full', { status: 503 });
+    }
+    return new Response(null, { status: 101, webSocket: client });
+  },
+
   /* v2.3.1627: build a clean copy of join.data.  Never mutates the
      caller's object, never iterates client keys, and drops anything not
      named above.  `z` is additionally validated against the zone
@@ -342,7 +480,9 @@ export const joinMethods = {
       }
     }
     session.id = msg.id;
-    session.name = msg.name || 'Anon';
+    /* v2.3.1970: see sanitizeDisplayName above -- this is the copy the
+       state_sync nameplate and the hiscores row are built from. */
+    session.name = sanitizeDisplayName(msg.name);
     /* v2.3.1627: sanitize ONCE, here, and use the clean copy for both
        consumers.  session.data must be the filtered object too, not
        just the playerState spread below: getAllPlayerData() (index.js)
@@ -385,7 +525,19 @@ export const joinMethods = {
         for (const k of JOIN_COSMETIC_KEYS) {
           if (session.char.look[k] !== undefined) cleanJoinData[k] = session.char.look[k];
         }
-        if (session.char.name) cleanJoinData.name = session.char.name;
+        if (session.char.name) {
+          cleanJoinData.name = session.char.name;
+          /* v2.3.1970: and the SESSION name follows the record too.  The
+             stored name already won for the nameplate (getAllPlayerData
+             spreads `...s.data` last), but session.name is a separate
+             copy and _reportToLeaderboard prefers it -- so a hand-edited
+             join could stand on the board under one name while its
+             nameplate showed the permanent one.  "Names are permanent"
+             (v2.3.1814, owner directive) has to mean everywhere the name
+             is published, not just the one reader that happened to be
+             ordered correctly. */
+          session.name = sanitizeDisplayName(session.char.name);
+        }
       }
     }
     session.data = cleanJoinData;
@@ -817,6 +969,13 @@ export const joinMethods = {
     // delivered-once, cleared after send).  After the inbox drain so
     // credit lines land first, before social chatter.
     await this._friendsOnJoin(msg.id, ws);
+    /* v2.3.1981: load this player's chat-mute list into memory and echo
+       it (chatmod.js _chatModOnJoin).  AWAITED and placed BEFORE the
+       state_sync below on purpose -- the tick fan-out consults the
+       in-memory Set synchronously, so a mute that loaded late would let
+       the first lines after a reconnect through, which is exactly the
+       moment a harassed player is most likely to be watching. */
+    await this._chatModOnJoin(msg.id, ws);
     // v2.3.1149: cadence hooks -- daily login reward (per-player
     // lazy settlement) + the weekly jackpot's lazy draw resolution
     // (rule 12: a week that ended in an empty room settles on the
@@ -884,9 +1043,20 @@ export const joinMethods = {
        wire blob -- _sanitizeJoinData already dropped an unlisted id, so
        this can no longer hand _ensureZoneMonsters a forged zone. */
     const joinZone = this.playerState[msg.id]?.z || 'town';
-    const zoneMonsters = (joinZone !== 'town' && joinZone !== 'farm_home') ? this._ensureZoneMonsters(joinZone) : [];
-    const zoneNodes = (joinZone !== 'town' && joinZone !== 'farm_home') ? this._ensureZoneNodes(joinZone) : [];
-    const zoneLootForJoin = (joinZone !== 'town' && joinZone !== 'farm_home') ? this._zoneLootForWire(joinZone) : [];
+    const _joinInWorld = (joinZone !== 'town' && joinZone !== 'farm_home');
+    if (_joinInWorld) {
+      this._ensureZoneMonsters(joinZone);
+      this._ensureZoneNodes(joinZone);
+      /* v2.3.1983: this player is already in playerState, so scaling here
+         counts them — their own state_sync below then carries the world
+         their arrival just grew, and everyone else in the zone gets the
+         roster push from inside (this socket is excluded; it is about to
+         receive the same lists in state_sync). */
+      this._spawnScaleZone(joinZone, Date.now(), undefined, ws);
+    }
+    const zoneMonsters = _joinInWorld ? (this.monsters[joinZone] || []) : [];
+    const zoneNodes = _joinInWorld ? (this.nodes[joinZone] || []) : [];
+    const zoneLootForJoin = _joinInWorld ? this._zoneLootForWire(joinZone) : [];
     // v2.3.1150: warm the live-ops flag cache before anything gated
     // can run, and let operator flags OVERRIDE the baked caps
     // (spread last).  Empty flags = identity, so deploy-order
@@ -895,6 +1065,44 @@ export const joinMethods = {
     // the disable_* server switches are the normal kill lever
     // (docs/specs/liveops.md safety table).
     const _liveFlags = await this._liveFlagsEnsure();
+    /* v2.3.2026: warm the cape ledgers on the same await the flags use.  The
+       ticket claim is deliberately SYNCHRONOUS (eventcapes.js), which means it
+       cannot load its own ledger -- it refuses rather than guess when one is
+       missing, so a cold ledger would silently award nothing all event. */
+    /* ═══ v2.3.2026: WARM THE CAPE LEDGERS, BUT DO NOT AWAIT THEM HERE ═══
+     * The ticket claim is deliberately SYNCHRONOUS (eventcapes.js) and refuses
+     * rather than guess when its ledger is cold, so the ledger has to be warm
+     * before the first kill -- which is a long way after this line.
+     *
+     * It is warmed UNAWAITED because awaiting it here breaks the join.
+     * Measured, not assumed: with `await this._capeLedgersLoad()` on this line
+     * the chainscore suite fails "svKills survives a reconnect" and echoes
+     * svKills 0 -- a reconnecting player's kill count reset, which is exactly
+     * the monotonicity that suite exists to protect. A bare
+     * `await Promise.resolve()` in the same place is harmless, so it is not
+     * yielding that does it; it is the extra STORAGE round-trip landing
+     * between this handler's own load and save of the rpg blob.
+     *
+     * Unawaited, the warm completes in a microtask, long before any monster
+     * dies, and the join path keeps exactly the storage ordering it had. */
+    try {
+      const _capeWarm = this._capeLedgersLoad();
+      if (_capeWarm && _capeWarm.catch) _capeWarm.catch(() => {});
+      /* v2.3.2101: and TELL THE PLAYER where the contest stands, once the warm
+         lands. Sent as its own message rather than folded into state_sync
+         below, because state_sync goes out now and the ledger is deliberately
+         not awaited here (see above) -- a count read before the warm would be
+         `null` on the join that matters most, the first one after a deploy.
+         Chained off the warm instead, so it carries a real number. */
+      if (_capeWarm && _capeWarm.then) {
+        _capeWarm.then(() => {
+          try {
+            const w = this._wsBySessionId(session.id);
+            if (w) w.send(JSON.stringify({ type: 'cape_status', payload: this._capePublicStatus() }));
+          } catch (e) { /* the player is gone; nothing to tell */ }
+        }).catch(() => {});
+      }
+    } catch (e) { /* never block a join on a cosmetic */ }
     ws.send(JSON.stringify({
       type: 'state_sync',
       // v2.3.1119: capability advertisement.  Clients gate their
@@ -961,7 +1169,7 @@ export const joinMethods = {
       char: (session.char
         ? { name: session.char.name, look: session.char.look, createdAt: session.char.createdAt }
         : null),
-      caps: { charLock: true /* v2.3.1814: name+look are stored server-side and a stored record WINS over the join payload.  The client gates BOTH halves of the permanent-character flow on this — skipping the creator, and trusting state_sync.char over its local trait catalogs.  Against an OLD worker the flag is absent, no record is ever stored, and the client keeps its old behaviour of picking a look every session; against a NEW worker an old client simply sends a look and has it locked in on first join, which is the intended migration either way (deploy-order safety, rule 19). */, trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, httpAuth: true, party: true, amuletForge: true, gems: true, petLoot: true, gemExtract: true, partyChat: true, trade2Weapons: true, trade2Review: true /* v2.3.1754: the two-stage trade (ready -> review -> accept), its server-enforced accept cooldown, and the trade2_ready type.  The client gates its Ready button and its trade2_ready send on this: against an OLD worker the flag is absent, the window keeps the single-stage Confirm it has always had, and nothing is sent that the worker would relay as an unknown broadcast.  Against a NEW worker an old client simply never readies — and _handleTrade2Confirm would refuse it, so the pairing must be advertised (deploy-order safety, rule 19). */, laststand: true, friends: true /* v2.3.1323 */, t2simple: true /* v2.3.1342: level = T2 points placed (cap 1000); client gates its level derivation + spend celebration on this so an old worker's player_state echo can't stomp the new formula */, t2bench: true, broVerify: true /* v2.3.1576: Hemi Bro ownership. Gates the client's wallet control (broWallet.broVerifySupported) so it only appears against a worker that can settle it; an old client never sends the types. Safe in either deploy order (rule 19). */, prog3: true /* v2.3.1659: the trained-skill combat rebuild (prog3.js). The client gates its new Build UI, prog3_allocate sends, trained-level readouts, and the retirement of its local _buildProg/weapon-XP accrual on this flag — an old worker would relay prog3_allocate as an unknown type and its player_state echoes would stomp prog3-derived pools (deploy-order safety, rule 19). */, abil: true /* v2.3.1733: stamina abilities + the milestone unlock ladder (abilities.js). The client gates its ability BUTTONS and its `ability` sends on this, so against an old worker (which would relay the unknown type as a broadcast and never settle it) no button appears and nothing is sent — deploy-order safe in either order (rule 19). */, elemBurst: true /* v2.3.1734: Element Burst (burst.js). Gates the client's burst button, its desktop key and its element_burst send — against an old worker the button never appears and nothing is sent, and against a new worker an old client simply never casts it. ALSO gates the client's FLAT special-attack mana cost: the cost is charged by the worker (_abilityCost), so a new client against an old worker must keep predicting floor(maxMana/5) or its charge pie promises casts that worker will refuse (deploy-order safety, rule 19). */, ..._liveFlags },
+      caps: { charLock: true /* v2.3.1814: name+look are stored server-side and a stored record WINS over the join payload.  The client gates BOTH halves of the permanent-character flow on this — skipping the creator, and trusting state_sync.char over its local trait catalogs.  Against an OLD worker the flag is absent, no record is ever stored, and the client keeps its old behaviour of picking a look every session; against a NEW worker an old client simply sends a look and has it locked in on first join, which is the intended migration either way (deploy-order safety, rule 19). */, trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, httpAuth: true, party: true, amuletForge: true, gems: true, petLoot: true, gemExtract: true, partyChat: true, trade2Weapons: true, trade2Review: true /* v2.3.1754: the two-stage trade (ready -> review -> accept), its server-enforced accept cooldown, and the trade2_ready type.  The client gates its Ready button and its trade2_ready send on this: against an OLD worker the flag is absent, the window keeps the single-stage Confirm it has always had, and nothing is sent that the worker would relay as an unknown broadcast.  Against a NEW worker an old client simply never readies — and _handleTrade2Confirm would refuse it, so the pairing must be advertised (deploy-order safety, rule 19). */, laststand: true, friends: true /* v2.3.1323 */, t2simple: true /* v2.3.1342: level = T2 points placed (cap 1000); client gates its level derivation + spend celebration on this so an old worker's player_state echo can't stomp the new formula */, t2bench: true, broVerify: true /* v2.3.1576: Hemi Bro ownership. Gates the client's wallet control (broWallet.broVerifySupported) so it only appears against a worker that can settle it; an old client never sends the types. Safe in either deploy order (rule 19). */, prog3: true /* v2.3.1659: the trained-skill combat rebuild (prog3.js). The client gates its new Build UI, prog3_allocate sends, trained-level readouts, and the retirement of its local _buildProg/weapon-XP accrual on this flag — an old worker would relay prog3_allocate as an unknown type and its player_state echoes would stomp prog3-derived pools (deploy-order safety, rule 19). */, abil: true /* v2.3.1733: stamina abilities + the milestone unlock ladder (abilities.js). The client gates its ability BUTTONS and its `ability` sends on this, so against an old worker (which would relay the unknown type as a broadcast and never settle it) no button appears and nothing is sent — deploy-order safe in either order (rule 19). */, elemBurst: true /* v2.3.1734: Element Burst (burst.js). Gates the client's burst button, its desktop key and its element_burst send — against an old worker the button never appears and nothing is sent, and against a new worker an old client simply never casts it. ALSO gates the client's FLAT special-attack mana cost: the cost is charged by the worker (_abilityCost), so a new client against an old worker must keep predicting floor(maxMana/5) or its charge pie promises casts that worker will refuse (deploy-order safety, rule 19). */, chatMute: true /* v2.3.1981: server-side chat mute + reports (chatmod.js). The client gates its chat_mute/chat_report sends AND its "muted lines still arrive, shown as [muted]" fallback on this: against an OLD worker the flag is absent, nothing is sent (an unknown type would be REBROADCAST to the room -- a mute telling everyone who you muted), and the localStorage list keeps doing the filtering it always did. Against a NEW worker an old client simply keeps filtering locally over a stream the worker is already filtering, which is harmless (deploy-order safety, rule 19). */, eventCapes: true /* v2.3.2026: the golden-ticket drop and cape_redeem (eventcapes.js). The client gates its Open button and its cape_redeem send on this: against an OLD worker the flag is absent, no ticket can exist to open, and nothing is sent that the worker would relay to the room as an unknown broadcast. Against a NEW worker an old client simply never opens a ticket it cannot have been given -- the drop is gated on the same event flag (deploy-order safety, rule 19). */, ..._liveFlags },
       // v2.3.1178: this session's private economy-endpoint token.
       // state_sync goes to the joining socket ONLY -- never broadcast.
       httpToken: session.httpToken,

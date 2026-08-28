@@ -11,6 +11,7 @@
      (destructured to the original names so the body is untouched).
    S is stateRef.current. */
 import { _onBroNonce, _onBroResult } from './broWallet.js'; /* v2.3.1576 */
+import { shopBus } from '../ui/mobile/shopBus.js';   /* v2.3.2050 */
 import { BT_AUDIO, ZONES, TILE, ARENA_CHAMPION_REWARD, ARENA_WIN_REWARD, CLAN_WAR_REWARDS, createDefaultCompStats, recalcDerived, DEATH_GOLD_PENALTY, PVP_THREAT_CONSENT_MS, updateZoneDimensions, generateZoneMap, trainDefense, getGuildRank, SKILL_GUILDS } from '@/data/index.js';
 import { MONSTER_VARIANTS, maybeTransformMonster, isRemnantSkull, xpMultFor } from '@/data/monsterVariants.js';
 import { prog3Live } from '@/data/prog3.js'; /* v2.3.1727: the kill-XP popup is a legacy number under prog3 */
@@ -27,6 +28,7 @@ import { BT_API_BASE } from '@/networking/index.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse, pushDmgPopup, monsterPopupY, isAttackInShieldArc } from '@/game/combatHelpers.js';
 import { handleChatEvent, handleEmoteEvent, handlePartyChatEvent } from '@/game/chat.js';
+import { applyServerMuteList } from '@/game/chatMute.js'; /* v2.3.1981 */
 import { pushAbilityRings } from '@/game/abilities.js'; /* v2.3.1735: a peer's bash draws the caster's own shockwave */
 import { friendsSrv } from '@/ui/mobile/sheet/friendsSync.js'; /* v2.3.1324 */
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
@@ -48,6 +50,13 @@ import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
    display state derived from the relayed, server-validated handshake —
    never sent back to the server, and time-bounded (≤10-min consent
    window) so reconnects/deploys just let stale marks age out. */
+/* v2.3.1970: mirrors PARTY.INVITE_TTL in server/src/party.js -- the window the
+   worker keeps a recorded invite for.  Mirrored rather than imported because
+   the client has no copy of the server's config objects; if that number moves,
+   move this one (a client clock that is SHORTER would hide a still-valid
+   invite, which is the failure worth avoiding). */
+var PARTY_INVITE_TTL_MS = 60000;
+
 function _setThreatMark(S, pid, type, until) {
   if (!pid || typeof pid !== 'string' || pid === S.myId) return;
   if (!S._threatMarks) S._threatMarks = {};
@@ -158,6 +167,86 @@ export function processGameEvent(type, payload, S, deps) {
               } catch (_e) {}
               break;
             }
+          /* ═══ v2.3.2050: SHOPKEEPER BRO'S TWO ANSWERS ═══
+             Both are server-emitted (PRIVILEGED_EVENTS), so what arrives here
+             is the room's own arithmetic and not another client's claim.
+             `shop_state` is BROADCAST on every sale, not just to the player
+             who made it: the pile is public, so someone with the window open
+             watches it move as other people trade. */
+          case 'shop_state': {
+            const _sp = payload || {};
+            shopBus.setStock(_sp.items || []);
+            break;
+          }
+          /* v2.3.2057: a stack price, quoted without moving anything. */
+          case 'shop_quoted': {
+            const _sq = payload || {};
+            shopBus.setQuote(_sq.ok ? _sq : null);
+            break;
+          }
+          /* ═══ v2.3.2101: WHERE THE CONTEST STANDS, IN THE CHAT ═══
+             The drop was reported dead four separate times and every round
+             went on guessing at state nobody could see -- the kill switch,
+             the rate and the ledger all live in durable worker storage,
+             readable only through an admin endpoint behind a secret. The
+             wiring was correct throughout (driving the kill resolver grants
+             the ticket); what was missing was a window into it.
+
+             So the worker now says, on join, whether the contest is running,
+             how many of the three are left and the rate it will actually
+             roll. A player wants to know all three during an event, and when
+             it goes wrong again this line is the diagnosis instead of an
+             afternoon of inference. */
+          case 'cape_status': {
+            const _cs = payload || {};
+            const _c = (_cs.capes && _cs.capes.crimson) || null;
+            const _pct = Math.round((_cs.rate || 0) * 100);
+            const _line = !_cs.live
+              ? 'Golden ticket event: not running.'
+              : _c && _c.remaining === null
+                ? 'Golden ticket event: running (counting tickets\u2026)'
+                : _c && _c.remaining > 0
+                  ? `Golden ticket event: ${_c.remaining} of ${_c.cap} left, ~${_pct}% per kill.`
+                  : 'Golden ticket event: all tickets have been found.';
+            /* ═══ v2.3.2117: OFF THE BOARD, NOT OUT OF REACH ═══
+             * Owner: "Hide the gold ticket message board, it covers the left
+             * joystick."
+             *
+             * This line used to go into world chat, and in a quiet room it was
+             * the ONLY line — which is what made the board permanent.  The feed
+             * renders nothing at all when nobody has said anything
+             * (WorldChatFeed's "quiet when empty"), so a status message posted
+             * on every single join is the difference between a lower-left
+             * corner that is clear and one that has a 260px panel parked over
+             * the joystick from the moment you load.  A status readout should
+             * not be able to hold a chat panel open.
+             *
+             * It is not deleted, because of why it exists: v2.3.2101 added it
+             * after the drop was reported dead four times and every round was
+             * spent guessing at state nobody could see — the kill switch, the
+             * rate and the ledger all live in durable storage and are invisible
+             * from source.  Blinding that again to clear a corner would trade a
+             * layout problem for the diagnostic one it was built to end.  So it
+             * goes to the console, where it costs no pixels and is one devtools
+             * tab away, and to a field QA can read without parsing chat. */
+            try { console.log('[bt] ' + _line); } catch (e) { /* ignore */ }
+            try { S._capeStatusLine = _line; } catch (e) { /* ignore */ }
+            break;
+          }
+          case 'shop_result': {
+            const _sr = payload || {};
+            if (_sr.ok && _sr.kind === 'shop_sell') {
+              shopBus.setNote(`Sold ${_sr.sold} for ${_sr.paid} coins.`, true);
+            } else if (_sr.ok && _sr.kind === 'shop_buy') {
+              shopBus.setNote(`Bought ${_sr.bought} for ${_sr.cost} coins.`, true);
+            } else {
+              /* His refusal, in his words -- "He's full of those" reads as a
+                 shopkeeper; "error" reads as a broken game. */
+              shopBus.setNote(_sr.error || 'He shakes his head.', false);
+            }
+            break;
+          }
+
           case 'chat':
             {
               /* v2.3.767: body moved to src/game/chat.js (Phase 2). */
@@ -254,6 +343,35 @@ export function processGameEvent(type, payload, S, deps) {
           case 'friend_error':
             {
               friendsSrv.setError(payload || null);
+              break;
+            }
+          /* v2.3.1981: chat moderation (server/src/chatmod.js).  The mute
+             list is the SERVER's — it arrives on join and after every
+             mutation, and replaces this browser's localStorage mirror so
+             a mute made on one device is in force on the next. */
+          case 'chat_mute_list':
+            {
+              applyServerMuteList(payload, S);
+              if (payload && payload.error === 'list-full' && S.player) {
+                pushDmgPopup(S, S.player.x, S.player.y - 30, 'Mute list is full', '#D95C54');
+              }
+              break;
+            }
+          case 'chat_report_ack':
+            {
+              /* The only feedback a reporter gets, and it matters: without
+                 it the button is indistinguishable from a button that does
+                 nothing, which is how a safety control loses its users. */
+              var _rrOk = !!(payload && payload.ok);
+              /* Last ack, kept on S so a headless check can ask what the
+                 WORKER answered rather than racing the popup's 3s ttl
+                 (tools/qa/mp/mp-chat.mjs). */
+              S._lastReportAck = payload || null;
+              var _rrMsg = _rrOk ? 'Report sent to the moderators'
+                : (payload && payload.error) === 'duplicate' ? 'Already reported just now'
+                  : (payload && String(payload.error || '').indexOf('rate-') === 0) ? 'Too many reports — try later'
+                    : 'Report failed';
+              if (S.player) pushDmgPopup(S, S.player.x, S.player.y - 30, _rrMsg, _rrOk ? '#59BF91' : '#D95C54', { ttl: 3 });
               break;
             }
           case 'gamble_result':
@@ -835,6 +953,18 @@ export function processGameEvent(type, payload, S, deps) {
               for (var _ie = 0; _ie < _inbEntries.length; _ie++) {
                 var _e = _inbEntries[_ie] || {};
                 var _ep = _e.payload || {};
+                /* v2.3.2037 (owner: "remove the 25 gold message").  The daily
+                   login reward is 25 gold (CADENCE.DAILY_BASE_GOLD) and it
+                   rides _creditPlayer like any other delivery, so it printed
+                   "📫 You received +25 gold (Daily reward — day 1)" into chat
+                   on EVERY login -- the first thing anyone read, every time.
+                   Only the LINE is dropped; the gold is still paid, and the
+                   coin counter still moves. Filtered on `source`, which
+                   inbox.js already puts on the wire, rather than on the text
+                   or the amount: a real delivery of 25 gold from a trade is
+                   still worth announcing, and a match on "25" would have
+                   silenced that too. */
+                if (_e.source === 'daily') continue;
                 var _what = _e.kind === 'gold' ? '+' + (_ep.amount || 0) + ' gold'
                   : _e.kind === 'item' ? (_ep.count || 1) + '× ' + (_ep.invKey || 'item')
                   : _e.kind === 'weapon' ? ((_ep.weapon && _ep.weapon.name) || 'a weapon')
@@ -2526,9 +2656,32 @@ export function processGameEvent(type, payload, S, deps) {
                  (accepting sends party_accept, validated against the
                  inviter's own recorded invite server-side). */
               if (!payload || !payload.from) break;
-              if (setParty) setParty({ invite: true, from: payload.from, fromName: payload.fromName || 'Someone', partySize: payload.partySize || 1, ts: Date.now() });
+              var _piTs = Date.now();
+              if (setParty) setParty({ invite: true, from: payload.from, fromName: payload.fromName || 'Someone', partySize: payload.partySize || 1, ts: _piTs });
               pushDmgPopup(S, S.player.x, S.player.y - 40, '🎪 ' + (payload.fromName || 'Someone') + ' invites you to a party!', '#fbbf24');
               BT_AUDIO.beep(600, 0.06, 0.08, 'sine');
+              /* ═══ v2.3.1970: AN IGNORED INVITE HAS TO GO AWAY BY ITSELF ═══
+                 The server drops the recorded invite after PARTY.INVITE_TTL
+                 (party.js, 60 s) and _handlePartyAccept answers a late Join
+                 with party_error 'expired'.  The CARD had no such clock: the
+                 stub carried a `ts` that nothing ever read, so an invite
+                 nobody answered sat on screen for the rest of the session.
+                 That is not cosmetic on the primary platform -- v2.3.1966
+                 portalled this card to document.body at Z_ABOVE_DASH_PROMPT
+                 precisely so it outranks the dashboard, which means a dead
+                 invite parks a 240px panel over the top-centre of a 390px
+                 phone and nothing but tapping it will move it.  A demo crowd
+                 invites strangers constantly and most of them will never
+                 answer, so this is the common case, not the edge one.
+                 Cleared with the functional setter and an identity check, so
+                 a NEWER invite (or a party you have since joined -- the same
+                 slot holds the roster) can never be swept away by an older
+                 invite's timer. */
+              setTimeout(function () {
+                if (setParty) setParty(function (cur) {
+                  return (cur && cur.invite && cur.from === payload.from && cur.ts === _piTs) ? null : cur;
+                });
+              }, PARTY_INVITE_TTL_MS);
               break;
             }
           case 'party_state':

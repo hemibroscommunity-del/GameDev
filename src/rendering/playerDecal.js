@@ -203,11 +203,60 @@ function _largestPiece(mask, w, h, x0, x1) {
  *        the behaviour is exactly what it was: largest piece only, confined to
  *        the whole mask, which keeps the shipped chest/trouser bakes identical.
  */
+/* ═══ v2.3.1962: WHERE THE 16x16 GRID LANDS, IN ONE PLACE ═══
+ *
+ * The drawing is a 16x16 grid fitted into a box inside the region's measured
+ * bulk rectangle.  That arithmetic used to live inline in stampRegion and
+ * nowhere else, which was fine while the only thing that needed it was the
+ * stamp itself.  The designer now needs the SAME numbers to run backwards —
+ * the owner wants to draw on the character rather than on a detached grid, so
+ * a touch on the body has to resolve to a cell — and a second copy of a fit
+ * like this is precisely how the hat and its hair-mask drifted apart
+ * (v2.3.1959).  One function, used by both directions.
+ *
+ * `fillW`/`fillH` are the share of the region the grid covers and `cy` is where
+ * its centre sits down the region, so the caller's BOX constants keep meaning
+ * exactly what they meant.
+ */
+export function gridFit(lx, rx, ty, by, box) {
+  const bw = rx - lx + 1, bh = by - ty + 1;
+  const dw = Math.max(ART_W, Math.round(bw * box.fillW));
+  const dh = Math.max(ART_H, Math.round(bh * box.fillH));
+  const ox = Math.round((lx + rx + 1) / 2 - dw / 2);
+  const oy = Math.round(ty + bh * box.cy - dh / 2);
+  return { ox, oy, cw: dw / ART_W, ch: dh / ART_H };
+}
+
+/** The inverse of gridFit: which grid cell a pixel of the SHEET falls in, or
+ *  null when it falls outside the grid entirely.  Deliberately does NOT consult
+ *  the region mask — a touch just off the arm should still resolve to the cell
+ *  it is nearest, or the last few pixels of every stroke would be swallowed.
+ *  What the mask governs is where the ink SHOWS, which the live preview says
+ *  better than a rejected touch would. */
+export function cellAt(g, x, y) {
+  const gx = Math.floor((x - g.ox) / g.cw);
+  const gy = Math.floor((y - g.oy) / g.ch);
+  if (gx < 0 || gy < 0 || gx >= ART_W || gy >= ART_H) return null;
+  return { gx, gy };
+}
+
 export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
-  if (!artHasInk(art)) return 0;
+  /* v2.3.1965: a blank canvas still has to report its grid.  The body-ink
+     surface turns a finger into a cell using the grid this stamp fitted, so
+     with this early return in front of the report a character who has never
+     drawn anything reported no grids at all — and could therefore never make
+     the FIRST mark, on any region, forever.  Nothing is painted either way:
+     every cell of a blank drawing gives artColorAt null and is skipped, so the
+     only cost of measuring it is measuring it, and only the designer asks. */
+  if (!artHasInk(art) && !(opts && opts.report)) return 0;
   const frames = Math.max(1, Math.floor(w / frameW));
-  const fillW = box.fillW, fillH = box.fillH, cy = box.cy;
   const eachPiece = !!(opts && opts.eachPiece);
+  const underSkin = !!(opts && opts.underSkin);   /* v2.3.1950 */
+  /* v2.3.1962: when the caller passes an array, every grid this stamp fits is
+     pushed into it.  The designer reads them to turn a touch on the body back
+     into a cell; the game passes nothing and the array never exists. */
+  const report = (opts && opts.report) || null;
+  const profile = !!(opts && opts.profile);   /* v2.3.1992: histograms in the report */
   let painted = 0;
   let scratch = null, seenBuf = null;
   /* The mask is its own array, so painting colours into `d` can never change
@@ -273,16 +322,112 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
     }
     if (!peakRow) { release(); continue; }   /* this piece has nothing here */
     const rowMin = Math.max(2, peakRow * REGION_KEEP), colMin = Math.max(2, peakCol * REGION_KEEP);
-    let lx = Infinity, rx = -1, ty = Infinity, by = -1;
+    let ty = Infinity, by = -1;
     for (let y = 0; y < h; y++) if (rowN[y] >= rowMin) { if (y < ty) ty = y; if (y > by) by = y; }
-    for (let x = 0; x < colN.length; x++) if (colN[x] >= colMin) { if (x < lx) lx = x + x0; if (x + x0 > rx) rx = x + x0; }
-    if (rx < 0 || by < 0) { release(); continue; }
-    const bw = rx - lx + 1, bh = by - ty + 1;
-    const dw = Math.max(ART_W, Math.round(bw * fillW));
-    const dh = Math.max(ART_H, Math.round(bh * fillH));
-    const ox = Math.round((lx + rx + 1) / 2 - dw / 2);
-    const oy = Math.round(ty + bh * cy - dh / 2);
-    const cw = dw / ART_W, ch = dh / ART_H;
+    /* ── THE COLUMN EXTENT IS MEASURED IN THE FRAME'S OWN SPACE (v2.3.1992) ──
+       Owner: "the face tattoo only showing on idle and disappears during jog
+       but then pops up on one frame."
+       `colN` is indexed from the LEFT EDGE OF THIS FRAME (`x - x0` above); `lx`
+       and `rx` are coordinates on the whole SHEET.  The line that walked the
+       histogram compared the two directly — `if (x < lx) lx = x + x0` — so on
+       frame 0, where x0 is 0 and the two spaces coincide, it was right, and on
+       every later frame `lx` held a sheet coordinate while `x` counted from 0,
+       so every kept column looked further left than the one before it and both
+       ends walked to the LAST one.  Measured on jog-east: frame 0 fits
+       lx 128 -> rx 163, and frame 1, whose kept columns are the same 36-wide
+       run, fits lx 419 -> rx 419 — a single column.
+       gridFit then clamps that 1px box back up to a 16px grid (Math.max(ART_W,
+       ...)), so the paint did not vanish so much as get crushed: rendered and
+       looked at, the face band on frame 1 is a narrow sliver jammed against the
+       leading edge of the face, half of it off the head and clipped away by the
+       mask.  That is also why nothing ever threw — every piece of arithmetic
+       downstream was valid, it was just measuring the wrong thing.
+       THE ONE FRAME IT WORKED ON IS FRAME 0 OF THE STRIP, which is what the
+       owner saw pop up, and it is also why every STANDING facing was fine —
+       those sheets are one frame, so x0 is always 0.
+       So the histogram is now walked entirely in local space and converted to
+       sheet coordinates ONCE, at the end.  The two spaces can no longer meet
+       in a comparison.
+       REGION_KEEP IS UNCHANGED, deliberately.  With the indices agreeing it
+       measured well on all 40 sheet/region pairs — it keeps 74-100% of the
+       true column run on the face, 59-100% on the chest and 76-100% on the
+       trousers (median 0.95), never collapsing below 4px on any of the three.
+       Swapping it for a mass quantile (the other candidate) trims MORE:
+       stand-south's face goes 45px -> 38px at 2% tails, which would move every
+       already-correct tattoo on every standing frame for no gain here.  The
+       stray-rejection v2.3.1945 added it for is exactly what it still does. */
+    let cLo = Infinity, cHi = -1;
+    for (let x = 0; x < colN.length; x++) if (colN[x] >= colMin) { if (x < cLo) cLo = x; if (x > cHi) cHi = x; }
+    if (cHi < 0 || by < 0) { release(); continue; }
+    const lx = cLo + x0, rx = cHi + x0;
+    /* v2.3.1950: the region's own mean brightness, so ink can be shaded BY the
+       body rather than pasted flat over it — see INK_TUNE. */
+    let refLum = 0;
+    if (underSkin) {
+      let n = 0, sum = 0;
+      for (let y = ty; y <= by; y++) {
+        for (let x = lx; x <= rx; x++) {
+          if (!confine[y * w + x]) continue;
+          const i = (y * w + x) * 4;
+          sum += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+          n++;
+        }
+      }
+      refLum = n ? sum / n : 128;
+    }
+    const { ox, oy, cw, ch } = gridFit(lx, rx, ty, by, box);
+    /* v2.3.1992: with `profile` set, the report carries the row/column HISTOGRAMS
+       the extent was measured from, not just the extent.  The vanishing face
+       tattoo was three wrong readings deep before anyone looked at the shape of
+       colN — a profile head's columns are a spike, a standing torso's are a
+       plateau — and no amount of staring at lx/rx says which one you have.
+       Diagnostic only, gated by the caller (window.__btGridProbe), and it
+       allocates two small arrays per frame when asked and none when not. */
+    /* ═══ v2.3.2082: THE FRAME'S OWN FIGURE BOX, UNDER THE PROBE ═══
+       Owner: "Check tattoo and pattern placements on all animations for
+       consistency."  The grid alone cannot answer that.  gridFit CENTRES the
+       drawing on the region box (ox = box centre - dw/2, oy = ty + bh*cy -
+       dh/2), so the drawing's position RELATIVE TO THAT BOX is constant by
+       construction on every frame of every sheet -- measure it and you have
+       measured the arithmetic, not the art.  What can drift is where the BOX
+       sits on the body, and that only shows against a third thing: the figure
+       itself.  So under the probe each frame also reports its own opaque
+       extent, and a scenario can ask where the ink landed on the CHARACTER.
+       Diagnostic only: one extra pass over the frame, and only when a QA
+       probe has asked for histograms. */
+    let fx0 = 0, fx1 = -1, fy0 = 0, fy1 = -1, fcx = 0, fcy = 0, fn = 0;
+    if (profile) {
+      fx0 = Infinity; fy0 = Infinity;
+      let sx = 0, sy = 0;
+      for (let y = 0; y < h; y++) {
+        for (let x = x0; x < x1; x++) {
+          if (d[(y * w + x) * 4 + 3] <= 24) continue;
+          if (x < fx0) fx0 = x;
+          if (x > fx1) fx1 = x;
+          if (y < fy0) fy0 = y;
+          if (y > fy1) fy1 = y;
+          sx += x; sy += y; fn++;
+        }
+      }
+      if (fx1 < 0) { fx0 = 0; fy0 = 0; }
+      if (fn) { fcx = sx / fn; fcy = sy / fn; }
+    }
+    /* v2.3.2083: fx0/fx1/fcx are SHEET coordinates, the same space as ox/lx,
+       so a placement subtracts cleanly.  `fw` is carried so a reader that
+       wants the FRAME-LOCAL figure -- the pattern question, where the tile is
+       phased on the cel -- can take fx0 - frame*fw rather than measuring the
+       256px-per-frame stride, which is what the first cut of mp-inkplace did
+       and why it reported a figure moving 7162px inside a 256px frame.
+       CENTROID AND AREA, not just the box: a swinging sleeve moves the box's
+       edge 21px on jog-east while the body under it moves 1.4px, so a box is
+       far too noisy to measure ink drift against (tools/dev/pattern-drift.py
+       has both numbers).  sqrt(fn) is the scale that goes with the centroid --
+       an area is much steadier than a width for the same reason. */
+    if (report) report.push(profile
+      ? { ox, oy, cw, ch, lx, rx, ty, by, frame: f, fx0, fx1, fy0, fy1,
+          fcx, fcy, fn, fw: frameW,
+          rowN: Array.from(rowN), colN: Array.from(colN) }
+      : { ox, oy, cw, ch, lx, rx, ty, by, frame: f });
     for (let gy = 0; gy < ART_H; gy++) {
       for (let gx = 0; gx < ART_W; gx++) {
         const col = artColorAt(art, mirror ? (ART_W - 1 - gx) : gx, gy);
@@ -296,7 +441,40 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
             if (x < x0 || x >= x1) continue;
             if (!confine[y * w + x]) continue;   /* confined to the region */
             const i = (y * w + x) * 4;
-            d[i] = R; d[i + 1] = G; d[i + 2] = B;
+            if (underSkin) {
+              const sr = d[i], sg = d[i + 1], sb = d[i + 2];
+              /* Shade the ink by how light or dark THIS pixel of the body is
+                 relative to the region's average, so the mark follows the
+                 muscle shading and the contour lines instead of flattening
+                 them.  Clamped: a contour line is near-black and would
+                 otherwise take the ink to zero. */
+              let sh = 1;
+              if (INK_TUNE.shade > 0 && refLum > 0) {
+                const lum = 0.299 * sr + 0.587 * sg + 0.114 * sb;
+                sh = 1 + (lum / refLum - 1) * INK_TUNE.shade;
+                if (sh < 0.55) sh = 0.55; else if (sh > 1.45) sh = 1.45;
+              }
+              /* v2.3.1950: a FIXED alpha cannot work.  Measured on the three
+                 skin tones: black ink at 0.6 alpha reads beautifully on pale
+                 skin and all but disappears on dark skin, because black on
+                 dark brown has almost no contrast to begin with.  So the ink
+                 gets more opaque exactly where it would otherwise vanish —
+                 which is also how real ink behaves, more of it being what you
+                 need to show up.  Full translucency where the ink and the skin
+                 are far apart, opaque where they are close. */
+              let A = INK_TUNE.alpha;
+              if (INK_TUNE.contrast > 0) {
+                const lumI = 0.299 * R * sh + 0.587 * G * sh + 0.114 * B * sh;
+                const lumS = 0.299 * sr + 0.587 * sg + 0.114 * sb;
+                const c = Math.abs(lumI - lumS) / 255 / INK_TUNE.contrast;
+                if (c < 1) A = A + (1 - A) * (1 - c);
+              }
+              d[i] = sr + (R * sh - sr) * A;
+              d[i + 1] = sg + (G * sh - sg) * A;
+              d[i + 2] = sb + (B * sh - sb) * A;
+            } else {
+              d[i] = R; d[i + 1] = G; d[i + 2] = B;
+            }
             painted++;
           }
         }
@@ -316,13 +494,111 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
    numbers fill the shorts and sit just below the belt line.  The chest box is
    the same idea one region up. */
 export const PANTS_BOX = { fillW: 0.78, fillH: 0.62, cy: 0.45 };   /* across the shorts */
-export const TATTOO_BOX = { fillW: 0.70, fillH: 0.55, cy: 0.50 };  /* chest */
+/* ═══ v2.3.1994: EVERY SKIN PIXEL IS TATTOOABLE ═══
+ *
+ * Owner: "Can you just make anywhere where skin is showing be tattooable?
+ * It's confusing trying to draw on skin and not being able to (only certain
+ * areas allowed)."
+ *
+ * The three skin boxes below used to be INSET rectangles inside their regions —
+ * the chest grid covered 70% x 55% of the torso, the face 78% x 63% of the
+ * head, the arm 92% x 40% of the limb.  The designer frames the whole REGION
+ * (BodyInk's fitRegion measures lx..rx / ty..by, the region's own bulk box),
+ * so what the owner saw was the whole chest with only a rectangle in the
+ * middle of it accepting ink, and no line drawn anywhere to say where that
+ * rectangle was.  Every touch outside it silently did nothing.  That is
+ * exactly the report.
+ *
+ * So the three skin grids now COVER their region: fill 1.0 x 1.0 centred.
+ * `gridFit` then puts the 16x16 exactly on lx..rx / ty..by, which is the box
+ * the editor frames — what you can see is what you can ink, and the two can no
+ * longer drift apart because they are now the same rectangle.
+ *
+ * WHAT THIS COSTS, STATED RATHER THAN DISCOVERED LATER (the same two prices
+ * v2.3.1965 paid to reach the forehead):
+ *   - a cell is COARSER.  The face's 16 rows now spread over the head's full
+ *     ~42 sheet rows instead of 26, and the chest's over the whole torso.
+ *   - an EXISTING skin drawing keeps its cells and therefore MOVES, outward
+ *     from the middle of the region towards its edges.
+ * Neither is avoidable while the ask is "all of it": a 16x16 stretched over
+ * more body is a coarser 16x16.  The mask still confines the paint, so cells
+ * that now sit over the crown, the ears or a shoulder seam paint nothing
+ * there — they simply stop being cells you cannot reach.
+ *
+ * PANTS_BOX is deliberately NOT changed: trousers are not skin, the print
+ * there was tuned against the leg gap (see above), and nobody reported it.
+ */
+export const TATTOO_BOX = { fillW: 1, fillH: 1, cy: 0.50 };  /* the whole bare torso */
 /* v2.3.1949 (owner: "Allow tattoos on the face and arms too").
    A face is small and mostly eyes, so the ink covers less of it and sits low —
    a cheek/jaw mark rather than a mask over the eyes.  An arm is a narrow
    vertical strip, so its box is nearly the full width of the limb. */
-export const FACE_BOX = { fillW: 0.62, fillH: 0.46, cy: 0.60 };
-export const ARM_BOX = { fillW: 0.92, fillH: 0.40, cy: 0.42 };
+/* ═══ v2.3.1950: INK UNDER SKIN ═══
+   Owner: "what effect can make these really look like tattoos instead of just
+   black lines on the character?  Maybe making them have some semi transparency?"
+
+   Right diagnosis.  A tattoo was REPLACING the skin pixel outright, so it
+   ignored every bit of the body's shading and read as a sticker stuck on.  Ink
+   is under skin: some skin shows through it, and the body's own light and
+   shadow fall across it.
+
+   These three numbers were CHOSEN BY RENDERING, not guessed — every
+   combination on the same figure, on alabaster / tan / ebony, with black ink
+   and with white, on the chest and then on the face and arms:
+
+     alpha 0.60     how much skin shows through.  0.85 still read as paint;
+                    0.50 lost the face mark on dark skin.
+     shade 1.0      the ink is modulated by how light or dark the body is at
+                    that pixel, relative to the region's average, so a mark
+                    follows the arm's curve instead of flattening it.
+     contrast 0.35  the window over which alpha ramps back to opaque.
+
+   THE THIRD ONE IS THE INTERESTING ONE.  A fixed alpha cannot work here: black
+   ink at 0.60 looks beautiful on pale skin and all but vanishes on dark skin,
+   because black on dark brown has almost no contrast to start with — and the
+   palette has fifteen colours against every skin tone.  So the ink is allowed
+   to go opaque exactly where it would otherwise disappear, and stays
+   translucent where ink and skin are far apart.  Which is also how real ink
+   behaves: more of it is what you need in order to show up.
+
+   Frozen because these are measured values, and because a mutable global that
+   any module could change would silently re-tune every character in the game.
+   Applied ONLY where `underSkin` is set — the three skin canvases.  A shirt
+   print is ink ON fabric, not under skin, and stays opaque. */
+export const INK_TUNE = Object.freeze({ alpha: 0.60, shade: 1.0, contrast: 0.35 });
+
+/* ═══ v2.3.1965: THE FOREHEAD IS PART OF THE FACE ═══
+   Owner, play-testing: "allow the user to zoom in on any part of the
+   character skin to tattoo it ... whatever zoomed in body part you want
+   (including forehead etc)."  The forehead was not reachable at all.
+   MEASURED before moving it: the face REGION (head skin) runs rows 36..77 of
+   the sheet, and the old box put its 16 rows at 52..71 — brow to upper lip.
+   Everything above row 52, which is the whole forehead, had no cell over it,
+   so no drawing could put ink there however hard you tried.
+   The new numbers were chosen by RENDERING a full-grid tattoo at each
+   candidate and looking (bald and under an afro), not by arithmetic:
+     0.62/0.46/0.60  eyes to upper lip — the old reach.
+     0.78/0.63/0.515 forehead to chin, temple to temple. THIS ONE.
+     0.78/0.72/0.475 no further coverage: the skin mask clips the crown
+                     anyway, so the extra rows are spent on nothing and every
+                     cell gets coarser for it.
+   The crown and the ears stay outside on purpose — the crown is under hair
+   for all but a bald character, and ink there would read as a mistake.
+   TWO CONSEQUENCES, stated rather than discovered later: the 16 rows now
+   spread over 26 sheet px instead of 19, so a cell is coarser; and an
+   existing face tattoo keeps its cells but covers more face than it did, so
+   it moves. Both are the price of reaching the forehead at all. */
+/* v2.3.1994: and the crown and the ears come inside after all — see the
+   TATTOO_BOX note above.  "Ink there would read as a mistake" was a judgement
+   made on the player's behalf, and the owner's answer to it is that being
+   unable to draw where the skin plainly is reads as broken, which is worse.  A
+   bald character can now ink his own scalp; a haired one paints under hair
+   that covers it, which is the same rule a hat already follows. */
+export const FACE_BOX = { fillW: 1, fillH: 1, cy: 0.50 };
+/* v2.3.1994: the whole limb, shoulder to hand, rather than a band across the
+   middle 40% of it.  `eachPiece` still gives each arm its own box, so this is
+   the whole of EACH arm and not one box stretched across both. */
+export const ARM_BOX = { fillW: 1, fillH: 1, cy: 0.50 };
 
 /* ═══ v2.3.1949: THE OTHER TWO SKIN REGIONS ═══
  *
@@ -579,6 +855,49 @@ export function regionFromFeet(d, mask, w, h, frameW, maxUp) {
 
 /** Tile `pat` (a parsed pattern from patternCatalog) across every pixel of
  *  `mask`, in place on the pixel array.  Returns the number of pixels painted. */
+/* ═══ v2.3.2082: THE TILE IS PINNED TO THE GARMENT, NOT TO THE CEL ═══
+ *
+ * Owner: "Check tattoo and pattern placements on all animations for
+ * consistency."
+ *
+ * A TATTOO was already consistent: stampRegion measures the body region every
+ * frame and gridFit centres the drawing in it, so the ink rides the character
+ * wherever the animation puts him.  A PATTERN was not fitted at all.  It
+ * phased on `x % frameW` and on `y` — the frame's own coordinates — which the
+ * old comment defended as "so every frame of a strip tiles identically".  That
+ * is true and it is the bug: the TILE is identical frame to frame while the
+ * FIGURE inside the frame is not, so the fabric slides underneath a pattern
+ * that stands still.
+ *
+ * MEASURED, over every shipped pose sheet (tools/dev/pattern-drift.py) — how
+ * far the figure's own box travels inside its frame across one cycle, in
+ * 256-space pixels, against tiles that repeat every 12-16px
+ * (traits/patternCatalog.js):
+ *
+ *     sword-north   107 across,  79 down     ~7 whole tile repeats
+ *     dodge-east     41 across, 108 down     ~7
+ *     bow-east       39 across                ~3
+ *     jog-east       21 across                ~1.5
+ *     hit-south      20 across,  20 down      ~1.5
+ *
+ * At one repeat every stripe stands where its neighbour was.  A player running
+ * east in a striped shirt watched the stripes crawl a stripe and a half across
+ * the fabric every stride, and a sword swing dragged them seven.
+ *
+ * ── THE ANCHOR IS THE GARMENT'S CENTROID, AND WHY NOT ITS BOX ──
+ * The obvious anchor is the mask's bounding box, and it is wrong on exactly
+ * the pose that matters: a sleeve swinging forward moves the shirt's left edge
+ * 21px on jog-east while the torso under it barely moves, so a box-anchored
+ * pattern would jump with the arm.  The CENTROID of the garment's own pixels
+ * moves with the cloth: the same jog-east cycle moves it 1.4px.  It is also
+ * cheap, needs no extra classification, and degrades sanely — a garment that
+ * genuinely travels (the roll, the lunge) carries its pattern along, which is
+ * the whole point.
+ *
+ * Rounded to a whole pixel so the phase cannot jitter sub-cell between frames;
+ * against a 12px repeat a 1px anchor wobble is invisible, and a float phase
+ * would quantise differently on adjacent frames for no gain.
+ */
 export function stampPattern(d, w, h, frameW, mask, pat, mirror) {
   if (!pat) return 0;
   const tile = pat.tile;
@@ -587,15 +906,37 @@ export function stampPattern(d, w, h, frameW, mask, pat, mirror) {
   const B = parseInt(pat.color.slice(5, 7), 16);
   const cell = Math.max(1, tile.cell);
   const tw = tile.w * cell, th = tile.h * cell;
+  const frames = Math.max(1, Math.floor(w / frameW));
+  /* The garment's centroid in each frame, in that frame's own space.  A frame
+     the mask does not reach keeps a zero anchor, which is exactly the old
+     frame-phased behaviour and cannot be worse than it. */
+  const ax = new Int32Array(frames), ay = new Int32Array(frames);
+  for (let f = 0; f < frames; f++) {
+    const x0 = f * frameW, x1 = Math.min(w, x0 + frameW);
+    let sx = 0, sy = 0, n = 0;
+    for (let y = 0; y < h; y++) {
+      for (let x = x0; x < x1; x++) {
+        if (!mask[y * w + x]) continue;
+        sx += x - x0; sy += y; n++;
+      }
+    }
+    if (!n) continue;
+    ax[f] = Math.round(sx / n);
+    ay[f] = Math.round(sy / n);
+  }
   let painted = 0;
   for (let y = 0; y < h; y++) {
-    const ty = Math.floor((((y % th) + th) % th) / cell);
     for (let x = 0; x < w; x++) {
       if (!mask[y * w + x]) continue;
-      /* phase within the FRAME, so every frame of a strip tiles identically */
-      const fx = x % frameW;
+      const f = Math.min(frames - 1, Math.floor(x / frameW));
+      const fx = x - f * frameW;
+      /* Mirrored facings are drawn by flipping the sheet, so the anchor has to
+         flip with the pixel or the pattern would ride a centroid measured on
+         the other side of the figure. */
       const sx = mirror ? (frameW - 1 - fx) : fx;
-      const tx = Math.floor((((sx % tw) + tw) % tw) / cell);
+      const anchorX = mirror ? (frameW - 1 - ax[f]) : ax[f];
+      const tx = Math.floor(((((sx - anchorX) % tw) + tw) % tw) / cell);
+      const ty = Math.floor(((((y - ay[f]) % th) + th) % th) / cell);
       if (!patternInk(tile, tx, ty)) continue;
       const i = (y * w + x) * 4;
       d[i] = R; d[i + 1] = G; d[i + 2] = B;

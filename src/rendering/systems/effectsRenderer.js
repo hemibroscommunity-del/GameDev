@@ -1877,6 +1877,42 @@ export class EffectsRenderer {
       gfx.fill({ color: cssToHex(ap.color || '#ffffff'), alpha });
     }
 
+    /* ═══ v2.3.2078: YOUR OWN DODGE LEFT NO TRAIL ═══
+       The loop below has always aged and drawn `S._dodgeTrail`, and NOTHING
+       in the client has ever pushed to it — so the local list was empty on
+       every frame and your own roll drew nothing.  The REMOTE half twenty
+       lines down does push, and its comment calls itself "MP parity": the
+       parity was backwards.  A peer rolling past you smeared blue; you
+       rolled and the screen stayed still.
+
+       Fed here, from exactly the same three facts the remote path uses — an
+       active roll, the render position, and `now` — so the two smears are
+       the same length and the same shape.  dodge.js sets S._dodgeRoll for
+       all three moves (roll, lunge, retreat shot) and BroTown.jsx nulls it
+       when the roll ends, which is also when this stops feeding and the
+       existing age-out empties the list. */
+    if (S._dodgeRoll && S.player) {
+      if (!S._dodgeTrail) S._dodgeTrail = [];
+      S._dodgeTrail.push({ x: S.player.x, y: S.player.y, ts: now });
+    } else if (S._dodgeTrail && S._dodgeTrail.length === 0) {
+      S._dodgeTrail = null;
+    }
+
+    /* v2.3.2078: what the two trails are doing this frame, so a scenario can
+       see that the local one is fed at all.  The bug above was invisible to
+       the suite because an empty list and a drawn-nothing list look the
+       same from outside. */
+    if (typeof window !== 'undefined') {
+      window.__btDodgeTrails = () => {
+        let peer = 0;
+        for (const oid in (S.others || {})) {
+          const o = S.others[oid];
+          if (o && o._dodgeTrail) peer += o._dodgeTrail.length;
+        }
+        return { rolling: !!S._dodgeRoll, mine: (S._dodgeTrail || []).length, peer };
+      };
+    }
+
     // Dodge trail afterimages
     const trail = S._dodgeTrail || [];
     for (let i = trail.length - 1; i >= 0; i--) {
@@ -2162,7 +2198,15 @@ export class EffectsRenderer {
       }
       const text = dmg._pixiText;
       text.x = dmg.x;
-      text.y = dmg.y + (dmg._stackOffset || 0) - age * 40;
+      /* v2.3.1985: the climb rate is per-popup now.  40 px/s is right for a
+         damage number, which exists to be glanced at and get out of the way,
+         and wrong for anything you are meant to READ: at 40 px/s a popup held
+         for four seconds has travelled 160 px and left the character it
+         belongs to.  A popup that asks for a longer life almost always wants
+         a slower climb with it, so `rise` sits next to `ttl` at the push
+         site.  Unset behaves exactly as before. */
+      const rise = (typeof dmg.rise === 'number') ? dmg.rise : 40;
+      text.y = dmg.y + (dmg._stackOffset || 0) - age * rise;
       /* Fade over 80% of ttl so longer-lived popups (kill messages with
          ttl=2.5) actually stay visible, not invisible most of their life. */
       text.alpha = Math.max(0, 1 - age / (ttl * 0.8));

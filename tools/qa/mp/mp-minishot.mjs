@@ -120,5 +120,63 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and the two quest pins still differ from each other',
     sib.every((w) => w.d > 0.02), sib);
 
+  /* ═══ v2.3.2072: AND THE MAP DOES NOT SAY THE SAME THING TWICE ═══
+     Owner: "I think there's two blacksmith indicators on map."  The checks
+     above prove every glyph is a DIFFERENT SHAPE from every other one, and
+     they were all passing while the map drew the hammer twice -- once for the
+     forge building and once for the blacksmith standing beside it.  Shape
+     distinctness says nothing about how many times a shape is used.
+
+     The rule is about the LANDMARK glyphs specifically, and that precision
+     matters: two `npc` marks close together are two townsfolk, which is fine
+     and expected, so a blanket "no repeated glyph" would fail on legitimate
+     content.  A trade glyph names a place you walk to -- there is one forge
+     and one general store -- so a second one is either a duplicate or a lie.
+
+     Read from the renderer's own record of every mark it drew, which is the
+     probe this bug forced into existence: the older __btMinimapMarks holds
+     PROPS only, so it saw one hammer and was satisfied. */
+  const marks = await P.page.evaluate(() => (window.__btMinimapAll
+    ? window.__btMinimapAll() : null));
+  rec.ok(`the minimap reported every mark it drew (${marks && marks.length})`,
+    !!(marks && marks.length), marks && marks.length);
+  const TRADE = ['forge', 'shop', 'bank', 'enchant'];
+  const counts = {};
+  for (const m of marks) counts[m.icon] = (counts[m.icon] || 0) + 1;
+  const doubled = TRADE.filter((k) => (counts[k] || 0) > 1)
+    .map((k) => `${k} x${counts[k]}`);
+  rec.ok(`each trade glyph is drawn once at most (${TRADE.map((k) => `${k}:${counts[k] || 0}`).join(' ')})`,
+    doubled.length === 0, { doubled, counts });
+
+  /* The specific regression, named: the two men who were wearing their
+     trade's glyph draw as people now, and the forge/store keep theirs. */
+  rec.ok(`the town's people are drawn as people (${counts.npc || 0} of them)`,
+    (counts.npc || 0) >= 4, counts);
+  rec.ok('...while the forge and the store keep their own glyphs',
+    counts.forge === 1 && counts.shop === 1, counts);
+
+  /* Nothing STATIC is stacked on an identical mark -- a landmark hidden under
+     another copy of itself is a landmark that is not there.
+
+     STATIC is the operative word, and the first cut of this check got it
+     wrong: written as "no repeated glyph overlaps another", it failed on two
+     `npc` marks 2.8 px apart, which is Shopkeeper Bro's 110 px patrol carrying
+     him onto Blacksmith Bro's fixed spot. That is two townsfolk standing
+     together, which is a thing townsfolk do -- the same trap the trade-glyph
+     rule above is written to avoid, walked into one assertion later. Props,
+     buildings and portals do not move, so for THEM an overlap is always a
+     bug. */
+  const STATIC = new Set([...TRADE, 'house', 'portal']);
+  const stacked = [];
+  for (let i = 0; i < marks.length; i++) {
+    if (!STATIC.has(marks[i].icon)) continue;
+    for (let j = i + 1; j < marks.length; j++) {
+      if (marks[i].icon !== marks[j].icon) continue;
+      const d = Math.hypot(marks[i].x - marks[j].x, marks[i].y - marks[j].y);
+      if (d < 5.5) stacked.push({ icon: marks[i].icon, d: +d.toFixed(1) });
+    }
+  }
+  rec.ok('no landmark is hidden underneath an identical one', stacked.length === 0, stacked);
+
   await P.ctx.close().catch(() => {});
 }

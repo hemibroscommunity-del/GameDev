@@ -28,7 +28,7 @@ import { getEyeColor, eyeColorTarget } from './traits/eyeColorCatalog.js';
 /* v2.3.1940: drawn pants prints + skin tattoos.  Unlike the shirt (its own
    sprite, stamped in gearSheets) these live INSIDE the body sheet, because
    that is where the pants pixels and the bare skin actually are. */
-import { getArt, artHasInk, artHash, onArtChange } from './traits/playerArt.js';
+import { getArt, artHasInk, artHash, onArtChange, sideForDir, emptyArt } from './traits/playerArt.js';   /* v2.3.2042: sideForDir/emptyArt -- a face tattoo does not revolve to the back of a head */
 import { stampRegion, stampPattern, litFabricMask, regionFromFeet, splitSkinRegions, PANTS_LIT_MIN, SHOES_LIT_MIN, PANTS_MAX_UP, SHOES_MAX_UP, PANTS_BOX, TATTOO_BOX, FACE_BOX, ARM_BOX } from './playerDecal.js';
 import { getPattern, parsePattern, patternKey, onPatternChange } from './traits/patternCatalog.js';   /* v2.3.1941 */
 
@@ -167,6 +167,16 @@ const POSES = ['stand', 'jog', 'hit', 'pickup', 'attack'];
    fallback on screen.  Now only the (pose,dir) actually drawn gets recolored,
    on demand, so cost is spread and the freeze is gone. */
 const _bodySheets = {};
+/* v2.3.2083: which recoloured body sheets exist, for QA.  The animation-
+   preloading law is a claim about WHEN a bake happens, and the only way to
+   see when is to look before the pose is ever used -- a screenshot of a
+   correctly-preloaded roll and a screenshot of one that baked a frame late
+   are the same picture once the bake lands.  Keys only, read-only, and the
+   game never calls it. */
+if (typeof window !== 'undefined') {
+  window.__btBodySheetKeys = () => Object.keys(_bodySheets)
+    .filter((k) => _bodySheets[k] && _bodySheets[k] !== 'loading');
+}
 
 function _retint(d, i, target, ref) {
   const k = (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) / ref;
@@ -534,6 +544,13 @@ function _torsoBands(d, w, h, frameW, frames) {
    of the eight screen facings are drawn by flipping a base-dir sheet, so a
    drawing baked straight in would read backwards on those (owner, on the shirt:
    "Your smiley face rotated the opposite direction"). */
+/* v2.3.1991: which sheet the bake below is for.  recolorBodyToCanvas takes an
+   IMAGE, not a pose and a direction, so the probe inside it cannot name what it
+   just measured -- and keying the probe by frame COUNT picked the 14-frame
+   MINING strip as "the biggest", which is how a first attempt at this
+   measurement ended up reporting on the wrong animation entirely.  buildBodySheet
+   knows, so buildBodySheet says. */
+let _bakeTag = '';
 export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH, eyeT, eyeRects, art) {
   /* v2.3.1108: when the caller knows this sheet's logical frame height, restore
      a downscaled-on-disk sheet to it (nearest-neighbour, exact palette) so the
@@ -555,13 +572,25 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
      skin no longer passes _isSkin (alabaster is r-g=13, the test wants >25), so
      classifying afterwards would find no skin at all on exactly the players who
      picked a light tone.  Same reason _torsoBands runs up here. */
-  const wantPantsArt = !!(art && artHasInk(art.pants));
-  const wantTattoo = !!(art && artHasInk(art.tattoo));
+  /* v2.3.1965: THE DESIGNER WANTS EVERY REGION, INKED OR NOT.
+     Each `want` below gates a mask, and the mask is what stampRegion measures
+     the grid from — so keyed on ink alone, a character who has drawn nothing
+     produced no masks, no grids and therefore no way for the body-ink surface
+     to turn a finger into a cell.  The FIRST mark was unmakeable, on every
+     region, forever; and the second one on a region was unmakeable too until
+     you had inked that region some other way.
+     `art.report` is set by the designer and by nothing else (the game passes
+     no `report`), so the extra classification is paid on the one screen that
+     needs it and nowhere else.  Blank art paints nothing either way: every
+     cell of it gives artColorAt null and is skipped. */
+  const wantReport = !!(art && art.report);
+  const wantPantsArt = !!(art && artHasInk(art.pants)) || wantReport;
+  const wantTattoo = !!(art && artHasInk(art.tattoo)) || wantReport;
   /* v2.3.1949: the face and the arms.  Both are derived from the SAME two masks
      the chest tattoo already needs (bare skin, and the torso band), so wanting
      one of them costs a second Uint8Array and no extra classification. */
-  const wantFaceTat = !!(art && artHasInk(art.tattooFace));
-  const wantArmTat = !!(art && artHasInk(art.tattooArm));
+  const wantFaceTat = !!(art && artHasInk(art.tattooFace)) || wantReport;
+  const wantArmTat = !!(art && artHasInk(art.tattooArm)) || wantReport;
   /* v2.3.1941: a pattern wants the same trouser mask a print does. */
   const pantsPat = art ? parsePattern(art.pantsPattern, 'pants') : null;
   const pantsPx = (wantPantsArt || pantsPat) ? new Uint8Array(w * h) : null;
@@ -637,26 +666,119 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
   /* Pattern first, print over it: a print is ON the fabric, and the fabric is
      what the pattern is. */
   if (pantsPat) stampPattern(d, w, h, FRAME_W, pantsPaint, pantsPat, !!art.mirror);
-  if (wantPantsArt) stampRegion(d, w, h, FRAME_W, pantsPaint, art.pants, !!art.mirror, PANTS_BOX);
+  /* v2.3.1962: when the caller asks (`art.report`), every grid these stamps fit
+     is collected and handed back on the canvas.  The designer needs the same
+     numbers the stamp used in order to run a touch backwards into a cell — see
+     gridFit/cellAt in playerDecal.  The game never asks, so it never pays. */
+  /* v2.3.1991: the probe forces the report on for the east run strip, so the
+     grid stampRegion actually fitted per frame can be read from outside.  The
+     region mask was already verified correct and the tattoo still did not
+     appear, which leaves the FIT as the thing to look at. */
+  /* v2.3.1992: the probe now reports on EVERY sheet it bakes, not only the east
+     run strip, and each report carries its row/column histograms.  The rule that
+     decides the extent has to hold for a broad front-on torso and a narrow
+     profile head at once, so "is it fixed?" is a question about all five facings
+     in both poses — the single-sheet probe is what let a rule that suits one
+     shape look correct. */
+  const _probe = typeof window !== 'undefined' && !!window.__btGridProbe;
+  const _rep = (art && art.report) || _probe
+    ? { pants: [], tattoo: [], face: [], arms: [] } : null;
+  const _stampOpt = (arr) => (_rep ? { report: arr, profile: _probe } : undefined);
+  if (wantPantsArt) stampRegion(d, w, h, FRAME_W, pantsPaint, art.pants, !!art.mirror, PANTS_BOX,
+    _stampOpt(_rep && _rep.pants));
   if (shoesPat) {
     stampPattern(d, w, h, FRAME_W,
       litFabricMask(base, regionFromFeet(d, shoesPx, w, h, FRAME_W, SHOES_MAX_UP), w * h, SHOES_LIT_MIN),
       shoesPat, !!art.mirror);
   }
-  if (tattooPx) stampRegion(d, w, h, FRAME_W, tattooPx, art.tattoo, !!art.mirror, TATTOO_BOX);
+  /* v2.3.1950: `underSkin` on all three -- ink sits UNDER skin, so it takes the
+     body's shading and lets some skin through.  A shirt print does not: it is
+     ink ON fabric, and stays opaque. */
+  if (tattooPx) stampRegion(d, w, h, FRAME_W, tattooPx, art.tattoo, !!art.mirror, TATTOO_BOX,
+    { underSkin: true, report: _rep && _rep.tattoo, profile: _probe });
   /* v2.3.1949: face and arms.  `eachPiece` for the arms only -- a figure has
      two of them and the largest-piece rule would ink whichever happens to be
      nearer the camera. */
   if (skinPx) {
     const reg = splitSkinRegions(skinPx, torsoPx, w, h, FRAME_W);
-    if (wantFaceTat) stampRegion(d, w, h, FRAME_W, reg.face, art.tattooFace, !!art.mirror, FACE_BOX);
-    if (wantArmTat) stampRegion(d, w, h, FRAME_W, reg.arms, art.tattooArm, !!art.mirror, ARM_BOX, { eachPiece: true });
+    /* ═══ v2.3.1991: PER-FRAME REGION SIZES, FOR THE PROBE ═══
+       Owner: "the face tattoo only showing on idle and disappears during jog
+       but then pops up on one frame."  A tattoo is painted into whatever
+       `reg.face` says the face is, so a frame where that region collapses
+       paints nothing -- and the difference between poses is invisible from
+       outside the bake.  This publishes the per-frame count so a scenario can
+       measure it instead of a human counting frames in a screenshot.
+       Diagnostic only: it allocates one small array per bake and is read by
+       tools/qa/mp/mp-facetat.mjs. */
+    if (typeof window !== 'undefined' && window.__btGridProbe) {
+      try {
+        const _fr = Math.max(1, Math.floor(w / FRAME_W));
+        const _face = new Array(_fr).fill(0), _arms = new Array(_fr).fill(0), _skin = new Array(_fr).fill(0);
+        for (let y = 0; y < h; y++) {
+          for (let x = 0; x < w; x++) {
+            const i = y * w + x, f = Math.min(_fr - 1, Math.floor(x / FRAME_W));
+            if (reg.face[i]) _face[f]++;
+            if (reg.arms[i]) _arms[f]++;
+            if (skinPx[i]) _skin[f]++;
+          }
+        }
+        /* Keyed by frame COUNT, and accumulated rather than overwritten: one
+           bake runs per (pose, dir) and the last one to finish is whichever
+           sheet the renderer happened to want most recently.  Overwriting
+           reported `frames: 1` -- the portrait -- and said nothing at all
+           about the 28-frame jog sheet, which is the one the question is
+           about. */
+        window.__btSkinRegions = window.__btSkinRegions || {};
+        window.__btSkinRegions[_bakeTag || ('f' + _fr)] = { frames: _fr, face: _face, arms: _arms, skin: _skin };
+        /* The finished sheet itself, so a probe can look at what was actually
+           painted rather than at what the region said was paintable.  Only the
+           multi-frame strips: the portrait bakes constantly and would thrash
+           this.  Capped so a run strip does not sit in memory forever. */
+        if (_bakeTag === 'jog-east' && _rep) { try { window.__btFaceGrids = _rep.face; } catch (e) { /* ignore */ } }
+        if (_bakeTag === 'jog-east') {
+          try {
+            /* The region PAINTED RED over the sheet.  "The region exists and is
+               a healthy size" turned out to be true while the tattoo was still
+               invisible, so the count is not the answer -- WHERE it is, is. */
+            const _c2 = document.createElement('canvas');
+            _c2.width = cv.width; _c2.height = cv.height;
+            const _g2 = _c2.getContext('2d');
+            _g2.drawImage(cv, 0, 0);
+            const _id = _g2.getImageData(0, 0, _c2.width, _c2.height);
+            const _dd = _id.data;
+            for (let i = 0; i < reg.face.length; i++) {
+              if (!reg.face[i]) continue;
+              _dd[i * 4] = 255; _dd[i * 4 + 1] = 0; _dd[i * 4 + 2] = 0; _dd[i * 4 + 3] = 255;
+            }
+            _g2.putImageData(_id, 0, 0);
+            window.__btLastBake = { tag: _bakeTag, frames: _fr, png: cv.toDataURL('image/png'), region: _c2.toDataURL('image/png') };
+          } catch (e) { /* tainted or huge: skip */ }
+        }
+      } catch (e) { /* a probe must never break a bake */ }
+    }
+    if (wantFaceTat) stampRegion(d, w, h, FRAME_W, reg.face, art.tattooFace, !!art.mirror, FACE_BOX,
+      { underSkin: true, report: _rep && _rep.face, profile: _probe });
+    if (wantArmTat) stampRegion(d, w, h, FRAME_W, reg.arms, art.tattooArm, !!art.mirror, ARM_BOX,
+      { eachPiece: true, underSkin: true, report: _rep && _rep.arms, profile: _probe });
   }
   /* v2.3.1928: the iris last, so it overwrites rather than being classified.
      Its pixels are near-black and would otherwise fall through every branch
      above untouched, which is exactly why the eye needed its own mask. */
   if (eyeT && eyeRects) { _eyeT = eyeT; _paintEyes(d, cv.width, cv.height, eyeRects, FRAME_W); }
   ctx.putImageData(imgData, 0, 0);
+  /* v2.3.1962: hand the grids back on the canvas rather than through a second
+     return value — `canvas.__btDir` (v2.3.1815) set the precedent, and every
+     caller of this function ignores extra properties.  Only present when the
+     caller asked. */
+  if (_rep) { try { cv.__btGrids = _rep; } catch (e) { /* frozen: no probe, no harm */ } }
+  /* v2.3.1992: and, for the probe only, the same grids keyed by SHEET, so a
+     scenario can ask of stand-south and jog-northeast exactly what v2.3.1991
+     could only ask of jog-east.  A rule for fitting a box has to hold for a
+     broad front-on torso and a narrow profile head at the same time; one sheet
+     cannot show that. */
+  if (_rep && _probe) {
+    try { window.__btGridsByTag = window.__btGridsByTag || {}; window.__btGridsByTag[_bakeTag] = _rep; } catch (e) { /* ignore */ }
+  }
   return cv;
 }
 
@@ -776,12 +898,14 @@ function loadImg(url) { return loadWebpOrPng(url); }
    keeps the player visible; &r=N bypasses a poisoned cache entry. */
 const _BODY_RETRY_MS = [2000, 6000];
 function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT, art, attempt = 0) {
+  art = artForFacing(art, dir);   /* v2.3.2042: the bake must match the key above */
   _bodySheets[sheetKey] = 'loading';
   /* Returns an always-resolving promise so a full preload can await it. */
   const bust = attempt > 0 ? `&r=${attempt}` : '';
   return loadImg(`/sprites/player/${pose}-${dir}.png?v=${SPRITE_VERSION}${bust}`).then(img => {
     /* body poses are 256px frames; restore if stored smaller on disk.  Recolour
        runs at full 256 (exact skin/pants/shoes pixel thresholds). */
+    _bakeTag = `${pose}-${dir}`;
     const full = recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, FRAME_H,
       eyeT, EYE_MASK[`${pose}-${dir}`], art);
     /* v2.3.1120: count frames at full 256-space width, then downscale the DISPLAY
@@ -834,6 +958,7 @@ function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT
    hand in six places is a bug waiting for the sixth to be missed, and a
    prewarmed sheet under a key nobody asks for is silently wasted work. */
 export function bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eyeKey, pose, dir, art) {
+  art = artForFacing(art, dir);   /* v2.3.2042: see artForFacing -- key and bake must agree */
   return (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default')
     + '/' + (shirtT ? (shirtKey || 'shirt') : 'none') + '/' + (eyeKey || 'none')
     + bodyArtSeg(art)
@@ -845,6 +970,50 @@ export function bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eyeKey,
    prewarmed as they always were — only someone who actually drew something pays
    for the extra bakes (including the mirrored ones, which is why `mirror` is in
    here: a pre-flipped bake must not be handed to an unflipped facing). */
+/* ═══ v2.3.2042: A FACE TATTOO DOES NOT REVOLVE ROUND TO THE BACK ═══
+ *
+ * Owner: "face tattoos don't revolve around to your back nor do front shirt
+ * designs revolve to back, they're separate."
+ *
+ * The SHIRT was already right: entityRenderer picks `_L.art[sideForDir(dir)]`,
+ * so the front drawing shows from the front and the back drawing from behind,
+ * and there are two separate canvases behind that (bt-shirtart /
+ * bt-shirtart-back). The FACE was not. The stamp at the bottom of
+ * recolorBodyToCanvas fires whenever a face tattoo exists, with no idea which
+ * way the character is pointing -- and `north` and `northeast` are real
+ * back-view sheets (playerSprites SOURCE_DIRS), so the drawing meant for a
+ * face was landing on the back of a head.
+ *
+ * There is no "back of head" canvas to add, and there should not be: a face
+ * tattoo has nowhere to go when you turn round. It simply stops being visible,
+ * which is what this does.
+ *
+ * WHY IT LIVES INSIDE bodySheetKey AND buildBodySheet rather than at the call
+ * sites. Three places pair a facing with an art object -- getBodyFrame,
+ * prewarmBody and preloadBodyAll -- and the key and the bake MUST agree or the
+ * preloaded sheet is filed under one name and looked up under another. That is
+ * not a cosmetic slip: it is a cache miss on the first turn, i.e. a bake in
+ * the middle of play, which is precisely what the animation-preload law in
+ * CLAUDE.md exists to prevent. Applying the transform inside the two functions
+ * that consume (dir, art) makes them agree by construction, so a fourth call
+ * site added later cannot get it wrong.
+ *
+ * The arm tattoo deliberately stays. Arms are visible from behind, and an arm
+ * drawing on a back-facing arm is the same arm. */
+export function artForFacing(art, dir) {
+  if (!art) return art;
+  if (sideForDir(dir) !== 'back') return art;
+  /* v2.3.2043: from behind, the head shows its OWN canvas rather than nothing.
+     v2.3.2042 blanked the face here, which was right as far as it went -- a
+     face has nowhere to go when you turn round -- but it left the back of the
+     head as the one surface you could not draw on. The swap is the same one
+     the shirt has been doing since v2.3.1939 (sideForDir picks front or back);
+     an empty back canvas falls through to emptyArt and behaves exactly like
+     v2.3.2042 did, so nobody who has not drawn one sees any change. */
+  const back = art.tattooHeadBack;
+  return { ...art, tattooFace: artHasInk(back) ? back : emptyArt() };
+}
+
 export function bodyArtSeg(art) {
   if (!art) return '';
   const p = artHasInk(art.pants) ? artHash(art.pants) : '';
@@ -853,24 +1022,30 @@ export function bodyArtSeg(art) {
      one keeps the exact key they had, so existing sheets stay shared. */
   const ft = artHasInk(art.tattooFace) ? artHash(art.tattooFace) : '';
   const at = artHasInk(art.tattooArm) ? artHash(art.tattooArm) : '';
+  /* v2.3.2043: the back-of-head canvas joins the key. artForFacing has already
+     resolved WHICH head drawing this bake uses by the time a key is computed,
+     so this only has to keep two different back drawings from sharing a sheet.
+     Anyone who has not drawn one keeps the exact key they had. */
+  const hb = artHasInk(art.tattooHeadBack) ? artHash(art.tattooHeadBack) : '';
   /* v2.3.1941: the trouser pattern joins the same segment.  It is already a
      short string ("stripe-v:3"), so it goes in whole rather than hashed. */
   const q = parsePattern(art.pantsPattern, 'pants') ? patternKey(art.pantsPattern, 'pants') : '';
   const f = parsePattern(art.shoesPattern, 'shoes') ? patternKey(art.shoesPattern, 'shoes') : '';   /* v2.3.1944 */
-  if (!p && !t && !q && !f && !ft && !at) return '';
+  if (!p && !t && !q && !f && !ft && !at && !hb) return '';
   /* '#' is the marker: no catalog id contains one, so _dropArtSheets can find
      every drawn bake by substring without matching e.g. '/default/'. */
-  return '/#art' + p + '.' + t + '.' + q + '.' + f + '.' + ft + '.' + at + (art.mirror ? 'm' : 'n');
+  return '/#art' + p + '.' + t + '.' + q + '.' + f + '.' + ft + '.' + at + '.' + hb + (art.mirror ? 'm' : 'n');
 }
 /** The local player's own drawings, in the shape the bake wants.  `mirror` is
  *  per-facing, so callers that know the facing pass it in. */
 export function localBodyArt(mirror) {
   const p = getArt('pants'), t = getArt('tattoo');
   const ft = getArt('tattooFace'), at = getArt('tattooArm');   /* v2.3.1949 */
+  const hb = getArt('tattooHeadBack');   /* v2.3.2043 */
   const q = getPattern('pants'), f = getPattern('shoes');   /* v2.3.1944 */
-  if (!artHasInk(p) && !artHasInk(t) && !artHasInk(ft) && !artHasInk(at)
+  if (!artHasInk(p) && !artHasInk(t) && !artHasInk(ft) && !artHasInk(at) && !artHasInk(hb)
     && !parsePattern(q, 'pants') && !parsePattern(f, 'shoes')) return null;
-  return { pants: p, tattoo: t, tattooFace: ft, tattooArm: at,
+  return { pants: p, tattoo: t, tattooFace: ft, tattooArm: at, tattooHeadBack: hb,
     pantsPattern: q, shoesPattern: f, mirror: !!mirror };
 }
 /** The eye target for a sheet, or null when that sheet has no eyes in it.
@@ -898,7 +1073,11 @@ export function getBodyFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, shir
   /* v2.3.1940: `art` is the ninth thing that can make this player's body differ
      from the shipped sheet, and like the rest of them it is PASSED IN, not read
      from a store — this function draws remote players too (v2.3.1930). */
-  const _art = bodyArtSeg(art) ? art : null;
+  /* v2.3.2042: resolve the facing BEFORE the gate, so a player whose only
+     drawing is a face tattoo falls back to the shipped sheet when facing
+     away rather than baking a copy identical to it. */
+  const _dirArt = artForFacing(art, dir);
+  const _art = bodyArtSeg(_dirArt) ? _dirArt : null;
   if (!skinT && !pantsT && !shoesT && !shirtT && !eye && !_art) return getFrame(pose, dir, frameIdx);
   const sheetKey = bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eye && eye.id, pose, dir, _art);
   const entry = _bodySheets[sheetKey];
@@ -1091,6 +1270,26 @@ export function preloadBodyAll() {
   for (const pose of ['stand', 'jog', 'hit']) {
     for (const dir of SOURCE_DIRS) prewarm(pose, dir);
   }
+  /* ═══ v2.3.2083: + 'dodge', FOR EVERYONE AND NOT ONLY THE ARMOURED ═══
+     v2.3.1534 already made this case: "a pose left off this list falls back
+     to the un-recolored base frame on its first use while the bake runs,
+     which for dodge would be a flash of default skin/pants the first time
+     the player rolls."  It put dodge on entityRenderer's PREWARM_POSES --
+     and that loop is prewarmMaskedBodyFrames, which opens with
+
+         if (!slots.some((sl) => getEquip(sl) !== 'none')) return;
+
+     because its own job is compositing armour onto a body.  The recoloured
+     BODY bake merely rides along inside it, so the fix landed for players
+     wearing a breastplate and for nobody else.  A customised player in a
+     t-shirt -- which is everyone for their first few hours -- still flashed
+     default skin and trousers on their first roll.
+
+     This is the everyone-path, so it belongs here.  Two sheets: the roll is
+     authored south + east only (playerSprites; entityRenderer's prewarmDirs
+     says the same), and `prewarm` adds the mirrored bake of east by itself
+     for a drawn player.  Animation-preloading law, CLAUDE.md. */
+  for (const dir of ['south', 'east']) prewarm('dodge', dir);
   /* v2.3.1118: prewarm the pickup BODY + (downscaled) HEAD behind the intro, so
      the first armoured loot pickup doesn't hitch while they bake mid-play (the
      v2.3.1117 lazy bake traded the spawn cost for an in-play frame-rate dip on

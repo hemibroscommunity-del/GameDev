@@ -119,8 +119,8 @@ sends). All of these are in `PRIVILEGED_EVENTS` unless noted.
 |---|---|---|
 | `tick` | Batched per-tick frame: `players` (id → x/y/dir/facing/zone/vx/vy + live equip fields), `events` (array fed to `_processGameEvent`), `monsters`/`nodes` (zone → entity list; v2 = dirty entities only). **Zone-scoped since v2.3.1575** — see below | ~2048 |
 | `state_sync` | Full room snapshot on join: players, zone monsters, etc. | ~2223 |
-| `zone_state` | v2 zone change: `{ zone, monsters, nodes, loot }` merged | ~2352 |
-| `zone_monsters` / `zone_nodes` / `zone_loot` | v1 legacy zone-change trio (kept as fallback) | ~2732 / ~2727 / ~2347 |
+| `zone_state` | v2 zone change: `{ zone, monsters, nodes, loot }` merged. **v2.3.1983: also sent MID-SESSION**, unprompted, when population-scaled spawns change a zone's roster — the client already replaces its lists wholesale on it, and a per-entity `tick` delta cannot introduce an entity, so this resend is how a new monster becomes real on any client (`docs/specs/spawn-scaling.md`) | ~2352 |
+| `zone_monsters` / `zone_nodes` / `zone_loot` | v1 legacy zone-change trio (kept as fallback). v2.3.1983: `zone_monsters` + `zone_nodes` are the v1 half of the mid-session roster push above (no `zone_loot` — piles are unaffected) | ~2732 / ~2727 / ~2347 |
 | `player_state` | Authoritative pool/progression mirror (hp, coins, xp, inventory…); v2 sends field deltas | ~2421 |
 | `player_died` | Server-confirmed own death | ~2567 |
 | `player_respawned` | Respawn confirm (server→self) / corpse-clear visual (peer broadcast) | ~2619 and [dispatcher] ~3721 (see Quirks) |
@@ -137,6 +137,8 @@ sends). All of these are in `PRIVILEGED_EVENTS` unless noted.
 | `monster_kill` | Server-confirmed kill (drives loot/XP via credits) | [dispatcher] ~3222 |
 | `monster_transform` | Variant transform (e.g. remnant skull) | [dispatcher] ~3163 |
 | `pvp_hit` | Server-resolved PvP damage | [dispatcher] ~3890 |
+| `chat_mute_list` | v2.3.1981 the SERVER's copy of who you have muted — `{list:[{id,name,at}], settled:true, error?}`, on join and after every mutation. Privileged: a forged one could paint (or silently empty) a mute list in the UI while the worker enforced something else | [dispatcher] chatmod.js |
+| `chat_report_ack` | v2.3.1981 answer to one `chat_report` — `{ok, id?, lines?, error?}`. A forged one would tell a harassed player their report was filed when nothing was written | [dispatcher] chatmod.js |
 
 ## Client → server messages (accepted cases)
 
@@ -168,6 +170,8 @@ Server cases in `GameRoom.webSocketMessage`, `server/src/index.js`
 | `set_active_slot` | Switch weapon slot (melee/ranged/staff) | ~3971 |
 | `forge_weapon` | Blacksmithing forge | ~3991 |
 | `amulet_forge_request` | v2.3.1192 server amulet forge — `{op:'smelt'\|'craft'\|'gem', ...}` under `caps.amuletForge`; echo is `player_state` only (see `docs/specs/amulet-forge.md`) | amulet.js |
+| `chat_mute` | v2.3.1981 persistent chat mute — `{target, on, name?}` under `caps.chatMute`. Stored in `chat_mute:<pid>` against the stable `bp_` identity and enforced on the FAN-OUT: a muted player's `chat`/`emote` is filtered out of the muter's own tick frame (tick.js), and their party chat / friend DM is not sent. Answers `chat_mute_list`. Its own case, never rebroadcast — an old worker would relay it and announce your mute to the room, which is why the client gates the send on the cap | chatmod.js |
+| `chat_report` | v2.3.1981 abuse report — `{target, reason?}` under `caps.chatMute`. Stored in `chat_report:<id>` with the SERVER's copy of the recent chat; a client-supplied text/name is ignored outright (rule 16). Reason clamped to an allowlist; rate-limited per reporter (60 s per target, 5/h, 20/day). Answers `chat_report_ack`. Operator reads them at `GET /api/admin/reports` | chatmod.js |
 | `gem_cut_request` | v2.3.1198 server gem cutting — `{gem}` under `caps.gems`; answers private `gem_cut_result` + `player_state` echo (see `docs/specs/amulet-forge.md` "Gem income") | amulet.js |
 | `quest_accept` / `quest_turn_in` | Quest lifecycle | ~4000 / ~4009 |
 
@@ -280,6 +284,19 @@ are not identical (join carries `eqst`; track carries `mask`, `cape`,
 `pet`). Both paths truncate strings to the same bounds, so a value can be
 clipped but never dropped.
 
+**And two client-side halves, v2.3.1961.** A server that admits a key
+relays nothing if the sender never sends it and paints nothing if the
+receiver never maps it — `tf`/`tm` cleared both server gates in v2.3.1949
+and were still missing from the client's `track` payload until v2.3.1961,
+so the two newest canvases could reach a peer only on their join frame.
+So: (3) send it from the `track` payload in `src/ui/BroTown.jsx` beside
+`sa`/`ta`, and (4) if the wire name differs from the field the renderer
+reads off a peer — `sa` → `shirtArtFront`, `hr` → `hair` — add the pair to
+`PEER_COSMETIC_FIELDS` in `src/networking/peerCosmetics.js`. That one table
+feeds the `state_sync` snapshot, `player_join`, both self-heal placeholders
+and the `player_update` relay; before it existed the relay wrote the SHORT
+keys onto peers and every renamed cosmetic was frozen at its join value.
+
 ## Peer-relayed broadcast events (client ↔ client)
 
 Sent via `channelShim.send({...})`, hit the server's default branch, pass the
@@ -290,6 +307,42 @@ gameplay authority must instead get a real server case.
 | Event | Purpose | Dispatcher case |
 |---|---|---|
 | `chat` / `emote` | Chat lines and emotes | ~3091 / ~3122 |
+
+> **v2.3.1981 — the relay is filtered PER RECIPIENT.** `chat` and `emote` are
+> the family a server-side mute suppresses: the tick fan-out drops them from
+> the muter's own frame (`MUTABLE_RELAY_TYPES`, chatmod.js), keyed on the
+> server-stamped `from`, never `payload.id`. Nothing else this player relays
+> is touched — mute is a chat control, block is an interaction control. See
+> `docs/specs/chat-moderation.md`.
+
+### `chat` is clamped and its sender is stamped (v2.3.1970)
+
+`chat` is still a relay — it keeps the `eventBuffer` fan-out, the relay
+token bucket and its deliberately un-zone-scoped reach — but the payload is
+no longer whatever the sender wrote. `_sanitizeChatRelay` (index.js) REBUILDS
+it from an allowlist before the rebroadcast:
+
+| Field | Rule |
+|---|---|
+| `id` | **stamped** from `session.id`; a claimed id is discarded |
+| `name` | **stamped** from server state (`playerState.name`, else the sanitized `session.name`) |
+| `text` | clamped to `CHAT_RELAY.TEXT_MAX` (200, matching `PARTY.CHAT_MAX`), control chars stripped, trimmed; an empty result relays **nothing** |
+| `color` | clamped to `CHAT_RELAY.COLOR_MAX` (32), control chars stripped |
+| anything else | dropped |
+
+Why: the only bound before this was the 16 KB frame gate, and the only thing
+that renders a chat line is a PIXI Text bubble whose background is sized from
+the measured text — so one message was a ~17,000px texture on every screen in
+the world. The identity half was already on the record in the v2.3.1150
+`server_announce` note ("any client could impersonate the server there").
+Clients clamp on receipt as well (`src/game/chat.js clampChatText`), because
+worker and client ship independently. Pinned by `anticheat.test.mjs` §9 and
+`tools/qa/mp/mp-socialgrief.mjs`.
+
+The top-level `join.name` is sanitized the same way (`sanitizeDisplayName`,
+join.js): it is the copy `getAllPlayerData()` publishes in every `state_sync`
+and the one `_reportToLeaderboard` prefers, and the client draws it into an
+unwrapped nameplate Text.
 | `player_swing` / `player_projectile` / `player_shield` | Remote attack/projectile/shield visuals | ~3134 / ~3142 / ~3155 |
 | `player_hurt_by_monster` / `monster_dmg_at` / `player_died_to_monster` | Peer combat-feedback visuals (drive the peer damage-number smoothing queue) | ~3646 / ~3666 / ~3683 |
 | `player_respawned` | Peer corpse-clear (deliberately not privileged — see Security model) | ~3721 |
@@ -338,6 +391,7 @@ Summary of the wire-visible changes:
 
 | Type | Purpose | Spec |
 |---|---|---|
+| `room_full` | v2.3.1982 admission refusal at the player cap: `{reason:'full', count, cap, retryMs}` on an upgraded socket the worker closes immediately with code **4009**. OPT-IN — sent only when the connect URL carries `?rf=1`; everything else keeps the legacy `503 Room full` on the un-upgraded handshake. Deliberately NOT a `join_rejected` reason: an old client treats an unknown reason as fatal and stops retrying (v2.3.1181) | room-full.md |
 | `join_rejected` | Join refusal: `reason:'auth'` (close 4003 — client mints a fresh id once) or `reason:'frozen'` (v2.3.1148 operator freeze, close 4004 — client shows a banner, stops reconnecting, must NOT mint) | identity.md / admin.md |
 | `inbox_delivered` | Offline-mail delivery: `{entries: [{kind, payload, note, source}], queued}` | inbox-escrow.md |
 | `duel_end` | Server duel resolution: `{winner, loser, wager, how: kill\|death\|forfeit\|timeout}` | duels.md |

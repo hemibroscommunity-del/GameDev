@@ -120,8 +120,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await A.page.waitForTimeout(600);
     }
     rec.ok('the chat bar opens', await chatOpen());
-    await A.page.locator('button:has-text("Send")').locator('xpath=preceding-sibling::input[1]')
-      .first().fill('/p party line');
+    /* v2.3.2078: `[data-chat-input]`, not the input before Send — the
+       composer became a <textarea> on its own row at v2.3.2039 and that
+       xpath has matched nothing since (TRAPS §29). */
+    await A.page.locator('[data-chat-input]').first().fill('/p party line');
     await H.clickText(A, 'Send');
     /* and close it again so it cannot sit over the party HUD checks below */
     await A.page.waitForTimeout(400);
@@ -203,19 +205,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('leaving clears the party for the leaver', !pb2 || pb2.members < 2, pb2);
     rec.ok('leaving clears the party for the other member too', !pa2 || pa2.members < 2, pa2);
 
-    /* The control for the check above: the identical tap, on the identical
-       player, once they are no longer a teammate.  If this one does not
-       lock either, the earlier pass was a missed click and means nothing. */
+    /* ═══ v2.3.1970: THE CONTROL MOVED, BECAUSE THE RULE DID ═══
+       This used to tap the SAME player after the party broke up and assert
+       the tap DID lock them — the control that made "no lock while partied"
+       mean something rather than "the click missed".  v2.3.1917 then took
+       player lock-on away from everyone (owner: "Also remove the option to
+       kill other players for now"; BroTown.jsx only aims at a live duel
+       opponent now), so that control had been failing ever since — asserting
+       a behaviour the game deliberately no longer has.
+
+       The tap still needs a control or the party check is worthless, and
+       there already is one: `mate.card` above. The inspect card OPENING is
+       proof the coordinates landed on the player, and it does not depend on
+       aiming at anybody. So what this now pins is the v2.3.1917 rule itself —
+       a tap on a non-duel player inspects and never aims, in or out of a
+       party — with the card as the evidence the tap connected. */
     await A.page.evaluate(() => {
       const S = window._gameState && window._gameState.current;
       if (S) S.lockedTarget = null;
     });
     const ex = await tapPeer();
     if (ex.hit) {
-      rec.ok('...and the same tap DOES lock them once they leave the party',
-        !!(ex.lock && ex.lock.type === 'player' && ex.lock.id === bId), ex.lock);
+      rec.ok('the same tap still lands on them once they leave the party (control)',
+        !!ex.card, ex);
+      rec.ok('...and STILL does not aim at them — v2.3.1917 took player lock-on away',
+        !(ex.lock && ex.lock.type === 'player'), ex.lock);
     } else {
-      rec.skip('...and the same tap DOES lock them once they leave the party',
+      rec.skip('the same tap still lands on them once they leave the party (control)',
         'the ex-member was no longer on screen');
     }
   }

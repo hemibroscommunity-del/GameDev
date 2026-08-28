@@ -302,5 +302,62 @@ check('forged trade2_state / trade2_invite dropped by deny-list', room.eventBuff
     { stash: psA.weaponStash.length, inbox: inboxA.length });
 }
 
+/* ═══ v2.3.1971: THE LIVE LANE, ATTACKED WITH Object.prototype ═══
+   trade2 is the trade a player can actually reach (the inspect card's
+   Trade button routes here whenever caps.trade2 is set, which is always
+   against this worker), so the crafted-key hole was reachable in one
+   `trade2_set` from a modified client.  Reproduced end to end before the
+   fix: A stages {constructor: 7}, both ready, both confirm, and the
+   commit's `(inv[k] || 0) < v` gate passes on goods A does not hold --
+   leaving `inventory.constructor = NaN` in A's saved blob and
+   `"function Object() { [native code] }7"` in B's.  Both sides, every
+   time, persisted by _saveRpg.  Asserted on both halves of the swap and
+   on the conservation of the REAL item riding alongside it. */
+{
+  psA.inventory = { fish_minnow: 6 };
+  psB.inventory = { ore_iron_ore: 2 };
+  psA.coins = 500; psB.coins = 500;
+  const coins0 = psA.coins + psB.coins;
+  const fish0 = psA.inventory.fish_minnow;
+
+  await cmd(wss.a, 'trade2_cancel');
+  await cmd(wss.b, 'trade2_cancel');
+  await cmd(wss.a, 'trade2_open', { target: P('b') });
+  await cmd(wss.b, 'trade2_open', { target: P('a') });
+  await cmd(wss.a, 'trade2_set', { offer: { constructor: 7, toString: 3, hasOwnProperty: 2, fish_minnow: 2 } });
+  await cmd(wss.b, 'trade2_set', { offer: { valueOf: 4, ore_iron_ore: 1 } });
+
+  const live = room._t2SessionFor(P('a'));
+  check('a staged offer carries no Object.prototype key across the wire',
+    Object.keys(live.offers[P('a')]).join(',') === 'fish_minnow'
+      && Object.keys(live.offers[P('b')]).join(',') === 'ore_iron_ore',
+    { a: live.offers[P('a')], b: live.offers[P('b')] });
+
+  await bothReady();
+  await cmd(wss.a, 'trade2_confirm');
+  await cmd(wss.b, 'trade2_confirm');
+
+  check('the swap still settles the REAL items either way',
+    psA.inventory.fish_minnow === fish0 - 2 && psB.inventory.fish_minnow === 2
+      && psB.inventory.ore_iron_ore === 1 && psA.inventory.ore_iron_ore === 1,
+    { a: psA.inventory, b: psB.inventory });
+  check('...and neither blob gained a prototype key',
+    !Object.prototype.hasOwnProperty.call(psA.inventory, 'constructor')
+      && !Object.prototype.hasOwnProperty.call(psA.inventory, 'toString')
+      && !Object.prototype.hasOwnProperty.call(psB.inventory, 'constructor')
+      && !Object.prototype.hasOwnProperty.call(psB.inventory, 'valueOf'),
+    { a: Object.keys(psA.inventory), b: Object.keys(psB.inventory) });
+  check('...and every count is still a finite number, not NaN or a string',
+    [...Object.values(psA.inventory), ...Object.values(psB.inventory)]
+      .every((n) => typeof n === 'number' && Number.isFinite(n)),
+    { a: psA.inventory, b: psB.inventory });
+  check('coins are conserved across the swap', psA.coins + psB.coins === coins0,
+    { a: psA.coins, b: psB.coins, coins0 });
+  /* And `toString` shadowed by a string is the crash this really guards:
+     anything that stringifies the bag would throw on a poisoned blob. */
+  check('the bag still stringifies (a shadowed toString would throw here)',
+    (() => { try { return typeof String(psB.inventory) === 'string'; } catch (e) { return false; } })());
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

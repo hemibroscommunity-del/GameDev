@@ -1,4 +1,6 @@
 ﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { shopBus } from './mobile/shopBus.js';   /* v2.3.2050: Shopkeeper Bro's window */
+import { uiBusyBus } from './mobile/uiBusyBus.js'; /* v2.3.2085: tell chrome outside this tree to stand aside */
 import { zonePlayerScale } from '@/data/zones.js'; /* v2.3.1574: the one copy of the vista perspective curve */
 import { ExtractionSwipeLayer } from './ExtractionSwipeLayer.jsx';
 /* v2.3.855: first UI-panel extraction — the info/online-count popup. */
@@ -24,7 +26,6 @@ import { EncyclopediaPanel } from './panels/EncyclopediaPanel.jsx';
 /* v2.3.865: skills panel extraction. */
 import { SkillsPanel } from './panels/SkillsPanel.jsx';
 /* v2.3.866: shop panel extraction. */
-import { ShopPanel } from './panels/ShopPanel.jsx';
 /* v2.3.869: stat screen panel extraction. */
 import { StatScreenPanel } from './panels/StatScreenPanel.jsx';
 /* v2.3.870: quest panel extraction (logic already in @/game/quests.js). */
@@ -48,6 +49,7 @@ import { UpdateBanner } from './panels/UpdateBanner.jsx';
 import { startBuildWatch } from '@/game/buildWatch.js';
 import { TouchControls } from './panels/TouchControls.jsx';
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
+import { LockOnActions } from './panels/LockOnActions.jsx'; /* v2.3.1952 */
 import { DuelRequestPanel } from './panels/DuelRequestPanel.jsx';
 import { ThreatIncomingPanel } from './panels/ThreatIncomingPanel.jsx';
 import { ChatPanel } from './panels/ChatPanel.jsx';
@@ -164,6 +166,7 @@ import { firemakingBus } from './mobile/firemakingBus.js';
 import { eatBus } from './mobile/eatBus.js';
 import { blockRingBus } from './mobile/blockRingBus.js';
 import { chatBubbleBus } from './mobile/chatBubbleBus.js'; /* v2.3.1287: self-tap opens chat */
+import { chatLogBus } from './mobile/chatLogBus.js'; /* v2.3.1980: the world-chat feed listens here */
 import { controlsTutorialBus } from './mobile/controlsTutorialBus.js';
 /* v2.3.1796: the questline teaches the controls by flashing the real one
    (owner).  Sibling of, not replacement for, ControlsTutorial above — see
@@ -177,7 +180,7 @@ import { t1StatsPayload } from '@/game/t1Sync.js'; /* v2.3.1633: shared T1 repor
 import * as DATA from '@/data/index.js';
 import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId } from '@/networking/index.js';
 /* v2.3.1923: the device's character roster — see src/networking/charRoster.js */
-import { rememberChar, ensureChar, activateChar, inRoster } from '@/networking/charRoster.js';
+import { rememberChar, ensureChar, activateChar, inRoster, adoptSharedPhrase } from '@/networking/charRoster.js';
 import { HEADWEAR_CATALOG, getHeadwear, setHeadwear } from '@/rendering/traits/headwearCatalog.js';
 import { FACIALHAIR_CATALOG, getFacialHair, setFacialHair } from '@/rendering/traits/facialHairCatalog.js';
 import { HAIR_CATALOG, getHair, setHair } from '@/rendering/traits/hairCatalog.js';
@@ -185,7 +188,9 @@ import { SKIN_CATALOG, PANTS_CATALOG, SHOES_CATALOG, getSkin, setSkin, getPants,
 import { HAIR_COLOR_CATALOG, getHairColor, setHairColor } from '@/rendering/traits/hairColorCatalog.js';
 import { HAT_COLOR_CATALOG, hatColorsFor, getHatColor, setHatColor } from '@/rendering/traits/hatColorCatalog.js';
 import { EYE_COLOR_CATALOG, getEyeColor, setEyeColor } from '@/rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
+import { HEIGHT_CATALOG, DEFAULT_HEIGHT, getBuildHeight, setBuildHeight, getBuildFrame, wireHeight, wireFrame } from '@/rendering/traits/buildCatalog.js'; /* v2.3.1953; v2.3.1996: frame locked to medium — no FRAME_CATALOG/setBuildFrame here */
 import { getShirtArt, getArt, artHasInk } from '@/rendering/traits/playerArt.js'; /* v2.3.1939; v2.3.1940 + pants/tattoo */
+import { clearAllArt } from '@/rendering/traits/artOps.js';   /* v2.3.2114/2115: Reset and Randomize clear the painted art */
 import { getPattern } from '@/rendering/traits/patternCatalog.js'; /* v2.3.1941 */
 import { FACIALHAIR_COLOR_CATALOG, getFacialHairColor, setFacialHairColor } from '@/rendering/traits/facialHairColorCatalog.js';
 import { SHIRT_CATALOG, getShirt, setShirt } from '@/rendering/traits/shirtCatalog.js';
@@ -204,6 +209,7 @@ import { releasePeerDamage, addBuildProg, pushDmgPopup, monsterPopupY } from '@/
 import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822: stuck-dead watchdog */
 /* v2.3.767: chat send + chat/emote handlers extracted behavior-frozen (REBUILD-PLAN Phase 2). */
 import { sendChatMessage } from '@/game/chat.js';
+import { subscribeMutes } from '@/game/chatMute.js'; /* v2.3.1981 */
 /* v2.3.787: zone transitions (town exits, tile-9 return, dungeon entrance/exit)
    extracted behavior-frozen (REBUILD-PLAN Phase 6). */
 import { handleZoneTransitions } from '@/game/zoneTransitions.js';
@@ -282,7 +288,6 @@ const {
   getDungeonCreatorUnlocks, validateCustomDungeon, createDefaultDungeonConfig,
   hasUnlock, getNpcQuest, npcHasQuestChain, /* v2.3.1773 */
   discoverMonster, discoverMaterial, discoverZone, discoverCollision,
-  SHOP_PRICES, SHOP_ITEMS_FOR_SALE,
   getGuildRank, getGuildQuest, GUILD_RANKS, GUILD_QUESTS, SKILL_GUILDS,
   meetsStatReq, meetsGearReq, getGearStatReq, STAT_LABELS,
   LIFE_SKILLS, RESOURCE_TIERS, DEPTH_CONFIG, DEPTH_TIERS,
@@ -328,6 +333,25 @@ import { SpriteHpBar } from './SpriteHpBar.jsx'; /* v2.3.1273: owner's HP-bar ar
 import { barHeight, navSlotSize, columnsRowHeight, DASH_OVERLAP } from './mobile/sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 bar-height canvas; v2.3.1325 slot-derived bar; v2.3.1560 two-row band; v2.3.1635 three-row band; v2.3.1636 columns row */
 import { recolorEnabled } from '@/rendering/traits/recolorOptions.js';
 import { buildingPropNear } from '@/data/worldProps.js'; /* v2.3.1778: building doors */
+
+/* ═══ v2.3.2062: THE MANA DRAUGHT'S FLOOR, IN CLIENT FRAMES ═══
+ * The server holds the surge as a flat amount PER REGEN TICK (660 ms); this
+ * loop runs per FRAME. Converting here rather than shipping a second constant
+ * means the two cannot drift: the number itself is the server's, mirrored onto
+ * S._manaFlat by wsClient, and all this does is spread it across the frames in
+ * a tick. Returns 0 when the buff is not up or the server never sent one, so a
+ * cooked meal -- which sets the same timer with no flat amount -- falls through
+ * to the ordinary multiplier path untouched.
+ * Prediction only: the worker's player_state is the truth, and this exists so
+ * the bar climbs smoothly between echoes rather than stepping. */
+var MANA_SURGE_TICK_MS = 660;   /* server: REGEN_TICKS x TICK_RATE */
+var MANA_SURGE_FPS = 60;
+function manaSurgePerFrame(S, active) {
+  if (!active) return 0;
+  var flat = Number(S && S._manaFlat);
+  if (!(flat >= 1 && flat <= 200)) return 0;   /* same bound the server reads */
+  return flat / (MANA_SURGE_TICK_MS / 1000) / MANA_SURGE_FPS;
+}
 
 /* Expose all exports as globals for the pre-transpiled code.
    The original index.html had everything in one scope; this bridges the gap. */
@@ -575,7 +599,21 @@ function _spawnTownNpcs() {
   /* v2.3.1773: the blacksmith joins the mayor.  This allowlist is the gate —
      NPC_DATA carries the record, but a name missing from here never spawns,
      which is how the table can hold entries that are not live yet. */
-  var ACTIVE_NPCS = ['Mayor Bro', 'Blacksmith Bro', 'Storekeeper Bro']; /* v2.3.1775 */
+  /* v2.3.2046: + Shopkeeper Bro, the first NPC in the game that walks.
+     Note 'Storekeeper Bro' beside him is a DIFFERENT, older entry -- the two
+     names are one letter apart and getNpcQuest keys on the name, so they must
+     not be conflated. */
+  /* v2.3.2064: + Lil Bro, the second NPC that walks. Scenery with legs -- no
+     quest, no shop -- so nothing but this line and his NPC_DATA record. */
+  /* v2.3.2073: 'Shopkeeper Bro' -> 'Diego' (owner's rename). This list is
+     keyed by NAME and gates the whole NPC tick — an NPC missing from it stops
+     walking, talking and being interactable, so it moves with gameDisplay's
+     `name` or the rename silently switches him off. */
+  /* v2.3.2091: 'Storekeeper Bro' is gone (owner: "Remove the other shopkeeper
+     NPC") — two men did one job and only Diego had any stock. His NPC_DATA
+     record went with him, so this is not a dormant entry waiting to be
+     re-enabled; see the note at the end of NPC_DATA. */
+  var ACTIVE_NPCS = ['Mayor Bro', 'Blacksmith Bro', 'Diego', 'Lil Bro']; /* v2.3.1775 */
   return NPC_DATA.filter(function (n) { return ACTIVE_NPCS.indexOf(n.name) >= 0; })
     .map(function (npc) { return _objectSpread({}, npc); });
 }
@@ -677,7 +715,16 @@ export var BroTown = function BroTown(_ref0) {
     currentZone: 'town',
     /* zone ID — starts in town */
     chatLog: [],
-    chatBubbles: {},
+    /* v2.3.1970: null-prototype -- this map is keyed by the sender id off
+       a chat payload, and until the same version that id was whatever the
+       wire said (the worker now stamps it, but the client has to hold
+       against an un-upgraded one).  On a plain {} the key '__proto__' is
+       not a no-op here, it is worse: the value is an object, so the
+       assignment REPLACES this map's prototype and every later lookup
+       reads through a bubble instead of Object.prototype.  Rule 4 /
+       TRAPS #6 -- three incidents in one day (duel.away v2.3.1175, party
+       meta v2.3.1185, amulet tiers v2.3.1192). */
+    chatBubbles: Object.create(null),
     /* {playerId: {text, ts}} */
     /* v2.3.1116: persistent identity -- stable id derived from a stored
        passphrase (silently generated on first boot) instead of a fresh
@@ -691,6 +738,19 @@ export var BroTown = function BroTown(_ref0) {
       try {
         if (/[?&]guest=1\b/.test(window.location.search)) return Math.random().toString(36).slice(2, 10);
         var _pf = localStorage.getItem('bt_passphrase');
+        /* ═══ v2.3.2110: BEFORE MINTING A KEY, ASK IF THIS IS REALLY A NEW DEVICE ═══
+           Owner: "the continue button ... right now it shows empty each time an
+           update is pushed."  It is not a new device — it is a new ORIGIN.  Each
+           Cloudflare Pages deployment gets its own hostname, localStorage is
+           per-origin, and minting here is what turned "your character is in the
+           other drawer" into "you have no character".  adoptSharedPhrase reads
+           the roster mirror that DOES cross origins (rosterCookie.js) and hands
+           back the most recent character, so the player walks straight in.  It
+           returns null on every road that is genuinely new or genuinely a
+           delete — see its guards — and then we mint as before.  This has to
+           happen HERE, before myId is derived: adopting later would need a
+           reload to rebuild the ids already baked into module state. */
+        if (!_pf) _pf = adoptSharedPhrase();
         if (!_pf) {
           _pf = generatePassphrase();
           localStorage.setItem('bt_passphrase', _pf);
@@ -1547,6 +1607,17 @@ export var BroTown = function BroTown(_ref0) {
     _useState168 = _slicedToArray(_useState167, 2),
     mutedList = _useState168[0],
     setMutedList = _useState168[1];
+  /* v2.3.1981: the mute list is a SERVER fact now (server/src/chatmod.js).
+     It arrives as chat_mute_list on join and after every mutation, and
+     chatMute.js republishes it through the localStorage mirror this state
+     was seeded from — so without this subscription the Social panel and
+     the inspect card would keep showing whatever THIS browser last
+     remembered while the worker enforced something else.  A mute made on
+     a phone has to be visibly in force on the laptop; that is the whole
+     point of moving it off the device. */
+  useEffect(function () {
+    return subscribeMutes(function (list) { setMutedList(list); });
+  }, []);
   var _useState169 = useState(false),
     _useState170 = _slicedToArray(_useState169, 2),
     showSocialPanel = _useState170[0],
@@ -1639,6 +1710,19 @@ export var BroTown = function BroTown(_ref0) {
     _useState188 = _slicedToArray(_useState187, 2),
     joinFlash = _useState188[0],
     setJoinFlash = _useState188[1];
+  /* ═══ v2.3.1980: PUBLISH THE ONLINE COUNT ONTO THE GAME STATE ═══
+     `playerCount` is the authoritative room population -- the worker
+     broadcasts it on every join and leave (`player_count`, getPlayerCount()
+     over all sessions, so it is WORLD-wide and not the zone you happen to be
+     standing in) and the client's own join/leave/ghost-sweep paths keep it
+     honest in between.  All of that lands in this one React state, which the
+     chat window cannot reach: ChatBubble is mounted by GameApp, outside this
+     component.  Mirroring it onto stateRef is how every other cross-boundary
+     read in this file is done, and it means the feed shows the SERVER's
+     number rather than recounting S.others and disagreeing with it. */
+  useEffect(function () {
+    if (stateRef.current) stateRef.current._playerCount = playerCount;
+  }, [playerCount]);
   /* ═══ v2.3.1814: WHICH PRE-GAME SCREEN, IF ANY ═══
      Owner: "character selections in terms of names and traits picked during
      login should be permanent.  When you load a character using the key it
@@ -1735,6 +1819,20 @@ export var BroTown = function BroTown(_ref0) {
   var _eyeColorSelState = useState(getEyeColor()),
     eyeColorSel = _eyeColorSelState[0],
     setEyeColorSel = _eyeColorSelState[1];
+  /* v2.3.1953: height + frame, mirrored into React the same way every other
+     pick is — the store is the truth, this is what re-renders the tiles and
+     re-runs the preview draw. */
+  var _heightSelState = useState(getBuildHeight()),
+    heightSel = _heightSelState[0],
+    setHeightSel = _heightSelState[1];
+  /* v2.3.1996: frame is locked to medium, so getBuildFrame() only ever answers
+     'medium' and this state never changes.  Kept rather than deleted because
+     the preview and the portrait still take a buildFrame, and because putting
+     a second frame back is then FRAME_CATALOG plus a picker -- not a re-thread
+     of every call site.  setFrameSel is passed down for the same reason. */
+  var _frameSelState = useState(getBuildFrame()),
+    frameSel = _frameSelState[0],
+    setFrameSel = _frameSelState[1];
   var _beardColorSelState = useState(getFacialHairColor()),
     beardColorSel = _beardColorSelState[0],
     setBeardColorSel = _beardColorSelState[1];
@@ -1766,6 +1864,33 @@ export var BroTown = function BroTown(_ref0) {
   /* Live character preview on the login screen -- redraws whenever any
      cosmetic selection (or the preview angle) changes. */
   var previewCanvasRef = useRef(null);
+  /* v2.3.1951: the tap-zoom moved up here from NameModal.  It was local while
+     it only resized a box inside that component; it now also tells the preview
+     camera to pull back to the whole figure, and that wiring lives in this
+     file beside activeCat, which was lifted for the same reason. */
+  /* ═══ v2.3.1994: THE CREATOR OPENS ON THE WHOLE CHARACTER ═══
+     Owner: "When first getting to the character design screen have the
+     character zoomed out normally instead of zooming in by default for his
+     hair."
+
+     `previewZoom` true means the WHOLE FIGURE (focusForCat returns FOCUS_FULL,
+     and NameModal gives the stage its taller frame) -- the name is a leftover
+     from when tapping the character was the only thing that moved the camera.
+     It started false, so the very first thing a new player saw was a close-up
+     of the top of a head, because `activeCat` starts on 'hair' and v2.3.1951
+     wired the camera to follow the open category.  That is the right behaviour
+     for a category you CHOSE and the wrong one for the category that merely
+     happens to be first.
+     So the camera starts pulled back and the category framing engages the
+     moment you pick a tab (setActiveCat below) -- the feature is kept, it just
+     stops firing before anyone has asked it to. */
+  var _zmState = useState(true),
+    previewZoom = _zmState[0],
+    setPreviewZoom = _zmState[1];
+  /* Picking a trait category IS the "aim the camera here" gesture, so it ends
+     the opening wide shot.  One place, so the two states can never disagree
+     about whether the camera has been aimed yet. */
+  var pickPreviewCat = function (c) { setActiveCat(c); setPreviewZoom(false); };
   /* v2.3.711: drag-to-rotate -- horizontal swipes on the preview canvas step
      the facing every 26px of travel; the corner buttons remain for
      discoverability.  Holds the last x where a step fired. */
@@ -1789,6 +1914,10 @@ export var BroTown = function BroTown(_ref0) {
       facialHairSel: facialHairSel, beardColorSel: beardColorSel,
       headwearSel: headwearSel, hatColorSel: hatColorSel, eyeColor: eyeColorSel,
       shirtSel: shirtSel, shirtColorSel: shirtColorSel,
+      buildHeight: heightSel, buildFrame: frameSel,   /* v2.3.1953 */
+      /* v2.3.1951: which tab is open drives where the preview camera looks,
+         and the tap-zoom overrides it with the whole figure. */
+      activeCat: activeCat, zoomedOut: previewZoom,
     });
     /* ═══ v2.3.1818: showNameModal IS A DEPENDENCY ═══
        Owner: "loading character assets seems slow (no char in image)."
@@ -1811,7 +1940,7 @@ export var BroTown = function BroTown(_ref0) {
 
        Listing the mount flag is the whole fix: the effect re-runs when the
        creator appears, the ref is attached by then, and the portrait draws. */
-  }, [showNameModal, previewDir, skinSel, pantsSel, shoesSel, hairSel, hairColorSel, facialHairSel, beardColorSel, headwearSel, hatColorSel, shirtSel, shirtColorSel, eyeColorSel]);
+  }, [showNameModal, previewDir, skinSel, pantsSel, shoesSel, hairSel, hairColorSel, facialHairSel, beardColorSel, headwearSel, hatColorSel, shirtSel, shirtColorSel, eyeColorSel, heightSel, frameSel, activeCat, previewZoom]);
   /* v2.3.715: the welcome modal is dead network time -- start pulling the
      heavy in-game sheets (network/decode only; the CPU bakes still run
      behind the intro overlay via preloadPlayerAssets in joinTown) and warm
@@ -1924,6 +2053,68 @@ export var BroTown = function BroTown(_ref0) {
       onClick: function () { onSet(opt.id); }, style: _apTileStyle(sel, size || 32)
     }, inner, sel ? _checkBadge() : null);
   };
+  /* ═══ v2.3.1953: THE BUILD TILE ═══
+     Height and frame have no sprite to show and no colour to swatch — they are
+     two numbers — so the tile draws what they DO: a stick silhouette scaled by
+     that option's own multiplier, with a ghost of the average build behind it
+     so the difference is visible in the tile rather than only on the stage.
+     Inline SVG rather than art: it is five shapes, it scales to any density,
+     and the animation-preload law's whole reason (an asset that loads late
+     hitches) does not apply to one that is never fetched.  Same precedent as
+     the designer's pencil (v2.3.1946). */
+  var _buildTile = function (opt, selId, onSet, axis, size) {
+    var sel = selId === opt.id;
+    /* ═══ THE ICON EXAGGERATES.  DELIBERATELY. ═══
+       A 12% difference is plain on a 300px character and invisible on a 30px
+       glyph, so the tile draws the option at 2.2x its real deviation from
+       average.  This is an ICON, not a preview — the preview is the bro on the
+       stage, who moves the moment you tap, and who moves by the REAL amount.
+       Understating the choice in the picker would make three of these tiles
+       look identical, which is worse than overstating it. */
+    var _ex = 1 + (opt.mul - 1) * 2.2;
+    var sx = axis === 'frame' ? _ex : 1;
+    var sy = axis === 'frame' ? 1 : _ex;
+    var _figure = function () {
+      return /*#__PURE__*/React.createElement("g", {
+        /* Anchored on the FEET, like everything else in this feature: a figure
+           that grew about its middle would float above the tile's baseline and
+           the three of them would no longer line up. */
+        transform: 'translate(20,36) scale(' + sx + ',' + sy + ') translate(-20,-36)',
+        fill: '#3a4450'
+      },
+      /*#__PURE__*/React.createElement("circle", { cx: 20, cy: 9.5, r: 5 }),
+      /*#__PURE__*/React.createElement("rect", { x: 13, y: 15.5, width: 14, height: 11.5, rx: 3 }),
+      /*#__PURE__*/React.createElement("rect", { x: 14.8, y: 27, width: 4.2, height: 9, rx: 1.4 }),
+      /*#__PURE__*/React.createElement("rect", { x: 21, y: 27, width: 4.2, height: 9, rx: 1.4 }));
+    };
+    return /*#__PURE__*/React.createElement("button", {
+      key: 'b_' + opt.id, type: 'button', title: opt.name,
+      onClick: function () { onSet(opt.id); }, style: _apTileStyle(sel, size || 52)
+    },
+    /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start' } },
+      /*#__PURE__*/React.createElement("span", {
+        /* Caption ABOVE the silhouette: the selected tile's check badge sits
+           in the bottom-right corner, and a caption under the figure ran into
+           it — "Average" came back as "Averag(check)".  Above it, the badge has
+           the corner to itself and the label is never clipped. */
+        style: { fontSize: 8, fontWeight: 800, letterSpacing: '.02em', color: '#3a4450', lineHeight: 1, flex: '0 0 auto' }
+      }, opt.name),
+      /*#__PURE__*/React.createElement("svg", {
+        /* Headroom above and to the sides so the exaggerated `tall` and
+           `large` figures are drawn whole rather than cropped at the box. */
+        viewBox: '-4 -8 48 46', "aria-hidden": true, focusable: 'false',
+        preserveAspectRatio: 'xMidYMax meet',
+        /* overflow visible so a `tall` figure is not clipped by its own box —
+           the ghost behind it is the reference, and a silhouette cropped at
+           the crown would understate exactly the thing being picked. */
+        style: { overflow: 'visible', display: 'block', flex: '1 1 auto', width: '100%', minHeight: 0 }
+      },
+      /* No ghost-of-average behind it: the first cut drew one and on `Short`
+         its head floated above the real figure's, reading as a second head.
+         Three tiles in a row ARE the comparison. */
+      _figure())),
+    sel ? _checkBadge() : null);
+  };
   var _thumbTile = function (cat, opt, selId, onSet, size) {
     var sz = size || 50;
     var sel = selId === opt.id;
@@ -1957,6 +2148,13 @@ export var BroTown = function BroTown(_ref0) {
     if (recolorEnabled('skin')) { var sk = rpick(SKIN_CATALOG); setSkin(sk); setSkinSel(sk); }
     if (recolorEnabled('pants')) { var pt = rpick(PANTS_CATALOG); setPants(pt); setPantsSel(pt); }
     if (recolorEnabled('shoes')) { var sh = rpick(SHOES_CATALOG); setShoes(sh); setShoesSel(sh); }
+    /* v2.3.1953: roll the build too.  Randomize is how most people first see
+       what the creator can do, and a feature it never touches is a feature
+       half the players never learn exists. */
+    var bh = rpick(HEIGHT_CATALOG); setBuildHeight(bh); setHeightSel(bh);
+    /* v2.3.1996: no frame roll -- the axis is locked to medium (FRAME_CATALOG),
+       so rolling it would pick 'medium' every time and the only thing it could
+       still do is surprise a player whose saved build was Thin or Large. */
     var hr = rpick(HAIR_CATALOG); setHair(hr); setHairSel(hr);
     if (recolorEnabled('hair')) {
       var hcCat = hr === 'long' ? HAIR_COLOR_CATALOG.filter(function (c) { return LONG_HAIR_COLORS.indexOf(c.id) >= 0; }) : HAIR_COLOR_CATALOG;
@@ -1972,9 +2170,84 @@ export var BroTown = function BroTown(_ref0) {
     if (recolorEnabled('hat')) { var htc = rpick(hatColorsFor(ht)); setHatColor(htc); setHatColorSel(htc); }
     if (recolorEnabled('eyes')) { var ec = rpick(EYE_COLOR_CATALOG); setEyeColor(ec); setEyeColorSel(ec); }
   };
+  /* ═══ v2.3.2036: RESET — BACK TO THE BARE DEFAULT ═══
+   *
+   * Owner: "add a reset button so you can make the character back to the
+   * default", and then, plainly, "bald shirtless character is what I wanted
+   * for reset".
+   *
+   * These are the stores' OWN defaults, not a snapshot: hair, shirt, headwear
+   * and beard are 'none' (hairCatalog.js, shirtCatalog.js, etc.), and every
+   * colour is 'default', meaning the sprite's native paint.
+   *
+   * IT IS NOT AS NAKED AS IT SOUNDS, which is worth writing down because the
+   * word "shirtless" invites the obvious worry. Skin, pants and shoes are
+   * RECOLOUR-only catalogs -- their 'default' is the base sprite's own
+   * colours, and the trousers and boots are painted into the body art itself.
+   * There is no 'none' to set them to, so reset cannot undress the legs.
+   *
+   * Deliberately CONSTANTS rather than the opening look. An earlier draft
+   * snapshotted the look when the creator opened and restored that. For a
+   * brand-new player the two are identical -- a fresh character opens bald and
+   * shirtless -- which is why they can look like the same feature. They part
+   * company for a returning player, whose saved character loads first: a
+   * snapshot would hand back the look they arrived in, and constants hand back
+   * a blank slate. The owner asked for the blank slate.
+   *
+   * Both halves of every trait are written -- the catalog store AND the React
+   * selection state -- exactly as randomizeAppearance does above. Writing only
+   * the store leaves the picker's tick on the old tile; writing only the state
+   * leaves the character unchanged. That is how this goes subtly wrong, so the
+   * pairs are kept literally side by side.
+   *
+   * ═══ v2.3.2114: THE DRAWINGS GO TOO ═══
+   * Owner: "The tattoos are not resetting through character reset and
+   * randomize", then "Yes make the shirt and pants reset too" (v2.3.2115).
+   *
+   * They did not, and the paragraph that used to stand here is why: the
+   * painted drawings live in their own canvases behind the designer modal, not
+   * in this trait state, and the call was that silently wiping someone's
+   * drawing from a button labelled Reset would be worse than leaving it.
+   *
+   * The owner is right and that call was wrong, for a reason the button itself
+   * gives: this Reset means "back to the bare default" (their words: "bald
+   * shirtless character is what I wanted"), and a character that comes back
+   * bald and shirtless still wearing a face tattoo has not been reset — it has
+   * been half reset, which reads as a bug rather than as care.  Same for
+   * Randomize: a fresh roll of every other trait around a drawing that never
+   * changes makes the drawing look stuck.
+   *
+   * EVERY painted canvas now — the four tattoos, both shirt sides and the
+   * trousers — through artOps.clearAllArt, which drops the SHAPES with the
+   * drawing rather than only the flat pixels.  See its note for why the set is
+   * the whole canvas list rather than a subset, and why the design slots
+   * (v2.3.1950) are deliberately left alone: a drawing saved to a slot
+   * survives this, which is what keeps a button that erases things honest. */
+  var resetLook = function () {
+    clearAllArt();   /* v2.3.2114 / v2.3.2115 */
+    setSkin('default'); setSkinSel('default');
+    setPants('default'); setPantsSel('default');
+    setShoes('default'); setShoesSel('default');
+    setBuildHeight(DEFAULT_HEIGHT); setHeightSel(DEFAULT_HEIGHT);
+    setHair('none'); setHairSel('none');
+    setHairColor('default'); setHairColorSel('default');
+    setFacialHair('none'); setFacialHairSel('none');
+    setFacialHairColor('default'); setBeardColorSel('default');
+    setShirt('none'); setShirtSel('none');
+    setShirtColor('default'); setShirtColorSel('default');
+    setHeadwear('none'); setHeadwearSel('none');
+    setHatColor('default'); setHatColorSel('default');
+    setEyeColor('default'); setEyeColorSel('default');
+  };
+
   /* v2.3.711: RANDOMIZE rolls a few quick looks before settling -- the
      slot-machine beat makes the button feel fun instead of a dry reroll. */
   var randomizeWithFlair = function () {
+    /* v2.3.2114: once, here, rather than inside randomizeAppearance — the
+       flair loop calls that four times, and clearing an already-empty canvas
+       three more times is work nobody asked for.  This is also the only
+       caller, so the button and the clear cannot drift apart. */
+    clearAllArt();
     randomizeAppearance();
     var n = 0;
     var t = setInterval(function () { randomizeAppearance(); if (++n >= 3) clearInterval(t); }, 110);
@@ -2146,19 +2419,32 @@ export var BroTown = function BroTown(_ref0) {
   }(), [nfts]);
   var frameRef = useRef(0);
 
+  /* ═══ v2.3.1980: EVERY WRITE TO THE CHAT LOG ANNOUNCES ITSELF ═══
+     The log is written from four modules (game/chat.js on send and on every
+     received line, networking/gameEvents.js for party chat and operator
+     announcements, networking/wsClient.js for the welcome line) and all four
+     were handed THIS setter -- so wrapping it once here is the whole of it.
+     The world-chat feed lives in ChatBubble, which GameApp mounts outside
+     this component and which therefore cannot see `chatLog` as a prop; it
+     reads S.chatLog and re-renders on the bump. */
+  var noteChatLog = useCallback(function (v) {
+    setChatLog(v);
+    try { chatLogBus.bump(); } catch (e) { /* the log still wrote; only the feed misses a frame */ }
+  }, []);
+
   /* Send chat message — input-widget concerns stay here; the network/state
      body lives in src/game/chat.js (v2.3.767, REBUILD-PLAN Phase 2). */
   var sendChat = useCallback(function () {
     var text = chatInput.trim();
     if (!text) return;
-    sendChatMessage(stateRef.current, text, { setChatLog: setChatLog });
+    sendChatMessage(stateRef.current, text, { setChatLog: noteChatLog });
     setChatInput('');
     chatInputValRef.current = '';
     /* Keep keyboard open by re-focusing */
     requestAnimationFrame(function () {
       if (chatInputRef.current) chatInputRef.current.focus();
     });
-  }, [chatInput]);
+  }, [chatInput, noteChatLog]);
   /* Ambient background music — gentle chiptune loop */
   useEffect(function () {
     return wireTownMusic(showNameModal, showLogin);
@@ -2320,13 +2606,26 @@ export var BroTown = function BroTown(_ref0) {
      the frame the auto-open would fire on.  Deliberately generous: false
      negatives here open a dialogue over someone's inventory, which is worse
      than a dialogue that waits. */
-  stateRef.current._uiBusy = !!(questPanel || buildingPanel || showInventory || showSkills
+  /* v2.3.2078: named, because it is now read twice — the proximity gate
+     reads it off stateRef on the same frame (see the note above), and the
+     effect that puts Diego's drawer away needs it as a dependency. One
+     expression, so the two can never disagree about what "a panel is open"
+     means. */
+  var _anyPanelOpen = !!(questPanel || buildingPanel || showInventory || showSkills
     || showStatScreen || showShop || showEncyclopedia || showLeaderboard || showSocialPanel
     || showClanPanel || showGuildPanel || showFeedback || showPetHouse || showFurniture
     || showPlayerList || showDungeonCreator || showTrade || incomingTrade || trade2
     || duelRequest || threatIncoming || inspectPlayer || chatOpen || showEmotes || showInfo
     || showIntro || showWelcome || showMayorGreeting || showTourPrompt || showNameModal
     || cookMinigame);
+  stateRef.current._uiBusy = _anyPanelOpen;
+  /* v2.3.2085: and out to the chrome mounted OUTSIDE this tree.  GameApp's
+     WorldChatFeed has no path to this React state (its own comment says so),
+     and its scrollable list was sitting over the inspect card's Trade button
+     -- see uiBusyBus for the whole story.  Published from the same
+     `_anyPanelOpen` this component already gates itself on, so there is one
+     definition of "busy" rather than two that drift. */
+  uiBusyBus.set(_anyPanelOpen);
   /* v2.3.1643: showChatLog, showClanWar and showArena USED TO LIVE HERE
      and were declared but never read — three dead useState pairs whose
      setters nothing called either. Removed. If you are looking for those
@@ -2341,7 +2640,7 @@ export var BroTown = function BroTown(_ref0) {
       showLogin: showLogin,
       preGame: bootPhase !== null,   /* v2.3.1814: also the boot check + login door */
       setPlayerCount: setPlayerCount,
-      setChatLog: setChatLog,
+      setChatLog: noteChatLog,   /* v2.3.1980: wrapped -- see noteChatLog */
       setUnreadChats: setUnreadChats,
       setJoinFlash: setJoinFlash,
       setRpgState: setRpgState,
@@ -2666,6 +2965,74 @@ export var BroTown = function BroTown(_ref0) {
     if (vv) vv.addEventListener('resize', resize);
     var resizeObs = window.ResizeObserver ? new ResizeObserver(resize) : null;
     if (resizeObs && canvas.parentElement) resizeObs.observe(canvas.parentElement);
+
+    /* ═══ v2.3.1975: A WATCHDOG, BECAUSE THE SPECIAL CASES KEEP RUNNING OUT ═══
+       Owner, with a screenshot from the FIRST person ever to play-test the
+       game: the world squashed into a band at the top, joysticks floating in
+       the page background below it, dashboard fine. Unplayable, and the THIRD
+       time this exact symptom has reached him.
+
+       Every previous fix identified the trigger and special-cased it — the
+       judging session, then v2.3.1715's #root measurement, then v2.3.1740's
+       keyboard guard firing on browser chrome. Each was correct. Each time a
+       new trigger turned up, because every one of them is a different way of
+       reaching the SAME state: resize() ran once against a viewport that was
+       not the real one, and nothing ever fired again to correct it.
+
+       That is the thing worth fixing. resize() is edge-triggered — a window
+       resize, a visualViewport resize, or a ResizeObserver on the parent — and
+       every one of those is the browser PROMISING to tell us. The failure mode
+       is the browser not making that call: an in-app browser whose chrome
+       settles without an event, a viewport reported small for one frame during
+       load, a devicePixelRatio that changes under us. There is no list of
+       those to complete; the list is "everything we have not seen yet".
+
+       So this asserts the invariant directly, on a timer, instead of trusting
+       the events: if the canvas is not the size the layout says it should be,
+       size it. It is level-triggered, so it cannot be defeated by a missing
+       event, and it self-heals rather than requiring a reload.
+
+       MEASURED against the owner's screenshot: the world band is ~12% of the
+       page viewport where it should be ~56%. The tolerance below is 8% of the
+       expected height, which is far looser than any rounding this code does
+       (DASH_OVERLAP and the Math.round in vh are single pixels) and far
+       tighter than any failure that has ever been reported.
+
+       Two things it deliberately does NOT do:
+         - It does not fight the keyboard. While a text field is focused the
+           guard above is doing its job on purpose (v2.3.130: the chat keyboard
+           must float over the world, not resize the scene), so the watchdog
+           stands down and picks it up on the next tick after the blur.
+         - It does not run forever at speed. A wrong size is a startup-shaped
+           failure, so it checks briskly while that is being decided and then
+           settles to a slow heartbeat that costs two reads a second. */
+    var wdTicks = 0;
+    var watchdog = setInterval(function () {
+      wdTicks++;
+      /* Fast for the first ~12s, then a slow heartbeat. */
+      if (wdTicks > 24 && (wdTicks % 4)) return;
+      var _ae2 = document.activeElement;
+      if (_ae2 && (_ae2.tagName === 'INPUT' || _ae2.tagName === 'TEXTAREA' || _ae2.isContentEditable)) return;
+      var vvNow = window.visualViewport;
+      var haveH = canvas.getBoundingClientRect().height;
+      if (!haveH) return;                       /* not laid out yet */
+      var fullH = vvNow ? vvNow.height : window.innerHeight;
+      var wantH = Math.max(120, fullH - barHeight(vvNow ? vvNow.width : window.innerWidth, fullH) + DASH_OVERLAP);
+      if (Math.abs(haveH - wantH) <= wantH * 0.08) return;
+      /* Say it once, loudly, with the numbers: if this ever fires in the wild
+         the log is the whole diagnosis, and silence here would hide the very
+         thing three fixes have failed to see. */
+      if (!window.__btResizeHealed) {
+        window.__btResizeHealed = { at: Date.now(), had: Math.round(haveH), want: Math.round(wantH) };
+        try {
+          console.warn('[canvas-watchdog] canvas was ' + Math.round(haveH) + 'px, should be '
+            + Math.round(wantH) + 'px — resizing. innerH=' + window.innerHeight
+            + ' vvH=' + (vvNow ? Math.round(vvNow.height) : 'n/a')
+            + ' dpr=' + (window.devicePixelRatio || 1));
+        } catch (e) { /* ignore */ }
+      }
+      resize();
+    }, 500);
 
     /* Initialize PixiJS renderer (async).  By this point the canvas has
        been resized so createPixiApp reads non-zero clientWidth/Height.
@@ -3712,7 +4079,33 @@ export var BroTown = function BroTown(_ref0) {
           var _gx = Math.floor(px * _gw / _mw);
           var _gy = Math.floor(py * _gh / _mh);
           if (_gy >= 0 && _gy < _gh && _gx >= 0 && _gx < _gw) {
-            return _wgrid[_gy][_gx] === false;
+            var _cellSolid = _wgrid[_gy][_gx] === false;
+            /* ═══ v2.3.2075: NEVER TRAP SOMEONE ALREADY INSIDE ═══
+               The same rule the NPC branch above states and for the same
+               reason, applied to the grid: if the player is ALREADY standing
+               in a blocked cell then every candidate step is solid too, there
+               is no direction out, and they are stuck for good.
+               That is not hypothetical here. The World View's town wall
+               (v2.3.2075) is new geometry drawn over ground that was open
+               yesterday, so a character who logged out against the old wall
+               art can load in inside the new band -- and a returning player
+               frozen on the spot is a far worse bug than the one the wall
+               fixes. Written for every zone rather than for this one: any mask
+               that ever tightens has the same failure.
+               A player OUTSIDE the geometry is blocked normally, so this
+               cannot be used to walk through a wall -- only out of one. */
+            /* S.player directly, NOT the `_pp` the NPC branch above sets:
+               that one is only assigned inside `if (_npcs && _npcs.length)`,
+               and the World View -- the zone this exists for -- has no NPCs at
+               all, so it would be undefined in exactly the place it matters. */
+            var _me = S.player;
+            if (_cellSolid && _me) {
+              var _pgx = Math.floor(_me.x * _gw / _mw);
+              var _pgy = Math.floor(_me.y * _gh / _mh);
+              if (_pgy >= 0 && _pgy < _gh && _pgx >= 0 && _pgx < _gw
+                  && _wgrid[_pgy][_pgx] === false) return false;
+            }
+            return _cellSolid;
           }
         }
       }
@@ -3727,6 +4120,16 @@ export var BroTown = function BroTown(_ref0) {
       if (tile === 8 || tile === 9 || tile === 10 || tile === 12 || tile === 14 || tile === 15) return false; /* exit/dungeon/gate/plot/bed walkable */
       return TILE_SOLID.has(tile);
     };
+    /* ═══ v2.3.2078: QA probe — ASK THE GAME WHERE THE WALLS ARE ═══
+       Owner, on the world map: "Can't walk through pinkish lines", and "make
+       sure the player doesn't spawn on the line or outside of it".  Nothing
+       could check either from outside: the walk mask is a JSON file a test
+       can read, but whether the CLIENT agrees with it is a different claim,
+       and it is the one that decides whether a player walks through a wall.
+       This is the game's own answer, at any point, in world coordinates.
+       Attached once per mount (this is the game-loop SETUP effect, not the
+       tick), so it costs one property write. */
+    if (typeof window !== 'undefined') window.__btIsSolid = (px, py) => isSolid(px, py);
     var _gameLoop = function gameLoop() {
       frameRef.current = requestAnimationFrame(_gameLoop);
       try {
@@ -4049,8 +4452,17 @@ export var BroTown = function BroTown(_ref0) {
         /* v2.3.1154: + Swiftness channel (Endurance grid, cap +10%) --
            client-owned; stays under the worker's 500 px/s move bound. */
         var baseSpd = S.rpg ? calcMoveSpeed(S.rpg.agility || 0, (S.rpg.enduranceSpec || {}).swiftness || 0) / 5.0 * SPEED : SPEED;
-        /* Food buff speed bonus */
-        var spdBuff = S._spdBuff && Date.now() < S._spdBuff ? 1.15 : 1.0;
+        /* Food buff speed bonus.
+           v2.3.2062: 1.15 is the COOKED-FOOD magnitude and stays the fallback;
+           S._spdBuffMul carries a stronger buff's own number (the Swift
+           Draught's 1.5). Bounded 1..2 to match the server's read in
+           movement.js -- that bound is also what the anti-teleport cap is
+           sized against, so a client that ran faster than it would be
+           rejected and rubber-banded by the server. */
+        var _sbm = Number(S._spdBuffMul);
+        var spdBuff = S._spdBuff && Date.now() < S._spdBuff
+          ? ((_sbm >= 1 && _sbm <= 2) ? _sbm : 1.15)
+          : 1.0;
         /* Amulet move speed bonus */
         var amuletSpdMult = ((_S$rpg5 = S.rpg) === null || _S$rpg5 === void 0 || (_S$rpg5 = _S$rpg5._amuletBonus) === null || _S$rpg5 === void 0 ? void 0 : _S$rpg5.stat) === 'moveSpd' ? 1 + S.rpg._amuletBonus.value / 100 : 1.0;
         var swimMult = S._swimming ? SWIM_SPEED_MULT : 1.0;
@@ -4784,6 +5196,14 @@ export var BroTown = function BroTown(_ref0) {
             if (_pOk && _pq) {
               S._npcProxLatch = { npc: _pn, ready: _pqReady };
               setQuestPanel({ npc: _pn.name, quest: _pq.quest, status: _pq.status, npcRef: _pn });
+            } else if (_pOk && _pn.shop && !shopBus.open) {
+              /* v2.3.2050: walking up to a shopkeeper opens his window, the
+                 same proximity gate a quest giver uses -- _pOk already means
+                 "close enough, not in combat, nothing else open". The latch is
+                 what stops it reopening every frame after you close it while
+                 still standing next to him. */
+              S._npcProxLatch = { npc: _pn, ready: false };
+              shopBus.setOpen(true);
             }
           }
         }
@@ -5176,7 +5596,9 @@ export var BroTown = function BroTown(_ref0) {
           if (_R7.mana < _R7.maxMana && Date.now() - S.lastDamageTaken > 2000 && !S._serverMonsters) {
             var mMindMult = 1 + (_R7.mind || 0) * 0.001;
             var manaRegenMult = hasManaBuff ? 1.3 : 1.0;
-            _R7.mana = Math.min(_R7.maxMana, _R7.mana + _R7.maxMana * 0.0004 * mMindMult * manaRegenMult);
+            _R7.mana = Math.min(_R7.maxMana, _R7.mana
+              + Math.max(manaSurgePerFrame(S, hasManaBuff),
+                _R7.maxMana * 0.0004 * mMindMult * manaRegenMult));
           }
         } else if (S.rpg) {
           /* In-combat regen — §3.2: 0.3%/s HP, stamina regens always */
@@ -5193,7 +5615,13 @@ export var BroTown = function BroTown(_ref0) {
              v2.3.234 (Phase 4): Mind multiplies combat regen too. */
           if (_R8.mana < _R8.maxMana && !S._serverMonsters) {
             var _mMindMult8 = 1 + (_R8.mind || 0) * 0.001;
-            _R8.mana = Math.min(_R8.maxMana, _R8.mana + _R8.maxMana * 0.00017 * _mMindMult8);
+            /* v2.3.2062: the surge applies IN COMBAT too -- that is the whole
+               point of it, since casting specials nonstop is a thing you do
+               while fighting. */
+            var _hasMana8 = S._manaBuff && Date.now() < S._manaBuff;
+            _R8.mana = Math.min(_R8.maxMana, _R8.mana
+              + Math.max(manaSurgePerFrame(S, _hasMana8),
+                _R8.maxMana * 0.00017 * _mMindMult8));
           }
         }
 
@@ -5208,7 +5636,45 @@ export var BroTown = function BroTown(_ref0) {
           var _dnNow = Date.now();
           var _dnW = 0;
           for (var _dnR = 0; _dnR < _dn.length; _dnR++) {
-            if (_dnNow - _dn[_dnR].ts < 1200) {
+            /* ═══ v2.3.1985: THE POPUP'S OWN ttl DECIDES, NOT A FLAT 1200ms ═══
+               Owner: "Make the quest complete message (like actually right
+               after getting the 4th snowman remains) stay longer on screen.
+               It's there for half a second or less."
+
+               It was, and this line is why. Popups have carried a per-popup
+               `ttl` since long before now — 1.5s by default, 2.5s on a kill
+               banner, 5s on an operator announcement, and (v2.3.1985) 4.5s on
+               the quest-complete floater — and the renderer honours it. This
+               prune did not: it dropped EVERY entry at a flat 1200ms and
+               destroyed its Pixi objects, so no popup in the game has ever
+               outlived 1.2 seconds whatever it asked for. Worse for reading
+               it, the renderer fades a popup out over ttl * 0.8, so a 1.5s
+               default was still fading on the assumption it had 1.5s while
+               this deleted it at 1.2 — the last visible third of every
+               message was spent nearly transparent, then it vanished.
+
+               The v2.3.1741 note below is right that TWO TTLs that must stay
+               ordered is a bug waiting to come back, and it is the reason
+               this prune owns the destroy. The answer to that is not a second
+               constant: it is to read the SAME number the renderer reads.
+               Now there is one ttl per popup and two places that agree on it,
+               which is what v2.3.1741 was reaching for.
+
+               The leak fix is untouched — whoever drops the entry still
+               releases what it owns, on the line below.
+
+               WHAT THIS COSTS. An ordinary damage number now lives 1.5s
+               instead of 1.2s, so the steady-state population of the
+               damageNumbers layer rises by a quarter. That is bounded on both
+               sides: MAX_LIVE_POPUPS (24, combatHelpers) still caps the
+               default-ttl popups, and only they are eligible to be aged out
+               early, so a long-lived message can never be squeezed by a busy
+               fight. Two other popups get the life they always asked for and
+               never had: the kill banner (2.5s) and the operator announcement
+               (5s, gameEvents.js), which is the only on-screen surface a
+               server announcement has. */
+            var _dnTtl = ((_dn[_dnR].ttl || 1.5) * 1000);
+            if (_dnNow - _dn[_dnR].ts < _dnTtl) {
               if (_dnW !== _dnR) _dn[_dnW] = _dn[_dnR];
               _dnW++;
             } else {
@@ -5585,6 +6051,21 @@ export var BroTown = function BroTown(_ref0) {
                 /* v2.3.1940: the drawn pants print and the chest tattoo. */
                 pa: artHasInk(getArt('pants')) ? getArt('pants') : undefined,
                 ta: artHasInk(getArt('tattoo')) ? getArt('tattoo') : undefined,
+                /* v2.3.1953: height and frame, so a build changed mid-session
+                   reaches everyone on the next relay rather than only on their
+                   next join.  Omitted entirely at average/medium. */
+                hg: wireHeight(),
+                fr: wireFrame(),
+                /* v2.3.1961: the face and arm tattoos, which v2.3.1949 put on
+                   the join frame and on BOTH server gates (JOIN_COSMETIC_KEYS
+                   and TRACK_COSMETIC_KEYS) but not here -- so the two newest
+                   canvases were the only ones the relay could not carry.  No
+                   allowlist moves for this: the worker has admitted them since
+                   v2.3.1949; this is the sender finally sending them.  Same
+                   only-when-drawn rule as the four above. */
+                tf: artHasInk(getArt('tattooFace')) ? getArt('tattooFace') : undefined,
+                tm: artHasInk(getArt('tattooArm')) ? getArt('tattooArm') : undefined,
+                tb: artHasInk(getArt('tattooHeadBack')) ? getArt('tattooHeadBack') : undefined,   /* v2.3.2043 */
                 /* v2.3.1941: clothing patterns. */
                 sp: getPattern('shirt') || undefined,
                 pp: getPattern('pants') || undefined,
@@ -5592,6 +6073,15 @@ export var BroTown = function BroTown(_ref0) {
                 eqc: getEquip('chest'),
                 eql: getEquip('legs'),
                 eqs: getEquip('shoulders'),
+                /* v2.3.2084: the UNDER-SHIRT, which this payload has never
+                   carried.  It rode the join frame alone, so peers lost it on
+                   the first relay and fell back to deriving a garment from the
+                   legacy `st` style -- and the two disagree about the default
+                   (the gear slot dresses every new player in a tshirt, `st` is
+                   'none' until somebody picks a style), so an ordinary player
+                   was drawn bare-chested on every other screen.  Same shape as
+                   the three above it. */
+                eqst: getEquip('shirt'),
                 pt: getPants(),
                 sh: getShoes(),
                 rpgLv: (_rpg === null || _rpg === void 0 ? void 0 : _rpg.level) || 1,
@@ -5802,6 +6292,7 @@ export var BroTown = function BroTown(_ref0) {
       window.removeEventListener('resize', resize);
       if (resizeObs) resizeObs.disconnect();
       if (vv) vv.removeEventListener('resize', resize);
+      clearInterval(watchdog);   /* v2.3.1975 */
       window._rebuildRenderer = null;
       /* v2.3.772: destroy() can throw mid-teardown when the GL context is
          already dead (the very case the epoch rebuild handles) -- never
@@ -6596,7 +7087,30 @@ export var BroTown = function BroTown(_ref0) {
       var actual = R.hp - before;
       R.inventory[key] -= 1;
       if (R.inventory[key] <= 0) delete R.inventory[key];
-      if (S._serverMonsters && S.channel) {
+      /* ═══ v2.3.2077: `_serverMonsters` IS FALSE IN TOWN ═══
+             Owner-facing symptom: eating and cooking in town do not stick.
+
+             This gate has been `S._serverMonsters && S.channel` since
+             v2.3.1207, and that flag means "this zone has server-managed
+             monsters" -- wsClient sets it false whenever the zone's monster
+             list is empty, and its own comment says so: "Empty list means the
+             server has no monsters for this zone (town, or a dungeon the
+             server doesn't model)". So in TOWN the message was never sent at
+             all. The client healed, decremented the bag and wrote
+             localStorage; the server never heard, and its blob -- which is
+             authoritative for inventory and HP -- reconciles the change away.
+
+             THIS IS THE THIRD TIME. v2.3.1702 fixed `ability_use` gated the
+             same way, and v2.3.2063 fixed `shop_purchase`, where no purchase
+             in the game's history had ever reached the server because the
+             vendor stands in town. Presence on the channel is the only
+             precondition a consume actually has.
+
+             Backlog item N in docs/ARCHITECTURE-HANDOFF.md reads this gate as
+             "adequate ... local heal is prediction, the echo is the
+             tiebreaker" -- true reasoning about the wrong premise, because
+             there is no echo when nothing is sent. */
+      if (S.channel) {
         try { S.channel.send({ type: 'eat_request', payload: { invKey: key } }); } catch (e) {}
       }
       pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + actual + ' HP', '#59BF91');
@@ -6702,6 +7216,43 @@ export var BroTown = function BroTown(_ref0) {
     setBuildingPanel(null);
     setQuestPanel(null);
     setInspectPlayer(null);
+  }, []);
+
+  /* ═══ v2.3.2078: THE SHOP DRAWER GETS OUT OF EVERYTHING'S WAY ═══
+     Diego's trade drawer is `position: fixed` just above the dashboard, and
+     so is every panel that opens over the bottom of the screen. On the
+     primary platform's 390x844 they land on top of each other and the drawer
+     wins: measured with elementFromPoint, three of the inspect card's four
+     actions had the drawer painted over them, so a finger aiming at Trade
+     opened a shop slot instead. The sweep found the same shape twice more —
+     mp-social could not press "Add Friend", mp-clan could not press "Create
+     Clan (500g)" — both reported as visible, enabled and stable and then
+     un-clickable, which is what a covered control looks like from outside.
+
+     The proximity gate that OPENS the drawer already refuses while anything
+     else is up ("_pOk already means close enough, not in combat, nothing
+     else open"). This is that same rule in the other direction, for a drawer
+     that was already open when you tapped: one panel at a time.
+
+     Keyed on `_anyPanelOpen` — the SAME expression the gate reads — rather
+     than on a list of panels kept here. The card is opened from four places
+     and the sheet has a dozen destinations; a rule written per-surface is a
+     rule that will be missed on the next one. */
+  useEffect(function () {
+    if (_anyPanelOpen) { try { shopBus.setOpen(false); } catch (e) { /* no shop */ } }
+  }, [_anyPanelOpen]);
+  /* ...and the bottom SHEET, which is not in that list. The sheet's
+     destinations render off dashboardPanelBus, not off the show* flags
+     above, so `_anyPanelOpen` is false while the Social or Clan destination
+     is filling the lower half of the screen. Two signals because the app has
+     two panel systems; collapsing them into one was tried and quietly
+     dropped the sheet. */
+  useEffect(function () {
+    return dashboardPanelBus.subscribe(function () {
+      if (dashboardPanelBus.state.mode !== 'bar') {
+        try { shopBus.setOpen(false); } catch (e) { /* no shop */ }
+      }
+    });
   }, []);
 
   /* Virtual joysticks — each tracks its own finger */
@@ -8116,7 +8667,7 @@ export var BroTown = function BroTown(_ref0) {
     });
   }
   if (showNameModal) {
-    return /*#__PURE__*/React.createElement(NameModal, { _dragRotX: _dragRotX, _swatchTile: _swatchTile, _thumbTile: _thumbTile, activeCat: activeCat, beardColorSel: beardColorSel, facialHairSel: facialHairSel, hairColorSel: hairColorSel, hairSel: hairSel, hatColorSel: hatColorSel, eyeColorSel: eyeColorSel, setEyeColorSel: setEyeColorSel, headwearSel: headwearSel, joinTown: joinTown, nameInput: nameInput, pantsSel: pantsSel, previewCanvasRef: previewCanvasRef, previewDir: previewDir, randomizeWithFlair: randomizeWithFlair, rollRandomName: rollRandomName, rotatePreview: rotatePreview, setActiveCat: setActiveCat, setBeardColorSel: setBeardColorSel, setFacialHairSel: setFacialHairSel, setHairColorSel: setHairColorSel, setHairSel: setHairSel, setHatColorSel: setHatColorSel, setHeadwearSel: setHeadwearSel, setNameInput: setNameInput, setPantsSel: setPantsSel, setShirtColorSel: setShirtColorSel, setShirtSel: setShirtSel, setShoesSel: setShoesSel, setSkinSel: setSkinSel, shirtColorSel: shirtColorSel, shirtSel: shirtSel, shoesSel: shoesSel, skinSel: skinSel });
+    return /*#__PURE__*/React.createElement(NameModal, { _dragRotX: _dragRotX, _swatchTile: _swatchTile, _thumbTile: _thumbTile, _buildTile: _buildTile, activeCat: activeCat, heightSel: heightSel, setHeightSel: setHeightSel, frameSel: frameSel, setFrameSel: setFrameSel, beardColorSel: beardColorSel, facialHairSel: facialHairSel, hairColorSel: hairColorSel, hairSel: hairSel, hatColorSel: hatColorSel, eyeColorSel: eyeColorSel, setEyeColorSel: setEyeColorSel, headwearSel: headwearSel, joinTown: joinTown, nameInput: nameInput, pantsSel: pantsSel, previewCanvasRef: previewCanvasRef, previewDir: previewDir, previewZoom: previewZoom, setPreviewZoom: setPreviewZoom, randomizeWithFlair: randomizeWithFlair, resetLook: resetLook, rollRandomName: rollRandomName, rotatePreview: rotatePreview, setActiveCat: pickPreviewCat, setBeardColorSel: setBeardColorSel, setFacialHairSel: setFacialHairSel, setHairColorSel: setHairColorSel, setHairSel: setHairSel, setHatColorSel: setHatColorSel, setHeadwearSel: setHeadwearSel, setNameInput: setNameInput, setPantsSel: setPantsSel, setShirtColorSel: setShirtColorSel, setShirtSel: setShirtSel, setShoesSel: setShoesSel, setSkinSel: setSkinSel, shirtColorSel: shirtColorSel, shirtSel: shirtSel, shoesSel: shoesSel, skinSel: skinSel });
   }
   return /*#__PURE__*/React.createElement(React.Fragment, null, /* v2.3.1925: the mystery-reveal ceremony.  Mounted at the top of the in-world fragment and ALWAYS mounted — it renders null until a hidden grade arrives on the loot credit, and mounting it conditionally would mean the queue it subscribes to could fill before anyone was listening. */ /*#__PURE__*/React.createElement(RevealOverlay, null), showIntro && /*#__PURE__*/React.createElement(IntroVideo, {
     waitFor: introWaitRef.current,
@@ -9320,12 +9871,31 @@ export var BroTown = function BroTown(_ref0) {
     }
     if (S._dmgBuff && Date.now() < S._dmgBuff) {
       var _rem2 = Math.ceil((S._dmgBuff - Date.now()) / 1000);
+      /* v2.3.2058: the chip used to say "+20%" for every damage buff, which
+         became a lie the moment the Fury Tonic started doubling. Read the
+         same magnitude the damage math reads, with the same 1..4 bound and
+         the same cooked-food fallback. */
+      var _dbm2 = Number(S._dmgBuffMul);
+      var _dmul2 = (_dbm2 >= 1 && _dbm2 <= 4) ? _dbm2 : 1.20;
       effects.push({
         icon: '⚔️',
         label: 'Dmg+',
         color: '#ea580c',
         time: _rem2 + 's',
-        desc: '+20%'
+        desc: _dmul2 >= 2 ? 'x' + (Math.round(_dmul2 * 100) / 100) : '+' + Math.round((_dmul2 - 1) * 100) + '%'
+      });
+    }
+    /* v2.3.2062: the Mana Draught had no chip at all, because until now it was
+       an instant top-up with nothing to count down. A three-minute buff the
+       HUD never mentions is one the player cannot tell is still running. */
+    if (S._manaBuff && Date.now() < S._manaBuff) {
+      var _rem6 = Math.ceil((S._manaBuff - Date.now()) / 1000);
+      effects.push({
+        icon: '\u{1F4A0}',
+        label: 'Mana',
+        color: '#4F8FDE',
+        time: _rem6 + 's',
+        desc: Number(S._manaFlat) > 0 ? 'Surge' : '+30%'
       });
     }
     if (S._regenBuff && Date.now() < S._regenBuff) {
@@ -9350,12 +9920,19 @@ export var BroTown = function BroTown(_ref0) {
     }
     if (S._spdBuff && Date.now() < S._spdBuff) {
       var _rem5 = Math.ceil((S._spdBuff - Date.now()) / 1000);
+      /* v2.3.2062: the chip said "+15%" for every speed buff, which became a
+         lie the moment the Swift Draught started multiplying by 1.5. Reads
+         the same magnitude the movement math reads, with the same bound and
+         the same cooked-food fallback. */
+      var _sbm5 = Number(S._spdBuffMul);
+      var _smul5 = (_sbm5 >= 1 && _sbm5 <= 2) ? _sbm5 : 1.15;
       effects.push({
         icon: '💨',
         label: 'Speed',
         color: '#D8A94D',
         time: _rem5 + 's',
-        desc: '+15%'
+        desc: _smul5 >= 1.5 ? 'x' + (Math.round(_smul5 * 100) / 100)
+          : '+' + Math.round((_smul5 - 1) * 100) + '%'
       });
     }
     if (effects.length === 0) return null;
@@ -10108,20 +10685,18 @@ export var BroTown = function BroTown(_ref0) {
       display: 'flex',
       alignItems: 'center'
     }
-  }, "\u26A0\uFE0F Dark! Monsters hear you.")), showEmotes && /*#__PURE__*/React.createElement(EmotePanel, { sendEmote: sendEmote }), nearBuilding === 0 && /*#__PURE__*/React.createElement("button", {
-    className: "bt-interact-prompt",
-    style: {
-      bottom: 160
-    },
-    onTouchStart: function onTouchStart(e) {
-      e.preventDefault();
-      setShowShop(true);
-    },
-    onMouseDown: function onMouseDown(e) {
-      e.preventDefault();
-      setShowShop(true);
-    }
-  }, "\uD83C\uDFEA Open Shop"), showShop && rpgState && /*#__PURE__*/React.createElement(ShopPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setShowShop: setShowShop }), nearBuilding !== null && BUILDINGS[nearBuilding] && /*#__PURE__*/React.createElement("button", {
+  }, "\u26A0\uFE0F Dark! Monsters hear you.")), showEmotes && /*#__PURE__*/React.createElement(EmotePanel, { sendEmote: sendEmote }), /* v2.3.2051 (owner: "Yeah replace it"): the building-side town shop is
+     RETIRED -- both the "Open Shop" prompt and the ShopPanel it opened.
+     Shopkeeper Bro does this job now, and does it server-side: the old
+     panel credited coins and edited the bag in the CLIENT and then told
+     the server, which is the same self-credit shape the marketplace note
+     calls free duplication for anyone with devtools.
+     Its three consumables were not dropped with it -- traps, whetstones
+     and antidotes are staples on his list at the SAME prices (shop.js
+     SHOP.STAPLES), because this shop was their only source and deleting
+     it without them would have removed them from the game rather than
+     moved them. */
+    null, nearBuilding !== null && BUILDINGS[nearBuilding] && /*#__PURE__*/React.createElement("button", {
     className: "bt-interact-prompt",
     onTouchStart: function onTouchStart(e) {
       e.preventDefault();
@@ -10434,7 +11009,10 @@ export var BroTown = function BroTown(_ref0) {
            panel onClick (~line 18989) for the predict + sync flow.
            Recipe index resolved by indexOf since `best` is one of the
            filtered COOKING_RECIPES entries. */
-        if (S._serverMonsters && S.channel) {
+        /* v2.3.2077: see the eat_request note above -- same flag, same
+           hole. Cooking happens at a campfire, and a campfire in town is the
+           obvious place to cook. */
+        if (S.channel) {
           var _recipeIdx = COOKING_RECIPES.indexOf(best);
           if (_recipeIdx >= 0) {
             try { S.channel.send({ type: 'cook_recipe', payload: { recipeIdx: _recipeIdx } }); } catch (e2) {}
@@ -10459,8 +11037,14 @@ export var BroTown = function BroTown(_ref0) {
         if (best.buff === 'heal') R.hp = Math.min(R.maxHp, R.hp + best.power);
         if (best.buff === 'regen') S._regenBuff = Date.now() + dur;
         if (best.buff === 'resist') S._resistBuff = Date.now() + dur;
-        if (best.buff === 'damage') S._dmgBuff = Date.now() + dur;
+        /* v2.3.2058: cleared with the timer -- a meal states its own
+             magnitude (the 1.20 fallback), it must not inherit a Fury
+             Tonic's x2 that is still ticking. Mirrors the server's
+             `delete ps._buffs.damageMul` in cooking.js. */
+        if (best.buff === 'damage') { S._dmgBuffMul = 0; S._dmgBuff = Date.now() + dur; }
         if (best.buff === 'all') {
+          S._dmgBuffMul = 0;   /* v2.3.2058: see above */
+          S._spdBuffMul = 0;   /* v2.3.2062: nor a Swift Draught's x1.5 */
           S._dmgBuff = Date.now() + dur;
           S._spdBuff = Date.now() + dur;
           S._hpBuff = Date.now() + dur;
@@ -10879,7 +11463,7 @@ export var BroTown = function BroTown(_ref0) {
      and z-index 6 so they sit over the world canvas but under all HUD
      (z>=20).  bt-desktop-hide drops them on desktop so the mouse reaches the
      canvas. */
-  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rStickRef: rStickRef, rKnobRef: rKnobRef, rJoyPreviewRef: rJoyPreviewRef, shieldJoyRef: shieldJoyRef, autoAttack: autoAttack, isLandscape: isLandscape, shieldUp: shieldUp }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until their milestone level unlocks them (AbilityButtons.jsx). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
+  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rStickRef: rStickRef, rKnobRef: rKnobRef, rJoyPreviewRef: rJoyPreviewRef, shieldJoyRef: shieldJoyRef, autoAttack: autoAttack, isLandscape: isLandscape, shieldUp: shieldUp }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until their milestone level unlocks them (AbilityButtons.jsx). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.1952: locking on to a monster raises block / dodge / special around the right joystick (LockOnActions.jsx). */ /*#__PURE__*/React.createElement(LockOnActions, { stateRef: stateRef, isLandscape: isLandscape, doSpecialAttack: doSpecialAttack })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
      Not a style choice — a hard requirement this cost a round of QA to
      find.  .brotown-wrap is position:fixed, and Chrome treats that as its
      own stacking context, so EVERY element inside it is confined to one

@@ -41,17 +41,52 @@
  * holds green (incl. the one workflow retry) for ~10 consecutive CI
  * runs.  If check 3 still flakes, the printed noise/armor numbers say
  * whether the scene (noise up) or the metric (armor down) moved.
+ *
+ * ═══ v2.3.2067: IT WAS FAILING ON ITSELF, NOT ON THE GAME ═══
+ * Every CI run of this harness since copper became tier one printed six
+ * failures, the loudest being "armor visibly renders" — and the armour
+ * rendered fine the whole time.  Three assumptions had gone stale, each
+ * in a different way, and all three are worth naming because they are
+ * the three ways a rendering harness rots:
+ *
+ *   1. A KEY IT DID NOT OWN.  It proved the equip by reading gearCatalog's
+ *      localStorage key; v2.3.1665 bumped that key.  Now it asks the
+ *      module (window.__btGetGear).
+ *   2. A URL THE RENDERER STOPPED REQUESTING.  It watched for
+ *      /sprites/gear/<slot>/<equipId>/, but a recoloured set draws its
+ *      donor's sheets (v2.3.1757/1772: copperplate IS steelplate art plus
+ *      a tint) and copperplate is what the catalog now offers first.  Now
+ *      it resolves through gearArt, the renderer's own resolver.
+ *   3. GEOMETRY IT ASSUMED WAS STILL 1:1.  The crop mapped world to screen
+ *      without S._worldScaleX/Y, so at WORLD_ZOOM (v2.3.1090/1780) and a
+ *      139px-tall world strip it sampled a fixed patch of ground 130px
+ *      left of the bro — identical bare and armoured, which is exactly
+ *      what "no color mass shifted" means.  THIS IS THE ONE THAT MATTERS:
+ *      checks 2-4 all read that crop, so a green from them would have
+ *      meant nothing either.
+ *
+ * With the crop on the figure the metric separates cleanly: histArmor
+ * 0.2229 against a 0.0161 noise floor (was 0.0034 against 0.0161), stable
+ * across four consecutive local runs on a real worker.
  */
 import { chromium } from 'playwright-core';
+import { legacyLogin } from './legacy-login.mjs';
 import { existsSync } from 'node:fs';
 import { GEAR_CATALOG, GEAR_SLOTS } from '../../src/rendering/gearCatalog.js';
+import { gearArt } from '../../src/rendering/gearVariants.js'; /* v2.3.2067: a recolour draws its donor's sheets */
 
 const SHELL = '/tmp/chrome-headless-shell-linux64/chrome-headless-shell';
 const PWCHROME = '/opt/pw-browsers/chromium';
 const EXE = process.env.QA_CHROME || (existsSync(SHELL) ? SHELL : (existsSync(PWCHROME) ? PWCHROME : undefined));
 const URL = process.env.QA_URL || 'http://localhost:4173/';
 const VIEW = { width: 844, height: 390 };
-const CROP = { w: 140, h: 170 }; // around the player; heads/weapons extend up more than feet down
+/* Around the player; heads/weapons extend up more than feet down.
+   v2.3.2067: 140x170 -> 110x120 CSS px.  The old box was authored against a
+   full-height world; the band now leaves a ~139px strip at 844x390, so a
+   170px-tall crop could not fit inside the canvas at all and every clamp of
+   it would have swallowed as much ground as bro.  110x120 is the same box
+   mp-southshirt crops the figure with. */
+const CROP = { w: 110, h: 120 };
 
 let failures = 0;
 const check = (name, cond, detail) => {
@@ -91,10 +126,11 @@ if (process.env.QA_WS_URL) {
    floating debug button out of the crop (window.debug stays exposed). */
 await page.goto(URL + (URL.includes('?') ? '&' : '?') + 'noresume=1&nodebug=1', { waitUntil: 'domcontentloaded', timeout: 60000 });
 await sleep(6000);
+/* v2.3.1964: the splash has no name box — it has a login door.
+   legacyLogin takes the same route a player takes (see
+   tools/qa/legacy-login.mjs for what broke and when). */
 try {
-  const input = page.locator('input').first();
-  await input.fill('GearBot', { timeout: 60000 });
-  await input.press('Enter');
+  await legacyLogin(page, 'GearBot');
 } catch (e) { console.log('login flow issue:', e.message); }
 
 let joined = false;
@@ -131,14 +167,36 @@ const sample = () => page.evaluate(({ w, h }) => new Promise((res) => {
       const cv = document.querySelector('canvas.brotown-canvas') || document.querySelector('canvas');
       const r = cv.getBoundingClientRect();
       const sx = cv.width / r.width, sy = cv.height / r.height; // CSS px -> backing px
-      const cx = (S.player.x - S.camera.x) * sx, cy = (S.player.y - S.camera.y) * sy;
+      /* ═══ v2.3.2067: THE CROP HAD STOPPED LANDING ON THE PLAYER ═══
+         world -> screen is (world - camera) * S._worldScaleX/Y, published
+         every frame by pixiRenderer; this crop assumed a world scale of 1,
+         which was true when it was written and has not been since
+         WORLD_ZOOM arrived (v2.3.1090, 1.25 -> 1.5 in v2.3.1780) and the
+         renderer began fitting the world strip to the dashboard band.
+         Measured at 844x390 with the band at 265px: scale 1.443 and a
+         139px-tall canvas, so the sample sat 130px left of the bro and
+         mostly above the canvas — the same patch of ground bare and
+         armoured, which is exactly the "armor does not render" verdict the
+         report-only run kept printing while the armour rendered fine.
+         Same expression as every current harness (mp-southshirt) and every
+         in-game world->screen conversion (BroTown's tap-to-lock). */
+      const kx = S._worldScaleX || 1, ky = S._worldScaleY || 1;
+      const cx = (S.player.x - S.camera.x) * kx * sx, cy = (S.player.y - S.camera.y) * ky * sy;
+      /* ...and keep the crop INSIDE the drawing buffer: the world strip is
+         only ~139px tall on the primary platform, so an unclamped rect
+         reads transparent black off the top edge and dilutes the histogram
+         with pixels that are not the scene. */
+      const bw = Math.min(Math.round(w * sx), cv.width);
+      const bh = Math.min(Math.round(h * sy), cv.height);
+      const bx = Math.max(0, Math.min(Math.round(cx - bw / 2), cv.width - bw));
+      const by = Math.max(0, Math.min(Math.round(cy - bh * 0.6), cv.height - bh));
       /* histogram from a mid-res crop (not the coarse grid — cell
          averaging washes colors out); grid from a downsample of it */
       const CW = 70, CH = 85;
       const c2 = document.createElement('canvas');
       c2.width = CW; c2.height = CH;
       const g = c2.getContext('2d');
-      g.drawImage(cv, cx - (w / 2) * sx, cy - h * 0.6 * sy, w * sx, h * sy, 0, 0, CW, CH);
+      g.drawImage(cv, bx, by, bw, bh, 0, 0, CW, CH);
       const d = g.getImageData(0, 0, CW, CH).data;
       const hist = new Array(64).fill(0);
       let lit = 0;
@@ -201,12 +259,17 @@ const overPairs = (as, bs, fn, pick) => {
 };
 
 /* Equip via the debug console command (the qa-gear-sheet contract) and
-   verify the per-slot store took it. */
+   verify the per-slot store took it.
+   v2.3.2067: the readback asks gearCatalog what is equipped
+   (window.__btGetGear) instead of reading its localStorage key.  It read
+   'bt-gear-v2-<slot>', which v2.3.1665 renamed to -v3 when new players
+   started bare — so every equip assertion here had been reading null and
+   failing for that reason alone, on a game that was equipping correctly. */
 const setGear = async (equips) => {
   const applied = await page.evaluate((eq) => {
     for (const [slot, id] of Object.entries(eq)) window.debug.runCmd('gear ' + slot + ' ' + id);
     const out = {};
-    for (const slot of Object.keys(eq)) out[slot] = localStorage.getItem('bt-gear-v2-' + slot);
+    for (const slot of Object.keys(eq)) out[slot] = window.__btGetGear ? window.__btGetGear(slot) : null;
     return out;
   }, equips);
   await sleep(1800); // lazy gear-sheet fetches + first armored draw
@@ -237,9 +300,18 @@ const armoredFrames = await sampleBurst();
 
 /* ── the rendering checks ── */
 for (const [slot, item] of Object.entries(FULL_SET)) {
-  const hits = gearResponses.filter((r) => r.url.includes(`/sprites/gear/${slot}/${item}/`));
-  check(`gear sheets fetched ok: ${slot}/${item}`, hits.some((r) => r.ok),
-    { responses: hits.slice(0, 6), total: hits.length });
+  /* v2.3.2067: watch the ART id, not the equip id.  A recoloured set draws
+     its donor's sheets and deliberately has no folder of its own
+     (gearVariants.js: copperplate IS steelplate art plus a tint), so once
+     copper became tier one — and the first non-variant catalog entry per
+     slot with it — this check was waiting for
+     /sprites/gear/chest/copperplate/, a URL the renderer is never going to
+     request.  gearArt is the same resolver gearSheets.js builds its URL
+     from, so the two cannot drift apart again. */
+  const art = gearArt(item);
+  const hits = gearResponses.filter((r) => r.url.includes(`/sprites/gear/${slot}/${art}/`));
+  check(`gear sheets fetched ok: ${slot}/${item}${art === item ? '' : ' (art: ' + art + ')'}`,
+    hits.some((r) => r.ok), { responses: hits.slice(0, 6), total: hits.length });
 }
 check('armored crop non-blank', armoredFrames.length >= 3 && armoredFrames[0].lit > 0.05,
   { frames: armoredFrames.length, first: armoredFrames[0] && { lit: armoredFrames[0].lit, err: armoredFrames[0].err } });

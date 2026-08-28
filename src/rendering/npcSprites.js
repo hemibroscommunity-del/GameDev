@@ -19,9 +19,9 @@
  * path: if art is missing the NPC falls back to its emoji, which is a visible
  * bug rather than a mid-play hitch.
  */
-import { Assets } from 'pixi.js';
+import { Assets, Rectangle, Texture } from 'pixi.js';
 import { NPC_DATA } from '../data/gameDisplay.js';
-import { propSpriteSources } from '../data/worldProps.js'; /* v2.3.1775: scenery shares this registry */
+import { propSpriteSources, propAnimStrips } from '../data/worldProps.js'; /* v2.3.1775: scenery shares this registry; v2.3.2061: + animated strips */
 
 /* Keys are asset paths that come from data, so Object.create(null): a plain {}
    silently no-ops on '__proto__' (CLAUDE.md — three incidents in one day). */
@@ -54,6 +54,13 @@ export function npcSpriteSources() {
     if (!n) continue;
     if (n.sprite) out.push(n.sprite);
     if (n.portrait) out.push(n.portrait);
+    /* v2.3.2045: a WALKING NPC's per-direction strips. Listed from NPC_DATA
+       like everything else here, so they ride the intro gate automatically --
+       the whole reason this function is driven off the data table rather than
+       a hand-kept list is that a second list is how an asset gets forgotten,
+       and a forgotten asset is a first-sighting load, which the preloading law
+       forbids. */
+    for (const src of walkStripSources(n)) out.push(src);
   }
   /* v2.3.1775: world props load through the same registry and therefore the
      same intro gate.  They are static scenery, so a lazy first-sighting load
@@ -61,6 +68,87 @@ export function npcSpriteSources() {
      alternative (a second loader) is how one of the two gets forgotten. */
   out.push(...propSpriteSources());
   return [...new Set(out)];
+}
+
+/* ═══ v2.3.2045: WALKING NPCs ═══
+ *
+ * Owner: "Add this as a shopkeeper who walks around in the town."
+ *
+ * Until now every NPC was ONE static texture -- Mayor Bro stands outside his
+ * house and that is the whole of it. A figure that moves needs a frame per
+ * step and a strip per facing, so `walk` on an NPC_DATA row names a strip set:
+ *
+ *   walk: { base: '/sprites/npc/shopkeeper-bro-walk-', frames: 4,
+ *           dirs: ['south','southwest', ...] }
+ *
+ * Each file is one horizontal strip of `frames` cells. They are sliced into
+ * Textures ONCE at load, sharing the strip's own source, rather than being
+ * re-cut per frame: a Texture is a rectangle over a source, so cutting them up
+ * front costs nothing at draw time and avoids allocating during the tick.
+ */
+function walkStripSources(n) {
+  const w = n && n.walk;
+  if (!w || !w.base || !Array.isArray(w.dirs)) return [];
+  return w.dirs.map((d) => w.base + d + '.webp');
+}
+
+/* npcId -> dir -> [Texture]. Object.create(null) because the keys are ids and
+   direction names out of a data table (CLAUDE.md rule 4). */
+const _walk = Object.create(null);
+
+function _sliceStrip(tex, frames) {
+  const out = [];
+  const src = tex.source;
+  const fw = Math.round(tex.width / frames), fh = Math.round(tex.height);
+  for (let i = 0; i < frames; i++) {
+    out.push(new Texture({ source: src, frame: new Rectangle(i * fw, 0, fw, fh) }));
+  }
+  return out;
+}
+
+/** One frame of a walking NPC, or null when it has no walk art (or none has
+ *  loaded). Callers fall back to the static `sprite`, so a missing strip is a
+ *  standing NPC rather than an invisible one. */
+export function getNpcWalkFrame(npcId, dir, frameIdx) {
+  const byDir = _walk[npcId];
+  const set = byDir && byDir[dir];
+  if (!set || !set.length) return null;
+  return set[((frameIdx % set.length) + set.length) % set.length];
+}
+
+/* ═══ v2.3.2061: ANIMATED PROPS ═══
+ * propId -> [Texture]. Object.create(null) because the keys are ids out of a
+ * data table (CLAUDE.md rule 4).
+ *
+ * Sliced by the SAME _sliceStrip the walking NPCs use, from the same load, on
+ * the same gate. The fountain is the first prop that moves, and the cheapest
+ * correct way to give it frames was to notice that a prop strip and an NPC
+ * walk row are the same file shape -- one horizontal run of equal cells -- so
+ * it needed a table entry and a lookup, not a second loader. */
+const _propAnim = Object.create(null);
+
+/** One frame of an animated prop, or null when it has none (or none has
+ *  loaded). Callers fall back to the whole strip texture, so a missing slice
+ *  is a wrong-looking prop rather than an invisible one. */
+export function getPropFrame(propId, frameIdx) {
+  const set = _propAnim[propId];
+  if (!set || !set.length) return null;
+  return set[((frameIdx % set.length) + set.length) % set.length];
+}
+
+/** How many frames a prop's animation actually has, after loading. 0 if none.
+ *  The renderer needs this rather than the declared count: if the strip failed
+ *  to load there is nothing to cycle, and cycling anyway would blink the prop
+ *  between a texture and null. */
+export function propFrameCount(propId) {
+  const set = _propAnim[propId];
+  return set ? set.length : 0;
+}
+
+/** Does this NPC have walk art at all? Lets the renderer decide once. */
+export function hasNpcWalk(npcId) {
+  const byDir = _walk[npcId];
+  return !!(byDir && Object.keys(byDir).length);
 }
 
 export function loadNpcSprites() {
@@ -74,6 +162,29 @@ export function loadNpcSprites() {
     if (tex.source) { try { tex.source.scaleMode = 'nearest'; } catch (e) { /* older pixi */ } }
     _tex[src] = tex;
   }).catch(() => { /* a missing file leaves the emoji fallback in place */ })));
+  /* Slice the walk strips once every source has settled. Deliberately AFTER
+     the same promise the intro gate awaits, so a walking NPC's frames exist by
+     the time the overlay lifts rather than on his first step. */
+  _done = _done.then(async (r) => {
+    for (const n of NPC_DATA || []) {
+      const w = n && n.walk;
+      if (!w || !w.base || !Array.isArray(w.dirs)) continue;
+      const byDir = Object.create(null);
+      for (const d of w.dirs) {
+        const tex = _tex[w.base + d + '.webp'];
+        if (tex) byDir[d] = _sliceStrip(tex, w.frames || 4);
+      }
+      if (Object.keys(byDir).length) _walk[n.id] = byDir;
+    }
+    /* v2.3.2061: animated props, cut in the same pass and for the same reason
+       -- AFTER the promise the intro gate awaits, so a fountain has its eight
+       frames before the overlay lifts rather than on first sighting. */
+    for (const a of propAnimStrips()) {
+      const tex = _tex[a.sprite];
+      if (tex) _propAnim[a.id] = _sliceStrip(tex, a.frames);
+    }
+    return r;
+  });
   return _done;
 }
 

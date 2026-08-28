@@ -381,10 +381,18 @@
    :active / [data-pressed] swaps the darker inset shell.
    Sites keep their own layout styles; inline background/border/shadow
    must be REMOVED where this class is applied (README: never layer a
-   CSS border on the art). */
+   CSS border on the art).
+   v2.3.2068: the -3x art is WebP now, not PNG (231KB -> 34KB across the seven
+   frames this file names).  They are authored at 3x and painted at 1/3, so the q90
+   encode was judged at DRAW size, where it costs a mean of 0.5-0.9/255 on
+   opaque pixels and leaves the alpha channel bit-identical — border-image
+   slices on alpha, so a moved alpha would have shifted every 78px cut.
+   toolbar-button-selected-3x is the one frame that missed that budget
+   (high-frequency selected texture) and ships lossless instead.
+   tools/webp_icons.py holds the measurement and re-runs it. */
 .bt-chisel{
   border:9px solid transparent;
-  border-image:url('/icons/ui/toolbar-button-inactive-3x.png?v=2.3.1332') 78 fill / 9px stretch;
+  border-image:url('/icons/ui/toolbar-button-inactive-3x.webp?v=2.3.2068') 78 fill / 9px stretch;
   background:none;
   box-shadow:none;
   color:var(--ui-text);
@@ -411,18 +419,18 @@
 }
 .bt-chisel--on,
 .bt-chisel[aria-pressed='true']{
-  border-image-source:url('/icons/ui/toolbar-button-selected-3x.png?v=2.3.1332');
+  border-image-source:url('/icons/ui/toolbar-button-selected-3x.webp?v=2.3.2068');
   color:var(--ui-text);
 }
 .bt-chisel--danger{
-  border-image:url('/icons/ui/toolbar-button-danger-3x.png?v=2.3.1334') 78 fill / 9px stretch;
+  border-image:url('/icons/ui/toolbar-button-danger-3x.webp?v=2.3.2068') 78 fill / 9px stretch;
   color:#FFF1EE;
 }
 .bt-chisel--chip.bt-chisel--danger{
   border-image-width:6px;
 }
 .bt-chisel--brass{
-  border-image:url('/icons/ui/toolbar-button-primary-brass-3x.png?v=2.3.1334') 78 fill / 9px stretch;
+  border-image:url('/icons/ui/toolbar-button-primary-brass-3x.webp?v=2.3.2068') 78 fill / 9px stretch;
   color:#20170D;
 }
 .bt-chisel--chip.bt-chisel--brass{
@@ -430,17 +438,17 @@
 }
 .bt-chisel:active,
 .bt-chisel[data-pressed='true']{
-  border-image-source:url('/icons/ui/toolbar-button-pressed-3x.png?v=2.3.1332');
+  border-image-source:url('/icons/ui/toolbar-button-pressed-3x.webp?v=2.3.2068');
   transform:translateY(1px);
 }
 /* Danger has its own carved pressed shell; brass keeps its face. */
 .bt-chisel--danger:active,
 .bt-chisel--danger[data-pressed='true']{
-  border-image-source:url('/icons/ui/toolbar-button-danger-pressed-3x.png?v=2.3.1334');
+  border-image-source:url('/icons/ui/toolbar-button-danger-pressed-3x.webp?v=2.3.2068');
 }
 .bt-chisel--brass:active,
 .bt-chisel--brass[data-pressed='true']{
-  border-image-source:url('/icons/ui/toolbar-button-primary-brass-3x.png?v=2.3.1334');
+  border-image-source:url('/icons/ui/toolbar-button-primary-brass-3x.webp?v=2.3.2068');
 }
 .bt-chisel:focus-visible{
   outline:2px solid var(--ui-brass-highlight);
@@ -457,7 +465,7 @@
      the thinnest lip that still shows the carved-in contour; the
      cavity still fills behind the chips. */
   border:2px solid transparent;
-  border-image:url('/icons/ui/recessed-well-3x.png?v=2.3.1334') 78 fill / 2px stretch;
+  border-image:url('/icons/ui/recessed-well-3x.webp?v=2.3.2068') 78 fill / 2px stretch;
   background:none;
   box-shadow:none;
 }
@@ -968,7 +976,31 @@ input{font-family:inherit}
    upper space instead of leaving a dead gap under the version line. */
 .bt-cc-namewrap{margin-top:auto}
 .bt-cc-actions{display:grid;grid-template-columns:1fr;gap:8px}
+/* v2.3.2036: Reset STACKS under Randomize rather than sitting beside it.
+   Side by side was the first attempt and it was wrong for a measured reason:
+   this whole action column is 172px wide, not the ~340 the screenshot
+   suggested. Reset took 53px plus the gap, leaving Randomize 121px, of which
+   the 30px icon and padding left 62px of label -- so "Randomize Look" wrapped
+   onto two lines. Shrinking Reset twice did not recover it, because the
+   problem was never Reset's width.
+   Making my own change degrade the control next to it is not a trade worth
+   taking for a button that is used once in a while, so Reset gets its own
+   full-width row and is styled quieter than the hero above it. */
+.bt-cc-reset{
+  min-height:40px;font-size:12px;letter-spacing:.04em;
+  background:rgba(255,255,255,.05);border:1px solid rgba(238,242,235,.18);
+  color:var(--ui-text-dim,#96A2A0);box-shadow:none;
+}
+.bt-cc-reset:active{transform:scale(.98);background:rgba(255,255,255,.09)}
 .bt-cc-actions>button{min-height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;font-family:'Source Sans 3',sans-serif;font-size:13px;font-weight:700;letter-spacing:.02em;padding:6px 10px}
+/* v2.3.2035: LEFT AT 20.  This class has two users -- the name-reroll die
+   inside the name input and the Randomize Look icon -- and only the owner's
+   "make the randomize look icon larger" applies to one of them.  Sizing the
+   shared class looked right and was not: the die carries its own inline 22px
+   so it silently ignored the change, which means the rule would have become
+   a trap that fires whenever someone tidies that inline style away.  The
+   Randomize icon now states its own size inline, the same way the die does
+   (NameModal.jsx), so each says what it is. */
 .bt-cc-action-icon{width:20px;height:20px;object-fit:contain;pointer-events:none}
 @media (max-height:720px){
   .bt-cc-cta{display:none}
@@ -1039,7 +1071,82 @@ input{font-family:inherit}
    border-bottom IS the bevel; presses flat on tap).  Buttons are
    border-box, so the thicker bottom edge changes no layout. */
 /* v2.3.1524: type scale re-fitted to the left column (was full modal width). */
-.bt-cc-play{background:linear-gradient(180deg,#E2B765,#D2A14D);border:1px solid var(--ui-brass-highlight);border-bottom:4px solid #9C742D;border-radius:12px;box-shadow:inset 0 1px 0 rgba(255,255,255,.30),0 2px 6px rgba(0,0,0,.22);color:#172126;min-height:52px;max-width:500px;margin-left:auto;margin-right:auto;font-family:'Source Sans 3',sans-serif;font-size:clamp(12px,3.3vw,18px);font-weight:800;letter-spacing:.05em;text-transform:uppercase;box-sizing:border-box}
+/* v2.3.2008: the gate icon on ENTER BRO TOWN.  The plate is a flex row so the
+   icon and the label centre together; the icon is `flex:none` so a long label
+   never squeezes it, and it is sized in em so it tracks the button's own
+   clamp()ed font size instead of needing its own breakpoints. */
+.bt-cc-play{display:flex;align-items:center;justify-content:center;gap:.55em}
+.bt-cc-play-icon{width:1.9em;height:1.9em;object-fit:contain;flex:none;
+  filter:drop-shadow(0 1px 0 rgba(255,255,255,.25)) drop-shadow(0 1px 2px rgba(0,0,0,.35))}
+/* ═══ v2.3.2006: THE TWO HEADLINE BUTTONS SIT UP OFF THE SCREEN ═══
+   Owner: "Make buttons randomized look, enter bro town stand out more.
+   They're too flat."
+
+   Both were flat for the same reason and it was not the colour: their AMBIENT
+   shadow was doing nothing.  ENTER BRO TOWN carried `0 2px 6px rgba(0,0,0,.22)`
+   -- a 6px blur at 22% over a dark pane is invisible -- so the 4px brass lip
+   was the only depth cue, and a lip with no shadow under it reads as a border,
+   not as height.  What changed:
+
+     - the gradient spans a real range (#F5D18C -> #C08F2C instead of
+       #E2B765 -> #D2A14D), so the face is lit rather than tinted;
+     - a bright top inset and a dark bottom inset give the metal a curve;
+     - the lip keeps its 4px but now has a shadow beneath it to cast onto;
+     - a wide, low-opacity warm halo lifts it off the pane.  Lantern Slate
+       allows exactly ONE dominant gold on a surface and this is it, so the
+       halo is affordable here and nowhere else on the screen.
+
+   The press still travels the lip's full height, so the button lands. */
+/* ═══ v2.3.2006: THE RANDOMIZE KEY, RAISED ═══
+   Same owner note as .bt-cc-play above.  .bt-cc-btn already had a 3px lip and
+   a 6px ambient, which is right for a secondary control; this is the creator's
+   OTHER headline action, so it gets a taller lip, a brighter face and a deeper
+   ambient -- while .bt-cc-btn itself stays exactly as it was for the account
+   modal and the quest claim screen's "Later", which are not headline anything.
+
+   A brass hairline along the top edge is what ties it to the gold plate below
+   it without making a second gold button: the face stays slate, only the lit
+   edge is warm. */
+.bt-cc-btn--hero{
+  background:
+    linear-gradient(180deg,
+      rgba(255,255,255,.30) 0,
+      rgba(255,255,255,.22) var(--ui-hairline),
+      rgba(255,255,255,.09) var(--ui-hairline),
+      rgba(0,0,0,.14) calc(100% - var(--ui-hairline)),
+      rgba(0,0,0,.46) calc(100% - var(--ui-hairline)),
+      rgba(0,0,0,.46) 100%),
+    linear-gradient(180deg,#6E8C98 0%,#2C3E46 100%);
+  border:1px solid #96805A;
+  border-radius:12px;
+  min-height:52px;
+  box-shadow:
+    inset 0 2px 0 rgba(247,223,174,.48),
+    inset 0 -6px 11px rgba(0,0,0,.34),
+    inset 0 0 0 1px rgba(247,223,174,.14),
+    0 0 0 1.5px rgba(10,14,17,.66),
+    0 6px 0 #1E2A30,
+    0 7px 2px rgba(0,0,0,.30),
+    0 13px 24px rgba(5,8,10,.56);
+}
+/* v2.3.2009: travels the whole 6px block, matching the gold plate beside it. */
+.bt-cc-btn--hero:active{
+  transform:translateY(6px);
+  box-shadow:
+    inset 0 2px 0 rgba(247,223,174,.22),
+    inset 0 3px 9px rgba(0,0,0,.40),
+    0 0 0 1.5px rgba(10,14,17,.66),
+    0 1px 3px rgba(5,8,10,.40);
+}
+.bt-cc-play{background:linear-gradient(180deg,#FFE9B8 0,#F3CE81 30%,#DFAE58 62%,#B98524 100%);border:1px solid #FFF0C8;border-bottom:none;border-radius:13px;box-shadow:
+    inset 0 2px 0 rgba(255,255,255,.75),
+    inset 0 -7px 12px rgba(104,68,14,.42),
+    inset 0 0 0 1px rgba(255,236,190,.30),
+    0 0 0 1.5px rgba(26,17,4,.62),
+    0 7px 0 #7A5620,
+    0 8px 2px rgba(0,0,0,.32),
+    0 14px 26px rgba(5,8,10,.58),
+    0 0 30px rgba(240,200,120,.22);color:#1A1206;min-height:56px;max-width:500px;margin-left:auto;margin-right:auto;font-family:'Source Sans 3',sans-serif;font-size:clamp(12px,3.3vw,18px);font-weight:800;letter-spacing:.05em;text-transform:uppercase;box-sizing:border-box}
 /* The returning-player row: two labels side by side needs to wrap and shrink
    in a column a third of the screen wide. */
 /* v2.3.1576: the returning-player door is now a real secondary control
@@ -1067,7 +1174,18 @@ input{font-family:inherit}
 .bt-cc-login:active{transform:translateY(1px);box-shadow:inset 0 3px 7px rgba(0,0,0,.46)}
 .bt-cc-login img{width:16px!important;height:16px!important}
 .bt-cc-actions>button{font-size:clamp(11px,2.8vw,13px)}
-.bt-cc-play:active{transform:translateY(2px);border-bottom-width:2px;filter:brightness(1.05)}
+/* v2.3.2006: travels the whole 4px lip (was 2 of 4, which left the button
+   looking like it had stuck) and drops its ambient shadow while down, so the
+   press reads as the plate meeting the pane. */
+/* v2.3.2009: the press travels the WHOLE 7px block and the block goes with it,
+   so the plate visibly meets the pane instead of sliding down a static
+   shadow. */
+.bt-cc-play:active{transform:translateY(7px);filter:brightness(1.07);box-shadow:
+    inset 0 2px 0 rgba(255,255,255,.30),
+    inset 0 3px 9px rgba(80,52,10,.40),
+    0 0 0 1.5px rgba(26,17,4,.62),
+    0 0 0 rgba(0,0,0,0),
+    0 1px 3px rgba(5,8,10,.40)}
 /* v2.3.1577 (owner request): the ENTER label breathes.
    Gated on :not(:disabled) ON PURPOSE — the button is disabled until the
    name passes the v2.3.1307 rules, so the breath starts the moment the
@@ -1320,7 +1438,12 @@ input{font-family:inherit}
 /* v2.3.1525: seven FLAT tabs (Head and its subtype row are retired). Four per
    row, so they wrap to a fixed two-row block — shorter than the tabs row plus
    the reserved two-row subtab row it replaces. */
-.bt-cc-tabs{flex:0 0 auto;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+/* v2.3.1953: THREE columns, not four.  The Build tab makes nine, and nine in a
+   4-wide grid is 4+4+1 — one lonely tab on its own row.  Three columns is a
+   clean 3x3 and makes every tab ~30% WIDER, which the labels and the 44px
+   touch-target floor both wanted anyway; the extra row costs ~56px in a
+   picker column that had several hundred spare (measured at 390x844). */
+.bt-cc-tabs{flex:0 0 auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
 /* v2.3.1576: the unselected tabs were background:transparent with a
    TRANSPARENT border — literally 1.00:1, so the category row read as
    floating labels rather than a row of controls, and only the selected
@@ -1398,29 +1521,50 @@ input{font-family:inherit}
   display:grid;align-items:start;justify-content:start;
   grid-template-columns:auto auto;
   grid-template-areas:
-    "tabs  tabs"
-    "side  main"
-    "note  main"
-    "tools tools"
-    "opts  opts"
-    "pal   pal"
-    "btn   btn";
+    "tabs tabs"
+    "side main"
+    "note main"
+    "ctl  ctl";
 }
 .bt-paint-tabs{grid-area:tabs}
 .bt-paint-side{grid-area:side;width:calc(var(--paint-size) * .62)}
 .bt-paint-note{grid-area:note;width:calc(var(--paint-size) * .62);
   font-size:11px;line-height:1.3;opacity:.78}
 .bt-paint-main{grid-area:main;width:var(--paint-size)}
-.bt-paint-tools{grid-area:tools;display:grid;grid-template-columns:repeat(6,1fr);gap:5}
+/* v2.3.1967: SEVEN tools, not six -- the hand joined them (owner: "add a hand
+   shape to tap the existing shape to reselect and edit it").  MEASURED rather
+   than nudged: --paint-size tops out at 288px, so at six columns a tool got
+   43px and at seven with the old 5px gap it gets 36.9px, which wraps "Letters"
+   onto a second line and grows the whole row.  A 4px gap and a notch off the
+   label give 37.7px against a 32px "Letters", so the row keeps its height and
+   nothing below it moves. */
+.bt-paint-tools{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.bt-paint-tools .bt-paint-tool-label{font-size:8.5px;white-space:nowrap}
 /* v2.3.1949: the options row is a flex pair now -- a variable part (brush
-   widths, or the alphabet) and a Mirror toggle that never moves. */
-.bt-paint-opts{grid-area:opts;display:flex;gap:5px;min-width:0}
+   widths, or the alphabet) and a Mirror toggle that never moves.
+   v2.3.1994: the Mirror cell is retired (owner: "Swap out the mirror for
+   'fill'"), so the row is the variable part alone -- kept as a flex wrapper
+   rather than collapsed into it, because the wrapper is what the shape-ops
+   grid and the alphabet strip both swap INTO, and flattening it would move
+   two other layouts to save one line.
+   v2.3.2004: .bt-paint-mirror is back with its button -- a fixed 62px cell
+   beside the flexing variable half, which is the v2.3.1949 geometry unchanged.
+   The widths grid simply flexes 62px narrower, exactly as it already does when
+   the alphabet strip swaps in, so no other row loses anything. */
+.bt-paint-opts{display:flex;gap:5px;min-width:0}
 .bt-paint-opts-main{flex:1 1 auto;min-width:0;display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
 .bt-paint-mirror{flex:0 0 auto;width:62px}
-.bt-paint-pal{grid-area:pal}
-.bt-paint-btn{grid-area:btn}
-/* Stacked: the wrapper vanishes and its children take their own areas. */
-.bt-paint-ctl{display:contents}
+/* ═══ v2.3.1950: THE CONTROLS ARE ONE COLUMN IN BOTH LAYOUTS ═══
+   They used to be four separate grid areas in the stacked layout and a flex
+   column in the wide one.  The stacked half was subtly wrong: a declared grid
+   row that holds nothing still contributes its two gaps, so the pattern screen
+   — which has no toolbar, no tool options and no slot row — opened 30px of
+   dead air above its buttons.  A flex column puts a gap only BETWEEN children
+   that exist, so the empty rows cost nothing and the wide layout needs no
+   special case beyond its own gap. */
+.bt-paint-ctl{
+  grid-area:ctl;display:flex;flex-direction:column;gap:10px;min-width:0;
+}
 /* The preview is pixel art zoomed in: pixelated on the way up, and a ground
    that is darker than the panel so a pale shirt still has an edge. */
 .bt-paint-pv{
@@ -1468,6 +1612,58 @@ input{font-family:inherit}
   color:var(--ui-text);font-size:17px;font-weight:700;line-height:1;
 }
 .bt-paint-letter--on{background:var(--ui-brass-soft);border-color:var(--ui-brass)}
+/* v2.3.1950: copy-to-the-other-side.  Quiet, because it is a once-per-design
+   action sitting under the caption rather than a control you work in. */
+.bt-paint-copy{
+  width:100%;min-height:34px;border-radius:8px;cursor:pointer;
+  background:rgba(229,237,233,.06);border:1px solid rgba(229,237,233,.20);
+  color:var(--ui-text);font-size:12px;letter-spacing:.01em;
+  transition:transform 90ms cubic-bezier(.2,.8,.2,1);
+}
+.bt-paint-copy:active{transform:scale(.98)}
+
+/* v2.3.1950: the saved-design row.  Three thumbnails and an arming button, on
+   one line, sized so a slot stays a comfortable target on a phone. */
+.bt-paint-slots{display:flex;gap:6px;align-items:stretch}
+.bt-paint-slot{
+  flex:0 0 auto;width:46px;min-height:46px;padding:3px;position:relative;
+  border-radius:8px;cursor:pointer;line-height:0;
+  background:rgba(229,237,233,.06);border:1px solid rgba(229,237,233,.20);
+  transition:transform 90ms cubic-bezier(.2,.8,.2,1);
+}
+.bt-paint-slot:active{transform:scale(.97)}
+.bt-paint-slot--on{border-color:var(--ui-brass);background:var(--ui-brass-soft)}
+.bt-paint-slot canvas{
+  width:100%;aspect-ratio:1/1;display:block;image-rendering:pixelated;border-radius:5px;
+}
+/* the "nothing here yet" mark, over the empty checker */
+.bt-paint-slot-plus{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:20px;line-height:1;color:rgba(229,237,233,.45);pointer-events:none;
+}
+.bt-paint-save{
+  flex:1 1 auto;min-height:46px;border-radius:8px;cursor:pointer;
+  background:rgba(229,237,233,.06);border:1px solid rgba(229,237,233,.20);
+  color:var(--ui-text);font-size:13px;
+}
+.bt-paint-save--on{background:var(--ui-brass-soft);border-color:var(--ui-brass)}
+/* v2.3.1951: the pending-shape controls borrow the brush-size chip so the row
+   keeps its height and the panel below it never jumps. */
+.bt-paint-shapeops .bt-paint-size{padding:4px 3px}
+.bt-paint-shapeops .bt-paint-tool-label{font-size:11px;line-height:1.15;text-align:center}
+/* v2.3.1967: the layer row -- a readout over four steps.  The readout is a row
+   of its own rather than a fifth chip: it is a sentence that CHANGES on every
+   tap ("Layer 2 of 4 - circle"), which is how the owner sees what the button
+   did, and squeezing it into the strip would have cost each button a quarter of
+   its width for a label nobody could read. */
+.bt-paint-layers{display:flex;flex-direction:column;gap:4px;min-width:0}
+.bt-paint-layer-at{
+  font-size:10px;line-height:1.2;letter-spacing:.01em;color:var(--ui-text);
+  opacity:.78;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.bt-paint-layer-btns{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.bt-paint-layer-btns .bt-paint-size{padding:4px 2px;min-height:38px}
+.bt-paint-layer-btns .bt-paint-tool-label{font-size:10.5px;line-height:1.15;text-align:center}
 
 /* ── short viewports: the same markup, three columns ──
    MEASURED (v2.3.1947): on iPhone landscape (844x390) the single-grid panel
@@ -1487,13 +1683,10 @@ input{font-family:inherit}
       "side main ctl"
       "note main ctl";
   }
-  /* The controls become ONE column of their own rather than four blocks sharing
-     rows with the preview: a 44px tool row in the same row as a 140px preview
-     gets a 96px hole under it, which is exactly what that looked like. */
-  .bt-paint-ctl{
-    display:flex;flex-direction:column;gap:8px;
-    grid-area:ctl;align-self:start;min-width:0;
-  }
+  /* Beside the drawing rather than under it, and hugging the top: the controls
+     are shorter than the grid, and stretching them would strand each one at the
+     top of an oversized row. */
+  .bt-paint-ctl{gap:8px;align-self:start}
 }
 /* Short AND narrow: keep the stack, just tighten it. */
 @media (max-height:460px) and (max-width:659px){
@@ -1595,7 +1788,7 @@ input{font-family:inherit}
    horizontal scroller was the right shape under a character; in a tall column
    it wasted the height that is the whole reason for the rebuild, and hid most
    of the catalog behind a swipe. */
-.bt-cc-strip{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:repeat(auto-fill,var(--cc-tile));grid-auto-rows:var(--cc-tile);gap:6px;justify-content:center;align-content:start;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;touch-action:pan-y;padding:2px;scrollbar-width:none;box-sizing:border-box}
+.bt-cc-strip{flex:0 1 auto;min-height:0;display:grid;grid-template-columns:repeat(auto-fill,var(--cc-tile));grid-auto-rows:var(--cc-tile);gap:6px;justify-content:center;align-content:start;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;touch-action:pan-y;padding:2px;scrollbar-width:none;box-sizing:border-box}
 .bt-cc-strip::-webkit-scrollbar{display:none}
 .bt-cc-strip>*{flex:none!important;width:var(--cc-tile)!important;height:var(--cc-tile)!important}
 /* Colors: fixed-size swatches so a long catalog scrolls with six-ish
@@ -1610,6 +1803,53 @@ input{font-family:inherit}
    pad that grew with them would take the room back off the tiles every time
    you changed category. Anything past two rows scrolls within the pad. */
 .bt-cc-colors{flex:0 0 auto;display:flex;flex-direction:column;min-width:0}
+/* v2.3.2035: the DEFAULT colour button, above the swatches.  Fixed height so
+   the row cannot vary with font metrics -- the constant-sheet-height
+   guarantee (v2.3.1252) is the reason every row in this drawer is pinned, and
+   a text row that grew with a longer label would reintroduce exactly the
+   stage-resize v2.3.1253 chased out.  Deliberately NOT swatch-shaped: it is
+   the absence of a colour choice, and anything square-and-coloured here would
+   claim to BE a colour. */
+.bt-cc-colors-head{flex:0 0 auto;height:22px;display:flex;align-items:center;justify-content:center;margin:0 0 4px}
+/* v2.3.2090: IT WEARS THE PICKER'S OWN WELL.  Owner: "make the default button
+   more obvious for color picker (maybe a different background color)".
+
+   v2.3.2035 built it as a faint outline on a near-transparent fill
+   (rgba(255,255,255,.05)) with dim text, sitting directly above swatch tiles
+   whose wells are a LIGHT gradient (_apTileStyle, BroTown.jsx).  Every other
+   control in this row shouts and this one whispered, so beside them it read
+   as a disabled caption rather than the option it is.
+
+   The fix is the swatch tiles' own well, because that well is the picker's
+   CHROME, not a colour: on a tile the light gradient is the frame and the
+   little square inside it is the colour.  A well with a WORD inside says
+   "an option of this picker whose value is not a colour", which is exactly
+   what Default is -- so this stays inside the v2.3.2035 rule (nothing
+   square-and-coloured may claim to BE a colour) rather than bending it.
+
+   Selection therefore rides where it rides on a tile: a brass ring, not a
+   change of fill.  Inverting the fill on select (the old brass-soft wash over
+   a near-black button) would have made the CHOSEN state darker and quieter
+   than the unchosen one the moment the unchosen one got its well.  The ring is
+   drawn with box-shadow, not a fatter border, so the button's box is identical
+   in both states -- the constant-sheet-height rule (v2.3.1252) is measured on
+   this row and a 1px->2px border would move it. */
+.bt-cc-defcolor{
+  height:22px;padding:0 15px;border-radius:11px;cursor:pointer;
+  font:700 12px/1 inherit;letter-spacing:.06em;text-transform:uppercase;
+  background:linear-gradient(180deg,#F4F5F8,#CDD2DC);
+  border:1px solid rgba(20,30,34,.38);
+  color:#1E2C33;
+  box-shadow:0 1px 4px rgba(5,8,10,.32);
+  transition:box-shadow 90ms cubic-bezier(.2,.8,.2,1),border-color 90ms cubic-bezier(.2,.8,.2,1);
+}
+/* The picked state matches how a chosen swatch reads (brass ring + lift), so
+   "Default" and a colour tile are visibly the same KIND of choice. */
+.bt-cc-defcolor--on{
+  border-color:var(--ui-brass);
+  box-shadow:0 0 0 2px var(--ui-brass),0 2px 7px rgba(5,8,10,.38);
+}
+.bt-cc-defcolor:active{transform:scale(.97)}
 .bt-cc-colors-row{display:grid;grid-template-columns:repeat(auto-fill,var(--cc-swatch));grid-auto-rows:var(--cc-swatch);gap:5px;justify-content:center;align-content:start;height:calc(var(--cc-swatch)*2 + 9px);min-width:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;touch-action:pan-y;padding:2px;scrollbar-width:none;box-sizing:border-box}
 .bt-cc-colors-row::-webkit-scrollbar{display:none}
 .bt-cc-colors-row>*{flex:none!important;width:var(--cc-swatch)!important;height:var(--cc-swatch)!important}
@@ -1623,7 +1863,18 @@ input{font-family:inherit}
 /* v2.3.1524: the items wrap is the pane's flexible region; the colours wrap
    stays fixed. The chevron overlay signalled horizontal overflow and has
    nothing to say about a vertical grid. */
-.bt-cc-panel>.bt-cc-scroll{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+/* v2.3.1956 (owner: "Move the tattoo and pattern option button to directly
+   beneath the color options instead of sitting at the bottom of the
+   container").  The options strip used to GROW into all the spare height, so
+   on a short catalogue — Skin is thirteen swatches — everything under it was
+   shoved to the floor of the pane with a hand's width of nothing in between,
+   and the Design button read as unrelated to the tab it belongs to.
+   `0 1 auto` lets it hug its content and still shrink-and-scroll on a long
+   catalogue; with nothing left growing, the spare height collects at the
+   bottom of the column where it is invisible.  The v2.3.1252 constant-size
+   guarantee is untouched: the pane's OUTER height is unchanged, so the stage
+   and the character do not move. */
+.bt-cc-panel>.bt-cc-scroll{flex:0 1 auto;min-height:0;display:flex;flex-direction:column}
 .bt-cc-more{display:none}
 .bt-cc-more{position:absolute;top:0;right:0;bottom:0;width:26px;display:flex;align-items:center;justify-content:flex-end;padding-right:2px;pointer-events:none;opacity:0;transition:opacity 160ms ease;background:linear-gradient(to right,rgba(30,46,52,0),var(--ui-sheet) 80%);color:var(--ui-text-secondary);font-size:15px;font-weight:700;line-height:1}
 .bt-cc-more--on{opacity:1}
@@ -2186,7 +2437,22 @@ body:has(.bt-inspect) .bt-kb-chip{display:none}
   cursor:pointer;-webkit-tap-highlight-color:transparent;
   transition:transform .09s ease-out,filter .18s ease-out;
 }
-.bt-login-btn--key{background-image:url('/ui/welcome/title/btn-login.png');aspect-ratio:815/259}
+/* v2.3.1954 (owner: "change the label from login with your key to just
+   'Continue' on splash screen").  The label is painted INTO the plate, so the
+   rename is the change: this stylesheet cannot append the build version the
+   way the JSX art() helper does, and an edit in place would be served from
+   cache to every returning player — on the one screen where the stale word is
+   the whole bug.  Same plate, same size, new word.  See
+   tools/ui/relabel-login-plate.mjs for how the lettering was recomposed. */
+/* v2.3.2005: the ?v= is the plate's ART version, and it has to move WITH the
+   art.  v2.3.1954 avoided a cache-bust by giving the repainted plate a new
+   FILENAME, which works once; this repaint keeps the name (same word, moved
+   205px left to centre it) so a returning browser would otherwise serve the
+   off-centre plate from cache forever.  Same failure TRAPS §27 records for
+   characterPortrait's hardcoded ?v=2.3.760, which silently withheld every
+   shirt re-bake from the creator preview.  Bump this whenever the PNG is
+   regenerated. */
+.bt-login-btn--key{background-image:url('/ui/welcome/title/btn-continue.png?v=2.3.2005');aspect-ratio:815/259}
 .bt-login-btn--new{background-image:url('/ui/welcome/title/btn-create.png');aspect-ratio:799/212}
 .bt-login-btn:active{transform:translateY(1px) scale(.995)}
 .bt-login-btn:disabled{opacity:.55;cursor:default;animation:none}
@@ -2378,4 +2644,51 @@ body:has(.bt-inspect) .bt-kb-chip{display:none}
 @media (max-height:520px){
   .bt-npcdlg-art{flex-basis:30%;max-width:140px}
   .bt-npcdlg-text{min-height:64px;font-size:13px}
+}
+
+/* ═══ v2.3.1965: THE BODY-INK SURFACE ═══
+   Owner: "allow the user to zoom in on any part of the character skin to
+   tattoo it ... with the live preview of what it looks like on the character."
+   The canvas is the character, so it takes the same square well the 16x16 grid
+   had; the bar under it carries the three things a finger needs that a grid
+   did not — pan instead of ink, and the two zoom steps for the hand that is
+   holding the phone. */
+.bt-bodyink{display:flex;flex-direction:column;gap:6px}
+.bt-bodyink-cv{background:rgba(9,13,17,.55)}
+.bt-bodyink-bar{display:flex;align-items:center;gap:6px}
+.bt-bodyink-bar .bt-paint-size{flex:0 0 auto;min-width:48px}
+/* The region under your finger, named. It is the one thing the surface knows
+   and you cannot see: Undo, Clear and the palette all act on THIS canvas. */
+.bt-bodyink-where{
+  margin-left:auto;font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--ui-brass);opacity:.85;padding-right:2px;
+}
+
+/* ═══ v2.3.2039: THE CHAT COMPOSER DOES NOT SELECT ═══
+   Owner: "make the chat window shell not selectable (if I long press on it
+   the whole game area highlights)."
+
+   `.brotown-wrap` above already carries this exact recipe, and it is easy to
+   assume everything drawn over the world inherits it.  ChatBubble is mounted
+   as a SIBLING of <BroTown> in GameApp, not inside its wrap, so it never has:
+   a long press anchored a document selection in the card and, with no rule to
+   stop it, the drag ran across the whole play area.
+
+   IN CSS RATHER THAN INLINE, deliberately.  `-webkit-touch-callout` does not
+   exist in desktop Chromium, so assigning it through React's inline `style`
+   is silently dropped by the CSSOM there and cannot be read back — a
+   declaration in a stylesheet ships literally to every browser and is applied
+   by the ones that implement it.  That also makes it checkable
+   (mp-chatcompose reads the rule text), which an unobservable inline property
+   is not.
+
+   The textarea opts back IN.  An inherited `none` does not merely stop
+   selection on iOS, it makes a field uneditable — trading a cosmetic bug for
+   a total one. */
+.bt-chat-noselect{
+  -webkit-touch-callout:none;-webkit-user-select:none;user-select:none;
+  -webkit-tap-highlight-color:transparent;
+}
+.bt-chat-noselect textarea,.bt-chat-noselect input{
+  -webkit-user-select:text;user-select:text;-webkit-touch-callout:default;
 }

@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { ITEM_NAMES, isTicketKey, isCapeItemKey } from './InventoryPanel.jsx';   /* v2.3.2054; isTicketKey v2.3.2103; isCapeItemKey v2.3.2107 */
 import { gearIdIcon, armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.1758: one armour art table */
 import { weaponMaterial, metalIconPath } from '@/rendering/traits/materialTints.js'; /* v2.3.1760 */
 import { COL, getState } from './common.js';
@@ -81,8 +82,8 @@ const tierLabel = (wpn) => weaponTierLabel(wpn);
 const ITEMS_V = '?v=2.3.1774'; /* v2.3.1774: pine shield icon */
 function weaponThumb(wpn) {
   if (!wpn || !wpn.type) return null;
-  if (wpn.type === 'bow')        return `/icons/items/bow.png${ITEMS_V}`;
-  if (wpn.type === 'staff')      return `/icons/items/staff.png${ITEMS_V}`;
+  if (wpn.type === 'bow')        return `/icons/items/bow.webp${ITEMS_V}`;
+  if (wpn.type === 'staff')      return `/icons/items/staff.webp${ITEMS_V}`;
   const metal = weaponMaterial(wpn.type, wpn.gearBase); /* v2.3.1760 */
   if (wpn.type === 'greatsword') return `${metalIconPath('/icons/items/great-sword.webp', metal)}${ITEMS_V}`;
   return `${metalIconPath('/icons/items/sword.webp', metal)}${ITEMS_V}`;
@@ -91,7 +92,7 @@ function weaponThumb(wpn) {
 function shieldThumb(shield) {
   /* v2.3.1325: every shield tier shows the painted shield (was
      wood-only + glyph fallback). */
-  return shield ? `/icons/items/shield.png${ITEMS_V}` : null;
+  return shield ? `/icons/items/shield.webp${ITEMS_V}` : null;
 }
 
 /* Which weapon slot does a `type` belong in. */
@@ -99,6 +100,18 @@ function slotFor(type) {
   if (type === 'bow')   return 'rangedWeapon';
   if (type === 'staff') return 'staffWeapon';
   return 'weapon'; /* sword, greatsword */
+}
+
+/* v2.3.2109: is the cape on the character right now?  Read from the RENDERER's
+   active cape (capeCatalog), which wsClient feeds from the worker's echo -- so
+   this is the server's answer, not a local guess that could disagree with what
+   every other player sees.  Synchronous and defensive: the module is a lazy
+   split chunk elsewhere, and a popup must not throw if it has not landed. */
+function capeIsWorn() {
+  try {
+    const S = getState();
+    return !!(S && S.rpg && S.rpg._capeWorn);
+  } catch (e) { return false; }
 }
 
 function resolveTarget(target) {
@@ -116,7 +129,18 @@ function resolveTarget(target) {
        ceil'd) — the server's _handleEatRequest math, so the promised
        number matches the heal the player_state echo delivers. */
     const SR = getState();
-    if (isCookedFish) info = '+' + calcDisplayHeal(SR && SR.rpg, key) + ' HP when eaten';
+    const isTicket = isTicketKey(key);
+    const isCape = isCapeItemKey(key);
+    if (isTicket) info = 'Open it to claim your cape';
+    /* v2.3.2109: it IS a control now (owner: "I wanted ability to equip and
+       unequip the cape"). Ownership is still the ledger's answer -- the worker
+       refuses a toggle from anyone who did not win one -- but whether it is on
+       your back is yours. The line reports the live state so the button below
+       is never the only thing saying which way round it is. */
+    else if (isCapeItemKey(key)) {
+      info = capeIsWorn() ? 'Worn — a contest prize' : 'A contest prize, in your bag';
+    }
+    else if (isCookedFish) info = '+' + calcDisplayHeal(SR && SR.rpg, key) + ' HP when eaten';
     else if (isRawFish) info = 'Cook over a campfire';
     else if (isBurnt) info = 'Inedible';
     else if (isLog) info = 'Light a campfire to cook at';
@@ -128,7 +152,24 @@ function resolveTarget(target) {
       name: prettyName(key),
       info,
       desc: cat.charAt(0).toUpperCase() + cat.slice(1),
-      actions: { light: isLog && count > 0, eat: isCookedFish && count > 0 },
+      /* v2.3.2103: `open` needs the worker to be able to SETTLE it -- the
+         redeem is server-only (a client-side open is the firemaking
+         duplication bug wearing a hat, cooking.js:71). Gated on the same
+         caps.eventCapes flag the older panel uses, read DIRECTLY rather than
+         through an alias so the caps-audit can see the gate. */
+      actions: {
+        light: isLog && count > 0,
+        eat: isCookedFish && count > 0,
+        open: isTicket && count > 0
+          && !!(SR && SR._serverCaps && SR._serverCaps.eventCapes),
+        /* v2.3.2109: gated on the same cap as the redeem -- against an old
+           worker the type would be relayed to the room as an unknown
+           broadcast, so no button and nothing sent (deploy-order safety). */
+        capeOn: isCape && !capeIsWorn()
+          && !!(SR && SR._serverCaps && SR._serverCaps.eventCapes),
+        capeOff: isCape && capeIsWorn()
+          && !!(SR && SR._serverCaps && SR._serverCaps.eventCapes),
+      },
     };
   }
   if (target.kind === 'weapon') {
@@ -342,6 +383,19 @@ function gearThumb(gearId) {
 
 function prettyName(key) {
   if (!key) return '';
+  /* v2.3.2054: an explicit label wins over the key-derived one. */
+  if (ITEM_NAMES[key]) return ITEM_NAMES[key];
+  /* v2.3.2103: the prize of a public contest read as "Goldticket Crimson"
+     out of the key-derived branch below -- which is what the owner was
+     looking at when he had to ask whether an item in his own bag was it. */
+  if (isTicketKey(key)) return 'Golden Ticket';
+  /* v2.3.2107: 'cape_crimson' out of the key-derived branch reads "Cape
+     Crimson". The catalog already names it properly for the character sheet;
+     the bag says the same thing. */
+  if (isCapeItemKey(key)) {
+    const id = String(key).slice('cape_'.length);
+    return id.charAt(0).toUpperCase() + id.slice(1) + ' Cape';
+  }
   return key
     .replace(/^cooked_fish_/, 'Cooked ')
     .replace(/^burnt_/, 'Burnt ')
@@ -994,6 +1048,31 @@ export const ItemDetailPopup = () => {
     eatBus.open(target.key);
     itemDetailBus.close();
   };
+  /* v2.3.2103: SEND AND WAIT. The consume, the grant and the echo are all the
+     worker's -- an "opened" ticket that the client also decrements locally is
+     handed straight back by the next player_state echo, which is how one log
+     lit unlimited campfires (cooking.js:71). The opId makes a retry on a
+     flaky phone converge instead of redeeming twice. */
+  /* v2.3.2109: the worn state comes from the RENDERER's active cape, which is
+     fed by the worker's echo (wsClient) -- so it is the server's answer, not a
+     local guess that could disagree with what everyone else sees. */
+  const sendCapeWorn = (worn) => {
+    const S = getState();
+    if (!S || !S.channel) return;
+    try { S.channel.send({ type: 'cape_equip', payload: { worn } }); } catch (e) { /* socket gone */ }
+    itemDetailBus.close();
+  };
+  const onCapeOn = () => sendCapeWorn(true);
+  const onCapeOff = () => sendCapeWorn(false);
+  const onOpenTicket = () => {
+    const S = getState();
+    if (!S || !S.channel) return;
+    const opId = target.key + ':' + (S.playerId || 'me') + ':' + Date.now();
+    try {
+      S.channel.send({ type: 'cape_redeem', payload: { invKey: target.key, opId } });
+    } catch (e) { /* the socket went away; the ticket is still in the bag */ }
+    itemDetailBus.close();
+  };
   const onUnequipWeapon = () => {
     unequipWeaponSlot(target.slot);
     itemDetailBus.close();
@@ -1226,6 +1305,9 @@ export const ItemDetailPopup = () => {
         <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
           {actions.light    && <button onClick={onLight}   className={buttonClass('primary')} style={buttonStyle('primary')}>Light fire</button>}
           {actions.eat      && <button onClick={onEat}     className={buttonClass('primary')} style={buttonStyle('primary')}>Eat</button>}
+          {actions.open     && <button onClick={onOpenTicket} className={buttonClass('primary')} style={buttonStyle('primary')}>Open Golden Ticket</button>}
+          {actions.capeOn   && <button onClick={onCapeOn}  className={buttonClass('primary')} style={buttonStyle('primary')}>Equip</button>}
+          {actions.capeOff  && <button onClick={onCapeOff} className={buttonClass('danger')}  style={buttonStyle('danger')}>Unequip</button>}
           {actions.equip    && <button onClick={onEquip}   className={buttonClass('primary')} style={buttonStyle('primary')}>Equip</button>}
           {actions.unequip  && <button onClick={onUnequip} className={buttonClass('danger')} style={buttonStyle('danger')}>Unequip</button>}
           <button onClick={onToggleLock} className={buttonClass()} style={buttonStyle()}>

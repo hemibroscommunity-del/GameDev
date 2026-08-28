@@ -60,7 +60,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const byRef = new Map();
     for (const k of Object.keys(pd)) { const v = pd[k]; if (v && v.visible !== undefined) byRef.set(v, k); }
     const eff = (o) => { let n = o; while (n) { if (!n.visible) return false; n = n.parent; } return true; };
-    return pd.children.map((c, i) => ({
+    /* v2.3.1953: the HUD moved into pd._uiLayer so the build scale can be
+       cancelled on it in one place, so a flat pass over pd.children now sees
+       ONE opaque container where it used to see eighteen named nodes — which
+       would have made this assertion vacuous (one unknown name, and every real
+       stray hidden inside it).  Flattened instead: the layer itself is not a
+       drawn thing and is skipped, and its children are listed exactly as they
+       were before, so the check stays as strong as it was. */
+    const flat = [];
+    for (const c of pd.children) {
+      if (c === pd._uiLayer) { for (const g of c.children) flat.push(g); continue; }
+      flat.push(c);
+    }
+    return flat.map((c, i) => ({
       i, name: byRef.get(c) || c.constructor.name,
       own: !!c.visible, effective: eff(c),
     })).filter((x) => x.own);

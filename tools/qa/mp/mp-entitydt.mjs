@@ -207,14 +207,31 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('both interpolation samples produced a shrinking gap', !!fast && !!slow, { fast, slow });
   if (fast && slow) {
     console.log(`    interp: k=${fast.k.toFixed(1)}/s at ${fast.fps.toFixed(1)}fps  vs  k=${slow.k.toFixed(1)}/s at ${slow.fps.toFixed(1)}fps`);
-    rec.ok('the throttle really did change the frame rate (guard)',
-      fast.fps > slow.fps * 1.5, { fastFps: +fast.fps.toFixed(1), slowFps: +slow.fps.toFixed(1) });
-    rec.ok('the gap actually closed in both samples (guard)',
-      fast.remaining < GAP && slow.remaining < GAP, { fast: fast.remaining, slow: slow.remaining });
-    const ratio = slow.k / fast.k;
-    rec.ok('a monster catches up to the server at the same rate per SECOND',
-      ratio > 0.7 && ratio < 1.4,
-      { ratio: +ratio.toFixed(3), fastK: +fast.k.toFixed(1), slowK: +slow.k.toFixed(1) });
+    /* v2.3.2020: a degraded BASELINE skips rather than fails — the same rule
+       and the same 25fps line as mp-arrowdt (v2.3.2019), which this file's
+       guard is a copy of.  Throttling 6x only proves anything if the
+       unthrottled sample had somewhere to fall from; when this machine is
+       saturated the baseline collapses on its own and the throttle has no
+       headroom.  Measured here at twelve scenarios at once: 11.1fps against
+       8.7fps, ratio 1.28, guard red — and the ratio assertion below went red
+       WITH it, reporting 0.696 as though the game had changed.  Alone, the
+       same commit passes.  Neither number was about the product. */
+    const TRUSTWORTHY_FPS = 25;
+    if (fast.fps < TRUSTWORTHY_FPS) {
+      const why = `machine too loaded to measure: unthrottled baseline was only ${fast.fps.toFixed(1)}fps `
+        + `(needs ${TRUSTWORTHY_FPS}+), so the 6x throttle had no headroom`;
+      rec.skip('the throttle really did change the frame rate (guard)', why);
+      rec.skip('a monster catches up to the server at the same rate per SECOND', why);
+    } else {
+      rec.ok('the throttle really did change the frame rate (guard)',
+        fast.fps > slow.fps * 1.5, { fastFps: +fast.fps.toFixed(1), slowFps: +slow.fps.toFixed(1) });
+      rec.ok('the gap actually closed in both samples (guard)',
+        fast.remaining < GAP && slow.remaining < GAP, { fast: fast.remaining, slow: slow.remaining });
+      const ratio = slow.k / fast.k;
+      rec.ok('a monster catches up to the server at the same rate per SECOND',
+        ratio > 0.7 && ratio < 1.4,
+        { ratio: +ratio.toFixed(3), fastK: +fast.k.toFixed(1), slowK: +slow.k.toFixed(1) });
+    }
   }
 
   const nFast = await npcRateAt(P, cdp, 1);

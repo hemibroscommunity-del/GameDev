@@ -34,6 +34,7 @@ import {
 // escrow-at-placement settlement under one DO's input gates.  Methods
 // are mixed into the class below (see market.js header for why).
 import { marketMethods } from './market.js';
+import { shopMethods } from './shop.js';   /* v2.3.2047: Shopkeeper Bro's public pile */
 // v2.3.1119 (heavy-systems PR4): server-settled trades -- the relay
 // handshake stays, but the room intercepts it and moves the goods
 // itself (see trade.js header for the duplication engine this kills).
@@ -101,6 +102,8 @@ import { gambleMethods } from './gamble.js';
 import { inboxMethods } from './inbox.js';
 // v2.3.1166 (P4 decomposition): cooking / eating / NPC shop -- see cooking.js.
 import { cookingMethods } from './cooking.js';
+// v2.3.2026: event capes -- golden ticket drop + redemption. See eventcapes.js.
+import { eventCapeMethods } from './eventcapes.js';
 // v2.3.1168 (P4 decomposition): gather nodes + harvest + extraction validation -- see gathering.js.
 import { gatheringMethods } from './gathering.js';
 // v2.3.1169 (P4 decomposition): equipment store (sanitizers/sell/forge/equip) -- see gear.js.
@@ -122,6 +125,11 @@ import { httpAuthMethods } from './httpauth.js';
 // cross-zone vitals HUD; memory-only, no combat/XP changes -- see party.js.
 import { partyMethods } from './party.js';
 import { friendsMethods } from './friends.js';
+/* v2.3.1981: server-side chat mute + abuse reports -- the mute list is a
+   storage fact enforced on the FAN-OUT (a muted line never reaches the
+   muter's socket), and a report is a durable record the operator reads
+   over the admin API.  See chatmod.js. */
+import { chatModMethods } from './chatmod.js';
 import { broVerifyMethods } from './broverify.js'; /* v2.3.1576: Hemi Bro ownership */
 // v2.3.1191 (P4 decomposition): the combat/damage core -- see combat.js.
 import { combatMethods } from './combat.js';
@@ -140,9 +148,33 @@ import { chainScoreMethods } from './chainscore.js';
 // v2.3.1734: Element Burst (COMBAT-OVERHAUL-PLAN PR 6) -- the elemental
 // nova + its four server-side gates -- see burst.js.
 import { burstMethods } from './burst.js';
+// v2.3.1983: population-scaled spawns -- monsters and gather nodes sized to
+// how many players are standing in THAT zone -- see spawnscale.js.
+import { spawnScaleMethods } from './spawnscale.js';
 
-export default {
-  async fetch(request, env) {
+/* ═══ v2.3.2113: AN ERROR IN HERE MUST NOT LOOK LIKE AN OUTAGE ═══
+ * Owner, of tools/draw: "This tool says can't reach the game server anymore."
+ *
+ * That page says it whenever `fetch` REJECTS, and a rejection is what the
+ * browser reports for a network failure — which is also what it reports when a
+ * cross-origin response arrives without CORS headers.  Those two are worlds
+ * apart in cause and identical on screen.
+ *
+ * And this router could produce the second one, because it had no catch: an
+ * exception anywhere below — a missing binding, a DO that throws, a bad parse
+ * — escaped to the runtime, which answers with its own HTML error page.  That
+ * page carries no Access-Control-Allow-Origin, so every browser client in the
+ * game turns a server fault into "could not reach the game server", and the
+ * one thing that would identify it is the one thing that never arrives.
+ *
+ * So the routing moves into a plain function and the entry point wraps it.  A
+ * fault now answers as JSON, with the CORS headers, saying what it was: the
+ * page can print the reason instead of guessing at it, and "unreachable" goes
+ * back to meaning unreachable.  The headers are built BEFORE anything that can
+ * throw — `new URL(request.url)` included — because a catch that needs the
+ * body to have run is not a catch.
+ */
+async function routeHttp(request, env) {
     const url = new URL(request.url);
     const corsHeaders = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' };
 
@@ -243,6 +275,20 @@ export default {
     }
 
     return new Response('Hemi Bros Game Server', { status: 200 });
+}
+
+export default {
+  async fetch(request, env) {
+    const errHeaders = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' };
+    try {
+      return await routeHttp(request, env);
+    } catch (err) {
+      /* Named, not swallowed: the whole point is that the caller can tell a
+         fault from an outage, and "500" alone does not do that. */
+      const msg = String((err && err.message) || err || 'unknown error');
+      try { console.error('[bt] worker fetch threw:', msg, err && err.stack); } catch (e) {}
+      return new Response(JSON.stringify({ ok: false, error: msg }), { status: 500, headers: errHeaders });
+    }
   },
 };
 
@@ -250,6 +296,45 @@ export default {
 // ═══════════════════════════════════════
 //  GAME ROOM — One per room, handles WebSocket multiplayer
 // ═══════════════════════════════════════
+
+/* ═══ v2.3.1970: THE ROOM-CHAT RELAY, THE LAST UNCLAMPED TEXT LANE ═══
+ *
+ * Every other line of player text in this server is clamped, control-
+ * stripped and stamped with the SERVER's idea of who sent it: party chat
+ * at PARTY.CHAT_MAX = 200 (party.js), a friend DM at FRIENDS.DM_MAX = 280
+ * (friends.js).  Room `chat` had none of it, for the oldest reason there
+ * is -- it has no case in the router switch, so it falls through to the
+ * default branch and relays byte-for-byte.  Its only bound was the
+ * v2.3.1618 frame gate, MAX_INBOUND_BYTES = 16 KB.
+ *
+ * That is a room-wide client crash, not untidiness.  The one thing that
+ * RENDERS a chat line is the overhead bubble (client
+ * effectsRenderer._renderChatBubble): a PIXI Text at fontSize 21 with
+ * wordWrapWidth 320, plus a background Graphics sized from the measured
+ * text.  16 KB is ~640 wrapped lines -- a text texture and a rounded rect
+ * on the order of 17,000 px tall, past the max texture size of every iOS
+ * GPU, which is the primary platform.  One socket, one message, and chat
+ * is the ONE relay v2.3.1575's interest management deliberately did not
+ * zone-scope, so it reaches every player in the world.
+ *
+ * Identity is the other half, and it was already on the record: the
+ * v2.3.1150 server_announce entry in PRIVILEGED_EVENTS says in so many
+ * words that "any client could impersonate the server" on this relay.
+ * The client reads payload.id / payload.name straight off the wire and
+ * only falls back to the server-stamped msg.from when they are ABSENT,
+ * so a forged pair wins.  party_chat already solved this by stamping
+ * `from` from the session (v2.3.1212); this does the same thing.
+ *
+ * Deliberately NOT a dedicated case in the switch: keeping it on the
+ * default path preserves everything about chat's DELIVERY (eventBuffer
+ * fan-out, the relay token bucket, room-wide reach) and changes only
+ * what is allowed to ride it.  And the payload is REBUILT from an
+ * allowlist rather than filtered in place, so the next field somebody
+ * adds to the send is dropped instead of trusted (rule 16 / TRAPS #13). */
+export const CHAT_RELAY = {
+  TEXT_MAX: 200,   // matches PARTY.CHAT_MAX -- one line looks the same in either lane
+  COLOR_MAX: 32,   // a CSS colour, nothing more
+};
 
 // Event types the worker emits itself (server -> client).  The default
 // branch of webSocketMessage rebroadcasts unknown msg.type values to
@@ -259,6 +344,13 @@ export default {
 // v2.3.1151: exported so test/wire-audit.test.mjs can verify every
 // server-emitted type is registered here (rule 13's mechanical check).
 export const PRIVILEGED_EVENTS = new Set([
+  /* v2.3.2047: the shopkeeper's two answers. Both are SERVER-EMITTED and
+     both carry money -- `shop_result` names coins paid and `shop_state` is
+     the public pile every client prices against. Forgeable, they would let
+     one player fake a sale receipt on another's screen or advertise a pile
+     that is not there, so they are denied on the relay like every other
+     server-emitted type (CLAUDE.md wire section). */
+  'shop_state', 'shop_result', 'shop_quoted',
   // Pool / progression mirrors
   'player_state', 'player_died',
   // 'player_respawned' intentionally OMITTED: the client broadcasts it
@@ -287,6 +379,18 @@ export const PRIVILEGED_EVENTS = new Set([
   // grant anything (credits are server-persisted before it's sent) but
   // it drives "you received X" UI, so don't let clients spoof it.
   'inbox_delivered', 'join_rejected',
+  /* v2.3.1982: the room-full refusal (join.js _roomFullRefusal).  Server-
+     emitted only -- a forged one would put "the world is full" in front of
+     every other player in the room, which is a one-message denial of
+     service on a demo day.  It rides its own socket and is closed
+     immediately after, so it never reaches the rebroadcast branch from the
+     server side; the deny-list is what stops a CLIENT sending it. */
+  'room_full',
+  /* v2.3.2101: the contest's public state (is it running, how many of the
+     three are left, the rate the worker will actually roll). Server-EMITTED,
+     so it MUST be here or a client could forge it -- and a forged "0 left"
+     would be a convincing way to stop people hunting. */
+  'cape_status',
   /* v2.3.1576: Hemi Bro ownership. Both are server-emitted only -- a forged
      bro_verify_result would let a client show peers a badge it never earned,
      and a forged bro_nonce would let it choose the text it 'signed'. */
@@ -350,6 +454,14 @@ export const PRIVILEGED_EVENTS = new Set([
   // could paint a fake roster and a forged friend_dm a fake message.
   'friend_sync', 'friend_request_in', 'friend_accepted', 'friend_error',
   'friend_dm', 'friend_dm_backlog',
+  /* v2.3.1981: chat-moderation emissions (chatmod.js).  chat_mute_list is
+     the server's copy of who you have muted -- a forged one would let a
+     modified client paint (or silently EMPTY) somebody's mute list in
+     their own UI while the server kept enforcing something else, which is
+     the most confusing possible failure for a safety control.  A forged
+     chat_report_ack would tell a harassed player their report was filed
+     when nothing was written. */
+  'chat_mute_list', 'chat_report_ack',
   // Combat resolution
   'monster_attack', 'monster_hit', 'monster_kill', 'pvp_hit',
   /* v2.3.1640: display-only snowball. Carries no damage (the authoritative
@@ -453,10 +565,39 @@ export const TRACK_COSMETIC_KEYS = new Set([
      unexpected. */
   /* v2.3.1940: + the drawn pants print and the chest tattoo.
      v2.3.1941: + the shirt and trouser patterns. */
-  'sa', 'sb', 'pa', 'ta', 'tf', 'tm', 'sp', 'pp', 'fp',   /* v2.3.1949: +face/arm tattoos */
+  /* v2.3.2043: +`tb`, the back-of-head drawing. Added to BOTH gates in the
+     same change on purpose -- v2.3.1939 put a drawing key in the join
+     sanitiser and not here, and the result was a print that appeared on
+     join and vanished on the first two-second relay. See DRAWING_KEYS. */
+  'sa', 'sb', 'pa', 'ta', 'tf', 'tm', 'tb', 'sp', 'pp', 'fp',   /* v2.3.1949: +face/arm tattoos */
+  /* v2.3.1953: 'hg' is the height and 'fr' the frame -- two short catalog ids
+     ('tall', 'large'), relayed so peers see the build you picked.  Display-only
+     in the strictest sense available: they reach a RENDER SCALE on the
+     receiving client and nothing else, and that client maps them through its
+     own HEIGHT_CATALOG / FRAME_CATALOG, answering the default for anything it
+     does not recognise -- so a forged value can only ever select a build the
+     catalog already contains.  It cannot touch a hitbox, because no hitbox on
+     either side reads a display object. */
+  'hg', 'fr',
   'pt', 'sh', 'bs', 'mask', 'cape', 'pet',
   // Live equipment visuals (armour on/off for remote renderers).
-  'eqc', 'eql', 'eqs',
+  /* ═══ v2.3.2084: +'eqst', THE UNDER-SHIRT, AND IT IS THE SAME BUG AS 'tb' ═══
+     v2.3.2043 records it exactly: "v2.3.1939 put a drawing key in the join
+     sanitiser and not here, and the result was a print that appeared on join
+     and vanished on the first two-second relay."  `eqst` was that key one slot
+     over -- admitted by JOIN_COSMETIC_KEYS (join.js) since v2.3.756 and never
+     by this gate -- so a shirt arrived with the join frame and was gone two
+     seconds later, and the renderer's fallback then derived the garment from
+     the legacy `st` style.  Those two disagree about the DEFAULT: the gear
+     slot dresses every new player in a tshirt (gearCatalog, "worn by every new
+     player by default") while `st` is 'none' until somebody picks a style.  So
+     every player who had never chosen a shirt saw themselves clothed and was
+     drawn BARE-CHESTED on every other screen from two seconds after joining.
+     Safe on the same grounds as the three ids beside it: a slot id, merged
+     into state like they are (TRACK_STATE_EXCLUDED is only x/y), and
+     display-only at the far end -- the receiving renderer looks the id up in
+     its own gear catalog and draws nothing for one it does not know. */
+  'eqc', 'eql', 'eqs', 'eqst',
   // Display-only mirrors of server-owned numbers (distinct key names
   // from the real fields on purpose -- see the note above).
   'rpgLv', 'rpgHp', 'rpgMaxHp',
@@ -497,6 +638,13 @@ export class GameRoom {
     this.tickInterval = null;
     this.tickSeq = 0;
     this.TICK_RATE = 22; // 45Hz (22ms)
+    /* The hard ceiling on concurrent sockets in this room.  It is a
+       RECEIVER-side number, not a server one (see the refusal comment in
+       fetch() below): ~4KB/s of download per co-located moving peer is
+       what an iPhone on cellular can carry, so ~20 people in one zone is
+       the real comfort limit and 60 in the room is the ceiling above it.
+       v2.3.1982: `_roomCap()` (join.js) is the read path -- the
+       `max_players` live-ops flag can only LOWER this, never raise it. */
     this.MAX_PLAYERS = 60;
     this.EVENTS_PER_TICK_CAP = 500;
     /* ═══ v2.3.1618: inbound abuse bounds ═══
@@ -1054,76 +1202,90 @@ export class GameRoom {
       for (let i = 0; i < spawn.count; i++) {
         const x = margin + Math.random() * (W - margin * 2);
         const y = margin + Math.random() * (H - margin * 2);
-        const depthPct = Math.max(0, Math.min(1, y / H));
-        const baseLvl = zone.level[0] || 1;
-        const maxLvl = zone.level[1] || 10;
-        // v2.3.1147: entrance ramp -- the shallowest 15% of a zone
-        // spawns up to 4 levels BELOW the band floor so walking into a
-        // mid/high band isn't an instant wall (hollows entry reads
-        // L34-38 instead of flat 38).  Mirrors spawnMonstersForZone in
-        // src/data/gameSystems.js; the client's applyZoneVariant level
-        // clamp was relaxed to minLv-4 to match.
-        const ramp = depthPct < 0.15 ? Math.round((1 - depthPct / 0.15) * 4) : 0;
-        const lvl = Math.max(1, Math.round(baseLvl + depthPct * (maxLvl - baseLvl)) - ramp);
-        const a = this._getArchetype(spawn.arch);
-        // baseline-10 rescale: 60 ÷ 4.8; HP curve centralized v2.3.1140 (BF-1)
-        const baseHp = this._monsterStat(MONSTER_HP_CURVE.base, lvl, MONSTER_HP_CURVE.ramp, MONSTER_HP_CURVE.plateau, MONSTER_HP_CURVE.endgame);
-        const baseDmg = this._monsterStat(12, lvl, 1.045, 1.025, 1.018);
-        const baseXp = this._monsterStat(10, lvl, 1.045, 1.025, 1.018);
-        const baseGold = this._monsterStat(5, lvl, 1.035, 1.020, 1.015);
-        /* v2.3.1535: a spawn entry may pin its own variant (verdant's single
-           blueSlime among mossSlimes).  Falls back to the whole-archetype
-           zone map for every other spawn, so nothing else changes. */
-        const variantKey = spawn.variant || this._variantForArchInZone(spawn.arch, zoneId);
-        // Variant speed override: if this (arch, zone) maps to a variant
-        // with its own spd (e.g. ember fodder -> fireGoblin spd 1.5),
-        // use it.  This is what makes server-driven AI move the variant
-        // at the right pace, so the client can stop running its own AI
-        // for the variant (was the `clientSideMovement: true` escape
-        // hatch on the client side).
-        const variantSpd = variantKey ? this._variantSpeed(variantKey) : null;
-        const finalSpd = (variantSpd != null) ? variantSpd : (0.5 * a.spdMult);
-        /* v2.3.1535: variant HP trade (blue slime = fast but squishy).
-           Multiplies the archetype's own hpMult; absent for every other
-           variant, so they stay exactly as they spawned before. */
-        const variantHpMult = variantKey ? this._variantHpMult(variantKey) : null;
-        const hpMult = a.hpMult * ((variantHpMult != null) ? variantHpMult : 1);
-        const spawnHp = Math.max(1, Math.ceil(baseHp * hpMult) + monsterHpFlat(lvl));
-        monsters.push({
-          id: 'sm-' + zoneId + '-' + idx,
-          arch: spawn.arch,
-          // Variant tag used at kill time for skull / inventory key
-          // resolution AND for visual / AI dispatch on the client.
-          // Server's AI uses m.spd directly (set above with variant
-          // override applied), so variant is also the source of truth
-          // for movement pace -- not just cosmetics.
-          variant: variantKey,
-          // Mid-fight transforms (mummy -> skeleton) mutate m.variant
-          // + m.spd; the respawn path resets to these spawn values so
-          // a re-spawned mummy starts back in mummy form instead of
-          // re-spawning as a skeleton.
-          spawnVariant: variantKey,
-          spawnSpd: finalSpd,
-          level: lvl,
-          element: zone.element || null,
-          hp: spawnHp, /* v2.3.1364: Lv1-2 -> flatLow; v2.3.1535: + variant hp mult */
-          maxHp: spawnHp,
-          dmg: Math.ceil(baseDmg * a.dmgMult),
-          xp: Math.ceil(baseXp),
-          gold: Math.ceil(baseGold),
-          spd: finalSpd,
-          emoji: a.emoji,
-          color: a.color,
-          x, y, spawnX: x, spawnY: y,
-          alive: true,
-          targetId: null, // player being chased
-          atkCd: 0,
-          respawnAt: 0,
-        });
+        const m = this._makeZoneMonster(zoneId, zone, spawn, 'sm-' + zoneId + '-' + idx, x, y);
+        if (m) monsters.push(m);
         idx++;
       }
     }
     return monsters;
+  }
+
+  /* v2.3.1983: ONE monster, built from a spawn entry at a given point.
+     Hoisted verbatim out of the _spawnZoneMonsters double loop (only the
+     id and the push/return changed) so the population scaler
+     (spawnscale.js) can add a monster mid-session that is identical in
+     every respect to an authored one — same entrance ramp, same variant
+     resolution, same hp/dmg/xp/gold curves.  A second copy of this math
+     would drift, and drifted monster stats desync client damage
+     prediction from monster_hit (the v2.3.1144 lockstep lesson). */
+  _makeZoneMonster(zoneId, zone, spawn, id, x, y) {
+    const H = zone.h * this.TILE;
+    const depthPct = Math.max(0, Math.min(1, y / H));
+    const baseLvl = zone.level[0] || 1;
+    const maxLvl = zone.level[1] || 10;
+    // v2.3.1147: entrance ramp -- the shallowest 15% of a zone
+    // spawns up to 4 levels BELOW the band floor so walking into a
+    // mid/high band isn't an instant wall (hollows entry reads
+    // L34-38 instead of flat 38).  Mirrors spawnMonstersForZone in
+    // src/data/gameSystems.js; the client's applyZoneVariant level
+    // clamp was relaxed to minLv-4 to match.
+    const ramp = depthPct < 0.15 ? Math.round((1 - depthPct / 0.15) * 4) : 0;
+    const lvl = Math.max(1, Math.round(baseLvl + depthPct * (maxLvl - baseLvl)) - ramp);
+    const a = this._getArchetype(spawn.arch);
+    // baseline-10 rescale: 60 ÷ 4.8; HP curve centralized v2.3.1140 (BF-1)
+    const baseHp = this._monsterStat(MONSTER_HP_CURVE.base, lvl, MONSTER_HP_CURVE.ramp, MONSTER_HP_CURVE.plateau, MONSTER_HP_CURVE.endgame);
+    const baseDmg = this._monsterStat(12, lvl, 1.045, 1.025, 1.018);
+    const baseXp = this._monsterStat(10, lvl, 1.045, 1.025, 1.018);
+    const baseGold = this._monsterStat(5, lvl, 1.035, 1.020, 1.015);
+    /* v2.3.1535: a spawn entry may pin its own variant (verdant's single
+       blueSlime among mossSlimes).  Falls back to the whole-archetype
+       zone map for every other spawn, so nothing else changes. */
+    const variantKey = spawn.variant || this._variantForArchInZone(spawn.arch, zoneId);
+    // Variant speed override: if this (arch, zone) maps to a variant
+    // with its own spd (e.g. ember fodder -> fireGoblin spd 1.5),
+    // use it.  This is what makes server-driven AI move the variant
+    // at the right pace, so the client can stop running its own AI
+    // for the variant (was the `clientSideMovement: true` escape
+    // hatch on the client side).
+    const variantSpd = variantKey ? this._variantSpeed(variantKey) : null;
+    const finalSpd = (variantSpd != null) ? variantSpd : (0.5 * a.spdMult);
+    /* v2.3.1535: variant HP trade (blue slime = fast but squishy).
+       Multiplies the archetype's own hpMult; absent for every other
+       variant, so they stay exactly as they spawned before. */
+    const variantHpMult = variantKey ? this._variantHpMult(variantKey) : null;
+    const hpMult = a.hpMult * ((variantHpMult != null) ? variantHpMult : 1);
+    const spawnHp = Math.max(1, Math.ceil(baseHp * hpMult) + monsterHpFlat(lvl));
+    return {
+      id,
+      arch: spawn.arch,
+      // Variant tag used at kill time for skull / inventory key
+      // resolution AND for visual / AI dispatch on the client.
+      // Server's AI uses m.spd directly (set above with variant
+      // override applied), so variant is also the source of truth
+      // for movement pace -- not just cosmetics.
+      variant: variantKey,
+      // Mid-fight transforms (mummy -> skeleton) mutate m.variant
+      // + m.spd; the respawn path resets to these spawn values so
+      // a re-spawned mummy starts back in mummy form instead of
+      // re-spawning as a skeleton.
+      spawnVariant: variantKey,
+      spawnSpd: finalSpd,
+      level: lvl,
+      element: zone.element || null,
+      hp: spawnHp, /* v2.3.1364: Lv1-2 -> flatLow; v2.3.1535: + variant hp mult */
+      maxHp: spawnHp,
+      dmg: Math.ceil(baseDmg * a.dmgMult),
+      xp: Math.ceil(baseXp),
+      gold: Math.ceil(baseGold),
+      spd: finalSpd,
+      emoji: a.emoji,
+      color: a.color,
+      x, y, spawnX: x, spawnY: y,
+      alive: true,
+      targetId: null, // player being chased
+      atkCd: 0,
+      respawnAt: 0,
+    };
   }
 
   // Mark a single monster / node as changed this tick.  Adds the zone
@@ -2836,7 +2998,23 @@ export class GameRoom {
         const buffMult = manaBuffActive ? 1.3 : 1.0;
         const mindMult = 1 + (ps.mind || 0) * 0.001;
         const rate = oocMana ? 0.018 : 0.007;
-        const manaHeal = Math.max(1, Math.ceil(ps.maxMana * rate * buffMult * mindMult));
+        /* ═══ v2.3.2062: THE MANA DRAUGHT'S FLOOR ═══
+           Owner: "refill at a quick rate so you can just do special attacks
+           constantly for 3 mins."
+
+           A FLOOR rather than another multiplier on the line below, because
+           the special's cost is FLAT (25) while every term here is a fraction
+           of maxMana -- so a multiplier that sustains a 100-mana build leaves
+           a 60-mana one still running dry, and the potion's promise would be
+           true only for some characters. See MANA_SURGE in data.js for the
+           arithmetic. Bounded like every other persisted magnitude: this is a
+           number out of a saved blob and must not become an infinite pool.
+           Math.max, so the ordinary regen still wins whenever it is larger --
+           a hub top-off is not slowed down by drinking. */
+        const _surge = Number(ps._buffs && ps._buffs.manaFlat);
+        const surgeFlat = (manaBuffActive && _surge >= 1 && _surge <= 200) ? _surge : 0;
+        const manaHeal = Math.max(surgeFlat,
+          Math.max(1, Math.ceil(ps.maxMana * rate * buffMult * mindMult)));
         const beforeMn = ps.mana;
         ps.mana = Math.min(ps.maxMana, ps.mana + manaHeal);
         if (ps.mana !== beforeMn) changed = true;
@@ -3731,8 +3909,29 @@ export class GameRoom {
     if (request.headers.get('Upgrade') !== 'websocket') {
       return new Response('Expected WebSocket', { status: 426 });
     }
-    if (this.sessions.size >= this.MAX_PLAYERS) {
-      return new Response('Room full', { status: 503 });
+    /* ═══ v2.3.1982: THE 61st PLAYER IS TOLD WHY ═══
+       This gate used to answer a bare `503 Room full` to a socket that
+       had not been upgraded yet, so the refusal reached the client as a
+       failed handshake and NOTHING ELSE.  wsClient's onclose cannot tell
+       that apart from a dropped cell connection, so it fell into the
+       ordinary reconnect backoff and retried every 10s forever behind a
+       loading screen that never said a word.  To that player the game is
+       simply broken, with no idea whether waiting would help.
+
+       The cap itself is NOT the bug and is not being raised: the headless
+       capacity campaign measured the worker at 0.16ms of its 22ms tick
+       with 60 players (server/test/load-crowd.mjs), so CPU is nowhere
+       near the wall — what binds is per-client DOWNLOAD bandwidth, ~4KB/s
+       per co-located moving peer on a phone (tools/qa/mp/mp-crowd.mjs).
+       Sixty is a receiver-side number.  The fix is a MESSAGE.
+
+       `_roomFullRefusal` (join.js) owns the answer, including the
+       deploy-order split: only a client that asked for the wire refusal
+       (`?rf=1`) gets the upgraded socket + `room_full`; everything else
+       still gets the byte-identical 503 it got before. */
+    await this._liveFlagsEnsure();
+    if (this.sessions.size >= this._roomCap()) {
+      return this._roomFullRefusal(url);
     }
     const [client, server] = Object.values(new WebSocketPair());
     this.state.acceptWebSocket(server);
@@ -3758,6 +3957,36 @@ export class GameRoom {
       (msg.blocking ? 1 : 0) + ',' + (msg.dodging ? 1 : 0) + ',' +
       (Number.isFinite(+msg.ba) ? Math.round(+msg.ba * 20) : '') + ',' +
       (msg.eqc || '') + ',' + (msg.eql || '') + ',' + (msg.eqs || '');
+  }
+
+  /* v2.3.1970: sanitise a room-chat relay in place (see CHAT_RELAY
+     above).  Returns false when there is nothing left worth relaying,
+     matching _handlePartyChat's "drop, don't answer" posture -- a
+     refusal is both a signal to a flooder and a second message to fan
+     out (the v2.3.1134 lane rule). */
+  _sanitizeChatRelay(session, msg) {
+    const p = msg && msg.payload;
+    if (!p || typeof p !== 'object') return false;
+    /* Clamp the RAW length FIRST so a padded string cannot smuggle a long
+       line past the trim -- the ordering _handlePartyChat documents. */
+    let text = typeof p.text === 'string' ? p.text : '';
+    text = text.slice(0, CHAT_RELAY.TEXT_MAX).replace(/[\x00-\x1f\x7f]/g, ' ').trim();
+    if (!text) return false;
+    const ps = this.playerState[session.id];
+    /* The server's own copy of who this is.  session.name is itself
+       sanitised at join (join.js sanitizeDisplayName, same version), and
+       ps.name is the stored permanent character name where there is one. */
+    const name = (ps && typeof ps.name === 'string' && ps.name) || session.name || 'Bro';
+    const color = typeof p.color === 'string'
+      ? p.color.slice(0, CHAT_RELAY.COLOR_MAX).replace(/[\x00-\x1f\x7f]/g, '') : '';
+    msg.payload = { id: session.id, name, text, color };
+    /* v2.3.1981: remember the line AS SANITISED, for the report path.
+       This is the ONLY copy of a chat line a report may quote (chatmod.js
+       header): taking it here means the evidence is what the server
+       actually relayed, byte for byte, and never what a reporting client
+       claims somebody said. */
+    this._chatModRemember(session.id, text, (ps && ps.z) || null, 'room');
+    return true;
   }
 
   async webSocketMessage(ws, message) {
@@ -3941,6 +4170,10 @@ export class GameRoom {
           // client-supplied cosmetics BEFORE they merge/broadcast (this
           // blind merge was the tag-forgery hole).
           this._clanStampTag(session.id, clean);
+          /* v2.3.2027: the ledger owns the cape, for the same reason the
+             registry owns the clan tag -- a blind merge of a client-supplied
+             cosmetic is a forgery hole, and this cosmetic is a contest prize. */
+          this._capeStamp(session.id, clean);
           session.data = { ...session.data, ...clean };
           const _trackPs = this.playerState[session.id];
           if (_trackPs) {
@@ -3988,6 +4221,59 @@ export class GameRoom {
           this._handleNodeStrike(session, msg.payload || msg);
         }
         break;
+
+      /* ═══ v2.3.2047: SHOPKEEPER BRO ═══
+         Three messages, all settled server-side. The client never computes a
+         price or moves a coin: it asks, and the authoritative player_state
+         echo that follows is what its bag and purse become (handoff rule 20).
+         A forged price is therefore not a thing that exists to forge. */
+      case 'shop_list':
+        if (session.id) {
+          this._shopList(((msg.payload || msg) || {}).keys)
+            .then((r) => this._shopSend(session.id, 'shop_state', r))
+            .catch(() => { /* a failed read leaves the panel on its last list */ });
+        }
+        break;
+
+      /* v2.3.2057: a price for a STACK, without moving anything. See
+         _shopQuote -- the decay means a stack is not unit price times N, and
+         the client holds no price table to work that out with. */
+      case 'shop_quote': {
+        if (!session.id) break;
+        const _q = msg.payload || msg;
+        this._shopQuote(_q.key, _q.qty, _q.mode)
+          .then((r) => this._shopSend(session.id, 'shop_quoted', r))
+          .catch(() => { /* the panel keeps its last quote */ });
+        break;
+      }
+
+      case 'shop_sell':
+      case 'shop_buy': {
+        if (!session.id) break;
+        const _sp = msg.payload || msg;
+        const _ps = this.playerState[session.id];
+        if (!_ps) break;
+        const _sid = session.id, _kind = msg.type;
+        (_kind === 'shop_sell'
+          ? this._shopSell(_ps, _sp.key, _sp.qty)
+          : this._shopBuy(_ps, _sp.key, _sp.qty)
+        ).then(async (r) => {
+          this._shopSend(_sid, 'shop_result', Object.assign({ kind: _kind }, r));
+          if (r && r.ok) {
+            /* The bag and purse the client must end up with, from the server's
+               own copy -- the same echo every other economy path leans on. */
+            const ws = this._wsBySessionId(_sid);
+            if (ws) this._sendPlayerState(ws, _sid);
+          }
+          /* Everyone's view of the pile, not just this player's: it is a
+             PUBLIC inventory, so a sale has to change what the next player
+             sees without them reopening the panel. */
+          this.broadcastAll({ type: 'shop_state', payload: await this._shopList() });
+        }).catch(() => {
+          this._shopSend(_sid, 'shop_result', { ok: false, error: 'Shop unavailable' });
+        });
+        break;
+      }
 
       case 'loot_pickup':
         // Client requests to pick up a loot pile.  Server validates
@@ -4075,6 +4361,33 @@ export class GameRoom {
         }
         break;
 
+      case 'cape_redeem':
+        /* v2.3.2026: the player tapped Open on a golden ticket in the bag.
+           The client never consumes it or grants the cape -- see the
+           firemaking incident in cooking.js, where a client-side consume with
+           no wire message let one log light unlimited campfires. */
+        if (session.id) {
+          /* `msg.payload || msg`, matching eat_request below: this switch does
+             NOT have a `data` binding, so the first cut handed the handler
+             undefined and every redeem returned at the invKey check -- the
+             ticket stayed in the bag and no cape was ever granted.  Silent,
+             and only the end-to-end scenario caught it. */
+          const _p = this._handleCapeRedeem(session, msg.payload || msg);
+          if (_p && _p.catch) _p.catch(() => {});
+        }
+        break;
+      case 'cape_equip':
+        /* v2.3.2109 (owner: "I wanted ability to equip and unequip the cape").
+           Only ever toggles a cape the LEDGER already says you won -- the
+           handler returns early on _capeOwnedBy, so this cannot be a way to
+           acquire one. `msg.payload || msg` for the same reason as the redeem
+           above: this switch has no `data` binding and the first cut of that
+           one silently did nothing for want of it. */
+        if (session.id) {
+          const _ce = this._handleCapeEquip(session, msg.payload || msg);
+          if (_ce && _ce.catch) _ce.catch(() => {});
+        }
+        break;
       case 'eat_request':
         // Player clicked Eat on a cooked_fish_* inventory item.
         // Server validates ownership, consumes 1, heals hp, emits
@@ -4208,6 +4521,18 @@ export class GameRoom {
         break;
       case 'friend_dm':
         if (session.id) await this._handleFriendDm(session, msg.payload || msg);
+        break;
+
+      /* v2.3.1981: chat moderation (chatmod.js).  Both are OWN validated
+         cases and neither rebroadcasts -- a mute is a private fact between
+         a player and the server, and a report must never be visible to the
+         person being reported (relaying it would make reporting dangerous,
+         which is the same as having no report button at all). */
+      case 'chat_mute':
+        if (session.id) await this._handleChatMute(session, msg.payload || msg);
+        break;
+      case 'chat_report':
+        if (session.id) await this._handleChatReport(session, msg.payload || msg);
         break;
 
       case 'harden_weapon':
@@ -4437,6 +4762,11 @@ export class GameRoom {
           session.relayTokens -= 1;
         }
         if (session.id) {
+          /* v2.3.1970: room chat is a relay, but not a blank cheque --
+             clamp the line, strip control chars and stamp the sender
+             before it is fanned out.  False means there is nothing left
+             to say, so nothing is relayed (see CHAT_RELAY above). */
+          if (msg.type === 'chat' && !this._sanitizeChatRelay(session, msg)) break;
           // v2.3.1119: trades keep the relay handshake but the room now
           // settles them -- the intercept validates at commit, moves the
           // goods, and annotates the accept with settled:true (or drops
@@ -4508,6 +4838,11 @@ export class GameRoom {
       this._partyOnDisconnect(session.id); // v2.3.1185: mark 'away' (grace), don't remove -- reconnects are routine
       this._botfpFlush(session); // v2.3.1146: final botstat: write so evidence survives the disconnect
       this._clearPvpConsent(session.id); // v2.3.1116: consent doesn't survive a disconnect
+      /* v2.3.1981: drop the in-memory mute Set (chatmod.js).  The list
+         itself is durable in chat_mute:<pid> and reloads on the next
+         join -- this only releases the fan-out lookup copy, so a room
+         that has seen a thousand players does not hold a thousand Sets. */
+      this._chatModOnClose(session.id);
       this.broadcastAll({ type: 'player_leave', id: session.id });
       this.broadcastAll({ type: 'player_count', count: this.getPlayerCount() - 1 });
     }
@@ -4624,7 +4959,9 @@ export class GameRoom {
 // v2.3.1118: mix the marketplace methods into GameRoom (see the
 // market.js header for the fold rationale + re-extraction path).
 Object.assign(GameRoom.prototype, broVerifyMethods); /* v2.3.1576 */
+Object.assign(GameRoom.prototype, eventCapeMethods); /* v2.3.2026 */
 Object.assign(GameRoom.prototype, marketMethods);
+Object.assign(GameRoom.prototype, shopMethods);   /* v2.3.2047 */
 // v2.3.1119: trade settlement mixin (same pattern).
 Object.assign(GameRoom.prototype, tradeMethods);
 // v2.3.1121: duel machine mixin.
@@ -4691,6 +5028,10 @@ Object.assign(GameRoom.prototype, combatMethods);
 Object.assign(GameRoom.prototype, amuletMethods);
 // v2.3.1323: mutual friendships + requests + DMs -- see friends.js.
 Object.assign(GameRoom.prototype, friendsMethods);
+// v2.3.1981: persistent chat mute + abuse reports -- see chatmod.js.
+Object.assign(GameRoom.prototype, chatModMethods);
 Object.assign(GameRoom.prototype, prog3Methods); /* v2.3.1659 */
 Object.assign(GameRoom.prototype, chainScoreMethods); /* v2.3.1664 */
 Object.assign(GameRoom.prototype, burstMethods); /* v2.3.1734 */
+// v2.3.1983: population-scaled spawns -- see spawnscale.js.
+Object.assign(GameRoom.prototype, spawnScaleMethods);

@@ -11,6 +11,7 @@ import { ZONES } from '@/data/zones.js';
 import { TOWN_EXITS, WORLDVIEW_EXITS, COMING_SOON_MARKS, TOWN_SOON_MARKS } from '@/data/effects.js';
 import { isZoneUnlocked, zoneUnlockQuest } from '@/game/questRoute.js'; /* v2.3.1822: a shut door looks shut */
 import { getLoadedTiledMap, getTilesetImage, IMAGE_ZONE_MAPS, VIDEO_ZONE_MAPS } from '../tiledMaps.js';
+import { PORTAL_BEAM } from '../fxStrips.js'; /* v2.3.2070: the light shaft over a zone exit */
 
 const ZONE_LABEL_STYLE = new TextStyle({
   fontFamily: 'Source Sans 3, sans-serif',
@@ -21,6 +22,55 @@ const ZONE_LABEL_STYLE = new TextStyle({
   align: 'center',
   letterSpacing: 2,
 });
+
+/* ═══ v2.3.2070: THE PORTAL BEAM'S SIZE AND STRENGTH ═══
+ * Owner: "Use this to indicate portal areas (where you go between zones)
+ * instead of the double circles.  It should fade furthest from the zone
+ * entrance."
+ *
+ * 168 world px is 5.25 tiles tall, against the old halo's 3.2-tile width.
+ * That sounds like a big jump and is not one on screen: the beam's own alpha
+ * is baked to fall 98% from apex to tip (tools/import_portal_beam.py), so the
+ * bright part is about a tile and a half across at the base and the rest is a
+ * plume you read rather than look at.  Its footprint on the ground -- the part
+ * that competes with the map art -- is SMALLER than the three nested circles
+ * it replaces.
+ *
+ * Anchored (0.5, 1) so the sprite's bottom row sits on the tile centre.  The
+ * bottom row IS the apex: the importer flips the artwork, which arrives with
+ * its apex at the top, so the brightest, narrowest end lands where you step
+ * through and the fan rises away from it. */
+const PORTAL_BEAM_H = 168;
+/* Multiplier on the pulse, which runs 0.4..0.8 — so this is not the opacity,
+ * it is what the pulse is scaled BY.  1.25 is exactly the value that maps the
+ * pulse's own peak (0.8) to a fully opaque beam and no further: anything
+ * higher clips at the top of every cycle, which does not make the beam
+ * brighter, it flattens the pulse into a hold.  At 1.0 the beam tops out at
+ * 0.8 and reads as haze on town's cobble, which is the brightest ground in the
+ * game and the first place the owner will look. */
+const PORTAL_BEAM_ALPHA = 1.25;
+/* A locked exit keeps a beam so the way stays findable on a painted map
+ * (v2.3.1822's rule), but a cold and dim one: slate tint, and the pulse is
+ * already halved for locked exits before it gets here.  The invitation is what
+ * is removed, not the landmark. */
+const PORTAL_BEAM_LOCKED_TINT = 0x7c8798;
+
+/* ═══ v2.3.2070: QA HANDLE ON THE BEAMS ═══
+ * The beam is ADDITIVE light over a painted map, so the only honest way to
+ * measure it is to shoot the same frame twice — with and without — and diff.
+ * That needs a way to turn them off that the render loop will not undo, and it
+ * has to reach the LIVE renderer.
+ *
+ * A per-instance `window.__x = () => this.y` (the shape the other probes in
+ * this file use) is not good enough here, twice over: update() re-sets
+ * `visible = true` on every beam every frame, so hiding the sprites is undone
+ * before the shutter opens; and a renderer built later silently clobbers the
+ * global, so the handle can end up pointing at an instance that is not the one
+ * on screen. That second failure is invisible — the toggle reports success and
+ * the two screenshots come back identical.
+ * So the set is the registry, the CONTAINER's flag is what moves, and every
+ * live renderer moves together. */
+const _liveTileRenderers = new Set();
 
 function cssToHex(css) {
   if (typeof css !== 'string') return 0x000000;
@@ -60,6 +110,31 @@ export class TileRenderer {
     // Overlay graphics for effects (water shimmer, exit glow, building outlines)
     this.overlayGfx = new Graphics();
     this.layer.addChild(this.overlayGfx);
+    /* v2.3.2070: the portal beams.  A Container of Sprites rather than more
+       Graphics, and ABOVE overlayGfx so the shaft reads as light over the
+       ground rather than something painted into it.  Pooled per exit tile —
+       see _updatePortalBeams. */
+    this.portalLayer = new Container();
+    this.portalLayer.label = 'portalBeams';
+    this.layer.addChild(this.portalLayer);
+    this._portalBeams = [];
+    /* v2.3.2070: QA hook.  The beam is additive light over a painted map, so
+       the only way to measure it is to shoot the same frame with and without
+       it and diff — which needs a handle on the sprites.  Same shape as
+       __btNpcSprites; read-only from the page's point of view. */
+    _liveTileRenderers.add(this);
+    if (typeof window !== 'undefined') {
+      window.__btPortalBeams = () => {
+        const all = [];
+        for (const t of _liveTileRenderers) all.push(...t._portalBeams);
+        return all;
+      };
+      window.__btPortalBeamsVisible = (v) => {
+        let n = 0;
+        for (const t of _liveTileRenderers) { t.portalLayer.visible = !!v; n++; }
+        return n;
+      };
+    }
     // Building sprite container (rendered on top of tiles)
     this.buildingContainer = new Container();
     this.buildingContainer.label = 'buildingSprites';
@@ -74,7 +149,7 @@ export class TileRenderer {
     /* Exit portal pulse — drawn per-frame on overlayGfx over S.map
        cells with tile id 8 (zone exit) / 9 (return-to-town) / 10
        (dungeon entrance). */
-    this._exitTiles = [];   // [{ r, c, tile, zoneId }]
+    this._exitTiles = [];   // [{ r, c, tile, zoneId, dir }]
 
     this.currentZone = null;
     this.currentMap = null;
@@ -136,14 +211,37 @@ export class TileRenderer {
        A tile that matches nothing (every spoke's tile-9 way home, and the
        procedural zones) keeps zoneId null and is never treated as gated. */
     const _destAt = new Map();
+    /* v2.3.2095: and which WAY each declared exit leads. The beam fans away
+       from the tile you step on, so an exit you leave by walking SOUTH needs
+       its plume pointing south too -- see the flip at the beam draw below. */
+    const _dirAt = new Map();
     const _declared = zoneId === 'town' ? TOWN_EXITS
       : zoneId === 'worldview' ? WORLDVIEW_EXITS : null;
     if (_declared) {
       for (const ex of _declared) {
-        /* Exits are declared at a 2x2 marker block's corner, so claim the
-           block rather than the single cell. */
-        for (let dr = 0; dr < 2; dr++) {
-          for (let dc = 0; dc < 2; dc++) _destAt.set(`${ex.ty + dr},${ex.tx + dc}`, ex.zoneId);
+        /* ═══ v2.3.2095: CLAIM THE BLOCK, WHICHEVER CORNER IT IS ═══
+           Exits are declared at a 2x2 marker block's corner. This claimed
+           `ty..ty+1` x `tx..tx+1` -- i.e. it assumed the declared cell is the
+           block's TOP-LEFT. Town's is not: its marker (25,48) is the block's
+           BOTTOM-RIGHT, and the painted tiles are rows 47-48, cols 24-25. So
+           the claim landed on rows 48-49, cols 25-26 and overlapped the real
+           block on exactly ONE of its four cells.
+
+           Three of town's four exit tiles therefore carried `zoneId: null`,
+           which is not cosmetic: the locked/gated test is `!!ex.zoneId && ...`,
+           so a gated zone's beam only ever read as locked on a quarter of its
+           own portal. It surfaced as a beam-direction mess -- one tile fanned
+           the new way and three the old -- which is what put a light on it.
+
+           A 3x3 neighbourhood covers the block from ANY corner, which is the
+           honest fix while the tables say "a corner" without saying which.
+           Safe against cross-claiming: the closest two live trail-heads on
+           either hub are six tiles apart. */
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            _destAt.set(`${ex.ty + dr},${ex.tx + dc}`, ex.zoneId);
+            _dirAt.set(`${ex.ty + dr},${ex.tx + dc}`, ex.dir || null);
+          }
         }
       }
     }
@@ -154,7 +252,8 @@ export class TileRenderer {
       for (let c = 0; c < cols; c++) {
         const t = row[c];
         if (t === 8 || t === 9 || t === 10) {
-          this._exitTiles.push({ r, c, tile: t, zoneId: _destAt.get(`${r},${c}`) || null });
+          this._exitTiles.push({ r, c, tile: t, zoneId: _destAt.get(`${r},${c}`) || null,
+            dir: _dirAt.get(`${r},${c}`) || null });
         }
       }
     }
@@ -209,10 +308,17 @@ export class TileRenderer {
        entry points that don't have a portal."
 
        Both cases are the same problem: the ART promises somewhere to go, and
-       walking there does nothing.  Town's twelve buildings have had no
-       entrances since v2.3.823 (S.nearBuilding is force-set to null every
-       frame), and the worldview paints nine regions of which five have a live
-       trail-head.  A player cannot tell "not built yet" from "I can't find
+       walking there does nothing.  The worldview paints nine regions of which
+       five have a live trail-head, and most of town's twelve buildings have
+       no door.
+       v2.3.2078: that second half no longer reads "S.nearBuilding is
+       force-set to null every frame" — it is computed every frame now, from
+       buildingPropNear matching a prop's `action` against the BUILDINGS
+       table.  What is true is narrower and worth stating exactly: TWO of the
+       twelve are reachable (the forge and the general store), because those
+       are the only PLACED town props carrying an action.  The other ten point
+       at the v16 set still held behind propIsPlaced, or at tiles from the
+       procedural town that no longer exists.  A player cannot tell "not built yet" from "I can't find
        the door", and spends the difference hunting.  A label costs one Text
        each and ends the hunt.
 
@@ -683,6 +789,14 @@ export class TileRenderer {
          re-deriving the answer in the test from the quest table would just be
          asserting the test's own copy of the rule. */
       const _portalProbe = (typeof window !== 'undefined') ? [] : null;
+      /* v2.3.2070: cache-only lookup, deliberately.  PORTAL_BEAM is registered
+         in the central preload manifest (preloadAnimations.js), so by the time
+         a zone renders it is warm; reading it here without a load call is what
+         makes a missing registration show up as the old circles rather than as
+         a texture that pops in mid-play.  CLAUDE.md: a first-use texture load
+         is a regression. */
+      const beamTex = PORTAL_BEAM.tex;
+      let _beamIdx = 0;
       for (const gl of (this._gatedLabels || [])) {
         const want = isZoneUnlocked(_rpg, gl.text._btZone) ? gl.base : gl.base + '\nLocked';
         if (gl.text.text !== want) gl.text.text = want;
@@ -710,6 +824,72 @@ export class TileRenderer {
         else                    { color = elemColor; pulseSpeed = 300; }
         const pulse = (Math.sin(now / pulseSpeed + ex.c + ex.r) * 0.2 + 0.6)
           * (_locked ? 0.5 : 1);
+        /* ═══ v2.3.2070: THE BEAM REPLACES THE CIRCLES ═══
+           Owner: "Use this to indicate portal areas (where you go between
+           zones) instead of the double circles."
+
+           The Graphics below are NOT dead code and must not be deleted: they
+           are the fallback for a beam texture that did not load.  A portal you
+           cannot see is a zone you cannot find, so the failure mode here has
+           to be "the old marker" and not "no marker" — the same rule
+           fxStrips.js states for the stun ring.  Nothing else in the loop
+           changes: the same pulse, the same per-type colour and speed, and the
+           same locked test drive both paths, so a fallback portal still
+           pulses at its own rate and still reads as shut when it is shut. */
+        if (beamTex) {
+          const sp = this._portalBeam(_beamIdx++);
+          sp.texture = beamTex;
+          sp.x = cx;
+          sp.y = cy;
+          sp.height = PORTAL_BEAM_H;
+          sp.width = PORTAL_BEAM_H * (beamTex.width / beamTex.height);
+          /* ═══ v2.3.2095: THE WAY OUT OF TOWN FANS THE WAY YOU ARE GOING ═══
+             Owner: "The light for exiting the city needs to be flipped
+             around."
+
+             The beam is anchored (0.5, 1) with its apex on the tile, so it
+             fans UP-SCREEN -- which is right for every exit you approach from
+             below, because the plume is then the thing you see ahead of you.
+             Town's one exit is the opposite case: it is on the plateau's
+             southern lip and you leave by walking SOUTH, so the fan rose
+             behind your shoulder and spread back over the town you were
+             leaving. The light pointed at where you had been.
+
+             Flipping scale.y (not the anchor, and not a rotation) keeps the
+             apex exactly where it was -- on the tile you step through, which
+             is the property v2.3.2070 was built around and the owner's
+             original "it should fade furthest from the zone entrance" -- and
+             sends the plume the other way.
+
+             Keyed on the exit's declared `dir`, so it is the data that
+             decides and not a hardcoded tile: any exit that leads southward
+             gets it, and today that is exactly the one the owner is looking
+             at. A tile-9 way home or a procedural exit carries no dir and is
+             unchanged. */
+          const _fanDown = ex.dir === 'south' || ex.dir === 'se' || ex.dir === 'sw';
+          sp.scale.y = _fanDown ? -Math.abs(sp.scale.y) : Math.abs(sp.scale.y);
+          sp.tint = _locked ? PORTAL_BEAM_LOCKED_TINT : 0xffffff;
+          /* Clamped: PORTAL_BEAM_ALPHA over 1 is deliberate — the beam wants
+             to be brighter than the pulse's own 0.8 ceiling on a dark map —
+             but Pixi clamps on render while leaving the property above 1,
+             which makes the QA probe report an alpha nothing ever drew. */
+          sp.alpha = Math.min(1, pulse * PORTAL_BEAM_ALPHA);
+          sp.visible = true;
+          /* v2.3.2070: the probe reports what was DRAWN, not what was
+             intended — "the portals are beams now" is a claim about pixels,
+             and re-deriving it in the test from the same constants would just
+             be the test asserting its own copy of the rule (the reasoning
+             v2.3.1822 wrote down for the locked flag). */
+          if (_portalProbe) {
+            const _p = _portalProbe[_portalProbe.length - 1];
+            _p.beam = { w: Math.round(sp.width), h: Math.round(sp.height),
+              alpha: +sp.alpha.toFixed(3), tint: sp.tint, blend: sp.blendMode,
+              /* v2.3.2095: reported from the sprite, so the test reads which
+                 way it was DRAWN rather than re-deriving the rule. */
+              fanDown: sp.scale.y < 0, dir: ex.dir || null };
+          }
+          continue;
+        }
         if (obvious) {
           /* Wide radial halo — three nested circles fading outward,
              so the exit reads as a glowing portal even on top of the
@@ -735,6 +915,11 @@ export class TileRenderer {
         }
       }
       if (_portalProbe) window.__btPortals = _portalProbe;
+      /* Any pooled beam past the last exit this zone has (the pool survives a
+         zone change; the exit list does not). */
+      for (let i = _beamIdx; i < this._portalBeams.length; i++) this._portalBeams[i].visible = false;
+    } else if (this._portalBeams.length) {
+      for (const sp of this._portalBeams) sp.visible = false;
     }
 
     // Two-pass background, matching the Canvas 2D path:
@@ -756,7 +941,32 @@ export class TileRenderer {
     }
   }
 
+  /* v2.3.2070: one pooled beam Sprite per exit tile, created on demand and
+     reused across zone changes.  Pooled rather than rebuilt because the exit
+     list is rebuilt on every zone change and a zone with six exits followed by
+     one with two would otherwise churn four Sprites per transition; the extras
+     are hidden, not destroyed.
+     ADDITIVE, which is the whole reason the artwork can have a white
+     background: the importer gives every pixel the ray's own colour and an
+     alpha of "how far from white it was", so under `add` a lit pixel adds
+     light and the page adds exactly nothing. */
+  _portalBeam(i) {
+    let sp = this._portalBeams[i];
+    if (!sp) {
+      sp = new Sprite();
+      sp.anchor.set(0.5, 1);
+      sp.blendMode = 'add';
+      this.portalLayer.addChild(sp);
+      this._portalBeams[i] = sp;
+    }
+    return sp;
+  }
+
   destroy() {
+    _liveTileRenderers.delete(this);
+    for (const sp of this._portalBeams) { try { sp.destroy(); } catch (e) {} }
+    this._portalBeams = [];
+    this.portalLayer.removeChildren();
     this.tileContainer.removeChildren();
     this.buildingContainer.removeChildren();
     this.overlayGfx.clear();

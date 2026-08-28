@@ -142,7 +142,7 @@ curl -X POST -H "Authorization: Bearer YOUR_KEY" \
 **Turn a broken system off** while you investigate (players stay
 connected; only that feature stops). The switches that exist today:
 `disable_jackpot`, `disable_weapon_drops`, `disable_dungeons`,
-`disable_threats`:
+`disable_threats`, `disable_event_capes`:
 ```
 curl -X POST -H "Authorization: Bearer YOUR_KEY" \
   -d '{"name":"disable_dungeons","value":true}' "https://WORKER/api/admin/flags"
@@ -158,6 +158,78 @@ One caution: flag names that match a *capability* name (like `jackpot`,
 clients it supports — that's an emergency lever with side effects (old
 client fallbacks can wake up). Stick to the `disable_*` switches and
 `xp_mult` unless a PR tells you otherwise.
+
+## Running the cape contest (v2.3.2029)
+
+**The contest is currently OFF, and starting it is not your job — it is a code
+change.** Ask in a session for the cape event to be switched on; that ships a
+one-line change (`EVENT_LIVE` in `server/src/eventcapes.js`) and merging it
+starts the contest. No terminal, no admin key, nothing for you to run.
+
+One thing to plan around: merging deploys the worker, which briefly
+disconnects everyone online and cold-starts the room. **Switch it on before
+players gather**, not while they are standing around waiting for it. Fifteen
+minutes of margin is plenty.
+
+Once it is running, it ends by itself when the third ticket is found. You do
+not have to switch it off.
+
+Everything below is optional and needs the admin key. Skip it unless something
+needs changing mid-event.
+
+**See who has won, and how many tickets are left.** This is the ledger — the
+one record that decides the contest — and it also tells you whether the drop is
+running right now:
+```
+curl -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/capes"
+```
+Worth running once BEFORE the event starts, to confirm all three are still
+available. If `issued` is not empty and the contest has not started, a ticket
+leaked (v2.3.2028 briefly ran the contest in production on 2026-08-27, between
+17:33 and 17:44 UTC) — clear it with the reset below.
+
+**Clear the ledger** — only for that situation, before a contest starts. It
+voids tickets people may legitimately hold, so it makes you name the cape and
+say `confirm=yes`:
+```
+curl -X DELETE -H "Authorization: Bearer YOUR_KEY" \
+  "https://WORKER/api/admin/capes?cape=crimson&confirm=yes"
+```
+
+**Change the drop rate.** The default is 1 in 100 kills (`0.01`). Set it as a
+chance per kill, so `0.02` is 1 in 50:
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" \
+  -d '{"name":"event_cape_rate","value":0.02}' "https://WORKER/api/admin/flags"
+```
+Conversions: `0.01` = 1 in 100, `0.02` = 1 in 50, `0.05` = 1 in 20. Takes
+effect immediately, no deploy. Only three tickets exist however easy you make
+them, so a higher rate does not make the prize less rare — it just means the
+contest actually finishes inside your session.
+
+**Stop the contest early**, before all three tickets are found:
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" \
+  -d '{"name":"disable_event_capes","value":true}' "https://WORKER/api/admin/flags"
+```
+This is the emergency stop — it works without a deploy, so it does not
+disconnect anyone. Undo it by deleting the flag:
+```
+curl -X DELETE -H "Authorization: Bearer YOUR_KEY" "https://WORKER/api/admin/flags?name=disable_event_capes"
+```
+
+Three things worth knowing so nothing surprises you mid-event:
+
+* **Stopping the contest does not take anyone's ticket away.** The switch stops
+  the *drop*. A ticket already won can still be opened for its cape a week
+  later, which is deliberate — a winner who happens to be offline must not
+  lose their prize.
+* **Tickets can be traded** between players in the trade window. They cannot be
+  sold on the marketplace (that is weapons-only). If someone ends up holding
+  two, they still only get one cape, and the spare stays in their bag to trade
+  on rather than being eaten.
+* **One cape per account.** A player who has already redeemed cannot win a
+  second ticket, so the three winners are three different people.
 
 ## Testing safely
 

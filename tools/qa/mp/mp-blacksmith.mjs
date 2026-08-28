@@ -25,10 +25,44 @@ import * as H from './harness.mjs';
    worldProps.js, so the relationship worth pinning is the one that now means
    something.  Loosening the old fountain check to make it pass would have kept
    a test that asserts nothing — he is 423px from the water and correct. */
-const FORGE = { x: 1480, y: 545 };
-/* Close enough to read as "at the fountain" on a phone screen: the basin is
-   ~76px in radius and the viewport is ~488 world px wide. */
-const NEAR = 200;
+/* v2.3.2078: THE FORGE IS READ, NOT REMEMBERED.
+   This was `{ x: 1480, y: 545 }`, copied out of worldProps at the time.  The
+   forge has since moved to (480, 900) and grown roughly threefold (owner:
+   "Same with blacksmith house"), so the check was measuring the smith's
+   distance from a spot no building has stood on for weeks — 960px, and a
+   FAIL on a smith who is standing at his forge.  mp-townhill reads the prop
+   table and passes on the same frame, which is the difference.
+
+   And it measures against the FOOTPRINT rather than the centre.  On a
+   building 470px wide the centre is 235px from its own doorway, so a
+   centre-distance test either fails a smith at the door or is loosened until
+   it would pass one across the plaza.  Distance to the box is what "at his
+   forge" means. */
+/* ═══ v2.3.2089: THERE ARE TWO ANVILS AND HE MOVED TO THE OTHER ONE ═══
+   Owner: "Move blacksmith bro next to the other anvil by his building."
+
+   The small `anvil` PROP sits out on the plaza cobble at (640, 960); the big
+   one is painted into the forge art itself, on its stump in the work yard in
+   front of the fire.  He now stands at the second, at (300, 900).
+
+   So the old check — within 90px of the anvil PROP — asserts the wrong anvil,
+   and it cannot simply be repointed: the painted one is pixels in a sprite,
+   not a row in the props table, so there is nothing to measure a distance to
+   without inventing a coordinate for it.  What IS derivable, and is the claim
+   that matters, is that he stands in his own forge YARD rather than out on the
+   plaza: inside the forge footprint's x-span, on its south lip.
+
+   AND THE REACHABILITY CHECK CHANGES SHAPE, NOT MEANING.  The line below used
+   to be "outside the footprint, or he is a smith you can never reach", which
+   is the right worry behind the wrong proxy — the yard is inside the forge's
+   footprint and is exactly where a smith belongs.  So it asks the real
+   question instead: is there ground a player can stand on close enough to
+   talk to him?  Probed downward from his feet; the first clear cell is 16px
+   away. */
+const NEAR_FORGE = 160;
+/* A player standing this far from him can interact — NPC_PROX_OPEN is 90 for
+   a shopkeeper's window, so anything inside that is comfortably in range. */
+const REACH = 90;
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Visitor', wsPort, webPort });
@@ -43,12 +77,38 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!smith, npcs);
   if (!smith) { await P.ctx.close().catch(() => {}); return; }
 
-  const d = Math.hypot(smith.x - FORGE.x, smith.y - FORGE.y);
-  rec.ok('...standing at his forge', d < NEAR,
-    { dist: Math.round(d), at: { x: smith.x, y: smith.y }, forge: FORGE });
-  /* ...and OUTSIDE it: the forge is solid, so a smith inside its footprint
-     would be a smith you can never reach. */
-  rec.ok('...outside it, not inside the building', smith.y > FORGE.y, { smith, forge: FORGE });
+  const forge = (await P.page.evaluate(() =>
+    (window.__btWorldProps ? window.__btWorldProps() : []).find((p) => p.id === 'forge') || null));
+  rec.ok('the forge is on the map to stand at (guard)',
+    !!forge && !!forge.footprint, forge);
+  if (!forge || !forge.footprint) { await P.ctx.close().catch(() => {}); return; }
+  const f = forge.footprint;
+  /* Distance to the BOX: zero anywhere inside it, and the gap to the nearest
+     wall outside it. */
+  const dx = Math.max(f.x0 - smith.x, 0, smith.x - f.x1);
+  const dy = Math.max(f.y0 - smith.y, 0, smith.y - f.y1);
+  const d = Math.hypot(dx, dy);
+  rec.ok('...standing at his forge', d < NEAR_FORGE,
+    { gapToWall: Math.round(d), at: { x: smith.x, y: smith.y }, footprint: f });
+
+  /* And in his own YARD, at the anvil painted into the forge art -- see the
+     header for why this is a containment test and not a distance to a prop. */
+  const inYard = smith.x >= f.x0 && smith.x <= f.x1
+    && smith.y > f.y0 && smith.y <= f.y1;
+  rec.ok('...in his own forge yard, not out on the plaza cobble',
+    inYard, { smith: { x: smith.x, y: smith.y }, footprint: f });
+
+  /* ...AND REACHABLE.  The forge is solid, so the thing actually worth
+     asserting is that a player can get close enough to talk to him. Probed
+     straight down from his feet, which is the only side open to the plaza. */
+  const gap = await P.page.evaluate(([sx, sy]) => {
+    for (let d = 0; d <= 200; d += 8) {
+      if (window.__btIsSolid(sx, sy + d) === false) return d;
+    }
+    return null;
+  }, [smith.x, smith.y]);
+  rec.ok(`...and a player can stand close enough to talk to him (${gap}px below his feet)`,
+    gap !== null && gap <= REACH, { gap, reach: REACH, smith: { x: smith.x, y: smith.y } });
 
   rec.ok('he carries his own art, so he is not the emoji fallback',
     !!smith.sprite && /blacksmith/.test(smith.sprite), smith.sprite);

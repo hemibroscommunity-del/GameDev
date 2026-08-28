@@ -38,8 +38,26 @@
  * CI status: wired into client-ci.yml as REPORT-ONLY (continue-on-error).
  * Promotion criteria: flip it blocking once it holds green (incl. the
  * one workflow retry) for ~10 consecutive CI runs.
+ *
+ * v2.3.2067 (backlog item F, promotion review): all ELEVEN of its own
+ * checks pass against a real local stack — caps, mutual presence, the
+ * invite card, both rosters, both HUD strips.  It then dies on the Leave
+ * click, and NOT because of the keyboard legend this harness already
+ * presses H for: the World Chat feed (v2.3.2037, WorldChatFeed.jsx) is
+ * drawn over the party roster and takes the tap.  Measured at 844x390
+ * with --dash-h at 265px, the feed's scrollable list — the one element
+ * in it with pointerEvents:'auto' — sits at y 84..117 over a Leave
+ * button at y 98..122, and elementFromPoint on the button's centre
+ * returns the feed.  A bottom-anchored panel clearing a 265px band on a
+ * 390px-tall screen is not in the lower left any more; it is in the
+ * top-left HUD column, on top of the roster (z 16) and the quest tracker
+ * (z 17-19).  That is a live regression rather than harness rot, and
+ * where the feed should go instead is an owner call, so this harness is
+ * left reporting it rather than reaching past the UI to make itself
+ * green.
  */
 import { chromium } from 'playwright-core';
+import { legacyLogin } from './legacy-login.mjs';
 import { existsSync } from 'node:fs';
 
 const SHELL = '/tmp/chrome-headless-shell-linux64/chrome-headless-shell';
@@ -94,9 +112,10 @@ async function startSession(label) {
   });
   await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await sleep(6000);
-  const input = page.locator('input').first();
-  await input.fill(label, { timeout: 60000 });
-  await input.press('Enter');
+  /* v2.3.1964: the splash has no name box — it has a login door.
+     legacyLogin takes the same route a player takes (see
+     tools/qa/legacy-login.mjs for what broke and when). */
+  await legacyLogin(page, label);
   for (let i = 0; i < 60; i++) {
     const joined = await page.evaluate(() => window._gameState?.current?.player?.x != null).catch(() => false);
     if (joined) return page;
@@ -199,6 +218,18 @@ for (const [label, page] of [['A', A], ['B', B]]) {
 
 /* ── 4. A leaves via the strip's Leave button → disband on both
        (a party left with one member is just a player) ── */
+/* v2.3.1966: hide the desktop keyboard legend before reaching for the roster.
+   The legend is `.bt-kb-hints`, bottom-left, and its KEY CHIPS take pointer
+   events (game.css: `.bt-kb-hints .bt-kb-key{pointer-events:auto}`) — so where
+   a chip overlaps the party roster's Leave button, the click lands on the chip.
+   H is the game's own control for this and the legend says so ("Hide these
+   (H)"), which is what a desktop player does; the harness does the same rather
+   than reaching past the UI with a synthetic event.
+   NOT swept under the carpet: the overlap itself is a real desktop-only
+   annoyance (there is no keyboard legend on the primary platform, iPhone).  It
+   is geometry, not stacking — see the note in the v2.3.1966 commit. */
+await A.keyboard.press('h');
+await A.waitForTimeout(400);
 await A.locator('button[title="Leave party"]').first().click({ timeout: 5000 });
 for (const [label, page] of [['A', A], ['B', B]]) {
   const gone = await pollUntil(async () => {

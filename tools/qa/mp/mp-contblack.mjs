@@ -205,7 +205,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const cont0 = await R.page.$('[data-tut="login-key"]');
   rec.ok('the door offers Continue (guard)', !!cont0, atDoor);
   if (cont0) {
-    await cont0.click();
+    /* v2.3.2111: this device has a character, so the list is already up. */
+    await H.openPicker(R.page);
     await R.page.waitForTimeout(800);
     const cont = await R.page.$('[data-tut="char-row"][data-char-name="Returner"]');
     rec.ok('the picker lists the character this device holds (guard)', !!cont, {});
@@ -241,7 +242,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const keyBtn = await Q.page.$('[data-tut="login-key"]');
   rec.ok('the door offers the Login Key button (guard)', !!keyBtn, {});
   if (keyBtn && idBefore.key) {
-    await keyBtn.click();
+    /* v2.3.2111: same — and the key form lives inside the picker either way. */
+    await H.openPicker(Q.page);
     await Q.page.waitForTimeout(700);
     const input = await Q.page.$('input');
     rec.ok('the key form has an input (guard)', !!input, {});

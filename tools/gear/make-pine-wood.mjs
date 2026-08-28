@@ -25,6 +25,7 @@
  * saturation gate below leaves them where they are.
  */
 import { chromium } from 'playwright-core';
+import { spawnSync } from 'node:child_process';
 import http from 'http';
 import fs from 'fs';
 import path from 'path';
@@ -43,14 +44,17 @@ const FILES = [
   ['bows/bow-northeast.webp', 'sprites/weapons/bows/bow-northeast.png'],
   ['bows/bow-north.webp', 'sprites/weapons/bows/bow-north.png'],
   ['staffs/Wizard Staff2.webp', 'sprites/weapons/staffs/Wizard Staff2.png'],
-  ['icons/bow.webp', 'icons/items/bow.png'],
-  ['icons/staff.webp', 'icons/items/staff.png'],
+  /* v2.3.2010: `inkEdge` — see THE SOFT OUTLINE below.  The three ICONS are
+     painted at 256px and their linework is a soft dark band, not the sprites'
+     hard near-black keyline, so the near-black guard only spares its core. */
+  ['icons/bow.webp', 'icons/items/bow.png', { inkEdge: true }],
+  ['icons/staff.webp', 'icons/items/staff.png', { inkEdge: true }],
   /* v2.3.1774 (owner: "change bro's shield to pine shield and see if you can
      recolor it like you did for the staff and bow").  Same curve, same
      reasoning — the shield's face is wood and the ask is for LIGHTER wood,
      which a multiply tint cannot do.  Its steel rim and boss are near-neutral
      and light, so the saturation gate leaves them as metal. */
-  ['icons/shield.webp', 'icons/items/shield.png'],
+  ['icons/shield.webp', 'icons/items/shield.png', { inkEdge: true }],
   /* v2.3.1875: the three shield SPRITES also get the halo peel (see DEHALO
      below).  The icon above deliberately does not — it is higher-res painted
      art whose edge really does carry light neutral highlights, and the peel
@@ -179,12 +183,64 @@ window.__pine = (src, opts) => new Promise((res) => {
     for (let v = 0; v < 256; v++) {
       curve[v] = Math.round(255 * (1 - Math.pow(1 - v / 255, P_SCREEN)));
     }
+    /* ═══ v2.3.2010: THE SOFT OUTLINE, WHICH THE NEAR-BLACK GUARD MISSES ═══
+     *
+     * Owner, for the second time on this art: "For pine bow check outline in
+     * each direction looks like the black outline was removed."
+     *
+     * v2.3.1875 already fixed this ONCE, by replacing a single screen step
+     * with a repeated screen that preserves shadow contrast, and that fix is
+     * real -- the SPRITE bows measure 88-99% dark on their silhouette edge
+     * today, and re-running this tool reproduces every shipped file
+     * byte-for-byte, so nothing here is stale.  What it did not fix is the
+     * ICON, and the reason is in the guard below rather than in the curve.
+     *
+     * MEASURED, on the source icon (tools/gear/src-art/icons/bow.webp), its
+     * 860 silhouette-edge pixels by max-channel band:
+     *
+     *     0- 31   177   32- 63   175   <- the guard spares these
+     *    64- 95   144   96-127   138   <- it lifts these, like wood
+     *   128-255   226
+     *
+     * The icon's outline is not a keyline.  It is a PAINTED band that fades
+     * from black out through the wood over ~120 levels, so 'mx < 60' keeps its
+     * core and screens its shoulder: 352 of 860 edge pixels survive and the
+     * line thins until it reads as gone.  Shipped edge means bear that out --
+     * bow 133.5, staff 100.0, shield 102.5, against the 85.9 this art had
+     * before any recolour.  (The saturation clause is a second, smaller miss:
+     * the icon's ink is brown, so a saturated dark pixel fails 'mx - mn < 24'
+     * even below 60.  Both are fixed by the same rule.)
+     *
+     * THE RULE: on the SILHOUETTE EDGE, leave anything darker than the wood's
+     * own midtone alone, whatever its hue.  The edge is where the outline is,
+     * by definition, so this cannot reach into the wood face and keep it dark
+     * -- an interior shadow is still screened exactly as before, and the
+     * approved pine colour is unchanged everywhere but the rim.
+     *
+     * EDGE_INK = 128 rather than the wood midtone's 66: the band's shoulder
+     * runs to ~127 (see the histogram), and stopping at 66 would leave the
+     * outer half of every line lifted, which is the same bug with a smaller
+     * number.  Above 128 the edge is a highlight on a metal fitting, not ink,
+     * and those still take the curve.
+     *
+     * SPRITES DO NOT OPT IN.  Their outline really is a hard near-black
+     * keyline that the old guard already catches, and their edges are one
+     * pixel wide, so an edge rule there would be all cost and no change. */
+    const EDGE_INK = 128;
+    const inkEdge = !!(opts && opts.inkEdge);
+    const alphaAt = (x, y) => (x < 0 || y < 0 || x >= W || y >= H) ? 0 : p[(y * W + x) * 4 + 3];
     for (let i = 0; i < p.length; i += 4) {
       if (p[i + 3] < 8) continue;
       const r = p[i], g = p[i + 1], b = p[i + 2];
       const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
       /* keyline: near-black and near-neutral -> the outline, leave it */
       if (mx < 60 && mx - mn < 24) continue;
+      if (inkEdge && mx < EDGE_INK) {
+        const px = (i / 4) % W, py = Math.floor((i / 4) / W);
+        const solid = alphaAt(px - 1, py) >= 200 && alphaAt(px + 1, py) >= 200
+          && alphaAt(px, py - 1) >= 200 && alphaAt(px, py + 1) >= 200;
+        if (!solid) continue;      /* on the silhouette and dark -> it is ink */
+      }
       const lift = (c0, k) => Math.max(0, Math.min(255, Math.round(curve[c0] * k)));
       p[i] = lift(r, WARM[0]);
       p[i + 1] = lift(g, WARM[1]);
@@ -230,3 +286,18 @@ console.log(`${wrote} file(s) written from tools/gear/src-art`);
 if (failed) { console.error(`${failed} file(s) FAILED — see above`); process.exitCode = 1; }
 await browser.close();
 srv.close();
+
+/* v2.3.2068: the three ICON destinations above are written as PNG (canvas
+   cannot encode a LOSSLESS webp) and then converted, because /icons/items
+   ships webp now and the React <img> tags ask for `.webp`.  The converter
+   only walks public/icons, so the sprite destinations in this list are
+   untouched by it and stay PNG. */
+if (wrote) {
+  const r = spawnSync('python3', [path.join(ROOT, 'tools/webp_icons.py'), '--convert'],
+    { cwd: ROOT, stdio: 'inherit' });
+  if (r.status !== 0) {
+    console.error('  !! webp conversion failed — the icons are still .png, which nothing loads.');
+    console.error('     Run: python3 tools/webp_icons.py --convert');
+    process.exitCode = 1;
+  }
+}

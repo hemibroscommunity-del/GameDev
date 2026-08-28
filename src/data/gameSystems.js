@@ -9,6 +9,9 @@ import { TILE } from './constants.js';
 import { ZONES } from './zones.js';
 import { ELEMENTS } from './elements.js';
 import { TOWN_BUILDINGS } from './buildings.js';
+/* v2.3.1972: the props ARE the doors — see questReachable below.  worldProps
+   imports nothing, so this cannot make a cycle. */
+import { WORLD_PROPS, propsForZone } from './worldProps.js';
 import { TOWN_EXITS } from './effects.js';
 /* v2.3.1189: DEPTH_TIERS…skillXpRequired were eslint-grandfathered
    globals (resolved via BroTown's Object.assign(globalThis, DATA) at
@@ -5509,11 +5512,11 @@ export const QUEST_CHAINS = {
          Copper — the per-metal icon has existed since v2.3.1760
          (tools/gear/make-metal-icons.mjs writes it by the same rule the
          renderer tints by), it was simply never pointed at here. */
-      { when: 'accept',   icon: '/icons/items/great-sword-copper.png', label: "Copper Great Sword" },
-      { when: 'accept',   icon: '/icons/items/shield.png', label: "Pine Shield" },
+      { when: 'accept',   icon: '/icons/items/great-sword-copper.webp', label: "Copper Great Sword" },
+      { when: 'accept',   icon: '/icons/items/shield.webp', label: "Pine Shield" },
       /* v2.3.1692 (owner): all three combat styles land on quest one. */
-      { when: 'complete', icon: '/icons/items/bow.png',    label: "Pine Bow" },
-      { when: 'complete', icon: '/icons/items/staff.png',  label: "Pine Staff" },
+      { when: 'complete', icon: '/icons/items/bow.webp',    label: "Pine Bow" },
+      { when: 'complete', icon: '/icons/items/staff.webp',  label: "Pine Staff" },
     ],
     dialogue: {
       /* ═══ v2.3.1831: HE HANDS YOU THE KIT, HE DOES NOT READ YOU THE MANUAL ═══
@@ -5589,7 +5592,7 @@ export const QUEST_CHAINS = {
        here promises armour the worker will not hand over. */
     reward: { gold: 400, xp: 210, item: "Copper Greaves" }, /* v2.3.1692 (owner): legs, not chest */
     next: null,
-    gives: [{ when: 'complete', icon: '/icons/items/greaves-copper.png', label: "Copper Greaves" }],
+    gives: [{ when: 'complete', icon: '/icons/items/greaves-copper.webp', label: "Copper Greaves" }],
     dialogue: {
       start: 'Last one from me. Flame Fields. Goblins, and they are quick about it. Six.',
       progress: 'Six, out of the fire.',
@@ -5654,7 +5657,7 @@ export const QUEST_CHAINS = {
     reward: { gold: 200, xp: 140, item: 'Copper Torso' }, /* v2.3.1758: copper is tier one */
     next: null,
     gives: [
-      { when: 'complete', icon: '/icons/items/chest-plate-copper.png', label: 'Copper Torso' },
+      { when: 'complete', icon: '/icons/items/chest-plate-copper.webp', label: 'Copper Torso' },
     ],
     dialogue: {
       start: 'Ore next. Five lumps, any kind — the rocks in every zone will do.',
@@ -5669,6 +5672,20 @@ export const QUEST_CHAINS = {
     npc: 'Mayor Bro',
     title: 'Welcome Home',
     desc: 'Visit 3 buildings in town.',
+    /* v2.3.1972: this quest needs a DOOR, and town has had none since
+       TOWN_PROPS_ENABLED went false (worldProps.js, v2.3.1813).  Declared as
+       data so questReachable can hide it while that is true and un-hide it the
+       day the props come back — see the long note on questReachable for why an
+       unfinishable quest here stopped the whole rest of his chain.  The quest
+       is left otherwise INTACT (check, reward, dialogue, `next`), because the
+       fix for it is content — restore the buildings, or give him an errand the
+       world can pay out on — and neither is a call to make from here.
+       v2.3.2087: THREE, not `true`.  The check below wants three DISTINCT
+       buildings and this asked whether ONE door existed, so with the forge and
+       the general store live the quest was offered and could not be finished —
+       which stopped mayor_2 and mayor_3 behind it and left `zone_exits`
+       locked. The number it needs is the number it asks for. */
+    needsDoor: 3,
     check: function check(rpg, S) {
       var _S$stats;
       return (((_S$stats = S.stats) === null || _S$stats === void 0 || (_S$stats = _S$stats.visitedBuildings) === null || _S$stats === void 0 ? void 0 : _S$stats.size) || 0) >= 3;
@@ -5711,6 +5728,21 @@ export const QUEST_CHAINS = {
     npc: 'Mayor Bro',
     title: 'Dungeon Delver',
     desc: 'Clear any dungeon.',
+    /* v2.3.1972: there is no way into a dungeon.  The depth-tier entrance has
+       been hard off since v2.3.54 (`if (false && tile === 10)` in
+       zoneTransitions.js — "the depth-tier dungeons aren't ready for play
+       yet"), and the custom-dungeon workshop that replaced it stands in
+       farm_home, which is reached only through the town Farm building's panel
+       (FarmPanel's "visit your farm"; the World View has no farm trail-head).
+       So the door this quest actually needs is the FARM's — named rather than
+       asking "is there any door", because the four town props that exist are
+       the forge, the bank, the enchanter and the general store, and turning
+       the props back on would otherwise un-hide this quest while the farm
+       stayed shut.  NOTE if that door ever ships: the tile-10 half is still
+       `false` and does not have to be re-enabled — the workshop route is a
+       complete path on its own (workshop -> DungeonCreatorPanel -> Play ->
+       dungeon_start -> dungeonWaves writes lifeSkills.dungeonClears). */
+    needsDoor: 'farm',
     check: function check(rpg) {
       var _rpg$lifeSkills4;
       return Object.keys(((_rpg$lifeSkills4 = rpg.lifeSkills) === null || _rpg$lifeSkills4 === void 0 ? void 0 : _rpg$lifeSkills4.dungeonClears) || {}).length > 0;
@@ -6264,6 +6296,102 @@ export function questObjectiveDone(quest, S, rpgFallback) {
   try { return !!quest.check(rpg, S); } catch (e) { return false; }
 }
 
+/* ═══ v2.3.1972: A QUEST WHOSE TARGET IS NOT IN THE WORLD ═══
+ *
+ * questModel.js already refuses to show a quest whose GIVER left the world
+ * (v2.3.1681, `giverExists`), on the reasoning that it "can never be accepted
+ * OR turned in, so it has no business being displayed at all".  mayor_1
+ * ("Visit 3 buildings in town") is the same fault one step further in: the
+ * giver is standing right there, and the OBJECTIVE is what left.
+ *
+ * TOWN_PROPS_ENABLED is false (worldProps.js, v2.3.1813, owner: "you can just
+ * keep the buildings and NPCS removed for now"), so propsForZone('town')
+ * returns [], buildingPropNear finds no door, and BroTown's proximity scan
+ * leaves S.nearBuilding null on every frame.  enterBuilding() is the ONLY
+ * writer of S.stats.visitedBuildings and nothing can call it — so mayor_1's
+ * `visitedBuildings.size >= 3` is false forever.
+ *
+ * WHY THAT WAS A DEAD END AND NOT MERELY A DEAD QUEST.  The log shows one
+ * offer at a time (v2.3.1681, owner: "must finish one to begin another") and
+ * getNpcQuest returns the FIRST incomplete quest in the chain.  mayor_1 sits
+ * directly after life_2, so the moment a player finished the six-quest arc
+ * the game handed them an errand it could never take back — and mayor_2 and
+ * mayor_3, both of which ARE completable, were never offered again.
+ * mp-questline's own closing assertion ("life_2: ...already offering his next
+ * quest") was green because of it.  A gate whose key cannot be obtained is
+ * not a gate, it is a wall (v2.3.1779, for the identical fault on the town
+ * building doors themselves).
+ *
+ * mayor_3 IS THE SAME WALL ONE STEP FURTHER ON, which is why the field takes
+ * a door NAME as well as `true`.  "Clear any dungeon" has exactly two
+ * entrances and neither is open: the depth-tier tile-10 trigger has been hard
+ * off since v2.3.54 (`if (false && tile === 10)`, zoneTransitions.js), and the
+ * custom-dungeon workshop stands in farm_home, which a player reaches ONLY
+ * through the town Farm building's panel.  So hiding mayor_1 on "is there any
+ * door" and stopping there would have moved the dead end from the quest after
+ * life_2 to the quest after mayor_2 and called it fixed — and worse, turning
+ * the props back on would have un-hidden mayor_3 while the farm stayed
+ * shut, because the four town props that exist are the forge, the bank, the
+ * enchanter and the general store.  There is no farm door in the table at all,
+ * so mayor_3 names the one it needs.
+ *
+ * DERIVED, NOT HARDCODED, on purpose — same shape as LIVE_QUEST_GIVERS.  The
+ * quest declares WHAT it needs (`needsDoor`) and this reads the same two
+ * things the proximity scan reads (propsForZone + p.action), so the day a door
+ * ships the quest comes back with it and nobody has to remember this function.
+ * Memoised: both inputs are module constants, and this is called from the
+ * per-frame NPC loop through getNpcQuest.
+ */
+var _doorCache = null;
+var _doorCount = 0;
+/** Is there a live, enterable door in the world?  `action` narrows it to one
+ *  building (the Farm, say); a NUMBER asks whether at least that many distinct
+ *  doors exist; true/undefined asks whether ANY door does.
+ *
+ * ═══ v2.3.2087: A COUNT, BECAUSE "ANY" WAS NOT WHAT THE QUEST NEEDED ═══
+ * mayor_1 is "Visit 3 buildings in town" and declared `needsDoor: true`, so
+ * this was asked whether ONE door existed.  Two did -- the forge and the
+ * general store -- so the quest was offered, and its own check wants
+ * `visitedBuildings.size >= 3`, which two doors can never reach.  Offered and
+ * impossible: exactly the dead end the note above was written to prevent,
+ * reappearing one level down, in the guard itself.
+ *
+ * It matters more than one errand.  getNpcQuest returns the FIRST incomplete
+ * quest in a chain and the log shows one at a time, so an uncompletable
+ * mayor_1 stops mayor_2 and mayor_3 from ever being offered -- and mayor_1
+ * `unlocks: 'zone_exits'`, so the whole world stayed shut behind it.
+ *
+ * v2.3.2086 put the bank and the enchanter back on the map, which takes the
+ * count to four and makes the quest completable for the first time.  This
+ * makes the GUARD honest as well, so the day a door is removed the quest
+ * hides itself again instead of quietly walling the chain. */
+function anyBuildingDoor(action) {
+  if (!_doorCache) {
+    _doorCache = Object.create(null);   /* action-keyed (CLAUDE.md rule 4) */
+    _doorCount = 0;
+    for (var _i34 = 0; _i34 < WORLD_PROPS.length; _i34++) {
+      var p = WORLD_PROPS[_i34];
+      if (!p || !p.action) continue;
+      /* Through propsForZone, not straight off WORLD_PROPS: the enable flag
+         lives in there, and reading the raw array would report doors the
+         renderer and the proximity scan both agree do not exist. */
+      if (propsForZone(p.zone).indexOf(p) < 0) continue;
+      if (!_doorCache[p.action]) _doorCount++;   /* DISTINCT buildings */
+      _doorCache[p.action] = true;
+      _doorCache['*'] = true;
+    }
+  }
+  if (typeof action === 'number') return _doorCount >= action;
+  return !!_doorCache[typeof action === 'string' ? action : '*'];
+}
+
+/** Can this quest's objective be met by anything currently in the world? */
+export function questReachable(quest) {
+  if (!quest) return false;
+  if (quest.needsDoor && !anyBuildingDoor(quest.needsDoor)) return false;
+  return true;
+}
+
 export function getNpcQuest(rpg, npcName) {
   var questState = rpg._quests || {};
   /* Find first incomplete quest for this NPC */
@@ -6272,6 +6400,12 @@ export function getNpcQuest(rpg, npcName) {
       qid = _Object$entries4$_i[0],
       quest = _Object$entries4$_i[1];
     if (quest.npc !== npcName) continue;
+    /* v2.3.1972: skip, do not stop.  `continue` is what keeps the rest of his
+       chain reachable — a `return null` here would trade one unfinishable
+       quest for a giver with nothing to say, which is the same wall wearing a
+       politer face.  It also unsticks a save that already holds mayor_1
+       'active': the state is simply passed over and he offers mayor_2. */
+    if (!questReachable(quest)) continue;
     var state = questState[qid];
     if (!state || state === QUEST_STATUS.available) return {
       quest: quest,

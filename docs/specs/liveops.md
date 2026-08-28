@@ -38,6 +38,18 @@ the authoritative grant and `combat_credit`; the broadcast `monster_kill`
 payload stays base (the private echo corrects, rule 20). This is the
 "2x XP weekend" primitive.
 
+`max_players` (v2.3.1982) — the room's admission ceiling, read through
+`_roomCap()` (join.js) in the DO's `fetch()` and clamped to
+**[1, MAX_PLAYERS]** at read. It can only ever LOWER the cap: 60 is a
+receiver-bandwidth number (~4KB/s of download per co-located moving peer
+on a phone), not a server one, so nothing above it is safe to hand out no
+matter what is written into storage. Set it to run a smaller, smoother
+room for a demo — or, in a headless test, to 1, which is how the
+61st-player refusal is exercised without 61 browsers
+(`tools/qa/mp/mp-roomfull.mjs`). Refused joiners get `room_full` and keep
+retrying, so RAISING the flag again lets the waiting queue in with no
+action from them. See room-full.md.
+
 ### Caps override (the emergency lever — read the warning)
 
 The whole flag map is also spread over the `state_sync.caps` literal,

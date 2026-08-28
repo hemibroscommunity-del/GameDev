@@ -222,7 +222,30 @@ export const movementMethods = {
     if (!zoneChanged && !firstMove
         && typeof ps.x === 'number' && typeof ps.y === 'number') {
       const dt = Math.max(0.001, (_now - ps.lastMoveAt) / 1000);
-      const maxDist = 500 * dt + 80;
+      /* ═══ v2.3.2062: THE CAP WIDENS FOR A BUFF THE SERVER ITSELF SOLD ═══
+         Owner: "a speed potion that lets you run 1.5x speed 3 mins."
+
+         The 500 px/sec bound above was set against the fastest LEGITIMATE
+         stack, which the audit note puts at ~441 px/sec (240 agility x 1.5
+         swiftness x 1.15 food x 1.065 amulet). Multiply that by the Swift
+         Draught's 1.5 and it is ~662 -- comfortably over the bound. Shipping
+         the potion without this line would have meant the server rejecting
+         the moves of a player using the item the server charged them for:
+         they would run at normal speed and rubber-band, which reads as
+         terrible lag rather than as a broken potion.
+
+         RAISED FOR THIS PLAYER ONLY, and only while the buff the SERVER
+         stamped is live -- not a blanket raise of the constant. A client
+         cannot grant itself this: _buffs.spd is set in _handleShopPurchase
+         after coins are taken, and the magnitude is bounded on read exactly
+         as the damage and mana ones are, so a tampered save cannot widen it
+         either. When the timer lapses the cap returns to 500 on its own. */
+      let _spdCap = 1;
+      if (this._buffActive && this._buffActive(ps, 'spd')) {
+        const _m = Number(ps._buffs && ps._buffs.spdMul);
+        _spdCap = (_m >= 1 && _m <= 2) ? _m : 1.15;   /* 1.15 = the cooked-food buff */
+      }
+      const maxDist = 500 * _spdCap * dt + 80;
       const dx = msg.x - ps.x;
       const dy = msg.y - ps.y;
       if (dx * dx + dy * dy > maxDist * maxDist) {
@@ -377,7 +400,7 @@ export const movementMethods = {
       if (ps.z !== 'town' && ps.z !== 'farm_home') {
         // Combat zone -- send the new zone's monster + gather +
         // loot state so the client can render them.
-        const newMonsters = this._ensureZoneMonsters(ps.z);
+        this._ensureZoneMonsters(ps.z);
         // Zone-entry damage immunity: replaces the prior
         // ENTRY_SAFE_RADIUS monster-shove (visually janky
         // teleport) with a 1500 ms grace window where incoming
@@ -387,18 +410,22 @@ export const movementMethods = {
         // walk/swing as normal but the player has a moment to
         // orient before hits land.
         ps._zoneEntryGraceUntil = Date.now() + this.ZONE_ENTRY_GRACE_MS;
-        const zoneMonstersWire = newMonsters.map(m => ({
-          id: m.id, arch: m.arch, level: m.level, element: m.element,
-          x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, dmg: m.dmg,
-          xp: m.xp, gold: m.gold, spd: m.spd, emoji: m.emoji, color: m.color,
-          alive: m.alive,
-        }));
-        const newNodes = this._ensureZoneNodes(ps.z);
-        const zoneNodesWire = newNodes.map(n => ({
-          id: n.id, nodeType: n.nodeType, x: n.x, y: n.y,
-          tierLvl: n.tierLvl, alive: n.alive, respawnAt: n.respawnAt,
-        }));
-        const zoneLootWire = this._zoneLootForWire(ps.z);
+        this._ensureZoneNodes(ps.z);
+        /* v2.3.1983: re-scale the zone to its NEW population before the
+           snapshot is built, so the arriving player's own frame already
+           carries the monsters/nodes their arrival just bought.  Doing it
+           on the 2s tick instead would show them the sparse world and then
+           re-sync it a moment later, which reads as a glitch.  `ws` is
+           excluded from the roster push — this snapshot IS their copy.
+           Everyone else already standing here gets theirs from inside. */
+        this._spawnScaleZone(ps.z, Date.now(), undefined, ws);
+        /* One shared definition of a zone snapshot (spawnscale.js), read
+           back AFTER the scale so a grow/trim can't leave a stale array
+           reference behind. */
+        const _zsnap = this._zoneSnapshotWire(ps.z);
+        const zoneMonstersWire = _zsnap.monsters;
+        const zoneNodesWire = _zsnap.nodes;
+        const zoneLootWire = _zsnap.loot;
         if (session.protocolVersion === 2) {
           // Protocol v2: one merged snapshot instead of three messages.
           ws.send(JSON.stringify({

@@ -68,7 +68,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   for (const [name, idx] of ORDER) {
     await A.page.evaluate((i) => {
       const S = window._gameState.current;
-      S._facingAngle = i * Math.PI / 4; S._aimAngle = i * Math.PI / 4; S.lockedMonster = null;
+      S._facingAngle = i * Math.PI / 4; S._aimAngle = i * Math.PI / 4; S.lockedTarget = null;
       S.rpg.activeSlot = 'melee';
       S.rpg.weapon = { name: 'Copper Great Sword', type: 'greatsword', gearBase: 'copper' };
     }, idx);

@@ -78,6 +78,38 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   rec.ok('the arrows actually advanced', fast.pxPerSec > 60 && slow.pxPerSec > 60,
     { fast: fast.pxPerSec, slow: slow.pxPerSec });
+  /* ═══ v2.3.2019: A MEASUREMENT THAT CANNOT BE TRUSTED SAYS SO ═══
+     This file's method is to throttle the CPU 6x and check the arrow still
+     covers the same ground per second.  That only means anything if the
+     throttle actually moved the frame rate, which is what the guard below is
+     for — and the guard is NOT negotiable, because without a real frame-rate
+     difference the ratio assertion holds on any build, fixed or broken.
+
+     But the guard has a second failure mode that looks identical to a
+     regression and is not one: when this machine is already saturated, the
+     UNTHROTTLED baseline collapses, and a 6x throttle has no headroom left to
+     bite.  Measured on the same commit, minutes apart:
+
+         alone            42.4fps -> 18.4fps   ratio 2.3   guard passes
+         12 scenarios     12.6fps ->  9.1fps   ratio 1.4   guard FAILS
+
+     Nothing about the product differs between those two lines; the second one
+     is a report about the test machine.  Failing there trains the reader to
+     discount this file, which is how a real regression gets waved through.
+
+     So a baseline that is itself degraded SKIPS rather than fails or passes.
+     25fps sits well clear of both numbers above, and skipping is the honest
+     third answer: the run neither confirmed nor refuted anything. */
+  const TRUSTWORTHY_FPS = 25;
+  if (fast.fps < TRUSTWORTHY_FPS) {
+    const why = `machine too loaded to measure: unthrottled baseline was only ${fast.fps.toFixed(1)}fps `
+      + `(needs ${TRUSTWORTHY_FPS}+; alone this machine gives ~42), so the 6x throttle had no headroom`;
+    rec.skip('the throttle really did change the frame rate (guard)', why);
+    rec.skip('an arrow covers the same ground per SECOND at either frame rate', why);
+    await P.ctx.close().catch(() => {});
+    return;
+  }
+
   /* GUARD: without a real frame-rate difference the comparison below holds on
      any build, fixed or not. */
   rec.ok('the throttle really did change the frame rate (guard)',

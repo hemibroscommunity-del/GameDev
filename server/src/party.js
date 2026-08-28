@@ -47,7 +47,8 @@ export const PARTY = {
   INVITE_TTL: 60000,       // 1 min to accept an invite
   VITALS_MS: 2000,         // roster re-echo cadence (live HP/zone)
   OFFLINE_GRACE_MS: 120000,// 'away' window before a dropped member is removed
-  CHAT_MAX: 200            // v2.3.1212: party-chat line length clamp
+  CHAT_MAX: 200,           // v2.3.1212: party-chat line length clamp
+  INVITE_REPEAT_MS: 5000   // v2.3.1970: min gap between two invite cards from the same inviter
 };
 
 export const partyMethods = {
@@ -129,9 +130,18 @@ export const partyMethods = {
       text,
       ts: Date.now(),
     };
+    /* v2.3.1981: this lane is per-recipient already, so the mute applies
+       right here -- a muted party member's line is not sent, rather than
+       sent and hidden (chatmod.js).  Remember it first: the report path
+       quotes the SERVER's copy of what was said, and party chat is a lane
+       harassment can hide in precisely because the room never sees it. */
+    this._chatModRemember(session.id, text, this.playerState[session.id] && this.playerState[session.id].z, 'party');
     // Deliver to every online member (the sender's own client already
     // echoed optimistically and drops from === myId, mirroring room chat).
-    for (const pid of p.members) this._partySend(pid, 'party_chat', wire);
+    for (const pid of p.members) {
+      if (this._chatModMuted(pid, session.id)) continue;
+      this._partySend(pid, 'party_chat', wire);
+    }
   },
 
   _handlePartyInvite(session, payload) {
@@ -152,6 +162,28 @@ export const partyMethods = {
     if (mine && mine.members.length >= PARTY.MAX_SIZE) {
       return this._partySend(fromId, 'party_error', { reason: 'full' });
     }
+    /* ═══ v2.3.1970: ONE CARD PER INVITER PER INVITE_REPEAT_MS ═══
+       Every other notice in this module is guarded against being a
+       popup-spam surface -- _handlePartyDecline answers only a REAL
+       pending invite for exactly this reason -- but the invite itself was
+       not.  party_invite is an EXPLICIT case in the router switch, so the
+       default branch's relay token bucket never sees it, and there is no
+       global inbound rate limit: a crafted client could send it as fast
+       as the socket allows and the target's screen took a pushDmgPopup
+       AND a BT_AUDIO.beep for every one (gameEvents.js party_invited),
+       on repeat, from a single griefer.
+       A COOLDOWN rather than a flat "one invite, ever": a re-send is a
+       legitimate move when the first one went missing -- qa-party-smoke
+       re-invites once after 8s for precisely that reason, and refusing it
+       outright would take away that harness's only recovery path.  5s is
+       well under that retry and well over any human double-tap.
+       The timestamp IS refreshed on a delivered re-invite: TTL exists so
+       a STALE card cannot be accepted, and an invite the inviter is
+       actively re-sending is not stale.  Dropped silently rather than
+       answered (the v2.3.1134 posture -- a refusal is a second message
+       and an oracle for whoever is probing). */
+    const _lastSent = this._partyInvites.get(fromId + '>' + target);
+    if (_lastSent && Date.now() - _lastSent < PARTY.INVITE_REPEAT_MS) return;
     this._partyInvites.set(fromId + '>' + target, Date.now());
     this._partySend(target, 'party_invited', {
       from: fromId,

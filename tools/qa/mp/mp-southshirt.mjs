@@ -50,7 +50,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(400);
 
   const shirtOn = await P.page.evaluate(() => {
-    try { return { shirt: window.__btShirtId || null, equipShirt: null }; } catch (e) { return null; }
+    /* v2.3.2078: was `window.__btShirtId`, which nothing defines — so this
+       line printed {shirt:null,equipShirt:null} on every run and told you
+       nothing about what the character had on.  __btWardrobe (gearCatalog)
+       is the real probe. */
+    try {
+      const w = window.__btWardrobe ? window.__btWardrobe() : null;
+      const S = window._gameState && window._gameState.current;
+      return { shirt: (S && S.myShirt) || null, equipShirt: w && w.gearShirt };
+    } catch (e) { return null; }
   });
   console.log('  shirt state', JSON.stringify(shirtOn));
 
@@ -95,19 +103,32 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the south block composite was actually running for the block shots (guard)',
     sb.some((b) => b && b.on), sb[0] || null);
 
-  /* ── THE ART IS SEALED (v2.3.1873) ──
+  /* ── THE ART IS SEALED (v2.3.1873, re-measured v2.3.1995) ──
      The screenshots above are how this was FOUND; this is how it stays fixed.
      The defect was the tee being a pixel or two narrower than the body beneath
-     it, so the count that matters is thin runs of visible body inside the
-     shirt's own bounding box — the same measure tools/gear/seal-shirt-edges.mjs
-     fills, run here in read-only form.
-     BASELINES, measured on the art this replaced: ~51 px/frame on jog-south
-     and 14-32 px on the stand sheets, every one of the 26 jog-south frames
-     affected.  After sealing: 0 on stand, ~2-4 px/frame residual on jog (the
-     next pixel out, which the seal deliberately does not cascade into — see
-     the tool's ONE PASS note).  A threshold of 10 sits an order of magnitude
-     below the baseline and well above the residual, so it catches unsealed art
-     being dropped back in without tripping on the art that shipped. */
+     it, so the count that matters is thin runs of visible body along the
+     shirt's edge — the same measure tools/gear/seal-shirt-edges.mjs fills, run
+     here in read-only form.
+
+     v2.3.1995: THE RUN IS MEASURED ON THE WHOLE FRAME.  This counted runs
+     inside the shirt's bounding box, which is the exact flaw that made the
+     tool paint the owner's three "too large black outline" spots: a garment
+     OPENING (the neck hole, the hem where the belly starts, the shoulder line,
+     the cut-out crossing arm) is body that runs OUT of that box, so clipping
+     the scan at the box turns a long run into a 1-2px one and calls the tee's
+     own design a sliver.  The tool now measures each run across the frame and
+     so does this, or the gate would fail art that is more correct than what it
+     was written against — jog-east reads 10.64/frame truncated and 0.21
+     honestly, and the difference is entirely the arm the artist cut out.
+
+     BASELINES on this measure: the artist's pre-seal art 6-14 px/frame on the
+     stand sheets and 19-32 on the jog sheets, every one of the 26 jog-south
+     frames affected; v2.3.1873's sealed art 0 on stand and 1.4-4.2 on jog; the
+     v2.3.1995 art 0 on stand and 0.04-0.65 on jog — better sealed than
+     v2.3.1873 despite writing 41% fewer pixels, because filling an opening's
+     edge manufactures a fresh 1px run on the far side of what it just wrote.
+     A threshold of 5 sits above every shipped number and below every unsealed
+     one, so unsealed art being dropped back in fails on any sheet. */
   const SHEETS = [];
   for (const pose of ['stand', 'jog']) {
     for (const dir of ['south', 'southwest', 'east', 'northeast', 'north']) SHEETS.push({ pose, dir });
@@ -154,15 +175,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
           if (isShirt(x, y)) { if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (y < by0) by0 = y; if (y > by1) by1 = y; }
         }
         if (bx1 < bx0) continue;
-        for (let y = by0; y <= by1; y++) {
+        /* v2.3.1995: runs span the whole frame; only pixels inside the shirt's
+           own box are COUNTED, the same split the tool uses between measuring
+           and writing. */
+        for (let y = 0; y < Hh; y++) {
           let cur = null;
-          for (let x = bx0; x <= bx1 + 1; x++) {
-            const vis = x <= bx1 && isBody(x, y) && !isShirt(x, y);
-            if (vis) { if (!cur) cur = { a: x, len: 0 }; cur.len++; }
+          for (let x = x0; x <= x1; x++) {
+            const vis = x < x1 && isBody(x, y) && !isShirt(x, y);
+            if (vis) { if (!cur) cur = { a: x, len: 0, px: [] }; cur.len++; cur.px.push(x); }
             else if (cur) {
               const ls = cur.a - 1 >= x0 && isShirt(cur.a - 1, y);
               const rs = x < x1 && isShirt(x, y);
-              if (cur.len <= 2 && (ls || rs)) thin += cur.len;
+              if (cur.len <= 2 && (ls || rs)) {
+                for (const px of cur.px) if (px >= bx0 && px <= bx1 && y >= by0 && y <= by1) thin++;
+              }
               cur = null;
             }
           }
@@ -171,7 +197,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return { thin, nF, perFrame: +(thin / Math.max(1, nF)).toFixed(2) };
     }, { shirt: readAsUrl(shirtF), body: readAsUrl(bodyF) });
     rec.ok(`shirt ${pose}-${dir}: no skin slivers along the tee's edge (${n.perFrame}/frame)`,
-      n.perFrame < 10, n);
+      n.perFrame < 5, n);
   }
   console.log('  composite', JSON.stringify(sb.filter((b) => b && b.on).map((b) => ({ f: b.jogFrame, cut: b.cut }))));
   await P.ctx.close().catch(() => {});
