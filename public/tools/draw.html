@@ -351,16 +351,58 @@
     }
     $('load').disabled = true;
     $('out1').innerHTML = '<p class="note">Loading…</p>';
-    fetch(base + '/api/leaderboard/top?category=level&limit=100', { cache: 'no-store' })
-      .then(function (r) { return r.json(); })
-      .then(function (j) {
-        var rows = (j && j.results) || [];
+    /* ═══ v2.3.2113: SAY WHICH THING WENT WRONG ═══
+       Owner: "This tool says can't reach the game server anymore."
+
+       It said that for EVERY failure, and the word for what it printed —
+       "Failed to fetch" — is the browser's single message for a family of
+       unrelated causes: the address is wrong, the host is down, a network or
+       extension blocked it, or the response came back without CORS headers
+       (which is what a server-side fault used to look like from here; the
+       worker answers faults as JSON now).  One sentence covering all of those
+       is a dead end for whoever is reading it.
+
+       So three things are separated.  A REJECTION is the only case that is
+       really "could not reach", and it now prints the address it tried, which
+       is the field most likely to be at fault and the one nobody thinks to
+       check.  An HTTP ERROR is the server answering, and says so with its
+       status and whatever reason it gave.  A response that is neither JSON nor
+       shaped like this endpoint is its own case, because "the address resolves
+       to something, just not this" is a different fix again. */
+    var target = base + '/api/leaderboard/top?category=level&limit=100';
+    var status = 0;
+    fetch(target, { cache: 'no-store' })
+      .then(function (r) {
+        status = r.status;
+        return r.text().then(function (body) { return { ok: r.ok, body: body }; });
+      })
+      .then(function (res) {
+        var j = null;
+        try { j = JSON.parse(res.body); } catch (e) { j = null; }
+        if (!res.ok) {
+          var why = (j && (j.error || j.message)) || res.body.slice(0, 200) || 'no reason given';
+          throw new Error('HTTP ' + status + ' — ' + why);
+        }
+        if (!j || !Array.isArray(j.results)) {
+          throw new Error('the server answered, but not with a leaderboard' +
+            (j && j.error ? ' (' + j.error + ')' : '') + '. Check the address.');
+        }
+        var rows = j.results;
         entrants = entrantsFrom(rows, f, t, minLv);
         renderEntrants(rows.length, excludedBy(rows, f, t, minLv), minLv);
       })
       .catch(function (e) {
-        $('out1').innerHTML = '<div class="warn">Could not reach the game server: ' +
-          esc(e.message) + '</div>';
+        var msg = (e && e.message) || String(e);
+        /* status stays 0 only when nothing came back at all. */
+        $('out1').innerHTML = status
+          ? '<div class="warn"><b>The game server answered with an error.</b><br>' +
+            esc(msg) + '</div>'
+          : '<div class="warn"><b>Could not reach the game server.</b><br>' +
+            'Tried <code>' + esc(target) + '</code><br>' +
+            esc(msg) + '<br>That is the browser saying the request never ' +
+            'completed — a wrong address in the box above, the server being ' +
+            'down, or something on this network or in an extension blocking ' +
+            'it.</div>';
       })
       .then(function () { $('load').disabled = false; });
   };

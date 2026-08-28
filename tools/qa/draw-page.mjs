@@ -381,6 +381,65 @@ console.log('draw-page:');
   await ctx.close();
 }
 
+/* ══ 3b. v2.3.2113: THE THREE WAYS THIS CAN FAIL, TOLD APART ══
+   Owner: "This tool says can't reach the game server anymore."  It said that
+   for every failure, and the browser's word for all of them is the same
+   ("Failed to fetch"), so the message could not distinguish a wrong address
+   from a dead host from a server fault.  These three cases are the reason the
+   page now looks at the response before deciding what to say — and they are
+   exactly what nobody can check by clicking, because you cannot make a live
+   server 500 on demand. */
+{
+  const ctx = await browser.newContext({ timezoneId: TZ });
+  const page = await ctx.newPage();
+
+  /* (a) the server ANSWERS, with a fault.  Since v2.3.2113 the worker returns
+     JSON with CORS headers on a throw instead of an HTML error page with
+     none, so this shape is what a real fault now looks like from here. */
+  await page.route('**/api/leaderboard/top*', (route) =>
+    route.fulfill({ status: 500, contentType: 'application/json',
+      body: JSON.stringify({ ok: false, error: 'deliberate test fault' }) }));
+  await page.goto(ORIGIN, { waitUntil: 'load' });
+  await setWindow(page, T0, T1);
+  await page.click('#load');
+  await page.waitForSelector('#out1 .warn');
+  let text = await page.locator('#out1').textContent();
+  ok('a server FAULT is not reported as unreachable',
+    /answered with an error/i.test(text) && !/Could not reach/i.test(text), text.slice(0, 200));
+  ok('...and it carries the status and the reason the server gave',
+    /500/.test(text) && /deliberate test fault/.test(text), text.slice(0, 200));
+
+  /* (b) nothing comes back at all — the only case that really is "could not
+     reach".  The address it tried is printed, because a mistyped server box is
+     the likeliest cause and the one nobody thinks to look at. */
+  await page.unroute('**/api/leaderboard/top*');
+  await page.route('**/api/leaderboard/top*', (route) => route.abort('failed'));
+  await page.goto(ORIGIN, { waitUntil: 'load' });
+  await setWindow(page, T0, T1);
+  await page.click('#load');
+  await page.waitForSelector('#out1 .warn');
+  text = await page.locator('#out1').textContent();
+  ok('a request that never completes IS reported as unreachable',
+    /Could not reach the game server/i.test(text), text.slice(0, 200));
+  ok('...and names the address it tried, so a wrong one is visible',
+    /\/api\/leaderboard\/top/.test(text), text.slice(0, 300));
+
+  /* (c) something answers, but it is not this endpoint — a different fix
+     again, and previously indistinguishable from an empty leaderboard. */
+  await page.unroute('**/api/leaderboard/top*');
+  await page.route('**/api/leaderboard/top*', (route) =>
+    route.fulfill({ status: 200, contentType: 'text/html', body: '<html>hello</html>' }));
+  await page.goto(ORIGIN, { waitUntil: 'load' });
+  await setWindow(page, T0, T1);
+  await page.click('#load');
+  await page.waitForSelector('#out1 .warn');
+  text = await page.locator('#out1').textContent();
+  ok('a reply that is not a leaderboard says so, rather than "nobody qualified"',
+    /not with a leaderboard/i.test(text) && !/Nobody qualified/i.test(text), text.slice(0, 200));
+
+  await ctx.close();
+}
+
 /* ── 4. self-contained ── */
 ok('the page requested nothing beyond the leaderboard and the block explorers',
   offSite.length === 0, offSite);
