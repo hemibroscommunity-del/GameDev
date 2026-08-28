@@ -119,7 +119,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      needs to see what the numbers above describe. */
   await P.page.evaluate(() => {
     const S = window._gameState.current;
-    S.player.x = 860; S.player.y = 1260; S.player.vx = 0; S.player.vy = 0;
+    S.player.x = 860; S.player.y = 1180; S.player.vx = 0; S.player.vy = 0;
   });
   await P.page.waitForTimeout(900);
   await P.page.evaluate(() => {
