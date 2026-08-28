@@ -275,10 +275,23 @@ export function ShopkeeperPanel() {
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>“The more I have, the less I pay.”</div>
         </div>
+        {/* v2.3.2060 (owner: "show gold coin symbol next to his gold count").
+            The game's own coin, the same file the band's gold row and the
+            vendor's price buttons use, with the 🪙 glyph as the fallback for
+            anywhere the image cannot resolve -- the established pattern in
+            VendorPanel.jsx. The trailing 'g' goes with it: the coin already
+            says what the number is, and keeping both reads as "172g" beside a
+            picture of a coin. */}
         <div data-shop-coins={coins} style={{
+          display: 'flex', alignItems: 'center', gap: 4,
           fontSize: 13, fontWeight: 700, color: '#EAC675',
           fontVariantNumeric: 'tabular-nums', flex: 'none',
-        }}>{coins}g</div>
+        }}>
+          <img src="/icons/popups/gold.webp" alt="" draggable={false}
+            style={{ width: 15, height: 15, objectFit: 'contain' }}
+            onError={(e) => { e.currentTarget.replaceWith(document.createTextNode('🪙')); }} />
+          {coins}
+        </div>
         <button type="button" onClick={() => shopBus.setOpen(false)} aria-label="Close"
           data-shop-close=""
           style={{

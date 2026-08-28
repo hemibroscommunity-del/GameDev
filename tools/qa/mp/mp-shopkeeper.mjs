@@ -352,6 +352,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('his stock shows the item\'s real thumbnail, the same picture the bag uses',
     thumb.img && thumb.loaded && thumb.w > 0, thumb);
 
+  /* v2.3.2060 (owner: "show gold coin symbol next to his gold count").
+     Asserted as a REAL loaded image, not just an <img> tag -- a broken src
+     still renders an element, and the whole point of the change is that the
+     coin is visible. */
+  const coinIcon = await A.page.evaluate(() => {
+    const box = document.querySelector('[data-shop-coins]');
+    const img = box && box.querySelector('img');
+    if (!img) return { img: false, text: box ? box.textContent.trim() : null };
+    return { img: true, loaded: img.complete && img.naturalWidth > 0,
+      w: img.naturalWidth, text: box.textContent.trim() };
+  });
+  rec.ok('his header shows the gold coin symbol beside the count',
+    coinIcon.img && coinIcon.loaded && coinIcon.w > 0, coinIcon);
+  rec.ok('...and the count itself is still a number', /^\d+$/.test(coinIcon.text || ''), coinIcon);
+
   const sizes = await A.page.evaluate(() =>
     ((window.__btNpcSprites && window.__btNpcSprites()) || [])
       .reduce((o, n) => { o[n.id] = Math.round(n.height); return o; }, {}));
