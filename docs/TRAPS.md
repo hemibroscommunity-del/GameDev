@@ -1075,3 +1075,96 @@ type several lines below the call and a single-line regex skips them.
 `src/ui/BroTown.jsx`; `tools/qa/mp/mp-townmeal.mjs`, which asserts on the
 WORKER'S blob through the admin API rather than on client state — a test that
 checked the client would have passed throughout the bug.
+
+---
+
+## §33 — A test that reads a field the game does not have asserts nothing (v2.3.2078)
+
+**The move that looks right:** write the state read the way you remember the
+field being called — `S.lockedMonster`, `S.playerCount`, `S._dead`,
+`S.nodes` — inside `page.evaluate`, wrap it in `|| null`, and read the number
+back out.
+
+**Why it is wrong:** `page.evaluate` runs in the browser. A property that
+does not exist is `undefined`, not an error, and every idiom the suite uses
+to be defensive turns that `undefined` into a pass:
+
+| written as | with the field missing | what the assertion then means |
+|---|---|---|
+| `S.playerCount \|\| null` then `count == null \|\| count >= 2` | `null` | passes with the room reporting an empty world |
+| `S._dead` reported as `dead: !!S._dead` | `false` | a corpse is described as alive in the payload that exists to explain a refusal |
+| `S.lockedMonster = null` | writes a new property | the lock the next line depends on is never cleared |
+| `Object.values(S.nodes \|\| S.zoneNodes \|\| {})` | `[]` | "the zone has resource nodes" fails forever, for a reason no payload names |
+| `window.__btGear.setEquip(...)` inside `try {}` | TypeError, swallowed | the scenario about a character wearing a tee never puts one on |
+
+The audit that found these compared every `S.<field>` read in
+`tools/qa/mp/*.mjs` against every field `src/` ever touches. Eight scenarios
+were clearing `lockedMonster`; `grep -rn lockedMonster src/` returns 0 and
+`lockedTarget` returns 48.
+
+**What to do instead:** the field name is not a memory, it is a lookup.
+Before writing a state read, `grep` it in `src/`. If nothing writes it, it
+does not exist — find the one that does.
+
+**Mechanised, partly:** precheck §8c (`qa-handles`) FAILs on any
+`window.__X` a scenario reads that neither the shipped client (`src/`,
+`public/`) nor that same scenario defines. Self-assigned scratch pins
+(`__pin`, `__fa`, `__qRaf`) are exempt because they are assigned in the file
+that reads them, and comments are stripped first so a note recording a
+retired handle does not re-flag the fix that removed it. The `S.<field>`
+half is NOT mechanised — the state object is built at runtime and half the
+short names (`S.c`, `S.w`, `S.page`) are shadowed locals in the harness, so
+a static rule there is mostly noise. That half is still a `grep` you owe.
+
+**Related:** §18 (a client→server message with no shim passthrough never
+reaches the worker — the same "looks fine, does nothing" shape),
+§28 (a test that reports "not found" is worse than no test),
+§29 (selecting UI by its label is a test with an expiry date).
+
+---
+
+## §34 — Moving the scenery invalidates every colour probe near it (v2.3.2078)
+
+**The move that looks right:** measure a character's tattoo by counting
+coloured pixels in a box around them, anchored on the player's world
+position and the camera rather than a guessed fraction of the screen. That
+much is correct, and TRAPS §21 already requires the CONTROL frame that goes
+with it.
+
+**Why it broke anyway:** the box was about twice the figure, and what filled
+the rest was the town. v2.3.2069 moved the fountain into the plaza, the
+plaza is where the spawn is, and three scenarios each carrying their own
+copy of an `88 x 104` crop suddenly had running water in frame. The control
+— a character with no drawings on him at all — read **4455 blue** and
+**205 pink** pixels, and ten assertions failed naming shirt prints and face
+tattoos that had nothing to do with it.
+
+Two separate faults, and both matter:
+
+1. **The box was too generous.** A crop derived from the player's position
+   is only as honest as its size. `H.figureBox` is the one copy now, cut to
+   numbers measured off a real control render and anchored on
+   `window.__btPlayerDrawn` so the mining lift and the build scale are
+   included rather than approximated.
+
+2. **The classifier was too loose, in two of the three files.**
+   `b > g + 24 && r > 110` accepts a lit blue like `(150,160,200)`.
+   mp-facingside had already learned this in v2.3.2043 and added `r >= b`;
+   mp-cosmpose and mp-skinworld had not, and mp-skinworld's comment still
+   claimed "every OTHER thing on screen has more green in it than blue",
+   which the fountain made false. That one comparison takes the water from
+   205 matches to 0.
+
+**What to do instead:** when you move a prop, grep the QA suite for anything
+that counts pixels near where it landed. And when a control frame goes from
+0 to non-zero without the art changing, believe the control — it is doing
+exactly the job §21 gave it, and the failing assertions downstream are
+collateral, not the finding.
+
+`H.TOWN_CLEAN_SPOT` is a patch of town measured walkable, 110px clear of all
+twelve props, and zero pixels matching any of the four probe colours; reach
+it with `H.hopTo`, never a teleport (v2.3.1706: movement.js refuses the jump
+and, once refused, stays refused).
+
+**Related:** §21 (a colour count is evidence only against a control),
+§30 (a measure that clips the thing it measures).

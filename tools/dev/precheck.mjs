@@ -591,6 +591,77 @@ function sanitize(src, { jsxText = false } = {}) {
   } else add('PASS', 'town-gate', 'no client->server send is gated on _serverMonsters (combat damage excepted)');
 }
 
+/* ---- 8c. qa-handles (FAIL) ------------------------------------------ */
+/* v2.3.2078: a QA scenario that calls a handle the game does not define
+ * asserts nothing, silently, forever.
+ *
+ * Every one of these was written inside a try/catch or behind a `||` fallback,
+ * so nothing ever threw and nothing ever failed:
+ *   mp-shirtarm    window.__btGear.setEquip(...)   -- the handle is __btGearSet.
+ *                  The scenario is about a character wearing a tee; it wore
+ *                  whatever it spawned in, for as long as the file existed.
+ *   mp-cosmpose    window.__broTapWorld(x, y)      -- never existed. The walk
+ *                  that was supposed to reach a resource node moved nobody.
+ *   mp-southshirt  window.__btShirtId              -- never existed. Printed
+ *                  nulls where the loadout should have been.
+ *
+ * The rule: a `window.__X` a scenario READS must be defined in the shipped
+ * client (src/ or public/), or assigned by that same scenario (the harness's
+ * own scratch pins -- __pin, __fa, __qRaf and friends -- are legitimate and
+ * are the overwhelming majority of matches, which is why self-assignment is
+ * the exemption rather than a name allowlist).
+ *
+ * Comments are stripped before scanning so a v2.3.2078-style note recording a
+ * retired handle does not re-flag the fix that removed it.
+ *
+ * FAIL rather than WARN: the standing set is empty as of v2.3.2078. */
+{
+  const strip = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const defined = new Set();
+  const collect = (dir, re) => {
+    let ents = [];
+    try { ents = readdirSync(join(root, dir), { withFileTypes: true }); } catch { return; }
+    for (const ent of ents) {
+      const p2 = `${dir}/${ent.name}`;
+      if (ent.isDirectory()) collect(p2, re);
+      else if (re.test(ent.name)) {
+        for (const m of read(p2).matchAll(/window\.(__[A-Za-z0-9_]+)/g)) defined.add(m[1]);
+      }
+    }
+  };
+  /* .html too, both trees: src/belt-harness.html sets __done and
+     public/tools/draw.html sets __draw — a scenario driving a standalone
+     harness page is reading a handle that page defines, not a missing one. */
+  collect('src', /\.(js|jsx|html)$/);
+  collect('public', /\.(html|js)$/);
+
+  const hits = [];
+  const scan = (dir) => {
+    let ents = [];
+    try { ents = readdirSync(join(root, dir), { withFileTypes: true }); } catch { return; }
+    for (const ent of ents) {
+      const p2 = `${dir}/${ent.name}`;
+      if (ent.isDirectory()) scan(p2);
+      else if (/\.mjs$/.test(ent.name)) {
+        const t = strip(read(p2));
+        const used = new Set([...t.matchAll(/window\.(__[A-Za-z0-9_]+)/g)].map((m) => m[1]));
+        for (const h of used) {
+          if (defined.has(h)) continue;
+          /* assigned by this scenario itself -> a scratch pin, which is fine */
+          if (new RegExp(`window\\.${h}\\s*(=[^=]|\\|\\|=)`).test(t)) continue;
+          hits.push(`window.${h} at ${p2}`);
+        }
+      }
+    }
+  };
+  scan('tools/qa');
+  if (hits.length) {
+    for (const h of hits) {
+      add('FAIL', 'qa-handles', `${h} is read but nothing defines it — the client offers no such handle, so whatever it guards is not being tested (see the note in tools/dev/precheck.mjs)`);
+    }
+  } else add('PASS', 'qa-handles', 'every window.__ handle a QA scenario reads is defined by the client or by that scenario');
+}
+
 /* ---- 7. server tests ----------------------------------------------- */
 if (changedServer.length) {
   const r = spawnSync('npm', ['test'], { cwd: join(root, 'server'), encoding: 'utf8', timeout: 5 * 60 * 1000, maxBuffer: 64 * 1024 * 1024 });

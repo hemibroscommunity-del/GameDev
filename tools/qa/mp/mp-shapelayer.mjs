@@ -73,7 +73,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
        still a grid.  Pants rather than the shirt because the shirt's Design
        button is dead until a shirt is actually worn (NameModal's _PAINT_FROM_TAB),
        and this scenario is about shapes, not about getting dressed first. */
-    const tab = await page.$('[data-cc-tab="pants"]') || await page.$('button:has-text("Pants")');
+    /* v2.3.2078: `[data-cc-tab]` has never existed in src/ — see mp-bodyink. */
+    const tab = await page.$('button:has-text("Pants")');
     if (!tab) return false;
     await tab.click();
     await page.waitForTimeout(300);

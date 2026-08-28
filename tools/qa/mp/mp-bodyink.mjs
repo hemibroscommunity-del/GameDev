@@ -70,7 +70,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   if (created) await created.click();
   await page.waitForSelector('input.bt-cc-name', { timeout: 30000 });
 
-  const skinTab = await page.$('[data-cc-tab="skin"]') || await page.$('button:has-text("Skin")');
+  /* v2.3.2078: the `[data-cc-tab]` half of this was dead — that attribute
+     has never existed in src/ (checked across the whole history), so the
+     text selector was always the one doing the work.  A selector that can
+     never match is a lie about which handle the UI offers. */
+  const skinTab = await page.$('button:has-text("Skin")');
   rec.ok('the creator has a skin tab to reach the designer from', !!skinTab, { found: !!skinTab });
   if (!skinTab) return;
   await skinTab.click();
