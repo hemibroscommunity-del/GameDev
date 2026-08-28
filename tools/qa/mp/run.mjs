@@ -139,6 +139,7 @@ const SCENARIOS = {
   townlock: () => import('./mp-townlock.mjs'), /* v2.3.1676: unarmed start + town gate */
   proj: () => import('./mp-proj.mjs'), /* v2.3.1678: the snowball is visible */
   lifeskill: () => import('./mp-lifeskill.mjs'), /* v2.3.1680: tool-gated gathering */
+  petdraw: () => import('./mp-petdraw.mjs'), /* v2.3.2078: an active pet is actually drawn */
   windup: () => import('./mp-windup.mjs'), /* v2.3.1811: the monster tells you */
   minishot: () => import('./mp-minishot.mjs'), /* v2.3.1810: glyph shapes are all distinct */
   fps: () => import('./mp-fps.mjs'), /* v2.3.1808: frame time, measured */
@@ -193,11 +194,16 @@ const SCENARIOS = {
  * shipped).  It names the newest offending file so the warning is actionable
  * rather than a thing to scroll past. */
 function _distStaleness() {
-  const dist = join(H.REPO, 'dist', 'index.html');
+  /* v2.3.2078: honour QA_DIST, so a verification run pointed at a second
+     build is not told its own fresh bundle is stale. */
+  const _root = process.env.QA_DIST
+    ? (process.env.QA_DIST.startsWith('/') ? process.env.QA_DIST : join(H.REPO, process.env.QA_DIST))
+    : join(H.REPO, 'dist');
+  const dist = join(_root, 'index.html');
   if (!existsSync(dist)) return { missing: true };
   const built = statSync(dist).mtimeMs;
   let newest = null, newestAt = 0, n = 0;
-  const skip = new Set(['node_modules', '.git', 'dist', '.wrangler', 'out']);
+  const skip = new Set(['node_modules', '.git', 'dist', 'dist-verify', '.wrangler', 'out']);
   const walk = (d) => {
     let ents; try { ents = readdirSync(d, { withFileTypes: true }); } catch { return; }
     for (const e of ents) {

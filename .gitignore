@@ -76,3 +76,4 @@ tools/maps/.*.png
 # tools/import_*.py on every run. The source sheets in assets/ are tracked;
 # these are not.
 tools/*-contact.png
+dist-verify/

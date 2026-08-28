@@ -9745,9 +9745,35 @@ export class EntityRenderer {
     }
   }
 
+  /* ═══ v2.3.2078: YOUR PET WAS INVISIBLE ═══
+     This read `S._activePet`, and NOTHING in the whole client has ever
+     written that field (checked across src/ and the history).  So `pet` was
+     undefined on every frame, the early return fired, and the pet display
+     was never shown to anybody.
+
+     The pet itself was not dormant, which is what made this hard to see: the
+     follow simulation runs every frame in BroTown.jsx (§18.1 PET FOLLOW +
+     AUTO-LOOT, keeping S._petX / S._petY), the auto-loot really collects
+     coins, and wsClient even floats a "PET +N G" popup at S._petX -- at a
+     position with nothing drawn on it.  A player who bought and activated a
+     pet got the loot, got the popup out of empty air, and never saw the
+     animal.
+
+     So the state this reads is the state the rest of the game keeps:
+     R.lifeSkills.activePet indexes R.lifeSkills.pets, exactly as PetHousePanel
+     and the peer-cosmetics wire (`pet:` in the join/move payload) already do.
+
+     And it draws the pet's OWN EMOJI rather than the anonymous 6px coloured
+     dot that was here.  The emoji is what every other surface shows for that
+     pet -- the pet house, the roster rows, the inspect card -- so the figure
+     on the ground now matches the one in the menus.  No asset load is
+     involved (Text falls back to the system emoji font), so this does not
+     touch the preload manifest. */
   _updatePet(S, now) {
-    const pet = S._activePet;
-    if (!pet) {
+    const _ls = S && S.rpg && S.rpg.lifeSkills;
+    const _idx = _ls ? _ls.activePet : null;
+    const pet = (_idx != null && _ls.pets) ? _ls.pets[_idx] : null;
+    if (!pet || !S.player) {
       if (this.petDisplay) { this.petDisplay.visible = false; }
       return;
     }
@@ -9758,6 +9784,10 @@ export class EntityRenderer {
       const petBody = new Graphics();
       this.petDisplay.addChild(petBody);
       this.petDisplay._body = petBody;
+      const petFace = new Text({ text: '', style: { fontSize: 15, align: 'center' } });
+      petFace.anchor.set(0.5, 0.5);
+      this.petDisplay.addChild(petFace);
+      this.petDisplay._faceText = petFace;
       const petName = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 7 } });
       petName.anchor.set(0.5, 1);
       petName.y = -12;
@@ -9767,19 +9797,44 @@ export class EntityRenderer {
     }
 
     this.petDisplay.visible = true;
-    this.petDisplay.x = pet.x || S.player.x + 20;
-    this.petDisplay.y = pet.y || S.player.y + 15;
+    /* The simulated follow position, which is also where the coin popup is
+       floated -- so the two finally agree.  Falls back to the spot the old
+       code used if the simulation has not seeded itself yet (one frame). */
+    this.petDisplay.x = (typeof S._petX === 'number') ? S._petX : S.player.x + 20;
+    this.petDisplay.y = (typeof S._petY === 'number') ? S._petY : S.player.y + 15;
 
+    const bounce = Math.sin(now / 300) * 2;
     const petBody = this.petDisplay._body;
     petBody.clear();
-    const bounce = Math.sin(now / 300) * 2;
-    petBody.circle(0, bounce, 6);
-    petBody.fill({ color: cssColorToHex(pet.color || '#f5c542') });
-    petBody.circle(0, bounce, 6);
-    petBody.stroke({ color: 0xffffff, width: 1, alpha: 0.3 });
+    /* A soft ground shadow under the emoji so it sits ON the world rather
+       than floating over it; the disc is only drawn as the pet itself when
+       the pet has no emoji to show. */
+    if (pet.emoji) {
+      petBody.ellipse(0, 7, 6, 2.5);
+      petBody.fill({ color: 0x000000, alpha: 0.25 });
+    } else {
+      petBody.circle(0, bounce, 6);
+      petBody.fill({ color: cssColorToHex(pet.color || '#f5c542') });
+      petBody.circle(0, bounce, 6);
+      petBody.stroke({ color: 0xffffff, width: 1, alpha: 0.3 });
+    }
+    this.petDisplay._faceText.text = pet.emoji || '';
+    this.petDisplay._faceText.visible = !!pet.emoji;
+    this.petDisplay._faceText.y = bounce;
 
     this.petDisplay._nameText.text = pet.name || '🐾';
     this.petDisplay._nameText.y = -10 + bounce;
+  }
+
+  /* v2.3.2078: what the pet display is doing, for a scenario to read.  The
+     bug above was invisible to the suite because nothing could see whether a
+     pet had been drawn at all. */
+  petDrawn() {
+    const d = this.petDisplay;
+    if (!d) return null;
+    return { visible: !!d.visible, x: d.x, y: d.y,
+      emoji: d._faceText ? d._faceText.text : null,
+      name: d._nameText ? d._nameText.text : null };
   }
 
   /* ═══ v2.3.1775: WORLD PROPS ═══

@@ -51,7 +51,16 @@ const MIME = {
 
 /* ── static server for dist/ ───────────────────────────────────────────── */
 export async function serveDist(port) {
-  const DIST = join(REPO, 'dist');
+  /* v2.3.2078: overridable, so a verification run can be pointed at a
+     SECOND build while a long sweep is still serving dist/.  Files are read
+     per request here, so rebuilding dist/ under a running batch hands its
+     in-flight scenarios truncated bundles and fails them for a reason that
+     has nothing to do with the code under test.
+       QA_DIST=dist-verify node tools/qa/mp/run.mjs petdraw
+     Unset, this is exactly what it always was. */
+  const DIST = process.env.QA_DIST
+    ? (process.env.QA_DIST.startsWith('/') ? process.env.QA_DIST : join(REPO, process.env.QA_DIST))
+    : join(REPO, 'dist');
   /* v2.3.1646 FIX: read FIRST, write once.  The old shape wrote the 200
      header and then read inside the same try, so any failure after the
      header — a client that had already gone away mid-response, most
