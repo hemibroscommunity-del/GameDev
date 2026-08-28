@@ -153,7 +153,30 @@ export const EVENT_CAPES = {
 
      The ONE-PER-ACCOUNT rule is what makes "everyone gets one" true and is
      untouched: without it a single player farming could take all ten. */
-  crimson: { cape: 'crimson', ticket: `${TICKET_PREFIX}crimson`, cap: 10 },
+  /* ═══ v2.3.2108: 10 -> 20 ═══
+     Owner: "it appears that the golden ticket count already subtracted the
+     golden tickets that appeared in the invisible legacy inventory."
+
+     Correct, and it is the cap's own arithmetic doing it: the gate is
+     `led.issued.length >= def.cap`, so a ticket counts the moment it DROPS,
+     not when it is opened. Tickets that landed while the bag had no icon and
+     no Open button (fixed in v2.3.2103/2107) were therefore spending the
+     contest silently -- and one held by a player who has since logged off
+     spends it forever, because a promise made cannot be taken back.
+
+     RAISED, NOT RESET, and that is the whole decision. The reset endpoint
+     exists and would put the number back to full in one call -- and it would
+     VOID tickets people are legitimately holding, which now that they are
+     visible means taking a prize out of someone's hands. Doubling the cap
+     costs nothing anybody owns and restores the headroom the owner asked for
+     ("I want everyone to get one. 8 joined") whatever the invisible period
+     consumed.
+
+     NOTE FOR NEXT TIME: the cap is a source constant, so moving it needs a
+     deploy and a brief disconnect, while the RATE is a live-ops flag that does
+     not. If a contest ever needs to be widened mid-event without dropping
+     everyone, the cap is the thing to make tunable. */
+  crimson: { cape: 'crimson', ticket: `${TICKET_PREFIX}crimson`, cap: 20 },
 };
 
 export const eventCapeMethods = {
