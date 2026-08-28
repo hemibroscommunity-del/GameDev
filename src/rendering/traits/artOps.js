@@ -1,6 +1,6 @@
 import {
   ART_W, ART_H, ART_LEN, emptyArt, isValidArt, artWithCells,
-  getArt, setArt, onArtChange, CANVASES,
+  getArt, setArt, onArtChange, CANVASES, TATTOO_CANVASES,
 } from './playerArt.js';
 import {
   shapeCells, expandCells, mirrorCells, fillCells, letterCells, LETTERS,
@@ -247,6 +247,34 @@ export function appendOp(id, op) {
   const next = appendToDoc(getDoc(id), op);
   saveDoc(id, next.base, next.ops);
   return next;
+}
+
+/* ═══ v2.3.2114: CLEARING THE INK, SHAPES AND ALL ═══
+ * Owner: "The tattoos are not resetting through character reset and
+ * randomize."  They were not, and deliberately so until now — v2.3.2036's
+ * Reset left the painted canvases alone on the reasoning that wiping someone's
+ * drawing from a button labelled Reset is worse than leaving it.  The owner
+ * has asked for the opposite, and they are right about what the buttons say:
+ * "back to the default" and a fresh random look both plainly mean the tattoos
+ * go too, and a character that resets to bald and shirtless while keeping a
+ * face tattoo reads as a broken reset, not a careful one.
+ *
+ * Through saveDoc, not setArt, and that is the part worth stating.  A drawing
+ * has TWO representations here — the flat 256-char art and the op list that
+ * still knows which shapes it is made of (v2.3.1967) — and clearing only the
+ * first leaves the editor holding shapes for a drawing that no longer exists.
+ * The onArtChange hook at the bottom of this file would notice and drop them,
+ * so the end state is the same either way; going through saveDoc means the
+ * clear is something this code DID rather than something a listener repaired,
+ * which is the difference between a rule and a coincidence.
+ *
+ * What this does NOT clear, said plainly: the shirt and pants designs.  The
+ * owner named tattoos, the design slots (v2.3.1950) are untouched either way,
+ * and a Reset already sets the shirt to 'none' so its drawing has nothing to
+ * appear on. */
+export function clearTattooArt() {
+  const empty = emptyArt();
+  for (const id of TATTOO_CANVASES) saveDoc(id, empty, [], empty);
 }
 
 /** Copy one canvas's whole op list onto another (shirt front -> back), so the

@@ -723,7 +723,11 @@ export function NameModal(props) {
     /* v2.3.2006: --hero, not a change to .bt-cc-btn itself -- that class is
        also the account modal's action and the quest claim screen's "Later",
        and neither of those is a screen's headline control. */
-    type: 'button', className: "bt-cc-btn bt-cc-btn--hero", onClick: randomizeWithFlair
+    type: 'button', className: "bt-cc-btn bt-cc-btn--hero", onClick: randomizeWithFlair,
+    /* v2.3.2114: a stable hook for mp-inkreset.  Both of these change the
+       whole character at once, which is exactly the kind of button whose
+       coverage is easy to believe in and hard to check by eye. */
+    'data-tut': 'cc-randomize'
   }, /*#__PURE__*/React.createElement("img", {
     /* v2.3.2008: the owner's painted randomize icon (a bro inside two turning
        arrows) replaces cc-random-look.webp, which was a generic pair of
@@ -746,7 +750,7 @@ export function NameModal(props) {
   /*#__PURE__*/React.createElement("button", {
     /* Not --hero: that is the headline treatment, and Reset is the quiet
        escape hatch below it. */
-    type: 'button', className: "bt-cc-btn bt-cc-reset",
+    type: 'button', className: "bt-cc-btn bt-cc-reset", 'data-tut': 'cc-reset',   /* v2.3.2114 */
     onClick: resetLook, title: 'Back to the look you started with'
   }, /*#__PURE__*/React.createElement("span", null, "Reset"))),
   /*#__PURE__*/React.createElement("button", {
