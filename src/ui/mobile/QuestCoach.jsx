@@ -516,11 +516,13 @@ export function QuestCoach(props) {
         border: '1px solid rgba(216,170,88,.45)',
         borderRadius: 12,
         padding: '7px 10px 8px',
-        /* v2.3.2123: the dismiss X below is absolutely positioned against
-           this card, so the card has to be its containing block -- without
-           this it anchors to the fixed overlay and lands in the screen's
-           corner instead of the card's. */
-        position: 'absolute',
+        /* v2.3.2123: the dismiss X below is absolutely positioned against this
+           card, which needs the card to be its containing block -- and it
+           already is, from the `position: 'absolute'` at the top of this
+           object.  A second one was added here and CI caught it as a duplicate
+           key (no-dupe-keys); the note is kept because the X depends on that
+           line and a future tidy-up that removes it would send the button to
+           the screen's corner. */
         boxShadow: '0 10px 24px rgba(3,8,10,.45)',
         pointerEvents: 'none',
         fontFamily: 'Source Sans 3,sans-serif',

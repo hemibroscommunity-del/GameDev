@@ -7600,6 +7600,16 @@ export class EntityRenderer {
         footY: display.y,
         width: _pb && _pb.texture ? Math.abs(_pb.texture.width * _pb.scale.x) : 0,
         height: _pb && _pb.texture ? Math.abs(_pb.texture.height * _pb.scale.y) : 0,
+        /* ═══ v2.3.2124: THE NUMBER THAT WAS MISSING ═══
+           width/height above read the BODY sprite's own scale, and the zone's
+           perspective shrink is applied to the CONTAINER -- so on a vista map
+           this probe reported an unchanged 115x115 while the figure on screen
+           was at 55% and falling to 3% toward the rim.  That gap cost two
+           wrong measurements and a wrong answer to the owner about whether
+           the character shrinks outside town (it does, on the World View, by
+           design since v2.3.859).  The container scale is the one number that
+           settles it, so it is published. */
+        scale: display.scale && typeof display.scale.y === 'number' ? display.scale.y : null,
         visible: display.visible,
       });
     }
@@ -7635,7 +7645,27 @@ export class EntityRenderer {
        distant edges). Absent => 1 (normal). v2.3.1091: extracted to
        _zonePscale and shared with the remote-player path. */
     {
-      const pscale = this._zonePscale(S, P.x, P.y) * PLAYER_SIZE_MULT; /* v2.3.1274 */
+      /* ═══ v2.3.2124: YOUR OWN FIGURE LOOKS THROUGH THE LENS ═══
+         Owner: "there was a fair point about the character being too small in
+         worldview.  Maybe it can show character full size but through a
+         'magnifying glass'."
+
+         The vista curve above is doing its job too well on the one figure you
+         steer -- on the World View it renders you at 55% at the plateau and
+         3% out toward the rim (ZONES.worldview.playerScale, v2.3.859).  A
+         zone that declares `playerLens` opts the LOCAL player out of the
+         curve and into a flat readable scale; tileRenderer draws the glass
+         under him so it reads as a magnifier rather than as a character that
+         failed to shrink.
+
+         LOCAL ONLY, on purpose: the remote path a few hundred lines up keeps
+         calling _zonePscale, so other players still recede into the distance
+         and the vista still has depth.  What changes is that the one figure
+         you are responsible for stays findable. */
+      const _lens = (ZONES[S.currentZone] || {}).playerLens;
+      const pscale = (_lens && typeof _lens.scale === 'number'
+        ? _lens.scale
+        : this._zonePscale(S, P.x, P.y)) * PLAYER_SIZE_MULT; /* v2.3.1274 */
       /* v2.3.1953: your own build.  Read from the store rather than from S,
          the same way this path reads your skin, shirt art and patterns — the
          creator writes it there and the store is the one copy. */

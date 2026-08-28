@@ -79,6 +79,81 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const boxHub = await H.figureBox(P).catch(() => null);
   console.log('    worldview: ' + JSON.stringify({ ...onHub, box: boxHub }));
 
+  /* ═══ THE RENDERER'S OWN REPORT, NOT A CANVAS CROP ═══
+     figureBox finds the figure by looking at pixels, which is the right tool
+     for "is he drawn" and the wrong one for "how big did you draw him": on a
+     vista map the sprite can be a handful of pixels and the crop latches onto
+     something else.  __btPlayerDrawn is what the renderer actually put on the
+     screen, and ZONES.worldview carries playerScale {near .55, far .03} --
+     a deliberate shrink to sell the vista's depth (v2.3.859) -- so this is
+     the number Tee's report is about.  Sampled at the centre AND out toward
+     the rim, because the whole point of the curve is that it varies. */
+  const drawnHub = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const Z = (window.__btZones || {}).worldview;
+    const out = [];
+    const at = (fx, fy, tag) => {
+      S.player.x = Z.w * 32 * fx; S.player.y = Z.h * 32 * fy;
+      return { tag, fx, fy };
+    };
+    return new Promise((res) => {
+      const spots = [[0.5, 0.5, 'centre'], [0.72, 0.28, 'toward a spoke'], [0.9, 0.1, 'near the rim']];
+      let i = 0;
+      const step = () => {
+        if (i >= spots.length) return res(out);
+        const s = spots[i];
+        const m = at(s[0], s[1], s[2]);
+        setTimeout(() => {
+          const d = window.__btPlayerDrawn ? window.__btPlayerDrawn() : null;
+          out.push({ ...m, scale: d && d.scale != null ? +d.scale.toFixed(3) : null });
+          i++; step();
+        }, 450);
+      };
+      step();
+    });
+  });
+  console.log('    worldview player scale: ' + JSON.stringify(drawnHub));
+
+  /* ═══ v2.3.2124: THE MAGNIFYING GLASS ═══
+     Owner: "there was a fair point about the character being too small in
+     worldview.  Maybe it can show character full size but through a
+     'magnifying glass'."
+
+     The World View shrinks your own figure to sell the vista's depth --
+     playerScale {near .55, far .03, curve .6}, so 55% at the plateau and 3%
+     out at the rim.  That is what Tee reported and what an earlier pass of
+     this scenario missed, because it measured with figureBox (a canvas crop,
+     which latched onto something else) and with __btPlayerDrawn's width (the
+     BODY sprite's scale, not the container the shrink is applied to).  The
+     container scale is published now and is the thing asserted.
+
+     The claim: with a lens declared, YOUR figure renders at the lens scale
+     everywhere on the map -- flat, not falling away with distance. */
+  const lens = await P.page.evaluate(() => ((window.__btZones || {}).worldview || {}).playerLens || null);
+  console.log('    lens: ' + JSON.stringify(lens));
+  rec.ok('the World View declares a magnifier for the local player', !!lens, lens);
+  if (lens && drawnHub.every((d) => d.scale != null)) {
+    /* NOT compared against lens.scale directly: the container scale is the
+       lens times PLAYER_SIZE_MULT times this bro's own build height, so the
+       config number is one factor of three and asserting equality with it
+       would be asserting the other two are 1.  What the feature promises is
+       the two things below. */
+    const rim = drawnHub[drawnHub.length - 1].scale;
+    const mid = drawnHub[0].scale;
+    /* 1. FLAT.  The curve's whole behaviour is to fall away with distance;
+          the lens's whole behaviour is not to. */
+    rec.ok('...and the figure holds one size right out to the rim',
+      Math.abs(mid - rim) < 0.02, drawnHub);
+    /* 2. READABLE.  The curve reached 0.03 at the rim -- a speck.  Any value
+          near that means the lens is not being read, whatever the config
+          says. */
+    rec.ok('...at a size you can actually see (the curve gave 0.03 out here)',
+      rim > 0.5, { rim, curveWouldBe: 0.03 });
+  } else {
+    rec.skip('the magnifier holds the figure at a readable size', 'no scale published');
+  }
+
+
   await stand(P, marks.spoke.tx * TILE + 16, marks.spoke.ty * TILE + 16);
   await H.waitFor(P, (S) => S.currentZone, (z) => z === 'sky',
     { timeout: 30000, label: 'Wind Dunes' }).catch(() => {});

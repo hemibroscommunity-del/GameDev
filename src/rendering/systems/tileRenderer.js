@@ -988,6 +988,8 @@ export class TileRenderer {
     }
     /* v2.3.2121: the road, drawn whether or not this zone declared exits. */
     this._drawQuestTrail(S, _questTo, _now);
+    /* v2.3.2124: the vista magnifier's glass, under your feet. */
+    this._drawPlayerLens(S, _now);
 
     // Two-pass background, matching the Canvas 2D path:
     //   1. Solid BLACK extending well beyond the map so out-of-bounds
@@ -1006,6 +1008,58 @@ export class TileRenderer {
       this.bgGfx.rect(0, 0, this._mapW, this._mapH);
       this.bgGfx.fill({ color: this._bgColor });
     }
+  }
+
+  /* ═══ v2.3.2124: THE MAGNIFYING GLASS ═══
+   * Owner: "there was a fair point about the character being too small in
+   * worldview.  Maybe it can show character full size but through a
+   * 'magnifying glass'."
+   *
+   * entityRenderer does the actual magnifying -- a zone carrying `playerLens`
+   * renders the LOCAL player at a flat readable scale instead of the vista
+   * curve that takes him to 3% at the rim.  This draws the glass he is being
+   * seen through, and it exists so the result reads as deliberate: a figure
+   * that is simply bigger than the map's perspective says he should be looks
+   * like a scale bug, and the same figure inside a lens looks like a lens.
+   *
+   * UNDER THE PLAYER, not over him.  overlayGfx sits below the entity layer,
+   * so this is glass he stands on rather than a pane across his face -- which
+   * is the only version that cannot cost readability, the exact thing the
+   * feature is for (Tee raised it about visual impairment).
+   *
+   * No filter and no texture: a ring, a fill and a highlight arc on the
+   * Graphics that is already cleared and refilled every frame.  A `filter`
+   * compositing over the WebGL canvas is the documented cause of the iOS
+   * static (CLAUDE.md), and this would be the worst possible place for it. */
+  _drawPlayerLens(S, now) {
+    const zone = ZONES[this.currentZone];
+    const lens = zone && zone.playerLens;
+    if (!lens || !S || !S.player) return;
+    const r = (typeof lens.r === 'number' ? lens.r : 46);
+    /* player x/y is the FOOT anchor and the figure stands up from it, so the
+       glass is lifted onto his middle -- centred on the feet it cut through
+       his knees and read as a selection ring. */
+    const x = S.player.x, y = S.player.y + (typeof lens.cy === 'number' ? lens.cy : 0);
+    /* A slow breath so the glass reads as an optic rather than a painted
+       circle -- 3% over four seconds, small enough never to pull the eye off
+       the figure inside it. */
+    const breathe = 1 + 0.03 * Math.sin((now % 4000) / 4000 * Math.PI * 2);
+    const rr = r * breathe;
+    /* the glass */
+    this.overlayGfx.circle(x, y, rr);
+    this.overlayGfx.fill({ color: 0xCFE3F0, alpha: 0.10 });
+    /* the rim, in Lantern Slate brass so it belongs to the UI rather than to
+       the landscape */
+    this.overlayGfx.circle(x, y, rr);
+    this.overlayGfx.stroke({ color: 0xD8AA58, width: 2.5, alpha: 0.75 });
+    /* an inner hairline, which is what makes a circle read as ground glass
+       instead of as a selection ring */
+    this.overlayGfx.circle(x, y, rr - 3);
+    this.overlayGfx.stroke({ color: 0xF4F0E7, width: 1, alpha: 0.24 });
+    /* the highlight: a short bright arc up-left, the one cue that says
+       "curved glass" at this size */
+    this.overlayGfx.arc(x, y, rr - 5, Math.PI * 1.05, Math.PI * 1.45);
+    this.overlayGfx.stroke({ color: 0xFFFFFF, width: 2.5, alpha: 0.34 });
   }
 
   /* ═══ v2.3.2121: THE ROAD ITSELF ═══

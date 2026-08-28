@@ -74,6 +74,7 @@ const SCENARIOS = {
   crowdsoak: () => import('./mp-crowdsoak.mjs'), /* v2.3.2122: the demo's load — peers + zone changes — which mp-soak does not drive */
   armorloss: () => import('./mp-armorloss.mjs'), /* v2.3.2122: where a dropped chest piece goes, and whether it comes back */
   weaponloss: () => import('./mp-weaponloss.mjs'), /* v2.3.2123: does a weapon survive a full stash? */
+  fightsoak: () => import('./mp-fightsoak.mjs'), /* v2.3.2124: a long soak against the WORKER's monsters — the path mp-soak never drives */
   figscale: () => import('./mp-figscale.mjs'), /* v2.3.2123: is the character smaller outside town? */
   chatjoy: () => import('./mp-chatjoy.mjs'), /* v2.3.2123: the world chat sitting on the joystick */
   dunes: () => import('./mp-dunes.mjs'), /* v2.3.2122: the Wind Dunes arrival you cannot walk out of */

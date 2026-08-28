@@ -39,7 +39,31 @@ export const ZONES = {
     palette: { ground: '#b89a5a', path: '#cdb27a', accent: '#7aa050' },
     spawns: [],
     atmosphere: { tint: 'rgba(180,200,230,0.03)', vignette: 'rgba(80,110,150,0.05)' },
-    playerScale: { near: 0.55, far: 0.03, curve: 0.6 }
+    playerScale: { near: 0.55, far: 0.03, curve: 0.6 },
+    /* ═══ v2.3.2124: THE MAGNIFYING GLASS ═══
+       Owner: "there was a fair point about the character being too small in
+       worldview.  Maybe it can show character full size but through a
+       'magnifying glass'."  Tee raised it first, on accessibility grounds:
+       "The charter is too small ... someone with visual impairment might
+       struggle with it."
+
+       They are right, and the curve above is why: it takes YOUR OWN figure
+       down to 55% at the plateau and 3% at the rim.  That is deliberate --
+       v2.3.859 added it to sell the vista's depth, and it works, which is
+       exactly the problem: the thing it shrinks to a speck is the thing you
+       are steering.
+
+       So the depth stays and the lens is the exception to it.  `scale` is
+       what the LOCAL player renders at here instead of the curve; `r` and
+       `cy` are the glass drawn under him (tileRenderer) so the difference
+       reads as a lens you are looking through rather than as a figure that
+       forgot to shrink.  `cy` lifts the circle off his FEET and onto his
+       middle -- player x/y is the foot anchor, so a circle centred there put
+       him in its top half with the rim through his knees, which reads as a
+       selection ring rather than as glass.
+       Peers keep the curve untouched -- a map full of full-size strangers
+       would flatten the vista, and it is your own character you need to see. */
+    playerLens: { scale: 0.9, r: 58, cy: -26 }
   },
   meadow: {
     id: 'meadow', name: 'Starting Meadow', w: 32, h: 32,

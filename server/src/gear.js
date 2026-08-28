@@ -244,8 +244,39 @@ export const gearMethods = {
     const i = Object.keys(table).indexOf(this._prog3BaseTier(isWw));
     return i > 0 ? i : 0;
   },
+  /* ═══ v2.3.2124: IRON CARRIES NO REQUIREMENT ═══
+   * Owner: "There should not be a 30 defense requirement on iron chest plate.
+   * Maybe an early build.  Remove any defense requirement for all iron."
+   *
+   * The 30 came from the fallback below rather than from any table.  A
+   * MONSTER_ARMOR_DROPS piece is minted as `{name, tierMult, slot, mat}` with
+   * no `gearBase` (v2.3.1924), so the tier lookup misses and the tierMult
+   * curve fires: round((2.0 - 1) x 6) = rung 6, x5 = 30.  Through the TABLE
+   * the same metal is rung 2 against copper's rung 1, i.e. 5.  So the drop was
+   * asking six times what a forged iron piece asks, purely for lacking a field
+   * -- and the client never gated it at all (canEquipItem returns true for
+   * anything without a gearBase), so the player equipped it, the worker
+   * refused, and until v2.3.2122 the refusal destroyed the piece.
+   *
+   * The owner's answer is simpler than reconciling those two roads, and it
+   * applies to the metal rather than to the drop: iron is free.  Matched on
+   * `mat` AND `gearBase` because a dropped piece names its metal in the first
+   * and a forged one in the second, and half a fix here reads as the rule
+   * working for loot and not for craft. */
+  _isIronGear(item) {
+    if (!item || typeof item !== 'object') return false;
+    return item.mat === 'iron' || item.material === 'iron' || item.gearBase === 'iron';
+  },
   _prog3EquipOk(ps, slot, item) {
     if (!ps || !ps.prog3 || !item || typeof item !== 'object') return true;
+    /* v2.3.2124: DEFENCE-gated slots only.  The owner's words are "remove any
+       DEFENSE requirement for all iron", and armour and shields are what the
+       defence ladder gates; an iron greatsword is gated on the sword ladder,
+       which they did not ask to change and which prog3.test.mjs pins in both
+       directions ("iron still asks for something -- one rung up, not zero").
+       A first cut exempted iron everywhere and turned that test red, which is
+       the test doing exactly its job. */
+    if ((slot === 'armor' || slot === 'shield') && this._isIronGear(item)) return true;
     let tierIdx = -1;
     let baseIdx = 0;
     if (typeof item.gearBase === 'string') {

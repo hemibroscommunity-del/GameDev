@@ -700,6 +700,36 @@ function sanitize(src, { jsxText = false } = {}) {
   }
 }
 
+/* ---- 6b. eslint, the check CI actually runs ------------------------- */
+/* ═══ v2.3.2124: ADDED BECAUSE CI CAUGHT WHAT THIS GATE MISSED ═══
+ * A duplicate object key (no-dupe-keys) in QuestCoach.jsx passed every check
+ * here -- the syntax check parses the file and a duplicate key parses fine --
+ * and turned lint-build red on the PR.  This file calls itself "the fast local
+ * gate"; a gate that green-lights a push CI will reject is not one.
+ *
+ * It was omitted for a good reason that has expired: CLAUDE.md said the sandbox
+ * blocked npm install, so lint lived in CI alone.  npm install works here now
+ * (verified 2026-08-03, and this repo's own node_modules is what runs the
+ * build), so the reason is gone and the check comes home.
+ *
+ * SKIPPED, NOT FAILED, when eslint is not installed: this must stay runnable
+ * on a bare checkout, and "no linter here" is not a finding about the diff.
+ * Only client files are linted because `npm run lint` is `eslint src`. */
+if (changedClient.length) {
+  const r = spawnSync('npx', ['--no-install', 'eslint', 'src'],
+    { cwd: root, encoding: 'utf8', timeout: 4 * 60 * 1000, maxBuffer: 32 * 1024 * 1024 });
+  if (r.error || r.status === null) {
+    add('PASS', 'eslint', 'eslint not runnable here — check skipped (CI still runs it)');
+  } else if (r.status === 0) {
+    add('PASS', 'eslint', 'npm run lint — clean');
+  } else {
+    const tail = ((r.stdout || '') + (r.stderr || '')).trim().split('\n').slice(-12).join('\n    ');
+    add('FAIL', 'eslint', `npm run lint exited ${r.status}:\n    ${tail}`);
+  }
+} else {
+  add('PASS', 'eslint', 'no client changes — lint skipped');
+}
+
 /* ---- 7. server tests ----------------------------------------------- */
 if (changedServer.length) {
   const r = spawnSync('npm', ['test'], { cwd: join(root, 'server'), encoding: 'utf8', timeout: 5 * 60 * 1000, maxBuffer: 64 * 1024 * 1024 });

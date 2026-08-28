@@ -423,5 +423,39 @@ check('a godly chest mitigates measurably more than a normal one',
 check('...without running straight into the 0.75 clamp',
   drGodly < 0.70, drGodly);
 
+/* ═══ 8. THE IRON PIECES CAN ACTUALLY BE WORN (v2.3.2124) ═══
+ * Owner: "There should not be a 30 defense requirement on iron chest plate.
+ * Maybe an early build.  Remove any defense requirement for all iron."
+ *
+ * The 30 was never in a table.  These pieces are minted as
+ * {name, tierMult, slot, mat} with NO gearBase, so _prog3EquipOk's tier
+ * lookup missed and its tierMult fallback fired: round((2.0 - 1) x 6) = rung
+ * 6, x5 = 30 trained Defense.  Through the table the same metal is rung 2
+ * against copper's rung 1, i.e. 5 -- so the DROP asked six times what a
+ * forged iron piece asks, purely for lacking a field.  Meanwhile the client's
+ * canEquipItem returns true for anything without a gearBase, so it let the
+ * player equip it, the worker refused, and until v2.3.2122 the refusal
+ * destroyed the only copy (mp-armorloss).
+ *
+ * Tested against a PROG3 player, because the gate is a no-op for anyone else
+ * and a legacy blob would pass this without the fix. */
+const ironPs = { prog3: { sk: { sword: { level: 1, xp: 0 }, bow: { level: 1, xp: 0 },
+  staff: { level: 1, xp: 0 }, defense: { level: 1, xp: 0 }, magic: { level: 1, xp: 0 } }, pool: 0 },
+  level: 1 };
+const chestItem = { name: chest.name, tierMult: chest.tierMult, slot: chest.slot, mat: chest.mat };
+const legsItem = { name: legs.name, tierMult: legs.tierMult, slot: legs.slot, mat: legs.mat };
+check('a level-1 prog3 bro can wear the dropped iron chest',
+  room._prog3EquipOk(ironPs, 'armor', chestItem) === true, chestItem);
+check('...and the dropped iron greaves', room._prog3EquipOk(ironPs, 'armor', legsItem) === true, legsItem);
+/* Forged iron names its metal in gearBase rather than mat, and the owner said
+   "all iron" -- covering one shape and not the other would make the rule true
+   for loot and false for craft. */
+check('...and a FORGED iron piece, which names its metal in gearBase',
+  room._prog3EquipOk(ironPs, 'armor', { gearBase: 'iron', tierMult: 1.25 }) === true);
+/* The gate still exists.  A blanket `return true` would pass every check
+   above and quietly retire progression, so something has to still be refused. */
+check('the defense gate still refuses a far higher tier (it was not just switched off)',
+  room._prog3EquipOk(ironPs, 'armor', { gearBase: 'mythril', tierMult: 1.94 }) === false);
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 if (failures > 0) process.exit(1);
