@@ -385,16 +385,45 @@ harness; promote individually. Danger: a flaky BLOCKING check is
 worse than none — if one still flakes, tune it first (v2.3.1196b,
 commit 4d31448f, is the tuning pattern).
 
-### G. PNG → WebP conversion
-325 PNGs, ~20MB under `public/`. Needs a machine with `cwebp` — the
-sandbox has no lossless WebP encoder (`tools/webp_convert.mjs` drives
-canvas, whose WebP is lossy and would corrupt the recolor-keyed
-player/gear sheets). `find public -name '*.png' -exec sh -c
-'cwebp -lossless "$1" -o "${1%.png}.webp"' _ {} \;`, then delete the
-.png twins in a follow-up once verified; `loadWebpOrPng`
-(`src/rendering/webpImage.js`) already prefers .webp per-file.
-Danger: sprites/player + sprites/gear MUST be `-lossless` — the tint
+### G. PNG → WebP conversion — `public/icons` SHIPPED v2.3.2068
+**The "no lossless encoder here" claim was false.** Pillow in this
+sandbox is built with libwebp (`PIL.features.check('webp')` is true),
+so lossless VP8L encodes run locally — no `cwebp`, no CI round trip,
+no Chromium canvas. `tools/webp_convert.mjs` (the canvas driver) is
+only needed on a machine without Pillow, and its WebP is lossy.
+
+`public/icons` is done: 27 PNGs, 1,041,647 → 415,394 bytes (60.1%),
+by `python3 tools/webp_icons.py --convert` (run it with no flag to
+re-print the measurement). Alpha came back bit-identical on every
+file at every quality — libwebp compresses the alpha plane losslessly
+at its default `alpha_quality=100`, and the tool asserts it and
+refuses to write if it ever moves. Painted item art ships LOSSLESS
+(lossy q90 costs it 2.6–6.9/255 mean on opaque pixels — visible
+banding on those gradients); the `-3x` UI frames ship q90, judged at
+the 1/3 they are drawn at, where it costs 0.5–0.9/255 and 10–25× the
+bytes. Two traps found doing it, both invisible to a filename grep:
+- `metalIconPath()` (`traits/materialTints.js`) BUILDS the per-metal
+  icon name by concatenation, so `sword-copper` / `chest-plate-iron`
+  had no literal anywhere. It, and the two generators that write by
+  the same rule (`tools/gear/make-metal-icons.mjs`,
+  `make-pine-wood.mjs`, plus `tools/build-verified-badge.mjs`), now
+  end in the convert pass so the rule and the files cannot drift.
+- `public/icons/shards/*.png` must NOT be converted: a
+  `shard_<zone>.webp` of the same name already sits there and is the
+  LIVE art (256px, `effectsRenderer` + `data/shards.js`). The .png
+  twins are stale 128px sources from `tools/shards/build_shards.py`
+  that nothing references; converting them would overwrite live art
+  with an older picture at half the size. `webp_icons.py` skips that
+  directory by name.
+
+Remaining: `public/sprites` (~290 PNGs, ~19MB) and `public/ui`. Those
+are the ones `loadWebpOrPng` (`src/rendering/webpImage.js`) already
+prefers .webp for per-file, so they can convert without a reference
+edit — generate the .webp, verify, then delete the .png twins.
+Danger: sprites/player + sprites/gear MUST be lossless — the tint
 pipeline (playerSkins.js brightness-ratio retint) reads exact RGB.
+Monsters were tried and REVERTED once already (lossless saved ~8%,
+lossy q90 came out LARGER than the PNG — see `tools/optimize-sprites.mjs`).
 
 ### H. Proto-WARN triage — SHIPPED v2.3.1214
 All 16 flagged plain-`{}` sites triaged; the whole-tree sweep

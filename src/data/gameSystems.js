@@ -5512,11 +5512,11 @@ export const QUEST_CHAINS = {
          Copper — the per-metal icon has existed since v2.3.1760
          (tools/gear/make-metal-icons.mjs writes it by the same rule the
          renderer tints by), it was simply never pointed at here. */
-      { when: 'accept',   icon: '/icons/items/great-sword-copper.png', label: "Copper Great Sword" },
-      { when: 'accept',   icon: '/icons/items/shield.png', label: "Pine Shield" },
+      { when: 'accept',   icon: '/icons/items/great-sword-copper.webp', label: "Copper Great Sword" },
+      { when: 'accept',   icon: '/icons/items/shield.webp', label: "Pine Shield" },
       /* v2.3.1692 (owner): all three combat styles land on quest one. */
-      { when: 'complete', icon: '/icons/items/bow.png',    label: "Pine Bow" },
-      { when: 'complete', icon: '/icons/items/staff.png',  label: "Pine Staff" },
+      { when: 'complete', icon: '/icons/items/bow.webp',    label: "Pine Bow" },
+      { when: 'complete', icon: '/icons/items/staff.webp',  label: "Pine Staff" },
     ],
     dialogue: {
       /* ═══ v2.3.1831: HE HANDS YOU THE KIT, HE DOES NOT READ YOU THE MANUAL ═══
@@ -5592,7 +5592,7 @@ export const QUEST_CHAINS = {
        here promises armour the worker will not hand over. */
     reward: { gold: 400, xp: 210, item: "Copper Greaves" }, /* v2.3.1692 (owner): legs, not chest */
     next: null,
-    gives: [{ when: 'complete', icon: '/icons/items/greaves-copper.png', label: "Copper Greaves" }],
+    gives: [{ when: 'complete', icon: '/icons/items/greaves-copper.webp', label: "Copper Greaves" }],
     dialogue: {
       start: 'Last one from me. Flame Fields. Goblins, and they are quick about it. Six.',
       progress: 'Six, out of the fire.',
@@ -5657,7 +5657,7 @@ export const QUEST_CHAINS = {
     reward: { gold: 200, xp: 140, item: 'Copper Torso' }, /* v2.3.1758: copper is tier one */
     next: null,
     gives: [
-      { when: 'complete', icon: '/icons/items/chest-plate-copper.png', label: 'Copper Torso' },
+      { when: 'complete', icon: '/icons/items/chest-plate-copper.webp', label: 'Copper Torso' },
     ],
     dialogue: {
       start: 'Ore next. Five lumps, any kind — the rocks in every zone will do.',

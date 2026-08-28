@@ -15,6 +15,7 @@
  */
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { decode, encode } from './png.mjs';
 
 const argv = process.argv.slice(2);
@@ -106,3 +107,15 @@ writeFileSync(OUT, encode({ width: outW, height: outH, data: out }));
 let opaque = 0;
 for (let i = 0; i < outW * outH; i++) if (out[i * 4 + 3] > 8) opaque++;
 console.log(`wrote ${OUT}  ${outW}x${outH}  (${opaque}px opaque, ${(100 * opaque / (outW * outH)).toFixed(0)}% fill)`);
+
+/* v2.3.2068: the badge SHIPS as verified-bro-small.webp (entityRenderer loads
+   that path), so the PNG this local encoder can write is an intermediate.
+   Converted lossless — the badge is 64px pixel art whose keylines the name
+   pill draws at ~11px, and lossy measured 6.3/255 mean on its opaque pixels. */
+if (OUT.startsWith('public/icons/')) {
+  const r = spawnSync('python3', ['tools/webp_icons.py', '--convert'], { stdio: 'inherit' });
+  if (r.status !== 0) {
+    console.error('!! webp conversion failed — run: python3 tools/webp_icons.py --convert');
+    process.exitCode = 1;
+  }
+}

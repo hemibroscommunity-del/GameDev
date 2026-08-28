@@ -67,8 +67,8 @@ const wpnIconSrc = (R, wpn) => {
   /* v2.3.1760: a melee weapon's icon takes its METAL (metalIconPath); a bow or
      a staff never does — owner: "only for metals though not staff or bow". */
   const metal = weaponMaterial(wpn.type, wpn.gearBase);
-  return wpn.type === 'bow' ? `/icons/items/bow.png${ITEMS_V}`
-    : wpn.type === 'staff' ? `/icons/items/staff.png${ITEMS_V}`
+  return wpn.type === 'bow' ? `/icons/items/bow.webp${ITEMS_V}`
+    : wpn.type === 'staff' ? `/icons/items/staff.webp${ITEMS_V}`
     : wpn.type === 'greatsword' ? `${metalIconPath('/icons/items/great-sword.webp', metal)}${ITEMS_V}`
       : `${metalIconPath('/icons/items/sword.webp', metal)}${ITEMS_V}`;
 };
@@ -161,7 +161,7 @@ export function getEquippedSlots(R) {
     { slot: 'weapon', label: 'Weapon', item: wpn, iconSrc: wpnIconSrc(R, wpn),
       ghost: !wpn, quality: wpn && wpn.quality, pickerSlot: 'weapon' },
     { slot: 'shield', label: 'Shield', item: R.shield,
-      iconSrc: R.shield ? `/icons/items/shield.png${ITEMS_V}` : null,
+      iconSrc: R.shield ? `/icons/items/shield.webp${ITEMS_V}` : null,
       ghost: !R.shield, pickerSlot: 'shield' },
     { slot: 'chest', label: 'Chest', item: chestEquipped ? { gearChestId, gearShirtId } : null,
       iconSrc: chestIcon, ghost: !chestEquipped, pickerSlot: 'chest' },

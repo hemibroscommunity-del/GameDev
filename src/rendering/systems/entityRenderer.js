@@ -3927,7 +3927,7 @@ function _attachNamePill(container, nameSize, sizeMult, host) {
    delays a badge rather than stalling the loading screen. */
 let _broBadgeTex = null;
 function _broBadgeTexture() {
-  if (!_broBadgeTex) _broBadgeTex = Texture.from('/icons/ui/verified-bro-small.png');
+  if (!_broBadgeTex) _broBadgeTex = Texture.from('/icons/ui/verified-bro-small.webp');
   return _broBadgeTex;
 }
 

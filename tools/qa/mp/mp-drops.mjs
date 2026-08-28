@@ -164,14 +164,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const img = cell && cell.querySelector('img');
     return {
       src: img ? img.getAttribute('src') : null,
+      /* v2.3.2068: naturalWidth, not just the src.  The per-metal icon name is
+         BUILT by metalIconPath() concatenating the metal onto the base — no
+         literal filename exists anywhere — so a wrong extension there 404s
+         while leaving an <img> in the DOM whose src still matches the regex
+         below.  Only a decoded bitmap proves the file is really there. */
+      w: img ? img.naturalWidth : 0,
       /* Anything on screen still showing the raw stored string is the bug. */
       rawName: /iron greatsword/.test(document.body.innerText || ''),
       text: (document.body.innerText || '').replace(/\s+/g, ' ').slice(0, 240),
     };
   });
-  console.log('    iron blade on screen', JSON.stringify({ src: seen.src, rawName: seen.rawName }));
+  console.log('    iron blade on screen', JSON.stringify({ src: seen.src, w: seen.w, rawName: seen.rawName }));
   rec.ok('the worn weapon cell draws the IRON greatsword art',
     !!seen.src && /great-sword-iron/.test(seen.src), seen.src);
+  rec.ok('...and that file actually loaded (metalIconPath builds the name)',
+    seen.w > 0, { src: seen.src, naturalWidth: seen.w });
   rec.ok('...and no screen shows the raw stored name', seen.rawName === false, seen.text);
   await P.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/drops-blade.png' });
 

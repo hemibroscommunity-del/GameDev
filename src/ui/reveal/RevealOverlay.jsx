@@ -65,8 +65,8 @@ function iconFor(r) {
     if (r.kind === 'weapon') {
       const base = r.itemType === 'greatsword' ? '/icons/items/great-sword.webp'
         : r.itemType === 'sword' ? '/icons/items/sword.webp'
-          : r.itemType === 'bow' ? '/icons/items/bow.png'
-            : r.itemType === 'staff' ? '/icons/items/staff.png' : null;
+          : r.itemType === 'bow' ? '/icons/items/bow.webp'
+            : r.itemType === 'staff' ? '/icons/items/staff.webp' : null;
       return base ? metalIconPath(base, r.mat) : null;
     }
   } catch (e) { /* a missing picture is never worth breaking the ceremony */ }

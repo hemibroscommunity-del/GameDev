@@ -21,8 +21,8 @@ export const GEAR_VARIANTS = {
   coppergreaves: { slot: 'legs', art: 'steelgreaves', material: 'copper', name: 'Copper Greaves' },
   /* v2.3.1924: iron becomes obtainable — monsters drop the two pieces at
      1-in-500 each (server/src/data.js MONSTER_ARMOR_DROPS).  The metal has
-     had a tint since v2.3.1760 and finished icon art (chest-plate-iron.png /
-     greaves-iron.png) the whole time, and no way to get any of it; these two
+     had a tint since v2.3.1760 and finished icon art (chest-plate-iron.webp /
+     greaves-iron.webp) the whole time, and no way to get any of it; these two
      rows are the entire client cost of tier two, which is the "adding a metal
      is one line" claim at the top of this file being cashed. */
   ironplate: { slot: 'chest', art: 'steelplate', material: 'iron', name: 'Iron Plate' },
