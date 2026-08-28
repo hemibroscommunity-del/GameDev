@@ -1365,3 +1365,58 @@ what happened instead of the author's prior.
 
 **Related:** §33 (a test that reads a field the game does not have), §37
 (measuring a drawing against the box that defines it).
+
+---
+
+## §39 — "Element is visible, enabled and stable" is what a COVERED button looks like (v2.3.2085)
+
+**The message that means the opposite of what it says.** A Playwright click
+on a control something else is sitting on top of reports this and then times
+out:
+
+```
+locator resolved to <button class="bt-inspect-tp">Trade</button>
+attempting click action
+  2 x waiting for element to be visible, enabled and stable
+    - element is visible, enabled and stable
+Timeout 30000ms exceeded
+```
+
+Every line is true. The button *is* visible, enabled and stable — it is
+simply not what the pointer would land on. Read as written it says "the
+button is fine and the click did nothing", which sends you to the handler,
+the event wiring, the disabled state: everywhere except the one place the
+answer is. mp-trade sat on this for weeks.
+
+**The browser will name the culprit for the asking.**
+`document.elementFromPoint` at the control's own centre. `H.clickText` does
+it now (v2.3.2084) and answered mp-trade in a single run. Three things had to
+be right before it said anything useful, and each wrong version *looked* like
+it worked:
+
+1. **Sample BEFORE the click.** In the catch block you are thirty seconds
+   late; the panel has moved on and `boundingBox()` answers null.
+2. **Put it FIRST in the message.** The runner truncates a failure at a couple
+   of hundred characters and Playwright's own call log is longer than that, so
+   an appended line is cut off before anyone reads it.
+3. **Say whether it is an ANCESTOR.** An element that *contains* the button is
+   not covering it — the click lands and bubbles. Naming which of the two it
+   is saves the reader the wrong half of the search.
+
+**And the fix is usually not a z-index.** The inspect card claims z 99800
+against the chat feed's 25 and loses anyway, because the feed's shell is
+styled `left: 8px` and *renders at x=295*: its `position: fixed` is captured
+by a transformed ancestor, which also scopes its z-index inside that
+ancestor's stacking context (§20). When two elements are in different
+stacking contexts, no number either side picks decides the argument. What
+decides it is one of them declining the tap.
+
+**The general shape, which this repo has now hit three times.** A control the
+player must press, with something invisible over it: the dashboard over the
+tutorial banner (v2.3.1205), the shop drawer over the inspect card's actions
+(v2.3.2078), the chat log over Trade (v2.3.2085). All three were reported as
+"the button does nothing". When a button does nothing, ask what is on top of
+it *before* you read its handler.
+
+**Related:** §20 (a fixed wrap is its own stacking context), §38 (a
+diagnostic that can only accuse the suspects you thought of).
