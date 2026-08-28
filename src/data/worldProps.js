@@ -65,9 +65,31 @@ export const WORLD_PROPS = [
        x 660..830, and at worldH 165 the art is 159 wide and sits inside it.
        The blueprint's own house is bigger; that is one of the details the
        owner said to ignore. */
+    /* ═══ v2.3.2069: BIGGER, AND WHY NOT THE FULL 3x ═══
+       Owner: "Make the mayors house larger by about 3x."
+
+       165 -> 400 is 2.4x, and it is the most the map has room for. At a true
+       3x (495) the roof reaches y=-45 -- off the TOP of the world, because
+       this house stands on the northern terrace at y=470 and there is only
+       470px of map above it. There is no version of 3x here that is not
+       partly drawn outside the map.
+
+       The width is the other half. At 400 the art is 386 across, spanning
+       x 567..953, and the terrace's clear cobble is only x 660..830 -- so it
+       DOES overhang, onto the pines either side. That was rendered and
+       looked at rather than reasoned about: the house reads as nestled into
+       the trees, which is what a house on a wooded terrace should look like.
+       It is covering foliage, not a cliff face, which is the overhang that
+       reads as floating.
+
+       Nudged 10px east of the measured centre so the left edge sits on
+       greenery rather than the rocky shoulder at x 545 (10% cliff on a 30px
+       disc). The BLOCK stays much narrower than the art -- an isometric
+       roof overhangs its walls, and blocking the roof's shadow leaves the
+       player bumping into thin air a body-length from the door. */
     id: 'mayor-house', zone: 'town', mapV: 17,
     sprite: '/sprites/props/mayor-house.png',
-    x: 750, y: 450, worldH: 165, blockW: 120, blockD: 52,
+    x: 760, y: 470, worldH: 400, blockW: 230, blockD: 78,
     /* No action: Mayor Bro stands outside handing out the tutorial, and a
        door that opens a panel he already covers is a second, worse way to
        talk to him. */
@@ -77,8 +99,23 @@ export const WORLD_PROPS = [
        83% cobble -- the rest is the western tree line -- so it sits 50px east
        at 98%. `action` makes the door work: ForgePanel has been unreachable
        since the props were switched off. */
+    /* ═══ v2.3.2069: BIGGER, AND WHY NOT THE FULL 3x ═══
+       Owner: "Same with blacksmith house."
+
+       200 -> 500 is 2.5x, and again it is what fits. This art is WIDER than
+       it is tall (1.10), so height is not the binding constraint here --
+       width is: at a true 3x it would be 661 across, and there is only
+       x 200..760 of clear cobble at this latitude before the west tree line
+       on one side and the fountain's own footprint on the other. Sampled at
+       3x, its left edge lands on ground that is 53% leaf and its right edge
+       reaches x=760, a hair from the fountain basin. 500 spans x 205..755
+       and both edges sample 98% open cobble.
+
+       Moved from (350,850) to (480,900): the extra width has to come from
+       somewhere, and taking it eastward keeps the building off the trees
+       while leaving the plaza's middle clear. */
     id: 'forge', zone: 'town', mapV: 17, sprite: '/sprites/props/forge.png',
-    x: 350, y: 850, worldH: 200, blockW: 150, blockD: 65,
+    x: 480, y: 900, worldH: 500, blockW: 330, blockD: 110,
     action: 'forge', label: 'BLACKSMITH',
   },
   {
@@ -160,7 +197,7 @@ export const WORLD_PROPS = [
        same thing in this pass. */
     id: 'anvil', zone: 'town', mapV: 17, mapIcon: null,
     sprite: '/sprites/props/anvil.png',
-    x: 470, y: 930, worldH: 46,
+    x: 640, y: 960, worldH: 46,
   },
 
   /* ═══ STILL UNPLACED: measured against town_v16 (96x30 tiles) ═══

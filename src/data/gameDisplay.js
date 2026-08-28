@@ -3639,18 +3639,22 @@ export const NPC_DATA = [{
      the plaza; he was at (1400,640) on the east, measured against the v16
      town. Moved to a step from his own door -- 99% open cobble on a 44px
      disc -- so the man and his anvil and his building are finally in the same
-     part of town. spawnX/renderX/targetX move WITH x/y or the wander step
+     part of town.
+     v2.3.2069: and again when the forge grew to 2.5x -- (460,900) is
+     inside the bigger building's footprint now, so he stands at its
+     south-east corner beside his anvil instead of inside its wall.
+     spawnX/renderX/targetX move WITH x/y or the wander step
      walks him back to the old spot over the next few seconds (v2.3.1813). */
-  x: 460, y: 900,
-  spawnX: 460, spawnY: 900,
-  renderX: 460, renderY: 900,
+  x: 640, y: 1010,
+  spawnX: 640, spawnY: 1010,
+  renderX: 640, renderY: 1010,
   hp: 100, maxHp: 100,
   noHp: true,
   alive: true,
   respawnAt: 0,
   pathRadius: 0,
   moveTimer: 0,
-  targetX: 460, targetY: 900,
+  targetX: 640, targetY: 1010,
   chatTimer: 11000,
   chatBubble: null,
   phrases: [

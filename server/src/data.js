@@ -414,7 +414,25 @@ export function manaSurgePerTick(specialCost, tickMs) {
 
 export const SHOP_ITEMS = {
       cookedMinnow:  { cost: 8,  effect: 'healFish', power: 23 },
-      basicTrap:     { cost: 20, effect: 'trap' },
+      /* ═══ v2.3.2069: THE TRAP IS OFF THE SHELF ═══
+         Owner: "Remove the 20g trap from the shop it has no effect in the
+         game currently." Checked before deleting, because pets.js says the
+         opposite in its header -- it consumes a basic_trap per capture
+         attempt and calls it "the item finally matters" (v2.3.1130).
+
+         Both are true. The SERVER side of pet capture is complete and
+         correct; what is missing is any way to ask for it. The only trigger
+         is the trap button in MenuBar.jsx, and that whole toolbar has
+         `display: 'none'` on its root -- "Legacy bottom toolbar, replaced by
+         the utility wheel, hidden in v14.x". So the capture path has been
+         unreachable for hundreds of versions and a trap has been twenty coins
+         for nothing.
+
+         ONLY THE SHOP LINE GOES. pets.js, the pet_capture message, the
+         `trap` effect branch in cooking.js and the basic_trap inventory key
+         all stay: they are a finished system waiting on a button, not dead
+         code, and a trap already in someone's bag still works. Put the item
+         back here the day the capture UI exists. */
       staminaSalts:  { cost: 12, effect: 'stamina', power: 60 },
       /* v2.3.2056: `duration` in SECONDS, like a cook recipe. 60s was the
          old client-only timer and it was never worth 35 coins even in theory:

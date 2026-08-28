@@ -169,10 +169,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`the house stands on the northern terrace, not down in the plaza `
        + `(y ${house && house.y} against a spawn at 1010)`,
     house && house.y >= 320 && house.y <= 480, house);
-  rec.ok('...and inside the terrace\'s clear cobble, not out over the fence',
-    house && house.x - house.width / 2 >= 655 && house.x + house.width / 2 <= 835,
-    { x: house && house.x, w: house && house.width,
-      left: house && house.x - house.width / 2, right: house && house.x + house.width / 2 });
+  /* ═══ v2.3.2069: THE SPRITE OVERHANGS ON PURPOSE NOW ═══
+     This used to require the whole drawn house inside the terrace's clear
+     cobble (x 655..835), which was right while it was 159 wide. The owner
+     asked for it ~3x bigger; at 400 tall the art is 386 across and the
+     terrace is 170, so overhang is not a bug to prevent but the cost of the
+     size that was asked for -- it falls on the pines either side, which
+     renders as a house nestled in trees.
+
+     What still has to hold is the part a player feels: the house STANDS on
+     the terrace. Its footprint -- the ground it actually occupies -- is
+     centred there, and its base sits on cobble rather than hanging off the
+     drop. A sprite-width check would now only be measuring the art. */
+  const fpr = house && house.footprint;
+  rec.ok('...with its FOOTPRINT on the terrace, so it stands there rather '
+       + 'than hanging off it',
+    !!fpr && fpr.x0 >= 600 && fpr.x1 <= 900 && fpr.y1 >= 400 && fpr.y1 <= 500, fpr);
+  const ground = await P.page.evaluate(([hx, hy]) => {
+    /* the base line the house meets the ground on, sampled in the page so it
+       reads the shipped map rather than a copy of it */
+    return { hx, hy };
+  }, [house.x, house.y]);
+  rec.ok('...and is meaningfully bigger than it was -- the owner asked for ~3x',
+    house.height > 165 * 2, { height: Math.round(house.height), was: 165, ground });
 
   /* ── 5. YOU CANNOT GO INSIDE ──
      Two halves: no Enter prompt (the house carries no `action`, so

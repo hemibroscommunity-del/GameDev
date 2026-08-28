@@ -29,14 +29,50 @@ async function hold(P, key, ms) {
   await P.page.waitForTimeout(250);
 }
 
-/** Distance covered walking north for `ms`, from a clear patch of plaza. */
-async function sprint(P, ms = 2200) {
-  await put(P, 700, 1450);
+/** How far the walk carries you per RENDERED FRAME, walking north up a clear
+ *  lane. NOT px/second, and that distinction is the whole of this helper.
+ *
+ * v2.3.2069: this measured wall-clock distance over a fixed 2200 ms and the
+ * comparison quietly stopped meaning anything. Movement is a FIXED STEP PER
+ * FRAME (7.6 px un-buffed, measured), so the distance covered in a second is
+ * really a measurement of headless Chromium's frame rate -- which here ramps
+ * as the run goes on. Probed across five lanes in one session: 69, 86, 101 and
+ * 103 px/s for the SAME walk, a 1.5x spread. That is exactly the size of the
+ * Swift Draught, so a control taken early and a buffed run taken later could
+ * differ by a factor of the thing under test with no potion involved at all.
+ * It first showed up as the control out-running the buffed run (202 -> 180),
+ * which reads as "the potion is broken" and is not.
+ *
+ * The same five lanes in px/FRAME: 7.600, 7.581, 7.644, 7.550 -- inside 1.2%.
+ * So count frames, not milliseconds, and the frame rate cancels out.
+ *
+ * The lane runs north from (1000, 1600): checked against propsForZone rather
+ * than remembered -- it crosses no blocking footprint (forge, mayor's house,
+ * general store, fountain) and stays clear of every NPC's wander radius,
+ * including Lil Bro's 130 px around (1180, 1180). 90 frames at the buffed rate
+ * is ~1030 px, which still lands short of the top of the map.
+ * (x=300 was rejected: it walks into the west cliff and reads 5.06.) */
+async function sprint(P, frames = 90) {
+  await put(P, 1000, 1600);
   await P.page.waitForTimeout(350);
-  const a = await pos(P);
-  await hold(P, 'w', ms);
-  const b = await pos(P);
-  return a.y - b.y;
+  await P.page.keyboard.down('w');
+  /* Already in motion before the count starts, so the first frames of the
+     press are not part of the sample. */
+  await P.page.waitForTimeout(400);
+  const m = await P.page.evaluate((n) => new Promise((res) => {
+    const S = window._gameState.current;
+    const y0 = S.player.y;
+    let f = 0;
+    const step = () => {
+      f++;
+      if (f >= n) return res({ dist: y0 - S.player.y, frames: f });
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }), frames);
+  await P.page.keyboard.up('w');
+  await P.page.waitForTimeout(250);
+  return Math.round((m.dist / m.frames) * 100) / 100;
 }
 
 export async function run({ browser, wsPort, webPort, rec }) {
@@ -81,7 +117,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.evaluate(() => window.__broShopBus.setOpen(false));
   await P.page.waitForTimeout(500);
   const before = await sprint(P);
-  rec.ok(`the control sprint covers ground (${before}px)`, before > 80, { before });
+  rec.ok(`the control sprint covers ground (${before} px/frame)`, before > 4, { before });
 
   await openBro();
   await P.page.click('[data-shop-bro="swiftDraught"]');
@@ -116,7 +152,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     buffState.spdBuff > 170000 && buffState.spdBuff < 185000, buffState);
 
   const after = await sprint(P);
-  rec.ok(`you actually run faster with it (${before}px -> ${after}px over the same walk)`,
+  rec.ok(`you actually run faster with it (${before} -> ${after} px/frame over the same walk)`,
     after > before * 1.25, { before, after, ratio: (after / before).toFixed(2) });
   rec.ok('...and the server accepted the sprint rather than rubber-banding it',
     after > before, { after, before });
@@ -174,8 +210,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* The speed is gone in the WORLD too, not just on a flag. */
   const slowAgain = await sprint(P);
-  rec.ok(`...and you are back to normal speed (${slowAgain}px, against `
-       + `${before}px un-buffed and ${after}px buffed)`,
+  rec.ok(`...and you are back to normal speed (${slowAgain} px/frame, against `
+       + `${before} un-buffed and ${after} buffed)`,
     slowAgain < after * 0.85, { before, after, slowAgain });
 
   /* ── 4. YOU CAN CAST SPECIALS WITHOUT PAUSE ──

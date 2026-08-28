@@ -261,6 +261,12 @@ if (typeof window !== 'undefined') window.__btNpcSprites = () => Object.values(_
    derived from them, and a magic 223 in four places is how they drift. */
 const NPC_FRAME_FEET_Y = 223;
 const NPC_FRAME_TOP_Y = 23;
+/* v2.3.2069: how far below the feet a name plate hangs, as a fraction of the
+   figure's own height. 38/121.9 is Shopkeeper Bro's shipped placement -- the
+   one the owner set by eye -- so he is unmoved by construction and every other
+   plate is spaced like his. See the note at the namePlate branch. */
+const NPC_PLATE_DROP_FRAC = 38 / 121.9;
+
 /** Height of the drawn figure above the NPC's feet, in world px. */
 const npcFigureHeight = (src) => npcSpriteScale(src) * (NPC_FRAME_FEET_Y - NPC_FRAME_TOP_Y);
 
@@ -9903,25 +9909,31 @@ export class EntityRenderer {
         if (npc.namePlate) {
           _attachNamePill(display, 9, 1);
           nameText.visible = false;
-          /* ═══ v2.3.2064: THE PLATE SITS WITH THE FIGURE, NOT AT A FIXED DROP ═══
-             _attachNamePill puts the plate 38 units below the container origin,
-             which for an NPC is the feet. That is a constant, so it reads as a
-             neat caption under a full-size adult and as a detached label
-             floating well under a child -- the gap does not shrink with the
-             character the way it does for a player (whose whole display scales).
-             Scaled by the same npcSpriteScale the figure uses, so the gap is the
-             same RELATIVE to each NPC's own height.
+          /* ═══ v2.3.2069: THE PLATE HANGS OFF THE FIGURE'S OWN HEIGHT ═══
+             Owner: "Move the lil bro name plate up."
 
-             CLAMPED AT THE ORIGINAL 38, so this can only ever pull a plate IN,
-             never push one out. Shopkeeper Bro is drawn at 1.30 and his plate
-             was placed by eye at the owner's request (v2.3.2048, "make it below
-             him"); a proportional rule would move it to 49 and quietly re-tune
-             something that was already signed off. Only figures SMALLER than
-             the default are adjusted, which is the case this exists for.
-             Floored, because a very small NPC still has to clear their shoes. */
+             _attachNamePill drops the plate a flat 38 units below the
+             container origin, which for an NPC is the feet. v2.3.2064 scaled
+             that by the sprite's size multiplier and clamped it, which pulled
+             Lil Bro's in to 30 -- not enough, because the multiplier is not
+             the thing the eye compares against. What reads as "too far below
+             him" is the gap measured against HIS OWN HEIGHT, so that is what
+             it is derived from now.
+
+             The reference is Shopkeeper Bro, whose plate the owner placed by
+             eye at v2.3.2048 ("make it below him") and which must not move:
+             his figure stands 121.9 world px above his feet and his plate
+             sits 38 below them, so the ratio the owner actually approved is
+             38/121.9. Every plate uses it. Lil Bro's figure is 73.1, so his
+             lands at 23 -- seven pixels up from v2.3.2064 and half the drop
+             it started at.
+
+             Only two NPCs opt into a plate at all (the quest givers keep the
+             above-head stack their '!' marker is tuned around), so this moves
+             exactly one of them and leaves the other where it was. */
           if (display._namePill) {
-            const _pm = npcSpriteScale(npc.sprite) / NPC_SPRITE_SCALE;
-            display._namePill.y = Math.max(20, Math.min(38, Math.round(38 * _pm)));
+            const _figH = npcFigureHeight(npc.sprite);
+            display._namePill.y = Math.max(14, Math.round(_figH * NPC_PLATE_DROP_FRAC));
           }
         }
 

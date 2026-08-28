@@ -79,13 +79,6 @@ export function VendorPanel(props) {
         effect: 'healFish',
         power: 23
       }, {
-        id: 'basicTrap',
-        name: 'Basic Trap',
-        icon: '🪤',
-        cost: 20,
-        desc: 'Capture weakened monsters',
-        effect: 'trap'
-      }, {
         id: 'staminaSalts',
         art: '/icons/items/potion-stamina.webp',   /* v2.3.2055 */
         name: 'Stamina Salts',
