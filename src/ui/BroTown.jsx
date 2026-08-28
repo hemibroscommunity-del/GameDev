@@ -7174,6 +7174,23 @@ export var BroTown = function BroTown(_ref0) {
     if (inspectPlayer) { try { shopBus.setOpen(false); } catch (e) { /* no shop */ } }
   }, [inspectPlayer]);
 
+  /* ...and the same for the bottom sheet's destinations. The inspect card was
+     the case the sweep caught, but the drawer is fixed at the bottom of the
+     screen and every dashboard panel opens over the same ground: mp-social
+     could not press "Add Friend" and mp-clan could not press "Create Clan
+     (500g)", both reported by Playwright as visible, enabled and stable and
+     then un-clickable, which is what a covered control looks like.
+     One subscription, so a destination added later is covered by the rule
+     rather than by remembering it. */
+  useEffect(function () {
+    var off = dashboardPanelBus.subscribe(function () {
+      if (dashboardPanelBus.state.mode !== 'bar') {
+        try { shopBus.setOpen(false); } catch (e) { /* no shop */ }
+      }
+    });
+    return off;
+  }, []);
+
   /* Virtual joysticks — each tracks its own finger */
   /* v2.3.816: floating model.  The joysticks are hidden until touched and
      spawn under the finger anywhere in their half of the screen.  lZoneRef

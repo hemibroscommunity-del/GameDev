@@ -139,6 +139,43 @@ export async function run({ browser, wsPort, webPort, rec }) {
       after.blocked.length === 0, after);
   }
 
+  /* ── AND FOR THE BOTTOM SHEET'S DESTINATIONS ──
+     The inspect card was the case the sweep caught; the drawer covers every
+     panel that opens over the same ground. mp-social could not press "Add
+     Friend" and mp-clan could not press "Create Clan (500g)" — both reported
+     as visible, enabled and stable, then un-clickable, which is what a
+     covered control looks like from outside. */
+  await A.page.keyboard.press('Escape').catch(() => {});
+  await A.page.waitForTimeout(300);
+  /* Re-arm the drawer through the real path: the proximity latch holds it
+     shut while you are still standing next to him, and only releases past
+     NPC_PROX_CLEAR (125px). So walk away and come back, which is also the
+     only way a player gets it back. */
+  if (walkedUp && walkedUp.npc) {
+    await H.hopTo(A, walkedUp.npc.x + 260, walkedUp.npc.y + 40);
+    await A.page.waitForTimeout(700);
+    await H.hopTo(A, walkedUp.npc.x + 40, walkedUp.npc.y + 40);
+    await A.page.waitForTimeout(1200);
+  }
+  const reopened = await A.page.evaluate(() => !!document.querySelector('[data-shop-panel]'));
+  if (reopened) {
+    const sheet = await A.page.evaluate(() => {
+      window.__broDashPanelBus.open('more');
+      return true;
+    });
+    await A.page.waitForTimeout(600);
+    const gone = await A.page.evaluate(() => ({
+      drawer: !!document.querySelector('[data-shop-panel]'),
+      mode: window.__broDashPanelBus.state.mode,
+    }));
+    rec.ok('opening a dashboard destination puts the shop drawer away too',
+      sheet && gone.drawer === false, gone);
+    await A.page.evaluate(() => window.__broDashPanelBus.clear());
+  } else {
+    rec.skip('opening a dashboard destination puts the shop drawer away too',
+      'the drawer did not re-open after the card closed, so there was nothing to cover with');
+  }
+
   const errs = A.logs.filter((l) => String(l).startsWith('pageerror'));
   rec.ok('no page errors while the card was open', errs.length === 0, errs.slice(0, 3));
 
