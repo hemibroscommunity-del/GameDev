@@ -180,18 +180,31 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
   if (propsOn) {
     for (const [key, what] of [
-      ['forge', 'the forge and the blacksmith'],
+      ['forge', 'the forge'],          /* v2.3.2072: the man no longer carries it */
       ['bank', 'the bank'],
       ['enchant', 'the enchanter'],
-      ['shop', 'the general store and the storekeeper'],
+      ['shop', 'the general store'],   /* v2.3.2091: the storekeeper is gone */
       ['house', "the mayor's house"],
     ]) {
       rec.ok(`${what} has its own symbol on the map`, (ic[key] || 0) > 0, { key, census: ic });
     }
-    /* A trade shared by a building AND the person who runs it draws the same
-       mark twice — that is the point, so you can find either one. */
-    rec.ok('the blacksmith and his forge share the anvil', (ic.forge || 0) >= 2, { forge: ic.forge });
-    rec.ok('the storekeeper and his store share the satchel', (ic.shop || 0) >= 2, { shop: ic.shop });
+    /* ═══ v2.3.2091: ONE GLYPH, ONE MEANING — THE OPPOSITE CLAIM ═══
+       These two asserted the reverse until now: that a trade shared by a
+       building AND the person who runs it draws its mark TWICE, "so you can
+       find either one".  v2.3.2072 retired that rule after the owner reported
+       "there's two blacksmith indicators on map" -- once the blueprint moved
+       each tradesman to his own door, the two marks landed a thumb's width
+       apart and neither meant anything the other did not.  NPC_ICON is an
+       empty map now: a BUILDING carries its trade, a PERSON carries the
+       person glyph.
+
+       Kept as assertions rather than deleted, because the failure they now
+       guard is real and easy to reintroduce: put one entry back in NPC_ICON
+       and the double marks come straight back. */
+    rec.ok('the anvil is drawn ONCE — the forge carries it, the blacksmith '
+         + 'standing at it does not carry it too', (ic.forge || 0) === 1, { forge: ic.forge });
+    rec.ok('...and so is the satchel — the general store carries it alone',
+      (ic.shop || 0) === 1, { shop: ic.shop });
     /* GUARD: they are genuinely DIFFERENT textures, not one glyph counted
        under several names. */
     rec.ok('at least six distinct symbols are actually in use (guard)',
@@ -203,29 +216,32 @@ export async function run({ browser, wsPort, webPort, rec }) {
        and draws its roof again, while the four shopfronts still carrying v16
        coordinates do not. Stated as the two halves that are actually true now,
        so the branch makes a claim instead of narrating one. */
-    /* Read PER PROP rather than off the icon census. The census counts a
-       `forge` and a `shop` mark in the bare town and neither is a building --
-       townsfolk carry their trade's glyph, so the blacksmith and Shopkeeper
-       Bro draw those. A census-based claim about buildings therefore fails on
-       marks that are working exactly as intended, which is what the first cut
-       of this did. */
+    /* Read PER PROP rather than off the icon census.  The reason has changed
+       twice and the method has not: it used to be that townsfolk carried their
+       trade's glyph, so a census counted marks that were not buildings
+       (v2.3.2072 ended that).  It is still the right read -- a census answers
+       "how many satchels" and this branch asks "which BUILDINGS are marked",
+       which is a question only the per-prop list can answer. */
     const pm = await P.page.evaluate(() => (window.__btMinimapMarks ? window.__btMinimapMarks() : null));
     rec.ok('the minimap reports which PROPS it marked (guard)', Array.isArray(pm), pm);
     rec.ok("the mayor's house is on the map -- it is placed on the map that ships",
       !!pm && pm.some((m) => m.id === 'mayor-house'), pm);
-    /* ═══ v2.3.2065: THE BLUEPRINT PUT THE SHOPS BACK ═══
-       The owner's layout has a blacksmith west and a general store east, both
-       re-measured onto town_v17, so those two ARE on the map now and are
-       expected here. The bank and the enchanter still carry v16 coordinates
-       and stay off -- which is the half of this that can still catch
-       something, since turning them on unmeasured puts them past the map's
-       right-hand edge. */
-    rec.ok('the blacksmith and the general store are marked -- the blueprint '
-         + 'placed them', !!pm && pm.some((m) => m.id === 'forge')
-      && pm.some((m) => m.id === 'general-store'), pm);
-    rec.ok('...and the two still carrying v16 coordinates are not',
-      !!pm && !pm.some((m) => ['bank', 'enchanter'].includes(m.id)),
-      { marks: pm, flag: 'TOWN_PROPS_ENABLED=false' });
+    /* ═══ v2.3.2086: ALL FOUR SHOPFRONTS ARE ON THE MAP NOW ═══
+       This asserted the world of v2.3.2065: blacksmith and general store
+       measured onto town_v17 and marked, bank and enchanter still carrying
+       v16 coordinates and therefore correctly absent.  v2.3.2086 re-measured
+       the last two onto v17 (bank 1230,1290; enchanter 1050,700), so the
+       absence half went from a real guard to an assertion about a town that
+       no longer exists -- and it duly failed on a working map.
+
+       THE CLAIM THAT SURVIVES is the one that mattered all along: a building
+       is marked if and only if it is placed on the map that ships.  Naming all
+       four rather than counting them, so a prop that quietly loses its mark
+       fails here by name instead of hiding inside a total. */
+    for (const id of ['forge', 'general-store', 'bank', 'enchanter']) {
+      rec.ok(`the ${id} is marked -- the blueprint placed it on town_v17`,
+        !!pm && pm.some((m) => m.id === id), { want: id, marks: pm });
+    }
     /* Still a real distinctness claim, at the size the bare town supports:
        the marks that ARE drawn must not have collapsed onto one glyph. */
     rec.ok('...and the marks still drawn are distinct textures (guard)',

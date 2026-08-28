@@ -3767,75 +3767,30 @@ export const NPC_DATA = [{
   _facing: 'down',
   _questMarker: null,
   _hitThisSwing: false,
-}, {
-  /* ═══ v2.3.1775: THE STOREKEEPER, BEHIND HIS STALL ═══
-     Owner: "a sprite sheet of a 'storekeeper' and the next image is of his
-     stall."
-
-     He stands on the fountain's EAST shoulder, mirroring the blacksmith's
-     corner on the west, with his stall (worldProps.js) beside him — the stall
-     is scenery, he is the character, and the two are placed against the same
-     measured fountain centre at world (765, 866).
-
-     He stands at the stall's front-left corner rather than behind the counter,
-     and that is the art's decision rather than a preference: the stall is
-     drawn as a COMPLETE stall — shelves, crates, barrels and goods fill its
-     whole interior with no gap for a figure.  Standing him on the stall's own
-     ground line hid him entirely (tried it, looked at it), and lifting him up
-     the screen would float him behind the awning.  Beside it, a step forward,
-     he reads as the vendor working his pitch — and because props sync before
-     NPCs he draws over the stall's near edge, which is correct for someone
-     standing closer to the camera than it.
-
-     Same normalisation as the other two figures — 256x256, 200px tall, feet on
-     y=223 — taken from row 0 column 1 of the sheet, a clean front-facing
-     stand.  His portrait is cropped from the LARGE reference figure on the
-     right of the same sheet rather than from the little one, so the dialogue
-     chip is sharp instead of an upscale.
-
-     No quests: the vendor building already owns buying and selling, and
-     wiring a shop to him is a decision about where trade lives, not a
-     rename.  He is townsfolk until the owner says otherwise. */
-  id: 'storekeeper_bro',
-  name: 'Storekeeper Bro',
-  /* v2.3.2071: his title. Deliberately the same shape as Shopkeeper Bro's
-     ("Shopkeeper") even though the two read similarly -- they are two
-     different people with two similar jobs, and inventing a distinguishing
-     title here would be a rename dressed up as a caption. */
-  plateRole: 'Storekeeper',
-  sprite: '/sprites/npc/storekeeper-bro.webp',
-  portrait: '/sprites/npc/storekeeper-bro-head.webp',
-  avatar: '🛒',
-  color: '#4a90d9',
-  /* ═══ v2.3.2065: HE WAS OFF THE MAP ═══
-     (2520, 748) is a v16 coordinate on a map that is 1664 world px wide, so
-     the storekeeper has been standing outside the world -- spawned, ticking,
-     and impossible to see or reach -- since the town was re-fused at
-     v2.3.1813. Now beside the general store the blueprint puts on the east
-     side, 98% open cobble. Same spawnX/renderX/targetX rule as above. */
-  x: 1180, y: 890,
-  spawnX: 1180, spawnY: 890,
-  renderX: 1180, renderY: 890,
-  hp: 100, maxHp: 100,
-  noHp: true,
-  alive: true,
-  respawnAt: 0,
-  pathRadius: 0,
-  moveTimer: 0,
-  targetX: 1180, targetY: 890,
-  chatTimer: 14000,
-  chatBubble: null,
-  phrases: [
-    'Everything here has a price.',
-    'Fresh stock, straight off the boat.',
-    'Coin talks, friend.',
-  ],
-  canFollow: false,
-  followZones: [],
-  _facing: 'down',
-  _questMarker: null,
-  _hitThisSwing: false,
 }];
+
+/* ═══ v2.3.2091: STOREKEEPER BRO IS GONE ═══
+   Owner: "Remove the other shopkeeper NPC."
+
+   The town had two men doing one job.  Diego (`shopkeeper_bro`) IS the shop
+   -- `shop: true`, a live stock list, a server-settled till.  Storekeeper Bro
+   (`storekeeper_bro`) sold nothing: his own record read "townsfolk until the
+   owner says otherwise", and his only distinguishing feature was a name one
+   letter away from Diego's.  v2.3.2072 had already taken the shop glyph off
+   him on the minimap for exactly that reason -- "a player following the map
+   to buy something walked to the man with no stock".
+
+   The RECORD goes, not just the spawn line, because a dormant entry named
+   one letter from a live one is the shape that gets conflated: `getNpcQuest`
+   keys on the name, and _spawnTownNpcs' allowlist comment has warned about
+   these two being confused since v2.3.2046.
+
+   HIS STALL STAYS.  The general store is scenery the blueprint puts on the
+   east side and the owner asked for a person removed, not a building.  It
+   reads as a shop that is closed today, which is a normal thing for a shop.
+   `storekeeper-bro.webp` and its head crop stay on disk unreferenced -- art
+   is cheap to keep and the record above is the thing that was confusing. */
+
 
 /* ═══ v2.3.1918: MONSTER DISPLAY NAMES ═══
  * Owner: "Give monsters a name plate with their name and level beneath it

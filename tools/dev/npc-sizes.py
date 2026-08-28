@@ -41,12 +41,15 @@ PLAYER_SIZE_MULT = 1.25
 # It is the landmark that matters: the import convention normalises everyone
 # hat-to-feet into one 200px band, so a tall hat is paid for out of the body
 # and total height flatters whoever is wearing the biggest one.
+# v2.3.2091: Storekeeper Bro is off this list because he is out of the town
+# (owner: "Remove the other shopkeeper NPC").  His row read 1.00 / 1.22 / 0.64
+# and is in the v2.3.2081 note in entityRenderer.js if the measurement is ever
+# re-read; a figure nobody draws does not belong in a picture of the town.
 FIGURES = [
     #  name              sprite                                    before  now   shoulder player
     ('You',              os.path.join(PL,  'stand-south.png'),      1.25,  1.25,  0.72,  True),
     ('Mayor Bro',        os.path.join(NPC, 'mayor-bro.webp'),       1.10,  1.254, 0.63,  False),
     ('Blacksmith Bro',   os.path.join(NPC, 'blacksmith-bro.webp'),  1.00,  1.14,  0.68,  False),
-    ('Storekeeper Bro',  os.path.join(NPC, 'storekeeper-bro.webp'), 1.00,  1.22,  0.64,  False),
     ('Diego',            os.path.join(NPC, 'shopkeeper-bro-walk-south.webp'),
                                                                    1.30,  1.30,  0.58,  False),
     ('Lil Bro',          os.path.join(NPC, 'lil-bro-walk-south.webp'),

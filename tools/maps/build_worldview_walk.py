@@ -55,8 +55,20 @@ DILATE = 1
 
 # Mirrors WORLDVIEW_ARRIVAL in src/data/effects.js. Checked against the mask
 # this file generates, so the two cannot drift apart.
-ARRIVAL = (744, 848)
+# v2.3.2094: moved OUTSIDE the ring, south of the gate. See the note on
+# WORLDVIEW_ARRIVAL in effects.js -- the old point was inside the walls with
+# the town portal between it and the only opening, so the walk out sent you
+# home and there was no way onto the map on foot.
+ARRIVAL = (752, 1072)
 ARRIVAL_CLEARANCE = 40       # px of open ground the arrival must have around it
+# v2.3.2094: and it must not land inside a trail-head's own trigger radius.
+# TOWN_EXIT_R in zoneTransitions.js is 2 tiles, Manhattan; a margin of 2 on top
+# means the first step in any direction cannot arm a portal. This is the check
+# that the trap above would have failed -- the old arrival was 2.25 tiles from
+# the town marker, so it passed "not on a line, 84px clear" while being
+# unplayable.
+EXIT_TRIGGER_R = 2           # must match TOWN_EXIT_R (src/game/zoneTransitions.js)
+ARRIVAL_MARKER_MARGIN = 2    # tiles of slack on top of it
 # Well outside the outline on all four sides: sky at the top, sea at the
 # bottom. If the flood reaches any of them the boundary has a hole in it.
 CORNERS = [('NW sky', 40, 40), ('NE sky', 1490, 40),
@@ -140,6 +152,24 @@ def report(raw, wall, px, size):
             print(f'FAIL: the arrival {ARRIVAL} is only {d:.0f}px clear (needs {ARRIVAL_CLEARANCE})')
         else:
             print(f'OK: the arrival {ARRIVAL} is off the line, {d:.0f}px clear of it')
+
+    # 1b. v2.3.2094: AND YOU DO NOT LAND ON A PORTAL. An arrival inside a
+    #     trail-head's trigger radius is a zone you bounce out of; an arrival
+    #     with a trail-head between it and the only gate is worse, because you
+    #     bounce on the way OUT and cannot tell why.
+    need = EXIT_TRIGGER_R + ARRIVAL_MARKER_MARGIN
+    atx, aty = ax / 32, ay / 32
+    close = [(e['zoneId'], abs(atx - e['tx']) + abs(aty - e['ty'])) for e in exits()]
+    close = [c for c in close if c[1] < need]
+    if close:
+        ok = False
+        for zid, d in close:
+            print(f'FAIL: the arrival {ARRIVAL} is {d:.2f} tiles from the '
+                  f'{zid} trail-head (needs {need}) -- you would be bounced')
+    else:
+        nearest = min((abs(atx - e['tx']) + abs(aty - e['ty']), e['zoneId']) for e in exits())
+        print(f'OK: the arrival is clear of every trail-head '
+              f'(nearest is {nearest[1]} at {nearest[0]:.2f} tiles, needs {need})')
 
     seen = reachable_from(wall, ax, ay)
     pct = seen.sum() * 100 / (GRID * GRID)

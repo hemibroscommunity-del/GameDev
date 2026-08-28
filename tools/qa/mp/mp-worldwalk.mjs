@@ -103,18 +103,27 @@ export async function run({ browser, wsPort, webPort, rec }) {
      The owner's first ask, in his words: "make sure the player doesn't spawn
      on the line or outside of it". */
   const at = await H.readState(P, (S) => ({ x: Math.round(S.player.x), y: Math.round(S.player.y) }));
-  rec.ok('you arrive INSIDE the ring, on open ground and not on the wall',
+  rec.ok('you arrive on open ground and not on the wall',
     !gridSolid(at.x, at.y), { at, gridSaysWall: gridSolid(at.x, at.y) });
   rec.ok('...and the client agrees you are standing somewhere legal',
     (await clientSolid(at.x, at.y)) === false, at);
 
   /* ═══ AN ANCHOR THAT IS NOT ON A TRAIL-HEAD ═══
-     The world map is a HUB. WORLDVIEW_ARRIVAL (744, 848) is tile (23, 26) and
-     the town trail-head is tile (24, 28) — Manhattan 3, against a
-     TOWN_EXIT_R of 2. One step south of the arrival is inside the radius and
-     the player is sent straight home, which is what the first cut of this
-     file spent its whole walk doing: it measured a TOWN coordinate against
-     the WORLD MAP's grid and called (806, 1680) a breach.
+     The world map is a HUB. The arrival used to be tile (23, 26) against a
+     town trail-head at (24, 28) — Manhattan 2.25, against a TOWN_EXIT_R of 2.
+     One step south of the arrival was inside the radius and the player was
+     sent straight home, which is what the first cut of this file spent its
+     whole walk doing: it measured a TOWN coordinate against the WORLD MAP's
+     grid and called (806, 1680) a breach.
+
+     v2.3.2094: THAT SENTENCE WAS A BUG REPORT AND THIS FILE TREATED IT AS
+     TERRAIN. The ring's only opening is the south gate and the marker sat
+     between the arrival and it, so a player leaving town on foot was bounced
+     home the moment the disarm timer lapsed — the owner hit it in play and
+     described it exactly: "you need to run through the entrance to get
+     outside of the city walls and it spawns you in town again". The arrival
+     is outside the gate now, and the assertions below are the ones that would
+     have caught it rather than routed around it.
      So the walking tests run from a spot derived at runtime — walkable, and
      at least four tiles from EVERY live marker, computed from the same
      WORLDVIEW_EXITS the game reads rather than from a number typed here. */
@@ -122,6 +131,42 @@ export async function run({ browser, wsPort, webPort, rec }) {
     ((window._gameFns && window._gameFns.WORLDVIEW_EXITS) || [])
       .map((e) => ({ zoneId: e.zoneId, tx: e.tx, ty: e.ty })));
   rec.ok('the world map declares its trail-heads (guard)', marks.length > 0, marks);
+
+  /* ═══ v2.3.2094: YOU CAN LEAVE ON FOOT ═══
+     Two claims, and the second is the one the owner reported.
+
+     ONE: where you land is outside every trail-head's trigger radius, so
+     arriving does not immediately bounce you somewhere else.
+
+     TWO: and there is a way OUT of the ring that does not cross one. The
+     ring's gate is due south, so this walks the straight line from the
+     arrival to open ground beyond it and asserts no step on that line comes
+     within TOWN_EXIT_R of the town marker. An arrival that is itself clear
+     but sits behind a marker is the trap that shipped: legal to stand on,
+     impossible to leave. */
+  const TOWN_EXIT_R = 2;
+  const nearestMark = (x, y) => {
+    const tx = Math.floor(x / 32), ty = Math.floor(y / 32);
+    return marks.reduce((best, m) => {
+      const d = Math.abs(tx - m.tx) + Math.abs(ty - m.ty);
+      return d < best.d ? { d, zoneId: m.zoneId } : best;
+    }, { d: Infinity, zoneId: null });
+  };
+  const spawnNear = nearestMark(at.x, at.y);
+  rec.ok('you do not land inside a trail-head — arriving does not bounce you '
+       + 'straight back out', spawnNear.d > TOWN_EXIT_R,
+    { at, nearest: spawnNear, TOWN_EXIT_R });
+
+  /* South, because that is where the ring opens. 12 tiles is well past the
+     gate funnel and still on the map. */
+  let blockedBy = null;
+  for (let step = 0; step <= 12 * 32; step += 16) {
+    const hit = nearestMark(at.x, at.y + step);
+    if (hit.d <= TOWN_EXIT_R) { blockedBy = { step, zoneId: hit.zoneId, d: hit.d }; break; }
+  }
+  rec.ok('...and walking out through the gate never crosses one, so you can '
+       + 'leave town on foot instead of being sent back to it',
+    blockedBy === null, { at, blockedBy, marks });
   const farFromMarks = (x, y) => {
     const tx = Math.floor(x / 32), ty = Math.floor(y / 32);
     /* EIGHT tiles, not four. TOWN_EXIT_R is 2, and a walking leg covers
@@ -132,6 +177,32 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return marks.every((m) => Math.abs(tx - m.tx) + Math.abs(ty - m.ty) >= 8);
   };
 
+  /* ═══ v2.3.2094: AND ALL FOUR LEGS HAVE TO STAY OFF THEM TOO ═══
+     `farFromMarks` guards the anchor itself, at 8 tiles. A leg walks further
+     than 8 tiles, so an anchor can pass that and still have a marker straight
+     ahead of it — which is what happened the moment the arrival moved south
+     of the town: the north leg portalled into town on its first sample,
+     `backToAnchor` could not get back (it refuses to teleport while the
+     player is in another zone), and the remaining three legs were skipped as
+     "off the map". Every leg gone, nothing proved, and the run reported it
+     honestly as a failure rather than a pass — which is the only reason this
+     was visible at all.
+
+     So the anchor must be one from which NO cardinal ray reaches a trail-head
+     within a leg's reach. 14 tiles is past what a 2s leg covers, sampled every
+     half tile. If the map has no such spot the guard below fails and says so,
+     rather than the run quietly proving nothing. */
+  const LEG_REACH = 14 * 32;
+  const legsClearOfMarks = (x, y) => {
+    for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+      for (let t = 0; t <= LEG_REACH; t += 16) {
+        const tx = Math.floor((x + dx * t) / 32), ty = Math.floor((y + dy * t) / 32);
+        if (marks.some((m) => Math.abs(tx - m.tx) + Math.abs(ty - m.ty) <= TOWN_EXIT_R)) return false;
+      }
+    }
+    return true;
+  };
+
   let anchor = null, wall = null;
   outer:
   for (let r = 60; r <= 500; r += 20) {
@@ -139,7 +210,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const x = Math.round(at.x + r * Math.cos(a * Math.PI / 180));
       const y = Math.round(at.y + r * Math.sin(a * Math.PI / 180));
       if (x < 60 || y < 60 || x > ZONE_W - 60 || y > ZONE_H - 60) continue;
-      if (gridSolid(x, y) || !farFromMarks(x, y)) continue;
+      if (gridSolid(x, y) || !farFromMarks(x, y) || !legsClearOfMarks(x, y)) continue;
       /* ...with a wall within reach of it, or there is nothing to walk into —
          and no NEARER than 120px, or there is no run-up either and "did the
          player move" cannot tell a wall from a frozen client (the first cut

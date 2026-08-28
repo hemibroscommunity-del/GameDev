@@ -151,10 +151,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── THE TRADESMEN STAND AT THEIR OWN BUILDINGS ──
      Storekeeper Bro was at x=2520 on a map 1664 wide -- spawned, ticking, and
      outside the world -- since the town was re-fused. This is the check that
-     would have caught it. */
+     would have caught it.
+     v2.3.2091: he is gone (owner: "Remove the other shopkeeper NPC"), so the
+     pair is Diego at the market stall instead. The property is the one that
+     caught the original bug and it does not care which men it is applied to:
+     a tradesman must be inside the world and at his own pitch. */
   const npcs = await P.page.evaluate(() => (window._gameState.current.npcs || [])
     .map((n) => ({ id: n.id, x: Math.round(n.x), y: Math.round(n.y) })));
-  for (const [nid, pid] of [['blacksmith_bro', 'forge'], ['storekeeper_bro', 'general-store']]) {
+  for (const [nid, pid] of [['blacksmith_bro', 'forge'], ['shopkeeper_bro', 'market-stall']]) {
     const n = npcs.find((q) => q.id === nid), pr = at(pid);
     rec.ok(`${nid} is inside the world at all`,
       !!n && n.x > 0 && n.x < TOWN_W && n.y > 0 && n.y < TOWN_H, n);

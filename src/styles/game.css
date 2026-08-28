@@ -1811,18 +1811,43 @@ input{font-family:inherit}
    the absence of a colour choice, and anything square-and-coloured here would
    claim to BE a colour. */
 .bt-cc-colors-head{flex:0 0 auto;height:22px;display:flex;align-items:center;justify-content:center;margin:0 0 4px}
+/* v2.3.2090: IT WEARS THE PICKER'S OWN WELL.  Owner: "make the default button
+   more obvious for color picker (maybe a different background color)".
+
+   v2.3.2035 built it as a faint outline on a near-transparent fill
+   (rgba(255,255,255,.05)) with dim text, sitting directly above swatch tiles
+   whose wells are a LIGHT gradient (_apTileStyle, BroTown.jsx).  Every other
+   control in this row shouts and this one whispered, so beside them it read
+   as a disabled caption rather than the option it is.
+
+   The fix is the swatch tiles' own well, because that well is the picker's
+   CHROME, not a colour: on a tile the light gradient is the frame and the
+   little square inside it is the colour.  A well with a WORD inside says
+   "an option of this picker whose value is not a colour", which is exactly
+   what Default is -- so this stays inside the v2.3.2035 rule (nothing
+   square-and-coloured may claim to BE a colour) rather than bending it.
+
+   Selection therefore rides where it rides on a tile: a brass ring, not a
+   change of fill.  Inverting the fill on select (the old brass-soft wash over
+   a near-black button) would have made the CHOSEN state darker and quieter
+   than the unchosen one the moment the unchosen one got its well.  The ring is
+   drawn with box-shadow, not a fatter border, so the button's box is identical
+   in both states -- the constant-sheet-height rule (v2.3.1252) is measured on
+   this row and a 1px->2px border would move it. */
 .bt-cc-defcolor{
-  height:22px;padding:0 14px;border-radius:11px;cursor:pointer;
-  font:600 12px/1 inherit;letter-spacing:.04em;text-transform:uppercase;
-  background:rgba(255,255,255,.05);border:1px solid rgba(238,242,235,.20);
-  color:var(--ui-text-dim,#96A2A0);
-  transition:background 90ms cubic-bezier(.2,.8,.2,1),color 90ms cubic-bezier(.2,.8,.2,1),border-color 90ms cubic-bezier(.2,.8,.2,1);
+  height:22px;padding:0 15px;border-radius:11px;cursor:pointer;
+  font:700 12px/1 inherit;letter-spacing:.06em;text-transform:uppercase;
+  background:linear-gradient(180deg,#F4F5F8,#CDD2DC);
+  border:1px solid rgba(20,30,34,.38);
+  color:#1E2C33;
+  box-shadow:0 1px 4px rgba(5,8,10,.32);
+  transition:box-shadow 90ms cubic-bezier(.2,.8,.2,1),border-color 90ms cubic-bezier(.2,.8,.2,1);
 }
 /* The picked state matches how a chosen swatch reads (brass ring + lift), so
    "Default" and a colour tile are visibly the same KIND of choice. */
 .bt-cc-defcolor--on{
-  background:var(--ui-brass-soft);border-color:var(--ui-brass);color:var(--ui-text);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 1px 5px rgba(5,8,10,.28);
+  border-color:var(--ui-brass);
+  box-shadow:0 0 0 2px var(--ui-brass),0 2px 7px rgba(5,8,10,.38);
 }
 .bt-cc-defcolor:active{transform:scale(.97)}
 .bt-cc-colors-row{display:grid;grid-template-columns:repeat(auto-fill,var(--cc-swatch));grid-auto-rows:var(--cc-swatch);gap:5px;justify-content:center;align-content:start;height:calc(var(--cc-swatch)*2 + 9px);min-width:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;touch-action:pan-y;padding:2px;scrollbar-width:none;box-sizing:border-box}

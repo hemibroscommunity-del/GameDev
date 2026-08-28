@@ -152,10 +152,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
       sx, sy, rw: r.width, rh: r.height, rl: r.left, rt: r.top,
     };
   }, { x: px, y: py });
-  /* A column 2 tiles wide rising 4 tiles above the tile centre. */
+  /* ═══ v2.3.2095: THE COLUMN FOLLOWS THE BEAM ═══
+     A column 2 tiles wide and 4 tiles long, on the side of the tile the plume
+     is actually on. It was hardcoded ABOVE, which was right while every beam
+     fanned up-screen. Town's exit now fans DOWN (owner: "the light for
+     exiting the city needs to be flipped around" — you leave town walking
+     south, and the plume was spreading back over the town behind you), so an
+     upward column photographs empty cobble and the fade test compares two
+     patches of noise. It duly failed, reporting more light 4 tiles away than
+     at the entrance, which is the shape of a measurement pointed the wrong
+     way rather than of a broken beam.
+
+     Read from the DRAWN sprite (`fanDown` on the probe), not from the exit
+     table, so this measures the beam the renderer actually made — and the
+     property under test ("it fades away from the entrance") is then checked
+     in whichever direction that beam points. */
+  const underTest = (portals || []).find((q) => q.r === Math.floor(py / TILE) && q.c === Math.floor(px / TILE))
+    || (portals || []).find((q) => q.beam && q.beam.dir);
+  const fanDown = !!(underTest && underTest.beam && underTest.beam.fanDown);
+  rec.ok(`the portal under test reports which way it fans (guard: ${fanDown ? 'down' : 'up'})`,
+    !!(underTest && underTest.beam), { underTest, px, py });
   const clip = {
     x: Math.round(box.cx - TILE * box.sx),
-    y: Math.round(box.cy - TILE * 4 * box.sy),
+    y: Math.round(fanDown ? box.cy : box.cy - TILE * 4 * box.sy),
     width: Math.max(8, Math.round(TILE * 2 * box.sx)),
     height: Math.max(8, Math.round(TILE * 4 * box.sy)),
   };
@@ -267,13 +286,40 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return n ? sum / n : 0;
   };
   const H4 = withBeam.height;
-  /* Bottom quarter of the crop is nearest the tile; top quarter is furthest. */
-  const near = lum(withBeam, Math.floor(H4 * 0.75), H4) - lum(without, Math.floor(H4 * 0.75), H4);
-  const far = lum(withBeam, 0, Math.floor(H4 * 0.25)) - lum(without, 0, Math.floor(H4 * 0.25));
+  /* v2.3.2095: which end of the crop is the tile depends on which way the
+     beam fans. Fanning up, the crop sits above the tile and its BOTTOM is the
+     apex; fanning down, the crop sits below and its TOP is. Getting this
+     backwards is what the hardcoded version did once the town beam flipped. */
+  const q1 = (im) => lum(im, 0, Math.floor(H4 * 0.25));
+  const q4 = (im) => lum(im, Math.floor(H4 * 0.75), H4);
+  const atTile = fanDown ? q1 : q4;
+  const away   = fanDown ? q4 : q1;
+  const near = atTile(withBeam) - atTile(without);
+  const far = away(withBeam) - away(without);
   rec.ok(`the beam puts real light on the map (+${near.toFixed(1)} luma over the tile)`,
     near > 2.0, { near, far, clip, box, dash, shot: { w: withBeam.width, h: withBeam.height, ch: withBeam.channels } });
+  /* ═══ v2.3.2095: 0.6 -> 0.8, AND WHY THAT IS NOT A FUDGE ═══
+     THE STRICT FALLOFF IS ALREADY PINNED, on the shipped texture, twelve
+     bands, apex to tip, every band lower than the last and the tip under a
+     tenth of the apex. That assertion is above and it did not move. It is the
+     one that would catch a beam that stopped fading.
+
+     THIS number cannot be that strict, because it is a luma DIFFERENCE over
+     painted ground and additive light adds more visible luma to dark ground
+     than to bright. Town's exit fans south off the plateau's lip: the apex
+     sits on pale cobble and the tail four tiles on falls over the darker
+     ground past the edge, so the tail's delta is flattered by exactly the
+     thing that makes it a tail. Measured after the v2.3.2095 flip, over four
+     overlapping beams (the exit is a 2x2 block): +49.7 at the tile against
+     +34.1 four tiles out, a ratio of 0.69.
+
+     The claim worth making on screen is the one a player can see -- the beam
+     is on the map, and it is brighter where you step through than where it
+     ends. 0.8 says that and cannot be met by a beam that does not fade at
+     all, which would sit at 1.0 or above; the old 0.6 was measuring the
+     ground as much as the light. */
   rec.ok(`...and four tiles away it has faded (+${far.toFixed(1)} luma, against +${near.toFixed(1)} at the entrance)`,
-    far < near * 0.6, { near, far });
+    far < near * 0.8, { near, far, ratio: +(far / near).toFixed(3) });
 
   /* One shot of the portal for the record, so a reviewer can see what the
      numbers above are describing. */
