@@ -152,8 +152,29 @@ import { burstMethods } from './burst.js';
 // how many players are standing in THAT zone -- see spawnscale.js.
 import { spawnScaleMethods } from './spawnscale.js';
 
-export default {
-  async fetch(request, env) {
+/* ═══ v2.3.2113: AN ERROR IN HERE MUST NOT LOOK LIKE AN OUTAGE ═══
+ * Owner, of tools/draw: "This tool says can't reach the game server anymore."
+ *
+ * That page says it whenever `fetch` REJECTS, and a rejection is what the
+ * browser reports for a network failure — which is also what it reports when a
+ * cross-origin response arrives without CORS headers.  Those two are worlds
+ * apart in cause and identical on screen.
+ *
+ * And this router could produce the second one, because it had no catch: an
+ * exception anywhere below — a missing binding, a DO that throws, a bad parse
+ * — escaped to the runtime, which answers with its own HTML error page.  That
+ * page carries no Access-Control-Allow-Origin, so every browser client in the
+ * game turns a server fault into "could not reach the game server", and the
+ * one thing that would identify it is the one thing that never arrives.
+ *
+ * So the routing moves into a plain function and the entry point wraps it.  A
+ * fault now answers as JSON, with the CORS headers, saying what it was: the
+ * page can print the reason instead of guessing at it, and "unreachable" goes
+ * back to meaning unreachable.  The headers are built BEFORE anything that can
+ * throw — `new URL(request.url)` included — because a catch that needs the
+ * body to have run is not a catch.
+ */
+async function routeHttp(request, env) {
     const url = new URL(request.url);
     const corsHeaders = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' };
 
@@ -254,6 +275,20 @@ export default {
     }
 
     return new Response('Hemi Bros Game Server', { status: 200 });
+}
+
+export default {
+  async fetch(request, env) {
+    const errHeaders = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' };
+    try {
+      return await routeHttp(request, env);
+    } catch (err) {
+      /* Named, not swallowed: the whole point is that the caller can tell a
+         fault from an outage, and "500" alone does not do that. */
+      const msg = String((err && err.message) || err || 'unknown error');
+      try { console.error('[bt] worker fetch threw:', msg, err && err.stack); } catch (e) {}
+      return new Response(JSON.stringify({ ok: false, error: msg }), { status: 500, headers: errHeaders });
+    }
   },
 };
 

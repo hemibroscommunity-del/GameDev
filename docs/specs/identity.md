@@ -98,6 +98,138 @@ Client knobs:
 - `MenuBar.jsx`'s reset path still removes `bt_passphrase`/`bt_rpg` —
   that is now "delete character", which is what an explicit reset means.
 
+## The roster mirror (v2.3.2110)
+
+The device's character roster (`src/networking/charRoster.js`) lives in
+`localStorage`, which is **per origin** — and a Cloudflare Pages deploy
+gives every build its own hostname (`<hash>.<project>.pages.dev`) beside
+the project's stable one. So opening the newest build meant opening a
+different origin: the roster read empty, the boot initialiser minted a
+fresh passphrase, and the player was shown the login door.
+
+Owner: *"People don't remember their key or know they have one. The
+continue button should allow them to continue their character from
+previous builds. Right now it shows empty each time an update is
+pushed."*
+
+`src/networking/rosterCookie.js` keeps a compact mirror of the roster in
+a cookie scoped to the **registrable domain**, which every deploy
+hostname of the same site shares. `localStorage` stays the working copy;
+the cookie exists so a first read on a new origin has something to
+restore from.
+
+- **Domain**: found by probing (2 labels, then 3, then 4) and using the
+  first the browser accepts — a public suffix like `pages.dev` fails the
+  probe by definition, so no Public Suffix List is shipped, and the rule
+  is self-correcting on a custom domain, on pages.dev and on localhost
+  (host-only cookie, harmless).
+- **Payload**: `{v, l:[{p,a,n,lv}], x:[phrase]}`, URL-encoded, capped at
+  3400 bytes (tombstones shed first, then the oldest rows).
+- **Tombstones** (`x`): a deleted phrase travels too, or the next build
+  would restore the character just removed. A phrase that comes back
+  (re-entered by key) drops out of them on the next write.
+- **Writes**: `charRoster._write` is the single funnel, so no mutation
+  can update one store and not the other. A device with a roster and no
+  mirror backfills once per page load.
+- **Boot**: `adoptSharedPhrase()` runs inside the `myId` initialiser,
+  *before* a key is minted. If this origin has never had a roster and the
+  mirror holds one, the most recent non-provisional character becomes the
+  device's key and the player walks straight in. It returns null when a
+  key is already held, when the origin has its own roster (an absent key
+  there means the player *deleted* the active character and the door is
+  correct), or when the only rows are provisional.
+- **Cost, written down**: the phrase is the credential and a cookie is
+  sent to the page host on every request, which `localStorage` is not.
+  `Secure` + `SameSite=Lax` on https; the same phrase already crosses the
+  wire to the worker on every join.
+- **Limit**: this crosses hostnames of one site, not separate sites. A
+  custom domain and `*.pages.dev` are different registrable domains and
+  do not share the mirror — the Login Key is still the road between
+  those.
+- **Test**: `node tools/qa/roster-mirror.test.mjs` (zero-dependency, off
+  the PR path) stubs the two stores with the property that matters — a
+  fresh `localStorage` per origin, one shared cookie jar that enforces
+  the public-suffix and host-scope rules.
+
+## The empty-list bug (v2.3.2112)
+
+Owner: *"I've been able to continue playing characters from earlier
+builds before. The main site is always Brotown.net. I think all
+characters are in local storage so can't they be retrieved from there?"*
+
+They can, and they were not. `readRoster`'s migration treated the stored
+list as authoritative whenever it **parsed** — and an empty array parses.
+So the first read on a device whose `bt_player` had not landed yet
+(a Login-Key sign-in, whose reload lands before anything is played; the
+boot check's `ensureChar`; the login screen's own roster count) seeded
+nothing, wrote `{"v":1,"list":[]}`, and every later read trusted it. The
+character was never lost — `bt_passphrase` still named it and the boot
+check still walked straight into it, which is why *continuing* kept
+working — but Continue's list stayed empty for good.
+
+- Only a **non-empty** stored list is an answer now; an empty one falls
+  through and seeds again. The "already migrated" flag existed to stop a
+  player who deleted everything being handed it back, and that job now
+  belongs to the **tombstones** (v2.3.2110), which both seed roads
+  honour. One bit was answering two questions.
+- Evidence for seeding the active key widens: `bt_player` with a name
+  gives a labelled row as before; failing that, a `bt_rpg` blob (saved
+  progress — unmistakable evidence of play) gives a **provisional** row,
+  which `CharacterPicker` finishes against the worker and drops if there
+  is no character behind the key. A bare minted key with neither still
+  seeds nothing.
+- `rosterCookie._domainFor` memoizes on the **hostname**, not on a bare
+  "probed" flag — a stale domain makes every write a silent no-op.
+- Regression cases in `tools/qa/roster-mirror.test.mjs`.
+
+**Scope, stated plainly**: before the roster shipped (v2.3.1923) a device
+held at most **two** passphrases — `bt_passphrase` and one spare in
+`bt_passphrase_prev`. So "all characters are in local storage" was never
+true for characters made before that; at most two per device can be
+recovered this way, and the rest were overwritten. And on iOS Safari,
+ITP evicts all script-writable storage (localStorage **and** JS-set
+cookies) after ~7 days without a visit — which no client-side store can
+survive. The Login Key remains the only recovery across those two gaps.
+
+## The list is the door (v2.3.2111)
+
+Owner: *"Can you actually provide a list of characters like you did
+before when people try to join the game and sort by highest level
+character on top? People will probably have a bunch of them."*
+
+- **Order** — `charRoster._sorted` is level-descending, last-played as
+  the tiebreak, insertion order on a full tie. This **supersedes** the
+  v2.3.1923 "most recent at the top". Level `0` means *unknown* (nobody
+  has looked the row up) and sorts last; `CharacterPicker`'s lookup pass
+  now asks for any row missing a name **or** a level, so an unknown row
+  is placed after the one request it takes.
+- **The picker opens itself** — `LoginScreen` mounts with the list open
+  whenever `rosterCount() > 0`. Standing on that screen at all means the
+  key this device holds has no character behind it (the boot check goes
+  straight into the world when it does), so the three ways to be there —
+  a restored origin, a logout, a delete of the active character — all
+  want the list. Not while `bootPhase === 'checking'`: it opens on the
+  checking→login edge, and only once, so tapping Back is respected.
+  Create Character is one Back away.
+- **Auto-adopt is now single-character only** — `adoptSharedPhrase`
+  returns null when the mirror restores two or more, so the door (and
+  the list) decides. One row is not a choice and still walks straight in.
+- **The row shows the level** in its own right-hand column, tabular, gold
+  when known and `· ·` while the lookup is in flight — a sort you cannot
+  see is indistinguishable from no sort. `data-char-level` carries it for
+  QA.
+- **Over the cap is possible and deliberate**: merging a mirror into a
+  device that already has characters can exceed `ROSTER_MAX`, so the
+  picker may read `12 / 10` and Create refuses until one is deleted.
+  Dropping restored rows to fit would lose characters, which is worse.
+- **Tests** — `tools/qa/mp/run.mjs roster` (28 assertions: auto-open,
+  strongest-first against a fixture seeded out of order on both keys, the
+  tie-break, rendered levels descending, delete, the cap at 10 and 9).
+  Two harness helpers, `H.openPicker` / `H.uncoverDoor`, are how every
+  scenario gets to or past the door now — the list is a scrim over both
+  door buttons, so a bare `click('[data-tut="login-create"]')` clicks
+  into the overlay.
+
 ## Tests
 
 `server/test/identity.test.mjs` (in `npm test`):

@@ -174,6 +174,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      must run on a NEW identity (or the worker hands the old character back),
      and the old key must still exist afterwards (or logging out and making a
      second character silently destroys the first). */
+  await H.uncoverDoor(P.page);   /* v2.3.2111: the list is up by default now */
   const doorCreate = await P.page.$('[data-tut="login-create"]');
   rec.ok('the door has a Create Character button (guard)', !!doorCreate, {});
   if (doorCreate) {
@@ -221,7 +222,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const contBtn = await P.page.$('[data-tut="login-key"]');
   rec.ok('the door offers Continue (guard)', !!contBtn, {});
   if (contBtn) {
-    await contBtn.click();
+    /* v2.3.2111: openPicker, not click — with a roster on the device the list
+       is already up and Continue is under its scrim. */
+    await H.openPicker(P.page);
     await P.page.waitForTimeout(900);
     const rows = await P.page.evaluate(() => {
       const open = !!document.querySelector('[data-tut="char-picker"]');

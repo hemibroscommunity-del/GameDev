@@ -11,10 +11,16 @@
  * This file covers the three claims that are about the LIST itself, each of
  * which can be satisfied by something that looks right and is not:
  *
- *   1. ORDER.  "Most recent at the top" is trivially true for one character
- *      and for a list that happens to have been written in that order.  So
- *      the roster is seeded deliberately out of order and the RENDERED rows
- *      are read back.
+ *   1. ORDER.  v2.3.2111 — owner: "sort by highest level character on top?
+ *      People will probably have a bunch of them."  Highest level first, with
+ *      last-played as the tiebreak (this supersedes the "most recent at the
+ *      top" of the quote above).  Trivially true for one character and for a
+ *      list that happens to have been written in that order, so the roster is
+ *      seeded deliberately out of order on BOTH keys — the newest row is not
+ *      the strongest, and two rows tie on level — and the RENDERED rows are
+ *      read back.  The door is also expected to open this list BY ITSELF now:
+ *      standing on it means the device's key has no character, so the list is
+ *      what the player came for.
  *   2. DELETE.  A confirm that appears is not the feature; a confirm whose
  *      buttons do what they say is.  Both answers are pressed, and "Keep
  *      them" is checked FIRST — a delete that fires on either button would
@@ -57,33 +63,87 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.goto(`http://localhost:${webPort}/?noresume=1&login=1`, { waitUntil: 'domcontentloaded' });
   await P.page.waitForTimeout(2000);
   await P.page.evaluate((realKey) => {
+    /* ═══ v2.3.2111: A FIXTURE HAS TO CLEAR BOTH STORES ═══
+       The roster is mirrored to a cookie so it survives a change of origin
+       (src/networking/rosterCookie.js), and readRoster MERGES anything the
+       mirror holds that the local list does not.  So a fixture that writes
+       only `bt_chars` is not seeding "a device with exactly these characters"
+       — it is seeding those PLUS everything an earlier section left behind.
+       This bit twice: the cap section below seeded nine and measured ten.
+       On localhost the mirror is a host-only cookie (no dot in the hostname,
+       so the domain probe finds nothing to widen to), which is what this one
+       line clears. */
+    try { document.cookie = 'bt_chars=; Path=/; Max-Age=0'; } catch (e) {}
     const now = Date.now();
+    /* v2.3.2111: seeded so neither storage order NOR play order can pass by
+       accident.  Newest is the most recently played and the WEAKEST; Middle
+       and Rosie tie on level 9 so the tiebreak is exercised; Strongest is
+       written first and played longest ago, so only a level sort floats it. */
     const list = [
+      { phrase: 'seed-strong-key', id: 'bp_seed3', name: 'Strongest', level: 31, at: now - 86400000 * 9, looked: true },
       { phrase: 'seed-oldest-key', id: 'bp_seed0', name: 'Oldest', level: 4, at: now - 86400000 * 6, looked: true },
       { phrase: 'seed-middle-key', id: 'bp_seed1', name: 'Middle', level: 9, at: now - 3600000 * 5, looked: true },
-      { phrase: realKey, id: 'x', name: 'Rosie', level: 3, at: now - 60000, looked: true },
-      { phrase: 'seed-newest-key', id: 'bp_seed2', name: 'Newest', level: 12, at: now - 1000, looked: true },
+      { phrase: 'seed-tietop-key', id: 'bp_seed4', name: 'TieTop', level: 9, at: now - 3600000 * 2, looked: true },
+      { phrase: realKey, id: 'x', name: 'Rosie', level: 9, at: now - 60000, looked: true },
+      { phrase: 'seed-newest-key', id: 'bp_seed2', name: 'Newest', level: 2, at: now - 1000, looked: true },
     ];
     localStorage.setItem('bt_chars', JSON.stringify({ v: 1, list }));
   }, mine.key);
   await P.page.reload({ waitUntil: 'domcontentloaded' });
   await P.page.waitForTimeout(2200);
 
-  const openPicker = async () => {
-    const b = await P.page.$('[data-tut="login-key"]');
-    if (!b) return false;
-    await b.click();
-    await P.page.waitForTimeout(700);
-    return !!(await P.page.$('[data-tut="char-picker"]'));
-  };
+  /* v2.3.2111: the list is expected to be up ALREADY — H.openPicker and
+     H.uncoverDoor are the shared spellings of "get to it" and "get past it",
+     and every scenario that touches this screen uses them so there is one
+     description of the door's behaviour rather than nine. */
+  const openPicker = () => H.openPicker(P.page);
+  const closePicker = () => H.uncoverDoor(P.page);
   const rowNames = () => P.page.evaluate(() => [...document.querySelectorAll('[data-tut="char-row"]')]
     .map((el) => el.getAttribute('data-char-name')));
+  const rowLevels = () => P.page.evaluate(() => [...document.querySelectorAll('[data-tut="char-row"]')]
+    .map((el) => Number(el.getAttribute('data-char-level'))));
 
-  rec.ok('the picker opens from Continue (guard)', await openPicker(), {});
+  /* ═══ WAIT FOR THE LIST TO STOP MOVING ═══
+     A fixture can claim any level it likes for a SEEDED key, but not for the
+     one this device actually played: the boot check asks the worker who that
+     key is and writes the answer back (ensureChar), so Rosie's fake level 9 is
+     replaced by her real one a beat after the screen paints — and the list
+     re-sorts under the read.  That is the feature working, not a race to
+     paper over, so this waits for it to land before measuring.  Everything
+     asserted below is therefore about the SEEDED rows, whose levels nothing
+     can correct. */
+  const settle = async () => {
+    let prev = null;
+    for (let i = 0; i < 12; i++) {
+      const snap = (await rowNames()).join(',') + '|' + (await rowLevels()).join(',');
+      if (snap === prev) return;
+      prev = snap;
+      await P.page.waitForTimeout(600);
+    }
+  };
+
+  /* The door opens onto the list with no tap — that IS the feature, so it is
+     asserted before anything reopens it by hand. */
+  const autoOpen = !!(await P.page.$('[data-tut="char-picker"]'));
+  rec.ok('the door opens the character list by itself', autoOpen, {});
+  rec.ok('the picker is reachable from Continue (guard)', await openPicker(), {});
+  await settle();
   const order = await rowNames();
-  console.log('    rendered order', JSON.stringify(order));
-  rec.ok('the list is most-recent-first, not storage order',
-    JSON.stringify(order) === JSON.stringify(['Newest', 'Rosie', 'Middle', 'Oldest']), order);
+  const levels = await rowLevels();
+  console.log('    rendered order', JSON.stringify(order), JSON.stringify(levels));
+  /* Strongest is written FIRST in storage and played LONGEST ago, so neither
+     storage order nor play order can put it at the top. */
+  rec.ok('the strongest character is first, not the newest and not the first stored',
+    order[0] === 'Strongest', order);
+  /* Read from the rendered levels rather than the fixture: a row showing a
+     number the sort did not use would pass a names-only check. */
+  rec.ok('...and the rendered levels descend all the way down',
+    levels.length === 6 && levels.every((v, i) => i === 0 || levels[i - 1] >= v), levels);
+  /* TieTop (9, two hours ago) over Middle (9, five hours ago) — both seeded,
+     so this is the tiebreak and nothing else. */
+  rec.ok('...with last played breaking a level tie',
+    order.indexOf('TieTop') < order.indexOf('Middle'), order);
+  rec.ok('...and the weakest is last', order[order.length - 1] === 'Newest', order);
   await P.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/roster-order.png' });
 
   /* ── 2. DELETE ───────────────────────────────────────────────────────── */
@@ -121,7 +181,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await keep.click();
     await P.page.waitForTimeout(500);
     const after = await rowNames();
-    rec.ok('answering "Keep them" deletes NOTHING', after.length === 4 && after.includes('Middle'), after);
+    rec.ok('answering "Keep them" deletes NOTHING',
+      JSON.stringify(after) === JSON.stringify(order), { after, before: order });
   }
 
   await clickDelete('Middle');
@@ -132,8 +193,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(600);
     const after = await rowNames();
     console.log('    after delete', JSON.stringify(after));
+    /* Set, not sequence, and deliberately.  The picker reads the roster at
+       mount and re-reads it when IT changes something — so a delete is also
+       the moment a late correction from the boot check lands, and the active
+       character's row can legitimately move as her real level replaces the
+       one this fixture invented.  "That row and only that row" is a claim
+       about MEMBERSHIP; the ordering claim is the descending check below,
+       which stays true however she places. */
+    const expected = order.filter((n) => n !== 'Middle');
     rec.ok('confirming removes that row and only that row',
-      JSON.stringify(after) === JSON.stringify(['Newest', 'Rosie', 'Oldest']), after);
+      after.length === expected.length && expected.every((n) => after.includes(n)),
+      { after, expected });
+    const afterLevels = await rowLevels();
+    rec.ok('...and the list is still highest-level-first afterwards',
+      afterLevels.every((v, i) => i === 0 || afterLevels[i - 1] >= v), afterLevels);
   }
 
   /* Deleting the character the device would BOOT into has to take the boot
@@ -195,6 +268,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 3. THE CAP ──────────────────────────────────────────────────────── */
   const setCount = async (n) => {
     await P.page.evaluate((count) => {
+      try { document.cookie = 'bt_chars=; Path=/; Max-Age=0'; } catch (e) {}   /* v2.3.2111 — see above */
       const now = Date.now();
       const list = [];
       for (let i = 0; i < count; i++) {
@@ -206,6 +280,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(2000);
   };
   const pressCreate = async () => {
+    /* v2.3.2111: the seeded roster makes the door open the list over both
+       buttons, so Create has to be uncovered before it can be pressed. */
+    await closePicker();
     const b = await P.page.$('[data-tut="login-create"]');
     if (!b) return null;
     await b.click();
