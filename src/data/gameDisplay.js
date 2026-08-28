@@ -3634,16 +3634,23 @@ export const NPC_DATA = [{
   portrait: '/sprites/npc/blacksmith-bro-head.webp',
   avatar: '🔨',
   color: '#d98b45',
-  x: 1400, y: 640,
-  spawnX: 1400, spawnY: 640,
-  renderX: 1400, renderY: 640,
+  /* ═══ v2.3.2065: HE FOLLOWS HIS FORGE WEST ═══
+     The owner's blueprint puts the blacksmith's building on the WEST side of
+     the plaza; he was at (1400,640) on the east, measured against the v16
+     town. Moved to a step from his own door -- 99% open cobble on a 44px
+     disc -- so the man and his anvil and his building are finally in the same
+     part of town. spawnX/renderX/targetX move WITH x/y or the wander step
+     walks him back to the old spot over the next few seconds (v2.3.1813). */
+  x: 460, y: 900,
+  spawnX: 460, spawnY: 900,
+  renderX: 460, renderY: 900,
   hp: 100, maxHp: 100,
   noHp: true,
   alive: true,
   respawnAt: 0,
   pathRadius: 0,
   moveTimer: 0,
-  targetX: 1400, targetY: 640,
+  targetX: 460, targetY: 900,
   chatTimer: 11000,
   chatBubble: null,
   phrases: [
@@ -3691,16 +3698,22 @@ export const NPC_DATA = [{
   portrait: '/sprites/npc/storekeeper-bro-head.webp',
   avatar: '🛒',
   color: '#4a90d9',
-  x: 2520, y: 748,
-  spawnX: 2520, spawnY: 748,
-  renderX: 2520, renderY: 748,
+  /* ═══ v2.3.2065: HE WAS OFF THE MAP ═══
+     (2520, 748) is a v16 coordinate on a map that is 1664 world px wide, so
+     the storekeeper has been standing outside the world -- spawned, ticking,
+     and impossible to see or reach -- since the town was re-fused at
+     v2.3.1813. Now beside the general store the blueprint puts on the east
+     side, 98% open cobble. Same spawnX/renderX/targetX rule as above. */
+  x: 1180, y: 890,
+  spawnX: 1180, spawnY: 890,
+  renderX: 1180, renderY: 890,
   hp: 100, maxHp: 100,
   noHp: true,
   alive: true,
   respawnAt: 0,
   pathRadius: 0,
   moveTimer: 0,
-  targetX: 2520, targetY: 748,
+  targetX: 1180, targetY: 890,
   chatTimer: 14000,
   chatBubble: null,
   phrases: [

@@ -1,4 +1,4 @@
-/* THE FOUNTAIN AND THE HOUSE ON THE HILL (v2.3.2061).
+/* THE TOWN'S LAYOUT (v2.3.2061, extended to the whole plaza at v2.3.2065).
  *
  * Owner: "See if you can wire in this sprite sheet of a fountain. Also put
  * mayor bros house on the top of the hill (you won't be able to go inside just
@@ -74,14 +74,68 @@ export async function run({ browser, wsPort, webPort, rec }) {
      substance: only props whose coordinates were measured against the map
      that ships are drawn, and the rest stay off rather than standing at x
      up to 2560 on a map 1664 wide. */
-  /* v2.3.2063: back to two. The general store was placed at v2.3.2062 only
-     because nothing else sold a potion; the owner moved the potions onto
-     Shopkeeper Bro's shelf instead, so the shopfront went back off. */
-  rec.ok('...and the six props still carrying v16 coordinates are NOT, so '
-       + 'shipping these two did not strand four buildings off the map',
-    ids.length === 2, ids);
+  /* ═══ v2.3.2065: THE OWNER'S BLUEPRINT ═══
+     A mockup of where things go: mayor's house up the stairs, blacksmith
+     west, general store east, fountain dead centre, dressing around them.
+     Twelve props are placed against it; the bank and the enchanter still
+     carry v16 coordinates and stay off, which is the claim that matters --
+     turning them on without re-measuring puts them off the right-hand edge
+     of a map 1664 world px wide. */
+  const EXPECT = ['anvil', 'banner-gate-e', 'banner-gate-w', 'bench-e', 'bench-w',
+    'forge', 'fountain', 'general-store', 'lamp-plaza-e', 'lamp-plaza-w',
+    'market-stall', 'mayor-house'];
+  rec.ok(`the blueprint's twelve props are all placed (${ids.length})`,
+    JSON.stringify(ids) === JSON.stringify(EXPECT), { got: ids, want: EXPECT });
+  rec.ok('...and the two still carrying v16 coordinates are NOT',
+    !ids.includes('bank') && !ids.includes('enchanter'), ids);
   const oob = list.filter((p) => p.x <= 0 || p.y <= 0 || p.x >= TOWN_W || p.y >= TOWN_H);
   rec.ok('every prop that IS drawn stands on the map that ships', oob.length === 0, oob);
+
+  /* ── THE PLAZA IS ARRANGED AROUND THE FOUNTAIN ──
+     Stated as relationships rather than coordinates, so the test says what
+     the blueprint says: the smith is west of the store, the house is north of
+     both, and the fountain sits between them rather than off to one side.
+     Coordinates alone would pass just as well with the whole town shifted. */
+  const at = (id) => byId(list, id);
+  const smith = at('forge'), store = at('general-store');
+  const fount = at('fountain'), house = at('mayor-house');
+  rec.ok('the blacksmith is west of the general store',
+    smith.x < store.x - 400, { smith: smith.x, store: store.x });
+  rec.ok('...the mayor\'s house is north of both',
+    house.y < smith.y - 250 && house.y < store.y - 250,
+    { house: house.y, smith: smith.y, store: store.y });
+  rec.ok('...and the fountain sits between the two shops, not beside one',
+    Math.abs((fount.x - smith.x) - (store.x - fount.x)) < 200,
+    { toSmith: fount.x - smith.x, toStore: store.x - fount.x });
+  rec.ok('...south of them, in the open plaza',
+    fount.y > smith.y && fount.y > store.y, { fount: fount.y, smith: smith.y });
+
+  /* ── WHAT BLOCKS, AND WHAT DOES NOT ──
+     Buildings and the fountain have real footprints. The dressing does not:
+     a lamp or a bench you can walk through is a smaller annoyance than a
+     plaza you can wedge yourself into. */
+  const solid = list.filter((p) => p.blocks).map((p) => p.id).sort();
+  rec.ok('the buildings and the fountain block',
+    JSON.stringify(solid) === JSON.stringify(['forge', 'fountain', 'general-store', 'mayor-house']),
+    solid);
+  rec.ok('...and the lamps, benches and banners do not -- they are dressing',
+    !list.some((p) => p.blocks && /lamp|bench|banner|anvil|stall/.test(p.id)),
+    list.filter((p) => p.blocks).map((p) => p.id));
+
+  /* ── THE TRADESMEN STAND AT THEIR OWN BUILDINGS ──
+     Storekeeper Bro was at x=2520 on a map 1664 wide -- spawned, ticking, and
+     outside the world -- since the town was re-fused. This is the check that
+     would have caught it. */
+  const npcs = await P.page.evaluate(() => (window._gameState.current.npcs || [])
+    .map((n) => ({ id: n.id, x: Math.round(n.x), y: Math.round(n.y) })));
+  for (const [nid, pid] of [['blacksmith_bro', 'forge'], ['storekeeper_bro', 'general-store']]) {
+    const n = npcs.find((q) => q.id === nid), pr = at(pid);
+    rec.ok(`${nid} is inside the world at all`,
+      !!n && n.x > 0 && n.x < TOWN_W && n.y > 0 && n.y < TOWN_H, n);
+    rec.ok(`...and stands at his own ${pid}, not across town`,
+      !!n && Math.hypot(n.x - pr.x, n.y - pr.y) < 260,
+      { npc: n, prop: { x: pr.x, y: pr.y }, dist: n && Math.round(Math.hypot(n.x - pr.x, n.y - pr.y)) });
+  }
 
   /* ── 2. THE WATER MOVES ──
      Sampled as the texture's window into the strip: eight frames share one
@@ -112,7 +166,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
      Not "somewhere in town": north of the plaza and above the cliff line the
      terrace sits on. TOWN_SPAWN is (815,1010), so a smaller y is further up
      the map, and the terrace's clear cobble is y 320..470. */
-  const house = byId(list, 'mayor-house');
   rec.ok(`the house stands on the northern terrace, not down in the plaza `
        + `(y ${house && house.y} against a spawn at 1010)`,
     house && house.y >= 320 && house.y <= 480, house);

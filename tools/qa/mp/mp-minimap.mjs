@@ -213,10 +213,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('the minimap reports which PROPS it marked (guard)', Array.isArray(pm), pm);
     rec.ok("the mayor's house is on the map -- it is placed on the map that ships",
       !!pm && pm.some((m) => m.id === 'mayor-house'), pm);
-    /* v2.3.2063: the general store went back off with the potions moving to
-       Shopkeeper Bro's shelf, so all four shopfronts are unplaced again. */
-    rec.ok('...and the shopfronts still carrying v16 coordinates are not',
-      !!pm && !pm.some((m) => ['forge', 'bank', 'enchanter', 'general-store'].includes(m.id)),
+    /* ═══ v2.3.2065: THE BLUEPRINT PUT THE SHOPS BACK ═══
+       The owner's layout has a blacksmith west and a general store east, both
+       re-measured onto town_v17, so those two ARE on the map now and are
+       expected here. The bank and the enchanter still carry v16 coordinates
+       and stay off -- which is the half of this that can still catch
+       something, since turning them on unmeasured puts them past the map's
+       right-hand edge. */
+    rec.ok('the blacksmith and the general store are marked -- the blueprint '
+         + 'placed them', !!pm && pm.some((m) => m.id === 'forge')
+      && pm.some((m) => m.id === 'general-store'), pm);
+    rec.ok('...and the two still carrying v16 coordinates are not',
+      !!pm && !pm.some((m) => ['bank', 'enchanter'].includes(m.id)),
       { marks: pm, flag: 'TOWN_PROPS_ENABLED=false' });
     /* Still a real distinctness claim, at the size the bare town supports:
        the marks that ARE drawn must not have collapsed onto one glyph. */
