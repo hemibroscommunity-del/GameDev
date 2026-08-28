@@ -409,11 +409,54 @@ export const eventCapeMethods = {
    *  RECEIVING an id still sees a truthy value where it expected `true`, and
    *  a new client receiving `true` from an old worker finds no texture for it
    *  and simply draws nothing. */
+  /* ═══ v2.3.2109: OWNING A CAPE AND WEARING IT ARE TWO FACTS ═══
+   * Owner: "I wanted ability to equip and unequip the cape."
+   *
+   * Until now they were one. `_capeOwnedBy` answered the ledger's question --
+   * did you win -- and every consumer treated that as "is it on your back", so
+   * a winner wore their prize permanently with no way to take it off.
+   *
+   * OWNERSHIP STAYS THE LEDGER'S, exactly as v2.3.2027 requires: a cape a
+   * client can assert is a cape anyone can award themselves, so nothing below
+   * lets a player claim one they did not win. What is new is a PREFERENCE
+   * beside it -- `ps.capeOff`, on the player's own blob, meaning "I own this
+   * and I have taken it off".
+   *
+   * STORED AS "OFF", NOT "ON", and that is deliberate: the field is absent on
+   * every existing winner's blob, and absent must mean WORN or this change
+   * would silently strip the cape off everyone who already has one. A default
+   * that reads false and means "wearing it" is the safe direction here. */
+  _capeWornBy(playerId) {
+    const owned = this._capeOwnedBy(playerId);
+    if (!owned) return null;
+    const ps = this.playerState && this.playerState[playerId];
+    return (ps && ps.capeOff === true) ? null : owned;
+  },
+
   _capeStamp(playerId, data) {
     if (!data) return;
-    const owned = this._capeOwnedBy(playerId);
-    if (owned) data.cape = owned;
-    else if (data.cape) delete data.cape;      /* claimed one, owns none */
+    /* WORN, not owned: a peer should see what is actually on your back. */
+    const worn = this._capeWornBy(playerId);
+    if (worn) data.cape = worn;
+    else if (data.cape) delete data.cape;      /* claimed one, or took it off */
+  },
+
+  /** Equip or unequip the cape you won.  The ledger still decides WHETHER you
+   *  have one; this only decides whether it is on. */
+  async _handleCapeEquip(session, payload) {
+    if (!session || !session.id) return;
+    const ps = this.playerState[session.id];
+    if (!ps) return;
+    if (ps.dying || ps.dead || ps.disconnected) return;
+    /* No cape, nothing to toggle -- and no way to acquire one through here. */
+    if (!this._capeOwnedBy(session.id)) return;
+    const want = !!(payload && payload.worn);
+    const next = !want;
+    if (ps.capeOff === next) return;            /* already there; no echo storm */
+    ps.capeOff = next;
+    this._saveRpg(session.id, ps);
+    const ws = this._wsBySessionId(session.id);
+    if (ws) this._sendPlayerState(ws, session.id);
   },
 
   /** ═══ v2.3.2034: THE LEDGER, VISIBLE AND RESETTABLE ═══

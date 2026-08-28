@@ -341,7 +341,9 @@ export const persistenceMethods = {
              local player would have to take its cape from localStorage, which
              means anyone could wear the contest prize by editing a key. Old
              clients ignore the unknown field (deploy-order safe). */
-          cape: (typeof this._capeOwnedBy === 'function' ? this._capeOwnedBy(playerId) : null) || null,
+          /* v2.3.2109: WORN, not merely owned -- the player can take it off
+             now (_capeWornBy), and this field is what puts it on their back. */
+          cape: (typeof this._capeWornBy === 'function' ? this._capeWornBy(playerId) : null) || null,
           coins: ps.coins || 0,
           inventory: ps.inventory || {},
           lifeSkills: ps.lifeSkills || {},
