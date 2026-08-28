@@ -52,6 +52,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('town has an exit to the world map (guard)', !!exit, exit);
   if (!exit) { await P.ctx.close().catch(() => {}); return; }
 
+  /* The mayor's gate is a HARD one (v2.3.1676: no leaving town before
+     accepting tut_1, which is what hands over the sword and shield), and it
+     is not what this file is about — mp-townexit asserts it. Accepted the
+     way every other travelling scenario does. */
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    if (S && S.channel) S.channel.send({ type: 'quest_accept', payload: { questId: 'tut_1' } });
+  });
+  await H.waitFor(P, (S) => !!((S.rpg || {})._quests || {}).tut_1, (v) => v === true,
+    { timeout: 12000, label: 'tut_1 lands' }).catch(() => {});
+
   let reached = false;
   for (let i = 0; i < 8 && !reached; i++) {
     await P.page.evaluate((e) => {
@@ -97,22 +108,68 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and the client agrees you are standing somewhere legal',
     (await clientSolid(at.x, at.y)) === false, at);
 
-  /* ── 2. A WALL THE GRID KNOWS ABOUT IS A WALL THE CLIENT KNOWS ABOUT ──
-     Found by looking, not remembered: step outward from the arrival point
-     until the grid says wall. */
-  let wall = null;
-  for (let r = 40; r <= 700 && !wall; r += 20) {
-    for (let a = 0; a < 360; a += 15) {
-      const x = at.x + r * Math.cos(a * Math.PI / 180);
-      const y = at.y + r * Math.sin(a * Math.PI / 180);
-      if (x < 8 || y < 8 || x > ZONE_W - 8 || y > ZONE_H - 8) continue;
-      if (gridSolid(x, y)) { wall = { x: Math.round(x), y: Math.round(y), r, a }; break; }
+  /* ═══ AN ANCHOR THAT IS NOT ON A TRAIL-HEAD ═══
+     The world map is a HUB. WORLDVIEW_ARRIVAL (744, 848) is tile (23, 26) and
+     the town trail-head is tile (24, 28) — Manhattan 3, against a
+     TOWN_EXIT_R of 2. One step south of the arrival is inside the radius and
+     the player is sent straight home, which is what the first cut of this
+     file spent its whole walk doing: it measured a TOWN coordinate against
+     the WORLD MAP's grid and called (806, 1680) a breach.
+     So the walking tests run from a spot derived at runtime — walkable, and
+     at least four tiles from EVERY live marker, computed from the same
+     WORLDVIEW_EXITS the game reads rather than from a number typed here. */
+  const marks = await P.page.evaluate(() =>
+    ((window._gameFns && window._gameFns.WORLDVIEW_EXITS) || [])
+      .map((e) => ({ zoneId: e.zoneId, tx: e.tx, ty: e.ty })));
+  rec.ok('the world map declares its trail-heads (guard)', marks.length > 0, marks);
+  const farFromMarks = (x, y) => {
+    const tx = Math.floor(x / 32), ty = Math.floor(y / 32);
+    /* EIGHT tiles, not four. TOWN_EXIT_R is 2, and a walking leg covers
+       ground fast: from four tiles out the player is inside a trail-head's
+       radius within half a second, which is what the first cut did on its
+       very first sample. Eight tiles plus a leg short enough to be stopped
+       by the wall keeps the walk on the map. */
+    return marks.every((m) => Math.abs(tx - m.tx) + Math.abs(ty - m.ty) >= 8);
+  };
+
+  let anchor = null, wall = null;
+  outer:
+  for (let r = 60; r <= 500; r += 20) {
+    for (let a = 0; a < 360; a += 10) {
+      const x = Math.round(at.x + r * Math.cos(a * Math.PI / 180));
+      const y = Math.round(at.y + r * Math.sin(a * Math.PI / 180));
+      if (x < 60 || y < 60 || x > ZONE_W - 60 || y > ZONE_H - 60) continue;
+      if (gridSolid(x, y) || !farFromMarks(x, y)) continue;
+      /* ...with a wall within reach of it, or there is nothing to walk into —
+         and no NEARER than 120px, or there is no run-up either and "did the
+         player move" cannot tell a wall from a frozen client (the first cut
+         picked a wall 40px out and failed its own guard on 23px of travel). */
+      for (let wr = 120; wr <= 320; wr += 16) {
+        for (let wa = 0; wa < 360; wa += 15) {
+          const wx = Math.round(x + wr * Math.cos(wa * Math.PI / 180));
+          const wy = Math.round(y + wr * Math.sin(wa * Math.PI / 180));
+          if (wx < 8 || wy < 8 || wx > ZONE_W - 8 || wy > ZONE_H - 8) continue;
+          if (!gridSolid(wx, wy)) continue;
+          /* the ground between them has to be open, or the "wall" the walk
+             stops at is not the one that was measured */
+          let clear = true;
+          for (let t = 16; t < wr - 8 && clear; t += 8) {
+            const mx = x + t * Math.cos(wa * Math.PI / 180);
+            const my = y + t * Math.sin(wa * Math.PI / 180);
+            if (gridSolid(mx, my)) clear = false;
+          }
+          if (!clear) continue;
+          anchor = { x, y }; wall = { x: wx, y: wy, r: wr, a: wa };
+          break outer;
+        }
+      }
     }
   }
-  rec.ok('there is a wall within reach of the arrival point to test against (guard)',
-    !!wall, wall);
+  rec.ok('there is open ground clear of every trail-head, with a wall within '
+       + 'reach of it, to test against (guard)', !!anchor && !!wall, { anchor, wall });
   if (wall) {
-    rec.ok(`the client calls that wall solid too (${wall.r}px out, bearing ${wall.a})`,
+    rec.ok(`the client calls that wall solid too (${wall.r}px from the anchor, `
+         + `bearing ${wall.a})`,
       (await clientSolid(wall.x, wall.y)) === true, wall);
   }
 
@@ -121,23 +178,54 @@ export async function run({ browser, wsPort, webPort, rec }) {
      hold the key toward the wall and see where the game leaves you. A player
      put ON a wall would be let out by the never-trap hatch, so the walk
      starts from open ground and heads at it. */
-  if (wall) {
-    const dir = Math.abs(wall.x - at.x) > Math.abs(wall.y - at.y)
-      ? (wall.x > at.x ? 'd' : 'a') : (wall.y > at.y ? 's' : 'w');
+  /* ═══ EVERY SAMPLE CARRIES ITS ZONE ═══
+     The world map is a HUB: its own exits are trail-heads a few tiles wide,
+     and a long walk in any direction eventually stands on one. The first cut
+     of this file did not check, so a leg that portalled into town kept
+     walking — and reported a town coordinate (806, 1680, which is town's own
+     bottom clamp) against the WORLD MAP's grid. Two coordinate systems, one
+     verdict, and the verdict was nonsense.
+     A leg that leaves the map is not a breach and not a pass: it ends, and
+     the run says so. */
+  const walkLeg = async (dir, ms, step = 400) => {
+    const samples = [];
+    await P.page.keyboard.down(dir);
+    for (let t = 0; t < ms; t += step) {
+      await P.page.waitForTimeout(step);
+      const q = await H.readState(P, (S) => ({ zone: S.currentZone,
+        x: Math.round(S.player.x), y: Math.round(S.player.y) }));
+      if (q.zone !== 'worldview') { samples.push({ ...q, left: true }); break; }
+      samples.push(q);
+    }
+    await P.page.keyboard.up(dir);
+    await P.page.waitForTimeout(300);
+    return samples;
+  };
+  const backToAnchor = async () => {
+    const z = await H.readState(P, (S) => S.currentZone);
+    if (z !== 'worldview' || !anchor) return false;
     await P.page.evaluate((p) => {
       const S = window._gameState.current;
       S.player.x = p.x; S.player.y = p.y;
-    }, at);
+    }, anchor);
     await P.page.waitForTimeout(400);
-    await P.page.keyboard.down(dir);
-    await P.page.waitForTimeout(4000);
-    await P.page.keyboard.up(dir);
-    await P.page.waitForTimeout(500);
-    const end = await H.readState(P, (S) => ({ x: Math.round(S.player.x), y: Math.round(S.player.y) }));
+    return true;
+  };
+
+  if (wall && anchor) {
+    const dir = Math.abs(wall.x - anchor.x) > Math.abs(wall.y - anchor.y)
+      ? (wall.x > anchor.x ? 'd' : 'a') : (wall.y > anchor.y ? 's' : 'w');
+    await backToAnchor();
+    const legs = await walkLeg(dir, 2000, 250);
+    const onMap = legs.filter((q) => !q.left);
+    const end = onMap[onMap.length - 1] || anchor;
     rec.ok('walking at the wall actually moved the player (guard)',
-      Math.hypot(end.x - at.x, end.y - at.y) > 30, { from: at, to: end, dir });
-    rec.ok('...and left them on walkable ground, not through the line',
-      !gridSolid(end.x, end.y), { end, dir, gridSaysWall: gridSolid(end.x, end.y) });
+      Math.hypot(end.x - anchor.x, end.y - anchor.y) > 20,
+      { from: anchor, to: end, dir, legs });
+    const through = onMap.filter((q) => gridSolid(q.x, q.y));
+    rec.ok('...and never put them through the line',
+      through.length === 0, { end, dir, through: through.slice(0, 3),
+        leftTheMap: legs.some((q) => q.left) });
   }
 
   /* ── 4. THE RING HOLDS ON EVERY SIDE ──
@@ -145,24 +233,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
      ground: one that is not means the player crossed a line, and the last
      sample being legal would not catch a pass THROUGH a wall into open
      ground beyond it. */
-  const breaches = [];
+  const breaches = [], leftBy = [];
   for (const [dir, label] of [['w', 'north'], ['s', 'south'], ['a', 'west'], ['d', 'east']]) {
-    await P.page.evaluate((p) => {
-      const S = window._gameState.current;
-      S.player.x = p.x; S.player.y = p.y;
-    }, at);
-    await P.page.waitForTimeout(350);
-    await P.page.keyboard.down(dir);
-    for (let i = 0; i < 14; i++) {
-      await P.page.waitForTimeout(400);
-      const p = await H.readState(P, (S) => ({ x: Math.round(S.player.x), y: Math.round(S.player.y) }));
-      if (gridSolid(p.x, p.y)) { breaches.push({ label, ...p }); break; }
+    if (!(await backToAnchor())) { leftBy.push(label + ' (off the map, skipped)'); continue; }
+    const legs = await walkLeg(dir, 2000, 250);
+    for (const q of legs) {
+      if (q.left) { leftBy.push(label + ' -> ' + q.zone); break; }
+      if (gridSolid(q.x, q.y)) { breaches.push({ label, ...q }); break; }
     }
-    await P.page.keyboard.up(dir);
-    await P.page.waitForTimeout(300);
   }
   rec.ok('walking hard at the rock wall in all four directions never crosses it',
-    breaches.length === 0, breaches);
+    breaches.length === 0, { breaches, leftByPortal: leftBy });
+  /* A run where every leg portalled out has proved nothing, and would
+     otherwise be reported as a clean pass. */
+  rec.ok('...and at least half those walks stayed on the map long enough to '
+       + 'mean something', leftBy.length <= 2, { leftByPortal: leftBy });
 
   const errs = P.logs.filter((l) => String(l).startsWith('pageerror'));
   rec.ok('no page errors while walking the world map', errs.length === 0, errs.slice(0, 3));
