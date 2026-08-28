@@ -601,7 +601,9 @@ function _spawnTownNpcs() {
      Note 'Storekeeper Bro' beside him is a DIFFERENT, older entry -- the two
      names are one letter apart and getNpcQuest keys on the name, so they must
      not be conflated. */
-  var ACTIVE_NPCS = ['Mayor Bro', 'Blacksmith Bro', 'Storekeeper Bro', 'Shopkeeper Bro']; /* v2.3.1775 */
+  /* v2.3.2064: + Lil Bro, the second NPC that walks. Scenery with legs -- no
+     quest, no shop -- so nothing but this line and his NPC_DATA record. */
+  var ACTIVE_NPCS = ['Mayor Bro', 'Blacksmith Bro', 'Storekeeper Bro', 'Shopkeeper Bro', 'Lil Bro']; /* v2.3.1775 */
   return NPC_DATA.filter(function (n) { return ACTIVE_NPCS.indexOf(n.name) >= 0; })
     .map(function (npc) { return _objectSpread({}, npc); });
 }

@@ -3486,6 +3486,67 @@ export const NPC_DATA = [{
      dormant Trader Tix quest chain in gameSystems.js and getNpcQuest keys on
      the NPC's NAME, so using it would silently switch that chain on. Exactly
      the trap documented on Blacksmith Bro below. */
+  /* ═══ v2.3.2064: LIL BRO, THE KID IN THE PLAZA ═══
+     Owner: "Add another little bro for a sprite sheet."
+
+     Scenery with legs: no quest, no shop, no dialogue tree -- he walks around
+     the east side of the plaza and says the odd thing, which is what a town
+     with people in it looks like. The second walking NPC in the game, and he
+     needed no new renderer code: `walk` names his strips and the shopkeeper's
+     v2.3.2046 machinery does the rest.
+
+     NAME: 'Lil Bro'. Checked against QUEST_CHAINS -- getNpcQuest keys on the
+     NPC's NAME, so reusing 'Trader Tix' or 'Scout' or 'Healer Luna' would
+     silently switch a dormant chain on and hang a '!' over a child. Same trap
+     documented on Shopkeeper Bro and Blacksmith Bro. */
+  id: 'lil_bro',
+  name: 'Lil Bro',
+  /* The south strip. `sprite` is what npcSpriteScale keys on and what the
+     preloader lists; the renderer binds a sliced FRAME, never this strip. */
+  sprite: '/sprites/npc/lil-bro-walk-south.webp',
+  portrait: '/sprites/npc/lil-bro-head.webp',
+  walk: {
+    base: '/sprites/npc/lil-bro-walk-',
+    frames: 4,
+    dirs: ['south', 'southwest', 'west', 'northwest',
+      'north', 'northeast', 'east', 'southeast'],
+  },
+  avatar: '🧒',
+  color: '#7FB6E8',
+  namePlate: true,
+  plateRole: 'Kid',
+  /* v2.3.2064: measured on town_v17, not guessed -- (1180,1180) is 99% open
+     cobble on a 90px disc, on the plaza's east side. That puts him opposite
+     Shopkeeper Bro at (700,1060) so the two do not crowd each other, clear of
+     the fountain's footprint (x 760..900), and off the spawn point. */
+  x: 1180, y: 1180,
+  spawnX: 1180, spawnY: 1180,
+  renderX: 1180, renderY: 1180,
+  hp: 100, maxHp: 100,
+  noHp: true,          /* a child in a safe town; a health bar reads as "fight this" */
+  alive: true,
+  respawnAt: 0,
+  /* Wider than the shopkeeper's 110: he has nothing to stand behind, and a kid
+     who covers ground is the point of him. Bounded so he stays on the cobble
+     the disc above was measured over. */
+  pathRadius: 130,
+  moveTimer: 0,
+  targetX: 1180, targetY: 1180,
+  chatTimer: 11000,
+  chatBubble: null,
+  /* REQUIRED -- the AI loop indexes this unguarded and an empty array throws. */
+  phrases: [
+    'Betcha can’t catch me!',
+    'My bro says the meadow’s got slimes.',
+    'One day I’m gonna be a real adventurer.',
+    'Did you see the fountain? It’s got FISH. Probably.',
+  ],
+  canFollow: false,
+  followZones: [],
+  _facing: 'down',
+  _questMarker: null,
+  _hitThisSwing: false,
+}, {
   id: 'shopkeeper_bro',
   name: 'Shopkeeper Bro',
   /* The south strip. `sprite` is what npcSpriteScale keys on and what the

@@ -228,6 +228,14 @@ const NPC_SCALE_MULT = Object.assign(Object.create(null), {
      a mayor. Keyed on the south strip because that is his NPC_DATA `sprite`,
      which is what npcSpriteScale is handed. */
   '/sprites/npc/shopkeeper-bro-walk-south.webp': 1.30,
+  /* ═══ v2.3.2064: LIL BRO IS A CHILD, SO HE IS DRAWN AS ONE ═══
+     The import convention normalises EVERY figure to 200px between hat and
+     feet (import_npc_walk.py), which is what makes an NPC need no per-sprite
+     anchor -- and it also means a kid ships exactly as tall as the mayor. The
+     art is a child; the scale is where that gets said. 0.78 puts his head at
+     about an adult's shoulder, which is what the reference art looks like
+     beside the grown-ups in the same street. */
+  '/sprites/npc/lil-bro-walk-south.webp': 0.78,
 });
 const npcSpriteScale = (src) => NPC_SPRITE_SCALE * (NPC_SCALE_MULT[src] || 1);
 
@@ -9895,6 +9903,26 @@ export class EntityRenderer {
         if (npc.namePlate) {
           _attachNamePill(display, 9, 1);
           nameText.visible = false;
+          /* ═══ v2.3.2064: THE PLATE SITS WITH THE FIGURE, NOT AT A FIXED DROP ═══
+             _attachNamePill puts the plate 38 units below the container origin,
+             which for an NPC is the feet. That is a constant, so it reads as a
+             neat caption under a full-size adult and as a detached label
+             floating well under a child -- the gap does not shrink with the
+             character the way it does for a player (whose whole display scales).
+             Scaled by the same npcSpriteScale the figure uses, so the gap is the
+             same RELATIVE to each NPC's own height.
+
+             CLAMPED AT THE ORIGINAL 38, so this can only ever pull a plate IN,
+             never push one out. Shopkeeper Bro is drawn at 1.30 and his plate
+             was placed by eye at the owner's request (v2.3.2048, "make it below
+             him"); a proportional rule would move it to 49 and quietly re-tune
+             something that was already signed off. Only figures SMALLER than
+             the default are adjusted, which is the case this exists for.
+             Floored, because a very small NPC still has to clear their shoes. */
+          if (display._namePill) {
+            const _pm = npcSpriteScale(npc.sprite) / NPC_SPRITE_SCALE;
+            display._namePill.y = Math.max(20, Math.min(38, Math.round(38 * _pm)));
+          }
         }
 
         /* Quest marker — badge above the head, pulses vertically.
@@ -10076,6 +10104,11 @@ export class EntityRenderer {
             /* world y of the figure's feet — anchor is the frame's foot row */
             footY: display.y,
             src: display._figSrc,
+            /* v2.3.2064: the facing the renderer CHOSE, and the strip it bound
+               for it. A walk sheet's row order cannot be read off the code --
+               this one is not ordered like the shopkeeper's -- so a test needs
+               to see which way he was pointed and which file answered. */
+            walkDir: display._walkDir || null,
           };
         }
       }
