@@ -5679,8 +5679,13 @@ export const QUEST_CHAINS = {
        unfinishable quest here stopped the whole rest of his chain.  The quest
        is left otherwise INTACT (check, reward, dialogue, `next`), because the
        fix for it is content — restore the buildings, or give him an errand the
-       world can pay out on — and neither is a call to make from here. */
-    needsDoor: true,
+       world can pay out on — and neither is a call to make from here.
+       v2.3.2087: THREE, not `true`.  The check below wants three DISTINCT
+       buildings and this asked whether ONE door existed, so with the forge and
+       the general store live the quest was offered and could not be finished —
+       which stopped mayor_2 and mayor_3 behind it and left `zone_exits`
+       locked. The number it needs is the number it asks for. */
+    needsDoor: 3,
     check: function check(rpg, S) {
       var _S$stats;
       return (((_S$stats = S.stats) === null || _S$stats === void 0 || (_S$stats = _S$stats.visitedBuildings) === null || _S$stats === void 0 ? void 0 : _S$stats.size) || 0) >= 3;
@@ -6338,11 +6343,32 @@ export function questObjectiveDone(quest, S, rpgFallback) {
  * per-frame NPC loop through getNpcQuest.
  */
 var _doorCache = null;
+var _doorCount = 0;
 /** Is there a live, enterable door in the world?  `action` narrows it to one
- *  building (the Farm, say); true/undefined asks whether ANY door exists. */
+ *  building (the Farm, say); a NUMBER asks whether at least that many distinct
+ *  doors exist; true/undefined asks whether ANY door does.
+ *
+ * ═══ v2.3.2087: A COUNT, BECAUSE "ANY" WAS NOT WHAT THE QUEST NEEDED ═══
+ * mayor_1 is "Visit 3 buildings in town" and declared `needsDoor: true`, so
+ * this was asked whether ONE door existed.  Two did -- the forge and the
+ * general store -- so the quest was offered, and its own check wants
+ * `visitedBuildings.size >= 3`, which two doors can never reach.  Offered and
+ * impossible: exactly the dead end the note above was written to prevent,
+ * reappearing one level down, in the guard itself.
+ *
+ * It matters more than one errand.  getNpcQuest returns the FIRST incomplete
+ * quest in a chain and the log shows one at a time, so an uncompletable
+ * mayor_1 stops mayor_2 and mayor_3 from ever being offered -- and mayor_1
+ * `unlocks: 'zone_exits'`, so the whole world stayed shut behind it.
+ *
+ * v2.3.2086 put the bank and the enchanter back on the map, which takes the
+ * count to four and makes the quest completable for the first time.  This
+ * makes the GUARD honest as well, so the day a door is removed the quest
+ * hides itself again instead of quietly walling the chain. */
 function anyBuildingDoor(action) {
   if (!_doorCache) {
     _doorCache = Object.create(null);   /* action-keyed (CLAUDE.md rule 4) */
+    _doorCount = 0;
     for (var _i34 = 0; _i34 < WORLD_PROPS.length; _i34++) {
       var p = WORLD_PROPS[_i34];
       if (!p || !p.action) continue;
@@ -6350,10 +6376,12 @@ function anyBuildingDoor(action) {
          lives in there, and reading the raw array would report doors the
          renderer and the proximity scan both agree do not exist. */
       if (propsForZone(p.zone).indexOf(p) < 0) continue;
+      if (!_doorCache[p.action]) _doorCount++;   /* DISTINCT buildings */
       _doorCache[p.action] = true;
       _doorCache['*'] = true;
     }
   }
+  if (typeof action === 'number') return _doorCount >= action;
   return !!_doorCache[typeof action === 'string' ? action : '*'];
 }
 
