@@ -331,6 +331,7 @@ const {
 import { _regenerator, _regeneratorDefine2, _asyncToGenerator, _typeof, _slicedToArray, _toConsumableArray, _objectSpread, _defineProperty, _toPropertyKey, _toPrimitive, ownKeys, _arrayWithHoles, _iterableToArrayLimit, _unsupportedIterableToArray, _arrayLikeToArray, _nonIterableRest, _arrayWithoutHoles, _iterableToArray, _nonIterableSpread, _createForOfIteratorHelper, asyncGeneratorStep } from '@/lib/babelHelpers.js';
 import { SpriteHpBar } from './SpriteHpBar.jsx'; /* v2.3.1273: owner's HP-bar art (desktop HUD row) */
 import { barHeight, navSlotSize, columnsRowHeight, DASH_OVERLAP } from './mobile/sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 bar-height canvas; v2.3.1325 slot-derived bar; v2.3.1560 two-row band; v2.3.1635 three-row band; v2.3.1636 columns row */
+import { dashMinBus } from './mobile/dashMinBus.js'; /* v2.3.2119: folded band = identity row only */
 import { recolorEnabled } from '@/rendering/traits/recolorOptions.js';
 import { buildingPropNear } from '@/data/worldProps.js'; /* v2.3.1778: building doors */
 
@@ -2926,6 +2927,18 @@ export var BroTown = function BroTown(_ref0) {
          anchors) and this canvas math share the same rounded value.
          game.css only carries boot fallbacks. */
       var bar = barHeight(vw, vhFull);
+      var colsH = columnsRowHeight(vw, vhFull);
+      /* v2.3.2119: FOLDED = IDENTITY ROW ONLY.  The fold subtracts the
+         columns row from the band and zeroes --cols-h, and every consumer
+         downstream — canvas height, the identity row's bottom anchor, the
+         chat feed, the joystick zones — derives the folded geometry from
+         the same two vars they already read.  The expanded-sheet offset is
+         the DIFFERENCE (--dash-h - --cols-h), which this arithmetic leaves
+         bit-identical, so a sheet opened out of a folded band sits exactly
+         where it always has.  Stamped HERE and not in the dashboard because
+         this function owns the canvas: a fold the canvas didn't follow
+         would be a black stripe where the columns row was. */
+      if (dashMinBus.min) { bar = Math.max(0, bar - colsH); colsH = 0; }
       document.documentElement.style.setProperty('--nav-slot', navSlotSize(vw, vhFull) + 'px');
       /* v2.3.1560: --nav-h is the toolbar ribbon alone; --dash-h below is
          the whole band.  Both stamped here so the ribbon and the rows
@@ -2942,7 +2955,7 @@ export var BroTown = function BroTown(_ref0) {
          became "middle row + identity row" and would have stretched the
          middle row over both.  Each pinned row is told its own height.
          v2.3.1636: --quick-h -> --cols-h with the three-column row. */
-      document.documentElement.style.setProperty('--cols-h', columnsRowHeight(vw, vhFull) + 'px');
+      document.documentElement.style.setProperty('--cols-h', colsH + 'px');
       document.documentElement.style.setProperty('--dash-h', bar + 'px');
       var vh = Math.max(120, Math.round(vhFull - bar) + DASH_OVERLAP); /* v2.3.1290: bar is the resting band */
       /* v2.3.1283: short-circuit when nothing changed — the
@@ -3017,7 +3030,15 @@ export var BroTown = function BroTown(_ref0) {
       var haveH = canvas.getBoundingClientRect().height;
       if (!haveH) return;                       /* not laid out yet */
       var fullH = vvNow ? vvNow.height : window.innerHeight;
-      var wantH = Math.max(120, fullH - barHeight(vvNow ? vvNow.width : window.innerWidth, fullH) + DASH_OVERLAP);
+      /* v2.3.2119: the watchdog must expect the FOLDED band when the fold
+         is on, or it and resize() disagree by the columns row's height —
+         ~13% on a phone, past the 8% tolerance — and it "heals" the canvas
+         to the wrong size twice a second forever.  Same arithmetic as
+         resize(), same flag. */
+      var _wdVw = vvNow ? vvNow.width : window.innerWidth;
+      var _wdBar = barHeight(_wdVw, fullH);
+      if (dashMinBus.min) _wdBar = Math.max(0, _wdBar - columnsRowHeight(_wdVw, fullH));
+      var wantH = Math.max(120, fullH - _wdBar + DASH_OVERLAP);
       if (Math.abs(haveH - wantH) <= wantH * 0.08) return;
       /* Say it once, loudly, with the numbers: if this ever fires in the wild
          the log is the whole diagnosis, and silence here would hide the very

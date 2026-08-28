@@ -12,6 +12,7 @@
    S is stateRef.current. */
 import { _onBroNonce, _onBroResult } from './broWallet.js'; /* v2.3.1576 */
 import { shopBus } from '../ui/mobile/shopBus.js';   /* v2.3.2050 */
+import { capeStatusBus } from '../ui/mobile/capeStatusBus.js'; /* v2.3.2118 */
 import { BT_AUDIO, ZONES, TILE, ARENA_CHAMPION_REWARD, ARENA_WIN_REWARD, CLAN_WAR_REWARDS, createDefaultCompStats, recalcDerived, DEATH_GOLD_PENALTY, PVP_THREAT_CONSENT_MS, updateZoneDimensions, generateZoneMap, trainDefense, getGuildRank, SKILL_GUILDS } from '@/data/index.js';
 import { MONSTER_VARIANTS, maybeTransformMonster, isRemnantSkull, xpMultFor } from '@/data/monsterVariants.js';
 import { prog3Live } from '@/data/prog3.js'; /* v2.3.1727: the kill-XP popup is a legacy number under prog3 */
@@ -231,6 +232,12 @@ export function processGameEvent(type, payload, S, deps) {
              * tab away, and to a field QA can read without parsing chat. */
             try { console.log('[bt] ' + _line); } catch (e) { /* ignore */ }
             try { S._capeStatusLine = _line; } catch (e) { /* ignore */ }
+            /* v2.3.2118: and to the chip (owner: "one line near chat like
+               #/# golden tickets left").  The RAW payload, because the chip
+               wants numbers, not this sentence.  Via a bus because this
+               message arrives once, on join, usually before WorldChatFeed
+               mounts — see capeStatusBus.js. */
+            try { capeStatusBus.set(_cs); } catch (e) { /* ignore */ }
             break;
           }
           case 'shop_result': {
