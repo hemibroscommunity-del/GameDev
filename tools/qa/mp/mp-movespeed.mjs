@@ -18,10 +18,30 @@ import * as H from './harness.mjs';
 
 const WALK_MS = 2500;
 
+/* ═══ v2.3.2078: A LANE WITH ROOM TO WALK DOWN IT ═══
+   The comment below has always said "re-centre", and nothing ever did.  Both
+   samples started wherever the previous one stopped, walking east from the
+   plaza spawn — and since v2.3.2069 made every town prop solid, east of the
+   spawn is the east bench.  The sweep measured 129px on the first sample
+   (the player pulled up at the bench's west edge, x 944) and 0px on the
+   second, and both assertions failed on a build whose movement was fine.
+
+   x 300..1450 at y 1140 is the longest clear east-west run in town:
+   walkable end to end on town_v17's grid and more than 14px clear of all
+   twelve prop footprints, checked against both.  2.5s at 7.6px/frame and
+   60fps is ~1140px, which fits inside it with room to spare — and BOTH
+   samples now start at the west end, so the slow one is not measuring the
+   distance the fast one left over. */
+const LANE = { x: 300, y: 1140 };
+
 async function walkAndMeasure(P, cdp, throttleRate) {
+  /* Back to the lane head BEFORE the throttle goes on: hopTo needs a
+     responsive page (100px steps, 260ms apart) and a 6x-throttled client
+     takes the trip several times over. */
+  await H.hopTo(P, LANE.x, LANE.y);
   if (cdp) await cdp.send('Emulation.setCPUThrottlingRate', { rate: throttleRate });
-  /* Re-centre and settle so both samples start from rest, and let the
-     throttle take effect before the clock starts. */
+  /* Settle so both samples start from rest, and let the throttle take
+     effect before the clock starts. */
   await P.page.waitForTimeout(700);
   const before = await P.page.evaluate(() => {
     const S = window._gameState.current;
