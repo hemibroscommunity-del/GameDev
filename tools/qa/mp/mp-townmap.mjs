@@ -85,13 +85,38 @@ export async function run({ browser, wsPort, webPort, rec }) {
     Math.abs(zoneAspect / artAspect - 1) < 0.02,
     { zoneAspect: +zoneAspect.toFixed(4), artAspect: +artAspect.toFixed(4) });
 
-  /* ── 2. no walk mask came back ──
-     The v2.3.1794 property, still the owner's standing call.  Without this,
-     someone re-enabling WALK_MASKS_ENABLED re-ships exactly what was rejected
-     and nothing here would notice. */
+  /* ── 2. no HUE-DERIVED walk mask came back ──
+     The v2.3.1794 property, still the owner's standing call: collision
+     inferred from map colours was rejected, and without this check someone
+     re-enabling WALK_MASKS_ENABLED re-ships exactly what was thrown out.
+
+     v2.3.2078: it is an ALLOWLIST now, because two entries in
+     S._tiledWalkable are legitimate and this used to fail on both.
+       - 'worldview' is AUTHORED, not inferred. The owner drew the boundary
+         himself and asked for it twice ("Use the pinkish line around the
+         world view rock wall for blocked walkability", then "Actually just
+         use this for walkability. Can't walk through pinkish lines"), and
+         tiledMaps.js switched exactly that one on — WALK_MASK_ZONES is a
+         one-zone Set, which is the mechanism the v2.3.1794 note kept the
+         Set alive FOR.
+       - 'town' is not a mask at all: spriteSheets.js installPropOnlyGrids
+         stamps the prop footprints into the same map when a zone has no
+         real mask, which is what makes the buildings solid.
+     Anything ELSE appearing here is the rejected thing coming back, and
+     still fails. The allowlist is spelled out rather than counted so that
+     enabling a third zone has to be a deliberate edit here too. */
+  const MASK_OK = new Set(['worldview', 'town']);
   const grids = await H.readState(P, (S) => Object.keys(S._tiledWalkable || {}));
-  rec.ok('no zone has a hue-derived walk mask loaded (the v2.3.1794 verdict holds)',
-    grids.length === 0 || (grids.length === 1 && grids[0] === 'town'), grids);
+  const unexpected = grids.filter((z) => !MASK_OK.has(z));
+  rec.ok('no zone has a HUE-DERIVED walk mask loaded (the v2.3.1794 verdict holds)',
+    unexpected.length === 0, { unexpected, grids, allowed: [...MASK_OK] });
+  /* The prop grid IS in this map — that is how the town's buildings block at
+     all — so an empty set here would mean collision had quietly gone away.
+     (The world map's authored mask loads on ENTRY to that zone, so it is not
+     visible from town and is not asserted here; mp-worldwalk drives it from
+     inside worldview, which is the only place the claim can be tested.) */
+  rec.ok('...and the town\'s prop grid IS loaded, or nothing in town blocks',
+    grids.includes('town'), grids);
 
   /* ── 3. the two coordinates anchored to the town's shape moved with it ──
      Both were off the new map before this version: TOWN_SPAWN sat past the
