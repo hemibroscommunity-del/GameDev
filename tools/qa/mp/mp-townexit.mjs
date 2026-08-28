@@ -122,16 +122,42 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the corridor above the exit tile is not walled off',
     gateSolid === false, { exit, probedAt: { x: ex, y: 1440 }, solid: gateSolid });
 
-  /* And the spawn is not boxed in: the column straight south of it is open
-     all the way to the cliff. The first attempt at this spawn sat 23px north
-     of the fountain's collision and stopped dead on the first step. */
-  const column = await P.page.evaluate((sp) => {
+  /* And the spawn is not boxed in: there is a way south from it, all the way
+     to the cliff. The first attempt at this spawn sat 23px north of the
+     fountain's collision and stopped dead on the first step.
+
+     ═══ v2.3.2087: A LANE, NOT A COLUMN ═══
+     This sampled the single column x = spawn.x and demanded every cell of it
+     be open, and it went intermittently red when Lil Bro's wander radius
+     started reaching that line: `__btIsSolid` includes TOWNSFOLK, on purpose
+     and by owner directive -- "only make the objects (like each house and NPC)
+     unwalkable areas" (v2.3.1794, a live radius test rather than a grid,
+     because a grid would be a lie the moment one of them moved).
+
+     So the probe was right and the CLAIM was wrong.  "The ground south of the
+     spawn is open" is a statement about ground; a person standing in your way
+     is someone you walk around, and one of them drifting across a one-pixel-
+     wide line is not the spawn being boxed in.  It failed 1 run in 3, which is
+     the worst kind of red -- it looks like a flake and it was a real
+     measurement of the wrong thing.
+
+     Sampled as a LANE now: three columns a body-width apart, and the route is
+     open at a given depth if ANY of them is.  That is what "can I get south
+     from here" means, it is immune to one townsperson standing in one column,
+     and it still fails hard the moment real scenery walls the plaza -- which
+     is the regression it was written for. */
+  const HALF = 24;   /* a body-width to either side */
+  const column = await P.page.evaluate(([sp, half]) => {
     const out = [];
-    for (let y = sp.y; y <= 1560; y += 16) if (window.__btIsSolid(sp.x, y)) out.push(y);
+    for (let y = sp.y; y <= 1560; y += 16) {
+      const open = [sp.x - half, sp.x, sp.x + half]
+        .some((x) => window.__btIsSolid(x, y) === false);
+      if (!open) out.push(y);
+    }
     return out;
-  }, spawn);
-  rec.ok('the ground straight south of the spawn is open to the cliff',
-    column.length === 0, { spawn, blockedAt: column.slice(0, 4) });
+  }, [spawn, HALF]);
+  rec.ok('there is a way south from the spawn, all the way to the cliff',
+    column.length === 0, { spawn, lane: [-HALF, 0, HALF], blockedAt: column.slice(0, 4) });
 
   /* ── THE MAYOR'S GATE COMES FIRST, AND IT IS SUPPOSED TO ──
      Owner, v2.3.1676: "not be allowed to leave town without speaking to mayor

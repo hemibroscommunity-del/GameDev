@@ -10006,7 +10006,14 @@ export class EntityRenderer {
            the texture's frame origin is the smallest honest answer -- a
            screenshot diff would also catch the player walking past. */
         const _fr = spr.texture && spr.texture.frame;
-        _propsDrawn.push({ id, x: spr.x, y: spr.y,
+        /* v2.3.2087: report the ACTION too -- whether this prop is a DOOR and
+           which panel it opens.  mp-townhill asked exactly that of this probe
+           and got `{}` back, because the field was not here: a test reading a
+           field the game does not publish asserts nothing (TRAPS §33).  The
+           renderer has the prop in hand; four keystrokes make the question
+           answerable. */
+        const _act = (_propById[id] && _propById[id].action) || null;
+        _propsDrawn.push({ id, x: spr.x, y: spr.y, action: _act,
           /* v2.3.2071: ABS, because a mirrored prop has a negative x scale and
              a negative width is not a width.  The flip is reported as its own
              field instead, so a test can assert the bench faces the fountain

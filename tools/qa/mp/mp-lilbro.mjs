@@ -139,9 +139,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
       /* Pin the wander AI and steer him along the axis under test. */
       n.pathRadius = 0;
       /* v2.3.2086: his anchor moved to (970, 1250) when the bank came back
-         onto the map at (1230, 1290) -- the old one put him inside its art. */
-      n.x = 970; n.y = 1250;
-      n.spawnX = 970 + ddx * 400; n.spawnY = 1250 + ddy * 400;
+         onto the map at (1230, 1290) -- the old one put him inside its art.
+         v2.3.2087: and south again to (960, 1400), clear of the spawn's
+         proximity ring (mp-townexit). */
+      n.x = 960; n.y = 1400;
+      n.spawnX = 960 + ddx * 400; n.spawnY = 1400 + ddy * 400;
       n.targetX = n.spawnX; n.targetY = n.spawnY;
     }, [dx, dy]);
     await P.page.waitForTimeout(800);
@@ -163,8 +165,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.evaluate(() => {
     const S = window._gameState.current;
     const n = (S.npcs || []).find((q) => q && q.id === 'lil_bro');
-    if (n) { n.pathRadius = 130; n.spawnX = 970; n.spawnY = 1250; }
-    S.player.x = 970; S.player.y = 1400;
+    if (n) { n.pathRadius = 130; n.spawnX = 960; n.spawnY = 1400; }
+    S.player.x = 960; S.player.y = 1540;
   });
   await P.page.waitForTimeout(1400);
   await P.page.screenshot({ path: H.REPO + '/tools/qa/mp/out/lil-bro.png' }).catch(() => {});

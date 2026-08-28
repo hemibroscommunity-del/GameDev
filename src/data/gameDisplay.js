@@ -3564,14 +3564,22 @@ export const NPC_DATA = [{
   /* v2.3.2086: 1180 -> 1000 across.  The bank came back onto the map at
      (1230, 1290) and its art runs y 970..1290 -- his old anchor put him
      INSIDE it, wandering through the lobby wall.  (1000, 1250) is open plaza
-     a comfortable distance from the bank's west face.  x 970 rather than
-     1000 so his 130px amble stops at 1100, short of the bank's footprint at
-     1120 -- the render at 1000 had his circle crossing the bank's steps, and
-     townsfolk do not collide with props, so he would have strolled through
-     them. */
-  x: 970, y: 1250,
-  spawnX: 970, spawnY: 1250,
-  renderX: 970, renderY: 1250,
+     a comfortable distance from the bank's west face, and townsfolk do not
+     collide with props so the circle has to clear it rather than bump it.
+
+     v2.3.2087: AND FAR ENOUGH SOUTH.  (970, 1250) was 134px from TOWN_SPAWN
+     (910, 1130) and he AMBLES 130 of that, so he could be standing a few
+     pixels from a player the moment they land -- mp-townexit caught it at
+     88px against its 125 floor.  That is TRAPS §36's third constraint, which
+     this town helped write: a spawn is not just clear ground, it is clear of
+     the townsfolk's rings too.  The anchor needs NPC_PROX_CLEAR + pathRadius
+     = 255 from the spawn; (960, 1400) is 275, leaving 145 of daylight at his
+     closest approach.  His circle still stops at x 1090, short of the bank's
+     footprint at 1120, and at tile x 30 he is five tiles clear of the World
+     View trail-head, whose reach is two. */
+  x: 960, y: 1400,
+  spawnX: 960, spawnY: 1400,
+  renderX: 960, renderY: 1400,
   hp: 100, maxHp: 100,
   noHp: true,          /* a child in a safe town; a health bar reads as "fight this" */
   alive: true,
@@ -3581,7 +3589,7 @@ export const NPC_DATA = [{
      the disc above was measured over. */
   pathRadius: 130,
   moveTimer: 0,
-  targetX: 970, targetY: 1250,
+  targetX: 960, targetY: 1400,
   chatTimer: 11000,
   chatBubble: null,
   /* REQUIRED -- the AI loop indexes this unguarded and an empty array throws. */
