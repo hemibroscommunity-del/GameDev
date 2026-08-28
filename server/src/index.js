@@ -4341,6 +4341,18 @@ export class GameRoom {
           if (_p && _p.catch) _p.catch(() => {});
         }
         break;
+      case 'cape_equip':
+        /* v2.3.2109 (owner: "I wanted ability to equip and unequip the cape").
+           Only ever toggles a cape the LEDGER already says you won -- the
+           handler returns early on _capeOwnedBy, so this cannot be a way to
+           acquire one. `msg.payload || msg` for the same reason as the redeem
+           above: this switch has no `data` binding and the first cut of that
+           one silently did nothing for want of it. */
+        if (session.id) {
+          const _ce = this._handleCapeEquip(session, msg.payload || msg);
+          if (_ce && _ce.catch) _ce.catch(() => {});
+        }
+        break;
       case 'eat_request':
         // Player clicked Eat on a cooked_fish_* inventory item.
         // Server validates ownership, consumes 1, heals hp, emits

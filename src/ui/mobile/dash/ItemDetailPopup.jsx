@@ -102,6 +102,18 @@ function slotFor(type) {
   return 'weapon'; /* sword, greatsword */
 }
 
+/* v2.3.2109: is the cape on the character right now?  Read from the RENDERER's
+   active cape (capeCatalog), which wsClient feeds from the worker's echo -- so
+   this is the server's answer, not a local guess that could disagree with what
+   every other player sees.  Synchronous and defensive: the module is a lazy
+   split chunk elsewhere, and a popup must not throw if it has not landed. */
+function capeIsWorn() {
+  try {
+    const S = getState();
+    return !!(S && S.rpg && S.rpg._capeWorn);
+  } catch (e) { return false; }
+}
+
 function resolveTarget(target) {
   if (!target) return null;
   if (target.kind === 'inventory') {
@@ -118,12 +130,16 @@ function resolveTarget(target) {
        number matches the heal the player_state echo delivers. */
     const SR = getState();
     const isTicket = isTicketKey(key);
+    const isCape = isCapeItemKey(key);
     if (isTicket) info = 'Open it to claim your cape';
-    /* v2.3.2107: it is a trophy, not a control. The cape you WEAR is decided
-       by the contest ledger and stamped over anything the client claims, so
-       this line says what it is rather than offering an equip that would be a
-       lie. */
-    else if (isCapeItemKey(key)) info = 'Worn — a contest prize';
+    /* v2.3.2109: it IS a control now (owner: "I wanted ability to equip and
+       unequip the cape"). Ownership is still the ledger's answer -- the worker
+       refuses a toggle from anyone who did not win one -- but whether it is on
+       your back is yours. The line reports the live state so the button below
+       is never the only thing saying which way round it is. */
+    else if (isCapeItemKey(key)) {
+      info = capeIsWorn() ? 'Worn — a contest prize' : 'A contest prize, in your bag';
+    }
     else if (isCookedFish) info = '+' + calcDisplayHeal(SR && SR.rpg, key) + ' HP when eaten';
     else if (isRawFish) info = 'Cook over a campfire';
     else if (isBurnt) info = 'Inedible';
@@ -145,6 +161,13 @@ function resolveTarget(target) {
         light: isLog && count > 0,
         eat: isCookedFish && count > 0,
         open: isTicket && count > 0
+          && !!(SR && SR._serverCaps && SR._serverCaps.eventCapes),
+        /* v2.3.2109: gated on the same cap as the redeem -- against an old
+           worker the type would be relayed to the room as an unknown
+           broadcast, so no button and nothing sent (deploy-order safety). */
+        capeOn: isCape && !capeIsWorn()
+          && !!(SR && SR._serverCaps && SR._serverCaps.eventCapes),
+        capeOff: isCape && capeIsWorn()
           && !!(SR && SR._serverCaps && SR._serverCaps.eventCapes),
       },
     };
@@ -1030,6 +1053,17 @@ export const ItemDetailPopup = () => {
      handed straight back by the next player_state echo, which is how one log
      lit unlimited campfires (cooking.js:71). The opId makes a retry on a
      flaky phone converge instead of redeeming twice. */
+  /* v2.3.2109: the worn state comes from the RENDERER's active cape, which is
+     fed by the worker's echo (wsClient) -- so it is the server's answer, not a
+     local guess that could disagree with what everyone else sees. */
+  const sendCapeWorn = (worn) => {
+    const S = getState();
+    if (!S || !S.channel) return;
+    try { S.channel.send({ type: 'cape_equip', payload: { worn } }); } catch (e) { /* socket gone */ }
+    itemDetailBus.close();
+  };
+  const onCapeOn = () => sendCapeWorn(true);
+  const onCapeOff = () => sendCapeWorn(false);
   const onOpenTicket = () => {
     const S = getState();
     if (!S || !S.channel) return;
@@ -1272,6 +1306,8 @@ export const ItemDetailPopup = () => {
           {actions.light    && <button onClick={onLight}   className={buttonClass('primary')} style={buttonStyle('primary')}>Light fire</button>}
           {actions.eat      && <button onClick={onEat}     className={buttonClass('primary')} style={buttonStyle('primary')}>Eat</button>}
           {actions.open     && <button onClick={onOpenTicket} className={buttonClass('primary')} style={buttonStyle('primary')}>Open Golden Ticket</button>}
+          {actions.capeOn   && <button onClick={onCapeOn}  className={buttonClass('primary')} style={buttonStyle('primary')}>Equip</button>}
+          {actions.capeOff  && <button onClick={onCapeOff} className={buttonClass('danger')}  style={buttonStyle('danger')}>Unequip</button>}
           {actions.equip    && <button onClick={onEquip}   className={buttonClass('primary')} style={buttonStyle('primary')}>Equip</button>}
           {actions.unequip  && <button onClick={onUnequip} className={buttonClass('danger')} style={buttonStyle('danger')}>Unequip</button>}
           <button onClick={onToggleLock} className={buttonClass()} style={buttonStyle()}>

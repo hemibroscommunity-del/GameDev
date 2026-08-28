@@ -1093,6 +1093,13 @@ export function setupWebSocket(ctx) {
                        every couple of seconds for the rest of the session. */
                     var _before = m.getCape();
                     m.setCape(_capeId);
+                    /* v2.3.2109: the popup's Equip/Unequip needs to know which
+                       way round it currently is, and the only trustworthy
+                       answer is the worker's -- `cape` is now WORN rather than
+                       merely owned (_capeWornBy). Mirrored onto S.rpg so the
+                       popup can read it synchronously without importing a lazy
+                       split chunk. */
+                    if (S.rpg) S.rpg._capeWorn = (_capeId !== 'none');
                     if (_before !== _capeId && _capeId !== 'none' && S.chatLog) {
                       var _nm = (m.CAPE_CATALOG.find(function (c) { return c.id === _capeId; }) || {}).name || 'a cape';
                       S.chatLog = S.chatLog.slice(-40).concat([
@@ -2842,6 +2849,13 @@ export function setupWebSocket(ctx) {
            case would mean tickets that never open, in public, during the
            event. */
         if (msg.type === 'cape_redeem') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
+        /* v2.3.2109: equipping/unequipping the cape you won. Same allowlist
+           rule as the redeem above -- a type with no line here is silently
+           dropped and the feature runs on nothing (TRAPS #18). */
+        if (msg.type === 'cape_equip') {
           ws.send(JSON.stringify(msg));
           return;
         }
