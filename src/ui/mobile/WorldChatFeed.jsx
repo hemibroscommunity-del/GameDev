@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { chatLogBus } from './chatLogBus.js';
 import { uiBusyBus } from './uiBusyBus.js';   /* v2.3.2085 */
+import { capeStatusBus } from './capeStatusBus.js'; /* v2.3.2118 */
 
 /* ═══ v2.3.2037: WORLD CHAT, AS ITS OWN SECTION ═══
  *
@@ -103,6 +104,26 @@ export function WorldChatFeed() {
   const [busy, setBusy] = useState(() => uiBusyBus.busy);
   useEffect(() => uiBusyBus.subscribe(setBusy), []);
 
+  /* ═══ v2.3.2118: THE TICKET COUNT, BACK AS ONE LINE ═══
+     Owner: "Can you just include one line near chat like #/# golden tickets
+     left?" — after v2.3.2117 pulled the full status sentence off this board
+     for covering the joystick.  The chip is the size the objection allows: a
+     single fit-content line, pointerEvents:'none' so it can never eat a drag,
+     and rendered ONLY while the worker says the contest is live — outside an
+     event this corner goes back to empty, which is what v2.3.2117 bought.
+     Initialised from the bus, same reason as `busy` above: cape_status
+     arrives once, on join, usually before this component mounts. */
+  const [capeSt, setCapeSt] = useState(() => capeStatusBus.payload);
+  useEffect(() => capeStatusBus.subscribe(setCapeSt), []);
+  const _crimson = (capeSt && capeSt.live && capeSt.capes && capeSt.capes.crimson) || null;
+  /* remaining === null is the ledger still warming ("unknown", not "none
+     left" — eventcapes.js draws that line and the chip keeps it): no chip
+     beats a wrong number.  0 stays visible on purpose — "0/20 left" is the
+     contest ending in public view, and it leaves when the event flag does. */
+  const ticketChip = (_crimson && typeof _crimson.remaining === 'number')
+    ? `${_crimson.remaining}/${_crimson.cap} golden tickets left`
+    : null;
+
   const S = (typeof window !== 'undefined' && window._gameState && window._gameState.current) || null;
   const lines = ((S && S.chatLog) || []).slice(-KEEP);
 
@@ -138,7 +159,11 @@ export function WorldChatFeed() {
     if (!shut && newestTs) seenRef.current = Math.max(seenRef.current, newestTs);
   }, [shut, newestTs]);
 
-  if (!lines.length) return null;
+  /* Quiet when empty (see header) — but the ticket chip may stand alone
+     during an event.  One 20px line in an otherwise clear corner is the
+     thing the owner asked for; the 260px board it replaces is the thing
+     they asked to remove (v2.3.2117). */
+  if (!lines.length && !ticketChip) return null;
 
   const toggle = () => {
     setShut((wasShut) => {
@@ -167,6 +192,46 @@ export function WorldChatFeed() {
         fontFamily: 'Source Sans 3, sans-serif',
       }}
     >
+      {ticketChip ? (
+        <div
+          data-cape-chip={_crimson.remaining}
+          style={{
+            /* fit-content, not the shell's 260px: the width complaint IS the
+               v2.3.2117 incident.  Inherits the shell's pointerEvents:'none'
+               — a readout, never a tap target over the joystick. */
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 5,
+            width: 'fit-content',
+            maxWidth: '100%',
+            height: 20,
+            padding: '0 7px',
+            margin: '0 0 3px 0',
+            boxSizing: 'border-box',
+            /* The feed's own surface recipe, so it reads as this corner's
+               chrome and not a new widget. */
+            background: 'rgba(13,22,27,.72)',
+            border: '1px solid rgba(229,237,233,.14)',
+            borderRadius: 8,
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: '.06em',
+            textTransform: 'uppercase',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            color: '#8FA3A0',
+            textShadow: '0 1px 2px rgba(4,7,9,.9)',
+          }}
+        >
+          <span aria-hidden="true" style={{ fontSize: 11 }}>{'\u{1F39F}️'}</span>
+          <span style={{ color: 'var(--ui-brass, #D8AA58)', fontVariantNumeric: 'tabular-nums' }}>
+            {_crimson.remaining}/{_crimson.cap}
+          </span>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>golden tickets left</span>
+        </div>
+      ) : null}
+      {lines.length ? (
       <button
         type="button"
         data-world-chat-toggle=""
@@ -248,7 +313,8 @@ export function WorldChatFeed() {
             strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
-      {shut ? null : (
+      ) : null}
+      {(!lines.length || shut) ? null : (
       <div
         ref={listRef}
         onScroll={onScroll}
