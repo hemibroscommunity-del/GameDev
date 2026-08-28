@@ -216,6 +216,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
     };
   });
 
+  /* ═══ v2.3.2078: WAIT FOR THE LANDING, NOT FOR A DURATION ═══
+     Every read below used to be a fixed waitForTimeout tuned to the overlay's
+     own constants (STAGE_MS 2000 per stage, so 2400+2000 for a two-stage
+     godly).  That is exact arithmetic against an animation driven by a chain
+     of React setTimeouts, and under the load of a twelve-scenario batch the
+     chain runs late: the sweep read the godly at 4400ms and found it still
+     spinning ("?? ? ?", no grade), then read again 400ms later and caught the
+     silhouette mid-cross-fade.  Three assertions failed, none of them about
+     the reveal being wrong — it landed correctly, just after the stopwatch.
+
+     A ceremony that stretches on a busy phone is not a defect; a test that
+     cannot tell "late" from "broken" is.  So the landing is polled for, and
+     the FIXED waits that remain are the ones that are the assertion itself
+     (a godly must still be rolling when a one-stage reveal would have
+     finished — that one is a real deadline and stays). */
+  const awaitLanding = (want, timeout = 12000) => P.page.waitForFunction((q) => {
+    const el = document.querySelector('[data-tut="reveal-overlay"]');
+    return !!el && el.getAttribute('data-reveal-grade') === q;
+  }, want, { timeout }).then(() => true).catch(() => false);
+
   await reveal({ kind: 'armor', name: 'Iron Torso', itemType: null, mat: 'iron',
     quality: 'rare', ladder: ['rare'] });
   await P.page.waitForTimeout(500);
@@ -231,7 +251,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     spinning.grade === '', spinning.grade);
   await P.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/reveal-spin.png' });
 
-  await P.page.waitForTimeout(2000);
+  const rareLanded = await awaitLanding('rare');
+  rec.ok('the rare reveal lands within its ceremony (guard)', rareLanded, await readOverlay());
+  await P.page.waitForTimeout(300);   /* the .12s filter/border cross-fade */
   const landedRare = await readOverlay();
   console.log('    rare landed', JSON.stringify(landedRare));
   rec.ok('the rare lands on its grade', landedRare.grade === 'rare', landedRare);
@@ -243,9 +265,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...in the rare hue the bag uses', /91, 153, 222/.test(landedRare.hue || ''), landedRare.hue);
   await P.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/reveal-rare.png' });
 
-  await P.page.waitForTimeout(2200);
-  rec.ok('the reveal clears itself when it is done',
-    (await readOverlay()).shown === false, {});
+  /* HOLD_MS is 1700 after the landing; polled rather than slept for, for the
+     same reason as the landing itself. */
+  const cleared = await P.page.waitForFunction(
+    () => !document.querySelector('[data-tut="reveal-overlay"]'),
+    null, { timeout: 8000 }).then(() => true).catch(() => false);
+  rec.ok('the reveal clears itself when it is done', cleared, await readOverlay());
 
   /* A godly plays TWO stages, so at the moment a rare would already have
      landed it is still rolling.  That is the escalation the owner described,
@@ -257,7 +282,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   console.log('    godly at the point a rare would have landed', JSON.stringify(midGodly));
   rec.ok('a godly is STILL rolling when a one-stage reveal would have finished',
     midGodly.shown === true && midGodly.grade === '', midGodly);
-  await P.page.waitForTimeout(2000);
+  const godlyLanded = await awaitLanding('godly');
+  rec.ok('the godly reveal lands within its ceremony (guard)', godlyLanded, await readOverlay());
   const landedGodly = await readOverlay();
   console.log('    godly landed', JSON.stringify(landedGodly));
   rec.ok('...and lands on godly after the second stage', landedGodly.grade === 'godly', landedGodly);
@@ -266,7 +292,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      The first read catches them mid-transition — the border was still the
      elite purple it is escalating FROM, and the art still silhouetted — which
      is correct but is not what the player is left looking at. */
-  await P.page.waitForTimeout(400);
+  await P.page.waitForTimeout(500);
   const settledGodly = await readOverlay();
   console.log('    godly settled', JSON.stringify(settledGodly));
   rec.ok('...in the godly hue, once the escalation finishes crossing over',
