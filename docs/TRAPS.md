@@ -1216,3 +1216,54 @@ v2.3.1813 chose the flag in the first place; the answer is to require BOTH
 
 **Related:** §29 (selecting UI by its label), §33 (reading a field the game
 does not have), §34 (moving the scenery under a colour probe).
+
+---
+
+## §36 — A spawn point has three constraints, and fixing one breaks another (v2.3.2078)
+
+**The move that looks right:** TOWN_SPAWN is inside the fountain's collision
+cell, so move it somewhere clear. Check the prop footprints, confirm the new
+spot is walkable, done.
+
+**Why it is wrong:** "clear" is three separate questions, and this version
+got each one wrong in turn while satisfying the previous ones.
+
+| attempt | clear of props? | can you walk out? | clear of the townsfolk? | what shipped |
+|---|---|---|---|---|
+| (815, 1010) | **no** — shares a 16px cell with the fountain | yes, by accident | yes | collision OFF for every player (the never-trap hatch), so you walked through everything |
+| (815, 975) | yes | **no** — 23px of corridor, then the basin | yes | boxed in against the fountain |
+| (815, 1140) | yes | yes | **no** — 99px from Diego | the shop drawer open on arrival, covering three of the inspect card's four actions |
+| (910, 1130) | yes | yes | yes — 170px | — |
+
+The three are genuinely independent:
+
+1. **Props.** The grid is stamped in 16px cells with `floor()` on both ends,
+   so a footprint that starts 2px into a cell blocks the whole cell. The
+   fountain's box starts at y 1018 and that is enough to poison y 1010.
+   And being *in* a blocked cell does not stop you — the never-trap hatch
+   lets you out, and takes the whole town's collision with it while you are
+   standing there.
+2. **A route.** Clear to stand on is not the same as clear to leave. North of
+   the basin the plaza is a 33px corridor for a 24px body.
+3. **The townsfolk.** Within `NPC_PROX_OPEN` (90px) a shopkeeper's drawer
+   opens by itself, and it stays open until `NPC_PROX_CLEAR` (125px). The
+   drawer is `position: fixed` at the bottom of the screen, where the inspect
+   card's pinned action row also lives, so a spawn inside that ring hands
+   every new player a card whose Trade, Duel and Add Friend cannot be
+   pressed.
+
+**What to do instead:** check all three, by walking. `node
+tools/dev/town-lanes.mjs X Y` answers the first; mp-townexit walks the other
+two and asserts the NPC gap (>125px) and that no shop drawer is up on
+arrival. A spawn is not a coordinate, it is the first ten seconds of the
+game.
+
+**And the third one is a live bug in its own right,** not only a spawn
+constraint: walking up to the shop and then tapping a player hits it too.
+Fixed by closing the drawer when the inspect card opens — one panel at a
+time, which is the rule the proximity gate already applies in the other
+direction.
+
+**Related:** §20 (a fixed wrap is its own stacking context — a control the
+dashboard paints over), §34 (moving the scenery under a probe), §35 (copying
+a value out of the game).
