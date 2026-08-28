@@ -126,9 +126,9 @@ export const WALK_MASKS_ENABLED = false;
  *  Kept as an empty Set rather than deleted: the mechanism is sound for a zone
  *  whose mask is authored rather than inferred, and this is the one switch.
  *
- *  ═══ v2.3.2075: AND THE WORLD VIEW IS THAT ZONE ═══
- *  Owner: "Use the pinkish line around the world view rock wall for blocked
- *  walkability."  They drew the boundary themselves, so it is authored, not
+ *  ═══ v2.3.2075/2076: AND THE WORLD VIEW IS THAT ZONE ═══
+ *  Owner: "Actually just use this for walkability. Can't walk through pinkish
+ *  lines."  They drew the boundary themselves, so it is authored, not
  *  inferred -- the exact case the paragraph above says this Set exists for.
  *  Nothing else is switched on: every other mask in WALKABILITY_MAPS is still
  *  a hue-derived one and stays off. */
@@ -141,22 +141,26 @@ const WALK_MASK_ZONES = new Set(['worldview']);
  *  IMAGE_ZONE_MAPS entry but NO walkability JSON, isSolid() defaults
  *  it to fully walkable. */
 export const WALKABILITY_MAPS = {
-  /* ═══ v2.3.2075: THE WORLD VIEW'S TOWN WALL ═══
-     Owner, over a screenshot with a magenta line drawn round the ring: "Use
-     the pinkish line around the world view rock wall for blocked walkability
-     and make sure the player doesn't spawn on the line or outside of it."
+  /* ═══ v2.3.2076: THE WHOLE WORLD VIEW, TRACED BY THE OWNER ═══
+     Owner, over a screenshot of the overworld with magenta drawn across it:
+     "Actually just use this for walkability. Can't walk through pinkish
+     lines."  v2.3.2075 did the same for the town ring alone; this drawing is
+     the entire playable boundary -- mountain feet, the volcano's skirt, the
+     canyon rim, the cave mouth, the dead wood, the shore -- and supersedes it.
 
-     THE OWNER'S LINE IS THE MASK.  It is lifted straight out of the annotated
-     image by tools/maps/build_worldview_walk.py rather than derived from the
-     art by hue -- which is the approach this file already tried and the owner
-     already rejected ("the areas you detected for the map are too
-     unreliable", v2.3.1794).  A drawn boundary classifies by intent, so there
-     is nothing to tune and nothing to re-tune when the art changes.
+     THE OWNER'S LINE IS THE MASK.  Lifted straight out of the annotated image
+     by tools/maps/build_worldview_walk.py rather than derived from the art by
+     hue -- which is the approach this file already tried and the owner already
+     rejected ("the areas you detected for the map are too unreliable",
+     v2.3.1794).  A drawn boundary classifies by intent, so there is nothing to
+     tune and nothing to re-tune when the art changes.
 
-     ONE OPENING, at the south, where the trail comes in.  The generator
-     refuses to write a mask that seals the ring (a cage, not a wall) or one
-     with a second hole in the stroke (decoration, not a wall), and it checks
-     the arrival point is inside the ring with room around it. */
+     The generator refuses to write a mask that fails three checks: the arrival
+     is off the line with room around it, EVERY live trail-head is still
+     walkable to from it (a boundary that closes a trail is a zone you can
+     never enter again, and nothing else in the game would notice), and the
+     boundary HOLDS -- the sky and the open sea have to stay on the far side of
+     it.  The playable area comes out at 36% of the map. */
   worldview: '/maps/worldview_v4.walk.json',
   /* Generated from a ChatGPT-painted magenta=blocked mask via
      tools/mask-to-walkable.mjs (64x64 grid). Authoritative collision for

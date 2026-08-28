@@ -154,9 +154,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return { gw, gh, blocked, me: { x: Math.round(S.player.x), y: Math.round(S.player.y) },
       onWall: solid(S.player.x, S.player.y) };
   });
-  rec.ok(`the World View loaded a wall mask (${wall && wall.gw}x${wall && wall.gh}, `
+  rec.ok(`the World View loaded its walkability mask (${wall && wall.gw}x${wall && wall.gh}, `
        + `${wall && wall.blocked} blocked cells)`,
-    !!(wall && wall.blocked > 200 && wall.blocked < 1200), wall);
+    !!(wall && wall.blocked > 3000 && wall.blocked < 9000), wall);
   rec.ok(`you do not arrive standing on the wall (at ${wall && wall.me.x},${wall && wall.me.y})`,
     !!wall && !wall.onWall, wall);
 
@@ -185,13 +185,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const gx2 = Math.floor((e.tx * 32 + 16) * gw / Z), gy2 = Math.floor((e.ty * 32 + 16) * gh / Z);
       return { zoneId: e.zoneId, reachable: !!seen[gy2 * gw + gx2] };
     });
-    return { reachable: n, total: gw * gh, spokes };
+    /* Well outside the outline on all four sides -- sky above, sea below. */
+    const leaks = [['NW sky', 40, 40], ['NE sky', 1490, 40],
+      ['SW sea', 40, 1490], ['SE sea', 1490, 1490]]
+      .filter(([, x, y]) => seen[Math.min(gh - 1, Math.floor(y * gh / Z)) * gw
+        + Math.min(gw - 1, Math.floor(x * gw / Z))]).map(([n]) => n);
+    return { reachable: n, total: gw * gh, spokes, leaks };
   }, marks.spokes);
-  /* The gate is open, so the flood escapes and reaches most of the map -- that
-     is the point. What proves you started INSIDE is the walk below. */
-  rec.ok(`...and the ring is not a cage -- the gate lets you out `
-       + `(${enclosure.reachable} of ${enclosure.total} cells reachable)`,
-    enclosure.reachable > enclosure.total * 0.5, enclosure);
+  /* v2.3.2076: the owner traced the WHOLE playable boundary, so the walkable
+     area is now the grassy star with the trails on it -- about a third of the
+     map -- and the mountains, the volcano, the sky and the sea are on the far
+     side of the line. Both bounds matter: too small and the town has sealed
+     itself in, too large and the outline has a hole and you can walk into the
+     sky (measured: a band one cell thinner leaks and 61% opens up). */
+  rec.ok(`the playable area is the ground the owner outlined `
+       + `(${Math.round(enclosure.reachable * 100 / enclosure.total)}% of the map reachable)`,
+    enclosure.reachable > enclosure.total * 0.15
+    && enclosure.reachable < enclosure.total * 0.5, enclosure);
+  rec.ok(`...and it does not leak past the outline (${enclosure.leaks.join(', ') || 'sky and sea are sealed off'})`,
+    enclosure.leaks.length === 0, enclosure);
   /* And every spoke is still reachable ON FOOT from where you land. Section 5
      below walks to one, but `stand` teleports, so it would pass over a wall
      that had sealed the town. This is the check that would not. */
@@ -229,10 +241,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const S = window._gameState.current;
     const grid = S._tiledWalkable.worldview;
     const gh = grid.length, gw = grid[0].length, Z = 48 * 32;
-    let put = null;
-    for (let gy = 0; gy < gh && !put; gy++) {
+    /* The blocked cell NEAREST the player, not the first one in scan order:
+       the case this guards is a character who logged out against the town
+       wall and loads in inside the new band, so the test should stand them in
+       that wall rather than in a stretch of mountain nobody has been near. */
+    let put = null, best = Infinity;
+    for (let gy = 0; gy < gh; gy++) {
       for (let gx = 0; gx < gw; gx++) {
-        if (!grid[gy][gx]) { put = { x: (gx + 0.5) * Z / gw, y: (gy + 0.5) * Z / gh }; break; }
+        if (grid[gy][gx]) continue;
+        const wx = (gx + 0.5) * Z / gw, wy = (gy + 0.5) * Z / gh;
+        const d = Math.hypot(wx - S.player.x, wy - S.player.y);
+        if (d < best) { best = d; put = { x: wx, y: wy }; }
       }
     }
     S.player.x = put.x; S.player.y = put.y; S.player.vx = 0; S.player.vy = 0;
