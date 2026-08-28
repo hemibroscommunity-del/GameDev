@@ -4022,7 +4022,33 @@ export var BroTown = function BroTown(_ref0) {
           var _gx = Math.floor(px * _gw / _mw);
           var _gy = Math.floor(py * _gh / _mh);
           if (_gy >= 0 && _gy < _gh && _gx >= 0 && _gx < _gw) {
-            return _wgrid[_gy][_gx] === false;
+            var _cellSolid = _wgrid[_gy][_gx] === false;
+            /* ═══ v2.3.2075: NEVER TRAP SOMEONE ALREADY INSIDE ═══
+               The same rule the NPC branch above states and for the same
+               reason, applied to the grid: if the player is ALREADY standing
+               in a blocked cell then every candidate step is solid too, there
+               is no direction out, and they are stuck for good.
+               That is not hypothetical here. The World View's town wall
+               (v2.3.2075) is new geometry drawn over ground that was open
+               yesterday, so a character who logged out against the old wall
+               art can load in inside the new band -- and a returning player
+               frozen on the spot is a far worse bug than the one the wall
+               fixes. Written for every zone rather than for this one: any mask
+               that ever tightens has the same failure.
+               A player OUTSIDE the geometry is blocked normally, so this
+               cannot be used to walk through a wall -- only out of one. */
+            /* S.player directly, NOT the `_pp` the NPC branch above sets:
+               that one is only assigned inside `if (_npcs && _npcs.length)`,
+               and the World View -- the zone this exists for -- has no NPCs at
+               all, so it would be undefined in exactly the place it matters. */
+            var _me = S.player;
+            if (_cellSolid && _me) {
+              var _pgx = Math.floor(_me.x * _gw / _mw);
+              var _pgy = Math.floor(_me.y * _gh / _mh);
+              if (_pgy >= 0 && _pgy < _gh && _pgx >= 0 && _pgx < _gw
+                  && _wgrid[_pgy][_pgx] === false) return false;
+            }
+            return _cellSolid;
           }
         }
       }

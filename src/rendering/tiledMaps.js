@@ -124,8 +124,15 @@ export const WALK_MASKS_ENABLED = false;
  *  it cannot disagree with what you can see.
  *
  *  Kept as an empty Set rather than deleted: the mechanism is sound for a zone
- *  whose mask is authored rather than inferred, and this is the one switch. */
-const WALK_MASK_ZONES = new Set();
+ *  whose mask is authored rather than inferred, and this is the one switch.
+ *
+ *  ═══ v2.3.2075: AND THE WORLD VIEW IS THAT ZONE ═══
+ *  Owner: "Use the pinkish line around the world view rock wall for blocked
+ *  walkability."  They drew the boundary themselves, so it is authored, not
+ *  inferred -- the exact case the paragraph above says this Set exists for.
+ *  Nothing else is switched on: every other mask in WALKABILITY_MAPS is still
+ *  a hue-derived one and stays off. */
+const WALK_MASK_ZONES = new Set(['worldview']);
 
 /** Per-zone walkability JSON.  Each url returns
  *  `{ width, height, grid: bool[h][w] }` where grid[ty][tx]=false marks
@@ -134,6 +141,23 @@ const WALK_MASK_ZONES = new Set();
  *  IMAGE_ZONE_MAPS entry but NO walkability JSON, isSolid() defaults
  *  it to fully walkable. */
 export const WALKABILITY_MAPS = {
+  /* ═══ v2.3.2075: THE WORLD VIEW'S TOWN WALL ═══
+     Owner, over a screenshot with a magenta line drawn round the ring: "Use
+     the pinkish line around the world view rock wall for blocked walkability
+     and make sure the player doesn't spawn on the line or outside of it."
+
+     THE OWNER'S LINE IS THE MASK.  It is lifted straight out of the annotated
+     image by tools/maps/build_worldview_walk.py rather than derived from the
+     art by hue -- which is the approach this file already tried and the owner
+     already rejected ("the areas you detected for the map are too
+     unreliable", v2.3.1794).  A drawn boundary classifies by intent, so there
+     is nothing to tune and nothing to re-tune when the art changes.
+
+     ONE OPENING, at the south, where the trail comes in.  The generator
+     refuses to write a mask that seals the ring (a cage, not a wall) or one
+     with a second hole in the stroke (decoration, not a wall), and it checks
+     the arrival point is inside the ring with room around it. */
+  worldview: '/maps/worldview_v4.walk.json',
   /* Generated from a ChatGPT-painted magenta=blocked mask via
      tools/mask-to-walkable.mjs (64x64 grid). Authoritative collision for
      the new cove town -- blocks cliffs + ocean, replaces the stale

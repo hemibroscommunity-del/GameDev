@@ -137,6 +137,140 @@ export async function run({ browser, wsPort, webPort, rec }) {
     hues.size > 40 && lit > 0, { tones: hues.size, lit });
   await P.page.screenshot({ path: H.REPO + '/tools/qa/mp/out/worldview.png' }).catch(() => {});
 
+  /* ── THE TOWN WALL, AND WHERE YOU LAND INSIDE IT (v2.3.2075) ──
+     Owner: "Use the pinkish line around the world view rock wall for blocked
+     walkability and make sure the player doesn't spawn on the line or outside
+     of it."  Two claims, checked separately, and neither from the mask file:
+     the grid is read as the CLIENT built it, and the wall is then walked into. */
+  const wall = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const grid = (S._tiledWalkable || {}).worldview;
+    if (!grid || !grid.length) return null;
+    const gh = grid.length, gw = grid[0].length;
+    const Z = 48 * 32;
+    const solid = (x, y) => !grid[Math.floor(y * gh / Z)][Math.floor(x * gw / Z)];
+    let blocked = 0;
+    for (const row of grid) for (const c of row) if (!c) blocked++;
+    return { gw, gh, blocked, me: { x: Math.round(S.player.x), y: Math.round(S.player.y) },
+      onWall: solid(S.player.x, S.player.y) };
+  });
+  rec.ok(`the World View loaded a wall mask (${wall && wall.gw}x${wall && wall.gh}, `
+       + `${wall && wall.blocked} blocked cells)`,
+    !!(wall && wall.blocked > 200 && wall.blocked < 1200), wall);
+  rec.ok(`you do not arrive standing on the wall (at ${wall && wall.me.x},${wall && wall.me.y})`,
+    !!wall && !wall.onWall, wall);
+
+  /* INSIDE, not merely off it. Proven by geometry rather than by trusting the
+     constant: the enclosed region is the one you cannot leave without passing
+     the gate, so flood-filling from the player without crossing the wall must
+     reach far fewer cells than the open map outside it. */
+  const enclosure = await P.page.evaluate((marksIn) => {
+    const S = window._gameState.current;
+    const grid = S._tiledWalkable.worldview;
+    const gh = grid.length, gw = grid[0].length, Z = 48 * 32;
+    const sx = Math.floor(S.player.x * gw / Z), sy = Math.floor(S.player.y * gh / Z);
+    const seen = new Uint8Array(gw * gh);
+    const q = [[sy, sx]]; seen[sy * gw + sx] = 1;
+    let n = 0;
+    while (q.length) {
+      const [y, x] = q.pop(); n++;
+      for (const [dy, dx] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const ny = y + dy, nx = x + dx;
+        if (ny < 0 || nx < 0 || ny >= gh || nx >= gw) continue;
+        if (!grid[ny][nx] || seen[ny * gw + nx]) continue;
+        seen[ny * gw + nx] = 1; q.push([ny, nx]);
+      }
+    }
+    const spokes = marksIn.map((e) => {
+      const gx2 = Math.floor((e.tx * 32 + 16) * gw / Z), gy2 = Math.floor((e.ty * 32 + 16) * gh / Z);
+      return { zoneId: e.zoneId, reachable: !!seen[gy2 * gw + gx2] };
+    });
+    return { reachable: n, total: gw * gh, spokes };
+  }, marks.spokes);
+  /* The gate is open, so the flood escapes and reaches most of the map -- that
+     is the point. What proves you started INSIDE is the walk below. */
+  rec.ok(`...and the ring is not a cage -- the gate lets you out `
+       + `(${enclosure.reachable} of ${enclosure.total} cells reachable)`,
+    enclosure.reachable > enclosure.total * 0.5, enclosure);
+  /* And every spoke is still reachable ON FOOT from where you land. Section 5
+     below walks to one, but `stand` teleports, so it would pass over a wall
+     that had sealed the town. This is the check that would not. */
+  rec.ok(`...and all ${enclosure.spokes.length} trail-heads are reachable on foot from the arrival`,
+    enclosure.spokes.every((s2) => s2.reachable), enclosure.spokes);
+
+  /* THE WALL ACTUALLY STOPS YOU. Walk due north from the arrival: the ring's
+     northern stones are the only thing between the player and the open map,
+     so a wall that works holds them south of it. */
+  const before = await P.page.evaluate(() => Math.round(window._gameState.current.player.y));
+  await P.page.keyboard.down('w');
+  await P.page.waitForTimeout(2600);
+  await P.page.keyboard.up('w');
+  await P.page.waitForTimeout(300);
+  const after = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const grid = S._tiledWalkable.worldview;
+    const gh = grid.length, gw = grid[0].length, Z = 48 * 32;
+    return { y: Math.round(S.player.y), x: Math.round(S.player.x),
+      onWall: !grid[Math.floor(S.player.y * gh / Z)][Math.floor(S.player.x * gw / Z)] };
+  });
+  rec.ok(`walking north into the town wall stops you (${before} -> ${after.y}, `
+       + `the wall's inner face is near 760)`,
+    after.y > 745 && !after.onWall, { before, after });
+  rec.ok('...and you did try -- you are not simply where you spawned',
+    after.y < before - 20, { before, after });
+
+  /* AND YOU CANNOT BE SEALED INSIDE THE STONES. The wall is new geometry over
+     ground that was open yesterday, so a character who logged out against the
+     old wall art can load in inside the new band. Every candidate step would
+     be solid, there would be no direction out, and they would be frozen for
+     good -- a worse bug than the one the wall fixes. Dropped into the band on
+     purpose here, and required to walk free. */
+  const escape = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const grid = S._tiledWalkable.worldview;
+    const gh = grid.length, gw = grid[0].length, Z = 48 * 32;
+    let put = null;
+    for (let gy = 0; gy < gh && !put; gy++) {
+      for (let gx = 0; gx < gw; gx++) {
+        if (!grid[gy][gx]) { put = { x: (gx + 0.5) * Z / gw, y: (gy + 0.5) * Z / gh }; break; }
+      }
+    }
+    S.player.x = put.x; S.player.y = put.y; S.player.vx = 0; S.player.vy = 0;
+    return put;
+  });
+  const from = await P.page.evaluate(() => ({ x: Math.round(window._gameState.current.player.x),
+    y: Math.round(window._gameState.current.player.y) }));
+  await P.page.keyboard.down('s');
+  await P.page.waitForTimeout(1400);
+  await P.page.keyboard.up('s');
+  await P.page.waitForTimeout(250);
+  const got = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const grid = S._tiledWalkable.worldview;
+    const gh = grid.length, gw = grid[0].length, Z = 48 * 32;
+    return { x: Math.round(S.player.x), y: Math.round(S.player.y),
+      stillInWall: !grid[Math.floor(S.player.y * gh / Z)][Math.floor(S.player.x * gw / Z)] };
+  });
+  /* The property is "no longer stuck", not "travelled far": once out of the
+     band normal collision applies again, and on a curved wall that can be a
+     few tens of pixels later. Measured as the cell they end on. */
+  rec.ok(`a player standing inside the wall can walk out of it `
+       + `(${from.x},${from.y} -> ${got.x},${got.y})`,
+    !got.stillInWall && (got.x !== from.x || got.y !== from.y), { escape, from, got });
+
+  /* RE-ARM THE ARRIVAL. The walk above took ~3 s and the hub-exit latch is
+     deaf for 2500 ms (HUB_EXIT_DEAF_MS), so section 2 would be testing an
+     EXPIRED window and reporting a bounce that no player would ever see. Hop
+     home and come back out, so what follows measures a fresh arrival. */
+  await stand(P, marks.townMark.tx, marks.townMark.ty);
+  await H.waitFor(P, (S) => S.currentZone, (z) => z === 'town',
+    { timeout: 20000, label: 'back to town to re-arm' }).catch(() => {});
+  await stand(P, marks.townExit.tx, marks.townExit.ty);
+  await H.waitFor(P, (S) => S.currentZone, (z) => z === 'worldview',
+    { timeout: 20000, label: 'a fresh arrival on the World View' }).catch(() => {});
+  rec.ok('a fresh arrival was set up for the latch checks below',
+    (await where(P)).zone === 'worldview', await where(P));
+
   /* ── 2. the momentum that brought you here must not carry you back ──
      The owner's v2.3.1703 report: they walked south out of town, kept
      walking, and went straight back in. */
