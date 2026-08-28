@@ -70,6 +70,7 @@ const SCENARIOS = {
   fishhand: () => import('./mp-fishhand.mjs'), /* v2.3.1914: the reeling hand over the shirt */
   previewweapon: () => import('./mp-previewweapon.mjs'), /* v2.3.1914: the preview follows the active weapon */
   questchain: () => import('./mp-questchain.mjs'), /* v2.3.1914: proximity turn-in across the whole chain */
+  questroad: () => import('./mp-questroad.mjs'), /* v2.3.2121: the gold road on the ground + the first-join welcome */
   queststar: () => import('./mp-queststar.mjs'), /* v2.3.1906: the star after the objective is done */
   freshpoints: () => import('./mp-freshpoints.mjs'), /* v2.3.1860: a new character has nothing to spend */
   bandsummary: () => import('./mp-bandsummary.mjs'), /* v2.3.1848: the band's compact summary */
