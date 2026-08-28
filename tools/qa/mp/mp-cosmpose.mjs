@@ -83,26 +83,58 @@ async function boxFor(P, peerId) {
      H.figureBox is the one copy of the tight box now; off-screen still
      returns null, because that means "not measurable", not "no ink".
 
-     v2.3.2082: A PEER GETS A PAD, and only a peer.  Your own figure is
-     anchored on __btPlayerDrawn — where the renderer actually put it last
-     frame — while a peer is anchored on renderX/renderY, the smoothed
-     interpolation, and page.screenshot lands some milliseconds after the
-     read.  A peer who is RUNNING has left a 40x46 box by then: `pinkMin` is
-     a MINIMUM over every sample of the whole scenario, so one badly aimed
-     crop out of dozens takes it to 0 and reports "the other player cannot
-     see his tattoos" about a character who is plainly covered in them.
-     The pad cannot manufacture a pass -- it is the same town behind the
-     figure either way, and the town has no pink or green in it (this
-     scenario's own no-art control is what says so). */
-  return H.figureBox(P, { peerId: peerId || null, pad: peerId ? 22 : 0 });
+     v2.3.2083: A PEER IS ANCHORED ON ITS OWN DRAWN POSITION.  It used to be
+     anchored on renderX/renderY -- the smoothed interpolation, read some
+     milliseconds after the screenshot -- and a RUNNING peer has left a 40x46
+     box by then.  `pinkMin` is a MINIMUM over every sample of the scenario,
+     so one badly aimed crop out of dozens took it to 0 and reported "the
+     other player cannot see his tattoos" about a character covered in them.
+     v2.3.2082 tried to pad the box instead, and that is the wrong fix and
+     worth recording: at this spawn a 22px margin reaches the grass, and the
+     NO-ART CONTROL immediately started counting 44 green pixels off the town
+     (TRAPS §34 -- the tight box exists precisely for this).  A crop needs a
+     better ANCHOR, not a bigger box, so entityRenderer publishes
+     __btPeersDrawn and H.figureBox uses it. */
+  return H.figureBox(P, { peerId: peerId || null });
 }
+
+/* Where the renderer last painted this figure, local or peer. */
+const drawnAt = (P, peerId) => P.page.evaluate((pid) => {
+  const d = pid ? (window.__btPeersDrawn && window.__btPeersDrawn(pid))
+    : (window.__btPlayerDrawn && window.__btPlayerDrawn());
+  return d ? { x: d.x, y: d.footY } : null;
+}, peerId || null);
 
 /** Ink counts in one figure's box, plus the pose being drawn right now. */
 async function sample(P, peerId, tag) {
+  /* ═══ v2.3.2083: A SAMPLE TAKEN WHILE THE FIGURE MOVED IS NOT A SAMPLE ═══
+     Every crop here is derived from a position read in one round-trip and
+     then photographed in the next, and page.screenshot is slow enough that a
+     RUNNING figure has left the 40x46 box in between.  The mis-aimed crop
+     does not read as an error, it reads as ZERO INK -- and pinkMin is a
+     minimum over dozens of samples, so one bad crop reported "the other
+     player cannot see his tattoos" about a character covered in them.
+     Two fixes were tried and are worth recording as dead ends.  PADDING the
+     box (v2.3.2082) reaches the grass at this spawn and the no-art control
+     immediately counted 44 green pixels off the town -- TRAPS §34, and the
+     exact reason the tight box exists.  Anchoring on the renderer's own drawn
+     position instead of renderX/renderY (also v2.3.2083, and kept, because it
+     is right) narrows the gap but does not close it: "where it was drawn last
+     frame" is still not "where it is in the photograph".
+     So the exposure is BRACKETED.  If the figure moved between the read
+     before and the read after, the crop was aimed somewhere the figure no
+     longer is, and this returns null -- a sample that is not counted rather
+     than a zero that is.  That does not weaken the claim: it removes
+     measurements already known to be invalid, and a pose that yields no valid
+     samples reports n:0, which is visible rather than silent. */
+  const before = await drawnAt(P, peerId);
   const box = await boxFor(P, peerId);
   if (!box) return null;
   let px;
   try { px = await H.screenshotPixels(P, box); } catch (e) { return null; }
+  const after = await drawnAt(P, peerId);
+  if (!before || !after
+      || Math.hypot(after.x - before.x, after.y - before.y) > 10) return null;
   if (tag) await P.page.screenshot({ path: `${SHOTS}/cosmpose-${tag}-${P.name}.png`, clip: box }).catch(() => {});
   const pose = await P.page.evaluate(() => {
     const r = window._pixiRenderer;
@@ -196,6 +228,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     e.greenMin = Math.min(e.greenMin, s.green); e.greenMax = Math.max(e.greenMax, s.green);
   };
   const peerSeen = Object.create(null);
+  /* v2.3.2083: BY POSE, like the local half.  The peer used to be one bucket,
+     so "worst green 0 over 8 samples" named no pose at all and the next step
+     was guesswork -- the same failure mode as TRAPS §38's diagnostic.  The
+     'peer' total stays for the headline; the per-pose rows say WHICH pose
+     lost its pattern. */
+  const peerPose = Object.create(null);
   const filePeer = (s) => {
     if (!s) return;
     const k = 'peer';
@@ -204,6 +242,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     e.n++;
     e.pinkMin = Math.min(e.pinkMin, s.pink);
     e.greenMin = Math.min(e.greenMin, s.green);
+    const pk = s.pose || 'stand';
+    if (!peerPose[pk]) peerPose[pk] = { n: 0, pinkMin: Infinity, greenMin: Infinity, greenMax: 0 };
+    const q = peerPose[pk];
+    q.n++;
+    q.pinkMin = Math.min(q.pinkMin, s.pink);
+    q.greenMin = Math.min(q.greenMin, s.green);
+    q.greenMax = Math.max(q.greenMax, s.green);
   };
 
   const soak = async (ms, tag) => {
@@ -302,12 +347,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }, { nodeType, tool });
     if (!ok) return { ok: false, why: 'the node could not be injected' };
     await A.page.waitForTimeout(700);
-    const st = await H.readState(A, (S) => ({
-      near: S._nearNode ? S._nearNode.id : null,
-      extracting: S._extraction ? (S._extraction.skill || true) : null,
-      inList: !!(S.gatherNodes || []).some((n) => n.id === 'qa-cosm-' + nodeType),
-      tapped: S._tapNode ? S._tapNode.id : null,
-    }));
+    /* page.evaluate with an ARGUMENT, not a closure: readState serialises the
+       function into the page, where `nodeType` does not exist -- the first cut
+       threw "ReferenceError: nodeType is not defined" and took the whole
+       scenario down with it. */
+    const st = await A.page.evaluate((wantId) => {
+      const S = window._gameState && window._gameState.current;
+      if (!S) return { near: null, extracting: null, inList: false, tapped: null };
+      return {
+        near: S._nearNode ? S._nearNode.id : null,
+        extracting: S._extraction ? (S._extraction.skill || true) : null,
+        inList: (S.gatherNodes || []).some((n) => n.id === wantId),
+        tapped: S._tapNode ? S._tapNode.id : null,
+      };
+    }, 'qa-cosm-' + nodeType);
     if (st.near !== 'qa-cosm-' + nodeType) {
       return { ok: false, why: 'the node never became interactable — '
         + (st.extracting ? 'a harvest attempt (' + st.extracting + ') is still live, '
@@ -378,7 +431,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
        + `(${pe ? pe.n : 0} samples, worst pink ${pe ? pe.pinkMin : 'n/a'})`,
     !!pe && pe.pinkMin >= 12, pe);
   rec.ok('...and the clothing patterns throughout, not just on the join frame',
-    !!pe && pe.greenMin >= 12, pe);
+    !!pe && pe.greenMin >= 12, { ...pe, byPose: peerPose });
+  /* Which pose, when it fails.  Printed always: a pose whose pattern is thin
+     rather than absent is worth seeing before it becomes a failure. */
+  const _pp = Object.keys(peerPose).sort()
+    .map((k) => `${k} n${peerPose[k].n} pink>=${peerPose[k].pinkMin} green ${peerPose[k].greenMin}-${peerPose[k].greenMax}`);
+  if (_pp.length) console.log(`      the peer's view, pose by pose: ${_pp.join('  ')}`);
 
   for (const P of [A, B]) {
     const errs = P.logs.filter((l) => String(l).startsWith('pageerror'));

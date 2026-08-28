@@ -758,7 +758,18 @@ export async function figureBox(P, { pad = 0, peerId = null } = {}) {
        plainly can. */
     const src = pid ? (S.others || {})[pid] : S.player;
     if (!src || typeof src.x !== 'number') return null;
-    const d = pid ? null : (window.__btPlayerDrawn ? window.__btPlayerDrawn() : null);
+    /* v2.3.2083: a PEER now has a drawn-position probe of its own
+       (__btPeersDrawn, entityRenderer), so its crop is anchored on the frame
+       the renderer actually painted rather than on renderX/renderY read a
+       moment later.  That gap is invisible on a standing peer and is most of
+       a running one's body: mp-cosmpose's `pinkMin` is a MINIMUM over dozens
+       of samples, so a single crop that missed reported "the other player
+       cannot see his tattoos" about a character covered in them.
+       The pad-the-box fix was tried first and is wrong — the margin reaches
+       the grass and the no-art control starts counting the town (TRAPS §34). */
+    const d = pid
+      ? (window.__btPeersDrawn ? window.__btPeersDrawn(pid) : null)
+      : (window.__btPlayerDrawn ? window.__btPlayerDrawn() : null);
     const wx = d ? d.x : (pid && src.renderX != null ? src.renderX : src.x);
     const wy = d ? d.footY : (pid && src.renderY != null ? src.renderY : src.y);
     return { x: r.left + (wx - S.camera.x) * (S._worldScaleX || 1),

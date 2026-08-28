@@ -297,6 +297,16 @@ if (typeof window !== 'undefined') {
     ? _entityLayerRef.children.map((c) => c.label).filter(Boolean) : null);
 }
 if (typeof window !== 'undefined') window.__btNpcSprites = () => Object.values(_npcDrawn);
+/* v2.3.2083: the peer half of __btPlayerDrawn — see the note at the peer draw
+   site.  A Map because the keys are player ids off the wire (CLAUDE.md rule 4:
+   a plain {} silently no-ops on '__proto__'). */
+if (typeof window !== 'undefined') {
+  const _peersDrawn = new Map();
+  window.__btPeersDrawn = (id) => (id == null
+    ? Object.fromEntries(_peersDrawn)
+    : (_peersDrawn.get(id) || null));
+  window.__btPeersDrawn._m = _peersDrawn;
+}
 
 /* The sprite frame's own geometry, in frame pixels: the figure's feet sit on
    y=223 and its top (hat) on y=23 — see the asset note in gameDisplay.js
@@ -6760,6 +6770,29 @@ export class EntityRenderer {
       // Use pre-computed interpolated position
       display.x = other.renderX || other.x || 0;
       display.y = other.renderY || other.y || 0;
+      /* ═══ v2.3.2083: WHERE A PEER WAS ACTUALLY DRAWN ═══
+         The local player has had __btPlayerDrawn since v2.3.2078; a peer had
+         nothing, so a QA crop around another player was derived from
+         renderX/renderY read at some LATER instant than the frame it was
+         cropping.  For a peer standing still that is exact and for one running
+         it is not, and mp-cosmpose read "the other player cannot see his
+         tattoos" off a crop that had simply missed him.  Widening the crop is
+         the wrong fix and was tried: at this spawn the extra margin reaches the
+         grass and the no-art CONTROL starts counting green off the town, which
+         is TRAPS §34 and the exact bug the tight box exists for.  A crop needs
+         a better ANCHOR, not a bigger box. */
+      if (typeof window !== 'undefined') {
+        const _pd = (window.__btPeersDrawn && window.__btPeersDrawn._m) || null;
+        if (_pd) {
+          const _pb2 = display._spriteBody;
+          _pd.set(id, {
+            x: display.x, footY: display.y,
+            width: _pb2 && _pb2.texture ? Math.abs(_pb2.texture.width * _pb2.scale.x) : 0,
+            height: _pb2 && _pb2.texture ? Math.abs(_pb2.texture.height * _pb2.scale.y) : 0,
+            visible: display.visible,
+          });
+        }
+      }
 
       /* v2.3.1091: apply the same per-zone perspective shrink the local
          player gets, computed from THIS remote's own position, so other

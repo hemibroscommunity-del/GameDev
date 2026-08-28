@@ -395,9 +395,10 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
        extent, and a scenario can ask where the ink landed on the CHARACTER.
        Diagnostic only: one extra pass over the frame, and only when a QA
        probe has asked for histograms. */
-    let fx0 = 0, fx1 = -1, fy0 = 0, fy1 = -1;
+    let fx0 = 0, fx1 = -1, fy0 = 0, fy1 = -1, fcx = 0, fcy = 0, fn = 0;
     if (profile) {
       fx0 = Infinity; fy0 = Infinity;
+      let sx = 0, sy = 0;
       for (let y = 0; y < h; y++) {
         for (let x = x0; x < x1; x++) {
           if (d[(y * w + x) * 4 + 3] <= 24) continue;
@@ -405,12 +406,26 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
           if (x > fx1) fx1 = x;
           if (y < fy0) fy0 = y;
           if (y > fy1) fy1 = y;
+          sx += x; sy += y; fn++;
         }
       }
       if (fx1 < 0) { fx0 = 0; fy0 = 0; }
+      if (fn) { fcx = sx / fn; fcy = sy / fn; }
     }
+    /* v2.3.2083: fx0/fx1/fcx are SHEET coordinates, the same space as ox/lx,
+       so a placement subtracts cleanly.  `fw` is carried so a reader that
+       wants the FRAME-LOCAL figure -- the pattern question, where the tile is
+       phased on the cel -- can take fx0 - frame*fw rather than measuring the
+       256px-per-frame stride, which is what the first cut of mp-inkplace did
+       and why it reported a figure moving 7162px inside a 256px frame.
+       CENTROID AND AREA, not just the box: a swinging sleeve moves the box's
+       edge 21px on jog-east while the body under it moves 1.4px, so a box is
+       far too noisy to measure ink drift against (tools/dev/pattern-drift.py
+       has both numbers).  sqrt(fn) is the scale that goes with the centroid --
+       an area is much steadier than a width for the same reason. */
     if (report) report.push(profile
       ? { ox, oy, cw, ch, lx, rx, ty, by, frame: f, fx0, fx1, fy0, fy1,
+          fcx, fcy, fn, fw: frameW,
           rowN: Array.from(rowN), colN: Array.from(colN) }
       : { ox, oy, cw, ch, lx, rx, ty, by, frame: f });
     for (let gy = 0; gy < ART_H; gy++) {

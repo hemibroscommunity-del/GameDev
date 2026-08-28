@@ -428,7 +428,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     S.channel.send({ type: 'ability', payload: { kind: 'bash' } });
     return { x: Math.round(x0 * 10) / 10, y: Math.round(y0 * 10) / 10 };
   });
-  await P.page.waitForTimeout(500);
+  /* v2.3.2083: 500 -> 1400ms.  The guard below needs 30px of travel after the
+     cast, and a solo player moves about 40px/s here (the adaptive 198ms move
+     gap when nobody shares your zone), so 500ms could only ever produce ~20 --
+     the guard was unreachable at this speed whatever the client did.  The
+     CAST's timing is untouched; this only lengthens the run after it. */
+  await P.page.waitForTimeout(1400);
   await P.page.keyboard.up('s');
   await P.page.waitForTimeout(400);
   rec.ok('the cast could be dispatched while running', !!cast, cast);
