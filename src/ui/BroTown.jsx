@@ -2562,13 +2562,19 @@ export var BroTown = function BroTown(_ref0) {
      the frame the auto-open would fire on.  Deliberately generous: false
      negatives here open a dialogue over someone's inventory, which is worse
      than a dialogue that waits. */
-  stateRef.current._uiBusy = !!(questPanel || buildingPanel || showInventory || showSkills
+  /* v2.3.2078: named, because it is now read twice — the proximity gate
+     reads it off stateRef on the same frame (see the note above), and the
+     effect that puts Diego's drawer away needs it as a dependency. One
+     expression, so the two can never disagree about what "a panel is open"
+     means. */
+  var _anyPanelOpen = !!(questPanel || buildingPanel || showInventory || showSkills
     || showStatScreen || showShop || showEncyclopedia || showLeaderboard || showSocialPanel
     || showClanPanel || showGuildPanel || showFeedback || showPetHouse || showFurniture
     || showPlayerList || showDungeonCreator || showTrade || incomingTrade || trade2
     || duelRequest || threatIncoming || inspectPlayer || chatOpen || showEmotes || showInfo
     || showIntro || showWelcome || showMayorGreeting || showTourPrompt || showNameModal
     || cookMinigame);
+  stateRef.current._uiBusy = _anyPanelOpen;
   /* v2.3.1643: showChatLog, showClanWar and showArena USED TO LIVE HERE
      and were declared but never read — three dead useState pairs whose
      setters nothing called either. Removed. If you are looking for those
@@ -7152,43 +7158,41 @@ export var BroTown = function BroTown(_ref0) {
     setInspectPlayer(null);
   }, []);
 
-  /* ═══ v2.3.2078: THE SHOP DRAWER GETS OUT OF THE INSPECT CARD'S WAY ═══
-     Both surfaces live at the bottom of the screen: the drawer is
-     position:fixed just above the dashboard, and the card's Trade / Duel /
-     Add Friend row is pinned to the card's own bottom edge. On the primary
-     platform's 390x844 they land on top of each other, and the drawer wins —
-     measured with elementFromPoint, three of the card's four actions had the
-     drawer painted over them, so a finger aiming at Trade opens a shop slot
-     instead (mp-cardreach).
+  /* ═══ v2.3.2078: THE SHOP DRAWER GETS OUT OF EVERYTHING'S WAY ═══
+     Diego's trade drawer is `position: fixed` just above the dashboard, and
+     so is every panel that opens over the bottom of the screen. On the
+     primary platform's 390x844 they land on top of each other and the drawer
+     wins: measured with elementFromPoint, three of the inspect card's four
+     actions had the drawer painted over them, so a finger aiming at Trade
+     opened a shop slot instead. The sweep found the same shape twice more —
+     mp-social could not press "Add Friend", mp-clan could not press "Create
+     Clan (500g)" — both reported as visible, enabled and stable and then
+     un-clickable, which is what a covered control looks like from outside.
 
      The proximity gate that OPENS the drawer already refuses while anything
-     else is on screen ("_pOk already means close enough, not in combat,
-     nothing else open"). This is the same rule in the other direction, for a
-     drawer that was already up when you tapped someone: one panel at a time.
+     else is up ("_pOk already means close enough, not in combat, nothing
+     else open"). This is that same rule in the other direction, for a drawer
+     that was already open when you tapped: one panel at a time.
 
-     An effect on `inspectPlayer` rather than a line at each call site —
-     the card is opened from the world tap, the party-mate tap, the social
-     panel's bridge and the friends list, and a rule kept in four places is a
-     rule that will be missed in the fifth. */
+     Keyed on `_anyPanelOpen` — the SAME expression the gate reads — rather
+     than on a list of panels kept here. The card is opened from four places
+     and the sheet has a dozen destinations; a rule written per-surface is a
+     rule that will be missed on the next one. */
   useEffect(function () {
-    if (inspectPlayer) { try { shopBus.setOpen(false); } catch (e) { /* no shop */ } }
-  }, [inspectPlayer]);
-
-  /* ...and the same for the bottom sheet's destinations. The inspect card was
-     the case the sweep caught, but the drawer is fixed at the bottom of the
-     screen and every dashboard panel opens over the same ground: mp-social
-     could not press "Add Friend" and mp-clan could not press "Create Clan
-     (500g)", both reported by Playwright as visible, enabled and stable and
-     then un-clickable, which is what a covered control looks like.
-     One subscription, so a destination added later is covered by the rule
-     rather than by remembering it. */
+    if (_anyPanelOpen) { try { shopBus.setOpen(false); } catch (e) { /* no shop */ } }
+  }, [_anyPanelOpen]);
+  /* ...and the bottom SHEET, which is not in that list. The sheet's
+     destinations render off dashboardPanelBus, not off the show* flags
+     above, so `_anyPanelOpen` is false while the Social or Clan destination
+     is filling the lower half of the screen. Two signals because the app has
+     two panel systems; collapsing them into one was tried and quietly
+     dropped the sheet. */
   useEffect(function () {
-    var off = dashboardPanelBus.subscribe(function () {
+    return dashboardPanelBus.subscribe(function () {
       if (dashboardPanelBus.state.mode !== 'bar') {
         try { shopBus.setOpen(false); } catch (e) { /* no shop */ }
       }
     });
-    return off;
   }, []);
 
   /* Virtual joysticks — each tracks its own finger */
