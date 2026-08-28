@@ -140,6 +140,7 @@ const SCENARIOS = {
   proj: () => import('./mp-proj.mjs'), /* v2.3.1678: the snowball is visible */
   lifeskill: () => import('./mp-lifeskill.mjs'), /* v2.3.1680: tool-gated gathering */
   petdraw: () => import('./mp-petdraw.mjs'), /* v2.3.2078: an active pet is actually drawn */
+  dodgetrail: () => import('./mp-dodgetrail.mjs'), /* v2.3.2078: your own dodge leaves a trail too */
   windup: () => import('./mp-windup.mjs'), /* v2.3.1811: the monster tells you */
   minishot: () => import('./mp-minishot.mjs'), /* v2.3.1810: glyph shapes are all distinct */
   fps: () => import('./mp-fps.mjs'), /* v2.3.1808: frame time, measured */
