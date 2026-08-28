@@ -503,10 +503,51 @@ export async function clickSel(P, sel, { timeout = 6000 } = {}) {
 }
 
 /** Click the first visible button whose text contains `text`. */
+/* ═══ v2.3.2083: WHEN A CLICK TIMES OUT, SAY WHAT IS ON TOP OF IT ═══
+ * Playwright's message for a covered control is the least useful failure in
+ * this harness.  It reports the actionability checks PASSING --
+ *
+ *     locator resolved to <button class="bt-inspect-tp">Trade</button>
+ *     attempting click action
+ *       2 x waiting for element to be visible, enabled and stable
+ *         - element is visible, enabled and stable
+ *
+ * -- and then simply times out, because the button really is visible, enabled
+ * and stable; it is just not the thing the pointer would land on.  Read as
+ * written it says "the button is fine and the click did nothing", which sends
+ * you looking at the handler.  The answer is always a DIFFERENT element, and
+ * the browser will name it for the asking: elementFromPoint at the control's
+ * own centre.  (mp-trade has failed this way for weeks; the drawer rule of
+ * v2.3.2078 fixed one such cover and this is how the next one gets found in
+ * one run instead of ten.) */
+export async function coveringElement(P, locator) {
+  const box = await locator.boundingBox().catch(() => null);
+  if (!box) return null;
+  return P.page.evaluate(({ x, y }) => {
+    const el = document.elementFromPoint(x, y);
+    if (!el) return 'nothing (the point is off-screen)';
+    const chain = [];
+    for (let n = el, i = 0; n && i < 4; n = n.parentElement, i++) {
+      const cls = (n.className && String(n.className).slice(0, 60)) || '';
+      chain.push(n.tagName.toLowerCase() + (n.id ? '#' + n.id : '') + (cls ? '.' + cls.trim().replace(/\s+/g, '.') : ''));
+    }
+    const cs = getComputedStyle(el);
+    return chain.join(' < ') + `  [z-index ${cs.zIndex}, position ${cs.position}]`;
+  }, { x: box.x + box.width / 2, y: box.y + box.height / 2 });
+}
+
 export async function clickText(P, text, { timeout = 6000 } = {}) {
   const btn = P.page.locator(`button:visible`, { hasText: text }).first();
   await btn.waitFor({ state: 'visible', timeout });
-  await btn.click();
+  try {
+    await btn.click();
+  } catch (e) {
+    const over = await coveringElement(P, btn).catch(() => null);
+    const err = new Error(String((e && e.message) || e)
+      + (over ? `\n  WHAT IS ACTUALLY AT THAT POINT: ${over}` : ''));
+    err.stack = (e && e.stack) || err.stack;
+    throw err;
+  }
   return true;
 }
 
