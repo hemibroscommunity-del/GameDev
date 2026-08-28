@@ -284,10 +284,17 @@ export class TileRenderer {
        entry points that don't have a portal."
 
        Both cases are the same problem: the ART promises somewhere to go, and
-       walking there does nothing.  Town's twelve buildings have had no
-       entrances since v2.3.823 (S.nearBuilding is force-set to null every
-       frame), and the worldview paints nine regions of which five have a live
-       trail-head.  A player cannot tell "not built yet" from "I can't find
+       walking there does nothing.  The worldview paints nine regions of which
+       five have a live trail-head, and most of town's twelve buildings have
+       no door.
+       v2.3.2078: that second half no longer reads "S.nearBuilding is
+       force-set to null every frame" — it is computed every frame now, from
+       buildingPropNear matching a prop's `action` against the BUILDINGS
+       table.  What is true is narrower and worth stating exactly: TWO of the
+       twelve are reachable (the forge and the general store), because those
+       are the only PLACED town props carrying an action.  The other ten point
+       at the v16 set still held behind propIsPlaced, or at tiles from the
+       procedural town that no longer exists.  A player cannot tell "not built yet" from "I can't find
        the door", and spends the difference hunting.  A label costs one Text
        each and ends the hunt.
 

@@ -42,9 +42,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   if (await H.buildingReachable(A, TAVERN)) {
     rec.ok('the Tavern (arena) building can be entered', true);
   } else {
+    /* v2.3.2078: the old reason blamed a mechanism that was restored — see
+       the note in mp-market. S.nearBuilding is computed every frame now; what
+       is missing is a PLACED town prop carrying action 'party'. */
     rec.skip('the arena panel can be opened from town',
-      'no town building is reachable: S.nearBuilding is force-set to null (v2.3.823), '
-      + 'so PartyPanel has no entry point. Server-side queue still checked below.');
+      'no placed town prop carries action \'party\', so PartyPanel has no door — '
+      + '2 of 12 buildings are reachable in town (forge, general-store). '
+      + 'Server-side queue still checked below.');
   }
 
   await H.grant(wsPort, aId, 'gold', { amount: 500 });
