@@ -1027,3 +1027,51 @@ judgement on locally gathered evidence, and should write down which.
 
 **Receipt:** handoff item F (rewritten v2.3.2067) and the report-only block in
 `.github/workflows/client-ci.yml`.
+
+## §32 — `S._serverMonsters` is FALSE in town, so a send gated on it never happens there (v2.3.2077)
+
+`S._serverMonsters` reads like "am I in multiplayer" and is not. It means
+**this zone has server-managed monsters**, and `wsClient.js` sets it false
+whenever the zone's monster list comes back empty — its own comment spells out
+which zones those are: *"Empty list means the server has no monsters for this
+zone (town, or a dungeon the server doesn't model)"*.
+
+So `if (S._serverMonsters && S.channel) channel.send(...)` is a send that
+**cannot happen in town** — and town is where the shops, the forge, the
+woodworker, the campfire and the vendor all are.
+
+**The failure is silent in both directions**, exactly as TRAPS §18 describes
+for the shim allowlist. The client predicts locally, decrements the bag, writes
+`localStorage`, and the screen looks correct. The worker — which owns
+inventory, coins and HP — never hears, and reconciles the whole thing away on
+the next `player_state`. Nothing throws, and any assertion written against
+client state passes throughout.
+
+**It has shipped four times:**
+
+| version | message | what was actually broken |
+|---|---|---|
+| v2.3.1702 | `ability_use` | specials did nothing server-side |
+| v2.3.2063 | `shop_purchase` | no purchase in the game's history had reached the worker — the vendor stands in town |
+| v2.3.2077 | `eat_request` ×3, `cook_recipe` ×2 | eating and cooking in town did not stick |
+| v2.3.2077 | `forge_weapon` ×2 | **forging had never reached the worker at all** — blacksmith and woodworker are both town buildings |
+
+**The rule:** the precondition for a client→server send is "am I connected",
+which is `S.channel`. The one legitimate use of the flag is a message that is
+*about* a server monster — you cannot damage one in a zone that has none — and
+`monster_damage` is allowlisted by name.
+
+**Do not trust a reading of this gate that assumes the message is sent.**
+Handoff item N called it "symmetry polish, not a hole" on the grounds that
+"the local heal is prediction, the echo is the tiebreaker". Sound reasoning,
+wrong premise: there is no echo when nothing is sent.
+
+**Mechanised.** `tools/dev/precheck.mjs` §8b (`town-gate`) FAILs on any
+client→server send gated on `_serverMonsters` outside the allowlist. It scans a
+seven-line window after each `.send(`, because two of the game's sends put the
+type several lines below the call and a single-line regex skips them.
+
+**Receipt:** `tools/dev/precheck.mjs` §8b; the note at the eatBus handler in
+`src/ui/BroTown.jsx`; `tools/qa/mp/mp-townmeal.mjs`, which asserts on the
+WORKER'S blob through the admin API rather than on client state — a test that
+checked the client would have passed throughout the bug.

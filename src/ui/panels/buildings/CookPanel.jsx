@@ -462,7 +462,10 @@ export function CookPanel(props) {
           if (R.inventory[key] <= 0) delete R.inventory[key];
           var healed = Math.min(healAmt, R.maxHp - R.hp);
           R.hp = Math.min(R.maxHp, R.hp + healAmt);
-          if (S._serverMonsters && S.channel) {
+          /* v2.3.2077: `_serverMonsters` is false in town, so this never
+             fired there -- see the long note at the eatBus handler in
+             BroTown.jsx. Presence on the channel is the real precondition. */
+          if (S.channel) {
             try { S.channel.send({ type: 'eat_request', payload: { invKey: key } }); } catch (e) {}
           }
           setRpgState(_objectSpread({}, R));
@@ -641,7 +644,9 @@ export function CookPanel(props) {
            buff/heal to ps + ps._buffs.  Local consume + buff timer
            stay as snappy visual prediction; player_state arrives
            shortly with the authoritative inventory + buff state. */
-        if (S._serverMonsters && S.channel) {
+        /* v2.3.2077: same flag, same hole -- see BroTown.jsx's eat_request
+           note. A recipe cooked in town never reached the worker. */
+        if (S.channel) {
           try { S.channel.send({ type: 'cook_recipe', payload: { recipeIdx: ri } }); } catch (e) {}
         }
         /* Consume ingredients */

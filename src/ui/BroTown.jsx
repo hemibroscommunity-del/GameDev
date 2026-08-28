@@ -7011,7 +7011,30 @@ export var BroTown = function BroTown(_ref0) {
       var actual = R.hp - before;
       R.inventory[key] -= 1;
       if (R.inventory[key] <= 0) delete R.inventory[key];
-      if (S._serverMonsters && S.channel) {
+      /* ═══ v2.3.2077: `_serverMonsters` IS FALSE IN TOWN ═══
+             Owner-facing symptom: eating and cooking in town do not stick.
+
+             This gate has been `S._serverMonsters && S.channel` since
+             v2.3.1207, and that flag means "this zone has server-managed
+             monsters" -- wsClient sets it false whenever the zone's monster
+             list is empty, and its own comment says so: "Empty list means the
+             server has no monsters for this zone (town, or a dungeon the
+             server doesn't model)". So in TOWN the message was never sent at
+             all. The client healed, decremented the bag and wrote
+             localStorage; the server never heard, and its blob -- which is
+             authoritative for inventory and HP -- reconciles the change away.
+
+             THIS IS THE THIRD TIME. v2.3.1702 fixed `ability_use` gated the
+             same way, and v2.3.2063 fixed `shop_purchase`, where no purchase
+             in the game's history had ever reached the server because the
+             vendor stands in town. Presence on the channel is the only
+             precondition a consume actually has.
+
+             Backlog item N in docs/ARCHITECTURE-HANDOFF.md reads this gate as
+             "adequate ... local heal is prediction, the echo is the
+             tiebreaker" -- true reasoning about the wrong premise, because
+             there is no echo when nothing is sent. */
+      if (S.channel) {
         try { S.channel.send({ type: 'eat_request', payload: { invKey: key } }); } catch (e) {}
       }
       pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + actual + ' HP', '#59BF91');
@@ -10873,7 +10896,10 @@ export var BroTown = function BroTown(_ref0) {
            panel onClick (~line 18989) for the predict + sync flow.
            Recipe index resolved by indexOf since `best` is one of the
            filtered COOKING_RECIPES entries. */
-        if (S._serverMonsters && S.channel) {
+        /* v2.3.2077: see the eat_request note above -- same flag, same
+           hole. Cooking happens at a campfire, and a campfire in town is the
+           obvious place to cook. */
+        if (S.channel) {
           var _recipeIdx = COOKING_RECIPES.indexOf(best);
           if (_recipeIdx >= 0) {
             try { S.channel.send({ type: 'cook_recipe', payload: { recipeIdx: _recipeIdx } }); } catch (e2) {}

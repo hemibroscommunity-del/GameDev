@@ -523,6 +523,74 @@ function sanitize(src, { jsxText = false } = {}) {
   }
 }
 
+/* ---- 8b. town-gate (FAIL) ------------------------------------------ */
+/* v2.3.2077: the FOURTH instance of one mistake, mechanised.
+ *
+ * `S._serverMonsters` means "this zone has server-managed monsters".  wsClient
+ * sets it FALSE whenever the zone's monster list comes back empty, and says so
+ * in its own comment: "town, or a dungeon the server doesn't model".  So a
+ * client->server send gated on it is a send that NEVER HAPPENS IN TOWN — and
+ * town is where the shops, the forge, the campfire and the vendor are.
+ *
+ * The failure is silent in exactly the way TRAPS #18 describes: the client
+ * predicts locally, the screen looks right, and the worker's blob — which owns
+ * inventory, coins and HP — reconciles the whole thing away on the next
+ * player_state.  It has shipped four times:
+ *   v2.3.1702  ability_use      (specials did nothing server-side)
+ *   v2.3.2063  shop_purchase    (no purchase in the game's history reached it)
+ *   v2.3.2077  eat_request x3, cook_recipe x2
+ *   v2.3.2077  forge_weapon x2  (the blacksmith stands in town — forging had
+ *                                never reached the worker at all)
+ *
+ * COMBAT MESSAGES ARE THE LEGITIMATE EXCEPTION and are allowlisted by name:
+ * you cannot damage a server monster in a zone that has none, so there the
+ * flag is the correct precondition rather than an accident.  Anything else
+ * wanting this gate should be asking "am I connected", which is `S.channel`.
+ *
+ * FAIL rather than WARN: the standing set is empty as of v2.3.2077, so this
+ * can only fire on something newly written. */
+{
+  const ALLOWED = new Set(['monster_damage']);
+  const hits = [];
+  const walk = (dir) => {
+    for (const ent of readdirSync(join(root, dir), { withFileTypes: true })) {
+      const p2 = `${dir}/${ent.name}`;
+      if (ent.isDirectory()) walk(p2);
+      else if (/\.(js|jsx|mjs)$/.test(ent.name) && p2 !== 'src/networking/wsClient.js') {
+        const lines = read(p2).split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          /* The type can sit several lines below the `.send(` — two of the
+             game's sends are written that way (prog3_allocate, stats_update),
+             and a single-line regex silently skips them. Scan a window. */
+          if (!lines[i].includes('.send(')) continue;
+          /* The type can sit several lines below the `.send(` — two of the
+             game's sends are written that way (prog3_allocate, stats_update)
+             — and three more pass a msg OBJECT built elsewhere, where no type
+             is resolvable from the call site at all. Find the guard first, so
+             a gated send is never skipped merely because its type is not
+             visible here. */
+          let guard = null;
+          for (let j = i; j > Math.max(-1, i - 12); j--) {
+            const g = /if \(([^)]*channel[^)]*)\)/.exec(lines[j]);
+            if (g) { guard = g[1]; break; }
+          }
+          if (!guard || !/_serverMonsters/.test(guard)) continue;
+          const m = /type:\s*'([a-z_0-9]+)'/.exec(lines.slice(i, i + 7).join('\n'));
+          if (m && (m[1] === 'broadcast' || ALLOWED.has(m[1]))) continue;
+          hits.push(m ? `'${m[1]}' at ${p2}:${i + 1}`
+            : `an unnamed send at ${p2}:${i + 1} (the type is built elsewhere — check it by hand)`);
+        }
+      }
+    }
+  };
+  try { walk('src'); } catch { /* best effort */ }
+  if (hits.length) {
+    for (const h of hits) {
+      add('FAIL', 'town-gate', `${h} is gated on _serverMonsters, which is false in TOWN — this send cannot happen there (see the note in tools/dev/precheck.mjs; use S.channel)`);
+    }
+  } else add('PASS', 'town-gate', 'no client->server send is gated on _serverMonsters (combat damage excepted)');
+}
+
 /* ---- 7. server tests ----------------------------------------------- */
 if (changedServer.length) {
   const r = spawnSync('npm', ['test'], { cwd: join(root, 'server'), encoding: 'utf8', timeout: 5 * 60 * 1000, maxBuffer: 64 * 1024 * 1024 });

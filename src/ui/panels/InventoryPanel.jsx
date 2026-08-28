@@ -659,7 +659,14 @@ export function InventoryPanel(props) {
           } catch (e) {}
           pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, '+' + healed + ' HP', '#59BF91');
           /* (Eat handler patched to send eat_request -- see block above.) */
-          if (stateRef.current._serverMonsters && stateRef.current.channel) {
+          /* v2.3.2077: `_serverMonsters` is FALSE in town -- it means "this
+             zone has server-managed monsters", and wsClient sets it false on
+             an empty monster list ("town, or a dungeon the server doesn't
+             model", its own words). This send therefore never happened in
+             town. Third instance of this exact flag doing it: v2.3.1702
+             (ability_use), v2.3.2063 (shop_purchase). Presence on the channel
+             is the only precondition. */
+          if (stateRef.current.channel) {
             try { stateRef.current.channel.send({ type: 'eat_request', payload: { invKey: key } }); } catch (e) {}
           }
           BT_AUDIO.beep(500, 0.06, 0.08, 'sine');
