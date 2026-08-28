@@ -1168,3 +1168,51 @@ and, once refused, stays refused).
 
 **Related:** §21 (a colour count is evidence only against a control),
 §30 (a measure that clips the thing it measures).
+
+---
+
+## §35 — A test that COPIES a value out of the game stops testing the game (v2.3.2078)
+
+**The move that looks right:** you need the forge's position, or the shirt
+sheet's cache-bust, or a lane to walk down, or a flag saying whether the town
+draws props. All four are right there in `src/`. Copy the number into the
+scenario with a comment saying where it came from.
+
+**Why it is wrong:** the copy has no link back. Everything below was correct
+when written and silently wrong later, and none of them announced it:
+
+| the copy | what changed | what the test then reported |
+|---|---|---|
+| `const FORGE = { x: 1480, y: 545 }` | the forge moved to (480,900) and grew ~3× | a smith standing at his forge, 960px from it, FAIL |
+| `const BLACKSMITH = { x: 1400, y: 640 }` | same town re-fuse | never fired — the file was skipping itself |
+| `gearVer: '2.3.2066'` hand-copied | any re-bake | the sheet still fetched (the `?v=` is only a cache-bust on a static file), so the test kept measuring art while claiming to prove the bust shipped |
+| the sprint lane `(1000, 1600)` | v2.3.2073 made props solid | passed with COLLISION OFF — isSolid's never-trap hatch lets a player in a solid cell move, and the lane's start is grid-unwalkable |
+| the walk lane, east from spawn | same | 129px on one sample and 0 on the next: the player was standing against a bench |
+| `if (!TOWN_PROPS_ENABLED) skip` | v2.3.2061 made the flag mean "the v16 set only" | the whole scenario reported "switched off by directive — skipped" while twelve props were on screen and two other files were measuring them |
+
+The last one is the worst of the six, because a skip is not a failure. It had
+been dark for weeks and the sweep's summary counted it as a green line.
+
+**What to do instead:** ask the game. Every one of those values has a live
+handle — `window.__btWorldProps()`, `__btGearVersion()`, `__btNpcSprites()`,
+`propsForZone('town')` — and where a scenario needs geometry it does not
+have a handle for, add the probe rather than the constant. Where a lane is
+genuinely a choice, `node tools/dev/town-lanes.mjs` re-derives it from the
+walk grid and the placed footprints, and `node tools/dev/town-lanes.mjs X Y`
+answers whether one spot is clear.
+
+**And measure against the SHAPE, not the centre.** A distance to a
+building's centre is meaningless once the building is 470px wide: the centre
+is 235px from its own doorway, so the check either fails someone at the door
+or gets loosened until it passes someone across the plaza. Distance to the
+footprint box is what "standing at it" means.
+
+**A skip must name a condition that is still real.** Gate a skip on the thing
+the file is about — "are there props drawn" — not on a flag that happens to
+correlate with it today. And keep the two apart: "off by directive" and
+"stopped working" look identical from outside, which is the whole reason
+v2.3.1813 chose the flag in the first place; the answer is to require BOTH
+(the directive AND an empty list), not to pick one.
+
+**Related:** §29 (selecting UI by its label), §33 (reading a field the game
+does not have), §34 (moving the scenery under a colour probe).
