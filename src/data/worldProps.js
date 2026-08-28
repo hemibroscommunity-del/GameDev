@@ -238,17 +238,40 @@ export const WORLD_PROPS = [
     sprite: '/sprites/props/bench.webp',
     x: 990, y: 975, worldH: 75, blockW: 72, blockD: 34, flipX: true,
   },
+  /* ═══ v2.3.2078: THE GATE BANNERS ARE SCENERY — THEY WERE WALLING THE TOWN IN
+     The town's only way out is the stone staircase down the south cliff, and
+     TOWN_EXITS puts the World View trail-head on it at tile (25, 48) — world
+     x 800..832.  banner-gate-e stood at x 810 with a 78px footprint, so
+     v2.3.2073's "make sure the objects are unwalkable" stamped a wall across
+     x 771..849 at y 1424..1450: straight over the top of the steps.
+
+     Measured, walking south from the plaza at five lanes: x 660, 770, 816 and
+     860 all stop dead at y 1412, and only x 715 gets through — a 110px gap
+     WEST of the stairs that leads nowhere.  The exit tile itself is clear and
+     unreachable, so a player could not leave town on foot at all.  (A player
+     placed south of the banners was pushed back north through them, which is
+     the same wall seen from the other side.)
+
+     Blocking them buys nothing — you cannot use a banner, and worldProps
+     already leaves the market stall walkable for exactly that reason ("the
+     counter is a painted front... blocking a thing you cannot use only makes
+     the plaza smaller").  Losing them costs the town its gate.  So the art
+     stays exactly where the owner put it and the footprint comes off.
+
+     If they should be solid, the fix is to move banner-gate-e EAST of the
+     stairs (centre ~880 puts its footprint at 841..919, clear of the exit
+     tile) rather than to give this one back its blockW/blockD. */
   {
     /* The town's colours on the way in from the south gate, standing in for
        the blueprint's banner arch until that art exists. */
     id: 'banner-gate-w', zone: 'town', mapV: 17, mapIcon: null,
     sprite: '/sprites/props/fence-banner.webp',
-    x: 620, y: 1450, worldH: 95, blockW: 78, blockD: 26,
+    x: 620, y: 1450, worldH: 95,
   },
   {
     id: 'banner-gate-e', zone: 'town', mapV: 17, mapIcon: null,
     sprite: '/sprites/props/fence-banner.webp',
-    x: 810, y: 1450, worldH: 95, blockW: 78, blockD: 26,
+    x: 810, y: 1450, worldH: 95,
   },
   {
     /* Owner: "This anvil belongs near the blacksmith." It follows the forge

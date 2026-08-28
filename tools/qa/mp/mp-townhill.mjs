@@ -118,9 +118,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
      an ALLOWLIST OF NONE rather than deleted: the failure it guards against
      has flipped direction, so a prop added later without a footprint is
      caught by the same line that used to insist on one being absent. */
+  /* ── v2.3.2078: WITH TWO NAMED EXCEPTIONS, AND THEY ARE THE POINT ──
+     The gate banners must NOT block. banner-gate-e stands at x 810 on the
+     stone staircase that is the town's only way out, and TOWN_EXITS puts the
+     World View trail-head on it at world x 800..832: with a footprint it
+     stamped a wall across the steps and a player could not leave town on
+     foot at all (measured — walking south at x 660, 770, 816 and 860 all
+     stopped at y 1412, and the one gap, at x 715, leads nowhere).
+     So the allowlist is not empty any more, and it is a LIST rather than a
+     count: a third prop losing its footprint still fails here. */
+  const GATE_BANNERS = ['banner-gate-w', 'banner-gate-e'];
   const walkThrough = list.filter((p) => !p.blocks).map((p) => p.id);
-  rec.ok(`every prop in town is solid (${list.length} of ${list.length})`,
-    walkThrough.length === 0, walkThrough);
+  const unexpected = walkThrough.filter((id) => !GATE_BANNERS.includes(id));
+  rec.ok(`every prop in town is solid except the gate banners `
+       + `(${list.length - walkThrough.length} of ${list.length} block)`,
+    unexpected.length === 0, { unexpected, walkThrough });
+  rec.ok('...and the gate banners are NOT, or the town has no way out',
+    GATE_BANNERS.every((id) => walkThrough.includes(id)),
+    { walkThrough, expected: GATE_BANNERS });
 
   /* ── THE TRADESMEN STAND AT THEIR OWN BUILDINGS ──
      Storekeeper Bro was at x=2520 on a map 1664 wide -- spawned, ticking, and

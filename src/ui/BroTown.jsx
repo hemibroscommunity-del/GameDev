@@ -4063,6 +4063,16 @@ export var BroTown = function BroTown(_ref0) {
       if (tile === 8 || tile === 9 || tile === 10 || tile === 12 || tile === 14 || tile === 15) return false; /* exit/dungeon/gate/plot/bed walkable */
       return TILE_SOLID.has(tile);
     };
+    /* ═══ v2.3.2078: QA probe — ASK THE GAME WHERE THE WALLS ARE ═══
+       Owner, on the world map: "Can't walk through pinkish lines", and "make
+       sure the player doesn't spawn on the line or outside of it".  Nothing
+       could check either from outside: the walk mask is a JSON file a test
+       can read, but whether the CLIENT agrees with it is a different claim,
+       and it is the one that decides whether a player walks through a wall.
+       This is the game's own answer, at any point, in world coordinates.
+       Attached once per mount (this is the game-loop SETUP effect, not the
+       tick), so it costs one property write. */
+    if (typeof window !== 'undefined') window.__btIsSolid = (px, py) => isSolid(px, py);
     var _gameLoop = function gameLoop() {
       frameRef.current = requestAnimationFrame(_gameLoop);
       try {

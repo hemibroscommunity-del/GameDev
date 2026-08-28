@@ -84,4 +84,34 @@ export const CLAN_LOGO_SIZE = 8;
    comment above predicted would keep happening.  Now the middle of the open
    cobble: measured against the art rather than converted from the old
    coordinate, and every sample within a 48px disc of it is open ground. */
-export const TOWN_SPAWN = { x: 815, y: 1010 };
+/* ═══ v2.3.2078: AND OUT OF THE FOUNTAIN'S COLLISION CELL ═══
+   The note above is about the ART — every sample within 48px is open cobble,
+   and that is still true. What it could not know is that v2.3.2073 gave the
+   fountain a FOOTPRINT (owner: "make sure the objects are unwalkable"), and
+   the prop grid is stamped in 16px cells: the basin's footprint starts at
+   y 1018, which lands in the same cell row as y 1010. So the spawn point was
+   inside a wall.
+
+   That is worse than it sounds, because isSolid has a never-trap escape
+   hatch (v2.3.2075) — a player standing in a blocked cell is allowed to move
+   in every direction, or they would be stuck for good. So EVERY player
+   spawned with collision switched off, and kept it off until they happened
+   to step onto a clear cell: you could walk through the fountain, the
+   forge, the mayor's house, anything, straight off the spawn.
+
+   Proved from outside with window.__btIsSolid (v2.3.2078): asked from the
+   spawn it reported nothing in town as solid; asked again from open ground
+   the fountain, the forge and the gate all came back solid.
+
+   Moved SOUTH of the fountain rather than north of it, and the reason is the
+   walk out of town. North of the basin the plaza is nearly sealed: the two
+   benches end at y 975 and the fountain's collision starts at y 1008, a 33px
+   corridor for a body 24px across. A spawn up there is clear to STAND on and
+   boxed in — driven from (815, 975) the player walks 23px south and stops
+   dead against the basin, which is correct and useless.
+
+   (815, 1140) is on the south side, facing the fountain, with the whole ±24px
+   disc clear of all twelve footprints at the player's own half-width AND an
+   unobstructed straight run south to the gate stairs — checked by walking it,
+   not by eye (mp-townexit). */
+export const TOWN_SPAWN = { x: 815, y: 1140 };

@@ -152,9 +152,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
       solidAtBase: at(p.x, p.y - 4),
     }));
   });
-  rec.ok(`every prop in town is solid (${blocked.filter((b) => b.solidAtBase).length} of ${blocked.length})`,
-    blocked.length >= 12 && blocked.every((b) => b.solidAtBase),
-    blocked.filter((b) => !b.solidAtBase));
+  /* v2.3.2078: the two gate banners are deliberately walkable — one of them
+     stood on the staircase that is the town's only exit and walled the town
+     in (see worldProps.js and mp-townhill).  Named, not counted, so a third
+     prop going soft still fails. */
+  const GATE_BANNERS = ['banner-gate-w', 'banner-gate-e'];
+  const soft = blocked.filter((b) => !b.solidAtBase).map((b) => b.id);
+  rec.ok(`every prop in town is solid except the gate banners `
+       + `(${blocked.length - soft.length} of ${blocked.length})`,
+    blocked.length >= 12 && soft.every((id) => GATE_BANNERS.includes(id)),
+    { soft, allowed: GATE_BANNERS });
+  rec.ok('...and the gate banners are walkable, so the way out is open',
+    GATE_BANNERS.every((id) => soft.includes(id)), { soft });
 
   /* THE WALK.  Straight north into the fountain from open cobble: the player
      has to stop south of its basin instead of strolling through the water. */
