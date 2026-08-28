@@ -134,6 +134,9 @@ const POTION_THUMBS = {
    no new code in the inventory panel. */
 export const thumbFor = (key) => {
   const k = (key || '').toLowerCase();
+  /* v2.3.2104: FIRST. It matches no rule below and would fall to `null`, which
+     is what sent it to the emoji fallback. */
+  if (isTicketKey(k)) return GOLDEN_TICKET_THUMB;
   /* v2.3.2055: FIRST, and lowercased-exact. The keys are camelCase
      ('manaShard', 'staminaSalts'), so they are matched on the lowered form --
      and above every prefix rule below, because 'whetstone' contains 'stone'
@@ -214,6 +217,11 @@ export const ITEM_NAMES = Object.assign(Object.create(null), {
  * would go quiet again on the day a new contest starts. */
 export const TICKET_KEY_PREFIX = 'goldticket_';
 export const isTicketKey = (key) => String(key || '').startsWith(TICKET_KEY_PREFIX);
+/* v2.3.2104: the owner's artwork, keyed off its black ground and squared to
+   the 256 tile by tools/import_ticket_icon.py. v2.3.2103 shipped an emoji
+   glyph because no file existed -- honest as a placeholder and wrong as a
+   destination, for the prize of a public contest. */
+const GOLDEN_TICKET_THUMB = `/icons/items/golden-ticket.webp${ITEMS_V}`;
 
 export const iconFor = (key) => {
   /* v2.3.2103: FIRST, above every pattern below. 'goldticket_crimson'
