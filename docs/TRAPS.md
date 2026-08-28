@@ -957,3 +957,44 @@ on the character's face).
 
 **Receipt:** `tools/qa/mp/mp-shirtarm.mjs` header, section
 "v2.3.2016: A GENERATED SLEEVE WAS TRIED AND REJECTED".
+
+## §31 — `continue-on-error` turns a FAILED CI step green in the Actions UI (v2.3.2067)
+
+Handoff backlog item F says to promote the report-only CI trio "once a step
+holds green for ~10 consecutive CI runs" and to "check the Actions history per
+harness". Both halves of that instruction are traps, and the first one is the
+dangerous one, because following it produces a confident wrong answer rather
+than no answer.
+
+**A `continue-on-error: true` step that fails reports `conclusion: success`.**
+Not "failure, ignored" — success, in the web UI and in the REST/MCP job data.
+The most recent completed dispatch of the `smoke` job at the time of writing
+(run 1435 cancelled, run 1431 on 2026-08-26) shows every step green,
+including all three report-only steps. Its LOG says:
+
+```
+FAIL  A reached worldview  {"x":784,"y":1424,"zone":"town","hp":118}
+...
+6 GEAR-SMOKE CHECK(S) FAILED
+```
+
+Two of the three had never passed a single assertion of their own subject
+matter, and the history said ten-for-ten. Anyone counting green ticks would
+have promoted a check that cannot pass — and a BLOCKING step that always
+fails also SKIPS the steps after it, so promoting the middle one of three
+would have silently removed the third from the run.
+
+**The rule:** the pass/fail state of a report-only step lives ONLY in its
+output. Read the log (or the uploaded `qa-*.json` artifacts), or run the
+harness locally against a real worker — `cd server && npx wrangler dev --port
+8787 --local`, `npm run build`, `npx vite preview --port 4173`, then
+`QA_WS_URL=ws://127.0.0.1:8787 node tools/qa/<harness>.mjs`. All three of the
+trio reproduce their CI result locally, line for line.
+
+**Second half of the trap:** the `smoke` job left the PR path in v2.3.1333 and
+has been dispatched 7 times in total. "10 consecutive CI runs" is not a bar
+these checks can clear at that rate; whoever promotes one is making a
+judgement on locally gathered evidence, and should write down which.
+
+**Receipt:** handoff item F (rewritten v2.3.2067) and the report-only block in
+`.github/workflows/client-ci.yml`.
