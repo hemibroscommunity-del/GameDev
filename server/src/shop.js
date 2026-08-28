@@ -46,6 +46,40 @@
  * player_state echo is the tiebreaker (handoff rule 20).
  */
 
+import { SHOP_ITEMS } from './data.js';   /* v2.3.2063: his staple shelf */
+
+/* ═══ v2.3.2063: THE THINGS HE ALWAYS HAS ═══
+ *
+ * Owner: "These potions should be purchasable there" -- there being
+ * Shopkeeper Bro, not the vendor building.
+ *
+ * A STAPLE is not part of the pile, and the distinction is the whole reason
+ * this is a separate list. The pile is public and player-driven: what someone
+ * sells him is what you can buy, and his offer decays as it grows. Nobody can
+ * sell him a potion, so a potion in the pile would be a finite stock that
+ * drains once and never refills -- the shelf would work for a week and then
+ * quietly stop selling potions forever. Staples sit outside that: fixed
+ * price, always available, no decay, and buying one never moves the pile.
+ *
+ * THE ITEMS ARE THE VENDOR'S OWN, read out of SHOP_ITEMS rather than
+ * re-listed, so the two shelves cannot drift into selling the same potion at
+ * two prices with two effects. That table is already the one the server
+ * applies effects from and the one mirror-audit pins the client against.
+ *
+ * BOUGHT ONE AT A TIME, because what you get is an EFFECT and only one runs
+ * at a time (owner: "Only 1 effect active at a time though") -- so a stack of
+ * five would charge for five and give you one. The quantity stepper is hidden
+ * for staples in the drawer for the same reason. */
+export function shopStaples() {
+  return Object.keys(SHOP_ITEMS).map((id) => ({
+    key: id,
+    cost: Math.max(1, Math.floor(SHOP_ITEMS[id].cost)),
+  }));
+}
+export function isShopStaple(key) {
+  return typeof key === 'string' && Object.prototype.hasOwnProperty.call(SHOP_ITEMS, key);
+}
+
 export const SHOP = {
   /* Coins he pays for the FIRST unit of something he has none of, before the
      stock decay applies. Keyed by a family SUBSTRING of the inventory key,
@@ -237,6 +271,16 @@ export const shopMethods = {
   async _shopList(keys) {
     const stock = await this._shopStock();
     const items = [];
+    /* v2.3.2063: HIS STAPLES LEAD THE SHELF. They are the things he always
+       has, so they never move and they are where a player looks first. `qty`
+       is null rather than a number -- the drawer draws no count badge for
+       them, because "6" on a potion he can never run out of is a lie. */
+    for (const st of shopStaples()) {
+      items.push({ key: st.key, qty: null, staple: true,
+        buy: 0,          /* he does not buy his own stock back */
+        base: 0,
+        sell: st.cost, full: false });
+    }
     if (Array.isArray(keys)) {
       /* Bounded and type-checked: this list arrives from a client. 60 is well
          past a full bag and far short of anything worth flooding us with. */
@@ -244,6 +288,7 @@ export const shopMethods = {
       for (const k of keys.slice(0, 60)) {
         if (typeof k !== 'string' || !k || k.length > 64) continue;
         if (seen[k] || stock[k]) continue;      /* held keys are listed below */
+        if (isShopStaple(k)) continue;         /* v2.3.2063: already on the shelf above */
         seen[k] = 1;
         items.push({ key: k, qty: 0, buy: this._shopBuyPrice(k, 0),
           base: this._shopBuyPrice(k, 0),
@@ -266,7 +311,16 @@ export const shopMethods = {
         full: stock[k] >= SHOP.MAX_STOCK,
       });
     }
-    items.sort((a, b) => b.qty - a.qty || a.key.localeCompare(b.key));
+    /* v2.3.2063: staples first, THEN the pile by size. Sorting them together
+       would have compared `null` against a number -- b.qty - a.qty is NaN for
+       every staple, which is not "sorts last", it is an inconsistent
+       comparator and the order it produces is undefined. They lead by intent
+       anyway: they are the shelf that is always there. */
+    items.sort((a, b) => {
+      if (!!a.staple !== !!b.staple) return a.staple ? -1 : 1;
+      if (a.staple) return a.key.localeCompare(b.key);
+      return b.qty - a.qty || a.key.localeCompare(b.key);
+    });
     return { ok: true, items, settled: true };
   },
 
@@ -289,6 +343,15 @@ export const shopMethods = {
     if (!(want >= 1 && want <= SHOP.MAX_QTY_PER_OP)) return { ok: false, error: 'Bad quantity' };
     const stock = await this._shopStock();
     if (mode === 'buy') {
+      /* v2.3.2063: a staple has no pile to be limited by and is always one --
+         quoting it against `held` would answer 0 for everything on his shelf
+         that he never runs out of, and the drawer would grey out the buy
+         button for every potion. */
+      if (isShopStaple(key)) {
+        const it = this._getShopItem(key);
+        return { ok: true, key, qty: 1, mode, staple: true,
+          total: it ? Math.max(1, Math.floor(it.cost)) : 0, settled: true };
+      }
       const held = stock[key] || 0;
       const take = Math.min(want, held);
       return { ok: true, key, qty: take, mode,
@@ -310,6 +373,12 @@ export const shopMethods = {
    *  would dodge the decay entirely, which is the rule's whole point. */
   async _shopSell(ps, key, qty) {
     if (!ps || typeof key !== 'string' || !key) return { ok: false, error: 'Bad request' };
+    /* v2.3.2063: he does not buy his own stock back. Two reasons, and the
+       second is the load-bearing one: his staple price is fixed, so buying at
+       a decayed price and selling back at the fixed one would be a coin
+       printer; and a staple sold INTO the pile would then be listed twice on
+       his shelf, once as a staple and once as stock. */
+    if (isShopStaple(key)) return { ok: false, error: "He only sells those" };
     const want = Math.floor(Number(qty) || 0);
     if (!(want >= 1 && want <= SHOP.MAX_QTY_PER_OP)) return { ok: false, error: 'Bad quantity' };
     if (!ps.inventory) ps.inventory = {};
@@ -348,6 +417,35 @@ export const shopMethods = {
     if (!ps || typeof key !== 'string' || !key) return { ok: false, error: 'Bad request' };
     const want = Math.floor(Number(qty) || 0);
     if (!(want >= 1 && want <= SHOP.MAX_QTY_PER_OP)) return { ok: false, error: 'Bad quantity' };
+
+    /* ═══ v2.3.2063: A STAPLE IS DRUNK, NOT CARRIED ═══
+       Owner: "These potions should be purchasable there."
+
+       What you buy here is an EFFECT, applied on the spot, exactly as the
+       vendor's own shelf applies it -- through the same _applyShopItem, so
+       the two shops cannot disagree about what a potion does. It is NOT
+       granted as an inventory item, and that is not a shortcut: a potion in
+       your bag would need a Drink action, and there is none -- cooked fish is
+       the only consumable the bag can use. Selling a bottle nobody can open
+       would be worse than not selling it.
+
+       ALWAYS ONE. The effect does not stack (owner: "Only 1 effect active at
+       a time"), so charging for five and running one is the only thing a
+       quantity could mean here. The pile is untouched: no decay, no restock,
+       nothing to run out of. */
+    if (isShopStaple(key)) {
+      const item = this._getShopItem(key);
+      if (!item) return { ok: false, error: "He hasn't got any" };
+      const cost = Math.max(1, Math.floor(item.cost));
+      const purse = Math.floor(Number(ps.coins) || 0);
+      if (purse < cost) return { ok: false, error: 'Not enough coins' };
+      ps.coins = purse - cost;
+      if (!this._applyShopItem(ps, item)) {
+        ps.coins = purse;                        /* refused (arena): refund */
+        return { ok: false, error: 'Not while you are fighting' };
+      }
+      return { ok: true, bought: 1, cost, coins: ps.coins, staple: true, settled: true };
+    }
 
     const stock = await this._shopStock();
     const held = stock[key] || 0;

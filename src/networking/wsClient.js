@@ -1238,7 +1238,20 @@ export function setupWebSocket(ctx) {
                  existing client-side UI + math reads the server values. */
               if (msg.payload._buffs && typeof msg.payload._buffs === 'object') {
                 var _sb = msg.payload._buffs;
+                /* ═══ v2.3.2063: ABSENT MEANS OFF ═══
+                   Every one of these was `if (typeof x === 'number')`, which
+                   mirrors a buff that IS running and silently keeps the last
+                   value for one that is not. That was survivable while buffs
+                   only ever expired on their own clock (the client's own
+                   `Date.now() < S._xBuff` check retired them). It stops being
+                   survivable now that one effect CANCELS another: the server
+                   clears _buffs wholesale, so the cancelled buff arrives as an
+                   absence, and a typeof guard would leave the old timer
+                   running on the client for its full duration -- the HUD chip
+                   still up, the speed still applied, and the server
+                   disagreeing with all of it. */
                 if (typeof _sb.damage === 'number') S._dmgBuff = _sb.damage;
+                else S._dmgBuff = 0;
                 /* v2.3.2058: the damage buff's MAGNITUDE now travels with its
                    timer, because two different things set it -- cooked food at
                    x1.20 and the Fury Tonic at x2. Mirrored unconditionally
@@ -1248,8 +1261,11 @@ export function setupWebSocket(ctx) {
                    authority or the popups lie. */
                 S._dmgBuffMul = typeof _sb.damageMul === 'number' ? _sb.damageMul : 0;
                 if (typeof _sb.regen === 'number') S._regenBuff = _sb.regen;
+                else S._regenBuff = 0;
                 if (typeof _sb.resist === 'number') S._resistBuff = _sb.resist;
+                else S._resistBuff = 0;
                 if (typeof _sb.spd === 'number') S._spdBuff = _sb.spd;
+                else S._spdBuff = 0;
                 /* v2.3.2062: magnitudes travel with their timers, and are
                    mirrored UNCONDITIONALLY so a cooked meal -- which sends
                    neither -- clears a potion's leftover strength here exactly
@@ -1257,7 +1273,9 @@ export function setupWebSocket(ctx) {
                 S._spdBuffMul = typeof _sb.spdMul === 'number' ? _sb.spdMul : 0;
                 S._manaFlat = typeof _sb.manaFlat === 'number' ? _sb.manaFlat : 0;
                 if (typeof _sb.hp === 'number') S._hpBuff = _sb.hp;
+                else S._hpBuff = 0;
                 if (typeof _sb.mana === 'number') S._manaBuff = _sb.mana;
+                else S._manaBuff = 0;
               }
               /* Equipment slots -- worker is the canonical owner.  An
                  equip_request swap, marketplace buy, or future server-

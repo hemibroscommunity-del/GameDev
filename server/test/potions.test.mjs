@@ -186,39 +186,47 @@ rp.x = 1000; rp.y = 1000; rp.lastMoveAt = Date.now() - 1000;
 room._handleMove(sess, ws, { type: 'move', x: 1000 + 2000, y: 1000, z: 'meadow' });
 check('an absurd stored speed multiplier does not open the cap', rp.x === 1000, { x: rp.x });
 
-/* ═══════════════ NEITHER LEAKS INTO A MEAL ═══════════════ */
-const eater = room.playerState.eater = {
+/* ═══════════════ ONE EFFECT AT A TIME ═══════════════
+   Owner: "Only 1 effect active at a time though."
+
+   Stated as what a player would notice: the buff they were running STOPS when
+   they drink something else. Checked on the magnitudes as well as the timers,
+   because a leftover multiplier with no timer is the failure mode
+   BUFF_MAGNITUDES exists to catch -- and it is exactly what a key-by-key
+   clear would leave behind. */
+const one = room.playerState.only = {
   z: 'meadow', hp: 100, maxHp: 100, mana: 50, maxMana: 100,
-  stamina: 100, maxStamina: 100, coins: 500,
-  inventory: Object.assign(Object.create(null), { herb_firebloom: 2, herb_rock_vine: 2, herb_cloudpetal: 2 }),
-  lifeSkills: {},
+  stamina: 100, maxStamina: 100, coins: 1000,
+  inventory: Object.create(null), lifeSkills: {},
 };
-room._handleShopPurchase({ id: 'eater' }, { itemId: 'swiftDraught' });
-room._handleShopPurchase({ id: 'eater' }, { itemId: 'manaShard' });
-check('the eater is carrying both potion magnitudes (guard)',
-  eater._buffs.spdMul === 1.5 && eater._buffs.manaFlat > 0, eater._buffs);
-/* Recipe index 2 is the game's damage-buff meal; the 'all' recipe is what sets
-   spd and mana, so find one that does. */
-const allIdx = (await import('../src/data.js')).COOKING_RECIPES.findIndex((r) => r.buff === 'all');
-if (allIdx >= 0) {
-  eater.inventory = Object.assign(Object.create(null), eater.inventory,
-    Object.fromEntries(Object.entries((await import('../src/data.js')).COOKING_RECIPES[allIdx].ingredients)
-      .map(([k, v]) => [k, v + 5])));
-  room._handleCookRecipe({ id: 'eater' }, { recipeIdx: allIdx });
-  check('a meal that buffs speed and mana does NOT inherit either potion\'s strength',
-    eater._buffs.spdMul === undefined && eater._buffs.manaFlat === undefined, eater._buffs);
-} else {
-  /* SELF-PRUNING, not a shrug. No shipped recipe carries buff:'all', so the
-     `delete ps._buffs.spdMul / manaFlat` in cooking.js is defensive today and
-     there is no live path to drive it down. Asserting the ABSENCE states that
-     as a fact about the recipe table: the day someone adds an 'all' recipe
-     this flips false, the branch above runs instead, and the real inheritance
-     check starts being made. A bare `true` here would just have gone quiet
-     forever. */
-  check('no cooked recipe grants speed or mana, so the clears above are '
-      + 'defensive -- add one and this test starts checking them',
-    allIdx === -1, { allIdx });
-}
+room._handleShopPurchase({ id: 'only' }, { itemId: 'swiftDraught' });
+check('the Swift Draught is running (guard)',
+  room._buffActive(one, 'spd') && one._buffs.spdMul === 1.5, one._buffs);
+
+room._handleShopPurchase({ id: 'only' }, { itemId: 'whetstone' });
+check('drinking a Fury Tonic ENDS the Swift Draught -- one effect at a time',
+  !room._buffActive(one, 'spd'), one._buffs);
+check('...and takes its multiplier with it, leaving nothing stranded',
+  one._buffs.spdMul === undefined, one._buffs);
+check('...while the tonic itself is now the one that is running',
+  room._buffActive(one, 'damage') && one._buffs.damageMul === 2.0, one._buffs);
+
+room._handleShopPurchase({ id: 'only' }, { itemId: 'manaShard' });
+check('and the Mana Draught ends the tonic in turn',
+  !room._buffActive(one, 'damage') && one._buffs.damageMul === undefined, one._buffs);
+check('...leaving exactly the mana surge', room._buffActive(one, 'mana')
+  && one._buffs.manaFlat > 0, one._buffs);
+
+/* A MEAL IS AN EFFECT TOO, or the rule is only half true. */
+const allIdx = (await import('../src/data.js')).COOKING_RECIPES.findIndex((r) => r.buff === 'damage');
+one.inventory = Object.assign(Object.create(null), one.inventory,
+  Object.fromEntries(Object.entries((await import('../src/data.js')).COOKING_RECIPES[allIdx].ingredients)
+    .map(([k, v]) => [k, v + 5])));
+room._handleCookRecipe({ id: 'only' }, { recipeIdx: allIdx });
+check('eating a cooked meal ends the potion that was running',
+  !room._buffActive(one, 'mana') && one._buffs.manaFlat === undefined, one._buffs);
+check('...and the meal is what is running now, at ITS strength not the potion\'s',
+  room._buffActive(one, 'damage') && one._buffs.damageMul === undefined, one._buffs);
 
 console.log(failures ? `\n${failures} FAILED` : '\nALL PASS');
 process.exit(failures ? 1 : 0);

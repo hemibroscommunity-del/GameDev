@@ -145,7 +145,7 @@ export function ShopkeeperPanel() {
     /* Clearing the signature rather than sending directly: a sale can change
        a COUNT without changing the set of keys, which the poll above would
        correctly skip, so this is the one case that has to force the ask. */
-    askedRef.current = '';
+    askedRef.current = null;
   }, [settleCount]);
 
   const sel = shopBus.sel;
@@ -169,9 +169,16 @@ export function ShopkeeperPanel() {
    * Polled rather than event-driven because inventory has no change event the
    * UI can subscribe to; the signature check means the message only goes when
    * the set of keys really moved, so a player standing still sends nothing. */
-  const askedRef = useRef('');
+  /* null means NEVER ASKED, and the distinction is load-bearing. This started
+     as '' -- which is also the signature of an empty bag, so a player carrying
+     nothing matched the "already asked" guard on the very first pass and never
+     sent shop_list at all: Bro's shelf was permanently bare for them, and the
+     staples he can never run out of were invisible. Caught by mp-potions,
+     because its player starts empty; mp-shopkeeper grants items first and so
+     never saw it. */
+  const askedRef = useRef(null);
   useEffect(() => {
-    if (!shopBus.open) { setQty(1); setQuote(null); askedRef.current = ''; return undefined; }
+    if (!shopBus.open) { setQty(1); setQuote(null); askedRef.current = null; return undefined; }
     const ask = () => {
       let keys = [];
       try {
@@ -180,7 +187,7 @@ export function ShopkeeperPanel() {
         keys = Object.keys(inv).filter((k) => (inv[k] || 0) > 0).sort();
       } catch (e) { keys = []; }
       const sig = keys.join('|');
-      if (sig === askedRef.current) return;
+      if (askedRef.current !== null && sig === askedRef.current) return;
       askedRef.current = sig;
       send('shop_list', { keys });
     };
@@ -208,11 +215,20 @@ export function ShopkeeperPanel() {
   const inv = (S && S.rpg && S.rpg.inventory) || {};
   const coins = (S && S.rpg && S.rpg.coins) || 0;
 
-  const shelf = shopBus.stock.filter((i) => i.qty > 0);
+  /* v2.3.2063: staples have no count (qty null) and must NOT be filtered out
+     by `qty > 0` -- they are the things he always has. The pile keeps its
+     filter: an item he holds none of is not on the shelf. */
+  const shelf = shopBus.stock.filter((i) => i.staple || i.qty > 0);
   const broHas = (k) => (shopBus.quoteFor(k) || {}).qty || 0;
   const youHave = (k) => Math.floor(inv[k] || 0);
 
-  const selMax = selKey ? (selSide === 'bro' ? broHas(selKey) : youHave(selKey)) : 0;
+  const selEntry = selKey ? shopBus.quoteFor(selKey) : null;
+  const selStaple = !!(selEntry && selEntry.staple && selSide === 'bro');
+  /* A staple is always exactly one: what you buy is an effect, and only one
+     effect runs at a time. */
+  const selMax = selKey
+    ? (selSide === 'bro' ? (selStaple ? 1 : broHas(selKey)) : youHave(selKey))
+    : 0;
   const clamped = Math.max(1, Math.min(qty, Math.max(1, selMax)));
   const liveQuote = (quote && selKey && quote.key === selKey && quote.qty === clamped
     && quote.mode === (selSide === 'bro' ? 'buy' : 'sell')) ? quote : null;
@@ -377,21 +393,36 @@ export function ShopkeeperPanel() {
                    which pushed the row taller than the strip it lives in. */
                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
               }}>
-                <span data-shop-brohas={broHas(selKey)}>Bro has {broHas(selKey)}</span>
-                {' · '}
-                <span data-shop-youhave={youHave(selKey)}>you have {youHave(selKey)}</span>
+                {/* v2.3.2063: "Bro has 0" is not a fact about a staple -- he
+                    cannot run out of them. What matters instead is that
+                    drinking it replaces whatever you are running. */}
+                {selStaple
+                  ? <span data-shop-staple="">Always in stock · replaces any effect</span>
+                  : <>
+                      <span data-shop-brohas={broHas(selKey)}>Bro has {broHas(selKey)}</span>
+                      {' · '}
+                      <span data-shop-youhave={youHave(selKey)}>you have {youHave(selKey)}</span>
+                    </>}
               </div>
             </div>
 
-            <button type="button" style={stepBtn} aria-label="One fewer"
-              data-shop-minus="" onClick={() => setQty((n) => Math.max(1, n - 1))}>−</button>
-            <div data-shop-qty={clamped} style={{
-              minWidth: 20, textAlign: 'center', fontSize: 15, fontWeight: 700,
-              fontVariantNumeric: 'tabular-nums', flex: 'none',
-            }}>{clamped}</div>
-            <button type="button" style={stepBtn} aria-label="One more"
-              data-shop-plus=""
-              onClick={() => setQty((n) => Math.min(Math.max(1, selMax), n + 1))}>+</button>
+            {/* v2.3.2063: no stepper on a staple. A quantity there could only
+                mean "charge me five times and give me one effect", since
+                effects do not stack -- so the control is removed rather than
+                disabled, and the row gets its width back for the name. */}
+            {selStaple ? null : (
+              <>
+                <button type="button" style={stepBtn} aria-label="One fewer"
+                  data-shop-minus="" onClick={() => setQty((n) => Math.max(1, n - 1))}>−</button>
+                <div data-shop-qty={clamped} style={{
+                  minWidth: 20, textAlign: 'center', fontSize: 15, fontWeight: 700,
+                  fontVariantNumeric: 'tabular-nums', flex: 'none',
+                }}>{clamped}</div>
+                <button type="button" style={stepBtn} aria-label="One more"
+                  data-shop-plus=""
+                  onClick={() => setQty((n) => Math.min(Math.max(1, selMax), n + 1))}>+</button>
+              </>
+            )}
 
             <button
               type="button" data-shop-act={selSide}

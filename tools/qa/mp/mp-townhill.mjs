@@ -74,9 +74,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
      substance: only props whose coordinates were measured against the map
      that ships are drawn, and the rest stay off rather than standing at x
      up to 2560 on a map 1664 wide. */
-  rec.ok('...and the props still carrying v16 coordinates are NOT, so shipping '
-       + 'these did not strand the rest off the map',
-    ids.length === 3 && ids.includes('general-store'), ids);
+  /* v2.3.2063: back to two. The general store was placed at v2.3.2062 only
+     because nothing else sold a potion; the owner moved the potions onto
+     Shopkeeper Bro's shelf instead, so the shopfront went back off. */
+  rec.ok('...and the six props still carrying v16 coordinates are NOT, so '
+       + 'shipping these two did not strand four buildings off the map',
+    ids.length === 2, ids);
   const oob = list.filter((p) => p.x <= 0 || p.y <= 0 || p.x >= TOWN_W || p.y >= TOWN_H);
   rec.ok('every prop that IS drawn stands on the map that ships', oob.length === 0, oob);
 

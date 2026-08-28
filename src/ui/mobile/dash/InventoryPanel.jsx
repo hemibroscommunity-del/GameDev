@@ -115,6 +115,12 @@ const POTION_THUMBS = {
   swiftdraught: `/icons/items/potion-antidote.webp${ITEMS_V}`,
   manashard:    `/icons/items/potion-mana.webp${ITEMS_V}`,
   staminasalts: `/icons/items/potion-stamina.webp${ITEMS_V}`,
+  /* v2.3.2063: not a potion, but it sits on the same shelf and it had no art
+     at all -- Shopkeeper Bro's staples drew two bare '◇' diamonds next to
+     three painted bottles, which reads as a loading failure rather than as an
+     item. The minnow's own thumb already existed for the COOKED FISH key;
+     this is the same picture under the SHOP's spelling of it. */
+  cookedminnow: `/icons/items/cooked-minnow.webp${ITEMS_V}`,
 };
 /* Elemental shards: one webp per zone, /icons/items/<key>.webp
    following the keys defined in src/data/shards.js (shard_meadow,
@@ -203,6 +209,11 @@ export const iconFor = (key) => {
   if (k === 'swiftdraught') return '🌿';   /* v2.3.2062 */
   if (k === 'antidote')   return '🍃';
   if (k === 'trap_basic') return '🪤';
+  /* v2.3.2063: the shop's own spelling of it. SHOP_ITEMS calls it basicTrap
+     and the granted inventory key is basic_trap -- both resolve here, because
+     a shelf slot and a bag slot showing different pictures of one item is the
+     kind of thing nobody reports and everybody notices. */
+  if (k === 'basictrap' || k === 'basic_trap') return '🪤';
   if (/sword/.test(k))   return '⚔';
   if (/bow/.test(k))     return '🏹';
   if (/staff|wand/.test(k)) return '🪄';

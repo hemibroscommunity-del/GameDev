@@ -146,32 +146,21 @@ export const WORLD_PROPS = [
     x: 2130, y: 525, worldH: 300, blockW: 220, blockD: 95,
     action: 'enchant', label: 'ENCHANTER',
   },
+  /* ═══ v2.3.2063: THE STORE GOES BACK OFF ═══
+     v2.3.2062 restored it because nothing else in the game sold a potion and
+     shipping two unbuyable ones is not shipping them. The owner's answer was
+     that they belong on Shopkeeper Bro's shelf instead ("These potions should
+     be purchasable there"), which is a better one -- he is already in town,
+     already walks up to you, and already has a working buy flow. So the whole
+     reason for putting a second shopfront in the plaza is gone, and it goes
+     with it rather than sitting there as scenery with a door.
+
+     Left in the table at its v16 coordinates, like the other three
+     shopfronts: this is a to-do (someone re-measures it and marks it mapV 17),
+     not a deletion. The entry below is exactly what it was before v2.3.2062. */
   {
-    /* ═══ v2.3.2062: THE STORE COMES BACK, BECAUSE NOTHING ELSE SELLS A POTION ═══
-       Owner: "Make the mana potion refill at a quick rate..." and "do a speed
-       potion...". Building those turned up a bigger problem: THERE WAS NO WAY
-       TO BUY A POTION AT ALL.
-
-       The vendor's shelf is the only place any potion has ever been sold, and
-       it opens from a building door -- S.nearBuilding comes from
-       buildingPropNear, which only ever returns props carrying an `action`.
-       Every such prop was held back on v16 coordinates, so the door did not
-       exist, so the shelf was unreachable: the Fury Tonic made real at
-       v2.3.2056 has been unbuyable for its whole life, and two new potions
-       would have joined it. Shopkeeper Bro cannot cover this -- his stock is
-       the PUBLIC pile, seeded with cooked fish and otherwise filled by what
-       players sell him, and potions are not something players can sell.
-
-       So this is a RESTORATION, not a new design: same building, same panel,
-       same action, re-measured onto town_v17. Placed on the plaza's east
-       side (sampled 98.5% open cobble on a 70px disc), across the square from
-       the fountain and clear both of the spawn point and of Shopkeeper Bro's
-       patrol, so the two shops do not crowd each other.
-
-       worldH 190 rather than the old 300, to sit with the mayor's house
-       rather than tower over the town it is in. */
-    id: 'general-store', zone: 'town', mapV: 17, sprite: '/sprites/props/general-store.png',
-    x: 1250, y: 1100, worldH: 190, blockW: 138, blockD: 60,
+    id: 'general-store', zone: 'town', mapV: 16, sprite: '/sprites/props/general-store.png',
+    x: 2440, y: 600, worldH: 300, blockW: 210, blockD: 95,
     action: 'shop', label: 'GENERAL STORE',
   },
 ];

@@ -222,7 +222,15 @@ export const cookingMethods = {
     // Apply the recipe effect.  Buffs go onto ps._buffs as endsAt
     // timestamps; heal modifies hp directly.  Duration is seconds
     // in the recipe table, ms on the wire.
-    if (!ps._buffs) ps._buffs = {};
+    /* ═══ v2.3.2063: A MEAL IS AN EFFECT TOO ═══
+       Owner: "Only 1 effect active at a time though." Applied HERE as well as
+       on the potion path, or the rule would only be half true -- a player
+       could drink a Swift Draught and then eat a damage meal and be running
+       two. Clearing here also makes the per-key `delete ps._buffs.spdMul` /
+       `damageMul` lines below redundant; they are kept because they are the
+       statement of intent for each writer, and a future granter that forgets
+       to clear is then still correct. */
+    this._clearTimedBuffs(ps);
     const dur = (recipe.duration || 0) * 1000;
     const endsAt = Date.now() + dur;
     if (recipe.buff === 'heal') {
@@ -298,30 +306,39 @@ export const cookingMethods = {
     return SHOP_ITEMS[itemId] || null;
   },
 
-  _handleShopPurchase(session, payload) {
-    if (!session || !session.id) return;
-    const { itemId } = payload || {};
-    if (typeof itemId !== 'string') return;
-    const item = this._getShopItem(itemId);
-    if (!item) return;
-    const ps = this.playerState[session.id];
-    if (!ps) return;
-    if (ps.dying || ps.dead || ps.disconnected) return;
-    // v2.3.1155: the §2.6 Influence discount is RETIRED with the stat
-    // (owner decision 2026-07-03: delete outright, don't freeze).  Its
-    // live value has been 0 for every player since v2.3.910, so removal
-    // changes no observable price; a future reputation system can add
-    // its own discount hook.
-    const finalCost = Math.max(1, Math.floor(item.cost));
-    if ((ps.coins || 0) < finalCost) return;
-    ps.coins -= finalCost;
-    // Apply effect.  Pool restores clamp to max; trap grants inventory;
-    // dmgBuff is transient client-only (server doesn't track buff timers).
+  /* ═══ v2.3.2063: ONE EFFECT AT A TIME ═══
+   * Owner: "Only 1 effect active at a time though."
+   *
+   * ps._buffs holds every timed effect in the game -- the potions' damage /
+   * spd / mana and the cooked recipes' regen / resist / damage -- so the rule
+   * is enforced in one place by clearing the whole record before anything new
+   * is written. Every granter calls this, which is what makes the rule true
+   * rather than true-for-potions: drinking replaces a meal, eating replaces a
+   * drink, and a second potion replaces the first.
+   *
+   * WHOLESALE, not key by key, and that is deliberate: the magnitudes
+   * (damageMul, spdMul, manaFlat) live in this same record beside their
+   * timers, so clearing by name would strand a multiplier belonging to an
+   * effect that is no longer running -- exactly the bug BUFF_MAGNITUDES was
+   * added to stop. Nothing else is stored in _buffs; see _pruneBuffs. */
+  _clearTimedBuffs(ps) {
+    if (ps) ps._buffs = {};
+  },
+
+  /* The EFFECT half of a shop purchase, without the coin handling.
+   * v2.3.2063: extracted so Shopkeeper Bro's shelf and the vendor's shelf
+   * apply an item the same way. Two copies of this branch chain is how one
+   * shop ends up with a potion the other one does not, or applies it
+   * differently -- and the owner has now asked for these to be sold in both
+   * places. Returns false when the purchase must be refunded. */
+  _applyShopItem(ps, item) {
+    if (!ps || !item) return false;
     if (item.effect === 'healFish') {
-      // v2.3.1126: no healing during an arena match (GDD §43).  The
-      // coins were already spent above -- matching the eat_request
-      // consume-anyway posture would be wrong here, so refund.
-      if (ps._arenaMatch) { ps.coins += finalCost; return; }
+      /* v2.3.1126: no healing during an arena match (GDD §43). Reported as
+         a refusal now rather than refunding inline, so the caller owns the
+         coins -- there are two callers since v2.3.2063 and each takes them
+         its own way. */
+      if (ps._arenaMatch) return false;
       if (typeof ps.maxHp !== 'number') ps.maxHp = 100;
       if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;
       ps.hp = Math.min(ps.maxHp, ps.hp + (item.power || 23));
@@ -353,7 +370,7 @@ export const cookingMethods = {
          meal and a potion can both buff mana without either one inheriting
          the other's strength. */
       if (typeof ps.maxMana !== 'number') ps.maxMana = 100;
-      if (!ps._buffs) ps._buffs = {};
+      this._clearTimedBuffs(ps);   /* v2.3.2063: one effect at a time */
       ps.mana = ps.maxMana;
       ps._buffs.manaFlat = manaSurgePerTick(PROG3.SPECIAL_MANA_COST, REGEN_TICKS * this.TICK_RATE);
       const durMs = Math.max(1, Math.floor(item.duration || 180)) * 1000;
@@ -372,7 +389,7 @@ export const cookingMethods = {
          build -- 1.5x puts a maxed character over it, so a player who bought
          this would have been rubber-banded by the server for using the thing
          the server sold them. The cap reads this same buff. */
-      if (!ps._buffs) ps._buffs = {};
+      this._clearTimedBuffs(ps);   /* v2.3.2063: one effect at a time */
       ps._buffs.spdMul = Number(item.mult) > 0 ? Number(item.mult) : 1.5;
       const durMs = Math.max(1, Math.floor(item.duration || 180)) * 1000;
       ps._buffs.spd = Date.now() + durMs;
@@ -394,7 +411,7 @@ export const cookingMethods = {
        * Nothing new is needed to fix it: ps._buffs.damage already exists for
        * cooked food and combat.js already reads it at x1.20. This is the one
        * line that was missing. */
-      if (!ps._buffs) ps._buffs = {};
+      this._clearTimedBuffs(ps);   /* v2.3.2063: one effect at a time */
       /* v2.3.2058: the magnitude rides WITH the timer. combat.js reads
          _buffs.damageMul when it is set and falls back to its own 1.20, so a
          cooked meal is untouched and this potion is its own thing. */
@@ -404,6 +421,30 @@ export const cookingMethods = {
          six minutes of x2, not a x2 that quietly became x4. */
       ps._buffs.damage = Date.now() + durMs;
     }
+    return true;
+  },
+
+  _handleShopPurchase(session, payload) {
+    if (!session || !session.id) return;
+    const { itemId } = payload || {};
+    if (typeof itemId !== 'string') return;
+    const item = this._getShopItem(itemId);
+    if (!item) return;
+    const ps = this.playerState[session.id];
+    if (!ps) return;
+    if (ps.dying || ps.dead || ps.disconnected) return;
+    // v2.3.1155: the §2.6 Influence discount is RETIRED with the stat
+    // (owner decision 2026-07-03: delete outright, don't freeze).  Its
+    // live value has been 0 for every player since v2.3.910, so removal
+    // changes no observable price; a future reputation system can add
+    // its own discount hook.
+    const finalCost = Math.max(1, Math.floor(item.cost));
+    if ((ps.coins || 0) < finalCost) return;
+    ps.coins -= finalCost;
+    /* v2.3.2063: the coins go back if the item refused to apply (an arena
+       match blocks healing). The apply half reports rather than refunding,
+       because it has two callers now and each holds the purse differently. */
+    if (!this._applyShopItem(ps, item)) { ps.coins += finalCost; return; }
     this._saveRpg(session.id, ps);
     const ws = this._wsBySessionId(session.id);
     if (ws) this._sendPlayerState(ws, session.id);

@@ -324,16 +324,32 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const price = slot && slot.parentElement
       && slot.parentElement.lastElementChild.textContent.trim();
     return { slot: !!slot, count: badge ? +badge.textContent : null, price,
-      gone: ['whetstone', 'antidote', 'trap_basic']
-        .filter((k) => document.querySelector(`[data-shop-bro="${k}"]`)) };
+      /* v2.3.2063: the potions are BACK on his shelf, at the owner's
+         request, but as STAPLES -- so what is checked is that they carry no
+         count badge. A number on a thing he can never run out of is a lie,
+         and it is also how you would tell a staple that had been mistakenly
+         dropped into the finite pile. */
+      staples: ['whetstone', 'manaShard', 'swiftDraught'].map((k) => {
+        const el = document.querySelector(`[data-shop-bro="${k}"]`);
+        return { k, on: !!el, count: el && el.querySelector('.bt-item-qty')
+          ? +el.querySelector('.bt-item-qty').textContent : null };
+      }) };
   });
   rec.ok('he starts with cooked fish on his shelf', seed2.slot, seed2);
   rec.ok('...with a real count, not "always in stock" -- it is a pile that runs out',
     seed2.count > 0, seed2);
   rec.ok('...priced under the slot, so you know what it costs before tapping it',
     /^\d+g$/.test(seed2.price || ''), seed2);
-  rec.ok('...and the retired consumables are gone from his shelf',
-    seed2.gone.length === 0, seed2);
+  /* ═══ v2.3.2063: THE POTIONS ARE ON HIS SHELF NOW ═══
+     Owner: "These potions should be purchasable there." This used to assert
+     the opposite -- that the consumables were gone -- which was right while
+     they were unbuyable and useless. They are neither now. */
+  rec.ok('...alongside the potions, which he always has',
+    seed2.staples.every((x) => x.on), seed2.staples);
+  rec.ok('...and THOSE carry no count, because a staple cannot run out '
+       + '(the fish can, and does)',
+    seed2.staples.every((x) => x.count === null) && seed2.count > 0,
+    { staples: seed2.staples, fish: seed2.count });
   rec.ok('(the drawer was shut a moment ago, so that shelf really did redraw)',
     seed.slot === false, seed);
 

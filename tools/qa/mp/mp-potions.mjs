@@ -48,61 +48,65 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.grant(wsPort, id, 'gold', { amount: 500 });
   await P.page.waitForTimeout(1000);
 
-  /* ── 1. THE SHOP IS REACHABLE AT ALL ──
-     This is the check that would have caught the whole problem: potions have
-     only ever been sold behind a building door, and every door was switched
-     off with the v16 props. */
-  const store = await P.page.evaluate(() =>
-    (window.__btWorldProps ? window.__btWorldProps() : []).find((p) => p.id === 'general-store') || null);
-  rec.ok('the general store is on the map', !!store, store);
+  /* ── 1. THEY ARE ON SHOPKEEPER BRO'S SHELF ──
+     Owner: "These potions should be purchasable there." Bro, not the vendor
+     building -- which is why this drives his drawer and not a door. */
+  const openBro = async () => {
+    await P.page.evaluate(() => window.__broShopBus.setOpen(true));
+    for (let i = 0; i < 40; i++) {
+      const ready = await P.page.evaluate(() =>
+        !!document.querySelector('[data-shop-bro="swiftDraught"]'));
+      if (ready) return true;
+      await P.page.waitForTimeout(150);
+    }
+    return false;
+  };
+  rec.ok('both draughts are on Shopkeeper Bro\'s shelf', await openBro(), null);
 
-  await put(P, store.x, store.y + 60);
-  await P.page.waitForTimeout(900);
-  const near = await H.readState(P, (S) => S.nearBuilding);
-  rec.ok('...and standing at its door offers a way in',
-    near !== null && near !== undefined, { nearBuilding: near });
-
-  await P.page.evaluate(() => {
-    const S = window._gameState.current;
-    if (window.__btEnterBuilding) window.__btEnterBuilding();
-  });
-  /* The door opens on the E key in the desktop rig. */
-  await P.page.keyboard.press('e');
-  await P.page.waitForTimeout(1200);
   const shelf = await P.page.evaluate(() => {
-    const t = document.body.innerText || '';
-    /* Case-insensitive: the header is text-transform:uppercase, and innerText
-       returns the RENDERED text, so a check for 'Vendor' misses 'VENDOR'. */
-    return { text: /vendor/i.test(t), mana: t.includes('Mana Draught'),
-      swift: t.includes('Swift Draught'), fury: t.includes('Fury Tonic') };
+    const ids = [...document.querySelectorAll('[data-shop-bro]')]
+      .map((e) => e.getAttribute('data-shop-bro'));
+    const slot = document.querySelector('[data-shop-bro="swiftDraught"]');
+    const price = slot && slot.parentElement && slot.parentElement.lastElementChild.textContent.trim();
+    const badge = slot && slot.querySelector('.bt-item-qty');
+    return { ids, price, badge: badge ? badge.textContent : null };
   });
-  rec.ok('the vendor shelf opens', shelf.text, shelf);
-  rec.ok('...and both new draughts are on it', shelf.mana && shelf.swift, shelf);
+  rec.ok('...priced under the slot like everything else on it',
+    /^\d+g$/.test(shelf.price || ''), shelf);
+  /* A count on a thing he cannot run out of would be a lie. */
+  rec.ok('...with no count badge, because a staple never runs out',
+    shelf.badge === null, shelf);
 
-  /* ── 2. THE SWIFT DRAUGHT MAKES YOU FASTER ──
-     Measured as distance covered, before and after, over the same walk. */
-  await P.page.keyboard.press('Escape');
-  await P.page.waitForTimeout(600);
+  /* ── 2. THE SWIFT DRAUGHT MAKES YOU FASTER ── */
+  await P.page.evaluate(() => window.__broShopBus.setOpen(false));
+  await P.page.waitForTimeout(500);
   const before = await sprint(P);
   rec.ok(`the control sprint covers ground (${before}px)`, before > 80, { before });
 
-  await put(P, store.x, store.y + 60);
-  await P.page.waitForTimeout(500);
-  await P.page.keyboard.press('e');
+  await openBro();
+  await P.page.click('[data-shop-bro="swiftDraught"]');
   await P.page.waitForTimeout(900);
-  const c0 = await coins(P);
-  const bought = await P.page.evaluate(() => {
-    const rows = [...document.querySelectorAll('div')].filter((d) => (d.textContent || '').includes('Swift Draught'));
-    const row = rows[rows.length - 1];
-    const btn = row && row.closest('div') && row.parentElement
-      && row.parentElement.parentElement && row.parentElement.parentElement.querySelector('button');
-    if (btn) { btn.click(); return true; }
-    return false;
+  const deal = await P.page.evaluate(() => {
+    const act = document.querySelector('[data-shop-act]');
+    return { side: act && act.getAttribute('data-shop-act'),
+      label: act && act.textContent.trim(),
+      total: act && act.getAttribute('data-shop-total'),
+      stepper: !!document.querySelector('[data-shop-plus]'),
+      staple: !!document.querySelector('[data-shop-staple]') };
   });
-  await P.page.waitForTimeout(1600);
-  rec.ok('the Swift Draught can be bought', (await coins(P)) < c0, { before: c0, after: await coins(P) });
-  await P.page.keyboard.press('Escape');
-  await P.page.waitForTimeout(600);
+  rec.ok('tapping it offers a BUY at a real price', deal.side === 'bro' && +deal.total > 0, deal);
+  /* Quantity on an effect could only mean "charge me five times, run it
+     once", so the stepper is gone rather than disabled. */
+  rec.ok('...with no quantity stepper, because an effect does not stack',
+    !deal.stepper && deal.staple, deal);
+
+  const c0 = await coins(P);
+  await P.page.click('[data-shop-act]');
+  await P.page.waitForTimeout(1800);
+  rec.ok('the Swift Draught can be bought from him', (await coins(P)) < c0,
+    { before: c0, after: await coins(P) });
+  await P.page.evaluate(() => window.__broShopBus.setOpen(false));
+  await P.page.waitForTimeout(500);
 
   const buffState = await H.readState(P, (S) => ({
     spdBuff: S._spdBuff ? S._spdBuff - Date.now() : 0, mul: S._spdBuffMul || 0 }));
@@ -114,44 +118,65 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const after = await sprint(P);
   rec.ok(`you actually run faster with it (${before}px -> ${after}px over the same walk)`,
     after > before * 1.25, { before, after, ratio: (after / before).toFixed(2) });
-  /* The server must not have refused any of those moves -- a rubber-banded
-     player ends up BEHIND where the client thinks they are. */
-  const drift = await P.page.evaluate(() => {
-    const S = window._gameState.current;
-    return { bought: !!S._spdBuff };
-  });
-  rec.ok('...and the server accepted the sprint rather than rubber-banding it '
-       + '(the run is longer, so no move was rejected)', after > before, { after, before, drift });
+  rec.ok('...and the server accepted the sprint rather than rubber-banding it',
+    after > before, { after, before });
 
   /* ── 3. THE MANA DRAUGHT KEEPS THE POOL UP ── */
-  await put(P, store.x, store.y + 60);
-  await P.page.waitForTimeout(500);
-  await P.page.keyboard.press('e');
-  await P.page.waitForTimeout(900);
-  await P.page.evaluate(() => {
-    const S = window._gameState.current;
-    S.rpg.mana = 5;                       /* drained, so the fill is visible */
-  });
+  /* Spend the pool through the SERVER before buying, or the refill cannot be
+     seen: setting S.rpg.mana in the page leaves the server still believing the
+     pool is full, and with a delta player_state it has no changed field to
+     send -- so the drink "fills" a pool the server never saw empty and the
+     number on screen is the client's own guess. Three specials is 75 mana. */
+  for (let i = 0; i < 3; i++) {
+    await P.page.evaluate(() => {
+      const S = window._gameState.current;
+      if (S.channel) S.channel.send({ type: 'ability_use', payload: { type: 'swipe', tier: 0 } });
+    });
+    await P.page.waitForTimeout(180);
+  }
+  await P.page.waitForTimeout(400);
+  const drained = await mana(P);
+  rec.ok(`three specials really drained the pool server-side (${drained})`,
+    drained < 60, { drained });
+
+  await openBro();
   const c1 = await coins(P);
-  await P.page.evaluate(() => {
-    const rows = [...document.querySelectorAll('div')].filter((d) => (d.textContent || '').includes('Mana Draught'));
-    const row = rows[rows.length - 1];
-    const btn = row && row.parentElement && row.parentElement.parentElement
-      && row.parentElement.parentElement.querySelector('button');
-    if (btn) btn.click();
-  });
-  await P.page.waitForTimeout(1600);
-  rec.ok('the Mana Draught can be bought', (await coins(P)) < c1, { before: c1, after: await coins(P) });
-  rec.ok('...and fills the pool on the drink, so the first special lands now',
-    (await mana(P)) > 80, { mana: await mana(P) });
+  await P.page.click('[data-shop-bro="manaShard"]');
+  await P.page.waitForTimeout(900);
+  await P.page.click('[data-shop-act]');
+  await P.page.waitForTimeout(1800);
+  rec.ok('the Mana Draught can be bought from him', (await coins(P)) < c1,
+    { before: c1, after: await coins(P) });
+  const filled = await mana(P);
+  rec.ok(`...and fills the pool on the drink, so the first special lands now `
+       + `(${drained} -> ${filled})`,
+    filled > drained + 40, { drained, filled });
+
+  /* ── ONE EFFECT AT A TIME ──
+     Owner: "Only 1 effect active at a time though." The Swift Draught was
+     running a moment ago; drinking this must have ended it. */
+  const excl = await H.readState(P, (S) => ({
+    spd: S._spdBuff && Date.now() < S._spdBuff ? 1 : 0,
+    spdMul: S._spdBuffMul || 0,
+    mana: S._manaBuff && Date.now() < S._manaBuff ? 1 : 0 }));
+  rec.ok('drinking the Mana Draught ENDED the Swift Draught -- one effect at a time',
+    excl.spd === 0 && excl.mana === 1, excl);
+  rec.ok('...and took its multiplier with it, so nothing is left applying 1.5x',
+    !excl.spdMul, excl);
 
   const manaBuff = await H.readState(P, (S) => ({
     ms: S._manaBuff ? S._manaBuff - Date.now() : 0, flat: S._manaFlat || 0 }));
   rec.ok('...for about three minutes', manaBuff.ms > 170000 && manaBuff.ms < 185000, manaBuff);
   rec.ok('...carrying the server\'s own per-tick regen floor',
     manaBuff.flat >= 10 && manaBuff.flat <= 200, manaBuff);
-  await P.page.keyboard.press('Escape');
+  await P.page.evaluate(() => window.__broShopBus.setOpen(false));
   await P.page.waitForTimeout(500);
+
+  /* The speed is gone in the WORLD too, not just on a flag. */
+  const slowAgain = await sprint(P);
+  rec.ok(`...and you are back to normal speed (${slowAgain}px, against `
+       + `${before}px un-buffed and ${after}px buffed)`,
+    slowAgain < after * 0.85, { before, after, slowAgain });
 
   /* ── 4. YOU CAN CAST SPECIALS WITHOUT PAUSE ──
      The owner's actual sentence, measured: cast at the real cadence the game
@@ -227,6 +252,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     withPotion.paid > sober.paid, { withPotion, sober });
   await C.ctx.close();
 
+  /* His shelf, open, for the record: staples lead and the pile follows, so
+     what the artifact shows is the order a player actually sees. */
+  await openBro();
+  await P.page.click('[data-shop-bro="swiftDraught"]').catch(() => {});
+  await P.page.waitForTimeout(900);
   await P.page.screenshot({ path: H.REPO + '/tools/qa/mp/out/potions.png' }).catch(() => {});
   const errs = P.logs.filter((l) => String(l).startsWith('pageerror'));
   rec.ok('no page errors', errs.length === 0, errs.slice(0, 3));

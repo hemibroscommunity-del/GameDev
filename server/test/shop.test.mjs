@@ -11,6 +11,7 @@
  */
 import { GameRoom, PRIVILEGED_EVENTS } from '../src/index.js';
 import { SHOP } from '../src/shop.js';
+import { SHOP_ITEMS } from '../src/data.js';   /* v2.3.2063: his staple shelf */
 
 function makeState() {
   const store = new Map();
@@ -158,9 +159,24 @@ check('a brand-new world finds a few cooked fish on him', !!fish && fish.qty > 0
 check('...priced above the raw fish they were made from',
   room3._shopBaseValue('cooked_fish_trout') > room3._shopBaseValue('fish_trout'),
   { cooked: room3._shopBaseValue('cooked_fish_trout'), raw: room3._shopBaseValue('fish_trout') });
-check('...and nothing else, so the retired consumables are really gone',
-  !seeded.items.some((i) => ['whetstone', 'antidote', 'trap_basic'].includes(i.key)),
-  seeded.items.map((i) => i.key));
+/* ═══ v2.3.2063: THE PILE AND THE SHELF ARE DIFFERENT THINGS ═══
+   This used to read "and nothing else, so the retired consumables are really
+   gone". The consumables came back at the owner's request ("These potions
+   should be purchasable there") -- but as STAPLES, which is a different list:
+   fixed price, always there, no decay, and buying one never moves the pile.
+   So the claim worth making is not "no consumables" but "no consumable is in
+   the PILE": a potion in the pile would be a finite stock nobody can restock,
+   because no player can sell him one. */
+const pile = seeded.items.filter((i) => !i.staple);
+check('the seeded PILE is the fish and nothing else',
+  pile.length === 1 && pile[0].key === 'cooked_fish_trout', pile.map((i) => i.key));
+check('...and the potions are on his staple shelf instead, where they cannot '
+    + 'run out', seeded.items.some((i) => i.staple && i.key === 'manaShard')
+  && seeded.items.some((i) => i.staple && i.key === 'swiftDraught'),
+  seeded.items.filter((i) => i.staple).map((i) => i.key));
+check('...priced at what the vendor charges, so the two shelves cannot drift',
+  seeded.items.find((i) => i.key === 'swiftDraught').sell === SHOP_ITEMS.swiftDraught.cost,
+  seeded.items.find((i) => i.key === 'swiftDraught'));
 
 /* The seed is written ONCE. A pile players have emptied is a stored {}, which
    is not the same as "never seeded" -- if that distinction were missed he
@@ -180,14 +196,19 @@ check('...and he does NOT restock them on the next read (the seed is once, '
    number -- which is the commonest row there is, since the point of him is
    selling him something he has not got. The client cannot fill that in (it
    computes no prices, deliberately), so the ask carries the keys. */
-const quoted = await room._shopList(['whetstone', 'manaShard', 'not_a_real_thing']);
-const qw = quoted.items.find((i) => i.key === 'whetstone');
+/* v2.3.2063: keyed on ORE and WOOD rather than the two potions this used to
+   name. Those are staples now -- he sells them and never buys them -- so
+   quoting them as things-he-holds-none-of asked the wrong question and got a
+   0 back. Ore and logs are the real case: player-gathered, sellable, and he
+   starts with none. */
+const quoted = await room._shopList(['ore_copper', 'wood_oak', 'not_a_real_thing']);
+const qw = quoted.items.find((i) => i.key === 'ore_copper');
 check('he quotes for an item he holds none of', !!qw && qw.qty === 0 && qw.buy > 0, quoted.items);
 check('...at a price that reflects what the item is worth, not a flat default',
-  qw.buy !== quoted.items.find((i) => i.key === 'manaShard').buy,
-  { whetstone: qw.buy, manaShard: quoted.items.find((i) => i.key === 'manaShard').buy });
-check('...and below what the vendor charges for it, so flipping is a loss',
-  qw.buy < 35, qw);
+  qw.buy !== quoted.items.find((i) => i.key === 'wood_oak').buy,
+  { ore: qw.buy, wood: quoted.items.find((i) => i.key === 'wood_oak').buy });
+check('...and below what he charges for it, so flipping is a loss',
+  qw.buy < room._shopSellPrice('ore_copper'), { buy: qw.buy, sell: room._shopSellPrice('ore_copper') });
 /* The key list arrives from a client, so it is bounded and type-checked. */
 const junk = await room._shopList([123, null, {}, 'x'.repeat(500), 'ok_key']);
 check('a malformed quote list is filtered rather than trusted',
@@ -292,6 +313,46 @@ check('an absurd stored multiplier is rejected, not applied',
   times(swing(psM), plainDmg, 1.20), { got: swing(psM), plainDmg });
 Math.random = _realRandom;
 delete psM._buffs;
+
+/* ═══ v2.3.2063: BUYING A POTION OFF HIS SHELF ═══
+   Owner: "These potions should be purchasable there." What you get is the
+   EFFECT, applied on the spot -- not a bottle in your bag, because the bag has
+   no way to open one (cooked fish is its only usable consumable). */
+const buyer2 = { coins: 200, inventory: Object.create(null), maxMana: 100, mana: 10,
+  maxHp: 100, hp: 100, maxStamina: 100, stamina: 100 };
+const beforeCoins = buyer2.coins;
+const rBuy = await room._shopBuy(buyer2, 'swiftDraught', 1);
+check('a staple can be bought off his shelf', rBuy.ok && rBuy.staple === true, rBuy);
+check('...for the vendor\'s price', beforeCoins - buyer2.coins === SHOP_ITEMS.swiftDraught.cost,
+  { spent: beforeCoins - buyer2.coins });
+check('...and what you get is the EFFECT, running now',
+  room._buffActive(buyer2, 'spd') && buyer2._buffs.spdMul === 1.5, buyer2._buffs);
+check('...not a bottle in your bag that nothing can open',
+  !buyer2.inventory.swiftDraught, buyer2.inventory);
+
+/* The pile is untouched by a staple sale -- no decay, nothing to run out. */
+const stockBefore = JSON.stringify(await room._shopStock());
+await room._shopBuy(buyer2, 'manaShard', 1);
+check('buying a staple does not move the public pile',
+  JSON.stringify(await room._shopStock()) === stockBefore, stockBefore);
+check('...and it is still on the shelf afterwards, at the same price',
+  (await room._shopList()).items.some((i) => i.key === 'manaShard' && i.staple
+    && i.sell === SHOP_ITEMS.manaShard.cost), null);
+
+/* Asking for five charges for one, because one is what an effect can be. */
+const buyer3 = { coins: 1000, inventory: Object.create(null), maxMana: 100, mana: 0,
+  maxHp: 100, hp: 100, maxStamina: 100, stamina: 100 };
+const r5 = await room._shopBuy(buyer3, 'whetstone', 5);
+check('asking for five staples charges for one -- an effect does not stack',
+  r5.ok && r5.bought === 1 && 1000 - buyer3.coins === SHOP_ITEMS.whetstone.cost,
+  { r5, spent: 1000 - buyer3.coins });
+
+/* Broke is refused, and costs nothing. */
+const skint = { coins: 1, inventory: Object.create(null), maxMana: 100, mana: 0,
+  maxHp: 100, hp: 100, maxStamina: 100, stamina: 100 };
+const rNo = await room._shopBuy(skint, 'whetstone', 1);
+check('a player who cannot afford it is refused, and keeps their coin',
+  !rNo.ok && skint.coins === 1 && !room._buffActive(skint, 'damage'), { rNo, skint });
 
 console.log(failures ? `\n${failures} FAILED` : '\nALL PASS');
 process.exit(failures ? 1 : 0);
