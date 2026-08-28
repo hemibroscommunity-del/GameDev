@@ -1955,14 +1955,25 @@ export function setupWebSocket(ctx) {
                 /* v2.3.599: track relays carry flat eqc/eql/eqs; rebuild the
                    nested other.equip the renderer reads so armour on/off syncs
                    (covers the standing-still case via the 2s track).
-                   v2.3.1961: `shirt` is deliberately NOT carried over here, and
-                   that is not an oversight to tidy up.  `eqst` is on neither
-                   the track payload nor TRACK_COSMETIC_KEYS, so the relay has
-                   no news about the under-shirt; dropping the key lets the
-                   renderer's v2.3.756 fallback derive it from `st`, which the
-                   mapping above keeps current, so taking the t-shirt off in the
-                   loadout shows on peers.  Preserving the join-time value here
-                   would pin it to whatever it was at join instead. */
+                   v2.3.1961 deliberately did NOT carry `shirt` here, on the
+                   grounds that "`eqst` is on neither the track payload nor
+                   TRACK_COSMETIC_KEYS, so the relay has no news about the
+                   under-shirt" -- dropping the key let the renderer's v2.3.756
+                   fallback derive it from `st`, which this relay does keep
+                   current.  The reasoning was sound and the premise it rests on
+                   was false: `st` and the gear slot DISAGREE ABOUT THE DEFAULT.
+                   The gear slot dresses every new player in a tshirt
+                   (gearCatalog: "worn by every new player by default"); `st` is
+                   'none' until somebody picks a style.  So the fallback dressed
+                   an ordinary player in nothing, and everyone was bare-chested
+                   on everyone else's screen from two seconds after joining.
+                   v2.3.2084 gives the relay the news it was missing -- `eqst`
+                   is on the track payload (BroTown) and on TRACK_COSMETIC_KEYS
+                   (server) now -- so the key is carried when it is sent and
+                   PRESERVED when it is not, exactly like the three beside it.
+                   An old worker that drops `eqst` leaves the old behaviour
+                   rather than a new failure, which is what makes this shippable
+                   in either order. */
                 var _ud = msg.data || {};
                 /* v2.3.1953: the relay carries the WIRE names (hg/fr); the
                    renderer reads the long ones, exactly as it does for every
@@ -1973,12 +1984,20 @@ export function setupWebSocket(ctx) {
                    — otherwise going back to Average would never take. */
                 S.others[msg.id].buildHeight = _ud.hg || null;
                 S.others[msg.id].buildFrame = _ud.fr || null;
-                if (_ud.eqc !== undefined || _ud.eql !== undefined || _ud.eqs !== undefined) {
+                if (_ud.eqc !== undefined || _ud.eql !== undefined
+                    || _ud.eqs !== undefined || _ud.eqst !== undefined) {
                   var _oe6 = S.others[msg.id].equip || { head: 'none', chest: 'none', legs: 'none', shoulders: 'none' };
                   S.others[msg.id].equip = {
                     chest: _ud.eqc !== undefined ? (_ud.eqc || 'none') : _oe6.chest,
                     legs: _ud.eql !== undefined ? (_ud.eql || 'none') : _oe6.legs,
                     shoulders: _ud.eqs !== undefined ? (_ud.eqs || 'none') : _oe6.shoulders,
+                    /* v2.3.2084: carried when sent, PRESERVED when not -- the
+                       key used to be dropped from the rebuild entirely, which
+                       is what put everyone in nothing.  `_oe6.shirt` is
+                       undefined for a peer whose join frame predates this, and
+                       undefined is exactly what the renderer's v2.3.756
+                       fallback expects, so an old client still reads as it did. */
+                    shirt: _ud.eqst !== undefined ? (_ud.eqst || 'none') : _oe6.shirt,
                   };
                 }
               }

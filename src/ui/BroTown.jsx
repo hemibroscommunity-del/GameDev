@@ -6022,6 +6022,15 @@ export var BroTown = function BroTown(_ref0) {
                 eqc: getEquip('chest'),
                 eql: getEquip('legs'),
                 eqs: getEquip('shoulders'),
+                /* v2.3.2084: the UNDER-SHIRT, which this payload has never
+                   carried.  It rode the join frame alone, so peers lost it on
+                   the first relay and fell back to deriving a garment from the
+                   legacy `st` style -- and the two disagree about the default
+                   (the gear slot dresses every new player in a tshirt, `st` is
+                   'none' until somebody picks a style), so an ordinary player
+                   was drawn bare-chested on every other screen.  Same shape as
+                   the three above it. */
+                eqst: getEquip('shirt'),
                 pt: getPants(),
                 sh: getShoes(),
                 rpgLv: (_rpg === null || _rpg === void 0 ? void 0 : _rpg.level) || 1,

@@ -541,7 +541,23 @@ export const TRACK_COSMETIC_KEYS = new Set([
   'hg', 'fr',
   'pt', 'sh', 'bs', 'mask', 'cape', 'pet',
   // Live equipment visuals (armour on/off for remote renderers).
-  'eqc', 'eql', 'eqs',
+  /* ═══ v2.3.2084: +'eqst', THE UNDER-SHIRT, AND IT IS THE SAME BUG AS 'tb' ═══
+     v2.3.2043 records it exactly: "v2.3.1939 put a drawing key in the join
+     sanitiser and not here, and the result was a print that appeared on join
+     and vanished on the first two-second relay."  `eqst` was that key one slot
+     over -- admitted by JOIN_COSMETIC_KEYS (join.js) since v2.3.756 and never
+     by this gate -- so a shirt arrived with the join frame and was gone two
+     seconds later, and the renderer's fallback then derived the garment from
+     the legacy `st` style.  Those two disagree about the DEFAULT: the gear
+     slot dresses every new player in a tshirt (gearCatalog, "worn by every new
+     player by default") while `st` is 'none' until somebody picks a style.  So
+     every player who had never chosen a shirt saw themselves clothed and was
+     drawn BARE-CHESTED on every other screen from two seconds after joining.
+     Safe on the same grounds as the three ids beside it: a slot id, merged
+     into state like they are (TRACK_STATE_EXCLUDED is only x/y), and
+     display-only at the far end -- the receiving renderer looks the id up in
+     its own gear catalog and draws nothing for one it does not know. */
+  'eqc', 'eql', 'eqs', 'eqst',
   // Display-only mirrors of server-owned numbers (distinct key names
   // from the real fields on purpose -- see the note above).
   'rpgLv', 'rpgHp', 'rpgMaxHp',

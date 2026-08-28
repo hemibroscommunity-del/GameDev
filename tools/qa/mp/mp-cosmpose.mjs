@@ -434,6 +434,40 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!pe && pe.greenMin >= 12, { ...pe, byPose: peerPose });
   /* Which pose, when it fails.  Printed always: a pose whose pattern is thin
      rather than absent is worth seeing before it becomes a failure. */
+  /* v2.3.2083b: WHICH SHEET THE ONLOOKER BAKED FOR HIM.  A peer's body bake
+     carries their drawings and their trouser/shoe PATTERN through
+     _remoteBodyArt -> bodySheetKey, and bodyArtSeg puts both in the key behind
+     a '#art' marker.  So a peer bake with no '#art' in its key means the
+     pattern never reached the canvas, and one with '#art' means it did and the
+     fault is further in.  Printed from B, the onlooker, because the question
+     is about what B drew. */
+  const _bk = await B.page.evaluate(() => (window.__btBodySheetKeys
+    ? window.__btBodySheetKeys() : null));
+  if (_bk) {
+    console.log(`      the onlooker's baked body sheets (${_bk.length}): `
+      + _bk.slice(0, 6).map((k) => k.split('|')[0] + '|' + (k.split('|')[1] || '')).join('  '));
+    console.log(`      ...carrying a drawing/pattern segment: `
+      + _bk.filter((k) => k.indexOf('#art') !== -1).length + ' of ' + _bk.length);
+  }
+  /* v2.3.2083b: IS HE EVEN WEARING THE SHIRT, ON THE ONLOOKER'S SCREEN?
+     The saved crops answer the green question before any arithmetic does: on
+     A's own screen he wears a green-and-white checked tee, and on B's screen
+     he is BARE-CHESTED.  The pattern is not failing to render -- the GARMENT
+     is not there to carry it.  So both sides of the shirt decision are
+     printed: what A draws for himself, and what B resolved for him. */
+  const _shirtA = await A.page.evaluate(() => {
+    const g = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+    return { store: g('bt-shirt'), gear: g('bt-gear-v3-shirt'), pat: g('bt-shirtpat') };
+  });
+  const _shirtB = await B.page.evaluate((id) => {
+    const S = window._gameState && window._gameState.current;
+    const o = (S && S.others && S.others[id]) || null;
+    if (!o) return null;
+    return { equipShirt: o.equip ? o.equip.shirt : undefined, legacyShirt: o.shirt || null,
+      shirtPattern: o.shirtPattern || null };
+  }, aId);
+  console.log(`      the shirt, both sides — A's own: ${JSON.stringify(_shirtA)}`
+    + `   B's view of A: ${JSON.stringify(_shirtB)}`);
   const _pp = Object.keys(peerPose).sort()
     .map((k) => `${k} n${peerPose[k].n} pink>=${peerPose[k].pinkMin} green ${peerPose[k].greenMin}-${peerPose[k].greenMax}`);
   if (_pp.length) console.log(`      the peer's view, pose by pose: ${_pp.join('  ')}`);

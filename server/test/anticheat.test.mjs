@@ -537,6 +537,8 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
       sp: 'stripe-v:3', pp: 'camo:6',   /* v2.3.1941: clothing patterns */
       fp: 'check:9',   /* v2.3.1944: shoes */
       hg: 'tall', fr: 'large',   /* v2.3.1953: height + frame */
+      eqc: 'steelplate', eql: 'steelgreaves', eqs: 'none',   /* v2.3.599: worn armour */
+      eqst: 'tshirt',   /* v2.3.2084: the under-shirt slot */
     },
   }));
 
@@ -570,6 +572,21 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
      list never reaches playerState.  Value safety is the client's: it maps `ec`
      through EYE_COLOR_CATALOG and answers null for anything unknown. */
   check('track: eye colour is relayed as a cosmetic (v2.3.1930)', psT.ec === 'ice', psT.ec);
+  /* ═══ v2.3.2084: EVERY EQUIPMENT SLOT, NOT THREE OF THE FOUR ═══
+     `eqst` was on JOIN_COSMETIC_KEYS from v2.3.756 and never on this gate, so
+     a peer's shirt arrived with the join frame and was dropped by the first
+     two-second relay -- the same shape as the v2.3.1939 drawing incident the
+     block above pins, and it survived far longer because the fallback that
+     covered for it (derive the garment from the legacy `st` style) LOOKED like
+     it worked.  It did not: the gear slot dresses every new player in a tshirt
+     and `st` is 'none' until somebody picks a style, so an ordinary player was
+     drawn bare-chested on every other screen.  Asserted as the whole SET, for
+     the same reason the drawings are: naming only the newest member is how the
+     next slot repeats it. */
+  check('track: every equipment slot is relayed, the shirt included (v2.3.2084)',
+    psT.eqc === 'steelplate' && psT.eql === 'steelgreaves'
+    && psT.eqs === 'none' && psT.eqst === 'tshirt',
+    { eqc: psT.eqc, eql: psT.eql, eqs: psT.eqs, eqst: psT.eqst });
   /* v2.3.1939: the drawn shirt rides the same allowlist.  Checked for FULL
      LENGTH, not just presence: the join path caps most cosmetics at 64 chars,
      and a truncated drawing is not a smaller drawing -- the client rejects any
