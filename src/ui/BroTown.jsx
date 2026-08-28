@@ -1,5 +1,6 @@
 ﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { shopBus } from './mobile/shopBus.js';   /* v2.3.2050: Shopkeeper Bro's window */
+import { uiBusyBus } from './mobile/uiBusyBus.js'; /* v2.3.2085: tell chrome outside this tree to stand aside */
 import { zonePlayerScale } from '@/data/zones.js'; /* v2.3.1574: the one copy of the vista perspective curve */
 import { ExtractionSwipeLayer } from './ExtractionSwipeLayer.jsx';
 /* v2.3.855: first UI-panel extraction — the info/online-count popup. */
@@ -2575,6 +2576,13 @@ export var BroTown = function BroTown(_ref0) {
     || showIntro || showWelcome || showMayorGreeting || showTourPrompt || showNameModal
     || cookMinigame);
   stateRef.current._uiBusy = _anyPanelOpen;
+  /* v2.3.2085: and out to the chrome mounted OUTSIDE this tree.  GameApp's
+     WorldChatFeed has no path to this React state (its own comment says so),
+     and its scrollable list was sitting over the inspect card's Trade button
+     -- see uiBusyBus for the whole story.  Published from the same
+     `_anyPanelOpen` this component already gates itself on, so there is one
+     definition of "busy" rather than two that drift. */
+  uiBusyBus.set(_anyPanelOpen);
   /* v2.3.1643: showChatLog, showClanWar and showArena USED TO LIVE HERE
      and were declared but never read — three dead useState pairs whose
      setters nothing called either. Removed. If you are looking for those
