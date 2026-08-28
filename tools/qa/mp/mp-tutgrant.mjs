@@ -139,6 +139,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
      "did the bag open" guard would only be a second way to say this. */
   rec.ok('the SWORD and SHIELD are DRAWN as bag tiles, not just held in the blob',
     drawn.stashTiles >= 2, drawn);
+
+  /* ═══ AND THE TILE HAS TO OPEN, AND SAY WHAT IT IS ═══
+     A tile is where the player's journey CONTINUES, not where it ends: the
+     name and the Equip button live in the popup a tap later (the tile itself
+     draws an <img> with an empty alt).  So "receiving the sword works" is only
+     answered by tapping it.  This is also the first point in the whole road
+     where the item's NAME is visible to a player at all, which is what they
+     would be looking for when they say nothing was received. */
+  await P.page.evaluate(() => {
+    const el = [...document.querySelectorAll('[data-tut="coach-gear"]')]
+      .find((e) => e.getBoundingClientRect().width > 0);
+    if (el) el.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+  });
+  await P.page.waitForTimeout(900);
+  const popup = await P.page.evaluate(() => {
+    const txt = (document.body.innerText || '').replace(/\s+/g, ' ');
+    return {
+      names: /Copper Great Sword|Pine Shield/i.test(txt),
+      equip: /\bEquip\b/i.test(txt),
+      text: txt.slice(0, 300),
+    };
+  });
+  console.log('    TILE POPUP: ' + JSON.stringify({ names: popup.names, equip: popup.equip }));
+  rec.ok('tapping the tile names the item the quest paid',
+    popup.names === true, { text: popup.text });
+  rec.ok('...and offers to equip it', popup.equip === true, { text: popup.text });
+  await P.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/tutgrant-popup.png' });
   await P.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/tutgrant-bag.png' });
   await P.page.evaluate(() => { try { window.__broDashPanelBus.open(null); } catch (e) {} });
   await P.page.waitForTimeout(600);
