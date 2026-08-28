@@ -159,17 +159,6 @@ export function artWithCells(s, cells, idx) {
 export const CANVASES = ['shirtFront', 'shirtBack', 'pants', 'tattoo', 'tattooFace', 'tattooArm', 'tattooHeadBack'];
 export const SHIRT_SIDES = ['front', 'back'];
 
-/* ═══ v2.3.2114: THE INK, AS A SET ═══
- * Owner: "The tattoos are not resetting through character reset and
- * randomize."
- *
- * DERIVED from CANVASES by prefix rather than written out, and that is the
- * whole point of putting it here: the tattoo canvases have grown twice already
- * (tattooFace and tattooArm in v2.3.1949, tattooHeadBack in v2.3.2043), and a
- * hand-kept copy of this list in the creator is a list that would have been
- * wrong both times — silently, because a reset that clears three of four
- * canvases looks like it worked until you turn the character round. */
-export const TATTOO_CANVASES = CANVASES.filter((id) => id.indexOf('tattoo') === 0);
 
 /** Which shirt drawing a facing shows. */
 export function sideForDir(dir) {

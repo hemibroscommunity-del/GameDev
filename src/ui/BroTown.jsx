@@ -190,7 +190,7 @@ import { HAT_COLOR_CATALOG, hatColorsFor, getHatColor, setHatColor } from '@/ren
 import { EYE_COLOR_CATALOG, getEyeColor, setEyeColor } from '@/rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
 import { HEIGHT_CATALOG, DEFAULT_HEIGHT, getBuildHeight, setBuildHeight, getBuildFrame, wireHeight, wireFrame } from '@/rendering/traits/buildCatalog.js'; /* v2.3.1953; v2.3.1996: frame locked to medium — no FRAME_CATALOG/setBuildFrame here */
 import { getShirtArt, getArt, artHasInk } from '@/rendering/traits/playerArt.js'; /* v2.3.1939; v2.3.1940 + pants/tattoo */
-import { clearTattooArt } from '@/rendering/traits/artOps.js';   /* v2.3.2114: Reset and Randomize clear the ink */
+import { clearAllArt } from '@/rendering/traits/artOps.js';   /* v2.3.2114/2115: Reset and Randomize clear the painted art */
 import { getPattern } from '@/rendering/traits/patternCatalog.js'; /* v2.3.1941 */
 import { FACIALHAIR_COLOR_CATALOG, getFacialHairColor, setFacialHairColor } from '@/rendering/traits/facialHairColorCatalog.js';
 import { SHIRT_CATALOG, getShirt, setShirt } from '@/rendering/traits/shirtCatalog.js';
@@ -2200,31 +2200,31 @@ export var BroTown = function BroTown(_ref0) {
    * leaves the character unchanged. That is how this goes subtly wrong, so the
    * pairs are kept literally side by side.
    *
-   * ═══ v2.3.2114: THE TATTOOS GO TOO ═══
+   * ═══ v2.3.2114: THE DRAWINGS GO TOO ═══
    * Owner: "The tattoos are not resetting through character reset and
-   * randomize."
+   * randomize", then "Yes make the shirt and pants reset too" (v2.3.2115).
    *
-   * They did not, and the paragraph that used to stand here is why: painted
-   * tattoos live in their own canvases behind the designer modal, not in this
-   * trait state, and the call was that silently wiping someone's drawing from
-   * a button labelled Reset would be worse than leaving it.
+   * They did not, and the paragraph that used to stand here is why: the
+   * painted drawings live in their own canvases behind the designer modal, not
+   * in this trait state, and the call was that silently wiping someone's
+   * drawing from a button labelled Reset would be worse than leaving it.
    *
    * The owner is right and that call was wrong, for a reason the button itself
    * gives: this Reset means "back to the bare default" (their words: "bald
    * shirtless character is what I wanted"), and a character that comes back
    * bald and shirtless still wearing a face tattoo has not been reset — it has
    * been half reset, which reads as a bug rather than as care.  Same for
-   * Randomize: a fresh roll of every other trait around a tattoo that never
-   * changes makes the tattoo look stuck.
+   * Randomize: a fresh roll of every other trait around a drawing that never
+   * changes makes the drawing look stuck.
    *
-   * The ink is cleared through artOps.clearTattooArt, which drops the SHAPES
-   * with the drawing rather than only the flat pixels — see its note.
-   *
-   * STILL NOT COVERED, and still stated rather than implied: the shirt and
-   * pants designs.  The owner named tattoos; the shirt goes to 'none' here
-   * anyway, so its drawing has nothing left to appear on. */
+   * EVERY painted canvas now — the four tattoos, both shirt sides and the
+   * trousers — through artOps.clearAllArt, which drops the SHAPES with the
+   * drawing rather than only the flat pixels.  See its note for why the set is
+   * the whole canvas list rather than a subset, and why the design slots
+   * (v2.3.1950) are deliberately left alone: a drawing saved to a slot
+   * survives this, which is what keeps a button that erases things honest. */
   var resetLook = function () {
-    clearTattooArt();   /* v2.3.2114 */
+    clearAllArt();   /* v2.3.2114 / v2.3.2115 */
     setSkin('default'); setSkinSel('default');
     setPants('default'); setPantsSel('default');
     setShoes('default'); setShoesSel('default');
@@ -2247,7 +2247,7 @@ export var BroTown = function BroTown(_ref0) {
        flair loop calls that four times, and clearing an already-empty canvas
        three more times is work nobody asked for.  This is also the only
        caller, so the button and the clear cannot drift apart. */
-    clearTattooArt();
+    clearAllArt();
     randomizeAppearance();
     var n = 0;
     var t = setInterval(function () { randomizeAppearance(); if (++n >= 3) clearInterval(t); }, 110);
