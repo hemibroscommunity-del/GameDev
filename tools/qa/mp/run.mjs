@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  potions: () => import('./mp-potions.mjs'), /* v2.3.2062: the mana + speed draughts */
   townhill: () => import('./mp-townhill.mjs'), /* v2.3.2061: the fountain + the house on the hill */
   shopkeeper: () => import('./mp-shopkeeper.mjs'), /* v2.3.2050: trading with Shopkeeper Bro, and the pile being public */
   facingside: () => import('./mp-facingside.mjs'), /* v2.3.2042: a face tattoo does not revolve to the back of a head */

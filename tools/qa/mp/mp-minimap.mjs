@@ -213,8 +213,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('the minimap reports which PROPS it marked (guard)', Array.isArray(pm), pm);
     rec.ok("the mayor's house is on the map -- it is placed on the map that ships",
       !!pm && pm.some((m) => m.id === 'mayor-house'), pm);
+    /* v2.3.2062: the general store is placed now (it is the potion shelf's
+       only door), so it is expected on the map; the other three shopfronts
+       still carry v16 coordinates and are not. */
+    rec.ok('the general store is on the map too -- the shop door is placed',
+      !!pm && pm.some((m) => m.id === 'general-store'), pm);
     rec.ok('...and the shopfronts still carrying v16 coordinates are not',
-      !!pm && !pm.some((m) => ['forge', 'bank', 'enchanter', 'general-store'].includes(m.id)),
+      !!pm && !pm.some((m) => ['forge', 'bank', 'enchanter'].includes(m.id)),
       { marks: pm, flag: 'TOWN_PROPS_ENABLED=false' });
     /* Still a real distinctness claim, at the size the bare town supports:
        the marks that ARE drawn must not have collapsed onto one glyph. */

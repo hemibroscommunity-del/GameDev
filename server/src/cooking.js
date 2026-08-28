@@ -13,7 +13,9 @@
  * only consumers (mirror-audit still pins them against the client
  * tables).  Original section comments preserved on each method. */
 
-import { FISH_TIERS, COOKING_RECIPES, SHOP_ITEMS } from './data.js';
+import { FISH_TIERS, COOKING_RECIPES, SHOP_ITEMS, manaSurgePerTick } from './data.js';
+import { PROG3 } from './prog3.js';        /* v2.3.2062: the special's mana cost */
+import { REGEN_TICKS } from './tick.js';   /* v2.3.2062: the regen cadence */
 
 export const cookingMethods = {
   // ═══ Eating cooked fish (server-authoritative HP heal) ═══
@@ -244,6 +246,12 @@ export const cookingMethods = {
       // 'all' buff sets all four sub-buffs.  Mirrors the client at
       // BroTown.jsx ~29766: damage + spd + hp + mana all extended.
       delete ps._buffs.damageMul;   /* v2.3.2058: see the note above */
+      /* v2.3.2062: and the same for the two magnitudes this recipe's OTHER
+         sub-buffs would otherwise inherit -- a meal must not carry a Swift
+         Draught's x1.5 or a Mana Draught's regen floor just because it happens
+         to set the same timers. Every writer states its own strength. */
+      delete ps._buffs.spdMul;
+      delete ps._buffs.manaFlat;
       ps._buffs.damage = endsAt;
       ps._buffs.spd = endsAt;
       ps._buffs.hp = endsAt;
@@ -322,9 +330,52 @@ export const cookingMethods = {
       if (typeof ps.stamina !== 'number') ps.stamina = ps.maxStamina;
       ps.stamina = Math.min(ps.maxStamina, ps.stamina + (item.power || 60));
     } else if (item.effect === 'mana') {
+      /* The old one-shot top-up. No live item uses it since v2.3.2062 turned
+         the Mana Draught into a surge, but the branch stays: `power` items are
+         a shape the table still supports and deleting the handler would make
+         re-adding one silently do nothing. */
       if (typeof ps.maxMana !== 'number') ps.maxMana = 100;
       if (typeof ps.mana !== 'number') ps.mana = ps.maxMana;
       ps.mana = Math.min(ps.maxMana, ps.mana + (item.power || 40));
+    } else if (item.effect === 'manaSurge') {
+      /* ═══ v2.3.2062: DRINK, THEN KEEP CASTING ═══
+         Owner: "refill at a quick rate so you can just do special attacks
+         constantly for 3 mins."
+
+         Two halves, and both are needed. The pool is FILLED on the drink, so
+         the first special lands immediately rather than after a wait; and the
+         timer arms a per-tick regen FLOOR in _tickPlayerRegen that outpaces
+         the cost of casting without pause (see MANA_SURGE in data.js).
+
+         _buffs.mana already existed as the cooked-food x1.3 regen multiplier
+         and is REUSED as the timer, with the potion's own magnitude carried
+         beside it -- the same pattern the Fury Tonic set at v2.3.2058, so a
+         meal and a potion can both buff mana without either one inheriting
+         the other's strength. */
+      if (typeof ps.maxMana !== 'number') ps.maxMana = 100;
+      if (!ps._buffs) ps._buffs = {};
+      ps.mana = ps.maxMana;
+      ps._buffs.manaFlat = manaSurgePerTick(PROG3.SPECIAL_MANA_COST, REGEN_TICKS * this.TICK_RATE);
+      const durMs = Math.max(1, Math.floor(item.duration || 180)) * 1000;
+      ps._buffs.mana = Date.now() + durMs;
+    } else if (item.effect === 'spdBuff') {
+      /* ═══ v2.3.2062: 1.5x FOR THREE MINUTES ═══
+         Owner: "a speed potion that lets you run 1.5x speed 3 mins."
+
+         _buffs.spd was ALREADY BEING SET by the cooked 'all' recipe and read
+         by nobody on the server -- the same dead-buff shape the Fury Tonic
+         had before v2.3.2058. The client read it at a hardcoded x1.15; the
+         magnitude now travels with the timer so this potion is its own thing.
+
+         THE ANTICHEAT HAS TO KNOW. movement.js rejects moves that imply more
+         than a fixed px/sec, and that bound was set against the fastest legal
+         build -- 1.5x puts a maxed character over it, so a player who bought
+         this would have been rubber-banded by the server for using the thing
+         the server sold them. The cap reads this same buff. */
+      if (!ps._buffs) ps._buffs = {};
+      ps._buffs.spdMul = Number(item.mult) > 0 ? Number(item.mult) : 1.5;
+      const durMs = Math.max(1, Math.floor(item.duration || 180)) * 1000;
+      ps._buffs.spd = Date.now() + durMs;
     } else if (item.effect === 'trap') {
       if (!ps.inventory) ps.inventory = {};
       ps.inventory.basic_trap = (ps.inventory.basic_trap || 0) + 1;

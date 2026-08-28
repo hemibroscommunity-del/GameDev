@@ -2942,7 +2942,23 @@ export class GameRoom {
         const buffMult = manaBuffActive ? 1.3 : 1.0;
         const mindMult = 1 + (ps.mind || 0) * 0.001;
         const rate = oocMana ? 0.018 : 0.007;
-        const manaHeal = Math.max(1, Math.ceil(ps.maxMana * rate * buffMult * mindMult));
+        /* ═══ v2.3.2062: THE MANA DRAUGHT'S FLOOR ═══
+           Owner: "refill at a quick rate so you can just do special attacks
+           constantly for 3 mins."
+
+           A FLOOR rather than another multiplier on the line below, because
+           the special's cost is FLAT (25) while every term here is a fraction
+           of maxMana -- so a multiplier that sustains a 100-mana build leaves
+           a 60-mana one still running dry, and the potion's promise would be
+           true only for some characters. See MANA_SURGE in data.js for the
+           arithmetic. Bounded like every other persisted magnitude: this is a
+           number out of a saved blob and must not become an infinite pool.
+           Math.max, so the ordinary regen still wins whenever it is larger --
+           a hub top-off is not slowed down by drinking. */
+        const _surge = Number(ps._buffs && ps._buffs.manaFlat);
+        const surgeFlat = (manaBuffActive && _surge >= 1 && _surge <= 200) ? _surge : 0;
+        const manaHeal = Math.max(surgeFlat,
+          Math.max(1, Math.ceil(ps.maxMana * rate * buffMult * mindMult)));
         const beforeMn = ps.mana;
         ps.mana = Math.min(ps.maxMana, ps.mana + manaHeal);
         if (ps.mana !== beforeMn) changed = true;

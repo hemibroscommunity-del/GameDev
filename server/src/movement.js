@@ -222,7 +222,30 @@ export const movementMethods = {
     if (!zoneChanged && !firstMove
         && typeof ps.x === 'number' && typeof ps.y === 'number') {
       const dt = Math.max(0.001, (_now - ps.lastMoveAt) / 1000);
-      const maxDist = 500 * dt + 80;
+      /* ═══ v2.3.2062: THE CAP WIDENS FOR A BUFF THE SERVER ITSELF SOLD ═══
+         Owner: "a speed potion that lets you run 1.5x speed 3 mins."
+
+         The 500 px/sec bound above was set against the fastest LEGITIMATE
+         stack, which the audit note puts at ~441 px/sec (240 agility x 1.5
+         swiftness x 1.15 food x 1.065 amulet). Multiply that by the Swift
+         Draught's 1.5 and it is ~662 -- comfortably over the bound. Shipping
+         the potion without this line would have meant the server rejecting
+         the moves of a player using the item the server charged them for:
+         they would run at normal speed and rubber-band, which reads as
+         terrible lag rather than as a broken potion.
+
+         RAISED FOR THIS PLAYER ONLY, and only while the buff the SERVER
+         stamped is live -- not a blanket raise of the constant. A client
+         cannot grant itself this: _buffs.spd is set in _handleShopPurchase
+         after coins are taken, and the magnitude is bounded on read exactly
+         as the damage and mana ones are, so a tampered save cannot widen it
+         either. When the timer lapses the cap returns to 500 on its own. */
+      let _spdCap = 1;
+      if (this._buffActive && this._buffActive(ps, 'spd')) {
+        const _m = Number(ps._buffs && ps._buffs.spdMul);
+        _spdCap = (_m >= 1 && _m <= 2) ? _m : 1.15;   /* 1.15 = the cooked-food buff */
+      }
+      const maxDist = 500 * _spdCap * dt + 80;
       const dx = msg.x - ps.x;
       const dy = msg.y - ps.y;
       if (dx * dx + dy * dy > maxDist * maxDist) {

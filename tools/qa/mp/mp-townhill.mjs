@@ -68,9 +68,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 1. ONLY THE RE-MEASURED PAIR IS BACK ── */
   rec.ok('the fountain and the house are drawn in town',
     ids.includes('fountain') && ids.includes('mayor-house'), ids);
-  rec.ok('...and the six props still carrying v16 coordinates are NOT, so '
-       + 'shipping these two did not strand four buildings off the map',
-    ids.length === 2, ids);
+  /* v2.3.2062: the general store joined them -- re-measured onto town_v17
+     because it is the only door the potion shelf opens from, and every such
+     door was switched off (see worldProps.js). The claim is unchanged in
+     substance: only props whose coordinates were measured against the map
+     that ships are drawn, and the rest stay off rather than standing at x
+     up to 2560 on a map 1664 wide. */
+  rec.ok('...and the props still carrying v16 coordinates are NOT, so shipping '
+       + 'these did not strand the rest off the map',
+    ids.length === 3 && ids.includes('general-store'), ids);
   const oob = list.filter((p) => p.x <= 0 || p.y <= 0 || p.x >= TOWN_W || p.y >= TOWN_H);
   rec.ok('every prop that IS drawn stands on the map that ships', oob.length === 0, oob);
 

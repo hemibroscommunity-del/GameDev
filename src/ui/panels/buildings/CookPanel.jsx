@@ -672,6 +672,7 @@ export function CookPanel(props) {
         if (recipe.buff === 'damage') { S._dmgBuffMul = 0; S._dmgBuff = Date.now() + dur; }
         if (recipe.buff === 'all') {
           S._dmgBuffMul = 0;   /* v2.3.2058: see above */
+          S._spdBuffMul = 0;   /* v2.3.2062: nor a Swift Draught's x1.5 */
           S._dmgBuff = Date.now() + dur;
           S._spdBuff = Date.now() + dur;
           S._hpBuff = Date.now() + dur;

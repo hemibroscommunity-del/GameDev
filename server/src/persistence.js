@@ -27,7 +27,11 @@ import { RPG_SCHEMA_VERSION, runRpgMigrations, healLifeSkills } from './migratio
    own strength instead of every reader hardcoding one constant. Map is
    magnitude key -> the timer key that owns it. Anything added here must also
    be handled by whatever reads it (see combat.js's bounded damageMul read). */
-const BUFF_MAGNITUDES = { damageMul: 'damage' };
+const BUFF_MAGNITUDES = {
+  damageMul: 'damage',   /* v2.3.2058: the Fury Tonic's x2 */
+  spdMul: 'spd',         /* v2.3.2062: the Swift Draught's x1.5 */
+  manaFlat: 'mana',      /* v2.3.2062: the Mana Draught's per-tick regen floor */
+};
 
 export const persistenceMethods = {
   async _loadRpg(playerId) {

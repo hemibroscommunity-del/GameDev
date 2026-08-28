@@ -332,6 +332,25 @@ import { barHeight, navSlotSize, columnsRowHeight, DASH_OVERLAP } from './mobile
 import { recolorEnabled } from '@/rendering/traits/recolorOptions.js';
 import { buildingPropNear } from '@/data/worldProps.js'; /* v2.3.1778: building doors */
 
+/* ═══ v2.3.2062: THE MANA DRAUGHT'S FLOOR, IN CLIENT FRAMES ═══
+ * The server holds the surge as a flat amount PER REGEN TICK (660 ms); this
+ * loop runs per FRAME. Converting here rather than shipping a second constant
+ * means the two cannot drift: the number itself is the server's, mirrored onto
+ * S._manaFlat by wsClient, and all this does is spread it across the frames in
+ * a tick. Returns 0 when the buff is not up or the server never sent one, so a
+ * cooked meal -- which sets the same timer with no flat amount -- falls through
+ * to the ordinary multiplier path untouched.
+ * Prediction only: the worker's player_state is the truth, and this exists so
+ * the bar climbs smoothly between echoes rather than stepping. */
+var MANA_SURGE_TICK_MS = 660;   /* server: REGEN_TICKS x TICK_RATE */
+var MANA_SURGE_FPS = 60;
+function manaSurgePerFrame(S, active) {
+  if (!active) return 0;
+  var flat = Number(S && S._manaFlat);
+  if (!(flat >= 1 && flat <= 200)) return 0;   /* same bound the server reads */
+  return flat / (MANA_SURGE_TICK_MS / 1000) / MANA_SURGE_FPS;
+}
+
 /* Expose all exports as globals for the pre-transpiled code.
    The original index.html had everything in one scope; this bridges the gap. */
 Object.assign(globalThis, DATA);
@@ -4334,8 +4353,17 @@ export var BroTown = function BroTown(_ref0) {
         /* v2.3.1154: + Swiftness channel (Endurance grid, cap +10%) --
            client-owned; stays under the worker's 500 px/s move bound. */
         var baseSpd = S.rpg ? calcMoveSpeed(S.rpg.agility || 0, (S.rpg.enduranceSpec || {}).swiftness || 0) / 5.0 * SPEED : SPEED;
-        /* Food buff speed bonus */
-        var spdBuff = S._spdBuff && Date.now() < S._spdBuff ? 1.15 : 1.0;
+        /* Food buff speed bonus.
+           v2.3.2062: 1.15 is the COOKED-FOOD magnitude and stays the fallback;
+           S._spdBuffMul carries a stronger buff's own number (the Swift
+           Draught's 1.5). Bounded 1..2 to match the server's read in
+           movement.js -- that bound is also what the anti-teleport cap is
+           sized against, so a client that ran faster than it would be
+           rejected and rubber-banded by the server. */
+        var _sbm = Number(S._spdBuffMul);
+        var spdBuff = S._spdBuff && Date.now() < S._spdBuff
+          ? ((_sbm >= 1 && _sbm <= 2) ? _sbm : 1.15)
+          : 1.0;
         /* Amulet move speed bonus */
         var amuletSpdMult = ((_S$rpg5 = S.rpg) === null || _S$rpg5 === void 0 || (_S$rpg5 = _S$rpg5._amuletBonus) === null || _S$rpg5 === void 0 ? void 0 : _S$rpg5.stat) === 'moveSpd' ? 1 + S.rpg._amuletBonus.value / 100 : 1.0;
         var swimMult = S._swimming ? SWIM_SPEED_MULT : 1.0;
@@ -5469,7 +5497,9 @@ export var BroTown = function BroTown(_ref0) {
           if (_R7.mana < _R7.maxMana && Date.now() - S.lastDamageTaken > 2000 && !S._serverMonsters) {
             var mMindMult = 1 + (_R7.mind || 0) * 0.001;
             var manaRegenMult = hasManaBuff ? 1.3 : 1.0;
-            _R7.mana = Math.min(_R7.maxMana, _R7.mana + _R7.maxMana * 0.0004 * mMindMult * manaRegenMult);
+            _R7.mana = Math.min(_R7.maxMana, _R7.mana
+              + Math.max(manaSurgePerFrame(S, hasManaBuff),
+                _R7.maxMana * 0.0004 * mMindMult * manaRegenMult));
           }
         } else if (S.rpg) {
           /* In-combat regen — §3.2: 0.3%/s HP, stamina regens always */
@@ -5486,7 +5516,13 @@ export var BroTown = function BroTown(_ref0) {
              v2.3.234 (Phase 4): Mind multiplies combat regen too. */
           if (_R8.mana < _R8.maxMana && !S._serverMonsters) {
             var _mMindMult8 = 1 + (_R8.mind || 0) * 0.001;
-            _R8.mana = Math.min(_R8.maxMana, _R8.mana + _R8.maxMana * 0.00017 * _mMindMult8);
+            /* v2.3.2062: the surge applies IN COMBAT too -- that is the whole
+               point of it, since casting specials nonstop is a thing you do
+               while fighting. */
+            var _hasMana8 = S._manaBuff && Date.now() < S._manaBuff;
+            _R8.mana = Math.min(_R8.maxMana, _R8.mana
+              + Math.max(manaSurgePerFrame(S, _hasMana8),
+                _R8.maxMana * 0.00017 * _mMindMult8));
           }
         }
 
@@ -9681,6 +9717,19 @@ export var BroTown = function BroTown(_ref0) {
         desc: _dmul2 >= 2 ? 'x' + (Math.round(_dmul2 * 100) / 100) : '+' + Math.round((_dmul2 - 1) * 100) + '%'
       });
     }
+    /* v2.3.2062: the Mana Draught had no chip at all, because until now it was
+       an instant top-up with nothing to count down. A three-minute buff the
+       HUD never mentions is one the player cannot tell is still running. */
+    if (S._manaBuff && Date.now() < S._manaBuff) {
+      var _rem6 = Math.ceil((S._manaBuff - Date.now()) / 1000);
+      effects.push({
+        icon: '\u{1F4A0}',
+        label: 'Mana',
+        color: '#4F8FDE',
+        time: _rem6 + 's',
+        desc: Number(S._manaFlat) > 0 ? 'Surge' : '+30%'
+      });
+    }
     if (S._regenBuff && Date.now() < S._regenBuff) {
       var _rem3 = Math.ceil((S._regenBuff - Date.now()) / 1000);
       effects.push({
@@ -9703,12 +9752,19 @@ export var BroTown = function BroTown(_ref0) {
     }
     if (S._spdBuff && Date.now() < S._spdBuff) {
       var _rem5 = Math.ceil((S._spdBuff - Date.now()) / 1000);
+      /* v2.3.2062: the chip said "+15%" for every speed buff, which became a
+         lie the moment the Swift Draught started multiplying by 1.5. Reads
+         the same magnitude the movement math reads, with the same bound and
+         the same cooked-food fallback. */
+      var _sbm5 = Number(S._spdBuffMul);
+      var _smul5 = (_sbm5 >= 1 && _sbm5 <= 2) ? _sbm5 : 1.15;
       effects.push({
         icon: '💨',
         label: 'Speed',
         color: '#D8A94D',
         time: _rem5 + 's',
-        desc: '+15%'
+        desc: _smul5 >= 1.5 ? 'x' + (Math.round(_smul5 * 100) / 100)
+          : '+' + Math.round((_smul5 - 1) * 100) + '%'
       });
     }
     if (effects.length === 0) return null;
@@ -10817,6 +10873,7 @@ export var BroTown = function BroTown(_ref0) {
         if (best.buff === 'damage') { S._dmgBuffMul = 0; S._dmgBuff = Date.now() + dur; }
         if (best.buff === 'all') {
           S._dmgBuffMul = 0;   /* v2.3.2058: see above */
+          S._spdBuffMul = 0;   /* v2.3.2062: nor a Swift Draught's x1.5 */
           S._dmgBuff = Date.now() + dur;
           S._spdBuff = Date.now() + dur;
           S._hpBuff = Date.now() + dur;

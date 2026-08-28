@@ -103,13 +103,16 @@ const RARE_GEM_THUMB        = `/icons/ui/cur-gem.webp${ITEMS_V}`; /* v2.3.1924 *
  *                   buff, so the art says what the item does without a word.
  *   manaShard    -> blue.
  *   staminaSalts -> gold.
- * The red and green bottles are in the folder and deliberately UNUSED: there
- * is no health potion and no antidote item in this game (the antidote lived
- * only in the retired town shop's list and was never a real key), and
- * inventing two consumables to justify art is a game-design change nobody
- * asked for. They are staged, not wired. */
+ * v2.3.2062: the GREEN bottle is wired now -- it is the Swift Draught (owner:
+ * "a speed potion that lets you run 1.5x speed 3 mins"). Its file is named
+ * antidote because that is what the sheet called it; the art is simply a green
+ * potion and there is still no antidote item in this game.
+ * The RED one stays staged and unused: there is no health potion, and
+ * inventing a consumable to justify art is a design change nobody asked for. */
 const POTION_THUMBS = {
   whetstone:    `/icons/items/potion-fury.webp${ITEMS_V}`,
+  /* v2.3.2062: the green bottle of the owner's set, unclaimed until now. */
+  swiftdraught: `/icons/items/potion-antidote.webp${ITEMS_V}`,
   manashard:    `/icons/items/potion-mana.webp${ITEMS_V}`,
   staminasalts: `/icons/items/potion-stamina.webp${ITEMS_V}`,
 };
@@ -172,8 +175,12 @@ export const thumbFor = (key) => {
  * is where anyone looking for the mismatch will find it explained. */
 export const ITEM_NAMES = Object.assign(Object.create(null), {
   whetstone: 'Fury Tonic',
+  swiftDraught: 'Swift Draught',   /* v2.3.2062 */
   /* v2.3.2055: the other two consumables read as keys in the bag otherwise
-     ('ManaShard', 'StaminaSalts' out of prettyName). */
+     ('ManaShard', 'StaminaSalts' out of prettyName).
+     v2.3.2062: the BAG has called it a Draught since v2.3.2055 while the
+     vendor's own shelf still said "Mana Shard" -- one item under two names,
+     one screen apart. The vendor label now matches this one. */
   manaShard: 'Mana Draught',
   staminaSalts: 'Stamina Salts',
 });
@@ -193,6 +200,7 @@ export const iconFor = (key) => {
      pattern three lines down would not match 'whetstone', so it is named
      here explicitly rather than by renaming the key. */
   if (k === 'whetstone')  return '🧪';
+  if (k === 'swiftdraught') return '🌿';   /* v2.3.2062 */
   if (k === 'antidote')   return '🍃';
   if (k === 'trap_basic') return '🪤';
   if (/sword/.test(k))   return '⚔';

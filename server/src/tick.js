@@ -15,6 +15,12 @@
  * Start/stop call sites (webSocketConnect first-join, webSocketClose
  * last-leave) stay in index.js untouched. */
 
+/* v2.3.2062: server ticks between regen passes. Exported because the Mana
+   Draught sizes its per-tick floor against this cadence (server/src/data.js
+   manaSurgePerTick), and a cadence that lives as a literal in one file and an
+   assumption in another drifts the first time someone tunes it. */
+export const REGEN_TICKS = 30;
+
 export const tickMethods = {
   /* v2.3.1913: RTT ping + AFK eviction, hoisted out of the tick loop
      (body unchanged apart from the close code below) so it can be
@@ -214,10 +220,14 @@ export const tickMethods = {
       // than a handful of parties.
       this._tickParties(Date.now());
 
-      // HP regen tick — every 30 server ticks (~670 ms at TICK_RATE=22).
+      // HP regen tick — every REGEN_TICKS server ticks (~660 ms at TICK_RATE=22).
+      // v2.3.2062: the interval is NAMED now because the Mana Draught's regen
+      // floor is derived from it (cooking.js) -- a per-tick amount computed
+      // against a cadence written as a bare 30 in one file and assumed in
+      // another is a drift waiting to happen.
       // Skip when no one needs healing to avoid wasted iteration.
       regenCounter++;
-      if (regenCounter >= 30) {
+      if (regenCounter >= REGEN_TICKS) {
         regenCounter = 0;
         this._tickPlayerRegen();
       }

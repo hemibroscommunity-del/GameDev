@@ -147,8 +147,31 @@ export const WORLD_PROPS = [
     action: 'enchant', label: 'ENCHANTER',
   },
   {
-    id: 'general-store', zone: 'town', mapV: 16, sprite: '/sprites/props/general-store.png',
-    x: 2440, y: 600, worldH: 300, blockW: 210, blockD: 95,
+    /* ═══ v2.3.2062: THE STORE COMES BACK, BECAUSE NOTHING ELSE SELLS A POTION ═══
+       Owner: "Make the mana potion refill at a quick rate..." and "do a speed
+       potion...". Building those turned up a bigger problem: THERE WAS NO WAY
+       TO BUY A POTION AT ALL.
+
+       The vendor's shelf is the only place any potion has ever been sold, and
+       it opens from a building door -- S.nearBuilding comes from
+       buildingPropNear, which only ever returns props carrying an `action`.
+       Every such prop was held back on v16 coordinates, so the door did not
+       exist, so the shelf was unreachable: the Fury Tonic made real at
+       v2.3.2056 has been unbuyable for its whole life, and two new potions
+       would have joined it. Shopkeeper Bro cannot cover this -- his stock is
+       the PUBLIC pile, seeded with cooked fish and otherwise filled by what
+       players sell him, and potions are not something players can sell.
+
+       So this is a RESTORATION, not a new design: same building, same panel,
+       same action, re-measured onto town_v17. Placed on the plaza's east
+       side (sampled 98.5% open cobble on a 70px disc), across the square from
+       the fountain and clear both of the spawn point and of Shopkeeper Bro's
+       patrol, so the two shops do not crowd each other.
+
+       worldH 190 rather than the old 300, to sit with the mayor's house
+       rather than tower over the town it is in. */
+    id: 'general-store', zone: 'town', mapV: 17, sprite: '/sprites/props/general-store.png',
+    x: 1250, y: 1100, worldH: 190, blockW: 138, blockD: 60,
     action: 'shop', label: 'GENERAL STORE',
   },
 ];

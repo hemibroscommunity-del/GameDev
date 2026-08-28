@@ -1250,6 +1250,12 @@ export function setupWebSocket(ctx) {
                 if (typeof _sb.regen === 'number') S._regenBuff = _sb.regen;
                 if (typeof _sb.resist === 'number') S._resistBuff = _sb.resist;
                 if (typeof _sb.spd === 'number') S._spdBuff = _sb.spd;
+                /* v2.3.2062: magnitudes travel with their timers, and are
+                   mirrored UNCONDITIONALLY so a cooked meal -- which sends
+                   neither -- clears a potion's leftover strength here exactly
+                   as it does on the server. Same rule as damageMul. */
+                S._spdBuffMul = typeof _sb.spdMul === 'number' ? _sb.spdMul : 0;
+                S._manaFlat = typeof _sb.manaFlat === 'number' ? _sb.manaFlat : 0;
                 if (typeof _sb.hp === 'number') S._hpBuff = _sb.hp;
                 if (typeof _sb.mana === 'number') S._manaBuff = _sb.mana;
               }
