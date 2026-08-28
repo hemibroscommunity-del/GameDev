@@ -1494,15 +1494,42 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      of the apparent volume.  If the owner wants it to SOUND 75% quieter,
      that is roughly -20 dB, i.e. another factor of ~2.5 on both numbers.
      SFX are deliberately untouched: the ask was the music. */
-  GLOBAL_MUSIC_VOL: 0.055,
+  /* v2.3.2079 (owner: "Make all the music tracks about 50% quieter at max
+     volume than it is now") — both halved again, together, for the same
+     reason v2.3.1590 moved them together: the session track and the zone
+     tracks keep their relationship to each other and to SFX.
+       GLOBAL_MUSIC_VOL  0.055   -> 0.0275
+       ZONE_MUSIC_VOL    0.06875 -> 0.034375
+     Applied to GAIN, which is how the previous ask was read too. Halving
+     gain is -6 dB; the rough rule is that -10 dB reads as "half as loud", so
+     this lands a little short of half APPARENT volume. If it still sits too
+     loud, another factor of ~1.6 on both numbers gets to a true perceptual
+     half. Cumulatively the music is now at 12.5% of the gain it shipped with
+     before v2.3.1590, about -18 dB.
+     There is no music slider and no mute: these two numbers ARE the maximum
+     volume, so this is a change to the ceiling and not to a default.
+     ZONE_AMBIENT_VOL is deliberately NOT halved — it is the wind-and-birds
+     layer that plays UNDER the score, not a music track, and cutting it with
+     the music would leave the ambience louder than the thing it sits beneath.
+     Say the word and it follows. */
+  GLOBAL_MUSIC_VOL: 0.0275,
   /* v2.3.1590: was a bare `var TARGET_VOL` inside startZoneAmbient, which
      made the one number the owner actually tunes invisible next to its
-     sibling above.  Promoted to a real constant; startZoneAmbient reads it. */
-  ZONE_MUSIC_VOL: 0.06875,
+     sibling above.  Promoted to a real constant; startZoneAmbient reads it.
+     v2.3.2079: 0.06875 -> 0.034375, halved with its sibling. */
+  ZONE_MUSIC_VOL: 0.034375,
   /* v2.3.1738: the per-zone AMBIENCE layer (ZONE_AMBIENT below).  Sits just
      under the zone score, because it plays UNDERNEATH it rather than instead
-     of it — wind you notice but do not listen to. */
-  ZONE_AMBIENT_VOL: 0.05,
+     of it — wind you notice but do not listen to.
+     v2.3.2079: 0.05 -> 0.025, following the music down. This is NOT what the
+     owner asked for — the ask was the music — and it is here because leaving
+     it would have inverted the rule the line above states: at 0.05 against a
+     halved zone score of 0.034375 the wind would have become the LOUDEST
+     layer in the zone, in front of the thing it is meant to sit beneath.
+     Held at the same 73% of the score it has always been, so the mix is the
+     one the owner has been listening to, only quieter. Put it back to 0.05
+     if the wind should keep its absolute level. */
+  ZONE_AMBIENT_VOL: 0.025,
   /* v2.3.1582: the decoded-buffer cache is BUDGETED, not unbounded.
      An AudioBuffer is raw float32 PCM, so a 2 MB mp3 is ~50 MB of RAM.
      Measured in Chromium at 44.1 kHz stereo: login-theme 34.4 MB, village

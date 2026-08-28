@@ -662,6 +662,44 @@ function sanitize(src, { jsxText = false } = {}) {
   } else add('PASS', 'qa-handles', 'every window.__ handle a QA scenario reads is defined by the client or by that scenario');
 }
 
+/* ---- 8d. audio-mix (FAIL) -------------------------------------------- */
+/* v2.3.2079: the ambience plays UNDERNEATH the score, and that is a number
+ * relationship, not a comment.
+ *
+ * ZONE_AMBIENT_VOL is documented as sitting "just under the zone score,
+ * because it plays UNDERNEATH it rather than instead of it — wind you notice
+ * but do not listen to". When the owner asked for the music to be halved
+ * (v2.3.2079) the two music constants moved and the ambience did not, which
+ * would have left the wind as the LOUDEST layer in the zone, in front of the
+ * thing it is meant to sit beneath. Caught by reading the file; nothing would
+ * have caught it in play except an owner wondering why the wind got louder.
+ *
+ * Both music volumes are the CEILING — there is no slider and no mute — so a
+ * tuning pass touches exactly these three numbers and this is where they can
+ * disagree. */
+{
+  const rel = 'src/data/gameDisplay.js';
+  const num = (k, t) => {
+    const m = new RegExp('\\b' + k + ':\\s*([0-9.]+)').exec(t);
+    return m ? +m[1] : null;
+  };
+  let t = '';
+  try { t = read(rel); } catch { t = ''; }
+  const zone = num('ZONE_MUSIC_VOL', t);
+  const amb = num('ZONE_AMBIENT_VOL', t);
+  const glob = num('GLOBAL_MUSIC_VOL', t);
+  if (zone == null || amb == null || glob == null) {
+    add('WARN', 'audio-mix', `could not read the three volume constants out of ${rel} — check the shapes`);
+  } else if (amb >= zone) {
+    add('FAIL', 'audio-mix', `ZONE_AMBIENT_VOL (${amb}) is not under ZONE_MUSIC_VOL (${zone}) — `
+      + 'the wind would play in FRONT of the score it is meant to sit beneath '
+      + '(see the note in gameDisplay.js)');
+  } else {
+    add('PASS', 'audio-mix', `the ambience sits under the score `
+      + `(${amb} < ${zone}; session track ${glob})`);
+  }
+}
+
 /* ---- 7. server tests ----------------------------------------------- */
 if (changedServer.length) {
   const r = spawnSync('npm', ['test'], { cwd: join(root, 'server'), encoding: 'utf8', timeout: 5 * 60 * 1000, maxBuffer: 64 * 1024 * 1024 });
