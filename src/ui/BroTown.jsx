@@ -173,6 +173,7 @@ export function questMsgMs(kind) {
    stomped the fake self-heal.  The eatBus handler now mirrors the
    CookPanel/InventoryPanel eat path (calcDisplayHeal prediction +
    eat_request). */
+import { unequipWeaponSlot } from './mobile/dash/equipActions.js'; /* v2.3.2123: on the autotest bridge below */
 import { firemakingBus } from './mobile/firemakingBus.js';
 import { eatBus } from './mobile/eatBus.js';
 import { blockRingBus } from './mobile/blockRingBus.js';
@@ -867,6 +868,13 @@ export var BroTown = function BroTown(_ref0) {
        bare-headed run makes the assertion pass by measuring nothing.  Same
        posture as createMonster above: a hook that mutates the world, so a
        test can set up the case it is actually about. */
+    /* v2.3.2123: the weapon unequip flow, on the same surface and for the
+       same reason.  It is the path the Equipped pane's button takes, it now
+       REFUSES at a full bag (equipActions.js), and "the client refuses what
+       the worker refuses" is a claim only reachable by calling the real
+       function — a scenario that reimplemented the rule would be asserting
+       against its own copy of it. */
+    unequipWeaponSlot: unequipWeaponSlot,
     setHeadwear: setHeadwear,
     setFacialHair: setFacialHair,
     HEADWEAR_CATALOG: HEADWEAR_CATALOG,
@@ -5360,7 +5368,23 @@ export var BroTown = function BroTown(_ref0) {
                     if (dropPower >= curPower) {
                       if (current && current.name) {
                         if (!S.rpg.weaponStash) S.rpg.weaponStash = [];
-                        if (S.rpg.weaponStash.length < WEAPON_STASH_MAX) S.rpg.weaponStash.push(_objectSpread({}, current));
+                        /* ═══ v2.3.2123: THE ONE IT REPLACES IS SOLD, NOT BINNED ═══
+                           The push was guarded and the assignment below was
+                           not, so a pet upgrade at a full stash deleted the
+                           weapon you were holding.  The WORSE-drop branch
+                           immediately below has always auto-sold at the cap
+                           ("dropping value on the floor is worse than a forced
+                           sale", index.js) -- this branch is the same trade
+                           seen from the other side, and it simply never got
+                           the same treatment.  So: keep the upgrade, sell the
+                           old one, say so.  See Alix's "just lost my magic
+                           stick" and mp-weaponloss. */
+                        if (S.rpg.weaponStash.length < WEAPON_STASH_MAX) {
+                          S.rpg.weaponStash.push(_objectSpread({}, current));
+                        } else {
+                          S.rpg.coins += Math.ceil(curPower * 0.5);
+                          pushDmgPopup(S, S._petX, S._petY - 30, 'BAG FULL -> sold ' + current.name, '#D8A94D');
+                        }
                       }
                       if (isRanged) S.rpg.rangedWeapon = drop;else S.rpg.weapon = drop;
                       pushDmgPopup(S, S._petX, S._petY - 15, 'PET -> ' + drop.name, loot.tierColor || '#fff');

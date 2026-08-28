@@ -685,7 +685,23 @@ export const QUEST_REWARDS = {
     };
 
 export const BLACKSMITH_TIERS = {
-      wood:         {minLvl:1, slots:1, oreName:'wood',          oreCost:3,  goldCost:8,    tierMult:1.00, statReq:0  },
+      /* ═══ v2.3.2123: THE FIRST MELEE TIER IS MADE OF WOOD, AND NOW SAYS SO ═══
+         Demo feedback (Alix, with a screenshot circling both halves): the
+         Greatsword's Wood tier read "Wood 0/3" while four pine logs sat in the
+         bag.  The resource key is built as `ore_<oreName>_ore`, so this row
+         asked for `ore_wood_ore` -- a key nothing in the game has ever
+         produced.  Mining yields ore_copper_ore / ore_iron_ore and trees yield
+         wood_pine_log (gathering.js _harvestInvKey), so the ENTIRE first tier
+         of melee crafting was unbuildable: the one tier a level-1 player can
+         reach, and the first thing a new player tries.
+         This is the same bug v2.3.1763 found and fixed one table down --
+         WOODWORKING_TIERS' first tier asked for `wood_wood`, in that fix's own
+         words "a key nothing in the game has ever produced".  It was fixed for
+         staves and bows and left live here.
+         `wood:` is the woodworking table's own field, and the key resolvers on
+         both sides prefer it, so one row change moves every consumer at once.
+         oreName stays as the LABEL ("Wood 3/3"), which is what it reads as. */
+      wood:         {minLvl:1, slots:1, oreName:'wood', wood:'pine_log', oreCost:3,  goldCost:8,    tierMult:1.00, statReq:0  },
       copper:       {minLvl:6, slots:1, oreName:'copper',        oreCost:3,  goldCost:20,   tierMult:1.12, statReq:10 },
       iron:         {minLvl:11,slots:1, oreName:'iron',          oreCost:4,  goldCost:35,   tierMult:1.25, statReq:20 },
       steel:        {minLvl:16,slots:1, oreName:'steel',         oreCost:5,  goldCost:55,   tierMult:1.40, statReq:30 },

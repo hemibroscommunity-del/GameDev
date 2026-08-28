@@ -372,7 +372,11 @@ export const gearMethods = {
     // Coin + resource validation.
     if ((ps.coins || 0) < tier.goldCost) return;
     if (!ps.inventory) ps.inventory = {};
-    const resourceKey = wantWw ? ('wood_' + tier.wood) : ('ore_' + tier.oreName + '_ore');
+    /* v2.3.2123: `tier.wood` decides, not `wantWw`.  The blacksmith's first
+       tier is a WOODEN weapon and carries a `wood` field now (see
+       BLACKSMITH_TIERS.wood) -- keying off which BENCH you are at sent it
+       looking for `ore_wood_ore`, which nothing produces. */
+    const resourceKey = tier.wood ? ('wood_' + tier.wood) : ('ore_' + tier.oreName + '_ore');
     const have = ps.inventory[resourceKey] || 0;
     const cost = wantWw ? tier.woodCost : tier.oreCost;
     if (have < cost) return;

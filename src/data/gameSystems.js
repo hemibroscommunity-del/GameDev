@@ -81,6 +81,13 @@ export const BLACKSMITH_TIERS = {
     label: 'Wood',
     slots: 1,
     oreName: 'wood',
+    /* v2.3.2123: mirrors server/src/data.js BLACKSMITH_TIERS.wood — the first
+       melee tier is a WOODEN weapon and consumes wood_pine_log, the log the
+       first tree drops.  Without this the key resolves to `ore_wood_ore`,
+       which nothing produces, and the tier reads "Wood 0/3" with a bag full of
+       logs (Alix's demo screenshot).  Same bug v2.3.1763 fixed for the
+       woodworking bench and left live here. */
+    wood: 'pine_log',
     oreCost: 3,
     goldCost: 8,
     tierMult: 1.00,

@@ -516,15 +516,69 @@ export function QuestCoach(props) {
         border: '1px solid rgba(216,170,88,.45)',
         borderRadius: 12,
         padding: '7px 10px 8px',
+        /* v2.3.2123: the dismiss X below is absolutely positioned against
+           this card, so the card has to be its containing block -- without
+           this it anchors to the fixed overlay and lands in the screen's
+           corner instead of the card's. */
+        position: 'absolute',
         boxShadow: '0 10px 24px rgba(3,8,10,.45)',
         pointerEvents: 'none',
         fontFamily: 'Source Sans 3,sans-serif',
       },
     },
+      /* ═══ v2.3.2123: A WAY OUT OF THE LESSON ═══
+         Demo feedback, three reviewers.  Excalibur: the tips and the chat
+         "just won't go away no matter what I do."  Tee: "I suggest adding a
+         collapse option for the chat screen and tips, so they don't take up
+         the entire screen ... It is obstructing the view of the game", with
+         the shield card circled.  Alix: "The message above the attack stick
+         mask the screen and not go down easily."
+
+         The header of this file says a lesson has "nothing to dismiss" and
+         ends by WATCHING GAME STATE, which is the right instinct and was too
+         literal: the block lesson ends only when you double-tap, hold, and
+         turn all the way around for two seconds.  A player who cannot make
+         that gesture -- or does not want to right now -- has no way to put the
+         card down, and it is parked over the world until they manage it.
+
+         So: one X, and only the X is interactive.  The overlay, the ring and
+         the card stay pointerEvents:'none', so the "never blocks" property the
+         header describes is intact everywhere except a 22px target that exists
+         to be pressed.  Dismissing marks the lesson done in the same
+         localStorage record the gesture would have -- per browser, the grain
+         the file already chose -- because a card you have explicitly put down
+         and which returns on the next zone change is the same complaint
+         again. */
+      React.createElement('button', {
+        'data-coach-dismiss': view.id,
+        onPointerUp: function (e) {
+          e.stopPropagation();
+          try {
+            const d = doneRef.current;
+            d[view.id] = true;
+            saveDone(d);
+          } catch (_e) { /* the card must still close */ }
+          viewRef.current = null;
+          setView(null);
+        },
+        'aria-label': 'Dismiss tip',
+        style: {
+          position: 'absolute', top: 2, right: 2,
+          width: 22, height: 22, lineHeight: '20px', textAlign: 'center',
+          padding: 0, borderRadius: 8,
+          background: 'transparent', border: 0,
+          color: 'rgba(244,240,231,.55)', fontSize: 15, fontWeight: 700,
+          fontFamily: 'inherit',
+          pointerEvents: 'auto',   /* the ONE thing here that takes a touch */
+          WebkitTapHighlightColor: 'transparent',
+        },
+      }, '×'),
       React.createElement('div', {
         style: {
           fontSize: 10, fontWeight: 800, letterSpacing: '.1em',
           textTransform: 'uppercase', color: BRASS, marginBottom: 2,
+          /* room for the X, so a long label cannot run under it */
+          paddingRight: 20,
         },
       }, view.label),
       React.createElement('div', {
