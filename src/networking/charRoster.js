@@ -168,7 +168,31 @@ function _json(k) { try { return JSON.parse(_ls(k)); } catch (e) { return null; 
 export function readRoster() {
   const stored = _raw();
   const shared = _shared();
-  if (stored) {
+  /* ═══ v2.3.2112: AN EMPTY LIST IS NOT AN ANSWER ═══
+   * Owner: "I've been able to continue playing characters from earlier builds
+   * before.  The main site is always Brotown.net.  I think all characters are
+   * in local storage so can't they be retrieved from there?"
+   *
+   * They can, and they were not.  `stored` used to be trusted whenever it
+   * PARSED — and an empty array parses.  So the very first read on a device
+   * whose `bt_player` had not landed yet (a Login-Key sign-in, whose reload
+   * lands before anything is played; the boot check's ensureChar; the login
+   * screen's own roster count) seeded nothing, wrote `{"v":1,"list":[]}`, and
+   * that empty list became the permanent answer.  The character was never
+   * lost — `bt_passphrase` still names it and the boot check still walks
+   * straight into it, which is why continuing kept working — but Continue's
+   * list stayed empty forever, because the one road that could have built it
+   * had already been marked done.  Reproduced in
+   * tools/qa/roster-mirror.test.mjs.
+   *
+   * So only a NON-EMPTY list is an answer; an empty one falls through and
+   * seeds again.  The "already migrated" flag was there to stop a player who
+   * deleted every character being handed them back on the next read — and
+   * that job now belongs to the tombstones (v2.3.2110), which say which
+   * phrases were deliberately forgotten and are honoured by both roads below.
+   * A flag that also swallowed the never-migrated case was answering two
+   * questions with one bit. */
+  if (stored && stored.length) {
     /* ═══ v2.3.2110: AN ESTABLISHED ORIGIN STILL LISTENS TO THE MIRROR ═══
        The restore below only fires on an origin that has never had a roster.
        That covers the reported case (a fresh build's hostname) but not its
@@ -228,10 +252,28 @@ export function readRoster() {
   const prev = _ls('bt_passphrase_prev');
   const player = _json('bt_player');
   const rpg = _json('bt_rpg');
-  if (cur && player && typeof player.name === 'string' && player.name.trim()) {
+  const dead0 = Object.create(null);
+  if (shared) shared.tomb.forEach(function (p) { dead0[p] = 1; });
+  const named = !!(player && typeof player.name === 'string' && player.name.trim());
+  if (cur && named && !dead0[cur]) {
     seeded.push(_entry(cur, Date.now(), { name: player.name.trim(), level: (rpg && rpg.level) || 0 }));
+  } else if (cur && !dead0[cur] && rpg && rpg.power !== undefined) {
+    /* ═══ v2.3.2112: PLAYED, BUT NOT LABELLED ═══
+       `bt_player` is the evidence this seed asks for, and it is the right
+       question — a key alone is minted silently on every first boot and
+       vouches for nothing.  But it is not the ONLY evidence: `bt_rpg` is a
+       character's saved progress, written all over the game, and a device
+       holding one has unmistakably played.  Seeded PROVISIONALLY because it
+       carries no name, which is exactly the row the picker already knows how
+       to finish: it asks the worker once, keeps the row with the name it gets
+       back, and drops it if there is no character behind the key.  Without
+       this, a device whose `bt_player` was missing at the wrong moment had no
+       road back into the list at all. */
+    const e = _entry(cur, 1, { level: rpg.level || 0 });
+    e.provisional = true;
+    seeded.push(e);
   }
-  if (prev && prev !== cur) {
+  if (prev && prev !== cur && !dead0[prev]) {
     const e = _entry(prev, 1);
     e.provisional = true;
     seeded.push(e);

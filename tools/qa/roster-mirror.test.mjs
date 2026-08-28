@@ -200,5 +200,51 @@ R.rememberChar('solar-thunder-ultra-viper-4', { name: 'Kiwi', level: 2 });
 origin('someone-else.pages.dev', true);
 ok(R.readRoster().length === 0, 'another pages.dev project sees nothing');
 
+/* ── 12. v2.3.2112: an empty list must not become the permanent answer ──
+   The bug the owner found: "I think all characters are in local storage so
+   can't they be retrieved from there?"  They could not.  The first read on a
+   device whose bt_player had not landed yet wrote {"v":1,"list":[]}, and every
+   later read trusted it — so the key sitting right there in bt_passphrase was
+   never turned into a row and Continue stayed empty for good. */
+COOKIES = [];
+origin('brotown.net', true);
+globalThis.document = { get cookie() { return jarStr(); }, set cookie(v) { setCookie(v); } };
+localStorage.setItem('bt_passphrase', 'alpha-blaze-coral-drift-1');
+ok(R.readRoster().length === 0, 'a key with no evidence of play seeds nothing (guard)');
+ok(localStorage.getItem('bt_chars') === '{"v":1,"list":[]}', 'and an empty list was written (guard)');
+localStorage.setItem('bt_player', JSON.stringify({ name: 'Hemi' }));
+localStorage.setItem('bt_rpg', JSON.stringify({ level: 7, power: 1 }));
+const healed = R.readRoster();
+ok(healed.length === 1 && healed[0].name === 'Hemi' && healed[0].level === 7,
+   'the empty list re-seeds once the evidence arrives (got ' + JSON.stringify(healed.map(e => e.name)) + ')');
+
+/* ...and played-but-unlabelled still gets a row, provisionally, for the picker
+   to finish against the worker. */
+COOKIES = [];   /* the mirror would legitimately restore Hemi from above */
+origin('brotown.net', true);
+localStorage.setItem('bt_passphrase', 'ember-frost-grove-haven-2');
+localStorage.setItem('bt_rpg', JSON.stringify({ level: 5, power: 1 }));
+const unlabelled = R.readRoster();
+ok(unlabelled.length === 1 && unlabelled[0].provisional === true && unlabelled[0].level === 5,
+   'bt_rpg alone seeds a provisional row (got ' + JSON.stringify(unlabelled) + ')');
+
+/* A key with NOTHING behind it still seeds nothing — a phone that has never
+   played must not be offered a character that does not exist. */
+origin('brotown.net', true);
+COOKIES = [];
+localStorage.setItem('bt_passphrase', 'karma-lunar-mango-nexus-3');
+ok(R.readRoster().length === 0, 'a bare minted key is still never offered as a character');
+
+/* And a deliberate delete is NOT undone by the re-seed: that is what the
+   tombstones are for, now that an empty list no longer means "done". */
+COOKIES = [];
+origin('brotown.net', true);
+localStorage.setItem('bt_passphrase', 'solar-thunder-ultra-viper-4');
+localStorage.setItem('bt_player', JSON.stringify({ name: 'Gone' }));
+R.readRoster();
+R.forgetChar('solar-thunder-ultra-viper-4');
+localStorage.setItem('bt_passphrase', 'solar-thunder-ultra-viper-4');   /* as if it lingered */
+ok(R.readRoster().length === 0, 'a forgotten phrase is not re-seeded by the empty-list road');
+
 console.log(fails ? '\n' + fails + ' FAILED' : '\nall passed');
 process.exit(fails ? 1 : 0);

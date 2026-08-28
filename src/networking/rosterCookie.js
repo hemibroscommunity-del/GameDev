@@ -98,12 +98,20 @@ function _candidates() {
   return out;
 }
 
-let _probed = false;
+/* Memoized on the HOSTNAME, not on a bare "have we probed" flag: the answer is
+   a property of the host, so caching it under the host is what makes the cache
+   correct rather than merely fast.  A page never changes hostname under itself,
+   but a test harness walking a device across origins does — and a stale domain
+   silently makes every write a no-op, which reads exactly like the feature not
+   working. */
+let _probedHost = null;
 let _domain = null;
 
 function _domainFor() {
-  if (_probed) return _domain;
-  _probed = true;
+  let host = '';
+  try { host = location.hostname || ''; } catch (e) { host = ''; }
+  if (_probedHost === host) return _domain;
+  _probedHost = host;
   _domain = null;
   const cands = _candidates();
   for (let i = 0; i < cands.length; i++) {

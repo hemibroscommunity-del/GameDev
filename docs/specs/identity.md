@@ -151,6 +151,46 @@ restore from.
   fresh `localStorage` per origin, one shared cookie jar that enforces
   the public-suffix and host-scope rules.
 
+## The empty-list bug (v2.3.2112)
+
+Owner: *"I've been able to continue playing characters from earlier
+builds before. The main site is always Brotown.net. I think all
+characters are in local storage so can't they be retrieved from there?"*
+
+They can, and they were not. `readRoster`'s migration treated the stored
+list as authoritative whenever it **parsed** — and an empty array parses.
+So the first read on a device whose `bt_player` had not landed yet
+(a Login-Key sign-in, whose reload lands before anything is played; the
+boot check's `ensureChar`; the login screen's own roster count) seeded
+nothing, wrote `{"v":1,"list":[]}`, and every later read trusted it. The
+character was never lost — `bt_passphrase` still named it and the boot
+check still walked straight into it, which is why *continuing* kept
+working — but Continue's list stayed empty for good.
+
+- Only a **non-empty** stored list is an answer now; an empty one falls
+  through and seeds again. The "already migrated" flag existed to stop a
+  player who deleted everything being handed it back, and that job now
+  belongs to the **tombstones** (v2.3.2110), which both seed roads
+  honour. One bit was answering two questions.
+- Evidence for seeding the active key widens: `bt_player` with a name
+  gives a labelled row as before; failing that, a `bt_rpg` blob (saved
+  progress — unmistakable evidence of play) gives a **provisional** row,
+  which `CharacterPicker` finishes against the worker and drops if there
+  is no character behind the key. A bare minted key with neither still
+  seeds nothing.
+- `rosterCookie._domainFor` memoizes on the **hostname**, not on a bare
+  "probed" flag — a stale domain makes every write a silent no-op.
+- Regression cases in `tools/qa/roster-mirror.test.mjs`.
+
+**Scope, stated plainly**: before the roster shipped (v2.3.1923) a device
+held at most **two** passphrases — `bt_passphrase` and one spare in
+`bt_passphrase_prev`. So "all characters are in local storage" was never
+true for characters made before that; at most two per device can be
+recovered this way, and the rest were overwritten. And on iOS Safari,
+ITP evicts all script-writable storage (localStorage **and** JS-set
+cookies) after ~7 days without a visit — which no client-side store can
+survive. The Login Key remains the only recovery across those two gaps.
+
 ## The list is the door (v2.3.2111)
 
 Owner: *"Can you actually provide a list of characters like you did
