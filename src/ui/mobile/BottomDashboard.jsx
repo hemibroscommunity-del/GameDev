@@ -57,6 +57,7 @@ import { QuestDetailPanel }   from './dash/QuestDetailPanel.jsx'; /* v2.3.1298 *
 import { T2Panel, requestT2Category } from './dash/T2Panel.jsx';
 import { SpendPointConfirm }   from './dash/SpendPointConfirm.jsx';
 import { playVw, playVh } from './playViewport.js';
+import { dashMinBus } from './dashMinBus.js'; /* v2.3.2119: fold the band to the identity row */
 
 // Bottom-of-screen dashboard.  Replaces the radial UtilityWheel.
 // Opening a destination grows the band into a sheet while the ribbon
@@ -539,6 +540,11 @@ export const BottomDashboard = () => {
   const [, force] = useState(0);
   const [tooltip, setTooltip] = useState('');
   const dashRef = useRef(null);
+  /* v2.3.2119: folded = columns row gone, identity row (and this component)
+     still here.  Initialised from the bus — the preference is persisted and
+     this component remounts on reconnect (the v2.3.2085 lesson). */
+  const [dashMin, setDashMin] = useState(() => dashMinBus.min);
+  useEffect(() => dashMinBus.subscribe(setDashMin), []);
   /* v2.3.1025: the BUILD/stats column rect -- the loadout equip picker docks
      over it (to the right of the loadout cells) so switching categories never
      moves the menu or covers the loadout, and it can't exceed the dashboard. */
@@ -755,6 +761,14 @@ export const BottomDashboard = () => {
   const rootId = dashboardPanelBus.root();
   const activeId = stack.length ? stack[stack.length - 1] : null;
   const active = mode === 'expanded' ? (PANELS[activeId] || PANELS[rootId] || PANELS.bag) : null;
+  /* v2.3.2119: OPENING A DESTINATION UNFOLDS.  Tapping Bag from a folded
+     band means "I want the UI back", and the expanded sheet's own layout
+     assumes the resting geometry.  Restoring here (not in the nav handler)
+     catches every way a panel can open — nav tap, drill, a panel another
+     system pushes. */
+  useEffect(() => {
+    if (mode === 'expanded' && dashMinBus.min) dashMinBus.set(false);
+  }, [mode]);
 
   /* v2.3.1642: litId and the badge counts were computed inside the
      retired ribbon's render IIFE.  The nav group needs them one level up
@@ -1055,6 +1069,24 @@ export const BottomDashboard = () => {
           }}>{active ? active.title : ''}</div>
         )}
         <IdentityStrip band />
+        {/* v2.3.2119 (owner: "make it possible to minimize the entire
+            dashboard with a button on that empty space next to gold"): the
+            FOLD chip, in the leftover the strip flexes into — between the
+            readouts and the nav group, which is the empty space the owner
+            pointed at.  Same .bt-chisel chip recipe as the drill back-chip
+            so the row stays one family of controls.  Rendered only at rest:
+            an expanded sheet already unfolds the band (the effect above),
+            and a fold control inside an open panel would be a lie. */}
+        {mode === 'bar' && (
+          <button
+            onPointerUp={(e) => { e.stopPropagation(); dashMinBus.set(!dashMinBus.min); }}
+            className="bt-chisel bt-chisel--chip"
+            aria-label={dashMin ? 'Expand dashboard' : 'Minimize dashboard'}
+            aria-expanded={!dashMin}
+            data-dash-fold={dashMin ? 'min' : 'open'}
+            style={{ ...chipStyle, fontSize: 15 }}
+          >{dashMin ? '▴' : '▾'}</button>
+        )}
         {/* Track 3, right-aligned.  The group is WIDER than the narrow
             track (132 vs 90 at 390w) and deliberately overflows it to the
             LEFT: track 2 holds only the DPS anchor box, which is pinned to
@@ -1083,7 +1115,7 @@ export const BottomDashboard = () => {
           unmounts.  Hidden while a panel is expanded — the open
           destination already shows all of this at full size, and the
           panel keeps its height. */}
-      {mode !== 'expanded' && (
+      {mode !== 'expanded' && !dashMin && (
         <div style={{
           position: 'absolute',
           left: 0, right: 0,
@@ -1092,7 +1124,10 @@ export const BottomDashboard = () => {
           boxSizing: 'border-box',
           /* v2.3.1635: its OWN height, not calc(--dash-h - --nav-h).  With
              the identity row added that subtraction became "middle row +
-             identity row" and would have stretched this over both. */
+             identity row" and would have stretched this over both.
+             v2.3.2119: gated on the fold too — --cols-h is stamped 0 while
+             folded, and a row rendered into 0px would still mount all three
+             panels to show nothing. */
           height: 'var(--cols-h, 93px)',
         }}>
           <DashColumns R={(window._gameState && window._gameState.current && window._gameState.current.rpg) || null} />
