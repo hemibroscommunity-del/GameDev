@@ -75,6 +75,41 @@ export const TICKET_PREFIX = 'goldticket_';
    contest still ends on its own. */
 export const EVENT_LIVE = true;
 
+/* ═══ v2.3.2098: A NEW CONTEST CLEARS THE OLD ONE'S STOP ═══
+ *
+ * Owner, mid-demo: "The ticket is not dropping. I killed about 50 monsters and
+ * not one dropped." At 1-in-5 that is a 1-in-70,000 coincidence, so it was not
+ * luck -- and every code path checked out: kills were resolving server-side
+ * (remnants were dropping), nobody held a ticket, and the ledger loader
+ * defaults to empty rather than refusing.
+ *
+ * What was left is the state NOBODY CAN SEE FROM THE SOURCE. `_capeEventOpen`
+ * ends with `!this._flagOn('disable_event_capes')` and the rate ends with
+ * `_flagNum('event_cape_rate', ...)`, and both read `liveflags` in durable DO
+ * storage, which outlives every deploy. Either one, left set, silently vetoes
+ * a contest that the shipped constants say is running -- no error, no log, no
+ * way to tell from the code that it is off.
+ *
+ * AND THERE IS A KNOWN OCCASION FOR ONE TO BE SET. v2.3.2028 deployed the drop
+ * LIVE at 17:33 on 2026-08-27 and v2.3.2029 turned it off at 17:44 -- and the
+ * documented way to stop a running contest is exactly `disable_event_capes`.
+ * A stop from that contest is still in storage today unless someone cleared
+ * it, and it would behave precisely like this.
+ *
+ * THE DESIGN BUG IS THE VETO, NOT THE FLAG. v2.3.2029 made EVENT_LIVE the
+ * START button -- "no key, no terminal", so an owner who does not work in a
+ * terminal can begin a contest by merging. A leftover emergency stop that
+ * silently overrides that start button takes the start button away again, and
+ * hands it back only to whoever holds the ADMIN_KEY. So starting a contest now
+ * clears the previous contest's overrides, once.
+ *
+ * ONCE, and that word is load-bearing. The clear is keyed on EVENT_START_ID
+ * below: it fires when storage has not seen this id, then records it. An
+ * operator who stops THIS contest with the kill switch is NOT overridden on
+ * the next join -- the stop stays stopped, which is what an emergency stop is
+ * for. Bump the id to start a new contest and clear again. */
+export const EVENT_START_ID = 'crimson-2026-08-28';
+
 export const EVENT_CAPES = {
   /* id -> the cape granted, its ticket, and how many exist. */
   crimson: { cape: 'crimson', ticket: `${TICKET_PREFIX}crimson`, cap: 3 },
@@ -223,6 +258,39 @@ export const eventCapeMethods = {
    *  synchronous claim both have something to read. */
   async _capeLedgersLoad() {
     for (const id of Object.keys(EVENT_CAPES)) await this._capeLedger(id);
+    await this._capeStartFresh();
+  },
+
+  /** v2.3.2098: clear a previous contest's live-ops overrides, exactly once
+   *  per EVENT_START_ID.  See the note on EVENT_START_ID for why.
+   *  Never throws: a cosmetic must not break the join that warms it. */
+  async _capeStartFresh() {
+    if (this._capeStartChecked) return;
+    this._capeStartChecked = true;          /* per room instance, not durable */
+    if (!EVENT_LIVE) return;                /* nothing to start, nothing to clear */
+    if (typeof this._liveFlagsEnsure !== 'function') return;
+    try {
+      const seen = await this.state.storage.get('cape_start_id');
+      if (seen === EVENT_START_ID) return;  /* this contest already started */
+      const flags = await this._liveFlagsEnsure();
+      const cleared = [];
+      if (flags.disable_event_capes) {
+        cleared.push('disable_event_capes');
+        delete flags.disable_event_capes;
+      }
+      /* The rate too: a rate pinned low by a previous contest is the same
+         silent veto wearing a different hat, and the shipped default is the
+         number the owner just chose. */
+      if (typeof flags.event_cape_rate === 'number') {
+        cleared.push('event_cape_rate=' + flags.event_cape_rate);
+        delete flags.event_cape_rate;
+      }
+      if (cleared.length) await this.state.storage.put('liveflags', flags);
+      await this.state.storage.put('cape_start_id', EVENT_START_ID);
+      if (cleared.length && typeof this._adminLog === 'function') {
+        await this._adminLog({ op: 'cape_start_clear', startId: EVENT_START_ID, cleared });
+      }
+    } catch (e) { /* never block a join on a cosmetic */ }
   },
 
   /** Overwrite whatever the client claimed about its cape with what the

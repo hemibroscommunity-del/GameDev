@@ -12,7 +12,7 @@
  * hits, and requires exactly three to survive.
  */
 import { GameRoom } from '../src/index.js';
-import { EVENT_LIVE } from '../src/eventcapes.js';
+import { EVENT_LIVE, EVENT_START_ID } from '../src/eventcapes.js';
 
 function makeState() {
   const store = new Map();
@@ -345,6 +345,51 @@ await room._capeLedgersLoad();
   check('...and the reset SURVIVES a reload, not just the cache',
     JSON.stringify((await s9.storage.get('capegrant:crimson')) || {}) === JSON.stringify({ issued: [], redeemed: [] }),
     await s9.storage.get('capegrant:crimson'));
+}
+
+
+/* ═══ v2.3.2098: A STALE STOP FROM THE LAST CONTEST DOES NOT VETO THIS ONE ═══
+   The owner's demo: 50 kills at 1-in-5 and no ticket. Every code path was
+   right; what was wrong was `liveflags` in durable storage, which outlives
+   every deploy and which nothing in the source can show you. These pin the
+   clear AND its once-ness -- an emergency stop on the CURRENT contest must
+   still stick, or the kill switch is not one. */
+{
+  const sA = makeState();
+  const r = new GameRoom(sA, mockEnv);
+  r.playerState = Object.create(null);
+  r._saveRpg = () => {}; r._sendPlayerState = () => {}; r._wsBySessionId = () => null;
+  await sA.storage.put('liveflags', { disable_event_capes: true, event_cape_rate: 0.0001 });
+  await r._capeLedgersLoad();
+  check('a stale stop from a previous contest is cleared on start',
+    r._capeEventOpen() === true, { open: r._capeEventOpen() });
+  check('...and a stale rate with it, so the shipped default decides',
+    r._flagNum('event_cape_rate', 1 / 5, 0, 1) === 1 / 5,
+    { rate: r._flagNum('event_cape_rate', 1 / 5, 0, 1) });
+  const persisted = await sA.storage.get('liveflags');
+  check('...and the clear is written, not just cached',
+    !persisted.disable_event_capes && persisted.event_cape_rate === undefined, persisted);
+  check('...and the contest start is recorded so it happens once',
+    (await sA.storage.get('cape_start_id')) === EVENT_START_ID,
+    await sA.storage.get('cape_start_id'));
+}
+{
+  /* A stop on the contest that is ALREADY started must survive the next join,
+     or the emergency stop stops nothing. */
+  const sB = makeState();
+  const rB = new GameRoom(sB, mockEnv);
+  rB.playerState = Object.create(null);
+  rB._saveRpg = () => {}; rB._sendPlayerState = () => {}; rB._wsBySessionId = () => null;
+  await sB.storage.put('cape_start_id', EVENT_START_ID);
+  await sB.storage.put('liveflags', { disable_event_capes: true });
+  await rB._capeLedgersLoad();
+  /* The join handler awaits _liveFlagsEnsure before any of this (liveops.js),
+     so the cache is warm in production. Warm it here too, or `_flagOn` reads
+     an unloaded cache and reports every flag off -- which would make this
+     assertion pass for the wrong reason on a build that HAD cleared the stop. */
+  await rB._liveFlagsEnsure();
+  check('a stop on the CURRENT contest is NOT cleared — the kill switch holds',
+    rB._capeEventOpen() === false, { open: rB._capeEventOpen() });
 }
 
 console.log(failures ? `\n${failures} FAILURE(S)` : '\neventcapes: ALL PASS');
