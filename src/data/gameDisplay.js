@@ -3732,16 +3732,29 @@ export const NPC_DATA = [{
      south-east corner beside his anvil instead of inside its wall.
      spawnX/renderX/targetX move WITH x/y or the wander step
      walks him back to the old spot over the next few seconds (v2.3.1813). */
-  x: 640, y: 1010,
-  spawnX: 640, spawnY: 1010,
-  renderX: 640, renderY: 1010,
+  /* ═══ v2.3.2089: AT THE ANVIL IN HIS OWN FORGE YARD ═══
+     Owner: "Move blacksmith bro next to the other anvil by his building."
+
+     There are two anvils and he was standing at the wrong one.  The small
+     `anvil` PROP sits at (640, 960) out on the plaza cobble, and the big one
+     is painted into the forge art itself -- on its stump in the work yard in
+     front of the fire, centred near (290, 815).  That second one is the one
+     "by his building", and it is where a blacksmith belongs.
+
+     (300, 900) puts him on the yard's south lip, directly below the anvil and
+     drawn in front of it (a higher y paints later), so he reads as standing
+     AT it rather than behind it.  pathRadius stays 0 -- he is pinned, so this
+     is the whole of his position and there is no wander ring to clear. */
+  x: 300, y: 900,
+  spawnX: 300, spawnY: 900,
+  renderX: 300, renderY: 900,
   hp: 100, maxHp: 100,
   noHp: true,
   alive: true,
   respawnAt: 0,
   pathRadius: 0,
   moveTimer: 0,
-  targetX: 640, targetY: 1010,
+  targetX: 300, targetY: 900,
   chatTimer: 11000,
   chatBubble: null,
   phrases: [

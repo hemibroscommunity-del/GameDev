@@ -71,48 +71,54 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`the renderer reported what it drew (${drawn && drawn.length} props)`,
     !!(drawn && drawn.length), drawn && drawn.map((d) => d.id));
   const by = (id) => (drawn || []).find((d) => d.id === id);
-  const fountain = by('fountain'), bw = by('bench-w'), be = by('bench-e');
-  rec.ok('the fountain and both benches are on the map',
-    !!(fountain && bw && be), { fountain: !!fountain, bw: !!bw, be: !!be });
+  const fountain = by('fountain'), bw = by('bench-w');
+  rec.ok('the fountain and the bench are on the map',
+    !!(fountain && bw), { fountain: !!fountain, bw: !!bw });
+  /* v2.3.2088 (owner: "Remove the banners and bench-e"). Asserted, not merely
+     no longer looked for: a second bench reappearing is a thing to hear about. */
+  rec.ok('...and the east bench is gone', !by('bench-e'),
+    (drawn || []).map((d) => d.id));
 
-  /* The art's seat faces SOUTH-EAST as drawn and SOUTH-WEST mirrored, so
-     "facing the fountain" is: the fountain lies in the quadrant the seat
-     points at.  SOUTH in both cases is the same statement as the owner's
-     second sentence — the backrest is the north side, so a fountain to the
-     south is a fountain the back is turned away from. */
-  const check = (b, label, wantEast) => {
-    const dx = fountain.x - b.x, dy = fountain.y - b.y;
+  /* ═══ v2.3.2088: THE ART WAS READ BACKWARDS, AND THIS TEST SAID SO ═══
+     The line below used to read "unflipped art seats face south-east", and
+     the sprite says the opposite: the backrest runs along the upper-right and
+     the seat opens toward the LOWER-LEFT.  So the check asserted the mistake,
+     passed green on it, and the benches sat with their backs to the water
+     through every run of this file — which is the fault the owner reported
+     TWICE, once to place them and once again to turn this one round.
+
+     A test that encodes the misreading it was written to catch is worse than
+     no test: it converts a visible bug into a green tick. Stated as the
+     sprite actually is, once:
+
+         unflipped  seat opens SOUTH-WEST   (backrest north-east)
+         flipX      seat opens SOUTH-EAST   (backrest north-west)
+
+     So a bench faces the fountain when the fountain lies in the quadrant its
+     seat opens into — south, and WEST when unflipped, EAST when flipped. */
+  {
+    const dx = fountain.x - bw.x, dy = fountain.y - bw.y;
     const deg = Math.round(Math.atan2(dy, Math.abs(dx)) * 180 / Math.PI);
-    rec.ok(`${label}: the fountain is ${dy > 0 ? 'SOUTH' : 'NORTH'} of it, so the backrest is the far side`,
+    rec.ok(`the fountain is SOUTH of the bench, so the backrest is the far side`,
       dy > 0, { dx, dy, deg });
-    rec.ok(`${label}: ...and ${wantEast ? 'EAST' : 'WEST'}, the way this sprite's seat points (flipX ${b.flipX})`,
-      (dx > 0) === wantEast && b.flipX === !wantEast, { dx, flipX: b.flipX });
-    rec.ok(`${label}: ...on a real diagonal, not edge-on (${deg} deg below horizontal)`,
+    /* flipX true => seat opens south-EAST => the fountain must be east of it. */
+    rec.ok(`...and on the side the seat opens into (flipX ${bw.flipX}, fountain ${dx > 0 ? 'EAST' : 'WEST'})`,
+      bw.flipX === true && dx > 0, { dx, flipX: bw.flipX });
+    rec.ok(`...on a real diagonal, not edge-on (${deg} deg below horizontal)`,
       deg >= 25 && deg <= 55, { deg });
-  };
-  check(bw, 'west bench', true);    /* unflipped art seats face south-east  */
-  check(be, 'east bench', false);   /* mirrored art seats face south-west   */
+  }
 
-  rec.ok('the two benches mirror each other about the fountain',
-    Math.abs((fountain.x - bw.x) - (be.x - fountain.x)) <= 2 && bw.y === be.y,
-    { bw: { x: bw.x, y: bw.y }, be: { x: be.x, y: be.y }, fx: fountain.x });
-  rec.ok(`...and are drawn the same size (${Math.round(bw.width)}x${Math.round(bw.height)})`,
-    Math.abs(bw.width - be.width) < 1 && Math.abs(bw.height - be.height) < 1,
-    { bw: { w: bw.width, h: bw.height }, be: { w: be.width, h: be.height } });
-
-  /* Neither bench may be drawn over the fountain or over another prop — the
+  /* The bench may not be drawn over the fountain or over another prop — the
      placement was measured that way and nothing else enforces it. */
   const hit = (a, b) => !(a.x + a.width / 2 <= b.x - b.width / 2
     || b.x + b.width / 2 <= a.x - a.width / 2
     || a.y <= b.y - b.height || b.y <= a.y - a.height);
   const clashes = [];
-  for (const b of [bw, be]) {
-    for (const o of drawn) {
-      if (o.id === b.id || o.id === 'bench-w' || o.id === 'bench-e') continue;
-      if (hit(b, o)) clashes.push(`${b.id} over ${o.id}`);
-    }
+  for (const o of drawn) {
+    if (o.id === bw.id) continue;
+    if (hit(bw, o)) clashes.push(`${bw.id} over ${o.id}`);
   }
-  rec.ok('neither bench is drawn on top of another prop', clashes.length === 0, clashes);
+  rec.ok('the bench is not drawn on top of another prop', clashes.length === 0, clashes);
 
   /* ── 3. THE OBJECTS ARE UNWALKABLE ──
      Owner: "It should be obvious but make sure the objects are unwalkable."
@@ -152,18 +158,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
       solidAtBase: at(p.x, p.y - 4),
     }));
   });
-  /* v2.3.2078: the two gate banners are deliberately walkable — one of them
-     stood on the staircase that is the town's only exit and walled the town
-     in (see worldProps.js and mp-townhill).  Named, not counted, so a third
-     prop going soft still fails. */
-  const GATE_BANNERS = ['banner-gate-w', 'banner-gate-e'];
+  /* v2.3.2088: the gate banners are GONE (owner), so there is no walkable
+     exception left — every prop in town is solid.  v2.3.2078 had made the two
+     of them walkable because banner-gate-e stood on the staircase that is the
+     town's only exit; removing the art removes the exception with it. */
   const soft = blocked.filter((b) => !b.solidAtBase).map((b) => b.id);
-  rec.ok(`every prop in town is solid except the gate banners `
+  rec.ok(`every prop in town is solid, with no exceptions left `
        + `(${blocked.length - soft.length} of ${blocked.length})`,
-    blocked.length >= 12 && soft.every((id) => GATE_BANNERS.includes(id)),
-    { soft, allowed: GATE_BANNERS });
-  rec.ok('...and the gate banners are walkable, so the way out is open',
-    GATE_BANNERS.every((id) => soft.includes(id)), { soft });
+    blocked.length >= 10 && soft.length === 0, { soft });
+  rec.ok('...and no gate banner remains to stand on the stairs',
+    !blocked.some((b) => String(b.id).startsWith('banner-gate')),
+    blocked.map((b) => b.id));
 
   /* THE WALK.  Straight north into the fountain from open cobble: the player
      has to stop south of its basin instead of strolling through the water. */
@@ -189,9 +194,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and you did actually walk (you are not just where you were put)',
     stop.y < fountainProp.y + 205, { stop, from: fountainProp.y + 210 });
 
-  /* Stand south of the fountain so the shot frames the pair of benches, the
-     water between them and the townsfolk's plates -- the picture a reviewer
-     needs to see what the numbers above describe. */
+  /* Stand south of the fountain so the shot frames the bench, the water beside
+     it and the townsfolk's plates -- the picture a reviewer needs to see what
+     the numbers above describe. */
   await P.page.evaluate(() => {
     const S = window._gameState.current;
     S.player.x = 860; S.player.y = 1180; S.player.vx = 0; S.player.vy = 0;
