@@ -1088,6 +1088,20 @@ export const joinMethods = {
     try {
       const _capeWarm = this._capeLedgersLoad();
       if (_capeWarm && _capeWarm.catch) _capeWarm.catch(() => {});
+      /* v2.3.2101: and TELL THE PLAYER where the contest stands, once the warm
+         lands. Sent as its own message rather than folded into state_sync
+         below, because state_sync goes out now and the ledger is deliberately
+         not awaited here (see above) -- a count read before the warm would be
+         `null` on the join that matters most, the first one after a deploy.
+         Chained off the warm instead, so it carries a real number. */
+      if (_capeWarm && _capeWarm.then) {
+        _capeWarm.then(() => {
+          try {
+            const w = this._wsBySessionId(session.id);
+            if (w) w.send(JSON.stringify({ type: 'cape_status', payload: this._capePublicStatus() }));
+          } catch (e) { /* the player is gone; nothing to tell */ }
+        }).catch(() => {});
+      }
     } catch (e) { /* never block a join on a cosmetic */ }
     ws.send(JSON.stringify({
       type: 'state_sync',

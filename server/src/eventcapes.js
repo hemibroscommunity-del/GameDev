@@ -254,6 +254,38 @@ export const eventCapeMethods = {
     return null;
   },
 
+  /** v2.3.2101: what a PLAYER may know about the contest -- is it running, and
+   *  how many of the three are left.  Never the id lists: those are the
+   *  operator's view (the admin GET), and who holds a ticket is not public.
+   *
+   *  WHY THIS EXISTS. The drop was reported dead four times and every round
+   *  was spent guessing at state nobody could see: `disable_event_capes` and
+   *  `event_cape_rate` live in durable storage, the ledger lives beside them,
+   *  and the only way to read any of it was an admin endpoint behind a secret
+   *  the owner does not carry. The wiring was fine the whole time -- driving
+   *  `_resolveMonsterKill` directly grants the ticket -- so what was missing
+   *  was never a fix, it was a window. */
+  _capePublicStatus() {
+    const out = { live: !!(this._capeEventOpen && this._capeEventOpen()), capes: {} };
+    for (const id of Object.keys(EVENT_CAPES)) {
+      const def = EVENT_CAPES[id];
+      const led = (this._capeLedgers && this._capeLedgers[id]) || null;
+      out.capes[id] = {
+        cap: def.cap,
+        /* null, not 0, when the ledger is not warm yet: "unknown" and "none
+           left" are different answers and a contest that reports the second
+           when it means the first is how this went wrong in the first place. */
+        remaining: led ? Math.max(0, def.cap - led.issued.length) : null,
+      };
+    }
+    /* The rate as the worker will actually roll it, so a flag pinned low in
+       storage shows up as a number instead of as silence. */
+    out.rate = (typeof this._flagNum === 'function')
+      ? this._flagNum('event_cape_rate', 1 / 5, 0, 1)
+      : 1 / 5;
+    return out;
+  },
+
   /** Warm every ledger.  Called once on room start so _capeOwnedBy and the
    *  synchronous claim both have something to read. */
   async _capeLedgersLoad() {
