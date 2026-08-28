@@ -50,18 +50,28 @@ async function hold(P, key, ms) {
  * test's. It ran 90 frames -- about 1030 px at the buffed rate -- up a plaza
  * that had four blocking props in it. v2.3.2073 gave all twelve a footprint
  * (owner: "make sure the objects are unwalkable"), and a furnished square has
- * no 1000 px straight line left in it: a sweep of every north-south lane in
- * town found the longest clear one is 630 px, at x=1000 south of the benches.
- * So the run is 30 counted frames behind a 250 ms roll-in, which is 513 px at
- * the buffed rate from (1000, 1600) -- ending at y 1087, comfortably clear of
- * bench-e's footprint at y 941..975. Fewer frames is noisier, and it does not
- * matter here: the effect under test is 1.5x against a 1.25x threshold, and
- * the measurement agreed to 1.2% over 120 frames.
- * The lane is checked against propFootprint and every NPC's wander radius
- * rather than remembered, and its ground samples 97% open cobble.
- * (x=300 was rejected long before that: it walks into the west cliff.) */
+ * no 1000 px straight line left in it. So the run is 30 counted frames behind
+ * a 250 ms roll-in, which is 513 px at the buffed rate. Fewer frames is
+ * noisier, and it does not matter here: the effect under test is 1.5x against
+ * a 1.25x threshold, and the measurement agreed to 1.2% over 120 frames.
+ *
+ * ── v2.3.2078: AND THE LANE HAS TO BE ON THE MAP, NOT JUST BETWEEN THE PROPS
+ * The previous lane started at (1000, 1600), chosen by checking propFootprint
+ * and every NPC's wander radius -- and NOT the walk grid, which is the other
+ * half of what makes ground walkable. town_v17's grid marks (1000, 1600)
+ * UNWALKABLE. The sprint ran anyway, and passed, because of the never-trap
+ * escape hatch in isSolid: a player standing in a solid cell is allowed to
+ * move out of it, so collision was effectively OFF for the whole measurement.
+ * A speed test with collision disabled is not measuring the walk a player
+ * takes.
+ * x=1070 is clear from y 665 to 1480 -- 815 px, the longest north-south lane
+ * in town -- against BOTH the grid and all twelve footprints, sampled across
+ * a 44 px body width rather than at the centre line. From (1070, 1470) the
+ * 513 px run ends at y 957 with 290 px of lane still ahead of it.
+ * (x=300 was rejected long before any of this: it walks into the west
+ * cliff.) */
 async function sprint(P, frames = 30) {
-  await put(P, 1000, 1600);
+  await put(P, 1070, 1470);
   await P.page.waitForTimeout(350);
   await P.page.keyboard.down('w');
   /* Already in motion before the count starts, so the first frames of the
