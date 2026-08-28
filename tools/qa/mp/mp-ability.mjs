@@ -411,7 +411,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
      which does not matter to this check twice over: the flush lives in the
      channel shim keyed on message type, and the stamp is taken before the
      gates. ═════════════════════════════════════════════════════════════════ */
-  await P.page.keyboard.down('w');
+  /* v2.3.2081: SOUTH, not north.  This held 'w' and ran the player straight
+     into the FOUNTAIN: TOWN_SPAWN is (910, 1130) and the basin's footprint
+     stamps the prop grid solid up to y 1088, so 800ms of north travel ended
+     pressed against it and the 500ms after the cast moved 0.05px — which
+     failed the guard below rather than the thing under test, because there is
+     nothing stale about a player who is standing still.  South of the spawn
+     is 250px of open plaza (tools/dev/town-lanes.mjs 910 1380) and the
+     direction is nothing to this check; only the running is. */
+  await P.page.keyboard.down('s');
   await P.page.waitForTimeout(800);
   const cast = await P.page.evaluate(() => {
     const S = window._gameState && window._gameState.current;
@@ -420,8 +428,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     S.channel.send({ type: 'ability', payload: { kind: 'bash' } });
     return { x: Math.round(x0 * 10) / 10, y: Math.round(y0 * 10) / 10 };
   });
-  await P.page.waitForTimeout(500);
-  await P.page.keyboard.up('w');
+  /* v2.3.2083: 500 -> 1400ms.  The guard below needs 30px of travel after the
+     cast, and a solo player moves about 40px/s here (the adaptive 198ms move
+     gap when nobody shares your zone), so 500ms could only ever produce ~20 --
+     the guard was unreachable at this speed whatever the client did.  The
+     CAST's timing is untouched; this only lengthens the run after it. */
+  await P.page.waitForTimeout(1400);
+  await P.page.keyboard.up('s');
   await P.page.waitForTimeout(400);
   rec.ok('the cast could be dispatched while running', !!cast, cast);
 

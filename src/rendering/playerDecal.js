@@ -383,8 +383,50 @@ export function stampRegion(d, w, h, frameW, mask, art, mirror, box, opts) {
        plateau — and no amount of staring at lx/rx says which one you have.
        Diagnostic only, gated by the caller (window.__btGridProbe), and it
        allocates two small arrays per frame when asked and none when not. */
+    /* ═══ v2.3.2082: THE FRAME'S OWN FIGURE BOX, UNDER THE PROBE ═══
+       Owner: "Check tattoo and pattern placements on all animations for
+       consistency."  The grid alone cannot answer that.  gridFit CENTRES the
+       drawing on the region box (ox = box centre - dw/2, oy = ty + bh*cy -
+       dh/2), so the drawing's position RELATIVE TO THAT BOX is constant by
+       construction on every frame of every sheet -- measure it and you have
+       measured the arithmetic, not the art.  What can drift is where the BOX
+       sits on the body, and that only shows against a third thing: the figure
+       itself.  So under the probe each frame also reports its own opaque
+       extent, and a scenario can ask where the ink landed on the CHARACTER.
+       Diagnostic only: one extra pass over the frame, and only when a QA
+       probe has asked for histograms. */
+    let fx0 = 0, fx1 = -1, fy0 = 0, fy1 = -1, fcx = 0, fcy = 0, fn = 0;
+    if (profile) {
+      fx0 = Infinity; fy0 = Infinity;
+      let sx = 0, sy = 0;
+      for (let y = 0; y < h; y++) {
+        for (let x = x0; x < x1; x++) {
+          if (d[(y * w + x) * 4 + 3] <= 24) continue;
+          if (x < fx0) fx0 = x;
+          if (x > fx1) fx1 = x;
+          if (y < fy0) fy0 = y;
+          if (y > fy1) fy1 = y;
+          sx += x; sy += y; fn++;
+        }
+      }
+      if (fx1 < 0) { fx0 = 0; fy0 = 0; }
+      if (fn) { fcx = sx / fn; fcy = sy / fn; }
+    }
+    /* v2.3.2083: fx0/fx1/fcx are SHEET coordinates, the same space as ox/lx,
+       so a placement subtracts cleanly.  `fw` is carried so a reader that
+       wants the FRAME-LOCAL figure -- the pattern question, where the tile is
+       phased on the cel -- can take fx0 - frame*fw rather than measuring the
+       256px-per-frame stride, which is what the first cut of mp-inkplace did
+       and why it reported a figure moving 7162px inside a 256px frame.
+       CENTROID AND AREA, not just the box: a swinging sleeve moves the box's
+       edge 21px on jog-east while the body under it moves 1.4px, so a box is
+       far too noisy to measure ink drift against (tools/dev/pattern-drift.py
+       has both numbers).  sqrt(fn) is the scale that goes with the centroid --
+       an area is much steadier than a width for the same reason. */
     if (report) report.push(profile
-      ? { ox, oy, cw, ch, lx, rx, ty, by, frame: f, rowN: Array.from(rowN), colN: Array.from(colN) }
+      ? { ox, oy, cw, ch, lx, rx, ty, by, frame: f, fx0, fx1, fy0, fy1,
+          fcx, fcy, fn, fw: frameW,
+          rowN: Array.from(rowN), colN: Array.from(colN) }
       : { ox, oy, cw, ch, lx, rx, ty, by, frame: f });
     for (let gy = 0; gy < ART_H; gy++) {
       for (let gx = 0; gx < ART_W; gx++) {
@@ -813,6 +855,49 @@ export function regionFromFeet(d, mask, w, h, frameW, maxUp) {
 
 /** Tile `pat` (a parsed pattern from patternCatalog) across every pixel of
  *  `mask`, in place on the pixel array.  Returns the number of pixels painted. */
+/* ═══ v2.3.2082: THE TILE IS PINNED TO THE GARMENT, NOT TO THE CEL ═══
+ *
+ * Owner: "Check tattoo and pattern placements on all animations for
+ * consistency."
+ *
+ * A TATTOO was already consistent: stampRegion measures the body region every
+ * frame and gridFit centres the drawing in it, so the ink rides the character
+ * wherever the animation puts him.  A PATTERN was not fitted at all.  It
+ * phased on `x % frameW` and on `y` — the frame's own coordinates — which the
+ * old comment defended as "so every frame of a strip tiles identically".  That
+ * is true and it is the bug: the TILE is identical frame to frame while the
+ * FIGURE inside the frame is not, so the fabric slides underneath a pattern
+ * that stands still.
+ *
+ * MEASURED, over every shipped pose sheet (tools/dev/pattern-drift.py) — how
+ * far the figure's own box travels inside its frame across one cycle, in
+ * 256-space pixels, against tiles that repeat every 12-16px
+ * (traits/patternCatalog.js):
+ *
+ *     sword-north   107 across,  79 down     ~7 whole tile repeats
+ *     dodge-east     41 across, 108 down     ~7
+ *     bow-east       39 across                ~3
+ *     jog-east       21 across                ~1.5
+ *     hit-south      20 across,  20 down      ~1.5
+ *
+ * At one repeat every stripe stands where its neighbour was.  A player running
+ * east in a striped shirt watched the stripes crawl a stripe and a half across
+ * the fabric every stride, and a sword swing dragged them seven.
+ *
+ * ── THE ANCHOR IS THE GARMENT'S CENTROID, AND WHY NOT ITS BOX ──
+ * The obvious anchor is the mask's bounding box, and it is wrong on exactly
+ * the pose that matters: a sleeve swinging forward moves the shirt's left edge
+ * 21px on jog-east while the torso under it barely moves, so a box-anchored
+ * pattern would jump with the arm.  The CENTROID of the garment's own pixels
+ * moves with the cloth: the same jog-east cycle moves it 1.4px.  It is also
+ * cheap, needs no extra classification, and degrades sanely — a garment that
+ * genuinely travels (the roll, the lunge) carries its pattern along, which is
+ * the whole point.
+ *
+ * Rounded to a whole pixel so the phase cannot jitter sub-cell between frames;
+ * against a 12px repeat a 1px anchor wobble is invisible, and a float phase
+ * would quantise differently on adjacent frames for no gain.
+ */
 export function stampPattern(d, w, h, frameW, mask, pat, mirror) {
   if (!pat) return 0;
   const tile = pat.tile;
@@ -821,15 +906,37 @@ export function stampPattern(d, w, h, frameW, mask, pat, mirror) {
   const B = parseInt(pat.color.slice(5, 7), 16);
   const cell = Math.max(1, tile.cell);
   const tw = tile.w * cell, th = tile.h * cell;
+  const frames = Math.max(1, Math.floor(w / frameW));
+  /* The garment's centroid in each frame, in that frame's own space.  A frame
+     the mask does not reach keeps a zero anchor, which is exactly the old
+     frame-phased behaviour and cannot be worse than it. */
+  const ax = new Int32Array(frames), ay = new Int32Array(frames);
+  for (let f = 0; f < frames; f++) {
+    const x0 = f * frameW, x1 = Math.min(w, x0 + frameW);
+    let sx = 0, sy = 0, n = 0;
+    for (let y = 0; y < h; y++) {
+      for (let x = x0; x < x1; x++) {
+        if (!mask[y * w + x]) continue;
+        sx += x - x0; sy += y; n++;
+      }
+    }
+    if (!n) continue;
+    ax[f] = Math.round(sx / n);
+    ay[f] = Math.round(sy / n);
+  }
   let painted = 0;
   for (let y = 0; y < h; y++) {
-    const ty = Math.floor((((y % th) + th) % th) / cell);
     for (let x = 0; x < w; x++) {
       if (!mask[y * w + x]) continue;
-      /* phase within the FRAME, so every frame of a strip tiles identically */
-      const fx = x % frameW;
+      const f = Math.min(frames - 1, Math.floor(x / frameW));
+      const fx = x - f * frameW;
+      /* Mirrored facings are drawn by flipping the sheet, so the anchor has to
+         flip with the pixel or the pattern would ride a centroid measured on
+         the other side of the figure. */
       const sx = mirror ? (frameW - 1 - fx) : fx;
-      const tx = Math.floor((((sx % tw) + tw) % tw) / cell);
+      const anchorX = mirror ? (frameW - 1 - ax[f]) : ax[f];
+      const tx = Math.floor(((((sx - anchorX) % tw) + tw) % tw) / cell);
+      const ty = Math.floor(((((y - ay[f]) % th) + th) % th) / cell);
       if (!patternInk(tile, tx, ty)) continue;
       const i = (y * w + x) * 4;
       d[i] = R; d[i + 1] = G; d[i + 2] = B;

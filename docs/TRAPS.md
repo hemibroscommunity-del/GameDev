@@ -919,7 +919,7 @@ bug report.
 it throws), `tools/qa/mp/mp-statpeek.mjs` + `HeroExpanded.jsx`
 (`data-section`), `tools/qa/mp/mp-layer.mjs`, `tools/qa/mp/mp-zonefx.mjs`.
 
-## §30 — A generated sleeve for the bare trailing arm looks worse than the bare arm (v2.3.2016)
+## §30 — A generated sleeve for the bare trailing arm looks worse than the bare arm (v2.3.2016; CLOSED v2.3.2066)
 
 **The plausible-but-wrong move:** the owner has reported the bare arm on
 jog-east three times, `mp-shirtarm.mjs` diagnoses it correctly (frames 0-6,
@@ -949,11 +949,474 @@ actually needed it.
 
 **What this leaves.** Closing this needs the arm's AXIS, not just its
 silhouette — or seven hand-drawn frames on one facing, which is probably the
-cheaper honest answer. Until one of those happens the bare arm STAYS. It is
+cheaper honest answer. Until one of those happens the bare arm STAYS (it did, until v2.3.2066 —
+see below). It is
 at least a coherent silhouette; the generated sleeve is not. Shipping a
 worse-looking fix to close a cosmetic report is a net loss, and this
 subsystem has already had one fix reverted in play (v2.3.1986's shirt blob
 on the character's face).
 
-**Receipt:** `tools/qa/mp/mp-shirtarm.mjs` header, section
-"v2.3.2016: A GENERATED SLEEVE WAS TRIED AND REJECTED".
+**CLOSED in v2.3.2066, by taking the two conditions above literally.**
+`tools/gear/draw-trailing-sleeve.mjs` cuts the sleeve along the LIMB'S OWN
+PRINCIPAL AXIS rather than along the shirt's edge, so the hem runs
+perpendicular to the arm the way the paragraph above demands; and every written
+pixel takes THE BODY'S OWN ALPHA, which is what kills the pips — a sleeve pixel
+at the body's coverage composites to exactly the body's coverage in a different
+colour, so the figure's silhouette does not change and the antialiased fringe
+stays a fringe instead of becoming hard dots and holes. Bare shoulder over one
+jog-east cycle: 176 px to 19. Rendered at 20x on all 14 frames before shipping,
+which is what the note above was really asking for.
+
+Two things it left that are worth keeping:
+- The sleeve's own attempt at a FRAME GATE was wrong and the measurement killed
+  it. The first run of the tool painted a white slab across the middle of the
+  forearm on frames 11-13, and the obvious reading — "those frames are
+  different, gate them out" — does not survive the numbers: every shape
+  statistic tried separates frames 1 and 13 by less than it separates frame 1
+  from frame 2. The real fault was the ANCHOR. On those frames the trailing arm
+  hangs parallel to the shirt's back edge and touches it for its whole length,
+  so the seam is the entire arm and its centroid is halfway down the limb.
+  Anchoring on the seam's TOP rows fixed all three with no frame list at all.
+- The number is only "bare shoulder" ON A PROFILE. Run over the other jog
+  facings it reports northeast 100 and southwest 130, and southwest rendered at
+  14x is FINE — on a three-quarter view the window also catches the raised
+  fist, which a tee is supposed to leave bare. `mp-shirtarm` prints those as an
+  audit and gates on none of them.
+
+**Receipt:** `tools/gear/draw-trailing-sleeve.mjs` header;
+`tools/qa/mp/mp-shirtarm.mjs` header, section "v2.3.2066: CLOSED, AND NOW
+MEASURED RATHER THAN PHOTOGRAPHED".
+
+## §31 — `continue-on-error` turns a FAILED CI step green in the Actions UI (v2.3.2067)
+
+Handoff backlog item F says to promote the report-only CI trio "once a step
+holds green for ~10 consecutive CI runs" and to "check the Actions history per
+harness". Both halves of that instruction are traps, and the first one is the
+dangerous one, because following it produces a confident wrong answer rather
+than no answer.
+
+**A `continue-on-error: true` step that fails reports `conclusion: success`.**
+Not "failure, ignored" — success, in the web UI and in the REST/MCP job data.
+The most recent completed dispatch of the `smoke` job at the time of writing
+(run 1435 cancelled, run 1431 on 2026-08-26) shows every step green,
+including all three report-only steps. Its LOG says:
+
+```
+FAIL  A reached worldview  {"x":784,"y":1424,"zone":"town","hp":118}
+...
+6 GEAR-SMOKE CHECK(S) FAILED
+```
+
+Two of the three had never passed a single assertion of their own subject
+matter, and the history said ten-for-ten. Anyone counting green ticks would
+have promoted a check that cannot pass — and a BLOCKING step that always
+fails also SKIPS the steps after it, so promoting the middle one of three
+would have silently removed the third from the run.
+
+**The rule:** the pass/fail state of a report-only step lives ONLY in its
+output. Read the log (or the uploaded `qa-*.json` artifacts), or run the
+harness locally against a real worker — `cd server && npx wrangler dev --port
+8787 --local`, `npm run build`, `npx vite preview --port 4173`, then
+`QA_WS_URL=ws://127.0.0.1:8787 node tools/qa/<harness>.mjs`. All three of the
+trio reproduce their CI result locally, line for line.
+
+**Second half of the trap:** the `smoke` job left the PR path in v2.3.1333 and
+has been dispatched 7 times in total. "10 consecutive CI runs" is not a bar
+these checks can clear at that rate; whoever promotes one is making a
+judgement on locally gathered evidence, and should write down which.
+
+**Receipt:** handoff item F (rewritten v2.3.2067) and the report-only block in
+`.github/workflows/client-ci.yml`.
+
+## §32 — `S._serverMonsters` is FALSE in town, so a send gated on it never happens there (v2.3.2077)
+
+`S._serverMonsters` reads like "am I in multiplayer" and is not. It means
+**this zone has server-managed monsters**, and `wsClient.js` sets it false
+whenever the zone's monster list comes back empty — its own comment spells out
+which zones those are: *"Empty list means the server has no monsters for this
+zone (town, or a dungeon the server doesn't model)"*.
+
+So `if (S._serverMonsters && S.channel) channel.send(...)` is a send that
+**cannot happen in town** — and town is where the shops, the forge, the
+woodworker, the campfire and the vendor all are.
+
+**The failure is silent in both directions**, exactly as TRAPS §18 describes
+for the shim allowlist. The client predicts locally, decrements the bag, writes
+`localStorage`, and the screen looks correct. The worker — which owns
+inventory, coins and HP — never hears, and reconciles the whole thing away on
+the next `player_state`. Nothing throws, and any assertion written against
+client state passes throughout.
+
+**It has shipped four times:**
+
+| version | message | what was actually broken |
+|---|---|---|
+| v2.3.1702 | `ability_use` | specials did nothing server-side |
+| v2.3.2063 | `shop_purchase` | no purchase in the game's history had reached the worker — the vendor stands in town |
+| v2.3.2077 | `eat_request` ×3, `cook_recipe` ×2 | eating and cooking in town did not stick |
+| v2.3.2077 | `forge_weapon` ×2 | **forging had never reached the worker at all** — blacksmith and woodworker are both town buildings |
+
+**The rule:** the precondition for a client→server send is "am I connected",
+which is `S.channel`. The one legitimate use of the flag is a message that is
+*about* a server monster — you cannot damage one in a zone that has none — and
+`monster_damage` is allowlisted by name.
+
+**Do not trust a reading of this gate that assumes the message is sent.**
+Handoff item N called it "symmetry polish, not a hole" on the grounds that
+"the local heal is prediction, the echo is the tiebreaker". Sound reasoning,
+wrong premise: there is no echo when nothing is sent.
+
+**Mechanised.** `tools/dev/precheck.mjs` §8b (`town-gate`) FAILs on any
+client→server send gated on `_serverMonsters` outside the allowlist. It scans a
+seven-line window after each `.send(`, because two of the game's sends put the
+type several lines below the call and a single-line regex skips them.
+
+**Receipt:** `tools/dev/precheck.mjs` §8b; the note at the eatBus handler in
+`src/ui/BroTown.jsx`; `tools/qa/mp/mp-townmeal.mjs`, which asserts on the
+WORKER'S blob through the admin API rather than on client state — a test that
+checked the client would have passed throughout the bug.
+
+---
+
+## §33 — A test that reads a field the game does not have asserts nothing (v2.3.2078)
+
+**The move that looks right:** write the state read the way you remember the
+field being called — `S.lockedMonster`, `S.playerCount`, `S._dead`,
+`S.nodes` — inside `page.evaluate`, wrap it in `|| null`, and read the number
+back out.
+
+**Why it is wrong:** `page.evaluate` runs in the browser. A property that
+does not exist is `undefined`, not an error, and every idiom the suite uses
+to be defensive turns that `undefined` into a pass:
+
+| written as | with the field missing | what the assertion then means |
+|---|---|---|
+| `S.playerCount \|\| null` then `count == null \|\| count >= 2` | `null` | passes with the room reporting an empty world |
+| `S._dead` reported as `dead: !!S._dead` | `false` | a corpse is described as alive in the payload that exists to explain a refusal |
+| `S.lockedMonster = null` | writes a new property | the lock the next line depends on is never cleared |
+| `Object.values(S.nodes \|\| S.zoneNodes \|\| {})` | `[]` | "the zone has resource nodes" fails forever, for a reason no payload names |
+| `window.__btGear.setEquip(...)` inside `try {}` | TypeError, swallowed | the scenario about a character wearing a tee never puts one on |
+
+The audit that found these compared every `S.<field>` read in
+`tools/qa/mp/*.mjs` against every field `src/` ever touches. Eight scenarios
+were clearing `lockedMonster`; `grep -rn lockedMonster src/` returns 0 and
+`lockedTarget` returns 48.
+
+**What to do instead:** the field name is not a memory, it is a lookup.
+Before writing a state read, `grep` it in `src/`. If nothing writes it, it
+does not exist — find the one that does.
+
+**Mechanised, partly:** precheck §8c (`qa-handles`) FAILs on any
+`window.__X` a scenario reads that neither the shipped client (`src/`,
+`public/`) nor that same scenario defines. Self-assigned scratch pins
+(`__pin`, `__fa`, `__qRaf`) are exempt because they are assigned in the file
+that reads them, and comments are stripped first so a note recording a
+retired handle does not re-flag the fix that removed it. The `S.<field>`
+half is NOT mechanised — the state object is built at runtime and half the
+short names (`S.c`, `S.w`, `S.page`) are shadowed locals in the harness, so
+a static rule there is mostly noise. That half is still a `grep` you owe.
+
+**Related:** §18 (a client→server message with no shim passthrough never
+reaches the worker — the same "looks fine, does nothing" shape),
+§28 (a test that reports "not found" is worse than no test),
+§29 (selecting UI by its label is a test with an expiry date).
+
+---
+
+## §34 — Moving the scenery invalidates every colour probe near it (v2.3.2078)
+
+**The move that looks right:** measure a character's tattoo by counting
+coloured pixels in a box around them, anchored on the player's world
+position and the camera rather than a guessed fraction of the screen. That
+much is correct, and TRAPS §21 already requires the CONTROL frame that goes
+with it.
+
+**Why it broke anyway:** the box was about twice the figure, and what filled
+the rest was the town. v2.3.2069 moved the fountain into the plaza, the
+plaza is where the spawn is, and three scenarios each carrying their own
+copy of an `88 x 104` crop suddenly had running water in frame. The control
+— a character with no drawings on him at all — read **4455 blue** and
+**205 pink** pixels, and ten assertions failed naming shirt prints and face
+tattoos that had nothing to do with it.
+
+Two separate faults, and both matter:
+
+1. **The box was too generous.** A crop derived from the player's position
+   is only as honest as its size. `H.figureBox` is the one copy now, cut to
+   numbers measured off a real control render and anchored on
+   `window.__btPlayerDrawn` so the mining lift and the build scale are
+   included rather than approximated.
+
+2. **The classifier was too loose, in two of the three files.**
+   `b > g + 24 && r > 110` accepts a lit blue like `(150,160,200)`.
+   mp-facingside had already learned this in v2.3.2043 and added `r >= b`;
+   mp-cosmpose and mp-skinworld had not, and mp-skinworld's comment still
+   claimed "every OTHER thing on screen has more green in it than blue",
+   which the fountain made false. That one comparison takes the water from
+   205 matches to 0.
+
+**What to do instead:** when you move a prop, grep the QA suite for anything
+that counts pixels near where it landed. And when a control frame goes from
+0 to non-zero without the art changing, believe the control — it is doing
+exactly the job §21 gave it, and the failing assertions downstream are
+collateral, not the finding.
+
+`H.TOWN_CLEAN_SPOT` is a patch of town measured walkable, 110px clear of all
+twelve props, and zero pixels matching any of the four probe colours; reach
+it with `H.hopTo`, never a teleport (v2.3.1706: movement.js refuses the jump
+and, once refused, stays refused).
+
+**Related:** §21 (a colour count is evidence only against a control),
+§30 (a measure that clips the thing it measures).
+
+---
+
+## §35 — A test that COPIES a value out of the game stops testing the game (v2.3.2078)
+
+**The move that looks right:** you need the forge's position, or the shirt
+sheet's cache-bust, or a lane to walk down, or a flag saying whether the town
+draws props. All four are right there in `src/`. Copy the number into the
+scenario with a comment saying where it came from.
+
+**Why it is wrong:** the copy has no link back. Everything below was correct
+when written and silently wrong later, and none of them announced it:
+
+| the copy | what changed | what the test then reported |
+|---|---|---|
+| `const FORGE = { x: 1480, y: 545 }` | the forge moved to (480,900) and grew ~3× | a smith standing at his forge, 960px from it, FAIL |
+| `const BLACKSMITH = { x: 1400, y: 640 }` | same town re-fuse | never fired — the file was skipping itself |
+| `gearVer: '2.3.2066'` hand-copied | any re-bake | the sheet still fetched (the `?v=` is only a cache-bust on a static file), so the test kept measuring art while claiming to prove the bust shipped |
+| the sprint lane `(1000, 1600)` | v2.3.2073 made props solid | passed with COLLISION OFF — isSolid's never-trap hatch lets a player in a solid cell move, and the lane's start is grid-unwalkable |
+| the walk lane, east from spawn | same | 129px on one sample and 0 on the next: the player was standing against a bench |
+| `if (!TOWN_PROPS_ENABLED) skip` | v2.3.2061 made the flag mean "the v16 set only" | the whole scenario reported "switched off by directive — skipped" while twelve props were on screen and two other files were measuring them |
+
+The last one is the worst of the six, because a skip is not a failure. It had
+been dark for weeks and the sweep's summary counted it as a green line.
+
+**What to do instead:** ask the game. Every one of those values has a live
+handle — `window.__btWorldProps()`, `__btGearVersion()`, `__btNpcSprites()`,
+`propsForZone('town')` — and where a scenario needs geometry it does not
+have a handle for, add the probe rather than the constant. Where a lane is
+genuinely a choice, `node tools/dev/town-lanes.mjs` re-derives it from the
+walk grid and the placed footprints, and `node tools/dev/town-lanes.mjs X Y`
+answers whether one spot is clear.
+
+**And measure against the SHAPE, not the centre.** A distance to a
+building's centre is meaningless once the building is 470px wide: the centre
+is 235px from its own doorway, so the check either fails someone at the door
+or gets loosened until it passes someone across the plaza. Distance to the
+footprint box is what "standing at it" means.
+
+**A skip must name a condition that is still real.** Gate a skip on the thing
+the file is about — "are there props drawn" — not on a flag that happens to
+correlate with it today. And keep the two apart: "off by directive" and
+"stopped working" look identical from outside, which is the whole reason
+v2.3.1813 chose the flag in the first place; the answer is to require BOTH
+(the directive AND an empty list), not to pick one.
+
+**Related:** §29 (selecting UI by its label), §33 (reading a field the game
+does not have), §34 (moving the scenery under a colour probe).
+
+---
+
+## §36 — A spawn point has three constraints, and fixing one breaks another (v2.3.2078)
+
+**The move that looks right:** TOWN_SPAWN is inside the fountain's collision
+cell, so move it somewhere clear. Check the prop footprints, confirm the new
+spot is walkable, done.
+
+**Why it is wrong:** "clear" is three separate questions, and this version
+got each one wrong in turn while satisfying the previous ones.
+
+| attempt | clear of props? | can you walk out? | clear of the townsfolk? | what shipped |
+|---|---|---|---|---|
+| (815, 1010) | **no** — shares a 16px cell with the fountain | yes, by accident | yes | collision OFF for every player (the never-trap hatch), so you walked through everything |
+| (815, 975) | yes | **no** — 23px of corridor, then the basin | yes | boxed in against the fountain |
+| (815, 1140) | yes | yes | **no** — 99px from Diego | the shop drawer open on arrival, covering three of the inspect card's four actions |
+| (910, 1130) | yes | yes | yes — 170px | — |
+
+The three are genuinely independent:
+
+1. **Props.** The grid is stamped in 16px cells with `floor()` on both ends,
+   so a footprint that starts 2px into a cell blocks the whole cell. The
+   fountain's box starts at y 1018 and that is enough to poison y 1010.
+   And being *in* a blocked cell does not stop you — the never-trap hatch
+   lets you out, and takes the whole town's collision with it while you are
+   standing there.
+2. **A route.** Clear to stand on is not the same as clear to leave. North of
+   the basin the plaza is a 33px corridor for a 24px body.
+3. **The townsfolk.** Within `NPC_PROX_OPEN` (90px) a shopkeeper's drawer
+   opens by itself, and it stays open until `NPC_PROX_CLEAR` (125px). The
+   drawer is `position: fixed` at the bottom of the screen, where the inspect
+   card's pinned action row also lives, so a spawn inside that ring hands
+   every new player a card whose Trade, Duel and Add Friend cannot be
+   pressed.
+
+**What to do instead:** check all three, by walking. `node
+tools/dev/town-lanes.mjs X Y` answers the first; mp-townexit walks the other
+two and asserts the NPC gap (>125px) and that no shop drawer is up on
+arrival. A spawn is not a coordinate, it is the first ten seconds of the
+game.
+
+**And the third one is a live bug in its own right,** not only a spawn
+constraint: walking up to the shop and then tapping a player hits it too.
+Fixed by closing the drawer when the inspect card opens — one panel at a
+time, which is the rule the proximity gate already applies in the other
+direction.
+
+**Related:** §20 (a fixed wrap is its own stacking context — a control the
+dashboard paints over), §34 (moving the scenery under a probe), §35 (copying
+a value out of the game).
+
+---
+
+## §37 — Measuring a drawing against the box that defines it tests the arithmetic, not the art (v2.3.2082)
+
+**The move that looks right.** The owner asks whether tattoos land in the
+same place through an animation. The bake already publishes, per frame, the
+region box it measured and the grid it fitted into that box
+(`window.__btGridProbe` → `__btGridsByTag['<pose>-<dir>']`, from
+`stampRegion` in `src/rendering/playerDecal.js`). So: express the grid's
+origin as a fraction of the region box, take the spread across the frames of
+a sheet, and gate on it. Every number is real, every number comes from the
+running game, and the check passes on a sheet whose tattoo crawls all over
+the chest.
+
+**Why it cannot fail.** `gridFit` *centres* the grid on the box it was
+handed:
+
+```js
+const dw = Math.max(ART_W, Math.round(bw * box.fillW));
+const ox = Math.round((lx + rx + 1) / 2 - dw / 2);
+const oy = Math.round(ty + bh * box.cy - dh / 2);
+```
+
+so `(ox - lx) / bw` is `(1 - fillW) / 2` on every frame of every sheet, for
+every drawing, forever. The metric is a restatement of two lines of
+arithmetic. A region box that has wandered off the chest and onto the armpit
+carries its perfectly-centred grid along with it and reports no drift at all.
+
+**The rule.** A placement is only measurable against something that did not
+help place it. Two things placed the ink — the region mask and `gridFit` —
+so the reference has to be a third: the FIGURE. `stampRegion` reports each
+frame's own opaque extent under the probe (`fx0, fx1, fy0, fy1`), and
+`mp-inkplace` measures the ink's centre as a fraction of *that*, which is
+what a player is actually looking at.
+
+**The same trap, elsewhere in this repo.** §35 is its sibling — a test that
+copies a value out of the game and compares it to itself. This one does not
+copy anything; it derives both sides of the comparison from the same
+function. Ask of any placement check: *what would have to be broken for this
+number to move?* If the answer is "nothing that could plausibly break", the
+reference is wrong, not the threshold.
+
+**A corollary worth keeping.** The reference does not have to be perfect to
+be valid, only independent. The figure box wobbles too — arms swing out
+through a stride and widen it — so a correctly-placed tattoo still moves a
+few percent, and the gate sits above that wobble rather than at zero. An
+imperfect independent reference beats a perfect dependent one.
+
+**Related:** §33 (a test that reads a field the game does not have), §35 (a
+test that copies a value out of the game), §34 (moving the scenery under a
+colour probe).
+
+---
+
+## §38 — A sub-test that injects over the previous one's live state blames the wrong feature (v2.3.2083)
+
+**The symptom, and how convincing it was.** `mp-cosmpose` works the player on
+an ore vein and then on a fishing spot, by the same recipe: put the tool in
+the bag, inject a node under the player's feet, set `S._tapNode`, press the
+prompt. The ore vein worked every time. The fishing spot never did. The
+scenario wrote the conclusion into its own source — *"an injected fishSpot
+does not become workable the way an ore vein does — the recipe is identical
+and the rod is in the bag, so something else about fishing refuses it"* — and
+downgraded the assertion to a `skip`. That reasoning is airtight and the
+conclusion is wrong.
+
+**What was actually happening.** `BroTown.jsx`'s node-proximity block ends:
+
+```js
+S._nearNode = _tapN;
+/* v2.3.1432 (owner: "the contextual menu for cooking didn't go away") */
+if (S._extraction) S._nearNode = null;
+```
+
+A live harvest attempt suppresses the interact prompt **on purpose** — you are
+already doing the thing it offers. The ore sub-test soaks for six seconds with
+an extraction running, and the fishing spot was injected immediately after it.
+`_nearNode` was nulled by the *mining* attempt that had not finished. Nothing
+about fishing refused anything: ore passed because it ran first and fish
+failed because it ran second. **Swapping the two would have swapped the
+result** — which is the check that would have caught this in one run.
+
+**The rule.** Two sub-tests that write the same game state are one test unless
+the first is torn down and the teardown is *confirmed*. Injecting into a live
+state machine does not overwrite it; it queues behind it. Cancel, then read
+back that the cancel took, then inject.
+
+**And make the diagnostic name the state, not the feature.** The old failure
+message read `hasGatherTool or nodeReachDist refused it` — it named the two
+gates the author had in mind and never mentioned `S._extraction`, so every run
+pointed at gathering. A `why` that can only accuse the suspects you already
+thought of will keep accusing them. The replacement reports which of
+`_extraction` / `gatherNodes` / `_tapNode` actually differs, so the state says
+what happened instead of the author's prior.
+
+**Related:** §33 (a test that reads a field the game does not have), §37
+(measuring a drawing against the box that defines it).
+
+---
+
+## §39 — "Element is visible, enabled and stable" is what a COVERED button looks like (v2.3.2085)
+
+**The message that means the opposite of what it says.** A Playwright click
+on a control something else is sitting on top of reports this and then times
+out:
+
+```
+locator resolved to <button class="bt-inspect-tp">Trade</button>
+attempting click action
+  2 x waiting for element to be visible, enabled and stable
+    - element is visible, enabled and stable
+Timeout 30000ms exceeded
+```
+
+Every line is true. The button *is* visible, enabled and stable — it is
+simply not what the pointer would land on. Read as written it says "the
+button is fine and the click did nothing", which sends you to the handler,
+the event wiring, the disabled state: everywhere except the one place the
+answer is. mp-trade sat on this for weeks.
+
+**The browser will name the culprit for the asking.**
+`document.elementFromPoint` at the control's own centre. `H.clickText` does
+it now (v2.3.2084) and answered mp-trade in a single run. Three things had to
+be right before it said anything useful, and each wrong version *looked* like
+it worked:
+
+1. **Sample BEFORE the click.** In the catch block you are thirty seconds
+   late; the panel has moved on and `boundingBox()` answers null.
+2. **Put it FIRST in the message.** The runner truncates a failure at a couple
+   of hundred characters and Playwright's own call log is longer than that, so
+   an appended line is cut off before anyone reads it.
+3. **Say whether it is an ANCESTOR.** An element that *contains* the button is
+   not covering it — the click lands and bubbles. Naming which of the two it
+   is saves the reader the wrong half of the search.
+
+**And the fix is usually not a z-index.** The inspect card claims z 99800
+against the chat feed's 25 and loses anyway, because the feed's shell is
+styled `left: 8px` and *renders at x=295*: its `position: fixed` is captured
+by a transformed ancestor, which also scopes its z-index inside that
+ancestor's stacking context (§20). When two elements are in different
+stacking contexts, no number either side picks decides the argument. What
+decides it is one of them declining the tap.
+
+**The general shape, which this repo has now hit three times.** A control the
+player must press, with something invisible over it: the dashboard over the
+tutorial banner (v2.3.1205), the shop drawer over the inspect card's actions
+(v2.3.2078), the chat log over Trade (v2.3.2085). All three were reported as
+"the button does nothing". When a button does nothing, ask what is on top of
+it *before* you read its handler.
+
+**Related:** §20 (a fixed wrap is its own stacking context), §38 (a
+diagnostic that can only accuse the suspects you thought of).

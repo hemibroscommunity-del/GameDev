@@ -1,4 +1,6 @@
 ﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { shopBus } from './mobile/shopBus.js';   /* v2.3.2050: Shopkeeper Bro's window */
+import { uiBusyBus } from './mobile/uiBusyBus.js'; /* v2.3.2085: tell chrome outside this tree to stand aside */
 import { zonePlayerScale } from '@/data/zones.js'; /* v2.3.1574: the one copy of the vista perspective curve */
 import { ExtractionSwipeLayer } from './ExtractionSwipeLayer.jsx';
 /* v2.3.855: first UI-panel extraction — the info/online-count popup. */
@@ -24,7 +26,6 @@ import { EncyclopediaPanel } from './panels/EncyclopediaPanel.jsx';
 /* v2.3.865: skills panel extraction. */
 import { SkillsPanel } from './panels/SkillsPanel.jsx';
 /* v2.3.866: shop panel extraction. */
-import { ShopPanel } from './panels/ShopPanel.jsx';
 /* v2.3.869: stat screen panel extraction. */
 import { StatScreenPanel } from './panels/StatScreenPanel.jsx';
 /* v2.3.870: quest panel extraction (logic already in @/game/quests.js). */
@@ -286,7 +287,6 @@ const {
   getDungeonCreatorUnlocks, validateCustomDungeon, createDefaultDungeonConfig,
   hasUnlock, getNpcQuest, npcHasQuestChain, /* v2.3.1773 */
   discoverMonster, discoverMaterial, discoverZone, discoverCollision,
-  SHOP_PRICES, SHOP_ITEMS_FOR_SALE,
   getGuildRank, getGuildQuest, GUILD_RANKS, GUILD_QUESTS, SKILL_GUILDS,
   meetsStatReq, meetsGearReq, getGearStatReq, STAT_LABELS,
   LIFE_SKILLS, RESOURCE_TIERS, DEPTH_CONFIG, DEPTH_TIERS,
@@ -332,6 +332,25 @@ import { SpriteHpBar } from './SpriteHpBar.jsx'; /* v2.3.1273: owner's HP-bar ar
 import { barHeight, navSlotSize, columnsRowHeight, DASH_OVERLAP } from './mobile/sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 bar-height canvas; v2.3.1325 slot-derived bar; v2.3.1560 two-row band; v2.3.1635 three-row band; v2.3.1636 columns row */
 import { recolorEnabled } from '@/rendering/traits/recolorOptions.js';
 import { buildingPropNear } from '@/data/worldProps.js'; /* v2.3.1778: building doors */
+
+/* ═══ v2.3.2062: THE MANA DRAUGHT'S FLOOR, IN CLIENT FRAMES ═══
+ * The server holds the surge as a flat amount PER REGEN TICK (660 ms); this
+ * loop runs per FRAME. Converting here rather than shipping a second constant
+ * means the two cannot drift: the number itself is the server's, mirrored onto
+ * S._manaFlat by wsClient, and all this does is spread it across the frames in
+ * a tick. Returns 0 when the buff is not up or the server never sent one, so a
+ * cooked meal -- which sets the same timer with no flat amount -- falls through
+ * to the ordinary multiplier path untouched.
+ * Prediction only: the worker's player_state is the truth, and this exists so
+ * the bar climbs smoothly between echoes rather than stepping. */
+var MANA_SURGE_TICK_MS = 660;   /* server: REGEN_TICKS x TICK_RATE */
+var MANA_SURGE_FPS = 60;
+function manaSurgePerFrame(S, active) {
+  if (!active) return 0;
+  var flat = Number(S && S._manaFlat);
+  if (!(flat >= 1 && flat <= 200)) return 0;   /* same bound the server reads */
+  return flat / (MANA_SURGE_TICK_MS / 1000) / MANA_SURGE_FPS;
+}
 
 /* Expose all exports as globals for the pre-transpiled code.
    The original index.html had everything in one scope; this bridges the gap. */
@@ -579,7 +598,17 @@ function _spawnTownNpcs() {
   /* v2.3.1773: the blacksmith joins the mayor.  This allowlist is the gate —
      NPC_DATA carries the record, but a name missing from here never spawns,
      which is how the table can hold entries that are not live yet. */
-  var ACTIVE_NPCS = ['Mayor Bro', 'Blacksmith Bro', 'Storekeeper Bro']; /* v2.3.1775 */
+  /* v2.3.2046: + Shopkeeper Bro, the first NPC in the game that walks.
+     Note 'Storekeeper Bro' beside him is a DIFFERENT, older entry -- the two
+     names are one letter apart and getNpcQuest keys on the name, so they must
+     not be conflated. */
+  /* v2.3.2064: + Lil Bro, the second NPC that walks. Scenery with legs -- no
+     quest, no shop -- so nothing but this line and his NPC_DATA record. */
+  /* v2.3.2073: 'Shopkeeper Bro' -> 'Diego' (owner's rename). This list is
+     keyed by NAME and gates the whole NPC tick — an NPC missing from it stops
+     walking, talking and being interactable, so it moves with gameDisplay's
+     `name` or the rename silently switches him off. */
+  var ACTIVE_NPCS = ['Mayor Bro', 'Blacksmith Bro', 'Storekeeper Bro', 'Diego', 'Lil Bro']; /* v2.3.1775 */
   return NPC_DATA.filter(function (n) { return ACTIVE_NPCS.indexOf(n.name) >= 0; })
     .map(function (npc) { return _objectSpread({}, npc); });
 }
@@ -2534,13 +2563,26 @@ export var BroTown = function BroTown(_ref0) {
      the frame the auto-open would fire on.  Deliberately generous: false
      negatives here open a dialogue over someone's inventory, which is worse
      than a dialogue that waits. */
-  stateRef.current._uiBusy = !!(questPanel || buildingPanel || showInventory || showSkills
+  /* v2.3.2078: named, because it is now read twice — the proximity gate
+     reads it off stateRef on the same frame (see the note above), and the
+     effect that puts Diego's drawer away needs it as a dependency. One
+     expression, so the two can never disagree about what "a panel is open"
+     means. */
+  var _anyPanelOpen = !!(questPanel || buildingPanel || showInventory || showSkills
     || showStatScreen || showShop || showEncyclopedia || showLeaderboard || showSocialPanel
     || showClanPanel || showGuildPanel || showFeedback || showPetHouse || showFurniture
     || showPlayerList || showDungeonCreator || showTrade || incomingTrade || trade2
     || duelRequest || threatIncoming || inspectPlayer || chatOpen || showEmotes || showInfo
     || showIntro || showWelcome || showMayorGreeting || showTourPrompt || showNameModal
     || cookMinigame);
+  stateRef.current._uiBusy = _anyPanelOpen;
+  /* v2.3.2085: and out to the chrome mounted OUTSIDE this tree.  GameApp's
+     WorldChatFeed has no path to this React state (its own comment says so),
+     and its scrollable list was sitting over the inspect card's Trade button
+     -- see uiBusyBus for the whole story.  Published from the same
+     `_anyPanelOpen` this component already gates itself on, so there is one
+     definition of "busy" rather than two that drift. */
+  uiBusyBus.set(_anyPanelOpen);
   /* v2.3.1643: showChatLog, showClanWar and showArena USED TO LIVE HERE
      and were declared but never read — three dead useState pairs whose
      setters nothing called either. Removed. If you are looking for those
@@ -3994,7 +4036,33 @@ export var BroTown = function BroTown(_ref0) {
           var _gx = Math.floor(px * _gw / _mw);
           var _gy = Math.floor(py * _gh / _mh);
           if (_gy >= 0 && _gy < _gh && _gx >= 0 && _gx < _gw) {
-            return _wgrid[_gy][_gx] === false;
+            var _cellSolid = _wgrid[_gy][_gx] === false;
+            /* ═══ v2.3.2075: NEVER TRAP SOMEONE ALREADY INSIDE ═══
+               The same rule the NPC branch above states and for the same
+               reason, applied to the grid: if the player is ALREADY standing
+               in a blocked cell then every candidate step is solid too, there
+               is no direction out, and they are stuck for good.
+               That is not hypothetical here. The World View's town wall
+               (v2.3.2075) is new geometry drawn over ground that was open
+               yesterday, so a character who logged out against the old wall
+               art can load in inside the new band -- and a returning player
+               frozen on the spot is a far worse bug than the one the wall
+               fixes. Written for every zone rather than for this one: any mask
+               that ever tightens has the same failure.
+               A player OUTSIDE the geometry is blocked normally, so this
+               cannot be used to walk through a wall -- only out of one. */
+            /* S.player directly, NOT the `_pp` the NPC branch above sets:
+               that one is only assigned inside `if (_npcs && _npcs.length)`,
+               and the World View -- the zone this exists for -- has no NPCs at
+               all, so it would be undefined in exactly the place it matters. */
+            var _me = S.player;
+            if (_cellSolid && _me) {
+              var _pgx = Math.floor(_me.x * _gw / _mw);
+              var _pgy = Math.floor(_me.y * _gh / _mh);
+              if (_pgy >= 0 && _pgy < _gh && _pgx >= 0 && _pgx < _gw
+                  && _wgrid[_pgy][_pgx] === false) return false;
+            }
+            return _cellSolid;
           }
         }
       }
@@ -4009,6 +4077,16 @@ export var BroTown = function BroTown(_ref0) {
       if (tile === 8 || tile === 9 || tile === 10 || tile === 12 || tile === 14 || tile === 15) return false; /* exit/dungeon/gate/plot/bed walkable */
       return TILE_SOLID.has(tile);
     };
+    /* ═══ v2.3.2078: QA probe — ASK THE GAME WHERE THE WALLS ARE ═══
+       Owner, on the world map: "Can't walk through pinkish lines", and "make
+       sure the player doesn't spawn on the line or outside of it".  Nothing
+       could check either from outside: the walk mask is a JSON file a test
+       can read, but whether the CLIENT agrees with it is a different claim,
+       and it is the one that decides whether a player walks through a wall.
+       This is the game's own answer, at any point, in world coordinates.
+       Attached once per mount (this is the game-loop SETUP effect, not the
+       tick), so it costs one property write. */
+    if (typeof window !== 'undefined') window.__btIsSolid = (px, py) => isSolid(px, py);
     var _gameLoop = function gameLoop() {
       frameRef.current = requestAnimationFrame(_gameLoop);
       try {
@@ -4331,8 +4409,17 @@ export var BroTown = function BroTown(_ref0) {
         /* v2.3.1154: + Swiftness channel (Endurance grid, cap +10%) --
            client-owned; stays under the worker's 500 px/s move bound. */
         var baseSpd = S.rpg ? calcMoveSpeed(S.rpg.agility || 0, (S.rpg.enduranceSpec || {}).swiftness || 0) / 5.0 * SPEED : SPEED;
-        /* Food buff speed bonus */
-        var spdBuff = S._spdBuff && Date.now() < S._spdBuff ? 1.15 : 1.0;
+        /* Food buff speed bonus.
+           v2.3.2062: 1.15 is the COOKED-FOOD magnitude and stays the fallback;
+           S._spdBuffMul carries a stronger buff's own number (the Swift
+           Draught's 1.5). Bounded 1..2 to match the server's read in
+           movement.js -- that bound is also what the anti-teleport cap is
+           sized against, so a client that ran faster than it would be
+           rejected and rubber-banded by the server. */
+        var _sbm = Number(S._spdBuffMul);
+        var spdBuff = S._spdBuff && Date.now() < S._spdBuff
+          ? ((_sbm >= 1 && _sbm <= 2) ? _sbm : 1.15)
+          : 1.0;
         /* Amulet move speed bonus */
         var amuletSpdMult = ((_S$rpg5 = S.rpg) === null || _S$rpg5 === void 0 || (_S$rpg5 = _S$rpg5._amuletBonus) === null || _S$rpg5 === void 0 ? void 0 : _S$rpg5.stat) === 'moveSpd' ? 1 + S.rpg._amuletBonus.value / 100 : 1.0;
         var swimMult = S._swimming ? SWIM_SPEED_MULT : 1.0;
@@ -5066,6 +5153,14 @@ export var BroTown = function BroTown(_ref0) {
             if (_pOk && _pq) {
               S._npcProxLatch = { npc: _pn, ready: _pqReady };
               setQuestPanel({ npc: _pn.name, quest: _pq.quest, status: _pq.status, npcRef: _pn });
+            } else if (_pOk && _pn.shop && !shopBus.open) {
+              /* v2.3.2050: walking up to a shopkeeper opens his window, the
+                 same proximity gate a quest giver uses -- _pOk already means
+                 "close enough, not in combat, nothing else open". The latch is
+                 what stops it reopening every frame after you close it while
+                 still standing next to him. */
+              S._npcProxLatch = { npc: _pn, ready: false };
+              shopBus.setOpen(true);
             }
           }
         }
@@ -5458,7 +5553,9 @@ export var BroTown = function BroTown(_ref0) {
           if (_R7.mana < _R7.maxMana && Date.now() - S.lastDamageTaken > 2000 && !S._serverMonsters) {
             var mMindMult = 1 + (_R7.mind || 0) * 0.001;
             var manaRegenMult = hasManaBuff ? 1.3 : 1.0;
-            _R7.mana = Math.min(_R7.maxMana, _R7.mana + _R7.maxMana * 0.0004 * mMindMult * manaRegenMult);
+            _R7.mana = Math.min(_R7.maxMana, _R7.mana
+              + Math.max(manaSurgePerFrame(S, hasManaBuff),
+                _R7.maxMana * 0.0004 * mMindMult * manaRegenMult));
           }
         } else if (S.rpg) {
           /* In-combat regen — §3.2: 0.3%/s HP, stamina regens always */
@@ -5475,7 +5572,13 @@ export var BroTown = function BroTown(_ref0) {
              v2.3.234 (Phase 4): Mind multiplies combat regen too. */
           if (_R8.mana < _R8.maxMana && !S._serverMonsters) {
             var _mMindMult8 = 1 + (_R8.mind || 0) * 0.001;
-            _R8.mana = Math.min(_R8.maxMana, _R8.mana + _R8.maxMana * 0.00017 * _mMindMult8);
+            /* v2.3.2062: the surge applies IN COMBAT too -- that is the whole
+               point of it, since casting specials nonstop is a thing you do
+               while fighting. */
+            var _hasMana8 = S._manaBuff && Date.now() < S._manaBuff;
+            _R8.mana = Math.min(_R8.maxMana, _R8.mana
+              + Math.max(manaSurgePerFrame(S, _hasMana8),
+                _R8.maxMana * 0.00017 * _mMindMult8));
           }
         }
 
@@ -5919,6 +6022,7 @@ export var BroTown = function BroTown(_ref0) {
                    only-when-drawn rule as the four above. */
                 tf: artHasInk(getArt('tattooFace')) ? getArt('tattooFace') : undefined,
                 tm: artHasInk(getArt('tattooArm')) ? getArt('tattooArm') : undefined,
+                tb: artHasInk(getArt('tattooHeadBack')) ? getArt('tattooHeadBack') : undefined,   /* v2.3.2043 */
                 /* v2.3.1941: clothing patterns. */
                 sp: getPattern('shirt') || undefined,
                 pp: getPattern('pants') || undefined,
@@ -5926,6 +6030,15 @@ export var BroTown = function BroTown(_ref0) {
                 eqc: getEquip('chest'),
                 eql: getEquip('legs'),
                 eqs: getEquip('shoulders'),
+                /* v2.3.2084: the UNDER-SHIRT, which this payload has never
+                   carried.  It rode the join frame alone, so peers lost it on
+                   the first relay and fell back to deriving a garment from the
+                   legacy `st` style -- and the two disagree about the default
+                   (the gear slot dresses every new player in a tshirt, `st` is
+                   'none' until somebody picks a style), so an ordinary player
+                   was drawn bare-chested on every other screen.  Same shape as
+                   the three above it. */
+                eqst: getEquip('shirt'),
                 pt: getPants(),
                 sh: getShoes(),
                 rpgLv: (_rpg === null || _rpg === void 0 ? void 0 : _rpg.level) || 1,
@@ -6931,7 +7044,30 @@ export var BroTown = function BroTown(_ref0) {
       var actual = R.hp - before;
       R.inventory[key] -= 1;
       if (R.inventory[key] <= 0) delete R.inventory[key];
-      if (S._serverMonsters && S.channel) {
+      /* ═══ v2.3.2077: `_serverMonsters` IS FALSE IN TOWN ═══
+             Owner-facing symptom: eating and cooking in town do not stick.
+
+             This gate has been `S._serverMonsters && S.channel` since
+             v2.3.1207, and that flag means "this zone has server-managed
+             monsters" -- wsClient sets it false whenever the zone's monster
+             list is empty, and its own comment says so: "Empty list means the
+             server has no monsters for this zone (town, or a dungeon the
+             server doesn't model)". So in TOWN the message was never sent at
+             all. The client healed, decremented the bag and wrote
+             localStorage; the server never heard, and its blob -- which is
+             authoritative for inventory and HP -- reconciles the change away.
+
+             THIS IS THE THIRD TIME. v2.3.1702 fixed `ability_use` gated the
+             same way, and v2.3.2063 fixed `shop_purchase`, where no purchase
+             in the game's history had ever reached the server because the
+             vendor stands in town. Presence on the channel is the only
+             precondition a consume actually has.
+
+             Backlog item N in docs/ARCHITECTURE-HANDOFF.md reads this gate as
+             "adequate ... local heal is prediction, the echo is the
+             tiebreaker" -- true reasoning about the wrong premise, because
+             there is no echo when nothing is sent. */
+      if (S.channel) {
         try { S.channel.send({ type: 'eat_request', payload: { invKey: key } }); } catch (e) {}
       }
       pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + actual + ' HP', '#59BF91');
@@ -7037,6 +7173,43 @@ export var BroTown = function BroTown(_ref0) {
     setBuildingPanel(null);
     setQuestPanel(null);
     setInspectPlayer(null);
+  }, []);
+
+  /* ═══ v2.3.2078: THE SHOP DRAWER GETS OUT OF EVERYTHING'S WAY ═══
+     Diego's trade drawer is `position: fixed` just above the dashboard, and
+     so is every panel that opens over the bottom of the screen. On the
+     primary platform's 390x844 they land on top of each other and the drawer
+     wins: measured with elementFromPoint, three of the inspect card's four
+     actions had the drawer painted over them, so a finger aiming at Trade
+     opened a shop slot instead. The sweep found the same shape twice more —
+     mp-social could not press "Add Friend", mp-clan could not press "Create
+     Clan (500g)" — both reported as visible, enabled and stable and then
+     un-clickable, which is what a covered control looks like from outside.
+
+     The proximity gate that OPENS the drawer already refuses while anything
+     else is up ("_pOk already means close enough, not in combat, nothing
+     else open"). This is that same rule in the other direction, for a drawer
+     that was already open when you tapped: one panel at a time.
+
+     Keyed on `_anyPanelOpen` — the SAME expression the gate reads — rather
+     than on a list of panels kept here. The card is opened from four places
+     and the sheet has a dozen destinations; a rule written per-surface is a
+     rule that will be missed on the next one. */
+  useEffect(function () {
+    if (_anyPanelOpen) { try { shopBus.setOpen(false); } catch (e) { /* no shop */ } }
+  }, [_anyPanelOpen]);
+  /* ...and the bottom SHEET, which is not in that list. The sheet's
+     destinations render off dashboardPanelBus, not off the show* flags
+     above, so `_anyPanelOpen` is false while the Social or Clan destination
+     is filling the lower half of the screen. Two signals because the app has
+     two panel systems; collapsing them into one was tried and quietly
+     dropped the sheet. */
+  useEffect(function () {
+    return dashboardPanelBus.subscribe(function () {
+      if (dashboardPanelBus.state.mode !== 'bar') {
+        try { shopBus.setOpen(false); } catch (e) { /* no shop */ }
+      }
+    });
   }, []);
 
   /* Virtual joysticks — each tracks its own finger */
@@ -9655,12 +9828,31 @@ export var BroTown = function BroTown(_ref0) {
     }
     if (S._dmgBuff && Date.now() < S._dmgBuff) {
       var _rem2 = Math.ceil((S._dmgBuff - Date.now()) / 1000);
+      /* v2.3.2058: the chip used to say "+20%" for every damage buff, which
+         became a lie the moment the Fury Tonic started doubling. Read the
+         same magnitude the damage math reads, with the same 1..4 bound and
+         the same cooked-food fallback. */
+      var _dbm2 = Number(S._dmgBuffMul);
+      var _dmul2 = (_dbm2 >= 1 && _dbm2 <= 4) ? _dbm2 : 1.20;
       effects.push({
         icon: '⚔️',
         label: 'Dmg+',
         color: '#ea580c',
         time: _rem2 + 's',
-        desc: '+20%'
+        desc: _dmul2 >= 2 ? 'x' + (Math.round(_dmul2 * 100) / 100) : '+' + Math.round((_dmul2 - 1) * 100) + '%'
+      });
+    }
+    /* v2.3.2062: the Mana Draught had no chip at all, because until now it was
+       an instant top-up with nothing to count down. A three-minute buff the
+       HUD never mentions is one the player cannot tell is still running. */
+    if (S._manaBuff && Date.now() < S._manaBuff) {
+      var _rem6 = Math.ceil((S._manaBuff - Date.now()) / 1000);
+      effects.push({
+        icon: '\u{1F4A0}',
+        label: 'Mana',
+        color: '#4F8FDE',
+        time: _rem6 + 's',
+        desc: Number(S._manaFlat) > 0 ? 'Surge' : '+30%'
       });
     }
     if (S._regenBuff && Date.now() < S._regenBuff) {
@@ -9685,12 +9877,19 @@ export var BroTown = function BroTown(_ref0) {
     }
     if (S._spdBuff && Date.now() < S._spdBuff) {
       var _rem5 = Math.ceil((S._spdBuff - Date.now()) / 1000);
+      /* v2.3.2062: the chip said "+15%" for every speed buff, which became a
+         lie the moment the Swift Draught started multiplying by 1.5. Reads
+         the same magnitude the movement math reads, with the same bound and
+         the same cooked-food fallback. */
+      var _sbm5 = Number(S._spdBuffMul);
+      var _smul5 = (_sbm5 >= 1 && _sbm5 <= 2) ? _sbm5 : 1.15;
       effects.push({
         icon: '💨',
         label: 'Speed',
         color: '#D8A94D',
         time: _rem5 + 's',
-        desc: '+15%'
+        desc: _smul5 >= 1.5 ? 'x' + (Math.round(_smul5 * 100) / 100)
+          : '+' + Math.round((_smul5 - 1) * 100) + '%'
       });
     }
     if (effects.length === 0) return null;
@@ -10443,20 +10642,18 @@ export var BroTown = function BroTown(_ref0) {
       display: 'flex',
       alignItems: 'center'
     }
-  }, "\u26A0\uFE0F Dark! Monsters hear you.")), showEmotes && /*#__PURE__*/React.createElement(EmotePanel, { sendEmote: sendEmote }), nearBuilding === 0 && /*#__PURE__*/React.createElement("button", {
-    className: "bt-interact-prompt",
-    style: {
-      bottom: 160
-    },
-    onTouchStart: function onTouchStart(e) {
-      e.preventDefault();
-      setShowShop(true);
-    },
-    onMouseDown: function onMouseDown(e) {
-      e.preventDefault();
-      setShowShop(true);
-    }
-  }, "\uD83C\uDFEA Open Shop"), showShop && rpgState && /*#__PURE__*/React.createElement(ShopPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setShowShop: setShowShop }), nearBuilding !== null && BUILDINGS[nearBuilding] && /*#__PURE__*/React.createElement("button", {
+  }, "\u26A0\uFE0F Dark! Monsters hear you.")), showEmotes && /*#__PURE__*/React.createElement(EmotePanel, { sendEmote: sendEmote }), /* v2.3.2051 (owner: "Yeah replace it"): the building-side town shop is
+     RETIRED -- both the "Open Shop" prompt and the ShopPanel it opened.
+     Shopkeeper Bro does this job now, and does it server-side: the old
+     panel credited coins and edited the bag in the CLIENT and then told
+     the server, which is the same self-credit shape the marketplace note
+     calls free duplication for anyone with devtools.
+     Its three consumables were not dropped with it -- traps, whetstones
+     and antidotes are staples on his list at the SAME prices (shop.js
+     SHOP.STAPLES), because this shop was their only source and deleting
+     it without them would have removed them from the game rather than
+     moved them. */
+    null, nearBuilding !== null && BUILDINGS[nearBuilding] && /*#__PURE__*/React.createElement("button", {
     className: "bt-interact-prompt",
     onTouchStart: function onTouchStart(e) {
       e.preventDefault();
@@ -10769,7 +10966,10 @@ export var BroTown = function BroTown(_ref0) {
            panel onClick (~line 18989) for the predict + sync flow.
            Recipe index resolved by indexOf since `best` is one of the
            filtered COOKING_RECIPES entries. */
-        if (S._serverMonsters && S.channel) {
+        /* v2.3.2077: see the eat_request note above -- same flag, same
+           hole. Cooking happens at a campfire, and a campfire in town is the
+           obvious place to cook. */
+        if (S.channel) {
           var _recipeIdx = COOKING_RECIPES.indexOf(best);
           if (_recipeIdx >= 0) {
             try { S.channel.send({ type: 'cook_recipe', payload: { recipeIdx: _recipeIdx } }); } catch (e2) {}
@@ -10794,8 +10994,14 @@ export var BroTown = function BroTown(_ref0) {
         if (best.buff === 'heal') R.hp = Math.min(R.maxHp, R.hp + best.power);
         if (best.buff === 'regen') S._regenBuff = Date.now() + dur;
         if (best.buff === 'resist') S._resistBuff = Date.now() + dur;
-        if (best.buff === 'damage') S._dmgBuff = Date.now() + dur;
+        /* v2.3.2058: cleared with the timer -- a meal states its own
+             magnitude (the 1.20 fallback), it must not inherit a Fury
+             Tonic's x2 that is still ticking. Mirrors the server's
+             `delete ps._buffs.damageMul` in cooking.js. */
+        if (best.buff === 'damage') { S._dmgBuffMul = 0; S._dmgBuff = Date.now() + dur; }
         if (best.buff === 'all') {
+          S._dmgBuffMul = 0;   /* v2.3.2058: see above */
+          S._spdBuffMul = 0;   /* v2.3.2062: nor a Swift Draught's x1.5 */
           S._dmgBuff = Date.now() + dur;
           S._spdBuff = Date.now() + dur;
           S._hpBuff = Date.now() + dur;

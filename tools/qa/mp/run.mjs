@@ -23,6 +23,21 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  rollbake: () => import('./mp-rollbake.mjs'), /* v2.3.2083: is the dodge roll baked before you roll? */
+  inkplace: () => import('./mp-inkplace.mjs'), /* v2.3.2082: does a tattoo stay in the same place while you move? */
+  townforge: () => import('./mp-townforge.mjs'), /* v2.3.2077: forging in town reaches the worker */
+  townmeal: () => import('./mp-townmeal.mjs'), /* v2.3.2077: eating + cooking in town reach the worker */
+  plazaplate: () => import('./mp-plazaplate.mjs'), /* v2.3.2071: a plate on every townsperson, benches facing the water */
+  portalbeam: () => import('./mp-portalbeam.mjs'), /* v2.3.2070: the light shaft over a zone exit */
+  lilbro: () => import('./mp-lilbro.mjs'), /* v2.3.2064: the second walking NPC */
+  potions: () => import('./mp-potions.mjs'), /* v2.3.2062: the mana + speed draughts */
+  townhill: () => import('./mp-townhill.mjs'), /* v2.3.2061: the fountain + the house on the hill */
+  shopkeeper: () => import('./mp-shopkeeper.mjs'), /* v2.3.2050: trading with Shopkeeper Bro, and the pile being public */
+  facingside: () => import('./mp-facingside.mjs'), /* v2.3.2042: a face tattoo does not revolve to the back of a head */
+  cosmpose: () => import('./mp-cosmpose.mjs'), /* v2.3.2041: do tattoos + clothing patterns survive every activity, on both screens? */
+  rehearsal: () => import('./mp-rehearsal.mjs'), /* v2.3.2040: four characters, every interaction, every frame scanned for a black band */
+  chatcompose: () => import('./mp-chatcompose.mjs'), /* v2.3.2039: selection, the dictation wait, and seeing your message */
+  loginkey: () => import('./mp-loginkey.mjs'), /* v2.3.2038: can you get your login key back from inside the game? */
   roomfull: () => import('./mp-roomfull.mjs'), /* v2.3.1982: the 61st player is told why, waits visibly, and walks in when a seat opens */
   hairmask: () => import('./mp-hairmask.mjs'), /* v2.3.1993: a hat presses the hair down, it does not shave the head */
   firstrun: () => import('./mp-firstrun.mjs'), /* v2.3.1975: a first-time player gets a whole screen, not a strip */
@@ -36,7 +51,7 @@ const SCENARIOS = {
   build: () => import('./mp-build.mjs'), /* v2.3.1953: height x frame — the shape, the boots, the plate, and the wire */
   facetat: () => import('./mp-facetat.mjs'), /* v2.3.1991: does the face tattoo survive the run? */
   questmsg: () => import('./mp-questmsg.mjs'), /* v2.3.1985: the quest-complete floater has to outlive a glance */
-  shirtarm: () => import('./mp-shirtarm.mjs'), /* v2.3.1984: the tee while jogging east */
+  shirtarm: () => import('./mp-shirtarm.mjs'), /* v2.3.2066: the tee's TRAILING sleeve while jogging east, measured */
   chatfeed: () => import('./mp-chatfeed.mjs'), /* v2.3.1980: players-online count + the world chat feed */
   lockaim: () => import('./mp-lockaim.mjs'), /* v2.3.1979: a locked-on bow shot has to actually hit */
   lockon: () => import('./mp-lockon.mjs'), /* v2.3.1952: locking on raises block/dodge/special around the right joystick */
@@ -126,6 +141,11 @@ const SCENARIOS = {
   townlock: () => import('./mp-townlock.mjs'), /* v2.3.1676: unarmed start + town gate */
   proj: () => import('./mp-proj.mjs'), /* v2.3.1678: the snowball is visible */
   lifeskill: () => import('./mp-lifeskill.mjs'), /* v2.3.1680: tool-gated gathering */
+  petdraw: () => import('./mp-petdraw.mjs'), /* v2.3.2078: an active pet is actually drawn */
+  dodgetrail: () => import('./mp-dodgetrail.mjs'), /* v2.3.2078: your own dodge leaves a trail too */
+  worldwalk: () => import('./mp-worldwalk.mjs'), /* v2.3.2078: the world map's pink lines are walls */
+  townexit: () => import('./mp-townexit.mjs'), /* v2.3.2078: you spawn clear of the fountain and can leave town */
+  cardreach: () => import('./mp-cardreach.mjs'), /* v2.3.2078: the inspect card's buttons on a phone */
   windup: () => import('./mp-windup.mjs'), /* v2.3.1811: the monster tells you */
   minishot: () => import('./mp-minishot.mjs'), /* v2.3.1810: glyph shapes are all distinct */
   fps: () => import('./mp-fps.mjs'), /* v2.3.1808: frame time, measured */
@@ -180,11 +200,16 @@ const SCENARIOS = {
  * shipped).  It names the newest offending file so the warning is actionable
  * rather than a thing to scroll past. */
 function _distStaleness() {
-  const dist = join(H.REPO, 'dist', 'index.html');
+  /* v2.3.2078: honour QA_DIST, so a verification run pointed at a second
+     build is not told its own fresh bundle is stale. */
+  const _root = process.env.QA_DIST
+    ? (process.env.QA_DIST.startsWith('/') ? process.env.QA_DIST : join(H.REPO, process.env.QA_DIST))
+    : join(H.REPO, 'dist');
+  const dist = join(_root, 'index.html');
   if (!existsSync(dist)) return { missing: true };
   const built = statSync(dist).mtimeMs;
   let newest = null, newestAt = 0, n = 0;
-  const skip = new Set(['node_modules', '.git', 'dist', '.wrangler', 'out']);
+  const skip = new Set(['node_modules', '.git', 'dist', 'dist-verify', '.wrangler', 'out']);
   const walk = (d) => {
     let ents; try { ents = readdirSync(d, { withFileTypes: true }); } catch { return; }
     for (const e of ents) {

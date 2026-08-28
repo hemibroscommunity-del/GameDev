@@ -25,6 +25,7 @@ import { playVw } from '../playViewport.js';
 /* v2.3.1652: the roster moved to bagFilterBus (see there); re-exported
    so every existing importer of InventoryPanel.CATEGORIES still works. */
 export { CATEGORIES } from './bagFilterBus.js';
+import { shopBus } from '../shopBus.js';   /* v2.3.2059: the bag is half the shop */
 
 // Light heuristic — classify an inventory key into one of the four
 // category filters.  Items the heuristic doesn't recognise fall through
@@ -83,18 +84,49 @@ const ORE_THUMB_DEFAULT = `/icons/items/ore-copper.webp${ITEMS_V}`;
    between the line and the rod, which a border-flood keyer can never reach
    because they don't touch the outside.  Re-keyed on NEAR-WHITE + NEAR-NEUTRAL
    wherever it sits, so coloured highlights (the red float) survive.
-   PNG because the source is webp and there is no webp ENCODER here — Chromium
-   did the decoding, which is why this was fixable at all. */
-const FISHING_POLE_THUMB = `/icons/items/fishing-pole.png${ITEMS_V}`;
+   Shipped as a PNG at the time because there was no webp ENCODER here —
+   Chromium did the decoding, which is why this was fixable at all.
+   v2.3.2068: there IS one now (Pillow is built with libwebp — see
+   tools/webp_icons.py), so the re-keyed art is a LOSSLESS webp and this
+   line no longer points at a .png.  The old un-keyed fishing-pole.webp it
+   replaces was still being served to the quest card in data/gameSystems.js,
+   so that card gets the fixed art too. */
+const FISHING_POLE_THUMB = `/icons/items/fishing-pole.webp${ITEMS_V}`;
 /* v2.3.1689 (owner: "use these sprites for the woodcutting axe and the
    pickaxe ... You currently just have a log thumbnail for the woodcutting
    axe").  The owner's two-tool sheet, split into one square icon each,
-   background keyed out and box-downscaled to 192px.  PNG rather than webp:
-   the rest of this set is webp because it was authored that way, and there
-   is no webp encoder in the build — the format is per-file, not a rule. */
-const WOODCUTTING_AXE_THUMB = `/icons/items/woodcutting-axe.png${ITEMS_V}`;
-const MINING_PICKAXE_THUMB  = `/icons/items/mining-pickaxe.png${ITEMS_V}`;
+   background keyed out and box-downscaled to 192px.  Shipped as PNG because
+   there was no webp encoder in the build; v2.3.2068 converted both to
+   LOSSLESS webp (identical pixels, ~43% fewer bytes) now that there is one. */
+const WOODCUTTING_AXE_THUMB = `/icons/items/woodcutting-axe.webp${ITEMS_V}`;
+const MINING_PICKAXE_THUMB  = `/icons/items/mining-pickaxe.webp${ITEMS_V}`;
 const RARE_GEM_THUMB        = `/icons/ui/cur-gem.webp${ITEMS_V}`; /* v2.3.1924 */
+/* ═══ v2.3.2055: THE POTIONS, AS REAL ART ═══
+ * Owner-supplied. Three of the five map onto consumables that actually exist
+ * (SHOP_ITEMS in server/src/data.js), and those are the three wired here:
+ *   whetstone    -> the purple one with the flexing arm. It IS the damage
+ *                   buff, so the art says what the item does without a word.
+ *   manaShard    -> blue.
+ *   staminaSalts -> gold.
+ * v2.3.2062: the GREEN bottle is wired now -- it is the Swift Draught (owner:
+ * "a speed potion that lets you run 1.5x speed 3 mins"). Its file is named
+ * antidote because that is what the sheet called it; the art is simply a green
+ * potion and there is still no antidote item in this game.
+ * The RED one stays staged and unused: there is no health potion, and
+ * inventing a consumable to justify art is a design change nobody asked for. */
+const POTION_THUMBS = {
+  whetstone:    `/icons/items/potion-fury.webp${ITEMS_V}`,
+  /* v2.3.2062: the green bottle of the owner's set, unclaimed until now. */
+  swiftdraught: `/icons/items/potion-antidote.webp${ITEMS_V}`,
+  manashard:    `/icons/items/potion-mana.webp${ITEMS_V}`,
+  staminasalts: `/icons/items/potion-stamina.webp${ITEMS_V}`,
+  /* v2.3.2063: not a potion, but it sits on the same shelf and it had no art
+     at all -- Shopkeeper Bro's staples drew two bare '◇' diamonds next to
+     three painted bottles, which reads as a loading failure rather than as an
+     item. The minnow's own thumb already existed for the COOKED FISH key;
+     this is the same picture under the SHOP's spelling of it. */
+  cookedminnow: `/icons/items/cooked-minnow.webp${ITEMS_V}`,
+};
 /* Elemental shards: one webp per zone, /icons/items/<key>.webp
    following the keys defined in src/data/shards.js (shard_meadow,
    shard_ember, ...).  thumbFor() takes the shard_ prefix branch
@@ -102,6 +134,11 @@ const RARE_GEM_THUMB        = `/icons/ui/cur-gem.webp${ITEMS_V}`; /* v2.3.1924 *
    no new code in the inventory panel. */
 export const thumbFor = (key) => {
   const k = (key || '').toLowerCase();
+  /* v2.3.2055: FIRST, and lowercased-exact. The keys are camelCase
+     ('manaShard', 'staminaSalts'), so they are matched on the lowered form --
+     and above every prefix rule below, because 'whetstone' contains 'stone'
+     and would otherwise be handed the ore picture. */
+  if (POTION_THUMBS[k]) return POTION_THUMBS[k];
   if (COOKED_FISH_THUMBS[k])        return COOKED_FISH_THUMBS[k];
   if (k.startsWith('cooked_fish_')) return COOKED_FISH_THUMB_DEFAULT;
   if (k.startsWith('burnt_'))       return BURNT_DUST_THUMB;
@@ -132,8 +169,56 @@ export const thumbFor = (key) => {
 // Friendly icon for a key — looks up by simple pattern.  Falls back to
 // a tier-coloured ◇.  We keep things lightweight: the bag is a dashboard
 // glance tool, not a crafting deep-dive.
+/* ═══ v2.3.2054: DISPLAY NAMES THAT ARE NOT THE KEY ═══
+ * Owner, on the whetstone: "I'd rather it be called something else and look
+ * more like a Potion."
+ *
+ * Names are otherwise DERIVED from the inventory key (prettyName), which is
+ * why renaming one has to live somewhere. This is that somewhere -- the same
+ * module that already owns the item's picture and its glyph, so the three
+ * facts about how an item PRESENTS sit together.
+ *
+ * THE KEY STAYS 'whetstone'. It is in players' saved inventories and in the
+ * server's own effect table (server/src/data.js: cost 35, effect dmgBuff), so
+ * changing it would need a storage migration to avoid quietly deleting the
+ * item out of every bag that holds one -- a lot of risk for a word. The key is
+ * an identifier; this is the label. They are allowed to differ, and this map
+ * is where anyone looking for the mismatch will find it explained. */
+export const ITEM_NAMES = Object.assign(Object.create(null), {
+  whetstone: 'Fury Tonic',
+  swiftDraught: 'Swift Draught',   /* v2.3.2062 */
+  /* v2.3.2055: the other two consumables read as keys in the bag otherwise
+     ('ManaShard', 'StaminaSalts' out of prettyName).
+     v2.3.2062: the BAG has called it a Draught since v2.3.2055 while the
+     vendor's own shelf still said "Mana Shard" -- one item under two names,
+     one screen apart. The vendor label now matches this one. */
+  manaShard: 'Mana Draught',
+  staminaSalts: 'Stamina Salts',
+});
+
 export const iconFor = (key) => {
   const k = (key || '').toLowerCase();
+  /* v2.3.2052: the three town-shop consumables, by EXACT key and above every
+     pattern below. They had no entry at all, so a whetstone in your bag drew
+     the '◇' fallback -- and it did so before Shopkeeper Bro existed; putting
+     them on his shelf is just what made it visible. The glyphs are the ones
+     the old shop used in its own item names (SHOP_ITEMS_FOR_SALE), so nothing
+     is being invented here, only reconnected.
+     Exact matches, because 'whetstone' contains 'stone' and would otherwise
+     be handed the pickaxe by the ore rule three lines down -- which is how it
+     would have gone wrong quietly. */
+  /* v2.3.2054: a potion, not a rock -- see ITEM_NAMES above. The potion
+     pattern three lines down would not match 'whetstone', so it is named
+     here explicitly rather than by renaming the key. */
+  if (k === 'whetstone')  return '🧪';
+  if (k === 'swiftdraught') return '🌿';   /* v2.3.2062 */
+  if (k === 'antidote')   return '🍃';
+  if (k === 'trap_basic') return '🪤';
+  /* v2.3.2063: the shop's own spelling of it. SHOP_ITEMS calls it basicTrap
+     and the granted inventory key is basic_trap -- both resolve here, because
+     a shelf slot and a bag slot showing different pictures of one item is the
+     kind of thing nobody reports and everybody notices. */
+  if (k === 'basictrap' || k === 'basic_trap') return '🪤';
   if (/sword/.test(k))   return '⚔';
   if (/bow/.test(k))     return '🏹';
   if (/staff|wand/.test(k)) return '🪄';
@@ -146,6 +231,44 @@ export const iconFor = (key) => {
   if (/bone|skull|tooth/.test(k))             return '🦴';
   if (/coin|gold/.test(k))                    return '🪙';
   return '◇';
+};
+
+/* ═══ v2.3.2059: WHILE SHOPKEEPER BRO IS OPEN, THIS TILE IS A SELL BUTTON ═══
+ *
+ * Owner: "Your existing bag should become one half of the shop interface.
+ * Don't open another inventory or cover it. ... Tap my inventory -> sell it.
+ * Tap his inventory -> buy it."
+ *
+ * So the shop does not draw a second copy of your bag -- it borrows THIS one.
+ * Two things change and only while the drawer is open:
+ *   - the tap selects the item for sale instead of opening the item popup
+ *   - a tiny gold quote appears in the slot: what Bro pays PER UNIT right
+ *     now, with an arrow saying whether that is under or at the top price
+ * Both revert the instant the drawer closes; nothing here is a permanent
+ * change to the bag.
+ *
+ * THE NUMBER IS THE SERVER'S. It is read out of shopBus, which is only ever
+ * written from a shop_state event. The client has no price table -- if it
+ * had one, a slot could quietly promise a price that settlement then
+ * disagreed with, and the whole point of a public pile with a decaying
+ * offer is that the number you see is the number you get. */
+const ShopQuoteBadge = ({ ikey }) => {
+  const q = shopBus.quoteFor(ikey);
+  if (!q || typeof q.buy !== 'number' || q.buy <= 0) return null;
+  /* Under the top price means his pile is already deep -- the arrow is the
+     one-glance version of "the more I have, the less I pay". */
+  const soft = typeof q.base === 'number' && q.base > q.buy;
+  return (
+    <span data-shop-quote={ikey} style={{
+      position: 'absolute', left: 2, bottom: 1,
+      display: 'inline-flex', alignItems: 'center', gap: 1,
+      padding: '0 3px', borderRadius: 3,
+      background: 'rgba(9,14,17,.82)',
+      color: soft ? '#B08A45' : '#EAC675',
+      fontSize: 10, lineHeight: '13px', fontWeight: 700,
+      fontVariantNumeric: 'tabular-nums', pointerEvents: 'none',
+    }}>{q.buy}g{soft ? '\u2193' : '\u2191'}</span>
+  );
 };
 
 export const ItemTile = ({ ikey, count, style: styleOverride }) => {
@@ -167,14 +290,21 @@ export const ItemTile = ({ ikey, count, style: styleOverride }) => {
       const rect = e.currentTarget.getBoundingClientRect();
       anchor = { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height };
     } catch (_e) {}
+    /* v2.3.2059: shopping mode -- see ShopQuoteBadge above. The popup is
+       suppressed rather than layered over the drawer: two windows about the
+       same item, one of them covering the bag the shop is built on top of,
+       is exactly the "don't open another inventory" the owner ruled out. */
+    if (shopBus.open) { shopBus.setSel(ikey, 'bag'); return; }
     itemDetailBus.open({ kind: 'inventory', key: ikey, count: count || 0, anchor });
   };
   const locked = itemIsLocked(ikey);
+  const shopSel = shopBus.open && shopBus.sel
+    && shopBus.sel.side === 'bag' && shopBus.sel.key === ikey;
   return (
-    <div onPointerUp={handleTap} style={{
+    <div onPointerUp={handleTap} data-inv-key={ikey} style={{
       width: '100%', aspectRatio: '1 / 1',
-      background: COL.tile,
-      border: `1px solid ${color}`,
+      background: shopSel ? 'rgba(234,198,117,.16)' : COL.tile,
+      border: shopSel ? '1px solid #EAC675' : `1px solid ${color}`,
       borderRadius: 6,
       display: 'flex',
       alignItems: 'center',
@@ -202,6 +332,9 @@ export const ItemTile = ({ ikey, count, style: styleOverride }) => {
       {count > 1 && (
         <span className="bt-item-qty">{count}</span>
       )}
+      {/* v2.3.2059: bottom-LEFT on purpose -- .bt-item-qty owns bottom-right
+          and the two must never overlap on a 56px slot. */}
+      {shopBus.open && <ShopQuoteBadge ikey={ikey} />}
       {locked && (
         /* v2.3.177: anchor glyph in the upper-right corner of anchored
            tiles. Matches the popup's anchor-glyph styling.
@@ -1008,9 +1141,9 @@ const StashTile = ({ kind, obj, index, style: styleOverride }) => {
     : kind === 'stashLegs'
     ? `${armorIconFor('legs', obj && obj.mat)}${ITEMS_V}` /* v2.3.1701: legs have real art */
     : kind === 'stashShield'
-    ? `/icons/items/shield.png${ITEMS_V}`
-    : obj && obj.type === 'bow'        ? `/icons/items/bow.png${ITEMS_V}`
-    : obj && obj.type === 'staff'      ? `/icons/items/staff.png${ITEMS_V}`
+    ? `/icons/items/shield.webp${ITEMS_V}`
+    : obj && obj.type === 'bow'        ? `/icons/items/bow.webp${ITEMS_V}`
+    : obj && obj.type === 'staff'      ? `/icons/items/staff.webp${ITEMS_V}`
     : obj && obj.type === 'greatsword'
       ? `${metalIconPath('/icons/items/great-sword.webp', weaponMaterial(obj.type, obj.gearBase))}${ITEMS_V}` /* v2.3.1760 */
     : `${metalIconPath('/icons/items/sword.webp', obj && weaponMaterial(obj.type, obj.gearBase))}${ITEMS_V}`;

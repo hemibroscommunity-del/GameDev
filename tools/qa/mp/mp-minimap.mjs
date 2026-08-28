@@ -197,8 +197,35 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('at least six distinct symbols are actually in use (guard)',
       Object.keys(ic).length >= 6, { keys: Object.keys(ic) });
   } else {
-    rec.ok('building marks are absent because the buildings are switched off', true,
-      { flag: 'TOWN_PROPS_ENABLED=false', census: ic });
+    /* ═══ v2.3.2061: THIS WAS `rec.ok(..., true)` ═══
+       A placeholder that could not fail, and whose text became untrue the day
+       a building came back: the mayor's house is re-measured against town_v17
+       and draws its roof again, while the four shopfronts still carrying v16
+       coordinates do not. Stated as the two halves that are actually true now,
+       so the branch makes a claim instead of narrating one. */
+    /* Read PER PROP rather than off the icon census. The census counts a
+       `forge` and a `shop` mark in the bare town and neither is a building --
+       townsfolk carry their trade's glyph, so the blacksmith and Shopkeeper
+       Bro draw those. A census-based claim about buildings therefore fails on
+       marks that are working exactly as intended, which is what the first cut
+       of this did. */
+    const pm = await P.page.evaluate(() => (window.__btMinimapMarks ? window.__btMinimapMarks() : null));
+    rec.ok('the minimap reports which PROPS it marked (guard)', Array.isArray(pm), pm);
+    rec.ok("the mayor's house is on the map -- it is placed on the map that ships",
+      !!pm && pm.some((m) => m.id === 'mayor-house'), pm);
+    /* ═══ v2.3.2065: THE BLUEPRINT PUT THE SHOPS BACK ═══
+       The owner's layout has a blacksmith west and a general store east, both
+       re-measured onto town_v17, so those two ARE on the map now and are
+       expected here. The bank and the enchanter still carry v16 coordinates
+       and stay off -- which is the half of this that can still catch
+       something, since turning them on unmeasured puts them past the map's
+       right-hand edge. */
+    rec.ok('the blacksmith and the general store are marked -- the blueprint '
+         + 'placed them', !!pm && pm.some((m) => m.id === 'forge')
+      && pm.some((m) => m.id === 'general-store'), pm);
+    rec.ok('...and the two still carrying v16 coordinates are not',
+      !!pm && !pm.some((m) => ['bank', 'enchanter'].includes(m.id)),
+      { marks: pm, flag: 'TOWN_PROPS_ENABLED=false' });
     /* Still a real distinctness claim, at the size the bare town supports:
        the marks that ARE drawn must not have collapsed onto one glyph. */
     rec.ok('...and the marks still drawn are distinct textures (guard)',
@@ -266,7 +293,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   for (const [name, idx] of [['east', 0], ['south', 2], ['north', 6]]) {
     await P.page.evaluate((i) => {
       const S = window._gameState.current;
-      S._facingAngle = i * Math.PI / 4; S._aimAngle = undefined; S.lockedMonster = null;
+      S._facingAngle = i * Math.PI / 4; S._aimAngle = undefined; S.lockedTarget = null;
     }, idx);
     await P.page.waitForTimeout(350);
     const m = await P.page.evaluate(() => window.__btMinimap || null);

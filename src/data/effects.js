@@ -290,12 +290,41 @@ export const TOWN_EXITS = [
    radiate from the central town circle to every region. Positions are
    approximate (the zone is walkable-everywhere until a mask); tune them to the
    painted trail-heads later. */
+/* v2.3.2074: the art under these is worldview_v4 now (the owner's new
+   overworld). The coordinates are DELIBERATELY UNCHANGED -- the new map is a
+   re-render of the same layout, and tools/maps/build_worldview_v4.py samples
+   the painted trail under every marker on both maps and refuses to write if a
+   live spoke loses more than 8 points of it. The note below still describes
+   where these came from. */
 /* v2.3.1359: trail-heads retuned to the owner's worldview_v2 art (the
    painted overworld: central walled town, volcano N, desert NE, crystal
    cave E, thunder dome SE, beach+pier S, gnarled mistwood SW, blossom
    verdant W, snow peaks NW).  Coords verified against a marker overlay
    on the actual art.  The town marker stays 3 tiles from the hub-entry
    spawn (24,31) — inside 2 re-triggers the v2.3.948 bounce. */
+/* ═══ v2.3.2075: WHERE YOU LAND ARRIVING FROM TOWN ═══
+ * Owner: "make sure the player doesn't spawn on the line or outside of it."
+ *
+ * The World View's town is a walled ring now (the owner drew the wall; see
+ * WALKABILITY_MAPS in tiledMaps.js), and the generic hub arrival put the
+ * player 16 px from the inside face of it -- their own half-width is 10, so
+ * they landed all but standing on the stones. That rule is "four tiles from
+ * the marker you came through, toward the hub centre", which was written when
+ * the World View was open ground and has no idea a wall exists.
+ *
+ * WORLD PIXELS, NOT TILES, and inside the ring on purpose: this is the middle
+ * of the walled town, 88 px clear of the wall on every side, with the gate
+ * due south. tools/maps/build_worldview_walk.py checks this exact point
+ * against the mask it generates and refuses to write if it is on the line,
+ * outside the ring, or short of clearance -- so the number cannot drift away
+ * from the wall it has to sit inside.
+ *
+ * ONLY the arrival FROM TOWN moves. Coming back from a spoke zone still lands
+ * you at that spoke's own trail-head (v2.3.861), which is out on the trails
+ * where the spokes are and is the property that makes a return trip land you
+ * where you left. */
+export const WORLDVIEW_ARRIVAL = { x: 744, y: 848 };
+
 export const WORLDVIEW_EXITS = [
   { zoneId: 'town',    tx: 24, ty: 28, dir: 'north', label: 'Town',            color: '#cdb27a' },
   { zoneId: 'ember',   tx: 25, ty: 10, dir: 'north', label: 'Flame Fields',    color: ELEMENTS.flame.color },

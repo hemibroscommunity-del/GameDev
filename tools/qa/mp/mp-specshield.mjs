@@ -55,7 +55,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (S && p && p.on) {
         const a = p.i * Math.PI / 4;
         S._facingAngle = a; S._aimAngle = a; S._mouseAimAngle = a;
-        S.lockedMonster = null; S._shieldUp = false;
+        S.lockedTarget = null; S._shieldUp = false;
         if (S.player) { S.player.vx = 0; S.player.vy = 0; }
         S.isSwinging = true; S.swingTimer = Date.now(); S._swingAng = a;
         S._specialAttack = !!p.special;

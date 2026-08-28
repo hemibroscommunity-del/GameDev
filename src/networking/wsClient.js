@@ -278,6 +278,7 @@ export function setupWebSocket(ctx) {
                designer pays a byte for them. */
             tf: artHasInk(getArt('tattooFace')) ? getArt('tattooFace') : undefined,
             tm: artHasInk(getArt('tattooArm')) ? getArt('tattooArm') : undefined,
+            tb: artHasInk(getArt('tattooHeadBack')) ? getArt('tattooHeadBack') : undefined,   /* v2.3.2043 */
             /* v2.3.1941: clothing patterns.  Short ids ("stripe-v:3"), so
                unlike the drawings they need no special length handling. */
             /* v2.3.1953: height and frame.  `undefined` unless you actually
@@ -1237,12 +1238,44 @@ export function setupWebSocket(ctx) {
                  existing client-side UI + math reads the server values. */
               if (msg.payload._buffs && typeof msg.payload._buffs === 'object') {
                 var _sb = msg.payload._buffs;
+                /* ═══ v2.3.2063: ABSENT MEANS OFF ═══
+                   Every one of these was `if (typeof x === 'number')`, which
+                   mirrors a buff that IS running and silently keeps the last
+                   value for one that is not. That was survivable while buffs
+                   only ever expired on their own clock (the client's own
+                   `Date.now() < S._xBuff` check retired them). It stops being
+                   survivable now that one effect CANCELS another: the server
+                   clears _buffs wholesale, so the cancelled buff arrives as an
+                   absence, and a typeof guard would leave the old timer
+                   running on the client for its full duration -- the HUD chip
+                   still up, the speed still applied, and the server
+                   disagreeing with all of it. */
                 if (typeof _sb.damage === 'number') S._dmgBuff = _sb.damage;
+                else S._dmgBuff = 0;
+                /* v2.3.2058: the damage buff's MAGNITUDE now travels with its
+                   timer, because two different things set it -- cooked food at
+                   x1.20 and the Fury Tonic at x2. Mirrored unconditionally
+                   (not behind a typeof guard) so that a meal, which sends no
+                   damageMul, CLEARS a tonic's leftover multiplier here exactly
+                   as it does on the server. Prediction must agree with the
+                   authority or the popups lie. */
+                S._dmgBuffMul = typeof _sb.damageMul === 'number' ? _sb.damageMul : 0;
                 if (typeof _sb.regen === 'number') S._regenBuff = _sb.regen;
+                else S._regenBuff = 0;
                 if (typeof _sb.resist === 'number') S._resistBuff = _sb.resist;
+                else S._resistBuff = 0;
                 if (typeof _sb.spd === 'number') S._spdBuff = _sb.spd;
+                else S._spdBuff = 0;
+                /* v2.3.2062: magnitudes travel with their timers, and are
+                   mirrored UNCONDITIONALLY so a cooked meal -- which sends
+                   neither -- clears a potion's leftover strength here exactly
+                   as it does on the server. Same rule as damageMul. */
+                S._spdBuffMul = typeof _sb.spdMul === 'number' ? _sb.spdMul : 0;
+                S._manaFlat = typeof _sb.manaFlat === 'number' ? _sb.manaFlat : 0;
                 if (typeof _sb.hp === 'number') S._hpBuff = _sb.hp;
+                else S._hpBuff = 0;
                 if (typeof _sb.mana === 'number') S._manaBuff = _sb.mana;
+                else S._manaBuff = 0;
               }
               /* Equipment slots -- worker is the canonical owner.  An
                  equip_request swap, marketplace buy, or future server-
@@ -1922,14 +1955,25 @@ export function setupWebSocket(ctx) {
                 /* v2.3.599: track relays carry flat eqc/eql/eqs; rebuild the
                    nested other.equip the renderer reads so armour on/off syncs
                    (covers the standing-still case via the 2s track).
-                   v2.3.1961: `shirt` is deliberately NOT carried over here, and
-                   that is not an oversight to tidy up.  `eqst` is on neither
-                   the track payload nor TRACK_COSMETIC_KEYS, so the relay has
-                   no news about the under-shirt; dropping the key lets the
-                   renderer's v2.3.756 fallback derive it from `st`, which the
-                   mapping above keeps current, so taking the t-shirt off in the
-                   loadout shows on peers.  Preserving the join-time value here
-                   would pin it to whatever it was at join instead. */
+                   v2.3.1961 deliberately did NOT carry `shirt` here, on the
+                   grounds that "`eqst` is on neither the track payload nor
+                   TRACK_COSMETIC_KEYS, so the relay has no news about the
+                   under-shirt" -- dropping the key let the renderer's v2.3.756
+                   fallback derive it from `st`, which this relay does keep
+                   current.  The reasoning was sound and the premise it rests on
+                   was false: `st` and the gear slot DISAGREE ABOUT THE DEFAULT.
+                   The gear slot dresses every new player in a tshirt
+                   (gearCatalog: "worn by every new player by default"); `st` is
+                   'none' until somebody picks a style.  So the fallback dressed
+                   an ordinary player in nothing, and everyone was bare-chested
+                   on everyone else's screen from two seconds after joining.
+                   v2.3.2084 gives the relay the news it was missing -- `eqst`
+                   is on the track payload (BroTown) and on TRACK_COSMETIC_KEYS
+                   (server) now -- so the key is carried when it is sent and
+                   PRESERVED when it is not, exactly like the three beside it.
+                   An old worker that drops `eqst` leaves the old behaviour
+                   rather than a new failure, which is what makes this shippable
+                   in either order. */
                 var _ud = msg.data || {};
                 /* v2.3.1953: the relay carries the WIRE names (hg/fr); the
                    renderer reads the long ones, exactly as it does for every
@@ -1940,12 +1984,20 @@ export function setupWebSocket(ctx) {
                    — otherwise going back to Average would never take. */
                 S.others[msg.id].buildHeight = _ud.hg || null;
                 S.others[msg.id].buildFrame = _ud.fr || null;
-                if (_ud.eqc !== undefined || _ud.eql !== undefined || _ud.eqs !== undefined) {
+                if (_ud.eqc !== undefined || _ud.eql !== undefined
+                    || _ud.eqs !== undefined || _ud.eqst !== undefined) {
                   var _oe6 = S.others[msg.id].equip || { head: 'none', chest: 'none', legs: 'none', shoulders: 'none' };
                   S.others[msg.id].equip = {
                     chest: _ud.eqc !== undefined ? (_ud.eqc || 'none') : _oe6.chest,
                     legs: _ud.eql !== undefined ? (_ud.eql || 'none') : _oe6.legs,
                     shoulders: _ud.eqs !== undefined ? (_ud.eqs || 'none') : _oe6.shoulders,
+                    /* v2.3.2084: carried when sent, PRESERVED when not -- the
+                       key used to be dropped from the rebuild entirely, which
+                       is what put everyone in nothing.  `_oe6.shirt` is
+                       undefined for a peer whose join frame predates this, and
+                       undefined is exactly what the renderer's v2.3.756
+                       fallback expects, so an old client still reads as it did. */
+                    shirt: _ud.eqst !== undefined ? (_ud.eqst || 'none') : _oe6.shirt,
                   };
                 }
               }
@@ -2798,6 +2850,14 @@ export function setupWebSocket(ctx) {
           return;
         }
         if (msg.type === 'loot_pickup') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
+        /* v2.3.2047: Shopkeeper Bro. Three asks, no answers -- the client
+           never states a price or a coin total, it names an item and a
+           quantity and takes whatever the server echoes back. */
+        if (msg.type === 'shop_list' || msg.type === 'shop_sell' || msg.type === 'shop_buy'
+            || msg.type === 'shop_quote') {
           ws.send(JSON.stringify(msg));
           return;
         }

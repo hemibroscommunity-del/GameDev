@@ -523,6 +523,183 @@ function sanitize(src, { jsxText = false } = {}) {
   }
 }
 
+/* ---- 8b. town-gate (FAIL) ------------------------------------------ */
+/* v2.3.2077: the FOURTH instance of one mistake, mechanised.
+ *
+ * `S._serverMonsters` means "this zone has server-managed monsters".  wsClient
+ * sets it FALSE whenever the zone's monster list comes back empty, and says so
+ * in its own comment: "town, or a dungeon the server doesn't model".  So a
+ * client->server send gated on it is a send that NEVER HAPPENS IN TOWN — and
+ * town is where the shops, the forge, the campfire and the vendor are.
+ *
+ * The failure is silent in exactly the way TRAPS #18 describes: the client
+ * predicts locally, the screen looks right, and the worker's blob — which owns
+ * inventory, coins and HP — reconciles the whole thing away on the next
+ * player_state.  It has shipped four times:
+ *   v2.3.1702  ability_use      (specials did nothing server-side)
+ *   v2.3.2063  shop_purchase    (no purchase in the game's history reached it)
+ *   v2.3.2077  eat_request x3, cook_recipe x2
+ *   v2.3.2077  forge_weapon x2  (the blacksmith stands in town — forging had
+ *                                never reached the worker at all)
+ *
+ * COMBAT MESSAGES ARE THE LEGITIMATE EXCEPTION and are allowlisted by name:
+ * you cannot damage a server monster in a zone that has none, so there the
+ * flag is the correct precondition rather than an accident.  Anything else
+ * wanting this gate should be asking "am I connected", which is `S.channel`.
+ *
+ * FAIL rather than WARN: the standing set is empty as of v2.3.2077, so this
+ * can only fire on something newly written. */
+{
+  const ALLOWED = new Set(['monster_damage']);
+  const hits = [];
+  const walk = (dir) => {
+    for (const ent of readdirSync(join(root, dir), { withFileTypes: true })) {
+      const p2 = `${dir}/${ent.name}`;
+      if (ent.isDirectory()) walk(p2);
+      else if (/\.(js|jsx|mjs)$/.test(ent.name) && p2 !== 'src/networking/wsClient.js') {
+        const lines = read(p2).split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          /* The type can sit several lines below the `.send(` — two of the
+             game's sends are written that way (prog3_allocate, stats_update),
+             and a single-line regex silently skips them. Scan a window. */
+          if (!lines[i].includes('.send(')) continue;
+          /* The type can sit several lines below the `.send(` — two of the
+             game's sends are written that way (prog3_allocate, stats_update)
+             — and three more pass a msg OBJECT built elsewhere, where no type
+             is resolvable from the call site at all. Find the guard first, so
+             a gated send is never skipped merely because its type is not
+             visible here. */
+          let guard = null;
+          for (let j = i; j > Math.max(-1, i - 12); j--) {
+            const g = /if \(([^)]*channel[^)]*)\)/.exec(lines[j]);
+            if (g) { guard = g[1]; break; }
+          }
+          if (!guard || !/_serverMonsters/.test(guard)) continue;
+          const m = /type:\s*'([a-z_0-9]+)'/.exec(lines.slice(i, i + 7).join('\n'));
+          if (m && (m[1] === 'broadcast' || ALLOWED.has(m[1]))) continue;
+          hits.push(m ? `'${m[1]}' at ${p2}:${i + 1}`
+            : `an unnamed send at ${p2}:${i + 1} (the type is built elsewhere — check it by hand)`);
+        }
+      }
+    }
+  };
+  try { walk('src'); } catch { /* best effort */ }
+  if (hits.length) {
+    for (const h of hits) {
+      add('FAIL', 'town-gate', `${h} is gated on _serverMonsters, which is false in TOWN — this send cannot happen there (see the note in tools/dev/precheck.mjs; use S.channel)`);
+    }
+  } else add('PASS', 'town-gate', 'no client->server send is gated on _serverMonsters (combat damage excepted)');
+}
+
+/* ---- 8c. qa-handles (FAIL) ------------------------------------------ */
+/* v2.3.2078: a QA scenario that calls a handle the game does not define
+ * asserts nothing, silently, forever.
+ *
+ * Every one of these was written inside a try/catch or behind a `||` fallback,
+ * so nothing ever threw and nothing ever failed:
+ *   mp-shirtarm    window.__btGear.setEquip(...)   -- the handle is __btGearSet.
+ *                  The scenario is about a character wearing a tee; it wore
+ *                  whatever it spawned in, for as long as the file existed.
+ *   mp-cosmpose    window.__broTapWorld(x, y)      -- never existed. The walk
+ *                  that was supposed to reach a resource node moved nobody.
+ *   mp-southshirt  window.__btShirtId              -- never existed. Printed
+ *                  nulls where the loadout should have been.
+ *
+ * The rule: a `window.__X` a scenario READS must be defined in the shipped
+ * client (src/ or public/), or assigned by that same scenario (the harness's
+ * own scratch pins -- __pin, __fa, __qRaf and friends -- are legitimate and
+ * are the overwhelming majority of matches, which is why self-assignment is
+ * the exemption rather than a name allowlist).
+ *
+ * Comments are stripped before scanning so a v2.3.2078-style note recording a
+ * retired handle does not re-flag the fix that removed it.
+ *
+ * FAIL rather than WARN: the standing set is empty as of v2.3.2078. */
+{
+  const strip = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const defined = new Set();
+  const collect = (dir, re) => {
+    let ents = [];
+    try { ents = readdirSync(join(root, dir), { withFileTypes: true }); } catch { return; }
+    for (const ent of ents) {
+      const p2 = `${dir}/${ent.name}`;
+      if (ent.isDirectory()) collect(p2, re);
+      else if (re.test(ent.name)) {
+        for (const m of read(p2).matchAll(/window\.(__[A-Za-z0-9_]+)/g)) defined.add(m[1]);
+      }
+    }
+  };
+  /* .html too, both trees: src/belt-harness.html sets __done and
+     public/tools/draw.html sets __draw — a scenario driving a standalone
+     harness page is reading a handle that page defines, not a missing one. */
+  collect('src', /\.(js|jsx|html)$/);
+  collect('public', /\.(html|js)$/);
+
+  const hits = [];
+  const scan = (dir) => {
+    let ents = [];
+    try { ents = readdirSync(join(root, dir), { withFileTypes: true }); } catch { return; }
+    for (const ent of ents) {
+      const p2 = `${dir}/${ent.name}`;
+      if (ent.isDirectory()) scan(p2);
+      else if (/\.mjs$/.test(ent.name)) {
+        const t = strip(read(p2));
+        const used = new Set([...t.matchAll(/window\.(__[A-Za-z0-9_]+)/g)].map((m) => m[1]));
+        for (const h of used) {
+          if (defined.has(h)) continue;
+          /* assigned by this scenario itself -> a scratch pin, which is fine */
+          if (new RegExp(`window\\.${h}\\s*(=[^=]|\\|\\|=)`).test(t)) continue;
+          hits.push(`window.${h} at ${p2}`);
+        }
+      }
+    }
+  };
+  scan('tools/qa');
+  if (hits.length) {
+    for (const h of hits) {
+      add('FAIL', 'qa-handles', `${h} is read but nothing defines it — the client offers no such handle, so whatever it guards is not being tested (see the note in tools/dev/precheck.mjs)`);
+    }
+  } else add('PASS', 'qa-handles', 'every window.__ handle a QA scenario reads is defined by the client or by that scenario');
+}
+
+/* ---- 8d. audio-mix (FAIL) -------------------------------------------- */
+/* v2.3.2079: the ambience plays UNDERNEATH the score, and that is a number
+ * relationship, not a comment.
+ *
+ * ZONE_AMBIENT_VOL is documented as sitting "just under the zone score,
+ * because it plays UNDERNEATH it rather than instead of it — wind you notice
+ * but do not listen to". When the owner asked for the music to be halved
+ * (v2.3.2079) the two music constants moved and the ambience did not, which
+ * would have left the wind as the LOUDEST layer in the zone, in front of the
+ * thing it is meant to sit beneath. Caught by reading the file; nothing would
+ * have caught it in play except an owner wondering why the wind got louder.
+ *
+ * Both music volumes are the CEILING — there is no slider and no mute — so a
+ * tuning pass touches exactly these three numbers and this is where they can
+ * disagree. */
+{
+  const rel = 'src/data/gameDisplay.js';
+  const num = (k, t) => {
+    const m = new RegExp('\\b' + k + ':\\s*([0-9.]+)').exec(t);
+    return m ? +m[1] : null;
+  };
+  let t = '';
+  try { t = read(rel); } catch { t = ''; }
+  const zone = num('ZONE_MUSIC_VOL', t);
+  const amb = num('ZONE_AMBIENT_VOL', t);
+  const glob = num('GLOBAL_MUSIC_VOL', t);
+  if (zone == null || amb == null || glob == null) {
+    add('WARN', 'audio-mix', `could not read the three volume constants out of ${rel} — check the shapes`);
+  } else if (amb >= zone) {
+    add('FAIL', 'audio-mix', `ZONE_AMBIENT_VOL (${amb}) is not under ZONE_MUSIC_VOL (${zone}) — `
+      + 'the wind would play in FRONT of the score it is meant to sit beneath '
+      + '(see the note in gameDisplay.js)');
+  } else {
+    add('PASS', 'audio-mix', `the ambience sits under the score `
+      + `(${amb} < ${zone}; session track ${glob})`);
+  }
+}
+
 /* ---- 7. server tests ----------------------------------------------- */
 if (changedServer.length) {
   const r = spawnSync('npm', ['test'], { cwd: join(root, 'server'), encoding: 'utf8', timeout: 5 * 60 * 1000, maxBuffer: 64 * 1024 * 1024 });

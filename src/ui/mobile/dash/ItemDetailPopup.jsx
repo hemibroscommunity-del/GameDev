@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { ITEM_NAMES } from './InventoryPanel.jsx';   /* v2.3.2054 */
 import { gearIdIcon, armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.1758: one armour art table */
 import { weaponMaterial, metalIconPath } from '@/rendering/traits/materialTints.js'; /* v2.3.1760 */
 import { COL, getState } from './common.js';
@@ -81,8 +82,8 @@ const tierLabel = (wpn) => weaponTierLabel(wpn);
 const ITEMS_V = '?v=2.3.1774'; /* v2.3.1774: pine shield icon */
 function weaponThumb(wpn) {
   if (!wpn || !wpn.type) return null;
-  if (wpn.type === 'bow')        return `/icons/items/bow.png${ITEMS_V}`;
-  if (wpn.type === 'staff')      return `/icons/items/staff.png${ITEMS_V}`;
+  if (wpn.type === 'bow')        return `/icons/items/bow.webp${ITEMS_V}`;
+  if (wpn.type === 'staff')      return `/icons/items/staff.webp${ITEMS_V}`;
   const metal = weaponMaterial(wpn.type, wpn.gearBase); /* v2.3.1760 */
   if (wpn.type === 'greatsword') return `${metalIconPath('/icons/items/great-sword.webp', metal)}${ITEMS_V}`;
   return `${metalIconPath('/icons/items/sword.webp', metal)}${ITEMS_V}`;
@@ -91,7 +92,7 @@ function weaponThumb(wpn) {
 function shieldThumb(shield) {
   /* v2.3.1325: every shield tier shows the painted shield (was
      wood-only + glyph fallback). */
-  return shield ? `/icons/items/shield.png${ITEMS_V}` : null;
+  return shield ? `/icons/items/shield.webp${ITEMS_V}` : null;
 }
 
 /* Which weapon slot does a `type` belong in. */
@@ -342,6 +343,8 @@ function gearThumb(gearId) {
 
 function prettyName(key) {
   if (!key) return '';
+  /* v2.3.2054: an explicit label wins over the key-derived one. */
+  if (ITEM_NAMES[key]) return ITEM_NAMES[key];
   return key
     .replace(/^cooked_fish_/, 'Cooked ')
     .replace(/^burnt_/, 'Burnt ')

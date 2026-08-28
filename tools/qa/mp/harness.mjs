@@ -51,7 +51,16 @@ const MIME = {
 
 /* ── static server for dist/ ───────────────────────────────────────────── */
 export async function serveDist(port) {
-  const DIST = join(REPO, 'dist');
+  /* v2.3.2078: overridable, so a verification run can be pointed at a
+     SECOND build while a long sweep is still serving dist/.  Files are read
+     per request here, so rebuilding dist/ under a running batch hands its
+     in-flight scenarios truncated bundles and fails them for a reason that
+     has nothing to do with the code under test.
+       QA_DIST=dist-verify node tools/qa/mp/run.mjs petdraw
+     Unset, this is exactly what it always was. */
+  const DIST = process.env.QA_DIST
+    ? (process.env.QA_DIST.startsWith('/') ? process.env.QA_DIST : join(REPO, process.env.QA_DIST))
+    : join(REPO, 'dist');
   /* v2.3.1646 FIX: read FIRST, write once.  The old shape wrote the 200
      header and then read inside the same try, so any failure after the
      header — a client that had already gone away mid-response, most
@@ -187,7 +196,7 @@ export async function stopWorker(w) {
    "passed" three assertions about marks that were never drawn.)  isMobile
    flips the emulated pointer to coarse and turns on the meta viewport, which
    together are the closest this harness gets to the primary platform. */
-export async function newPlayer(browser, { name, wsPort, webPort, guest = false, viewport, touch = false, phrase = null, dpr = null }) {
+export async function newPlayer(browser, { name, wsPort, webPort, guest = false, viewport, touch = false, phrase = null, dpr = null, init = null }) {
   const ctx = await browser.newContext(Object.assign(
     { viewport: viewport || { width: 1000, height: 780 } },
     touch ? { hasTouch: true, isMobile: true, deviceScaleFactor: 2 } : null,
@@ -213,6 +222,17 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
       try { localStorage.setItem('bt_passphrase', ph); } catch (e) {}
     }, phrase);
   }
+  /* v2.3.2039: `init` is arbitrary JS run before the bundle does. It exists
+     for scenarios that must stand in for a BROWSER API the sandbox cannot
+     provide -- mp-chatcompose replaces webkitSpeechRecognition, which needs a
+     microphone and a recognition backend that headless Chromium has neither
+     of. It has to run pre-load, not post-load: modules that read a global at
+     module scope (ChatBubble resolves SpeechRec once, at import) have already
+     looked by the time the page is interactive.
+
+     Use it ONLY for platform APIs. Stubbing our own code here would let a
+     scenario pass by replacing the thing it claims to test. */
+  if (init) await page.addInitScript(init);
   await page.goto(`http://localhost:${webPort}/${guest ? '?guest=1' : ''}`, { waitUntil: 'domcontentloaded' });
   return { ctx, page, logs, name };
 }
@@ -483,10 +503,75 @@ export async function clickSel(P, sel, { timeout = 6000 } = {}) {
 }
 
 /** Click the first visible button whose text contains `text`. */
+/* ═══ v2.3.2083: WHEN A CLICK TIMES OUT, SAY WHAT IS ON TOP OF IT ═══
+ * Playwright's message for a covered control is the least useful failure in
+ * this harness.  It reports the actionability checks PASSING --
+ *
+ *     locator resolved to <button class="bt-inspect-tp">Trade</button>
+ *     attempting click action
+ *       2 x waiting for element to be visible, enabled and stable
+ *         - element is visible, enabled and stable
+ *
+ * -- and then simply times out, because the button really is visible, enabled
+ * and stable; it is just not the thing the pointer would land on.  Read as
+ * written it says "the button is fine and the click did nothing", which sends
+ * you looking at the handler.  The answer is always a DIFFERENT element, and
+ * the browser will name it for the asking: elementFromPoint at the control's
+ * own centre.  (mp-trade has failed this way for weeks; the drawer rule of
+ * v2.3.2078 fixed one such cover and this is how the next one gets found in
+ * one run instead of ten.) */
+export async function coveringElement(P, locator) {
+  const box = await locator.boundingBox().catch(() => null);
+  if (!box) return null;
+  const target = await locator.elementHandle().catch(() => null);
+  return P.page.evaluate(({ x, y, want }) => {
+    const el = document.elementFromPoint(x, y);
+    if (!el) return 'nothing (the point is off-screen)';
+    /* An element that CONTAINS the button is not covering it -- the click would
+       land and bubble.  Saying which of the two it is saves the next reader the
+       wrong half of the search. */
+    const contains = !!(want && el.contains(want));
+    const desc = (n) => {
+      const cls = (typeof n.className === 'string' ? n.className : '').trim();
+      const r = n.getBoundingClientRect();
+      const cs = getComputedStyle(n);
+      return n.tagName.toLowerCase() + (n.id ? '#' + n.id : '')
+        + (cls ? '.' + cls.replace(/\s+/g, '.').slice(0, 50) : '')
+        + ` {${Math.round(r.width)}x${Math.round(r.height)} @${Math.round(r.x)},${Math.round(r.y)}`
+        + ` z:${cs.zIndex} pos:${cs.position} pe:${cs.pointerEvents}`
+        + (n.getAttribute && n.getAttribute('style') ? ` style="${n.getAttribute('style').slice(0, 70)}"` : '')
+        + '}';
+    };
+    const chain = [];
+    for (let n = el, i = 0; n && i < 5; n = n.parentElement, i++) chain.push(desc(n));
+    return (contains ? 'AN ANCESTOR of the button (so not a cover): ' : 'a DIFFERENT element: ')
+      + chain.join('\n        < ');
+  }, { x: box.x + box.width / 2, y: box.y + box.height / 2, want: target });
+}
+
 export async function clickText(P, text, { timeout = 6000 } = {}) {
   const btn = P.page.locator(`button:visible`, { hasText: text }).first();
   await btn.waitFor({ state: 'visible', timeout });
-  await btn.click();
+  /* v2.3.2084: SAMPLED BEFORE THE CLICK, not after it.  The first cut asked
+     elementFromPoint in the catch block and got nothing at all: a click that
+     times out has spent THIRTY SECONDS failing, and by then the panel has
+     moved on, so boundingBox answers null and the diagnostic reports nothing
+     about the moment that mattered.  The reading is cheap, so it is taken up
+     front and only PRINTED if the click then fails. */
+  const over = await coveringElement(P, btn).catch(() => null);
+  try {
+    await btn.click();
+  } catch (e) {
+    /* FIRST, not last.  The runner truncates a failure message at a couple of
+       hundred characters and Playwright's own call log is longer than that, so
+       anything appended is cut off before it is ever read -- which is how the
+       first two attempts at this diagnostic reported nothing while working
+       perfectly. */
+    const err = new Error(`COVERED BY: ${over || '(unreadable)'} — `
+      + String((e && e.message) || e));
+    err.stack = (e && e.stack) || err.stack;
+    throw err;
+  }
   return true;
 }
 
@@ -623,6 +708,112 @@ export async function openDest(P, label, { timeout = 6000 } = {}) {
  * deliberately minimal and asserts the shape it expects rather than trying to
  * be a general decoder.
  */
+/* ═══ v2.3.2078: MOVE THERE, DO NOT TELEPORT THERE ═══
+ * Lifted verbatim in behaviour from mp-harvest (v2.3.1706), which learned it
+ * the hard way: movement.js caps a move at `500 * dt + 80` px and, on reject,
+ * "drops EVERYTHING so a cheater can't flip blocking/dodging/dead while
+ * teleporting" — and a reject does NOT write ps.x, so every later move is
+ * still the same illegal distance from the server's stale position.  Once
+ * rejected, rejected forever, with the client looking perfectly healthy.
+ * 100px hops with a beat between them sit well inside the cap.
+ *
+ * A COLOUR-CLEAN PATCH OF TOWN, for the scenarios that count pixels on the
+ * character: measured off town_v17.webp and its walk grid — walkable, more
+ * than 110px clear of all twelve props, and zero pixels matching any of the
+ * four probe colours (pink/green/blue/red) in the box a figure crop covers.
+ * The plaza spawn is NOT such a patch since v2.3.2069 put the fountain there.
+ */
+export const TOWN_CLEAN_SPOT = { x: 1000, y: 1460 };
+
+export async function hopTo(P, tx, ty, { step = 100, gap = 260, tries = 40 } = {}) {
+  for (let i = 0; i < tries; i++) {
+    const done = await P.page.evaluate(({ x, y, s }) => {
+      const S = window._gameState.current;
+      const dx = x - S.player.x, dy = y - S.player.y;
+      const d = Math.hypot(dx, dy);
+      if (d < 6) { S.player.vx = 0; S.player.vy = 0; return true; }
+      const k = Math.min(s, d);
+      S.player.x += (dx / d) * k;
+      S.player.y += (dy / d) * k;
+      return false;
+    }, { x: tx, y: ty, s: step });
+    await P.page.waitForTimeout(gap);   /* > the 198ms solo move gap */
+    if (done) return true;
+  }
+  return false;
+}
+
+/* ═══ v2.3.2078: THE BOX A COLOUR PROBE MAY COUNT PIXELS IN ═══
+ * mp-facingside, mp-cosmpose and mp-skinworld each carried their own copy of
+ * `x = c.x - 44, y = c.y - 86, 88 x 104` — a box about twice the figure, with
+ * the character sitting in its bottom-middle and the town filling the rest.
+ * That was survivable while the spawn looked at bare cobbles.  When v2.3.2069
+ * moved the fountain into the plaza the spawn ended up in front of it, and
+ * the CONTROL frame — a character with no drawings on him at all — started
+ * reading 4455 blue pixels off the water.  Four assertions in mp-facingside
+ * and six in mp-cosmpose failed, none of them about the art they name.
+ *
+ * The box below was measured off that control render (tools/qa/mp/out/
+ * facingside-00-control.png, 88x104 at dpr 2): the head's top row sits 37 CSS
+ * px above the feet and the figure is ~28 px across at the shoulders.  40x46
+ * clears both with margin and stops well below the basin.  Grey fountain
+ * stone can still clip the top corners and that is fine — none of the four
+ * colour tests (isPink/isGreen/isBlue/isRed) fires on a neutral.
+ *
+ * Anchored on `__btPlayerDrawn()` when the client offers it (entityRenderer,
+ * same version) so the mining -8px lift and the build-scale shift are
+ * included, and on S.player otherwise, which is what the old copies did.
+ *
+ * Returns null when the box would run off the viewport, exactly as before —
+ * a caller treats that as "could not be located", not as zero pixels.
+ */
+export async function figureBox(P, { pad = 0, peerId = null } = {}) {
+  const c = await P.page.evaluate((pid) => {
+    const S = window._gameState.current;
+    const r = document.querySelector('canvas').getBoundingClientRect();
+    /* A peer has no drawn-box probe of its own, so its anchor is the position
+       the renderer draws it at — and that is renderX/renderY, the smoothed
+       interpolation, NOT the raw x/y off the last packet (entityRenderer:
+       `display.x = other.renderX || other.x || 0`).
+       v2.3.2078: the difference did not matter to the old 88x104 box and
+       matters a great deal to a 40x46 one — a peer mid-interpolation sits far
+       enough from its packet position to fall outside the tighter crop, which
+       reads as "the other player cannot see his tattoos" on a frame where he
+       plainly can. */
+    const src = pid ? (S.others || {})[pid] : S.player;
+    if (!src || typeof src.x !== 'number') return null;
+    /* v2.3.2083: a PEER now has a drawn-position probe of its own
+       (__btPeersDrawn, entityRenderer), so its crop is anchored on the frame
+       the renderer actually painted rather than on renderX/renderY read a
+       moment later.  That gap is invisible on a standing peer and is most of
+       a running one's body: mp-cosmpose's `pinkMin` is a MINIMUM over dozens
+       of samples, so a single crop that missed reported "the other player
+       cannot see his tattoos" about a character covered in them.
+       The pad-the-box fix was tried first and is wrong — the margin reaches
+       the grass and the no-art control starts counting the town (TRAPS §34). */
+    const d = pid
+      ? (window.__btPeersDrawn ? window.__btPeersDrawn(pid) : null)
+      : (window.__btPlayerDrawn ? window.__btPlayerDrawn() : null);
+    const wx = d ? d.x : (pid && src.renderX != null ? src.renderX : src.x);
+    const wy = d ? d.footY : (pid && src.renderY != null ? src.renderY : src.y);
+    return { x: r.left + (wx - S.camera.x) * (S._worldScaleX || 1),
+             y: r.top + (wy - S.camera.y) * (S._worldScaleY || 1),
+             vw: innerWidth, vh: innerHeight,
+             drawn: !!d, facing: S._facing || null };
+  }, peerId);
+  if (!c) return null;
+  const w = 40 + pad * 2, h = 46 + pad * 2;
+  const x = Math.round(c.x - 20 - pad), y = Math.round(c.y - 44 - pad);
+  if (x < 0 || y < 0 || x + w > c.vw || y + h > c.vh) return null;
+  /* Geometry ONLY on the enumerable side: this object is handed straight to
+     page.screenshot({ clip }), which is not the place to find out whether a
+     stray key is tolerated.  The two diagnostics ride non-enumerably. */
+  const box = { x, y, width: w, height: h };
+  Object.defineProperty(box, 'facing', { value: c.facing, enumerable: false });
+  Object.defineProperty(box, 'drawn', { value: c.drawn, enumerable: false });
+  return box;
+}
+
 export async function screenshotPixels(P, clip) {
   const buf = await P.page.screenshot(clip ? { clip } : {});
   return decodePng(buf);

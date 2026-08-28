@@ -79,11 +79,23 @@ const ps = room.playerState['bp_pet_p'];
 ps.coins = 1000;
 ps.level = 10;
 
-// ── 1. caps + trap purchase ──
+// ── 1. caps + a trap in the bag ──
+/* v2.3.2069: THE TRAP IS NO LONGER SOLD, AND THAT IS NOT A BUG HERE.
+   Owner: "Remove the 20g trap from the shop it has no effect in the game
+   currently" -- the capture system below is finished and correct server-side,
+   but its only trigger is a button on the legacy toolbar, whose root has
+   `display: 'none'`. So the shop LINE went and everything this file exercises
+   stayed (see the note in server/src/data.js).
+   The trap is therefore placed in the bag directly. That is what this section
+   was really establishing -- "a player holding a trap" -- and it now says so
+   instead of routing through a shelf that no longer carries one. A trap
+   already in someone's bag still works, which is the property being kept. */
 const sync = ws.sent.find((m) => m.type === 'state_sync');
 check('state_sync advertises caps.pets', sync && sync.caps && sync.caps.pets === true, sync && sync.caps);
 await room.webSocketMessage(ws, JSON.stringify({ type: 'shop_purchase', payload: { itemId: 'basicTrap' } }));
-check('vendor trap lands in ps.inventory.basic_trap', (ps.inventory.basic_trap || 0) === 1 && ps.coins === 980, { trap: ps.inventory.basic_trap, coins: ps.coins });
+check('the vendor no longer sells a trap, and the attempt costs nothing',
+  !ps.inventory.basic_trap && ps.coins === 1000, { trap: ps.inventory.basic_trap, coins: ps.coins });
+ps.inventory.basic_trap = 1;
 
 // world monster to hunt
 ps.z = 'meadow';

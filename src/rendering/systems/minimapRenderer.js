@@ -130,6 +130,20 @@ const C_QUEST_DONE = 0x58b97b;   /* COL.xp — green '?', same as the in-world b
    opens (worldProps.js) rather than off its id.  Keying on the action means
    the icon and the panel come from one field: rename a building and the map
    still promises exactly the trade you get when you walk in. */
+/* v2.3.2061 dev probe store, house style: prop id -> the glyph it drew. */
+const _propMarks = [];
+if (typeof window !== 'undefined') window.__btMinimapMarks = () => _propMarks.slice();
+
+/* ═══ v2.3.2072: EVERY MARK, NOT JUST THE PROPS ═══
+   Owner: "I think there's two blacksmith indicators on map" — and there were,
+   because the forge BUILDING and the blacksmith MAN were both drawing the
+   hammer. _propMarks could never have caught that: it only records props, so
+   it saw one hammer and was satisfied. A duplicate is a property of the whole
+   set of marks, so the probe has to hold the whole set — glyph, colour and
+   where it landed, for props, townsfolk, portals and all. */
+const _allMarks = [];
+if (typeof window !== 'undefined') window.__btMinimapAll = () => _allMarks.slice();
+
 const BUILDING_ICON = {
   forge: 'forge',
   bank: 'bank',
@@ -137,9 +151,37 @@ const BUILDING_ICON = {
   shop: 'shop',
 };
 
-/* Townsfolk who do a job get that job's glyph — the same one their building
-   carries, so "the anvil on the map" is the blacksmith whether you find the
-   forge or the man.  Anyone else is a plain townsfolk. */
+/* ═══ v2.3.2072: A TOWNSPERSON IS A PERSON ON THE MAP ═══
+   Owner: "I think there's two blacksmith indicators on map." There were.
+
+   This map used to give townsfolk who do a job their trade's glyph — the same
+   one their building carries — on the reasoning that "the anvil on the map is
+   the blacksmith whether you find the forge or the man." That held while the
+   man and his building were on opposite sides of town: he stood at (1400,640)
+   and his forge at (350,850), so the two hammers were two different places.
+
+   It stopped holding when the owner's blueprint moved him to his own door
+   (v2.3.2065) and the forge grew to 2.5x (v2.3.2069). The forge's marker and
+   the blacksmith now sit 327 world px apart — about 39 px on the minimap —
+   so the map draws two hammers a thumb's width apart and neither one means
+   anything the other does not. The general store is worse: 194 world px, ~23
+   minimap px, two shop glyphs nearly on top of each other.
+
+   AND IT POINTED AT THE WRONG MAN. Shopkeeper Bro is the one who actually
+   sells you things — his drawer IS the shop — and he had no entry here, so he
+   drew as a plain person. Storekeeper Bro sells nothing (his own record says
+   "townsfolk until the owner says otherwise") and he was the one wearing the
+   shop glyph. A player following the map to buy something walked to the man
+   with no stock.
+
+   So the rule is now the one the rest of this file already states twice (the
+   v2.3.1810 icon pass, and v2.3.1819's star): one glyph, one meaning. A
+   BUILDING carries its trade — that is the thing you walk to and the panel it
+   opens. A PERSON carries the person glyph. The blacksmith reads as a man
+   standing by a forge, which is what he is.
+
+   Left as an empty map rather than deleted so re-enabling one is a single
+   line if a townsperson ever ends up somewhere their trade is not. */
 /* ═══ v2.3.1819: THE STAR MEANS QUEST, AND NOTHING ELSE ═══
    Owner: "the start icon should be yellow for quests (if that's what it's
    for)" — and the parenthesis is the real finding.  It was for two things.
@@ -156,10 +198,7 @@ const BUILDING_ICON = {
    NPC loop precisely so nothing can cover it), which says far more than a
    star did — it says whether he has work for you or is waiting to be paid.
    The star is now unambiguous and always gold. */
-const NPC_ICON = {
-  blacksmith_bro: 'forge',
-  storekeeper_bro: 'shop',
-};
+const NPC_ICON = {};
 
 /* Same order as entityRenderer's SECTORS — S._renderFacing is published from
    there, so this must match it or the chevron points somewhere else. */
@@ -521,6 +560,11 @@ export class MinimapRenderer {
     s.tint = color;
     s.alpha = 1;
     s.visible = true;
+    /* Recorded where it is DRAWN, so the probe reports the glyph that actually
+       reached the box rather than the one the lookup asked for. */
+    if (typeof window !== 'undefined') {
+      _allMarks.push({ icon: icon || 'dot', color, x: Math.round(s.x), y: Math.round(s.y), px });
+    }
     this._used++;
     return s;
   }
@@ -638,6 +682,7 @@ export class MinimapRenderer {
        steer by lands on top: nodes < buildings < NPCs < other bros < monsters
        < portals < quest markers < you. */
     this._used = 0;
+    _allMarks.length = 0;   /* v2.3.2072: one frame's worth, not a growing log */
 
     const nodes = S.gatherNodes || [];
     for (let i = 0; i < nodes.length; i++) {
@@ -651,14 +696,26 @@ export class MinimapRenderer {
        no action (the mayor's house) falls back to the roof glyph. */
     let props = [];
     try { props = propsForZone(zoneId) || []; } catch (e) { props = []; }
+    /* v2.3.2061 dev probe, house style (__btWorldProps): which glyph each prop
+       got. A wrong icon is invisible to every other check -- the marker is
+       drawn, it is the right colour, it is in the right place, and it is a
+       picture of the wrong thing. */
+    _propMarks.length = 0;
     for (let i = 0; i < props.length; i++) {
       const b = props[i];
       if (!b || !b.sprite) continue;         /* the anvil and stall are scenery */
-      const key = BUILDING_ICON[b.action] || (b.blockW ? 'house' : null);
+      /* v2.3.2061: `mapIcon: null` opts a prop OUT. The fallback below reads
+         "it blocks, so it is a building", which was true while every blocking
+         prop WAS one -- the fountain is the first that is not, and it was
+         being marked on the minimap with a little roof. */
+      const key = b.mapIcon !== undefined
+        ? b.mapIcon
+        : (BUILDING_ICON[b.action] || (b.blockW ? 'house' : null));
       if (!key) continue;
       /* Anchored at the bottom-centre in world space, so lift the marker onto
          the middle of the building rather than its doorstep. */
       this._mark(b.x, b.y - (b.worldH || 0) * 0.35, key, C_BUILDING, BIG_ICON_PX, 0);
+      _propMarks.push({ id: b.id, key });
     }
 
     const npcs = S.npcs || [];

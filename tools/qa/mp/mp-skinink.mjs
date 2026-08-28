@@ -116,7 +116,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the creator opens on the whole character, not a close-up of the hair',
     !!camWide && camWide.height === '92%', camWide);
 
-  const skinTab = await page.$('[data-cc-tab="skin"]') || await page.$('button:has-text("Skin")');
+  /* v2.3.2078: `[data-cc-tab]` has never existed in src/ — see mp-bodyink. */
+  const skinTab = await page.$('button:has-text("Skin")');
   rec.ok('the creator has a skin tab to reach the designer from', !!skinTab, { found: !!skinTab });
   if (!skinTab) return;
   await skinTab.click();

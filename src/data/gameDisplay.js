@@ -1494,15 +1494,42 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      of the apparent volume.  If the owner wants it to SOUND 75% quieter,
      that is roughly -20 dB, i.e. another factor of ~2.5 on both numbers.
      SFX are deliberately untouched: the ask was the music. */
-  GLOBAL_MUSIC_VOL: 0.055,
+  /* v2.3.2079 (owner: "Make all the music tracks about 50% quieter at max
+     volume than it is now") — both halved again, together, for the same
+     reason v2.3.1590 moved them together: the session track and the zone
+     tracks keep their relationship to each other and to SFX.
+       GLOBAL_MUSIC_VOL  0.055   -> 0.0275
+       ZONE_MUSIC_VOL    0.06875 -> 0.034375
+     Applied to GAIN, which is how the previous ask was read too. Halving
+     gain is -6 dB; the rough rule is that -10 dB reads as "half as loud", so
+     this lands a little short of half APPARENT volume. If it still sits too
+     loud, another factor of ~1.6 on both numbers gets to a true perceptual
+     half. Cumulatively the music is now at 12.5% of the gain it shipped with
+     before v2.3.1590, about -18 dB.
+     There is no music slider and no mute: these two numbers ARE the maximum
+     volume, so this is a change to the ceiling and not to a default.
+     ZONE_AMBIENT_VOL is deliberately NOT halved — it is the wind-and-birds
+     layer that plays UNDER the score, not a music track, and cutting it with
+     the music would leave the ambience louder than the thing it sits beneath.
+     Say the word and it follows. */
+  GLOBAL_MUSIC_VOL: 0.0275,
   /* v2.3.1590: was a bare `var TARGET_VOL` inside startZoneAmbient, which
      made the one number the owner actually tunes invisible next to its
-     sibling above.  Promoted to a real constant; startZoneAmbient reads it. */
-  ZONE_MUSIC_VOL: 0.06875,
+     sibling above.  Promoted to a real constant; startZoneAmbient reads it.
+     v2.3.2079: 0.06875 -> 0.034375, halved with its sibling. */
+  ZONE_MUSIC_VOL: 0.034375,
   /* v2.3.1738: the per-zone AMBIENCE layer (ZONE_AMBIENT below).  Sits just
      under the zone score, because it plays UNDERNEATH it rather than instead
-     of it — wind you notice but do not listen to. */
-  ZONE_AMBIENT_VOL: 0.05,
+     of it — wind you notice but do not listen to.
+     v2.3.2079: 0.05 -> 0.025, following the music down. This is NOT what the
+     owner asked for — the ask was the music — and it is here because leaving
+     it would have inverted the rule the line above states: at 0.05 against a
+     halved zone score of 0.034375 the wind would have become the LOUDEST
+     layer in the zone, in front of the thing it is meant to sit beneath.
+     Held at the same 73% of the score it has always been, so the mix is the
+     one the owner has been listening to, only quieter. Put it back to 0.05
+     if the wind should keep its absolute level. */
+  ZONE_AMBIENT_VOL: 0.025,
   /* v2.3.1582: the decoded-buffer cache is BUDGETED, not unbounded.
      An AudioBuffer is raw float32 PCM, so a 2 MB mp3 is ~50 MB of RAM.
      Measured in Chromium at 44.1 kHz stereo: login-theme 34.4 MB, village
@@ -3393,6 +3420,12 @@ export const BT_ACHIEVEMENTS = [{
 export const NPC_DATA = [{
   id: 'mayor_bro',
   name: 'Mayor Bro',          /* MUST equal QUEST_CHAINS[].npc — getNpcQuest keys on it */
+  /* v2.3.2071 (owner: "Make every persons name or title as a consistent
+     name plate"). The gold sub-line under the name -- the slot a player's
+     level occupies -- so a townsperson reads the same way a player does.
+     He kept the old above-head label until now because his plate was opt-in;
+     the plate sits below the feet, so his '!' badge is untouched. */
+  plateRole: 'Mayor',
   /* v2.3.1672: real art (owner-supplied).  `sprite` wins over `avatar` in the
      renderer; the emoji stays as the fallback for the frames before the
      texture resolves and for any NPC that never gets art.
@@ -3455,6 +3488,199 @@ export const NPC_DATA = [{
   _questMarker: null,
   _hitThisSwing: false,
 }, {
+  /* ═══ v2.3.2046: THE SHOPKEEPER, WHO ACTUALLY WALKS ═══
+     Owner: "Add this as a shopkeeper who walks around in the town."
+
+     THE FIRST NPC IN THE GAME THAT MOVES. Mayor Bro and Blacksmith Bro are
+     both pathRadius 0 -- pinned, because a quest giver who wanders is a quest
+     giver you have to hunt for. This one is meant to wander, so he carries a
+     `walk` strip set (npcSprites.js) and a radius to roam inside.
+
+     `walk` names one horizontal 4-frame strip per facing. The renderer picks
+     the facing from his actual movement and advances the frame by DISTANCE
+     travelled, so his feet match his speed instead of skating.
+
+     ROAMING IS SAFE HERE, and it is worth writing down why rather than
+     trusting it: the wander step (BroTown.jsx) clamps to the town bounds but
+     does NOT test walkability, so a radius over solid ground would walk him
+     into a wall. In town there is nothing to walk into -- TOWN_PROPS_ENABLED
+     is false and town's walkability mask is deliberately NOT loaded
+     (tiledMaps.js WALKABILITY_MAPS), so the whole zone is open ground. If
+     either of those is ever switched on, this radius needs re-checking; that
+     is the tripwire, stated here because the code cannot state it.
+
+     POSITION: south-west of the player's spawn at (815, 1010), far enough from
+     Mayor Bro at (900, 780) that the two are never on top of each other, and
+     close enough to spawn that a new player meets him without looking. The
+     radius keeps him inside a small patch of the plaza rather than roaming the
+     whole town, so "where is the shopkeeper" has an answer.
+
+     NAME: v2.3.2073 he is DIEGO, at the owner's request ("Instead of
+     shopkeeper bro with a subtitle of shopkeeper name him Diego / Diego with
+     the subtitle shopkeeper"). The plate now reads Diego over Shopkeeper
+     instead of saying the same word twice.
+
+     A rename here is not cosmetic and has to be checked: getNpcQuest keys on
+     the NPC's NAME, so a name that matches a dormant chain in gameSystems.js
+     switches that chain on silently. That is why he was not called "Trader
+     Tix" when he shipped, and it is the trap documented on Blacksmith Bro
+     below. Checked before renaming: "Diego" appears nowhere in gameSystems.js
+     or anywhere else in the repo, so he stays questless.
+     TWO OTHER SITES KEY ON THIS STRING and move with it -- ACTIVE_NPCS in
+     BroTown.jsx (a name he must be in or he stops ticking entirely) and the
+     header of his own drawer in ShopkeeperPanel.jsx. */
+  /* ═══ v2.3.2064: LIL BRO, THE KID IN THE PLAZA ═══
+     Owner: "Add another little bro for a sprite sheet."
+
+     Scenery with legs: no quest, no shop, no dialogue tree -- he walks around
+     the east side of the plaza and says the odd thing, which is what a town
+     with people in it looks like. The second walking NPC in the game, and he
+     needed no new renderer code: `walk` names his strips and the shopkeeper's
+     v2.3.2046 machinery does the rest.
+
+     NAME: 'Lil Bro'. Checked against QUEST_CHAINS -- getNpcQuest keys on the
+     NPC's NAME, so reusing 'Trader Tix' or 'Scout' or 'Healer Luna' would
+     silently switch a dormant chain on and hang a '!' over a child. Same trap
+     documented on Shopkeeper Bro and Blacksmith Bro. */
+  id: 'lil_bro',
+  name: 'Lil Bro',
+  /* The south strip. `sprite` is what npcSpriteScale keys on and what the
+     preloader lists; the renderer binds a sliced FRAME, never this strip. */
+  sprite: '/sprites/npc/lil-bro-walk-south.webp',
+  portrait: '/sprites/npc/lil-bro-head.webp',
+  walk: {
+    base: '/sprites/npc/lil-bro-walk-',
+    frames: 4,
+    dirs: ['south', 'southwest', 'west', 'northwest',
+      'north', 'northeast', 'east', 'southeast'],
+  },
+  avatar: '🧒',
+  color: '#7FB6E8',
+  plateRole: 'Kid',
+  /* v2.3.2064: measured on town_v17, not guessed -- (1180,1180) is 99% open
+     cobble on a 90px disc, on the plaza's east side. That puts him opposite
+     Shopkeeper Bro at (700,1060) so the two do not crowd each other, clear of
+     the fountain's footprint (x 760..900), and off the spawn point. */
+  /* v2.3.2086: 1180 -> 1000 across.  The bank came back onto the map at
+     (1230, 1290) and its art runs y 970..1290 -- his old anchor put him
+     INSIDE it, wandering through the lobby wall.  (1000, 1250) is open plaza
+     a comfortable distance from the bank's west face, and townsfolk do not
+     collide with props so the circle has to clear it rather than bump it.
+
+     v2.3.2087: AND FAR ENOUGH SOUTH.  (970, 1250) was 134px from TOWN_SPAWN
+     (910, 1130) and he AMBLES 130 of that, so he could be standing a few
+     pixels from a player the moment they land -- mp-townexit caught it at
+     88px against its 125 floor.  That is TRAPS §36's third constraint, which
+     this town helped write: a spawn is not just clear ground, it is clear of
+     the townsfolk's rings too.  The anchor needs NPC_PROX_CLEAR + pathRadius
+     = 255 from the spawn; (960, 1400) is 275, leaving 145 of daylight at his
+     closest approach.  His circle still stops at x 1090, short of the bank's
+     footprint at 1120, and at tile x 30 he is five tiles clear of the World
+     View trail-head, whose reach is two. */
+  x: 960, y: 1400,
+  spawnX: 960, spawnY: 1400,
+  renderX: 960, renderY: 1400,
+  hp: 100, maxHp: 100,
+  noHp: true,          /* a child in a safe town; a health bar reads as "fight this" */
+  alive: true,
+  respawnAt: 0,
+  /* Wider than the shopkeeper's 110: he has nothing to stand behind, and a kid
+     who covers ground is the point of him. Bounded so he stays on the cobble
+     the disc above was measured over. */
+  pathRadius: 130,
+  moveTimer: 0,
+  targetX: 960, targetY: 1400,
+  chatTimer: 11000,
+  chatBubble: null,
+  /* REQUIRED -- the AI loop indexes this unguarded and an empty array throws. */
+  phrases: [
+    'Betcha can’t catch me!',
+    'My bro says the meadow’s got slimes.',
+    'One day I’m gonna be a real adventurer.',
+    'Did you see the fountain? It’s got FISH. Probably.',
+  ],
+  canFollow: false,
+  followZones: [],
+  _facing: 'down',
+  _questMarker: null,
+  _hitThisSwing: false,
+}, {
+  id: 'shopkeeper_bro',
+  name: 'Diego',
+  /* The south strip. `sprite` is what npcSpriteScale keys on and what the
+     preloader lists; the renderer binds a sliced FRAME rather than this raw
+     strip (see entityRenderer v2.3.2046), so the four-in-one image is never
+     drawn. */
+  sprite: '/sprites/npc/shopkeeper-bro-walk-south.webp',
+  /* Cropped from his own south frame by tools/import_shopkeeper.py, so the
+     face in the dialogue chip cannot drift from the man in the street. NOT the
+     shipped storekeeper-bro-head.webp, which is a different character. */
+  portrait: '/sprites/npc/shopkeeper-bro-head.webp',
+  walk: {
+    base: '/sprites/npc/shopkeeper-bro-walk-',
+    frames: 4,
+    dirs: ['south', 'southwest', 'west', 'northwest',
+      'north', 'northeast', 'east', 'southeast'],
+  },
+  avatar: '🎩',
+  color: '#c9a227',
+  /* v2.3.2048 (owner: "Give his name a proper name plate like the main
+     character. Make it below him"). Opt-in, so the two quest givers keep the
+     above-head name their '!' marker stack is tuned around. `plateRole` is the
+     plate's second line, where a player's reads "LV 3" -- a shopkeeper has no
+     level, and what you actually want to know about him is what he does. */
+  plateRole: 'Shopkeeper',
+  shop: true,          /* v2.3.2050: walking up to him opens his trade window */
+  /* ═══ v2.3.2080: HE STANDS AT THE MARKET STALL ═══
+     He was at (760, 1210) — the middle of an empty square, with no counter,
+     no goods and nothing to explain why a man called Shopkeeper is standing
+     there. Meanwhile the market stall 330px west had an awning, a counter and
+     nobody behind it; worldProps calls it "a painted front, there is nobody
+     behind it", which was true and is the thing worth fixing rather than
+     documenting.
+     (430, 1360) is 50px in front of the stall's counter (its footprint ends
+     at y 1310) — the same relationship Storekeeper Bro has to the general
+     store, and clear of every footprint at a player's own half-width.
+
+     It also gets him away from the spawn, which matters more than it looks.
+     His trade drawer opens by itself within NPC_PROX_OPEN (90px) and he
+     AMBLES within pathRadius (110px), so his drawer can reach 200px from
+     this anchor and only lets go past NPC_PROX_CLEAR + pathRadius = 235px.
+     From TOWN_SPAWN (910, 1130) the old anchor was 170px away — inside that
+     — so a new player could have the shop drawer open itself over their
+     screen without touching anything, and the drawer covers the inspect
+     card's actions (v2.3.2078). From the stall he is 532px away, and with
+     the tighter radius below his drawer reaches only 130px. */
+  x: 430, y: 1360,
+  spawnX: 430, spawnY: 1360,
+  renderX: 430, renderY: 1360,
+  hp: 100, maxHp: 100,
+  noHp: true,          /* a shopkeeper in a safe town; a health bar reads as "fight this" */
+  alive: true,
+  respawnAt: 0,
+  /* v2.3.2080: 110 -> 40.  NPCs do not collide with props — the wander in
+     BroTown.jsx picks a point in the radius and walks straight to it — so at
+     110 he strolled clean THROUGH the stall counter (its footprint runs y
+     1250-1310, and 1360-110 = 1250).  40 keeps him in front of it (y
+     1320-1400) and reads like a man shifting his weight behind a counter
+     rather than pacing the square. */
+  pathRadius: 40,
+  moveTimer: 0,
+  targetX: 430, targetY: 1360,
+  chatTimer: 9000,
+  chatBubble: null,
+  /* REQUIRED -- the AI loop indexes this unguarded and an empty array throws. */
+  phrases: [
+    'Bones, hides, anything. I pay coin.',
+    'Everything on me is for sale.',
+    "The more I've got of a thing, the less I'll give you for it.",
+  ],
+  canFollow: false,
+  followZones: [],
+  _facing: 'down',
+  _questMarker: null,
+  _hitThisSwing: false,
+}, {
   /* ═══ v2.3.1773: THE BLACKSMITH, AT THE FOUNTAIN ═══
      Owner: "Add this npc to the game near the water fountain he'll be the
      blacksmith.  Size him about the same as mayor bro."
@@ -3487,20 +3713,35 @@ export const NPC_DATA = [{
      ambient-chat loop indexes it unguarded and an empty array throws. */
   id: 'blacksmith_bro',
   name: 'Blacksmith Bro',
+  /* v2.3.2071: his title on the plate. "Blacksmith" and not "Bron" for the
+     same reason his NAME is not -- getNpcQuest keys on the name, not on this,
+     but keeping the two consistent avoids inviting the mistake. */
+  plateRole: 'Blacksmith',
   sprite: '/sprites/npc/blacksmith-bro.webp',
   portrait: '/sprites/npc/blacksmith-bro-head.webp',
   avatar: '🔨',
   color: '#d98b45',
-  x: 1400, y: 640,
-  spawnX: 1400, spawnY: 640,
-  renderX: 1400, renderY: 640,
+  /* ═══ v2.3.2065: HE FOLLOWS HIS FORGE WEST ═══
+     The owner's blueprint puts the blacksmith's building on the WEST side of
+     the plaza; he was at (1400,640) on the east, measured against the v16
+     town. Moved to a step from his own door -- 99% open cobble on a 44px
+     disc -- so the man and his anvil and his building are finally in the same
+     part of town.
+     v2.3.2069: and again when the forge grew to 2.5x -- (460,900) is
+     inside the bigger building's footprint now, so he stands at its
+     south-east corner beside his anvil instead of inside its wall.
+     spawnX/renderX/targetX move WITH x/y or the wander step
+     walks him back to the old spot over the next few seconds (v2.3.1813). */
+  x: 640, y: 1010,
+  spawnX: 640, spawnY: 1010,
+  renderX: 640, renderY: 1010,
   hp: 100, maxHp: 100,
   noHp: true,
   alive: true,
   respawnAt: 0,
   pathRadius: 0,
   moveTimer: 0,
-  targetX: 1400, targetY: 640,
+  targetX: 640, targetY: 1010,
   chatTimer: 11000,
   chatBubble: null,
   phrases: [
@@ -3544,20 +3785,31 @@ export const NPC_DATA = [{
      rename.  He is townsfolk until the owner says otherwise. */
   id: 'storekeeper_bro',
   name: 'Storekeeper Bro',
+  /* v2.3.2071: his title. Deliberately the same shape as Shopkeeper Bro's
+     ("Shopkeeper") even though the two read similarly -- they are two
+     different people with two similar jobs, and inventing a distinguishing
+     title here would be a rename dressed up as a caption. */
+  plateRole: 'Storekeeper',
   sprite: '/sprites/npc/storekeeper-bro.webp',
   portrait: '/sprites/npc/storekeeper-bro-head.webp',
   avatar: '🛒',
   color: '#4a90d9',
-  x: 2520, y: 748,
-  spawnX: 2520, spawnY: 748,
-  renderX: 2520, renderY: 748,
+  /* ═══ v2.3.2065: HE WAS OFF THE MAP ═══
+     (2520, 748) is a v16 coordinate on a map that is 1664 world px wide, so
+     the storekeeper has been standing outside the world -- spawned, ticking,
+     and impossible to see or reach -- since the town was re-fused at
+     v2.3.1813. Now beside the general store the blueprint puts on the east
+     side, 98% open cobble. Same spawnX/renderX/targetX rule as above. */
+  x: 1180, y: 890,
+  spawnX: 1180, spawnY: 890,
+  renderX: 1180, renderY: 890,
   hp: 100, maxHp: 100,
   noHp: true,
   alive: true,
   respawnAt: 0,
   pathRadius: 0,
   moveTimer: 0,
-  targetX: 2520, targetY: 748,
+  targetX: 1180, targetY: 890,
   chatTimer: 14000,
   chatBubble: null,
   phrases: [

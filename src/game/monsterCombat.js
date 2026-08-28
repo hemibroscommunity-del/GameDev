@@ -78,7 +78,15 @@ export function updateMonsterCombat(S, deps) {
           /* §4 Amulet bonus — elemental damage boost */
           if (((_R6$_amuletBonus = _R6._amuletBonus) === null || _R6$_amuletBonus === void 0 ? void 0 : _R6$_amuletBonus.stat) === 'elemDmg' && _activeWpn.element1) pDmg *= 1 + _R6._amuletBonus.value / 100;
           /* §18.1 Food buff — damage multiplier */
-          if (S._dmgBuff && Date.now() < S._dmgBuff) pDmg *= 1.20;
+          /* v2.3.2058: 1.20 is the COOKED-FOOD magnitude and stays the
+             fallback; S._dmgBuffMul carries a stronger buff's own number
+             (the Fury Tonic's x2). Bounded 1..4 to match the server's read
+             in combat.js -- prediction that can outrun the authority just
+             produces popups the room then contradicts. */
+          if (S._dmgBuff && Date.now() < S._dmgBuff) {
+            var _dbm = Number(S._dmgBuffMul);
+            pDmg *= (_dbm >= 1 && _dbm <= 4) ? _dbm : 1.20;
+          }
           /* Hexer curse debuff — reduces damage by 30% */
           if (S._cursedUntil && Date.now() < S._cursedUntil) pDmg *= 0.7;
           /* Swarm bleed tick — removed (mosquito damage). Application

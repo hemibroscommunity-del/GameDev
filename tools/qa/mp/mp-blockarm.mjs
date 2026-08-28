@@ -34,7 +34,7 @@ async function face(P, k) {
     const S = window._gameState.current;
     S._facingAngle = kk * Math.PI / 4; S._aimAngle = kk * Math.PI / 4;
     S._shieldAngle = kk * Math.PI / 4; S._shieldKb = false;
-    S._shieldUp = true; S.lockedMonster = null;
+    S._shieldUp = true; S.lockedTarget = null;
     S.rpg.shield = { name: 'Pine Shield', type: 'shield' };
   }, k);
   await P.page.waitForTimeout(360);

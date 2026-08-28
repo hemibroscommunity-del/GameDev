@@ -255,7 +255,15 @@ export function WoodworkPanel(props) {
                See blacksmith forge (~line 22273) for the predict + sync flow. */
             {
               var _Sww = stateRef.current;
-              if (_Sww._serverMonsters && _Sww.channel) {
+              /* v2.3.2077: `_serverMonsters` is FALSE in town -- it means "this
+             zone has server-managed monsters", and wsClient sets it false on
+             an empty monster list ("town, or a dungeon the server doesn't
+             model", its own words). This send therefore never happened in
+             town. Third instance of this exact flag doing it: v2.3.1702
+             (ability_use), v2.3.2063 (shop_purchase). Presence on the channel
+             is the only precondition.
+                 Same as the blacksmith's forge above, and in the same town. */
+              if (_Sww.channel) {
                 try { _Sww.channel.send({ type: 'forge_weapon', payload: { weaponType: wpnType, tierKey: key, isWoodwork: true } }); } catch (e) {}
               }
             }

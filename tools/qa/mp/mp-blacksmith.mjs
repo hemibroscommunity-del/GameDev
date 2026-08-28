@@ -25,10 +25,27 @@ import * as H from './harness.mjs';
    worldProps.js, so the relationship worth pinning is the one that now means
    something.  Loosening the old fountain check to make it pass would have kept
    a test that asserts nothing — he is 423px from the water and correct. */
-const FORGE = { x: 1480, y: 545 };
-/* Close enough to read as "at the fountain" on a phone screen: the basin is
-   ~76px in radius and the viewport is ~488 world px wide. */
-const NEAR = 200;
+/* v2.3.2078: THE FORGE IS READ, NOT REMEMBERED.
+   This was `{ x: 1480, y: 545 }`, copied out of worldProps at the time.  The
+   forge has since moved to (480, 900) and grown roughly threefold (owner:
+   "Same with blacksmith house"), so the check was measuring the smith's
+   distance from a spot no building has stood on for weeks — 960px, and a
+   FAIL on a smith who is standing at his forge.  mp-townhill reads the prop
+   table and passes on the same frame, which is the difference.
+
+   And it measures against the FOOTPRINT rather than the centre.  On a
+   building 470px wide the centre is 235px from its own doorway, so a
+   centre-distance test either fails a smith at the door or is loosened until
+   it would pass one across the plaza.  Distance to the box is what "at his
+   forge" means. */
+/* Two distances, because the smith has a workstation and a building and they
+   are not the same object.  He stands at the ANVIL (640, 960) — 50px, a
+   body's length from it, which is where a smith stands — and the forge whose
+   south wall ends at y 900 is 110px beyond that.  Both read as "he is at his
+   forge" on a viewport ~488 world px wide; only one of them is where he is
+   actually working. */
+const NEAR_ANVIL = 90;
+const NEAR_FORGE = 160;
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Visitor', wsPort, webPort });
@@ -43,12 +60,40 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!smith, npcs);
   if (!smith) { await P.ctx.close().catch(() => {}); return; }
 
-  const d = Math.hypot(smith.x - FORGE.x, smith.y - FORGE.y);
-  rec.ok('...standing at his forge', d < NEAR,
-    { dist: Math.round(d), at: { x: smith.x, y: smith.y }, forge: FORGE });
+  const forge = (await P.page.evaluate(() =>
+    (window.__btWorldProps ? window.__btWorldProps() : []).find((p) => p.id === 'forge') || null));
+  rec.ok('the forge is on the map to stand at (guard)',
+    !!forge && !!forge.footprint, forge);
+  if (!forge || !forge.footprint) { await P.ctx.close().catch(() => {}); return; }
+  const f = forge.footprint;
+  /* Distance to the BOX: zero anywhere inside it, and the gap to the nearest
+     wall outside it. */
+  const dx = Math.max(f.x0 - smith.x, 0, smith.x - f.x1);
+  const dy = Math.max(f.y0 - smith.y, 0, smith.y - f.y1);
+  const d = Math.hypot(dx, dy);
+  rec.ok('...standing at his forge', d < NEAR_FORGE,
+    { gapToWall: Math.round(d), at: { x: smith.x, y: smith.y }, footprint: f });
+
+  /* And at the thing he actually works at.  The anvil followed the forge west
+     in v2.3.2073 ("This anvil belongs near the blacksmith"), so a smith who
+     drifted from it would be standing beside a building holding nothing. */
+  const anvil = await P.page.evaluate(() =>
+    (window.__btWorldProps ? window.__btWorldProps() : []).find((p) => p.id === 'anvil') || null);
+  if (anvil && anvil.footprint) {
+    const a = anvil.footprint;
+    const adx = Math.max(a.x0 - smith.x, 0, smith.x - a.x1);
+    const ady = Math.max(a.y0 - smith.y, 0, smith.y - a.y1);
+    const ad = Math.hypot(adx, ady);
+    rec.ok('...within arm\'s reach of his anvil, which is what he works at',
+      ad < NEAR_ANVIL, { gap: Math.round(ad), at: { x: smith.x, y: smith.y }, anvil: a });
+  } else {
+    rec.skip('...within arm\'s reach of his anvil, which is what he works at',
+      'the anvil is not on the map in this build');
+  }
   /* ...and OUTSIDE it: the forge is solid, so a smith inside its footprint
      would be a smith you can never reach. */
-  rec.ok('...outside it, not inside the building', smith.y > FORGE.y, { smith, forge: FORGE });
+  const inside = smith.x >= f.x0 && smith.x <= f.x1 && smith.y >= f.y0 && smith.y <= f.y1;
+  rec.ok('...outside it, not inside the building', !inside, { smith, footprint: f });
 
   rec.ok('he carries his own art, so he is not the emoji fallback',
     !!smith.sprite && /blacksmith/.test(smith.sprite), smith.sprite);

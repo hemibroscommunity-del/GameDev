@@ -69,7 +69,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
      nothing about the clamp underneath it.  4 KB is 20x the clamp and
      comfortably inside the frame — the same reasoning anticheat.test.mjs's
      avatar fixture spells out. */
-  const errsBefore = B.logs.length;
+/* ═══ v2.3.2078: COUNT PAGE ERRORS, NOT LOG LINES ═══
+     These assertions are named "with no page error" and were comparing
+     `B.logs.length` — every line the client logged, transport noise
+     included.  A single `console Failed to load resource:
+     net::ERR_CONNECTION_RESET`, which says nothing about whether a griefed
+     client survived, failed the run.  The rest of the suite already filters
+     this (mp-skinworld, mp-rehearsal): count what the assertion claims to
+     count. */
+  const pageErrs = (P) => P.logs.filter((l) => String(l).startsWith('pageerror')).length;
+  const errsBefore = pageErrs(B);
   await raw(A, 'chat', { id: aId, name: 'Griefer', text: 'X'.repeat(4000), color: '#fff' });
   await B.page.waitForTimeout(2500);
   const longLine = await H.readState(B, (S) => {
@@ -87,20 +96,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!bub && bub.wrapWidth <= 400, bub);
   rec.ok('the receiving client is still running after it', await alive(B));
   rec.ok('...with no page error on the way through',
-    B.logs.length === errsBefore, B.logs.slice(errsBefore, errsBefore + 3));
+    pageErrs(B) === errsBefore, B.logs.filter((l) => String(l).startsWith('pageerror')).slice(0, 3));
 
   /* ── 1b. rapid spam ──
      The relay token bucket (RELAY_BURST 8 / 4 per s) is the worker's answer;
      what this checks is the CLIENT's — that twenty lines in a row leave it
      playable and its log bounded, rather than growing without limit. */
-  const errsSpam = B.logs.length;
+  const errsSpam = pageErrs(B);
   for (let i = 0; i < 20; i++) await raw(A, 'chat', { id: aId, name: 'Griefer', text: 'spam ' + i, color: '#fff' });
   await B.page.waitForTimeout(3000);
   const logLen = await H.readState(B, (S) => (S.chatLog || []).length);
   rec.ok('twenty lines in a row leave the log bounded (it keeps the last 40)',
     logLen <= 41, logLen);
   rec.ok('...and the client still playable', await alive(B));
-  rec.ok('...with no page error', B.logs.length === errsSpam, B.logs.slice(errsSpam, errsSpam + 3));
+  rec.ok('...with no page error', pageErrs(B) === errsSpam,
+    B.logs.filter((l) => String(l).startsWith('pageerror')).slice(0, 3));
 
   /* ── 1c. unicode and emoji survive the round trip ──
      The clamp is a .slice() on a JS string, so a line that ends inside a

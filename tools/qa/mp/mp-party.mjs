@@ -120,8 +120,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await A.page.waitForTimeout(600);
     }
     rec.ok('the chat bar opens', await chatOpen());
-    await A.page.locator('button:has-text("Send")').locator('xpath=preceding-sibling::input[1]')
-      .first().fill('/p party line');
+    /* v2.3.2078: `[data-chat-input]`, not the input before Send — the
+       composer became a <textarea> on its own row at v2.3.2039 and that
+       xpath has matched nothing since (TRAPS §29). */
+    await A.page.locator('[data-chat-input]').first().fill('/p party line');
     await H.clickText(A, 'Send');
     /* and close it again so it cannot sit over the party HUD checks below */
     await A.page.waitForTimeout(400);

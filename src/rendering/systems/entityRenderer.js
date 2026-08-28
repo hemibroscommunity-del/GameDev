@@ -3,7 +3,7 @@
  * Uses PixiJS Graphics for procedural shapes (matching the original Canvas 2D look).
  */
 import { Assets, ColorMatrixFilter, Container, Graphics, Rectangle, Sprite, Text, TextStyle, Texture } from 'pixi.js';
-import { getNpcTexture } from '../npcSprites.js'; /* v2.3.1672: NPC figure art */
+import { getNpcTexture, getNpcWalkFrame, hasNpcWalk, getPropFrame, propFrameCount } from '../npcSprites.js'; /* v2.3.1672: NPC figure art; v2.3.2046: walking NPCs; v2.3.2061: animated props */
 import { propsForZone, propFootprint } from '../../data/worldProps.js'; /* v2.3.1775: scenery; v2.3.1794: + footprint for the props probe */
 import { TILE } from '@/data/constants.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
@@ -216,10 +216,69 @@ const NPC_SPRITE_SCALE = 120 / 256;
    only one drawn.  He is not: the blacksmith (v2.3.1773) and the storekeeper
    (v2.3.1775) render off the same constant, and the owner did NOT ask for
    those to change.  Owner: "Make mayor bro 10% larger" — so the 10% lives
-   here, keyed by sprite path, and everyone else keeps 1.0.
+   here, keyed by sprite path, and everyone else kept 1.0.  (They no longer
+   do; v2.3.2081 below is why, and the mayor's 10% survived it intact.) */
+/* ═══ v2.3.2081: THE ADULTS ARE ONE TOWN, MEASURED AT THE SHOULDER ═══
+   Owner: "Check sizes of NPCs."  tools/dev/npc-sizes.py draws every
+   townsperson beside a default player on one baseline, which is how this
+   was measured rather than nudged.  Before this pass:
+
+     You 111   Diego 119   Mayor 103   Blacksmith 94   Storekeeper 94
+
+   -- a 27% spread across four grown men, with the BLACKSMITH, who is drawn
+   as the burliest man in town, the shortest of them.
+
+   The number that misleads is the total height, because import_npc_walk.py
+   normalises every figure hat-to-feet into the same 200px band.  A tall hat
+   is therefore paid for out of the BODY: the mayor's stovepipe is a fifth of
+   his figure, Diego's crown another sixth, and the bare-headed blacksmith
+   spends all 200px on a man.  Compare the landmark a player actually reads
+   -- the SHOULDER line (tools/maps/out/npc-hatruler.png, a ruler render at a
+   common height) -- and the town was much worse than the totals said:
+
+     You 80   Diego 69   Mayor 65   Blacksmith 64   Storekeeper 60
+
+   The player's shoulders stood 15-33% above every adult in town while the
+   totals claimed Diego was the tallest person in it.
+
+   The mults below put the ordinary adults' shoulders on ~73 -- about 8%
+   under the player, so the hero is still the tallest man in the square, by a
+   head-and-shoulders margin rather than by a third.  Nothing shrinks and
+   nothing the owner set by eye is walked back: Diego keeps his v2.3.2052
+   1.30 ("make shopkeeper larger"), Lil Bro keeps his v2.3.2064 0.78, and the
+   mayor keeps being exactly 1.10x the blacksmith, the rule from v2.3.1822.
+   After:
+
+     You 111   Diego 119   Mayor 118   Storekeeper 114   Blacksmith 107
+
    Keyed by client-visible strings, so Object.create(null) (CLAUDE.md rule 4). */
 const NPC_SCALE_MULT = Object.assign(Object.create(null), {
-  '/sprites/npc/mayor-bro.webp': 1.10,
+  /* 1.10 -> 1.254: still the blacksmith x 1.10 exactly (0.909 the other way,
+     which is what mp-blacksmith asserts), lifted with him. */
+  '/sprites/npc/mayor-bro.webp': 1.254,
+  /* 1.00 -> 1.14.  He was the shortest adult in town and is drawn as the
+     biggest-built one; his shoulder went 64 -> 73. */
+  '/sprites/npc/blacksmith-bro.webp': 1.14,
+  /* 1.00 -> 1.22.  The cap and the hair cost him more of the 200px band than
+     anyone but the hatted two, so he needed the largest correction to land on
+     the same shoulder line: 60 -> 73. */
+  '/sprites/npc/storekeeper-bro.webp': 1.22,
+  /* v2.3.2052 (owner: "make shopkeeper larger his sprite is bit small").
+     Measured rather than nudged: at 1.0 he drew 120px against Mayor Bro's 132,
+     so he read as the smallest figure in the town square despite being a
+     broad man in a heavy coat. 1.30 puts him at ~156 -- the biggest of the
+     three, which is what a man in that coat should look like standing next to
+     a mayor. Keyed on the south strip because that is his NPC_DATA `sprite`,
+     which is what npcSpriteScale is handed. */
+  '/sprites/npc/shopkeeper-bro-walk-south.webp': 1.30,
+  /* ═══ v2.3.2064: LIL BRO IS A CHILD, SO HE IS DRAWN AS ONE ═══
+     The import convention normalises EVERY figure to 200px between hat and
+     feet (import_npc_walk.py), which is what makes an NPC need no per-sprite
+     anchor -- and it also means a kid ships exactly as tall as the mayor. The
+     art is a child; the scale is where that gets said. 0.78 puts his head at
+     about an adult's shoulder, which is what the reference art looks like
+     beside the grown-ups in the same street. */
+  '/sprites/npc/lil-bro-walk-south.webp': 0.78,
 });
 const npcSpriteScale = (src) => NPC_SPRITE_SCALE * (NPC_SCALE_MULT[src] || 1);
 
@@ -238,6 +297,16 @@ if (typeof window !== 'undefined') {
     ? _entityLayerRef.children.map((c) => c.label).filter(Boolean) : null);
 }
 if (typeof window !== 'undefined') window.__btNpcSprites = () => Object.values(_npcDrawn);
+/* v2.3.2083: the peer half of __btPlayerDrawn — see the note at the peer draw
+   site.  A Map because the keys are player ids off the wire (CLAUDE.md rule 4:
+   a plain {} silently no-ops on '__proto__'). */
+if (typeof window !== 'undefined') {
+  const _peersDrawn = new Map();
+  window.__btPeersDrawn = (id) => (id == null
+    ? Object.fromEntries(_peersDrawn)
+    : (_peersDrawn.get(id) || null));
+  window.__btPeersDrawn._m = _peersDrawn;
+}
 
 /* The sprite frame's own geometry, in frame pixels: the figure's feet sit on
    y=223 and its top (hat) on y=23 — see the asset note in gameDisplay.js
@@ -245,8 +314,36 @@ if (typeof window !== 'undefined') window.__btNpcSprites = () => Object.values(_
    derived from them, and a magic 223 in four places is how they drift. */
 const NPC_FRAME_FEET_Y = 223;
 const NPC_FRAME_TOP_Y = 23;
+/* v2.3.2069: how far below the feet a name plate hangs, as a fraction of the
+   figure's own height. 38/121.9 is Shopkeeper Bro's shipped placement -- the
+   one the owner set by eye -- so he is unmoved by construction and every other
+   plate is spaced like his. See the note at the namePlate branch. */
+const NPC_PLATE_DROP_FRAC = 38 / 121.9;
+
 /** Height of the drawn figure above the NPC's feet, in world px. */
 const npcFigureHeight = (src) => npcSpriteScale(src) * (NPC_FRAME_FEET_Y - NPC_FRAME_TOP_Y);
+
+/* ═══ v2.3.2046: WHICH WAY A WALKING NPC IS FACING ═══
+ * Straight from his movement, in the eight names the strips are filed under.
+ * Screen space, so +y is DOWN and therefore south -- getting that backwards is
+ * the classic version of this bug and it looks like the figure walking
+ * backwards up the street.
+ * The diagonal band is deliberately wide (22.5 degrees either side of each
+ * eighth): an NPC wandering to a point almost due south should read as south
+ * rather than flickering between south and southeast on sub-pixel jitter. */
+const NPC_DIRS_8 = ['east', 'southeast', 'south', 'southwest',
+                    'west', 'northwest', 'north', 'northeast'];
+function npcDirFromDelta(dx, dy) {
+  const a = Math.atan2(dy, dx);                    /* -pi..pi, +y is down */
+  const oct = Math.round(a / (Math.PI / 4));       /* -4..4 */
+  return NPC_DIRS_8[((oct % 8) + 8) % 8];
+}
+/* World px of travel per walk frame. Distance-driven rather than time-driven
+   so the feet match the speed: a time-driven cycle makes a slow NPC skate,
+   which is the thing you notice without being able to say why. Tuned to the
+   figure's own stride -- he is ~200px tall drawn at NPC scale, and a four
+   frame cycle over ~26px reads as a step rather than a shuffle. */
+const NPC_WALK_PX_PER_FRAME = 6.5;
 
 /* v2.3.1681: the quest badge behind the '!' (owner: "thick white outline or
    something to be more attention grabbing").  Radius in world px — the label
@@ -1247,10 +1344,15 @@ function _remoteBodyArt(other, mirror) {
      that is not a well-formed 256-char drawing answers null and is dropped
      here, before it can reach a bake key or a canvas. */
   const ft = sanitizeShirtArt(other.faceTattooArt), at = sanitizeShirtArt(other.armTattooArt);
+  /* v2.3.2043: and the back of their head, through the same sanitiser. Peers
+     draw it via artForFacing exactly as the local player does, so a remote who
+     turns away shows THEIR back canvas rather than a blank head. */
+  const hb = sanitizeShirtArt(other.headBackTattooArt);
   const q = sanitizePattern(other.pantsPattern, 'pants');   /* v2.3.1941 */
   const f = sanitizePattern(other.shoesPattern, 'shoes');   /* v2.3.1944 */
-  return (p || t || ft || at || q || f)
+  return (p || t || ft || at || hb || q || f)
     ? { pants: p || '', tattoo: t || '', tattooFace: ft || '', tattooArm: at || '',
+      tattooHeadBack: hb || '',
       pantsPattern: q, shoesPattern: f, mirror: !!mirror }
     : null;
 }
@@ -3927,7 +4029,7 @@ function _attachNamePill(container, nameSize, sizeMult, host) {
    delays a badge rather than stalling the loading screen. */
 let _broBadgeTex = null;
 function _broBadgeTexture() {
-  if (!_broBadgeTex) _broBadgeTex = Texture.from('/icons/ui/verified-bro-small.png');
+  if (!_broBadgeTex) _broBadgeTex = Texture.from('/icons/ui/verified-bro-small.webp');
   return _broBadgeTex;
 }
 
@@ -3939,7 +4041,10 @@ function _updateNamePill(display, name, level, visible, broId) {
   if (display._pillKey !== key) {
     display._pillKey = key;
     display._pillName.text = name;
-    display._pillLevel.text = 'LV ' + level;
+    /* v2.3.2048: a STRING second line passes through verbatim. An NPC has no
+       level, and "LV undefined" under a shopkeeper is worse than no plate.
+       Every existing caller passes a number and is unaffected. */
+    display._pillLevel.text = (typeof level === 'string') ? level : ('LV ' + level);
     /* Sized to whichever line is wider, so a long name and a two-digit
        level both sit inside with equal padding. */
     /* v2.3.1576: the badge sits inside the plate, so it has to be paid for
@@ -6665,6 +6770,29 @@ export class EntityRenderer {
       // Use pre-computed interpolated position
       display.x = other.renderX || other.x || 0;
       display.y = other.renderY || other.y || 0;
+      /* ═══ v2.3.2083: WHERE A PEER WAS ACTUALLY DRAWN ═══
+         The local player has had __btPlayerDrawn since v2.3.2078; a peer had
+         nothing, so a QA crop around another player was derived from
+         renderX/renderY read at some LATER instant than the frame it was
+         cropping.  For a peer standing still that is exact and for one running
+         it is not, and mp-cosmpose read "the other player cannot see his
+         tattoos" off a crop that had simply missed him.  Widening the crop is
+         the wrong fix and was tried: at this spawn the extra margin reaches the
+         grass and the no-art CONTROL starts counting green off the town, which
+         is TRAPS §34 and the exact bug the tight box exists for.  A crop needs
+         a better ANCHOR, not a bigger box. */
+      if (typeof window !== 'undefined') {
+        const _pd = (window.__btPeersDrawn && window.__btPeersDrawn._m) || null;
+        if (_pd) {
+          const _pb2 = display._spriteBody;
+          _pd.set(id, {
+            x: display.x, footY: display.y,
+            width: _pb2 && _pb2.texture ? Math.abs(_pb2.texture.width * _pb2.scale.x) : 0,
+            height: _pb2 && _pb2.texture ? Math.abs(_pb2.texture.height * _pb2.scale.y) : 0,
+            visible: display.visible,
+          });
+        }
+      }
 
       /* v2.3.1091: apply the same per-zone perspective shrink the local
          player gets, computed from THIS remote's own position, so other
@@ -7448,6 +7576,30 @@ export class EntityRenderer {
     const P = S.player;
     const display = this.playerDisplay;
     if (typeof window !== 'undefined' && window.__btMaskDebug) window.__playerDisplay = display;
+    /* ═══ v2.3.2078: WHERE THE PLAYER IS ACTUALLY DRAWN ═══
+       The sibling of __btNpcSprites, for the local character.  Every
+       colour-probe scenario (mp-facingside, mp-cosmpose, mp-skinworld,
+       mp-southshirt) crops a fixed 88x104-ish box off the player's world
+       position and counts coloured pixels in it.  That box is roughly twice
+       the figure, and what fills the rest is whatever the town happens to
+       have behind him -- so when v2.3.2069 moved the fountain to the plaza
+       the CONTROL reading started finding 4455 blue pixels on a character
+       with no drawings on him at all, and four assertions in each scenario
+       failed for a reason that had nothing to do with the art.
+       Guessing a tighter fraction of the screen would just move the guess.
+       This reports the figure the renderer really drew -- its world footY
+       and its drawn width/height, exactly the three numbers _npcDrawn
+       carries -- so a crop can be derived instead of estimated. */
+    if (typeof window !== 'undefined') {
+      const _pb = display._spriteBody;
+      window.__btPlayerDrawn = () => ({
+        x: display.x,
+        footY: display.y,
+        width: _pb && _pb.texture ? Math.abs(_pb.texture.width * _pb.scale.x) : 0,
+        height: _pb && _pb.texture ? Math.abs(_pb.texture.height * _pb.scale.y) : 0,
+        visible: display.visible,
+      });
+    }
     /* Force visibility every frame — same defensive concern as the
        parent re-attach above.
        v2.3.846: ...except while a woodcutting chop is active — the chopper
@@ -9669,9 +9821,35 @@ export class EntityRenderer {
     }
   }
 
+  /* ═══ v2.3.2078: YOUR PET WAS INVISIBLE ═══
+     This read `S._activePet`, and NOTHING in the whole client has ever
+     written that field (checked across src/ and the history).  So `pet` was
+     undefined on every frame, the early return fired, and the pet display
+     was never shown to anybody.
+
+     The pet itself was not dormant, which is what made this hard to see: the
+     follow simulation runs every frame in BroTown.jsx (§18.1 PET FOLLOW +
+     AUTO-LOOT, keeping S._petX / S._petY), the auto-loot really collects
+     coins, and wsClient even floats a "PET +N G" popup at S._petX -- at a
+     position with nothing drawn on it.  A player who bought and activated a
+     pet got the loot, got the popup out of empty air, and never saw the
+     animal.
+
+     So the state this reads is the state the rest of the game keeps:
+     R.lifeSkills.activePet indexes R.lifeSkills.pets, exactly as PetHousePanel
+     and the peer-cosmetics wire (`pet:` in the join/move payload) already do.
+
+     And it draws the pet's OWN EMOJI rather than the anonymous 6px coloured
+     dot that was here.  The emoji is what every other surface shows for that
+     pet -- the pet house, the roster rows, the inspect card -- so the figure
+     on the ground now matches the one in the menus.  No asset load is
+     involved (Text falls back to the system emoji font), so this does not
+     touch the preload manifest. */
   _updatePet(S, now) {
-    const pet = S._activePet;
-    if (!pet) {
+    const _ls = S && S.rpg && S.rpg.lifeSkills;
+    const _idx = _ls ? _ls.activePet : null;
+    const pet = (_idx != null && _ls.pets) ? _ls.pets[_idx] : null;
+    if (!pet || !S.player) {
       if (this.petDisplay) { this.petDisplay.visible = false; }
       return;
     }
@@ -9682,6 +9860,10 @@ export class EntityRenderer {
       const petBody = new Graphics();
       this.petDisplay.addChild(petBody);
       this.petDisplay._body = petBody;
+      const petFace = new Text({ text: '', style: { fontSize: 15, align: 'center' } });
+      petFace.anchor.set(0.5, 0.5);
+      this.petDisplay.addChild(petFace);
+      this.petDisplay._faceText = petFace;
       const petName = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 7 } });
       petName.anchor.set(0.5, 1);
       petName.y = -12;
@@ -9691,19 +9873,44 @@ export class EntityRenderer {
     }
 
     this.petDisplay.visible = true;
-    this.petDisplay.x = pet.x || S.player.x + 20;
-    this.petDisplay.y = pet.y || S.player.y + 15;
+    /* The simulated follow position, which is also where the coin popup is
+       floated -- so the two finally agree.  Falls back to the spot the old
+       code used if the simulation has not seeded itself yet (one frame). */
+    this.petDisplay.x = (typeof S._petX === 'number') ? S._petX : S.player.x + 20;
+    this.petDisplay.y = (typeof S._petY === 'number') ? S._petY : S.player.y + 15;
 
+    const bounce = Math.sin(now / 300) * 2;
     const petBody = this.petDisplay._body;
     petBody.clear();
-    const bounce = Math.sin(now / 300) * 2;
-    petBody.circle(0, bounce, 6);
-    petBody.fill({ color: cssColorToHex(pet.color || '#f5c542') });
-    petBody.circle(0, bounce, 6);
-    petBody.stroke({ color: 0xffffff, width: 1, alpha: 0.3 });
+    /* A soft ground shadow under the emoji so it sits ON the world rather
+       than floating over it; the disc is only drawn as the pet itself when
+       the pet has no emoji to show. */
+    if (pet.emoji) {
+      petBody.ellipse(0, 7, 6, 2.5);
+      petBody.fill({ color: 0x000000, alpha: 0.25 });
+    } else {
+      petBody.circle(0, bounce, 6);
+      petBody.fill({ color: cssColorToHex(pet.color || '#f5c542') });
+      petBody.circle(0, bounce, 6);
+      petBody.stroke({ color: 0xffffff, width: 1, alpha: 0.3 });
+    }
+    this.petDisplay._faceText.text = pet.emoji || '';
+    this.petDisplay._faceText.visible = !!pet.emoji;
+    this.petDisplay._faceText.y = bounce;
 
     this.petDisplay._nameText.text = pet.name || '🐾';
     this.petDisplay._nameText.y = -10 + bounce;
+  }
+
+  /* v2.3.2078: what the pet display is doing, for a scenario to read.  The
+     bug above was invisible to the suite because nothing could see whether a
+     pet had been drawn at all. */
+  petDrawn() {
+    const d = this.petDisplay;
+    if (!d) return null;
+    return { visible: !!d.visible, x: d.x, y: d.y,
+      emoji: d._faceText ? d._faceText.text : null,
+      name: d._nameText ? d._nameText.text : null };
   }
 
   /* ═══ v2.3.1775: WORLD PROPS ═══
@@ -9740,12 +9947,39 @@ export class EntityRenderer {
         this.propDisplays.set(p.id, spr);
       }
       if (spr.texture === Texture.EMPTY) {
-        const t = getNpcTexture(p.sprite);
+        /* ═══ v2.3.2061: AN ANIMATED PROP TAKES ITS SIZE FROM ONE FRAME ═══
+           The fountain's art is an eight-frame STRIP, so `getNpcTexture` here
+           returns something eight times too wide. Scaling that to worldH would
+           have drawn the whole film reel at an eighth of the intended height,
+           which is why the frame is asked for first and the strip is only the
+           fallback for a prop that has no animation. */
+        const t = (p.anim && getPropFrame(p.id, 0)) || getNpcTexture(p.sprite);
         if (t) {
           spr.texture = t;
           const h = t.height || 1;
-          spr.scale.set((p.worldH || h) / h);
+          const k = (p.worldH || h) / h;
+          /* ═══ v2.3.2071: A PROP CAN FACE THE OTHER WAY ═══
+             Owner: "Position the benches so that lengthwise they face the
+             fountain."  The bench art is a single three-quarter view whose
+             seat faces south-EAST, so as drawn it can only ever be placed
+             north-west of the thing it looks at.  A mirrored copy faces
+             south-west and covers the other side, and mirroring is a sign on
+             the x scale rather than a second 51KB file of the same bench.
+             Anchor is (0.5, 1) — the centre — so the flip pivots about the
+             prop's own ground point and `x`/`y` still mean what they meant. */
+          spr.scale.set(p.flipX ? -k : k, k);
         }
+      }
+      /* The frame swap. Time-driven, not distance-driven like the walking
+         NPCs: a fountain runs at its own rate regardless of anything moving.
+         Driven off the shared wall clock rather than a per-prop accumulator so
+         two of the same prop stay in step and a dropped frame does not slow
+         the water down -- it skips, which is what a clock does and what an
+         accumulator does not. */
+      if (p.anim && propFrameCount(p.id) > 1) {
+        const fps = p.anim.fps > 0 ? p.anim.fps : 12;
+        const tex = getPropFrame(p.id, Math.floor(Date.now() * fps / 1000));
+        if (tex && spr.texture !== tex) spr.texture = tex;
       }
       spr.x = p.x;
       spr.y = p.y;
@@ -9766,10 +10000,30 @@ export class EntityRenderer {
            mp-townmap picked the anvil and failed for the right reason. */
         let _fp = null;
         try { _fp = propFootprint(_propById[id]) || null; } catch (e) { /* probe only */ }
-        _propsDrawn.push({ id, x: spr.x, y: spr.y,
-          width: spr.texture.width * spr.scale.x,
-          height: spr.texture.height * spr.scale.y,
-          blocks: !!_fp, footprint: _fp });
+        /* v2.3.2061: the FRAME an animated prop is showing, as its rectangle
+           within the shared strip source. A test that wants to prove the water
+           actually moves needs something it can sample twice and compare, and
+           the texture's frame origin is the smallest honest answer -- a
+           screenshot diff would also catch the player walking past. */
+        const _fr = spr.texture && spr.texture.frame;
+        /* v2.3.2087: report the ACTION too -- whether this prop is a DOOR and
+           which panel it opens.  mp-townhill asked exactly that of this probe
+           and got `{}` back, because the field was not here: a test reading a
+           field the game does not publish asserts nothing (TRAPS §33).  The
+           renderer has the prop in hand; four keystrokes make the question
+           answerable. */
+        const _act = (_propById[id] && _propById[id].action) || null;
+        _propsDrawn.push({ id, x: spr.x, y: spr.y, action: _act,
+          /* v2.3.2071: ABS, because a mirrored prop has a negative x scale and
+             a negative width is not a width.  The flip is reported as its own
+             field instead, so a test can assert the bench faces the fountain
+             without inferring it from a sign. */
+          width: Math.abs(spr.texture.width * spr.scale.x),
+          height: Math.abs(spr.texture.height * spr.scale.y),
+          flipX: spr.scale.x < 0,
+          blocks: !!_fp, footprint: _fp,
+          frameX: _fr ? Math.round(_fr.x) : null,
+          frameW: _fr ? Math.round(_fr.width) : null });
       }
     }
   }
@@ -9816,6 +10070,67 @@ export class EntityRenderer {
         nameText.y = -17;
         display.addChild(nameText);
         display._nameText = nameText;
+
+        /* ═══ v2.3.2048: A PROPER PLATE, UNDER HIM ═══
+           Owner: "Give his name a proper name plate like the main character.
+           Make it below him."
+           The SAME _attachNamePill the player and every peer use, so there is
+           one plate implementation rather than a second that drifts -- which
+           is the reason that function exists at all (see its note).
+
+           ═══ v2.3.2071: EVERY TOWNSPERSON, NOT TWO OF THEM ═══
+           Owner: "Make every persons name or title as a consistent name
+           plate." It was opt-in via `namePlate` in NPC_DATA, and only
+           Shopkeeper Bro and Lil Bro had opted in -- so Mayor Bro, Blacksmith
+           Bro and Storekeeper Bro kept the old above-head `nameText` and the
+           town had two different ways of labelling a person standing in it.
+
+           The flag is GONE rather than set to true on all five. A default
+           carried by a per-NPC boolean is a default that the sixth NPC will
+           miss, and "every person" is the requirement -- so the plate is what
+           an NPC gets, full stop, and there is no longer a way to add one
+           without it. `plateRole` stays optional: it is the gold sub-line
+           (the same slot a player's level sits in), and an NPC without a
+           title simply shows their name.
+
+           The v2.3.2048 note worried that the two quest givers keep a
+           hand-tuned above-head stack around their '!' badge. That worry does
+           not survive contact: the plate hangs BELOW the feet and the lift
+           loop below explicitly skips it, so the badge keeps its position and
+           the only thing that changes is the name moving out from under it --
+           which gives the '!' more room, not less. */
+        {
+          _attachNamePill(display, 9, 1);
+          nameText.visible = false;
+          /* ═══ v2.3.2069: THE PLATE HANGS OFF THE FIGURE'S OWN HEIGHT ═══
+             Owner: "Move the lil bro name plate up."
+
+             _attachNamePill drops the plate a flat 38 units below the
+             container origin, which for an NPC is the feet. v2.3.2064 scaled
+             that by the sprite's size multiplier and clamped it, which pulled
+             Lil Bro's in to 30 -- not enough, because the multiplier is not
+             the thing the eye compares against. What reads as "too far below
+             him" is the gap measured against HIS OWN HEIGHT, so that is what
+             it is derived from now.
+
+             The reference is Shopkeeper Bro, whose plate the owner placed by
+             eye at v2.3.2048 ("make it below him") and which must not move:
+             his figure stands 121.9 world px above his feet and his plate
+             sits 38 below them, so the ratio the owner actually approved is
+             38/121.9. Every plate uses it. Lil Bro's figure is 73.1, so his
+             lands at 23 -- seven pixels up from v2.3.2064 and half the drop
+             it started at.
+
+             v2.3.2071: now that every NPC has a plate, this ratio is what
+             keeps them consistent as a SET rather than merely present -- the
+             three that just gained one are all drawn at a different scale
+             from each other, so a flat 38 would have put their plates at
+             visibly different gaps below three different-sized people. */
+          if (display._namePill) {
+            const _figH = npcFigureHeight(npc.sprite);
+            display._namePill.y = Math.max(14, Math.round(_figH * NPC_PLATE_DROP_FRAC));
+          }
+        }
 
         /* Quest marker — badge above the head, pulses vertically.
            Hidden by default; populated when npc._questMarker is set. */
@@ -9872,7 +10187,13 @@ export class EntityRenderer {
            standing; anchoring at the frame centre instead would float him half
            a body above the street. */
         if (npc.sprite) {
-          const fig = new Sprite(getNpcTexture(npc.sprite) || Texture.EMPTY);
+          /* v2.3.2046: a walking NPC starts on his south frame, not on
+             `sprite` -- which for him names a four-frame STRIP, and binding it
+             raw would draw all four squashed into one body for the frame
+             before the first update corrects it. */
+          const fig = new Sprite(
+            (hasNpcWalk(npc.id) && getNpcWalkFrame(npc.id, 'south', 0))
+            || getNpcTexture(npc.sprite) || Texture.EMPTY);
           fig.anchor.set(0.5, NPC_FRAME_FEET_Y / 256);
           fig.scale.set(npcSpriteScale(npc.sprite));
           display.addChildAt(fig, 0);      // behind the bars and labels
@@ -9886,6 +10207,41 @@ export class EntityRenderer {
 
       display.x = npc.x;
       display.y = npc.y;
+
+      /* v2.3.2048: keep the plate's text current. Cheap: _updateNamePill
+         rebuilds the rounded rect only when the string changes (_pillKey),
+         so this is a string comparison per frame and nothing more. */
+      if (display._namePill) {
+        _updateNamePill(display, npc.name, npc.plateRole || '', true, null);
+      }
+
+      /* ═══ v2.3.2046: ANIMATE HIM IF HE HAS A WALK CYCLE ═══
+         Velocity is derived HERE, from the position the renderer is already
+         given, rather than read off a field the walk code would have to
+         publish: the NPC step lives in BroTown and this keeps the animation a
+         pure function of where he has actually got to, so it cannot disagree
+         with what is drawn.
+         The phase accumulates DISTANCE, so a slow wander steps slowly and a
+         stopped NPC holds frame 0 instead of marching on the spot. */
+      if (display._fig && hasNpcWalk(npc.id)) {
+        const hadLast = typeof display._lastX === 'number';
+        const dx = hadLast ? npc.x - display._lastX : 0;
+        const dy = hadLast ? npc.y - display._lastY : 0;
+        display._lastX = npc.x; display._lastY = npc.y;
+        const step = Math.hypot(dx, dy);
+        /* A floor, not `> 0`: an NPC steered toward a target he has essentially
+           reached jitters by fractions of a pixel forever, and without this he
+           would face a new random direction every frame while standing still. */
+        const moving = step > 0.08;
+        if (moving) {
+          display._walkDir = npcDirFromDelta(dx, dy);
+          display._walkPhase = (display._walkPhase || 0) + step;
+        }
+        const dir = display._walkDir || 'south';
+        const idx = moving ? Math.floor(display._walkPhase / NPC_WALK_PX_PER_FRAME) : 0;
+        const tex = getNpcWalkFrame(npc.id, dir, idx);
+        if (tex && display._fig.texture !== tex) display._fig.texture = tex;
+      }
 
       /* v2.3.1673: label headroom, POSITIONED rather than nudged.
          v2.3.1672 shifted every label up by the figure height, which kept the
@@ -9917,6 +10273,11 @@ export class EntityRenderer {
         display._nameText.y = -(top + GAP + MARK_PX + GAP);
         for (const c of display.children) {
           if (c === display._fig || c === display._nameText || c === display._questMarker) continue;
+          /* v2.3.2048: the name plate is anchored BELOW the feet on purpose,
+             so it must not be swept up with the above-head furniture. Without
+             this exclusion the "below him" plate lands over his hat, which is
+             the opposite of what was asked for. */
+          if (c === display._namePill) continue;
           if (c === display._body || c === display._avatar) continue;
           c.y -= (top + MARK_PX + 24);
         }
@@ -9950,6 +10311,24 @@ export class EntityRenderer {
             /* world y of the figure's feet — anchor is the frame's foot row */
             footY: display.y,
             src: display._figSrc,
+            /* v2.3.2064: the facing the renderer CHOSE, and the strip it bound
+               for it. A walk sheet's row order cannot be read off the code --
+               this one is not ordered like the shopkeeper's -- so a test needs
+               to see which way he was pointed and which file answered. */
+            walkDir: display._walkDir || null,
+            /* v2.3.2071: the PLATE as painted -- the two strings on it, how
+               far below the feet it hangs, and whether the old above-head
+               label is really gone. Owner: "Make every persons name or title
+               as a consistent name plate", and consistency is a property of
+               the SET, so a test needs every plate's actual numbers rather
+               than a flag saying one was requested. */
+            plate: display._namePill ? {
+              name: display._pillName ? display._pillName.text : null,
+              role: display._pillLevel ? display._pillLevel.text : null,
+              y: Math.round(display._namePill.y),
+              visible: display._namePill.visible,
+            } : null,
+            oldLabelHidden: display._nameText ? !display._nameText.visible : null,
           };
         }
       }

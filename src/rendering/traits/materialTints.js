@@ -146,7 +146,12 @@ export function metalIconPath(basePath, material) {
   if (!basePath) return basePath;
   const m = material && MATERIALS[material];
   if (!m || m.tint === NATIVE_TINT) return basePath;
-  return basePath.replace(/\.(webp|png)$/i, '') + '-' + m.id + '.png';
+  /* v2.3.2068: .webp, not .png.  The per-metal icons were the only PNGs left
+     in /icons/items and they were reached ONLY through this concatenation —
+     no filename grep would have found them.  They are lossless webp now
+     (exact pixels, 48% fewer bytes); the generator below writes the same
+     extension, so the rule and the files still cannot drift apart. */
+  return basePath.replace(/\.(webp|png)$/i, '') + '-' + m.id + '.webp';
 }
 
 /** Pixi tint for a weapon, or the native white for anything unmapped. */

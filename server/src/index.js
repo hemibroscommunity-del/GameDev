@@ -34,6 +34,7 @@ import {
 // escrow-at-placement settlement under one DO's input gates.  Methods
 // are mixed into the class below (see market.js header for why).
 import { marketMethods } from './market.js';
+import { shopMethods } from './shop.js';   /* v2.3.2047: Shopkeeper Bro's public pile */
 // v2.3.1119 (heavy-systems PR4): server-settled trades -- the relay
 // handshake stays, but the room intercepts it and moves the goods
 // itself (see trade.js header for the duplication engine this kills).
@@ -308,6 +309,13 @@ export const CHAT_RELAY = {
 // v2.3.1151: exported so test/wire-audit.test.mjs can verify every
 // server-emitted type is registered here (rule 13's mechanical check).
 export const PRIVILEGED_EVENTS = new Set([
+  /* v2.3.2047: the shopkeeper's two answers. Both are SERVER-EMITTED and
+     both carry money -- `shop_result` names coins paid and `shop_state` is
+     the public pile every client prices against. Forgeable, they would let
+     one player fake a sale receipt on another's screen or advertise a pile
+     that is not there, so they are denied on the relay like every other
+     server-emitted type (CLAUDE.md wire section). */
+  'shop_state', 'shop_result', 'shop_quoted',
   // Pool / progression mirrors
   'player_state', 'player_died',
   // 'player_respawned' intentionally OMITTED: the client broadcasts it
@@ -517,7 +525,11 @@ export const TRACK_COSMETIC_KEYS = new Set([
      unexpected. */
   /* v2.3.1940: + the drawn pants print and the chest tattoo.
      v2.3.1941: + the shirt and trouser patterns. */
-  'sa', 'sb', 'pa', 'ta', 'tf', 'tm', 'sp', 'pp', 'fp',   /* v2.3.1949: +face/arm tattoos */
+  /* v2.3.2043: +`tb`, the back-of-head drawing. Added to BOTH gates in the
+     same change on purpose -- v2.3.1939 put a drawing key in the join
+     sanitiser and not here, and the result was a print that appeared on
+     join and vanished on the first two-second relay. See DRAWING_KEYS. */
+  'sa', 'sb', 'pa', 'ta', 'tf', 'tm', 'tb', 'sp', 'pp', 'fp',   /* v2.3.1949: +face/arm tattoos */
   /* v2.3.1953: 'hg' is the height and 'fr' the frame -- two short catalog ids
      ('tall', 'large'), relayed so peers see the build you picked.  Display-only
      in the strictest sense available: they reach a RENDER SCALE on the
@@ -529,7 +541,23 @@ export const TRACK_COSMETIC_KEYS = new Set([
   'hg', 'fr',
   'pt', 'sh', 'bs', 'mask', 'cape', 'pet',
   // Live equipment visuals (armour on/off for remote renderers).
-  'eqc', 'eql', 'eqs',
+  /* ═══ v2.3.2084: +'eqst', THE UNDER-SHIRT, AND IT IS THE SAME BUG AS 'tb' ═══
+     v2.3.2043 records it exactly: "v2.3.1939 put a drawing key in the join
+     sanitiser and not here, and the result was a print that appeared on join
+     and vanished on the first two-second relay."  `eqst` was that key one slot
+     over -- admitted by JOIN_COSMETIC_KEYS (join.js) since v2.3.756 and never
+     by this gate -- so a shirt arrived with the join frame and was gone two
+     seconds later, and the renderer's fallback then derived the garment from
+     the legacy `st` style.  Those two disagree about the DEFAULT: the gear
+     slot dresses every new player in a tshirt (gearCatalog, "worn by every new
+     player by default") while `st` is 'none' until somebody picks a style.  So
+     every player who had never chosen a shirt saw themselves clothed and was
+     drawn BARE-CHESTED on every other screen from two seconds after joining.
+     Safe on the same grounds as the three ids beside it: a slot id, merged
+     into state like they are (TRACK_STATE_EXCLUDED is only x/y), and
+     display-only at the far end -- the receiving renderer looks the id up in
+     its own gear catalog and draws nothing for one it does not know. */
+  'eqc', 'eql', 'eqs', 'eqst',
   // Display-only mirrors of server-owned numbers (distinct key names
   // from the real fields on purpose -- see the note above).
   'rpgLv', 'rpgHp', 'rpgMaxHp',
@@ -2930,7 +2958,23 @@ export class GameRoom {
         const buffMult = manaBuffActive ? 1.3 : 1.0;
         const mindMult = 1 + (ps.mind || 0) * 0.001;
         const rate = oocMana ? 0.018 : 0.007;
-        const manaHeal = Math.max(1, Math.ceil(ps.maxMana * rate * buffMult * mindMult));
+        /* ═══ v2.3.2062: THE MANA DRAUGHT'S FLOOR ═══
+           Owner: "refill at a quick rate so you can just do special attacks
+           constantly for 3 mins."
+
+           A FLOOR rather than another multiplier on the line below, because
+           the special's cost is FLAT (25) while every term here is a fraction
+           of maxMana -- so a multiplier that sustains a 100-mana build leaves
+           a 60-mana one still running dry, and the potion's promise would be
+           true only for some characters. See MANA_SURGE in data.js for the
+           arithmetic. Bounded like every other persisted magnitude: this is a
+           number out of a saved blob and must not become an infinite pool.
+           Math.max, so the ordinary regen still wins whenever it is larger --
+           a hub top-off is not slowed down by drinking. */
+        const _surge = Number(ps._buffs && ps._buffs.manaFlat);
+        const surgeFlat = (manaBuffActive && _surge >= 1 && _surge <= 200) ? _surge : 0;
+        const manaHeal = Math.max(surgeFlat,
+          Math.max(1, Math.ceil(ps.maxMana * rate * buffMult * mindMult)));
         const beforeMn = ps.mana;
         ps.mana = Math.min(ps.maxMana, ps.mana + manaHeal);
         if (ps.mana !== beforeMn) changed = true;
@@ -4138,6 +4182,59 @@ export class GameRoom {
         }
         break;
 
+      /* ═══ v2.3.2047: SHOPKEEPER BRO ═══
+         Three messages, all settled server-side. The client never computes a
+         price or moves a coin: it asks, and the authoritative player_state
+         echo that follows is what its bag and purse become (handoff rule 20).
+         A forged price is therefore not a thing that exists to forge. */
+      case 'shop_list':
+        if (session.id) {
+          this._shopList(((msg.payload || msg) || {}).keys)
+            .then((r) => this._shopSend(session.id, 'shop_state', r))
+            .catch(() => { /* a failed read leaves the panel on its last list */ });
+        }
+        break;
+
+      /* v2.3.2057: a price for a STACK, without moving anything. See
+         _shopQuote -- the decay means a stack is not unit price times N, and
+         the client holds no price table to work that out with. */
+      case 'shop_quote': {
+        if (!session.id) break;
+        const _q = msg.payload || msg;
+        this._shopQuote(_q.key, _q.qty, _q.mode)
+          .then((r) => this._shopSend(session.id, 'shop_quoted', r))
+          .catch(() => { /* the panel keeps its last quote */ });
+        break;
+      }
+
+      case 'shop_sell':
+      case 'shop_buy': {
+        if (!session.id) break;
+        const _sp = msg.payload || msg;
+        const _ps = this.playerState[session.id];
+        if (!_ps) break;
+        const _sid = session.id, _kind = msg.type;
+        (_kind === 'shop_sell'
+          ? this._shopSell(_ps, _sp.key, _sp.qty)
+          : this._shopBuy(_ps, _sp.key, _sp.qty)
+        ).then(async (r) => {
+          this._shopSend(_sid, 'shop_result', Object.assign({ kind: _kind }, r));
+          if (r && r.ok) {
+            /* The bag and purse the client must end up with, from the server's
+               own copy -- the same echo every other economy path leans on. */
+            const ws = this._wsBySessionId(_sid);
+            if (ws) this._sendPlayerState(ws, _sid);
+          }
+          /* Everyone's view of the pile, not just this player's: it is a
+             PUBLIC inventory, so a sale has to change what the next player
+             sees without them reopening the panel. */
+          this.broadcastAll({ type: 'shop_state', payload: await this._shopList() });
+        }).catch(() => {
+          this._shopSend(_sid, 'shop_result', { ok: false, error: 'Shop unavailable' });
+        });
+        break;
+      }
+
       case 'loot_pickup':
         // Client requests to pick up a loot pile.  Server validates
         // (range, recipient, single-claim) and emits a private
@@ -4812,6 +4909,7 @@ export class GameRoom {
 Object.assign(GameRoom.prototype, broVerifyMethods); /* v2.3.1576 */
 Object.assign(GameRoom.prototype, eventCapeMethods); /* v2.3.2026 */
 Object.assign(GameRoom.prototype, marketMethods);
+Object.assign(GameRoom.prototype, shopMethods);   /* v2.3.2047 */
 // v2.3.1119: trade settlement mixin (same pattern).
 Object.assign(GameRoom.prototype, tradeMethods);
 // v2.3.1121: duel machine mixin.

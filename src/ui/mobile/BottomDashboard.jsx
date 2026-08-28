@@ -439,7 +439,9 @@ const PANELS = {
   feedback:     { title: 'Feedback',    Component: FeedbackPanel },
   settings:     { title: 'Settings',    Component: SettingsPanel },
   /* v2.3.1143: Login Key display + device transfer. */
-  account:      { title: 'Account',     Component: AccountPanel },
+  /* v2.3.2038: titled 'Login Key' to match the More tile that now opens it
+     directly -- what you tap and what opens should carry one name. */
+  account:      { title: 'Login Key',   Component: AccountPanel },
   /* v2.3.235 (Phase 5): Tier 2 spec allocation panel. */
   /* v2.3.1236: owner feedback — stat screen shows the six combat skills;
      Weapons menu renamed Build (display string only; the t2 id and

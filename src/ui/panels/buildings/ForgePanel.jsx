@@ -332,7 +332,18 @@ export function ForgePanel(props) {
            arrives with authoritative weapon + stash + coins + inv. */
         {
           var _Sfw = stateRef.current;
-          if (_Sfw._serverMonsters && _Sfw.channel) {
+          /* v2.3.2077: `_serverMonsters` is FALSE in town -- it means "this
+             zone has server-managed monsters", and wsClient sets it false on
+             an empty monster list ("town, or a dungeon the server doesn't
+             model", its own words). This send therefore never happened in
+             town. Third instance of this exact flag doing it: v2.3.1702
+             (ability_use), v2.3.2063 (shop_purchase). Presence on the channel
+             is the only precondition.
+             AND THE FORGE STANDS IN TOWN, so forging has never reached the
+             worker at all: the client spent the ore and the coins and minted
+             the weapon locally, and the server's blob -- which owns all
+             three -- reconciled every bit of it away. */
+          if (_Sfw.channel) {
             try { _Sfw.channel.send({ type: 'forge_weapon', payload: { weaponType: bsMelee, tierKey: key, isWoodwork: false } }); } catch (e) {}
           }
         }

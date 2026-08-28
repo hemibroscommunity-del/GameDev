@@ -19,7 +19,7 @@
      intentionally sees the pre-transition zone);
    - W/H: CSS-pixel canvas size for the camera snap.
    S is stateRef.current; P is S.player (same object the loop mutates). */
-import { TILE, ZONES, ELEMENTS, TOWN_EXITS, WORLDVIEW_EXITS, DEPTH_CONFIG, BT_AUDIO, updateZoneDimensions, discoverZone, generateZoneMap, spawnMonstersForZone, spawnGatherNodes, createMonster } from '@/data/index.js';
+import { TILE, ZONES, ELEMENTS, TOWN_EXITS, WORLDVIEW_EXITS, WORLDVIEW_ARRIVAL, DEPTH_CONFIG, BT_AUDIO, updateZoneDimensions, discoverZone, generateZoneMap, spawnMonstersForZone, spawnGatherNodes, createMonster } from '@/data/index.js';
 import { zoneUnlockQuest } from '@/game/questRoute.js'; /* v2.3.1817: which quest opens a zone */
 import { perfTracker } from '@/debug/perfTracker.js';
 import { _typeof } from '@/lib/babelHelpers.js';
@@ -568,17 +568,33 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                  anyone at (0,0). */
               if (bestExit.zoneId === 'worldview' || bestExit.zoneId === 'town') {
                 P.x = midX; P.y = midY + TILE * 7;
+                /* ═══ v2.3.2075: THE WORLD VIEW'S TOWN IS WALLED NOW ═══
+                   Owner: "make sure the player doesn't spawn on the line or
+                   outside of it."  The rule below -- four tiles from the
+                   marker you came through, toward the hub centre -- was
+                   written when the World View was open ground, and against a
+                   walled ring it puts you 16 px from the inside face of the
+                   wall with a half-width of 10.  Arriving from town lands you
+                   in the middle of the town instead; the point is checked
+                   against the wall mask by the generator that draws it. */
                 var _dstExits = bestExit.zoneId === 'town' ? TOWN_EXITS : WORLDVIEW_EXITS;
                 var _backMark = null;
                 for (var _bi = 0; _bi < _dstExits.length; _bi++) {
                   if (_dstExits[_bi].zoneId === S._enteredFromHub) { _backMark = _dstExits[_bi]; break; }
                 }
+                if (bestExit.zoneId === 'worldview') {
+                  P.x = WORLDVIEW_ARRIVAL.x; P.y = WORLDVIEW_ARRIVAL.y;
+                }
                 if (_backMark) {
                   var _hcx = newZone.w / 2, _hcy = newZone.h / 2;
                   var _hdx = _hcx - _backMark.tx, _hdy = _hcy - _backMark.ty;
                   var _hlen = Math.max(0.001, Math.sqrt(_hdx * _hdx + _hdy * _hdy));
-                  P.x = (_backMark.tx + _hdx / _hlen * 4) * TILE;
-                  P.y = (_backMark.ty + _hdy / _hlen * 4) * TILE;
+                  /* The World View keeps the arrival set above -- inside its
+                     walls.  Town has no wall and keeps the original rule. */
+                  if (bestExit.zoneId !== 'worldview') {
+                    P.x = (_backMark.tx + _hdx / _hlen * 4) * TILE;
+                    P.y = (_backMark.ty + _hdy / _hlen * 4) * TILE;
+                  }
                   /* Deaf for a moment, so the walk that brought you here
                      cannot carry you straight back through. */
                   S._hubExitDisarm = {

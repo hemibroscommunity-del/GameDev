@@ -29,7 +29,7 @@ async function peerView(P) {
 async function setFacing(P, idx) {
   await P.page.evaluate((i) => {
     const S = window._gameState.current;
-    S._facingAngle = i * Math.PI / 4; S._aimAngle = i * Math.PI / 4; S.lockedMonster = null;
+    S._facingAngle = i * Math.PI / 4; S._aimAngle = i * Math.PI / 4; S.lockedTarget = null;
   }, idx);
 }
 

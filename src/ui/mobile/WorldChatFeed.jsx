@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { chatLogBus } from './chatLogBus.js';
+import { uiBusyBus } from './uiBusyBus.js';   /* v2.3.2085 */
 
 /* ═══ v2.3.2037: WORLD CHAT, AS ITS OWN SECTION ═══
  *
@@ -28,6 +29,24 @@ import { chatLogBus } from './chatLogBus.js';
  * feed that swallowed a joystick drag in the lower left would be a worse
  * problem than the one this solves.
  *
+ * ...AND IT NO LONGER EATS A PANEL'S EITHER (v2.3.2085). The sentence above
+ * was true of the WORLD behind the feed and false of anything ABOVE it. The
+ * scrollable list has to be pointerEvents:'auto' to be scrollable, and it is
+ * a 260x104 rectangle in the same lower-left corner as the inspect card's
+ * action row -- so the card's single most important button, Trade, could not
+ * be pressed while any chat line was on screen. mp-trade had been failing on
+ * exactly that for weeks behind a message that reads as innocent ("element is
+ * visible, enabled and stable", then a timeout); H.clickText naming what
+ * elementFromPoint finds at the button's centre (v2.3.2084) answered it in
+ * one run.
+ *
+ * A z-index cannot settle it: the card already claims 99800 against this
+ * feed's 25 and loses anyway, because this shell is styled `left: 8px` and
+ * renders at x=295 -- its `position: fixed` is captured by a transformed
+ * ancestor, which also scopes its z-index inside that ancestor's stacking
+ * context (TRAPS §20). What settles it is the feed declining the tap while a
+ * panel is open, which is the same thing it already does for the world.
+ *
  * QUIET WHEN EMPTY: with nothing said, it renders nothing at all rather than
  * an empty box captioned "Nothing said yet." A permanent widget explaining
  * that it is empty is worse than the space it would occupy, and on a phone
@@ -44,6 +63,13 @@ export function WorldChatFeed() {
   const stuckRef = useRef(true);
 
   useEffect(() => chatLogBus.subscribe(() => setV((n) => n + 1)), []);
+
+  /* v2.3.2085: "is a panel open on top of me?"  Initialised from the bus
+     rather than to false, because this component can mount after a panel is
+     already up (a reconnect while the inspect card is open) and a first paint
+     that swallows taps is the whole bug. */
+  const [busy, setBusy] = useState(() => uiBusyBus.busy);
+  useEffect(() => uiBusyBus.subscribe(setBusy), []);
 
   const S = (typeof window !== 'undefined' && window._gameState && window._gameState.current) || null;
   const lines = ((S && S.chatLog) || []).slice(-KEEP);
@@ -97,7 +123,9 @@ export function WorldChatFeed() {
         onScroll={onScroll}
         data-world-chat-lines={lines.length}
         style={{
-          pointerEvents: 'auto',
+          /* v2.3.2085: 'auto' so the log can be scrolled, 'none' while a panel
+             is open on top of it -- see the header. */
+          pointerEvents: busy ? 'none' : 'auto',
           maxHeight: 'min(26vh, 150px)',
           overflowY: 'auto',
           overflowX: 'hidden',

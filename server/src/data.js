@@ -382,12 +382,95 @@ export const COOKING_RECIPES = [
       { ingredients: { herb_firebloom: 2 },                          buff: 'damage', power: 0.05, duration: 90, tier: 2 },
     ];
 
+/* ═══ v2.3.2062: WHAT "CONSTANTLY" IS WORTH, IN NUMBERS ═══
+ *
+ * A special costs a FLAT PROG3.SPECIAL_MANA_COST (25) and the client gates it
+ * on a 1500 ms cooldown (playerActions.js `now - S._lastSwipe < 1500`), so
+ * casting without pause spends 25 mana every 1.5 s -- about 16.7 mana/sec.
+ * Base regen is a PERCENTAGE of the pool: maxMana x 0.007 per 660 ms tick in
+ * combat, i.e. ~1.5 mana/sec at a 100 pool. The potion has to close a gap of
+ * more than ten times.
+ *
+ * A FLOOR, NOT A MULTIPLIER, and that is the whole design decision. The cost
+ * is flat while regen is proportional, so any multiplier big enough to sustain
+ * a 100-mana build (about x16) leaves a 60-mana build still unable to cast
+ * continuously and hands a 200-mana build far more than it needs. A flat
+ * per-tick floor makes the potion's promise -- "you can keep casting" -- true
+ * for every build, which is what the owner actually asked for.
+ *
+ * HEADROOM above break-even so the bar visibly climbs rather than hovering at
+ * zero: at 1.25 the surge pays ~21 mana/sec against ~16.7 spent, so a player
+ * who pauses recovers and one who never pauses still never runs dry. */
+export const MANA_SURGE = {
+  SWIPE_CD_MS: 1500,        /* mirrors playerActions.js -- change both */
+  HEADROOM: 1.25,
+};
+
+/** Mana per regen tick while the surge is up. Derived from the cost and the
+ *  cadence rather than typed in, so re-balancing either one carries. */
+export function manaSurgePerTick(specialCost, tickMs) {
+  return Math.ceil(specialCost * (tickMs / MANA_SURGE.SWIPE_CD_MS) * MANA_SURGE.HEADROOM);
+}
+
 export const SHOP_ITEMS = {
       cookedMinnow:  { cost: 8,  effect: 'healFish', power: 23 },
-      basicTrap:     { cost: 20, effect: 'trap' },
+      /* ═══ v2.3.2069: THE TRAP IS OFF THE SHELF ═══
+         Owner: "Remove the 20g trap from the shop it has no effect in the
+         game currently." Checked before deleting, because pets.js says the
+         opposite in its header -- it consumes a basic_trap per capture
+         attempt and calls it "the item finally matters" (v2.3.1130).
+
+         Both are true. The SERVER side of pet capture is complete and
+         correct; what is missing is any way to ask for it. The only trigger
+         is the trap button in MenuBar.jsx, and that whole toolbar has
+         `display: 'none'` on its root -- "Legacy bottom toolbar, replaced by
+         the utility wheel, hidden in v14.x". So the capture path has been
+         unreachable for hundreds of versions and a trap has been twenty coins
+         for nothing.
+
+         ONLY THE SHOP LINE GOES. pets.js, the pet_capture message, the
+         `trap` effect branch in cooking.js and the basic_trap inventory key
+         all stay: they are a finished system waiting on a button, not dead
+         code, and a trap already in someone's bag still works. Put the item
+         back here the day the capture UI exists. */
       staminaSalts:  { cost: 12, effect: 'stamina', power: 60 },
-      manaShard:     { cost: 18, effect: 'mana', power: 40 },
-      whetstone:     { cost: 35, effect: 'dmgBuff' },
+      /* v2.3.2056: `duration` in SECONDS, like a cook recipe. 60s was the
+         old client-only timer and it was never worth 35 coins even in theory:
+         at x1.20 you kill 20% faster, so the buff pays for itself only if you
+         land about twenty kills inside it -- one every three seconds at 60s,
+         which nobody does. At 300s that is a kill every fifteen seconds, which
+         is what actually farming looks like. */
+      /* v2.3.2058 (owner: "make it 2x and 3 minutes"). `mult` is the potion's
+         OWN multiplier: combat's x1.20 is the COOKED-FOOD buff and is shared
+         with every recipe in the game, so doubling that constant would have
+         silently doubled every meal too. Carried on the item instead. */
+      whetstone:     { cost: 35, effect: 'dmgBuff', duration: 180, mult: 2.0 },
+      /* ═══ v2.3.2062: THE MANA DRAUGHT IS A THREE-MINUTE SURGE ═══
+         Owner: "Make the mana potion refill at a quick rate so you can just
+         do special attacks constantly for 3 mins."
+
+         It used to be a one-shot +40 mana, which buys you not quite two
+         specials. `manaSurge` instead tops the pool off AND holds a regen
+         floor for the duration -- see MANA_SURGE below for why a FLOOR and
+         not a multiplier. Priced with the Fury Tonic (35) rather than at its
+         old 18: an unbroken three minutes of specials is worth about what
+         three minutes of double damage is. */
+      manaShard:     { cost: 30, effect: 'manaSurge', duration: 180 },
+      /* ═══ v2.3.2062: THE SWIFT DRAUGHT ═══
+         Owner: "Then do a speed potion that lets you run 1.5x speed 3 mins."
+
+         `mult` is this potion's OWN magnitude, exactly as the Fury Tonic's
+         is: x1.15 in the movement path is the COOKED-FOOD speed buff, shared
+         with every recipe that grants it, so raising that constant would have
+         quietly sped up every meal in the game too (v2.3.2058 learned this
+         the first time). Carried on the item instead.
+
+         READ movement.js BEFORE CHANGING THIS NUMBER. The server rejects
+         moves faster than a fixed px/sec bound, and 1.5x pushes the worst
+         legitimate stack past the old ceiling -- the cap now widens for a
+         player the server itself sold this to, and the arithmetic there is
+         written against this value. */
+      swiftDraught:  { cost: 30, effect: 'spdBuff', duration: 180, mult: 1.5 },
     };
 
 /* v2.3.1120: declarative quest objectives.  An entry WITH `objective`

@@ -53,9 +53,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
   if (await H.buildingReachable(A, MARKETPLACE)) {
     rec.ok('the Marketplace building can be entered', true);
   } else {
+    /* v2.3.2078: the reason given here was stale and blamed the wrong thing.
+       S.nearBuilding is NOT force-set to null any more — BroTown.jsx computes
+       it every frame from buildingPropNear(zone, x, y, 95), matching a prop's
+       `action` against the BUILDINGS table, and the note there says so ("this
+       restores access to panels that have been UNREACHABLE for the whole time
+       the prompt was off").
+       The real reason is that no PLACED town prop carries action 'exchange'.
+       Of the twelve buildings, exactly two have a door in town today — the
+       forge and the general store — because the props that carry the other
+       ten actions are the v16 set still held behind propIsPlaced, or tiles
+       from the procedural town that no longer exists. That is a content gap
+       for the owner, not something a test can route around. */
     rec.skip('the Marketplace panel can be opened from town',
-      'no town building is reachable: S.nearBuilding is force-set to null (v2.3.823), '
-      + 'so ExchangePanel has no entry point. Server-side order book still checked below.');
+      'no placed town prop carries action \'exchange\', so ExchangePanel has no '
+      + 'door — 2 of 12 buildings are reachable in town (forge, general-store). '
+      + 'Server-side order book still checked below.');
   }
 
   /* ── the players need gold to bid with ── */

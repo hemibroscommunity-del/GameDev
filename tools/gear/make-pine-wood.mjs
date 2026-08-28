@@ -25,6 +25,7 @@
  * saturation gate below leaves them where they are.
  */
 import { chromium } from 'playwright-core';
+import { spawnSync } from 'node:child_process';
 import http from 'http';
 import fs from 'fs';
 import path from 'path';
@@ -285,3 +286,18 @@ console.log(`${wrote} file(s) written from tools/gear/src-art`);
 if (failed) { console.error(`${failed} file(s) FAILED — see above`); process.exitCode = 1; }
 await browser.close();
 srv.close();
+
+/* v2.3.2068: the three ICON destinations above are written as PNG (canvas
+   cannot encode a LOSSLESS webp) and then converted, because /icons/items
+   ships webp now and the React <img> tags ask for `.webp`.  The converter
+   only walks public/icons, so the sprite destinations in this list are
+   untouched by it and stay PNG. */
+if (wrote) {
+  const r = spawnSync('python3', [path.join(ROOT, 'tools/webp_icons.py'), '--convert'],
+    { cwd: ROOT, stdio: 'inherit' });
+  if (r.status !== 0) {
+    console.error('  !! webp conversion failed — the icons are still .png, which nothing loads.');
+    console.error('     Run: python3 tools/webp_icons.py --convert');
+    process.exitCode = 1;
+  }
+}

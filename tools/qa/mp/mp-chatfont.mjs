@@ -52,11 +52,21 @@ function measureInk(img, { yTo }) {
   const rows = [];
   for (let y = 0; y < Math.min(height, yTo); y++) {
     let light = 0, x0 = -1, x1 = -1;
+    /* v2.3.2078: the longest CONTIGUOUS light run as well as the outer
+       extent.  The bubble is a solid near-white box; the town around it is
+       not contiguous white.  See the note by xL/xR below for what this
+       fixes. */
+    let run = 0, runBest = 0, runAt = -1, runStart = -1;
     for (let x = 0; x < width; x++) {
       const p = img.at(x, y);
-      if (LIGHT(p[0], p[1], p[2])) { light++; if (x0 < 0) x0 = x; x1 = x; }
+      if (LIGHT(p[0], p[1], p[2])) {
+        light++; if (x0 < 0) x0 = x; x1 = x;
+        if (run === 0) runStart = x;
+        run++;
+        if (run > runBest) { runBest = run; runAt = runStart; }
+      } else run = 0;
     }
-    rows.push({ y, light, x0, x1 });
+    rows.push({ y, light, x0, x1, runBest, runAt });
   }
   /* The bubble body: the tallest stack of rows carrying a neutral slab.
      Counted, not run-length: a text row's white is BROKEN by the letters,
@@ -69,10 +79,33 @@ function measureInk(img, { yTo }) {
   }
   if (cur && (!best || cur.rows.length > best.rows.length)) best = cur;
   if (!best) return null;
-  /* Ink INSIDE the slab's own x-range, so world detail beside the bubble
-     cannot be counted as a letter. */
-  const xL = Math.min.apply(null, best.rows.map((r) => r.x0));
-  const xR = Math.max.apply(null, best.rows.map((r) => r.x1));
+  /* ═══ v2.3.2078: THE BOX, NOT THE BOX PLUS WHATEVER IS BESIDE IT ═══
+     This used to take min(x0)..max(x1) ACROSS the slab's rows — the outer
+     extent of every light pixel on every row of the band the bubble sits
+     in.  The bubble is not alone up there: a lamp post's pale shaft, the
+     plaza's gold cobbles, an NPC's name plate and the bubble's own drop
+     shadow all put light pixels on some of those rows, and each one drags
+     the range outward.  Measured against a real frame the box came out
+     247px wide where the bubble is 222 (x 84..305) — 25px of town.
+
+     That is not a rounding error, it is the assertions: `bubbleW` is
+     compared against the wrap box, and 247 clears the 213px wrap width by
+     enough to read as "the text did not wrap" on a message that plainly
+     had (four lines of it, in the screenshot the run writes out).
+
+     The bubble is a SOLID near-white rectangle, so its width is the longest
+     CONTIGUOUS light run — scenery is not contiguous with it.  Taken as the
+     max over the slab's rows because the text rows have their runs broken
+     by the letters, while the padding rows above and below the type carry
+     the full width.  (That breakage is why the SLAB is still found by
+     counting light pixels rather than by run length — the v2.3.1912 note
+     above records losing the bubble to exactly that.) */
+  let xL = 0, xR = -1;
+  for (const r of best.rows) {
+    if (r.runBest > xR - xL + 1) { xL = r.runAt; xR = r.runAt + r.runBest - 1; }
+  }
+  if (xR < xL) { xL = Math.min.apply(null, best.rows.map((r) => r.x0));
+                 xR = Math.max.apply(null, best.rows.map((r) => r.x1)); }
   const inked = [];
   for (const r of best.rows) {
     let ink = 0, i0 = -1, i1 = -1;
@@ -104,7 +137,15 @@ async function say(P, text) {
   await P.page.waitForFunction(() =>
     [...document.querySelectorAll('button')].some((b) => b.offsetParent && b.textContent.trim() === 'Send'),
   null, { timeout: 8000 });
-  const input = P.page.locator('button:has-text("Send")').locator('xpath=preceding-sibling::input[1]').first();
+  /* v2.3.2078: was `button:has-text("Send")` + preceding-sibling::input[1].
+     That stopped matching anything on two counts at v2.3.2039: the composer
+     became a <textarea> (so `input` is the wrong element name) and it moved
+     onto its own row above the controls (so it is no longer the sibling
+     before Send).  `locator.fill` then timed out at 30s and took the whole
+     scenario down.  `[data-chat-input]` is the handle the markup offers and
+     the one mp-worldchat already uses — TRAPS §29, a scenario that selects
+     UI by its shape has an expiry date. */
+  const input = P.page.locator('[data-chat-input]').first();
   await input.fill(text);
   await H.clickText(P, 'Send');
   await P.page.evaluate(() => window.__broChatBubbleBus && window.__broChatBubbleBus.setOpen(false));

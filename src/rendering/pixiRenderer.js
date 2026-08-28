@@ -606,6 +606,9 @@ export async function initPixiRenderer(canvas) {
        its children.  Read-only use only — this hands out the live container,
        so a scenario that mutated it would be testing its own edit. */
     playerDisplayRaw: () => entityRenderer.playerDisplay || null,
+    /* v2.3.2078: what the pet display is doing — the pet was invisible
+       for its whole life and nothing could see that. */
+    petDrawn: () => entityRenderer.petDrawn(),
     blockGeomProbe: () => {
       const pd = entityRenderer.playerDisplay;
       const sb = pd && pd._spriteBody;

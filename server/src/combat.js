@@ -484,7 +484,14 @@ export const combatMethods = {
     // client specialAtkMultFor (src/data/gameSystems.js).
     if (isSpecial) base *= (type === 'staff' ? 2.0 : 3.0);
     if (w && w.isVolatile) base *= 1.30;               // §4.7 volatile weapon
-    if (this._buffActive(ps, 'damage')) base *= 1.20;  // cooked damage buff (client gameLoop.js:2346)
+    /* v2.3.2058: 1.20 is the COOKED-FOOD magnitude and stays the default;
+       _buffs.damageMul is set by anything that buffs damage by its own amount
+       (the Fury Tonic at 2.0). Guarded and bounded because it is persisted
+       state -- a corrupted blob must not become a damage multiplier. */
+    if (this._buffActive(ps, 'damage')) {
+      const _m = Number(ps._buffs && ps._buffs.damageMul);
+      base *= (_m >= 1 && _m <= 4) ? _m : 1.20;
+    }
     // Crit (calcCritChance + calcCritMult).
     // v2.3.1345 (counter skills): the crit CHANNEL is a deterministic
     // accumulator — "a LUCKY hit every N hits", never streaky.  Power's

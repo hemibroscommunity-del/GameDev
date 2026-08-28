@@ -29,6 +29,24 @@ import { Assets, Rectangle, Texture } from 'pixi.js';
 export const STUN_STARS = { frames: [], url: '/sprites/fx/stun-stars-v1.png?v=2.3.1735' };
 export const WHIRL_VORTEX = { frames: [], url: '/sprites/fx/whirl-vortex-v1.png?v=2.3.1735' };
 
+/* ═══ v2.3.2070: THE PORTAL BEAM ═══
+ * Owner: "Use this to indicate portal areas (where you go between zones)
+ * instead of the double circles.  It should fade furthest from the zone
+ * entrance."  One still, not a strip -- it is animated by the pulse the
+ * portals already had, not by frames.
+ *
+ * It lives HERE, in the leaf module, for the reason the file exists: it is
+ * drawn by tileRenderer, which imports pixi and data tables only, and adding a
+ * loader to it would be the first "load on first sighting" in that file.
+ * GLOBAL rather than per-zone -- every zone has exits, so there is no zone
+ * whose overlay could own it (CLAUDE.md's ZONE-ASSET EXCEPTION covers art you
+ * only need in one place; this is the opposite).
+ *
+ * Built by tools/import_portal_beam.py, which derives the alpha the owner's
+ * white-background artwork does not carry and bakes the fade that the ask is
+ * actually about. */
+export const PORTAL_BEAM = { tex: null, url: '/sprites/fx/portal-beam.webp?v=2.3.2070' };
+
 /* One full turn of the star ring.  Slow enough to read as a daze rather than
    a strobe; matches the 700ms period of the procedural orbit it replaces so
    the feel does not change, only the art. */
@@ -36,6 +54,9 @@ export const STUN_SPIN_MS = 700;
 export const WHIRL_FX_MS = 520;
 
 const _pending = [];
+_pending.push(Assets.load(PORTAL_BEAM.url).then((tex) => {
+  if (tex && tex.source) PORTAL_BEAM.tex = tex;
+}).catch((err) => console.warn('[fx-strips] load failed', PORTAL_BEAM.url, err)));
 for (const cfg of [STUN_STARS, WHIRL_VORTEX]) {
   const p = Assets.load(cfg.url).then((tex) => {
     if (!tex || !tex.source) return;

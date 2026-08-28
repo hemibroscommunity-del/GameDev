@@ -88,6 +88,15 @@ const TARGETS = {
     pattern: null,
     note: 'Goes on BOTH arms. Sleeves cover the upper arm, so it shows below them.',
   },
+  /* v2.3.2043 (owner: "front back for face and back of head area").  The face
+     canvas's other side, exactly as shirtBack is to shirtFront -- and worded
+     the same way the shirt's note is, because it is the same idea and a player
+     who has met one should recognise the other. */
+  tattooHeadBack: {
+    label: 'back of head',
+    pattern: null,
+    note: 'Shows when you walk away. Separate from your face — hair covers part of it.',
+  },
   /* v2.3.1944: shoes are pattern-ONLY.  A boot is about eight screen pixels, so
      there is nothing to draw on -- and the four tiles offered are the ones that
      survive at that size (see patternCatalog). */
@@ -113,7 +122,11 @@ const TATTOO_SPOT = { body: 'tattoo', face: 'tattooFace' };
    frames a view now rather than fencing one canvas off, so Body covers the
    torso and both arms.  Beside TATTOO_SPOT because the two are one table read
    two ways: the default, and the whole set. */
-const TAB_SPOTS = { body: ['tattoo', 'tattooArm'], face: ['tattooFace'] };
+/* v2.3.2043: the Face screen reaches the BACK of the head too. Adding a spot
+   to this table rather than a bespoke front/back switch: the Body screen has
+   picked between two canvases this way since v2.3.1994, so the control, the
+   caption and the undo history all already work for it. */
+const TAB_SPOTS = { body: ['tattoo', 'tattooArm'], face: ['tattooFace', 'tattooHeadBack'] };
 
 /* ── the toolbar's icons ──
    Drawn inline rather than shipped as art, for the reason the creator's pencil
@@ -331,6 +344,7 @@ const FOCUS = {
      tattooArm keeps its frame: the arm canvas still renders, it just has no
      editor any more (see TATTOO_SPOT). */
   tattooFace: { cy: 0.43, h: 0.45 },
+  tattooHeadBack: { cy: 0.43, h: 0.45 },   /* v2.3.2043: same head, other side */
   tattooArm: { cy: 0.46, h: 0.40 },
   /* Trousers, plus the boot tops.  Centring higher put a third of the pane on
      shirt hem. */
