@@ -3615,16 +3615,42 @@ export const NPC_DATA = [{
      level, and what you actually want to know about him is what he does. */
   plateRole: 'Shopkeeper',
   shop: true,          /* v2.3.2050: walking up to him opens his trade window */
-  x: 760, y: 1210,
-  spawnX: 760, spawnY: 1210,
-  renderX: 760, renderY: 1210,
+  /* ═══ v2.3.2080: HE STANDS AT THE MARKET STALL ═══
+     He was at (760, 1210) — the middle of an empty square, with no counter,
+     no goods and nothing to explain why a man called Shopkeeper is standing
+     there. Meanwhile the market stall 330px west had an awning, a counter and
+     nobody behind it; worldProps calls it "a painted front, there is nobody
+     behind it", which was true and is the thing worth fixing rather than
+     documenting.
+     (430, 1360) is 50px in front of the stall's counter (its footprint ends
+     at y 1310) — the same relationship Storekeeper Bro has to the general
+     store, and clear of every footprint at a player's own half-width.
+
+     It also gets him away from the spawn, which matters more than it looks.
+     His trade drawer opens by itself within NPC_PROX_OPEN (90px) and he
+     AMBLES within pathRadius (110px), so his drawer can reach 200px from
+     this anchor and only lets go past NPC_PROX_CLEAR + pathRadius = 235px.
+     From TOWN_SPAWN (910, 1130) the old anchor was 170px away — inside that
+     — so a new player could have the shop drawer open itself over their
+     screen without touching anything, and the drawer covers the inspect
+     card's actions (v2.3.2078). From the stall he is 532px away, and with
+     the tighter radius below his drawer reaches only 130px. */
+  x: 430, y: 1360,
+  spawnX: 430, spawnY: 1360,
+  renderX: 430, renderY: 1360,
   hp: 100, maxHp: 100,
   noHp: true,          /* a shopkeeper in a safe town; a health bar reads as "fight this" */
   alive: true,
   respawnAt: 0,
-  pathRadius: 110,     /* he ambles round a patch of plaza, not the whole town */
+  /* v2.3.2080: 110 -> 40.  NPCs do not collide with props — the wander in
+     BroTown.jsx picks a point in the radius and walks straight to it — so at
+     110 he strolled clean THROUGH the stall counter (its footprint runs y
+     1250-1310, and 1360-110 = 1250).  40 keeps him in front of it (y
+     1320-1400) and reads like a man shifting his weight behind a counter
+     rather than pacing the square. */
+  pathRadius: 40,
   moveTimer: 0,
-  targetX: 760, targetY: 1210,
+  targetX: 430, targetY: 1360,
   chatTimer: 9000,
   chatBubble: null,
   /* REQUIRED -- the AI loop indexes this unguarded and an empty array throws. */
