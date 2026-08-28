@@ -38,7 +38,28 @@ export const IMAGE_ZONE_MAPS = {
      iOS Safari 14+. Dimensions unchanged (1024x1024), so world bounds and the
      walkability grids still align. */
   town:    '/maps/town_v17.webp',   /* v2.3.1813: re-fused clifftop plateau (tools/maps/build-town-v17.mjs) */
-  worldview: '/maps/worldview_v2.webp',   /* v2.3.1420: REVERTED to v2 (owner: "revert back to the previous world map art").  The v2.3.1403 worldview_v3 trial stays on disk if it's ever wanted again.  Upside of the revert: the WORLDVIEW_EXITS trail-heads were coordinate-verified against THIS art (v2.3.1359), so the markers sit exactly on the painted trails again. */
+  /* ═══ v2.3.2074: THE OWNER'S NEW OVERWORLD ═══
+     Owner: "Use this map instead for world view. The only thing different
+     should be the town walls looks more like the rocks in the town view."
+     Built by tools/maps/build_worldview_v4.py, which does the resize and then
+     the one edit that is not a resize: the town ring's warm masonry is re-cut
+     in the town view's own pale basalt, so the two maps of the same place
+     agree about what the place is made of.
+
+     v4, NOT v3: worldview_v3.webp is the v2.3.1403 trial the owner rejected
+     ("revert back to the previous world map art") and it is still on disk.
+     Reusing the number would point this at that file the next time someone
+     cleared their build cache.
+
+     THE TRAIL-HEADS DID NOT MOVE. WORLDVIEW_EXITS was coordinate-verified
+     against worldview_v2 in v2.3.1359 and is untouched; the new art is a
+     re-render of the same layout, and the importer proves it rather than
+     assuming it -- it samples the painted trail under all nine markers on BOTH
+     maps and fails if a live one loses ground. Measured: town -3.7, ember
+     +2.7, sky -6.0, verdant -4.0, frost -0.7 percentage points. (v2.3.1777
+     and v2.3.1813 both shipped exits on tiles that no longer existed, which is
+     why this is a check and not a sentence.) */
+  worldview: '/maps/worldview_v4.webp',
   frost:   '/maps/frost_v5.webp',   /* redesign: meadow-coast -> deep-ice transition */
   meadow:  '/maps/meadow_v6.webp',   /* redesign: new painterly meadow (scaled to 1024 world) */
   thunder: '/maps/thunder_v5.webp',   /* redesign: metallic/electric buried-machine peaks */
@@ -134,7 +155,7 @@ export const WALKABILITY_MAPS = {
   thunder: '/maps/thunder_v5.walk.json',   /* dense machinery -> walkable is mostly the central path corridor */
   farm_home: '/maps/farm_v1.walk.json',   /* note: mask was a wider aspect than the art -- walls align at edges, interior drifts a few % */
   verdant: '/maps/verdant_v1.walk.json',
-  // worldview: '/maps/worldview_v1.walk.json',   /* v2.3.1359: DISABLED — the v1 mask was painted for the old art's trails and misaligns on worldview_v2; fully walkable until a v2 mask is painted (same posture as the town mask above) */
+  // worldview: '/maps/worldview_v1.walk.json',   /* v2.3.1359: DISABLED — the v1 mask was painted for the old art's trails and misaligns on worldview_v2 (and on v4, which shares its layout); fully walkable until one is painted (same posture as the town mask above) */
 };
 
 /** v2.3.1405: which zone maps are currently decoded + resident in the Pixi

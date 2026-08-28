@@ -290,6 +290,12 @@ export const TOWN_EXITS = [
    radiate from the central town circle to every region. Positions are
    approximate (the zone is walkable-everywhere until a mask); tune them to the
    painted trail-heads later. */
+/* v2.3.2074: the art under these is worldview_v4 now (the owner's new
+   overworld). The coordinates are DELIBERATELY UNCHANGED -- the new map is a
+   re-render of the same layout, and tools/maps/build_worldview_v4.py samples
+   the painted trail under every marker on both maps and refuses to write if a
+   live spoke loses more than 8 points of it. The note below still describes
+   where these came from. */
 /* v2.3.1359: trail-heads retuned to the owner's worldview_v2 art (the
    painted overworld: central walled town, volcano N, desert NE, crystal
    cave E, thunder dome SE, beach+pier S, gnarled mistwood SW, blossom
