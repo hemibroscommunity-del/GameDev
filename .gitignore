@@ -77,3 +77,10 @@ tools/maps/.*.png
 # these are not.
 tools/*-contact.png
 dist-verify/
+# v2.3.2078: the staging copy a build is written to while a QA sweep is still
+# serving dist/. Files are read per request, so rebuilding dist/ under a
+# running batch hands its in-flight scenarios truncated bundles; the build
+# goes here and is swapped in at a batch boundary. Same reason dist-verify/ is
+# here, and just as much a build artefact.
+dist-new/
+dist-old/
