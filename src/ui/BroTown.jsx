@@ -608,7 +608,11 @@ function _spawnTownNpcs() {
      keyed by NAME and gates the whole NPC tick — an NPC missing from it stops
      walking, talking and being interactable, so it moves with gameDisplay's
      `name` or the rename silently switches him off. */
-  var ACTIVE_NPCS = ['Mayor Bro', 'Blacksmith Bro', 'Storekeeper Bro', 'Diego', 'Lil Bro']; /* v2.3.1775 */
+  /* v2.3.2091: 'Storekeeper Bro' is gone (owner: "Remove the other shopkeeper
+     NPC") — two men did one job and only Diego had any stock. His NPC_DATA
+     record went with him, so this is not a dormant entry waiting to be
+     re-enabled; see the note at the end of NPC_DATA. */
+  var ACTIVE_NPCS = ['Mayor Bro', 'Blacksmith Bro', 'Diego', 'Lil Bro']; /* v2.3.1775 */
   return NPC_DATA.filter(function (n) { return ACTIVE_NPCS.indexOf(n.name) >= 0; })
     .map(function (npc) { return _objectSpread({}, npc); });
 }

@@ -249,7 +249,12 @@ const NPC_SPRITE_SCALE = 120 / 256;
    mayor keeps being exactly 1.10x the blacksmith, the rule from v2.3.1822.
    After:
 
-     You 111   Diego 119   Mayor 118   Storekeeper 114   Blacksmith 107
+     You 111   Diego 119   Mayor 118   Blacksmith 107
+
+   (The storekeeper appears in both rows above because the pass was measured
+   against the town as it stood.  He is no longer in it -- v2.3.2091 removed
+   him -- and his mult is gone from the table below, where a key for a sprite
+   nobody draws would be a rule nothing obeys.)
 
    Keyed by client-visible strings, so Object.create(null) (CLAUDE.md rule 4). */
 const NPC_SCALE_MULT = Object.assign(Object.create(null), {
@@ -259,10 +264,6 @@ const NPC_SCALE_MULT = Object.assign(Object.create(null), {
   /* 1.00 -> 1.14.  He was the shortest adult in town and is drawn as the
      biggest-built one; his shoulder went 64 -> 73. */
   '/sprites/npc/blacksmith-bro.webp': 1.14,
-  /* 1.00 -> 1.22.  The cap and the hair cost him more of the 200px band than
-     anyone but the hatted two, so he needed the largest correction to land on
-     the same shoulder line: 60 -> 73. */
-  '/sprites/npc/storekeeper-bro.webp': 1.22,
   /* v2.3.2052 (owner: "make shopkeeper larger his sprite is bit small").
      Measured rather than nudged: at 1.0 he drew 120px against Mayor Bro's 132,
      so he read as the smallest figure in the town square despite being a
@@ -289,8 +290,10 @@ const _npcDrawn = Object.create(null);
 const _propsDrawn = [];
 if (typeof window !== 'undefined') window.__btWorldProps = () => _propsDrawn.slice();
 /* v2.3.1775: the entity layer's child order — Pixi paints in this order, so it
-   is what decides whether the stall covers the storekeeper or the other way
-   round.  Labelled children only; the rest are unnamed graphics. */
+   is what decides whether a stall covers the vendor standing at it or the
+   other way round (Diego at the market stall since v2.3.2080; the example
+   used to be the storekeeper, who left town in v2.3.2091).  Labelled children
+   only; the rest are unnamed graphics. */
 let _entityLayerRef = null;
 if (typeof window !== 'undefined') {
   window.__btEntityOrder = () => (_entityLayerRef
