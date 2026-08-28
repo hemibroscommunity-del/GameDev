@@ -31,8 +31,11 @@ import * as H from './harness.mjs';
 const SOAK_MS = Number(process.env.BT_SOAK_MS || 90000);
 const SAMPLE_EVERY_MS = 15000;
 
-/* Counting probe.  Runs in the page; returns a flat {name: count} map. */
-const PROBE = () => {
+/* Counting probe.  Runs in the page; returns a flat {name: count} map.
+   v2.3.2122: EXPORTED, so mp-crowdsoak can watch the same counters under a
+   different kind of load (peers + zone changes) without a second copy that
+   can drift away from this one. */
+export const PROBE = () => {
   const S = window._gameState && window._gameState.current;
   const out = {};
   if (!S) return out;

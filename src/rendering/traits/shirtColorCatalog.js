@@ -86,6 +86,40 @@ function loadImg(url) {
   });
 }
 
+/* ═══ v2.3.2122: THE FOURTH RECOLOUR CACHE GETS ITS CAP ═══
+ * v2.3.1119 bounded the hair, beard and hat caches with this exact code and
+ * this exact reason — "so a crowded multiplayer zone can't grow it without
+ * bound (one ~1MB, 5-dir entry per unique appearance)".  Shirts were missed.
+ *
+ * Found while hunting the demo's slowdown ("gameplay slowed down significantly
+ * like accumulation over time"), and it is honest to say what this is and is
+ * not: the shirt key is `shirtId/colorId` over 2 styles and 12 colours, so the
+ * ceiling is ~24 entries rather than unbounded, and neither soak
+ * (tools/qa/mp/mp-soak, mp-crowdsoak) reproduced the slowdown at all.  So this
+ * is NOT a proven cause — it is a real, bounded miss in a set of four caches
+ * where the other three are capped at 12, fixed because a crowded room is
+ * exactly where it fills and leaving one of four uncapped is the kind of
+ * inconsistency the next person has to re-derive from scratch.
+ *
+ * LRU with a 30s-deferred source destroy, identical to its three siblings: the
+ * getter re-touches its key so live appearances stay resident, and eviction
+ * never kills an in-flight bake or a texture that might still be mid-frame. */
+const _CACHE_CAP = 12;
+function _capCache() {
+  const keys = Object.keys(_cache);
+  if (keys.length <= _CACHE_CAP) return;
+  for (const k of keys) {
+    const e = _cache[k];
+    if (e === 'loading') continue;        // never evict an in-flight bake
+    delete _cache[k];
+    setTimeout(() => {
+      try { for (const dir in e) { const t = e[dir]; if (t && t.source) t.source.destroy(); } }
+      catch (err) { /* ignore */ }
+    }, 30000);
+    break;
+  }
+}
+
 function build(shirtId, colorId) {
   const target = shirtColorTarget(colorId);
   const key = shirtId + '/' + colorId;
@@ -99,7 +133,7 @@ function build(shirtId, colorId) {
       if (t && t.source) { t.source.scaleMode = 'linear'; t.source.autoGenerateMipmaps = true; }
       tex[dir] = t;
     } catch (e) { /* dir missing -> renderer falls back */ }
-  })).then(() => { _cache[key] = tex; });
+  })).then(() => { _cache[key] = tex; _capCache(); });
 }
 
 /** Recolored shirt texture map for (shirtId, colorId), or null for the
@@ -110,5 +144,9 @@ export function getColoredShirtTextures(shirtId, colorId) {
   const e = _cache[key];
   if (e === undefined) { build(shirtId, colorId); return null; }
   if (e === 'loading') return null;
+  /* LRU touch: move this key to newest so _capCache evicts a genuinely cold
+     one — the appearance being rendered right now must never be the one
+     thrown away. */
+  delete _cache[key]; _cache[key] = e;
   return e;
 }

@@ -47,6 +47,75 @@ import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { showRoomFull, hideRoomFull, roomFullOpen } from '@/ui/RoomFullScreen.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
+
+/* ═══ v2.3.2122: A PIECE THE WORKER TAKES OFF YOU GOES IN THE BAG ═══
+ *
+ * Owner, after the live demo: "a complaint about an iron chest plate that
+ * went missing from their inventory."
+ *
+ * Reproduced end to end (tools/qa/mp/mp-armorloss.mjs).  The Iron Torso is
+ * the 1-in-500 drop from v2.3.1924 and it lives ONLY in the client's bag —
+ * there is no server-side armour stash, because handoff rule 1 forbids a new
+ * rpg-blob field, so the worker knows what you WEAR and nothing about what you
+ * are carrying.  Then:
+ *
+ *   1. You equip it.  equipArmorFromStash takes it out of the bag, puts it in
+ *      R.armor and tells the worker.  On screen you are wearing it.
+ *   2. The worker REFUSES.  A tierMult-2.0 chest piece needs 30 trained
+ *      Defense under prog3 (_prog3EquipOk) and a fresh character has none, so
+ *      grids.js keeps ps.armor = null.  Silently — the comment there says "the
+ *      client's own gate shows the requirement", and for armour there is no
+ *      such gate: equipArmorFromStash does not check prog3 at all.
+ *   3. The echo lands, this handler wrote `S.rpg.armor = null`, and the piece
+ *      was gone from the worn slot, gone from the bag it had been taken out
+ *      of, and gone from bt_rpg on the next persist.  Every copy, destroyed by
+ *      a refusal the player never saw.
+ *
+ * The threat gear lock (v2.3.1129) refuses swaps the same way and would eat a
+ * piece identically, so this is not only about progression tiers.
+ *
+ * THIS IS THE SHIELD'S FIX, APPLIED TO ARMOUR.  v2.3.1683 hit the same wall
+ * from the other side — the worker's shield field being written straight onto
+ * the arm — and settled it with the same principle: the stash is the CLIENT's,
+ * so an echo has to route through the bag rather than overwrite the slot.  The
+ * worker stays authoritative about what is worn; it simply cannot be
+ * authoritative about a bag it has never been told about, and treating its
+ * silence as "you no longer own this" is what destroys the item.
+ *
+ * IDEMPOTENT BY IDENTITY, because player_state echoes repeat: a piece already
+ * worn or already in the bag is never pushed again, which is the same
+ * name+tierMult test the loot credit and the quest-armour adopt both use.
+ */
+function _armorSame(a, b) {
+  if (!a || !b) return false;
+  return String(a.name || '') === String(b.name || '')
+    && (Number(a.tierMult) || 1) === (Number(b.tierMult) || 1);
+}
+
+function _rescueDisplacedArmor(S, slot, stashKey, incoming) {
+  try {
+    var R = S && S.rpg;
+    if (!R) return;
+    var worn = R[slot];
+    if (!worn || typeof worn !== 'object') return;      /* nothing to displace */
+    if (_armorSame(worn, incoming)) return;             /* the worker kept it */
+    if (!Array.isArray(R[stashKey])) R[stashKey] = [];
+    /* Already in the bag — the ordinary unequip, which bags the piece itself
+       before telling the worker, arrives here a moment later. */
+    for (var i = 0; i < R[stashKey].length; i++) {
+      if (_armorSame(R[stashKey][i], worn)) return;
+    }
+    R[stashKey].push(worn);
+    /* Say so.  A piece that silently comes off is the same mystery as one that
+       silently vanishes, and the player needs to know it is still theirs. */
+    try {
+      if (S.player) {
+        pushDmgPopup(S, S.player.x, S.player.y - 46,
+          'BAG: ' + String(worn.name || 'Armor'), '#f5c542', { ts: Date.now() + 3 });
+      }
+    } catch (e) { /* a popup must never cost the rescue */ }
+  } catch (e) { /* never let this break the state echo */ }
+}
 import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822 */
 /* Tick arrival timestamps — module-level so the buffer survives
  * WebSocket reconnects and can be sampled by the FPS/NET overlay.
@@ -1329,7 +1398,11 @@ export function setupWebSocket(ctx) {
                 S.rpg.activeSlot = msg.payload.activeSlot;
               }
               var _armorChanged = false;
-              if ('armor' in msg.payload) { S.rpg.armor = msg.payload.armor; _armorChanged = true; }
+              if ('armor' in msg.payload) {
+                _rescueDisplacedArmor(S, 'armor', 'armorStash', msg.payload.armor);
+                S.rpg.armor = msg.payload.armor;
+                _armorChanged = true;
+              }
               /* v2.3.189: never let the server stomp the default wood
                  shield. Pre-v2.3.188 saves on the worker may have
                  shield=null, which would erase the client default
@@ -1371,7 +1444,11 @@ export function setupWebSocket(ctx) {
                  formula and quietly disagreed with the damage the server
                  actually deals.  Read-only (there is no client legs-armour
                  equip path yet); the worker owns the slot. */
-              if ('legsArmor' in msg.payload) { S.rpg.legsArmor = msg.payload.legsArmor; _armorChanged = true; }
+              if ('legsArmor' in msg.payload) {
+                _rescueDisplacedArmor(S, 'legsArmor', 'legsStash', msg.payload.legsArmor);
+                S.rpg.legsArmor = msg.payload.legsArmor;
+                _armorChanged = true;
+              }
               /* v2.3.1703: the WORN LAYER is derived from these two fields
                  (gearCatalog.syncArmorLayers), so the worker's echo has to
                  drive it as well as the local equip screens — otherwise a
