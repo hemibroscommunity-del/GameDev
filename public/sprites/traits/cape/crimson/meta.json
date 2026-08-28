@@ -45,7 +45,7 @@
   ],
   "east": [
    114,
-   11
+   21
   ],
   "northeast": [
    122,
@@ -56,8 +56,9 @@
    1
   ]
  },
- "note": "Imported by tools/import_cape_green.py from a sheet whose person was painted flat #00FF00. The cape is everything that is neither the magenta backdrop nor the green person, so no colour heuristic can eat a cape pixel. Registered by fitting the GREEN silhouette against the real stand-<dir> body, feet-anchored (the one landmark a cape never covers), scoring inside-minus-spill so a cape that hides most of the body still fits at its true scale rather than at zero. v2.3.2122: south is dropped 10px after the fit (Y_NUDGE in the importer). The feet-anchored inside-minus-spill score cannot see a hood riding high over a face -- measured, the collar covered 25 of 39 mouth pixels and the hood floated 21px clear of the crown against southwest's 9. southwest and east were measured and left alone.",
+ "note": "Imported by tools/import_cape_green.py from a sheet whose person was painted flat #00FF00. The cape is everything that is neither the magenta backdrop nor the green person, so no colour heuristic can eat a cape pixel. Registered by fitting the GREEN silhouette against the real stand-<dir> body, feet-anchored (the one landmark a cape never covers), scoring inside-minus-spill so a cape that hides most of the body still fits at its true scale rather than at zero. v2.3.2122: south is dropped 10px after the fit (Y_NUDGE in the importer). The feet-anchored inside-minus-spill score cannot see a hood riding high over a face -- measured, the collar covered 25 of 39 mouth pixels and the hood floated 21px clear of the crown against southwest's 9. southwest and east were measured and left alone. v2.3.2123: east is dropped 10px on the same reasoning (owner picked it from a rendered ladder), and 44px of keying fringe was erased from it -- a detached black strand hanging across the chin and a dark tab cutting into the forehead, both residue of the person's outline that the importer's ring test could not reach and its one-piece connectivity drop could not see, because both were joined to the cape at one end.",
  "yNudge": {
-  "south": 10
+  "south": 10,
+  "east": 10
  }
 }
