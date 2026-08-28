@@ -66,7 +66,13 @@ export const TICKET_PREFIX = 'goldticket_';
  * of three ends it on its own, tickets already won never expire, and
  * disable_event_capes remains as a no-deploy emergency stop for an operator
  * who has the admin key. */
-export const EVENT_LIVE = false;
+/* v2.3.2096: ON. Owner, mid-demo-testing: "Time to switch on the cape drop
+   odds." The odds themselves needed no change -- `event_cape_rate` below is
+   already a live-ops number defaulting to 1/100, tunable without a deploy.
+   This flag is the thing that was off, and it is what the note above says to
+   flip. The cap of three and the one-per-account rule are untouched, so the
+   contest still ends on its own. */
+export const EVENT_LIVE = true;
 
 export const EVENT_CAPES = {
   /* id -> the cape granted, its ticket, and how many exist. */

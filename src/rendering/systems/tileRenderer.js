@@ -149,7 +149,7 @@ export class TileRenderer {
     /* Exit portal pulse — drawn per-frame on overlayGfx over S.map
        cells with tile id 8 (zone exit) / 9 (return-to-town) / 10
        (dungeon entrance). */
-    this._exitTiles = [];   // [{ r, c, tile, zoneId }]
+    this._exitTiles = [];   // [{ r, c, tile, zoneId, dir }]
 
     this.currentZone = null;
     this.currentMap = null;
@@ -211,14 +211,37 @@ export class TileRenderer {
        A tile that matches nothing (every spoke's tile-9 way home, and the
        procedural zones) keeps zoneId null and is never treated as gated. */
     const _destAt = new Map();
+    /* v2.3.2095: and which WAY each declared exit leads. The beam fans away
+       from the tile you step on, so an exit you leave by walking SOUTH needs
+       its plume pointing south too -- see the flip at the beam draw below. */
+    const _dirAt = new Map();
     const _declared = zoneId === 'town' ? TOWN_EXITS
       : zoneId === 'worldview' ? WORLDVIEW_EXITS : null;
     if (_declared) {
       for (const ex of _declared) {
-        /* Exits are declared at a 2x2 marker block's corner, so claim the
-           block rather than the single cell. */
-        for (let dr = 0; dr < 2; dr++) {
-          for (let dc = 0; dc < 2; dc++) _destAt.set(`${ex.ty + dr},${ex.tx + dc}`, ex.zoneId);
+        /* ═══ v2.3.2095: CLAIM THE BLOCK, WHICHEVER CORNER IT IS ═══
+           Exits are declared at a 2x2 marker block's corner. This claimed
+           `ty..ty+1` x `tx..tx+1` -- i.e. it assumed the declared cell is the
+           block's TOP-LEFT. Town's is not: its marker (25,48) is the block's
+           BOTTOM-RIGHT, and the painted tiles are rows 47-48, cols 24-25. So
+           the claim landed on rows 48-49, cols 25-26 and overlapped the real
+           block on exactly ONE of its four cells.
+
+           Three of town's four exit tiles therefore carried `zoneId: null`,
+           which is not cosmetic: the locked/gated test is `!!ex.zoneId && ...`,
+           so a gated zone's beam only ever read as locked on a quarter of its
+           own portal. It surfaced as a beam-direction mess -- one tile fanned
+           the new way and three the old -- which is what put a light on it.
+
+           A 3x3 neighbourhood covers the block from ANY corner, which is the
+           honest fix while the tables say "a corner" without saying which.
+           Safe against cross-claiming: the closest two live trail-heads on
+           either hub are six tiles apart. */
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            _destAt.set(`${ex.ty + dr},${ex.tx + dc}`, ex.zoneId);
+            _dirAt.set(`${ex.ty + dr},${ex.tx + dc}`, ex.dir || null);
+          }
         }
       }
     }
@@ -229,7 +252,8 @@ export class TileRenderer {
       for (let c = 0; c < cols; c++) {
         const t = row[c];
         if (t === 8 || t === 9 || t === 10) {
-          this._exitTiles.push({ r, c, tile: t, zoneId: _destAt.get(`${r},${c}`) || null });
+          this._exitTiles.push({ r, c, tile: t, zoneId: _destAt.get(`${r},${c}`) || null,
+            dir: _dirAt.get(`${r},${c}`) || null });
         }
       }
     }
@@ -819,6 +843,31 @@ export class TileRenderer {
           sp.y = cy;
           sp.height = PORTAL_BEAM_H;
           sp.width = PORTAL_BEAM_H * (beamTex.width / beamTex.height);
+          /* ═══ v2.3.2095: THE WAY OUT OF TOWN FANS THE WAY YOU ARE GOING ═══
+             Owner: "The light for exiting the city needs to be flipped
+             around."
+
+             The beam is anchored (0.5, 1) with its apex on the tile, so it
+             fans UP-SCREEN -- which is right for every exit you approach from
+             below, because the plume is then the thing you see ahead of you.
+             Town's one exit is the opposite case: it is on the plateau's
+             southern lip and you leave by walking SOUTH, so the fan rose
+             behind your shoulder and spread back over the town you were
+             leaving. The light pointed at where you had been.
+
+             Flipping scale.y (not the anchor, and not a rotation) keeps the
+             apex exactly where it was -- on the tile you step through, which
+             is the property v2.3.2070 was built around and the owner's
+             original "it should fade furthest from the zone entrance" -- and
+             sends the plume the other way.
+
+             Keyed on the exit's declared `dir`, so it is the data that
+             decides and not a hardcoded tile: any exit that leads southward
+             gets it, and today that is exactly the one the owner is looking
+             at. A tile-9 way home or a procedural exit carries no dir and is
+             unchanged. */
+          const _fanDown = ex.dir === 'south' || ex.dir === 'se' || ex.dir === 'sw';
+          sp.scale.y = _fanDown ? -Math.abs(sp.scale.y) : Math.abs(sp.scale.y);
           sp.tint = _locked ? PORTAL_BEAM_LOCKED_TINT : 0xffffff;
           /* Clamped: PORTAL_BEAM_ALPHA over 1 is deliberate — the beam wants
              to be brighter than the pulse's own 0.8 ceiling on a dark map —
@@ -834,7 +883,10 @@ export class TileRenderer {
           if (_portalProbe) {
             const _p = _portalProbe[_portalProbe.length - 1];
             _p.beam = { w: Math.round(sp.width), h: Math.round(sp.height),
-              alpha: +sp.alpha.toFixed(3), tint: sp.tint, blend: sp.blendMode };
+              alpha: +sp.alpha.toFixed(3), tint: sp.tint, blend: sp.blendMode,
+              /* v2.3.2095: reported from the sprite, so the test reads which
+                 way it was DRAWN rather than re-deriving the rule. */
+              fanDown: sp.scale.y < 0, dir: ex.dir || null };
           }
           continue;
         }

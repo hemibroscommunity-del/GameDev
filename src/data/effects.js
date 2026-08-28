@@ -323,7 +323,43 @@ export const TOWN_EXITS = [
  * you at that spoke's own trail-head (v2.3.861), which is out on the trails
  * where the spokes are and is the property that makes a return trip land you
  * where you left. */
-export const WORLDVIEW_ARRIVAL = { x: 744, y: 848 };
+/* ═══ v2.3.2094: OUTSIDE THE GATE, NOT INSIDE THE WALLS ═══
+ * Owner: "spawn the character outside the city walls when he exits the town.
+ * Running into an issue where you need to run through the entrance to get
+ * outside of the city walls and it spawns you in town again."
+ *
+ * (744, 848) is the middle of the walled ring. The ring's only opening is the
+ * SOUTH gate, and the town trail-head -- the portal home -- sits at tile
+ * (24, 28), which is BETWEEN the ring's centre and that gate. TOWN_EXIT_R is
+ * 2 tiles, the old arrival was 2.25 from the marker, so the walk from where
+ * you land to the only way out passed within one tile of it. The moment
+ * `_hubExitDisarm` lapsed -- it is a short timer, not a latch on leaving --
+ * the marker took you straight back to town. There was no way out on foot.
+ *
+ * mp-worldwalk.mjs had already WRITTEN THIS DOWN, in its own words: "One step
+ * south of the arrival is inside the radius and the player is sent straight
+ * home." It then routed its walking tests around the problem instead of
+ * failing on it, which is how a known trap stayed shipped.
+ *
+ * (752, 1072) is six tiles due south of the marker and 106px clear of the
+ * nearest wall cell (the old spot had 84), on open ground below the gate
+ * funnel -- so you land looking at the town's gate with the trails at your
+ * back, and nothing stands between you and the map.
+ *
+ * WHY v2.3.1708's ARGUMENT NO LONGER HOLDS. That note put the arrival inside
+ * on the reasoning that any point south of the marker sits on the walking
+ * line to Flame Fields (25,10), so heading north would drag you home. True
+ * when it was written -- and it PRE-DATES THE WALL. The ring arrived with
+ * worldview_v4 (v2.3.2075). A route north now cannot pass through (24,28) at
+ * all, because that tile is inside a wall you have to walk around: going
+ * round either side keeps you four or more tiles from the marker the whole
+ * way. The wall turned the old objection into the fix.
+ *
+ * tools/maps/build_worldview_walk.py checks this point against the mask it
+ * generates -- open ground, clearance, every spoke still reachable on foot
+ * from here, and (v2.3.2094) outside the town marker's trigger radius, which
+ * is the check that would have caught the trap. */
+export const WORLDVIEW_ARRIVAL = { x: 752, y: 1072 };
 
 export const WORLDVIEW_EXITS = [
   { zoneId: 'town',    tx: 24, ty: 28, dir: 'north', label: 'Town',            color: '#cdb27a' },
