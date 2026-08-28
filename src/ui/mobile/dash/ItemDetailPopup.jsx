@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ITEM_NAMES } from './InventoryPanel.jsx';   /* v2.3.2054 */
+import { ITEM_NAMES, isTicketKey } from './InventoryPanel.jsx';   /* v2.3.2054; isTicketKey v2.3.2103 */
 import { gearIdIcon, armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.1758: one armour art table */
 import { weaponMaterial, metalIconPath } from '@/rendering/traits/materialTints.js'; /* v2.3.1760 */
 import { COL, getState } from './common.js';
@@ -117,7 +117,9 @@ function resolveTarget(target) {
        ceil'd) — the server's _handleEatRequest math, so the promised
        number matches the heal the player_state echo delivers. */
     const SR = getState();
-    if (isCookedFish) info = '+' + calcDisplayHeal(SR && SR.rpg, key) + ' HP when eaten';
+    const isTicket = isTicketKey(key);
+    if (isTicket) info = 'Open it to claim your cape';
+    else if (isCookedFish) info = '+' + calcDisplayHeal(SR && SR.rpg, key) + ' HP when eaten';
     else if (isRawFish) info = 'Cook over a campfire';
     else if (isBurnt) info = 'Inedible';
     else if (isLog) info = 'Light a campfire to cook at';
@@ -129,7 +131,17 @@ function resolveTarget(target) {
       name: prettyName(key),
       info,
       desc: cat.charAt(0).toUpperCase() + cat.slice(1),
-      actions: { light: isLog && count > 0, eat: isCookedFish && count > 0 },
+      /* v2.3.2103: `open` needs the worker to be able to SETTLE it -- the
+         redeem is server-only (a client-side open is the firemaking
+         duplication bug wearing a hat, cooking.js:71). Gated on the same
+         caps.eventCapes flag the older panel uses, read DIRECTLY rather than
+         through an alias so the caps-audit can see the gate. */
+      actions: {
+        light: isLog && count > 0,
+        eat: isCookedFish && count > 0,
+        open: isTicket && count > 0
+          && !!(SR && SR._serverCaps && SR._serverCaps.eventCapes),
+      },
     };
   }
   if (target.kind === 'weapon') {
@@ -345,6 +357,10 @@ function prettyName(key) {
   if (!key) return '';
   /* v2.3.2054: an explicit label wins over the key-derived one. */
   if (ITEM_NAMES[key]) return ITEM_NAMES[key];
+  /* v2.3.2103: the prize of a public contest read as "Goldticket Crimson"
+     out of the key-derived branch below -- which is what the owner was
+     looking at when he had to ask whether an item in his own bag was it. */
+  if (isTicketKey(key)) return 'Golden Ticket';
   return key
     .replace(/^cooked_fish_/, 'Cooked ')
     .replace(/^burnt_/, 'Burnt ')
@@ -997,6 +1013,20 @@ export const ItemDetailPopup = () => {
     eatBus.open(target.key);
     itemDetailBus.close();
   };
+  /* v2.3.2103: SEND AND WAIT. The consume, the grant and the echo are all the
+     worker's -- an "opened" ticket that the client also decrements locally is
+     handed straight back by the next player_state echo, which is how one log
+     lit unlimited campfires (cooking.js:71). The opId makes a retry on a
+     flaky phone converge instead of redeeming twice. */
+  const onOpenTicket = () => {
+    const S = getState();
+    if (!S || !S.channel) return;
+    const opId = target.key + ':' + (S.playerId || 'me') + ':' + Date.now();
+    try {
+      S.channel.send({ type: 'cape_redeem', payload: { invKey: target.key, opId } });
+    } catch (e) { /* the socket went away; the ticket is still in the bag */ }
+    itemDetailBus.close();
+  };
   const onUnequipWeapon = () => {
     unequipWeaponSlot(target.slot);
     itemDetailBus.close();
@@ -1229,6 +1259,7 @@ export const ItemDetailPopup = () => {
         <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
           {actions.light    && <button onClick={onLight}   className={buttonClass('primary')} style={buttonStyle('primary')}>Light fire</button>}
           {actions.eat      && <button onClick={onEat}     className={buttonClass('primary')} style={buttonStyle('primary')}>Eat</button>}
+          {actions.open     && <button onClick={onOpenTicket} className={buttonClass('primary')} style={buttonStyle('primary')}>Open Golden Ticket</button>}
           {actions.equip    && <button onClick={onEquip}   className={buttonClass('primary')} style={buttonStyle('primary')}>Equip</button>}
           {actions.unequip  && <button onClick={onUnequip} className={buttonClass('danger')} style={buttonStyle('danger')}>Unequip</button>}
           <button onClick={onToggleLock} className={buttonClass()} style={buttonStyle()}>

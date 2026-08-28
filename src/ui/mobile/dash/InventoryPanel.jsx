@@ -196,7 +196,32 @@ export const ITEM_NAMES = Object.assign(Object.create(null), {
   staminaSalts: 'Stamina Salts',
 });
 
+/* ═══ v2.3.2103: THE GOLDEN TICKET WAS INVISIBLE IN THIS BAG ═══
+ * Owner, mid-event, looking at his own inventory: "Hold on I think people
+ * might have gotten it? Is it this 1?"
+ *
+ * It was not, and the reason he had to ask is the bug. `goldticket_` appeared
+ * in the client in exactly ONE file -- src/ui/panels/InventoryPanel.jsx, the
+ * older full-screen inventory, where the Open button lives. THIS bag, the one
+ * on the dashboard that players actually use, had no name for it, no icon,
+ * and no way to open it. A ticket sitting in someone's bag right now reads as
+ * an unnamed generic item, and the prize cannot be claimed from the screen
+ * they are looking at.
+ *
+ * Matched by PREFIX, not by the one key: the ticket id is built as
+ * `${TICKET_PREFIX}${capeId}` (server/src/eventcapes.js), so a second cape
+ * would mint `goldticket_<something>` and a table keyed on the crimson one
+ * would go quiet again on the day a new contest starts. */
+export const TICKET_KEY_PREFIX = 'goldticket_';
+export const isTicketKey = (key) => String(key || '').startsWith(TICKET_KEY_PREFIX);
+
 export const iconFor = (key) => {
+  /* v2.3.2103: FIRST, above every pattern below. 'goldticket_crimson'
+     contains no word any of them match, so it fell through to the generic
+     tier diamond -- the prize of a public contest drawn as "unknown item".
+     No art file exists for it, and a glyph that reads as a ticket is more
+     honest than borrowing a coin's picture. */
+  if (isTicketKey(key)) return '\uD83C\uDF9F';
   const k = (key || '').toLowerCase();
   /* v2.3.2052: the three town-shop consumables, by EXACT key and above every
      pattern below. They had no entry at all, so a whetstone in your bag drew
