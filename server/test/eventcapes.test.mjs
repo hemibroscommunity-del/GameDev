@@ -12,7 +12,7 @@
  * hits, and requires exactly three to survive.
  */
 import { GameRoom } from '../src/index.js';
-import { EVENT_LIVE, EVENT_START_ID } from '../src/eventcapes.js';
+import { EVENT_LIVE, EVENT_START_ID, EVENT_CAPES } from '../src/eventcapes.js';
 
 function makeState() {
   const store = new Map();
@@ -57,14 +57,20 @@ await room._capeLedgersLoad();
 
 /* ── the cap ── */
 {
+  /* v2.3.2102: read the cap from the table rather than repeating the number.
+     It went 3 -> 10 when the owner widened the contest, and a test carrying
+     its own copy of a constant asserts that someone remembered to edit two
+     places -- not that the cap holds. Rolls well past it either way. */
+  const CAP = EVENT_CAPES.crimson.cap;
   const got = [];
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < CAP + 9; i++) {
     const id = 'p' + i;
     ps(id);
     const t = room._claimCapeTicket('crimson', id, room.playerState[id], always);
     if (t) got.push(id);
   }
-  check('exactly three tickets exist, however many players roll', got.length === 3, got);
+  check(`exactly ${CAP} tickets exist, however many players roll`,
+    got.length === CAP, { issued: got.length, cap: CAP });
 }
 
 /* ── THE CONCURRENCY CASE ── every claim decided in ONE synchronous pass,
@@ -96,7 +102,8 @@ await room._capeLedgersLoad();
   const results = await Promise.all(ids.map(async (id) =>
     r2._claimCapeTicket('crimson', id, r2.playerState[id], always)));
   const winners = ids.filter((id, i) => results[i]);
-  check('twenty-five simultaneous claims still yield exactly three', winners.length === 3, winners);
+  check(`twenty-five simultaneous claims still yield exactly ${EVENT_CAPES.crimson.cap}`,
+    winners.length === EVENT_CAPES.crimson.cap, { winners: winners.length, cap: EVENT_CAPES.crimson.cap });
 }
 
 /* ── one per account ── */
@@ -315,7 +322,8 @@ await room._capeLedgersLoad();
   check('the ledger reads back who holds a ticket',
     read.body.capes.crimson.issued.indexOf('winner') >= 0, read.body.capes);
   check('...and how many are left, which is the number the owner actually wants',
-    read.body.capes.crimson.remaining === 2, read.body.capes.crimson);
+    read.body.capes.crimson.remaining === EVENT_CAPES.crimson.cap - 1,
+    read.body.capes.crimson);
   check('...and whether the contest is running right now',
     read.body.live === true, read.body.live);
 
@@ -339,8 +347,9 @@ await room._capeLedgersLoad();
   check('a confirmed reset clears the ledger and reports what it voided',
     done.body.ok === true && done.body.cleared.issued.indexOf('winner') >= 0, done.body);
   const after9 = await r9._capeAdminRoute({ method: 'GET' }, U(), '/capes', J);
-  check('...leaving all three available again',
-    after9.body.capes.crimson.remaining === 3 && after9.body.capes.crimson.issued.length === 0,
+  check('...leaving every ticket available again',
+    after9.body.capes.crimson.remaining === EVENT_CAPES.crimson.cap
+      && after9.body.capes.crimson.issued.length === 0,
     after9.body.capes.crimson);
   check('...and the reset SURVIVES a reload, not just the cache',
     JSON.stringify((await s9.storage.get('capegrant:crimson')) || {}) === JSON.stringify({ issued: [], redeemed: [] }),
