@@ -1420,3 +1420,48 @@ it *before* you read its handler.
 
 **Related:** §20 (a fixed wrap is its own stacking context), §38 (a
 diagnostic that can only accuse the suspects you thought of).
+
+## §40 — A screenshot is not in CSS pixels, so a rect offset samples the wrong place (v2.3.2090)
+
+**The move that looks right.** You want to prove a control is actually
+visible rather than merely styled visible, so you read its box from the
+page, screenshot a strip across it, and sample a pixel "6px inside the left
+edge":
+
+```js
+const r = await rect('.bt-cc-defcolor');           // CSS pixels
+const px = await H.screenshotPixels(P, { x: r.x - 20, y: ..., width: r.w + 40, height: 3 });
+const fill = px.at(20 + 6, 1);                     // WRONG
+```
+
+**Why it is wrong.** `getBoundingClientRect` speaks CSS pixels. The returned
+image is `devicePixelRatio` times that in each axis — 2× on every harness
+that passes a `dpr`, and 2× by default on some of them. Indexing the image
+with a CSS offset therefore lands at *half* the intended distance in. The
+clip is right; the sampling is not.
+
+**What it looks like when it bites.** `mp-ccsize` sampled 6px into a
+near-white button on a dark panel and read `[29,45,51]` — the panel. Both
+samples fell outside the button, so the assertion reported a contrast of
+**1** for a control that measures **184**. That is the dangerous failure
+shape: not an obviously broken number, but a plausible one that says the
+change did not work, sending you back to the stylesheet to fix code that was
+already correct.
+
+**The fix is a ratio, not a constant.** Do not hard-code 2 — a scenario that
+sets `dpr: 1` or runs on a different viewport would then be wrong in the
+other direction. Derive it from the image the browser actually returned:
+
+```js
+const k = px.width / clipW;                        // whatever ratio was used
+const fill = px.at(Math.round((20 + 6) * k), Math.floor(px.height / 2));
+```
+
+**Where this does NOT apply.** Counting pixels that match a predicate inside
+a region (the brass-ring count in the same file) is scale-free — every pixel
+is still inside the same region, only more of them. It is *indexing* a
+specific coordinate that needs the ratio. Thresholds tuned against a count,
+though, are not portable across dpr: state the viewport the number came from.
+
+**Related:** §34 (a colour probe is only as good as what is behind it), §37
+(measuring a drawing against the box that defines it).

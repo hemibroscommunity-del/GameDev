@@ -1,5 +1,11 @@
 /* THE CREATOR'S TWO ICONS, AND THE DEFAULT COLOUR BUTTON — v2.3.2035.
  *
+ * v2.3.2090 adds sections 3b and 3c: the button was restyled because it was
+ * hard to SEE, and "more obvious" only means something as a measurement of
+ * rendered pixels.  Read §40 of docs/TRAPS.md before touching that sampling --
+ * the image is devicePixelRatio times the CSS box, and the first draft of it
+ * reported a contrast of 1 for a near-white button on a dark panel.
+ *
  * Three owner asks, all of them about things you can only judge by looking:
  * the tattoo icon and the Randomize Look icon were too small, and "default"
  * was not a thing you could pick.
@@ -133,6 +139,66 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...positioned above the colour options, not over them',
     !!order && order.defBottom <= order.rowTop + 1, order);
 
+  /* ── 3b. IS IT ACTUALLY VISIBLE? — v2.3.2090 ──
+     Owner: "make the default button more obvious for color picker (maybe a
+     different background color)".  v2.3.2035 shipped it as a near-transparent
+     fill (rgba(255,255,255,.05)) above swatch tiles that carry a LIGHT well,
+     so it read as a disabled caption beside them.
+
+     "More obvious" is only a real claim if it is a NUMBER, and the number has
+     to come from the rendered pixels rather than the stylesheet: a fill can be
+     declared bright and still be invisible because something translucent sits
+     over it, or because the rule lost the cascade.  So this samples the
+     button's own fill and the backdrop immediately beside it and asserts the
+     gap in perceived brightness.  The old style scored ~10 of 255 here; a
+     threshold of 90 cannot be met by tinting the old fill a bit and is met
+     with room to spare by giving it the picker's well. */
+  const lum = (px) => 0.2126 * px[0] + 0.7152 * px[1] + 0.0722 * px[2];
+  const rect = (sel) => P.page.evaluate((s2) => {
+    const el = document.querySelector(s2);
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { x: r.x, y: r.y, w: r.width, h: r.height };
+  }, sel);
+
+  /* Read here, before anything is picked.  Nothing needs unselecting first:
+     the v2.3.2090 restyle puts the whole selected/unselected difference on the
+     RING (3c below), so the fill this measures is the same fill in both
+     states -- which is the point.  The state the owner was looking at and
+     could not see was the unchosen one, and it now carries this same well. */
+  const dr = await rect('.bt-cc-defcolor');
+  rec.ok('the Default button has a box to sample (guard)', !!dr, dr);
+
+  /* A generous margin either side, so the clip carries backdrop AND button.
+     Sampled at the button's vertical middle: 6px inside its left edge is fill
+     (the label is centred, so no glyph is in the way), and 12px outside is the
+     colour block behind it -- the head row is empty there, which is why the
+     backdrop reading is of the sheet and not of a swatch. */
+  const clipW = dr ? Math.round(dr.w) + 40 : 0;
+  const strip = dr && await H.screenshotPixels(P, {
+    x: Math.round(dr.x) - 20, y: Math.round(dr.y + dr.h / 2) - 1,
+    width: clipW, height: 3
+  });
+  /* A SCREENSHOT IS NOT IN CSS PIXELS.  getBoundingClientRect speaks CSS px and
+     the returned image is devicePixelRatio times that -- 2x here -- so indexing
+     the image with a CSS offset lands at HALF the distance in.  The first draft
+     sampled "6px inside the left edge", landed 7px OUTSIDE it, read the panel
+     twice and reported a contrast of 1 for a near-white button on a dark panel.
+     Scale by the image's own width over the clip's, so the sampling follows the
+     ratio the browser actually used rather than one assumed here. */
+  const k = strip ? strip.width / clipW : 1;
+  const midY = strip ? Math.floor(strip.height / 2) : 0;
+  const contrast = strip
+    ? Math.abs(lum(strip.at(Math.round((20 + 6) * k), midY))
+             - lum(strip.at(Math.round(6 * k), midY)))
+    : -1;
+  rec.ok('the Default button stands off the panel behind it — its fill and the '
+       + 'backdrop beside it differ by more than 90 of 255 in brightness '
+       + '(the near-transparent v2.3.2035 fill scored about 10)',
+    contrast >= 90, { contrast: Math.round(contrast), dpr: Math.round(k * 100) / 100,
+      fill: strip && strip.at(Math.round(26 * k), midY),
+      behind: strip && strip.at(Math.round(6 * k), midY) });
+
   /* THE BEHAVIOUR. Pick a colour, then use Default to come back — the round
      trip is the thing v2.3.1253 made undiscoverable. */
   const startsOn = await P.page.evaluate(() =>
@@ -174,6 +240,44 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!document.querySelector('.bt-cc-defcolor--on'));
   rec.ok('tapping Default puts the colour back — the way out that previously '
        + 'existed only as "re-tap the swatch you chose"', backOn, { backOn });
+
+  /* ── 3c. AND THE PICK STILL READS AS THE PICK — v2.3.2090 ──
+     The v2.3.2090 restyle moved the selected state off the FILL (it used to
+     darken to a brass wash) and onto a brass RING, the same signal a chosen
+     swatch carries.  That is the failure mode worth a test: give the unchosen
+     button a bright well and forget to re-pitch the chosen one, and the
+     CHOSEN state ends up the quieter of the two.  Counting brass pixels in a
+     band around the button answers it in the rendered image. */
+  const brassy = async () => {
+    const r = await rect('.bt-cc-defcolor');
+    if (!r) return -1;
+    const px = await H.screenshotPixels(P, {
+      x: Math.round(r.x) - 5, y: Math.round(r.y) - 5,
+      width: Math.round(r.w) + 10, height: Math.round(r.h) + 10
+    });
+    let n = 0;
+    for (let y = 0; y < px.height; y++) {
+      for (let x = 0; x < px.width; x++) {
+        const c = px.at(x, y);
+        if (c[0] > 150 && c[0] - c[2] > 55 && c[1] > c[2]) n++;
+      }
+    }
+    return n;
+  };
+  const ringOn = await brassy();
+  await P.page.evaluate(() => {
+    const t = document.querySelector('.bt-cc-colors-row > *');
+    if (t) (t.querySelector('button') || t).click();
+  });
+  await P.page.waitForTimeout(700);
+  const ringOff = await brassy();
+  rec.ok('the chosen Default wears a brass ring, the unchosen one does not — '
+       + 'selection reads the same way it reads on a swatch',
+    ringOn > ringOff + 60, { ringOn, ringOff });
+
+  /* Put it back so the assertions after this one see the state they expect. */
+  await P.page.click('.bt-cc-defcolor');
+  await P.page.waitForTimeout(600);
 
   /* ── 4. Reset — v2.3.2036 ──
      Owner: "bald shirtless character is what I wanted for reset". So the
