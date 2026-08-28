@@ -48,6 +48,34 @@ SPILL = 3.0          # how much a green pixel outside the body costs, vs one ins
 ALPHA_T = 110
 MIN_PIECE = 20       # a cape is one piece; anything smaller is keying residue        # the art arrives resampled; threshold it back to crisp edges
 
+# ═══ v2.3.2122: THE ONE THING THE FEET CANNOT TELL YOU ═══
+# Owner: "Find how the cape sits on the character it needs to go down a bit.
+# South view shows it sitting over the mouth."
+#
+# It did: measured, the collar covered 25 of the 39 pixels of the south mouth,
+# and the hood floated 21px clear of the crown against southwest's 9.
+#
+# WHY THE FIT COULD NOT SEE IT.  The registration is FEET-ANCHORED -- soles to
+# soles -- because the feet are the one landmark a cape never covers, and the
+# score is inside-minus-spill over the WHOLE silhouette.  Both are right, and
+# both are blind here: a hood that rides a little high costs a handful of spill
+# pixels against a 4881-pixel body, which is nothing next to the scale term it
+# is traded against.  The fit is optimising total overlap; nobody asked it
+# about the face, and the face is the only place a few pixels are worth more
+# than a few hundred anywhere else.
+#
+# So this is a CORRECTION, not a parameter: a number measured off the rendered
+# result and written down, per facing, in the same units the art is in. It
+# lives here rather than as a renderer nudge on purpose -- capeSprites.js says
+# "no anchor, no nudge table and no per-facing exception to get wrong", and the
+# way to keep that true is for the ART to be right, so a re-import from the
+# same sheet reproduces the fix instead of losing it.
+#
+# Only south is corrected. southwest and east were measured and left alone:
+# southwest's mouth is 8/17 covered by the hood SIDES, which is a hood framing
+# a face, and east reads correctly in profile with the hood wrapping behind.
+Y_NUDGE = {'south': 10, 'east': 10, 'southwest': 10}   # pixels DOWN, in 256-space, after the fit  (v2.3.2123 east, v2.3.2124 southwest)
+
 
 def classify(rgb):
     r, g, b = rgb[:, :, 0].astype(int), rgb[:, :, 1].astype(int), rgb[:, :, 2].astype(int)
@@ -271,7 +299,10 @@ def main():
                      'the green person, so no colour heuristic can eat a cape pixel. Registered by '
                      'fitting the GREEN silhouette against the real stand-<dir> body, feet-anchored '
                      '(the one landmark a cape never covers), scoring inside-minus-spill so a cape '
-                     'that hides most of the body still fits at its true scale rather than at zero.')}
+                     'that hides most of the body still fits at its true scale rather than at zero. '
+                     'v2.3.2122: a per-facing Y_NUDGE is applied after the fit -- south is dropped 10px, '
+                     'because a feet-anchored inside-minus-spill score cannot see a hood riding high over '
+                     'a face (a few pixels there are worth more than a few hundred anywhere else).')}
 
     prev_path = f'{outdir}/meta.json'
     if only and os.path.exists(prev_path):
@@ -340,7 +371,7 @@ def main():
         src = src.resize((max(1, int(round((bx1 - bx0) * k))),
                           max(1, int(round((by1 - by0) * k)))), Image.LANCZOS)
         PX = int(round(X + (bx0 - gx0) * k))
-        PY = int(round(Y + (by0 - gy0) * k))
+        PY = int(round(Y + (by0 - gy0) * k)) + Y_NUDGE.get(d, 0)   # v2.3.2122
         frame = Image.new('RGBA', (FRAME, FRAME), (0, 0, 0, 0))
         frame.alpha_composite(src, (max(0, PX), max(0, PY)))
         arr = np.array(frame)
