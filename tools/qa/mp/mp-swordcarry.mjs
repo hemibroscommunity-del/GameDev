@@ -33,7 +33,7 @@ async function face(P, idx) {
   await P.page.evaluate((i) => {
     const S = window._gameState.current;
     S._facingAngle = i * Math.PI / 4; S._aimAngle = i * Math.PI / 4;
-    S.lockedMonster = null; S.isSwinging = false; S.swingTimer = 0; S.autoAttack = false;
+    S.lockedTarget = null; S.isSwinging = false; S.swingTimer = 0; S.autoAttack = false;
   }, idx);
   await P.page.waitForTimeout(280);
   /* Re-assert the weapon right before reading: the worker is authoritative for

@@ -293,7 +293,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   for (const [name, idx] of [['east', 0], ['south', 2], ['north', 6]]) {
     await P.page.evaluate((i) => {
       const S = window._gameState.current;
-      S._facingAngle = i * Math.PI / 4; S._aimAngle = undefined; S.lockedMonster = null;
+      S._facingAngle = i * Math.PI / 4; S._aimAngle = undefined; S.lockedTarget = null;
     }, idx);
     await P.page.waitForTimeout(350);
     const m = await P.page.evaluate(() => window.__btMinimap || null);

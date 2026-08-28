@@ -34,8 +34,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the peer entry carries a position', ra.length === 1 && ra[0].hasPos, ra);
   rec.ok('presence is mutual', rb.length === 1 && rb[0].id === aId, rb);
 
-  const count = await H.readState(A, (S) => S.playerCount || null);
-  rec.ok('the room reports both players', count == null || count >= 2, { count });
+  /* v2.3.2078: this read `S.playerCount`, which exists nowhere in src/ — the
+     worker's `player_count` is written onto `S._playerCount` (BroTown.jsx
+     1705, and ChatBubble reads it there).  So `count` was null on every run
+     and the `count == null || ...` escape hatch made the assertion vacuous:
+     it would have passed with the room reporting nobody.  Read the real
+     field, and WAIT for it, because the count arrives on its own broadcast
+     rather than with the join. */
+  const count = await H.waitFor(A, (S) => S._playerCount,
+    (n) => typeof n === 'number' && n >= 2,
+    { timeout: 20000, label: 'the room counts both players' }).catch(() => null);
+  rec.ok('the room reports both players', typeof count === 'number' && count >= 2,
+    { count, raw: await H.readState(A, (S) => S._playerCount) });
 
   /* ── disconnect: close the PAGE but keep the browser profile ── */
   await B.page.close();

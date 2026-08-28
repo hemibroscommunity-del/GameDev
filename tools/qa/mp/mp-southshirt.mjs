@@ -50,7 +50,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(400);
 
   const shirtOn = await P.page.evaluate(() => {
-    try { return { shirt: window.__btShirtId || null, equipShirt: null }; } catch (e) { return null; }
+    /* v2.3.2078: was `window.__btShirtId`, which nothing defines — so this
+       line printed {shirt:null,equipShirt:null} on every run and told you
+       nothing about what the character had on.  __btWardrobe (gearCatalog)
+       is the real probe. */
+    try {
+      const w = window.__btWardrobe ? window.__btWardrobe() : null;
+      const S = window._gameState && window._gameState.current;
+      return { shirt: (S && S.myShirt) || null, equipShirt: w && w.gearShirt };
+    } catch (e) { return null; }
   });
   console.log('  shirt state', JSON.stringify(shirtOn));
 

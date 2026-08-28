@@ -634,6 +634,94 @@ export async function openDest(P, label, { timeout = 6000 } = {}) {
  * deliberately minimal and asserts the shape it expects rather than trying to
  * be a general decoder.
  */
+/* ═══ v2.3.2078: MOVE THERE, DO NOT TELEPORT THERE ═══
+ * Lifted verbatim in behaviour from mp-harvest (v2.3.1706), which learned it
+ * the hard way: movement.js caps a move at `500 * dt + 80` px and, on reject,
+ * "drops EVERYTHING so a cheater can't flip blocking/dodging/dead while
+ * teleporting" — and a reject does NOT write ps.x, so every later move is
+ * still the same illegal distance from the server's stale position.  Once
+ * rejected, rejected forever, with the client looking perfectly healthy.
+ * 100px hops with a beat between them sit well inside the cap.
+ *
+ * A COLOUR-CLEAN PATCH OF TOWN, for the scenarios that count pixels on the
+ * character: measured off town_v17.webp and its walk grid — walkable, more
+ * than 110px clear of all twelve props, and zero pixels matching any of the
+ * four probe colours (pink/green/blue/red) in the box a figure crop covers.
+ * The plaza spawn is NOT such a patch since v2.3.2069 put the fountain there.
+ */
+export const TOWN_CLEAN_SPOT = { x: 1000, y: 1460 };
+
+export async function hopTo(P, tx, ty, { step = 100, gap = 260, tries = 40 } = {}) {
+  for (let i = 0; i < tries; i++) {
+    const done = await P.page.evaluate(({ x, y, s }) => {
+      const S = window._gameState.current;
+      const dx = x - S.player.x, dy = y - S.player.y;
+      const d = Math.hypot(dx, dy);
+      if (d < 6) { S.player.vx = 0; S.player.vy = 0; return true; }
+      const k = Math.min(s, d);
+      S.player.x += (dx / d) * k;
+      S.player.y += (dy / d) * k;
+      return false;
+    }, { x: tx, y: ty, s: step });
+    await P.page.waitForTimeout(gap);   /* > the 198ms solo move gap */
+    if (done) return true;
+  }
+  return false;
+}
+
+/* ═══ v2.3.2078: THE BOX A COLOUR PROBE MAY COUNT PIXELS IN ═══
+ * mp-facingside, mp-cosmpose and mp-skinworld each carried their own copy of
+ * `x = c.x - 44, y = c.y - 86, 88 x 104` — a box about twice the figure, with
+ * the character sitting in its bottom-middle and the town filling the rest.
+ * That was survivable while the spawn looked at bare cobbles.  When v2.3.2069
+ * moved the fountain into the plaza the spawn ended up in front of it, and
+ * the CONTROL frame — a character with no drawings on him at all — started
+ * reading 4455 blue pixels off the water.  Four assertions in mp-facingside
+ * and six in mp-cosmpose failed, none of them about the art they name.
+ *
+ * The box below was measured off that control render (tools/qa/mp/out/
+ * facingside-00-control.png, 88x104 at dpr 2): the head's top row sits 37 CSS
+ * px above the feet and the figure is ~28 px across at the shoulders.  40x46
+ * clears both with margin and stops well below the basin.  Grey fountain
+ * stone can still clip the top corners and that is fine — none of the four
+ * colour tests (isPink/isGreen/isBlue/isRed) fires on a neutral.
+ *
+ * Anchored on `__btPlayerDrawn()` when the client offers it (entityRenderer,
+ * same version) so the mining -8px lift and the build-scale shift are
+ * included, and on S.player otherwise, which is what the old copies did.
+ *
+ * Returns null when the box would run off the viewport, exactly as before —
+ * a caller treats that as "could not be located", not as zero pixels.
+ */
+export async function figureBox(P, { pad = 0, peerId = null } = {}) {
+  const c = await P.page.evaluate((pid) => {
+    const S = window._gameState.current;
+    const r = document.querySelector('canvas').getBoundingClientRect();
+    /* A peer has no drawn-box probe of its own, so its anchor is the position
+       the renderer is given — which is what the old copies used for everyone. */
+    const src = pid ? (S.others || {})[pid] : S.player;
+    if (!src || typeof src.x !== 'number') return null;
+    const d = pid ? null : (window.__btPlayerDrawn ? window.__btPlayerDrawn() : null);
+    const wx = d ? d.x : src.x;
+    const wy = d ? d.footY : src.y;
+    return { x: r.left + (wx - S.camera.x) * (S._worldScaleX || 1),
+             y: r.top + (wy - S.camera.y) * (S._worldScaleY || 1),
+             vw: innerWidth, vh: innerHeight,
+             drawn: !!d, facing: S._facing || null };
+  }, peerId);
+  if (!c) return null;
+  const w = 40 + pad * 2, h = 46 + pad * 2;
+  const x = Math.round(c.x - 20 - pad), y = Math.round(c.y - 44 - pad);
+  if (x < 0 || y < 0 || x + w > c.vw || y + h > c.vh) return null;
+  /* Geometry ONLY on the enumerable side: this object is handed straight to
+     page.screenshot({ clip }), which is not the place to find out whether a
+     stray key is tolerated.  The two diagnostics ride non-enumerably. */
+  const box = { x, y, width: w, height: h };
+  Object.defineProperty(box, 'facing', { value: c.facing, enumerable: false });
+  Object.defineProperty(box, 'drawn', { value: c.drawn, enumerable: false });
+  return box;
+}
+
 export async function screenshotPixels(P, clip) {
   const buf = await P.page.screenshot(clip ? { clip } : {});
   return decodePng(buf);

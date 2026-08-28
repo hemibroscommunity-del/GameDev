@@ -51,7 +51,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
        refusal names itself instead of looking like "the flag never set". */
     return { hasShield: !!R.shield, hasWeapon: !!R.weapon,
       weapon: R.weapon && (R.weapon.id || R.weapon.type),
-      mana: R.mana, maxMana: R.maxMana, stamina: R.stamina, dead: !!S._dead,
+      mana: R.mana, maxMana: R.maxMana, stamina: R.stamina,
+      /* v2.3.2078: was `!!S._dead` — no such field.  The game's own
+         predicate is `S._dying || S.rpg.hp <= 0` (BroTown.jsx
+         _playerDead), so the old line reported "alive" for a corpse
+         and the refusal this payload exists to name stayed unnamed. */
+      dead: !!S._dying || !!(R && R.hp <= 0),
       fromStash: (R.weaponStash || []).length };
   });
   rec.ok('the character has a weapon and a shield to fight with (guard)',

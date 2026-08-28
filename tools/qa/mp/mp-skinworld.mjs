@@ -50,7 +50,13 @@ const ALL_PINK = 'b'.repeat(256);
    classifier is tight enough that nothing else in frame can pass it") is why
    this scenario does BOTH: the no-tattoo control below has to come out at
    zero, and the crops are written to disk to be looked at. */
-const isInk = (r, g, b) => b > g + 24 && r > 110;
+/* v2.3.2078: ...and `r >= b`, the guard mp-facingside added in v2.3.2043.
+   The claim above — "every OTHER thing on screen has more green in it than
+   blue" — stopped being true when v2.3.2069 put the fountain in the plaza:
+   its water clears both `b > g + 24` and `r > 110` and reads as ink.  The
+   ink is #d76ba8 (215,107,168), r comfortably above b, so the guard costs
+   this scenario nothing and takes the water to zero. */
+const isInk = (r, g, b) => b > g + 24 && r > 110 && r >= b;
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, {
@@ -84,19 +90,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* Where the figure is on the glass, so the crop follows him rather than a
      guessed fraction of the screen (the same aim-with-a-probe rule the editor
      scenario follows). */
-  const clip = async () => {
-    const c = await P.page.evaluate(() => {
-      const S = window._gameState.current;
-      const r = document.querySelector('canvas').getBoundingClientRect();
-      return {
-        x: r.left + (S.player.x - S.camera.x) * (S._worldScaleX || 1),
-        y: r.top + (S.player.y - S.camera.y) * (S._worldScaleY || 1),
-      };
-    });
-    return { x: Math.max(0, Math.round(c.x - 44)), y: Math.max(0, Math.round(c.y - 86)), width: 88, height: 104 };
-  };
+  /* v2.3.2078: was a local 88x104 box about twice the character — the
+     v2.3.2069 fountain landed inside it (see H.figureBox).  One copy now,
+     shared with mp-facingside and mp-cosmpose.  The old version clamped a
+     negative origin to 0, which silently slid the box off the figure; the
+     shared one returns null instead, so an unmeasurable frame says so. */
+  const clip = () => H.figureBox(P);
   const inkCount = async (tag) => {
     const box = await clip();
+    /* v2.3.2078: a null box means the figure is not fully on the glass.
+       Counting a FULL-PAGE screenshot instead (what screenshotPixels does
+       with no clip) would report the whole town's ink as the character's. */
+    if (!box) return null;
     const px = await H.screenshotPixels(P, box);
     if (tag) await P.page.screenshot({ path: SHOTS + '/skinworld-' + tag + '.png', clip: box });
     return px.count(isInk);
@@ -117,8 +122,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── THE CONTROL: no tattoo, nothing light on the figure ── */
   const bare = await inkCount('bare');
+  /* v2.3.2078: `bare !== null` explicitly.  inkCount returns null when the
+     figure is not fully on the glass, and `null < 12` is TRUE — the control
+     would have passed by being unmeasurable. */
   rec.ok('with no tattoo there is no ink colour anywhere in the frame (the measure is honest)',
-    bare < 12, { inkPixels: bare });
+    bare !== null && bare < 12, { inkPixels: bare });
 
   /* ── INK EVERYTHING ──
      Through the store and a reload, the way a returning player arrives (the
@@ -177,8 +185,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(700);
   for (let i = 0; i < 3; i++) { await P.page.waitForTimeout(140); jog.push(await inkCount('jog-south-' + i)); }
   await P.page.keyboard.up('s');
+  rec.ok('every running frame could actually be measured (guard)',
+    jog.length > 0 && jog.every((n) => n !== null), jog);
   rec.ok('the tattoo is still on him while he runs, on every sampled frame',
-    jog.every((n) => n > bare + 20), { jog, bare });
+    bare !== null && jog.every((n) => n !== null && n > bare + 20), { jog, bare });
 
   /* A reload mid-scenario is a reconnect, and the client announces its own
      re-join on the error channel.  That is the harness's doing, not the

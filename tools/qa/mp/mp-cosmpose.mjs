@@ -60,7 +60,15 @@ const PANTS_PAT = 'stripe-v:6';
 
 /* Ink lands blended UNDER the skin (INK_TUNE), so the test is for a hue SHIFT,
    not for the literal hex. Pink reads as blue-over-green on a warm body. */
-const isPink = (r, g, b) => b > g + 24 && r > 110;
+/* v2.3.2078: `r >= b` is not decoration — it is the guard mp-facingside added
+   in v2.3.2043 and this file never picked up.  Without it a lit blue clears
+   both `b > g + 24` and `r > 110`: when v2.3.2069 moved the fountain into the
+   plaza its water put 205 "pink" pixels in the control frame of a character
+   with no tattoos on him at all, and the control plus five downstream
+   assertions failed for a reason that had nothing to do with ink.  Pink
+   (215,107,168) has r above b; the fountain's (150,160,200) does not.  One
+   comparison separates them, and it takes that 205 to 0. */
+const isPink = (r, g, b) => b > g + 24 && r > 110 && r >= b;
 /* Green reads as green-over-both. The margins are wide because the pattern is
    stamped on lit fabric and picks up the garment's own shading. */
 const isGreen = (r, g, b) => g > r + 20 && g > b + 20 && g > 70;
@@ -69,23 +77,12 @@ const isGreen = (r, g, b) => g > r + 20 && g > b + 20 && g > 70;
    it is that peer's entry in `others`, which is the whole point -- a peer box
    read from your own position would measure your own character twice. */
 async function boxFor(P, peerId) {
-  const c = await P.page.evaluate((pid) => {
-    const S = window._gameState.current;
-    const r = document.querySelector('canvas').getBoundingClientRect();
-    const src = pid ? (S.others || {})[pid] : S.player;
-    if (!src || typeof src.x !== 'number') return null;
-    return {
-      x: r.left + (src.x - S.camera.x) * (S._worldScaleX || 1),
-      y: r.top + (src.y - S.camera.y) * (S._worldScaleY || 1),
-      vw: innerWidth, vh: innerHeight,
-    };
-  }, peerId || null);
-  if (!c) return null;
-  const x = Math.round(c.x - 44), y = Math.round(c.y - 86);
-  /* Off-screen means "not measurable", not "no ink" -- returning a box that
-     is partly outside the viewport would silently count clamped pixels. */
-  if (x < 0 || y < 0 || x + 88 > c.vw || y + 104 > c.vh) return null;
-  return { x, y, width: 88, height: 104 };
+  /* v2.3.2078: was a local 88x104 box about twice the character.  The
+     v2.3.2069 fountain landed inside it and the control frame started
+     reading 4455 blue pixels off water on a character with no art on him.
+     H.figureBox is the one copy of the tight box now; off-screen still
+     returns null, because that means "not measurable", not "no ink". */
+  return H.figureBox(P, { peerId: peerId || null });
 }
 
 /** Ink counts in one figure's box, plus the pose being drawn right now. */
@@ -228,33 +225,59 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await soak(9000, '06-combat');
   await A.page.evaluate(() => { try { window._gameState.current.autoAttack = false; } catch (e) {} });
 
-  /* RESOURCE EXTRACTION -- walk onto the nearest node and let the game do its
-     own thing. Whether a node is within reach of the spawn is the world's
-     business; if none is, the poses simply never appear and are skipped below
-     rather than being quietly credited. */
-  const node = await A.page.evaluate(() => {
-    const S = window._gameState.current;
-    const ns = Object.values(S.nodes || S.zoneNodes || {});
-    if (!ns.length) return null;
-    let best = null, bd = Infinity;
-    for (const n of ns) {
-      const d = Math.hypot((n.x || 0) - S.player.x, (n.y || 0) - S.player.y);
-      if (d < bd) { bd = d; best = { x: n.x, y: n.y, kind: n.kind || n.type || null, d: Math.round(d) }; }
-    }
-    return best;
-  });
-  rec.ok(`the zone has resource nodes to work${node ? ` (nearest ${node.kind || '?'} at ${node.d}px)` : ''}`,
-    !!node, node);
-  if (node) {
-    for (let i = 0; i < 6; i++) {
-      await A.page.evaluate((n) => {
-        const S = window._gameState.current;
-        S.moveTarget = { x: n.x, y: n.y };
-        if (window.__broTapWorld) window.__broTapWorld(n.x, n.y);
-      }, node);
-      await soak(2500, i === 0 ? '07-gather' : null);
-    }
-  }
+  /* RESOURCE EXTRACTION -- the mine and fish poses.
+     v2.3.2078: this block used to read `S.nodes || S.zoneNodes` and steer with
+     `S.moveTarget` / `window.__broTapWorld`.  NONE of those four names exist
+     anywhere in src/ -- the real node list is `S.gatherNodes` and the real
+     tap handle is `S._tapNode` -- so the node was always null, the "the zone
+     has resource nodes to work" assertion failed on every run, and the walk
+     that was supposed to reach one moved nobody.  Worse, it could never have
+     worked where it runs: this scenario never leaves TOWN, and BroTown.jsx
+     clears `S.gatherNodes = []` on town entry on purpose ("Town is safe -- no
+     harvestable resources").
+
+     So the node is INJECTED, the way mp-lifeskill does, rather than travelled
+     to.  That is honest here in a way it would not be in mp-harvest: what is
+     under test is whether the tattoo and pattern bake survives the MINE and
+     FISH body sheets, which is a local rendering question.  Node sync and
+     harvest settlement are mp-harvest's job and are asserted there against
+     the worker.  The tools go in the bag first because hasGatherTool gates
+     whether the node is tappable at all. */
+  const workNode = async (nodeType, tool, shot) => {
+    const ok = await A.page.evaluate(({ nodeType, tool }) => {
+      const S = window._gameState && window._gameState.current;
+      if (!S || !S.player) return false;
+      S.rpg = S.rpg || {};
+      S.rpg.inventory = S.rpg.inventory || {};
+      S.rpg.inventory[tool] = (S.rpg.inventory[tool] || 0) + 1;
+      const node = { id: 'qa-cosm-' + nodeType, nodeType, tierLvl: 1, alive: true,
+        respawnAt: 0, x: S.player.x + 8, y: S.player.y + 8 };
+      S.gatherNodes = [node];
+      S._tapNode = node;            /* as if a finger had touched it */
+      return true;
+    }, { nodeType, tool });
+    if (!ok) return false;
+    await A.page.waitForTimeout(700);
+    const near = await H.readState(A, (S) => (S._nearNode ? S._nearNode.id : null));
+    if (near !== 'qa-cosm-' + nodeType) return false;
+    /* Dispatched in page, not through Playwright: the prompt is anchored over
+       the node and the bottom dashboard intercepts it at this viewport
+       (mp-harvest v2.3.1706 hit the same wall).  Its onClick is still the code
+       path being exercised. */
+    await A.page.evaluate(() => {
+      const el = document.getElementById('bt-node-prompt');
+      if (el) el.click();
+    });
+    await A.page.waitForTimeout(900);
+    const ex = await H.readState(A, (S) => (S._extraction ? S._extraction.skill : null));
+    if (!ex) return false;
+    await soak(6000, shot);
+    return true;
+  };
+  const mined = await workNode('oreVein', 'mining_pickaxe', '07-mine');
+  rec.ok('the player can be put to work on an ore vein (the mine pose)', mined);
+  const fished = await workNode('fishSpot', 'fishing_pole', '08-fish');
+  rec.ok('the player can be put to work on a fishing spot (the fish pose)', fished);
 
   /* ── THE VERDICT, POSE BY POSE ── */
   const poses = Object.keys(seen).sort();
@@ -277,7 +300,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (!seen[p]) {
       rec.skip(`tattoos and patterns while the game draws "${p}"`,
         `the character never entered that pose in this run — `
-        + `${p === 'mine' || p === 'fish' ? 'no reachable node of that kind near spawn'
+        + `${p === 'mine' || p === 'fish' ? 'the injected node never became workable'
            : p === 'dodge' ? 'no dodge was triggered'
            : p === 'pickup' ? 'nothing was looted'
            : 'the activity did not occur'}`);

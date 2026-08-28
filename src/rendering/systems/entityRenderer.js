@@ -7500,6 +7500,30 @@ export class EntityRenderer {
     const P = S.player;
     const display = this.playerDisplay;
     if (typeof window !== 'undefined' && window.__btMaskDebug) window.__playerDisplay = display;
+    /* ═══ v2.3.2078: WHERE THE PLAYER IS ACTUALLY DRAWN ═══
+       The sibling of __btNpcSprites, for the local character.  Every
+       colour-probe scenario (mp-facingside, mp-cosmpose, mp-skinworld,
+       mp-southshirt) crops a fixed 88x104-ish box off the player's world
+       position and counts coloured pixels in it.  That box is roughly twice
+       the figure, and what fills the rest is whatever the town happens to
+       have behind him -- so when v2.3.2069 moved the fountain to the plaza
+       the CONTROL reading started finding 4455 blue pixels on a character
+       with no drawings on him at all, and four assertions in each scenario
+       failed for a reason that had nothing to do with the art.
+       Guessing a tighter fraction of the screen would just move the guess.
+       This reports the figure the renderer really drew -- its world footY
+       and its drawn width/height, exactly the three numbers _npcDrawn
+       carries -- so a crop can be derived instead of estimated. */
+    if (typeof window !== 'undefined') {
+      const _pb = display._spriteBody;
+      window.__btPlayerDrawn = () => ({
+        x: display.x,
+        footY: display.y,
+        width: _pb && _pb.texture ? Math.abs(_pb.texture.width * _pb.scale.x) : 0,
+        height: _pb && _pb.texture ? Math.abs(_pb.texture.height * _pb.scale.y) : 0,
+        visible: display.visible,
+      });
+    }
     /* Force visibility every frame — same defensive concern as the
        parent re-attach above.
        v2.3.846: ...except while a woodcutting chop is active — the chopper

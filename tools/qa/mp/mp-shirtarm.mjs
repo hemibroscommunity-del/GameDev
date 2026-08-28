@@ -155,11 +155,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const armed = await P.page.evaluate(() => {
     const S = window._gameState.current;
     if (!S) return null;
-    S._equip = S._equip || {};
+    /* v2.3.2078: this used to write `S._equip` (no such field anywhere in
+       src/) and equip through `window.__btGear.setEquip` (no such handle —
+       the real one is `window.__btGearSet(slot, id)`, gearCatalog.js).  The
+       try/catch swallowed the TypeError, so the character wore whatever it
+       spawned in and the "loadout" line below reported an empty object the
+       test had just created itself. */
     try {
-      const g = window.__btGear || null;
-      if (g && g.setEquip) { g.setEquip('shirt', 'tshirt'); g.setEquip('chest', 'none'); }
-    } catch (e) { /* fall through to the state read below */ }
+      if (window.__btGearSet) { window.__btGearSet('shirt', 'tshirt'); window.__btGearSet('chest', 'none'); }
+    } catch (e) { /* fall through to the wardrobe read below */ }
     /* HAIR ON, and it is not a detail: the hair is a separate trait sprite
        composited over the run, so a bald probe cannot see anything the hair
        does wrong. The v2.3.1990 hunt for a reported "blob on the face" in all
@@ -167,9 +171,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
        false negative this line removes. Afro because it is the tallest and
        widest of the eight and the one the owner tests with. */
     try { if (window.__btSetHair) window.__btSetHair('afro'); } catch (e) { /* bald is still a run */ }
-    return { shirt: S.myShirt || null, equip: S._equip };
+    return { shirt: S.myShirt || null,
+      equip: (window.__btWardrobe ? window.__btWardrobe() : null),
+      gearVer: (window.__btGearVersion ? window.__btGearVersion() : null) };
   });
   rec.ok('the client is up and reports its loadout (guard)', armed !== null, armed);
+  rec.ok('the tee is really on the character, through the real gear store',
+    !!(armed && armed.equip && armed.equip.gearShirt === 'tshirt'),
+    armed && armed.equip);
+  rec.ok('the client hands back the gear cache-bust it is asking for',
+    !!(armed && armed.gearVer), armed && armed.gearVer);
 
   /* ── THE MEASUREMENT ──
      Composite the body sheet and the tee sheet the way the game does (the tee
@@ -252,7 +263,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         shirtInBand, overhang };
     }
     return out;
-  }, { gearVer: '2.3.2066', dirs: { east: -1, northeast: -1, southwest: 1, north: -1, south: -1 } });
+  }, { gearVer: (armed && armed.gearVer) || '2.3.2066', dirs: { east: -1, northeast: -1, southwest: 1, north: -1, south: -1 } });
 
   const east = measure.east || {};
   rec.ok('both jog-east sheets loaded through the client\'s own gear URL', !east.error, east.error || 'ok');

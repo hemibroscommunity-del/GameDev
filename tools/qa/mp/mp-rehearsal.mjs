@@ -107,6 +107,43 @@ export async function run({ browser, wsPort, webPort, rec }) {
   for (const P of ALL) await H.enterWorld(P);
   await A.page.waitForTimeout(2500);
 
+  /* ═══ v2.3.2078: KEEP THE CROWD AWAKE, OR THE SERVER SENDS THEM HOME ═══
+     This scenario runs for 294 seconds and drives Ana for nearly all of it.
+     The worker evicts a session with no real input for IDLE_TIMEOUT_MS, which
+     is 120 s -- so Ben, Cat and Dan were being AFK-booted two and a half
+     minutes before the final check, and "all four are still connected at the
+     end of the session" was failing with stillSeen: 1.
+
+     THE GAME WAS RIGHT AND THE TEST WAS WRONG. Idle eviction is a deliberate
+     feature (v2.3.1913, and mp-afk asserts it), so a five-minute test that
+     leaves three clients standing still was asserting against it.
+
+     A no-op move does NOT count, deliberately: _moveActivitySig rounds
+     positions to whole pixels precisely so a stationary body cannot ping
+     itself awake. So the crowd has to actually move, and they do -- one pixel,
+     alternating, every 45 s.
+
+     Nudged through the position rather than the keyboard on purpose: the
+     script drives Cat and Dan directly at two points, and a background key
+     press racing a click on the same page is a flake nobody would ever
+     reproduce. Moving the body is the same activity signal without touching
+     the input the test is using. */
+  let _wake = 0;
+  const _keepAwake = setInterval(() => {
+    const dx = (_wake++ % 2) ? 1 : -1;
+    for (const P of [B, C, D]) {
+      P.page.evaluate((d) => {
+        const S = window._gameState && window._gameState.current;
+        if (S && S.player) S.player.x += d;
+      }, dx).catch(() => {});
+    }
+  }, 45000);
+  /* unref'd so a throw anywhere below cannot leave the runner hanging on a
+     live timer -- the scenario's own failure should be what you see, not a
+     process that never exits. */
+  try { _keepAwake.unref(); } catch (e) { /* not a Node timer */ }
+  const _stopKeepAwake = () => { try { clearInterval(_keepAwake); } catch (e) {} };
+
   const ids = {};
   for (const P of ALL) ids[P.name] = await myId(P);
   rec.ok('all four characters reached the world with distinct identities',
@@ -218,11 +255,34 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const combat = await H.readState(A, (S) => ({
     xp: (S.rpg || {}).xp || 0,
     hp: (S.rpg || {}).hp,
-    zone: S.zone || S.zoneId,
+    /* v2.3.2078: `S.zone` and `S.zoneId` do not exist on the state root --
+       the field is `currentZone`, and only peers carry a `.zone`. Both reads
+       returned undefined, so the zone half of the assertion below was
+       checking nothing at all. */
+    zone: S.currentZone,
     monsters: Object.keys(S.monsters || {}).length,
   }));
-  rec.ok('the world has live monsters to fight', combat.monsters > 0, combat);
-  rec.ok('...and the player is alive and in a zone', combat.hp > 0 && !!combat.zone, combat);
+  /* ═══ v2.3.2078: THIS SESSION NEVER LEAVES TOWN, AND TOWN HAS NO MONSTERS ═══
+     `the world has live monsters to fight` asserted combat.monsters > 0 while
+     every one of the four clients stood in the plaza, and BroTown.jsx clears
+     the zone's entities on town entry on purpose -- "Town is safe".  It could
+     not pass, ever, and it had nothing to say about the session under test.
+
+     Sending Ana out to a spoke zone is not the fix either: `S.others` is
+     zone-scoped presence, so the moment she leaves she stops seeing Ben, Cat
+     and Dan and the end-of-session connectivity check below reports 0.
+     Server-settled combat is mp-burst's and mp-soak's subject and is asserted
+     there against the worker; what belongs HERE is that the auto-attack
+     switch the loop above threw did not take the client down with it. */
+  rec.ok('the player is alive and in a zone after a combat pass',
+    combat.hp > 0 && !!combat.zone, combat);
+  if (combat.monsters === 0 && combat.zone === 'town') {
+    rec.skip('the world has live monsters to fight',
+      'the rehearsal stays in town for the whole session (presence is '
+      + 'zone-scoped) and town is deliberately monster-free');
+  } else {
+    rec.ok('the world has live monsters to fight', combat.monsters > 0, combat);
+  }
   await frame(A, '07-combat', rec, worst);
 
   /* ── THE DASHBOARDS AND MENUS, ON THE PHONE ──
@@ -263,6 +323,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`no page errors on ${P.name}'s client across the whole session`,
       errs.length === 0, errs.slice(0, 3));
   }
+  _stopKeepAwake();
   const stillSeen = await H.readState(A, (S) => Object.keys(S.others || {}).length);
   rec.ok('all four are still connected at the end of the session',
     stillSeen >= 3, { stillSeen });

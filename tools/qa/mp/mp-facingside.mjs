@@ -71,21 +71,15 @@ const isBlue  = (r, g, b) => b > r + 34 && b > g + 22 && b > 80;
    same reason). */
 const isRed = (r, g, b) => r > 140 && r - g > 90 && r - b > 100;
 
-/* The whole figure. Same box mp-skinworld measures the character in, and for
-   the same reason: it is derived from the player's world position and the
-   camera rather than from a guessed fraction of the screen. */
+/* The figure, and only the figure.  v2.3.2078: this used to be a local copy
+   of an 88x104 box that was about twice the character — see H.figureBox for
+   what the fountain did to its control reading, and where the tighter numbers
+   come from.  One copy now, shared with mp-cosmpose and mp-skinworld.
+   (`S.facing` in the old fallback chain does not exist in src/; `S._facing`
+   does, and is what figureBox reports.) */
 async function boxes(P) {
-  const c = await P.page.evaluate(() => {
-    const S = window._gameState.current;
-    const r = document.querySelector('canvas').getBoundingClientRect();
-    return { x: r.left + (S.player.x - S.camera.x) * (S._worldScaleX || 1),
-             y: r.top + (S.player.y - S.camera.y) * (S._worldScaleY || 1),
-             vw: innerWidth, vh: innerHeight,
-             facing: S._facing || S.facing || null };
-  });
-  const x = Math.round(c.x - 44), y = Math.round(c.y - 86);
-  if (x < 0 || y < 0 || x + 88 > c.vw || y + 104 > c.vh) return null;
-  return { facing: c.facing, figure: { x, y, width: 88, height: 104 } };
+  const b = await H.figureBox(P);
+  return b ? { facing: b.facing, figure: b } : null;
 }
 
 /** Turn to face a direction and come to a stop, so the pose is `stand` and the
@@ -95,7 +89,16 @@ async function face(P, key, ms = 900) {
   await P.page.keyboard.down(key);
   await P.page.waitForTimeout(ms);
   await P.page.keyboard.up(key);
-  await P.page.waitForTimeout(1400);
+  await P.page.waitForTimeout(400);
+  /* v2.3.2078: walk back to the colour-clean patch before reading.
+     Turning means WALKING ~380px, and from the plaza spawn that lands the
+     figure beside the fountain — whose water put 4455 blue pixels in the
+     control frame and failed four assertions that have nothing to do with
+     the shirt print they name.  The facing is set by the walk and survives
+     being repositioned (_facingAngle is not recomputed while stopped), so
+     coming back costs the measurement nothing. */
+  await H.hopTo(P, H.TOWN_CLEAN_SPOT.x, H.TOWN_CLEAN_SPOT.y);
+  await P.page.waitForTimeout(1000);
 }
 
 async function read(P, tag) {
@@ -123,6 +126,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      scenario reported a green run while its crop sat on bare cobblestones. */
   await H.enterWorld(P);
   await P.page.waitForTimeout(2500);
+  await H.hopTo(P, H.TOWN_CLEAN_SPOT.x, H.TOWN_CLEAN_SPOT.y);
   await face(P, 's');
   const plain = await read(P, '00-control');
   rec.ok('a plain character can be located (guard)', !!plain, plain);

@@ -107,7 +107,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await raw(A, 'trade2_set', { offer: { constructor: 7, toString: 3, hasOwnProperty: 2, [WOOD]: 1 } });
   await A.page.waitForTimeout(800);
 
-  const staged = await H.readState(A, (S) => (S._trade2 && S._trade2.offers) || null);
+  /* v2.3.2078: this used to read `S._trade2.offers` for the diagnostic.
+     There is no such field: the trade2 session snapshot lives in React
+     state behind setTrade2 (gameEvents.js `trade2_state`) and never
+     touches the S object, so `staged` was null on every run and the
+     payload below said nothing.  The worker's own view is the thing
+     worth printing anyway — it is what the assertions are about. */
+  const staged = await serverBag(wsPort, aId).catch(() => null);
   await readyAndAccept(A, B);
 
   const a1 = await serverBag(wsPort, aId), b1 = await serverBag(wsPort, bId);

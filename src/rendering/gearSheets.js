@@ -188,6 +188,13 @@ function buildSheet(key, slot, item, pose, dir, attempt = 0, stampArt = null) {
    material pipeline's whole claim is that a recoloured set adds none. */
 if (typeof window !== 'undefined') {
   window.__btGearSheets = () => Object.keys(_sheets);
+  /* v2.3.2078: and the cache-bust the client is actually asking for.  A
+     scenario that fetches a gear sheet by URL had GEAR_VERSION copied into
+     it by hand (mp-shirtarm), which silently went stale on every re-bake —
+     the fetch still resolved (the ?v= is only a cache-bust on a static
+     file), so the test kept measuring art while claiming to prove the bust
+     shipped.  Read it from here instead. */
+  window.__btGearVersion = () => GEAR_VERSION;
 }
 export function getGearFrame(slot, item, pose, dir, frameIdx) {
   if (!item || item === 'none') return null;
