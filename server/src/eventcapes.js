@@ -67,8 +67,9 @@ export const TICKET_PREFIX = 'goldticket_';
  * disable_event_capes remains as a no-deploy emergency stop for an operator
  * who has the admin key. */
 /* v2.3.2096: ON. Owner, mid-demo-testing: "Time to switch on the cape drop
-   odds." The odds themselves needed no change -- `event_cape_rate` below is
-   already a live-ops number defaulting to 1/100, tunable without a deploy.
+   odds." The odds themselves needed no change at the time -- `event_cape_rate`
+   below is a live-ops number, tunable without a deploy (v2.3.2097 then raised
+   its default to 1/5 on the owner's call).
    This flag is the thing that was off, and it is what the note above says to
    flip. The cap of three and the one-per-account rule are untouched, so the
    contest still ends on its own. */
@@ -167,9 +168,21 @@ export const eventCapeMethods = {
        which is the difference between adjusting mid-event and not adjusting.
        It is also what lets the scenario drive the real drop end to end
        instead of a test-only back door. */
+    /* v2.3.2097: 1/100 -> 1/5. Owner, with the demo starting: "Just update it
+       to a 1 in 5 chance. First 3 get it."
+
+       The cap is what ends the contest, not the rate -- three tickets exist,
+       one per account, and `led.issued.length >= def.cap` above is checked
+       before the roll. So a generous rate does not mean more capes; it means
+       the three that exist are found in a demo session instead of over a
+       week of play. That is the trade the owner is making deliberately.
+
+       Still read through the live-ops flag first, so it can be tuned again
+       mid-event without a deploy -- this only moves the DEFAULT the flag
+       falls back to. */
     const rate = (typeof this._flagNum === 'function')
-      ? this._flagNum('event_cape_rate', 1 / 100, 0, 1)
-      : 1 / 100;
+      ? this._flagNum('event_cape_rate', 1 / 5, 0, 1)
+      : 1 / 5;
     if (roll >= rate) return null;
     led.issued.push(playerId);
     if (!ps.inventory) ps.inventory = {};

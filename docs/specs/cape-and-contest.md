@@ -244,6 +244,12 @@ consequence — a deploy briefly disconnects everyone — is handled by merging
 the enable *before* players gather, and that instruction lives in
 `docs/OPERATIONS.md` rather than only here.
 
+**v2.3.2097: the default is now `1/5` (owner's call, mid-demo: "Just update
+it to a 1 in 5 chance. First 3 get it").** The cap of three is what ends the
+contest -- it is checked before the roll -- so a generous rate changes how
+FAST the three are found, not how many exist. The paragraph below describes
+the 1/100 reasoning it replaced.
+
 The rate stays `_flagNum('event_cape_rate', 1/100, 0, 1)`: adjustable
 mid-event without a deploy, which is genuinely where that property earns its
 keep. **Default raised from 1/200 to 1/100 (owner's call, 2026-08-27)** —
