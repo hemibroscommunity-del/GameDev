@@ -33,12 +33,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the inspect card opens on a phone viewport (guard)',
     await A.page.$('.bt-inspect-card') !== null);
 
-  const probe = await A.page.evaluate((names) => {
+  const probe = await A.page.evaluate(async (names) => {
     const out = [];
     const btns = [...document.querySelectorAll('button')];
     for (const want of names) {
       const b = btns.find((x) => (x.textContent || '').includes(want));
       if (!b) { out.push({ want, found: false }); continue; }
+      /* v2.3.2078: SCROLL IT INTO VIEW FIRST, then ask what is on top.
+         Add Friend and Mute live below the fold on a short phone ON PURPOSE
+         (InspectPlayerPanel says so), so a raw elementFromPoint at their
+         rect finds the pinned Trade/Duel row painted at the same screen
+         coordinates and reports a covered button that is merely scrolled
+         away. The bug worth catching is a control that CANNOT be reached
+         after scrolling to it, which is what the shop drawer did. */
+      b.scrollIntoView({ block: 'center' });
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
       const r = b.getBoundingClientRect();
       const cx = Math.round(r.left + r.width / 2), cy = Math.round(r.top + r.height / 2);
       const top = document.elementFromPoint(cx, cy);
@@ -82,6 +91,52 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`...a finger on "${a.want}" lands on the button, not on something over it`,
       a.reaches, a);
     rec.ok(`..."${a.want}" meets the 44px touch floor`, a.tall, a);
+  }
+
+  /* ── AND WITH THE SHOP DRAWER UP ──
+     Moving the spawn stopped players ARRIVING inside Diego's ring; it does
+     not stop them walking into it. Standing at the shop and then tapping
+     someone is an ordinary thing to do, and the drawer is position:fixed —
+     scrolling the card does not move it out of the way. So the card has to
+     put the drawer away when it opens (BroTown.jsx v2.3.2078), and this is
+     the check that it does. */
+  await A.page.keyboard.press('Escape').catch(() => {});
+  await A.page.waitForTimeout(400);
+  const walkedUp = await (async () => {
+    const npc = await H.readState(A, (S) => {
+      const n = (S.npcs || []).find((q) => q.shop);
+      return n ? { x: n.x, y: n.y, id: n.id } : null;
+    });
+    if (!npc) return null;
+    await H.hopTo(A, npc.x + 40, npc.y + 40);
+    await A.page.waitForTimeout(1200);
+    return { npc, drawer: await A.page.evaluate(() => !!document.querySelector('[data-shop-panel]')) };
+  })();
+  rec.ok('walking up to the shopkeeper opens his drawer (guard — this is the '
+       + 'state the card has to survive)',
+    !!walkedUp && walkedUp.drawer === true, walkedUp);
+  if (walkedUp && walkedUp.drawer) {
+    await H.openInspect(A, bId);
+    await A.page.waitForTimeout(500);
+    const after = await A.page.evaluate((names) => {
+      const drawer = !!document.querySelector('[data-shop-panel]');
+      const btns = [...document.querySelectorAll('button')];
+      const blocked = [];
+      for (const want of names) {
+        const b = btns.find((x) => (x.textContent || '').includes(want));
+        if (!b) continue;
+        b.scrollIntoView({ block: 'center' });
+        const r = b.getBoundingClientRect();
+        const top = document.elementFromPoint(Math.round(r.left + r.width / 2),
+          Math.round(r.top + r.height / 2));
+        if (!(top && (top === b || b.contains(top)))) blocked.push(want);
+      }
+      return { drawer, blocked };
+    }, ACTIONS);
+    rec.ok('opening the inspect card puts the shop drawer away',
+      after.drawer === false, after);
+    rec.ok('...so every action on the card is still reachable at the shop',
+      after.blocked.length === 0, after);
   }
 
   const errs = A.logs.filter((l) => String(l).startsWith('pageerror'));

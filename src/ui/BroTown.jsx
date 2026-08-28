@@ -7152,6 +7152,28 @@ export var BroTown = function BroTown(_ref0) {
     setInspectPlayer(null);
   }, []);
 
+  /* ═══ v2.3.2078: THE SHOP DRAWER GETS OUT OF THE INSPECT CARD'S WAY ═══
+     Both surfaces live at the bottom of the screen: the drawer is
+     position:fixed just above the dashboard, and the card's Trade / Duel /
+     Add Friend row is pinned to the card's own bottom edge. On the primary
+     platform's 390x844 they land on top of each other, and the drawer wins —
+     measured with elementFromPoint, three of the card's four actions had the
+     drawer painted over them, so a finger aiming at Trade opens a shop slot
+     instead (mp-cardreach).
+
+     The proximity gate that OPENS the drawer already refuses while anything
+     else is on screen ("_pOk already means close enough, not in combat,
+     nothing else open"). This is the same rule in the other direction, for a
+     drawer that was already up when you tapped someone: one panel at a time.
+
+     An effect on `inspectPlayer` rather than a line at each call site —
+     the card is opened from the world tap, the party-mate tap, the social
+     panel's bridge and the friends list, and a rule kept in four places is a
+     rule that will be missed in the fifth. */
+  useEffect(function () {
+    if (inspectPlayer) { try { shopBus.setOpen(false); } catch (e) { /* no shop */ } }
+  }, [inspectPlayer]);
+
   /* Virtual joysticks — each tracks its own finger */
   /* v2.3.816: floating model.  The joysticks are hidden until touched and
      spawn under the finger anywhere in their half of the screen.  lZoneRef
