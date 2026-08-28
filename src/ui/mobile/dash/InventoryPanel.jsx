@@ -137,6 +137,9 @@ export const thumbFor = (key) => {
   /* v2.3.2104: FIRST. It matches no rule below and would fall to `null`, which
      is what sent it to the emoji fallback. */
   if (isTicketKey(k)) return GOLDEN_TICKET_THUMB;
+  /* v2.3.2107: the owner's cape art, the same file the character sheet's cape
+     slot uses -- one drawing of the garment, two places it appears. */
+  if (isCapeItemKey(k)) return `/icons/items/${k.replace('cape_', 'cape-')}.webp${ITEMS_V}`;
   /* v2.3.2055: FIRST, and lowercased-exact. The keys are camelCase
      ('manaShard', 'staminaSalts'), so they are matched on the lowered form --
      and above every prefix rule below, because 'whetstone' contains 'stone'
@@ -222,6 +225,11 @@ export const isTicketKey = (key) => String(key || '').startsWith(TICKET_KEY_PREF
    glyph because no file existed -- honest as a placeholder and wrong as a
    destination, for the prize of a public contest. */
 const GOLDEN_TICKET_THUMB = `/icons/items/golden-ticket.webp${ITEMS_V}`;
+/* v2.3.2107: the cape the ticket opens into. Same prefix rule as the ticket
+   and for the same reason -- the key is `cape_${capeId}` server-side, so a
+   second cape must not need a second table entry to be visible. */
+export const CAPE_ITEM_PREFIX = 'cape_';
+export const isCapeItemKey = (key) => String(key || '').startsWith(CAPE_ITEM_PREFIX);
 
 export const iconFor = (key) => {
   /* v2.3.2103: FIRST, above every pattern below. 'goldticket_crimson'
