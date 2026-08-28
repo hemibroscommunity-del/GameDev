@@ -1,4 +1,5 @@
 import { passphraseToId } from './index.js';
+import { readShared, writeShared } from './rosterCookie.js';   /* v2.3.2110 */
 
 /* ═══ v2.3.1923: THE DEVICE'S CHARACTER ROSTER ═══
  *
@@ -72,10 +73,60 @@ function _sorted(list) {
     .map(function (x) { return x.e; });
 }
 
-function _write(list) {
+/* ═══ v2.3.2110: EVERY WRITE ALSO GOES TO THE SHARED MIRROR ═══
+   localStorage stays the working copy; the cookie in rosterCookie.js is the
+   only part of this that a NEW ORIGIN can see, and a new origin is what a
+   fresh Pages deployment is (see that file's header).  Mirroring here rather
+   than at each call site is deliberate: this is the single funnel every
+   mutation already goes through, so there is no road that can quietly write
+   one store and not the other.
+
+   `tombAdd` is a phrase being forgotten.  It has to travel too, or the next
+   build restores the character that was just deleted.  A phrase that is back
+   in the live list is not deleted any more and drops out of the tombstones
+   in the same breath. */
+function _write(list, tombAdd) {
   const trimmed = list.length > HARD_BOUND ? _sorted(list).slice(0, HARD_BOUND) : list;
   try { localStorage.setItem(KEY, JSON.stringify({ v: 1, list: trimmed })); } catch (e) {}
+  try {
+    const shared = readShared();
+    let tombs = (shared && shared.tomb) || [];
+    if (tombAdd) tombs = [tombAdd].concat(tombs.filter(function (x) { return x !== tombAdd; }));
+    /* Phrases are player-supplied (a typed Login Key), so the membership set
+       is Object.create(null) — a plain {} no-ops on '__proto__'. */
+    const live = Object.create(null);
+    trimmed.forEach(function (e) { live[e.phrase] = 1; });
+    writeShared(trimmed, tombs.filter(function (x) { return !live[x]; }));
+  } catch (e) {}
   return trimmed;
+}
+
+/* The shared mirror, guarded once so every caller below can just use it. */
+function _shared() {
+  try { return readShared(); } catch (e) { return null; }
+}
+
+/* ═══ BACKFILL, ONCE PER LOAD ═══
+   Everyone who already has a character has a localStorage roster and NO mirror
+   — the cookie did not exist when they made it.  readRoster's fast path
+   returns early when nothing changed, so without this their mirror would stay
+   empty until the next thing that happens to write (a play, a delete), and the
+   very build that ships this fix would be the last one they could still be
+   found on.  So the first read of a page load with a roster and no mirror
+   writes one.
+
+   Once per load, and only when the mirror is genuinely absent: with cookies
+   switched off readShared always answers null, and without this flag every
+   readRoster — which is called on render, on inRoster, on every remember —
+   would re-run a write that cannot stick. */
+let _mirrorSeeded = false;
+
+/* A row rebuilt from the mirror.  Not provisional: it was written by a real
+   roster on some origin of this same site, which is positive evidence — the
+   CharacterPicker drops provisional rows on a "no character" answer, and
+   these must not be droppable that way. */
+function _fromShared(e) {
+  return { phrase: e.phrase, id: passphraseToId(e.phrase), at: e.at || 1, name: e.name || '', level: e.level || 0 };
 }
 
 /* The stored shape is an OBJECT, not a bare array, and that is load-bearing:
@@ -97,7 +148,39 @@ function _json(k) { try { return JSON.parse(_ls(k)); } catch (e) { return null; 
 
 export function readRoster() {
   const stored = _raw();
-  if (stored) return _sorted(stored);
+  const shared = _shared();
+  if (stored) {
+    /* ═══ v2.3.2110: AN ESTABLISHED ORIGIN STILL LISTENS TO THE MIRROR ═══
+       The restore below only fires on an origin that has never had a roster.
+       That covers the reported case (a fresh build's hostname) but not its
+       mirror image: a character MADE on the new build, opened later on the
+       stable URL that already has a roster of its own.  Without this pass
+       that character would be invisible there for good, and the player would
+       be back to "which link was it on".
+
+       Additions only, minus tombstones.  This never overwrites a local row —
+       the local copy is the one with the real play times on it, and the
+       mirror's `at` is whatever the other origin last knew. */
+    const dead = Object.create(null);
+    const have = Object.create(null);
+    if (shared) shared.tomb.forEach(function (p) { dead[p] = 1; });
+    stored.forEach(function (e) { have[e.phrase] = 1; });
+    let changed = false;
+    const merged = stored.filter(function (e) {
+      if (!dead[e.phrase]) return true;
+      changed = true;                    /* a delete made elsewhere, honoured here */
+      return false;
+    });
+    if (shared) shared.list.forEach(function (e) {
+      if (have[e.phrase] || dead[e.phrase]) return;
+      have[e.phrase] = 1;
+      merged.push(_fromShared(e));
+      changed = true;
+    });
+    if (!shared && !_mirrorSeeded && merged.length) { _mirrorSeeded = true; changed = true; }
+    if (!changed) return _sorted(stored);
+    return _sorted(_write(merged));
+  }
   /* ═══ FIRST READ ON A DEVICE THAT PREDATES THE ROSTER ═══
      Seed from the two keys the old model could be holding — but a key is not
      a character, and the difference matters here more than anywhere else.
@@ -134,8 +217,67 @@ export function readRoster() {
     e.provisional = true;
     seeded.push(e);
   }
+  /* ═══ v2.3.2110: ...OR A DEVICE THAT IS ONLY NEW BECAUSE THE BUILD IS ═══
+     Everything above reads localStorage, which a fresh Pages deployment does
+     not share with the deployment before it — so on that origin the two legacy
+     keys are absent and the seed is empty.  The shared mirror is the one store
+     that DOES cross that gap (rosterCookie.js), and this is the read it exists
+     for: the roster the player built on the last build, restored before they
+     have seen a screen. */
+  const dead = Object.create(null);
+  const have = Object.create(null);
+  seeded.forEach(function (e) { have[e.phrase] = 1; });
+  if (shared) {
+    shared.tomb.forEach(function (p) { dead[p] = 1; });
+    shared.list.forEach(function (e) {
+      if (have[e.phrase] || dead[e.phrase]) return;
+      have[e.phrase] = 1;
+      seeded.push(_fromShared(e));
+    });
+  }
   _write(seeded);
   return _sorted(seeded);
+}
+
+/* ═══ v2.3.2110: WALKING STRAIGHT IN ON A BUILD YOU HAVE NEVER OPENED ═══
+ * Owner: "The continue button should allow them to continue their character
+ * from previous builds."  Restoring the roster makes that button work — but
+ * on the origin the player actually lands on, the door only appears because
+ * this device has no `bt_passphrase`, and the myId initialiser is about to
+ * MINT one (BroTown.jsx).  A brand-new key has no character, so the boot check
+ * routes to the login screen, and the player is asked to pick something they
+ * were already playing five minutes ago on the previous link.
+ *
+ * So the initialiser asks here first: if this origin has never had a roster
+ * and the mirror is holding one, adopt its most recent character as the
+ * device's key.  The player lands in the world, which is what "continue"
+ * means, with no key typed and no list to read.
+ *
+ * THE THREE GUARDS ARE THE WHOLE DESIGN, because this must not fire on the
+ * road that LOOKS the same:
+ *   - a device already holding a key is not being restored, it is being
+ *     played, and nothing here may touch it;
+ *   - an origin with its OWN roster is not new, so an absent key means the
+ *     player deleted the active character (forgetChar clears it) and the door
+ *     is the correct destination — adopting there would silently walk them
+ *     into a different character right after a delete;
+ *   - a provisional row is a key the migration GUESSED at (charRoster header).
+ *     Guessing wrong here means auto-joining as somebody who may not exist, so
+ *     those rows stay for the picker, which resolves them against the worker.
+ * Returns the adopted phrase, or null when any guard says no.
+ */
+export function adoptSharedPhrase() {
+  try {
+    if (_ls('bt_passphrase')) return null;
+    if (_raw()) return null;
+    const shared = _shared();
+    if (!shared || !shared.list.length) return null;
+    const list = readRoster().filter(function (e) { return !e.provisional; });
+    if (!list.length) return null;
+    const phrase = list[0].phrase;       /* readRoster sorts most-recent-first */
+    localStorage.setItem('bt_passphrase', phrase);
+    return phrase;
+  } catch (e) { return null; }
 }
 
 export function rosterCount() { return readRoster().length; }
@@ -240,7 +382,9 @@ export function forgetChar(phrase) {
     }
     if (localStorage.getItem('bt_passphrase_prev') === phrase) localStorage.removeItem('bt_passphrase_prev');
   } catch (e) {}
-  _write(list);
+  /* v2.3.2110: the tombstone rides along, so the delete crosses to the other
+     origins of this site instead of being undone by the next build's restore. */
+  _write(list, phrase);
   return _sorted(list);
 }
 
@@ -267,6 +411,7 @@ try {
     window.__btRoster = {
       read: readRoster, remember: rememberChar, forget: forgetChar,
       activate: activateChar, describe: describeChar, ensure: ensureChar,
+      adopt: adoptSharedPhrase,
       MAX: ROSTER_MAX,
     };
   }

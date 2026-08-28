@@ -180,7 +180,7 @@ import { t1StatsPayload } from '@/game/t1Sync.js'; /* v2.3.1633: shared T1 repor
 import * as DATA from '@/data/index.js';
 import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId } from '@/networking/index.js';
 /* v2.3.1923: the device's character roster — see src/networking/charRoster.js */
-import { rememberChar, ensureChar, activateChar, inRoster } from '@/networking/charRoster.js';
+import { rememberChar, ensureChar, activateChar, inRoster, adoptSharedPhrase } from '@/networking/charRoster.js';
 import { HEADWEAR_CATALOG, getHeadwear, setHeadwear } from '@/rendering/traits/headwearCatalog.js';
 import { FACIALHAIR_CATALOG, getFacialHair, setFacialHair } from '@/rendering/traits/facialHairCatalog.js';
 import { HAIR_CATALOG, getHair, setHair } from '@/rendering/traits/hairCatalog.js';
@@ -737,6 +737,19 @@ export var BroTown = function BroTown(_ref0) {
       try {
         if (/[?&]guest=1\b/.test(window.location.search)) return Math.random().toString(36).slice(2, 10);
         var _pf = localStorage.getItem('bt_passphrase');
+        /* ═══ v2.3.2110: BEFORE MINTING A KEY, ASK IF THIS IS REALLY A NEW DEVICE ═══
+           Owner: "the continue button ... right now it shows empty each time an
+           update is pushed."  It is not a new device — it is a new ORIGIN.  Each
+           Cloudflare Pages deployment gets its own hostname, localStorage is
+           per-origin, and minting here is what turned "your character is in the
+           other drawer" into "you have no character".  adoptSharedPhrase reads
+           the roster mirror that DOES cross origins (rosterCookie.js) and hands
+           back the most recent character, so the player walks straight in.  It
+           returns null on every road that is genuinely new or genuinely a
+           delete — see its guards — and then we mint as before.  This has to
+           happen HERE, before myId is derived: adopting later would need a
+           reload to rebuild the ids already baked into module state. */
+        if (!_pf) _pf = adoptSharedPhrase();
         if (!_pf) {
           _pf = generatePassphrase();
           localStorage.setItem('bt_passphrase', _pf);

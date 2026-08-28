@@ -98,6 +98,59 @@ Client knobs:
 - `MenuBar.jsx`'s reset path still removes `bt_passphrase`/`bt_rpg` —
   that is now "delete character", which is what an explicit reset means.
 
+## The roster mirror (v2.3.2110)
+
+The device's character roster (`src/networking/charRoster.js`) lives in
+`localStorage`, which is **per origin** — and a Cloudflare Pages deploy
+gives every build its own hostname (`<hash>.<project>.pages.dev`) beside
+the project's stable one. So opening the newest build meant opening a
+different origin: the roster read empty, the boot initialiser minted a
+fresh passphrase, and the player was shown the login door.
+
+Owner: *"People don't remember their key or know they have one. The
+continue button should allow them to continue their character from
+previous builds. Right now it shows empty each time an update is
+pushed."*
+
+`src/networking/rosterCookie.js` keeps a compact mirror of the roster in
+a cookie scoped to the **registrable domain**, which every deploy
+hostname of the same site shares. `localStorage` stays the working copy;
+the cookie exists so a first read on a new origin has something to
+restore from.
+
+- **Domain**: found by probing (2 labels, then 3, then 4) and using the
+  first the browser accepts — a public suffix like `pages.dev` fails the
+  probe by definition, so no Public Suffix List is shipped, and the rule
+  is self-correcting on a custom domain, on pages.dev and on localhost
+  (host-only cookie, harmless).
+- **Payload**: `{v, l:[{p,a,n,lv}], x:[phrase]}`, URL-encoded, capped at
+  3400 bytes (tombstones shed first, then the oldest rows).
+- **Tombstones** (`x`): a deleted phrase travels too, or the next build
+  would restore the character just removed. A phrase that comes back
+  (re-entered by key) drops out of them on the next write.
+- **Writes**: `charRoster._write` is the single funnel, so no mutation
+  can update one store and not the other. A device with a roster and no
+  mirror backfills once per page load.
+- **Boot**: `adoptSharedPhrase()` runs inside the `myId` initialiser,
+  *before* a key is minted. If this origin has never had a roster and the
+  mirror holds one, the most recent non-provisional character becomes the
+  device's key and the player walks straight in. It returns null when a
+  key is already held, when the origin has its own roster (an absent key
+  there means the player *deleted* the active character and the door is
+  correct), or when the only rows are provisional.
+- **Cost, written down**: the phrase is the credential and a cookie is
+  sent to the page host on every request, which `localStorage` is not.
+  `Secure` + `SameSite=Lax` on https; the same phrase already crosses the
+  wire to the worker on every join.
+- **Limit**: this crosses hostnames of one site, not separate sites. A
+  custom domain and `*.pages.dev` are different registrable domains and
+  do not share the mirror — the Login Key is still the road between
+  those.
+- **Test**: `node tools/qa/roster-mirror.test.mjs` (zero-dependency, off
+  the PR path) stubs the two stores with the property that matters — a
+  fresh `localStorage` per origin, one shared cookie jar that enforces
+  the public-suffix and host-scope rules.
+
 ## Tests
 
 `server/test/identity.test.mjs` (in `npm test`):
