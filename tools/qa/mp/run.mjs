@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  inkplace: () => import('./mp-inkplace.mjs'), /* v2.3.2082: does a tattoo stay in the same place while you move? */
   townforge: () => import('./mp-townforge.mjs'), /* v2.3.2077: forging in town reaches the worker */
   townmeal: () => import('./mp-townmeal.mjs'), /* v2.3.2077: eating + cooking in town reach the worker */
   plazaplate: () => import('./mp-plazaplate.mjs'), /* v2.3.2071: a plate on every townsperson, benches facing the water */

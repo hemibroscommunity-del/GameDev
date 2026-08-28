@@ -95,9 +95,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
      shared with mp-facingside and mp-cosmpose.  The old version clamped a
      negative origin to 0, which silently slid the box off the figure; the
      shared one returns null instead, so an unmeasurable frame says so. */
-  const clip = () => H.figureBox(P);
-  const inkCount = async (tag) => {
-    const box = await clip();
+  /* ═══ v2.3.2082: A MOVING FIGURE NEEDS A BIGGER BOX ═══
+     figureBox is 40x46 around where the renderer last drew the player, and
+     page.screenshot takes long enough that a RUNNING player has left it: the
+     jog samples below photographed bare cobbles and empty rocks and reported
+     0, 81, 177 ink pixels, which read as "the tattoo vanishes when he runs"
+     and is not what the pictures show (tools/qa/mp/out/, and the shots this
+     writes).  The pad is aim, not slack: the control below still requires
+     fewer than 12 ink pixels ANYWHERE in the box with no tattoo on, so a
+     larger box cannot manufacture a pass -- the town has no pink in it. */
+  const RUN_PAD = 26;
+  const clip = (pad = 0) => H.figureBox(P, { pad });
+  const inkCount = async (tag, pad = 0) => {
+    const box = await clip(pad);
     /* v2.3.2078: a null box means the figure is not fully on the glass.
        Counting a FULL-PAGE screenshot instead (what screenshotPixels does
        with no clip) would report the whole town's ink as the character's. */
@@ -174,16 +184,31 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── MID-STRIDE ──
      See the header: the CLAIM here is that the ink is on the figure while he
      runs, not where each later frame's box lands — that measurement belongs to
-     v2.3.1992, which is not on this branch. */
+     v2.3.1992, which is not on this branch.
+
+     v2.3.2082: RUN SOMEWHERE ELSE.  These strides used to start at the spawn
+     and head east, straight at Lil Bro (1180, 1180) — and an NPC's chat
+     bubble is a large opaque white panel drawn over whatever is behind it.
+     Two of the four east samples photographed the words "...s got" with the
+     character underneath them, which counts as no ink for the same reason a
+     player would see no tattoo: it is covered.  (1000, 1420) is open plaza
+     with 200px of clear runway east and south (tools/dev/town-lanes.mjs), no
+     townsperson within 240px of either path, and tile x=31 all the way — six
+     tiles clear of the World View trail-head at (25, 48), whose reach is
+     TOWN_EXIT_R = 2 in Manhattan tiles. */
+  await H.hopTo(P, 1000, 1420);
+  await P.page.waitForTimeout(500);
   await P.page.keyboard.down('d');
   await P.page.waitForTimeout(700);
   const jog = [];
-  for (let i = 0; i < 4; i++) { await P.page.waitForTimeout(140); jog.push(await inkCount('jog-east-' + i)); }
+  for (let i = 0; i < 4; i++) { await P.page.waitForTimeout(140); jog.push(await inkCount('jog-east-' + i, RUN_PAD)); }
   await P.page.keyboard.up('d');
   await P.page.waitForTimeout(600);
+  await H.hopTo(P, 1000, 1420);
+  await P.page.waitForTimeout(400);
   await P.page.keyboard.down('s');
   await P.page.waitForTimeout(700);
-  for (let i = 0; i < 3; i++) { await P.page.waitForTimeout(140); jog.push(await inkCount('jog-south-' + i)); }
+  for (let i = 0; i < 3; i++) { await P.page.waitForTimeout(140); jog.push(await inkCount('jog-south-' + i, RUN_PAD)); }
   await P.page.keyboard.up('s');
   rec.ok('every running frame could actually be measured (guard)',
     jog.length > 0 && jog.every((n) => n !== null), jog);

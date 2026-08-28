@@ -81,8 +81,20 @@ async function boxFor(P, peerId) {
      v2.3.2069 fountain landed inside it and the control frame started
      reading 4455 blue pixels off water on a character with no art on him.
      H.figureBox is the one copy of the tight box now; off-screen still
-     returns null, because that means "not measurable", not "no ink". */
-  return H.figureBox(P, { peerId: peerId || null });
+     returns null, because that means "not measurable", not "no ink".
+
+     v2.3.2082: A PEER GETS A PAD, and only a peer.  Your own figure is
+     anchored on __btPlayerDrawn — where the renderer actually put it last
+     frame — while a peer is anchored on renderX/renderY, the smoothed
+     interpolation, and page.screenshot lands some milliseconds after the
+     read.  A peer who is RUNNING has left a 40x46 box by then: `pinkMin` is
+     a MINIMUM over every sample of the whole scenario, so one badly aimed
+     crop out of dozens takes it to 0 and reports "the other player cannot
+     see his tattoos" about a character who is plainly covered in them.
+     The pad cannot manufacture a pass -- it is the same town behind the
+     figure either way, and the town has no pink or green in it (this
+     scenario's own no-art control is what says so). */
+  return H.figureBox(P, { peerId: peerId || null, pad: peerId ? 22 : 0 });
 }
 
 /** Ink counts in one figure's box, plus the pose being drawn right now. */

@@ -1267,3 +1267,55 @@ direction.
 **Related:** §20 (a fixed wrap is its own stacking context — a control the
 dashboard paints over), §34 (moving the scenery under a probe), §35 (copying
 a value out of the game).
+
+---
+
+## §37 — Measuring a drawing against the box that defines it tests the arithmetic, not the art (v2.3.2082)
+
+**The move that looks right.** The owner asks whether tattoos land in the
+same place through an animation. The bake already publishes, per frame, the
+region box it measured and the grid it fitted into that box
+(`window.__btGridProbe` → `__btGridsByTag['<pose>-<dir>']`, from
+`stampRegion` in `src/rendering/playerDecal.js`). So: express the grid's
+origin as a fraction of the region box, take the spread across the frames of
+a sheet, and gate on it. Every number is real, every number comes from the
+running game, and the check passes on a sheet whose tattoo crawls all over
+the chest.
+
+**Why it cannot fail.** `gridFit` *centres* the grid on the box it was
+handed:
+
+```js
+const dw = Math.max(ART_W, Math.round(bw * box.fillW));
+const ox = Math.round((lx + rx + 1) / 2 - dw / 2);
+const oy = Math.round(ty + bh * box.cy - dh / 2);
+```
+
+so `(ox - lx) / bw` is `(1 - fillW) / 2` on every frame of every sheet, for
+every drawing, forever. The metric is a restatement of two lines of
+arithmetic. A region box that has wandered off the chest and onto the armpit
+carries its perfectly-centred grid along with it and reports no drift at all.
+
+**The rule.** A placement is only measurable against something that did not
+help place it. Two things placed the ink — the region mask and `gridFit` —
+so the reference has to be a third: the FIGURE. `stampRegion` reports each
+frame's own opaque extent under the probe (`fx0, fx1, fy0, fy1`), and
+`mp-inkplace` measures the ink's centre as a fraction of *that*, which is
+what a player is actually looking at.
+
+**The same trap, elsewhere in this repo.** §35 is its sibling — a test that
+copies a value out of the game and compares it to itself. This one does not
+copy anything; it derives both sides of the comparison from the same
+function. Ask of any placement check: *what would have to be broken for this
+number to move?* If the answer is "nothing that could plausibly break", the
+reference is wrong, not the threshold.
+
+**A corollary worth keeping.** The reference does not have to be perfect to
+be valid, only independent. The figure box wobbles too — arms swing out
+through a stride and widen it — so a correctly-placed tattoo still moves a
+few percent, and the gate sits above that wobble rather than at zero. An
+imperfect independent reference beats a perfect dependent one.
+
+**Related:** §33 (a test that reads a field the game does not have), §35 (a
+test that copies a value out of the game), §34 (moving the scenery under a
+colour probe).
