@@ -21,7 +21,7 @@
  */
 import { Assets, Rectangle, Texture } from 'pixi.js';
 import { NPC_DATA } from '../data/gameDisplay.js';
-import { propSpriteSources } from '../data/worldProps.js'; /* v2.3.1775: scenery shares this registry */
+import { propSpriteSources, propAnimStrips } from '../data/worldProps.js'; /* v2.3.1775: scenery shares this registry; v2.3.2061: + animated strips */
 
 /* Keys are asset paths that come from data, so Object.create(null): a plain {}
    silently no-ops on '__proto__' (CLAUDE.md — three incidents in one day). */
@@ -116,6 +116,35 @@ export function getNpcWalkFrame(npcId, dir, frameIdx) {
   return set[((frameIdx % set.length) + set.length) % set.length];
 }
 
+/* ═══ v2.3.2061: ANIMATED PROPS ═══
+ * propId -> [Texture]. Object.create(null) because the keys are ids out of a
+ * data table (CLAUDE.md rule 4).
+ *
+ * Sliced by the SAME _sliceStrip the walking NPCs use, from the same load, on
+ * the same gate. The fountain is the first prop that moves, and the cheapest
+ * correct way to give it frames was to notice that a prop strip and an NPC
+ * walk row are the same file shape -- one horizontal run of equal cells -- so
+ * it needed a table entry and a lookup, not a second loader. */
+const _propAnim = Object.create(null);
+
+/** One frame of an animated prop, or null when it has none (or none has
+ *  loaded). Callers fall back to the whole strip texture, so a missing slice
+ *  is a wrong-looking prop rather than an invisible one. */
+export function getPropFrame(propId, frameIdx) {
+  const set = _propAnim[propId];
+  if (!set || !set.length) return null;
+  return set[((frameIdx % set.length) + set.length) % set.length];
+}
+
+/** How many frames a prop's animation actually has, after loading. 0 if none.
+ *  The renderer needs this rather than the declared count: if the strip failed
+ *  to load there is nothing to cycle, and cycling anyway would blink the prop
+ *  between a texture and null. */
+export function propFrameCount(propId) {
+  const set = _propAnim[propId];
+  return set ? set.length : 0;
+}
+
 /** Does this NPC have walk art at all? Lets the renderer decide once. */
 export function hasNpcWalk(npcId) {
   const byDir = _walk[npcId];
@@ -146,6 +175,13 @@ export function loadNpcSprites() {
         if (tex) byDir[d] = _sliceStrip(tex, w.frames || 4);
       }
       if (Object.keys(byDir).length) _walk[n.id] = byDir;
+    }
+    /* v2.3.2061: animated props, cut in the same pass and for the same reason
+       -- AFTER the promise the intro gate awaits, so a fountain has its eight
+       frames before the overlay lifts rather than on first sighting. */
+    for (const a of propAnimStrips()) {
+      const tex = _tex[a.sprite];
+      if (tex) _propAnim[a.id] = _sliceStrip(tex, a.frames);
     }
     return r;
   });

@@ -3,7 +3,7 @@
  * Uses PixiJS Graphics for procedural shapes (matching the original Canvas 2D look).
  */
 import { Assets, ColorMatrixFilter, Container, Graphics, Rectangle, Sprite, Text, TextStyle, Texture } from 'pixi.js';
-import { getNpcTexture, getNpcWalkFrame, hasNpcWalk } from '../npcSprites.js'; /* v2.3.1672: NPC figure art; v2.3.2046: walking NPCs */
+import { getNpcTexture, getNpcWalkFrame, hasNpcWalk, getPropFrame, propFrameCount } from '../npcSprites.js'; /* v2.3.1672: NPC figure art; v2.3.2046: walking NPCs; v2.3.2061: animated props */
 import { propsForZone, propFootprint } from '../../data/worldProps.js'; /* v2.3.1775: scenery; v2.3.1794: + footprint for the props probe */
 import { TILE } from '@/data/constants.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
@@ -9778,12 +9778,29 @@ export class EntityRenderer {
         this.propDisplays.set(p.id, spr);
       }
       if (spr.texture === Texture.EMPTY) {
-        const t = getNpcTexture(p.sprite);
+        /* ═══ v2.3.2061: AN ANIMATED PROP TAKES ITS SIZE FROM ONE FRAME ═══
+           The fountain's art is an eight-frame STRIP, so `getNpcTexture` here
+           returns something eight times too wide. Scaling that to worldH would
+           have drawn the whole film reel at an eighth of the intended height,
+           which is why the frame is asked for first and the strip is only the
+           fallback for a prop that has no animation. */
+        const t = (p.anim && getPropFrame(p.id, 0)) || getNpcTexture(p.sprite);
         if (t) {
           spr.texture = t;
           const h = t.height || 1;
           spr.scale.set((p.worldH || h) / h);
         }
+      }
+      /* The frame swap. Time-driven, not distance-driven like the walking
+         NPCs: a fountain runs at its own rate regardless of anything moving.
+         Driven off the shared wall clock rather than a per-prop accumulator so
+         two of the same prop stay in step and a dropped frame does not slow
+         the water down -- it skips, which is what a clock does and what an
+         accumulator does not. */
+      if (p.anim && propFrameCount(p.id) > 1) {
+        const fps = p.anim.fps > 0 ? p.anim.fps : 12;
+        const tex = getPropFrame(p.id, Math.floor(Date.now() * fps / 1000));
+        if (tex && spr.texture !== tex) spr.texture = tex;
       }
       spr.x = p.x;
       spr.y = p.y;
@@ -9804,10 +9821,18 @@ export class EntityRenderer {
            mp-townmap picked the anvil and failed for the right reason. */
         let _fp = null;
         try { _fp = propFootprint(_propById[id]) || null; } catch (e) { /* probe only */ }
+        /* v2.3.2061: the FRAME an animated prop is showing, as its rectangle
+           within the shared strip source. A test that wants to prove the water
+           actually moves needs something it can sample twice and compare, and
+           the texture's frame origin is the smallest honest answer -- a
+           screenshot diff would also catch the player walking past. */
+        const _fr = spr.texture && spr.texture.frame;
         _propsDrawn.push({ id, x: spr.x, y: spr.y,
           width: spr.texture.width * spr.scale.x,
           height: spr.texture.height * spr.scale.y,
-          blocks: !!_fp, footprint: _fp });
+          blocks: !!_fp, footprint: _fp,
+          frameX: _fr ? Math.round(_fr.x) : null,
+          frameW: _fr ? Math.round(_fr.width) : null });
       }
     }
   }

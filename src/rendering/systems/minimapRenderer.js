@@ -130,6 +130,10 @@ const C_QUEST_DONE = 0x58b97b;   /* COL.xp — green '?', same as the in-world b
    opens (worldProps.js) rather than off its id.  Keying on the action means
    the icon and the panel come from one field: rename a building and the map
    still promises exactly the trade you get when you walk in. */
+/* v2.3.2061 dev probe store, house style: prop id -> the glyph it drew. */
+const _propMarks = [];
+if (typeof window !== 'undefined') window.__btMinimapMarks = () => _propMarks.slice();
+
 const BUILDING_ICON = {
   forge: 'forge',
   bank: 'bank',
@@ -651,14 +655,26 @@ export class MinimapRenderer {
        no action (the mayor's house) falls back to the roof glyph. */
     let props = [];
     try { props = propsForZone(zoneId) || []; } catch (e) { props = []; }
+    /* v2.3.2061 dev probe, house style (__btWorldProps): which glyph each prop
+       got. A wrong icon is invisible to every other check -- the marker is
+       drawn, it is the right colour, it is in the right place, and it is a
+       picture of the wrong thing. */
+    _propMarks.length = 0;
     for (let i = 0; i < props.length; i++) {
       const b = props[i];
       if (!b || !b.sprite) continue;         /* the anvil and stall are scenery */
-      const key = BUILDING_ICON[b.action] || (b.blockW ? 'house' : null);
+      /* v2.3.2061: `mapIcon: null` opts a prop OUT. The fallback below reads
+         "it blocks, so it is a building", which was true while every blocking
+         prop WAS one -- the fountain is the first that is not, and it was
+         being marked on the minimap with a little roof. */
+      const key = b.mapIcon !== undefined
+        ? b.mapIcon
+        : (BUILDING_ICON[b.action] || (b.blockW ? 'house' : null));
       if (!key) continue;
       /* Anchored at the bottom-centre in world space, so lift the marker onto
          the middle of the building rather than its doorstep. */
       this._mark(b.x, b.y - (b.worldH || 0) * 0.35, key, C_BUILDING, BIG_ICON_PX, 0);
+      _propMarks.push({ id: b.id, key });
     }
 
     const npcs = S.npcs || [];

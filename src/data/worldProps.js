@@ -25,7 +25,7 @@ export const WORLD_PROPS = [
        (~590) and clear of the lamp post at (633, 890).
        46 world px tall reads as an anvil at a smith's knee — a real one is
        roughly a third of a person, and a person here is 120. */
-    id: 'anvil', zone: 'town',
+    id: 'anvil', zone: 'town', mapV: 16,
     sprite: '/sprites/props/anvil.png',
     x: 1310, y: 660, worldH: 46,
   },
@@ -35,7 +35,7 @@ export const WORLD_PROPS = [
        170 world px puts the canopy about a head and a half above a person,
        which is what a market awning is.  It is drawn from its bottom edge, so
        the counter meets the cobbles at y and the canopy rises from there. */
-    id: 'market-stall', zone: 'town',
+    id: 'market-stall', zone: 'town', mapV: 16,
     sprite: '/sprites/props/market-stall.png',
     x: 2560, y: 700, worldH: 170,
   },
@@ -61,45 +61,93 @@ export const WORLD_PROPS = [
      before placement, and the grid re-checked for connectivity afterwards:
      five solid blocks in a bowl is an easy way to wall the town in half. */
   {
-    /* ═══ v2.3.1794: UP ON THE HILL ═══
-       Owner: "put mayor bros house up on the hill (above the stairs) and mayor
-       bro right outside the house."  It stood on the lower plaza at (1180,585),
-       in the row with the forge and the bank, which made the town's one
-       landmark just another shopfront.
+    /* ═══ v2.3.2061: BACK ON THE HILL, MEASURED AGAINST THE MAP THAT SHIPS ═══
+       Owner: "put mayor bros house on the top of the hill (you won't be able
+       to go inside just the building)."
 
-       Placed by reading the art rather than by eye: the walled courtyard at the
-       top of the stairs is sand from about x 750..1150 and y 120..300, with the
-       stair head at (960,300).  A prop's (x,y) is its BOTTOM-CENTRE
-       (anchor 0.5,1), so the base sits on the courtyard floor at y=300 and the
-       house draws upward from there.
+       It has been off the map since v2.3.1813, when the town was re-fused from
+       96x30 tiles to 52x55 and every prop coordinate in this file became a
+       number for a map that no longer exists. Its old (930, 300) was measured
+       against the v16 courtyard; on town_v17 that is a different place
+       entirely. So this is a fresh measurement, not a conversion — converting
+       arithmetically is how you land a house in the trees and call it done.
 
-       worldH 300 -> 235 for the same reason: at 300 the roof reached y=0 and
-       stood over the cliffs and pines that ring the terrace.  235 fits between
-       the cliff line (~60) and the stair head, and a slightly smaller building
-       on a raised terrace reads as further away, which is what it is. */
-    id: 'mayor-house', zone: 'town', sprite: '/sprites/props/mayor-house.png',
-    x: 930, y: 300, worldH: 235, blockW: 165, blockD: 75,
-    /* No action: it is Mayor Bro's house, and he is standing outside it
-       handing out the tutorial.  A door that opens a panel he already covers
-       would be a second, worse way to talk to him. */
+       WHERE THE HILL IS, read off the art rather than by eye: the plateau's
+       high ground is the fenced terrace at the head of the north ramp, and its
+       clear cobble runs x 660..830 by y 320..470. Sampled on a 40px disc, the
+       middle of that box is 99% cobble and every edge of it falls off into
+       fence, cliff or pine — so the house sits at (750, 455), which puts its
+       front step just inside the terrace's southern lip, looking down over the
+       plaza. A prop's (x,y) is its BOTTOM-CENTRE, so the building draws upward
+       from that step and the roof rises against the rock behind it.
+
+       worldH 165 rather than the old 235: the v16 courtyard was wider than
+       this terrace. At 235 the art is 227 world px across and would hang over
+       the fence on both sides; at 165 it is 159, inside the 170 the terrace
+       actually has.
+
+       NO `action`, which is the "you won't be able to go inside" half of the
+       ask -- buildingPropNear only ever returns props that carry one, so there
+       is no Enter prompt and no panel behind it. It blocks, because you should
+       not be able to walk through a house. */
+    id: 'mayor-house', zone: 'town', mapV: 17,
+    sprite: '/sprites/props/mayor-house.png',
+    x: 750, y: 455, worldH: 165, blockW: 120, blockD: 52,
   },
   {
-    id: 'forge', zone: 'town', sprite: '/sprites/props/forge.png',
+    /* ═══ v2.3.2061: THE PLAZA FOUNTAIN ═══
+       Owner supplied an 8-frame magenta sheet: "See if you can wire in this
+       sprite sheet of a fountain."
+
+       THE FIRST ANIMATED PROP. Everything in this table until now has been one
+       still texture, so `anim` is new: it names a horizontal strip and the
+       rate to play it at, and the renderer swaps the frame on a clock (see
+       _updateProps in entityRenderer.js). The strip is sliced by the same
+       _sliceStrip the shopkeeper's walk rows use and rides the same preload
+       gate every prop sprite already rides, so nothing here loads on first
+       sighting -- CLAUDE.md's preloading law.
+
+       12 fps over 8 frames is a 0.67s loop. Measured against the art rather
+       than picked: the water rises and falls once across the eight, and much
+       faster reads as a flicker while much slower reads as a stutter.
+
+       PLACED IN THE MIDDLE OF THE PLAZA, 200px south of TOWN_SPAWN (815,1010),
+       so it is the first thing in front of you when you land -- which is what
+       a town's centrepiece is for. Sampled on an 80px disc, (830,1215) is 99%
+       open cobble; the nearest thing to it is the spawn point itself, and the
+       footprint below stops well short of it.
+
+       It blocks, on the same reasoning as the house: a stone basin you can
+       walk through reads as a bug. The footprint is the basin's ground
+       ellipse and is deliberately narrower than the drawn art -- the spray
+       overhangs the stonework, and blocking the spray would stop the player a
+       body-width from the rim. */
+    id: 'fountain', zone: 'town', mapV: 17,
+    /* Not a building, so no roof glyph on the minimap -- the marker there is
+       keyed off "does it block", and this is the first blocking prop that is
+       not somewhere you go. */
+    mapIcon: null,
+    sprite: '/sprites/props/fountain.webp',
+    anim: { frames: 8, fps: 12 },
+    x: 830, y: 1215, worldH: 170, blockW: 140, blockD: 48,
+  },
+  {
+    id: 'forge', zone: 'town', mapV: 16, sprite: '/sprites/props/forge.png',
     x: 1480, y: 545, worldH: 300, blockW: 220, blockD: 95,
     action: 'forge', label: 'BLACKSMITH',
   },
   {
-    id: 'bank', zone: 'town', sprite: '/sprites/props/bank.png',
+    id: 'bank', zone: 'town', mapV: 16, sprite: '/sprites/props/bank.png',
     x: 1810, y: 505, worldH: 320, blockW: 220, blockD: 95,
     action: 'bank', label: 'BANK',
   },
   {
-    id: 'enchanter', zone: 'town', sprite: '/sprites/props/enchanter.png',
+    id: 'enchanter', zone: 'town', mapV: 16, sprite: '/sprites/props/enchanter.png',
     x: 2130, y: 525, worldH: 300, blockW: 220, blockD: 95,
     action: 'enchant', label: 'ENCHANTER',
   },
   {
-    id: 'general-store', zone: 'town', sprite: '/sprites/props/general-store.png',
+    id: 'general-store', zone: 'town', mapV: 16, sprite: '/sprites/props/general-store.png',
     x: 2440, y: 600, worldH: 300, blockW: 210, blockD: 95,
     action: 'shop', label: 'GENERAL STORE',
   },
@@ -149,14 +197,45 @@ export function buildingPropNear(zoneId, x, y, range) {
  *  Flip to true to get them back exactly as they were. */
 export const TOWN_PROPS_ENABLED = false;
 
+/** ═══ v2.3.2061: THE TOWN MAP A PROP'S POSITION WAS MEASURED AGAINST ═══
+ *  Bump this when the town art is re-fused again, and every prop still
+ *  carrying the old number drops out of the world instead of standing in the
+ *  wrong place. That is the whole mechanism: TOWN_PROPS_ENABLED above is a
+ *  blanket "the v16 set is off", which was right while ALL of them were stale,
+ *  but it cannot express what is true now -- the mayor's house and the
+ *  fountain have been measured against town_v17 and the other six have not.
+ *  Flipping the blanket flag to ship two props would have dragged four
+ *  buildings back to coordinates up to 2560 on a map 1664 wide. */
+export const TOWN_MAP_V = 17;
+
+/** Is this prop's position good for the map that is actually loaded?
+ *  Town props declare `mapV`; anything measured against the CURRENT map draws
+ *  regardless of the blanket switch, and anything older is held behind it. */
+function propIsPlaced(p) {
+  if (!p || p.zone !== 'town') return true;
+  return p.mapV === TOWN_MAP_V ? true : TOWN_PROPS_ENABLED;
+}
+
 export function propsForZone(zoneId) {
-  if (zoneId === 'town' && !TOWN_PROPS_ENABLED) return [];
-  return WORLD_PROPS.filter((p) => p.zone === zoneId);
+  return WORLD_PROPS.filter((p) => p.zone === zoneId && propIsPlaced(p));
 }
 
 /** Every distinct prop sprite — the preload manifest's source list. */
 export function propSpriteSources() {
-  return [...new Set(WORLD_PROPS.map((p) => p.sprite).filter(Boolean))];
+  /* v2.3.2061: only the props that can actually be DRAWN. The four v16
+     buildings are held back until someone re-measures them (propIsPlaced), and
+     preloading ~1MB of art for objects no zone will ask for is a cost paid on
+     the startup gate -- the one place in this game where bytes are most
+     expensive. They come back with their positions, in the same change. */
+  return [...new Set(WORLD_PROPS.filter(propIsPlaced).map((p) => p.sprite).filter(Boolean))];
+}
+
+/** Props that are ANIMATED — `{id, sprite, frames}` — for the strip slicer.
+ *  Separate from propSpriteSources because the loader needs the frame count
+ *  to cut the strip, and the manifest only needs the url. */
+export function propAnimStrips() {
+  return WORLD_PROPS.filter((p) => propIsPlaced(p) && p.anim && p.anim.frames > 1)
+    .map((p) => ({ id: p.id, sprite: p.sprite, frames: p.anim.frames }));
 }
 
 /* v2.3.1813 dev probe, house style (__btWorldProps): the props switch itself.

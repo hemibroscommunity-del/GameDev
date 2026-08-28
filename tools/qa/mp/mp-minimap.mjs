@@ -197,8 +197,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('at least six distinct symbols are actually in use (guard)',
       Object.keys(ic).length >= 6, { keys: Object.keys(ic) });
   } else {
-    rec.ok('building marks are absent because the buildings are switched off', true,
-      { flag: 'TOWN_PROPS_ENABLED=false', census: ic });
+    /* ═══ v2.3.2061: THIS WAS `rec.ok(..., true)` ═══
+       A placeholder that could not fail, and whose text became untrue the day
+       a building came back: the mayor's house is re-measured against town_v17
+       and draws its roof again, while the four shopfronts still carrying v16
+       coordinates do not. Stated as the two halves that are actually true now,
+       so the branch makes a claim instead of narrating one. */
+    /* Read PER PROP rather than off the icon census. The census counts a
+       `forge` and a `shop` mark in the bare town and neither is a building --
+       townsfolk carry their trade's glyph, so the blacksmith and Shopkeeper
+       Bro draw those. A census-based claim about buildings therefore fails on
+       marks that are working exactly as intended, which is what the first cut
+       of this did. */
+    const pm = await P.page.evaluate(() => (window.__btMinimapMarks ? window.__btMinimapMarks() : null));
+    rec.ok('the minimap reports which PROPS it marked (guard)', Array.isArray(pm), pm);
+    rec.ok("the mayor's house is on the map -- it is placed on the map that ships",
+      !!pm && pm.some((m) => m.id === 'mayor-house'), pm);
+    rec.ok('...and the shopfronts still carrying v16 coordinates are not',
+      !!pm && !pm.some((m) => ['forge', 'bank', 'enchanter', 'general-store'].includes(m.id)),
+      { marks: pm, flag: 'TOWN_PROPS_ENABLED=false' });
     /* Still a real distinctness claim, at the size the bare town supports:
        the marks that ARE drawn must not have collapsed onto one glyph. */
     rec.ok('...and the marks still drawn are distinct textures (guard)',
