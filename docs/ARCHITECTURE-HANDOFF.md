@@ -376,7 +376,7 @@ opId-idempotent, sweep checks the deliver stamp before refunding
 (rule 6). Gated on its own narrow `caps.trade2Weapons` (rule 19 /
 TRAPS #9). The item/gold path stays memory-only validate-at-commit.
 
-### F. Promote the report-only CI trio
+### F. Promote the report-only CI trio — REVIEWED v2.3.2067, none promoted
 qa-gear-smoke, qa-party-smoke, qa-combat-predict run
 `continue-on-error` in `.github/workflows/client-ci.yml`; the
 promotion criteria live as comments on those steps (~10 consecutive
@@ -385,6 +385,55 @@ harness's `continue-on-error` line). Check the Actions history per
 harness; promote individually. Danger: a flaky BLOCKING check is
 worse than none — if one still flakes, tune it first (v2.3.1196b,
 commit 4d31448f, is the tuning pattern).
+
+**v2.3.2067 — all three run against a real local stack, none promoted.**
+Two things about the criterion itself, before the per-harness state:
+
+1. **The Actions history cannot answer it.** A `continue-on-error` step
+   that FAILS is reported as `conclusion: success` by the UI and the
+   API. Run 1431 (2026-08-26) is a green `smoke` job whose log says
+   `6 GEAR-SMOKE CHECK(S) FAILED`. Count green runs from step OUTPUT
+   or the count is fiction.
+2. **There is almost no history to count.** The job left the PR path in
+   v2.3.1333 and has been dispatched 7 times ever, 3 of them since — so
+   "~10 consecutive CI runs" is, at the current rate, years away.
+   Promotion here is really a judgement on locally gathered evidence;
+   whoever promotes should say which evidence.
+
+Per harness:
+
+- **qa-combat-predict — BLOCKED, needs a rewrite, not a tune.** Its
+  v2.3.1190 route (town → worldview → ember) is shut by two HARD gates
+  added since: the Mayor gate (v2.3.1676 — quest `tut_1` must be
+  accepted before you may leave town) and the per-zone quest unlock
+  (v2.3.1817, enforced server-side in `movement.js`). It fails on
+  assertion one, identically in CI and locally, having ghost-hopped
+  onto the exit tile; its three reconciliation checks — the point of
+  the file — have never executed. Fixing it means giving it the
+  questline prologue `tools/qa/mp/mp-questline.mjs` already drives.
+- **qa-gear-smoke — REPAIRED, 12/12, still report-only.** It was
+  failing on itself, not on the game: a localStorage key the module
+  renamed (v2.3.1665), a sprite URL the renderer stopped requesting
+  (recolours draw their donor's sheets, v2.3.1757/1772), and a crop
+  that mapped world→screen without `S._worldScaleX/Y`, so at
+  WORLD_ZOOM it sampled ground 130px away from the bro — identical
+  bare and armoured, which is what its "armor does not render" verdict
+  was really reporting. All three fixed; the gating metric went
+  0.0034 → 0.2229 against a 0.0161 noise floor, stable over four
+  consecutive local runs. Left report-only because that sampling code
+  has zero CI runs behind it: the next step is a stabilization series
+  on the dispatched job, then delete the line.
+- **qa-party-smoke — BLOCKED by a live UI regression.** All 11 of its
+  own checks pass; it then dies clicking Leave, because the World Chat
+  feed (v2.3.2037) is drawn over the party roster and takes the tap.
+  At 844x390 with `--dash-h` 265px the feed sits at y 84..117 and the
+  Leave button at y 98..122 — a panel anchored `bottom: calc(--dash-h
+  + 8px)` is in the top-left HUD column, not the lower left, once the
+  band is two thirds of the screen. It covers the quest tracker and
+  the roster (zLayers: feed 25, roster 16, tracker 17-19). Where the
+  feed should go instead is an owner/design call, so it is reported
+  rather than guessed at — see `src/ui/mobile/WorldChatFeed.jsx`,
+  whose own header says "IT DOES NOT EAT TAPS".
 
 ### G. PNG → WebP conversion
 325 PNGs, ~20MB under `public/`. Needs a machine with `cwebp` — the

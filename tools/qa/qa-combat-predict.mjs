@@ -44,6 +44,26 @@
  * trajectory on timeout so failures diagnose themselves.  Promotion
  * criteria: flip it blocking once it holds green (incl. the one
  * workflow retry) for ~10 consecutive CI runs.
+ *
+ * ═══ v2.3.2067: THE ROUTE IS SHUT, AND NO TUNING OPENS IT ═══
+ * (backlog item F, promotion review.)  This harness has never reached
+ * its own subject matter: it fails on assertion one, "A reached
+ * worldview", identically in CI and locally, and the trajectory it dumps
+ * shows why — the bot ghost-hops onto the exit tile (784,1424) and stays
+ * in town.  Leaving town is gated TWICE now, both hard, both added long
+ * after this route was written:
+ *   - the Mayor gate (v2.3.1676, zoneTransitions.js): you may not leave
+ *     town until quest tut_1 is accepted, because that is what arms you;
+ *   - the per-zone quest unlock (v2.3.1817), enforced by the server in
+ *     movement.js — so even a client patched past the first gate gets
+ *     the zone change refused.
+ * Neither is a flake and neither is a bug: they are the onboarding the
+ * owner asked for.  Promoting this check therefore means TEACHING IT THE
+ * PROLOGUE — accept tut_1 from Mayor Bro, then follow the quest that
+ * opens the combat zone — which tools/qa/mp/mp-questline.mjs already
+ * drives end to end and is the thing to borrow from.  Until then the
+ * three reconciliation checks below (the actual point of the file) have
+ * never once executed, so nothing here has any evidence behind it.
  */
 import { chromium } from 'playwright-core';
 import { legacyLogin } from './legacy-login.mjs';

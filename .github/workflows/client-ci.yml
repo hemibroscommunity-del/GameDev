@@ -168,6 +168,45 @@ jobs:
       # flaking, fix or loosen the specific failing check (headers of
       # each harness say which checks are the likely offenders) rather
       # than leaving it report-only forever.
+      #
+      # ═══ v2.3.2067: WHY ALL THREE ARE STILL REPORT-ONLY ═══
+      # (handoff backlog item F, worked end to end against a real local
+      # stack — wrangler dev + vite preview + real Chromium.)
+      #
+      # READ THE LOG, NOT THE TICK.  `continue-on-error: true` makes a
+      # FAILED step report `conclusion: success` in the Actions UI and
+      # API, so "check the Actions history per harness" cannot answer the
+      # promotion question at all: the last completed dispatch (run 1431,
+      # 2026-08-26) is a green job whose log contains "6 GEAR-SMOKE
+      # CHECK(S) FAILED".  Any future count of consecutive green runs has
+      # to come from the step's OUTPUT.
+      #
+      # Per harness, as of this version:
+      #   combat-predict — CANNOT PASS, and not for a flaky reason.  It
+      #     walks town -> worldview -> ember on a v2.3.1190 route, and
+      #     leaving town is now gated twice: the Mayor gate (v2.3.1676,
+      #     needs quest tut_1 accepted) and the per-zone quest unlock
+      #     (v2.3.1817, enforced server-side in movement.js).  It dies on
+      #     its first assertion, "A reached worldview", having ghost-
+      #     hopped onto the exit tile and bounced.  Promoting it means
+      #     giving it the questline prologue tools/qa/mp/mp-questline.mjs
+      #     already drives — a rewrite, not a tune.
+      #   gear-smoke — REPAIRED THIS VERSION (three stale assumptions,
+      #     see the harness header); 12/12 PASS, four consecutive local
+      #     runs, and the gating metric went from 0.0034 (below its own
+      #     noise floor) to 0.2229, ~13x it.  Still report-only ONLY
+      #     because the criterion above is CI runs and this sampling code
+      #     has none: it wants a stabilization series on this job before
+      #     the line below comes out.
+      #   party-smoke — 11/11 of its own checks PASS, then it dies
+      #     clicking Leave: the World Chat feed (v2.3.2037) is drawn over
+      #     the party roster and takes the tap.  That is a live UI
+      #     regression, not harness rot — measured at 844x390 with the
+      #     band at --dash-h 265px, the feed lands at y 84..117 and the
+      #     Leave button is at y 98..122 — and where the feed goes
+      #     instead is an owner/design call (zLayers.js puts it at 25,
+      #     deliberately above the roster's 16), so it is reported rather
+      #     than guessed at here.
       - name: Combat-prediction reconciliation (two sessions; v2.3.1196, report-only)
         continue-on-error: true
         env:

@@ -38,6 +38,23 @@
  * CI status: wired into client-ci.yml as REPORT-ONLY (continue-on-error).
  * Promotion criteria: flip it blocking once it holds green (incl. the
  * one workflow retry) for ~10 consecutive CI runs.
+ *
+ * v2.3.2067 (backlog item F, promotion review): all ELEVEN of its own
+ * checks pass against a real local stack — caps, mutual presence, the
+ * invite card, both rosters, both HUD strips.  It then dies on the Leave
+ * click, and NOT because of the keyboard legend this harness already
+ * presses H for: the World Chat feed (v2.3.2037, WorldChatFeed.jsx) is
+ * drawn over the party roster and takes the tap.  Measured at 844x390
+ * with --dash-h at 265px, the feed's scrollable list — the one element
+ * in it with pointerEvents:'auto' — sits at y 84..117 over a Leave
+ * button at y 98..122, and elementFromPoint on the button's centre
+ * returns the feed.  A bottom-anchored panel clearing a 265px band on a
+ * 390px-tall screen is not in the lower left any more; it is in the
+ * top-left HUD column, on top of the roster (z 16) and the quest tracker
+ * (z 17-19).  That is a live regression rather than harness rot, and
+ * where the feed should go instead is an owner call, so this harness is
+ * left reporting it rather than reaching past the UI to make itself
+ * green.
  */
 import { chromium } from 'playwright-core';
 import { legacyLogin } from './legacy-login.mjs';
