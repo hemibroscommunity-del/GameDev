@@ -9802,7 +9802,17 @@ export class EntityRenderer {
         if (t) {
           spr.texture = t;
           const h = t.height || 1;
-          spr.scale.set((p.worldH || h) / h);
+          const k = (p.worldH || h) / h;
+          /* ═══ v2.3.2071: A PROP CAN FACE THE OTHER WAY ═══
+             Owner: "Position the benches so that lengthwise they face the
+             fountain."  The bench art is a single three-quarter view whose
+             seat faces south-EAST, so as drawn it can only ever be placed
+             north-west of the thing it looks at.  A mirrored copy faces
+             south-west and covers the other side, and mirroring is a sign on
+             the x scale rather than a second 51KB file of the same bench.
+             Anchor is (0.5, 1) — the centre — so the flip pivots about the
+             prop's own ground point and `x`/`y` still mean what they meant. */
+          spr.scale.set(p.flipX ? -k : k, k);
         }
       }
       /* The frame swap. Time-driven, not distance-driven like the walking
@@ -9842,8 +9852,13 @@ export class EntityRenderer {
            screenshot diff would also catch the player walking past. */
         const _fr = spr.texture && spr.texture.frame;
         _propsDrawn.push({ id, x: spr.x, y: spr.y,
-          width: spr.texture.width * spr.scale.x,
-          height: spr.texture.height * spr.scale.y,
+          /* v2.3.2071: ABS, because a mirrored prop has a negative x scale and
+             a negative width is not a width.  The flip is reported as its own
+             field instead, so a test can assert the bench faces the fountain
+             without inferring it from a sign. */
+          width: Math.abs(spr.texture.width * spr.scale.x),
+          height: Math.abs(spr.texture.height * spr.scale.y),
+          flipX: spr.scale.x < 0,
           blocks: !!_fp, footprint: _fp,
           frameX: _fr ? Math.round(_fr.x) : null,
           frameW: _fr ? Math.round(_fr.width) : null });
@@ -9900,13 +9915,29 @@ export class EntityRenderer {
            The SAME _attachNamePill the player and every peer use, so there is
            one plate implementation rather than a second that drifts -- which
            is the reason that function exists at all (see its note).
-           OPT-IN per NPC (`namePlate` in NPC_DATA) rather than applied to all
-           of them: Mayor Bro and Blacksmith Bro carry a quest marker, and
-           their name sits in a hand-tuned stack above the head with the '!'
-           that has its own incident history. Flipping those to a plate is one
-           word each when the owner wants it, and not a silent side effect of
-           this ask. */
-        if (npc.namePlate) {
+
+           ═══ v2.3.2071: EVERY TOWNSPERSON, NOT TWO OF THEM ═══
+           Owner: "Make every persons name or title as a consistent name
+           plate." It was opt-in via `namePlate` in NPC_DATA, and only
+           Shopkeeper Bro and Lil Bro had opted in -- so Mayor Bro, Blacksmith
+           Bro and Storekeeper Bro kept the old above-head `nameText` and the
+           town had two different ways of labelling a person standing in it.
+
+           The flag is GONE rather than set to true on all five. A default
+           carried by a per-NPC boolean is a default that the sixth NPC will
+           miss, and "every person" is the requirement -- so the plate is what
+           an NPC gets, full stop, and there is no longer a way to add one
+           without it. `plateRole` stays optional: it is the gold sub-line
+           (the same slot a player's level sits in), and an NPC without a
+           title simply shows their name.
+
+           The v2.3.2048 note worried that the two quest givers keep a
+           hand-tuned above-head stack around their '!' badge. That worry does
+           not survive contact: the plate hangs BELOW the feet and the lift
+           loop below explicitly skips it, so the badge keeps its position and
+           the only thing that changes is the name moving out from under it --
+           which gives the '!' more room, not less. */
+        {
           _attachNamePill(display, 9, 1);
           nameText.visible = false;
           /* ═══ v2.3.2069: THE PLATE HANGS OFF THE FIGURE'S OWN HEIGHT ═══
@@ -9928,9 +9959,11 @@ export class EntityRenderer {
              lands at 23 -- seven pixels up from v2.3.2064 and half the drop
              it started at.
 
-             Only two NPCs opt into a plate at all (the quest givers keep the
-             above-head stack their '!' marker is tuned around), so this moves
-             exactly one of them and leaves the other where it was. */
+             v2.3.2071: now that every NPC has a plate, this ratio is what
+             keeps them consistent as a SET rather than merely present -- the
+             three that just gained one are all drawn at a different scale
+             from each other, so a flat 38 would have put their plates at
+             visibly different gaps below three different-sized people. */
           if (display._namePill) {
             const _figH = npcFigureHeight(npc.sprite);
             display._namePill.y = Math.max(14, Math.round(_figH * NPC_PLATE_DROP_FRAC));
@@ -10121,6 +10154,19 @@ export class EntityRenderer {
                this one is not ordered like the shopkeeper's -- so a test needs
                to see which way he was pointed and which file answered. */
             walkDir: display._walkDir || null,
+            /* v2.3.2071: the PLATE as painted -- the two strings on it, how
+               far below the feet it hangs, and whether the old above-head
+               label is really gone. Owner: "Make every persons name or title
+               as a consistent name plate", and consistency is a property of
+               the SET, so a test needs every plate's actual numbers rather
+               than a flag saying one was requested. */
+            plate: display._namePill ? {
+              name: display._pillName ? display._pillName.text : null,
+              role: display._pillLevel ? display._pillLevel.text : null,
+              y: Math.round(display._namePill.y),
+              visible: display._namePill.visible,
+            } : null,
+            oldLabelHidden: display._nameText ? !display._nameText.visible : null,
           };
         }
       }

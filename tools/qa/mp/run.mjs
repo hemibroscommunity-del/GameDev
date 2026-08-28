@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  plazaplate: () => import('./mp-plazaplate.mjs'), /* v2.3.2071: a plate on every townsperson, benches facing the water */
   portalbeam: () => import('./mp-portalbeam.mjs'), /* v2.3.2070: the light shaft over a zone exit */
   lilbro: () => import('./mp-lilbro.mjs'), /* v2.3.2064: the second walking NPC */
   potions: () => import('./mp-potions.mjs'), /* v2.3.2062: the mana + speed draughts */

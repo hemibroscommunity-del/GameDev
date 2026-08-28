@@ -165,15 +165,49 @@ export const WORLD_PROPS = [
     sprite: '/sprites/props/lamp-post.webp',
     x: 1130, y: 1080, worldH: 150,
   },
+  /* ═══ v2.3.2071: BOTH BENCHES LOOK AT THE FOUNTAIN ═══
+     Owner: "Position the benches so that lengthwise they face the fountain.
+     Tallest back part should be furthest back from the fountains."
+
+     WHAT THE ART CAN DO decides where they go. The bench is one
+     three-quarter view: its length runs lower-left to upper-right, the
+     backrest is on the NORTH-WEST side and the seat faces SOUTH-EAST. There
+     is no rear view and no north-facing pose, so a bench can only ever sit
+     north-west of what it looks at -- or north-EAST of it, mirrored, which is
+     what `flipX` is for. That is why they are a pair on the fountain's north
+     side rather than ringing it: two benches at the head of the square
+     looking in at the water is the arrangement this art actually supports.
+
+     The old bench-e was the case that made the ask: at (1050, 1230) the
+     fountain was up and to its LEFT, so it had its back to the water and a
+     sitter faced away across the plaza.
+
+     Both are now 130 px either side of the fountain's axis at the same y, so
+     they mirror each other exactly. Measured, not eyeballed: the line to the
+     fountain leaves each one at 39 degrees below horizontal (the diagonal the
+     art's seat is drawn along), the ground under each base band samples 93%
+     and 97% cobble, and neither drawn rect touches another prop's.
+
+     THE WEST ONE SITS INSIDE SHOPKEEPER BRO'S PATROL, by about 20 px, and
+     that is the best the north-west quadrant allows -- a sweep of every
+     position in the plaza found seventeen spots that satisfy the owner's
+     geometry on that side and all seventeen are inside his 110 px wander
+     disc, because the forge, its anvil, the west lamp and the blacksmith
+     already own the rest of it. Benches are non-blocking dressing by design
+     (see the header), so he ambles past rather than getting stuck; worth an
+     owner's eye if he ever reads as standing IN it. */
   {
     id: 'bench-w', zone: 'town', mapV: 17, mapIcon: null,
     sprite: '/sprites/props/bench.webp',
-    x: 540, y: 1030, worldH: 75,
+    x: 730, y: 975, worldH: 75,
   },
   {
+    /* Mirrored, so its back is on the north-EAST side and its seat looks
+       south-west at the fountain. A sign on the x scale, not a second copy of
+       the art -- see the flip note in entityRenderer's _updateProps. */
     id: 'bench-e', zone: 'town', mapV: 17, mapIcon: null,
     sprite: '/sprites/props/bench.webp',
-    x: 1050, y: 1230, worldH: 75,
+    x: 990, y: 975, worldH: 75, flipX: true,
   },
   {
     /* The town's colours on the way in from the south gate, standing in for

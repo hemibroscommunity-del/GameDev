@@ -3393,6 +3393,12 @@ export const BT_ACHIEVEMENTS = [{
 export const NPC_DATA = [{
   id: 'mayor_bro',
   name: 'Mayor Bro',          /* MUST equal QUEST_CHAINS[].npc — getNpcQuest keys on it */
+  /* v2.3.2071 (owner: "Make every persons name or title as a consistent
+     name plate"). The gold sub-line under the name -- the slot a player's
+     level occupies -- so a townsperson reads the same way a player does.
+     He kept the old above-head label until now because his plate was opt-in;
+     the plate sits below the feet, so his '!' badge is untouched. */
+  plateRole: 'Mayor',
   /* v2.3.1672: real art (owner-supplied).  `sprite` wins over `avatar` in the
      renderer; the emoji stays as the fallback for the frames before the
      texture resolves and for any NPC that never gets art.
@@ -3513,7 +3519,6 @@ export const NPC_DATA = [{
   },
   avatar: '🧒',
   color: '#7FB6E8',
-  namePlate: true,
   plateRole: 'Kid',
   /* v2.3.2064: measured on town_v17, not guessed -- (1180,1180) is 99% open
      cobble on a 90px disc, on the plaza's east side. That puts him opposite
@@ -3571,7 +3576,6 @@ export const NPC_DATA = [{
      above-head name their '!' marker stack is tuned around. `plateRole` is the
      plate's second line, where a player's reads "LV 3" -- a shopkeeper has no
      level, and what you actually want to know about him is what he does. */
-  namePlate: true,
   plateRole: 'Shopkeeper',
   shop: true,          /* v2.3.2050: walking up to him opens his trade window */
   x: 700, y: 1060,
@@ -3630,6 +3634,10 @@ export const NPC_DATA = [{
      ambient-chat loop indexes it unguarded and an empty array throws. */
   id: 'blacksmith_bro',
   name: 'Blacksmith Bro',
+  /* v2.3.2071: his title on the plate. "Blacksmith" and not "Bron" for the
+     same reason his NAME is not -- getNpcQuest keys on the name, not on this,
+     but keeping the two consistent avoids inviting the mistake. */
+  plateRole: 'Blacksmith',
   sprite: '/sprites/npc/blacksmith-bro.webp',
   portrait: '/sprites/npc/blacksmith-bro-head.webp',
   avatar: '🔨',
@@ -3698,6 +3706,11 @@ export const NPC_DATA = [{
      rename.  He is townsfolk until the owner says otherwise. */
   id: 'storekeeper_bro',
   name: 'Storekeeper Bro',
+  /* v2.3.2071: his title. Deliberately the same shape as Shopkeeper Bro's
+     ("Shopkeeper") even though the two read similarly -- they are two
+     different people with two similar jobs, and inventing a distinguishing
+     title here would be a rename dressed up as a caption. */
+  plateRole: 'Storekeeper',
   sprite: '/sprites/npc/storekeeper-bro.webp',
   portrait: '/sprites/npc/storekeeper-bro-head.webp',
   avatar: '🛒',
