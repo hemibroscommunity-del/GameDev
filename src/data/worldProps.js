@@ -226,53 +226,45 @@ export const WORLD_PROPS = [
      (see the header), so he ambles past rather than getting stuck; worth an
      owner's eye if he ever reads as standing IN it. */
   {
+    /* ═══ v2.3.2088: ONE BENCH, AND IT FINALLY FACES THE WATER ═══
+       Owner: "Remove the banners and bench-e. Rotate bench-w clockwise (so
+       the seat portion faces the fountain)."
+
+       THE ART WAS READ BACKWARDS IN v2.3.2071.  That note says "the backrest
+       is on the NORTH-WEST side and the seat faces SOUTH-EAST", and the sprite
+       says the opposite: the backrest runs along the upper-right and the seat
+       opens toward the LOWER-LEFT.  So a bench placed north-west of the
+       fountain -- which is what both of them were, on that reasoning -- had
+       its back to the water, which is the fault the owner reported in the
+       first place.  Two benches were arranged symmetrically around a mistake.
+
+       AND THE FIX IS A MIRROR, NOT A ROTATION.  Rotating this sprite 90
+       degrees does not turn the bench, it tips it over: the art is a single
+       three-quarter view drawn against the ground plane, so a 2D rotation
+       rotates the perspective too and the bench ends up lying on its side.
+       Rendered all four options and looked at them.  `flipX` swings the seat
+       from lower-left to lower-RIGHT, and from (730, 975) the fountain at
+       (860, 1080) is exactly lower-right -- so the mirror is what the owner's
+       parenthetical actually asks for, and the rotation is what it cannot
+       have without new art. */
     id: 'bench-w', zone: 'town', mapV: 17, mapIcon: null,
     sprite: '/sprites/props/bench.webp',
-    x: 730, y: 975, worldH: 75, blockW: 72, blockD: 34,
+    x: 730, y: 975, worldH: 75, blockW: 72, blockD: 34, flipX: true,
   },
-  {
-    /* Mirrored, so its back is on the north-EAST side and its seat looks
-       south-west at the fountain. A sign on the x scale, not a second copy of
-       the art -- see the flip note in entityRenderer's _updateProps. */
-    id: 'bench-e', zone: 'town', mapV: 17, mapIcon: null,
-    sprite: '/sprites/props/bench.webp',
-    x: 990, y: 975, worldH: 75, blockW: 72, blockD: 34, flipX: true,
-  },
-  /* ═══ v2.3.2078: THE GATE BANNERS ARE SCENERY — THEY WERE WALLING THE TOWN IN
-     The town's only way out is the stone staircase down the south cliff, and
-     TOWN_EXITS puts the World View trail-head on it at tile (25, 48) — world
-     x 800..832.  banner-gate-e stood at x 810 with a 78px footprint, so
-     v2.3.2073's "make sure the objects are unwalkable" stamped a wall across
-     x 771..849 at y 1424..1450: straight over the top of the steps.
+  /* ═══ v2.3.2088: THE GATE BANNERS ARE GONE ═══
+     Owner: "Remove the banners and bench-e."
 
-     Measured, walking south from the plaza at five lanes: x 660, 770, 816 and
-     860 all stop dead at y 1412, and only x 715 gets through — a 110px gap
-     WEST of the stairs that leads nowhere.  The exit tile itself is clear and
-     unreachable, so a player could not leave town on foot at all.  (A player
-     placed south of the banners was pushed back north through them, which is
-     the same wall seen from the other side.)
+     v2.3.2078 had already taken their FOOTPRINTS off, because banner-gate-e
+     stood at x 810 with a 78px block and the World View trail-head is on the
+     stairs at world x 800..832 -- it had walled the town's only way out, and
+     five lanes walked south all stopped dead at y 1412.  The art stayed
+     because the owner had placed it.  Now the art goes too, so the south
+     approach is open ground and there is nothing left at the gate to walk
+     into or around.
 
-     Blocking them buys nothing — you cannot use a banner, and worldProps
-     already leaves the market stall walkable for exactly that reason ("the
-     counter is a painted front... blocking a thing you cannot use only makes
-     the plaza smaller").  Losing them costs the town its gate.  So the art
-     stays exactly where the owner put it and the footprint comes off.
-
-     If they should be solid, the fix is to move banner-gate-e EAST of the
-     stairs (centre ~880 puts its footprint at 841..919, clear of the exit
-     tile) rather than to give this one back its blockW/blockD. */
-  {
-    /* The town's colours on the way in from the south gate, standing in for
-       the blueprint's banner arch until that art exists. */
-    id: 'banner-gate-w', zone: 'town', mapV: 17, mapIcon: null,
-    sprite: '/sprites/props/fence-banner.webp',
-    x: 620, y: 1450, worldH: 95,
-  },
-  {
-    id: 'banner-gate-e', zone: 'town', mapV: 17, mapIcon: null,
-    sprite: '/sprites/props/fence-banner.webp',
-    x: 810, y: 1450, worldH: 95,
-  },
+     The pair were standing in for a banner ARCH the blueprint wants and the
+     game does not have art for.  If that arch is ever drawn, it belongs here,
+     and it must clear x 800..832 or it repeats v2.3.2078 exactly. */
   {
     /* Owner: "This anvil belongs near the blacksmith." It follows the forge
        west -- it was measured against the v16 town and has been off the map
