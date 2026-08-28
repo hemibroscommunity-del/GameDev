@@ -1319,3 +1319,49 @@ imperfect independent reference beats a perfect dependent one.
 **Related:** §33 (a test that reads a field the game does not have), §35 (a
 test that copies a value out of the game), §34 (moving the scenery under a
 colour probe).
+
+---
+
+## §38 — A sub-test that injects over the previous one's live state blames the wrong feature (v2.3.2083)
+
+**The symptom, and how convincing it was.** `mp-cosmpose` works the player on
+an ore vein and then on a fishing spot, by the same recipe: put the tool in
+the bag, inject a node under the player's feet, set `S._tapNode`, press the
+prompt. The ore vein worked every time. The fishing spot never did. The
+scenario wrote the conclusion into its own source — *"an injected fishSpot
+does not become workable the way an ore vein does — the recipe is identical
+and the rod is in the bag, so something else about fishing refuses it"* — and
+downgraded the assertion to a `skip`. That reasoning is airtight and the
+conclusion is wrong.
+
+**What was actually happening.** `BroTown.jsx`'s node-proximity block ends:
+
+```js
+S._nearNode = _tapN;
+/* v2.3.1432 (owner: "the contextual menu for cooking didn't go away") */
+if (S._extraction) S._nearNode = null;
+```
+
+A live harvest attempt suppresses the interact prompt **on purpose** — you are
+already doing the thing it offers. The ore sub-test soaks for six seconds with
+an extraction running, and the fishing spot was injected immediately after it.
+`_nearNode` was nulled by the *mining* attempt that had not finished. Nothing
+about fishing refused anything: ore passed because it ran first and fish
+failed because it ran second. **Swapping the two would have swapped the
+result** — which is the check that would have caught this in one run.
+
+**The rule.** Two sub-tests that write the same game state are one test unless
+the first is torn down and the teardown is *confirmed*. Injecting into a live
+state machine does not overwrite it; it queues behind it. Cancel, then read
+back that the cancel took, then inject.
+
+**And make the diagnostic name the state, not the feature.** The old failure
+message read `hasGatherTool or nodeReachDist refused it` — it named the two
+gates the author had in mind and never mentioned `S._extraction`, so every run
+pointed at gathering. A `why` that can only accuse the suspects you already
+thought of will keep accusing them. The replacement reports which of
+`_extraction` / `gatherNodes` / `_tapNode` actually differs, so the state says
+what happened instead of the author's prior.
+
+**Related:** §33 (a test that reads a field the game does not have), §37
+(measuring a drawing against the box that defines it).

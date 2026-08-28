@@ -259,6 +259,35 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* v2.3.2078: returns WHY, not just whether. An ore vein works from this
        recipe and a fishing spot does not, and a bare false says nothing about
        which step refused. */
+    /* ═══ v2.3.2083: END THE LAST HARVEST FIRST ═══
+       This used to inject straight over the top of the previous sub-test, and
+       that is the whole of the "an injected fishSpot never becomes workable"
+       mystery.  BroTown's node-proximity block ends with
+
+           if (S._extraction) S._nearNode = null;
+
+       (v2.3.1432, owner: "the contextual menu for cooking didn't go away") --
+       while a harvest attempt is live the interact prompt is deliberately
+       suppressed.  The ore-vein sub-test above soaks for six seconds with an
+       extraction running, and the fishing spot was injected immediately after
+       it, so `_nearNode` was nulled by the MINING attempt that had not
+       finished.  Nothing about fishing refused anything: ore passed because it
+       ran first and fish failed because it ran second, and swapping the two
+       would have swapped the result.
+       So the attempt is cancelled and the cancel is CONFIRMED before the next
+       node goes in -- and the diagnostic below now names this state, so a
+       recurrence says so instead of blaming a gathering skill. */
+    await A.page.evaluate(() => {
+      const S = window._gameState && window._gameState.current;
+      if (!S) return;
+      S._extraction = null;
+      S._tapNode = null;
+      S._nearNode = null;
+    });
+    await A.page.waitForTimeout(400);
+    const busy = await H.readState(A, (S) => !!S._extraction);
+    if (busy) return { ok: false, why: 'the previous harvest attempt would not cancel' };
+
     const ok = await A.page.evaluate(({ nodeType, tool }) => {
       const S = window._gameState && window._gameState.current;
       if (!S || !S.player) return false;
@@ -273,10 +302,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }, { nodeType, tool });
     if (!ok) return { ok: false, why: 'the node could not be injected' };
     await A.page.waitForTimeout(700);
-    const near = await H.readState(A, (S) => (S._nearNode ? S._nearNode.id : null));
-    if (near !== 'qa-cosm-' + nodeType) {
-      return { ok: false, why: 'the node never became interactable (S._nearNode is '
-        + JSON.stringify(near) + ') — hasGatherTool or nodeReachDist refused it' };
+    const st = await H.readState(A, (S) => ({
+      near: S._nearNode ? S._nearNode.id : null,
+      extracting: S._extraction ? (S._extraction.skill || true) : null,
+      inList: !!(S.gatherNodes || []).some((n) => n.id === 'qa-cosm-' + nodeType),
+      tapped: S._tapNode ? S._tapNode.id : null,
+    }));
+    if (st.near !== 'qa-cosm-' + nodeType) {
+      return { ok: false, why: 'the node never became interactable — '
+        + (st.extracting ? 'a harvest attempt (' + st.extracting + ') is still live, '
+            + 'which suppresses the prompt by design'
+          : !st.inList ? 'the node fell out of S.gatherNodes (a server node push?)'
+          : !st.tapped ? 'S._tapNode was dropped — hasGatherTool or nodeReachDist refused it'
+          : 'S._nearNode is ' + JSON.stringify(st.near)),
+        state: st };
     }
     /* Dispatched in page, not through Playwright: the prompt is anchored over
        the node and the bottom dashboard intercepts it at this viewport
@@ -297,15 +336,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   };
   const mined = await workNode('oreVein', 'mining_pickaxe', '07-mine');
   rec.ok('the player can be put to work on an ore vein (the mine pose)', mined.ok, mined);
-  /* The fishing spot is REPORTED, not gated. An injected fishSpot does not
-     become workable the way an ore vein does — the recipe is identical and the
-     rod is in the bag, so something else about fishing refuses it, and that is
-     mp-fishhand's subject rather than this file's. Skipping with the client's
-     own reason keeps the finding visible without failing a cosmetics test for
-     a gathering question. */
+  /* v2.3.2083: this was a SKIP, on the belief that "something else about
+     fishing refuses it".  Nothing about fishing refused it: workNode injected
+     over the ore vein's still-running extraction, and a live extraction
+     suppresses the interact prompt on purpose.  With the attempt cancelled
+     first the recipe is genuinely identical, so this is an assertion again. */
   const fished = await workNode('fishSpot', 'fishing_pole', '08-fish');
-  if (fished.ok) rec.ok('the player can be put to work on a fishing spot (the fish pose)', true, fished);
-  else rec.skip('the player can be put to work on a fishing spot (the fish pose)', fished.why);
+  rec.ok('the player can be put to work on a fishing spot (the fish pose)', fished.ok, fished);
 
   /* ── THE VERDICT, POSE BY POSE ── */
   const poses = Object.keys(seen).sort();
