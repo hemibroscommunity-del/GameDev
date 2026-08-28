@@ -48,6 +48,29 @@ export const CAPE_LEDGER_KEY = (capeId) => `capegrant:${capeId}`;
    guard _handleEatRequest uses (a plain {} no-ops on '__proto__'). */
 export const TICKET_PREFIX = 'goldticket_';
 
+/* ═══ v2.3.2107: AND THE CAPE ITSELF LANDS IN THE BAG ═══
+ * Owner: "When you open the golden ticket nothing happens. Cape should appear
+ * in inventory."
+ *
+ * Both halves of that were true. The redeem DID work -- the ticket left the
+ * bag and the worker started echoing the cape, so the character wore it -- but
+ * from the seat every visible thing said nothing had happened: no message, no
+ * new item, and the prize only showing on a character sheet the player had no
+ * reason to open.
+ *
+ * The cape was ownership-only by design: the LEDGER is the record, and
+ * v2.3.2027's note is right that a cape asserted by a client is a cape anyone
+ * can award themselves. That stays exactly as it is -- what you WEAR is still
+ * decided by the ledger and stamped over whatever the client claims. This adds
+ * a TROPHY beside it: an ordinary inventory line, so opening a ticket does the
+ * thing every other "open" in the game does and puts something in your bag.
+ *
+ * It is not what makes the cape work, and nothing reads it back. Deleting the
+ * item would not take the cape off, and hand-editing one in would not put a
+ * cape on, because `_capeStampTag` answers that question from the ledger. */
+export const CAPE_ITEM_PREFIX = 'cape_';
+export const capeItemKey = (capeId) => `${CAPE_ITEM_PREFIX}${capeId}`;
+
 /* ═══ v2.3.2029: THE SWITCH IS THIS LINE ═══
  *
  * false = no ticket can drop.  true = the contest is running.
@@ -473,6 +496,10 @@ export const eventCapeMethods = {
     ps.inventory[invKey] -= 1;
     if (ps.inventory[invKey] <= 0) delete ps.inventory[invKey];
     led.redeemed.push(session.id);
+    /* v2.3.2107: the trophy, in the same synchronous block as the consume, so
+       a ticket can never be spent without the cape appearing. */
+    const _capeKey = capeItemKey(capeId);
+    ps.inventory[_capeKey] = (Math.floor(Number(ps.inventory[_capeKey]) || 0)) + 1;
     /* ── end ── */
     this._capeLedgerSave(capeId);
     if (opId && typeof opId === 'string') await this._opStamp('capered:' + opId);

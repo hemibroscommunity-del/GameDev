@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ITEM_NAMES, isTicketKey } from './InventoryPanel.jsx';   /* v2.3.2054; isTicketKey v2.3.2103 */
+import { ITEM_NAMES, isTicketKey, isCapeItemKey } from './InventoryPanel.jsx';   /* v2.3.2054; isTicketKey v2.3.2103; isCapeItemKey v2.3.2107 */
 import { gearIdIcon, armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.1758: one armour art table */
 import { weaponMaterial, metalIconPath } from '@/rendering/traits/materialTints.js'; /* v2.3.1760 */
 import { COL, getState } from './common.js';
@@ -119,6 +119,11 @@ function resolveTarget(target) {
     const SR = getState();
     const isTicket = isTicketKey(key);
     if (isTicket) info = 'Open it to claim your cape';
+    /* v2.3.2107: it is a trophy, not a control. The cape you WEAR is decided
+       by the contest ledger and stamped over anything the client claims, so
+       this line says what it is rather than offering an equip that would be a
+       lie. */
+    else if (isCapeItemKey(key)) info = 'Worn — a contest prize';
     else if (isCookedFish) info = '+' + calcDisplayHeal(SR && SR.rpg, key) + ' HP when eaten';
     else if (isRawFish) info = 'Cook over a campfire';
     else if (isBurnt) info = 'Inedible';
@@ -361,6 +366,13 @@ function prettyName(key) {
      out of the key-derived branch below -- which is what the owner was
      looking at when he had to ask whether an item in his own bag was it. */
   if (isTicketKey(key)) return 'Golden Ticket';
+  /* v2.3.2107: 'cape_crimson' out of the key-derived branch reads "Cape
+     Crimson". The catalog already names it properly for the character sheet;
+     the bag says the same thing. */
+  if (isCapeItemKey(key)) {
+    const id = String(key).slice('cape_'.length);
+    return id.charAt(0).toUpperCase() + id.slice(1) + ' Cape';
+  }
   return key
     .replace(/^cooked_fish_/, 'Cooked ')
     .replace(/^burnt_/, 'Burnt ')

@@ -1080,7 +1080,30 @@ export function setupWebSocket(ctx) {
               try {
                 var _capeId = (typeof msg.payload.cape === 'string' && msg.payload.cape) ? msg.payload.cape : 'none';
                 import('@/rendering/traits/capeCatalog.js')
-                  .then(function (m) { m.setCape(_capeId); })
+                  .then(function (m) {
+                    /* ═══ v2.3.2107: SAY SOMETHING WHEN IT ARRIVES ═══
+                       Owner: "When you open the golden ticket nothing
+                       happens." The redeem worked -- the ticket left the bag
+                       and this line put the cape on -- but every visible thing
+                       said otherwise: no message, and the prize showing only
+                       on a character sheet nobody had a reason to open.
+
+                       Fired on the EDGE, none -> a cape, so it announces the
+                       moment you win and stays quiet on the echo that arrives
+                       every couple of seconds for the rest of the session. */
+                    var _before = m.getCape();
+                    m.setCape(_capeId);
+                    if (_before !== _capeId && _capeId !== 'none' && S.chatLog) {
+                      var _nm = (m.CAPE_CATALOG.find(function (c) { return c.id === _capeId; }) || {}).name || 'a cape';
+                      S.chatLog = S.chatLog.slice(-40).concat([
+                        { id: null, name: null, text: 'You claimed the ' + _nm + '!', ts: Date.now() },
+                      ]);
+                      /* setChatLog is this module's own binding (ctx, line
+                         ~74); `deps` is the gameEvents idiom and is not in
+                         scope here. */
+                      if (typeof setChatLog === 'function') setChatLog(S.chatLog.slice());
+                    }
+                  })
                   .catch(function () { /* module split not loaded yet: next echo carries it */ });
               } catch (e) { /* never let a cosmetic break the state sync */ }
               if (typeof msg.payload.coins === 'number') {
