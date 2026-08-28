@@ -167,6 +167,16 @@ const POSES = ['stand', 'jog', 'hit', 'pickup', 'attack'];
    fallback on screen.  Now only the (pose,dir) actually drawn gets recolored,
    on demand, so cost is spread and the freeze is gone. */
 const _bodySheets = {};
+/* v2.3.2083: which recoloured body sheets exist, for QA.  The animation-
+   preloading law is a claim about WHEN a bake happens, and the only way to
+   see when is to look before the pose is ever used -- a screenshot of a
+   correctly-preloaded roll and a screenshot of one that baked a frame late
+   are the same picture once the bake lands.  Keys only, read-only, and the
+   game never calls it. */
+if (typeof window !== 'undefined') {
+  window.__btBodySheetKeys = () => Object.keys(_bodySheets)
+    .filter((k) => _bodySheets[k] && _bodySheets[k] !== 'loading');
+}
 
 function _retint(d, i, target, ref) {
   const k = (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) / ref;
@@ -1260,6 +1270,26 @@ export function preloadBodyAll() {
   for (const pose of ['stand', 'jog', 'hit']) {
     for (const dir of SOURCE_DIRS) prewarm(pose, dir);
   }
+  /* ═══ v2.3.2083: + 'dodge', FOR EVERYONE AND NOT ONLY THE ARMOURED ═══
+     v2.3.1534 already made this case: "a pose left off this list falls back
+     to the un-recolored base frame on its first use while the bake runs,
+     which for dodge would be a flash of default skin/pants the first time
+     the player rolls."  It put dodge on entityRenderer's PREWARM_POSES --
+     and that loop is prewarmMaskedBodyFrames, which opens with
+
+         if (!slots.some((sl) => getEquip(sl) !== 'none')) return;
+
+     because its own job is compositing armour onto a body.  The recoloured
+     BODY bake merely rides along inside it, so the fix landed for players
+     wearing a breastplate and for nobody else.  A customised player in a
+     t-shirt -- which is everyone for their first few hours -- still flashed
+     default skin and trousers on their first roll.
+
+     This is the everyone-path, so it belongs here.  Two sheets: the roll is
+     authored south + east only (playerSprites; entityRenderer's prewarmDirs
+     says the same), and `prewarm` adds the mirrored bake of east by itself
+     for a drawn player.  Animation-preloading law, CLAUDE.md. */
+  for (const dir of ['south', 'east']) prewarm('dodge', dir);
   /* v2.3.1118: prewarm the pickup BODY + (downscaled) HEAD behind the intro, so
      the first armoured loot pickup doesn't hitch while they bake mid-play (the
      v2.3.1117 lazy bake traded the spawn cost for an in-play frame-rate dip on

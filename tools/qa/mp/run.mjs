@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  rollbake: () => import('./mp-rollbake.mjs'), /* v2.3.2083: is the dodge roll baked before you roll? */
   inkplace: () => import('./mp-inkplace.mjs'), /* v2.3.2082: does a tattoo stay in the same place while you move? */
   townforge: () => import('./mp-townforge.mjs'), /* v2.3.2077: forging in town reaches the worker */
   townmeal: () => import('./mp-townmeal.mjs'), /* v2.3.2077: eating + cooking in town reach the worker */
