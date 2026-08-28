@@ -216,10 +216,53 @@ const NPC_SPRITE_SCALE = 120 / 256;
    only one drawn.  He is not: the blacksmith (v2.3.1773) and the storekeeper
    (v2.3.1775) render off the same constant, and the owner did NOT ask for
    those to change.  Owner: "Make mayor bro 10% larger" — so the 10% lives
-   here, keyed by sprite path, and everyone else keeps 1.0.
+   here, keyed by sprite path, and everyone else kept 1.0.  (They no longer
+   do; v2.3.2081 below is why, and the mayor's 10% survived it intact.) */
+/* ═══ v2.3.2081: THE ADULTS ARE ONE TOWN, MEASURED AT THE SHOULDER ═══
+   Owner: "Check sizes of NPCs."  tools/dev/npc-sizes.py draws every
+   townsperson beside a default player on one baseline, which is how this
+   was measured rather than nudged.  Before this pass:
+
+     You 111   Diego 119   Mayor 103   Blacksmith 94   Storekeeper 94
+
+   -- a 27% spread across four grown men, with the BLACKSMITH, who is drawn
+   as the burliest man in town, the shortest of them.
+
+   The number that misleads is the total height, because import_npc_walk.py
+   normalises every figure hat-to-feet into the same 200px band.  A tall hat
+   is therefore paid for out of the BODY: the mayor's stovepipe is a fifth of
+   his figure, Diego's crown another sixth, and the bare-headed blacksmith
+   spends all 200px on a man.  Compare the landmark a player actually reads
+   -- the SHOULDER line (tools/maps/out/npc-hatruler.png, a ruler render at a
+   common height) -- and the town was much worse than the totals said:
+
+     You 80   Diego 69   Mayor 65   Blacksmith 64   Storekeeper 60
+
+   The player's shoulders stood 15-33% above every adult in town while the
+   totals claimed Diego was the tallest person in it.
+
+   The mults below put the ordinary adults' shoulders on ~73 -- about 8%
+   under the player, so the hero is still the tallest man in the square, by a
+   head-and-shoulders margin rather than by a third.  Nothing shrinks and
+   nothing the owner set by eye is walked back: Diego keeps his v2.3.2052
+   1.30 ("make shopkeeper larger"), Lil Bro keeps his v2.3.2064 0.78, and the
+   mayor keeps being exactly 1.10x the blacksmith, the rule from v2.3.1822.
+   After:
+
+     You 111   Diego 119   Mayor 118   Storekeeper 114   Blacksmith 107
+
    Keyed by client-visible strings, so Object.create(null) (CLAUDE.md rule 4). */
 const NPC_SCALE_MULT = Object.assign(Object.create(null), {
-  '/sprites/npc/mayor-bro.webp': 1.10,
+  /* 1.10 -> 1.254: still the blacksmith x 1.10 exactly (0.909 the other way,
+     which is what mp-blacksmith asserts), lifted with him. */
+  '/sprites/npc/mayor-bro.webp': 1.254,
+  /* 1.00 -> 1.14.  He was the shortest adult in town and is drawn as the
+     biggest-built one; his shoulder went 64 -> 73. */
+  '/sprites/npc/blacksmith-bro.webp': 1.14,
+  /* 1.00 -> 1.22.  The cap and the hair cost him more of the 200px band than
+     anyone but the hatted two, so he needed the largest correction to land on
+     the same shoulder line: 60 -> 73. */
+  '/sprites/npc/storekeeper-bro.webp': 1.22,
   /* v2.3.2052 (owner: "make shopkeeper larger his sprite is bit small").
      Measured rather than nudged: at 1.0 he drew 120px against Mayor Bro's 132,
      so he read as the smallest figure in the town square despite being a
