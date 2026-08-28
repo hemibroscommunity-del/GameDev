@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
-"""The golden ticket's bag icon, from the owner's artwork.
+"""An owner-supplied artwork, turned into a bag icon.
 
-Owner, sending the art: "Is this the icon for it? That's what I wanted."
+Owner, sending the golden ticket: "Is this the icon for it? That's what I
+wanted."  Then, sending the cape: "Use this for the inventory art for cape."
+Two arts, one job, so one tool -- v2.3.2104 shipped this as
+import_ticket_icon.py and it is renamed rather than copied, because the second
+copy is where the two drift.
 
 v2.3.2103 gave the ticket an EMOJI glyph because no art file existed -- the
 honest placeholder, and better than borrowing a coin's picture, but a
@@ -25,24 +29,37 @@ CROPPED TO THE INK FIRST, then padded square, so the ticket fills the tile
 rather than floating in the source's generous margin -- the same reason
 tools/dev/npc-sizes.py crops before it measures.
 
-    python3 tools/import_ticket_icon.py <source.png>
+    python3 tools/import_item_icon.py <source.png> <icon-name>
 """
 from PIL import Image
 import os
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(ROOT, 'public', 'icons', 'items', 'golden-ticket.webp')
 SIZE = 256
 
-# Below LO the pixel is background; above HI it is fully the ticket. Between,
-# alpha ramps. Read off the source: the glow peaks around 40 and the ticket's
+# Below LO the pixel is background; above HI it is fully the subject. Between,
+# alpha ramps. Read off the ticket source: its glow peaks around 40 and its
 # darkest kept ink sits near 90.
+#
+# ONLY USED WHEN THE SOURCE HAS NO ALPHA OF ITS OWN.  The ticket arrived as
+# RGB gold on black and had to be keyed; the cape arrived already cut out.
+# Keying an image that is already transparent would be worse than useless --
+# the cape's own dark red folds and its black outline sit well under HI, so a
+# luminance key would eat the shading and leave a hole where the garment is
+# darkest.  So the alpha channel, when the artist supplied one, wins.
 LO, HI = 34, 96
 
 
-def main(src):
-    im = Image.open(src).convert('RGB')
+def main(src, name):
+    src_im = Image.open(src)
+    if src_im.mode in ('RGBA', 'LA') and src_im.getchannel('A').getextrema()[0] < 250:
+        print('source carries its own alpha -- using it, not keying')
+        out = src_im.convert('RGBA')
+        w, h = out.size
+        return finish(out, name, w, h)
+    print('source is opaque -- keying the background on luminance')
+    im = src_im.convert('RGB')
     px = im.load()
     w, h = im.size
     out = Image.new('RGBA', (w, h), (0, 0, 0, 0))
@@ -56,6 +73,11 @@ def main(src):
             a = 255 if lum >= HI else int(round(255 * (lum - LO) / (HI - LO)))
             op[x, y] = (r, g, b, a)
 
+    return finish(out, name, w, h)
+
+
+def finish(out, name, w, h):
+    OUT = os.path.join(ROOT, 'public', 'icons', 'items', name + '.webp')
     bb = out.getbbox()
     if not bb:
         raise SystemExit('FAIL: the key removed everything -- check LO/HI')
@@ -79,4 +101,6 @@ def main(src):
 
 
 if __name__ == '__main__':
-    main(sys.argv[1] if len(sys.argv) > 1 else None)
+    if len(sys.argv) < 3:
+        raise SystemExit('usage: import_item_icon.py <source.png> <icon-name>')
+    main(sys.argv[1], sys.argv[2])

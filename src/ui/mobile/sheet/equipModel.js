@@ -6,6 +6,7 @@ import { gearIdIcon, armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.
 import { weaponMaterial, metalIconPath } from '@/rendering/traits/materialTints.js'; /* v2.3.1760 */
 import { getShieldStats, getAmuletBonus } from '../../../data/items.js';
 import { getEquip } from '../../../rendering/gearCatalog.js';
+import { getCape, CAPE_CATALOG } from '@/rendering/traits/capeCatalog.js'; /* v2.3.2105 */
 
 /* v2.3.1285: the six equipped positions in the nav-system spec's FIXED
    order — Weapon, Shield, Chest, Legs, Cape, Amulet.  Resolution
@@ -174,8 +175,43 @@ export function getEquippedSlots(R) {
       iconSrc: gearLegsId !== 'none' ? gearIconSrc(gearLegsId)
         : R.legsArmor ? `${armorIconFor('legs', R.legsArmor.mat)}${ITEMS_V}` : null, /* v2.3.1758 */
       ghost: gearLegsId === 'none' && !R.legsArmor, pickerSlot: 'legs' },
-    /* Cape: Phase-2 — no data field yet; permanently ghosted, no picker. */
-    { slot: 'cape', label: 'Cape', item: null, iconSrc: null, ghost: true, pickerSlot: null },
+    /* ═══ v2.3.2105: THE CAPE SHOWS IN THE CAPE SLOT ═══
+       Owner: "make the cape go into the cape slot after being equipped on
+       character menu too."
+
+       The slot has existed since the sheet was built and was hardcoded
+       `item: null, ghost: true` -- "Phase-2, no data field yet". There IS a
+       data field now: the worker echoes `player_state.cape` from the contest
+       LEDGER and wsClient feeds it to capeCatalog (v2.3.2023), so a winner has
+       been wearing their prize in the world while their character sheet showed
+       an empty hanger. That is the whole gap.
+
+       READ FROM capeCatalog, not from R. The cape is deliberately NOT on the
+       rpg blob: ownership is a server fact about the persistent `bp_`
+       identity, and capeCatalog's own header is emphatic that this module must
+       not become a picker -- "a picker is how a contest prize ends up on
+       everybody". Reading the active id here displays what the server granted
+       and offers no way to choose it, which keeps that property.
+
+       v2.3.2106: the owner's own cape art ("Use this for the inventory art for
+       cape"), imported by tools/import_item_icon.py. The first cut borrowed
+       the renderer's south-facing WORLD frame -- correct, and wrong for a
+       slot: that sprite is drawn to hang off a 200px character at world
+       scale, so in a 44px tile it is a small red smudge. An inventory icon is
+       its own drawing of the garment, which is what arrived. */
+    (function () {
+      const capeId = getCape();
+      const worn = capeId && capeId !== 'none';
+      const entry = worn ? CAPE_CATALOG.find((c) => c.id === capeId) : null;
+      return {
+        slot: 'cape',
+        label: 'Cape',
+        item: worn ? { capeId, name: (entry && entry.name) || 'Cape' } : null,
+        iconSrc: worn ? `/icons/items/cape-${capeId}.webp${ITEMS_V}` : null,
+        ghost: !worn,
+        pickerSlot: null,
+      };
+    }()),
     /* v2.3.1325: an equipped amulet finally shows real art instead of
        staying on the ghost pictogram. */
     { slot: 'amulet', label: 'Amulet', item: R.amulet || null,
