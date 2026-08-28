@@ -159,6 +159,7 @@ export function artWithCells(s, cells, idx) {
 export const CANVASES = ['shirtFront', 'shirtBack', 'pants', 'tattoo', 'tattooFace', 'tattooArm', 'tattooHeadBack'];
 export const SHIRT_SIDES = ['front', 'back'];
 
+
 /** Which shirt drawing a facing shows. */
 export function sideForDir(dir) {
   return (dir === 'north' || dir === 'northeast' || dir === 'northwest') ? 'back' : 'front';

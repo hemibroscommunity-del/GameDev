@@ -249,6 +249,44 @@ export function appendOp(id, op) {
   return next;
 }
 
+/* ═══ v2.3.2114: CLEARING THE PAINTED ART, SHAPES AND ALL ═══
+ * Owner: "The tattoos are not resetting through character reset and
+ * randomize."  They were not, and deliberately so until now — v2.3.2036's
+ * Reset left the painted canvases alone on the reasoning that wiping someone's
+ * drawing from a button labelled Reset is worse than leaving it.  The owner
+ * has asked for the opposite, and they are right about what the buttons say:
+ * "back to the default" and a fresh random look both plainly mean the drawings
+ * go too, and a character that resets to bald and shirtless while keeping a
+ * face tattoo reads as a broken reset, not a careful one.
+ *
+ * ═══ v2.3.2115: ...AND THE SHIRT AND PANTS WITH THEM ═══
+ * Owner: "Yes make the shirt and pants reset too."  v2.3.2114 shipped the
+ * tattoo canvases only, because tattoos were what was reported.  With the
+ * clothing designs in, the set is simply CANVASES — every painted surface
+ * there is — which is a better rule than any subset: it needs no prefix
+ * convention to keep working, and a canvas added later is covered the day it
+ * is added rather than the day someone notices it was missed.  Both of the
+ * prefix rule's near-misses are already in the file's history (face and arm in
+ * v2.3.1949, back-of-head in v2.3.2043).
+ *
+ * Through saveDoc, not setArt, and that is the part worth stating.  A drawing
+ * has TWO representations here — the flat 256-char art and the op list that
+ * still knows which shapes it is made of (v2.3.1967) — and clearing only the
+ * first leaves the editor holding shapes for a drawing that no longer exists.
+ * The onArtChange hook at the bottom of this file would notice and drop them,
+ * so the end state is the same either way; going through saveDoc means the
+ * clear is something this code DID rather than something a listener repaired,
+ * which is the difference between a rule and a coincidence.
+ *
+ * The DESIGN SLOTS (v2.3.1950) are untouched, and that is what keeps this
+ * honest rather than destructive: a drawing saved to a slot survives every
+ * Reset and every Randomize, so "try something without losing what you had"
+ * still means what it says. */
+export function clearAllArt() {
+  const empty = emptyArt();
+  for (const id of CANVASES) saveDoc(id, empty, [], empty);
+}
+
 /** Copy one canvas's whole op list onto another (shirt front -> back), so the
  *  copy arrives with its shapes still separable rather than as a flat print. */
 export function copyDoc(fromId, toId) {
