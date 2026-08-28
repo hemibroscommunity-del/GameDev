@@ -97,15 +97,52 @@ ok(window.__btRosterCookie.read().list.length === 2, 'mirror carries 2 rows');
 origin('4f2fc630.gamedev-aix.pages.dev', true);
 const restored = R.readRoster();
 ok(restored.length === 2, 'fresh deploy origin restored 2 characters (got ' + restored.length + ')');
-ok(restored[0].name === 'Rangi', 'most recent first (got ' + restored[0].name + ')');
+ok(restored[0].name === 'Hemi', 'highest level first across the hop — Hemi 7 over Rangi 3 (got ' + restored[0].name + ')');
 ok(restored.every(e => !e.provisional), 'restored rows are not provisional');
 
-/* ── 4. and the boot initialiser adopts the most recent one ── */
+/* ── 4. v2.3.2111: TWO characters is a choice, so nothing is adopted ── */
 origin('a1b2c3d4.gamedev-aix.pages.dev', true);
-const adopted = R.adoptSharedPhrase();
-ok(adopted === 'ember-frost-grove-haven-2', 'adopted the most recent phrase (got ' + adopted + ')');
-ok(localStorage.getItem('bt_passphrase') === adopted, 'bt_passphrase written');
+ok(R.adoptSharedPhrase() === null, 'two restored characters -> no auto-adopt, the list decides');
+ok(localStorage.getItem('bt_passphrase') === null, 'and no key is written');
+ok(R.readRoster().length === 2, 'the list the door will show has both');
+
+/* ── 4b. ONE character is not a choice: straight in ── */
+COOKIES = [];
+origin('gamedev-aix.pages.dev', true);
+localStorage.setItem('bt_passphrase', 'onlyone-alpha-blaze-coral-5');
+R.rememberChar('onlyone-alpha-blaze-coral-5', { name: 'Solo', level: 12 });
+origin('deadbeef.gamedev-aix.pages.dev', true);
+const solo = R.adoptSharedPhrase();
+ok(solo === 'onlyone-alpha-blaze-coral-5', 'a single restored character is adopted (got ' + solo + ')');
+ok(localStorage.getItem('bt_passphrase') === solo, 'bt_passphrase written');
 ok(R.adoptSharedPhrase() === null, 'adopt is a no-op once a key is held');
+
+/* ── 4c. v2.3.2111: highest level on top, last-played as the tiebreak ── */
+COOKIES = [];
+origin('gamedev-aix.pages.dev', true);
+R.rememberChar('lo-alpha-blaze-coral-1', { name: 'Low', level: 2 });
+tick();
+R.rememberChar('hi-ember-frost-grove-2', { name: 'High', level: 41 });
+tick();
+R.rememberChar('mid-karma-lunar-mango-3', { name: 'Mid', level: 9 });
+tick();
+R.rememberChar('tieold-solar-thunder-4', { name: 'TieOld', level: 9 });
+tick();
+R.rememberChar('tienew-viper-wrath-zeal-5', { name: 'TieNew', level: 9 });
+const order = R.readRoster().map(function (e) { return e.name; });
+ok(order[0] === 'High', 'highest level is first (got ' + order[0] + ')');
+ok(order.join(',') === 'High,TieNew,TieOld,Mid,Low',
+   'level desc, then most-recent within a tie (got ' + order.join(',') + ')');
+/* An unlooked-up row means UNKNOWN, not zero, and sorts last rather than
+   claiming to outrank a level-2. */
+R.rememberChar('unknown-onyx-pixel-quartz-6', { name: 'Unknown' });
+const withUnknown = R.readRoster().map(function (e) { return e.name; });
+ok(withUnknown[withUnknown.length - 1] === 'Unknown',
+   'a level-less row sorts last (got ' + withUnknown.join(',') + ')');
+/* ...and it survives the origin hop with its level intact. */
+origin('cafe1234.gamedev-aix.pages.dev', true);
+const hopped = R.readRoster();
+ok(hopped[0].name === 'High' && hopped[0].level === 41, 'levels cross origins and keep the order');
 
 /* ── 5. a device already holding a key is never touched ── */
 origin('e5f6.gamedev-aix.pages.dev', true);
@@ -113,8 +150,11 @@ localStorage.setItem('bt_passphrase', 'zzz-yyy-xxx-www-9');
 ok(R.adoptSharedPhrase() === null, 'a held key is never replaced');
 
 /* ── 6. delete crosses origins (tombstone) ── */
+COOKIES = [];
 origin('gamedev-aix.pages.dev', true);
-R.readRoster();
+R.rememberChar('alpha-blaze-coral-drift-1', { name: 'Hemi', level: 7 });
+tick();
+R.rememberChar('ember-frost-grove-haven-2', { name: 'Rangi', level: 3 });
 R.forgetChar('alpha-blaze-coral-drift-1');
 ok(R.readRoster().length === 1, 'delete removed the row locally');
 origin('99887766.gamedev-aix.pages.dev', true);

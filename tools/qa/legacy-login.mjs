@@ -39,6 +39,12 @@ export async function legacyLogin(page, name, timeout = 90000) {
 
   const resumed = await page.evaluate(() => window.__btBootRoute === 'resume');
   if (!resumed) {
+    /* v2.3.2111: the door opens the character list by itself when the device
+       has characters (LoginScreen), and that list covers both buttons. */
+    if (await page.$('[data-tut="char-picker"]')) {
+      const back = await page.$('[data-tut="char-picker"] >> text=Back');
+      if (back) { await back.click(); await page.waitForTimeout(400); }
+    }
     if (await page.$('[data-tut="login-create"]')) {
       await page.click('[data-tut="login-create"]');
       await page.waitForSelector('input.bt-cc-name', { timeout: 30000 });

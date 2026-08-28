@@ -65,11 +65,30 @@ function _entry(phrase, at, extra) {
   return e;
 }
 
+/* ═══ v2.3.2111: HIGHEST LEVEL AT THE TOP ═══
+   Owner: "provide a list of characters ... and sort by highest level character
+   on top?  People will probably have a bunch of them."  This SUPERSEDES the
+   v2.3.1923 order ("most recent at the top"), and the reason it changed is in
+   the same sentence: a roster of two is a history, a roster of eight is a
+   collection, and the one you want out of a collection is the one you have put
+   the most into — not whichever you happened to open last.
+
+   Last played survives as the TIEBREAK, so a shelf of level-1s still reads in
+   the order v2.3.1923 asked for, and the row still says when it was played.
+   Stable on a full tie, so a roster where nothing has been played yet keeps
+   the order it was written in.
+
+   Level 0 means UNKNOWN, not new: it is a row nobody has looked up yet, and it
+   sorts last.  CharacterPicker's lookup pass fills those in (it asks for any
+   row missing a name OR a level), so an unknown row does not sit at the bottom
+   for longer than the one request it takes to place it. */
 function _sorted(list) {
-  /* "most recent at the top" (owner).  Stable on ties so a roster where
-     nothing has been played yet keeps the order it was written in. */
   return list.map(function (e, i) { return { e: e, i: i }; })
-    .sort(function (a, b) { return (b.e.at || 0) - (a.e.at || 0) || a.i - b.i; })
+    .sort(function (a, b) {
+      return (b.e.level || 0) - (a.e.level || 0)
+        || (b.e.at || 0) - (a.e.at || 0)
+        || a.i - b.i;
+    })
     .map(function (x) { return x.e; });
 }
 
@@ -249,9 +268,23 @@ export function readRoster() {
  * were already playing five minutes ago on the previous link.
  *
  * So the initialiser asks here first: if this origin has never had a roster
- * and the mirror is holding one, adopt its most recent character as the
- * device's key.  The player lands in the world, which is what "continue"
- * means, with no key typed and no list to read.
+ * and the mirror is holding EXACTLY ONE character, adopt it as the device's
+ * key.  The player lands in the world, which is what "continue" means, with no
+ * key typed and no list to read.
+ *
+ * ═══ v2.3.2111: ...AND ONLY WHEN THERE IS NOTHING TO CHOOSE ═══
+ * Owner: "Can you actually provide a list of characters like you did before
+ * when people try to join the game ... People will probably have a bunch of
+ * them."  v2.3.2110 adopted the most recent of however many came across, which
+ * on a restored device is a choice made FOR the player — and worse, silently:
+ * they land as one character with no sign the other seven survived the build,
+ * which is the exact anxiety ("it shows empty") this was meant to answer.
+ *
+ * One row is not a choice, so it still walks straight in.  Two or more and
+ * this declines, no key is adopted, and the login door appears — where the
+ * picker now opens by itself onto the list (LoginScreen).  The list IS the
+ * answer at that point: it shows every character that made it across, sorted
+ * so the biggest is the first thing read.
  *
  * THE THREE GUARDS ARE THE WHOLE DESIGN, because this must not fire on the
  * road that LOOKS the same:
@@ -273,8 +306,9 @@ export function adoptSharedPhrase() {
     const shared = _shared();
     if (!shared || !shared.list.length) return null;
     const list = readRoster().filter(function (e) { return !e.provisional; });
-    if (!list.length) return null;
-    const phrase = list[0].phrase;       /* readRoster sorts most-recent-first */
+    /* v2.3.2111: exactly one, or the player picks — see the note above. */
+    if (list.length !== 1) return null;
+    const phrase = list[0].phrase;
     localStorage.setItem('bt_passphrase', phrase);
     return phrase;
   } catch (e) { return null; }

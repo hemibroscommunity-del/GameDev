@@ -19,6 +19,18 @@ import { AccountLoginForm } from '../account/AccountLoginForm.jsx';
  * which is why the button that opened it had to be called "Log in with your
  * Key": that was all it did.
  *
+ * ═══ v2.3.2111: THE ORDER, AND WHEN THIS OPENS ═══
+ * Owner: "Can you actually provide a list of characters like you did before
+ * when people try to join the game and sort by highest level character on top?
+ * People will probably have a bunch of them."
+ *
+ * Two things follow.  The SORT moves to level-first (charRoster's _sorted,
+ * which records why it supersedes "most recent at the top"), and last-played
+ * becomes the tiebreak.  And this window no longer waits to be asked: the
+ * login screen opens it by itself whenever the device has characters, because
+ * standing on that screen at all means the key this device holds has none —
+ * see LoginScreen.
+ *
  * WHY THE ROW IS THE BUTTON.  Each row is one tap to play, with delete as a
  * separate small control at its right edge.  The alternative — select, then
  * confirm with a Play button below — costs a tap on the only thing anyone
@@ -67,10 +79,17 @@ export const CharacterPicker = ({ onPlay, onClose }) => {
      One request per unknown row, once ever (`looked` is persisted by
      describeChar), and sequential rather than parallel — /api/account/login
      throttles 20/min per IP, and a burst of ten from a phone that then
-     retries is how a legitimate player gets told to wait a minute. */
+     retries is how a legitimate player gets told to wait a minute.
+
+     v2.3.2111: a missing LEVEL now qualifies a row too, not just a missing
+     name.  The list is sorted highest-level-first (owner), and level 0 means
+     "nobody has looked this up" rather than "level zero" — so without this a
+     migrated row would sit at the bottom of the list forever, under characters
+     it outranks, looking like the sort was broken.  Same one-request-ever
+     budget: `looked` is what stops it, and it is set by the same call. */
   React.useEffect(function () {
     let alive = true;
-    const todo = roster.filter(function (e) { return !e.name && !e.looked; });
+    const todo = roster.filter(function (e) { return (!e.name || !e.level) && !e.looked; });
     if (!todo.length) return undefined;
     (async function () {
       for (const e of todo) {
@@ -149,6 +168,10 @@ export const CharacterPicker = ({ onPlay, onClose }) => {
                   type="button"
                   data-tut="char-row"
                   data-char-name={e.name || ''}
+                  /* v2.3.2111: the sort key, on the row, so mp-roster can
+                     assert the ORDER against the numbers that produced it
+                     rather than against a fixture it also wrote. */
+                  data-char-level={e.level || 0}
                   onClick={function () { onPlay(e.phrase); }}
                   className="bt-chisel bt-chisel--chip"
                   style={{
@@ -158,11 +181,30 @@ export const CharacterPicker = ({ onPlay, onClose }) => {
                     padding: '6px 10px', textAlign: 'left', color: '#F4F0E7',
                   }}
                 >
-                  <span style={{ fontSize: 14, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
-                    {e.name || 'Unnamed character'}
+                  {/* ═══ v2.3.2111: THE LEVEL IS THE RANK, SO IT READS AS ONE ═══
+                      The list is sorted highest-level-first (owner), and a
+                      sort you cannot see is indistinguishable from no sort —
+                      the level was buried mid-subline behind a middot, where
+                      eight rows gave the eye nothing to run down.  It moves to
+                      its own column at the row's right edge, tabular so the
+                      digits line up, which is what makes the order legible at
+                      a glance.  A row with no level yet says so rather than
+                      showing a zero it does not mean: the lookup above is
+                      still in flight. */}
+                  <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, width: '100%' }}>
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {e.name || 'Unnamed character'}
+                    </span>
+                    <span style={{
+                      flex: 'none', fontSize: 11, fontWeight: 800, letterSpacing: '.04em',
+                      color: e.level > 0 ? '#E7C46A' : '#7F8C8A',
+                      fontVariantNumeric: 'tabular-nums',
+                    }}>
+                      {e.level > 0 ? 'LV ' + e.level : '· ·'}
+                    </span>
                   </span>
                   <span style={{ fontSize: 11, color: '#B6C1BE', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
-                    {e.level > 0 ? 'LV ' + e.level + ' · ' : ''}{here ? 'on this device' : ago(e.at)}
+                    {here ? 'on this device' : ago(e.at)}
                   </span>
                 </button>
                 {/* Its own control, and it stops the row's click — otherwise

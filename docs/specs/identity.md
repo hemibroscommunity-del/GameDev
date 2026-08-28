@@ -151,6 +151,45 @@ restore from.
   fresh `localStorage` per origin, one shared cookie jar that enforces
   the public-suffix and host-scope rules.
 
+## The list is the door (v2.3.2111)
+
+Owner: *"Can you actually provide a list of characters like you did
+before when people try to join the game and sort by highest level
+character on top? People will probably have a bunch of them."*
+
+- **Order** — `charRoster._sorted` is level-descending, last-played as
+  the tiebreak, insertion order on a full tie. This **supersedes** the
+  v2.3.1923 "most recent at the top". Level `0` means *unknown* (nobody
+  has looked the row up) and sorts last; `CharacterPicker`'s lookup pass
+  now asks for any row missing a name **or** a level, so an unknown row
+  is placed after the one request it takes.
+- **The picker opens itself** — `LoginScreen` mounts with the list open
+  whenever `rosterCount() > 0`. Standing on that screen at all means the
+  key this device holds has no character behind it (the boot check goes
+  straight into the world when it does), so the three ways to be there —
+  a restored origin, a logout, a delete of the active character — all
+  want the list. Not while `bootPhase === 'checking'`: it opens on the
+  checking→login edge, and only once, so tapping Back is respected.
+  Create Character is one Back away.
+- **Auto-adopt is now single-character only** — `adoptSharedPhrase`
+  returns null when the mirror restores two or more, so the door (and
+  the list) decides. One row is not a choice and still walks straight in.
+- **The row shows the level** in its own right-hand column, tabular, gold
+  when known and `· ·` while the lookup is in flight — a sort you cannot
+  see is indistinguishable from no sort. `data-char-level` carries it for
+  QA.
+- **Over the cap is possible and deliberate**: merging a mirror into a
+  device that already has characters can exceed `ROSTER_MAX`, so the
+  picker may read `12 / 10` and Create refuses until one is deleted.
+  Dropping restored rows to fit would lose characters, which is worse.
+- **Tests** — `tools/qa/mp/run.mjs roster` (28 assertions: auto-open,
+  strongest-first against a fixture seeded out of order on both keys, the
+  tie-break, rendered levels descending, delete, the cap at 10 and 9).
+  Two harness helpers, `H.openPicker` / `H.uncoverDoor`, are how every
+  scenario gets to or past the door now — the list is a scrim over both
+  door buttons, so a bare `click('[data-tut="login-create"]')` clicks
+  into the overlay.
+
 ## Tests
 
 `server/test/identity.test.mjs` (in `npm test`):

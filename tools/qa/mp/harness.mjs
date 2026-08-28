@@ -238,6 +238,36 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
 }
 
 /** Drive character creation and wait until the world is live. */
+/* ═══ v2.3.2111: THE DOOR NOW OPENS THE CHARACTER LIST BY ITSELF ═══
+ * Owner: "Can you actually provide a list of characters ... when people try to
+ * join the game".  So whenever this device has characters, LoginScreen mounts
+ * with the picker already up — and the picker is a scrim over BOTH door
+ * buttons.  A scenario that clicks Create or Continue by handle now clicks
+ * into the overlay: the handle exists, the element is on the page, and the
+ * click either lands on nothing or times out on a name field that will never
+ * appear.  Every road through the door goes through one of these two, so the
+ * behaviour is described once instead of in nine scenarios.
+ *
+ * A fresh context has no roster and the picker is not up, which is why both
+ * are written as no-ops rather than steps: the same call is correct before and
+ * after this version. */
+export async function uncoverDoor(page) {
+  if (!(await page.$('[data-tut="char-picker"]'))) return false;
+  const back = await page.$('[data-tut="char-picker"] >> text=Back');
+  if (back) { await back.click(); await page.waitForTimeout(400); }
+  return true;
+}
+
+/* The other direction: get to the list, however the door happens to be. */
+export async function openPicker(page) {
+  if (await page.$('[data-tut="char-picker"]')) return true;
+  const b = await page.$('[data-tut="login-key"]');
+  if (!b) return false;
+  await b.click();
+  await page.waitForTimeout(700);
+  return !!(await page.$('[data-tut="char-picker"]'));
+}
+
 export async function enterWorld(P, timeout = 90000) {
   const { page, name } = P;
   /* ═══ v2.3.1814: THE LOGIN DOOR COMES FIRST NOW ═══
@@ -259,6 +289,7 @@ export async function enterWorld(P, timeout = 90000) {
   }, null, { timeout: 30000, polling: 250 });
   const resumed = await page.evaluate(() => window.__btBootRoute === 'resume');
   if (!resumed) {
+    await uncoverDoor(page);   /* v2.3.2111 — see uncoverDoor */
     if (await page.$('[data-tut="login-create"]')) {
       await page.click('[data-tut="login-create"]');
       await page.waitForSelector('input.bt-cc-name', { timeout: 30000 });
