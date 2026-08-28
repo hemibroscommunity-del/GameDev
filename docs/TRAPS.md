@@ -919,7 +919,7 @@ bug report.
 it throws), `tools/qa/mp/mp-statpeek.mjs` + `HeroExpanded.jsx`
 (`data-section`), `tools/qa/mp/mp-layer.mjs`, `tools/qa/mp/mp-zonefx.mjs`.
 
-## §30 — A generated sleeve for the bare trailing arm looks worse than the bare arm (v2.3.2016)
+## §30 — A generated sleeve for the bare trailing arm looks worse than the bare arm (v2.3.2016; CLOSED v2.3.2066)
 
 **The plausible-but-wrong move:** the owner has reported the bare arm on
 jog-east three times, `mp-shirtarm.mjs` diagnoses it correctly (frames 0-6,
@@ -949,11 +949,40 @@ actually needed it.
 
 **What this leaves.** Closing this needs the arm's AXIS, not just its
 silhouette — or seven hand-drawn frames on one facing, which is probably the
-cheaper honest answer. Until one of those happens the bare arm STAYS. It is
+cheaper honest answer. Until one of those happens the bare arm STAYS (it did, until v2.3.2066 —
+see below). It is
 at least a coherent silhouette; the generated sleeve is not. Shipping a
 worse-looking fix to close a cosmetic report is a net loss, and this
 subsystem has already had one fix reverted in play (v2.3.1986's shirt blob
 on the character's face).
 
-**Receipt:** `tools/qa/mp/mp-shirtarm.mjs` header, section
-"v2.3.2016: A GENERATED SLEEVE WAS TRIED AND REJECTED".
+**CLOSED in v2.3.2066, by taking the two conditions above literally.**
+`tools/gear/draw-trailing-sleeve.mjs` cuts the sleeve along the LIMB'S OWN
+PRINCIPAL AXIS rather than along the shirt's edge, so the hem runs
+perpendicular to the arm the way the paragraph above demands; and every written
+pixel takes THE BODY'S OWN ALPHA, which is what kills the pips — a sleeve pixel
+at the body's coverage composites to exactly the body's coverage in a different
+colour, so the figure's silhouette does not change and the antialiased fringe
+stays a fringe instead of becoming hard dots and holes. Bare shoulder over one
+jog-east cycle: 176 px to 19. Rendered at 20x on all 14 frames before shipping,
+which is what the note above was really asking for.
+
+Two things it left that are worth keeping:
+- The sleeve's own attempt at a FRAME GATE was wrong and the measurement killed
+  it. The first run of the tool painted a white slab across the middle of the
+  forearm on frames 11-13, and the obvious reading — "those frames are
+  different, gate them out" — does not survive the numbers: every shape
+  statistic tried separates frames 1 and 13 by less than it separates frame 1
+  from frame 2. The real fault was the ANCHOR. On those frames the trailing arm
+  hangs parallel to the shirt's back edge and touches it for its whole length,
+  so the seam is the entire arm and its centroid is halfway down the limb.
+  Anchoring on the seam's TOP rows fixed all three with no frame list at all.
+- The number is only "bare shoulder" ON A PROFILE. Run over the other jog
+  facings it reports northeast 100 and southwest 130, and southwest rendered at
+  14x is FINE — on a three-quarter view the window also catches the raised
+  fist, which a tee is supposed to leave bare. `mp-shirtarm` prints those as an
+  audit and gates on none of them.
+
+**Receipt:** `tools/gear/draw-trailing-sleeve.mjs` header;
+`tools/qa/mp/mp-shirtarm.mjs` header, section "v2.3.2066: CLOSED, AND NOW
+MEASURED RATHER THAN PHOTOGRAPHED".

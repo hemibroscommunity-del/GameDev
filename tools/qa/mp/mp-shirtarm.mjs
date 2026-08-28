@@ -15,7 +15,10 @@
  * Captures a strip of the character across a full stride, cropped to the
  * figure and zoomed, so the frames can be compared side by side.
  *
- * ── STATUS: STILL OPEN (v2.3.1990) ──
+ * ── STATUS: CLOSED (v2.3.2066) — see the v2.3.2066 section below ──
+ * ── the history from here down is kept because two attempts failed on it ──
+ *
+ * ── WAS OPEN, v2.3.1990 ──
  * v2.3.1986 attempted a fix and was REVERTED the same night: its "crossing
  * arm" detector picked the jaw-and-neck mass on frames 9-11 (the head, neck,
  * torso and arms are one connected skin region, so a horizontal neck cut does
@@ -55,6 +58,44 @@
  * does it must hold the invariant v2.3.1986 lacked: never write above the
  * shirt's own topmost row in that frame, and never on a column whose skin
  * continues up out of the collar. Both are cheap to assert per frame.
+ *
+ * ── v2.3.2066: CLOSED, AND NOW MEASURED RATHER THAN PHOTOGRAPHED ──
+ * The sleeve is drawn.  tools/gear/draw-trailing-sleeve.mjs re-bakes
+ * shirt/tshirt/jog-east.png with a band cut PERPENDICULAR TO THE ARM'S AXIS
+ * (the thing §30 below says is required) at the body's own alpha, so the
+ * character's silhouette does not change and the fringe cannot turn to pips.
+ * Read that file's header for why the first two attempts failed and what in
+ * this one is scar tissue from them.
+ *
+ * This scenario stops being a photograph and starts being a NUMBER, because a
+ * photograph is exactly how a bare arm survived four owner reports:
+ *
+ *   bareShoulder(f) = body-skin pixels that are uncovered by the shirt, lie
+ *   BEHIND the shirt's rear edge on their own row, and sit in the 8 rows below
+ *   the shirt's topmost row, with head/neck columns excluded.
+ *
+ * That is v2.3.1999's window widened past the shirt's bounding box, which is
+ * where the bare arm actually is (v2.3.1999 measured single digits precisely
+ * because it clipped at the box).  Over one 14-frame cycle of jog-east:
+ *
+ *     frame     0   1   2   3   4   5   6  |  7  8  9 10 11 12 13   total
+ *     before   13  28  30  39  22  19  14  |  0  3  0  0  0  2  6     176
+ *     after     0   1   0  13   0   0   2  |  0  3  0  0  0  0  0      19
+ *
+ * The before column reproduces v2.3.1999's frames-0-6 split independently, so
+ * the metric is measuring the reported defect and not the fix's own shape.
+ * Frame 3's residual is real and is the bicep BELOW the hem: its shoulder sits
+ * high enough that the 8-row window reaches past a correct short sleeve.
+ *
+ * It is read through the CLIENT's own sheet URL, ?v=GEAR_VERSION and all, so a
+ * sheet that shipped without its cache bust fails here rather than in play.
+ *
+ * The other facings are REPORTED, not gated.  Measured at the same window they
+ * come out northeast 100, southwest 130, north 35, south 4 — and rendered at
+ * 14x, southwest is FINE: on a three-quarter view the window also catches the
+ * raised fist, which is bare skin the tee is supposed to leave bare.  The
+ * number only means "bare shoulder" on a profile.  Printed so the next session
+ * starts from that rather than from the number.
  *
  * ── v2.3.2016: A GENERATED SLEEVE WAS TRIED AND REJECTED ──
  * The diagnosis above is right, and the fix it asks for — extend the shoulder
@@ -129,6 +170,123 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return { shirt: S.myShirt || null, equip: S._equip };
   });
   rec.ok('the client is up and reports its loadout (guard)', armed !== null, armed);
+
+  /* ── THE MEASUREMENT ──
+     Composite the body sheet and the tee sheet the way the game does (the tee
+     draws straight over the body, 1:1, same frame size) and count bare skin
+     where the trailing sleeve belongs.  Fetched through the CLIENT's own gear
+     URL — ?v=GEAR_VERSION included — so a re-baked sheet that shipped without
+     its cache bust fails here instead of in play. */
+  const measure = await P.page.evaluate(async (o) => {
+    const load = async (src) => {
+      const i = new Image();
+      i.crossOrigin = 'anonymous';
+      const ok = await new Promise((r) => { i.onload = () => r(true); i.onerror = () => r(false); i.src = src; });
+      if (!ok) return null;
+      const c = document.createElement('canvas');
+      c.width = i.width; c.height = i.height;
+      const g = c.getContext('2d', { willReadFrequently: true });
+      g.drawImage(i, 0, 0);
+      return { w: c.width, h: c.height, d: g.getImageData(0, 0, c.width, c.height).data };
+    };
+    const out = {};
+    for (const dir of Object.keys(o.dirs)) {
+      const back = o.dirs[dir];
+      const B = await load(`/sprites/player/jog-${dir}.png`);
+      const S = await load(`/sprites/gear/shirt/tshirt/jog-${dir}.png?v=${o.gearVer}`);
+      if (!B || !S) { out[dir] = { error: 'sheet did not load', body: !!B, shirt: !!S }; continue; }
+      if (B.w !== S.w || B.h !== S.h) { out[dir] = { error: `size ${B.w}x${B.h} vs ${S.w}x${S.h}` }; continue; }
+      const W = B.w, F = B.h, nF = Math.round(W / F);
+      const per = [];
+      let shirtInBand = 0, overhang = 0;
+      for (let f = 0; f < nF; f++) {
+        const I = (x, y) => (y * W + f * F + x) * 4;
+        const isShirt = (x, y) => S.d[I(x, y) + 3] > 24;
+        const isBody = (x, y) => B.d[I(x, y) + 3] > 24;
+        let top = F;
+        const edge = new Int32Array(F).fill(-1);
+        for (let y = 0; y < F; y++) {
+          let e = -1;
+          for (let x = 0; x < F; x++) if (isShirt(x, y)) { if (e < 0 || (back < 0 ? x < e : x > e)) e = x; }
+          edge[y] = e;
+          if (e >= 0 && y < top) top = y;
+        }
+        if (top === F) { per.push(0); continue; }
+        const headCol = new Uint8Array(F);
+        for (let x = 0; x < F; x++) for (let y = 0; y < top; y++) if (isBody(x, y)) { headCol[x] = 1; break; }
+        let bare = 0;
+        /* two controls, tallied over the WHOLE shoulder band rather than just
+           its trailing half.  shirtInBand closes the hole that would otherwise
+           make every gate below pass on a sheet that failed to load: with no
+           shirt pixels anywhere there is nothing to be uncovered by, and bare
+           comes out 0.  overhang is the property that separates this fix from
+           v2.3.2016's — the sleeve is written at the BODY's own alpha, so the
+           shirt must never cover a pixel where the body is transparent, and the
+           character's silhouette cannot have grown.  0 on the artist's sheet
+           and 0 after the re-bake. */
+        for (let y = top; y <= Math.min(F - 1, top + 7); y++) {
+          for (let x = 0; x < F; x++) {
+            if (!isShirt(x, y)) continue;
+            shirtInBand++;
+            if (!isBody(x, y)) overhang++;
+          }
+        }
+        for (let y = top; y <= Math.min(F - 1, top + 7); y++) {
+          const e = edge[y];
+          if (e < 0) continue;
+          for (let x = 0; x < F; x++) {
+            if (back < 0 ? x >= e : x <= e) continue;
+            if (headCol[x] || !isBody(x, y)) continue;
+            const i = I(x, y);
+            if (isShirt(x, y)) continue;
+            const lum = 0.299 * B.d[i] + 0.587 * B.d[i + 1] + 0.114 * B.d[i + 2];
+            if (lum < 70) continue;                    /* the body's own keyline */
+            if (B.d[i + 1] > B.d[i]) continue;         /* trousers */
+            bare++;
+          }
+        }
+        per.push(bare);
+      }
+      const cyc = per.slice(0, 14);
+      out[dir] = { per: cyc, total: cyc.reduce((a, b) => a + b, 0), worst: Math.max(...cyc),
+        shirtInBand, overhang };
+    }
+    return out;
+  }, { gearVer: '2.3.2066', dirs: { east: -1, northeast: -1, southwest: 1, north: -1, south: -1 } });
+
+  const east = measure.east || {};
+  rec.ok('both jog-east sheets loaded through the client\'s own gear URL', !east.error, east.error || 'ok');
+
+  /* The gate.  176 before the v2.3.2066 re-bake; 19 after, all but 6 of it on
+     frame 3's bicep below the hem.  40 leaves room for a re-seal moving a
+     pixel or two and still fails hard if the sleeve ever comes off again. */
+  rec.ok('the trailing arm is not bare at the shoulder on jog-east (was 176 px over the cycle)',
+    east.total !== undefined && east.total <= 40, { total: east.total, perFrame: east.per });
+
+  /* No single frame may go back to reading as a tank top.  Worst before was
+     frame 3 at 39; worst after is the same frame at 13. */
+  rec.ok('no single jog-east frame carries a bare shoulder (worst was 39 px, on frame 3)',
+    east.worst !== undefined && east.worst <= 20, { worst: east.worst, perFrame: east.per });
+
+  /* Control 1: there IS a shirt on the wire.  Without this both gates above
+     also pass on a sheet that failed to load — nothing to be uncovered by. */
+  rec.ok('there is a tee in the shoulder band at all (guard against an empty sheet)',
+    east.shirtInBand > 1000, { shirtInBand: east.shirtInBand });
+
+  /* Control 2, and the one that says HOW the sleeve was drawn: it is written at
+     the body's own alpha, so the tee must never cover a transparent body pixel.
+     The character's silhouette is what it was.  This is exactly the property
+     v2.3.2016's fill lacked, which is why it grew pips on the arm's fringe. */
+  rec.ok('the sleeve never grew the character — no tee pixel over a transparent body',
+    east.overhang === 0, { overhang: east.overhang });
+
+  /* An AUDIT, not a gate — see the header.  On a three-quarter view this window
+     also catches the raised fist, which a tee is supposed to leave bare, so a
+     number here is a starting point for a look, not a verdict. */
+  const audit = {};
+  for (const d of ['northeast', 'southwest', 'north', 'south']) audit[d] = measure[d] && measure[d].total;
+  rec.ok('the other jog facings are measured, and reported rather than gated (audit)',
+    Object.values(audit).every((v) => typeof v === 'number'), audit);
 
   /* Run in EVERY direction and photograph each stride. The canvas is
      camera-centred on the player, so the crop is the middle of the play area.
