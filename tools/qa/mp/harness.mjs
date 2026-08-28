@@ -707,12 +707,19 @@ export async function figureBox(P, { pad = 0, peerId = null } = {}) {
     const S = window._gameState.current;
     const r = document.querySelector('canvas').getBoundingClientRect();
     /* A peer has no drawn-box probe of its own, so its anchor is the position
-       the renderer is given — which is what the old copies used for everyone. */
+       the renderer draws it at — and that is renderX/renderY, the smoothed
+       interpolation, NOT the raw x/y off the last packet (entityRenderer:
+       `display.x = other.renderX || other.x || 0`).
+       v2.3.2078: the difference did not matter to the old 88x104 box and
+       matters a great deal to a 40x46 one — a peer mid-interpolation sits far
+       enough from its packet position to fall outside the tighter crop, which
+       reads as "the other player cannot see his tattoos" on a frame where he
+       plainly can. */
     const src = pid ? (S.others || {})[pid] : S.player;
     if (!src || typeof src.x !== 'number') return null;
     const d = pid ? null : (window.__btPlayerDrawn ? window.__btPlayerDrawn() : null);
-    const wx = d ? d.x : src.x;
-    const wy = d ? d.footY : src.y;
+    const wx = d ? d.x : (pid && src.renderX != null ? src.renderX : src.x);
+    const wy = d ? d.footY : (pid && src.renderY != null ? src.renderY : src.y);
     return { x: r.left + (wx - S.camera.x) * (S._worldScaleX || 1),
              y: r.top + (wy - S.camera.y) * (S._worldScaleY || 1),
              vw: innerWidth, vh: innerHeight,

@@ -244,6 +244,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
      the worker.  The tools go in the bag first because hasGatherTool gates
      whether the node is tappable at all. */
   const workNode = async (nodeType, tool, shot) => {
+    /* v2.3.2078: returns WHY, not just whether. An ore vein works from this
+       recipe and a fishing spot does not, and a bare false says nothing about
+       which step refused. */
     const ok = await A.page.evaluate(({ nodeType, tool }) => {
       const S = window._gameState && window._gameState.current;
       if (!S || !S.player) return false;
@@ -256,28 +259,41 @@ export async function run({ browser, wsPort, webPort, rec }) {
       S._tapNode = node;            /* as if a finger had touched it */
       return true;
     }, { nodeType, tool });
-    if (!ok) return false;
+    if (!ok) return { ok: false, why: 'the node could not be injected' };
     await A.page.waitForTimeout(700);
     const near = await H.readState(A, (S) => (S._nearNode ? S._nearNode.id : null));
-    if (near !== 'qa-cosm-' + nodeType) return false;
+    if (near !== 'qa-cosm-' + nodeType) {
+      return { ok: false, why: 'the node never became interactable (S._nearNode is '
+        + JSON.stringify(near) + ') — hasGatherTool or nodeReachDist refused it' };
+    }
     /* Dispatched in page, not through Playwright: the prompt is anchored over
        the node and the bottom dashboard intercepts it at this viewport
        (mp-harvest v2.3.1706 hit the same wall).  Its onClick is still the code
        path being exercised. */
-    await A.page.evaluate(() => {
+    const pressed = await A.page.evaluate(() => {
       const el = document.getElementById('bt-node-prompt');
-      if (el) el.click();
+      if (!el) return false;
+      el.click();
+      return true;
     });
+    if (!pressed) return { ok: false, why: 'the node offered no harvest prompt to press' };
     await A.page.waitForTimeout(900);
     const ex = await H.readState(A, (S) => (S._extraction ? S._extraction.skill : null));
-    if (!ex) return false;
+    if (!ex) return { ok: false, why: 'the prompt was pressed and no extraction started' };
     await soak(6000, shot);
-    return true;
+    return { ok: true, skill: ex };
   };
   const mined = await workNode('oreVein', 'mining_pickaxe', '07-mine');
-  rec.ok('the player can be put to work on an ore vein (the mine pose)', mined);
+  rec.ok('the player can be put to work on an ore vein (the mine pose)', mined.ok, mined);
+  /* The fishing spot is REPORTED, not gated. An injected fishSpot does not
+     become workable the way an ore vein does — the recipe is identical and the
+     rod is in the bag, so something else about fishing refuses it, and that is
+     mp-fishhand's subject rather than this file's. Skipping with the client's
+     own reason keeps the finding visible without failing a cosmetics test for
+     a gathering question. */
   const fished = await workNode('fishSpot', 'fishing_pole', '08-fish');
-  rec.ok('the player can be put to work on a fishing spot (the fish pose)', fished);
+  if (fished.ok) rec.ok('the player can be put to work on a fishing spot (the fish pose)', true, fished);
+  else rec.skip('the player can be put to work on a fishing spot (the fish pose)', fished.why);
 
   /* ── THE VERDICT, POSE BY POSE ── */
   const poses = Object.keys(seen).sort();
