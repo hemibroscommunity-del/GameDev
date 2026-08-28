@@ -54,10 +54,34 @@ const raw = (P) => P.page.evaluate(() => {
   };
 });
 
+/* v2.3.2125: frame the CAPE, not the canvas centre.  The first cut cropped a
+   fixed box at the middle of the canvas, and the camera does not keep the
+   player there while he runs -- two of five sweep frames came back with no
+   character in them at all, which is a picture that proves nothing and looks
+   like an answer.  Asking the sprite where it is on screen cannot drift. */
+const CAPE_BOX = () => {
+  const r = window._pixiRenderer;
+  const pd = r && r.playerDisplayRaw ? r.playerDisplayRaw() : null;
+  const spr = pd && pd._capeSprite;
+  const cv = document.querySelector('canvas');
+  if (!spr || !cv || !spr.visible) return null;
+  let g = null;
+  try { g = spr.getGlobalPosition ? spr.getGlobalPosition() : null; } catch (e) { g = null; }
+  if (!g) return null;
+  const b = cv.getBoundingClientRect();
+  const k = b.width / (cv.width || b.width);          // CSS px per stage px
+  const cx = b.left + g.x * k, cy = b.top + g.y * k;
+  const W = 150, H = 180;
+  const x = Math.max(b.left, Math.min(cx - W / 2, b.right - W));
+  const y = Math.max(b.top, Math.min(cy - H / 2, b.bottom - H));
+  return { x, y, width: W, height: H };
+};
+
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Caped', wsPort, webPort, guest: true,
     viewport: { width: 390, height: 844 }, touch: true, dpr: 2 });
   await H.enterWorld(P);
+  await P.page.evaluate(`window.__btCapeBox = ${CAPE_BOX.toString()}`);
   await P.page.waitForTimeout(2500);
 
   const bare = await raw(P);
@@ -160,10 +184,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
    * is the one a later "simplification" would reach for. */
   await P.page.keyboard.down('d');
   const jog = [];
+  const shots = [];
   for (let i = 0; i < 14 && jog.length < 3; i++) {
     await P.page.waitForTimeout(160);
     const s = await raw(P);
-    if (s && s.pose === 'jog' && s.cape && s.body) jog.push(s);
+    if (s && s.pose === 'jog' && s.cape && s.body) {
+      jog.push(s);
+      /* v2.3.2125: capture the jog as PIXELS as well as numbers.  Everything
+         below reads the transform, which is the right test for "does it follow
+         the crown" and is silent on "does it look right" -- the owner's actual
+         question.  A crop around the figure, one per sample, so a hood that has
+         slid off the head is visible rather than inferred. */
+      const box = await P.page.evaluate(() => window.__btCapeBox && window.__btCapeBox());
+      if (box && box.width > 0) {
+        const f = `/home/user/GameDev/tools/qa/mp/out/cape-jog-${jog.length}.png`;
+        await P.page.screenshot({ path: f, clip: box });
+        shots.push(f);
+      }
+    }
   }
   await P.page.keyboard.up('d');
   await P.page.waitForTimeout(600);
@@ -179,6 +217,55 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('...and it is still drawn at the body\'s size while it does so',
       jog.every((s) => Math.abs(s.cape.w - s.body.w) < 1.5), jog.map((s) => [s.cape.w, s.body.w]));
   }
+  rec.ok('the jog was photographed, not only measured', shots.length > 0, { shots });
+
+  /* ═══ v2.3.2125: THE TILT SWEEP ═══
+     Owner: "It looks like the cape is hanging off the side of his head and the
+     side of his body. It needs to be angled more aggressively so that the back
+     of his body doesn't show behind it."
+
+     Two numbers decide that and neither can be measured -- see _capeTune in
+     entityRenderer.  So this photographs the SAME jog frame at a spread of
+     them, in one run, and the choice is made by looking.  Setting the handle
+     is what makes that possible; the assertion is only that the sweep actually
+     ran (a silent no-op would leave four identical pictures and a confident
+     wrong conclusion). */
+  const SWEEP = [
+    { tiltScale: 1.0, pivotY: 0.27, tag: 'a-now' },
+    { tiltScale: 1.0, pivotY: 0.31, tag: 'b-pivot' },
+    { tiltScale: 1.5, pivotY: 0.31, tag: 'c-1.5x' },
+    { tiltScale: 2.0, pivotY: 0.31, tag: 'd-2.0x' },
+    { tiltScale: 2.5, pivotY: 0.33, tag: 'e-2.5x' },
+  ];
+  const swept = [];
+  for (const cfg of SWEEP) {
+    await P.page.evaluate((c) => { window.__btCapeTune = { tiltScale: c.tiltScale, pivotY: c.pivotY }; }, cfg);
+    await P.page.keyboard.down('d');
+    let got = null;
+    for (let i = 0; i < 12 && !got; i++) {
+      await P.page.waitForTimeout(140);
+      const s2 = await raw(P);
+      if (s2 && s2.pose === 'jog' && s2.cape && s2.cape.visible) got = s2;
+    }
+    if (got) {
+      /* FULL frame, cropped afterwards by finding the cape's own crimson.
+         Two attempts at computing the crop from the sprite's position came
+         back with no character in the picture -- once because the camera does
+         not hold the player at the canvas centre, once because stage
+         coordinates are not CSS pixels. A picture with nothing in it is worse
+         than no picture: it looks like an answer. The colour is on the screen
+         by definition, so locating it cannot drift. */
+      await P.page.screenshot({ path: `/home/user/GameDev/tools/qa/mp/out/cape-tilt-${cfg.tag}.png` });
+      swept.push({ ...cfg, rot: got.cape.rot });
+    }
+    await P.page.keyboard.up('d');
+    await P.page.waitForTimeout(400);
+  }
+  await P.page.evaluate(() => { try { delete window.__btCapeTune; } catch (e) {} });
+  console.log('    TILT SWEEP: ' + JSON.stringify(swept));
+  rec.ok('the tilt sweep actually varied the rotation (guard: identical frames prove nothing)',
+    swept.length >= 3 && new Set(swept.map((x) => Math.round(x.rot * 1000))).size >= 3, swept);
+
   const back = await raw(P);
   rec.ok('...and standing again there is no offset — the art is fitted to THIS pose',
     !!(back && back.cape && back.body && back.pose === 'stand'

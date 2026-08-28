@@ -1407,11 +1407,54 @@ const _CAPE_HIDDEN_POSES = { dodge: 1, swing: 1, bowshot: 1, fire: 1, chop: 1, m
  * three-quarter angles and the amount that reads correctly is not a projection
  * of anything — it is a look.  Mirrored facings negate it, for the same reason
  * the body's own scale.x carries its sign. */
-const _CAPE_JOG_TILT = { east: 0.30, northeast: 0.20, southwest: -0.20, north: 0, south: 0 };   /* v2.3.2025: owner, "angled more with jog" -- doubled */
+/* v2.3.2025: owner, "angled more with jog" -- doubled.
+   v2.3.2125: owner, "angled more aggressively so that the back of his body
+   doesn't show behind it" -- 1.5x again (east 0.30 -> 0.45).  Chosen off a
+   rendered ladder at 1x / 1.5x / 2x / 2.5x, and the ladder is why it is not
+   more: past about 1.5x the rotation stops covering the back and starts
+   LIFTING THE HEM off it, because the cape swings about the shoulders -- at
+   2.5x the hem is near horizontal and the lower back is barer than it was at
+   1x. More angle is not monotonically more cover, which is the thing that is
+   not obvious from the ask. */
+const _CAPE_JOG_TILT = { east: 0.45, northeast: 0.30, southwest: -0.30, north: 0, south: 0 };
 /* Where the cape swings FROM: the shoulders, not the middle of the frame.
    Pivoting about the centre would swing the hood as far as the hem and take
-   the hood off the head, which is the thing v2.3.2023b just fixed. */
-const _CAPE_PIVOT_Y = 0.27;
+   the hood off the head, which is the thing v2.3.2023b just fixed.
+
+   v2.3.2125: 0.27 -> 0.31, and this is a CONSEQUENCE of v2.3.2122-2124 rather
+   than a taste change. The pivot is a fraction of the 256 FRAME, but what it
+   needs to sit on is the shoulders of the ART -- and the art just moved 10px
+   down inside that frame. Left at 0.27 the swing had crept up from the
+   shoulders towards the neck, which is the "hanging off the side of his head"
+   half of the report. 10/256 = 0.039, so 0.31 puts it back where it was. */
+const _CAPE_PIVOT_Y = 0.31;
+
+/* ═══ v2.3.2125: THE TWO NUMBERS THIS KEEPS BEING ASKED TO CHANGE ═══
+ * The tilt has now been re-asked for twice ("angled more with jog", v2.3.2025;
+ * "angled more aggressively so the back of his body doesn't show behind it",
+ * this version), and the pivot moves whenever the ART moves inside its frame —
+ * which it just did, by 10px (v2.3.2122-2124).  Both are pure LOOK: no
+ * measurement settles them, only rendering the jog and looking at it.
+ *
+ * So they are overridable at runtime.  Not a feature and not a setting — a
+ * bench, so a tuning round is one harness run that sweeps values and
+ * photographs each, instead of four rebuilds.  Absent the handle these read
+ * exactly as the constants above, which is every session that is not a QA
+ * scenario deliberately setting it. */
+function _capeTune(dir) {
+  let t = null;
+  try { t = window.__btCapeTune || null; } catch (e) { t = null; }
+  const base = _CAPE_JOG_TILT[dir] || 0;
+  if (!t) return { tilt: base, pivotY: _CAPE_PIVOT_Y };
+  /* A tilt of 0 is meaningful (north/south face the camera, where a sideways
+     lean would be a lie), so scale rather than replace: one knob moves the
+     whole table and cannot accidentally give north a tilt it must not have. */
+  const k = (typeof t.tiltScale === 'number') ? t.tiltScale : 1;
+  return {
+    tilt: base * k,
+    pivotY: (typeof t.pivotY === 'number') ? t.pivotY : _CAPE_PIVOT_Y,
+  };
+}
 
 function _placeCape(display, capeId, pose, dir, mirror, frameIdx) {
   const spr = display && display._capeSprite;
@@ -1446,12 +1489,13 @@ function _placeCape(display, capeId, pose, dir, mirror, frameIdx) {
   /* v2.3.2024: swing it from the shoulders while running.  The anchor moves off
      centre so the rotation pivots there, and y is compensated by the same
      amount so the cape does not also jump up the screen when it tilts. */
-  const tilt = (pose === 'jog') ? ((_CAPE_JOG_TILT[dir] || 0) * (mirror ? -1 : 1)) : 0;
-  if (spr.anchor.y !== _CAPE_PIVOT_Y) spr.anchor.set(0.5, _CAPE_PIVOT_Y);
+  const tune = _capeTune(dir);                                   /* v2.3.2125 */
+  const tilt = (pose === 'jog') ? (tune.tilt * (mirror ? -1 : 1)) : 0;
+  if (spr.anchor.y !== tune.pivotY) spr.anchor.set(0.5, tune.pivotY);
   if (spr.rotation !== tilt) spr.rotation = tilt;
   const drawnH = Math.abs(spr.scale.y) * ((tex.frame && tex.frame.height) || 256);
   spr.x = sb.x + dx;
-  spr.y = sb.y + dy - (0.5 - _CAPE_PIVOT_Y) * drawnH;
+  spr.y = sb.y + dy - (0.5 - tune.pivotY) * drawnH;
   if (!spr.visible) spr.visible = true;
 }
 
