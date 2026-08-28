@@ -1034,6 +1034,34 @@ export const BottomDashboard = () => {
             goes stale the next time this corner is rearranged.  34px against
             the 44px touch rule is the pre-existing chipStyle; the row is 52px
             tall and centres it, so the tappable area is the row's height. */}
+        {/* v2.3.2119: the FOLD chip; v2.3.2120 (owner: "all the way left on
+            the dashboard (to the left of gold count) and stays there
+            regardless of which tab is open"): FIRST in the row, in every
+            mode.  A control that anchors the row's left edge cannot also
+            migrate with the modes — same one-screen-position rule the nav
+            group follows (v2.3.1637b): nothing slides out from under the
+            thumb that knows where it lives.
+
+            IN EXPANDED MODE the tap means "get all this out of my way":
+            close the sheet to the bar FIRST, then fold.  In that order on
+            purpose — the mode-effect above unfolds whenever a sheet is
+            open, so folding while still expanded would be setting a flag
+            for the effect to immediately revert; with the sheet already
+            closed the effect has nothing to say.  Opening any tab still
+            unfolds (that effect is unchanged) — the chip stays put, its
+            meaning flips with the glyph. */}
+        <button
+          onPointerUp={(e) => {
+            e.stopPropagation();
+            if (mode === 'expanded') { dashboardPanelBus.toBar(); dashMinBus.set(true); }
+            else dashMinBus.set(!dashMinBus.min);
+          }}
+          className="bt-chisel bt-chisel--chip"
+          aria-label={dashMin ? 'Expand dashboard' : 'Minimize dashboard'}
+          aria-expanded={!dashMin}
+          data-dash-fold={dashMin ? 'min' : 'open'}
+          style={{ ...chipStyle, fontSize: 15 }}
+        >{dashMin ? '▴' : '▾'}</button>
         {drill && (
           <button
             onPointerUp={(e) => { e.stopPropagation(); dashboardPanelBus.pop(); }}
@@ -1069,24 +1097,6 @@ export const BottomDashboard = () => {
           }}>{active ? active.title : ''}</div>
         )}
         <IdentityStrip band />
-        {/* v2.3.2119 (owner: "make it possible to minimize the entire
-            dashboard with a button on that empty space next to gold"): the
-            FOLD chip, in the leftover the strip flexes into — between the
-            readouts and the nav group, which is the empty space the owner
-            pointed at.  Same .bt-chisel chip recipe as the drill back-chip
-            so the row stays one family of controls.  Rendered only at rest:
-            an expanded sheet already unfolds the band (the effect above),
-            and a fold control inside an open panel would be a lie. */}
-        {mode === 'bar' && (
-          <button
-            onPointerUp={(e) => { e.stopPropagation(); dashMinBus.set(!dashMinBus.min); }}
-            className="bt-chisel bt-chisel--chip"
-            aria-label={dashMin ? 'Expand dashboard' : 'Minimize dashboard'}
-            aria-expanded={!dashMin}
-            data-dash-fold={dashMin ? 'min' : 'open'}
-            style={{ ...chipStyle, fontSize: 15 }}
-          >{dashMin ? '▴' : '▾'}</button>
-        )}
         {/* Track 3, right-aligned.  The group is WIDER than the narrow
             track (132 vs 90 at 390w) and deliberately overflows it to the
             LEFT: track 2 holds only the DPS anchor box, which is pinned to
