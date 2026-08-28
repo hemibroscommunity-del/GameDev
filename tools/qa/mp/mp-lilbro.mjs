@@ -138,8 +138,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (!n) return;
       /* Pin the wander AI and steer him along the axis under test. */
       n.pathRadius = 0;
-      n.x = 1180; n.y = 1180;
-      n.spawnX = 1180 + ddx * 400; n.spawnY = 1180 + ddy * 400;
+      /* v2.3.2086: his anchor moved to (970, 1250) when the bank came back
+         onto the map at (1230, 1290) -- the old one put him inside its art. */
+      n.x = 970; n.y = 1250;
+      n.spawnX = 970 + ddx * 400; n.spawnY = 1250 + ddy * 400;
       n.targetX = n.spawnX; n.targetY = n.spawnY;
     }, [dx, dy]);
     await P.page.waitForTimeout(800);
@@ -161,8 +163,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.evaluate(() => {
     const S = window._gameState.current;
     const n = (S.npcs || []).find((q) => q && q.id === 'lil_bro');
-    if (n) { n.pathRadius = 130; n.spawnX = 1180; n.spawnY = 1180; }
-    S.player.x = 1180; S.player.y = 1330;
+    if (n) { n.pathRadius = 130; n.spawnX = 970; n.spawnY = 1250; }
+    S.player.x = 970; S.player.y = 1400;
   });
   await P.page.waitForTimeout(1400);
   await P.page.screenshot({ path: H.REPO + '/tools/qa/mp/out/lil-bro.png' }).catch(() => {});

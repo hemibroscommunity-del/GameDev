@@ -3561,9 +3561,17 @@ export const NPC_DATA = [{
      cobble on a 90px disc, on the plaza's east side. That puts him opposite
      Shopkeeper Bro at (700,1060) so the two do not crowd each other, clear of
      the fountain's footprint (x 760..900), and off the spawn point. */
-  x: 1180, y: 1180,
-  spawnX: 1180, spawnY: 1180,
-  renderX: 1180, renderY: 1180,
+  /* v2.3.2086: 1180 -> 1000 across.  The bank came back onto the map at
+     (1230, 1290) and its art runs y 970..1290 -- his old anchor put him
+     INSIDE it, wandering through the lobby wall.  (1000, 1250) is open plaza
+     a comfortable distance from the bank's west face.  x 970 rather than
+     1000 so his 130px amble stops at 1100, short of the bank's footprint at
+     1120 -- the render at 1000 had his circle crossing the bank's steps, and
+     townsfolk do not collide with props, so he would have strolled through
+     them. */
+  x: 970, y: 1250,
+  spawnX: 970, spawnY: 1250,
+  renderX: 970, renderY: 1250,
   hp: 100, maxHp: 100,
   noHp: true,          /* a child in a safe town; a health bar reads as "fight this" */
   alive: true,
@@ -3573,7 +3581,7 @@ export const NPC_DATA = [{
      the disc above was measured over. */
   pathRadius: 130,
   moveTimer: 0,
-  targetX: 1180, targetY: 1180,
+  targetX: 970, targetY: 1250,
   chatTimer: 11000,
   chatBubble: null,
   /* REQUIRED -- the AI loop indexes this unguarded and an empty array throws. */

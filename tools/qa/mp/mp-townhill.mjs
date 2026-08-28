@@ -77,17 +77,30 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ═══ v2.3.2065: THE OWNER'S BLUEPRINT ═══
      A mockup of where things go: mayor's house up the stairs, blacksmith
      west, general store east, fountain dead centre, dressing around them.
-     Twelve props are placed against it; the bank and the enchanter still
-     carry v16 coordinates and stay off, which is the claim that matters --
-     turning them on without re-measuring puts them off the right-hand edge
-     of a map 1664 world px wide. */
-  const EXPECT = ['anvil', 'banner-gate-e', 'banner-gate-w', 'bench-e', 'bench-w',
-    'forge', 'fountain', 'general-store', 'lamp-plaza-e', 'lamp-plaza-w',
+
+     v2.3.2086: FOURTEEN NOW.  This used to assert that the bank and the
+     enchanter were NOT placed, and that was the right assertion while it was
+     true: they carried v16 coordinates (x 1810 and x 2130) and turning them
+     on without re-measuring would have put them off the right-hand edge of a
+     map 1664 world px wide.  worldProps said what to do about it -- "re-
+     measure against the current art, mark them mapV 17, and they come back" --
+     and v2.3.2086 did exactly that, so the claim inverts.
+
+     It matters more than two props: twelve building PANELS are written and
+     working, and before this only TWO had a door on the current map.  These
+     two are the cheapest of the missing ten, because only the coordinates
+     were stale.  The `oob` check below is the part that must never relax --
+     it is what would have caught a careless re-enable. */
+  const EXPECT = ['anvil', 'bank', 'banner-gate-e', 'banner-gate-w', 'bench-e', 'bench-w',
+    'enchanter', 'forge', 'fountain', 'general-store', 'lamp-plaza-e', 'lamp-plaza-w',
     'market-stall', 'mayor-house'];
-  rec.ok(`the blueprint's twelve props are all placed (${ids.length})`,
+  rec.ok(`the blueprint's props are all placed (${ids.length})`,
     JSON.stringify(ids) === JSON.stringify(EXPECT), { got: ids, want: EXPECT });
-  rec.ok('...and the two still carrying v16 coordinates are NOT',
-    !ids.includes('bank') && !ids.includes('enchanter'), ids);
+  /* The two that came back are DOORS, not scenery: their whole point is the
+     panel behind them, so the action is asserted rather than just the id. */
+  const acts = Object.fromEntries(list.filter((p) => p.action).map((p) => [p.id, p.action]));
+  rec.ok('...and the bank and the enchanter are doors that open their panels',
+    acts.bank === 'bank' && acts.enchanter === 'enchant', acts);
   const oob = list.filter((p) => p.x <= 0 || p.y <= 0 || p.x >= TOWN_W || p.y >= TOWN_H);
   rec.ok('every prop that IS drawn stands on the map that ships', oob.length === 0, oob);
 

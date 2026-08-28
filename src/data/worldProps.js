@@ -290,14 +290,44 @@ export const WORLD_PROPS = [
      The map that ships is 52x55, so these x values run off the right-hand
      edge of the world. They are a to-do, not a deletion: re-measure against
      the current art, mark them mapV 17, and they come back. */
+  /* ═══ v2.3.2086: THE BANK AND THE ENCHANTER COME BACK ═══
+     The note above says exactly what to do -- "re-measure against the current
+     art, mark them mapV 17, and they come back" -- and this is that, done.
+     They had sat at x 1810 and x 2130, off the right edge of a 52x55 map,
+     since the v17 art landed.
+
+     WHY THEY WERE WORTH FINDING.  Twelve building panels are written and
+     working; only TWO had a door on the current map (forge and general-store,
+     the two with `action` above).  These two are the cheapest of the ten
+     missing: the art ships, the panels ship, and only the coordinates were
+     stale.  The other eight need either new art or a decision to reach them
+     another way, which is the owner's call and not a placement problem.
+
+     PLACED THE SAME WAY EVERY OTHER PROP HERE WAS: candidate anchors filtered
+     to those whose whole footprint AND a 70px standing apron in front of the
+     door are clear of every other footprint, then rendered and looked at
+     (tools/maps/render_town_layout.py).  Both sit on the east plaza, which is
+     the only quarter with room for a 220-wide building that is not already
+     spoken for -- the west half holds the forge (470 across) and the market
+     stall, and the north is the mayor's terrace. */
   {
-    id: 'bank', zone: 'town', mapV: 16, sprite: '/sprites/props/bank.png',
-    x: 1810, y: 505, worldH: 320, blockW: 220, blockD: 95,
+    id: 'bank', zone: 'town', mapV: 17, sprite: '/sprites/props/bank.png',
+    x: 1230, y: 1290, worldH: 320, blockW: 220, blockD: 95,
     action: 'bank', label: 'BANK',
   },
   {
-    id: 'enchanter', zone: 'town', mapV: 16, sprite: '/sprites/props/enchanter.png',
-    x: 2130, y: 525, worldH: 300, blockW: 220, blockD: 95,
+    /* NORTH-EAST, not stacked under the bank.  The first placement put it at
+       (1180, 1000), which the layout render showed crowding the general store:
+       220 of spire drawn through a shop 190 wide, and Storekeeper Bro standing
+       in the seam.  There is not room on the east flank for two 300px
+       buildings AND the store between the plaza and the wall -- the clear run
+       is about 550px and they want 620.
+       So it takes the empty quarter instead: the cobble between the mayor's
+       terrace and the store, which held nothing at all.  Art spans y 400..700
+       and x 940..1160, clear of the mayor's house (its art ends at x 925) and
+       of the store (its footprint starts at x 1195). */
+    id: 'enchanter', zone: 'town', mapV: 17, sprite: '/sprites/props/enchanter.png',
+    x: 1050, y: 700, worldH: 300, blockW: 220, blockD: 95,
     action: 'enchant', label: 'ENCHANTER',
   },
 ];
