@@ -140,6 +140,39 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the SWORD and SHIELD are DRAWN as bag tiles, not just held in the blob',
     drawn.stashTiles >= 2, drawn);
 
+  /* ═══ v2.3.2117: THE LOWER-LEFT CORNER BELONGS TO THE JOYSTICK ═══
+     Owner: "Hide the gold ticket message board, it covers the left joystick."
+
+     The world chat feed renders NOTHING when nobody has said anything, so what
+     kept a 260px panel parked over the joystick was the golden-ticket status
+     line — posted on every join, and in a quiet room the only line there is.
+     Measured as a RECTANGLE OVERLAP against the joystick disc rather than as
+     "is the panel present": the panel is allowed to exist, it is just not
+     allowed to sit on the control.  A pixel of overlap is a pixel the thumb
+     lands on. */
+  const corner = await P.page.evaluate(() => {
+    const vis = (el) => el && el.getBoundingClientRect().width > 0;
+    const disc = [...document.querySelectorAll('.bt-joystick-zone')].filter(vis)[0];
+    /* The feed's scrollable list is the part with pointerEvents:auto — the
+       half that can actually swallow a drag. */
+    const feed = [...document.querySelectorAll('*')].filter((el) => {
+      const t = (el.textContent || '');
+      return vis(el) && /Golden ticket event/i.test(t) && el.children.length === 0;
+    })[0];
+    const r = (el) => { const b = el.getBoundingClientRect(); return { l: b.left, t: b.top, r: b.right, b: b.bottom }; };
+    if (!disc) return { disc: null };
+    const d = r(disc);
+    if (!feed) return { disc: d, feed: null, overlap: 0 };
+    const f = r(feed);
+    const ox = Math.max(0, Math.min(d.r, f.r) - Math.max(d.l, f.l));
+    const oy = Math.max(0, Math.min(d.b, f.b) - Math.max(d.t, f.t));
+    return { disc: d, feed: f, overlap: Math.round(ox * oy) };
+  });
+  console.log('    CORNER: ' + JSON.stringify(corner));
+  rec.ok('the left joystick disc is on screen (guard)', !!corner.disc, corner);
+  rec.ok('the golden-ticket status no longer parks a panel on the left joystick',
+    !corner.feed && !corner.overlap, corner);
+
   /* ═══ AND THE TILE HAS TO OPEN, AND SAY WHAT IT IS ═══
      A tile is where the player's journey CONTINUES, not where it ends: the
      name and the Equip button live in the popup a tap later (the tile itself

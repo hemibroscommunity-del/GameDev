@@ -208,10 +208,29 @@ export function processGameEvent(type, payload, S, deps) {
                 : _c && _c.remaining > 0
                   ? `Golden ticket event: ${_c.remaining} of ${_c.cap} left, ~${_pct}% per kill.`
                   : 'Golden ticket event: all tickets have been found.';
-            S.chatLog = (S.chatLog || []).slice(-40).concat([
-              { id: null, name: null, text: _line, ts: Date.now() },
-            ]);
-            if (setChatLog) setChatLog(S.chatLog.slice());
+            /* ═══ v2.3.2117: OFF THE BOARD, NOT OUT OF REACH ═══
+             * Owner: "Hide the gold ticket message board, it covers the left
+             * joystick."
+             *
+             * This line used to go into world chat, and in a quiet room it was
+             * the ONLY line — which is what made the board permanent.  The feed
+             * renders nothing at all when nobody has said anything
+             * (WorldChatFeed's "quiet when empty"), so a status message posted
+             * on every single join is the difference between a lower-left
+             * corner that is clear and one that has a 260px panel parked over
+             * the joystick from the moment you load.  A status readout should
+             * not be able to hold a chat panel open.
+             *
+             * It is not deleted, because of why it exists: v2.3.2101 added it
+             * after the drop was reported dead four times and every round was
+             * spent guessing at state nobody could see — the kill switch, the
+             * rate and the ledger all live in durable storage and are invisible
+             * from source.  Blinding that again to clear a corner would trade a
+             * layout problem for the diagnostic one it was built to end.  So it
+             * goes to the console, where it costs no pixels and is one devtools
+             * tab away, and to a field QA can read without parsing chat. */
+            try { console.log('[bt] ' + _line); } catch (e) { /* ignore */ }
+            try { S._capeStatusLine = _line; } catch (e) { /* ignore */ }
             break;
           }
           case 'shop_result': {
