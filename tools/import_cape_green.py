@@ -74,7 +74,7 @@ MIN_PIECE = 20       # a cape is one piece; anything smaller is keying residue  
 # Only south is corrected. southwest and east were measured and left alone:
 # southwest's mouth is 8/17 covered by the hood SIDES, which is a hood framing
 # a face, and east reads correctly in profile with the hood wrapping behind.
-Y_NUDGE = {'south': 10}   # pixels DOWN, in 256-space, applied after the fit
+Y_NUDGE = {'south': 10, 'east': 10}   # pixels DOWN, in 256-space, applied after the fit  (v2.3.2123: east too)
 
 
 def classify(rgb):
