@@ -109,6 +109,11 @@ export async function preloadWorldAnimations() {
     /* v2.3.1735: the shared owner FX strips.  Registered HERE, in the same PR
        that adds them, per CLAUDE.md's animation-preloading law — a first-use
        texture load is a regression, and these two are global (not per-zone). */
+    /* v2.3.2070: the portal beam rides this group — it is exported from
+       fxStrips.js and awaited by the same fxStripsReady(), so it is covered
+       by the line above and needs no entry of its own.  Said out loud
+       because a still image in a module named "strips" is exactly the kind
+       of thing a later reader assumes was forgotten. */
     fxStrips: fxStripsReady(),
     traits: preloadTraits(),
     /* v2.3.2023: five stills per cape.  Global rather than per-zone -- a cape
