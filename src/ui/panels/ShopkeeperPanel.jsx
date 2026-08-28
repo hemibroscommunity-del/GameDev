@@ -1,47 +1,66 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { shopBus } from '../mobile/shopBus.js';
-/* v2.3.2052 (owner: "show his inventory similar to how my inventory is shown
-   with the actual item thumbnail"). The SAME resolver the bag uses, so a slime
-   in his pile is the picture you already know from your own bag -- and so a
-   thumbnail added for a new material appears in both places at once instead of
-   only in the one somebody remembered to update. */
 import { thumbFor, iconFor, ITEM_NAMES } from '../mobile/dash/InventoryPanel.jsx';
 
-/* ═══ v2.3.2050: TRADING WITH SHOPKEEPER BRO ═══
+/* ═══ v2.3.2059: THE MERCHANT DRAWER ═══
  *
- * Owner: "Make it so you can buy and sell things from him. His inventory is
- * public so other players who sell monster remains (etc) can see it and buy
- * from him. The more quantity he has of a thing the cheaper he's willing to
- * buy from you."
+ * Owner, replacing the v2.3.2057 popup: "Your existing bag should become one
+ * half of the shop interface. Don't open another inventory or cover it. ... a
+ * merchant drawer attach[es] directly to the top edge of your existing bag
+ * panel ... The important part is that your bag does not change position at
+ * all. The shop simply grows upward from it. ... I wouldn't make it a floating
+ * rounded popup like your current version."
  *
- * ── ONE LIST, NOT TWO TABS ──
- * A buy tab and a sell tab would be the obvious shape and it hides the thing
- * that makes this shop interesting: his stock IS the price. Seeing "42 held,
- * he pays 4" on the same row as "he charges 18" is what explains why your
- * slimes are suddenly worth less than they were yesterday. Split across two
- * screens, that connection is invisible and the rule looks like a bug.
+ * ── WHAT THAT MEANS STRUCTURALLY ──
+ * This component is HALF a window. The other half is the band that is already
+ * on screen -- its gold row, its filter chips, its inventory grid, its weapon
+ * panel -- and none of that moves, is covered, or is redrawn here. The bag's
+ * own tiles gain a per-slot quote and become the sell control (see ItemTile in
+ * dash/InventoryPanel.jsx). What is left for this file is the three things the
+ * band does not already show: who you are trading with, what he has, and the
+ * one deal you are currently looking at.
  *
- * So: one row per item, both prices on it, and your own count beside his --
- * the row is the whole decision.
+ * ── WHY IT IS ANCHORED, NOT CENTRED ──
+ * bottom: var(--dash-h) is the whole trick. --dash-h is the band's height and
+ * the one number every bottom-anchored element in the game reads (zLayers.js
+ * rule 2), so the drawer's bottom edge IS the band's top edge at every
+ * viewport, with no gap to fall out of sync. The bottom corners are square and
+ * there is no shadow under them: it has to look joined to the band, not
+ * floating over it. Left and right sit at the columns row's own frame padding,
+ * so the drawer's edges line up with the bag panel's left edge and the combat
+ * panel's right edge -- "it looks like your bag just gained a merchant
+ * extension".
  *
- * ── THE CLIENT NEVER DOES ARITHMETIC ──
- * Every number here arrives in a shop_state event. Nothing is computed
- * locally and nothing updates optimistically after a tap: the panel asks, and
- * redraws when the server says what happened. That is deliberate rather than
- * lazy -- an optimistic update that disagrees with settlement is how a player
- * ends up believing they were paid something they were not.
+ * ── NO BUY/SELL TOGGLE ──
+ * Owner: "Tap my inventory -> sell it. Tap his inventory -> buy it." The side
+ * you tapped from IS the verb, so there is one action button and it is never
+ * ambiguous. The selection lives in shopBus because the two grids live in two
+ * different components (his shelf here, your bag in the band).
  *
- * ── ITEMS HE HAS NONE OF ──
- * A pile that is empty of a thing has no row, so the panel also lists what YOU
- * are carrying that he would take. Without it, the first person to find a new
- * material could never sell it: there would be nothing on screen to tap.
+ * ── THE TOTAL COMES FROM HIM, NOT FROM MULTIPLICATION ──
+ * A stack is NOT unit price times N: his offer decays as his pile grows. The
+ * client holds no price table on purpose, so every total on screen is a
+ * `shop_quote` answer. Multiplying locally would put a number on the button
+ * that settlement then disagrees with, which is the one thing a shop must
+ * never do. The quote is debounced so holding "+" does not send a message per
+ * frame.
  */
 
-/* Turn an inventory key into something a person would say. The keys are
-   machine-shaped ('slime-remnants', 'wood_pine_log', 'shard_ember') and
-   showing them raw makes a shop look like a database. */
+/* Owner: "~220-280 px tall". Fixed rather than content-sized so the world
+   above it does not jump as his shelf fills up, and so the shelf has a known
+   height to scroll inside. */
+const DRAWER_H = 226;
+/* Owner: "If he has more than five things, horizontally swipe his shelf." So
+   FIVE is the width unit, not a cap: the slot is a fifth of the shelf and a
+   sixth item simply scrolls into view. Sized as a percentage rather than a px
+   number so it stays five-across on every phone width -- and because a
+   percentage basis inside an overflow-x row resolves against the row, the
+   sixth slot keeps that same size instead of squeezing the other five. */
+const SHELF_MIN = 5;
+const SLOT_W = `calc((100% - ${(SHELF_MIN - 1) * 6}px) / ${SHELF_MIN})`;
+
 function prettyKey(k) {
-  if (ITEM_NAMES[k]) return ITEM_NAMES[k];   /* v2.3.2054 */
+  if (ITEM_NAMES[k]) return ITEM_NAMES[k];
   return String(k || '')
     .replace(/[_-]+/g, ' ')
     .replace(/\bremnants\b/i, 'remains')
@@ -55,26 +74,133 @@ const send = (type, payload) => {
   } catch (e) { /* offline: the panel simply will not update */ }
 };
 
+/* One shelf slot. Deliberately the same recipe as the bag tile it sits above
+   -- square, dark well, hairline, count badge bottom-right -- because the
+   owner's rule is that his stock reads in "the same exact slot language as
+   your existing inventory". The price sits UNDER the slot rather than inside
+   it: on his side it is what you pay, which is a commitment, not a hint. */
+function ShelfSlot({ itemKey, count, price, selected, onTap, size }) {
+  if (!itemKey) {
+    return (
+      <div aria-hidden="true" style={{ width: size, flex: 'none' }}>
+        <div style={{
+          width: '100%', aspectRatio: '1 / 1', borderRadius: 6,
+          background: 'rgba(17,30,35,.45)',
+          border: '1px dashed rgba(229,237,233,.10)',
+        }} />
+        <div style={{ height: 15 }} />
+      </div>
+    );
+  }
+  const thumb = thumbFor(itemKey);
+  return (
+    <div style={{ width: size, flex: 'none' }}>
+      <button
+        type="button" onClick={onTap} data-shop-bro={itemKey}
+        title={prettyKey(itemKey)}
+        style={{
+          position: 'relative', width: '100%', aspectRatio: '1 / 1', padding: 0,
+          background: selected ? 'rgba(234,198,117,.16)' : '#111E23',
+          border: selected ? '1px solid #EAC675' : '1px solid rgba(229,237,233,.14)',
+          borderRadius: 6, cursor: 'pointer', touchAction: 'manipulation',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 18, color: 'var(--ui-text, #F4F0E7)',
+        }}
+      >
+        {thumb
+          ? <img src={thumb} alt="" draggable={false}
+              style={{ width: '82%', height: '82%', objectFit: 'contain' }} />
+          : <span>{iconFor(itemKey)}</span>}
+        {count > 1 ? <span className="bt-item-qty">{count}</span> : null}
+      </button>
+      <div style={{
+        height: 15, textAlign: 'center', fontSize: 10.5, fontWeight: 700,
+        lineHeight: '15px', color: '#EAC675', fontVariantNumeric: 'tabular-nums',
+      }}>{price > 0 ? price + 'g' : ''}</div>
+    </div>
+  );
+}
+
 export function ShopkeeperPanel() {
   const [, force] = useState(0);
-  useEffect(() => shopBus.subscribe(() => force((n) => n + 1)), []);
-  /* Ask once on open. The server broadcasts every later change, so there is
-     no polling here -- a shop window that re-asked on a timer would be a
-     message per second per player for a list that rarely moves. */
+  const [qty, setQty] = useState(1);
+  const [quote, setQuote] = useState(null);    /* { key, qty, mode, total } */
+  const quoteTimer = useRef(null);
+
+  useEffect(() => shopBus.subscribe(() => {
+    force((n) => n + 1);
+    if (shopBus.quote) setQuote(shopBus.quote);
+    else setQuote(null);
+  }), []);
+
+  /* After a settled trade the bag has changed, so the per-slot quotes have to
+     be asked for again -- you may now be carrying a key you were not before,
+     or have emptied one out. Keyed on the RESULT, not on shop_state: a
+     shop_list answer arrives AS a shop_state, so re-asking on that would
+     answer itself forever. shop_result is sent once, to the one player who
+     acted. */
+  const settleCount = shopBus.settled;
   useEffect(() => {
-    if (!shopBus.open) return;
-    /* The keys you are CARRYING ride along, so he can quote for things he
-       holds none of -- otherwise the Sell button on those rows has no number
-       on it, and that is the commonest row there is. The prices still come
-       back from him; this only tells him what to price. */
-    let keys = [];
-    try {
-      const S0 = window._gameState && window._gameState.current;
-      keys = Object.keys((S0 && S0.rpg && S0.rpg.inventory) || {})
-        .filter((k) => ((S0.rpg.inventory[k] || 0) > 0));
-    } catch (e) { keys = []; }
-    send('shop_list', { keys });
+    if (!shopBus.open || !settleCount) return;
+    /* Clearing the signature rather than sending directly: a sale can change
+       a COUNT without changing the set of keys, which the poll above would
+       correctly skip, so this is the one case that has to force the ask. */
+    askedRef.current = '';
+  }, [settleCount]);
+
+  const sel = shopBus.sel;
+  const selKey = sel && sel.key;
+  const selSide = sel && sel.side;
+  /* Re-selecting the SAME item is still a selection, and it has to re-ask for
+     the price -- see shopBus.selSeq. */
+  const selSeq = shopBus.selSeq;
+
+  /* ═══ ASK WHENEVER THE BAG'S SHAPE CHANGES, NOT JUST ON OPEN ═══
+   * The list has to name every key you are carrying, because that is what
+   * makes the band's own slots show his price. Asking once at open was wrong
+   * twice over:
+   *   - the drawer OPENS BY ITSELF when you walk up to him (BroTown.jsx), so
+   *     "open" can happen before an item is in your bag at all -- which is
+   *     how this arrived: a mail grant landing a moment after the drawer
+   *     opened left every slot permanently unpriced, and only on the runs
+   *     where the player spawned near him. mp-shopkeeper caught it as a
+   *     flake, which is exactly what a position-dependent race looks like.
+   *   - picking anything up mid-shop had the same hole.
+   * Polled rather than event-driven because inventory has no change event the
+   * UI can subscribe to; the signature check means the message only goes when
+   * the set of keys really moved, so a player standing still sends nothing. */
+  const askedRef = useRef('');
+  useEffect(() => {
+    if (!shopBus.open) { setQty(1); setQuote(null); askedRef.current = ''; return undefined; }
+    const ask = () => {
+      let keys = [];
+      try {
+        const S0 = window._gameState && window._gameState.current;
+        const inv = (S0 && S0.rpg && S0.rpg.inventory) || {};
+        keys = Object.keys(inv).filter((k) => (inv[k] || 0) > 0).sort();
+      } catch (e) { keys = []; }
+      const sig = keys.join('|');
+      if (sig === askedRef.current) return;
+      askedRef.current = sig;
+      send('shop_list', { keys });
+    };
+    ask();
+    const id = setInterval(ask, 700);
+    return () => clearInterval(id);
   }, [shopBus.open]);
+
+  /* A new selection always starts at one. */
+  useEffect(() => { setQty(1); }, [selSeq]);
+
+  /* Debounced: holding '+' must not send a message per frame. */
+  useEffect(() => {
+    if (!selKey) return undefined;
+    if (quoteTimer.current) clearTimeout(quoteTimer.current);
+    quoteTimer.current = setTimeout(() => {
+      send('shop_quote', { key: selKey, qty, mode: selSide === 'bro' ? 'buy' : 'sell' });
+    }, 140);
+    return () => { if (quoteTimer.current) clearTimeout(quoteTimer.current); };
+  }, [selKey, selSide, selSeq, qty]);
 
   if (!shopBus.open) return null;
 
@@ -82,24 +208,34 @@ export function ShopkeeperPanel() {
   const inv = (S && S.rpg && S.rpg.inventory) || {};
   const coins = (S && S.rpg && S.rpg.coins) || 0;
 
-  /* His pile, plus anything in your bag he does not yet hold -- see the note
-     above on why the second half matters. */
-  const rows = shopBus.stock.slice();
-  const held = new Set(rows.map((r) => r.key));
-  /* v2.3.2055: a FALLBACK now. The server quotes for what you carry (see the
-     shop_list ask above), so these rows normally arrive priced; this only
-     covers the frames before that answer lands, and anything picked up while
-     the window is already open. */
-  for (const k in inv) {
-    if ((inv[k] || 0) > 0 && !held.has(k)) rows.push({ key: k, qty: 0, buy: null, sell: null, mine: true });
-  }
+  const shelf = shopBus.stock.filter((i) => i.qty > 0);
+  const broHas = (k) => (shopBus.quoteFor(k) || {}).qty || 0;
+  const youHave = (k) => Math.floor(inv[k] || 0);
 
-  const close = () => shopBus.setOpen(false);
-  const act = (type, key) => {
-    if (shopBus.busy) return;
+  const selMax = selKey ? (selSide === 'bro' ? broHas(selKey) : youHave(selKey)) : 0;
+  const clamped = Math.max(1, Math.min(qty, Math.max(1, selMax)));
+  const liveQuote = (quote && selKey && quote.key === selKey && quote.qty === clamped
+    && quote.mode === (selSide === 'bro' ? 'buy' : 'sell')) ? quote : null;
+  const tooPoor = selSide === 'bro' && liveQuote && coins < liveQuote.total;
+  const canAct = !!liveQuote && selMax >= 1 && !tooPoor && !shopBus.busy;
+
+  const act = () => {
+    if (!canAct) return;
     shopBus.setBusy(true);
-    send(type, { key, qty: 1 });
+    send(selSide === 'bro' ? 'shop_buy' : 'shop_sell', { key: selKey, qty: clamped });
+    setQty(1);
   };
+
+  const stepBtn = {
+    width: 34, height: 34, borderRadius: 8, padding: 0, flex: 'none',
+    background: '#293B41', border: '1px solid rgba(229,237,233,.20)',
+    color: 'var(--ui-text, #F4F0E7)', fontSize: 18, cursor: 'pointer',
+    touchAction: 'manipulation', fontFamily: 'inherit',
+  };
+  const rule = '1px solid rgba(229,237,233,.11)';
+
+  const cells = shelf.slice();
+  while (cells.length < SHELF_MIN) cells.push(null);
 
   return (
     <div
@@ -107,109 +243,165 @@ export function ShopkeeperPanel() {
       onPointerDown={(e) => e.stopPropagation()}
       className="bt-chat-noselect"
       style={{
-        position: 'fixed', left: '50%', transform: 'translateX(-50%)',
-        bottom: 'calc(var(--dash-h, 135px) + 12px)',
-        width: 'min(94vw, 460px)', maxHeight: '58vh',
+        position: 'fixed',
+        /* The band's own frame padding, so the drawer's edges line up with
+           the bag panel's left edge and the combat panel's right edge. */
+        left: 6, right: 6,
+        bottom: 'var(--dash-h, 243px)',
+        height: DRAWER_H,
         display: 'flex', flexDirection: 'column',
         background: 'var(--ui-sheet, #1E2E34)',
-        border: '1px solid var(--ui-line-strong, rgba(229,237,233,.20))',
-        borderRadius: 12, boxShadow: '0 14px 30px rgba(4,7,9,.38)',
+        border: rule,
+        /* Square at the bottom: it is JOINED to the band, not floating over
+           it. A radius here would draw the seam the whole layout is avoiding. */
+        borderRadius: '10px 10px 0 0',
+        borderBottom: 'none',
         color: 'var(--ui-text, #F4F0E7)', fontFamily: 'Source Sans 3, sans-serif',
         zIndex: 40, overflow: 'hidden',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px 8px' }}>
+      {/* ── WHO ── */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        padding: '6px 8px', flex: 'none', borderBottom: rule,
+        background: '#27393F',
+      }}>
         <img src="/sprites/npc/shopkeeper-bro-head.webp" alt="" draggable={false}
-          style={{ width: 30, height: 30, objectFit: 'contain', flex: 'none' }} />
+          style={{ width: 26, height: 26, objectFit: 'contain', flex: 'none' }} />
         <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ fontSize: 15, fontWeight: 800 }}>Shopkeeper Bro</div>
-          <div style={{ fontSize: 11, color: 'var(--ui-text-muted, #8FA3A0)' }}>
-            The more he holds, the less he pays
-          </div>
+          <div style={{ fontSize: 13, fontWeight: 800, lineHeight: 1.15 }}>Shopkeeper Bro</div>
+          <div style={{
+            fontSize: 10, color: 'var(--ui-text-muted, #8FA3A0)',
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>“The more I have, the less I pay.”</div>
         </div>
-        <div style={{ fontSize: 14, fontWeight: 700, color: '#EAC675', fontVariantNumeric: 'tabular-nums' }}>
-          {coins}g
-        </div>
-        <button type="button" onClick={close} aria-label="Close" className="bt-cc-btn"
-          style={{ width: 32, height: 32, borderRadius: 8, padding: 0, flex: 'none' }}>✕</button>
+        <div data-shop-coins={coins} style={{
+          fontSize: 13, fontWeight: 700, color: '#EAC675',
+          fontVariantNumeric: 'tabular-nums', flex: 'none',
+        }}>{coins}g</div>
+        <button type="button" onClick={() => shopBus.setOpen(false)} aria-label="Close"
+          data-shop-close=""
+          style={{
+            width: 30, height: 30, borderRadius: 8, padding: 0, flex: 'none',
+            background: '#293B41', border: '1px solid rgba(229,237,233,.20)',
+            color: 'var(--ui-text, #F4F0E7)', fontSize: 14, cursor: 'pointer',
+            fontFamily: 'inherit',
+          }}>✕</button>
       </div>
 
-      {shopBus.note ? (
-        <div data-shop-note="" style={{
-          margin: '0 12px 8px', padding: '6px 9px', borderRadius: 8, fontSize: 12,
-          background: shopBus.noteOk ? 'rgba(85,185,138,.14)' : 'rgba(224,106,94,.16)',
-          color: shopBus.noteOk ? '#7FD3AC' : '#E9A79E',
-        }}>{shopBus.note}</div>
-      ) : null}
-
-      <div data-shop-rows={rows.length} style={{ overflowY: 'auto', padding: '0 12px 12px' }}>
-        {rows.length === 0 ? (
-          <div style={{ fontSize: 13, color: 'var(--ui-text-secondary, #B6C1BE)', padding: '10px 2px' }}>
-            His bag is empty and so is yours. Bring him something.
+      {/* ── HIS SHELF ── one row, swiped sideways when he has more than five */}
+      <div style={{
+        flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column',
+        /* centred, so the row sits in the middle of whatever height is left
+           rather than clinging to the label with a pool of dead panel under
+           it -- the drawer is a fixed height and his shelf is one row. */
+        justifyContent: 'center', padding: '6px 8px 4px',
+      }}>
+        <div style={{
+          fontSize: 9.5, fontWeight: 700, letterSpacing: '.12em',
+          textTransform: 'uppercase', color: 'var(--ui-text-muted, #8FA3A0)',
+          marginBottom: 4, flex: 'none',
+        }}>His shelf</div>
+        {shelf.length === 0 ? (
+          <div data-shop-empty="" style={{
+            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 12, color: 'var(--ui-text-secondary, #B6C1BE)', textAlign: 'center',
+          }}>His shelf is bare. Sell him something.</div>
+        ) : (
+          <div data-shop-shelf="" style={{
+            display: 'flex', gap: 6, overflowX: 'auto', overflowY: 'hidden',
+            touchAction: 'pan-x', WebkitOverflowScrolling: 'touch',
+            flex: 'none', paddingBottom: 2,
+          }}>
+            {cells.map((e, i) => (
+              <ShelfSlot key={e ? e.key : 'e' + i} size={SLOT_W}
+                itemKey={e && e.key} count={e && e.qty} price={e && e.sell}
+                selected={!!e && selSide === 'bro' && e.key === selKey}
+                onTap={() => e && shopBus.setSel(e.key, 'bro')} />
+            ))}
           </div>
-        ) : rows.map((r) => {
-          const mine = Math.floor(inv[r.key] || 0);
-          return (
-            <div key={r.key} data-shop-row={r.key} style={{
-              display: 'flex', alignItems: 'center', gap: 8, minHeight: 44,
-              padding: '6px 0', borderTop: '1px solid var(--ui-line, rgba(229,237,233,.10))',
-            }}>
-              {/* The item, as an object you recognise, not a word. Same tile
-                  recipe as the bag: square, dark, hairline, count badge at the
-                  bottom right -- his stock reads like an inventory because it
-                  IS one. */}
+        )}
+        {shopBus.note ? (
+          <div data-shop-note="" style={{
+            marginTop: 4, padding: '3px 7px', borderRadius: 6, fontSize: 11,
+            flex: 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            background: shopBus.noteOk ? 'rgba(85,185,138,.14)' : 'rgba(224,106,94,.16)',
+            color: shopBus.noteOk ? '#7FD3AC' : '#E9A79E',
+          }}>{shopBus.note}</div>
+        ) : null}
+      </div>
+
+      {/* ── THE DEAL ── the only transaction UI, and it sits precisely between
+             his shelf and your existing bag, which is the row directly below
+             this drawer's bottom edge. */}
+      <div data-shop-deal={selKey || ''} style={{
+        flex: 'none', borderTop: rule, background: '#111E23',
+        padding: '6px 8px',
+        display: 'flex', alignItems: 'center', gap: 8, minHeight: 58,
+      }}>
+        {!selKey ? (
+          <div style={{
+            flex: 1, textAlign: 'center', fontSize: 12,
+            color: 'var(--ui-text-secondary, #B6C1BE)',
+          }}>Tap his shelf to buy · tap your bag below to sell</div>
+        ) : (
+          <>
+            {thumbFor(selKey)
+              ? <img src={thumbFor(selKey)} alt="" draggable={false}
+                  style={{ width: 30, height: 30, objectFit: 'contain', flex: 'none' }} />
+              : <span style={{ fontSize: 20, flex: 'none' }}>{iconFor(selKey)}</span>}
+
+            <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{
-                position: 'relative', width: 38, height: 38, flex: 'none',
-                background: '#111E23',
-                border: '1px solid rgba(229,237,233,.14)',
-                borderRadius: 6, display: 'flex',
-                alignItems: 'center', justifyContent: 'center', fontSize: 18,
+                fontSize: 12.5, fontWeight: 700, lineHeight: 1.15,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              }}>{prettyKey(selKey)}</div>
+              {/* His count first: it is what sets the price. */}
+              <div style={{
+                fontSize: 10, color: 'var(--ui-text-muted, #8FA3A0)',
+                fontVariantNumeric: 'tabular-nums',
+                /* One line. It wrapped to two at 390 with a long item name,
+                   which pushed the row taller than the strip it lives in. */
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
               }}>
-                {thumbFor(r.key)
-                  ? <img src={thumbFor(r.key)} alt="" draggable={false}
-                      style={{ width: '85%', height: '85%', objectFit: 'contain' }} />
-                  : <span>{iconFor(r.key)}</span>}
-                {/* HIS count on the tile, where your bag puts yours -- it is
-                    his inventory being shown, and it is also the number that
-                    sets the price. */}
-                {r.qty > 1 ? <span className="bt-item-qty">{r.qty}</span> : null}
+                <span data-shop-brohas={broHas(selKey)}>Bro has {broHas(selKey)}</span>
+                {' · '}
+                <span data-shop-youhave={youHave(selKey)}>you have {youHave(selKey)}</span>
               </div>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap',
-                  overflow: 'hidden', textOverflow: 'ellipsis' }}>{prettyKey(r.key)}</div>
-                <div style={{ fontSize: 11, color: 'var(--ui-text-muted, #8FA3A0)',
-                  fontVariantNumeric: 'tabular-nums' }}>
-                  {/* His count first: it is the number that sets the price.
-                     v2.3.2053: the "always in stock" case went with the
-                     staples -- everything he has now is a pile that can run
-                     out, so every row has a real count. */}
-                  {`he holds ${r.qty}`}{mine ? ` · you have ${mine}` : ''}
-                </div>
-              </div>
-              <button
-                type="button" data-shop-sell={r.key}
-                disabled={!mine || shopBus.busy}
-                onClick={() => act('shop_sell', r.key)}
-                className="button-secondary"
-                style={{ minHeight: 40, minWidth: 78, padding: '0 8px', fontSize: 12,
-                  opacity: (!mine || shopBus.busy) ? 0.45 : 1 }}
-              >
-                {/* What he PAYS, on the button that takes his money. */}
-                Sell {r.buy != null ? `${r.buy}g` : ''}
-              </button>
-              <button
-                type="button" data-shop-buy={r.key}
-                disabled={!r.qty || shopBus.busy || (r.sell != null && coins < r.sell)}
-                onClick={() => act('shop_buy', r.key)}
-                className="button-secondary"
-                style={{ minHeight: 40, minWidth: 78, padding: '0 8px', fontSize: 12,
-                  opacity: (!r.qty || shopBus.busy || (r.sell != null && coins < r.sell)) ? 0.45 : 1 }}
-              >
-                Buy {r.sell != null ? `${r.sell}g` : ''}
-              </button>
             </div>
-          );
-        })}
+
+            <button type="button" style={stepBtn} aria-label="One fewer"
+              data-shop-minus="" onClick={() => setQty((n) => Math.max(1, n - 1))}>−</button>
+            <div data-shop-qty={clamped} style={{
+              minWidth: 20, textAlign: 'center', fontSize: 15, fontWeight: 700,
+              fontVariantNumeric: 'tabular-nums', flex: 'none',
+            }}>{clamped}</div>
+            <button type="button" style={stepBtn} aria-label="One more"
+              data-shop-plus=""
+              onClick={() => setQty((n) => Math.min(Math.max(1, selMax), n + 1))}>+</button>
+
+            <button
+              type="button" data-shop-act={selSide}
+              data-shop-total={liveQuote ? liveQuote.total : ''}
+              disabled={!canAct} onClick={act}
+              style={{
+                flex: 'none', minWidth: 96, minHeight: 40, borderRadius: 9,
+                padding: '0 10px', fontSize: 12.5, fontWeight: 800,
+                fontFamily: 'inherit', cursor: canAct ? 'pointer' : 'default',
+                fontVariantNumeric: 'tabular-nums',
+                background: 'linear-gradient(180deg,#E2B765,#D2A14D)',
+                border: '1px solid #EAC675', color: '#172126',
+                opacity: canAct ? 1 : 0.45,
+              }}
+            >
+              {/* The total is his answer for THIS stack, so it already accounts
+                  for the decay across the units -- it is not qty x unit. */}
+              {tooPoor ? 'Not enough gold'
+                : (selSide === 'bro' ? 'BUY ' : 'SELL ')
+                  + (liveQuote ? liveQuote.total + 'g' : '…')}
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

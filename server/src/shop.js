@@ -246,6 +246,7 @@ export const shopMethods = {
         if (seen[k] || stock[k]) continue;      /* held keys are listed below */
         seen[k] = 1;
         items.push({ key: k, qty: 0, buy: this._shopBuyPrice(k, 0),
+          base: this._shopBuyPrice(k, 0),
           sell: this._shopSellPrice(k), full: false, quote: true });
       }
     }
@@ -254,12 +255,54 @@ export const shopMethods = {
         key: k,
         qty: stock[k],
         buy: this._shopBuyPrice(k, stock[k]),    /* he pays you this */
+        /* v2.3.2059: what he WOULD pay with an empty pile. The bag's per-slot
+           quote shows an arrow -- "he is paying under the odds for this" vs
+           "he wants this" -- and the only honest way to draw it is to compare
+           against a number the SERVER computed. Deriving the baseline on the
+           client would mean shipping a copy of the price table, which is the
+           one thing this whole feature is built to avoid. */
+        base: this._shopBuyPrice(k, 0),
         sell: this._shopSellPrice(k),            /* you pay him this */
         full: stock[k] >= SHOP.MAX_STOCK,
       });
     }
     items.sort((a, b) => b.qty - a.qty || a.key.localeCompare(b.key));
     return { ok: true, items, settled: true };
+  },
+
+  /** What a whole STACK is worth, without moving anything.
+   *
+   *  The panel needs this because a stack is not unit-price times N: his offer
+   *  decays as the pile grows, so selling ten is worth less than ten times the
+   *  first one. The client cannot work that out -- it holds no price table,
+   *  deliberately -- and multiplying the unit price on screen would show a
+   *  number the settlement then disagrees with, which is the one thing a shop
+   *  must never do.
+   *
+   *  Walks the same per-unit loop the real sale does rather than a closed form,
+   *  so the quote and the settlement cannot drift apart: if one is wrong they
+   *  are both wrong in the same direction, and the test that compares them
+   *  catches it. */
+  async _shopQuote(key, qty, mode) {
+    if (typeof key !== 'string' || !key) return { ok: false, error: 'Bad request' };
+    const want = Math.floor(Number(qty) || 0);
+    if (!(want >= 1 && want <= SHOP.MAX_QTY_PER_OP)) return { ok: false, error: 'Bad quantity' };
+    const stock = await this._shopStock();
+    if (mode === 'buy') {
+      const held = stock[key] || 0;
+      const take = Math.min(want, held);
+      return { ok: true, key, qty: take, mode,
+        total: this._shopSellPrice(key) * take, settled: true };
+    }
+    let held = stock[key] || 0;
+    let total = 0, n = 0;
+    for (let i = 0; i < want; i++) {
+      if (held >= SHOP.MAX_STOCK) break;
+      total += this._shopBuyRaw(key, held);
+      held++; n++;
+    }
+    return { ok: true, key, qty: n, mode: 'sell',
+      total: n ? Math.max(n * SHOP.MIN_BUY, Math.floor(total)) : 0, settled: true };
   },
 
   /** Sell player stock TO him. Each unit is priced against the pile as it

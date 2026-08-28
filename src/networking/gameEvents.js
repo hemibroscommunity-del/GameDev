@@ -178,6 +178,12 @@ export function processGameEvent(type, payload, S, deps) {
             shopBus.setStock(_sp.items || []);
             break;
           }
+          /* v2.3.2057: a stack price, quoted without moving anything. */
+          case 'shop_quoted': {
+            const _sq = payload || {};
+            shopBus.setQuote(_sq.ok ? _sq : null);
+            break;
+          }
           case 'shop_result': {
             const _sr = payload || {};
             if (_sr.ok && _sr.kind === 'shop_sell') {

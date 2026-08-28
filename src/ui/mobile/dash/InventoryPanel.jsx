@@ -25,6 +25,7 @@ import { playVw } from '../playViewport.js';
 /* v2.3.1652: the roster moved to bagFilterBus (see there); re-exported
    so every existing importer of InventoryPanel.CATEGORIES still works. */
 export { CATEGORIES } from './bagFilterBus.js';
+import { shopBus } from '../shopBus.js';   /* v2.3.2059: the bag is half the shop */
 
 // Light heuristic — classify an inventory key into one of the four
 // category filters.  Items the heuristic doesn't recognise fall through
@@ -208,6 +209,44 @@ export const iconFor = (key) => {
   return '◇';
 };
 
+/* ═══ v2.3.2059: WHILE SHOPKEEPER BRO IS OPEN, THIS TILE IS A SELL BUTTON ═══
+ *
+ * Owner: "Your existing bag should become one half of the shop interface.
+ * Don't open another inventory or cover it. ... Tap my inventory -> sell it.
+ * Tap his inventory -> buy it."
+ *
+ * So the shop does not draw a second copy of your bag -- it borrows THIS one.
+ * Two things change and only while the drawer is open:
+ *   - the tap selects the item for sale instead of opening the item popup
+ *   - a tiny gold quote appears in the slot: what Bro pays PER UNIT right
+ *     now, with an arrow saying whether that is under or at the top price
+ * Both revert the instant the drawer closes; nothing here is a permanent
+ * change to the bag.
+ *
+ * THE NUMBER IS THE SERVER'S. It is read out of shopBus, which is only ever
+ * written from a shop_state event. The client has no price table -- if it
+ * had one, a slot could quietly promise a price that settlement then
+ * disagreed with, and the whole point of a public pile with a decaying
+ * offer is that the number you see is the number you get. */
+const ShopQuoteBadge = ({ ikey }) => {
+  const q = shopBus.quoteFor(ikey);
+  if (!q || typeof q.buy !== 'number' || q.buy <= 0) return null;
+  /* Under the top price means his pile is already deep -- the arrow is the
+     one-glance version of "the more I have, the less I pay". */
+  const soft = typeof q.base === 'number' && q.base > q.buy;
+  return (
+    <span data-shop-quote={ikey} style={{
+      position: 'absolute', left: 2, bottom: 1,
+      display: 'inline-flex', alignItems: 'center', gap: 1,
+      padding: '0 3px', borderRadius: 3,
+      background: 'rgba(9,14,17,.82)',
+      color: soft ? '#B08A45' : '#EAC675',
+      fontSize: 10, lineHeight: '13px', fontWeight: 700,
+      fontVariantNumeric: 'tabular-nums', pointerEvents: 'none',
+    }}>{q.buy}g{soft ? '\u2193' : '\u2191'}</span>
+  );
+};
+
 export const ItemTile = ({ ikey, count, style: styleOverride }) => {
   /* v2.3.1228: owner correction — the bag showed category colors
      (weapons blue, armor green) that read as fake rarity and clashed
@@ -227,14 +266,21 @@ export const ItemTile = ({ ikey, count, style: styleOverride }) => {
       const rect = e.currentTarget.getBoundingClientRect();
       anchor = { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height };
     } catch (_e) {}
+    /* v2.3.2059: shopping mode -- see ShopQuoteBadge above. The popup is
+       suppressed rather than layered over the drawer: two windows about the
+       same item, one of them covering the bag the shop is built on top of,
+       is exactly the "don't open another inventory" the owner ruled out. */
+    if (shopBus.open) { shopBus.setSel(ikey, 'bag'); return; }
     itemDetailBus.open({ kind: 'inventory', key: ikey, count: count || 0, anchor });
   };
   const locked = itemIsLocked(ikey);
+  const shopSel = shopBus.open && shopBus.sel
+    && shopBus.sel.side === 'bag' && shopBus.sel.key === ikey;
   return (
-    <div onPointerUp={handleTap} style={{
+    <div onPointerUp={handleTap} data-inv-key={ikey} style={{
       width: '100%', aspectRatio: '1 / 1',
-      background: COL.tile,
-      border: `1px solid ${color}`,
+      background: shopSel ? 'rgba(234,198,117,.16)' : COL.tile,
+      border: shopSel ? '1px solid #EAC675' : `1px solid ${color}`,
       borderRadius: 6,
       display: 'flex',
       alignItems: 'center',
@@ -262,6 +308,9 @@ export const ItemTile = ({ ikey, count, style: styleOverride }) => {
       {count > 1 && (
         <span className="bt-item-qty">{count}</span>
       )}
+      {/* v2.3.2059: bottom-LEFT on purpose -- .bt-item-qty owns bottom-right
+          and the two must never overlap on a 56px slot. */}
+      {shopBus.open && <ShopQuoteBadge ikey={ikey} />}
       {locked && (
         /* v2.3.177: anchor glyph in the upper-right corner of anchored
            tiles. Matches the popup's anchor-glyph styling.

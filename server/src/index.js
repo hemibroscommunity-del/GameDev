@@ -315,7 +315,7 @@ export const PRIVILEGED_EVENTS = new Set([
      one player fake a sale receipt on another's screen or advertise a pile
      that is not there, so they are denied on the relay like every other
      server-emitted type (CLAUDE.md wire section). */
-  'shop_state', 'shop_result',
+  'shop_state', 'shop_result', 'shop_quoted',
   // Pool / progression mirrors
   'player_state', 'player_died',
   // 'player_respawned' intentionally OMITTED: the client broadcasts it
@@ -4162,6 +4162,18 @@ export class GameRoom {
             .catch(() => { /* a failed read leaves the panel on its last list */ });
         }
         break;
+
+      /* v2.3.2057: a price for a STACK, without moving anything. See
+         _shopQuote -- the decay means a stack is not unit price times N, and
+         the client holds no price table to work that out with. */
+      case 'shop_quote': {
+        if (!session.id) break;
+        const _q = msg.payload || msg;
+        this._shopQuote(_q.key, _q.qty, _q.mode)
+          .then((r) => this._shopSend(session.id, 'shop_quoted', r))
+          .catch(() => { /* the panel keeps its last quote */ });
+        break;
+      }
 
       case 'shop_sell':
       case 'shop_buy': {
