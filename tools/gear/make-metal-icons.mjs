@@ -18,6 +18,7 @@
  * the same one the game recolours with.
  */
 import { chromium } from 'playwright-core';
+import { spawnSync } from 'node:child_process';
 import http from 'http';
 import fs from 'fs';
 import path from 'path';
@@ -103,6 +104,10 @@ for (const [mat, tint] of Object.entries(MATS)) {
   for (const s of SOURCES) {
     const got = await page.evaluate(([src, t]) => window.__tint(src, t), ['/' + s.src, tint]);
     if (!got) { console.log(`  MISSING SOURCE  ${s.src}`); continue; }
+    /* v2.3.2068: still a PNG at this step — canvas.toDataURL('image/webp')
+       is LOSSY, and these icons ship lossless.  The convert pass below turns
+       every one of them into the .webp that metalIconPath now asks for; the
+       PNG is an intermediate, not the shipped file. */
     const out = path.join(PUB, 'icons/items', `${s.key}-${mat}.png`);
     fs.writeFileSync(out, Buffer.from(got.png.split(',')[1], 'base64'));
     console.log(`  wrote ${path.relative(PUB, out)}  (${got.w}x${got.h}, tint ${tint.join(',')})`);
@@ -112,3 +117,17 @@ for (const [mat, tint] of Object.entries(MATS)) {
 console.log(`${wrote} icon(s) written, ${skipped} native metal(s) skipped`);
 await browser.close();
 srv.close();
+
+/* v2.3.2068: PNG -> lossless WebP, because metalIconPath() asks for .webp and
+   the rule and the files are only allowed to agree.  Doing it HERE rather than
+   leaving it to whoever adds the next metal is the whole point of the "add a
+   row, run this, done" claim at the top of this file. */
+if (wrote) {
+  const r = spawnSync('python3', [path.join(ROOT, 'tools/webp_icons.py'), '--convert'],
+    { cwd: ROOT, stdio: 'inherit' });
+  if (r.status !== 0) {
+    console.log('  !! webp conversion failed — the new icons are still .png and');
+    console.log('     metalIconPath() will 404 on them.  Run tools/webp_icons.py --convert.');
+    process.exitCode = 1;
+  }
+}

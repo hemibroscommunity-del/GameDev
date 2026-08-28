@@ -84,17 +84,22 @@ const ORE_THUMB_DEFAULT = `/icons/items/ore-copper.webp${ITEMS_V}`;
    between the line and the rod, which a border-flood keyer can never reach
    because they don't touch the outside.  Re-keyed on NEAR-WHITE + NEAR-NEUTRAL
    wherever it sits, so coloured highlights (the red float) survive.
-   PNG because the source is webp and there is no webp ENCODER here — Chromium
-   did the decoding, which is why this was fixable at all. */
-const FISHING_POLE_THUMB = `/icons/items/fishing-pole.png${ITEMS_V}`;
+   Shipped as a PNG at the time because there was no webp ENCODER here —
+   Chromium did the decoding, which is why this was fixable at all.
+   v2.3.2068: there IS one now (Pillow is built with libwebp — see
+   tools/webp_icons.py), so the re-keyed art is a LOSSLESS webp and this
+   line no longer points at a .png.  The old un-keyed fishing-pole.webp it
+   replaces was still being served to the quest card in data/gameSystems.js,
+   so that card gets the fixed art too. */
+const FISHING_POLE_THUMB = `/icons/items/fishing-pole.webp${ITEMS_V}`;
 /* v2.3.1689 (owner: "use these sprites for the woodcutting axe and the
    pickaxe ... You currently just have a log thumbnail for the woodcutting
    axe").  The owner's two-tool sheet, split into one square icon each,
-   background keyed out and box-downscaled to 192px.  PNG rather than webp:
-   the rest of this set is webp because it was authored that way, and there
-   is no webp encoder in the build — the format is per-file, not a rule. */
-const WOODCUTTING_AXE_THUMB = `/icons/items/woodcutting-axe.png${ITEMS_V}`;
-const MINING_PICKAXE_THUMB  = `/icons/items/mining-pickaxe.png${ITEMS_V}`;
+   background keyed out and box-downscaled to 192px.  Shipped as PNG because
+   there was no webp encoder in the build; v2.3.2068 converted both to
+   LOSSLESS webp (identical pixels, ~43% fewer bytes) now that there is one. */
+const WOODCUTTING_AXE_THUMB = `/icons/items/woodcutting-axe.webp${ITEMS_V}`;
+const MINING_PICKAXE_THUMB  = `/icons/items/mining-pickaxe.webp${ITEMS_V}`;
 const RARE_GEM_THUMB        = `/icons/ui/cur-gem.webp${ITEMS_V}`; /* v2.3.1924 */
 /* ═══ v2.3.2055: THE POTIONS, AS REAL ART ═══
  * Owner-supplied. Three of the five map onto consumables that actually exist
@@ -1136,9 +1141,9 @@ const StashTile = ({ kind, obj, index, style: styleOverride }) => {
     : kind === 'stashLegs'
     ? `${armorIconFor('legs', obj && obj.mat)}${ITEMS_V}` /* v2.3.1701: legs have real art */
     : kind === 'stashShield'
-    ? `/icons/items/shield.png${ITEMS_V}`
-    : obj && obj.type === 'bow'        ? `/icons/items/bow.png${ITEMS_V}`
-    : obj && obj.type === 'staff'      ? `/icons/items/staff.png${ITEMS_V}`
+    ? `/icons/items/shield.webp${ITEMS_V}`
+    : obj && obj.type === 'bow'        ? `/icons/items/bow.webp${ITEMS_V}`
+    : obj && obj.type === 'staff'      ? `/icons/items/staff.webp${ITEMS_V}`
     : obj && obj.type === 'greatsword'
       ? `${metalIconPath('/icons/items/great-sword.webp', weaponMaterial(obj.type, obj.gearBase))}${ITEMS_V}` /* v2.3.1760 */
     : `${metalIconPath('/icons/items/sword.webp', obj && weaponMaterial(obj.type, obj.gearBase))}${ITEMS_V}`;
