@@ -34,6 +34,11 @@ tools/_*.png
 tools/qa/out/
 # mp-scenario screenshots (tools/qa/mp/run.mjs output — v2.3.1781)
 tools/qa/mp/out/
+# v2.3.2073: the town-layout render is a generated picture (5.8MB), rebuilt by
+# tools/maps/render_town_layout.py from the live data. Committing it would put
+# a big binary in every diff that moves a prop, and it would go stale the
+# moment one moved without a re-run.
+tools/maps/out/
 
 # v2.3.1710: throwaway QA probe scripts at the REPO ROOT.
 #

@@ -3488,10 +3488,20 @@ export const NPC_DATA = [{
      radius keeps him inside a small patch of the plaza rather than roaming the
      whole town, so "where is the shopkeeper" has an answer.
 
-     NAME: "Shopkeeper Bro", deliberately NOT "Trader Tix" -- there is a
-     dormant Trader Tix quest chain in gameSystems.js and getNpcQuest keys on
-     the NPC's NAME, so using it would silently switch that chain on. Exactly
-     the trap documented on Blacksmith Bro below. */
+     NAME: v2.3.2073 he is DIEGO, at the owner's request ("Instead of
+     shopkeeper bro with a subtitle of shopkeeper name him Diego / Diego with
+     the subtitle shopkeeper"). The plate now reads Diego over Shopkeeper
+     instead of saying the same word twice.
+
+     A rename here is not cosmetic and has to be checked: getNpcQuest keys on
+     the NPC's NAME, so a name that matches a dormant chain in gameSystems.js
+     switches that chain on silently. That is why he was not called "Trader
+     Tix" when he shipped, and it is the trap documented on Blacksmith Bro
+     below. Checked before renaming: "Diego" appears nowhere in gameSystems.js
+     or anywhere else in the repo, so he stays questless.
+     TWO OTHER SITES KEY ON THIS STRING and move with it -- ACTIVE_NPCS in
+     BroTown.jsx (a name he must be in or he stops ticking entirely) and the
+     header of his own drawer in ShopkeeperPanel.jsx. */
   /* ═══ v2.3.2064: LIL BRO, THE KID IN THE PLAZA ═══
      Owner: "Add another little bro for a sprite sheet."
 
@@ -3553,7 +3563,7 @@ export const NPC_DATA = [{
   _hitThisSwing: false,
 }, {
   id: 'shopkeeper_bro',
-  name: 'Shopkeeper Bro',
+  name: 'Diego',
   /* The south strip. `sprite` is what npcSpriteScale keys on and what the
      preloader lists; the renderer binds a sliced FRAME rather than this raw
      strip (see entityRenderer v2.3.2046), so the four-in-one image is never
@@ -3578,16 +3588,16 @@ export const NPC_DATA = [{
      level, and what you actually want to know about him is what he does. */
   plateRole: 'Shopkeeper',
   shop: true,          /* v2.3.2050: walking up to him opens his trade window */
-  x: 700, y: 1060,
-  spawnX: 700, spawnY: 1060,
-  renderX: 700, renderY: 1060,
+  x: 760, y: 1210,
+  spawnX: 760, spawnY: 1210,
+  renderX: 760, renderY: 1210,
   hp: 100, maxHp: 100,
   noHp: true,          /* a shopkeeper in a safe town; a health bar reads as "fight this" */
   alive: true,
   respawnAt: 0,
   pathRadius: 110,     /* he ambles round a patch of plaza, not the whole town */
   moveTimer: 0,
-  targetX: 700, targetY: 1060,
+  targetX: 760, targetY: 1210,
   chatTimer: 9000,
   chatBubble: null,
   /* REQUIRED -- the AI loop indexes this unguarded and an empty array throws. */

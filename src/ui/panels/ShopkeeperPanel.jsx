@@ -285,7 +285,7 @@ export function ShopkeeperPanel() {
         <img src="/sprites/npc/shopkeeper-bro-head.webp" alt="" draggable={false}
           style={{ width: 26, height: 26, objectFit: 'contain', flex: 'none' }} />
         <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ fontSize: 13, fontWeight: 800, lineHeight: 1.15 }}>Shopkeeper Bro</div>
+          <div style={{ fontSize: 13, fontWeight: 800, lineHeight: 1.15 }}>Diego</div>
           <div style={{
             fontSize: 10, color: 'var(--ui-text-muted, #8FA3A0)',
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',

@@ -44,11 +44,34 @@ export const WORLD_PROPS = [
      mockup shows. The banner rails below stand in for the gate's banners;
      the arch and the potion stall are the two things still to draw.
 
-     WHAT BLOCKS: buildings and the fountain, which are things with real
-     footprints. Lamps, benches and banner rails do NOT -- they are dressing,
-     they are thin, and a plaza with a walk-through bench is a smaller
-     annoyance than one where you can wedge yourself between a bench and a
-     fountain. Same posture the anvil and the market stall have always had.
+     ═══ WHAT BLOCKS: EVERYTHING, SINCE v2.3.2073 ═══
+     Owner: "It should be obvious but make sure the objects are unwalkable."
+
+     It used to be buildings and the fountain only. Lamps, benches, banner
+     rails, the anvil and the market stall were deliberately left walk-through
+     on the reasoning that they are thin dressing and "a plaza with a
+     walk-through bench is a smaller annoyance than one where you can wedge
+     yourself between a bench and a fountain". The owner's answer to that is
+     the line above, and they are right: a lamp post you stroll through is not
+     a lamp post.
+
+     The four that DID block were also blocking far less than they looked. The
+     footprint is a box `blockW` wide and `blockD` deep at the sprite's base,
+     and the forge's was 330 of its 551 px width and 110 of its 500 px height
+     -- so two thirds of the building was solid and the rest was air. Every
+     footprint is now measured off the art: `blockW` is the GROUND-FLOOR wall
+     width (the widest run of the sprite's bottom quarter, which excludes the
+     roof overhang), and `blockD` the depth of that base. An isometric roof
+     hangs over its walls, and blocking the roof's shadow leaves the player
+     bumping into thin air a body-length from the door.
+
+     UNWALKABLE MUST NOT MEAN IMPRISONING. Twelve footprints in one small
+     plaza can seal a corner without anyone noticing, so the whole grid is
+     flood-filled from the town exit -- the same 16 px cells the client builds
+     (installPropOnlyGrids), sampled at the player's own half-width -- and
+     every door, every townsperson and every walkable cell has to come back
+     reachable. It does: 100% of usable cells connect to the exit, and no
+     pocket is cut off. mp-plazaplate holds the in-game half of that.
 
      `mapV` gates placement (see propIsPlaced): 17 is the map that ships. */
   {
@@ -89,7 +112,7 @@ export const WORLD_PROPS = [
        player bumping into thin air a body-length from the door. */
     id: 'mayor-house', zone: 'town', mapV: 17,
     sprite: '/sprites/props/mayor-house.png',
-    x: 760, y: 470, worldH: 400, blockW: 230, blockD: 78,
+    x: 760, y: 470, worldH: 400, blockW: 330, blockD: 150,
     /* No action: Mayor Bro stands outside handing out the tutorial, and a
        door that opens a panel he already covers is a second, worse way to
        talk to him. */
@@ -115,7 +138,7 @@ export const WORLD_PROPS = [
        somewhere, and taking it eastward keeps the building off the trees
        while leaving the plaza's middle clear. */
     id: 'forge', zone: 'town', mapV: 17, sprite: '/sprites/props/forge.png',
-    x: 480, y: 900, worldH: 500, blockW: 330, blockD: 110,
+    x: 480, y: 900, worldH: 500, blockW: 470, blockD: 200,
     action: 'forge', label: 'BLACKSMITH',
   },
   {
@@ -125,7 +148,7 @@ export const WORLD_PROPS = [
        into and a merchant who walks up to you. */
     id: 'general-store', zone: 'town', mapV: 17,
     sprite: '/sprites/props/general-store.png',
-    x: 1290, y: 800, worldH: 200, blockW: 150, blockD: 65,
+    x: 1290, y: 800, worldH: 200, blockW: 190, blockD: 85,
     action: 'shop', label: 'GENERAL STORE',
   },
   {
@@ -139,7 +162,7 @@ export const WORLD_PROPS = [
     mapIcon: null,   /* not a building: no roof glyph on the minimap */
     sprite: '/sprites/props/fountain.webp',
     anim: { frames: 8, fps: 12 },
-    x: 860, y: 1080, worldH: 170, blockW: 140, blockD: 48,
+    x: 860, y: 1080, worldH: 170, blockW: 165, blockD: 62,
   },
   {
     /* The market stall, south-west, where the blueprint's produce awning is.
@@ -148,7 +171,7 @@ export const WORLD_PROPS = [
     id: 'market-stall', zone: 'town', mapV: 17,
     mapIcon: null,
     sprite: '/sprites/props/market-stall.png',
-    x: 430, y: 1310, worldH: 150,
+    x: 430, y: 1310, worldH: 150, blockW: 185, blockD: 60,
   },
   /* ═══ DRESSING ═══
      From the owner's props sheet (tools/import_town_props.py). Sized against
@@ -156,14 +179,20 @@ export const WORLD_PROPS = [
      over one, a bench comes to the hip, a banner rail to the chest. None of
      them block -- see the header note. */
   {
+    /* v2.3.2073: moved off the anvil.  At (660,1000) its pole was drawn
+       straight through the anvil and the west bench -- three objects inside
+       forty pixels, which the layout render made obvious the moment they all
+       had footprints.  (590,1080) mirrors lamp-plaza-e about the fountain's
+       axis, so the plaza has a lamp at each shoulder instead of a pile on one
+       side. */
     id: 'lamp-plaza-w', zone: 'town', mapV: 17, mapIcon: null,
     sprite: '/sprites/props/lamp-post.webp',
-    x: 660, y: 1000, worldH: 150,
+    x: 590, y: 1080, worldH: 150, blockW: 34, blockD: 20,
   },
   {
     id: 'lamp-plaza-e', zone: 'town', mapV: 17, mapIcon: null,
     sprite: '/sprites/props/lamp-post.webp',
-    x: 1130, y: 1080, worldH: 150,
+    x: 1130, y: 1080, worldH: 150, blockW: 34, blockD: 20,
   },
   /* ═══ v2.3.2071: BOTH BENCHES LOOK AT THE FOUNTAIN ═══
      Owner: "Position the benches so that lengthwise they face the fountain.
@@ -199,7 +228,7 @@ export const WORLD_PROPS = [
   {
     id: 'bench-w', zone: 'town', mapV: 17, mapIcon: null,
     sprite: '/sprites/props/bench.webp',
-    x: 730, y: 975, worldH: 75,
+    x: 730, y: 975, worldH: 75, blockW: 72, blockD: 34,
   },
   {
     /* Mirrored, so its back is on the north-EAST side and its seat looks
@@ -207,19 +236,19 @@ export const WORLD_PROPS = [
        the art -- see the flip note in entityRenderer's _updateProps. */
     id: 'bench-e', zone: 'town', mapV: 17, mapIcon: null,
     sprite: '/sprites/props/bench.webp',
-    x: 990, y: 975, worldH: 75, flipX: true,
+    x: 990, y: 975, worldH: 75, blockW: 72, blockD: 34, flipX: true,
   },
   {
     /* The town's colours on the way in from the south gate, standing in for
        the blueprint's banner arch until that art exists. */
     id: 'banner-gate-w', zone: 'town', mapV: 17, mapIcon: null,
     sprite: '/sprites/props/fence-banner.webp',
-    x: 620, y: 1450, worldH: 95,
+    x: 620, y: 1450, worldH: 95, blockW: 78, blockD: 26,
   },
   {
     id: 'banner-gate-e', zone: 'town', mapV: 17, mapIcon: null,
     sprite: '/sprites/props/fence-banner.webp',
-    x: 810, y: 1450, worldH: 95,
+    x: 810, y: 1450, worldH: 95, blockW: 78, blockD: 26,
   },
   {
     /* Owner: "This anvil belongs near the blacksmith." It follows the forge
@@ -231,7 +260,7 @@ export const WORLD_PROPS = [
        same thing in this pass. */
     id: 'anvil', zone: 'town', mapV: 17, mapIcon: null,
     sprite: '/sprites/props/anvil.png',
-    x: 640, y: 960, worldH: 46,
+    x: 640, y: 960, worldH: 46, blockW: 46, blockD: 24,
   },
 
   /* ═══ STILL UNPLACED: measured against town_v16 (96x30 tiles) ═══

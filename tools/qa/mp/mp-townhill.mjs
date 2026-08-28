@@ -110,17 +110,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...south of them, in the open plaza',
     fount.y > smith.y && fount.y > store.y, { fount: fount.y, smith: smith.y });
 
-  /* ── WHAT BLOCKS, AND WHAT DOES NOT ──
-     Buildings and the fountain have real footprints. The dressing does not:
-     a lamp or a bench you can walk through is a smaller annoyance than a
-     plaza you can wedge yourself into. */
-  const solid = list.filter((p) => p.blocks).map((p) => p.id).sort();
-  rec.ok('the buildings and the fountain block',
-    JSON.stringify(solid) === JSON.stringify(['forge', 'fountain', 'general-store', 'mayor-house']),
-    solid);
-  rec.ok('...and the lamps, benches and banners do not -- they are dressing',
-    !list.some((p) => p.blocks && /lamp|bench|banner|anvil|stall/.test(p.id)),
-    list.filter((p) => p.blocks).map((p) => p.id));
+  /* ── EVERYTHING BLOCKS ──
+     v2.3.2073, owner: "It should be obvious but make sure the objects are
+     unwalkable."  This used to assert the OPPOSITE -- that exactly the four
+     buildings blocked and that "the lamps, benches and banners do not, they
+     are dressing" -- which was the shipped rule and is now the bug.  Kept as
+     an ALLOWLIST OF NONE rather than deleted: the failure it guards against
+     has flipped direction, so a prop added later without a footprint is
+     caught by the same line that used to insist on one being absent. */
+  const walkThrough = list.filter((p) => !p.blocks).map((p) => p.id);
+  rec.ok(`every prop in town is solid (${list.length} of ${list.length})`,
+    walkThrough.length === 0, walkThrough);
 
   /* ── THE TRADESMEN STAND AT THEIR OWN BUILDINGS ──
      Storekeeper Bro was at x=2520 on a map 1664 wide -- spawned, ticking, and
@@ -181,10 +181,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
      the terrace. Its footprint -- the ground it actually occupies -- is
      centred there, and its base sits on cobble rather than hanging off the
      drop. A sprite-width check would now only be measuring the art. */
+  /* v2.3.2073: the footprint grew with the unwalkable pass -- it was a
+     230 px strip of a 386 px-wide house, so two thirds of the building was
+     solid and the wings were air.  It is the ground floor now (330), which no
+     longer fits inside the terrace's 170 px of clear cobble.
+     So the claim is restated as what it was always FOR: the house stands ON
+     the terrace, meaning its footprint is CENTRED there and its base line is
+     the terrace's ground -- not that a box sized for the old narrow block
+     fits inside another box.  Where the wings overhang, they overhang the
+     pines, and blocking there is right: a projecting wall you can walk
+     through is the thing being fixed. */
   const fpr = house && house.footprint;
-  rec.ok('...with its FOOTPRINT on the terrace, so it stands there rather '
-       + 'than hanging off it',
-    !!fpr && fpr.x0 >= 600 && fpr.x1 <= 900 && fpr.y1 >= 400 && fpr.y1 <= 500, fpr);
+  const fpMid = fpr && (fpr.x0 + fpr.x1) / 2;
+  rec.ok('...with its FOOTPRINT centred on the terrace, so it stands there '
+       + 'rather than hanging off it',
+    !!fpr && fpMid >= 655 && fpMid <= 835 && fpr.y1 >= 400 && fpr.y1 <= 500,
+    { fpr, mid: fpMid });
+  rec.ok('...and covering the ground floor, not a strip of it',
+    !!fpr && (fpr.x1 - fpr.x0) > house.width * 0.7,
+    { fpW: fpr && fpr.x1 - fpr.x0, drawnW: Math.round(house.width) });
   const ground = await P.page.evaluate(([hx, hy]) => {
     /* the base line the house meets the ground on, sampled in the page so it
        reads the shipped map rather than a copy of it */

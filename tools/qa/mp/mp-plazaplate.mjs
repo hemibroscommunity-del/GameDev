@@ -114,6 +114,72 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
   rec.ok('neither bench is drawn on top of another prop', clashes.length === 0, clashes);
 
+  /* ── 3. THE OBJECTS ARE UNWALKABLE ──
+     Owner: "It should be obvious but make sure the objects are unwalkable."
+     It was not obvious and it was not true: only four of the twelve props
+     carried a footprint, and the four that did blocked a narrow strip of
+     their base -- the forge stopped you across 330 px of its 551, and only
+     for the bottom 110 px of a 500 px building.
+
+     Checked two ways, because the grid and the game can disagree.  First that
+     the client's collision grid marks every prop's own centre solid -- the
+     grid is built from propFootprint at 16 px cells, so a prop with no
+     footprint silently contributes nothing and this is what catches that.
+     Then that a real walk actually stops, which is the only claim a player
+     can make. */
+  const solid = await P.page.evaluate(async () => {
+    const S = window._gameState.current;
+    const grid = S._tiledWalkable && S._tiledWalkable.town;
+    if (!grid || !grid.length) return { grid: false };
+    const m = await import('/src/data/worldProps.js').catch(() => null);
+    return { grid: true, gh: grid.length, gw: grid[0].length, hasModule: !!m };
+  });
+  rec.ok('the client built a collision grid for town', solid.grid, solid);
+  /* Sampled through the renderer's own prop record, so the test asks about
+     the props that were actually DRAWN rather than its own copy of the list. */
+  const blocked = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const grid = S._tiledWalkable.town;
+    const gh = grid.length, gw = grid[0].length;
+    const W = 52 * 32, H = 55 * 32;
+    const at = (x, y) => {
+      const gx = Math.floor(x * gw / W), gy = Math.floor(y * gh / H);
+      return !(grid[gy] && grid[gy][gx]);          /* false in the grid = solid */
+    };
+    return (window.__btWorldProps ? window.__btWorldProps() : []).map((p) => ({
+      id: p.id, blocks: p.blocks,
+      /* one body-height above the base is inside any real footprint */
+      solidAtBase: at(p.x, p.y - 4),
+    }));
+  });
+  rec.ok(`every prop in town is solid (${blocked.filter((b) => b.solidAtBase).length} of ${blocked.length})`,
+    blocked.length >= 12 && blocked.every((b) => b.solidAtBase),
+    blocked.filter((b) => !b.solidAtBase));
+
+  /* THE WALK.  Straight north into the fountain from open cobble: the player
+     has to stop south of its basin instead of strolling through the water. */
+  const fountainProp = (await P.page.evaluate(() => (window.__btWorldProps
+    ? window.__btWorldProps().find((p) => p.id === 'fountain') : null)));
+  await P.page.evaluate(({ x, y }) => {
+    const S = window._gameState.current;
+    S.player.x = x; S.player.y = y; S.player.vx = 0; S.player.vy = 0;
+  }, { x: fountainProp.x, y: fountainProp.y + 210 });
+  await P.page.waitForTimeout(500);
+  await P.page.keyboard.down('w');
+  await P.page.waitForTimeout(2600);
+  await P.page.keyboard.up('w');
+  await P.page.waitForTimeout(300);
+  const stop = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    return { x: Math.round(S.player.x), y: Math.round(S.player.y) };
+  });
+  /* The basin's south edge, from the prop's own reported footprint. */
+  const basinY = fountainProp.footprint ? fountainProp.footprint.y1 : fountainProp.y;
+  rec.ok(`walking north into the fountain stops you at its rim (y ${stop.y}, basin ends at ${Math.round(basinY)})`,
+    stop.y > basinY - 2, { stop, basinY, footprint: fountainProp.footprint });
+  rec.ok('...and you did actually walk (you are not just where you were put)',
+    stop.y < fountainProp.y + 205, { stop, from: fountainProp.y + 210 });
+
   /* Stand south of the fountain so the shot frames the pair of benches, the
      water between them and the townsfolk's plates -- the picture a reviewer
      needs to see what the numbers above describe. */

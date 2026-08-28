@@ -603,7 +603,11 @@ function _spawnTownNpcs() {
      not be conflated. */
   /* v2.3.2064: + Lil Bro, the second NPC that walks. Scenery with legs -- no
      quest, no shop -- so nothing but this line and his NPC_DATA record. */
-  var ACTIVE_NPCS = ['Mayor Bro', 'Blacksmith Bro', 'Storekeeper Bro', 'Shopkeeper Bro', 'Lil Bro']; /* v2.3.1775 */
+  /* v2.3.2073: 'Shopkeeper Bro' -> 'Diego' (owner's rename). This list is
+     keyed by NAME and gates the whole NPC tick — an NPC missing from it stops
+     walking, talking and being interactable, so it moves with gameDisplay's
+     `name` or the rename silently switches him off. */
+  var ACTIVE_NPCS = ['Mayor Bro', 'Blacksmith Bro', 'Storekeeper Bro', 'Diego', 'Lil Bro']; /* v2.3.1775 */
   return NPC_DATA.filter(function (n) { return ACTIVE_NPCS.indexOf(n.name) >= 0; })
     .map(function (npc) { return _objectSpread({}, npc); });
 }

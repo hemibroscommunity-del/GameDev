@@ -46,19 +46,28 @@ async function hold(P, key, ms) {
  * The same five lanes in px/FRAME: 7.600, 7.581, 7.644, 7.550 -- inside 1.2%.
  * So count frames, not milliseconds, and the frame rate cancels out.
  *
- * The lane runs north from (1000, 1600): checked against propsForZone rather
- * than remembered -- it crosses no blocking footprint (forge, mayor's house,
- * general store, fountain) and stays clear of every NPC's wander radius,
- * including Lil Bro's 130 px around (1180, 1180). 90 frames at the buffed rate
- * is ~1030 px, which still lands short of the top of the map.
- * (x=300 was rejected: it walks into the west cliff and reads 5.06.) */
-async function sprint(P, frames = 90) {
+ * THE LANE IS SHORTER NOW, and that is the town's fault rather than the
+ * test's. It ran 90 frames -- about 1030 px at the buffed rate -- up a plaza
+ * that had four blocking props in it. v2.3.2073 gave all twelve a footprint
+ * (owner: "make sure the objects are unwalkable"), and a furnished square has
+ * no 1000 px straight line left in it: a sweep of every north-south lane in
+ * town found the longest clear one is 630 px, at x=1000 south of the benches.
+ * So the run is 30 counted frames behind a 250 ms roll-in, which is 513 px at
+ * the buffed rate from (1000, 1600) -- ending at y 1087, comfortably clear of
+ * bench-e's footprint at y 941..975. Fewer frames is noisier, and it does not
+ * matter here: the effect under test is 1.5x against a 1.25x threshold, and
+ * the measurement agreed to 1.2% over 120 frames.
+ * The lane is checked against propFootprint and every NPC's wander radius
+ * rather than remembered, and its ground samples 97% open cobble.
+ * (x=300 was rejected long before that: it walks into the west cliff.) */
+async function sprint(P, frames = 30) {
   await put(P, 1000, 1600);
   await P.page.waitForTimeout(350);
   await P.page.keyboard.down('w');
   /* Already in motion before the count starts, so the first frames of the
-     press are not part of the sample. */
-  await P.page.waitForTimeout(400);
+     press are not part of the sample -- and short, because every pixel of
+     roll-in eats the clear lane the count needs. */
+  await P.page.waitForTimeout(250);
   const m = await P.page.evaluate((n) => new Promise((res) => {
     const S = window._gameState.current;
     const y0 = S.player.y;
