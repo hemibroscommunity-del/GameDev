@@ -187,20 +187,31 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── FRIENDS ── */
   await H.openInspect(A, ids.Ben);
   await frame(A, '03-inspect-card', rec, worst);
+  /* v2.3.2078: say WHY. This has failed with a bare `undefined` payload,
+     which cannot distinguish "the button is not there" from "it is there and
+     the dashboard is over it" — two different bugs with the same symptom, and
+     mp-harvest v2.3.1706 records the second one biting before. */
   const addedFriend = await H.clickText(A, 'Add Friend', { timeout: 8000 })
-    .then(() => true).catch(() => false);
-  rec.ok('a friend request can be sent from the inspect card', addedFriend);
+    .then(() => ({ ok: true }))
+    .catch((e) => ({ ok: false, err: String(e && e.message || e).slice(0, 160) }));
+  rec.ok('a friend request can be sent from the inspect card', addedFriend.ok,
+    { ...addedFriend, buttons: await H.buttonTexts(A) });
   await A.page.waitForTimeout(1500);
 
   /* ── PARTY ── */
   await H.openInspect(A, ids.Cat);
   const invited = await H.clickText(A, 'Invite to Party', { timeout: 8000 })
-    .then(() => true).catch(() => false);
-  rec.ok('a party invite can be sent', invited);
+    .then(() => ({ ok: true }))
+    .catch((e) => ({ ok: false, err: String(e && e.message || e).slice(0, 160) }));
+  rec.ok('a party invite can be sent', invited.ok,
+    { ...invited, buttons: await H.buttonTexts(A) });
   await C.page.waitForTimeout(1500);
   const joined = await H.clickText(C, 'Join', { timeout: 10000 })
-    .then(() => true).catch(() => false);
-  rec.ok('...and the other player can accept it', joined);
+    .then(() => ({ ok: true }))
+    .catch((e) => ({ ok: false, err: String(e && e.message || e).slice(0, 160) }));
+  rec.ok('...and the other player can accept it', joined.ok,
+    { ...joined, buttons: await H.buttonTexts(C),
+      partyState: await H.readState(C, (S) => (S._party ? Object.keys(S._party) : null)) });
   await A.page.waitForTimeout(2000);
   const party = await H.readState(A, (S) => {
     const p = S.party || S._party || {};

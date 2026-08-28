@@ -110,8 +110,20 @@ export const CLAN_LOGO_SIZE = 8;
    boxed in — driven from (815, 975) the player walks 23px south and stops
    dead against the basin, which is correct and useless.
 
-   (815, 1140) is on the south side, facing the fountain, with the whole ±24px
-   disc clear of all twelve footprints at the player's own half-width AND an
-   unobstructed straight run south to the gate stairs — checked by walking it,
-   not by eye (mp-townexit). */
-export const TOWN_SPAWN = { x: 815, y: 1140 };
+   AND CLEAR OF THE TOWNSFOLK, which (815, 1140) — the first attempt at this —
+   was not. Walking within NPC_PROX_OPEN (90px) of a shopkeeper opens his
+   trade drawer, and it stays open until you are NPC_PROX_CLEAR (125px) away.
+   That spawn sat 99px from Diego, so a new player arrived with the shop
+   drawer already across the bottom of their screen — and the drawer covers
+   the inspect card's Trade / Duel / Add Friend row. Measured on a 390x844
+   phone: three of those four buttons unreachable by a real finger
+   (mp-cardreach), which is what mp-rehearsal had been reporting as four
+   unrelated failures.
+
+   (910, 1130) is on the south side with the fountain directly north of it —
+   the view the plaza was laid out for — 170px from the nearest townsperson,
+   outside the CLEAR radius with room for one to be nudged, its whole ±24px
+   disc clear of all twelve footprints at the player's own half-width, and an
+   unobstructed straight run south to the gate stairs. All three properties
+   are checked by walking, not by eye (mp-townexit). */
+export const TOWN_SPAWN = { x: 910, y: 1130 };

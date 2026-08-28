@@ -143,6 +143,7 @@ const SCENARIOS = {
   dodgetrail: () => import('./mp-dodgetrail.mjs'), /* v2.3.2078: your own dodge leaves a trail too */
   worldwalk: () => import('./mp-worldwalk.mjs'), /* v2.3.2078: the world map's pink lines are walls */
   townexit: () => import('./mp-townexit.mjs'), /* v2.3.2078: you spawn clear of the fountain and can leave town */
+  cardreach: () => import('./mp-cardreach.mjs'), /* v2.3.2078: the inspect card's buttons on a phone */
   windup: () => import('./mp-windup.mjs'), /* v2.3.1811: the monster tells you */
   minishot: () => import('./mp-minishot.mjs'), /* v2.3.1810: glyph shapes are all distinct */
   fps: () => import('./mp-fps.mjs'), /* v2.3.1808: frame time, measured */

@@ -70,6 +70,30 @@ export async function run({ browser, wsPort, webPort, rec }) {
        + 'the whole town open',
     fromSpawn.fountain === true, { spawn, ...fromSpawn });
 
+  /* ── THE SPAWN IS ALSO CLEAR OF THE TOWNSFOLK ──
+     Walking within NPC_PROX_OPEN (90px) of a shopkeeper opens his trade
+     drawer, and it stays open until you are NPC_PROX_CLEAR (125px) away.
+     A spawn inside that ring hands every new player a drawer across the
+     bottom of their screen — and the drawer sits over the inspect card's
+     Trade / Duel / Add Friend row, so three of those four buttons cannot be
+     pressed by a real finger (mp-cardreach). A spawn 99px from Diego did
+     exactly that, and mp-rehearsal reported it as four unrelated failures.
+     125px is the floor; the shipped spawn keeps 170. */
+  const NPC_PROX_CLEAR = 125;
+  const npcGap = await H.readState(P, (S) => {
+    const P2 = S.player;
+    return (S.npcs || []).map((n) => ({ id: n.id,
+      d: Math.round(Math.hypot(n.x - P2.x, n.y - P2.y)) }))
+      .sort((a, b) => a.d - b.d);
+  });
+  rec.ok('town has townsfolk to keep clear of (guard)', npcGap.length > 0, npcGap);
+  rec.ok('you do not spawn inside a townsperson\'s proximity ring',
+    npcGap.every((n) => n.d > NPC_PROX_CLEAR),
+    { nearest: npcGap[0], floor: NPC_PROX_CLEAR, all: npcGap });
+  rec.ok('...so no shop drawer is over the screen on arrival',
+    (await P.page.evaluate(() => !document.querySelector('[data-shop-panel]'))) === true,
+    npcGap[0]);
+
   /* The same question from ground that is certainly clear, as the control:
      if THIS also said the fountain is walkable the probe would be broken
      rather than the spawn. */
@@ -97,6 +121,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const gateSolid = await P.page.evaluate(([x, y]) => window.__btIsSolid(x, y), [ex, 1440]);
   rec.ok('the corridor above the exit tile is not walled off',
     gateSolid === false, { exit, probedAt: { x: ex, y: 1440 }, solid: gateSolid });
+
+  /* And the spawn is not boxed in: the column straight south of it is open
+     all the way to the cliff. The first attempt at this spawn sat 23px north
+     of the fountain's collision and stopped dead on the first step. */
+  const column = await P.page.evaluate((sp) => {
+    const out = [];
+    for (let y = sp.y; y <= 1560; y += 16) if (window.__btIsSolid(sp.x, y)) out.push(y);
+    return out;
+  }, spawn);
+  rec.ok('the ground straight south of the spawn is open to the cliff',
+    column.length === 0, { spawn, blockedAt: column.slice(0, 4) });
 
   /* ── THE MAYOR'S GATE COMES FIRST, AND IT IS SUPPOSED TO ──
      Owner, v2.3.1676: "not be allowed to leave town without speaking to mayor
@@ -138,13 +173,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }, spawn);
   await P.page.waitForTimeout(500);
 
-  /* One leg: straight south. That is the whole point of where the spawn is —
-     if the route out needs a detour round the fountain then the plaza is
-     boxed in, and a scenario that zig-zags would hide it. */
-  await P.page.keyboard.down('s');
-  const reached = await H.waitFor(P, (S) => S.currentZone, (v) => v === 'worldview',
-    { timeout: 14000, label: 'walk out of town' }).then(() => true).catch(() => false);
-  await P.page.keyboard.up('s');
+  /* ── STEERED, THE WAY A THUMB STEERS ──
+     Not "hold south": the stairs are at x 800..832 and the spawn is at x 910,
+     because the exit's own column near the plaza is inside Diego's proximity
+     ring (98px) and, further north, inside the fountain. Holding one key runs
+     past the trail-head's 2-tile radius and pins you on the map's bottom
+     clamp at y 1680, four tiles below it.
+     So this closes on the marker one short press at a time, choosing the axis
+     with the most distance left — which is what a player does, and what makes
+     the walk a test of the ROUTE rather than of one lucky column. Anything
+     the route has to detour round would show as a leg that stops making
+     progress, so the "no progress" bail is part of the assertion, not
+     housekeeping. */
+  let reached = false, stalls = 0;
+  for (let i = 0; i < 40 && !reached && stalls < 4; i++) {
+    const p = await H.readState(P, (S) => ({ zone: S.currentZone, x: S.player.x, y: S.player.y }));
+    if (p.zone === 'worldview') { reached = true; break; }
+    const dx = ex - p.x, dy = ey - p.y;
+    if (Math.hypot(dx, dy) < 8) break;
+    const key = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'd' : 'a') : (dy > 0 ? 's' : 'w');
+    await P.page.keyboard.down(key);
+    await P.page.waitForTimeout(Math.min(600, Math.max(120, Math.hypot(dx, dy) * 1.2)));
+    await P.page.keyboard.up(key);
+    await P.page.waitForTimeout(160);
+    const q = await H.readState(P, (S) => ({ zone: S.currentZone, x: S.player.x, y: S.player.y }));
+    if (q.zone === 'worldview') { reached = true; break; }
+    stalls = Math.hypot(q.x - p.x, q.y - p.y) < 4 ? stalls + 1 : 0;
+  }
   await P.page.waitForTimeout(600);
   const end = await H.readState(P, (S) => ({
     zone: S.currentZone, x: Math.round(S.player.x), y: Math.round(S.player.y) }));
@@ -161,6 +216,45 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     rec.ok('...and you arrive on open ground, not inside the rock wall',
       legal === false, end);
+  }
+
+  /* ── 3. AND BACK AGAIN ──
+     The round trip, because the return is its own bug surface: v2.3.1708 was
+     "the portal from worldview back into town doesn't work", answered with a
+     deaf window on the marker you arrived through. A one-way test would pass
+     with the way home shut. */
+  if (end.zone === 'worldview') {
+    const home = await P.page.evaluate(() => {
+      const f = window._gameFns;
+      const e = f && f.WORLDVIEW_EXITS && f.WORLDVIEW_EXITS.find((x) => x.zoneId === 'town');
+      return e ? { tx: e.tx, ty: e.ty } : null;
+    });
+    rec.ok('the world map declares a way back to town (guard)', !!home, home);
+    if (home) {
+      /* Walk onto it rather than teleporting: the deaf window is timed from
+         the arrival, so the trip has to take as long as a trip. */
+      let back = false;
+      for (let i = 0; i < 10 && !back; i++) {
+        await P.page.evaluate((h) => {
+          const S = window._gameState.current;
+          S.player.x = h.tx * 32 + 16; S.player.y = h.ty * 32 + 16;
+        }, home);
+        back = await H.waitFor(P, (S) => S.currentZone, (z) => z === 'town',
+          { timeout: 3000, label: 'back to town' }).then(() => true).catch(() => false);
+      }
+      rec.ok('...and the way back into town works', back,
+        await H.readState(P, (S) => ({ zone: S.currentZone,
+          x: Math.round(S.player.x), y: Math.round(S.player.y) })));
+      if (back) {
+        const landed = await P.page.evaluate(() => {
+          const S = window._gameState.current;
+          return { x: Math.round(S.player.x), y: Math.round(S.player.y),
+            solid: window.__btIsSolid(S.player.x, S.player.y) };
+        });
+        rec.ok('...landing on open cobble, not inside a prop',
+          landed.solid === false, landed);
+      }
+    }
   }
 
   const errs = P.logs.filter((l) => String(l).startsWith('pageerror'));
