@@ -351,6 +351,11 @@ export const PRIVILEGED_EVENTS = new Set([
      immediately after, so it never reaches the rebroadcast branch from the
      server side; the deny-list is what stops a CLIENT sending it. */
   'room_full',
+  /* v2.3.2101: the contest's public state (is it running, how many of the
+     three are left, the rate the worker will actually roll). Server-EMITTED,
+     so it MUST be here or a client could forge it -- and a forged "0 left"
+     would be a convincing way to stop people hunting. */
+  'cape_status',
   /* v2.3.1576: Hemi Bro ownership. Both are server-emitted only -- a forged
      bro_verify_result would let a client show peers a badge it never earned,
      and a forged bro_nonce would let it choose the text it 'signed'. */

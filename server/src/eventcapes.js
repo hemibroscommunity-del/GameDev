@@ -108,11 +108,29 @@ export const EVENT_LIVE = true;
  * operator who stops THIS contest with the kill switch is NOT overridden on
  * the next join -- the stop stays stopped, which is what an emergency stop is
  * for. Bump the id to start a new contest and clear again. */
-export const EVENT_START_ID = 'crimson-2026-08-28';
+/* v2.3.2102: bumped with the cap change, deliberately. This is a NEW contest
+   -- ten capes instead of three -- so the clear above runs again, and any
+   `disable_event_capes` or `event_cape_rate` still sitting in storage from the
+   last one is cleared with it. That is the whole reason this id exists. */
+export const EVENT_START_ID = 'crimson-10-2026-08-28';
 
 export const EVENT_CAPES = {
   /* id -> the cape granted, its ticket, and how many exist. */
-  crimson: { cape: 'crimson', ticket: `${TICKET_PREFIX}crimson`, cap: 3 },
+  /* ═══ v2.3.2102: TEN, NOT THREE ═══
+     Owner, after the drop failed to land through a whole live session: "I want
+     to just give free capes to monster drops because they didn't get the right
+     experience. Can you change it to 10 capes or something because I want
+     everyone to get one. 8 joined."
+
+     Ten against eight players, so everyone who turned up can have one and
+     there is headroom for two more -- and, deliberately, headroom over
+     whatever the ledger already holds. Any tickets issued during the ten
+     minutes the drop ran live on 2026-08-27 come out of this cap, and at three
+     that alone could have been the whole contest; at ten it cannot be.
+
+     The ONE-PER-ACCOUNT rule is what makes "everyone gets one" true and is
+     untouched: without it a single player farming could take all ten. */
+  crimson: { cape: 'crimson', ticket: `${TICKET_PREFIX}crimson`, cap: 10 },
 };
 
 export const eventCapeMethods = {
@@ -215,9 +233,16 @@ export const eventCapeMethods = {
        Still read through the live-ops flag first, so it can be tuned again
        mid-event without a deploy -- this only moves the DEFAULT the flag
        falls back to. */
+    /* v2.3.2102: 1/5 -> 1/2. The owner's ask is "everyone to get one", and at
+       1-in-5 an unlucky player is still empty-handed after fifteen kills --
+       which is exactly the experience being made good. At 1-in-2 the median
+       player has a ticket in two kills and the cap, not the dice, is what ends
+       it. Generous is the safe failure mode here: the cap and one-per-account
+       bound the prize either way, so the only thing the rate decides is how
+       long someone stands there wondering whether it is broken again. */
     const rate = (typeof this._flagNum === 'function')
-      ? this._flagNum('event_cape_rate', 1 / 5, 0, 1)
-      : 1 / 5;
+      ? this._flagNum('event_cape_rate', 1 / 2, 0, 1)
+      : 1 / 2;
     if (roll >= rate) return null;
     led.issued.push(playerId);
     if (!ps.inventory) ps.inventory = {};
@@ -252,6 +277,38 @@ export const eventCapeMethods = {
       if (led && led.redeemed.indexOf(playerId) >= 0) return EVENT_CAPES[id].cape;
     }
     return null;
+  },
+
+  /** v2.3.2101: what a PLAYER may know about the contest -- is it running, and
+   *  how many of the three are left.  Never the id lists: those are the
+   *  operator's view (the admin GET), and who holds a ticket is not public.
+   *
+   *  WHY THIS EXISTS. The drop was reported dead four times and every round
+   *  was spent guessing at state nobody could see: `disable_event_capes` and
+   *  `event_cape_rate` live in durable storage, the ledger lives beside them,
+   *  and the only way to read any of it was an admin endpoint behind a secret
+   *  the owner does not carry. The wiring was fine the whole time -- driving
+   *  `_resolveMonsterKill` directly grants the ticket -- so what was missing
+   *  was never a fix, it was a window. */
+  _capePublicStatus() {
+    const out = { live: !!(this._capeEventOpen && this._capeEventOpen()), capes: {} };
+    for (const id of Object.keys(EVENT_CAPES)) {
+      const def = EVENT_CAPES[id];
+      const led = (this._capeLedgers && this._capeLedgers[id]) || null;
+      out.capes[id] = {
+        cap: def.cap,
+        /* null, not 0, when the ledger is not warm yet: "unknown" and "none
+           left" are different answers and a contest that reports the second
+           when it means the first is how this went wrong in the first place. */
+        remaining: led ? Math.max(0, def.cap - led.issued.length) : null,
+      };
+    }
+    /* The rate as the worker will actually roll it, so a flag pinned low in
+       storage shows up as a number instead of as silence. */
+    out.rate = (typeof this._flagNum === 'function')
+      ? this._flagNum('event_cape_rate', 1 / 2, 0, 1)
+      : 1 / 2;
+    return out;
   },
 
   /** Warm every ledger.  Called once on room start so _capeOwnedBy and the

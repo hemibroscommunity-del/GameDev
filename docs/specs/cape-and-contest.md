@@ -244,7 +244,17 @@ consequence — a deploy briefly disconnects everyone — is handled by merging
 the enable *before* players gather, and that instruction lives in
 `docs/OPERATIONS.md` rather than only here.
 
-**v2.3.2097: the default is now `1/5` (owner's call, mid-demo: "Just update
+**v2.3.2102: TEN capes, at `1/2`.** Owner, after the drop failed to land
+through a whole live session with eight players: "I want to just give free
+capes to monster drops because they didn't get the right experience... change
+it to 10 capes or something because I want everyone to get one. 8 joined."
+Ten against eight leaves headroom, including over whatever the ledger already
+holds from the ten minutes the drop ran live on 2026-08-27 — at a cap of three
+those alone could have been the whole contest. One-per-account is untouched:
+it is what makes "everyone gets one" true rather than "one player gets ten".
+`EVENT_START_ID` was bumped with it, so the stale-override clear runs again.
+
+**v2.3.2097: the default was `1/5` (owner's call, mid-demo: "Just update
 it to a 1 in 5 chance. First 3 get it").** The cap of three is what ends the
 contest -- it is checked before the roll -- so a generous rate changes how
 FAST the three are found, not how many exist. The paragraph below describes

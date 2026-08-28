@@ -184,6 +184,36 @@ export function processGameEvent(type, payload, S, deps) {
             shopBus.setQuote(_sq.ok ? _sq : null);
             break;
           }
+          /* ═══ v2.3.2101: WHERE THE CONTEST STANDS, IN THE CHAT ═══
+             The drop was reported dead four separate times and every round
+             went on guessing at state nobody could see -- the kill switch,
+             the rate and the ledger all live in durable worker storage,
+             readable only through an admin endpoint behind a secret. The
+             wiring was correct throughout (driving the kill resolver grants
+             the ticket); what was missing was a window into it.
+
+             So the worker now says, on join, whether the contest is running,
+             how many of the three are left and the rate it will actually
+             roll. A player wants to know all three during an event, and when
+             it goes wrong again this line is the diagnosis instead of an
+             afternoon of inference. */
+          case 'cape_status': {
+            const _cs = payload || {};
+            const _c = (_cs.capes && _cs.capes.crimson) || null;
+            const _pct = Math.round((_cs.rate || 0) * 100);
+            const _line = !_cs.live
+              ? 'Golden ticket event: not running.'
+              : _c && _c.remaining === null
+                ? 'Golden ticket event: running (counting tickets\u2026)'
+                : _c && _c.remaining > 0
+                  ? `Golden ticket event: ${_c.remaining} of ${_c.cap} left, ~${_pct}% per kill.`
+                  : 'Golden ticket event: all tickets have been found.';
+            S.chatLog = (S.chatLog || []).slice(-40).concat([
+              { id: null, name: null, text: _line, ts: Date.now() },
+            ]);
+            if (setChatLog) setChatLog(S.chatLog.slice());
+            break;
+          }
           case 'shop_result': {
             const _sr = payload || {};
             if (_sr.ok && _sr.kind === 'shop_sell') {
