@@ -34,7 +34,20 @@ const MAP_W = 1674, MAP_H = 1774;        /* town_v17.webp */
 const HALF = 22;                          /* half a body */
 const MARGIN = 14;                        /* keep off a footprint's edge */
 
-const walk = JSON.parse(readFileSync(join(REPO, 'public/maps/town_v17.walk.json'), 'utf8'));
+/* ═══ v2.3.2078: THE TOWN DOES NOT USE ITS .walk.json ═══
+   The first cut of this tool read public/maps/town_v17.walk.json and called
+   any `false` cell a wall. The client does not load that file: tiledMaps.js
+   has WALK_MASK_ZONES = new Set(['worldview']), so town's terrain mask is
+   generated and ignored, and collision in town comes from the PROP
+   footprints alone — spriteSheets.js installPropOnlyGrids stamps them into a
+   16px grid.
+
+   That mattered: the tool reported mp-potions' sprint lane as "BLOCKED by
+   grid" against a file the game never reads, and the real reason that lane
+   was wrong is a different one (it is not, on the grid that counts). Mirror
+   what the game does instead — same CELL, same floor()-based stamping — so
+   this answers the question the player's legs ask. */
+const CELL = 16;
 
 /* IMPORTED, not regex-scraped.  The first cut of this tool matched prop
    literals with a `[^{}]*?` pattern and silently lost the FOUNTAIN — whose
@@ -43,21 +56,37 @@ const walk = JSON.parse(readFileSync(join(REPO, 'public/maps/town_v17.walk.json'
    basin.  It also counted the bank and the enchanter, which belong to
    another zone entirely.  worldProps.js has no imports of its own, so it
    loads directly and there is nothing left to get wrong. */
+/* The zone is 52x55 TILEs; the MAP art is a hair larger and is not what
+   collision is measured in. */
+const ZONE_W = 52 * 32, ZONE_H = 55 * 32;
+const GW = Math.round(ZONE_W / CELL), GH = Math.round(ZONE_H / CELL);
+const propGrid = Array.from({ length: GH }, () => new Array(GW).fill(true));
 const { propsForZone } = await import(join(REPO, 'src/data/worldProps.js'));
 /* propsForZone, not a filter of my own: it applies propIsPlaced, which holds
    back the four buildings still carrying town_v16 coordinates (the bank and
    the enchanter among them, off the right-hand edge of a 1674px map — a
    documented to-do, not a deletion). A tool that counted them would report
    obstacles the game does not draw. */
+const { propFootprint } = await import(join(REPO, 'src/data/worldProps.js'));
 const PROPS = propsForZone('town')
-  .filter((p) => p.blockW && p.blockD)
-  .map((p) => ({ id: p.id, x: p.x, y: p.y, bw: p.blockW, bd: p.blockD }));
+  .filter((p) => propFootprint(p))
+  .map((p) => ({ id: p.id, x: p.x, y: p.y, bw: p.blockW, bd: p.blockD, f: propFootprint(p) }));
+/* Stamped exactly as installPropOnlyGrids does — floor() on both ends, so a
+   footprint that starts 2px into a cell blocks the whole cell. That
+   quantisation is not a detail: it is why TOWN_SPAWN at y 1010 shared a cell
+   with a fountain whose footprint starts at y 1018 (v2.3.2078). */
+for (const p of PROPS) {
+  const x0 = Math.max(0, Math.floor(p.f.x0 * GW / ZONE_W));
+  const x1 = Math.min(GW - 1, Math.floor(p.f.x1 * GW / ZONE_W));
+  const y0 = Math.max(0, Math.floor(p.f.y0 * GH / ZONE_H));
+  const y1 = Math.min(GH - 1, Math.floor(p.f.y1 * GH / ZONE_H));
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) propGrid[y][x] = false;
+}
 
 const gridBlocked = (x, y) => {
-  const tx = Math.floor(x * walk.width / MAP_W);
-  const ty = Math.floor(y * walk.height / MAP_H);
-  if (!(tx >= 0 && tx < walk.width && ty >= 0 && ty < walk.height)) return 'off-map';
-  return walk.grid[ty][tx] === false ? 'grid' : null;
+  const gx = Math.floor(x * GW / ZONE_W), gy = Math.floor(y * GH / ZONE_H);
+  if (!(gx >= 0 && gx < GW && gy >= 0 && gy < GH)) return 'off-map';
+  return propGrid[gy][gx] === false ? 'prop-grid' : null;
 };
 /* `m` separates the two questions this tool answers.  m=0 is COLLISION —
    propFootprint's own box, what actually stops a player.  m=MARGIN is
@@ -93,8 +122,9 @@ if (args.length >= 2) {
   process.exit(solid ? 1 : 0);
 }
 
-console.log(`town_v17: ${walk.width}x${walk.height} grid over ${MAP_W}x${MAP_H}px, `
-  + `${PROPS.length} blocking props, sampled across a ${HALF * 2}px body\n`);
+console.log(`town: a ${GW}x${GH} prop grid (${CELL}px cells) over ${ZONE_W}x${ZONE_H} world px, `
+  + `${PROPS.length} blocking props, sampled across a ${HALF * 2}px body.`);
+console.log(`(town_v17.walk.json is NOT loaded by the client — see the note at the top.)\n`);
 
 /* A PLACED prop that is nonetheless off the map would be a real error — the
    held-back v16 ones are already excluded above. */

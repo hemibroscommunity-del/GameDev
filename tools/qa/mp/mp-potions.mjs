@@ -55,19 +55,25 @@ async function hold(P, key, ms) {
  * noisier, and it does not matter here: the effect under test is 1.5x against
  * a 1.25x threshold, and the measurement agreed to 1.2% over 120 frames.
  *
- * ── v2.3.2078: AND THE LANE HAS TO BE ON THE MAP, NOT JUST BETWEEN THE PROPS
- * The previous lane started at (1000, 1600), chosen by checking propFootprint
- * and every NPC's wander radius -- and NOT the walk grid, which is the other
- * half of what makes ground walkable. town_v17's grid marks (1000, 1600)
- * UNWALKABLE. The sprint ran anyway, and passed, because of the never-trap
- * escape hatch in isSolid: a player standing in a solid cell is allowed to
- * move out of it, so collision was effectively OFF for the whole measurement.
- * A speed test with collision disabled is not measuring the walk a player
- * takes.
- * x=1070 is clear from y 665 to 1480 -- 815 px, the longest north-south lane
- * in town -- against BOTH the grid and all twelve footprints, sampled across
- * a 44 px body width rather than at the centre line. From (1070, 1470) the
- * 513 px run ends at y 957 with 290 px of lane still ahead of it.
+ * ── v2.3.2078: AND THE LANE IS CHECKED AGAINST THE GRID THAT COUNTS
+ * The previous lane started at (1000, 1600), chosen against propFootprint and
+ * every NPC's wander radius. That is the right check and it was done at the
+ * centre line only, which is how it ended up 40px from the map's south edge
+ * with the sprint running toward the plaza rather than away from it.
+ *
+ * The grid that counts in town is the PROP grid, not town_v17.walk.json:
+ * tiledMaps.js has WALK_MASK_ZONES = new Set(['worldview']), so town's
+ * terrain mask is generated and never loaded, and spriteSheets.js
+ * installPropOnlyGrids stamps the footprints into a 16px grid instead. (A
+ * first pass of this note said the walk JSON marked the old lane unwalkable.
+ * It does — and the client does not read it.)
+ *
+ * x=1070 is clear from y 665 to 1480 against that grid and all twelve
+ * footprints, sampled across a 44px body width rather than at the centre
+ * line -- 815px, and the longest north-south lane the plaza had before
+ * v2.3.2078 freed the gate. From (1070, 1470) the 513px run ends at y 957
+ * with 290px of lane still ahead of it. `node tools/dev/town-lanes.mjs
+ * 1070 1470` re-derives it.
  * (x=300 was rejected long before any of this: it walks into the west
  * cliff.) */
 async function sprint(P, frames = 30) {
