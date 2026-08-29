@@ -25,21 +25,26 @@ import { capeStatusBus } from './capeStatusBus.js'; /* v2.3.2118 */
  * ON TOP of the dashboard, covering the controls -- which is the exact bug
  * that made someone write that file.
  *
- * IT DOES NOT EAT TAPS. pointerEvents is 'none' on the shell so the world
- * behind it stays draggable, and 'auto' only on the scrollable list. A chat
- * feed that swallowed a joystick drag in the lower left would be a worse
- * problem than the one this solves.
+ * IT DOES NOT EAT TAPS -- and as of v2.3.2123 that is finally true rather
+ * than intended. pointerEvents is 'none' on the shell AND on the line list;
+ * the fold header is the only interactive thing here, and it sits above the
+ * joystick disc. A chat feed that swallowed a joystick drag in the lower left
+ * would be a worse problem than the one this solves, and for two versions it
+ * WAS that problem: see the note on the list's style, and mp-chatjoy, which
+ * measures it at the disc rather than trusting this paragraph.
  *
  * ...AND IT NO LONGER EATS A PANEL'S EITHER (v2.3.2085). The sentence above
  * was true of the WORLD behind the feed and false of anything ABOVE it. The
- * scrollable list has to be pointerEvents:'auto' to be scrollable, and it is
- * a 260x104 rectangle in the same lower-left corner as the inspect card's
- * action row -- so the card's single most important button, Trade, could not
- * be pressed while any chat line was on screen. mp-trade had been failing on
+ * list was pointerEvents:'auto' back then so that it could be scrolled, and it
+ * is a rectangle in the same lower-left corner as the inspect card's action
+ * row -- so the card's single most important button, Trade, could not be
+ * pressed while any chat line was on screen. mp-trade had been failing on
  * exactly that for weeks behind a message that reads as innocent ("element is
  * visible, enabled and stable", then a timeout); H.clickText naming what
  * elementFromPoint finds at the button's centre (v2.3.2084) answered it in
- * one run.
+ * one run. v2.3.2123 removes the cause rather than the symptom -- an inert
+ * list cannot cover anything -- but the `busy` gate stays on the header,
+ * which is still a real button in that same corner.
  *
  * A z-index cannot settle it: the card already claims 99800 against this
  * feed's 25 and loses anyway, because this shell is styled `left: 8px` and
@@ -89,7 +94,6 @@ const writeShut = (v) => {
 export function WorldChatFeed() {
   const [, setV] = useState(0);
   const listRef = useRef(null);
-  const stuckRef = useRef(true);
   const [shut, setShut] = useState(readShut);
   /* The newest ts the player has been shown. 0 until the first paint marks it,
      so a first-ever open does not claim a backlog of unread. */
@@ -127,19 +131,15 @@ export function WorldChatFeed() {
   const S = (typeof window !== 'undefined' && window._gameState && window._gameState.current) || null;
   const lines = ((S && S.chatLog) || []).slice(-KEEP);
 
-  /* Follow new lines only when the player is already at the bottom. Scrolling
-     up to read something and having it yanked away by the next arrival is the
-     classic chat-feed annoyance, and it is one comparison to avoid. */
+  /* Follow the newest line.  v2.3.2123: unconditionally, because the list is
+     pointerEvents:'none' now and there is no longer any way for the player to
+     scroll away from the bottom — the "don't yank it away from someone reading
+     history" comparison this used to make had nothing left to protect.  See
+     the note on the list's own style for why it stopped being interactive. */
   useEffect(() => {
     const el = listRef.current;
-    if (el && stuckRef.current) el.scrollTop = el.scrollHeight;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [lines.length]);
-
-  const onScroll = () => {
-    const el = listRef.current;
-    if (!el) return;
-    stuckRef.current = (el.scrollHeight - el.scrollTop - el.clientHeight) < 24;
-  };
 
   /* Newer than the mark = unread. Own lines count as read the moment they are
      shown, which the mark handles for free: the effect below runs on the same
@@ -317,12 +317,40 @@ export function WorldChatFeed() {
       {(!lines.length || shut) ? null : (
       <div
         ref={listRef}
-        onScroll={onScroll}
         data-world-chat-lines={lines.length}
         style={{
-          /* v2.3.2085: 'auto' so the log can be scrolled, 'none' while a panel
-             is open on top of it -- see the header. */
-          pointerEvents: busy ? 'none' : 'auto',
+          /* ═══ v2.3.2123: THE LIST IS READ-ONLY, AND THAT IS THE FIX ═══
+             All four demo reviewers reported this corner, and Uttam named the
+             mechanism: "in phone worldchat cover left side of joystick, unable
+             to move jotstick".  Measured (tools/qa/mp/mp-chatjoy.mjs): with a
+             busy room's chat in it this panel is 204px tall at 389..593, the
+             joystick disc lives at 452..527, elementFromPoint returns a chat
+             <span> at every point on the disc, and a real touch drag moves the
+             player ZERO pixels.  The joystick is simply dead.
+
+             The header of this file claimed the opposite — "IT DOES NOT EAT
+             TAPS ... a chat feed that swallowed a joystick drag in the lower
+             left would be a worse problem than the one this solves".  That was
+             true of the SHELL, which is pointerEvents:'none', and false of this
+             list, which had to be 'auto' to be scrollable.  The shell being
+             transparent buys nothing when its opaque child is the thing over
+             the thumb.
+
+             So the list stops being interactive at all.  What that costs is
+             scrolling back through history; what it buys is the primary
+             control of the game, in the corner the owner asked the feed to
+             live in (v2.3.2037).  It is not a close trade — and it costs less
+             than it looks, because the feed auto-follows the newest line, so
+             the bottom is where it already sits.  A player who wants the
+             corner back entirely still folds it with the header, which stays
+             tappable and sits ABOVE the disc (measured at 412..440 against the
+             disc's 452).
+
+             `busy` no longer changes anything here and the prop is kept: it
+             still gates the header below, which IS interactive, and that is
+             the v2.3.2085 case (an inspect card's Trade button in this same
+             corner). */
+          pointerEvents: 'none',
           maxHeight: 'min(26vh, 150px)',
           overflowY: 'auto',
           overflowX: 'hidden',

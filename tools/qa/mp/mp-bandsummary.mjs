@@ -163,6 +163,14 @@ const readPills = (P) => P.page.evaluate(() => {
       cardRight: Math.round(el.getBoundingClientRect().right),
       cardH: Math.round(el.getBoundingClientRect().height),
       pairText: pairEl ? (pairEl.textContent || '').replace(/\s+/g, '') : null,
+      /* v2.3.2131: the numbers moved to the popup and the BAR became the
+         thing that carries them -- it reads the eased value and publishes it
+         where its own width is computed from.  pairText above stays: it is
+         now the assertion that no digits are left on the card face. */
+      prog: (() => { const b = el.querySelector('[data-xpbar]');
+        const v = b && b.getAttribute('data-xpprog'); return v == null || v === '' ? null : +v; })(),
+      thresh: (() => { const b = el.querySelector('[data-xpbar]');
+        const v = b && b.getAttribute('data-xpthresh'); return v == null || v === '' ? null : +v; })(),
       lvlText: lvlEl ? (lvlEl.textContent || '').trim() : null,
       badgeText: badgeEl ? (badgeEl.textContent || '').trim() : null,
       /* Do the badge and the level OVERLAP?  v2.3.1859 grew the level to
@@ -333,14 +341,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
     { pills: pills.map((p) => p.label) });
   const three = pills.length === 3;   /* .every() on [] is TRUE — see above */
   const [melee, bow, magic] = pills;
-  rec.ok('each card shows its XP as a pair',
-    three && pills.every((p) => p.pairText && /^\d[\d.k]*\/\d[\d.k]*$/.test(p.pairText)),
-    pills.map((p) => p.pairText));
-  /* Its OWN skill's numbers: 250 / 210 / 140 against the same 280. */
-  rec.ok('...and it is that skill\'s own progress, not a shared number',
-    three && melee.pairText === '250/280' && bow.pairText === '210/280'
-      && magic.pairText === '140/280',
+  /* ═══ v2.3.2131: THE DIGITS ARE GONE FROM THE CARD ═══
+     This asserted the opposite until now -- that every card printed its XP as
+     a pair -- and the owner asked for exactly that to stop: "get rid of the xp
+     numbers in the 3 combat skills and put them as some kind of pop up when
+     you tap on it."  So the claim flips, and it is worth flipping rather than
+     deleting: "no digits" is the requirement, and a later pass that quietly
+     puts a number back on this card should fail here. */
+  rec.ok('no card prints XP digits on its face any more',
+    three && pills.every((p) => p.pairText === null),
     pills.map((p) => `${p.label}=${p.pairText}`));
+  /* THE PROPERTY THAT SURVIVED THE MOVE.  Each card still shows its OWN
+     skill's progress rather than a shared number -- 250 / 210 / 140 against
+     the same 280 -- only now the bar carries it instead of the text.  Read
+     off the bar's published value, which is the number its width is drawn
+     from. */
+  rec.ok('...but each bar still shows that skill\'s own progress, not a shared one',
+    three && melee.prog === 250 && bow.prog === 210 && magic.prog === 140
+      && pills.every((p) => p.thresh === 280),
+    pills.map((p) => `${p.label}=${p.prog}/${p.thresh}`));
   rec.ok('...and its level, spelled LV n',
     three && pills.every((p) => /^LV\s*\d+$/i.test(p.lvlText || '')),
     pills.map((p) => p.lvlText));
@@ -380,20 +399,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
      Asserted as a RATIO of the card, not a pixel count, because the card is
      94px at 390 and 80 at 360; and asserted BELOW the bar, because "it is
      wide" would also be true of a pair that had landed on top of the level. */
-  rec.ok('the XP pair spans the whole card, not one column',
-    three && pills.every((p) => p.pair && p.pair.w >= p.pillW * 0.85),
-    pills.map((p) => ({ card: p.pillW, pair: p.pair && p.pair.w,
-      pct: p.pair && Math.round((p.pair.w / p.pillW) * 100) })));
-  /* v2.3.1863: hard against the right rim.  Measured on the denominator's
-     glyphs, not the containing box — the box spans the card whether the text
-     is centred or not, so it would pass either way. */
-  rec.ok('...ending hard against the card\'s right edge',
-    three && pills.every((p) => p.denom && p.cardRight - p.denom.r <= 6),
-    pills.map((p) => ({ cardRight: p.cardRight, denomRight: p.denom && p.denom.r,
-      gap: p.denom && (p.cardRight - p.denom.r) })));
-  rec.ok('...along the bottom, clear of the bar above it',
-    three && pills.every((p) => p.pair && p.bar && p.pair.t >= p.bar.b - 1),
-    pills.map((p) => ({ bar: p.bar, pair: p.pair })));
+  /* ═══ v2.3.2131: THREE GEOMETRY ASSERTIONS RETIRED WITH THE PAIR ═══
+     What stood here measured the pair's box: that it spanned the card rather
+     than one column (v2.3.1862), that its denominator sat hard against the
+     right rim (v2.3.1863), and that it cleared the bar above it.  All three
+     were about placing digits on a card that no longer carries any, so they
+     are removed rather than adapted -- there is nothing left for them to be
+     true or false about, and the "no digits" assertion above is what now
+     guards that ground.
+
+     The card's own geometry is still asserted, below and unchanged: the bar
+     is half the card, the fill matches the numbers, the level survives the
+     badge, and nothing clips at either width. */
   /* The bar SHRANK, which is what paid for the icon.  Asserted so a later
      pass cannot quietly widen it back across the card and re-break the
      half. */
@@ -444,10 +461,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and their numbers still fit',
     narrow.length === 3 && narrow.every((p) => p.clipped === false),
     narrow.map((p) => ({ pill: p.pillW, rows: p.rows })));
+  /* v2.3.2131: read off the bar, for the reason given at the 390 case -- the
+     digits moved to the popup and the bar carries the value now. */
   rec.ok('...and still read their own skill',
-    narrow.length === 3 && narrow[0].pairText === '250/280'
-      && narrow[1].pairText === '210/280' && narrow[2].pairText === '140/280',
-    narrow.map((p) => p.pairText));
+    narrow.length === 3 && narrow[0].prog === 250
+      && narrow[1].prog === 210 && narrow[2].prog === 140
+      && narrow.every((p) => p.thresh === 280),
+    narrow.map((p) => `${p.prog}/${p.thresh}`));
   await N.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/bandsummary-360.png' });
 
   /* ═══ v2.3.1922: THE CARD MUST AGREE WITH THE CHARACTER ═══
@@ -494,7 +514,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
      at level 20.  xpShort caps each side at four characters ("9.9k"), so the
      worst case is roughly "9.9k/9.9k".  Driven here at BOTH widths, on the
      narrow phone first because 360 is where the card is 80px, not 94. */
-  const WIDEST = 9990;   /* -> "9.9k", the longest xpShort output */
+  /* ═══ v2.3.2131: STILL DRIVEN WIDE, FOR A DIFFERENT REASON ═══
+     This used to size the card against the widest string xpShort could
+     produce ("9.9k/9.9k"), because the pair was the thing that clipped.  The
+     pair is gone, so that reasoning is gone with it -- but the CASE is worth
+     keeping: at level 20 the card holds "LV 20" instead of "LV 1", and a
+     card that fits on day one and clips at level 20 is precisely the failure
+     the original note was written about.  Same number, same two widths, now
+     asserting the card that is actually rendered. */
+  const WIDEST = 9990;
   for (const [who, label] of [[N, '360'], [P, '390']]) {
     await who.page.evaluate((xp) => {
       const R = window._gameState.current.rpg;
@@ -507,15 +535,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }, WIDEST);
     await who.page.waitForTimeout(700);
     const wide = await readPills(who);
-    rec.ok(`the widest possible XP pair still fits at ${label}`,
+    rec.ok(`a level-20 card still fits at ${label}`,
       wide.length === 3 && wide.every((p) => p.clipped === false),
-      wide.map((p) => ({ pair: p.pairText, pill: p.pillW, rows: p.rows.filter((r) => r.over > 0) })));
-    /* Not clipped is not the same as not OVERLAPPING: the pair is absolutely
-       positioned across the card's bottom, so it can run under the level and
-       the bar without either box reporting an overflow. */
-    rec.ok(`...without colliding with the level at ${label}`,
-      wide.length === 3 && wide.every((p) => p.pair && p.lvl && p.pair.t >= p.lvl.b - 1),
-      wide.map((p) => ({ pair: p.pair, lvl: p.lvl })));
+      wide.map((p) => ({ lvl: p.lvlText, pill: p.pillW, rows: p.rows.filter((r) => r.over > 0) })));
+    /* And the digits stay off it at the extreme too.  The card is tightest
+       here, which is exactly where a future pass would be tempted to squeeze
+       a number back in. */
+    rec.ok(`...and still prints no XP digits at ${label}`,
+      wide.length === 3 && wide.every((p) => p.pairText === null),
+      wide.map((p) => p.pairText));
     await who.page.screenshot({ path: `/home/user/GameDev/tools/qa/mp/out/bandsummary-wide-${label}.png` });
   }
 

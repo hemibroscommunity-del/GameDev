@@ -29,6 +29,9 @@ import { blockRingBus } from './mobile/blockRingBus.js';
    sheet's More destination instead. */
 import { dashboardPanelBus } from './mobile/dashboardPanelBus.js';
 import { ControlsTutorial } from './mobile/ControlsTutorial.jsx';
+/* v2.3.2131: the "what is this?" explainer -- one overlay behind both the
+   combat-card XP popup and the hero sheet's tappable stat labels. */
+import { InfoPopup } from './mobile/InfoPopup.jsx';
 /* v2.3.820: MasteryNotification removed from the render (owner request) --
    import dropped to avoid an unused symbol. */
 import { advanceMastery, earnCertification } from '../game/mastery.js';
@@ -659,6 +662,7 @@ export const GameApp = () => {
           tracking itself (advanceMastery/earnCertification + localStorage)
           is untouched; only the popup UI is gone. */}
       <ControlsTutorial />
+      <InfoPopup />
       {/* v2.3.221: dev-tooling overlays gated on ?dev=1 URL param so
           the player-facing build doesn't show the D button, version
           badge, or FPS counter. */}

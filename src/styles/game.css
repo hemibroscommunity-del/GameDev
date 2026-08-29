@@ -2323,9 +2323,35 @@ body:has(.bt-inspect) .bt-kb-chip{display:none}
    records as the iPhone sore spot.  As a keyframe the compositor owns it and
    the JS loop writes no style at all.  opacity only: nothing here can trigger
    layout or paint, and there is no filter (iOS static). */
-@keyframes bt-coach-pulse { 0%,100% { opacity: 1 } 50% { opacity: .45 } }
-.bt-coach-ring{ animation: bt-coach-pulse 600ms ease-in-out infinite }
-@media (prefers-reduced-motion: reduce){ .bt-coach-ring{ animation: none; opacity: 1 } }
+/* ═══ v2.3.2124: IT BREATHES, SO IT READS AS WAITING FOR YOU ═══
+   Owner: "For the double tap and hold portion of the total can you make the
+   line around the right joystick swell and contract to show that it's the
+   active thing waiting for you to do? I had a user who got confused and had
+   that up on their screen during the whole gameplay."
+
+   A ring that only fades is ambiguous: on a busy screen it reads as decoration
+   -- something the UI is doing -- rather than as a prompt aimed at the control
+   underneath it.  Growing and shrinking reads as breathing, and a breathing
+   outline around a specific control is unmistakably "here, now, this one".
+   That is the whole difference between a player finding the gesture and a
+   player carrying the card around for a session, which is what happened.
+
+   SLOWER, TOO: 600ms is a blink and reads as an alarm.  1100ms is a breath,
+   which is the right register for a thing that is patiently waiting.
+
+   Still compositor-only, which is the constraint the note above sets: opacity
+   and transform are both GPU-composited, neither triggers layout or paint, and
+   there is still no `filter` (the iOS WebGL static CLAUDE.md records).  Scaling
+   about the default centre origin means the ring swells around the control it
+   is pointing at rather than drifting off it. */
+@keyframes bt-coach-pulse {
+  0%, 100% { opacity: 1;   transform: scale(1) }
+  50%      { opacity: .55; transform: scale(1.13) }
+}
+.bt-coach-ring{ animation: bt-coach-pulse 1100ms ease-in-out infinite }
+@media (prefers-reduced-motion: reduce){
+  .bt-coach-ring{ animation: none; opacity: 1; transform: none }
+}
 
 /* ═══ v2.3.1814 / v2.3.1823: THE TITLE SCREEN ═══
    Owner (v2.3.1814): "a new login screen needs to be made (re use the same

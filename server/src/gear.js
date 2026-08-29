@@ -244,8 +244,44 @@ export const gearMethods = {
     const i = Object.keys(table).indexOf(this._prog3BaseTier(isWw));
     return i > 0 ? i : 0;
   },
+  /* ═══ v2.3.2124: IRON CARRIES NO REQUIREMENT ═══
+   * Owner: "There should not be a 30 defense requirement on iron chest plate.
+   * Maybe an early build.  Remove any defense requirement for all iron."
+   *
+   * The 30 came from the fallback below rather than from any table.  A
+   * MONSTER_ARMOR_DROPS piece is minted as `{name, tierMult, slot, mat}` with
+   * no `gearBase` (v2.3.1924), so the tier lookup misses and the tierMult
+   * curve fires: round((2.0 - 1) x 6) = rung 6, x5 = 30.  Through the TABLE
+   * the same metal is rung 2 against copper's rung 1, i.e. 5.  So the drop was
+   * asking six times what a forged iron piece asks, purely for lacking a field
+   * -- and the client never gated it at all (canEquipItem returns true for
+   * anything without a gearBase), so the player equipped it, the worker
+   * refused, and until v2.3.2122 the refusal destroyed the piece.
+   *
+   * The owner's answer is simpler than reconciling those two roads, and it
+   * applies to the metal rather than to the drop: iron is free.  Matched on
+   * `mat` AND `gearBase` because a dropped piece names its metal in the first
+   * and a forged one in the second, and half a fix here reads as the rule
+   * working for loot and not for craft. */
+  _isIronGear(item) {
+    if (!item || typeof item !== 'object') return false;
+    return item.mat === 'iron' || item.material === 'iron' || item.gearBase === 'iron';
+  },
   _prog3EquipOk(ps, slot, item) {
     if (!ps || !ps.prog3 || !item || typeof item !== 'object') return true;
+    /* ═══ v2.3.2125: EVERY SLOT, NOT JUST THE DEFENCE ONES ═══
+       v2.3.2124 read "remove any DEFENSE requirement for all iron" narrowly
+       and exempted armour and shields alone, on the reasoning that an iron
+       greatsword is gated on the SWORD ladder and had not been asked about.
+       The owner then said it directly: "Allow iron weapons to be equipped at
+       any level.  Exempt iron weapons from requirement too."  So the metal is
+       free in every slot, and prog3.test.mjs's "iron still asks for something"
+       was pinning a decision that has since been made the other way -- it is
+       updated in the same change rather than worked around.
+       The ladder itself is untouched above iron: steel and everything past it
+       still gate, which drops.test.mjs and prog3.test.mjs both pin so that
+       "make iron work" cannot quietly become "delete the gate". */
+    if (this._isIronGear(item)) return true;
     let tierIdx = -1;
     let baseIdx = 0;
     if (typeof item.gearBase === 'string') {
@@ -372,7 +408,11 @@ export const gearMethods = {
     // Coin + resource validation.
     if ((ps.coins || 0) < tier.goldCost) return;
     if (!ps.inventory) ps.inventory = {};
-    const resourceKey = wantWw ? ('wood_' + tier.wood) : ('ore_' + tier.oreName + '_ore');
+    /* v2.3.2123: `tier.wood` decides, not `wantWw`.  The blacksmith's first
+       tier is a WOODEN weapon and carries a `wood` field now (see
+       BLACKSMITH_TIERS.wood) -- keying off which BENCH you are at sent it
+       looking for `ore_wood_ore`, which nothing produces. */
+    const resourceKey = tier.wood ? ('wood_' + tier.wood) : ('ore_' + tier.oreName + '_ore');
     const have = ps.inventory[resourceKey] || 0;
     const cost = wantWw ? tier.woodCost : tier.oreCost;
     if (have < cost) return;

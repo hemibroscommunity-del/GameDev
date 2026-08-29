@@ -218,7 +218,7 @@ export function ForgePanel(props) {
       bt = _ref132[1];
     var bsLvl = ((_rpgState$lifeSkills23 = rpgState.lifeSkills) === null || _rpgState$lifeSkills23 === void 0 || (_rpgState$lifeSkills23 = _rpgState$lifeSkills23.blacksmithing) === null || _rpgState$lifeSkills23 === void 0 ? void 0 : _rpgState$lifeSkills23.level) || 1;
     var canForgeSkill = bsLvl >= bt.minLvl;
-    var oreKey = 'ore_' + bt.oreName + '_ore';
+    var oreKey = (bt.wood ? 'wood_' + bt.wood : 'ore_' + bt.oreName + '_ore');
     var hasOre = (((_rpgState$inventory = rpgState.inventory) === null || _rpgState$inventory === void 0 ? void 0 : _rpgState$inventory[oreKey]) || 0) >= bt.oreCost;
     var hasGold = rpgState.coins >= bt.goldCost;
     var bsMelee = ((_stateRef$current1 = stateRef.current) === null || _stateRef$current1 === void 0 ? void 0 : _stateRef$current1._bsType) || 'greatsword';
@@ -354,7 +354,15 @@ export function ForgePanel(props) {
         var wpnType = bsMelee;
         if (R[wpnKey] && R[wpnKey].name) {
           if (!R.weaponStash) R.weaponStash = [];
-          if (R.weaponStash.length < WEAPON_STASH_MAX) R.weaponStash.push(_objectSpread({}, R[wpnKey]));
+          /* v2.3.2123: the old weapon has to have somewhere to GO.  This push
+             was guarded and the assignment below it was not, so at eight
+             weapons the one being replaced was dropped on the floor -- and the
+             worker refuses this forge outright at the cap
+             (gear.js _handleForgeWeapon), so the client was destroying an item
+             to complete an action that was never going to happen.  See
+             mp-weaponloss, and Alix's "just lost my magic stick". */
+          if (R.weaponStash.length >= WEAPON_STASH_MAX) return;
+          R.weaponStash.push(_objectSpread({}, R[wpnKey]));
         }
         R[wpnKey] = {
           type: wpnType,
@@ -449,7 +457,7 @@ export function ForgePanel(props) {
     var bt = BLACKSMITH_TIERS[wpn.gearBase];
     if (!bt) return null;
     var reforgeCost = Math.ceil(bt.oreCost * 0.5);
-    var reforgeOreKey = 'ore_' + bt.oreName + '_ore';
+    var reforgeOreKey = (bt.wood ? 'wood_' + bt.wood : 'ore_' + bt.oreName + '_ore');
     var reforgeGold = Math.ceil(bt.goldCost * 0.3);
     var hardenCost = bt.oreCost;
     var hardenGold = Math.ceil(bt.goldCost * 0.5);
@@ -814,7 +822,7 @@ export function ForgePanel(props) {
       bt = _ref138[1];
     var bsLvl = ((_rpgState$lifeSkills27 = rpgState.lifeSkills) === null || _rpgState$lifeSkills27 === void 0 || (_rpgState$lifeSkills27 = _rpgState$lifeSkills27.blacksmithing) === null || _rpgState$lifeSkills27 === void 0 ? void 0 : _rpgState$lifeSkills27.level) || 1;
     var canForge = bsLvl >= bt.minLvl;
-    var oreKey = 'ore_' + bt.oreName + '_ore';
+    var oreKey = (bt.wood ? 'wood_' + bt.wood : 'ore_' + bt.oreName + '_ore');
     var hasOre = (((_rpgState$inventory2 = rpgState.inventory) === null || _rpgState$inventory2 === void 0 ? void 0 : _rpgState$inventory2[oreKey]) || 0) >= bt.oreCost;
     var hasGold = rpgState.coins >= bt.goldCost;
     /* v2.3.1661 (prog3): shields gate on DEFENSE POINTS under the
@@ -935,7 +943,7 @@ export function ForgePanel(props) {
     var bt = BLACKSMITH_TIERS[sh.gearBase];
     if (!bt) return null;
     var reforgeCost = Math.ceil(bt.oreCost * 0.5);
-    var reforgeOreKey = 'ore_' + bt.oreName + '_ore';
+    var reforgeOreKey = (bt.wood ? 'wood_' + bt.wood : 'ore_' + bt.oreName + '_ore');
     var reforgeGold = Math.ceil(bt.goldCost * 0.3);
     var hardenCost = bt.oreCost;
     var hardenGold = Math.ceil(bt.goldCost * 0.5);
