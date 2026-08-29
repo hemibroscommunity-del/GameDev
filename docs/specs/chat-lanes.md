@@ -91,10 +91,33 @@ between them does not buy a fresh allowance.
 
 ## What is deliberately not here
 
-- **No channel picker UI.** The lanes are slash commands, matching `/p`, which
-  is the vocabulary the game already teaches. A channel selector is a
-  reasonable follow-up and is a pure client change — the wire surface above
-  does not need to move for it.
+- ~~**No channel picker UI.**~~ **Shipped v2.3.2139** — and it moved no wire
+  surface, exactly as this section predicted. `src/game/chatChannel.js` holds
+  the selected lane and one `compose()` that turns "lane + what was typed"
+  into the same line a player could have typed by hand; the chips
+  (`src/ui/mobile/ChatChannelChips.jsx`) only set a mode. Slash commands are
+  untouched and an explicitly typed one still wins.
+
+  Three things about it are load-bearing rather than cosmetic:
+
+  - **`compose()` is applied inside `sendChatMessage`, not by the composers.**
+    There are two composers (the legacy `ChatPanel` and the mobile
+    `ChatBubble` textarea), and applying it in the UI would have meant two
+    call sites. Two call sites is precisely how `/p` once went out over the
+    ROOM relay from the mobile composer. That is also why the module lives in
+    `game/` rather than beside the chips.
+  - **A lane whose cap is absent is not offered at all.** Against an older
+    worker the picker is just the All chip — a selector that can choose a
+    lane the server would rebroadcast is the failure this is shaped to avoid.
+  - **Whisper is never persisted.** The two mistakes are not symmetric:
+    thinking you are in All when you are in Whisper costs a line going to one
+    person; thinking you are in Whisper when you are in All publishes to the
+    world something you chose to say privately. The remembered value is lossy
+    in the safe direction. A whisper with nobody named is **refused**, never
+    downgraded to the room.
+
+  Covered by `tools/qa/mp/mp-chatpicker.mjs`, which checks the received end
+  rather than the sender's own log.
 - **No history or backlog.** Unlike `friend_dm`, a whisper to an offline
   player is refused (`no-such-player`) rather than queued. Offline delivery is
   the friends system's job and it already does it.

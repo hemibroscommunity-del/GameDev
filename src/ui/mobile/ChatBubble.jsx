@@ -2,6 +2,10 @@
 import { chatBubbleBus } from './chatBubbleBus.js';
 import { chatLogBus } from './chatLogBus.js';
 import { sendChatMessage } from '../../game/chat.js';
+/* v2.3.2139: the channel picker.  The chips only set a mode — the line is
+   composed inside sendChatMessage, so this composer stays ignorant of how
+   a lane is spelled (see chatChannel.js on why that matters here). */
+import { ChatChannelChips, lanePlaceholder } from './ChatChannelChips.jsx';
 
 // Over-the-character chat bubble. Opens from the bottom-dashboard chat
 // icon, focuses immediately so the soft keyboard appears, and closes when
@@ -371,6 +375,7 @@ export const ChatBubble = () => {
             short-lived always-on chat bar).  Enter still submits. */}
         {/* v2.3.2039: the composer takes the full width on its own row and the
             two controls sit beneath it -- see the note by `grow` above. */}
+        <ChatChannelChips compact />
         <textarea
           ref={inputRef}
           data-chat-input=""
@@ -385,7 +390,7 @@ export const ChatBubble = () => {
             if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
             else if (e.key === 'Escape') { close(); }
           }}
-          placeholder="Say something…"
+          placeholder={lanePlaceholder('Say something…')}
           maxLength={120}
           /* v2.3.1233: spec input — #121B20 well, 44px tall, brass caret;
              fontSize stays 16 (iOS Safari zooms inputs below 16px). */

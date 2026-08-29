@@ -7834,6 +7834,9 @@ export class EntityRenderer {
        _zonePscale and shared with the remote-player path. */
     {
       /* ═══ v2.3.2124: YOUR OWN FIGURE LOOKS THROUGH THE LENS ═══
+         SUPERSEDED BY v2.3.2141, immediately below -- kept because it is the
+         record of what was tried and why it was undone, not a description of
+         what this code does now.
          Owner: "there was a fair point about the character being too small in
          worldview.  Maybe it can show character full size but through a
          'magnifying glass'."
@@ -7850,14 +7853,42 @@ export class EntityRenderer {
          calling _zonePscale, so other players still recede into the distance
          and the vista still has depth.  What changes is that the one figure
          you are responsible for stays findable. */
-      const _lens = (ZONES[S.currentZone] || {}).playerLens;
-      const pscale = (_lens && typeof _lens.scale === 'number'
-        ? _lens.scale
-        : this._zonePscale(S, P.x, P.y)) * PLAYER_SIZE_MULT; /* v2.3.1274 */
+      /* ═══ v2.3.2141: AND BACK ONTO THE CURVE ═══
+         Owner: "Change the character back to tiny on worldview and center
+         them inside the magnifying glass (that'll be enough)."
+
+         The opt-out above is gone.  A figure at 90% on a map drawn to look
+         miles away does not read as magnified, it reads as un-shrunk -- and
+         it is the ONE figure whose size the vista's depth is judged by, so
+         the exception was flattening the effect it stood in the middle of.
+         What survives is the ring (tileRenderer._drawPlayerLens): the answer
+         to "where am I" that costs the map nothing.
+
+         So there is no lens branch here any more -- your figure takes the
+         same _zonePscale as every peer, on the World View and everywhere
+         else.  `playerLens` is now purely a DRAWING instruction, which is why
+         the zone entry lost its `scale` key rather than this reading a 1. */
+      const pscale = this._zonePscale(S, P.x, P.y) * PLAYER_SIZE_MULT; /* v2.3.1274 */
       /* v2.3.1953: your own build.  Read from the store rather than from S,
          the same way this path reads your skin, shirt art and patterns — the
          creator writes it there and the store is the one copy. */
       display.y += _applyBuildScale(display, pscale, getBuildHeight(), getBuildFrame());
+      /* ═══ v2.3.2141: THE ONE NUMBER THE GLASS NEEDS ═══
+         The lens is drawn by tileRenderer, which knows where your feet are and
+         nothing about how big you are being drawn -- and "centre the glass on
+         him" is a question only the figure's live scale can answer, because
+         the World View's curve changes it with every step you take.
+
+         Published on S rather than imported, deliberately: tileRenderer
+         importing entityRenderer would close a cycle (entityRenderer already
+         reaches for the tile layer's walkability), and a constant copied into
+         the other file would be a second copy of PLAYER_SIZE_MULT and the
+         build scale -- the exact drift the _zonePscale extraction (v2.3.1574)
+         was made to end.  Read a frame later at worst, which at 3% per step
+         is invisible; a missing value falls back to 1 there, which is the
+         right answer on every zone that has no curve at all. */
+      S._figureScaleY = display.scale && typeof display.scale.y === 'number'
+        ? display.scale.y : 1;
     }
 
     /* Self death visual — play the death sprite animation (player ->

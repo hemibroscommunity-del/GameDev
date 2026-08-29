@@ -114,43 +114,51 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   console.log('    worldview player scale: ' + JSON.stringify(drawnHub));
 
-  /* ═══ v2.3.2124: THE MAGNIFYING GLASS ═══
-     Owner: "there was a fair point about the character being too small in
-     worldview.  Maybe it can show character full size but through a
-     'magnifying glass'."
+  /* ═══ v2.3.2124 -> v2.3.2141: THE MAGNIFIER, AND THEN ONLY ITS RING ═══
+     Owner, first: "there was a fair point about the character being too small
+     in worldview.  Maybe it can show character full size but through a
+     'magnifying glass'."  Owner, after living with it: "Change the character
+     back to tiny on worldview and center them inside the magnifying glass
+     (that'll be enough)."
 
-     The World View shrinks your own figure to sell the vista's depth --
-     playerScale {near .55, far .03, curve .6}, so 55% at the plateau and 3%
-     out at the rim.  That is what Tee reported and what an earlier pass of
-     this scenario missed, because it measured with figureBox (a canvas crop,
-     which latched onto something else) and with __btPlayerDrawn's width (the
-     BODY sprite's scale, not the container the shrink is applied to).  The
-     container scale is published now and is the thing asserted.
+     THIS BLOCK USED TO ASSERT THE OPPOSITE and it was right to, then: the
+     lens carried `scale: 0.9`, which took the local player off the curve
+     entirely, and the two claims here were "the figure holds ONE size right
+     out to the rim" and "at a size you can actually see (rim > 0.5)".  Both
+     are now false by decision, not by regression -- a figure at 90% on a map
+     drawn to look miles away read as un-shrunk rather than as magnified, and
+     it flattened the depth at the one spot the eye always is.  What survives
+     is the RING, which answers "where am I" without touching the perspective.
 
-     The claim: with a lens declared, YOUR figure renders at the lens scale
-     everywhere on the map -- flat, not falling away with distance. */
+     So the claim inverts: your figure is back on the curve, exactly like
+     every peer.  Kept here rather than deleted because this scenario is where
+     "is the character too small outside town" is answered, and the honest
+     answer on the World View is now "yes, deliberately, and there is a ring
+     around him instead".  mp-wvglass owns the rest of it -- that the glass is
+     centred on him at every distance, and that it does not shrink with him. */
   const lens = await P.page.evaluate(() => ((window.__btZones || {}).worldview || {}).playerLens || null);
   console.log('    lens: ' + JSON.stringify(lens));
-  rec.ok('the World View declares a magnifier for the local player', !!lens, lens);
-  if (lens && drawnHub.every((d) => d.scale != null)) {
-    /* NOT compared against lens.scale directly: the container scale is the
-       lens times PLAYER_SIZE_MULT times this bro's own build height, so the
-       config number is one factor of three and asserting equality with it
-       would be asserting the other two are 1.  What the feature promises is
-       the two things below. */
+  rec.ok('the World View still declares a ring for the local player', !!lens, lens);
+  rec.ok('...that no longer freezes his size (v2.3.2141 removed playerLens.scale)',
+    !!lens && lens.scale === undefined, lens);
+  if (drawnHub.every((d) => d.scale != null)) {
     const rim = drawnHub[drawnHub.length - 1].scale;
     const mid = drawnHub[0].scale;
-    /* 1. FLAT.  The curve's whole behaviour is to fall away with distance;
-          the lens's whole behaviour is not to. */
-    rec.ok('...and the figure holds one size right out to the rim',
-      Math.abs(mid - rim) < 0.02, drawnHub);
-    /* 2. READABLE.  The curve reached 0.03 at the rim -- a speck.  Any value
-          near that means the lens is not being read, whatever the config
-          says. */
-    rec.ok('...at a size you can actually see (the curve gave 0.03 out here)',
-      rim > 0.5, { rim, curveWouldBe: 0.03 });
+    /* The curve's whole behaviour is to fall away with distance, and the
+       figure is on it again -- which is the assertion that would have caught
+       the v2.3.2124 opt-out had it existed then. */
+    rec.ok('...so your figure shrinks with distance again, like every peer',
+      mid > rim * 1.5, drawnHub);
+    /* And it really does reach the speck the curve promises out at the rim.
+       The measured value out here is ~0.12 (the curve's 0.0955 at this
+       distance, times the 1.25 size mult, times this bro's build); 0.2 leaves
+       room for a taller build without letting through anything that is still
+       holding him up -- the value being excluded is the 1.125 the frozen lens
+       used to force, which is nearly ten times this. */
+    rec.ok('...all the way down to a speck at the rim, as the vista intends',
+      rim < 0.2, { rim, curveFar: 0.03, frozenLensWas: 1.125 });
   } else {
-    rec.skip('the magnifier holds the figure at a readable size', 'no scale published');
+    rec.skip('the figure is back on the perspective curve', 'no scale published');
   }
 
 

@@ -23,6 +23,8 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  pathstyle: () => import('./mp-pathstyle.mjs'), /* v2.3.2141: the quest path can be turned off, and it has a shape */
+  wvglass: () => import('./mp-wvglass.mjs'), /* v2.3.2141: the World View figure is small again, and the glass is centred on him */
   inkreset: () => import('./mp-inkreset.mjs'), /* v2.3.2114: do Reset and Randomize clear the tattoos — all four of them? */
   rollbake: () => import('./mp-rollbake.mjs'), /* v2.3.2083: is the dodge roll baked before you roll? */
   inkplace: () => import('./mp-inkplace.mjs'), /* v2.3.2082: does a tattoo stay in the same place while you move? */
@@ -77,6 +79,7 @@ const SCENARIOS = {
   weaponloss: () => import('./mp-weaponloss.mjs'), /* v2.3.2123: does a weapon survive a full stash? */
   fightsoak: () => import('./mp-fightsoak.mjs'), /* v2.3.2124: a long soak against the WORKER's monsters — the path mp-soak never drives */
   monwatch: () => import('./mp-monwatch.mjs'), /* v2.3.2126: do the worker's monsters come back? */
+  chatpicker: () => import('./mp-chatpicker.mjs'), /* v2.3.2139: pick a lane without a slash command */
   chatlanes: () => import('./mp-chatlanes.mjs'), /* v2.3.2136: @area / @user across two real clients */
   deaddoor: () => import('./mp-deaddoor.mjs'), /* v2.3.2135: the depth door that cannot open */
   infopop: () => import('./mp-infopop.mjs'), /* v2.3.2131: tap a thing, find out what it is */
