@@ -269,14 +269,19 @@ export const gearMethods = {
   },
   _prog3EquipOk(ps, slot, item) {
     if (!ps || !ps.prog3 || !item || typeof item !== 'object') return true;
-    /* v2.3.2124: DEFENCE-gated slots only.  The owner's words are "remove any
-       DEFENSE requirement for all iron", and armour and shields are what the
-       defence ladder gates; an iron greatsword is gated on the sword ladder,
-       which they did not ask to change and which prog3.test.mjs pins in both
-       directions ("iron still asks for something -- one rung up, not zero").
-       A first cut exempted iron everywhere and turned that test red, which is
-       the test doing exactly its job. */
-    if ((slot === 'armor' || slot === 'shield') && this._isIronGear(item)) return true;
+    /* ═══ v2.3.2125: EVERY SLOT, NOT JUST THE DEFENCE ONES ═══
+       v2.3.2124 read "remove any DEFENSE requirement for all iron" narrowly
+       and exempted armour and shields alone, on the reasoning that an iron
+       greatsword is gated on the SWORD ladder and had not been asked about.
+       The owner then said it directly: "Allow iron weapons to be equipped at
+       any level.  Exempt iron weapons from requirement too."  So the metal is
+       free in every slot, and prog3.test.mjs's "iron still asks for something"
+       was pinning a decision that has since been made the other way -- it is
+       updated in the same change rather than worked around.
+       The ladder itself is untouched above iron: steel and everything past it
+       still gate, which drops.test.mjs and prog3.test.mjs both pin so that
+       "make iron work" cannot quietly become "delete the gate". */
+    if (this._isIronGear(item)) return true;
     let tierIdx = -1;
     let baseIdx = 0;
     if (typeof item.gearBase === 'string') {

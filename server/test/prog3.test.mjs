@@ -494,13 +494,28 @@ const psA = room.playerState.pa;
   /* The other half.  A gate that lets the starter through by letting
      EVERYTHING through is not a fix, and that is the failure mode a "make it
      work" change lands on. */
-  check('iron still asks for something — one rung up, not zero',
-    room._prog3EquipOk(lvl1(), 'weapon', wpn('greatsword', 'iron')) === false);
-  check('...and steel asks for more than iron',
-    room._prog3EquipOk({ prog3: { sk: { sword: { level: 5 } }, alloc: {}, atk: {}, pool: {}, ms: {} } },
-      'weapon', wpn('greatsword', 'iron')) === true
-    && room._prog3EquipOk({ prog3: { sk: { sword: { level: 5 } }, alloc: {}, atk: {}, pool: {}, ms: {} } },
-      'weapon', wpn('greatsword', 'steel')) === false);
+  /* ═══ v2.3.2125: IRON IS FREE, BY OWNER DIRECTIVE ═══
+     This used to read "iron still asks for something — one rung up, not
+     zero", and it was right to: v2.3.1765 slid the ladder down so copper sat
+     at rung zero, and iron at rung one was the first thing that cost you
+     anything.  The owner has since decided otherwise, twice and explicitly —
+     "Remove any defense requirement for all iron", then "Allow iron weapons
+     to be equipped at any level.  Exempt iron weapons from requirement too."
+     So the expectation is inverted rather than deleted: iron passes at
+     trained level 1 in every slot.
+
+     The reason the old check existed has NOT gone away, and the two below
+     carry it: a gate that lets the starter through by letting EVERYTHING
+     through is not a fix, so steel — the first rung above iron — must still
+     be refused, and must still be reachable once the level is there. */
+  check('iron is equippable at trained level 1 in every slot (owner: exempt all iron)',
+    room._prog3EquipOk(lvl1(), 'weapon', wpn('greatsword', 'iron')) === true
+    && room._prog3EquipOk(lvl1(), 'armor', { mat: 'iron', tierMult: 2.0 }) === true);
+  check('...and the ladder above iron still gates: steel is refused at level 1',
+    room._prog3EquipOk(lvl1(), 'weapon', wpn('greatsword', 'steel')) === false);
+  check('...and steel opens up once the trained level is there',
+    room._prog3EquipOk({ prog3: { sk: { sword: { level: 30 } }, alloc: {}, atk: {}, pool: {}, ms: {} } },
+      'weapon', wpn('greatsword', 'steel')) === true);
 
   /* The whole point, end to end: the handler must actually seat it, not just
      the predicate.  A gate that says yes while _handleEquipRequest returns for

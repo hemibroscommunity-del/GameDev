@@ -346,9 +346,11 @@ export const AMULET_EQUIP_STAT = 'mind';
    first (MONSTER_ARMOR_DROPS mints {name, tierMult, slot, mat}) and a forged
    one in the second, and covering only one would make the rule true for loot
    and false for craft.
-   Applied to the DEFENCE-gated slots only (armor / shield): the owner's words
-   were "remove any DEFENSE requirement for all iron", and an iron weapon is
-   gated on its own weapon ladder, which is untouched.
+   v2.3.2125: applied to EVERY slot.  v2.3.2124 covered armour and shields
+   alone, reading "remove any DEFENSE requirement for all iron" narrowly and
+   leaving an iron weapon on its sword/bow/staff ladder; the owner then asked
+   for those too — "Allow iron weapons to be equipped at any level.  Exempt
+   iron weapons from requirement too."  Tiers ABOVE iron still gate.
    Server mirror: _isIronGear in server/src/gear.js — pinned by a test, because
    the two gates disagreeing is exactly what cost a player their chest plate
    (they equipped what this function allowed and the worker refused). */
@@ -359,10 +361,10 @@ export function isIronGear(item) {
 
 export function canEquipItem(rpg, item, slotType) {
   var _item$gearBase2;
-  /* v2.3.2124: DEFENCE-gated slots only — see the note on isIronGear.  An
-     iron WEAPON keeps its sword/bow/staff requirement; the owner asked about
-     the defence one. */
-  if ((slotType === 'armor' || slotType === 'shield') && isIronGear(item)) return true;
+  /* v2.3.2125: every slot — see the note on isIronGear.  v2.3.2124 exempted
+     the defence-gated slots only; the owner then asked for the weapons too
+     ("Allow iron weapons to be equipped at any level"). */
+  if (isIronGear(item)) return true;
   if (!item || !item.gearBase) return true; /* non-crafted items have no stat gate */
   var isWood = (_item$gearBase2 = item.gearBase) === null || _item$gearBase2 === void 0 ? void 0 : _item$gearBase2.startsWith('ww_');
   var tierKey = isWood ? item.gearBase.slice(3) : item.gearBase;

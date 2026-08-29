@@ -452,6 +452,11 @@ check('...and the dropped iron greaves', room._prog3EquipOk(ironPs, 'armor', leg
    for loot and false for craft. */
 check('...and a FORGED iron piece, which names its metal in gearBase',
   room._prog3EquipOk(ironPs, 'armor', { gearBase: 'iron', tierMult: 1.25 }) === true);
+/* v2.3.2125: and the WEAPON slots too.  v2.3.2124 exempted armour and shields
+   alone; the owner then asked for the rest -- "Allow iron weapons to be
+   equipped at any level.  Exempt iron weapons from requirement too." */
+check('...and an iron WEAPON, at trained level 1',
+  room._prog3EquipOk(ironPs, 'weapon', { gearBase: 'iron', type: 'greatsword', tierMult: 1.25 }) === true);
 /* The gate still exists.  A blanket `return true` would pass every check
    above and quietly retire progression, so something has to still be refused. */
 check('the defense gate still refuses a far higher tier (it was not just switched off)',
