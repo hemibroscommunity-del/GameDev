@@ -105,9 +105,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const r = el.getBoundingClientRect();
       return { cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
     };
+    /* ═══ v2.3.2131: READ THE BAR, NOT THE DIGITS ═══
+       The card used to print the eased number as text (data-xppair) and this
+       read it off the card face.  The owner asked for those digits to move to
+       a popup, so the bar is what carries the count-up now -- it reads
+       displayXp where it used to read the raw value, and publishes it as
+       data-xpprog on the same element whose width is computed from it.
+       Still the DISPLAYED value, which is what this file has always been
+       about; only the thing displaying it changed. */
     const pairText = () => {
-      const el = document.querySelector('[data-xppair="sword"]');
-      return (el && el.textContent || '').trim();
+      const el = document.querySelector('[data-xpbar="sword"]');
+      return el ? String(el.getAttribute('data-xpprog') || '') : '';
     };
     const before = pairText();
     const t0 = Date.now();
@@ -190,9 +198,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
        "0/280" and yields 10 — which is exactly what the first cut of this
        test did, and why it thought a fresh character had 10 XP. */
     const read0 = () => {
-      const el = document.querySelector('[data-xppair="staff"]');
-      const m = (el && el.textContent || '').match(/^(\d+)\s*\/\s*(\d+)/);
-      return m ? +m[1] : null;
+      const el = document.querySelector('[data-xpbar="staff"]');
+      const v = el && el.getAttribute('data-xpprog');
+      return v == null || v === '' ? null : +v;
     };
     /* The DISPLAYED value before the gain — not sk.xp.  The first cut compared
        against a number it poked into the client's own object, which the next
@@ -206,9 +214,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
        gain that overshoots lands on "280/280" and the count-up has nowhere to
        travel — which reads as "it jumped" no matter how well it eases. */
     const thresh = (() => {
-      const el = document.querySelector('[data-xppair="staff"]');
-      const m = (el && el.textContent || '').match(/^(\d+)\s*\/\s*(\d+)/);
-      return m ? +m[2] : 280;
+      const el = document.querySelector('[data-xpbar="staff"]');
+      const v = el && el.getAttribute('data-xpthresh');
+      return v == null || v === '' ? 280 : +v;
     })();
     const bump = Math.max(20, Math.floor(thresh * 0.6));
     window.__btPushXp(S, { target: 'xpBar', text: '+' + bump + ' XP', color: '#60a5fa', cat: 'staff' });

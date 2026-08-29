@@ -77,12 +77,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.enterWorld(P);
   await P.page.waitForTimeout(2500);
 
-  /* ── 0. before the questline, nothing is being taught ──
-     The coach is gated on Mayor Bro's chain, so a player who has not taken
-     his first quest gets no marks at all.  Without this the whole file could
-     pass on an overlay that is simply always on. */
+  /* ── 0. before the questline, ONE thing is being taught ──
+     ═══ v2.3.2130 CHANGED WHAT THIS ASSERTS, DELIBERATELY ═══
+     This said "no coach mark before the questline starts", and that was
+     true, and it was the bug: the coach's gate wanted a tut quest already
+     'active', so the first minute -- spawn, work out the controls, find
+     Mayor Bro -- had nothing on screen at all.  Three of four demo
+     reviewers reported exactly that minute.  The gate now also opens
+     BEFORE the chain, for a level-<=3 player who has touched no tut quest,
+     and teaches the two controls nothing else taught: drag to move, drag
+     to attack.
+
+     The GUARD the old line provided still matters -- without something
+     here the whole file could pass on an overlay that is simply always on
+     -- so it is not dropped, it is sharpened: before the questline the
+     only permitted mark is 'move'.  An 'equip' mark up here would mean the
+     questline lessons had come unmoored from the questline, which is the
+     thing worth catching.  That the move mark then RETIRES, and that the
+     coach falls silent again until tut_1, is owned by mp-coachearly.mjs,
+     which drives a real joystick drag to prove it. */
   const idle = await coach(P);
-  rec.ok('no coach mark before the questline starts', !idle, idle);
+  rec.ok('the only thing taught before the questline is how to move',
+    !idle || idle.id === 'move', idle);
 
   /* ── 1. the gear lesson, off the REAL quest ──
      Nothing is fabricated here on purpose.  The lesson's trigger is a claim
@@ -218,12 +234,73 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('once the sword and shield are on, the gear lesson stops',
     !afterEquip || afterEquip.id !== 'equip', afterEquip);
 
+  /* ── 3b. THE ORDINARY ATTACK, WHICH NOW COMES FIRST (v2.3.2130) ──
+     This section is new, and it is why the two assertions below it changed:
+     until v2.3.2130 the coach went straight from the gear lesson to the
+     SPECIAL, and the plainest thing the right joystick does — drag it to
+     attack — was never taught anywhere but ControlsTutorial, behind
+     Settings.  A player could finish Mayor Bro's whole chain having been
+     shown the swipe and the double-tap-hold but not the drag they are
+     variations of.  So `attack` is ordered ahead of `special`: the basic
+     gesture, then the ones built on it.
+
+     Retired here through a REAL touchstart on the right joystick zone, which
+     is what BroTown's rM handler listens for and where it calls doSwing() —
+     the same swingAttack() a thumb reaches, refusal gates and all.  A slow
+     release on purpose: the special fires on release SPEED, and firing it
+     here would retire the NEXT lesson too and leave section 4 asserting
+     against a mark that had already gone. */
+  const cA = await waitCoach(P, 'attack');
+  rec.ok('with a weapon in hand, the ordinary attack is taught first',
+    !!(cA && cA.id === 'attack'), cA);
+  rec.ok('...and it names the drag, not the swipe',
+    !!(cA && /drag/i.test(cA.text) && !/swipe/i.test(cA.text)), cA && cA.text);
+  const rJoyA = await rectOf(P, '.bt-rjoy-base');
+  if (rJoyA && cA && cA.ring) {
+    const dx = Math.abs((cA.ring.left + cA.ring.width / 2) - (rJoyA.left + rJoyA.width / 2));
+    const dy = Math.abs((cA.ring.top + cA.ring.height / 2) - (rJoyA.top + rJoyA.height / 2));
+    rec.ok('...ringing the RIGHT joystick', dx < 8 && dy < 8, { ring: cA.ring, rJoyA, dx, dy });
+  }
+  await P.page.evaluate(() => {
+    window.__touch = (el, type, x, y, id) => {
+      const t = new Touch({ identifier: id, target: el, clientX: x, clientY: y });
+      const end = type === 'touchend' || type === 'touchcancel';
+      el.dispatchEvent(new TouchEvent(type, {
+        bubbles: true, cancelable: true,
+        touches: end ? [] : [t], targetTouches: end ? [] : [t], changedTouches: [t],
+      }));
+    };
+    const z = document.querySelector('[data-joyzone="R"]');
+    const r = z.getBoundingClientRect();
+    window.__btAtkPt = { z, x: r.x + r.width / 2, y: r.y + r.height / 2 };
+    window.__touch(z, 'touchstart', window.__btAtkPt.x, window.__btAtkPt.y, 31);
+  });
+  await P.page.waitForTimeout(700);
+  const swung = await P.page.evaluate(() => ({
+    isSwinging: !!window._gameState.current.isSwinging,
+    coach: window.__btCoach && window.__btCoach(),
+  }));
+  await P.page.evaluate(() => {
+    const a = window.__btAtkPt;
+    window.__touch(a.z, 'touchend', a.x, a.y, 31);
+  });
+  await P.page.waitForTimeout(500);
+  /* GUARD, in the shape section 4 uses: swingAttack() returns on an empty
+     melee slot, so if the swing was refused the lesson correctly stays up and
+     the assertion below would be testing nothing. */
+  rec.ok('the drag really produced a swing (guard — a refused swing sets no flag)',
+    !!(swung.coach && swung.coach.done && swung.coach.done.attack), swung);
+  const afterAttack = await coach(P);
+  rec.ok('dragging the right joystick retires the attack lesson',
+    !afterAttack || afterAttack.id !== 'attack', afterAttack);
+
   /* ── 4. the special attack ──
      Owner: "I think mayor bro ought to require you to perform your special
      attack too during the tutorial."
-     It comes straight after the gear lesson because the swipe needs nothing
-     but a weapon in hand — which is exactly what the player has just put
-     there — and because that is the order Mayor Bro says them in. */
+     It follows the ordinary attack (v2.3.2130 put that ahead of it): the
+     swipe needs nothing but a weapon in hand, which the player has just put
+     there, and teaching a variation before the thing it varies is backwards.
+     This is still the order Mayor Bro says them in. */
   const cS = await waitCoach(P, 'special');
   rec.ok('with a weapon in hand, the special-attack lesson appears',
     !!(cS && cS.id === 'special'), cS);

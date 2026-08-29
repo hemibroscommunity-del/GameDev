@@ -11,6 +11,9 @@ import { heroSectionBus } from '../sheet/heroSectionBus.js';
 import { prog3Live, prog3HasSkills, prog3Pool, prog3SkillLevel, prog3CatFor } from '../../../data/prog3.js';
 import { buildSkillUnspent, STAT_TO_WEAPON_CAT } from '../../../data/gameSystems.js';
 import { registerXpCard, displayXp, xpCounting } from '../../xpLanding.js'; /* v2.3.1874 */
+/* v2.3.2131: the XP digits left the card face for a popup (owner). */
+import { infoPopupBus } from '../infoPopupBus.js';
+import { skillInfo } from '../infoGlossary.js';
 import { dashTileSize, dashPanelWidths, combatPillWidth, combatPillHeight, BAG_VIEW_COLS, DASH_GAP, DASH_ROWS, BAG_HEADER_H } from '../sheet/sheetGeometry.js';
 import { playVw } from '../playViewport.js';
 import { shopBus } from '../shopBus.js';   /* v2.3.2059 */
@@ -230,11 +233,11 @@ export const DashColumns = ({ R }) => {
      three glyphs (sword / bow / wand) are the same ones Hero's build cards
      label in full, one tap away, and both aria-label and title spell it
      out here for anyone who needs it read aloud. */
-  /* Four digits do not fit a 40px bar, and a level-20 skill needs 4,800 XP.
-     Thousands collapse to one decimal so the pair stays inside its bar for
-     the whole level range rather than only the early one. */
-  const xpShort = (n) => (n >= 10000 ? `${Math.round(n / 1000)}k`
-    : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
+  /* v2.3.2131: xpShort is gone with the pair it abbreviated.  It existed
+     because four digits do not fit a 40px bar -- a constraint that stops
+     applying the moment the digits are not on the card.  The popup has room
+     for the real numbers and shows them unabbreviated, which is the point of
+     moving them there. */
   const pillW = combatPillWidth(vw);
   const pillH = combatPillHeight(vw);
   /* v2.3.1853: the pill now carries THREE things across, so the icon stops
@@ -290,7 +293,6 @@ export const DashColumns = ({ R }) => {
      with tabular figures that is ~72px against the card's ~88 at 390 and
      ~74 at 360.  mp-bandsummary now drives those numbers rather than
      trusting the arithmetic. */
-  const chipFs = tight ? 12 : 14;
   const barH = tight ? 5 : 6;
   const combatPill = (s) => {
     /* ═══ v2.3.1668: these pills were the last live route into the
@@ -362,14 +364,46 @@ export const DashColumns = ({ R }) => {
            has an edge to sit on — which it did not in v2.3.1854/1855, where
            the row drew nothing and the halo floated around empty space. */
         className={unspent > 0 ? 'bt-build-flash' : undefined}
+        /* ═══ v2.3.2131: TAP TELLS YOU WHAT IT IS; THE BUTTON TAKES YOU THERE ═══
+           This used to jump straight to Hero -> Build, which is the right
+           destination for somebody who already knows what the card is and the
+           wrong one for the reviewer who tapped it to find out.  The owner
+           asked for the explainer and for the way through to survive: "popup,
+           then Build on a second tap".
+
+           A second tap on the CARD cannot be the trigger -- the popup lays a
+           full-screen scrim over it, so the card is unreachable while its own
+           popup is open, and a "tap it again" affordance would be one the
+           player can never satisfy.  So the second tap is the popup's own
+           action button, which is the same gesture count and is the half of
+           the owner's instruction that is physically reachable.
+
+           The destination is unchanged, including the non-prog3 branch: this
+           moved WHEN you go there, never where. */
         onPointerUp={(e) => {
           e.stopPropagation();
-          dashboardPanelBus.open('hero');
-          if (p3) {
-            heroSectionBus.request('Build', p3cat);
-          } else if (cat) {
-            requestT2Category(cat); dashboardPanelBus.push('t2');
-          }
+          const go = () => {
+            dashboardPanelBus.open('hero');
+            if (p3) {
+              heroSectionBus.request('Build', p3cat);
+            } else if (cat) {
+              requestT2Category(cat); dashboardPanelBus.push('t2');
+            }
+          };
+          const info = skillInfo(p3cat);
+          infoPopupBus.open({
+            title: `${info ? info.title : s.label} — Level ${lvl}`,
+            body: info ? info.body : `${s.label}, level ${lvl}.`,
+            /* The digits this card stopped printing.  Unabbreviated: the
+               popup has the width the card did not, which is the whole
+               reason they moved. */
+            stat: xp ? `${Math.round(xp.prog)} / ${Math.round(xp.thresh)} XP`
+                     : 'Fully levelled',
+            note: unspent > 0
+              ? `You have ${unspent} unspent point${unspent === 1 ? '' : 's'} to put into this.`
+              : undefined,
+            action: { label: unspent > 0 ? 'Spend points' : 'Train this skill', run: go },
+          });
         }}
         /* v2.3.1874: the card publishes its own rect each render, so an XP
            label can fly to where the card ACTUALLY is.  A ref callback rather
@@ -421,9 +455,11 @@ export const DashColumns = ({ R }) => {
         <div style={{
           flex: '1 1 auto', minWidth: 0,
           /* v2.3.1862: the pair left this column for the card's bottom edge,
-             so what remains sits clear of it. */
+             so what remains sits clear of it.
+             v2.3.2131: and now it has left the card entirely, so the strip
+             that was being held for it goes back to the level and the bar --
+             the two readouts that stayed. */
           display: 'flex', flexDirection: 'column', gap: 3,
-          paddingBottom: chipFs + 2,
         }}>
           <span aria-hidden="true" style={{
             fontSize: lvlFs, fontWeight: 900, lineHeight: 1,
@@ -435,13 +471,24 @@ export const DashColumns = ({ R }) => {
               track carrying no text, so the fill stays solid and readable
               instead of washing out under digits. */}
           {xp && (
-            <div aria-hidden="true" style={{
-              height: barH, borderRadius: barH / 2, overflow: 'hidden',
-              background: COL.wellDeep,
-              border: '1px solid rgba(255,255,255,.06)',
-            }}>
+            <div aria-hidden="true"
+              /* v2.3.2131: the bar publishes the value it is drawing.  The
+                 eased number used to be readable as text (data-xppair) and
+                 mp-xpfly asserted the count-up off it; with the digits gone
+                 that assertion needs somewhere honest to read.  These are the
+                 bar's OWN state -- its width is computed from them on the
+                 same line -- so this is a probe on a real displayed thing,
+                 not a hidden copy of a number nobody can see. */
+              data-xpbar={p3cat || undefined}
+              data-xpprog={p3cat ? Math.round(displayXp(p3cat, xp.prog)) : undefined}
+              data-xpthresh={p3cat ? Math.round(xp.thresh) : undefined}
+              style={{
+                height: barH, borderRadius: barH / 2, overflow: 'hidden',
+                background: COL.wellDeep,
+                border: '1px solid rgba(255,255,255,.06)',
+              }}>
               <div style={{
-                width: `${Math.min(100, (xp.prog / xp.thresh) * 100)}%`,
+                width: `${Math.min(100, (displayXp(p3cat, xp.prog) / xp.thresh) * 100)}%`,
                 height: '100%', background: '#8AA9F9',
               }} />
             </div>
@@ -454,51 +501,30 @@ export const DashColumns = ({ R }) => {
             card this full that was still empty.
             v2.3.1853's rule holds — it must not REPLACE the level, which is
             what it did before the owner asked for the level to be shown. */}
-        {/* ═══ v2.3.1862: THE XP PAIR TAKES THE WHOLE CARD ═══
-            Owner: "try to make the xp text just wider."
+        {/* ═══ v2.3.2131: THE DIGITS LEFT THE CARD ═══
+            Owner: "get rid of the xp numbers in the 3 combat skills and put
+            them as some kind of pop up when you tap on it."
 
-            It could not get wider where it was.  Boxed in the right-hand
-            column it had 41px, and at 8.8px the text needed all 41 — the
-            measured ceiling was 9.0 (v2.3.1859), which is not a change
-            anyone would notice.  Every pixel of that column is spoken for by
-            an icon the owner has called the right size, so the width had to
-            come from somewhere else.
+            v2.3.1862 and v2.3.1920 had spent a lot of effort making this pair
+            legible -- moving it across the card's whole width, then growing it
+            to 14px/900 -- and the demo still produced a complaint about it.
+            That is the tell that it was the wrong thing in the wrong place
+            rather than the right thing too small: an ~88px card carrying an
+            icon, a level, a bar AND "1.2k/4.8k" is a card with no room to say
+            any of it well.
 
-            The card's own width was free.  The pair sits ACROSS THE BOTTOM
-            now — absolutely positioned, so it costs the icon no height
-            either — which takes it from 41px to the full ~88 and the type
-            from 8.8 to 12.  Same card, same icon, half again the size.
+            So the exact numbers move to the popup, where there is room to
+            print them in full and unabbreviated, and the card keeps the three
+            readouts that survive at this size: the icon, the level, and the
+            bar.
 
-            It overlaps the icon's bottom edge, and that is the trade: these
-            three sprites (sword, bow, staff) are drawn on the diagonal with
-            an empty lower-left, and the shadow below keeps the digits
-            legible over whatever art does fall behind them.  mp-bandsummary
-            asserts the numbers still fit at 360 as well as 390. */}
-        {xp && (
-          <div aria-hidden="true" style={{
-            /* v2.3.1863 (owner: "shift it all the way to the right so the
-               second number is almost touching the gold border").  Right-
-               aligned rather than centred, and hard against the rim: the
-               denominator is the fixed half of the pair, so anchoring THAT
-               edge keeps the numbers still while the numerator grows — a
-               centred pair slides left every time the first number gains a
-               digit.  3px of inset, which is the card's own padding. */
-            position: 'absolute', left: 3, right: 3, bottom: 1,
-            textAlign: 'right',
-            fontSize: chipFs, fontWeight: 900, lineHeight: 1,  /* v2.3.1920: chunkier */
-            color: COL.text, fontVariantNumeric: 'tabular-nums',
-            letterSpacing: '-0.01em',
-            textShadow: '0 1px 3px rgba(9,14,17,.92), 0 0 2px rgba(9,14,17,.9)',
-            whiteSpace: 'nowrap', overflow: 'hidden',
-            pointerEvents: 'none',
-          }}
-          /* v2.3.1874: names the XP pair so it can be read on its own.  The
-             card's textContent runs "LV 1" straight into "0/280", and a regex
-             over the whole card splices those into "10/280" — which is how
-             mp-xpfly first read a fresh character's 0 XP as 10. */
-          data-xppair={p3cat || undefined}
-          >{xpShort(displayXp(p3cat, xp.prog))}<span style={{ opacity: .62 }}>/{xpShort(xp.thresh)}</span></div>
-        )}
+            THE COUNT-UP SURVIVES, AND THAT IS NOT INCIDENTAL.  v2.3.1874's
+            XP-fly lands a "+37 XP" label on this card and eases the number up
+            (displayXp).  The pair was the only thing reading that eased value
+            -- the bar used the RAW one -- so deleting the pair on its own
+            would have quietly killed the feature and left the label flying to
+            a card that does not react.  The bar reads displayXp now, so the
+            landing still shows: as growth rather than as digits. */}
         {unspent > 0 && (
           <span aria-hidden="true" style={{
             /* ═══ v2.3.1859: THE BADGE MOVES OFF THE TEXT COLUMN ═══

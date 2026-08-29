@@ -209,7 +209,33 @@ const FACING_SECTORS = ['east', 'southeast', 'south', 'southwest', 'west', 'nort
    worldview branch stamp them from TOWN_EXITS / WORLDVIEW_EXITS, the same
    coordinates the world's portal-glow pass reads.  Everything else in
    `S.map` (paths, buildings, flowers) is ignored here on purpose. */
-const EXIT_TILES = new Set([8, 9, 10]);
+/* ═══ v2.3.2135: THE DOOR TO THE SECOND DEPTH IS NOT DRAWN ANY MORE ═══
+   Owner, on the demo: "Second depth zone used to exist and minimap icon
+   still exists for it but doesn't exist anymore in game."  A reviewer wrote
+   it up as "Door didnt exist" in Verdant Wilds.
+
+   Both were right, and it was in every combat zone, not just that one.
+   generateZoneMap stamps a 2x2 block of TILE 10 -- the depth-tier dungeon
+   entrance -- at (16,2)-(17,2) in verdant, frost, sky, mist, ember and
+   thunder alike.  Walking into it does nothing: the transition has been
+   hard-off since v2.3.54, where zoneTransitions.js still carries the gate
+   verbatim as `if (false && tile === 10)` ("the depth-tier dungeons aren't
+   ready for play yet").  So the game has been painting a glowing portal in
+   the world and an icon on the minimap, for two and a half years, over a
+   door that cannot open.
+
+   THE TILE IS DELIBERATELY LEFT IN THE MAP.  zoneTransitions' note says to
+   flip that `false` to re-enable, and gameSystems' mayor_3 note repeats it;
+   stamping is what makes that a one-line change.  What is removed is only
+   the ADVERTISING.  Tiles 8 and 9 are untouched -- they are the town exits
+   and the return-to-town portal, which really do go somewhere.
+
+   IF THE DUNGEONS EVER SHIP, three places take a 10 back: this list, the
+   twin in the other renderer named below, and the gate in
+   zoneTransitions.js.  The twin is tileRenderer.js's exit-tile collector,
+   which drives the portal beams and glows in the WORLD -- the same dead
+   door, painted bigger.  Written in both files so neither is found alone. */
+const EXIT_TILES = new Set([8, 9]);
 
 export class MinimapRenderer {
   constructor(hudLayer, app) {

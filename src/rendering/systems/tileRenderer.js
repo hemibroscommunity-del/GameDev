@@ -291,7 +291,33 @@ export class TileRenderer {
       if (!row) continue;
       for (let c = 0; c < cols; c++) {
         const t = row[c];
-        if (t === 8 || t === 9 || t === 10) {
+        /* ═══ v2.3.2135: THE DOOR TO THE SECOND DEPTH IS NOT DRAWN ═══
+           Owner, on the demo: "Second depth zone used to exist and minimap
+           icon still exists for it but doesn't exist anymore in game."  A
+           reviewer wrote the same thing up as "Door didnt exist" in Verdant
+           Wilds.
+
+           Both were right, and it is every combat zone, not just that one.
+           generateZoneMap stamps a 2x2 block of TILE 10 -- the depth-tier
+           dungeon entrance -- at (16,2)-(17,2) in verdant, frost, sky, mist,
+           ember and thunder alike.  Walking into it does nothing: the
+           transition has been hard-off since v2.3.54, where zoneTransitions.js
+           still carries the gate verbatim as `if (false && tile === 10)`
+           ("the depth-tier dungeons aren't ready for play yet").  So this loop
+           has been collecting a door that cannot open, and the block below has
+           been painting it a glowing portal beam ever since.
+
+           THE TILE IS DELIBERATELY LEFT IN THE MAP.  zoneTransitions' note
+           says to flip that `false` to re-enable and gameSystems' mayor_3 note
+           repeats it; stamping is what keeps that a one-line change.  What is
+           removed here is only the ADVERTISING.  Tiles 8 and 9 are untouched --
+           town exits and the return-to-town portal really do go somewhere.
+
+           IF THE DUNGEONS EVER SHIP, three places take a 10 back: this test,
+           the twin in minimapRenderer.js (EXIT_TILES, which draws the map
+           icon), and the gate in zoneTransitions.js.  Noted in both renderers
+           so neither is found alone. */
+        if (t === 8 || t === 9) {
           this._exitTiles.push({ r, c, tile: t, zoneId: _destAt.get(`${r},${c}`) || null,
             dir: _dirAt.get(`${r},${c}`) || null });
         }
