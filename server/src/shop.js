@@ -418,33 +418,44 @@ export const shopMethods = {
     const want = Math.floor(Number(qty) || 0);
     if (!(want >= 1 && want <= SHOP.MAX_QTY_PER_OP)) return { ok: false, error: 'Bad quantity' };
 
-    /* ═══ v2.3.2063: A STAPLE IS DRUNK, NOT CARRIED ═══
-       Owner: "These potions should be purchasable there."
+    /* ═══ v2.3.2127: A STAPLE IS CARRIED NOW, AND DRUNK LATER ═══
+       Owner: "Also work on putting a potions to inventory after buying."
 
-       What you buy here is an EFFECT, applied on the spot, exactly as the
-       vendor's own shelf applies it -- through the same _applyShopItem, so
-       the two shops cannot disagree about what a potion does. It is NOT
-       granted as an inventory item, and that is not a shortcut: a potion in
+       v2.3.2063 applied the effect on the spot and said why: "a potion in
        your bag would need a Drink action, and there is none -- cooked fish is
        the only consumable the bag can use. Selling a bottle nobody can open
-       would be worse than not selling it.
+       would be worse than not selling it." That reasoning was right and the
+       conclusion has expired, because the missing half now exists:
+       _handleDrinkRequest (cooking.js) is the Drink action, built on the same
+       validate-consume-persist-echo shape as eating a fish.
 
-       ALWAYS ONE. The effect does not stack (owner: "Only 1 effect active at
-       a time"), so charging for five and running one is the only thing a
-       quantity could mean here. The pile is untouched: no decay, no restock,
-       nothing to run out of. */
+       THE EFFECT IS UNCHANGED AND STILL SINGLE-SOURCED. Drinking runs the
+       same _applyShopItem this used to call, so the bottle does on the bench
+       exactly what it did at the counter and the two shops still cannot
+       disagree about what a potion is.
+
+       THE QUANTITY COMES BACK, and that is a consequence rather than a
+       feature. "Always one" was forced by the effect not stacking -- charging
+       for five and running one is all a quantity could have meant. Five
+       BOTTLES stack perfectly well; you drink them one at a time. So the
+       stepper the drawer hides for staples can come back with them.
+
+       The pile is still untouched: no decay, no restock, nothing to run out
+       of. That is what a staple is. */
     if (isShopStaple(key)) {
       const item = this._getShopItem(key);
       if (!item) return { ok: false, error: "He hasn't got any" };
-      const cost = Math.max(1, Math.floor(item.cost));
+      const unit = Math.max(1, Math.floor(item.cost));
+      const cost = unit * want;
       const purse = Math.floor(Number(ps.coins) || 0);
       if (purse < cost) return { ok: false, error: 'Not enough coins' };
       ps.coins = purse - cost;
-      if (!this._applyShopItem(ps, item)) {
-        ps.coins = purse;                        /* refused (arena): refund */
-        return { ok: false, error: 'Not while you are fighting' };
-      }
-      return { ok: true, bought: 1, cost, coins: ps.coins, staple: true, settled: true };
+      /* Plain {} is safe: `key` passed isShopStaple, which is a
+         hasOwnProperty test against SHOP_ITEMS -- our own table -- so it
+         cannot be '__proto__' (rule 4). */
+      if (!ps.inventory) ps.inventory = {};
+      ps.inventory[key] = (Math.floor(Number(ps.inventory[key]) || 0)) + want;
+      return { ok: true, bought: want, cost, coins: ps.coins, staple: true, settled: true };
     }
 
     const stock = await this._shopStock();

@@ -314,10 +314,15 @@ check('an absurd stored multiplier is rejected, not applied',
 Math.random = _realRandom;
 delete psM._buffs;
 
-/* ═══ v2.3.2063: BUYING A POTION OFF HIS SHELF ═══
-   Owner: "These potions should be purchasable there." What you get is the
-   EFFECT, applied on the spot -- not a bottle in your bag, because the bag has
-   no way to open one (cooked fish is its only usable consumable). */
+/* ═══ v2.3.2127: BUYING A POTION PUTS A BOTTLE IN YOUR BAG ═══
+   Owner: "Also work on putting a potions to inventory after buying."
+
+   This REPLACES the v2.3.2063 assertions, and the reason they were right and
+   are now wrong is worth keeping: what you bought used to be the EFFECT,
+   applied at the counter, because "the bag has no way to open one (cooked fish
+   is its only usable consumable)". _handleDrinkRequest is that way, so the
+   bottle can be carried. The effect itself is unchanged -- it now runs on the
+   drink instead of on the sale, through the same _applyShopItem. */
 const buyer2 = { coins: 200, inventory: Object.create(null), maxMana: 100, mana: 10,
   maxHp: 100, hp: 100, maxStamina: 100, stamina: 100 };
 const beforeCoins = buyer2.coins;
@@ -325,10 +330,12 @@ const rBuy = await room._shopBuy(buyer2, 'swiftDraught', 1);
 check('a staple can be bought off his shelf', rBuy.ok && rBuy.staple === true, rBuy);
 check('...for the vendor\'s price', beforeCoins - buyer2.coins === SHOP_ITEMS.swiftDraught.cost,
   { spent: beforeCoins - buyer2.coins });
-check('...and what you get is the EFFECT, running now',
-  room._buffActive(buyer2, 'spd') && buyer2._buffs.spdMul === 1.5, buyer2._buffs);
-check('...not a bottle in your bag that nothing can open',
-  !buyer2.inventory.swiftDraught, buyer2.inventory);
+check('...and what you get is a BOTTLE IN THE BAG',
+  buyer2.inventory.swiftDraught === 1, buyer2.inventory);
+/* The buy must NOT run the effect any more -- a potion that fires at the
+   counter AND stacks in the bag is one purchase paying twice. */
+check('...and the effect has NOT fired yet -- it waits for the drink',
+  !room._buffActive(buyer2, 'spd'), buyer2._buffs);
 
 /* The pile is untouched by a staple sale -- no decay, nothing to run out. */
 const stockBefore = JSON.stringify(await room._shopStock());
@@ -339,13 +346,49 @@ check('...and it is still on the shelf afterwards, at the same price',
   (await room._shopList()).items.some((i) => i.key === 'manaShard' && i.staple
     && i.sell === SHOP_ITEMS.manaShard.cost), null);
 
-/* Asking for five charges for one, because one is what an effect can be. */
+/* v2.3.2127: five now means five. "Always one" was forced by the effect not
+   stacking; five BOTTLES stack perfectly well and are drunk one at a time. */
 const buyer3 = { coins: 1000, inventory: Object.create(null), maxMana: 100, mana: 0,
   maxHp: 100, hp: 100, maxStamina: 100, stamina: 100 };
 const r5 = await room._shopBuy(buyer3, 'whetstone', 5);
-check('asking for five staples charges for one -- an effect does not stack',
-  r5.ok && r5.bought === 1 && 1000 - buyer3.coins === SHOP_ITEMS.whetstone.cost,
-  { r5, spent: 1000 - buyer3.coins });
+check('asking for five staples buys five bottles, at five times the price',
+  r5.ok && r5.bought === 5 && buyer3.inventory.whetstone === 5
+  && 1000 - buyer3.coins === SHOP_ITEMS.whetstone.cost * 5,
+  { r5, spent: 1000 - buyer3.coins, bag: buyer3.inventory });
+
+/* ═══ v2.3.2127: AND THE BOTTLE OPENS ═══
+   The half v2.3.2063 said did not exist. Four properties, and the last two are
+   the ones that would ship broken quietly. */
+const drinker = { coins: 0, inventory: { swiftDraught: 2 }, maxMana: 100, mana: 0,
+  maxHp: 100, hp: 100, maxStamina: 100, stamina: 100 };
+const dSess = { id: 'p_drink' };
+room.playerState[dSess.id] = drinker;
+room._handleDrinkRequest(dSess, { invKey: 'swiftDraught' });
+check('drinking a potion runs its effect',
+  room._buffActive(drinker, 'spd') && drinker._buffs.spdMul === 1.5, drinker._buffs);
+check('...and consumes exactly one of them', drinker.inventory.swiftDraught === 1,
+  drinker.inventory);
+/* A key that is not a shop item must not reach ps.inventory at all -- the
+   guard is hasOwnProperty against SHOP_ITEMS, which is also the rule-4
+   protection ('__proto__' is not an own property of it). */
+const forged = { coins: 0, inventory: { swiftDraught: 1 }, maxHp: 100, hp: 100 };
+const fSess = { id: 'p_forge' };
+room.playerState[fSess.id] = forged;
+room._handleDrinkRequest(fSess, { invKey: '__proto__' });
+room._handleDrinkRequest(fSess, { invKey: 'cooked_fish_trout' });
+check('a forged or non-shop key drinks nothing and pollutes nothing',
+  forged.inventory.swiftDraught === 1 && ({}).spdMul === undefined
+  && Object.prototype.spdMul === undefined, forged.inventory);
+/* Refused mid-arena: _applyShopItem returns false, and the bottle must still
+   be there. Consuming on a refusal is strictly worse than the sale it replaced
+   -- the potion vanishes and does nothing. */
+const fighter = { coins: 0, inventory: { cookedMinnow: 1 }, maxHp: 100, hp: 10,
+  _arenaMatch: 't1' };
+const gSess = { id: 'p_arena' };
+room.playerState[gSess.id] = fighter;
+room._handleDrinkRequest(gSess, { invKey: 'cookedMinnow' });
+check('a refused drink keeps the bottle and heals nothing',
+  fighter.inventory.cookedMinnow === 1 && fighter.hp === 10, fighter);
 
 /* Broke is refused, and costs nothing. */
 const skint = { coins: 1, inventory: Object.create(null), maxMana: 100, mana: 0,

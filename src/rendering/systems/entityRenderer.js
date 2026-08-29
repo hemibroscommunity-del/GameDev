@@ -1451,7 +1451,16 @@ const _CAPE_PIVOT_Y = 0.33;   /* v2.3.2126: the picked frame's value */
  * offset is "backwards along the direction of travel", not "left on screen",
  * so running west it has to go the other way or the cape would lead him. Same
  * sign convention the tilt already uses, for the same reason. */
-const _CAPE_JOG_DX = { east: 0, northeast: 0, southwest: 0, north: 0, south: 0 };
+/* v2.3.2127: owner, of the slide ladder -- "Only the furthest right frame
+   looked correct", which is -28. My reading of "nudge left" had been that it
+   would walk the hood off the head, and the pictures said so plainly at -20
+   and -28; the owner looked at the same pictures and chose -28 anyway. The
+   rendering was right and the JUDGEMENT was mine to lose: at this angle the
+   hood is meant to ride back off the crown, because the figure is leaning into
+   the run and the hood is trailing with the rest of the garment.
+   The diagonals scale with the tilt (0.50/0.75 of east), so the whole table
+   keeps one shape rather than three independent hand-set numbers. */
+const _CAPE_JOG_DX = { east: -28, northeast: -19, southwest: 19, north: 0, south: 0 };
 
 /* ═══ v2.3.2125: THE TWO NUMBERS THIS KEEPS BEING ASKED TO CHANGE ═══
  * The tilt has now been re-asked for twice ("angled more with jog", v2.3.2025;
