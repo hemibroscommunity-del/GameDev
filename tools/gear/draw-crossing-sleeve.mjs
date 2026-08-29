@@ -1,3 +1,13 @@
+/* ═══ SUPERSEDED — DO NOT RUN (v2.3.2140) ═══
+ * Never applied, and now never should be. This chased the bare shoulder into
+ * the ARTWORK; it is not there. The renderer's upper-arm capsule was stamping
+ * a bare-skin body clone over the tee (v2.3.2134). The sheet needed nothing.
+ *
+ * Kept because the head-ceiling machinery and the two failed axis rules below
+ * are a real record of what does not work on this sheet, and because the
+ * measurement critique in its header is what led to looking at the renderer
+ * at all.
+ */
 /* ═══ v2.3.2133: A SLEEVE ON THE ARM THAT CROSSES THE CHEST (jog-east) ═══
  *
  * Owner, a sixth time: "East shoulder is still bare during jog."
