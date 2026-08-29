@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { COL, panelStyle } from './common.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { controlsTutorialBus } from '../controlsTutorialBus.js';
+import { TRAIL_STYLES, getTrailStyle, setTrailStyle } from '@/game/questTrailStyle.js';
 
 /* v2.3.1232: Lantern Slate pass (docs/LANTERN-SLATE-SPEC.md) — 44px
    setting rows, and the switch grows to a 46×26 touchable pill: track
@@ -72,6 +73,10 @@ export const SettingsPanel = () => {
   const [debug, setDebug] = useState(() => {
     try { return localStorage.getItem('brotown_debug') === '1'; } catch { return false; }
   });
+  /* v2.3.2141: the quest path guide -- shape, or off.  The module owns the
+     value and the storage; this row only names it, the same way the audio
+     toggle owns nothing but the label. */
+  const [trail, setTrail] = useState(() => getTrailStyle());
   /* v2.3.1347: self-service character restart (owner playtest).
      'idle' -> confirm overlay -> 'sending' (waiting on the server's
      character_reset_done, which wipes + reloads in wsClient.js) or
@@ -197,6 +202,18 @@ export const SettingsPanel = () => {
     <div style={panelStyle}>
       <Toggle label="Audio" value={audio} onChange={toggleAudio} />
       <Toggle label="Debug overlay (D)" value={debug} onChange={toggleDebug} />
+      {/* ═══ v2.3.2141: THE QUEST PATH ═══
+          Owner: "Add an option to turn off the path guide for the quest.
+          Also explore different options than the bead snake."
+          ONE row, not a toggle plus a picker: a player who wants it gone and
+          a player who wants it different are reaching for the same control,
+          and Off as a fourth chip is one tap from either. */}
+      <ChoiceRow
+        label="Quest path"
+        options={TRAIL_STYLES}
+        value={trail}
+        onChange={(id) => { setTrail(setTrailStyle(id)); }}
+      />
       {/* v2.3.1291 (ChatGPT round-3 §1): Account, Controls and Feedback
           fold in here as drill rows — they left the More launcher.  The
           panels themselves are unchanged (PANELS registry push). */}
@@ -217,6 +234,64 @@ export const SettingsPanel = () => {
       <div style={{ marginTop: 10, padding: '0 8px', fontSize: 13, color: COL.muted, lineHeight: 1.4 }}>
         Tap the floating <b>D</b> button for the full devtools console.
       </div>
+    </div>
+  );
+};
+
+/* ═══ v2.3.2141: A SETTING WITH MORE THAN TWO STATES ═══
+ * The panel had exactly one control shape -- the on/off Toggle -- and "which
+ * shape should the quest path be" is not a yes/no.  A dropdown was the other
+ * option and is the wrong one on a phone: it hides every value but the current
+ * one behind a tap, so a player who does not already know what "Ribbon" looks
+ * like cannot discover it, and discovery is most of what this row is for.
+ *
+ * So: chips, all values visible, with the selected one carrying the brass
+ * fill the Toggle's ON state uses (LANTERN-SLATE-SPEC: brass is the active
+ * state, and this row's chips are the only active thing in it).  The hint line
+ * under them describes the SELECTED value, because that is the one the player
+ * is deciding whether to keep.
+ *
+ * 44px chips, deliberately, unlike the 32px chat lane chips (v2.3.2139, sized
+ * down to keep a composer clear of the iOS keyboard).  A settings row has no
+ * keyboard to make room for, so there is no reason to spend the touch floor
+ * here. */
+const ChoiceRow = ({ label, options, value, onChange }) => {
+  const sel = options.find((o) => o.id === value) || null;
+  return (
+    <div style={{ padding: '10px 8px', borderBottom: `1px solid ${COL.divider}` }}>
+      <div style={{ fontSize: 13.5, color: COL.text, marginBottom: 8 }}>{label}</div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {options.map((o) => {
+          const on = o.id === value;
+          return (
+            <button
+              key={o.id}
+              data-trailstyle={o.id}
+              aria-pressed={on}
+              onPointerUp={(e) => { e.stopPropagation(); onChange(o.id); }}
+              style={{
+                flex: '1 1 0',
+                minWidth: 68,
+                minHeight: 44,
+                borderRadius: 8,
+                cursor: 'pointer',
+                background: on ? COL.accentFill : COL.raised,
+                border: `1px solid ${on ? COL.accent : COL.borderStrong}`,
+                color: on ? COL.accent : COL.text,
+                fontFamily: 'inherit',
+                fontSize: 13.5,
+                fontWeight: on ? 700 : 500,
+                touchAction: 'manipulation',
+              }}
+            >{o.label}</button>
+          );
+        })}
+      </div>
+      {sel && sel.hint ? (
+        <div style={{ marginTop: 8, fontSize: 12.5, color: COL.muted, lineHeight: 1.4 }}>
+          {sel.hint}
+        </div>
+      ) : null}
     </div>
   );
 };

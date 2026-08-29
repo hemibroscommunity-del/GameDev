@@ -47,23 +47,44 @@ export const ZONES = {
        "The charter is too small ... someone with visual impairment might
        struggle with it."
 
-       They are right, and the curve above is why: it takes YOUR OWN figure
-       down to 55% at the plateau and 3% at the rim.  That is deliberate --
-       v2.3.859 added it to sell the vista's depth, and it works, which is
-       exactly the problem: the thing it shrinks to a speck is the thing you
-       are steering.
+       ═══ v2.3.2141: THE GLASS STAYS, THE MAGNIFICATION GOES ═══
+       Owner, after living with it: "Change the character back to tiny on
+       worldview and center them inside the magnifying glass (that'll be
+       enough)."
 
-       So the depth stays and the lens is the exception to it.  `scale` is
-       what the LOCAL player renders at here instead of the curve; `r` and
-       `cy` are the glass drawn under him (tileRenderer) so the difference
-       reads as a lens you are looking through rather than as a figure that
-       forgot to shrink.  `cy` lifts the circle off his FEET and onto his
-       middle -- player x/y is the foot anchor, so a circle centred there put
-       him in its top half with the rim through his knees, which reads as a
-       selection ring rather than as glass.
-       Peers keep the curve untouched -- a map full of full-size strangers
-       would flatten the vista, and it is your own character you need to see. */
-    playerLens: { scale: 0.9, r: 58, cy: -26 }
+       v2.3.2124 answered "too small" by making the figure BIG -- `scale: 0.9`
+       took the local player off the perspective curve entirely, so he stood
+       at nearly his town size on a map whose whole job is to look far away.
+       That reads as a character who forgot to shrink, and it flattens the
+       vista at the one spot your eye is always on.
+
+       The finding underneath was still right, and so is the fix that is left:
+       what you actually need on the World View is to KNOW WHERE YOU ARE, and
+       a ring does that without touching the depth.  So `scale` is gone (the
+       curve governs your figure again, exactly as it does every peer) and the
+       ring stays at its full size around a speck -- which is what a magnifier
+       held over a map looks like, and what keeps you findable at the rim
+       where the curve takes the figure to 3%.
+
+       `cyUnits` replaces the old fixed `cy`.  A constant pixel lift was only
+       ever correct at ONE figure size: it was -26 for the 0.9 figure, and the
+       same -26 over a 4px speck at the rim would hang the glass a whole body
+       above him.  It is now multiplied by the figure's LIVE render scale
+       (tileRenderer._drawPlayerLens), so the glass centres on him at every
+       distance -- which is the half of the owner's sentence that is easy to
+       skip and is the entire point of the change.
+
+       WHERE -45 COMES FROM, since the old -26 was eyeballed and landed a
+       quarter of the way up the figure rather than halfway.  The body cell is
+       256px tall and the figure stands in rows 23..223 of it (the same frame
+       geometry NPC_FRAME_TOP_Y / NPC_FRAME_FEET_Y name in entityRenderer), so
+       its visual middle is (223-23)/2 = 100 cell-px above the feet, which is
+       0.39 of the cell.  The drawn body measures 114.6 container units, and
+       0.39 x 114.6 = 44.8.  Measured on a real client rather than trusted:
+       mp-wvglass reads the figure the renderer actually drew and checks the
+       glass is centred on it, at three distances across the vista.
+       Peers are untouched and always were: the curve is the map's depth. */
+    playerLens: { r: 58, cyUnits: -45 }
   },
   meadow: {
     id: 'meadow', name: 'Starting Meadow', w: 32, h: 32,

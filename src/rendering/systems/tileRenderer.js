@@ -10,6 +10,7 @@ import { TILE } from '@/data/constants.js';
 import { ZONES } from '@/data/zones.js';
 import { TOWN_EXITS, WORLDVIEW_EXITS, COMING_SOON_MARKS, TOWN_SOON_MARKS } from '@/data/effects.js';
 import { isZoneUnlocked, zoneUnlockQuest, questRoutePoint } from "@/game/questRoute.js"; /* v2.3.1822: a shut door looks shut; v2.3.2121: and the way there is lit */
+import { getTrailStyle } from '@/game/questTrailStyle.js'; /* v2.3.2141: ...in the shape the player chose, or not at all */
 import { getLoadedTiledMap, getTilesetImage, IMAGE_ZONE_MAPS, VIDEO_ZONE_MAPS } from '../tiledMaps.js';
 import { PORTAL_BEAM } from '../fxStrips.js'; /* v2.3.2070: the light shaft over a zone exit */
 
@@ -63,6 +64,10 @@ const PORTAL_BEAM_LOCKED_TINT = 0x7c8798;
  * minimap star reads — but only on the minimap, which is a thing you stop to
  * consult.  This puts the same answer on the ground in front of you.
  *
+ * v2.3.2141: and it has a SHAPE the player picks, or none at all --
+ * questTrailStyle.js, Settings -> Quest path.  Everything below is still true
+ * of every style; what changes is what gets drawn on the samples.
+ *
  * IT IS A HEADING, NOT A ROUTE MAP.  The motes run from the player's feet
  * TRAIL_TILES along the way and stop, rather than drawing the whole distance.
  * Two reasons, and the second is the load-bearing one:
@@ -94,6 +99,19 @@ const TRAIL_INK = 0x0D151A;
 const TRAIL_TILES = 7;          /* how far ahead the road is lit */
 const TRAIL_STEP = 0.9;         /* tiles between motes */
 const TRAIL_NEAR_TILES = 1.4;   /* no motes under your own feet */
+/* ═══ v2.3.2141: THREE SHAPES FOR THE SAME ROAD ═══
+ * Owner: "explore different options than the bead snake (effective path but
+ * beads a little strange)."  The spacing differs per style because the styles
+ * are different sizes of thing: a chevron is wide and needs room or the row
+ * turns into a hedge, and a ribbon is a CONTINUOUS line, so its step is a
+ * sampling rate rather than a gap -- fine enough that the round caps overlap
+ * into one stroke instead of a dashed one.
+ * Every style keeps the three-layer ink/gold/core recipe the beads use: the
+ * dark backing is what makes gold legible over town's gold cobble, and that
+ * argument (see the ring note in _drawQuestTrail) is about the ground, not
+ * about the shape drawn on it. */
+const TRAIL_STEP_ARROW = 1.3;   /* tiles between chevrons */
+const TRAIL_STEP_RIBBON = 0.28; /* sampling step, not a gap */
 
 /* ═══ v2.3.2070: QA HANDLE ON THE BEAMS ═══
  * The beam is ADDITIVE light over a painted map, so the only honest way to
@@ -193,7 +211,15 @@ export class TileRenderer {
           let b = null; try { b = t.lensGfx.getLocalBounds(); } catch (e) { continue; }
           if (!b || !(b.width > 0)) continue;
           return { x: Math.round(b.x), y: Math.round(b.y),
-                   w: Math.round(b.width), h: Math.round(b.height), zone: t.currentZone };
+                   w: Math.round(b.width), h: Math.round(b.height), zone: t.currentZone,
+                   /* v2.3.2141: the CENTRE, because "center them inside the
+                      magnifying glass" is a claim about where the glass sits
+                      relative to the figure -- and deriving it in the test
+                      from x + w/2 would be the test re-deriving the renderer's
+                      own geometry.  The bounds are a disc's, so this is its
+                      centre by construction. */
+                   cx: Math.round(b.x + b.width / 2),
+                   cy: Math.round(b.y + b.height / 2) };
         }
         return null;
       };
@@ -1093,8 +1119,24 @@ export class TileRenderer {
     const r = (typeof lens.r === 'number' ? lens.r : 46);
     /* player x/y is the FOOT anchor and the figure stands up from it, so the
        glass is lifted onto his middle -- centred on the feet it cut through
-       his knees and read as a selection ring. */
-    const x = S.player.x, y = S.player.y + (typeof lens.cy === 'number' ? lens.cy : 0);
+       his knees and read as a selection ring.
+       ═══ v2.3.2141: LIFTED BY HIS SIZE, NOT BY A CONSTANT ═══
+       Owner: "center them inside the magnifying glass".  The lift used to be
+       a flat -26px, which was right for exactly one figure size -- the 0.9
+       one v2.3.2124 froze him at.  With the perspective curve back (zones.js)
+       he is 0.69 on the plateau and 0.04 at the rim, and -26 over a four-pixel
+       speck hangs the glass a whole body above his head.  So the lift is in
+       FIGURE UNITS and multiplied by the scale he is really drawn at, which
+       entityRenderer publishes each frame.
+       Missing (an older renderer, or a frame before the first player draw)
+       falls back to 1 rather than to 0: an unscaled lift is the old behaviour,
+       and a 0 would silently drop the glass to his feet -- the bug the
+       original comment above records. */
+    const _fs = (typeof S._figureScaleY === 'number' && S._figureScaleY > 0)
+      ? S._figureScaleY : 1;
+    const _cy = (typeof lens.cyUnits === 'number') ? lens.cyUnits * _fs
+      : (typeof lens.cy === 'number' ? lens.cy : 0);
+    const x = S.player.x, y = S.player.y + _cy;
     /* A slow breath so the glass reads as an optic rather than a painted
        circle -- 3% over four seconds, small enough never to pull the eye off
        the figure inside it. */
@@ -1141,10 +1183,17 @@ export class TileRenderer {
   }
 
   /* ═══ v2.3.2121: THE ROAD ITSELF ═══
-   * Motes from the player along the way to `to`, fading with distance, with a
+   * Marks from the player along the way to `to`, fading with distance, with a
    * slow travelling shimmer so it reads as flowing THAT WAY rather than as a
    * static dotted line.  See the constants block for why it is a heading and
    * not a full route.
+   *
+   * v2.3.2141: this method now does the WALK and nothing else -- sample the
+   * polyline, work out the falloff, and hand the samples to whichever of
+   * _trailArrows / _trailRibbon / _trailBeads the player chose (or draw
+   * nothing at all, which is a value of that same setting).  The walk is the
+   * part that goes subtly wrong and it is identical for every style, so it
+   * happens once; a style is only a shape.
    *
    * Never throws and never blocks a frame: every early return leaves
    * overlayGfx exactly as the exits loop left it. */
@@ -1155,11 +1204,25 @@ export class TileRenderer {
        shape that says "ran, drew nothing" so a probe read can tell "no route"
        apart from "the trail code never executed", which are two very
        different bugs that look identical from the outside. */
+    /* v2.3.2141: the style is read ONCE per frame and reported, so a probe
+       can tell "Off, as asked" apart from "the road failed to draw" -- two
+       states that look identical from outside and would otherwise make the
+       off switch untestable. */
+    const style = getTrailStyle();
     const _probe = (typeof window !== 'undefined')
       ? { to: to ? { x: to.x, y: to.y, npc: to.npc || null, zoneId: to.zoneId || null } : null,
-          motes: 0, limitTiles: 0, legs: 0, bent: false }
+          motes: 0, limitTiles: 0, legs: 0, bent: false, style }
       : null;
     if (_probe) window.__btQuestRoad = _probe;
+
+    /* ═══ v2.3.2141: THE OFF SWITCH ═══
+       Owner: "Add an option to turn off the path guide for the quest."
+       Before the route is even walked: off means no work, not invisible work.
+       The gold quest-exit BEAM is deliberately NOT gated on this -- it is the
+       portal's own colour, the minimap star's answer in the world, and it was
+       not what the owner asked to be rid of.  What "the path guide" names is
+       the thing drawn on the ground under your feet. */
+    if (style === 'off') return;
 
     if (!to || !S || !S.player) return;
     const path = this._questPath(S, to);
@@ -1183,14 +1246,28 @@ export class TileRenderer {
 
     /* The shimmer: one slow cycle travelling outward along the road. */
     const phase = (now % 1600) / 1600;
+
+    /* ═══ v2.3.2141: SAMPLED ONCE, DRAWN THREE WAYS ═══
+       The walk along the polyline -- which segment am I on, how far into it,
+       and which way is it pointing -- is identical for every style, and it is
+       the part that is easy to get subtly wrong (see the bunching note above).
+       So it happens once, here, and each style is only a shape.
+       `u` is the unit direction of the leg this sample sits on, which is what
+       a chevron needs and what a bead never had: it is the reason the arrows
+       can point. */
+    const samples = [];
+    const step = style === 'arrows' ? TRAIL_STEP_ARROW
+      : style === 'ribbon' ? TRAIL_STEP_RIBBON : TRAIL_STEP;
     let si = 0;
     let acc = 0;                                     /* arc length at path[si] */
-    for (let t = TRAIL_NEAR_TILES; t * TILE <= limit; t += TRAIL_STEP) {
+    for (let t = TRAIL_NEAR_TILES; t * TILE <= limit; t += step) {
       const d = t * TILE;
       while (si < seg.length - 1 && acc + seg[si] < d) { acc += seg[si]; si++; }
       const f = seg[si] > 0 ? (d - acc) / seg[si] : 0;
       const x = path[si].x + (path[si + 1].x - path[si].x) * f;
       const y = path[si].y + (path[si + 1].y - path[si].y) * f;
+      const dx = path[si + 1].x - path[si].x, dy = path[si + 1].y - path[si].y;
+      const L = Math.hypot(dx, dy) || 1;
       /* ═══ BOTH OF THESE ARE SHALLOW ON PURPOSE ═══
          The first cut had falloff run 1 -> 0 and the shimmer swing 0.1 -> 1.0,
          which multiplied out to a typical mote alpha near 0.13 — and 13% gold
@@ -1203,25 +1280,130 @@ export class TileRenderer {
       const wave = 0.8 + 0.2 * Math.sin((t / TRAIL_TILES - phase) * Math.PI * 2);
       const a = Math.max(0, falloff * wave);
       if (a <= 0.02) continue;
-      if (_probe) _probe.motes++;
-      /* ═══ THREE RINGS, AND THE DARK ONE IS THE REASON THIS IS VISIBLE ═══
-         The first cut was gold glow + gold core, and the headless shot of the
-         very screen this feature opens on showed NOTHING: town's ground is
-         painted gold cobble, so gold at 30% alpha over gold is gold.  A mote
-         cannot be defined by its hue when the hue is the floor's.
+      samples.push({ x, y, ux: dx / L, uy: dy / L, a });
+    }
+    if (!samples.length) return;
+    if (_probe) _probe.motes = samples.length;
 
-         So each one is a shadow, a glow and a hot core.  The Lantern Slate
-         ink underneath (the same #0D151A the quest plate sits on) is what
-         separates it from a bright ground, and the near-white core is what
-         separates it from a dark one — frost and the cave are the opposite
-         problem, and a single value cannot solve both.  Drawn shadow-first so
-         the core lands on top of its own backing. */
-      this.overlayGfx.circle(x, y, TILE * 0.40);
+    if (style === 'ribbon') { this._trailRibbon(samples); return; }
+    if (style === 'arrows') { this._trailArrows(samples); return; }
+    this._trailBeads(samples);
+  }
+
+  /* ═══ THREE RINGS, AND THE DARK ONE IS THE REASON THIS IS VISIBLE ═══
+     The first cut was gold glow + gold core, and the headless shot of the
+     very screen this feature opens on showed NOTHING: town's ground is
+     painted gold cobble, so gold at 30% alpha over gold is gold.  A mote
+     cannot be defined by its hue when the hue is the floor's.
+
+     So each one is a shadow, a glow and a hot core.  The Lantern Slate
+     ink underneath (the same #0D151A the quest plate sits on) is what
+     separates it from a bright ground, and the near-white core is what
+     separates it from a dark one — frost and the cave are the opposite
+     problem, and a single value cannot solve both.  Drawn shadow-first so
+     the core lands on top of its own backing.
+
+     v2.3.2141: unchanged, and now one style of three.  The owner's "beads a
+     little strange" is about the SHAPE; this argument is about the ground
+     under it, so every style below repeats the ink/gold/core sandwich. */
+  _trailBeads(samples) {
+    for (const s of samples) {
+      const a = s.a;
+      this.overlayGfx.circle(s.x, s.y, TILE * 0.40);
       this.overlayGfx.fill({ color: TRAIL_INK, alpha: a * 0.45 });
-      this.overlayGfx.circle(x, y, TILE * 0.30);
+      this.overlayGfx.circle(s.x, s.y, TILE * 0.30);
       this.overlayGfx.fill({ color: TRAIL_GOLD, alpha: a * 0.85 });
-      this.overlayGfx.circle(x, y, TILE * 0.15);
+      this.overlayGfx.circle(s.x, s.y, TILE * 0.15);
       this.overlayGfx.fill({ color: TRAIL_CORE, alpha: a });
+    }
+  }
+
+  /* ═══ v2.3.2141: CHEVRONS ═══
+     Owner: "explore different options than the bead snake".
+
+     The one thing a dot cannot do is point, and pointing is the entire job.
+     Each chevron is drawn ON the sample and rotated to the leg it sits on, so
+     a road that bends round the town hall bends with it -- the arrows turn
+     through the corner rather than all facing the destination, which would be
+     an arrow pointing INTO the building the path is going around.
+
+     Stroked, not filled: an outline chevron keeps the ground visible through
+     it, and at three widths (ink, gold, core) the same sandwich the beads use
+     falls out of the stroke widths instead of out of three radii.
+
+     The tip leads by half the body so the shape's visual centre lands on the
+     sample rather than its tail -- otherwise the row reads as lagging behind
+     the path it is marking. */
+  _trailArrows(samples) {
+    /* ═══ SIZED AND WEIGHTED ON A REAL SHOT, NOT BY EYE IN THE EDITOR ═══
+       The world renders at 1/1.5 (WORLD_ZOOM), so a chevron a third of a tile
+       across lands about seven screen pixels wide -- and the first cut of
+       these, at that size with the beads' own alphas, photographed as pale
+       scratches on town's gold cobble.  That ground is the reason the beads
+       carry an ink ring at all (see _trailBeads), and a shape made of STROKES
+       needs the argument applied harder than a shape made of discs: a disc's
+       backing is a whole ring around it, a stroke's is two pixels either side.
+       So: bigger, and the ink is nearly solid under a nearly solid face. */
+    const HALF = TILE * 0.45;     /* wing spread, perpendicular */
+    const BODY = TILE * 0.42;     /* tip to wing tips, along the path */
+    const g = this.overlayGfx;
+    /* Two passes: every backing first, then every face.  One pass per chevron
+       would let the NEXT arrow's ink land on top of the previous arrow's gold
+       wherever they overlap on a tight corner, which reads as a gap chewed
+       out of the road. */
+    for (let pass = 0; pass < 3; pass++) {
+      for (const s of samples) {
+        const ux = s.ux, uy = s.uy;
+        const px = -uy, py = ux;
+        const tipX = s.x + ux * BODY * 0.5, tipY = s.y + uy * BODY * 0.5;
+        const bx = tipX - ux * BODY, by = tipY - uy * BODY;
+        g.moveTo(bx + px * HALF, by + py * HALF);
+        g.lineTo(tipX, tipY);
+        g.lineTo(bx - px * HALF, by - py * HALF);
+        if (pass === 0) g.stroke({ color: TRAIL_INK, width: 9, alpha: s.a * 0.85, cap: 'round', join: 'round' });
+        else if (pass === 1) g.stroke({ color: TRAIL_GOLD, width: 5, alpha: s.a, cap: 'round', join: 'round' });
+        else g.stroke({ color: TRAIL_CORE, width: 1.8, alpha: s.a * 0.9, cap: 'round', join: 'round' });
+      }
+    }
+  }
+
+  /* ═══ v2.3.2141: THE RIBBON ═══
+     A road rather than a row of marks: the same samples, joined.  It is the
+     quietest of the three and the one that survives being looked at all
+     session, which is the property the constants block asks of this feature.
+
+     Each leg is stroked on its own so the width can TAPER with distance --
+     Pixi strokes one path at one width, so a single polyline could only be a
+     uniform stripe, and a uniform stripe over the map art is exactly what the
+     v2.3.2121 note refused.  Round caps make the legs read as one continuous
+     line at TRAIL_STEP_RIBBON, where the cap of one lands inside the next.
+
+     Three passes for the same reason the arrows use them, and it matters more
+     here: with overlapping caps, a per-leg ink-then-gold order would paint
+     every leg's backing over the previous leg's face and leave the ribbon
+     looking scalloped. */
+  _trailRibbon(samples) {
+    const g = this.overlayGfx;
+    const W = [TILE * 0.34, TILE * 0.21, TILE * 0.07];
+    const C = [TRAIL_INK, TRAIL_GOLD, TRAIL_CORE];
+    /* The same correction the chevrons needed and for the same reason: a
+       0.45 ink under a 0.85 gold photographed as a hairline outline with the
+       cobble showing through the middle of its own road. */
+    const A = [0.8, 1, 0.9];
+    for (let pass = 0; pass < 3; pass++) {
+      for (let i = 1; i < samples.length; i++) {
+        const p0 = samples[i - 1], p1 = samples[i];
+        /* A leg longer than a couple of tiles is not a leg, it is the jump
+           across a gap where the falloff skipped samples; joining it would
+           draw a chord through whatever the path went around. */
+        if (Math.hypot(p1.x - p0.x, p1.y - p0.y) > TILE * 1.2) continue;
+        g.moveTo(p0.x, p0.y);
+        g.lineTo(p1.x, p1.y);
+        /* The near end of the leg owns its alpha and width, so the taper
+           follows the same falloff every other style uses. */
+        g.stroke({ color: C[pass], width: W[pass] * (0.75 + 0.25 * p1.a),
+          alpha: p1.a * A[pass], cap: 'round', join: 'round' });
+      }
     }
   }
 
