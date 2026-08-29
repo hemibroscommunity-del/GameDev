@@ -149,7 +149,17 @@ export class TileRenderer {
     this.layer.addChild(this.tileContainer);
     // Overlay graphics for effects (water shimmer, exit glow, building outlines)
     this.overlayGfx = new Graphics();
+    /* ═══ v2.3.2137: THE LENS GETS ITS OWN GRAPHICS ═══
+       Not tidiness -- it is what makes the stray-subpath bug below both
+       impossible to hide and cheap to test.  Sharing overlayGfx with the
+       portal markers and the quest road meant the lens had no bounds of its
+       own: a subpath reaching from the glass to world (0,0) was invisible to
+       every probe, because the overlay's bounds already span the whole map.
+       On its own Graphics the lens's bounds ARE the lens, so "did it draw a
+       disc or a disc plus a line to the corner" is one number. */
+    this.lensGfx = new Graphics();
     this.layer.addChild(this.overlayGfx);
+    this.layer.addChild(this.lensGfx);
     /* v2.3.2070: the portal beams.  A Container of Sprites rather than more
        Graphics, and ABOVE overlayGfx so the shaft reads as light over the
        ground rather than something painted into it.  Pooled per exit tile —
@@ -168,6 +178,24 @@ export class TileRenderer {
         const all = [];
         for (const t of _liveTileRenderers) all.push(...t._portalBeams);
         return all;
+      };
+      /* ═══ v2.3.2137: WHAT THE LENS ACTUALLY DREW ═══
+         The bug this pins was a stray path segment from world (0,0) to the
+         glass, and it hid from everything: no scene node of its own, and a
+         moveTo/lineTo probe never sees it because `arc` builds that segment
+         itself.  Pixels could not settle it either -- the World View animates
+         enough that a with/without frame diff moved more than the bug did
+         (measured: no separation).  Its OWN Graphics makes it one number:
+         a disc's bounds are the disc. */
+      window.__btLensBounds = () => {
+        for (const t of _liveTileRenderers) {
+          if (!t.lensGfx) continue;
+          let b = null; try { b = t.lensGfx.getLocalBounds(); } catch (e) { continue; }
+          if (!b || !(b.width > 0)) continue;
+          return { x: Math.round(b.x), y: Math.round(b.y),
+                   w: Math.round(b.width), h: Math.round(b.height), zone: t.currentZone };
+        }
+        return null;
       };
       window.__btPortalBeamsVisible = (v) => {
         let n = 0;
@@ -1058,6 +1086,7 @@ export class TileRenderer {
    * compositing over the WebGL canvas is the documented cause of the iOS
    * static (CLAUDE.md), and this would be the worst possible place for it. */
   _drawPlayerLens(S, now) {
+    this.lensGfx.clear();
     const zone = ZONES[this.currentZone];
     const lens = zone && zone.playerLens;
     if (!lens || !S || !S.player) return;
@@ -1072,20 +1101,43 @@ export class TileRenderer {
     const breathe = 1 + 0.03 * Math.sin((now % 4000) / 4000 * Math.PI * 2);
     const rr = r * breathe;
     /* the glass */
-    this.overlayGfx.circle(x, y, rr);
-    this.overlayGfx.fill({ color: 0xCFE3F0, alpha: 0.10 });
+    this.lensGfx.circle(x, y, rr);
+    this.lensGfx.fill({ color: 0xCFE3F0, alpha: 0.10 });
     /* the rim, in Lantern Slate brass so it belongs to the UI rather than to
        the landscape */
-    this.overlayGfx.circle(x, y, rr);
-    this.overlayGfx.stroke({ color: 0xD8AA58, width: 2.5, alpha: 0.75 });
+    this.lensGfx.circle(x, y, rr);
+    this.lensGfx.stroke({ color: 0xD8AA58, width: 2.5, alpha: 0.75 });
     /* an inner hairline, which is what makes a circle read as ground glass
        instead of as a selection ring */
-    this.overlayGfx.circle(x, y, rr - 3);
-    this.overlayGfx.stroke({ color: 0xF4F0E7, width: 1, alpha: 0.24 });
+    this.lensGfx.circle(x, y, rr - 3);
+    this.lensGfx.stroke({ color: 0xF4F0E7, width: 1, alpha: 0.24 });
     /* the highlight: a short bright arc up-left, the one cue that says
        "curved glass" at this size */
-    this.overlayGfx.arc(x, y, rr - 5, Math.PI * 1.05, Math.PI * 1.45);
-    this.overlayGfx.stroke({ color: 0xFFFFFF, width: 2.5, alpha: 0.34 });
+    /* ═══ v2.3.2137: moveTo FIRST, OR THE ARC DRAGS A LINE IN WITH IT ═══
+       Owner: "On the worldview there shouldn't be two line guiding character
+       where to go.  Just keep the beaded line get rid of straight line."
+
+       There was a second line, and it was never a quest guide -- it was this
+       arc.  `arc()` continues the CURRENT path: with no point set it starts
+       from the path's origin, so the stroke below drew the highlight AND a
+       straight line reaching it from world (0,0) -- the map's top-left
+       corner.  On a 32x32 vista that is a hairline running most of the way
+       across the World View, ending exactly on the lens ring, which is
+       precisely what it looks like: a second guide pointing off past town.
+
+       The circles above are immune (each `circle()` opens its own subpath),
+       which is why only the one arc in this file ever showed it.
+
+       WHY IT SURVIVED EVERY OBVIOUS TEST, noted so the next person does not
+       repeat them: it is not the quest road (it outlived clearing the route),
+       not the portal beams (it outlived hiding them), not the map art, and it
+       is invisible to a scene-graph scan because it lives inside overlayGfx
+       alongside every other shape.  A moveTo/lineTo probe misses it too --
+       `arc` builds that connecting segment itself and never calls lineTo. */
+    const _hi0 = Math.PI * 1.05, _hi1 = Math.PI * 1.45;
+    this.lensGfx.moveTo(x + Math.cos(_hi0) * (rr - 5), y + Math.sin(_hi0) * (rr - 5));
+    this.lensGfx.arc(x, y, rr - 5, _hi0, _hi1);
+    this.lensGfx.stroke({ color: 0xFFFFFF, width: 2.5, alpha: 0.34 });
   }
 
   /* ═══ v2.3.2121: THE ROAD ITSELF ═══
