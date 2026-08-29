@@ -97,6 +97,55 @@
  * number only means "bare shoulder" on a profile.  Printed so the next session
  * starts from that rather than from the number.
  *
+ * ── v2.3.2133: THE METRIC ABOVE IS THE REASON THIS KEEPS COMING BACK ──
+ * Owner, a sixth time: "East shoulder is still bare during jog."
+ *
+ * The bareShoulder number the v2.3.2066 section defines is honest about the
+ * TRAILING arm and actively misleading about everything else, and two sessions
+ * have now closed this bug on the strength of it. Read body-only beside
+ * body+tee at 13x for frame 3 and frame 10 and the defect is plain: frame 3
+ * reads as a t-shirt, frame 10 reads as a bare chest with a white strip down
+ * the back of it. What is over the chest on 10 is the NEAR ARM, swung up
+ * across it, which the artist cut the tee away from so it draws in front.
+ *
+ * Two things make the metric miss that, and both are worth knowing before
+ * trusting any area count on this sheet:
+ *
+ *   1. THE FIGURE SHRINKS. The torso turns away through 7-13, so the whole
+ *      character is 1483-1829 px there against 1873-1958 on 0-6. Less of
+ *      everything, the bare part included.
+ *   2. MOST OF THE COUNT IS SUPPOSED TO BE BARE. Forearm, fist and neck are
+ *      inside every window anyone has drawn here, and a tee leaves them bare.
+ *
+ * Net: bare skin in the chest band comes out 259,281,261,282,263,282,277 on
+ * frames 0-6 against 245,211,185,135,180,218,244 on 7-13. The BAD frames score
+ * better, on every one of them. v2.3.2093 ran five independent measurements
+ * off this shape and concluded the frames were fine; they are not, the metric
+ * was. Anything new here should be judged on a render first and a number
+ * second -- which is what this file's own v2.3.1984 header said before the
+ * v2.3.2066 section talked it out of it.
+ *
+ * ── AND WHY NO TOOL COULD REACH IT (v2.3.2133) ──
+ * draw-trailing-sleeve.mjs already carries an `o.back` sign, so pointing it at
+ * the FRONT edge is a one-character change. It writes exactly zero pixels on
+ * every frame. The reason is its invariant (b): it excludes any COLUMN with
+ * body above the shirt's topmost row, the cheap head test it was given after
+ * v2.3.1986 painted a shirt-coloured blob on the character's FACE. On an east
+ * profile the head sits directly above the chest, so that test deletes the
+ * whole front region -- 54 px down to 4 on frame 10, 217 down to 64 on frame 3
+ * -- and the limb never reaches the 12-pixel floor. The invariant that keeps
+ * the tool off the face is the same one that forbids this fix.
+ *
+ * tools/gear/draw-crossing-sleeve.mjs unblocks that with v2.3.2093's per-pixel
+ * head CEILING (strictly safer than a column test, and far safer than the
+ * nothing v2.3.1986 had) and then applies draw-trailing-sleeve's rule to the
+ * limb in front. It is NOT shipped and the sheet is unchanged: it reads right
+ * on frames 0-10 and puts a hard white bar down the arm on 11-13, where the
+ * uncovered region merges arm with chest and no axis derived from it -- PCA or
+ * distal, both tried and both recorded in that file -- is the arm's. That is
+ * v2.3.2016's wall again, and its conclusion still stands: this needs the
+ * arm's own axis, or seven frames drawn by hand.
+ *
  * ── v2.3.2016: A GENERATED SLEEVE WAS TRIED AND REJECTED ──
  * The diagnosis above is right, and the fix it asks for — extend the shoulder
  * over the trailing arm — was built and measured before being thrown away.

@@ -1383,8 +1383,35 @@ function _remoteBodyArt(other, mirror) {
  * which means two renderers holding one piece of geometry, and "the moment a
  * value is copied into two renderers it starts to drift".  For a cosmetic
  * cape that is not worth it: a swing is a few frames, and a missing cape
- * reads far better than a floating one. */
-const _CAPE_HIDDEN_POSES = { dodge: 1, swing: 1, bowshot: 1, fire: 1, chop: 1, mine: 1, fish: 1, cook: 1, pickup: 1, hit: 1 };
+ * reads far better than a floating one.
+ *
+ * ═══ v2.3.2129: WHICH OF THESE WERE ACTUALLY HIDING ANYTHING ═══
+ * Owner: "Add it to all the animations as well" -> "yes do the free 8".
+ *
+ * The list above was written defensively at v2.3.2023, when the cape was one
+ * facing old and the question was only "where can it definitely not go
+ * wrong".  Ten poses went in.  Read against the renderer, they are three
+ * different things and only one of them is a reason:
+ *
+ *   STAND-IN POSES — chop, cook, fire (and swing, bowshot).  The real figure
+ *   is replaced by a whole separate sprite in another layer and the body
+ *   container is hidden outright (`_chopHide`, line ~7703; the peer path's
+ *   `_rexStandIn`).  These stay listed, but note they were never doing the
+ *   work: the container is invisible, so its cape child is too, and `pose`
+ *   does not even read 'chop' while chopping.  `sb.visible` is what actually
+ *   holds the line here, exactly as the paragraph above says.
+ *
+ *   REAL-BODY POSES — dodge, mine, fish, pickup, hit.  These draw the
+ *   player's own body sprite out of a real sheet, and the cape rides that
+ *   sprite's transform like any other full-frame layer.  Nothing was wrong
+ *   with them; they were listed because nobody had looked yet.  REMOVED, so a
+ *   cape you paid for does not vanish every time you take a hit or bend down
+ *   for loot.
+ *
+ * That is five poses back, not the eight I first told the owner — chop, cook
+ * and fire only LOOKED free.  Their entries stay because deleting them would
+ * invite the next reader to re-derive all of this. */
+const _CAPE_HIDDEN_POSES = { swing: 1, bowshot: 1, chop: 1, cook: 1, fire: 1 };
 
 /* ═══ v2.3.2024: THE CAPE TRAILS WHEN HE RUNS ═══
  * Owner: "The cape needs to be rotated so the back of the character doesn't
@@ -1407,11 +1434,92 @@ const _CAPE_HIDDEN_POSES = { dodge: 1, swing: 1, bowshot: 1, fire: 1, chop: 1, m
  * three-quarter angles and the amount that reads correctly is not a projection
  * of anything — it is a look.  Mirrored facings negate it, for the same reason
  * the body's own scale.x carries its sign. */
-const _CAPE_JOG_TILT = { east: 0.30, northeast: 0.20, southwest: -0.20, north: 0, south: 0 };   /* v2.3.2025: owner, "angled more with jog" -- doubled */
+/* v2.3.2025: owner, "angled more with jog" -- doubled.
+   v2.3.2125: owner, "angled more aggressively so that the back of his body
+   doesn't show behind it" -- 1.5x again (east 0.30 -> 0.45).  Chosen off a
+   rendered ladder at 1x / 1.5x / 2x / 2.5x, and the ladder is why it is not
+   more: past about 1.5x the rotation stops covering the back and starts
+   LIFTING THE HEM off it, because the cape swings about the shoulders -- at
+   2.5x the hem is near horizontal and the lower back is barer than it was at
+   1x. More angle is not monotonically more cover, which is the thing that is
+   not obvious from the ask. */
+/* v2.3.2126: owner, of the v2.3.2125 ladder -- "Last cape frame most angled is
+   correct". That frame was 2.5x the THEN-current table (east 0.30), i.e. 0.75
+   rad, so the table takes those absolute values rather than another multiplier:
+   a scale is meaningless once the thing it scales has moved, which is the trap
+   the sweep that produced this fell into first (it asked for 2.5x again and
+   rendered 1.125 rad -- a rung off a ladder nobody had looked at). */
+const _CAPE_JOG_TILT = { east: 0.75, northeast: 0.50, southwest: -0.50, north: 0, south: 0 };
 /* Where the cape swings FROM: the shoulders, not the middle of the frame.
    Pivoting about the centre would swing the hood as far as the hem and take
-   the hood off the head, which is the thing v2.3.2023b just fixed. */
-const _CAPE_PIVOT_Y = 0.27;
+   the hood off the head, which is the thing v2.3.2023b just fixed.
+
+   v2.3.2125: 0.27 -> 0.31, and this is a CONSEQUENCE of v2.3.2122-2124 rather
+   than a taste change. The pivot is a fraction of the 256 FRAME, but what it
+   needs to sit on is the shoulders of the ART -- and the art just moved 10px
+   down inside that frame. Left at 0.27 the swing had crept up from the
+   shoulders towards the neck, which is the "hanging off the side of his head"
+   half of the report. 10/256 = 0.039, so 0.31 puts it back where it was. */
+const _CAPE_PIVOT_Y = 0.33;   /* v2.3.2126: the picked frame's value */
+
+/* ═══ v2.3.2126: AND SLIDE IT BACK ALONG THE LINE OF TRAVEL ═══
+ * Owner, picking the hardest angle off the ladder: "Last cape frame most
+ * angled is correct but needs to nudge left to fit."
+ *
+ * Rotation alone cannot put it there, and the reason is what the pivot IS. The
+ * cape turns about the shoulders, so the hem swings one way and the HOOD
+ * swings the other -- and at the angle the owner chose the hood has come far
+ * enough forward to sit over the face. Sliding the whole sprite back along the
+ * line of travel re-seats the hood on the head and carries the hem with it,
+ * which a bigger or smaller angle cannot do: those trade the two ends against
+ * each other, and this moves both at once.
+ *
+ * In 256-space, applied only while jogging, and MIRRORED like the tilt -- the
+ * offset is "backwards along the direction of travel", not "left on screen",
+ * so running west it has to go the other way or the cape would lead him. Same
+ * sign convention the tilt already uses, for the same reason. */
+/* v2.3.2127: owner, of the slide ladder -- "Only the furthest right frame
+   looked correct", which is -28. My reading of "nudge left" had been that it
+   would walk the hood off the head, and the pictures said so plainly at -20
+   and -28; the owner looked at the same pictures and chose -28 anyway. The
+   rendering was right and the JUDGEMENT was mine to lose: at this angle the
+   hood is meant to ride back off the crown, because the figure is leaning into
+   the run and the hood is trailing with the rest of the garment.
+   The diagonals scale with the tilt (0.50/0.75 of east), so the whole table
+   keeps one shape rather than three independent hand-set numbers. */
+const _CAPE_JOG_DX = { east: -28, northeast: -19, southwest: 19, north: 0, south: 0 };
+
+/* ═══ v2.3.2125: THE TWO NUMBERS THIS KEEPS BEING ASKED TO CHANGE ═══
+ * The tilt has now been re-asked for twice ("angled more with jog", v2.3.2025;
+ * "angled more aggressively so the back of his body doesn't show behind it",
+ * this version), and the pivot moves whenever the ART moves inside its frame —
+ * which it just did, by 10px (v2.3.2122-2124).  Both are pure LOOK: no
+ * measurement settles them, only rendering the jog and looking at it.
+ *
+ * So they are overridable at runtime.  Not a feature and not a setting — a
+ * bench, so a tuning round is one harness run that sweeps values and
+ * photographs each, instead of four rebuilds.  Absent the handle these read
+ * exactly as the constants above, which is every session that is not a QA
+ * scenario deliberately setting it. */
+function _capeTune(dir) {
+  let t = null;
+  try { t = window.__btCapeTune || null; } catch (e) { t = null; }
+  const base = _CAPE_JOG_TILT[dir] || 0;
+  if (!t) return { tilt: base, pivotY: _CAPE_PIVOT_Y };
+  /* A tilt of 0 is meaningful (north/south face the camera, where a sideways
+     lean would be a lie), so scale rather than replace: one knob moves the
+     whole table and cannot accidentally give north a tilt it must not have. */
+  const k = (typeof t.tiltScale === 'number') ? t.tiltScale : 1;
+  return {
+    tilt: base * k,
+    pivotY: (typeof t.pivotY === 'number') ? t.pivotY : _CAPE_PIVOT_Y,
+    /* v2.3.2126: absolute, not scaled -- the table has a ZERO for north and
+       south (they face the camera; a sideways slide there would be the same
+       lie a sideways tilt would), and scaling cannot move a zero.  A sweep
+       needs to be able to ask "what does -20 look like on east". */
+    dx: (typeof t.jogDx === 'number') ? t.jogDx : (_CAPE_JOG_DX[dir] || 0),
+  };
+}
 
 function _placeCape(display, capeId, pose, dir, mirror, frameIdx) {
   const spr = display && display._capeSprite;
@@ -1446,12 +1554,18 @@ function _placeCape(display, capeId, pose, dir, mirror, frameIdx) {
   /* v2.3.2024: swing it from the shoulders while running.  The anchor moves off
      centre so the rotation pivots there, and y is compensated by the same
      amount so the cape does not also jump up the screen when it tilts. */
-  const tilt = (pose === 'jog') ? ((_CAPE_JOG_TILT[dir] || 0) * (mirror ? -1 : 1)) : 0;
-  if (spr.anchor.y !== _CAPE_PIVOT_Y) spr.anchor.set(0.5, _CAPE_PIVOT_Y);
+  const tune = _capeTune(dir);                                   /* v2.3.2125 */
+  const tilt = (pose === 'jog') ? (tune.tilt * (mirror ? -1 : 1)) : 0;
+  if (spr.anchor.y !== tune.pivotY) spr.anchor.set(0.5, tune.pivotY);
   if (spr.rotation !== tilt) spr.rotation = tilt;
   const drawnH = Math.abs(spr.scale.y) * ((tex.frame && tex.frame.height) || 256);
-  spr.x = sb.x + dx;
-  spr.y = sb.y + dy - (0.5 - _CAPE_PIVOT_Y) * drawnH;
+  /* v2.3.2126: the jog slide, in the same 256-space the crown offset above is
+     in, so it scales with the sprite exactly as that does. */
+  const jogDx = (pose === 'jog')
+    ? (tune.dx * Math.abs(spr.scale.x) * (mirror ? -1 : 1))
+    : 0;
+  spr.x = sb.x + dx + jogDx;
+  spr.y = sb.y + dy - (0.5 - tune.pivotY) * drawnH;
   if (!spr.visible) spr.visible = true;
 }
 
@@ -4642,6 +4756,51 @@ function createPlayerDisplay() {
   container.addChild(handArmMask);
   container.addChild(handArmSprite);
 
+  /* ═══ v2.3.2134: THE SHIRT RIDES ALONG WITH THE ARM CLONE ═══
+   * Owner, a sixth time, and this is the report that finally located it:
+   * "I don't understand why east frame jog shoulder only and not west frame
+   * jog shoulder has skin problems. It only occurred after adding something
+   * (like shield or maybe another layered item)... it used to not be an issue."
+   *
+   * Both halves of that were right and both were the clue. The tee's jog-east
+   * sheet is ALSO its jog-west sheet (there is no jog-west.png; west is east
+   * with a negative scale.x), so a defect on one facing and not the other can
+   * not be in the artwork -- which is where five sessions and every
+   * measurement since v2.3.1984 had been looking.
+   *
+   * It is here. The arm capsule above clones the BODY texture -- bare skin --
+   * masks it to a stripe from shoulder to hand, and draws it ABOVE the shirt
+   * (gearShirt is added at the top of this builder, this sprite far below it).
+   * It fires on `facingIdx === 0 && pose === 'jog'`: EAST ONLY, which is the
+   * asymmetry. It exists so the upper arm covers the SHIELD during the east
+   * back-swing (v2.3.196/200/202), which is the "after adding something (like
+   * shield)". And it became visible when the layered shirt stopped being baked
+   * into the body texture: before that the clone already had the shirt in it
+   * and stamping it changed nothing, which is the "it used to not be an
+   * issue".
+   *
+   * v2.3.749 hit the identical bug on the sibling hand-cap -- "over the shirt
+   * the cap stamped a bare-skin circle (shirt eaten at the right hand)" -- and
+   * fixed it by switching the cap off whenever a layered shirt is worn, with
+   * the note that "the grip-wrap nicety returns when the shirt clone learns to
+   * ride along". The same guard was never applied here. Doing that now would
+   * fix the shoulder and give back the shield show-through the capsule exists
+   * to prevent, so instead: this is the shirt clone learning to ride along.
+   *
+   * Same texture and transform as the worn shirt, its own Graphics carrying
+   * the identical capsule (a Pixi mask belongs to one object, so the two
+   * clones cannot share one), and added immediately after the body clone --
+   * above it, still below the weapon, so v2.3.200's z-order between shield and
+   * blade is untouched. */
+  const handArmShirt = new Sprite();
+  handArmShirt.anchor.set(0.5, 0.5);
+  handArmShirt.visible = false;
+  const handArmShirtMask = new Graphics();
+  handArmShirtMask.visible = true;
+  handArmShirt.mask = handArmShirtMask;
+  container.addChild(handArmShirtMask);
+  container.addChild(handArmShirt);
+
   /* v2.3.1785: the outstretched arm that holds the raised shield, cut from the
      bow-shot art (see blockArm.js).  Sits here — after the body and the worn
      gear, immediately before the shield — so it reaches out OVER the torso and
@@ -4855,6 +5014,8 @@ function createPlayerDisplay() {
   container._handCapMask = handCapMask;
   container._handArmSprite = handArmSprite;
   container._handArmMask = handArmMask;
+  container._handArmShirt = handArmShirt;           /* v2.3.2134 */
+  container._handArmShirtMask = handArmShirtMask;   /* v2.3.2134 */
   container._shieldSprite = shieldSprite;
   container._blockCaretGfx = blockCaretGfx;     /* v2.3.1798 */
   container._blockArmSprite = blockArmSprite;   /* v2.3.1785 */
@@ -9207,13 +9368,43 @@ export class EntityRenderer {
             armMask.moveTo(shoulderX, shoulderY);
             armMask.lineTo(weaponSprite.x, weaponSprite.y);
             armMask.stroke({ color: 0xffffff, width: 16, cap: 'butt' });
+            /* v2.3.2134: and the worn shirt, through the SAME capsule, over
+               the body clone.  Without this the clone above is bare skin
+               stamped on top of the tee -- east only, because the capsule is
+               east only -- which is the bare shoulder the owner has reported
+               six times.  Driven off the live gearShirt so a re-baked or
+               patterned shirt rides along with it; hidden when the shirt is
+               not drawn, which leaves the v2.3.200 behaviour exactly as it
+               was for a bare-chested character. */
+            const _armShirt = display._handArmShirt;
+            const _armShirtMask = display._handArmShirtMask;
+            const _wornShirt = display._gearShirt;
+            if (_armShirt && _armShirtMask) {
+              if (_wornShirt && _wornShirt.visible && _wornShirt.texture) {
+                _armShirt.texture = _wornShirt.texture;
+                _armShirt.x = _wornShirt.x;
+                _armShirt.y = _wornShirt.y;
+                _armShirt.scale.x = _wornShirt.scale.x;
+                _armShirt.scale.y = _wornShirt.scale.y;
+                _armShirt.tint = _wornShirt.tint;
+                _armShirt.visible = true;
+                _armShirtMask.clear();
+                _armShirtMask.moveTo(shoulderX, shoulderY);
+                _armShirtMask.lineTo(weaponSprite.x, weaponSprite.y);
+                _armShirtMask.stroke({ color: 0xffffff, width: 16, cap: 'butt' });
+              } else {
+                _armShirt.visible = false;
+              }
+            }
           } else if (handArm) {
             handArm.visible = false;
+            if (display._handArmShirt) display._handArmShirt.visible = false;
           }
         } else {
           weaponSprite.visible = false;
           if (display._handCapSprite) display._handCapSprite.visible = false;
           if (display._handArmSprite) display._handArmSprite.visible = false;
+          if (display._handArmShirt) display._handArmShirt.visible = false;   /* v2.3.2134 */
           /* Procedural fallback — abstract line / arc / orb. */
           if (wpn.type === 'bow') {
             // Bow arc
@@ -9443,6 +9634,24 @@ export class EntityRenderer {
         const targetArmIdx = haIdx > wcIdxArm ? wcIdxArm : Math.max(0, wcIdxArm - 1);
         if (haIdx !== targetArmIdx) {
           display.setChildIndex(display._handArmSprite, targetArmIdx);
+        }
+        /* v2.3.2134: the shirt clone follows the body clone.  It is added
+           immediately above it in the builder, but this block MOVES the body
+           clone every frame, so a static build order does not survive -- the
+           shirt would be left wherever it started and stop covering the arm.
+           Placed directly above the body clone and therefore still below the
+           weapon (inserting at the weapon's index pushes the weapon up), so
+           v2.3.200's shield/blade sandwich is unchanged.
+           The index is recomputed after the move rather than derived from
+           targetArmIdx: setChildIndex splices, so a clone coming from BELOW
+           shifts the body clone down by one on removal and one coming from
+           above does not. */
+        const _as = display._handArmShirt;
+        if (_as && _as.visible) {
+          const bIdx = display.getChildIndex(display._handArmSprite);
+          const sIdx = display.getChildIndex(_as);
+          const wantIdx = sIdx < bIdx ? bIdx : bIdx + 1;
+          if (sIdx !== wantIdx) display.setChildIndex(_as, wantIdx);
         }
       }
 

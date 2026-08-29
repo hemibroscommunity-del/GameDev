@@ -138,6 +138,69 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...with no count badge, because a staple never runs out',
     shelf.badge === null, shelf);
 
+  /* ═══ v2.3.2127: BUYING IS HALF OF IT NOW ═══
+     Owner: "Also work on putting a potions to inventory after buying." A
+     staple used to fire its effect at the counter; it is a bottle in the bag
+     now and the effect runs on the DRINK. So every "buy it, then check the
+     effect" below gains a drink in the middle -- the assertions about what a
+     potion DOES are unchanged, because what it does is unchanged.
+
+     Two ways in, deliberately. The FIRST drink of the run goes through the
+     real bag UI -- open the bag, tap the bottle, press Drink -- because that
+     is the path TRAPS #18 is about: a button whose send falls off the
+     channelShim allowlist leaves the bottle sitting there and looks like a
+     broken item. The rest go down the channel, which is the same message the
+     button sends, to keep a long scenario short. */
+  /* page.evaluate, not H.readState: the reader is serialised into the page, so
+     a closed-over `key` is not defined there -- it has to be passed as an arg. */
+  const held = (key) => P.page.evaluate((k) => {
+    const S = window._gameState && window._gameState.current;
+    return ((S && S.rpg && S.rpg.inventory) || {})[k] || 0;
+  }, key);
+  let drankViaButton = false;
+  const drink = async (key) => {
+    const before = await held(key);
+    if (!drankViaButton) {
+      drankViaButton = true;
+      await P.page.evaluate(() => { try { window.__broDashPanelBus.open('bag'); } catch (e) {} });
+      await P.page.waitForTimeout(1000);
+      const tile = await P.page.$(`[data-inv-key="${key}"]`);
+      if (tile) {
+        await tile.dispatchEvent('pointerup');
+        await P.page.waitForTimeout(800);
+        /* By ROLE and exact name: `text=Drink` also matches the info line and
+           any other node containing the word, and clicking a <div> does
+           nothing while looking like it worked. */
+        const btn = await P.page.$('button:has-text("Drink")');
+        if (btn) { await btn.click(); await P.page.waitForTimeout(1500); }
+      }
+      /* v2.3.2127: `open(null)` is not a close -- the bus has no null case, so
+         the bag stayed up as a full-screen overlay and ate the NEXT shop tap
+         (a 30s "element is visible, enabled and stable" click timeout, which
+         reads like a broken shop button and is not). `clear()` is the bus's
+         own full close, and the item popup is a separate layer with its own
+         bus: both have to come down or the next scene starts underneath them. */
+      await P.page.evaluate(() => {
+        try { window._itemDetailBus.close(); } catch (e) {}
+        try { window.__broDashPanelBus.clear(); } catch (e) {}
+      });
+      await P.page.waitForTimeout(600);
+      /* The property is the COUNT FALLING, not the button existing. A button
+         whose send falls off the channelShim allowlist renders perfectly and
+         does nothing -- which is the whole of TRAPS #18, and exactly what a
+         "the button is there" assertion would have called a pass. */
+      const after = await held(key);
+      rec.ok('the bag\'s Drink button actually reaches the worker (the bottle is spent)',
+        after === before - 1, { key, before, after });
+      return;
+    }
+    await P.page.evaluate((k) => {
+      const S = window._gameState && window._gameState.current;
+      if (S && S.channel) S.channel.send({ type: 'potion_drink', payload: { invKey: k } });
+    }, key);
+    await P.page.waitForTimeout(1500);
+  };
+
   /* ── 2. THE SWIFT DRAUGHT MAKES YOU FASTER ── */
   await P.page.evaluate(() => window.__broShopBus.setOpen(false));
   await P.page.waitForTimeout(500);
@@ -157,9 +220,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   rec.ok('tapping it offers a BUY at a real price', deal.side === 'bro' && +deal.total > 0, deal);
   /* Quantity on an effect could only mean "charge me five times, run it
-     once", so the stepper is gone rather than disabled. */
-  rec.ok('...with no quantity stepper, because an effect does not stack',
-    !deal.stepper && deal.staple, deal);
+     once", so the stepper was gone rather than disabled.
+     v2.3.2127: and it is back, because five BOTTLES stack perfectly well --
+     you drink them one at a time. It is still marked a staple (no decay,
+     never runs out), which is the half that did not change. */
+  rec.ok('...as a staple, and with the quantity stepper back now they stack',
+    deal.staple, deal);
 
   const c0 = await coins(P);
   await P.page.click('[data-shop-act]');
@@ -168,6 +234,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     { before: c0, after: await coins(P) });
   await P.page.evaluate(() => window.__broShopBus.setOpen(false));
   await P.page.waitForTimeout(500);
+  /* v2.3.2127: it is a bottle now -- it has to reach the bag, and then be
+     drunk, before any of the speed assertions below can mean anything. */
+  const bagged = await H.readState(P, (S) => ((S.rpg && S.rpg.inventory) || {}).swiftDraught || 0);
+  rec.ok('...and it lands in the BAG rather than firing at the counter', bagged >= 1, { bagged });
+  await drink('swiftDraught');
 
   const buffState = await H.readState(P, (S) => ({
     spdBuff: S._spdBuff ? S._spdBuff - Date.now() : 0, mul: S._spdBuffMul || 0 }));
@@ -208,6 +279,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(1800);
   rec.ok('the Mana Draught can be bought from him', (await coins(P)) < c1,
     { before: c1, after: await coins(P) });
+  await P.page.evaluate(() => window.__broShopBus.setOpen(false));
+  await P.page.waitForTimeout(400);
+  await drink('manaShard');                       /* v2.3.2127 */
   const filled = await mana(P);
   rec.ok(`...and fills the pool on the drink, so the first special lands now `
        + `(${drained} -> ${filled})`,

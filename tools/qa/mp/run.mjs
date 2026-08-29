@@ -53,6 +53,7 @@ const SCENARIOS = {
   facetat: () => import('./mp-facetat.mjs'), /* v2.3.1991: does the face tattoo survive the run? */
   questmsg: () => import('./mp-questmsg.mjs'), /* v2.3.1985: the quest-complete floater has to outlive a glance */
   shirtarm: () => import('./mp-shirtarm.mjs'), /* v2.3.2066: the tee's TRAILING sleeve while jogging east, measured */
+  jogsides: () => import('./mp-jogsides.mjs'), /* v2.3.2134: east and west are ONE mirrored sheet -- so an east-only bare shoulder is in the renderer, not the art */
   chatfeed: () => import('./mp-chatfeed.mjs'), /* v2.3.1980: players-online count + the world chat feed */
   lockaim: () => import('./mp-lockaim.mjs'), /* v2.3.1979: a locked-on bow shot has to actually hit */
   lockon: () => import('./mp-lockon.mjs'), /* v2.3.1952: locking on raises block/dodge/special around the right joystick */
