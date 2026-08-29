@@ -342,7 +342,8 @@ const {
 
 import { _regenerator, _regeneratorDefine2, _asyncToGenerator, _typeof, _slicedToArray, _toConsumableArray, _objectSpread, _defineProperty, _toPropertyKey, _toPrimitive, ownKeys, _arrayWithHoles, _iterableToArrayLimit, _unsupportedIterableToArray, _arrayLikeToArray, _nonIterableRest, _arrayWithoutHoles, _iterableToArray, _nonIterableSpread, _createForOfIteratorHelper, asyncGeneratorStep } from '@/lib/babelHelpers.js';
 import { SpriteHpBar } from './SpriteHpBar.jsx'; /* v2.3.1273: owner's HP-bar art (desktop HUD row) */
-import { barHeight, navSlotSize, columnsRowHeight, DASH_OVERLAP } from './mobile/sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 bar-height canvas; v2.3.1325 slot-derived bar; v2.3.1560 two-row band; v2.3.1635 three-row band; v2.3.1636 columns row */
+import { navSlotSize, bandFootprint } from './mobile/sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 bar-height canvas; v2.3.1325 slot-derived bar; v2.3.1560 two-row band; v2.3.1635 three-row band; v2.3.1636 columns row; v2.3.2151 one footprint for resize + watchdog */
+import { playIsLandscape } from './mobile/playViewport.js'; /* v2.3.2151: the data-orient stamp + the isLandscape seed */
 import { dashMinBus } from './mobile/dashMinBus.js'; /* v2.3.2119: folded band = identity row only */
 import { recolorEnabled } from '@/rendering/traits/recolorOptions.js';
 import { buildingPropNear } from '@/data/worldProps.js'; /* v2.3.1778: building doors */
@@ -2945,8 +2946,6 @@ export var BroTown = function BroTown(_ref0) {
          changes — so every game.css consumer (joystick zones, world-HUD
          anchors) and this canvas math share the same rounded value.
          game.css only carries boot fallbacks. */
-      var bar = barHeight(vw, vhFull);
-      var colsH = columnsRowHeight(vw, vhFull);
       /* v2.3.2119: FOLDED = IDENTITY ROW ONLY.  The fold subtracts the
          columns row from the band and zeroes --cols-h, and every consumer
          downstream — canvas height, the identity row's bottom anchor, the
@@ -2957,7 +2956,25 @@ export var BroTown = function BroTown(_ref0) {
          where it always has.  Stamped HERE and not in the dashboard because
          this function owns the canvas: a fold the canvas didn't follow
          would be a black stripe where the columns row was. */
-      if (dashMinBus.min) { bar = Math.max(0, bar - colsH); colsH = 0; }
+      /* v2.3.2151: that arithmetic lives in bandFootprint() now — ONE copy,
+         shared with the watchdog below, because orientation is about to
+         become a third input to it (owner: "Landscape would be an optional
+         view") and two hand-kept copies of a rule that must match is the
+         bug worldViewport.js's header narrates.  Same numbers, same flag. */
+      var _fp = bandFootprint(vw, vhFull, dashMinBus.min);
+      var bar = _fp.dashH;
+      var colsH = _fp.colsH;
+      /* v2.3.2151: the shell's orientation, stamped where every other
+         viewport-derived value is stamped.  CSS scoped under
+         html[data-orient="landscape"] keys off THIS attribute rather than a
+         media query, because a 1400x450 desktop window matches any
+         short-and-wide query while its aspect-locked play shell is portrait
+         — playIsLandscape() is the one source that knows the difference
+         (playViewport.js's two-widths law). Nothing reads it yet; the
+         landscape dashboard PR does. */
+      try {
+        document.documentElement.setAttribute('data-orient', playIsLandscape() ? 'landscape' : 'portrait');
+      } catch (e) { /* SSR/teardown: a missed stamp heals on the next resize */ }
       document.documentElement.style.setProperty('--nav-slot', navSlotSize(vw, vhFull) + 'px');
       /* v2.3.1560: --nav-h is the toolbar ribbon alone; --dash-h below is
          the whole band.  Both stamped here so the ribbon and the rows
@@ -2976,7 +2993,7 @@ export var BroTown = function BroTown(_ref0) {
          v2.3.1636: --quick-h -> --cols-h with the three-column row. */
       document.documentElement.style.setProperty('--cols-h', colsH + 'px');
       document.documentElement.style.setProperty('--dash-h', bar + 'px');
-      var vh = Math.max(120, Math.round(vhFull - bar) + DASH_OVERLAP); /* v2.3.1290: bar is the resting band */
+      var vh = Math.max(120, Math.round(vhFull - bar) + _fp.overlap); /* v2.3.1290: bar is the resting band; v2.3.2151: overlap rides the footprint (a bandless layout earns none) */
       /* v2.3.1283: short-circuit when nothing changed — the
          ResizeObserver below re-fires during layout churn (e.g. the
          sheet's height animation), and assigning canvas.width even to
@@ -3055,9 +3072,13 @@ export var BroTown = function BroTown(_ref0) {
          to the wrong size twice a second forever.  Same arithmetic as
          resize(), same flag. */
       var _wdVw = vvNow ? vvNow.width : window.innerWidth;
-      var _wdBar = barHeight(_wdVw, fullH);
-      if (dashMinBus.min) _wdBar = Math.max(0, _wdBar - columnsRowHeight(_wdVw, fullH));
-      var wantH = Math.max(120, fullH - _wdBar + DASH_OVERLAP);
+      /* v2.3.2151: the SAME bandFootprint resize() uses — switched in the
+         same commit, deliberately: the watchdog's whole job is to re-derive
+         resize()'s arithmetic, and the day the two read different formulas
+         (a 243-vs-48 landscape disagreement is 10x the 8% tolerance) it
+         "heals" the canvas against resize() twice a second forever. */
+      var _wdFp = bandFootprint(_wdVw, fullH, dashMinBus.min);
+      var wantH = Math.max(120, fullH - _wdFp.dashH + _wdFp.overlap);
       if (Math.abs(haveH - wantH) <= wantH * 0.08) return;
       /* Say it once, loudly, with the numbers: if this ever fires in the wild
          the log is the whole diagnosis, and silence here would hide the very
@@ -6826,7 +6847,14 @@ export var BroTown = function BroTown(_ref0) {
     _useState212 = _slicedToArray(_useState211, 2),
     swordReady = _useState212[0],
     setSwordReady = _useState212[1];
-  var _useState213 = useState(window.innerWidth > window.innerHeight),
+  /* v2.3.2151: seeded from playIsLandscape(), not innerWidth>innerHeight —
+     on the desktop shell those disagree (a 1920x1080 WINDOW is landscape
+     while the aspect-locked 390/715 PLAY AREA is portrait), so the first
+     render laid controls out for an orientation the play area never had
+     until the first resize event corrected it.  orientationSync has updated
+     this flag from playIsLandscape() since v2.3.1715; the seed just never
+     caught up. */
+  var _useState213 = useState(playIsLandscape()),
     _useState214 = _slicedToArray(_useState213, 2),
     isLandscape = _useState214[0],
     setIsLandscape = _useState214[1];

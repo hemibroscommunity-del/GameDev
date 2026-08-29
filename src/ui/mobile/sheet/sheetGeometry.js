@@ -402,6 +402,42 @@ export function navGroupWidth(vw, vh) {
    screen.  That is the owner's chosen trade, made with both this and the
    187px one-row version rendered to scale: the columns are the ask, and
    the identity row stays because no column carries name/level/XP/gold. */
+/* ═══ v2.3.2151: THE BAND'S FOOTPRINT, AS ONE ANSWER ═══
+ *
+ * Owner: "Landscape would be an optional view.  You can play in portrait or
+ * landscape."  This function is the seam that makes that buildable.
+ *
+ * Two callers compute the band's on-screen cost and they MUST agree:
+ * BroTown's resize() (which stamps --dash-h/--cols-h and sizes the canvas as
+ * viewport minus band) and its 500ms watchdog (which re-derives the same
+ * arithmetic with an 8% tolerance and "heals" any disagreement by calling
+ * resize again).  Before this function each carried its own copy of the
+ * barHeight/fold arithmetic -- two copies of a rule that must match, the
+ * exact shape worldViewport.js's header warns about, and v2.3.2119 already
+ * had to patch BOTH when the fold shipped.  Orientation is about to become a
+ * third input to that rule, so the rule moves HERE first, alone, with the
+ * two callers switched onto it in the same commit -- a resize()/watchdog
+ * disagreement is not a subtle bug, it is a healing war twice a second.
+ *
+ * `overlap` rides in the return because it is CONDITIONAL geometry-to-be:
+ * the canvas runs DASH_OVERLAP px under a bottom band so the rounded-corner
+ * notches show live world (v2.3.1271) -- a footprint with no bottom band
+ * earns no overlap, and a caller that added the constant itself would
+ * overflow the canvas 14px past the screen the day that becomes true.
+ *
+ * THIS PR the landscape branch is deliberately ABSENT: portrait and
+ * landscape return identical numbers, so behavior is byte-identical
+ * everywhere while the seam and its two callers are proven by the existing
+ * suite.  The landscape footprint (identity row only -- the v2.3.2118 fold,
+ * made the orientation's resting state) lands with the landscape dashboard
+ * itself, behind `vw > vh`, in its own PR. */
+export function bandFootprint(vw, vh, folded) {
+  var dashH = barHeight(vw, vh);
+  var colsH = columnsRowHeight(vw);
+  if (folded) { dashH = Math.max(0, dashH - colsH); colsH = 0; }
+  return { dashH: dashH, colsH: colsH, overlap: DASH_OVERLAP };
+}
+
 export function barHeight(vw, vh) {
   /* v2.3.1637: the toolbar ribbon is GONE — its six destinations moved
      into the left rail, which runs beside these two rows rather than
