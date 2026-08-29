@@ -130,6 +130,9 @@ import { friendsMethods } from './friends.js';
    muter's socket), and a report is a durable record the operator reads
    over the admin API.  See chatmod.js. */
 import { chatModMethods } from './chatmod.js';
+/* v2.3.2134: @area / @user chat lanes (chatlanes.js).  Own validated
+   cases, never the room-wide default relay -- see that file's header. */
+import { chatLaneMethods } from './chatlanes.js';
 import { broVerifyMethods } from './broverify.js'; /* v2.3.1576: Hemi Bro ownership */
 // v2.3.1191 (P4 decomposition): the combat/damage core -- see combat.js.
 import { combatMethods } from './combat.js';
@@ -448,6 +451,11 @@ export const PRIVILEGED_EVENTS = new Set([
   // rosters; forging party_invited is popup-spam surface.
   'party_state', 'party_invited', 'party_error',
   'party_chat', // v2.3.1212: server-relayed party-only chat (party.js)
+  /* v2.3.2134: the two new chat lanes (chatlanes.js).  PRIVILEGED for the
+     same reason party_chat is -- these carry a server-stamped `from`, and a
+     client able to inject them could forge who said a thing in a lane the
+     room never sees.  whisper_error is only ever sent back to the asker. */
+  'area_chat', 'whisper', 'whisper_error',
   // v2.3.1323: friends system emissions (friends.js) -- the graph sync,
   // request/accept notifications, error channel, and DMs (live +
   // join-time backlog) are all server-authored; a forged friend_sync
@@ -4492,6 +4500,19 @@ export class GameRoom {
         // the sender + relays only to party members (party.js).
         if (session.id) this._handlePartyChat(session, msg.payload || msg);
         break;
+      /* v2.3.2134: the @area and @user lanes (chatlanes.js).  Own validated
+         cases for the same reason party_chat is one: the default branch
+         rebroadcasts unknown types to the WHOLE ROOM, which for a whisper
+         would be the worst possible failure.  Both stamp the sender from the
+         session and carry their own rate limit -- an explicit case never
+         reaches the default branch's relay token bucket (the v2.3.1970
+         party_invite hole). */
+      case 'area_chat':
+        if (session.id) this._handleAreaChat(session, msg.payload || msg);
+        break;
+      case 'whisper':
+        if (session.id) this._handleWhisper(session, msg.payload || msg);
+        break;
 
       // v2.3.1323: friends system (friends.js) -- request/accept/decline/
       // remove handshake (rule 14/15: accepts validated against stored
@@ -4958,6 +4979,7 @@ export class GameRoom {
 
 // v2.3.1118: mix the marketplace methods into GameRoom (see the
 // market.js header for the fold rationale + re-extraction path).
+Object.assign(GameRoom.prototype, chatLaneMethods); /* v2.3.2134 */
 Object.assign(GameRoom.prototype, broVerifyMethods); /* v2.3.1576 */
 Object.assign(GameRoom.prototype, eventCapeMethods); /* v2.3.2026 */
 Object.assign(GameRoom.prototype, marketMethods);

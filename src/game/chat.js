@@ -85,6 +85,69 @@ export function sendChatMessage(S, text, deps) {
     setChatLog(_toConsumableArray(S.chatLog));
     return;
   }
+  /* ═══ v2.3.2134: /a AND /w -- THE OTHER TWO LANES ═══
+     Owner, from the demo feedback: per-channel chat, @user / @area / @all.
+     @all is the room-wide send below and is unchanged; these are the two that
+     did not exist.  Written in /p's shape deliberately -- same cap gate, same
+     local-hint-instead-of-send when the worker is old, same tagged log line --
+     because a player learning one lane should already know the others.
+
+     THE CAP GATE IS THE LOAD-BEARING PART (rule 19 / TRAPS #9).  An older
+     worker has no case for either type, so the shim's broadcast path would
+     hand it to the DEFAULT branch, which rebroadcasts unknown types to the
+     WHOLE ROOM.  For /a that turns a quiet lane loud; for /w it publishes a
+     private line to everyone.  So when the flag is absent nothing is sent and
+     the player is told, exactly as party chat does. */
+  var _laneHint = function (tag, msg, color) {
+    S.chatLog = [].concat(_toConsumableArray(S.chatLog.slice(-40)), [{
+      id: '_sys', name: tag, text: msg, color: color || '#8a8f98', ts: Date.now(), lane: true
+    }]);
+    setChatLog(_toConsumableArray(S.chatLog));
+  };
+
+  /* ── /a <msg> : everyone standing in this zone ── */
+  var _am = /^\/a\s+([\s\S]+)/i.exec(text);
+  if (_am) {
+    var _atext = _am[1].trim();
+    if (!_atext) return;
+    if (!(S._serverCaps && S._serverCaps.areaChat)) {
+      _laneHint('📍 Area', 'Area chat needs a server update — not sent.');
+      return;
+    }
+    if (S.channel) S.channel.send({ type: 'broadcast', event: 'area_chat', payload: { text: _atext } });
+    BT_AUDIO.chatSend();
+    if (S.stats) S.stats.msgsSent++;
+    S.chatBubbles[S.myId] = { text: _atext, ts: Date.now() };
+    S.chatLog = [].concat(_toConsumableArray(S.chatLog.slice(-40)), [{
+      id: S.myId, name: '📍 ' + S.myName, text: _atext, color: '#7FB2FF', ts: Date.now(), area: true
+    }]);
+    setChatLog(_toConsumableArray(S.chatLog));
+    return;
+  }
+
+  /* ── /w <name> <msg> : one player, by the name on their head ── */
+  var _wm = /^\/w\s+(\S+)\s+([\s\S]+)/i.exec(text);
+  if (_wm) {
+    var _wto = _wm[1].trim();
+    var _wtext = _wm[2].trim();
+    if (!_wto || !_wtext) return;
+    if (!(S._serverCaps && S._serverCaps.whisper)) {
+      _laneHint('✉ Whisper', 'Whispers need a server update — not sent.');
+      return;
+    }
+    if (S.channel) S.channel.send({ type: 'broadcast', event: 'whisper', payload: { to: _wto, text: _wtext } });
+    BT_AUDIO.chatSend();
+    if (S.stats) S.stats.msgsSent++;
+    /* NO overhead bubble for a whisper.  The bubble is drawn over your head
+       for everyone nearby to read, which would publish the thing you just
+       chose to say privately. */
+    S.chatLog = [].concat(_toConsumableArray(S.chatLog.slice(-40)), [{
+      id: S.myId, name: '✉ to ' + clampChatName(_wto), text: _wtext, color: '#C79BFF', ts: Date.now(), whisper: true
+    }]);
+    setChatLog(_toConsumableArray(S.chatLog));
+    return;
+  }
+
   if (S.channel) S.channel.send({
     type: 'broadcast',
     event: 'chat',
@@ -172,6 +235,112 @@ export function handleChatEvent(payload, S, deps) {
    honoring the same block/mute lists as room chat.  Own messages were
    already echoed optimistically by sendChatMessage, so drop from===myId.
    deps = { setChatLog, setUnreadChats } */
+/* ═══ v2.3.2134: the two new lanes arriving ═══
+   Both mirror handlePartyChatEvent below: drop our own echo, re-clamp the
+   text (the worker already bounds it -- this is purely the deploy-order half,
+   as v2.3.1970 argues for room chat), honour the local block and mute lists,
+   and append one tagged line.
+
+   THE WHISPER DRAWS NO OVERHEAD BUBBLE, for the same reason the send half
+   does not: a bubble is rendered above the speaker for everyone nearby, so
+   bubbling a whisper would publish the private line at both ends. */
+/* ═══ v2.3.2134: A QA SEAM FOR THE SEND PATH ═══
+   Same house pattern, and the same argument, as window.__btCtlTut: the only
+   way to send a chat line from outside is BroTown's `sendChat` useCallback,
+   which takes NO argument -- it reads the composer's ref -- so a scenario
+   cannot ask it to send a particular string.  And the send path is exactly
+   what a mocked server test cannot cover: a lane needs a server case, a
+   handler AND the shim passthrough that carries the type (TRAPS #18), plus a
+   caps gate that has to let the send through against a current worker.
+
+   No behaviour of its own: it calls the same sendChatMessage every real
+   caller does, and the server validates everything regardless of who asked.
+   Read by tools/qa/mp/mp-chatlanes.mjs. */
+try {
+  if (typeof window !== 'undefined') {
+    window.__btSendChat = function (text) {
+      var S = window._gameState && window._gameState.current;
+      if (!S || typeof text !== 'string' || !text.trim()) return false;
+      sendChatMessage(S, text.trim(), {
+        setChatLog: function () {
+          try {
+            var bus = window.__broChatLogBus;
+            if (bus && bus.bump) bus.bump();
+          } catch (e) {}
+        },
+      });
+      return true;
+    };
+  }
+} catch (e) { /* never break the module over a test seam */ }
+
+export function handleAreaChatEvent(payload, S, deps) {
+  var setChatLog = deps.setChatLog, setUnreadChats = deps.setUnreadChats;
+  if (!payload || !payload.from || payload.from === S.myId) return;
+  var _atext = clampChatText(payload.text);
+  if (!_atext) return;
+  try {
+    var bl = JSON.parse(localStorage.getItem('bt_blocked') || '[]');
+    if (bl.includes(payload.from)) return;
+  } catch (e) {}
+  var isMuted = false;
+  try {
+    var ml = JSON.parse(localStorage.getItem('bt_muted') || '[]');
+    isMuted = ml.includes(payload.from);
+  } catch (e) {}
+  if (!isMuted) S.chatBubbles[payload.from] = { text: _atext, ts: Date.now() };
+  BT_AUDIO.chatReceive();
+  S.chatLog = [].concat(_toConsumableArray(S.chatLog.slice(-40)), [{
+    id: payload.from, name: '📍 ' + clampChatName(payload.fromName),
+    text: isMuted ? '[muted]' : _atext,
+    color: '#7FB2FF', ts: Date.now(), area: true, muted: isMuted
+  }]);
+  setChatLog(_toConsumableArray(S.chatLog));
+  if (!isMuted && setUnreadChats) setUnreadChats(function (prev) { return prev + 1; });
+}
+
+export function handleWhisperEvent(payload, S, deps) {
+  var setChatLog = deps.setChatLog, setUnreadChats = deps.setUnreadChats;
+  if (!payload || !payload.from || payload.from === S.myId) return;
+  var _wtext = clampChatText(payload.text);
+  if (!_wtext) return;
+  try {
+    var bl2 = JSON.parse(localStorage.getItem('bt_blocked') || '[]');
+    if (bl2.includes(payload.from)) return;
+  } catch (e) {}
+  var wMuted = false;
+  try {
+    var ml2 = JSON.parse(localStorage.getItem('bt_muted') || '[]');
+    wMuted = ml2.includes(payload.from);
+  } catch (e) {}
+  if (wMuted) return;      /* a muted whisper is dropped, not shown as [muted] */
+  BT_AUDIO.chatReceive();
+  S.chatLog = [].concat(_toConsumableArray(S.chatLog.slice(-40)), [{
+    id: payload.from, name: '✉ ' + clampChatName(payload.fromName),
+    text: _wtext, color: '#C79BFF', ts: Date.now(), whisper: true
+  }]);
+  setChatLog(_toConsumableArray(S.chatLog));
+  if (setUnreadChats) setUnreadChats(function (prev) { return prev + 1; });
+}
+
+/* The worker could not deliver it.  Told to the sender only, and told at all
+   because the alternative is a whisper that silently goes nowhere -- which is
+   the "select a weapon and nothing happens" shape of bug in a different
+   costume. */
+export function handleWhisperErrorEvent(payload, S, deps) {
+  var setChatLog = deps.setChatLog;
+  var to = clampChatName((payload && payload.to) || '');
+  var why = (payload && payload.reason) === 'ambiguous'
+    ? ('More than one player is called ' + to + ' — nothing sent.')
+    : ((payload && payload.reason) === 'rate'
+      ? 'Slow down a moment — that whisper was not sent.'
+      : ('Nobody here is called ' + to + '.'));
+  S.chatLog = [].concat(_toConsumableArray(S.chatLog.slice(-40)), [{
+    id: '_sys', name: '✉ Whisper', text: why, color: '#8a8f98', ts: Date.now(), lane: true
+  }]);
+  setChatLog(_toConsumableArray(S.chatLog));
+}
+
 export function handlePartyChatEvent(payload, S, deps) {
   var setChatLog = deps.setChatLog,
     setUnreadChats = deps.setUnreadChats;

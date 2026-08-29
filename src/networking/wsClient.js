@@ -2753,7 +2753,11 @@ export function setupWebSocket(ctx) {
     'trade2_open', 'trade2_set', 'trade2_ready', 'trade2_confirm', 'trade2_cancel', 'trade2_stage_weapon', 'trade2_unstage_weapon', /* v2.3.1754: trade2_ready — TRAPS #18, the third leg */
     /* v2.3.1185: party commands -- same server-truth-renderer posture
        as trade2; invite/accept clicks should not sit in a batch. */
-    'party_invite', 'party_accept', 'party_decline', 'party_leave', 'party_kick', 'party_chat']);
+    'party_invite', 'party_accept', 'party_decline', 'party_leave', 'party_kick', 'party_chat',
+    /* v2.3.2134: the two new chat lanes.  Priority for the same reason
+       party_chat is -- a line you just typed should not sit in the 33ms
+       input batch behind position updates. */
+    'area_chat', 'whisper']);
     var INPUT_BATCH_WINDOW = 33; // ms — match server tick rate for smooth remote movement
     /* ═══ v2.3.1635: ADAPTIVE POSITION RATE ═══
        Position updates were ~87% of this game's entire Cloudflare request
