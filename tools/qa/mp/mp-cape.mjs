@@ -270,6 +270,60 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   const worn = await raw(P);
   rec.ok('the cape is drawn once it is worn', !!(worn && worn.cape && worn.cape.visible && worn.cape.tex), worn && worn.cape);
+
+  /* ═══ v2.3.2142: AND IT SURVIVES THE NEXT player_state ═══
+     Owner: "the cape disappeared entirely after a while... the cape isn't
+     showing up in the cape slot in character equip menu... jogging while
+     wearing cape doesn't work, shows nothing."
+
+     One cause under all three. wsClient read a MISSING `cape` field as 'none',
+     which is right for a v1 full snapshot and wrong for the v2 DELTA every
+     current client asks for: the delta carries only fields whose JSON changed,
+     and `cape` is a stable string once you own one, so it is emitted once and
+     never again. The next player_state -- a coin, a regen tick, anything --
+     arrived without it and took the cape off. The character sheet's cape slot
+     reads getCape(), so it emptied with it, and there was nothing left to draw
+     on a jog.
+
+     Everything above this line passed throughout, because it reads the cape
+     immediately after the redeem -- on the ONE echo that does carry the field.
+     That is the shape of the hole: the assertion has to outlive that echo.
+
+     So: force a player_state that changes something ELSE, and check the cape
+     is still on. Coins through the shipped operator API, which is a real
+     server-side mutation and therefore a real delta. */
+  const beforeDelta = await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    return { coins: (S && S.rpg && S.rpg.coins) || 0 };
+  });
+  /* `gold`, not `coins`. The admin grant endpoint accepts exactly two kinds,
+     gold and item (admin.js: `kind !== 'gold' && kind !== 'item'`), and
+     anything else is refused. The first cut here sent 'coins' and the guard
+     below caught it -- coins went 75 -> 75, so the survival assertion beside
+     it would have passed on a delta that never happened. (mp-rehearsal sends
+     'coins' too, with the rejection swallowed by a .catch; that is its own
+     silent no-op, noted here rather than fixed from this file.) */
+  await H.grant(wsPort, pid, 'gold', { amount: 250 }).catch(() => null);
+  await P.page.waitForTimeout(2500);
+  /* `_capeWorn` is the mirror wsClient keeps on S.rpg for exactly this reason
+     -- the catalog is a lazy split chunk with no importable URL in dist (this
+     file's own header says so), so the flag is the readable answer. */
+  const afterDelta = await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    return {
+      coins: (S && S.rpg && S.rpg.coins) || 0,
+      capeWorn: !!(S && S.rpg && S.rpg._capeWorn),
+    };
+  });
+  rec.ok('a coin grant really did land (guard: no delta, nothing is proven)',
+    afterDelta.coins > beforeDelta.coins, { before: beforeDelta, after: afterDelta });
+  rec.ok('the cape SURVIVES a player_state that does not mention it '
+    + '(v2.3.2142: absent is "unchanged", not "took it off")',
+    afterDelta.capeWorn === true, afterDelta);
+
+  const still = await raw(P);
+  rec.ok('...and it is still drawn on the character after that delta',
+    !!(still && still.cape && still.cape.visible && still.cape.tex), still && still.cape);
   rec.ok('...and the body is drawn under it (guard: otherwise "visible" means nothing)',
     !!(worn && worn.body && worn.body.visible), worn && worn.body);
   /* THE REGISTRATION. Same origin, same scale — a full-frame sticker on a
