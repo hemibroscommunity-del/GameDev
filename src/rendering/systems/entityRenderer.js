@@ -4756,6 +4756,51 @@ function createPlayerDisplay() {
   container.addChild(handArmMask);
   container.addChild(handArmSprite);
 
+  /* ═══ v2.3.2134: THE SHIRT RIDES ALONG WITH THE ARM CLONE ═══
+   * Owner, a sixth time, and this is the report that finally located it:
+   * "I don't understand why east frame jog shoulder only and not west frame
+   * jog shoulder has skin problems. It only occurred after adding something
+   * (like shield or maybe another layered item)... it used to not be an issue."
+   *
+   * Both halves of that were right and both were the clue. The tee's jog-east
+   * sheet is ALSO its jog-west sheet (there is no jog-west.png; west is east
+   * with a negative scale.x), so a defect on one facing and not the other can
+   * not be in the artwork -- which is where five sessions and every
+   * measurement since v2.3.1984 had been looking.
+   *
+   * It is here. The arm capsule above clones the BODY texture -- bare skin --
+   * masks it to a stripe from shoulder to hand, and draws it ABOVE the shirt
+   * (gearShirt is added at the top of this builder, this sprite far below it).
+   * It fires on `facingIdx === 0 && pose === 'jog'`: EAST ONLY, which is the
+   * asymmetry. It exists so the upper arm covers the SHIELD during the east
+   * back-swing (v2.3.196/200/202), which is the "after adding something (like
+   * shield)". And it became visible when the layered shirt stopped being baked
+   * into the body texture: before that the clone already had the shirt in it
+   * and stamping it changed nothing, which is the "it used to not be an
+   * issue".
+   *
+   * v2.3.749 hit the identical bug on the sibling hand-cap -- "over the shirt
+   * the cap stamped a bare-skin circle (shirt eaten at the right hand)" -- and
+   * fixed it by switching the cap off whenever a layered shirt is worn, with
+   * the note that "the grip-wrap nicety returns when the shirt clone learns to
+   * ride along". The same guard was never applied here. Doing that now would
+   * fix the shoulder and give back the shield show-through the capsule exists
+   * to prevent, so instead: this is the shirt clone learning to ride along.
+   *
+   * Same texture and transform as the worn shirt, its own Graphics carrying
+   * the identical capsule (a Pixi mask belongs to one object, so the two
+   * clones cannot share one), and added immediately after the body clone --
+   * above it, still below the weapon, so v2.3.200's z-order between shield and
+   * blade is untouched. */
+  const handArmShirt = new Sprite();
+  handArmShirt.anchor.set(0.5, 0.5);
+  handArmShirt.visible = false;
+  const handArmShirtMask = new Graphics();
+  handArmShirtMask.visible = true;
+  handArmShirt.mask = handArmShirtMask;
+  container.addChild(handArmShirtMask);
+  container.addChild(handArmShirt);
+
   /* v2.3.1785: the outstretched arm that holds the raised shield, cut from the
      bow-shot art (see blockArm.js).  Sits here — after the body and the worn
      gear, immediately before the shield — so it reaches out OVER the torso and
@@ -4969,6 +5014,8 @@ function createPlayerDisplay() {
   container._handCapMask = handCapMask;
   container._handArmSprite = handArmSprite;
   container._handArmMask = handArmMask;
+  container._handArmShirt = handArmShirt;           /* v2.3.2134 */
+  container._handArmShirtMask = handArmShirtMask;   /* v2.3.2134 */
   container._shieldSprite = shieldSprite;
   container._blockCaretGfx = blockCaretGfx;     /* v2.3.1798 */
   container._blockArmSprite = blockArmSprite;   /* v2.3.1785 */
@@ -9291,13 +9338,43 @@ export class EntityRenderer {
             armMask.moveTo(shoulderX, shoulderY);
             armMask.lineTo(weaponSprite.x, weaponSprite.y);
             armMask.stroke({ color: 0xffffff, width: 16, cap: 'butt' });
+            /* v2.3.2134: and the worn shirt, through the SAME capsule, over
+               the body clone.  Without this the clone above is bare skin
+               stamped on top of the tee -- east only, because the capsule is
+               east only -- which is the bare shoulder the owner has reported
+               six times.  Driven off the live gearShirt so a re-baked or
+               patterned shirt rides along with it; hidden when the shirt is
+               not drawn, which leaves the v2.3.200 behaviour exactly as it
+               was for a bare-chested character. */
+            const _armShirt = display._handArmShirt;
+            const _armShirtMask = display._handArmShirtMask;
+            const _wornShirt = display._gearShirt;
+            if (_armShirt && _armShirtMask) {
+              if (_wornShirt && _wornShirt.visible && _wornShirt.texture) {
+                _armShirt.texture = _wornShirt.texture;
+                _armShirt.x = _wornShirt.x;
+                _armShirt.y = _wornShirt.y;
+                _armShirt.scale.x = _wornShirt.scale.x;
+                _armShirt.scale.y = _wornShirt.scale.y;
+                _armShirt.tint = _wornShirt.tint;
+                _armShirt.visible = true;
+                _armShirtMask.clear();
+                _armShirtMask.moveTo(shoulderX, shoulderY);
+                _armShirtMask.lineTo(weaponSprite.x, weaponSprite.y);
+                _armShirtMask.stroke({ color: 0xffffff, width: 16, cap: 'butt' });
+              } else {
+                _armShirt.visible = false;
+              }
+            }
           } else if (handArm) {
             handArm.visible = false;
+            if (display._handArmShirt) display._handArmShirt.visible = false;
           }
         } else {
           weaponSprite.visible = false;
           if (display._handCapSprite) display._handCapSprite.visible = false;
           if (display._handArmSprite) display._handArmSprite.visible = false;
+          if (display._handArmShirt) display._handArmShirt.visible = false;   /* v2.3.2134 */
           /* Procedural fallback — abstract line / arc / orb. */
           if (wpn.type === 'bow') {
             // Bow arc
@@ -9527,6 +9604,24 @@ export class EntityRenderer {
         const targetArmIdx = haIdx > wcIdxArm ? wcIdxArm : Math.max(0, wcIdxArm - 1);
         if (haIdx !== targetArmIdx) {
           display.setChildIndex(display._handArmSprite, targetArmIdx);
+        }
+        /* v2.3.2134: the shirt clone follows the body clone.  It is added
+           immediately above it in the builder, but this block MOVES the body
+           clone every frame, so a static build order does not survive -- the
+           shirt would be left wherever it started and stop covering the arm.
+           Placed directly above the body clone and therefore still below the
+           weapon (inserting at the weapon's index pushes the weapon up), so
+           v2.3.200's shield/blade sandwich is unchanged.
+           The index is recomputed after the move rather than derived from
+           targetArmIdx: setChildIndex splices, so a clone coming from BELOW
+           shifts the body clone down by one on removal and one coming from
+           above does not. */
+        const _as = display._handArmShirt;
+        if (_as && _as.visible) {
+          const bIdx = display.getChildIndex(display._handArmSprite);
+          const sIdx = display.getChildIndex(_as);
+          const wantIdx = sIdx < bIdx ? bIdx : bIdx + 1;
+          if (sIdx !== wantIdx) display.setChildIndex(_as, wantIdx);
         }
       }
 
