@@ -55,13 +55,22 @@ const armClone = (P) => P.page.evaluate(() => {
     ? window._pixiRenderer.playerDisplayRaw() : null;
   if (!pd) return null;
   const b = pd._handArmSprite, sh = pd._handArmShirt, worn = pd._gearShirt;
+  const cp = pd._handArmCape, wornCape = pd._capeSprite;          /* v2.3.2138 */
   const idx = (o) => { try { return pd.getChildIndex(o); } catch (e) { return -1; } };
   return {
     body: !!(b && b.visible), shirt: !!(sh && sh.visible),
     worn: !!(worn && worn.visible),
+    cape: !!(cp && cp.visible), wornCape: !!(wornCape && wornCape.visible),
     bodyIdx: b ? idx(b) : -1, shirtIdx: sh ? idx(sh) : -1,
+    capeIdx: cp ? idx(cp) : -1,
     wornIdx: worn ? idx(worn) : -1,
     weaponIdx: pd._weaponContainer ? idx(pd._weaponContainer) : -1,
+    /* The cape is tilted and shoulder-pivoted on a jog; the clone has to carry
+       both or it lays a straight stripe over a slanted cape. */
+    capeRot: cp ? +Number(cp.rotation || 0).toFixed(3) : null,
+    wornCapeRot: wornCape ? +Number(wornCape.rotation || 0).toFixed(3) : null,
+    capeAnchorY: cp ? +Number(cp.anchor.y).toFixed(3) : null,
+    wornCapeAnchorY: wornCape ? +Number(wornCape.anchor.y).toFixed(3) : null,
   };
 });
 
@@ -150,6 +159,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
     + 'weapon-sprite path)', !!armedWpn, armedWpn);
   await P.page.waitForTimeout(900);
 
+  /* ── A REAL CAPE, THROUGH THE REAL PATH ──
+     v2.3.2138. The worker echoes the cape its LEDGER says you own, null
+     included, so a locally-set cape is taken straight back off (mp-cape says
+     so). The ticket is seeded through the shipped operator API and redeemed
+     with the message the Open button sends. */
+  const pid = await P.page.evaluate(() => (window._gameState
+    && window._gameState.current && window._gameState.current.myId) || null);
+  await H.grant(wsPort, pid, 'item', { invKey: 'goldticket_crimson', count: 1 })
+    .catch(() => null);
+  await P.page.waitForTimeout(1500);
+  await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    if (S && S.channel) {
+      S.channel.send({ type: 'cape_redeem',
+        payload: { invKey: 'goldticket_crimson', opId: 'mp-jogsides-' + Date.now() } });
+    }
+  });
+  await P.page.waitForTimeout(2200);
+  const caped = await armClone(P);
+  rec.ok('the character is actually wearing a cape (guard: the cape claims '
+    + 'below pass on nothing without one)', !!(caped && caped.wornCape), caped);
+
   const east = await runSide(P, 'd', 'east', rec);
   /* Back to the middle: holding a key runs the character into a map edge,
      where the camera clamps and the crop loses the side of him that matters
@@ -205,6 +236,30 @@ export async function run({ browser, wsPort, webPort, rec }) {
       || (s.clone.shirtIdx > s.clone.bodyIdx
         && (s.clone.weaponIdx < 0 || s.clone.shirtIdx < s.clone.weaponIdx))),
     cloned.map((s) => s.clone));
+
+  /* v2.3.2138: the cape is the OTHER layer the clone draws over -- capeSprite
+     is added to the display before the clone, so it was being stamped exactly
+     as the tee was. Fixing one and not the other is what this covers. */
+  rec.ok('...and it never draws over a worn CAPE alone either '
+    + '(v2.3.2138: the cape clone rides along too)',
+    cloned.length > 0 && cloned.every((s) => !s.clone.wornCape || s.clone.cape),
+    cloned.map((s) => s.clone));
+  rec.ok('...with the cape clone on top of the shirt clone, matching the order '
+    + 'the real layers draw in',
+    cloned.length > 0 && cloned.every((s) => !s.clone.cape
+      || (s.clone.capeIdx > s.clone.bodyIdx
+        && (!s.clone.shirt || s.clone.capeIdx > s.clone.shirtIdx)
+        && (s.clone.weaponIdx < 0 || s.clone.capeIdx < s.clone.weaponIdx))),
+    cloned.map((s) => s.clone));
+  /* The tilt is the part a position-only copy would lose, and losing it is
+     worse than the bug: a straight stripe across a slanted cape. */
+  rec.ok('...and the cape clone carries the cape\'s own TILT and shoulder '
+    + 'pivot, not just its position',
+    cloned.length > 0 && cloned.every((s) => !s.clone.cape
+      || (s.clone.capeRot === s.clone.wornCapeRot
+        && s.clone.capeAnchorY === s.clone.wornCapeAnchorY)),
+    cloned.map((s) => ({ rot: s.clone.capeRot, wornRot: s.clone.wornCapeRot,
+      aY: s.clone.capeAnchorY, wornAY: s.clone.wornCapeAnchorY })));
 
   try {
     const fs = await import('node:fs');
