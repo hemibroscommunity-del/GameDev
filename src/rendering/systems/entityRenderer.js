@@ -1383,8 +1383,35 @@ function _remoteBodyArt(other, mirror) {
  * which means two renderers holding one piece of geometry, and "the moment a
  * value is copied into two renderers it starts to drift".  For a cosmetic
  * cape that is not worth it: a swing is a few frames, and a missing cape
- * reads far better than a floating one. */
-const _CAPE_HIDDEN_POSES = { dodge: 1, swing: 1, bowshot: 1, fire: 1, chop: 1, mine: 1, fish: 1, cook: 1, pickup: 1, hit: 1 };
+ * reads far better than a floating one.
+ *
+ * ═══ v2.3.2129: WHICH OF THESE WERE ACTUALLY HIDING ANYTHING ═══
+ * Owner: "Add it to all the animations as well" -> "yes do the free 8".
+ *
+ * The list above was written defensively at v2.3.2023, when the cape was one
+ * facing old and the question was only "where can it definitely not go
+ * wrong".  Ten poses went in.  Read against the renderer, they are three
+ * different things and only one of them is a reason:
+ *
+ *   STAND-IN POSES — chop, cook, fire (and swing, bowshot).  The real figure
+ *   is replaced by a whole separate sprite in another layer and the body
+ *   container is hidden outright (`_chopHide`, line ~7703; the peer path's
+ *   `_rexStandIn`).  These stay listed, but note they were never doing the
+ *   work: the container is invisible, so its cape child is too, and `pose`
+ *   does not even read 'chop' while chopping.  `sb.visible` is what actually
+ *   holds the line here, exactly as the paragraph above says.
+ *
+ *   REAL-BODY POSES — dodge, mine, fish, pickup, hit.  These draw the
+ *   player's own body sprite out of a real sheet, and the cape rides that
+ *   sprite's transform like any other full-frame layer.  Nothing was wrong
+ *   with them; they were listed because nobody had looked yet.  REMOVED, so a
+ *   cape you paid for does not vanish every time you take a hit or bend down
+ *   for loot.
+ *
+ * That is five poses back, not the eight I first told the owner — chop, cook
+ * and fire only LOOKED free.  Their entries stay because deleting them would
+ * invite the next reader to re-derive all of this. */
+const _CAPE_HIDDEN_POSES = { swing: 1, bowshot: 1, chop: 1, cook: 1, fire: 1 };
 
 /* ═══ v2.3.2024: THE CAPE TRAILS WHEN HE RUNS ═══
  * Owner: "The cape needs to be rotated so the back of the character doesn't

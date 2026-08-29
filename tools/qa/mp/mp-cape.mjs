@@ -54,6 +54,134 @@ const raw = (P) => P.page.evaluate(() => {
   };
 });
 
+
+/* ═══ v2.3.2129: THE POSES THAT DRAW A REAL BODY ═══
+ * Owner: "Add it to all the animations as well" -> "yes do the free 8".
+ *
+ * Five, not eight -- chop, cook and fire replace the whole figure with a
+ * stand-in sprite and hide the body container, so they were never free and
+ * stay hidden along with swing and bowshot (entityRenderer _CAPE_HIDDEN_POSES).
+ *
+ * Each is reached by setting the SAME state flag the game itself sets
+ * (entityRenderer's `pose` ladder reads exactly these), rather than by trying
+ * to arrange a monster, a loot drop and an ore vein in one run. The flag is
+ * the input to the thing under test; staging the world around it would test
+ * the world.
+ */
+const POSES = [
+  { tag: 'hit', label: 'taking a hit',
+    set: () => { const S = window._gameState.current; S._hitFlash = Date.now(); } },
+  { tag: 'pickup', label: 'bending for loot',
+    set: () => { const S = window._gameState.current; S._lootFreezeUntil = Date.now() + 4000; } },
+  /* mine/fish need a NODE, not just a skill name: the extraction tick drops
+     `_extraction` on the very next frame if its nodeRef is missing or dead
+     (BroTown.jsx ~5020), which is why a bare { skill } reached neither pose.
+     A node standing at the player's own feet satisfies both that and the
+     walk-away reach test. */
+  { tag: 'mine', label: 'mining',
+    set: () => {
+      const S = window._gameState.current;
+      const P2 = S.player;
+      S._extraction = { skill: 'mining', nodeId: 'qa-node', status: 'waiting',
+        nodeRef: { id: 'qa-node', alive: true, type: 'oreVein', x: P2.x, y: P2.y, r: 20 },
+        startedAt: Date.now(), windowOpensAt: Date.now() + 600000,
+        windowClosesAt: Date.now() + 900000, swipeSamples: [] };
+    } },
+  { tag: 'fish', label: 'fishing',
+    set: () => {
+      const S = window._gameState.current;
+      const P2 = S.player;
+      S._extraction = { skill: 'fishing', nodeId: 'qa-node', status: 'waiting',
+        nodeRef: { id: 'qa-node', alive: true, type: 'fishSpot', x: P2.x, y: P2.y, r: 20 },
+        startedAt: Date.now(), windowOpensAt: Date.now() + 600000,
+        windowClosesAt: Date.now() + 900000, swipeSamples: [] };
+    } },
+  { tag: 'dodge', label: 'dodge roll',
+    set: () => { const S = window._gameState.current; S._dodgeRoll = { angle: 0, startTime: Date.now() }; } },
+];
+
+/* Walk WEST before shooting.  The tilt sweep holds 'd' through five passes and
+   runs the character into the town's eastern edge -- and the camera clamps at
+   a map edge, so he ends up pinned against the right of the viewport with the
+   space a cape hangs into off-screen.  Every preview came back half black
+   before this, which reads as a broken crop rather than as a character
+   standing in the wrong place. */
+async function _recentre(P, at) {
+  if (at) {
+    /* Second pass: stand exactly where the first one did.  The two rows of the
+       preview are read side by side, and a character photographed against a
+       different patch of town in each row makes the comparison harder for no
+       reason -- the difference the picture is FOR is the cape. */
+    await P.page.evaluate((a) => {
+      const S = window._gameState.current;
+      if (S && S.player) { S.player.x = a.x; S.player.y = a.y; }
+    }, at);
+    await P.page.waitForTimeout(800);
+  } else {
+    await P.page.keyboard.down('a');
+    await P.page.waitForTimeout(2200);
+    await P.page.keyboard.up('a');
+    await P.page.waitForTimeout(700);
+  }
+  return P.page.evaluate(() => {
+    const S = window._gameState.current;
+    return S && S.player ? { x: S.player.x, y: S.player.y } : null;
+  });
+}
+
+/* Photograph every pose once, into `prefix`.  Returns one record per pose it
+   actually reached, carrying the frame path and the character's drawn position
+   for the offline crop (tools/qa/cape-pose-sheet.mjs). */
+async function _shootPoses(P, raw, prefix) {
+  const out = [];
+  for (const pz of POSES) {
+    let got = null;
+    for (let i = 0; i < 10 && !got; i++) {
+      /* Re-armed every sample: _hitFlash lapses after 250ms and _dodgeRoll is
+         cleared by the roll's own timer, so a single set would be gone by the
+         time the frame is grabbed. */
+      await P.page.evaluate(pz.set);
+      await P.page.waitForTimeout(120);
+      const s2 = await raw(P);
+      if (s2 && s2.pose === pz.tag) got = s2;
+    }
+    if (got) {
+      /* FULL frame plus the character's drawn position, cropped offline.  A
+         clip computed here has to be clamped into the viewport, and clamping
+         is what put the character in the corner of the first five previews
+         with the interesting side of him -- the side a cape hangs off --
+         outside the picture.  Offline the crop can run past the edge and pad.
+         (A colour search was tried before that and was worse: "reddish" found
+         the BANK's brown door in all five pictures.) */
+      const f = `/home/user/GameDev/tools/qa/mp/out/${prefix}-${pz.tag}.png`;
+      const at = await P.page.evaluate(() => {
+        const S = window._gameState.current;
+        const r = document.querySelector('canvas').getBoundingClientRect();
+        const d = window.__btPlayerDrawn ? window.__btPlayerDrawn() : null;
+        const wx = d ? d.x : S.player.x, wy = d ? d.footY : S.player.y;
+        return {
+          cx: r.left + (wx - S.camera.x) * (S._worldScaleX || 1),
+          cy: r.top + (wy - S.camera.y) * (S._worldScaleY || 1),
+          dpr: window.devicePixelRatio || 1, drawn: !!d,
+        };
+      }).catch(() => null);
+      await P.page.screenshot({ path: f });
+      out.push({ tag: pz.tag, label: pz.label, shot: f, at: at || null,
+        capeOn: !!(got.cape && got.cape.visible),
+        bodyOn: !!(got.body && got.body.visible),
+        dx: got.cape && got.body ? got.cape.x - got.body.x : null,
+        dy: got.cape && got.body ? got.cape.y - got.body.y : null,
+        w: got.cape && got.body ? +(got.cape.w - got.body.w).toFixed(2) : null });
+    }
+    await P.page.evaluate(() => {
+      const S = window._gameState.current;
+      S._extraction = null; S._dodgeRoll = null; S._lootFreezeUntil = 0; S._hitFlash = 0;
+    });
+    await P.page.waitForTimeout(350);
+  }
+  return out;
+}
+
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Caped', wsPort, webPort, guest: true,
     viewport: { width: 390, height: 844 }, touch: true, dpr: 2 });
@@ -64,6 +192,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the player display exposes a cape sprite (guard)', !!(bare && bare.cape), bare);
   rec.ok('with no cape owned, nothing is drawn', !!bare && bare.cape && bare.cape.visible === false,
     bare && bare.cape);
+
+  /* ── THE BARE ROW OF THE PREVIEW, SHOT WHILE THERE IS NO CAPE TO HIDE ──
+     v2.3.2129. Same five poses, same crop, taken here because no cape is owned
+     yet -- which is a stronger guarantee of "no cape in this picture" than any
+     amount of hiding it, and the only one that works (see the note beside the
+     caped pass below). */
+  const spot = await _recentre(P, null);
+  const bareShots = await _shootPoses(P, raw, 'cape-bare');
+  rec.ok('the five poses are reachable before a cape exists (guard: the bare '
+    + 'half of the preview, and proof the pose flags work at all)',
+    bareShots.length === POSES.length, bareShots.map((x) => x.tag));
+  rec.ok('...and none of them draws a cape, because none is owned yet',
+    bareShots.every((x) => x.capeOn === false), bareShots.map((x) => [x.tag, x.capeOn]));
 
   /* ═══ v2.3.2027: THE CAPE IS GRANTED BY THE WORKER NOW ═══
    * The first version of this file set localStorage and reloaded, which was
@@ -263,6 +404,77 @@ export async function run({ browser, wsPort, webPort, rec }) {
        && Math.abs(back.cape.x - back.body.x) <= 1 && Math.abs(back.cape.y - back.body.y) <= 1
        && Math.abs(back.cape.rot) < 0.001),
     back);
+
+  /* ═══ v2.3.2129: THE CAPE ON EVERY POSE THAT DRAWS A REAL BODY ═══
+     Owner: "Add it to all the animations as well" -> "yes do the free 8".
+
+     Five, not eight -- chop, cook and fire replace the whole figure with a
+     stand-in sprite and hide the body container, so they were never free and
+     stay hidden along with swing and bowshot (see _CAPE_HIDDEN_POSES).
+
+     Every pose here is reached by setting the SAME state flag the game itself
+     sets (entityRenderer's `pose` ladder reads exactly these), rather than by
+     trying to arrange a monster, a loot drop and an ore vein in one run. The
+     flag is the input to the thing under test; staging the world around it
+     would test the world.
+
+     Photographed AND measured. The numbers say the cape is on the body; only
+     the picture says whether it looks right on a crouch or a roll, which is
+     what the owner asked to see. */
+  await _recentre(P, spot);
+  const posed = await _shootPoses(P, raw, 'cape-pose');
+  /* Pair each caped frame with the BARE one shot before the ticket was ever
+     redeemed.  A cape-on picture cannot answer the owner's actual question --
+     whether the cape looks right ON these poses -- because it cannot show what
+     the cape is covering.
+     The bare row is shot EARLY rather than by hiding the sprite mid-run, and
+     that is not a stylistic choice: pinning `_capeSprite.visible` false does
+     nothing in Pixi v8. Visibility is a setter that updates an internal render
+     bitmask, so a shadowing property fools JS and not the renderer -- the
+     first "without" row came back wearing the cape. (The same pin DOES work on
+     `_spriteBody.visible` at the foot of this file, for the opposite reason:
+     there it exists to fool `_placeCape`'s own JS read, not the GPU.) */
+  for (const b of bareShots) {
+    const m = posed.find((x) => x.tag === b.tag);
+    if (m) { m.bare = b.shot; m.bareAt = b.at; }
+  }
+  rec.ok('...and each pose was shot BARE as well, so the preview shows what the '
+    + 'cape is covering rather than only that it is there',
+    posed.length > 0 && posed.every((x) => !!x.bare), posed.map((x) => x.bare || null));
+
+  console.log('    POSES: ' + JSON.stringify(posed));
+  /* An index beside the frames, so building the contact sheet is not a second
+     place that has to re-derive where the character was. */
+  try {
+    const fs = await import('node:fs');
+    fs.writeFileSync('/home/user/GameDev/tools/qa/mp/out/cape-poses.json',
+      JSON.stringify(posed, null, 2));
+  } catch (e) { /* the pictures are the deliverable; the index is a convenience */ }
+  rec.ok('all five real-body poses were actually reached (guard: an unreached '
+    + 'pose would let every claim below pass on nothing)',
+    posed.length === POSES.length, posed.map((x) => x.tag));
+  rec.ok('the cape is drawn on every one of them -- it no longer vanishes when '
+    + 'you take a hit or bend down for loot',
+    posed.length > 0 && posed.every((x) => x.capeOn && x.bodyOn),
+    posed.map((x) => ({ tag: x.tag, cape: x.capeOn, body: x.bodyOn })));
+  /* A BOUND, not zero. The first cut of this asserted dx == dy == 0 and failed
+     on a correct build: the cape deliberately follows each frame's own crown
+     (v2.3.2023b), so 'hit' reads +6,+6 and that is the feature working. What a
+     broken cape looks like is a LARGE offset -- the sprite left behind beside
+     the figure -- so the claim is that it stays within a head's width of the
+     body while it tracks. Size still has to match exactly: the cape is a
+     full-frame sticker on the body's own transform, and a width that drifts
+     means it stopped being one. */
+  const OFFSET_CAP = 24;
+  rec.ok(`...and on each one it stays ON the character (within ${OFFSET_CAP}px) `
+    + 'and is drawn at the body\'s exact size',
+    posed.length > 0 && posed.every((x) => Math.abs(x.dx) <= OFFSET_CAP
+      && Math.abs(x.dy) <= OFFSET_CAP && Math.abs(x.w) < 1.5),
+    posed.map((x) => ({ tag: x.tag, dx: x.dx, dy: x.dy, dw: x.w })));
+  rec.ok('every pose was photographed, not only measured -- the numbers cannot '
+    + 'say whether a cape looks right on a roll',
+    posed.length === POSES.length && posed.every((x) => !!x.shot),
+    posed.map((x) => x.shot));
 
   /* ── THE INVARIANT THAT MATTERS ──
    * Not "click and hope a monster was in range".  The first cut did that and
