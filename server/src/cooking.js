@@ -129,6 +129,66 @@ export const cookingMethods = {
     if (ws) this._sendPlayerState(ws, session.id);
   },
 
+  /* ═══ v2.3.2127: THE DRINK ACTION THE BOTTLE WAS WAITING FOR ═══
+   *
+   * Owner: "Also work on putting a potions to inventory after buying."
+   *
+   * v2.3.2063 deliberately did NOT put them there, and its reason was sound:
+   * "a potion in your bag would need a Drink action, and there is none --
+   * cooked fish is the only consumable the bag can use. Selling a bottle
+   * nobody can open would be worse than not selling it." This is that action,
+   * so the reason expires rather than being overruled.
+   *
+   * SAME SHAPE AS _handleEatRequest, on purpose: validate ownership, consume
+   * one, persist, echo. It is the same kind of act -- a client-initiated
+   * consume of a stackable bag item -- and the two bugs that shape exists to
+   * prevent are both live here. The firemaking note above records the first
+   * (delete client-side, send nothing, and the next player_state hands the
+   * item straight back: one log lit unlimited fires). The second is the
+   * inverse: consume server-side without echoing and the bag keeps drawing a
+   * bottle that is gone.
+   *
+   * THE GUARD IS AN OWN-PROPERTY TEST, NOT A PREFIX. Eating and firemaking
+   * can use `startsWith` because their keys are namespaced (`cooked_fish_`,
+   * `wood_`); a potion's key is its SHOP_ITEMS id -- `staminaSalts`,
+   * `manaDraught` -- which shares no prefix with anything. hasOwnProperty
+   * against our own table is both stricter and the same rule-4 protection:
+   * SHOP_ITEMS['__proto__'] is not an own property, so a crafted key cannot
+   * reach Object.prototype through ps.inventory (the v2.3.1626 note on
+   * _getShopItem is this same guard, for this same table).
+   *
+   * REFUSAL DOES NOT CONSUME. _applyShopItem returns false when the effect
+   * cannot run (mid-arena healing, GDD §43). The buy path refunds coins there;
+   * here the equivalent is to put the bottle back -- so the check happens
+   * BEFORE the decrement and a refused drink costs nothing. Getting that
+   * ordering wrong would be a potion that vanishes and does nothing, which is
+   * strictly worse than the sale this replaces.
+   *
+   * Deploy-order safe both ways (rule 19): the client gates its Drink button
+   * and this send on the `potionBag` cap, so against an OLD worker no bottle
+   * can be in the bag to drink and nothing is sent that would be rebroadcast
+   * to the room as an unknown type; against a NEW worker an old client simply
+   * never drinks. */
+  _handleDrinkRequest(session, payload) {
+    if (!session || !session.id) return;
+    const { invKey } = payload || {};
+    if (typeof invKey !== 'string') return;
+    const item = this._getShopItem(invKey);      /* own-property gated */
+    if (!item) return;
+    const ps = this.playerState[session.id];
+    if (!ps) return;
+    if (ps.dying || ps.dead || ps.disconnected) return;
+    if (!ps.inventory) ps.inventory = {};
+    if ((ps.inventory[invKey] || 0) <= 0) return;
+    /* Before the decrement -- see REFUSAL DOES NOT CONSUME above. */
+    if (!this._applyShopItem(ps, item)) return;
+    ps.inventory[invKey] -= 1;
+    if (ps.inventory[invKey] <= 0) delete ps.inventory[invKey];
+    this._saveRpg(session.id, ps);
+    const ws = this._wsBySessionId(session.id);
+    if (ws) this._sendPlayerState(ws, session.id);
+  },
+
   // ═══ Cooking recipes (multi-ingredient -> buff or heal) ═══
   //
   // Mirrors COOKING_RECIPES in src/data/gameSystems.js.  Client sends

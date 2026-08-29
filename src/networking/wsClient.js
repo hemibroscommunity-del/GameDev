@@ -2940,6 +2940,15 @@ export function setupWebSocket(ctx) {
           ws.send(JSON.stringify(msg));
           return;
         }
+        /* v2.3.2127: drinking a potion out of the bag. Same allowlist rule --
+           a type with no line here is silently dropped and the feature runs on
+           nothing (TRAPS #18). This one would fail in the worst way: the
+           bottle stays in the bag and nothing happens, which reads as a broken
+           item rather than as a broken send. */
+        if (msg.type === 'potion_drink') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
         /* v2.3.1704: THE HARVEST HANDSHAKE'S MISSING HALF.  TRAPS #18 again,
            and this one had been silently dead since v2.3.229: the client has
            always sent `extraction_start` (lifeSkillRewards.js startExtraction)

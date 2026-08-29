@@ -231,6 +231,27 @@ const GOLDEN_TICKET_THUMB = `/icons/items/golden-ticket.webp${ITEMS_V}`;
 export const CAPE_ITEM_PREFIX = 'cape_';
 export const isCapeItemKey = (key) => String(key || '').startsWith(CAPE_ITEM_PREFIX);
 
+/* ═══ v2.3.2127: WHICH BAG ITEMS ARE DRINKABLE ═══
+ * Owner: "Also work on putting a potions to inventory after buying." A staple
+ * bought from Shopkeeper Bro is a bottle in the bag now (server: shop.js
+ * _shopBuy), and the popup needs to know which keys get a Drink button.
+ *
+ * DERIVED from POTION_THUMBS rather than written out again. That map already
+ * has to list exactly these keys to give them art, and it is already
+ * lowercase-keyed for the same reason this is: the ids are camelCase
+ * ('manaShard', 'staminaSalts'). A second hand-kept list would be a second
+ * thing to forget on the day a bottle is added -- and the failure would be
+ * silent, an item with a picture and no way to use it, which is precisely the
+ * "bottle nobody can open" v2.3.2063 refused to sell.
+ *
+ * The SERVER's list is SHOP_ITEMS, and it is the authority: _handleDrinkRequest
+ * gates on hasOwnProperty against it, so a key that is here and not there gets
+ * a button that does nothing rather than a drink it should not have. The
+ * mirror-audit suite already pins the client's vendor table against that same
+ * server table, which is what keeps the two from drifting. */
+export const isPotionKey = (key) => Object.prototype.hasOwnProperty.call(
+  POTION_THUMBS, String(key || '').toLowerCase());
+
 export const iconFor = (key) => {
   /* v2.3.2103: FIRST, above every pattern below. 'goldticket_crimson'
      contains no word any of them match, so it fell through to the generic

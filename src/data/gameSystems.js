@@ -5691,8 +5691,29 @@ export const QUEST_CHAINS = {
      `check` counts a FAMILY of inventory keys, mirroring the server's
      invPrefix objective — cooked fish are cooked_fish_<species> and ore is
      ore_<name>, so a single key would mean picking a favourite species. */
+  /* ═══ v2.3.2128: `anyZone` — WHERE THE MINIMAP STAR POINTS ═══
+     Owner: "on the quest for 2 cooked fish show stars on all the zones on
+     minimap — one of the people in demo got confused, there was no stars for
+     that quest."
+
+     `zone` above means "this quest happens THERE" and the star marks that one
+     arch.  A quest with no `zone` got no star at all, which lumped two very
+     different things together: "Forge a weapon at the Blacksmith" (a building
+     twenty paces away — a star would be noise) and "Cook 2 fish" (out in the
+     field, and there are no fishing holes in town — a star is the whole
+     point).  `anyZone` separates them: it marks the second kind, and the map
+     stars EVERY open spoke rather than none (src/game/questRoute.js).
+
+     Set it when the objective needs a monster or a gathering node, since town
+     has neither.  Leave it off for anything done at a town building, and off
+     for mayor_3 — the dungeon entrance has been disabled since v2.3.54, so
+     pointing at it would be selling a trip that goes nowhere.
+
+     Client-only: it steers a marker, never a payout, so unlike the rest of
+     this table it has no mirror in the server's QUEST_REWARDS. */
   life_1: {
     id: 'life_1', npc: 'Mayor Bro', title: 'Learn a Trade',
+    anyZone: true,   /* v2.3.2128: out in the field, any zone will do */
     desc: 'Cook 2 fish and bring them to Mayor Bro.',
     check: function (rpg) {
       var inv = rpg.inventory || {};
@@ -5715,6 +5736,7 @@ export const QUEST_CHAINS = {
   },
   life_2: {
     id: 'life_2', npc: 'Mayor Bro', title: 'Rock Bottom',
+    anyZone: true,   /* v2.3.2128: out in the field, any zone will do */
     desc: 'Bring 5 Ore to Mayor Bro.',
     check: function (rpg) {
       var inv = rpg.inventory || {};
@@ -5784,6 +5806,7 @@ export const QUEST_CHAINS = {
   },
   mayor_2: {
     id: 'mayor_2',
+    anyZone: true,   /* v2.3.2128: out in the field, any zone will do */
     npc: 'Mayor Bro',
     title: 'Into the Wild',
     desc: 'Kill 5 monsters in any zone.',
@@ -5863,6 +5886,7 @@ export const QUEST_CHAINS = {
   },
   trader_2: {
     id: 'trader_2',
+    anyZone: true,   /* v2.3.2128: out in the field, any zone will do */
     npc: 'Trader Tix',
     title: 'Gather and Prosper',
     desc: 'Harvest 3 gathering nodes.',
@@ -5906,6 +5930,7 @@ export const QUEST_CHAINS = {
   /* ═══ ENCHANTRESS — Element/Enchanting Gates ═══ */
   enchant_1: {
     id: 'enchant_1',
+    anyZone: true,   /* v2.3.2128: out in the field, any zone will do */
     npc: 'Enchantress',
     title: 'First Spark',
     desc: 'Trigger an elemental collision.',
@@ -5926,6 +5951,7 @@ export const QUEST_CHAINS = {
   },
   enchant_2: {
     id: 'enchant_2',
+    anyZone: true,   /* v2.3.2128: out in the field, any zone will do */
     npc: 'Enchantress',
     title: 'Elemental Scholar',
     desc: 'Discover 5 different collisions.',
@@ -5968,6 +5994,7 @@ export const QUEST_CHAINS = {
   /* ═══ SCOUT — Zone Mechanic Gates ═══ */
   scout_1: {
     id: 'scout_1',
+    anyZone: true,   /* v2.3.2128: out in the field, any zone will do */
     npc: 'Scout',
     title: 'Zone Hopper',
     desc: 'Visit 3 different combat zones.',
@@ -5989,6 +6016,7 @@ export const QUEST_CHAINS = {
   },
   scout_2: {
     id: 'scout_2',
+    anyZone: true,   /* v2.3.2128: out in the field, any zone will do */
     npc: 'Scout',
     title: 'Elemental Advantage',
     desc: 'Kill a monster using element effectiveness.',
@@ -6011,6 +6039,7 @@ export const QUEST_CHAINS = {
   /* ═══ BLACKSMITH BRON — Crafting Gates ═══ */
   bron_1: {
     id: 'bron_1',
+    anyZone: true,   /* v2.3.2128: out in the field, any zone will do */
     npc: 'Blacksmith Bron',
     title: 'Raw Materials',
     desc: 'Mine 5 ore from any zone.',
@@ -6121,6 +6150,7 @@ export const QUEST_CHAINS = {
   },
   luna_2: {
     id: 'luna_2',
+    anyZone: true,   /* v2.3.2128: out in the field, any zone will do */
     npc: 'Healer Luna',
     title: 'Hold the Line',
     desc: 'Block 10 enemy attacks.',
@@ -6142,6 +6172,7 @@ export const QUEST_CHAINS = {
   },
   luna_3: {
     id: 'luna_3',
+    anyZone: true,   /* v2.3.2128: out in the field, any zone will do */
     npc: 'Healer Luna',
     title: 'Death and Taxes',
     desc: 'Die and recover scattered items.',
@@ -6164,6 +6195,7 @@ export const QUEST_CHAINS = {
   /* ═══ BEASTMASTER KAI — Pet Gates ═══ */
   kai_1: {
     id: 'kai_1',
+    anyZone: true,   /* v2.3.2128: out in the field, any zone will do */
     npc: 'Beastmaster Kai',
     title: 'The Weakened Prey',
     desc: 'Capture your first pet.',
@@ -6185,6 +6217,7 @@ export const QUEST_CHAINS = {
   },
   kai_2: {
     id: 'kai_2',
+    anyZone: true,   /* v2.3.2128: out in the field, any zone will do */
     npc: 'Beastmaster Kai',
     title: 'Growing Pack',
     desc: 'Capture 3 different pets.',
@@ -6206,6 +6239,7 @@ export const QUEST_CHAINS = {
   },
   kai_3: {
     id: 'kai_3',
+    anyZone: true,   /* v2.3.2128: out in the field, any zone will do */
     npc: 'Beastmaster Kai',
     title: 'Pet Power',
     desc: 'Pet collects 20 loot drops.',
@@ -6228,6 +6262,7 @@ export const QUEST_CHAINS = {
   /* ═══ VETERAN ASH — Combat Mastery Gates ═══ */
   ash_1: {
     id: 'ash_1',
+    anyZone: true,   /* v2.3.2128: out in the field, any zone will do */
     npc: 'Veteran Ash',
     title: 'Critical Moment',
     desc: 'Land 10 critical hits.',
@@ -6249,6 +6284,7 @@ export const QUEST_CHAINS = {
   },
   ash_2: {
     id: 'ash_2',
+    anyZone: true,   /* v2.3.2128: out in the field, any zone will do */
     npc: 'Veteran Ash',
     title: 'Status Master',
     desc: 'Apply 5 different status effects.',
@@ -6270,6 +6306,7 @@ export const QUEST_CHAINS = {
   },
   ash_3: {
     id: 'ash_3',
+    anyZone: true,   /* v2.3.2128: out in the field, any zone will do */
     npc: 'Veteran Ash',
     title: 'Collision Expert',
     desc: 'Discover 15 unique collisions.',
@@ -6290,6 +6327,7 @@ export const QUEST_CHAINS = {
   },
   ash_4: {
     id: 'ash_4',
+    anyZone: true,   /* v2.3.2128: out in the field, any zone will do */
     npc: 'Veteran Ash',
     title: 'Volatile Heart',
     desc: 'Trigger a Volatile weapon collision.',

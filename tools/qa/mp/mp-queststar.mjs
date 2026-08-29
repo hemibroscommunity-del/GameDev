@@ -17,8 +17,30 @@ import * as H from './harness.mjs';
 
 const route = (P) => P.page.evaluate(() => {
   const m = window.__btMinimap;
-  return m ? { route: m.questRoute, zone: m.zone } : null;
+  return m ? { route: m.questRoute, routes: m.questRoutes || null, zone: m.zone } : null;
 });
+
+/* Put the player on a tile and let the game tick see it -- the same trick
+   mp-hubspawn walks the hubs with. */
+const stand = (P, tx, ty) => P.page.evaluate(({ x, y }) => {
+  const S = window._gameState && window._gameState.current;
+  if (!S || !S.player) return false;
+  S.player.x = x * 32 + 16;
+  S.player.y = y * 32 + 16;
+  return true;
+}, { x: tx, y: ty });
+
+/* The quest book, set straight on the client. Both things under test read
+   this one object -- questTargetZone for "where next" and isZoneUnlocked for
+   "which spokes are open" -- so a fixture here exercises the real rules. */
+const setQuests = (P, book) => P.page.evaluate((b) => {
+  const S = window._gameState && window._gameState.current;
+  if (!S || !S.rpg) return false;
+  const m = Object.create(null);            /* rule 4: quest ids are keys */
+  for (const k of Object.keys(b)) m[k] = b[k];
+  S.rpg._quests = m;
+  return true;
+}, book);
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, {
@@ -101,4 +123,104 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!undone && !!undone.route && undone.route.zoneId === 'worldview', undone);
 
   await P.ctx.close().catch(() => {});
+
+  /* ═══ v2.3.2128: THE FIELD QUEST THAT STARRED NOTHING ═══
+     Owner: "on the quest for 2 cooked fish show stars on all the zones on
+     minimap -- one of the people in demo got confused, there was no stars for
+     that quest."
+
+     life_1 names no zone, because fishing holes spawn one per zone (server
+     gathering.js) and any of them will do. The old rule read that as "nothing
+     to point at" and drew a blank map during an active quest -- which is how
+     the demo player read it too: as no quest running.
+
+     A FRESH player, because the half above leaves tut_1 active and a NAMED
+     zone deliberately outranks the wildcard -- that precedence is a feature,
+     not something to test around.
+
+     The fixture is `_quests` set on the client. That is exactly the state a
+     real player is in when Mayor Bro first offers life_1 (he walks his table
+     in order, so the four tut quests are turned in by then -- which is also
+     what has all four spokes unlocked), and it is the state the demo player
+     was in. Driving the tutorial for real would be four zone trips and four
+     turn-ins to arrive at the same three-line object. The star and the zone
+     locks both read this same object, so nothing here is faked past it. */
+  const F = await H.newPlayer(browser, {
+    name: 'Angler', wsPort, webPort, guest: true, touch: true,
+    viewport: { width: 390, height: 844 },
+  });
+  await H.enterWorld(F);
+  await F.page.waitForTimeout(2500);
+
+  /* ── COUNTER-TEST FIRST: a TOWN errand must still star nothing ──
+     mayor_1 is "Visit 3 buildings in town". If the wildcard leaked to every
+     zone-less quest, the map would send a player out to Frost Ridge to visit
+     a building that is twenty paces behind them. Run before the real fixture
+     so it cannot be a stale reading of it. */
+  await setQuests(F, { mayor_1: 'active' });
+  await F.page.waitForTimeout(1500);
+  const errand = await route(F);
+  rec.ok('a TOWN errand ("Visit 3 buildings") stars nothing -- the wildcard did not leak',
+    !!errand && errand.zone === 'town' && (errand.routes || []).length === 0, errand);
+
+  /* ── IN TOWN: the whole field is behind one gate, so mark the gate ── */
+  await setQuests(F, { tut_1: 'turnedIn', tut_2: 'turnedIn', tut_3: 'turnedIn',
+    tut_4: 'turnedIn', life_1: 'active' });
+  await F.page.waitForTimeout(1500);
+  const townField = await route(F);
+  rec.ok('the fish quest stars the way OUT of town instead of nothing',
+    !!townField && (townField.routes || []).length >= 1
+    && townField.routes.every((r) => r.zoneId === 'worldview'), townField);
+
+  /* ── ON THE WORLD VIEW: every open spoke, because any of them will do ── */
+  const marks = await F.page.evaluate(() => {
+    const f = window._gameFns;
+    if (!f || !f.WORLDVIEW_EXITS || !f.TOWN_EXITS) return { err: 'no exit tables on the bridge' };
+    return {
+      townExit: f.TOWN_EXITS.find((e) => e.zoneId === 'worldview') || null,
+      spokes: f.WORLDVIEW_EXITS.filter((e) => e.zoneId !== 'town').map((e) => e.zoneId).sort(),
+    };
+  });
+  if (marks.err || !marks.townExit) {
+    rec.skip('the World View stars every open spoke for a field quest', marks.err || 'no markers');
+  } else {
+    await stand(F, marks.townExit.tx, marks.townExit.ty);
+    await H.waitFor(F, (S) => S.currentZone, (z) => z === 'worldview',
+      { timeout: 30000, label: 'reach the World View' }).catch(() => {});
+    /* The travel echo can rewrite _quests from the server's copy, which never
+       saw the turn-ins -- reassert the fixture on the far side. */
+    await setQuests(F, { tut_1: 'turnedIn', tut_2: 'turnedIn', tut_3: 'turnedIn',
+      tut_4: 'turnedIn', life_1: 'active' });
+    await F.page.waitForTimeout(2500);
+    const hub = await route(F);
+    const zones = (hub && hub.routes || []).map((r) => r.zoneId).sort();
+    console.log('    starred spokes: ' + JSON.stringify(zones));
+    /* EQUALITY, not "more than one": the claim is every open spoke, and a
+       ">1" test would pass just as happily on two of the four. */
+    rec.ok('on the World View the fish quest stars EVERY open spoke',
+      hub && hub.zone === 'worldview'
+      && zones.length === marks.spokes.length
+      && zones.join() === marks.spokes.join(), { zones, spokes: marks.spokes });
+    rec.ok('...and never the arch back to town (no fishing holes in town)',
+      zones.length > 0 && !zones.includes('town'), zones);
+
+    /* ── STANDING IN THE FIELD: you are already there, so stop pointing ── */
+    const spoke = zones[0];
+    const dest = spoke ? await F.page.evaluate((z) => {
+      const e = (window._gameFns.WORLDVIEW_EXITS || []).find((x) => x.zoneId === z);
+      return e ? { tx: e.tx, ty: e.ty } : null;
+    }, spoke) : null;
+    if (dest) {
+      await stand(F, dest.tx, dest.ty);
+      await H.waitFor(F, (S) => S.currentZone, (z) => z === spoke,
+        { timeout: 30000, label: 'reach ' + spoke }).catch(() => {});
+      await setQuests(F, { tut_1: 'turnedIn', tut_2: 'turnedIn', tut_3: 'turnedIn',
+        tut_4: 'turnedIn', life_1: 'active' });
+      await F.page.waitForTimeout(2500);
+      const inField = await route(F);
+      rec.ok('standing IN a zone the fish quest stops starring travel (fish here)',
+        !!inField && inField.zone === spoke && (inField.routes || []).length === 0, inField);
+    }
+  }
+  await F.ctx.close().catch(() => {});
 }
