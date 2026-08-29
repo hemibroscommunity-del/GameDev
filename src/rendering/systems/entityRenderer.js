@@ -4801,6 +4801,31 @@ function createPlayerDisplay() {
   container.addChild(handArmShirtMask);
   container.addChild(handArmShirt);
 
+  /* ═══ v2.3.2138: AND THE CAPE, FOR THE SAME REASON ═══
+   * v2.3.2134 taught the SHIRT to ride along with the bare-skin arm clone and
+   * stopped there.  The cape has the identical problem and it is visible in
+   * the build order right above: capeSprite is added at ~4682 and the arm
+   * clone at ~4757, so the clone draws over the cape exactly as it was drawing
+   * over the tee.  Fixing one layer and not the other left a caped player
+   * jogging east in combat with a bare-skin stripe across the cape -- the same
+   * bug wearing different clothes.
+   *
+   * The cape is NOT a copy of the shirt clone, because the cape does not share
+   * the body's transform: on a jog it carries a per-facing TILT and a slide
+   * (v2.3.2024/2126), and its anchor is moved to the shoulders to pivot there
+   * (_capeTune / _placeCape).  So this clone copies rotation and anchor as
+   * well as position and scale -- copying only x/y/scale, the way the shirt
+   * clone legitimately does, would put an untilted cape stripe over a tilted
+   * one, which reads worse than the bare skin it replaces. */
+  const handArmCape = new Sprite();
+  handArmCape.anchor.set(0.5, 0.5);
+  handArmCape.visible = false;
+  const handArmCapeMask = new Graphics();
+  handArmCapeMask.visible = true;
+  handArmCape.mask = handArmCapeMask;
+  container.addChild(handArmCapeMask);
+  container.addChild(handArmCape);
+
   /* v2.3.1785: the outstretched arm that holds the raised shield, cut from the
      bow-shot art (see blockArm.js).  Sits here — after the body and the worn
      gear, immediately before the shield — so it reaches out OVER the torso and
@@ -5016,6 +5041,8 @@ function createPlayerDisplay() {
   container._handArmMask = handArmMask;
   container._handArmShirt = handArmShirt;           /* v2.3.2134 */
   container._handArmShirtMask = handArmShirtMask;   /* v2.3.2134 */
+  container._handArmCape = handArmCape;             /* v2.3.2138 */
+  container._handArmCapeMask = handArmCapeMask;     /* v2.3.2138 */
   container._shieldSprite = shieldSprite;
   container._blockCaretGfx = blockCaretGfx;     /* v2.3.1798 */
   container._blockArmSprite = blockArmSprite;   /* v2.3.1785 */
@@ -9427,15 +9454,44 @@ export class EntityRenderer {
                 _armShirt.visible = false;
               }
             }
+            /* v2.3.2138: the cape through the same capsule, over the shirt
+               clone.  Rotation and anchor come across too -- the cape is
+               tilted and shoulder-pivoted on a jog, unlike the shirt, so a
+               position-only copy would lay a straight stripe over a slanted
+               cape. */
+            const _armCape = display._handArmCape;
+            const _armCapeMask = display._handArmCapeMask;
+            const _wornCape = display._capeSprite;
+            if (_armCape && _armCapeMask) {
+              if (_wornCape && _wornCape.visible && _wornCape.texture) {
+                _armCape.texture = _wornCape.texture;
+                _armCape.x = _wornCape.x;
+                _armCape.y = _wornCape.y;
+                _armCape.scale.x = _wornCape.scale.x;
+                _armCape.scale.y = _wornCape.scale.y;
+                _armCape.rotation = _wornCape.rotation;
+                _armCape.anchor.set(_wornCape.anchor.x, _wornCape.anchor.y);
+                _armCape.tint = _wornCape.tint;
+                _armCape.visible = true;
+                _armCapeMask.clear();
+                _armCapeMask.moveTo(shoulderX, shoulderY);
+                _armCapeMask.lineTo(weaponSprite.x, weaponSprite.y);
+                _armCapeMask.stroke({ color: 0xffffff, width: 16, cap: 'butt' });
+              } else {
+                _armCape.visible = false;
+              }
+            }
           } else if (handArm) {
             handArm.visible = false;
             if (display._handArmShirt) display._handArmShirt.visible = false;
+            if (display._handArmCape) display._handArmCape.visible = false;
           }
         } else {
           weaponSprite.visible = false;
           if (display._handCapSprite) display._handCapSprite.visible = false;
           if (display._handArmSprite) display._handArmSprite.visible = false;
           if (display._handArmShirt) display._handArmShirt.visible = false;   /* v2.3.2134 */
+          if (display._handArmCape) display._handArmCape.visible = false;     /* v2.3.2138 */
           /* Procedural fallback — abstract line / arc / orb. */
           if (wpn.type === 'bow') {
             // Bow arc
@@ -9683,6 +9739,19 @@ export class EntityRenderer {
           const sIdx = display.getChildIndex(_as);
           const wantIdx = sIdx < bIdx ? bIdx : bIdx + 1;
           if (sIdx !== wantIdx) display.setChildIndex(_as, wantIdx);
+        }
+        /* v2.3.2138: and the cape clone directly above whichever of those two
+           is on top, so the stack stays body -> shirt -> cape, matching the
+           order the real layers are drawn in.  Same splice-aware recompute as
+           above, for the same reason. */
+        const _ac = display._handArmCape;
+        if (_ac && _ac.visible) {
+          const topIdx = (_as && _as.visible)
+            ? display.getChildIndex(_as)
+            : display.getChildIndex(display._handArmSprite);
+          const cIdx = display.getChildIndex(_ac);
+          const wantIdx = cIdx < topIdx ? topIdx : topIdx + 1;
+          if (cIdx !== wantIdx) display.setChildIndex(_ac, wantIdx);
         }
       }
 

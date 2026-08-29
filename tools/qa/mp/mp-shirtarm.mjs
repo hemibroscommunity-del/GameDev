@@ -254,6 +254,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const back = o.dirs[dir];
       const B = await load(`/sprites/player/jog-${dir}.png`);
       const S = await load(`/sprites/gear/shirt/tshirt/jog-${dir}.png?v=${o.gearVer}`);
+      /* v2.3.2140: a checksum of the whole sheet, so "has anyone baked on this
+         again" is answerable exactly rather than by a heuristic. The first
+         attempt here WAS a heuristic -- count the tee's dark pixels lying
+         across bare limb -- and it passed on the baked sheet, because a hem
+         cut across an arm has the white sleeve beside it along the row and the
+         detector skipped precisely the pixels it was built to catch. It was
+         replaced rather than repaired: a green assertion that cannot fail on
+         the defect is worse than no assertion. */
+      let sheetSum = 0;
+      if (S) { for (let i = 0; i < S.d.length; i++) sheetSum = (Math.imul(sheetSum, 31) + S.d[i]) >>> 0; }
       if (!B || !S) { out[dir] = { error: 'sheet did not load', body: !!B, shirt: !!S }; continue; }
       if (B.w !== S.w || B.h !== S.h) { out[dir] = { error: `size ${B.w}x${B.h} vs ${S.w}x${S.h}` }; continue; }
       const W = B.w, F = B.h, nF = Math.round(W / F);
@@ -306,10 +316,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
           }
         }
         per.push(bare);
+
       }
       const cyc = per.slice(0, 14);
       out[dir] = { per: cyc, total: cyc.reduce((a, b) => a + b, 0), worst: Math.max(...cyc),
-        shirtInBand, overhang };
+        shirtInBand, overhang, sum: sheetSum };
     }
     return out;
   }, { gearVer: (armed && armed.gearVer) || '2.3.2066', dirs: { east: -1, northeast: -1, southwest: 1, north: -1, south: -1 } });
@@ -317,16 +328,52 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const east = measure.east || {};
   rec.ok('both jog-east sheets loaded through the client\'s own gear URL', !east.error, east.error || 'ok');
 
-  /* The gate.  176 before the v2.3.2066 re-bake; 19 after, all but 6 of it on
-     frame 3's bicep below the hem.  40 leaves room for a re-seal moving a
-     pixel or two and still fails hard if the sleeve ever comes off again. */
-  rec.ok('the trailing arm is not bare at the shoulder on jog-east (was 176 px over the cycle)',
-    east.total !== undefined && east.total <= 40, { total: east.total, perFrame: east.per });
+  /* ═══ v2.3.2140: THESE TWO WERE GATES, AND THEY GATED THE WRONG THING ═══
+     They pinned the v2.3.2066 sleeve bake at <= 40 total / <= 20 worst, and
+     they did their job: the bake stayed on. The bake was the wrong fix. The
+     bare shoulder the owner reported six times was the renderer's upper-arm
+     capsule stamping a bare-skin BODY clone over the tee, east-only, in
+     combat (v2.3.2134); the sheet never had the defect. With the real cause
+     fixed the bake became visible instead of neutral -- 1112 painted pixels,
+     252 of them the tee's near-black hem, reported as "an extra line drawn on
+     the problem shoulder" -- so the sheet is back to the artist's art
+     (c20c6ec5) and this number is back to ~176.
 
-  /* No single frame may go back to reading as a tank top.  Worst before was
-     frame 3 at 39; worst after is the same frame at 13. */
-  rec.ok('no single jog-east frame carries a bare shoulder (worst was 39 px, on frame 3)',
-    east.worst !== undefined && east.worst <= 20, { worst: east.worst, perFrame: east.per });
+     So they are REPORTED now, not gated, for the same reason the other
+     facings below always were: the window catches forearm and fist, which a
+     tee is meant to leave bare, and on this sheet it never separated "bare
+     shoulder" from "bare arm the artist drew bare". A number that cannot tell
+     those apart should not be able to hold art hostage -- it did, for four
+     versions.
+
+     The property that actually matters is asserted in mp-jogsides: a
+     bare-skin clone drawn over a worn shirt must carry the shirt with it.
+     That one is verified by disabling the fix and watching it go red. */
+  console.log(`    jog-east bare-shoulder window: total ${east.total}, worst ${east.worst}`);
+  console.log(`      per frame: ${JSON.stringify(east.per)}`);
+  rec.ok('the jog-east bare-shoulder window is MEASURED (reported, not gated — '
+    + 'see the v2.3.2140 note; the real invariant lives in mp-jogsides)',
+    east.total !== undefined && east.worst !== undefined,
+    { total: east.total, worst: east.worst });
+
+  /* A REAL gate in their place: the sheet the client is served must BE the
+     artist's art, byte for byte after decode. Four versions of this file
+     defended a bake; this defends the absence of one.
+
+     ARTIST_SHEET_SUM is the checksum of
+     `git show c20c6ec5:public/sprites/gear/shirt/tshirt/jog-east.png`
+     (v2.3.1995 -- the artist's art with its keyline seal, and the source rev
+     every bake tool in tools/gear/ pins as its input). The baked sheet that
+     shipped from v2.3.2066 to v2.3.2140 hashes to 4149180810 instead, which
+     is how this was checked: it fails on that sheet and passes on this one.
+
+     If the artist ever legitimately redraws jog-east, this fails and the
+     number is updated deliberately -- which on a sheet with this history is
+     the behaviour worth having. */
+  const ARTIST_SHEET_SUM = 340001760;
+  rec.ok('the tee served to the client is the ARTIST\'s jog-east art, unbaked '
+    + '(v2.3.2140 reverted the v2.3.2066/2078 bakes)',
+    east.sum === ARTIST_SHEET_SUM, { got: east.sum, want: ARTIST_SHEET_SUM });
 
   /* Control 1: there IS a shirt on the wire.  Without this both gates above
      also pass on a sheet that failed to load — nothing to be uncovered by. */

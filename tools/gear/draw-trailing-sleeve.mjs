@@ -1,3 +1,22 @@
+/* ═══ SUPERSEDED — DO NOT RUN (v2.3.2140) ═══
+ * This tool's output was REVERTED. It baked a sleeve onto the tee to
+ * compensate for a bare arm that was never in this sheet: the renderer's
+ * upper-arm capsule stamps a bare-skin BODY clone over the tee, east-only,
+ * in combat (found and fixed in v2.3.2134 -- the shirt now rides along with
+ * that clone, and the cape with it in v2.3.2138).
+ *
+ * With the real cause fixed, the bake stopped being invisible and started
+ * being an artifact: 1112 painted pixels over the artist's art, 252 of them
+ * the tee's near-black hem, which the owner saw as "an extra line drawn on
+ * the problem shoulder". The sheet is back to c20c6ec5 (v2.3.1995, the
+ * artist's art with its keyline seal) and should stay there.
+ *
+ * Kept, not deleted, because the header below is the record of three failed
+ * attempts and the reasoning is still worth reading -- and because a tool
+ * that is gone gets rebuilt. Everything under this line describes a fix for
+ * a misdiagnosis. Read tools/qa/mp/mp-shirtarm.mjs for how the measurement
+ * that justified it went wrong.
+ */
 /* ═══ v2.3.2066: A SLEEVE ON THE TRAILING ARM, jog-east frames 0-6 ═══
  *
  * Owner, four times now: "The bare arm showing while jogging east wearing t
