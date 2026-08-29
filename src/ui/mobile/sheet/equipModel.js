@@ -210,6 +210,15 @@ export function getEquippedSlots(R) {
         iconSrc: worn ? `/icons/items/cape-${capeId}.webp${ITEMS_V}` : null,
         ghost: !worn,
         pickerSlot: null,
+        /* v2.3.2143: the slot card grows its own REMOVE button when a cape is
+           on.  It has to: the bag item used to be the only unequip control,
+           and the same version hides that item while the cape is worn (see
+           bagModel.js).  Deliberately NOT `pickerSlot` -- that opens the
+           loadout picker, and a cape must never be pickable (capeCatalog's
+           header: "a picker is how a contest prize ends up on everybody").
+           This is one button that sends `cape_equip { worn: false }`; the
+           server keeps the ledger and only flips ps.capeOff. */
+        unequipCape: worn ? capeId : null,
       };
     }()),
     /* v2.3.1325: an equipped amulet finally shows real art instead of

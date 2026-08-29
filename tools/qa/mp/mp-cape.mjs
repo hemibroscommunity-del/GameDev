@@ -271,6 +271,60 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const worn = await raw(P);
   rec.ok('the cape is drawn once it is worn', !!(worn && worn.cape && worn.cape.visible && worn.cape.tex), worn && worn.cape);
 
+  /* ═══ v2.3.2143: AND IT IS NOT ALSO SITTING IN THE BAG ═══
+     Owner, twice: "after equipping it it still stays as an icon in your
+     inventory", then "the bug of it not disappearing from bag after equipping
+     ... still isn't working".
+
+     Two separate facts, and they must BOTH hold or the fix is a different bug:
+       - the trophy is still in rpg.inventory (hidden, never consumed, so the
+         cape comes straight back the moment you take it off), and
+       - the bag model does not list it while it is worn.
+     Asserting only the second would pass just as well if the item had been
+     destroyed, which would make the cape unrecoverable. */
+  const bagWorn = await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    const rpg = S && S.rpg;
+    return {
+      inBlob: (rpg && rpg.inventory && rpg.inventory.cape_crimson) || 0,
+      keys: (window.__btBagKeys && rpg) ? window.__btBagKeys(rpg) : null,
+    };
+  });
+  rec.ok('the bag model is reachable from the page (guard: a null list would '
+    + 'pass the hide check for the wrong reason)', Array.isArray(bagWorn.keys), bagWorn);
+  rec.ok('the cape trophy is STILL in the inventory blob -- hidden, not '
+    + 'consumed, so taking the cape off gives it back', bagWorn.inBlob > 0, bagWorn);
+  rec.ok('...but the bag does not SHOW it while the cape is worn -- the '
+    + 'owner\'s report, twice',
+    Array.isArray(bagWorn.keys) && bagWorn.keys.indexOf('cape_crimson') < 0, bagWorn);
+
+  /* Take it off through the same message the slot card's REMOVE button sends,
+     and the item must come back -- otherwise the hide is a one-way door. */
+  await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    if (S && S.channel) S.channel.send({ type: 'cape_equip', payload: { worn: false } });
+  });
+  await P.page.waitForTimeout(1200);
+  const bagOff = await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    const rpg = S && S.rpg;
+    return {
+      keys: (window.__btBagKeys && rpg) ? window.__btBagKeys(rpg) : null,
+    };
+  });
+  rec.ok('REMOVE puts the cape back in the bag, so it can be worn again',
+    Array.isArray(bagOff.keys) && bagOff.keys.indexOf('cape_crimson') >= 0, bagOff);
+
+  /* Put it back on: everything below this point measures a WORN cape. */
+  await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    if (S && S.channel) S.channel.send({ type: 'cape_equip', payload: { worn: true } });
+  });
+  await P.page.waitForTimeout(1200);
+  const reworn = await raw(P);
+  rec.ok('and wearing it again draws it, so the round trip is symmetric',
+    !!(reworn && reworn.cape && reworn.cape.visible && reworn.cape.tex), reworn && reworn.cape);
+
   /* ═══ v2.3.2142: AND IT SURVIVES THE NEXT player_state ═══
      Owner: "the cape disappeared entirely after a while... the cape isn't
      showing up in the cape slot in character equip menu... jogging while
@@ -413,6 +467,49 @@ export async function run({ browser, wsPort, webPort, rec }) {
       jog.every((s) => Math.abs(s.cape.w - s.body.w) < 1.5), jog.map((s) => [s.cape.w, s.body.w]));
   }
   rec.ok('the jog was photographed, not only measured', shots.length > 0, { shots });
+
+  /* ═══ v2.3.2143: JOG IN EVERY DIRECTION, NOT ONLY EAST ═══
+     The owner said "jogging while wearing cape doesn't work, shows nothing"
+     without naming a direction, and every jog assertion above this line holds
+     'd'. That is not a safe assumption to leave standing: the cape resolves
+     its texture through capeBaseDir(), which maps eight facings onto five
+     sheets, and the jog path additionally applies a per-direction tilt and
+     pivot (_capeTune). A facing whose sheet never loaded, or whose tune sent
+     the sprite off the body, would look exactly like "shows nothing" to a
+     player and would be invisible to an east-only test.
+
+     Four keys, the four the touch stick can produce on its own; the diagonals
+     ride the same five sheets by the mirror rule. */
+  const jogDirs = [
+    { key: 'd', label: 'east' }, { key: 'a', label: 'west' },
+    { key: 'w', label: 'north' }, { key: 's', label: 'south' },
+  ];
+  const jogSeen = [];
+  for (const jd of jogDirs) {
+    await P.page.keyboard.down(jd.key);
+    let hit = null;
+    for (let i = 0; i < 12 && !hit; i++) {
+      await P.page.waitForTimeout(130);
+      const st = await raw(P);
+      if (st && st.pose === 'jog') hit = st;
+    }
+    await P.page.keyboard.up(jd.key);
+    await P.page.waitForTimeout(350);
+    if (hit) {
+      jogSeen.push({
+        dir: jd.label, facing: hit.dir || hit.facing || null,
+        capeOn: !!(hit.cape && hit.cape.visible), tex: !!(hit.cape && hit.cape.tex),
+        bodyOn: !!(hit.body && hit.body.visible),
+      });
+    }
+  }
+  rec.ok('the character jogged in all four directions (guard: an unreached '
+    + 'direction would let the claim below pass on nothing)',
+    jogSeen.length === jogDirs.length, jogSeen);
+  rec.ok('the cape is drawn on the jog in EVERY direction, with a real '
+    + 'texture behind it -- the owner said "shows nothing" without naming one',
+    jogSeen.length === jogDirs.length && jogSeen.every((j) => j.capeOn && j.tex && j.bodyOn),
+    jogSeen);
 
   /* ═══ v2.3.2125: THE TILT SWEEP ═══
      Owner: "It looks like the cape is hanging off the side of his head and the
