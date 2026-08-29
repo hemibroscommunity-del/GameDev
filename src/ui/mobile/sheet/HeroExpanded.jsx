@@ -1,4 +1,9 @@
 import React, { useEffect, useState } from 'react';
+/* v2.3.2131: the stat rows below became tappable explainers -- see the
+   note on sheetRow.  The words live in infoGlossary so the hero sheet and
+   anywhere else that ever shows these rows read from one copy. */
+import { infoPopupBus } from '../infoPopupBus.js';
+import { statInfo } from '../infoGlossary.js';
 import { COL, QUALITY_COLOR, panelStyle, getState } from '../dash/common.js';
 import { buildSkillUnspent, STAT_TO_WEAPON_CAT, getActiveWeapon } from '../../../data/gameSystems.js'; /* v2.3.1914: getActiveWeapon */
 import { requestT2Category } from '../dash/T2Panel.jsx';
@@ -329,8 +334,33 @@ export const HeroExpanded = () => {
   /* `sheetRow`, not `statRow`: that name is already taken by the item card's
      own row renderer further down (v2.3.1846), and the two are different
      shapes — this one takes (label, value), that one takes a { k, v }. */
-  const sheetRow = (label, value) => (
-    <div key={label} style={{
+  /* ═══ v2.3.2131: A ROW YOU CAN ASK ABOUT ═══
+     Owner: "more pop ups for things users want to learn more about on the
+     character equip menu (labels tapped on and such)."
+
+     Demo reviewers met seven stat rows -- Damage, DPS, Crit, Crit Dmg,
+     Defense, Dodge, Armor -- with no way to find out what any of them did.
+     Tapping one now opens the explainer.
+
+     ONLY rows the glossary actually has words for become interactive.  A row
+     that looks tappable and answers nothing is worse than a plain one, so
+     `info` being null is what decides: no role, no cursor, no handler, and
+     the row renders exactly as it did before.  That also means adding a stat
+     later cannot silently ship a dead affordance -- it just is not tappable
+     until somebody writes its sentence. */
+  const sheetRow = (label, value) => {
+    const info = statInfo(label);
+    return (
+    <div key={label}
+      data-statrow={info ? label : undefined}
+      role={info ? 'button' : undefined}
+      tabIndex={info ? 0 : undefined}
+      aria-label={info ? `${label} — what is this?` : undefined}
+      onPointerUp={info ? ((e) => {
+        e.stopPropagation();
+        infoPopupBus.open({ title: info.title, body: info.body, note: info.note, stat: String(value) });
+      }) : undefined}
+      style={{
       display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
       /* v2.3.1890b: the list left real vertical air where the boxes' chrome
          used to be — spent on legibility, which is the point of dropping
@@ -343,6 +373,11 @@ export const HeroExpanded = () => {
          6px they were short, and it is taken here rather than from the
          resources because the resources are the thing being made larger. */
       gap: 6, minWidth: 0, lineHeight: 1.18,
+      /* v2.3.2131: the only chrome a tappable row gets.  No underline, no
+         chevron -- seven of them down a narrow column would read as clutter,
+         and charfit is already the ceiling on this list's height. */
+      cursor: info ? 'pointer' : undefined,
+      touchAction: info ? 'manipulation' : undefined,
     }}>
       <span style={{
         fontSize: 10.5, fontWeight: 600, color: COL.muted,
@@ -353,7 +388,8 @@ export const HeroExpanded = () => {
         fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', flex: 'none',
       }}>{value}</span>
     </div>
-  );
+    );
+  };
 
   /* v2.3.1883: the same seven, split into the two groups the owner drew.
      Nothing is added or dropped — OFFENSE is the four that decide what you

@@ -63,6 +63,9 @@
     9000      chat panel (ChatPanel)
     9200      MoreOverlay
     9300      ControlsTutorial, MasteryNotification
+    9400      InfoPopup (v2.3.2131) -- opened from panels inside
+              MoreOverlay, so it has to clear 9200, and it is an aside
+              rather than a flow, so it stays under the modals
     9999      name modal (.bt-name-modal)
    10000      account modal (AccountModal)
    99000+     inventory surface (InventorySurface 99000/99500,

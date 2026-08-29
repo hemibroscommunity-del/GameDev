@@ -359,6 +359,48 @@ export function isIronGear(item) {
   return item.mat === 'iron' || item.material === 'iron' || item.gearBase === 'iron';
 }
 
+/* ═══ v2.3.2132: THE GATE AND THE BADGE NOW READ THE SAME NUMBER ═══
+ *
+ * Excalibur, on the demo: "select a weapon and nothing happens."
+ *
+ * They disagreed, in two ways, and both made the game tell a player they
+ * could not use a weapon the game was perfectly willing to equip:
+ *
+ *   1. THE COPPER BASELINE.  v2.3.1765 made copper rung zero inside
+ *      canEquipItem -- subtracting BLACKSMITH_TIERS.copper.statReq, after the
+ *      owner reported an auto-unequip -- and getEquipReqLabel never learned
+ *      it.  So the copper sword tut_1 hands you in the first five minutes
+ *      passes the gate at trained level 0 while the badge on its card reads
+ *      "Melee Lv 1/5 ✗", in red, on a fresh character.
+ *   2. IRON.  v2.3.2124/2125 exempted iron from every requirement on the
+ *      owner's instruction ("Allow iron weapons to be equipped at any
+ *      level").  That went into canEquipItem only, so iron gear still
+ *      advertises a requirement nothing enforces.
+ *
+ * Which is what "nothing happens" looks like from the outside: you tap a
+ * weapon, a red cross tells you that you do not meet its requirement, and
+ * you conclude the tap did nothing -- when in fact the gate would have let
+ * you through the whole time.
+ *
+ * So the arithmetic lives in ONE function that both callers use.  Keeping two
+ * copies level by hand is what produced this: the rule changed three times
+ * (v2.3.1661, v2.3.1765, v2.3.2125) and the label was updated for one of
+ * them.
+ *
+ * (The SERVER is not affected and is not changed: _prog3EquipOk in
+ * server/src/gear.js reaches these numbers by tier index and is pinned by a
+ * test.  This was only ever the client's label lying about the client's own
+ * gate.) */
+export function prog3EquipReq(tier, slotType, isWood) {
+  if (!tier || !tier.statReq) return 0;
+  /* Amulets are scored against AMULET_TIERS, a different table with its own
+     scale, so the metal ladder's base does not apply to them. */
+  if (slotType === 'amulet') return Math.max(0, Math.ceil((tier.statReq || 0) / 2));
+  var baseTier = isWood ? WOODWORKING_TIERS.pine : BLACKSMITH_TIERS.copper;
+  var baseReq = baseTier ? (baseTier.statReq || 0) : 0;
+  return Math.max(0, Math.ceil(((tier.statReq || 0) - baseReq) / 2));
+}
+
 export function canEquipItem(rpg, item, slotType) {
   var _item$gearBase2;
   /* v2.3.2125: every slot — see the note on isIronGear.  v2.3.2124 exempted
@@ -391,10 +433,9 @@ export function canEquipItem(rpg, item, slotType) {
      this point, a different table with its own scale.
      Server mirror: _prog3EquipOk in server/src/gear.js reaches the same
      numbers by tier INDEX rather than statReq — pinned by a test. */
-  var _baseTier = isWood ? WOODWORKING_TIERS.pine : BLACKSMITH_TIERS.copper;
-  var _baseReq = (slotType === 'amulet' || !_baseTier) ? 0 : (_baseTier.statReq || 0);
   if (prog3Live(rpg)) {
-    var p3req = Math.max(0, Math.ceil(((tier.statReq || 0) - _baseReq) / 2));
+    /* v2.3.2132: shared with getEquipReqLabel — see prog3EquipReq's note. */
+    var p3req = prog3EquipReq(tier, slotType, isWood);
     if (slotType === 'armor' || slotType === 'shield') return prog3Pts(rpg, 'def') >= p3req;
     if (slotType === 'amulet') return prog3SkillLevel(rpg, 'staff') >= p3req;
     var p3cat = item.type === 'bow' ? 'bow' : item.type === 'staff' ? 'staff' : 'sword';
@@ -420,6 +461,11 @@ export function canEquipItem(rpg, item, slotType) {
 export function getEquipReqLabel(item, slotType, rpg) {
   var _item$gearBase3;
   if (!item || !item.gearBase) return null;
+  /* v2.3.2132: iron is free in every slot (v2.3.2124/2125, owner) and
+     canEquipItem returns true for it before looking at anything else.  A
+     requirement badge on gear nothing gates is the label contradicting the
+     gate, which is the whole fault this version fixes. */
+  if (isIronGear(item)) return null;
   var isWood = (_item$gearBase3 = item.gearBase) === null || _item$gearBase3 === void 0 ? void 0 : _item$gearBase3.startsWith('ww_');
   var tierKey = isWood ? item.gearBase.slice(3) : item.gearBase;
   var tierTable = isWood ? WOODWORKING_TIERS : BLACKSMITH_TIERS;
@@ -429,7 +475,10 @@ export function getEquipReqLabel(item, slotType, rpg) {
   /* v2.3.1661 (prog3): pass rpg to get the trained-skill requirement —
      `have`/`met` carried so callers stop reading rpg[stat] themselves. */
   if (rpg && prog3Live(rpg)) {
-    var p3q = Math.ceil((tier.statReq || 0) / 2);
+    /* v2.3.2132: the SAME number the gate uses.  This used to compute
+       `statReq / 2` on its own and overstated every metal requirement by the
+       copper baseline. */
+    var p3q = prog3EquipReq(tier, slotType, isWood);
     if (slotType === 'armor' || slotType === 'shield') {
       return { stat: 'defensePts', req: p3q, label: 'Defense', have: prog3Pts(rpg, 'def'), met: prog3Pts(rpg, 'def') >= p3q, prog3: true };
     }

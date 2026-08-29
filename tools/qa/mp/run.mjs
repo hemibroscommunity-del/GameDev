@@ -76,6 +76,7 @@ const SCENARIOS = {
   weaponloss: () => import('./mp-weaponloss.mjs'), /* v2.3.2123: does a weapon survive a full stash? */
   fightsoak: () => import('./mp-fightsoak.mjs'), /* v2.3.2124: a long soak against the WORKER's monsters — the path mp-soak never drives */
   monwatch: () => import('./mp-monwatch.mjs'), /* v2.3.2126: do the worker's monsters come back? */
+  infopop: () => import('./mp-infopop.mjs'), /* v2.3.2131: tap a thing, find out what it is */
   coachearly: () => import('./mp-coachearly.mjs'), /* v2.3.2130: is anything taught in the first minute? */
   figscale: () => import('./mp-figscale.mjs'), /* v2.3.2123: is the character smaller outside town? */
   chatjoy: () => import('./mp-chatjoy.mjs'), /* v2.3.2123: the world chat sitting on the joystick */
