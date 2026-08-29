@@ -3132,6 +3132,59 @@ BT_AUDIO.play = function (key, opts) {
     if (_dur != null) src.start(0, _off, _dur);
     else if (_off) src.start(0, _off);
     else src.start(0);
+    /* ═══ v2.3.2126: LET GO OF THE SOUND WHEN IT HAS FINISHED ═══
+     *
+     * Owner, on the demo: "during demo gameplay slowed down significantly
+     * like accumulation over time" and, decisively, "It was smooth after I
+     * logged out and back in and I did that several times."
+     *
+     * This function created a BufferSource AND a GainNode per sound, wired
+     * both into the output bus, and never took them out again.  Nothing else
+     * did either.  So every footstep (line ~2066 calls this on EVERY step),
+     * every swing, every hit and every death left two nodes permanently
+     * connected to the graph, and the audio thread kept processing all of
+     * them for the rest of the session.
+     *
+     * MEASURED, because three soaks had already come back clean and I did not
+     * want a fourth plausible story: tools/qa/mp/mp-fightsoak wraps
+     * createBufferSource/createGain/disconnect and counts live nodes.  Two
+     * minutes of ordinary play -- walking, no kills at all -- went
+     * 117 -> 235 -> 343 -> 441 -> 559 -> 675 nodes, with created exactly
+     * equal to live because NOT ONE was ever released.  ~5.5 a second, which
+     * is ~20,000 an hour.  Over the same run: timers flat at 15, listeners
+     * flat at 384, JS heap flat at 27-38MB.
+     *
+     * WHICH IS WHY NOTHING FOUND IT.  Web Audio nodes live on the native side,
+     * so they are invisible to performance.memory and to every state/scene
+     * probe the soaks watch -- and a reload builds a fresh AudioContext, which
+     * is exactly why logging out and back in cured it every time.
+     *
+     * TWO RELEASE PATHS ON PURPOSE.  `onended` is the right hook and fires for
+     * a one-shot that finishes on its own.  It is NOT reliable on iOS for a
+     * source someone STOPPED early -- this file already records that at
+     * v2.3.1603's note ("iOS does not reliably fire it for a source it
+     * stopped") -- and iOS is the primary platform, so a timer sized to the
+     * clip backs it up.  Both are idempotent: disconnect() on an already
+     * disconnected node is a no-op, and the guard keeps the bookkeeping
+     * honest either way. */
+    var _released = false;
+    var _release = function () {
+      if (_released) return;
+      _released = true;
+      try { src.disconnect(); } catch (e) {}
+      try { g.disconnect(); } catch (e) {}
+    };
+    try { src.onended = _release; } catch (e) {}
+    /* How long this clip will actually play for, in seconds, allowing for the
+       playback rate and any offset/duration slice above.  Padded, so the
+       fallback never cuts a sound short -- it is a safety net, not the
+       schedule. */
+    try {
+      var _len = (_dur != null) ? _dur : Math.max(0, (buf.duration || 0) - _off);
+      var _ms = ((_len / (rate || 1)) * 1000) + 400;
+      if (isFinite(_ms) && _ms > 0) setTimeout(_release, Math.min(_ms, 60000));
+      else setTimeout(_release, 2000);
+    } catch (e) { setTimeout(_release, 2000); }
     /* Return a handle so callers that need to cut a sample short
        (e.g. fishing reel sound when the catch completes mid-clip)
        can stop playback early. Most callers ignore the return value. */
