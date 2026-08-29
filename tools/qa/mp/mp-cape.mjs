@@ -324,6 +324,30 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const still = await raw(P);
   rec.ok('...and it is still drawn on the character after that delta',
     !!(still && still.cape && still.cape.visible && still.cape.tex), still && still.cape);
+
+  /* ═══ AND IT IS STILL THERE WHEN YOU RUN ═══
+     Owner, after testing the first fix: "it not showing on jog still isn't
+     working." The jog assertions further down this file all run BEFORE the
+     delta above, so every one of them was reading the cape inside the window
+     where it had not been stripped yet -- the same blind spot in a different
+     place. The owner's actual sequence is equip, play for a moment, then run:
+     a delta lands between the two, and THAT is the jog that showed nothing.
+     So: jog here, after the delta, and check. */
+  await P.page.keyboard.down('d');
+  let joggedAfter = null;
+  for (let i = 0; i < 12 && !joggedAfter; i++) {
+    await P.page.waitForTimeout(140);
+    const s3 = await raw(P);
+    if (s3 && s3.pose === 'jog') joggedAfter = s3;
+  }
+  await P.page.keyboard.up('d');
+  await P.page.waitForTimeout(500);
+  rec.ok('the character jogged after the delta (guard)', !!joggedAfter,
+    { got: !!joggedAfter });
+  rec.ok('...and the cape is STILL DRAWN on that jog -- the owner\'s exact '
+    + 'sequence: equip, play a moment, then run',
+    !!(joggedAfter && joggedAfter.cape && joggedAfter.cape.visible && joggedAfter.cape.tex),
+    joggedAfter && joggedAfter.cape);
   rec.ok('...and the body is drawn under it (guard: otherwise "visible" means nothing)',
     !!(worn && worn.body && worn.body.visible), worn && worn.body);
   /* THE REGISTRATION. Same origin, same scale — a full-frame sticker on a
