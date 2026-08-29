@@ -1416,7 +1416,13 @@ const _CAPE_HIDDEN_POSES = { dodge: 1, swing: 1, bowshot: 1, fire: 1, chop: 1, m
    2.5x the hem is near horizontal and the lower back is barer than it was at
    1x. More angle is not monotonically more cover, which is the thing that is
    not obvious from the ask. */
-const _CAPE_JOG_TILT = { east: 0.45, northeast: 0.30, southwest: -0.30, north: 0, south: 0 };
+/* v2.3.2126: owner, of the v2.3.2125 ladder -- "Last cape frame most angled is
+   correct". That frame was 2.5x the THEN-current table (east 0.30), i.e. 0.75
+   rad, so the table takes those absolute values rather than another multiplier:
+   a scale is meaningless once the thing it scales has moved, which is the trap
+   the sweep that produced this fell into first (it asked for 2.5x again and
+   rendered 1.125 rad -- a rung off a ladder nobody had looked at). */
+const _CAPE_JOG_TILT = { east: 0.75, northeast: 0.50, southwest: -0.50, north: 0, south: 0 };
 /* Where the cape swings FROM: the shoulders, not the middle of the frame.
    Pivoting about the centre would swing the hood as far as the hem and take
    the hood off the head, which is the thing v2.3.2023b just fixed.
@@ -1427,7 +1433,25 @@ const _CAPE_JOG_TILT = { east: 0.45, northeast: 0.30, southwest: -0.30, north: 0
    down inside that frame. Left at 0.27 the swing had crept up from the
    shoulders towards the neck, which is the "hanging off the side of his head"
    half of the report. 10/256 = 0.039, so 0.31 puts it back where it was. */
-const _CAPE_PIVOT_Y = 0.31;
+const _CAPE_PIVOT_Y = 0.33;   /* v2.3.2126: the picked frame's value */
+
+/* ═══ v2.3.2126: AND SLIDE IT BACK ALONG THE LINE OF TRAVEL ═══
+ * Owner, picking the hardest angle off the ladder: "Last cape frame most
+ * angled is correct but needs to nudge left to fit."
+ *
+ * Rotation alone cannot put it there, and the reason is what the pivot IS. The
+ * cape turns about the shoulders, so the hem swings one way and the HOOD
+ * swings the other -- and at the angle the owner chose the hood has come far
+ * enough forward to sit over the face. Sliding the whole sprite back along the
+ * line of travel re-seats the hood on the head and carries the hem with it,
+ * which a bigger or smaller angle cannot do: those trade the two ends against
+ * each other, and this moves both at once.
+ *
+ * In 256-space, applied only while jogging, and MIRRORED like the tilt -- the
+ * offset is "backwards along the direction of travel", not "left on screen",
+ * so running west it has to go the other way or the cape would lead him. Same
+ * sign convention the tilt already uses, for the same reason. */
+const _CAPE_JOG_DX = { east: 0, northeast: 0, southwest: 0, north: 0, south: 0 };
 
 /* ═══ v2.3.2125: THE TWO NUMBERS THIS KEEPS BEING ASKED TO CHANGE ═══
  * The tilt has now been re-asked for twice ("angled more with jog", v2.3.2025;
@@ -1453,6 +1477,11 @@ function _capeTune(dir) {
   return {
     tilt: base * k,
     pivotY: (typeof t.pivotY === 'number') ? t.pivotY : _CAPE_PIVOT_Y,
+    /* v2.3.2126: absolute, not scaled -- the table has a ZERO for north and
+       south (they face the camera; a sideways slide there would be the same
+       lie a sideways tilt would), and scaling cannot move a zero.  A sweep
+       needs to be able to ask "what does -20 look like on east". */
+    dx: (typeof t.jogDx === 'number') ? t.jogDx : (_CAPE_JOG_DX[dir] || 0),
   };
 }
 
@@ -1494,7 +1523,12 @@ function _placeCape(display, capeId, pose, dir, mirror, frameIdx) {
   if (spr.anchor.y !== tune.pivotY) spr.anchor.set(0.5, tune.pivotY);
   if (spr.rotation !== tilt) spr.rotation = tilt;
   const drawnH = Math.abs(spr.scale.y) * ((tex.frame && tex.frame.height) || 256);
-  spr.x = sb.x + dx;
+  /* v2.3.2126: the jog slide, in the same 256-space the crown offset above is
+     in, so it scales with the sprite exactly as that does. */
+  const jogDx = (pose === 'jog')
+    ? (tune.dx * Math.abs(spr.scale.x) * (mirror ? -1 : 1))
+    : 0;
+  spr.x = sb.x + dx + jogDx;
   spr.y = sb.y + dy - (0.5 - tune.pivotY) * drawnH;
   if (!spr.visible) spr.visible = true;
 }

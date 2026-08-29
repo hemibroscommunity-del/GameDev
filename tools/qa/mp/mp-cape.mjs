@@ -54,34 +54,10 @@ const raw = (P) => P.page.evaluate(() => {
   };
 });
 
-/* v2.3.2125: frame the CAPE, not the canvas centre.  The first cut cropped a
-   fixed box at the middle of the canvas, and the camera does not keep the
-   player there while he runs -- two of five sweep frames came back with no
-   character in them at all, which is a picture that proves nothing and looks
-   like an answer.  Asking the sprite where it is on screen cannot drift. */
-const CAPE_BOX = () => {
-  const r = window._pixiRenderer;
-  const pd = r && r.playerDisplayRaw ? r.playerDisplayRaw() : null;
-  const spr = pd && pd._capeSprite;
-  const cv = document.querySelector('canvas');
-  if (!spr || !cv || !spr.visible) return null;
-  let g = null;
-  try { g = spr.getGlobalPosition ? spr.getGlobalPosition() : null; } catch (e) { g = null; }
-  if (!g) return null;
-  const b = cv.getBoundingClientRect();
-  const k = b.width / (cv.width || b.width);          // CSS px per stage px
-  const cx = b.left + g.x * k, cy = b.top + g.y * k;
-  const W = 150, H = 180;
-  const x = Math.max(b.left, Math.min(cx - W / 2, b.right - W));
-  const y = Math.max(b.top, Math.min(cy - H / 2, b.bottom - H));
-  return { x, y, width: W, height: H };
-};
-
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Caped', wsPort, webPort, guest: true,
     viewport: { width: 390, height: 844 }, touch: true, dpr: 2 });
   await H.enterWorld(P);
-  await P.page.evaluate(`window.__btCapeBox = ${CAPE_BOX.toString()}`);
   await P.page.waitForTimeout(2500);
 
   const bare = await raw(P);
@@ -195,12 +171,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
          the crown" and is silent on "does it look right" -- the owner's actual
          question.  A crop around the figure, one per sample, so a hood that has
          slid off the head is visible rather than inferred. */
-      const box = await P.page.evaluate(() => window.__btCapeBox && window.__btCapeBox());
-      if (box && box.width > 0) {
-        const f = `/home/user/GameDev/tools/qa/mp/out/cape-jog-${jog.length}.png`;
-        await P.page.screenshot({ path: f, clip: box });
-        shots.push(f);
-      }
+      /* v2.3.2126: full frame, like the sweep below and for the same reason --
+         every attempt at computing a clip from the sprite's position produced
+         either an empty rect or a picture with no character in it. */
+      const f = `/home/user/GameDev/tools/qa/mp/out/cape-jog-${jog.length}.png`;
+      await P.page.screenshot({ path: f });
+      shots.push(f);
     }
   }
   await P.page.keyboard.up('d');
@@ -230,16 +206,27 @@ export async function run({ browser, wsPort, webPort, rec }) {
      is what makes that possible; the assertion is only that the sweep actually
      ran (a silent no-op would leave four identical pictures and a confident
      wrong conclusion). */
+  /* v2.3.2126: the owner picked the hardest angle off the v2.3.2125 ladder and
+     asked for it slid back ("needs to nudge left to fit").  So the angle is now
+     FIXED at their pick and the sweep moves the slide instead -- one variable at
+     a time, or the picture cannot say which knob did what. */
+  /* The scale is against whatever the TABLE currently holds, and the table
+     moved in v2.3.2125 (east 0.30 -> 0.45).  So "2.5x", the label on the frame
+     the owner picked, no longer means the angle they were looking at -- it now
+     lands at 1.125 rad against the 0.75 they chose.  Pinned by the ABSOLUTE
+     rotation instead: 0.75 / 0.45 = 1.667.  A ladder rung is only a rung while
+     the thing underneath it holds still. */
+  const PICKED = 1.667;
   const SWEEP = [
-    { tiltScale: 1.0, pivotY: 0.27, tag: 'a-now' },
-    { tiltScale: 1.0, pivotY: 0.31, tag: 'b-pivot' },
-    { tiltScale: 1.5, pivotY: 0.31, tag: 'c-1.5x' },
-    { tiltScale: 2.0, pivotY: 0.31, tag: 'd-2.0x' },
-    { tiltScale: 2.5, pivotY: 0.33, tag: 'e-2.5x' },
+    { tiltScale: PICKED, pivotY: 0.33, jogDx: 0, tag: 'a-dx0' },
+    { tiltScale: PICKED, pivotY: 0.33, jogDx: -8, tag: 'b-dx8' },
+    { tiltScale: PICKED, pivotY: 0.33, jogDx: -14, tag: 'c-dx14' },
+    { tiltScale: PICKED, pivotY: 0.33, jogDx: -20, tag: 'd-dx20' },
+    { tiltScale: PICKED, pivotY: 0.33, jogDx: -28, tag: 'e-dx28' },
   ];
   const swept = [];
   for (const cfg of SWEEP) {
-    await P.page.evaluate((c) => { window.__btCapeTune = { tiltScale: c.tiltScale, pivotY: c.pivotY }; }, cfg);
+    await P.page.evaluate((c) => { window.__btCapeTune = { tiltScale: c.tiltScale, pivotY: c.pivotY, jogDx: c.jogDx }; }, cfg);
     await P.page.keyboard.down('d');
     let got = null;
     for (let i = 0; i < 12 && !got; i++) {
@@ -256,15 +243,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
          than no picture: it looks like an answer. The colour is on the screen
          by definition, so locating it cannot drift. */
       await P.page.screenshot({ path: `/home/user/GameDev/tools/qa/mp/out/cape-tilt-${cfg.tag}.png` });
-      swept.push({ ...cfg, rot: got.cape.rot });
+      swept.push({ ...cfg, rot: got.cape.rot, capeX: got.cape.x - got.body.x });
     }
     await P.page.keyboard.up('d');
     await P.page.waitForTimeout(400);
   }
   await P.page.evaluate(() => { try { delete window.__btCapeTune; } catch (e) {} });
   console.log('    TILT SWEEP: ' + JSON.stringify(swept));
-  rec.ok('the tilt sweep actually varied the rotation (guard: identical frames prove nothing)',
-    swept.length >= 3 && new Set(swept.map((x) => Math.round(x.rot * 1000))).size >= 3, swept);
+  /* The rotation is deliberately CONSTANT across this sweep now, so the old
+     "did the rotation vary" guard would fail on a correct run.  What has to
+     vary is the cape's X -- that is the knob under test, and a sweep where it
+     did not move is five identical pictures and a confident wrong answer. */
+  rec.ok('the slide sweep actually moved the cape (guard: identical frames prove nothing)',
+    swept.length >= 3 && new Set(swept.map((x) => x.capeX)).size >= 3, swept);
 
   const back = await raw(P);
   rec.ok('...and standing again there is no offset — the art is fitted to THIS pose',
