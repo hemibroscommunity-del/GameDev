@@ -4397,6 +4397,16 @@ export class GameRoom {
         }
         break;
 
+      case 'potion_drink':
+        /* v2.3.2127: Drink, pressed on a potion in the bag. The worker
+           validates ownership against SHOP_ITEMS, applies the effect through
+           the same _applyShopItem the shop counter used to call, consumes one
+           and echoes player_state -- see _handleDrinkRequest (cooking.js). */
+        if (session.id) {
+          this._handleDrinkRequest(session, msg.payload || msg);
+        }
+        break;
+
       case 'firemaking_request':
         // v2.3.1702: player tapped a wood_* log in the Bag to light a
         // campfire.  Server validates ownership, consumes 1, emits

@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ITEM_NAMES, isTicketKey, isCapeItemKey } from './InventoryPanel.jsx';   /* v2.3.2054; isTicketKey v2.3.2103; isCapeItemKey v2.3.2107 */
+import { ITEM_NAMES, isTicketKey, isCapeItemKey, isPotionKey } from './InventoryPanel.jsx';   /* v2.3.2054; isTicketKey v2.3.2103; isCapeItemKey v2.3.2107 */
 import { gearIdIcon, armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.1758: one armour art table */
 import { weaponMaterial, metalIconPath } from '@/rendering/traits/materialTints.js'; /* v2.3.1760 */
 import { COL, getState } from './common.js';
@@ -130,6 +130,7 @@ function resolveTarget(target) {
        number matches the heal the player_state echo delivers. */
     const SR = getState();
     const isTicket = isTicketKey(key);
+    const isPotion = isPotionKey(key);            /* v2.3.2127 */
     const isCape = isCapeItemKey(key);
     if (isTicket) info = 'Open it to claim your cape';
     /* v2.3.2109: it IS a control now (owner: "I wanted ability to equip and
@@ -169,6 +170,16 @@ function resolveTarget(target) {
           && !!(SR && SR._serverCaps && SR._serverCaps.eventCapes),
         capeOff: isCape && capeIsWorn()
           && !!(SR && SR._serverCaps && SR._serverCaps.eventCapes),
+        /* v2.3.2127: Drink. Gated on `potionBag` because BOTH halves of this
+           feature are the worker's -- it is the worker that puts the bottle in
+           the bag on purchase and the worker that applies the effect on the
+           drink. Against an old worker a staple still fires at the counter, so
+           there is no bottle here to press this on; sending the type anyway
+           would have it relayed to the room as an unknown broadcast (TRAPS
+           #18). Read directly off _serverCaps rather than through an alias so
+           the caps-audit suite can see the gate. */
+        drink: isPotion && count > 0
+          && !!(SR && SR._serverCaps && SR._serverCaps.potionBag),
       },
     };
   }
@@ -1064,6 +1075,15 @@ export const ItemDetailPopup = () => {
   };
   const onCapeOn = () => sendCapeWorn(true);
   const onCapeOff = () => sendCapeWorn(false);
+  /* v2.3.2127: one bottle per press. The worker validates ownership, applies
+     the effect and echoes player_state -- the bag redraws off that echo, never
+     off a local decrement (cooking.js's firemaking note records what happens
+     when a client consumes an item the server still holds). */
+  const onDrink = () => {
+    const S = getState();
+    try { S.channel.send({ type: 'potion_drink', payload: { invKey: target.key } }); } catch (e) {}
+    close();
+  };
   const onOpenTicket = () => {
     const S = getState();
     if (!S || !S.channel) return;
@@ -1306,6 +1326,7 @@ export const ItemDetailPopup = () => {
           {actions.light    && <button onClick={onLight}   className={buttonClass('primary')} style={buttonStyle('primary')}>Light fire</button>}
           {actions.eat      && <button onClick={onEat}     className={buttonClass('primary')} style={buttonStyle('primary')}>Eat</button>}
           {actions.open     && <button onClick={onOpenTicket} className={buttonClass('primary')} style={buttonStyle('primary')}>Open Golden Ticket</button>}
+          {actions.drink    && <button onClick={onDrink} className={buttonClass('primary')} style={buttonStyle('primary')}>Drink</button>}
           {actions.capeOn   && <button onClick={onCapeOn}  className={buttonClass('primary')} style={buttonStyle('primary')}>Equip</button>}
           {actions.capeOff  && <button onClick={onCapeOff} className={buttonClass('danger')}  style={buttonStyle('danger')}>Unequip</button>}
           {actions.equip    && <button onClick={onEquip}   className={buttonClass('primary')} style={buttonStyle('primary')}>Equip</button>}
