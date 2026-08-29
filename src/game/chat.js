@@ -12,6 +12,8 @@
    never rely on the globalThis copies of DATA or the babel helpers
    (they're assigned only when BroTown.jsx evaluates). */
 import { BT_AUDIO } from '@/data/index.js';
+/* v2.3.2139: the channel picker's compose step — see its note below. */
+import { chatChannelBus } from '@/game/chatChannel.js';
 import { _toConsumableArray } from '@/lib/babelHelpers.js';
 
 /* ═══ v2.3.1970: A RECEIVED LINE IS UNTRUSTED TEXT ═══
@@ -47,6 +49,31 @@ function clampChatName(v) {
    deps = { setChatLog } */
 export function sendChatMessage(S, text, deps) {
   var setChatLog = deps.setChatLog;
+  /* ═══ v2.3.2139: THE CHANNEL PICKER APPLIES HERE, AND ONLY HERE ═══
+     The picker (game/chatChannel.js) sets a mode; this turns that mode plus
+     what was typed into the line to send.  It happens at the TOP of the one
+     function both composers already route through, which is the whole reason
+     the bus lives in game/ rather than beside the chips: doing it in the UI
+     would mean two call sites, and two call sites is exactly how "/p" once
+     went out over the ROOM relay from the mobile composer (see the note on
+     that incident in ChatBubble.jsx).
+
+     compose() may REFUSE -- a whisper with nobody named.  Refusing is the
+     correct failure for a private lane and the one that incident taught:
+     falling back to the room would publish to the world a line the player
+     chose to say to one person.  The refusal is shown in the log the player
+     is already looking at, and nothing is sent. */
+  try {
+    var _lane = chatChannelBus.compose(text);
+    if (_lane && _lane.refuse) {
+      S.chatLog = [].concat(_toConsumableArray(S.chatLog.slice(-40)), [{
+        id: '_sys', name: '✉ Whisper', text: _lane.refuse, color: '#8a8f98', ts: Date.now(), lane: true
+      }]);
+      setChatLog(_toConsumableArray(S.chatLog));
+      return;
+    }
+    if (_lane && typeof _lane.text === 'string' && _lane.text) text = _lane.text;
+  } catch (e) { /* a picker fault must never eat the message */ }
   /* v2.3.1212: party chat -- "/p <msg>" routes the line to party
      members only (server-validated relay, party.js), reusing this chat
      log tagged with a shield + party color.  If you're not in a party,

@@ -77,6 +77,7 @@ const SCENARIOS = {
   weaponloss: () => import('./mp-weaponloss.mjs'), /* v2.3.2123: does a weapon survive a full stash? */
   fightsoak: () => import('./mp-fightsoak.mjs'), /* v2.3.2124: a long soak against the WORKER's monsters — the path mp-soak never drives */
   monwatch: () => import('./mp-monwatch.mjs'), /* v2.3.2126: do the worker's monsters come back? */
+  chatpicker: () => import('./mp-chatpicker.mjs'), /* v2.3.2139: pick a lane without a slash command */
   chatlanes: () => import('./mp-chatlanes.mjs'), /* v2.3.2136: @area / @user across two real clients */
   deaddoor: () => import('./mp-deaddoor.mjs'), /* v2.3.2135: the depth door that cannot open */
   infopop: () => import('./mp-infopop.mjs'), /* v2.3.2131: tap a thing, find out what it is */

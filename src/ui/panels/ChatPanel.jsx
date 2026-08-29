@@ -1,4 +1,8 @@
 import React from 'react';
+/* v2.3.2139: the channel picker, shared with the mobile composer.  A
+   picker on only one of the two surfaces is one a player learns and then
+   loses. */
+import { ChatChannelChips, lanePlaceholder } from '@/ui/mobile/ChatChannelChips.jsx';
 
 /* === ChatPanel — the open-chat input overlay === */
 /* v2.3.892: extracted verbatim from the chatOpen JSX subtree in
@@ -31,7 +35,10 @@ export function ChatPanel(props) {
       bottom: '70%',
       zIndex: 9000,
       display: 'flex',
-      alignItems: 'center',
+      /* v2.3.2139: a column now — the lane chips sit above the row this
+         surface has always had.  The row itself is unchanged, wrapped below. */
+      flexDirection: 'column',
+      alignItems: 'stretch',
       gap: 6,
       padding: 8,
       /* v2.3.1235: batch-4 rollout — established world-chrome recipe
@@ -42,6 +49,9 @@ export function ChatPanel(props) {
       border: '1px solid rgba(229,237,233,.20)',
       boxShadow: '0 14px 30px rgba(4,7,9,.38)'
     }
+  }, /*#__PURE__*/React.createElement(ChatChannelChips, null),
+  /*#__PURE__*/React.createElement("div", {
+    style: { display: 'flex', alignItems: 'center', gap: 6, width: '100%' }
   }, /*#__PURE__*/React.createElement("button", {
     onTouchStart: function onTouchStart(e) {
       e.preventDefault();
@@ -83,7 +93,7 @@ export function ChatPanel(props) {
        broken here on the next layout change.  One selector, both surfaces
        (TRAPS §29). */
     "data-chat-input": "",
-    placeholder: "Tap to type…",
+    placeholder: lanePlaceholder("Tap to type…"),
     value: chatInput,
     onChange: function onChange(e) {
       setChatInput(e.target.value);
@@ -174,5 +184,5 @@ export function ChatPanel(props) {
       flexShrink: 0,
       fontFamily: 'Source Sans 3,sans-serif'
     }
-  }, "Send"));
+  }, "Send")));
 }
