@@ -209,7 +209,7 @@ const FACING_SECTORS = ['east', 'southeast', 'south', 'southwest', 'west', 'nort
    worldview branch stamp them from TOWN_EXITS / WORLDVIEW_EXITS, the same
    coordinates the world's portal-glow pass reads.  Everything else in
    `S.map` (paths, buildings, flowers) is ignored here on purpose. */
-/* ═══ v2.3.2133: THE DOOR TO THE SECOND DEPTH IS NOT DRAWN ANY MORE ═══
+/* ═══ v2.3.2135: THE DOOR TO THE SECOND DEPTH IS NOT DRAWN ANY MORE ═══
    Owner, on the demo: "Second depth zone used to exist and minimap icon
    still exists for it but doesn't exist anymore in game."  A reviewer wrote
    it up as "Door didnt exist" in Verdant Wilds.

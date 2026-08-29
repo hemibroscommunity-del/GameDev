@@ -1,6 +1,6 @@
 # Chat lanes — @area and @user
 
-Shipped v2.3.2134, from demo feedback: per-channel chat, `@user` / `@area` /
+Shipped v2.3.2136, from demo feedback: per-channel chat, `@user` / `@area` /
 `@all`. Server: `server/src/chatlanes.js` (mixin, `chatLaneMethods`). Client:
 `src/game/chat.js` (send + receive bodies), dispatcher cases in
 `src/networking/gameEvents.js`, priority forwarding in

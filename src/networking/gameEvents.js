@@ -28,7 +28,7 @@ import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1598: armou
 import { BT_API_BASE } from '@/networking/index.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse, pushDmgPopup, monsterPopupY, isAttackInShieldArc } from '@/game/combatHelpers.js';
-import { handleChatEvent, handleEmoteEvent, handlePartyChatEvent, handleAreaChatEvent, handleWhisperEvent, handleWhisperErrorEvent } from '@/game/chat.js'; /* v2.3.2134: the @area / @user lanes */
+import { handleChatEvent, handleEmoteEvent, handlePartyChatEvent, handleAreaChatEvent, handleWhisperEvent, handleWhisperErrorEvent } from '@/game/chat.js'; /* v2.3.2136: the @area / @user lanes */
 import { applyServerMuteList } from '@/game/chatMute.js'; /* v2.3.1981 */
 import { pushAbilityRings } from '@/game/abilities.js'; /* v2.3.1735: a peer's bash draws the caster's own shockwave */
 import { friendsSrv } from '@/ui/mobile/sheet/friendsSync.js'; /* v2.3.1324 */
@@ -305,7 +305,7 @@ export function processGameEvent(type, payload, S, deps) {
               handlePartyChatEvent(payload, S, { setChatLog: setChatLog, setUnreadChats: setUnreadChats });
               break;
             }
-          /* v2.3.2134: the @area and @user lanes (server/src/chatlanes.js).
+          /* v2.3.2136: the @area and @user lanes (server/src/chatlanes.js).
              Bodies in chat.js beside the room and party paths, so all four
              lanes clamp, block and mute the same way. */
           case 'area_chat':

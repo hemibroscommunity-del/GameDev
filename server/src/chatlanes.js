@@ -1,4 +1,4 @@
-/* ═══ CHAT LANES — say it to the room, the zone, or one person (v2.3.2134) ═══
+/* ═══ CHAT LANES — say it to the room, the zone, or one person (v2.3.2136) ═══
  *
  * Owner, from the demo feedback: per-channel chat -- @user / @area / @all.
  *

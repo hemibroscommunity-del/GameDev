@@ -85,7 +85,7 @@ export function sendChatMessage(S, text, deps) {
     setChatLog(_toConsumableArray(S.chatLog));
     return;
   }
-  /* ═══ v2.3.2134: /a AND /w -- THE OTHER TWO LANES ═══
+  /* ═══ v2.3.2136: /a AND /w -- THE OTHER TWO LANES ═══
      Owner, from the demo feedback: per-channel chat, @user / @area / @all.
      @all is the room-wide send below and is unchanged; these are the two that
      did not exist.  Written in /p's shape deliberately -- same cap gate, same
@@ -235,7 +235,7 @@ export function handleChatEvent(payload, S, deps) {
    honoring the same block/mute lists as room chat.  Own messages were
    already echoed optimistically by sendChatMessage, so drop from===myId.
    deps = { setChatLog, setUnreadChats } */
-/* ═══ v2.3.2134: the two new lanes arriving ═══
+/* ═══ v2.3.2136: the two new lanes arriving ═══
    Both mirror handlePartyChatEvent below: drop our own echo, re-clamp the
    text (the worker already bounds it -- this is purely the deploy-order half,
    as v2.3.1970 argues for room chat), honour the local block and mute lists,
@@ -244,7 +244,7 @@ export function handleChatEvent(payload, S, deps) {
    THE WHISPER DRAWS NO OVERHEAD BUBBLE, for the same reason the send half
    does not: a bubble is rendered above the speaker for everyone nearby, so
    bubbling a whisper would publish the private line at both ends. */
-/* ═══ v2.3.2134: A QA SEAM FOR THE SEND PATH ═══
+/* ═══ v2.3.2136: A QA SEAM FOR THE SEND PATH ═══
    Same house pattern, and the same argument, as window.__btCtlTut: the only
    way to send a chat line from outside is BroTown's `sendChat` useCallback,
    which takes NO argument -- it reads the composer's ref -- so a scenario

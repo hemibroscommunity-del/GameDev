@@ -291,7 +291,7 @@ export class TileRenderer {
       if (!row) continue;
       for (let c = 0; c < cols; c++) {
         const t = row[c];
-        /* ═══ v2.3.2133: THE DOOR TO THE SECOND DEPTH IS NOT DRAWN ═══
+        /* ═══ v2.3.2135: THE DOOR TO THE SECOND DEPTH IS NOT DRAWN ═══
            Owner, on the demo: "Second depth zone used to exist and minimap
            icon still exists for it but doesn't exist anymore in game."  A
            reviewer wrote the same thing up as "Door didnt exist" in Verdant
