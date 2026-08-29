@@ -66,6 +66,13 @@ const BRASS = '#D8AA58';
 const INK = 'rgba(13,21,26,.92)';
 
 /* The block lesson's two conditions, both of which the owner named. */
+/* v2.3.2130: the move lesson's finish line, and the jump it refuses to
+   count as walking.  TELEPORT_PX is well above any real per-frame step
+   (the bro covers a few px a frame) and well below a zone change, which
+   moves him the width of a map. */
+const MOVE_PX = 120;
+const TELEPORT_PX = 48;
+
 const BLOCK_HOLD_MS = 2000;
 const BLOCK_SECTORS = 8;
 const FULL_CIRCLE = (1 << BLOCK_SECTORS) - 1;
@@ -147,6 +154,38 @@ function inTutorial(rpg) {
   return false;
 }
 
+/* ── Before Mayor Bro has said a word ──
+   v2.3.2130.  inTutorial() above is the gate the coach has always used, and
+   it answers false for the one player who needs teaching most: someone who
+   has just spawned.  A brand-new bro has accepted nothing, so no tut quest
+   is 'active', so the coach stayed dark through the entire first minute --
+   the minute three of four demo reviewers described as not knowing what to
+   do.  (The other two teachers do not cover it either: the §15 step machine
+   has been switched off since v2.3.1593 on the owner's instruction, and
+   ControlsTutorial only opens from a row in Settings labelled "replay the
+   tutorial", which a first-time player has neither seen nor gone looking
+   for.)
+
+   So the coach also runs BEFORE the chain starts -- but only for someone it
+   could plausibly be about.  Two conditions, and both matter:
+
+     - no tut quest has any record at all.  Once tut_1 is accepted this goes
+       false and inTutorial takes over, so the two gates hand off cleanly and
+       never overlap; once tut_4 is turned in both are false forever.
+     - level 3 or under.  Per-browser completion (LS_KEY) already means a
+       returning player is not re-taught, but "returning" is per BROWSER: a
+       veteran on a new phone, or after clearing site data, would otherwise
+       be told how to walk.  The level is the fact that says who they really
+       are. */
+function preTutorial(rpg) {
+  if (!rpg) return false;
+  if ((rpg.level || 1) > 3) return false;
+  const q = rpg._quests || null;
+  if (!q) return true;
+  for (const id of ['tut_1', 'tut_2', 'tut_3', 'tut_4']) if (q[id]) return false;
+  return true;
+}
+
 /* ── The lessons ──
    `live(rpg)`  — is there anything to teach right now?
    `done(rpg)`  — has the player done it? (checked before `live`, so a
@@ -154,6 +193,50 @@ function inTutorial(rpg) {
    `anchors`    — live-DOM targets, first REACHABLE one wins, each with the
                   wording that fits what it is pointing at. */
 const LESSONS = [
+  {
+    /* ═══ v2.3.2130: DRAG TO MOVE ═══
+       The most basic control in the game, and until now it was taught in
+       exactly one place: ControlsTutorial's first step, behind Settings.
+       It goes first because it is first -- a player who cannot move cannot
+       reach Mayor Bro, and every lesson below assumes they got to him.
+
+       ═══ LIVE ONLY BEFORE THE CHAIN, AND THAT IS LOAD-BEARING ═══
+       The first cut had `live` return true unconditionally -- there is no
+       state that makes walking unavailable, so there seemed to be no gate
+       to write.  That was wrong, and mp-questcoach caught it with 23
+       failures: lessons are shown ONE at a time in order, and an unfinished
+       lesson at the head of the queue blocks every lesson behind it.  A
+       `move` mark that had not yet been satisfied sat on top of the gear
+       lesson, the special, the block and the cycle -- the entire questline
+       curriculum, held hostage by a hint about walking.
+
+       (The file's own degrade rule normally prevents exactly this: a lesson
+       whose anchor cannot be measured is SKIPPED rather than blocking, which
+       is why the joystick lessons cause no trouble on desktop.  But this
+       one's anchor measures fine on a phone.  It was on screen, so it
+       blocked.)
+
+       Scoping it to preTutorial fixes that at the root instead of adding a
+       "non-blocking" flag for one lesson: this exists to cover the walk from
+       the spawn point to Mayor Bro, so accepting his first quest IS the
+       lesson being over -- you demonstrably got there.  From that moment
+       preTutorial is false forever, the mark can never return, and the
+       questline lessons own the queue exactly as they did before.
+
+       On desktop the joystick is display:none, measure() returns null, and
+       the degrade rule skips this one as well.
+
+       Anchored on the same zone the cycle lesson uses, with the same
+       `reach` escape: the disc is pointerEvents:'none' and the finger is
+       caught by the full-height [data-joyzone] layer underneath. */
+    id: 'move',
+    shape: 'circle',
+    anchors: [{ sel: '.bt-joystick-zone', reach: '[data-joyzone="L"]',
+                body: 'Drag to move.' }],
+    label: 'Move',
+    live: function (rpg) { return preTutorial(rpg); },
+    done: null,     /* watched live -- see the walked tracker below */
+  },
   {
     id: 'equip',
     shape: 'rect',
@@ -232,6 +315,33 @@ const LESSONS = [
     done: null,     /* watched live — see the activeSlot tracker below */
   },
   {
+    /* ═══ v2.3.2130: DRAG TO ATTACK ═══
+       The other control nothing teaches.  The coach has taught the SPECIAL
+       (a quick swipe) since v2.3.1797 and the BLOCK since v2.3.1796, and
+       both sit on the right joystick -- so the ordinary attack, the plainest
+       thing that stick does, was the one gesture a player could reach the
+       end of the tutorial without ever being shown.  Ordered before the
+       special for that reason: swipe-then-hold are variations on a drag, and
+       teaching a variation before the thing it varies is backwards.
+
+       GATED ON A WEAPON, and not merely for tidiness: swingAttack() returns
+       at `if (!S.rpg.weapon) return` (v2.3.1682, after the owner reported
+       "the character can still make an initial swing without a sword"), so
+       before the gear lesson is finished this would be asking for a gesture
+       the game refuses -- which this file already holds to be worse than no
+       mark at all.  getActiveWeapon rather than rpg.weapon so the ranged and
+       staff slots count, matching the special's gate exactly. */
+    id: 'attack',
+    shape: 'circle',
+    anchors: [{ sel: '.bt-rjoy-base', reach: '[data-joyzone="R"]',
+                body: 'Drag to attack.' },
+              { sel: '.bt-rjoy-zone', reach: '[data-joyzone="R"]',
+                body: 'Drag to attack.' }],
+    label: 'Attack',
+    live: function (rpg) { return !!getActiveWeapon(rpg); },
+    done: null,     /* watched live -- see the isSwinging tracker below */
+  },
+  {
     id: 'special',
     shape: 'circle',
     anchors: [{ sel: '.bt-rjoy-base', reach: '[data-joyzone="R"]',
@@ -296,6 +406,10 @@ export function QuestCoach(props) {
      start credited the player for the previous lesson's equips. */
   const cycleArmed = React.useRef(false);
   const blockRef = React.useRef({ ms: 0, sectors: 0, last: 0 });
+  /* v2.3.2130: how far the bro has actually walked, in world px.  A ref for
+     the same reason as the others -- it ticks every frame and only its
+     crossing of the finish line is worth a render. */
+  const walkRef = React.useRef({ x: null, y: null, px: 0 });
 
   React.useEffect(function () {
     let raf = 0, tick = 0, stop = false;
@@ -351,6 +465,49 @@ export function QuestCoach(props) {
          mid-harvest, cooldown, no weapon, no mana) has passed, so it cannot
          credit a swipe the game turned down. */
       if (S && S._hasUsedSwipe && !done.special) { done.special = true; saveDone(done); }
+      /* ═══ v2.3.2130: DID THEY WALK, AND DID THEY SWING? ═══
+         Both watched the way every other lesson here is -- by polling a state
+         fact, never by a hook pushed into the control (the design note at the
+         top of this file says why, and the double-tap classifier it is
+         protecting has only grown since).
+
+         WALKING is measured as distance COVERED rather than "is the stick
+         deflected", because the honest question is whether the player got the
+         bro to go somewhere.  Per-frame steps over TELEPORT_PX are discarded:
+         a zone change relocates the player across the map in one frame and
+         would otherwise finish this lesson for them -- which matters, since
+         the pre-tutorial gate means this can be on screen while somebody
+         wanders through a door.  120px is a few steps, far enough to be a
+         deliberate walk and short enough that the mark is gone before it
+         nags. */
+      if (S && S.player && !done.move) {
+        const w = walkRef.current;
+        if (w.x != null) {
+          const step = Math.hypot(S.player.x - w.x, S.player.y - w.y);
+          if (step < TELEPORT_PX) w.px += step;
+        }
+        w.x = S.player.x; w.y = S.player.y;
+        if (w.px >= MOVE_PX) { done.move = true; saveDone(done); }
+      }
+      /* SWINGING is a live flag rather than a permanent one, so it is caught
+         on the frame it is true.  Both paths that set it count: playerActions'
+         manual swing and the auto-attack arm in monsterCombat -- a bow player
+         who drags the stick and looses an arrow has done what was asked, and
+         refusing them credit for holding the wrong weapon would be pedantry.
+
+         AND THE AUTO-ATTACK ARM IS NOT A LOOPHOLE, which is worth writing
+         down because it reads like one.  That arm is gated on S.autoAttack,
+         and the only two things that set it are BroTown's right-joystick drag
+         handler (beside S._aiming and the right-stick trail) and the desktop
+         left-click.  It is off until the player aims.  So there is no path
+         where the game swings for somebody who has not made this gesture,
+         and the flag means the thing the lesson is asking about.
+
+         The refusal gates are upstream of the flag too (it is set AFTER
+         swingAttack's no-weapon return), so a swing the game turned down
+         cannot credit it -- the same property that makes _hasUsedSwipe
+         trustworthy above. */
+      if (S && S.isSwinging && !done.attack) { done.attack = true; saveDone(done); }
       if (S) {
         const b = blockRef.current;
         if (S._shieldUp) {
@@ -378,7 +535,7 @@ export function QuestCoach(props) {
 
       /* ── pick and place the mark, ~12x a second ── */
       if ((tick++ % 5) !== 0) return;
-      if (!rpg || !inTutorial(rpg)) {
+      if (!rpg || (!inTutorial(rpg) && !preTutorial(rpg))) {
         if (viewRef.current) { viewRef.current = null; setView(null); }
         return;
       }
@@ -451,7 +608,20 @@ export function QuestCoach(props) {
         return { done: Object.assign({}, doneRef.current), heldMs: Math.round(b.ms),
                  sectors: bits, needMs: BLOCK_HOLD_MS, needSectors: BLOCK_SECTORS,
                  slots: Object.assign({}, seenSlots.current),
-                 cycleArmed: cycleArmed.current };
+                 cycleArmed: cycleArmed.current,
+                 /* v2.3.2130: the move lesson's progress, and which gate is
+                    holding the coach open.  Both are invisible from outside --
+                    a test that could only see "no mark" could not tell a coach
+                    that finished from one that never opened, which is exactly
+                    the failure the pre-tutorial gate is fixing. */
+                 walkedPx: Math.round(walkRef.current.px), needPx: MOVE_PX,
+                 gate: (function () {
+                   const r = (stateRef && stateRef.current && stateRef.current.rpg) || null;
+                   if (!r) return 'none';
+                   if (inTutorial(r)) return 'tutorial';
+                   if (preTutorial(r)) return 'pre';
+                   return 'closed';
+                 })() };
       };
     } catch (_e) {}
     raf = requestAnimationFrame(step);
