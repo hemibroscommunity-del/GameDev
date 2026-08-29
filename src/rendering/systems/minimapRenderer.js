@@ -56,7 +56,7 @@ import { IMAGE_ZONE_MAPS } from '../tiledMaps.js';
 import { propsForZone } from '@/data/worldProps.js';
 import { ZONES } from '@/data/zones.js';
 import { TILE } from '@/data/constants.js';
-import { questRouteExit } from '@/game/questRoute.js'; /* v2.3.1817: which portal the active quest wants */
+import { questRouteExits } from '@/game/questRoute.js'; /* v2.3.1817: which portal the active quest wants; v2.3.2128: plural */
 
 /* Box size in CSS px.  104 is ~27% of a 390px phone's width — big enough
    that a 3px dot reads, small enough to leave the corner usable. */
@@ -781,10 +781,22 @@ export class MinimapRenderer {
        Above the plain portals (drawn after) and below the NPC quest pins
        (drawn next), which is the same precedence the pins already have — the
        thing you can act on right now outranks the thing you travel to. */
-    const routeTo = questRouteExit(zoneId, S.rpg, S);   /* v2.3.1906: S for the spoke return tile */
-    if (routeTo) {
-      this._mark(routeTo.x, routeTo.y, 'star', C_QUEST_STAR, STAR_ICON_PX, 0, -9);
+    /* ═══ v2.3.2128: SOMETIMES EVERY ARCH IS THE RIGHT ONE ═══
+       Owner: "on the quest for 2 cooked fish show stars on all the zones on
+       minimap — one of the people in demo got confused, there was no stars
+       for that quest."
+
+       "Cook 2 fish" names no zone, so the route had nothing to point at and
+       drew nothing — and a blank map during an active quest reads as "no
+       quest is running", the exact failure the star was added to prevent.
+       Fishing holes spawn one per zone, so the truthful mark is all of them:
+       questRouteExits returns a list, and this draws however many come back
+       (one, normally; four on the World View with a field quest up). */
+    const routeList = questRouteExits(zoneId, S.rpg, S);   /* v2.3.1906: S for the spoke return tile */
+    for (let i = 0; i < routeList.length; i++) {
+      this._mark(routeList[i].x, routeList[i].y, 'star', C_QUEST_STAR, STAR_ICON_PX, 0, -9);
     }
+    const routeTo = routeList.length ? routeList[0] : null;
 
     /* '❗' = he has work for you, '❓' = you can hand it in.  Read straight off
        npc._questMarker, which is what the in-world badge over his head reads
@@ -823,6 +835,11 @@ export class MinimapRenderer {
            star" is not the claim worth testing — "is it on the RIGHT portal"
            is. */
         questRoute: routeTo ? { x: Math.round(routeTo.x), y: Math.round(routeTo.y), zoneId: routeTo.zoneId } : null,
+        /* v2.3.2128: ALL of them.  `questRoute` above is the first, kept at
+           its old shape so the scenarios written against it still read; the
+           claim worth testing now is "how many, and which zones" — a single
+           entry cannot tell a four-star field quest from a one-star trip. */
+        questRoutes: routeList.map((r) => ({ x: Math.round(r.x), y: Math.round(r.y), zoneId: r.zoneId })),
         /* v2.3.1908: the star's own colour and size, so "more yellow and
            slightly larger" is assertable rather than eyeballed — and so a
            later tidy-up cannot quietly fold it back into C_QUEST. */

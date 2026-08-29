@@ -30,6 +30,25 @@ import { TILE } from '@/data/constants.js';
    somewhere else, the search for what to change lands here. */
 const QUEST_HOME_ZONE = 'town';
 
+/* ═══ v2.3.2128: "ANYWHERE OUT THERE" IS A DESTINATION TOO ═══
+ * Owner: "on the quest for 2 cooked fish show stars on all the zones on
+ * minimap — one of the people in demo got confused, there was no stars for
+ * that quest."
+ *
+ * The star used to answer "which zone does this quest name", and a quest that
+ * names no zone got nothing.  But "Cook 2 fish" is not zone-less because it
+ * happens nowhere — it is zone-less because it happens in ANY zone: fishing
+ * holes are spawned one per zone (server gathering.js `_getZoneNodeConfig`)
+ * and there are none in town.  So the honest answer for that quest is not
+ * "no star", it is "every one of them", which is what a player standing on
+ * the World View needs to see.
+ *
+ * This is the sentinel `questTargetZone` returns for that case.  Not a real
+ * zone id — '*' cannot collide with one — and every consumer has to handle
+ * it, which is the point: a caller that forgets goes back to starring
+ * nothing rather than trying to walk to a zone called '*'. */
+export const ANY_FIELD_ZONE = '*';
+
 /** The zone the player's ACTIVE Mayor Bro step points at, or null.
  *  Null covers three ordinary cases and they are deliberately not
  *  distinguished: no quest running, a quest with no zone (cook / mine
@@ -37,6 +56,7 @@ const QUEST_HOME_ZONE = 'town';
 export function questTargetZone(rpg, S) {
   const quests = (rpg && rpg._quests) || null;
   if (!quests) return null;
+  let anyField = false;                    /* v2.3.2128 */
   for (const qid of Object.keys(quests)) {
     if (quests[qid] !== QUEST_STATUS.active) continue;
     const q = QUEST_CHAINS[qid];
@@ -63,22 +83,73 @@ export function questTargetZone(rpg, S) {
     try { done = !!(q.check && q.check(rpg, S)); } catch (e) { done = false; }
     if (done) return QUEST_HOME_ZONE;      /* hand it in */
     if (q.zone) return q.zone;
+    /* v2.3.2128: remembered rather than returned, so a NAMED zone on any
+       other active quest still wins.  "Frost Ridge" is a better direction
+       than "anywhere", and holding both quests at once is normal. */
+    if (q.anyZone) anyField = true;
   }
-  return null;
+  return anyField ? ANY_FIELD_ZONE : null;
 }
 
-/** Where to head NEXT, in the zone you are standing in — world {x, y} plus
- *  the zone it leads to — or null when there is nothing useful to point at.
+/** EVERY exit worth starring in the zone you are standing in — an array of
+ *  world {x, y} plus the zone each leads to.  Empty when there is nothing
+ *  useful to point at.
  *
- *  Returning null when you are ALREADY in the target zone is the important
+ *  Usually one, because usually the quest names one place.  It is a LIST for
+ *  the v2.3.2128 case above: an objective that any zone satisfies has no
+ *  single right arch to mark, and picking one of five arbitrarily would be
+ *  worse than marking all five — it would send everyone to the same zone and
+ *  read as "the quest is here", which is a claim the star must not make.
+ *
+ *  Returning empty when you are ALREADY in the target zone is the important
  *  one: a star on the exit you just came through would be pointing at the way
  *  home while the quest is telling you to hunt here. */
-export function questRouteExit(currentZone, rpg, S) {
+export function questRouteExits(currentZone, rpg, S) {
   const target = questTargetZone(rpg, S);
-  if (!target || !currentZone) return null;
-  if (currentZone === target) return null;          /* you are there — hunt, don't travel */
+  if (!target || !currentZone) return [];
 
   const at = (e) => ({ x: (e.tx + 0.5) * TILE, y: (e.ty + 0.5) * TILE, zoneId: e.zoneId });
+
+  /* v2.3.2128: "out there, anywhere". */
+  if (target === ANY_FIELD_ZONE) {
+    if (currentZone === 'worldview') {
+      /* Every live spoke EXCEPT the one back to town — that is the way home,
+         not a place to fish — and only the ones you can actually walk into.
+         A locked spoke is painted shut (tileRenderer, v2.3.1822) and starring
+         it would be the map arguing with the door. */
+      const open = WORLDVIEW_EXITS
+        .filter((e) => e && e.zoneId !== 'town' && isZoneUnlocked(rpg, e.zoneId));
+      if (open.length) return open.map(at);
+      /* Nothing out here is open to you yet, so "go fish anywhere" has no
+         anywhere in it — the next real step is back to the Mayor for the
+         quest that unlocks a zone.  Falling through to an empty list would
+         put us back at the blank map this whole change is about. */
+      const home = WORLDVIEW_EXITS.find((e) => e && e.zoneId === 'town');
+      return home ? [at(home)] : [];
+    }
+    if (currentZone === 'town') {
+      /* One way out of town, and the whole field is behind it — but only if
+         any of it is open.  With every spoke still locked the trip is a dead
+         end, and the Mayor's own '❗' pin is already the honest next step. */
+      const anyOpen = WORLDVIEW_EXITS.some(
+        (e) => e && e.zoneId !== 'town' && isZoneUnlocked(rpg, e.zoneId));
+      if (!anyOpen) return [];
+      const e = TOWN_EXITS.find((x) => x && x.zoneId === 'worldview');
+      return e ? [at(e)] : [];
+    }
+    /* You are standing in a zone already: this IS one of the places the
+       quest meant, so the next step is work, not travel. */
+    return [];
+  }
+
+  const one = _routeOne(currentZone, target, S, at);
+  return one ? [one] : [];
+}
+
+/** The single-destination route — the original v2.3.1817 behaviour, unchanged,
+ *  hoisted out so the any-zone branch above can sit beside it. */
+function _routeOne(currentZone, target, S, at) {
+  if (currentZone === target) return null;          /* you are there — hunt, don't travel */
 
   if (currentZone === 'worldview') {
     /* The hub: the spoke itself is here, so point straight at it.  A target
@@ -112,6 +183,14 @@ export function questRouteExit(currentZone, rpg, S) {
      nothing" left the one screen where you actually need directions blank. */
   const home = _nearestReturnTile(S);
   return home ? { x: home.x, y: home.y, zoneId: (S && S._enteredFromHub === 'worldview') ? 'worldview' : 'town' } : null;
+}
+
+/** The FIRST exit worth starring, or null.  Kept because "where is the quest
+ *  pointing" is still a one-answer question for every caller that only wants
+ *  one — and because the QA probe has published this shape since v2.3.1817. */
+export function questRouteExit(currentZone, rpg, S) {
+  const list = questRouteExits(currentZone, rpg, S);
+  return list.length ? list[0] : null;
 }
 
 /* The nearest tile-9 return marker in the zone you are standing in, as world
