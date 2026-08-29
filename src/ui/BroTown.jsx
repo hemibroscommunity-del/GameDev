@@ -87,6 +87,10 @@ import { IntroVideo } from './IntroVideo.jsx';
    trigger the owner asked to remove.  MayorGreeting itself stays imported
    because the (now unreachable) render branch below still references it. */
 import { MayorGreeting } from './MayorGreeting.jsx';
+/* v2.3.2121: the first-join welcome + "find Mayor Bro" objective.  A banner,
+   NOT the greeting video above — see welcomeBanner.js for why those are
+   different asks. */
+import { maybeShowWelcome } from '@/game/welcomeBanner.js';
 import { BUILD_INFO } from './BuildBadge.jsx';
 import { pushHudPopup } from './XpFlyOverlay.jsx';
 
@@ -147,7 +151,14 @@ function _npcQuestReady(S, npcQ) {
 }
 
 export function questMsgMs(kind) {
-  return (kind === 'completed' || kind === 'reward') ? QUEST_MSG_LONG_MS : QUEST_MSG_MS;
+  /* v2.3.2121: 'welcome' joins the long hold.  It is the one banner whose
+     reader has never seen this screen before — 2.2s is a go-cue for someone
+     who already knows what the plate is, and the first-join greeting is
+     asking them to find a name they have not met yet.  It also fires ONCE in
+     a character's life, so the queue cost the note above worries about is
+     paid at most once. */
+  return (kind === 'completed' || kind === 'reward' || kind === 'welcome')
+    ? QUEST_MSG_LONG_MS : QUEST_MSG_MS;
 }
 
 /* v2.3.868: COOK_PAN_BY_FISH removed — it fed panSheetSrc to the
@@ -162,6 +173,7 @@ export function questMsgMs(kind) {
    stomped the fake self-heal.  The eatBus handler now mirrors the
    CookPanel/InventoryPanel eat path (calcDisplayHeal prediction +
    eat_request). */
+import { unequipWeaponSlot } from './mobile/dash/equipActions.js'; /* v2.3.2123: on the autotest bridge below */
 import { firemakingBus } from './mobile/firemakingBus.js';
 import { eatBus } from './mobile/eatBus.js';
 import { blockRingBus } from './mobile/blockRingBus.js';
@@ -856,6 +868,13 @@ export var BroTown = function BroTown(_ref0) {
        bare-headed run makes the assertion pass by measuring nothing.  Same
        posture as createMonster above: a hook that mutates the world, so a
        test can set up the case it is actually about. */
+    /* v2.3.2123: the weapon unequip flow, on the same surface and for the
+       same reason.  It is the path the Equipped pane's button takes, it now
+       REFUSES at a full bag (equipActions.js), and "the client refuses what
+       the worker refuses" is a claim only reachable by calling the real
+       function — a scenario that reimplemented the rule would be asserting
+       against its own copy of it. */
+    unequipWeaponSlot: unequipWeaponSlot,
     setHeadwear: setHeadwear,
     setFacialHair: setFacialHair,
     HEADWEAR_CATALOG: HEADWEAR_CATALOG,
@@ -5349,7 +5368,23 @@ export var BroTown = function BroTown(_ref0) {
                     if (dropPower >= curPower) {
                       if (current && current.name) {
                         if (!S.rpg.weaponStash) S.rpg.weaponStash = [];
-                        if (S.rpg.weaponStash.length < WEAPON_STASH_MAX) S.rpg.weaponStash.push(_objectSpread({}, current));
+                        /* ═══ v2.3.2123: THE ONE IT REPLACES IS SOLD, NOT BINNED ═══
+                           The push was guarded and the assignment below was
+                           not, so a pet upgrade at a full stash deleted the
+                           weapon you were holding.  The WORSE-drop branch
+                           immediately below has always auto-sold at the cap
+                           ("dropping value on the floor is worse than a forced
+                           sale", index.js) -- this branch is the same trade
+                           seen from the other side, and it simply never got
+                           the same treatment.  So: keep the upgrade, sell the
+                           old one, say so.  See Alix's "just lost my magic
+                           stick" and mp-weaponloss. */
+                        if (S.rpg.weaponStash.length < WEAPON_STASH_MAX) {
+                          S.rpg.weaponStash.push(_objectSpread({}, current));
+                        } else {
+                          S.rpg.coins += Math.ceil(curPower * 0.5);
+                          pushDmgPopup(S, S._petX, S._petY - 30, 'BAG FULL -> sold ' + current.name, '#D8A94D');
+                        }
                       }
                       if (isRanged) S.rpg.rangedWeapon = drop;else S.rpg.weapon = drop;
                       pushDmgPopup(S, S._petX, S._petY - 15, 'PET -> ' + drop.name, loot.tierColor || '#fff');
@@ -8708,6 +8743,12 @@ export var BroTown = function BroTown(_ref0) {
          correct (the overlay is covering it), and after it a dark canvas is
          the bug the owner reported. */
       try { if (stateRef.current) stateRef.current.__introLiftedAt = Date.now(); } catch (e) {}
+      /* v2.3.2121 (owner: "first time upon joining the game you get a message
+         about welcome to bro town and find the mayor"): here, because this is
+         the instant the world becomes visible — the same beat the v2.3.1593
+         greeting used to take.  It is a MESSAGE, not that removed video; see
+         welcomeBanner.js.  Once per browser, and it never throws. */
+      maybeShowWelcome();
       setShowIntro(false);
     }
   }), showMayorGreeting && /*#__PURE__*/React.createElement(MayorGreeting, {
@@ -9833,6 +9874,13 @@ export var BroTown = function BroTown(_ref0) {
     }
   }, questMsg.kind === 'completed' ? "QUEST COMPLETED!"
     : questMsg.kind === 'reward' ? "QUEST REWARD"
+    /* v2.3.2121: the first-join greeting borrows this plate.  ONE WORD, and
+       that is a layout constraint rather than a style choice: the headline is
+       `nowrap` at min(30px, 6.4vw), so "WELCOME TO BRO TOWN" would run off a
+       390px screen — the primary platform — the same way "QUEST COMPLETED!"
+       did before v2.3.1745b sized it.  The town's name goes in the title line
+       below, which wraps. */
+    : questMsg.kind === 'welcome' ? "WELCOME"
     : "QUEST ACCEPTED!"),
   questMsg.title && /*#__PURE__*/React.createElement("div", {
     style: {

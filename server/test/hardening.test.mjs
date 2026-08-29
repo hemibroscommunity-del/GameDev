@@ -70,7 +70,12 @@ await join(ws, 'bp_hd_p');
 const ps = room.playerState['bp_hd_p'];
 ps.coins = 100000;
 ps.lifeSkills = { blacksmithing: { level: 10, xp: 0 } };
-ps.inventory = { ore_wood_ore: 99 };
+/* v2.3.2123: wood_pine_log, not the old ore_wood_ore.  The blacksmith's
+   first tier consumes the log the first tree drops now; the key it used to
+   ask for was one nothing in the game produced, and seeding it here is how
+   this suite kept passing while the tier was unforgeable in play (see
+   forgekeys.test.mjs and Alix's demo screenshot). */
+ps.inventory = { wood_pine_log: 99 };
 
 // ── 1. caps ──
 const sync = ws.sent.find((m) => m.type === 'state_sync');

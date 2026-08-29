@@ -163,6 +163,68 @@ export function zoneUnlockQuest(zoneId) {
   return ZONE_UNLOCK.get(zoneId) || null;
 }
 
+/* ═══ v2.3.2121: THE LAST FEW STEPS, WHICH THE STAR NEVER HAD TO TAKE ═══
+ *
+ * Owner: "a light gold path to the next area you're supposed to go to", and
+ * "first time upon joining ... find the mayor because he wants to speak with
+ * you".
+ *
+ * questRouteExit answers "which portal", which is the whole job on a minimap
+ * — it deliberately returns null once you are IN the target zone, because a
+ * star on the exit you just walked through would point home.  A road on the
+ * ground has one more question to answer: you are standing in town, the man
+ * you need is forty tiles away behind a fountain, and "no route" leaves the
+ * one screen where the feature was asked for blank.
+ *
+ * So this wraps it and adds the in-town leg.  It is a SEPARATE export rather
+ * than a change to questRouteExit because the minimap's contract is right as
+ * it is: the star marks portals, and it should not start marking people.
+ *
+ * TWO CASES REACH THE NPC, and no others:
+ *   - an active quest whose objective is already met — the next step is the
+ *     hand-in, which is exactly what v2.3.1906 taught questTargetZone; this
+ *     just walks the last few tiles of it.
+ *   - a player with NO quest records at all, i.e. brand new.  That is the
+ *     welcome case, and it is the only time this points at a quest you have
+ *     not accepted: a general "walk to any available quest" pointer would be
+ *     a nag, and this fires once in a character's life.
+ *
+ * The position is read from the LIVE npc list, never from NPC_DATA: two of
+ * them walk (v2.3.2046/2064), and a road to where someone used to stand is
+ * worse than no road.
+ */
+const WELCOME_NPC = 'Mayor Bro';
+
+export function questRoutePoint(currentZone, rpg, S) {
+  const exit = questRouteExit(currentZone, rpg, S);
+  if (exit) return exit;
+  if (currentZone !== QUEST_HOME_ZONE) return null;
+
+  const quests = (rpg && rpg._quests) || null;
+  let wantNpc = null;
+
+  if (!quests || !Object.keys(quests).length) {
+    wantNpc = WELCOME_NPC;                       /* brand new: go meet him */
+  } else {
+    for (const qid of Object.keys(quests)) {
+      if (quests[qid] !== QUEST_STATUS.active) continue;
+      const q = QUEST_CHAINS[qid];
+      if (!q || !q.npc) continue;
+      let done = false;
+      try { done = !!(q.check && q.check(rpg, S)); } catch (e) { done = false; }
+      if (done) { wantNpc = q.npc; break; }      /* hand it in */
+    }
+  }
+  if (!wantNpc) return null;
+
+  const npcs = (S && S.npcs) || null;
+  if (!Array.isArray(npcs)) return null;
+  const n = npcs.find((o) => o && o.name === wantNpc);
+  return (n && typeof n.x === 'number' && typeof n.y === 'number')
+    ? { x: n.x, y: n.y, npc: wantNpc }
+    : null;
+}
+
 /** Is `zoneId` open to this player?
  *
  *  v2.3.1822.  Owner, after the gate shipped: "I started a new character on

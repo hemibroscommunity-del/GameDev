@@ -81,6 +81,13 @@ export const BLACKSMITH_TIERS = {
     label: 'Wood',
     slots: 1,
     oreName: 'wood',
+    /* v2.3.2123: mirrors server/src/data.js BLACKSMITH_TIERS.wood — the first
+       melee tier is a WOODEN weapon and consumes wood_pine_log, the log the
+       first tree drops.  Without this the key resolves to `ore_wood_ore`,
+       which nothing produces, and the tier reads "Wood 0/3" with a bag full of
+       logs (Alix's demo screenshot).  Same bug v2.3.1763 fixed for the
+       woodworking bench and left live here. */
+    wood: 'pine_log',
     oreCost: 3,
     goldCost: 8,
     tierMult: 1.00,
@@ -332,8 +339,32 @@ export const ARMOR_EQUIP_STAT = 'vitality';
 export const AMULET_EQUIP_STAT = 'mind';
 
 /* Check if player meets stat requirement for an item */
+/* ═══ v2.3.2124: IRON IS FREE TO WEAR ═══
+   Owner: "There should not be a 30 defense requirement on iron chest plate.
+   Maybe an early build.  Remove any defense requirement for all iron."
+   Matched on `mat` AND `gearBase`: a dropped piece names its metal in the
+   first (MONSTER_ARMOR_DROPS mints {name, tierMult, slot, mat}) and a forged
+   one in the second, and covering only one would make the rule true for loot
+   and false for craft.
+   v2.3.2125: applied to EVERY slot.  v2.3.2124 covered armour and shields
+   alone, reading "remove any DEFENSE requirement for all iron" narrowly and
+   leaving an iron weapon on its sword/bow/staff ladder; the owner then asked
+   for those too — "Allow iron weapons to be equipped at any level.  Exempt
+   iron weapons from requirement too."  Tiers ABOVE iron still gate.
+   Server mirror: _isIronGear in server/src/gear.js — pinned by a test, because
+   the two gates disagreeing is exactly what cost a player their chest plate
+   (they equipped what this function allowed and the worker refused). */
+export function isIronGear(item) {
+  if (!item || typeof item !== 'object') return false;
+  return item.mat === 'iron' || item.material === 'iron' || item.gearBase === 'iron';
+}
+
 export function canEquipItem(rpg, item, slotType) {
   var _item$gearBase2;
+  /* v2.3.2125: every slot — see the note on isIronGear.  v2.3.2124 exempted
+     the defence-gated slots only; the owner then asked for the weapons too
+     ("Allow iron weapons to be equipped at any level"). */
+  if (isIronGear(item)) return true;
   if (!item || !item.gearBase) return true; /* non-crafted items have no stat gate */
   var isWood = (_item$gearBase2 = item.gearBase) === null || _item$gearBase2 === void 0 ? void 0 : _item$gearBase2.startsWith('ww_');
   var tierKey = isWood ? item.gearBase.slice(3) : item.gearBase;

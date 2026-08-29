@@ -273,7 +273,10 @@ export function WoodworkPanel(props) {
             var wpnKey = craftType === 'bow' ? 'rangedWeapon' : 'staffWeapon';
             if (R[wpnKey] && R[wpnKey].name) {
               if (!R.weaponStash) R.weaponStash = [];
-              if (R.weaponStash.length < WEAPON_STASH_MAX) R.weaponStash.push(_objectSpread({}, R[wpnKey]));
+              /* v2.3.2123: refuse at the cap instead of overwriting -- the
+                 blacksmith's twin, same bug, same reason.  See ForgePanel. */
+              if (R.weaponStash.length >= WEAPON_STASH_MAX) return;
+              R.weaponStash.push(_objectSpread({}, R[wpnKey]));
             }
             R[wpnKey] = {
               type: wpnType,

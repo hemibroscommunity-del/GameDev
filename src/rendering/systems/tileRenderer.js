@@ -9,7 +9,7 @@ import { Container, Graphics, Sprite, Text, TextStyle, Texture, Rectangle, Asset
 import { TILE } from '@/data/constants.js';
 import { ZONES } from '@/data/zones.js';
 import { TOWN_EXITS, WORLDVIEW_EXITS, COMING_SOON_MARKS, TOWN_SOON_MARKS } from '@/data/effects.js';
-import { isZoneUnlocked, zoneUnlockQuest } from '@/game/questRoute.js'; /* v2.3.1822: a shut door looks shut */
+import { isZoneUnlocked, zoneUnlockQuest, questRoutePoint } from "@/game/questRoute.js"; /* v2.3.1822: a shut door looks shut; v2.3.2121: and the way there is lit */
 import { getLoadedTiledMap, getTilesetImage, IMAGE_ZONE_MAPS, VIDEO_ZONE_MAPS } from '../tiledMaps.js';
 import { PORTAL_BEAM } from '../fxStrips.js'; /* v2.3.2070: the light shaft over a zone exit */
 
@@ -54,6 +54,46 @@ const PORTAL_BEAM_ALPHA = 1.25;
  * already halved for locked exits before it gets here.  The invitation is what
  * is removed, not the landmark. */
 const PORTAL_BEAM_LOCKED_TINT = 0x7c8798;
+
+/* ═══ v2.3.2121: THE QUEST ROAD ═══
+ * Owner: "make it so that during quests there's a light gold path to the next
+ * area you're supposed to go to."
+ *
+ * questRoute.js has answered "which way" since v2.3.1817 — it is what the
+ * minimap star reads — but only on the minimap, which is a thing you stop to
+ * consult.  This puts the same answer on the ground in front of you.
+ *
+ * IT IS A HEADING, NOT A ROUTE MAP.  The motes run from the player's feet
+ * TRAIL_TILES along the way and stop, rather than drawing the whole distance.
+ * Two reasons, and the second is the load-bearing one:
+ *   - A line all the way across a zone is a stripe over the map art, and this
+ *     has to survive being looked at for an entire play session.
+ *   - It cannot go stale.  It is re-derived from the player's live position,
+ *     so a short road that keeps being true beats a long one drawn once.
+ *
+ * Those seven tiles ARE PATHFOUND, over the same walkability grid the player
+ * collides with — see _questPath, and see its header for why the first cut
+ * (straight line, stopped at the first wall) drew nothing at all on the one
+ * screen this feature was asked for.
+ *
+ * WHY IT AGREES WITH THE MINIMAP.  Both read questRoute.js.  The star answers
+ * "which portal" and the road answers "which way from here"; if the road
+ * picked its own destination the two could point opposite ways, which is
+ * worse than having neither.
+ *
+ * Drawn on overlayGfx, which is cleared and refilled every frame — so this
+ * costs no texture, and therefore has nothing to register with
+ * preloadWorldAnimations (CLAUDE.md's preloading law is about assets that can
+ * hitch on first use; a Graphics circle cannot). */
+const TRAIL_GOLD = 0xF5C542;
+/* The mote's hot centre and its shadow.  Both exist because town's ground is
+   painted GOLD — see the three-ring note in _drawQuestTrail.  TRAIL_INK is
+   Lantern Slate's own ink, the colour the quest plate sits on. */
+const TRAIL_CORE = 0xFFF3C4;
+const TRAIL_INK = 0x0D151A;
+const TRAIL_TILES = 7;          /* how far ahead the road is lit */
+const TRAIL_STEP = 0.9;         /* tiles between motes */
+const TRAIL_NEAR_TILES = 1.4;   /* no motes under your own feet */
 
 /* ═══ v2.3.2070: QA HANDLE ON THE BEAMS ═══
  * The beam is ADDITIVE light over a painted map, so the only honest way to
@@ -774,8 +814,21 @@ export class TileRenderer {
        the painted artwork.  Other zones use a tighter rectangle since
        the procedural ground tiles already provide visual contrast. */
     this.overlayGfx.clear();
+    /* ═══ v2.3.2121: THE ROUTE IS READ ONCE, FOR BOTH USERS ═══
+       The gold beam (inside the exits loop) and the road on the ground both
+       want it, and it is hoisted OUT of `if (this._exitTiles.length)` on
+       purpose: the trail must not be conditional on this zone having declared
+       exit tiles.  It usually does — the route's own waypoint is normally one
+       of them — but "the guidance disappears in a zone that happens to have
+       no exits" is exactly the silent failure this feature exists to prevent.
+       Wrapped for the same reason questRoute wraps q.check: it runs arbitrary
+       per-quest predicates on live state, and a throw here would take the
+       whole tile layer down.  No route is the correct failure mode. */
+    const _now = Date.now();
+    let _questTo = null;
+    try { _questTo = questRoutePoint(this.currentZone, (S && S.rpg) || null, S); } catch (e) { _questTo = null; }
     if (this._exitTiles.length) {
-      const now = Date.now();
+      const now = _now;
       const zone = ZONES[this.currentZone];
       const elemColor = zone && zone.element ? 0xff5e6c : 0x5b52ff;
       const obvious = !!this._isImageZone;
@@ -868,7 +921,19 @@ export class TileRenderer {
              unchanged. */
           const _fanDown = ex.dir === 'south' || ex.dir === 'se' || ex.dir === 'sw';
           sp.scale.y = _fanDown ? -Math.abs(sp.scale.y) : Math.abs(sp.scale.y);
-          sp.tint = _locked ? PORTAL_BEAM_LOCKED_TINT : 0xffffff;
+          /* v2.3.2121: the quest's own exit burns GOLD.  The road on the
+             ground says which way; this says which arch, which is the
+             question the star was invented to answer (questRoute.js's header:
+             five interchangeable arches).  A LOCKED exit keeps its slate —
+             the route never points at one, and "cold" outranks "chosen"
+             because the invitation would be a lie. */
+          const _isQuestExit = !_locked && _questTo
+            && Math.abs(_questTo.x - cx) < TILE && Math.abs(_questTo.y - cy) < TILE;
+          sp.tint = _locked ? PORTAL_BEAM_LOCKED_TINT : (_isQuestExit ? TRAIL_GOLD : 0xffffff);
+          if (_portalProbe) {
+            const _pq = _portalProbe[_portalProbe.length - 1];
+            if (_pq) _pq.questGold = !!_isQuestExit;
+          }
           /* Clamped: PORTAL_BEAM_ALPHA over 1 is deliberate — the beam wants
              to be brighter than the pulse's own 0.8 ceiling on a dark map —
              but Pixi clamps on render while leaving the property above 1,
@@ -921,6 +986,10 @@ export class TileRenderer {
     } else if (this._portalBeams.length) {
       for (const sp of this._portalBeams) sp.visible = false;
     }
+    /* v2.3.2121: the road, drawn whether or not this zone declared exits. */
+    this._drawQuestTrail(S, _questTo, _now);
+    /* v2.3.2124: the vista magnifier's glass, under your feet. */
+    this._drawPlayerLens(S, _now);
 
     // Two-pass background, matching the Canvas 2D path:
     //   1. Solid BLACK extending well beyond the map so out-of-bounds
@@ -939,6 +1008,281 @@ export class TileRenderer {
       this.bgGfx.rect(0, 0, this._mapW, this._mapH);
       this.bgGfx.fill({ color: this._bgColor });
     }
+  }
+
+  /* ═══ v2.3.2124: THE MAGNIFYING GLASS ═══
+   * Owner: "there was a fair point about the character being too small in
+   * worldview.  Maybe it can show character full size but through a
+   * 'magnifying glass'."
+   *
+   * entityRenderer does the actual magnifying -- a zone carrying `playerLens`
+   * renders the LOCAL player at a flat readable scale instead of the vista
+   * curve that takes him to 3% at the rim.  This draws the glass he is being
+   * seen through, and it exists so the result reads as deliberate: a figure
+   * that is simply bigger than the map's perspective says he should be looks
+   * like a scale bug, and the same figure inside a lens looks like a lens.
+   *
+   * UNDER THE PLAYER, not over him.  overlayGfx sits below the entity layer,
+   * so this is glass he stands on rather than a pane across his face -- which
+   * is the only version that cannot cost readability, the exact thing the
+   * feature is for (Tee raised it about visual impairment).
+   *
+   * No filter and no texture: a ring, a fill and a highlight arc on the
+   * Graphics that is already cleared and refilled every frame.  A `filter`
+   * compositing over the WebGL canvas is the documented cause of the iOS
+   * static (CLAUDE.md), and this would be the worst possible place for it. */
+  _drawPlayerLens(S, now) {
+    const zone = ZONES[this.currentZone];
+    const lens = zone && zone.playerLens;
+    if (!lens || !S || !S.player) return;
+    const r = (typeof lens.r === 'number' ? lens.r : 46);
+    /* player x/y is the FOOT anchor and the figure stands up from it, so the
+       glass is lifted onto his middle -- centred on the feet it cut through
+       his knees and read as a selection ring. */
+    const x = S.player.x, y = S.player.y + (typeof lens.cy === 'number' ? lens.cy : 0);
+    /* A slow breath so the glass reads as an optic rather than a painted
+       circle -- 3% over four seconds, small enough never to pull the eye off
+       the figure inside it. */
+    const breathe = 1 + 0.03 * Math.sin((now % 4000) / 4000 * Math.PI * 2);
+    const rr = r * breathe;
+    /* the glass */
+    this.overlayGfx.circle(x, y, rr);
+    this.overlayGfx.fill({ color: 0xCFE3F0, alpha: 0.10 });
+    /* the rim, in Lantern Slate brass so it belongs to the UI rather than to
+       the landscape */
+    this.overlayGfx.circle(x, y, rr);
+    this.overlayGfx.stroke({ color: 0xD8AA58, width: 2.5, alpha: 0.75 });
+    /* an inner hairline, which is what makes a circle read as ground glass
+       instead of as a selection ring */
+    this.overlayGfx.circle(x, y, rr - 3);
+    this.overlayGfx.stroke({ color: 0xF4F0E7, width: 1, alpha: 0.24 });
+    /* the highlight: a short bright arc up-left, the one cue that says
+       "curved glass" at this size */
+    this.overlayGfx.arc(x, y, rr - 5, Math.PI * 1.05, Math.PI * 1.45);
+    this.overlayGfx.stroke({ color: 0xFFFFFF, width: 2.5, alpha: 0.34 });
+  }
+
+  /* ═══ v2.3.2121: THE ROAD ITSELF ═══
+   * Motes from the player along the way to `to`, fading with distance, with a
+   * slow travelling shimmer so it reads as flowing THAT WAY rather than as a
+   * static dotted line.  See the constants block for why it is a heading and
+   * not a full route.
+   *
+   * Never throws and never blocks a frame: every early return leaves
+   * overlayGfx exactly as the exits loop left it. */
+  _drawQuestTrail(S, to, now) {
+    /* v2.3.2121 QA HANDLE.  A scenario cannot read a WebGL canvas, and "are
+       there gold pixels" was never the claim worth testing — "is the road
+       pointing at the right thing, and does it get there" is.  Reset to a
+       shape that says "ran, drew nothing" so a probe read can tell "no route"
+       apart from "the trail code never executed", which are two very
+       different bugs that look identical from the outside. */
+    const _probe = (typeof window !== 'undefined')
+      ? { to: to ? { x: to.x, y: to.y, npc: to.npc || null, zoneId: to.zoneId || null } : null,
+          motes: 0, limitTiles: 0, legs: 0, bent: false }
+      : null;
+    if (_probe) window.__btQuestRoad = _probe;
+
+    if (!to || !S || !S.player) return;
+    const path = this._questPath(S, to);
+    if (!path || path.length < 2) return;
+    if (_probe) { _probe.legs = path.length - 1; _probe.bent = path.length > 2; }
+
+    /* Arc length along the polyline, so spacing, falloff and the shimmer are
+       all measured in DISTANCE TRAVELLED rather than in straight-line
+       distance — a road that bends round a building must not bunch its motes
+       up on the corner. */
+    const seg = [];
+    let total = 0;
+    for (let i = 1; i < path.length; i++) {
+      const L = Math.hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y);
+      seg.push(L);
+      total += L;
+    }
+    const limit = Math.min(total, TRAIL_TILES * TILE);
+    if (_probe) _probe.limitTiles = limit / TILE;
+    if (limit <= TRAIL_NEAR_TILES * TILE) return;   /* nothing left to draw */
+
+    /* The shimmer: one slow cycle travelling outward along the road. */
+    const phase = (now % 1600) / 1600;
+    let si = 0;
+    let acc = 0;                                     /* arc length at path[si] */
+    for (let t = TRAIL_NEAR_TILES; t * TILE <= limit; t += TRAIL_STEP) {
+      const d = t * TILE;
+      while (si < seg.length - 1 && acc + seg[si] < d) { acc += seg[si]; si++; }
+      const f = seg[si] > 0 ? (d - acc) / seg[si] : 0;
+      const x = path[si].x + (path[si + 1].x - path[si].x) * f;
+      const y = path[si].y + (path[si + 1].y - path[si].y) * f;
+      /* ═══ BOTH OF THESE ARE SHALLOW ON PURPOSE ═══
+         The first cut had falloff run 1 -> 0 and the shimmer swing 0.1 -> 1.0,
+         which multiplied out to a typical mote alpha near 0.13 — and 13% gold
+         over town's painted GOLD cobble is nothing.  Two headless shots in a
+         row came back with no road on them.  The fade and the shimmer are
+         both meant to be texture on a visible thing, not the difference
+         between visible and not, so each keeps most of its brightness:
+         distance costs 45%, the shimmer swings 20%. */
+      const falloff = 1 - 0.45 * (d / (TRAIL_TILES * TILE));
+      const wave = 0.8 + 0.2 * Math.sin((t / TRAIL_TILES - phase) * Math.PI * 2);
+      const a = Math.max(0, falloff * wave);
+      if (a <= 0.02) continue;
+      if (_probe) _probe.motes++;
+      /* ═══ THREE RINGS, AND THE DARK ONE IS THE REASON THIS IS VISIBLE ═══
+         The first cut was gold glow + gold core, and the headless shot of the
+         very screen this feature opens on showed NOTHING: town's ground is
+         painted gold cobble, so gold at 30% alpha over gold is gold.  A mote
+         cannot be defined by its hue when the hue is the floor's.
+
+         So each one is a shadow, a glow and a hot core.  The Lantern Slate
+         ink underneath (the same #0D151A the quest plate sits on) is what
+         separates it from a bright ground, and the near-white core is what
+         separates it from a dark one — frost and the cave are the opposite
+         problem, and a single value cannot solve both.  Drawn shadow-first so
+         the core lands on top of its own backing. */
+      this.overlayGfx.circle(x, y, TILE * 0.40);
+      this.overlayGfx.fill({ color: TRAIL_INK, alpha: a * 0.45 });
+      this.overlayGfx.circle(x, y, TILE * 0.30);
+      this.overlayGfx.fill({ color: TRAIL_GOLD, alpha: a * 0.85 });
+      this.overlayGfx.circle(x, y, TILE * 0.15);
+      this.overlayGfx.fill({ color: TRAIL_CORE, alpha: a });
+    }
+  }
+
+  /* ═══ v2.3.2121: THE ROAD GOES ROUND THE TOWN HALL ═══
+   *
+   * The first cut of this drew a straight line and stopped it at the first
+   * blocked cell, on the reasoning that collision is prop-only outside the
+   * World View so the straight line is almost always the walk.  The very
+   * first headless run killed that: a new bro spawns at (910, 1130) and Mayor
+   * Bro stands at (900, 780), eleven tiles due north — with a building
+   * squarely between them.  The road died after one tile.  On the one screen
+   * the feature was asked for, it drew nothing.
+   *
+   * So it is a real route now, over the same `S._tiledWalkable[zone]` grid
+   * isSolid() uses.  Breadth-first, four-connected, over a BOX around the
+   * player just big enough to hold the seven-tile heading — bounded work,
+   * with no dependence on how far away the target is.
+   *
+   * WHEN THE TARGET IS OUTSIDE THE BOX (the common case: a portal across the
+   * zone), it routes to the reachable cell in the box that lands NEAREST the
+   * target and stops there.  That is the honest answer for a heading: the
+   * first seven tiles of the way there are true, and the road is re-derived
+   * from the player's new position a moment later, so it keeps being true.
+   * It never "fails to find a path" and blanks — the nearest reachable cell
+   * always exists, because the player's own cell qualifies.
+   *
+   * CACHED ON THE CELL, not on the frame.  A BFS every frame at 60fps is a
+   * cost this does not need to pay: the answer only changes when the player
+   * or the target crosses a grid cell, so that is the key.  Walking at full
+   * speed crosses a 16px cell a few times a second.
+   *
+   * Grid-reading is the part that silently goes wrong, so: it is a bare
+   * bool[gh][gw] — not a `{ grid }` wrapper — at its OWN resolution, not the
+   * tile grid's (16px prop-only cells from v2.3.1794; 64x64 for the World
+   * View's painted mask), so world pixels scale through the grid's dimensions
+   * against the zone's world extent, exactly as BroTown's isSolid and
+   * zoneTransitions' nudgeSpawnToWalkable do.  `false` blocks; a missing row
+   * or cell is off-map and also blocks, so a road cannot leave the world.
+   *
+   * A zone with NO grid at all (nothing to collide with) falls back to the
+   * straight line, which is exactly right there. */
+  _questPath(S, to) {
+    const px = S.player.x, py = S.player.y;
+    const straight = () => {
+      const d = Math.hypot(to.x - px, to.y - py);
+      if (!(d > 1)) return null;
+      const k = Math.min(d, TRAIL_TILES * TILE) / d;
+      return [{ x: px, y: py }, { x: px + (to.x - px) * k, y: py + (to.y - py) * k }];
+    };
+
+    const grid = (S._tiledWalkable && S._tiledWalkable[this.currentZone]) || null;
+    const zdef = ZONES[this.currentZone];
+    const gh = (grid && grid.length) || 0;
+    const gw = (gh && grid[0] && grid[0].length) || 0;
+    if (!gw || !zdef) return straight();
+
+    const cw = (zdef.w * TILE) / gw, ch = (zdef.h * TILE) / gh;
+    const pgx = Math.floor(px / cw), pgy = Math.floor(py / ch);
+    const tgx = Math.floor(to.x / cw), tgy = Math.floor(to.y / ch);
+
+    const key = this.currentZone + '|' + pgx + ',' + pgy + '|' + tgx + ',' + tgy;
+    if (this._trailKey === key) return this._trailPath;
+    this._trailKey = key;
+
+    const open = (gx, gy) => {
+      const row = grid[gy];
+      return !!row && gx >= 0 && gx < gw && row[gx] !== false;
+    };
+    /* R covers the heading plus a little slack, so a road that has to detour
+       sideways round a wide building still has room to come back. */
+    const R = Math.ceil((TRAIL_TILES * TILE) / Math.min(cw, ch)) + 4;
+    const x0 = Math.max(0, pgx - R), x1 = Math.min(gw - 1, pgx + R);
+    const y0 = Math.max(0, pgy - R), y1 = Math.min(gh - 1, pgy + R);
+    const bw = x1 - x0 + 1, bh = y1 - y0 + 1;
+    if (bw <= 0 || bh <= 0) { this._trailPath = straight(); return this._trailPath; }
+
+    const prev = new Int32Array(bw * bh).fill(-2);   /* -2 unvisited, -1 root */
+    const at = (gx, gy) => (gy - y0) * bw + (gx - x0);
+    const startI = at(pgx, pgy);
+    if (startI < 0 || startI >= prev.length) { this._trailPath = straight(); return this._trailPath; }
+    prev[startI] = -1;
+    const q = [startI];
+    let head = 0;
+    let best = startI;
+    let bestD = Infinity;
+    while (head < q.length) {
+      const i = q[head++];
+      const gx = x0 + (i % bw), gy = y0 + ((i / bw) | 0);
+      const wx = (gx + 0.5) * cw, wy = (gy + 0.5) * ch;
+      const d2 = (wx - to.x) * (wx - to.x) + (wy - to.y) * (wy - to.y);
+      if (d2 < bestD) { bestD = d2; best = i; }
+      if (gx === tgx && gy === tgy) break;           /* arrived */
+      for (let k = 0; k < 4; k++) {
+        const nx = gx + (k === 0 ? 1 : k === 1 ? -1 : 0);
+        const ny = gy + (k === 2 ? 1 : k === 3 ? -1 : 0);
+        if (nx < x0 || nx > x1 || ny < y0 || ny > y1) continue;
+        const j = at(nx, ny);
+        if (prev[j] !== -2 || !open(nx, ny)) continue;
+        prev[j] = i;
+        q.push(j);
+      }
+    }
+
+    /* Backtrack, then STRAIGHTEN.  A four-connected BFS answers in stair
+       steps, and a road of dots on a staircase reads as a bug; skipping every
+       waypoint the previous one can already see turns it back into two or
+       three long straight runs with a bend at the corner, which is what a
+       road looks like. */
+    const cells = [];
+    for (let i = best; i !== -1; i = prev[i]) cells.push(i);
+    cells.reverse();
+    const pts = cells.map((i) => ({
+      x: (x0 + (i % bw) + 0.5) * cw,
+      y: (y0 + ((i / bw) | 0) + 0.5) * ch,
+    }));
+    pts[0] = { x: px, y: py };                       /* start at the feet, not the cell centre */
+    /* The last hop onto the target itself: only when the BFS actually got
+       there, so a road that stopped at the box edge does not jump the gap. */
+    if (cells.length && cells[cells.length - 1] === at(tgx, tgy)) pts.push({ x: to.x, y: to.y });
+
+    const clear = (a, b) => {
+      const d = Math.hypot(b.x - a.x, b.y - a.y);
+      const step = Math.min(cw, ch) * 0.5;
+      for (let s = step; s < d; s += step) {
+        if (!open(Math.floor((a.x + (b.x - a.x) * (s / d)) / cw),
+                  Math.floor((a.y + (b.y - a.y) * (s / d)) / ch))) return false;
+      }
+      return true;
+    };
+    const out = [pts[0]];
+    let i = 0;
+    while (i < pts.length - 1) {
+      let j = pts.length - 1;
+      while (j > i + 1 && !clear(pts[i], pts[j])) j--;
+      out.push(pts[j]);
+      i = j;
+    }
+    this._trailPath = out;
+    return out;
   }
 
   /* v2.3.2070: one pooled beam Sprite per exit tile, created on demand and

@@ -12,7 +12,8 @@
 import { getState } from './common.js';
 import { t1StatsPayload } from '@/game/t1Sync.js'; /* v2.3.1633: one gate, every sender */
 import { GEAR_CATALOG, getEquip, setEquip, syncArmorLayers } from '../../../rendering/gearCatalog.js';
-import { recalcDerived } from '../../../data/gameSystems.js';
+import { recalcDerived, WEAPON_STASH_MAX } from '../../../data/gameSystems.js';
+import { pushDmgPopup } from '@/game/combatHelpers.js'; /* v2.3.2123: say why a refusal happened */
 
 function persist(R) {
   try { if (typeof window !== 'undefined') localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
@@ -47,6 +48,34 @@ export function unequipWeaponSlot(slot /* 'weapon' | 'ranged' | 'staff' */) {
   const cur = R[slotProp];
   if (!cur) return;
   if (!R.weaponStash) R.weaponStash = [];
+  /* ═══ v2.3.2123: THE BAG HAS A LID, AND THE CLIENT HAS TO KNOW IT ═══
+     Demo chat, Alix: "Just lost my magic stick ... Changed to the bow and cant
+     find it back again", and Mudokan checking the obvious places: "It's not in
+     inventory or in weapon equip character slot?"  "Nop sir i verify."
+
+     This pushed UNCONDITIONALLY while the worker refuses the same request
+     outright at the cap (gear.js _handleUnequipRequest: "stash full --
+     reject").  So at eight weapons the client emptied the slot and grew its
+     stash to nine, the worker kept the weapon equipped and its stash at eight,
+     and the next player_state — which adopts weaponStash wholesale — replaced
+     the client's nine with the worker's eight.  The ninth was the one the
+     player had just taken off.  Measured in mp-weaponloss: a weapon the client
+     holds and the worker does not is destroyed by the next echo, silently.
+
+     Refusing here is what makes the two agree, and it is the same answer the
+     worker already gives — so nothing is lost and nothing has to be merged
+     back (merging a client-held weapon into an authoritative store is the
+     duplication engine trade.js exists to avoid).  It is SAID OUT LOUD
+     because "I pressed unequip and nothing happened" is the other half of the
+     feedback (Excalibur: "I go to dashboard and select a weapon like sword and
+     nothing happens"). */
+  if (R.weaponStash.length >= WEAPON_STASH_MAX) {
+    try {
+      const P = S.player;
+      if (P) pushDmgPopup(S, P.x, P.y - 40, 'WEAPON BAG FULL', '#D8A94D');
+    } catch (e) { /* the refusal matters, the popup does not */ }
+    return;
+  }
   R.weaponStash.push(cur);
   R[slotProp] = null;
   syncWeaponSlot({ type: 'unequip_request', payload: { slot: slotProp } });

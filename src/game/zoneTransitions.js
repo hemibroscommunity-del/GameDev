@@ -54,6 +54,11 @@ var PORTAL_EDGE_INSET = 3;
    as you stayed near the portal, which read as the portal being broken. */
 var HUB_EXIT_DEAF_MS = 2500;
 
+/* The player's collision half-width (hs in BroTown.jsx's movement step).  Named
+   here because nudgeSpawnToWalkable has to guarantee a landing spot the BODY
+   fits in, not one its centre point fits in. */
+var PLAYER_HS = 10;
+
 /* v2.3.1347: fixed directional entry spawns don't consult the painted
    walkability masks, so zones whose mask blocks the spawn point strand
    the player on unwalkable ground — Desert Winds ('sky') stuck every
@@ -74,12 +79,23 @@ function nudgeSpawnToWalkable(S, zoneId, zone) {
   var gx = Math.max(0, Math.min(gw - 1, Math.floor(P.x * gw / mw)));
   var gy = Math.max(0, Math.min(gh - 1, Math.floor(P.y * gh / mh)));
   var open = function (x, y) { return y >= 0 && y < gh && x >= 0 && x < gw && grid[y][x] !== false; };
-  /* Full 3x3 block open — the movement hitbox (20x20, hs=10 in
-     BroTown.jsx) spans up to 3 grid cells including diagonals when the
-     grid runs finer than TILE (sky's mask is 64x64 → 16px cells), so a
-     lone walkable cell still wedges the player. */
+  /* The block that has to be open around the landing cell — the movement
+     hitbox (20x20, hs=10 in BroTown.jsx) spans several grid cells including
+     diagonals, so a lone walkable cell still wedges the player.
+     ═══ v2.3.2122: SIZED FROM THE GRID, NOT FIXED AT 3x3 ═══
+     This was a hardcoded 3x3, written against "sky's mask is 64x64 -> 16px
+     cells", where 3x3 guarantees 24px of clearance from the centre and the
+     player needs 10.  The World View's mask is 192x192 -> 8px cells, where
+     the same 3x3 guarantees 12px: it passes a cell with 2px to spare and
+     calls it roomy.  Deriving the radius from the CELL SIZE keeps the
+     guarantee the same whatever resolution a mask is painted at — which is
+     the whole point of reading the grid's own dimensions everywhere else in
+     this function. */
+  var _cellW = mw / gw, _cellH = mh / gh;
+  var _rx = Math.max(1, Math.ceil(PLAYER_HS / _cellW));
+  var _ry = Math.max(1, Math.ceil(PLAYER_HS / _cellH));
   var roomy = function (x, y) {
-    for (var oy = -1; oy <= 1; oy++) for (var ox = -1; ox <= 1; ox++) {
+    for (var oy = -_ry; oy <= _ry; oy++) for (var ox = -_rx; ox <= _rx; ox++) {
       if (!open(x + ox, y + oy)) return false;
     }
     return true;
@@ -806,6 +822,32 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
             } else {
               P.x = _rcx * TILE; P.y = _rcy * TILE;
             }
+            /* ═══ v2.3.2122: AND LAND SOMEWHERE YOU CAN STAND ═══
+               Owner, after the live demo: "the desert winds level blocks you
+               when you try to exit.  Unwalkable path you spawn on."
+
+               The offset above is "four tiles from the trail-head toward the
+               hub centre", written in v2.3.387 when the World View was open
+               ground in every direction.  It is not any more: v2.3.2076 gave
+               the overworld the owner's traced boundary, and it is the ONE
+               live walk mask in the game.  Measured coming back from the Wind
+               Dunes (trail-head 39,12): the arrival lands EIGHT PIXELS from a
+               blocked cell — inside the player's own 10px half-width — with
+               four of eight directions walled off.  That is the report, both
+               halves of it: you land on ground you cannot stand on, and the
+               way onward is a wall.
+
+               nudgeSpawnToWalkable exists for exactly this and has since
+               v2.3.1347 — it was simply never called here.  Its only call
+               site was the hub EXIT branch (walking out to a spoke); the
+               spoke RETURN sets a position and trusted it.  So the mask's own
+               generator could not have caught this either: it checks the town
+               arrival and that every trail-head stays reachable, and the
+               spoke return is a third point that nothing checked.
+
+               A no-op in town (no mask there — town blocks on props), so this
+               is the World View's fix and costs the other hub nothing. */
+            nudgeSpawnToWalkable(S, _retHub, twn2);
             S._enteredFromDir = null;
             S._enteredFromExit = null;
             pushDmgPopup(S, P.x, P.y - 40, _retHub === 'worldview' ? 'World View' : 'Town', '#5b52ff');

@@ -16,7 +16,7 @@
  */
 import * as H from './harness.mjs';
 
-const ORE = 'ore_wood_ore';      // BLACKSMITH_TIERS.wood: 3 ore + 8g, Lv1, no stat req
+const ORE = 'wood_pine_log';     // v2.3.2123: BLACKSMITH_TIERS.wood consumes the first tree's log (3 + 8g, Lv1, no stat req) -- it asked for ore_wood_ore, which nothing produces
 const NEED_ORE = 3, NEED_GOLD = 8;
 
 const put = (P, x, y) => P.page.evaluate(({ px, py }) => {
