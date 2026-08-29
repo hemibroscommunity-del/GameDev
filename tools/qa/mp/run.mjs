@@ -80,6 +80,7 @@ const SCENARIOS = {
   deaddoor: () => import('./mp-deaddoor.mjs'), /* v2.3.2135: the depth door that cannot open */
   infopop: () => import('./mp-infopop.mjs'), /* v2.3.2131: tap a thing, find out what it is */
   coachearly: () => import('./mp-coachearly.mjs'), /* v2.3.2130: is anything taught in the first minute? */
+  wvlens: () => import('./mp-wvlens.mjs'), /* v2.3.2137: the magnifier draws a lens, not a line */
   figscale: () => import('./mp-figscale.mjs'), /* v2.3.2123: is the character smaller outside town? */
   chatjoy: () => import('./mp-chatjoy.mjs'), /* v2.3.2123: the world chat sitting on the joystick */
   dunes: () => import('./mp-dunes.mjs'), /* v2.3.2122: the Wind Dunes arrival you cannot walk out of */
