@@ -19,7 +19,7 @@ import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rende
 import { getEyeColor, onEyeColorChange } from '../../rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
 import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
-import { barHeight, expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP, bandFootprint, LAND_NAV_BTN_W, landscapeNavGroupW, identityRowHeight } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.1325 slot-derived bar; v2.3.2152 the sideways band; v2.3.2161 the nav dock; v2.3.2163 the barless landscape */
+import { barHeight, expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP, bandFootprint, LAND_NAV_BTN_W, landscapeNavGroupW, landscapeSheetW, identityRowHeight } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.1325 slot-derived bar; v2.3.2152 the sideways band; v2.3.2161 the nav dock; v2.3.2163 the barless landscape */
 import { DashColumns } from './dash/DashColumns.jsx';           /* v2.3.1636 */
 import { NavRail } from './dash/NavRail.jsx';                   /* v2.3.1637 */
 import { portraitStore } from './sheet/portraitStore.js';          /* v2.3.1294 */
@@ -1011,6 +1011,12 @@ export const BottomDashboard = () => {
                that the bar is gone, so the dock states the row height the
                band used to lend it. */
             height: identityRowHeight(playVw(), playVh()),
+            /* v2.3.2165 (owner, zoomed screenshot: "the left side of the
+               buttons has space to fill"): the dock spans the DASHBOARD
+               container's inner width — always that width, whatever is
+               open, so the buttons hold one screen position (v2.3.1637b)
+               — and NavRail's `fill` flexes the five buttons into it. */
+            width: landscapeSheetW(playVw(), playVh(), 'dashboard') - 2 * DASH_GAP,
             zIndex: 31,
             display: 'flex', alignItems: 'center',
           }}
@@ -1023,6 +1029,7 @@ export const BottomDashboard = () => {
             vh={typeof window !== 'undefined' ? window.innerHeight : 844}
             dots={dots}
             btnW={LAND_NAV_BTN_W}
+            fill
             profilePortrait={profilePortrait} />
         </div>
       ) : null}

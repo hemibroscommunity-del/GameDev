@@ -32,13 +32,19 @@ import { navButtonSize } from '../sheet/sheetGeometry.js';
    and it is how you switch destinations or get out.  A rail that hid with
    the rest of the band would leave an open panel with no navigation. */
 
-export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, btnW }) => {
+export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, btnW, fill }) => {
   /* v2.3.2161: `btnW` narrows the buttons for the landscape dock — the
      five of them must fit inside the side container's width (owner: the
      dashboard buttons "should all be included in that container on that
      whole right side"), and every 2px on a button is 10px off the world.
      Height keeps the derived rule; portrait passes nothing and is
      untouched. */
+  /* v2.3.2165 (owner, with a zoomed screenshot of slack left of the row:
+     "room to expand just the dashboard navigation buttons ... the left
+     side of the buttons has space to fill"): `fill` stretches the group
+     across its parent and lets each button flex into an equal share —
+     btnW becomes the floor the geometry planned for, not the ceiling the
+     render stops at. */
   const base = navButtonSize(vw, vh);
   const size = btnW ? { w: btnW, h: base.h } : base;
   return (
@@ -54,6 +60,7 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, b
          geometry owns can be balanced against what the strip needs; a
          flex grab cannot. */
       flex: 'none',
+      width: fill ? '100%' : undefined, /* v2.3.2165: the dock's whole row */
       boxSizing: 'border-box',
       /* v2.3.1650 (owner: "remove the darker background behind the 3
          dashboard buttons").  The well + border + radius were the
@@ -128,7 +135,10 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, b
                  v2.3.1642: still a vertical pill, now in a horizontal
                  row — navButtonSize returns {w,h} with h from the
                  identity row so the shape survives the move. */
-              width: size.w, height: size.h, flex: 'none',
+              /* v2.3.2165: under `fill` each button takes an equal share of
+                 the row instead of the fixed floor width. */
+              ...(fill ? { flex: '1 1 0', minWidth: size.w } : { width: size.w, flex: 'none' }),
+              height: size.h,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               background: on ? COL.accentFill : COL.wellSoft,
               border: `1px solid ${on ? COL.accent : COL.tileBor}`,

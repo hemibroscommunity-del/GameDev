@@ -276,6 +276,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
       && footing.dock.x >= footing.sheet.x - 1 && footing.dock.r <= footing.sheet.r + 1
       && footing.dock.bottom <= 391,
     footing);
+  /* v2.3.2165 (owner, zoomed screenshot: "the left side of the buttons has
+     space to fill"): the button row FILLS the container's width — no dead
+     slack left of the first button. */
+  rec.ok('...and the button row FILLS the container\'s width (no slack on its left)',
+    !!footing && !!footing.dock
+      && (footing.dock.r - footing.dock.x) >= (footing.sheet.r - footing.sheet.x) - 20,
+    footing);
   /* v2.3.2160: shoot the OPEN dashboard — the state every owner correction
      in this file has been about — rather than the resting band. */
   await P.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/landscape-dash.png' });

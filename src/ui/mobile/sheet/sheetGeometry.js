@@ -500,11 +500,17 @@ export function navGroupWidth(vw, vh) {
  * slots and 53px ones, and the owner's named asks (slot size, combat row,
  * nav in the container) outrank chrome he has never mentioned sideways.
  * Filters stay one tap away in the Bag pane. */
-/* v2.3.2164 (owner: "The dashboard navigation buttons a smidge more of
-   room to expand width wise"): 28 -> 32.  The nav row is the container's
-   binding width, so the smidge costs the world 20px (sheet 190 -> 210);
-   the buttons gain 14% of tap width each. */
-export const LAND_NAV_BTN_W = 32;
+/* v2.3.2164 read "a smidge more of room to expand width wise" as WIDEN
+   THE CONTAINER (28 -> 32, world paid 20px).  v2.3.2165, with the owner's
+   zoomed screenshot: "I'm talking about room to expand just the dashboard
+   navigation buttons at the bottom ... the left side of the buttons has
+   space to fill."  So the container goes back to its bag/nav-derived
+   width and the BUTTONS fill their row instead: the dock spans the
+   container's inner width and the five buttons flex into it (NavRail's
+   `fill`), which spends the very slack the screenshot circles.  This
+   constant is the geometry FLOOR the container width is derived from;
+   the rendered buttons come out ~31px once the slack is shared. */
+export const LAND_NAV_BTN_W = 28;
 export const LAND_PILL_H = 44;
 export function landscapeNavGroupW() {
   return RAIL_COUNT * LAND_NAV_BTN_W + NAV_GAP * (RAIL_COUNT - 1) + 2 * NAV_GAP;
