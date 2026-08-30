@@ -19,7 +19,7 @@ import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rende
 import { getEyeColor, onEyeColorChange } from '../../rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
 import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
-import { barHeight, expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP, bandFootprint } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.1325 slot-derived bar; v2.3.2152 the sideways band */
+import { barHeight, expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP, bandFootprint, LAND_NAV_BTN_W, landscapeNavGroupW } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.1325 slot-derived bar; v2.3.2152 the sideways band; v2.3.2161 the nav dock */
 import { DashColumns } from './dash/DashColumns.jsx';           /* v2.3.1636 */
 import { NavRail } from './dash/NavRail.jsx';                   /* v2.3.1637 */
 import { portraitStore } from './sheet/portraitStore.js';          /* v2.3.1294 */
@@ -921,16 +921,19 @@ export const BottomDashboard = () => {
             position: 'fixed',
             top: 0,
             right: 0,
-            /* v2.3.2158: --dash-h carries the safe-area inset itself now
-               (bandFootprint counts it sideways), so adding env() here
-               again would double it. */
-            bottom: 'var(--dash-h, 48px)',
+            /* v2.3.2161 (owner: the dashboard buttons "should all be
+               included in that container on that whole right side"): the
+               sheet runs to the SCREEN's bottom edge now, not the band's
+               top — the strip narrows to the world's width beside it
+               (game.css), and the nav dock below occupies the container's
+               own bottom row.  The content wrapper reserves that row via
+               --dash-h so panels never slide under the buttons. */
+            bottom: 0,
             width: 'var(--sheet-w, 400px)',
             zIndex: 30,
             boxSizing: 'border-box',
             background: 'rgba(13,22,27,.96)',
             borderLeft: '1px solid rgba(229,237,233,.20)',
-            borderBottomLeftRadius: 14,
             color: COL.text,
             fontFamily: 'Source Sans 3, sans-serif',
             display: 'flex',
@@ -939,13 +942,52 @@ export const BottomDashboard = () => {
             paddingTop: 'env(safe-area-inset-top, 0px)',
           }}
         >
-          {/* The same panel the portrait sheet would host, in a body with no
-              toolbar reservation -- the nav lives in the band below, which
-              persists (the v2.3.1642 rule: navigation cannot hide with the
-              thing it escapes). */}
-          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: '8px 8px 6px' }}>
+          {/* v2.3.2161: the bottom padding is the nav dock's zone —
+              --dash-h already carries the home-indicator inset sideways
+              (bandFootprint, v2.3.2158), so no env() term here. */}
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: '8px 8px calc(var(--dash-h, 48px) + 6px)' }}>
             {Active && <Active />}
           </div>
+        </div>
+      ) : null}
+
+      {/* ═══ v2.3.2161: THE LANDSCAPE NAV DOCK ═══
+          Owner: "the dashboard buttons (for dashboard bag view, character
+          view, lifeskills) should all be included in that container on that
+          whole right side."
+
+          Sideways the five buttons leave the band's flex row and become a
+          FIXED dock in the screen's bottom-right corner — the same corner
+          they occupied inside the band, so nothing moves under a thumb
+          that knows where they live (v2.3.1637b).  What changes is what
+          is painted BEHIND them: the strip at rest, the side container
+          when a sheet is open — which is exactly "included in that
+          container" without the buttons ever moving between two parents
+          or two positions.  Rendered after the band so it always paints
+          on top; the buttons narrow to LAND_NAV_BTN_W so the whole group
+          fits inside the container's width. */}
+      {land ? (
+        <div
+          className="bt-land-navdock"
+          onPointerDown={(e) => e.stopPropagation()}
+          style={{
+            position: 'fixed',
+            right: DASH_GAP,
+            bottom: 'env(safe-area-inset-bottom, 0px)',
+            height: 'calc(var(--dash-h, 48px) - env(safe-area-inset-bottom, 0px))',
+            zIndex: 31,
+            display: 'flex', alignItems: 'center',
+          }}
+        >
+          <NavRail
+            items={RAIL_ITEMS}
+            litId={litId}
+            atRest={mode === 'bar'}
+            vw={playVw()}
+            vh={typeof window !== 'undefined' ? window.innerHeight : 844}
+            dots={dots}
+            btnW={LAND_NAV_BTN_W}
+            profilePortrait={profilePortrait} />
         </div>
       ) : null}
 
@@ -1122,7 +1164,12 @@ export const BottomDashboard = () => {
         height: 'calc(var(--dash-h, 145px) - var(--cols-h, 93px))',
         zIndex: 3,
         boxSizing: 'border-box',
-        padding: `0 ${DASH_GAP}px`,
+        /* v2.3.2161: sideways the nav group is a fixed dock (below), so the
+           strip must RESERVE its corner or the identity readout flexes
+           under the buttons the moment they leave the flex row. */
+        padding: land
+          ? `0 ${landscapeNavGroupW() + DASH_GAP}px 0 ${DASH_GAP}px`
+          : `0 ${DASH_GAP}px`,
         /* v2.3.1653: a flex row again.  The grid existed to put the strip
            on the columns row's tracks; with two panels below and no weapon
            cell to align to, there is nothing left for the tracks to keep
@@ -1227,16 +1274,21 @@ export const BottomDashboard = () => {
             down to fit the track instead would have put them back at 24px
             wide — the size the owner asked to grow away from at
             v2.3.1644. */}
-        <div style={{ flex: 'none', display: 'flex', alignItems: 'center' }}>
-          <NavRail
-            items={RAIL_ITEMS}
-            litId={litId}
-            atRest={mode === 'bar'}
-            vw={playVw()}   /* v2.3.1715 */
-            vh={typeof window !== 'undefined' ? window.innerHeight : 844}
-            dots={dots}
-            profilePortrait={profilePortrait} />
-        </div>
+        {/* v2.3.2161: not sideways — there the five buttons live in the
+            fixed nav dock so the side container can enclose them (owner:
+            "included in that container on that whole right side"). */}
+        {!land && (
+          <div style={{ flex: 'none', display: 'flex', alignItems: 'center' }}>
+            <NavRail
+              items={RAIL_ITEMS}
+              litId={litId}
+              atRest={mode === 'bar'}
+              vw={playVw()}   /* v2.3.1715 */
+              vh={typeof window !== 'undefined' ? window.innerHeight : 844}
+              dots={dots}
+              profilePortrait={profilePortrait} />
+          </div>
+        )}
       </div>
 
       {/* v2.3.1636 (owner, with a reference shot): the THREE-COLUMN ROW —

@@ -2767,3 +2767,15 @@ html[data-orient="landscape"] .bt-zone-header{
 html[data-orient="landscape"] [data-dash-fold]{
   display:none!important; /* the chip's display is an inline style (flex), like the wrap's width — only !important outranks it */
 }
+/* v2.3.2161 (owner: the dashboard buttons "should all be included in that
+   container on that whole right side"): the band takes the zone header's
+   own rule — it spans the WORLD, not the screen, so the side container
+   runs the full height of its edge with no strip crossing under it.  At
+   rest --play-w is the whole screen, so nothing changes until a sheet is
+   open.  The nav buttons live in the fixed .bt-land-navdock sideways, in
+   the same corner they held inside the band.  !important for the same
+   reason as the wrap: the band's left/right are inline styles. */
+html[data-orient="landscape"] .bt-dashboard{
+  right:auto!important;
+  width:var(--play-w,100%)!important;
+}

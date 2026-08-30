@@ -99,12 +99,6 @@ export const BagFilterChips = ({ height, gutter, width }) => {
             <img src={c.iconSrc} alt="" draggable={false}
               style={{
                 width: 24, height: 24, objectFit: 'contain',
-                /* v2.3.2160: the landscape dashboard's header is only two
-                   slots wide, so five chips land ~23px each — narrower than
-                   this fixed icon.  The cap lets the glyph shrink with its
-                   chip there and is inert everywhere the chip is >= 28px
-                   (portrait chips are one 63px slot each). */
-                maxWidth: '86%',
                 opacity: on ? 1 : 0.7, pointerEvents: 'none',
               }} />
           </div>

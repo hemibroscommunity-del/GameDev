@@ -248,6 +248,42 @@ column; everything the rotation saves is world. Two sheet widths now
 
 resize() and the watchdog both pass the KIND into `bandFootprint`
 (`false | 'dashboard' | 'panel'`), same inputs, same commit — the healing-war
-rule. The world keeps ~686 of 844 with the dashboard open (was 552).
-mp-landscape-dash asserts the narrow width against the pane width and the
-2-column × 4-visible-row grid geometry directly.
+rule. mp-landscape-dash asserts the narrow width against the pane width and
+the 2-column × 4-visible-row grid geometry directly.
+
+### One container on the right (v2.3.2161 — owner clarification)
+
+Owner: "if you understand my vision it's to have equivalent dashboard
+navigation space as the portrait mode. So actually the width of the entire
+dashboard area should be enough to include the 3 combat skills at the
+bottom. … Also this means the dashboard buttons (for dashboard bag view,
+character view, lifeskills) should all be included in that container on
+that whole right side."
+
+The portrait band, stood upright — the sheet is the WHOLE right side now:
+
+- **Full height**: `.bt-land-sheet` runs screen top to screen bottom; its
+  content wrapper reserves `--dash-h` at the foot for the nav zone.
+- **The strip narrows to the world** (`.bt-dashboard` takes the zone
+  header's `width: var(--play-w)` rule), so no strip crosses under the
+  container; it keeps only the identity readout.
+- **The nav dock**: sideways the five buttons leave the band's flex row for
+  a fixed `.bt-land-navdock` in the same bottom-right corner (one screen
+  position, v2.3.1637b) — over the strip at rest, enclosed by the container
+  when a sheet is open. Buttons narrow to `LAND_NAV_BTN_W` (28) so the
+  five-button row fits the container, and that row is what BINDS the
+  container's width (`landscapeDashColW`: nav 164 vs bag panel ~134 →
+  sheet 188 at phone sizes; pane sheets keep 292).
+- **The combat skills** are a row of three compact upright cards (icon over
+  level over bar, `LAND_PILL_H` 44) at the container's foot — visible, not
+  scrolled to.
+- **The tile answers to height** (`landscapeDashTileSize`): the portrait
+  tile unless four rows of it plus the combat row and the nav zone overrun
+  the screen — 60 at 390-tall (portrait 63), the full 70 at 430-tall. The
+  filter chips and the peek sliver are the portrait chrome that doesn't
+  ride along (their height is what keeps the slots near portrait size);
+  filters stay in the Bag pane.
+
+The world keeps 656 of 844 with the dashboard open. mp-landscape-dash
+asserts the full-height sheet, the strip spanning the world, the on-screen
+combat row, and the dock sitting inside the container's footprint.

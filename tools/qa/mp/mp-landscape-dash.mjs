@@ -102,11 +102,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...the sheet sits exactly in the yielded ground, beside the world',
     !!open.sheet && Math.abs(open.sheet.x - open.canvasW) <= 1
       && Math.abs(open.sheet.w - open.sheetW) <= 1, open.sheet);
-  rec.ok('...from the top of the screen down to the band, which it does not cover',
-    !!open.sheet && open.sheet.top <= 1 && Math.abs(open.sheet.bottom - (390 - 48)) <= 2, open.sheet);
-  rec.ok('...the band did not move or grow (48px, one screen position)',
+  /* v2.3.2161: the sheet is the WHOLE right side now — screen top to
+     screen bottom — and the strip narrows to the world's width beside it
+     (the zone header's own rule), so no band runs under the container. */
+  rec.ok('...from the top of the screen to its BOTTOM — the whole right side is the container',
+    !!open.sheet && open.sheet.top <= 1 && Math.abs(open.sheet.bottom - 390) <= 2, open.sheet);
+  rec.ok('...the band did not move or grow (48px), and spans the WORLD, not the screen',
     !!open.band && open.band.h === 48 + (open.band.h - 48 > 4 ? 0 : (open.band.h - 48))
-      && Math.abs(open.band.top - (390 - open.band.h)) <= 2, open.band);
+      && Math.abs(open.band.top - (390 - open.band.h)) <= 2
+      && Math.abs(open.band.w - open.playW) <= 1, open.band);
   const navAfter = await navRect(P);
   rec.ok('...and the nav button that opened it has not moved a pixel (v2.3.1637b)',
     !!navAfter && JSON.stringify(navAfter) === JSON.stringify(navBefore),
@@ -182,17 +186,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return !!sh.querySelector('.bt-dashcols') && lvs >= 3
         && sh.querySelectorAll('div').length > 8;
     }));
-  /* ═══ v2.3.2160: THE ROTATION, NOT A REFLOW ═══
-     Owner, with the portrait band screenshot: "it would actually be 2 slots
-     wide and 4 slots vertical height leaving 8 slots viewable at one time
-     ... I was making a portrait to landscape conversion of viewable game
-     area that keeps equivalent dashboard view space."
-     So the DASHBOARD destination earns a column exactly two slots wide
-     (390-basis tile 63 -> panel 140 -> sheet 158) while pane destinations
-     (the Bag detail asserted at 280..340 above, Hero, Settings) keep the
-     4-column width — the two-widths rule in landscapeSheetW. */
-  rec.ok('...in the narrow 2-slot column (~158) — pane sheets stay 4 slots wide',
-    viaTap.sheetW >= 145 && viaTap.sheetW <= 185 && viaTap.sheetW < open.sheetW - 80,
+  /* ═══ v2.3.2160/2161: THE ROTATION, NOT A REFLOW ═══
+     Owner: "it would actually be 2 slots wide and 4 slots vertical height
+     leaving 8 slots viewable at one time ... a portrait to landscape
+     conversion of viewable game area that keeps equivalent dashboard view
+     space" — then: "the width of the entire dashboard area should be
+     enough to include the 3 combat skills at the bottom ... the dashboard
+     buttons should all be included in that container on that whole right
+     side."
+     So the DASHBOARD destination earns a narrow column (bound by the
+     five-button nav row: ~188 at phone sizes) holding the 2x4 bag, the
+     three combat skills as a row, and the nav dock — ALL visible at once —
+     while pane destinations (the Bag detail asserted at 280..340 above,
+     Hero, Settings) keep the 4-column width. */
+  rec.ok('...in the narrow nav-bound column (~188) — pane sheets stay 4 slots wide',
+    viaTap.sheetW >= 170 && viaTap.sheetW <= 210 && viaTap.sheetW < open.sheetW - 80,
     { dashboardSheetW: viaTap.sheetW, paneSheetW: open.sheetW });
   rec.ok('...and the bag grid is 2 columns x 4 visible rows — portrait 4x2, rotated',
     await P.page.evaluate(() => {
@@ -205,11 +213,41 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const cols = getComputedStyle(grid).gridTemplateColumns.trim().split(/\s+/).length;
       const scroller = grid.parentElement;
       const tile = grid.firstElementChild ? grid.firstElementChild.getBoundingClientRect().width : 0;
-      /* 4 whole rows + the 12px peek sliver: (h + gap) / (tile + gap) lands
-         between 4 and 5 iff exactly four rows are fully visible */
+      /* exactly four whole rows: (h + gap) / (tile + gap) lands in [4,5) */
       const visRows = tile ? (scroller.clientHeight + 4) / (tile + 4) : 0;
-      return cols === 2 && visRows >= 4 && visRows < 5;
+      return cols === 2 && visRows >= 3.95 && visRows < 5;
     }));
+  /* v2.3.2161: nothing to scroll for — the three combat pills sit ON
+     SCREEN at the container's foot, above the nav dock, and the dock's
+     buttons sit inside the container's footprint. */
+  const footing = await P.page.evaluate(() => {
+    const sh = document.querySelector('.bt-land-sheet');
+    if (!sh) return null;
+    const shR = sh.getBoundingClientRect();
+    /* the combat cards are the role=button leaves that read "LV n" — the
+       bar is absent at the level cap, so it cannot be the hook */
+    const pills = [...sh.querySelectorAll('[role="button"]')]
+      .filter((el) => /\bLV\s*\d/.test(el.textContent || '') && !el.querySelector('[role="button"]'))
+      .map((el) => el.getBoundingClientRect());
+    const dock = document.querySelector('.bt-land-navdock');
+    const dockR = dock ? dock.getBoundingClientRect() : null;
+    const btns = dock ? dock.querySelectorAll('[data-nav]').length : 0;
+    return {
+      sheet: { x: Math.round(shR.left), r: Math.round(shR.right) },
+      pills: pills.map((r) => ({ top: Math.round(r.top), bottom: Math.round(r.bottom), left: Math.round(r.left) })),
+      dock: dockR ? { x: Math.round(dockR.left), r: Math.round(dockR.right), bottom: Math.round(dockR.bottom) } : null,
+      btns,
+    };
+  });
+  rec.ok('...the 3 combat skills are VISIBLE at the bottom — no scrolling to find them',
+    !!footing && footing.pills.length === 3
+      && footing.pills.every((r) => r.bottom <= 390 - 44 && r.top >= 0),
+    footing);
+  rec.ok('...and the five nav buttons sit INSIDE the container ("included in that container")',
+    !!footing && !!footing.dock && footing.btns >= 5
+      && footing.dock.x >= footing.sheet.x - 1 && footing.dock.r <= footing.sheet.r + 1
+      && footing.dock.bottom <= 391,
+    footing);
   /* v2.3.2160: shoot the OPEN dashboard — the state every owner correction
      in this file has been about — rather than the resting band. */
   await P.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/landscape-dash.png' });

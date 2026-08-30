@@ -14,7 +14,7 @@ import { registerXpCard, displayXp, xpCounting } from '../../xpLanding.js'; /* v
 /* v2.3.2131: the XP digits left the card face for a popup (owner). */
 import { infoPopupBus } from '../infoPopupBus.js';
 import { skillInfo } from '../infoGlossary.js';
-import { dashTileSize, dashPanelWidths, combatPillWidth, combatPillHeight, landscapeBagPanelW, BAG_VIEW_COLS, DASH_GAP, DASH_ROWS, BAG_HEADER_H, BAG_PEEK_H } from '../sheet/sheetGeometry.js';
+import { dashTileSize, dashPanelWidths, combatPillWidth, combatPillHeight, landscapeDashTileSize, landscapeDashColW, LAND_PILL_H, BAG_VIEW_COLS, DASH_GAP, DASH_ROWS, BAG_HEADER_H } from '../sheet/sheetGeometry.js';
 import { playVw } from '../playViewport.js';
 import { shopBus } from '../shopBus.js';   /* v2.3.2059 */
 
@@ -122,7 +122,12 @@ export const DashColumns = ({ R, stacked, vwBasis }) => {
      player already knows.  Portrait callers pass neither and nothing
      changes. */
   const vw = vwBasis || playVw();   /* v2.3.1715: the shell, not the window */
-  const t = dashTileSize(vw);
+  /* v2.3.2161: the stacked tile answers to HEIGHT as well — four rows,
+     the combat row and the nav zone must all fit the screen with nothing
+     to scroll for (see landscapeDashTileSize).  `vwBasis` is the device's
+     short side, which sideways IS its height, so one basis serves both
+     axes of the rule. */
+  const t = stacked ? landscapeDashTileSize(vw, vw) : dashTileSize(vw);
   const panelW = dashPanelWidths(vw);
   const rpg = R || {};
   const [bagFilter, setBagFilter] = React.useState(bagFilterBus.get());
@@ -202,7 +207,12 @@ export const DashColumns = ({ R, stacked, vwBasis }) => {
      still has half a row to sit on. */
   const bagCols = stacked ? 2 : BAG_VIEW_COLS;
   const bagVisRows = stacked ? 4 : DASH_ROWS;
-  const bagRows = Math.max(bagVisRows + 3, Math.ceil(entries.length / bagCols));
+  /* v2.3.2161: stacked fits its EIGHT slots exactly (the container must
+     hold the combat row and the nav below them with nothing to scroll
+     for), so its floor is the visible grid itself; more items than eight
+     still grow the grid and scroll behind the fade.  Portrait keeps the
+     +3 scroll-proof floor and its peek. */
+  const bagRows = Math.max(stacked ? bagVisRows : bagVisRows + 3, Math.ceil(entries.length / bagCols));
   const bagCellCount = bagRows * bagCols;
   const gridW = bagCols * t + (bagCols - 1) * DASH_GAP;
 
@@ -258,13 +268,16 @@ export const DashColumns = ({ R, stacked, vwBasis }) => {
      applying the moment the digits are not on the card.  The popup has room
      for the real numbers and shows them unabbreviated, which is the point of
      moving them there. */
-  /* v2.3.2158: stacked pills span the bag panel's own width — there is no
-     narrow column beside the bag to size against.
-     v2.3.2160: and that width is the 2-column grid's now, so the pills
-     narrow with the bag and the sheet is exactly as wide as the rotated
-     dashboard needs — no wider. */
-  const pillW = stacked ? gridW : combatPillWidth(vw);
-  const pillH = combatPillHeight(vw);
+  /* v2.3.2161 (owner: "the width of the entire dashboard area should be
+     enough to include the 3 combat skills at the bottom"): the stacked
+     pills are a ROW of three at the container's foot now, splitting the
+     container's inner width three ways — compact upright cards (icon over
+     level over bar) instead of the wide lying pills, because ~48px of
+     width holds no horizontal layout. */
+  const pillW = stacked
+    ? Math.floor((landscapeDashColW(vw, vw) - 10 - 2 * DASH_GAP) / 3)
+    : combatPillWidth(vw);
+  const pillH = stacked ? LAND_PILL_H : combatPillHeight(vw);
   /* v2.3.1853: the pill now carries THREE things across, so the icon stops
      taking the pill's whole height.  MEASURED against the narrowest phone
      the layout supports: at 360 the pill is 80px wide and 68 of that is
@@ -290,10 +303,12 @@ export const DashColumns = ({ R, stacked, vwBasis }) => {
      row's needed vs available width at both widths — four earlier passes
      over this card were sized by eye and every one came out over. */
   /* v2.3.2158: a share of WIDTH is right only while the pill is the narrow
-     portrait column (94px -> a 42px icon).  The stacked landscape pill is
-     ~264 wide and the same share drew 119px giants over their own bars —
-     when the pill is wide, the stable axis is its HEIGHT. */
-  const iconPx = stacked ? Math.round(pillH * 0.8) : Math.round(pillW * (tight ? 0.40 : 0.45));
+     portrait column (94px -> a 42px icon).
+     v2.3.2161: the stacked pill is an upright ~48x44 card now — icon on
+     top, level under it, the bar at the foot.  Sized to its own budget:
+     44 less the level line, the bar, two gaps and the padding leaves
+     ~20px for the icon. */
+  const iconPx = stacked ? 20 : Math.round(pillW * (tight ? 0.40 : 0.45));
   /* ═══ v2.3.1859: BIGGER TYPE, TO THE CEILING THE COLUMN ALLOWS ═══
      Owner: "combat icons are perfect size just make the other font bigger."
      So the icon share above is frozen and only the type moves.
@@ -306,8 +321,8 @@ export const DashColumns = ({ R, stacked, vwBasis }) => {
      frozen 42px icon.  Growing it further needs width the card does not
      have: either the icon gives some back, or the COMBAT column takes it
      from the bag.  Both are the owner's call, so neither is made here. */
-  const lvlFs = tight ? 12 : 13.5;
-  const badgeFs = tight ? 10.5 : 12;
+  const lvlFs = stacked ? 9.5 : tight ? 12 : 13.5;
+  const badgeFs = stacked ? 9 : tight ? 10.5 : 12;
   /* v2.3.1862: the pair spans the card now, not the column — ~88px at 390
      instead of 41 — so this is sized against the CARD.  Measured, as ever:
      mp-bandsummary reports needed-vs-available for every text node.
@@ -322,7 +337,7 @@ export const DashColumns = ({ R, stacked, vwBasis }) => {
      with tabular figures that is ~72px against the card's ~88 at 390 and
      ~74 at 360.  mp-bandsummary now drives those numbers rather than
      trusting the arithmetic. */
-  const barH = tight ? 5 : 6;
+  const barH = stacked ? 3 : tight ? 5 : 6;
   const combatPill = (s) => {
     /* ═══ v2.3.1668: these pills were the last live route into the
        retired tier-2 screen ═══
@@ -467,8 +482,11 @@ export const DashColumns = ({ R, stacked, vwBasis }) => {
              aria-label spells it out.) */
           width: pillW, height: pillH, flex: 'none', boxSizing: 'border-box',
           position: 'relative',
-          display: 'flex', flexDirection: 'row', alignItems: 'center',
-          gap: 3, padding: '3px 3px',
+          /* v2.3.2161: upright in the stacked row — icon over readouts,
+             because a 48px-wide card has no left half to give an icon. */
+          display: 'flex', flexDirection: stacked ? 'column' : 'row',
+          alignItems: 'center', justifyContent: stacked ? 'center' : undefined,
+          gap: stacked ? 2 : 3, padding: stacked ? 2 : '3px 3px',
           background: COL.wellSoft,
           border: `1px solid ${unspent > 0 ? COL.accent : COL.tileBor}`,
           borderRadius: 8,
@@ -480,20 +498,26 @@ export const DashColumns = ({ R, stacked, vwBasis }) => {
             width: iconPx, height: iconPx,
             flex: 'none', objectFit: 'contain', pointerEvents: 'none',
           }} />
-        {/* RIGHT — the three readouts, stacked in what is left. */}
+        {/* RIGHT — the three readouts, stacked in what is left.
+            v2.3.2161: BELOW the icon in the upright stacked card, spanning
+            its whole width so the level centres and the bar runs edge to
+            edge. */}
         <div style={{
-          flex: '1 1 auto', minWidth: 0,
+          ...(stacked
+            ? { flex: 'none', width: '100%', alignItems: 'center' }
+            : { flex: '1 1 auto', minWidth: 0 }),
           /* v2.3.1862: the pair left this column for the card's bottom edge,
              so what remains sits clear of it.
              v2.3.2131: and now it has left the card entirely, so the strip
              that was being held for it goes back to the level and the bar --
              the two readouts that stayed. */
-          display: 'flex', flexDirection: 'column', gap: 3,
+          display: 'flex', flexDirection: 'column', gap: stacked ? 2 : 3,
         }}>
           <span aria-hidden="true" style={{
             fontSize: lvlFs, fontWeight: 900, lineHeight: 1,
             color: unspent > 0 ? COL.accent : COL.text,
             fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+            textAlign: stacked ? 'center' : undefined, /* v2.3.2161: centred in the upright card */
           }}>LV {lvl}</span>
           {/* The bar, now the right column's width rather than the card's
               — the room the icon was given came from here.  Still a plain
@@ -591,11 +615,14 @@ export const DashColumns = ({ R, stacked, vwBasis }) => {
          equality was there to serve.  The two panels that hold squares are
          still exactly equal to each other; only COMBAT, whose contents are
          a different shape on purpose, is narrower. */
-      /* v2.3.2160: the stacked track is the 2-column panel's width
-         (landscapeBagPanelW), NOT dashPanelWidths().wide — that is the
-         4-across portrait panel, and sizing the track from it left 130px
-         of dead tray beside a 2-wide grid. */
-      gridTemplateColumns: stacked ? `${landscapeBagPanelW(vw, vw)}px` : `${panelW.wide}px ${panelW.narrow}px`,
+      /* v2.3.2160: the stacked track is the 2-column panel's width, NOT
+         dashPanelWidths().wide — that is the 4-across portrait panel, and
+         sizing the track from it left 130px of dead tray beside a 2-wide
+         grid.
+         v2.3.2161: the track is the CONTAINER's width now (nav row vs bag
+         panel, whichever is wider — landscapeDashColW), so the bag, the
+         combat row and the nav dock below all share one column edge. */
+      gridTemplateColumns: stacked ? `${landscapeDashColW(vw, vw)}px` : `${panelW.wide}px ${panelW.narrow}px`,
       justifyContent: 'center',
       /* v2.3.2158: stacked rows size to content; the sheet scrolls, not
          this grid, so height:100% would stretch one row over the void. */
@@ -614,7 +641,11 @@ export const DashColumns = ({ R, stacked, vwBasis }) => {
           in one panel.  The header is sized from the same COLS/TILE the
           rows use, so each chip lands one slot wide. */}
       <Column label="Bag" stretch>
-        <BagFilterChips width={gridW} height={BAG_HEADER_H} />
+        {/* v2.3.2161: no chips sideways — their 30px is exactly what keeps
+            the four slot rows near portrait size once the combat row and
+            the nav dock joined the column (see landscapeDashTileSize).
+            Filters stay one tap away in the Bag pane. */}
+        {!stacked && <BagFilterChips width={gridW} height={BAG_HEADER_H} />}
         {/* The scroller.  It is the ONLY thing on this row that scrolls —
             the world behind never does (the v2.3.1285 rule), and the panel
             itself stays exactly as tall as the band. */}
@@ -623,9 +654,11 @@ export const DashColumns = ({ R, stacked, vwBasis }) => {
           /* v2.3.2158: stacked mode has no band height to fill — the bag
              shows the owner's "8 slots" exactly and scrolls for the rest;
              portrait keeps flex-filling the columns row.
-             v2.3.2160: eight slots is now FOUR rows of two, so the scroller
-             is told four rows' height plus the same peek sliver. */
-          ...(stacked ? { height: bagVisRows * t + (bagVisRows - 1) * DASH_GAP + BAG_PEEK_H, flex: '0 0 auto' } : { flex: 1, minHeight: 0 }),
+             v2.3.2160: eight slots is now FOUR rows of two.
+             v2.3.2161: and exactly four — the peek sliver's height went to
+             keeping the slots portrait-sized with the combat row and nav
+             below; a ninth item still scrolls behind the fade. */
+          ...(stacked ? { height: bagVisRows * t + (bagVisRows - 1) * DASH_GAP, flex: '0 0 auto' } : { flex: 1, minHeight: 0 }),
           overflowY: 'auto', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch',
           WebkitMaskImage: 'linear-gradient(180deg, #000 calc(100% - 9px), transparent)',
           maskImage: 'linear-gradient(180deg, #000 calc(100% - 9px), transparent)',
@@ -653,7 +686,16 @@ export const DashColumns = ({ R, stacked, vwBasis }) => {
           v2.3.1653 (owner: "the combat stats stay on the right in their own
           column"): unchanged, and now the only company the bag has. */}
       <Column label="Combat">
-        {COMBAT_SKILLS.slice(0, 3).map(combatPill)}
+        {/* v2.3.2161: sideways the three skills sit in ONE ROW at the
+            container's foot — "the width of the entire dashboard area
+            should be enough to include the 3 combat skills at the bottom"
+            (owner) — splitting the container's width three ways as compact
+            upright cards.  Portrait keeps its stacked column. */}
+        {stacked
+          ? <div style={{ display: 'flex', gap: DASH_GAP, justifyContent: 'center' }}>
+              {COMBAT_SKILLS.slice(0, 3).map(combatPill)}
+            </div>
+          : COMBAT_SKILLS.slice(0, 3).map(combatPill)}
       </Column>
     </div>
   );

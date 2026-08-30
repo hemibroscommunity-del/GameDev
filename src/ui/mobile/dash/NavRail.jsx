@@ -32,8 +32,15 @@ import { navButtonSize } from '../sheet/sheetGeometry.js';
    and it is how you switch destinations or get out.  A rail that hid with
    the rest of the band would leave an open panel with no navigation. */
 
-export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait }) => {
-  const size = navButtonSize(vw, vh);
+export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, btnW }) => {
+  /* v2.3.2161: `btnW` narrows the buttons for the landscape dock — the
+     five of them must fit inside the side container's width (owner: the
+     dashboard buttons "should all be included in that container on that
+     whole right side"), and every 2px on a button is 10px off the world.
+     Height keeps the derived rule; portrait passes nothing and is
+     untouched. */
+  const base = navButtonSize(vw, vh);
+  const size = btnW ? { w: btnW, h: base.h } : base;
   return (
     <div className="bt-navrail" style={{
       /* v2.3.1642: a ROW at the band's top-left, in its own bordered
