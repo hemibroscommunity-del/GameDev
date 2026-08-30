@@ -580,6 +580,36 @@ export async function coveringElement(P, locator) {
   }, { x: box.x + box.width / 2, y: box.y + box.height / 2, want: target });
 }
 
+/* ═══ v2.3.2155: THE CORNER RESTS AS A BELL NOW ═══
+ * WorldChatFeed defaults to SHUT (the owner asked for the notifications to
+ * collapse into a bell), so the message list simply does not exist until
+ * somebody presses it. Every scenario that reads [data-world-chat-lines]
+ * needs this first.
+ *
+ * Written as "press it until it says it is open" rather than one click: the
+ * toggle only renders once the feed has something to show, and on a fresh
+ * join that is a race with the welcome line. Returns false rather than
+ * throwing, so a scenario that legitimately has no chat can carry on and fail
+ * on its own assertion instead of on this.
+ */
+export async function openWorldChat(P, { timeout = 8000 } = {}) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < timeout) {
+    const state = await P.page.evaluate(() => {
+      const b = document.querySelector('[data-world-chat-toggle]');
+      return b ? b.getAttribute('aria-expanded') : null;
+    });
+    if (state === 'true') return true;
+    if (state === 'false') {
+      await P.page.click('[data-world-chat-toggle]').catch(() => {});
+      await P.page.waitForTimeout(350);
+      continue;
+    }
+    await P.page.waitForTimeout(250);
+  }
+  return false;
+}
+
 export async function clickText(P, text, { timeout = 6000 } = {}) {
   const btn = P.page.locator(`button:visible`, { hasText: text }).first();
   await btn.waitFor({ state: 'visible', timeout });

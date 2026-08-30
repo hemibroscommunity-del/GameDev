@@ -84,9 +84,20 @@ const KEEP = 40;
  * had shown you", and unread is however many are newer than it -- which stays
  * true across a remount, a rollover and a zone change without any bookkeeping.
  */
+/* ═══ v2.3.2155: THE CORNER RESTS AS A BELL ═══
+ * Owner: "collapse all notifications (chat, special events, etc, into a little
+ * notification bell on the bottom left corner above the dashboard)."
+ *
+ * So SHUT is the default, not open: only an explicit '0' -- a player who has
+ * opened the feed and left it open -- keeps the list up. A first-ever session
+ * now starts with a quiet corner and a bell, which is the ask.
+ *
+ * This changes what four scenarios see on boot (the list only exists while
+ * open), and they are updated to press the bell rather than the default being
+ * bent back to suit them. */
 const SHUT_KEY = 'bt_worldchat_shut';
 const readShut = () => {
-  try { return localStorage.getItem(SHUT_KEY) === '1'; } catch (e) { return false; }
+  try { return localStorage.getItem(SHUT_KEY) !== '0'; } catch (e) { return true; }
 };
 const writeShut = (v) => {
   try { localStorage.setItem(SHUT_KEY, v ? '1' : '0'); } catch (e) { /* private window */ }
@@ -189,8 +200,12 @@ export function WorldChatFeed() {
            the CSS var, and 8px of air keeps the panel off its edge. */
         bottom: 'calc(var(--dash-h, 135px) + 8px)',
         /* Narrow on purpose: this is the LOWER LEFT corner, not a column.
-           Capped in vw so it cannot swallow a landscape screen. */
-        width: 'min(58vw, 260px)',
+           Capped in vw so it cannot swallow a landscape screen.
+           v2.3.2155: and while shut it is the BELL's width and nothing more.
+           The shell is pointerEvents:'none', so this is not about taps -- it is
+           so the button inside cannot inherit a 260px line box and go on
+           covering the joystick with an invisible strip. */
+        width: shut ? 'auto' : 'min(58vw, 260px)',
         /* v2.3.2145: already under .bt-inspect (32) and already unable to eat a
            tap, so the trade guard costs it nothing -- but it is the surface the
            owner NAMED ("chat, etc"), and it is what the silence control has to
@@ -200,7 +215,10 @@ export function WorldChatFeed() {
         fontFamily: 'Source Sans 3, sans-serif',
       }}
     >
-      {ticketChip ? (
+      {/* v2.3.2155: the golden-ticket line is a "special event" in the owner's
+          words, so it folds into the bell with the rest rather than standing
+          outside it. Shut, the corner is one 36px button and nothing else. */}
+      {(ticketChip && !shut) ? (
         <div
           data-cape-chip={_crimson.remaining}
           style={{
@@ -252,23 +270,40 @@ export function WorldChatFeed() {
              a button under a sheet that still takes the tap is the bug that
              file's header is about. */
           pointerEvents: busy ? 'none' : 'auto',
-          /* ONE LINE, and it has to stay one line on the narrowest phone:
-             fixed height, nothing wraps, the label truncates before the count
-             does. 28px keeps the shut state compact while staying a real
-             touch target at this width. */
+          /* ═══ v2.3.2155: SHUT IS A 36px BELL, OPEN IS THE OLD HEADER ═══
+             This control has always been the one thing in this corner that
+             takes a tap, and it sits at z-index 25 over [data-joyzone="L"] --
+             the invisible full-left-half pad at z-index 6 that receives every
+             movement drag. Anything here that opts back into pointer events
+             takes that patch of screen away from movement, which is what made
+             the v2.3.2145 silence chip unshippable three times over.
+             The bell makes that patch SMALLER, not larger: measured on a
+             390px phone the old header was 226x28 = 6328px of stolen drag
+             area (the 260px shell cap only bites on a wider screen), and the
+             bell is 36x36 = 1296 -- a 79% cut. That is the reason to prefer a
+             bell here beyond the owner asking for one, and mp-notifbell
+             measures the footprint rather than trusting the arithmetic.
+             Open, it is the full-width header it has been since v2.3.2099 --
+             a label and a chevron are what say "this folds", and a bell that
+             stayed a bell would leave the open state with no way back. */
           display: 'flex',
           alignItems: 'center',
-          gap: 6,
-          width: '100%',
-          height: 28,
-          padding: '0 8px',
-          margin: '0 0 3px 0',
+          justifyContent: shut ? 'center' : 'flex-start',
+          gap: shut ? 0 : 6,
+          position: 'relative',
+          width: shut ? 36 : '100%',
+          height: shut ? 36 : 28,
+          padding: shut ? 0 : '0 8px',
+          margin: shut ? 0 : '0 0 3px 0',
           boxSizing: 'border-box',
           /* Reads as part of the feed, not as a separate widget: the same
              surface recipe as the list below it. */
-          background: 'rgba(13,22,27,.72)',
-          border: '1px solid rgba(229,237,233,.14)',
-          borderRadius: 8,
+          /* v2.3.2155: the shut bell stands ON the world rather than inside a
+             panel, so it carries a little more ground than the open header
+             did -- at .72 over bright sand the glyph had nothing behind it. */
+          background: shut ? 'rgba(13,22,27,.86)' : 'rgba(13,22,27,.72)',
+          border: `1px solid ${shut ? 'rgba(229,237,233,.26)' : 'rgba(229,237,233,.14)'}`,
+          borderRadius: shut ? 10 : 8,
           cursor: 'pointer',
           fontFamily: 'inherit',
           textAlign: 'left',
@@ -276,50 +311,98 @@ export function WorldChatFeed() {
           touchAction: 'manipulation',
         }}
       >
-        <span style={{
-          fontSize: 10,
-          fontWeight: 700,
-          letterSpacing: '.08em',
-          textTransform: 'uppercase',
-          color: '#8FA3A0',
-          textShadow: '0 1px 2px rgba(4,7,9,.9)',
-          flex: 1,
-          minWidth: 0,
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-        }}>
-          World Chat
-        </span>
-        {unread > 0 ? (
-          <span
-            data-world-chat-unread={unread}
-            style={{
-              flex: '0 0 auto',
-              minWidth: 18,
-              height: 18,
-              padding: '0 5px',
-              borderRadius: 999,
-              background: 'var(--ui-brass, #D8AA58)',
-              color: '#20170D',
-              fontSize: 11,
-              fontWeight: 800,
-              lineHeight: '18px',
-              textAlign: 'center',
-              fontVariantNumeric: 'tabular-nums',
-            }}
-          >
-            {unread > 99 ? '99+' : unread}
+        {shut ? (
+          /* The bell is INLINE SVG, like the chevron below it and for the same
+             reason: a texture that loads on first use is the regression
+             CLAUDE.md names by name, and this one would load the first time a
+             player was ever notified of anything -- exactly the moment it must
+             already be there. */
+          <>
+            <svg width="21" height="21" viewBox="0 0 20 20" aria-hidden="true"
+              style={{ display: 'block' }}>
+              <path
+                d="M10 2.6a4.6 4.6 0 0 0-4.6 4.6v2.5L4.1 12.4a.7.7 0 0 0 .6 1.05h10.6a.7.7 0 0 0 .6-1.05L14.6 9.7V7.2A4.6 4.6 0 0 0 10 2.6Z"
+                fill="none" stroke={unread > 0 ? 'var(--ui-brass, #D8AA58)' : '#8FA3A0'}
+                strokeWidth="1.5" strokeLinejoin="round" />
+              <path d="M8.2 15.2a1.9 1.9 0 0 0 3.6 0"
+                fill="none" stroke={unread > 0 ? 'var(--ui-brass, #D8AA58)' : '#8FA3A0'}
+                strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+            {unread > 0 ? (
+              /* Overlapping the bell's shoulder rather than sitting beside it:
+                 the whole point of the shut state is that it is 36px wide, and
+                 a badge on a row would spend that back. */
+              <span
+                data-world-chat-unread={unread}
+                style={{
+                  /* v2.3.2155b: 16px and overlapping at -3 put a 25px pill
+                     across a 36px button and hid the bell behind its own
+                     count -- the first render of this read as a brass blob.
+                     14px, and pushed clear of the corner, so the glyph is
+                     what you see and the number is what you check. */
+                  position: 'absolute', top: -5, right: -5,
+                  minWidth: 14, height: 14, padding: '0 3px',
+                  borderRadius: 999,
+                  background: 'var(--ui-brass, #D8AA58)',
+                  color: '#20170D',
+                  fontSize: 9, fontWeight: 800, lineHeight: '14px',
+                  textAlign: 'center', fontVariantNumeric: 'tabular-nums',
+                  boxShadow: '0 0 0 2px rgba(13,22,27,.92)',
+                }}
+              >
+                {unread > 99 ? '99+' : unread}
+              </span>
+            ) : null}
+          </>
+        ) : (
+          <>
+
+          <span style={{
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: '.08em',
+            textTransform: 'uppercase',
+            color: '#8FA3A0',
+            textShadow: '0 1px 2px rgba(4,7,9,.9)',
+            flex: 1,
+            minWidth: 0,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}>
+            World Chat
           </span>
-        ) : null}
-        {/* The chevron is the affordance: it says this folds, which a bare
-            label never did. Inline, because it is two lines of SVG and a
-            texture that loads on first use is the regression CLAUDE.md names. */}
-        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"
-          style={{ flex: '0 0 auto', transform: shut ? 'rotate(180deg)' : 'none' }}>
-          <path d="M1 3.5 L5 7 L9 3.5" fill="none" stroke="#8FA3A0"
-            strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+          {unread > 0 ? (
+            <span
+              data-world-chat-unread={unread}
+              style={{
+                flex: '0 0 auto',
+                minWidth: 18,
+                height: 18,
+                padding: '0 5px',
+                borderRadius: 999,
+                background: 'var(--ui-brass, #D8AA58)',
+                color: '#20170D',
+                fontSize: 11,
+                fontWeight: 800,
+                lineHeight: '18px',
+                textAlign: 'center',
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
+              {unread > 99 ? '99+' : unread}
+            </span>
+          ) : null}
+          {/* The chevron is the affordance: it says this folds, which a bare
+              label never did. Inline, because it is two lines of SVG and a
+              texture that loads on first use is the regression CLAUDE.md names. */}
+          <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"
+            style={{ flex: '0 0 auto', transform: shut ? 'rotate(180deg)' : 'none' }}>
+            <path d="M1 3.5 L5 7 L9 3.5" fill="none" stroke="#8FA3A0"
+              strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          </>
+        )}
       </button>
       ) : null}
       {(!lines.length || shut) ? null : (
