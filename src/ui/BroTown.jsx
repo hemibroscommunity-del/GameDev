@@ -342,7 +342,8 @@ const {
 
 import { _regenerator, _regeneratorDefine2, _asyncToGenerator, _typeof, _slicedToArray, _toConsumableArray, _objectSpread, _defineProperty, _toPropertyKey, _toPrimitive, ownKeys, _arrayWithHoles, _iterableToArrayLimit, _unsupportedIterableToArray, _arrayLikeToArray, _nonIterableRest, _arrayWithoutHoles, _iterableToArray, _nonIterableSpread, _createForOfIteratorHelper, asyncGeneratorStep } from '@/lib/babelHelpers.js';
 import { SpriteHpBar } from './SpriteHpBar.jsx'; /* v2.3.1273: owner's HP-bar art (desktop HUD row) */
-import { barHeight, navSlotSize, columnsRowHeight, DASH_OVERLAP } from './mobile/sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 bar-height canvas; v2.3.1325 slot-derived bar; v2.3.1560 two-row band; v2.3.1635 three-row band; v2.3.1636 columns row */
+import { navSlotSize, bandFootprint } from './mobile/sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 bar-height canvas; v2.3.1325 slot-derived bar; v2.3.1560 two-row band; v2.3.1635 three-row band; v2.3.1636 columns row; v2.3.2156 one footprint for resize + watchdog */
+import { playIsLandscape } from './mobile/playViewport.js'; /* v2.3.2156: the data-orient stamp + the isLandscape seed */
 import { dashMinBus } from './mobile/dashMinBus.js'; /* v2.3.2119: folded band = identity row only */
 import { recolorEnabled } from '@/rendering/traits/recolorOptions.js';
 import { buildingPropNear } from '@/data/worldProps.js'; /* v2.3.1778: building doors */
@@ -2945,8 +2946,6 @@ export var BroTown = function BroTown(_ref0) {
          changes — so every game.css consumer (joystick zones, world-HUD
          anchors) and this canvas math share the same rounded value.
          game.css only carries boot fallbacks. */
-      var bar = barHeight(vw, vhFull);
-      var colsH = columnsRowHeight(vw, vhFull);
       /* v2.3.2119: FOLDED = IDENTITY ROW ONLY.  The fold subtracts the
          columns row from the band and zeroes --cols-h, and every consumer
          downstream — canvas height, the identity row's bottom anchor, the
@@ -2957,7 +2956,47 @@ export var BroTown = function BroTown(_ref0) {
          where it always has.  Stamped HERE and not in the dashboard because
          this function owns the canvas: a fold the canvas didn't follow
          would be a black stripe where the columns row was. */
-      if (dashMinBus.min) { bar = Math.max(0, bar - colsH); colsH = 0; }
+      /* v2.3.2156: that arithmetic lives in bandFootprint() now — ONE copy,
+         shared with the watchdog below, because orientation is about to
+         become a third input to it (owner: "Landscape would be an optional
+         view") and two hand-kept copies of a rule that must match is the
+         bug worldViewport.js's header narrates.  Same numbers, same flag. */
+      /* v2.3.2157: the open sheet is geometry now.  In portrait this input
+         changes nothing (bandFootprint ignores it there -- the BAR-height
+         invariant); in landscape an expanded destination narrows the world
+         to playW and the sheet takes the difference. */
+      /* v2.3.2165: the open sheet's KIND rides along — the dashboard column
+         is narrower than a pane column (the owner's 2x4 rotation rule). */
+      var _sheetOpen = dashboardPanelBus.state.mode === 'expanded'
+        ? (dashboardPanelBus.state.stack[0] === 'dashboard' ? 'dashboard' : 'panel')
+        : false;
+      /* v2.3.2163: the home-indicator inset, measured through CSS because
+         JS cannot read env() directly.  The probe is one reusable fixed div
+         parked off-screen; 0 in a browser tab, ~21px in a standalone
+         landscape launch.  Cached on the element so the getComputedStyle
+         cost is paid once per resize, not per frame. */
+      var _sabEl = document.getElementById('bt-sab-probe');
+      if (!_sabEl) {
+        _sabEl = document.createElement('div');
+        _sabEl.id = 'bt-sab-probe';
+        _sabEl.style.cssText = 'position:fixed;left:-9999px;top:0;padding-bottom:env(safe-area-inset-bottom,0px);';
+        document.body.appendChild(_sabEl);
+      }
+      var _sab = parseFloat(getComputedStyle(_sabEl).paddingBottom) || 0;
+      var _fp = bandFootprint(vw, vhFull, dashMinBus.min, _sheetOpen, _sab);
+      var bar = _fp.dashH;
+      var colsH = _fp.colsH;
+      /* v2.3.2156: the shell's orientation, stamped where every other
+         viewport-derived value is stamped.  CSS scoped under
+         html[data-orient="landscape"] keys off THIS attribute rather than a
+         media query, because a 1400x450 desktop window matches any
+         short-and-wide query while its aspect-locked play shell is portrait
+         — playIsLandscape() is the one source that knows the difference
+         (playViewport.js's two-widths law). Nothing reads it yet; the
+         landscape dashboard PR does. */
+      try {
+        document.documentElement.setAttribute('data-orient', playIsLandscape() ? 'landscape' : 'portrait');
+      } catch (e) { /* SSR/teardown: a missed stamp heals on the next resize */ }
       document.documentElement.style.setProperty('--nav-slot', navSlotSize(vw, vhFull) + 'px');
       /* v2.3.1560: --nav-h is the toolbar ribbon alone; --dash-h below is
          the whole band.  Both stamped here so the ribbon and the rows
@@ -2976,16 +3015,27 @@ export var BroTown = function BroTown(_ref0) {
          v2.3.1636: --quick-h -> --cols-h with the three-column row. */
       document.documentElement.style.setProperty('--cols-h', colsH + 'px');
       document.documentElement.style.setProperty('--dash-h', bar + 'px');
-      var vh = Math.max(120, Math.round(vhFull - bar) + DASH_OVERLAP); /* v2.3.1290: bar is the resting band */
+      /* v2.3.2157: the play area's width and the sheet's.  Portrait stamps
+         playW == vw and sheetW == 0, so nothing there can read a landscape
+         number.  In landscape, game.css narrows .brotown-wrap to --play-w
+         (contain:paint re-anchors every fixed HUD overlay to it -- the
+         desktop shell's own v2.3.1768 mechanic, one level down) and the
+         side sheet takes --sheet-w. */
+      document.documentElement.style.setProperty('--play-w', _fp.playW + 'px');
+      document.documentElement.style.setProperty('--sheet-w', _fp.sheetW + 'px');
+      var vh = Math.max(120, Math.round(vhFull - bar) + _fp.overlap); /* v2.3.1290: bar is the resting band; v2.3.2156: overlap rides the footprint (a bandless layout earns none) */
       /* v2.3.1283: short-circuit when nothing changed — the
          ResizeObserver below re-fires during layout churn (e.g. the
          sheet's height animation), and assigning canvas.width even to
          the SAME value reallocates the WebGL drawing buffer. */
-      var tw = Math.round(vw * dpr), th = Math.round(vh * dpr);
+      /* v2.3.2157: the canvas is the PLAY width, not the viewport width --
+         identical in portrait (playW == vw always), narrower in landscape
+         while a sheet is open. */
+      var tw = Math.round(_fp.playW * dpr), th = Math.round(vh * dpr);
       if (canvas.width === tw && canvas.height === th) return;
       canvas.width = tw;
       canvas.height = th;
-      canvas.style.width = vw + 'px';
+      canvas.style.width = _fp.playW + 'px';
       canvas.style.height = vh + 'px';
     }
     /* Pre-size the canvas BEFORE Pixi init so pixiApp's createPixiApp
@@ -3055,10 +3105,28 @@ export var BroTown = function BroTown(_ref0) {
          to the wrong size twice a second forever.  Same arithmetic as
          resize(), same flag. */
       var _wdVw = vvNow ? vvNow.width : window.innerWidth;
-      var _wdBar = barHeight(_wdVw, fullH);
-      if (dashMinBus.min) _wdBar = Math.max(0, _wdBar - columnsRowHeight(_wdVw, fullH));
-      var wantH = Math.max(120, fullH - _wdBar + DASH_OVERLAP);
-      if (Math.abs(haveH - wantH) <= wantH * 0.08) return;
+      /* v2.3.2156: the SAME bandFootprint resize() uses — switched in the
+         same commit, deliberately: the watchdog's whole job is to re-derive
+         resize()'s arithmetic, and the day the two read different formulas
+         (a 243-vs-48 landscape disagreement is 10x the 8% tolerance) it
+         "heals" the canvas against resize() twice a second forever. */
+      var _wdSab = 0;
+      try {
+        var _wdEl = document.getElementById('bt-sab-probe');
+        if (_wdEl) _wdSab = parseFloat(getComputedStyle(_wdEl).paddingBottom) || 0;
+      } catch (e) { /* probe not built yet: 0, same as resize's first pass */ }
+      var _wdFp = bandFootprint(_wdVw, fullH, dashMinBus.min,
+        dashboardPanelBus.state.mode === 'expanded'
+          ? (dashboardPanelBus.state.stack[0] === 'dashboard' ? 'dashboard' : 'panel')
+          : false, _wdSab); /* v2.3.2157/2163/2165: same inputs as resize() */
+      var wantH = Math.max(120, fullH - _wdFp.dashH + _wdFp.overlap);
+      /* v2.3.2157: width joins the check -- it varies with the landscape
+         sheet now, and a missed open/close resize would otherwise leave a
+         black stripe nothing heals.  Same tolerance, same single warning. */
+      var haveW = canvas.getBoundingClientRect().width;
+      var wantW = _wdFp.playW;
+      if (Math.abs(haveH - wantH) <= wantH * 0.08
+        && Math.abs(haveW - wantW) <= wantW * 0.08) return;
       /* Say it once, loudly, with the numbers: if this ever fires in the wild
          the log is the whole diagnosis, and silence here would hide the very
          thing three fixes have failed to see. */
@@ -6827,7 +6895,14 @@ export var BroTown = function BroTown(_ref0) {
     _useState212 = _slicedToArray(_useState211, 2),
     swordReady = _useState212[0],
     setSwordReady = _useState212[1];
-  var _useState213 = useState(window.innerWidth > window.innerHeight),
+  /* v2.3.2156: seeded from playIsLandscape(), not innerWidth>innerHeight —
+     on the desktop shell those disagree (a 1920x1080 WINDOW is landscape
+     while the aspect-locked 390/715 PLAY AREA is portrait), so the first
+     render laid controls out for an orientation the play area never had
+     until the first resize event corrected it.  orientationSync has updated
+     this flag from playIsLandscape() since v2.3.1715; the seed just never
+     caught up. */
+  var _useState213 = useState(playIsLandscape()),
     _useState214 = _slicedToArray(_useState213, 2),
     isLandscape = _useState214[0],
     setIsLandscape = _useState214[1];

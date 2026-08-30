@@ -1,6 +1,7 @@
 import React from 'react';
 import { COL } from './common.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
+import { playIsLandscape } from '../playViewport.js'; /* v2.3.2158: the tap decides by shape */
 import { navButtonSize } from '../sheet/sheetGeometry.js';
 
 /* v2.3.1637 (owner mockup): the NAV RAIL — the destinations as icon-only
@@ -31,8 +32,21 @@ import { navButtonSize } from '../sheet/sheetGeometry.js';
    and it is how you switch destinations or get out.  A rail that hid with
    the rest of the band would leave an open panel with no navigation. */
 
-export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait }) => {
-  const size = navButtonSize(vw, vh);
+export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, btnW, fill }) => {
+  /* v2.3.2166: `btnW` narrows the buttons for the landscape dock — the
+     five of them must fit inside the side container's width (owner: the
+     dashboard buttons "should all be included in that container on that
+     whole right side"), and every 2px on a button is 10px off the world.
+     Height keeps the derived rule; portrait passes nothing and is
+     untouched. */
+  /* v2.3.2170 (owner, with a zoomed screenshot of slack left of the row:
+     "room to expand just the dashboard navigation buttons ... the left
+     side of the buttons has space to fill"): `fill` stretches the group
+     across its parent and lets each button flex into an equal share —
+     btnW becomes the floor the geometry planned for, not the ceiling the
+     render stops at. */
+  const base = navButtonSize(vw, vh);
+  const size = btnW ? { w: btnW, h: base.h } : base;
   return (
     <div className="bt-navrail" style={{
       /* v2.3.1642: a ROW at the band's top-left, in its own bordered
@@ -46,6 +60,7 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait })
          geometry owns can be balanced against what the strip needs; a
          flex grab cannot. */
       flex: 'none',
+      width: fill ? '100%' : undefined, /* v2.3.2170: the dock's whole row */
       boxSizing: 'border-box',
       /* v2.3.1650 (owner: "remove the darker background behind the 3
          dashboard buttons").  The well + border + radius were the
@@ -82,7 +97,35 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait })
             role="button" aria-label={d.label} aria-pressed={on} title={d.label}
             onPointerUp={(e) => {
               e.stopPropagation();
-              if (d.id === 'dashboard') { dashboardPanelBus.toBar(); return; }
+              /* ═══ v2.3.2158: SIDEWAYS, THE DASHBOARD BUTTON IS THE BAG ═══
+                 Owner, on a real iPhone in landscape: "The one thing I don't
+                 understand is where my bag went.  I see the thin bar at the
+                 bottom but no inventory slots when dashboard is active."
+
+                 In portrait this button's job is "go to rest", because rest
+                 IS the dashboard -- the columns row with the bag preview.
+                 Landscape has no columns row (the whole point of the 48px
+                 strip), so toBar() here was a lit button that showed
+                 nothing: the one thing it promised -- your slots -- was the
+                 one thing it could not produce.  Sideways it opens the Bag
+                 sheet instead, and a second tap (or tapping it with ANY
+                 sheet open) still rests -- so it is the same "give me the
+                 world back" button the moment something is open, which is
+                 the half of toBar() worth keeping.
+                 Decided at TAP TIME from playIsLandscape() rather than from
+                 subscribed state: the handler needs the answer only when the
+                 finger lands. */
+              if (d.id === 'dashboard') {
+                if (playIsLandscape() && dashboardPanelBus.state.mode === 'bar') {
+                  /* v2.3.2163: the destination is the DASHBOARD view now —
+                     bag grid + combat pills stacked (PANELS.dashboard) —
+                     not the bare bag; the owner named both halves. */
+                  dashboardPanelBus.open('dashboard');
+                  return;
+                }
+                dashboardPanelBus.toBar();
+                return;
+              }
               dashboardPanelBus.open(d.id);
             }}
             style={{
@@ -92,7 +135,10 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait })
                  v2.3.1642: still a vertical pill, now in a horizontal
                  row — navButtonSize returns {w,h} with h from the
                  identity row so the shape survives the move. */
-              width: size.w, height: size.h, flex: 'none',
+              /* v2.3.2170: under `fill` each button takes an equal share of
+                 the row instead of the fixed floor width. */
+              ...(fill ? { flex: '1 1 0', minWidth: size.w } : { width: size.w, flex: 'none' }),
+              height: size.h,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               background: on ? COL.accentFill : COL.wellSoft,
               border: `1px solid ${on ? COL.accent : COL.tileBor}`,

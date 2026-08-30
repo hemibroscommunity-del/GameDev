@@ -3,6 +3,7 @@ import { notificationsMuted, setNotificationsMuted } from '../modalGuardBus.js';
 import { COL, panelStyle } from './common.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { controlsTutorialBus } from '../controlsTutorialBus.js';
+import { installHintBus } from '../installHintBus.js'; /* v2.3.2159 */
 import { TRAIL_STYLES, getTrailStyle, setTrailStyle } from '@/game/questTrailStyle.js';
 
 /* v2.3.1232: Lantern Slate pass (docs/LANTERN-SLATE-SPEC.md) — 44px
@@ -255,6 +256,23 @@ export const SettingsPanel = () => {
         onTap={() => dashboardPanelBus.push('account')} />
       <LinkRow label="Controls — replay the tutorial"
         onTap={() => controlsTutorialBus.open()} />
+      {/* v2.3.2159: the way back to a dismissed install hint — everything
+          cut is one tap away.  iOS Safari in the browser only: launched
+          from the home screen there is nothing to teach, and elsewhere the
+          instruction would be wrong. */}
+      {(() => {
+        try {
+          const ios = /iPad|iPhone|iPod/.test(navigator.userAgent)
+            || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+          const standalone = window.navigator.standalone === true
+            || window.matchMedia('(display-mode: standalone)').matches;
+          if (!ios || standalone) return null;
+        } catch (e) { return null; }
+        return (
+          <LinkRow label="Play full screen — hide the browser bar"
+            onTap={() => { installHintBus.open(); dashboardPanelBus.toBar(); }} />
+        );
+      })()}
       <LinkRow label="Feedback — message the developers"
         onTap={() => dashboardPanelBus.push('feedback')} />
       {/* v2.3.1347: destructive row — red label, drills into the

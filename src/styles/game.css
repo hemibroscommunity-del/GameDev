@@ -2554,14 +2554,21 @@ body:has([data-trade-drawer]) .bt-kb-chip{display:none}
    characterPortrait's hardcoded ?v=2.3.760, which silently withheld every
    shirt re-bake from the creator preview.  Bump this whenever the PNG is
    regenerated. */
-/* v2.3.2151: bumped with the recut (tools/ui/recut-continue-plate.py) --
-   owner: "the lettering looks off and it's still not centered".  The C is cut
-   from the plate's own O now instead of an E with its middle bar removed, and
-   the word is centred on the FIELD BESIDE THE KEY (x 192-759, centre 475)
-   rather than on the plate (centre 406) -- centred on the plate it sits 69px
-   into the key's half with a void after it, which is the "not centered" the
-   owner sees.  Bumping this is not optional: the filename did not change. */
-.bt-login-btn--key{background-image:url('/ui/welcome/title/btn-continue.png?v=2.3.2151');aspect-ratio:815/259}
+/* v2.3.2161 (owner: "change the continue button on splash page to use these
+   assets instead"): the plate is the owner's own art now — the C-and-arrow
+   emblem beside the gold pixel CONTINUE wordmark, composed into one PNG by
+   tools/ui/compose-continue-plate.mjs (emblem 1.2x the letter height,
+   vertically centred).  The aspect-ratio and the ?v bump move with the PNG,
+   per the cache note above. */
+/* v2.3.2162 (owner: "Put it on same button frame"): the mark sets into the
+   same framed plate Create wears — see compose-continue-plate.mjs.  Aspect
+   returns to the frame's own, so the two plates match exactly. */
+/* MERGE NOTE (#515 over #514): #514's v2.3.2151 recut of the OLD lettering
+   (recut-continue-plate.py, 815/259) is superseded here — the owner supplied
+   new emblem + wordmark art after that work and iterated this plate four
+   times ("same button frame" → "align left" → "center just the label"), so
+   the owner's-art plate wins the merge.  The recut tool stays on disk. */
+.bt-login-btn--key{background-image:url('/ui/welcome/title/btn-continue.png?v=2.3.2167');aspect-ratio:799/212} /* v2.3.2167: label centred, emblem left (owner) */
 .bt-login-btn--new{background-image:url('/ui/welcome/title/btn-create.png');aspect-ratio:799/212}
 .bt-login-btn:active{transform:translateY(1px) scale(.995)}
 .bt-login-btn:disabled{opacity:.55;cursor:default;animation:none}
@@ -2800,4 +2807,57 @@ body:has([data-trade-drawer]) .bt-kb-chip{display:none}
 }
 .bt-chat-noselect textarea,.bt-chat-noselect input{
   -webkit-user-select:text;user-select:text;-webkit-touch-callout:default;
+}
+
+/* ═══ v2.3.2157: LANDSCAPE — THE WORLD AS ITS OWN COMPLETE WINDOW ═══
+   Owner: "Landscape would be an optional view", "No I don't want an overlay
+   over the world", "You should be able to play the game with the menus open.
+   That's the idea."
+
+   Scoped under html[data-orient="landscape"], the attribute BroTown's
+   resize() stamps from playIsLandscape() (v2.3.2156) — NOT a media query,
+   because a 1400x450 desktop window matches every short-and-wide query while
+   its aspect-locked play shell is portrait.  One JS source drives the JS and
+   the CSS, so the desktop shell and a landscape phone can never trip each
+   other's path.
+
+   The mechanic is the desktop shell's own (v2.3.1768), one level down:
+   contain:paint makes .brotown-wrap the CONTAINING BLOCK for every
+   position:fixed overlay inside it — the canvas HUD, the joysticks, the
+   quest tracker, the banners — so when the wrap narrows to --play-w (world
+   yielding width to the open sheet), all of them re-anchor to the world's
+   edges without being edited one by one.  At rest --play-w is the full
+   viewport and this whole block is visually a no-op.  The !important is the
+   same one the desktop block carries: the wrap's 100% width is an inline
+   style. */
+html[data-orient="landscape"] .brotown-wrap{
+  width:var(--play-w,100%)!important;
+  contain:paint;
+}
+/* The zone header belongs to the WORLD's width, not the screen's — the
+   owner pointed at the narrow-width capture as the target: header spanning
+   the world only, with the sheet wholly outside it. */
+html[data-orient="landscape"] .bt-zone-header{
+  right:auto;
+  width:var(--play-w,100%);
+}
+/* The fold chip hides sideways: the landscape band already IS the fold
+   (bandFootprint returns the identity row unconditionally), so the toggle
+   would be a button that does nothing — a handle with no gesture behind it
+   is a lie (v2.3.1307). */
+html[data-orient="landscape"] [data-dash-fold]{
+  display:none!important; /* the chip's display is an inline style (flex), like the wrap's width — only !important outranks it */
+}
+/* v2.3.2166: the band narrowed to the world's width so the side container
+   could own the right edge.
+   v2.3.2168 (owner: "You can actually remove that whole bottom length bar
+   now.  Coins can go someplace else (they don't need an entire screen
+   length)"): the band does not render sideways AT ALL.  What it carried
+   has homes: the nav buttons in .bt-land-navdock (v2.3.2166), gold in the
+   .bt-land-gold chip at the world's bottom centre, the drill back-chip in
+   the sheet's own header row.  display:none rather than unmounting in JSX
+   so the portrait/landscape flip stays a stamp flip — the band's React
+   tree (portraits, buses, effects) never churns on rotation. */
+html[data-orient="landscape"] .bt-dashboard{
+  display:none!important;
 }

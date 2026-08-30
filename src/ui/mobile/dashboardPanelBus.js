@@ -24,8 +24,26 @@
 // never collapses the sheet — play with menus open (v2.3.1307); the
 // combat chrome rides above the open sheet keyed off --sheet-h.
 
+import { playIsLandscape } from './playViewport.js'; /* v2.3.2173: the bag-pane tourniquet below */
+
 const listeners = new Set();
-const emit = () => { for (const fn of listeners) fn(); };
+const emit = () => {
+  for (const fn of listeners) fn();
+  /* ═══ v2.3.2157: THE ONE GEOMETRY PATH, SAME AS THE FOLD ═══
+     In landscape the world YIELDS width to the open sheet (owner: menus
+     beside the world, playable while open), which means opening or closing
+     a destination is a canvas-geometry change -- and dashMinBus's own note
+     names the only safe road: BroTown's resize() owns turning band state
+     into pixels, and the watchdog re-derives the same arithmetic.  A sheet
+     the canvas doesn't know about is a black stripe where the world should
+     be; one the watchdog doesn't know about is a healing war every 500ms.
+     Dispatched on EVERY state change rather than landscape-only: in
+     portrait resize() recomputes identical numbers and its short-circuit
+     returns before touching the canvas, so the extra event costs a
+     comparison -- cheaper than this file knowing which orientation it is
+     in. */
+  try { window.dispatchEvent(new Event('resize')); } catch (e) { /* ignore */ }
+};
 
 /* v2.3.1312 (round-8; retagged from 1311 — #288 claimed it first):
    one restrained tick when the sheet snaps to a new state
@@ -33,6 +51,23 @@ const emit = () => { for (const fn of listeners) fn(); };
    no-op on iOS Safari — Android/PWA users get it, everyone else
    silently doesn't; never let an exotic WebView throw over it. */
 const haptic = () => { try { navigator.vibrate && navigator.vibrate(8); } catch (_) {} };
+
+/* ═══ v2.3.2173: THE TINY-SLOT BAG PANE IS RETIRED SIDEWAYS ═══
+   Owner, reviewing the landscape view screenshots: "you show another bag
+   view with tiny inventory slots.  That must be a legacy view that needs
+   to retire.  It got replaced with the [dashboard column] view."
+   Nothing in src/ opens 'bag'/'inventory' any more (v2.3.1654 made the
+   resting dashboard the bag; v2.3.2163 pointed the sideways button at the
+   dashboard destination), so this is a tourniquet, not a route: whatever
+   old call site or test still asks for the legacy inventory pane in
+   landscape lands on the 2x4 dashboard column instead.  Portrait is
+   untouched — the panel remains registered for its history there. */
+const landSafe = (id) => {
+  try {
+    if ((id === 'bag' || id === 'inventory') && playIsLandscape()) return 'dashboard';
+  } catch (e) { /* pre-boot: no viewport to ask */ }
+  return id;
+};
 
 export const dashboardPanelBus = {
   state: { stack: ['bag'], mode: 'bar' },
@@ -74,7 +109,7 @@ export const dashboardPanelBus = {
   },
 
   open(id) {
-    this.state.stack = [id];
+    this.state.stack = [landSafe(id)];
     this.state.mode = 'expanded';
     haptic();
     emit();
@@ -129,7 +164,7 @@ export const dashboardPanelBus = {
     if (this.current() === id) {
       this.clear();
     } else {
-      this.state.stack = [id];
+      this.state.stack = [landSafe(id)];
       this.state.mode = 'expanded';
       emit();
     }
@@ -138,7 +173,7 @@ export const dashboardPanelBus = {
   // Push a child panel onto the stack — used by launcher tiles and the
   // Hero -> Build jump.  Drill children render expanded.
   push(id) {
-    this.state.stack = [...this.state.stack, id];
+    this.state.stack = [...this.state.stack, landSafe(id)];
     this.state.mode = 'expanded';
     emit();
   },

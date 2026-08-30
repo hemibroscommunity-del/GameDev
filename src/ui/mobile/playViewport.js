@@ -70,3 +70,29 @@ export function playVh() {
 export function playIsLandscape() {
   return playVw() > playVh();
 }
+
+/* ═══ v2.3.2157: THE WIDTH A DASHBOARD PANEL ACTUALLY HAS ═══
+ *
+ * A third width joins the two above, for the same reason each of them
+ * exists: a panel laying itself out from the wrong container stretched.
+ *
+ * In portrait the expanded sheet spans the play area, so playVw() and "my
+ * container's width" were the same number by coincidence.  The landscape
+ * side sheet ends the coincidence: a panel inside a 400px column that sizes
+ * its grid from a 844px playVw() lays out ten tiles in a four-tile box --
+ * the v2.3.1715 desktop stretch, one level down.
+ *
+ * resize() stamps --sheet-w whenever it stamps the rest of the geometry;
+ * a panel is hosted by the side sheet exactly when the play area is
+ * landscape, so that is the whole test.  Portrait (or a missing stamp, on
+ * an older boot) falls through to playVw() -- the primary platform cannot
+ * be changed by this function existing. */
+export function panelVw() {
+  if (playIsLandscape()) {
+    try {
+      const v = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sheet-w'), 10);
+      if (v > 0) return v;
+    } catch (e) { /* fall through */ }
+  }
+  return playVw();
+}

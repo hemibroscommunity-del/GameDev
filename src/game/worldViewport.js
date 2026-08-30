@@ -82,6 +82,46 @@ export const REF_VIEW_W = Math.round(390 * WORLD_ZOOM);   /* 585 at WORLD_ZOOM 1
  * warning above about a second height constraint stands unchanged. */
 const MIN_SCALE = 0.5;
 
+/* ═══ v2.3.2156: LANDSCAPE GETS ITS OWN REFERENCE, ON THE OTHER AXIS ═══
+ *
+ * Owner: "Landscape would be an optional view.  You can play in portrait or
+ * landscape."
+ *
+ * The width-only rule above is exactly right in portrait and exactly wrong
+ * sideways: at 844 CSS px wide it read a landscape phone as "a very wide
+ * screen" and zoomed IN (scale 1.44), squeezing the world to 585x96 -- three
+ * tiles of height, measured.  A landscape canvas is not a wide portrait, it
+ * is a SHORT one, and the scarce axis is the one the rule must protect.
+ *
+ * So the constraint SWITCHES AXES with the canvas's own shape, and only
+ * switches -- it never doubles up.  The header above records that a second,
+ * simultaneous height term cost a questline run before it was understood;
+ * this is not that.  One constraint is active at a time, selected by
+ * orientation, and each branch is the other's mirror.
+ *
+ * WHERE 480 COMES FROM -- AREA PARITY, because fairness is standing policy
+ * (the cap itself, v2.3.1768b; the SE floor removal, v2.3.2021: "spotting a
+ * monster or another player before they spot you is the whole tactical
+ * layer").  A 390x844 portrait phone sees 585 x ~922 world px = ~539K px^2.
+ * With the landscape band at its folded 48px (the v2.3.2118 identity-row
+ * footprint, which is what the landscape dashboard rests at), REF_VIEW_H=480
+ * gives, measured on real clients:
+ *     844x390  ->  canvas 844x356  scale .742  view 1138x480  (+1.3% area)
+ *     812x375  ->  canvas 812x341  scale .710  view 1143x480  (+2.4%)
+ *     932x430  ->  canvas 932x396  scale .825  view 1130x480  (-1.1%)
+ * Same area, different shape: landscape trades vertical spotting range for
+ * horizontal, and every landscape player sees the SAME 480 world px of
+ * height -- the "same slice for everyone" rule, transposed.
+ *
+ * UNTIL THE LANDSCAPE BAND SHIPS (the PR after this one), a landscape phone
+ * still carries the portrait band (~261px), so the canvas is ~143 tall and
+ * this rule bottoms out at MIN_SCALE: view 1688x286.  That is deliberate --
+ * an overview rather than a keyhole, ~3x the world the broken layout showed
+ * -- and it is BELOW portrait's area, so the interim state gives nobody an
+ * advantage.  The QA scenario pins the final numbers, not the interim ones.
+ */
+export const REF_VIEW_H = 480;
+
 /** The logical world viewport for a canvas, plus the world->CSS scale.
  *  W/H are WORLD px — what the camera centres and clamps against, and what the
  *  projectile sim measures screen edges in. */
@@ -91,7 +131,15 @@ export function worldViewport(canvas) {
   const cssH = (canvas ? canvas.height : 0) / dpr;
   /* Every screen gets the SAME slice of world, drawn at whatever size fits.
      Above the reference width that means zooming IN (v2.3.1768b, desktop);
-     below it, v2.3.2021, it means zooming OUT. */
-  const scale = Math.max(MIN_SCALE, cssW / REF_VIEW_W);
+     below it, v2.3.2021, it means zooming OUT.
+     v2.3.2156: the canvas's own shape picks which axis carries the rule --
+     see the landscape note above.  The canvas and not the window, so both
+     callers (camera and renderer) agree by construction, and the desktop
+     shell -- whose canvas is aspect-locked to a PORTRAIT phone -- can never
+     wander into the landscape branch however wide the monitor is. */
+  const land = cssW > cssH;
+  const scale = land
+    ? Math.max(MIN_SCALE, cssH / REF_VIEW_H)
+    : Math.max(MIN_SCALE, cssW / REF_VIEW_W);
   return { W: cssW / scale, H: cssH / scale, scale };
 }

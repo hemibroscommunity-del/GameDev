@@ -402,6 +402,216 @@ export function navGroupWidth(vw, vh) {
    screen.  That is the owner's chosen trade, made with both this and the
    187px one-row version rendered to scale: the columns are the ask, and
    the identity row stays because no column carries name/level/XP/gold. */
+/* ═══ v2.3.2156: THE BAND'S FOOTPRINT, AS ONE ANSWER ═══
+ *
+ * Owner: "Landscape would be an optional view.  You can play in portrait or
+ * landscape."  This function is the seam that makes that buildable.
+ *
+ * Two callers compute the band's on-screen cost and they MUST agree:
+ * BroTown's resize() (which stamps --dash-h/--cols-h and sizes the canvas as
+ * viewport minus band) and its 500ms watchdog (which re-derives the same
+ * arithmetic with an 8% tolerance and "heals" any disagreement by calling
+ * resize again).  Before this function each carried its own copy of the
+ * barHeight/fold arithmetic -- two copies of a rule that must match, the
+ * exact shape worldViewport.js's header warns about, and v2.3.2119 already
+ * had to patch BOTH when the fold shipped.  Orientation is about to become a
+ * third input to that rule, so the rule moves HERE first, alone, with the
+ * two callers switched onto it in the same commit -- a resize()/watchdog
+ * disagreement is not a subtle bug, it is a healing war twice a second.
+ *
+ * `overlap` rides in the return because it is CONDITIONAL geometry-to-be:
+ * the canvas runs DASH_OVERLAP px under a bottom band so the rounded-corner
+ * notches show live world (v2.3.1271) -- a footprint with no bottom band
+ * earns no overlap, and a caller that added the constant itself would
+ * overflow the canvas 14px past the screen the day that becomes true.
+ *
+ * THIS PR the landscape branch is deliberately ABSENT: portrait and
+ * landscape return identical numbers, so behavior is byte-identical
+ * everywhere while the seam and its two callers are proven by the existing
+ * suite.  The landscape footprint (identity row only -- the v2.3.2118 fold,
+ * made the orientation's resting state) lands with the landscape dashboard
+ * itself, behind `vw > vh`, in its own PR. */
+/* ═══ v2.3.2157: THE LANDSCAPE SHEET'S WIDTH ═══
+ * Owner: menus open BESIDE the world, never over it, and "you should be able
+ * to play the game with the menus open."  The sheet takes this much of the
+ * screen's width; the world keeps the rest.
+ * 0.474 is 400/844 -- the ratio the owner approved on the mockups -- and the
+ * clamp keeps both sides honest on other phones: 360 is the narrowest a
+ * 4-column bag grid lays out without clipping (4 tiles + gaps + padding at
+ * the sheet's own tile size), 430 stops a big phone spending its extra width
+ * on a menu instead of on the world.  844 -> 400, 812 -> 385, 932 -> 430;
+ * the world keeps >= 412px everywhere. */
+/* v2.3.2163 (owner, playing the web app: "landscape view needs to have
+ * dashboard area narrowed.  I can see 8 slots playing in [portrait] view
+ * (plus space for combat skills) so this should translate to 8 slots of
+ * space viewable in landscape").  The sheet's width stops being a share of
+ * the screen and becomes exactly what the content earns: the 4-column bag
+ * panel at the tile size the player already knows from PORTRAIT -- the
+ * device's short side is its portrait width, so dashTileSize(min(vw,vh))
+ * is that familiar size by construction.  844x390 -> tile 63 -> sheet 292;
+ * 932x430 -> tile 70 -> sheet 320.  The world gains the ~100px the old
+ * 0.474 share was spending on empty slot columns. */
+/* v2.3.2165 (owner, with the portrait band screenshot beside it: "it would
+ * actually be 2 slots wide and 4 slots vertical height leaving 8 slots
+ * viewable at one time ... I was making a portrait to landscape conversion
+ * of viewable game area that keeps equivalent dashboard view space").
+ * The dashboard's AREA is conserved and its SHAPE rotates with the screen:
+ * portrait shows 4x2 slots in a wide band, landscape shows 2x4 in a tall
+ * column, and everything the rotation saves is world.  390-basis tile 63 ->
+ * bag panel 140 -> sheet 158; the world keeps ~686 of 844.
+ *
+ * TWO WIDTHS, because the owner's rule is about the DASHBOARD: the 2-column
+ * sheet fits slots and pills and nothing else -- Settings' rows, Hero's
+ * chips and the quest log need the 4-column width to lay out at all.  So
+ * the dashboard destination earns the narrow column and every other pane
+ * keeps the wider one ("panes like character view ... in vertical space
+ * below" -- below, in a column that can actually hold them). */
+/* ═══ v2.3.2166: THE RIGHT SIDE IS ONE CONTAINER ═══
+ * Owner: "if you understand my vision it's to have equivalent dashboard
+ * navigation space as the portrait mode.  So actually the width of the
+ * entire dashboard area should be enough to include the 3 combat skills at
+ * the bottom. ... Also this means the dashboard buttons (for dashboard bag
+ * view, character view, lifeskills) should all be included in that
+ * container on that whole right side."
+ *
+ * The portrait band, stood upright: the sheet runs the FULL height of the
+ * screen's right edge and holds, top to bottom, the 2x4 bag, the three
+ * combat skills as a row at its foot, and the five nav buttons at the very
+ * bottom — nothing to scroll for.  The bottom strip keeps only the identity
+ * readout and narrows to the world's width (the zone header's own rule), so
+ * no strip runs under the container; the nav group becomes a fixed dock in
+ * the strip's old corner, which is ALSO the container's bottom row — one
+ * screen position in every mode (v2.3.1637b), enclosed by the sheet when it
+ * is open, over the strip when it is not.
+ *
+ * WIDTH is the widest row the container must hold.  That is the NAV group
+ * — five buttons at their landscape size — against the 2-slot bag panel:
+ * 164 vs ~134, so the buttons bind, which is the owner's sentence made
+ * arithmetic ("wide enough to include the 3 combat skills at the bottom":
+ * the three compact pills split that same width three ways).  Buttons are
+ * 28px sideways, between portrait's 26 floor and 36 cap — every 2px on the
+ * button is 10px off the world.
+ *
+ * HEIGHT: four tile rows + pills + nav must all FIT, so the tile is "the
+ * portrait tile, unless this screen is too short for four rows of it" —
+ * 60 at 390-tall (portrait 63), the full 70 at 430-tall.  The two pieces of
+ * portrait bag chrome that do NOT ride along are the filter chips and the
+ * peek sliver: their height is exactly the difference between near-portrait
+ * slots and 53px ones, and the owner's named asks (slot size, combat row,
+ * nav in the container) outrank chrome he has never mentioned sideways.
+ * Filters stay one tap away in the Bag pane. */
+/* v2.3.2169 read "a smidge more of room to expand width wise" as WIDEN
+   THE CONTAINER (28 -> 32, world paid 20px).  v2.3.2170, with the owner's
+   zoomed screenshot: "I'm talking about room to expand just the dashboard
+   navigation buttons at the bottom ... the left side of the buttons has
+   space to fill."  So the container goes back to its bag/nav-derived
+   width and the BUTTONS fill their row instead: the dock spans the
+   container's inner width and the five buttons flex into it (NavRail's
+   `fill`), which spends the very slack the screenshot circles.  This
+   constant is the geometry FLOOR the container width is derived from;
+   the rendered buttons come out ~31px once the slack is shared. */
+export const LAND_NAV_BTN_W = 28;
+export const LAND_PILL_H = 44;
+export function landscapeNavGroupW() {
+  /* v2.3.2171 (owner: "add a button for minimizing that whole dashboard
+     area (just like the portrait equivalent)"): the fold chip joins the
+     dock row at its far LEFT — the same corner portrait's chip holds
+     (v2.3.2120, "all the way left ... stays there regardless of which tab
+     is open") — so the row is now SIX slots wide: the chip plus the five
+     destinations. */
+  return (RAIL_COUNT + 1) * LAND_NAV_BTN_W + NAV_GAP * RAIL_COUNT + 2 * NAV_GAP;
+}
+export function landscapeDashTileSize(vw, vh) {
+  /* The fixed vertical costs beside the four tile rows: the nav zone (the
+     band's own height), the sheet wrapper's 8/6 pads, DashColumns' pads,
+     the bag Column's chrome, the row gap, and the combat row + its chrome.
+     Change any of those and change this — the two must agree or the
+     container scrolls, which is the one thing this function exists to
+     prevent. */
+  var fixed = identityRowHeight(vw, vh) + 14 + 2 * DASH_GAP + 10 + DASH_GAP + (LAND_PILL_H + 10);
+  var free = (vh || 0) - fixed - 3 * DASH_GAP;
+  return Math.min(dashTileSize(Math.min(vw, vh || vw)), Math.max(34, Math.floor(free / 4)));
+}
+/* v2.3.2168 (owner: "you'll still need to fit the sort chips somewhere on
+   the landscape bag view"): the filter chips return as a VERTICAL rail down
+   the bag grid's left side — the one place they cost NO height (v2.3.2166
+   dropped them because their 30px row was exactly what shrank the slots)
+   and almost no width: the 2-wide grid was already narrower than the
+   nav-bound container, so the rail mostly spends dead tray.  Five chips
+   split the grid's own height (~47px each beside 60px slots). */
+export const BAG_RAIL_W = 28;
+export function landscapeBagPanelW(vw, vh) {
+  var t = landscapeDashTileSize(vw, vh);
+  /* rail + gap + 2 tiles + gap + padding + border */
+  return BAG_RAIL_W + DASH_GAP + 2 * t + DASH_GAP + 2 * DASH_GAP + 2;
+}
+export function landscapeDashColW(vw, vh) {
+  return Math.max(landscapeBagPanelW(vw, vh), landscapeNavGroupW());
+}
+export function landscapeSheetW(vw, vh, kind) {
+  /* ═══ v2.3.2172: ONE WIDTH ═══
+     Owner: "The 2 slot width view you showed me of the dashboard (the
+     width of the dashboard itself) should be that skinny and the exact
+     same for all the buttons."
+     So the two-widths rule dies young: EVERY destination opens in the
+     dashboard's own skinny column, and panes reflow VERTICALLY to fit it
+     — which is what "panes like character view can be put in vertical
+     space below" meant all along (v2.3.2169's full-portrait-width pane
+     was the wrong fix for Hero's clipping; the right one is Hero
+     stacking, and it now does).  `kind` is accepted and ignored so the
+     two callers in BroTown didn't have to change in the same commit that
+     changes the answer; the canvas math cares only about the number.
+     +2*DASH_GAP for DashColumns' side pads and +16 for the sheet
+     wrapper's — the column track must fit INSIDE both or it clips. */
+  return landscapeDashColW(vw, vh) + 2 * DASH_GAP + 16;
+}
+
+export function bandFootprint(vw, vh, folded, sheetOpen, bottomInset) {
+  /* ═══ v2.3.2157: THE LANDSCAPE BRANCH ═══
+     Owner: "Landscape would be an optional view."  Sideways, the band's
+     resting state IS the fold -- identity row only (the v2.3.2118 geometry,
+     made unconditional for the orientation), because the width-driven
+     columns row is the whole reason a rotated phone lost its world (68% of
+     a 390px screen, measured).  `folded` is deliberately IGNORED here: the
+     band cannot fold below what it already is, and honoring the flag would
+     double-subtract a columns row that was never counted.
+
+     `playW` is the canvas's width.  Portrait never varies it -- the sheet
+     overlays and the canvas must not resize when a panel opens (the BAR-
+     height invariant).  Landscape-open is the deliberate exception the
+     owner chose ("No I don't want an overlay over the world"): the world
+     YIELDS width to the sheet, side by side, as one discrete resize through
+     the same two callers -- exactly how the fold resizes height.  320 is
+     the floor a degenerate window bottoms out at rather than a zero-width
+     world. */
+  if (vw > vh) {
+    /* v2.3.2165: `sheetOpen` carries the KIND now — false, 'dashboard', or
+       'panel' — because the dashboard column and a pane column earn
+       different widths (see landscapeSheetW). */
+    var sheetW = sheetOpen ? landscapeSheetW(vw, vh, sheetOpen === 'dashboard' ? 'dashboard' : 'panel') : 0;
+    /* ═══ v2.3.2168: THE BAR IS GONE ═══
+       Owner: "You can actually remove that whole bottom length bar now.
+       Coins can go someplace else (they don't need an entire screen
+       length)."
+       Sideways the band costs NOTHING: the world runs to the screen's
+       bottom edge, the nav buttons are a floating dock in the corner they
+       already held, and gold is a chip at the world's bottom centre
+       (.bt-land-gold — the ONLY count on a landscape screen, so the
+       v2.3.1563 two-counts rule is satisfied, not skirted).  What survives
+       of the height is the home-indicator INSET alone (v2.3.2163's probe):
+       controls must still clear it in a standalone launch, and it is 0 in
+       a browser tab and every headless run.  `overlap` goes to 0 with the
+       band — the 2156 note above ("a footprint with no bottom band earns
+       no overlap") stops being hypothetical here. */
+    return { dashH: (bottomInset || 0), colsH: 0, overlap: 0,
+             playW: Math.max(320, vw - sheetW), sheetW: sheetW };
+  }
+  var dashH = barHeight(vw, vh);
+  var colsH = columnsRowHeight(vw);
+  if (folded) { dashH = Math.max(0, dashH - colsH); colsH = 0; }
+  return { dashH: dashH, colsH: colsH, overlap: DASH_OVERLAP, playW: vw, sheetW: 0 };
+}
+
 export function barHeight(vw, vh) {
   /* v2.3.1637: the toolbar ribbon is GONE — its six destinations moved
      into the left rail, which runs beside these two rows rather than
