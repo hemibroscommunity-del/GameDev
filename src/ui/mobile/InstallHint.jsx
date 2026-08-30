@@ -44,15 +44,30 @@ const dismissed = () => {
   try { return localStorage.getItem(KEY) === '1'; } catch (e) { return false; }
 };
 
-const ShareGlyph = () => (
-  <svg width="16" height="20" viewBox="0 0 16 20" aria-hidden="true"
-    style={{ verticalAlign: '-4px', margin: '0 2px' }}>
-    <g stroke="#7FB2E5" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 8 h-1.2 v10 h12.4 v-10 H13" />
-      <path d="M8 1.6 v10" />
-      <path d="M4.6 4.6 L8 1.4 l3.4 3.2" />
-    </g>
-  </svg>
+/* ═══ v2.3.2155: THE ICON IS A BUTTON, NOT A FOOTNOTE ═══
+   Owner, after the first cut shipped with a 16px glyph inline in the
+   sentence: "include the icon of what the share button looks like too" --
+   it was there, and it read as punctuation.  A player hunting an unlabeled
+   toolbar button needs a PICTURE OF THE BUTTON: the glyph now sits in its
+   own Safari-toolbar-style chip, first thing in the card, at a size the
+   eye lands on before the words. */
+const ShareChip = () => (
+  <div aria-hidden="true" style={{
+    flex: '0 0 auto',
+    width: 44, height: 44,
+    borderRadius: 10,
+    background: '#1C2A33',
+    border: '1px solid rgba(229,237,233,.16)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+  }}>
+    <svg width="22" height="28" viewBox="0 0 16 20">
+      <g stroke="#4E9CF5" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 8 h-1.2 v10 h12.4 v-10 H13" />
+        <path d="M8 1.6 v10" />
+        <path d="M4.6 4.6 L8 1.4 l3.4 3.2" />
+      </g>
+    </svg>
+  </div>
 );
 
 export function InstallHint() {
@@ -90,14 +105,15 @@ export function InstallHint() {
         alignItems: 'flex-start',
       }}
     >
+      <ShareChip />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.06em', color: '#EAC675', marginBottom: 4 }}>
           PLAY FULL SCREEN
         </div>
         <div style={{ fontSize: 13.5, lineHeight: 1.45 }}>
-          In Safari, tap <b>Share</b> <ShareGlyph /> — bottom bar upright, top-right
-          sideways — then <b>Add&nbsp;to&nbsp;Home&nbsp;Screen</b>. Open Bro&nbsp;Town from
-          that icon and the browser bar is gone.
+          Tap <b>this button</b> in Safari — bottom bar upright, top-right
+          sideways — then <b>Add&nbsp;to&nbsp;Home&nbsp;Screen</b>. Open Bro&nbsp;Town
+          from that icon: no browser bar.
         </div>
       </div>
       <button

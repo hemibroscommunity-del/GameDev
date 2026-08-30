@@ -49,10 +49,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('an iPhone-Safari player gets the card after the welcome has had its say', !!c1, c1);
   rec.ok('...it DRAWS the share glyph (the owner could not find it from words alone)',
     !!c1 && c1.svg, c1);
+  /* v2.3.2155 (owner: "include the icon of what the share button looks like
+     too" -- about a card that already had a 16px one): the icon must be a
+     BUTTON-SIZED picture, not punctuation.  Measured, not trusted. */
+  rec.ok('...at button size, in its own chip — a picture of the thing to hunt for',
+    await P.page.evaluate(() => {
+      const svg = document.querySelector('[data-install-hint] svg');
+      if (!svg) return false;
+      const r = svg.getBoundingClientRect();
+      const chip = svg.parentElement ? svg.parentElement.getBoundingClientRect() : null;
+      return r.width >= 20 && !!chip && chip.width >= 40 && chip.height >= 40;
+    }));
   rec.ok('...names the destination and both places the button lives',
     !!c1 && /Add to Home Screen/i.test(c1.text) && /bottom bar/i.test(c1.text) && /top-right/i.test(c1.text), c1);
   rec.ok('...and its dismiss is a 44pt target (the dismissables law)',
     !!c1 && !!c1.x && c1.x.w >= 44 && c1.x.h >= 44, c1 && c1.x);
+
+  await P.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/a2hs.png',
+    clip: { x: 0, y: 400, width: 390, height: 220 } });
 
   /* dismissal is remembered */
   await P.page.evaluate(() => {
