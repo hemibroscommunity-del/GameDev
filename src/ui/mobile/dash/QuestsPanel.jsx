@@ -3,7 +3,7 @@ import { COL, panelStyle, getState } from './common.js';
 import { deriveQuestLog, trackedQuestId, rewardText } from '../sheet/questModel.js';
 import { questDetailBus } from '../sheet/questDetailBus.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
-import { panelVw } from '../playViewport.js'; /* v2.3.2167: the sheet's width, not the shell's */
+import { panelVw } from '../playViewport.js'; /* v2.3.2172: the sheet's width, not the shell's */
 
 /* v2.3.1265: Quests — read-only quest log (accepting/turning-in stays
    with the NPCs; server-authoritative flow untouched).
@@ -20,14 +20,14 @@ import { panelVw } from '../playViewport.js'; /* v2.3.2167: the sheet's width, n
 const SEGMENTS = ['Active', 'Available', 'Completed'];
 let _lastSegment = 'Active';
 
-/* v2.3.2167 (owner: every destination opens in the dashboard's skinny
+/* v2.3.2172 (owner: every destination opens in the dashboard's skinny
    landscape column): `narrow` shrinks the type a notch and lets the button
    actually shrink — three nowrap flex:1 buttons whose text is wider than a
    third of a ~204px row overflow the sheet's edge otherwise (measured:
    "Available (1)" ran off the right of the landscape pane).  The count
    moves to a corner badge there; see the render. */
 const seg = (active, narrow) => ({
-  /* v2.3.2168: narrow shares by CONTENT, not thirds — equal thirds starve
+  /* v2.3.2173: narrow shares by CONTENT, not thirds — equal thirds starve
      the longest word and "Completed" was still rendering "Comple…" at
      10px.  'Active' cedes what it doesn't need. */
   flex: narrow ? '1 1 auto' : 1,
@@ -107,7 +107,7 @@ export const QuestsPanel = () => {
       }}>
         {SEGMENTS.map(s => {
           const n = s === 'Active' ? active.length : s === 'Available' ? upcoming.length : done.length;
-          /* v2.3.2167: in the skinny landscape column the inline " (1)" is
+          /* v2.3.2172: in the skinny landscape column the inline " (1)" is
              the width that overflowed, so the count becomes a corner badge
              there — same number, fewer pixels.  Portrait unchanged. */
           const narrow = panelVw() < 260;

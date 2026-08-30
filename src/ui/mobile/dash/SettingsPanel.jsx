@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { COL, panelStyle } from './common.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { controlsTutorialBus } from '../controlsTutorialBus.js';
-import { installHintBus } from '../installHintBus.js'; /* v2.3.2154 */
+import { installHintBus } from '../installHintBus.js'; /* v2.3.2159 */
 import { TRAIL_STYLES, getTrailStyle, setTrailStyle } from '@/game/questTrailStyle.js';
 
 /* v2.3.1232: Lantern Slate pass (docs/LANTERN-SLATE-SPEC.md) — 44px
@@ -225,7 +225,7 @@ export const SettingsPanel = () => {
         onTap={() => dashboardPanelBus.push('account')} />
       <LinkRow label="Controls — replay the tutorial"
         onTap={() => controlsTutorialBus.open()} />
-      {/* v2.3.2154: the way back to a dismissed install hint — everything
+      {/* v2.3.2159: the way back to a dismissed install hint — everything
           cut is one tap away.  iOS Safari in the browser only: launched
           from the home screen there is nothing to teach, and elsewhere the
           instruction would be wrong. */}

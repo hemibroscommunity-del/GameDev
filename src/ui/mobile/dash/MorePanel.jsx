@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { COL, panelStyle, getState } from './common.js';
-import { panelVw } from '../playViewport.js'; /* v2.3.2168: the sheet's width, not the shell's */
+import { panelVw } from '../playViewport.js'; /* v2.3.2173: the sheet's width, not the shell's */
 /* v2.3.1641: live status lines for the three destinations re-homed here. */
 import { readyQuestCount } from '../sheet/questModel.js';
 import { getFriendRows } from '../sheet/friendsModel.js';
@@ -200,7 +200,7 @@ export const MorePanel = () => {
           than staying compact inside it. */}
       <div style={{
         display: 'grid',
-        /* v2.3.2168 (owner: "the labels are getting cut off"): five
+        /* v2.3.2173 (owner: "the labels are getting cut off"): five
            columns in the skinny landscape column left ~38px per cell and
            the labels died ("Qu…", "Se…", "Lo…").  Two columns there —
            every word renders whole in a ~96px cell, ten items make five

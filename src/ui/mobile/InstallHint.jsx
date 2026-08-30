@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { installHintBus } from './installHintBus.js';
 
-/* ═══ v2.3.2154: THE ADD-TO-HOME-SCREEN CARD ═══
+/* ═══ v2.3.2159: THE ADD-TO-HOME-SCREEN CARD ═══
  *
  * Owner: "there needs to be some kind of instruction on the game itself on
  * how to do this" — and then, proving the need in the same breath: "Where is
@@ -44,7 +44,7 @@ const dismissed = () => {
   try { return localStorage.getItem(KEY) === '1'; } catch (e) { return false; }
 };
 
-/* ═══ v2.3.2155: THE ICON IS A BUTTON, NOT A FOOTNOTE ═══
+/* ═══ v2.3.2160: THE ICON IS A BUTTON, NOT A FOOTNOTE ═══
    Owner, after the first cut shipped with a 16px glyph inline in the
    sentence: "include the icon of what the share button looks like too" --
    it was there, and it read as punctuation.  A player hunting an unlabeled

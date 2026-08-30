@@ -402,7 +402,7 @@ export function navGroupWidth(vw, vh) {
    screen.  That is the owner's chosen trade, made with both this and the
    187px one-row version rendered to scale: the columns are the ask, and
    the identity row stays because no column carries name/level/XP/gold. */
-/* ═══ v2.3.2151: THE BAND'S FOOTPRINT, AS ONE ANSWER ═══
+/* ═══ v2.3.2156: THE BAND'S FOOTPRINT, AS ONE ANSWER ═══
  *
  * Owner: "Landscape would be an optional view.  You can play in portrait or
  * landscape."  This function is the seam that makes that buildable.
@@ -431,7 +431,7 @@ export function navGroupWidth(vw, vh) {
  * suite.  The landscape footprint (identity row only -- the v2.3.2118 fold,
  * made the orientation's resting state) lands with the landscape dashboard
  * itself, behind `vw > vh`, in its own PR. */
-/* ═══ v2.3.2152: THE LANDSCAPE SHEET'S WIDTH ═══
+/* ═══ v2.3.2157: THE LANDSCAPE SHEET'S WIDTH ═══
  * Owner: menus open BESIDE the world, never over it, and "you should be able
  * to play the game with the menus open."  The sheet takes this much of the
  * screen's width; the world keeps the rest.
@@ -441,7 +441,7 @@ export function navGroupWidth(vw, vh) {
  * the sheet's own tile size), 430 stops a big phone spending its extra width
  * on a menu instead of on the world.  844 -> 400, 812 -> 385, 932 -> 430;
  * the world keeps >= 412px everywhere. */
-/* v2.3.2158 (owner, playing the web app: "landscape view needs to have
+/* v2.3.2163 (owner, playing the web app: "landscape view needs to have
  * dashboard area narrowed.  I can see 8 slots playing in [portrait] view
  * (plus space for combat skills) so this should translate to 8 slots of
  * space viewable in landscape").  The sheet's width stops being a share of
@@ -451,7 +451,7 @@ export function navGroupWidth(vw, vh) {
  * is that familiar size by construction.  844x390 -> tile 63 -> sheet 292;
  * 932x430 -> tile 70 -> sheet 320.  The world gains the ~100px the old
  * 0.474 share was spending on empty slot columns. */
-/* v2.3.2160 (owner, with the portrait band screenshot beside it: "it would
+/* v2.3.2165 (owner, with the portrait band screenshot beside it: "it would
  * actually be 2 slots wide and 4 slots vertical height leaving 8 slots
  * viewable at one time ... I was making a portrait to landscape conversion
  * of viewable game area that keeps equivalent dashboard view space").
@@ -466,7 +466,7 @@ export function navGroupWidth(vw, vh) {
  * the dashboard destination earns the narrow column and every other pane
  * keeps the wider one ("panes like character view ... in vertical space
  * below" -- below, in a column that can actually hold them). */
-/* ═══ v2.3.2161: THE RIGHT SIDE IS ONE CONTAINER ═══
+/* ═══ v2.3.2166: THE RIGHT SIDE IS ONE CONTAINER ═══
  * Owner: "if you understand my vision it's to have equivalent dashboard
  * navigation space as the portrait mode.  So actually the width of the
  * entire dashboard area should be enough to include the 3 combat skills at
@@ -500,8 +500,8 @@ export function navGroupWidth(vw, vh) {
  * slots and 53px ones, and the owner's named asks (slot size, combat row,
  * nav in the container) outrank chrome he has never mentioned sideways.
  * Filters stay one tap away in the Bag pane. */
-/* v2.3.2164 read "a smidge more of room to expand width wise" as WIDEN
-   THE CONTAINER (28 -> 32, world paid 20px).  v2.3.2165, with the owner's
+/* v2.3.2169 read "a smidge more of room to expand width wise" as WIDEN
+   THE CONTAINER (28 -> 32, world paid 20px).  v2.3.2170, with the owner's
    zoomed screenshot: "I'm talking about room to expand just the dashboard
    navigation buttons at the bottom ... the left side of the buttons has
    space to fill."  So the container goes back to its bag/nav-derived
@@ -513,7 +513,7 @@ export function navGroupWidth(vw, vh) {
 export const LAND_NAV_BTN_W = 28;
 export const LAND_PILL_H = 44;
 export function landscapeNavGroupW() {
-  /* v2.3.2166 (owner: "add a button for minimizing that whole dashboard
+  /* v2.3.2171 (owner: "add a button for minimizing that whole dashboard
      area (just like the portrait equivalent)"): the fold chip joins the
      dock row at its far LEFT — the same corner portrait's chip holds
      (v2.3.2120, "all the way left ... stays there regardless of which tab
@@ -532,9 +532,9 @@ export function landscapeDashTileSize(vw, vh) {
   var free = (vh || 0) - fixed - 3 * DASH_GAP;
   return Math.min(dashTileSize(Math.min(vw, vh || vw)), Math.max(34, Math.floor(free / 4)));
 }
-/* v2.3.2163 (owner: "you'll still need to fit the sort chips somewhere on
+/* v2.3.2168 (owner: "you'll still need to fit the sort chips somewhere on
    the landscape bag view"): the filter chips return as a VERTICAL rail down
-   the bag grid's left side — the one place they cost NO height (v2.3.2161
+   the bag grid's left side — the one place they cost NO height (v2.3.2166
    dropped them because their 30px row was exactly what shrank the slots)
    and almost no width: the 2-wide grid was already narrower than the
    nav-bound container, so the rail mostly spends dead tray.  Five chips
@@ -549,14 +549,14 @@ export function landscapeDashColW(vw, vh) {
   return Math.max(landscapeBagPanelW(vw, vh), landscapeNavGroupW());
 }
 export function landscapeSheetW(vw, vh, kind) {
-  /* ═══ v2.3.2167: ONE WIDTH ═══
+  /* ═══ v2.3.2172: ONE WIDTH ═══
      Owner: "The 2 slot width view you showed me of the dashboard (the
      width of the dashboard itself) should be that skinny and the exact
      same for all the buttons."
      So the two-widths rule dies young: EVERY destination opens in the
      dashboard's own skinny column, and panes reflow VERTICALLY to fit it
      — which is what "panes like character view can be put in vertical
-     space below" meant all along (v2.3.2164's full-portrait-width pane
+     space below" meant all along (v2.3.2169's full-portrait-width pane
      was the wrong fix for Hero's clipping; the right one is Hero
      stacking, and it now does).  `kind` is accepted and ignored so the
      two callers in BroTown didn't have to change in the same commit that
@@ -567,7 +567,7 @@ export function landscapeSheetW(vw, vh, kind) {
 }
 
 export function bandFootprint(vw, vh, folded, sheetOpen, bottomInset) {
-  /* ═══ v2.3.2152: THE LANDSCAPE BRANCH ═══
+  /* ═══ v2.3.2157: THE LANDSCAPE BRANCH ═══
      Owner: "Landscape would be an optional view."  Sideways, the band's
      resting state IS the fold -- identity row only (the v2.3.2118 geometry,
      made unconditional for the orientation), because the width-driven
@@ -585,11 +585,11 @@ export function bandFootprint(vw, vh, folded, sheetOpen, bottomInset) {
      the floor a degenerate window bottoms out at rather than a zero-width
      world. */
   if (vw > vh) {
-    /* v2.3.2160: `sheetOpen` carries the KIND now — false, 'dashboard', or
+    /* v2.3.2165: `sheetOpen` carries the KIND now — false, 'dashboard', or
        'panel' — because the dashboard column and a pane column earn
        different widths (see landscapeSheetW). */
     var sheetW = sheetOpen ? landscapeSheetW(vw, vh, sheetOpen === 'dashboard' ? 'dashboard' : 'panel') : 0;
-    /* ═══ v2.3.2163: THE BAR IS GONE ═══
+    /* ═══ v2.3.2168: THE BAR IS GONE ═══
        Owner: "You can actually remove that whole bottom length bar now.
        Coins can go someplace else (they don't need an entire screen
        length)."
@@ -598,10 +598,10 @@ export function bandFootprint(vw, vh, folded, sheetOpen, bottomInset) {
        already held, and gold is a chip at the world's bottom centre
        (.bt-land-gold — the ONLY count on a landscape screen, so the
        v2.3.1563 two-counts rule is satisfied, not skirted).  What survives
-       of the height is the home-indicator INSET alone (v2.3.2158's probe):
+       of the height is the home-indicator INSET alone (v2.3.2163's probe):
        controls must still clear it in a standalone launch, and it is 0 in
        a browser tab and every headless run.  `overlap` goes to 0 with the
-       band — the 2151 note above ("a footprint with no bottom band earns
+       band — the 2156 note above ("a footprint with no bottom band earns
        no overlap") stops being hypothetical here. */
     return { dashH: (bottomInset || 0), colsH: 0, overlap: 0,
              playW: Math.max(320, vw - sheetW), sheetW: sheetW };

@@ -71,7 +71,7 @@ export function playIsLandscape() {
   return playVw() > playVh();
 }
 
-/* ═══ v2.3.2152: THE WIDTH A DASHBOARD PANEL ACTUALLY HAS ═══
+/* ═══ v2.3.2157: THE WIDTH A DASHBOARD PANEL ACTUALLY HAS ═══
  *
  * A third width joins the two above, for the same reason each of them
  * exists: a panel laying itself out from the wrong container stretched.

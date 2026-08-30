@@ -3,7 +3,7 @@ import { COL, panelStyle, getState } from './common.js';
 import { skillXpRequired } from '../../../data/items.js';
 import { SKILL_GATHER, SKILL_CRAFT, SKILL_ROSTER, skillUnlocks, markSkillsSeen } from '../sheet/skillsModel.js';
 import { skillDetailBus } from '../sheet/skillDetailBus.js';
-import { panelVw } from '../playViewport.js'; /* v2.3.2168: the sheet's width, not the shell's */
+import { panelVw } from '../playViewport.js'; /* v2.3.2173: the sheet's width, not the shell's */
 
 /* v2.3.1224: roster corrected to the canonical 10 LIFE_SKILLS (owner
    directive).  v2.3.1286 (nav-system): 3-column card grid on the shared
@@ -180,7 +180,7 @@ export const SkillsPanel = () => {
     <div style={{ ...panelStyle, overflowY: 'auto', WebkitMaskImage: 'none', maskImage: 'none' }}>
       <div style={{
         display: 'grid',
-        /* v2.3.2168 (owner: "It's obvious that the labels are getting cut
+        /* v2.3.2173 (owner: "It's obvious that the labels are getting cut
            off"): in the skinny landscape column two pills share ~96px each
            and every skill name ellipsised to ONE LETTER ("W Lv 0").  One
            column there — the sideways pane has vertical room to burn and

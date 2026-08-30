@@ -1,5 +1,5 @@
 /* THE LANDSCAPE DASHBOARD: A 48px STRIP, AND A SHEET THE WORLD YIELDS TO
- * (v2.3.2152)
+ * (v2.3.2157)
  *
  * Owner, across the mockup rounds: "Landscape would be an optional view.
  * You can play in portrait or landscape."  "No I don't want an overlay over
@@ -36,7 +36,7 @@ const geom = (P) => P.page.evaluate(() => {
   const sheet = document.querySelector('.bt-land-sheet');
   const sh = sheet ? sheet.getBoundingClientRect() : null;
   const zh = document.querySelector('.bt-zone-header');
-  /* v2.3.2163: the gold chip that replaced the bar's screen-length readout */
+  /* v2.3.2168: the gold chip that replaced the bar's screen-length readout */
   const gold = document.querySelector('.bt-land-gold');
   const goldR = gold ? gold.getBoundingClientRect() : null;
   return {
@@ -74,7 +74,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── AT REST ── */
   const rest = await geom(P);
   console.log('    rest: ' + JSON.stringify(rest));
-  /* v2.3.2163 (owner: "You can actually remove that whole bottom length
+  /* v2.3.2168 (owner: "You can actually remove that whole bottom length
      bar now"): sideways there is NO band at all — the world takes the
      whole screen, gold is a chip at the world's bottom centre, and the
      nav buttons float in their fixed dock. */
@@ -103,7 +103,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(900);
   const open = await geom(P);
   console.log('    open: ' + JSON.stringify(open));
-  /* ═══ v2.3.2168: THE LEGACY BAG PANE IS RETIRED SIDEWAYS ═══
+  /* ═══ v2.3.2173: THE LEGACY BAG PANE IS RETIRED SIDEWAYS ═══
      Owner: "you show another bag view with tiny inventory slots.  That
      must be a legacy view that needs to retire.  It got replaced with
      the [dashboard column] view."  Asking the bus for 'bag' in landscape
@@ -112,7 +112,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('asking for the legacy Bag pane lands on the DASHBOARD column (retired sideways)',
     await P.page.evaluate(() => window.__broDashPanelBus.state.stack[0] === 'dashboard'
       && !!document.querySelector('.bt-land-sheet .bt-dashcols')));
-  /* v2.3.2167 (owner: "should be that skinny and the exact same for all
+  /* v2.3.2172 (owner: "should be that skinny and the exact same for all
      the buttons"): ONE width — every destination opens in the dashboard's
      own narrow column (~220 at phone sizes). */
   rec.ok('opening it NARROWS the canvas — the world yields, nothing overlays it',
@@ -121,7 +121,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...the sheet sits exactly in the yielded ground, beside the world',
     !!open.sheet && Math.abs(open.sheet.x - open.canvasW) <= 1
       && Math.abs(open.sheet.w - open.sheetW) <= 1, open.sheet);
-  /* v2.3.2161: the sheet is the WHOLE right side now — screen top to
+  /* v2.3.2166: the sheet is the WHOLE right side now — screen top to
      screen bottom — and the strip narrows to the world's width beside it
      (the zone header's own rule), so no band runs under the container. */
   rec.ok('...from the top of the screen to its BOTTOM — the whole right side is the container',
@@ -176,7 +176,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('closing gives the world its width back',
     closed.canvasW === 844 && closed.playW === 844 && !closed.sheet, closed);
 
-  /* ═══ v2.3.2153: THE OWNER'S EXACT GESTURE ═══
+  /* ═══ v2.3.2158: THE OWNER'S EXACT GESTURE ═══
      Owner, on a real device: "I see the thin bar at the bottom but no
      inventory slots when dashboard is active."  Everything above drove the
      bus; the owner drives a THUMB, and the chart button's portrait job --
@@ -194,7 +194,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const viaTap = await geom(P);
   rec.ok('tapping the DASHBOARD button opens the sheet sideways — the slots are back',
     viaTap.mode === 'expanded' && !!viaTap.sheet && viaTap.canvasW < 844, viaTap);
-  /* v2.3.2158: the destination is the STACKED dashboard — the bag grid AND
+  /* v2.3.2163: the destination is the STACKED dashboard — the bag grid AND
      the combat pills, both named by the owner, in one vertical column. */
   rec.ok('...with the bag grid AND the combat pills stacked in it',
     await P.page.evaluate(() => {
@@ -206,7 +206,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return !!sh.querySelector('.bt-dashcols') && lvs >= 3
         && sh.querySelectorAll('div').length > 8;
     }));
-  /* ═══ v2.3.2160/2161: THE ROTATION, NOT A REFLOW ═══
+  /* ═══ v2.3.2165/2161: THE ROTATION, NOT A REFLOW ═══
      Owner: "it would actually be 2 slots wide and 4 slots vertical height
      leaving 8 slots viewable at one time ... a portrait to landscape
      conversion of viewable game area that keeps equivalent dashboard view
@@ -219,9 +219,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
      three combat skills as a row, and the nav dock — ALL visible at once —
      while pane destinations (the Bag detail asserted at 280..340 above,
      Hero, Settings) keep the 4-column width. */
-  /* v2.3.2166: the fold chip joined the dock row, so the nav-bound width
+  /* v2.3.2171: the fold chip joined the dock row, so the nav-bound width
      is six slots (~220 at phone sizes).
-     v2.3.2167 (owner: "that skinny and the exact same for all the
+     v2.3.2172 (owner: "that skinny and the exact same for all the
      buttons"): the dashboard and every pane share ONE width. */
   rec.ok('...in the same skinny column every destination gets (one width for all buttons)',
     viaTap.sheetW >= 205 && viaTap.sheetW <= 245 && viaTap.sheetW === open.sheetW,
@@ -241,7 +241,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const visRows = tile ? (scroller.clientHeight + 4) / (tile + 4) : 0;
       return cols === 2 && visRows >= 3.95 && visRows < 5;
     }));
-  /* v2.3.2163 (owner: "you'll still need to fit the sort chips somewhere
+  /* v2.3.2168 (owner: "you'll still need to fit the sort chips somewhere
      on the landscape bag view"): the five filter chips are a vertical rail
      down the grid's LEFT side, spanning the grid's own height. */
   rec.ok('...the 5 sort chips ride a vertical rail beside the slots',
@@ -257,7 +257,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         && Math.abs(rr.height - gr.height) <= 14                   /* spanning its height */
         && rr.height > rr.width * 4;                               /* actually vertical */
     }));
-  /* v2.3.2161: nothing to scroll for — the three combat pills sit ON
+  /* v2.3.2166: nothing to scroll for — the three combat pills sit ON
      SCREEN at the container's foot, above the nav dock, and the dock's
      buttons sit inside the container's footprint. */
   const footing = await P.page.evaluate(() => {
@@ -288,14 +288,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
       && footing.dock.x >= footing.sheet.x - 1 && footing.dock.r <= footing.sheet.r + 1
       && footing.dock.bottom <= 391,
     footing);
-  /* v2.3.2165 (owner, zoomed screenshot: "the left side of the buttons has
+  /* v2.3.2170 (owner, zoomed screenshot: "the left side of the buttons has
      space to fill"): the button row FILLS the container's width — no dead
      slack left of the first button. */
   rec.ok('...and the button row FILLS the container\'s width (no slack on its left)',
     !!footing && !!footing.dock
       && (footing.dock.r - footing.dock.x) >= (footing.sheet.r - footing.sheet.x) - 20,
     footing);
-  /* v2.3.2160: shoot the OPEN dashboard — the state every owner correction
+  /* v2.3.2165: shoot the OPEN dashboard — the state every owner correction
      in this file has been about — rather than the resting band. */
   await P.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/landscape-dash.png' });
   await P.page.evaluate(() => {
@@ -307,7 +307,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and tapping it again gives the world back (the same toggle it always was)',
     viaTap2.mode === 'bar' && viaTap2.canvasW === 844, viaTap2);
 
-  /* ═══ v2.3.2166: THE FOLD CHIP, SIDEWAYS ═══
+  /* ═══ v2.3.2171: THE FOLD CHIP, SIDEWAYS ═══
      Owner: "add a button for minimizing that whole dashboard area (just
      like the portrait equivalent)."  Far left of the dock row, in every
      mode: ▴ at rest opens the dashboard, ▾ minimizes whatever is open. */
@@ -331,7 +331,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and tapping it again (▾) MINIMIZES the whole dashboard area',
     afterChipClose.mode === 'bar' && afterChipClose.canvasW === 844, afterChipClose);
 
-  /* v2.3.2167: the CHARACTER view in the skinny column — the pane that
+  /* v2.3.2172: the CHARACTER view in the skinny column — the pane that
      clipped at every earlier width.  It must lay out vertically with no
      horizontal overflow, per the owner's "align some of the panes
      vertically ... put stats beneath that". */
@@ -354,7 +354,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.evaluate(() => window.__broDashPanelBus.toBar());
   await P.page.waitForTimeout(400);
 
-  /* ═══ v2.3.2163: A DRILL STILL HAS A WAY BACK ═══
+  /* ═══ v2.3.2168: A DRILL STILL HAS A WAY BACK ═══
      The back-chip rode the band's identity row, and the band is gone
      sideways — so the chip moved into the sheet's own header.  Drill in,
      find it, tap it, land back on the parent. */
@@ -378,7 +378,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.evaluate(() => window.__broDashPanelBus.toBar());
   await P.page.waitForTimeout(400);
 
-  /* ═══ v2.3.2168: EVERY LABEL RENDERS WHOLE ═══
+  /* ═══ v2.3.2173: EVERY LABEL RENDERS WHOLE ═══
      Owner: "you also need to actually examine all of the screenshots of
      each view visually.  It's obvious that the labels are getting cut
      off."  What the eye caught, the suite now pins: for each destination,

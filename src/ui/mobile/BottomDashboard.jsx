@@ -19,7 +19,7 @@ import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rende
 import { getEyeColor, onEyeColorChange } from '../../rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
 import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
-import { barHeight, expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP, bandFootprint, LAND_NAV_BTN_W, landscapeNavGroupW, landscapeSheetW, identityRowHeight } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.1325 slot-derived bar; v2.3.2152 the sideways band; v2.3.2161 the nav dock; v2.3.2163 the barless landscape */
+import { barHeight, expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP, bandFootprint, LAND_NAV_BTN_W, landscapeNavGroupW, landscapeSheetW, identityRowHeight } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.1325 slot-derived bar; v2.3.2157 the sideways band; v2.3.2166 the nav dock; v2.3.2168 the barless landscape */
 import { DashColumns } from './dash/DashColumns.jsx';           /* v2.3.1636 */
 import { NavRail } from './dash/NavRail.jsx';                   /* v2.3.1637 */
 import { portraitStore } from './sheet/portraitStore.js';          /* v2.3.1294 */
@@ -56,7 +56,7 @@ import { QuestsPanel }        from './dash/QuestsPanel.jsx';
 import { QuestDetailPanel }   from './dash/QuestDetailPanel.jsx'; /* v2.3.1298 */
 import { T2Panel, requestT2Category } from './dash/T2Panel.jsx';
 import { SpendPointConfirm }   from './dash/SpendPointConfirm.jsx';
-import { playVw, playVh, playIsLandscape } from './playViewport.js'; /* v2.3.2152: the band has a sideways shape */
+import { playVw, playVh, playIsLandscape } from './playViewport.js'; /* v2.3.2157: the band has a sideways shape */
 import { dashMinBus } from './dashMinBus.js'; /* v2.3.2119: fold the band to the identity row */
 
 // Bottom-of-screen dashboard.  Replaces the radial UtilityWheel.
@@ -455,7 +455,7 @@ const PANELS = {
      in old sessions don't render a blank sheet. */
   bag:          { title: 'Bag',         Component: InventoryPanel },
   hero:         { title: 'Hero',        Component: HeroExpanded },
-  /* ═══ v2.3.2158: THE DASHBOARD, AS A DESTINATION — LANDSCAPE ONLY ═══
+  /* ═══ v2.3.2163: THE DASHBOARD, AS A DESTINATION — LANDSCAPE ONLY ═══
      Owner: "I can see 8 slots playing in [portrait] view (plus space for
      combat skills) so this should translate to 8 slots of space viewable
      in landscape."  Portrait's resting columns row IS this view, so
@@ -562,7 +562,7 @@ export const BottomDashboard = () => {
      still here.  Initialised from the bus — the preference is persisted and
      this component remounts on reconnect (the v2.3.2085 lesson). */
   const [dashMin, setDashMin] = useState(() => dashMinBus.min);
-  /* ═══ v2.3.2152: WHICH SHAPE IS THE BAND? ═══
+  /* ═══ v2.3.2157: WHICH SHAPE IS THE BAND? ═══
      Owner: "Landscape would be an optional view."  Self-subscribed from
      playIsLandscape() exactly the way ElementBurstButton and SpecialChargePie
      already do -- the shell's orientation, not the window's (a desktop
@@ -658,7 +658,7 @@ export const BottomDashboard = () => {
       const mode = dashboardPanelBus.state.mode;
       document.documentElement.dataset.btSheet = mode;
       /* v2.3.1311e: drill panels (stack depth > 1) use the taller sheet. */
-      /* v2.3.2152: sideways there is no taller sheet -- the destination
+      /* v2.3.2157: sideways there is no taller sheet -- the destination
          opens BESIDE the world, so everything docked above the band
          (joystick zones, the legacy toast) keys off the identity row's own
          height in every mode.  bandFootprint, not a literal, so this and
@@ -812,7 +812,7 @@ export const BottomDashboard = () => {
   useEffect(() => {
     if (mode === 'expanded' && dashMinBus.min) dashMinBus.set(false);
   }, [mode]);
-  /* ═══ v2.3.2152: ROTATION CLOSES AN OPEN DESTINATION ═══
+  /* ═══ v2.3.2157: ROTATION CLOSES AN OPEN DESTINATION ═══
      The portrait bottom sheet and the landscape side sheet share no
      geometry, so there is no defined mid-state to animate between -- a
      panel left open across the flip would be laid out for a surface that
@@ -887,7 +887,7 @@ export const BottomDashboard = () => {
       <SpendPointConfirm />
       <Tooltip tip={tooltip} onClose={() => setTooltip('')} />
 
-      {/* ═══ v2.3.2152: THE LANDSCAPE SIDE SHEET ═══
+      {/* ═══ v2.3.2157: THE LANDSCAPE SIDE SHEET ═══
           Owner: "No I don't want an overlay over the world" + "You should be
           able to play the game with the menus open.  That's the idea."
 
@@ -921,7 +921,7 @@ export const BottomDashboard = () => {
             position: 'fixed',
             top: 0,
             right: 0,
-            /* v2.3.2161 (owner: the dashboard buttons "should all be
+            /* v2.3.2166 (owner: the dashboard buttons "should all be
                included in that container on that whole right side"): the
                sheet runs to the SCREEN's bottom edge now, not the band's
                top — the strip narrows to the world's width beside it
@@ -942,7 +942,7 @@ export const BottomDashboard = () => {
             paddingTop: 'env(safe-area-inset-top, 0px)',
           }}
         >
-          {/* ═══ v2.3.2163: THE DRILL HEADER LIVES IN THE SHEET NOW ═══
+          {/* ═══ v2.3.2168: THE DRILL HEADER LIVES IN THE SHEET NOW ═══
               The back-chip and title used to ride the band's identity row;
               with the bar gone sideways (owner: "remove that whole bottom
               length bar"), a drill (Settings, Build, quest detail) would
@@ -962,8 +962,8 @@ export const BottomDashboard = () => {
               }}>{active ? active.title : ''}</div>
             </div>
           )}
-          {/* v2.3.2161: the bottom padding is the nav dock's zone.
-              v2.3.2163: --dash-h stopped carrying it (the bar is gone and
+          {/* v2.3.2166: the bottom padding is the nav dock's zone.
+              v2.3.2168: --dash-h stopped carrying it (the bar is gone and
               the var is just the home-indicator inset now), so the reserve
               is the dock's own height plus that inset, stated directly. */}
           <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: `8px 8px calc(${identityRowHeight(playVw(), playVh()) + 6}px + env(safe-area-inset-bottom, 0px))` }}>
@@ -972,7 +972,7 @@ export const BottomDashboard = () => {
         </div>
       ) : null}
 
-      {/* ═══ v2.3.2163: GOLD, AS A CHIP ═══
+      {/* ═══ v2.3.2168: GOLD, AS A CHIP ═══
           Owner: "Coins can go someplace else (they don't need an entire
           screen length)."  The bar existed to carry this one number; the
           number survives as a compact chip at the WORLD's bottom centre —
@@ -984,7 +984,7 @@ export const BottomDashboard = () => {
           none: it is a readout over the touch zones, never a control. */}
       {land ? <LandGoldChip /> : null}
 
-      {/* ═══ v2.3.2161: THE LANDSCAPE NAV DOCK ═══
+      {/* ═══ v2.3.2166: THE LANDSCAPE NAV DOCK ═══
           Owner: "the dashboard buttons (for dashboard bag view, character
           view, lifeskills) should all be included in that container on that
           whole right side."
@@ -1007,11 +1007,11 @@ export const BottomDashboard = () => {
             position: 'fixed',
             right: DASH_GAP,
             bottom: 'env(safe-area-inset-bottom, 0px)',
-            /* v2.3.2163: its OWN height — --dash-h is only the inset now
+            /* v2.3.2168: its OWN height — --dash-h is only the inset now
                that the bar is gone, so the dock states the row height the
                band used to lend it. */
             height: identityRowHeight(playVw(), playVh()),
-            /* v2.3.2165 (owner, zoomed screenshot: "the left side of the
+            /* v2.3.2170 (owner, zoomed screenshot: "the left side of the
                buttons has space to fill"): the dock spans the DASHBOARD
                container's inner width — always that width, whatever is
                open, so the buttons hold one screen position (v2.3.1637b)
@@ -1021,7 +1021,7 @@ export const BottomDashboard = () => {
             display: 'flex', alignItems: 'center', paddingLeft: DASH_GAP,
           }}
         >
-          {/* ═══ v2.3.2166: THE LANDSCAPE FOLD CHIP ═══
+          {/* ═══ v2.3.2171: THE LANDSCAPE FOLD CHIP ═══
               Owner: "add a button for minimizing that whole dashboard area
               (just like the portrait equivalent)."  Same chip, same corner
               rule as portrait's (v2.3.2120: far left of the row, there in
@@ -1075,7 +1075,7 @@ export const BottomDashboard = () => {
            default; canvas/zones/HUD all key off it) and expanded
            (detail).  Every destination uses the same snaps.  220ms
            token; reduced-motion drops the transition. */
-        /* v2.3.2152: sideways the band NEVER grows -- expanded content
+        /* v2.3.2157: sideways the band NEVER grows -- expanded content
            lives in the side sheet, and a band that grew would cover the
            world the owner asked to keep playing in. */
         height: land ? 'var(--dash-h)'
@@ -1228,7 +1228,7 @@ export const BottomDashboard = () => {
         height: 'calc(var(--dash-h, 145px) - var(--cols-h, 93px))',
         zIndex: 3,
         boxSizing: 'border-box',
-        /* v2.3.2161: sideways the nav group is a fixed dock (below), so the
+        /* v2.3.2166: sideways the nav group is a fixed dock (below), so the
            strip must RESERVE its corner or the identity readout flexes
            under the buttons the moment they leave the flex row. */
         padding: land
@@ -1338,7 +1338,7 @@ export const BottomDashboard = () => {
             down to fit the track instead would have put them back at 24px
             wide — the size the owner asked to grow away from at
             v2.3.1644. */}
-        {/* v2.3.2161: not sideways — there the five buttons live in the
+        {/* v2.3.2166: not sideways — there the five buttons live in the
             fixed nav dock so the side container can enclose them (owner:
             "included in that container on that whole right side"). */}
         {!land && (
@@ -1389,7 +1389,7 @@ export const BottomDashboard = () => {
 };
 
 /* v2.3.1332: frame via .bt-chisel — layout only here. */
-/* v2.3.2163: the landscape gold chip (see the render-site comment).  Reads
+/* v2.3.2168: the landscape gold chip (see the render-site comment).  Reads
    the same R.coins IdentityStrip reads and ticks itself once a second —
    gold moves on server settlement, not per frame, and a 1s readout lag on
    a coin count is invisible while a live subscription here would be a new

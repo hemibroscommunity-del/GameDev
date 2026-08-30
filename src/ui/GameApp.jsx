@@ -5,7 +5,7 @@ import { wheelBus } from './mobile/wheelBus.js';
 import { BottomDashboard } from './mobile/BottomDashboard.jsx';
 import { ChatBubble } from './mobile/ChatBubble.jsx';
 import { WorldChatFeed } from './mobile/WorldChatFeed.jsx'; /* v2.3.2037 */
-import { InstallHint } from './mobile/InstallHint.jsx'; /* v2.3.2154 */
+import { InstallHint } from './mobile/InstallHint.jsx'; /* v2.3.2159 */
 import { ShopkeeperPanel } from './panels/ShopkeeperPanel.jsx';   /* v2.3.2050 */
 import { XpFlyOverlay } from './XpFlyOverlay.jsx';
 import { InventorySurface } from './mobile/InventorySurface.jsx';
@@ -642,7 +642,7 @@ export const GameApp = () => {
           state and the same bus -- and, like it, has no path to BroTown's
           React state. */}
       <WorldChatFeed />
-      {/* v2.3.2154: the Add-to-Home-Screen instruction (owner: "there needs
+      {/* v2.3.2159: the Add-to-Home-Screen instruction (owner: "there needs
           to be some kind of instruction on the game itself").  Mounted here
           like the chat surfaces: world chrome, no path to BroTown state. */}
       <InstallHint />

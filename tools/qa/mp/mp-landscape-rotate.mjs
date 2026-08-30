@@ -1,4 +1,4 @@
-/* ROTATION IS A CLEAN HANDOFF, BOTH WAYS (v2.3.2152)
+/* ROTATION IS A CLEAN HANDOFF, BOTH WAYS (v2.3.2157)
  *
  * Owner: "Landscape would be an optional view.  You can play in portrait or
  * landscape."  The word doing the work is OR — one session moves between
@@ -54,7 +54,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(1200);
   const l0 = await geom(P);
   console.log('    landscape: ' + JSON.stringify(l0));
-  /* v2.3.2163 (owner: "remove that whole bottom length bar"): sideways
+  /* v2.3.2168 (owner: "remove that whole bottom length bar"): sideways
      there is NO band — --dash-h is just the safe-area inset (0 headless)
      and the canvas takes the whole 390. */
   rec.ok('rotating flips the stamp and drops the bar entirely (dash-h 0, canvas 844x390)',

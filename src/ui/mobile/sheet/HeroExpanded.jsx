@@ -22,7 +22,7 @@ import { previewStatPoint, overallDps } from './statPreview.js';                
 import { itemDetailBus } from '../dash/itemDetailBus.js';                        /* v2.3.1653 */
 import { heroSectionBus } from './heroSectionBus.js';                            /* v2.3.1668 */
 import { DASH_GAP, HERO_TAB_H } from './sheetGeometry.js';                      /* v2.3.1653; v2.3.1657 tabs */
-import { playIsLandscape } from '../playViewport.js';                            /* v2.3.2166: the sideways pane stacks */
+import { playIsLandscape } from '../playViewport.js';                            /* v2.3.2171: the sideways pane stacks */
 
 /* v2.3.1286: Hero expanded — the detailed character sheet.
    v2.3.1295 (ChatGPT round-4, owner-approved): no longer one long
@@ -420,7 +420,7 @@ export const HeroExpanded = () => {
     }}>{text}</div>
   );
 
-  /* ═══ v2.3.2166: THE SIDEWAYS PANE STACKS ═══
+  /* ═══ v2.3.2171: THE SIDEWAYS PANE STACKS ═══
      Owner, inspecting the landscape screenshots: "You'll need to align
      some of the panes vertically.  Like hero has his preview and slots
      but you need to put stats beneath that."
@@ -430,7 +430,7 @@ export const HeroExpanded = () => {
      390-tall column with empty floor under the figure row — so the two
      lists move BENEATH the row, full width, and the third column keeps
      the vitals (and the item card) alone.  Read per render: rotation
-     closes the sheet (v2.3.2152), so this cannot flip under an open pane. */
+     closes the sheet (v2.3.2157), so this cannot flip under an open pane. */
   const landPane = playIsLandscape();
   /* v2.3.1660: one definition (heroModel) — under prog3 this is THE
      pool, so the tab badge and the points chip both show it. */
@@ -612,7 +612,7 @@ export const HeroExpanded = () => {
               onPointerUp={(e) => { e.stopPropagation(); setSection(s); }}
               style={{
                 position: 'relative',
-                /* v2.3.2168: sideways the tabs share by CONTENT — equal
+                /* v2.3.2173: sideways the tabs share by CONTENT — equal
                    thirds starved the longest word and "Equipment" rendered
                    "Equipm…" in the skinny column; Points and Journey cede
                    what they don't need.  Portrait keeps equal thirds. */
@@ -626,7 +626,7 @@ export const HeroExpanded = () => {
                 boxSizing: 'border-box',
               }}>
               <span style={{
-                /* v2.3.2167: one point down in the skinny landscape column —
+                /* v2.3.2172: one point down in the skinny landscape column —
                    "Equipment" ellipsised to "Equip…" at 11px in a 65px tab. */
                 fontSize: landPane ? 10 : 11, fontWeight: 800, letterSpacing: '.03em',
                 color: on ? COL.accent : COL.text2,
@@ -711,7 +711,7 @@ export const HeroExpanded = () => {
           {/* v2.3.1842: three columns, in the owner's order — CHARACTER,
               then the gear slots, then the vitals.  ("I actually have slots to
               the right and vitals to the right of that.") */}
-          {/* v2.3.2167 (owner: one skinny column for every destination):
+          {/* v2.3.2172 (owner: one skinny column for every destination):
               sideways the row WRAPS — figure and slots share the first
               line (they just fit the ~204px column at a 6px gap), and the
               vitals/item-card column breaks below them at full width
@@ -771,7 +771,7 @@ export const HeroExpanded = () => {
                 The vitals come back the moment you tap the slot closed.  The
                 whole-character stats below are unchanged. */}
             <div style={{
-              /* v2.3.2167: sideways this whole column wraps to its own
+              /* v2.3.2172: sideways this whole column wraps to its own
                  full-width line under the figure (flex-basis 100%), auto
                  height — the card and the vitals size to their content
                  there instead of to the gear grid beside them. */
@@ -1023,7 +1023,7 @@ export const HeroExpanded = () => {
                     {compactVital('stamina', R.stamina || 0, R.maxStamina || 100)}
                     {compactVital('mana', R.mana || 0, R.maxMana || 100)}
                   </div>
-                  {/* v2.3.2166: sideways the lists live BELOW the row (the
+                  {/* v2.3.2171: sideways the lists live BELOW the row (the
                       owner's "put stats beneath that"), so the divider and
                       the in-column copy render in portrait only — one copy
                       of the numbers on screen, ever. */}
@@ -1056,7 +1056,7 @@ export const HeroExpanded = () => {
             </div>
           </div>
 
-          {/* v2.3.2166 (owner: "put stats beneath that"): the landscape
+          {/* v2.3.2171 (owner: "put stats beneath that"): the landscape
               pane's stat block — the same two lists, under the figure row
               at the pane's full width, in the vertical room the sideways
               column actually has.  Always rendered sideways, item card open

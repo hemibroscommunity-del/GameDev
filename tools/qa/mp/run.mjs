@@ -23,10 +23,10 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
-  a2hs: () => import('./mp-a2hs.mjs'), /* v2.3.2154: the install instruction finds the right player */
-  landdash: () => import('./mp-landscape-dash.mjs'), /* v2.3.2152: the 48px strip, the side sheet, and playing with menus open */
-  landrotate: () => import('./mp-landscape-rotate.mjs'), /* v2.3.2152: rotation is a clean handoff both ways */
-  landview: () => import('./mp-landscape-view.mjs'), /* v2.3.2151: the view rule switches axes; portrait is pinned */
+  a2hs: () => import('./mp-a2hs.mjs'), /* v2.3.2159: the install instruction finds the right player */
+  landdash: () => import('./mp-landscape-dash.mjs'), /* v2.3.2157: the 48px strip, the side sheet, and playing with menus open */
+  landrotate: () => import('./mp-landscape-rotate.mjs'), /* v2.3.2157: rotation is a clean handoff both ways */
+  landview: () => import('./mp-landscape-view.mjs'), /* v2.3.2156: the view rule switches axes; portrait is pinned */
   pathstyle: () => import('./mp-pathstyle.mjs'), /* v2.3.2141: the quest path can be turned off, and it has a shape */
   wvglass: () => import('./mp-wvglass.mjs'), /* v2.3.2141: the World View figure is small again, and the glass is centred on him */
   inkreset: () => import('./mp-inkreset.mjs'), /* v2.3.2114: do Reset and Randomize clear the tattoos — all four of them? */

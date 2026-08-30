@@ -1,4 +1,4 @@
-/* ═══ v2.3.2156/2157: THE CONTINUE PLATE, FROM THE OWNER'S OWN ART ═══
+/* ═══ v2.3.2161/2162: THE CONTINUE PLATE, FROM THE OWNER'S OWN ART ═══
  *
  * Owner: "change the continue button on splash page to use these assets
  * instead" — a gold pixel CONTINUE wordmark and a C-with-arrow emblem —
@@ -62,9 +62,9 @@ const out = await page.evaluate(async ({ wordmark, emblem, frame }) => {
   const gap = emH / 5;
   const k = Math.min(availW / (emW + gap + wmW), availH / emH);
   const emH2 = emH * k, emW2 = emW * k, wmH2 = unitH * k, wmW2 = wmW * k, gap2 = gap * k;
-  /* v2.3.2159 (owner: "align left for continue icon and label"): the mark
+  /* v2.3.2164 (owner: "align left for continue icon and label"): the mark
      starts at the interior's left padding rather than centring. */
-  /* v2.3.2162 (owner: "center just the continue label and leave the
+  /* v2.3.2167 (owner: "center just the continue label and leave the
      continue icon where it is (left aligned)"): the two parts split —
      the emblem holds the left padding, the wordmark centres in the
      frame's whole interior on its own.  If a centred label would run

@@ -1,4 +1,4 @@
-# Landscape mode (optional view) — v2.3.2151 groundwork + v2.3.2152 dashboard
+# Landscape mode (optional view) — v2.3.2156 groundwork + v2.3.2157 dashboard
 
 > Owner: "Landscape would be an optional view. You can play in portrait or
 > landscape."
@@ -102,7 +102,7 @@ destination in portrait today. Landscape PR2 must preserve exactly that:
 - Damage, camera, spawns, chat floaters keep running — nothing about the
   render or input loop pauses on open.
 
-## The landscape dashboard (v2.3.2152 — this PR)
+## The landscape dashboard (v2.3.2157 — this PR)
 
 The contract above, built:
 
@@ -146,7 +146,7 @@ Measured open state at 844×390: canvas 444×356, sheet x444 w400, view
 
 ## Testing
 
-### Groundwork (v2.3.2151)
+### Groundwork (v2.3.2156)
 
 
 `tools/qa/mp/mp-landscape-view.mjs` (17 assertions): portrait pinned EXACTLY
@@ -156,7 +156,7 @@ when the 48px band lands; visible area ≤ portrait's; the QA default viewport
 (1000×780, which trips the desktop shell) still resolves to a portrait canvas.
 Verified non-vacuous: 6 assertions fail against the pre-change code.
 
-### The dashboard (v2.3.2152)
+### The dashboard (v2.3.2157)
 
 `mp-landscape-dash.mjs` (17 assertions): the rest state (48/0, canvas
 844×356, ≤ one-third ceiling, fold chip gone), the open state (canvas
@@ -173,7 +173,7 @@ unleaked (portrait open does NOT resize the canvas), and the settled-state
 war check — at most one watchdog heal across the rotation sequence (a race,
 logged), zero once settled.
 
-### The dashboard button, sideways (v2.3.2153 — owner device test)
+### The dashboard button, sideways (v2.3.2158 — owner device test)
 
 First real-device report: "The one thing I don't understand is where my bag
 went. I see the thin bar at the bottom but no inventory slots when dashboard
@@ -188,7 +188,7 @@ Safari keeps its bar for a non-scrolling page. The app already ships
 `apple-mobile-web-app-capable`, so Add to Home Screen launches it
 chrome-free; that is the recommended way to play.
 
-### The install instruction (v2.3.2154 — owner request)
+### The install instruction (v2.3.2159 — owner request)
 
 Owner: "there needs to be some kind of instruction on the game itself on how
 to do this" — then, in the next message, "Where is the share button?"
@@ -205,7 +205,7 @@ audience. mp-a2hs proves the audience gate both ways with a spoofed iPhone
 UA, the glyph, both locations in the copy, the 44pt dismiss, the memory, and
 the Settings reopen past it.
 
-### The narrowed sheet + standalone inset (v2.3.2158 — owner web-app test)
+### The narrowed sheet + standalone inset (v2.3.2163 — owner web-app test)
 
 Owner, playing the installed web app sideways: "view kinda messy where
 dashboard buttons are. They're off the dashboard top when playing as a web
@@ -224,7 +224,7 @@ Two fixes, one commit:
   became what its content earns, at the tile size the player already knows —
   `dashTileSize(min(vw,vh))`, the device's portrait tile by construction.
 
-### The rotation rule (v2.3.2160 — owner correction)
+### The rotation rule (v2.3.2165 — owner correction)
 
 Owner, with the portrait band screenshot beside it: "No it would actually be
 2 slots wide and 4 slots vertical height leaving 8 slots viewable at one
@@ -251,7 +251,7 @@ resize() and the watchdog both pass the KIND into `bandFootprint`
 rule. mp-landscape-dash asserts the narrow width against the pane width and
 the 2-column × 4-visible-row grid geometry directly.
 
-### One container on the right (v2.3.2161 — owner clarification)
+### One container on the right (v2.3.2166 — owner clarification)
 
 Owner: "if you understand my vision it's to have equivalent dashboard
 navigation space as the portrait mode. So actually the width of the entire
@@ -288,7 +288,7 @@ The world keeps 656 of 844 with the dashboard open. mp-landscape-dash
 asserts the full-height sheet, the strip spanning the world, the on-screen
 combat row, and the dock sitting inside the container's footprint.
 
-### The bar goes entirely (v2.3.2163 — owner)
+### The bar goes entirely (v2.3.2168 — owner)
 
 Owner: "You can actually remove that whole bottom length bar now. Coins can
 go someplace else (they don't need an entire screen length). And you'll
@@ -296,7 +296,7 @@ still need to fit the sort chips somewhere on the landscape bag view."
 
 - **No band sideways at all**: `bandFootprint`'s landscape `dashH` is just
   the home-indicator inset (0 in a browser tab and headless), `overlap` is
-  0 (a footprint with no band earns none — the v2.3.2151 note, now live),
+  0 (a footprint with no band earns none — the v2.3.2156 note, now live),
   and the band is `display:none` under the landscape scope (a stamp flip,
   so its React tree never churns on rotation). The canvas takes the whole
   390: scale 390/480 = .8125, view 1038×480 (~498K px² — still under
@@ -308,7 +308,7 @@ still need to fit the sort chips somewhere on the landscape bag view."
 - **The sort chips return as a vertical rail** (`BagFilterChips vertical`,
   `BAG_RAIL_W` 28): down the bag grid's left side, five chips splitting the
   grid's own height — the one placement costing no height (slots keep their
-  v2.3.2161 size) and mostly dead-tray width.
+  v2.3.2166 size) and mostly dead-tray width.
 - **The drill back-chip moved into the sheet's own header** (it rode the
   band's identity row); the nav dock and the sheet's bottom reserve state
   their own height (`identityRowHeight`) since `--dash-h` no longer
@@ -321,7 +321,7 @@ popping Settings back to its parent. mp-landscape-rotate pins the new
 landscape numbers; mp-landscape-view holds unchanged (it asserts the rule,
 not the interim numbers — as designed).
 
-### The legacy bag pane retires; every label renders whole (v2.3.2168)
+### The legacy bag pane retires; every label renders whole (v2.3.2173)
 
 Owner, reviewing the seven view screenshots: the tiny-slot Bag pane "must
 be a legacy view that needs to retire. It got replaced with the [dashboard

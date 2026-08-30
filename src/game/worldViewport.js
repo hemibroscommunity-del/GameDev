@@ -82,7 +82,7 @@ export const REF_VIEW_W = Math.round(390 * WORLD_ZOOM);   /* 585 at WORLD_ZOOM 1
  * warning above about a second height constraint stands unchanged. */
 const MIN_SCALE = 0.5;
 
-/* ═══ v2.3.2151: LANDSCAPE GETS ITS OWN REFERENCE, ON THE OTHER AXIS ═══
+/* ═══ v2.3.2156: LANDSCAPE GETS ITS OWN REFERENCE, ON THE OTHER AXIS ═══
  *
  * Owner: "Landscape would be an optional view.  You can play in portrait or
  * landscape."
@@ -132,7 +132,7 @@ export function worldViewport(canvas) {
   /* Every screen gets the SAME slice of world, drawn at whatever size fits.
      Above the reference width that means zooming IN (v2.3.1768b, desktop);
      below it, v2.3.2021, it means zooming OUT.
-     v2.3.2151: the canvas's own shape picks which axis carries the rule --
+     v2.3.2156: the canvas's own shape picks which axis carries the rule --
      see the landscape note above.  The canvas and not the window, so both
      callers (camera and renderer) agree by construction, and the desktop
      shell -- whose canvas is aspect-locked to a PORTRAIT phone -- can never

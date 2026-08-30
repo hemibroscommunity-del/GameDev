@@ -21,12 +21,12 @@ import { DASH_GAP } from '../sheet/sheetGeometry.js';
 export const BagFilterChips = ({ height, gutter, width, vertical }) => {
   const [sel, setSel] = useState(bagFilterBus.get());
   useEffect(() => bagFilterBus.subscribe(setSel), []);
-  /* v2.3.2163 (owner: "you'll still need to fit the sort chips somewhere
+  /* v2.3.2168 (owner: "you'll still need to fit the sort chips somewhere
      on the landscape bag view"): `vertical` turns the header row into a
      RAIL — the same five chips, one per row, splitting the given height
      the way the horizontal row splits its width.  It exists for the
      landscape bag column, where a header row's 30px is exactly what the
-     slots cannot spare (v2.3.2161) but the grid's side tray is free. */
+     slots cannot spare (v2.3.2166) but the grid's side tray is free. */
   if (vertical) {
     return (
       <div className="bt-bagrail" style={{

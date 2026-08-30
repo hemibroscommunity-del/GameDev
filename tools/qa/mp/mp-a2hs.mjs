@@ -1,4 +1,4 @@
-/* THE ADD-TO-HOME-SCREEN INSTRUCTION FINDS THE RIGHT PLAYER (v2.3.2154)
+/* THE ADD-TO-HOME-SCREEN INSTRUCTION FINDS THE RIGHT PLAYER (v2.3.2159)
  *
  * Owner: "there needs to be some kind of instruction on the game itself on
  * how to do this" — and in the next message, "Where is the share button?",
@@ -49,7 +49,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('an iPhone-Safari player gets the card after the welcome has had its say', !!c1, c1);
   rec.ok('...it DRAWS the share glyph (the owner could not find it from words alone)',
     !!c1 && c1.svg, c1);
-  /* v2.3.2155 (owner: "include the icon of what the share button looks like
+  /* v2.3.2160 (owner: "include the icon of what the share button looks like
      too" -- about a card that already had a 16px one): the icon must be a
      BUTTON-SIZED picture, not punctuation.  Measured, not trusted. */
   rec.ok('...at button size, in its own chip — a picture of the thing to hunt for',

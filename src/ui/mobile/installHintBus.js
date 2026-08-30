@@ -1,4 +1,4 @@
-/* ═══ v2.3.2154: "HOW DO I GET RID OF THE BROWSER BAR?" — installHintBus ═══
+/* ═══ v2.3.2159: "HOW DO I GET RID OF THE BROWSER BAR?" — installHintBus ═══
  *
  * Owner, after testing landscape on a real iPhone: "a lot of the screen is
  * eaten by the active browser at the top.  Is there any way around that?"
