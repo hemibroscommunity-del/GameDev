@@ -1018,19 +1018,40 @@ export const BottomDashboard = () => {
                — and NavRail's `fill` flexes the five buttons into it. */
             width: landscapeSheetW(playVw(), playVh(), 'dashboard') - 2 * DASH_GAP,
             zIndex: 31,
-            display: 'flex', alignItems: 'center',
+            display: 'flex', alignItems: 'center', paddingLeft: DASH_GAP,
           }}
         >
-          <NavRail
-            items={RAIL_ITEMS}
-            litId={litId}
-            atRest={mode === 'bar'}
-            vw={playVw()}
-            vh={typeof window !== 'undefined' ? window.innerHeight : 844}
-            dots={dots}
-            btnW={LAND_NAV_BTN_W}
-            fill
-            profilePortrait={profilePortrait} />
+          {/* ═══ v2.3.2166: THE LANDSCAPE FOLD CHIP ═══
+              Owner: "add a button for minimizing that whole dashboard area
+              (just like the portrait equivalent)."  Same chip, same corner
+              rule as portrait's (v2.3.2120: far left of the row, there in
+              every mode).  Landscape's rest state IS minimized, so the
+              glyph pair maps to the sheet: ▾ closes whatever is open, ▴
+              opens the dashboard column. */}
+          <button
+            onPointerUp={(e) => {
+              e.stopPropagation();
+              if (dashboardPanelBus.state.mode === 'expanded') dashboardPanelBus.toBar();
+              else dashboardPanelBus.open('dashboard');
+            }}
+            className="bt-chisel bt-chisel--chip"
+            aria-label={mode === 'expanded' ? 'Minimize dashboard' : 'Expand dashboard'}
+            aria-expanded={mode === 'expanded'}
+            data-land-fold={mode === 'expanded' ? 'open' : 'min'}
+            style={{ ...chipStyle, flex: 'none', fontSize: 15 }}
+          >{mode === 'expanded' ? '▾' : '▴'}</button>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <NavRail
+              items={RAIL_ITEMS}
+              litId={litId}
+              atRest={mode === 'bar'}
+              vw={playVw()}
+              vh={typeof window !== 'undefined' ? window.innerHeight : 844}
+              dots={dots}
+              btnW={LAND_NAV_BTN_W}
+              fill
+              profilePortrait={profilePortrait} />
+          </div>
         </div>
       ) : null}
 

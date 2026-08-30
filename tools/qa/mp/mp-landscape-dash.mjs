@@ -211,8 +211,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
      three combat skills as a row, and the nav dock — ALL visible at once —
      while pane destinations (the Bag detail asserted at 280..340 above,
      Hero, Settings) keep the 4-column width. */
-  rec.ok('...in the narrow nav-bound column (~188) — pane sheets stay 4 slots wide',
-    viaTap.sheetW >= 170 && viaTap.sheetW <= 210 && viaTap.sheetW < open.sheetW - 80,
+  /* v2.3.2166: the fold chip joined the dock row, so the nav-bound width
+     is six slots now (~220 at phone sizes). */
+  rec.ok('...in the narrow nav-bound column (~220) — pane sheets stay the portrait width',
+    viaTap.sheetW >= 205 && viaTap.sheetW <= 245 && viaTap.sheetW < open.sheetW - 80,
     { dashboardSheetW: viaTap.sheetW, paneSheetW: open.sheetW });
   rec.ok('...and the bag grid is 2 columns x 4 visible rows — portrait 4x2, rotated',
     await P.page.evaluate(() => {
@@ -294,6 +296,30 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const viaTap2 = await geom(P);
   rec.ok('...and tapping it again gives the world back (the same toggle it always was)',
     viaTap2.mode === 'bar' && viaTap2.canvasW === 844, viaTap2);
+
+  /* ═══ v2.3.2166: THE FOLD CHIP, SIDEWAYS ═══
+     Owner: "add a button for minimizing that whole dashboard area (just
+     like the portrait equivalent)."  Far left of the dock row, in every
+     mode: ▴ at rest opens the dashboard, ▾ minimizes whatever is open. */
+  const chipUp = await P.page.evaluate(() => {
+    const c = document.querySelector('[data-land-fold]');
+    if (!c) return null;
+    c.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+    return c.getAttribute('data-land-fold');
+  });
+  await P.page.waitForTimeout(800);
+  const afterChipOpen = await geom(P);
+  rec.ok('the fold chip exists at rest (▴) and OPENS the dashboard area',
+    chipUp === 'min' && afterChipOpen.mode === 'expanded' && afterChipOpen.canvasW < 844,
+    { chipStateAtTap: chipUp, after: { mode: afterChipOpen.mode, canvasW: afterChipOpen.canvasW } });
+  await P.page.evaluate(() => {
+    const c = document.querySelector('[data-land-fold]');
+    if (c) c.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+  });
+  await P.page.waitForTimeout(800);
+  const afterChipClose = await geom(P);
+  rec.ok('...and tapping it again (▾) MINIMIZES the whole dashboard area',
+    afterChipClose.mode === 'bar' && afterChipClose.canvasW === 844, afterChipClose);
 
   /* ═══ v2.3.2163: A DRILL STILL HAS A WAY BACK ═══
      The back-chip rode the band's identity row, and the band is gone

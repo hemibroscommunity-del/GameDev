@@ -513,7 +513,13 @@ export function navGroupWidth(vw, vh) {
 export const LAND_NAV_BTN_W = 28;
 export const LAND_PILL_H = 44;
 export function landscapeNavGroupW() {
-  return RAIL_COUNT * LAND_NAV_BTN_W + NAV_GAP * (RAIL_COUNT - 1) + 2 * NAV_GAP;
+  /* v2.3.2166 (owner: "add a button for minimizing that whole dashboard
+     area (just like the portrait equivalent)"): the fold chip joins the
+     dock row at its far LEFT — the same corner portrait's chip holds
+     (v2.3.2120, "all the way left ... stays there regardless of which tab
+     is open") — so the row is now SIX slots wide: the chip plus the five
+     destinations. */
+  return (RAIL_COUNT + 1) * LAND_NAV_BTN_W + NAV_GAP * RAIL_COUNT + 2 * NAV_GAP;
 }
 export function landscapeDashTileSize(vw, vh) {
   /* The fixed vertical costs beside the four tile rows: the nav zone (the

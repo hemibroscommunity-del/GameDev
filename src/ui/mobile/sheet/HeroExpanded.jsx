@@ -22,6 +22,7 @@ import { previewStatPoint, overallDps } from './statPreview.js';                
 import { itemDetailBus } from '../dash/itemDetailBus.js';                        /* v2.3.1653 */
 import { heroSectionBus } from './heroSectionBus.js';                            /* v2.3.1668 */
 import { DASH_GAP, HERO_TAB_H } from './sheetGeometry.js';                      /* v2.3.1653; v2.3.1657 tabs */
+import { playIsLandscape } from '../playViewport.js';                            /* v2.3.2166: the sideways pane stacks */
 
 /* v2.3.1286: Hero expanded — the detailed character sheet.
    v2.3.1295 (ChatGPT round-4, owner-approved): no longer one long
@@ -419,6 +420,18 @@ export const HeroExpanded = () => {
     }}>{text}</div>
   );
 
+  /* ═══ v2.3.2166: THE SIDEWAYS PANE STACKS ═══
+     Owner, inspecting the landscape screenshots: "You'll need to align
+     some of the panes vertically.  Like hero has his preview and slots
+     but you need to put stats beneath that."
+     In portrait the OFFENSE/DEFENSE lists share the third column with the
+     vitals because vertical room is the scarce thing there (the whole
+     v2.3.1878 story).  The landscape pane has the opposite shape — a full
+     390-tall column with empty floor under the figure row — so the two
+     lists move BENEATH the row, full width, and the third column keeps
+     the vitals (and the item card) alone.  Read per render: rotation
+     closes the sheet (v2.3.2152), so this cannot flip under an open pane. */
+  const landPane = playIsLandscape();
   /* v2.3.1660: one definition (heroModel) — under prog3 this is THE
      pool, so the tab badge and the points chip both show it. */
   const totalUnspent = unspentPointsTotal(R);
@@ -991,7 +1004,11 @@ export const HeroExpanded = () => {
                     {compactVital('stamina', R.stamina || 0, R.maxStamina || 100)}
                     {compactVital('mana', R.mana || 0, R.maxMana || 100)}
                   </div>
-                  <div style={{ height: 1, background: COL.tileBor, flex: 'none', margin: '2px 0' }} />
+                  {/* v2.3.2166: sideways the lists live BELOW the row (the
+                      owner's "put stats beneath that"), so the divider and
+                      the in-column copy render in portrait only — one copy
+                      of the numbers on screen, ever. */}
+                  {!landPane && <div style={{ height: 1, background: COL.tileBor, flex: 'none', margin: '2px 0' }} />}
                   {/* ═══ v2.3.1890: TWO COLUMNS, NOT A GRID OF BOXES ═══
                       Owner: "every stat is being treated as its own card...
                       I'd switch to a character-sheet/list format".
@@ -1000,6 +1017,7 @@ export const HeroExpanded = () => {
                       rows and defense three: stacked they cost 7 rows plus two
                       headings, and beside each other they cost 4 plus one. In
                       a 146px column that difference is most of the budget. */}
+                  {!landPane && (
                   <div style={{
                     flex: 1, minHeight: 0, display: 'flex',
                     alignItems: 'flex-start', gap: 12,
@@ -1013,10 +1031,29 @@ export const HeroExpanded = () => {
                       <div style={{ marginTop: 2 }}>{defenseCells()}</div>
                     </div>
                   </div>
+                  )}
                 </>
               )}
             </div>
           </div>
+
+          {/* v2.3.2166 (owner: "put stats beneath that"): the landscape
+              pane's stat block — the same two lists, under the figure row
+              at the pane's full width, in the vertical room the sideways
+              column actually has.  Always rendered sideways, item card open
+              or not: down here the card no longer needs their space. */}
+          {landPane && (
+            <div style={{ flex: 'none', display: 'flex', alignItems: 'flex-start', gap: 14, paddingTop: 10 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {groupHead('Offense')}
+                <div style={{ marginTop: 3 }}>{offenseCells()}</div>
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {groupHead('Defense')}
+                <div style={{ marginTop: 3 }}>{defenseCells()}</div>
+              </div>
+            </div>
+          )}
 
           {/* v2.3.1878: the "Your stats" block that stood here is GONE — the
               seven cells moved into the vitals column above, where there was
