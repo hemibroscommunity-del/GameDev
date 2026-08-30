@@ -156,7 +156,13 @@ export function artWithCells(s, cells, idx) {
    head had one, so turning round showed either a face where no face is
    (before v2.3.2042) or nothing at all (after it).  This is the canvas that
    makes the head work the way the shirt already does. */
-export const CANVASES = ['shirtFront', 'shirtBack', 'pants', 'tattoo', 'tattooFace', 'tattooArm', 'tattooHeadBack'];
+/* v2.3.2148: `tattooBack` completes the pair for the BODY. Owner: "make it so
+   that the back and front of the character body have separate tattoos areas so
+   body and face should have a front and back now." The face already had both
+   halves (tattooFace / tattooHeadBack, v2.3.2043) and the shirt has had them
+   since v2.3.1939; the torso was the one surface still showing its FRONT
+   drawing to someone standing behind you. */
+export const CANVASES = ['shirtFront', 'shirtBack', 'pants', 'tattoo', 'tattooBack', 'tattooFace', 'tattooArm', 'tattooHeadBack'];
 export const SHIRT_SIDES = ['front', 'back'];
 
 
@@ -169,6 +175,7 @@ export function sideForDir(dir) {
 const STORAGE_KEY = {
   shirtFront: 'bt-shirtart', shirtBack: 'bt-shirtart-back',
   pants: 'bt-pantsart', tattoo: 'bt-tattooart',
+  tattooBack: 'bt-tattooart-back',   /* v2.3.2148 */
   tattooFace: 'bt-facetattoo', tattooArm: 'bt-armtattoo',   /* v2.3.1949 */
   tattooHeadBack: 'bt-headbackart',   /* v2.3.2043 */
 };

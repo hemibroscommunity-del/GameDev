@@ -55,6 +55,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.enterWorld(A);
   const B = await H.newPlayer(browser, { name: 'Listener', wsPort, webPort, guest: true });
   await H.enterWorld(B);
+  /* v2.3.2155: the corner rests as a bell -- press it, or the list this
+     scenario reads does not exist. */
+  await H.openWorldChat(A);
+  await H.openWorldChat(B);
   await H.waitMutualSight(A, B).catch(() => {});
   await A.page.waitForTimeout(1500);
 

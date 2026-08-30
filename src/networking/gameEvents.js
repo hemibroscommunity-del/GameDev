@@ -1,4 +1,5 @@
 /* ═══ GAME EVENTS — the server/peer event dispatcher (40+ message types) ═══ */
+import { lockOntoDuelOpponent } from '@/game/duelLock.js'; /* v2.3.2145 */
 /* v2.3.783: _processGameEvent moved verbatim from the inline WS client in
    src/ui/BroTown.jsx (REBUILD-PLAN Phase 4, behavior-frozen). It handles
    both batched `tick.events` entries and direct sends (see
@@ -2424,6 +2425,11 @@ export function processGameEvent(type, payload, S, deps) {
                   wager: payload.wager || 0,
                   startTime: Date.now()
                 };
+                /* v2.3.2145: lock onto them, which is what a duel means -- and
+                   is what puts the BLOCK BUTTON on screen at all
+                   (LockOnActions returns null without a lock). See
+                   src/game/duelLock.js. */
+                lockOntoDuelOpponent(S, payload.from);
                 pushDmgPopup(S, S.player.x, S.player.y - 40, 'DUEL STARTED!', '#fbbf24');
               }
               break;

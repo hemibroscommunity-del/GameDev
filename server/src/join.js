@@ -71,7 +71,14 @@ const JOIN_COSMETIC_KEYS = [
      convention and `ta` was taken by the chest. */
   /* v2.3.2043: `tb` is the BACK OF THE HEAD -- the face canvas's other side,
      matching what `sb` is to `sa`. Same 256-char shape, same cap. */
-  'sa', 'sb', 'pa', 'ta', 'tf', 'tm', 'tb',
+  /* v2.3.2148: `tr` is the BACK OF THE BODY -- the chest/torso canvas's other
+     side, exactly as `sb` is to `sa` and `tb` is to `tf`. NOT `tb`: that is
+     already the back of the HEAD (v2.3.2043), so the obvious letter was taken
+     and `tr` (tattoo, rear) is the next unambiguous one. Same 256-char shape,
+     same cap, and added to BOTH gates and DRAWING_KEYS in this one change --
+     v2.3.1939 put a drawing key in one gate and not the other and the print
+     appeared on join then vanished on the first relay. */
+  'sa', 'sb', 'pa', 'ta', 'tf', 'tm', 'tb', 'tr',
   /* v2.3.1941: clothing patterns -- a tile id and a palette index, e.g.
      "stripe-v:3".  Short, so unlike the drawings above they sit inside the flat
      64-char cap with room to spare and need no special case. */
@@ -90,7 +97,7 @@ const JOIN_COSMETIC_KEYS = [
    the live-update path: the client's sanitiser rejects anything that is not
    exactly 256 hex characters, so peers saw the print appear on join and vanish
    two seconds later.  index.js imports this rather than repeating it. */
-export const DRAWING_KEYS = new Set(['sa', 'sb', 'pa', 'ta', 'tf', 'tm', 'tb']);   /* v2.3.2043: +tb */
+export const DRAWING_KEYS = new Set(['sa', 'sb', 'pa', 'ta', 'tf', 'tm', 'tb', 'tr']);   /* v2.3.2043: +tb; v2.3.2148: +tr, the back of the body */
 /** Cap for one cosmetic key: drawings and avatars get the large bound. */
 export function cosmeticCap(k) { return (k === 'avatar' || DRAWING_KEYS.has(k)) ? 512 : 64; }
 /* ═══ v2.3.1970: THE TOP-LEVEL `name` WAS THE ONE THAT GOT AWAY ═══

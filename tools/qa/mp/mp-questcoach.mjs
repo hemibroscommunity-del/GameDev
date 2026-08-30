@@ -520,6 +520,42 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !afterCycle || afterCycle.id !== 'cycle', afterCycle);
 
   /* ── 6. it is over when the lessons are learned ── */
+  /* ═══ v2.3.2147: TWO MORE LESSONS TO LEARN FIRST ═══
+     The coach gained a Login Key step and a tap-to-chat step after the shield
+     (owner: "after the shield rotation help orient players to their pass key.
+     Also that tapping on your character is how you open the chat menu"), so
+     "every lesson learned" now includes them -- and reaching silence without
+     doing them would mean the assertion below had quietly stopped covering
+     the end of the tour.
+
+     Both are performed the way the tracker watches for them, which is what
+     makes this a test of the new steps rather than a way past them: the key
+     lesson wants the ACCOUNT PANEL open (opening More and closing it teaches
+     nobody their key), and the chat lesson wants the composer actually open. */
+  await P.page.evaluate(() => {
+    try { if (window.__broDashPanelBus) window.__broDashPanelBus.push('account'); } catch (e) {}
+  });
+  await P.page.waitForTimeout(900);
+  const learnedKey = await P.page.evaluate(() => {
+    const d = JSON.parse(localStorage.getItem('bt_coach_v1') || '{}');
+    try { if (window.__broDashPanelBus) window.__broDashPanelBus.toBar(); } catch (e) {}
+    return !!d.passkey;
+  });
+  rec.ok('opening the Login Key panel retires the Login Key lesson',
+    learnedKey, { learnedKey });
+
+  await P.page.evaluate(() => {
+    try { if (window.__broChatBubbleBus) window.__broChatBubbleBus.setOpen(true); } catch (e) {}
+  });
+  await P.page.waitForTimeout(900);
+  const learnedChat = await P.page.evaluate(() => {
+    const d = JSON.parse(localStorage.getItem('bt_coach_v1') || '{}');
+    try { if (window.__broChatBubbleBus) window.__broChatBubbleBus.setOpen(false); } catch (e) {}
+    return !!d.chat;
+  });
+  rec.ok('...and opening the chat composer retires the tap-to-chat lesson',
+    learnedChat, { learnedChat });
+
   await P.page.waitForTimeout(800);
   const end = await coach(P);
   rec.ok('with every lesson learned, the coach is silent', !end, end);

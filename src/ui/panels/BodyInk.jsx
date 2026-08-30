@@ -96,8 +96,21 @@ const REGIONS = [
   { key: 'arms',   target: 'tattooArm',  label: 'Arms' },
   { key: 'tattoo', target: 'tattoo',     label: 'Chest' },
 ];
+/* v2.3.2150: front canvas -> its back counterpart, and back -> the front
+   REGION it is drawn on. Both directions are needed and they are not the same
+   question: the first is "which canvas does this touch write to", the second is
+   "which part of the figure is that canvas drawn over". */
+const BACK_TARGET = { tattoo: 'tattooBack', tattooFace: 'tattooHeadBack' };
+const FRONT_OF = { tattooBack: 'tattoo', tattooHeadBack: 'tattooFace' };
 const keyForTarget = (t) => {
-  const r = REGIONS.find((q) => q.target === t);
+  /* A back canvas has NO region of its own -- the surface frames a
+     front-facing figure and there is no back to hit-test -- so it borrows the
+     grid of the part it covers. Without this fold, keyForTarget answered null
+     for 'tattooBack', gridFor found no grid, and every stroke on the back was
+     silently DROPPED: mp-bodyink saw the chest correctly left alone and the
+     back never written, which reads as "the switch does nothing". */
+  const key = FRONT_OF[t] || t;
+  const r = REGIONS.find((q) => q.target === key);
   return r ? r.key : null;
 };
 
@@ -136,6 +149,12 @@ export default function BodyInk({
   /* v2.3.1994: the panel drives the tools; this surface reports cells. */
   apiRef = null, activeTarget = 'tattoo',
   onRegion, onDown, onMove, onUp,
+  /* v2.3.2150: true while the panel is drawing on the character's BACK. The
+     surface still frames a front-facing figure -- there is no back-view art to
+     paint on -- so the touch REGIONS are unchanged and only the canvas each one
+     writes to moves. That is the whole reason a back canvas needed a switch
+     rather than a place to touch. */
+  backSide = false,
   overlayCells = null, selCells = null, handleCell = null,
 }) {
   const boxRef = React.useRef(null);
@@ -203,12 +222,24 @@ export default function BodyInk({
         const g = list[k];
         if (p.x >= g.lx && p.x <= g.rx + 1 && p.y >= g.ty && p.y <= g.by + 1) {
           const R = REGIONS.find((q) => q.key === tabKeys[i]);
-          return { key: tabKeys[i], target: R ? R.target : 'tattoo', grid: g };
+          let tgt = R ? R.target : 'tattoo';
+          /* v2.3.2150: the same touch, the other side. Arms are deliberately
+             NOT remapped -- an arm is the same arm from behind, which is why
+             artForFacing leaves that canvas alone (playerSkins, v2.3.2148); a
+             second arm drawing for the back view would be a canvas nothing
+             renders. */
+          if (backSide) tgt = BACK_TARGET[tgt] || tgt;
+          return { key: tabKeys[i], target: tgt, grid: g };
         }
       }
     }
     return null;
-  }, [tabKeys]);
+    /* v2.3.2150: `backSide` is a DEPENDENCY, not just a read. Left out of this
+       list it is captured once and never updated, so flipping the switch
+       changed the label and nothing else -- mp-bodyink caught exactly that: with
+       Back selected, a tap on the torso still inked the CHEST. cellFor below
+       depends on this callback, so the stale value reached every gesture. */
+  }, [tabKeys, backSide]);
 
   /* ── v2.3.1994: THE SURFACE'S ONE ANSWER ────────────────────────────────
      Which cell of which canvas is this pointer on?  `clamp` pins a drag that
@@ -642,10 +673,29 @@ export default function BodyInk({
     if (onH) gestureRef.current = activeTarget;
     else {
       const c = cellFor(e, false, null);
-      if (!c) return;
+      if (!c) {
+        try {
+          const g = gridsRef.current;
+          const pt = sheetAt(e.clientX, e.clientY);
+          window.__btInkDown = {
+            miss: true, back: !!backSide,
+            gridKeys: g ? Object.keys(g) : null,
+            counts: g ? Object.keys(g).map((k) => k + ':' + (g[k] || []).length) : null,
+            tabKeys: tabKeys.slice(),
+            pt: pt ? { x: Math.round(pt.x), y: Math.round(pt.y) } : null,
+          };
+        } catch (_e) { /* ignore */ }
+        return;
+      }
       /* The canvas this gesture belongs to is decided ONCE, here, and every
          later sample is measured against it — see cellFor's `lock`. */
       gestureRef.current = c.target;
+      /* v2.3.2150: read-only probe of what this surface decided a touch was.
+         The game never reads it. It exists because "the stroke went nowhere"
+         has three indistinguishable causes from outside -- the touch missed
+         the grid, the region resolved to the wrong canvas, or the panel
+         dropped it downstream -- and only the surface can say which. */
+      try { window.__btInkDown = { target: c.target, gx: c.gx, gy: c.gy, back: !!backSide }; } catch (e) { /* ignore */ }
       if (onRegion) onRegion(c.target);
     }
     if (onDown) onDown(e, { handle: onH });

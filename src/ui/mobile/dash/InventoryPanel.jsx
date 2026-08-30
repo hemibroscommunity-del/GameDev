@@ -26,6 +26,7 @@ import { playVw, panelVw } from '../playViewport.js';
    so every existing importer of InventoryPanel.CATEGORIES still works. */
 export { CATEGORIES } from './bagFilterBus.js';
 import { shopBus } from '../shopBus.js';   /* v2.3.2059: the bag is half the shop */
+import { tradeBagBus } from '../tradeBagBus.js';   /* v2.3.2149: ...and half the trade */
 
 // Light heuristic — classify an inventory key into one of the four
 // category filters.  Items the heuristic doesn't recognise fall through
@@ -35,7 +36,28 @@ export const classify = (key) => {
   const k = (key || '').toLowerCase();
   if (/sword|bow|staff|spear|axe|dagger|hammer|wand|gauntlet/.test(k)) return 'weapon';
   if (/helm|cuirass|armor|shield|robe|cape|boots|gloves|mail|plate/.test(k)) return 'armor';
-  if (/potion|elixir|tonic|salve|brew|tincture/.test(k)) return 'potion';
+  /* ═══ v2.3.2145: THE BOTTLE YOU JUST BOUGHT IS UNDER *POTIONS* ═══
+     Owner, a second time: "fix the potion landing in the bag after buying it.
+     That hasn't been fixed yet."
+
+     It DOES land in the bag -- v2.3.2127 is on main and mp-potions taps the
+     real Buy button and finds the key in rpg.inventory. What it does not do
+     is land where you go looking for it. Every filter chip reads `cat`, `cat`
+     is this function, and this function decided what a potion was by matching
+     ENGLISH WORDS: potion, elixir, tonic, salve, brew, tincture. The shop
+     sells a swiftDraught, a manaShard, staminaSalts and a whetstone. Not one
+     of those words appears in any of those keys, so all four filed themselves
+     under CRAFTING, and tapping Potions showed an empty bag right after
+     buying a potion.
+
+     The word-list stays for anything the game mints later that reads like a
+     potion, but the shop's own consumables are matched by KEY first, off the
+     same POTION_THUMBS table that already gives them their bottle art and
+     already tells the popup which ones get a Drink button. That table has to
+     list exactly these keys anyway, so it cannot drift: an item with a bottle
+     picture and a Drink button now necessarily sorts as a potion too. */
+  if (isPotionKey(k)) return 'potion';
+  if (/potion|elixir|tonic|salve|brew|tincture|draught/.test(k)) return 'potion';
   return 'crafting';
 };
 
@@ -357,16 +379,25 @@ export const ItemTile = ({ ikey, count, style: styleOverride }) => {
        same item, one of them covering the bag the shop is built on top of,
        is exactly the "don't open another inventory" the owner ruled out. */
     if (shopBus.open) { shopBus.setSel(ikey, 'bag'); return; }
+    /* v2.3.2149: a live trade takes the bag the same way the shop does.
+       Owner: "change the player to player trade menu to be like the
+       shopkeeper trade menu where it just attaches to the player bag."
+       The popup is suppressed for the same reason it is for the shop: two
+       windows about one item, one of them covering the bag the trade is
+       built on, is the "don't open another inventory" that was ruled out. */
+    if (tradeBagBus.open && tradeBagBus.tap(ikey)) return;
     itemDetailBus.open({ kind: 'inventory', key: ikey, count: count || 0, anchor });
   };
   const locked = itemIsLocked(ikey);
   const shopSel = shopBus.open && shopBus.sel
     && shopBus.sel.side === 'bag' && shopBus.sel.key === ikey;
+  /* v2.3.2149: how many of this stack are staged, so the tile can say so. */
+  const tradeStaged = tradeBagBus.open ? tradeBagBus.countFor(ikey) : 0;
   return (
     <div onPointerUp={handleTap} data-inv-key={ikey} style={{
       width: '100%', aspectRatio: '1 / 1',
-      background: shopSel ? 'rgba(234,198,117,.16)' : COL.tile,
-      border: shopSel ? '1px solid #EAC675' : `1px solid ${color}`,
+      background: (shopSel || tradeStaged) ? 'rgba(234,198,117,.16)' : COL.tile,
+      border: (shopSel || tradeStaged) ? '1px solid #EAC675' : `1px solid ${color}`,
       borderRadius: 6,
       display: 'flex',
       alignItems: 'center',
@@ -397,6 +428,18 @@ export const ItemTile = ({ ikey, count, style: styleOverride }) => {
       {/* v2.3.2059: bottom-LEFT on purpose -- .bt-item-qty owns bottom-right
           and the two must never overlap on a 56px slot. */}
       {shopBus.open && <ShopQuoteBadge ikey={ikey} />}
+      {/* v2.3.2149: "2/6 staged" on the tile, so the bag itself shows what is
+          in the offer -- the trade window no longer carries its own copy of
+          your bag, so this is the only place that can say it. */}
+      {tradeStaged > 0 && (
+        <div data-trade-staged={tradeStaged} style={{
+          position: 'absolute', left: 2, top: 2,
+          padding: '0 4px', borderRadius: 999,
+          background: 'rgba(216,170,88,.92)', color: '#1B1206',
+          font: '800 9px/14px "Source Sans 3", sans-serif',
+          fontVariantNumeric: 'tabular-nums', pointerEvents: 'none',
+        }}>{tradeStaged}</div>
+      )}
       {locked && (
         /* v2.3.177: anchor glyph in the upper-right corner of anchored
            tiles. Matches the popup's anchor-glyph styling.

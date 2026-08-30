@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { tradeBagBus } from '../mobile/tradeBagBus.js'; /* v2.3.2149 */
+import { guardPush } from '../mobile/modalGuardBus.js'; /* v2.3.2145 */
 /* v2.3.1235: batch-4 state-correction — RARITY_TIERS for staged-weapon
    row rarity (existing data; plain inventory items carry no rarity). */
 import { RARITY_TIERS } from '@/data/index.js';
@@ -215,6 +217,13 @@ function OfferRows({ offer, weapons, empty, onRemoveItem, onRemoveWeapon, goldSu
 }
 
 export function TradeWindowPanel(props) {
+  /* v2.3.2145: while this panel is up the transient world chrome stands down
+     -- see modalGuardBus. The owner could not accept a trade at all: the chat
+     composer's dismiss layer is a full-play-area tap catcher forty z-layers
+     above this panel, so every tap aimed at Accept closed the chat box
+     instead. */
+  React.useEffect(() => guardPush(), []);
+
   const { rpgState, stateRef, trade2, setTrade2 } = props;
   const S = stateRef.current;
   const myId = S.myId;
@@ -293,6 +302,43 @@ export function TradeWindowPanel(props) {
     const t = setTimeout(() => setTrade2(null), terminalState === 'done' ? 2800 : 2200);
     return () => clearTimeout(t);
   }, [terminalState]);
+
+  /* ═══ v2.3.2149: YOUR REAL BAG IS THE ITEM SOURCE ═══
+     Owner: "change the player to player trade menu to be like the shopkeeper
+     trade menu where it just attaches to the player bag."
+
+     Shopkeeper Bro's window already works this way (shopBus, v2.3.2059) and
+     this is the same handshake: the band's own bag tiles become half the
+     controls, so the window hands them the staging function and a copy of what
+     is staged, and takes both back when it closes. A tap after the window is
+     gone then reaches nothing rather than a stale closure over a finished
+     trade.
+
+     THE PROTOCOL IS UNTOUCHED. A tap runs the same addOne -> trade2_set path
+     the in-window tray already used; no new wire message, no new server gate.
+
+     ABOVE EVERY EARLY RETURN, and through a REF. This component returns early
+     SIX times -- no trade, the receipt, a failure, the invite stub, 'invited',
+     and a malformed state -- and a hook below any of them is a hooks-order
+     violation. The first cut put these next to addOne, where they read more
+     naturally, which is below all six; the second lifted them above only the
+     last three. Both crashed with React error #300 the moment the trade
+     COMPLETED and the receipt returned early past them, taking the whole UI
+     down with it (mp-trade: no drawer, no card, not one visible button). They
+     now sit above `if (!trade2) return null;`, which is the first one. The ref
+     is assigned during the live render further down, which is all an effect
+     needs.
+
+     `liveTrade` is deliberately false for the receipt and failure states too,
+     so the bag is handed back the instant the trade stops being editable. */
+  const bagTapRef = useRef(null);
+  const liveTrade = !!trade2 && !trade2.invite && trade2.state === 'open';
+  useEffect(() => {
+    if (!liveTrade) return undefined;
+    tradeBagBus.attach((k) => { if (bagTapRef.current) bagTapRef.current(k); });
+    return () => tradeBagBus.detach();
+  }, [liveTrade]);
+  useEffect(() => { if (liveTrade) tradeBagBus.setStaged(stage); }, [liveTrade, stage]);
 
   if (!trade2) return null;
 
@@ -485,6 +531,11 @@ export function TradeWindowPanel(props) {
   /* Tapping a bag tile adds ONE.  It used to add a quarter of the stack and
      wrap to zero past the top — see the note on StagedRow. */
   const addOne = (k) => setQty(k, (stage[k] || 0) + 1);
+  /* v2.3.2149: hand the live addOne to the bag tiles (see the ref above).
+     Assigned every render, so a tap always stages onto the CURRENT offer --
+     a captured one would add to a stale copy and silently undo the last
+     change. */
+  bagTapRef.current = addOne;
   /* v2.3.1235: batch-4 state-correction §4 — the staged-row Remove
      control.  Same pathway an item already left the stage by (delete
      the key, push the whole offer via the existing trade2_set send) —
@@ -494,6 +545,7 @@ export function TradeWindowPanel(props) {
     delete next[k];
     pushStage(next);
   };
+
 
   /* v2.3.1235: batch-4 state-correction §3/§7 — emptiness facts for the
      empty-state copy, the disabled Confirm, and the leave-confirm guard.
@@ -640,8 +692,43 @@ export function TradeWindowPanel(props) {
   }
 
   return (
-    <div className="bt-inspect" style={{ background: 'rgba(4,9,12,0.52)' /* v2.3.1235: batch-4 rollout — trade-confirm strong scrim */ }} onClick={requestLeave /* v2.3.1235: batch-4 state-correction §7 — scrim taps route through the leave guard (same trade2_cancel send when nothing is staged) */}>
-      <div className="bt-inspect-card" onClick={(e) => e.stopPropagation()} style={{ ...cardStyle, width: 320 }}>
+    /* ═══ v2.3.2149: A DRAWER ON THE BAND, NOT A MODAL OVER IT ═══
+       Owner: "change the player to player trade menu to be like the shopkeeper
+       trade menu where it just attaches to the player bag."
+
+       Same frame as Shopkeeper Bro's drawer, deliberately down to the numbers:
+       left/right 6 so its edges line up with the bag panel's, bottom pinned to
+       --dash-h so it JOINS the band rather than floating over it, and square
+       bottom corners for the same reason (a radius there draws the seam the
+       layout is avoiding).
+
+       AND NO SCRIM. The scrim was the whole problem: it covered the bag, so
+       the bag could not be the item source. Losing it also loses tap-outside-
+       to-leave, which is why the ✕ stays exactly where it was and still routes
+       through requestLeave -- the leave guard, and its trade2_cancel, are
+       untouched. */
+    <div
+      data-trade-drawer=""
+      onPointerDown={(e) => e.stopPropagation()}
+      className="bt-chat-noselect"
+      style={{
+        position: 'fixed', left: 6, right: 6,
+        bottom: 'var(--dash-h, 243px)',
+        maxHeight: 'min(52vh, 420px)',
+        display: 'flex', flexDirection: 'column',
+        background: 'var(--ui-sheet, #1E2E34)',
+        border: '1px solid rgba(229,237,233,.14)',
+        borderRadius: '10px 10px 0 0',
+        borderBottom: 'none',
+        color: 'var(--ui-text, #F4F0E7)',
+        /* Above the world chrome and the joystick discs (30/31), below the
+           item popup (100030) -- the shop drawer's own layer. */
+        zIndex: 40,
+        overflowY: 'auto',
+        padding: 10,
+        boxSizing: 'border-box',
+      }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ position: 'relative' }}>
         <button className="bt-inspect-close" onClick={requestLeave /* v2.3.1235: batch-4 state-correction §7 */}>✕</button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: '#F4F0E7', marginBottom: 8 }}>
           <TradeIcon /> Trading with {otherName}
@@ -685,44 +772,21 @@ export function TradeWindowPanel(props) {
             ) : 'Tap an item in Bag below to add it'} />
         </div>
 
-        {/* v2.3.1235: batch-4 state-correction §3 — the in-modal Bag tray
-            is THE item source for this trade (staging never touches the
-            dashboard Bag), so it gets a small header and the restrained
-            brass source outline. */}
+        {/* ═══ v2.3.2149: THE IN-WINDOW BAG TRAY IS GONE ═══
+            It was "THE item source for this trade (staging never touches the
+            dashboard Bag)" -- which is exactly what the owner asked to change:
+            "like the shopkeeper trade menu where it just attaches to the player
+            bag". Your real bag sits right below this drawer now and its tiles
+            stage straight into the offer (tradeBagBus), so a second copy of the
+            same bag inside the window would be two bags on one screen
+            disagreeing about which one is yours.
+
+            Kept as a caption pointing DOWN at the real one, because a window
+            that used to hold the items and now does not needs to say where they
+            went. */}
         {bagItems.length > 0 && (
-          <div style={{ ...laneHeader, color: '#8D9B98' }}>Bag · tap an item to add</div>
+          <div style={{ ...laneHeader, color: '#8D9B98' }}>Tap an item in your bag below to add it</div>
         )}
-        <div className="ls-scrollbody" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 4, marginBottom: 6, maxHeight: 120, overflowY: 'auto', background: '#111E23', borderRadius: 8, padding: 4, boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44)', border: '1px solid rgba(216,170,88,.42)' /* v2.3.1235: batch-4 state-correction §3 — brass item-source outline */ }}>
-          {bagItems.map(([k, v]) => (
-            <button
-              key={k}
-              onClick={() => addOne(k)}
-              /* v2.3.1755: the tile's only text used to be the count, and its
-                 glyph was an emoji CHARACTER — so "📦 6" was its whole label.
-                 With a real thumbnail the image carries the identity and the
-                 accessible name would collapse to "6", which is nothing to a
-                 screen reader and nothing to select on.  Name it explicitly. */
-              aria-label={`Add one ${labelFor(k)}`}
-              style={{
-                padding: '4px 2px', borderRadius: 8, fontSize: 10, cursor: 'pointer',
-                fontVariantNumeric: 'tabular-nums',
-                /* v2.3.1232: well-soft cell; brass = staged selection */
-                /* v2.3.1235: batch-4 rollout — corrected cell tokens: brass
-                   #D8AA58 selection edge on card #24363C; resting cell =
-                   corrected well-soft #16262C (INV.tileFill) + .08 tile
-                   hairline. */
-                border: stage[k] ? '2px solid #D8AA58' : '1px solid rgba(229,237,233,.08)',
-                background: stage[k] ? '#24363C' : '#16262C',
-                color: stage[k] ? '#F4F0E7' : '#8D9B98',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <ItemThumb itemKey={k} size={22} fallback={emojiFor(k)} />
-              </div>
-              <div>{stage[k] ? (stage[k] + '/' + v) : v}</div>
-            </button>
-          ))}
-        </div>
 
         {weaponLane && stash.length > 0 && (
           <div style={{ marginBottom: 8 }}>

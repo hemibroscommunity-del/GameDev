@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { chromeSilenced } from './modalGuardBus.js'; /* v2.3.2145 */
 import { subscribeMastery } from '../../game/mastery.js';
 
 /* §12.1 / §12.2 / CR §8.49 — surfaced mastery + skill-cert notification.
@@ -96,7 +97,14 @@ export const MasteryNotification = () => {
        panel shadow, Source Sans 3. */
     return (
       <div onClick={dismiss} style={{
-        position: 'fixed', top: 14, left: 14, zIndex: 9300,
+        /* v2.3.2145: a toast is news, not a decision. While a decision panel owns
+           the screen -- or the player has silenced notifications -- it drops under
+           the modal layer (.bt-inspect is 32) and stops taking taps entirely, so
+           it can neither cover a confirm button nor eat the tap meant for one. */
+        position: 'fixed', top: 14, left: 14,
+        zIndex: chromeSilenced() ? 31 : 9300,
+        pointerEvents: chromeSilenced() ? 'none' : 'auto',
+        opacity: chromeSilenced() ? 0 : 1,
         maxWidth: 286, padding: '10px 12px',
         background: COL.bg,
         border: `1px solid ${COL.border}`, borderRadius: 12,
@@ -123,7 +131,14 @@ export const MasteryNotification = () => {
   return (
     /* v2.3.1233: same spec toast treatment as the tier card above. */
     <div onClick={dismiss} style={{
-      position: 'fixed', top: 14, left: 14, zIndex: 9300,
+      /* v2.3.2145: a toast is news, not a decision. While a decision panel owns
+           the screen -- or the player has silenced notifications -- it drops under
+           the modal layer (.bt-inspect is 32) and stops taking taps entirely, so
+           it can neither cover a confirm button nor eat the tap meant for one. */
+        position: 'fixed', top: 14, left: 14,
+        zIndex: chromeSilenced() ? 31 : 9300,
+        pointerEvents: chromeSilenced() ? 'none' : 'auto',
+        opacity: chromeSilenced() ? 0 : 1,
       maxWidth: 286, padding: '8px 11px',
       background: COL.certBg,
       border: `1px solid ${COL.border}`, borderRadius: 12,

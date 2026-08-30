@@ -6190,6 +6190,7 @@ export var BroTown = function BroTown(_ref0) {
                 tf: artHasInk(getArt('tattooFace')) ? getArt('tattooFace') : undefined,
                 tm: artHasInk(getArt('tattooArm')) ? getArt('tattooArm') : undefined,
                 tb: artHasInk(getArt('tattooHeadBack')) ? getArt('tattooHeadBack') : undefined,   /* v2.3.2043 */
+                tr: artHasInk(getArt('tattooBack')) ? getArt('tattooBack') : undefined,   /* v2.3.2148 */
                 /* v2.3.1941: clothing patterns. */
                 sp: getPattern('shirt') || undefined,
                 pp: getPattern('pants') || undefined,

@@ -13,6 +13,11 @@ import * as H from './harness.mjs';
  * chat feed. */
 export async function run({ browser, wsPort, webPort, rec }) {
   const { A, B } = await H.joinPair(browser, { wsPort, webPort, nameA: 'Ayla', nameB: 'Bram' });
+  /* v2.3.2155: the corner rests as a bell now, so the list this whole scenario
+     reads does not exist until it is pressed. Both feeds: the point below is
+     that the OTHER player sees the line too. */
+  await H.openWorldChat(A);
+  await H.openWorldChat(B);
   await A.page.setViewportSize({ width: 390, height: 844 });
   await B.page.setViewportSize({ width: 390, height: 844 });
   await A.page.waitForTimeout(1500);

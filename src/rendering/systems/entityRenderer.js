@@ -1351,11 +1351,14 @@ function _remoteBodyArt(other, mirror) {
      draw it via artForFacing exactly as the local player does, so a remote who
      turns away shows THEIR back canvas rather than a blank head. */
   const hb = sanitizeShirtArt(other.headBackTattooArt);
+  /* v2.3.2148: and the back of their body, through the same sanitiser -- peers
+     resolve it via artForFacing exactly as the local player does. */
+  const bb = sanitizeShirtArt(other.bodyBackTattooArt);
   const q = sanitizePattern(other.pantsPattern, 'pants');   /* v2.3.1941 */
   const f = sanitizePattern(other.shoesPattern, 'shoes');   /* v2.3.1944 */
-  return (p || t || ft || at || hb || q || f)
+  return (p || t || ft || at || hb || bb || q || f)
     ? { pants: p || '', tattoo: t || '', tattooFace: ft || '', tattooArm: at || '',
-      tattooHeadBack: hb || '',
+      tattooHeadBack: hb || '', tattooBack: bb || '',
       pantsPattern: q, shoesPattern: f, mirror: !!mirror }
     : null;
 }
@@ -1505,7 +1508,22 @@ function _capeTune(dir) {
   let t = null;
   try { t = window.__btCapeTune || null; } catch (e) { t = null; }
   const base = _CAPE_JOG_TILT[dir] || 0;
-  if (!t) return { tilt: base, pivotY: _CAPE_PIVOT_Y };
+  /* ═══ v2.3.2153: THE DEFAULT BRANCH OWES A `dx` TOO ═══
+     Owner, for the third time: "Cape still disappears on jog."
+
+     v2.3.2126 added the jog slide and added it to ONE of these two returns.
+     This is the branch every real session takes -- the other needs
+     window.__btCapeTune, which only a QA bench sets -- and without `dx` the
+     caller computes `undefined * scale * ±1`, which is NaN, and writes NaN
+     into spr.x. A sprite at NaN never rasterises. So the cape vanished for
+     every player on every jog, while the tuning sweep that was built to
+     photograph this exact animation kept producing a perfect cape, because
+     setting __btCapeTune is what put a number back in the object.
+
+     That is also why three rounds of scene-graph assertions missed it: the
+     sprite is visible, its texture is right, its scale matches the body and
+     its rotation is applied. Only the position is poisoned. */
+  if (!t) return { tilt: base, pivotY: _CAPE_PIVOT_Y, dx: (_CAPE_JOG_DX[dir] || 0) };
   /* A tilt of 0 is meaningful (north/south face the camera, where a sideways
      lean would be a lie), so scale rather than replace: one knob moves the
      whole table and cannot accidentally give north a tilt it must not have. */
@@ -1561,8 +1579,14 @@ function _placeCape(display, capeId, pose, dir, mirror, frameIdx) {
   const drawnH = Math.abs(spr.scale.y) * ((tex.frame && tex.frame.height) || 256);
   /* v2.3.2126: the jog slide, in the same 256-space the crown offset above is
      in, so it scales with the sprite exactly as that does. */
+  /* v2.3.2153: coerced, and NOT because the value above is in doubt. This is
+     the line that turned one missing table entry into an invisible cape, and
+     it would do it again for the next dir added to _CAPE_JOG_DX without a
+     matching entry. A cape one pixel out of place is a bug you can see; a
+     cape at NaN is a bug that looks like the feature was never built. */
+  const _tuneDx = Number(tune.dx) || 0;
   const jogDx = (pose === 'jog')
-    ? (tune.dx * Math.abs(spr.scale.x) * (mirror ? -1 : 1))
+    ? (_tuneDx * Math.abs(spr.scale.x) * (mirror ? -1 : 1))
     : 0;
   spr.x = sb.x + dx + jogDx;
   spr.y = sb.y + dy - (0.5 - tune.pivotY) * drawnH;
@@ -3895,7 +3919,24 @@ function createMonsterDisplay(monster) {
      row (the same origin the procedural circle straddles), so +size clears
      the feet for the small archetypes and for the 96px sprites alike —
      they all stand ON this line, only their tops differ. */
-  _attachNamePill(hpUi, 10, MONSTER_SIZE_MULT);
+  /* ═══ v2.3.2154: THE PLATES GO UP A COUPLE OF SIZES ═══
+     Owner: "Make the character name plate, level, and monster nameplate and
+     level a bit larger font."
+
+     Raised at the FACTORY argument, not by scaling the container: a Pixi Text
+     is a texture, and enlarging its container resamples glyphs rasterised at
+     the old size -- bigger AND blurrier, which is the opposite of the ask and
+     is the whole point of the v2.3.1821 note inside _attachNamePill. Passing a
+     larger nameSize re-rasterises at the new size, and _pillH, the LV
+     baseline and the verified badge are all derived from it, so the pill grows
+     in proportion instead of the text spilling out of it.
+
+     The player-to-peer relationship is preserved deliberately: yours has been
+     one size above everyone else's since v2.3.1681, so 13/12 becomes 15/14
+     rather than both landing on the same number. The NPC plate (9) is left
+     alone -- the owner named the character and the monster, and the town NPCs
+     are the one population where a bigger plate would crowd the street. */
+  _attachNamePill(hpUi, 12, MONSTER_SIZE_MULT);   /* v2.3.2154: 10 -> 12 */
   hpUi._namePill.y = size + 6;
 
   /* Single dynamic Graphics for everything that DOES change per frame:
@@ -4925,7 +4966,7 @@ function createPlayerDisplay() {
   /* v2.3.1681 (owner: "Player name and level in the pill beneath character
      need to be slightly larger for legibility").  10 -> 13; the plate sizes
      itself off this number, so the background grows with the text. */
-  _attachNamePill(container, 13, undefined, uiLayer);
+  _attachNamePill(container, 15, undefined, uiLayer);   /* v2.3.2154: 13 -> 15 */
 
   /* v2.3.1193: the local player's own threat skull (red = my threat
      countdown is running, white = ignored/expired fight window).  One
@@ -5238,7 +5279,7 @@ function createOtherPlayerDisplay() {
 
   /* v2.3.1566 (owner): same plate the local player gets, one size down —
      a remote name should not out-shout your own. */
-  _attachNamePill(container, 12, undefined, uiLayer);   /* v2.3.1681: 9 -> 12, still one down from your own */
+  _attachNamePill(container, 14, undefined, uiLayer);   /* v2.3.1681: 9 -> 12, still one down from your own; v2.3.2154 lifts the pair to 15/14 */
 
   /* v2.3.1193: threat skull above the nameplate (red = active threat
      countdown, white = ignored/expired fight window — see
@@ -6588,6 +6629,11 @@ export class EntityRenderer {
           name: _pui && _pui._pillName ? _pui._pillName.text : null,
           level: _pui && _pui._pillLevel ? _pui._pillLevel.text : null,
           levelFill: _pui && _pui._pillLevel ? String(_pui._pillLevel.style.fill) : null,
+          /* v2.3.2154: the rasterised sizes, so "a bit larger font" is a
+             measurement rather than a diff review. Read-only, like every other
+             field on this probe. */
+          nameSize: _pui && _pui._pillName ? Number(_pui._pillName.style.fontSize) : null,
+          lvlSize: _pui && _pui._pillLevel ? Number(_pui._pillLevel.style.fontSize) : null,
           y: _pillNode ? _pillNode.y : null,
           hasOldLvlText: !!display._lvlText,
         });

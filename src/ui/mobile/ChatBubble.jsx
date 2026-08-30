@@ -1,4 +1,5 @@
 ﻿import React, { useEffect, useRef, useState } from 'react';
+import { guardActive, onGuardChange } from './modalGuardBus.js'; /* v2.3.2145 */
 import { chatBubbleBus } from './chatBubbleBus.js';
 import { chatLogBus } from './chatLogBus.js';
 import { sendChatMessage } from '../../game/chat.js';
@@ -207,7 +208,29 @@ export const ChatBubble = () => {
     }
   }, [chatBubbleBus.open]);
 
+  /* ═══ v2.3.2145: THE COMPOSER STANDS DOWN FOR A DECISION PANEL ═══
+     Owner: "I couldn't accept any trades because notifications blocked it."
+
+     This component's first child is a transparent tap catcher covering the
+     entire play area at z-index 95, mounted for exactly as long as the
+     composer is open, whose job is to close the composer on the next tap
+     anywhere. The trade window is z-index 32. So with the composer open,
+     every tap aimed at Accept was swallowed by an invisible sheet above it --
+     the button was not merely hard to hit, it was unreachable.
+
+     Closing rather than hiding, and closing through the bus, so the toolbar's
+     Chat button agrees about the state; leaving `open` true while rendering
+     null would give a chat box that is shut on screen and open to the toggle.
+     Whatever was typed is kept -- the composer restores it on reopen -- so
+     nothing a player wrote is thrown away by a trade invite landing. */
+  React.useEffect(() => onGuardChange(() => {
+    if (guardActive() && chatBubbleBus.open) { try { chatBubbleBus.close(); } catch (e) { /* ignore */ } }
+  }), []);
+
   if (!chatBubbleBus.open) return null;
+  /* Belt as well as braces: a panel that opens in the same commit as this
+     render has already pushed the guard but not yet fired the listener. */
+  if (guardActive()) return null;
 
   const dictate = () => {
     if (!SpeechRec) return;

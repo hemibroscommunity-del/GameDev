@@ -1,4 +1,5 @@
 import React from 'react';
+import { guardPush } from '../mobile/modalGuardBus.js'; /* v2.3.2145 */
 import { BT_AUDIO } from '@/data/index.js';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
@@ -22,6 +23,13 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
    raised secondary Decline, heavier confirmation scrim rgba(4,9,12,0.52).
    Styles + static JSX only; handlers byte-identical. */
 export function IncomingTradePanel(props) {
+  /* v2.3.2145: while this panel is up the transient world chrome stands down
+     -- see modalGuardBus. The owner could not accept a trade at all: the chat
+     composer's dismiss layer is a full-play-area tap catcher forty z-layers
+     above this panel, so every tap aimed at Accept closed the chat box
+     instead. */
+  React.useEffect(() => guardPush(), []);
+
   var stateRef = props.stateRef,
     incomingTrade = props.incomingTrade,
     setIncomingTrade = props.setIncomingTrade,

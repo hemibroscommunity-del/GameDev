@@ -176,6 +176,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('one player\'s world-chat line reaches all three others',
     Object.values(gotBen).every(Boolean), gotBen);
 
+  /* v2.3.2155: the corner rests as a bell now, so the list below does not
+     exist until it is pressed -- and only A's feed is ever read, so only A's
+     is opened. The first cut opened all four at boot, which spent up to 24s of
+     wall time on three players nobody looks at and pushed the session long
+     enough to lose connections at the end of it. */
+  await H.openWorldChat(A);
   const feed = await A.page.evaluate(() => {
     const el = document.querySelector('[data-world-chat-lines]');
     return el ? { n: +el.getAttribute('data-world-chat-lines'), text: el.textContent } : null;
