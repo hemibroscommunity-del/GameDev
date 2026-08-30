@@ -620,7 +620,9 @@ export const HeroExpanded = () => {
                 cursor: 'pointer', touchAction: 'manipulation',
               }}>
               <span style={{
-                fontSize: 11, fontWeight: 800, letterSpacing: '.03em',
+                /* v2.3.2167: one point down in the skinny landscape column —
+                   "Equipment" ellipsised to "Equip…" at 11px in a 65px tab. */
+                fontSize: landPane ? 10 : 11, fontWeight: 800, letterSpacing: '.03em',
                 color: on ? COL.accent : COL.text2,
                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                 pointerEvents: 'none',
@@ -703,7 +705,12 @@ export const HeroExpanded = () => {
           {/* v2.3.1842: three columns, in the owner's order — CHARACTER,
               then the gear slots, then the vitals.  ("I actually have slots to
               the right and vitals to the right of that.") */}
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+          {/* v2.3.2167 (owner: one skinny column for every destination):
+              sideways the row WRAPS — figure and slots share the first
+              line (they just fit the ~204px column at a 6px gap), and the
+              vitals/item-card column breaks below them at full width
+              instead of squeezing beside them. */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: landPane ? 6 : 8, flexWrap: landPane ? 'wrap' : undefined, rowGap: landPane ? 8 : undefined }}>
             {/* HARD LEFT, and cropped to a rectangle around him.  `crop`
                 narrows the WELL over the canvas rather than shrinking the
                 canvas — the character stays the size the owner asked to keep,
@@ -758,7 +765,13 @@ export const HeroExpanded = () => {
                 The vitals come back the moment you tap the slot closed.  The
                 whole-character stats below are unchanged. */}
             <div style={{
-              flex: 1, minWidth: 0, height: 3 * EQ_W + 2 * DASH_GAP,
+              /* v2.3.2167: sideways this whole column wraps to its own
+                 full-width line under the figure (flex-basis 100%), auto
+                 height — the card and the vitals size to their content
+                 there instead of to the gear grid beside them. */
+              ...(landPane
+                ? { flex: '1 1 100%', minWidth: 0 }
+                : { flex: 1, minWidth: 0, height: 3 * EQ_W + 2 * DASH_GAP }),
               display: 'flex', flexDirection: 'column',
               /* v2.3.1893: 10 -> 6 on the stats branch.  That flex gap is
                  where the "room above the divider" actually lives — it sits

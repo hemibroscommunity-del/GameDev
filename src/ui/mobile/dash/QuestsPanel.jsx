@@ -3,6 +3,7 @@ import { COL, panelStyle, getState } from './common.js';
 import { deriveQuestLog, trackedQuestId, rewardText } from '../sheet/questModel.js';
 import { questDetailBus } from '../sheet/questDetailBus.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
+import { panelVw } from '../playViewport.js'; /* v2.3.2167: the sheet's width, not the shell's */
 
 /* v2.3.1265: Quests — read-only quest log (accepting/turning-in stays
    with the NPCs; server-authoritative flow untouched).
@@ -19,8 +20,17 @@ import { dashboardPanelBus } from '../dashboardPanelBus.js';
 const SEGMENTS = ['Active', 'Available', 'Completed'];
 let _lastSegment = 'Active';
 
-const seg = (active) => ({
+/* v2.3.2167 (owner: every destination opens in the dashboard's skinny
+   landscape column): `narrow` shrinks the type a notch and lets the button
+   actually shrink — three nowrap flex:1 buttons whose text is wider than a
+   third of a ~204px row overflow the sheet's edge otherwise (measured:
+   "Available (1)" ran off the right of the landscape pane).  The count
+   moves to a corner badge there; see the render. */
+const seg = (active, narrow) => ({
   flex: 1,
+  minWidth: 0,
+  position: 'relative',
+  overflow: 'hidden',
   minHeight: 36,
   background: active ? COL.raised : 'transparent',
   color: active ? COL.text : COL.text2,
@@ -28,11 +38,13 @@ const seg = (active) => ({
   borderBottom: `2px solid ${active ? COL.accent : 'transparent'}`,
   borderRadius: 8,
   fontFamily: 'inherit',
-  fontSize: 12,
+  fontSize: narrow ? 10 : 12,
   fontWeight: 700,
+  padding: narrow ? '0 2px' : undefined,
   cursor: 'pointer',
   touchAction: 'manipulation',
   whiteSpace: 'nowrap',
+  textOverflow: 'ellipsis', /* the backstop; at 10px all three words fit */
 });
 
 const rowBtn = {
@@ -92,9 +104,22 @@ export const QuestsPanel = () => {
       }}>
         {SEGMENTS.map(s => {
           const n = s === 'Active' ? active.length : s === 'Available' ? upcoming.length : done.length;
+          /* v2.3.2167: in the skinny landscape column the inline " (1)" is
+             the width that overflowed, so the count becomes a corner badge
+             there — same number, fewer pixels.  Portrait unchanged. */
+          const narrow = panelVw() < 260;
           return (
-            <button key={s} onClick={() => setSegment(s)} style={seg(segment === s)}>
-              {s}{n > 0 ? ` (${n})` : ''}
+            <button key={s} onClick={() => setSegment(s)} style={seg(segment === s, narrow)}>
+              {s}{!narrow && n > 0 ? ` (${n})` : ''}
+              {narrow && n > 0 && (
+                <span aria-hidden="true" style={{
+                  position: 'absolute', top: 2, right: 2,
+                  minWidth: 13, height: 13, padding: '0 3px',
+                  borderRadius: 7, background: COL.accent, color: COL.onAccent,
+                  fontSize: 9, fontWeight: 900, lineHeight: '13px', textAlign: 'center',
+                  fontVariantNumeric: 'tabular-nums', pointerEvents: 'none',
+                }}>{n > 9 ? '9+' : n}</span>
+              )}
             </button>
           );
         })}

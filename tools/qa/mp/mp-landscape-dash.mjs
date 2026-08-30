@@ -103,12 +103,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(900);
   const open = await geom(P);
   console.log('    open: ' + JSON.stringify(open));
-  /* v2.3.2164: a PANE sheet is the device's whole portrait width (390
-     here) — every destination renders pixel-identical to portrait, which
-     is what caught Hero's stat columns clipping at the old bag-derived
-     292. */
+  /* v2.3.2167 (owner: "should be that skinny and the exact same for all
+     the buttons"): ONE width — every destination opens in the dashboard's
+     own narrow column (~220 at phone sizes). */
   rec.ok('opening the Bag NARROWS the canvas — the world yields, nothing overlays it',
-    open.canvasW === 844 - open.sheetW && open.sheetW === 390
+    open.canvasW === 844 - open.sheetW && open.sheetW >= 205 && open.sheetW <= 245
       && open.playW === open.canvasW, open);
   rec.ok('...the sheet sits exactly in the yielded ground, beside the world',
     !!open.sheet && Math.abs(open.sheet.x - open.canvasW) <= 1
@@ -212,9 +211,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
      while pane destinations (the Bag detail asserted at 280..340 above,
      Hero, Settings) keep the 4-column width. */
   /* v2.3.2166: the fold chip joined the dock row, so the nav-bound width
-     is six slots now (~220 at phone sizes). */
-  rec.ok('...in the narrow nav-bound column (~220) — pane sheets stay the portrait width',
-    viaTap.sheetW >= 205 && viaTap.sheetW <= 245 && viaTap.sheetW < open.sheetW - 80,
+     is six slots (~220 at phone sizes).
+     v2.3.2167 (owner: "that skinny and the exact same for all the
+     buttons"): the dashboard and every pane share ONE width. */
+  rec.ok('...in the same skinny column every destination gets (one width for all buttons)',
+    viaTap.sheetW >= 205 && viaTap.sheetW <= 245 && viaTap.sheetW === open.sheetW,
     { dashboardSheetW: viaTap.sheetW, paneSheetW: open.sheetW });
   rec.ok('...and the bag grid is 2 columns x 4 visible rows — portrait 4x2, rotated',
     await P.page.evaluate(() => {
@@ -320,6 +321,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const afterChipClose = await geom(P);
   rec.ok('...and tapping it again (▾) MINIMIZES the whole dashboard area',
     afterChipClose.mode === 'bar' && afterChipClose.canvasW === 844, afterChipClose);
+
+  /* v2.3.2167: the CHARACTER view in the skinny column — the pane that
+     clipped at every earlier width.  It must lay out vertically with no
+     horizontal overflow, per the owner's "align some of the panes
+     vertically ... put stats beneath that". */
+  await P.page.evaluate(() => window.__broDashPanelBus.open('hero'));
+  await P.page.waitForTimeout(1000);
+  const heroFit = await P.page.evaluate(() => {
+    const sh = document.querySelector('.bt-land-sheet');
+    if (!sh) return null;
+    const shR = sh.getBoundingClientRect();
+    const wide = [...sh.querySelectorAll('*')].filter((el) => {
+      const r = el.getBoundingClientRect();
+      return r.right > shR.right + 2 && r.width > 4;
+    }).length;
+    const text = sh.textContent || '';
+    return { scrollFits: sh.scrollWidth <= sh.clientWidth + 1, wide,
+             hasStats: /OFFENSE/i.test(text) && /DEFENSE/i.test(text) && /Damage/.test(text) };
+  });
+  rec.ok('the character view fits the skinny column — stacked, nothing clipped sideways',
+    !!heroFit && heroFit.scrollFits && heroFit.wide === 0 && heroFit.hasStats, heroFit);
+  await P.page.evaluate(() => window.__broDashPanelBus.toBar());
+  await P.page.waitForTimeout(400);
 
   /* ═══ v2.3.2163: A DRILL STILL HAS A WAY BACK ═══
      The back-chip rode the band's identity row, and the band is gone

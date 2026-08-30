@@ -549,22 +549,21 @@ export function landscapeDashColW(vw, vh) {
   return Math.max(landscapeBagPanelW(vw, vh), landscapeNavGroupW());
 }
 export function landscapeSheetW(vw, vh, kind) {
-  /* +2*DASH_GAP for DashColumns' own side pads and +16 for the sheet
+  /* ═══ v2.3.2167: ONE WIDTH ═══
+     Owner: "The 2 slot width view you showed me of the dashboard (the
+     width of the dashboard itself) should be that skinny and the exact
+     same for all the buttons."
+     So the two-widths rule dies young: EVERY destination opens in the
+     dashboard's own skinny column, and panes reflow VERTICALLY to fit it
+     — which is what "panes like character view can be put in vertical
+     space below" meant all along (v2.3.2164's full-portrait-width pane
+     was the wrong fix for Hero's clipping; the right one is Hero
+     stacking, and it now does).  `kind` is accepted and ignored so the
+     two callers in BroTown didn't have to change in the same commit that
+     changes the answer; the canvas math cares only about the number.
+     +2*DASH_GAP for DashColumns' side pads and +16 for the sheet
      wrapper's — the column track must fit INSIDE both or it clips. */
-  if (kind === 'dashboard') return landscapeDashColW(vw, vh) + 2 * DASH_GAP + 16;
-  /* v2.3.2164: a PANE is the device's whole portrait width.  The old
-     bag-derived 292 was measured against one panel and broke another the
-     first time the owner opened it: Hero's Equipment overview lays out
-     figure + slots + stat columns for the 390 every panel was designed
-     and tested at, and at 292 the stats clipped off the sheet's edge.
-     Rather than audit and re-flow ~20 panels for a second width, the pane
-     sheet IS the portrait width — every destination renders pixel-
-     identical to portrait by construction, which is also the strongest
-     possible reading of "panes like character view can be put in vertical
-     space below" (owner, v2.3.2158).  The world keeps vw - shortSide
-     (454 at 844x390) while a pane is up; the DASHBOARD column above stays
-     the narrow one, and it is the surface that is up while you play. */
-  return Math.min(vw, vh || vw);
+  return landscapeDashColW(vw, vh) + 2 * DASH_GAP + 16;
 }
 
 export function bandFootprint(vw, vh, folded, sheetOpen, bottomInset) {
