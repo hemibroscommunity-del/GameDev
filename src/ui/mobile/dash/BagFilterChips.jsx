@@ -18,9 +18,47 @@ import { DASH_GAP } from '../sheet/sheetGeometry.js';
 
    The chips fill their row: no fixed width, so five categories or eight
    both divide the space evenly instead of overflowing it. */
-export const BagFilterChips = ({ height, gutter, width }) => {
+export const BagFilterChips = ({ height, gutter, width, vertical }) => {
   const [sel, setSel] = useState(bagFilterBus.get());
   useEffect(() => bagFilterBus.subscribe(setSel), []);
+  /* v2.3.2163 (owner: "you'll still need to fit the sort chips somewhere
+     on the landscape bag view"): `vertical` turns the header row into a
+     RAIL — the same five chips, one per row, splitting the given height
+     the way the horizontal row splits its width.  It exists for the
+     landscape bag column, where a header row's 30px is exactly what the
+     slots cannot spare (v2.3.2161) but the grid's side tray is free. */
+  if (vertical) {
+    return (
+      <div className="bt-bagrail" style={{
+        width, height, flex: 'none', boxSizing: 'border-box',
+        display: 'flex', flexDirection: 'column', gap: DASH_GAP,
+        background: 'transparent', border: 'none', padding: 0,
+      }}>
+        {CATEGORIES.map((c) => {
+          const on = c.id === sel;
+          return (
+            <div key={c.id}
+              role="button" aria-label={c.label} aria-pressed={on} title={c.label}
+              onPointerUp={(e) => { e.stopPropagation(); bagFilterBus.set(c.id); }}
+              style={{
+                flex: '1 1 0', minHeight: 0, width: '100%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: on ? COL.accentFill : COL.wellSoft,
+                border: `1px solid ${on ? COL.accent : COL.tileBor}`,
+                borderRadius: 7, boxSizing: 'border-box',
+                cursor: 'pointer', touchAction: 'manipulation',
+              }}>
+              <img src={c.iconSrc} alt="" draggable={false}
+                style={{
+                  width: 20, height: 20, objectFit: 'contain',
+                  opacity: on ? 1 : 0.7, pointerEvents: 'none',
+                }} />
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
   return (
     <div style={{
       /* v2.3.1652 (owner: "put the filters on their own header row above

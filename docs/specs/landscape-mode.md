@@ -287,3 +287,36 @@ The portrait band, stood upright — the sheet is the WHOLE right side now:
 The world keeps 656 of 844 with the dashboard open. mp-landscape-dash
 asserts the full-height sheet, the strip spanning the world, the on-screen
 combat row, and the dock sitting inside the container's footprint.
+
+### The bar goes entirely (v2.3.2163 — owner)
+
+Owner: "You can actually remove that whole bottom length bar now. Coins can
+go someplace else (they don't need an entire screen length). And you'll
+still need to fit the sort chips somewhere on the landscape bag view."
+
+- **No band sideways at all**: `bandFootprint`'s landscape `dashH` is just
+  the home-indicator inset (0 in a browser tab and headless), `overlap` is
+  0 (a footprint with no band earns none — the v2.3.2151 note, now live),
+  and the band is `display:none` under the landscape scope (a stamp flip,
+  so its React tree never churns on rotation). The canvas takes the whole
+  390: scale 390/480 = .8125, view 1038×480 (~498K px² — still under
+  portrait's ~539K, fairness holds).
+- **Gold is a chip** (`.bt-land-gold`): bottom centre of the WORLD, keyed
+  to `--play-w` so it re-centres over the narrowed world when a sheet is
+  open. The only gold count on a landscape screen — the v2.3.1563 one-count
+  rule holds by construction. Pointer-events none; 1s self-tick.
+- **The sort chips return as a vertical rail** (`BagFilterChips vertical`,
+  `BAG_RAIL_W` 28): down the bag grid's left side, five chips splitting the
+  grid's own height — the one placement costing no height (slots keep their
+  v2.3.2161 size) and mostly dead-tray width.
+- **The drill back-chip moved into the sheet's own header** (it rode the
+  band's identity row); the nav dock and the sheet's bottom reserve state
+  their own height (`identityRowHeight`) since `--dash-h` no longer
+  carries it.
+
+mp-landscape-dash asserts the barless rest (dash-h 0, canvas 844×390, gold
+chip centred over the world at rest AND re-centred over the narrowed world
+when open), the chip rail beside the slots, and the drill's back-chip
+popping Settings back to its parent. mp-landscape-rotate pins the new
+landscape numbers; mp-landscape-view holds unchanged (it asserts the rule,
+not the interim numbers — as designed).

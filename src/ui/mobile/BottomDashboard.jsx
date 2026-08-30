@@ -19,7 +19,7 @@ import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rende
 import { getEyeColor, onEyeColorChange } from '../../rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
 import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
-import { barHeight, expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP, bandFootprint, LAND_NAV_BTN_W, landscapeNavGroupW } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.1325 slot-derived bar; v2.3.2152 the sideways band; v2.3.2161 the nav dock */
+import { barHeight, expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP, bandFootprint, LAND_NAV_BTN_W, landscapeNavGroupW, identityRowHeight } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.1325 slot-derived bar; v2.3.2152 the sideways band; v2.3.2161 the nav dock; v2.3.2163 the barless landscape */
 import { DashColumns } from './dash/DashColumns.jsx';           /* v2.3.1636 */
 import { NavRail } from './dash/NavRail.jsx';                   /* v2.3.1637 */
 import { portraitStore } from './sheet/portraitStore.js';          /* v2.3.1294 */
@@ -942,14 +942,47 @@ export const BottomDashboard = () => {
             paddingTop: 'env(safe-area-inset-top, 0px)',
           }}
         >
-          {/* v2.3.2161: the bottom padding is the nav dock's zone —
-              --dash-h already carries the home-indicator inset sideways
-              (bandFootprint, v2.3.2158), so no env() term here. */}
-          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: '8px 8px calc(var(--dash-h, 48px) + 6px)' }}>
+          {/* ═══ v2.3.2163: THE DRILL HEADER LIVES IN THE SHEET NOW ═══
+              The back-chip and title used to ride the band's identity row;
+              with the bar gone sideways (owner: "remove that whole bottom
+              length bar"), a drill (Settings, Build, quest detail) would
+              have had no way back.  Same chip, same title treatment, at
+              the top of the container where the drill actually is. */}
+          {drill && (
+            <div style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px 0' }}>
+              <button
+                onPointerUp={(e) => { e.stopPropagation(); dashboardPanelBus.pop(); }}
+                className="bt-chisel bt-chisel--chip"
+                style={{ ...chipStyle, flex: 'none' }}
+              >◂</button>
+              <div style={{
+                minWidth: 0, fontSize: 13, fontWeight: 700, letterSpacing: '.10em',
+                textTransform: 'uppercase', color: COL.text,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              }}>{active ? active.title : ''}</div>
+            </div>
+          )}
+          {/* v2.3.2161: the bottom padding is the nav dock's zone.
+              v2.3.2163: --dash-h stopped carrying it (the bar is gone and
+              the var is just the home-indicator inset now), so the reserve
+              is the dock's own height plus that inset, stated directly. */}
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: `8px 8px calc(${identityRowHeight(playVw(), playVh()) + 6}px + env(safe-area-inset-bottom, 0px))` }}>
             {Active && <Active />}
           </div>
         </div>
       ) : null}
+
+      {/* ═══ v2.3.2163: GOLD, AS A CHIP ═══
+          Owner: "Coins can go someplace else (they don't need an entire
+          screen length)."  The bar existed to carry this one number; the
+          number survives as a compact chip at the WORLD's bottom centre —
+          left is keyed to --play-w, so when a sheet opens and the world
+          narrows, the chip re-centres over the world rather than the
+          screen.  This is the ONLY gold count on a landscape screen (the
+          band that carried the other one no longer renders), so the
+          v2.3.1563 one-count rule holds by construction.  pointer-events
+          none: it is a readout over the touch zones, never a control. */}
+      {land ? <LandGoldChip /> : null}
 
       {/* ═══ v2.3.2161: THE LANDSCAPE NAV DOCK ═══
           Owner: "the dashboard buttons (for dashboard bag view, character
@@ -974,7 +1007,10 @@ export const BottomDashboard = () => {
             position: 'fixed',
             right: DASH_GAP,
             bottom: 'env(safe-area-inset-bottom, 0px)',
-            height: 'calc(var(--dash-h, 48px) - env(safe-area-inset-bottom, 0px))',
+            /* v2.3.2163: its OWN height — --dash-h is only the inset now
+               that the bar is gone, so the dock states the row height the
+               band used to lend it. */
+            height: identityRowHeight(playVw(), playVh()),
             zIndex: 31,
             display: 'flex', alignItems: 'center',
           }}
@@ -1325,6 +1361,43 @@ export const BottomDashboard = () => {
 };
 
 /* v2.3.1332: frame via .bt-chisel — layout only here. */
+/* v2.3.2163: the landscape gold chip (see the render-site comment).  Reads
+   the same R.coins IdentityStrip reads and ticks itself once a second —
+   gold moves on server settlement, not per frame, and a 1s readout lag on
+   a coin count is invisible while a live subscription here would be a new
+   wire into a component that renders four elements. */
+const LandGoldChip = () => {
+  const [, force] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => force((v) => (v + 1) % 1000000), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const R = (window._gameState && window._gameState.current && window._gameState.current.rpg) || {};
+  const gold = R.coins || R.gold || 0;
+  return (
+    <div className="bt-land-gold" aria-label={`${gold} gold`} style={{
+      position: 'fixed',
+      left: 'calc(var(--play-w, 100%) / 2)',
+      transform: 'translateX(-50%)',
+      bottom: 'calc(env(safe-area-inset-bottom, 0px) + 6px)',
+      zIndex: 30,
+      display: 'flex', alignItems: 'center', gap: 5,
+      padding: '4px 10px',
+      background: 'rgba(13,22,27,.78)',
+      border: '1px solid rgba(229,237,233,.16)',
+      borderRadius: 999,
+      pointerEvents: 'none',
+    }}>
+      <img src="/icons/popups/gold.webp" alt="" draggable={false}
+        style={{ width: 16, height: 16, objectFit: 'contain' }} />
+      <span className="bt-coin-glimmer" style={{
+        color: COL.gold, fontSize: 14, fontWeight: 800,
+        fontVariantNumeric: 'tabular-nums', lineHeight: 1,
+      }}>{Number(gold).toLocaleString()}</span>
+    </div>
+  );
+};
+
 const chipStyle = {
   width: 34, height: 34,
   display: 'flex',

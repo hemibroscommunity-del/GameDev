@@ -516,9 +516,18 @@ export function landscapeDashTileSize(vw, vh) {
   var free = (vh || 0) - fixed - 3 * DASH_GAP;
   return Math.min(dashTileSize(Math.min(vw, vh || vw)), Math.max(34, Math.floor(free / 4)));
 }
+/* v2.3.2163 (owner: "you'll still need to fit the sort chips somewhere on
+   the landscape bag view"): the filter chips return as a VERTICAL rail down
+   the bag grid's left side — the one place they cost NO height (v2.3.2161
+   dropped them because their 30px row was exactly what shrank the slots)
+   and almost no width: the 2-wide grid was already narrower than the
+   nav-bound container, so the rail mostly spends dead tray.  Five chips
+   split the grid's own height (~47px each beside 60px slots). */
+export const BAG_RAIL_W = 28;
 export function landscapeBagPanelW(vw, vh) {
   var t = landscapeDashTileSize(vw, vh);
-  return 2 * t + DASH_GAP + 2 * DASH_GAP + 2;      /* 2 tiles + gap + padding + border */
+  /* rail + gap + 2 tiles + gap + padding + border */
+  return BAG_RAIL_W + DASH_GAP + 2 * t + DASH_GAP + 2 * DASH_GAP + 2;
 }
 export function landscapeDashColW(vw, vh) {
   return Math.max(landscapeBagPanelW(vw, vh), landscapeNavGroupW());
@@ -554,17 +563,21 @@ export function bandFootprint(vw, vh, folded, sheetOpen, bottomInset) {
        'panel' — because the dashboard column and a pane column earn
        different widths (see landscapeSheetW). */
     var sheetW = sheetOpen ? landscapeSheetW(vw, vh, sheetOpen === 'dashboard' ? 'dashboard' : 'panel') : 0;
-    /* v2.3.2158 (owner, web app: the nav buttons sat "off the dashboard
-       top"): standalone launches have a real home-indicator inset, the
-       identity row anchors ABOVE it (bottom: inset + cols-h), and a band
-       that ignored the inset was 21px shorter than its own contents -- the
-       buttons poked out the top.  The inset joins the band's height here,
-       so the canvas clears the whole band and the row sits inside it.
-       `bottomInset` is measured by resize() (a CSS env() probe; JS cannot
-       read env directly) and is 0 in a browser tab and in every headless
-       run -- the portrait pins and the landscape numbers are unchanged
-       where there is no inset to count. */
-    return { dashH: identityRowHeight(vw, vh) + (bottomInset || 0), colsH: 0, overlap: DASH_OVERLAP,
+    /* ═══ v2.3.2163: THE BAR IS GONE ═══
+       Owner: "You can actually remove that whole bottom length bar now.
+       Coins can go someplace else (they don't need an entire screen
+       length)."
+       Sideways the band costs NOTHING: the world runs to the screen's
+       bottom edge, the nav buttons are a floating dock in the corner they
+       already held, and gold is a chip at the world's bottom centre
+       (.bt-land-gold — the ONLY count on a landscape screen, so the
+       v2.3.1563 two-counts rule is satisfied, not skirted).  What survives
+       of the height is the home-indicator INSET alone (v2.3.2158's probe):
+       controls must still clear it in a standalone launch, and it is 0 in
+       a browser tab and every headless run.  `overlap` goes to 0 with the
+       band — the 2151 note above ("a footprint with no bottom band earns
+       no overlap") stops being hypothetical here. */
+    return { dashH: (bottomInset || 0), colsH: 0, overlap: 0,
              playW: Math.max(320, vw - sheetW), sheetW: sheetW };
   }
   var dashH = barHeight(vw, vh);

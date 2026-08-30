@@ -54,8 +54,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(1200);
   const l0 = await geom(P);
   console.log('    landscape: ' + JSON.stringify(l0));
-  rec.ok('rotating flips the stamp and the band in one move (48px, canvas 844x356)',
-    l0.orient === 'landscape' && l0.dashH === 48 && l0.canvasW === 844 && l0.canvasH === 356, l0);
+  /* v2.3.2163 (owner: "remove that whole bottom length bar"): sideways
+     there is NO band — --dash-h is just the safe-area inset (0 headless)
+     and the canvas takes the whole 390. */
+  rec.ok('rotating flips the stamp and drops the bar entirely (dash-h 0, canvas 844x390)',
+    l0.orient === 'landscape' && l0.dashH === 0 && l0.canvasW === 844 && l0.canvasH === 390, l0);
 
   /* open the Bag, then rotate back with it open */
   await P.page.evaluate(() => window.__broDashPanelBus.open('bag'));

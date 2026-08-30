@@ -14,7 +14,7 @@ import { registerXpCard, displayXp, xpCounting } from '../../xpLanding.js'; /* v
 /* v2.3.2131: the XP digits left the card face for a popup (owner). */
 import { infoPopupBus } from '../infoPopupBus.js';
 import { skillInfo } from '../infoGlossary.js';
-import { dashTileSize, dashPanelWidths, combatPillWidth, combatPillHeight, landscapeDashTileSize, landscapeDashColW, LAND_PILL_H, BAG_VIEW_COLS, DASH_GAP, DASH_ROWS, BAG_HEADER_H } from '../sheet/sheetGeometry.js';
+import { dashTileSize, dashPanelWidths, combatPillWidth, combatPillHeight, landscapeDashTileSize, landscapeDashColW, LAND_PILL_H, BAG_RAIL_W, BAG_VIEW_COLS, DASH_GAP, DASH_ROWS, BAG_HEADER_H } from '../sheet/sheetGeometry.js';
 import { playVw } from '../playViewport.js';
 import { shopBus } from '../shopBus.js';   /* v2.3.2059 */
 
@@ -641,11 +641,19 @@ export const DashColumns = ({ R, stacked, vwBasis }) => {
           in one panel.  The header is sized from the same COLS/TILE the
           rows use, so each chip lands one slot wide. */}
       <Column label="Bag" stretch>
-        {/* v2.3.2161: no chips sideways — their 30px is exactly what keeps
-            the four slot rows near portrait size once the combat row and
-            the nav dock joined the column (see landscapeDashTileSize).
-            Filters stay one tap away in the Bag pane. */}
-        {!stacked && <BagFilterChips width={gridW} height={BAG_HEADER_H} />}
+        {/* v2.3.2161 dropped the chips sideways for their 30px of height.
+            v2.3.2163 (owner: "you'll still need to fit the sort chips
+            somewhere on the landscape bag view"): they return as a
+            VERTICAL rail down the grid's left side — the one placement
+            that costs no height at all (the slots keep their size) and
+            spends mostly dead tray for width.  display:contents in
+            portrait so that branch's flex layout is byte-identical. */}
+        <div style={stacked
+          ? { display: 'flex', gap: DASH_GAP, alignItems: 'stretch' }
+          : { display: 'contents' }}>
+        {stacked
+          ? <BagFilterChips vertical width={BAG_RAIL_W} height={bagVisRows * t + (bagVisRows - 1) * DASH_GAP} />
+          : <BagFilterChips width={gridW} height={BAG_HEADER_H} />}
         {/* The scroller.  It is the ONLY thing on this row that scrolls —
             the world behind never does (the v2.3.1285 rule), and the panel
             itself stays exactly as tall as the band. */}
@@ -677,6 +685,7 @@ export const DashColumns = ({ R, stacked, vwBasis }) => {
                   }} />
             ))}
           </div>
+        </div>
         </div>
       </Column>
 
