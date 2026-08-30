@@ -64,10 +64,17 @@ const out = await page.evaluate(async ({ wordmark, emblem, frame }) => {
   const emH2 = emH * k, emW2 = emW * k, wmH2 = unitH * k, wmW2 = wmW * k, gap2 = gap * k;
   /* v2.3.2159 (owner: "align left for continue icon and label"): the mark
      starts at the interior's left padding rather than centring. */
+  /* v2.3.2162 (owner: "center just the continue label and leave the
+     continue icon where it is (left aligned)"): the two parts split —
+     the emblem holds the left padding, the wordmark centres in the
+     frame's whole interior on its own.  If a centred label would run
+     under the badge, it yields right to the badge's edge plus the gap
+     (and still fits: k already sized the full row into availW). */
   const x0 = box.x + pad;
   const cy = box.y + box.h / 2;
   ctx.drawImage(em, x0, cy - emH2 / 2, emW2, emH2);
-  ctx.drawImage(wm, x0 + emW2 + gap2, cy - wmH2 / 2, wmW2, wmH2);
+  const wmX = Math.max(box.x + (box.w - wmW2) / 2, x0 + emW2 + gap2);
+  ctx.drawImage(wm, wmX, cy - wmH2 / 2, wmW2, wmH2);
   return { data: c.toDataURL('image/png'), W: fr.width, H: fr.height };
 }, { wordmark, emblem, frame });
 await browser.close();

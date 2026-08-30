@@ -2487,7 +2487,7 @@ body:has(.bt-inspect) .bt-kb-chip{display:none}
 /* v2.3.2157 (owner: "Put it on same button frame"): the mark sets into the
    same framed plate Create wears — see compose-continue-plate.mjs.  Aspect
    returns to the frame's own, so the two plates match exactly. */
-.bt-login-btn--key{background-image:url('/ui/welcome/title/btn-continue.png?v=2.3.2159');aspect-ratio:799/212}
+.bt-login-btn--key{background-image:url('/ui/welcome/title/btn-continue.png?v=2.3.2162');aspect-ratio:799/212} /* v2.3.2162: label centred, emblem left (owner) */
 .bt-login-btn--new{background-image:url('/ui/welcome/title/btn-create.png');aspect-ratio:799/212}
 .bt-login-btn:active{transform:translateY(1px) scale(.995)}
 .bt-login-btn:disabled{opacity:.55;cursor:default;animation:none}
