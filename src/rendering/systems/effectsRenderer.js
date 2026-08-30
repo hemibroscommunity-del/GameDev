@@ -4897,6 +4897,10 @@ export class EffectsRenderer {
       if (ent.chop) ent.chop.visible = false;
       if (ent.cook) ent.cook.visible = false;
       if (ent.fire) ent.fire.visible = false;
+      /* v2.3.2146: the gear rides the same pool entry, so it hides with it --
+         otherwise a peer who stops making fire leaves their shirt standing
+         there. */
+      if (ent.gear) { ent.gear.legs.visible = false; ent.gear.shirt.visible = false; ent.gear.chest.visible = false; }
       /* v2.3.1574: the head traits ride the same pool entry, so they have to
          drop with the figure — otherwise a peer's hat hangs in the air after
          they stop cooking, or follows them into another zone. */
@@ -5007,6 +5011,67 @@ export class EffectsRenderer {
       sp.x = ox;
       sp.y = oy + 6 * pscale;                 /* foot offset shrinks with the figure */
       sp.visible = true;
+      /* ═══ v2.3.2146: AND THEIR CLOTHES ═══
+         Owner: "the remote player fire starting needs to be fixed."
+
+         Photographed side by side (tools/qa/mp/mp-firepeer.mjs): the watcher
+         stands in a white t-shirt and the peer lighting the fire is BARE
+         CHESTED. Not a tint or a z-order slip -- this path has never drawn
+         gear at all, which the comment above the spec table has said in as
+         many words since v2.3.1713. Lighting a fire undressed you, to
+         everybody except yourself.
+
+         Everything needed already exists and none of it is new wire: the
+         'fire' gear strips are registered at load (_gearStripFrame calls in
+         the preload), FIRE_GEAR_REG carries the per-frame nudge the supplied
+         art needs, _placeSwingShirt is the shared shirt rule (it hides the
+         shirt under a chest plate), and a peer's equip/shirt/shirtColor are
+         already relayed and already used by the remote SWING stand-in
+         (v2.3.1050/1764). This is that same block, on the pose that was
+         missed.
+
+         FIRE ONLY, deliberately. The offsets in FIRE_GEAR_REG were measured
+         against this strip (tools/measure_fire_gear_reg.mjs) and mean nothing
+         on the chop and cook cells, and no gear strips are cut for those
+         poses -- so a generic version here would either draw nothing or draw
+         it in the wrong place. Those two stay bare until their art exists,
+         which is the honest state rather than a guess. */
+      if (code === 'fire') {
+        if (!ent.gear) {
+          /* Created AFTER the body sprite and BEFORE the traits below, so the
+             layer order falls out of creation order: body, legs, shirt, plate,
+             then head traits on top. */
+          const mkg = () => { const g = new Sprite(); g.visible = false; this.gestureLayer.addChild(g); return g; };
+          ent.gear = { legs: mkg(), shirt: mkg(), chest: mkg() };
+        }
+        const _eq = o.equip || {};
+        const _placeFireGear = (slot) => (spr, tex) => {
+          if (!spr) return;
+          if (!tex) { spr.visible = false; return; }
+          const reg = FIRE_GEAR_REG[slot];
+          const off = (reg && reg.off && reg.off[_fiClamped]) || [0, 0];
+          const k = (reg && reg.scale) || 1;
+          spr.anchor.set(0.5, 1);
+          spr.texture = tex;
+          spr.scale.set(sp.scale.x * k, sp.scale.y * k);
+          spr.x = sp.x + off[0] * sp.scale.x;
+          spr.y = sp.y + off[1] * sp.scale.y;
+          spr.visible = true;
+        };
+        /* Legs first so the shirt hangs in front of the greaves, then the
+           shirt, then the plate -- the local path's order, for its reasons. */
+        _placeFireGear('legs')(ent.gear.legs,
+          this._gearStripFrame('legs', _eq.legs, 'fire', 'south', FIRE_FW, _fiClamped));
+        const _oShirt = (_eq.shirt !== undefined) ? _eq.shirt
+          : ((o.shirt && o.shirt !== 'none') ? 'tshirt' : 'none');
+        this._placeSwingShirt(ent.gear.shirt, _placeFireGear('shirt'), _oShirt, _eq.chest,
+          'fire', 'south', FIRE_FW, _fiClamped, o.shirtColor, o.shirt || 'tshirt');
+        _placeFireGear('chest')(ent.gear.chest,
+          this._gearStripFrame('chest', _eq.chest, 'fire', 'south', FIRE_FW, _fiClamped));
+        /* Their metals, off the already-relayed equip ids (v2.3.1764). */
+        if (ent.gear.legs) ent.gear.legs.tint = gearTint(_eq.legs);
+        if (ent.gear.chest) ent.gear.chest.tint = gearTint(_eq.chest);
+      }
       /* v2.3.1574 (owner: "doesn't reflect any trait items worn by them").
          The LOCAL figures composite the player's hair/beard/hat onto the
          stand-in's crown (_updateFiremaking -> _placeSkillTraitsOn); the
