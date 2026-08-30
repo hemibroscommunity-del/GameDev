@@ -35,7 +35,28 @@ export const classify = (key) => {
   const k = (key || '').toLowerCase();
   if (/sword|bow|staff|spear|axe|dagger|hammer|wand|gauntlet/.test(k)) return 'weapon';
   if (/helm|cuirass|armor|shield|robe|cape|boots|gloves|mail|plate/.test(k)) return 'armor';
-  if (/potion|elixir|tonic|salve|brew|tincture/.test(k)) return 'potion';
+  /* ═══ v2.3.2145: THE BOTTLE YOU JUST BOUGHT IS UNDER *POTIONS* ═══
+     Owner, a second time: "fix the potion landing in the bag after buying it.
+     That hasn't been fixed yet."
+
+     It DOES land in the bag -- v2.3.2127 is on main and mp-potions taps the
+     real Buy button and finds the key in rpg.inventory. What it does not do
+     is land where you go looking for it. Every filter chip reads `cat`, `cat`
+     is this function, and this function decided what a potion was by matching
+     ENGLISH WORDS: potion, elixir, tonic, salve, brew, tincture. The shop
+     sells a swiftDraught, a manaShard, staminaSalts and a whetstone. Not one
+     of those words appears in any of those keys, so all four filed themselves
+     under CRAFTING, and tapping Potions showed an empty bag right after
+     buying a potion.
+
+     The word-list stays for anything the game mints later that reads like a
+     potion, but the shop's own consumables are matched by KEY first, off the
+     same POTION_THUMBS table that already gives them their bottle art and
+     already tells the popup which ones get a Drink button. That table has to
+     list exactly these keys anyway, so it cannot drift: an item with a bottle
+     picture and a Drink button now necessarily sorts as a potion too. */
+  if (isPotionKey(k)) return 'potion';
+  if (/potion|elixir|tonic|salve|brew|tincture|draught/.test(k)) return 'potion';
   return 'crafting';
 };
 

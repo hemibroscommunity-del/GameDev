@@ -143,6 +143,7 @@ const SCENARIOS = {
   statpeek: () => import('./mp-statpeek.mjs'), /* v2.3.1766: the allocation tooltip tells the truth */
   spawnfx: () => import('./mp-spawnfx.mjs'), /* v2.3.1765: the respawn silhouette */
   presence: () => import('./mp-presence.mjs'),
+  tradetap: () => import('./mp-tradetap.mjs'), /* v2.3.2145: can you tap the trade window with chat open? */
   trade: () => import('./mp-trade.mjs'),
   tradeatk: () => import('./mp-tradeatk.mjs'), /* v2.3.1971: the trade window attacked — prototype-key offers, coin/item conservation, replayed confirms, a tab that dies mid-handshake */
   duel: () => import('./mp-duel.mjs'),

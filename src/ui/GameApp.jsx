@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { NotificationMute } from './mobile/NotificationMute.jsx'; /* v2.3.2145 */
 import { BroTown } from './BroTown.jsx';
 import { DebugOverlay } from '../debug/DebugOverlay.jsx';
 import { wheelBus } from './mobile/wheelBus.js';
@@ -641,6 +642,8 @@ export const GameApp = () => {
           state and the same bus -- and, like it, has no path to BroTown's
           React state. */}
       <WorldChatFeed />
+      {/* v2.3.2145: the silence control, in the corner it silences. */}
+      <NotificationMute />
       {/* v2.3.2050: Shopkeeper Bro's trade window. Mounted here rather than in
           BroTown's tree for the same reason the chat surfaces are: it is driven
           by a bus that a WebSocket handler and the game loop both write to, and

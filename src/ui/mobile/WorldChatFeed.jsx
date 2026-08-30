@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { chromeSilenced, onGuardChange } from './modalGuardBus.js'; /* v2.3.2145 */
 import { chatLogBus } from './chatLogBus.js';
 import { uiBusyBus } from './uiBusyBus.js';   /* v2.3.2085 */
 import { capeStatusBus } from './capeStatusBus.js'; /* v2.3.2118 */
@@ -100,6 +101,9 @@ export function WorldChatFeed() {
   const seenRef = useRef(0);
 
   useEffect(() => chatLogBus.subscribe(() => setV((n) => n + 1)), []);
+  /* v2.3.2145: and repaint when the silence control or a trade guard flips,
+     or the feed keeps talking after the player has asked it not to. */
+  useEffect(() => onGuardChange(() => setV((n) => n + 1)), []);
 
   /* v2.3.2085: "is a panel open on top of me?"  Initialised from the bus
      rather than to false, because this component can mount after a panel is
@@ -183,12 +187,21 @@ export function WorldChatFeed() {
         left: 8,
         /* Clears the dashboard band. See the note above: the band height is
            the CSS var, and 8px of air keeps the panel off its edge. */
-        bottom: 'calc(var(--dash-h, 135px) + 8px)',
+        /* v2.3.2145: +30px clears the silence toggle, which takes this
+           corner's bottom slot (NotificationMute) so the control sits
+           beside what it controls. */
+        bottom: 'calc(var(--dash-h, 135px) + 38px)',
         /* Narrow on purpose: this is the LOWER LEFT corner, not a column.
            Capped in vw so it cannot swallow a landscape screen. */
         width: 'min(58vw, 260px)',
+        /* v2.3.2145: already under .bt-inspect (32) and already unable to eat a
+           tap, so the trade guard costs it nothing -- but it is the surface the
+           owner NAMED ("chat, etc"), and it is what the silence control has to
+           actually silence. One flag answers both. */
         zIndex: 25,
         pointerEvents: 'none',
+        opacity: chromeSilenced() ? 0 : 1,
+        transition: 'opacity 140ms ease',
         fontFamily: 'Source Sans 3, sans-serif',
       }}
     >

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { guardPush } from '../mobile/modalGuardBus.js'; /* v2.3.2145 */
 /* v2.3.1235: batch-4 state-correction — RARITY_TIERS for staged-weapon
    row rarity (existing data; plain inventory items carry no rarity). */
 import { RARITY_TIERS } from '@/data/index.js';
@@ -215,6 +216,13 @@ function OfferRows({ offer, weapons, empty, onRemoveItem, onRemoveWeapon, goldSu
 }
 
 export function TradeWindowPanel(props) {
+  /* v2.3.2145: while this panel is up the transient world chrome stands down
+     -- see modalGuardBus. The owner could not accept a trade at all: the chat
+     composer's dismiss layer is a full-play-area tap catcher forty z-layers
+     above this panel, so every tap aimed at Accept closed the chat box
+     instead. */
+  React.useEffect(() => guardPush(), []);
+
   const { rpgState, stateRef, trade2, setTrade2 } = props;
   const S = stateRef.current;
   const myId = S.myId;

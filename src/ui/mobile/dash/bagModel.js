@@ -158,4 +158,11 @@ if (typeof window !== 'undefined') {
   window.__btBagKeys = (rpg) => getBagEntries(rpg).map((e) => (
     e.kind === 'item' ? e.key : `${e.kind}:${e.index}`
   ));
+  /* v2.3.2145: the same list with the FILTER CHIP each entry sorts under.
+     Keys alone could not have caught the potion bug -- the bottle was in the
+     bag the whole time, under the wrong chip -- so a scenario needs to be able
+     to ask which chip, not just whether it is there at all. */
+  window.__btBagCats = (rpg) => getBagEntries(rpg)
+    .filter((e) => e.kind === 'item')
+    .map((e) => ({ key: e.key, cat: e.cat }));
 }
