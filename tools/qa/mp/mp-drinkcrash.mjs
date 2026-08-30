@@ -13,7 +13,32 @@
  * Order matters here. The liveness checks come AFTER the drink and are
  * compared against a reading taken BEFORE it, so a screen that was already
  * broken for some unrelated reason fails the control instead of being
- * reported as this bug. */
+ * reported as this bug.
+ *
+ * ═══ v2.3.2152: AND IT IS NOT A THROW AT ALL ═══
+ * Owner, asked what the crash looks like: "More than one type of potion, from
+ * bag menu (tap item, drink) ... immediate ejection to a different tab I had
+ * open. Full crash no warning."
+ *
+ * No dialog, no error, dropped onto another open tab is iOS Safari DISCARDING
+ * the tab -- the renderer process was killed, which is a memory verdict and
+ * not an exception. So the pageerror watch below was looking for the wrong
+ * thing, and it stays only as a guard; it is not the test for this report.
+ *
+ * Measured while chasing it, and recorded here so nobody re-runs it:
+ *   - the drink allocates NOTHING on the JS side. Heap, total canvas bytes and
+ *     the baked body-sheet cache are flat across all five drinkables.
+ *   - the bag's thumbnails are NOT replaced when the inventory changes, so
+ *     there is no burst of image decodes behind it (the hypothesis that fit
+ *     "from the bag menu, more than one potion" best). Asserted below, because
+ *     a future render change could quietly make it true.
+ *   - heap readings around the drink swing 22-44MB in BOTH directions run to
+ *     run. That is GC, not signal; an earlier reading of it as "a full bag
+ *     grows" was wrong.
+ * What CANNOT be measured here is the thing most likely left: GPU and image
+ * memory. This harness launches with --disable-gpu on a Linux box, so an iOS
+ * texture budget is not modelled at all. That is a limit of the harness, not a
+ * clean bill of health. */
 import * as H from './harness.mjs';
 
 const alive = (P) => P.page.evaluate(() => ({
@@ -44,31 +69,45 @@ export async function run({ browser, wsPort, webPort, rec }) {
   for (const key of BOTTLES) {
     await H.grant(wsPort, id, 'item', { invKey: key, count: 2 });
   }
-  await P.page.waitForTimeout(1400);
+  /* v2.3.2152: a bag the size a real player carries, not five bottles. The
+     owner drinks from a full bag, and the grid's cost is per TILE -- a
+     five-item bag would have hidden anything that scales with the bag. */
+  for (const k of ['fish_minnow', 'fish_trout', 'fish_bass', 'fish_carp',
+    'cooked_fish_minnow', 'cooked_fish_trout', 'cooked_fish_bass',
+    'wood_oak', 'wood_pine', 'wood_birch', 'wood_willow',
+    'shard_meadow', 'shard_ember', 'shard_frost', 'shard_dune',
+    'ore_copper', 'ore_iron', 'ore_silver', 'ore_gold',
+    'herb_firebloom', 'herb_frostleaf', 'herb_sunroot', 'burnt_dust']) {
+    await H.grant(wsPort, id, 'item', { invKey: k, count: 7 });
+  }
+  await P.page.waitForTimeout(2200);
 
   const held = (k) => P.page.evaluate((key) => {
     const S = window._gameState && window._gameState.current;
     return ((S && S.rpg && S.rpg.inventory) || {})[key] || 0;
   }, k);
 
-  /* THE POTIONS CHIP IS ON, and that is not decoration. v2.3.2145 is what
-     put these five under it, so the owner's route to a bottle now goes
-     through this filter -- and draining the last one empties a FILTERED
-     list, which is a different render branch from emptying the bag. */
-  await P.page.evaluate(() => { try { window.__broDashPanelBus.open('bag'); } catch (e) {} });
-  await P.page.waitForTimeout(700);
-  /* pointerUP, not click: the chip is a role="button" div wired to
-     onPointerUp, and .click() on a div does nothing while looking like it
-     worked (the same trap the Drink lookup avoids by asking for a <button>). */
-  const chip = await P.page.$('[aria-label="Potion"][role="button"]');
-  if (chip) { await chip.dispatchEvent('pointerup'); await P.page.waitForTimeout(500); }
-  rec.ok('the Potions chip actually selected the potion filter',
-    await P.page.evaluate(() => {
-      const c = document.querySelector('[aria-label="Potion"][role="button"]');
-      return !!c && c.getAttribute('aria-pressed') === 'true';
-    }), null);
-  rec.ok('the Potions chip is reachable in the bag', !!chip, null);
+  /* ═══ v2.3.2152: THE FIRST BOTTLE GOES DOWN WITH THE WHOLE BAG ON SCREEN ═══
+     The Potions chip used to be selected for the ENTIRE run, and that quietly
+     shrank the grid under test to five tiles -- the filler granted above never
+     reached the screen at all, so anything that scales with BAG SIZE could not
+     have shown up. Found by the control run for the thumbnail probe below,
+     which reported 5 tiles where it should have reported ~28.
 
+     So the first bottle drinks under 'All', with the full grid rendered, and
+     the chip goes on afterwards for the rest -- which still covers what it was
+     added for: draining the last of a stack out of a FILTERED list is a
+     different render branch from emptying the bag. */
+  await P.page.evaluate(() => { try { window.__broDashPanelBus.open('bag'); } catch (e) {} });
+  await P.page.waitForTimeout(900);
+  const tileCount = await P.page.evaluate(() =>
+    document.querySelectorAll('[data-inv-key]').length);
+  rec.ok(`the whole bag is on screen for the first drink (${tileCount} tiles)`,
+    tileCount >= 20, { tileCount });
+  await P.page.evaluate(() => { try { window.__broDashPanelBus.clear(); } catch (e) {} });
+  await P.page.waitForTimeout(400);
+
+  let chipOn = false;
   for (const key of BOTTLES) {
     rec.ok(`${key} is in the bag to drink`, (await held(key)) >= 1, { key, n: await held(key) });
 
@@ -83,8 +122,41 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const btn = await P.page.$('button:has-text("Drink")');
     rec.ok(`${key}'s popup offers Drink`, !!btn, { key });
 
+    /* v2.3.2152: stamp every bag thumbnail, so the drink can be asked whether
+       it REPLACED them. Counting images cannot answer that -- the count is
+       identical either way -- and a replaced <img> is a fresh decode on the
+       device, one per tile, which is the shape of thing that loses an iOS tab.
+       The stamp survives a re-render and dies with the node. */
+    const before2 = await P.page.evaluate(() => {
+      const imgs = [...document.querySelectorAll('[data-inv-key] img')];
+      for (const i of imgs) i.__btStamp = 1;
+      const cvs = [...document.querySelectorAll('canvas')];
+      let px = 0; for (const c of cvs) px += (c.width || 0) * (c.height || 0);
+      let sheets = -1;
+      try { sheets = window.__btBodySheetKeys ? window.__btBodySheetKeys().length : -1; } catch (e) {}
+      return { imgs: imgs.length, canvasPx: px, sheets };
+    });
+
     const errsBefore = P.logs.filter((l) => l.startsWith('pageerror')).length;
     if (btn) { await btn.click(); await P.page.waitForTimeout(1600); }
+
+    const after2 = await P.page.evaluate(() => {
+      const imgs = [...document.querySelectorAll('[data-inv-key] img')];
+      let kept = 0; for (const i of imgs) if (i.__btStamp) kept++;
+      const cvs = [...document.querySelectorAll('canvas')];
+      let px = 0; for (const c of cvs) px += (c.width || 0) * (c.height || 0);
+      let sheets = -1;
+      try { sheets = window.__btBodySheetKeys ? window.__btBodySheetKeys().length : -1; } catch (e) {}
+      return { imgs: imgs.length, kept, canvasPx: px, sheets };
+    });
+    /* The bottle's own tile legitimately goes when the stack empties, so the
+       property is "all the OTHERS survived", not "every one did". */
+    rec.ok(`drinking ${key} did not re-decode the bag `
+         + `(${after2.kept}/${after2.imgs} thumbnails are the same nodes)`,
+      after2.kept >= after2.imgs - 1, { before: before2, after: after2 });
+    rec.ok(`drinking ${key} allocated no new canvas or baked sheet`,
+      after2.canvasPx <= before2.canvasPx
+        && after2.sheets <= before2.sheets, { before: before2, after: after2 });
 
     const after = await alive(P);
     rec.ok(`the game is still mounted after drinking ${key}`,
@@ -109,6 +181,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
       try { window.__broDashPanelBus.clear(); } catch (e) {}
     });
     await P.page.waitForTimeout(500);
+
+    if (!chipOn) {
+      /* pointerUP, not click: the chip is a role="button" div wired to
+         onPointerUp, and .click() on a div does nothing while looking like it
+         worked (the same trap the Drink lookup avoids by asking for a
+         <button>). */
+      await P.page.evaluate(() => { try { window.__broDashPanelBus.open('bag'); } catch (e) {} });
+      await P.page.waitForTimeout(700);
+      const chip = await P.page.$('[aria-label="Potion"][role="button"]');
+      if (chip) { await chip.dispatchEvent('pointerup'); await P.page.waitForTimeout(500); }
+      chipOn = await P.page.evaluate(() => {
+        const c = document.querySelector('[aria-label="Potion"][role="button"]');
+        return !!c && c.getAttribute('aria-pressed') === 'true';
+      });
+      rec.ok('the Potions chip actually selected the potion filter', chipOn, null);
+      await P.page.evaluate(() => { try { window.__broDashPanelBus.clear(); } catch (e) {} });
+      await P.page.waitForTimeout(400);
+    }
   }
 
   /* A React tree can survive while the GAME does not -- the loop is a
