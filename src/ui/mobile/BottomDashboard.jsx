@@ -19,7 +19,7 @@ import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rende
 import { getEyeColor, onEyeColorChange } from '../../rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
 import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
-import { barHeight, expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.1325 slot-derived bar */
+import { barHeight, expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP, bandFootprint } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.1325 slot-derived bar; v2.3.2152 the sideways band */
 import { DashColumns } from './dash/DashColumns.jsx';           /* v2.3.1636 */
 import { NavRail } from './dash/NavRail.jsx';                   /* v2.3.1637 */
 import { portraitStore } from './sheet/portraitStore.js';          /* v2.3.1294 */
@@ -56,7 +56,7 @@ import { QuestsPanel }        from './dash/QuestsPanel.jsx';
 import { QuestDetailPanel }   from './dash/QuestDetailPanel.jsx'; /* v2.3.1298 */
 import { T2Panel, requestT2Category } from './dash/T2Panel.jsx';
 import { SpendPointConfirm }   from './dash/SpendPointConfirm.jsx';
-import { playVw, playVh } from './playViewport.js';
+import { playVw, playVh, playIsLandscape } from './playViewport.js'; /* v2.3.2152: the band has a sideways shape */
 import { dashMinBus } from './dashMinBus.js'; /* v2.3.2119: fold the band to the identity row */
 
 // Bottom-of-screen dashboard.  Replaces the radial UtilityWheel.
@@ -544,6 +544,24 @@ export const BottomDashboard = () => {
      still here.  Initialised from the bus — the preference is persisted and
      this component remounts on reconnect (the v2.3.2085 lesson). */
   const [dashMin, setDashMin] = useState(() => dashMinBus.min);
+  /* ═══ v2.3.2152: WHICH SHAPE IS THE BAND? ═══
+     Owner: "Landscape would be an optional view."  Self-subscribed from
+     playIsLandscape() exactly the way ElementBurstButton and SpecialChargePie
+     already do -- the shell's orientation, not the window's (a desktop
+     monitor is landscape while the aspect-locked play shell is portrait,
+     playViewport's two-widths law).  Sideways, the band is the identity row
+     alone and an open destination renders as a SIDE sheet beside the world
+     rather than the band growing. */
+  const [land, setLand] = useState(() => playIsLandscape());
+  useEffect(() => {
+    const onR = () => setLand(playIsLandscape());
+    window.addEventListener('resize', onR);
+    window.addEventListener('orientationchange', onR);
+    return () => {
+      window.removeEventListener('resize', onR);
+      window.removeEventListener('orientationchange', onR);
+    };
+  }, []);
   useEffect(() => dashMinBus.subscribe(setDashMin), []);
   /* v2.3.1025: the BUILD/stats column rect -- the loadout equip picker docks
      over it (to the right of the loadout cells) so switching categories never
@@ -622,8 +640,15 @@ export const BottomDashboard = () => {
       const mode = dashboardPanelBus.state.mode;
       document.documentElement.dataset.btSheet = mode;
       /* v2.3.1311e: drill panels (stack depth > 1) use the taller sheet. */
-      const px = mode === 'expanded' ? (dashboardPanelBus.state.stack.length > 1 ? snapPxRef.current.drill : snapPxRef.current.expanded)
-        : barHeight(playVw(), playVh());
+      /* v2.3.2152: sideways there is no taller sheet -- the destination
+         opens BESIDE the world, so everything docked above the band
+         (joystick zones, the legacy toast) keys off the identity row's own
+         height in every mode.  bandFootprint, not a literal, so this and
+         the canvas can never disagree about what the band costs. */
+      const px = (playVw() > playVh())
+        ? bandFootprint(playVw(), playVh(), dashMinBus.min, false).dashH
+        : (mode === 'expanded' ? (dashboardPanelBus.state.stack.length > 1 ? snapPxRef.current.drill : snapPxRef.current.expanded)
+          : barHeight(playVw(), playVh()));
       document.documentElement.style.setProperty('--sheet-h', px + 'px');
     };
     stamp();
@@ -769,6 +794,19 @@ export const BottomDashboard = () => {
   useEffect(() => {
     if (mode === 'expanded' && dashMinBus.min) dashMinBus.set(false);
   }, [mode]);
+  /* ═══ v2.3.2152: ROTATION CLOSES AN OPEN DESTINATION ═══
+     The portrait bottom sheet and the landscape side sheet share no
+     geometry, so there is no defined mid-state to animate between -- a
+     panel left open across the flip would be laid out for a surface that
+     no longer exists.  toBar() keeps the root, so the next tap resumes the
+     same destination; the world is what greets the rotation. */
+  const _landRef = useRef(land);
+  useEffect(() => {
+    if (_landRef.current !== land) {
+      _landRef.current = land;
+      if (dashboardPanelBus.state.mode === 'expanded') dashboardPanelBus.toBar();
+    }
+  }, [land]);
 
   /* v2.3.1642: litId and the badge counts were computed inside the
      retired ribbon's render IIFE.  The nav group needs them one level up
@@ -831,6 +869,65 @@ export const BottomDashboard = () => {
       <SpendPointConfirm />
       <Tooltip tip={tooltip} onClose={() => setTooltip('')} />
 
+      {/* ═══ v2.3.2152: THE LANDSCAPE SIDE SHEET ═══
+          Owner: "No I don't want an overlay over the world" + "You should be
+          able to play the game with the menus open.  That's the idea."
+
+          Sideways, an open destination renders HERE -- a fixed column on the
+          right, from the top of the screen down to the band -- instead of
+          the band growing.  The world does not sit under it: resize()
+          narrows the canvas (and game.css narrows .brotown-wrap) to
+          --play-w, so this sheet occupies ground the world has already
+          yielded.  Side by side, never on top.
+
+          A SIBLING of the band, outside .brotown-wrap -- placement, not
+          z-index, is what keeps it out of the wrap's stacking context
+          (TRAPS §20: no number crosses that boundary).  The band below it
+          never moves and never grows (the v2.3.1637b one-position law), so
+          the nav that opened this sheet is the nav that closes it, in the
+          same place.
+
+          Deliberately NOT in _anyPanelOpen/uiBusyBus: this is the dashboard
+          sheet, which has never counted as "busy" -- that gate is for the
+          legacy full-screen panels.  The joysticks stay live on the world
+          beside it, which is the entire point.
+
+          Opaque world-chrome surface, no backdrop-filter (iOS Safari +
+          WebGL, LANTERN-SLATE-SPEC), radius on the one corner that meets
+          the world. */}
+      {land && active ? (
+        <div
+          className="bt-land-sheet"
+          onPointerDown={(e) => e.stopPropagation()}
+          style={{
+            position: 'fixed',
+            top: 0,
+            right: 0,
+            bottom: 'calc(var(--dash-h, 48px) + env(safe-area-inset-bottom, 0px))',
+            width: 'var(--sheet-w, 400px)',
+            zIndex: 30,
+            boxSizing: 'border-box',
+            background: 'rgba(13,22,27,.96)',
+            borderLeft: '1px solid rgba(229,237,233,.20)',
+            borderBottomLeftRadius: 14,
+            color: COL.text,
+            fontFamily: 'Source Sans 3, sans-serif',
+            display: 'flex',
+            flexDirection: 'column',
+            touchAction: 'none',
+            paddingTop: 'env(safe-area-inset-top, 0px)',
+          }}
+        >
+          {/* The same panel the portrait sheet would host, in a body with no
+              toolbar reservation -- the nav lives in the band below, which
+              persists (the v2.3.1642 rule: navigation cannot hide with the
+              thing it escapes). */}
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: '8px 8px 6px' }}>
+            {Active && <Active />}
+          </div>
+        </div>
+      ) : null}
+
       {/* v2.3.1294 (ChatGPT round-4, owner-approved): the persistent
           top-right identity card is RETIRED — name/level/XP/gold are
           rarely needed mid-play, and the card cost world space in the
@@ -851,7 +948,11 @@ export const BottomDashboard = () => {
            default; canvas/zones/HUD all key off it) and expanded
            (detail).  Every destination uses the same snaps.  220ms
            token; reduced-motion drops the transition. */
-        height: mode === 'expanded' ? (stack.length > 1 ? snapPx.drill : snapPx.expanded) + 'px' /* v2.3.1311e: drill = taller */
+        /* v2.3.2152: sideways the band NEVER grows -- expanded content
+           lives in the side sheet, and a band that grew would cover the
+           world the owner asked to keep playing in. */
+        height: land ? 'var(--dash-h)'
+          : mode === 'expanded' ? (stack.length > 1 ? snapPx.drill : snapPx.expanded) + 'px' /* v2.3.1311e: drill = taller */
           : 'var(--dash-h)',
         transition: sheetTransition(),
         /* v2.3.1240: surface, rounded top edge, and crisp contact shadow
@@ -877,7 +978,7 @@ export const BottomDashboard = () => {
           swipes are retired (owner: too ambiguous over interactive
           menus; a handle with no gesture behind it is a lie).  Resizing
           lives on the toolbar: tap cycle + icon swipes + chevrons. */}
-      {active ? (
+      {active && !land ? (
         <>
           {/* v2.3.1350 (owner: "remove the headers — it's redundant"):
               ROOT panels have no header strip — the lit toolbar button
@@ -1125,7 +1226,7 @@ export const BottomDashboard = () => {
           unmounts.  Hidden while a panel is expanded — the open
           destination already shows all of this at full size, and the
           panel keeps its height. */}
-      {mode !== 'expanded' && !dashMin && (
+      {mode !== 'expanded' && !dashMin && !land && (
         <div style={{
           position: 'absolute',
           left: 0, right: 0,

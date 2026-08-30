@@ -2961,7 +2961,12 @@ export var BroTown = function BroTown(_ref0) {
          become a third input to it (owner: "Landscape would be an optional
          view") and two hand-kept copies of a rule that must match is the
          bug worldViewport.js's header narrates.  Same numbers, same flag. */
-      var _fp = bandFootprint(vw, vhFull, dashMinBus.min);
+      /* v2.3.2152: the open sheet is geometry now.  In portrait this input
+         changes nothing (bandFootprint ignores it there -- the BAR-height
+         invariant); in landscape an expanded destination narrows the world
+         to playW and the sheet takes the difference. */
+      var _sheetOpen = dashboardPanelBus.state.mode === 'expanded';
+      var _fp = bandFootprint(vw, vhFull, dashMinBus.min, _sheetOpen);
       var bar = _fp.dashH;
       var colsH = _fp.colsH;
       /* v2.3.2151: the shell's orientation, stamped where every other
@@ -2993,16 +2998,27 @@ export var BroTown = function BroTown(_ref0) {
          v2.3.1636: --quick-h -> --cols-h with the three-column row. */
       document.documentElement.style.setProperty('--cols-h', colsH + 'px');
       document.documentElement.style.setProperty('--dash-h', bar + 'px');
+      /* v2.3.2152: the play area's width and the sheet's.  Portrait stamps
+         playW == vw and sheetW == 0, so nothing there can read a landscape
+         number.  In landscape, game.css narrows .brotown-wrap to --play-w
+         (contain:paint re-anchors every fixed HUD overlay to it -- the
+         desktop shell's own v2.3.1768 mechanic, one level down) and the
+         side sheet takes --sheet-w. */
+      document.documentElement.style.setProperty('--play-w', _fp.playW + 'px');
+      document.documentElement.style.setProperty('--sheet-w', _fp.sheetW + 'px');
       var vh = Math.max(120, Math.round(vhFull - bar) + _fp.overlap); /* v2.3.1290: bar is the resting band; v2.3.2151: overlap rides the footprint (a bandless layout earns none) */
       /* v2.3.1283: short-circuit when nothing changed — the
          ResizeObserver below re-fires during layout churn (e.g. the
          sheet's height animation), and assigning canvas.width even to
          the SAME value reallocates the WebGL drawing buffer. */
-      var tw = Math.round(vw * dpr), th = Math.round(vh * dpr);
+      /* v2.3.2152: the canvas is the PLAY width, not the viewport width --
+         identical in portrait (playW == vw always), narrower in landscape
+         while a sheet is open. */
+      var tw = Math.round(_fp.playW * dpr), th = Math.round(vh * dpr);
       if (canvas.width === tw && canvas.height === th) return;
       canvas.width = tw;
       canvas.height = th;
-      canvas.style.width = vw + 'px';
+      canvas.style.width = _fp.playW + 'px';
       canvas.style.height = vh + 'px';
     }
     /* Pre-size the canvas BEFORE Pixi init so pixiApp's createPixiApp
@@ -3077,9 +3093,16 @@ export var BroTown = function BroTown(_ref0) {
          resize()'s arithmetic, and the day the two read different formulas
          (a 243-vs-48 landscape disagreement is 10x the 8% tolerance) it
          "heals" the canvas against resize() twice a second forever. */
-      var _wdFp = bandFootprint(_wdVw, fullH, dashMinBus.min);
+      var _wdFp = bandFootprint(_wdVw, fullH, dashMinBus.min,
+        dashboardPanelBus.state.mode === 'expanded'); /* v2.3.2152: same input as resize() */
       var wantH = Math.max(120, fullH - _wdFp.dashH + _wdFp.overlap);
-      if (Math.abs(haveH - wantH) <= wantH * 0.08) return;
+      /* v2.3.2152: width joins the check -- it varies with the landscape
+         sheet now, and a missed open/close resize would otherwise leave a
+         black stripe nothing heals.  Same tolerance, same single warning. */
+      var haveW = canvas.getBoundingClientRect().width;
+      var wantW = _wdFp.playW;
+      if (Math.abs(haveH - wantH) <= wantH * 0.08
+        && Math.abs(haveW - wantW) <= wantW * 0.08) return;
       /* Say it once, loudly, with the numbers: if this ever fires in the wild
          the log is the whole diagnosis, and silence here would hide the very
          thing three fixes have failed to see. */

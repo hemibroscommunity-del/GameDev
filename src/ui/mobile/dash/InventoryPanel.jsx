@@ -13,7 +13,7 @@ import { bagFilterBus, CATEGORIES } from './bagFilterBus.js'; /* v2.3.1649 */
 import { BagFilterChips } from './BagFilterChips.jsx'; /* v2.3.1652 */
 import { unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipGearDirect } from './equipActions.js'; /* v2.3.1330 */
 import { getEquip } from '../../../rendering/gearCatalog.js';
-import { playVw } from '../playViewport.js';
+import { playVw, panelVw } from '../playViewport.js';
 
 // Category filter chips.  "All" comes first so the player always opens
 // the bag with everything visible.  v2.3.1231: UI Bible icons replace
@@ -572,7 +572,7 @@ export const InventoryPanel = () => {
      size, and not even square.  Fixed columns of that shared size with
      the shared gap, and as many as fit — nine at 390w, so the bag also
      goes from 12 visible slots to 18. */
-  const vwNow = playVw();   /* v2.3.1715: the shell, not the window */
+  const vwNow = panelVw();  /* v2.3.1715: the shell, not the window; v2.3.2152: the SHEET, when the landscape side sheet is the container */
   const TILE = dashTileSize(vwNow);
   /* panel padding 6+6 and tray padding 3+3 come off the usable width.
      v2.3.1649: the floor drops from 4 columns to 3 — at the new 64px tile a

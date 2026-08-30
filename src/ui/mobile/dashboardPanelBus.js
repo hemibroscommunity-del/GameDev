@@ -25,7 +25,23 @@
 // combat chrome rides above the open sheet keyed off --sheet-h.
 
 const listeners = new Set();
-const emit = () => { for (const fn of listeners) fn(); };
+const emit = () => {
+  for (const fn of listeners) fn();
+  /* ═══ v2.3.2152: THE ONE GEOMETRY PATH, SAME AS THE FOLD ═══
+     In landscape the world YIELDS width to the open sheet (owner: menus
+     beside the world, playable while open), which means opening or closing
+     a destination is a canvas-geometry change -- and dashMinBus's own note
+     names the only safe road: BroTown's resize() owns turning band state
+     into pixels, and the watchdog re-derives the same arithmetic.  A sheet
+     the canvas doesn't know about is a black stripe where the world should
+     be; one the watchdog doesn't know about is a healing war every 500ms.
+     Dispatched on EVERY state change rather than landscape-only: in
+     portrait resize() recomputes identical numbers and its short-circuit
+     returns before touching the canvas, so the extra event costs a
+     comparison -- cheaper than this file knowing which orientation it is
+     in. */
+  try { window.dispatchEvent(new Event('resize')); } catch (e) { /* ignore */ }
+};
 
 /* v2.3.1312 (round-8; retagged from 1311 — #288 claimed it first):
    one restrained tick when the sheet snaps to a new state

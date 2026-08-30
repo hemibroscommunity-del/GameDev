@@ -431,11 +431,47 @@ export function navGroupWidth(vw, vh) {
  * suite.  The landscape footprint (identity row only -- the v2.3.2118 fold,
  * made the orientation's resting state) lands with the landscape dashboard
  * itself, behind `vw > vh`, in its own PR. */
-export function bandFootprint(vw, vh, folded) {
+/* ═══ v2.3.2152: THE LANDSCAPE SHEET'S WIDTH ═══
+ * Owner: menus open BESIDE the world, never over it, and "you should be able
+ * to play the game with the menus open."  The sheet takes this much of the
+ * screen's width; the world keeps the rest.
+ * 0.474 is 400/844 -- the ratio the owner approved on the mockups -- and the
+ * clamp keeps both sides honest on other phones: 360 is the narrowest a
+ * 4-column bag grid lays out without clipping (4 tiles + gaps + padding at
+ * the sheet's own tile size), 430 stops a big phone spending its extra width
+ * on a menu instead of on the world.  844 -> 400, 812 -> 385, 932 -> 430;
+ * the world keeps >= 412px everywhere. */
+export function landscapeSheetW(vw) {
+  return Math.round(Math.min(430, Math.max(360, vw * 0.474)));
+}
+
+export function bandFootprint(vw, vh, folded, sheetOpen) {
+  /* ═══ v2.3.2152: THE LANDSCAPE BRANCH ═══
+     Owner: "Landscape would be an optional view."  Sideways, the band's
+     resting state IS the fold -- identity row only (the v2.3.2118 geometry,
+     made unconditional for the orientation), because the width-driven
+     columns row is the whole reason a rotated phone lost its world (68% of
+     a 390px screen, measured).  `folded` is deliberately IGNORED here: the
+     band cannot fold below what it already is, and honoring the flag would
+     double-subtract a columns row that was never counted.
+
+     `playW` is the canvas's width.  Portrait never varies it -- the sheet
+     overlays and the canvas must not resize when a panel opens (the BAR-
+     height invariant).  Landscape-open is the deliberate exception the
+     owner chose ("No I don't want an overlay over the world"): the world
+     YIELDS width to the sheet, side by side, as one discrete resize through
+     the same two callers -- exactly how the fold resizes height.  320 is
+     the floor a degenerate window bottoms out at rather than a zero-width
+     world. */
+  if (vw > vh) {
+    var sheetW = sheetOpen ? landscapeSheetW(vw) : 0;
+    return { dashH: identityRowHeight(vw, vh), colsH: 0, overlap: DASH_OVERLAP,
+             playW: Math.max(320, vw - sheetW), sheetW: sheetW };
+  }
   var dashH = barHeight(vw, vh);
   var colsH = columnsRowHeight(vw);
   if (folded) { dashH = Math.max(0, dashH - colsH); colsH = 0; }
-  return { dashH: dashH, colsH: colsH, overlap: DASH_OVERLAP };
+  return { dashH: dashH, colsH: colsH, overlap: DASH_OVERLAP, playW: vw, sheetW: 0 };
 }
 
 export function barHeight(vw, vh) {

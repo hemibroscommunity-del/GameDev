@@ -1,4 +1,4 @@
-# Landscape mode (optional view) — v2.3.2151, groundwork
+# Landscape mode (optional view) — v2.3.2151 groundwork + v2.3.2152 dashboard
 
 > Owner: "Landscape would be an optional view. You can play in portrait or
 > landscape."
@@ -102,7 +102,52 @@ destination in portrait today. Landscape PR2 must preserve exactly that:
 - Damage, camera, spawns, chat floaters keep running — nothing about the
   render or input loop pauses on open.
 
+## The landscape dashboard (v2.3.2152 — this PR)
+
+The contract above, built:
+
+- **bandFootprint's landscape branch**: the band is the identity row alone
+  (48px), unconditionally — `folded` is ignored sideways (the band cannot
+  fold below what it already is), and the fold chip hides
+  (`display:none!important`; its display is an inline style, like the wrap's
+  width — the same !important the desktop block carries).
+- **The world yields width, one discrete resize**: `bandFootprint(vw, vh,
+  folded, sheetOpen)` returns `playW = vw − landscapeSheetW(vw)` when a
+  destination is expanded in landscape. resize() sizes the canvas to playW
+  and stamps `--play-w`/`--sheet-w`; the watchdog re-derives the same
+  formula and now checks width too. dashboardPanelBus.emit() dispatches the
+  same synthetic resize event dashMinBus pioneered — one geometry path.
+- **The wrap narrows, everything reflows**: `html[data-orient="landscape"]
+  .brotown-wrap { width:var(--play-w)!important; contain:paint }` — the
+  desktop shell's v2.3.1768 mechanic one level down. Every fixed HUD overlay
+  (joysticks, tracker, banners) re-anchors to the world's edges without
+  per-element edits. The zone header takes `width:var(--play-w)` so the
+  world reads as a complete window.
+- **The side sheet**: `.bt-land-sheet`, a sibling of the band outside the
+  wrap (placement beats z-index across the wrap's stacking context, TRAPS
+  §20), from the screen top down to the band, `width:var(--sheet-w)`
+  (`landscapeSheetW`: 400 at 844w, clamped 360..430). Hosts the same
+  `<Active/>` panel the portrait sheet would. The band itself NEVER grows in
+  landscape; nav keeps one screen position (v2.3.1637b), and `--sheet-h`
+  reads the identity row's height in every landscape mode so the joystick
+  zones stay right.
+- **panelVw()** (playViewport.js): the width a dashboard panel's container
+  actually has — the sheet's, in landscape; playVw() in portrait, unchanged
+  by construction. InventoryPanel sizes its grid from it (a 844px playVw in
+  a 400px sheet laid out ten tiles in a four-tile box — the v2.3.1715
+  stretch, one level down).
+- **Rotation closes an open destination** (toBar keeps the root); the
+  portrait bottom sheet and the landscape side sheet share no geometry.
+- The sheet never joins `_anyPanelOpen`/uiBusyBus — proven by walking with
+  the Bag open.
+
+Measured open state at 844×390: canvas 444×356, sheet x444 w400, view
+599×480 world px, scale .7417 unchanged from rest.
+
 ## Testing
+
+### Groundwork (v2.3.2151)
+
 
 `tools/qa/mp/mp-landscape-view.mjs` (17 assertions): portrait pinned EXACTLY
 (band px, canvas px, view width 585) at three device classes; the landscape
@@ -110,3 +155,20 @@ rule asserted as a rule (scale = max(0.5, canvasH/480)) so it holds unchanged
 when the 48px band lands; visible area ≤ portrait's; the QA default viewport
 (1000×780, which trips the desktop shell) still resolves to a portrait canvas.
 Verified non-vacuous: 6 assertions fail against the pre-change code.
+
+### The dashboard (v2.3.2152)
+
+`mp-landscape-dash.mjs` (17 assertions): the rest state (48/0, canvas
+844×356, ≤ one-third ceiling, fold chip gone), the open state (canvas
+narrows to 844−sheetW — the world literally is not under the sheet; sheet
+rect exactly in the yielded ground; band and nav pixel-identical before and
+after; zone header == play width; bag grid fits with no horizontal
+overflow), and the owner's whole idea: the character WALKS by real keyboard
+input with the Bag expanded while `_uiBusy` stays false. Verified
+non-vacuous: 12 of its assertions fail against groundwork-only code.
+
+`mp-landscape-rotate.mjs` (9 assertions): portrait pins on boot, the flip
+both ways, the open sheet closing on rotation, the BAR-height invariant
+unleaked (portrait open does NOT resize the canvas), and the settled-state
+war check — at most one watchdog heal across the rotation sequence (a race,
+logged), zero once settled.
