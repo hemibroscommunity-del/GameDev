@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { NotificationMute } from './NotificationMute.jsx'; /* v2.3.2145 */
 import { chromeSilenced, onGuardChange } from './modalGuardBus.js'; /* v2.3.2145 */
 import { chatLogBus } from './chatLogBus.js';
 import { uiBusyBus } from './uiBusyBus.js';   /* v2.3.2085 */
@@ -198,18 +197,9 @@ export function WorldChatFeed() {
            actually silence. One flag answers both. */
         zIndex: 25,
         pointerEvents: 'none',
-        /* The SHELL keeps its opacity: the silence chip lives inside it and
-           has to stay visible and tappable while muted, or the control that
-           silenced the corner would silence itself out of existence. The
-           messages below fade instead. */
         fontFamily: 'Source Sans 3, sans-serif',
       }}
     >
-      {/* v2.3.2145: the silence control, at the top of this corner's stack --
-          above the feed it silences, in the strip the fold header already
-          occupies safely. NOT a floating button lower down: that is the
-          movement thumbstick's pad (see NotificationMute's own header). */}
-      <NotificationMute />
       {ticketChip ? (
         <div
           data-cape-chip={_crimson.remaining}
@@ -224,8 +214,7 @@ export function WorldChatFeed() {
             maxWidth: '100%',
             height: 20,
             padding: '0 7px',
-            margin: '0 0 3px 0',
-            boxSizing: 'border-box',
+              boxSizing: 'border-box',
             /* The feed's own surface recipe, so it reads as this corner's
                chrome and not a new widget. */
             background: 'rgba(13,22,27,.72)',
@@ -370,8 +359,9 @@ export function WorldChatFeed() {
              corner). */
           pointerEvents: 'none',
           /* v2.3.2145: silenced means silent. The MESSAGES fade, not the
-             shell -- the shell carries the silence chip, which has to stay
-             visible to be un-silenced with. */
+             shell, so the feed's fold header stays where it is and the corner
+             does not reflow when you mute; the switch itself lives in Settings
+             (see the note there for why it is not in this corner). */
           opacity: chromeSilenced() ? 0 : 1,
           transition: 'opacity 140ms ease',
           maxHeight: 'min(26vh, 150px)',
