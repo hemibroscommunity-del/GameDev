@@ -1351,11 +1351,14 @@ function _remoteBodyArt(other, mirror) {
      draw it via artForFacing exactly as the local player does, so a remote who
      turns away shows THEIR back canvas rather than a blank head. */
   const hb = sanitizeShirtArt(other.headBackTattooArt);
+  /* v2.3.2148: and the back of their body, through the same sanitiser -- peers
+     resolve it via artForFacing exactly as the local player does. */
+  const bb = sanitizeShirtArt(other.bodyBackTattooArt);
   const q = sanitizePattern(other.pantsPattern, 'pants');   /* v2.3.1941 */
   const f = sanitizePattern(other.shoesPattern, 'shoes');   /* v2.3.1944 */
-  return (p || t || ft || at || hb || q || f)
+  return (p || t || ft || at || hb || bb || q || f)
     ? { pants: p || '', tattoo: t || '', tattooFace: ft || '', tattooArm: at || '',
-      tattooHeadBack: hb || '',
+      tattooHeadBack: hb || '', tattooBack: bb || '',
       pantsPattern: q, shoesPattern: f, mirror: !!mirror }
     : null;
 }

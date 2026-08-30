@@ -78,6 +78,16 @@ const TARGETS = {
   /* v2.3.1949 (owner: "Allow tattoos on the face and arms too").  Three skin
      canvases rather than one drawing stretched over three very differently
      shaped regions. */
+  /* v2.3.2148 (owner: "make it so that the back and front of the character
+     body have separate tattoos areas so body and face should have a front and
+     back now").  The torso's other side, worded like the shirt's and the back
+     of the head's -- it is the same idea a third time, and a player who has met
+     either of those should recognise this one. */
+  tattooBack: {
+    label: 'back tattoo',
+    pattern: null,
+    note: 'Shows when you walk away. Separate from your chest — a shirt or breastplate covers it.',
+  },
   tattooFace: {
     label: 'face tattoo',
     pattern: null,
@@ -126,7 +136,11 @@ const TATTOO_SPOT = { body: 'tattoo', face: 'tattooFace' };
    to this table rather than a bespoke front/back switch: the Body screen has
    picked between two canvases this way since v2.3.1994, so the control, the
    caption and the undo history all already work for it. */
-const TAB_SPOTS = { body: ['tattoo', 'tattooArm'], face: ['tattooFace', 'tattooHeadBack'] };
+/* v2.3.2148: Body reaches the BACK canvas too, exactly as Face has reached the
+   back of the head since v2.3.2043 -- one more entry in this table rather than
+   a bespoke front/back switch, so the control, the caption and the undo history
+   all work for it already. */
+const TAB_SPOTS = { body: ['tattoo', 'tattooBack', 'tattooArm'], face: ['tattooFace', 'tattooHeadBack'] };
 
 /* ── the toolbar's icons ──
    Drawn inline rather than shipped as art, for the reason the creator's pencil
@@ -334,6 +348,7 @@ const FOCUS = {
      recognisably yours, which a floating torso does not. */
   shirt: { cy: 0.43, h: 0.45 },
   tattoo: { cy: 0.43, h: 0.45 },
+  tattooBack: { cy: 0.43, h: 0.45 },   /* v2.3.2148: same torso, other side */
   /* v2.3.1978: the face preview shows the WHOLE UPPER BODY, same frame as the
      body tab.  Owner: "If body, show full upper body including head in
      preview ... For face, same idea ... In the preview it shows the full upper
