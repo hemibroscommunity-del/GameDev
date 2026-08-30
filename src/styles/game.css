@@ -2478,7 +2478,13 @@ body:has(.bt-inspect) .bt-kb-chip{display:none}
    characterPortrait's hardcoded ?v=2.3.760, which silently withheld every
    shirt re-bake from the creator preview.  Bump this whenever the PNG is
    regenerated. */
-.bt-login-btn--key{background-image:url('/ui/welcome/title/btn-continue.png?v=2.3.2005');aspect-ratio:815/259}
+/* v2.3.2156 (owner: "change the continue button on splash page to use these
+   assets instead"): the plate is the owner's own art now — the C-and-arrow
+   emblem beside the gold pixel CONTINUE wordmark, composed into one PNG by
+   tools/ui/compose-continue-plate.mjs (emblem 1.2x the letter height,
+   vertically centred).  The aspect-ratio and the ?v bump move with the PNG,
+   per the cache note above. */
+.bt-login-btn--key{background-image:url('/ui/welcome/title/btn-continue.png?v=2.3.2156');aspect-ratio:1332/360}
 .bt-login-btn--new{background-image:url('/ui/welcome/title/btn-create.png');aspect-ratio:799/212}
 .bt-login-btn:active{transform:translateY(1px) scale(.995)}
 .bt-login-btn:disabled{opacity:.55;cursor:default;animation:none}
