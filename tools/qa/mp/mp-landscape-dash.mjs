@@ -103,10 +103,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(900);
   const open = await geom(P);
   console.log('    open: ' + JSON.stringify(open));
+  /* ═══ v2.3.2168: THE LEGACY BAG PANE IS RETIRED SIDEWAYS ═══
+     Owner: "you show another bag view with tiny inventory slots.  That
+     must be a legacy view that needs to retire.  It got replaced with
+     the [dashboard column] view."  Asking the bus for 'bag' in landscape
+     lands on the DASHBOARD column — the same request that used to
+     produce the tiny-slot InventoryPanel. */
+  rec.ok('asking for the legacy Bag pane lands on the DASHBOARD column (retired sideways)',
+    await P.page.evaluate(() => window.__broDashPanelBus.state.stack[0] === 'dashboard'
+      && !!document.querySelector('.bt-land-sheet .bt-dashcols')));
   /* v2.3.2167 (owner: "should be that skinny and the exact same for all
      the buttons"): ONE width — every destination opens in the dashboard's
      own narrow column (~220 at phone sizes). */
-  rec.ok('opening the Bag NARROWS the canvas — the world yields, nothing overlays it',
+  rec.ok('opening it NARROWS the canvas — the world yields, nothing overlays it',
     open.canvasW === 844 - open.sheetW && open.sheetW >= 205 && open.sheetW <= 245
       && open.playW === open.canvasW, open);
   rec.ok('...the sheet sits exactly in the yielded ground, beside the world',
@@ -129,7 +138,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the zone header spans the WORLD, not the screen (a complete window)',
     open.zoneHeaderW !== null && Math.abs(open.zoneHeaderW - open.playW) <= 1,
     { zoneHeaderW: open.zoneHeaderW, playW: open.playW });
-  rec.ok('the bag grid fits its sheet — no horizontal overflow (panelVw, not playVw)',
+  rec.ok('the sheet has no horizontal overflow (panelVw, not playVw)',
     await P.page.evaluate(() => {
       const sh = document.querySelector('.bt-land-sheet');
       if (!sh) return false;
@@ -146,7 +155,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(200);
   const x1 = await H.readState(P, (S) => Math.round(S.player.x));
   const still = await geom(P);
-  rec.ok('you can WALK with the Bag open — "play the game with the menus open"',
+  rec.ok('you can WALK with the sheet open — "play the game with the menus open"',
     still.mode === 'expanded' && x1 > x0 + 20,
     { from: x0, to: x1, mode: still.mode });
 
@@ -349,7 +358,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      The back-chip rode the band's identity row, and the band is gone
      sideways — so the chip moved into the sheet's own header.  Drill in,
      find it, tap it, land back on the parent. */
-  await P.page.evaluate(() => { window.__broDashPanelBus.open('bag'); });
+  await P.page.evaluate(() => { window.__broDashPanelBus.open('quests'); });
   await P.page.waitForTimeout(500);
   await P.page.evaluate(() => { window.__broDashPanelBus.push('settings'); });
   await P.page.waitForTimeout(700);
@@ -364,8 +373,40 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(700);
   const popped = await P.page.evaluate(() => window.__broDashPanelBus.state.stack.join('>'));
   rec.ok('a drill (Settings) shows a back-chip INSIDE the sheet, and it pops back to the parent',
-    drillBack.found && drillBack.onScreen && popped === 'bag',
+    drillBack.found && drillBack.onScreen && popped === 'quests',
     { ...drillBack, stackAfterPop: popped });
+  await P.page.evaluate(() => window.__broDashPanelBus.toBar());
+  await P.page.waitForTimeout(400);
+
+  /* ═══ v2.3.2168: EVERY LABEL RENDERS WHOLE ═══
+     Owner: "you also need to actually examine all of the screenshots of
+     each view visually.  It's obvious that the labels are getting cut
+     off."  What the eye caught, the suite now pins: for each destination,
+     zero elements past the sheet's right edge AND zero truncated text
+     leaves (a leaf whose scrollWidth exceeds its box is exactly an
+     ellipsised or clipped label — "W Lv 0", "Qu…", "Comple…").  A future
+     panel that outgrows the skinny column fails here BY NAME. */
+  for (const dest of ['quests', 'skills', 'more']) {
+    await P.page.evaluate((d) => window.__broDashPanelBus.open(d), dest);
+    await P.page.waitForTimeout(900);
+    const fit = await P.page.evaluate(() => {
+      const sh = document.querySelector('.bt-land-sheet');
+      if (!sh) return null;
+      const shR = sh.getBoundingClientRect();
+      let past = 0; const trunc = [];
+      for (const el of sh.querySelectorAll('*')) {
+        const rr = el.getBoundingClientRect();
+        if (rr.width > 4 && rr.right > shR.right + 2) past++;
+        if (el.children.length === 0 && (el.textContent || '').trim().length > 2
+            && el.clientWidth > 0 && el.scrollWidth > el.clientWidth + 1) {
+          trunc.push((el.textContent || '').trim().slice(0, 24));
+        }
+      }
+      return { past, truncated: trunc.slice(0, 6), truncCount: trunc.length };
+    });
+    rec.ok(`${dest}: every label renders whole — nothing clipped or ellipsised`,
+      !!fit && fit.past === 0 && fit.truncCount === 0, fit);
+  }
   await P.page.evaluate(() => window.__broDashPanelBus.toBar());
   await P.page.waitForTimeout(400);
   await P.ctx.close().catch(() => {});

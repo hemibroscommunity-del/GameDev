@@ -27,7 +27,10 @@ let _lastSegment = 'Active';
    "Available (1)" ran off the right of the landscape pane).  The count
    moves to a corner badge there; see the render. */
 const seg = (active, narrow) => ({
-  flex: 1,
+  /* v2.3.2168: narrow shares by CONTENT, not thirds — equal thirds starve
+     the longest word and "Completed" was still rendering "Comple…" at
+     10px.  'Active' cedes what it doesn't need. */
+  flex: narrow ? '1 1 auto' : 1,
   minWidth: 0,
   position: 'relative',
   overflow: 'hidden',

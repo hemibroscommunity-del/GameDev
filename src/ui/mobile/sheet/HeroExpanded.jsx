@@ -612,12 +612,18 @@ export const HeroExpanded = () => {
               onPointerUp={(e) => { e.stopPropagation(); setSection(s); }}
               style={{
                 position: 'relative',
-                flex: '1 1 0', minWidth: 0, height: '100%',
+                /* v2.3.2168: sideways the tabs share by CONTENT — equal
+                   thirds starved the longest word and "Equipment" rendered
+                   "Equipm…" in the skinny column; Points and Journey cede
+                   what they don't need.  Portrait keeps equal thirds. */
+                flex: landPane ? '1 1 auto' : '1 1 0', minWidth: 0, height: '100%',
+                padding: landPane ? '0 5px' : 0,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 background: on ? COL.accentFill : COL.wellSoft,
                 border: `1px solid ${on ? COL.accent : COL.tileBor}`,
                 borderRadius: 7,
                 cursor: 'pointer', touchAction: 'manipulation',
+                boxSizing: 'border-box',
               }}>
               <span style={{
                 /* v2.3.2167: one point down in the skinny landscape column —

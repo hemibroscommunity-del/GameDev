@@ -320,3 +320,28 @@ when open), the chip rail beside the slots, and the drill's back-chip
 popping Settings back to its parent. mp-landscape-rotate pins the new
 landscape numbers; mp-landscape-view holds unchanged (it asserts the rule,
 not the interim numbers — as designed).
+
+### The legacy bag pane retires; every label renders whole (v2.3.2168)
+
+Owner, reviewing the seven view screenshots: the tiny-slot Bag pane "must
+be a legacy view that needs to retire. It got replaced with the [dashboard
+column] view" — and "you also need to actually examine all of the
+screenshots of each view visually. It's obvious that the labels are
+getting cut off."
+
+- **The bag-pane tourniquet** (dashboardPanelBus `landSafe`): asking the
+  bus for `'bag'` or `'inventory'` in landscape lands on `'dashboard'`.
+  Nothing in src/ still opens them (v2.3.1654 made the resting dashboard
+  the bag), so this guards old call sites and tests; portrait untouched.
+- **Label fixes in the skinny column**, all gated on `panelVw() < 260` (or
+  `landPane` where the component already holds it), portrait unchanged:
+  - SkillsPanel: 1 column (2-across left one-letter names: "W Lv 0").
+  - MorePanel: 2 columns (5-across left "Qu…", "Se…", "Lo…").
+  - QuestsPanel + HeroExpanded tabs: `flex: 1 1 auto` — shares by
+    content, so "Completed" and "Equipment" stop ellipsising (equal
+    thirds starve the longest word).
+- **The suite now pins what the eye caught**: for quests/skills/more,
+  zero elements past the sheet's right edge AND zero truncated text
+  leaves (scrollWidth > clientWidth = a clipped or ellipsised label) —
+  a future panel that outgrows the column fails BY NAME. Plus: asking
+  for 'bag' sideways is asserted to land on the dashboard column.

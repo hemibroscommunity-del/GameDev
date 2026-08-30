@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { COL, panelStyle, getState } from './common.js';
+import { panelVw } from '../playViewport.js'; /* v2.3.2168: the sheet's width, not the shell's */
 /* v2.3.1641: live status lines for the three destinations re-homed here. */
 import { readyQuestCount } from '../sheet/questModel.js';
 import { getFriendRows } from '../sheet/friendsModel.js';
@@ -199,10 +200,16 @@ export const MorePanel = () => {
           than staying compact inside it. */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(5, 1fr)',
-        gridAutoRows: '1fr',
+        /* v2.3.2168 (owner: "the labels are getting cut off"): five
+           columns in the skinny landscape column left ~38px per cell and
+           the labels died ("Qu…", "Se…", "Lo…").  Two columns there —
+           every word renders whole in a ~96px cell, ten items make five
+           rows in the height the sideways pane has anyway.  Portrait
+           keeps its five-across one-screen grid (v2.3.1648). */
+        gridTemplateColumns: panelVw() < 260 ? 'repeat(2, 1fr)' : 'repeat(5, 1fr)',
+        gridAutoRows: panelVw() < 260 ? undefined : '1fr',
         gap: 4,
-        height: '100%', boxSizing: 'border-box',
+        height: panelVw() < 260 ? undefined : '100%', boxSizing: 'border-box',
       }}>
         {['quests', 'skills', 'social', 'clan', 'guild',
           'journey', 'encyclopedia', 'leaderboard', 'settings', 'account'].map(id => {
