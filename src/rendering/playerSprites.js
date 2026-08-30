@@ -144,7 +144,7 @@ const POSE_DIRS = {
    belt re-baked from chainbelt.png.  anchors.json NE hand positions are
    measured from the wristband marker per frame -- real data, replacing the
    stale 48-entry list from the pre-v2.3.6xx sheet. */
-const VERSION = 99; /* v2.3.1656: NORTHEAST JOG FRAME 23 RESTORED.  The owner's
+const VERSION = 100; /* v2.3.2144: PINHOLE FILL across the body sheets (tools/fill-body-pinholes.mjs). Owner: "There are some transparent south idle face pixels." 3282px of fully ENCLOSED transparent specks -- 676 of them a single pixel -- sat inside the figure across 46 sheets, and the body sheet is the character's bottom layer, so each one is the ground showing through him. Same repair and same rules as the v2.3.1456 jog fill; the cap is 12px, the knee of the measured size distribution, so real gaps between limbs (100-2700px) are left alone. */ /* v2.3.1656: NORTHEAST JOG FRAME 23 RESTORED.  The owner's
    "stutter right after the back arm swing": jog-northeast.png shipped 23
    frames while its legs sheet, anchors.json, body-tops.json and
    body-anchors.json all say 24.  tools/resample_jog_frames.py's de-stutter
