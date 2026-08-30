@@ -62,8 +62,9 @@ const out = await page.evaluate(async ({ wordmark, emblem, frame }) => {
   const gap = emH / 5;
   const k = Math.min(availW / (emW + gap + wmW), availH / emH);
   const emH2 = emH * k, emW2 = emW * k, wmH2 = unitH * k, wmW2 = wmW * k, gap2 = gap * k;
-  const totalW = emW2 + gap2 + wmW2;
-  const x0 = box.x + (box.w - totalW) / 2;
+  /* v2.3.2159 (owner: "align left for continue icon and label"): the mark
+     starts at the interior's left padding rather than centring. */
+  const x0 = box.x + pad;
   const cy = box.y + box.h / 2;
   ctx.drawImage(em, x0, cy - emH2 / 2, emW2, emH2);
   ctx.drawImage(wm, x0 + emW2 + gap2, cy - wmH2 / 2, wmW2, wmH2);
