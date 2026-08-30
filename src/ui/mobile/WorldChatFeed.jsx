@@ -214,7 +214,8 @@ export function WorldChatFeed() {
             maxWidth: '100%',
             height: 20,
             padding: '0 7px',
-              boxSizing: 'border-box',
+            margin: '0 0 3px 0',
+            boxSizing: 'border-box',
             /* The feed's own surface recipe, so it reads as this corner's
                chrome and not a new widget. */
             background: 'rgba(13,22,27,.72)',

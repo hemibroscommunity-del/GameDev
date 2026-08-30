@@ -426,8 +426,35 @@ export function NameModal(props) {
      now.  Keyed on previewZoom alone, picking any other tab would shrink the
      character in a shorter box rather than zoom to anything — see
      categoryCrops(). */
+  /* ═══ v2.3.2151: HE WAS STANDING IN FRONT OF THE PEDESTAL, NOT ON IT ═══
+     Owner: "move the character to the center of the pedestal on the character
+     creation screen."
+
+     HORIZONTALLY he was already centred -- canvas and pedestal group are both
+     `left:50%; translateX(-50%)` on the same stage, and measured ink agrees to
+     within 2.5px (mp-ccstand). The miss was VERTICAL, and it was big: his
+     boots landed at page y 510-529 on a 390x844 phone while the pedestal's
+     whole image ends at 513. He was planted on the rock in FRONT of the disc.
+
+     WHY THE ALGEBRA DRIFTED. Every frame here solves `contact = b + k*h`
+     against the v2.3.799 geometry, and `k` -- how far up its own bitmap the
+     boots sit -- was fixed at 0.11 when the preview bitmap was 256x256 with
+     the figure inset. The bitmap is 631x631 now and drawCharacterPortrait
+     fills it: measured boots sit at y 608-623 of 631, so k is 0.011, an order
+     of magnitude smaller. With `b:2%` that put contact at ~3% of stage instead
+     of the 24.2% the pedestal art is drawn for, which is exactly the ~78px
+     drop measured. Nothing "moved" -- the constant stopped describing the
+     picture, and the frame quietly followed it down.
+
+     So `b` is re-solved from the same target: 24.2% of stage for the contact
+     line, minus 0.011*92 for the bitmap footing, is 23.2% -- rounded to 24.7%
+     because the per-angle translateY nudge below drops the box by up to 8px
+     and the mean of the three measured facings is what should sit on the
+     disc, not the highest of them. mp-ccstand asserts the boots land inside
+     the top face for every facing, so the day the bitmap changes again this
+     fails instead of sliding. */
   var _frame = (previewZoom || !categoryCrops(_activeType))
-    ? { h: 92, b: '2%' } : { h: 54.5, b: '18.2%' };
+    ? { h: 92, b: '24.7%' } : { h: 54.5, b: '18.2%' };
   /* v2.3.1307: name validity gates ENTER (round-7).  Local rules only:
      names are not unique server-side, so there is no availability
      check to run — trimmed length is the honest contract. */
@@ -623,9 +650,22 @@ export function NameModal(props) {
     /* v2.3.1307 (round-7): persistent field label — the placeholder
        vanishes the moment you type; the label doesn't. */
     htmlFor: 'bt-cc-name-input',
-    style: { display: 'block', fontSize: 10, fontWeight: 700, letterSpacing: '.12em',
-      color: '#B6C1BE', fontFamily: 'Source Sans 3, sans-serif',
-      textTransform: 'uppercase', padding: '0 2px 3px', textAlign: 'left' }
+    /* ═══ v2.3.2151: THE NAME FIELD ASKS FOR SOMETHING, SO IT SHOULD LOOK
+           LIKE A QUESTION ═══
+       Owner: "Make the name your character area more obvious. Maybe center
+       and large and in all caps put the BRO NAME label."
+
+       It was a 10px grey caption in the corner of a screen whose other three
+       controls are 48px plates -- it read as a field label on a form, not as
+       the one thing the screen needs from you. Centred over the well, at 15px
+       in the brass the ENTER plate uses, it reads as the heading of the
+       cluster instead. The caps were already there (textTransform); what was
+       missing was the size, the centring and a colour that belongs to the
+       screen's primary action rather than to its captions. */
+    style: { display: 'block', fontSize: 15, fontWeight: 800, letterSpacing: '.20em',
+      color: '#EAC675', fontFamily: 'Source Sans 3, sans-serif',
+      textTransform: 'uppercase', padding: '0 2px 5px', textAlign: 'center',
+      textShadow: '0 1px 0 rgba(0,0,0,.55)' }
   }, "Bro Name"), /*#__PURE__*/React.createElement("input", {
     id: 'bt-cc-name-input',
     value: nameInput,
@@ -635,7 +675,12 @@ export function NameModal(props) {
     onKeyDown: function onKeyDown(e) {
       return e.key === 'Enter' && _nameValid && joinTown();
     },
-    placeholder: "Name your Bro…",
+    /* v2.3.2151: "Name your Bro…" did not fit the column -- the well is ~172px
+       wide with 46px reserved on the right for the die, and the field
+       ellipsised its own placeholder to "Name your ...", which reads as a
+       broken string rather than as an invitation. The heading above says whose
+       name it is now, so the placeholder only has to say what to do. */
+    placeholder: "Tap to name",
     maxLength: 20,
     /* ═══ v2.3.1818: NO AUTOFOCUS ═══
        Owner: "Immediately after tapping new character from splash screen the
@@ -723,7 +768,11 @@ export function NameModal(props) {
     /* v2.3.2006: --hero, not a change to .bt-cc-btn itself -- that class is
        also the account modal's action and the quest claim screen's "Later",
        and neither of those is a screen's headline control. */
-    type: 'button', className: "bt-cc-btn bt-cc-btn--hero", onClick: randomizeWithFlair,
+    /* v2.3.2151: --randomize carries the colour (owner: "Make the randomize
+       look, reset buttons different colors with larger font"); --hero still
+       carries the bevel, so the two buttons differ in hue and in nothing
+       else. */
+    type: 'button', className: "bt-cc-btn bt-cc-btn--hero bt-cc-randomize", onClick: randomizeWithFlair,
     /* v2.3.2114: a stable hook for mp-inkreset.  Both of these change the
        whole character at once, which is exactly the kind of button whose
        coverage is easy to believe in and hard to check by eye. */

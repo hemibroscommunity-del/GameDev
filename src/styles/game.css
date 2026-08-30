@@ -992,7 +992,19 @@ input{font-family:inherit}
   color:var(--ui-text-dim,#96A2A0);box-shadow:none;
 }
 .bt-cc-reset:active{transform:scale(.98);background:rgba(255,255,255,.09)}
-.bt-cc-actions>button{min-height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;font-family:'Source Sans 3',sans-serif;font-size:13px;font-weight:700;letter-spacing:.02em;padding:6px 10px}
+.bt-cc-actions>button{min-width:0;min-height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;font-family:'Source Sans 3',sans-serif;font-size:13px;font-weight:700;letter-spacing:.02em;padding:6px 8px}
+/* v2.3.2151: the label never wraps, and the 4px of side padding + 2px of
+   gap given back are what pays for the bigger type. Measured, not guessed:
+   "Randomize Look" needs 115.1px at 15.2px, and the row had 113.2px of
+   content width left after a 28px icon, a 10px pad and an 8px gap -- 1.9px
+   short, which is why the first cut of the bigger font wrapped it to two
+   lines exactly as v2.3.2036's did. mp-ccbuttons measures both. */
+/* v2.3.2151: min-width:0 above is load-bearing WITH the nowrap. A grid
+   item's default min-width is min-content, so a label that cannot wrap
+   pushes the button WIDER than its 1fr track -- which is what happened on
+   the first cut: Randomize and Reset grew ~8px past ENTER BRO TOWN and the
+   name well, and the column stopped lining up. */
+.bt-cc-actions>button>span{white-space:nowrap}
 /* v2.3.2035: LEFT AT 20.  This class has two users -- the name-reroll die
    inside the name input and the Randomize Look icon -- and only the owner's
    "make the randomize look icon larger" applies to one of them.  Sizing the
@@ -1173,7 +1185,60 @@ input{font-family:inherit}
   transition:background 90ms cubic-bezier(.2,.8,.2,1),transform 90ms cubic-bezier(.2,.8,.2,1)}
 .bt-cc-login:active{transform:translateY(1px);box-shadow:inset 0 3px 7px rgba(0,0,0,.46)}
 .bt-cc-login img{width:16px!important;height:16px!important}
-.bt-cc-actions>button{font-size:clamp(11px,2.8vw,13px)}
+/* ═══ v2.3.2151: TWO BUTTONS, TWO COLOURS, READABLE LABELS ═══
+   Owner: "Make the randomize look, reset buttons different colors with larger
+   font."
+
+   THE FONT.  clamp(11,2.8vw,13) put the labels at 11px on a 390px phone --
+   below the 12px the rest of this screen uses and two sizes under the plate
+   beneath them, on a control column only 172px wide. The new clamp bottoms out
+   at 13 and tops out at 16. Checked against the reason the pair was stacked in
+   the first place (v2.3.2036: "Randomize Look" wrapped to two lines when Reset
+   sat beside it): they are on separate full-width rows now, so the label has
+   the whole 172px and 16px still fits on one line -- mp-ccbuttons measures the
+   rendered box and the line count rather than trusting that.
+
+   THE COLOURS. Randomize goes green and Reset goes russet, and both keep the
+   --hero bevel recipe: only the base gradient and the edge move, through the
+   three variables added to .bt-cc-btn--hero above. That is deliberate -- these
+   are the same KIND of control (change the whole character at once) and should
+   differ in hue, not in construction. The gold stays reserved for ENTER BRO
+   TOWN, which is still the one primary on the screen (Lantern Slate allows
+   exactly one). */
+.bt-cc-actions>button{font-size:clamp(13px,3.9vw,16px)}
+/* WHY TWO CLASSES AND NOT `.bt-cc-randomize`. The first cut set the colour
+   through variables read by .bt-cc-btn--hero, and the button stayed slate:
+   .bt-cc-btn (line ~1290) and .bt-cc-btn--hero (line ~1140) are both ONE class
+   and .bt-cc-btn comes LATER, so it wins background, border and box-shadow --
+   the hero's face has never actually painted, only its min-height and radius.
+   That is a pre-existing bug in a treatment nobody asked me to change, so it
+   is recorded here rather than "fixed" into a button the owner has not seen;
+   these two rules simply carry the specificity to beat .bt-cc-btn themselves.
+   mp-ccbuttons compares each against a plain .bt-cc-btn so a rule that loses
+   the cascade fails instead of looking applied. */
+.bt-cc-btn.bt-cc-randomize{
+  background:
+    linear-gradient(180deg,
+      rgba(255,255,255,.16) 0,
+      rgba(255,255,255,.16) var(--ui-hairline),
+      rgba(255,255,255,.06) var(--ui-hairline),
+      rgba(0,0,0,.12) calc(100% - var(--ui-hairline)),
+      rgba(0,0,0,.40) calc(100% - var(--ui-hairline)),
+      rgba(0,0,0,.40) 100%),
+    linear-gradient(180deg,#4F9068 0%,#1D3A2B 100%);
+  border:1px solid #7FB394;color:#F2F7F3;
+}
+.bt-cc-btn.bt-cc-randomize:active{transform:translateY(2px);background:
+    linear-gradient(180deg,#43805B 0%,#173023 100%)}
+.bt-cc-reset.bt-cc-reset{
+  /* Doubled class so it outranks .bt-cc-actions>button on font-size and the
+     v2.3.2036 quiet-treatment block above on colour, without !important. */
+  font-size:clamp(13px,3.9vw,16px);letter-spacing:.04em;
+  background:linear-gradient(180deg,#8A5340 0%,#4A2A20 100%);
+  border:1px solid #B0785A;color:#F6E4D8;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 3px 0 rgba(0,0,0,.30),0 6px 14px rgba(5,8,10,.45);
+}
+.bt-cc-reset.bt-cc-reset:active{transform:translateY(2px);background:linear-gradient(180deg,#7A4736 0%,#40241B 100%)}
 /* v2.3.2006: travels the whole 4px lip (was 2 of 4, which left the button
    looking like it had stuck) and drops its ambient shadow while down, so the
    press reads as the plate meeting the pane. */
@@ -2489,7 +2554,14 @@ body:has([data-trade-drawer]) .bt-kb-chip{display:none}
    characterPortrait's hardcoded ?v=2.3.760, which silently withheld every
    shirt re-bake from the creator preview.  Bump this whenever the PNG is
    regenerated. */
-.bt-login-btn--key{background-image:url('/ui/welcome/title/btn-continue.png?v=2.3.2005');aspect-ratio:815/259}
+/* v2.3.2151: bumped with the recut (tools/ui/recut-continue-plate.py) --
+   owner: "the lettering looks off and it's still not centered".  The C is cut
+   from the plate's own O now instead of an E with its middle bar removed, and
+   the word is centred on the FIELD BESIDE THE KEY (x 192-759, centre 475)
+   rather than on the plate (centre 406) -- centred on the plate it sits 69px
+   into the key's half with a void after it, which is the "not centered" the
+   owner sees.  Bumping this is not optional: the filename did not change. */
+.bt-login-btn--key{background-image:url('/ui/welcome/title/btn-continue.png?v=2.3.2151');aspect-ratio:815/259}
 .bt-login-btn--new{background-image:url('/ui/welcome/title/btn-create.png');aspect-ratio:799/212}
 .bt-login-btn:active{transform:translateY(1px) scale(.995)}
 .bt-login-btn:disabled{opacity:.55;cursor:default;animation:none}
