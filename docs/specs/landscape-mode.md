@@ -204,3 +204,50 @@ full screen — hide the browser bar" (installHintBus), shown only to the same
 audience. mp-a2hs proves the audience gate both ways with a spoofed iPhone
 UA, the glyph, both locations in the copy, the 44pt dismiss, the memory, and
 the Settings reopen past it.
+
+### The narrowed sheet + standalone inset (v2.3.2158 — owner web-app test)
+
+Owner, playing the installed web app sideways: "view kinda messy where
+dashboard buttons are. They're off the dashboard top when playing as a web
+app. Also landscape view needs to have dashboard area narrowed."
+
+Two fixes, one commit:
+
+- **The inset**: a standalone landscape launch has a real
+  home-indicator inset; the identity row anchors above it, and a band that
+  didn't count it was ~21px shorter than its own contents — the nav buttons
+  poked out the top. JS cannot read `env()`, so resize() parks a fixed probe
+  div (`#bt-sab-probe`) with `padding-bottom:env(safe-area-inset-bottom)` and
+  reads it computed; `bandFootprint` adds it to the landscape band height.
+  0 in a browser tab and in headless — every pinned number unchanged there.
+- **The width**: the sheet stopped being a 0.474 share of the screen and
+  became what its content earns, at the tile size the player already knows —
+  `dashTileSize(min(vw,vh))`, the device's portrait tile by construction.
+
+### The rotation rule (v2.3.2160 — owner correction)
+
+Owner, with the portrait band screenshot beside it: "No it would actually be
+2 slots wide and 4 slots vertical height leaving 8 slots viewable at one
+time. This would make it equivalent to the portrait view of the bag. The
+additional room goes to screen space of the world. … I was making a portrait
+to landscape conversion of viewable game area that keeps equivalent
+dashboard view space."
+
+The dashboard's AREA is conserved and its SHAPE rotates with the screen:
+portrait shows 4×2 slots in a wide band; landscape shows **2×4** in a tall
+column; everything the rotation saves is world. Two sheet widths now
+(`landscapeSheetW(vw, vh, kind)`):
+
+- **`'dashboard'`** (the chart button's destination): the 2-column panel —
+  390-basis tile 63 → panel 140 → sheet 158. DashColumns' stacked branch
+  renders the bag `repeat(2, t)` with four whole rows plus the peek sliver,
+  and the combat pills narrow to the grid's own width.
+- **`'panel'`** (Bag detail, Hero, Settings, quests — "panes like character
+  view … in vertical space below"): the 4-column width (292 at 390 basis) —
+  those layouts need it to lay out at all.
+
+resize() and the watchdog both pass the KIND into `bandFootprint`
+(`false | 'dashboard' | 'panel'`), same inputs, same commit — the healing-war
+rule. The world keeps ~686 of 844 with the dashboard open (was 552).
+mp-landscape-dash asserts the narrow width against the pane width and the
+2-column × 4-visible-row grid geometry directly.

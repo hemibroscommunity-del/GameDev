@@ -14,7 +14,7 @@ import { registerXpCard, displayXp, xpCounting } from '../../xpLanding.js'; /* v
 /* v2.3.2131: the XP digits left the card face for a popup (owner). */
 import { infoPopupBus } from '../infoPopupBus.js';
 import { skillInfo } from '../infoGlossary.js';
-import { dashTileSize, dashPanelWidths, combatPillWidth, combatPillHeight, BAG_VIEW_COLS, DASH_GAP, DASH_ROWS, BAG_HEADER_H, BAG_PEEK_H } from '../sheet/sheetGeometry.js';
+import { dashTileSize, dashPanelWidths, combatPillWidth, combatPillHeight, landscapeBagPanelW, BAG_VIEW_COLS, DASH_GAP, DASH_ROWS, BAG_HEADER_H, BAG_PEEK_H } from '../sheet/sheetGeometry.js';
 import { playVw } from '../playViewport.js';
 import { shopBus } from '../shopBus.js';   /* v2.3.2059 */
 
@@ -191,9 +191,20 @@ export const DashColumns = ({ R, stacked, vwBasis }) => {
      to scroll, not a taller band.  Measured before/after at 390x844: the
      dashboard band stays 390x243 and the scroller stays 142px tall; only the
      grid's own height grows (197 -> 331). */
-  const bagRows = Math.max(DASH_ROWS + 3, Math.ceil(entries.length / BAG_VIEW_COLS));
-  const bagCellCount = bagRows * BAG_VIEW_COLS;
-  const gridW = BAG_VIEW_COLS * t + (BAG_VIEW_COLS - 1) * DASH_GAP;
+  /* v2.3.2160 (owner, portrait band screenshot beside the ask: "it would
+     actually be 2 slots wide and 4 slots vertical height leaving 8 slots
+     viewable at one time ... I was making a portrait to landscape conversion
+     of viewable game area that keeps equivalent dashboard view space"): the
+     stacked bag is the portrait grid ROTATED, not reflowed — 2 columns by
+     4 visible rows instead of 4 by 2.  Same 8 slots, same tile size, half
+     the width; everything the rotation saves is world.  The scroll floor
+     keeps the same "+3 rows past visible" rule so the peek-and-fade cue
+     still has half a row to sit on. */
+  const bagCols = stacked ? 2 : BAG_VIEW_COLS;
+  const bagVisRows = stacked ? 4 : DASH_ROWS;
+  const bagRows = Math.max(bagVisRows + 3, Math.ceil(entries.length / bagCols));
+  const bagCellCount = bagRows * bagCols;
+  const gridW = bagCols * t + (bagCols - 1) * DASH_GAP;
 
   /* ── LOADOUT ── */
   /* v2.3.1653 (owner: "move the equipped view to be merged with the
@@ -248,8 +259,11 @@ export const DashColumns = ({ R, stacked, vwBasis }) => {
      for the real numbers and shows them unabbreviated, which is the point of
      moving them there. */
   /* v2.3.2158: stacked pills span the bag panel's own width — there is no
-     narrow column beside the bag to size against. */
-  const pillW = stacked ? dashPanelWidths(vw).wide - 2 * DASH_GAP - 2 : combatPillWidth(vw);
+     narrow column beside the bag to size against.
+     v2.3.2160: and that width is the 2-column grid's now, so the pills
+     narrow with the bag and the sheet is exactly as wide as the rotated
+     dashboard needs — no wider. */
+  const pillW = stacked ? gridW : combatPillWidth(vw);
   const pillH = combatPillHeight(vw);
   /* v2.3.1853: the pill now carries THREE things across, so the icon stops
      taking the pill's whole height.  MEASURED against the narrowest phone
@@ -577,7 +591,11 @@ export const DashColumns = ({ R, stacked, vwBasis }) => {
          equality was there to serve.  The two panels that hold squares are
          still exactly equal to each other; only COMBAT, whose contents are
          a different shape on purpose, is narrower. */
-      gridTemplateColumns: stacked ? `${panelW.wide}px` : `${panelW.wide}px ${panelW.narrow}px`,
+      /* v2.3.2160: the stacked track is the 2-column panel's width
+         (landscapeBagPanelW), NOT dashPanelWidths().wide — that is the
+         4-across portrait panel, and sizing the track from it left 130px
+         of dead tray beside a 2-wide grid. */
+      gridTemplateColumns: stacked ? `${landscapeBagPanelW(vw, vw)}px` : `${panelW.wide}px ${panelW.narrow}px`,
       justifyContent: 'center',
       /* v2.3.2158: stacked rows size to content; the sheet scrolls, not
          this grid, so height:100% would stretch one row over the void. */
@@ -603,16 +621,18 @@ export const DashColumns = ({ R, stacked, vwBasis }) => {
         <div style={{
           width: gridW,
           /* v2.3.2158: stacked mode has no band height to fill — the bag
-             shows the owner's "8 slots" (two rows) exactly and scrolls for
-             the rest; portrait keeps flex-filling the columns row. */
-          ...(stacked ? { height: 2 * t + DASH_GAP + BAG_PEEK_H, flex: '0 0 auto' } : { flex: 1, minHeight: 0 }),
+             shows the owner's "8 slots" exactly and scrolls for the rest;
+             portrait keeps flex-filling the columns row.
+             v2.3.2160: eight slots is now FOUR rows of two, so the scroller
+             is told four rows' height plus the same peek sliver. */
+          ...(stacked ? { height: bagVisRows * t + (bagVisRows - 1) * DASH_GAP + BAG_PEEK_H, flex: '0 0 auto' } : { flex: 1, minHeight: 0 }),
           overflowY: 'auto', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch',
           WebkitMaskImage: 'linear-gradient(180deg, #000 calc(100% - 9px), transparent)',
           maskImage: 'linear-gradient(180deg, #000 calc(100% - 9px), transparent)',
         }}>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: `repeat(${BAG_VIEW_COLS}, ${t}px)`,
+            gridTemplateColumns: `repeat(${bagCols}, ${t}px)`,
             gridAutoRows: `${t}px`,
             gap: DASH_GAP,
           }}>

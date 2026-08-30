@@ -2965,7 +2965,11 @@ export var BroTown = function BroTown(_ref0) {
          changes nothing (bandFootprint ignores it there -- the BAR-height
          invariant); in landscape an expanded destination narrows the world
          to playW and the sheet takes the difference. */
-      var _sheetOpen = dashboardPanelBus.state.mode === 'expanded';
+      /* v2.3.2160: the open sheet's KIND rides along — the dashboard column
+         is narrower than a pane column (the owner's 2x4 rotation rule). */
+      var _sheetOpen = dashboardPanelBus.state.mode === 'expanded'
+        ? (dashboardPanelBus.state.stack[0] === 'dashboard' ? 'dashboard' : 'panel')
+        : false;
       /* v2.3.2158: the home-indicator inset, measured through CSS because
          JS cannot read env() directly.  The probe is one reusable fixed div
          parked off-screen; 0 in a browser tab, ~21px in a standalone
@@ -3112,7 +3116,9 @@ export var BroTown = function BroTown(_ref0) {
         if (_wdEl) _wdSab = parseFloat(getComputedStyle(_wdEl).paddingBottom) || 0;
       } catch (e) { /* probe not built yet: 0, same as resize's first pass */ }
       var _wdFp = bandFootprint(_wdVw, fullH, dashMinBus.min,
-        dashboardPanelBus.state.mode === 'expanded', _wdSab); /* v2.3.2152/2158: same inputs as resize() */
+        dashboardPanelBus.state.mode === 'expanded'
+          ? (dashboardPanelBus.state.stack[0] === 'dashboard' ? 'dashboard' : 'panel')
+          : false, _wdSab); /* v2.3.2152/2158/2160: same inputs as resize() */
       var wantH = Math.max(120, fullH - _wdFp.dashH + _wdFp.overlap);
       /* v2.3.2152: width joins the check -- it varies with the landscape
          sheet now, and a missed open/close resize would otherwise leave a

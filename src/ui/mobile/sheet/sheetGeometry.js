@@ -451,10 +451,29 @@ export function navGroupWidth(vw, vh) {
  * is that familiar size by construction.  844x390 -> tile 63 -> sheet 292;
  * 932x430 -> tile 70 -> sheet 320.  The world gains the ~100px the old
  * 0.474 share was spending on empty slot columns. */
-export function landscapeSheetW(vw, vh) {
+/* v2.3.2160 (owner, with the portrait band screenshot beside it: "it would
+ * actually be 2 slots wide and 4 slots vertical height leaving 8 slots
+ * viewable at one time ... I was making a portrait to landscape conversion
+ * of viewable game area that keeps equivalent dashboard view space").
+ * The dashboard's AREA is conserved and its SHAPE rotates with the screen:
+ * portrait shows 4x2 slots in a wide band, landscape shows 2x4 in a tall
+ * column, and everything the rotation saves is world.  390-basis tile 63 ->
+ * bag panel 140 -> sheet 158; the world keeps ~686 of 844.
+ *
+ * TWO WIDTHS, because the owner's rule is about the DASHBOARD: the 2-column
+ * sheet fits slots and pills and nothing else -- Settings' rows, Hero's
+ * chips and the quest log need the 4-column width to lay out at all.  So
+ * the dashboard destination earns the narrow column and every other pane
+ * keeps the wider one ("panes like character view ... in vertical space
+ * below" -- below, in a column that can actually hold them). */
+export function landscapeBagPanelW(vw, vh) {
+  var t = dashTileSize(Math.min(vw, vh || vw));
+  return 2 * t + DASH_GAP + 2 * DASH_GAP + 2;      /* 2 tiles + gap + padding + border */
+}
+export function landscapeSheetW(vw, vh, kind) {
+  if (kind === 'dashboard') return landscapeBagPanelW(vw, vh) + 2 * DASH_GAP + 10;
   var basis = Math.min(vw, vh || vw);
-  var wide = dashPanelWidths(basis).wide;
-  return wide + 2 * DASH_GAP + 10;   /* the sheet's own padding + hairline */
+  return dashPanelWidths(basis).wide + 2 * DASH_GAP + 10;
 }
 
 export function bandFootprint(vw, vh, folded, sheetOpen, bottomInset) {
@@ -476,7 +495,10 @@ export function bandFootprint(vw, vh, folded, sheetOpen, bottomInset) {
      the floor a degenerate window bottoms out at rather than a zero-width
      world. */
   if (vw > vh) {
-    var sheetW = sheetOpen ? landscapeSheetW(vw, vh) : 0;
+    /* v2.3.2160: `sheetOpen` carries the KIND now — false, 'dashboard', or
+       'panel' — because the dashboard column and a pane column earn
+       different widths (see landscapeSheetW). */
+    var sheetW = sheetOpen ? landscapeSheetW(vw, vh, sheetOpen === 'dashboard' ? 'dashboard' : 'panel') : 0;
     /* v2.3.2158 (owner, web app: the nav buttons sat "off the dashboard
        top"): standalone launches have a real home-indicator inset, the
        identity row anchors ABOVE it (bottom: inset + cols-h), and a band

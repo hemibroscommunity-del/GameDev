@@ -182,6 +182,37 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return !!sh.querySelector('.bt-dashcols') && lvs >= 3
         && sh.querySelectorAll('div').length > 8;
     }));
+  /* ═══ v2.3.2160: THE ROTATION, NOT A REFLOW ═══
+     Owner, with the portrait band screenshot: "it would actually be 2 slots
+     wide and 4 slots vertical height leaving 8 slots viewable at one time
+     ... I was making a portrait to landscape conversion of viewable game
+     area that keeps equivalent dashboard view space."
+     So the DASHBOARD destination earns a column exactly two slots wide
+     (390-basis tile 63 -> panel 140 -> sheet 158) while pane destinations
+     (the Bag detail asserted at 280..340 above, Hero, Settings) keep the
+     4-column width — the two-widths rule in landscapeSheetW. */
+  rec.ok('...in the narrow 2-slot column (~158) — pane sheets stay 4 slots wide',
+    viaTap.sheetW >= 145 && viaTap.sheetW <= 185 && viaTap.sheetW < open.sheetW - 80,
+    { dashboardSheetW: viaTap.sheetW, paneSheetW: open.sheetW });
+  rec.ok('...and the bag grid is 2 columns x 4 visible rows — portrait 4x2, rotated',
+    await P.page.evaluate(() => {
+      const sh = document.querySelector('.bt-land-sheet');
+      if (!sh) return false;
+      /* the bag grid is the one div with an inline gridAutoRows (its tiles
+         are square rows of the same t the columns use) */
+      const grid = [...sh.querySelectorAll('div')].find((d) => d.style && d.style.gridAutoRows);
+      if (!grid) return false;
+      const cols = getComputedStyle(grid).gridTemplateColumns.trim().split(/\s+/).length;
+      const scroller = grid.parentElement;
+      const tile = grid.firstElementChild ? grid.firstElementChild.getBoundingClientRect().width : 0;
+      /* 4 whole rows + the 12px peek sliver: (h + gap) / (tile + gap) lands
+         between 4 and 5 iff exactly four rows are fully visible */
+      const visRows = tile ? (scroller.clientHeight + 4) / (tile + 4) : 0;
+      return cols === 2 && visRows >= 4 && visRows < 5;
+    }));
+  /* v2.3.2160: shoot the OPEN dashboard — the state every owner correction
+     in this file has been about — rather than the resting band. */
+  await P.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/landscape-dash.png' });
   await P.page.evaluate(() => {
     const b = document.querySelector('.bt-navrail [data-nav="dashboard"]');
     if (b) b.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
@@ -190,7 +221,5 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const viaTap2 = await geom(P);
   rec.ok('...and tapping it again gives the world back (the same toggle it always was)',
     viaTap2.mode === 'bar' && viaTap2.canvasW === 844, viaTap2);
-
-  await P.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/landscape-dash.png' });
   await P.ctx.close().catch(() => {});
 }
