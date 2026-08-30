@@ -1147,6 +1147,41 @@ export function setupWebSocket(ctx) {
                  catalog, so a hostile echo cannot make the renderer ask for a
                  texture that does not exist. */
               try {
+                /* ═══ v2.3.2142: ABSENT IS NOT "TOOK IT OFF" ═══
+                   Owner: "the cape disappeared entirely after a while... the
+                   cape isn't showing up in the cape slot... jogging while
+                   wearing cape shows nothing."
+
+                   All three were this line. It read a MISSING `cape` field as
+                   'none', which is correct for a v1 full snapshot and wrong
+                   for a v2 DELTA -- and v2 is what every current client asks
+                   for. The delta carries only fields whose JSON changed
+                   (persistence.js: `if (cache[k] !== s)`), and `cape` is a
+                   stable string once you own one, so it is emitted exactly
+                   ONCE and never again. Every player_state after that -- a
+                   coin, a regen tick, anything -- arrived without it and took
+                   the cape straight back off.
+
+                   That is why it looked like three bugs: the cape vanished
+                   from the world, the character sheet's cape slot reads
+                   getCape() so it emptied too, and there was nothing left to
+                   draw while jogging.
+
+                   So: only touch the cape when the payload actually CARRIES
+                   the key. Present-and-null still means "took it off" -- the
+                   server always includes `cape` in the first emit and again
+                   whenever it changes, so an unequip really does arrive as a
+                   key. Absent means "unchanged", which is the whole point of
+                   a delta.
+
+                   Guarded with an `if` rather than an early `break`: this
+                   handler carries on into coins, inventory, lifeSkills and the
+                   rest below, and a `break` here -- inside the switch case --
+                   would skip every one of them on the (very common) delta that
+                   does not mention the cape. Caught by reading the lines under
+                   this block rather than by a test, which is the sort of thing
+                   a cosmetic guard should never be able to do. */
+                if (Object.prototype.hasOwnProperty.call(msg.payload, 'cape')) {
                 var _capeId = (typeof msg.payload.cape === 'string' && msg.payload.cape) ? msg.payload.cape : 'none';
                 import('@/rendering/traits/capeCatalog.js')
                   .then(function (m) {
@@ -1181,6 +1216,7 @@ export function setupWebSocket(ctx) {
                     }
                   })
                   .catch(function () { /* module split not loaded yet: next echo carries it */ });
+                }
               } catch (e) { /* never let a cosmetic break the state sync */ }
               if (typeof msg.payload.coins === 'number') {
                 S.rpg.coins = msg.payload.coins;

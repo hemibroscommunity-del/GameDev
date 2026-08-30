@@ -270,6 +270,138 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   const worn = await raw(P);
   rec.ok('the cape is drawn once it is worn', !!(worn && worn.cape && worn.cape.visible && worn.cape.tex), worn && worn.cape);
+
+  /* ═══ v2.3.2143: AND IT IS NOT ALSO SITTING IN THE BAG ═══
+     Owner, twice: "after equipping it it still stays as an icon in your
+     inventory", then "the bug of it not disappearing from bag after equipping
+     ... still isn't working".
+
+     Two separate facts, and they must BOTH hold or the fix is a different bug:
+       - the trophy is still in rpg.inventory (hidden, never consumed, so the
+         cape comes straight back the moment you take it off), and
+       - the bag model does not list it while it is worn.
+     Asserting only the second would pass just as well if the item had been
+     destroyed, which would make the cape unrecoverable. */
+  const bagWorn = await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    const rpg = S && S.rpg;
+    return {
+      inBlob: (rpg && rpg.inventory && rpg.inventory.cape_crimson) || 0,
+      keys: (window.__btBagKeys && rpg) ? window.__btBagKeys(rpg) : null,
+    };
+  });
+  rec.ok('the bag model is reachable from the page (guard: a null list would '
+    + 'pass the hide check for the wrong reason)', Array.isArray(bagWorn.keys), bagWorn);
+  rec.ok('the cape trophy is STILL in the inventory blob -- hidden, not '
+    + 'consumed, so taking the cape off gives it back', bagWorn.inBlob > 0, bagWorn);
+  rec.ok('...but the bag does not SHOW it while the cape is worn -- the '
+    + 'owner\'s report, twice',
+    Array.isArray(bagWorn.keys) && bagWorn.keys.indexOf('cape_crimson') < 0, bagWorn);
+
+  /* Take it off through the same message the slot card's REMOVE button sends,
+     and the item must come back -- otherwise the hide is a one-way door. */
+  await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    if (S && S.channel) S.channel.send({ type: 'cape_equip', payload: { worn: false } });
+  });
+  await P.page.waitForTimeout(1200);
+  const bagOff = await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    const rpg = S && S.rpg;
+    return {
+      keys: (window.__btBagKeys && rpg) ? window.__btBagKeys(rpg) : null,
+    };
+  });
+  rec.ok('REMOVE puts the cape back in the bag, so it can be worn again',
+    Array.isArray(bagOff.keys) && bagOff.keys.indexOf('cape_crimson') >= 0, bagOff);
+
+  /* Put it back on: everything below this point measures a WORN cape. */
+  await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    if (S && S.channel) S.channel.send({ type: 'cape_equip', payload: { worn: true } });
+  });
+  await P.page.waitForTimeout(1200);
+  const reworn = await raw(P);
+  rec.ok('and wearing it again draws it, so the round trip is symmetric',
+    !!(reworn && reworn.cape && reworn.cape.visible && reworn.cape.tex), reworn && reworn.cape);
+
+  /* ═══ v2.3.2142: AND IT SURVIVES THE NEXT player_state ═══
+     Owner: "the cape disappeared entirely after a while... the cape isn't
+     showing up in the cape slot in character equip menu... jogging while
+     wearing cape doesn't work, shows nothing."
+
+     One cause under all three. wsClient read a MISSING `cape` field as 'none',
+     which is right for a v1 full snapshot and wrong for the v2 DELTA every
+     current client asks for: the delta carries only fields whose JSON changed,
+     and `cape` is a stable string once you own one, so it is emitted once and
+     never again. The next player_state -- a coin, a regen tick, anything --
+     arrived without it and took the cape off. The character sheet's cape slot
+     reads getCape(), so it emptied with it, and there was nothing left to draw
+     on a jog.
+
+     Everything above this line passed throughout, because it reads the cape
+     immediately after the redeem -- on the ONE echo that does carry the field.
+     That is the shape of the hole: the assertion has to outlive that echo.
+
+     So: force a player_state that changes something ELSE, and check the cape
+     is still on. Coins through the shipped operator API, which is a real
+     server-side mutation and therefore a real delta. */
+  const beforeDelta = await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    return { coins: (S && S.rpg && S.rpg.coins) || 0 };
+  });
+  /* `gold`, not `coins`. The admin grant endpoint accepts exactly two kinds,
+     gold and item (admin.js: `kind !== 'gold' && kind !== 'item'`), and
+     anything else is refused. The first cut here sent 'coins' and the guard
+     below caught it -- coins went 75 -> 75, so the survival assertion beside
+     it would have passed on a delta that never happened. (mp-rehearsal sends
+     'coins' too, with the rejection swallowed by a .catch; that is its own
+     silent no-op, noted here rather than fixed from this file.) */
+  await H.grant(wsPort, pid, 'gold', { amount: 250 }).catch(() => null);
+  await P.page.waitForTimeout(2500);
+  /* `_capeWorn` is the mirror wsClient keeps on S.rpg for exactly this reason
+     -- the catalog is a lazy split chunk with no importable URL in dist (this
+     file's own header says so), so the flag is the readable answer. */
+  const afterDelta = await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    return {
+      coins: (S && S.rpg && S.rpg.coins) || 0,
+      capeWorn: !!(S && S.rpg && S.rpg._capeWorn),
+    };
+  });
+  rec.ok('a coin grant really did land (guard: no delta, nothing is proven)',
+    afterDelta.coins > beforeDelta.coins, { before: beforeDelta, after: afterDelta });
+  rec.ok('the cape SURVIVES a player_state that does not mention it '
+    + '(v2.3.2142: absent is "unchanged", not "took it off")',
+    afterDelta.capeWorn === true, afterDelta);
+
+  const still = await raw(P);
+  rec.ok('...and it is still drawn on the character after that delta',
+    !!(still && still.cape && still.cape.visible && still.cape.tex), still && still.cape);
+
+  /* ═══ AND IT IS STILL THERE WHEN YOU RUN ═══
+     Owner, after testing the first fix: "it not showing on jog still isn't
+     working." The jog assertions further down this file all run BEFORE the
+     delta above, so every one of them was reading the cape inside the window
+     where it had not been stripped yet -- the same blind spot in a different
+     place. The owner's actual sequence is equip, play for a moment, then run:
+     a delta lands between the two, and THAT is the jog that showed nothing.
+     So: jog here, after the delta, and check. */
+  await P.page.keyboard.down('d');
+  let joggedAfter = null;
+  for (let i = 0; i < 12 && !joggedAfter; i++) {
+    await P.page.waitForTimeout(140);
+    const s3 = await raw(P);
+    if (s3 && s3.pose === 'jog') joggedAfter = s3;
+  }
+  await P.page.keyboard.up('d');
+  await P.page.waitForTimeout(500);
+  rec.ok('the character jogged after the delta (guard)', !!joggedAfter,
+    { got: !!joggedAfter });
+  rec.ok('...and the cape is STILL DRAWN on that jog -- the owner\'s exact '
+    + 'sequence: equip, play a moment, then run',
+    !!(joggedAfter && joggedAfter.cape && joggedAfter.cape.visible && joggedAfter.cape.tex),
+    joggedAfter && joggedAfter.cape);
   rec.ok('...and the body is drawn under it (guard: otherwise "visible" means nothing)',
     !!(worn && worn.body && worn.body.visible), worn && worn.body);
   /* THE REGISTRATION. Same origin, same scale — a full-frame sticker on a
@@ -335,6 +467,49 @@ export async function run({ browser, wsPort, webPort, rec }) {
       jog.every((s) => Math.abs(s.cape.w - s.body.w) < 1.5), jog.map((s) => [s.cape.w, s.body.w]));
   }
   rec.ok('the jog was photographed, not only measured', shots.length > 0, { shots });
+
+  /* ═══ v2.3.2143: JOG IN EVERY DIRECTION, NOT ONLY EAST ═══
+     The owner said "jogging while wearing cape doesn't work, shows nothing"
+     without naming a direction, and every jog assertion above this line holds
+     'd'. That is not a safe assumption to leave standing: the cape resolves
+     its texture through capeBaseDir(), which maps eight facings onto five
+     sheets, and the jog path additionally applies a per-direction tilt and
+     pivot (_capeTune). A facing whose sheet never loaded, or whose tune sent
+     the sprite off the body, would look exactly like "shows nothing" to a
+     player and would be invisible to an east-only test.
+
+     Four keys, the four the touch stick can produce on its own; the diagonals
+     ride the same five sheets by the mirror rule. */
+  const jogDirs = [
+    { key: 'd', label: 'east' }, { key: 'a', label: 'west' },
+    { key: 'w', label: 'north' }, { key: 's', label: 'south' },
+  ];
+  const jogSeen = [];
+  for (const jd of jogDirs) {
+    await P.page.keyboard.down(jd.key);
+    let hit = null;
+    for (let i = 0; i < 12 && !hit; i++) {
+      await P.page.waitForTimeout(130);
+      const st = await raw(P);
+      if (st && st.pose === 'jog') hit = st;
+    }
+    await P.page.keyboard.up(jd.key);
+    await P.page.waitForTimeout(350);
+    if (hit) {
+      jogSeen.push({
+        dir: jd.label, facing: hit.dir || hit.facing || null,
+        capeOn: !!(hit.cape && hit.cape.visible), tex: !!(hit.cape && hit.cape.tex),
+        bodyOn: !!(hit.body && hit.body.visible),
+      });
+    }
+  }
+  rec.ok('the character jogged in all four directions (guard: an unreached '
+    + 'direction would let the claim below pass on nothing)',
+    jogSeen.length === jogDirs.length, jogSeen);
+  rec.ok('the cape is drawn on the jog in EVERY direction, with a real '
+    + 'texture behind it -- the owner said "shows nothing" without naming one',
+    jogSeen.length === jogDirs.length && jogSeen.every((j) => j.capeOn && j.tex && j.bodyOn),
+    jogSeen);
 
   /* ═══ v2.3.2125: THE TILT SWEEP ═══
      Owner: "It looks like the cape is hanging off the side of his head and the
