@@ -127,7 +127,22 @@ const TARGETS = {
    any more.  Nothing is deleted: a player who inked their arms before this
    still wears them, and the wire, the renderer and both server gates are
    untouched.  Say the word if it should be cleared instead. */
+/* ═══ v2.3.2150: FRONT AND BACK, AND WHY THIS IS A TABLE OF FOUR ═══
+   Owner: "I don't see a menu option that toggles tattooing the back."
+
+   They were right, and the gap was older and wider than the canvas added in
+   v2.3.2148. The tattoo screens do not have a canvas PICKER: the tab frames a
+   view and your FINGER chooses the canvas (BodyInk's regionAt, v2.3.1994), and
+   the figure it frames faces the camera. So a back canvas is unreachable by
+   construction -- there is no back to touch. That applied to the back of the
+   HEAD too, which has been in TAB_SPOTS since v2.3.2043 with no way to select
+   it either.
+
+   The fix is the shirt's own idiom (it has had front/back since v2.3.1939):
+   one Front/Back switch, applying to whichever tab you are on, so two tabs
+   times two sides reach all four canvases without a four-tab strip. */
 const TATTOO_SPOT = { body: 'tattoo', face: 'tattooFace' };
+const TATTOO_SPOT_BACK = { body: 'tattooBack', face: 'tattooHeadBack' };
 /* v2.3.1994: and which canvases each of those two screens can REACH — the tab
    frames a view now rather than fencing one canvas off, so Body covers the
    torso and both arms.  Beside TATTOO_SPOT because the two are one table read
@@ -140,7 +155,19 @@ const TATTOO_SPOT = { body: 'tattoo', face: 'tattooFace' };
    back of the head since v2.3.2043 -- one more entry in this table rather than
    a bespoke front/back switch, so the control, the caption and the undo history
    all work for it already. */
-const TAB_SPOTS = { body: ['tattoo', 'tattooBack', 'tattooArm'], face: ['tattooFace', 'tattooHeadBack'] };
+/* Which canvases each tab reaches, per side. Arms appear on BOTH: an arm is
+   the same arm from behind, which is why artForFacing leaves the arm canvas
+   alone (playerSkins, v2.3.2148) -- so a stroke on an arm from the back view
+   belongs on the one arm drawing rather than a second one that does not
+   exist. */
+const TAB_SPOTS = {
+  body: ['tattoo', 'tattooArm'],
+  face: ['tattooFace'],
+};
+const TAB_SPOTS_BACK = {
+  body: ['tattooBack', 'tattooArm'],
+  face: ['tattooHeadBack'],
+};
 
 /* ── the toolbar's icons ──
    Drawn inline rather than shipped as art, for the reason the creator's pencil
@@ -510,7 +537,17 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   /* Which skin canvas the body surface last touched.  It drives `spot`, so the
      palette, Undo, Clear and the caption all follow your finger from the chest
      to the face without you telling them you moved. */
-  const side = mode === 'back' ? 'back' : 'front';
+  /* v2.3.2150: which SIDE of the character the tattoo screens are on.
+     DECLARED HERE, above `side`, and that placement is the whole of a bug:
+     it started life next to the other tattoo-spot state a couple of dozen
+     lines further down, which put it AFTER the `side` that reads it -- a
+     temporal dead zone, so every render of this panel threw
+     "Cannot access 'inkBack' before initialization" and the designer simply
+     never opened. mp-bodyink caught it as a timeout waiting for the canvas. */
+  const [inkBack, setInkBack] = React.useState(false);
+  /* The tattoo screens carry their own side, so the worn preview turns round
+     with the switch (WornPreview already faces north for 'back'). */
+  const side = isTattoo ? (inkBack ? 'back' : 'front') : (mode === 'back' ? 'back' : 'front');
   const onPattern = mode === 'pattern';
   /* WHERE on the body this panel is currently painting.  For everything but a
      tattoo that is just the target; for a tattoo the mode picks it, and the
@@ -533,8 +570,11 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
      — no second render, and no window in which the panel is pointed at a
      canvas the surface cannot reach. */
   const [bodySpot, setBodySpot] = React.useState('tattoo');
-  const tabSpot = isTattoo ? (TATTOO_SPOT[mode] || 'tattoo') : target;
-  const spot = (isTattoo && (TAB_SPOTS[mode] || []).indexOf(bodySpot) >= 0) ? bodySpot : tabSpot;
+  const tabSpot = isTattoo
+    ? ((inkBack ? TATTOO_SPOT_BACK : TATTOO_SPOT)[mode] || 'tattoo')
+    : target;
+  const reachable = isTattoo ? ((inkBack ? TAB_SPOTS_BACK : TAB_SPOTS)[mode] || []) : [];
+  const spot = (isTattoo && reachable.indexOf(bodySpot) >= 0) ? bodySpot : tabSpot;
   const scfg = TARGETS[spot] || cfg;
   /* Which stored drawing this panel is editing right now. */
   const artId = isShirt ? (side === 'back' ? 'shirtBack' : 'shirtFront') : spot;
@@ -866,6 +906,13 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   const liveArt = (id) => (id === artId ? art : getArt(id));
   const bodyArts = React.useMemo(() => ({
     tattoo: liveArt('tattoo'), tattooFace: liveArt('tattooFace'), tattooArm: liveArt('tattooArm'),
+    /* v2.3.2150: the back canvases belong here too, and leaving them out was
+       not cosmetic. The surface builds its per-region GRIDS from what it is
+       given; with the Back switch on, `activeTarget` was a canvas this object
+       had never heard of, so the composite pass bailed and the grids went
+       stale -- every touch then reported a MISS and the stroke was dropped
+       silently. The switch looked like it did nothing at all. */
+    tattooBack: liveArt('tattooBack'), tattooHeadBack: liveArt('tattooHeadBack'),
     /* liveArt reads only `art`/`artId` and the store; bodyTick is the store's
        own change signal.  (No react-hooks plugin in this repo's flat config —
        the deps are stated by hand and checked by hand.) */
@@ -1388,6 +1435,35 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
           </div>
         )}
 
+        {/* ═══ v2.3.2150: THE FRONT / BACK SWITCH ═══
+            Owner: "I don't see a menu option that toggles tattooing the back."
+            There was none -- see TATTOO_SPOT above for why the tabs alone could
+            never have offered one. It sits under the tabs rather than among
+            them because it is not a fifth place to draw: it is which way round
+            the character you are drawing on, and it applies to whichever tab is
+            active. The worn preview turns with it, so the switch shows its own
+            effect.
+
+            ITS OWN CLASS, not bt-paint-tabs: that selector means "which screen
+            am I on" and mp-bodyink asserts there are exactly two of them.
+            Sharing it would make this switch look like two more screens, both
+            to that test and to anyone reading the DOM. */}
+        {isTattoo && (
+          <div className="bt-paint-sideswitch" data-ink-side={inkBack ? 'back' : 'front'}
+            style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+            {[['front', false], ['back', true]].map((opt) => (
+              <button key={opt[0]} type="button"
+                data-ink-side-btn={opt[0]}
+                aria-pressed={inkBack === opt[1]}
+                onClick={() => setInkBack(opt[1])}
+                className={'bt-cc-tab' + (inkBack === opt[1] ? ' bt-cc-tab--on' : '')}
+                style={{ flex: 1, minHeight: 30, textTransform: 'capitalize' }}>
+                <span className="bt-cc-tab-label">{opt[0]}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* v2.3.1947: the character wearing what you are making. */}
         <div className="bt-paint-side">
           <WornPreview look={look} target={spot} side={side} art={art} pat={pat} />
@@ -1445,6 +1521,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
             <BodyInk look={look} arts={bodyArts} ink={ink}
               region={mode === 'face' ? 'face' : 'tattoo'}
               apiRef={bodyApiRef} activeTarget={artId}
+              backSide={inkBack}
               onRegion={bodyRegion} onDown={down} onMove={move} onUp={up}
               overlayCells={(liveIdx >= 0 && liveIdx < painted.cells.length) ? painted.cells[liveIdx] : null}
               selCells={(sel >= 0 && sel < painted.cells.length) ? painted.cells[sel] : null}
