@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  a2hs: () => import('./mp-a2hs.mjs'), /* v2.3.2154: the install instruction finds the right player */
   landdash: () => import('./mp-landscape-dash.mjs'), /* v2.3.2152: the 48px strip, the side sheet, and playing with menus open */
   landrotate: () => import('./mp-landscape-rotate.mjs'), /* v2.3.2152: rotation is a clean handoff both ways */
   landview: () => import('./mp-landscape-view.mjs'), /* v2.3.2151: the view rule switches axes; portrait is pinned */

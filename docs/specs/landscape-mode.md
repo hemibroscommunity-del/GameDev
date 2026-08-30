@@ -187,3 +187,20 @@ Browser chrome on iPhone: not a code problem this PR can solve in-browser —
 Safari keeps its bar for a non-scrolling page. The app already ships
 `apple-mobile-web-app-capable`, so Add to Home Screen launches it
 chrome-free; that is the recommended way to play.
+
+### The install instruction (v2.3.2154 — owner request)
+
+Owner: "there needs to be some kind of instruction on the game itself on how
+to do this" — then, in the next message, "Where is the share button?"
+
+InstallHint (GameApp-mounted world chrome): iPhone/iPad Safari **in the
+browser only** (standalone launches and Android see nothing — on Android the
+instruction would be a lie until a web manifest ships). Appears 8s after the
+world is in, above the band per zLayers rule 2; DRAWS the share glyph inline
+(the button the player must find has no label and moves — bottom toolbar
+upright, top-right sideways — and the card names both); 44pt dismiss,
+remembered in localStorage. The way back is one tap away: Settings → "Play
+full screen — hide the browser bar" (installHintBus), shown only to the same
+audience. mp-a2hs proves the audience gate both ways with a spoofed iPhone
+UA, the glyph, both locations in the copy, the 44pt dismiss, the memory, and
+the Settings reopen past it.
