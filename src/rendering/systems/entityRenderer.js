@@ -1508,7 +1508,22 @@ function _capeTune(dir) {
   let t = null;
   try { t = window.__btCapeTune || null; } catch (e) { t = null; }
   const base = _CAPE_JOG_TILT[dir] || 0;
-  if (!t) return { tilt: base, pivotY: _CAPE_PIVOT_Y };
+  /* ═══ v2.3.2153: THE DEFAULT BRANCH OWES A `dx` TOO ═══
+     Owner, for the third time: "Cape still disappears on jog."
+
+     v2.3.2126 added the jog slide and added it to ONE of these two returns.
+     This is the branch every real session takes -- the other needs
+     window.__btCapeTune, which only a QA bench sets -- and without `dx` the
+     caller computes `undefined * scale * ±1`, which is NaN, and writes NaN
+     into spr.x. A sprite at NaN never rasterises. So the cape vanished for
+     every player on every jog, while the tuning sweep that was built to
+     photograph this exact animation kept producing a perfect cape, because
+     setting __btCapeTune is what put a number back in the object.
+
+     That is also why three rounds of scene-graph assertions missed it: the
+     sprite is visible, its texture is right, its scale matches the body and
+     its rotation is applied. Only the position is poisoned. */
+  if (!t) return { tilt: base, pivotY: _CAPE_PIVOT_Y, dx: (_CAPE_JOG_DX[dir] || 0) };
   /* A tilt of 0 is meaningful (north/south face the camera, where a sideways
      lean would be a lie), so scale rather than replace: one knob moves the
      whole table and cannot accidentally give north a tilt it must not have. */
@@ -1564,8 +1579,14 @@ function _placeCape(display, capeId, pose, dir, mirror, frameIdx) {
   const drawnH = Math.abs(spr.scale.y) * ((tex.frame && tex.frame.height) || 256);
   /* v2.3.2126: the jog slide, in the same 256-space the crown offset above is
      in, so it scales with the sprite exactly as that does. */
+  /* v2.3.2153: coerced, and NOT because the value above is in doubt. This is
+     the line that turned one missing table entry into an invisible cape, and
+     it would do it again for the next dir added to _CAPE_JOG_DX without a
+     matching entry. A cape one pixel out of place is a bug you can see; a
+     cape at NaN is a bug that looks like the feature was never built. */
+  const _tuneDx = Number(tune.dx) || 0;
   const jogDx = (pose === 'jog')
-    ? (tune.dx * Math.abs(spr.scale.x) * (mirror ? -1 : 1))
+    ? (_tuneDx * Math.abs(spr.scale.x) * (mirror ? -1 : 1))
     : 0;
   spr.x = sb.x + dx + jogDx;
   spr.y = sb.y + dy - (0.5 - tune.pivotY) * drawnH;
