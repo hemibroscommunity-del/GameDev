@@ -96,7 +96,16 @@ function XpChooser(props) {
     },
   }, /*#__PURE__*/React.createElement("div", {
     style: {
-      display: 'flex', alignItems: 'baseline', gap: 7,
+      /* v2.3.2154: 7 -> 9. At 11px the caption read as a footnote and the gap
+         did not matter; at 13px it sits shoulder to shoulder with the payout
+         and "+70 XPCHOOSE WHERE TO TRAIN IT" runs together. 11 was the first
+         try and it cost 2px more than the row had -- the caption carries an
+         ellipsis, so it paid for the gap by truncating to "...TRAIN I…", which
+         is a worse outcome than the small type it replaced. 9, with the
+         letter-spacing trimmed a notch below, buys the separation and keeps
+         the whole sentence. mp-questxp asserts BOTH, so the next size bump
+         cannot quietly spend the sentence again. */
+      display: 'flex', alignItems: 'baseline', gap: 9,
       marginBottom: 6, minWidth: 0,
     },
   }, /*#__PURE__*/React.createElement("span", {
@@ -105,9 +114,18 @@ function XpChooser(props) {
     className: 'bt-xp-payout',
     style: { fontSize: 17, fontWeight: 700, color: '#61B06B', flex: 'none', lineHeight: 1 },
   }, '+' + xp + ' XP'), /*#__PURE__*/React.createElement("span", {
+    /* v2.3.2154: a stable hook. This span and the three buttons below have no
+       id of their own, and a size is only a size if something measures it. */
+    'data-xp-caption': '',
     style: {
-      fontSize: 11, fontWeight: 600, letterSpacing: '.06em',
-      textTransform: 'uppercase', color: 'rgba(238,242,235,.55)',
+      /* v2.3.2154 (owner: "Make the 'choose where to train it' font size and
+         icon labels larger"). 11 -> 13, and the muted grey lifts with it: this
+         line is the INSTRUCTION for the only decision on the screen, and at
+         11px in 55% white it read as a footnote to the XP number beside it. It
+         keeps its ellipsis, so a narrow phone truncates rather than reflowing
+         the row the payout sits on. */
+      fontSize: 13, fontWeight: 600, letterSpacing: '.04em',
+      textTransform: 'uppercase', color: 'rgba(238,242,235,.72)',
       minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
     },
   }, 'choose where to train it')), /*#__PURE__*/React.createElement("div", {
@@ -116,6 +134,7 @@ function XpChooser(props) {
     var on = xpCat === sk.key;
     return /*#__PURE__*/React.createElement("button", {
       key: sk.key,
+      'data-xp-skill': sk.key,     /* v2.3.2154: see the caption's note */
       'aria-pressed': on,
       onClick: function onClick(e) { e.stopPropagation(); setXpCat(sk.key); },
       style: {
@@ -125,12 +144,20 @@ function XpChooser(props) {
         border: '1px solid ' + (on ? '#D8A85F' : 'rgba(238,242,235,.18)'),
         borderRadius: 10,
         color: on ? '#D8A85F' : '#EEF2EB',
-        fontFamily: 'inherit', fontSize: 12, fontWeight: 700,
+        /* v2.3.2154: 12 -> 14 on the label, 18 -> 22 on the icon below.
+           These three buttons are where the quest's XP actually goes, and
+           Melee / Bow / Magic were set two sizes under the panel's own body
+           text. Both move together on purpose: enlarging the label alone
+           leaves an icon that reads as a bullet point beside it.
+           `nowrap` because this is a three-across row on a 390px phone, and
+           bigger type is exactly how a label starts wrapping -- mp-questxp
+           measures the rendered line count rather than trusting that. */
+        fontFamily: 'inherit', fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap',
         cursor: 'pointer', touchAction: 'manipulation',
       },
     }, /*#__PURE__*/React.createElement("img", {
       src: sk.iconSrc, alt: "", draggable: false,
-      style: { width: 18, height: 18, objectFit: 'contain', flex: 'none', pointerEvents: 'none' },
+      style: { width: 22, height: 22, objectFit: 'contain', flex: 'none', pointerEvents: 'none' },
     }), sk.label);
   })));
 }

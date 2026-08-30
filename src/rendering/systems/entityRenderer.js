@@ -3919,7 +3919,24 @@ function createMonsterDisplay(monster) {
      row (the same origin the procedural circle straddles), so +size clears
      the feet for the small archetypes and for the 96px sprites alike —
      they all stand ON this line, only their tops differ. */
-  _attachNamePill(hpUi, 10, MONSTER_SIZE_MULT);
+  /* ═══ v2.3.2154: THE PLATES GO UP A COUPLE OF SIZES ═══
+     Owner: "Make the character name plate, level, and monster nameplate and
+     level a bit larger font."
+
+     Raised at the FACTORY argument, not by scaling the container: a Pixi Text
+     is a texture, and enlarging its container resamples glyphs rasterised at
+     the old size -- bigger AND blurrier, which is the opposite of the ask and
+     is the whole point of the v2.3.1821 note inside _attachNamePill. Passing a
+     larger nameSize re-rasterises at the new size, and _pillH, the LV
+     baseline and the verified badge are all derived from it, so the pill grows
+     in proportion instead of the text spilling out of it.
+
+     The player-to-peer relationship is preserved deliberately: yours has been
+     one size above everyone else's since v2.3.1681, so 13/12 becomes 15/14
+     rather than both landing on the same number. The NPC plate (9) is left
+     alone -- the owner named the character and the monster, and the town NPCs
+     are the one population where a bigger plate would crowd the street. */
+  _attachNamePill(hpUi, 12, MONSTER_SIZE_MULT);   /* v2.3.2154: 10 -> 12 */
   hpUi._namePill.y = size + 6;
 
   /* Single dynamic Graphics for everything that DOES change per frame:
@@ -4949,7 +4966,7 @@ function createPlayerDisplay() {
   /* v2.3.1681 (owner: "Player name and level in the pill beneath character
      need to be slightly larger for legibility").  10 -> 13; the plate sizes
      itself off this number, so the background grows with the text. */
-  _attachNamePill(container, 13, undefined, uiLayer);
+  _attachNamePill(container, 15, undefined, uiLayer);   /* v2.3.2154: 13 -> 15 */
 
   /* v2.3.1193: the local player's own threat skull (red = my threat
      countdown is running, white = ignored/expired fight window).  One
@@ -5262,7 +5279,7 @@ function createOtherPlayerDisplay() {
 
   /* v2.3.1566 (owner): same plate the local player gets, one size down —
      a remote name should not out-shout your own. */
-  _attachNamePill(container, 12, undefined, uiLayer);   /* v2.3.1681: 9 -> 12, still one down from your own */
+  _attachNamePill(container, 14, undefined, uiLayer);   /* v2.3.1681: 9 -> 12, still one down from your own; v2.3.2154 lifts the pair to 15/14 */
 
   /* v2.3.1193: threat skull above the nameplate (red = active threat
      countdown, white = ignored/expired fight window — see
@@ -6612,6 +6629,11 @@ export class EntityRenderer {
           name: _pui && _pui._pillName ? _pui._pillName.text : null,
           level: _pui && _pui._pillLevel ? _pui._pillLevel.text : null,
           levelFill: _pui && _pui._pillLevel ? String(_pui._pillLevel.style.fill) : null,
+          /* v2.3.2154: the rasterised sizes, so "a bit larger font" is a
+             measurement rather than a diff review. Read-only, like every other
+             field on this probe. */
+          nameSize: _pui && _pui._pillName ? Number(_pui._pillName.style.fontSize) : null,
+          lvlSize: _pui && _pui._pillLevel ? Number(_pui._pillLevel.style.fontSize) : null,
           y: _pillNode ? _pillNode.y : null,
           hasOldLvlText: !!display._lvlText,
         });

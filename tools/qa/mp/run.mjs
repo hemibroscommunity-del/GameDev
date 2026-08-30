@@ -38,6 +38,7 @@ const SCENARIOS = {
   ccstand: () => import('./mp-ccstand.mjs'), /* v2.3.2151: the bro stands mid-pedestal */
   ccbuttons: () => import('./mp-ccbuttons.mjs'), /* v2.3.2151: the name label + the two action buttons */
   townhill: () => import('./mp-townhill.mjs'), /* v2.3.2061: the fountain + the house on the hill */
+  questxp: () => import('./mp-questxp.mjs'), /* v2.3.2154: the XP chooser's type, and your own plate */
   shopkeeper: () => import('./mp-shopkeeper.mjs'), /* v2.3.2050: trading with Shopkeeper Bro, and the pile being public */
   facingside: () => import('./mp-facingside.mjs'), /* v2.3.2042: a face tattoo does not revolve to the back of a head */
   cosmpose: () => import('./mp-cosmpose.mjs'), /* v2.3.2041: do tattoos + clothing patterns survive every activity, on both screens? */

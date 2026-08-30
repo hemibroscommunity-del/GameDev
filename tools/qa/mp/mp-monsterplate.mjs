@@ -97,4 +97,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!cold && !/ef4444|16729156/i.test(cold.levelFill || ''), cold);
 
   if (process.env.BT_SHOT) await P.page.screenshot({ path: process.env.BT_SHOT });
+
+  /* ═══ v2.3.2154: AND THE PLATE IS BIG ENOUGH TO READ ═══
+     Owner: "Make the character name plate, level, and monster nameplate and
+     level a bit larger font." A size is only a size if something measures it;
+     the numbers live in a factory argument three files away from anything a
+     reader of this scenario would think to check. */
+  const sized = await P.page.evaluate(() => {
+    const pl = window.__btMonsterPlates;
+    const p0 = pl && pl.plates && pl.plates.find((x) => x.hasPill && x.nameSize);
+    return p0 ? { nameSize: p0.nameSize, lvlSize: p0.lvlSize, arch: p0.arch } : null;
+  });
+  rec.ok('a monster plate reported its font sizes (guard)', !!sized, sized);
+  rec.ok(`the monster's name is at least 12px (${sized && sized.nameSize})`,
+    !!sized && sized.nameSize >= 12, sized);
+  rec.ok(`...and its LV line tracks it, one down (${sized && sized.lvlSize})`,
+    !!sized && sized.lvlSize >= sized.nameSize - 1, sized);
 }
