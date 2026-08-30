@@ -22,8 +22,10 @@
  * the two views agree on order down to the tile -- a freshly unequipped item
  * or a freshly gathered material both bubble to the front in both places. */
 
-import { classify } from './InventoryPanel.jsx';
+import { classify, CAPE_ITEM_PREFIX } from './InventoryPanel.jsx';
 import { lockedKeysInOrder } from './inventoryLocks.js';
+/* v2.3.2143: the WORN cape leaves the bag -- see wornCapeKey() below. */
+import { getCape } from '@/rendering/traits/capeCatalog.js';
 
 let clk = 0;
 const bump = () => ++clk;
@@ -64,9 +66,42 @@ export function getBagEntries(rpg) {
     if (!((inv[k] || 0) > 0)) { prevCount.delete(k); itemStamp.delete(k); }
   }
 
+  /* ═══ v2.3.2143: A WORN CAPE IS NOT IN YOUR BAG ═══
+     Owner, twice: "after equipping it it still stays as an icon in your
+     inventory", then "the bug of it not disappearing from bag after
+     equipping ... still isn't working".
+
+     Every other slot already behaves this way and that is the whole point:
+     the bag holds what you are NOT wearing.  Worn gear is absent from
+     rpg.inventory entirely, and gear you take off comes BACK as a stash
+     entry (pushStash below).  The cape broke that rule because it is not
+     rpg data at all -- `cape_<id>` is a TROPHY the worker mints beside the
+     ownership ledger (server/src/eventcapes.js _handleCapeRedeem), and the
+     ledger, not the item, is what says you own it.  So the trophy sat in
+     the bag whether or not the cape was on your back.
+
+     Hidden, not consumed.  The item stays in rpg.inventory untouched, so
+     nothing about ownership or persistence changes and no server round
+     trip can drop it; take the cape off and this key is right back in the
+     bag, in its old position, ready to tap again.  That symmetry is why
+     the filter lives HERE, in the one model both bag surfaces read: the
+     quick-bag and the full panel can never disagree about it.
+
+     The unequip control this depends on is the REMOVE button on the cape's
+     slot card (equipModel.js / HeroExpanded.jsx, same version) -- before
+     that button existed this bag item was the ONLY way to take a cape off,
+     and hiding it alone would have welded the prize on. */
+  const wornCapeKey = (function () {
+    try {
+      const id = getCape();
+      return (id && id !== 'none') ? `${CAPE_ITEM_PREFIX}${id}` : null;
+    } catch (e) { return null; }   /* never let a cosmetic hide empty the bag */
+  }());
+
   const entries = [];
   for (const k of Object.keys(inv)) {
     if ((inv[k] || 0) <= 0) continue;
+    if (wornCapeKey && k === wornCapeKey) continue;
     entries.push({
       kind: 'item', key: k, count: inv[k], cat: classify(k),
       lockKey: k, stamp: itemStamp.get(k) || 0,
@@ -106,4 +141,21 @@ export function getBagEntries(rpg) {
     return b.stamp - a.stamp;
   });
   return entries;
+}
+
+/* ═══ v2.3.2143: A QA HANDLE FOR WHAT THE BAG ACTUALLY SHOWS ═══
+   The worn-cape filter above is invisible to every existing check: the item
+   is still in rpg.inventory (deliberately -- it is hidden, not consumed), so
+   a scenario reading the blob sees no difference at all, which is exactly the
+   blind spot that let "still in the bag" be reported twice.
+
+   Driving the real bag panel instead would mean finding a tile by its art in
+   a scrolling grid -- the brittleness that killed five scenarios (TRAPS §29).
+   This is the honest middle: the scenario hands in the same rpg the panel
+   renders from and gets back the same ordered key list the panel lays out, so
+   a filter that stops working fails a test instead of reaching the owner. */
+if (typeof window !== 'undefined') {
+  window.__btBagKeys = (rpg) => getBagEntries(rpg).map((e) => (
+    e.kind === 'item' ? e.key : `${e.kind}:${e.index}`
+  ));
 }

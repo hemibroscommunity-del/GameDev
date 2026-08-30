@@ -836,6 +836,41 @@ export const HeroExpanded = () => {
                           cursor: 'pointer',
                         }}>CHANGE</button>
                     )}
+                    {/* ═══ v2.3.2143: TAKE THE CAPE OFF FROM ITS OWN SLOT ═══
+                        Owner: "the bug of it not disappearing from bag after
+                        equipping ... still isn't working".  Hiding the worn
+                        cape from the bag (bagModel.js, same version) removes
+                        the ONLY unequip control the cape ever had -- tapping
+                        that bag item is what opened the wear/remove popup --
+                        so the control has to reappear somewhere, and the slot
+                        you are already looking at is where every other game
+                        puts it.
+
+                        Same shape as CHANGE, different verb, because it is a
+                        different act: CHANGE opens a picker over a list you
+                        may choose from; a cape is a PRIZE with a list of one,
+                        so the only thing you can do to it is stop wearing it.
+                        Sending `worn: false` leaves the server's ownership
+                        ledger alone (_capeOwnedBy) and only sets ps.capeOff,
+                        so the cape returns to the bag and the slot ghosts --
+                        and putting it back on is a tap on that bag item. */}
+                    {selSlot.unequipCape && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          try {
+                            const St = getState();
+                            if (St && St.channel) St.channel.send({ type: 'cape_equip', payload: { worn: false } });
+                          } catch (_e) { /* offline: the next player_state is the truth anyway */ }
+                        }}
+                        style={{
+                          flex: 'none', padding: '2px 8px', borderRadius: 999,
+                          background: 'transparent', border: `1px solid ${rimCol}`,
+                          color: rimCol, fontFamily: 'inherit',
+                          fontSize: 10, fontWeight: 800, letterSpacing: '.04em',
+                          cursor: 'pointer',
+                        }}>REMOVE</button>
+                    )}
                   </div>
                   {/* ═══ v2.3.1845: THE ITEM, THEN ITS STATS ═══
                       Owner: "put a larger view of the item selected before
