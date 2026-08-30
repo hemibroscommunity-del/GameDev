@@ -441,11 +441,23 @@ export function navGroupWidth(vw, vh) {
  * the sheet's own tile size), 430 stops a big phone spending its extra width
  * on a menu instead of on the world.  844 -> 400, 812 -> 385, 932 -> 430;
  * the world keeps >= 412px everywhere. */
-export function landscapeSheetW(vw) {
-  return Math.round(Math.min(430, Math.max(360, vw * 0.474)));
+/* v2.3.2158 (owner, playing the web app: "landscape view needs to have
+ * dashboard area narrowed.  I can see 8 slots playing in [portrait] view
+ * (plus space for combat skills) so this should translate to 8 slots of
+ * space viewable in landscape").  The sheet's width stops being a share of
+ * the screen and becomes exactly what the content earns: the 4-column bag
+ * panel at the tile size the player already knows from PORTRAIT -- the
+ * device's short side is its portrait width, so dashTileSize(min(vw,vh))
+ * is that familiar size by construction.  844x390 -> tile 63 -> sheet 292;
+ * 932x430 -> tile 70 -> sheet 320.  The world gains the ~100px the old
+ * 0.474 share was spending on empty slot columns. */
+export function landscapeSheetW(vw, vh) {
+  var basis = Math.min(vw, vh || vw);
+  var wide = dashPanelWidths(basis).wide;
+  return wide + 2 * DASH_GAP + 10;   /* the sheet's own padding + hairline */
 }
 
-export function bandFootprint(vw, vh, folded, sheetOpen) {
+export function bandFootprint(vw, vh, folded, sheetOpen, bottomInset) {
   /* ═══ v2.3.2152: THE LANDSCAPE BRANCH ═══
      Owner: "Landscape would be an optional view."  Sideways, the band's
      resting state IS the fold -- identity row only (the v2.3.2118 geometry,
@@ -464,8 +476,18 @@ export function bandFootprint(vw, vh, folded, sheetOpen) {
      the floor a degenerate window bottoms out at rather than a zero-width
      world. */
   if (vw > vh) {
-    var sheetW = sheetOpen ? landscapeSheetW(vw) : 0;
-    return { dashH: identityRowHeight(vw, vh), colsH: 0, overlap: DASH_OVERLAP,
+    var sheetW = sheetOpen ? landscapeSheetW(vw, vh) : 0;
+    /* v2.3.2158 (owner, web app: the nav buttons sat "off the dashboard
+       top"): standalone launches have a real home-indicator inset, the
+       identity row anchors ABOVE it (bottom: inset + cols-h), and a band
+       that ignored the inset was 21px shorter than its own contents -- the
+       buttons poked out the top.  The inset joins the band's height here,
+       so the canvas clears the whole band and the row sits inside it.
+       `bottomInset` is measured by resize() (a CSS env() probe; JS cannot
+       read env directly) and is 0 in a browser tab and in every headless
+       run -- the portrait pins and the landscape numbers are unchanged
+       where there is no inset to count. */
+    return { dashH: identityRowHeight(vw, vh) + (bottomInset || 0), colsH: 0, overlap: DASH_OVERLAP,
              playW: Math.max(320, vw - sheetW), sheetW: sheetW };
   }
   var dashH = barHeight(vw, vh);

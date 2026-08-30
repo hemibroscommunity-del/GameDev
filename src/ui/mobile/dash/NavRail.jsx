@@ -103,7 +103,10 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait })
                  finger lands. */
               if (d.id === 'dashboard') {
                 if (playIsLandscape() && dashboardPanelBus.state.mode === 'bar') {
-                  dashboardPanelBus.open('bag');
+                  /* v2.3.2158: the destination is the DASHBOARD view now —
+                     bag grid + combat pills stacked (PANELS.dashboard) —
+                     not the bare bag; the owner named both halves. */
+                  dashboardPanelBus.open('dashboard');
                   return;
                 }
                 dashboardPanelBus.toBar();

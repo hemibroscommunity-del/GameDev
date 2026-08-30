@@ -2966,7 +2966,20 @@ export var BroTown = function BroTown(_ref0) {
          invariant); in landscape an expanded destination narrows the world
          to playW and the sheet takes the difference. */
       var _sheetOpen = dashboardPanelBus.state.mode === 'expanded';
-      var _fp = bandFootprint(vw, vhFull, dashMinBus.min, _sheetOpen);
+      /* v2.3.2158: the home-indicator inset, measured through CSS because
+         JS cannot read env() directly.  The probe is one reusable fixed div
+         parked off-screen; 0 in a browser tab, ~21px in a standalone
+         landscape launch.  Cached on the element so the getComputedStyle
+         cost is paid once per resize, not per frame. */
+      var _sabEl = document.getElementById('bt-sab-probe');
+      if (!_sabEl) {
+        _sabEl = document.createElement('div');
+        _sabEl.id = 'bt-sab-probe';
+        _sabEl.style.cssText = 'position:fixed;left:-9999px;top:0;padding-bottom:env(safe-area-inset-bottom,0px);';
+        document.body.appendChild(_sabEl);
+      }
+      var _sab = parseFloat(getComputedStyle(_sabEl).paddingBottom) || 0;
+      var _fp = bandFootprint(vw, vhFull, dashMinBus.min, _sheetOpen, _sab);
       var bar = _fp.dashH;
       var colsH = _fp.colsH;
       /* v2.3.2151: the shell's orientation, stamped where every other
@@ -3093,8 +3106,13 @@ export var BroTown = function BroTown(_ref0) {
          resize()'s arithmetic, and the day the two read different formulas
          (a 243-vs-48 landscape disagreement is 10x the 8% tolerance) it
          "heals" the canvas against resize() twice a second forever. */
+      var _wdSab = 0;
+      try {
+        var _wdEl = document.getElementById('bt-sab-probe');
+        if (_wdEl) _wdSab = parseFloat(getComputedStyle(_wdEl).paddingBottom) || 0;
+      } catch (e) { /* probe not built yet: 0, same as resize's first pass */ }
       var _wdFp = bandFootprint(_wdVw, fullH, dashMinBus.min,
-        dashboardPanelBus.state.mode === 'expanded'); /* v2.3.2152: same input as resize() */
+        dashboardPanelBus.state.mode === 'expanded', _wdSab); /* v2.3.2152/2158: same inputs as resize() */
       var wantH = Math.max(120, fullH - _wdFp.dashH + _wdFp.overlap);
       /* v2.3.2152: width joins the check -- it varies with the landscape
          sheet now, and a missed open/close resize would otherwise leave a

@@ -455,6 +455,24 @@ const PANELS = {
      in old sessions don't render a blank sheet. */
   bag:          { title: 'Bag',         Component: InventoryPanel },
   hero:         { title: 'Hero',        Component: HeroExpanded },
+  /* ═══ v2.3.2158: THE DASHBOARD, AS A DESTINATION — LANDSCAPE ONLY ═══
+     Owner: "I can see 8 slots playing in [portrait] view (plus space for
+     combat skills) so this should translate to 8 slots of space viewable
+     in landscape."  Portrait's resting columns row IS this view, so
+     portrait never routes here (NavRail's dashboard tap rests there); the
+     landscape side sheet opens it as a destination: the same bag grid at
+     the same PORTRAIT tile size (vwBasis = the device's short side),
+     combat pills stacked below in the vertical space, scrolling as one
+     column. */
+  dashboard:    { title: 'Dashboard',   Component: function LandDash() {
+    return React.createElement('div', {
+      style: { flex: 1, minHeight: 0, overflowY: 'auto', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' },
+    }, React.createElement(DashColumns, {
+      R: (window._gameState && window._gameState.current && window._gameState.current.rpg) || null,
+      stacked: true,
+      vwBasis: Math.min(playVw(), playVh()),
+    }));
+  } },
 };
 
 /* v2.3.1283: the six toolbar destinations (nav-system spec).  Chat left
@@ -903,7 +921,10 @@ export const BottomDashboard = () => {
             position: 'fixed',
             top: 0,
             right: 0,
-            bottom: 'calc(var(--dash-h, 48px) + env(safe-area-inset-bottom, 0px))',
+            /* v2.3.2158: --dash-h carries the safe-area inset itself now
+               (bandFootprint counts it sideways), so adding env() here
+               again would double it. */
+            bottom: 'var(--dash-h, 48px)',
             width: 'var(--sheet-w, 400px)',
             zIndex: 30,
             boxSizing: 'border-box',

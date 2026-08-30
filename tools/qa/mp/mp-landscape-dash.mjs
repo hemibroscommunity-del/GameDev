@@ -92,8 +92,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(900);
   const open = await geom(P);
   console.log('    open: ' + JSON.stringify(open));
+  /* v2.3.2158: the sheet earns exactly the 4-column bag panel's width at
+     the PORTRAIT tile size (basis = the short side, 390 -> tile 63 ->
+     sheet 292) — the owner's "8 slots plus combat skills", not a share of
+     the screen. */
   rec.ok('opening the Bag NARROWS the canvas — the world yields, nothing overlays it',
-    open.canvasW === 844 - open.sheetW && open.sheetW >= 360 && open.playW === open.canvasW, open);
+    open.canvasW === 844 - open.sheetW && open.sheetW >= 280 && open.sheetW <= 340
+      && open.playW === open.canvasW, open);
   rec.ok('...the sheet sits exactly in the yielded ground, beside the world',
     !!open.sheet && Math.abs(open.sheet.x - open.canvasW) <= 1
       && Math.abs(open.sheet.w - open.sheetW) <= 1, open.sheet);
@@ -163,15 +168,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the chart button exists to tap (guard)', chart === true);
   await P.page.waitForTimeout(900);
   const viaTap = await geom(P);
-  rec.ok('tapping the DASHBOARD button opens the Bag sheet sideways — the slots are back',
+  rec.ok('tapping the DASHBOARD button opens the sheet sideways — the slots are back',
     viaTap.mode === 'expanded' && !!viaTap.sheet && viaTap.canvasW < 844, viaTap);
-  rec.ok('...with actual inventory tiles rendered in it',
+  /* v2.3.2158: the destination is the STACKED dashboard — the bag grid AND
+     the combat pills, both named by the owner, in one vertical column. */
+  rec.ok('...with the bag grid AND the combat pills stacked in it',
     await P.page.evaluate(() => {
       const sh = document.querySelector('.bt-land-sheet');
       if (!sh) return false;
-      /* the bag grid's tiles are the sheet's only grid of squares */
-      return sh.querySelectorAll('[data-bag-tile], [data-inv-tile], img, div').length > 8
-        && sh.getBoundingClientRect().width > 300;
+      /* the stacked DashColumns marker + the three icon-labeled pills (they
+         read "LV n", not skill names) + enough divs to be a real grid */
+      const lvs = ((sh.textContent || '').match(/LV\s*\d/g) || []).length;
+      return !!sh.querySelector('.bt-dashcols') && lvs >= 3
+        && sh.querySelectorAll('div').length > 8;
     }));
   await P.page.evaluate(() => {
     const b = document.querySelector('.bt-navrail [data-nav="dashboard"]');
