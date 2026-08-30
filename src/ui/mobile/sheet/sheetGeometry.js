@@ -500,7 +500,11 @@ export function navGroupWidth(vw, vh) {
  * slots and 53px ones, and the owner's named asks (slot size, combat row,
  * nav in the container) outrank chrome he has never mentioned sideways.
  * Filters stay one tap away in the Bag pane. */
-export const LAND_NAV_BTN_W = 28;
+/* v2.3.2164 (owner: "The dashboard navigation buttons a smidge more of
+   room to expand width wise"): 28 -> 32.  The nav row is the container's
+   binding width, so the smidge costs the world 20px (sheet 190 -> 210);
+   the buttons gain 14% of tap width each. */
+export const LAND_NAV_BTN_W = 32;
 export const LAND_PILL_H = 44;
 export function landscapeNavGroupW() {
   return RAIL_COUNT * LAND_NAV_BTN_W + NAV_GAP * (RAIL_COUNT - 1) + 2 * NAV_GAP;
@@ -536,8 +540,19 @@ export function landscapeSheetW(vw, vh, kind) {
   /* +2*DASH_GAP for DashColumns' own side pads and +16 for the sheet
      wrapper's — the column track must fit INSIDE both or it clips. */
   if (kind === 'dashboard') return landscapeDashColW(vw, vh) + 2 * DASH_GAP + 16;
-  var basis = Math.min(vw, vh || vw);
-  return dashPanelWidths(basis).wide + 2 * DASH_GAP + 10;
+  /* v2.3.2164: a PANE is the device's whole portrait width.  The old
+     bag-derived 292 was measured against one panel and broke another the
+     first time the owner opened it: Hero's Equipment overview lays out
+     figure + slots + stat columns for the 390 every panel was designed
+     and tested at, and at 292 the stats clipped off the sheet's edge.
+     Rather than audit and re-flow ~20 panels for a second width, the pane
+     sheet IS the portrait width — every destination renders pixel-
+     identical to portrait by construction, which is also the strongest
+     possible reading of "panes like character view can be put in vertical
+     space below" (owner, v2.3.2158).  The world keeps vw - shortSide
+     (454 at 844x390) while a pane is up; the DASHBOARD column above stays
+     the narrow one, and it is the surface that is up while you play. */
+  return Math.min(vw, vh || vw);
 }
 
 export function bandFootprint(vw, vh, folded, sheetOpen, bottomInset) {

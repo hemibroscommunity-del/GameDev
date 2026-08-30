@@ -103,12 +103,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(900);
   const open = await geom(P);
   console.log('    open: ' + JSON.stringify(open));
-  /* v2.3.2158: the sheet earns exactly the 4-column bag panel's width at
-     the PORTRAIT tile size (basis = the short side, 390 -> tile 63 ->
-     sheet 292) — the owner's "8 slots plus combat skills", not a share of
-     the screen. */
+  /* v2.3.2164: a PANE sheet is the device's whole portrait width (390
+     here) — every destination renders pixel-identical to portrait, which
+     is what caught Hero's stat columns clipping at the old bag-derived
+     292. */
   rec.ok('opening the Bag NARROWS the canvas — the world yields, nothing overlays it',
-    open.canvasW === 844 - open.sheetW && open.sheetW >= 280 && open.sheetW <= 340
+    open.canvasW === 844 - open.sheetW && open.sheetW === 390
       && open.playW === open.canvasW, open);
   rec.ok('...the sheet sits exactly in the yielded ground, beside the world',
     !!open.sheet && Math.abs(open.sheet.x - open.canvasW) <= 1
