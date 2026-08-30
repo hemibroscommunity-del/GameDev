@@ -1,4 +1,5 @@
 import React from 'react';
+import { guardPush } from '../mobile/modalGuardBus.js'; /* v2.3.2145 */
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
@@ -22,6 +23,13 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
    parity with TradeWindowPanel v2.3.1233b). Styles + static JSX only;
    every handler body byte-identical. */
 export function TradePanel(props) {
+  /* v2.3.2145: while this panel is up the transient world chrome stands down
+     -- see modalGuardBus. The owner could not accept a trade at all: the chat
+     composer's dismiss layer is a full-play-area tap catcher forty z-layers
+     above this panel, so every tap aimed at Accept closed the chat box
+     instead. */
+  React.useEffect(() => guardPush(), []);
+
   var rpgState = props.rpgState,
     stateRef = props.stateRef,
     tradeTarget = props.tradeTarget,

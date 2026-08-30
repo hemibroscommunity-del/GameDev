@@ -173,6 +173,24 @@ const _bodySheets = {};
    correctly-preloaded roll and a screenshot of one that baked a frame late
    are the same picture once the bake lands.  Keys only, read-only, and the
    game never calls it. */
+/* v2.3.2148: WHICH TORSO DRAWING A FACING RESOLVES TO, exactly.
+   Read-only, and the game never calls it -- the same posture as the sheet-key
+   probe below. It exists because the honest question ("does facing away pick
+   the back canvas?") has no other exact answer from a test: the sheet-key
+   cache accumulates across a session, so filtering it by direction reads
+   BAKES THAT ALREADY EXISTED rather than the current decision, and a scenario
+   built on it passed identically with the swap reverted. This returns the
+   decision itself. */
+if (typeof window !== 'undefined') {
+  window.__btArtForFacing = (dir) => {
+    try {
+      const a = localBodyArt(false);
+      if (!a) return null;
+      const r = artForFacing(a, dir);
+      return { tattoo: r ? r.tattoo : null, tattooFace: r ? r.tattooFace : null };
+    } catch (e) { return null; }
+  };
+}
 if (typeof window !== 'undefined') {
   window.__btBodySheetKeys = () => Object.keys(_bodySheets)
     .filter((k) => _bodySheets[k] && _bodySheets[k] !== 'loading');
@@ -1011,7 +1029,23 @@ export function artForFacing(art, dir) {
      an empty back canvas falls through to emptyArt and behaves exactly like
      v2.3.2042 did, so nobody who has not drawn one sees any change. */
   const back = art.tattooHeadBack;
-  return { ...art, tattooFace: artHasInk(back) ? back : emptyArt() };
+  /* v2.3.2148: the BODY does the same thing the head does. Owner: "make it so
+     that the back and front of the character body have separate tattoos areas".
+     Until now the torso canvas was stamped whichever way the character faced,
+     so a chest piece was also a back piece -- the exact complaint v2.3.2042
+     fixed for the face ("face tattoos don't revolve around to your back nor do
+     front shirt designs revolve to back, they're separate"), left unfixed for
+     the torso.
+
+     An undrawn back canvas falls through to emptyArt, so a player who has only
+     ever drawn a chest tattoo now shows a BARE back rather than their chest
+     design wrapped round them. That is the separation being asked for, and it
+     is exactly how the head and the shirt already behave. The ARM canvas still
+     stays put: an arm is the same arm from behind. */
+  const bodyBack = art.tattooBack;
+  return { ...art,
+    tattooFace: artHasInk(back) ? back : emptyArt(),
+    tattoo: artHasInk(bodyBack) ? bodyBack : emptyArt() };
 }
 
 export function bodyArtSeg(art) {
@@ -1027,14 +1061,18 @@ export function bodyArtSeg(art) {
      so this only has to keep two different back drawings from sharing a sheet.
      Anyone who has not drawn one keeps the exact key they had. */
   const hb = artHasInk(art.tattooHeadBack) ? artHash(art.tattooHeadBack) : '';
+  /* v2.3.2148: and the back-of-body canvas, same reasoning as `hb` above --
+     artForFacing has already picked WHICH torso drawing this bake uses, so this
+     only has to stop two different back drawings sharing one sheet. */
+  const tb2 = artHasInk(art.tattooBack) ? artHash(art.tattooBack) : '';
   /* v2.3.1941: the trouser pattern joins the same segment.  It is already a
      short string ("stripe-v:3"), so it goes in whole rather than hashed. */
   const q = parsePattern(art.pantsPattern, 'pants') ? patternKey(art.pantsPattern, 'pants') : '';
   const f = parsePattern(art.shoesPattern, 'shoes') ? patternKey(art.shoesPattern, 'shoes') : '';   /* v2.3.1944 */
-  if (!p && !t && !q && !f && !ft && !at && !hb) return '';
+  if (!p && !t && !q && !f && !ft && !at && !hb && !tb2) return '';
   /* '#' is the marker: no catalog id contains one, so _dropArtSheets can find
      every drawn bake by substring without matching e.g. '/default/'. */
-  return '/#art' + p + '.' + t + '.' + q + '.' + f + '.' + ft + '.' + at + '.' + hb + (art.mirror ? 'm' : 'n');
+  return '/#art' + p + '.' + t + '.' + q + '.' + f + '.' + ft + '.' + at + '.' + hb + '.' + tb2 + (art.mirror ? 'm' : 'n');
 }
 /** The local player's own drawings, in the shape the bake wants.  `mirror` is
  *  per-facing, so callers that know the facing pass it in. */
@@ -1042,10 +1080,13 @@ export function localBodyArt(mirror) {
   const p = getArt('pants'), t = getArt('tattoo');
   const ft = getArt('tattooFace'), at = getArt('tattooArm');   /* v2.3.1949 */
   const hb = getArt('tattooHeadBack');   /* v2.3.2043 */
+  const tbk = getArt('tattooBack');       /* v2.3.2148 */
   const q = getPattern('pants'), f = getPattern('shoes');   /* v2.3.1944 */
   if (!artHasInk(p) && !artHasInk(t) && !artHasInk(ft) && !artHasInk(at) && !artHasInk(hb)
+    && !artHasInk(tbk)
     && !parsePattern(q, 'pants') && !parsePattern(f, 'shoes')) return null;
   return { pants: p, tattoo: t, tattooFace: ft, tattooArm: at, tattooHeadBack: hb,
+    tattooBack: tbk,
     pantsPattern: q, shoesPattern: f, mirror: !!mirror };
 }
 /** The eye target for a sheet, or null when that sheet has no eyes in it.

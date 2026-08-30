@@ -383,6 +383,50 @@ const LESSONS = [
     live: function (rpg) { return !!rpg.shield; },
     done: null,     /* watched live — see the block tracker below */
   },
+  /* ═══ v2.3.2147: THE TWO THINGS NOBODY IS EVER TOLD ═══
+     Owner: "During the first onboarding tutorial maybe after the shield
+     rotation help orient players to their pass key. Also that tapping on your
+     character (on screen) is how you open the chat menu."
+
+     Both sit AFTER the shield deliberately, in the order asked for: the
+     lessons above are how to survive the next minute, and these two are how
+     to keep the character and how to talk to anyone -- important, and not
+     urgent, which is exactly why they belong last rather than in the middle of
+     a fight lesson. */
+  {
+    id: 'passkey',
+    shape: 'rect',
+    /* The rail's More button, because it is on screen whatever panel you are
+       on; the tile itself is the better ring once More is open, so it is
+       listed first and the rail is the fallback -- the same anchor-then-
+       fallback shape every step here uses. */
+    anchors: [{ sel: '[data-more-tile="account"]', reach: '[data-more-tile="account"]',
+                body: 'Your Login Key is the ONLY way back to this character. Open it and save it somewhere.' },
+              { sel: '.bt-navrail [aria-label="More"]', reach: '.bt-navrail [aria-label="More"]',
+                body: 'More > Login Key. It is the only way back to this character — save it somewhere.' }],
+    label: 'Save your Login Key',
+    /* Gated on having got through the fight lessons: a key is meaningless to
+       someone who has not yet decided they want to keep the character, and the
+       owner asked for it after the shield. */
+    live: function (rpg) { return !!rpg.shield; },
+    done: null,     /* watched live — see the passkey tracker below */
+  },
+  {
+    id: 'chat',
+    shape: 'circle',
+    /* THE CHARACTER IS NOT IN THE DOM -- he is painted on the canvas -- so
+       there is no selector for the thing this lesson is about. The canvas is
+       the honest anchor: the ring lands on the play area, and the words say
+       where to tap. ControlsTutorial has taught this in passing since
+       v2.3.1287 ("Menus live down here. Tap your character to chat."), bundled
+       into the toolbar step where it reads as a footnote; the owner asking for
+       it again is the tell that a footnote was not enough. */
+    anchors: [{ sel: 'canvas', reach: 'canvas',
+                body: 'Tap your own character to open chat.' }],
+    label: 'Tap yourself to chat',
+    live: function (rpg) { return !!rpg.shield; },
+    done: null,     /* watched live — see the chat tracker below */
+  },
 ];
 
 export function QuestCoach(props) {
@@ -465,6 +509,30 @@ export function QuestCoach(props) {
          mid-harvest, cooldown, no weapon, no mana) has passed, so it cannot
          credit a swipe the game turned down. */
       if (S && S._hasUsedSwipe && !done.special) { done.special = true; saveDone(done); }
+      /* ═══ v2.3.2147: THE TWO NEW LESSONS, WATCHED THE SAME WAY ═══
+         By POLLING a fact the game already keeps, never by a hook pushed into
+         the control -- the design note at the top of this file explains why,
+         and neither of these is worth breaking that rule for.
+
+         The key counts as learned when the panel that SHOWS it is open, not
+         when More is tapped: opening More and closing it again teaches nobody
+         their key. The chat lesson counts when the composer is actually open,
+         which is only reachable by the tap being taught (or the rail), so it
+         cannot be credited by accident. */
+      if (!done.passkey) {
+        try {
+          const _pb = window.__broDashPanelBus;
+          if (_pb && typeof _pb.current === 'function' && _pb.current() === 'account') {
+            done.passkey = true; saveDone(done);
+          }
+        } catch (e) { /* a lesson tracker must never break the frame */ }
+      }
+      if (!done.chat) {
+        try {
+          const _cb = window.__broChatBubbleBus;
+          if (_cb && _cb.open === true) { done.chat = true; saveDone(done); }
+        } catch (e) { /* as above */ }
+      }
       /* ═══ v2.3.2130: DID THEY WALK, AND DID THEY SWING? ═══
          Both watched the way every other lesson here is -- by polling a state
          fact, never by a hook pushed into the control (the design note at the

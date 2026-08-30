@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { notificationsMuted, setNotificationsMuted } from '../modalGuardBus.js'; /* v2.3.2147 */
 import { COL, panelStyle } from './common.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { controlsTutorialBus } from '../controlsTutorialBus.js';
@@ -220,6 +221,36 @@ export const SettingsPanel = () => {
       {/* v2.3.2038: renamed with the tile and the panel header. This row stays
           -- it is where the path has lived since v2.3.1291 and anyone who
           learned it here should still find it. */}
+      {/* ═══ v2.3.2147: SILENCE ALL NOTIFICATIONS ═══
+          Owner: "give options to silence all notifications (on bottom left
+          above dashboard of screen)."
+
+          IT IS NOT ON THE BOTTOM LEFT, and that is a deliberate departure from
+          what was asked, not an oversight. That corner of the play area is the
+          movement thumbstick: `data-joyzone="L"` (TouchControls) is a fixed,
+          invisible pad covering the whole LEFT HALF of the screen that
+          receives every movement drag, and TouchControls says so where the
+          visible disc is kept pointerEvents:'none' -- "this corner box must
+          not intercept them".
+
+          Three placements were tried there and each broke a control that has
+          nothing to do with notifications:
+            - floating above the dashboard: ate movement drags outright; two
+              duellists could not walk to each other (mp-duelfeel).
+            - inside the chat feed's shell, under its fold header: sat where
+              QuestCoach's reachable() hit-tests the joystick, so the coach
+              silently dropped its opening "drag to move" lesson
+              (mp-coachearly).
+            - in the fold header's own row: pushed the row past the feed's box
+              and back over the pad (mp-duelfeel again).
+
+          A mute switch is worth less than being able to walk. So it lives here
+          with the other session settings, one tap from More, where it cannot
+          take a gesture from anything. */}
+      <LinkRow label={notificationsMuted()
+        ? 'Notifications — SILENCED, tap to turn them back on'
+        : 'Notifications — silence all of them'}
+        onTap={() => { setNotificationsMuted(!notificationsMuted()); force((n) => n + 1); }} />
       <LinkRow label="Login Key — save it, or continue a character"
         onTap={() => dashboardPanelBus.push('account')} />
       <LinkRow label="Controls — replay the tutorial"

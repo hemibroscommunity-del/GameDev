@@ -458,8 +458,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
     jog.length > 0, { samples: jog.length });
   if (jog.length) {
     const off = jog.map((s) => [s.cape.x - s.body.x, s.cape.y - s.body.y]);
+    /* ═══ v2.3.2153: FINITE, then non-zero -- in that order ═══
+       This read `dx !== 0 || dy !== 0`, and NaN !== 0 is TRUE. So when
+       _capeTune's default branch started returning no `dx` at all and the
+       caller computed `undefined * scale`, spr.x became NaN, the cape stopped
+       rasterising for every player on every jog -- and this line went on
+       passing, because a NaN is not zero. Three rounds of assertions sat on
+       top of that. Finiteness first, and it is not a formality. */
+    rec.ok('the cape\'s jog position is a NUMBER (NaN draws nothing and is not zero)',
+      jog.every((s) => Number.isFinite(s.cape.x) && Number.isFinite(s.cape.y)),
+      { xs: jog.map((s) => s.cape.x), ys: jog.map((s) => s.cape.y) });
     rec.ok('while jogging the cape follows the frame\'s crown, not the frame origin',
-      off.some(([dx, dy]) => dx !== 0 || dy !== 0), { offsets: off });
+      off.every(([dx, dy]) => Number.isFinite(dx) && Number.isFinite(dy))
+        && off.some(([dx, dy]) => dx !== 0 || dy !== 0), { offsets: off });
     rec.ok('...and it is TILTED while running, so the back is covered '
       + '(owner: "the back of the character doesn\'t stick out while running")',
       jog.some((s) => Math.abs(s.cape.rot) > 0.01), { rots: jog.map((s) => s.cape.rot), dir: jog[0].dir });
@@ -467,6 +478,109 @@ export async function run({ browser, wsPort, webPort, rec }) {
       jog.every((s) => Math.abs(s.cape.w - s.body.w) < 1.5), jog.map((s) => [s.cape.w, s.body.w]));
   }
   rec.ok('the jog was photographed, not only measured', shots.length > 0, { shots });
+
+  /* ═══ v2.3.2153: AND THE PHOTOGRAPH IS *READ* ═══
+     Owner, a third time, with a screen recording: "Cape still disappears on
+     jog." Every assertion above this line reads the SCENE GRAPH -- visible,
+     texture, offset, rotation, size -- and all of them were true of a cape
+     that painted nothing at all, because the one poisoned value was the
+     position. A picture that is saved and never looked at is not a test; it
+     is an attachment.
+
+     So: count the cape's own crimson in the frame while jogging, and again
+     while jogging BARE in the same place, and require the difference. The
+     bare pass is the control and it is doing real work here -- the HUD, the
+     quest banner and the golden-ticket chip all carry reds, ~2600 of them in
+     a frame, which is more than the cape itself contributes. An absolute
+     threshold would have passed with no cape on screen at all; the DELTA is
+     the only honest form of this. */
+  const crimson = async (at) => {
+    /* ═══ BOTH PASSES STAND ON THE SAME GROUND ═══
+       Two wrong versions before this one, and both failed in the direction
+       that passes:
+         - measured over the WHOLE frame it read 5033 worn against 3630 bare,
+           and once came out NEGATIVE. The town is full of reds, and the two
+           passes stood in different places, so the scenery swamped the cape.
+         - correctly cropped but still un-pinned it read 2315 against 2249: the
+           crop was right, the LOCATION was not. A crop over a red-roofed prop
+           counts as much red as a cape does.
+       A THIRD wrong version pinned both passes to mp-potions' sprint lane, and
+       that was worse again -- it is near the south edge, the camera clamps
+       there, and the figure ends up drawn low on screen BEHIND the chat feed
+       and the ticket banner. Measuring a character through two translucent
+       panels reads as no cape at all.
+       So the worn pass runs where the scenario already left him -- clear of
+       the HUD, camera unclamped -- and the bare pass is put back on that exact
+       spot. Same ground, same backdrop, one variable. */
+    if (at) {
+      await P.page.evaluate((p) => {
+        const S = window._gameState.current;
+        S.player.x = p.x; S.player.y = p.y; S.player.vx = 0; S.player.vy = 0;
+      }, at);
+      await P.page.waitForTimeout(600);
+    }
+    const here = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
+    await P.page.keyboard.down('d');
+    let n = null;
+    for (let i = 0; i < 16 && n === null; i++) {
+      await P.page.waitForTimeout(150);
+      const st = await raw(P);
+      if (!st || st.pose !== 'jog') continue;
+      /* ═══ THE CROP IS ANCHORED ON THE DRAWN FIGURE, NOT ON THE FRAME ═══
+         Two cheaper versions were wrong first, and both were wrong in the
+         direction that passes:
+           - the WHOLE frame reads 5033 worn against 3630 bare, and once came
+             out NEGATIVE. The town is full of reds the player runs past, and
+             the two passes stand in different places, so the scenery swamps a
+             cape entirely.
+           - a box at the FRAME CENTRE worked on one pair of screenshots (3806
+             against 106) and collapsed to 327/301 on the next run, because by
+             this point in the scenario the player is near a map edge and the
+             camera CLAMPS -- he is no longer in the middle of his own screen.
+             That is the trap that killed mp-facegap (TRAPS: a measured box
+             reused across a camera clamp).
+         figureBox anchors on __btPlayerDrawn, which is the position the
+         renderer actually painted this frame. Padded, because the cape is
+         wider than the body and streams behind him. */
+      const box = await H.figureBox(P, { pad: 44 });
+      if (!box) continue;
+      const px = await H.screenshotPixels(P, box);
+      let c = 0;
+      for (let i2 = 0; i2 < px.width * px.height; i2++) {
+        const r = px.data[i2 * 4], g = px.data[i2 * 4 + 1], b = px.data[i2 * 4 + 2];
+        /* The cape's body red, kept away from the town's sand (high R AND high
+           G) by demanding a wide R-G gap and a dark green channel. */
+        if (r > 90 && r < 200 && g < 70 && b < 80 && (r - g) > 60) c++;
+      }
+      n = c;
+    }
+    await P.page.keyboard.up('d');
+    await P.page.waitForTimeout(500);
+    return { n, at: here };
+  };
+
+  const wornPass = await crimson(null);
+  const wornRed = wornPass && wornPass.n;
+  await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    if (S && S.channel) S.channel.send({ type: 'cape_equip', payload: { worn: false } });
+  });
+  await P.page.waitForTimeout(1800);
+  const barePass = await crimson(wornPass && wornPass.at);
+  const bareRed = barePass && barePass.n;
+  await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    if (S && S.channel) S.channel.send({ type: 'cape_equip', payload: { worn: true } });
+  });
+  await P.page.waitForTimeout(1800);
+
+  rec.ok('both jog frames were captured (guard: no pixels, nothing is proven)',
+    wornRed !== null && bareRed !== null, { wornRed, bareRed });
+  rec.ok(`the cape is ON SCREEN while jogging -- ${wornRed} crimson pixels worn `
+       + `vs ${bareRed} bare`,
+    wornRed !== null && bareRed !== null && wornRed >= 300
+      && (wornRed - bareRed) >= 250,
+    { wornRed, bareRed, delta: (wornRed || 0) - (bareRed || 0) });
 
   /* ═══ v2.3.2143: JOG IN EVERY DIRECTION, NOT ONLY EAST ═══
      The owner said "jogging while wearing cape doesn't work, shows nothing"

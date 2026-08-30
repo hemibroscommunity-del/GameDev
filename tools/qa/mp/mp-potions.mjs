@@ -238,6 +238,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
      drunk, before any of the speed assertions below can mean anything. */
   const bagged = await H.readState(P, (S) => ((S.rpg && S.rpg.inventory) || {}).swiftDraught || 0);
   rec.ok('...and it lands in the BAG rather than firing at the counter', bagged >= 1, { bagged });
+
+  /* ═══ v2.3.2145: AND UNDER THE *POTIONS* CHIP ═══
+     The assertion above is the one that let the owner report this twice. It
+     reads rpg.inventory -- the DATA -- and the data was always right. What is
+     wrong is where the bag FILES it: every filter chip sorts on classify(),
+     classify matched the English words potion/elixir/tonic/salve/brew, and the
+     shop sells a swiftDraught. So the bottle sat under CRAFTING and tapping
+     Potions right after buying one showed an empty bag.
+
+     A bag key alone cannot see that, which is why the model now reports the
+     chip beside the key. */
+  const potCats = await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    const rpg = S && S.rpg;
+    return (window.__btBagCats && rpg) ? window.__btBagCats(rpg) : null;
+  });
+  rec.ok('the bag model reports a filter chip per item (guard: a null list '
+    + 'would pass the check below for the wrong reason)', Array.isArray(potCats), potCats);
+  const swift = Array.isArray(potCats) ? potCats.find((e) => e.key === 'swiftDraught') : null;
+  rec.ok('...and the Swift Draught sorts under POTIONS, which is where you go '
+    + 'looking for it -- not under Crafting', !!(swift && swift.cat === 'potion'),
+    { swift, all: potCats });
   await drink('swiftDraught');
 
   const buffState = await H.readState(P, (S) => ({

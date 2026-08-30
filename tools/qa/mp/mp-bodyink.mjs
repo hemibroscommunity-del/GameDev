@@ -28,7 +28,7 @@
  */
 import * as H from './harness.mjs';
 
-const KEYS = { tattoo: 'bt-tattooart', tattooFace: 'bt-facetattoo', tattooArm: 'bt-armtattoo' };
+const KEYS = { tattoo: 'bt-tattooart', tattooBack: 'bt-tattooart-back', tattooFace: 'bt-facetattoo', tattooArm: 'bt-armtattoo' };   /* v2.3.2150: +the back canvas */
 
 const readArts = (page) => page.evaluate((keys) => {
   const out = {};
@@ -89,6 +89,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the tattoo designer offers exactly two screens, body and face',
     tabs.length === 2 && tabs[0] === 'body' && tabs[1] === 'face', { tabs });
 
+  /* ═══ v2.3.2150: AND A FRONT/BACK SWITCH ═══
+     Owner, after the back canvas shipped: "I don't see a menu option that
+     toggles tattooing the back." There was none, and the reason is structural:
+     these screens have no canvas PICKER -- the tab frames a view and your
+     FINGER chooses the canvas, off a figure that faces the camera, so a back
+     canvas is unreachable by construction. That had also left the back of the
+     HEAD unreachable ever since v2.3.2043 added it.
+
+     Checked on its OWN class rather than folded into the tab count above: the
+     two things answer different questions ("which screen" vs "which way
+     round"), and sharing a selector is how a switch starts looking like two
+     more screens. */
+  const sideSwitch = await page.evaluate(() => {
+    const btns = [...document.querySelectorAll('[data-ink-side-btn]')];
+    return {
+      labels: btns.map((b) => b.getAttribute('data-ink-side-btn')),
+      visible: btns.filter((b) => b.offsetParent).length,
+      pressed: btns.filter((b) => b.getAttribute('aria-pressed') === 'true')
+        .map((b) => b.getAttribute('data-ink-side-btn')),
+    };
+  });
+  rec.ok('the designer offers a FRONT/BACK switch, so the back canvases can be '
+    + 'reached at all -- the menu option the owner could not find',
+    sideSwitch.visible === 2 && sideSwitch.labels.join(',') === 'front,back', sideSwitch);
+  rec.ok('...and it opens on FRONT, so nobody who never touches it sees any '
+    + 'change', sideSwitch.pressed.join(',') === 'front', sideSwitch);
+
   const box = await page.$('.bt-bodyink-cv');
   const r = await box.boundingBox();
   rec.ok('the editor has a real on-screen size to aim at (guard)',
@@ -142,6 +169,80 @@ export async function run({ browser, wsPort, webPort, rec }) {
     inked(arts.tattoo) >= strokeBefore + 2, { before: strokeBefore, after: inked(arts.tattoo) });
 
   const chestAfterBody = inked(arts.tattoo);
+
+  /* ═══ v2.3.2150: THE BACK, THROUGH THE SWITCH ═══
+     The switch existing is not the feature -- inking the BACK with it is. So
+     this flips it, taps the same torso, and checks where the ink went. The
+     chest count is checked as well as the back one, because the failure this
+     could plausibly have is not "nothing happens" but "it writes to the front
+     canvas anyway", which a back-only assertion would call a pass. */
+  const chestBeforeBack = inked(arts.tattoo);
+  /* ═══ TAP THE EDITOR'S CENTRE, NOT A REMEMBERED AIM ═══
+     The aim captured at the top of this scenario is STALE by here -- the zoom
+     and drag steps above move the view, and __btInkAim does not follow, so a
+     tap at those coordinates lands off the torso. That is not hypothetical:
+     the control below was added precisely because the back check was failing,
+     and the control failed too, with FRONT selected -- which is what proved
+     the coordinates were the problem rather than the back canvas.
+
+     The Body tab frames the torso to fill the editor (this scenario asserts
+     exactly that, above), so the canvas's own centre is on the chest by
+     construction and cannot go stale. */
+  const centreTap = async () => {
+    const box = await page.$('.bt-bodyink-cv');
+    const b = await box.boundingBox();
+    await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(b.x + b.width / 2 + 1, b.y + b.height / 2 + 1);
+    await page.mouse.up();
+    await page.waitForTimeout(420);
+  };
+  /* Counted in OPS, not in inked cells. The centre cell may already carry ink
+     from the drag above, and a pen stroke over an inked cell changes no cell
+     count at all -- the first version of this control read cells, reported
+     7 -> 7, and looked exactly like a tap that had missed. An op is appended
+     either way, so the op list is what says the gesture landed. */
+  const opsFor = (id) => page.evaluate((k) => {
+    try {
+      const raw = localStorage.getItem('bt-artops');
+      const p2 = raw ? JSON.parse(raw) : null;
+      return p2 && p2[k] && p2[k].o ? p2[k].o.length : 0;
+    } catch (e) { return -1; }
+  }, id);
+  const ctrlBefore = await opsFor('tattoo');
+  await centreTap();
+  const ctrlAfter = await opsFor('tattoo');
+  rec.ok('control: a tap at the editor centre still reaches the CHEST with '
+    + 'Front selected (guard: if this fails the tap is missing and the back '
+    + 'check below proves nothing)', ctrlAfter > ctrlBefore, { ctrlBefore, ctrlAfter });
+
+  const backBtn = await page.$('[data-ink-side-btn="back"]');
+  rec.ok('the Back switch is tappable (guard)', !!backBtn);
+  if (backBtn) {
+    await backBtn.click();
+    await page.waitForTimeout(900);
+    const backAim = await aimFor(page, 'tattoo');
+    rec.ok('the body screen still reports where the torso is with Back on '
+      + '(guard: the surface frames the same front-facing figure, only the '
+      + 'canvas moves)', !!backAim, backAim);
+    if (backAim) {
+      await centreTap();
+      await page.waitForTimeout(500);
+      arts = await readArts(page);
+      rec.ok('with Back selected, a tap on the torso inks the BACK canvas -- '
+        + "the owner's ask: \"a menu option that toggles tattooing the back\"",
+        inked(arts.tattooBack) > 0,
+        { back: inked(arts.tattooBack), chest: inked(arts.tattoo),
+          down: await page.evaluate(() => window.__btInkDown || null) });
+      rec.ok('...and left the CHEST drawing exactly as it was, so the switch '
+        + 'moves the canvas rather than just the label',
+        inked(arts.tattoo) === chestBeforeBack,
+        { before: chestBeforeBack, after: inked(arts.tattoo) });
+    }
+    /* Back to front, or the face section below starts on the wrong side. */
+    const frontBtn = await page.$('[data-ink-side-btn="front"]');
+    if (frontBtn) { await frontBtn.click(); await page.waitForTimeout(700); }
+  }
 
   /* ═══ FACE ═══════════════════════════════════════════════════════════ */
   const tabBtns = await page.$$('.bt-paint-tabs .bt-cc-tab');

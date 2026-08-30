@@ -93,21 +93,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await goldInput.fill('100');
   await A.page.waitForTimeout(1200);
 
-  /* ── A taps a bag tile to stage an item (the in-modal Bag tray) ── */
-  const staged = await A.page.evaluate(() => {
-    /* v2.3.1755: selected by aria-label, not by text shape.  The old matcher
-       was /^\S{1,3}\s*\d+$/ — "glyph + count" — which only ever worked because
-       the glyph was an emoji CHARACTER.  Now that a tile draws a real
-       thumbnail its text is the bare count, and that regex finds nothing. */
-    const tile = [...document.querySelectorAll('button[aria-label^="Add one"]')]
-      .find((b) => b.offsetParent);
+  /* ═══ A TAPS A TILE IN THEIR REAL BAG ═══
+     v2.3.2149 (owner: "change the player to player trade menu to be like the
+     shopkeeper trade menu where it just attaches to the player bag"): the
+     window no longer carries its own copy of your bag. It is a DRAWER sitting
+     on the band, and the band's own bag tiles stage into the offer -- the same
+     handshake Shopkeeper Bro has used since v2.3.2059.
+
+     So this taps `[data-inv-key]`, the real tile, rather than the retired
+     in-window tray's `aria-label="Add one …"` button. That is not a
+     workaround: tapping the real bag IS the feature under test now, and if the
+     drawer ever covers the bag again this is the assertion that goes red. */
+  const staged = await A.page.evaluate((k) => {
+    const tile = [...document.querySelectorAll(`[data-inv-key="${k}"]`)]
+      .find((el) => el.offsetParent);
     if (!tile) return null;
-    const before = (tile.getAttribute('aria-label') || '').trim();
-    tile.click();
-    return before;
-  });
+    const r = tile.getBoundingClientRect();
+    /* Hit-tested, not just clicked: a tile the drawer is sitting on top of
+       would still "click" and do nothing, which is the failure this whole
+       change could introduce. */
+    const top = document.elementFromPoint(Math.round(r.left + r.width / 2), Math.round(r.top + r.height / 2));
+    const reachable = !!(top && (top === tile || tile.contains(top) || (top.closest && top.closest('[data-inv-key]') === tile)));
+    tile.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+    return { key: k, reachable };
+  }, WOOD_KEY);
   await A.page.waitForTimeout(1200);
-  rec.ok('bag tray exposes a stageable item', !!staged, { staged });
+  rec.ok('the real bag tile is reachable with the trade drawer open -- the '
+    + 'drawer sits ON the band, it does not cover it', !!(staged && staged.reachable), staged);
 
   /* ── v2.3.1752: MORE THAN ONE ──
      Owner: "allow additional quantities of stuff to be traded (it only
@@ -167,7 +179,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
      check.  Only a decoded bitmap proves the player is actually looking at
      the item. */
   const art = await A.page.evaluate(() => {
-    const card = document.querySelector('.bt-inspect-card');
+    /* v2.3.2149: the trade window is a DRAWER on the band now, not a
+       .bt-inspect-card modal, so it is found by its own marker. Kept as a
+       fallback rather than replaced outright -- the invite stub and the
+       receipt screen are still cards. */
+    const card = document.querySelector('[data-trade-drawer]') || document.querySelector('.bt-inspect-card');
     if (!card) return null;
     const imgs = [...card.querySelectorAll('img')]
       .map((i) => ({ src: i.getAttribute('src') || '', w: i.naturalWidth }));
@@ -357,7 +373,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── settlement ── */
   const done = await H.waitUi(A, () => /Trade complete/.test(document.body.innerText),
     { label: 'A sees Trade complete', timeout: 25000 }).then(() => true).catch(() => false);
-  rec.ok('the trade completes', done);
+  /* v2.3.2149: diagnostics on FAILURE only. Worth keeping: when this went red
+     during the drawer rework the useful fact was not "no Trade complete" but
+     that there were no visible buttons AT ALL and a React #300 in the log --
+     a hooks-order crash taking the whole UI down. Without this the failure
+     looked like a missing string. */
+  const settleDbg = done ? null : await A.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    return {
+      state: S && S.trade2 ? S.trade2.state : (S ? 'no-trade2' : 'no-state'),
+      hasReceipt: !!(S && S.trade2 && S.trade2.receipt),
+      drawer: !!document.querySelector('[data-trade-drawer]'),
+      card: !!document.querySelector('.bt-inspect-card'),
+      buttons: [...document.querySelectorAll('button')].filter((b) => b.offsetParent)
+        .map((b) => (b.textContent || '').trim()).slice(0, 14),
+    };
+  });
+  rec.ok('the trade completes', done,
+    settleDbg ? { ...settleDbg, pageErrors: (A.logs || []).slice(-4) } : null);
 
   await A.page.waitForTimeout(3000);
   const aCoins1 = await coins(A), bCoins1 = await coins(B);
