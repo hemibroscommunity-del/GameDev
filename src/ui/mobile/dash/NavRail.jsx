@@ -1,6 +1,7 @@
 import React from 'react';
 import { COL } from './common.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
+import { playIsLandscape } from '../playViewport.js'; /* v2.3.2153: the tap decides by shape */
 import { navButtonSize } from '../sheet/sheetGeometry.js';
 
 /* v2.3.1637 (owner mockup): the NAV RAIL — the destinations as icon-only
@@ -82,7 +83,32 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait })
             role="button" aria-label={d.label} aria-pressed={on} title={d.label}
             onPointerUp={(e) => {
               e.stopPropagation();
-              if (d.id === 'dashboard') { dashboardPanelBus.toBar(); return; }
+              /* ═══ v2.3.2153: SIDEWAYS, THE DASHBOARD BUTTON IS THE BAG ═══
+                 Owner, on a real iPhone in landscape: "The one thing I don't
+                 understand is where my bag went.  I see the thin bar at the
+                 bottom but no inventory slots when dashboard is active."
+
+                 In portrait this button's job is "go to rest", because rest
+                 IS the dashboard -- the columns row with the bag preview.
+                 Landscape has no columns row (the whole point of the 48px
+                 strip), so toBar() here was a lit button that showed
+                 nothing: the one thing it promised -- your slots -- was the
+                 one thing it could not produce.  Sideways it opens the Bag
+                 sheet instead, and a second tap (or tapping it with ANY
+                 sheet open) still rests -- so it is the same "give me the
+                 world back" button the moment something is open, which is
+                 the half of toBar() worth keeping.
+                 Decided at TAP TIME from playIsLandscape() rather than from
+                 subscribed state: the handler needs the answer only when the
+                 finger lands. */
+              if (d.id === 'dashboard') {
+                if (playIsLandscape() && dashboardPanelBus.state.mode === 'bar') {
+                  dashboardPanelBus.open('bag');
+                  return;
+                }
+                dashboardPanelBus.toBar();
+                return;
+              }
               dashboardPanelBus.open(d.id);
             }}
             style={{

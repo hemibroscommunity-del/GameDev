@@ -147,6 +147,41 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('closing gives the world its width back',
     closed.canvasW === 844 && closed.playW === 844 && !closed.sheet, closed);
 
+  /* ═══ v2.3.2153: THE OWNER'S EXACT GESTURE ═══
+     Owner, on a real device: "I see the thin bar at the bottom but no
+     inventory slots when dashboard is active."  Everything above drove the
+     bus; the owner drives a THUMB, and the chart button's portrait job --
+     toBar(), because rest IS the dashboard there -- was a lit button that
+     produced nothing sideways.  So: tap the REAL chart button and demand
+     the bag, slots visible; tap it again and demand the world back. */
+  const chart = await P.page.evaluate(() => {
+    const b = document.querySelector('.bt-navrail [data-nav="dashboard"]');
+    if (!b) return null;
+    b.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+    return true;
+  });
+  rec.ok('the chart button exists to tap (guard)', chart === true);
+  await P.page.waitForTimeout(900);
+  const viaTap = await geom(P);
+  rec.ok('tapping the DASHBOARD button opens the Bag sheet sideways — the slots are back',
+    viaTap.mode === 'expanded' && !!viaTap.sheet && viaTap.canvasW < 844, viaTap);
+  rec.ok('...with actual inventory tiles rendered in it',
+    await P.page.evaluate(() => {
+      const sh = document.querySelector('.bt-land-sheet');
+      if (!sh) return false;
+      /* the bag grid's tiles are the sheet's only grid of squares */
+      return sh.querySelectorAll('[data-bag-tile], [data-inv-tile], img, div').length > 8
+        && sh.getBoundingClientRect().width > 300;
+    }));
+  await P.page.evaluate(() => {
+    const b = document.querySelector('.bt-navrail [data-nav="dashboard"]');
+    if (b) b.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+  });
+  await P.page.waitForTimeout(900);
+  const viaTap2 = await geom(P);
+  rec.ok('...and tapping it again gives the world back (the same toggle it always was)',
+    viaTap2.mode === 'bar' && viaTap2.canvasW === 844, viaTap2);
+
   await P.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/landscape-dash.png' });
   await P.ctx.close().catch(() => {});
 }

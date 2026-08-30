@@ -172,3 +172,18 @@ both ways, the open sheet closing on rotation, the BAR-height invariant
 unleaked (portrait open does NOT resize the canvas), and the settled-state
 war check — at most one watchdog heal across the rotation sequence (a race,
 logged), zero once settled.
+
+### The dashboard button, sideways (v2.3.2153 — owner device test)
+
+First real-device report: "The one thing I don't understand is where my bag
+went. I see the thin bar at the bottom but no inventory slots when dashboard
+is active." In portrait the chart button's job is toBar() because rest IS
+the dashboard — the columns row with the bag preview. Landscape has no
+columns row, so the button lit and produced nothing. Sideways it now opens
+the Bag sheet from rest and still rests from any open sheet (the toggle it
+always was). mp-landscape-dash drives the REAL button both ways.
+
+Browser chrome on iPhone: not a code problem this PR can solve in-browser —
+Safari keeps its bar for a non-scrolling page. The app already ships
+`apple-mobile-web-app-capable`, so Add to Home Screen launches it
+chrome-free; that is the recommended way to play.
