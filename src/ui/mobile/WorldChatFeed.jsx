@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { NotificationMute } from './NotificationMute.jsx'; /* v2.3.2145 */
 import { chromeSilenced, onGuardChange } from './modalGuardBus.js'; /* v2.3.2145 */
 import { chatLogBus } from './chatLogBus.js';
 import { uiBusyBus } from './uiBusyBus.js';   /* v2.3.2085 */
@@ -187,10 +188,7 @@ export function WorldChatFeed() {
         left: 8,
         /* Clears the dashboard band. See the note above: the band height is
            the CSS var, and 8px of air keeps the panel off its edge. */
-        /* v2.3.2145: +30px clears the silence toggle, which takes this
-           corner's bottom slot (NotificationMute) so the control sits
-           beside what it controls. */
-        bottom: 'calc(var(--dash-h, 135px) + 38px)',
+        bottom: 'calc(var(--dash-h, 135px) + 8px)',
         /* Narrow on purpose: this is the LOWER LEFT corner, not a column.
            Capped in vw so it cannot swallow a landscape screen. */
         width: 'min(58vw, 260px)',
@@ -200,11 +198,18 @@ export function WorldChatFeed() {
            actually silence. One flag answers both. */
         zIndex: 25,
         pointerEvents: 'none',
-        opacity: chromeSilenced() ? 0 : 1,
-        transition: 'opacity 140ms ease',
+        /* The SHELL keeps its opacity: the silence chip lives inside it and
+           has to stay visible and tappable while muted, or the control that
+           silenced the corner would silence itself out of existence. The
+           messages below fade instead. */
         fontFamily: 'Source Sans 3, sans-serif',
       }}
     >
+      {/* v2.3.2145: the silence control, at the top of this corner's stack --
+          above the feed it silences, in the strip the fold header already
+          occupies safely. NOT a floating button lower down: that is the
+          movement thumbstick's pad (see NotificationMute's own header). */}
+      <NotificationMute />
       {ticketChip ? (
         <div
           data-cape-chip={_crimson.remaining}
@@ -364,6 +369,11 @@ export function WorldChatFeed() {
              the v2.3.2085 case (an inspect card's Trade button in this same
              corner). */
           pointerEvents: 'none',
+          /* v2.3.2145: silenced means silent. The MESSAGES fade, not the
+             shell -- the shell carries the silence chip, which has to stay
+             visible to be un-silenced with. */
+          opacity: chromeSilenced() ? 0 : 1,
+          transition: 'opacity 140ms ease',
           maxHeight: 'min(26vh, 150px)',
           overflowY: 'auto',
           overflowX: 'hidden',

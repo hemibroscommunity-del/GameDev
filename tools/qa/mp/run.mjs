@@ -146,6 +146,7 @@ const SCENARIOS = {
   tradetap: () => import('./mp-tradetap.mjs'), /* v2.3.2145: can you tap the trade window with chat open? */
   trade: () => import('./mp-trade.mjs'),
   tradeatk: () => import('./mp-tradeatk.mjs'), /* v2.3.1971: the trade window attacked — prototype-key offers, coin/item conservation, replayed confirms, a tab that dies mid-handshake */
+  duelblock: () => import('./mp-duelblock.mjs'), /* v2.3.2145: is there a block button in a duel? */
   duel: () => import('./mp-duel.mjs'),
   party: () => import('./mp-party.mjs'),
   social: () => import('./mp-social.mjs'),

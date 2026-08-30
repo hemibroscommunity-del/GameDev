@@ -1,4 +1,5 @@
 import React from 'react';
+import { lockOntoDuelOpponent } from '@/game/duelLock.js'; /* v2.3.2145 */
 import { createPortal } from 'react-dom';
 import { BT_AUDIO } from '@/data/index.js';
 
@@ -160,6 +161,10 @@ export function DuelRequestPanel(props) {
         wager: duelRequest.wager || 0,
         startTime: Date.now()
       };
+      /* v2.3.2145: both sides lock on, or only the challenger gets a block
+         button -- the same half-a-fix shape as v2.3.1306's _inDuel gate.
+         See src/game/duelLock.js. */
+      lockOntoDuelOpponent(S2, duelRequest.fromId);
       setDuelRequest(null);
       pushDmgPopup(S2, S2.player.x, S2.player.y - 40, 'DUEL!', '#a78bfa');
       BT_AUDIO.beep(300, 0.15, 0.2, 'sawtooth');

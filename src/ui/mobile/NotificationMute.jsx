@@ -6,24 +6,30 @@ import { notificationsMuted, setNotificationsMuted, onGuardChange, guardActive }
  * Owner: "give options to silence all notifications (on bottom left above
  * dashboard of screen)."
  *
- * Placed exactly there, and deliberately in the SAME corner as the world chat
- * feed, immediately under it: the control that silences a thing belongs beside
- * the thing, and a player who wants the corner quiet is already looking at it.
- * The feed is pushed up by this button's height so the two never overlap.
+ * IT IS NOT A FLOATING BUTTON, AND THAT IS THE WHOLE STORY OF THIS FILE.
+ * The first cut was exactly what was asked for -- position:fixed, left 8, just
+ * above the dashboard -- and it broke MOVEMENT. The bottom left of the play
+ * area is not empty space: `data-joyzone="L"` (TouchControls) is a fixed,
+ * invisible, FULL-LEFT-HALF-OF-THE-SCREEN pad at z-index 6 that receives every
+ * movement drag. Anything interactive placed over it wins the touch and the
+ * player cannot walk. TouchControls already records this rule one element
+ * down, where the VISIBLE joystick disc is deliberately pointerEvents:'none'
+ * -- "this corner box must not intercept them". A floating control there is a
+ * control on top of the thumbstick.
  *
- * IT MUST OUTLIVE ITS OWN EFFECT. The mute lives in modalGuardBus behind
- * localStorage, not in this component's state, for two reasons: a muted feed
- * renders at opacity 0, so a toggle living inside the feed would silence
- * itself out of existence and strand the player; and the same flag is what
- * the trade guard reads, so the silence control and the trade guard cannot
- * end up disagreeing about whether the chrome may speak.
+ * Caught by mp-duelfeel, which is a COMBAT test and has no idea this component
+ * exists: two duellists simply stopped being able to close the distance
+ * between them (233px apart, zero damage, nobody died) because the harness
+ * walks with the keyboard and the pad had gone deaf. It would have shipped as
+ * "I can't move in the bottom left".
  *
- * It hides while a decision panel is open, which is not an exception to the
- * above but the same rule applied to itself: it is world chrome too, it sits
- * over the play area, and the whole point of the guard is that nothing
- * transient is in front of a confirm button.
- */
-export function NotificationMute() {
+ * So the chip lives INSIDE the world chat feed's shell instead -- still the
+ * bottom left, still above the dashboard, sitting with the feed it silences
+ * and above it rather than under it, in the strip the feed's own fold header
+ * has always occupied safely. It is rendered by WorldChatFeed, not mounted
+ * separately, so it inherits that shell's position and can never drift back
+ * down onto the stick.
+ */export function NotificationMute() {
   const [, bump] = useState(0);
   useEffect(() => onGuardChange(() => bump((n) => n + 1)), []);
   const muted = notificationsMuted();
@@ -36,10 +42,12 @@ export function NotificationMute() {
       aria-label={muted ? 'Notifications silenced — tap to unmute' : 'Silence all notifications'}
       onClick={() => setNotificationsMuted(!muted)}
       style={{
-        position: 'fixed',
-        left: 8,
-        bottom: 'calc(var(--dash-h, 135px) + 8px)',
-        zIndex: 26,
+        /* The feed's shell is pointerEvents:'none' so the world stays
+           draggable around it; this control opts back in for its own few
+           pixels, the same bargain the fold header makes. */
+        pointerEvents: 'auto',
+        alignSelf: 'flex-start',
+        margin: '0 0 3px 0',
         display: 'flex', alignItems: 'center', gap: 6,
         padding: '4px 9px',
         borderRadius: 999,
