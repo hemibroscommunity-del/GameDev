@@ -344,6 +344,7 @@ import { _regenerator, _regeneratorDefine2, _asyncToGenerator, _typeof, _slicedT
 import { SpriteHpBar } from './SpriteHpBar.jsx'; /* v2.3.1273: owner's HP-bar art (desktop HUD row) */
 import { navSlotSize, bandFootprint, DASH_GAP, LAND_FOLD_CHIP_W } from './mobile/sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 bar-height canvas; v2.3.1325 slot-derived bar; v2.3.1560 two-row band; v2.3.1635 three-row band; v2.3.1636 columns row; v2.3.2156 one footprint for resize + watchdog */
 import { playIsLandscape } from './mobile/playViewport.js'; /* v2.3.2156: the data-orient stamp + the isLandscape seed */
+import { resolveDashSide, screenAngle } from '../game/dashSidePref.js'; /* v2.3.2177: which edge the landscape dashboard takes, and the player's pin */
 import { dashMinBus } from './mobile/dashMinBus.js'; /* v2.3.2119: folded band = identity row only */
 import { recolorEnabled } from '@/rendering/traits/recolorOptions.js';
 import { buildingPropNear } from '@/data/worldProps.js'; /* v2.3.1778: building doors */
@@ -3002,10 +3003,19 @@ export var BroTown = function BroTown(_ref0) {
          The Island lands on the LEFT or the RIGHT depending on which way the
          phone was rotated, so a fixed side is right for one rotation and
          wrong for the other -- which is why this is measured rather than
-         chosen.  A tie (both 0: a browser tab, Android, desktop, every
-         headless QA run) resolves LEFT, the side the owner asked for.
-         Portrait never reads this: the band spans the full width there. */
-      var _dashSide = (_insL > _insR) ? 'right' : 'left';
+         chosen.  Portrait never reads this: the band spans the full width.
+
+         ═══ v2.3.2177: THE INSETS ALONE COULD NEVER ANSWER IT ═══
+         This was `(_insL > _insR) ? 'right' : 'left'`, and the owner found
+         what that means on a real phone: "It always displays on the left."
+         iOS insets BOTH long edges equally in landscape (rounded corners on
+         both sides), so the comparison is false in both rotations and the
+         tie-break -- left -- was the only answer it ever gave.  The rule now
+         lives in dashSidePref.js, which keeps the inset comparison as the
+         first signal and falls back to the ROTATION when the insets tie,
+         with a Settings pin behind it in case the rotation mapping reads
+         backwards on hardware this repo cannot test against. */
+      var _dashSide = resolveDashSide(_insL, _insR, screenAngle());
       var _fp = bandFootprint(vw, vhFull, dashMinBus.min, _sheetOpen, _sab);
       var bar = _fp.dashH;
       var colsH = _fp.colsH;
@@ -3061,6 +3071,21 @@ export var BroTown = function BroTown(_ref0) {
          on the edge clusters only. */
       document.documentElement.style.setProperty('--world-x',
         (_dashSide === 'left' ? _fp.sheetW : 0) + 'px');
+      /* ═══ v2.3.2178: THE HOME-INDICATOR INSET, AS A STAMP ═══
+         resize() has measured this since v2.3.2163 (the probe exists
+         because JS cannot read env()), but the band, the landscape dock and
+         the panels that must clear it each read `env(safe-area-inset-bottom)`
+         for themselves.  Two costs, and the owner has now been bitten by
+         both: the numbers could DISAGREE with --dash-h, which is what put
+         the portrait nav buttons above their own band in a standalone
+         launch; and nothing downstream was reachable from a test, because
+         env() cannot be set in a headless browser -- so every standalone-only
+         layout bug could only ever be found on a phone.
+         One measured value, stamped where --dash-h and --world-x are
+         stamped, ends both: the layout reads the same number resize() sized
+         itself with, and the QA harness simulates a standalone launch by
+         overriding the probe exactly as it already simulates an Island. */
+      document.documentElement.style.setProperty('--sab', _sab + 'px');
       document.documentElement.style.setProperty('--world-pad-l', _insL + 'px');
       document.documentElement.style.setProperty('--world-pad-r', _insR + 'px');
       /* ═══ v2.3.2176b: THE RESTING FOLD CHIP'S FOOTPRINT ═══

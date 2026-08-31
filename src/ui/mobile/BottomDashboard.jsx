@@ -19,7 +19,7 @@ import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rende
 import { getEyeColor, onEyeColorChange } from '../../rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
 import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
-import { barHeight, expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP, bandFootprint, LAND_NAV_BTN_W, landscapeNavGroupW, landscapeSheetW, identityRowHeight, LAND_FOLD_CHIP_W } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.1325 slot-derived bar; v2.3.2157 the sideways band; v2.3.2166 the nav dock; v2.3.2168 the barless landscape */
+import { barHeight, expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP, bandFootprint, LAND_NAV_BTN_W, landscapeNavGroupW, landscapeSheetW, identityRowHeight, LAND_FOLD_CHIP_W, landDockFootprint } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.1325 slot-derived bar; v2.3.2157 the sideways band; v2.3.2166 the nav dock; v2.3.2168 the barless landscape */
 import { DashColumns } from './dash/DashColumns.jsx';           /* v2.3.1636 */
 import { NavRail } from './dash/NavRail.jsx';                   /* v2.3.1637 */
 import { portraitStore } from './sheet/portraitStore.js';          /* v2.3.1294 */
@@ -603,6 +603,11 @@ export const BottomDashboard = () => {
     };
   }, []);
   useEffect(() => dashMinBus.subscribe(setDashMin), []);
+  /* v2.3.2178: the landscape dock's box and the room panels keep clear of
+     it, from one seam (sheetGeometry.landDockFootprint).  Recomputed every
+     render like the other playVw()-derived numbers here -- the component
+     already re-renders on resize, orientationchange and the 200ms force. */
+  const landDock = landDockFootprint(playVw(), playVh());
   /* v2.3.1025: the BUILD/stats column rect -- the loadout equip picker docks
      over it (to the right of the loadout cells) so switching categories never
      moves the menu or covers the loadout, and it can't exceed the dashboard. */
@@ -996,10 +1001,12 @@ export const BottomDashboard = () => {
             </div>
           )}
           {/* v2.3.2166: the bottom padding is the nav dock's zone.
-              v2.3.2168: --dash-h stopped carrying it (the bar is gone and
-              the var is just the home-indicator inset now), so the reserve
-              is the dock's own height plus that inset, stated directly. */}
-          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: `8px 8px calc(${identityRowHeight(playVw(), playVh()) + 6}px + env(safe-area-inset-bottom, 0px))` }}>
+              v2.3.2178: and it is the DOCK's own arithmetic now, not a second
+              copy of it -- the reserve never knew where the dock actually
+              sat, only how tall it was, so an inset that moved the dock left
+              the panel reserving the wrong row.  landDockFootprint returns
+              both from the same expression. */}
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: `8px 8px ${landDock.reserve}` }}>
             {Active && <Active />}
           </div>
         </div>
@@ -1041,11 +1048,19 @@ export const BottomDashboard = () => {
             /* v2.3.2174: the dock rides the panel to whichever edge is
                clear — it is the container's own bottom row. */
             ...(side === 'left' ? { left: DASH_GAP } : { right: DASH_GAP }),
-            bottom: 'env(safe-area-inset-bottom, 0px)',
+            /* v2.3.2178 (owner: "the dashboard buttons can go down some to
+               make more room so the combat skills don't get clipped"): the
+               dock gives most of the home-indicator inset back instead of
+               sitting on top of it, and its height and the panel's reserve
+               now come from ONE place -- landDockFootprint.  Installed, the
+               old anchor lifted the dock 21px into the panel and it covered
+               the combat cards; in a browser tab the inset is 0 and none of
+               this moves, which is exactly why the bug never showed here. */
+            bottom: landDock.bottom,
             /* v2.3.2168: its OWN height — --dash-h is only the inset now
                that the bar is gone, so the dock states the row height the
                band used to lend it. */
-            height: identityRowHeight(playVw(), playVh()),
+            height: landDock.h,
             /* v2.3.2170 (owner, zoomed screenshot: "the left side of the
                buttons has space to fill"): the dock spans the DASHBOARD
                container's inner width — always that width, whatever is
@@ -1148,7 +1163,7 @@ export const BottomDashboard = () => {
         display: 'flex',
         flexDirection: 'column',
         boxSizing: 'border-box',
-        paddingBottom: 'env(safe-area-inset-bottom)',
+        paddingBottom: 'var(--sab, 0px)',
         /* touch-action: none swallows browser default gestures (pan,
            zoom, swipe) on the dashboard chrome.  Inner scrollable panels
            use panelStyle.touchAction = 'pan-y' to opt back in to
@@ -1281,8 +1296,14 @@ export const BottomDashboard = () => {
       <div style={{
         position: 'absolute',
         left: 0, right: 0,
-        bottom: 'calc(env(safe-area-inset-bottom, 0px) + var(--cols-h, 93px))',
-        height: 'calc(var(--dash-h, 145px) - var(--cols-h, 93px))',
+        bottom: 'calc(var(--sab, 0px) + var(--cols-h, 93px))',
+        /* v2.3.2178: --dash-h carries the home-indicator inset now (see
+           bandFootprint), and this row is offset from the band's bottom by
+           that same inset -- so it must come OUT of the height, or the row
+           grows by an inset it has already been moved past and overhangs
+           the band's top edge.  Zero in a browser tab; the whole bug on an
+           installed phone. */
+        height: 'calc(var(--dash-h, 145px) - var(--cols-h, 93px) - var(--sab, 0px))',
         zIndex: 3,
         boxSizing: 'border-box',
         /* v2.3.2166: sideways the nav group is a fixed dock (below), so the
@@ -1424,7 +1445,7 @@ export const BottomDashboard = () => {
         <div style={{
           position: 'absolute',
           left: 0, right: 0,
-          bottom: 'env(safe-area-inset-bottom, 0px)',
+          bottom: 'var(--sab, 0px)',
           zIndex: 2,
           boxSizing: 'border-box',
           /* v2.3.1635: its OWN height, not calc(--dash-h - --nav-h).  With
@@ -1468,7 +1489,7 @@ const LandGoldChip = () => {
          that offsets the wrap re-centres the chip. */
       left: 'calc(var(--world-x, 0px) + var(--play-w, 100%) / 2)',
       transform: 'translateX(-50%)',
-      bottom: 'calc(env(safe-area-inset-bottom, 0px) + 6px)',
+      bottom: 'calc(var(--sab, 0px) + 6px)',
       zIndex: 30,
       display: 'flex', alignItems: 'center', gap: 5,
       padding: '4px 10px',
