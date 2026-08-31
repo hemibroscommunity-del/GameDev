@@ -124,6 +124,47 @@ export async function run({ browser, wsPort, webPort, rec }) {
     seen.push({ dir: name, ...(st || {}) });
   }
   rec.ok('all five facings were photographed with the cape on', seen.length === 5, seen);
+
+  /* ═══ THE DIAGONAL, WHILE RUNNING ═══
+     Owner: "Show jog southwest while wearing cape."
+
+     The four-way `facing` above cannot answer this: it reports left/right/up/
+     down, while the SPRITE direction is an eight-way resolved from the movement
+     vector and kept on the display as _animDir.  So this holds both keys and
+     waits for the renderer to actually BE in jog + southwest before it shoots --
+     a screenshot taken on a timer would be captioned "southwest" whatever the
+     character happened to be doing, which is exactly the mislabelling this
+     scenario exists to avoid (see the northeast note above).
+
+     Worth its own shot because southwest is where the two halves of the cape
+     are hardest: the jog tilt swings the whole garment from the shoulders
+     (_capeTune) and the split has to hold while it does. */
+  {
+    await P.page.keyboard.down('s'); await P.page.keyboard.down('a');
+    let hit = null;
+    for (let i = 0; i < 40 && !hit; i++) {
+      await P.page.waitForTimeout(120);
+      const st = await P.page.evaluate(() => {
+        const r = window._pixiRenderer;
+        const pd = r && r.playerDisplayRaw ? r.playerDisplayRaw() : null;
+        if (!pd) return null;
+        return {
+          pose: pd._animPose || null, dir: pd._animDir || null,
+          back: !!(pd._capeBackSprite && pd._capeBackSprite.visible),
+          front: !!(pd._capeSprite && pd._capeSprite.visible),
+          rot: +Number((pd._capeSprite && pd._capeSprite.rotation) || 0).toFixed(3),
+        };
+      }).catch(() => null);
+      if (st && st.pose === 'jog' && st.dir === 'southwest') hit = st;
+    }
+    if (hit) await P.page.screenshot({ path: 'tools/qa/mp/out/capehair-jog-southwest.png' });
+    await P.page.keyboard.up('a'); await P.page.keyboard.up('s');
+    rec.ok('the renderer reached jog + southwest, so the shot is of what it says',
+      !!hit, hit);
+    rec.ok('...with the cape still SPLIT while running the diagonal — the tilt '
+      + 'swings both halves together, it does not tear them apart',
+      !!hit && hit.back && hit.front, hit);
+  }
   /* The asymmetry, asserted rather than described: the three front-ish facings
      draw BOTH halves, the two back facings draw only the front sprite. */
   /* WHAT THE GAME ACTUALLY REPORTS is a FOUR-WAY facing -- up/down/left/right --
