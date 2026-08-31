@@ -194,8 +194,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       art: q('[data-portrait="art"]'),
       letter: q('[data-portrait="letter"]'),
       create: q('[data-tut="char-create"]'),
-      del: q('[data-tut="char-delete"]'),
-      confirm: q('[data-tut="char-delete-confirm"]'),
+      menus: q('[data-tut="char-menu"]'),
+      confirm: q('[data-tut="char-confirm"]'),
       keyOpen: q('input[placeholder*="Login Key"]'),
       useKey: q('[data-tut="char-usekey"]'),
       title: /CHOOSE YOUR BRO/.test((sheet && sheet.textContent) || ''),
@@ -207,17 +207,103 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and they are REAL drawings, not a screen full of letter tiles '
     + '(the worker had to start sending the look for this to be possible)',
     shape.art > 0, shape);
-  /* Both removed by the owner after seeing the redesign — "Remove the delete
-     character button from this menu" and "Remove the create bro from there".
-     This window answers ONE question now: which of my bros am I playing. */
-  rec.ok('there is no delete control on the character list',
-    shape.del === 0 && shape.confirm === 0, shape);
-  rec.ok('...and no Create card either — the door behind already carries one',
+  /* Create stays off this screen ("Remove the create bro from there") — the
+     door behind it already carries Create Character. */
+  rec.ok('there is no Create card — the door behind already carries one',
     shape.create === 0, shape);
+  /* Every row has its options road, and NOTHING destructive is on the card
+     itself: the ... is a menu, so a mis-tap on a list you are scrolling cannot
+     reach a wipe. */
+  rec.ok('every row has an options control, and nothing destructive sits on '
+    + 'the card itself',
+    shape.menus === shape.rows && shape.confirm === 0, shape);
   rec.ok('the Login Key box is SHUT, one line until it is wanted',
     shape.keyOpen === 0 && shape.useKey === 1, shape);
   rec.ok('...and the window asks you to choose a bro rather than manage profiles',
     shape.title === true, shape);
+
+  /* ── 2b. OPTIONS: RESTART, DELETE, AND THE TYPED WORD ────────────────
+     Owner: "Add an ellipses to the character for options where you can open
+     another menu and choose to delete or restart the character to lvl 1 and
+     another menu that asks are you sure? And need to type yes to confirm."
+
+     THE CLAIM THAT MATTERS is the middle one.  A confirm dialog that appears
+     is not a safety catch; a confirm that REFUSES TO ACT until the word is
+     typed is.  So the button is pressed first with the box empty and then with
+     a wrong word, and the row is checked to be still there each time — a gate
+     that only looked disabled, or one wired to `onClick` regardless, passes
+     every other assertion in this file and loses somebody's character.
+
+     Delete is exercised end to end here.  RESTART is not driven to completion
+     on purpose: it is an irreversible server wipe, and the rows this scenario
+     seeds are invented keys with no character behind them, so the worker would
+     correctly refuse and the test would be asserting the refusal rather than
+     the feature.  The restart's own machinery is covered where it can be
+     driven honestly — server/test/account.test.mjs walks the endpoint against
+     real storage and checks the blob is gone, the prereset snapshot exists,
+     and the character and auth records survive. */
+  const openMenu = async (name) => {
+    const btn = await P.page.$(`[data-tut="char-row"][data-char-name="${name}"] ~ [data-tut="char-menu"]`);
+    if (!btn) return false;
+    await btn.click();
+    await P.page.waitForTimeout(400);
+    return true;
+  };
+  rec.ok('the ... opens a menu (guard)', await openMenu('Middle'), {});
+  const menu = await P.page.evaluate(() => {
+    const el = document.querySelector('[data-tut="char-menu-sheet"]');
+    return {
+      shown: !!el,
+      namesIt: /Middle/.test((el && el.textContent) || ''),
+      restart: !!document.querySelector('[data-tut="char-menu-restart"]'),
+      del: !!document.querySelector('[data-tut="char-menu-delete"]'),
+      text: ((el && el.textContent) || '').replace(/\s+/g, ' ').trim().slice(0, 240),
+    };
+  });
+  console.log('    menu', JSON.stringify(menu));
+  rec.ok('...naming the character it is about to act on', menu.shown && menu.namesIt, menu);
+  rec.ok('...offering BOTH restart at level 1 and remove from this device',
+    menu.restart === true && menu.del === true, menu);
+  /* The two are not the same act and the menu has to say so — one is a server
+     wipe, the other frees a slot and leaves the Login Key working. */
+  rec.ok('...and saying which one is which', /Login Key/i.test(menu.text)
+    && /level 1/i.test(menu.text), menu.text);
+
+  await P.page.click('[data-tut="char-menu-delete"]');
+  await P.page.waitForTimeout(400);
+  const ask = await P.page.evaluate(() => {
+    const el = document.querySelector('[data-tut="char-confirm"]');
+    return { shown: !!el, hasInput: !!document.querySelector('[data-tut="char-confirm-input"]'),
+      text: ((el && el.textContent) || '').replace(/\s+/g, ' ').trim().slice(0, 200) };
+  });
+  rec.ok('choosing one asks "are you sure" with a box to type in',
+    ask.shown && ask.hasInput && /are you sure/i.test(ask.text), ask);
+
+  /* ── THE GATE, pressed twice against a row that must survive both ── */
+  const stillThere = async () => (await rowNames()).includes('Middle');
+  await P.page.click('[data-tut="char-confirm-go"]').catch(() => {});
+  await P.page.waitForTimeout(400);
+  rec.ok('pressing confirm with the box EMPTY does nothing', await stillThere(), await rowNames());
+  await P.page.fill('[data-tut="char-confirm-input"]', 'no');
+  await P.page.click('[data-tut="char-confirm-go"]').catch(() => {});
+  await P.page.waitForTimeout(400);
+  rec.ok('...and the wrong word does nothing either', await stillThere(), await rowNames());
+
+  /* ...and the right one does.  Case-insensitive and trimmed, because a phone
+     capitalises the first letter of a text box by default and a gate you have
+     to fight the keyboard to pass teaches people to stop reading it. */
+  await P.page.fill('[data-tut="char-confirm-input"]', ' YES ');
+  await P.page.click('[data-tut="char-confirm-go"]');
+  await P.page.waitForTimeout(700);
+  const after = await rowNames();
+  console.log('    after the typed yes', JSON.stringify(after));
+  rec.ok('typing yes removes the character', !after.includes('Middle'), after);
+  rec.ok('...and only that one — the rest of the list is untouched',
+    after.length === 5 && after.includes('Strongest'), after);
+  rec.ok('...and both the menu and the confirm closed behind it',
+    await P.page.evaluate(() => !document.querySelector('[data-tut="char-confirm"]')
+      && !document.querySelector('[data-tut="char-menu-sheet"]')), {});
+  await P.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/roster-confirm.png' });
 
   /* ── 3. THE CAP ──────────────────────────────────────────────────────── */
   const setCount = async (n) => {

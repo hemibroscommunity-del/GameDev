@@ -1,6 +1,6 @@
 import React from 'react';
-import { checkAccountLogin } from '@/networking/index.js';
-import { readRoster, describeChar, forgetChar, needsLookup, ROSTER_MAX } from '@/networking/charRoster.js';
+import { checkAccountLogin, resetAccountCharacter } from '@/networking/index.js';
+import { readRoster, describeChar, forgetChar, relookChar, needsLookup, ROSTER_MAX } from '@/networking/charRoster.js';
 import { peerCosmeticsFromWire } from '@/networking/peerCosmetics.js';
 import { portraitDataUrl, portraitOptsFromPeer, portraitHasSubject } from '@/rendering/characterPortrait.js';
 import { AccountLoginForm } from '../account/AccountLoginForm.jsx';
@@ -107,15 +107,35 @@ const PORTRAIT_PX = 60;
  * paints its own centre (border-image with `fill`), so a background set
  * underneath it never shows -- the frame would have had to be re-cut to change
  * this colour, and a colour is not worth new art. */
+/* ═══ v2.3.2194: GUNMETAL BLUE ═══
+ * Owner: "Make the buttons like a gunmetal blue" / "Make the buttons a blueish
+ * color."  The first pass gave the cards a lighter slate face with a gold edge;
+ * gold is the sheet's own accent, so the cards were a brighter version of their
+ * container rather than a different material.  Blue reads as a separate thing
+ * sitting ON the slate, which is what "differentiate the buttons from the
+ * background container" was asking for in the first place.
+ *
+ * A real gunmetal: cool, desaturated, and slightly LIGHTER at the top than the
+ * bottom so it catches light like metal rather than glowing like a screen.  The
+ * edge is a pale steel rather than gold, and the inset highlight along the top
+ * is what sells the bevel. */
+const STEEL = {
+  face: 'linear-gradient(180deg, #35506A 0%, #2A4058 55%, #24374C 100%)',
+  faceLit: 'linear-gradient(180deg, #3D5B78 0%, #314A64 55%, #2A4058 100%)',
+  edge: 'rgba(150, 179, 209, 0.46)',
+  edgeQuiet: 'rgba(150, 179, 209, 0.26)',
+  lip: '0 2px 0 rgba(3,6,10,.45), inset 0 1px 0 rgba(197, 220, 244, .18)',
+};
+
 const CARD = {
   width: '100%', minHeight: 82,
   display: 'flex', alignItems: 'center', gap: 12,
   padding: '9px 12px 9px 10px', textAlign: 'left',
-  color: '#F4F0E7',
-  background: 'linear-gradient(180deg, #2A3D46 0%, #22333B 100%)',
-  border: '1px solid rgba(231, 196, 106, 0.34)',
+  color: '#F2F6FA',
+  background: STEEL.face,
+  border: '1px solid ' + STEEL.edge,
   borderRadius: 10,
-  boxShadow: '0 2px 0 rgba(4,7,9,.35), inset 0 1px 0 rgba(255,255,255,.05)',
+  boxShadow: STEEL.lip,
   cursor: 'pointer',
   fontFamily: 'inherit',
   WebkitTapHighlightColor: 'transparent',
@@ -149,8 +169,8 @@ function Portrait({ entry }) {
   const box = {
     flex: 'none', width: PORTRAIT_PX, height: PORTRAIT_PX,
     borderRadius: 8, overflow: 'hidden',
-    background: '#16232A',
-    border: '1px solid rgba(229,237,233,.14)',
+    background: '#1B2836',
+    border: '1px solid rgba(150, 179, 209, .22)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
   };
   if (url) {
@@ -177,6 +197,21 @@ function Portrait({ entry }) {
 
 export const CharacterPicker = ({ onPlay, onClose }) => {
   const [roster, setRoster] = React.useState(function () { return readRoster(); });
+  /* ═══ v2.3.2194: THE OPTIONS ROAD, IN TWO STOPS ═══
+     Owner: "Add an ellipses to the character for options where you can open
+     another menu and choose to delete or restart the character to lvl 1 and
+     another menu that asks are you sure? And need to type yes to confirm."
+
+     `menuFor` is the character whose ... is open; `askFor` is {entry, action}
+     once one of the two has been picked.  Both hold the ENTRY rather than an
+     index, because the list re-sorts as lookups land and an index would end up
+     pointed at whoever moved into that slot -- the same trap the old delete
+     dialog recorded. */
+  const [menuFor, setMenuFor] = React.useState(null);
+  const [askFor, setAskFor] = React.useState(null);
+  const [typed, setTyped] = React.useState('');
+  const [busy, setBusy] = React.useState(false);
+  const [failed, setFailed] = React.useState('');
   /* v2.3.2193: the Login Key box starts shut.  See the header — this is the
      occasional road, and it was taking half the panel from the common one. */
   const [keyOpen, setKeyOpen] = React.useState(false);
@@ -228,6 +263,48 @@ export const CharacterPicker = ({ onPlay, onClose }) => {
     return function () { alive = false; };
   }, [roster]);
 
+  /* THE WORD IS THE SAFETY CATCH, so it is compared the way a person types it:
+     trimmed and case-insensitive.  Requiring an exact "yes" would fail an
+     iPhone that helpfully capitalised the first letter, which teaches people to
+     fight the keyboard rather than to read the sentence above it. */
+  const armed = typed.trim().toLowerCase() === 'yes';
+
+  const doConfirmed = async function () {
+    if (!askFor || !armed || busy) return;
+    const e = askFor.entry;
+    if (askFor.action === 'delete') {
+      /* Device-local, and instant: forgetChar drops the key from this device
+         and frees a slot.  The character's record on the server is untouched
+         and its Login Key still reaches it -- the copy below promises exactly
+         that and no more. */
+      setRoster(forgetChar(e.phrase));
+      /* BOTH stops close.  Clearing only the confirm would drop the player back
+         onto the menu behind it -- a menu headed by the character that no longer
+         exists, offering to restart them. */
+      setAskFor(null); setMenuFor(null); setTyped('');
+      return;
+    }
+    /* The restart is the SERVER's, so it can fail, and a wipe that never
+       reached the worker must not be reported as done.  Nothing local is
+       touched until the worker says it happened. */
+    setBusy(true); setFailed('');
+    let res = null;
+    try { res = await resetAccountCharacter(e.phrase); } catch (err) { res = null; }
+    setBusy(false);
+    if (!res || !res.ok || !res.reset) {
+      setFailed(res && res.reason === 'unavailable'
+        ? 'Could not reach the server. Nothing was changed.'
+        : 'That did not work. Nothing was changed.');
+      return;
+    }
+    /* Level is now a lie in the roster row -- the character IS level 1 and this
+       device is holding the number it had a second ago.  relookChar puts the
+       row back in needsLookup so the effect above re-asks the worker, rather
+       than writing a level the client guessed at. */
+    setRoster(relookChar(e.phrase));
+    setAskFor(null); setMenuFor(null); setTyped('');
+  };
+
   return (
     <div
       className="bt-login-warn-scrim"
@@ -274,7 +351,7 @@ export const CharacterPicker = ({ onPlay, onClose }) => {
           )}
           {roster.map(function (e) {
             return (
-              <div key={e.phrase} style={{ marginBottom: 9 }}>
+              <div key={e.phrase} style={{ position: 'relative', marginBottom: 9 }}>
                 {/* THE WHOLE CARD IS THE BUTTON.  One tap to play, which is the
                     only thing anyone opens this window to do. */}
                 <button
@@ -310,7 +387,29 @@ export const CharacterPicker = ({ onPlay, onClose }) => {
                   </span>
                   {/* Says the card goes somewhere, which is what makes a second
                       Continue button unnecessary. */}
-                  <span aria-hidden="true" style={{ flex: 'none', fontSize: 20, color: '#8B9895', marginLeft: 2 }}>›</span>
+                  <span aria-hidden="true" style={{ flex: 'none', fontSize: 20, color: '#93A7BC', marginLeft: 2 }}>›</span>
+                </button>
+                {/* v2.3.2194: the options road.  Out of the card's flow so the
+                    card still reads as ONE thing you press, and it stops the
+                    card's click — otherwise opening the menu would launch the
+                    character you were about to act on. */}
+                <button
+                  type="button"
+                  aria-label={'Options for ' + (e.name || 'this character')}
+                  title={'Options for ' + (e.name || 'this character')}
+                  data-tut="char-menu"
+                  onClick={function (ev) { ev.stopPropagation(); setMenuFor(e); }}
+                  onPointerDown={function (ev) { ev.stopPropagation(); }}
+                  style={{
+                    position: 'absolute', top: 4, right: 2,
+                    width: 34, height: 30, padding: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: '#93A7BC', fontSize: 17, lineHeight: 1, letterSpacing: '.10em',
+                    WebkitTapHighlightColor: 'transparent',
+                  }}
+                >
+                  <span aria-hidden="true">•••</span>
                 </button>
               </div>
             );
@@ -333,8 +432,8 @@ export const CharacterPicker = ({ onPlay, onClose }) => {
                 width: '100%', minHeight: 48, padding: '6px 10px',
                 /* Same family as the cards, a step quieter: it is a road out of
                    this window, not one of the things in it. */
-                background: 'rgba(255,255,255,.03)',
-                border: '1px solid rgba(231, 196, 106, 0.18)',
+                background: 'rgba(53, 80, 106, .38)',
+                border: '1px solid ' + STEEL.edgeQuiet,
                 borderRadius: 10, cursor: 'pointer',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
                 fontFamily: 'inherit',
@@ -364,6 +463,157 @@ export const CharacterPicker = ({ onPlay, onClose }) => {
         </button>
       </div>
 
+
+      {/* ═══ STOP ONE: WHAT DO YOU WANT TO DO WITH THIS BRO ═══
+          A menu, not an action.  Nothing here is destructive on its own — both
+          rows lead to the typed confirm below, which is where the decision
+          actually gets made. */}
+      {menuFor && !askFor && (
+        <div
+          data-tut="char-menu-sheet"
+          onPointerDown={function (e) { e.stopPropagation(); setMenuFor(null); }}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9700,
+            background: 'rgba(5, 9, 12, 0.72)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+          }}
+        >
+          <div onPointerDown={function (e) { e.stopPropagation(); }} style={{ ...SHEET, padding: '16px 16px 14px' }}>
+            <div style={{ fontSize: 17, fontWeight: 800, textAlign: 'center' }}>
+              {menuFor.name || 'This character'}
+            </div>
+            <div style={{ fontSize: 13, color: '#9FB0C2', marginTop: 4, marginBottom: 14, textAlign: 'center' }}>
+              {menuFor.level > 0 ? 'Level ' + menuFor.level : 'Level unknown'}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+              <button
+                type="button"
+                data-tut="char-menu-restart"
+                onClick={function () { setAskFor({ entry: menuFor, action: 'restart' }); setTyped(''); setFailed(''); }}
+                style={{ ...CARD, minHeight: 56, justifyContent: 'flex-start', flexDirection: 'column', alignItems: 'flex-start', gap: 2, padding: '10px 12px' }}
+              >
+                <span style={{ fontSize: 15, fontWeight: 800 }}>Restart at level 1</span>
+                <span style={{ fontSize: 12, color: '#9FB0C2', fontWeight: 400 }}>
+                  Keeps the name and the face. Everything earned is gone.
+                </span>
+              </button>
+              <button
+                type="button"
+                data-tut="char-menu-delete"
+                onClick={function () { setAskFor({ entry: menuFor, action: 'delete' }); setTyped(''); setFailed(''); }}
+                style={{ ...CARD, minHeight: 56, justifyContent: 'flex-start', flexDirection: 'column', alignItems: 'flex-start', gap: 2, padding: '10px 12px' }}
+              >
+                <span style={{ fontSize: 15, fontWeight: 800 }}>Remove from this device</span>
+                <span style={{ fontSize: 12, color: '#9FB0C2', fontWeight: 400 }}>
+                  Frees a slot. Their Login Key still brings them back.
+                </span>
+              </button>
+              <button
+                type="button"
+                data-tut="char-menu-cancel"
+                onClick={function () { setMenuFor(null); }}
+                style={{
+                  minHeight: 40, marginTop: 2, padding: 0,
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontSize: 14, fontWeight: 700, color: '#8B9895', fontFamily: 'inherit',
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ STOP TWO: TYPE THE WORD ═══
+          Owner: "another menu that asks are you sure? And need to type yes to
+          confirm."  A typed word is a different KIND of gate from a second
+          button: it cannot be hit by a mis-tap, by a double-tap landing on the
+          dialog that just opened, or by muscle memory — the three ways a
+          confirm button gets pressed without being read.  Both actions take it,
+          though only the restart is irreversible; the owner asked for the gate
+          on the menu, and a delete that silently skipped it would teach people
+          that the word is sometimes optional. */}
+      {askFor && (
+        <div
+          data-tut="char-confirm"
+          onPointerDown={function (e) { e.stopPropagation(); if (!busy) { setAskFor(null); setTyped(''); } }}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9800,
+            background: 'rgba(5, 9, 12, 0.80)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+          }}
+        >
+          <div onPointerDown={function (e) { e.stopPropagation(); }} style={{ ...SHEET, padding: '16px 16px 14px' }}>
+            <div style={{ fontSize: 17, fontWeight: 800, textAlign: 'center' }}>Are you sure?</div>
+            <div style={{ fontSize: 13.5, color: '#B6C1BE', marginTop: 8, lineHeight: 1.4 }}>
+              {askFor.action === 'restart' ? (
+                <span>
+                  <b style={{ color: '#F4F0E7' }}>{askFor.entry.name || 'This character'}</b> goes
+                  back to <b style={{ color: '#F4F0E7' }}>level 1</b>. Their levels, gear, coins
+                  and quests are gone and cannot be brought back. They keep their
+                  name, their look and their Login Key.
+                </span>
+              ) : (
+                <span>
+                  <b style={{ color: '#F4F0E7' }}>{askFor.entry.name || 'This character'}</b> is
+                  removed from this device and their slot is freed. You can bring
+                  them back with their Login Key — without it, they are gone for good.
+                </span>
+              )}
+            </div>
+            <div style={{ fontSize: 12.5, color: '#9FB0C2', marginTop: 12, marginBottom: 6 }}>
+              Type <b style={{ color: '#E7C46A', letterSpacing: '.06em' }}>yes</b> to confirm.
+            </div>
+            <input
+              data-tut="char-confirm-input"
+              value={typed}
+              onChange={function (ev) { setTyped(ev.target.value); }}
+              onKeyDown={function (ev) { if (ev.key === 'Enter' && armed) doConfirmed(); }}
+              placeholder="yes"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck="false"
+              aria-label="Type yes to confirm"
+              style={{
+                width: '100%', minHeight: 44, boxSizing: 'border-box',
+                background: '#16232E', color: '#F2F6FA',
+                border: '1px solid ' + (armed ? 'rgba(231,196,106,.55)' : STEEL.edgeQuiet),
+                borderRadius: 8, padding: '0 12px',
+                fontSize: 16, fontFamily: 'inherit', outline: 'none',
+              }}
+            />
+            {failed && (
+              <div data-tut="char-confirm-error" style={{ fontSize: 12.5, color: '#E89A94', marginTop: 8 }}>{failed}</div>
+            )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
+              <button
+                type="button"
+                data-tut="char-confirm-go"
+                disabled={!armed || busy}
+                className="bt-chisel bt-chisel--danger"
+                style={{ minHeight: 46, fontSize: 15, fontWeight: 800, opacity: (armed && !busy) ? 1 : 0.42 }}
+                onClick={doConfirmed}
+              >
+                {busy ? 'Working…'
+                  : askFor.action === 'restart' ? 'Restart at level 1' : 'Remove from this device'}
+              </button>
+              <button
+                type="button"
+                data-tut="char-confirm-cancel"
+                onClick={function () { if (!busy) { setAskFor(null); setTyped(''); } }}
+                style={{
+                  minHeight: 40, padding: 0,
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontSize: 14, fontWeight: 700, color: '#8B9895', fontFamily: 'inherit',
+                }}
+              >
+                Keep them as they are
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

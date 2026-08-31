@@ -126,6 +126,38 @@ check('a key with no character previews look:null, not an empty look',
     && r.preview.hasChar === false,
   r.preview);
 
+// ── 3c. v2.3.2194: RESTART A CHARACTER OVER HTTP ──
+// The picker restarts a bro the device is not playing, so the wipe needs a road
+// that authenticates with the Login Key instead of a live socket.  Asserted
+// through the STORAGE, not the response: an endpoint that returns ok and
+// deletes nothing is exactly the failure a status-code check would miss.
+state._store.set('rpg:' + DRESSED_ID, { level: 42, xp: 9999, _v: 1 });
+r = await room._accountReset(DRESSED_PHRASE, true, '1.1.1.1');
+check('a correct key restarts the character', r.ok === true && r.reset === true && r.id === DRESSED_ID, r);
+check('...and the rpg blob is really gone, so the rejoin bootstraps level 1',
+  state._store.get('rpg:' + DRESSED_ID) === undefined, state._store.get('rpg:' + DRESSED_ID));
+// The parachute: an irreversible action the owner can still be dug out of.
+const snaps = [...state._store.keys()].filter((k) => k.startsWith('rpgsnap:' + DRESSED_ID + ':prereset-'));
+check('...with a prereset snapshot left behind for admin /restore', snaps.length === 1, snaps);
+// The character RECORD survives: same name, same face, starting again.
+check('...and the character record is untouched — same bro, level 1',
+  !!state._store.get('char:' + DRESSED_ID), state._store.get('char:' + DRESSED_ID));
+check('...and so is the auth record, so the Login Key still works',
+  !!state._store.get('auth:' + DRESSED_ID), null);
+
+// confirm is not a formality: without it nothing is touched.
+state._store.set('rpg:' + DRESSED_ID, { level: 7, _v: 1 });
+r = await room._accountReset(DRESSED_PHRASE, false, '1.1.1.1');
+check('no confirm -> bad_request', r.ok === false && r.reason === 'bad_request', r);
+check('...and the blob is still there', !!state._store.get('rpg:' + DRESSED_ID), null);
+
+// A WRONG key must not wipe anybody.  Same lockout budget as /login, so this
+// also proves the two endpoints cannot be played against each other.
+r = await room._accountReset('not-the-right-phrase-9', true, '2.2.2.2');
+check('a phrase with no account cannot reset anything',
+  !(r.ok && r.reset), r);
+check('...and the real character is untouched', !!state._store.get('rpg:' + DRESSED_ID), null);
+
 // ── 4. unregistered phrase: exists:false, NOTHING stamped ──
 const authKeysBefore = [...state._store.keys()].filter((k) => k.startsWith('auth:')).length;
 r = await room._accountLogin('ghost-haze-iron-jet-9', '1.1.1.1');

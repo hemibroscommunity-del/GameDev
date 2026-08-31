@@ -493,6 +493,27 @@ export function describeChar(phrase, info) {
   return _sorted(_write(list));
 }
 
+/* ═══ v2.3.2194: THE ROW IS STALE, ASK AGAIN ═══
+   After a restart the character IS level 1 and this device is still holding
+   the number it had a second ago.  Clearing the level and the asked-flag puts
+   the row back in `needsLookup`, so the picker's own effect re-asks the worker
+   on the next render -- the same road a never-looked-up row takes, rather than
+   a second path that writes a level the client guessed at.
+
+   The NAME and the LOOK are kept: a restart resets progression, not who the
+   character is (server/src/persistence.js keeps char:<id> and auth:<id>), so
+   throwing them away would blank the row and make a portrait re-fetch for
+   nothing. */
+export function relookChar(phrase) {
+  if (!phrase) return readRoster();
+  const list = readRoster().slice();
+  const i = list.findIndex(function (e) { return e.phrase === phrase; });
+  if (i < 0) return _sorted(list);
+  list[i].level = 0;
+  delete list[i].looked;
+  return _sorted(_write(list));
+}
+
 /* Remove from THIS DEVICE.  See the header for what this is and is not. */
 export function forgetChar(phrase) {
   if (!phrase) return readRoster();
