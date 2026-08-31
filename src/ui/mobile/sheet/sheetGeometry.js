@@ -588,7 +588,17 @@ export function landscapeDashTileSize(vw, vh) {
    and almost no width: the 2-wide grid was already narrower than the
    nav-bound container, so the rail mostly spends dead tray.  Five chips
    split the grid's own height (~47px each beside 60px slots). */
-export const BAG_RAIL_W = 28;
+/* v2.3.2179 (owner: "you have more room to make the filter buttons on the
+   bag view a bit wider too"): 28 -> 44, and it costs the world NOTHING.
+   The column's width is `max(landscapeBagPanelW, landscapeNavGroupW)` and
+   the NAV GROUP is the wider of the two -- measured, 196 against the bag's
+   166 -- so the bag panel has been sitting inside a container 30px wider
+   than it asked for, which is the room the owner is looking at.  44 spends
+   16 of those 30 and leaves the max() untouched (182 < 196), so the sheet
+   width, the canvas width and every landscape geometry assertion stay
+   exactly where they are.  Taking all 30 would make the two sides equal and
+   hand the next nav-button change the power to widen the sheet. */
+export const BAG_RAIL_W = 44;
 export function landscapeBagPanelW(vw, vh) {
   var t = landscapeDashTileSize(vw, vh);
   /* rail + gap + 2 tiles + gap + padding + border */
