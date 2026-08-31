@@ -36,7 +36,15 @@ const BASE_DIR = {
 export const CAPE_IDS = ['crimson'];
 
 const _tex = Object.create(null);      /* `${id}|${baseDir}` -> Texture */
+const _hood = Object.create(null);     /* `${id}|${baseDir}` -> Texture (hood only) */
+const _hoodMask = Object.create(null); /* `${id}|${baseDir}` -> Texture (hood silhouette, opening filled) */
 const _loading = Object.create(null);
+
+/* v2.3.2186: the facings that HAVE a hood cut, i.e. the ones where the cape is
+   split across the body. north/northeast are the back view -- there the cape is
+   between the viewer and the character and correctly covers them, so they stay
+   a single in-front sprite and get no hood frame. See tools/cape/split-cape-hood.py. */
+const SPLIT_DIRS = ['south', 'southwest', 'east'];
 
 export function capeBaseDir(dir) { return BASE_DIR[dir] || 'south'; }
 
@@ -46,6 +54,25 @@ export function capeBaseDir(dir) { return BASE_DIR[dir] || 'south'; }
 export function getCapeTexture(id, dir) {
   if (!id || id === 'none') return null;
   return _tex[`${id}|${capeBaseDir(dir)}`] || null;
+}
+
+/** The HOOD-ONLY texture: the cape above its clasp, drawn IN FRONT of the body
+ *  while getCapeTexture's full frame draws BEHIND it, so the torso occludes the
+ *  panels instead of the panels covering the torso (v2.3.2186).
+ *  null for north/northeast BY DESIGN — the caller reads that as "this facing
+ *  is not split", not as "the art failed to load". */
+export function getCapeHoodTexture(id, dir) {
+  if (!id || id === 'none') return null;
+  return _hood[`${id}|${capeBaseDir(dir)}`] || null;
+}
+
+/** The hood's SILHOUETTE with its face opening filled — the shape hair is
+ *  clipped to so it cannot poke out past the hood (v2.3.2186). Hair already
+ *  draws under the hood, so z-order was never the problem: what shows is hair
+ *  reaching beyond the hood's outline, and only a clip removes that. */
+export function getCapeHoodMaskTexture(id, dir) {
+  if (!id || id === 'none') return null;
+  return _hoodMask[`${id}|${capeBaseDir(dir)}`] || null;
 }
 
 /** Load every frame of every cape.  Awaited by preloadWorldAnimations(). */
@@ -65,6 +92,32 @@ export async function preloadCapes(ids = CAPE_IDS) {
       }).catch(() => { /* a missing cape must not fail the whole preload */ });
       jobs.push(_loading[key]);
     }
+    /* PRELOADING IS LAW (CLAUDE.md): the hood halves go up with the capes, in
+       the same awaited pass. A hood that loaded on first sighting would pop in
+       over a character already wearing the back half. */
+    for (const d of SPLIT_DIRS) {
+      const hkey = `${id}|${d}|hood`;
+      if (_hood[`${id}|${d}`] || _loading[hkey]) continue;
+      const hurl = `/sprites/traits/cape/${id}/hood/${d}.png`;
+      _loading[hkey] = Assets.load(hurl).then((t) => {
+        if (t) {
+          try { t.source.scaleMode = 'nearest'; } catch (e) { /* older pixi shape */ }
+          _hood[`${id}|${d}`] = t;
+        }
+      }).catch(() => { /* no hood frame -> that facing simply stays un-split */ });
+      jobs.push(_loading[hkey]);
+
+      const mkey = `${id}|${d}|hoodmask`;
+      if (_hoodMask[`${id}|${d}`] || _loading[mkey]) continue;
+      const murl = `/sprites/traits/cape/${id}/hood/hairmask-${d}.png`;
+      _loading[mkey] = Assets.load(murl).then((t) => {
+        if (t) {
+          try { t.source.scaleMode = 'nearest'; } catch (e) { /* older pixi shape */ }
+          _hoodMask[`${id}|${d}`] = t;
+        }
+      }).catch(() => { /* no mask -> hair simply is not clipped for that facing */ });
+      jobs.push(_loading[mkey]);
+    }
   }
   await Promise.all(jobs);
   return Object.keys(_tex).length;
@@ -72,4 +125,6 @@ export async function preloadCapes(ids = CAPE_IDS) {
 
 /** For tests and the preload report. */
 export function capeFramesResident() { return Object.keys(_tex).length; }
+export function capeHoodFramesResident() { return Object.keys(_hood).length; }
+export function capeHoodMasksResident() { return Object.keys(_hoodMask).length; }
 export { Texture };

@@ -61,5 +61,11 @@
   "south": 10,
   "east": 10,
   "southwest": 10
- }
+ },
+ "hoodSplitY": {
+  "south": 89,
+  "southwest": 89,
+  "east": 83
+ },
+ "hoodNote": "v2.3.2186: hood/<dir>.png is the cape above the clasp, drawn IN FRONT of the body while the full frame draws BEHIND it, so the torso occludes the panels instead of the panels covering the torso. north/northeast have no hood frame on purpose: they are the back view, where the cape correctly covers the character and there is nothing to occlude. Regenerate with tools/cape/split-cape-hood.py."
 }

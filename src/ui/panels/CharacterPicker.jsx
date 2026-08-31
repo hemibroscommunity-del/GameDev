@@ -212,16 +212,46 @@ export const CharacterPicker = ({ onPlay, onClose }) => {
                 <button
                   type="button"
                   aria-label={'Delete ' + (e.name || 'character')}
+                  title={'Delete ' + (e.name || 'character')}
                   data-tut="char-delete"
                   onClick={function (ev) { ev.stopPropagation(); setPendingDelete(e); }}
                   className="bt-chisel bt-chisel--chip"
                   style={{
                     flex: 'none', width: 44, minHeight: 48,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 16, color: '#D8635D', padding: 0,
+                    color: '#D8635D', padding: 0,
                   }}
                 >
-                  ✕
+                  {/* ── v2.3.2187: A BIN, NOT A ✕ ──
+                      Owner: "it looks like the x is just to back out of the
+                      window instead of delete the character."  Exactly right,
+                      and the code had been saying so for three versions --
+                      every comment around this control calls it "the bin"
+                      while it drew a dismiss glyph.  ✕ is the close affordance
+                      on every other panel in this game, so on the ONE screen
+                      where the destructive action sits beside a row you tap to
+                      play, it read as "shut this" to the person holding the
+                      phone.  Red alone could not carry the difference.
+
+                      Same inline stroke bin as the paint panel's Clear
+                      (v2.3.1994, PlayerPaint), for the reasons stated there:
+                      it inherits the button's colour, it stays crisp at any
+                      pixel density, and an asset that is never fetched cannot
+                      hitch on first use.  The words have not gone -- they are
+                      the aria-label and now the title too, which is where a
+                      whole sentence fits and 44px of chip never could.
+                      The are-you-sure below is unchanged; this makes the
+                      button say what that dialog is about to ask. */}
+                  <svg viewBox="0 0 24 24" width="19" height="19"
+                    aria-hidden="true" focusable="false">
+                    <g fill="none" stroke="currentColor" strokeWidth="1.8"
+                      strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4.4 6.6h15.2" />
+                      <path d="M9.4 6.6V4.9a1.3 1.3 0 0 1 1.3-1.3h2.6a1.3 1.3 0 0 1 1.3 1.3v1.7" />
+                      <path d="M6.4 6.6l.9 12a1.6 1.6 0 0 0 1.6 1.5h6.2a1.6 1.6 0 0 0 1.6-1.5l.9-12" />
+                      <path d="M10.4 10.2v6.4M13.6 10.2v6.4" />
+                    </g>
+                  </svg>
                 </button>
               </div>
             );

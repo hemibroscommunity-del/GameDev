@@ -155,6 +155,38 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return true;
   };
 
+  /* ═══ v2.3.2187: THE CONTROL LOOKS LIKE DELETING, NOT CLOSING ═══
+     Owner: "it looks like the x is just to back out of the window instead of
+     delete the character."  It drew a ✕ -- which is the CLOSE affordance on
+     every other panel in this game -- while every comment around it called it
+     "the bin".  On the one screen where the destructive control sits beside a
+     row you tap to play, that reading costs a character.
+
+     Pinned as "not a dismiss glyph, and it draws something": a future edit that
+     reaches for ✕ or × again fails here rather than shipping, and a bin that
+     silently stopped rendering (an icon font that never loaded, a stroke that
+     inherited to transparent) is caught by the same assertion.  The words stay
+     the accessible name, which is what a screen reader and a hover actually
+     read. */
+  const delLook = await P.page.evaluate(() => {
+    const b = document.querySelector('[data-tut="char-delete"]');
+    if (!b) return null;
+    const svg = b.querySelector('svg');
+    return {
+      text: (b.textContent || '').trim(),
+      hasIcon: !!svg,
+      paths: svg ? svg.querySelectorAll('path').length : 0,
+      aria: b.getAttribute('aria-label') || '',
+      title: b.getAttribute('title') || '',
+    };
+  });
+  rec.ok('the delete control is not a dismiss glyph — no ✕/× where a bin belongs',
+    !!delLook && !/[✕×xX]/.test(delLook.text), delLook);
+  rec.ok('...it draws an actual bin (an icon that failed to render would be silent)',
+    !!delLook && delLook.hasIcon && delLook.paths >= 3, delLook);
+  rec.ok('...and it still SAYS delete, for a screen reader and a hover',
+    !!delLook && /^Delete\s+\S/.test(delLook.aria) && /^Delete\s+\S/.test(delLook.title), delLook);
+
   rec.ok('a row has its own delete control (guard)', await clickDelete('Middle'), {});
   const confirm = await P.page.evaluate(() => {
     const el = document.querySelector('[data-tut="char-delete-confirm"]');

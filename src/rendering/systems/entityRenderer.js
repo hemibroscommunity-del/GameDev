@@ -56,7 +56,7 @@ import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadB
 import { getEyeColor } from '../traits/eyeColorCatalog.js';   /* v2.3.1930: eye colour is per-player now, so every draw names whose eyes it means */
 import { DISPLAY_DS, downscaleByFactor } from '../spriteScale.js'; /* v2.3.1120: display-texture downscale + lockstep transform compensation */
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.1953: height x frame render scale */
-import { getCapeTexture } from '../capeSprites.js'; /* v2.3.2023: the cosmetic cape */
+import { getCapeTexture, getCapeHoodTexture, getCapeHoodMaskTexture } from '../capeSprites.js'; /* v2.3.2023: the cosmetic cape; v2.3.2186: its hood half + the hair clip */
 import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2023 */
 import { getHairColor, getColoredHairTextures } from '../traits/hairColorCatalog.js';
 import { getHatColor, getColoredHatTextures } from '../traits/hatColorCatalog.js';
@@ -1542,10 +1542,56 @@ function _capeTune(dir) {
 function _placeCape(display, capeId, pose, dir, mirror, frameIdx) {
   const spr = display && display._capeSprite;
   if (!spr) return;
+  const back = display._capeBackSprite || null;              /* v2.3.2186 */
   const sb = display._spriteBody;
-  const tex = (!capeId || capeId === 'none' || _CAPE_HIDDEN_POSES[pose]) ? null : getCapeTexture(capeId, dir);
-  if (!tex || !sb || !sb.visible) { if (spr.visible) spr.visible = false; return; }
-  if (spr.texture !== tex) spr.texture = tex;
+  const off = (!capeId || capeId === 'none' || _CAPE_HIDDEN_POSES[pose]);
+  const tex = off ? null : getCapeTexture(capeId, dir);
+  if (!tex || !sb || !sb.visible) {
+    if (spr.visible) spr.visible = false;
+    if (back && back.visible) back.visible = false;
+    /* v2.3.2186: and the hair clip goes with it.  Leaving _btReady set here
+       would clip the hair to a hood that is NOT on screen -- which is not a
+       cosmetic slip but a bald patch, and it would fire on every swing, chop,
+       cook and fire pose, all of which hide the cape (_CAPE_HIDDEN_POSES).
+       Found by the capehair probe reading maskedToHood=true while both cape
+       sprites were invisible. */
+    const hm0 = display._capeHoodMask;
+    if (hm0) hm0._btReady = false;
+    return;
+  }
+  /* ═══ v2.3.2186: WHICH HALF GOES WHERE ═══
+   * Owner: "the left side of the cape should be occluded by characters body.
+   * Then mirrored for the other side."
+   *
+   * The cape is two garments on opposite sides of the person: the HOOD is over
+   * the skull and must draw in front, the PANELS hang from the shoulders and
+   * must draw behind.  v2.3.2023 drew both in front because the art is one
+   * whole-mannequin picture, and the panels then covered the torso -- the slab
+   * the owner photographed.
+   *
+   * A hood texture EXISTING is the signal that this facing is split (south,
+   * southwest, east).  north and northeast deliberately have none: they are the
+   * back view, where the cape is between the viewer and the character and
+   * correctly covers them, so they keep the single in-front sprite they always
+   * had.  Reading the split off the art rather than off a dir list here means
+   * a new cape that ships hood frames for more facings just works.
+   *
+   * Both textures are full 256 frames at the identical fitted position
+   * (tools/cape/split-cape-hood.py), which is why the transform below is
+   * computed ONCE and copied: no second placement path can drift out of step
+   * with the jog tilt, the pivot or the crown offset. */
+  const hoodTex = off ? null : getCapeHoodTexture(capeId, dir);
+  const split = !!(hoodTex && back);
+  const frontTex = split ? hoodTex : tex;
+  if (spr.texture !== frontTex) spr.texture = frontTex;
+  if (back) {
+    if (split) {
+      if (back.texture !== tex) back.texture = tex;
+      if (!back.visible) back.visible = true;
+    } else if (back.visible) {
+      back.visible = false;
+    }
+  }
   const norm = 256 / ((tex.frame && tex.frame.width) || 256);
   spr.scale.x = sb.scale.x * norm / DISPLAY_DS;
   spr.scale.y = sb.scale.y * norm / DISPLAY_DS;
@@ -1591,6 +1637,33 @@ function _placeCape(display, capeId, pose, dir, mirror, frameIdx) {
   spr.x = sb.x + dx + jogDx;
   spr.y = sb.y + dy - (0.5 - tune.pivotY) * drawnH;
   if (!spr.visible) spr.visible = true;
+  /* v2.3.2186: the back half wears the SAME transform, copied rather than
+     recomputed.  Both frames are the same 256 box fitted to the same body, so
+     any divergence here would be a bug by construction -- and the jog tilt,
+     the shoulder pivot and the crown offset all have to stay identical or the
+     hood would swing off the panels it is stitched to. */
+  if (back && back.visible) {
+    back.scale.x = spr.scale.x; back.scale.y = spr.scale.y;
+    if (back.anchor.y !== spr.anchor.y) back.anchor.set(0.5, spr.anchor.y);
+    back.rotation = spr.rotation;
+    back.x = spr.x; back.y = spr.y;
+  }
+  /* v2.3.2186: and the hair clip rides the same transform.  Left INVISIBLE --
+     a mask is sampled, not drawn, and showing it would paint a white hood. */
+  const hoodMask = display._capeHoodMask;
+  if (hoodMask) {
+    const mtex = split ? getCapeHoodMaskTexture(capeId, dir) : null;
+    if (mtex) {
+      if (hoodMask.texture !== mtex) hoodMask.texture = mtex;
+      hoodMask.scale.x = spr.scale.x; hoodMask.scale.y = spr.scale.y;
+      if (hoodMask.anchor.y !== spr.anchor.y) hoodMask.anchor.set(0.5, spr.anchor.y);
+      hoodMask.rotation = spr.rotation;
+      hoodMask.x = spr.x; hoodMask.y = spr.y;
+      hoodMask._btReady = true;
+    } else {
+      hoodMask._btReady = false;
+    }
+  }
 }
 
 function _placeGear(display, equip, pose, dir, frameIdx, legsFrom) {
@@ -3103,8 +3176,23 @@ function _clipHairToHat(display, hatId, hairId, pose, dir, mirror, frameIdx, bod
   const meta = helmet && helmet.meta;
   const maskEntry = (meta && meta.clipsHair) ? _ensureHairMaskLoaded(hatId) : null;
   if (!(meta && meta.clipsHair && hair.visible && maskEntry && maskEntry.tex[dir])) {
-    if (hair.mask) hair.mask = null;
     maskSprite.visible = false;
+    /* ═══ v2.3.2186: THE HOOD CLIPS HAIR TOO ═══
+     * Owner: "Hair sticking out."  The hood already draws over the hair
+     * (hairSprite is added before capeSprite), so this was never a z-order
+     * bug -- what shows is hair reaching PAST the hood's outline, which only
+     * a clip removes.
+     * A hat that clips wins, and that is why this sits in the ELSE: the hat is
+     * drawn above the hood, so its silhouette is the one the hair has to obey.
+     * The mask sprite is placed by _placeCape from the body's transform, which
+     * runs BEFORE _placeHair on both the local and the remote path, so it is
+     * already registered by the time this reads it. */
+    const hoodMask = display._capeHoodMask;
+    if (hair.visible && hoodMask && hoodMask._btReady) {
+      if (hair.mask !== hoodMask) hair.mask = hoodMask;
+    } else if (hair.mask) {
+      hair.mask = null;
+    }
     return;
   }
   /* Reuse the trait placement with the helmet's meta but the mask texture
@@ -3163,6 +3251,26 @@ if (typeof window !== 'undefined') {
     const p = hair.parent;
     return { hairOverHat: p.getChildIndex(hair) > p.getChildIndex(hat),
       hatVisible: !!hat.visible, hairVisible: !!hair.visible };
+  };
+}
+/* v2.3.2186: QA probe — is the hair clipped to the cape's hood, and is the
+   mask staying invisible?  Read off the live container rather than off the
+   code's intentions: the v2.3.2153 cape bug passed every scene-graph assertion
+   while drawing nothing, because the assertions asked what the code meant. */
+if (typeof window !== 'undefined') {
+  window.__btCapeHair = () => {
+    const d = _lastHairDisplay;
+    if (!d) return null;
+    const hair = d._hairSprite, hm = d._capeHoodMask, hatMask = d._hairMask;
+    return {
+      hairVisible: !!(hair && hair.visible),
+      maskedToHood: !!(hair && hm && hair.mask === hm),
+      hoodMaskReady: !!(hm && hm._btReady),
+      hatMaskVisible: !!(hatMask && hatMask.visible),
+      hoodMaskDrawn: !!(hm && hm.visible),
+      capeBackOn: !!(d._capeBackSprite && d._capeBackSprite.visible),
+      capeFrontOn: !!(d._capeSprite && d._capeSprite.visible),
+    };
   };
 }
 function _orderHairOverHat(display, hatId) {
@@ -4605,6 +4713,20 @@ function createPlayerDisplay() {
   shieldBackLo.visible = false;
   container.addChild(shieldBackLo);
 
+  /* v2.3.2186: THE CAPE'S BACK HALF, under everything the character is.
+     Owner: "the left side of the cape should be occluded by characters body.
+     Then mirrored for the other side."  v2.3.2023 drew the whole cape in front
+     because the art is a whole-mannequin picture with its panels painted over
+     the chest -- true of the picture, false of the person, and the result was a
+     red slab glued to the front with the torso hidden behind it.  The panels
+     hang from the shoulders, so they belong BEHIND; only the hood is over the
+     skull, and that is a separate texture drawn by _capeSprite above.
+     Added before the body Graphics so it is behind the fallback body too. */
+  const capeBackSprite = new Sprite();
+  capeBackSprite.anchor.set(0.5, 0.5);
+  capeBackSprite.visible = false;
+  container.addChild(capeBackSprite);
+
   /* Procedural fallback body — drawn until the sprite sheets resolve
      (and as a permanent fallback if they fail to load). */
   const body = new Graphics();
@@ -4721,6 +4843,15 @@ function createPlayerDisplay() {
   capeSprite.anchor.set(0.5, 0.5);
   capeSprite.visible = false;
   container.addChild(capeSprite);
+  /* v2.3.2186: the hood's silhouette, used to CLIP THE HAIR (owner: "Hair
+     sticking out").  Hair already draws under the hood, so no z-order fixes
+     this -- what shows is hair reaching past the hood's outline.  Placed with
+     the cape's own transform, which is the body sprite's, so unlike the hat
+     hair-mask it needs no crown anchor or per-pose tune to stay registered. */
+  const capeHoodMask = new Sprite();
+  capeHoodMask.anchor.set(0.5, 0.5);
+  capeHoodMask.visible = false;
+  container.addChild(capeHoodMask);
 
   const headwearSprite = new Sprite();
   headwearSprite.visible = false;
@@ -5068,6 +5199,8 @@ function createPlayerDisplay() {
   container._hairSprite = hairSprite;
   container._hairMask = hairMask;
   container._capeSprite = capeSprite;                 /* v2.3.2023 */
+  container._capeBackSprite = capeBackSprite;         /* v2.3.2186 */
+  container._capeHoodMask = capeHoodMask;             /* v2.3.2186 */
   container._headwearSprite = headwearSprite;
   container._nftFront = nftFront;
   container._nftBack = nftBack;
@@ -5137,6 +5270,12 @@ function createOtherPlayerDisplay() {
   shieldBackLo.anchor.set(0.5, 0.5);
   shieldBackLo.visible = false;
   container.addChild(shieldBackLo);
+
+  /* v2.3.2186: the cape's back half — see the local player's builder. */
+  const capeBackSprite = new Sprite();
+  capeBackSprite.anchor.set(0.5, 0.5);
+  capeBackSprite.visible = false;
+  container.addChild(capeBackSprite);
 
   const body = new Graphics();
   container.addChild(body);
@@ -5222,6 +5361,15 @@ function createOtherPlayerDisplay() {
   capeSprite.anchor.set(0.5, 0.5);
   capeSprite.visible = false;
   container.addChild(capeSprite);
+  /* v2.3.2186: the hood's silhouette, used to CLIP THE HAIR (owner: "Hair
+     sticking out").  Hair already draws under the hood, so no z-order fixes
+     this -- what shows is hair reaching past the hood's outline.  Placed with
+     the cape's own transform, which is the body sprite's, so unlike the hat
+     hair-mask it needs no crown anchor or per-pose tune to stay registered. */
+  const capeHoodMask = new Sprite();
+  capeHoodMask.anchor.set(0.5, 0.5);
+  capeHoodMask.visible = false;
+  container.addChild(capeHoodMask);
 
   const headwearSprite = new Sprite();
   headwearSprite.visible = false;
@@ -5299,6 +5447,8 @@ function createOtherPlayerDisplay() {
   container._hairSprite = hairSprite;
   container._hairMask = hairMask;
   container._capeSprite = capeSprite;                 /* v2.3.2023 */
+  container._capeBackSprite = capeBackSprite;         /* v2.3.2186 */
+  container._capeHoodMask = capeHoodMask;             /* v2.3.2186 */
   container._headwearSprite = headwearSprite;
   container._nftFront = nftFront;
   container._nftBack = nftBack;
@@ -9507,7 +9657,14 @@ export class EntityRenderer {
                cape. */
             const _armCape = display._handArmCape;
             const _armCapeMask = display._handArmCapeMask;
-            const _wornCape = display._capeSprite;
+            /* v2.3.2186: take the FULL cape, which since the hood split lives on
+               the back sprite -- _capeSprite now carries only the hood on the
+               split facings, and a hood laid over the forearm is nothing. Falls
+               back to _capeSprite for the unsplit facings (north/northeast),
+               where it is still the whole garment. */
+            const _capeBack = display._capeBackSprite;
+            const _wornCape = (_capeBack && _capeBack.visible && _capeBack.texture)
+              ? _capeBack : display._capeSprite;
             if (_armCape && _armCapeMask) {
               if (_wornCape && _wornCape.visible && _wornCape.texture) {
                 _armCape.texture = _wornCape.texture;
