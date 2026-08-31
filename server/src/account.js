@@ -61,10 +61,44 @@ export const accountMethods = {
         const result = await this._accountLogin(body && body.phrase, ip);
         return new Response(JSON.stringify(result), { headers: H });
       }
+      /* v2.3.2194: RESTART A CHARACTER YOU ARE NOT PLAYING.
+         The in-game Settings restart (character_reset, v2.3.1347) needs a live
+         socket to say who you are.  The character picker is a pre-game screen
+         listing bros by KEY, so it has no socket for any of them -- this is the
+         same wipe reached with the same proof of ownership the login check
+         already takes.
+         GRANTS NO NEW AUTHORITY: knowing the phrase already lets you sign in as
+         that character and restart it from Settings.  This removes a detour,
+         not a lock. */
+      if (request.method === 'POST' && path.startsWith('/reset')) {
+        let body = null;
+        try { body = await request.json(); } catch (e) { /* malformed -> bad_request below */ }
+        const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+        const result = await this._accountReset(body && body.phrase, body && body.confirm, ip);
+        return new Response(JSON.stringify(result), { headers: H });
+      }
       return new Response(JSON.stringify({ ok: false, error: 'Not found' }), { status: 404, headers: H });
     } catch (err) {
       return new Response(JSON.stringify({ ok: false, error: err.message }), { status: 500, headers: H });
     }
+  },
+
+  /* Core restart, split from the fetch wrapper as the test seam.
+     AUTHENTICATES BY DELEGATING to _accountLogin rather than re-deriving the
+     id and re-comparing the hash.  Two things follow and both matter: the
+     per-IP throttle and the per-id lockout are ONE shared budget across both
+     endpoints, so a sweep cannot use the cheaper road to probe for the other;
+     and there is exactly one implementation of "is this phrase yours", which
+     is not a check to keep two copies of.
+     A failure is returned VERBATIM -- 'rate', 'auth', 'locked', exists:false --
+     so the caller cannot tell a wrong key from a missing character by the shape
+     of the answer any more than it can on /login. */
+  async _accountReset(phrase, confirm, ip) {
+    if (confirm !== true) return { ok: false, settled: true, reason: 'bad_request' };
+    const auth = await this._accountLogin(phrase, ip);
+    if (!auth || !auth.ok || !auth.exists || !auth.id) return auth || { ok: false, settled: true, reason: 'bad_request' };
+    await this._resetCharacterData(auth.id);
+    return { ok: true, settled: true, reset: true, id: auth.id };
   },
 
   // Core check, split from the fetch wrapper as the test seam.
@@ -136,6 +170,28 @@ export const accountMethods = {
           createdAt: auth.createdAt,
           hasChar: !!(char && char.look),
           name: (char && char.name) || '',
+          /* ═══ v2.3.2193: THE APPEARANCE, SO THE PICKER CAN DRAW A FACE ═══
+             Owner, of the Continue window: "it currently feels like an
+             account-management modal, not a character-selection screen...
+             In an RPG, I should recognize my character visually before I even
+             read the name."  A portrait is the fix, and this is the only place
+             the client can learn what a character it is NOT currently playing
+             looks like -- the roster on the device holds keys and names, never
+             cosmetics.
+
+             THE WHOLE LOOK, not a face-shaped subset.  Picking out "the keys a
+             headshot needs" would be a second allowlist beside
+             JOIN_COSMETIC_KEYS that has to stay in step with it forever, and
+             this repo has already paid for that shape once (v2.3.2148: a
+             drawing key added to one gate and not the other, and the print
+             silently never appeared).  It costs ~2KB when a character has all
+             eight drawings, on a request made once per character ever.
+
+             LEAKS NOTHING NEW: reaching this branch required presenting the
+             correct passphrase, which is the same bar `name` already cleared.
+             Absent on an old worker, and the client falls back to its letter
+             tile -- deploy-order safe in both directions (rule 19). */
+          look: (char && char.look) || null,
         },
       };
     }

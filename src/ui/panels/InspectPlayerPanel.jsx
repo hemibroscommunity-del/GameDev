@@ -10,7 +10,7 @@ import { setMuted, reportPlayer, chatMuteSettled } from '@/game/chatMute.js';
 /* v2.3.1235: Checkpoint B — real pixel-portrait generator + the color-id →
    RGB target transforms it expects (same set the BottomDashboard player
    card uses). */
-import { portraitDataUrl } from '../../rendering/characterPortrait.js';
+import { portraitDataUrl, portraitOptsFromPeer, portraitHasSubject } from '../../rendering/characterPortrait.js'; /* v2.3.2193: one shared recipe */
 import { hairColorTarget } from '../../rendering/traits/hairColorCatalog.js';
 import { hatColorTarget } from '../../rendering/traits/hatColorCatalog.js';
 import { facialHairColorTarget } from '../../rendering/traits/facialHairColorCatalog.js';
@@ -116,36 +116,16 @@ export function InspectPlayerPanel(props) {
     try {
       o = inspectPlayer && stateRef.current && stateRef.current.others ? stateRef.current.others[inspectPlayer.id] : null;
     } catch (e) {}
-    /* tick-created placeholder peers carry all-null cosmetics — skip so
-       the avatar / letter-tile fallbacks show instead of a default body */
-    if (o && (o.skin || o.hair || o.shirt || o.headwear || o.facialhair || o.pants)) {
+    /* v2.3.2193: the mapping moved to characterPortrait's portraitOptsFromPeer
+       so the character picker draws its rows through the identical recipe --
+       the long note there says why a second hand-written copy is the shape
+       this repo keeps paying for.  The guard moved with it: a tick-created
+       placeholder peer carries all-null cosmetics, and drawing one produces a
+       default body rather than a person, so the avatar / letter-tile fallbacks
+       show instead. */
+    if (portraitHasSubject(o)) {
       try {
-        portraitDataUrl({
-          skin: o.skin,
-          pants: o.pants,
-          shoes: o.shoes,
-          hair: o.hair,
-          hairColor: hairColorTarget(o.hairColor),
-          facialHair: o.facialhair,
-          facialHairColor: facialHairColorTarget(o.facialHairColor),
-          headwear: o.headwear,
-          hatColor: hatColorTarget(o.hatColor, o.headwear), /* v2.3.1927 */
-          shirt: o.shirt,
-          shirtColor: shirtColorTarget(o.shirtColor),
-          eyeColor: o.eyeColor,   /* v2.3.1930: THEIR eyes, off the wire */
-          /* v2.3.1939: THEIR drawn shirt.  The card draws south, which is a
-             front-facing view, so it is the front design that belongs here. */
-          shirtArt: o.shirtArtFront || null,
-          /* v2.3.1940: THEIR pants print and tattoo.  Passed explicitly (rather
-             than left to default to this device's own) for exactly the reason
-             the eye colour is -- this card draws a stranger. */
-          pantsArt: o.pantsArt || null,
-          tattooArt: o.tattooArt || null,
-          /* v2.3.1941: and THEIR clothing patterns. */
-          shirtPattern: o.shirtPattern || '',
-          pantsPattern: o.pantsPattern || '',
-          shoesPattern: o.shoesPattern || ''
-        }, true).then(function (url) {
+        portraitDataUrl(portraitOptsFromPeer(o), true).then(function (url) {
           if (alive && url) setGenPortrait(url);
         }).catch(function () {});
       } catch (e) {}

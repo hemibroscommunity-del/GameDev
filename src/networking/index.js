@@ -104,6 +104,41 @@ export async function checkAccountLogin(phrase) {
   }
 }
 
+/* ═══ v2.3.2194: RESTART A CHARACTER FROM THE PICKER ═══
+ * Owner: an options menu on each bro, "choose to delete or restart the
+ * character to lvl 1".
+ *
+ * The in-game restart (character_reset, v2.3.1347) travels over a live socket
+ * and so can only reach the bro you are already playing.  This is the same
+ * wipe over the same authenticated road the boot check uses -- the worker
+ * verifies the phrase before touching anything, so the key IS the permission.
+ *
+ * IRREVERSIBLE FOR THE PLAYER, which is why the caller makes them type the
+ * word.  Recoverable for the OWNER: the worker parachutes the old blob to
+ * rpgsnap:<id>:prereset-<ts> first, reachable through admin /restore.
+ *
+ * Same 8s abort and same settled:true gate as checkAccountLogin, for the same
+ * reason spelled out there: an old worker answers unknown paths with a 200 and
+ * plain text, so a status check proves nothing and a hung socket never
+ * rejects.  A worker without this endpoint reports 'unavailable' and the UI
+ * says the restart did not happen -- rather than claiming a wipe that never
+ * reached anyone. */
+export async function resetAccountCharacter(phrase) {
+  try {
+    const res = await fetch(BT_API_BASE + '/api/account/reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phrase, confirm: true }),
+      signal: AbortSignal.timeout(8000),
+    });
+    const json = await res.json();
+    if (!json || json.settled !== true) return { ok: false, reason: 'unavailable' };
+    return json;
+  } catch (e) {
+    return { ok: false, reason: 'unavailable' };
+  }
+}
+
 export function applyAccountLogin(phrase) {
   /* Only after checkAccountLogin returned exists:true + user confirm. */
   try {

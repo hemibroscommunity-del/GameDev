@@ -61,8 +61,58 @@ function _entry(phrase, at, extra) {
   if (extra) {
     if (typeof extra.name === 'string' && extra.name) e.name = extra.name;
     if (extra.level > 0) e.level = extra.level | 0;
+    if (extra.look && typeof extra.look === 'object') e.look = extra.look;   /* v2.3.2193 */
   }
   return e;
+}
+
+/* ═══ v2.3.2193: THE APPEARANCE, KEPT SO THE PICKER CAN DRAW A FACE ═══
+   Owner, of the Continue window: "In an RPG, I should recognize my character
+   visually before I even read the name."  A portrait needs cosmetics, and a
+   roster row is a KEY -- it has never held any.  The worker now returns the
+   look beside the name in the account preview (server/src/account.js), and
+   this keeps it, for the same reason the name is kept: so the second visit
+   draws the character with no network at all.
+
+   Stored raw, in the WIRE shape (short keys, `sk`/`hr`/`hc`...), and not
+   translated on the way in.  Translating here would put a second copy of
+   peerCosmetics' mapping in the storage layer, where it would rot quietly the
+   next time a cosmetic key is added -- the picker calls the same
+   peerCosmeticsFromWire every peer goes through, so there is one mapping.
+
+   IT IS A LOOK, NOT A MAP OF IDS.  Its keys come from the worker's own
+   JOIN_COSMETIC_KEYS allowlist, so rule 4 (Object.create(null) for
+   client-keyed maps) does not bite here -- nothing indexes it by anything a
+   player typed. */
+/* ═══ v2.3.2193: THE LOOKUP BUDGET IS A GENERATION, NOT A BOOLEAN ═══
+   `looked` is the once-ever budget that stops a nameless row re-asking the
+   worker on every render.  As a boolean it would have made the portrait
+   arrive for exactly the wrong rows: a row written by PLAYING already has its
+   name and level (rememberChar), so it never qualified for a lookup, so it
+   would never learn a look -- the common row, the one you recognise, would
+   have been the one stuck on a letter tile, while a migrated row nobody has
+   touched got the face.
+
+   A number instead of a flag gives every row already marked `looked` exactly
+   ONE more lookup, which is what fills in the look for a roster that predates
+   this version.  Bump it again the next time the preview learns a field
+   worth back-filling; a row that genuinely has nothing behind it is still
+   asked once and then left alone. */
+export const LOOKUP_GEN = 2;
+
+/** Does this row still owe the worker a question?  One place, so the picker's
+    fetch and the flag that stops it cannot disagree about what "asked" means. */
+export function needsLookup(e) {
+  return !!e && (!e.name || !e.level || !e.look) && e.looked !== LOOKUP_GEN;
+}
+
+function _keepLook(entry, look) {
+  if (look && typeof look === 'object') entry.look = look;
+  /* A definitive null means "this key has no character yet" -- drop any look
+     we were holding rather than draw a face for someone who no longer exists.
+     `undefined` is an OLD WORKER that does not send the field at all, and must
+     leave a look we already have alone (rule 19, deploy-order safety). */
+  else if (look === null && entry.look) delete entry.look;
 }
 
 /* ═══ v2.3.2111: HIGHEST LEVEL AT THE TOP ═══
@@ -384,6 +434,7 @@ export function rememberChar(phrase, info) {
     e.at = Date.now();
     if (info && typeof info.name === 'string' && info.name) e.name = info.name;
     if (info && info.level > 0) e.level = info.level | 0;
+    if (info) _keepLook(e, info.look);                             /* v2.3.2193 */
     e.id = passphraseToId(phrase);
     delete e.provisional;
   } else {
@@ -435,9 +486,31 @@ export function describeChar(phrase, info) {
   if (i < 0) return _sorted(list);
   if (typeof info.name === 'string' && info.name) list[i].name = info.name;
   if (info.level > 0) list[i].level = info.level | 0;
-  list[i].looked = true;   /* asked once; a miss must not re-ask on every render */
+  _keepLook(list[i], info.look);                                   /* v2.3.2193 */
+  list[i].looked = LOOKUP_GEN;   /* asked; a miss must not re-ask on every render */
   /* Confirmed by the worker, so it is no longer a guess the migration made. */
   delete list[i].provisional;
+  return _sorted(_write(list));
+}
+
+/* ═══ v2.3.2194: THE ROW IS STALE, ASK AGAIN ═══
+   After a restart the character IS level 1 and this device is still holding
+   the number it had a second ago.  Clearing the level and the asked-flag puts
+   the row back in `needsLookup`, so the picker's own effect re-asks the worker
+   on the next render -- the same road a never-looked-up row takes, rather than
+   a second path that writes a level the client guessed at.
+
+   The NAME and the LOOK are kept: a restart resets progression, not who the
+   character is (server/src/persistence.js keeps char:<id> and auth:<id>), so
+   throwing them away would blank the row and make a portrait re-fetch for
+   nothing. */
+export function relookChar(phrase) {
+  if (!phrase) return readRoster();
+  const list = readRoster().slice();
+  const i = list.findIndex(function (e) { return e.phrase === phrase; });
+  if (i < 0) return _sorted(list);
+  list[i].level = 0;
+  delete list[i].looked;
   return _sorted(_write(list));
 }
 

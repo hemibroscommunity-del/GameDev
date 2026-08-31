@@ -296,6 +296,21 @@ export const persistenceMethods = {
     const pid = session && session.id;
     if (!pid) return;
     if (!payload || payload.confirm !== true) return; // accidental sends are no-ops
+    await this._resetCharacterData(pid);
+  },
+
+  /* ═══ v2.3.2194: THE WIPE ITSELF, SHARED ═══
+   * Split out of the handler above so a SECOND road can reach it: the
+   * character picker restarts a bro the device is NOT currently playing, and
+   * authenticates over HTTP with its Login Key instead of a live socket
+   * (account.js _accountReset).  Both roads must do the identical thing --
+   * snapshot, delete, and evict any live session -- and the eviction is the
+   * part that is easy to get wrong from a new caller: a connected session's
+   * next _saveRpg writes its in-memory state straight back over the wipe, so
+   * the socket has to go before this returns.  Copying that would have been a
+   * second chance to forget it. */
+  async _resetCharacterData(pid) {
+    if (!pid) return false;
     try {
       const current = await this.state.storage.get('rpg:' + pid);
       if (current) await this.state.storage.put('rpgsnap:' + pid + ':prereset-' + Date.now(), current);
@@ -312,6 +327,7 @@ export const persistenceMethods = {
     delete this.playerState[pid];
     delete this.stateHistory[pid];
     this.dirtyPlayers.delete(pid);
+    return true;
   },
 
   // Queue a player_state emit for the next tick flush.  Used by

@@ -242,9 +242,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const keyBtn = await Q.page.$('[data-tut="login-key"]');
   rec.ok('the door offers the Login Key button (guard)', !!keyBtn, {});
   if (keyBtn && idBefore.key) {
-    /* v2.3.2111: same — and the key form lives inside the picker either way. */
+    /* v2.3.2111: same — and the key form lives inside the picker either way.
+       v2.3.2193b: ...behind one tap now.  The owner cut the box down to a
+       single USE LOGIN KEY line because "Most sessions will simply be 'tap my
+       Bro and play'", so the walk opens it rather than expecting it open. */
     await H.openPicker(Q.page);
     await Q.page.waitForTimeout(700);
+    const useKey = await Q.page.$('[data-tut="char-usekey"]');
+    if (useKey) { await useKey.click(); await Q.page.waitForTimeout(400); }
     const input = await Q.page.$('input');
     rec.ok('the key form has an input (guard)', !!input, {});
     if (input) {
