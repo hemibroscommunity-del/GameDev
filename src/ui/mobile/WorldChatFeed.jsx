@@ -195,7 +195,14 @@ export function WorldChatFeed() {
       data-world-chat=""
       style={{
         position: 'fixed',
-        left: 8,
+        /* v2.3.2174: pinned to the WORLD's left edge, not the screen's.  In
+           landscape the dashboard may now take the left edge (owner: the
+           punch hole "goes right through the menus"), and this shell -- the
+           chat feed and the v2.3.2155 notification bell it carries -- sat
+           underneath it.  --world-x is 0 in portrait and whenever the panel
+           is on the right, so this is the `left: 8` it replaces everywhere
+           else. */
+        left: 'calc(var(--world-x, 0px) + 8px)',
         /* Clears the dashboard band. See the note above: the band height is
            the CSS var, and 8px of air keeps the panel off its edge. */
         bottom: 'calc(var(--dash-h, 135px) + 8px)',

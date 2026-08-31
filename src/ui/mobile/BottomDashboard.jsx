@@ -571,13 +571,35 @@ export const BottomDashboard = () => {
      alone and an open destination renders as a SIDE sheet beside the world
      rather than the band growing. */
   const [land, setLand] = useState(() => playIsLandscape());
+  /* ═══ v2.3.2174: WHICH EDGE THE PANEL TAKES ═══
+     Owner, sideways on a real iPhone: "The iPhone has a punch hole that's
+     awkward since it goes right through the menus."  BroTown's resize()
+     measures both safe-area insets and stamps the CLEAR edge on <html>;
+     this reads that one answer rather than measuring again, so the panel,
+     the world offset and the CSS can never disagree about which side it is.
+     'left' whenever there is no Island to dodge (a browser tab, Android,
+     desktop, every headless run) -- the side the owner asked for. */
+  const [side, setSide] = useState(() => {
+    try { return document.documentElement.getAttribute('data-dash-side') || 'left'; }
+    catch (e) { return 'left'; }
+  });
   useEffect(() => {
-    const onR = () => setLand(playIsLandscape());
+    const onR = () => {
+      setLand(playIsLandscape());
+      try { setSide(document.documentElement.getAttribute('data-dash-side') || 'left'); }
+      catch (e) { /* teardown: the next event heals it */ }
+    };
     window.addEventListener('resize', onR);
     window.addEventListener('orientationchange', onR);
+    /* The stamp is written INSIDE resize(); a listener registered here can
+       run before it on the very same event, so re-read once the frame has
+       settled.  Cheap: two attribute reads per rotation. */
+    const onSettle = () => setTimeout(onR, 320);
+    window.addEventListener('orientationchange', onSettle);
     return () => {
       window.removeEventListener('resize', onR);
       window.removeEventListener('orientationchange', onR);
+      window.removeEventListener('orientationchange', onSettle);
     };
   }, []);
   useEffect(() => dashMinBus.subscribe(setDashMin), []);
@@ -920,7 +942,11 @@ export const BottomDashboard = () => {
           style={{
             position: 'fixed',
             top: 0,
-            right: 0,
+            /* v2.3.2174 (owner: the punch hole "goes right through the
+               menus"): the panel takes the CLEAR edge — see the `side`
+               state above.  The border and the radius are the seam where
+               the panel meets the world, so they mirror with it. */
+            ...(side === 'left' ? { left: 0 } : { right: 0 }),
             /* v2.3.2166 (owner: the dashboard buttons "should all be
                included in that container on that whole right side"): the
                sheet runs to the SCREEN's bottom edge now, not the band's
@@ -933,7 +959,9 @@ export const BottomDashboard = () => {
             zIndex: 30,
             boxSizing: 'border-box',
             background: 'rgba(13,22,27,.96)',
-            borderLeft: '1px solid rgba(229,237,233,.20)',
+            ...(side === 'left'
+              ? { borderRight: '1px solid rgba(229,237,233,.20)' }
+              : { borderLeft: '1px solid rgba(229,237,233,.20)' }),
             color: COL.text,
             fontFamily: 'Source Sans 3, sans-serif',
             display: 'flex',
@@ -1005,7 +1033,9 @@ export const BottomDashboard = () => {
           onPointerDown={(e) => e.stopPropagation()}
           style={{
             position: 'fixed',
-            right: DASH_GAP,
+            /* v2.3.2174: the dock rides the panel to whichever edge is
+               clear — it is the container's own bottom row. */
+            ...(side === 'left' ? { left: DASH_GAP } : { right: DASH_GAP }),
             bottom: 'env(safe-area-inset-bottom, 0px)',
             /* v2.3.2168: its OWN height — --dash-h is only the inset now
                that the bar is gone, so the dock states the row height the
@@ -1405,7 +1435,11 @@ const LandGoldChip = () => {
   return (
     <div className="bt-land-gold" aria-label={`${gold} gold`} style={{
       position: 'fixed',
-      left: 'calc(var(--play-w, 100%) / 2)',
+      /* v2.3.2174: centred over the WORLD, wherever the world starts.
+         --world-x is the world's left edge (0 whenever the panel is on the
+         right), so this needs no knowledge of the side — the same stamp
+         that offsets the wrap re-centres the chip. */
+      left: 'calc(var(--world-x, 0px) + var(--play-w, 100%) / 2)',
       transform: 'translateX(-50%)',
       bottom: 'calc(env(safe-area-inset-bottom, 0px) + 6px)',
       zIndex: 30,

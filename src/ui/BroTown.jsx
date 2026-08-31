@@ -2975,14 +2975,37 @@ export var BroTown = function BroTown(_ref0) {
          parked off-screen; 0 in a browser tab, ~21px in a standalone
          landscape launch.  Cached on the element so the getComputedStyle
          cost is paid once per resize, not per frame. */
+      /* ═══ v2.3.2174: THE PROBE READS ALL THREE INSETS ═══
+         Owner, on a real iPhone sideways: "The iPhone has a punch hole
+         that's awkward since it goes right through the menus."  It does,
+         and it is not cosmetic: index.html sets viewport-fit=cover, so the
+         page draws UNDER the Dynamic Island, and nothing in the game read
+         env(safe-area-inset-left/right) until now.  The SAME probe answers
+         all three questions -- one element, one getComputedStyle, three
+         paddings -- because a second probe is a second thing to keep in
+         sync with resize(). */
       var _sabEl = document.getElementById('bt-sab-probe');
       if (!_sabEl) {
         _sabEl = document.createElement('div');
         _sabEl.id = 'bt-sab-probe';
-        _sabEl.style.cssText = 'position:fixed;left:-9999px;top:0;padding-bottom:env(safe-area-inset-bottom,0px);';
+        _sabEl.style.cssText = 'position:fixed;left:-9999px;top:0;'
+          + 'padding-bottom:env(safe-area-inset-bottom,0px);'
+          + 'padding-left:env(safe-area-inset-left,0px);'
+          + 'padding-right:env(safe-area-inset-right,0px);';
         document.body.appendChild(_sabEl);
       }
-      var _sab = parseFloat(getComputedStyle(_sabEl).paddingBottom) || 0;
+      var _sabCS = getComputedStyle(_sabEl);
+      var _sab = parseFloat(_sabCS.paddingBottom) || 0;
+      var _insL = parseFloat(_sabCS.paddingLeft) || 0;
+      var _insR = parseFloat(_sabCS.paddingRight) || 0;
+      /* ═══ THE DASHBOARD TAKES THE CLEAR EDGE ═══
+         The Island lands on the LEFT or the RIGHT depending on which way the
+         phone was rotated, so a fixed side is right for one rotation and
+         wrong for the other -- which is why this is measured rather than
+         chosen.  A tie (both 0: a browser tab, Android, desktop, every
+         headless QA run) resolves LEFT, the side the owner asked for.
+         Portrait never reads this: the band spans the full width there. */
+      var _dashSide = (_insL > _insR) ? 'right' : 'left';
       var _fp = bandFootprint(vw, vhFull, dashMinBus.min, _sheetOpen, _sab);
       var bar = _fp.dashH;
       var colsH = _fp.colsH;
@@ -3023,6 +3046,26 @@ export var BroTown = function BroTown(_ref0) {
          side sheet takes --sheet-w. */
       document.documentElement.style.setProperty('--play-w', _fp.playW + 'px');
       document.documentElement.style.setProperty('--sheet-w', _fp.sheetW + 'px');
+      /* ═══ v2.3.2174: WHICH SIDE, AND WHERE THE WORLD STARTS ═══
+         Stamped beside --play-w because they are the same fact seen from
+         two ends: --play-w is how WIDE the world is, --world-x is where it
+         BEGINS.  game.css offsets .brotown-wrap by --world-x, and
+         contain:paint carries every fixed HUD child along with it (the
+         v2.3.2157 mechanic) -- so the whole world, joysticks and banners
+         included, moves with one number.  0 when the panel is on the right,
+         which is byte-identical to the layout that shipped.
+         --world-pad-l/r are the Island's own insets: the panel takes the
+         CLEAR edge, so the Island always falls on the world's side, and the
+         owner chose to keep the art full-bleed under it ("keep it
+         full-bleed") with the CONTROLS held clear.  game.css spends these
+         on the edge clusters only. */
+      document.documentElement.style.setProperty('--world-x',
+        (_dashSide === 'left' ? _fp.sheetW : 0) + 'px');
+      document.documentElement.style.setProperty('--world-pad-l', _insL + 'px');
+      document.documentElement.style.setProperty('--world-pad-r', _insR + 'px');
+      try {
+        document.documentElement.setAttribute('data-dash-side', _dashSide);
+      } catch (e) { /* SSR/teardown: a missed stamp heals on the next resize */ }
       var vh = Math.max(120, Math.round(vhFull - bar) + _fp.overlap); /* v2.3.1290: bar is the resting band; v2.3.2156: overlap rides the footprint (a bandless layout earns none) */
       /* v2.3.1283: short-circuit when nothing changed — the
          ResizeObserver below re-fires during layout churn (e.g. the
@@ -3045,6 +3088,21 @@ export var BroTown = function BroTown(_ref0) {
     resize();
     window.addEventListener('resize', resize);
     if (vv) vv.addEventListener('resize', resize);
+    /* ═══ v2.3.2174: A 180-DEGREE FLIP IS NOT A RESIZE ═══
+       Turning the phone end-for-end in landscape moves the Dynamic Island
+       from one edge to the other WITHOUT changing 844x390, so the 'resize'
+       above may never fire and the dashboard would stay on the edge the
+       Island just moved to -- the exact complaint this change answers.
+       orientationchange does fire, and iOS reports the new insets LATE
+       (the same lateness handleOrientationChange documents at :2557), so
+       re-run after it settles as well as immediately.  Costs a no-op
+       resize() in every other rotation: the short-circuit at the top
+       returns before touching the canvas when nothing moved. */
+    var _orientResize = function () {
+      resize();
+      setTimeout(resize, 300);
+    };
+    window.addEventListener('orientationchange', _orientResize);
     var resizeObs = window.ResizeObserver ? new ResizeObserver(resize) : null;
     if (resizeObs && canvas.parentElement) resizeObs.observe(canvas.parentElement);
 
@@ -6415,6 +6473,7 @@ export var BroTown = function BroTown(_ref0) {
       unregCycleWeapon(); /* v2.3.1562 */
       teardownDesktopControls();
       window.removeEventListener('resize', resize);
+      window.removeEventListener('orientationchange', _orientResize);
       if (resizeObs) resizeObs.disconnect();
       if (vv) vv.removeEventListener('resize', resize);
       clearInterval(watchdog);   /* v2.3.1975 */
@@ -7658,6 +7717,26 @@ export var BroTown = function BroTown(_ref0) {
        gate (SWIPE_START_RADIUS 160 + slack): touches near the gesture
        cue belong to the gesture; anything else is movement, so walking
        away works mid-animation for every skill. */
+    /* ═══ v2.3.2174: VIEWPORT COORDS ARE NOT CANVAS COORDS ═══
+       The two classifiers below compare a raw touch `clientX` (measured from
+       the SCREEN's left edge) against world coords converted to CANVAS space
+       by (world - camera) * scale.  Those two agree only while the canvas
+       starts at screen x=0 -- true on a phone until now, and never true on
+       the letterboxed desktop shell, where both have been quietly ~100px off
+       for as long as they have existed.
+       Landscape can now put the dashboard on the LEFT (owner: the punch hole
+       "goes right through the menus"), which offsets the world by the panel's
+       whole width -- so a tap on your own character would have opened chat
+       ~220px to its left, and the fishing/mining swipe would have missed its
+       cue by the same margin.  One helper, both callers, and the desktop bug
+       goes with it.  This is the pattern tapResourceAtClient already uses
+       forty lines below; it is simply hoisted so everyone shares it. */
+    var clientToCanvas = function (clientX, clientY) {
+      var c = canvasRef.current;
+      if (!c) return { x: clientX, y: clientY };
+      var r = c.getBoundingClientRect();
+      return { x: clientX - r.left, y: clientY - r.top };
+    };
     var isGestureTouch = function (clientX, clientY) {
       var S = stateRef.current;
       var ex = S && S._extraction;
@@ -7676,7 +7755,8 @@ export var BroTown = function BroTown(_ref0) {
           : node.nodeType === 'tree' ? 96 : node.nodeType === 'oreVein' ? 36 : 30;
         cx = (node.x - cam.x) * sx; cy = (node.y - yOff - cam.y) * sy;
       }
-      var dx = clientX - cx, dy = clientY - cy;
+      var _p = clientToCanvas(clientX, clientY);   /* v2.3.2174 */
+      var dx = _p.x - cx, dy = _p.y - cy;
       return (dx * dx + dy * dy) < (190 * 190);
     };
     /* v2.3.1287: tapping YOUR OWN character opens the chat composer —
@@ -7694,8 +7774,9 @@ export var BroTown = function BroTown(_ref0) {
          tolerates the error; this 52px one doesn't.) */
       var sx = S._worldScaleX || 1.0;
       var sy = S._worldScaleY || 1.0;
-      var dx = clientX - (P.x - cam.x) * sx;
-      var dy = clientY - (P.y - 24 - cam.y) * sy;
+      var _p = clientToCanvas(clientX, clientY);   /* v2.3.2174 */
+      var dx = _p.x - (P.x - cam.x) * sx;
+      var dy = _p.y - (P.y - 24 - cam.y) * sy;
       var r = 52 * sx;
       return (dx * dx + dy * dy) < (r * r);
     };

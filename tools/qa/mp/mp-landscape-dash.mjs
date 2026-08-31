@@ -47,6 +47,12 @@ const geom = (P) => P.page.evaluate(() => {
     playW: parseInt(cs.getPropertyValue('--play-w')) || 0,
     sheetW: parseInt(cs.getPropertyValue('--sheet-w')) || 0,
     orient: document.documentElement.getAttribute('data-orient'),
+    /* v2.3.2174: which edge the panel took, where the world starts, and the
+       canvas's REAL left edge -- the three the side rule has to keep in
+       agreement. */
+    side: document.documentElement.getAttribute('data-dash-side'),
+    worldX: parseInt(cs.getPropertyValue('--world-x')) || 0,
+    canvasX: Math.round(r.left),
     band: b ? { top: Math.round(b.top), h: Math.round(b.height), w: Math.round(b.width) } : null,
     sheet: sh ? { x: Math.round(sh.left), w: Math.round(sh.width), top: Math.round(sh.top), bottom: Math.round(sh.bottom) } : null,
     zoneHeaderW: zh ? Math.round(zh.getBoundingClientRect().width) : null,
@@ -89,6 +95,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...gold is a CHIP at the world\'s bottom centre, not a screen-length bar',
     !!rest.gold && Math.abs(rest.gold.cx - 844 / 2) <= 3 && rest.gold.bottom >= 370
       && /\d/.test(rest.gold.text), rest.gold);
+  /* ═══ v2.3.2174: THE PANEL TAKES THE CLEAR EDGE ═══
+     Owner: "The iPhone has a punch hole that's awkward since it goes right
+     through the menus."  With no Island to dodge (headless, both insets 0)
+     the rule resolves LEFT -- the side the owner asked for -- and at rest
+     the world still spans everything, so nothing is offset yet. */
+  rec.ok('...the panel claims the LEFT edge when there is no Island to dodge',
+    rest.side === 'left' && rest.worldX === 0 && rest.canvasX === 0, rest);
   rec.ok('...and the fold chip is gone (the band already IS the fold)',
     await P.page.evaluate(() => {
       const c = document.querySelector('[data-dash-fold]');
@@ -118,9 +131,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('opening it NARROWS the canvas — the world yields, nothing overlays it',
     open.canvasW === 844 - open.sheetW && open.sheetW >= 205 && open.sheetW <= 245
       && open.playW === open.canvasW, open);
+  /* v2.3.2174: stated as a RULE rather than "the sheet is on the right", so
+     the same assertion holds on whichever edge the Island pushed it to --
+     the world occupies [worldX, worldX+playW] and the panel takes exactly
+     the ground beside it, with no overlap and no gap. */
+  const _sheetXWant = open.side === 'left' ? 0 : open.playW;
   rec.ok('...the sheet sits exactly in the yielded ground, beside the world',
-    !!open.sheet && Math.abs(open.sheet.x - open.canvasW) <= 1
-      && Math.abs(open.sheet.w - open.sheetW) <= 1, open.sheet);
+    !!open.sheet && Math.abs(open.sheet.x - _sheetXWant) <= 1
+      && Math.abs(open.sheet.w - open.sheetW) <= 1
+      && open.canvasX === open.worldX
+      && open.worldX === (open.side === 'left' ? open.sheetW : 0),
+    { sheet: open.sheet, want: _sheetXWant, side: open.side, worldX: open.worldX, canvasX: open.canvasX });
   /* v2.3.2166: the sheet is the WHOLE right side now — screen top to
      screen bottom — and the strip narrows to the world's width beside it
      (the zone header's own rule), so no band runs under the container. */
@@ -129,8 +150,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...still no band painted anywhere (the bar stays gone with a sheet open)',
     !open.band || open.band.h === 0, open.band);
   rec.ok('...and the gold chip re-centres over the NARROWED world, off the sheet',
-    !!open.gold && Math.abs(open.gold.cx - open.playW / 2) <= 3
-      && open.gold.cx + 40 < open.canvasW, open.gold);
+    !!open.gold && Math.abs(open.gold.cx - (open.worldX + open.playW / 2)) <= 3
+      && open.gold.cx > open.worldX + 20
+      && open.gold.cx < open.worldX + open.playW - 20,
+    { gold: open.gold, worldX: open.worldX, playW: open.playW });
   const navAfter = await navRect(P);
   rec.ok('...and the nav button that opened it has not moved a pixel (v2.3.1637b)',
     !!navAfter && JSON.stringify(navAfter) === JSON.stringify(navBefore),
@@ -409,5 +432,97 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
   await P.page.evaluate(() => window.__broDashPanelBus.toBar());
   await P.page.waitForTimeout(400);
+
+  /* ═══ v2.3.2174: NOTHING FROM THE WORLD SITS ON THE PANEL ═══
+     Moving the panel to the left edge broke two things that a passing test
+     suite said nothing about, and only LOOKING at the screenshot found them:
+     the quest coach card clamped itself to `window.innerWidth` and slid under
+     the panel, and the v2.3.2155 notification bell was pinned to the screen's
+     bottom-left corner -- which is now the panel's corner.  Both are outside
+     .brotown-wrap, so the contain:paint mechanic could not carry them and
+     each needed --world-x by hand.
+     This sweep is the guard: any visible, text-bearing world chrome whose box
+     intrudes into the panel's column fails HERE, by name, instead of in a
+     screenshot nobody re-reads. */
+  await P.page.evaluate(() => window.__broDashPanelBus.open('dashboard'));
+  await P.page.waitForTimeout(1000);
+  const intruders = await P.page.evaluate(() => {
+    const sheet = document.querySelector('.bt-land-sheet').getBoundingClientRect();
+    const out = [];
+    for (const el of document.body.querySelectorAll('*')) {
+      if (el.closest('.bt-land-sheet') || el.closest('.bt-land-navdock')) continue;
+      const cs = getComputedStyle(el);
+      if (cs.visibility === 'hidden' || cs.display === 'none' || parseFloat(cs.opacity) < 0.05) continue;
+      const r = el.getBoundingClientRect();
+      /* text-bearing chrome only: the canvas and full-screen scrims are
+         SUPPOSED to span the panel's column (the world paints under it). */
+      if (r.width < 20 || r.height < 12 || r.width > 700) continue;
+      const txt = (el.textContent || '').trim();
+      if (!txt) continue;
+      if (r.left < sheet.right - 4 && r.right > sheet.left + 4) {
+        out.push(txt.slice(0, 28) + ' @' + Math.round(r.left));
+      }
+    }
+    return [...new Set(out)].slice(0, 6);
+  });
+  rec.ok('no world chrome sits on the panel — the bell and the coach card ride the world',
+    intruders.length === 0, { intruders });
+  await P.page.evaluate(() => window.__broDashPanelBus.toBar());
+  await P.page.waitForTimeout(400);
+
+  /* ═══ v2.3.2174: THE PANEL DODGES THE ISLAND, EITHER WAY ═══
+     Owner: "The iPhone has a punch hole that's awkward since it goes right
+     through the menus."  The Island lands on the LEFT or the RIGHT purely by
+     which way the phone was turned, so a fixed side is right for one rotation
+     and wrong for the other -- the whole point of measuring it.
+
+     Headless has no Island, so one is SIMULATED at the source of truth:
+     resize() reads its insets off #bt-sab-probe's padding, so overriding that
+     padding is exactly what a real notch does to it.  Left inset > right
+     means the Island is on the LEFT, so the panel must flee to the RIGHT and
+     take the world, the gold chip and the dock with it. */
+  const flip = await P.page.evaluate(async () => {
+    const st = document.createElement('style');
+    st.id = 'bt-fake-island';
+    st.textContent = '#bt-sab-probe{padding-left:59px!important;padding-right:0px!important}';
+    document.head.appendChild(st);
+    window.dispatchEvent(new Event('resize'));
+    await new Promise((r) => setTimeout(r, 700));
+    const cs = getComputedStyle(document.documentElement);
+    const c = document.querySelector('canvas').getBoundingClientRect();
+    const zh = document.querySelector('.bt-zone-header');
+    return {
+      side: document.documentElement.getAttribute('data-dash-side'),
+      worldX: parseInt(cs.getPropertyValue('--world-x')) || 0,
+      padL: parseInt(cs.getPropertyValue('--world-pad-l')) || 0,
+      canvasX: Math.round(c.left),
+      headerPadL: zh ? Math.round(parseFloat(getComputedStyle(zh).paddingLeft) || 0) : null,
+    };
+  });
+  rec.ok('an Island on the LEFT pushes the whole dashboard to the RIGHT',
+    flip.side === 'right' && flip.worldX === 0 && flip.canvasX === 0, flip);
+  rec.ok('...and the world keeps its art full-bleed while its HUD clears the Island',
+    flip.padL === 59 && flip.headerPadL === 59, flip);
+  /* With the panel open on that side, the world must start at 0 and the
+     sheet must sit at the far edge -- the mirror of the left-side case. */
+  await P.page.evaluate(() => window.__broDashPanelBus.open('dashboard'));
+  await P.page.waitForTimeout(900);
+  const flipOpen = await geom(P);
+  rec.ok('...opening it there yields the world\'s RIGHT edge, not its left',
+    flipOpen.side === 'right' && flipOpen.worldX === 0 && flipOpen.canvasX === 0
+      && !!flipOpen.sheet && Math.abs(flipOpen.sheet.x - flipOpen.playW) <= 1
+      && Math.abs(flipOpen.gold.cx - flipOpen.playW / 2) <= 3, flipOpen);
+  /* Put the probe back so nothing after this inherits a fake notch. */
+  await P.page.evaluate(async () => {
+    const st = document.getElementById('bt-fake-island');
+    if (st) st.remove();
+    window.__broDashPanelBus.toBar();
+    window.dispatchEvent(new Event('resize'));
+    await new Promise((r) => setTimeout(r, 500));
+  });
+  const restored = await geom(P);
+  rec.ok('...and with the Island gone the panel returns to the left, world un-offset',
+    restored.side === 'left' && restored.worldX === 0 && restored.canvasX === 0, restored);
+
   await P.ctx.close().catch(() => {});
 }

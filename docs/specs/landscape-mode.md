@@ -345,3 +345,58 @@ getting cut off."
   leaves (scrollWidth > clientWidth = a clipped or ellipsised label) —
   a future panel that outgrows the column fails BY NAME. Plus: asking
   for 'bag' sideways is asserted to land on the dashboard column.
+
+### The dashboard dodges the Dynamic Island (v2.3.2174 — owner)
+
+Owner, sideways on a real iPhone: "How much work would it be to actually have
+the whole dashboard area on the left side of the screen instead of the right?
+The iPhone has a punch hole that's awkward since it goes right through the
+menus."
+
+Real, not cosmetic: `index.html` sets `viewport-fit=cover`, so the page draws
+UNDER the Island, and nothing in the game read `env(safe-area-inset-left/right)`
+before this. The Island lands on the LEFT or the RIGHT purely by which way the
+phone was turned, so the side is **measured, not chosen** (owner's pick over a
+static move):
+
+- **One probe, three insets**: `#bt-sab-probe` (v2.3.2163, which existed to
+  read the home-indicator inset because JS cannot read `env()`) now also
+  carries `padding-left/right:env(safe-area-inset-left/right)`. resize() reads
+  all three from one `getComputedStyle`.
+- **The rule**: `side = insetLeft > insetRight ? 'right' : 'left'` — the panel
+  takes the CLEAR edge. A tie (browser tab, Android, desktop, every headless
+  run) resolves **left**, the side the owner asked for.
+- **Stamps**: `data-dash-side` beside `data-orient`, plus `--world-x` (where
+  the world begins — `sheetW` when the panel is left, else 0) and
+  `--world-pad-l/r` (the Island's own insets).
+- **One number moves the world**: `.brotown-wrap` takes
+  `margin-left:var(--world-x)`, and `contain:paint` carries every fixed HUD
+  child with it — the same v2.3.1768 mechanic that made narrowing free.
+- **The four elements OUTSIDE the wrap** are told the side by hand: the sheet
+  (`left:0` vs `right:0`, border and radius mirrored), the nav dock, the gold
+  chip and the zone header. Three more that were pinned to the SCREEN's left
+  and would have sat under a left-side panel now ride `--world-x`: the chat
+  feed shell (carrying the v2.3.2155 notification bell), the quest coach card
+  (which clamped itself to `window.innerWidth`), and the install hint.
+- **Full-bleed world, clear controls** (owner's pick): the art still paints
+  under the Island; the zone header and the keyboard-hint clusters take
+  `--world-pad-l/r` so no control or text hides behind it.
+- **A 180° flip is not a resize** — turning the phone end-for-end moves the
+  Island without changing 844×390, so `resize` may never fire.
+  `orientationchange` now re-runs resize() immediately and again after 300ms
+  (iOS reports the new insets late).
+
+**The bug this uncovered**: `isSelfTouch` and `isGestureTouch` (BroTown.jsx)
+compared a raw viewport `clientX` against world coords converted to CANVAS
+space — correct only while the canvas starts at screen x=0, and never correct
+on the letterboxed desktop shell. Both now route through one `clientToCanvas()`
+helper (the pattern `tapResourceAtClient` already used beside them). Without it
+a tap on your own character would open chat ~220px away.
+
+mp-landscape-dash pins all of it: the side rule and the world offset at rest
+and open, every geometry assertion restated as a RULE so it holds on either
+edge, a **simulated Island** (overriding the probe's padding — the source of
+truth resize() reads) proving the whole dashboard flees to the right and comes
+back, and a sweep asserting **no text-bearing world chrome intrudes into the
+panel's column** — the guard that would have caught the bell and the coach
+card, which a passing suite missed and only looking at the screenshot found.
