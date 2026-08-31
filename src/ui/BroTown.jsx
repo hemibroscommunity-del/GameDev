@@ -3071,6 +3071,21 @@ export var BroTown = function BroTown(_ref0) {
          on the edge clusters only. */
       document.documentElement.style.setProperty('--world-x',
         (_dashSide === 'left' ? _fp.sheetW : 0) + 'px');
+      /* ═══ v2.3.2178: THE HOME-INDICATOR INSET, AS A STAMP ═══
+         resize() has measured this since v2.3.2163 (the probe exists
+         because JS cannot read env()), but the band, the landscape dock and
+         the panels that must clear it each read `env(safe-area-inset-bottom)`
+         for themselves.  Two costs, and the owner has now been bitten by
+         both: the numbers could DISAGREE with --dash-h, which is what put
+         the portrait nav buttons above their own band in a standalone
+         launch; and nothing downstream was reachable from a test, because
+         env() cannot be set in a headless browser -- so every standalone-only
+         layout bug could only ever be found on a phone.
+         One measured value, stamped where --dash-h and --world-x are
+         stamped, ends both: the layout reads the same number resize() sized
+         itself with, and the QA harness simulates a standalone launch by
+         overriding the probe exactly as it already simulates an Island. */
+      document.documentElement.style.setProperty('--sab', _sab + 'px');
       document.documentElement.style.setProperty('--world-pad-l', _insL + 'px');
       document.documentElement.style.setProperty('--world-pad-r', _insR + 'px');
       /* ═══ v2.3.2176b: THE RESTING FOLD CHIP'S FOOTPRINT ═══

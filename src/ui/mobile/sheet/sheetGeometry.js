@@ -296,6 +296,46 @@ export function columnsRowHeight(vw) {
    SHORT VIEWPORTS get the tighter pad for the same reason navSlotSize
    and dashTileSize carry caps: an SE-class phone has to keep its world
    view, and this row is the third thing competing for it. */
+/* ═══ v2.3.2178: THE LANDSCAPE NAV DOCK'S FOOTPRINT, IN ONE PLACE ═══
+ * Owner, with two screenshots of the installed app sideways: "in landscape
+ * the combat skills are still getting clipped at the bottom (regardless of
+ * rotation left or rotation right)", and then the fix itself -- "it looks
+ * like the dashboard buttons can go down some to make more room so the
+ * combat skills don't get clipped."
+ *
+ * They were not clipped, they were COVERED.  The dock is anchored to the
+ * screen's bottom by the home-indicator inset, so installing the app lifts
+ * it 21px INTO the panel: measured, its top edge rose to 321 while the three
+ * combat cards end at 327, and six elements ended up behind it.  In a
+ * browser tab the inset is 0, the dock sits lower, and nothing overlaps --
+ * which is why every headless run and every desktop check said this screen
+ * was fine.
+ *
+ * Two things had to become one.  The dock's height and the bottom padding
+ * the panel reserves for it were stated separately (identityRowHeight, then
+ * identityRowHeight + 6 spelled out again at the call site), so they could
+ * drift -- and the reserve never knew where the dock actually WAS, only how
+ * tall it was.  This returns both from the same arithmetic.
+ *
+ * SINK is the owner's "go down some": the dock gives back most of the
+ * indicator inset, keeping a little clearance rather than all of it.  iOS's
+ * landscape inset is generous for a bar that is a few pixels tall, and the
+ * cost of spending it here is a covered control; the benefit is the panel
+ * gets the height back.  0 in a browser tab, where there is no inset to
+ * give back and the dock does not move at all.
+ */
+export const LAND_DOCK_SINK = 12;
+
+/* `bottom` and `reserve` come back as CSS so both call sites carry the SAME
+   expression against the live --sab stamp, rather than two copies of the
+   arithmetic that agree until someone edits one of them. */
+export function landDockFootprint(vw, vh) {
+  var h = navButtonSize(vw, vh).h + 2 * DASH_GAP;   /* the buttons and their own padding */
+  var bottom = 'max(0px, var(--sab, 0px) - ' + LAND_DOCK_SINK + 'px)';
+  /* What a panel must keep clear: the dock's own box plus a hairline gap. */
+  return { h: h, bottom: bottom, reserve: 'calc(' + (h + DASH_GAP) + 'px + ' + bottom + ')' };
+}
+
 /* v2.3.2176b: the landscape FOLD CHIP's width, stated where geometry is
    stated rather than only inside the chip's own style object.  BroTown's
    resize() spends it on --land-fold-w so the world's bottom-left cluster
@@ -618,7 +658,25 @@ export function bandFootprint(vw, vh, folded, sheetOpen, bottomInset) {
   var dashH = barHeight(vw, vh);
   var colsH = columnsRowHeight(vw);
   if (folded) { dashH = Math.max(0, dashH - colsH); colsH = 0; }
-  return { dashH: dashH, colsH: colsH, overlap: DASH_OVERLAP, playW: vw, sheetW: 0 };
+  /* ═══ v2.3.2178: THE HOME INDICATOR IS PART OF THE BAND'S HEIGHT ═══
+     Owner, on a screenshot of the installed web app: "the dashboard buttons
+     float off the dashboard."  They did, by exactly the home-indicator
+     inset, and the arithmetic says why.  The band paints `height:var(--dash-h)`
+     with `box-sizing:border-box` and `padding-bottom:<inset>`, so the inset
+     eats into that height -- while its two rows are positioned from the
+     band's BOTTOM with the inset added (`bottom:calc(<inset> + var(--cols-h))`
+     for the identity row).  So the identity row's top sat at
+     inset + colsH + (dashH - colsH) = dashH + inset: one whole inset ABOVE
+     the band it belongs to, floating over the world.  Zero in a browser tab,
+     which is why every headless run and every desktop check missed it, and
+     ~34px on an installed iPhone, which is what the owner photographed.
+     The landscape branch above has always returned the inset as height for
+     the same reason ("controls must still clear it in a standalone launch").
+     Portrait needs it too: the band has to be TALLER by the inset to keep
+     the same rows above the indicator, and the canvas correspondingly
+     shorter -- which resize() and the watchdog both derive from this one
+     return value. */
+  return { dashH: dashH + (bottomInset || 0), colsH: colsH, overlap: DASH_OVERLAP, playW: vw, sheetW: 0 };
 }
 
 export function barHeight(vw, vh) {

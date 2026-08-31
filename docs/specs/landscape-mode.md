@@ -505,3 +505,51 @@ mp-landscape-dash now drives the case the device actually presents: **symmetric*
 59px insets with only the rotation differing, asserting the two rotations pick
 opposite sides, plus the pin overriding both signals and Auto handing the
 decision back.
+
+### The installed web app, which nothing tested (v2.3.2178 — owner)
+
+Owner, with three screenshots of the game added to the iPhone home screen:
+*"In web app view the dashboard buttons float off the dashboard"*, and sideways
+*"the combat skills are still getting clipped at the bottom (regardless of
+rotation left or rotation right)"* — then the fix itself: *"it looks like the
+dashboard buttons can go down some to make more room."*
+
+Both are the same missing state. A browser tab has **no** home-indicator inset;
+an installed launch has ~34px in portrait and ~21px sideways, and that inset is
+load-bearing geometry. Every scenario in the harness ran at zero, so every one
+agreed these screens were fine while the owner was looking at two broken ones —
+the second time a device-only state has hidden a bug behind a green suite (the
+first being v2.3.2177's symmetric insets).
+
+**Portrait — the band lost its own rows.** `.bt-dashboard` paints
+`height:var(--dash-h)` with `box-sizing:border-box` and `padding-bottom:<inset>`,
+while its two rows are positioned from the band's *bottom* with that inset added
+(`bottom:calc(<inset> + var(--cols-h))`). So the identity row's top sat at
+`inset + colsH + (dashH − colsH)` = **one whole inset above the band**, floating
+over the world. `bandFootprint` now returns `dashH + bottomInset` in portrait —
+the landscape branch has always returned the inset as height for exactly this
+reason — and the identity row's height subtracts it. The band grows; the world
+gives back the same height; a browser tab is unchanged at zero.
+
+**Landscape — the dock climbed onto the panel.** The nav dock is anchored to the
+screen bottom by the inset, so installing the app lifted it 21px *into* the
+panel: measured, its top rose to 321 while the combat cards end at 327, and six
+elements ended up behind it. Two things had to become one — the dock's height and
+the padding a panel reserves for it were stated separately, so the reserve knew
+how tall the dock was but never where it *sat*. `landDockFootprint` returns both
+from the same expression, and `LAND_DOCK_SINK` is the owner's "go down some": the
+dock gives most of the indicator back rather than spending it climbing.
+
+**The enabler: `--sab`.** resize() has measured this inset since v2.3.2163, but
+the band, the dock and the panels each called `env(safe-area-inset-bottom)` for
+themselves — so their numbers could disagree with `--dash-h` (which is the
+portrait bug), and nothing downstream was reachable from a test, because `env()`
+cannot be set in a headless browser. resize() now stamps `--sab` beside
+`--dash-h` and `--world-x`, and every consumer reads it. One measured value, one
+path — and `mp-standalone` simulates an install by overriding the probe's padding,
+exactly as `mp-landscape-dash` already simulates an Island.
+
+`mp-standalone` (13 assertions) covers both orientations, asserts the browser-tab
+layout is restored byte-for-byte when the inset goes away, and was confirmed to
+**fail on the original code**: `aboveBand: 34` for the floating rows and
+`rise: 21` for the dock.
