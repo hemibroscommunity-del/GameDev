@@ -246,5 +246,34 @@ R.forgetChar('solar-thunder-ultra-viper-4');
 localStorage.setItem('bt_passphrase', 'solar-thunder-ultra-viper-4');   /* as if it lingered */
 ok(R.readRoster().length === 0, 'a forgotten phrase is not re-seeded by the empty-list road');
 
+/* ═══ v2.3.2195: THE LOOK RE-ASKS; THE NAME DOES NOT ═══
+   The portrait shipped and never appeared, and the reason is a race this
+   asserts directly: the client reached Pages a few minutes before the worker
+   did, so the picker spent its ONE lookup on a worker that could not yet
+   return `look`, and then recorded the row as asked forever.  One flag was
+   answering two questions with different costs.
+
+   These four claims are the split.  They are made against needsLookup rather
+   than through the UI on purpose: the bug is a decision, not a rendering, and
+   a Playwright run against a worker that DOES answer could never have shown
+   it. */
+{
+  const asked = { phrase: 'p-look-1', name: 'Anon', level: 1, looked: R.LOOKUP_GEN };
+  ok(R.needsLookup(asked) === true,
+     'a row already marked asked STILL asks while it has no look (the deploy race)');
+  R.markLookAsked('p-look-1');
+  ok(R.needsLookup(asked) === false,
+     '...but only once per page load, so an old worker is not re-asked every render');
+  /* The name/level budget keeps its old, persistent meaning: a row with nothing
+     behind it must not re-ask on every load, which is what would burn the
+     20/min throttle. */
+  const nameless = { phrase: 'p-look-2', name: '', level: 0, looked: R.LOOKUP_GEN, look: { sk: '#c98' } };
+  ok(R.needsLookup(nameless) === false,
+     'a nameless row that has already been asked stays asked — that budget is still permanent');
+  /* And a row that HAS its look asks for nothing at all. */
+  const done = { phrase: 'p-look-3', name: 'Anon', level: 4, looked: R.LOOKUP_GEN, look: { sk: '#c98' } };
+  ok(R.needsLookup(done) === false, 'a complete row asks for nothing');
+}
+
 console.log(fails ? '\n' + fails + ' FAILED' : '\nall passed');
 process.exit(fails ? 1 : 0);

@@ -100,10 +100,52 @@ function _entry(phrase, at, extra) {
    asked once and then left alone. */
 export const LOOKUP_GEN = 2;
 
+/* ═══ v2.3.2195: THE LOOK IS A DIFFERENT QUESTION FROM THE NAME ═══
+   Owner, of the picker that shipped hours earlier: "It's not showing a
+   portrait of the character."  Their row was showing a letter tile and could
+   never have shown anything else.
+
+   THE RACE, exactly.  The client reached Cloudflare Pages a few minutes before
+   the worker deploy finished.  In that window the picker made its ONE lookup
+   against a worker that did not yet return `look` -- which the client handled
+   correctly, treating an absent field as "leave what you have" (rule 19) -- and
+   then `describeChar` stamped the row `looked = LOOKUP_GEN` anyway, because
+   the answer HAD arrived.  So the budget was spent on the one worker that
+   could not answer, and the flag that stops the re-ask is permanent.  The
+   generation bump was meant to cover exactly this and could not: it grants one
+   retry, and the retry is what got burned.
+
+   The mistake is that ONE flag was answering TWO questions.  They have
+   different costs and want different budgets:
+
+     the NAME and LEVEL are why `looked` exists.  A row with nothing behind it
+     answers "no" forever, and re-asking every render is what would get a
+     player rate-limited -- so that one stays a persistent, once-ever budget.
+
+     the LOOK is a field the WORKER may simply not have known about yet, and a
+     worker gains the ability to answer between page loads.  A permanent "asked"
+     is the wrong record of "asked something that could not answer".
+
+   So the look re-asks at most ONCE PER PAGE LOAD, out of a set that lives in
+   memory and dies with the tab.  Bounded: a roster of ten costs ten sequential
+   requests on a load where no look is known and nothing after that, against a
+   20/min budget; the load after the worker learns the answer fills them in and
+   the set stops asking. */
+const _lookAsked = new Set();
+
+/** Record that this row's look was asked for on THIS page load, whatever the
+    answer.  Called by the picker at every definitive answer, so a character
+    that genuinely has no look costs one request per load rather than one per
+    render. */
+export function markLookAsked(phrase) { if (phrase) _lookAsked.add(phrase); }
+
 /** Does this row still owe the worker a question?  One place, so the picker's
-    fetch and the flag that stops it cannot disagree about what "asked" means. */
+    fetch and the flags that stop it cannot disagree about what "asked" means. */
 export function needsLookup(e) {
-  return !!e && (!e.name || !e.level || !e.look) && e.looked !== LOOKUP_GEN;
+  if (!e) return false;
+  const wantWho = (!e.name || !e.level) && e.looked !== LOOKUP_GEN;
+  const wantLook = !e.look && !_lookAsked.has(e.phrase);
+  return wantWho || wantLook;
 }
 
 function _keepLook(entry, look) {
