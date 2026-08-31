@@ -27,6 +27,7 @@ const probe = (P) => P.page.evaluate(() => {
   return {
     bodyVisible: !!(pd && pd._spriteBody && pd._spriteBody.visible),
     cape: window.__btStandInCape ? window.__btStandInCape() : null,
+    clip: window.__btStandInHairClip ? window.__btStandInHairClip() : null,
     /* the WALKING cape's drawn size, for the size comparison below */
     walkCapeH: (pd && pd._capeSprite && pd._capeSprite.texture)
       ? +Number(Math.abs(pd._capeSprite.height)).toFixed(1) : null,
@@ -151,10 +152,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
       under: s.cape && s.cape.backUnderBody, backIdx: s.cape && s.cape.backIdx,
       bodyIdx: s.cape && s.cape.bodyIdx })));
 
-  rec.ok('...and the hood clips the hair here too, so a big style does not burst '
-    + 'out of it for the quarter-second of every swing',
+  /* ═══ v2.3.2192: THE CLIP IS ASSERTED ON THE HAIR, NOT ON THE MASK ═══
+     v2.3.2190 asserted only that the hood mask was READY, and shipped green.
+     "The mask sprite got placed" and "the hair is masked to it" are different
+     facts -- the distinction __btStandInHairClip was built for at v2.3.1776,
+     and the one this file then failed to apply.  So both are claimed now, and
+     the second one is the one the owner asked for. */
+  rec.ok('the hood mask is placed and ready on every attack (guard for the '
+    + 'claim below)',
     seen.every((s) => s.cape && s.cape.hoodClipReady),
-    seen.map((s) => ({ tag: s.tag, clip: s.cape && s.cape.hoodClipReady })));
+    seen.map((s) => ({ tag: s.tag, ready: s.cape && s.cape.hoodClipReady })));
+
+  rec.ok('...and THE HAIR IS ACTUALLY CLIPPED TO IT, so a big style does not '
+    + 'burst out of the hood for the quarter-second of every swing',
+    seen.every((s) => s.clip && s.clip.hairVisible && s.clip.maskedToHood),
+    seen.map((s) => ({ tag: s.tag, hair: s.clip && s.clip.hairVisible,
+      toHood: s.clip && s.clip.maskedToHood, toHat: s.clip && s.clip.masked,
+      hoodReady: s.clip && s.clip.hoodReady })));
 
   /* THE SIZE.  This is the claim that failed first and it failed silently:
      sharing the HAT's scale (_skillTraitMul, normalised to the head) drew the
