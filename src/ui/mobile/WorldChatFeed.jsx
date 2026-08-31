@@ -110,6 +110,12 @@ export function WorldChatFeed() {
   /* The newest ts the player has been shown. 0 until the first paint marks it,
      so a first-ever open does not claim a backlog of unread. */
   const seenRef = useRef(0);
+  /* v2.3.2175: the bell's tap origin.  Declared HERE, with the other hooks
+     and above this component's early `return null` -- the first cut put it
+     down beside the handler that uses it and turned a quiet corner into
+     React error #310 (a hook behind a conditional return), which took the
+     whole feed off the screen.  Handlers may live anywhere; hooks may not. */
+  const tapRef = useRef(null);
 
   useEffect(() => chatLogBus.subscribe(() => setV((n) => n + 1)), []);
   /* v2.3.2145: and repaint when the silence control or a trade guard flips,
@@ -179,6 +185,37 @@ export function WorldChatFeed() {
      thing the owner asked for; the 260px board it replaces is the thing
      they asked to remove (v2.3.2117). */
   if (!lines.length && !ticketChip) return null;
+
+  /* ═══ v2.3.2175: A FINGER THAT MOVES 4px IS STILL A TAP ═══
+     Owner: "Make it so when you tap on the alert bell it pops back up with
+     the notifications."  It was already wired to do exactly that -- and it
+     did not, for a reason mp-notifbell could not see: the test drove
+     page.click(), which SYNTHESISES a click whatever the touch did, while a
+     real finger produces touchstart -> touchmove -> touchend.  Measured in
+     the harness with real CDP touch events: a pixel-perfect tap opened it,
+     a tap with 4px of drift did nothing.  Every real tap drifts.
+
+     The click never arrives because this corner sits over the movement pad:
+     the global touchmove guard (BroTown's gM) preventDefaults the drifted
+     move and the joystick claims the sequence, so the browser never
+     synthesises the click this button was listening for.  Pointer events do
+     not depend on that synthesis, which is why the rest of this codebase
+     taps with onPointerUp -- the bell was the odd one out.
+
+     The drag guard keeps the other half honest: the bell is ON the movement
+     pad, so a real DRAG that happens to start on it must still steer the
+     character rather than toggling the feed.  12px is the same order as the
+     joystick's own tap/drag split. */
+  const onTapDown = (e) => { tapRef.current = { x: e.clientX, y: e.clientY }; };
+  const onTapUp = (e) => {
+    const s = tapRef.current;
+    tapRef.current = null;
+    if (!s) return;                       /* the gesture did not start here */
+    const dx = e.clientX - s.x, dy = e.clientY - s.y;
+    if ((dx * dx + dy * dy) > (12 * 12)) return;   /* a drag: leave it to the pad */
+    e.stopPropagation();
+    toggle();
+  };
 
   const toggle = () => {
     setShut((wasShut) => {
@@ -269,7 +306,12 @@ export function WorldChatFeed() {
         type="button"
         data-world-chat-toggle=""
         aria-expanded={!shut}
-        onClick={toggle}
+        /* v2.3.2175: pointer events, not onClick — see onTapUp above.  No
+           onClick beside them: on a mouse both would fire and the feed would
+           toggle twice back to where it started. */
+        onPointerDown={onTapDown}
+        onPointerUp={onTapUp}
+        onPointerCancel={() => { tapRef.current = null; }}
         style={{
           /* The wrapper is pointerEvents:none so the world stays draggable
              around the feed; this control opts back in. 'none' while a panel

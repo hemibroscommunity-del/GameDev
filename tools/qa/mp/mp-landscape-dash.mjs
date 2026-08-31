@@ -467,6 +467,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   rec.ok('no world chrome sits on the panel — the bell and the coach card ride the world',
     intruders.length === 0, { intruders });
+  /* v2.3.2175 (owner: "Make it so when you tap on the alert bell it pops back
+     up with the notifications"): the inverse of the sweep above, and the
+     property the owner actually feels -- the bell must be the thing UNDER THE
+     FINGER, not the panel that moved on top of it.  elementFromPoint is the
+     honest question: whatever is topmost at the bell's centre is what a tap
+     hits. */
+  const bellHit = await P.page.evaluate(() => {
+    const b = document.querySelector('[data-world-chat-toggle]');
+    if (!b) return { absent: true };
+    const r = b.getBoundingClientRect();
+    const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return {
+      x: Math.round(r.left),
+      reachable: !!top && !!top.closest('[data-world-chat-toggle]'),
+      hitBy: top ? String(top.className || top.tagName).slice(0, 24) : 'none',
+    };
+  });
+  rec.ok('the notification bell is reachable sideways — a tap lands on IT, not the panel',
+    bellHit.absent || bellHit.reachable, bellHit);
   await P.page.evaluate(() => window.__broDashPanelBus.toBar());
   await P.page.waitForTimeout(400);
 
