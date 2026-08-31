@@ -2604,6 +2604,19 @@ body:has([data-trade-drawer]) .bt-kb-chip{display:none}
   color:#F3E7CC;opacity:.86;
   text-shadow:0 1px 3px rgba(3,6,10,.95),0 0 8px rgba(3,6,10,.7);
 }
+/* v2.3.2178: the build stamp under the note.  Deliberately the quietest
+   thing on the screen -- it is a reference a player reads only when asked
+   ("what version are you on?"), never something competing with Continue.
+   tabular-nums so the sha does not wobble between builds, and the same
+   heavy text-shadow as the note because this sits over moving artwork. */
+.bt-login-ver{
+  position:relative;padding:2px 14px 2px;
+  font-size:10px;line-height:1.4;letter-spacing:.06em;
+  font-variant-numeric:tabular-nums;
+  color:#E8DCC4;opacity:.42;
+  text-shadow:0 1px 3px rgba(3,6,10,.95),0 0 8px rgba(3,6,10,.7);
+}
+
 .bt-login-note::before{
   content:"";position:absolute;left:50%;bottom:-40px;transform:translateX(-50%);
   width:190%;height:190%;pointer-events:none;z-index:-1;

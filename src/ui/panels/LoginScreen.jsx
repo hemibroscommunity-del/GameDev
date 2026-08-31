@@ -328,6 +328,23 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
                the "small unobtrusive text" the brief asked for. */
             : 'Your Login Key lets you access your character on any device.'}
         </div>
+
+        {/* v2.3.2178 (owner: "add the version back to the home splash screen
+            somewhere").  It was not deleted — v2.3.221 gated BuildBadge behind
+            ?dev=1 so the player-facing build would not carry a debug HUD, and
+            the version went with it.  That gate is right for the in-game badge
+            and wrong for this screen: the splash is the one surface where
+            "which build am I on?" is a QUESTION A PLAYER ASKS, because the
+            home-screen icon can hand them a cached bundle (see buildWatch.js —
+            a tab left open across a deploy keeps running the old code).
+            The SHA, not the version, is what actually identifies a build:
+            package.json's number moves by hand and had sat at 2.3.1201 for ~900
+            tags, whereas __BUILD_SHA__ comes from `git rev-parse` in the same
+            build that emits version.json, so it is the same string buildWatch
+            compares.  Both are shown; the sha is the one to read out. */}
+        <div className="bt-login-ver" title={BUILD_INFO.time ? `Built ${BUILD_INFO.time}` : undefined}>
+          v{BUILD_INFO.version} · {BUILD_INFO.sha}
+        </div>
       </div>
 
       {showPicker && (

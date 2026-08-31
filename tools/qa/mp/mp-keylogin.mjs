@@ -50,6 +50,36 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await S.page.waitForTimeout(3500);
     try { fs.mkdirSync('tools/qa/mp/out', { recursive: true }); } catch (e) {}
     await S.page.screenshot({ path: 'tools/qa/mp/out/titlescreen.png' });
+
+    /* ── THE BUILD STAMP (v2.3.2178) ──
+       Owner: "add the version back to the home splash screen somewhere".  It
+       goes HERE, on the screenshot browser, and deliberately not on B below:
+       B's flow ends in applyAccountLogin's full page RELOAD, whose 45s
+       waitForFunction swallows its own timeout with .catch(() => {}), so any
+       extra work near it can tip the reload past the wait and every later
+       assertion reads null.  Measured while placing this: the same three
+       assertions next to that reload flipped `route` to null on 6 of 8 runs,
+       while the pristine scenario passed 4 of 4 -- the reload is the fragile
+       thing, not the reading.  S is a throwaway browser that only ever looks
+       at the door, so a read here cannot perturb anything.
+
+       WHAT THIS PINS is not "the element exists" but "the NUMBER is true".
+       package.json's version is moved by hand and had sat at 2.3.1201 for
+       ~900 tags while the code marched on, which is exactly a badge that
+       lies.  So: the rendered text must match package.json as it is on disk
+       right now, and the sha must be a real one rather than the
+       'local'/'nogit'/'dev' fallback BuildBadge uses when Vite did not
+       substitute the token. */
+    const ver = await S.page.$eval('.bt-login-ver', (el) => el.textContent.trim())
+      .catch(() => null);
+    const pkg = JSON.parse(fs.readFileSync(H.REPO + '/package.json', 'utf8'));
+    rec.ok('the splash carries a build stamp', !!ver, { ver });
+    rec.ok('...showing the version package.json actually declares',
+      !!ver && ver.includes('v' + pkg.version), { ver, pkg: pkg.version });
+    rec.ok('...and a real build sha, not the un-substituted fallback',
+      !!ver && !/\b(local|nogit|dev)\b/.test(ver) && /\u00b7\s*[0-9a-f]{7,}/.test(ver),
+      { ver });
+
     await S.ctx.close().catch(() => {});
   }
 
