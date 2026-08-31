@@ -222,6 +222,42 @@ const psA = room.playerState.pa;
   check('prog3_allocated acks each landed point', acks.length === 4
     && acks[3].payload.stat === 'hp' && acks[3].payload.pts === 4 && acks[3].payload.pool === 6,
     acks.map((a) => a.payload));
+
+  /* ═══ v2.3.2176: POINTS REMEMBER THE SKILL THAT EARNED THEM ═══
+     Owner: "You can only apply offensive weapon damage to the combat skills
+     you leveled up in.  However you can apply that stat point to any
+     defensive attribute ... regardless of what channel you earned the point
+     through."  Four claims, each its own check. */
+  p3.alloc.hp = 0; p3.atk = { sword: { crit: 0, critDmg: 0, aspd: 0 },
+    bow: { crit: 0, critDmg: 0, aspd: 0 }, staff: { crit: 0, critDmg: 0, aspd: 0 } };
+  p3.pool = 2; p3.poolBy = { sword: 0, bow: 2, staff: 0 };
+
+  room._handleProg3Allocate(sess, { stat: 'crit', cat: 'sword' });
+  check('a BOW point cannot buy MELEE crit', p3.atk.sword.crit === 0 && p3.pool === 2,
+    { sword: p3.atk.sword, pool: p3.pool, poolBy: p3.poolBy });
+
+  room._handleProg3Allocate(sess, { stat: 'crit', cat: 'bow' });
+  check('...but it buys BOW crit, off BOW\'s own count',
+    p3.atk.bow.crit === 1 && p3.pool === 1 && p3.poolBy.bow === 1,
+    { bow: p3.atk.bow, pool: p3.pool, poolBy: p3.poolBy });
+
+  room._handleProg3Allocate(sess, { stat: 'hp', cat: 'bow' });
+  check('a BOW point buys a DEFENSIVE stat (any channel may)',
+    p3.alloc.hp === 1 && p3.pool === 0 && p3.poolBy.bow === 0,
+    { hp: p3.alloc.hp, pool: p3.pool, poolBy: p3.poolBy });
+
+  /* Points banked before this rule existed have no channel on record, and
+     must stay spendable anywhere — the migration promise. */
+  p3.pool = 1; p3.poolBy = { sword: 0, bow: 0, staff: 0 };
+  room._handleProg3Allocate(sess, { stat: 'crit', cat: 'staff' });
+  check('a legacy point with no channel still buys any weapon\'s offense',
+    p3.atk.staff.crit === 1 && p3.pool === 0, { staff: p3.atk.staff, pool: p3.pool });
+
+  /* A forged blob must not mint offense points by over-claiming a channel. */
+  const forged = room._sanitizeProg3({ pool: 1, poolBy: { sword: 99, bow: 99, staff: 99 } });
+  const forgedSum = forged.poolBy.sword + forged.poolBy.bow + forged.poolBy.staff;
+  check('the channel breakdown can never exceed the pool it splits',
+    forgedSum <= forged.pool, { pool: forged.pool, poolBy: forged.poolBy });
   // Dodge's own hard cap (75) binds even with level headroom.
   psA.prog3.sk.sword.level = 100; psA.prog3.sk.bow.level = 100; psA.prog3.sk.staff.level = 100;
   room._prog3Recompute(psA);

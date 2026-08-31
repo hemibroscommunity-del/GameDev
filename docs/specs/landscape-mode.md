@@ -345,3 +345,110 @@ getting cut off."
   leaves (scrollWidth > clientWidth = a clipped or ellipsised label) —
   a future panel that outgrows the column fails BY NAME. Plus: asking
   for 'bag' sideways is asserted to land on the dashboard column.
+
+### The dashboard dodges the Dynamic Island (v2.3.2174 — owner)
+
+Owner, sideways on a real iPhone: "How much work would it be to actually have
+the whole dashboard area on the left side of the screen instead of the right?
+The iPhone has a punch hole that's awkward since it goes right through the
+menus."
+
+Real, not cosmetic: `index.html` sets `viewport-fit=cover`, so the page draws
+UNDER the Island, and nothing in the game read `env(safe-area-inset-left/right)`
+before this. The Island lands on the LEFT or the RIGHT purely by which way the
+phone was turned, so the side is **measured, not chosen** (owner's pick over a
+static move):
+
+- **One probe, three insets**: `#bt-sab-probe` (v2.3.2163, which existed to
+  read the home-indicator inset because JS cannot read `env()`) now also
+  carries `padding-left/right:env(safe-area-inset-left/right)`. resize() reads
+  all three from one `getComputedStyle`.
+- **The rule**: `side = insetLeft > insetRight ? 'right' : 'left'` — the panel
+  takes the CLEAR edge. A tie (browser tab, Android, desktop, every headless
+  run) resolves **left**, the side the owner asked for.
+- **Stamps**: `data-dash-side` beside `data-orient`, plus `--world-x` (where
+  the world begins — `sheetW` when the panel is left, else 0) and
+  `--world-pad-l/r` (the Island's own insets).
+- **One number moves the world**: `.brotown-wrap` takes
+  `margin-left:var(--world-x)`, and `contain:paint` carries every fixed HUD
+  child with it — the same v2.3.1768 mechanic that made narrowing free.
+- **The four elements OUTSIDE the wrap** are told the side by hand: the sheet
+  (`left:0` vs `right:0`, border and radius mirrored), the nav dock, the gold
+  chip and the zone header. Three more that were pinned to the SCREEN's left
+  and would have sat under a left-side panel now ride `--world-x`: the chat
+  feed shell (carrying the v2.3.2155 notification bell), the quest coach card
+  (which clamped itself to `window.innerWidth`), and the install hint.
+- **Full-bleed world, clear controls** (owner's pick): the art still paints
+  under the Island; the zone header and the keyboard-hint clusters take
+  `--world-pad-l/r` so no control or text hides behind it.
+- **A 180° flip is not a resize** — turning the phone end-for-end moves the
+  Island without changing 844×390, so `resize` may never fire.
+  `orientationchange` now re-runs resize() immediately and again after 300ms
+  (iOS reports the new insets late).
+
+**The bug this uncovered**: `isSelfTouch` and `isGestureTouch` (BroTown.jsx)
+compared a raw viewport `clientX` against world coords converted to CANVAS
+space — correct only while the canvas starts at screen x=0, and never correct
+on the letterboxed desktop shell. Both now route through one `clientToCanvas()`
+helper (the pattern `tapResourceAtClient` already used beside them). Without it
+a tap on your own character would open chat ~220px away.
+
+mp-landscape-dash pins all of it: the side rule and the world offset at rest
+and open, every geometry assertion restated as a RULE so it holds on either
+edge, a **simulated Island** (overriding the probe's padding — the source of
+truth resize() reads) proving the whole dashboard flees to the right and comes
+back, and a sweep asserting **no text-bearing world chrome intrudes into the
+panel's column** — the guard that would have caught the bell and the coach
+card, which a passing suite missed and only looking at the screenshot found.
+
+### Minimized means minimized (v2.3.2176 — owner)
+
+Owner, of a resting landscape screenshot: *"the dashboard navigation buttons
+still visible that should've been hidden inside the main dashboard screen when
+it's minimized. Also the main dashboard button (the chart) is transparent but
+should have the same background as the other buttons."*
+
+- **At rest the world carries the ▴ chip and nothing else.** The five nav
+  buttons belong to the CONTAINER, not to the world: the dock renders them only
+  while a destination is open, and its width collapses to the chip's. Reaching
+  a destination costs one extra tap, which the owner weighed and chose — the
+  world is what landscape is for. The chip does not move between states (the
+  v2.3.1637b one-position law).
+- **A lit button is not a transparent one.** `COL.accentFill` is
+  `rgba(216,170,88,0.15)` — a brass TINT, which over the dark band reads as a
+  fill and over the bright world reads as a hole. Lit buttons composite that
+  tint over the same opaque `COL.wellSoft` every other button carries.
+- **The chart lights for the DASHBOARD destination sideways** (`landLit`). In
+  portrait it lights AT REST, because rest IS the dashboard there; sideways the
+  buttons only exist while something is open, so the at-rest rule would have
+  left it the one button with no lit state at all.
+- **The fold chip and the notification bell no longer share a corner.** At rest
+  `--world-x` drops to 0 and the world's bottom-left cluster landed underneath
+  the chip — the bell unreadable and untappable. resize() stamps
+  `--land-fold-w` (the chip's footprint, non-zero only when the chip is
+  actually on the world's left edge) and the chat-feed shell steps around it.
+  Found by looking at the screenshot; the suite was green.
+
+### The Points accordion (v2.3.2176 — owner mockup)
+
+Owner: *"The core thing the player is doing is not 'editing Bow stats'… They
+are doing: I earned a point. Where do I want to spend it?"* So the screen is
+three weapon lanes, one open at a time (`buildCat`, which already meant
+exactly that), and every control that can spend a point lives inside the open
+lane: `<WEAPON> ATTACK` on the left, `CHARACTER` (shared) on the right — the
+owner named that column, not "Global". Collapsed lanes carry their level, a
+`N PTS` chip and, in portrait, a `CRIT n/11 DMG n/11 SPD n/11` summary.
+
+Two bugs the screenshots caught that the green suite did not:
+
+- **`overflow:hidden` on a lane made the lane a scroll container**, so the
+  header's `position:sticky` resolved against the LANE and pinned itself 32px
+  down — on top of its own Crit row. The old guard asserted the *declaration*
+  (`position === 'sticky'`), which stayed true while the layout was broken.
+  Corners moved onto the header; mp-prog3 now measures the effect.
+- **The Points tab's count badge reserved 12px** and pushed the three section
+  tabs past the 191px strip, so all three ellipsised — "Equipm…", "Poi…",
+  "Journ…" — but only once the player had a point to spend. The landdash label
+  sweep passed because it swept a FRESH character. Sideways the count is a dot
+  (it is still on the hero nav button, in each lane's chip, and in the tab's
+  aria-label), and the sweep now seeds points and a long zone name first.

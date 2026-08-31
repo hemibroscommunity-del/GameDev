@@ -87,7 +87,11 @@ export function InstallHint() {
       data-install-hint=""
       style={{
         position: 'fixed',
-        left: '50%',
+        /* v2.3.2174: centred over the WORLD, not the screen — with a
+           landscape panel open, screen-centre is partly underneath it.
+           --world-x is 0 in portrait and at rest, so this is identical to
+           the 50% it replaces everywhere else. */
+        left: 'calc(var(--world-x, 0px) + var(--play-w, 100%) / 2)',
         transform: 'translateX(-50%)',
         bottom: 'calc(var(--dash-h, 145px) + 12px)',   /* zLayers rule 2: clear the band geometrically */
         zIndex: 31,

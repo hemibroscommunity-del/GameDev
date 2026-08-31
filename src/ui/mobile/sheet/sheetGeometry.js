@@ -296,6 +296,15 @@ export function columnsRowHeight(vw) {
    SHORT VIEWPORTS get the tighter pad for the same reason navSlotSize
    and dashTileSize carry caps: an SE-class phone has to keep its world
    view, and this row is the third thing competing for it. */
+/* v2.3.2176b: the landscape FOLD CHIP's width, stated where geometry is
+   stated rather than only inside the chip's own style object.  BroTown's
+   resize() spends it on --land-fold-w so the world's bottom-left cluster
+   (chat feed + notification bell) can step around the chip at rest -- the
+   two were drawn in the same corner, chip on top, and the bell could not
+   be tapped.  The chip renders at exactly this width, so the two cannot
+   drift. */
+export const LAND_FOLD_CHIP_W = 34;
+
 export function identityRowHeight(vw, vh) {
   return 40 + (vh && vh <= 720 ? 8 : 12);
 }

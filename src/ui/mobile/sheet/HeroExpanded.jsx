@@ -14,8 +14,7 @@ import { COMBAT_SKILLS, skillLevel, skillProgressPct, skillProgress, deriveHeroS
    seven-stat allocation menu when the worker owns prog3. */
 import {
   prog3Live, prog3Pts, prog3AtkPts, prog3StatCap, prog3SkillLevel,
-  prog3ActiveCat, PROG3_ATK_META, PROG3_BODY_META, PROG3_SKILL_META,
-} from '../../../data/prog3.js';
+  prog3ActiveCat, PROG3_ATK_META, PROG3_BODY_META, PROG3_SKILL_META, prog3PoolFor } from '../../../data/prog3.js';
 import { VitalBar, VITAL_ICONS, VITAL_LABEL, VITAL_TINT } from './VitalBar.jsx'; /* v2.3.1311; VITAL_LABEL v2.3.1883 */
 import { getEquippedSlots, getEquipContribs, GHOST_SRC } from './equipModel.js'; /* v2.3.1653 */
 import { previewStatPoint, overallDps } from './statPreview.js';                 /* v2.3.1766 */
@@ -617,7 +616,12 @@ export const HeroExpanded = () => {
                    "Equipm…" in the skinny column; Points and Journey cede
                    what they don't need.  Portrait keeps equal thirds. */
                 flex: landPane ? '1 1 auto' : '1 1 0', minWidth: 0, height: '100%',
-                padding: landPane ? '0 5px' : 0,
+                /* v2.3.2176b: 4px, not 5.  Measured sideways, the three
+                   words plus 5px cheeks come to 192 in a 191px strip -- so
+                   the strip was one pixel from ellipsising all three even
+                   with no badge on it.  A 6px margin is the difference
+                   between a layout that fits and one that happens to. */
+                padding: landPane ? '0 4px' : 0,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 background: on ? COL.accentFill : COL.wellSoft,
                 border: `1px solid ${on ? COL.accent : COL.tileBor}`,
@@ -634,9 +638,29 @@ export const HeroExpanded = () => {
                 pointerEvents: 'none',
                 /* The Build tab carries a count badge at top/right 2 — keep
                    the word clear of it so "Build" and "3" never overlap. */
-                paddingRight: badge > 0 ? 12 : 0,
+                /* v2.3.2176b: sideways the badge costs the WORD nothing.
+                   Owner, twice: "labels that are still cut off".  This
+                   reserve is why -- 12px off a 50px tab pushed the row over
+                   its 191, every tab shrank, and all three ellipsised
+                   ("Equipm…", "Poi…", "Journ…") the moment the player had a
+                   point to spend.  Sideways the count becomes a dot (below)
+                   and the reserve goes with it. */
+                paddingRight: badge > 0 && !landPane ? 12 : 0,
               }}>{SECTION_LABEL[s] || s}</span>
-              {badge > 0 && (
+              {badge > 0 && (landPane ? (
+                /* v2.3.2176b: sideways, a DOT.  The digits need a 13px pill
+                   and 12px of clearance in a column that has neither, and
+                   the number is not lost -- it rides this tab's aria-label,
+                   the hero nav button's own badge two rows down, and each
+                   weapon lane's "N PTS" chip inside the screen.  What the
+                   tab has to say here is "there is something to spend",
+                   and a dot says it in 6px. */
+                <span aria-hidden="true" style={{
+                  position: 'absolute', top: 3, right: 3,
+                  width: 6, height: 6, borderRadius: 999,
+                  background: COL.accent, pointerEvents: 'none',
+                }} />
+              ) : (
                 <span aria-hidden="true" style={{
                   position: 'absolute', top: 2, right: 2,
                   minWidth: 13, height: 13, padding: '0 3px',
@@ -644,7 +668,7 @@ export const HeroExpanded = () => {
                   fontSize: 9, fontWeight: 900, lineHeight: '13px', textAlign: 'center',
                   fontVariantNumeric: 'tabular-nums', pointerEvents: 'none',
                 }}>{badge > 9 ? '9+' : badge}</span>
-              )}
+              ))}
             </div>
           );
         })}
@@ -1109,93 +1133,47 @@ export const HeroExpanded = () => {
           body stats. Whole cells are the tap target — a separate [+]
           button costs width three columns cannot spare, and a 120x30
           cell is a better thumb target than a 30px button anyway. */}
+      {/* ═══ v2.3.2176: THE POINTS SCREEN IS AN ACCORDION ═══
+          Owner, with a mockup and the reasoning behind it: "The core thing
+          the player is doing is not 'editing Bow stats' or 'editing global
+          stats.' They are doing: I earned a point.  Where do I want to spend
+          it?  So I would organize the whole screen around the source of the
+          point."  Three weapon lanes, one open at a time, and everything
+          those points can buy lives physically inside the open lane.
+
+          WHAT REPLACES WHAT.  The v2.3.1703/1710 run of seven identical
+          pills under a separate combat-type selector row is gone; `buildCat`
+          — which has always meant "whose offense am I looking at" — is now
+          the accordion's open lane, so the selector and the section header
+          are the same control.  Nothing underneath changed: the same
+          prog3_allocate send, the same prog3StatCap gate, the same statPeek
+          preview on press.
+
+          THE POOL IS ONE POOL, and that is why the mockup's per-lane
+          numbers are not here.  The owner, asked directly: "There is a
+          points per weapon number IF you're allocating to offensive
+          capabilities specific to that weapon.  Otherwise you can allocate
+          to global defense numbers (hp, defense, dodge, etc) that's the way
+          it works now."  So the ALLOCATION is per weapon (crit is Bow's
+          crit) while the pool is shared — server/src/prog3.js: "points spent
+          on Melee's crit are points not spent on Magic's."  Printing "2
+          POINTS" on Bow and "1 POINT" on Melee would describe a game this
+          is not.  The pool prints ONCE, above the lanes; each lane's own
+          right-hand number is its trained LEVEL, which really is per weapon.
+
+          CHARACTER, not "global" (owner): "'Global' is developer/system
+          language.  'Character' immediately tells the player: this upgrades
+          me, not my bow."
+
+          THE SEVEN CONTROLS ARE STILL SEVEN, all one size, all on screen at
+          once — mp-prog3 has asserted exactly that since v2.3.1710 (the
+          owner's "should all be the same size") and the two columns are
+          1fr/1fr so uniformity is structural rather than tuned.  The [+] is
+          DECORATIVE: the whole row is the tap target, which is the v2.3.1668
+          reasoning ("a 120x30 cell is a better thumb target than a 30px
+          button") and also keeps the count at seven. */}
       {section === 'Build' && p3 && (
         <>
-          <div style={{
-            display: 'flex', gap: DASH_GAP, height: HERO_TAB_H,
-            flex: 'none', marginBottom: 4,
-          }}>
-            {PROG3_SKILL_META.map(sk => {
-              const on = buildCat === sk.key;
-              const lvl = prog3SkillLevel(R, sk.key);
-              return (
-                <div key={sk.key}
-                  role="button" aria-label={`${sk.label}, level ${lvl}`} aria-pressed={on} title={sk.label}
-                  onPointerUp={(e) => { e.stopPropagation(); setBuildCat(sk.key); }}
-                  style={{
-                    flex: '1 1 0', minWidth: 0, height: '100%',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-                    background: on ? COL.accentFill : COL.wellSoft,
-                    border: `1px solid ${on ? COL.accent : COL.tileBor}`,
-                    borderRadius: 7, cursor: 'pointer', touchAction: 'manipulation',
-                  }}>
-                  <img src={sk.iconSrc} alt="" draggable={false}
-                    style={{ width: 18, height: 18, objectFit: 'contain', flex: 'none', opacity: on ? 1 : 0.7, pointerEvents: 'none' }} />
-                  <span style={{
-                    fontSize: 11, fontWeight: 800, color: on ? COL.accent : COL.text2,
-                    fontVariantNumeric: 'tabular-nums',
-                  }}>{lvl}</span>
-                </div>
-              );
-            })}
-            {/* The pool sits in the selector row rather than owning a
-                line of its own — 30px of the budget for one number. */}
-            <div style={{
-              flex: 'none', minWidth: 46, padding: '0 8px',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: totalUnspent > 0 ? COL.accentFill : COL.wellSoft,
-              border: `1px solid ${totalUnspent > 0 ? COL.accent : COL.tileBor}`,
-              borderRadius: 7,
-              fontSize: 12, fontWeight: 900,
-              color: totalUnspent > 0 ? COL.accent : COL.muted,
-              fontVariantNumeric: 'tabular-nums',
-            }} aria-label={`${totalUnspent} points available`}>+{totalUnspent}</div>
-          </div>
-
-          {/* ═══ v2.3.1703: PILLS ═══
-              Owner: "the character star point allocation menu is hard to
-              see (tiny font small thumbnails) maybe you can make it a pill
-              shape or something easier on the eyes."
-
-              The v2.3.1668 cells were text-only with an 8px label — below
-              this project's own 10px font floor (v2.3.1239).  A pill with a
-              20px icon, a 10px label and a 15px value replaced them.
-              Fully-rounded (the owner's "pill"), which also reads as
-              "tap me" next to the square read-only cells on Overview.
-
-              ═══ v2.3.1710: ONE GRID AGAIN, SO EVERY PILL IS ONE SIZE ═══
-              Owner: "Character build stat allocation pills should all be
-              the same size."
-
-              v2.3.1703 had split the run into TWO grids by what the stats
-              ARE — the three offense stats 3-wide, the four body stats
-              2-wide underneath — to buy the body stats width.  It bought
-              them too much: a 187px body pill beside a 123px attack pill,
-              which is the mismatch the owner is looking at.  Both grids
-              collapse back into ONE `repeat(3, 1fr)` run, so all seven
-              pills are literally the same grid track and cannot drift.
-
-              WHY 3-WIDE and not 2- or 4-.  The height budget here is not a
-              preference, it is the v2.3.1660 incident: five of seven stats
-              once sat below a fold with no scroll cue, and mp-prog3 has
-              measured the Build screen against its own scroll viewport ever
-              since — 191px of content into a 191px body on a 390x844
-              iPhone, i.e. no headroom at all.
-                • 2-wide needs FOUR rows for seven pills. That is a new row
-                  the budget does not have.
-                • 4-wide fits in two rows but leaves ~91px per pill, which
-                  cannot hold a 20px icon AND "ATK SPEED" at the 10px floor
-                  on one line; it only works as a stacked icon-over-text
-                  cell, which is taller per row and lands back over budget.
-                • 3-wide is 3 rows x 34px + 2 gaps = 110px — to the pixel
-                  what the two grids cost (34 + 4 + 72) — and 123px per
-                  pill, the width the attack pills already prove legible.
-              Seven into three leaves the last row ragged (STAMINA alone,
-              two empty cells after it).  That is the price of a uniform
-              size with a prime number of stats, and it is paid at the END
-              of the reading order where a short last line is ordinary.
-              The order still groups: offense triplet fills row 1, the four
-              body stats follow. */}
           {(() => {
             /* v2.3.1766: what the tooltip strip below is currently describing.
                Held on the component (not a ref) so the strip re-renders when
@@ -1204,20 +1182,33 @@ export const HeroExpanded = () => {
               try { setStatPeek({ key: st.key, atk: !!st.atk, label: st.label, cat: buildCat }); }
               catch (e) { /* a tooltip must never block a spend */ }
             };
-            const pill = (st) => {
+            /* Short forms for the collapsed lane summary only — the mockup's
+               "CRIT 2/4  DMG 1/4  SPD 0/4".  The rows themselves keep the
+               full labels. */
+            const SHORT = { crit: 'CRIT', critDmg: 'DMG', aspd: 'SPD' };
+            /* v2.3.2176: does this worker channel points?  Without the cap
+               there is no breakdown to read, so everything falls back to the
+               single shared pool the old worker enforces (rule 19). */
+            const chanCaps = !!(S && S._serverCaps && S._serverCaps.prog3Chan);
+            /* What the OPEN lane can spend.  An offense row is buyable only
+               from its own lane's points -- the owner's rule -- and a body
+               row spends from the lane you are standing in, so both read the
+               same number. */
+            const openPts = chanCaps ? prog3PoolFor(R, buildCat) : totalUnspent;
+            const ROW_H = 22;
+            const statRow = (st) => {
               const pts = st.atk ? prog3AtkPts(R, buildCat, st.key) : prog3Pts(R, st.key);
               const cap = prog3StatCap(R, st.key);
-              const canSpend = totalUnspent > 0 && pts < cap;
+              const canSpend = openPts > 0 && pts < cap;
               return (
                 <div key={(st.atk ? buildCat + ':' : '') + st.key}
                   role="button"
+                  /* The aria-label is a CONTRACT, not prose: mp-prog3 finds
+                     every allocation control by `aria-label*=" of "` and reads
+                     the stat name off the text before the first comma. */
                   aria-label={`${st.label}${st.atk ? ' for ' + buildCat : ''}, ${pts} of ${cap}. ${st.perText} per point.`}
                   aria-disabled={!canSpend}
                   title={`${st.label} — ${st.perText} per point`}
-                  /* v2.3.1766: the tooltip fills on PRESS, before the spend
-                     that rides pointer-up.  A stat you cannot afford is still
-                     previewable — pills go non-spendable at 0 points or at the
-                     cap, and pressing one then is pure inspection. */
                   onPointerDown={(e) => { e.stopPropagation(); showPreview(st); }}
                   onPointerUp={(e) => {
                     e.stopPropagation();
@@ -1227,63 +1218,68 @@ export const HeroExpanded = () => {
                        guessing which weapon you meant. */
                     S.channel.send({
                       type: 'prog3_allocate',
-                      payload: st.atk ? { stat: st.key, cat: buildCat } : { stat: st.key },
+                      /* v2.3.2176: BODY spends name the lane too.  The stat
+                         is global either way; the `cat` says which channel's
+                         point pays for it, so the number the player just
+                         watched on that lane is the number that moves. */
+                      payload: { stat: st.key, cat: buildCat },
                     });
                   }}
                   style={{
-                    minWidth: 0, minHeight: 34, padding: '2px 8px',
-                    display: 'flex', alignItems: 'center', gap: 6,
+                    minWidth: 0, height: ROW_H, flex: 'none', boxSizing: 'border-box',
+                    padding: '0 6px',
+                    display: 'flex', alignItems: 'center', gap: 5,
                     background: canSpend ? COL.accentFill : COL.wellSoft,
                     border: `1px solid ${canSpend ? COL.accent : COL.tileBor}`,
-                    borderRadius: 999,
+                    borderRadius: 7,
                     cursor: canSpend ? 'pointer' : 'default',
                     opacity: canSpend ? 1 : 0.75,
                     touchAction: 'manipulation',
                   }}>
-                  {/* v2.3.1694 (owner: "add little thumbnails that represent
-                      each thing … they were stripped out at some point").
-                      v2.3.1703: 16 -> 20px, and left-aligned with the text
-                      rather than the pair centred, so the icons line up
-                      down the column instead of drifting with label
-                      length. */}
-                  {st.iconSrc && (
-                    <img src={st.iconSrc} alt="" draggable={false}
-                      style={{
-                        width: 20, height: 20, objectFit: 'contain', flex: 'none',
-                        opacity: canSpend ? 1 : 0.8, pointerEvents: 'none',
+                  <div style={{
+                    flex: 1, minWidth: 0,
+                    fontSize: 10.5, fontWeight: 700, letterSpacing: '.02em',
+                    textTransform: 'uppercase', color: COL.text,
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  }}>{st.label}</div>
+                  {/* Decorative: the ROW is the button (see the header note). */}
+                  <span aria-hidden="true" style={{
+                    flex: 'none', width: 15, height: 15, borderRadius: 4,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: canSpend ? COL.accent : 'transparent',
+                    border: `1px solid ${canSpend ? COL.accent : COL.tileBor}`,
+                    color: canSpend ? '#20170D' : COL.muted,
+                    fontSize: 11, fontWeight: 900, lineHeight: 1,
+                  }}>+</span>
+                  {/* Four pips: the mockup's own readout of how full a stat
+                      is, at a glance, beside the exact number. */}
+                  <span aria-hidden="true" style={{ flex: 'none', display: 'flex', gap: 2 }}>
+                    {[0, 1, 2, 3].map((i) => (
+                      <span key={i} style={{
+                        width: 6, height: 6, borderRadius: 999,
+                        background: i < pts ? '#8AA9F9' : 'transparent',
+                        border: `1px solid ${i < pts ? '#8AA9F9' : COL.tileBor}`,
                       }} />
-                  )}
-                  <div style={{ minWidth: 0, flex: '1 1 auto' }}>
-                    <div style={{
-                      fontSize: 10, fontWeight: 700, letterSpacing: '.03em',
-                      textTransform: 'uppercase', lineHeight: 1.1,
-                      color: st.atk ? (canSpend ? COL.accent : COL.text2) : COL.text2,
-                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                    }}>{st.label}</div>
-                    <div style={{
-                      fontSize: 15, fontWeight: 800, color: COL.text,
-                      fontVariantNumeric: 'tabular-nums', lineHeight: 1.1,
-                      whiteSpace: 'nowrap',
-                    }}>{pts}<span style={{ color: COL.muted, fontWeight: 700, fontSize: 10 }}>/{cap}</span></div>
-                  </div>
+                    ))}
+                  </span>
+                  <div style={{
+                    flex: 'none', fontSize: 10.5, fontWeight: 800,
+                    color: COL.text2, fontVariantNumeric: 'tabular-nums',
+                  }}>{pts}/{cap}</div>
                 </div>
               );
             };
-            /* v2.3.1710: ONE grid — see the note above.  Every pill is a
-               cell of the same `1fr` track, which is the only way "all the
-               same size" can be true by construction rather than by two
-               layouts happening to agree. */
-            /* ═══ v2.3.1766: WHAT A POINT HERE BUYS ═══
-               Owner: "a tooltip on the stat allocation screen ... include the
-               overall change to crit from baseline and the '+#DPS' changes it
-               effects."
-               A strip rather than a hover tooltip, because the primary
-               platform is iPhone Safari and `title=` never appears on a touch
-               device — the pills have carried one since v2.3.1694 and nobody
-               on a phone has ever seen it.
-               ALWAYS RENDERED, never conditionally, so the grid above cannot
-               jump when the text appears; at rest it carries the overall DPS,
-               which is the other half of what was asked for. */
+            const groupHead2 = (text, sub) => (
+              <div style={{
+                display: 'flex', alignItems: 'baseline', gap: 5,
+                fontSize: 10, fontWeight: 700, letterSpacing: '.10em',
+                textTransform: 'uppercase', color: COL.muted,
+                lineHeight: 1, marginBottom: 3,
+              }}>
+                <span style={{ whiteSpace: 'nowrap' }}>{text}</span>
+                {sub && <span style={{ fontSize: 9, letterSpacing: '.04em', color: COL.muted, opacity: 0.8, whiteSpace: 'nowrap' }}>{sub}</span>}
+              </div>
+            );
             const peekMeta = statPeek
               ? (statPeek.atk ? PROG3_ATK_META : PROG3_BODY_META).find(m => m.key === statPeek.key)
               : null;
@@ -1294,10 +1290,144 @@ export const HeroExpanded = () => {
             const statTxt = (v) => (peekMeta && peekMeta.pct ? n1(v * 100) : n1(v)) + ((peekMeta && peekMeta.unit) || '');
             return (
               <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
-                {PROG3_ATK_META.map(m => pill({ ...m, atk: true }))}
-                {PROG3_BODY_META.map(m => pill({ ...m, atk: false }))}
-              </div>
+              {/* v2.3.2176: the pool has NO line of its own.  The portrait
+                  band gives this section 191px (measured), and a standalone
+                  row cost 22 of them for a number the Points TAB already
+                  carries as a +N badge -- and which now also rides the open
+                  lane's header, where the spending happens. */}
+              {/* THE THREE LANES.  Every lane's header is always mounted, so
+                  the three combat types are always reachable — and each is
+                  still `[role="button"][aria-label*="level"]`, the hook
+                  mp-prog3 has used to find the type selector since v2.3.1668. */}
+              {PROG3_SKILL_META.map((sk) => {
+                const open = buildCat === sk.key;
+                const lvl = prog3SkillLevel(R, sk.key);
+                /* v2.3.2176: what THIS lane can spend — its own channelled
+                   points plus any legacy ones.  Against an old worker there
+                   is no breakdown, so every lane falls back to the shared
+                   total and the screen says exactly what that worker will
+                   honour (caps.prog3Chan, deploy-order rule 19). */
+                const lanePts = chanCaps ? prog3PoolFor(R, sk.key) : totalUnspent;
+                return (
+                  <div key={sk.key} style={{
+                    flex: 'none',        /* v2.3.2176: never squash -- see below */
+                    marginBottom: 3,
+                    borderRadius: 8,
+                    border: `1px solid ${open ? COL.accent : COL.tileBor}`,
+                    background: open ? COL.raised : COL.wellSoft,
+                    /* ═══ v2.3.2176b: NO overflow:hidden HERE ═══
+                       It was here to clip the header's fill to the lane's
+                       rounded corners, and it silently broke the sticky
+                       header below: an overflow:hidden box IS a scroll
+                       container, so `position:sticky` resolved its offset
+                       against the LANE instead of the panel and pinned the
+                       header 32px down -- on top of its own first stat row.
+                       Measured, not guessed: lane top 689, header top 722,
+                       body top 716.  Crit was invisible in every screenshot.
+                       The corners are the header's own job now (below). */
+                  }}>
+                    <div
+                      role="button"
+                      aria-label={`${sk.label}, level ${lvl}`}
+                      aria-expanded={open}
+                      title={sk.label}
+                      onPointerUp={(e) => { e.stopPropagation(); setBuildCat(sk.key); }}
+                      style={{
+                        height: open ? 26 : 22, boxSizing: 'border-box', padding: '0 7px',
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        cursor: 'pointer', touchAction: 'manipulation',
+                        /* ═══ v2.3.2176: THE LANES NEVER SCROLL AWAY ═══
+                           Measured: three lanes + seven controls + the DPS
+                           strip need ~229px and the portrait band gives this
+                           section 191 (the 33dvh ceiling, and the BAR-height
+                           invariant forbids growing it for one tab).  So the
+                           open lane's stats scroll -- but the NAVIGATION is
+                           sticky, which is the half the v2.3.1660 incident
+                           was actually about: five of seven stats were once
+                           below an uncued fold with no way to know.  Here the
+                           three weapons stay on screen at all times and the
+                           next lane's edge is the cue that there is more. */
+                        position: 'sticky', top: HERO_TAB_H + 4, zIndex: 1,
+                        background: open ? COL.raised : COL.wellSoft,
+                        /* v2.3.2176b: the lane's rounded top corners, which
+                           used to come from the parent's overflow:hidden.
+                           A collapsed lane IS its header, so it takes all
+                           four. */
+                        borderRadius: open ? '7px 7px 0 0' : 7,
+                      }}>
+                      <img src={sk.iconSrc} alt="" draggable={false}
+                        style={{ width: 17, height: 17, objectFit: 'contain', flex: 'none', opacity: open ? 1 : 0.75, pointerEvents: 'none' }} />
+                      <span style={{
+                        flex: 'none', fontSize: 11.5, fontWeight: 800, letterSpacing: '.06em',
+                        textTransform: 'uppercase', color: open ? COL.accent : COL.text,
+                        whiteSpace: 'nowrap',
+                      }}>{sk.label}</span>
+                      {/* The collapsed summary the owner drew — where this
+                          lane's points already went, without opening it.
+                          v2.3.2176: portrait only.  Measured in the narrow
+                          landscape column: icon + name + three "CRIT 0/4"
+                          groups + "LV n" + chevron overran a 204px lane, and
+                          the label sweep caught it (past: 2).  Sideways the
+                          lane keeps its name and its level, which is what a
+                          collapsed row is for. */}
+                      {!open && !landPane && (
+                        <span style={{
+                          flex: 1, minWidth: 0, display: 'flex', gap: 7,
+                          fontSize: 9.5, fontWeight: 700, color: COL.muted,
+                          fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                        }}>
+                          {PROG3_ATK_META.map((m) => (
+                            <span key={m.key}>{SHORT[m.key]} {prog3AtkPts(R, sk.key, m.key)}/{prog3StatCap(R, m.key)}</span>
+                          ))}
+                        </span>
+                      )}
+                      <span style={{
+                        flex: open ? 1 : 'none', textAlign: 'right',
+                        fontSize: 10, fontWeight: 800, color: COL.text2,
+                        fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+                      }}>LV {lvl}</span>
+                      {/* v2.3.2176: the lane's OWN points — the number the
+                          owner's mockup put on every row, now that it means
+                          something: points earned through this skill (plus
+                          any legacy ones), and the only points that can buy
+                          this weapon's offense. */}
+                      {lanePts > 0 && (
+                        <span aria-label={`${lanePts} points to spend on ${sk.label}`} style={{
+                          flex: 'none', padding: '0 5px', borderRadius: 999,
+                          background: COL.accent, color: '#20170D',
+                          fontSize: 9.5, fontWeight: 900, lineHeight: '15px',
+                          fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+                        }}>{lanePts} PT{lanePts === 1 ? '' : 'S'}</span>
+                      )}
+                      <span aria-hidden="true" style={{ flex: 'none', fontSize: 10, color: COL.muted, lineHeight: 1 }}>{open ? '\u25B2' : '\u25BC'}</span>
+                    </div>
+                    {open && (
+                      /* Two equal columns so all seven controls are one
+                         width by construction; stacked in the narrow
+                         landscape pane, where two columns cannot hold a
+                         label, a [+], four pips and a value. */
+                      <div style={{
+                        display: 'flex', flexDirection: landPane ? 'column' : 'row',
+                        gap: landPane ? 5 : 7, padding: '0 7px 6px',
+                      }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          {groupHead2(`${sk.label} Attack`)}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                            {PROG3_ATK_META.map((m) => statRow({ ...m, atk: true }))}
+                          </div>
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          {groupHead2('Character', 'Shared')}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                            {PROG3_BODY_META.map((m) => statRow({ ...m, atk: false }))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
               <div aria-live="polite" className="bt-stat-peek" style={{
                 marginTop: 5, minHeight: 30, padding: '4px 9px', borderRadius: 8,
                 background: COL.wellSoft, border: `1px solid ${COL.tileBor}`,
@@ -1431,7 +1561,15 @@ export const HeroExpanded = () => {
         <>
         {/* v2.3.1311c: 3x2 (was 2x3) — two card rows fit the real device
             budget without scrolling; three didn't. */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 5, paddingTop: 6 }}>
+        {/* v2.3.2176 (owner, of the landscape Journey tab: "labels that are
+            still cut off and need to have a different layout to display
+            correctly"): three cards across a ~204px column left ~63px each,
+            so every label ellipsised to a single letter -- "K...", "D...",
+            "L...".  Sideways this becomes ONE column of wide rows, which is
+            the only arrangement in which "Lifetime Gold" and "Deepest Zone"
+            fit whole.  Portrait keeps the 3x2 grid v2.3.1311c measured
+            against its own no-scroll budget. */}
+        <div style={{ display: 'grid', gridTemplateColumns: landPane ? '1fr' : 'repeat(3, 1fr)', gap: 5, paddingTop: 6 }}>
           {[
             /* v2.3.1323 (owner icon sheet): each record card gets its
                icon — same magenta-key pipeline as the stat sheet.
@@ -1453,23 +1591,66 @@ export const HeroExpanded = () => {
             ['Lifetime XP', Number(R.xp || 0).toLocaleString(), 'rec-xp'],
             ['Duels Won', cs.duelsWon ?? 0, 'rec-duels'],
             ['Deepest Zone', cs.deepestZone ?? '—', 'rec-zone'],
-          ].map(([label, value, icon]) => (
+          ].map(([label, value, icon]) => {
+            /* v2.3.2176b: ONE rule for how big a record's value is printed,
+               shared by both layouts.  Five of the six are short numbers,
+               but Deepest Zone is a zone NAME and lifetime gold reaches
+               seven figures -- and at a fixed 14px those two overflowed in
+               both orientations (portrait ellipsised "Frost Holl…";
+               sideways the nowrap row simply pushed past the panel's right
+               edge, which the landdash overflow sweep caught).  The point
+               size steps down with the string rather than the reader losing
+               the end of it. */
+            const valueFs = String(value).length <= 6 ? 14 : String(value).length <= 9 ? 12 : 10;
+            return (
             <div key={label} style={{
               background: COL.wellSoft,
               border: `1px solid ${COL.tileBor}`,
               borderRadius: 7,
               padding: '5px 7px 6px',
               minWidth: 0,
-              display: 'flex', alignItems: 'center', gap: 6,
+              /* v2.3.2176b: 5px of gap and a 22px icon in the PORTRAIT
+                 grid.  Measured: a 117px card less 14 of padding, a 26px
+                 icon and 6 of gap left 71px for a label that needs 73, so
+                 "LIFETIME GOLD" and "DEEPEST ZONE" ellipsised to
+                 "LIFETIME GO…" / "DEEPEST ZO…" -- the owner's complaint,
+                 in the orientation the landscape fix did not touch.  Four
+                 pixels off an icon buys the whole word; the icon is
+                 decoration and the word is the data. */
+              display: 'flex', alignItems: 'center', gap: landPane ? 6 : 5,
             }}>
               <img src={`/icons/ui/hero/${icon}.webp?v=2.3.1341`} alt="" draggable={false}
-                style={{ width: 26, height: 26, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 800, color: COL.text, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{value}</div>
-                <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: COL.muted, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
-              </div>
+                style={{ width: landPane ? 26 : 22, height: landPane ? 26 : 22, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
+              {/* v2.3.2176: stacked (value over label) in the portrait grid,
+                  where the cell is short and wide-ish; a single ROW sideways
+                  -- label left, value right -- which is the house list
+                  pattern and gives the label the whole width it needs. */}
+              {landPane ? (
+                <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 6 }}>
+                  {/* v2.3.2176b: 10px, not 11.  "LIFETIME GOLD" whole plus a
+                      seven-figure number is more than this row has at 11 --
+                      and neither half may be clipped, so the type gives. */}
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: COL.muted, whiteSpace: 'nowrap' }}>{label}</div>
+                  <div style={{ fontSize: valueFs, fontWeight: 800, color: COL.text, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', flex: 'none' }}>{value}</div>
+                </div>
+              ) : (
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {/* v2.3.2176b: the VALUE line sizes itself.  Five of the
+                      six records are short numbers, but Deepest Zone is a
+                      zone NAME -- "Frost Hollow" wanted 99px in an 80px
+                      cell and ellipsised to "Frost Holl…", which is the
+                      same clipping the labels above were just fixed for,
+                      one line down.  Seven-figure gold hits it too.  So the
+                      point size steps down with the string's length rather
+                      than the reader losing the end of it. */}
+                  <div style={{ fontSize: valueFs, fontWeight: 800, color: COL.text, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{value}</div>
+                  {/* v2.3.2176b: .02em, not .04 -- thirteen characters of
+                      tracking is another 2px this cell does not have. */}
+                  <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '.02em', textTransform: 'uppercase', color: COL.muted, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
+                </div>
+              )}
             </div>
-          ))}
+          );})}
         </div>
         {/* v2.3.1664: the on-chain receipt.  Appears only once a milestone
             has actually been written to Hemi, so it is never a promise the

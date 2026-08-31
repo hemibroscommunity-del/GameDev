@@ -32,7 +32,7 @@ import { navButtonSize } from '../sheet/sheetGeometry.js';
    and it is how you switch destinations or get out.  A rail that hid with
    the rest of the band would leave an open panel with no navigation. */
 
-export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, btnW, fill }) => {
+export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, btnW, fill, landLit }) => {
   /* v2.3.2166: `btnW` narrows the buttons for the landscape dock — the
      five of them must fit inside the side container's width (owner: the
      dashboard buttons "should all be included in that container on that
@@ -83,7 +83,15 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, b
       gap: 4, padding: 4,
     }}>
       {items.map((d) => {
-        const on = d.id === 'dashboard' ? atRest : (!atRest && litId === d.id);
+        /* v2.3.2176: `landLit` is the sideways rule.  In portrait the chart
+           lights AT REST, because rest IS the dashboard there (the columns
+           row).  Sideways the buttons only exist while a destination is
+           open, so `atRest` can never be true here -- the chart would be the
+           one button with no lit state at all.  There it lights for the
+           DASHBOARD destination like any other. */
+        const on = landLit
+          ? litId === d.id
+          : (d.id === 'dashboard' ? atRest : (!atRest && litId === d.id));
         const count = dots && dots[d.id];
         return (
           <div key={d.id}
@@ -140,7 +148,18 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, b
               ...(fill ? { flex: '1 1 0', minWidth: size.w } : { width: size.w, flex: 'none' }),
               height: size.h,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: on ? COL.accentFill : COL.wellSoft,
+              /* ═══ v2.3.2176: A LIT BUTTON IS NOT A TRANSPARENT ONE ═══
+                 Owner, of the landscape dock: "the main dashboard button
+                 (the chart) is transparent but should have the same
+                 background as the other buttons."  It was: COL.accentFill
+                 is rgba(216,170,88,0.15) -- a translucent brass TINT, which
+                 over a dark band reads as a fill and over the bright world
+                 reads as a hole.  Composited over the same opaque wellSoft
+                 every other button carries, the lit state is the tint it
+                 was always meant to be and the solidity matches. */
+              background: on
+                ? `linear-gradient(0deg, ${COL.accentFill}, ${COL.accentFill}), ${COL.wellSoft}`
+                : COL.wellSoft,
               border: `1px solid ${on ? COL.accent : COL.tileBor}`,
               borderRadius: 999,
               cursor: 'pointer', touchAction: 'manipulation',

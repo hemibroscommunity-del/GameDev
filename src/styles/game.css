@@ -2833,13 +2833,43 @@ body:has([data-trade-drawer]) .bt-kb-chip{display:none}
 html[data-orient="landscape"] .brotown-wrap{
   width:var(--play-w,100%)!important;
   contain:paint;
+  /* ═══ v2.3.2174: THE WORLD SLIDES OFF THE DYNAMIC ISLAND ═══
+     Owner, sideways on a real iPhone: "The iPhone has a punch hole that's
+     awkward since it goes right through the menus."  So the dashboard takes
+     whichever edge is CLEAR (resize() measures both insets and stamps
+     data-dash-side) and the world takes the other -- which means the world
+     may now START at x = --world-x rather than 0.
+     ONE number moves everything: contain:paint above makes this element the
+     containing block for every fixed HUD child (joysticks, banners, tracker,
+     minimap), so they ride along with no per-element edit -- the same
+     v2.3.1768 mechanic that made narrowing free.  --world-x is 0 whenever
+     the panel is on the right, so that side stays byte-identical to what
+     shipped. */
+  margin-left:var(--world-x,0px);
 }
 /* The zone header belongs to the WORLD's width, not the screen's — the
    owner pointed at the narrow-width capture as the target: header spanning
    the world only, with the sheet wholly outside it. */
 html[data-orient="landscape"] .bt-zone-header{
   right:auto;
+  /* v2.3.2174: the header is a SIBLING of the wrap (GameApp renders it
+     outside), so it cannot inherit the offset -- it is told the same
+     number. */
+  left:var(--world-x,0px);
   width:var(--play-w,100%);
+  /* The world's ART stays full-bleed under the Island (owner: "keep it
+     full-bleed"); its CONTROLS do not.  The exit chip sits at this header's
+     left edge, where the Island's corner would clip it. */
+  padding-left:var(--world-pad-l,0px);
+  padding-right:var(--world-pad-r,0px);
+  box-sizing:border-box;
+}
+/* v2.3.2174: the two other clusters pinned to a world EDGE rather than to
+   its centre.  Anchored by `left`, so the inset goes into the offset --
+   padding would not move them. */
+html[data-orient="landscape"] .bt-kb-hints,
+html[data-orient="landscape"] .bt-kb-chip{
+  left:calc(12px + var(--world-pad-l,0px));
 }
 /* The fold chip hides sideways: the landscape band already IS the fold
    (bandFootprint returns the identity row unconditionally), so the toggle

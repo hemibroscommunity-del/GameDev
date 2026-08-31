@@ -159,8 +159,68 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }) : undefined;
     return { scrollH: el.scrollHeight, clientH: el.clientHeight, over: over > 0 ? over : 0, kids };
   });
-  rec.ok('the Build screen fits without scrolling',
-    !fit.err && fit.scrollH <= fit.clientH + 1, fit);
+  /* ═══ v2.3.2176: WHAT THIS GUARD IS ACTUALLY FOR ═══
+     It was "the Build screen fits without scrolling", and it is RELAXED
+     here deliberately rather than quietly -- the accordion the owner asked
+     for ("organize the whole screen around the source of the point": three
+     weapon lanes, one open) needs ~282px in portrait and the band gives
+     this section 203.  The 33dvh ceiling caps the band and the BAR-height
+     invariant (v2.3.1290) forbids growing it for one tab, so the content
+     cannot be made to fit without shrinking rows past the 10px floor.
+
+     The INCIDENT the guard was written for (v2.3.1660) was not "scrolling
+     is bad" -- it was five of seven stats sitting below an uncued fold with
+     no way to know they existed.  So the property is restated as the thing
+     that actually protects the player, and it is STRICTER about the part
+     that matters:
+       - every one of the OPEN lane's seven controls is fully in view, no
+         scrolling required (asserted below, by rect, not by scrollHeight);
+       - and what does fall below is only the other lanes and the DPS strip,
+         at most one lane's worth, with the next lane's edge visible as the
+         cue -- plus the lane headers are position:sticky, so the three
+         weapons never scroll out of reach at all. */
+  const openFit = await P.page.evaluate(() => {
+    const btn = document.querySelector('[aria-label*="Crit"], [aria-label*="Defense"]');
+    if (!btn) return { err: 'no stat cell found' };
+    let el = btn.parentElement;
+    while (el && getComputedStyle(el).overflowY !== 'auto') el = el.parentElement;
+    if (!el) return { err: 'no scroll container' };
+    const box = el.getBoundingClientRect();
+    const cells = [...document.querySelectorAll('[role="button"][aria-label*=" of "]')];
+    const below = cells.filter((c) => c.getBoundingClientRect().bottom > box.bottom + 1).length;
+    const above = cells.filter((c) => c.getBoundingClientRect().top < box.top - 1).length;
+    return { cells: cells.length, below, above,
+             over: Math.max(0, el.scrollHeight - el.clientHeight) };
+  });
+  rec.ok('every one of the open lane\'s seven controls is in view without scrolling',
+    !openFit.err && openFit.cells === 7 && openFit.below === 0 && openFit.above === 0, openFit);
+  rec.ok('...and what scrolls below is at most one lane, not a hidden screen',
+    !openFit.err && openFit.over <= 100, { over: openFit.over, ...fit });
+  /* The three lanes are the navigation, so they must never scroll away. */
+  rec.ok('...with the weapon lanes pinned (sticky) so navigation is always reachable',
+    await P.page.evaluate(() => [...document.querySelectorAll('[role="button"][aria-label*="level"]')]
+      .every((l) => getComputedStyle(l).position === 'sticky')));
+  /* ═══ v2.3.2176b: AND THE PIN DOES NOT LAND ON THE FIRST STAT ═══
+     The assertion above passed on a build where the open lane's header sat
+     32px BELOW where it belonged, on top of its own Crit row -- because it
+     checked the DECLARATION and not the effect.  (The lane box carried
+     overflow:hidden, which makes it a scroll container, so `sticky` resolved
+     against the lane instead of the panel and pushed the header down into
+     it.)  A screenshot caught it; this checks it: the open header's bottom
+     is at or above the first control's top, and the header sits at the top
+     of its own lane, not somewhere inside it. */
+  const pinned = await P.page.evaluate(() => {
+    const head = [...document.querySelectorAll('[role="button"][aria-label*="level"]')]
+      .find((l) => l.getAttribute('aria-expanded') === 'true');
+    if (!head) return { err: 'no open lane' };
+    const first = head.parentElement.querySelector('[role="button"][aria-label*=" of "]');
+    if (!first) return { err: 'no stat row' };
+    const h = head.getBoundingClientRect(); const f = first.getBoundingClientRect();
+    const lane = head.parentElement.getBoundingClientRect();
+    return { overlap: Math.round(h.bottom - f.top), intoLane: Math.round(h.top - lane.top) };
+  });
+  rec.ok('...and the pinned header never covers the lane\'s own first stat',
+    !pinned.err && pinned.overlap <= 1 && pinned.intoLane <= 2, pinned);
 
   const cells = await P.page.locator('[aria-disabled][role="button"][aria-label*=" of "]').count().catch(() => 0);
   rec.ok('all seven allocatable stats are present at once', cells === 7, { cells });

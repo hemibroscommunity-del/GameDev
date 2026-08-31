@@ -741,7 +741,19 @@ export function QuestCoach(props) {
       'data-coach-card': view.id,
       style: {
         position: 'absolute',
-        left: Math.min(Math.max(8, r.left + r.width / 2 - 110), Math.max(8, window.innerWidth - 228)),
+        /* v2.3.2174: clamped to the WORLD's span, not the screen's.  The
+           landscape dashboard can take the left edge now, and a card clamped
+           to `window.innerWidth` happily slid underneath it -- measured at
+           x=175 with the panel occupying 0..220.  --world-x / --play-w are
+           0 / innerWidth in portrait, so the arithmetic is unchanged there. */
+        left: (() => {
+          const _cs = getComputedStyle(document.documentElement);
+          const _wx = parseFloat(_cs.getPropertyValue('--world-x')) || 0;
+          const _pw = parseFloat(_cs.getPropertyValue('--play-w')) || window.innerWidth;
+          return Math.min(
+            Math.max(_wx + 8, r.left + r.width / 2 - 110),
+            Math.max(_wx + 8, _wx + _pw - 228));
+        })(),
         /* Anchored by its BOTTOM when it sits above the control, because the
            card's height is not knowable here — it is one, two or three lines
            of wrapped copy plus an optional progress bar.  The first cut used

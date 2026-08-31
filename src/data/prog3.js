@@ -243,6 +243,37 @@ export function prog3Pool(rpg) {
 /* §6-C double cap: the stat's own hard cap AND min(100, char level) —
    mirrors the server's allocation gate so the [+] button disables at
    exactly the point the server would refuse. */
+/* ═══ v2.3.2176: POINTS REMEMBER THE SKILL THAT EARNED THEM ═══
+   Owner: "You earn stat points that one of those primary combat skills
+   channels.  You can only apply offensive weapon damage to the combat
+   skills you leveled up in.  However you can apply that stat point to any
+   defensive attribute ... regardless of what channel you earned the point
+   through."
+
+   `poolBy[cat]` is what that skill earned.  Whatever `pool` holds beyond
+   the sum of the channels is legacy — points banked before the rule
+   existed — and is spendable ANYWHERE, which is the only migration that
+   does not stranded somebody's earned points behind a rule that post-dates
+   them.  The server enforces all of this (prog3.js _handleProg3Allocate);
+   these are the readouts so the screen can say the same thing the worker
+   will do. */
+export function prog3PoolBy(rpg, cat) {
+  var by = rpg && rpg.prog3 && rpg.prog3.poolBy;
+  var n = by && Number(by[cat]);
+  return (typeof n === 'number' && n > 0) ? Math.floor(n) : 0;
+}
+/* Points with no channel on record — spendable on anything. */
+export function prog3PoolAny(rpg) {
+  var total = prog3Pool(rpg);
+  var summed = 0;
+  for (var i = 0; i < PROG3.SKILLS.length; i++) summed += prog3PoolBy(rpg, PROG3.SKILLS[i]);
+  return Math.max(0, total - summed);
+}
+/* What this lane can actually spend: its own points plus the free ones. */
+export function prog3PoolFor(rpg, cat) {
+  return prog3PoolBy(rpg, cat) + prog3PoolAny(rpg);
+}
+
 export function prog3StatCap(rpg, stat) {
   var d = PROG3.BODY[stat] || PROG3.ATK[stat];
   return Math.min(d ? d.cap : 0, prog3CharLevel(rpg));

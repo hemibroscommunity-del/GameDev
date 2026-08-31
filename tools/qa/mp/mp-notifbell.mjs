@@ -65,6 +65,30 @@ const look = (P) => P.page.evaluate(() => {
   };
 });
 
+
+/* ═══ v2.3.2175: A REAL FINGER, NOT page.click() ═══
+   The taps below drove page.click(), which SYNTHESISES a click whatever the
+   touch did -- so this scenario proved the handler worked while proving
+   nothing about whether a finger can reach it.  This corner sits on the
+   movement pad, under a global non-passive touchmove guard, and every real
+   tap drifts a few pixels; that is the path worth testing.  CDP touch events
+   are the only way to produce it faithfully (page.tap() sends a clean tap
+   with no drift, which is the easy case). */
+const fingerTap = async (P, drift = 4) => {
+  const a = await P.page.evaluate(() => {
+    const e = document.querySelector('[data-world-chat-toggle]');
+    const r = e.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  });
+  const cdp = await P.page.context().newCDPSession(P.page);
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: a.x, y: a.y }] });
+  await new Promise((r) => setTimeout(r, 40));
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: a.x + drift, y: a.y + drift - 1 }] });
+  await new Promise((r) => setTimeout(r, 40));
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await cdp.detach();
+};
+
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Bellringer', wsPort, webPort,
     touch: true, viewport: { width: 390, height: 844 }, dpr: 2 });
@@ -129,15 +153,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.screenshot({ path: 'tools/qa/mp/out/notifbell-shut.png' });
 
   /* ── 4. THE BELL OPENS AND CLOSES ── */
-  await P.page.click('[data-world-chat-toggle]');
+  await fingerTap(P);                                   /* v2.3.2175 */
   await P.page.waitForTimeout(700);
   const open = await look(P);
-  rec.ok('tapping the bell opens the notifications', open.expanded === 'true', open);
+  rec.ok('a REAL finger tap (with drift) opens the notifications', open.expanded === 'true', open);
   rec.ok('...and the messages are there', !!open.list && open.list.h > 0, open);
   rec.ok('...and opening clears the unread badge', open.badge === null, open);
   await P.page.screenshot({ path: 'tools/qa/mp/out/notifbell-open.png' });
 
-  await P.page.click('[data-world-chat-toggle]');
+  await fingerTap(P);                                   /* v2.3.2175 */
   await P.page.waitForTimeout(700);
   const reshut = await look(P);
   rec.ok('tapping it again folds it back to the bell',
