@@ -125,12 +125,37 @@ is **inert, not deleted**:
   `prog3_allocate` sends, trained readouts, and its local XP-accrual
   retirement on it. (Listed in caps-audit's allowlist until that slice
   lands — delete the entry in that PR.)
-- client → server: `prog3_allocate { stat }`.
+- client → server: `prog3_allocate { stat, cat }`.
 - server → client (both in `PRIVILEGED_EVENTS`):
   `prog3_level { skill, level, pool, charLevel }`,
-  `prog3_allocated { stat, pts, pool }`.
-- `player_state` / `_saveRpg` carry `prog3` (`{ sk, alloc, pool }`);
+  `prog3_allocated { stat, pts, pool, poolBy }`.
+- `player_state` / `_saveRpg` carry `prog3` (`{ sk, alloc, pool, poolBy }`);
   `RPG_SCHEMA_VERSION` = 10.
+
+## Points remember their channel (v2.3.2176)
+
+Owner, correcting a plan that had treated the pool as one undifferentiated
+number: *"There are 3 primary combat skills. You earn stat points that one
+of those primary combat skills channels. You can only apply offensive
+weapon damage to the combat skills you leveled up in. However you can apply
+that stat point to any defensive attribute (max hp, defense, dodge,
+stamina) regardless of what channel you earned the point through."*
+
+- `prog3.poolBy = { sword, bow, staff }` records WHICH skill's level-up
+  minted each unspent point. `_prog3AwardXp` stamps it on level-up;
+  the sanitizer clamps Σ poolBy ≤ pool so a forged blob cannot mint
+  points by claiming channels.
+- **Offense** (`crit`, `critDmg`, `aspd` — per weapon) is spendable only
+  from that weapon's own channel. A Bow point cannot buy Melee crit.
+- **Defense** (`def`, `hp`, `dodge`, `stam` — global) is spendable from
+  any channel; the client names the lane it is standing in via `cat`, and
+  an old client with no `cat` falls back to the largest channel.
+- `pool − Σ poolBy` is the LEGACY remainder: points earned before this
+  shipped have no channel and stay spendable anywhere. Nobody's existing
+  points are taken away or retroactively assigned.
+- Deploy-order (rule 19): the worker advertises `caps.prog3Chan`. Without
+  it the client shows the single shared pool on every lane, which is
+  exactly what an old worker will honour.
 
 ## Tier / equip gates (v2.3.1661, §6 — SHIPPED)
 

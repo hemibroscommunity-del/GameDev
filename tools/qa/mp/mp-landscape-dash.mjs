@@ -108,8 +108,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return !c || getComputedStyle(c).display === 'none';
     }));
 
-  const navBefore = await navRect(P);
-  rec.ok('a nav button is on screen to open with (guard)', !!navBefore, navBefore);
+  /* ═══ v2.3.2176: MINIMIZED MEANS MINIMIZED ═══
+     Owner: "the dashboard navigation buttons still visible that should've
+     been hidden inside the main dashboard screen when it's minimized."  So
+     at rest the world carries NO nav buttons -- only the chip that opens the
+     container (and the gold chip and bell, which are readouts).  This
+     replaces the old "a nav button is on screen to open with" guard, which
+     asserted the very thing the owner asked to remove. */
+  rec.ok('at rest the world carries NO nav buttons — only the chip that opens them',
+    await P.page.evaluate(() => !document.querySelector('.bt-navrail [data-nav]')
+      && !!document.querySelector('[data-land-fold]')));
 
   /* ── OPEN ── */
   await P.page.evaluate(() => window.__broDashPanelBus.open('bag'));
@@ -154,10 +162,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
       && open.gold.cx > open.worldX + 20
       && open.gold.cx < open.worldX + open.playW - 20,
     { gold: open.gold, worldX: open.worldX, playW: open.playW });
+  /* v2.3.2176: the one-position law (v2.3.1637b) is now measured between
+     two OPEN states -- the buttons do not exist at rest to compare against,
+     and what the law protects is a button moving under the thumb that is
+     about to tap it again. */
   const navAfter = await navRect(P);
-  rec.ok('...and the nav button that opened it has not moved a pixel (v2.3.1637b)',
-    !!navAfter && JSON.stringify(navAfter) === JSON.stringify(navBefore),
-    { before: navBefore, after: navAfter });
+  await P.page.evaluate(() => window.__broDashPanelBus.open('hero'));
+  await P.page.waitForTimeout(700);
+  const navOther = await navRect(P);
+  rec.ok('...and switching destination does not move the nav buttons (v2.3.1637b)',
+    !!navAfter && !!navOther && JSON.stringify(navAfter) === JSON.stringify(navOther),
+    { onDashboard: navAfter, onHero: navOther });
+  await P.page.evaluate(() => window.__broDashPanelBus.open('bag'));
+  await P.page.waitForTimeout(700);
   rec.ok('the zone header spans the WORLD, not the screen (a complete window)',
     open.zoneHeaderW !== null && Math.abs(open.zoneHeaderW - open.playW) <= 1,
     { zoneHeaderW: open.zoneHeaderW, playW: open.playW });
@@ -202,20 +219,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ═══ v2.3.2158: THE OWNER'S EXACT GESTURE ═══
      Owner, on a real device: "I see the thin bar at the bottom but no
      inventory slots when dashboard is active."  Everything above drove the
-     bus; the owner drives a THUMB, and the chart button's portrait job --
-     toBar(), because rest IS the dashboard there -- was a lit button that
-     produced nothing sideways.  So: tap the REAL chart button and demand
-     the bag, slots visible; tap it again and demand the world back. */
+     bus; the owner drives a THUMB.
+     v2.3.2176: the way IN from rest is the chip now (the buttons are hidden
+     when minimized, the owner's later ask), so the thumb path is: chip
+     opens the container, and the chart button inside it is the DASHBOARD
+     destination -- lit, and a second tap gives the world back. */
+  const viaChip = await P.page.evaluate(() => {
+    const c = document.querySelector('[data-land-fold]');
+    if (!c) return null;
+    c.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+    return true;
+  });
+  rec.ok('the chip is the way in from rest (guard)', viaChip === true);
+  await P.page.waitForTimeout(900);
   const chart = await P.page.evaluate(() => {
     const b = document.querySelector('.bt-navrail [data-nav="dashboard"]');
     if (!b) return null;
-    b.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
-    return true;
+    return { lit: b.getAttribute('aria-pressed') === 'true',
+             opaque: !/^rgba\(0, 0, 0, 0\)$/.test(getComputedStyle(b).backgroundColor) };
   });
-  rec.ok('the chart button exists to tap (guard)', chart === true);
-  await P.page.waitForTimeout(900);
+  /* v2.3.2176 (owner: "the main dashboard button (the chart) is transparent
+     but should have the same background as the other buttons"): the lit fill
+     was a translucent brass TINT with nothing opaque behind it. */
+  rec.ok('the chart button is inside the container, lit, and NOT transparent',
+    !!chart && chart.lit && chart.opaque, chart);
+  await P.page.waitForTimeout(200);
   const viaTap = await geom(P);
-  rec.ok('tapping the DASHBOARD button opens the sheet sideways — the slots are back',
+  rec.ok('the chip opened the DASHBOARD sideways — the slots are back',
     viaTap.mode === 'expanded' && !!viaTap.sheet && viaTap.canvasW < 844, viaTap);
   /* v2.3.2163: the destination is the STACKED dashboard — the bag grid AND
      the combat pills, both named by the owner, in one vertical column. */
@@ -327,8 +357,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   await P.page.waitForTimeout(900);
   const viaTap2 = await geom(P);
-  rec.ok('...and tapping it again gives the world back (the same toggle it always was)',
+  rec.ok('...and tapping the chart button gives the world back (the toggle it always was)',
     viaTap2.mode === 'bar' && viaTap2.canvasW === 844, viaTap2);
+  rec.ok('...which also puts the nav buttons away again',
+    await P.page.evaluate(() => !document.querySelector('.bt-navrail [data-nav]')));
 
   /* ═══ v2.3.2171: THE FOLD CHIP, SIDEWAYS ═══
      Owner: "add a button for minimizing that whole dashboard area (just
@@ -429,6 +461,58 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     rec.ok(`${dest}: every label renders whole — nothing clipped or ellipsised`,
       !!fit && fit.past === 0 && fit.truncCount === 0, fit);
+  }
+  /* ═══ v2.3.2176: THE HERO PANE'S THREE SECTIONS, SWEPT TOO ═══
+     The sweep above covered quests/skills/more and stopped there, which is
+     exactly why Journey shipped reading "K...", "D...", "L..." in the narrow
+     column and the owner had to point at it a second time.  Hero is one
+     destination with THREE screens behind a section switch, so it needs its
+     own walk. */
+  /* ═══ v2.3.2176b: SWEEP THE POINTED CHARACTER, NOT THE FRESH ONE ═══
+     This walk was already here and it passed -- while the shipped build
+     rendered "Equipm...", "Poi...", "Journ..." in a screenshot.  The reason
+     is the state it swept: a fresh character has no unspent points, so the
+     Points tab carried no count badge, and it is the badge's 12px reserve
+     that pushed the three tabs over the strip's 191 and ellipsised ALL of
+     them.  A guard that only ever sees the empty state cannot see the bug.
+     Same for the records: "Deepest Zone" is a zone NAME, and the fresh
+     value is the em dash.  Both are seeded here so the sweep walks the
+     screen a player who has been playing actually has. */
+  await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current; const R = S && S.rpg;
+    if (R && R.prog3) { R.prog3.pool = 6; R.prog3.poolBy = { sword: 1, bow: 4, staff: 1 }; }
+    if (R) {
+      const cs = R._compStats = R._compStats || {};
+      cs.totalGoldEarned = 1234567; cs.deepestZone = 'Frost Hollow';
+    }
+    if (S) S._serverCaps = Object.assign({}, S._serverCaps, { prog3Chan: true });
+  });
+  await P.page.evaluate(() => window.__broDashPanelBus.open('hero'));
+  await P.page.waitForTimeout(900);
+  for (const sec of ['Overview', 'Build', 'Records']) {
+    const fit = await P.page.evaluate((s) => {
+      const tab = document.querySelector(`.bt-land-sheet [role="button"][data-section="${s}"]`);
+      if (tab) tab.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+      return !!tab;
+    }, sec);
+    if (!fit) { rec.ok(`hero/${sec}: the section tab exists`, false, { sec }); continue; }
+    await P.page.waitForTimeout(650);
+    const clip = await P.page.evaluate(() => {
+      const sh = document.querySelector('.bt-land-sheet');
+      const shR = sh.getBoundingClientRect();
+      let past = 0; const trunc = [];
+      for (const el of sh.querySelectorAll('*')) {
+        const rr = el.getBoundingClientRect();
+        if (rr.width > 4 && rr.right > shR.right + 2) past++;
+        if (el.children.length === 0 && (el.textContent || '').trim().length > 2
+            && el.clientWidth > 0 && el.scrollWidth > el.clientWidth + 1) {
+          trunc.push((el.textContent || '').trim().slice(0, 24));
+        }
+      }
+      return { past, truncated: [...new Set(trunc)].slice(0, 6), truncCount: trunc.length };
+    });
+    rec.ok(`hero/${sec}: every label renders whole — nothing clipped or ellipsised`,
+      clip.past === 0 && clip.truncCount === 0, clip);
   }
   await P.page.evaluate(() => window.__broDashPanelBus.toBar());
   await P.page.waitForTimeout(400);

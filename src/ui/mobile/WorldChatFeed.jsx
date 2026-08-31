@@ -239,7 +239,13 @@ export function WorldChatFeed() {
            underneath it.  --world-x is 0 in portrait and whenever the panel
            is on the right, so this is the `left: 8` it replaces everywhere
            else. */
-        left: 'calc(var(--world-x, 0px) + 8px)',
+        /* v2.3.2176b: ...and clear of the landscape fold chip.  At rest
+           the dashboard is minimised to that one ▴ button, --world-x drops
+           to 0, and this shell landed underneath it -- the bell unreadable
+           and untappable in the one state the player spends most of their
+           time in.  --land-fold-w is 0 everywhere else (BroTown resize()),
+           so this is the same `left` in portrait and with any sheet open. */
+        left: 'calc(var(--world-x, 0px) + var(--land-fold-w, 0px) + 8px)',
         /* Clears the dashboard band. See the note above: the band height is
            the CSS var, and 8px of air keeps the panel off its edge. */
         bottom: 'calc(var(--dash-h, 135px) + 8px)',

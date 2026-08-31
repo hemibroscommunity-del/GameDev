@@ -342,7 +342,7 @@ const {
 
 import { _regenerator, _regeneratorDefine2, _asyncToGenerator, _typeof, _slicedToArray, _toConsumableArray, _objectSpread, _defineProperty, _toPropertyKey, _toPrimitive, ownKeys, _arrayWithHoles, _iterableToArrayLimit, _unsupportedIterableToArray, _arrayLikeToArray, _nonIterableRest, _arrayWithoutHoles, _iterableToArray, _nonIterableSpread, _createForOfIteratorHelper, asyncGeneratorStep } from '@/lib/babelHelpers.js';
 import { SpriteHpBar } from './SpriteHpBar.jsx'; /* v2.3.1273: owner's HP-bar art (desktop HUD row) */
-import { navSlotSize, bandFootprint } from './mobile/sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 bar-height canvas; v2.3.1325 slot-derived bar; v2.3.1560 two-row band; v2.3.1635 three-row band; v2.3.1636 columns row; v2.3.2156 one footprint for resize + watchdog */
+import { navSlotSize, bandFootprint, DASH_GAP, LAND_FOLD_CHIP_W } from './mobile/sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 bar-height canvas; v2.3.1325 slot-derived bar; v2.3.1560 two-row band; v2.3.1635 three-row band; v2.3.1636 columns row; v2.3.2156 one footprint for resize + watchdog */
 import { playIsLandscape } from './mobile/playViewport.js'; /* v2.3.2156: the data-orient stamp + the isLandscape seed */
 import { dashMinBus } from './mobile/dashMinBus.js'; /* v2.3.2119: folded band = identity row only */
 import { recolorEnabled } from '@/rendering/traits/recolorOptions.js';
@@ -3063,6 +3063,22 @@ export var BroTown = function BroTown(_ref0) {
         (_dashSide === 'left' ? _fp.sheetW : 0) + 'px');
       document.documentElement.style.setProperty('--world-pad-l', _insL + 'px');
       document.documentElement.style.setProperty('--world-pad-r', _insR + 'px');
+      /* ═══ v2.3.2176b: THE RESTING FOLD CHIP'S FOOTPRINT ═══
+         Found by looking at a screenshot of the resting landscape world:
+         the ▴ chip and the v2.3.2155 notification bell were drawn in the
+         SAME bottom-left corner, chip on top -- so the bell could not be
+         read and could not be tapped.  Neither is wrong on its own; they
+         only collide in the one state where the dashboard is minimised
+         (--world-x drops to 0 and the world's left edge becomes the
+         screen's, right where the chip lives).  So the chip states its
+         width and the world's bottom-left cluster steps around it: the
+         dock's inset + its padding + the 34px chip, plus air.  Zero
+         whenever the chip is NOT on the world's left edge -- portrait,
+         any open sheet, and every rotation that puts the dashboard on the
+         right -- which keeps those layouts byte-identical. */
+      document.documentElement.style.setProperty('--land-fold-w',
+        (playIsLandscape() && !_sheetOpen && _dashSide === 'left'
+          ? 2 * DASH_GAP + LAND_FOLD_CHIP_W + 8 : 0) + 'px');
       try {
         document.documentElement.setAttribute('data-dash-side', _dashSide);
       } catch (e) { /* SSR/teardown: a missed stamp heals on the next resize */ }

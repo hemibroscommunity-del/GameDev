@@ -400,3 +400,55 @@ truth resize() reads) proving the whole dashboard flees to the right and comes
 back, and a sweep asserting **no text-bearing world chrome intrudes into the
 panel's column** — the guard that would have caught the bell and the coach
 card, which a passing suite missed and only looking at the screenshot found.
+
+### Minimized means minimized (v2.3.2176 — owner)
+
+Owner, of a resting landscape screenshot: *"the dashboard navigation buttons
+still visible that should've been hidden inside the main dashboard screen when
+it's minimized. Also the main dashboard button (the chart) is transparent but
+should have the same background as the other buttons."*
+
+- **At rest the world carries the ▴ chip and nothing else.** The five nav
+  buttons belong to the CONTAINER, not to the world: the dock renders them only
+  while a destination is open, and its width collapses to the chip's. Reaching
+  a destination costs one extra tap, which the owner weighed and chose — the
+  world is what landscape is for. The chip does not move between states (the
+  v2.3.1637b one-position law).
+- **A lit button is not a transparent one.** `COL.accentFill` is
+  `rgba(216,170,88,0.15)` — a brass TINT, which over the dark band reads as a
+  fill and over the bright world reads as a hole. Lit buttons composite that
+  tint over the same opaque `COL.wellSoft` every other button carries.
+- **The chart lights for the DASHBOARD destination sideways** (`landLit`). In
+  portrait it lights AT REST, because rest IS the dashboard there; sideways the
+  buttons only exist while something is open, so the at-rest rule would have
+  left it the one button with no lit state at all.
+- **The fold chip and the notification bell no longer share a corner.** At rest
+  `--world-x` drops to 0 and the world's bottom-left cluster landed underneath
+  the chip — the bell unreadable and untappable. resize() stamps
+  `--land-fold-w` (the chip's footprint, non-zero only when the chip is
+  actually on the world's left edge) and the chat-feed shell steps around it.
+  Found by looking at the screenshot; the suite was green.
+
+### The Points accordion (v2.3.2176 — owner mockup)
+
+Owner: *"The core thing the player is doing is not 'editing Bow stats'… They
+are doing: I earned a point. Where do I want to spend it?"* So the screen is
+three weapon lanes, one open at a time (`buildCat`, which already meant
+exactly that), and every control that can spend a point lives inside the open
+lane: `<WEAPON> ATTACK` on the left, `CHARACTER` (shared) on the right — the
+owner named that column, not "Global". Collapsed lanes carry their level, a
+`N PTS` chip and, in portrait, a `CRIT n/11 DMG n/11 SPD n/11` summary.
+
+Two bugs the screenshots caught that the green suite did not:
+
+- **`overflow:hidden` on a lane made the lane a scroll container**, so the
+  header's `position:sticky` resolved against the LANE and pinned itself 32px
+  down — on top of its own Crit row. The old guard asserted the *declaration*
+  (`position === 'sticky'`), which stayed true while the layout was broken.
+  Corners moved onto the header; mp-prog3 now measures the effect.
+- **The Points tab's count badge reserved 12px** and pushed the three section
+  tabs past the 191px strip, so all three ellipsised — "Equipm…", "Poi…",
+  "Journ…" — but only once the player had a point to spend. The landdash label
+  sweep passed because it swept a FRESH character. Sideways the count is a dot
+  (it is still on the hero nav button, in each lane's chip, and in the tab's
+  aria-label), and the sweep now seeds points and a long zone name first.

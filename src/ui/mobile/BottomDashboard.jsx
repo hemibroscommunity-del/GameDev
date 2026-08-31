@@ -19,7 +19,7 @@ import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rende
 import { getEyeColor, onEyeColorChange } from '../../rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
 import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
-import { barHeight, expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP, bandFootprint, LAND_NAV_BTN_W, landscapeNavGroupW, landscapeSheetW, identityRowHeight } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.1325 slot-derived bar; v2.3.2157 the sideways band; v2.3.2166 the nav dock; v2.3.2168 the barless landscape */
+import { barHeight, expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP, bandFootprint, LAND_NAV_BTN_W, landscapeNavGroupW, landscapeSheetW, identityRowHeight, LAND_FOLD_CHIP_W } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.1325 slot-derived bar; v2.3.2157 the sideways band; v2.3.2166 the nav dock; v2.3.2168 the barless landscape */
 import { DashColumns } from './dash/DashColumns.jsx';           /* v2.3.1636 */
 import { NavRail } from './dash/NavRail.jsx';                   /* v2.3.1637 */
 import { portraitStore } from './sheet/portraitStore.js';          /* v2.3.1294 */
@@ -859,6 +859,11 @@ export const BottomDashboard = () => {
      in-flow header rendered on, now read by the toolbar row instead. */
   const drill = mode === 'expanded' && stack.length > 1;
   const litId = mode === 'bar' ? null
+    /* v2.3.2176: 'dashboard' is a real destination sideways (PANELS.dashboard,
+       the 2x4 column) but it is not in DESTINATIONS, so it fell through to the
+       legacy-root branch and lit MORE -- the wrong button entirely, on the one
+       screen the chart button names.  Matched first, before that fallback. */
+    : rootId === 'dashboard' ? 'dashboard'
     : DESTINATIONS.map(d => d.id).includes(rootId) ? rootId
     /* legacy drill roots (inventory push, tutorial ids...) light More */
     : (rootId ? 'more' : 'bag');
@@ -1046,7 +1051,18 @@ export const BottomDashboard = () => {
                container's inner width — always that width, whatever is
                open, so the buttons hold one screen position (v2.3.1637b)
                — and NavRail's `fill` flexes the five buttons into it. */
-            width: landscapeSheetW(playVw(), playVh(), 'dashboard') - 2 * DASH_GAP,
+            /* v2.3.2176 (owner: "the dashboard navigation buttons still
+               visible that should've been hidden inside the main dashboard
+               screen when it's minimized"): the dock is only as wide as
+               what it shows.  At rest that is the chip alone, so the row
+               stops reserving a container's worth of world for buttons
+               that are not there; open, it is the container's inner width
+               and the buttons fill it (NavRail's `fill`).  The chip itself
+               never moves -- it is the first item either way, at the same
+               screen position (v2.3.1637b). */
+            width: mode === 'expanded'
+              ? landscapeSheetW(playVw(), playVh(), 'dashboard') - 2 * DASH_GAP
+              : undefined,
             zIndex: 31,
             display: 'flex', alignItems: 'center', paddingLeft: DASH_GAP,
           }}
@@ -1068,20 +1084,31 @@ export const BottomDashboard = () => {
             aria-label={mode === 'expanded' ? 'Minimize dashboard' : 'Expand dashboard'}
             aria-expanded={mode === 'expanded'}
             data-land-fold={mode === 'expanded' ? 'open' : 'min'}
-            style={{ ...chipStyle, flex: 'none', fontSize: 15 }}
+            style={{ ...chipStyle, flex: 'none', fontSize: 15, width: LAND_FOLD_CHIP_W }}
           >{mode === 'expanded' ? '▾' : '▴'}</button>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <NavRail
-              items={RAIL_ITEMS}
-              litId={litId}
-              atRest={mode === 'bar'}
-              vw={playVw()}
-              vh={typeof window !== 'undefined' ? window.innerHeight : 844}
-              dots={dots}
-              btnW={LAND_NAV_BTN_W}
-              fill
-              profilePortrait={profilePortrait} />
-          </div>
+          {/* ═══ v2.3.2176: MINIMIZED MEANS MINIMIZED ═══
+              Owner: the nav buttons "should've been hidden inside the main
+              dashboard screen when it's minimized."  So sideways they are
+              part of the CONTAINER, not permanent world chrome: at rest the
+              only control on the world is the chip that opens it (plus the
+              gold chip and the bell, which are readouts).  Reaching a
+              destination costs one extra tap, which the owner weighed and
+              chose -- the world is what landscape is for. */}
+          {mode === 'expanded' ? (
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <NavRail
+                items={RAIL_ITEMS}
+                litId={litId}
+                atRest={mode === 'bar'}
+                vw={playVw()}
+                vh={typeof window !== 'undefined' ? window.innerHeight : 844}
+                dots={dots}
+                btnW={LAND_NAV_BTN_W}
+                fill
+                landLit
+                profilePortrait={profilePortrait} />
+            </div>
+          ) : null}
         </div>
       ) : null}
 

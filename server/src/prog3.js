@@ -65,8 +65,30 @@ export const PROG3 = {
    * justify.  ATK stats are allocated PER COMBAT TYPE, so specialising in
    * Bow means investing in Bow's crit specifically.
    *
-   * The point pool stays SINGLE and shared, which is what keeps the choice
-   * sharp: points spent on Melee's crit are points not spent on Magic's.
+   * The point pool WAS single and shared, "which is what keeps the choice
+   * sharp: points spent on Melee's crit are points not spent on Magic's."
+   *
+   * ═══ v2.3.2176: POINTS REMEMBER THE SKILL THAT EARNED THEM ═══
+   * Owner, correcting the model this file had: "There are 3 primary combat
+   * skills.  You earn stat points that one of those primary combat skills
+   * channels.  You can only apply offensive weapon damage to the combat
+   * skills you leveled up in.  However you can apply that stat point to any
+   * defensive attribute (max hp, defense, dodge, stamina) regardless of what
+   * channel you earned the point through.  That's the nuanced difference."
+   *
+   * So a point is stamped with its channel at the moment of the level-up:
+   * `poolBy[cat]`.  An OFFENSE spend on Bow must draw a Bow point; a BODY
+   * spend may draw from whichever channel the player is standing in.  The
+   * old sharpness survives in a better place -- a Bow point is still a
+   * point not spent on Magic's crit, but now because it never could be.
+   *
+   * `pool` REMAINS the total and remains the field everything else reads
+   * (the client's prog3Pool, the persistence echo, the migrations).  The
+   * breakdown is additive: `poolBy` sums to at most `pool`, and the
+   * remainder -- points that predate this change, with no channel on
+   * record -- is spendable ANYWHERE.  That is the only honest migration:
+   * nobody's earned points get stranded behind a rule that did not exist
+   * when they earned them.
    */
   BODY: {
     def:     { cap: 100, per: 0.004 },  // −0.4% damage taken/pt → −40%
@@ -321,6 +343,29 @@ export const prog3Methods = {
     }
     const p = Number(src.pool);
     if (Number.isFinite(p) && p > 0) out.pool = Math.min(999, Math.floor(p));
+    /* v2.3.2176: the per-channel breakdown.  Absent on every blob written
+       before this change, which is exactly what makes those points "any" --
+       see the header.  Clamped to `pool` as a whole so a forged blob cannot
+       mint offense points by claiming a channel holds more than exists. */
+    out.poolBy = { sword: 0, bow: 0, staff: 0 };
+    if (src.poolBy && typeof src.poolBy === 'object') {
+      let sum = 0;
+      for (const cat of PROG3.SKILLS) {
+        const n = Number(src.poolBy[cat]);
+        if (!Number.isFinite(n) || n <= 0) continue;
+        const v = Math.min(999, Math.floor(n));
+        out.poolBy[cat] = v; sum += v;
+      }
+      /* Never let the parts exceed the whole. */
+      if (sum > out.pool) {
+        let over = sum - out.pool;
+        for (const cat of PROG3.SKILLS) {
+          if (over <= 0) break;
+          const take = Math.min(over, out.poolBy[cat]);
+          out.poolBy[cat] -= take; over -= take;
+        }
+      }
+    }
     /* v2.3.1733: `ms` = the highest character level whose MILESTONE rewards
        have already been paid (abilities.js _prog3GrantMilestones).  It has
        to survive this sanitizer or every join would re-pay the bonus point
@@ -469,6 +514,9 @@ export const prog3Methods = {
       sk.xp -= prog3XpRequired(sk.level);
       sk.level++;
       p3.pool++;
+      /* v2.3.2176: and the point remembers WHICH skill earned it. */
+      if (!p3.poolBy || typeof p3.poolBy !== 'object') p3.poolBy = { sword: 0, bow: 0, staff: 0 };
+      p3.poolBy[cat] = (Number(p3.poolBy[cat]) || 0) + 1;
       gained++;
     }
     if (sk.level >= PROG3.LEVEL_CAP) sk.xp = 0;
@@ -542,13 +590,35 @@ export const prog3Methods = {
     if (!sd) return;
     if (!(p3.pool >= 1)) return;
 
+    /* ═══ v2.3.2176: WHICH POINT IS BEING SPENT ═══
+       `poolBy[cat]` is what that skill earned; the remainder of `pool` is
+       legacy/unchannelled and spendable anywhere (see the file header).
+       An OFFENSE spend may only draw the named skill's own points or that
+       remainder; a BODY spend draws the same way from whichever lane the
+       player is standing in, because the owner's rule is about where a
+       point may be SPENT on attack, not about defense. */
+    if (!p3.poolBy || typeof p3.poolBy !== 'object') p3.poolBy = { sword: 0, bow: 0, staff: 0 };
+    const chan = (c) => (PROG3.SKILLS.indexOf(c) >= 0 ? Math.max(0, Number(p3.poolBy[c]) || 0) : 0);
+    const anyPts = Math.max(0, p3.pool - PROG3.SKILLS.reduce((n, c) => n + chan(c), 0));
+    /* Spend the CHANNELLED point first and keep the free one for a choice
+       the player may not have yet — spending the flexible point while a
+       matching one sits unused would quietly narrow their options. */
+    const takePoint = (c) => {
+      p3.pool -= 1;
+      if (chan(c) > 0) p3.poolBy[c] = chan(c) - 1;
+    };
+
     const levelCap = ps.level || this._prog3CharLevel(ps);
     const cap = Math.min(sd.def.cap, levelCap);
 
-    let cur, apply;
+    let cur, apply, from;
     if (sd.scope === 'atk') {
       const cat = payload && payload.cat;
       if (typeof cat !== 'string' || PROG3.SKILLS.indexOf(cat) < 0) return;
+      /* THE RULE: "You can only apply offensive weapon damage to the combat
+         skills you leveled up in."  A Bow point cannot buy Melee crit. */
+      if (chan(cat) < 1 && anyPts < 1) return;
+      from = cat;
       if (!p3.atk || typeof p3.atk !== 'object') p3.atk = prog3FreshAtk();
       if (!p3.atk[cat] || typeof p3.atk[cat] !== 'object') p3.atk[cat] = { crit: 0, critDmg: 0, aspd: 0 };
       cur = (typeof p3.atk[cat][stat] === 'number') ? p3.atk[cat][stat] : 0;
@@ -557,11 +627,19 @@ export const prog3Methods = {
     } else {
       cur = (typeof p3.alloc[stat] === 'number') ? p3.alloc[stat] : 0;
       if (cur >= cap) return;
+      /* A BODY stat takes any point.  The client names the lane it is
+         standing in so the spend comes off that lane's count on screen;
+         an old client sends none, and then the largest channel pays --
+         never the flexible remainder, which is worth keeping for offense. */
+      const want = payload && payload.cat;
+      from = (typeof want === 'string' && PROG3.SKILLS.indexOf(want) >= 0 && chan(want) > 0)
+        ? want
+        : PROG3.SKILLS.reduce((best, c) => (chan(c) > chan(best) ? c : best), PROG3.SKILLS[0]);
       apply = () => { p3.alloc[stat] = cur + 1; return { stat, cat: null, pts: cur + 1 }; };
     }
 
     const applied = apply();
-    p3.pool -= 1;
+    takePoint(from);
     this._prog3Recompute(ps);
     this._saveRpg(session.id, ps);
     const ws = this._wsBySessionId(session.id);
@@ -569,7 +647,9 @@ export const prog3Methods = {
       try {
         ws.send(JSON.stringify({
           type: 'prog3_allocated',
-          payload: { ...applied, pool: p3.pool },
+          /* v2.3.2176: the breakdown rides the ack so the lane counts move
+             the moment the spend settles, not on the next player_state. */
+          payload: { ...applied, pool: p3.pool, poolBy: { ...p3.poolBy } },
         }));
       } catch (e) {}
       this._sendPlayerState(ws, session.id);
