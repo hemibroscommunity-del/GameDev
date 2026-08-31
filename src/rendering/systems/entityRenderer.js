@@ -1492,6 +1492,26 @@ const _CAPE_PIVOT_Y = 0.33;   /* v2.3.2126: the picked frame's value */
    keeps one shape rather than three independent hand-set numbers. */
 const _CAPE_JOG_DX = { east: -28, northeast: -19, southwest: 19, north: 0, south: 0 };
 
+/* ═══ v2.3.2189: HOW MUCH OF THAT MOTION THE HOOD TAKES ═══
+ * Fractions of the two numbers above, not a second table: the panels' tilt and
+ * slide have been tuned by the owner three times (v2.3.2025, 2125, 2126-2127)
+ * and re-tuning them must keep moving the whole garment.  See the long note in
+ * _placeCape for why a hood cannot take the panels' motion at all.
+ *
+ * BOTH ARE ZERO, and that is the answer the pictures gave rather than a
+ * placeholder: at 0 the hood sits exactly where the STANDING frames put it --
+ * on the crown, tracking the head's own bob through the body-tops offset the
+ * placement already applies -- and standing is the one pose that has never been
+ * reported wrong.  A fraction of the panel motion is the obvious middle ground
+ * and it is NOT free, because the pivot is at the shoulders: a partial swing
+ * about a point below the neck still TRANSLATES the hood off the head, just
+ * less far, so buying a little lean costs a little of the seat that was the
+ * bug.  If a lean is ever wanted, the pivot has to move onto the neck first.
+ * They exist as named constants, and as bench handles below, so that round is
+ * a sweep rather than a rebuild. */
+const _CAPE_HOOD_TILT_K = 0;
+const _CAPE_HOOD_DX_K = 0;
+
 /* ═══ v2.3.2125: THE TWO NUMBERS THIS KEEPS BEING ASKED TO CHANGE ═══
  * The tilt has now been re-asked for twice ("angled more with jog", v2.3.2025;
  * "angled more aggressively so the back of his body doesn't show behind it",
@@ -1523,7 +1543,10 @@ function _capeTune(dir) {
      That is also why three rounds of scene-graph assertions missed it: the
      sprite is visible, its texture is right, its scale matches the body and
      its rotation is applied. Only the position is poisoned. */
-  if (!t) return { tilt: base, pivotY: _CAPE_PIVOT_Y, dx: (_CAPE_JOG_DX[dir] || 0) };
+  if (!t) {
+    return { tilt: base, pivotY: _CAPE_PIVOT_Y, dx: (_CAPE_JOG_DX[dir] || 0),
+      hoodTiltK: _CAPE_HOOD_TILT_K, hoodDxK: _CAPE_HOOD_DX_K };
+  }
   /* A tilt of 0 is meaningful (north/south face the camera, where a sideways
      lean would be a lie), so scale rather than replace: one knob moves the
      whole table and cannot accidentally give north a tilt it must not have. */
@@ -1536,6 +1559,11 @@ function _capeTune(dir) {
        lie a sideways tilt would), and scaling cannot move a zero.  A sweep
        needs to be able to ask "what does -20 look like on east". */
     dx: (typeof t.jogDx === 'number') ? t.jogDx : (_CAPE_JOG_DX[dir] || 0),
+    /* v2.3.2189: the same shape -- absolute, because 0 is the shipped value
+       and scaling cannot move a zero.  This is the whole point of the bench:
+       asking "what does a quarter of the panel tilt look like on the hood". */
+    hoodTiltK: (typeof t.hoodTiltK === 'number') ? t.hoodTiltK : _CAPE_HOOD_TILT_K,
+    hoodDxK: (typeof t.hoodDxK === 'number') ? t.hoodDxK : _CAPE_HOOD_DX_K,
   };
 }
 
@@ -1619,9 +1647,6 @@ function _placeCape(display, capeId, pose, dir, mirror, frameIdx) {
      centre so the rotation pivots there, and y is compensated by the same
      amount so the cape does not also jump up the screen when it tilts. */
   const tune = _capeTune(dir);                                   /* v2.3.2125 */
-  const tilt = (pose === 'jog') ? (tune.tilt * (mirror ? -1 : 1)) : 0;
-  if (spr.anchor.y !== tune.pivotY) spr.anchor.set(0.5, tune.pivotY);
-  if (spr.rotation !== tilt) spr.rotation = tilt;
   const drawnH = Math.abs(spr.scale.y) * ((tex.frame && tex.frame.height) || 256);
   /* v2.3.2126: the jog slide, in the same 256-space the crown offset above is
      in, so it scales with the sprite exactly as that does. */
@@ -1631,34 +1656,73 @@ function _placeCape(display, capeId, pose, dir, mirror, frameIdx) {
      matching entry. A cape one pixel out of place is a bug you can see; a
      cape at NaN is a bug that looks like the feature was never built. */
   const _tuneDx = Number(tune.dx) || 0;
-  const jogDx = (pose === 'jog')
+  const jogging = (pose === 'jog');
+  /* THE PANELS' motion: the tilt and the slide, exactly as tuned in
+     v2.3.2024-2127.  Nothing about these two numbers changes. */
+  const panelTilt = jogging ? (tune.tilt * (mirror ? -1 : 1)) : 0;
+  const panelSlide = jogging
     ? (_tuneDx * Math.abs(spr.scale.x) * (mirror ? -1 : 1))
     : 0;
-  spr.x = sb.x + dx + jogDx;
-  spr.y = sb.y + dy - (0.5 - tune.pivotY) * drawnH;
+  /* ═══ v2.3.2189: A HOOD IS NOT CLOTH ═══
+   * Owner: "East jog cape covers player face" and "Southwest jog the cape is
+   * aligned too far to the right on his head."
+   *
+   * Both are the same bug wearing two costumes, and it is the LAST thing left
+   * over from before the hood split.  v2.3.2186 cut the garment in two but
+   * still computed one transform and copied it, on the reasoning that any
+   * divergence "would be a bug by construction".  That reasoning holds for the
+   * SCALE and the CROWN OFFSET -- both halves are the same 256 box fitted to
+   * the same body -- and it is wrong for the two numbers that describe how
+   * cloth MOVES:
+   *
+   *   the tilt   swings the garment 0.75 rad about the shoulders on east.  On
+   *              the panels that is the cloth streaming behind a runner.  On
+   *              the hood it rotates a hat 43 degrees about a point below the
+   *              neck, which walks it forward and down until its front rim
+   *              sits over the face.  Photographed: jog-east, the face gone.
+   *   the slide  pushes the garment 19-28px BACKWARDS along the line of travel,
+   *              so the hem trails.  A head does not trail.  On southwest the
+   *              +19 carries the hood bodily off the skull to the right, which
+   *              is the owner's second report word for word.
+   *
+   * The panels hang from the shoulders and swing; the hood is ON the skull and
+   * goes where the skull goes -- which is what the crown offset above already
+   * says, and which is why the STANDING frames (tilt 0, slide 0) were never
+   * reported: standing, the hood is already seated correctly.
+   *
+   * So the two halves get their own motion, scaled off the panels' by the two
+   * K's below rather than by an independent table -- one number still moves the
+   * whole garment, and a hood cannot drift out of proportion with the panels it
+   * is stitched to.  Zero means "rides the head", which is what the pictures
+   * chose; they are constants rather than inlined zeros so the next tuning
+   * round is a sweep and not a rebuild, exactly as tilt and pivot already are.
+   *
+   * UNSPLIT facings (north/northeast) are untouched: there is no separate hood
+   * sprite there, `spr` IS the whole garment, and it keeps the panel motion. */
+  const hoodTilt = panelTilt * tune.hoodTiltK;
+  const hoodSlide = panelSlide * tune.hoodDxK;
+  /* One seat for every layer, so the scale, the pivot and the y-compensation
+     cannot drift between them -- only the two motion terms differ, and they
+     are arguments. */
+  const seat = (s, tiltVal, slideVal) => {
+    s.scale.x = spr.scale.x; s.scale.y = spr.scale.y;
+    if (s.anchor.y !== tune.pivotY) s.anchor.set(0.5, tune.pivotY);
+    if (s.rotation !== tiltVal) s.rotation = tiltVal;
+    s.x = sb.x + dx + slideVal;
+    s.y = sb.y + dy - (0.5 - tune.pivotY) * drawnH;
+  };
+  if (back && back.visible) seat(back, panelTilt, panelSlide);
+  seat(spr, split ? hoodTilt : panelTilt, split ? hoodSlide : panelSlide);
   if (!spr.visible) spr.visible = true;
-  /* v2.3.2186: the back half wears the SAME transform, copied rather than
-     recomputed.  Both frames are the same 256 box fitted to the same body, so
-     any divergence here would be a bug by construction -- and the jog tilt,
-     the shoulder pivot and the crown offset all have to stay identical or the
-     hood would swing off the panels it is stitched to. */
-  if (back && back.visible) {
-    back.scale.x = spr.scale.x; back.scale.y = spr.scale.y;
-    if (back.anchor.y !== spr.anchor.y) back.anchor.set(0.5, spr.anchor.y);
-    back.rotation = spr.rotation;
-    back.x = spr.x; back.y = spr.y;
-  }
-  /* v2.3.2186: and the hair clip rides the same transform.  Left INVISIBLE --
+  /* v2.3.2186: and the hair clip rides the same transform -- v2.3.2189: the
+     HOOD's, since it is the hood's silhouette it clips to.  Left INVISIBLE --
      a mask is sampled, not drawn, and showing it would paint a white hood. */
   const hoodMask = display._capeHoodMask;
   if (hoodMask) {
     const mtex = split ? getCapeHoodMaskTexture(capeId, dir) : null;
     if (mtex) {
       if (hoodMask.texture !== mtex) hoodMask.texture = mtex;
-      hoodMask.scale.x = spr.scale.x; hoodMask.scale.y = spr.scale.y;
-      if (hoodMask.anchor.y !== spr.anchor.y) hoodMask.anchor.set(0.5, spr.anchor.y);
-      hoodMask.rotation = spr.rotation;
-      hoodMask.x = spr.x; hoodMask.y = spr.y;
+      seat(hoodMask, hoodTilt, hoodSlide);
       hoodMask._btReady = true;
     } else {
       hoodMask._btReady = false;

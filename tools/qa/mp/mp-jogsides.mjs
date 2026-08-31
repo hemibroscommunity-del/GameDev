@@ -56,6 +56,15 @@ const armClone = (P) => P.page.evaluate(() => {
   if (!pd) return null;
   const b = pd._handArmSprite, sh = pd._handArmShirt, worn = pd._gearShirt;
   const cp = pd._handArmCape, wornCape = pd._capeSprite;          /* v2.3.2138 */
+  /* v2.3.2189: the clone copies its transform from whichever sprite carries the
+     WHOLE garment -- the back half since the v2.3.2186 split, `_capeSprite` on
+     the unsplit facings -- so the tilt claim below has to compare against that
+     same sprite.  `_capeSprite` now holds the hood, which v2.3.2189 seats on the
+     head at rotation 0 on purpose; comparing to it would fail a correct build
+     and would be asserting that the clone copies the HOOD, which is not what
+     the clone is for or what the renderer does. */
+  const _cb = pd._capeBackSprite;
+  const wornSrc = (_cb && _cb.visible && _cb.texture) ? _cb : wornCape;
   const idx = (o) => { try { return pd.getChildIndex(o); } catch (e) { return -1; } };
   return {
     body: !!(b && b.visible), shirt: !!(sh && sh.visible),
@@ -68,9 +77,9 @@ const armClone = (P) => P.page.evaluate(() => {
     /* The cape is tilted and shoulder-pivoted on a jog; the clone has to carry
        both or it lays a straight stripe over a slanted cape. */
     capeRot: cp ? +Number(cp.rotation || 0).toFixed(3) : null,
-    wornCapeRot: wornCape ? +Number(wornCape.rotation || 0).toFixed(3) : null,
+    wornCapeRot: wornSrc ? +Number(wornSrc.rotation || 0).toFixed(3) : null,
     capeAnchorY: cp ? +Number(cp.anchor.y).toFixed(3) : null,
-    wornCapeAnchorY: wornCape ? +Number(wornCape.anchor.y).toFixed(3) : null,
+    wornCapeAnchorY: wornSrc ? +Number(wornSrc.anchor.y).toFixed(3) : null,
   };
 });
 
