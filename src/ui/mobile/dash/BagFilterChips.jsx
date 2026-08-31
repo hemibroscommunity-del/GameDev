@@ -18,6 +18,33 @@ import { DASH_GAP } from '../sheet/sheetGeometry.js';
 
    The chips fill their row: no fixed width, so five categories or eight
    both divide the space evenly instead of overflowing it. */
+/* ═══ v2.3.2183: THE FUNNEL, ONCE, AND NOT ON "ALL" ═══
+   Owner: "Just add the filter icons to everything except the bag button."
+
+   Two halves.  The mark was drawn inline in the horizontal branch only, so
+   the landscape RAIL had none at all -- five bare pictograms with nothing
+   saying what tapping one does to the list, which is precisely the gap
+   v2.3.1650 added it to close ("understood without using language").  The
+   rail is 44px wide since v2.3.2179, so there is now room for it.
+
+   And the bag chip loses the one it had.  That chip is `all` -- the
+   UNFILTERED view -- so a funnel on it promised the opposite of what it
+   does: the only chip that removes filtering was advertising itself as
+   filtering.  Four category chips carry the mark; the one that clears them
+   does not, which is the distinction the owner is drawing. */
+const Funnel = ({ on }) => (
+  <svg viewBox="0 0 10 10" width="9" height="9" aria-hidden="true" style={{
+    position: 'absolute', top: 2, right: 2, pointerEvents: 'none',
+  }}>
+    <path d="M1 1.5 H9 L6.2 5 V8.6 L3.8 7.4 V5 Z"
+      fill={on ? COL.accent : 'none'}
+      stroke={on ? COL.accent : COL.muted} strokeWidth="1.1" strokeLinejoin="round" />
+  </svg>
+);
+
+/* The chip that CLEARS the filter, rather than applying one. */
+const UNFILTERED = 'all';
+
 export const BagFilterChips = ({ height, gutter, width, vertical }) => {
   const [sel, setSel] = useState(bagFilterBus.get());
   useEffect(() => bagFilterBus.subscribe(setSel), []);
@@ -41,6 +68,7 @@ export const BagFilterChips = ({ height, gutter, width, vertical }) => {
               role="button" aria-label={c.label} aria-pressed={on} title={c.label}
               onPointerUp={(e) => { e.stopPropagation(); bagFilterBus.set(c.id); }}
               style={{
+                position: 'relative',   /* v2.3.2183: the funnel anchors here */
                 flex: '1 1 0', minHeight: 0, width: '100%',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 background: on ? COL.accentFill : COL.wellSoft,
@@ -48,9 +76,22 @@ export const BagFilterChips = ({ height, gutter, width, vertical }) => {
                 borderRadius: 7, boxSizing: 'border-box',
                 cursor: 'pointer', touchAction: 'manipulation',
               }}>
+              {c.id !== UNFILTERED && <Funnel on={on} />}
+              {/* v2.3.2184 (owner: "actually increase the size of the filter
+                  categories ... there's room to"): 20 -> 28.  The rail's
+                  chips became 44x47 at v2.3.2179 and the icon never grew
+                  with them, so a 20px pictogram sat in a cell twice its
+                  size -- the thing being named was smaller than the box
+                  naming it.  28 keeps 8px of margin on the narrow axis and
+                  still clears the funnel's corner.  The portrait row is NOT
+                  touched: its chips are 26px tall by BAG_HEADER_H and hold
+                  a 24px icon already, so growing that icon means growing
+                  the band and taking the height off the world, which is a
+                  different decision than spending room that is already
+                  there. */}
               <img src={c.iconSrc} alt="" draggable={false}
                 style={{
-                  width: 20, height: 20, objectFit: 'contain',
+                  width: 28, height: 28, objectFit: 'contain',
                   opacity: on ? 1 : 0.7, pointerEvents: 'none',
                 }} />
             </div>
@@ -119,21 +160,14 @@ export const BagFilterChips = ({ height, gutter, width, vertical }) => {
               cursor: 'pointer', touchAction: 'manipulation',
             }}>
             {/* v2.3.1650 (owner: "put the little filter icon next to each
-                filter button").  This is v2.3.1320's funnel mark, restored
-                verbatim from the design it shipped in — the owner's own
-                suggestion at the time, for the reason recorded then:
-                "understood without using language".  Five category
-                pictograms in a row do not say WHAT they do to the list;
-                the funnel does, in nine pixels and no words.  Brass on the
+                filter button").  v2.3.1320's funnel mark: five category
+                pictograms in a row do not say WHAT they do to the list; the
+                funnel does, in nine pixels and no words.  Brass on the
                 active chip, so it doubles as the selected marker now that
-                the recessed track is gone. */}
-            <svg viewBox="0 0 10 10" width="9" height="9" aria-hidden="true" style={{
-              position: 'absolute', top: 2, right: 2, pointerEvents: 'none',
-            }}>
-              <path d="M1 1.5 H9 L6.2 5 V8.6 L3.8 7.4 V5 Z"
-                fill={on ? COL.accent : 'none'}
-                stroke={on ? COL.accent : COL.muted} strokeWidth="1.1" strokeLinejoin="round" />
-            </svg>
+                the recessed track is gone.
+                v2.3.2183: shared with the landscape rail, and off the `all`
+                chip -- see the note on Funnel above. */}
+            {c.id !== UNFILTERED && <Funnel on={on} />}
             <img src={c.iconSrc} alt="" draggable={false}
               style={{
                 width: 24, height: 24, objectFit: 'contain',

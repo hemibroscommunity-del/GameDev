@@ -5,6 +5,7 @@ import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { controlsTutorialBus } from '../controlsTutorialBus.js';
 import { installHintBus } from '../installHintBus.js'; /* v2.3.2159 */
 import { TRAIL_STYLES, getTrailStyle, setTrailStyle } from '@/game/questTrailStyle.js';
+import { DASH_SIDES, getDashSidePref, setDashSidePref } from '@/game/dashSidePref.js'; /* v2.3.2177 */
 
 /* v2.3.1232: Lantern Slate pass (docs/LANTERN-SLATE-SPEC.md) — 44px
    setting rows, and the switch grows to a 46×26 touchable pill: track
@@ -79,6 +80,7 @@ export const SettingsPanel = () => {
      value and the storage; this row only names it, the same way the audio
      toggle owns nothing but the label. */
   const [trail, setTrail] = useState(() => getTrailStyle());
+  const [dashSide, setDashSide] = useState(() => getDashSidePref());
   /* v2.3.1347: self-service character restart (owner playtest).
      'idle' -> confirm overlay -> 'sending' (waiting on the server's
      character_reset_done, which wipes + reloads in wsClient.js) or
@@ -216,6 +218,24 @@ export const SettingsPanel = () => {
         value={trail}
         onChange={(id) => { setTrail(setTrailStyle(id)); }}
       />
+      {/* ═══ v2.3.2177: WHICH SIDE THE SIDEWAYS MENUS SIT ON ═══
+          Owner, after v2.3.2176 shipped: the dashboard "always displays on
+          the left" instead of dodging the Dynamic Island.  The cause and the
+          new rule are in dashSidePref.js; this row is the escape hatch for
+          the half of that rule this repo cannot test -- there is no iPhone
+          here to check the rotation mapping against, and a player who finds
+          Auto reading the wrong way round should not have to wait for
+          another build.  It is also just a preference worth having: some
+          people want their menus under one particular thumb.
+          Landscape-only, and it says so rather than appearing inert to
+          somebody reading Settings in portrait. */}
+      <ChoiceRow
+        label="Landscape menu side"
+        hook="dashside"
+        options={DASH_SIDES}
+        value={dashSide}
+        onChange={(id) => { setDashSide(setDashSidePref(id)); }}
+      />
       {/* v2.3.1291 (ChatGPT round-3 §1): Account, Controls and Feedback
           fold in here as drill rows — they left the More launcher.  The
           panels themselves are unchanged (PANELS registry push). */}
@@ -304,7 +324,10 @@ export const SettingsPanel = () => {
  * down to keep a composer clear of the iOS keyboard).  A settings row has no
  * keyboard to make room for, so there is no reason to spend the touch floor
  * here. */
-const ChoiceRow = ({ label, options, value, onChange }) => {
+/* v2.3.2177: `hook` names the data-* attribute the buttons carry, so a
+   second row can be selected by tests without inheriting the trail row's
+   name.  Defaulted, so the original row is untouched. */
+const ChoiceRow = ({ label, options, value, onChange, hook = 'trailstyle' }) => {
   const sel = options.find((o) => o.id === value) || null;
   return (
     <div style={{ padding: '10px 8px', borderBottom: `1px solid ${COL.divider}` }}>
@@ -315,7 +338,7 @@ const ChoiceRow = ({ label, options, value, onChange }) => {
           return (
             <button
               key={o.id}
-              data-trailstyle={o.id}
+              {...{ [`data-${hook}`]: o.id }}
               aria-pressed={on}
               onPointerUp={(e) => { e.stopPropagation(); onChange(o.id); }}
               style={{

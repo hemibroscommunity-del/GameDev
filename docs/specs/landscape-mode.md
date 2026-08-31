@@ -452,3 +452,104 @@ Two bugs the screenshots caught that the green suite did not:
   sweep passed because it swept a FRESH character. Sideways the count is a dot
   (it is still on the hero nav button, in each lane's chip, and in the tab's
   aria-label), and the sweep now seeds points and a long zone name first.
+
+### The insets could never say which side (v2.3.2177 — owner)
+
+Owner, after playing v2.3.2176: *"One thing still not working correctly is
+displaying the dashboard landscape mode on the side away from the Dynamic
+Island area on iPhone. It always displays on the left."*
+
+v2.3.2174 decided the side from one signal — `insetLeft > insetRight`, read off
+`#bt-sab-probe`. Everything downstream of that was correct, and
+mp-landscape-dash proved it by simulating an Island in the probe's own padding
+and watching the whole dashboard flee. The **assumption** was wrong: iOS does
+not report a bigger inset on the housing side. In landscape it insets **both**
+long edges equally (rounded corners exist on both sides), so the comparison is
+false in either rotation and the tie-break — `left` — was the only answer the
+rule could ever give.
+
+**The bug lived in the gap between what the test simulated and what the device
+does.** The guard fed the rule an asymmetric pair no iPhone produces.
+
+The rule now lives in `src/game/dashSidePref.js`:
+
+1. **Asymmetric insets still win** — where a browser reports them honestly it is
+   telling us directly, and no inference beats that.
+2. **A tie at a non-zero value** means "there is a housing to clear, but not
+   which side", and the **rotation** decides: `screen.orientation.angle` of 90
+   is the device turned counter-clockwise, which sweeps its top edge — and the
+   Island — to the left, so the panel takes the right; 270 mirrors it.
+3. **A tie at zero** is the opposite fact — no safe area, nothing to dodge — so
+   the rotation is *not* consulted and the answer is `left`. This distinction is
+   load-bearing: a desktop browser and Playwright's mobile emulation both report
+   a landscape angle of 90 with no insets at all, and without it they would dodge
+   an Island that does not exist.
+
+The angle mapping in (2) was **derived rather than measured** when it shipped —
+this repo has no iPhone to rotate — so it went out behind a Settings pin in case
+it read backwards. The owner then checked both rotations on the device: *"The
+mapping is correct."* Those two lines are known-good against real hardware; do
+not flip them on a later reading of the spec.
+
+**Settings → "Landscape menu side" (Auto · Left · Right)** stays, now as a plain
+preference rather than an escape hatch: some people want their menus under one
+particular thumb, and a device that reports something neither branch expects
+still has an answer. The setter dispatches a resize rather than moving anything
+itself, so resize() stays the single writer of `--world-x` and `data-dash-side`.
+
+The debug overlay's ENVIRONMENT section now prints the raw safe-area insets, the
+angle, the chosen side and the preference — because this bug was invisible from
+the outside and diagnosing it on a phone meant guessing.
+
+mp-landscape-dash now drives the case the device actually presents: **symmetric**
+59px insets with only the rotation differing, asserting the two rotations pick
+opposite sides, plus the pin overriding both signals and Auto handing the
+decision back.
+
+### The installed web app, which nothing tested (v2.3.2178 — owner)
+
+Owner, with three screenshots of the game added to the iPhone home screen:
+*"In web app view the dashboard buttons float off the dashboard"*, and sideways
+*"the combat skills are still getting clipped at the bottom (regardless of
+rotation left or rotation right)"* — then the fix itself: *"it looks like the
+dashboard buttons can go down some to make more room."*
+
+Both are the same missing state. A browser tab has **no** home-indicator inset;
+an installed launch has ~34px in portrait and ~21px sideways, and that inset is
+load-bearing geometry. Every scenario in the harness ran at zero, so every one
+agreed these screens were fine while the owner was looking at two broken ones —
+the second time a device-only state has hidden a bug behind a green suite (the
+first being v2.3.2177's symmetric insets).
+
+**Portrait — the band lost its own rows.** `.bt-dashboard` paints
+`height:var(--dash-h)` with `box-sizing:border-box` and `padding-bottom:<inset>`,
+while its two rows are positioned from the band's *bottom* with that inset added
+(`bottom:calc(<inset> + var(--cols-h))`). So the identity row's top sat at
+`inset + colsH + (dashH − colsH)` = **one whole inset above the band**, floating
+over the world. `bandFootprint` now returns `dashH + bottomInset` in portrait —
+the landscape branch has always returned the inset as height for exactly this
+reason — and the identity row's height subtracts it. The band grows; the world
+gives back the same height; a browser tab is unchanged at zero.
+
+**Landscape — the dock climbed onto the panel.** The nav dock is anchored to the
+screen bottom by the inset, so installing the app lifted it 21px *into* the
+panel: measured, its top rose to 321 while the combat cards end at 327, and six
+elements ended up behind it. Two things had to become one — the dock's height and
+the padding a panel reserves for it were stated separately, so the reserve knew
+how tall the dock was but never where it *sat*. `landDockFootprint` returns both
+from the same expression, and `LAND_DOCK_SINK` is the owner's "go down some": the
+dock gives most of the indicator back rather than spending it climbing.
+
+**The enabler: `--sab`.** resize() has measured this inset since v2.3.2163, but
+the band, the dock and the panels each called `env(safe-area-inset-bottom)` for
+themselves — so their numbers could disagree with `--dash-h` (which is the
+portrait bug), and nothing downstream was reachable from a test, because `env()`
+cannot be set in a headless browser. resize() now stamps `--sab` beside
+`--dash-h` and `--world-x`, and every consumer reads it. One measured value, one
+path — and `mp-standalone` simulates an install by overriding the probe's padding,
+exactly as `mp-landscape-dash` already simulates an Island.
+
+`mp-standalone` (13 assertions) covers both orientations, asserts the browser-tab
+layout is restored byte-for-byte when the inset goes away, and was confirmed to
+**fail on the original code**: `aboveBand: 34` for the floating rows and
+`rise: 21` for the dock.

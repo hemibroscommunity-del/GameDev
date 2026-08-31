@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { debugBus } from './debugBus.js';
 import { perfTracker } from './perfTracker.js';
 import { BUILD_INFO } from '../ui/BuildBadge.jsx';
+import { screenAngle, getDashSidePref } from '@/game/dashSidePref.js'; /* v2.3.2177: the side decision, readable on the phone */
 
 const PANELS = ['Console', 'State', 'WS', 'Perf'];
 
@@ -295,7 +296,19 @@ const PerfPanel = () => {
     </div>
   );
 
-  const Cell = ({ k, v, hot }) => (
+  /* v2.3.2177: what the safe-area probe currently reads.  The probe element is
+   BroTown resize()'s (#bt-sab-probe) -- read, never created here, so the
+   overlay can never disagree with the geometry it is reporting on. */
+const cssEnv = (edge) => {
+  try {
+    const el = document.getElementById('bt-sab-probe');
+    if (!el) return '-';
+    const v = parseFloat(getComputedStyle(el)['padding' + edge[0].toUpperCase() + edge.slice(1)]);
+    return Number.isFinite(v) ? Math.round(v) : '-';
+  } catch (e) { return '-'; }
+};
+
+const Cell = ({ k, v, hot }) => (
     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', fontSize: 11 }}>
       <span style={{ color: '#90a4ae' }}>{k}</span>
       <span style={{ color: hot ? '#ef5350' : '#cfd8dc' }}>{String(v)}</span>
@@ -425,6 +438,14 @@ const PerfPanel = () => {
       <Section title="ENVIRONMENT">
         <Cell k="Build" v={`v${BUILD_INFO.version} · ${BUILD_INFO.sha}`} />
         <Cell k="Viewport" v={`${window.innerWidth}x${window.innerHeight} dpr ${window.devicePixelRatio}`} />
+        {/* v2.3.2177: the four numbers that decide which edge the landscape
+            dashboard takes.  They are here because the v2.3.2174 bug ("it
+            always displays on the left") was invisible from the outside --
+            the plumbing was right and the one input was silently useless --
+            and diagnosing it on a phone meant guessing.  Now the answer and
+            everything it was derived from can be read off the screen. */}
+        <Cell k="Safe area" v={`L ${cssEnv('left')} R ${cssEnv('right')} B ${cssEnv('bottom')}`} />
+        <Cell k="Dash side" v={`${document.documentElement.getAttribute('data-dash-side') || '-'} · angle ${screenAngle()} · pref ${getDashSidePref()}`} />
         <Cell k="UA" v={navigator.userAgent.slice(0, 60)} />
         <Cell k="Game keys" v={s ? Object.keys(s).length : '-'} />
       </Section>
