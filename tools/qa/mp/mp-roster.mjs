@@ -155,7 +155,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return true;
   };
 
-  /* ═══ v2.3.2180: THE CONTROL LOOKS LIKE DELETING, NOT CLOSING ═══
+  /* ═══ v2.3.2187: THE CONTROL LOOKS LIKE DELETING, NOT CLOSING ═══
      Owner: "it looks like the x is just to back out of the window instead of
      delete the character."  It drew a ✕ -- which is the CLOSE affordance on
      every other panel in this game -- while every comment around it called it

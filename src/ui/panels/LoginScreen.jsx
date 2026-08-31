@@ -329,7 +329,7 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
             : 'Your Login Key lets you access your character on any device.'}
         </div>
 
-        {/* v2.3.2178 (owner: "add the version back to the home splash screen
+        {/* v2.3.2185 (owner: "add the version back to the home splash screen
             somewhere").  It was not deleted — v2.3.221 gated BuildBadge behind
             ?dev=1 so the player-facing build would not carry a debug HUD, and
             the version went with it.  That gate is right for the in-game badge

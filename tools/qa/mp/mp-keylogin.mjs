@@ -51,7 +51,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     try { fs.mkdirSync('tools/qa/mp/out', { recursive: true }); } catch (e) {}
     await S.page.screenshot({ path: 'tools/qa/mp/out/titlescreen.png' });
 
-    /* ── THE BUILD STAMP (v2.3.2178) ──
+    /* ── THE BUILD STAMP (v2.3.2185) ──
        Owner: "add the version back to the home splash screen somewhere".  It
        goes HERE, on the screenshot browser, and deliberately not on B below:
        B's flow ends in applyAccountLogin's full page RELOAD, whose 45s
@@ -122,7 +122,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return { key: pick('[data-tut="login-key"]'), make: pick('[data-tut="login-create"]') };
   });
   const K = plates.key, C = plates.make;
-  /* ═══ v2.3.2181: THE WORD IS ALONE ON THE PLATE, AND CENTRED ═══
+  /* ═══ v2.3.2188: THE WORD IS ALONE ON THE PLATE, AND CENTRED ═══
      Owner: "The continue label is still not centered on the button it looks
      slightly offset left."
 
@@ -185,7 +185,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const wc = inner.length === 1 ? (inner[0][0] + inner[0][1]) / 2 : null;
     const offPct = wc === null ? null : +(Math.abs(wc - pc) / span * 100).toFixed(2);
     rec.ok('the plate carries ONE thing between its frames — the word, with no key '
-      + 'roundel beside it to pull the eye left (v2.3.2181)',
+      + 'roundel beside it to pull the eye left (v2.3.2188)',
       inner.length === 1, { inner, plate: plateArt && plateArt.plate });
     rec.ok('...and that word sits on the plate\'s centre line (within 1% of its width)',
       offPct !== null && offPct <= 1.0, { wordCentre: wc, plateCentre: pc, offPct });

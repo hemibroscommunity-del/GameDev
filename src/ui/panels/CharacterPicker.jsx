@@ -222,7 +222,7 @@ export const CharacterPicker = ({ onPlay, onClose }) => {
                     color: '#D8635D', padding: 0,
                   }}
                 >
-                  {/* ── v2.3.2180: A BIN, NOT A ✕ ──
+                  {/* ── v2.3.2187: A BIN, NOT A ✕ ──
                       Owner: "it looks like the x is just to back out of the
                       window instead of delete the character."  Exactly right,
                       and the code had been saying so for three versions --

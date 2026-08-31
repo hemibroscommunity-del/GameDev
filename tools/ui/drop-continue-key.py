@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""TAKE THE KEY OFF THE CONTINUE PLATE (v2.3.2181).
+"""TAKE THE KEY OFF THE CONTINUE PLATE (v2.3.2188).
 
 Owner: "The continue label is still not centered on the button it looks slightly
 offset left."

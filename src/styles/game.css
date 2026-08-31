@@ -2604,7 +2604,7 @@ body:has([data-trade-drawer]) .bt-kb-chip{display:none}
   color:#F3E7CC;opacity:.86;
   text-shadow:0 1px 3px rgba(3,6,10,.95),0 0 8px rgba(3,6,10,.7);
 }
-/* v2.3.2178: the build stamp under the note.  Deliberately the quietest
+/* v2.3.2185: the build stamp under the note.  Deliberately the quietest
    thing on the screen -- it is a reference a player reads only when asked
    ("what version are you on?"), never something competing with Continue.
    tabular-nums so the sha does not wobble between builds, and the same

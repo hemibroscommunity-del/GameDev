@@ -24,7 +24,7 @@ const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
   a2hs: () => import('./mp-a2hs.mjs'), /* v2.3.2159: the install instruction finds the right player */
-  standalone: () => import('./mp-standalone.mjs'), /* v2.3.2178: the installed web app -- the home-indicator inset every other scenario runs at zero */
+  standalone: () => import('./mp-standalone.mjs'), /* v2.3.2185: the installed web app -- the home-indicator inset every other scenario runs at zero */
   landdash: () => import('./mp-landscape-dash.mjs'), /* v2.3.2157: the 48px strip, the side sheet, and playing with menus open */
   landrotate: () => import('./mp-landscape-rotate.mjs'), /* v2.3.2157: rotation is a clean handoff both ways */
   landview: () => import('./mp-landscape-view.mjs'), /* v2.3.2156: the view rule switches axes; portrait is pinned */
@@ -132,7 +132,7 @@ const SCENARIOS = {
   hudface: () => import('./mp-hudface.mjs'), /* v2.3.1835: the HUD portrait tracks the worn cosmetics */
   capekill: () => import('./mp-capekill.mjs'), /* v2.3.2100: does a real KILL roll for the ticket? */
   cape: () => import('./mp-cape.mjs'),
-  capehair: () => import('./mp-capehair.mjs'),   /* v2.3.2179 */
+  capehair: () => import('./mp-capehair.mjs'),   /* v2.3.2186 */
   specshield: () => import('./mp-specshield.mjs'), /* v2.3.1834: shield layering during a special */
   scalesheet: () => import('./mp-scalesheet.mjs'), /* v2.3.1830: size per direction, both poses */
   bodysize: () => import('./mp-bodysize.mjs'), /* v2.3.1826: the same character in every direction */

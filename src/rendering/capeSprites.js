@@ -40,7 +40,7 @@ const _hood = Object.create(null);     /* `${id}|${baseDir}` -> Texture (hood on
 const _hoodMask = Object.create(null); /* `${id}|${baseDir}` -> Texture (hood silhouette, opening filled) */
 const _loading = Object.create(null);
 
-/* v2.3.2179: the facings that HAVE a hood cut, i.e. the ones where the cape is
+/* v2.3.2186: the facings that HAVE a hood cut, i.e. the ones where the cape is
    split across the body. north/northeast are the back view -- there the cape is
    between the viewer and the character and correctly covers them, so they stay
    a single in-front sprite and get no hood frame. See tools/cape/split-cape-hood.py. */
@@ -58,7 +58,7 @@ export function getCapeTexture(id, dir) {
 
 /** The HOOD-ONLY texture: the cape above its clasp, drawn IN FRONT of the body
  *  while getCapeTexture's full frame draws BEHIND it, so the torso occludes the
- *  panels instead of the panels covering the torso (v2.3.2179).
+ *  panels instead of the panels covering the torso (v2.3.2186).
  *  null for north/northeast BY DESIGN — the caller reads that as "this facing
  *  is not split", not as "the art failed to load". */
 export function getCapeHoodTexture(id, dir) {
@@ -67,7 +67,7 @@ export function getCapeHoodTexture(id, dir) {
 }
 
 /** The hood's SILHOUETTE with its face opening filled — the shape hair is
- *  clipped to so it cannot poke out past the hood (v2.3.2179). Hair already
+ *  clipped to so it cannot poke out past the hood (v2.3.2186). Hair already
  *  draws under the hood, so z-order was never the problem: what shows is hair
  *  reaching beyond the hood's outline, and only a clip removes that. */
 export function getCapeHoodMaskTexture(id, dir) {

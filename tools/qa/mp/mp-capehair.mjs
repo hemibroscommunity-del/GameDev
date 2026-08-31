@@ -1,4 +1,4 @@
-/* THE HOOD HAS TO CLIP THE HAIR (v2.3.2179).
+/* THE HOOD HAS TO CLIP THE HAIR (v2.3.2186).
  *
  * Owner, with a screenshot: "The cape needs adjustments. Hair sticking out."
  *

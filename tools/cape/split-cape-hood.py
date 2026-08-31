@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """CUT THE HOOD OFF THE CAPE, SO THE BODY CAN STAND IN FRONT OF THE REST
-(v2.3.2179).
+(v2.3.2186).
 
 Owner, with two screenshots: "The cape needs adjustments ... The left side of
 the cape should be occluded by characters body. Then mirrored for the other
@@ -71,7 +71,7 @@ SPLIT = {'south': 89, 'southwest': 89, 'east': 83}
 def fill_holes(mask):
     """The hood silhouette with its FACE OPENING filled in.
 
-    v2.3.2179, the hair half of the owner's report ("Hair sticking out").  Hair
+    v2.3.2186, the hair half of the owner's report ("Hair sticking out").  Hair
     draws under the hood, so anything inside the hood is already covered -- what
     shows is hair reaching PAST the hood's outline, which no z-order can fix.
     Clipping the hair to this shape is what cuts it.
@@ -165,7 +165,7 @@ def main():
                 meta = json.load(open(mp))
                 meta['hoodSplitY'] = dict(SPLIT)
                 meta['hoodNote'] = (
-                    'v2.3.2179: hood/<dir>.png is the cape above the clasp, drawn IN FRONT of '
+                    'v2.3.2186: hood/<dir>.png is the cape above the clasp, drawn IN FRONT of '
                     'the body while the full frame draws BEHIND it, so the torso occludes the '
                     'panels instead of the panels covering the torso. north/northeast have no '
                     'hood frame on purpose: they are the back view, where the cape correctly '
