@@ -452,3 +452,52 @@ Two bugs the screenshots caught that the green suite did not:
   sweep passed because it swept a FRESH character. Sideways the count is a dot
   (it is still on the hero nav button, in each lane's chip, and in the tab's
   aria-label), and the sweep now seeds points and a long zone name first.
+
+### The insets could never say which side (v2.3.2177 — owner)
+
+Owner, after playing v2.3.2176: *"One thing still not working correctly is
+displaying the dashboard landscape mode on the side away from the Dynamic
+Island area on iPhone. It always displays on the left."*
+
+v2.3.2174 decided the side from one signal — `insetLeft > insetRight`, read off
+`#bt-sab-probe`. Everything downstream of that was correct, and
+mp-landscape-dash proved it by simulating an Island in the probe's own padding
+and watching the whole dashboard flee. The **assumption** was wrong: iOS does
+not report a bigger inset on the housing side. In landscape it insets **both**
+long edges equally (rounded corners exist on both sides), so the comparison is
+false in either rotation and the tie-break — `left` — was the only answer the
+rule could ever give.
+
+**The bug lived in the gap between what the test simulated and what the device
+does.** The guard fed the rule an asymmetric pair no iPhone produces.
+
+The rule now lives in `src/game/dashSidePref.js`:
+
+1. **Asymmetric insets still win** — where a browser reports them honestly it is
+   telling us directly, and no inference beats that.
+2. **A tie at a non-zero value** means "there is a housing to clear, but not
+   which side", and the **rotation** decides: `screen.orientation.angle` of 90
+   is the device turned counter-clockwise, which sweeps its top edge — and the
+   Island — to the left, so the panel takes the right; 270 mirrors it.
+3. **A tie at zero** is the opposite fact — no safe area, nothing to dodge — so
+   the rotation is *not* consulted and the answer is `left`. This distinction is
+   load-bearing: a desktop browser and Playwright's mobile emulation both report
+   a landscape angle of 90 with no insets at all, and without it they would dodge
+   an Island that does not exist.
+
+**Settings → "Landscape menu side" (Auto · Left · Right)** sits behind the rule.
+The angle mapping in (2) is reasoning, not measurement — this repo has no iPhone
+to check it against, and a mapping that reads backwards would be worse than the
+bug it replaces. Auto is the default and should never need touching; if it reads
+the wrong way round on real hardware, the side is one tap away instead of one
+round trip. The setter dispatches a resize rather than moving anything itself, so
+resize() stays the single writer of `--world-x` and `data-dash-side`.
+
+The debug overlay's ENVIRONMENT section now prints the raw safe-area insets, the
+angle, the chosen side and the preference — because this bug was invisible from
+the outside and diagnosing it on a phone meant guessing.
+
+mp-landscape-dash now drives the case the device actually presents: **symmetric**
+59px insets with only the rotation differing, asserting the two rotations pick
+opposite sides, plus the pin overriding both signals and Auto handing the
+decision back.

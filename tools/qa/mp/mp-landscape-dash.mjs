@@ -627,5 +627,64 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and with the Island gone the panel returns to the left, world un-offset',
     restored.side === 'left' && restored.worldX === 0 && restored.canvasX === 0, restored);
 
+  /* ═══ v2.3.2177: THE CASE A REAL iPHONE ACTUALLY PRESENTS ═══
+     Owner, on the shipped v2.3.2174: "It always displays on the left."  The
+     test above passes and always did, because it feeds the rule an
+     ASYMMETRIC pair of insets -- and that is not what iOS hands a landscape
+     page.  iOS insets BOTH long edges by the same amount (rounded corners on
+     both sides), so `insL > insR` was false in both rotations and 'left' was
+     the only answer the old rule could give.  The bug lived entirely in the
+     gap between what the test simulated and what the device does.
+
+     So: SYMMETRIC insets, exactly as iOS reports them, with the rotation as
+     the only thing that differs between the two cases.  If either of these
+     comes back 'left' for both angles, the fix has regressed to the bug. */
+  const symmetric = async (angle) => P.page.evaluate(async (a) => {
+    let st = document.getElementById('bt-fake-island');
+    if (!st) { st = document.createElement('style'); st.id = 'bt-fake-island'; document.head.appendChild(st); }
+    /* Both edges inset the same, which is the real iOS landscape answer. */
+    st.textContent = '#bt-sab-probe{padding-left:59px!important;padding-right:59px!important}';
+    /* screen.orientation is read-only; redefine the angle the way a rotation
+       would change it.  Same source of truth resolveDashSide() reads. */
+    try {
+      Object.defineProperty(window.screen.orientation, 'angle', { configurable: true, get: () => a });
+    } catch (e) { /* fall back to window.orientation below */ }
+    try {
+      Object.defineProperty(window, 'orientation', { configurable: true, get: () => a });
+    } catch (e) { /* one of the two will have taken */ }
+    window.dispatchEvent(new Event('resize'));
+    await new Promise((r) => setTimeout(r, 700));
+    return {
+      angle: a,
+      side: document.documentElement.getAttribute('data-dash-side'),
+      insets: 'both 59',
+    };
+  }, angle);
+
+  const at90 = await symmetric(90);
+  rec.ok('with iOS\'s symmetric insets, a 90 rotation still picks a side (the v2.3.2174 bug)',
+    at90.side === 'right', at90);
+  const at270 = await symmetric(270);
+  rec.ok('...and turning the phone the other way moves it, rather than pinning left forever',
+    at270.side === 'left' && at270.side !== at90.side, { at90, at270 });
+
+  /* The Settings pin overrides both signals, in both rotations -- the escape
+     hatch for a rotation mapping this repo cannot verify against hardware. */
+  const pinned = await P.page.evaluate(async () => {
+    const out = [];
+    for (const want of ['left', 'right']) {
+      window.__btDashSide(want);            /* dispatches its own resize */
+      await new Promise((r) => setTimeout(r, 600));
+      out.push({ want, got: document.documentElement.getAttribute('data-dash-side') });
+    }
+    window.__btDashSide('auto');
+    await new Promise((r) => setTimeout(r, 600));
+    return { out, back: document.documentElement.getAttribute('data-dash-side') };
+  });
+  rec.ok('...and a pinned side wins over the rotation, both ways',
+    pinned.out.every((o) => o.got === o.want), pinned);
+  rec.ok('...with Auto handing the decision back when it is chosen again',
+    pinned.back === 'left', pinned);
+
   await P.ctx.close().catch(() => {});
 }
