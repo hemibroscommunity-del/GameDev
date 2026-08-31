@@ -77,9 +77,21 @@ export const BagFilterChips = ({ height, gutter, width, vertical }) => {
                 cursor: 'pointer', touchAction: 'manipulation',
               }}>
               {c.id !== UNFILTERED && <Funnel on={on} />}
+              {/* v2.3.2184 (owner: "actually increase the size of the filter
+                  categories ... there's room to"): 20 -> 28.  The rail's
+                  chips became 44x47 at v2.3.2179 and the icon never grew
+                  with them, so a 20px pictogram sat in a cell twice its
+                  size -- the thing being named was smaller than the box
+                  naming it.  28 keeps 8px of margin on the narrow axis and
+                  still clears the funnel's corner.  The portrait row is NOT
+                  touched: its chips are 26px tall by BAG_HEADER_H and hold
+                  a 24px icon already, so growing that icon means growing
+                  the band and taking the height off the world, which is a
+                  different decision than spending room that is already
+                  there. */}
               <img src={c.iconSrc} alt="" draggable={false}
                 style={{
-                  width: 20, height: 20, objectFit: 'contain',
+                  width: 28, height: 28, objectFit: 'contain',
                   opacity: on ? 1 : 0.7, pointerEvents: 'none',
                 }} />
             </div>
