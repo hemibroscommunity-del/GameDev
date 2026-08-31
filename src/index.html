@@ -4,8 +4,46 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=overlays-content"/>
 <title>Hemi Bros ARPG v2.1</title>
-<link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
+<!-- ═══ v2.3.2191: THE HOME-SCREEN ICON (owner art drop) ═══
+     Owner: "Can you use this image for the web app (that you save to your
+     home page on iPhone) also configure it however you need to for android."
+
+     Until now there was NEITHER an apple-touch-icon nor a manifest, so an
+     installed launcher had nothing to show and iOS fell back to a
+     screenshot of whatever the page looked like when you added it.  The
+     three platforms want three different things and none of them reads the
+     others:
+       - iOS home screen reads apple-touch-icon ONLY (never the manifest),
+         wants 180x180, and rounds the corners itself;
+       - Android/Chrome reads the manifest's icons, wants 192 and 512, and
+         CROPS a maskable one to a circle -- hence the separate padded file,
+         or "BRO" and "TOWN" lose their outer letters;
+       - the browser tab wants a small favicon.
+     All four are the same artwork, generated from the owner's 1254px master
+     (tools/dev/make-app-icons.mjs, so the set can be rebuilt from a new
+     drop rather than hand-cut).
+
+     NOTE the old `/favicon.svg` here pointed at src/public/favicon.svg, and
+     Vite's publicDir is the REPO-ROOT public/ -- so that file has never been
+     copied into dist at all.  Verified, not assumed: the request does not
+     even fail loudly, it falls through to the SPA rewrite and comes back as
+     index.html with Content-Type text/html, so the browser was being handed
+     a web page where an icon should be and quietly drew nothing.  The PNGs
+     below live in the directory that actually ships.  (src/public/ also
+     holds _headers and _redirects, which are not reaching dist either --
+     flagged to the owner rather than moved here, since redirects are
+     production routing and not this change's business.) -->
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/app/favicon-32.png"/>
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/app/favicon-192.png"/>
+<link rel="apple-touch-icon" href="/icons/app/icon-180.png"/>
+<link rel="manifest" href="/manifest.webmanifest"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
+<!-- The name under the icon on an iPhone home screen.  Without this iOS
+     uses <title>, which is "Hemi Bros ARPG v2.1" -- truncated to something
+     like "Hemi Bros A…" and carrying a version number a player has no use
+     for. -->
+<meta name="apple-mobile-web-app-title" content="BroTown"/>
+<meta name="application-name" content="BroTown"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <!-- v2.3.1240: match iOS Safari chrome to the dashboard's deep slate. -->
