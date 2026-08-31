@@ -3564,7 +3564,15 @@ export const BOW_RELEASE_MS = 110;
    sprite got placed" and "the hair is masked to it" are different facts, and
    only the second is what the owner asked for, so the probe reads the live
    hair sprite's own `mask` reference. */
-const _standInHairClip = { hat: null, clipsHair: false, masked: false, maskVisible: false };
+const _standInHairClip = { hat: null, clipsHair: false, masked: false, maskVisible: false,
+  /* v2.3.2192: ...and whether the clip landed on the HOOD instead of a hat.
+     `masked` above compares against the HAT's mask sprite, so it reads false on
+     a hooded head that is correctly clipped -- which is why v2.3.2190 could
+     ship the hood fallback with a green test: the only thing asserted was that
+     the mask was READY, and "the mask got placed" and "the hair is masked to
+     it" are different facts (the distinction this probe was built for at
+     v2.3.1776, missed here on its own terms). */
+  maskedToHood: false, hoodReady: false, hairVisible: false };
 if (typeof window !== 'undefined') window.__btStandInHairClip = () => Object.assign({}, _standInHairClip);
 
 /* ═══ v2.3.1776: THE HAIR IS CLIPPED ON THE STAND-INS TOO ═══
@@ -3604,6 +3612,10 @@ function _clipStandInHair(sprites, hatId, dir, mirror, cwx, cwy, scaleVal, fit) 
     _standInHairClip.clipsHair = !!(meta && meta.clipsHair);
     _standInHairClip.masked = hair.mask === maskSprite;
     _standInHairClip.maskVisible = !!maskSprite.visible;
+    const _hm = sprites.capeHoodMask;                          /* v2.3.2192 */
+    _standInHairClip.maskedToHood = !!(_hm && hair.mask === _hm);
+    _standInHairClip.hoodReady = !!(_hm && _hm._btReady);
+    _standInHairClip.hairVisible = !!hair.visible;
   };
   if (!(meta && meta.clipsHair && hair.visible && maskEntry && maskEntry.tex[dir])) {
     maskSprite.visible = false;
