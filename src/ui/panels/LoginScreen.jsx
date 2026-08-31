@@ -286,13 +286,23 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
                 This device is full
               </div>
               <div style={{ fontSize: 13, color: '#B6C1BE', marginTop: 6, lineHeight: 1.35 }}>
+                {/* v2.3.2193b: this used to say "Delete one under Continue to
+                    make room", and the owner has since removed delete from that
+                    window ("Remove the delete character button from this
+                    menu").  Nothing else in the game deletes a character, so
+                    the sentence was pointing at a control that no longer
+                    exists — the one thing a dead end must not do is give
+                    directions.  Says the cap plainly instead, until delete has
+                    a home again. */}
                 You have all <b style={{ color: '#F4F0E7' }}>{ROSTER_MAX}</b> characters
-                this device can hold. Delete one under Continue to make room.
+                this device can hold. Play one of them instead.
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 14 }}>
-                {/* The way out, not just the refusal: the control that frees
-                    a slot lives one screen away and this is the only place
-                    the player is told so. */}
+                {/* Somewhere to GO, not just a refusal.  It used to say
+                    "Manage characters", because the picker was where a slot got
+                    freed; since v2.3.2193b it cannot free one, so the button
+                    offers the thing that screen CAN still do.  Same target, an
+                    honest label. */}
                 <button
                   type="button"
                   data-tut="login-full-manage"
@@ -300,7 +310,7 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
                   style={{ minHeight: 44, fontSize: 14, fontWeight: 800, color: '#F4F0E7' }}
                   onClick={() => { setWarnFull(false); setShowPicker(true); }}
                 >
-                  Manage characters
+                  Choose a bro
                 </button>
                 <button
                   type="button"

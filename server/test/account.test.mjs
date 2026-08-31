@@ -90,6 +90,42 @@ state._store.set('rpg:' + ALICE_ID, rpgBlob);
 r = await room._accountLogin(ALICE_PHRASE, '1.1.1.1');
 check('preview level from rpg blob', r.preview && r.preview.level === 12, r.preview);
 
+// ── 3b. v2.3.2193: the preview carries the APPEARANCE ──
+// The picker draws a portrait of a character it is not playing, and this is
+// the only place it can learn what one looks like: the roster on the device
+// holds keys and names, never cosmetics.
+//
+// A SEPARATE, DRESSED join, because alice's setup join above carries no
+// cosmetics at all -- and a join with no cosmetics deliberately creates no
+// char record (join.js _loadOrCreateCharacter: a blank look must never be made
+// permanent).  Asserting against the stored record rather than a fixture, so a
+// change to what a look contains cannot leave this passing on a stale shape.
+const DRESSED_PHRASE = 'karma-lunar-mango-nexus-3';
+const DRESSED_ID = 'bp_ktayze_karmalunar';            // from the parity fixtures above
+const wsD = fakeWs('dressed');
+room.sessions.set(wsD, baseSession());
+await room.webSocketMessage(wsD, JSON.stringify({
+  type: 'join', id: DRESSED_ID, name: 'Dressy', phrase: DRESSED_PHRASE,
+  /* `name` INSIDE data, not the top-level one: _loadOrCreateCharacter reads
+     cleanJoinData.name, and a nameless join deliberately creates no character
+     (join.js, v2.3.1814 -- a blank character must never be made permanent). */
+  data: { x: 100, y: 100, z: 'town', name: 'Dressy', sk: '#c98', hr: 'afro', hc: 'black', st: 'tshirt' },
+}));
+const charRec = state._store.get('char:' + DRESSED_ID);
+check('setup: the dressed join stored a char record with a look', !!(charRec && charRec.look), charRec);
+r = await room._accountLogin(DRESSED_PHRASE, '1.1.1.1');
+check('preview carries the character look, so the picker can draw a face',
+  !!(r.preview && r.preview.look) && JSON.stringify(r.preview.look) === JSON.stringify(charRec.look),
+  { look: r.preview && r.preview.look });
+// A key with NO character yet must not invent one: the picker falls back to its
+// letter tile on null, where a {} would read as "a character with no features"
+// and draw a blank bro.  alice is exactly that case -- registered, no look.
+r = await room._accountLogin(ALICE_PHRASE, '1.1.1.1');
+check('a key with no character previews look:null, not an empty look',
+  r.ok === true && r.exists === true && r.preview && r.preview.look === null
+    && r.preview.hasChar === false,
+  r.preview);
+
 // ── 4. unregistered phrase: exists:false, NOTHING stamped ──
 const authKeysBefore = [...state._store.keys()].filter((k) => k.startsWith('auth:')).length;
 r = await room._accountLogin('ghost-haze-iron-jet-9', '1.1.1.1');

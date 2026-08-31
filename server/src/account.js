@@ -136,6 +136,28 @@ export const accountMethods = {
           createdAt: auth.createdAt,
           hasChar: !!(char && char.look),
           name: (char && char.name) || '',
+          /* ═══ v2.3.2193: THE APPEARANCE, SO THE PICKER CAN DRAW A FACE ═══
+             Owner, of the Continue window: "it currently feels like an
+             account-management modal, not a character-selection screen...
+             In an RPG, I should recognize my character visually before I even
+             read the name."  A portrait is the fix, and this is the only place
+             the client can learn what a character it is NOT currently playing
+             looks like -- the roster on the device holds keys and names, never
+             cosmetics.
+
+             THE WHOLE LOOK, not a face-shaped subset.  Picking out "the keys a
+             headshot needs" would be a second allowlist beside
+             JOIN_COSMETIC_KEYS that has to stay in step with it forever, and
+             this repo has already paid for that shape once (v2.3.2148: a
+             drawing key added to one gate and not the other, and the print
+             silently never appeared).  It costs ~2KB when a character has all
+             eight drawings, on a request made once per character ever.
+
+             LEAKS NOTHING NEW: reaching this branch required presenting the
+             correct passphrase, which is the same bar `name` already cleared.
+             Absent on an old worker, and the client falls back to its letter
+             tile -- deploy-order safe in both directions (rule 19). */
+          look: (char && char.look) || null,
         },
       };
     }

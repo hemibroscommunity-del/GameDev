@@ -245,6 +245,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !(await visible(B, '[data-bt="account-keycard"]')), {});
 
   /* ── 1. type the key: it should JOIN, not ask again ── */
+  /* ═══ v2.3.2193: THE KEY BOX STARTS SHUT ═══
+     Owner, of this window: "Most sessions will simply be 'tap my Bro and
+     play'.  The Login Key input is consuming almost half the panel despite
+     being an occasional action."  So it is one line until it is wanted, and
+     this walk now opens it — which is the extra tap the owner asked for, and
+     it is asserted rather than assumed: a box that quietly came back open
+     would defeat the change while every claim below still passed. */
+  rec.ok('the picker does NOT lead with the Login Key input — it is a '
+    + 'character select, and the key is the occasional road',
+    !(await visible(B, 'input[placeholder*="Login Key"]')), {});
+  await B.page.click('[data-tut="char-usekey"]');
+  await B.page.waitForTimeout(400);
+  rec.ok('...and tapping USE LOGIN KEY opens it',
+    await visible(B, 'input[placeholder*="Login Key"]'), {});
   await B.page.fill('input[placeholder*="Login Key"]', key);
   /* By ROLE + exact name: the plate button's hidden label is "Log in with
      your Key", so a substring match on "Log in" hits it instead of the

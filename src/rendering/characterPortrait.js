@@ -18,6 +18,11 @@
 import { skinTarget, pantsTarget, shoesTarget, recolorBodyToCanvas } from './playerSkins.js';
 import EYE_MASK from './eyeMask.json';                              /* v2.3.1928 */
 import { eyeColorTarget } from './traits/eyeColorCatalog.js';
+/* v2.3.2193: the colour-id -> target maps, for portraitOptsFromPeer below. */
+import { hairColorTarget } from './traits/hairColorCatalog.js';
+import { hatColorTarget } from './traits/hatColorCatalog.js';
+import { facialHairColorTarget } from './traits/facialHairColorCatalog.js';
+import { shirtColorTarget } from './traits/shirtColorCatalog.js';
 import { shirtArtForDir, sanitizeShirtArt, inkedArt } from './traits/playerArt.js';   /* v2.3.1938; v2.3.1940 + pants/tattoo */
 import { getPattern, parsePattern, sanitizePattern } from './traits/patternCatalog.js';   /* v2.3.1941 */
 import { composeShirt } from './playerDecal.js';   /* v2.3.1938; v2.3.1941 one compositor for colour + pattern + print */
@@ -804,4 +809,55 @@ export async function portraitDataUrl(opts, headshot) {
   } catch (e) {
     return '';
   }
+}
+
+/* ═══ v2.3.2193: ONE RECIPE FOR "SOMEBODY ELSE'S PORTRAIT" ═══
+ * Turns the long-named cosmetic set the renderer reads off a peer
+ * (peerCosmeticsFromWire) into portraitDataUrl's options: colour IDS become
+ * colour TARGETS, and every field is passed EXPLICITLY rather than left to
+ * default to this device's own — a portrait of another character that quietly
+ * inherits your eyes, your tattoo or your shirt print is not a portrait of
+ * them.
+ *
+ * Extracted from InspectPlayerPanel, which had been the only caller since
+ * v2.3.1235.  The character picker needs the identical mapping, and a second
+ * hand-written copy is the shape this repo has already paid for twice — a
+ * cosmetic key added to one list and not the other, and the feature silently
+ * not appearing (v2.3.1939, v2.3.2148).  Add a key here and both get it.
+ *
+ * SOUTH-FACING FIELDS: the shirt's FRONT design and the face tattoo, because
+ * every caller draws the character facing the camera.
+ */
+export function portraitOptsFromPeer(o) {
+  const c = o || {};
+  return {
+    skin: c.skin,
+    pants: c.pants,
+    shoes: c.shoes,
+    hair: c.hair,
+    hairColor: hairColorTarget(c.hairColor),
+    facialHair: c.facialhair,
+    facialHairColor: facialHairColorTarget(c.facialHairColor),
+    headwear: c.headwear,
+    hatColor: hatColorTarget(c.hatColor, c.headwear),          /* v2.3.1927 */
+    shirt: c.shirt,
+    shirtColor: shirtColorTarget(c.shirtColor),
+    eyeColor: c.eyeColor,                                      /* v2.3.1930 */
+    shirtArt: c.shirtArtFront || null,                         /* v2.3.1939 */
+    pantsArt: c.pantsArt || null,                              /* v2.3.1940 */
+    tattooArt: c.tattooArt || null,                            /* v2.3.1940 */
+    shirtPattern: c.shirtPattern || '',                        /* v2.3.1941 */
+    pantsPattern: c.pantsPattern || '',
+    shoesPattern: c.shoesPattern || '',
+  };
+}
+
+/** Is there enough here to draw anybody?  A tick-created placeholder peer, and
+ *  a roster row whose worker never returned a look, both carry all-nulls —
+ *  drawing those produces a default body wearing nothing, which reads as the
+ *  wrong character rather than as no character.  Callers fall back to their
+ *  own placeholder on false. */
+export function portraitHasSubject(o) {
+  const c = o || {};
+  return !!(c.skin || c.hair || c.shirt || c.headwear || c.facialhair || c.pants);
 }
