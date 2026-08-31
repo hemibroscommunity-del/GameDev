@@ -443,7 +443,7 @@ const TRAIT_NFT_ID = 'test-1';
    v2.3.1561: bumped — halo gains floatsAboveHair in meta.json.  A meta-only
    change still needs the bust, or a returning browser serves the cached
    meta and the halo goes on placing itself flat on the hair. */
-const TRAIT_VER = '2.3.1561';
+const TRAIT_VER = '2.3.2174';   /* v2.3.2174: de-fringe sweep across the trait sheets (tools/sprite-defringe.py); see playerSprites VERSION 101. */
 
 /* v2.3.377 hid the on-back (sheathed) shield behind SHOW_BACK_SHIELD=false:
    "purely cosmetic and a persistent source of per-facing z-order issues vs

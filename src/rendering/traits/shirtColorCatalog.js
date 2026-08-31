@@ -73,7 +73,7 @@ export function onShirtColorChange(fn) {
 
 /* ── in-game recolored shirt textures ── */
 const DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
-const TRAIT_VER = '2.3.467';
+const TRAIT_VER = '2.3.2174';   /* v2.3.2174: de-fringe sweep across the trait sheets (tools/sprite-defringe.py); see playerSprites VERSION 101. */
 /* `${shirtId}/${colorId}` -> { east:Texture, ... } | 'loading' */
 const _cache = {};
 
