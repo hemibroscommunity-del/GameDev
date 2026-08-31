@@ -29,21 +29,22 @@
  * you turned it.  A tie at ZERO is a different fact entirely: no safe area,
  * nothing to dodge, so the rotation is not consulted and the answer is left.
  *
- * ═══ THE MAPPING, AND WHY THERE IS A MANUAL PIN BESIDE IT ═══
+ * ═══ THE MAPPING (CONFIRMED ON HARDWARE) ═══
  * `screen.orientation.angle` is the rotation of the CONTENT away from the
  * device's natural orientation.  Content rotated +90 means the device itself
  * was turned 90 counter-clockwise, which sweeps its top edge -- and the
  * Island with it -- to the LEFT.  So angle 90 => Island left => dashboard
  * right, and angle 270 => the mirror.
  *
- * That reasoning is sound but it is REASONING: this repo has no iPhone to
- * check it against, and a mapping that is backwards would be worse than the
- * bug it replaces (the panel would sit under the Island in one rotation
- * instead of harmlessly left in both).  Hence the setting: Auto is the
- * default and should never need touching, and if Auto reads the wrong way
- * round on a real device the owner pins the side in one tap instead of
- * waiting for another round trip.  A pinned side also serves someone who
- * simply prefers their menus on one hand.
+ * That was derived rather than measured when it shipped -- this repo has no
+ * iPhone to rotate -- so it went out behind a Settings pin in case it read
+ * backwards.  The owner then checked both rotations on the real device:
+ * "The mapping is correct."  Do not flip these two lines on a later reading
+ * of the spec; they are known-good against an actual iPhone.
+ *
+ * The pin stays, now as a plain preference rather than an escape hatch: some
+ * people want their menus under one particular thumb, and a player whose
+ * device reports something neither branch expects still has an answer.
  *
  * Module-shaped for the same reason as questTrailStyle.js (v2.3.2141) and
  * chatChannel.js (v2.3.2139): resize() reads this on every layout pass, and
@@ -128,6 +129,7 @@ export function resolveDashSide(insL, insR, angle, pref) {
      landscape angle of 90 with no insets at all, and without this they would
      "dodge" an Island that does not exist. */
   if (insL > 4 && insR > 4) {
+    /* Owner-confirmed on a real iPhone (v2.3.2177) -- see the header. */
     if (angle === 90) return 'right';   /* device turned CCW -> Island left  */
     if (angle === 270) return 'left';   /* device turned CW  -> Island right */
   }

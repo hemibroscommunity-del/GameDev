@@ -485,13 +485,17 @@ The rule now lives in `src/game/dashSidePref.js`:
    a landscape angle of 90 with no insets at all, and without it they would dodge
    an Island that does not exist.
 
-**Settings → "Landscape menu side" (Auto · Left · Right)** sits behind the rule.
-The angle mapping in (2) is reasoning, not measurement — this repo has no iPhone
-to check it against, and a mapping that reads backwards would be worse than the
-bug it replaces. Auto is the default and should never need touching; if it reads
-the wrong way round on real hardware, the side is one tap away instead of one
-round trip. The setter dispatches a resize rather than moving anything itself, so
-resize() stays the single writer of `--world-x` and `data-dash-side`.
+The angle mapping in (2) was **derived rather than measured** when it shipped —
+this repo has no iPhone to rotate — so it went out behind a Settings pin in case
+it read backwards. The owner then checked both rotations on the device: *"The
+mapping is correct."* Those two lines are known-good against real hardware; do
+not flip them on a later reading of the spec.
+
+**Settings → "Landscape menu side" (Auto · Left · Right)** stays, now as a plain
+preference rather than an escape hatch: some people want their menus under one
+particular thumb, and a device that reports something neither branch expects
+still has an answer. The setter dispatches a resize rather than moving anything
+itself, so resize() stays the single writer of `--world-x` and `data-dash-side`.
 
 The debug overlay's ENVIRONMENT section now prints the raw safe-area insets, the
 angle, the chosen side and the preference — because this bug was invisible from
