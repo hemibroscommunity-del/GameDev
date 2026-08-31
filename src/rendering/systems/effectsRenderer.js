@@ -28,7 +28,8 @@ import { getRemnantsTexture as getSnowmanRemnantsTex } from '../snowmanSprites.j
 import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../data/monsterVariants.js';
 import { ZONE_SHARDS } from '../../data/shards.js';
-import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS } from './entityRenderer.js';
+import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in */
+import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2190: the worn cape, for the attack stand-ins */
 import { WHIRL_VORTEX, WHIRL_FX_MS } from '../fxStrips.js'; /* v2.3.1735 */
 import { getEquip } from '../gearCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
@@ -160,6 +161,104 @@ const FIRE_SKIN_OPTS = { maxBR: 0.50, minGR: 0.45, maxGR: 0.80, minBlob: 1800 };
 /* v2.3.1764: what each stand-in pose's gear sprites were last tinted with —
    see _tintGearSprite.  Module-level so the probe exists before any pose has
    played; an empty record is itself the answer to "did anything tint?". */
+/* ═══ v2.3.2190: THE CAPE ON AN ATTACK STAND-IN ═══
+ * Owner: "the attack animations need to have the cape anchored on the player's
+ * head to look right."  The placement itself lives in entityRenderer beside the
+ * walking one (see placeStandInCape's note); what belongs HERE is the z-order,
+ * because the panels have to go under the stand-in's BODY and the body is not a
+ * member of the trait set.
+ *
+ * ATTACKS ONLY, which is what was asked.  The gathering stand-ins -- chop, cook,
+ * firemaking -- keep no cape: they are the same three the walking path has always
+ * hidden it on (_CAPE_HIDDEN_POSES), they draw a different figure entirely
+ * (a lumberjack, a cook), and nobody has reported them.  The predicate is shared
+ * with the layer choice a few lines below rather than written twice, so the two
+ * cannot disagree about which figure this is. */
+function _isGatheringStandIn(skillKey) {
+  return skillKey === 'chop' || skillKey === 'cook' || skillKey === 'fire';
+}
+
+/* Place the cape and then drop its BACK half under the stand-in body.  The
+   re-seat is per frame and guarded: the swing re-orders its weapon every frame
+   too (_orderSwingWeapon), and the index it wants moves as sprites are shown
+   and hidden, so reading the body's live index is the only thing that stays
+   correct through that. */
+const _STAND_IN_TRAIT_KEYS = ['capeBack', 'hair', 'beard', 'capeHood', 'capeHoodMask', 'hat', 'hairMask'];
+/* v2.3.2190: QA probe.  A headless run cannot read the WebGL canvas, and the
+   two facts that matter here are not visible in a screenshot anyway: whether
+   the panels are UNDER the stand-in body, and whether the hood is the split's
+   front half rather than the whole garment drawn twice.
+
+   IT READS THE LIVE SPRITES, not a snapshot taken while placing them.  A
+   snapshot is how this went wrong first: hideSkillTraits takes the cape down at
+   the top of every frame without going through the placement, so a cached
+   object went on reporting on:true for the rest of the session and the "it
+   leaves when the attack ends" claim passed on a stale record.  That is the
+   same failure the stand-in hair clip's probe records at v2.3.1776 -- measuring
+   the instrument instead of the game -- and holding references rather than
+   values is what actually prevents it. */
+let _capeProbe = null;
+if (typeof window !== 'undefined') {
+  window.__btStandInCape = () => {
+    const p = _capeProbe;
+    const sprites = p && p.sprites;
+    const back = sprites && sprites.capeBack;
+    const hood = sprites && sprites.capeHood;
+    const body = p && p.body;
+    const parent = back && back.parent;
+    let backIdx = -1, bodyIdx = -1;
+    if (parent && body && body.parent === parent) {
+      try { backIdx = parent.getChildIndex(back); bodyIdx = parent.getChildIndex(body); }
+      catch (e) { backIdx = -1; bodyIdx = -1; }
+    }
+    const on = !!(hood && hood.visible);
+    return {
+      on,
+      key: p ? p.key : null,
+      dir: p ? p.dir : null,
+      mirror: !!(p && p.mirror),
+      split: !!(back && back.visible),
+      backIdx,
+      bodyIdx,
+      backUnderBody: (on && backIdx >= 0 && bodyIdx >= 0) ? (backIdx < bodyIdx) : null,
+      hoodOn: on,
+      hoodClipReady: !!(sprites && sprites.capeHoodMask && sprites.capeHoodMask._btReady),
+      /* The DRAWN height of the 256 frame: against the same number on the
+         standing figure it says whether the cape is the CHARACTER's size or the
+         hat's.  It was the hat's, and measured 19% and 49% over. */
+      capeDrawnH: (on && hood) ? +Number(Math.abs(hood.height)).toFixed(1) : null,
+      /* Both anchors sit ON the crown by construction, give or take the hair
+         art's own crownNudge; recorded so a change that offsets one of them
+         shows up here. */
+      hoodX: hood ? +Number(hood.x).toFixed(1) : null,
+      hairX: (sprites && sprites.hair) ? +Number(sprites.hair.x).toFixed(1) : null,
+    };
+  };
+}
+
+function _placeStandInCapeOn(sprites, capeId, dir, mirror, cwx, cwy, crownToFeet, bodySprite, key) {
+  const drawn = placeStandInCape(sprites, capeId, dir, mirror, cwx, cwy, crownToFeet);
+  if (typeof window !== 'undefined') _capeProbe = { sprites, body: bodySprite, key, dir, mirror };
+  const back = sprites && sprites.capeBack;
+  if (!drawn || !back || !back.visible || !bodySprite) return drawn;
+  const parent = back.parent;
+  if (!parent || bodySprite.parent !== parent) return drawn;
+  try {
+    const backIdx = parent.getChildIndex(back);
+    const bodyIdx = parent.getChildIndex(bodySprite);
+    /* ONLY when it is above, and that is not a micro-optimisation -- it is the
+       correctness condition.  setChildIndex REMOVES and re-inserts, so moving a
+       child that already sits BELOW the target to the target's index lands it
+       one place too high: the removal shifts the target down by one first.
+       Measured, that is exactly what happened -- back at 5, body at 4, the
+       panels drawn over the torso on three of five stand-ins.  A child already
+       below the body needs no move at all, so testing for "above" both fixes
+       the off-by-one and skips the work. */
+    if (backIdx > bodyIdx) parent.setChildIndex(back, bodyIdx);
+  } catch (e) { /* order is cosmetic; never break the frame over it */ }
+  return drawn;
+}
+
 const _standInTints = Object.create(null);
 if (typeof window !== 'undefined') window.__btStandInTints = () => Object.assign({}, _standInTints);
 /* v2.3.1772: QA hook — clear the record between two different loadouts, so a
@@ -1481,8 +1580,16 @@ export class EffectsRenderer {
        masked to (entityRenderer._clipStandInHair).  Pixi needs a mask sprite in
        the scene graph, so it is created and parented exactly like the traits —
        it is never drawn itself. */
-    this.skillTraits = { hair: new Sprite(), beard: new Sprite(), hat: new Sprite(), hairMask: new Sprite() };
-    for (const k of ['hair', 'beard', 'hat', 'hairMask']) {
+    /* v2.3.2190: + the cape's two halves and its hair clip.  The key order is
+       the addChild order is the z-order (see _ensureRemoteSwordSet's note), so
+       this literal alone puts the hood OVER the hair and UNDER the hat, which
+       is the order the walking figure is built in (entityRenderer: hair, cape,
+       hood mask, headwear).  `capeBack` is first here but that is not enough on
+       its own -- the panels have to go under the stand-in BODY, which is not a
+       member of this set, so _placeSkillTraitsOn re-seats it each frame. */
+    this.skillTraits = { capeBack: new Sprite(), hair: new Sprite(), beard: new Sprite(),
+      capeHood: new Sprite(), capeHoodMask: new Sprite(), hat: new Sprite(), hairMask: new Sprite() };
+    for (const k of ['capeBack', 'hair', 'beard', 'capeHood', 'capeHoodMask', 'hat', 'hairMask']) {
       this.skillTraits[k].visible = false;
       this.nodeLayer.addChild(this.skillTraits[k]);
     }
@@ -1692,9 +1799,9 @@ export class EffectsRenderer {
        'chop' / 'cook' / 'fire' are the gathering set, everything else
        ('sword*', 'bow*') is combat.  addChild is a no-op when already
        parented there, so this costs nothing on the steady state. */
-    const _want = (skillKey === 'chop' || skillKey === 'cook' || skillKey === 'fire')
-      ? this.gestureLayer : this.nodeLayer;
-    for (const k of ['hair', 'beard', 'hat', 'hairMask']) { /* v2.3.1776: the mask travels with them */
+    const _gathering = _isGatheringStandIn(skillKey);
+    const _want = _gathering ? this.gestureLayer : this.nodeLayer;
+    for (const k of _STAND_IN_TRAIT_KEYS) { /* v2.3.1776: the mask travels with them; v2.3.2190: so does the cape */
       const t = this.skillTraits && this.skillTraits[k];
       if (t && !t.destroyed && t.parent !== _want) _want.addChild(t);
     }
@@ -1705,6 +1812,13 @@ export class EffectsRenderer {
     const cwx = sp.x + (cr[0] - data.fw / 2) * sp.scale.x;
     const cwy = sp.y + (cr[1] - data.fh) * sp.scale.y;
     const scaleVal = Math.abs(sp.scale.y) * (this._skillTraitMul[skillKey] || 1);
+    /* v2.3.2190: the cape goes on BEFORE the head traits, because the hair clip
+       at the end of placeSkillTraits falls back to the hood's silhouette when no
+       hat clips -- reading it after would clip to the PREVIOUS frame's hood. */
+    /* v2.3.2190: the cape's size is the FIGURE's, not the head's -- the
+       stand-in's own crown-to-feet, in world px.  See placeStandInCape. */
+    _placeStandInCapeOn(this.skillTraits, _gathering ? null : getCape(), dir, mirror,
+      cwx, cwy, (data.fh - cr[1]) * Math.abs(sp.scale.y), sp, skillKey);
     placeSkillTraits(this.skillTraits, cwx, cwy, dir, mirror, scaleVal);
   }
 
@@ -5091,6 +5205,7 @@ export class EffectsRenderer {
         hair: o.hair, hairColor: o.hairColor,
         facialhair: o.facialhair, facialHairColor: o.facialHairColor,
         headwear: o.headwear, hatColor: o.hatColor,
+        cape: o.cape,                                        /* v2.3.2190 */
       };
       this._placeSkillTraitsOnFor(code, sp, fi, spec.traitDir, false, looks, ent.traits);
     }
@@ -5367,7 +5482,7 @@ export class EffectsRenderer {
          the mk() call order, which is the addChild order, which is the z-order,
          so this line alone puts a peer's shirt in front of their greaves the way
          the owner asked for the local character. */
-      set = { jogLegs: mk(), jogLegsGear: mk(), body: mk(), legs: mk(), shirt: mk(), chest: mk(), weapon: mk(), traits: { hair: mk(), beard: mk(), hat: mk(), hairMask: mk() } }; /* v2.3.1776: + the clip mask */
+      set = { jogLegs: mk(), jogLegsGear: mk(), body: mk(), legs: mk(), shirt: mk(), chest: mk(), weapon: mk(), traits: { capeBack: mk(), hair: mk(), beard: mk(), capeHood: mk(), capeHoodMask: mk(), hat: mk(), hairMask: mk() } }; /* v2.3.1776: + the clip mask; v2.3.2190: + the cape's two halves and its hood clip */
       this._remoteSwordSprites.set(id, set);
     }
     return set;
@@ -5384,6 +5499,13 @@ export class EffectsRenderer {
     const cwx = sp.x + (cr[0] - data.fw / 2) * sp.scale.x;
     const cwy = sp.y + (cr[1] - data.fh) * sp.scale.y;
     const scaleVal = Math.abs(sp.scale.y) * (this._skillTraitMul[skillKey] || 1);
+    /* v2.3.2190: their cape too, on the same crown -- MP parity is the whole
+       reason this parameterized copy exists, and a cape that vanished off other
+       people's attacks while staying on yours would be the asymmetry v2.3.1011
+       set out to remove.  Before the head traits, for the hair-clip reason in
+       _placeSkillTraitsOn. */
+    _placeStandInCapeOn(traitSprites, _isGatheringStandIn(skillKey) ? null : (looks && looks.cape),
+      dir, mirror, cwx, cwy, (data.fh - cr[1]) * Math.abs(sp.scale.y), sp, skillKey);
     placeSkillTraitsFor(traitSprites, looks, cwx, cwy, dir, mirror, scaleVal);
   }
 
@@ -5522,6 +5644,7 @@ export class EffectsRenderer {
         hair: o.hair, hairColor: o.hairColor,
         facialhair: o.facialhair, facialHairColor: o.facialHairColor,
         headwear: o.headwear, hatColor: o.hatColor,
+        cape: o.cape,                                        /* v2.3.2190 */
       };
       this._placeSkillTraitsOnFor(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror, looks, set.traits);
       /* composite the jog legs under the torso strip (or hide them). */
@@ -5576,7 +5699,7 @@ export class EffectsRenderer {
          v2.3.1710: `legs` before `shirt`, in step with the local bow stand-in
          and _ensureRemoteSwordSet — see the note there on why key order is
          z-order. */
-      set = { jogLegs: mk(), jogLegsGear: mk(), body: mk(), legs: mk(), shirt: mk(), chest: mk(), weapon: mk(), traits: { hair: mk(), beard: mk(), hat: mk(), hairMask: mk() } }; /* v2.3.1776: + the clip mask */
+      set = { jogLegs: mk(), jogLegsGear: mk(), body: mk(), legs: mk(), shirt: mk(), chest: mk(), weapon: mk(), traits: { capeBack: mk(), hair: mk(), beard: mk(), capeHood: mk(), capeHoodMask: mk(), hat: mk(), hairMask: mk() } }; /* v2.3.1776: + the clip mask; v2.3.2190: + the cape's two halves and its hood clip */
       this._remoteBowSprites.set(id, set);
     }
     return set;
@@ -5667,6 +5790,7 @@ export class EffectsRenderer {
         hair: o.hair, hairColor: o.hairColor,
         facialhair: o.facialhair, facialHairColor: o.facialHairColor,
         headwear: o.headwear, hatColor: o.hatColor,
+        cape: o.cape,                                        /* v2.3.2190 */
       };
       this._placeSkillTraitsOnFor(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror, looks, set.traits);
       /* composite the jog legs under the torso strip (or hide them). */

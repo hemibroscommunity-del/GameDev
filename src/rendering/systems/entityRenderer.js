@@ -1388,6 +1388,17 @@ function _remoteBodyArt(other, mirror) {
  * cape that is not worth it: a swing is a few frames, and a missing cape
  * reads far better than a floating one.
  *
+ * ═══ v2.3.2190: ...AND THE STAND-IN NOW WEARS ONE OF ITS OWN ═══
+ * Owner: "the attack animations need to have the cape anchored on the player's
+ * head to look right."  Everything above still holds and none of it changes:
+ * THIS path stays off during an attack, because there is still no body here to
+ * hang a cape on.  What the owner's word "anchored" points at is that the
+ * stand-in HAS a known anchor -- its own per-frame crown, out of crowns.json --
+ * and hats, hair, beards and the hair clip have all ridden it since v2.3.867.
+ * So the cape is not a second copy of THIS geometry; it is one more sprite pair
+ * on an anchor that already exists and is already maintained.  See
+ * placeStandInCape, and mp-capeattack for the assertions.
+ *
  * ═══ v2.3.2129: WHICH OF THESE WERE ACTUALLY HIDING ANYTHING ═══
  * Owner: "Add it to all the animations as well" -> "yes do the free 8".
  *
@@ -3399,6 +3410,141 @@ function _placeStandaloneTrait(sprite, entry, dir, mirror, cwx, cwy, scaleVal, l
   sprite.visible = true;
 }
 
+/* ═══ v2.3.2190: THE CAPE ON AN ATTACK STAND-IN, HUNG FROM THE HEAD ═══
+ *
+ * Owner: "the attack animations need to have the cape anchored on the player's
+ * head to look right."
+ *
+ * v2.3.2023 left the cape OFF every attack and wrote down why: a swing hides
+ * the real body and redraws the whole figure as a stand-in in effectsRenderer,
+ * so a cape placed from `_spriteBody` would hang in mid-air beside the swing --
+ * and drawing it twice would mean "two renderers holding one piece of geometry",
+ * which is how the back shield went wrong.  That reasoning was right about the
+ * BODY and it does not apply to the HEAD, which is what the owner's word
+ * "anchored" identifies:
+ *
+ *   the stand-in's crown is ALREADY computed every frame, in world space, by
+ *   _placeSkillTraitsOn, out of crowns.json -- and hats, hair, beards and the
+ *   hair clip have all been composited onto attacks from it since v2.3.867.
+ *
+ * So this is not a second geometry: it is the same crown anchor those four
+ * already ride, with one more sprite pair on it.  There is nothing here for a
+ * future change to drift out of step with, because there is no second copy of
+ * the placement -- if crowns.json moves, everything on the head moves together.
+ *
+ * WHERE THE CAPE'S OWN CROWN IS.  The art is a full 256 frame fitted against
+ * the real stand-<dir> body (import_cape_green.py), so the point on it that
+ * corresponds to a head is the STANDING body's crown -- exactly the value
+ * _placeCape already reaches for as its reference, out of body-tops.json.
+ * Anchoring the frame there and dropping it on the stand-in's crown is the
+ * whole placement; the hood lands on the head and the panels fall from the
+ * shoulders below it.
+ *
+ * WHY THE SIZE IS NOT scaleVal, WHICH IS WHAT THE HATS USE.  It was, and the
+ * pictures rejected it: the cape came out 19% oversized on the south swing and
+ * 49% on the east one, swallowing the arms it should hang beside (measured, the
+ * 256 frame drawing 136.5px and 170.6px against the standing figure's 114.6).
+ * _skillTraitMul is a HEAD number -- "the hat matches how it sits idle rather
+ * than being sized to the lumberjack's small head" -- and a stand-in is not the
+ * walking figure rescaled: it is separate art whose head sits in a different
+ * proportion to its body.  Matching the head therefore cannot match the body,
+ * and a cape is a body-length garment.
+ *
+ * So the size is derived per frame from the figure itself, with no table to
+ * tune and none to fall out of date: the cape is drawn so that its own
+ * CROWN-TO-HEM spans the stand-in's own CROWN-TO-FEET.  Both ends are already
+ * known -- the stand-in's crown is the crowns.json row this placement is
+ * anchored at and its feet are the sprite's bottom (the stand-ins are anchored
+ * 0.5, 1), and the cape's crown is the standing body-top the frame is fitted
+ * to, with the 256 frame's own bottom as its hem.  A stand-in re-cut to a new
+ * frame size self-corrects, which is exactly what _skillTraitMul could not do
+ * when the fire art went from 220 to 512 (v2.3.1715) and every hat on that pose
+ * silently rendered at 43%.
+ *
+ * The split is the walking path's, read off the art the same way: a hood
+ * texture existing means this facing draws the panels behind and the hood in
+ * front (south/southwest/east), and its absence means the single sprite
+ * (north/northeast, the back view).  The z-order is the caller's -- the panels
+ * have to go under the stand-in BODY, which this function cannot see. */
+function _placeStandaloneCapeLayer(sprite, tex, standTop, mirror, cwx, cwy, scaleVal) {
+  if (!sprite) return false;
+  const fw = tex && ((tex.frame && tex.frame.width) || tex.width);
+  if (!tex || !fw || !standTop) { sprite.visible = false; return false; }
+  if (sprite.texture !== tex) sprite.texture = tex;
+  const W = 256;
+  /* The anchor is a fraction of the TEXTURE, and the texture is the whole
+     authored frame however many pixels it is stored at -- so the fraction is
+     the 256-space crown over 256 either way.  Same reasoning as
+     _placeStandaloneTrait's, and the same trap it records (v2.3.1532): the
+     SCALE is what has to know the storage size, through norm. */
+  sprite.anchor.set(standTop[0] / W, standTop[1] / W);
+  const m = mirror ? -1 : 1;
+  sprite.x = cwx;
+  sprite.y = cwy;
+  sprite.scale.x = m * scaleVal * (W / fw);
+  sprite.scale.y = scaleVal * (W / fw);
+  /* No tilt here on purpose.  The jog tilt exists because a RUNNER leans into
+     the direction of travel (v2.3.2024); a stand-in is drawn in its own pose
+     with its own lean already in the art, and rotating the cape on top of that
+     would be leaning twice.  The hood would land off the head besides, which
+     is the v2.3.2189 bug over again. */
+  if (sprite.rotation !== 0) sprite.rotation = 0;
+  sprite.visible = true;
+  return true;
+}
+
+/** Hide a stand-in trait set's cape layers, and drop the hood's hair clip.
+    Not exported: hideSkillTraits below is the door every caller already uses,
+    and a second one would be a way to take the cape down without taking the
+    clip with it. */
+function hideStandInCape(sprites) {
+  if (!sprites) return;
+  if (sprites.capeBack) sprites.capeBack.visible = false;
+  if (sprites.capeHood) sprites.capeHood.visible = false;
+  /* The clip goes with them.  Leaving _btReady set would clip the hair to a
+     hood that is not on screen -- a bald patch, which is the exact bug the
+     capehair probe caught on the walking path at v2.3.2186. */
+  if (sprites.capeHoodMask) {
+    sprites.capeHoodMask.visible = false;
+    sprites.capeHoodMask._btReady = false;
+  }
+}
+
+/** Place a stand-in's cape from the crown world position.  Returns true if any
+    cape layer is now drawn, so the caller knows whether to re-order it. */
+export function placeStandInCape(sprites, capeId, dir, mirror, cwx, cwy, crownToFeet) {
+  if (!sprites || !(sprites.capeBack || sprites.capeHood)) return false;
+  const tex = (capeId && capeId !== 'none') ? getCapeTexture(capeId, dir) : null;
+  const standTop = _lookupBodyTop('stand', dir, 0);
+  if (!tex || !standTop) { hideStandInCape(sprites); return false; }
+  /* The cape's own crown-to-hem, in the 256 frame it is authored in. */
+  const capeSpan = 256 - standTop[1];
+  if (!(crownToFeet > 0) || !(capeSpan > 0)) { hideStandInCape(sprites); return false; }
+  const scaleVal = crownToFeet / capeSpan;
+  const hoodTex = getCapeHoodTexture(capeId, dir);
+  const split = !!(hoodTex && sprites.capeBack);
+  const front = split ? hoodTex : tex;
+  if (split) {
+    _placeStandaloneCapeLayer(sprites.capeBack, tex, standTop, mirror, cwx, cwy, scaleVal);
+  } else if (sprites.capeBack) {
+    sprites.capeBack.visible = false;
+  }
+  const drawn = _placeStandaloneCapeLayer(sprites.capeHood, front, standTop, mirror, cwx, cwy, scaleVal);
+  const hoodMask = sprites.capeHoodMask;
+  if (hoodMask) {
+    const mtex = split ? getCapeHoodMaskTexture(capeId, dir) : null;
+    if (mtex && _placeStandaloneCapeLayer(hoodMask, mtex, standTop, mirror, cwx, cwy, scaleVal)) {
+      /* A mask is sampled, not drawn -- visible would paint a white hood. */
+      hoodMask.visible = false;
+      hoodMask._btReady = true;
+    } else {
+      hoodMask.visible = false;
+      hoodMask._btReady = false;
+    }
+  }
+  return drawn;
+}
+
 /* v2.3.910: how long the sword-swing stand-in plays (the 14-frame swing maps
    across this window from S.swingTimer).  Exported so effectsRenderer drives
    the same window when it draws the stand-in and composites the traits. */
@@ -3460,8 +3606,18 @@ function _clipStandInHair(sprites, hatId, dir, mirror, cwx, cwy, scaleVal, fit) 
     _standInHairClip.maskVisible = !!maskSprite.visible;
   };
   if (!(meta && meta.clipsHair && hair.visible && maskEntry && maskEntry.tex[dir])) {
-    if (hair.mask) hair.mask = null;
     maskSprite.visible = false;
+    /* v2.3.2190: ...but a HOOD clips hair too, and on a stand-in the cape is
+       placed just before this runs.  Same fallback the walking path grew at
+       v2.3.2186, and for the same report ("hair sticking out"): a hood the hair
+       bursts out of looks no better mid-swing than it does mid-stride.  A hat
+       that clips still wins -- it is the inner layer, worn under the hood. */
+    const hoodMask = sprites.capeHoodMask;
+    if (hair.visible && hoodMask && hoodMask._btReady) {
+      if (hair.mask !== hoodMask) hair.mask = hoodMask;
+    } else if (hair.mask) {
+      hair.mask = null;
+    }
     _rec();
     return;
   }
@@ -3533,6 +3689,7 @@ export function placeSkillTraitsFor(sprites, looks, cwx, cwy, dir, mirror, scale
 /** Hide all three skill-trait sprites (no stand-in active this frame). */
 export function hideSkillTraits(sprites) {
   if (!sprites) return;
+  hideStandInCape(sprites);                                  /* v2.3.2190 */
   if (sprites.hat) sprites.hat.visible = false;
   if (sprites.beard) sprites.beard.visible = false;
   if (sprites.hair) sprites.hair.visible = false;
