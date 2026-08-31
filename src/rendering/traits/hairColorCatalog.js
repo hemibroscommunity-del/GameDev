@@ -61,7 +61,7 @@ export function onHairColorChange(fn) {
 
 /* ── in-game recolored hair textures ── */
 const DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
-const TRAIT_VER = '2.3.391';
+const TRAIT_VER = '2.3.2174';   /* v2.3.2174: de-fringe sweep across the trait sheets (tools/sprite-defringe.py); see playerSprites VERSION 101. */
 /* `${hairId}/${colorId}` -> { east:Texture, ... } | 'loading' */
 const _cache = {};
 
