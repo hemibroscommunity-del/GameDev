@@ -165,6 +165,100 @@ export async function run({ browser, wsPort, webPort, rec }) {
       + 'swings both halves together, it does not tear them apart',
       !!hit && hit.back && hit.front, hit);
   }
+  /* ═══ v2.3.2189: THE HOOD IS ON THE HEAD, NOT ON THE CLOTH ═══
+     Owner, two reports: "East jog cape covers player face" and "Southwest jog
+     the cape is aligned too far to the right on his head."
+
+     Both were one bug: the hood wore the PANELS' motion.  The tilt swings the
+     garment 0.75 rad about the shoulders on east, which on a hood walks its
+     front rim down over the face; the slide pushes it 19-28px backwards along
+     the line of travel so the hem trails, which on a hood carries it bodily off
+     the skull.  v2.3.2189 gave the two halves their own motion terms.
+
+     WHAT IS MEASURED, and why it is this and not a pixel count.  The obvious
+     test -- "count the skin pixels on the face" -- cannot be written here: the
+     town ground is sandy gold, which passes the engine's own skin predicate
+     (r>g>=b, r-b>30, r-g>25) by a mile, so the count would be dominated by
+     cobblestones.  What CAN be measured exactly is the thing the owner's words
+     describe: where the hood sits RELATIVE TO THE HEAD.  The hair sprite is
+     placed from the head every frame, so hood-centre minus hair-centre IS the
+     hood's seat on the skull.
+
+     And it is compared against STANDING rather than against a constant, which
+     matters twice over: standing is the pose the cape art was fitted to and the
+     only one never reported wrong, and comparing to it needs no number baked in
+     from this particular cape's fit, so a new cape with a differently-centred
+     hood still passes if it is seated the same way running as standing.
+
+     Negative control, MEASURED against the v2.3.2186 renderer with everything
+     else in this commit unchanged: east drifts 14.57px and carries the panels'
+     full 0.75 rad, southwest drifts 7.93px at -0.50 rad.  All four claims below
+     go red there and green here. */
+  {
+    const seatOf = () => P.page.evaluate(() => {
+      const r = window._pixiRenderer;
+      const pd = r && r.playerDisplayRaw ? r.playerDisplayRaw() : null;
+      if (!pd) return null;
+      const hood = pd._capeSprite, back = pd._capeBackSprite, hair = pd._hairSprite;
+      if (!hood || !hood.visible || !hair || !hair.visible) return null;
+      const cx = (o) => o.x + (0.5 - o.anchor.x) * Math.abs(Number(o.scale.x)
+        * ((o.texture && o.texture.frame && o.texture.frame.width) || 0));
+      return {
+        pose: pd._animPose || null, dir: pd._animDir || null,
+        /* The seat: how far the hood's centre sits from the head's. */
+        seat: +(cx(hood) - cx(hair)).toFixed(2),
+        hoodRot: +Number(hood.rotation || 0).toFixed(3),
+        panelRot: +Number((back && back.visible ? back.rotation : 0) || 0).toFixed(3),
+        panelOff: +Number(back && back.visible ? (back.x - hood.x) : 0).toFixed(2),
+        split: !!(back && back.visible),
+      };
+    }).catch(() => null);
+
+    /* Hold the keys until the renderer REPORTS the pose+dir asked for, never a
+       timer: the same rule the southwest shot above follows, and for the same
+       reason -- a sample taken on a timer would be labelled with a direction
+       the character was never in. */
+    const settle = async (keys, wantPose, wantDir) => {
+      for (const k of keys) await P.page.keyboard.down(k);
+      let hit = null;
+      for (let i = 0; i < 45 && !hit; i++) {
+        await P.page.waitForTimeout(110);
+        const st = await seatOf();
+        if (st && st.pose === wantPose && st.dir === wantDir) hit = st;
+      }
+      /* Shot while the keys are still DOWN, because releasing them ends the
+         jog: a picture taken after the release would be of a standing
+         character captioned as running. */
+      if (hit) await P.page.screenshot({ path: `tools/qa/mp/out/capehair-jog-${wantDir}.png` });
+      for (const k of keys) await P.page.keyboard.up(k);
+      return hit;
+    };
+
+    for (const [name, keys] of [['east', ['d']], ['southwest', ['s', 'a']]]) {
+      const jog = await settle(keys, 'jog', name);
+      await P.page.waitForTimeout(900);                 /* settle to standing */
+      const stand = await seatOf();
+      rec.ok(`${name}: the renderer reached jog and settled back to stand, so `
+        + 'there are two real samples to compare (guard)',
+        !!(jog && stand && stand.pose === 'stand'), { jog, stand });
+      if (!jog || !stand) continue;
+      rec.ok(`${name}: the panels really are streaming on this sample — tilted, `
+        + 'or slid back along the line of travel (guard: a still cape would '
+        + 'make the claim below pass on nothing)',
+        jog.split && (Math.abs(jog.panelRot) > 0.01 || Math.abs(jog.panelOff) > 1),
+        jog);
+      const drift = Math.abs(jog.seat - stand.seat);
+      rec.ok(`${name}: THE HOOD KEEPS ITS SEAT ON THE HEAD WHILE RUNNING — it `
+        + 'sits the same distance from the head jogging as standing, which is '
+        + 'the pose the art was fitted to (owner: "aligned too far to the right '
+        + 'on his head")',
+        drift <= 2, { drift: +drift.toFixed(2), jogSeat: jog.seat, standSeat: stand.seat });
+      rec.ok(`${name}: ...and it is not ROTATED off the head either, while the `
+        + 'panels behind it still swing (owner: "cape covers player face")',
+        Math.abs(jog.hoodRot) <= 0.01, jog);
+    }
+  }
+
   /* The asymmetry, asserted rather than described: the three front-ish facings
      draw BOTH halves, the two back facings draw only the front sprite. */
   /* WHAT THE GAME ACTUALLY REPORTS is a FOUR-WAY facing -- up/down/left/right --

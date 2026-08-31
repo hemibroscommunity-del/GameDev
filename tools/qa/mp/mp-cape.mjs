@@ -25,7 +25,18 @@ const raw = (P) => P.page.evaluate(() => {
   const r = window._pixiRenderer;
   const pd = r && r.playerDisplayRaw ? r.playerDisplayRaw() : null;
   if (!pd) return null;
-  const c = pd._capeSprite, b = pd._spriteBody;
+  /* v2.3.2189: THE WHOLE GARMENT, which is what every claim in this file is
+     about -- is the cape drawn, is it the right size, is it TILTED while
+     running, does the slide move it.  Since the v2.3.2186 hood split that is
+     the BACK sprite on south/southwest/east: `_capeSprite` there carries only
+     the hood, and v2.3.2189 gave the hood its own motion (it rides the head
+     instead of streaming behind), so reading the tilt off it would measure a
+     number that is deliberately zero and report the panels as untilted.
+     Falls back to `_capeSprite` on the unsplit facings, where it IS the whole
+     garment -- the same rule the renderer's own arm-capsule clone uses. */
+  const _back = pd._capeBackSprite;
+  const c = (_back && _back.visible && _back.texture) ? _back : pd._capeSprite;
+  const b = pd._spriteBody;
   return {
     /* EFFECTIVE size, not raw scale.  The body draws from a DOWNSCALED display
        texture and the cape from a raw 256 PNG, so their scale NUMBERS differ by
