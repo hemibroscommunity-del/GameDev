@@ -122,6 +122,75 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return { key: pick('[data-tut="login-key"]'), make: pick('[data-tut="login-create"]') };
   });
   const K = plates.key, C = plates.make;
+  /* ═══ v2.3.2181: THE WORD IS ALONE ON THE PLATE, AND CENTRED ═══
+     Owner: "The continue label is still not centered on the button it looks
+     slightly offset left."
+
+     THE WORD WAS ALREADY CENTRED -- measured on their own screenshot, 645
+     against the plate's 646.  What was off was the BALANCE: a key roundel on
+     the left with nothing opposite it left 31px of field before it and 269px
+     after the word, and the eye reads that cluster's centre of mass, not the
+     glyphs'.  v2.3.2151 re-centred the word and the report came back unchanged,
+     which is the tell that the word was never the problem.  The owner chose to
+     drop the key, so the plate now matches CREATE CHARACTER below it.
+
+     Measured on the ART, because that is where the answer lives -- the word is
+     painted into the PNG, so no DOM box can see it.  Reading the columns that
+     differ from an empty field column finds the frame, the word, and anything
+     else on the plate; "anything else" is what must stay absent.  Tolerance is
+     1% of the plate: CREATE's own art is 2px off on 758 (0.26%), so anything
+     tighter would fail the button this one is being matched to. */
+  const plateArt = await B.page.evaluate(async () => {
+    const img = new Image();
+    await new Promise((res, rej) => { img.onload = res; img.onerror = rej;
+      img.src = '/ui/welcome/title/btn-continue.png'; });
+    const c = document.createElement('canvas');
+    c.width = img.width; c.height = img.height;
+    const g = c.getContext('2d', { willReadFrequently: true });
+    g.drawImage(img, 0, 0);
+    const d = g.getImageData(0, 0, c.width, c.height).data;
+    const at = (x, y) => { const i = (y * c.width + x) * 4; return [d[i], d[i+1], d[i+2], d[i+3]]; };
+    const y0 = Math.round(c.height * 0.28), y1 = Math.round(c.height * 0.71);
+    const CLEAN = Math.round(c.width * 0.81);       /* empty field, right of the word */
+    const cols = [];
+    for (let x = 0; x < c.width; x++) {
+      let dev = 0, n = 0;
+      for (let y = y0; y < y1; y += 2) {
+        const p = at(x, y), q = at(CLEAN, y);
+        dev += Math.abs(p[0]-q[0]) + Math.abs(p[1]-q[1]) + Math.abs(p[2]-q[2]); n += 3;
+      }
+      cols.push(dev / n);
+    }
+    const hot = []; let s = -1;
+    for (let x = 0; x < cols.length; x++) {
+      if (cols[x] > 6) { if (s < 0) s = x; }
+      else if (s >= 0) { if (x - s > 12) hot.push([s, x - 1]); s = -1; }
+    }
+    if (s >= 0) hot.push([s, cols.length - 1]);
+    /* the plate's own extent, from alpha */
+    let px0 = c.width, px1 = -1;
+    for (let x = 0; x < c.width; x++) {
+      for (let y = 0; y < c.height; y += 3) {
+        if (at(x, y)[3] > 16) { if (x < px0) px0 = x; if (x > px1) px1 = x; break; }
+      }
+    }
+    return { w: c.width, hot, plate: [px0, px1] };
+  }).catch(() => null);
+  rec.ok('the CONTINUE plate art could be read (guard)', !!plateArt && plateArt.hot.length > 0, plateArt);
+  {
+    const inner = plateArt ? plateArt.hot.filter(
+      (r) => r[0] > plateArt.plate[0] + 60 && r[1] < plateArt.plate[1] - 60) : [];
+    const pc = plateArt ? (plateArt.plate[0] + plateArt.plate[1]) / 2 : 0;
+    const span = plateArt ? plateArt.plate[1] - plateArt.plate[0] : 1;
+    const wc = inner.length === 1 ? (inner[0][0] + inner[0][1]) / 2 : null;
+    const offPct = wc === null ? null : +(Math.abs(wc - pc) / span * 100).toFixed(2);
+    rec.ok('the plate carries ONE thing between its frames — the word, with no key '
+      + 'roundel beside it to pull the eye left (v2.3.2181)',
+      inner.length === 1, { inner, plate: plateArt && plateArt.plate });
+    rec.ok('...and that word sits on the plate\'s centre line (within 1% of its width)',
+      offPct !== null && offPct <= 1.0, { wordCentre: wc, plateCentre: pc, offPct });
+  }
+
   rec.ok('both buttons are painted plates, not CSS rectangles',
     /* v2.3.1954: btn-continue.png, renamed from btn-login.png when the word
        painted into it changed — game.css cannot cache-bust a url(), so the
