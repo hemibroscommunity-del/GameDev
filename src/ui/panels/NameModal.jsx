@@ -484,8 +484,26 @@ export function NameModal(props) {
      0.355 down the disc, still deep inside the 0.12-0.72 top face
      mp-ccstand pins. Measured, not predicted: 88 gives 22px, 84 gives 35,
      80 gives 48, and the feet never move more than 3px across all of them. */
+  /* ═══ v2.3.2201: AND DOWN A BIT, BECAUSE TALL IS A THING ═══
+     Owner, with a screenshot of a TALL bro whose hair still reached the
+     wordmark: "Can you just move the char down a lil."
+
+     v2.3.2199 shrank him and I checked the worst case by walking all 9 hairs
+     and all 40 hats -- and never touched BUILD, which is a third multiplier
+     sitting right there in the same picker (heightMul, via focusForCat).
+     Measured: Tall costs 30px of headroom on its own, taking the tallest
+     hair-and-hat combination from 51px under the sword to 21. Same gap I had
+     just called comfortable, on a build I never rendered.
+
+     So `b` drops 24.8 -> 20, which lowers him ~16px and takes that worst
+     case back to 37. His boots land 0.488 down the pedestal's top face --
+     nearer its middle than the 0.347 they sat at, and still inside the
+     0.12-0.72 band mp-ccstand pins, so v2.3.2151's "on the disc, not in
+     front of it" is untouched. Measured across the range: 22 gives 31px,
+     20 gives 37, 18 gives 44, and the disc fraction climbs 0.43 / 0.49 /
+     0.55 in step. */
   var _frame = (previewZoom || !categoryCrops(_activeType))
-    ? { h: 84, b: '24.8%' } : { h: 54.5, b: '18.2%' };
+    ? { h: 84, b: '20%' } : { h: 54.5, b: '18.2%' };
   /* v2.3.1307: name validity gates ENTER (round-7).  Local rules only:
      names are not unique server-side, so there is no availability
      check to run — trimmed length is the honest contract. */

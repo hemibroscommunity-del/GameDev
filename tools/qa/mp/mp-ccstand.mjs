@@ -150,15 +150,31 @@ export async function run({ browser, wsPort, webPort, rec }) {
   };
   const hair = await tallestIn('Hair');
   const hats = await tallestIn('Hats');
-  rec.ok('every hair and hat could be tried (guard)',
-    !!hair && !!hats && hair.n > 1 && hats.n > 1, { hair, hats });
+  /* v2.3.2201: BUILD TOO.  v2.3.2199 walked hair and hats, called the
+     remaining gap comfortable, and shipped -- and the owner's next
+     screenshot was a TALL bro back up against the wordmark.  Build is a
+     third height multiplier (heightMul) sitting in the same picker, worth
+     30px on its own: it took the worst hair-and-hat pair from 51px under
+     the sword to 21.  A "tallest head the game can build" check that skips
+     one of the three things that make a head tall is not that check. */
+  const build = await tallestIn('Build');
+  rec.ok('every hair, hat and build could be tried (guard)',
+    !!hair && !!hats && !!build && hair.n > 1 && hats.n > 1 && build.n > 1,
+    { hair, hats, build });
   const worst = await inkSpan(P);
   const sword = await swordBottom();
   const gap = worst && worst.pageTop ? Math.round(worst.pageTop - sword) : null;
-  /* 12px is the smallest gap that still reads as deliberate space rather than
-     a near-miss at this scale; shipped it was 9 and the owner saw it. */
+  /* ═══ WHAT COUNTS AS CLEAR IS THE OWNER'S CALL, NOT MINE ═══
+     v2.3.2199 set this at 12px, reasoning from the 9px that had just been
+     reported.  Then the owner looked at 21px -- which passes a 12px bar --
+     and said "the character is up against the logo" again.  So 12 was a
+     number I made up that the evidence has since contradicted, and the bar
+     is now the one the owner actually drew: comfortably above the 21 they
+     rejected, comfortably below the 38 this ships with, so it fails on what
+     they disliked without being so tight that a device a few pixels wider
+     trips it. */
   rec.ok(`the tallest head the game can build clears the logo's sword (${gap}px)`,
-    gap !== null && gap >= 12, { gap, head: worst && worst.pageTop, swordBottom: sword, hair, hats });
+    gap !== null && gap >= 28, { gap, head: worst && worst.pageTop, swordBottom: sword, hair, hats, build });
 
   /* ═══ v2.3.2200: THE MEASURED FIGURE IS THE BODY, NOT ITS SHADOW ═══
      Owner, twice: "the shoes are transparent" / "Shoes appear semi
