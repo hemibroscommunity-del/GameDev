@@ -298,6 +298,39 @@ export function wireCharacterPortrait(previewCanvasRef, sel) {
    * and ends on.  That also retires both constants: a hat, a build, a hairstyle
    * and a facing all move these rows, and now they simply move them.
    */
+  /* ═══ v2.3.2200: THE SHADOW IS NOT PART OF THE BRO ═══
+     Owner, twice, with screenshots: "the shoes are transparent", and then
+     "Shoes appear semi transparent" after the first round did not fix it.
+
+     They are not transparent -- composited over magenta the boots come back
+     79,79,78 with no magenta through them, at the owner's own dpr 3. What
+     makes them LOOK see-through is this measurement, one line down.
+
+     The bottom scan used the same `alpha > 8` as the top, and the composite
+     it reads includes the v2.3.1300 CONTACT SHADOW -- a 52%-black ellipse
+     painted under the boots, whose faintest pixels are alpha 8-11. So `bot`
+     was the bottom of the SHADOW, tens of rows below the actual feet, and
+     two things followed from that one wrong number:
+       - fitCrown framed the camera around the shadow rather than the body,
+         and
+       - blit()'s "the body continues below the frame" dissolve is gated on
+         exactly this bound, so it could fade a bottom band that holds the
+         boots -- the same failure v2.3.1956 fixed at the TOP edge, where the
+         fade was eating the hair on the hair tab, one edge over.
+     Measured A/B at dpr 3: with the shadow drawn the boots read washed-out
+     with the pedestal's rings apparently running through them; with it off
+     they are crisp and solid, and the figure's measured bottom moves by 56
+     rows. Same sprite either way.
+
+     So the bottom scan looks for BODY ink only. The shadow's own gradient
+     tops out at 0.52 alpha (rgba(0,0,0,0.52), v2.3.1300c), so 160 is above
+     anything it can paint and below the boots' 255. The TOP scan keeps the
+     old sensitivity: there is no shadow up there, and a hat's antialiased
+     crown is exactly the faint ink v2.3.1956 went to the trouble of
+     including. */
+  const TOP_INK = 8;
+  const BODY_INK = 160;
+
   function measureFigure(cv) {
     try {
       const c = cv.getContext('2d', { willReadFrequently: true });
@@ -308,13 +341,20 @@ export function wireCharacterPortrait(previewCanvasRef, sel) {
       const STEP = 4;
       let top = -1, bot = -1;
       for (let y = 0; y < S && top < 0; y++) {
-        for (let x = 0; x < S; x += STEP) if (d[(y * S + x) * 4 + 3] > 8) { top = y; break; }
+        for (let x = 0; x < S; x += STEP) if (d[(y * S + x) * 4 + 3] > TOP_INK) { top = y; break; }
       }
       for (let y = S - 1; y >= 0 && bot < 0; y--) {
-        for (let x = 0; x < S; x += STEP) if (d[(y * S + x) * 4 + 3] > 8) { bot = y; break; }
+        for (let x = 0; x < S; x += STEP) if (d[(y * S + x) * 4 + 3] > BODY_INK) { bot = y; break; }
       }
       if (top < 0) return null;
-      return { top: top / S, bot: bot / S };
+      const out = { top: top / S, bot: bot / S };
+      /* v2.3.2200 QA handle, house style (__btTrailStyle, __btDashSide).  The
+         bug this fixes is invisible in the finished pixels -- the boots are
+         opaque either way -- and lives entirely in THIS number, so the guard
+         has to be able to read it.  mp-ccstand checks that `bot` is the body
+         and not the shadow tens of rows below it. */
+      try { if (typeof window !== 'undefined') window.__btFigBounds = out; } catch (e) {}
+      return out;
     } catch (e) { return null; }   /* tainted or zero-sized: fall back below */
   }
 

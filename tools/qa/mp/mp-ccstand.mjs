@@ -160,6 +160,46 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`the tallest head the game can build clears the logo's sword (${gap}px)`,
     gap !== null && gap >= 12, { gap, head: worst && worst.pageTop, swordBottom: sword, hair, hats });
 
+  /* ═══ v2.3.2200: THE MEASURED FIGURE IS THE BODY, NOT ITS SHADOW ═══
+     Owner, twice: "the shoes are transparent" / "Shoes appear semi
+     transparent."  They never were -- over magenta the boots come back
+     opaque -- but characterCreatorEffects.measureFigure scanned for
+     `alpha > 8`, and the composite carries the v2.3.1300 contact shadow,
+     whose faintest pixels are alpha 8-11.  So the figure's "bottom" was the
+     bottom of the SHADOW, which reframed the camera and armed the
+     bottom-edge dissolve over the boots.
+
+     This cannot be caught in the finished picture: the boots measure opaque
+     in both states.  It lives in that one number, so the number is what is
+     asserted -- the reported bottom must sit on the body's own ink, not tens
+     of rows under it.  Compared against the lowest FULLY OPAQUE row of the
+     live preview, which the shadow (alpha <= 133) can never reach. */
+  const bounds = await P.page.evaluate(() => {
+    const b = window.__btFigBounds;
+    const c = document.querySelector('.bt-cc-stage canvas');
+    if (!b || !c) return null;
+    const W = c.width, Hh = c.height;
+    const d = c.getContext('2d').getImageData(0, 0, W, Hh).data;
+    let solid = -1, anyInk = -1;
+    for (let y = Hh - 1; y >= 0 && solid < 0; y--)
+      for (let x = 0; x < W; x++) if (d[(y * W + x) * 4 + 3] === 255) { solid = y; break; }
+    for (let y = Hh - 1; y >= 0 && anyInk < 0; y--)
+      for (let x = 0; x < W; x++) if (d[(y * W + x) * 4 + 3] > 8) { anyInk = y; break; }
+    return { bot: b.bot, top: b.top, solidFrac: solid / Hh, anyInkFrac: anyInk / Hh };
+  });
+  rec.ok('the figure bounds are readable (guard)', !!bounds, bounds);
+  if (bounds) {
+    /* There IS a shadow: some ink sits below the last solid row.  If this
+       ever goes to zero the A/B below stops proving anything. */
+    rec.ok('...and the contact shadow really does extend below his boots (guard)',
+      bounds.anyInkFrac > bounds.solidFrac + 0.01, bounds);
+    /* The measured bottom must track the BOOTS.  Shipped it tracked the
+       shadow: 56 rows of an 865px canvas, ~6.5% of the frame, lower. */
+    rec.ok('...and the measured figure bottom is his boots, not the shadow under them',
+      Math.abs(bounds.bot - bounds.solidFrac) <= 0.03,
+      { measuredBot: bounds.bot, boots: bounds.solidFrac, shadow: bounds.anyInkFrac });
+  }
+
   /* Rotate him and check the other facings too: the offset the owner sees is
      per-FRAME, so a fix that only lands on south is a fix for one sixth of the
      screen. Drag the canvas, which is how a player turns him now (v2.3.2006
