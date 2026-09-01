@@ -162,6 +162,11 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
   /* Cache-busted on the build version: these are new files at a new path,
      but they will be re-cut from the sheet again and a CDN edge holding the
      old crop is exactly the "it looks fine for me" report. */
+  /* v2.3.2207 (owner: "there's still a static shine on the Hemi bros logo and
+     diamonds framing 'bro town' that I want gone"). The marks were painted
+     into the sheet, so the page loads CLEANED cuts -- logo-plain / banner-plain,
+     built by tools/ui/clean-title-marks.mjs from the slicer's own output. The
+     original names stay free for the slicer; see that tool's header. */
   const art = (n) => `/ui/welcome/title/${n}.png?v=${BUILD_INFO.version}`;
 
   return (
@@ -198,7 +203,7 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
               banner -- and swept a mask 22px lower than the lettering. */}
           <span className="bt-login-logowrap">
             <img
-              src={art('logo')}
+              src={art('logo-plain')}
               alt="Hemi Bros"
               draggable={false}
               className="bt-login-logo"
@@ -210,11 +215,11 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
             <div
               className="bt-login-shine"
               aria-hidden
-              style={{ '--lg-logo': `url("${art('logo')}")` }}
+              style={{ '--lg-logo': `url("${art('logo-plain')}")` }}
             />
           </span>
           <img
-            src={art('banner')}
+            src={art('banner-plain')}
             alt=""
             draggable={false}
             className="bt-login-banner"

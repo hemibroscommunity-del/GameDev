@@ -245,10 +245,68 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return {
       login: await one('/ui/welcome/title/btn-continue.png'),
       create: await one('/ui/welcome/title/btn-create-plain.png'),
-      logo: await one('/ui/welcome/title/logo.png'),
-      banner: await one('/ui/welcome/title/banner.png'),
+      logo: await one('/ui/welcome/title/logo-plain.png'),
+      banner: await one('/ui/welcome/title/banner-plain.png'),
     };
   });
+  /* ═══ v2.3.2207: THE MARKS THE OWNER ASKED US TO REMOVE ARE GONE ═══
+     Owner: "there's still a static shine on the Hemi bros logo and diamonds
+     framing 'bro town' that I want gone."
+
+     These pin the ART, not the markup, because that is where the marks live
+     and where they would come back from: logo.png and banner.png are slices
+     of the owner's title sheet, and re-running tools/gear/slice-splash-art.mjs
+     regenerates them WITH the sparkles and diamonds. If a later change ever
+     points the page back at a raw slice, this fails.
+
+     Each assertion tests the property that DEFINES its mark rather than
+     looking in the place it used to be:
+
+     - a sparkle is the only thing in this logo that is bright and
+       DESATURATED. The wordmark is gold and dark brown, so a cluster of
+       near-white pixels can only be a star. (Measured on the original: 372
+       such pixels in two clusters, at (306,36) and (367,218).)
+     - a diamond is the only thing on the banner's rules that is TALL. The
+       rule is 10-12px of ink; each diamond was 35. So outside the lettering,
+       no column may carry more ink than the rule does. */
+  const marks = await B.page.evaluate(async () => {
+    const read = (u) => new Promise((res) => {
+      const i = new Image();
+      i.onload = () => {
+        const c = document.createElement('canvas');
+        c.width = i.naturalWidth; c.height = i.naturalHeight;
+        const cx = c.getContext('2d');
+        cx.drawImage(i, 0, 0);
+        res({ w: c.width, h: c.height, d: cx.getImageData(0, 0, c.width, c.height).data });
+      };
+      i.onerror = () => res(null);
+      i.src = u;
+    });
+    const logo = await read('/ui/welcome/title/logo-plain.png');
+    const ban = await read('/ui/welcome/title/banner-plain.png');
+    if (!logo || !ban) return null;
+    let white = 0;
+    for (let i = 0; i < logo.d.length; i += 4) {
+      const r = logo.d[i], b = logo.d[i + 2], a = logo.d[i + 3];
+      if (a > 40 && r > 200 && b > 150 && (r - b) < 70) white++;
+    }
+    /* tallest column of ink outside the lettering (which spans x 108..347) */
+    let tallest = 0, tallestAt = -1;
+    for (let x = 0; x < ban.w; x++) {
+      if (x >= 100 && x <= 352) continue;
+      let n = 0;
+      for (let y = 0; y < ban.h; y++) if (ban.d[(y * ban.w + x) * 4 + 3] > 24) n++;
+      if (n > tallest) { tallest = n; tallestAt = x; }
+    }
+    return { white, tallest, tallestAt };
+  });
+  rec.ok('both title marks could be read for inspection (guard)', !!marks, marks);
+  rec.ok('the HEMI BROS logo carries no sparkle — nothing in it is bright and '
+       + 'desaturated, and only a star could be', !!marks && marks.white === 0, marks);
+  rec.ok('the BRO TOWN banner carries no diamonds — outside the lettering the '
+       + 'rules are the only ink, and a rule is thin',
+    !!marks && marks.tallest <= 16, marks);
+
   rec.ok('every title slice actually decodes (guard: url() lies about 404s)',
     loaded.login > 0 && loaded.create > 0 && loaded.logo > 0 && loaded.banner > 0, loaded);
   rec.ok('the second action is named "Create Character" for a screen reader',
