@@ -756,6 +756,33 @@ export async function openDest(P, label, { timeout = 6000 } = {}) {
   return true;
 }
 
+/** Close the bottom sheet back to the bar — the resting state.
+ *
+ *  v2.3.2195: openDest has had no counterpart, and the day that mattered was
+ *  the day the quest panel's Accept was removed: mp-tutorial reads the quest
+ *  detail in the sheet and then has to walk up to the giver, and the NPC
+ *  proximity opener is gated on `dashboardPanelBus.state.mode === 'bar'`
+ *  (BroTown.jsx ~5397 — "the nav rail's destinations render over the world
+ *  just like the modals do").  With the sheet still open, walking up to Mayor
+ *  Bro does nothing at all, which reads in a test as a broken NPC rather than
+ *  as a scenario that never put its menu away.
+ *
+ *  Taps the fold chip, which is what a player taps: in expanded mode its
+ *  handler is `toBar()`.  Returns the bus's own verdict, so a chip that stops
+ *  closing the sheet fails here instead of somewhere downstream.
+ */
+export async function closeDest(P, { timeout = 6000 } = {}) {
+  const sel = '[data-dash-fold]';
+  if (await P.page.locator(sel).first().isVisible().catch(() => false)) {
+    await tapTop(P.page, sel, timeout).catch(() => {});
+  }
+  await P.page.waitForTimeout(500);
+  return P.page.evaluate(() => {
+    const b = window.__broDashPanelBus;
+    return !b || b.state.mode === 'bar';
+  });
+}
+
 /* ── PIXELS ────────────────────────────────────────────────────────────────
  * Some things can only be proven by looking at the screen.  The obvious way —
  * getImageData on the game canvas — returns BLANK: the WebGL context has no
@@ -1112,6 +1139,57 @@ export function questOfferBlocked(P) {
 }
 
 /** Is either half of the NPC conversation on screen? */
+/* ═══ v2.3.2195: WALK UP TO AN NPC, WITH A CLEAN SLATE ═══
+ * Lifted out of mp-questline, which had said for two versions why it belongs
+ * here: "the dialogue-walking itself lives in the harness, because four
+ * scenarios drive it and four private copies is how they drift."  v2.3.2195
+ * makes that literal -- the quest panel's Accept button is gone (the owner:
+ * "this was disabled a while ago and should remain disabled"), so every
+ * scenario that used to accept from the list has to walk up to the giver
+ * instead, and a third and fourth private copy is exactly what the note
+ * warned about.
+ *
+ * AWAY, CLOSE, BACK IN, and all three steps are load-bearing: the proximity
+ * latch only re-arms after leaving the larger radius, and the scan will not
+ * re-fire while a card is already open (`!S._uiBusy`) -- so a card left over
+ * from an earlier step sits there showing a STALE quest.  That is not
+ * hypothetical; it is what made a turn-in read "New Quest!" (v2.3.1706b).
+ *
+ * Teleports rather than walks, because what is under test is the dialogue and
+ * the quest state, never the pathfinding. */
+function _placeByNpc(P, id, dx, dy) {
+  return P.page.evaluate(({ who, ox, oy }) => {
+    const S = window._gameState && window._gameState.current;
+    const npc = ((S && S.npcs) || []).find((n) => n && n.id === who);
+    if (!S || !npc || !S.player) return null;
+    S.player.x = npc.x + ox; S.player.y = npc.y + oy;
+    return true;
+  }, { who: id, ox: dx, oy: dy });
+}
+
+/** Step away from an NPC and put his window away — the first half of the
+ *  approach, on its own, because leaving is a step in its own right.
+ *
+ *  Order matters and it is the opposite of the intuitive one: WALK OFF first,
+ *  THEN close.  Closing while still inside the opener's radius is a card that
+ *  comes straight back (the latch is what suppresses it, and the latch is
+ *  released by the close), and the way that shows up is a scrim sitting over
+ *  the nav rail long after the scenario thought it had dismissed him. */
+export async function leaveNpc(P, id = 'mayor_bro') {
+  await _placeByNpc(P, id, 420, 0);
+  await P.page.waitForTimeout(500);
+  await closeNpcDialogue(P);
+  await P.page.waitForTimeout(300);
+  return !(await npcDialogueOpen(P));
+}
+
+export async function approachNpc(P, id = 'mayor_bro') {
+  await leaveNpc(P, id);
+  await _placeByNpc(P, id, 0, 34);
+  await P.page.waitForTimeout(1100);
+  return npcDialogueOpen(P);
+}
+
 export function npcDialogueOpen(P) {
   return P.page.evaluate(() => !!document.querySelector('.bt-npcdlg, .bt-qoffer'));
 }

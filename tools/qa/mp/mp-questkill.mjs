@@ -54,14 +54,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the first quest asks for an item, from a named zone (guard on the table)',
     !!WANT && WANT.type === 'collect' && WANT.invKey === 'snowman' && WANT.zone === 'frost', WANT);
 
-  /* ── accept tut_1, which is also what arms you and opens Frost Ridge ── */
-  await H.openDest(P, 'Quests');
-  await P.page.waitForTimeout(800);
-  await H.clickText(P, 'Available').catch(() => {});
-  await P.page.waitForTimeout(400);
-  await H.clickText(P, 'Cold Reception').catch(() => {});
-  await P.page.waitForTimeout(600);
-  await H.clickText(P, 'Accept from Mayor Bro').catch(() => {});
+  /* ── accept tut_1, which is also what arms you and opens Frost Ridge ──
+     v2.3.2195: BY WALKING UP TO HIM.  This used to tap "Accept from Mayor Bro"
+     in the quest list; the owner had that door removed ("this was disabled a
+     while ago and should remain disabled") after accepting there granted the
+     starter kit with nobody handing it over.  The giver's dialogue is the only
+     accept road now, and it is the one this scenario should have used anyway:
+     what arms the character is the thing the character does. */
+  rec.ok('walking up to Mayor Bro opens his dialogue (guard)',
+    await H.approachNpc(P, 'mayor_bro'), {});
+  const landed = await H.advanceNpcDialogue(P);
+  rec.ok('...and his lines lead to the offer', landed === 'offer', { landed });
+  await H.confirmQuestOffer(P);
   await P.page.waitForTimeout(2000);
   const armedSrv = await srv();
   rec.ok('the quest is active on the worker (guard: the rest is meaningless without it)',
