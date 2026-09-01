@@ -64,11 +64,17 @@ auto-detected from strip width by `snowmanSprites.js`.
 |---|---|---|---|
 | `snowman-attack-{s,e,sw,n,ne}.png` | 8 | one-shot | Snowball throw. 5 source facings; the renderer's mirror table covers all 8. |
 | `snowman-pile.png` | 8 | **loop** | The travelling mound. Non-directional by design — a mound has no front, so one loop serves every facing (same posture as the existing hit/death sheets). |
+| `snowman-burrow.png` | 8 | one-shot | Standing → mound. Non-directional. |
 
-Still to author: `snowman-burrow.png` (standing → mound) and
-`snowman-emerge.png` (mound → standing), both one-shot, non-directional.
-Until they exist the transition pops; the phase logic does not depend on
-them.
+The burrow's last frame hands off to the pile loop's first frame at
+115x64 vs 118x63 on the same base row — a 3px width difference, which is
+why the two were scaled against each other rather than each against the
+idle sheet. Its first frame sits at 112px tall against the attack sheets'
+110, so idle → burrow does not pop either.
+
+Still to author: `snowman-emerge.png` (mound → standing), one-shot,
+non-directional. Until it exists the end of the move pops; the phase logic
+does not depend on it.
 
 **Processing** (`tools/` + the session's build script): each generated 4×2
 grid is sliced by geometry, the character's main body isolated per frame
