@@ -48,8 +48,16 @@ export function swingAttack(S) {
     S._specialAttack = false;
     clearSwingHitFlags(S); /* v2.3.1421: fresh dedup per swing (quick re-tap fix) */
     /* v2.3.1798: rotate the owner's three swing samples (level-matched in
-       BT_AUDIO.swordSwing); bamboo keeps its own. */
-    BT_AUDIO.swordSwing(meleeSwingSfx(S.rpg), { vol: 0.55 });
+       BT_AUDIO.swordSwing); bamboo keeps its own.
+       v2.3.2202: the whoosh is DEFERRED to the blade's contact frame
+       (monsterCombat plays it when the MELEE_CONTACT_MS gate opens).
+       v2.3.2200 moved the hit thunk to contact but left the whoosh at
+       press, splitting the owner's alternating swing/hit pairs into a
+       gallop — owner: the alternating sounds "don't sound quite right
+       anymore".  Deferring the whoosh re-stacks the pair at the moment
+       the swing visually lands; the rotation itself is untouched. */
+    S._swingSfxKey = meleeSwingSfx(S.rpg);
+    S._swingSfxPending = true;
 }
 
 export function specialAttack(S) {
