@@ -101,6 +101,65 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...without pushing his head out of the stage',
     ink.pageTop >= stage.top, { head: ink.pageTop, stageTop: stage.top });
 
+  /* ═══ v2.3.2199: AND CLEAR OF THE LOGO, WHICH IS THE REAL CEILING ═══
+     Owner, with a screenshot: "the character is up against the logo."  He
+     was -- 9px under the sword's tip with the tallest hair and hat -- and
+     the assertion directly above said he was fine, because it measures the
+     STAGE and the logo was moved on top of the stage at v2.3.1527.  A true
+     guard over the wrong edge.
+
+     The ceiling is the SWORD, not the wordmark: .bt-cc-logo-sword is a
+     115%-tall sprite pinned at top:19%, so its tip hangs to ~134% of the
+     logo's own height and is the lowest ink the logo group puts on the
+     stage.  Measuring .bt-cc-logo would repeat the original mistake one
+     element over.
+
+     And it has to be measured on the TALLEST head the game can produce, not
+     the default one: bald-with-no-hat clears by 84px and tells you nothing.
+     So this walks every hair and every hat, keeps the highest head each
+     produces, and checks that one. */
+  const swordBottom = async () => (await rect(P, '.bt-cc-logo-sword')).bottom;
+  const openCat = (name) => P.page.evaluate((n) => {
+    const b = [...document.querySelectorAll('[role="tab"],button')]
+      .find((e) => new RegExp('^' + n + '$', 'i').test((e.textContent || '').trim()));
+    if (b) { b.click(); return true; }
+    return false;
+  }, name);
+  const stripLen = () => P.page.evaluate(() =>
+    (document.querySelector('.bt-cc-strip') || { children: [] }).children.length);
+  const pickTile = (i) => P.page.evaluate((idx) => {
+    const t = [...document.querySelector('.bt-cc-strip').children][idx];
+    if (t) t.click();
+  }, i);
+  /* Walk a category and return the highest head (smallest pageTop) it can make. */
+  const tallestIn = async (cat) => {
+    if (!(await openCat(cat))) return null;
+    await P.page.waitForTimeout(400);
+    const n = await stripLen();
+    let best = null, bestI = -1;
+    for (let i = 0; i < n; i++) {
+      await pickTile(i);
+      await P.page.waitForTimeout(260);
+      const k = await inkSpan(P);
+      if (!k || !k.bmp || k.empty) continue;
+      if (best === null || k.pageTop < best) { best = k.pageTop; bestI = i; }
+    }
+    /* leave the tallest one ON, so hair and hat stack for the final check */
+    if (bestI >= 0) { await pickTile(bestI); await P.page.waitForTimeout(300); }
+    return { best, bestI, n };
+  };
+  const hair = await tallestIn('Hair');
+  const hats = await tallestIn('Hats');
+  rec.ok('every hair and hat could be tried (guard)',
+    !!hair && !!hats && hair.n > 1 && hats.n > 1, { hair, hats });
+  const worst = await inkSpan(P);
+  const sword = await swordBottom();
+  const gap = worst && worst.pageTop ? Math.round(worst.pageTop - sword) : null;
+  /* 12px is the smallest gap that still reads as deliberate space rather than
+     a near-miss at this scale; shipped it was 9 and the owner saw it. */
+  rec.ok(`the tallest head the game can build clears the logo's sword (${gap}px)`,
+    gap !== null && gap >= 12, { gap, head: worst && worst.pageTop, swordBottom: sword, hair, hats });
+
   /* Rotate him and check the other facings too: the offset the owner sees is
      per-FRAME, so a fix that only lands on south is a fix for one sixth of the
      screen. Drag the canvas, which is how a player turns him now (v2.3.2006

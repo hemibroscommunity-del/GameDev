@@ -453,8 +453,39 @@ export function NameModal(props) {
      disc, not the highest of them. mp-ccstand asserts the boots land inside
      the top face for every facing, so the day the bitmap changes again this
      fails instead of sliding. */
+  /* ═══ v2.3.2199: HE HAD GROWN INTO THE LOGO ═══
+     Owner, with a screenshot of the trait picker: "the character is up
+     against the logo. What's the best way to handle this? Shrink character,
+     move him down, remove floating effect, etc."
+
+     MEASURED, at 390x844 with the tallest hair and the tallest hat: the head
+     ink topped out 9px under the sword's tip. Nine pixels is the gap the
+     owner is looking at, and on a slightly taller phone it closes.
+
+     WHY IT COLLIDES WITH THE SWORD RATHER THAN THE WORDMARK, and why nothing
+     caught it: .bt-cc-logo-sword hangs BELOW the logo image (top:19% of a
+     115%-tall sprite, so its tip reaches ~134% of the wordmark's height), and
+     mp-ccstand's only headroom assertion was `ink.pageTop >= stage.top` --
+     the STAGE, which the logo was later moved on top of (v2.3.1527). The
+     guard was true and the picture was still wrong.
+
+     WHY SHRINKING, and not the owner's other two options:
+       - "move him down" undoes v2.3.2151. His boots were planted on the
+         pedestal's top face two rounds ago at the owner's own request; the
+         only way down is back onto the rock in front of it.
+       - "remove floating effect" -- there is no float. Nothing bobs here.
+         What reads as one is the v2.3.1300 contact shadow, a 52%-black
+         ellipse the owner asked to be made STRONGER twice (v2.3.1300b/c).
+     Shrinking is the one lever that buys headroom without spending either.
+
+     92 -> 84 (a ~9% trim) puts 35px under the sword's tip in that same
+     worst case. The contact line is `b + k*h` with k = 0.011 (v2.3.2151), so
+     holding it fixed only moves `b` by 0.09% -- his boots land 2px lower and
+     0.355 down the disc, still deep inside the 0.12-0.72 top face
+     mp-ccstand pins. Measured, not predicted: 88 gives 22px, 84 gives 35,
+     80 gives 48, and the feet never move more than 3px across all of them. */
   var _frame = (previewZoom || !categoryCrops(_activeType))
-    ? { h: 92, b: '24.7%' } : { h: 54.5, b: '18.2%' };
+    ? { h: 84, b: '24.8%' } : { h: 54.5, b: '18.2%' };
   /* v2.3.1307: name validity gates ENTER (round-7).  Local rules only:
      names are not unique server-side, so there is no availability
      check to run — trimmed length is the honest contract. */
