@@ -495,15 +495,36 @@ export function NameModal(props) {
      hair-and-hat combination from 51px under the sword to 21. Same gap I had
      just called comfortable, on a build I never rendered.
 
-     So `b` drops 24.8 -> 20, which lowers him ~16px and takes that worst
-     case back to 37. His boots land 0.488 down the pedestal's top face --
+     v2.3.2202 (owner, still with a tall afro on the sword: "Shrink the
+     character a bit (maybe 10%) and move him down some pixels"): 84 -> 76,
+     the owner's 10%, and b 20 -> 18.
+
+     THE DROP IS THE HALF THAT HAS A CEILING. Shrinking barely moves his
+     feet (k = 0.011), but every point off `b` walks his boots toward the
+     front lip of the disc -- b:17 put the DEFAULT build at 0.70 of the
+     pedestal, two points from standing in front of it again, and
+     mp-ccstand caught it. So the shrink does the work and the drop is the
+     small part, which is also why the two worst cases differ: a TALL bro
+     gets a zoomed-out camera and his feet ride HIGHER in frame, so
+     `default` is the worst case for the disc while `tall` is the worst
+     case for the logo. Both are measured.
+
+     AND IT WAS NEVER A DEVICE-WIDTH PROBLEM, which is what I assumed when
+     his own screenshot disagreed with my measurement. Swept at dpr 3 across
+     390x844, 402x874 and 430x932: the gap GROWS with width (37 / 47 / 64 on
+     the previous numbers), because the logo is capped at 168px while the
+     stage scales with the column. 390 is the worst case, so measuring there
+     is measuring the floor -- not a lucky viewport.
+
+     The earlier step: `b` dropped 24.8 -> 20, which lowered him ~16px and
+     took that worst case to 37. His boots land 0.488 down the pedestal's top face --
      nearer its middle than the 0.347 they sat at, and still inside the
      0.12-0.72 band mp-ccstand pins, so v2.3.2151's "on the disc, not in
      front of it" is untouched. Measured across the range: 22 gives 31px,
      20 gives 37, 18 gives 44, and the disc fraction climbs 0.43 / 0.49 /
      0.55 in step. */
   var _frame = (previewZoom || !categoryCrops(_activeType))
-    ? { h: 84, b: '20%' } : { h: 54.5, b: '18.2%' };
+    ? { h: 76, b: '18%' } : { h: 54.5, b: '18.2%' };
   /* v2.3.1307: name validity gates ENTER (round-7).  Local rules only:
      names are not unique server-side, so there is no availability
      check to run — trimmed length is the honest contract. */

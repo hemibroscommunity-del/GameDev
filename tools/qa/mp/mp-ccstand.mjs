@@ -172,9 +172,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
      is now the one the owner actually drew: comfortably above the 21 they
      rejected, comfortably below the 38 this ships with, so it fails on what
      they disliked without being so tight that a device a few pixels wider
-     trips it. */
+     trips it.
+
+     v2.3.2202: 28 -> 50. The owner looked at 37px and asked for another 10%
+     off, so 28 was still under what they will accept. Measured at 390x844
+     deliberately: swept across 390 / 402 / 430 at dpr 3 the gap GROWS with
+     width (the logo is capped at 168px while the stage scales with the
+     column), so the narrowest phone is the worst case and this number is
+     the smallest any device sees. */
   rec.ok(`the tallest head the game can build clears the logo's sword (${gap}px)`,
-    gap !== null && gap >= 28, { gap, head: worst && worst.pageTop, swordBottom: sword, hair, hats, build });
+    gap !== null && gap >= 50, { gap, head: worst && worst.pageTop, swordBottom: sword, hair, hats, build });
 
   /* ═══ v2.3.2200: THE MEASURED FIGURE IS THE BODY, NOT ITS SHADOW ═══
      Owner, twice: "the shoes are transparent" / "Shoes appear semi
