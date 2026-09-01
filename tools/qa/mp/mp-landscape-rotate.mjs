@@ -60,6 +60,30 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('rotating flips the stamp and drops the bar entirely (dash-h 0, canvas 844x390)',
     l0.orient === 'landscape' && l0.dashH === 0 && l0.canvasW === 844 && l0.canvasH === 390, l0);
 
+  /* ── AND THE JOYSTICKS CAME WITH IT ── */
+  const chrome = () => P.page.evaluate(() => {
+    const cs = getComputedStyle(document.documentElement);
+    return {
+      sheetH: parseInt(cs.getPropertyValue('--sheet-h')) || 0,
+      dashH: parseInt(cs.getPropertyValue('--dash-h')) || 0,
+      vh: window.innerHeight,
+      /* TWO classes, not one: the left disc is .bt-joystick-zone and the
+         right is .bt-rjoy-zone (v2.3.1288 named it so the expanded-sheet dim
+         could reach it).  Asking for one of them and counting two is how the
+         first draft of this check reported the right stick "missing". */
+      zones: [...document.querySelectorAll('.bt-joystick-zone, .bt-rjoy-zone')].map((z) => {
+        const r = z.getBoundingClientRect();
+        return { top: Math.round(r.top), bottom: Math.round(r.bottom) };
+      }),
+    };
+  });
+  const lChrome = await chrome();
+  console.log('    landscape chrome: ' + JSON.stringify(lChrome));
+  rec.ok('both joysticks are still mounted after the flip (guard)',
+    lChrome.zones.length === 2, lChrome);
+  rec.ok('...and both are fully on screen, not pushed off the top by a stale --sheet-h',
+    lChrome.zones.every((z) => z.top >= 0 && z.bottom <= lChrome.vh), lChrome);
+
   /* open the Bag, then rotate back with it open */
   await P.page.evaluate(() => window.__broDashPanelBus.open('bag'));
   await P.page.waitForTimeout(700);

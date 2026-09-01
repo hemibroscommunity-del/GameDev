@@ -690,17 +690,54 @@ export const BottomDashboard = () => {
          (joystick zones, the legacy toast) keys off the identity row's own
          height in every mode.  bandFootprint, not a literal, so this and
          the canvas can never disagree about what the band costs. */
-      const px = (playVw() > playVh())
-        ? bandFootprint(playVw(), playVh(), dashMinBus.min, false).dashH
-        : (mode === 'expanded' ? (dashboardPanelBus.state.stack.length > 1 ? snapPxRef.current.drill : snapPxRef.current.expanded)
-          : barHeight(playVw(), playVh()));
+      /* ═══ v2.3.2196: EVERY INPUT READ LIVE, AND RE-READ ON RESIZE ═══
+         Owner: "I did have a brief bug where the joysticks weren't showing
+         on landscape full screen."
+
+         Measured: rotate a phone from portrait to landscape and --sheet-h
+         stayed at the PORTRAIT bar height, 243px, on a viewport now 390px
+         tall.  Everything docked above the band keys off it -- both joystick
+         discs, the charge pie, the ability buttons, the lock-on ring -- at
+         `bottom: calc(var(--sheet-h) + 70px)`, so the discs jumped to 313px
+         off the bottom of a 390px screen and hung off the TOP edge, clipped,
+         nowhere near a thumb.  Then the next tap on any destination emitted
+         through the bus, this re-ran, and they snapped home: brief, exactly
+         as reported, and invisible to anyone who touched a menu first.
+
+         TWO CAUSES, one fix each.
+         1. This effect only ever subscribed to dashboardPanelBus.  Rotation,
+            entering or leaving fullscreen, and the iOS URL bar are all
+            viewport changes that no bus announces, so the stamp simply did
+            not re-run.  It listens for 'resize' now -- which also covers
+            both buses for free, since each already dispatches one (see the
+            notes in dashboardPanelBus and dashMinBus: "the one geometry
+            path").
+         2. The portrait branch read snapPxRef, whose state is set from a
+            SEPARATE resize listener -- so even with a listener here the two
+            would race on the same event and this one could stamp the old
+            height.  Computed live from the same two helpers instead, which
+            is what the landscape and bar branches beside it already did.
+            playVh() is innerHeight by construction (see playViewport.js on
+            the iOS keyboard trap), so there is no keyboard guard to carry
+            over: this cannot be fooled by a shrunken visualViewport. */
+      const vw = playVw(), vh = playVh();
+      const px = (vw > vh)
+        ? bandFootprint(vw, vh, dashMinBus.min, false).dashH
+        : (mode === 'expanded'
+          ? (dashboardPanelBus.state.stack.length > 1 ? drillSheetHeight(vw, vh) : expandedSheetHeight(vw, vh))
+          : barHeight(vw, vh));
       document.documentElement.style.setProperty('--sheet-h', px + 'px');
     };
     stamp();
     const unsub = dashboardPanelBus.subscribe(stamp);
+    const vv = window.visualViewport;
+    window.addEventListener('resize', stamp);
+    if (vv) vv.addEventListener('resize', stamp);
     return () => {
       delete document.documentElement.dataset.btSheet;
       document.documentElement.style.removeProperty('--sheet-h');
+      window.removeEventListener('resize', stamp);
+      if (vv) vv.removeEventListener('resize', stamp);
       unsub();
     };
   }, []);
@@ -736,11 +773,15 @@ export const BottomDashboard = () => {
      IconButton (pointer events) and routed to bus.advance/retreat; the
      mode change animates the band via the height ternary's 220ms
      transition, so there is no live height-tracking drag and no second
-     writer to the band's height.  The snapPx ref feeds the <html>
-     stamp effect.  toolbarRef stays on the frame (tutorial anchoring +
-     any future gesture surface). */
-  const snapPxRef = useRef(snapPx);
-  snapPxRef.current = snapPx;
+     writer to the band's height.  toolbarRef stays on the frame (tutorial
+     anchoring + any future gesture surface).
+     v2.3.2196: snapPxRef is GONE.  It existed only to feed the <html>
+     stamp effect, and it raced that effect's own resize listener -- both
+     listen for the same event, and the ref is written a render later than
+     the stamp reads it.  The stamp computes the two heights live now
+     (expandedSheetHeight / drillSheetHeight, the same helpers the state
+     below uses); the snapPx STATE stays, because the band's own height
+     still renders from it. */
   const toolbarRef = useRef(null);
   /* Player-card portrait: a head-and-shoulders render of the player's
      chosen cosmetics (skin / hair / hair color / beard / hat).  Generated
