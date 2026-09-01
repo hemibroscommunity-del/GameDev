@@ -28,7 +28,7 @@ import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1598: armou
    its own module scope — the barrel export is the canonical copy. */
 import { BT_API_BASE } from '@/networking/index.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
-import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse, pushDmgPopup, monsterPopupY, isAttackInShieldArc } from '@/game/combatHelpers.js';
+import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse, pushDmgPopup, monsterPopupY, isAttackInShieldArc, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */ } from '@/game/combatHelpers.js';
 import { handleChatEvent, handleEmoteEvent, handlePartyChatEvent, handleAreaChatEvent, handleWhisperEvent, handleWhisperErrorEvent } from '@/game/chat.js'; /* v2.3.2136: the @area / @user lanes */
 import { applyServerMuteList } from '@/game/chatMute.js'; /* v2.3.1981 */
 import { pushAbilityRings } from '@/game/abilities.js'; /* v2.3.1735: a peer's bash draws the caster's own shockwave */
@@ -794,6 +794,11 @@ export function processGameEvent(type, payload, S, deps) {
                   maxR: payload.radius || 55, duration: 400,
                 });
                 S.screenShake = _maShake[payload.ability] || 5;
+                /* v2.3.2200: a landed telegraph also KICKS the camera
+                   toward the impact — the big attacks should read bigger
+                   than an ordinary hit's shake alone. */
+                var _cpAngT = Math.atan2(_maY - S.player.y, _maX - S.player.x);
+                S._camPunch = { dx: Math.cos(_cpAngT) * 8, dy: Math.sin(_cpAngT) * 8, ts: Date.now() };
                 BT_AUDIO.beep(payload.ability === 'slam' ? 80 : (payload.ability === 'lunge' ? 200 : 150),
                   0.18, 0.22,
                   payload.ability === 'slam' ? 'sawtooth' : 'square');
@@ -1222,6 +1227,36 @@ export function processGameEvent(type, payload, S, deps) {
                      locked the bar percentage at 100%. */
                   hitM.curHp = Math.round(payload.hpPct * hitM.maxHp);
                   hitM._hitFlash = Date.now();
+                  /* ═══ v2.3.2200: EVERY HIT VISIBLY LANDS ("floaty" #3) ═══
+                     _hitFlash above was written for years and read by
+                     nothing (entityRenderer now renders it as a brief
+                     brightness pulse).  And the recoil sheet/squash only
+                     fired from OUR OWN local swing/arrow sites — a
+                     teammate's hits moved nothing.  Stamp the hit-react
+                     window here for peer hits and for our own
+                     server-rolled hits (ability/thorns/burst, which have
+                     no local prediction site); our own swings/arrows
+                     already stamped it locally, and re-stamping would
+                     only extend the same window a few ms — harmless. */
+                  if (payload.attackerId !== S.myId || payload.ability || payload.thorns || payload.burst) {
+                    if (hitM.curHp > 0) {
+                      hitM._hitAnimStart = Date.now();
+                      hitM._hitAnimEnd = Date.now() + ((hitM.archetype || hitM.type) === 'snowman' ? 600 : 400);
+                    }
+                    /* Material debris + ground mark for hits with no local
+                       spawn site.  Peer weapon/angle unknown: infer the
+                       direction from the attacker's position when we can
+                       see them, else default "up" (the _impactAngle
+                       precedent below). */
+                    var _dbAng = -Math.PI / 2;
+                    var _dbAtk = payload.attackerId && S.others && S.others[payload.attackerId];
+                    if (_dbAtk && typeof _dbAtk.x === 'number') {
+                      _dbAng = Math.atan2((hitM.y || 0) - _dbAtk.y, (hitM.x || 0) - _dbAtk.x);
+                    }
+                    spawnHitDebris(S, hitM, _dbAng);
+                    spawnGroundDecal(S, hitM.x || hitM.renderX || 0, hitM.y || hitM.renderY || 0,
+                      hitM.archetype || hitM.type, { chance: 0.35, size: 5 });
+                  }
                   /* v2.3.1124: ice-burst impact flash on snowmen for PEER hits
                      only -- our own hits stamp _impactAt at the local melee/
                      projectile site (with the real weapon size), so stamping
@@ -1661,6 +1696,15 @@ export function processGameEvent(type, payload, S, deps) {
                  lands (block / dodge zero dmgTaken2 → no flash). */
               if (Math.ceil(dmgTaken2) > 0) {
                 S._hitFlash = Date.now();
+                /* v2.3.2200: directional camera kick AWAY from the
+                   attacker — being hit should physically shove the view,
+                   not just tint it.  Same single-slot _camPunch the melee
+                   crit uses (BroTown.jsx applies + 300ms-decays it);
+                   force 6 stays under the crit's 12 per LANTERN-SLATE
+                   restraint.  Guarded on real damage so blocks/dodges
+                   don't shove. */
+                var _cpAng2 = Math.atan2(S.player.y - _atkY, S.player.x - _atkX);
+                S._camPunch = { dx: Math.cos(_cpAng2) * 6, dy: Math.sin(_cpAng2) * 6, ts: Date.now() };
               }
               /* v2.3.110: heart glyph alongside "-N" popup so the
                  loss-of-HP intent reads instantly. */

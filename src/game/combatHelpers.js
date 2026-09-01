@@ -9,6 +9,7 @@
    verbatim. window._gameState / window._setLevelUpMsg stay as runtime lookups
    by design (they are wired up inside the BroTown component each render). */
 import { xpRequired, recalcDerived, BT_AUDIO, BLOCK_ARC_HALF, monsterBodyOffsetY } from '@/data/index.js';
+import { hitMaterialOf } from '@/data/monsterVariants.js'; /* v2.3.2200: hit-feedback material table */
 
 /* ═══ v2.3.1979: WHERE A LOCKED TARGET ACTUALLY IS, FOR AIMING ═══
    Owner: "Tap to lock on enemy sometimes does not hit the target.  I was
@@ -449,6 +450,57 @@ export function hurtPlayerLocal(S, R, amount) {
   if (!R || amt <= 0) return;
   if (S && S._serverMonsters) return; /* player_state carries the truth */
   R.hp -= amt;
+}
+
+/* ═══ v2.3.2200: HIT FEEDBACK SPAWNERS (one home, four call sites) ═══
+ *
+ * Owner: hits should throw material off the monster and leave marks on
+ * the ground.  These two helpers are the only writers of the debris
+ * queue and the on-hit decal path, called from the local melee sweep,
+ * the two projectile impact sites, and the monster_hit handler (peer +
+ * server-rolled hits) — so all four kinds of hit read identically.
+ * They only ENQUEUE; effectsRenderer owns textures and lifetimes
+ * (sprite-based, per the owner's "code-drawn effects look bad" call).
+ *
+ * spawnHitDebris: directional burst of the monster's material.
+ * Renderer-side dedup (per-monster 150ms gap) lives with the sprites,
+ * but the queue is still hard-capped here so a hit storm can't grow an
+ * unbounded array between frames (the hitParticles-400 posture). */
+export function spawnHitDebris(S, m, angle) {
+  if (!S || !m) return;
+  var mat = hitMaterialOf(m.archetype || m.type);
+  if (!S._debrisBursts) S._debrisBursts = [];
+  if (S._debrisBursts.length >= 24) return;
+  S._debrisBursts.push({
+    monsterId: m.id, kind: mat.kind, tint: mat.tint,
+    x: (typeof m.renderX === 'number') ? m.renderX : m.x,
+    y: ((typeof m.renderY === 'number') ? m.renderY : m.y) - monsterBodyOffsetY(m.archetype || m.type),
+    ang: (typeof angle === 'number') ? angle : -Math.PI / 2,
+    t0: Date.now(),
+  });
+}
+
+/* spawnGroundDecal: one persistent mark at the monster's feet.  Rides
+   the EXISTING S.groundSplatter array (cap 80, TTL/fade in
+   effectsRenderer + stateCleanup) — on-hit marks are small and
+   probabilistic (50%) so a fight doesn't flush the cap; kills keep
+   their bigger multi-mark burst at the call site.  `color` may
+   override the material decal tint (element kills). */
+export function spawnGroundDecal(S, x, y, arch, opts) {
+  if (!S) return;
+  var o = opts || {};
+  if (o.chance != null && Math.random() > o.chance) return;
+  var mat = hitMaterialOf(arch);
+  if (!S.groundSplatter) S.groundSplatter = [];
+  S.groundSplatter.push({
+    x: x + (Math.random() - 0.5) * (o.spread != null ? o.spread : 18),
+    y: y + (Math.random() - 0.5) * (o.spread != null ? o.spread : 12),
+    color: o.color || mat.decal,
+    size: o.size != null ? o.size : 4 + Math.random() * 4,
+    ts: Date.now(),
+    element: o.element || null,
+  });
+  if (S.groundSplatter.length > 80) S.groundSplatter.splice(0, S.groundSplatter.length - 80);
 }
 
 export {
