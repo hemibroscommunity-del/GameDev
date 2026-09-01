@@ -24,6 +24,7 @@ const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
   critpreview: () => import('./mp-critpreview.mjs'), /* v2.3.2203: crit vs normal on demand, no playthrough */
+  feel: () => import('./mp-feel.mjs'), /* v2.3.2200: contact-synced hits, universal recoil, ground marks */
   introfit: () => import('./mp-introfit.mjs'), /* v2.3.2199: the loading bar is painted into the film, so the clip must not be cropped */
   capeattack: () => import('./mp-capeattack.mjs'), /* v2.3.2190: the cape stays on while you attack, anchored on the head */
   a2hs: () => import('./mp-a2hs.mjs'), /* v2.3.2159: the install instruction finds the right player */

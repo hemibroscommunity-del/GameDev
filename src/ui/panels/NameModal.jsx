@@ -370,25 +370,64 @@ export function NameModal(props) {
   var _paintState = React.useState(null), showPaint = _paintState[0], setShowPaint = _paintState[1];
   var _stripRef = React.useRef(null);
   var _colorRowRef = React.useRef(null);
-  /* v2.3.1254: scroll affordance — per-strip "more content to the
-     right" flags drive the fade+chevron overlays (.bt-cc-more).
+  /* v2.3.1254: scroll affordance — per-strip "more content waiting"
+     flags drive the fade+chevron overlays (.bt-cc-more).
      Measured on scroll and whenever the strip contents change; the
      setter bails when nothing changed so scrolling doesn't re-render
-     every frame. */
+     every frame.
+
+     ═══ v2.3.2205: IT WAS MEASURING THE AXIS THE STRIP NO LONGER SCROLLS ═══
+     Owner, on the Hats tab: "additional hat options don't surface the
+     shadowed effect to cue additional options anymore."
+
+     Correct, and it has been that way since v2.3.1524 — not something this
+     round broke. v2.3.1254 built this for a HORIZONTAL row of five tiles,
+     so it asks `scrollWidth - clientWidth - scrollLeft`. The two-column
+     rewrite turned both strips into vertical grids with `overflow-x:hidden`,
+     which pins scrollWidth to clientWidth: the expression is 0 forever, the
+     flag never goes true, and the overlay never fades in. The overlay
+     element, its state and its wiring all survived the rewrite intact —
+     only the axis was left pointing the old way, which is exactly why this
+     was invisible for so long. Nothing looked missing in the code.
+
+     So the same three reads, on the axis that actually moves. Note the
+     scroll RESET below had the identical bug in the identical place:
+     `scrollLeft = 0` on a category change is a no-op on an overflow-x:hidden
+     box, so switching from Hats back to Hair left you wherever you had
+     scrolled to. Both are fixed here because both are the same mistake, and
+     splitting them would leave half of it. */
   var _moreS = React.useState({ items: false, colors: false }), scrollMore = _moreS[0], setScrollMore = _moreS[1];
   var _measureMore = function () {
     var i = _stripRef.current, c = _colorRowRef.current;
+    /* The 2px slack absorbs sub-pixel layout: a grid whose rows sum to a
+       fraction over its box would otherwise cue "more" with nothing there. */
     var next = {
-      items: !!(i && i.scrollWidth - i.clientWidth - i.scrollLeft > 2),
-      colors: !!(c && c.scrollWidth - c.clientWidth - c.scrollLeft > 2)
+      items: !!(i && i.scrollHeight - i.clientHeight - i.scrollTop > 2),
+      colors: !!(c && c.scrollHeight - c.clientHeight - c.scrollTop > 2)
     };
     setScrollMore(function (p) { return (p.items === next.items && p.colors === next.colors) ? p : next; });
   };
   React.useEffect(function () {
-    if (_stripRef.current) _stripRef.current.scrollLeft = 0;
-    if (_colorRowRef.current) _colorRowRef.current.scrollLeft = 0;
+    if (_stripRef.current) _stripRef.current.scrollTop = 0;
+    if (_colorRowRef.current) _colorRowRef.current.scrollTop = 0;
     _measureMore();
   }, [activeCat]);
+  /* v2.3.2205: vertical overflow depends on the strip's HEIGHT, which the
+     category change can't tell us about — rotating the phone or the software
+     keyboard opening resizes the pane under a catalogue that never changed.
+     The category effects cover content changes; this covers box changes. The
+     observer watches the scrollers themselves and is created once: React
+     keeps the same two DOM nodes across category switches, so re-observing
+     per render would be churn for no signal. */
+  var _measureRef = React.useRef(null);
+  _measureRef.current = _measureMore;
+  React.useEffect(function () {
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    var ro = new ResizeObserver(function () { if (_measureRef.current) _measureRef.current(); });
+    if (_stripRef.current) ro.observe(_stripRef.current);
+    if (_colorRowRef.current) ro.observe(_colorRowRef.current);
+    return function () { ro.disconnect(); };
+  }, []);
   /* Re-measure without a scroll reset when the pick changes — the color
      row appears/disappears with it and the user may be mid-browse. */
   React.useEffect(function () { _measureMore(); }, [_def.sel]);
@@ -453,8 +492,78 @@ export function NameModal(props) {
      disc, not the highest of them. mp-ccstand asserts the boots land inside
      the top face for every facing, so the day the bitmap changes again this
      fails instead of sliding. */
+  /* ═══ v2.3.2201: HE HAD GROWN INTO THE LOGO ═══
+     Owner, with a screenshot of the trait picker: "the character is up
+     against the logo. What's the best way to handle this? Shrink character,
+     move him down, remove floating effect, etc."
+
+     MEASURED, at 390x844 with the tallest hair and the tallest hat: the head
+     ink topped out 9px under the sword's tip. Nine pixels is the gap the
+     owner is looking at, and on a slightly taller phone it closes.
+
+     WHY IT COLLIDES WITH THE SWORD RATHER THAN THE WORDMARK, and why nothing
+     caught it: .bt-cc-logo-sword hangs BELOW the logo image (top:19% of a
+     115%-tall sprite, so its tip reaches ~134% of the wordmark's height), and
+     mp-ccstand's only headroom assertion was `ink.pageTop >= stage.top` --
+     the STAGE, which the logo was later moved on top of (v2.3.1527). The
+     guard was true and the picture was still wrong.
+
+     WHY SHRINKING, and not the owner's other two options:
+       - "move him down" undoes v2.3.2151. His boots were planted on the
+         pedestal's top face two rounds ago at the owner's own request; the
+         only way down is back onto the rock in front of it.
+       - "remove floating effect" -- there is no float. Nothing bobs here.
+         What reads as one is the v2.3.1300 contact shadow, a 52%-black
+         ellipse the owner asked to be made STRONGER twice (v2.3.1300b/c).
+     Shrinking is the one lever that buys headroom without spending either.
+
+     92 -> 84 (a ~9% trim) puts 35px under the sword's tip in that same
+     worst case. The contact line is `b + k*h` with k = 0.011 (v2.3.2151), so
+     holding it fixed only moves `b` by 0.09% -- his boots land 2px lower and
+     0.355 down the disc, still deep inside the 0.12-0.72 top face
+     mp-ccstand pins. Measured, not predicted: 88 gives 22px, 84 gives 35,
+     80 gives 48, and the feet never move more than 3px across all of them. */
+  /* ═══ v2.3.2203: AND DOWN A BIT, BECAUSE TALL IS A THING ═══
+     Owner, with a screenshot of a TALL bro whose hair still reached the
+     wordmark: "Can you just move the char down a lil."
+
+     v2.3.2201 shrank him and I checked the worst case by walking all 9 hairs
+     and all 40 hats -- and never touched BUILD, which is a third multiplier
+     sitting right there in the same picker (heightMul, via focusForCat).
+     Measured: Tall costs 30px of headroom on its own, taking the tallest
+     hair-and-hat combination from 51px under the sword to 21. Same gap I had
+     just called comfortable, on a build I never rendered.
+
+     v2.3.2204 (owner, still with a tall afro on the sword: "Shrink the
+     character a bit (maybe 10%) and move him down some pixels"): 84 -> 76,
+     the owner's 10%, and b 20 -> 18.
+
+     THE DROP IS THE HALF THAT HAS A CEILING. Shrinking barely moves his
+     feet (k = 0.011), but every point off `b` walks his boots toward the
+     front lip of the disc -- b:17 put the DEFAULT build at 0.70 of the
+     pedestal, two points from standing in front of it again, and
+     mp-ccstand caught it. So the shrink does the work and the drop is the
+     small part, which is also why the two worst cases differ: a TALL bro
+     gets a zoomed-out camera and his feet ride HIGHER in frame, so
+     `default` is the worst case for the disc while `tall` is the worst
+     case for the logo. Both are measured.
+
+     AND IT WAS NEVER A DEVICE-WIDTH PROBLEM, which is what I assumed when
+     his own screenshot disagreed with my measurement. Swept at dpr 3 across
+     390x844, 402x874 and 430x932: the gap GROWS with width (37 / 47 / 64 on
+     the previous numbers), because the logo is capped at 168px while the
+     stage scales with the column. 390 is the worst case, so measuring there
+     is measuring the floor -- not a lucky viewport.
+
+     The earlier step: `b` dropped 24.8 -> 20, which lowered him ~16px and
+     took that worst case to 37. His boots land 0.488 down the pedestal's top face --
+     nearer its middle than the 0.347 they sat at, and still inside the
+     0.12-0.72 band mp-ccstand pins, so v2.3.2151's "on the disc, not in
+     front of it" is untouched. Measured across the range: 22 gives 31px,
+     20 gives 37, 18 gives 44, and the disc fraction climbs 0.43 / 0.49 /
+     0.55 in step. */
   var _frame = (previewZoom || !categoryCrops(_activeType))
-    ? { h: 92, b: '24.7%' } : { h: 54.5, b: '18.2%' };
+    ? { h: 76, b: '18%' } : { h: 54.5, b: '18.2%' };
   /* v2.3.1307: name validity gates ENTER (round-7).  Local rules only:
      names are not unique server-side, so there is no availability
      check to run — trimmed length is the honest contract. */
@@ -911,9 +1020,11 @@ export function NameModal(props) {
        machinery is retired with the pager. */
     className: "bt-cc-strip", ref: _stripRef, onScroll: _measureMore, role: 'listbox', "aria-label": _def.label + ' options'
   }, _items), /*#__PURE__*/React.createElement("span", {
-    /* v2.3.1254: fade + chevron while more tiles wait off-screen. */
+    /* v2.3.1254: fade + chevron while more tiles wait off-screen.
+       v2.3.2205: the arrow points DOWN now, at the direction the grid
+       actually scrolls -- a › over a vertical list points at a wall. */
     className: "bt-cc-more" + (scrollMore.items ? " bt-cc-more--on" : ""), "aria-hidden": true
-  }, "›")), /*#__PURE__*/React.createElement("div", {
+  }, "▾")), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1252: like the subtabs, the color block always occupies its
        row — an invisible ghost (with one placeholder tile so the row
        keeps its swatch height) when the type/pick has no colors.  This
@@ -967,7 +1078,7 @@ export function NameModal(props) {
     className: "bt-cc-colors-row", ref: _colorRowRef, onScroll: _measureMore, role: _colors ? 'radiogroup' : undefined, "aria-label": _colors ? _def.label + ' colors' : undefined
   }, _colors || /*#__PURE__*/React.createElement("div", null)), /*#__PURE__*/React.createElement("span", {
     className: "bt-cc-more" + (scrollMore.colors ? " bt-cc-more--on" : ""), "aria-hidden": true
-  }, "›"))),
+  }, "▾"))),
   /* ═══ v2.3.1938: THE WAY IN TO THE DESIGNER ═══
      v2.3.1940 moved it OUT of the colour block and made it always present.
      Two bugs, one cause: the colour block renders as a `.bt-cc-ghost`

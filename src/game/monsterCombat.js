@@ -25,7 +25,7 @@ import {
   GS_INNER_RADIUS, GS_OUTER_RADIUS, PVP_THREAT_DURATION,
   QUEST_CHAINS, QUEST_STATUS, RARE_DROP_CHANCE, RARE_DROP_ITEMS, RARITY_TIERS,
   RESPAWN_BASE, RESPAWN_ESCALATE, RESPAWN_ESCALATE_WINDOW, RESPAWN_MAX, SPECIAL_ATK_MULT, specialAtkMultFor,
-  SWING_ARC, SWING_COOLDOWN, SWING_RANGE, TILE, WEAPON_TYPES, WELL_RESTED_XP_MULT,
+  SWING_ARC, SWING_COOLDOWN, SWING_RANGE, MELEE_CONTACT_MS /* v2.3.2200 */, TILE, WEAPON_TYPES, WELL_RESTED_XP_MULT,
   ZONES, ZONE_RESOURCES, applyStatus, awardWeaponXp, bowPierceCount, bowRangeMult, calcBlockReduction, calcCritChance,
   calcCritMult, calcDisplayDmgRange, calcSpecialDmg, calcWeaponDmg, cleaveArcBonus, createDefaultCompStats, createDefaultLifeSkills,
   CRIT_ANCHOR_MULT,
@@ -36,10 +36,10 @@ import {
   trainDefense, applyIronSkin, applyResilience, /* v2.3.1314 */
   monsterBodyOffsetY, monsterMeleeHitRadius, monsterProceduralRadius, TOWN_SPAWN /* v2.3.1777 */
 } from '@/data/index.js';
-import { MONSTER_VARIANTS, baseArchetypeOf, hitShapeOf, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
+import { MONSTER_VARIANTS, baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2200 */, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
 import { rollMonsterShard } from '@/data/shards.js';
-import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint } from '@/game/combatHelpers.js';
+import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */ } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
 import { btRpc, getBtPlayerId, syncRpgToServer } from '@/networking/index.js';
@@ -1412,8 +1412,18 @@ export function updateMonsterCombat(S, deps) {
                the aim preview — keep them in lockstep. */
             var _gsArc   = S._specialAttack ? Math.PI * 2 : GS_FORWARD_ARC + cleaveArcBonus(S.rpg);
             var _maxRange = _wildSwing ? Math.max(_gsInner, _gsOuter) : _swingRange;
+            /* ═══ v2.3.2200: CONTACT SYNC ("floaty" fix #1) ═══
+               The angle/_swingAng/player_swing broadcast above still runs
+               from frame 0 (peers must see the swing start immediately);
+               only the HIT TEST below waits for the blade to visually
+               reach the target — MELEE_CONTACT_MS into the 300ms swing.
+               Dedup is untouched: _hitThisSwing clears per swing, and the
+               fastest legal swing cadence (200ms) is longer than the
+               contact delay, so no swing loses its window. */
+            var _contactOpen = Date.now() - S.swingTimer >= MELEE_CONTACT_MS;
             /* Hit monsters */
             S.monsters.forEach(function (m) {
+              if (!_contactOpen) return; /* v2.3.2200: blade not at target yet */
               if (!m.alive || m._hitThisSwing) return;
               /* Fodder slimes render as a 96 px sprite anchored at the
                  feet (m.y is feet-level).  Sprite frame bottom = m.y+8,
@@ -1615,10 +1625,20 @@ export function updateMonsterCombat(S, deps) {
                 {
                   var _hitArch = m.archetype || m.type;
                   var _hitBase = baseArchetypeOf(_hitArch);
-                  if ((_hitBase === 'fodder' || _hitArch === 'snowman') && m.curHp > 0) {
+                  /* v2.3.2200: EVERY archetype recoils now, not just
+                     fodder/snowman — monsters with a hit sheet play it,
+                     everything else gets the renderer's squash fallback.
+                     A hit that moves nothing on the target reads as a
+                     whiff, which is "floaty" fix #3. */
+                  if (m.curHp > 0) {
                     m._hitAnimStart = Date.now();
                     m._hitAnimEnd = Date.now() + (_hitArch === 'snowman' ? 600 : 400);
                   }
+                  /* v2.3.2200: flash locally too — the monster_hit echo
+                     also stamps this, but town/SP zones never get one and
+                     in server zones the echo trails the swing by a beat;
+                     re-stamping just extends the same 120ms pulse. */
+                  m._hitFlash = Date.now();
                   /* Retaliation — getting hit forces aggro and keeps the
                      monster chasing the player for 5s even if the player
                      is past the normal aggro range.  Gated on fodder-base
@@ -1654,36 +1674,17 @@ export function updateMonsterCombat(S, deps) {
                     try { BT_AUDIO.levelUp(); } catch (e) {}
                   }
                 }
-                /* Slash mark — short diagonal cut at the impact point,
-                   oriented along the swing direction. Capped + cleared on
-                   respawn alongside stuck arrows / burn marks. */
-                if (!m._slashMarks) m._slashMarks = [];
-                if (m._slashMarks.length < 8) {
-                  m._slashMarks.push({
-                    ox: (Math.random() - 0.5) * 10,
-                    oy: (Math.random() - 0.5) * 10,
-                    ang: baseAngle,
-                    ts: Date.now(),
-                  });
-                }
-                /* Blood spray — particles fly along the swing direction
-                   (baseAngle) with a small angular spread and gravity-y
-                   bias for a realistic spurt. */
+                /* v2.3.2200: the slash-mark writer is GONE — it pushed
+                   records nothing ever rendered (no reader anywhere in
+                   src/rendering/, verified), and the material debris
+                   below is the shipped version of the same intent.
+                   v2.3.2200: the 8-circle blood spray is replaced by a
+                   directional SPRITE debris burst of the monster's own
+                   material (owner: "snow that flies off the monster";
+                   code-drawn circles read as placeholder).  One queue,
+                   rendered by effectsRenderer._updateDebrisBursts. */
                 if (!S.hitParticles) S.hitParticles = [];
-                var _bloodPalette = ['#8a0a0a', '#a01010', '#6e0606', '#c01818'];
-                for (var _bp = 0; _bp < 8; _bp++) {
-                  var _bpAng = baseAngle + (Math.random() - 0.5) * 0.7;
-                  var _bpSpd = 1.5 + Math.random() * 3.5;
-                  S.hitParticles.push({
-                    x: m.x + (Math.random() - 0.5) * 4,
-                    y: m.y + (Math.random() - 0.5) * 4,
-                    vx: Math.cos(_bpAng) * _bpSpd,
-                    vy: Math.sin(_bpAng) * _bpSpd - 0.5,
-                    life: 0.4 + Math.random() * 0.3,
-                    color: _bloodPalette[Math.floor(Math.random() * _bloodPalette.length)],
-                    size: 0.8 + Math.random() * 1.2,
-                  });
-                }
+                spawnHitDebris(S, m, baseAngle);
 
                 /* Report attack INTENT to server for authoritative
                    resolution.  The worker now ROLLS the damage itself
@@ -1795,21 +1796,11 @@ export function updateMonsterCombat(S, deps) {
                 if (collisionResult) {
                   BT_AUDIO.collisionSound(collisionResult.setupElement, collisionResult.triggerElement, collisionResult.manaRestored);
                 }
-                /* §6 Hit Stop — freeze frame proportional to hit significance */
-                if (collisionResult && isCrit) {
-                  S._hitStopDuration = 120;
-                  S._hitStop = Date.now() + 120; /* Grand moment: collision + crit */
-                } else if (collisionResult) {
-                  S._hitStopDuration = 80;
-                  S._hitStop = Date.now() + 80; /* Collision burst */
-                } else if (isCrit) {
-                  S._hitStopDuration = 60;
-                  S._hitStop = Date.now() + 60; /* Critical hit */
-                } else {
-                  /* Micro-stop on every hit — subtle weight */
-                  S._hitStopDuration = 25;
-                  S._hitStop = Date.now() + 25;
-                }
+                /* v2.3.2200: the §6 hit-stop writes are DELETED, not just
+                   disabled.  BroTown.jsx nulls S._hitStop unconditionally
+                   every frame (owner: "felt like lag") — that null is the
+                   pin and stays; writing values into a field the next
+                   frame erases was dead code masquerading as a feature. */
                 /* Knockback — §Creative Vision: proportional to hit weight.
                    Special attacks knock back ~2x (per user v2.3.110:
                    "Sword hits make the monsters bounce back a
@@ -1823,8 +1814,13 @@ export function updateMonsterCombat(S, deps) {
                    v2.3.1397: owner — special bounce = exactly 2x a
                    normal hit (45 -> 16); crit unchanged between.
                    v2.3.1402: owner — reduce ALL knockback 50% (16/11/8 ->
-                   8/5.5/4; the 2x-normal special ratio still holds). */
-                var kbForce = S._specialAttack ? 8 : isCrit ? 5.5 : 4;
+                   8/5.5/4; the 2x-normal special ratio still holds).
+                   v2.3.2200: 8/5.5/4 -> 10/7/6.  Both prior cuts reacted
+                   to the OLD 180px scale; at 4px a normal hit's bounce is
+                   below readability and "floaty" is partly this.  Still
+                   25-60% under the last owner-approved pre-halving values
+                   (called out in the PR body for a one-word veto). */
+                var kbForce = S._specialAttack ? 10 : isCrit ? 7 : 6;
                 /* Collision adds extra knockback (v2.3.1356: 6 -> 2; v2.3.1402: -> 1) */
                 var collisionKb = collisionResult ? 1 : 0;
                 m.x += Math.cos(kbAngle) * (kbForce + collisionKb);
@@ -1841,18 +1837,17 @@ export function updateMonsterCombat(S, deps) {
                 weaponFX.forEach(function (p) {
                   return S.hitParticles.push(p);
                 });
-                /* Blood splatter on ground */
-                for (var bs = 0; bs < (isCrit ? 6 : 3); bs++) {
-                  S.hitParticles.push({
-                    x: m.x + Math.cos(kbAngle) * (8 + Math.random() * 15),
-                    y: m.y + Math.sin(kbAngle) * (8 + Math.random() * 15),
-                    vx: 0,
-                    vy: 0,
-                    life: 1.5,
-                    color: '#880011',
-                    size: 2 + Math.random() * 2
-                  });
-                }
+                /* v2.3.2200: the 1.5s zero-velocity "blood splatter"
+                   particles were the intended ground mark all along —
+                   they just expired as circles.  Now a real persistent
+                   decal (owner: "snow on the ground that stays 5-10s"):
+                   material-tinted, 50% per hit so a fight doesn't flush
+                   the 80-mark cap, biased along the knockback direction. */
+                spawnGroundDecal(S,
+                  m.x + Math.cos(kbAngle) * (8 + Math.random() * 15),
+                  m.y + Math.sin(kbAngle) * (8 + Math.random() * 15),
+                  m.archetype || m.type,
+                  { chance: 0.5, size: isCrit ? 7 : 5 });
                 /* Screen shake */
                 S.screenShake = isCrit ? 6 : 3;
                 /* Camera punch — directional kick toward the hit */
@@ -2089,7 +2084,10 @@ export function updateMonsterCombat(S, deps) {
                   /* ═══ GROUND SPLATTER — persistent kill marks ═══ */
                   if (!S.groundSplatter) S.groundSplatter = [];
                   var splatElem = m.element;
-                  var splatCol = splatElem ? ((_ELEMENTS$splatElem = ELEMENTS[splatElem]) === null || _ELEMENTS$splatElem === void 0 ? void 0 : _ELEMENTS$splatElem.color) || '#ff5e6c' : '#8a2030';
+                  /* v2.3.2200: non-elemental kills mark the ground in the
+                     monster's MATERIAL color (snow leaves snow, slime
+                     leaves goo) instead of universal blood red. */
+                  var splatCol = splatElem ? ((_ELEMENTS$splatElem = ELEMENTS[splatElem]) === null || _ELEMENTS$splatElem === void 0 ? void 0 : _ELEMENTS$splatElem.color) || '#ff5e6c' : hitMaterialOf(m.archetype || m.type).decal;
                   var splatCount = isGrandSlam ? 5 : 2 + Math.floor(Math.random() * 2);
                   for (var si = 0; si < splatCount; si++) {
                     S.groundSplatter.push({

@@ -5379,6 +5379,19 @@ export function meleeSwingSfx(rpg) {
 export const SWING_COOLDOWN = 600;
 export const SWING_RANGE = 50;
 export const SWING_ARC = Math.PI * 0.85;
+/* ═══ v2.3.2200: CONTACT-SYNCED MELEE ("floaty" fix #1) ═══
+   The damage sweep used to run on frame 0 of the 300ms swing animation
+   (entityRenderer SWORD_SWING_MS), so the popup/particles/knockback all
+   landed while the blade was still winding up — feedback decoupled from
+   visual contact is most of what "floaty" means.  120ms = 40% of the
+   swing, where the blade visually crosses centre-frame.  Safe bounds:
+   the fastest legal swing cadence is 200ms (the amulet-atkSpd floor in
+   monsterCombat), so every swing gets its contact window before the
+   next swing resets the timer, and the server's 210ms per-monster hit
+   floor sees a phase shift, not a rate change.  Melee only — the bow
+   already launches at its release frame and projectiles carry travel
+   time, which is contact sync by construction. */
+export const MELEE_CONTACT_MS = 120;
 /* ═══ v2.3.1705: BLOCKING IS DIRECTIONAL AGAIN ═══
    Owner: "add a subtle cone of light effect while shield is held to show
    direction of where shield is pointed and where it protect you from damage",

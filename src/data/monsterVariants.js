@@ -326,6 +326,44 @@ export function isFodderLike(arch) {
   return baseArchetypeOf(arch) === 'fodder';
 }
 
+/* ═══ v2.3.2200: WHAT A MONSTER IS MADE OF (hit-feedback material) ═══
+ *
+ * Owner: "Every successful damage taken plays a brief feedback effect
+ * (snow that flies off the monster, snow on the ground)."  Every hit
+ * spawns a debris burst and a ground decal keyed by THIS table — the
+ * one place a monster's physical substance is written down.  Values are
+ * DEBRIS_BURSTS keys (effectsRenderer) plus the decal tint.  Keyed by
+ * variant first, then base archetype, so a reskin can override its
+ * base (skeleton is bone even though its base brute would be stone).
+ * Unknown anything falls through to goo — the least wrong default in a
+ * game whose default monster is a slime. */
+const HIT_MATERIALS = {
+  snowman:       { kind: 'snow',  tint: 0xe8f4ff, decal: '#dbeafe' },
+  skeleton:      { kind: 'bone',  tint: 0xe6ddc8, decal: '#c9bfa5' },
+  mummy:         { kind: 'bone',  tint: 0xd8cdb4, decal: '#b8ad90' },
+  fireGoblin:    { kind: 'ember', tint: 0xea580c, decal: '#7c2d12' },
+  rockmonster:   { kind: 'stone', tint: 0x8a8a8a, decal: '#5b5b5b' },
+  thornShambler: { kind: 'stone', tint: 0x6b8f4e, decal: '#3f5e2c' },
+  brute:         { kind: 'stone', tint: 0x8a8a8a, decal: '#5b5b5b' },
+  sentinel:      { kind: 'stone', tint: 0x9aa4b0, decal: '#565e68' },
+  fodder:        { kind: 'goo',   tint: 0x3dd497, decal: '#1f7a55' },
+  mossSlime:     { kind: 'goo',   tint: 0x4cbf6b, decal: '#2a6e3e' },
+  blueSlime:     { kind: 'goo',   tint: 0x4c9fdc, decal: '#28567e' },
+  mireWisp:      { kind: 'goo',   tint: 0x7fd0c9, decal: '#3d6f6a' },
+  bogLurker:     { kind: 'goo',   tint: 0x5e7a52, decal: '#37482f' },
+  fishman:       { kind: 'goo',   tint: 0x62b8c7, decal: '#2f6570' },
+  swarm:         { kind: 'goo',   tint: 0x8a6dc0, decal: '#4c3a70' },
+  volatile:      { kind: 'ember', tint: 0xf59e0b, decal: '#78350f' },
+  stalker:       { kind: 'goo',   tint: 0x94a3b8, decal: '#475569' },
+  hexer:         { kind: 'bone',  tint: 0xb8a9d9, decal: '#5b4a80' },
+};
+const HIT_MATERIAL_DEFAULT = { kind: 'goo', tint: 0x3dd497, decal: '#1f7a55' };
+export function hitMaterialOf(archOrVariant) {
+  return HIT_MATERIALS[archOrVariant]
+    || HIT_MATERIALS[baseArchetypeOf(archOrVariant)]
+    || HIT_MATERIAL_DEFAULT;
+}
+
 /* v2.3.1535: every variant key a zone can put on screen.
  *
  * Two sources, because there are two ways to assign a variant: the

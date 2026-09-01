@@ -101,6 +101,128 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...without pushing his head out of the stage',
     ink.pageTop >= stage.top, { head: ink.pageTop, stageTop: stage.top });
 
+  /* ═══ v2.3.2201: AND CLEAR OF THE LOGO, WHICH IS THE REAL CEILING ═══
+     Owner, with a screenshot: "the character is up against the logo."  He
+     was -- 9px under the sword's tip with the tallest hair and hat -- and
+     the assertion directly above said he was fine, because it measures the
+     STAGE and the logo was moved on top of the stage at v2.3.1527.  A true
+     guard over the wrong edge.
+
+     The ceiling is the SWORD, not the wordmark: .bt-cc-logo-sword is a
+     115%-tall sprite pinned at top:19%, so its tip hangs to ~134% of the
+     logo's own height and is the lowest ink the logo group puts on the
+     stage.  Measuring .bt-cc-logo would repeat the original mistake one
+     element over.
+
+     And it has to be measured on the TALLEST head the game can produce, not
+     the default one: bald-with-no-hat clears by 84px and tells you nothing.
+     So this walks every hair and every hat, keeps the highest head each
+     produces, and checks that one. */
+  const swordBottom = async () => (await rect(P, '.bt-cc-logo-sword')).bottom;
+  const openCat = (name) => P.page.evaluate((n) => {
+    const b = [...document.querySelectorAll('[role="tab"],button')]
+      .find((e) => new RegExp('^' + n + '$', 'i').test((e.textContent || '').trim()));
+    if (b) { b.click(); return true; }
+    return false;
+  }, name);
+  const stripLen = () => P.page.evaluate(() =>
+    (document.querySelector('.bt-cc-strip') || { children: [] }).children.length);
+  const pickTile = (i) => P.page.evaluate((idx) => {
+    const t = [...document.querySelector('.bt-cc-strip').children][idx];
+    if (t) t.click();
+  }, i);
+  /* Walk a category and return the highest head (smallest pageTop) it can make. */
+  const tallestIn = async (cat) => {
+    if (!(await openCat(cat))) return null;
+    await P.page.waitForTimeout(400);
+    const n = await stripLen();
+    let best = null, bestI = -1;
+    for (let i = 0; i < n; i++) {
+      await pickTile(i);
+      await P.page.waitForTimeout(260);
+      const k = await inkSpan(P);
+      if (!k || !k.bmp || k.empty) continue;
+      if (best === null || k.pageTop < best) { best = k.pageTop; bestI = i; }
+    }
+    /* leave the tallest one ON, so hair and hat stack for the final check */
+    if (bestI >= 0) { await pickTile(bestI); await P.page.waitForTimeout(300); }
+    return { best, bestI, n };
+  };
+  const hair = await tallestIn('Hair');
+  const hats = await tallestIn('Hats');
+  /* v2.3.2203: BUILD TOO.  v2.3.2201 walked hair and hats, called the
+     remaining gap comfortable, and shipped -- and the owner's next
+     screenshot was a TALL bro back up against the wordmark.  Build is a
+     third height multiplier (heightMul) sitting in the same picker, worth
+     30px on its own: it took the worst hair-and-hat pair from 51px under
+     the sword to 21.  A "tallest head the game can build" check that skips
+     one of the three things that make a head tall is not that check. */
+  const build = await tallestIn('Build');
+  rec.ok('every hair, hat and build could be tried (guard)',
+    !!hair && !!hats && !!build && hair.n > 1 && hats.n > 1 && build.n > 1,
+    { hair, hats, build });
+  const worst = await inkSpan(P);
+  const sword = await swordBottom();
+  const gap = worst && worst.pageTop ? Math.round(worst.pageTop - sword) : null;
+  /* ═══ WHAT COUNTS AS CLEAR IS THE OWNER'S CALL, NOT MINE ═══
+     v2.3.2201 set this at 12px, reasoning from the 9px that had just been
+     reported.  Then the owner looked at 21px -- which passes a 12px bar --
+     and said "the character is up against the logo" again.  So 12 was a
+     number I made up that the evidence has since contradicted, and the bar
+     is now the one the owner actually drew: comfortably above the 21 they
+     rejected, comfortably below the 38 this ships with, so it fails on what
+     they disliked without being so tight that a device a few pixels wider
+     trips it.
+
+     v2.3.2204: 28 -> 50. The owner looked at 37px and asked for another 10%
+     off, so 28 was still under what they will accept. Measured at 390x844
+     deliberately: swept across 390 / 402 / 430 at dpr 3 the gap GROWS with
+     width (the logo is capped at 168px while the stage scales with the
+     column), so the narrowest phone is the worst case and this number is
+     the smallest any device sees. */
+  rec.ok(`the tallest head the game can build clears the logo's sword (${gap}px)`,
+    gap !== null && gap >= 50, { gap, head: worst && worst.pageTop, swordBottom: sword, hair, hats, build });
+
+  /* ═══ v2.3.2202: THE MEASURED FIGURE IS THE BODY, NOT ITS SHADOW ═══
+     Owner, twice: "the shoes are transparent" / "Shoes appear semi
+     transparent."  They never were -- over magenta the boots come back
+     opaque -- but characterCreatorEffects.measureFigure scanned for
+     `alpha > 8`, and the composite carries the v2.3.1300 contact shadow,
+     whose faintest pixels are alpha 8-11.  So the figure's "bottom" was the
+     bottom of the SHADOW, which reframed the camera and armed the
+     bottom-edge dissolve over the boots.
+
+     This cannot be caught in the finished picture: the boots measure opaque
+     in both states.  It lives in that one number, so the number is what is
+     asserted -- the reported bottom must sit on the body's own ink, not tens
+     of rows under it.  Compared against the lowest FULLY OPAQUE row of the
+     live preview, which the shadow (alpha <= 133) can never reach. */
+  const bounds = await P.page.evaluate(() => {
+    const b = window.__btFigBounds;
+    const c = document.querySelector('.bt-cc-stage canvas');
+    if (!b || !c) return null;
+    const W = c.width, Hh = c.height;
+    const d = c.getContext('2d').getImageData(0, 0, W, Hh).data;
+    let solid = -1, anyInk = -1;
+    for (let y = Hh - 1; y >= 0 && solid < 0; y--)
+      for (let x = 0; x < W; x++) if (d[(y * W + x) * 4 + 3] === 255) { solid = y; break; }
+    for (let y = Hh - 1; y >= 0 && anyInk < 0; y--)
+      for (let x = 0; x < W; x++) if (d[(y * W + x) * 4 + 3] > 8) { anyInk = y; break; }
+    return { bot: b.bot, top: b.top, solidFrac: solid / Hh, anyInkFrac: anyInk / Hh };
+  });
+  rec.ok('the figure bounds are readable (guard)', !!bounds, bounds);
+  if (bounds) {
+    /* There IS a shadow: some ink sits below the last solid row.  If this
+       ever goes to zero the A/B below stops proving anything. */
+    rec.ok('...and the contact shadow really does extend below his boots (guard)',
+      bounds.anyInkFrac > bounds.solidFrac + 0.01, bounds);
+    /* The measured bottom must track the BOOTS.  Shipped it tracked the
+       shadow: 56 rows of an 865px canvas, ~6.5% of the frame, lower. */
+    rec.ok('...and the measured figure bottom is his boots, not the shadow under them',
+      Math.abs(bounds.bot - bounds.solidFrac) <= 0.03,
+      { measuredBot: bounds.bot, boots: bounds.solidFrac, shadow: bounds.anyInkFrac });
+  }
+
   /* Rotate him and check the other facings too: the offset the owner sees is
      per-FRAME, so a fix that only lands on south is a fix for one sixth of the
      screen. Drag the canvas, which is how a player turns him now (v2.3.2006
