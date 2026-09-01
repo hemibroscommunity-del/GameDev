@@ -588,7 +588,10 @@ export const HeroExpanded = () => {
         position: 'sticky', top: 0, zIndex: 2,
         display: 'flex', gap: DASH_GAP,
         height: HERO_TAB_H, flex: '0 0 auto',
-        marginBottom: 4,
+        /* v2.3.2210: 4 -> 2. Every pixel above the open lane pushes its last
+           stat toward the bottom of the phone; the lane headers' sticky
+           offset below must move with this or they pin in the wrong place. */
+        marginBottom: 2,
         background: COL.bg, /* sticky: keep opaque so content scrolls UNDER */
       }}>
         {SECTIONS.map(s => {
@@ -1196,7 +1199,44 @@ export const HeroExpanded = () => {
                row spends from the lane you are standing in, so both read the
                same number. */
             const openPts = chanCaps ? prog3PoolFor(R, buildCat) : totalUnspent;
-            const ROW_H = 22;
+            const ROW_H = 21;
+            /* ═══ v2.3.2210: THE NINTH STAT WAS OFF THE BOTTOM OF THE PHONE ═══
+               v2.3.2199 added `dmg` and `elem`, taking the lane from 7 stat
+               rows to 9 -- 4 attack, 5 character -- and the lane is as tall
+               as its TALLER column, so the CHARACTER side grew by one row.
+               Measured at 390x844: ELEM POWER rendered at y 829..851 with the
+               viewport ending at 844. The last stat the player was just given
+               was drawn off the bottom of the screen.
+
+               mp-prog3 did not catch it because that scenario runs at the
+               harness's DEFAULT 1000x780 desktop viewport, where the same
+               layout has room. The phone is the primary platform, so the
+               guard now measures there too (mp-prog3, v2.3.2210).
+
+               Most of it comes out of WHITESPACE rather than controls: the
+               row gap 3->2, the column caption's margin 3->1, the space under
+               the section tabs 4->2, and the open lane's header 26->22 (the
+               size a collapsed one already is). That was only enough at
+               390x844, with ONE pixel to spare -- and a 1px margin is not a
+               fix, it is the same bug waiting for a different phone. Measured
+               on an SE at 375x667, where the section gets 187px instead of
+               191, ELEM POWER was still clipped.
+
+               So ROW_H also drops 22 -> 21. That IS a control, and it is
+               stated rather than buried: the rows were already well under a
+               44pt target and this makes them 1px worse, which buys 5px
+               (four rows sit above the last one) and turns a 1px margin into
+               a real one on the smallest phone the game supports.
+
+               HONEST LIMIT: this buys back what two stats cost and very
+               little more. A tenth stat does not fit, and the answer then is
+               not another 2px -- it is structural, and the owner's call. The
+               CHARACTER block is the same five SHARED numbers in all three
+               lanes, so it could sit once below them instead of being
+               repeated inside each, which would free a whole column. That
+               contradicts the layout the owner specified in v2.3.2176, so it
+               is not done here. */
+            const LANE_GAP = 2;
             const statRow = (st) => {
               const pts = st.atk ? prog3AtkPts(R, buildCat, st.key) : prog3Pts(R, st.key);
               const cap = prog3StatCap(R, st.key);
@@ -1275,7 +1315,7 @@ export const HeroExpanded = () => {
                 display: 'flex', alignItems: 'baseline', gap: 5,
                 fontSize: 10, fontWeight: 700, letterSpacing: '.10em',
                 textTransform: 'uppercase', color: COL.muted,
-                lineHeight: 1, marginBottom: 3,
+                lineHeight: 1, marginBottom: 1,
               }}>
                 <span style={{ whiteSpace: 'nowrap' }}>{text}</span>
                 {sub && <span style={{ fontSize: 9, letterSpacing: '.04em', color: COL.muted, opacity: 0.8, whiteSpace: 'nowrap' }}>{sub}</span>}
@@ -1334,7 +1374,7 @@ export const HeroExpanded = () => {
                       title={sk.label}
                       onPointerUp={(e) => { e.stopPropagation(); setBuildCat(sk.key); }}
                       style={{
-                        height: open ? 26 : 22, boxSizing: 'border-box', padding: '0 7px',
+                        height: 22, boxSizing: 'border-box', padding: '0 7px',
                         display: 'flex', alignItems: 'center', gap: 6,
                         cursor: 'pointer', touchAction: 'manipulation',
                         /* ═══ v2.3.2176: THE LANES NEVER SCROLL AWAY ═══
@@ -1348,7 +1388,7 @@ export const HeroExpanded = () => {
                            below an uncued fold with no way to know.  Here the
                            three weapons stay on screen at all times and the
                            next lane's edge is the cue that there is more. */
-                        position: 'sticky', top: HERO_TAB_H + 4, zIndex: 1,
+                        position: 'sticky', top: HERO_TAB_H + 2, zIndex: 1,
                         background: open ? COL.raised : COL.wellSoft,
                         /* v2.3.2176b: the lane's rounded top corners, which
                            used to come from the parent's overflow:hidden.
@@ -1414,13 +1454,13 @@ export const HeroExpanded = () => {
                       }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           {groupHead2(`${sk.label} Attack`)}
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: LANE_GAP }}>
                             {prog3AtkMeta().map((m) => statRow({ ...m, atk: true }))}
                           </div>
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           {groupHead2('Character', 'Shared')}
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: LANE_GAP }}>
                             {prog3BodyMeta().map((m) => statRow({ ...m, atk: false }))}
                           </div>
                         </div>
