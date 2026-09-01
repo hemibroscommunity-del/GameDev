@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* ═══ v2.3.2207: TAKE THE SPARKLES AND THE DIAMONDS OFF THE TITLE ═══
+/* ═══ v2.3.2209: TAKE THE SPARKLES AND THE DIAMONDS OFF THE TITLE ═══
  *
  * Owner, twice: "make the sparkles on the Hemi bros title move or make them
  * disappear? I don't like the diamonds because it's a dead giveaway of AI
@@ -59,7 +59,7 @@
  *
  * ── WHY NEW FILENAMES ──
  * Not for caching: LoginScreen's `art()` helper already appends the build
- * version to these, unlike the CSS-referenced plate in v2.3.2205.  It is
+ * version to these, unlike the CSS-referenced plate in v2.3.2207.  It is
  * because logo.png and banner.png are SLICES of the owner's title sheet
  * (tools/gear/slice-splash-art.mjs), and that name has to stay free for the
  * slicer.  A re-slice putting the sparkles back under a name the page loads

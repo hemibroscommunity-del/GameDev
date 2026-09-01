@@ -367,7 +367,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!document.querySelector('.bt-cc-defcolor--on'));
   rec.ok('...and colour picks are back to Default too', skinDefault, { skinDefault });
 
-  /* ═══ v2.3.2203: THE "THERE IS MORE BELOW" CUE ═══
+  /* ═══ v2.3.2205: THE "THERE IS MORE BELOW" CUE ═══
      Owner, on the Hats tab: "additional hat options don't surface the
      shadowed effect to cue additional options anymore."
 
@@ -424,11 +424,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...so the "more below" cue is showing', !!atTop && atTop.on, atTop);
   rec.ok('...and it is actually painted, not just class-tagged',
     !!atTop && atTop.opacity > 0.9, atTop);
-  /* The axis assertions -- the two that fail on the pre-v2.3.2203 overlay,
+  /* The axis assertions -- the two that fail on the pre-v2.3.2205 overlay,
      which was a narrow column pinned to the RIGHT edge. */
   rec.ok('...lying across the strip\'s full width, not down one side',
     !!atTop && atTop.widthFrac > 0.9, atTop);
-  /* v2.3.2204: this used to require the band's bottom to LAND on the strip's
+  /* v2.3.2206: this used to require the band's bottom to LAND on the strip's
      bottom (|gap| <= 2), and that tolerance is exactly what shipped the
      owner's one-device-pixel bright line -- two boxes that agree in CSS can
      still round to different device pixels on a composited touch-scroller.
@@ -448,7 +448,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const atEnd = await cue();
   rec.ok('scrolled to the last hat, the cue is gone', !!atEnd && !atEnd.on, atEnd);
 
-  /* v2.3.2203: the scroll RESET carried the same axis bug (scrollLeft on an
+  /* v2.3.2205: the scroll RESET carried the same axis bug (scrollLeft on an
      overflow-x:hidden box). Leave Hats scrolled to the bottom, switch away
      and back, and the catalogue must start at the top again.
 

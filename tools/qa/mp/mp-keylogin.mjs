@@ -107,7 +107,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the BRO TOWN banner is under the logo',
     await visible(B, '.bt-login-banner'), {});
 
-  /* ═══ v2.3.2206: THE SHIMMER LANDS ON THE LETTERING ═══
+  /* ═══ v2.3.2208: THE SHIMMER LANDS ON THE LETTERING ═══
      .bt-login-shine masks itself with the logo so the highlight can only fall
      on the art -- but `mask-size:contain` centres that mask in the shine's
      OWN box, so the mask is only in the right place if the two boxes match.
@@ -249,7 +249,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       banner: await one('/ui/welcome/title/banner-plain.png'),
     };
   });
-  /* ═══ v2.3.2207: THE MARKS THE OWNER ASKED US TO REMOVE ARE GONE ═══
+  /* ═══ v2.3.2209: THE MARKS THE OWNER ASKED US TO REMOVE ARE GONE ═══
      Owner: "there's still a static shine on the Hemi bros logo and diamonds
      framing 'bro town' that I want gone."
 

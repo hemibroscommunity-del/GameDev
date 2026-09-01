@@ -162,7 +162,7 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
   /* Cache-busted on the build version: these are new files at a new path,
      but they will be re-cut from the sheet again and a CDN edge holding the
      old crop is exactly the "it looks fine for me" report. */
-  /* v2.3.2207 (owner: "there's still a static shine on the Hemi bros logo and
+  /* v2.3.2209 (owner: "there's still a static shine on the Hemi bros logo and
      diamonds framing 'bro town' that I want gone"). The marks were painted
      into the sheet, so the page loads CLEANED cuts -- logo-plain / banner-plain,
      built by tools/ui/clean-title-marks.mjs from the slicer's own output. The
@@ -197,7 +197,7 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
             its own hand-kept numbers.  Both marks are slices of the owner's
             sheet (tools/gear/slice-splash-art.mjs). */}
         <div className="bt-login-title">
-          {/* v2.3.2206: the shimmer lives INSIDE a wrapper that shrink-wraps
+          {/* v2.3.2208: the shimmer lives INSIDE a wrapper that shrink-wraps
               the logo, so `inset:0` gives it the image's own box. It used to
               be a sibling sized against .bt-login-title -- logo plus gap plus
               banner -- and swept a mask 22px lower than the lettering. */}

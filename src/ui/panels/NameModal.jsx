@@ -376,7 +376,7 @@ export function NameModal(props) {
      setter bails when nothing changed so scrolling doesn't re-render
      every frame.
 
-     ═══ v2.3.2203: IT WAS MEASURING THE AXIS THE STRIP NO LONGER SCROLLS ═══
+     ═══ v2.3.2205: IT WAS MEASURING THE AXIS THE STRIP NO LONGER SCROLLS ═══
      Owner, on the Hats tab: "additional hat options don't surface the
      shadowed effect to cue additional options anymore."
 
@@ -412,7 +412,7 @@ export function NameModal(props) {
     if (_colorRowRef.current) _colorRowRef.current.scrollTop = 0;
     _measureMore();
   }, [activeCat]);
-  /* v2.3.2203: vertical overflow depends on the strip's HEIGHT, which the
+  /* v2.3.2205: vertical overflow depends on the strip's HEIGHT, which the
      category change can't tell us about — rotating the phone or the software
      keyboard opening resizes the pane under a catalogue that never changed.
      The category effects cover content changes; this covers box changes. The
@@ -492,7 +492,7 @@ export function NameModal(props) {
      disc, not the highest of them. mp-ccstand asserts the boots land inside
      the top face for every facing, so the day the bitmap changes again this
      fails instead of sliding. */
-  /* ═══ v2.3.2199: HE HAD GROWN INTO THE LOGO ═══
+  /* ═══ v2.3.2201: HE HAD GROWN INTO THE LOGO ═══
      Owner, with a screenshot of the trait picker: "the character is up
      against the logo. What's the best way to handle this? Shrink character,
      move him down, remove floating effect, etc."
@@ -523,18 +523,18 @@ export function NameModal(props) {
      0.355 down the disc, still deep inside the 0.12-0.72 top face
      mp-ccstand pins. Measured, not predicted: 88 gives 22px, 84 gives 35,
      80 gives 48, and the feet never move more than 3px across all of them. */
-  /* ═══ v2.3.2201: AND DOWN A BIT, BECAUSE TALL IS A THING ═══
+  /* ═══ v2.3.2203: AND DOWN A BIT, BECAUSE TALL IS A THING ═══
      Owner, with a screenshot of a TALL bro whose hair still reached the
      wordmark: "Can you just move the char down a lil."
 
-     v2.3.2199 shrank him and I checked the worst case by walking all 9 hairs
+     v2.3.2201 shrank him and I checked the worst case by walking all 9 hairs
      and all 40 hats -- and never touched BUILD, which is a third multiplier
      sitting right there in the same picker (heightMul, via focusForCat).
      Measured: Tall costs 30px of headroom on its own, taking the tallest
      hair-and-hat combination from 51px under the sword to 21. Same gap I had
      just called comfortable, on a build I never rendered.
 
-     v2.3.2202 (owner, still with a tall afro on the sword: "Shrink the
+     v2.3.2204 (owner, still with a tall afro on the sword: "Shrink the
      character a bit (maybe 10%) and move him down some pixels"): 84 -> 76,
      the owner's 10%, and b 20 -> 18.
 
@@ -1021,7 +1021,7 @@ export function NameModal(props) {
     className: "bt-cc-strip", ref: _stripRef, onScroll: _measureMore, role: 'listbox', "aria-label": _def.label + ' options'
   }, _items), /*#__PURE__*/React.createElement("span", {
     /* v2.3.1254: fade + chevron while more tiles wait off-screen.
-       v2.3.2203: the arrow points DOWN now, at the direction the grid
+       v2.3.2205: the arrow points DOWN now, at the direction the grid
        actually scrolls -- a › over a vertical list points at a wall. */
     className: "bt-cc-more" + (scrollMore.items ? " bt-cc-more--on" : ""), "aria-hidden": true
   }, "▾")), /*#__PURE__*/React.createElement("div", {

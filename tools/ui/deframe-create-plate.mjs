@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* ═══ v2.3.2205: TAKE THE DIAMONDS OFF THE CREATE CHARACTER PLATE ═══
+/* ═══ v2.3.2207: TAKE THE DIAMONDS OFF THE CREATE CHARACTER PLATE ═══
  *
  * Owner: "on Main page can you remove the diamonds framing create character
  * ... I don't like the diamonds because it's a dead giveaway of AI produced

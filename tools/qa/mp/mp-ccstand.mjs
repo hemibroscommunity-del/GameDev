@@ -101,7 +101,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...without pushing his head out of the stage',
     ink.pageTop >= stage.top, { head: ink.pageTop, stageTop: stage.top });
 
-  /* ═══ v2.3.2199: AND CLEAR OF THE LOGO, WHICH IS THE REAL CEILING ═══
+  /* ═══ v2.3.2201: AND CLEAR OF THE LOGO, WHICH IS THE REAL CEILING ═══
      Owner, with a screenshot: "the character is up against the logo."  He
      was -- 9px under the sword's tip with the tallest hair and hat -- and
      the assertion directly above said he was fine, because it measures the
@@ -150,7 +150,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   };
   const hair = await tallestIn('Hair');
   const hats = await tallestIn('Hats');
-  /* v2.3.2201: BUILD TOO.  v2.3.2199 walked hair and hats, called the
+  /* v2.3.2203: BUILD TOO.  v2.3.2201 walked hair and hats, called the
      remaining gap comfortable, and shipped -- and the owner's next
      screenshot was a TALL bro back up against the wordmark.  Build is a
      third height multiplier (heightMul) sitting in the same picker, worth
@@ -165,7 +165,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const sword = await swordBottom();
   const gap = worst && worst.pageTop ? Math.round(worst.pageTop - sword) : null;
   /* ═══ WHAT COUNTS AS CLEAR IS THE OWNER'S CALL, NOT MINE ═══
-     v2.3.2199 set this at 12px, reasoning from the 9px that had just been
+     v2.3.2201 set this at 12px, reasoning from the 9px that had just been
      reported.  Then the owner looked at 21px -- which passes a 12px bar --
      and said "the character is up against the logo" again.  So 12 was a
      number I made up that the evidence has since contradicted, and the bar
@@ -174,7 +174,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      they disliked without being so tight that a device a few pixels wider
      trips it.
 
-     v2.3.2202: 28 -> 50. The owner looked at 37px and asked for another 10%
+     v2.3.2204: 28 -> 50. The owner looked at 37px and asked for another 10%
      off, so 28 was still under what they will accept. Measured at 390x844
      deliberately: swept across 390 / 402 / 430 at dpr 3 the gap GROWS with
      width (the logo is capped at 168px while the stage scales with the
@@ -183,7 +183,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`the tallest head the game can build clears the logo's sword (${gap}px)`,
     gap !== null && gap >= 50, { gap, head: worst && worst.pageTop, swordBottom: sword, hair, hats, build });
 
-  /* ═══ v2.3.2200: THE MEASURED FIGURE IS THE BODY, NOT ITS SHADOW ═══
+  /* ═══ v2.3.2202: THE MEASURED FIGURE IS THE BODY, NOT ITS SHADOW ═══
      Owner, twice: "the shoes are transparent" / "Shoes appear semi
      transparent."  They never were -- over magenta the boots come back
      opaque -- but characterCreatorEffects.measureFigure scanned for

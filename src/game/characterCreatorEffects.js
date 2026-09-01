@@ -298,7 +298,7 @@ export function wireCharacterPortrait(previewCanvasRef, sel) {
    * and ends on.  That also retires both constants: a hat, a build, a hairstyle
    * and a facing all move these rows, and now they simply move them.
    */
-  /* ═══ v2.3.2200: THE SHADOW IS NOT PART OF THE BRO ═══
+  /* ═══ v2.3.2202: THE SHADOW IS NOT PART OF THE BRO ═══
      Owner, twice, with screenshots: "the shoes are transparent", and then
      "Shoes appear semi transparent" after the first round did not fix it.
 
@@ -348,7 +348,7 @@ export function wireCharacterPortrait(previewCanvasRef, sel) {
       }
       if (top < 0) return null;
       const out = { top: top / S, bot: bot / S };
-      /* v2.3.2200 QA handle, house style (__btTrailStyle, __btDashSide).  The
+      /* v2.3.2202 QA handle, house style (__btTrailStyle, __btDashSide).  The
          bug this fixes is invisible in the finished pixels -- the boots are
          opaque either way -- and lives entirely in THIS number, so the guard
          has to be able to read it.  mp-ccstand checks that `bot` is the body

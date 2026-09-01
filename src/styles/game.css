@@ -1931,7 +1931,7 @@ input{font-family:inherit}
    which never took effect anyway, because the v2.3.1254 rule further down
    re-declares display at the same specificity and wins on order.  So the
    overlay has been painting all along, at opacity 0, waiting on a flag that
-   could no longer go true (NameModal.jsx, v2.3.2203). */
+   could no longer go true (NameModal.jsx, v2.3.2205). */
 /* v2.3.1956 (owner: "Move the tattoo and pattern option button to directly
    beneath the color options instead of sitting at the bottom of the
    container").  The options strip used to GROW into all the spare height, so
@@ -1944,7 +1944,7 @@ input{font-family:inherit}
    guarantee is untouched: the pane's OUTER height is unchanged, so the stage
    and the character do not move. */
 .bt-cc-panel>.bt-cc-scroll{flex:0 1 auto;min-height:0;display:flex;flex-direction:column}
-/* v2.3.2203 (owner: "additional hat options don't surface the shadowed effect
+/* v2.3.2205 (owner: "additional hat options don't surface the shadowed effect
    to cue additional options anymore").  The cue turns 90 degrees to match the
    grid: a band across the BOTTOM edge, not a column down the right one.
    The transparent stop is rgba(30,46,52,0) rather than `transparent` on
@@ -1953,7 +1953,7 @@ input{font-family:inherit}
    spelled in numbers, which is what .bt-cc-panel is painted with, so the
    band lands on the panel and reads as depth rather than as a grey stripe.
    The two dead display declarations are gone with it; see the note above. */
-/* ═══ v2.3.2204: THE ONE-PIXEL BRIGHT LINE ═══
+/* ═══ v2.3.2206: THE ONE-PIXEL BRIGHT LINE ═══
    Owner, with a crop of the Hats list: "There's a tiny thin line that looks
    like a glitch."
 
@@ -1982,7 +1982,7 @@ input{font-family:inherit}
    The gradient stops are in PIXELS now, not percentages, for the same
    reason: with the box 3px taller, a percentage stop would have quietly
    moved the fade's start.  19px of fade then solid keeps the visible band
-   exactly where v2.3.2203 put it, and the chevron's padding grows by the
+   exactly where v2.3.2205 put it, and the chevron's padding grows by the
    same 3px so it does not slide down with the box. */
 .bt-cc-more{position:absolute;left:0;right:0;bottom:-3px;height:25px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:4px;pointer-events:none;opacity:0;transition:opacity 160ms ease;background:linear-gradient(to bottom,rgba(30,46,52,0) 0,var(--ui-sheet) 19px);color:var(--ui-text-secondary);font-size:13px;font-weight:700;line-height:1}
 .bt-cc-more--on{opacity:1}
@@ -2539,7 +2539,7 @@ body:has([data-trade-drawer]) .bt-kb-chip{display:none}
    fall on the lettering — a gradient laid over the box would wash the sky
    beside it.  One slow pass, then a long wait: "an occasional faint
    shimmer", not a loop you notice. */
-/* ═══ v2.3.2206: THE SHIMMER WAS FALLING 22px BELOW THE LETTERING ═══
+/* ═══ v2.3.2208: THE SHIMMER WAS FALLING 22px BELOW THE LETTERING ═══
    The comment above says the height is pinned to the logo "so the mask does
    not stretch over the banner below it" -- and it is, to `--lg-logoh`, which
    NOTHING IN THE REPO EVER SETS.  So the fallback ran: 100% of
@@ -2638,7 +2638,7 @@ body:has([data-trade-drawer]) .bt-kb-chip{display:none}
    times ("same button frame" → "align left" → "center just the label"), so
    the owner's-art plate wins the merge.  The recut tool stays on disk. */
 .bt-login-btn--key{background-image:url('/ui/welcome/title/btn-continue.png?v=2.3.2167');aspect-ratio:799/212} /* v2.3.2167: label centred, emblem left (owner) */
-/* v2.3.2205 (owner: "remove the diamonds framing create character ... it's a
+/* v2.3.2207 (owner: "remove the diamonds framing create character ... it's a
    dead giveaway of AI produced content").  The diamonds were painted into
    the plate, so the fix is a new plate, not a rule -- tools/ui/deframe-
    create-plate.mjs.  New FILENAME, not a ?v= query, because btn-create.png
