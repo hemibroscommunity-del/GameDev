@@ -239,6 +239,50 @@ export function attackReleaseFrame(facing) {
   return Math.min(ATTACK_RELEASE_FRAME, fc - 1);
 }
 
+/* ═══ v2.3.2217: WHERE THE BALL ACTUALLY LEAVES HIS HAND ═══
+   The server creates the snowball at the monster's logical point, which is
+   the snowman's FEET — his sprite is anchored bottom-centre at y = +13 and
+   stands 64px tall, so the logical point sits near the bottom of the art.
+   His hand is 17-45px ABOVE that, and off to one side. v2.3.2216 fixed
+   *when* the ball appears but not *where*, so it still popped into
+   existence at his base rather than out of his claw (owner, 2026-09-01:
+   "the position of the snowball from the thrown position do not match up").
+
+   These are the ball's centre in SOURCE pixels on frame 4 of each strip —
+   the last frame it is still held — measured off the sheets rather than
+   guessed, and re-measurable the same way if the art is redrawn: render
+   frame 4 at 3-5x with a 16px grid and read the ball's centre.
+
+   Stored as source pixels, not world offsets, so the anchor/scale maths
+   below stays the single place that knows how the sprite is placed.
+
+   Note how much they differ — he holds it overhead facing south, east and
+   north, but low and to the side facing southwest. One flat offset would
+   be visibly wrong for at least one facing, which is why this is a table. */
+const THROW_MUZZLE_PX = {
+  south:     { x: 32,  y: 22 },
+  southwest: { x: 22,  y: 68 },
+  east:      { x: 64,  y: 21 },
+  northeast: { x: 116, y: 17 },
+  north:     { x: 36,  y: 12 },
+};
+const FRAME_PX = 128;      /* source cell */
+const RENDER_PX = 64;      /* drawn size — entityRenderer's baseScale 64/128 */
+const FOOT_Y = 13;         /* spriteBody.y = getMonsterSize('snowman') */
+
+/* Offset from the monster's logical point to his throwing hand, in world
+   px, for the facing currently being drawn. Mirrored facings negate x, the
+   same way the strip itself is flipped. */
+export function throwMuzzle(facing) {
+  const m = DIR_MAP[facing] || DIR_MAP.south;
+  const p = THROW_MUZZLE_PX[m.src] || THROW_MUZZLE_PX.south;
+  const sc = RENDER_PX / FRAME_PX;
+  return {
+    dx: (p.x - FRAME_PX / 2) * sc * (m.mirror ? -1 : 1),
+    dy: p.y * sc - (FRAME_PX * sc - FOOT_Y),
+  };
+}
+
 export function attackFrameCount(facing) {
   const m = DIR_MAP[facing] || DIR_MAP.south;
   const sheet = ATTACK_SHEETS[m.src];

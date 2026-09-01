@@ -616,6 +616,32 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     !!relM, { found: !!relM });
   check('windup mirror: ...and it is inside the 8-frame strips as drawn',
     !!relM && Number(relM[1]) > 0 && Number(relM[1]) < 8, relM && relM[1]);
+
+  /* ═══ v2.3.2217: the ball must leave his HAND, on the ball's own tick ═══
+     Two follow-ups to the same report.  The server can only place the
+     snowball at the monster's logical point (its feet), so the throwing-hand
+     offset is measured off the strips client-side — and a facing with no
+     entry silently falls back to south's hand, which is the quiet failure
+     this pins.  The release is then driven by the projectile event rather
+     than by the wind-up clock, because a tick boundary plus the wire put the
+     ball a beat behind the arm. */
+  const muzM = sprites.match(/const THROW_MUZZLE_PX = \{([\s\S]*?)\n\};/);
+  const muzKeys = muzM ? (muzM[1].match(/(\w+)\s*:\s*\{/g) || []).map((k) => k.replace(/\s*:\s*\{$/, '')) : [];
+  const dirM = sprites.match(/const DIR_MAP = \{([\s\S]*?)\n\};/);
+  const dirSrcs = dirM ? [...new Set((dirM[1].match(/src:\s*'(\w+)'/g) || []).map((k) => k.replace(/src:\s*'/, '').replace(/'$/, '')))] : [];
+  check('muzzle mirror: both the muzzle table and DIR_MAP are parseable',
+    muzKeys.length > 0 && dirSrcs.length > 0, { muzKeys, dirSrcs });
+  const muzMissing = dirSrcs.filter((d) => !muzKeys.includes(d));
+  check('muzzle mirror: every facing the strips are drawn from has a hand offset',
+    muzMissing.length === 0, { muzMissing, muzKeys, dirSrcs });
+  check('muzzle mirror: the renderer publishes the hand for the facing it draws',
+    /_muzzleX\s*=\s*_mz\.dx/.test(rend), {});
+  check('muzzle mirror: ...and the projectile launches from it',
+    /_muzzleX/.test(src) && /_sbX/.test(src), {});
+  check('release sync: the projectile event stamps the release instant',
+    /_throwReleaseAt\s*=\s*Date\.now\(\)/.test(src), {});
+  check('release sync: ...and the renderer waits for it rather than a clock',
+    /_throwReleaseAt/.test(rend) && /THROW_RELEASE_GRACE_MS/.test(rend), {});
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

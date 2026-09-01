@@ -175,3 +175,51 @@ both halves — the stamp and the gate — because either alone is useless.
 
 A melee attack strip for the snowman is **still missing art**; until it
 exists his melee poke shows the body throb only.
+
+## The ball leaves his hand, on the ball's own tick (v2.3.2217)
+
+Two follow-ups to the same playtest, after v2.3.2216 aligned *when* the
+release happens.
+
+**Where.** The server can only create the snowball at the monster's logical
+point, which for the snowman is his FEET — his sprite is anchored
+bottom-centre at `y = +13` and stands 64px tall, so the logical point sits
+near the bottom of the art. His hand is 17-45px above it and off to one
+side, so the ball popped into existence at his base rather than out of his
+claw.
+
+`snowmanSprites.throwMuzzle(facing)` now returns that offset, measured off
+frame 4 of each strip (the last frame the ball is still held) and stored as
+**source pixels**, so the anchor/scale maths lives in one place. The
+renderer publishes it for the facing it is actually drawing
+(`_muzzleX/_muzzleY`) because facing is renderer-derived from movement
+history — it is not on the wire. Mirrored facings negate x, exactly as the
+strip is flipped.
+
+The offsets are not interchangeable: he holds the ball overhead facing
+south, east and north (`dy` about -40 to -45) but low and to the side facing
+southwest (`dy` -17). One flat offset would be visibly wrong for at least
+one facing, which is why this is a table. Re-measure the same way if the art
+is redrawn: render frame 4 at 3-5x with a 16px grid and read the centre.
+
+Moving the launch point is safe because `monster_projectile` is display-only
+— the server scheduled the impact, aimed at a frozen point, and delivers the
+damage itself. Travel time is unchanged: `life` is in frames and `speed` is
+re-derived from the new distance, so the visual still lands exactly when the
+authoritative hit does.
+
+**When, exactly.** Timing the release to the wind-up's own end is right in
+theory but races it in practice: the server resolves on a tick boundary and
+the event crosses the wire, so the ball arrived a beat after the arm had
+thrown — a small residual lag. The release is now driven by
+`monster_projectile` itself, which cannot drift because it *is* the ball
+appearing. The anticipation frames hold on the cocked pose until it lands
+(normally a frame or two; it reads as weight), with
+`THROW_RELEASE_GRACE_MS` as the escape hatch — a throw wind-up **can**
+resolve into no ball at all (target gone, or an earlier ball still in the
+air), and without it he would hold the cocked pose forever.
+
+**The release frame is deliberately skipped.** Frame 5's entire content is a
+drawn ball in mid-air, and the engine now draws the real one at his hand on
+that same tick. Playing it would put two snowballs on screen a few px apart.
+The strip therefore runs 0-4, then 6-7.

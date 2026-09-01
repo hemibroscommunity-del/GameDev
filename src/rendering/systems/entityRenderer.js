@@ -44,7 +44,8 @@ function slimeTintFor(variant, state) {
 }
 import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount as snowmanFrameCount, getHitFrame as getSnowmanHitFrame, hitFrameCount as snowmanHitFrameCount, getDeathFrame as getSnowmanDeathFrame, deathFrameCount as snowmanDeathFrameCount,
   getAttackFrame as getSnowmanAttackFrame, attackFrameCount as snowmanAttackFrameCount, /* v2.3.2215 */
-  attackReleaseFrame as snowmanAttackReleaseFrame /* v2.3.2216 */
+  attackReleaseFrame as snowmanAttackReleaseFrame, /* v2.3.2216 */
+  throwMuzzle as snowmanThrowMuzzle /* v2.3.2217 */
 } from '../snowmanSprites.js';
 import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, maybeTransformMonster } from '../../data/monsterVariants.js';
@@ -4113,6 +4114,13 @@ const NAME_STYLE = new TextStyle({
    the monster object instead looks equivalent and is not: nothing sets that
    field on a real monster (only the QA fixtures do), so a hand-rolled
    fallback silently mis-places the ring on every live monster in the game. */
+/* v2.3.2217: how long the renderer waits for the projectile event before
+   playing the follow-through anyway.  A throw wind-up CAN resolve into no
+   ball at all (the target left, or an earlier ball is still in the air —
+   see _resolveBasicWindup), and without this he would hold the cocked pose
+   forever. */
+const THROW_RELEASE_GRACE_MS = 250;
+
 export function getMonsterSize(archetype) {
   /* Slime/fodder stays small (renders as a 50-px sprite, the 8-px
      circle is the procedural fallback / hitbox anchor).  Snowman
@@ -6804,6 +6812,13 @@ export class EntityRenderer {
              ms + 300), so he holds still through it instead of sliding. */
           const atkFc = snowmanAttackFrameCount(facing);
           const atkRel = snowmanAttackReleaseFrame(facing);
+          /* v2.3.2217: publish the throwing hand for THIS facing so the
+             projectile can be launched from it (gameEvents reads these two
+             numbers on monster_projectile).  Stamped on the monster rather
+             than resolved there because facing is renderer-derived state —
+             it comes from movement history, not the wire. */
+          const _mz = snowmanThrowMuzzle(facing);
+          m._muzzleX = _mz.dx; m._muzzleY = _mz.dy;
           const adur = Math.max(1, (m._shootAnimEnd || 0) - (m._shootAnimStart || 0));
           /* One frame's worth of the wind-up.  The ANTICIPATION frames are
              0..atkRel-1 (atkRel of them) — frame atkRel is the release
@@ -6811,24 +6826,49 @@ export class EntityRenderer {
              atkRel (not atkRel + 1) is what puts the drawn ball leaving his
              hand on the exact tick the server creates the projectile. */
           const atkPerF = adur / Math.max(1, atkRel);
-          /* Release + follow-through: frames atkRel..atkFc-1 play after the
-             wind-up ends, at the same cadence.  For the 8-frame sheets at
-             THROW_MS 350 that is 3 frames x 70ms = 210ms, inside the
-             server's ms + 300 post-throw freeze. */
-          const atkFollowMs = atkPerF * Math.max(0, atkFc - atkRel);
+          /* v2.3.2217: THE RELEASE IS DRIVEN BY THE BALL, NOT BY A CLOCK.
+             v2.3.2216 timed the release to the wind-up's own end, which is
+             the right instant in theory but races it in practice: the server
+             resolves on a tick boundary and the event crosses the wire, so
+             the ball landed a beat after the arm had already thrown — the
+             "tiny subtle lag" the owner reported.  Now the anticipation
+             frames hold on the cocked pose until monster_projectile actually
+             arrives, which cannot drift because it IS the ball appearing.
+             The wait is normally a frame or two and reads as weight. */
+          const relAt = (m._throwReleaseAt && m._throwReleaseAt >= m._shootAnimStart)
+            ? m._throwReleaseAt
+            : (now >= m._shootAnimEnd + THROW_RELEASE_GRACE_MS
+                ? m._shootAnimEnd + THROW_RELEASE_GRACE_MS
+                : 0);
+          /* Frames after the release one: the release frame itself is SKIPPED
+             (see below), so the follow-through is everything past it. */
+          const followFrames = Math.max(0, atkFc - atkRel - 1);
           /* v2.3.2216: never play the THROW strip for a melee poke (see the
              _shootAnimKind stamp in gameEvents).  Compared against 'swing'
              rather than equality with 'throw' so an unstamped write — the
              client-local AI's shoot path — still animates as it always
              did. */
           const inAtkWindow = !inHitWindow && m._shootAnimEnd
-            && m._shootAnimKind !== 'swing'
-            && now < m._shootAnimEnd + atkFollowMs && atkFc > 0;
+            && m._shootAnimKind !== 'swing' && atkFc > 0
+            && (!relAt || now < relAt + followFrames * atkPerF);
           let frameTex = null;
           let mirror = false;
           if (inAtkWindow) {
-            const aFrame = getSnowmanAttackFrame(
-              facing, Math.floor((now - m._shootAnimStart) / atkPerF));
+            let aIdx;
+            if (!relAt) {
+              /* Winding up — or holding the cocked pose while the ball is in
+                 flight to us across the wire. */
+              aIdx = Math.max(0, Math.min(atkRel - 1,
+                Math.floor((now - m._shootAnimStart) / atkPerF)));
+            } else {
+              /* Straight to the follow-through, SKIPPING the release frame:
+                 that frame's whole content is a drawn ball in mid-air, and
+                 the engine now draws the real one at his hand on this very
+                 tick.  Playing it would put two snowballs on screen at
+                 slightly different places. */
+              aIdx = atkRel + 1 + Math.floor((now - relAt) / atkPerF);
+            }
+            const aFrame = getSnowmanAttackFrame(facing, aIdx);
             if (aFrame) { frameTex = aFrame.tex; mirror = aFrame.mirror; }
           } else if (inHitWindow) {
             const dur = Math.max(1, m._hitAnimEnd - m._hitAnimStart);
