@@ -588,7 +588,7 @@ export const HeroExpanded = () => {
         position: 'sticky', top: 0, zIndex: 2,
         display: 'flex', gap: DASH_GAP,
         height: HERO_TAB_H, flex: '0 0 auto',
-        /* v2.3.2210: 4 -> 2. Every pixel above the open lane pushes its last
+        /* v2.3.2214: 4 -> 2. Every pixel above the open lane pushes its last
            stat toward the bottom of the phone; the lane headers' sticky
            offset below must move with this or they pin in the wrong place. */
         marginBottom: 2,
@@ -1200,7 +1200,7 @@ export const HeroExpanded = () => {
                same number. */
             const openPts = chanCaps ? prog3PoolFor(R, buildCat) : totalUnspent;
             const ROW_H = 21;
-            /* ═══ v2.3.2210: THE NINTH STAT WAS OFF THE BOTTOM OF THE PHONE ═══
+            /* ═══ v2.3.2214: THE NINTH STAT WAS OFF THE BOTTOM OF THE PHONE ═══
                v2.3.2199 added `dmg` and `elem`, taking the lane from 7 stat
                rows to 9 -- 4 attack, 5 character -- and the lane is as tall
                as its TALLER column, so the CHARACTER side grew by one row.
@@ -1211,7 +1211,7 @@ export const HeroExpanded = () => {
                mp-prog3 did not catch it because that scenario runs at the
                harness's DEFAULT 1000x780 desktop viewport, where the same
                layout has room. The phone is the primary platform, so the
-               guard now measures there too (mp-prog3, v2.3.2210).
+               guard now measures there too (mp-prog3, v2.3.2214).
 
                Most of it comes out of WHITESPACE rather than controls: the
                row gap 3->2, the column caption's margin 3->1, the space under

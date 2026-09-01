@@ -335,7 +335,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   await P.ctx.close().catch(() => {});
 
-  /* ═══ v2.3.2210: AND ALL OF THAT, ON A PHONE ═══
+  /* ═══ v2.3.2214: AND ALL OF THAT, ON A PHONE ═══
      Everything above runs on THIS scenario's player, which takes the
      harness's default 1000x780 viewport. That is why the fold assertions
      passed while the screen was broken: v2.3.2199 added the dmg and elem
