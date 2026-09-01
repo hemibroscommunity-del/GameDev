@@ -591,6 +591,31 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   const strayArch = Object.keys(SRV_BASIC_WINDUP.MS).filter((k) => k !== 'DEFAULT' && !archKeys.includes(k));
   check('windup mirror: every duration key is a real archetype (a typo would fall back to DEFAULT)',
     strayArch.length === 0, { strayArch, archKeys });
+
+  /* ═══ v2.3.2216: the throw strip must know WHICH basic it is drawing ═══
+     The snowman's only attack sheet is a snowball throw, but he melee-pokes
+     inside his 100px minRange — the range you actually fight him at.  Until
+     v2.3.2216 the client stamped the animation fields for both kinds, so a
+     melee poke played a throw: a ball appeared in his hand and no projectile
+     ever followed.  The fix is a _shootAnimKind stamp on the writer side and
+     a gate on the reader side, and it is worthless if either half is
+     dropped — so pin BOTH, the same way the whitelist above is pinned. */
+  check('windup mirror: gameEvents stamps _shootAnimKind from the wire ability',
+    /_shootAnimKind\s*=\s*payload\.ability/.test(src), {});
+  const rend = readFileSync(
+    new URL('../../src/rendering/systems/entityRenderer.js', import.meta.url), 'utf8');
+  check('windup mirror: ...and the renderer gates the throw strip on it',
+    /_shootAnimKind\s*!==\s*'swing'/.test(rend), {});
+  /* The release frame is what aligns the drawn ball with the real
+     projectile; if the strips are ever redrawn at a different length this
+     must move with them, so pin that it is inside the sheet. */
+  const sprites = readFileSync(
+    new URL('../../src/rendering/snowmanSprites.js', import.meta.url), 'utf8');
+  const relM = sprites.match(/ATTACK_RELEASE_FRAME\s*=\s*(\d+)/);
+  check('windup mirror: the snowman attack strips declare a release frame',
+    !!relM, { found: !!relM });
+  check('windup mirror: ...and it is inside the 8-frame strips as drawn',
+    !!relM && Number(relM[1]) > 0 && Number(relM[1]) < 8, relM && relM[1]);
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

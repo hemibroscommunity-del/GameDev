@@ -43,7 +43,8 @@ function slimeTintFor(variant, state) {
   return (variant && variant.tint) || 0xffffff;
 }
 import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount as snowmanFrameCount, getHitFrame as getSnowmanHitFrame, hitFrameCount as snowmanHitFrameCount, getDeathFrame as getSnowmanDeathFrame, deathFrameCount as snowmanDeathFrameCount,
-  getAttackFrame as getSnowmanAttackFrame, attackFrameCount as snowmanAttackFrameCount /* v2.3.2215 */
+  getAttackFrame as getSnowmanAttackFrame, attackFrameCount as snowmanAttackFrameCount, /* v2.3.2215 */
+  attackReleaseFrame as snowmanAttackReleaseFrame /* v2.3.2216 */
 } from '../snowmanSprites.js';
 import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, maybeTransformMonster } from '../../data/monsterVariants.js';
@@ -6783,19 +6784,51 @@ export class EntityRenderer {
           const inHitWindow = m._hitAnimEnd && now < m._hitAnimEnd && hitFc > 0;
           /* v2.3.2215: the snowball-throw wind-up.  Priority sits BELOW the
              hit reaction (being struck interrupts the throw, which is what
-             the recoil is for) and above idle.  Frame index is elapsed /
-             duration across the whole wind-up so the throw reads at whatever
-             length the server chose, and getSnowmanAttackFrame clamps to the
-             last frame rather than looping — a throw that restarted
-             mid-wind-up would read as a stutter. */
+             the recoil is for) and above idle.  getSnowmanAttackFrame clamps
+             rather than looping — a throw that restarted mid-wind-up would
+             read as a stutter.
+
+             v2.3.2216: SPLIT AT THE RELEASE FRAME, don't scale the strip.
+             The old code spread all 8 frames evenly across the wind-up, so
+             the drawn ball left his hand at 62.5% of the tell (~219ms of
+             350) while the server's real projectile did not exist until
+             100%.  The ball then vanished for the two empty follow-through
+             frames and reappeared as a projectile ~130ms later — the
+             disconnect the owner reported on 2026-09-01.
+
+             Now the ANTICIPATION frames (0..release) fill the wind-up
+             exactly, so the release pose lands on the same instant the
+             server creates the projectile, and the follow-through frames
+             play AFTER it at the same cadence.  The follow-through fits
+             inside the server's post-throw freeze (_attackingUntil is
+             ms + 300), so he holds still through it instead of sliding. */
           const atkFc = snowmanAttackFrameCount(facing);
-          const inAtkWindow = !inHitWindow && m._shootAnimEnd && now < m._shootAnimEnd && atkFc > 0;
+          const atkRel = snowmanAttackReleaseFrame(facing);
+          const adur = Math.max(1, (m._shootAnimEnd || 0) - (m._shootAnimStart || 0));
+          /* One frame's worth of the wind-up.  The ANTICIPATION frames are
+             0..atkRel-1 (atkRel of them) — frame atkRel is the release
+             itself, so it must START at adur, not end there.  Dividing by
+             atkRel (not atkRel + 1) is what puts the drawn ball leaving his
+             hand on the exact tick the server creates the projectile. */
+          const atkPerF = adur / Math.max(1, atkRel);
+          /* Release + follow-through: frames atkRel..atkFc-1 play after the
+             wind-up ends, at the same cadence.  For the 8-frame sheets at
+             THROW_MS 350 that is 3 frames x 70ms = 210ms, inside the
+             server's ms + 300 post-throw freeze. */
+          const atkFollowMs = atkPerF * Math.max(0, atkFc - atkRel);
+          /* v2.3.2216: never play the THROW strip for a melee poke (see the
+             _shootAnimKind stamp in gameEvents).  Compared against 'swing'
+             rather than equality with 'throw' so an unstamped write — the
+             client-local AI's shoot path — still animates as it always
+             did. */
+          const inAtkWindow = !inHitWindow && m._shootAnimEnd
+            && m._shootAnimKind !== 'swing'
+            && now < m._shootAnimEnd + atkFollowMs && atkFc > 0;
           let frameTex = null;
           let mirror = false;
           if (inAtkWindow) {
-            const adur = Math.max(1, m._shootAnimEnd - m._shootAnimStart);
-            const at = (now - m._shootAnimStart) / adur;
-            const aFrame = getSnowmanAttackFrame(facing, Math.floor(at * atkFc));
+            const aFrame = getSnowmanAttackFrame(
+              facing, Math.floor((now - m._shootAnimStart) / atkPerF));
             if (aFrame) { frameTex = aFrame.tex; mirror = aFrame.mirror; }
           } else if (inHitWindow) {
             const dur = Math.max(1, m._hitAnimEnd - m._hitAnimStart);

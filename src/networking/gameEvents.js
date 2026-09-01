@@ -776,6 +776,15 @@ export function processGameEvent(type, payload, S, deps) {
                      wiring. */
                   _bwM._shootAnimStart = Date.now();
                   _bwM._shootAnimEnd = Date.now() + _bwMs;
+                  /* v2.3.2216: and WHICH basic this is, because the art is
+                     not interchangeable.  The snowman's only attack strip is
+                     a snowball throw, but he melee-pokes inside his 100px
+                     minRange — which is exactly where you stand to fight him
+                     — so stamping this field blind made every melee poke
+                     play a throw: a ball appeared in his hand and no
+                     projectile ever followed it.  The renderer gates the
+                     throw strip on this. */
+                  _bwM._shootAnimKind = payload.ability;
                 }
                 break;
               }

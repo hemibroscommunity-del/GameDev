@@ -208,6 +208,37 @@ export function getAttackFrame(facing, frameIdx) {
   return { tex: sheet.frames[idx], mirror: m.mirror };
 }
 
+/* ═══ v2.3.2216: WHERE THE BALL LEAVES THE HAND ═══
+   The attack strips are not uniform anticipation: on the 8-frame sheets,
+   frames 0-4 wind up (ball picked up, raised overhead, body coiled),
+   frame 5 is the RELEASE (the ball is drawn detached and airborne), and
+   6-7 are follow-through with empty hands.
+
+   v2.3.2215 spread all 8 frames evenly across the server's wind-up, which
+   put the drawn release at 62.5% of a 350ms tell — the snowman threw at
+   ~219ms, his drawn ball then vanished for frames 6-7, and the REAL
+   server projectile did not exist until 350ms.  That ~130ms hole is the
+   "awkward disconnect" the owner reported on 2026-09-01.
+
+   So the strip is split here instead of scaled: the anticipation frames
+   fill the wind-up exactly, and the release frame lands on the same
+   instant the server creates the projectile.  Latency does not reopen the
+   gap — the wind-up event and the projectile both cross the wire, so both
+   client-side timestamps shift by the same half-RTT.
+
+   Any FUTURE monster attack strip must declare its own release index the
+   same way; a sheet whose ball leaves mid-strip and is timed uniformly
+   will reproduce this bug exactly. */
+export const ATTACK_RELEASE_FRAME = 5;
+
+/* Clamped so a shorter/redrawn strip cannot index past its own end (which
+   would silently pin the whole wind-up on the last frame). */
+export function attackReleaseFrame(facing) {
+  const fc = attackFrameCount(facing);
+  if (fc <= 0) return 0;
+  return Math.min(ATTACK_RELEASE_FRAME, fc - 1);
+}
+
 export function attackFrameCount(facing) {
   const m = DIR_MAP[facing] || DIR_MAP.south;
   const sheet = ATTACK_SHEETS[m.src];

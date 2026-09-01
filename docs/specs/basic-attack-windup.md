@@ -128,3 +128,50 @@ documents for the next author: `window.__btDispatch` is a test-injection
 helper that real inbound messages bypass (wrapping it observes nothing), and
 the player must WALK — a teleport is rejected by the anti-cheat speed cap,
 leaving client and server disagreeing about where the player stands.
+
+## Attack-strip timing: split at the release frame (v2.3.2216)
+
+An attack sheet is **not** uniform anticipation, and timing it as though it
+were is a bug that looks like lag. The snowman's 8-frame throw strips run
+0-4 wind-up (ball picked up, raised, body coiled), **5 release** (the ball is
+drawn detached and airborne), 6-7 follow-through with empty hands.
+
+v2.3.2215 spread all 8 evenly across the server's wind-up, which put the
+drawn release at 62.5% of a 350ms tell. The snowman threw at ~219ms, his
+drawn ball then vanished for the two empty frames, and the *real* projectile
+did not exist until 350ms — a ~130ms hole where he had visibly thrown
+nothing. Reported by the owner on 2026-09-01 as "an awkward disconnect
+between the snowball thrown from his hand and when the projectile appears."
+
+The rule: **anticipation frames fill the wind-up; the release frame starts
+at the instant the server creates the projectile; follow-through plays
+after.** Concretely `perFrame = windupMs / releaseIdx` (not
+`/(releaseIdx + 1)` — the release frame must *start* at the end, not end
+there), and the render window extends past `_shootAnimEnd` by
+`perFrame * (frameCount - releaseIdx)`. For the snowman that is 5 x 70ms of
+wind-up then 3 x 70ms of follow-through, which fits inside the server's
+`ms + 300` post-throw freeze, so he holds still through it.
+
+Latency does not reopen the gap: the wind-up event and the projectile both
+cross the wire, so both client timestamps shift by the same half-RTT.
+
+**Every new attack strip must declare its own release index**
+(`ATTACK_RELEASE_FRAME` in `snowmanSprites.js` is the pattern). A sheet whose
+projectile leaves mid-strip and is timed uniformly reproduces this exactly.
+
+## One strip per attack KIND (v2.3.2216)
+
+The wire carries `ability: 'swing' | 'throw'`, and the client stamps
+`_shootAnimKind` from it. This is load-bearing, not bookkeeping: the
+snowman's ranged band is `minRange: 100`, so inside 100px — which is exactly
+where you stand to fight him — he **melee-pokes**. v2.3.2215 stamped the
+animation fields for both kinds, so every melee poke played the snowball
+throw: a ball appeared in his hand and no projectile ever followed it.
+
+The renderer gates the throw strip on `_shootAnimKind !== 'swing'` (compared
+against `'swing'` rather than equality with `'throw'` so the client-local AI's
+unstamped shoot path still animates as it always did). `mirror-audit` pins
+both halves — the stamp and the gate — because either alone is useless.
+
+A melee attack strip for the snowman is **still missing art**; until it
+exists his melee poke shows the body throb only.
