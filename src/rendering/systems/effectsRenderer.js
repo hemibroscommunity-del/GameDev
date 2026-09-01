@@ -286,8 +286,38 @@ const FIRE_GEAR_REG = {
 /* Popup icons (XP badge, gold coin, sword/arrow/spell for damage by weapon
    type). Loaded async — entries appear in the registry once each PNG is
    ready. Until then, popups render text-only and the icon is skipped. */
+/* ═══ v2.3.2211: A CRIT HAS TO BE UNMISTAKABLE ═══
+   Owner: "I still can't visually distinguish critical hits.  Maybe a much
+   larger damage number followed by an additional icon to represent it's a
+   critical hit (explosion?)"
+
+   They were right, and the reason is worse than a tuning miss: the size
+   difference below has never been applied to a single real crit.  The
+   renderer has read `dmg.crit` since v2.3.1357, but NOTHING that lands a
+   crit ever set it -- the flag's only writers were two UI notices in
+   BroTown.jsx using it as "make this text big and wiggly".  So every crit
+   rendered at the normal 21px and the only cue was a colour swap.
+
+   Both halves are fixed at once, because either alone stays weak: the size
+   gap goes 21 -> 27 -> 38 (near double, not a nudge), and the crit gets the
+   game's OWN crit mark beside it -- the gold starburst already used for the
+   Crit stat on the Hero screen, so a player learns one symbol, not two. */
+const DMG_FONT_PX = 21;
+const DMG_CRIT_FONT_PX = 38;
+/* v2.3.2212 (owner: "change the damage color to a light yellow when it's a
+   crit").  Was the gold #f5c542 / amber #fbbf24 pair -- two shades for one
+   event, and both close enough to the game's general gold accent (level-ups,
+   XP, quest text) to read as "some UI thing" rather than "that hit was
+   special".  One light yellow, used by every crit door. */
+export const DMG_CRIT_COLOR = '#FFF27A';
+
 const POPUP_ICONS = {};
-const POPUP_ICON_KEYS = ['xp', 'gold', 'sword', 'arrow', 'spell', 'heart'];
+const POPUP_ICON_KEYS = ['xp', 'gold', 'sword', 'arrow', 'spell', 'heart', 'crit'];
+/* v2.3.2211: 'crit' is the one key whose art does not live in /icons/popups.
+   Reusing the Hero screen's own crit icon rather than copying it to a second
+   path -- one asset, one meaning, and no chance of the two drifting apart
+   the next time either is redrawn. */
+const POPUP_ICON_SRC = { crit: '/icons/ui/hero/crit.webp' };
 /* v2.3.1403 (owner: "the damage bow icon did not work" while damage
    numbers still showed): the icon load was one-shot — a single flaked
    fetch (common right after a deploy) left that icon undefined for the
@@ -297,7 +327,7 @@ const POPUP_ICON_KEYS = ['xp', 'gold', 'sword', 'arrow', 'spell', 'heart'];
    texture resolves. */
 function _loadPopupIcon(k, attempt) {
   const bust = attempt > 0 ? '&r=' + attempt : '';
-  return _fxLoad('/icons/popups/' + k + '.webp?v=2.3.1403' + bust)
+  return _fxLoad((POPUP_ICON_SRC[k] || ('/icons/popups/' + k + '.webp')) + '?v=2.3.2201' + bust)
     .then((tex) => { POPUP_ICONS[k] = tex; })
     .catch(() => {
       if (attempt < 2) {
@@ -2216,13 +2246,33 @@ export class EffectsRenderer {
            Centralized here so the 40+ push sites don't each need recoloring. */
         const t = dmg.text || '';
         let displayColor = dmg.color || '#ffffff';
-        if (/^[^A-Za-z+]*-?\d+$/.test(t)) {
+        /* ═══ v2.3.2213: ...UNLESS IT IS A CRIT ═══
+           Owner, on the preview: "the number did not turn yellow.  I think
+           the crit icon was larger."  Both halves of that are exactly right,
+           and this line is why.
+
+           The white override below matches ANY plain number, which is every
+           ordinary damage popup AND every crit -- so `displayColor` was
+           thrown away and replaced with white before it reached the tint.
+           The v2.3.103 comment even says "push sites still pass their own
+           dmg.color FOR CRITS", and then the next statement discards it: the
+           note describes an intention the code never carried out.
+
+           So the crit colour has never rendered.  Not the light yellow, and
+           not the gold before it -- which means that for the whole time the
+           game has had crits, a crit and an ordinary hit were drawn in the
+           same colour at the same size, and the ONLY thing that ever told
+           them apart was the icon (a sword, the same sword a normal hit
+           got).  That is the real answer to "I still can't visually
+           distinguish critical hits": there was nothing to distinguish.
+
+           The override still owns every non-crit number -- v2.3.103's
+           reason (uniform white reads best against zone art) is untouched
+           for the bulk of fight popups it was written for. */
+        if (!dmg.crit && /^[^A-Za-z+]*-?\d+$/.test(t)) {
           /* v2.3.103 user request: combat damage in white reads more
              clearly than the previous orange (#ff8c1a) against most
-             zone backgrounds.  Push sites still pass their own
-             dmg.color for crits / specials / status tints, but the
-             generic damage pattern wins here so the bulk of fight
-             popups are uniformly white. */
+             zone backgrounds. */
           displayColor = '#ffffff';
         } else if (/^\+\d+\s*XP$/.test(t)) {
           displayColor = '#60a5fa';
@@ -2280,7 +2330,7 @@ export class EffectsRenderer {
            would otherwise push the offset positive and re-open the exact
            hole this fix closes. */
         dmg._stackOffset = hasNeighbor ? Math.min(0, (highestY - SPACING) - dmg.y) : 0;
-        const baseFontSize = dmg.crit ? 27 : 21;
+        const baseFontSize = dmg.crit ? DMG_CRIT_FONT_PX : DMG_FONT_PX;
         /* Special-attack hits used to render at 2x to read as "heavy", but
            that crowded the screen and hid the normal-hit cadence. They now
            match normal size and instead get a bright outer glow (see
@@ -2359,7 +2409,14 @@ export class EffectsRenderer {
           const tex = POPUP_ICONS[iconKey];
           const icon = new Sprite(tex);
           icon.anchor.set(0, 0.5);
-          const targetH = Math.min(fontSize, 22);
+          /* v2.3.2212 (owner: "make the crit icon much larger (I can barely
+             see it)").  The 22px cap was the whole reason: it applied
+             whatever the font did, so raising the crit number to 38px left
+             the mark beside it at its old size and looking smaller still by
+             comparison.  A crit's mark now scales WITH its number and a
+             little past it, which is what "much larger" asks for; every
+             other icon keeps the cap it has always had. */
+          const targetH = dmg.crit ? Math.round(fontSize * 1.15) : Math.min(fontSize, 22);
           icon.scale.set(targetH / tex.height);
           this.dmgLayer.addChild(icon);
           dmg._pixiIcon = icon;
@@ -2417,7 +2474,7 @@ export class EffectsRenderer {
            floor still let the magic icon clip the last digit on
            fire-goblin hits ("32" reading as "3[magic]").  Stroked text
            extends a few px past text.width on iOS canvas rendering. */
-        const _iconGap = Math.max(10, (dmg.crit ? 27 : 21) * 0.35);
+        const _iconGap = Math.max(10, (dmg.crit ? DMG_CRIT_FONT_PX : DMG_FONT_PX) * 0.35);
         dmg._pixiIcon.x = text.x + text.width / 2 + _iconGap;
         dmg._pixiIcon.y = text.y;
         dmg._pixiIcon.alpha = text.alpha;

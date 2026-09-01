@@ -176,11 +176,15 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
   const flat = 1 * 40 * 41;                          // t2Accel(40, 1) = 1,640
   const expMin = Math.round(base * 0.75 + flat);     // melee band 0.75-1.25
   const expMax = Math.round(base * 1.25 + flat);
-  const critChance = 40 * 100 / (100 + 200) / 100    // Power baseline
+  const critChance = 0.01                            // v2.3.2210: the flat base every character starts with
+                   + 40 * 100 / (100 + 200) / 100    // Power baseline
                    + 50 * 0.005;                     // + counter channel expected rate
   const critMult = 1.5 + 100 * 0.001;                // power-only (1.6)
   const critFlat = Math.round(T2_UNITS.critDmg * 25 * 26); // t2Accel(25, unit) — v2.3.1415: derives from the table so unit tuning can't break the fixture
-  const expDps = ((expMin + expMax) / 2 * (1 + critChance * (critMult - 1)) + critChance * critFlat) / (600 / 1000);
+  /* v2.3.2212: anchored crit -- floor at 2x the range top, banked flat on top. */
+  const avgH = (expMin + expMax) / 2;
+  const critHitH = Math.max(avgH * critMult, expMax * 2) + critFlat;
+  const expDps = (avgH + critChance * (critHitH - avgH)) / (600 / 1000);
 
   const r = calcDisplayDmgRange(rpg, wpn);
   check('fixture: damage range matches hand math exactly',
@@ -349,11 +353,23 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
   setProg3Enabled(true);
   setProg3XEnabled(true);
   // By hand, the prog3x math: base = (6.67 + 40×1.5 + 30×0.5) × 2.0,
+  /* v2.3.2210: the 0.01 in each crit term below is the flat base every
+     character now starts with (PROG3.ATK.crit.base).  Written as a LITERAL
+     rather than imported on purpose -- importing the constant would make
+     these fixtures agree with the production formula by construction, which
+     is the one thing a fixture must not do.  If the base is ever retuned,
+     these three lines are supposed to fail and be changed deliberately. */
   // period 600 × (1 − 20×0.0035), crit EV = 1 + 0.2 × (2.1 − 1), no flat.
   const baseX = (6.67 + 40 * PROG3.DMG_PER_LEVEL.sword + 30 * PROG3.ATK.dmg.per) * 2.0;
   const cdX = 600 * (1 - 20 * PROG3.ATK.aspd.per);
   const expMinX = Math.round(baseX * 0.75), expMaxX = Math.round(baseX * 1.25);
-  const expDpsX = ((expMinX + expMaxX) / 2 * (1 + (50 * PROG3.ATK.crit.per) * (2.1 - 1))) / (cdX / 1000);
+  /* v2.3.2212: crits are floored at 2x the top of the range (the anchor), so
+     the fold is avg + chance x (critHit - avg), not a multiplier on avg.
+     The 2 is a literal here for the same reason 0.01 is -- a fixture that
+     imports the constant agrees with production by construction. */
+  const avgX = (expMinX + expMaxX) / 2;
+  const critHitX = Math.max(avgX * 2.1, expMaxX * 2);
+  const expDpsX = (avgX + (0.01 + 50 * PROG3.ATK.crit.per) * (critHitX - avgX)) / (cdX / 1000);
   const rX = calcDisplayDmgRange(p3rpg, SWORD);
   const dX = calcDisplayDps(p3rpg, SWORD);
   check('prog3x fixture: range carries the dmg stat pre-tier',
@@ -368,8 +384,9 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
   setProg3XEnabled(false);
   const baseL = (6.67 + 40 * PROG3.DMG_PER_LEVEL.sword) * 2.0;
   const expMinL = Math.round(baseL * 0.75), expMaxL = Math.round(baseL * 1.25);
-  const expDpsL = ((expMinL + expMaxL) / 2 * (1 + (50 * PROG3.ATK.crit.per) * (1.5 - 1))
-    + (50 * PROG3.ATK.crit.per) * (60 * 2)) / (cdX / 1000);
+  const avgL = (expMinL + expMaxL) / 2;
+  const critHitL = Math.max(avgL * 1.5, expMaxL * 2) + 60 * 2;   /* flat rides ON TOP of the anchor */
+  const expDpsL = (avgL + (0.01 + 50 * PROG3.ATK.crit.per) * (critHitL - avgL)) / (cdX / 1000);
   const rL = calcDisplayDmgRange(p3rpg, SWORD);
   const dL = calcDisplayDps(p3rpg, SWORD);
   check('old-worker fallback: dmg stat leaves the range',
