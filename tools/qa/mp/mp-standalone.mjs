@@ -98,6 +98,60 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !app.err && app.canvasBottom === tab.canvasBottom - SAB_PORTRAIT,
     { was: tab.canvasBottom, now: app.canvasBottom });
 
+  /* ═══ v2.3.2198: AND AN OPEN MENU SITS IN THE BAND IT OPENED FROM ═══
+     Owner, on the installed web app: "none of the other menus sit right.
+     Portrait mode."  Everything above measures the RESTING band; v2.3.2178
+     folded the inset into --dash-h and the two consumers of that number in
+     expanded mode were not brought along.
+
+     Measured before the fix, at 390x844 with a 34px indicator: opening a
+     destination SHRANK the band from 277 to 243 (the expanded snap is a
+     plain pixel number and does not carry the inset, while the element pays
+     it as paddingBottom either way), and the panel body then reserved
+     `--dash-h - --cols-h` = 86px for a 52px row, because that expression
+     carries the inset too.  34px of the sheet gone, 34px of dead space
+     above the panel, and the bottom of every panel off the screen.
+
+     Two assertions rather than one because those are two separate mistakes
+     that happened to add up: the sheet's SIZE, and what the panel RESERVES
+     inside it. */
+  await P.page.evaluate(() => window.__broDashPanelBus.open('hero'));
+  await P.page.waitForTimeout(900);
+  const openGeom = (P2) => P2.page.evaluate(() => {
+    const band = document.querySelector('.bt-dashboard');
+    const nav = document.querySelector('[data-nav]');
+    if (!band || !nav) return { err: 'band/nav missing' };
+    const b = band.getBoundingClientRect();
+    /* The identity ROW, not the nav BUTTON GROUP inside it.  The first cut
+       of this check compared against [data-nav] and reported a 4px hole
+       that was really the row's own padding around its buttons -- the
+       marginTop reserves the row, so the row is what it has to agree with. */
+    const row = [...band.children].find(
+      (e) => getComputedStyle(e).position === 'absolute' && e.contains(nav));
+    const n = (row || nav).getBoundingClientRect();
+    /* The panel body is the flex child that is NOT the absolute nav row. */
+    const body = [...band.children].find((e) => getComputedStyle(e).position !== 'absolute');
+    const p = body ? body.getBoundingClientRect() : null;
+    return {
+      bandTop: Math.round(b.top), bandBottom: Math.round(b.bottom), bandH: Math.round(b.height),
+      navBottom: Math.round(n.bottom),
+      panelTop: p ? Math.round(p.top) : null,
+      panelBottom: p ? Math.round(p.bottom) : null,
+      vh: window.innerHeight,
+      sab: parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sab')) || 0,
+    };
+  });
+  const open = await openGeom(P);
+  rec.ok('opening a destination does not make the sheet SHORTER than the band it grew from',
+    !open.err && open.bandH >= app.bandH, { resting: app.bandH, open: open.bandH });
+  rec.ok('...and the panel body starts where the identity ROW ends, with no inset-sized hole above it',
+    !open.err && Math.abs(open.panelTop - open.navBottom) <= 2,
+    { panelTop: open && open.panelTop, rowBottom: open && open.navBottom, sab: open && open.sab });
+  rec.ok('...and the panel ends inside the sheet, above the home indicator',
+    !open.err && open.panelBottom <= open.vh - open.sab + 2, open);
+  await P.page.evaluate(() => window.__broDashPanelBus.toBar());
+  await P.page.waitForTimeout(600);
+
   /* Taking the install away must restore the tab layout exactly. */
   await install(P, 0);
   const back = await portraitGeom(P);
