@@ -36,6 +36,42 @@ const EFFECTIVENESS = [["flame","frost"],["frost","storm"],["storm","stone"],["s
 export const COLLISION_TABLE = {"flora|flame":{"id":"wildfire","base":45,"coeff":0.8,"stat":"power"},"flora|frost":{"id":"thaw_bloom","base":25,"coeff":0.5,"stat":"vitality"},"flora|water":{"id":"overgrowth","base":30,"coeff":0.6,"stat":"vitality"},"flora|venom":{"id":"blight_garden","base":40,"coeff":0.7,"stat":"mind"},"flora|storm":{"id":"lightning_rod","base":65,"coeff":1.1,"stat":"agility"},"flora|stone":{"id":"petrified_wood","base":30,"coeff":0.6,"stat":"vitality"},"flora|wind":{"id":"scatter_seed","base":30,"coeff":0.5,"stat":"agility"},"flora|dark":{"id":"withering","base":45,"coeff":0.8,"stat":"mind"},"flora|light":{"id":"purifying_bloom","base":50,"coeff":0.9,"stat":"vitality"},"flame|frost":{"id":"steam","base":40,"coeff":0.8,"stat":"power"},"flame|water":{"id":"quench","base":45,"coeff":0.9,"stat":"power"},"flame|venom":{"id":"toxic_fumes","base":30,"coeff":0.6,"stat":"power"},"flame|storm":{"id":"overcharge","base":70,"coeff":1.2,"stat":"agility"},"flame|stone":{"id":"magma","base":50,"coeff":1,"stat":"power"},"flame|wind":{"id":"firestorm","base":35,"coeff":0.7,"stat":"power"},"frost|water":{"id":"flash_freeze","base":25,"coeff":0.5,"stat":"vitality"},"frost|venom":{"id":"shatter","base":70,"coeff":1.2,"stat":"agility"},"frost|storm":{"id":"hailstorm","base":50,"coeff":0.8,"stat":"agility"},"frost|stone":{"id":"permafrost","base":20,"coeff":0.4,"stat":"vitality"},"frost|wind":{"id":"blizzard","base":45,"coeff":0.7,"stat":"agility"},"water|venom":{"id":"dilute","base":30,"coeff":0.6,"stat":"vitality"},"water|storm":{"id":"conduit","base":55,"coeff":1,"stat":"agility"},"water|stone":{"id":"mudslide","base":40,"coeff":0.7,"stat":"vitality"},"water|wind":{"id":"monsoon","base":25,"coeff":0.5,"stat":"agility"},"venom|storm":{"id":"blight","base":60,"coeff":1,"stat":"mind"},"venom|stone":{"id":"petrify","base":35,"coeff":0.6,"stat":"vitality"},"venom|wind":{"id":"miasma","base":30,"coeff":0.5,"stat":"mind"},"storm|stone":{"id":"seismic_pulse","base":55,"coeff":0.9,"stat":"power"},"storm|wind":{"id":"tempest","base":50,"coeff":0.8,"stat":"agility"},"stone|wind":{"id":"erosion","base":20,"coeff":0.4,"stat":"vitality"},"dark|flame":{"id":"hellfire","base":65,"coeff":1.1,"stat":"power"},"dark|frost":{"id":"dread","base":40,"coeff":0.7,"stat":"vitality"},"dark|water":{"id":"drown","base":45,"coeff":0.8,"stat":"vitality"},"dark|venom":{"id":"wither","base":50,"coeff":0.9,"stat":"mind"},"dark|storm":{"id":"hex","base":60,"coeff":1,"stat":"mind"},"dark|stone":{"id":"shackle","base":55,"coeff":0.9,"stat":"power"},"dark|wind":{"id":"haunt","base":35,"coeff":0.6,"stat":"agility"},"light|flame":{"id":"radiant_fire","base":50,"coeff":0.8,"stat":"mind"},"light|frost":{"id":"purify","base":40,"coeff":0.7,"stat":"vitality"},"light|water":{"id":"baptism","base":60,"coeff":1,"stat":"vitality"},"light|venom":{"id":"cleansing_bloom","base":45,"coeff":0.7,"stat":"vitality"},"light|storm":{"id":"divine_strike","base":90,"coeff":1.4,"stat":"mind"},"light|stone":{"id":"consecrate","base":35,"coeff":0.6,"stat":"vitality"},"light|wind":{"id":"salvation","base":55,"coeff":0.9,"stat":"mind"},"dark|light":{"id":"eclipse","base":120,"coeff":1.8,"stat":"vitality"}};
 
 export const COLLISION_BURST_CAP = 3.2;   // GDD §22 INV-16
+
+/* ═══ v2.3.2199: ELEMENTAL SCALING GETS A LIVE STAT AGAIN ═══
+ *
+ * Every formula in this module prices off LEGACY T1 stats — the power
+ * snapshot in applyElementStatus, the per-collision `stat` column above.
+ * prog3 retired those stats but left them stored for rollback, so a
+ * migrated veteran's burns ride a frozen fossil value and a
+ * fresh-created character's ride 0.  Elemental damage was the one
+ * combat system no spendable point could touch.
+ *
+ * This resolver is the single seam: the allocated BODY stat `elem`
+ * (+1 effective power per point, cap 75) substitutes for WHATEVER
+ * legacy stat a formula asks for, so burn 5+P×0.3, root 3+P×0.15,
+ * thorn 4+P×0.25 and collision base+P×coeff all scale from it with
+ * zero change to the formulas themselves.  Legacy (non-prog3) players
+ * keep the byte-identical old read.
+ *
+ * KNOWN, ANNOUNCED REGRESSION for veterans: their fossil T1 stats stop
+ * feeding elemental damage the moment this ships — deliberately, since
+ * a value nobody can raise or lower is not a stat — so their elemental
+ * output DROPS until they invest in `elem` (the 3-points retro grant
+ * in the same release hands them the points to do it).
+ *
+ * Anticheat posture: `elem` is server-owned and spend-gated like every
+ * prog3 allocation, DoT/collision damage is minted server-side, and
+ * COLLISION_BURST_CAP still binds (raw includes the stat term).  No
+ * ceiling work needed. */
+import { PROG3 } from './prog3.js';
+export function elemAttackStat(ps, legacyStatName) {
+  if (ps && ps.prog3) {
+    const v = ps.prog3.alloc && ps.prog3.alloc.elem;
+    const d = PROG3.BODY.elem;
+    return (typeof v === 'number') ? Math.max(0, Math.min(d.cap, v)) * d.per : 0;
+  }
+  return (ps && ps[legacyStatName]) || 0;
+}
 const RESONANCE_WINDOW_RATIO = 0.25;      // mirrors gameSystems.js §5.7
 const RESONANCE_BONUS_BASE = 0.10;
 const RESONANCE_BONUS_PEAK = 0.30;
@@ -178,7 +214,7 @@ export function resolveElementCollision(m, triggerElement, attackerPs, isVolatil
   if (!setup) return null;
   const collision = lookupCollision(setup.element, triggerElement);
   if (!collision) return null;
-  const statValue = (attackerPs && attackerPs[collision.stat]) || 0;
+  const statValue = elemAttackStat(attackerPs, collision.stat); // v2.3.2199: prog3 reads `elem`, legacy unchanged
   const raw = collision.base + statValue * collision.coeff;
   let dmg = raw;
   let resonating = false;

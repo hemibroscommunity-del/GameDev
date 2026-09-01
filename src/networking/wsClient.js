@@ -23,7 +23,7 @@ import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking
 import { peerCosmeticsFromWire, applyPeerCosmetics } from '@/networking/peerCosmetics.js';
 import { revealBus } from '@/ui/reveal/revealBus.js'; /* v2.3.1925 */
 import { applyCharacterRecord, hasStoredCharacter, publishCharRecord } from '@/game/characterRecord.js'; /* v2.3.1814: the stored name+look */
-import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, DEATH_GOLD_PENALTY, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, PROG3_SKILL_META, PROG3 } from '@/data/index.js';
+import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, DEATH_GOLD_PENALTY, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setProg3XEnabled, isProg3XEnabled, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, PROG3_SKILL_META, PROG3 } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { usesClientSideMovement, MONSTER_VARIANTS, isRemnantSkull, applyZoneVariant } from '@/data/monsterVariants.js';
 import { rollMonsterShard, shardByKey } from '@/data/shards.js';
@@ -931,6 +931,11 @@ export function setupWebSocket(ctx) {
                    an old worker everything keeps the legacy T2 math
                    that matches that worker's rolls and echoes. */
                 setProg3Enabled(!!(S._serverCaps && S._serverCaps.prog3));
+                /* v2.3.2199: the 3-points economy expansion — gates the
+                   dmg/elem stat rows, the percent critDmg readouts and
+                   the "+3 points" banner copy (display only; see the
+                   flag's note in data/prog3.js). */
+                setProg3XEnabled(!!(S._serverCaps && S._serverCaps.prog3x));
                 /* v2.3.1733: stamina-abilities deploy-order gate.  The two
                    ability BUTTONS render and the `ability` message is sent
                    only while THIS worker claims caps.abil — an old worker
@@ -1835,7 +1840,11 @@ export function setupWebSocket(ctx) {
               var _gains = [];
               if (_dmgPer > 0) _gains.push('+' + _dmgPer + ' damage');
               if (PROG3.HP_PER_LEVEL > 0) _gains.push('+' + PROG3.HP_PER_LEVEL + ' max HP');
-              _gains.push('+1 point to spend');
+              /* v2.3.2199: 3 points per level on a prog3x worker; an old
+                 worker still mints 1, so the banner must promise what THAT
+                 worker paid (rule 19). */
+              var _pts = isProg3XEnabled() ? PROG3.POINTS_PER_LEVEL : 1;
+              _gains.push('+' + _pts + (_pts === 1 ? ' point' : ' points') + ' to spend');
               /* v2.3.1733: ...and name the MILESTONE, when this level crossed
                  one.  A new button appearing on the HUD with no explanation
                  is the same "level 13 doesn't feel different" problem in a
@@ -1986,12 +1995,25 @@ export function setupWebSocket(ctx) {
               /* v2.3.1660: server confirmed a prog3_allocate spend.
                  Apply the authoritative pts + pool (the player_state
                  that follows carries the same numbers; the explicit
-                 ack avoids any race, the stat_allocated pattern). */
+                 ack avoids any race, the stat_allocated pattern).
+                 v2.3.2199: route by the ack's `cat` — an ATK spend was
+                 landing in the BODY bucket (alloc.crit instead of
+                 atk[cat].crit) and poolBy was dropped, so offense pills
+                 and lane counts stalled one round-trip until the
+                 player_state echo repaired them.  The server has sent
+                 both fields since v2.3.2176 precisely so they wouldn't. */
               if (!msg.payload || !S.rpg || !S.rpg.prog3) break;
               var p3a = msg.payload;
-              if (!p3a.stat || !S.rpg.prog3.alloc) break;
-              if (typeof p3a.pts === 'number') S.rpg.prog3.alloc[p3a.stat] = p3a.pts;
+              if (!p3a.stat) break;
+              if (typeof p3a.pts === 'number') {
+                if (typeof p3a.cat === 'string' && p3a.cat) {
+                  if (!S.rpg.prog3.atk || typeof S.rpg.prog3.atk !== 'object') S.rpg.prog3.atk = {};
+                  if (!S.rpg.prog3.atk[p3a.cat]) S.rpg.prog3.atk[p3a.cat] = {};
+                  S.rpg.prog3.atk[p3a.cat][p3a.stat] = p3a.pts;
+                } else if (S.rpg.prog3.alloc) S.rpg.prog3.alloc[p3a.stat] = p3a.pts;
+              }
               if (typeof p3a.pool === 'number') S.rpg.prog3.pool = p3a.pool;
+              if (p3a.poolBy && typeof p3a.poolBy === 'object') S.rpg.prog3.poolBy = p3a.poolBy;
               recalcDerived(S.rpg);
               setRpgState(_objectSpread({}, S.rpg));
               try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}

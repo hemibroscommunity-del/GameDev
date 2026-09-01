@@ -401,5 +401,40 @@ const legacyBlob = () => ({
     runRpgMigrations(bare).failed === null && bare._v === RPG_SCHEMA_VERSION, bare);
 }
 
+/* ── v14: three points per level, back-paid (v2.3.2199) ── */
+{
+  const { PROG3 } = await import('../src/prog3.js');
+  /* A stored v13 blob (already prog3-shaped): +2 per earned level-up,
+     stamped per lane; defense carry untouched by construction (it lives
+     in pool with no lane and the grant only ADDS). */
+  const b = {
+    _v: 13,
+    prog3: {
+      sk: { sword: { level: 5, xp: 0 }, bow: { level: 2, xp: 0 }, staff: { level: 1, xp: 0 } },
+      alloc: { def: 0, hp: 0, dodge: 0, stam: 0 },
+      atk: {},
+      pool: 6, poolBy: { sword: 4, bow: 1, staff: 0 }, ms: 5,
+    },
+  };
+  const r = runRpgMigrations(b);
+  check('v14 back-pays 2 × Σ(level−1)', r.failed === null && b.prog3.pool === 6 + 2 * (4 + 1 + 0), b.prog3.pool);
+  check('v14 channels the back-pay per lane',
+    b.prog3.poolBy.sword === 4 + 8 && b.prog3.poolBy.bow === 1 + 2 && b.prog3.poolBy.staff === 0, b.prog3.poolBy);
+  check('v14 is idempotent (the ppl stamp)', runRpgMigrations(b).changed === false
+    && b.prog3.ppl === PROG3.POINTS_PER_LEVEL, b.prog3);
+  /* A v10-ERA blob (pre-prog3, legacy fields only) runs v10→v14 in one
+     pass: prog3FromLegacy already mints at the new rate AND stamps ppl,
+     so v14 must find nothing left to grant — the double-pay trap. */
+  const era = { _v: 9, weaponSkills: { sword: { level: 6, xp: 0 } }, defenseSkill: { level: 4 } };
+  const r2 = runRpgMigrations(era);
+  check('a v10-era blob lands at the new rate in one pass (6×3 + 4 carry, no double grant)',
+    r2.failed === null && era.prog3.pool === 6 * PROG3.POINTS_PER_LEVEL + 4
+      && era.prog3.poolBy.sword === 6 * PROG3.POINTS_PER_LEVEL,
+    { pool: era.prog3.pool, poolBy: era.prog3.poolBy });
+  const bare = { _v: 13 };
+  check('v14 survives a blob with no prog3 at all',
+    runRpgMigrations(bare).failed === null && bare._v === RPG_SCHEMA_VERSION, bare);
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

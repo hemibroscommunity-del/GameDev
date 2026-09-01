@@ -41,9 +41,9 @@
  */
 
 import { t2ReplayFlat } from './data.js';
-import { prog3FromLegacy, prog3SplitAtk } from './prog3.js';
+import { prog3FromLegacy, prog3SplitAtk, prog3GrantRetroPoints } from './prog3.js';
 
-export const RPG_SCHEMA_VERSION = 13;
+export const RPG_SCHEMA_VERSION = 14;
 
 /* Pure version of the v2.3.769 heal (was GameRoom._healLifeSkills):
  * records bootstrapped from pre-fix clients carry lifeSkills with
@@ -489,6 +489,30 @@ export const MIGRATIONS = [
       if (sh.name !== "Bro's Shield" || sh.gearBase !== 'wood') return false;
       sh.name = 'Pine Shield';
       return true;
+    },
+  },
+  {
+    v: 14,
+    name: 'prog3-three-points-per-level',
+    /* v2.3.2199 (owner: "each level up gives the character 3 points to
+       spend instead of 1").  The mint moved to PROG3.POINTS_PER_LEVEL and
+       this back-pays every stored character the difference — +2 per
+       level-up already earned (level − 1 per skill, the v10 convention),
+       stamped into poolBy per the earning skill — so a veteran holds
+       exactly what a fresh character reaching the same levels would.
+       The v10 defense-skill carry was a one-time bonus, not per-level
+       minting, and is deliberately NOT tripled.
+
+       Idempotent via the blob's `ppl` rate stamp (prog3GrantRetroPoints
+       returns false when already at the current rate), which also covers
+       the two paths that never see this migration: fresh v10-derives
+       (prog3FromLegacy now mints at the new rate and stamps ppl itself)
+       and fail-open blobs healed at join (_sanitizeProg3 runs the same
+       grant as a boundary heal — the v11 pattern). */
+    run(blob) {
+      if (!blob || typeof blob !== 'object') return false;
+      if (!blob.prog3 || typeof blob.prog3 !== 'object') return false;
+      return prog3GrantRetroPoints(blob.prog3);
     },
   },
 ];
