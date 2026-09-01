@@ -19,6 +19,9 @@ export const PROG3 = {
   SKILLS: ['sword', 'bow', 'staff'], // storage keys; displayed Melee / Bow / Magic
   LEVEL_CAP: 100,
   CHAR_LEVEL_CAP: 300,
+  /* v2.3.2199: 3 points per level-up (was 1) — the level banner reads
+     this; the mint itself is the server's (prog3.js _prog3AwardXp). */
+  POINTS_PER_LEVEL: 3,
   /* v2.3.1668: BODY is global, ATK is allocated per combat type — see
      the server's PROG3 block for the reasoning.  Mirror both or the
      readouts drift from the rolls. */
@@ -27,11 +30,17 @@ export const PROG3 = {
     hp:      { cap: 100, per: 8 },      // +8 max HP/pt
     dodge:   { cap: 75,  per: 0.004 },  // +0.4% dodge/pt
     stam:    { cap: 100, per: 3 },      // +3 max stamina/pt
+    elem:    { cap: 75,  per: 1 },      // v2.3.2199: +1 elemental power/pt (DoT + collisions)
   },
   ATK: {
     crit:    { cap: 75,  per: 0.004 },  // +0.4% crit/pt, PER TYPE
-    critDmg: { cap: 100, per: 2 },      // +2 flat on crits/pt, PER TYPE
+    /* v2.3.2199: critDmg went flat→percent (+1%/pt on the 1.5× crit
+       multiplier, ×2.5 at cap).  The reasoning lives on the SERVER copy;
+       the LEGACY flat (+2/pt) still exists as a display fallback against
+       an old worker — see prog3CritFlat below, NOT this constant. */
+    critDmg: { cap: 100, per: 0.01 },   // +1% crit damage/pt, PER TYPE
     aspd:    { cap: 100, per: 0.0035 }, // −0.35% swing period/pt, PER TYPE
+    dmg:     { cap: 75,  per: 0.5 },    // v2.3.2199: +0.5 damage/pt pre-tier, PER TYPE
   },
   /* v2.3.1727: the retune PROGRESSION-REDESIGN #13 deferred — the §7-A
      placeholders bought +17.7% damage over ten character levels, which the
@@ -89,9 +98,17 @@ export const PROG3 = {
    own name, so a new stat states how it displays instead of the tooltip
    carrying a table of special cases.
    `pct: true` means the stored value is a fraction to be shown x100. */
+/* v2.3.2199: rows carrying `capsProg3x: true` exist only on a prog3x
+   worker; critDmg carries BOTH copies of its per-point text because its
+   SEMANTICS changed (flat +2 → +1% on the multiplier) and the row must
+   describe what the connected worker actually rolls.  Consumers go
+   through prog3AtkMeta()/prog3BodyMeta() below, which resolve against
+   the live caps flag — mapping the raw arrays would show stats an old
+   worker silently refuses to allocate. */
 export const PROG3_ATK_META = [
+  { key: 'dmg',     label: 'Damage',    perText: '+0.5 damage per hit', unit: ' dmg', iconSrc: '/icons/ui/hero/dps.webp?v=2.3.2199', capsProg3x: true },
   { key: 'crit',    label: 'Crit',      perText: '+0.4% crit chance',  pct: true, unit: '%', iconSrc: '/icons/ui/hero/crit.webp?v=2.3.1694' },
-  { key: 'critDmg', label: 'Crit Dmg',  perText: '+2 damage on crits', unit: ' dmg', iconSrc: '/icons/ui/hero/damage.webp?v=2.3.1694' },
+  { key: 'critDmg', label: 'Crit Dmg',  perText: '+1% crit damage', pct: true, unit: '% extra', perTextLegacy: '+2 damage on crits', unitLegacy: ' dmg', iconSrc: '/icons/ui/hero/damage.webp?v=2.3.1694' },
   /* Atk Speed's points SHORTEN the swing, so its total is a reduction — the
      label below says "faster" rather than printing a negative. */
   { key: 'aspd',    label: 'Atk Speed', perText: '−0.35% swing time',  pct: true, unit: '% faster', iconSrc: '/icons/ui/t2/sword-tempo.webp?v=2.3.1694' },
@@ -101,7 +118,27 @@ export const PROG3_BODY_META = [
   { key: 'hp',    label: 'Max HP',  perText: '+8 max HP',          unit: ' HP', iconSrc: '/icons/ui/hero/hp-heart.webp?v=2.3.1922' } /* v2.3.1922: plain heart */,
   { key: 'dodge', label: 'Dodge',   perText: '+0.4% dodge',        pct: true, unit: '%', iconSrc: '/icons/ui/hero/dodge.webp?v=2.3.1694' },
   { key: 'stam',  label: 'Stamina', perText: '+3 max stamina',     unit: ' stamina', iconSrc: '/icons/ui/hero/stamina.webp?v=2.3.1694' },
+  /* v2.3.2199: elemental power — burns/roots/thorns and element collisions
+     scale from it (the detonation art is the closest drawing the repo has;
+     swap the day a dedicated element-power icon exists). */
+  { key: 'elem',  label: 'Elem Power', perText: '+1 elemental power', unit: ' power', iconSrc: '/icons/ui/t2/staff-detonation.webp?v=2.3.2199', capsProg3x: true },
 ];
+
+/* The rows the CONNECTED worker supports, with critDmg's copy resolved
+   to that worker's semantics.  UI maps these, never the raw arrays. */
+function _resolveMetaRows(rows) {
+  var out = [];
+  for (var i = 0; i < rows.length; i++) {
+    var m = rows[i];
+    if (m.capsProg3x && !_prog3x) continue;
+    if (m.key === 'critDmg' && !_prog3x) {
+      out.push({ ...m, perText: m.perTextLegacy, unit: m.unitLegacy, pct: false });
+    } else out.push(m);
+  }
+  return out;
+}
+export function prog3AtkMeta() { return _resolveMetaRows(PROG3_ATK_META); }
+export function prog3BodyMeta() { return _resolveMetaRows(PROG3_BODY_META); }
 
 export const PROG3_SKILL_META = [
   { key: 'sword', label: 'Melee', iconSrc: '/icons/ui/hero/melee.webp?v=2.3.1311' },
@@ -119,6 +156,17 @@ export function prog3XpRequired(level) {
 var _enabled = false;
 export function setProg3Enabled(on) { _enabled = !!on; }
 export function isProg3Enabled() { return _enabled; }
+
+/* ═══ v2.3.2199: caps.prog3x — the 3-points economy expansion gate ═══
+   Display-only (rule 19): gates the two new stat rows (dmg/elem), the
+   percent critDmg copy + DPS math, and the "+3 points" level banner.
+   Against an OLD worker the rows hide (it would silently refuse the
+   allocation), the critDmg readouts keep predicting the flat +2 crits
+   that worker actually rolls, and the banner says +1 — nothing new is
+   ever SENT on this flag, so there is no message to gate. */
+var _prog3x = false;
+export function setProg3XEnabled(on) { _prog3x = !!on; }
+export function isProg3XEnabled() { return _prog3x; }
 
 /* ═══ v2.3.1734: caps.elemBurst — the deploy-order gate for BOTH halves
    of the mana rework (server/src/join.js advertises it) ═══
@@ -286,7 +334,19 @@ export function prog3DodgePct(rpg) { return prog3Pts(rpg, 'dodge') * PROG3.BODY.
 /* v2.3.1668: crit/critDmg read the ACTIVE weapon's block unless a
    category is named (loadout previews pass one explicitly). */
 export function prog3CritPct(rpg, cat) { return prog3AtkPts(rpg, cat || prog3ActiveCat(rpg), 'crit') * PROG3.ATK.crit.per; }
-export function prog3CritFlat(rpg, cat) { return prog3AtkPts(rpg, cat || prog3ActiveCat(rpg), 'critDmg') * PROG3.ATK.critDmg.per; }
+/* v2.3.2199: critDmg went flat→percent.  The multiplier is the live
+   read; the FLAT survives only as the old-worker prediction (the
+   literal 2 below is the retired per-point value, pinned so a new
+   client still predicts the flat +2 crits an un-upgraded worker rolls
+   — the specialManaCost fallback pattern, rule 19). */
+export function prog3CritMult(rpg, cat) {
+  if (!_prog3x) return 1.5;
+  return 1.5 + prog3AtkPts(rpg, cat || prog3ActiveCat(rpg), 'critDmg') * PROG3.ATK.critDmg.per;
+}
+export function prog3CritFlat(rpg, cat) {
+  if (_prog3x) return 0;
+  return prog3AtkPts(rpg, cat || prog3ActiveCat(rpg), 'critDmg') * 2; /* legacy worker's flat */
+}
 export function prog3DefPct(rpg) { return prog3Pts(rpg, 'def') * PROG3.BODY.def.per; }
 
 /* The trained-level damage term replacing stat × 0.1667 — mirrors the
@@ -294,5 +354,9 @@ export function prog3DefPct(rpg) { return prog3Pts(rpg, 'def') * PROG3.BODY.def.
    are handled at the call sites that know isSpecial). */
 export function prog3DmgTerm(rpg, weaponType) {
   var cat = weaponType === 'bow' ? 'bow' : weaponType === 'staff' ? 'staff' : 'sword';
-  return prog3SkillLevel(rpg, cat) * PROG3.DMG_PER_LEVEL[cat];
+  /* v2.3.2199: + the allocated flat-damage stat, pre-tier like the
+     server's roll.  Gated on prog3x: an old worker doesn't add it, and
+     a readout that promises damage the wire won't confirm is a bug. */
+  return prog3SkillLevel(rpg, cat) * PROG3.DMG_PER_LEVEL[cat]
+    + (_prog3x ? prog3AtkPts(rpg, cat, 'dmg') * PROG3.ATK.dmg.per : 0);
 }

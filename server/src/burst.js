@@ -69,7 +69,7 @@
  */
 
 import { PROG3 } from './prog3.js';
-import { ELEMENT_STATUS, applyElementStatus } from './elemental.js';
+import { ELEMENT_STATUS, applyElementStatus, elemAttackStat } from './elemental.js'; // v2.3.2199: + elem resolver
 
 /* The ability name the client's ability_rejected handler switches on.
    A CONSTANT rather than an inline literal on purpose: wire-audit
@@ -192,7 +192,7 @@ export const burstMethods = {
          shown the element that killed it (matches the client's hit order
          in monsterCombat.js) and so a lethal burst still reads correctly
          in the nova payload. */
-      applyElementStatus(m, element, session.id, ps.power || 0, now, this._attuneMult(ps));
+      applyElementStatus(m, element, session.id, elemAttackStat(ps, 'power'), now, this._attuneMult(ps)); // v2.3.2199: prog3 snapshots `elem`
       targets.push(m.id);
 
       /* Damage through the shared pipeline: overkill clamp, contribution

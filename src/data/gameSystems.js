@@ -27,6 +27,7 @@ import { applyZoneVariant, hitShapeOf, variantForArchetype } from './monsterVari
 import {
   PROG3, prog3Live, prog3CharLevel, prog3SkillLevel, prog3Pts,
   prog3AtkPts, prog3CatFor, prog3DodgePct, prog3CritPct, prog3CritFlat,
+  prog3CritMult, /* v2.3.2199: percent critDmg */
   prog3DmgTerm,
 } from './prog3.js';
 /* v2.3.1733: the char-10 milestone's max-stamina multiplier (mirror of the
@@ -3960,8 +3961,14 @@ export function tickStatuses(target, dt, now, rpg, opts) {
     if (def.tick && now - status.lastTick >= def.tick * 1000) {
       status.lastTick = now;
       var dotDmg = 0;
-      if (id === 'burn') dotDmg = (5 + ((rpg === null || rpg === void 0 ? void 0 : rpg.power) || 0) * 0.3) * emMult;
-      if (id === 'root') dotDmg = (3 + ((rpg === null || rpg === void 0 ? void 0 : rpg.power) || 0) * 0.15) * emMult;
+      /* v2.3.2199: the allocated `elem` stat replaces the fossil T1 power
+         for prog3 players — mirror of the server's elemAttackStat seam
+         (elemental.js).  Display/prediction only; monster_hit is truth. */
+      var _elemP = (rpg && rpg.prog3)
+        ? Math.max(0, Math.min(PROG3.BODY.elem.cap, (rpg.prog3.alloc && rpg.prog3.alloc.elem) || 0)) * PROG3.BODY.elem.per
+        : ((rpg === null || rpg === void 0 ? void 0 : rpg.power) || 0);
+      if (id === 'burn') dotDmg = (5 + _elemP * 0.3) * emMult;
+      if (id === 'root') dotDmg = (3 + _elemP * 0.15) * emMult;
       if (dotDmg > 0 && applyHp) {
         target.curHp = (target.curHp || target.hp) - Math.round(dotDmg);
         target._lastDotDmg = {
@@ -4397,8 +4404,12 @@ export function resolveCollision(target, triggerElement, source, rpg, now) {
   var collision = lookupCollision(setupElement, triggerElement);
   if (!collision) return null;
 
-  /* Calculate collision damage — §10.6 */
-  var statValue = rpg[collision.stat] || 0;
+  /* Calculate collision damage — §10.6.  v2.3.2199: prog3 players scale
+     off the allocated `elem` stat (mirror of the server's elemAttackStat
+     seam); legacy players keep the named T1 stat, byte for byte. */
+  var statValue = (rpg && rpg.prog3)
+    ? Math.max(0, Math.min(PROG3.BODY.elem.cap, (rpg.prog3.alloc && rpg.prog3.alloc.elem) || 0)) * PROG3.BODY.elem.per
+    : (rpg[collision.stat] || 0);
   var dmg = collision.base + statValue * collision.coeff;
 
   /* §5.7 Resonance — bonus damage if the consumed status was inside its
@@ -4965,14 +4976,17 @@ export function calcDisplayDps(rpg, wpn) {
   /* Crit fold: chance × extra multiplier, both resolved for THIS
      weapon's category channels (Precision/Executioner etc.) on top of
      the Power baseline — same call pair as the loadout readout. */
-  /* v2.3.1660 (prog3): crit is the allocated pair — chance crit×0.4%,
-     mult a plain 1.5×, flat critDmg×2 (mirrors the server roll). */
+  /* v2.3.1660 (prog3): crit is the allocated pair — chance crit×0.4%
+     plus critDmg.  v2.3.2199: critDmg is a PERCENT on the multiplier
+     against a prog3x worker; prog3CritMult/prog3CritFlat resolve the
+     connected worker's semantics between them (exactly one is live),
+     so this fold predicts whichever roll the wire will confirm. */
   /* v2.3.1668: this computes DPS for the weapon PASSED IN, which may be
      a stash item being previewed — so the crit pair must read that
      weapon's category, not whatever is currently in hand. */
   var critChance = prog3Live(rpg) ? prog3CritPct(rpg, prog3CatFor(wpn.type))
     : calcCritChance((rpg && rpg.power) || 0, weaponCritStatFor(rpg, wpn.type));
-  var critMult = prog3Live(rpg) ? 1.5 : calcCritMult((rpg && rpg.power) || 0);
+  var critMult = prog3Live(rpg) ? prog3CritMult(rpg, prog3CatFor(wpn.type)) : calcCritMult((rpg && rpg.power) || 0);
   /* v2.3.1345: crit-dmg channel is a FLAT bonus on lucky hits — fold
      its expected value on top of the power multiplier. */
   var critFlat = prog3Live(rpg) ? prog3CritFlat(rpg, prog3CatFor(wpn.type)) : weaponCritFlatFor(rpg, wpn.type);

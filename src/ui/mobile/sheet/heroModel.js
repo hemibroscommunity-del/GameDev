@@ -8,6 +8,7 @@ import {
    the legacy formulas stay for old workers (rule 19). */
 import {
   prog3Live, prog3Pool, prog3CritPct, prog3CritFlat, prog3DodgePct,
+  prog3CritMult, isProg3XEnabled, /* v2.3.2199: percent critDmg */
   prog3DefPct, prog3SkillLevel, prog3XpRequired, PROG3,
   PROG3_SKILL_META, /* v2.3.1848: bestWeaponProgress needs the icons */
 } from '../../../data/prog3.js';
@@ -263,7 +264,15 @@ export function deriveHeroStats(R) {
        per-type now), and two genuinely-informative numbers join it —
        see the honesty note below. */
     crit: prog3Live(R) ? prog3CritPct(R) : calcCritChance(R.power || 0, getWeaponCritStat(R)),
-    critDmg: prog3Live(R) ? prog3CritFlat(R) : 0,
+    /* v2.3.2199: against a prog3x worker critDmg is the extra crit
+       multiplier as a percent (pts×1); against an old worker it stays
+       that worker's flat (+2/pt).  critDmgPct tells the pane which unit
+       it is printing — a bare number that silently changed meaning
+       would be worse than either. */
+    critDmg: prog3Live(R)
+      ? (isProg3XEnabled() ? (prog3CritMult(R) - 1.5) * 100 : prog3CritFlat(R))
+      : 0,
+    critDmgPct: prog3Live(R) && isProg3XEnabled(),
     defPct: prog3Live(R) ? prog3DefPct(R) : 0,
     /* v2.3.1697: worn armour's real damage reduction — the exact multiplier
        the server applies per hit (getArmorDrPct mirrors _armorDrMult).  Not

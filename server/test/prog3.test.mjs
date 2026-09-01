@@ -71,15 +71,25 @@ function check(name, cond, detail) {
     blob.prog3.sk.sword.level === 8 && blob.prog3.sk.sword.xp === 500, blob.prog3.sk.sword);
   check('bow floors at level 1', blob.prog3.sk.bow.level === 1 && blob.prog3.sk.bow.xp === 10, blob.prog3.sk.bow);
   check('staff caps at 100, xp zeroed', blob.prog3.sk.staff.level === 100 && blob.prog3.sk.staff.xp === 0, blob.prog3.sk.staff);
-  check('pool = Σ weapon levels + defense level', blob.prog3.pool === 7 + 0 + 100 + 12, blob.prog3.pool);
+  /* v2.3.2199: weapon levels mint at POINTS_PER_LEVEL (3); the defense
+     carry stays a one-time unchannelled bonus and does NOT triple. */
+  check('pool = Σ weapon levels × PPL + defense level',
+    blob.prog3.pool === (7 + 0 + 100) * PROG3.POINTS_PER_LEVEL + 12, blob.prog3.pool);
+  check('poolBy stamps each weapon lane at the minted rate',
+    blob.prog3.poolBy.sword === 7 * PROG3.POINTS_PER_LEVEL
+      && blob.prog3.poolBy.bow === 0
+      && blob.prog3.poolBy.staff === 100 * PROG3.POINTS_PER_LEVEL, blob.prog3.poolBy);
+  check('the rate stamp rides the respec (v14 must not double-grant)',
+    blob.prog3.ppl === PROG3.POINTS_PER_LEVEL, blob.prog3.ppl);
   /* v2.3.1668: alloc is the BODY set only; offense lives in atk, keyed
-     by combat type. */
+     by combat type.  v2.3.2199: + elem / + dmg. */
   check('body alloc starts zeroed',
     Object.values(blob.prog3.alloc).every((v) => v === 0)
-      && Object.keys(blob.prog3.alloc).sort().join(',') === 'def,dodge,hp,stam', blob.prog3.alloc);
+      && Object.keys(blob.prog3.alloc).sort().join(',') === 'def,dodge,elem,hp,stam', blob.prog3.alloc);
   check('per-type offense starts zeroed for all three skills',
     PROG3.SKILLS.every((c) => blob.prog3.atk[c]
-      && blob.prog3.atk[c].crit === 0 && blob.prog3.atk[c].critDmg === 0 && blob.prog3.atk[c].aspd === 0),
+      && blob.prog3.atk[c].crit === 0 && blob.prog3.atk[c].critDmg === 0 && blob.prog3.atk[c].aspd === 0
+      && blob.prog3.atk[c].dmg === 0),
     blob.prog3.atk);
   check('legacy fields kept for rollback', blob.weaponSkills.sword.level === 7 && blob.t2Flat.defense.ironskin === 300);
   // Absent-only: a second pass (or a hand-reset _v) never re-derives.
@@ -139,9 +149,13 @@ const psA = room.playerState.pa;
   room._prog3AwardXp('pa', psA, 'sword', prog3XpRequired(1) - 1, { flat: true });
   check('xp below threshold: no level', psA.prog3.sk.sword.level === 1 && psA.prog3.pool === 0, psA.prog3.sk.sword);
   room._prog3AwardXp('pa', psA, 'sword', 1, { flat: true });
-  check('level-up: sword 2, pool 1, char level 4',
-    psA.prog3.sk.sword.level === 2 && psA.prog3.pool === 1 && psA.level === 4,
+  /* v2.3.2199: a level-up mints POINTS_PER_LEVEL (3), stamped to the lane. */
+  check('level-up: sword 2, pool 3, char level 4',
+    psA.prog3.sk.sword.level === 2 && psA.prog3.pool === PROG3.POINTS_PER_LEVEL && psA.level === 4,
     { sk: psA.prog3.sk.sword, pool: psA.prog3.pool, level: psA.level });
+  check('level-up: the minted points are channelled to the earning skill',
+    psA.prog3.poolBy.sword === PROG3.POINTS_PER_LEVEL && psA.prog3.poolBy.bow === 0,
+    psA.prog3.poolBy);
   check('level-up restores resources', psA.hp === psA.maxHp && psA.stamina === psA.maxStamina && psA.mana === psA.maxMana,
     { hp: psA.hp, maxHp: psA.maxHp });
   const lvlMsgs = msgsOfType(wsA, 'prog3_level');
@@ -316,8 +330,10 @@ const psA = room.playerState.pa;
   psA.rangedWeapon = { type: 'bow', tierMult: 6 };
   psA.staffWeapon = { type: 'staff', tierMult: 6 };
   /* v2.3.1668: offense is per type — invest in every category so each
-     candidate weapon in the ceiling loop is genuinely maxed. */
-  for (const c of PROG3.SKILLS) { psA.prog3.atk[c].crit = 75; psA.prog3.atk[c].critDmg = 100; }
+     candidate weapon in the ceiling loop is genuinely maxed.
+     v2.3.2199: + the flat-damage stat, maxed too, so the sampling proves
+     the ceiling carries the new term. */
+  for (const c of PROG3.SKILLS) { psA.prog3.atk[c].crit = 75; psA.prog3.atk[c].critDmg = 100; psA.prog3.atk[c].dmg = 75; }
   psA._cursedUntil = 0; psA.amulet = null;
   for (const special of [false, true]) {
     const cap = room._maxDmgForAttacker(psA, special);
@@ -331,12 +347,39 @@ const psA = room.playerState.pa;
     }
     check(`prog3 ${special ? 'special' : 'normal'} rolls stay under the ceiling`, maxSeen <= cap, { maxSeen, cap });
   }
-  // Deterministic crit: rate 30% at 75 pts, flat +200 at 100 critDmg.
+  // Deterministic crit: rate 30% at 75 pts; v2.3.2199: critDmg is +1%/pt
+  // on the 1.5× multiplier (×2.5 at the 100-pt cap), no flat term.
   const origRandom = Math.random;
   Math.random = () => 0.0;
   const critRoll = room._computeAttackDamage(psA, 'melee', false);
   Math.random = origRandom;
   check('prog3 crit fires from the allocated stat', critRoll.isCrit === true, critRoll);
+  /* The exact percent math, deterministically: Math.random()=0 pins the
+     melee variance at its 0.75 floor, so
+       dmg = round((effBase + skLvl×1.5 + 75×0.5) × tierMult 6 × 0.75
+             × volatile 1.3 × critMult 2.5). */
+  {
+    const skLvl = psA.prog3.sk.sword.level;
+    const effBase = room._weaponEffBase('sword', psA.weapon);
+    const expected = Math.round((effBase + skLvl * PROG3.DMG_PER_LEVEL.sword + 75 * PROG3.ATK.dmg.per)
+      * 6 * 0.75 * 1.3 * (1.5 + 100 * PROG3.ATK.critDmg.per));
+    check('crit damage = base × (1.5 + pts×0.01), the flat is gone', critRoll.dmg === expected,
+      { got: critRoll.dmg, expected });
+  }
+  /* And the dmg stat feeds the NON-crit roll too: +75×0.5 pre-tier. */
+  {
+    Math.random = () => 0.999999; // no crit; melee variance ~1.25 either way
+    const invested = room._computeAttackDamage(psA, 'melee', false);
+    const pts = psA.prog3.atk.sword.dmg;
+    psA.prog3.atk.sword.dmg = 0;
+    const bare = room._computeAttackDamage(psA, 'melee', false);
+    psA.prog3.atk.sword.dmg = pts;
+    Math.random = origRandom;
+    const gap = invested.dmg - bare.dmg;
+    const expectedGap = Math.round(75 * PROG3.ATK.dmg.per * 6 * (0.75 + 0.999999 * 0.5) * 1.3);
+    check('the dmg stat adds pts×0.5 inside the pre-tier sum',
+      Math.abs(gap - expectedGap) <= 1 && invested.isCrit === false, { gap, expectedGap });
+  }
 }
 
 // ── 7. Sanitizer bounds corrupt stored shapes ──
@@ -563,6 +606,76 @@ const psA = room.playerState.pa;
     !!room.playerState['t1'].weapon && room.playerState['t1'].weapon.gearBase === 'copper',
     room.playerState['t1'].weapon);
   delete room.playerState['t1'];
+}
+
+// ── 11. v2.3.2199: the 3-points economy — retro grant, ppl stamp, elem ──
+{
+  const { prog3GrantRetroPoints } = await import('../src/prog3.js');
+  const { elemAttackStat, tickElementStatuses, applyElementStatus, resolveElementCollision } =
+    await import('../src/elemental.js');
+
+  /* Migration v14 back-pays +2 per earned level-up, per lane. */
+  const vet = {
+    _v: 13,
+    prog3: {
+      sk: { sword: { level: 7, xp: 0 }, bow: { level: 1, xp: 0 }, staff: { level: 100, xp: 0 } },
+      alloc: { def: 3, hp: 2, dodge: 0, stam: 0 },
+      atk: { sword: { crit: 1, critDmg: 0, aspd: 0 }, bow: { crit: 0, critDmg: 0, aspd: 0 }, staff: { crit: 0, critDmg: 0, aspd: 0 } },
+      pool: 40, poolBy: { sword: 4, bow: 0, staff: 30 }, ms: 8,
+    },
+  };
+  const res14 = runRpgMigrations(vet);
+  const grant = (c, lvl) => (PROG3.POINTS_PER_LEVEL - 1) * (lvl - 1);
+  check('v14 runs clean to the current version', res14.failed === null && vet._v === RPG_SCHEMA_VERSION, res14);
+  check('v14 back-pays +2 × (level−1) per skill into the pool',
+    vet.prog3.pool === 40 + grant('sword', 7) + grant('bow', 1) + grant('staff', 100), vet.prog3.pool);
+  check('v14 stamps the back-pay into each earning lane',
+    vet.prog3.poolBy.sword === 4 + grant('sword', 7)
+      && vet.prog3.poolBy.bow === 0
+      && vet.prog3.poolBy.staff === 30 + grant('staff', 100), vet.prog3.poolBy);
+  check('v14 stamps the rate', vet.prog3.ppl === PROG3.POINTS_PER_LEVEL, vet.prog3.ppl);
+  const poolAfter = vet.prog3.pool;
+  check('v14 is idempotent (ppl gates the re-run)',
+    prog3GrantRetroPoints(vet.prog3) === false && vet.prog3.pool === poolAfter, vet.prog3.pool);
+
+  /* The sanitizer is the boundary heal for fail-open blobs — and must
+     PRESERVE the stamp or every join re-pays the grant. */
+  const healed = room._sanitizeProg3({
+    sk: { sword: { level: 10, xp: 0 }, bow: { level: 1, xp: 0 }, staff: { level: 1, xp: 0 } },
+    alloc: {}, atk: {}, pool: 9, poolBy: { sword: 9 },
+  });
+  check('sanitize boundary-heals a ppl-less blob (+2×9 on sword)',
+    healed.pool === 9 + 18 && healed.poolBy.sword === 9 + 18 && healed.ppl === PROG3.POINTS_PER_LEVEL,
+    { pool: healed.pool, poolBy: healed.poolBy, ppl: healed.ppl });
+  const healedTwice = room._sanitizeProg3(healed);
+  check('...and a healed blob sanitizes to itself (no re-grant)',
+    healedTwice.pool === healed.pool && healedTwice.poolBy.sword === healed.poolBy.sword,
+    { pool: healedTwice.pool });
+  check('sanitize clamps the new stats',
+    room._sanitizeProg3({ sk: {}, alloc: { elem: 999 }, atk: { sword: { dmg: 999 } }, pool: 0, ppl: 3 })
+      .alloc.elem === PROG3.BODY.elem.cap
+    && room._sanitizeProg3({ sk: {}, alloc: {}, atk: { sword: { dmg: 999 } }, pool: 0, ppl: 3 })
+      .atk.sword.dmg === PROG3.ATK.dmg.cap);
+
+  /* elem feeds the DoT snapshot and the collision stat; legacy players
+     keep their old read, byte for byte. */
+  const p3ps = { prog3: { alloc: { elem: 75 } }, power: 500 };
+  const legacyPs = { power: 40, agility: 15 };
+  check('elemAttackStat: prog3 reads elem × per, never the fossil T1 stat',
+    elemAttackStat(p3ps, 'power') === 75 * PROG3.BODY.elem.per, elemAttackStat(p3ps, 'power'));
+  check('elemAttackStat: legacy reads the named legacy stat',
+    elemAttackStat(legacyPs, 'power') === 40 && elemAttackStat(legacyPs, 'agility') === 15);
+  const burnM = { hp: 1000, statuses: null };
+  applyElementStatus(burnM, 'flame', 'src1', elemAttackStat(p3ps, 'power'), 1000, 1);
+  burnM.statuses.burn.lastTick = 0;
+  const ticks = tickElementStatuses(burnM, 0.1, 1000);
+  check('burn DoT prices off the elem snapshot (5 + 75×0.3)',
+    ticks.length === 1 && ticks[0].dmg === Math.round(5 + 75 * PROG3.BODY.elem.per * 0.3), ticks);
+  const colM = { hp: 1000, statuses: null, element: null };
+  applyElementStatus(colM, 'flame', 'src1', 0, 1000, 1);
+  const col = resolveElementCollision(colM, 'frost', p3ps, false, 2000);
+  check('collision stat term reads elem for prog3 attackers',
+    col && col.id === 'steam' && col.dmg >= Math.round(40 + 75 * 0.8), col);
 }
 
 console.log(failures === 0 ? '\nprog3: ALL PASS' : `\nprog3: ${failures} FAILURE(S)`);

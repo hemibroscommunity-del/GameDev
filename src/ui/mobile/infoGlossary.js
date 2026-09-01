@@ -46,6 +46,13 @@ export const STAT_INFO = _mk({
   'Crit Dmg': {
     title: 'Crit damage',
     body: 'How much extra a critical hit adds on top of the normal one.',
+    note: 'Only pays off when you also have crit chance — the pair works together.', /* v2.3.2199 */
+  },
+  /* v2.3.2199: the two new spendable stats. */
+  'Elem Power': {
+    title: 'Elemental power',
+    body: 'Makes your weapon’s element hit harder — burns, roots, thorns and element combos all grow with it.',
+    note: 'Only works with an enchanted weapon (one that carries an element).',
   },
   Defense: {
     title: 'Defense',

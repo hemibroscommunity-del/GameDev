@@ -19,6 +19,13 @@ import * as H from './harness.mjs';
    re-typing its value into an assertion (see the maxHp check below). */
 import { PROG3 } from '../../../src/data/prog3.js';
 
+/* v2.3.2199: the open lane's control count, derived from the constant
+   tables the UI itself maps (4 ATK + 5 BODY = 9 against a prog3x worker;
+   this harness always runs against the local worker, which advertises
+   it) — a hand-typed 7 here went stale the day the dmg/elem stats
+   shipped, which is exactly the trap the v2.3.1727 note above names. */
+const STAT_ROWS = Object.keys(PROG3.ATK).length + Object.keys(PROG3.BODY).length;
+
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Respec', wsPort, webPort });
   await H.enterWorld(P);
@@ -117,7 +124,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     .click({ timeout: 8000 }).catch(() => {});
   await P.page.waitForTimeout(500);
   const disabled = await P.page.locator('[role="button"][aria-disabled="true"][aria-label*=" of "]').count().catch(() => 0);
-  rec.ok('every stat is unspendable with an empty pool', disabled === 7, { disabled });
+  rec.ok('every stat is unspendable with an empty pool', disabled === STAT_ROWS, { disabled, STAT_ROWS });
   /* The selector is icon+level chips, so the type names live in
      aria-label rather than in the text — same icon-only recipe as the
      Hero section tabs.  Assert the accessible names, which is also what
@@ -192,8 +199,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return { cells: cells.length, below, above,
              over: Math.max(0, el.scrollHeight - el.clientHeight) };
   });
-  rec.ok('every one of the open lane\'s seven controls is in view without scrolling',
-    !openFit.err && openFit.cells === 7 && openFit.below === 0 && openFit.above === 0, openFit);
+  rec.ok('every one of the open lane\'s controls is in view without scrolling',
+    !openFit.err && openFit.cells === STAT_ROWS && openFit.below === 0 && openFit.above === 0, openFit);
   rec.ok('...and what scrolls below is at most one lane, not a hidden screen',
     !openFit.err && openFit.over <= 100, { over: openFit.over, ...fit });
   /* The three lanes are the navigation, so they must never scroll away. */
@@ -223,7 +230,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !pinned.err && pinned.overlap <= 1 && pinned.intoLane <= 2, pinned);
 
   const cells = await P.page.locator('[aria-disabled][role="button"][aria-label*=" of "]').count().catch(() => 0);
-  rec.ok('all seven allocatable stats are present at once', cells === 7, { cells });
+  rec.ok('all allocatable stats are present at once', cells === STAT_ROWS, { cells, STAT_ROWS });
 
   /* ═══ v2.3.1710: AND ALL SEVEN ARE THE SAME SIZE ═══
      Owner: "Character build stat allocation pills should all be the same
@@ -257,7 +264,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const widths = [...new Set((pillGeom.box || []).map((b) => b.w))];
   const heights = [...new Set((pillGeom.box || []).map((b) => b.h))];
   rec.ok('every allocation pill is exactly one size',
-    pillGeom.box.length === 7 && widths.length === 1 && heights.length === 1, pillGeom.box);
+    pillGeom.box.length === STAT_ROWS && widths.length === 1 && heights.length === 1, pillGeom.box);
   rec.ok('...with no label cropped to buy that uniformity',
     (pillGeom.clipped || []).length === 0, pillGeom.clipped);
   /* The 10px floor is this project's own (v2.3.1239), and v2.3.1703 exists

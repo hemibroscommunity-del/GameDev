@@ -37,6 +37,7 @@
 
 import {
   ELEMENT_STATUS, applyElementStatus, resolveElementCollision, fractureDmgMult,
+  elemAttackStat, // v2.3.2199: prog3 `elem` stat resolver for the DoT power snapshot
 } from './elemental.js';
 import { AMULET_TIER_POWER, t2CounterRate, QUALITY_GRADES /* v2.3.1925 */ } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
 import { BLOCK_COSTS_STAMINA, BLOCK_STAMINA_COST } from './data.js'; // v2.3.1919: a blocked PvP hit costs stamina too
@@ -360,7 +361,11 @@ export const combatMethods = {
          bow-trained player's special would trip the anticheat. */
         const _cat = w.type === 'bow' ? 'bow' : w.type === 'staff' ? 'staff' : 'sword';
         const _skLvl = (_p3.sk[_cat] && _p3.sk[_cat].level) || 1;
-        bonus = _skLvl * PROG3.DMG_PER_LEVEL[_cat];
+        /* v2.3.2199: + the allocated flat-damage stat, per candidate's own
+           lane — the exact term _computeAttackDamage adds, lockstep by
+           construction (server-owned allocation, same as the skill term). */
+        bonus = _skLvl * PROG3.DMG_PER_LEVEL[_cat]
+          + this._prog3AtkPts(ps, _cat, 'dmg') * PROG3.ATK.dmg.per;
       }
       const channelFlat = isSpecial ? 0 : this._wpnDmgFlat(ps, w.type); // reads 0 under prog3 (_t2Flat gate)
       const base = (this._weaponEffBase(w.type, w) + bonus) * (w.tierMult || 1) + channelFlat;
@@ -375,10 +380,15 @@ export const combatMethods = {
     // v2.3.1345: crit is power-mult + a FLAT accelerating bonus; the
     // ceiling assumes both MAXED (the v2.3.1133 pattern) — forgetting
     // either term rejects legit maxed-build hits.
-    // v2.3.1659 (prog3): the roll's crit is a plain 1.5× plus the
-    // allocated critDmg flat — the ceiling mirrors both exactly
-    // (server-owned stat, lockstep by construction).
-    const critMult = ps.prog3 ? 1.5 : 1.5 + (ps.power || 0) * 0.001;
+    // v2.3.1659 (prog3): the roll's crit was a plain 1.5× plus the
+    // allocated critDmg flat.  v2.3.2199: critDmg is a PERCENT on the
+    // multiplier now (+1%/pt, ×2.5 at cap) — the ceiling takes the
+    // LARGEST lane's multiplier for the same over-cover reason as the
+    // flat below (the candidate loop doesn't report which weapon won;
+    // loose rejects nothing, tight rejects legit maxed crits).
+    const critMult = ps.prog3
+      ? 1.5 + Math.max(...PROG3.SKILLS.map((c) => this._prog3AtkPts(ps, c, 'critDmg'))) * PROG3.ATK.critDmg.per
+      : 1.5 + (ps.power || 0) * 0.001;
     // v2.3.1451: the attacker's ACTUAL banked crit-dmg flat, max
     // across the three categories (the candidate loop in
     // _maxWeaponDmg doesn't know which weapon wins, so cover the
@@ -390,7 +400,7 @@ export const combatMethods = {
        (a loose ceiling rejects nothing); under-covering would reject a
        legitimate maxed hit, which is the failure that matters. */
     const critFlatCeil = ps.prog3
-      ? Math.max(...PROG3.SKILLS.map((c) => this._prog3AtkPts(ps, c, 'critDmg'))) * PROG3.ATK.critDmg.per
+      ? 0 // v2.3.2199: no flat crit term under prog3 — critDmg rides critMult above
       : Math.max(
         this._t2Flat(ps, 'sword', 'executioner'),
         this._t2Flat(ps, 'bow', 'headshot'),
@@ -470,7 +480,14 @@ export const combatMethods = {
          pool every special spends, not the special's damage. */
       const _cat = type === 'bow' ? 'bow' : type === 'staff' ? 'staff' : 'sword';
       const _skLvl = (_p3.sk[_cat] && _p3.sk[_cat].level) || 1;
-      statTerm = _skLvl * PROG3.DMG_PER_LEVEL[_cat];
+      /* v2.3.2199: + the allocated flat-damage stat (ATK.dmg, +0.5/pt),
+         inside the pre-tierMult sum ON PURPOSE — it scales with gear like
+         skill damage and never goes dead, while its relative worth decays
+         as the skill term grows (the balance shape that keeps it from
+         dominating; see progression-v3.md).  _maxWeaponDmg carries the
+         identical term — the lockstep rule. */
+      statTerm = _skLvl * PROG3.DMG_PER_LEVEL[_cat]
+        + this._prog3AtkPts(ps, _cat, 'dmg') * PROG3.ATK.dmg.per;
     }
     let base = (this._weaponEffBase(type, w) + statTerm) * tierMult;
     // Per-type variance -- same rolls as the client.
@@ -502,16 +519,23 @@ export const combatMethods = {
     // v2.3.1659 (prog3): crit collapses to two allocated stats — a
     // plain dice roll at +0.4%/pt (30% at the 75-pt cap; power's
     // rational curve dies with T1, the lucky accumulator dies with the
-    // per-weapon channels — _wpnCritPts reads 0 for prog3) and a flat
-    // +2/pt on the 1.5× multiplier (+200 at the 100-pt cap; flat, not
-    // %, for the §7 anti-compounding reason).
+    // per-weapon channels — _wpnCritPts reads 0 for prog3) and a
+    // critDmg stat on the 1.5× multiplier.  v2.3.2199: critDmg went
+    // from flat +2/pt to +1%/pt on the multiplier (×2.5 at cap) — the
+    // owner-approved reversal of the §7 anti-compounding pick; see the
+    // constant's note in prog3.js.
     let isCrit;
     if (_p3) {
       /* v2.3.1668: read the offense block for the weapon ACTUALLY being
          swung — investing in Bow's crit must do nothing for a staff. */
       const _atkCat = this._prog3CatFor(type);
       isCrit = Math.random() < this._prog3AtkPts(ps, _atkCat, 'crit') * PROG3.ATK.crit.per;
-      if (isCrit) base = base * 1.5 + this._prog3AtkPts(ps, _atkCat, 'critDmg') * PROG3.ATK.critDmg.per;
+      /* v2.3.2199: critDmg is a percent on the multiplier now (×1.5 →
+         ×2.5 at the 100-pt cap), not a flat add — see the constant's
+         note in prog3.js for why the v2.3.1659 flat was reversed.
+         Ceiling lockstep: _maxDmgForAttacker's critMult carries the
+         same term and its critFlatCeil dropped to 0, this commit. */
+      if (isCrit) base = base * (1.5 + this._prog3AtkPts(ps, _atkCat, 'critDmg') * PROG3.ATK.critDmg.per);
     } else {
       const P = ps.power || 0;
       const baseCrit = Math.max(0, Math.min(1, 40 * P / (P + 200) / 100));
@@ -737,7 +761,10 @@ export const combatMethods = {
     // different-element status already on the monster.
     if (m.hp > 0 && element && ELEMENT_STATUS[element] && attackerPs) {
       const _now = Date.now();
-      applyElementStatus(m, element, session.id, attackerPs.power || 0, _now,
+      /* v2.3.2199: the snapshot prices the whole DoT (burn/root ticks and
+         the thorn recoil read st.power) — prog3 players snapshot their
+         allocated `elem` stat, legacy players their old power, one seam. */
+      applyElementStatus(m, element, session.id, elemAttackStat(attackerPs, 'power'), _now,
         this._attuneMult(attackerPs));
       // Volatile mirrors _computeAttackDamage's slot resolution.
       const _eff = (slot === 'melee' || slot === 'ranged' || slot === 'staff')
