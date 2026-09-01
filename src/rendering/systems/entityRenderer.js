@@ -6383,6 +6383,25 @@ export class EntityRenderer {
         }
         if (!window.__btMonScales) window.__btMonScales = Object.create(null);
         window.__btMonScales[m.id] = display.scale.x;
+        /* v2.3.2200 QA probe (mp-feel): the universal hit-recoil is a
+           BODY-sprite squash + a 120ms tint pulse, neither readable off
+           a screenshot — expose the body scale/tint the renderer
+           actually wrote, with the hit-window stamps as the control. */
+        if (!window.__btMonsterHitReact) {
+          window.__btMonsterHitReact = (mid) => {
+            const st = window.__btMonHit && window.__btMonHit[mid];
+            return st || null;
+          };
+        }
+        if (!window.__btMonHit) window.__btMonHit = Object.create(null);
+        if (display._spriteBody) {
+          window.__btMonHit[m.id] = {
+            sx: display._spriteBody.scale.x, sy: display._spriteBody.scale.y,
+            tint: display._spriteBody.tint,
+            hitStart: m._hitAnimStart || 0, hitEnd: m._hitAnimEnd || 0,
+            flash: m._hitFlash || 0,
+          };
+        }
       } catch (e) {}
 
       const size = display._size;
@@ -6624,8 +6643,15 @@ export class EntityRenderer {
           if (spriteBody.scale.x !== sx) spriteBody.scale.x = sx;
           if (spriteBody.scale.y !== sy) spriteBody.scale.y = sy;
           if (spriteBody.y !== size) spriteBody.y = size;
-          /* v2.3.1147: per-variant tint (reskins recolor shared sheets). */
-          const wantTintV = (variant && variant.tint) || 0xffffff;
+          /* v2.3.1147: per-variant tint (reskins recolor shared sheets).
+             v2.3.2200: hit-flash finally RENDERS — gameEvents has stamped
+             m._hitFlash on every monster_hit since v2.3.248 and nothing
+             ever read it.  A 120ms red pulse (the player/peer flash
+             convention), restored automatically because the tint is
+             recomputed from the variant every frame.  No filters
+             (per-monster filter = per-monster render target). */
+          const _hfV = m._hitFlash && (now - m._hitFlash) < 120;
+          const wantTintV = _hfV ? 0xff8080 : ((variant && variant.tint) || 0xffffff);
           if (spriteBody.tint !== wantTintV) spriteBody.tint = wantTintV;
           if (!spriteBody.visible) spriteBody.visible = true;
           if (display._body.visible) display._body.visible = false;
@@ -6702,7 +6728,8 @@ export class EntityRenderer {
           /* v2.3.1147: tinted slime reskins (mossSlime/mireWisp).
              v2.3.1534: a recoloured variant reports white here — see
              slimeTintFor. */
-          const wantTintS = slimeTintFor(variant, state);
+          const _hfS = m._hitFlash && (now - m._hitFlash) < 120; /* v2.3.2200: see variant branch */
+          const wantTintS = _hfS ? 0xff8080 : slimeTintFor(variant, state);
           if (spriteBody.tint !== wantTintS) spriteBody.tint = wantTintS;
           if (!spriteBody.visible) spriteBody.visible = true;
           if (display._body.visible) display._body.visible = false;
@@ -6781,7 +6808,9 @@ export class EntityRenderer {
             if (spriteBody.scale.x !== sx) spriteBody.scale.x = sx;
             if (spriteBody.scale.y !== baseScale) spriteBody.scale.y = baseScale;
             if (spriteBody.y !== size) spriteBody.y = size;
-            if (spriteBody.tint !== 0xffffff) spriteBody.tint = 0xffffff;
+            const _hfN = m._hitFlash && (now - m._hitFlash) < 120; /* v2.3.2200: see variant branch */
+            const wantTintN = _hfN ? 0xff8080 : 0xffffff;
+            if (spriteBody.tint !== wantTintN) spriteBody.tint = wantTintN;
             if (!spriteBody.visible) spriteBody.visible = true;
             if (display._body.visible) display._body.visible = false;
           } else {

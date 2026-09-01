@@ -20,7 +20,11 @@ export function updateStateCleanup(S) {
         Object.keys(S.chatBubbles || {}).forEach(function(pid) {
           if (_now - (S.chatBubbles[pid] || {}).ts > 5000) delete S.chatBubbles[pid];
         });
-        if (S.groundSplatter) S.groundSplatter = S.groundSplatter.filter(function(sp) { return _now - sp.ts < 30000; });
+        /* v2.3.2200: 30s -> 8s.  Marks now also spawn on HIT (not just
+           kill) and fade out over their last 2s in the renderer — the
+           owner's "stays for about 5-10 seconds" spec.  Keep this TTL
+           and the renderer's GROUND_DECAL_MS in lockstep. */
+        if (S.groundSplatter) S.groundSplatter = S.groundSplatter.filter(function(sp) { return _now - sp.ts < 8000; });
         if (S._impactRings) S._impactRings = S._impactRings.filter(function(r) { return _now - r.ts < 400; });
         if (S.groundLoot) S.groundLoot.forEach(function(loot) { if (loot.expiry && _now > loot.expiry) loot._expired = true; });
 }

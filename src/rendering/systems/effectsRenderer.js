@@ -492,6 +492,77 @@ for (const cfg of Object.values(EFFECT_BURSTS)) {
 }
 const FX_BURST_MS = 600;
 
+/* ═══ v2.3.2200: PER-MATERIAL HIT DEBRIS (owner: "snow that flies off the
+   monster").  Same 8x256 one-shot strip contract as EFFECT_BURSTS above;
+   queued via S._debrisBursts { monsterId, kind, tint, x, y, ang, t0 } by
+   combatHelpers.spawnHitDebris (melee sweep, both projectile impact
+   sites, and the monster_hit handler for peer/server-rolled hits).
+   Sheets are OWNER-GENERATED (the art manifest in
+   docs/specs/combat-feel-pack.md carries the exact prompts); until a
+   sheet lands, _spawnDebrisBurst falls back to a burst of tinted copies
+   of one minted soft-particle texture — sprites, never live Graphics
+   circles (owner: code-drawn effects read as placeholder).  The load
+   failures are EXPECTED while art is pending, hence the silent catch. */
+const DEBRIS_BURSTS = {
+  snow:  { frames: [], h: 72, url: '/sprites/effects/debris-snow-burst-v1.webp?v=2.3.2200' },
+  goo:   { frames: [], h: 72, url: '/sprites/effects/debris-goo-burst-v1.webp?v=2.3.2200' },
+  stone: { frames: [], h: 72, url: '/sprites/effects/debris-stone-burst-v1.webp?v=2.3.2200' },
+  bone:  { frames: [], h: 72, url: '/sprites/effects/debris-bone-burst-v1.webp?v=2.3.2200' },
+  ember: { frames: [], h: 72, url: '/sprites/effects/debris-ember-burst-v1.webp?v=2.3.2200' },
+};
+for (const cfg of Object.values(DEBRIS_BURSTS)) {
+  _fxLoad(cfg.url).then((tex) => {
+    if (!tex || !tex.source) return;
+    const fw = Math.floor(tex.source.width / 8);
+    for (let i = 0; i < 8; i++) {
+      cfg.frames.push(new Texture({ source: tex.source, frame: new Rectangle(i * fw, 0, fw, tex.source.height) }));
+    }
+  }).catch(() => {}); /* art pending — placeholder branch covers it */
+}
+const DEBRIS_MS = 450;
+const DEBRIS_MIN_GAP_MS = 150;   /* per-monster dedup, the _impactSpawned posture */
+
+/* Minted soft-particle texture (the entityRenderer _shadowTex recipe:
+   one canvas radial gradient, minted once, tinted per use — batches). */
+let _DEBRIS_DOT_TEX = null;
+function debrisDotTex() {
+  if (_DEBRIS_DOT_TEX) return _DEBRIS_DOT_TEX;
+  const c = document.createElement('canvas');
+  c.width = 32; c.height = 32;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(16, 16, 2, 16, 16, 15);
+  g.addColorStop(0, 'rgba(255,255,255,1)');
+  g.addColorStop(0.6, 'rgba(255,255,255,0.85)');
+  g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 32, 32);
+  _DEBRIS_DOT_TEX = Texture.from(c);
+  return _DEBRIS_DOT_TEX;
+}
+
+/* Minted ground-decal texture: three overlapping soft blobs, white so the
+   splat entry's material color tints it.  Optional art upgrade:
+   ground-splat-atlas-v1.webp (manifest) replaces this via the same tint
+   path. */
+let _GROUND_DECAL_TEX = null;
+function groundDecalTex() {
+  if (_GROUND_DECAL_TEX) return _GROUND_DECAL_TEX;
+  const c = document.createElement('canvas');
+  c.width = 64; c.height = 64;
+  const ctx = c.getContext('2d');
+  const blob = (bx, by, r) => {
+    const g = ctx.createRadialGradient(bx, by, 1, bx, by, r);
+    g.addColorStop(0, 'rgba(255,255,255,0.9)');
+    g.addColorStop(0.7, 'rgba(255,255,255,0.55)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(bx, by, r, 0, Math.PI * 2); ctx.fill();
+  };
+  blob(32, 32, 20); blob(20, 40, 10); blob(46, 26, 8); blob(40, 46, 6);
+  _GROUND_DECAL_TEX = Texture.from(c);
+  return _GROUND_DECAL_TEX;
+}
+
 /* v2.3.1735: the stun ring + whirl vortex strips live in
    src/rendering/fxStrips.js — a leaf module, because entityRenderer draws
    the stun ring and cannot import THIS file (it is the other way round). */
@@ -1841,6 +1912,7 @@ export class EffectsRenderer {
     this._updateGroundSplatter(S);
     this._updateGatherNodes(S, now);
     this._updateMonsterImpacts(S, now);
+    this._updateDebrisBursts(S, now);   /* v2.3.2200: material hit debris */
     this._updateCampfire(S, now);
     this._updateFiremaking(S, now);
     this._updateSwordSwing(S, now);
@@ -4219,16 +4291,134 @@ export class EffectsRenderer {
   }
 
   /* ── Ground Splatter ── */
+  /* v2.3.2200: pooled SPRITES off one minted decal texture, replacing the
+     shared-Graphics circles (owner: code-drawn effects look bad).  The
+     old `length === _lastSplatCount` early-out is gone on purpose: marks
+     fade over their last 2s now, so alpha changes every frame — and 80
+     sprite property writes are cheaper than the full Graphics rebuild
+     the early-out was guarding.  Pool never exceeds the cap (the array
+     is capped at 80 by every writer); surplus sprites hide, not destroy,
+     so a busy fight doesn't churn allocations.  TTL lockstep:
+     stateCleanup.js filters at GROUND_DECAL_MS. */
   _updateGroundSplatter(S) {
     const splatters = S.groundSplatter || [];
-    if (splatters.length === this._lastSplatCount) return;
-    this._lastSplatCount = splatters.length;
+    if (!this._splatPool) this._splatPool = [];
+    const pool = this._splatPool;
+    const now = Date.now();
+    const GROUND_DECAL_MS = 8000, DECAL_FADE_MS = 2000;
+    const tex = groundDecalTex();
+    for (let i = 0; i < splatters.length; i++) {
+      const d = splatters[i];
+      let sp = pool[i];
+      if (!sp || sp.destroyed) {
+        sp = new Sprite(tex);
+        sp.anchor.set(0.5, 0.5);
+        this.splatLayer.addChild(sp);
+        pool[i] = sp;
+      }
+      sp.x = d.x; sp.y = d.y;
+      /* Deterministic per-mark rotation from its timestamp — stable
+         across frames without storing another field. */
+      sp.rotation = ((d.ts || 0) % 628) / 100;
+      const s = (d.size || 4) / 20;
+      sp.scale.set(s * 1.25, s);   /* slightly squashed = lies on the ground */
+      if (d._tint == null) d._tint = cssToHex(d.color || '#4a0000');
+      if (sp.tint !== d._tint) sp.tint = d._tint;
+      const age = now - (d.ts || now);
+      sp.alpha = 0.35 * Math.max(0, Math.min(1, (GROUND_DECAL_MS - age) / DECAL_FADE_MS));
+      if (!sp.visible) sp.visible = true;
+    }
+    for (let i = splatters.length; i < pool.length; i++) {
+      if (pool[i] && !pool[i].destroyed && pool[i].visible) pool[i].visible = false;
+    }
+  }
 
-    const gfx = this.splatGfx;
-    gfx.clear();
-    for (const sp of splatters) {
-      gfx.circle(sp.x, sp.y, sp.size || 3);
-      gfx.fill({ color: cssToHex(sp.color || '#4a0000'), alpha: 0.3 });
+  /* ── v2.3.2200: material hit-debris bursts ──
+   * Consumes S._debrisBursts (combatHelpers.spawnHitDebris).  With a
+   * loaded sheet: one directional strip sprite rotated along the hit
+   * angle (the snowman-plume recipe).  Without: six tinted copies of
+   * the minted soft particle on parametric arcs — dt-safe because
+   * position is computed from age, not integrated per frame. */
+  _updateDebrisBursts(S, now) {
+    const q = S && S._debrisBursts;
+    if (q && q.length) {
+      if (!this._debrisLast) this._debrisLast = Object.create(null);
+      for (let i = 0; i < q.length; i++) {
+        const b = q[i];
+        const last = this._debrisLast[b.monsterId || ''] || 0;
+        if (now - last < DEBRIS_MIN_GAP_MS) continue;
+        this._debrisLast[b.monsterId || ''] = now;
+        this._spawnDebrisBurst(b, now);
+      }
+      q.length = 0;
+    }
+    this._advanceDebrisBursts(now);
+  }
+
+  _spawnDebrisBurst(b, now) {
+    if (!this._debrisFx) this._debrisFx = [];
+    if (this._debrisFx.length >= 24) return;   /* hard cap, hitParticles posture */
+    const cfg = DEBRIS_BURSTS[b.kind];
+    const ang = (typeof b.ang === 'number') ? b.ang : -Math.PI / 2;
+    if (cfg && cfg.frames.length) {
+      const sp = new Sprite(cfg.frames[0]);
+      sp.anchor.set(0.5, 0.85);
+      sp.rotation = ang + Math.PI / 2;   /* base art points up */
+      sp.x = b.x; sp.y = b.y;
+      sp.scale.set(cfg.h / 256);
+      this.particleLayer.addChild(sp);
+      this._debrisFx.push({ strip: sp, cfg, t0: now });
+    } else {
+      const parts = [];
+      for (let i = 0; i < 6; i++) {
+        const sp = new Sprite(debrisDotTex());
+        sp.anchor.set(0.5, 0.5);
+        sp.tint = b.tint || 0xffffff;
+        sp.x = b.x; sp.y = b.y;
+        const sc = 0.3 + Math.random() * 0.4;
+        sp.scale.set(sc);
+        this.particleLayer.addChild(sp);
+        const a = ang + (Math.random() - 0.5) * 1.2;
+        const spd = 1.6 + Math.random() * 2.6;
+        parts.push({ sp, x0: b.x, y0: b.y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd - 1.4, sc });
+      }
+      this._debrisFx.push({ parts, t0: now });
+    }
+  }
+
+  _advanceDebrisBursts(now) {
+    const list = this._debrisFx;
+    if (!list || !list.length) return;
+    const kill = (sp) => {
+      if (!sp || sp.destroyed) return;
+      if (sp.parent) sp.parent.removeChild(sp);   /* Pixi v8 zombie defence */
+      sp.destroy();
+    };
+    for (let i = list.length - 1; i >= 0; i--) {
+      const fx = list[i];
+      const age = now - fx.t0;
+      if (age >= DEBRIS_MS) {
+        if (fx.strip) kill(fx.strip);
+        if (fx.parts) for (const p of fx.parts) kill(p.sp);
+        list.splice(i, 1);
+        continue;
+      }
+      const t01 = age / DEBRIS_MS;
+      if (fx.strip && !fx.strip.destroyed) {
+        const fi = Math.min(7, Math.floor(t01 * 8));
+        fx.strip.texture = fx.cfg.frames[fi];
+        fx.strip.alpha = t01 > 0.8 ? (1 - t01) / 0.2 : 1;
+      } else if (fx.parts) {
+        /* Parametric flight: x = x0 + v·t, y adds gravity's ½g·t² */
+        const tf = age / 16.7;   /* 60Hz-frame units */
+        for (const p of fx.parts) {
+          if (p.sp.destroyed) continue;
+          p.sp.x = p.x0 + p.vx * tf;
+          p.sp.y = p.y0 + p.vy * tf + 0.06 * tf * tf;
+          p.sp.alpha = 1 - t01 * t01;
+          p.sp.scale.set(p.sc * (1 - t01 * 0.5));
+        }
+      }
     }
   }
 
@@ -7200,6 +7390,22 @@ export class EffectsRenderer {
     this.hudGfx.clear();
     this.lootGfx.clear();
     this.splatGfx.clear();
+    /* v2.3.2200: tear down the decal sprite pool + in-flight debris the
+       same way (removeChild-before-destroy, the v8 zombie defence). */
+    if (this._splatPool) {
+      for (const sp of this._splatPool) {
+        if (sp && !sp.destroyed) { if (sp.parent) sp.parent.removeChild(sp); sp.destroy(); }
+      }
+      this._splatPool = [];
+    }
+    if (this._debrisFx) {
+      for (const fx of this._debrisFx) {
+        const kill = (sp) => { if (sp && !sp.destroyed) { if (sp.parent) sp.parent.removeChild(sp); sp.destroy(); } };
+        if (fx.strip) kill(fx.strip);
+        if (fx.parts) for (const p of fx.parts) kill(p.sp);
+      }
+      this._debrisFx = [];
+    }
     this.nodeGfx.clear();
     this.flashOverlay.clear();
     this.atmosphereGfx.clear();

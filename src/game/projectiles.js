@@ -22,7 +22,7 @@ import {
 import { baseArchetypeOf, hitShapeOf, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
 import { rollMonsterShard } from '@/data/shards.js';
-import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint } from '@/game/combatHelpers.js';
+import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */ } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
@@ -331,10 +331,17 @@ export function updateArrows(S, deps) {
                 {
                   var _hitArchR = m.archetype || m.type;
                   var _hitBaseR = baseArchetypeOf(_hitArchR);
-                  if ((_hitBaseR === 'fodder' || _hitArchR === 'snowman') && m.curHp > 0) {
+                  /* v2.3.2200: every archetype recoils (squash fallback
+                     covers sheet-less monsters) — mirrors the melee path. */
+                  if (m.curHp > 0) {
                     m._hitAnimStart = Date.now();
                     m._hitAnimEnd = Date.now() + (_hitArchR === 'snowman' ? 600 : 400);
                   }
+                  m._hitFlash = Date.now(); /* v2.3.2200: see the melee site */
+                  /* v2.3.2200: material debris + ground mark along the
+                     projectile's travel direction — mirrors the melee path. */
+                  spawnHitDebris(S, m, a.ang);
+                  spawnGroundDecal(S, m.x, m.y, _hitArchR, { chance: 0.5, size: 5 });
                   /* Retaliation — mirrors the melee path so arrow/staff
                      hits also force fireGoblin to chase the player for 5s. */
                   if (_hitBaseR === 'fodder' && m.curHp > 0) {
