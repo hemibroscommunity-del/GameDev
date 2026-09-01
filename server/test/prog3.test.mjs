@@ -678,5 +678,59 @@ const psA = room.playerState.pa;
     col && col.id === 'steam' && col.dmg >= Math.round(40 + 75 * 0.8), col);
 }
 
+/* ═══ v2.3.2200: EVERY CHARACTER STARTS AT A FLAT 1%, PER DAMAGE TYPE ═══
+   Owner: "I want crit chance to start at a flat 1% per damage type by
+   default for each character."
+
+   Before this the roll was `Math.random() < 0` for anyone who had not spent
+   a point -- literally impossible, in every weapon type, for the whole early
+   game.  Pinned deterministically on BOTH SIDES of the 1% boundary rather
+   than by sampling: a probabilistic assertion on a 1% rate needs tens of
+   thousands of rolls to separate 1% from 0% reliably, and would still flake.
+   Math.random is stubbed to a value just inside the window and then just
+   outside it, which tests the actual comparison.
+
+   All three categories, because "per damage type" is the ask and the ATK
+   block is read per category -- a base wired into only one of them would
+   pass any single-slot test. */
+{
+  const origRandom = Math.random;
+  const fresh = {
+    prog3: { sk: { sword: { level: 1 }, bow: { level: 1 }, staff: { level: 1 } },
+             atk: { sword: { crit: 0, critDmg: 0, aspd: 0, dmg: 0 },
+                    bow:   { crit: 0, critDmg: 0, aspd: 0, dmg: 0 },
+                    staff: { crit: 0, critDmg: 0, aspd: 0, dmg: 0 } },
+             alloc: {}, pool: 0 },
+    power: 0, mind: 0, agility: 0, weaponSpecs: {},
+    weapon: { type: 'sword', tierMult: 1 },
+    rangedWeapon: { type: 'bow', tierMult: 1 },
+    staffWeapon: { type: 'staff', tierMult: 1 },
+  };
+  check('the base is a real constant, not a literal buried in the roll',
+    PROG3.ATK.crit.base === 0.01, PROG3.ATK.crit.base);
+  for (const [slot, cat] of [['melee', 'sword'], ['ranged', 'bow'], ['staff', 'staff']]) {
+    Math.random = () => 0.005;              /* inside 1% */
+    const hit = room._computeAttackDamage(fresh, slot, false);
+    Math.random = () => 0.02;               /* outside 1%, inside nothing */
+    const miss = room._computeAttackDamage(fresh, slot, false);
+    Math.random = origRandom;
+    check(`${cat}: an UNALLOCATED character crits inside the 1% window`,
+      hit.isCrit === true, { slot, cat, hit: hit.isCrit });
+    check(`${cat}: ...and does not crit outside it (the base is 1%, not a free crit)`,
+      miss.isCrit === false, { slot, cat, miss: miss.isCrit });
+  }
+  /* Additive, not absorbed: the first point bought must still be worth its
+     0.4%, which is what a base folded INTO the allocated range would cost. */
+  fresh.prog3.atk.bow.crit = 1;
+  Math.random = () => 0.012;                /* between 1% and 1.4% */
+  const bought = room._computeAttackDamage(fresh, 'ranged', false);
+  Math.random = origRandom;
+  check('a bought point stacks ON TOP of the base (1% + 0.4%)',
+    bought.isCrit === true, { at: 0.012, isCrit: bought.isCrit });
+  check('...and melee, which bought nothing, is unaffected by bow\'s point',
+    PROG3.ATK.crit.base + fresh.prog3.atk.sword.crit * PROG3.ATK.crit.per === 0.01,
+    fresh.prog3.atk.sword.crit);
+}
+
 console.log(failures === 0 ? '\nprog3: ALL PASS' : `\nprog3: ${failures} FAILURE(S)`);
 if (failures > 0) process.exit(1);

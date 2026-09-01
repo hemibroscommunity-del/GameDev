@@ -119,7 +119,27 @@ export const PROG3 = {
     elem:    { cap: 75,  per: 1 },      // +1 elemental power/pt → 75
   },
   ATK: {
-    crit:    { cap: 75,  per: 0.004 },  // +0.4%/pt → 30%, PER TYPE
+    /* ═══ v2.3.2200: EVERY CHARACTER STARTS AT 1% ═══
+       Owner: "I want crit chance to start at a flat 1% per damage type by
+       default for each character."
+
+       Before this, an unallocated character's crit roll was
+       `Math.random() < 0` -- never true, in any weapon type, for the whole
+       of the early game.  `base` is added to the allocated term rather than
+       folded into it, so the two stay legible: 1% is what you HAVE, +0.4%/pt
+       is what you BUY.  Per damage type by construction, because the whole
+       ATK block is read per category (v2.3.1668).
+
+       The cap moves with it: 1% + 75 x 0.4% = 31%, not 30%.  Deliberate --
+       the owner asked for a floor, not a re-slice of the same 30%, and a
+       base that ate into the allocated range would make the first point
+       bought worth nothing.
+
+       Anticheat is NOT affected and does not move: _maxDmgForAttacker's
+       ceiling is built from critMult (the DAMAGE multiplier), which is
+       unchanged.  Crit CHANCE has never entered that arithmetic -- the
+       ceiling already assumes the crit happened. */
+    crit:    { cap: 75,  per: 0.004, base: 0.01 },  // 1% + 0.4%/pt → 31%, PER TYPE
     /* v2.3.2199: critDmg becomes a PERCENT on the 1.5× multiplier (+1%/pt,
        ×2.5 at the 100-pt cap), REVERSING v2.3.1659's "flat, not %, for the
        §7 anti-compounding reason" — owner-approved in the 3-points balance

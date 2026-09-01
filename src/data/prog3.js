@@ -33,7 +33,11 @@ export const PROG3 = {
     elem:    { cap: 75,  per: 1 },      // v2.3.2199: +1 elemental power/pt (DoT + collisions)
   },
   ATK: {
-    crit:    { cap: 75,  per: 0.004 },  // +0.4% crit/pt, PER TYPE
+    /* v2.3.2200: the flat 1% base every character starts with -- the
+       reasoning (and why the cap becomes 31%, and why anticheat does not
+       move) lives on the SERVER copy, server/src/prog3.js, which is the
+       source of truth; mirror-audit.test.mjs pins the two together. */
+    crit:    { cap: 75,  per: 0.004, base: 0.01 },  // 1% + 0.4%/pt, PER TYPE
     /* v2.3.2199: critDmg went flat→percent (+1%/pt on the 1.5× crit
        multiplier, ×2.5 at cap).  The reasoning lives on the SERVER copy;
        the LEGACY flat (+2/pt) still exists as a display fallback against
@@ -333,7 +337,14 @@ export function prog3IsAtkStat(stat) {
 export function prog3DodgePct(rpg) { return prog3Pts(rpg, 'dodge') * PROG3.BODY.dodge.per; }
 /* v2.3.1668: crit/critDmg read the ACTIVE weapon's block unless a
    category is named (loadout previews pass one explicitly). */
-export function prog3CritPct(rpg, cat) { return prog3AtkPts(rpg, cat || prog3ActiveCat(rpg), 'crit') * PROG3.ATK.crit.per; }
+/* v2.3.2200: base + allocated, mirroring the server's roll exactly.  Every
+   predicted number downstream reads this one function -- the Hero screen's
+   Crit row and calcDisplayDps's crit term both -- so the base reaches the
+   display and the DPS estimate without either of them knowing about it. */
+export function prog3CritPct(rpg, cat) {
+  return PROG3.ATK.crit.base
+    + prog3AtkPts(rpg, cat || prog3ActiveCat(rpg), 'crit') * PROG3.ATK.crit.per;
+}
 /* v2.3.2199: critDmg went flat→percent.  The multiplier is the live
    read; the FLAT survives only as the old-worker prediction (the
    literal 2 below is the retired per-point value, pinned so a new

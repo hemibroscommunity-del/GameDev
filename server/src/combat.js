@@ -529,7 +529,12 @@ export const combatMethods = {
       /* v2.3.1668: read the offense block for the weapon ACTUALLY being
          swung — investing in Bow's crit must do nothing for a staff. */
       const _atkCat = this._prog3CatFor(type);
-      isCrit = Math.random() < this._prog3AtkPts(ps, _atkCat, 'crit') * PROG3.ATK.crit.per;
+      /* v2.3.2200: + the flat base (owner: "start at a flat 1% per damage
+         type by default"). Added here, not folded into `per`, so an
+         unallocated character can crit at all -- this roll was
+         `Math.random() < 0` for every new player before it. */
+      isCrit = Math.random() < PROG3.ATK.crit.base
+        + this._prog3AtkPts(ps, _atkCat, 'crit') * PROG3.ATK.crit.per;
       /* v2.3.2199: critDmg is a percent on the multiplier now (×1.5 →
          ×2.5 at the 100-pt cap), not a flat add — see the constant's
          note in prog3.js for why the v2.3.1659 flat was reversed.
@@ -538,7 +543,11 @@ export const combatMethods = {
       if (isCrit) base = base * (1.5 + this._prog3AtkPts(ps, _atkCat, 'critDmg') * PROG3.ATK.critDmg.per);
     } else {
       const P = ps.power || 0;
-      const baseCrit = Math.max(0, Math.min(1, 40 * P / (P + 200) / 100));
+      /* v2.3.2200: the legacy branch gets the same 1% floor, so "every
+         character starts at 1%" is true of a pre-prog3 blob too (rule 19
+         keeps this path alive for old workers). */
+      const baseCrit = Math.max(0, Math.min(1,
+        PROG3.ATK.crit.base + 40 * P / (P + 200) / 100));
       isCrit = Math.random() < baseCrit;
       const _critRate = t2CounterRate(this._wpnCritPts(ps, type));
       if (_critRate > 0) {

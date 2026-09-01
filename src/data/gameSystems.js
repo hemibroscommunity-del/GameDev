@@ -4870,7 +4870,10 @@ export function calcCritChance(power, ferocity) {
      client display/prediction at the same average.  t2CounterRate =
      0.005/pt (every 2nd hit at the 100-pt cap). */
   var fCrit = t2CounterRate(fer);
-  return Math.max(0, Math.min(1, pCrit + fCrit));
+  /* v2.3.2200: the same flat 1% base the server's legacy branch now adds
+     (combat.js), so a display fed by this path does not read 0% against a
+     worker that will roll 1%. */
+  return Math.max(0, Math.min(1, PROG3.ATK.crit.base + pCrit + fCrit));
 }
 export function calcCritMult(power, critDmgPts) {
   if (arguments.length < 2) { critDmgPts = 0; }
