@@ -159,28 +159,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return c ? (c.innerText || '') : '';
   });
   const close = () => H.closeNpcDialogue(P);
-  const place = (dx, dy) => P.page.evaluate(({ ox, oy }) => {
-    const S = window._gameState && window._gameState.current;
-    const npc = (S && S.npcs || []).find((n) => n && n.id === 'mayor_bro');
-    if (!S || !npc || !S.player) return null;
-    S.player.x = npc.x + ox; S.player.y = npc.y + oy;
-    return true;
-  }, { ox: dx, oy: dy });
 
-  /* Walk up to him with a clean slate: away, close whatever is up, back in.
-     The latch only re-arms after leaving the larger radius, and the scan will
-     not re-fire while a card is already open (`!S._uiBusy`) — so a card left
-     over from a previous step would sit there showing a stale quest.  That
-     is not hypothetical: it is exactly what made this run's first attempt at
-     the turn-in read "New Quest!" (v2.3.1706b). */
-  const approach = async () => {
-    await place(420, 0);
-    await P.page.waitForTimeout(500);
-    await close();
-    await place(0, 34);
-    await P.page.waitForTimeout(1100);
-    return open();
-  };
+  /* v2.3.2195: the walk-up moved to the harness (H.approachNpc) — the note
+     above finally became literal when the quest panel's Accept was removed and
+     two more scenarios had to walk up to him.  Same three steps, same reasons;
+     they are just written down once now. */
+  const approach = () => H.approachNpc(P, 'mayor_bro');
 
   /* ── the line starts here ── */
   const start = await srv();

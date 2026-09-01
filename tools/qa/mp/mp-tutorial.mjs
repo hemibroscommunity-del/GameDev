@@ -73,6 +73,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.evaluate(() => !!document.querySelector('img[src*="mayor-bro-head"]')));
   rec.ok('the detail page shows the quest giver speaking',
     /Mayor Bro/.test(detail), detail.slice(0, 400));
+  /* v2.3.2195: and it renders no SOURCE at all.  Removing the Accept button
+     left a long block comment where a JSX child used to be, and a bare
+     block comment in JSX children is not a comment -- it is text, which is
+     how the whole rationale for the removal nearly shipped printed on the
+     panel.  Nothing else in this pane's copy can produce a version tag or a
+     comment opener, so this reads as "no source leaked" and nothing else. */
+  rec.ok('the pane renders no source comment as body text',
+    !/═══|\/\*|v2\.3\.\d/.test(detail), detail.slice(0, 300));
 
   /* ═══ v2.3.1704: THE REWARD BLOCK NAMES ITS OWN QUEST ═══
      Owner: "The quest UI is a little confusing what's rewards for the next
@@ -88,10 +96,36 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and who pays them, and when',
     /Paid by Mayor Bro when you hand this quest in/.test(detail), detail.slice(0, 600));
 
-  /* ── accept reaches the SERVER, not just the client ── */
-  const acceptTapped = await H.clickText(P, 'Accept from Mayor Bro').then(() => true).catch(() => false);
-  rec.ok('the Accept button exists and is tappable', acceptTapped);
+  /* ── accept reaches the SERVER, not just the client ──
+     v2.3.2195: THROUGH THE GIVER, not the list.  The panel's Accept is gone
+     (owner: "this was disabled a while ago and should remain disabled"), and
+     with it the claim that used to sit here -- "the Accept button exists and is
+     tappable", which was written against the v2.3.1665 reachability bug when
+     town NPCs did not exist and the panel was the only door.  The bug it
+     guarded is gone with its cause: Mayor Bro is in the world, and the
+     assertion below still proves the accept reaches the WORKER, which was
+     always the half that mattered. */
+  /* Leave the pane FIRST.  The proximity opener stands down while a menu is
+     over the world -- both gates, `!S._uiBusy` AND
+     `dashboardPanelBus.state.mode === 'bar'` (BroTown.jsx ~5397).  That is
+     correct behaviour, but with the quest detail still up, walking to Mayor
+     Bro does NOTHING, which is exactly how this repoint failed its first run:
+     three assertions blaming the NPC for a menu the scenario left open.
+     Asserted rather than assumed, so a pane that stops closing names itself. */
+  await P.page.keyboard.press('Escape').catch(() => {});
+  const sheetShut = await H.closeDest(P);
+  rec.ok('the quest pane closes, leaving the world clear (guard)',
+    sheetShut && await H.readState(P, (S) => !S._uiBusy), { sheetShut });
+
+  rec.ok('walking up to Mayor Bro opens his dialogue', await H.approachNpc(P, 'mayor_bro'));
+  const landedOffer = await H.advanceNpcDialogue(P);
+  rec.ok('...and his lines lead to the offer panel', landedOffer === 'offer', { landedOffer });
+  rec.ok('...which offers Accept', await H.confirmQuestOffer(P));
   await P.page.waitForTimeout(1200);
+  /* And walk off again: his window stays up after the accept, and its scrim
+     is over the nav rail this scenario taps next.  H.leaveNpc, not a bare
+     close -- closing while still standing on him just reopens it. */
+  rec.ok('walking away puts his window away (guard)', await H.leaveNpc(P, 'mayor_bro'));
 
   const admin = await H.adminPlayer(wsPort, myId);
   const quests = (admin && admin.rpg && admin.rpg._quests) || {};

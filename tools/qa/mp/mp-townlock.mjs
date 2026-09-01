@@ -98,20 +98,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...not on a second tap past the cooldown either',
     !(await H.readState(P, (S) => !!S.isSwinging)));
 
-  /* Accept the first quest — the moment the mayor arms you. */
-  await H.openDest(P, 'Quests');
-  await P.page.waitForTimeout(900);
-  await H.clickText(P, 'Available').catch(() => {});
-  await P.page.waitForTimeout(500);
-  await H.clickText(P, 'Cold Reception').catch(() => {});
-  await P.page.waitForTimeout(700);
-  /* v2.3.2011: NOT acceptQuestFromGiver.  This scenario accepts from the
-     QUESTS DASH (openDest above), where the offer is a panel with its own
-     Accept and there is no NpcDialogue to page through -- a different door
-     from the in-world giver, and it still works.  Measured: 27/27 with this
-     line, 22/27 when it was "helpfully" switched to the giver flow. */
-  await H.clickText(P, 'Accept').catch(() => {});
+  /* Accept the first quest — the moment the mayor arms you.
+     v2.3.2195: BY WALKING UP TO HIM.  The v2.3.2011 note that used to sit
+     here said the opposite -- "NOT acceptQuestFromGiver; this scenario accepts
+     from the QUESTS DASH, a different door, and it still works" -- and it was
+     right at the time.  That door is now closed on purpose: the owner had the
+     dash's Accept removed ("this was disabled a while ago and should remain
+     disabled") because accepting there handed over the starter kit with nobody
+     there to hand it over, which is the very grant this scenario measures.
+     One door left, so this walks through it. */
+  rec.ok('walking up to Mayor Bro opens his dialogue (guard)',
+    await H.approachNpc(P, 'mayor_bro'), {});
+  const landedTown = await H.advanceNpcDialogue(P);
+  rec.ok('...and his lines lead to the offer (guard)', landedTown === 'offer', { landedTown });
+  await H.confirmQuestOffer(P);
   await P.page.waitForTimeout(2200);
+  /* Walk off: his window stays up after the accept and its scrim covers the
+     nav rail this scenario taps later. */
+  await H.leaveNpc(P, 'mayor_bro');
 
   const armed = await H.readState(P, (S) => ({
     weapon: S.rpg && S.rpg.weapon && S.rpg.weapon.type,

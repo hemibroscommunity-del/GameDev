@@ -19,7 +19,7 @@ import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rende
 import { getEyeColor, onEyeColorChange } from '../../rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
 import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
-import { barHeight, expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP, bandFootprint, LAND_NAV_BTN_W, landscapeNavGroupW, landscapeSheetW, identityRowHeight, LAND_FOLD_CHIP_W, landDockFootprint } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.1325 slot-derived bar; v2.3.2157 the sideways band; v2.3.2166 the nav dock; v2.3.2168 the barless landscape */
+import { expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP, bandFootprint, LAND_NAV_BTN_W, landscapeNavGroupW, landscapeSheetW, identityRowHeight, LAND_FOLD_CHIP_W, landDockFootprint } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.2197 barHeight left with the --sheet-h formula; v2.3.2157 the sideways band; v2.3.2166 the nav dock; v2.3.2168 the barless landscape */
 import { DashColumns } from './dash/DashColumns.jsx';           /* v2.3.1636 */
 import { NavRail } from './dash/NavRail.jsx';                   /* v2.3.1637 */
 import { portraitStore } from './sheet/portraitStore.js';          /* v2.3.1294 */
@@ -57,7 +57,8 @@ import { QuestDetailPanel }   from './dash/QuestDetailPanel.jsx'; /* v2.3.1298 *
 import { T2Panel, requestT2Category } from './dash/T2Panel.jsx';
 import { SpendPointConfirm }   from './dash/SpendPointConfirm.jsx';
 import { playVw, playVh, playIsLandscape } from './playViewport.js'; /* v2.3.2157: the band has a sideways shape */
-import { dashMinBus } from './dashMinBus.js'; /* v2.3.2119: fold the band to the identity row */
+import { dashMinBus } from './dashMinBus.js';
+import { stampSheetH, unstampSheetH } from './sheetStamp.js'; /* v2.3.2197: one --sheet-h formula, shared with resize() + the watchdog */ /* v2.3.2119: fold the band to the identity row */
 
 // Bottom-of-screen dashboard.  Replaces the radial UtilityWheel.
 // Opening a destination grows the band into a sheet while the ribbon
@@ -681,26 +682,40 @@ export const BottomDashboard = () => {
      px) — overlays that dock above the OPEN sheet (the legacy tooltip
      toast) anchor to it, while world chrome keeps var(--dash-h). */
   useEffect(() => {
-    const stamp = () => {
-      const mode = dashboardPanelBus.state.mode;
-      document.documentElement.dataset.btSheet = mode;
-      /* v2.3.1311e: drill panels (stack depth > 1) use the taller sheet. */
-      /* v2.3.2157: sideways there is no taller sheet -- the destination
-         opens BESIDE the world, so everything docked above the band
-         (joystick zones, the legacy toast) keys off the identity row's own
-         height in every mode.  bandFootprint, not a literal, so this and
-         the canvas can never disagree about what the band costs. */
-      const px = (playVw() > playVh())
-        ? bandFootprint(playVw(), playVh(), dashMinBus.min, false).dashH
-        : (mode === 'expanded' ? (dashboardPanelBus.state.stack.length > 1 ? snapPxRef.current.drill : snapPxRef.current.expanded)
-          : barHeight(playVw(), playVh()));
-      document.documentElement.style.setProperty('--sheet-h', px + 'px');
-    };
-    stamp();
-    const unsub = dashboardPanelBus.subscribe(stamp);
+    /* ═══ v2.3.2197: THE FORMULA MOVED OUT; THIS OWNS THE LIFETIME ═══
+       The arithmetic is in sheetStamp.js now, because three callers need it
+       and the day two of them read different formulas they fight -- the
+       lesson bandFootprint already taught the canvas watchdog.  What stays
+       here is what genuinely belongs to the dashboard: stamping on mount, on
+       every bus change, and REMOVING the stamp on unmount.
+
+       v2.3.2196 (the resize listeners) was necessary and not sufficient.  It
+       fixed a stamp that never re-ran on rotation; it left the stamp
+       edge-triggered, still betting on the browser to send an event with the
+       new dimensions on it.  Owner: "upon FIRST joining the game and first
+       rotating to landscape SOMETIMES the joysticks are indeed missing" --
+       sometimes and first-time is what a lost race sounds like, and iOS is
+       specifically known for reporting pre-rotation dimensions on the first
+       resize after an orientationchange.  BroTown's resize() and its 500ms
+       watchdog now call the same function (see sheetStamp.js), which makes
+       --sheet-h level-triggered like every other viewport-derived var: a
+       missed or early event heals on the next tick instead of lasting until
+       the player happens to open a menu.
+
+       These listeners stay anyway.  They are the FAST path -- no waiting on a
+       heartbeat for the common case -- and they keep the dashboard correct on
+       its own terms rather than depending on another component being mounted.
+       Calling twice costs nothing: stampSheetH skips the DOM write when the
+       value has not moved. */
+    stampSheetH();
+    const unsub = dashboardPanelBus.subscribe(stampSheetH);
+    const vv = window.visualViewport;
+    window.addEventListener('resize', stampSheetH);
+    if (vv) vv.addEventListener('resize', stampSheetH);
     return () => {
-      delete document.documentElement.dataset.btSheet;
-      document.documentElement.style.removeProperty('--sheet-h');
+      unstampSheetH();
+      window.removeEventListener('resize', stampSheetH);
+      if (vv) vv.removeEventListener('resize', stampSheetH);
       unsub();
     };
   }, []);
@@ -736,11 +751,15 @@ export const BottomDashboard = () => {
      IconButton (pointer events) and routed to bus.advance/retreat; the
      mode change animates the band via the height ternary's 220ms
      transition, so there is no live height-tracking drag and no second
-     writer to the band's height.  The snapPx ref feeds the <html>
-     stamp effect.  toolbarRef stays on the frame (tutorial anchoring +
-     any future gesture surface). */
-  const snapPxRef = useRef(snapPx);
-  snapPxRef.current = snapPx;
+     writer to the band's height.  toolbarRef stays on the frame (tutorial
+     anchoring + any future gesture surface).
+     v2.3.2196: snapPxRef is GONE.  It existed only to feed the <html>
+     stamp effect, and it raced that effect's own resize listener -- both
+     listen for the same event, and the ref is written a render later than
+     the stamp reads it.  The stamp computes the two heights live now
+     (expandedSheetHeight / drillSheetHeight, the same helpers the state
+     below uses); the snapPx STATE stays, because the band's own height
+     still renders from it. */
   const toolbarRef = useRef(null);
   /* Player-card portrait: a head-and-shoulders render of the player's
      chosen cosmetics (skin / hair / hair color / beard / hat).  Generated

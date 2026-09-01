@@ -346,6 +346,7 @@ import { navSlotSize, bandFootprint, DASH_GAP, LAND_FOLD_CHIP_W } from './mobile
 import { playIsLandscape } from './mobile/playViewport.js'; /* v2.3.2156: the data-orient stamp + the isLandscape seed */
 import { resolveDashSide, screenAngle } from '../game/dashSidePref.js'; /* v2.3.2177: which edge the landscape dashboard takes, and the player's pin */
 import { dashMinBus } from './mobile/dashMinBus.js'; /* v2.3.2119: folded band = identity row only */
+import { stampSheetH } from './mobile/sheetStamp.js'; /* v2.3.2197: --sheet-h joins --dash-h under resize() + the watchdog */
 import { recolorEnabled } from '@/rendering/traits/recolorOptions.js';
 import { buildingPropNear } from '@/data/worldProps.js'; /* v2.3.1778: building doors */
 
@@ -2910,6 +2911,23 @@ export var BroTown = function BroTown(_ref0) {
       var _ae = document.activeElement;
       var _typing = !!(_ae && (_ae.tagName === 'INPUT' || _ae.tagName === 'TEXTAREA' || _ae.isContentEditable));
       if (vv && _typing && window.innerHeight - vhFull > 100) return;
+      /* ═══ v2.3.2197: --sheet-h RIDES WITH THE REST OF THE GEOMETRY ═══
+         Owner: "upon first joining the game and first rotating to landscape
+         sometimes the joysticks are indeed missing."  The discs hang off
+         --sheet-h, which was stamped only by BottomDashboard, only off its
+         own bus and (v2.3.2196) its own resize listener -- edge-triggered,
+         while --dash-h and --cols-h beside it have been level-triggered by
+         the watchdog since v2.3.1975.  The note above those two already says
+         where a joystick anchor belongs: "Stamped HERE and not in the
+         dashboard because this function owns the canvas."  So it is stamped
+         here too, from the one shared formula (sheetStamp.js), which puts it
+         behind every trigger this function already has -- window resize,
+         visualViewport resize, the ResizeObserver, the orientationchange
+         double-fire, and the watchdog's heal.
+         AFTER the keyboard guard on purpose: while a text field is focused
+         the band must not move under the composer, and the guard's early
+         return is what holds it. */
+      stampSheetH();
       /* v2.3.1715: on desktop the whole app lives inside a centred, capped
          shell (#root, see the pointer:fine block in game.css), so the
          viewport is no longer what the game gets to use.  Measure the SHELL
@@ -3194,6 +3212,14 @@ export var BroTown = function BroTown(_ref0) {
       if (wdTicks > 24 && (wdTicks % 4)) return;
       var _ae2 = document.activeElement;
       if (_ae2 && (_ae2.tagName === 'INPUT' || _ae2.tagName === 'TEXTAREA' || _ae2.isContentEditable)) return;
+      /* v2.3.2197: BEFORE the canvas tolerance check below, deliberately.
+         That check short-circuits whenever the canvas is the right size --
+         and --sheet-h can be wrong on a canvas that is perfectly fine (a
+         rotation whose first resize carried pre-rotation dimensions is
+         exactly that shape), so a stamp placed after it would never run in
+         the case it exists for.  Costs a few reads a tick: stampSheetH does
+         not touch the DOM unless the value actually moved. */
+      stampSheetH();
       var vvNow = window.visualViewport;
       var haveH = canvas.getBoundingClientRect().height;
       if (!haveH) return;                       /* not laid out yet */

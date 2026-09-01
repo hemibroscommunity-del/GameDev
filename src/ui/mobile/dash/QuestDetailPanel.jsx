@@ -4,7 +4,6 @@ import { QUEST_CHAINS } from '../../../data/gameSystems.js';
 import { deriveQuestLog, trackedQuestId, setTrackedQuest } from '../sheet/questModel.js';
 import { questDetailBus } from '../sheet/questDetailBus.js';
 import { NPC_DATA } from '../../../data/gameDisplay.js';
-import { showQuestBanner } from '../../../game/quests.js'; /* v2.3.1745 */
 
 /* v2.3.1673: the quest giver's portrait, looked up by the NAME the quest
    chain stores — the same key getNpcQuest already matches on, so there is no
@@ -259,86 +258,44 @@ export const QuestDetailPanel = () => {
           }}
         >{tracked ? '★ Tracked — tap to untrack' : '☆ Track this quest'}</button>
       )}
-      {/* ═══ v2.3.1665: ACCEPT from the panel ═══
-          The header above used to say "accepting/turning-in stays with the
-          NPCs — this page never adds wire surface."  That was true, and it
-          made the quest system UNREACHABLE: town NPC entities had been
-          disabled since v2.3.214 (S.npcs = []), so the only door into
-          quests was a door that no longer existed.
+      {/* ═══ v2.3.2195: AND THE ACCEPT HALF IS GONE TOO ═══
+          Owner: "the landscape quest module lets you accept a quest from the
+          menu (this was disabled a while ago and should remain disabled).  I
+          did not receive weapons from mayor bro for first quest done correctly
+          by walking up to him after accepting the quest in the module."
 
-          v2.3.1669 CORRECTION: an earlier version of this comment blamed
-          the town walkability grid for the spawn being gated off.  That
-          was wrong — town has no walkability grid at all (tiledMaps.js has
-          its .walk.json commented out), so that clause was always true and
-          never gated anything.  Mayor Bro is back in the world now, but
-          this button STAYS: a panel route means the arc does not depend on
-          finding an NPC on a small screen.
+          The second sentence is the bug and it explains the first.  The
+          server DOES pay the starter kit on accept, from either door
+          (_handleQuestAccept, grantOnAccept) -- so the sword and shield were
+          either granted silently, with no giver, no dialogue and no line
+          naming them, or their grant failed the way that path is deliberately
+          allowed to fail (an occupied slot or a full stash must not stop a
+          quest being accepted).  Then Mayor Bro had nothing to hand over,
+          because the quest was already active.  Either way the player did the
+          arc correctly and watched the handover moment not happen.
 
-          The server validates state transitions and the declarative
-          objective either way (server/src/quests.js), so the panel cannot
-          mint a reward the NPC path couldn't. */}
-      {/* ═══ v2.3.1704: THE TURN-IN HALF IS GONE FROM THIS PANE ═══
-          Owner: "Disable turning in quest rewards (completion) through the
-          quest pane.  It's getting messed up."
+          WHAT WAS HERE, and why it went.  v2.3.1665 added this button when
+          town NPCs did not exist (S.npcs = [] since v2.3.214), so the quest
+          system had no door at all; v2.3.1669 kept it once Mayor Bro was back,
+          on the argument that "a panel route means the arc does not depend on
+          finding an NPC on a small screen".  That argument is now spent: the
+          owner walked up to him.  What the panel road cannot do is BE the
+          moment -- the kit is a thing a person hands you, and a list page can
+          only make it appear in a bag.
 
-          What used to be here: a `status === 'Ready'` branch of this same
-          button that sent `quest_turn_in`, plus the XP-skill picker above it
-          (v2.3.1669) that the worker requires before it will pay XP.  Both
-          are removed.  ACCEPT is deliberately untouched — the reachability
-          argument above still holds for it, and taking it away would put the
-          whole arc back behind finding an NPC.
+          This is the same removal, for the same reason, as v2.3.1704 took the
+          turn-in half out of this pane: two doors sent the same message and
+          they were never the same door.  Nothing leaves the wire --
+          `quest_accept` is unchanged and is still sent by the dialogue
+          (src/game/quests.js).  This is a UI door closing, not a protocol
+          change, so no allowlist work applies (docs/TRAPS.md #18 is about the
+          opposite direction).
 
-          WHY REMOVED RATHER THAN FIXED.  Two doors sent the same message and
-          they were never the same door.  This one is a LIST page: it renders
-          whichever quest `questDetailBus` last selected, refreshes on a 1 Hz
-          timer, and derives `status` from a re-derived quest log every tick —
-          so the quest under the button can change out from under a thumb that
-          is already moving.  Its optimistic paint also lives on the client
-          (`turnInQuest` predicts gold/XP), so a refusal shows as a reward that
-          appears and is then taken back by the next player_state — the exact
-          "getting messed up" shape reported before, in v2.3.1685's incident.
-          The in-world dialogue has none of that: it is opened by, and bound
-          to, one specific giver standing in front of you.
-
-          Nothing was removed from the wire.  `quest_turn_in` is unchanged, and
-          the client still sends it — from src/game/quests.js, via the
-          dialogue's Turn In button.  This is a UI door being closed, not a
-          protocol change, so no allowlist/passthrough work applies here
-          (docs/TRAPS.md #18 is about the opposite direction).
-
-          If the pane ever needs the action back, the honest way is to open the
-          giver's dialogue from here rather than to re-add a second sender. */}
-
-      {status === 'Available' && (
-        <button
-          onPointerUp={(e) => {
-            e.stopPropagation();
-            const St = getState();
-            if (!St || !St.channel) return;
-            St.channel.send({ type: 'quest_accept', payload: { questId: quest.id } });
-            /* v2.3.1745: the same QUEST ACCEPTED! banner the dialogue shows.
-               This is the OTHER accept door, and the two having different
-               feedback is how "the same button, two code paths" bugs read to
-               a player (see the v2.3.1684 note above — that one was mute in
-               the other direction). */
-            showQuestBanner('accepted', quest.title);
-            force(v => v + 1);
-          }}
-          style={{
-            width: '100%',
-            minHeight: 44,
-            marginTop: 8,
-            background: COL.accentFill,
-            border: `1px solid ${COL.accent}`,
-            borderRadius: 10,
-            color: COL.accent,
-            fontFamily: 'inherit',
-            fontSize: 13, fontWeight: 800,
-            cursor: 'pointer',
-            touchAction: 'manipulation',
-          }}
-        >{`Accept from ${quest.npc}`}</button>
-      )}
+          THE COST, stated: quests are now startable only by finding their
+          giver.  That is the owner's call and it is what makes the starter kit
+          a handover again.  The tracked-quest arrow and the quest coach both
+          still point at the giver, so "find him" is a signposted job rather
+          than a search. */}
 
       {/* The giver's own words, so the arc reads as someone sending you
           somewhere rather than a checklist appearing. */}

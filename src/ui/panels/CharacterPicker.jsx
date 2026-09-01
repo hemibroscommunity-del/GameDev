@@ -1,6 +1,6 @@
 import React from 'react';
 import { checkAccountLogin, resetAccountCharacter } from '@/networking/index.js';
-import { readRoster, describeChar, forgetChar, relookChar, needsLookup, ROSTER_MAX } from '@/networking/charRoster.js';
+import { readRoster, describeChar, forgetChar, relookChar, needsLookup, markLookAsked, ROSTER_MAX } from '@/networking/charRoster.js';
 import { peerCosmeticsFromWire } from '@/networking/peerCosmetics.js';
 import { portraitDataUrl, portraitOptsFromPeer, portraitHasSubject } from '@/rendering/characterPortrait.js';
 import { AccountLoginForm } from '../account/AccountLoginForm.jsx';
@@ -242,6 +242,12 @@ export const CharacterPicker = ({ onPlay, onClose }) => {
            for good.  A definitive answer (found, or genuinely not found) does
            mark it. */
         if (!res || res.reason === 'unavailable' || res.reason === 'rate') continue;
+        /* v2.3.2195: the LOOK question is spent for this page load, whatever
+           came back -- so a character the worker has no look for costs one
+           request per load, not one per render.  Deliberately NOT persisted:
+           a worker that could not answer today can answer tomorrow, and that
+           is the race that shipped a letter tile nobody could clear. */
+        markLookAsked(e.phrase);
         const p = (res.exists && res.preview) || {};
         /* A PROVISIONAL row is one the migration guessed at — a key this
            device holds whose owner it was never told (charRoster.js).  A

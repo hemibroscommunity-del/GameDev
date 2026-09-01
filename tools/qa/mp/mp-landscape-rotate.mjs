@@ -60,6 +60,60 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('rotating flips the stamp and drops the bar entirely (dash-h 0, canvas 844x390)',
     l0.orient === 'landscape' && l0.dashH === 0 && l0.canvasW === 844 && l0.canvasH === 390, l0);
 
+  /* ── AND THE JOYSTICKS CAME WITH IT ── */
+  const chrome = () => P.page.evaluate(() => {
+    const cs = getComputedStyle(document.documentElement);
+    return {
+      sheetH: parseInt(cs.getPropertyValue('--sheet-h')) || 0,
+      dashH: parseInt(cs.getPropertyValue('--dash-h')) || 0,
+      vh: window.innerHeight,
+      /* TWO classes, not one: the left disc is .bt-joystick-zone and the
+         right is .bt-rjoy-zone (v2.3.1288 named it so the expanded-sheet dim
+         could reach it).  Asking for one of them and counting two is how the
+         first draft of this check reported the right stick "missing". */
+      zones: [...document.querySelectorAll('.bt-joystick-zone, .bt-rjoy-zone')].map((z) => {
+        const r = z.getBoundingClientRect();
+        return { top: Math.round(r.top), bottom: Math.round(r.bottom) };
+      }),
+    };
+  });
+  const lChrome = await chrome();
+  console.log('    landscape chrome: ' + JSON.stringify(lChrome));
+  rec.ok('both joysticks are still mounted after the flip (guard)',
+    lChrome.zones.length === 2, lChrome);
+  rec.ok('...and both are fully on screen, not pushed off the top by a stale --sheet-h',
+    lChrome.zones.every((z) => z.top >= 0 && z.bottom <= lChrome.vh), lChrome);
+
+  /* ── AND IT HEALS A STAMP NOTHING WILL CORRECT ──
+     v2.3.2197.  The check above proves --sheet-h is right after a resize the
+     browser actually reported.  This one proves the case that resize cannot
+     cover and that v2.3.2196 got wrong: a --sheet-h left holding a value no
+     event is coming to fix.  On iOS that is a rotation whose first resize
+     carries pre-rotation dimensions; here it is written straight onto the
+     root, which is the same STATE by a cheaper road, and the assertion is
+     about the recovery, not about how it got there.
+
+     Nothing is touched afterwards -- no bus, no resize, no tap.  If the
+     stamp were still edge-triggered this sits wrong forever, which is
+     exactly what "sometimes the joysticks are missing" is. */
+  await P.page.evaluate(() => {
+    document.documentElement.style.setProperty('--sheet-h', '243px');
+  });
+  /* Past the 220ms `bottom` transition (game.css) before reading: at 120ms
+     the discs are still gliding and report their OLD rect, which made this
+     guard fail for the wrong reason on its first run. */
+  await P.page.waitForTimeout(450);
+  const broken = await chrome();
+  rec.ok('a wrong --sheet-h really does push the discs off the top (guard: the harm is real)',
+    broken.zones.some((z) => z.top < 0), broken);
+  await P.page.waitForTimeout(3000);   /* > 4 watchdog ticks at the fast rate */
+  const healed = await chrome();
+  console.log('    healed chrome: ' + JSON.stringify(healed));
+  rec.ok('...and the watchdog heals it with no event of any kind',
+    healed.sheetH === 0, healed);
+  rec.ok('...putting both discs back on screen',
+    healed.zones.length === 2 && healed.zones.every((z) => z.top >= 0 && z.bottom <= healed.vh), healed);
+
   /* open the Bag, then rotate back with it open */
   await P.page.evaluate(() => window.__broDashPanelBus.open('bag'));
   await P.page.waitForTimeout(700);
