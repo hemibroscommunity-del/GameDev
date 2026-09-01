@@ -391,6 +391,10 @@ export const abilityMethods = {
         m._tgPhase = null; m._tgUntil = 0; m._tgAim = null; m._tgTarget = null;
         m._tgNextAt = now + cfg.stunMs;
       }
+      /* v2.3.2215: ...and a basic swing's wind-up, for the same reason the
+         telegraph is cancelled — a stun that let the pending swing land
+         anyway would stop the animation without stopping the hit. */
+      if (m._bwUntil) { m._bwUntil = 0; m._bwTarget = null; m._bwKind = null; }
     }
 
     /* Sticky aggro, exactly as a swing does it — hitting something has to

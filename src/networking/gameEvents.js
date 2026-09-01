@@ -744,6 +744,41 @@ export function processGameEvent(type, payload, S, deps) {
               var _maLabels = { slam: 'SLAM!', pounce: 'POUNCE!', lunge: 'LUNGE!' };
               var _maColors = { slam: '#f5c542', pounce: '#2C3E50', lunge: '#E8955A' };
               var _maShake = { slam: 8, pounce: 5, lunge: 3 };
+              /* ═══ v2.3.2215: THE UNIVERSAL BASIC-ATTACK TELL ═══
+                 Every monster now winds up before an ordinary swing or throw
+                 (server/src/telegraph.js BASIC_WINDUP).  Handled ABOVE the
+                 kit whitelist and returning early, because it is a different
+                 kind of event: it fires roughly every 1.5s per engaged
+                 monster, so it deliberately gets NO popup, NO screen shake
+                 and NO beep — a label per jab would be noise, and the noise
+                 is what made the shipped kit telegraphs unreadable.  What it
+                 gets instead is the thing a player actually watches: the
+                 monster's own body.  Whitelisted like the kits (mirror-audit
+                 pins the pair) so a future server kind cannot render an
+                 arbitrary wire string. */
+              var _bwKinds = { swing: 1, throw: 1 };
+              if (payload.phase === 'windup' && _bwKinds[payload.ability]) {
+                var _bwMs = Math.max(80, Math.min(3000, Number(payload.ms) || 400));
+                var _bwM = (S.monsters || []).find(function (mm) { return mm.id === payload.monsterId; });
+                if (_bwM) {
+                  /* The existing throb (entityRenderer _windupFx) reads these
+                     two, so the tell is the same visual language as a kit
+                     cast — just shorter and quieter. */
+                  _bwM._tgFrom = Date.now();
+                  _bwM._tgUntil = Date.now() + _bwMs;
+                  /* And the ATTACK SHEET, for any monster that has one.  This
+                     branch is why the sheets exist: _shootAnim* has been read
+                     by the renderer for versions but was only ever written by
+                     the client-local AI, which does not run for server-driven
+                     monsters — so no monster in a live zone has ever played an
+                     attack animation.  Every future per-monster attack strip
+                     lights up here the moment its art lands, with no further
+                     wiring. */
+                  _bwM._shootAnimStart = Date.now();
+                  _bwM._shootAnimEnd = Date.now() + _bwMs;
+                }
+                break;
+              }
               var _maLabel = _maLabels[payload.ability];
               if (!_maLabel) break; /* never render an arbitrary wire string */
               var _maX = typeof payload.x === 'number' ? payload.x : S.player.x;

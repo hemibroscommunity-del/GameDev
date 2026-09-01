@@ -120,6 +120,20 @@ m0.x = m0.spawnX = FAR; m0.y = m0.spawnY = FAR;
 const swingOnly = () => {
   m0._tgPhase = null; m0._tgUntil = 0; m0._tgAim = null; m0._tgTarget = null;
   m0._tgNextAt = Date.now() + 1e9;
+  /* v2.3.2215: ...and any pending basic wind-up.  Meadow fodder is a RANGED
+     archetype, so the aggro tick a section earlier can leave a THROW wind-up
+     in flight; without clearing it the next tick resolves that throw and
+     never reaches the swing this helper exists to isolate. */
+  m0._bwUntil = 0; m0._bwTarget = null; m0._bwKind = null;
+};
+/* v2.3.2215: a basic swing is stamp-then-resolve now — the first pass
+   stamps the wind-up, the second lands it.  Forcing _bwUntil elapsed is the
+   same idiom the telegraph block already uses for _tgUntil, and asserting
+   through it keeps these tests about what they were about (damage, block,
+   stamina) rather than about the new timing. */
+const landSwing = () => {
+  room._tickMonsters();
+  if (m0._bwUntil) { m0._bwUntil = Date.now() - 1; room._tickMonsters(); }
 };
 swingOnly();
 
@@ -140,7 +154,7 @@ ps.x = FAR + 30; ps.y = FAR; // attackDist 30 <= 45
 ps.blocking = false;
 m0.atkCd = 0; swingOnly();
 clearDirty();
-room._tickMonsters();
+landSwing();
 const atk = room.eventBuffer.find((e) => e.type === 'monster_attack' && e.payload.monsterId === m0.id);
 check('attack: monster_attack emitted with server-applied dmgTaken', !!atk && atk.payload.targetId === 'bp_tk_a' && atk.payload.dmgTaken > 0, atk && atk.payload);
 check('attack: victim hp reduced by exactly dmgTaken', !!atk && ps.hp === 100 - atk.payload.dmgTaken, { hp: ps.hp });
@@ -150,7 +164,7 @@ check('attack: cooldown stamped (no machine-gun swings)', m0.atkCd > Date.now(),
 ps.hp = 100; ps.stamina = 100; ps.blocking = true;
 m0.atkCd = 0; swingOnly();
 clearDirty();
-room._tickMonsters();
+landSwing();
 const blk = room.eventBuffer.find((e) => e.type === 'monster_attack' && e.payload.monsterId === m0.id);
 /* v2.3.1704: the melee twins of the combat-lifecycle / dungeon block
    assertions — they read BLOCK_COSTS_STAMINA so the suite pins whichever mode
@@ -181,7 +195,7 @@ ps.stamina = 100; ps.defenseSpec = { bulwark: 100 };
 m0.atkCd = 0; swingOnly();
 clearDirty();
 room.eventBuffer.length = 0;
-room._tickMonsters();
+landSwing();
 const blkBw = room.eventBuffer.find((e) => e.type === 'monster_attack' && e.payload.monsterId === m0.id);
 /* v2.3.1704: with the demo flag off nothing is charged, so the anti-turtle
    floor is asserted against the PRICING HELPER — the maths is untouched and

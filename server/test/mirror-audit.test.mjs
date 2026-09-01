@@ -27,7 +27,7 @@ import { GameRoom } from '../src/index.js';
 import { PROG3 as SRV_PROG3 } from '../src/prog3.js';
 /* v2.3.1812: check 13 compares telegraph kit kinds against the client's
    render whitelist — see the block at the bottom for why it reads text. */
-import { TELEGRAPH as SRV_TELEGRAPH } from '../src/telegraph.js';
+import { TELEGRAPH as SRV_TELEGRAPH, BASIC_WINDUP as SRV_BASIC_WINDUP } from '../src/telegraph.js';
 import { PROG3 as CLIENT_PROG3 } from '../../src/data/prog3.js';
 import {
   ARCHETYPES, MONSTER_HP_CURVE, COOKING_RECIPES, QUEST_CHAINS,
@@ -572,6 +572,25 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     check(`telegraph mirror: ${table} covers every kit too`,
       serverKinds.every((k) => keys.includes(k)), { table, keys, serverKinds });
   }
+
+  /* ═══ v2.3.2215: the SAME trap, for the universal basic wind-up ═══
+     The client renders only the ability strings it has a table entry for
+     and silently drops the rest — which is how a server-side tell can ship,
+     be fully authoritative, and be invisible in play.  The kits above are
+     pinned for that reason; the basic wind-up needs the same pin or the
+     tell that fires on EVERY swing is the one that goes dark. */
+  const bwm = src.match(/var _bwKinds = \{([^}]*)\}/);
+  check('windup mirror: the client\'s basic-windup whitelist is parseable',
+    !!bwm, { found: !!bwm });
+  const bwClient = bwm ? (bwm[1].match(/(\w+)\s*:/g) || []).map((k) => k.replace(/\s*:$/, '')) : [];
+  check('windup mirror: ...and it accepts both server kinds (swing + throw)',
+    ['swing', 'throw'].every((k) => bwClient.includes(k)), bwClient);
+  /* Every duration key must be a REAL archetype, or a typo silently gets
+     DEFAULT and one monster quietly loses its tuned tell. */
+  const archKeys = Object.keys(ARCHETYPES);
+  const strayArch = Object.keys(SRV_BASIC_WINDUP.MS).filter((k) => k !== 'DEFAULT' && !archKeys.includes(k));
+  check('windup mirror: every duration key is a real archetype (a typo would fall back to DEFAULT)',
+    strayArch.length === 0, { strayArch, archKeys });
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
