@@ -35,7 +35,7 @@
  * than move twice.  Guards: combat-lifecycle, anticheat, elemental2
  * suites (plus tick/persistence for the callers). */
 
-/* v2.3.2202: "at least double the top end range of the weapon's damage"
+/* v2.3.2212: "at least double the top end range of the weapon's damage"
    (owner).  Named because the client's DPS readout has to predict the same
    number -- see calcDisplayDps, which mirrors it. */
 const CRIT_ANCHOR_MULT = 2;
@@ -379,7 +379,7 @@ export const combatMethods = {
     return max;
   },
 
-  /* ═══ v2.3.2202: A CRIT IS ANCHORED TO THE TOP OF THE RANGE ═══
+  /* ═══ v2.3.2212: A CRIT IS ANCHORED TO THE TOP OF THE RANGE ═══
    * Owner: "The crit damage amount should be doing at least double the top
    * end range of the weapon's damage.  Maybe that's the anchor.  Right now
    * it's very underwhelming."
@@ -526,7 +526,7 @@ export const combatMethods = {
     }
     let base = (this._weaponEffBase(type, w) + statTerm) * tierMult;
     /* Per-type variance -- same rolls as the client.
-       v2.3.2202: the band is a TABLE now, read twice: once to roll, and
+       v2.3.2212: the band is a TABLE now, read twice: once to roll, and
        once for the crit anchor below.  Two literals would have drifted the
        first time anyone retuned a band, and the anchor would then be
        promising a "double the top of the range" that is not the range. */
@@ -572,7 +572,7 @@ export const combatMethods = {
       /* v2.3.1668: read the offense block for the weapon ACTUALLY being
          swung — investing in Bow's crit must do nothing for a staff. */
       const _atkCat = this._prog3CatFor(type);
-      /* v2.3.2200: + the flat base (owner: "start at a flat 1% per damage
+      /* v2.3.2210: + the flat base (owner: "start at a flat 1% per damage
          type by default"). Added here, not folded into `per`, so an
          unallocated character can crit at all -- this roll was
          `Math.random() < 0` for every new player before it. */
@@ -586,7 +586,7 @@ export const combatMethods = {
       if (isCrit) base = this._critAnchor(base * (1.5 + this._prog3AtkPts(ps, _atkCat, 'critDmg') * PROG3.ATK.critDmg.per), rangeTop);
     } else {
       const P = ps.power || 0;
-      /* v2.3.2200: the legacy branch gets the same 1% floor, so "every
+      /* v2.3.2210: the legacy branch gets the same 1% floor, so "every
          character starts at 1%" is true of a pre-prog3 blob too (rule 19
          keeps this path alive for old workers). */
       const baseCrit = Math.max(0, Math.min(1,
@@ -599,7 +599,7 @@ export const combatMethods = {
       }
       // v2.3.1451: the crit-DMG channel adds its BANKED bench-locked
       // flat on lucky hits (after the power multiplier) — was t2Accel.
-      /* v2.3.2202: the anchor floors the MULTIPLIED part and the banked flat
+      /* v2.3.2212: the anchor floors the MULTIPLIED part and the banked flat
          rides ON TOP.  Folding the flat inside the max ate it whenever the
          floor bound -- 99 executioner points paid 1691 instead of their
          banked 1740 (caught by critDmg's own test), which would have made

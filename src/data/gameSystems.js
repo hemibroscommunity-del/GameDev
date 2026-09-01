@@ -24,7 +24,7 @@ import { applyZoneVariant, hitShapeOf, variantForArchetype } from './monsterVari
 /* v2.3.1660: the trained-skill combat rebuild's client mirror — every
    prog3Live(rpg) branch below keeps its legacy body for old workers
    (rule 19) and for any blob the v10 respec fail-opened on. */
-/* v2.3.2202: mirrors server/src/combat.js CRIT_ANCHOR_MULT -- a crit pays
+/* v2.3.2212: mirrors server/src/combat.js CRIT_ANCHOR_MULT -- a crit pays
    at least this many times the top of the weapon's range.  The reasoning
    (and why anticheat does not move) lives on the SERVER copy, which is the
    source of truth. */
@@ -4876,7 +4876,7 @@ export function calcCritChance(power, ferocity) {
      client display/prediction at the same average.  t2CounterRate =
      0.005/pt (every 2nd hit at the 100-pt cap). */
   var fCrit = t2CounterRate(fer);
-  /* v2.3.2200: the same flat 1% base the server's legacy branch now adds
+  /* v2.3.2210: the same flat 1% base the server's legacy branch now adds
      (combat.js), so a display fed by this path does not read 0% against a
      worker that will roll 1%. */
   return Math.max(0, Math.min(1, PROG3.ATK.crit.base + pCrit + fCrit));
@@ -4999,7 +4999,7 @@ export function calcDisplayDps(rpg, wpn) {
   /* v2.3.1345: crit-dmg channel is a FLAT bonus on lucky hits — fold
      its expected value on top of the power multiplier. */
   var critFlat = prog3Live(rpg) ? prog3CritFlat(rpg, prog3CatFor(wpn.type)) : weaponCritFlatFor(rpg, wpn.type);
-  /* ═══ v2.3.2202: THE CRIT ANCHOR IS IN THE PREDICTION TOO ═══
+  /* ═══ v2.3.2212: THE CRIT ANCHOR IS IN THE PREDICTION TOO ═══
      The server floors a crit at CRIT_ANCHOR_MULT x the top of the range
      (combat.js _critAnchor), so folding crits as `avg x critMult` would
      under-report DPS for exactly the builds the anchor exists to help --

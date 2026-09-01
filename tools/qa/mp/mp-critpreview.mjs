@@ -1,4 +1,4 @@
-/* CRIT VS NORMAL, ON DEMAND (v2.3.2203)
+/* CRIT VS NORMAL, ON DEMAND (v2.3.2213)
  *
  * Owner: "You should be able to generate a simulated normal damage number vs
  * crit damage number without me needing to start a new char and run it every
@@ -17,7 +17,7 @@
  * It also ASSERTS the two properties that were broken and invisible until the
  * owner played the preview build and told me:
  *   - the crit number is not white (the v2.3.103 override swallowed every
- *     crit colour the game has ever set -- see effectsRenderer v2.3.2203)
+ *     crit colour the game has ever set -- see effectsRenderer v2.3.2213)
  *   - the crit number is drawn much bigger than the normal one
  * Both are read off the LIVE pixi objects, not off the popup record, because
  * the record was right the whole time and the screen still showed white.

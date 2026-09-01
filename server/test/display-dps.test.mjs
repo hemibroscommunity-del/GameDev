@@ -176,12 +176,12 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
   const flat = 1 * 40 * 41;                          // t2Accel(40, 1) = 1,640
   const expMin = Math.round(base * 0.75 + flat);     // melee band 0.75-1.25
   const expMax = Math.round(base * 1.25 + flat);
-  const critChance = 0.01                            // v2.3.2200: the flat base every character starts with
+  const critChance = 0.01                            // v2.3.2210: the flat base every character starts with
                    + 40 * 100 / (100 + 200) / 100    // Power baseline
                    + 50 * 0.005;                     // + counter channel expected rate
   const critMult = 1.5 + 100 * 0.001;                // power-only (1.6)
   const critFlat = Math.round(T2_UNITS.critDmg * 25 * 26); // t2Accel(25, unit) — v2.3.1415: derives from the table so unit tuning can't break the fixture
-  /* v2.3.2202: anchored crit -- floor at 2x the range top, banked flat on top. */
+  /* v2.3.2212: anchored crit -- floor at 2x the range top, banked flat on top. */
   const avgH = (expMin + expMax) / 2;
   const critHitH = Math.max(avgH * critMult, expMax * 2) + critFlat;
   const expDps = (avgH + critChance * (critHitH - avgH)) / (600 / 1000);
@@ -353,7 +353,7 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
   setProg3Enabled(true);
   setProg3XEnabled(true);
   // By hand, the prog3x math: base = (6.67 + 40×1.5 + 30×0.5) × 2.0,
-  /* v2.3.2200: the 0.01 in each crit term below is the flat base every
+  /* v2.3.2210: the 0.01 in each crit term below is the flat base every
      character now starts with (PROG3.ATK.crit.base).  Written as a LITERAL
      rather than imported on purpose -- importing the constant would make
      these fixtures agree with the production formula by construction, which
@@ -363,7 +363,7 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
   const baseX = (6.67 + 40 * PROG3.DMG_PER_LEVEL.sword + 30 * PROG3.ATK.dmg.per) * 2.0;
   const cdX = 600 * (1 - 20 * PROG3.ATK.aspd.per);
   const expMinX = Math.round(baseX * 0.75), expMaxX = Math.round(baseX * 1.25);
-  /* v2.3.2202: crits are floored at 2x the top of the range (the anchor), so
+  /* v2.3.2212: crits are floored at 2x the top of the range (the anchor), so
      the fold is avg + chance x (critHit - avg), not a multiplier on avg.
      The 2 is a literal here for the same reason 0.01 is -- a fixture that
      imports the constant agrees with production by construction. */

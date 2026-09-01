@@ -286,7 +286,7 @@ const FIRE_GEAR_REG = {
 /* Popup icons (XP badge, gold coin, sword/arrow/spell for damage by weapon
    type). Loaded async — entries appear in the registry once each PNG is
    ready. Until then, popups render text-only and the icon is skipped. */
-/* ═══ v2.3.2201: A CRIT HAS TO BE UNMISTAKABLE ═══
+/* ═══ v2.3.2211: A CRIT HAS TO BE UNMISTAKABLE ═══
    Owner: "I still can't visually distinguish critical hits.  Maybe a much
    larger damage number followed by an additional icon to represent it's a
    critical hit (explosion?)"
@@ -304,7 +304,7 @@ const FIRE_GEAR_REG = {
    Crit stat on the Hero screen, so a player learns one symbol, not two. */
 const DMG_FONT_PX = 21;
 const DMG_CRIT_FONT_PX = 38;
-/* v2.3.2202 (owner: "change the damage color to a light yellow when it's a
+/* v2.3.2212 (owner: "change the damage color to a light yellow when it's a
    crit").  Was the gold #f5c542 / amber #fbbf24 pair -- two shades for one
    event, and both close enough to the game's general gold accent (level-ups,
    XP, quest text) to read as "some UI thing" rather than "that hit was
@@ -313,7 +313,7 @@ export const DMG_CRIT_COLOR = '#FFF27A';
 
 const POPUP_ICONS = {};
 const POPUP_ICON_KEYS = ['xp', 'gold', 'sword', 'arrow', 'spell', 'heart', 'crit'];
-/* v2.3.2201: 'crit' is the one key whose art does not live in /icons/popups.
+/* v2.3.2211: 'crit' is the one key whose art does not live in /icons/popups.
    Reusing the Hero screen's own crit icon rather than copying it to a second
    path -- one asset, one meaning, and no chance of the two drifting apart
    the next time either is redrawn. */
@@ -2246,7 +2246,7 @@ export class EffectsRenderer {
            Centralized here so the 40+ push sites don't each need recoloring. */
         const t = dmg.text || '';
         let displayColor = dmg.color || '#ffffff';
-        /* ═══ v2.3.2203: ...UNLESS IT IS A CRIT ═══
+        /* ═══ v2.3.2213: ...UNLESS IT IS A CRIT ═══
            Owner, on the preview: "the number did not turn yellow.  I think
            the crit icon was larger."  Both halves of that are exactly right,
            and this line is why.
@@ -2409,7 +2409,7 @@ export class EffectsRenderer {
           const tex = POPUP_ICONS[iconKey];
           const icon = new Sprite(tex);
           icon.anchor.set(0, 0.5);
-          /* v2.3.2202 (owner: "make the crit icon much larger (I can barely
+          /* v2.3.2212 (owner: "make the crit icon much larger (I can barely
              see it)").  The 22px cap was the whole reason: it applied
              whatever the font did, so raising the crit number to 38px left
              the mark beside it at its old size and looking smaller still by

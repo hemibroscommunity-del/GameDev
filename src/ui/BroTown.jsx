@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { DMG_CRIT_COLOR } from '@/rendering/systems/effectsRenderer.js'; /* v2.3.2203: the crit preview hook uses the real crit colour */
+import { DMG_CRIT_COLOR } from '@/rendering/systems/effectsRenderer.js'; /* v2.3.2213: the crit preview hook uses the real crit colour */
 import { shopBus } from './mobile/shopBus.js';   /* v2.3.2050: Shopkeeper Bro's window */
 import { uiBusyBus } from './mobile/uiBusyBus.js'; /* v2.3.2085: tell chrome outside this tree to stand aside */
 import { zonePlayerScale } from '@/data/zones.js'; /* v2.3.1574: the one copy of the vista perspective curve */
@@ -865,7 +865,7 @@ export var BroTown = function BroTown(_ref0) {
   /* Expose state for autotest */
   window._gameState = stateRef;
   window._gameFns = {
-    /* ═══ v2.3.2203: SHOW ME A CRIT WITHOUT PLAYING FOR ONE ═══
+    /* ═══ v2.3.2213: SHOW ME A CRIT WITHOUT PLAYING FOR ONE ═══
        Owner: "You should be able to generate a simulated normal damage
        number vs crit damage number without me needing to start a new char
        and run it every time."

@@ -119,7 +119,7 @@ export const PROG3 = {
     elem:    { cap: 75,  per: 1 },      // +1 elemental power/pt → 75
   },
   ATK: {
-    /* ═══ v2.3.2200: EVERY CHARACTER STARTS AT 1% ═══
+    /* ═══ v2.3.2210: EVERY CHARACTER STARTS AT 1% ═══
        Owner: "I want crit chance to start at a flat 1% per damage type by
        default for each character."
 

@@ -18,7 +18,7 @@
    - `setRpgState` / `setLevelUpMsg` are the React setters.
    `window._pixiRenderer` stays a runtime global (same as the other
    extracted loop modules). S is stateRef.current. */
-import { DMG_CRIT_COLOR } from '@/rendering/systems/effectsRenderer.js'; /* v2.3.2202: one crit colour, every door */
+import { DMG_CRIT_COLOR } from '@/rendering/systems/effectsRenderer.js'; /* v2.3.2212: one crit colour, every door */
 import {
   BT_AUDIO, DEATH_GOLD_PENALTY, DEATH_SCATTER_RECOVERY,
   ECHO_AGGRO_MULT, ELEMENTS, GEM_DROP_RATES, GOLD_NUGGET_DROP, GS_FORWARD_ARC,
@@ -1570,9 +1570,9 @@ export function updateMonsterCombat(S, deps) {
                    single headroom term covering "combo + status amplifier +
                    amulet elemDmg + lunge", so shrinking it for this would
                    clamp legitimate hits from the other three. */
-                /* ═══ v2.3.2203: THE ANCHOR BELONGS HERE TOO ═══
+                /* ═══ v2.3.2213: THE ANCHOR BELONGS HERE TOO ═══
                    Owner, on the preview: "the damage was not double the top
-                   of the range."  It wasn't, and this line is why: v2.3.2202
+                   of the range."  It wasn't, and this line is why: v2.3.2212
                    anchored the SERVER's roll and the DPS readout, and left
                    the number the player actually watches -- this local
                    prediction, which is what paints the popup on your own
@@ -1872,7 +1872,7 @@ export function updateMonsterCombat(S, deps) {
                 });
                 /* Damage number — scaled by crit/normal in the renderer. */
                 var _isSpecialDmg = !!S._specialAttack;
-                /* ═══ v2.3.2201: crit: true, AT LAST ═══
+                /* ═══ v2.3.2211: crit: true, AT LAST ═══
                    Owner: "I still can't visually distinguish critical hits."
                    The renderer has sized crits bigger since v2.3.1357 off
                    this exact flag, and no crit has ever set it -- the colour

@@ -1,6 +1,6 @@
 /* ═══ GAME EVENTS — the server/peer event dispatcher (40+ message types) ═══ */
 import { lockOntoDuelOpponent } from '@/game/duelLock.js'; /* v2.3.2145 */
-import { DMG_CRIT_COLOR } from '@/rendering/systems/effectsRenderer.js'; /* v2.3.2202: one crit colour, every door */
+import { DMG_CRIT_COLOR } from '@/rendering/systems/effectsRenderer.js'; /* v2.3.2212: one crit colour, every door */
 /* v2.3.783: _processGameEvent moved verbatim from the inline WS client in
    src/ui/BroTown.jsx (REBUILD-PLAN Phase 4, behavior-frozen). It handles
    both batched `tick.events` entries and direct sends (see
@@ -1283,7 +1283,7 @@ export function processGameEvent(type, payload, S, deps) {
                     enqueuePeerDamage(S, peerDmgKey(payload.monsterId, hitM.x || hitM.renderX, hitM.y || hitM.renderY), {
                       x: hitM.x || hitM.renderX, y: monsterPopupY(hitM, -20),
                       text: '-' + payload.dmg, color: payload.isCrit ? DMG_CRIT_COLOR : '#ff8888',
-                      /* v2.3.2201: the server's crit gets the same treatment
+                      /* v2.3.2211: the server's crit gets the same treatment
                          the local swing gets -- big number + the crit mark.
                          These two doors painted the same event differently,
                          which is how a crit could read as ordinary depending
@@ -1302,7 +1302,7 @@ export function processGameEvent(type, payload, S, deps) {
                        Same shape, same reason, as the thorns case below. */
                     pushDmgPopup(S, hitM.x || hitM.renderX, monsterPopupY(hitM, -20),
                       '-' + payload.dmg, payload.isCrit ? DMG_CRIT_COLOR : '#ffd08a',
-                      payload.isCrit ? { crit: true, iconKey: 'crit' } : undefined);  /* v2.3.2201 */
+                      payload.isCrit ? { crit: true, iconKey: 'crit' } : undefined);  /* v2.3.2211 */
                   } else if (payload.thorns) {
                     /* v2.3.1137: Thorns reflect is SERVER-rolled with no
                        local prediction (unlike swings), so our own thorns
@@ -1860,7 +1860,7 @@ export function processGameEvent(type, payload, S, deps) {
                 y: (payload.y || 0) - 20,
                 text: '-' + (payload.dmg || 0),
                 color: payload.isCrit ? DMG_CRIT_COLOR : '#ff8888',
-                /* v2.3.2201: a peer's crit reads as a crit too -- found by the
+                /* v2.3.2211: a peer's crit reads as a crit too -- found by the
                    crit-popup precheck rule, not by hand. */
                 crit: !!payload.isCrit,
                 iconKey: payload.isCrit ? 'crit' : undefined
@@ -2150,7 +2150,7 @@ export function processGameEvent(type, payload, S, deps) {
                     pushDmgPopup(S, _pvX, _pvY,
                       '-' + Math.ceil(payload.dmgTaken) + (payload.isCrit ? '!' : ''),
                       payload.isCrit ? DMG_CRIT_COLOR : '#ff5e6c',
-                      /* v2.3.2201: this one already SAID crit with a '!' and
+                      /* v2.3.2211: this one already SAID crit with a '!' and
                          a colour, and still drew at ordinary size. */
                       payload.isCrit ? { crit: true, iconKey: 'crit' } : undefined);
                   }

@@ -358,7 +358,7 @@ const psA = room.playerState.pa;
      melee variance at its 0.75 floor, so
        multiplied = (effBase + skLvl×1.5 + 75×0.5) × tierMult 6 × 0.75
                     × volatile 1.3 × critMult 2.5
-     ...and v2.3.2202 floors that at the ANCHOR, 2 × the top of the range,
+     ...and v2.3.2212 floors that at the ANCHOR, 2 × the top of the range,
      where the range top is the same pre-variance base × the melee band's
      1.25 ceiling.  On this fixture the anchor WINS (2.5 × base against
      2.4375 × base), which is the anchor doing its job: Math.random()=0 is
@@ -372,7 +372,7 @@ const psA = room.playerState.pa;
     const multiplied = preVar * 0.75 * 1.3 * (1.5 + 100 * PROG3.ATK.critDmg.per);
     const anchored = preVar * 1.25 * 2;
     const expected = Math.round(Math.max(multiplied, anchored));
-    check('crit damage = max(base × (1.5 + pts×0.01), 2 × range top) — the v2.3.2202 anchor', critRoll.dmg === expected,
+    check('crit damage = max(base × (1.5 + pts×0.01), 2 × range top) — the v2.3.2212 anchor', critRoll.dmg === expected,
       { got: critRoll.dmg, expected });
   }
   /* And the dmg stat feeds the NON-crit roll too: +75×0.5 pre-tier. */
@@ -687,7 +687,7 @@ const psA = room.playerState.pa;
     col && col.id === 'steam' && col.dmg >= Math.round(40 + 75 * 0.8), col);
 }
 
-/* ═══ v2.3.2200: EVERY CHARACTER STARTS AT A FLAT 1%, PER DAMAGE TYPE ═══
+/* ═══ v2.3.2210: EVERY CHARACTER STARTS AT A FLAT 1%, PER DAMAGE TYPE ═══
    Owner: "I want crit chance to start at a flat 1% per damage type by
    default for each character."
 
@@ -741,7 +741,7 @@ const psA = room.playerState.pa;
     fresh.prog3.atk.sword.crit);
 }
 
-/* ═══ v2.3.2202: A CRIT ALWAYS BEATS THE BEST ORDINARY HIT ═══
+/* ═══ v2.3.2212: A CRIT ALWAYS BEATS THE BEST ORDINARY HIT ═══
    Owner: "The crit damage amount should be doing at least double the top
    end range of the weapon's damage.  Maybe that's the anchor.  Right now
    it's very underwhelming."

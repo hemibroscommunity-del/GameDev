@@ -375,7 +375,7 @@ function sanitize(src, { jsxText = false } = {}) {
 }
 
 /* ---- 4b. crit-popup ----------------------------------------------- */
-/* ═══ v2.3.2201: A POPUP THAT KNOWS IT IS A CRIT MUST SAY SO ═══
+/* ═══ v2.3.2211: A POPUP THAT KNOWS IT IS A CRIT MUST SAY SO ═══
    Owner: "I still can't visually distinguish critical hits."
 
    The cause was not a tuning miss.  effectsRenderer has sized crits off
@@ -414,7 +414,7 @@ function sanitize(src, { jsxText = false } = {}) {
       checked++;
       if (!/\bcrit\s*:/.test(args)) {
         fails++;
-        add('FAIL', 'crit-popup', `${f}:${lineOf(srcText, m.index)} — this popup branches on isCrit but never passes crit:, so effectsRenderer draws the crit at ordinary size (the v2.3.2201 bug, restated)`);
+        add('FAIL', 'crit-popup', `${f}:${lineOf(srcText, m.index)} — this popup branches on isCrit but never passes crit:, so effectsRenderer draws the crit at ordinary size (the v2.3.2211 bug, restated)`);
       }
     }
   }

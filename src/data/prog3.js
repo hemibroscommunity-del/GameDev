@@ -33,7 +33,7 @@ export const PROG3 = {
     elem:    { cap: 75,  per: 1 },      // v2.3.2199: +1 elemental power/pt (DoT + collisions)
   },
   ATK: {
-    /* v2.3.2200: the flat 1% base every character starts with -- the
+    /* v2.3.2210: the flat 1% base every character starts with -- the
        reasoning (and why the cap becomes 31%, and why anticheat does not
        move) lives on the SERVER copy, server/src/prog3.js, which is the
        source of truth; mirror-audit.test.mjs pins the two together. */
@@ -337,7 +337,7 @@ export function prog3IsAtkStat(stat) {
 export function prog3DodgePct(rpg) { return prog3Pts(rpg, 'dodge') * PROG3.BODY.dodge.per; }
 /* v2.3.1668: crit/critDmg read the ACTIVE weapon's block unless a
    category is named (loadout previews pass one explicitly). */
-/* v2.3.2200: base + allocated, mirroring the server's roll exactly.  Every
+/* v2.3.2210: base + allocated, mirroring the server's roll exactly.  Every
    predicted number downstream reads this one function -- the Hero screen's
    Crit row and calcDisplayDps's crit term both -- so the base reaches the
    display and the DPS estimate without either of them knowing about it. */
