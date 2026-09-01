@@ -14,7 +14,7 @@ import { COMBAT_SKILLS, skillLevel, skillProgressPct, skillProgress, deriveHeroS
    seven-stat allocation menu when the worker owns prog3. */
 import {
   prog3Live, prog3Pts, prog3AtkPts, prog3StatCap, prog3SkillLevel,
-  prog3ActiveCat, PROG3_ATK_META, PROG3_BODY_META, PROG3_SKILL_META, prog3PoolFor } from '../../../data/prog3.js';
+  prog3ActiveCat, prog3AtkMeta, prog3BodyMeta, PROG3_SKILL_META, prog3PoolFor } from '../../../data/prog3.js';
 import { VitalBar, VITAL_ICONS, VITAL_LABEL, VITAL_TINT } from './VitalBar.jsx'; /* v2.3.1311; VITAL_LABEL v2.3.1883 */
 import { getEquippedSlots, getEquipContribs, GHOST_SRC } from './equipModel.js'; /* v2.3.1653 */
 import { previewStatPoint, overallDps } from './statPreview.js';                 /* v2.3.1766 */
@@ -400,7 +400,7 @@ export const HeroExpanded = () => {
     sheetRow('Damage', d.dmgText),
     sheetRow('DPS', d.dps.toFixed(1)),
     sheetRow('Crit', `${pct1(d.crit)}%`),
-    sheetRow('Crit Dmg', p3 ? `+${Math.round(d.critDmg)}` : '—'),
+    sheetRow('Crit Dmg', p3 ? `+${Math.round(d.critDmg)}${d.critDmgPct ? '%' : ''}` : '—'), /* v2.3.2199: % on a prog3x worker */
   ];
   const defenseCells = () => [
     sheetRow('Defense', p3 ? `${pct1(d.defPct)}%` : '—'),
@@ -1184,8 +1184,9 @@ export const HeroExpanded = () => {
             };
             /* Short forms for the collapsed lane summary only — the mockup's
                "CRIT 2/4  DMG 1/4  SPD 0/4".  The rows themselves keep the
-               full labels. */
-            const SHORT = { crit: 'CRIT', critDmg: 'DMG', aspd: 'SPD' };
+               full labels.  v2.3.2199: the new flat-damage stat takes DMG;
+               critDmg (which had borrowed it) becomes CRIT+. */
+            const SHORT = { dmg: 'DMG', crit: 'CRIT', critDmg: 'CRIT+', aspd: 'SPD' };
             /* v2.3.2176: does this worker channel points?  Without the cap
                there is no breakdown to read, so everything falls back to the
                single shared pool the old worker enforces (rule 19). */
@@ -1281,7 +1282,7 @@ export const HeroExpanded = () => {
               </div>
             );
             const peekMeta = statPeek
-              ? (statPeek.atk ? PROG3_ATK_META : PROG3_BODY_META).find(m => m.key === statPeek.key)
+              ? (statPeek.atk ? prog3AtkMeta() : prog3BodyMeta()).find(m => m.key === statPeek.key)
               : null;
             const peek = (statPeek && R)
               ? previewStatPoint(R, statPeek.key, statPeek.cat || buildCat) : null;
@@ -1377,7 +1378,7 @@ export const HeroExpanded = () => {
                           fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
                           overflow: 'hidden',
                         }}>
-                          {PROG3_ATK_META.map((m) => (
+                          {prog3AtkMeta().map((m) => (
                             <span key={m.key}>{SHORT[m.key]} {prog3AtkPts(R, sk.key, m.key)}/{prog3StatCap(R, m.key)}</span>
                           ))}
                         </span>
@@ -1414,13 +1415,13 @@ export const HeroExpanded = () => {
                         <div style={{ flex: 1, minWidth: 0 }}>
                           {groupHead2(`${sk.label} Attack`)}
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                            {PROG3_ATK_META.map((m) => statRow({ ...m, atk: true }))}
+                            {prog3AtkMeta().map((m) => statRow({ ...m, atk: true }))}
                           </div>
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           {groupHead2('Character', 'Shared')}
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                            {PROG3_BODY_META.map((m) => statRow({ ...m, atk: false }))}
+                            {prog3BodyMeta().map((m) => statRow({ ...m, atk: false }))}
                           </div>
                         </div>
                       </div>

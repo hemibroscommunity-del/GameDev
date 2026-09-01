@@ -24,7 +24,7 @@
  * real answer to "should I put it here" rather than a gap in the tooltip.
  */
 import { calcDisplayDps, getActiveWeapon } from '../../../data/gameSystems.js';
-import { PROG3, prog3Pts, prog3AtkPts, prog3IsAtkStat } from '../../../data/prog3.js';
+import { PROG3, prog3Pts, prog3AtkPts, prog3IsAtkStat, isProg3XEnabled } from '../../../data/prog3.js';
 
 /* The weapon a DPS readout should speak for.
  *
@@ -45,7 +45,13 @@ export function displayWeapon(R) {
    flat rate per point (PROG3.ATK / PROG3.BODY `per`), so this needs no
    per-stat cases — only the unit differs, and that rides on the stat's own
    metadata next to its name. */
-function statTotal(pts, cfg) { return pts * (cfg ? cfg.per : 0); }
+function statTotal(pts, cfg, stat) {
+  /* v2.3.2199: critDmg's per is the PERCENT rate now; an old worker still
+     rolls the flat +2/pt, and the tooltip must total what that worker
+     pays (the prog3CritFlat fallback, rule 19). */
+  if (stat === 'critDmg' && !isProg3XEnabled()) return pts * 2;
+  return pts * (cfg ? cfg.per : 0);
+}
 
 /** Preview one more point in `stat`.  `cat` is the weapon category an offense
  *  stat belongs to ('sword' | 'bow' | 'staff'); ignored for body stats.
@@ -82,8 +88,8 @@ export function previewStatPoint(R, stat, cat) {
 
   return {
     capped,
-    statNow: statTotal(pts, cfg),
-    statAfter: statTotal(pts + 1, cfg),
+    statNow: statTotal(pts, cfg, stat),
+    statAfter: statTotal(pts + 1, cfg, stat),
     dpsNow, dpsAfter,
     dpsDelta: (typeof dpsNow === 'number' && typeof dpsAfter === 'number') ? (dpsAfter - dpsNow) : null,
     weaponName: wpn ? (wpn.name || wpn.type || 'weapon') : null,

@@ -328,5 +328,56 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
     zeroBank.min === base.min && zeroBank.max === base.max, { base, zeroBank });
 }
 
+// ── 11. v2.3.2199: the prog3 display pair predicts the prog3 roll ──
+// This suite had ZERO prog3 coverage — every fixture above exercises the
+// legacy branch.  Pins: the dmg stat inside the pre-tier sum, the percent
+// critDmg fold, and the rule-19 fallback (prog3x off = the flat +2 math an
+// old worker actually rolls).
+{
+  const { setProg3Enabled, setProg3XEnabled, PROG3 } = await import('../../src/data/prog3.js');
+  const p3rpg = {
+    activeSlot: 'melee',
+    prog3: {
+      sk: { sword: { level: 40, xp: 0 }, bow: { level: 1, xp: 0 }, staff: { level: 1, xp: 0 } },
+      alloc: { def: 0, hp: 0, dodge: 0, stam: 0, elem: 0 },
+      atk: { sword: { crit: 50, critDmg: 60, aspd: 20, dmg: 30 },
+             bow: { crit: 0, critDmg: 0, aspd: 0, dmg: 0 },
+             staff: { crit: 0, critDmg: 0, aspd: 0, dmg: 0 } },
+      pool: 0, poolBy: { sword: 0, bow: 0, staff: 0 }, ms: 0, ppl: 3,
+    },
+  };
+  setProg3Enabled(true);
+  setProg3XEnabled(true);
+  // By hand, the prog3x math: base = (6.67 + 40×1.5 + 30×0.5) × 2.0,
+  // period 600 × (1 − 20×0.0035), crit EV = 1 + 0.2 × (2.1 − 1), no flat.
+  const baseX = (6.67 + 40 * PROG3.DMG_PER_LEVEL.sword + 30 * PROG3.ATK.dmg.per) * 2.0;
+  const cdX = 600 * (1 - 20 * PROG3.ATK.aspd.per);
+  const expMinX = Math.round(baseX * 0.75), expMaxX = Math.round(baseX * 1.25);
+  const expDpsX = ((expMinX + expMaxX) / 2 * (1 + (50 * PROG3.ATK.crit.per) * (2.1 - 1))) / (cdX / 1000);
+  const rX = calcDisplayDmgRange(p3rpg, SWORD);
+  const dX = calcDisplayDps(p3rpg, SWORD);
+  check('prog3x fixture: range carries the dmg stat pre-tier',
+    !!rX && rX.min === expMinX && rX.max === expMaxX && Math.abs(rX.cdMs - cdX) < 1e-9,
+    { got: rX, expMinX, expMaxX, cdX });
+  check('prog3x fixture: DPS folds the percent critDmg, no flat',
+    Math.abs(dX - expDpsX) < 1e-9, { got: dX, exp: expDpsX });
+
+  // The same character against an OLD worker (prog3x off): the dmg stat
+  // is not in that worker's roll and its crits pay 1.5× + flat 2/pt —
+  // the readout must predict THAT (rule 19).
+  setProg3XEnabled(false);
+  const baseL = (6.67 + 40 * PROG3.DMG_PER_LEVEL.sword) * 2.0;
+  const expMinL = Math.round(baseL * 0.75), expMaxL = Math.round(baseL * 1.25);
+  const expDpsL = ((expMinL + expMaxL) / 2 * (1 + (50 * PROG3.ATK.crit.per) * (1.5 - 1))
+    + (50 * PROG3.ATK.crit.per) * (60 * 2)) / (cdX / 1000);
+  const rL = calcDisplayDmgRange(p3rpg, SWORD);
+  const dL = calcDisplayDps(p3rpg, SWORD);
+  check('old-worker fallback: dmg stat leaves the range',
+    !!rL && rL.min === expMinL && rL.max === expMaxL, { got: rL, expMinL, expMaxL });
+  check('old-worker fallback: DPS predicts the flat +2 crit math',
+    Math.abs(dL - expDpsL) < 1e-9, { got: dL, exp: expDpsL });
+  setProg3Enabled(false);
+}
+
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nALL PASS');
 process.exit(failures ? 1 : 0);

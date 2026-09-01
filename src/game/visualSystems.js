@@ -11,8 +11,12 @@ import { BT_AUDIO } from '@/data/index.js';
 
 export function updateVisualSystems(S) {
         /* ── Screen shake decay ── */
+        /* v2.3.2200: dt-scaled (the v2.3.1771 pow() pattern used for
+           facing just below).  `*= 0.85` per FRAME decayed shake twice
+           as fast on a 120Hz iPhone as on a 60Hz screen — the primary
+           platform was getting HALF the impact feel of desktop. */
         if (S.screenShake > 0.1) {
-          S.screenShake *= 0.85;
+          S.screenShake *= Math.pow(0.85, S._dtScale || 1);
         } else {
           S.screenShake = 0;
         }

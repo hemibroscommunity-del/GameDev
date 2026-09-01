@@ -51,6 +51,16 @@ export const PROG3 = {
      either alone regresses the other.  See the pacing note on
      DMG_PER_LEVEL for the measured checkpoints. */
   XP_PER_DMG: 0.4,                   // was the legacy WEAPON_XP_PER_DMG's 1.0
+  /* ═══ v2.3.2199: THREE POINTS PER LEVEL (owner, 2026-09-01) ═══
+   * "Each level up gives the character 3 points to spend instead of 1."
+   * One constant, four readers: the level-up mint (_prog3AwardXp), the
+   * respec (prog3FromLegacy), the retro grant (prog3GrantRetroPoints /
+   * migration v14 — existing characters are back-paid so a veteran equals
+   * a fresh character that trained to the same levels), and the client
+   * banner (mirror).  The blob stamps the rate it was granted at in
+   * `ppl`, which is what makes the back-pay idempotent AND makes any
+   * future rate change a one-line migration instead of archaeology. */
+  POINTS_PER_LEVEL: 3,
   /* ═══ v2.3.1668: BODY vs ATK (owner, 2026-08-11) ═══
    *
    * "The attack power (crit chance, attack speed, etc) are specific to the
@@ -95,15 +105,47 @@ export const PROG3 = {
     hp:      { cap: 100, per: 8 },      // +8 max HP/pt → +800
     dodge:   { cap: 75,  per: 0.004 },  // +0.4%/pt → 30%
     stam:    { cap: 100, per: 3 },      // +3 max stamina/pt → +300
+    /* v2.3.2199: ELEMENTAL POWER — repairs the stat orphaning the elemental
+       rework left behind: burn/root/thorn DoT and element collisions still
+       read the LEGACY T1 stats (power/agility/mind/vitality), which are
+       frozen fossils for migrated veterans and 0 for every fresh prog3
+       character.  Each point = +1 effective "power" in those exact legacy
+       formulas via elemAttackStat (elemental.js) — burn 5+P×0.3/tick,
+       collision base+P×coeff.  BODY (not ATK) per the owner's own split:
+       elemental power describes the character, not the thing in hand — and
+       it is deliberately the one offense buyable with any lane's points.
+       Endgame fade is structural (no tierMult in the DoT formulas); if it
+       dies late, the dial is tier-coupling in a SEPARATE lockstep PR. */
+    elem:    { cap: 75,  per: 1 },      // +1 elemental power/pt → 75
   },
   ATK: {
     crit:    { cap: 75,  per: 0.004 },  // +0.4%/pt → 30%, PER TYPE
-    critDmg: { cap: 100, per: 2 },      // +2 flat on crits/pt → +200, PER TYPE
+    /* v2.3.2199: critDmg becomes a PERCENT on the 1.5× multiplier (+1%/pt,
+       ×2.5 at the 100-pt cap), REVERSING v2.3.1659's "flat, not %, for the
+       §7 anti-compounding reason" — owner-approved in the 3-points balance
+       pass.  The flat +2 was monstrous early (+200 vs a ~26-damage swing at
+       char 13) and rounding error at endgame; a percent survives gear
+       scaling, and the compounding worry is bounded by the ×2.5 hard
+       ceiling.  Invested points KEEP their count — semantics change only,
+       no refund.  Roll + anticheat ceiling (combat.js) + client display
+       (calcDisplayDps, gated on caps.prog3x) all moved in this commit. */
+    critDmg: { cap: 100, per: 0.01 },   // +1% crit damage/pt → ×2.5, PER TYPE
     aspd:    { cap: 100, per: 0.0035 }, // −0.35% swing period/pt → −35%, PER TYPE
     // aspd note: 600ms base × 0.65 × the 0.7 lag headroom = 273ms >
     // the 210ms server cadence floor (combat.js), so the existing
     // floor already covers a maxed prog3 build.  If the per-point
     // value ever grows past −50%, the floor must move in lockstep.
+    /* v2.3.2199: FLAT DAMAGE — the stat players asked for ("levels don't
+       feel strong" has a spend-side answer now).  +0.5/pt INSIDE the
+       (effBase + statTerm) sum, PRE-tierMult, so it scales with gear like
+       skill damage and never goes dead — but its RELATIVE value self-decays
+       as the skill term grows (strong early buy, the weak offense buy at
+       endgame; crit/aspd take over — see progression-v3.md §balance).
+       3 points = one skill level's damage term (1.5) with none of the
+       level's HP/mana/milestone side benefits.  Cap 75 (not 100): +37.5
+       max, ~¼ of a maxed skill term.  ANTICHEAT LOCKSTEP: _maxWeaponDmg
+       carries the same term, same commit. */
+    dmg:     { cap: 75,  per: 0.5 },    // +0.5 damage/pt → +37.5, PER TYPE
   },
   /* ═══ v2.3.1727: THE RETUNE PROGRESSION-REDESIGN #13 DEFERRED ═══
    * Owner, after judging: "The players who are level 13 do not feel
@@ -225,9 +267,9 @@ export function prog3XpRequired(level) {
   return Math.ceil(280 * Math.pow(1.16, Math.max(0, (level || 1) - 1)));
 }
 
-/* v2.3.1668: the global BODY allocation. */
+/* v2.3.1668: the global BODY allocation.  v2.3.2199: + elem. */
 export function prog3FreshAlloc() {
-  return { def: 0, hp: 0, dodge: 0, stam: 0 };
+  return { def: 0, hp: 0, dodge: 0, stam: 0, elem: 0 };
 }
 /* v2.3.1668: the per-combat-type OFFENSE allocation, one block per skill.
  * Object.create(null) is not needed here — the keys are OUR constants, not
@@ -235,7 +277,7 @@ export function prog3FreshAlloc() {
  * read site can index it without a presence check. */
 export function prog3FreshAtk() {
   const out = {};
-  for (const cat of PROG3.SKILLS) out[cat] = { crit: 0, critDmg: 0, aspd: 0 };
+  for (const cat of PROG3.SKILLS) out[cat] = { crit: 0, critDmg: 0, aspd: 0, dmg: 0 }; // v2.3.2199: + dmg
   return out;
 }
 /* Which table owns a stat name.  Returns null for anything unknown, which
@@ -258,6 +300,7 @@ export function prog3StatDef(stat) {
 export function prog3FromLegacy(src) {
   const clampLvl = (v) => Math.max(0, Math.min(100, Math.floor(Number(v) || 0)));
   const sk = {};
+  const poolBy = { sword: 0, bow: 0, staff: 0 };
   let pool = 0;
   for (const cat of PROG3.SKILLS) {
     const old = (src && src.weaponSkills && typeof src.weaponSkills === 'object')
@@ -266,13 +309,50 @@ export function prog3FromLegacy(src) {
     const level = Math.min(PROG3.LEVEL_CAP, oldLevel + 1);
     const xp = Math.max(0, Math.min(1e8, Number(old && old.xp) || 0));
     sk[cat] = { level, xp: level >= PROG3.LEVEL_CAP ? 0 : xp };
-    pool += oldLevel;
+    /* v2.3.2199: mint at the CURRENT rate and stamp the earning lane, so a
+       join-boundary heal (which lands with _v already at the constant and
+       therefore never sees migration v14) pays the new rate by
+       construction — miss this and a fail-open blob healed at join is
+       stranded at 1/level forever with no migration left to fix it. */
+    pool += oldLevel * PROG3.POINTS_PER_LEVEL;
+    poolBy[cat] = oldLevel * PROG3.POINTS_PER_LEVEL;
   }
+  /* The defense-skill carry stays a one-time UNCHANNELLED bonus (§3's
+     bonus-points pick, spendable anywhere) — it is not per-level minting
+     and does not triple. */
   pool += clampLvl(src && src.defenseSkill && src.defenseSkill.level);
   /* v2.3.1733: `ms` starts at 0 so a respecced veteran is paid every
      milestone bonus point they have already earned, once, on their next
      level-up or join (see _prog3GrantMilestones). */
-  return { sk, alloc: prog3FreshAlloc(), atk: prog3FreshAtk(), pool, ms: 0 };
+  return { sk, alloc: prog3FreshAlloc(), atk: prog3FreshAtk(), pool, poolBy, ms: 0, ppl: PROG3.POINTS_PER_LEVEL };
+}
+
+/* ═══ v2.3.2199: THE RETRO GRANT (migration v14) ═══
+ * Back-pays existing characters the difference between the old 1/level
+ * mint and POINTS_PER_LEVEL, so a veteran holds exactly what a fresh
+ * character reaching the same levels would: earned level-ups per skill
+ * ≡ level − 1 (levels are 1-based; the v10 respec's `pool += oldLevel`
+ * with `level = oldLevel + 1` is the same convention).  Stamped into
+ * poolBy per the earning skill — pool and Σ poolBy grow by the same
+ * amount, so the sanitizer's parts-≤-whole invariant is preserved.
+ * Idempotent via the `ppl` rate stamp; pure and blob-shaped, shared by
+ * migration v14 (stored blobs) AND the _sanitizeProg3 boundary heal
+ * (fail-open blobs), the prog3SplitAtk pattern.  Max legitimate unspent
+ * pool is now ~992 (3×297 + defense carry ≤100 + the milestone point) —
+ * still under the sanitizer's 999 clamp, barely; that clamp is load-
+ * bearing headroom now, don't repurpose it. */
+export function prog3GrantRetroPoints(p3) {
+  if (!p3 || typeof p3 !== 'object' || !p3.sk || typeof p3.sk !== 'object') return false;
+  if (Number(p3.ppl) >= PROG3.POINTS_PER_LEVEL) return false;
+  if (!p3.poolBy || typeof p3.poolBy !== 'object') p3.poolBy = { sword: 0, bow: 0, staff: 0 };
+  for (const cat of PROG3.SKILLS) {
+    const lvl = Math.max(1, Math.min(PROG3.LEVEL_CAP, Math.floor(Number(p3.sk[cat] && p3.sk[cat].level) || 1)));
+    const grant = (PROG3.POINTS_PER_LEVEL - 1) * (lvl - 1);
+    p3.pool = Math.min(999, Math.max(0, Math.floor(Number(p3.pool) || 0)) + grant);
+    p3.poolBy[cat] = Math.min(999, Math.max(0, Math.floor(Number(p3.poolBy[cat]) || 0)) + grant);
+  }
+  p3.ppl = PROG3.POINTS_PER_LEVEL;
+  return true;
 }
 
 /* v2.3.1668: fold a v10-shaped prog3 (one global alloc holding all seven
@@ -373,6 +453,32 @@ export const prog3Methods = {
        infinite one.  Bounded by the char-level cap. */
     const ms = Number(src.ms);
     if (Number.isFinite(ms) && ms > 0) out.ms = Math.min(PROG3.CHAR_LEVEL_CAP, Math.floor(ms));
+    /* v2.3.2199 BOUNDARY HEAL (the prog3SplitAtk pattern above).  `ppl` is
+       the points-per-level rate this blob was granted at; the fresh shape
+       from prog3FromLegacy(null) carries the CURRENT constant, so it must
+       be overwritten from the source FIRST — a pre-v14 blob has no `ppl`
+       (rate 1) and keeping the fresh shape's stamp would mark it paid
+       without paying it.  Then the retro grant runs here too, because
+       migrations FAIL OPEN: a blob that skipped v14 gets its back-pay on
+       the next sanitize instead of never.  Idempotent via the stamp, and
+       like `ms` above the stamp MUST survive sanitizing or every join
+       would re-pay the grant — a dropped field is how a one-time grant
+       becomes an infinite one. */
+    const ppl = Number(src.ppl);
+    out.ppl = (Number.isFinite(ppl) && ppl >= 1) ? Math.min(PROG3.POINTS_PER_LEVEL, Math.floor(ppl)) : 1;
+    prog3GrantRetroPoints(out);
+    /* Re-run the parts-≤-whole clamp: the grant grows pool and poolBy by
+       the same amounts, but its 999 pool ceiling can bind on a forged
+       near-999 blob while the per-lane adds don't, and then the block
+       above has already run.  Never let the parts exceed the whole. */
+    {
+      let sum = PROG3.SKILLS.reduce((n, c) => n + out.poolBy[c], 0);
+      for (const cat of PROG3.SKILLS) {
+        if (sum <= out.pool) break;
+        const take = Math.min(sum - out.pool, out.poolBy[cat]);
+        out.poolBy[cat] -= take; sum -= take;
+      }
+    }
     return out;
   },
 
@@ -513,10 +619,11 @@ export const prog3Methods = {
     while (sk.level < PROG3.LEVEL_CAP && sk.xp >= prog3XpRequired(sk.level)) {
       sk.xp -= prog3XpRequired(sk.level);
       sk.level++;
-      p3.pool++;
-      /* v2.3.2176: and the point remembers WHICH skill earned it. */
+      /* v2.3.2199: 3 per level (POINTS_PER_LEVEL), was 1. */
+      p3.pool += PROG3.POINTS_PER_LEVEL;
+      /* v2.3.2176: and the points remember WHICH skill earned them. */
       if (!p3.poolBy || typeof p3.poolBy !== 'object') p3.poolBy = { sword: 0, bow: 0, staff: 0 };
-      p3.poolBy[cat] = (Number(p3.poolBy[cat]) || 0) + 1;
+      p3.poolBy[cat] = (Number(p3.poolBy[cat]) || 0) + PROG3.POINTS_PER_LEVEL;
       gained++;
     }
     if (sk.level >= PROG3.LEVEL_CAP) sk.xp = 0;
@@ -620,7 +727,7 @@ export const prog3Methods = {
       if (chan(cat) < 1 && anyPts < 1) return;
       from = cat;
       if (!p3.atk || typeof p3.atk !== 'object') p3.atk = prog3FreshAtk();
-      if (!p3.atk[cat] || typeof p3.atk[cat] !== 'object') p3.atk[cat] = { crit: 0, critDmg: 0, aspd: 0 };
+      if (!p3.atk[cat] || typeof p3.atk[cat] !== 'object') p3.atk[cat] = { crit: 0, critDmg: 0, aspd: 0, dmg: 0 }; // v2.3.2199: + dmg
       cur = (typeof p3.atk[cat][stat] === 'number') ? p3.atk[cat][stat] : 0;
       if (cur >= cap) return;
       apply = () => { p3.atk[cat][stat] = cur + 1; return { stat, cat, pts: cur + 1 }; };

@@ -2077,10 +2077,31 @@ input{font-family:inherit}
    below the welcome modal (9999, already dismissed by this point). */
 .bt-intro{position:fixed;inset:0;z-index:100;background:#000;display:flex;align-items:center;justify-content:center;opacity:1;transition:opacity 1s ease-in}
 .bt-intro--fading{opacity:0}
-/* v2.3.832: cover (was contain) — the landscape reef clip was letterboxed
-   with black bars on portrait phones; cover fills the whole screen and the
-   LOADING caption sits on top of it. */
-.bt-intro video{width:100%;height:100%;object-fit:cover}
+/* ═══ v2.3.2199: contain, BECAUSE THE BAR IS PAINTED INTO THE FILM ═══
+   Owner: "on the web app view the ocean screen loading bar gets clipped."
+
+   v2.3.832 chose `cover` and its note says exactly why: "the LANDSCAPE reef
+   clip was letterboxed with black bars on portrait phones; cover fills the
+   whole screen and the LOADING caption SITS ON TOP OF IT."  Both halves of
+   that reasoning expired at v2.3.1220, which swapped in the owner's PORTRAIT
+   400x736 "washed ashore" clip and — that version's own note — dropped the JS
+   overlay "because it carries its OWN LOADING caption + bar in the art."  So
+   the caption stopped sitting on top of the film and became part of it, while
+   the crop that `cover` performs stayed.  Cropping a frame whose bottom strip
+   IS the progress bar cuts the bar.
+
+   The arithmetic, on the clip's real 400x736: `cover` scales by whichever
+   axis needs more and throws the rest away.  Any viewport wider in aspect
+   than 400:736 (0.543) — a desktop window, a rotated phone — scales by WIDTH
+   and crops top and bottom, and the bar lives near the bottom.  At 1000x780
+   that is 530px cropped off each end of a 1840px-tall render: the bar is not
+   clipped, it is gone.
+
+   `contain` shows the whole frame always.  The letterbox that argument was
+   worried about lands on .bt-intro's own #000, so on a portrait phone
+   (390x844 -> a 390x718 render) it is 63px of black on black that nobody can
+   see, and on a wide window it is an honest centred portrait card. */
+.bt-intro video{width:100%;height:100%;object-fit:contain}
 .bt-intro__loading{position:absolute;bottom:28px;left:0;right:0;text-align:center;color:rgba(255,255,255,.82);font-family:'Source Sans 3',sans-serif;font-size:13px;font-weight:700;letter-spacing:1px;text-shadow:0 1px 3px #000;animation:bt-intro-pulse 1.1s ease-in-out infinite}
 @keyframes bt-intro-pulse{0%,100%{opacity:.4}50%{opacity:1}}
 /* v2.3.831: loading-screen caption + progress bar. */
