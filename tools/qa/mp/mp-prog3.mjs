@@ -334,4 +334,63 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!cardText && /Melee/i.test(cardText.aria), cardText);
 
   await P.ctx.close().catch(() => {});
+
+  /* ═══ v2.3.2214: AND ALL OF THAT, ON A PHONE ═══
+     Everything above runs on THIS scenario's player, which takes the
+     harness's default 1000x780 viewport. That is why the fold assertions
+     passed while the screen was broken: v2.3.2199 added the dmg and elem
+     stats, taking the open lane from 7 rows to 9, and at 390x844 the ninth
+     -- ELEM POWER -- rendered at y 829..851 against a viewport ending at
+     844. Off the bottom of the screen, on the primary platform, and green
+     in CI.
+
+     A desktop-sized check of a phone layout is not a check. So the property
+     that actually protects the player -- every control of the OPEN lane is
+     fully reachable without scrolling -- is re-measured here at real device
+     sizes, and 375x667 is in the list deliberately: it is the smallest phone
+     the game supports, the section gets 187px there instead of 191, and the
+     first fix for this bug passed at 390x844 with one pixel to spare while
+     still clipping the SE. One viewport is how this shipped; one MORE
+     viewport would have shipped it again. */
+  for (const [w, h] of [[390, 844], [375, 667], [430, 932]]) {
+    const M = await H.newPlayer(browser, { name: `Fit${w}`, wsPort, webPort,
+      viewport: { width: w, height: h }, touch: true });
+    await H.enterWorld(M);
+    await M.page.waitForTimeout(2200);
+    await M.page.locator('[aria-label="Hero"], [aria-label^="Hero"]').first()
+      .click({ timeout: 8000 }).catch(() => {});
+    await M.page.waitForTimeout(600);
+    await M.page.locator('[aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]').first()
+      .click({ timeout: 8000 }).catch(() => {});
+    await M.page.waitForTimeout(700);
+    const fitPhone = await M.page.evaluate(() => {
+      const btn = document.querySelector('[aria-label*="Crit"], [aria-label*="Defense"]');
+      if (!btn) return { err: 'no stat cell found' };
+      let el = btn.parentElement;
+      while (el && getComputedStyle(el).overflowY !== 'auto') el = el.parentElement;
+      if (!el) return { err: 'no scroll container' };
+      const box = el.getBoundingClientRect();
+      const vh = window.innerHeight;
+      /* The floor is whichever comes first: the panel's own bottom edge, or
+         the bottom of the screen. Measuring only against the panel is how a
+         control that hangs off the phone still reads as "in view". */
+      const floor = Math.min(box.bottom, vh);
+      const cells = [...document.querySelectorAll('[role="button"][aria-label*=" of "]')];
+      const clipped = cells
+        .filter((c) => c.getBoundingClientRect().bottom > floor + 1)
+        .map((c) => (c.getAttribute('aria-label') || '').split(',')[0]);
+      const last = cells.reduce((m, c) => Math.max(m, c.getBoundingClientRect().bottom), 0);
+      return { cells: cells.length, clipped, margin: Math.round(floor - last),
+        panel: Math.round(box.height) };
+    });
+    rec.ok(`${w}x${h}: the open lane's ${STAT_ROWS} controls are all there (guard)`,
+      !fitPhone.err && fitPhone.cells === STAT_ROWS, fitPhone);
+    rec.ok(`${w}x${h}: ...and none of them is drawn past the bottom of the screen`,
+      !fitPhone.err && fitPhone.clipped.length === 0, fitPhone);
+    /* Not just "it fits" -- it must fit with room, because "fits exactly"
+       is what the previous version of this layout did on one phone. */
+    rec.ok(`${w}x${h}: ...with real room under the last one, not a hair (${fitPhone.margin}px)`,
+      !fitPhone.err && fitPhone.margin >= 4, fitPhone);
+    await M.ctx.close().catch(() => {});
+  }
 }
