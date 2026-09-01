@@ -1169,8 +1169,25 @@ export const BottomDashboard = () => {
         /* v2.3.2157: sideways the band NEVER grows -- expanded content
            lives in the side sheet, and a band that grew would cover the
            world the owner asked to keep playing in. */
+        /* ═══ v2.3.2198: THE EXPANDED SHEET PAYS THE INSET TOO ═══
+           Owner, on the installed web app: "none of the other menus sit
+           right.  Portrait mode."
+
+           The resting band is `var(--dash-h)`, which since v2.3.2178
+           INCLUDES the home-indicator inset.  The expanded snap is a plain
+           pixel number that does not -- while this element pays
+           `paddingBottom: var(--sab)` in both states.  So on an installed
+           phone, opening a destination made the sheet SHRINK by the inset
+           (measured: band 277 resting, 243 expanded) and its top edge DROP
+           by the same 34px, which is the gap under the gold row in the
+           owner's screenshot.  Expanding must never take room away.
+
+           Zero in a browser tab, which is exactly why every headless run
+           and every desktop check missed it -- the same blind spot, in the
+           same arithmetic, that v2.3.2178's note describes. */
         height: land ? 'var(--dash-h)'
-          : mode === 'expanded' ? (stack.length > 1 ? snapPx.drill : snapPx.expanded) + 'px' /* v2.3.1311e: drill = taller */
+          : mode === 'expanded'
+            ? `calc(${stack.length > 1 ? snapPx.drill : snapPx.expanded}px + var(--sab, 0px))` /* v2.3.1311e: drill = taller */
           : 'var(--dash-h)',
         transition: sheetTransition(),
         /* v2.3.1240: surface, rounded top edge, and crisp contact shadow
@@ -1257,7 +1274,18 @@ export const BottomDashboard = () => {
               the toolbar row — the 44px drill header that used to stack on
               top of it has moved into that row.  One overlay, one
               reservation. */}
-          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', marginTop: 'calc(var(--dash-h, 145px) - var(--cols-h, 93px))' }}>
+          {/* v2.3.2198: MINUS --sab.  This reserves the absolute nav row
+              pinned at the band's top, and that row's own height is
+              `--dash-h - --cols-h - --sab` (see it, ~60 lines below).  This
+              line kept the v2.3.1922 subtraction as it was, so once
+              v2.3.2178 folded the home-indicator inset into --dash-h the
+              reservation and the thing it reserves disagreed by exactly the
+              inset -- and since the sheet ALSO pays it as paddingBottom, the
+              inset was charged twice.  That is the same failure v2.3.1922
+              wrote up as "the band paid for the toolbar TWICE", arriving by
+              a new road: 34px of dead space above every panel on an
+              installed phone, and 34px of panel falling off the bottom. */}
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', marginTop: 'calc(var(--dash-h, 145px) - var(--cols-h, 93px) - var(--sab, 0px))' }}>
             {Active && <Active />}
           </div>
         </>
