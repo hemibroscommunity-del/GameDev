@@ -24,7 +24,7 @@ import { t2ReplayFlat as _replay } from '../src/data.js';
 /* v2.3.1812: the fodder-tell assertions read the kit numbers directly —
    pinning "slowest wind-up / no damage spike / rare" against the other
    kits is what keeps the owner's trade honest if anyone retunes one. */
-import { TELEGRAPH } from '../src/telegraph.js';
+import { TELEGRAPH, BASIC_WINDUP, basicWindupMs } from '../src/telegraph.js';
 
 const mockState = {
   storage: {
@@ -45,6 +45,24 @@ function fakeWs(label) {
 }
 function msgsOfType(ws, type) { return ws.sent.filter((m) => m.type === type); }
 
+/* ═══ v2.3.2215: basic attacks are stamp-then-resolve ═══
+   A swing now takes two passes -- one stamps the wind-up, the next lands
+   it -- so a test that drives a single tick and expects damage is testing
+   the wind-up, not the hit.  These two helpers keep every assertion below
+   about what it was always about.
+
+   clearWindup() belongs beside the atkCd/_projImpactAt resets it is bolted
+   onto: several archetypes here are RANGED, so an earlier tick can leave a
+   THROW wind-up in flight, and without clearing it the next tick resolves
+   that throw instead of the melee swing under test.
+
+   landSwing() forces the wind-up elapsed exactly the way the telegraph
+   block forces _tgUntil.  It cannot manufacture an attack -- a monster
+   that never stamped one (stunned, frozen, out of range, on cooldown) has
+   no _bwUntil to expire -- so negative assertions stay honest. */
+const clearWindup = (m) => { if (m) { m._bwUntil = 0; m._bwTarget = null; m._bwKind = null; } };
+const landWindup = (m) => { if (m && m._bwUntil) m._bwUntil = Date.now() - 1; };
+
 let failures = 0;
 /* v2.3.1812: a monster armed for a BASIC SWING, explicitly.
    Fodder gained a wind-up in this version (server/src/telegraph.js), so a
@@ -56,6 +74,10 @@ let failures = 0;
 function basicSwingOnly(m) {
   m._tgPhase = null; m._tgUntil = 0; m._tgAim = null; m._tgTarget = null;
   m._tgNextAt = Date.now() + 1e9;
+  /* v2.3.2215: and any pending basic wind-up — several archetypes here are
+     RANGED, so an earlier tick can leave a THROW in flight that would
+     resolve instead of the swing this helper exists to isolate. */
+  m._bwUntil = 0; m._bwTarget = null; m._bwKind = null;
   return m;
 }
 function check(name, cond, detail) {
@@ -541,12 +563,13 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   const _thornsFlat = psA.t2Flat.defense.thorns;
   const tm = meadowMonsters[3];
   tm.alive = true; tm.hp = _thornsFlat; tm.maxHp = _thornsFlat; tm.dmg = 40; tm.dmgByPlayer = {};
-  tm.statuses = undefined; tm.atkCd = 0; tm._attackingUntil = 0; tm._wanderPausedUntil = 0;
+  tm.statuses = undefined; tm.atkCd = 0; tm._attackingUntil = 0; tm._wanderPausedUntil = 0; clearWindup(tm);
   basicSwingOnly(tm);                   /* v2.3.1812: thorns rides the SWING's block branch */
   tm.x = 3000; tm.y = 3000; tm.spawnX = 3000; tm.spawnY = 3000;
   psA.x = 3000; psA.y = 3000;
   room.eventBuffer.length = 0;
   room._tickMonsters();
+  landWindup(tm); room._tickMonsters();   /* v2.3.2215: thorns fires at IMPACT, one pass later */
   const th = room.eventBuffer.find((e) => e.type === 'monster_hit' && e.payload.thorns);
   const tk = room.eventBuffer.find((e) => e.type === 'monster_kill' && e.payload.monsterId === tm.id);
   check('thorns: banked payback lands and the lethal reflect kills through the shared pipeline',
@@ -1475,10 +1498,11 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     for (const other of frost) { if (other !== sm) { other.x = 9000; other.y = 9000; } }
     /* 200px: past the 100px minRange, inside the 300px range. */
     sm.alive = true; sm.hp = sm.maxHp || 50; sm.x = psB.x + 200; sm.y = psB.y;
-    sm.atkCd = 0; sm._projImpactAt = 0; sm.statuses = undefined;
+    sm.atkCd = 0; sm._projImpactAt = 0; sm.statuses = undefined; clearWindup(sm);
 
     room.eventBuffer.length = 0;
     room._tickMonsters();
+    landWindup(sm); room._tickMonsters();   /* v2.3.2215: pre-release cue, then the ball */
     const thrown = room.eventBuffer.filter((e) => e.type === 'monster_projectile');
     check('a blocking player still gets thrown at', thrown.length >= 1,
       { thrown: thrown.length, types: room.eventBuffer.map((e) => e.type) });
@@ -1529,10 +1553,11 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
       for (const other of room.monsters.frost) { if (other !== smE) { other.x = 9000; other.y = 9000; } }
       smE.alive = true; smE.hp = smE.maxHp || 50;
       const throwsAt = () => {
-        smE.x = psE.x + 200; smE.y = psE.y; smE.atkCd = 0; smE._projImpactAt = 0;
+        smE.x = psE.x + 200; smE.y = psE.y; smE.atkCd = 0; smE._projImpactAt = 0; clearWindup(smE);
         smE.targetId = null; smE._aggroOverrideTarget = null; smE._aggroOverrideUntil = 0;
         room.eventBuffer.length = 0;
         room._tickMonsters();
+        landWindup(smE); room._tickMonsters();   /* v2.3.2215: the throw has a pre-release cue now */
         return room.eventBuffer.filter((e) => e.type === 'monster_projectile').length;
       };
 
@@ -1557,7 +1582,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
       /* Sticky aggro (a bow-snipe) must not drag the monster over either. */
       startRec();
       smE._aggroOverrideTarget = 'pa'; smE._aggroOverrideUntil = Date.now() + 10000;
-      smE.x = psE.x + 200; smE.y = psE.y; smE.atkCd = 0; smE._projImpactAt = 0; smE.targetId = null;
+      smE.x = psE.x + 200; smE.y = psE.y; smE.atkCd = 0; smE._projImpactAt = 0; smE.targetId = null; clearWindup(smE);
       room.eventBuffer.length = 0;
       room._tickMonsters();
       check('...and a sticky bow-snipe aggro is DROPPED, not parked, on a harvester',
@@ -1862,11 +1887,12 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   mm.x = psA.x + 20; mm.y = psA.y;       /* due EAST, well inside melee reach */
 
   const swing = () => {
-    mm.atkCd = 0; mm._attackingUntil = 0;
+    mm.atkCd = 0; mm._attackingUntil = 0; clearWindup(mm);
     basicSwingOnly(mm);                  /* v2.3.1812: these three are about the SWING's arc */
     mm.x = psA.x + 20; mm.y = psA.y;     /* re-park: the chase step moves it */
     room.eventBuffer.length = 0;
     room._tickMonsters();
+    landWindup(mm); room._tickMonsters();   /* v2.3.2215: wind-up, then the blow */
     return room.eventBuffer.filter((e) => e.type === 'monster_attack' && e.payload.targetId === 'pa')[0];
   };
 
@@ -1920,11 +1946,14 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   const armBrute = () => {
     tm.alive = true; tm.arch = 'brute'; tm.maxHp = 5000; tm.hp = 5000;
     tm.statuses = {}; tm.dmg = 20; tm.respawnAt = 0;
-    tm.atkCd = 0; tm._attackingUntil = 0;
+    tm.atkCd = 0; tm._attackingUntil = 0; clearWindup(tm);
     tm._tgPhase = null; tm._tgUntil = 0; tm._tgAim = null; tm._tgNextAt = 0;
     tm.x = psA.x + 20; tm.y = psA.y;
   };
   const tick = () => { room.eventBuffer.length = 0; room._tickMonsters(); };
+  /* v2.3.2215: a second pass that KEEPS the buffer, so an assertion can see
+     the wind-up cue and the blow that followed it in one window. */
+  const tick2 = () => { room._tickMonsters(); };
   const abilities = () => room.eventBuffer.filter((e) => e.type === 'monster_ability');
   const attacks = () => room.eventBuffer.filter((e) => e.type === 'monster_attack' && e.payload.targetId === 'pa');
 
@@ -2021,8 +2050,103 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   armBrute();
   tm.arch = 'swarm';
   tick();
-  check('telegraph: swarm still does NOT wind up (N at once would be noise)',
-    abilities().length === 0, abilities().map((e) => e.payload));
+  /* v2.3.2215: narrowed from "emits nothing at all" to "emits no signature
+     CAST", because every archetype now carries the universal basic wind-up.
+     The value this assertion protects is unchanged -- swarm must not get a
+     kit -- and the noise argument above is exactly why swarm was given the
+     SHORTEST basic wind-up in the table, pinned below so a future retune
+     cannot quietly make a pack of them the loudest thing on screen. */
+  check('telegraph: swarm still gets no signature CAST (N at once would be noise)',
+    abilities().filter((e) => e.payload.phase === 'telegraph').length === 0,
+    abilities().map((e) => e.payload));
+  check('telegraph: ...and swarm carries the SHORTEST basic wind-up',
+    basicWindupMs('swarm') === Math.min(...Object.keys(BASIC_WINDUP.MS)
+      .filter((k) => k !== 'DEFAULT').map((k) => BASIC_WINDUP.MS[k])),
+    { swarm: basicWindupMs('swarm'), table: BASIC_WINDUP.MS });
+
+  /* ═══ v2.3.2215: EVERY BASIC ATTACK HAS A WIND-UP ═══
+     The kits above cover three archetypes on a multi-second cooldown; the
+     ordinary swing every monster throws every 1.5s used to decide AND land
+     inside one 22ms tick.  That is the mechanical half of the owner's
+     "floaty" report: damage arriving with nothing in front of it cannot be
+     read, blocked on reaction, or learned from.
+
+     These pin the same fairness properties the kits have, because a tell
+     that damages during the wind-up, never whiffs, or hands the monster
+     extra DPS is worse than no tell at all. */
+  {
+    const bw = () => abilities().filter((e) => e.payload.phase === 'windup');
+    armBrute(); basicSwingOnly(tm);      /* no kit — this is about the plain swing */
+    const hpBefore = psA.hp;
+    tick();
+    const cue = bw()[0];
+    check('windup: an ordinary swing announces itself first',
+      !!cue && cue.payload.ability === 'swing' && cue.payload.ms > 0, cue && cue.payload);
+    /* A second pass WITHOUT expiring the tell.  Asserting "no damage in the
+       tick that stamped it" would be worthless -- the stamp returns early,
+       so that holds even for a zero-length wind-up.  Ticking again while the
+       tell is still running is what actually catches one that resolves
+       instantly (verified: it fails when the wind-up length is sabotaged). */
+    tick2();
+    check('windup: ...and nothing lands while the tell is still running',
+      psA.hp === hpBefore && attacks().length === 0,
+      { hp: psA.hp, before: hpBefore, atks: attacks().length });
+    /* The duration band, asserted rather than described: above the parry
+       window (or reacting could not work) and below the signature kits (or
+       a jab reads like a slam). */
+    const kitMin = Math.min(...Object.keys(TELEGRAPH.KITS).map((a) => TELEGRAPH.KITS[a].windupMs));
+    check('windup: every archetype sits above the parry window and below the kits',
+      Object.keys(BASIC_WINDUP.MS).every((k) => BASIC_WINDUP.MS[k] > 250 && BASIC_WINDUP.MS[k] < kitMin),
+      { table: BASIC_WINDUP.MS, kitMin });
+
+    landWindup(tm); tick2();
+    check('windup: standing still, the blow lands', psA.hp < hpBefore, { before: hpBefore, after: psA.hp });
+
+    /* ── THE WHIFF: walking out during the tell ── */
+    armBrute(); basicSwingOnly(tm);
+    tick();                              /* stamps the wind-up */
+    psA.x = 3000; psA.y = 3000;          /* leave, the way a player would */
+    const hpAway = psA.hp;
+    landWindup(tm); tick2();
+    check('windup: walking out during the tell WHIFFS (no damage, no event)',
+      psA.hp === hpAway && attacks().length === 0,
+      { before: hpAway, after: psA.hp, atks: attacks().length });
+    psA.x = 500; psA.y = 500;
+
+    /* ── a shield raised DURING the tell counts.  This is the whole reason
+       block/parry moved to impact time rather than decision time. ── */
+    armBrute(); basicSwingOnly(tm);
+    psA.blocking = false; psA.ba = null;
+    tick();                              /* wind-up starts with no shield up */
+    psA.blocking = true; psA.ba = 0;     /* ...raised in response to the tell */
+    const hpGuard = psA.hp;
+    landWindup(tm); tick2();
+    const guarded = attacks()[0];
+    check('windup: a shield raised DURING the tell still blocks',
+      !!guarded && guarded.payload.blocked === true && psA.hp === hpGuard,
+      guarded && guarded.payload);
+    psA.blocking = false; psA.ba = null;
+
+    /* ── NO FREE DPS.  The wind-up is spent INSIDE the existing cadence,
+       not added to it; getting this backwards would nerf every monster in
+       the game by a third while looking like a presentation change. ── */
+    armBrute(); basicSwingOnly(tm);
+    const t0 = Date.now();
+    tick();
+    check('windup: the cooldown is stamped at the START, so the cycle does not grow',
+      tm.atkCd >= t0 + room.MONSTER_ATTACK_CD - 100 && tm.atkCd <= Date.now() + room.MONSTER_ATTACK_CD,
+      { stampedAfter: tm.atkCd - t0, cd: room.MONSTER_ATTACK_CD });
+
+    /* ── cancelling it (what Shield Bash and a parry do) lands nothing ── */
+    armBrute(); basicSwingOnly(tm);
+    tick();
+    check('windup: a swing is pending mid-tell', tm._bwUntil > 0, tm._bwUntil);
+    tm._bwUntil = 0; tm._bwTarget = null; tm._bwKind = null;   /* the cancel */
+    const hpStun = psA.hp;
+    tick2();
+    check('windup: a cancelled wind-up lands nothing',
+      psA.hp === hpStun && attacks().length === 0, { before: hpStun, after: psA.hp });
+  }
 
   saved.forEach(({ m, alive, respawnAt, arch }) => { m.alive = alive; m.respawnAt = respawnAt; m.arch = arch; });
   psB.z = 'meadow';
@@ -2057,11 +2181,20 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   const armFodder = () => {
     pm.alive = true; pm.arch = 'fodder'; pm.maxHp = 5000; pm.hp = 5000;
     pm.statuses = {}; pm.dmg = 20; pm.respawnAt = 0;
-    pm.atkCd = 0; pm._attackingUntil = 0;
+    pm.atkCd = 0; pm._attackingUntil = 0; clearWindup(pm);
     basicSwingOnly(pm);                /* see above — load-bearing */
     pm.x = psA.x + 20; pm.y = psA.y;
   };
-  const tick = () => { room.eventBuffer.length = 0; room._tickMonsters(); };
+  /* v2.3.2215: block and parry are evaluated at IMPACT now, so this tick
+     helper drives the whole swing -- wind-up, then blow.  That is exactly
+     the property under test here: a shield raised DURING the tell counts,
+     because the arc and the parry window are read when the blow lands
+     rather than when the monster decided to throw it. */
+  const tick = () => {
+    room.eventBuffer.length = 0;
+    room._tickMonsters();
+    landWindup(pm); room._tickMonsters();
+  };
   const atk = () => room.eventBuffer.filter((e) => e.type === 'monster_attack' && e.payload.targetId === 'pa')[0];
   const parries = () => room.eventBuffer.filter((e) => e.type === 'parry');
 
@@ -2118,7 +2251,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   const armCast = () => {
     pm.alive = true; pm.arch = 'fodder'; pm.maxHp = 5000; pm.hp = 5000;
     pm.statuses = {}; pm.dmg = 20; pm.respawnAt = 0;
-    pm.atkCd = 0; pm._attackingUntil = 0;
+    pm.atkCd = 0; pm._attackingUntil = 0; clearWindup(pm);
     pm.x = psA.x + 20; pm.y = psA.y;
     pm._tgPhase = 'telegraph';
     pm._tgUntil = Date.now() - 1;              /* wind-up already elapsed */

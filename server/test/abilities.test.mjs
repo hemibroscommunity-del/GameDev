@@ -309,6 +309,12 @@ const setCharLevel = (lvl) => {
   m.atkCd = 0; m._attackingUntil = 0; m._stunUntil = Date.now() + 800; noTelegraph();
   room.eventBuffer.length = 0;
   room._tickMonsters();
+  /* v2.3.2215: a basic swing is stamp-then-resolve now — one pass stamps the
+     wind-up, the next lands it.  Expiring _bwUntil cannot manufacture an
+     attack for a monster that never stamped one (a frozen or stunned monster
+     is gated out of STARTING a wind-up by ccMoveMult), so the negative
+     assertions below stay honest. */
+  if (m._bwUntil) { m._bwUntil = Date.now() - 1; room._tickMonsters(); }
   const stunnedAttacks = room.eventBuffer.filter((e) => e.type === 'monster_attack');
   check('a stunned monster does not attack', stunnedAttacks.length === 0,
     { attacks: stunnedAttacks.length });
@@ -317,6 +323,12 @@ const setCharLevel = (lvl) => {
   m.x = psA.x + 20; m.y = psA.y;
   room.eventBuffer.length = 0;
   room._tickMonsters();
+  /* v2.3.2215: a basic swing is stamp-then-resolve now — one pass stamps the
+     wind-up, the next lands it.  Expiring _bwUntil cannot manufacture an
+     attack for a monster that never stamped one (a frozen or stunned monster
+     is gated out of STARTING a wind-up by ccMoveMult), so the negative
+     assertions below stay honest. */
+  if (m._bwUntil) { m._bwUntil = Date.now() - 1; room._tickMonsters(); }
   const freeAttacks = room.eventBuffer.filter((e) => e.type === 'monster_attack');
   check('...the same monster with the stun cleared DOES attack (control)',
     freeAttacks.length > 0, { attacks: freeAttacks.length });

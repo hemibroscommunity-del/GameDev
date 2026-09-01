@@ -42,7 +42,9 @@ function slimeTintFor(variant, state) {
   if (variant && variant.recolor && hasRecoloredState(variant, state)) return 0xffffff;
   return (variant && variant.tint) || 0xffffff;
 }
-import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount as snowmanFrameCount, getHitFrame as getSnowmanHitFrame, hitFrameCount as snowmanHitFrameCount, getDeathFrame as getSnowmanDeathFrame, deathFrameCount as snowmanDeathFrameCount } from '../snowmanSprites.js';
+import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount as snowmanFrameCount, getHitFrame as getSnowmanHitFrame, hitFrameCount as snowmanHitFrameCount, getDeathFrame as getSnowmanDeathFrame, deathFrameCount as snowmanDeathFrameCount,
+  getAttackFrame as getSnowmanAttackFrame, attackFrameCount as snowmanAttackFrameCount /* v2.3.2215 */
+} from '../snowmanSprites.js';
 import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, maybeTransformMonster } from '../../data/monsterVariants.js';
 import { getDeathFrame as getPlayerDeathFrame, hasDeathSprites as hasPlayerDeathSprites, frameForElapsed as playerDeathFrameForElapsed } from '../playerDeathSprites.js';
@@ -6779,9 +6781,23 @@ export class EntityRenderer {
              oriented correctly. */
           const hitFc = snowmanHitFrameCount();
           const inHitWindow = m._hitAnimEnd && now < m._hitAnimEnd && hitFc > 0;
+          /* v2.3.2215: the snowball-throw wind-up.  Priority sits BELOW the
+             hit reaction (being struck interrupts the throw, which is what
+             the recoil is for) and above idle.  Frame index is elapsed /
+             duration across the whole wind-up so the throw reads at whatever
+             length the server chose, and getSnowmanAttackFrame clamps to the
+             last frame rather than looping — a throw that restarted
+             mid-wind-up would read as a stutter. */
+          const atkFc = snowmanAttackFrameCount(facing);
+          const inAtkWindow = !inHitWindow && m._shootAnimEnd && now < m._shootAnimEnd && atkFc > 0;
           let frameTex = null;
           let mirror = false;
-          if (inHitWindow) {
+          if (inAtkWindow) {
+            const adur = Math.max(1, m._shootAnimEnd - m._shootAnimStart);
+            const at = (now - m._shootAnimStart) / adur;
+            const aFrame = getSnowmanAttackFrame(facing, Math.floor(at * atkFc));
+            if (aFrame) { frameTex = aFrame.tex; mirror = aFrame.mirror; }
+          } else if (inHitWindow) {
             const dur = Math.max(1, m._hitAnimEnd - m._hitAnimStart);
             const t = (now - m._hitAnimStart) / dur;
             const idx = Math.max(0, Math.min(hitFc - 1, Math.floor(t * hitFc)));

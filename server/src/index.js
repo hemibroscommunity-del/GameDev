@@ -1554,6 +1554,10 @@ export class GameRoom {
                decides who owns the loot. */
             m.statuses = Object.create(null); // v2.3.1709: null-proto, rule 4
             m.dmgByPlayer = Object.create(null);
+            /* v2.3.2215: a wind-up must not survive death — a respawned
+               monster carrying _bwUntil would resolve a swing it started in
+               a previous life, at a target that is no longer there. */
+            m._bwUntil = 0; m._bwTarget = null; m._bwKind = null;
             // Revert any in-life variant transform (mummy -> skeleton)
             // so a respawned monster comes back in its original form
             // with the original spd.  Stamped at spawn time and
@@ -1621,6 +1625,10 @@ export class GameRoom {
            mid-cast used to strand the monster in a pending telegraph
            forever — see the note on _resolveMonsterTelegraph. */
         if (this._resolveMonsterTelegraph(zoneId, m, now)) continue;
+        /* v2.3.2215: and the basic swing's wind-up, for the same reason and
+           in the same place — before target acquisition, so a player who
+           walks away cannot strand a pending swing that fires stale later. */
+        if (this._resolveBasicWindup(zoneId, m, now)) continue;
 
         /* v2.3.1640: resolve an in-flight snowball.  Deliberately OUTSIDE
            the aggro branch and ahead of it — a thrown ball is already in
@@ -1864,43 +1872,12 @@ export class GameRoom {
                  harvester again for movement or telegraph reasons, the throw
                  must still not fire. */
               && !nearest.extracting) {
-            m.atkCd = now + _rangedCfg.cd;
-            m._attackingUntil = now + 400;
-            m._projImpactAt = now + _rangedCfg.travelMs;
-            m._projTargetId = nearest.id;
-            /* Where the ball is aimed.  Stored so the impact can MISS: the
-               ball flies to this point, not to wherever the player ends up,
-               which is what makes the 900ms telegraph mean something.
-               Without it the throw would be an undodgeable homing hit and
-               the slow readable arc would be pure decoration. */
-            m._projTx = nearest.x;
-            m._projTy = nearest.y;
-            /* Display-only event: it carries NO damage and the client
-               applies none.  The authoritative hit lands on the impact
-               tick via _monsterStrikePlayer.  Registered in
-               PRIVILEGED_EVENTS so a client can't forge incoming balls.
-               Deploy-order safe in both directions with no caps flag: an
-               OLD client ignores an unknown event type (its message
-               switch has no default side effects) and simply sees the
-               damage arrive as it always did, while a NEW client against
-               an OLD worker never receives one because the old worker
-               never throws. */
-            this.eventBuffer.push({
-              type: 'monster_projectile',
-              payload: {
-                monsterId: m.id,
-                /* v2.3.1678: the archetype decides the look.  A snowman
-                   throws a snowball; a slime spits an orb. */
-                kind: m.arch === 'snowman' ? 'snowball' : 'slime',
-                zone: zoneId,
-                x: m.x,
-                y: m.y,
-                tx: nearest.x,
-                ty: nearest.y,
-                travelMs: _rangedCfg.travelMs,
-              }
-            });
-            this._markMonsterDirty(zoneId, m.id);
+            /* v2.3.2215: the throw gets a short pre-release cue too, so the
+               arm going back reads before the ball exists.  The ball itself
+               (and its aim point, frozen at release) is created by
+               _resolveBasicWindup — travelMs remains the dodge window, this
+               just puts a tell in front of it. */
+            this._startBasicWindup(zoneId, m, nearest.id, now, 'throw', _rangedCfg.cd);
           }
 
           /* v2.3.1730: START a telegraphed ability (brute slam, stalker
@@ -1919,135 +1896,28 @@ export class GameRoom {
           // monsters can't swing either (client gates the whole AI
           // branch on moveMult > 0 -- mirror that here).
           if (attackDist <= _atkRange && now > m.atkCd && ccMoveMult > 0) {
-            // Don't fire damage events while the player is blocking — the
-            // client's monster_attack handler also computes block reduction,
-            // but that path was producing inconsistent block resolution
-            // (client snapshot of monster position can drift from server,
-            // making the directional arc test miss). Skipping the event
-            // entirely when the player has shield up gives reliable
-            // blocking. We still set atkCd so the monster doesn't keep
-            // queuing while the player blocks.
-            /* v2.3.1690 (owner: "monsters don't attack you while you're
-               extracting resources"): the swing is skipped outright, cooldown
-               still stamped so the monster does not queue one up for the
-               instant the swipe lands.  Placed ABOVE the blocking branch so a
-               harvester is left alone whether or not a shield happens to be
-               up.
-               v2.3.1704: like the throw gate above, this is now unreachable by
-               construction (harvesters are filtered out of aggro entirely) and
-               is kept as the second line of defence.  The line that actually
-               guarantees no damage is in _monsterStrikePlayer. */
+            /* v2.3.1690/1704: a harvester is left alone; cooldown still
+               stamped so the monster does not queue one up for the instant
+               the swipe lands.  (Unreachable by construction — extracting
+               players are filtered out of target acquisition — kept as the
+               second line of defence.) */
             if (nearest.extracting) {
               m.atkCd = now + this.MONSTER_ATTACK_CD;
               m._attackingUntil = 0;
               continue;
             }
-            /* v2.3.1726: arc-test the FULL record, not the slim projection.
-               `nearest` (built at the top of the tick, v2.3.1183) has no
-               `ba`, and _blockArcCovers deliberately fail-opens on a missing
-               facing — so this check, added as "directional" in v2.3.1705,
-               actually made every monster melee swing blockable from behind.
-               The owner's report was the symptom: "the shield blocks all
-               attacks from everywhere."  The full record is one map hit and
-               was already being fetched a few lines down for stamina. */
-            const blockerPs = this.playerState[nearest.id];
-            if (this._blockArcCovers(blockerPs, m.x, m.y)) { // v2.3.1705: directional; v2.3.1726: actually so
-              m.atkCd = now + this.MONSTER_ATTACK_CD;
-              m._attackingUntil = now + 400;
-              // Block cost: 15 stamina (mirrors client at BroTown.jsx:2663).
-              // Server is authoritative for stamina now, so deduct here
-              // and echo via player_state so the bar visibly drops.
-              // v2.3.1153: × Bulwark block-stamina efficiency (−1%/pt,
-              // cap −50%).  The exact cost rides the wire as
-              // staminaDrain below, so pre-fix clients render the
-              // discounted number correctly with zero client changes.
-              // v2.3.1704: free for the demo — see BLOCK_COSTS_STAMINA in data.js.
-              /* v2.3.1731: a shield RAISED IN TIME is a parry — costs
-                 nothing, pays stamina back, and staggers the swing. */
-              const _parried = this._parryOpen(blockerPs, now);
-              if (_parried) this._applyParry(zoneId, m, nearest.id, blockerPs, now);
-              /* v2.3.1731: 15 -> 10, and BLOCK_COSTS_STAMINA is ON again.
-                 Deliberately a per-BLOCKED-HIT cost and NOT a hold tax: a
-                 drain-while-held punishes the player who raises early and
-                 reads the fight, which is the exact behaviour v2.3.1730's
-                 wind-ups exist to teach.  Paying per hit absorbed still ends
-                 infinite turtling, because the hits are what drain you. */
-              const staminaCost = (BLOCK_COSTS_STAMINA && !_parried)
-                ? Math.max(1, Math.round(BLOCK_STAMINA_COST * this._blockStaminaMult(blockerPs)))
-                : 0;
-              if (staminaCost > 0 && blockerPs && typeof blockerPs.stamina === 'number') {
-                blockerPs.stamina = Math.max(0, blockerPs.stamina - staminaCost);
-                /* v2.3.1619b: stamina only -> coalesced (see
-                   _saveRpgPools).  This fires on the monster-attack
-                   cadence, so a player holding a shield in a fight was
-                   writing a full rpg blob every 1.5 s per engaged
-                   monster.  The wire is unchanged -- the flush below
-                   still runs every time, so the stamina bar drops
-                   exactly as before. */
-                this._saveRpgPools(nearest.id, blockerPs);
-                this._queuePlayerStateFlush(nearest.id);
-              }
-              // v2.3.1137: THORNS — reflect 1%/pt of the monster's attack
-              // back at it on every successful block (cap 50% at the
-              // defenseSpec clamp).  Server-owned: the reflect is
-              // authoritative damage, credited like any hit so a thorns
-              // kill pays XP/loot/quests through the shared pipeline.
-              // slot 'thorns' denies melee lifesteal exactly like 'dot'
-              // (you didn't swing — nothing to refund).
-              // v2.3.1659 (prog3): thorns is a dropped channel for
-              // respecced players — the stored points must not keep
-              // firing (the banked flat already reads 0 via _t2Flat's
-              // prog3 gate, but the trigger reads raw points).
-              const _thornsPts = (blockerPs && !blockerPs.prog3 && blockerPs.defenseSpec && blockerPs.defenseSpec.thorns) || 0;
-              if (_thornsPts > 0 && m.hp > 0) {
-                const reflect = Math.min(Math.max(0, m.hp),
-                  Math.max(1, this._t2Flat(blockerPs, 'defense', 'thorns'))); // v2.3.1451: bench-locked banked payback (was t2Accel)
-                m.hp -= reflect;
-                if (!m.dmgByPlayer) m.dmgByPlayer = Object.create(null); // v2.3.1202: player-id-keyed
-                m.dmgByPlayer[nearest.id] = (m.dmgByPlayer[nearest.id] || 0) + reflect;
-                this.eventBuffer.push({
-                  type: 'monster_hit',
-                  payload: {
-                    monsterId: m.id, zone: zoneId, dmg: reflect, isCrit: false,
-                    attackerId: nearest.id, thorns: true,
-                    hpPct: Math.max(0, m.hp / m.maxHp),
-                  },
-                });
-                this._markMonsterDirty(zoneId, m.id);
-                if (m.hp <= 0) {
-                  this._resolveMonsterKill(zoneId, m, nearest.id, blockerPs, 'thorns');
-                }
-              }
-              // Still emit a monster_attack event so the client can show
-              // the "Blocked!" popup + the stamina drain.  blocked: true
-              // tells the client to skip the HP-damage path entirely;
-              // staminaDrain rides on the wire so the floating number
-              // matches the exact server-side cost.
-              this.eventBuffer.push({
-                type: 'monster_attack',
-                payload: {
-                  monsterId: m.id,
-                  targetId: nearest.id,
-                  dmg: m.dmg,
-                  dmgTaken: 0,
-                  blocked: true,
-                  parried: _parried || undefined, /* v2.3.1731 */
-                  staminaDrain: staminaCost > 0 ? staminaCost : undefined, /* v2.3.1704: no 0 on the wire (the client pops it as "-0⚡") */
-                  zone: zoneId,
-                  attackerX: m.x,
-                  attackerY: m.y,
-                }
-              });
-              continue;
-            }
-            m.atkCd = now + this.MONSTER_ATTACK_CD;
-            m._attackingUntil = now + 400;
-            /* v2.3.1640: the damage half of a monster attack now lives in
-               _monsterStrikePlayer so the melee swing here and the ranged
-               snowball impact share ONE implementation.  attackerX/Y is the
-               melee monster's own position; the ranged path passes the impact
-               point instead (see the method for why that matters). */
-            this._monsterStrikePlayer(zoneId, m, nearest.id, m.x, m.y);
+            /* ═══ v2.3.2215: THE SWING NOW STARTS WITH A TELL ═══
+               This used to resolve block/parry/thorns/damage inline, in the
+               same tick the decision was made — a hit with no anticipation,
+               which is the mechanical half of the owner's "floaty" report.
+               It stamps a wind-up instead; _resolveBasicWindup (called
+               before aggro, above) re-measures and lands it.  The whole
+               resolution moved verbatim to _resolveBasicSwingHit, so the
+               block arc, the parry window, the stamina cost and the thorns
+               reflect are all evaluated at IMPACT — which is what lets a
+               player raise their shield DURING the tell and have it count. */
+            this._startBasicWindup(zoneId, m, nearest.id, now, 'swing', this.MONSTER_ATTACK_CD);
+            continue;
           }
         } else {
           // Idle wander -- pick a random target ~30-80 px from the
@@ -2341,6 +2211,12 @@ export class GameRoom {
   _applyParry(zoneId, m, pid, ps, now) {
     m.atkCd = Math.max(m.atkCd || 0, now + this.PARRY_STAGGER_MS);
     m._attackingUntil = 0;
+    /* v2.3.2215: defensive — a parry cannot leave a pending basic wind-up
+       primed to land after the stagger.  Unreachable today (a wind-up
+       stamps atkCd, which is the same gate a telegraph start respects, so
+       a monster never holds both), which is exactly why it is cheap to
+       keep honest here rather than rely on that staying true. */
+    if (m._bwUntil) { m._bwUntil = 0; m._bwTarget = null; m._bwKind = null; }
     if (m._tgPhase) {
       m._tgPhase = null; m._tgUntil = 0; m._tgAim = null; m._tgTarget = null;
       m._tgNextAt = now + this.PARRY_STAGGER_MS;

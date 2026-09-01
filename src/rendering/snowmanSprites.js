@@ -22,7 +22,7 @@ const FRAME_H = 128;
    edge cache) hold the previous PNG by URL, so swapping bytes alone
    isn't enough — the URL has to change.  Append as ?v=… so the file
    on disk keeps its pretty name. */
-const SPRITE_VERSION = '2.1.13';
+const SPRITE_VERSION = '2.1.14';   /* v2.3.2215: attack sheets added */
 
 const SOURCE_DIRS = ['south', 'southwest', 'east', 'north', 'northeast'];
 
@@ -39,6 +39,13 @@ const DIR_MAP = {
 };
 
 const SHEETS = {};   // sourceDir -> { frames: Texture[] }
+/* v2.3.2215: the snowball-throw wind-up, one strip per source facing —
+   the same 5 directions and the same DIR_MAP mirroring as the idle set,
+   so a west-facing throw is the east strip flipped exactly as its idle
+   is.  Kept in its own map rather than folded into SHEETS because a
+   facing may have an idle strip and no attack strip (the renderer falls
+   back to the idle pose rather than freezing on a missing frame). */
+const ATTACK_SHEETS = {};   // sourceDir -> { frames: Texture[] }
 /* Single-frame death-scene sprite — what's left on the ground after a
    snowman is killed.  Held as a bare Texture, not a sheet, because
    it never animates. */
@@ -72,6 +79,27 @@ async function loadOne(dir) {
     SHEETS[dir] = { frames };
   } catch {
     /* missing strip — caller falls back to procedural circle */
+  }
+}
+
+/* v2.3.2215: attack strip for one facing.  Silent on failure like
+   loadOne — a missing strip means the renderer keeps the idle pose, which
+   is how this shipped before the art existed. */
+async function loadAttack(dir) {
+  try {
+    const tex = await Assets.load(`/sprites/monsters/snowman/snowman-attack-${dirShort(dir)}.png?v=${SPRITE_VERSION}`);
+    if (!tex || !tex.source) return;
+    const count = Math.max(1, Math.floor((tex.source.width || tex.width || 0) / FRAME_W));
+    const frames = [];
+    for (let i = 0; i < count; i++) {
+      frames.push(new Texture({
+        source: tex.source,
+        frame: new Rectangle(i * FRAME_W, 0, FRAME_W, FRAME_H),
+      }));
+    }
+    ATTACK_SHEETS[dir] = { frames };
+  } catch {
+    /* missing strip — renderer holds the idle pose */
   }
 }
 
@@ -112,7 +140,11 @@ async function loadDeath() {
 
 export function loadSnowmanSprites() {
   if (loadPromise) return loadPromise;
-  loadPromise = Promise.all([...SOURCE_DIRS.map(loadOne), loadRemnants(), loadHit(), loadDeath()]);
+  loadPromise = Promise.all([
+    ...SOURCE_DIRS.map(loadOne),
+    ...SOURCE_DIRS.map(loadAttack),   /* v2.3.2215 */
+    loadRemnants(), loadHit(), loadDeath(),
+  ]);
   return loadPromise;
 }
 
@@ -161,6 +193,24 @@ export function getFrame(facing, frameIdx) {
 export function frameCount(facing) {
   const m = DIR_MAP[facing] || DIR_MAP.south;
   const sheet = SHEETS[m.src];
+  return (sheet && sheet.frames.length) || 0;
+}
+
+/* v2.3.2215: attack-strip lookup.  Same facing→(source, mirror) resolution
+   as getFrame, but the index is CLAMPED rather than wrapped: the throw is a
+   one-shot that should hold its final pose until the wind-up ends, not loop
+   back to the neutral frame mid-swing. */
+export function getAttackFrame(facing, frameIdx) {
+  const m = DIR_MAP[facing] || DIR_MAP.south;
+  const sheet = ATTACK_SHEETS[m.src];
+  if (!sheet || sheet.frames.length === 0) return null;
+  const idx = Math.max(0, Math.min(sheet.frames.length - 1, frameIdx));
+  return { tex: sheet.frames[idx], mirror: m.mirror };
+}
+
+export function attackFrameCount(facing) {
+  const m = DIR_MAP[facing] || DIR_MAP.south;
+  const sheet = ATTACK_SHEETS[m.src];
   return (sheet && sheet.frames.length) || 0;
 }
 

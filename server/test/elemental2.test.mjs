@@ -146,9 +146,21 @@ mControl.x = ps.x - 10; mControl.y = ps.y; mControl.atkCd = 0;
 for (const _m of [mFrozen, mControl]) {
   _m._tgPhase = null; _m._tgUntil = 0; _m._tgAim = null; _m._tgTarget = null;
   _m._tgNextAt = Date.now() + 1e9;
+  /* v2.3.2215: and any pending basic wind-up.  Meadow fodder is a RANGED
+     archetype, so the movement tick above leaves a THROW wind-up in flight
+     (it was in throw range while chasing); without clearing it the ticks
+     below resolve that throw instead of the swing under test. */
+  _m._bwUntil = 0; _m._bwTarget = null; _m._bwKind = null;
 }
 room.eventBuffer.length = 0;
 ps.hp = 1000; ps.maxHp = 1000; ps._zoneEntryGraceUntil = 0;
+room._tickMonsters();
+/* v2.3.2215: a basic swing is stamp-then-resolve now — one pass stamps the
+   wind-up, the next lands it.  Expiring _bwUntil cannot manufacture an
+   attack for a monster that never stamped one (a frozen or stunned monster
+   is gated out of STARTING a wind-up by ccMoveMult), so the negative
+   assertions below stay honest. */
+for (const _m of [mFrozen, mControl]) if (_m._bwUntil) _m._bwUntil = Date.now() - 1;
 room._tickMonsters();
 const atkFrom = (id) => room.eventBuffer.filter((e) => e.type === 'monster_attack' && e.payload.monsterId === id).length;
 check('frozen monster cannot attack', atkFrom(mFrozen.id) === 0, room.eventBuffer.map((e) => e.type));
@@ -282,8 +294,12 @@ const mHex = meadow[4];
 mHex.alive = true; mHex.arch = 'hexer'; mHex.atkCd = 0; mHex.dmg = 1;
 mHex.x = ps.x + 5; mHex.y = ps.y;
 mHex.statuses = {};
+mHex._bwUntil = 0; mHex._bwTarget = null; mHex._bwKind = null;
 ps.hp = 1000; ps.blocking = false;
+/* v2.3.2215: stamp-then-resolve — one pass winds up, the next lands the
+   hit that stamps the curse. */
 room._tickMonsters();
+if (mHex._bwUntil) { mHex._bwUntil = Date.now() - 1; room._tickMonsters(); }
 check("a hexer's landed hit stamps the curse", ps._cursedUntil > Date.now(), ps._cursedUntil);
 
 /* ── v2.3.1569: Flora + client/server elemental mirror ── */

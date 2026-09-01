@@ -105,6 +105,63 @@ export const TELEGRAPH = {
   },
 };
 
+/* ═══ v2.3.2215: EVERY BASIC ATTACK HAS A WIND-UP ═══
+ *
+ * Owner: combat feels "floaty".  The telegraphed kits above cover three
+ * archetypes on a multi-second cooldown; the ORDINARY swing every monster
+ * throws every 1.5s had no anticipation at all -- `attackDist <= range &&
+ * now > atkCd` resolved the decision AND the damage inside the same 22ms
+ * tick, so a hit arrived with nothing before it.  That instantaneity is
+ * most of what "floaty" means from the receiving end: damage out of
+ * nowhere cannot be read, blocked on reaction, or learned from.
+ *
+ * This is the same stamp-then-resolve shape as the kits, deliberately:
+ * one state machine, one set of fairness properties (no damage during the
+ * wind-up, moving out whiffs, blocking and parrying are evaluated at
+ * IMPACT), and one place a future ability can hook.
+ *
+ * DURATIONS are per archetype and all sit in a band with two hard edges:
+ *   - ABOVE PARRY_WINDOW_MS (250), or the parry window would be wider than
+ *     the tell and "react in time" would mean nothing.
+ *   - BELOW the kits' 700-1200ms, so a signature move still reads as the
+ *     bigger event.  A brute's slam must not feel like his jab.
+ * Ordered by fantasy inside that band: swarm jabs, brute heaves.
+ *
+ * THE CYCLE DOES NOT GROW.  atkCd is stamped when the wind-up STARTS, not
+ * when it lands, so the wind-up is spent INSIDE the existing 1500ms
+ * cadence rather than added to it -- monsters telegraph without losing
+ * damage over time.  Getting this backwards would nerf every monster in
+ * the game by a third while looking like a pure presentation change.
+ *
+ * WHIFF_GRACE is the honest half of the trade: the resolve re-measures
+ * against where the player is NOW, but through a ring 1.3x the contact
+ * range.  At 1.0 every micro-step out of a 45px ring would whiff and
+ * monsters would look broken; unbounded, walking away would never work
+ * and the tell would be decoration.  1.3 means deliberate kiting escapes
+ * and jitter does not.
+ */
+export const BASIC_WINDUP = {
+  WHIFF_GRACE: 1.3,
+  THROW_MS: 350,          /* pre-throw cue; the ball's travel time is the rest of the tell */
+  MS: {
+    swarm: 350,
+    snowman: 350,         /* his melee poke; the SNOWBALL uses THROW_MS */
+    volatile: 400,
+    stalker: 400,
+    fodder: 500,
+    hexer: 500,
+    sentinel: 550,
+    brute: 600,
+    DEFAULT: 450,
+  },
+};
+
+export function basicWindupMs(arch) {
+  return Object.prototype.hasOwnProperty.call(BASIC_WINDUP.MS, arch)
+    ? BASIC_WINDUP.MS[arch]
+    : BASIC_WINDUP.MS.DEFAULT;
+}
+
 export const telegraphMethods = {
   /* Resolve a wind-up already in flight.  Called UNCONDITIONALLY, before
      target acquisition — deliberately NOT inside the aggro branch, which is
@@ -271,5 +328,150 @@ export const telegraphMethods = {
     this._queuePlayerStateFlush(pid);
     if (ps.hp <= 0 && !ps.dying) this._handlePlayerDeath(ps, pid, 'monster:' + m.id);
     return res.dmgTaken;
+  },
+  /* ═══ v2.3.2215: basic-attack wind-up ═══ */
+
+  /* The melee contact ring, in ONE place.  The tick loop and the wind-up
+     resolve must measure with the same geometry or a swing could start
+     from inside a ring it then whiffs against by construction (the
+     snowman's relaxed 70/1.5 ring is exactly the case that would break). */
+  _basicAtkGeom(m) {
+    return m.arch === 'snowman'
+      ? { range: 70, yScale: 1.5 }
+      : { range: this.MONSTER_ATTACK_RANGE, yScale: 3.0 };
+  },
+
+  /* Stamp a wind-up instead of swinging.  Called from the aggro branch
+     where a live target and its distance are already in hand, BELOW the
+     telegraph kits (a signature cast outranks a jab) and above the old
+     swing site it replaces.  `kind` is 'swing' or 'throw'. */
+  _startBasicWindup(zoneId, m, targetId, now, kind, cdMs) {
+    const ms = kind === 'throw' ? BASIC_WINDUP.THROW_MS : basicWindupMs(m.arch);
+    m._bwUntil = now + ms;
+    m._bwTarget = targetId;
+    m._bwKind = kind;
+    /* Inside the cycle, not added to it — see the header. */
+    m.atkCd = now + cdMs;
+    /* Plant him for the tell AND the follow-through, the way the kits do.
+       Without this he walks through his own wind-up and the cue reads as
+       an unrelated shimmer. */
+    m._attackingUntil = Math.max(m._attackingUntil || 0, now + ms + 300);
+    this._monsterAbilityEvent(zoneId, m, kind, 'windup', { ms });
+    return true;
+  },
+
+  /* Resolve a wind-up in flight.  Called UNCONDITIONALLY before target
+     acquisition for the reason spelled out on _resolveMonsterTelegraph: a
+     player who runs away must not strand a pending swing that fires stale
+     at whoever wanders past next.  Returns TRUE when it owns the tick. */
+  _resolveBasicWindup(zoneId, m, now) {
+    if (!m._bwUntil) return false;
+    if (now < m._bwUntil) {
+      m._attackingUntil = Math.max(m._attackingUntil || 0, now + 100);
+      return true;
+    }
+    const targetId = m._bwTarget;
+    const kind = m._bwKind;
+    m._bwUntil = 0;
+    m._bwTarget = null;
+    m._bwKind = null;
+    m._attackingUntil = Math.max(m._attackingUntil || 0, now + 300);
+
+    const ps = targetId ? this.playerState[targetId] : null;
+    if (!ps || ps.dead || ps.dying || ps.z !== zoneId) return true;   /* target gone: silent whiff */
+    /* v2.3.1690/1704: a harvester is left alone even if they started the
+       swipe DURING the wind-up — the gate has to be re-checked here, not
+       only at stamp time. */
+    if (this._extractionShielded(targetId, now)) return true;
+
+    if (kind === 'throw') {
+      const cfg = Object.prototype.hasOwnProperty.call(this.MONSTER_RANGED_BY_ARCH, m.arch)
+        ? this.MONSTER_RANGED_BY_ARCH[m.arch] : null;
+      /* One ball at a time still holds — a wind-up that started before an
+         earlier ball landed resolves into nothing rather than doubling up. */
+      if (!cfg || m._projImpactAt) return true;
+      m._projImpactAt = now + cfg.travelMs;
+      m._projTargetId = targetId;
+      /* Aimed where they are at RELEASE, frozen there: the ball flies to a
+         point, not to the player, which is what makes travelMs dodgeable
+         (the v2.3.1686 rule, unchanged). */
+      m._projTx = ps.x;
+      m._projTy = ps.y;
+      this.eventBuffer.push({
+        type: 'monster_projectile',
+        payload: {
+          monsterId: m.id,
+          kind: m.arch === 'snowman' ? 'snowball' : 'slime',
+          zone: zoneId, x: m.x, y: m.y, tx: ps.x, ty: ps.y, travelMs: cfg.travelMs,
+        },
+      });
+      this._markMonsterDirty(zoneId, m.id);
+      return true;
+    }
+
+    /* THE WHIFF — re-measured against where they are NOW, through the
+       grace ring, with the same ellipse the tick loop uses. */
+    const geom = this._basicAtkGeom(m);
+    const reach = geom.range * BASIC_WINDUP.WHIFF_GRACE;
+    const dx = ps.x - m.x, dy = (ps.y - m.y) * geom.yScale;
+    if (Math.sqrt(dx * dx + dy * dy) > reach) return true;   /* they left: no damage, no event */
+
+    this._resolveBasicSwingHit(zoneId, m, targetId, now);
+    return true;
+  },
+
+  /* One basic swing vs one player, at IMPACT time.
+     v2.3.2215: moved verbatim out of the _tickMonsters aggro branch so the
+     wind-up resolve (which runs before aggro) can reach it.  Behaviour is
+     unchanged with one deliberate consequence: block, parry, stamina and
+     thorns are now evaluated when the blow LANDS rather than when it was
+     decided, which is what makes a shield raised during the tell work —
+     and it matches how the kits and the snowball impact already resolved.
+     atkCd/_attackingUntil are NOT stamped here: the wind-up already paid
+     them (see the header on why the cycle must not grow). */
+  _resolveBasicSwingHit(zoneId, m, targetId, now) {
+    const blockerPs = this.playerState[targetId];
+    if (this._blockArcCovers(blockerPs, m.x, m.y)) {
+      const _parried = this._parryOpen(blockerPs, now);
+      if (_parried) this._applyParry(zoneId, m, targetId, blockerPs, now);
+      const staminaCost = (BLOCK_COSTS_STAMINA && !_parried)
+        ? Math.max(1, Math.round(BLOCK_STAMINA_COST * this._blockStaminaMult(blockerPs)))
+        : 0;
+      if (staminaCost > 0 && blockerPs && typeof blockerPs.stamina === 'number') {
+        blockerPs.stamina = Math.max(0, blockerPs.stamina - staminaCost);
+        this._saveRpgPools(targetId, blockerPs);
+        this._queuePlayerStateFlush(targetId);
+      }
+      const _thornsPts = (blockerPs && !blockerPs.prog3 && blockerPs.defenseSpec && blockerPs.defenseSpec.thorns) || 0;
+      if (_thornsPts > 0 && m.hp > 0) {
+        const reflect = Math.min(Math.max(0, m.hp),
+          Math.max(1, this._t2Flat(blockerPs, 'defense', 'thorns')));
+        m.hp -= reflect;
+        if (!m.dmgByPlayer) m.dmgByPlayer = Object.create(null);
+        m.dmgByPlayer[targetId] = (m.dmgByPlayer[targetId] || 0) + reflect;
+        this.eventBuffer.push({
+          type: 'monster_hit',
+          payload: {
+            monsterId: m.id, zone: zoneId, dmg: reflect, isCrit: false,
+            attackerId: targetId, thorns: true,
+            hpPct: Math.max(0, m.hp / m.maxHp),
+          },
+        });
+        this._markMonsterDirty(zoneId, m.id);
+        if (m.hp <= 0) this._resolveMonsterKill(zoneId, m, targetId, blockerPs, 'thorns');
+      }
+      this.eventBuffer.push({
+        type: 'monster_attack',
+        payload: {
+          monsterId: m.id, targetId, dmg: m.dmg, dmgTaken: 0,
+          blocked: true,
+          parried: _parried || undefined,
+          staminaDrain: staminaCost > 0 ? staminaCost : undefined,
+          zone: zoneId, attackerX: m.x, attackerY: m.y,
+        },
+      });
+      return;
+    }
+    this._monsterStrikePlayer(zoneId, m, targetId, m.x, m.y);
   },
 };
