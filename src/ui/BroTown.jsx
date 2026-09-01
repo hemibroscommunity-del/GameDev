@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { DMG_CRIT_COLOR } from '@/rendering/systems/effectsRenderer.js'; /* v2.3.2203: the crit preview hook uses the real crit colour */
 import { shopBus } from './mobile/shopBus.js';   /* v2.3.2050: Shopkeeper Bro's window */
 import { uiBusyBus } from './mobile/uiBusyBus.js'; /* v2.3.2085: tell chrome outside this tree to stand aside */
 import { zonePlayerScale } from '@/data/zones.js'; /* v2.3.1574: the one copy of the vista perspective curve */
@@ -864,6 +865,39 @@ export var BroTown = function BroTown(_ref0) {
   /* Expose state for autotest */
   window._gameState = stateRef;
   window._gameFns = {
+    /* ═══ v2.3.2203: SHOW ME A CRIT WITHOUT PLAYING FOR ONE ═══
+       Owner: "You should be able to generate a simulated normal damage
+       number vs crit damage number without me needing to start a new char
+       and run it every time."
+
+       Right, and the lack of this is why four capture attempts burned ten
+       minutes each: to look at a crit you had to accept a quest, equip a
+       sword, cross two zones, stay alive, and then wait out a rare roll --
+       so a two-second visual question cost a full playthrough, and the
+       answer arrived only if the dice agreed.
+
+       This spawns the two popups side by side through the game's OWN
+       pushDmgPopup with the game's own flags, so what appears is what a real
+       hit paints -- same colour rule, same font sizing, same icon, same
+       renderer.  Nothing about the look is mocked; only the dice are
+       skipped.  `dmg` defaults are a plausible pair for a starting weapon,
+       and a caller can pass the real numbers to compare a specific weapon.
+
+       Autotest surface, same posture as the trait setters below: it mutates
+       the world, so it is a hook, not a fixture. */
+    previewCritVsNormal: function previewCritVsNormal(normalDmg, critDmg) {
+      var S2 = stateRef.current;
+      if (!S2 || !S2.player) return null;
+      var n = normalDmg || 12, c = critDmg || 41;
+      /* BELOW the player, not above: above is where the welcome banner and
+         the quest reminder live, and the first run of this put both numbers
+         behind the banner where neither could be read. */
+      var x = S2.player.x, y = S2.player.y + 44;
+      pushDmgPopup(S2, x - 60, y, String(n), '#fff', { iconKey: 'sword', ttl: 6 });
+      pushDmgPopup(S2, x + 60, y, String(c), DMG_CRIT_COLOR,
+        { iconKey: 'crit', crit: true, ttl: 6 });
+      return { normal: n, crit: c };
+    },
     /* v2.3.1826: trait setters on the autotest surface.  The owner's
        constraint on the body-size fix was "without breaking anything else
        (relative item scale like hats, beards, etc)", and the only honest way

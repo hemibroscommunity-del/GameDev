@@ -2174,13 +2174,33 @@ export class EffectsRenderer {
            Centralized here so the 40+ push sites don't each need recoloring. */
         const t = dmg.text || '';
         let displayColor = dmg.color || '#ffffff';
-        if (/^[^A-Za-z+]*-?\d+$/.test(t)) {
+        /* ═══ v2.3.2203: ...UNLESS IT IS A CRIT ═══
+           Owner, on the preview: "the number did not turn yellow.  I think
+           the crit icon was larger."  Both halves of that are exactly right,
+           and this line is why.
+
+           The white override below matches ANY plain number, which is every
+           ordinary damage popup AND every crit -- so `displayColor` was
+           thrown away and replaced with white before it reached the tint.
+           The v2.3.103 comment even says "push sites still pass their own
+           dmg.color FOR CRITS", and then the next statement discards it: the
+           note describes an intention the code never carried out.
+
+           So the crit colour has never rendered.  Not the light yellow, and
+           not the gold before it -- which means that for the whole time the
+           game has had crits, a crit and an ordinary hit were drawn in the
+           same colour at the same size, and the ONLY thing that ever told
+           them apart was the icon (a sword, the same sword a normal hit
+           got).  That is the real answer to "I still can't visually
+           distinguish critical hits": there was nothing to distinguish.
+
+           The override still owns every non-crit number -- v2.3.103's
+           reason (uniform white reads best against zone art) is untouched
+           for the bulk of fight popups it was written for. */
+        if (!dmg.crit && /^[^A-Za-z+]*-?\d+$/.test(t)) {
           /* v2.3.103 user request: combat damage in white reads more
              clearly than the previous orange (#ff8c1a) against most
-             zone backgrounds.  Push sites still pass their own
-             dmg.color for crits / specials / status tints, but the
-             generic damage pattern wins here so the bulk of fight
-             popups are uniformly white. */
+             zone backgrounds. */
           displayColor = '#ffffff';
         } else if (/^\+\d+\s*XP$/.test(t)) {
           displayColor = '#60a5fa';

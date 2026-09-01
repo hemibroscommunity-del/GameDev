@@ -27,7 +27,8 @@ import {
   RESPAWN_BASE, RESPAWN_ESCALATE, RESPAWN_ESCALATE_WINDOW, RESPAWN_MAX, SPECIAL_ATK_MULT, specialAtkMultFor,
   SWING_ARC, SWING_COOLDOWN, SWING_RANGE, TILE, WEAPON_TYPES, WELL_RESTED_XP_MULT,
   ZONES, ZONE_RESOURCES, applyStatus, awardWeaponXp, bowPierceCount, bowRangeMult, calcBlockReduction, calcCritChance,
-  calcCritMult, calcSpecialDmg, calcWeaponDmg, cleaveArcBonus, createDefaultCompStats, createDefaultLifeSkills,
+  calcCritMult, calcDisplayDmgRange, calcSpecialDmg, calcWeaponDmg, cleaveArcBonus, createDefaultCompStats, createDefaultLifeSkills,
+  CRIT_ANCHOR_MULT,
   createMonster, discoverCollision, discoverMonster, generateZoneMap, getActiveWeapon,
   getAttunementPts, getCollisionDeathFX, getDefenseBlockBonus, getEffectiveness, getElementDeathFX,
   getShieldStats, getWeaponCritDmgStat, getWeaponCritStat, meleeSwingSfx, recalcDerived, resolveCollision,
@@ -1559,7 +1560,29 @@ export function updateMonsterCombat(S, deps) {
                    single headroom term covering "combo + status amplifier +
                    amulet elemDmg + lunge", so shrinking it for this would
                    clamp legitimate hits from the other three. */
-                var dmg = Math.round(((isCrit ? _specBase * critMult + critFlat : _specBase)) * specialMult);
+                /* ═══ v2.3.2203: THE ANCHOR BELONGS HERE TOO ═══
+                   Owner, on the preview: "the damage was not double the top
+                   of the range."  It wasn't, and this line is why: v2.3.2202
+                   anchored the SERVER's roll and the DPS readout, and left
+                   the number the player actually watches -- this local
+                   prediction, which is what paints the popup on your own
+                   swing -- multiplying the roll exactly as before.  So the
+                   server was paying the anchored damage while the screen
+                   showed the old figure.
+
+                   Mirrors combat.js _critAnchor term for term: the floor is
+                   2x the top of THIS weapon's displayed range, the flat rides
+                   on top of it, and the special multiplier applies after --
+                   the same order the server uses. */
+                var _rangeTop = 0;
+                if (isCrit) {
+                  var _rng = calcDisplayDmgRange(_R6, _activeWpn);
+                  _rangeTop = (_rng && _rng.max) || 0;
+                }
+                var _critBase = isCrit
+                  ? Math.max(_specBase * critMult, _rangeTop * CRIT_ANCHOR_MULT) + critFlat
+                  : _specBase;
+                var dmg = Math.round(_critBase * specialMult);
                 /* Boss invulnerability — can only be damaged during recovery phase */
                 if (m._invulnerable) {
                   pushDmgPopup(S, m.x, m.y - 20, 'IMMUNE', '#888');
