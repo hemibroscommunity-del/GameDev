@@ -1226,19 +1226,23 @@ export function processGameEvent(type, payload, S, deps) {
                      Clobbering it made curHp == hp on every hit, which
                      locked the bar percentage at 100%. */
                   hitM.curHp = Math.round(payload.hpPct * hitM.maxHp);
-                  hitM._hitFlash = Date.now();
                   /* ═══ v2.3.2200: EVERY HIT VISIBLY LANDS ("floaty" #3) ═══
-                     _hitFlash above was written for years and read by
-                     nothing (entityRenderer now renders it as a brief
-                     brightness pulse).  And the recoil sheet/squash only
-                     fired from OUR OWN local swing/arrow sites — a
-                     teammate's hits moved nothing.  Stamp the hit-react
-                     window here for peer hits and for our own
-                     server-rolled hits (ability/thorns/burst, which have
-                     no local prediction site); our own swings/arrows
-                     already stamped it locally, and re-stamping would
-                     only extend the same window a few ms — harmless. */
+                     _hitFlash was written for years and read by nothing
+                     (entityRenderer now renders it as a brief brightness
+                     pulse).  And the recoil sheet/squash only fired from
+                     OUR OWN local swing/arrow sites — a teammate's hits
+                     moved nothing.  Stamp flash + hit-react here for peer
+                     hits and for our own server-rolled hits (ability/
+                     thorns/burst, which have no local prediction site).
+                     OUR OWN swings/arrows already stamped BOTH at blade
+                     contact — v2.3.2200b: the flash stamp used to sit
+                     above this gate, so the echo of your own hit RE-FIRED
+                     the flash a network round-trip later, and that
+                     trailing second pulse read as "the flash is delayed"
+                     (owner report, first playtest).  Everything
+                     echo-driven now sits behind the same gate. */
                   if (payload.attackerId !== S.myId || payload.ability || payload.thorns || payload.burst) {
+                    hitM._hitFlash = Date.now();
                     if (hitM.curHp > 0) {
                       hitM._hitAnimStart = Date.now();
                       hitM._hitAnimEnd = Date.now() + ((hitM.archetype || hitM.type) === 'snowman' ? 600 : 400);
@@ -1305,13 +1309,20 @@ export function processGameEvent(type, payload, S, deps) {
                        OTHER player in the zone saw the numbers. */
                     pushDmgPopup(S, hitM.x || hitM.renderX, monsterPopupY(hitM, -20), '-' + payload.dmg, '#c084fc');
                   }
-                  /* Hit particles for everyone */
-                  for (var hp2 = 0; hp2 < 3; hp2++) {
-                    S.hitParticles.push({
-                      x: hitM.x || hitM.renderX, y: hitM.y || hitM.renderY,
-                      vx: (Math.random() - 0.5) * 3, vy: -1 - Math.random() * 2,
-                      life: 0.5, color: hitM.color || '#ff5e6c', size: 2
-                    });
+                  /* Hit particles — v2.3.2200b: same gate as the flash
+                     above.  "For everyone" meant bystanders; for the
+                     ATTACKER it was a duplicate puff arriving a network
+                     round-trip after their contact-time debris, which
+                     contributed to the same "feedback trails the hit"
+                     read the double flash did. */
+                  if (payload.attackerId !== S.myId || payload.ability || payload.thorns || payload.burst) {
+                    for (var hp2 = 0; hp2 < 3; hp2++) {
+                      S.hitParticles.push({
+                        x: hitM.x || hitM.renderX, y: hitM.y || hitM.renderY,
+                        vx: (Math.random() - 0.5) * 3, vy: -1 - Math.random() * 2,
+                        life: 0.5, color: hitM.color || '#ff5e6c', size: 2
+                      });
+                    }
                   }
                 }
               }
