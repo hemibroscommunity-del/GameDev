@@ -1853,10 +1853,17 @@ export function updateMonsterCombat(S, deps) {
                 });
                 /* Damage number — scaled by crit/normal in the renderer. */
                 var _isSpecialDmg = !!S._specialAttack;
+                /* ═══ v2.3.2201: crit: true, AT LAST ═══
+                   Owner: "I still can't visually distinguish critical hits."
+                   The renderer has sized crits bigger since v2.3.1357 off
+                   this exact flag, and no crit has ever set it -- the colour
+                   swap was doing the whole job alone.  The icon goes to the
+                   crit mark too: a sword on a crit says the same thing as a
+                   sword on a normal hit, which is nothing. */
                 if (isCrit && collisionResult) {
-                  pushDmgPopup(S, m.x, monsterPopupY(m, -20), 'ZAP ' + dmg, '#f5c542', { iconKey: 'sword', special: _isSpecialDmg });
+                  pushDmgPopup(S, m.x, monsterPopupY(m, -20), 'ZAP ' + dmg, '#f5c542', { iconKey: 'crit', crit: true, special: _isSpecialDmg });
                 } else if (isCrit) {
-                  pushDmgPopup(S, m.x, monsterPopupY(m, -20), String(dmg), '#f5c542', { iconKey: 'sword', special: _isSpecialDmg });
+                  pushDmgPopup(S, m.x, monsterPopupY(m, -20), String(dmg), '#f5c542', { iconKey: 'crit', crit: true, special: _isSpecialDmg });
                 } else {
                   pushDmgPopup(S, m.x, monsterPopupY(m, -20), '' + dmg, '#fff', { iconKey: 'sword', special: _isSpecialDmg });
                 }

@@ -1242,7 +1242,14 @@ export function processGameEvent(type, payload, S, deps) {
                   if (payload.attackerId !== S.myId) {
                     enqueuePeerDamage(S, peerDmgKey(payload.monsterId, hitM.x || hitM.renderX, hitM.y || hitM.renderY), {
                       x: hitM.x || hitM.renderX, y: monsterPopupY(hitM, -20),
-                      text: '-' + payload.dmg, color: payload.isCrit ? '#fbbf24' : '#ff8888'
+                      text: '-' + payload.dmg, color: payload.isCrit ? '#fbbf24' : '#ff8888',
+                      /* v2.3.2201: the server's crit gets the same treatment
+                         the local swing gets -- big number + the crit mark.
+                         These two doors painted the same event differently,
+                         which is how a crit could read as ordinary depending
+                         on which path produced its number. */
+                      crit: !!payload.isCrit,
+                      iconKey: payload.isCrit ? 'crit' : undefined,
                     });
                   } else if (payload.ability) {
                     /* v2.3.1733: OUR OWN stamina-ability hit.  The rule
@@ -1254,7 +1261,8 @@ export function processGameEvent(type, payload, S, deps) {
                        the ability chips the HP bar and prints NOTHING.
                        Same shape, same reason, as the thorns case below. */
                     pushDmgPopup(S, hitM.x || hitM.renderX, monsterPopupY(hitM, -20),
-                      '-' + payload.dmg, payload.isCrit ? '#fbbf24' : '#ffd08a');
+                      '-' + payload.dmg, payload.isCrit ? '#fbbf24' : '#ffd08a',
+                      payload.isCrit ? { crit: true, iconKey: 'crit' } : undefined);  /* v2.3.2201 */
                   } else if (payload.thorns) {
                     /* v2.3.1137: Thorns reflect is SERVER-rolled with no
                        local prediction (unlike swings), so our own thorns
@@ -1795,7 +1803,11 @@ export function processGameEvent(type, payload, S, deps) {
                 x: payload.x || 0,
                 y: (payload.y || 0) - 20,
                 text: '-' + (payload.dmg || 0),
-                color: payload.isCrit ? '#fbbf24' : '#ff8888'
+                color: payload.isCrit ? '#fbbf24' : '#ff8888',
+                /* v2.3.2201: a peer's crit reads as a crit too -- found by the
+                   crit-popup precheck rule, not by hand. */
+                crit: !!payload.isCrit,
+                iconKey: payload.isCrit ? 'crit' : undefined
               });
               break;
             }
@@ -2081,7 +2093,10 @@ export function processGameEvent(type, payload, S, deps) {
                   } else if (typeof payload.dmgTaken === 'number') {
                     pushDmgPopup(S, _pvX, _pvY,
                       '-' + Math.ceil(payload.dmgTaken) + (payload.isCrit ? '!' : ''),
-                      payload.isCrit ? '#f5c542' : '#ff5e6c');
+                      payload.isCrit ? '#f5c542' : '#ff5e6c',
+                      /* v2.3.2201: this one already SAID crit with a '!' and
+                         a colour, and still drew at ordinary size. */
+                      payload.isCrit ? { crit: true, iconKey: 'crit' } : undefined);
                   }
                   /* Flash the opponent so a hit reads even off-centre, the same
                      feedback a monster gets. */

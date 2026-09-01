@@ -286,8 +286,32 @@ const FIRE_GEAR_REG = {
 /* Popup icons (XP badge, gold coin, sword/arrow/spell for damage by weapon
    type). Loaded async — entries appear in the registry once each PNG is
    ready. Until then, popups render text-only and the icon is skipped. */
+/* ═══ v2.3.2201: A CRIT HAS TO BE UNMISTAKABLE ═══
+   Owner: "I still can't visually distinguish critical hits.  Maybe a much
+   larger damage number followed by an additional icon to represent it's a
+   critical hit (explosion?)"
+
+   They were right, and the reason is worse than a tuning miss: the size
+   difference below has never been applied to a single real crit.  The
+   renderer has read `dmg.crit` since v2.3.1357, but NOTHING that lands a
+   crit ever set it -- the flag's only writers were two UI notices in
+   BroTown.jsx using it as "make this text big and wiggly".  So every crit
+   rendered at the normal 21px and the only cue was a colour swap.
+
+   Both halves are fixed at once, because either alone stays weak: the size
+   gap goes 21 -> 27 -> 38 (near double, not a nudge), and the crit gets the
+   game's OWN crit mark beside it -- the gold starburst already used for the
+   Crit stat on the Hero screen, so a player learns one symbol, not two. */
+const DMG_FONT_PX = 21;
+const DMG_CRIT_FONT_PX = 38;
+
 const POPUP_ICONS = {};
-const POPUP_ICON_KEYS = ['xp', 'gold', 'sword', 'arrow', 'spell', 'heart'];
+const POPUP_ICON_KEYS = ['xp', 'gold', 'sword', 'arrow', 'spell', 'heart', 'crit'];
+/* v2.3.2201: 'crit' is the one key whose art does not live in /icons/popups.
+   Reusing the Hero screen's own crit icon rather than copying it to a second
+   path -- one asset, one meaning, and no chance of the two drifting apart
+   the next time either is redrawn. */
+const POPUP_ICON_SRC = { crit: '/icons/ui/hero/crit.webp' };
 /* v2.3.1403 (owner: "the damage bow icon did not work" while damage
    numbers still showed): the icon load was one-shot — a single flaked
    fetch (common right after a deploy) left that icon undefined for the
@@ -297,7 +321,7 @@ const POPUP_ICON_KEYS = ['xp', 'gold', 'sword', 'arrow', 'spell', 'heart'];
    texture resolves. */
 function _loadPopupIcon(k, attempt) {
   const bust = attempt > 0 ? '&r=' + attempt : '';
-  return _fxLoad('/icons/popups/' + k + '.webp?v=2.3.1403' + bust)
+  return _fxLoad((POPUP_ICON_SRC[k] || ('/icons/popups/' + k + '.webp')) + '?v=2.3.2201' + bust)
     .then((tex) => { POPUP_ICONS[k] = tex; })
     .catch(() => {
       if (attempt < 2) {
@@ -2208,7 +2232,7 @@ export class EffectsRenderer {
            would otherwise push the offset positive and re-open the exact
            hole this fix closes. */
         dmg._stackOffset = hasNeighbor ? Math.min(0, (highestY - SPACING) - dmg.y) : 0;
-        const baseFontSize = dmg.crit ? 27 : 21;
+        const baseFontSize = dmg.crit ? DMG_CRIT_FONT_PX : DMG_FONT_PX;
         /* Special-attack hits used to render at 2x to read as "heavy", but
            that crowded the screen and hid the normal-hit cadence. They now
            match normal size and instead get a bright outer glow (see
@@ -2345,7 +2369,7 @@ export class EffectsRenderer {
            floor still let the magic icon clip the last digit on
            fire-goblin hits ("32" reading as "3[magic]").  Stroked text
            extends a few px past text.width on iOS canvas rendering. */
-        const _iconGap = Math.max(10, (dmg.crit ? 27 : 21) * 0.35);
+        const _iconGap = Math.max(10, (dmg.crit ? DMG_CRIT_FONT_PX : DMG_FONT_PX) * 0.35);
         dmg._pixiIcon.x = text.x + text.width / 2 + _iconGap;
         dmg._pixiIcon.y = text.y;
         dmg._pixiIcon.alpha = text.alpha;
