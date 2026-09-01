@@ -65,6 +65,7 @@ auto-detected from strip width by `snowmanSprites.js`.
 | `snowman-attack-{s,e,sw,n,ne}.png` | 8 | one-shot | Snowball throw. 5 source facings; the renderer's mirror table covers all 8. |
 | `snowman-pile.png` | 8 | **loop** | The travelling mound. Non-directional by design — a mound has no front, so one loop serves every facing (same posture as the existing hit/death sheets). |
 | `snowman-burrow.png` | 8 | one-shot | Standing → mound. Non-directional. |
+| `snowman-emerge.png` | 8 | one-shot | Mound → standing. Non-directional. |
 
 The burrow's last frame hands off to the pile loop's first frame at
 115x64 vs 118x63 on the same base row — a 3px width difference, which is
