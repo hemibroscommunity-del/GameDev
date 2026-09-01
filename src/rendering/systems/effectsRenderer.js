@@ -549,6 +549,40 @@ for (const cfg of Object.values(DEBRIS_BURSTS)) {
     }
   }).catch(() => {}); /* art pending — placeholder branch covers it */
 }
+/* ═══ v2.3.2217: the thrown snowball's IMPACT ═══
+   Owner-supplied art (a 4x2 grid, normalised to the repo's 8-frame strip
+   with ONE shared centre and scale so the burst's expansion survives —
+   fitting each frame to its own cell would have flattened the growth that
+   IS the effect).  Frame 0 is the ball still intact, so it hands off from
+   the projectile cleanly.
+
+   128px frames, not 256: this is a per-zone asset and it draws at ~44px,
+   so 256 would be six times oversampled for four times the VRAM on the
+   iPhone this game is played on. */
+const SNOWBALL_BURST = { frames: [], url: '/sprites/effects/snowball-burst-v1.png?v=2.3.2217' };
+const SNOWBALL_BURST_MS = 420;    /* ~52ms a frame — a snowball, not a bomb */
+const SNOWBALL_BURST_H = 44;      /* drawn height in world px; the ball is 16 */
+/* Loaded PER ZONE, not at startup: only frost has snowmen, and a module-scope
+   _fxLoad would join the global manifest and spend the iPhone's startup budget
+   on a strip most sessions never see (CLAUDE.md's zone-asset exception).
+   preloadZoneAssets awaits this for frost, behind the zone overlay — which is
+   the exception done properly, not a lazy first-use load. */
+let _snowballBurstLoad = null;
+export function ensureSnowballBurstTex() {
+  if (_snowballBurstLoad) return _snowballBurstLoad;
+  _snowballBurstLoad = _fxLoad(SNOWBALL_BURST.url).then((tex) => {
+    if (!tex || !tex.source) return;
+    tex.source.scaleMode = 'linear';
+    const fw = Math.floor(tex.source.width / 8);
+    for (let i = 0; i < 8; i++) {
+      SNOWBALL_BURST.frames.push(new Texture({
+        source: tex.source, frame: new Rectangle(i * fw, 0, fw, tex.source.height),
+      }));
+    }
+  }).catch(() => {}); /* no burst is a cosmetic loss, never a broken frame */
+  return _snowballBurstLoad;
+}
+
 const DEBRIS_MS = 450;
 const DEBRIS_MIN_GAP_MS = 150;   /* per-monster dedup, the _impactSpawned posture */
 
@@ -4806,6 +4840,46 @@ export class EffectsRenderer {
       }
     }
     this._advanceSnowmanImpacts(now);
+    this._updateSnowballBursts(S, now);
+  }
+
+  /* v2.3.2217: drain the queue projectiles.js fills when a thrown snowball's
+     flight ends, and advance the ones already playing.  One-shot, leaves
+     nothing behind — the ground decal is the debris system's job, not this. */
+  _updateSnowballBursts(S, now) {
+    const q = S && S.snowballBursts;
+    if (q && q.length) {
+      if (SNOWBALL_BURST.frames.length) {
+        if (!this._snowballBursts) this._snowballBursts = [];
+        for (const b of q) {
+          const sp = new Sprite(SNOWBALL_BURST.frames[0]);
+          sp.anchor.set(0.5, 0.5);
+          const f0 = SNOWBALL_BURST.frames[0];
+          sp.scale.set(SNOWBALL_BURST_H / (f0.height || 128));
+          sp.x = b.x; sp.y = b.y;
+          this.particleLayer.addChild(sp);
+          this._snowballBursts.push({ sp, startedAt: b.at || now });
+        }
+      }
+      q.length = 0;   /* drained whether or not the art loaded, so it cannot pile up */
+    }
+    const list = this._snowballBursts;
+    if (!list || !list.length) return;
+    for (let i = list.length - 1; i >= 0; i--) {
+      const fx = list[i];
+      const t = now - fx.startedAt;
+      if (t >= SNOWBALL_BURST_MS || fx.sp.destroyed) {
+        if (!fx.sp.destroyed) {
+          if (fx.sp.parent) fx.sp.parent.removeChild(fx.sp);
+          fx.sp.destroy();
+        }
+        list.splice(i, 1);
+        continue;
+      }
+      const idx = Math.min(7, Math.floor((t / SNOWBALL_BURST_MS) * 8));
+      const tex = SNOWBALL_BURST.frames[idx];
+      if (tex && fx.sp.texture !== tex) fx.sp.texture = tex;
+    }
   }
 
   _spawnSnowmanImpact(m, sizeMul, now) {
@@ -7490,6 +7564,16 @@ export class EffectsRenderer {
         if (fx.parts) for (const p of fx.parts) kill(p.sp);
       }
       this._debrisFx = [];
+    }
+    /* v2.3.2217: and the snowball bursts. */
+    if (this._snowballBursts) {
+      for (const fx of this._snowballBursts) {
+        if (fx.sp && !fx.sp.destroyed) {
+          if (fx.sp.parent) fx.sp.parent.removeChild(fx.sp);
+          fx.sp.destroy();
+        }
+      }
+      this._snowballBursts = [];
     }
     this.nodeGfx.clear();
     this.flashOverlay.clear();

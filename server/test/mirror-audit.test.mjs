@@ -667,6 +667,35 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
      ball you cannot dodge, and the art is a per-zone asset. */
   check('snowball art: ...with the procedural orb kept as the fallback',
     /cold rim/.test(fx), {});
+
+  /* ═══ v2.3.2217: the ball bursts where its flight ends ═══
+     Owner-supplied art, normalised into the repo's 8-frame strip.  Three
+     ways this dies quietly, so three pins: the strip goes missing; the
+     queue is filled but never drained (or vice versa); or the per-zone
+     preload entry is dropped, which turns it into exactly the first-use
+     texture load CLAUDE.md calls a regression. */
+  let burstBytes = 0;
+  try {
+    burstBytes = readFileSync(new URL(
+      '../../public/sprites/effects/snowball-burst-v1.png', import.meta.url)).length;
+  } catch { /* missing */ }
+  check('snowball burst: the strip is committed',
+    burstBytes > 0, { bytes: burstBytes });
+  const proj = readFileSync(
+    new URL('../../src/game/projectiles.js', import.meta.url), 'utf8');
+  /* BOTH endings must queue: reaching the aimed point (a dodge) and
+     reaching the player (a hit).  Bursting only on damage would make a
+     successful dodge look like the ball evaporated. */
+  /* Call sites only — the declaration itself reads `queueSnowballBurst(S, proj)` too. */
+  const queued = (proj.match(/queueSnowballBurst\(S, proj\); return false;/g) || []).length;
+  check('snowball burst: both ways a flight can end queue one',
+    queued === 2, { queued });
+  check('snowball burst: ...and the renderer drains that queue',
+    /_updateSnowballBursts/.test(fx) && /snowballBursts/.test(fx), {});
+  const pre = readFileSync(
+    new URL('../../src/rendering/preloadAnimations.js', import.meta.url), 'utf8');
+  check('snowball burst: ...and it is preloaded per-zone, not on first use',
+    /ensureSnowballBurstTex/.test(pre) && /tasks\.push\(Promise\.resolve\(ensureSnowballBurstTex/.test(pre), {});
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

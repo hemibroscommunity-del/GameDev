@@ -253,3 +253,39 @@ It loads inside `loadSnowmanSprites`, so it rides the frost zone's
 law's zone-asset exception). **The procedural orb is kept as the fallback,
 not deleted:** the art is a per-zone asset, and a ball you cannot see is a
 ball you cannot dodge.
+
+## The ball bursts where its flight ends (v2.3.2217)
+
+The thrown snowball had no impact at all — it stopped existing on the frame
+it arrived. Owner-supplied art, normalised into the repo's 8-frame strip.
+
+**Normalising the sheet.** The source is a 4x2 grid at 1774x887. It was
+resampled with **one shared centre and one shared scale** across all eight
+frames, not fitted per cell: the burst grows 208px -> 389px -> 204px, and
+that expansion *is* the effect — fitting each frame to its own cell would
+have flattened it into a wobble. The artist's centres agree to within ~8px,
+so a single origin (224, 225) works. Frame 0 is the ball still intact, which
+hands off cleanly from the projectile.
+
+Output is **128px frames, not 256**: this draws at ~44px, so 256 would be
+six times oversampled for four times the VRAM on the iPhone this game is
+played on. Small isolated speckles in the source were dropped (components
+under 30px, away from the main mass).
+
+**Both endings burst.** `queueSnowballBurst` is called at the two — and
+only two — ways a ball's flight can end, both in `updateSlimeProjectiles`:
+life running out (it reached the point it was aimed at, i.e. you dodged) and
+reaching the player (a hit). Bursting only on damage would make a successful
+dodge look like the ball evaporated.
+
+It is queued there rather than in the renderer's sprite reap because the
+reap also fires on a zone change, which would spray bursts for every ball in
+the air as you leave. The queue is cleared at the same four sites that clear
+`slimeProjectiles` on zone load, is capped at 12, and is drained every frame
+whether or not the art loaded, so it cannot accumulate.
+
+**Preloaded per zone and awaited.** A module-scope `_fxLoad` would join the
+global manifest and spend startup budget on a strip most sessions never see.
+It is instead kicked from `preloadZoneAssets` for frost and **pushed into
+`tasks`**, so it is awaited behind the zone overlay — the preload law's
+zone-asset exception done properly, not a lazy first-use load.

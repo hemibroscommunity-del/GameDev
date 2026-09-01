@@ -513,7 +513,7 @@ export function processGameEvent(type, payload, S, deps) {
               S.hitParticles = [];
               S.deathExplosions = [];
               S.arrows = [];
-              S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */
+              S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */ S.snowballBursts = []; /* v2.3.2217: and an undrained burst would pop in the new zone at old coords */
               S.player.x = _ddMX * TILE;
               S.player.y = (_ddH - 3) * TILE;
               S._zoneWipe = Date.now();
@@ -592,7 +592,7 @@ export function processGameEvent(type, payload, S, deps) {
                 S.hitParticles = [];
                 S.deathExplosions = [];
                 S.arrows = [];
-                S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */
+                S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */ S.snowballBursts = []; /* v2.3.2217: and an undrained burst would pop in the new zone at old coords */
                 S.player.x = Math.floor(_fz.w / 2) * TILE;
                 S.player.y = (_fz.h - 4) * TILE;
                 S._zoneWipe = Date.now();
