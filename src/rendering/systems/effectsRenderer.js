@@ -304,6 +304,12 @@ const FIRE_GEAR_REG = {
    Crit stat on the Hero screen, so a player learns one symbol, not two. */
 const DMG_FONT_PX = 21;
 const DMG_CRIT_FONT_PX = 38;
+/* v2.3.2202 (owner: "change the damage color to a light yellow when it's a
+   crit").  Was the gold #f5c542 / amber #fbbf24 pair -- two shades for one
+   event, and both close enough to the game's general gold accent (level-ups,
+   XP, quest text) to read as "some UI thing" rather than "that hit was
+   special".  One light yellow, used by every crit door. */
+export const DMG_CRIT_COLOR = '#FFF27A';
 
 const POPUP_ICONS = {};
 const POPUP_ICON_KEYS = ['xp', 'gold', 'sword', 'arrow', 'spell', 'heart', 'crit'];
@@ -2311,7 +2317,14 @@ export class EffectsRenderer {
           const tex = POPUP_ICONS[iconKey];
           const icon = new Sprite(tex);
           icon.anchor.set(0, 0.5);
-          const targetH = Math.min(fontSize, 22);
+          /* v2.3.2202 (owner: "make the crit icon much larger (I can barely
+             see it)").  The 22px cap was the whole reason: it applied
+             whatever the font did, so raising the crit number to 38px left
+             the mark beside it at its old size and looking smaller still by
+             comparison.  A crit's mark now scales WITH its number and a
+             little past it, which is what "much larger" asks for; every
+             other icon keeps the cap it has always had. */
+          const targetH = dmg.crit ? Math.round(fontSize * 1.15) : Math.min(fontSize, 22);
           icon.scale.set(targetH / tex.height);
           this.dmgLayer.addChild(icon);
           dmg._pixiIcon = icon;

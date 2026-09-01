@@ -18,6 +18,7 @@
    - `setRpgState` / `setLevelUpMsg` are the React setters.
    `window._pixiRenderer` stays a runtime global (same as the other
    extracted loop modules). S is stateRef.current. */
+import { DMG_CRIT_COLOR } from '@/rendering/systems/effectsRenderer.js'; /* v2.3.2202: one crit colour, every door */
 import {
   BT_AUDIO, DEATH_GOLD_PENALTY, DEATH_SCATTER_RECOVERY,
   ECHO_AGGRO_MULT, ELEMENTS, GEM_DROP_RATES, GOLD_NUGGET_DROP, GS_FORWARD_ARC,
@@ -1861,9 +1862,9 @@ export function updateMonsterCombat(S, deps) {
                    crit mark too: a sword on a crit says the same thing as a
                    sword on a normal hit, which is nothing. */
                 if (isCrit && collisionResult) {
-                  pushDmgPopup(S, m.x, monsterPopupY(m, -20), 'ZAP ' + dmg, '#f5c542', { iconKey: 'crit', crit: true, special: _isSpecialDmg });
+                  pushDmgPopup(S, m.x, monsterPopupY(m, -20), 'ZAP ' + dmg, DMG_CRIT_COLOR, { iconKey: 'crit', crit: true, special: _isSpecialDmg });
                 } else if (isCrit) {
-                  pushDmgPopup(S, m.x, monsterPopupY(m, -20), String(dmg), '#f5c542', { iconKey: 'crit', crit: true, special: _isSpecialDmg });
+                  pushDmgPopup(S, m.x, monsterPopupY(m, -20), String(dmg), DMG_CRIT_COLOR, { iconKey: 'crit', crit: true, special: _isSpecialDmg });
                 } else {
                   pushDmgPopup(S, m.x, monsterPopupY(m, -20), '' + dmg, '#fff', { iconKey: 'sword', special: _isSpecialDmg });
                 }

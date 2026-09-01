@@ -24,6 +24,12 @@ import { applyZoneVariant, hitShapeOf, variantForArchetype } from './monsterVari
 /* v2.3.1660: the trained-skill combat rebuild's client mirror — every
    prog3Live(rpg) branch below keeps its legacy body for old workers
    (rule 19) and for any blob the v10 respec fail-opened on. */
+/* v2.3.2202: mirrors server/src/combat.js CRIT_ANCHOR_MULT -- a crit pays
+   at least this many times the top of the weapon's range.  The reasoning
+   (and why anticheat does not move) lives on the SERVER copy, which is the
+   source of truth. */
+export const CRIT_ANCHOR_MULT = 2;
+
 import {
   PROG3, prog3Live, prog3CharLevel, prog3SkillLevel, prog3Pts,
   prog3AtkPts, prog3CatFor, prog3DodgePct, prog3CritPct, prog3CritFlat,
@@ -4993,7 +4999,23 @@ export function calcDisplayDps(rpg, wpn) {
   /* v2.3.1345: crit-dmg channel is a FLAT bonus on lucky hits — fold
      its expected value on top of the power multiplier. */
   var critFlat = prog3Live(rpg) ? prog3CritFlat(rpg, prog3CatFor(wpn.type)) : weaponCritFlatFor(rpg, wpn.type);
-  return ((r.min + r.max) / 2 * (1 + critChance * (critMult - 1)) + critChance * critFlat) / (r.cdMs / 1000);
+  /* ═══ v2.3.2202: THE CRIT ANCHOR IS IN THE PREDICTION TOO ═══
+     The server floors a crit at CRIT_ANCHOR_MULT x the top of the range
+     (combat.js _critAnchor), so folding crits as `avg x critMult` would
+     under-report DPS for exactly the builds the anchor exists to help --
+     the ones whose critMult alone does not reach the floor.  Mirrored
+     here so the readout predicts the roll the wire will confirm, which is
+     the v2.3.1451 rule this whole function lives by.
+     The average hit is avg on a normal swing and the anchored value on a
+     crit, so the fold is avg + chance x (critHit - avg) rather than a
+     multiplier on avg. */
+  var avg = (r.min + r.max) / 2;
+  /* Flat ON TOP of the floor, matching the server exactly (_critAnchor is
+     applied to the multiplied part and the banked flat added after).  The
+     first cut folded critFlat inside the max and would have under-reported
+     every legacy crit-flat build by the part the floor swallowed. */
+  var critHit = Math.max(avg * critMult, r.max * CRIT_ANCHOR_MULT) + critFlat;
+  return (avg + critChance * (critHit - avg)) / (r.cdMs / 1000);
 }
 
 /* v2.3.1207: ONE display heal formula for every fish readout — the

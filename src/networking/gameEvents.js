@@ -1,5 +1,6 @@
 /* ═══ GAME EVENTS — the server/peer event dispatcher (40+ message types) ═══ */
 import { lockOntoDuelOpponent } from '@/game/duelLock.js'; /* v2.3.2145 */
+import { DMG_CRIT_COLOR } from '@/rendering/systems/effectsRenderer.js'; /* v2.3.2202: one crit colour, every door */
 /* v2.3.783: _processGameEvent moved verbatim from the inline WS client in
    src/ui/BroTown.jsx (REBUILD-PLAN Phase 4, behavior-frozen). It handles
    both batched `tick.events` entries and direct sends (see
@@ -1242,7 +1243,7 @@ export function processGameEvent(type, payload, S, deps) {
                   if (payload.attackerId !== S.myId) {
                     enqueuePeerDamage(S, peerDmgKey(payload.monsterId, hitM.x || hitM.renderX, hitM.y || hitM.renderY), {
                       x: hitM.x || hitM.renderX, y: monsterPopupY(hitM, -20),
-                      text: '-' + payload.dmg, color: payload.isCrit ? '#fbbf24' : '#ff8888',
+                      text: '-' + payload.dmg, color: payload.isCrit ? DMG_CRIT_COLOR : '#ff8888',
                       /* v2.3.2201: the server's crit gets the same treatment
                          the local swing gets -- big number + the crit mark.
                          These two doors painted the same event differently,
@@ -1261,7 +1262,7 @@ export function processGameEvent(type, payload, S, deps) {
                        the ability chips the HP bar and prints NOTHING.
                        Same shape, same reason, as the thorns case below. */
                     pushDmgPopup(S, hitM.x || hitM.renderX, monsterPopupY(hitM, -20),
-                      '-' + payload.dmg, payload.isCrit ? '#fbbf24' : '#ffd08a',
+                      '-' + payload.dmg, payload.isCrit ? DMG_CRIT_COLOR : '#ffd08a',
                       payload.isCrit ? { crit: true, iconKey: 'crit' } : undefined);  /* v2.3.2201 */
                   } else if (payload.thorns) {
                     /* v2.3.1137: Thorns reflect is SERVER-rolled with no
@@ -1803,7 +1804,7 @@ export function processGameEvent(type, payload, S, deps) {
                 x: payload.x || 0,
                 y: (payload.y || 0) - 20,
                 text: '-' + (payload.dmg || 0),
-                color: payload.isCrit ? '#fbbf24' : '#ff8888',
+                color: payload.isCrit ? DMG_CRIT_COLOR : '#ff8888',
                 /* v2.3.2201: a peer's crit reads as a crit too -- found by the
                    crit-popup precheck rule, not by hand. */
                 crit: !!payload.isCrit,
@@ -2093,7 +2094,7 @@ export function processGameEvent(type, payload, S, deps) {
                   } else if (typeof payload.dmgTaken === 'number') {
                     pushDmgPopup(S, _pvX, _pvY,
                       '-' + Math.ceil(payload.dmgTaken) + (payload.isCrit ? '!' : ''),
-                      payload.isCrit ? '#f5c542' : '#ff5e6c',
+                      payload.isCrit ? DMG_CRIT_COLOR : '#ff5e6c',
                       /* v2.3.2201: this one already SAID crit with a '!' and
                          a colour, and still drew at ordinary size. */
                       payload.isCrit ? { crit: true, iconKey: 'crit' } : undefined);

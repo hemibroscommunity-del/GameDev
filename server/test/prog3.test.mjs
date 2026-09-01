@@ -356,14 +356,23 @@ const psA = room.playerState.pa;
   check('prog3 crit fires from the allocated stat', critRoll.isCrit === true, critRoll);
   /* The exact percent math, deterministically: Math.random()=0 pins the
      melee variance at its 0.75 floor, so
-       dmg = round((effBase + skLvl×1.5 + 75×0.5) × tierMult 6 × 0.75
-             × volatile 1.3 × critMult 2.5). */
+       multiplied = (effBase + skLvl×1.5 + 75×0.5) × tierMult 6 × 0.75
+                    × volatile 1.3 × critMult 2.5
+     ...and v2.3.2202 floors that at the ANCHOR, 2 × the top of the range,
+     where the range top is the same pre-variance base × the melee band's
+     1.25 ceiling.  On this fixture the anchor WINS (2.5 × base against
+     2.4375 × base), which is the anchor doing its job: Math.random()=0 is
+     the worst roll on the table, and the whole point is that a crit off a
+     bad roll still beats the best ordinary hit.  The 2 is written as a
+     literal, not imported, so this stays an independent check. */
   {
     const skLvl = psA.prog3.sk.sword.level;
     const effBase = room._weaponEffBase('sword', psA.weapon);
-    const expected = Math.round((effBase + skLvl * PROG3.DMG_PER_LEVEL.sword + 75 * PROG3.ATK.dmg.per)
-      * 6 * 0.75 * 1.3 * (1.5 + 100 * PROG3.ATK.critDmg.per));
-    check('crit damage = base × (1.5 + pts×0.01), the flat is gone', critRoll.dmg === expected,
+    const preVar = (effBase + skLvl * PROG3.DMG_PER_LEVEL.sword + 75 * PROG3.ATK.dmg.per) * 6;
+    const multiplied = preVar * 0.75 * 1.3 * (1.5 + 100 * PROG3.ATK.critDmg.per);
+    const anchored = preVar * 1.25 * 2;
+    const expected = Math.round(Math.max(multiplied, anchored));
+    check('crit damage = max(base × (1.5 + pts×0.01), 2 × range top) — the v2.3.2202 anchor', critRoll.dmg === expected,
       { got: critRoll.dmg, expected });
   }
   /* And the dmg stat feeds the NON-crit roll too: +75×0.5 pre-tier. */
@@ -730,6 +739,57 @@ const psA = room.playerState.pa;
   check('...and melee, which bought nothing, is unaffected by bow\'s point',
     PROG3.ATK.crit.base + fresh.prog3.atk.sword.crit * PROG3.ATK.crit.per === 0.01,
     fresh.prog3.atk.sword.crit);
+}
+
+/* ═══ v2.3.2202: A CRIT ALWAYS BEATS THE BEST ORDINARY HIT ═══
+   Owner: "The crit damage amount should be doing at least double the top
+   end range of the weapon's damage.  Maybe that's the anchor.  Right now
+   it's very underwhelming."
+
+   The promise in one line: whatever the dice did, a crit pays at least 2x
+   the top of the range.  Asserted as the PROPERTY rather than a number,
+   across the whole variance band, because the failure it guards is exactly
+   the old behaviour -- a crit on a low roll landing under a lucky normal
+   hit.  Both ends of the band are pinned via Math.random, so this covers
+   the worst roll (where the anchor must bind) and the best (where the
+   multiplier may already win and the anchor must not REDUCE it). */
+{
+  const origRandom = Math.random;
+  const ps = {
+    prog3: { sk: { sword: { level: 1 }, bow: { level: 1 }, staff: { level: 1 } },
+             atk: { sword: { crit: 75, critDmg: 0, aspd: 0, dmg: 0 },
+                    bow:   { crit: 75, critDmg: 0, aspd: 0, dmg: 0 },
+                    staff: { crit: 75, critDmg: 0, aspd: 0, dmg: 0 } },
+             alloc: {}, pool: 0 },
+    power: 0, mind: 0, agility: 0, weaponSpecs: {},
+    weapon: { type: 'sword', tierMult: 2 },
+    rangedWeapon: { type: 'bow', tierMult: 2 },
+    staffWeapon: { type: 'staff', tierMult: 2 },
+  };
+  /* The band ceilings the roll actually uses (combat.js VAR). */
+  const BAND_TOP = { melee: 1.25, ranged: 0.8, staff: 1.5 };
+  const TYPE = { melee: 'sword', ranged: 'bow', staff: 'staff' };
+  for (const slot of ['melee', 'ranged', 'staff']) {
+    const w = slot === 'melee' ? ps.weapon : slot === 'ranged' ? ps.rangedWeapon : ps.staffWeapon;
+    const preVar = (room._weaponEffBase(TYPE[slot], w) + PROG3.DMG_PER_LEVEL[TYPE[slot]]) * 2;
+    const rangeTop = preVar * BAND_TOP[slot];
+    /* A SEQUENCE, not one value.  _computeAttackDamage draws variance first
+       and the crit roll second, so a single stub cannot ask for "best roll
+       AND a crit" -- 0.999999 pins the band at its top and then fails the
+       31% crit check.  The first draft did exactly that and reported six
+       failures that were the test's fault, not the code's. */
+    for (const [label, band] of [['worst roll', 0.0], ['best roll', 0.999999]]) {
+      const seq = [band, 0.0]; let n = 0;
+      Math.random = () => seq[Math.min(n++, seq.length - 1)];
+      const hit = room._computeAttackDamage(ps, slot, false);
+      Math.random = origRandom;
+      check(`${TYPE[slot]} (${label}): the hit crit (guard)`, hit.isCrit === true, hit);
+      check(`${TYPE[slot]} (${label}): a crit pays at least 2x the top of the range`,
+        hit.dmg >= Math.round(rangeTop * 2) - 1,
+        { dmg: hit.dmg, rangeTop: Math.round(rangeTop), need: Math.round(rangeTop * 2) });
+    }
+  }
+  Math.random = origRandom;
 }
 
 console.log(failures === 0 ? '\nprog3: ALL PASS' : `\nprog3: ${failures} FAILURE(S)`);

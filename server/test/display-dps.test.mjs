@@ -181,7 +181,10 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
                    + 50 * 0.005;                     // + counter channel expected rate
   const critMult = 1.5 + 100 * 0.001;                // power-only (1.6)
   const critFlat = Math.round(T2_UNITS.critDmg * 25 * 26); // t2Accel(25, unit) — v2.3.1415: derives from the table so unit tuning can't break the fixture
-  const expDps = ((expMin + expMax) / 2 * (1 + critChance * (critMult - 1)) + critChance * critFlat) / (600 / 1000);
+  /* v2.3.2202: anchored crit -- floor at 2x the range top, banked flat on top. */
+  const avgH = (expMin + expMax) / 2;
+  const critHitH = Math.max(avgH * critMult, expMax * 2) + critFlat;
+  const expDps = (avgH + critChance * (critHitH - avgH)) / (600 / 1000);
 
   const r = calcDisplayDmgRange(rpg, wpn);
   check('fixture: damage range matches hand math exactly',
@@ -360,7 +363,13 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
   const baseX = (6.67 + 40 * PROG3.DMG_PER_LEVEL.sword + 30 * PROG3.ATK.dmg.per) * 2.0;
   const cdX = 600 * (1 - 20 * PROG3.ATK.aspd.per);
   const expMinX = Math.round(baseX * 0.75), expMaxX = Math.round(baseX * 1.25);
-  const expDpsX = ((expMinX + expMaxX) / 2 * (1 + (0.01 + 50 * PROG3.ATK.crit.per) * (2.1 - 1))) / (cdX / 1000);
+  /* v2.3.2202: crits are floored at 2x the top of the range (the anchor), so
+     the fold is avg + chance x (critHit - avg), not a multiplier on avg.
+     The 2 is a literal here for the same reason 0.01 is -- a fixture that
+     imports the constant agrees with production by construction. */
+  const avgX = (expMinX + expMaxX) / 2;
+  const critHitX = Math.max(avgX * 2.1, expMaxX * 2);
+  const expDpsX = (avgX + (0.01 + 50 * PROG3.ATK.crit.per) * (critHitX - avgX)) / (cdX / 1000);
   const rX = calcDisplayDmgRange(p3rpg, SWORD);
   const dX = calcDisplayDps(p3rpg, SWORD);
   check('prog3x fixture: range carries the dmg stat pre-tier',
@@ -375,8 +384,9 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
   setProg3XEnabled(false);
   const baseL = (6.67 + 40 * PROG3.DMG_PER_LEVEL.sword) * 2.0;
   const expMinL = Math.round(baseL * 0.75), expMaxL = Math.round(baseL * 1.25);
-  const expDpsL = ((expMinL + expMaxL) / 2 * (1 + (0.01 + 50 * PROG3.ATK.crit.per) * (1.5 - 1))
-    + (0.01 + 50 * PROG3.ATK.crit.per) * (60 * 2)) / (cdX / 1000);
+  const avgL = (expMinL + expMaxL) / 2;
+  const critHitL = Math.max(avgL * 1.5, expMaxL * 2) + 60 * 2;   /* flat rides ON TOP of the anchor */
+  const expDpsL = (avgL + (0.01 + 50 * PROG3.ATK.crit.per) * (critHitL - avgL)) / (cdX / 1000);
   const rL = calcDisplayDmgRange(p3rpg, SWORD);
   const dL = calcDisplayDps(p3rpg, SWORD);
   check('old-worker fallback: dmg stat leaves the range',
