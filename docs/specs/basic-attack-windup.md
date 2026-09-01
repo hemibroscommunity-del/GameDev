@@ -223,3 +223,33 @@ air), and without it he would hold the cocked pose forever.
 drawn ball in mid-air, and the engine now draws the real one at his hand on
 that same tick. Playing it would put two snowballs on screen a few px apart.
 The strip therefore runs 0-4, then 6-7.
+
+## The thrown ball is his own ball (v2.3.2217)
+
+The projectile was three stacked `Graphics` circles — a white orb with a
+cold rim — because when it was written there was no snowball sprite in the
+repo. Next to the detailed, shaded ball in his claw it read as "a plain
+white circle" (owner, 2026-09-01).
+
+There is one now, and it is the same drawing:
+`public/sprites/monsters/snowman/snowball.png` is **cut from frame 5 of the
+south throw strip**. That is the frame the wind-up deliberately skips — and
+it turns out to be the only place the artist drew the ball *in flight*:
+standalone, larger (it is coming toward the viewer), and free of the brown
+claw that wraps it in every held frame. Every frame-4 crop carries claw
+fragments; that one is clean. So the frame is not wasted after all — it
+became the projectile.
+
+Cut with a circular mask at r=16 centred on (32, 78) in the source cell,
+with a 1.5px soft edge. Wider radii pull in a dark arc from behind the
+ball; re-cut the same way if the art is redrawn.
+
+Drawn at the strips' own 0.5 scale, which is what makes the ball in the air
+and the ball in the hand read as one object. It does not rotate — the
+highlight is lit from one side, so spinning it would look wrong.
+
+It loads inside `loadSnowmanSprites`, so it rides the frost zone's
+`preloadZoneAssets` await and needs no separate registration (the preload
+law's zone-asset exception). **The procedural orb is kept as the fallback,
+not deleted:** the art is a per-zone asset, and a ball you cannot see is a
+ball you cannot dodge.

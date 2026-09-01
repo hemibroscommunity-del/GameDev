@@ -642,6 +642,31 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     /_throwReleaseAt\s*=\s*Date\.now\(\)/.test(src), {});
   check('release sync: ...and the renderer waits for it rather than a clock',
     /_throwReleaseAt/.test(rend) && /THROW_RELEASE_GRACE_MS/.test(rend), {});
+
+  /* ═══ v2.3.2217: the ball in the air is the ball in his hand ═══
+     snowball.png is CUT from frame 5 of the south throw strip, so it is a
+     generated asset that must be committed — miss it and the projectile
+     silently drops back to the procedural orb the owner asked us to
+     replace.  Pin the file, the loader (it rides loadSnowmanSprites, which
+     preloadZoneAssets awaits for frost — the preload law's zone exception)
+     and the consumer. */
+  let ballBytes = 0;
+  try {
+    ballBytes = readFileSync(new URL(
+      '../../public/sprites/monsters/snowman/snowball.png', import.meta.url)).length;
+  } catch { /* missing */ }
+  check('snowball art: the cut-out ball sprite is committed',
+    ballBytes > 0, { bytes: ballBytes });
+  check('snowball art: it loads with the rest of the snowman (per-zone preload)',
+    /loadSnowball\(\)/.test(sprites) && /snowball\.png/.test(sprites), {});
+  const fx = readFileSync(
+    new URL('../../src/rendering/systems/effectsRenderer.js', import.meta.url), 'utf8');
+  check('snowball art: ...and the thrown ball actually draws it',
+    /getSnowballTexture\(\)/.test(fx), {});
+  /* The procedural orb stays as the fallback — a ball you cannot see is a
+     ball you cannot dodge, and the art is a per-zone asset. */
+  check('snowball art: ...with the procedural orb kept as the fallback',
+    /cold rim/.test(fx), {});
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

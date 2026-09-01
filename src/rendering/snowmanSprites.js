@@ -103,6 +103,31 @@ async function loadAttack(dir) {
   }
 }
 
+/* v2.3.2217: the thrown snowball's art.  It is CUT FROM frame 5 of the
+   south throw strip — the frame the wind-up skips, because that frame's
+   whole content is the ball drawn in flight, standalone and free of the
+   claw that wraps it in every held frame.  So the projectile is not a
+   lookalike of the ball he throws; it is literally the same drawing.
+   (Owner, 2026-09-01: the procedural orb "looks like a plain white
+   circle" next to the detailed one in his hand.) */
+let snowballTex = null;
+
+async function loadSnowball() {
+  try {
+    const tex = await Assets.load(`/sprites/monsters/snowman/snowball.png?v=${SPRITE_VERSION}`);
+    if (tex && tex.source) snowballTex = tex;
+  } catch {
+    /* missing — effectsRenderer falls back to its procedural orb */
+  }
+}
+
+/** The thrown-snowball texture, or null until loaded.  Its art is 32px
+ *  across in a 36px cell; draw it at the strips' own 0.5 scale so the ball
+ *  in the air matches the size of the ball in his hand. */
+export function getSnowballTexture() {
+  return snowballTex;
+}
+
 async function loadRemnants() {
   try {
     const tex = await Assets.load(`/sprites/monsters/snowman-remnants.png?v=${SPRITE_VERSION}`);
@@ -144,6 +169,7 @@ export function loadSnowmanSprites() {
     ...SOURCE_DIRS.map(loadOne),
     ...SOURCE_DIRS.map(loadAttack),   /* v2.3.2215 */
     loadRemnants(), loadHit(), loadDeath(),
+    loadSnowball(),   /* v2.3.2217 */
   ]);
   return loadPromise;
 }

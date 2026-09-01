@@ -24,7 +24,7 @@ import { TILE, MINE_SPOT_R, FISH_CUE_DY } from '@/data/constants.js';
 import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool} from '@/data/index.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1535 generalised */
-import { getRemnantsTexture as getSnowmanRemnantsTex } from '../snowmanSprites.js';
+import { getRemnantsTexture as getSnowmanRemnantsTex, getSnowballTexture } from '../snowmanSprites.js'; /* v2.3.2217 */
 import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../data/monsterVariants.js';
 import { ZONE_SHARDS } from '../../data/shards.js';
@@ -2911,14 +2911,42 @@ export class EffectsRenderer {
        archetype entirely.  Frost Ridge has no variant-map entry at all, so the
        snowman's ball fell through to the slime orb: a green blob against snow,
        which is why it read as invisible.
-       There is no snowball sprite in the repo (the snowman folder has facings,
-       a death, a hit and an IMPACT splash — no ball), so this draws one:
-       a white orb with a soft rim, procedural, on the same Graphics the rest
-       of this pass uses.  No filters — iOS WebGL, CLAUDE.md — so the softness
-       is two stacked circles, the same trick the lantern ring used. */
+       v2.3.2217: THERE IS A SNOWBALL SPRITE NOW, and it is his own.
+       `snowball.png` is cut from frame 5 of the south throw strip — the one
+       frame that draws the ball in flight, standalone and free of the claw
+       that wraps it in every held frame — so the ball in the air is the same
+       drawing as the ball in his hand, not a lookalike.  Drawn at the strips'
+       own 0.5 scale, which is what makes the two read as one object.
+       (Owner, 2026-09-01: the orb below "looks like a plain white circle"
+       next to the detailed one he holds.)
+
+       The procedural orb is KEPT as the fallback, not deleted: the art is a
+       per-zone asset, and a ball you cannot see is a ball you cannot dodge.
+       It is a white orb with a soft rim, no filters — iOS WebGL, CLAUDE.md —
+       so the softness is two stacked circles, the lantern-ring trick. */
     const snowballs = slimeProjs.filter((sp) => sp.kind === 'snowball');
     if (snowballs.length) {
+      const ballTex = getSnowballTexture();
       for (const sp of snowballs) {
+        if (ballTex) {
+          let bs = sp._pixiSprite;
+          if (!bs || bs.destroyed) {
+            bs = new Sprite(ballTex);
+            bs.anchor.set(0.5, 0.5);
+            this.projectileLayer.addChild(bs);
+            sp._pixiSprite = bs;
+            this.slimeProjSprites.push({ proj: sp, sprite: bs });
+          }
+          if (bs.texture !== ballTex) bs.texture = ballTex;
+          /* The strips render at 64/128; matching it puts the flying ball at
+             exactly the size it was in his claw. */
+          bs.scale.set(0.5);
+          bs.rotation = 0;   /* the highlight is lit from one side — spinning it would read wrong */
+          bs.x = sp.x;
+          bs.y = sp.y;
+          if (!bs.visible) bs.visible = true;
+          continue;
+        }
         /* Shed the pooled Sprite if this ball was previously drawn as an orb
            (kind can only be set at spawn, but a stale sprite would linger). */
         if (sp._pixiSprite && !sp._pixiSprite.destroyed) { sp._pixiSprite.visible = false; }
