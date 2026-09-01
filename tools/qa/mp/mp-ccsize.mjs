@@ -366,4 +366,111 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const skinDefault = await P.page.evaluate(() =>
     !!document.querySelector('.bt-cc-defcolor--on'));
   rec.ok('...and colour picks are back to Default too', skinDefault, { skinDefault });
+
+  /* ═══ v2.3.2203: THE "THERE IS MORE BELOW" CUE ═══
+     Owner, on the Hats tab: "additional hat options don't surface the
+     shadowed effect to cue additional options anymore."
+
+     It had been dead since v2.3.1524 and nothing noticed, so the interesting
+     question is what a test would have had to check to catch it. Not "does
+     the overlay exist" -- it existed the whole time, correctly wired, at
+     opacity 0. Not "is it in the DOM when the catalogue is long" -- also true
+     the whole time. The two properties that were actually false:
+
+       1. the flag goes TRUE on a catalogue that overflows, and
+       2. the band lies along the edge the content runs off.
+
+     (2) is the one that pins the axis. A right-hand 26px column and a bottom
+     22px band are both "an overlay on the strip"; only measuring the rect
+     against the strip's own box can tell them apart, which is why this
+     asserts the band is nearly as wide as the strip and sits at its floor
+     rather than just asserting it is visible.
+
+     Hats is the catalogue the owner was looking at and the longest in the
+     game, so it is the honest one to drive -- but the guard below still
+     proves it overflows rather than trusting that. */
+  const opened = await P.page.evaluate(() => {
+    const b = [...document.querySelectorAll('.bt-cc-tab')]
+      .find((x) => (x.textContent || '').trim() === 'Hats');
+    if (b) b.click();
+    return !!b;
+  });
+  rec.ok('the Hats tab is there to open (guard)', opened, { opened });
+  await P.page.waitForTimeout(800);
+
+  const cue = () => P.page.evaluate(() => {
+    const strip = document.querySelector('.bt-cc-strip');
+    const more = document.querySelector('.bt-cc-scroll .bt-cc-more');
+    if (!strip || !more) return null;
+    const sr = strip.getBoundingClientRect();
+    const mr = more.getBoundingClientRect();
+    return {
+      overflow: strip.scrollHeight - strip.clientHeight,
+      top: Math.round(strip.scrollTop),
+      on: more.className.indexOf('bt-cc-more--on') >= 0,
+      /* Computed, not the class: a rule could hide it in a way the class
+         name cannot see. */
+      opacity: Number(getComputedStyle(more).opacity),
+      widthFrac: mr.width / sr.width,
+      floorGap: Math.round(sr.bottom - mr.bottom),
+      height: Math.round(mr.height)
+    };
+  });
+
+  const atTop = await cue();
+  rec.ok('the Hats catalogue really is taller than its strip (guard: a cue '
+       + 'that never had anything to announce proves nothing)',
+    !!atTop && atTop.overflow > 20, atTop);
+  rec.ok('...so the "more below" cue is showing', !!atTop && atTop.on, atTop);
+  rec.ok('...and it is actually painted, not just class-tagged',
+    !!atTop && atTop.opacity > 0.9, atTop);
+  /* The axis assertions -- the two that fail on the pre-v2.3.2203 overlay,
+     which was a narrow column pinned to the RIGHT edge. */
+  rec.ok('...lying across the strip\'s full width, not down one side',
+    !!atTop && atTop.widthFrac > 0.9, atTop);
+  rec.ok('...at the strip\'s bottom edge, where the options run off',
+    !!atTop && Math.abs(atTop.floorGap) <= 2, atTop);
+
+  /* And it goes away at the end of the list: a cue that is always on is
+     decoration, not information. */
+  await P.page.evaluate(() => {
+    const strip = document.querySelector('.bt-cc-strip');
+    if (strip) strip.scrollTop = strip.scrollHeight;
+  });
+  await P.page.waitForTimeout(500);
+  const atEnd = await cue();
+  rec.ok('scrolled to the last hat, the cue is gone', !!atEnd && !atEnd.on, atEnd);
+
+  /* v2.3.2203: the scroll RESET carried the same axis bug (scrollLeft on an
+     overflow-x:hidden box). Leave Hats scrolled to the bottom, switch away
+     and back, and the catalogue must start at the top again.
+
+     Stated honestly: this one PASSES against the unfixed source too, so it
+     is a pin, not the guard that would have caught the bug. Hair's catalogue
+     is shorter than Hats', so swapping to it shrinks the content under a
+     scrolled box and the browser clamps scrollTop to 0 on its own -- the
+     broken reset got the right answer by accident on this particular pair of
+     tabs. It is kept because the invariant is real and cheap, and because a
+     future long-catalogue-to-long-catalogue switch would make it bite. */
+  const back = await P.page.evaluate(() => {
+    const hit = (label) => {
+      const b = [...document.querySelectorAll('.bt-cc-tab')]
+        .find((x) => (x.textContent || '').trim() === label);
+      if (b) b.click();
+      return !!b;
+    };
+    return hit('Hair');
+  });
+  rec.ok('the Hair tab is there to switch to (guard)', back, { back });
+  await P.page.waitForTimeout(600);
+  await P.page.evaluate(() => {
+    const b = [...document.querySelectorAll('.bt-cc-tab')]
+      .find((x) => (x.textContent || '').trim() === 'Hats');
+    if (b) b.click();
+  });
+  await P.page.waitForTimeout(700);
+  const reopened = await cue();
+  rec.ok('coming back to Hats starts at the top of the list, not where you '
+       + 'left it', !!reopened && reopened.top === 0, reopened);
+  rec.ok('...with the cue showing again', !!reopened && reopened.on, reopened);
 }

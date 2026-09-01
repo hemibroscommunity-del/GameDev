@@ -1926,8 +1926,12 @@ input{font-family:inherit}
    matches the retired pager's › (no emoji). */
 .bt-cc-scroll{position:relative;flex:0 0 auto;min-width:0}
 /* v2.3.1524: the items wrap is the pane's flexible region; the colours wrap
-   stays fixed. The chevron overlay signalled horizontal overflow and has
-   nothing to say about a vertical grid. */
+   stays fixed.  That rewrite also declared the chevron overlay had "nothing
+   to say about a vertical grid" and killed it with the display:none below --
+   which never took effect anyway, because the v2.3.1254 rule further down
+   re-declares display at the same specificity and wins on order.  So the
+   overlay has been painting all along, at opacity 0, waiting on a flag that
+   could no longer go true (NameModal.jsx, v2.3.2203). */
 /* v2.3.1956 (owner: "Move the tattoo and pattern option button to directly
    beneath the color options instead of sitting at the bottom of the
    container").  The options strip used to GROW into all the spare height, so
@@ -1940,8 +1944,16 @@ input{font-family:inherit}
    guarantee is untouched: the pane's OUTER height is unchanged, so the stage
    and the character do not move. */
 .bt-cc-panel>.bt-cc-scroll{flex:0 1 auto;min-height:0;display:flex;flex-direction:column}
-.bt-cc-more{display:none}
-.bt-cc-more{position:absolute;top:0;right:0;bottom:0;width:26px;display:flex;align-items:center;justify-content:flex-end;padding-right:2px;pointer-events:none;opacity:0;transition:opacity 160ms ease;background:linear-gradient(to right,rgba(30,46,52,0),var(--ui-sheet) 80%);color:var(--ui-text-secondary);font-size:15px;font-weight:700;line-height:1}
+/* v2.3.2203 (owner: "additional hat options don't surface the shadowed effect
+   to cue additional options anymore").  The cue turns 90 degrees to match the
+   grid: a band across the BOTTOM edge, not a column down the right one.
+   The transparent stop is rgba(30,46,52,0) rather than `transparent` on
+   purpose -- `transparent` is transparent BLACK, and Safari interpolates
+   through it, so the honest fade greys out halfway.  #1E2E34 is --ui-sheet
+   spelled in numbers, which is what .bt-cc-panel is painted with, so the
+   band lands on the panel and reads as depth rather than as a grey stripe.
+   The two dead display declarations are gone with it; see the note above. */
+.bt-cc-more{position:absolute;left:0;right:0;bottom:0;height:22px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:1px;pointer-events:none;opacity:0;transition:opacity 160ms ease;background:linear-gradient(to bottom,rgba(30,46,52,0),var(--ui-sheet) 88%);color:var(--ui-text-secondary);font-size:13px;font-weight:700;line-height:1}
 .bt-cc-more--on{opacity:1}
 /* === v2.3.1524: TWO-COLUMN creator (owner) ===============================
    The v2.3.1276 slide-up drawer is retired. The owner's reasoning is the

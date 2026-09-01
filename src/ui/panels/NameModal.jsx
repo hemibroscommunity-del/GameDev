@@ -370,25 +370,64 @@ export function NameModal(props) {
   var _paintState = React.useState(null), showPaint = _paintState[0], setShowPaint = _paintState[1];
   var _stripRef = React.useRef(null);
   var _colorRowRef = React.useRef(null);
-  /* v2.3.1254: scroll affordance — per-strip "more content to the
-     right" flags drive the fade+chevron overlays (.bt-cc-more).
+  /* v2.3.1254: scroll affordance — per-strip "more content waiting"
+     flags drive the fade+chevron overlays (.bt-cc-more).
      Measured on scroll and whenever the strip contents change; the
      setter bails when nothing changed so scrolling doesn't re-render
-     every frame. */
+     every frame.
+
+     ═══ v2.3.2203: IT WAS MEASURING THE AXIS THE STRIP NO LONGER SCROLLS ═══
+     Owner, on the Hats tab: "additional hat options don't surface the
+     shadowed effect to cue additional options anymore."
+
+     Correct, and it has been that way since v2.3.1524 — not something this
+     round broke. v2.3.1254 built this for a HORIZONTAL row of five tiles,
+     so it asks `scrollWidth - clientWidth - scrollLeft`. The two-column
+     rewrite turned both strips into vertical grids with `overflow-x:hidden`,
+     which pins scrollWidth to clientWidth: the expression is 0 forever, the
+     flag never goes true, and the overlay never fades in. The overlay
+     element, its state and its wiring all survived the rewrite intact —
+     only the axis was left pointing the old way, which is exactly why this
+     was invisible for so long. Nothing looked missing in the code.
+
+     So the same three reads, on the axis that actually moves. Note the
+     scroll RESET below had the identical bug in the identical place:
+     `scrollLeft = 0` on a category change is a no-op on an overflow-x:hidden
+     box, so switching from Hats back to Hair left you wherever you had
+     scrolled to. Both are fixed here because both are the same mistake, and
+     splitting them would leave half of it. */
   var _moreS = React.useState({ items: false, colors: false }), scrollMore = _moreS[0], setScrollMore = _moreS[1];
   var _measureMore = function () {
     var i = _stripRef.current, c = _colorRowRef.current;
+    /* The 2px slack absorbs sub-pixel layout: a grid whose rows sum to a
+       fraction over its box would otherwise cue "more" with nothing there. */
     var next = {
-      items: !!(i && i.scrollWidth - i.clientWidth - i.scrollLeft > 2),
-      colors: !!(c && c.scrollWidth - c.clientWidth - c.scrollLeft > 2)
+      items: !!(i && i.scrollHeight - i.clientHeight - i.scrollTop > 2),
+      colors: !!(c && c.scrollHeight - c.clientHeight - c.scrollTop > 2)
     };
     setScrollMore(function (p) { return (p.items === next.items && p.colors === next.colors) ? p : next; });
   };
   React.useEffect(function () {
-    if (_stripRef.current) _stripRef.current.scrollLeft = 0;
-    if (_colorRowRef.current) _colorRowRef.current.scrollLeft = 0;
+    if (_stripRef.current) _stripRef.current.scrollTop = 0;
+    if (_colorRowRef.current) _colorRowRef.current.scrollTop = 0;
     _measureMore();
   }, [activeCat]);
+  /* v2.3.2203: vertical overflow depends on the strip's HEIGHT, which the
+     category change can't tell us about — rotating the phone or the software
+     keyboard opening resizes the pane under a catalogue that never changed.
+     The category effects cover content changes; this covers box changes. The
+     observer watches the scrollers themselves and is created once: React
+     keeps the same two DOM nodes across category switches, so re-observing
+     per render would be churn for no signal. */
+  var _measureRef = React.useRef(null);
+  _measureRef.current = _measureMore;
+  React.useEffect(function () {
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    var ro = new ResizeObserver(function () { if (_measureRef.current) _measureRef.current(); });
+    if (_stripRef.current) ro.observe(_stripRef.current);
+    if (_colorRowRef.current) ro.observe(_colorRowRef.current);
+    return function () { ro.disconnect(); };
+  }, []);
   /* Re-measure without a scroll reset when the pick changes — the color
      row appears/disappears with it and the user may be mid-browse. */
   React.useEffect(function () { _measureMore(); }, [_def.sel]);
@@ -981,9 +1020,11 @@ export function NameModal(props) {
        machinery is retired with the pager. */
     className: "bt-cc-strip", ref: _stripRef, onScroll: _measureMore, role: 'listbox', "aria-label": _def.label + ' options'
   }, _items), /*#__PURE__*/React.createElement("span", {
-    /* v2.3.1254: fade + chevron while more tiles wait off-screen. */
+    /* v2.3.1254: fade + chevron while more tiles wait off-screen.
+       v2.3.2203: the arrow points DOWN now, at the direction the grid
+       actually scrolls -- a › over a vertical list points at a wall. */
     className: "bt-cc-more" + (scrollMore.items ? " bt-cc-more--on" : ""), "aria-hidden": true
-  }, "›")), /*#__PURE__*/React.createElement("div", {
+  }, "▾")), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1252: like the subtabs, the color block always occupies its
        row — an invisible ghost (with one placeholder tile so the row
        keeps its swatch height) when the type/pick has no colors.  This
@@ -1037,7 +1078,7 @@ export function NameModal(props) {
     className: "bt-cc-colors-row", ref: _colorRowRef, onScroll: _measureMore, role: _colors ? 'radiogroup' : undefined, "aria-label": _colors ? _def.label + ' colors' : undefined
   }, _colors || /*#__PURE__*/React.createElement("div", null)), /*#__PURE__*/React.createElement("span", {
     className: "bt-cc-more" + (scrollMore.colors ? " bt-cc-more--on" : ""), "aria-hidden": true
-  }, "›"))),
+  }, "▾"))),
   /* ═══ v2.3.1938: THE WAY IN TO THE DESIGNER ═══
      v2.3.1940 moved it OUT of the colour block and made it always present.
      Two bugs, one cause: the colour block renders as a `.bt-cc-ghost`
