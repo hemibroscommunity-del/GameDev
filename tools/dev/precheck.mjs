@@ -374,6 +374,53 @@ function sanitize(src, { jsxText = false } = {}) {
   if (!fails) add('PASS', 'dmg-popup', `no raw S.dmgNumbers.push( in ${changedClient.length} changed client file(s)`);
 }
 
+/* ---- 4b. crit-popup ----------------------------------------------- */
+/* ═══ v2.3.2211: A POPUP THAT KNOWS IT IS A CRIT MUST SAY SO ═══
+   Owner: "I still can't visually distinguish critical hits."
+
+   The cause was not a tuning miss.  effectsRenderer has sized crits off
+   `dmg.crit` since v2.3.1357 -- and NOTHING that landed a crit ever set it,
+   so the renderer's crit branch was dead code and a colour swap carried the
+   whole signal alone.  Two call sites chose a colour with `isCrit ? gold :
+   plain` and simply never passed the flag; nothing could notice.
+
+   THE RULE IS KEYED ON isCrit, NOT ON THE COLOUR.  The first cut of this
+   check looked for the gold literals (#f5c542 / #fbbf24) and produced 42
+   failures on one branch: those are the game's general accent, worn by
+   level-ups, XP, quest text and gold pickups, so "this colour means crit"
+   is simply false.  What IS true is narrower and exactly the bug: a popup
+   call that BRANCHES ON isCrit has decided it is looking at a crit, and
+   must hand that fact to the renderer.
+
+   Static because it has to hold at the call site, and because no runtime
+   test can catch a crit often enough (~8%) to be a reliable gate. */
+{
+  let fails = 0, checked = 0;
+  const CALL = /(pushDmgPopup|enqueuePeerDamage)\s*\(/g;
+  for (const f of changedClient) {
+    const srcText = read(f);
+    for (const m of srcText.matchAll(CALL)) {
+      /* The call's own argument list: balance parens from the opening one so
+         a nested ternary or object literal cannot end the slice early. */
+      let i = m.index + m[0].length, depth = 1;
+      while (i < srcText.length && depth > 0) {
+        const ch = srcText[i];
+        if (ch === '(') depth++;
+        else if (ch === ')') depth--;
+        i++;
+      }
+      const args = srcText.slice(m.index, i);
+      if (!/\bisCrit\b/.test(args)) continue;   /* not a crit-aware call */
+      checked++;
+      if (!/\bcrit\s*:/.test(args)) {
+        fails++;
+        add('FAIL', 'crit-popup', `${f}:${lineOf(srcText, m.index)} — this popup branches on isCrit but never passes crit:, so effectsRenderer draws the crit at ordinary size (the v2.3.2211 bug, restated)`);
+      }
+    }
+  }
+  if (!fails) add('PASS', 'crit-popup', `every isCrit-aware popup in ${changedClient.length} changed client file(s) passes the flag (${checked} site(s))`);
+}
+
 /* ---- 5. storage-keys --------------------------------------------- */
 {
   // registry covers GameRoom DO storage (handoff rule 2); other DOs exempt

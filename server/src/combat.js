@@ -35,6 +35,11 @@
  * than move twice.  Guards: combat-lifecycle, anticheat, elemental2
  * suites (plus tick/persistence for the callers). */
 
+/* v2.3.2212: "at least double the top end range of the weapon's damage"
+   (owner).  Named because the client's DPS readout has to predict the same
+   number -- see calcDisplayDps, which mirrors it. */
+const CRIT_ANCHOR_MULT = 2;
+
 import {
   ELEMENT_STATUS, applyElementStatus, resolveElementCollision, fractureDmgMult,
   elemAttackStat, // v2.3.2199: prog3 `elem` stat resolver for the DoT power snapshot
@@ -374,6 +379,36 @@ export const combatMethods = {
     return max;
   },
 
+  /* ═══ v2.3.2212: A CRIT IS ANCHORED TO THE TOP OF THE RANGE ═══
+   * Owner: "The crit damage amount should be doing at least double the top
+   * end range of the weapon's damage.  Maybe that's the anchor.  Right now
+   * it's very underwhelming."
+   *
+   * It was underwhelming for a structural reason, not a tuning one.  The
+   * crit multiplier scaled the ROLLED value, so a crit on a low roll landed
+   * under a lucky normal hit and read as nothing at all: a melee band is
+   * 0.75-1.25, so a 0.75 roll crit at x1.5 = 1.125 base -- LESS than an
+   * ordinary 1.25 roll.  The one hit that is supposed to feel special could
+   * come out smaller than the hit before it.
+   *
+   * Anchoring to the top of the range fixes exactly that: whatever the dice
+   * did, a crit pays at least double the biggest ordinary hit that weapon
+   * can produce, so it always reads as a spike.  A FLOOR, not a
+   * replacement -- an invested critDmg build that already beats the anchor
+   * keeps its bigger number, so points spent there are never wasted.
+   *
+   * ANTICHEAT: checked, and it does NOT move.  The ceiling is
+   * maxWpn x critMult x comboBoost(5) x specialMult, all off the
+   * PRE-variance base.  The loosest new crit is base x VAR_max(1.5, staff)
+   * x 2 = 3x base, against a ceiling of at least base x 1.5 x 5 = 7.5x
+   * base.  The anchor cannot reach it, so no legit hit starts being
+   * rejected -- the handoff's "ceilings move with any reprice" rule is
+   * satisfied by the arithmetic rather than by a change.  anticheat.test
+   * and prog3.test pin it either way. */
+  _critAnchor(critDmg, rangeTop) {
+    return Math.max(critDmg, rangeTop * CRIT_ANCHOR_MULT);
+  },
+
   _maxDmgForAttacker(ps, isSpecial) {
     if (!ps) return 21; // baseline-10: 100 ÷ 4.8
     const maxWpn = this._maxWeaponDmg(ps, isSpecial);
@@ -490,10 +525,18 @@ export const combatMethods = {
         + this._prog3AtkPts(ps, _cat, 'dmg') * PROG3.ATK.dmg.per;
     }
     let base = (this._weaponEffBase(type, w) + statTerm) * tierMult;
-    // Per-type variance -- same rolls as the client.
-    const v = type === 'staff' ? (0.5  + Math.random() * 1.0)
-            : type === 'bow'   ? (0.6  + Math.random() * 0.2)
-            :                    (0.75 + Math.random() * 0.5);
+    /* Per-type variance -- same rolls as the client.
+       v2.3.2212: the band is a TABLE now, read twice: once to roll, and
+       once for the crit anchor below.  Two literals would have drifted the
+       first time anyone retuned a band, and the anchor would then be
+       promising a "double the top of the range" that is not the range. */
+    const VAR = type === 'staff' ? [0.5, 1.5]
+              : type === 'bow'   ? [0.6, 0.8]
+              :                    [0.75, 1.25];
+    const v = VAR[0] + Math.random() * (VAR[1] - VAR[0]);
+    /* The top of the weapon's displayed damage range, built from the same
+       pre-variance base the roll uses (mirrors calcDisplayDmgRange). */
+    const rangeTop = base * VAR[1] + dmgFlat;
     base *= v;
     base += dmgFlat; // v2.3.1451: bench-locked banked flat (post-tier post-variance slot unchanged)
     // v2.3.1397 (owner): per-weapon special multiplier — melee (sword/
@@ -529,16 +572,25 @@ export const combatMethods = {
       /* v2.3.1668: read the offense block for the weapon ACTUALLY being
          swung — investing in Bow's crit must do nothing for a staff. */
       const _atkCat = this._prog3CatFor(type);
-      isCrit = Math.random() < this._prog3AtkPts(ps, _atkCat, 'crit') * PROG3.ATK.crit.per;
+      /* v2.3.2210: + the flat base (owner: "start at a flat 1% per damage
+         type by default"). Added here, not folded into `per`, so an
+         unallocated character can crit at all -- this roll was
+         `Math.random() < 0` for every new player before it. */
+      isCrit = Math.random() < PROG3.ATK.crit.base
+        + this._prog3AtkPts(ps, _atkCat, 'crit') * PROG3.ATK.crit.per;
       /* v2.3.2199: critDmg is a percent on the multiplier now (×1.5 →
          ×2.5 at the 100-pt cap), not a flat add — see the constant's
          note in prog3.js for why the v2.3.1659 flat was reversed.
          Ceiling lockstep: _maxDmgForAttacker's critMult carries the
          same term and its critFlatCeil dropped to 0, this commit. */
-      if (isCrit) base = base * (1.5 + this._prog3AtkPts(ps, _atkCat, 'critDmg') * PROG3.ATK.critDmg.per);
+      if (isCrit) base = this._critAnchor(base * (1.5 + this._prog3AtkPts(ps, _atkCat, 'critDmg') * PROG3.ATK.critDmg.per), rangeTop);
     } else {
       const P = ps.power || 0;
-      const baseCrit = Math.max(0, Math.min(1, 40 * P / (P + 200) / 100));
+      /* v2.3.2210: the legacy branch gets the same 1% floor, so "every
+         character starts at 1%" is true of a pre-prog3 blob too (rule 19
+         keeps this path alive for old workers). */
+      const baseCrit = Math.max(0, Math.min(1,
+        PROG3.ATK.crit.base + 40 * P / (P + 200) / 100));
       isCrit = Math.random() < baseCrit;
       const _critRate = t2CounterRate(this._wpnCritPts(ps, type));
       if (_critRate > 0) {
@@ -547,7 +599,12 @@ export const combatMethods = {
       }
       // v2.3.1451: the crit-DMG channel adds its BANKED bench-locked
       // flat on lucky hits (after the power multiplier) — was t2Accel.
-      if (isCrit) base = base * (1.5 + P * 0.001) + this._wpnCritDmgFlat(ps, type);
+      /* v2.3.2212: the anchor floors the MULTIPLIED part and the banked flat
+         rides ON TOP.  Folding the flat inside the max ate it whenever the
+         floor bound -- 99 executioner points paid 1691 instead of their
+         banked 1740 (caught by critDmg's own test), which would have made
+         the anchor quietly cancel the stat it sits next to. */
+      if (isCrit) base = this._critAnchor(base * (1.5 + P * 0.001), rangeTop) + this._wpnCritDmgFlat(ps, type);
     }
     // v2.3.1139 (item I): the two multipliers the v2.3.912 scope note
     // deliberately omitted, now server-side (the client applies both
