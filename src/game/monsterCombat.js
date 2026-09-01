@@ -1336,8 +1336,12 @@ export function updateMonsterCombat(S, deps) {
                    can render the full stand-in (not just a bare arc). */
                 S._swingBcastPending = true;
                 /* v2.3.1798: same rotation as the manual swing — one helper, so
-                   the auto-attack and the tapped swing cannot drift apart. */
-                BT_AUDIO.swordSwing(meleeSwingSfx(S.rpg), { vol: 0.55 });
+                   the auto-attack and the tapped swing cannot drift apart.
+                   v2.3.2202: deferred to the contact frame like the tap path
+                   (see playerActions.swingAttack) — the sweep below plays it
+                   when the MELEE_CONTACT_MS gate opens. */
+                S._swingSfxKey = meleeSwingSfx(S.rpg);
+                S._swingSfxPending = true;
               }
             }
           }
@@ -1421,6 +1425,14 @@ export function updateMonsterCombat(S, deps) {
                fastest legal swing cadence (200ms) is longer than the
                contact delay, so no swing loses its window. */
             var _contactOpen = Date.now() - S.swingTimer >= MELEE_CONTACT_MS;
+            /* v2.3.2202: the deferred swing whoosh plays the frame the
+               contact gate opens — hit or whiff — so it stacks with the
+               alternating hit thunk exactly as it did before contact
+               sync, just at the moment the blade visually arrives. */
+            if (_contactOpen && S._swingSfxPending) {
+              S._swingSfxPending = false;
+              BT_AUDIO.swordSwing(S._swingSfxKey, { vol: 0.55 });
+            }
             /* Hit monsters */
             S.monsters.forEach(function (m) {
               if (!_contactOpen) return; /* v2.3.2200: blade not at target yet */
