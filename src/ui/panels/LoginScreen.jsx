@@ -192,22 +192,27 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
             its own hand-kept numbers.  Both marks are slices of the owner's
             sheet (tools/gear/slice-splash-art.mjs). */}
         <div className="bt-login-title">
-          <img
-            src={art('logo')}
-            alt="Hemi Bros"
-            draggable={false}
-            className="bt-login-logo"
-          />
-          {/* The shimmer uses the logo as its own mask, so the highlight can
-              only ever fall on the lettering.  The URL goes in as a custom
-              property because a CSS mask cannot read an <img>'s src, and the
-              height is pinned to the logo so the mask does not stretch over
-              the banner below it. */}
-          <div
-            className="bt-login-shine"
-            aria-hidden
-            style={{ '--lg-logo': `url("${art('logo')}")` }}
-          />
+          {/* v2.3.2206: the shimmer lives INSIDE a wrapper that shrink-wraps
+              the logo, so `inset:0` gives it the image's own box. It used to
+              be a sibling sized against .bt-login-title -- logo plus gap plus
+              banner -- and swept a mask 22px lower than the lettering. */}
+          <span className="bt-login-logowrap">
+            <img
+              src={art('logo')}
+              alt="Hemi Bros"
+              draggable={false}
+              className="bt-login-logo"
+            />
+            {/* The shimmer uses the logo as its own mask, so the highlight
+                can only ever fall on the lettering.  The URL goes in as a
+                custom property because a CSS mask cannot read an <img>'s
+                src; the BOX now comes from the wrapper above. */}
+            <div
+              className="bt-login-shine"
+              aria-hidden
+              style={{ '--lg-logo': `url("${art('logo')}")` }}
+            />
+          </span>
           <img
             src={art('banner')}
             alt=""

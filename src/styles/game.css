@@ -1953,7 +1953,38 @@ input{font-family:inherit}
    spelled in numbers, which is what .bt-cc-panel is painted with, so the
    band lands on the panel and reads as depth rather than as a grey stripe.
    The two dead display declarations are gone with it; see the note above. */
-.bt-cc-more{position:absolute;left:0;right:0;bottom:0;height:22px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:1px;pointer-events:none;opacity:0;transition:opacity 160ms ease;background:linear-gradient(to bottom,rgba(30,46,52,0),var(--ui-sheet) 88%);color:var(--ui-text-secondary);font-size:13px;font-weight:700;line-height:1}
+/* ═══ v2.3.2204: THE ONE-PIXEL BRIGHT LINE ═══
+   Owner, with a crop of the Hats list: "There's a tiny thin line that looks
+   like a glitch."
+
+   Measured off their own screenshot rather than guessed at: the line is
+   EXACTLY ONE DEVICE PIXEL (mean 129 against a 42.7 background), and the
+   rows both above AND below it read 42.7.  42.7 is (30+46+52)/3 -- it is
+   --ui-sheet.  So the band is painting solid sheet above the line, and the
+   PANEL is showing solid sheet below it, and in between one row of bright
+   tile survives.  That is the signature of a seam, not of a short gradient:
+   the overlay's bottom edge and the scroller's clip edge round to different
+   device pixels, and the strip's content shows through the difference.
+
+   It does not reproduce in headless Chromium at dpr 3 -- the fade measures
+   smooth there -- which is what you would expect from a rounding seam on a
+   composited touch-scroller (`-webkit-overflow-scrolling:touch` promotes
+   .bt-cc-strip to its own layer on iOS).
+
+   So the fix is not to tune a number until it looks right on one device; it
+   is to make the class of bug impossible.  The band OVERSHOOTS the strip's
+   bottom by 3px, so no rounding difference between the two boxes can leave
+   a gap.  The overshoot cannot be seen: the band's last stop is opaque
+   --ui-sheet and it lands on .bt-cc-panel, which is painted --ui-sheet, in
+   the 7px gap before the next block.  It cannot be felt either --
+   pointer-events:none.
+
+   The gradient stops are in PIXELS now, not percentages, for the same
+   reason: with the box 3px taller, a percentage stop would have quietly
+   moved the fade's start.  19px of fade then solid keeps the visible band
+   exactly where v2.3.2203 put it, and the chevron's padding grows by the
+   same 3px so it does not slide down with the box. */
+.bt-cc-more{position:absolute;left:0;right:0;bottom:-3px;height:25px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:4px;pointer-events:none;opacity:0;transition:opacity 160ms ease;background:linear-gradient(to bottom,rgba(30,46,52,0) 0,var(--ui-sheet) 19px);color:var(--ui-text-secondary);font-size:13px;font-weight:700;line-height:1}
 .bt-cc-more--on{opacity:1}
 /* === v2.3.1524: TWO-COLUMN creator (owner) ===============================
    The v2.3.1276 slide-up drawer is retired. The owner's reasoning is the
@@ -2500,7 +2531,7 @@ body:has([data-trade-drawer]) .bt-kb-chip{display:none}
    drawn that way — so this adds only the ground shadow that lifts it off the
    painting.  No wide fuzzy glow: "reduce the fuzzy glow". */
 .bt-login-logo{
-  position:relative;z-index:1;
+  position:relative;z-index:1;display:block;
   width:min(80vw,380px);max-height:30vh;object-fit:contain;
   filter:drop-shadow(0 5px 12px rgba(3,6,10,.55));
 }
@@ -2508,8 +2539,34 @@ body:has([data-trade-drawer]) .bt-kb-chip{display:none}
    fall on the lettering — a gradient laid over the box would wash the sky
    beside it.  One slow pass, then a long wait: "an occasional faint
    shimmer", not a loop you notice. */
+/* ═══ v2.3.2206: THE SHIMMER WAS FALLING 22px BELOW THE LETTERING ═══
+   The comment above says the height is pinned to the logo "so the mask does
+   not stretch over the banner below it" -- and it is, to `--lg-logoh`, which
+   NOTHING IN THE REPO EVER SETS.  So the fallback ran: 100% of
+   .bt-login-title, which is the logo PLUS the gap PLUS the BRO TOWN banner.
+   Measured at 390x844: the box is 312x245.7 while the logo is 312x201.5, and
+   `mask-size:contain` centres the mask in the taller box -- so the highlight
+   swept a mask sitting 22px low, clipping the bottom of the lettering and
+   spilling onto the banner.  Found while looking at the title for the
+   sparkle work, not reported; it is subtle because the shimmer is faint and
+   passes once every 8.5s.
+
+   The fix is to stop guessing the logo's box and USE it: the img gets a
+   wrapper that shrink-wraps it, and the shimmer is `inset:0` inside that
+   wrapper.  Whatever the img's box turns out to be, the shimmer's is the
+   same one, and `mask-size:contain` inside it then reproduces the img's own
+   `object-fit:contain` exactly -- including the letterboxing that happens on
+   a short screen, where `max-height:30vh` binds and the art is narrower than
+   its element.
+
+   An earlier attempt used `aspect-ratio:700/452` instead, and it was wrong in
+   that second case: it assumed the logo is always width-driven.  The test
+   below caught it at the QA harness's own 1000x780, where 30vh caps the logo
+   at 234px tall while the aspect gave the shimmer 245.4 -- so the guard is
+   worth more than the rule it guards. */
+.bt-login-logowrap{position:relative;display:block}
 .bt-login-shine{
-  position:absolute;left:0;right:0;top:0;height:var(--lg-logoh,100%);z-index:2;pointer-events:none;
+  position:absolute;inset:0;z-index:2;pointer-events:none;
   -webkit-mask-image:var(--lg-logo);mask-image:var(--lg-logo);
   -webkit-mask-size:contain;mask-size:contain;
   -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
@@ -2581,7 +2638,14 @@ body:has([data-trade-drawer]) .bt-kb-chip{display:none}
    times ("same button frame" → "align left" → "center just the label"), so
    the owner's-art plate wins the merge.  The recut tool stays on disk. */
 .bt-login-btn--key{background-image:url('/ui/welcome/title/btn-continue.png?v=2.3.2167');aspect-ratio:799/212} /* v2.3.2167: label centred, emblem left (owner) */
-.bt-login-btn--new{background-image:url('/ui/welcome/title/btn-create.png');aspect-ratio:799/212}
+/* v2.3.2205 (owner: "remove the diamonds framing create character ... it's a
+   dead giveaway of AI produced content").  The diamonds were painted into
+   the plate, so the fix is a new plate, not a rule -- tools/ui/deframe-
+   create-plate.mjs.  New FILENAME, not a ?v= query, because btn-create.png
+   is the slicer's output name (tools/gear/slice-splash-art.mjs) and must
+   stay free for it; a re-slice regenerating the diamonds under a name the
+   page loads is exactly the trap this avoids. */
+.bt-login-btn--new{background-image:url('/ui/welcome/title/btn-create-plain.png');aspect-ratio:799/212}
 .bt-login-btn:active{transform:translateY(1px) scale(.995)}
 .bt-login-btn:disabled{opacity:.55;cursor:default;animation:none}
 /* Focus ring hugs the painted plate, not the transparent glow margin. */

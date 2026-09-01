@@ -428,8 +428,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
      which was a narrow column pinned to the RIGHT edge. */
   rec.ok('...lying across the strip\'s full width, not down one side',
     !!atTop && atTop.widthFrac > 0.9, atTop);
-  rec.ok('...at the strip\'s bottom edge, where the options run off',
-    !!atTop && Math.abs(atTop.floorGap) <= 2, atTop);
+  /* v2.3.2204: this used to require the band's bottom to LAND on the strip's
+     bottom (|gap| <= 2), and that tolerance is exactly what shipped the
+     owner's one-device-pixel bright line -- two boxes that agree in CSS can
+     still round to different device pixels on a composited touch-scroller.
+     The band now deliberately OVERSHOOTS, so the pin is that it hangs BELOW
+     the strip rather than meeting it, with a ceiling so a future edit cannot
+     turn a 3px overshoot into a 30px one that swallows the row beneath. */
+  rec.ok('...hanging past the strip\'s bottom edge, so no rounding seam can '
+       + 'open up under it', !!atTop && atTop.floorGap <= -2 && atTop.floorGap >= -8, atTop);
 
   /* And it goes away at the end of the list: a cue that is always on is
      decoration, not information. */

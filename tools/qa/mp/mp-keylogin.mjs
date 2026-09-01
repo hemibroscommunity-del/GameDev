@@ -107,6 +107,32 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the BRO TOWN banner is under the logo',
     await visible(B, '.bt-login-banner'), {});
 
+  /* ═══ v2.3.2206: THE SHIMMER LANDS ON THE LETTERING ═══
+     .bt-login-shine masks itself with the logo so the highlight can only fall
+     on the art -- but `mask-size:contain` centres that mask in the shine's
+     OWN box, so the mask is only in the right place if the two boxes match.
+     They did not: the height was pinned to `--lg-logoh`, a variable nothing
+     in the repo ever set, so the box fell back to 100% of .bt-login-title --
+     the logo PLUS the gap PLUS the banner -- and the mask sat 22px low.
+
+     Boxes, not the stylesheet, because the failure was a computed height, and
+     a test that read the CSS would have seen the pin that was written down
+     rather than the one that was in effect. 2px of slack for sub-pixel
+     layout; 22 fails, and so does any future edit that unpins it again. */
+  const box = await B.page.evaluate(() => {
+    const r = (sel) => { const e = document.querySelector(sel); if (!e) return null;
+      const b = e.getBoundingClientRect();
+      return { x: +b.x.toFixed(1), y: +b.y.toFixed(1), w: +b.width.toFixed(1), h: +b.height.toFixed(1) }; };
+    return { logo: r('.bt-login-logo'), shine: r('.bt-login-shine') };
+  });
+  rec.ok('the logo and its shimmer layer are both on screen (guard)',
+    !!(box.logo && box.shine && box.logo.h > 40), box);
+  rec.ok('...and the shimmer covers the LOGO, not the logo plus the banner '
+       + 'below it', !!(box.logo && box.shine)
+    && Math.abs(box.shine.h - box.logo.h) <= 2
+    && Math.abs(box.shine.y - box.logo.y) <= 2
+    && Math.abs(box.shine.w - box.logo.w) <= 2, box);
+
   const plates = await B.page.evaluate(() => {
     const pick = (sel) => {
       const el = document.querySelector(sel);
@@ -197,7 +223,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        rename IS the cache bust.  Matched by name rather than by "some png"
        because the whole point of this line is that the plate is the OWNER'S
        art and not a CSS rectangle. */
-    !!K && !!C && /btn-continue\.png/.test(K.bg) && /btn-create\.png/.test(C.bg),
+    !!K && !!C && /btn-continue\.png/.test(K.bg) && /btn-create-plain\.png/.test(C.bg),
     { key: K && K.bg, make: C && C.bg });
   /* The slices are cut so each plate is 94% of its box and dead-centred, so
      under one CSS width the two painted edges must line up.  This is the
@@ -218,7 +244,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     return {
       login: await one('/ui/welcome/title/btn-continue.png'),
-      create: await one('/ui/welcome/title/btn-create.png'),
+      create: await one('/ui/welcome/title/btn-create-plain.png'),
       logo: await one('/ui/welcome/title/logo.png'),
       banner: await one('/ui/welcome/title/banner.png'),
     };
