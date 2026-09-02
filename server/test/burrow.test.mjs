@@ -214,16 +214,28 @@ function toPile() {
   room._tickMonsters();                    /* -> pile */
   check('duration: the pile begins even at point-blank range',
     snowman._burPhase === 'pile', snowman._burPhase);
-  /* Arrival is already true (distance 0), so without a floor this would
-     surface on the very next tick -- which is exactly the case that made
-     the move feel like it barely happened. */
+  /* v2.3.2236: this used to read "arrival cannot end it before the floor",
+     because the pile chased you and being at distance 0 satisfied arrival
+     immediately.  He flees now, so arrival is unreachable and the end
+     condition is ESCAPE_PX instead -- the two halves below are that new
+     contract, and the second one is the reason ESCAPE_PX had to exist at
+     all: without it a fleeing pile has NO end but the 8s cap. */
   snowman.x = ps.x; snowman.y = ps.y;
   room._tickMonsters();
-  check('duration: ...and arrival cannot end it before the floor',
+  check('duration: ...and it cannot end before the floor',
     snowman._burPhase === 'pile', { phase: snowman._burPhase, floor: snowman._burFloor });
+  /* THE FLOOR ALONE IS NOT ENOUGH ANY MORE.  Still standing on him, so he
+     has not made the distance -- the old rule would have surfaced here. */
   snowman._burFloor = Date.now() - 1;
+  snowman.x = ps.x; snowman.y = ps.y;
   room._tickMonsters();
-  check('duration: ...but does end it once the floor has passed',
+  check('duration: ...and the floor passing does not end it while he is still near',
+    snowman._burPhase === 'pile',
+    { phase: snowman._burPhase, dist: Math.hypot(snowman.x - ps.x, snowman.y - ps.y) });
+  /* ...but getting clear does. */
+  snowman.x = ps.x + BURROW.ESCAPE_PX + 10; snowman.y = ps.y;
+  room._tickMonsters();
+  check('duration: ...and it ends once he has got ESCAPE_PX clear',
     snowman._burPhase === 'emerge', snowman._burPhase);
 }
 
@@ -238,14 +250,28 @@ function toPile() {
   snowman._burUntil = Date.now() - 1;
   room._tickMonsters();                    /* -> pile */
   const x0 = snowman.x;
+  const dx0 = Math.abs(snowman.x - ps.x);
   room._tickMonsters();
   const step = Math.abs(snowman.x - x0);
-  /* m.spd (0.4 for a snowman) x SPEED_MULT.  Pinned because the field was
-     read as `m.speed` -- which does not exist -- and silently fell back to
-     1, moving the pile at two and a half times its design speed. */
-  const want = (snowman.spd || 0.4) * BURROW.SPEED_MULT;
-  check('duration: the pile moves at m.spd x SPEED_MULT, not a fallback',
-    Math.abs(step - want) < 0.05, { step, want, spd: snowman.spd });
+  /* ═══ v2.3.2236: IT FLEES, AND IT OUTRUNS A DEFAULT CHARACTER ═══
+     The speed is pinned against the PLAYER rather than against the
+     monster's own walk, because that is the property the owner asked for:
+     "moves away from the player more quickly than the default speed of the
+     character moving towards it."  A default character is
+     calcMoveSpeed(0,0)/5 x SPEED = 2.5 px/frame at 60fps = 150 px/s.
+     Still pinned to a number, and for the original reason too: the old form
+     read `m.speed`, a field that does not exist, and ran at 2.5x its design
+     speed behind a plausible-looking fallback. */
+  const PLAYER_PX_S = 150;
+  const want = BURROW.FLEE_PX_S * (room.TICK_RATE / 1000);
+  check('the pile moves at FLEE_PX_S against the room clock, not a fallback',
+    Math.abs(step - want) < 0.05, { step, want, tick: room.TICK_RATE });
+  check('...which is faster than a default character walks at it',
+    BURROW.FLEE_PX_S > PLAYER_PX_S, { flee: BURROW.FLEE_PX_S, player: PLAYER_PX_S });
+  /* DIRECTION, which is the whole ask.  Toward-the-player was the old
+     behaviour and would pass every speed assertion above. */
+  check('...and it moves AWAY from the player, not toward them',
+    Math.abs(snowman.x - ps.x) > dx0, { before: dx0, after: Math.abs(snowman.x - ps.x) });
 }
 
 // ══════════════════════════════════════════════════════════════════
