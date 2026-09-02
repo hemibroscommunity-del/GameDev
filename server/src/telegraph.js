@@ -193,8 +193,39 @@ export const BURROW = {
   PILE_MIN_MS: 2400,   /* v2.3.2225: 1200 -> 2400 */
   PILE_MAX_MS: 8000,   /* invulnerable, harmless. v2.3.2225: 4000 -> 8000 */
   EMERGE_MS: 600,      /* vulnerable — the punish window */
-  ARRIVE_PX: 60,
-  SPEED_MULT: 3,
+  /* ═══ v2.3.2236: THE PILE RUNS AWAY, AND IT OUTRUNS YOU ═══
+     Owner: "change snowman burrow behavior to move AWAY from the player and
+     change the speed so that during burrow it moves away from the player
+     more quickly than the default speed of the character moving towards it."
+
+     It used to crawl TOWARD you at m.spd x 3 = 1.2px per 22ms tick, i.e.
+     54 px/s, which is a third of walking pace -- the move read as a slow
+     approach you could simply stand still for.  Now it is an ESCAPE, and
+     the number is chosen against the player rather than against the
+     monster's own walk:
+
+       a default character moves SPEED (2.5 px/frame at 60fps) = 150 px/s
+       (src/data/gameSystems.js; calcMoveSpeed(0,0)/5 x SPEED = 1.0 x 2.5).
+
+     190 px/s is ~1.27x that, so walking straight at him loses ground.
+     STATED PLAINLY: a fully specced character reaches 300 px/s (agility cap
+     +60% and swiftness +2.0), and catches him.  The owner asked for the
+     DEFAULT speed to be beaten, and that is what this is -- outrunning the
+     fastest build in the game would need ~1.3x the game's top speed, which
+     is a different and much bigger balance decision. */
+  FLEE_PX_S: 190,
+  /* The mirror of ARRIVE_PX, and REQUIRED rather than a nicety: with the
+     direction flipped, "he reached you" can never be true, so without an
+     end of its own the pile would run to PILE_MAX_MS every time -- 8s at
+     190 px/s is 1520px across a 1024px zone, i.e. five seconds pinned
+     against the map edge.  420 is just under the distance the floor buys
+     (2400ms x 190 = 456px), so in open ground he surfaces essentially as
+     the floor expires and PILE_MIN_MS stays the duration you feel.
+     Cornered against the edge he cannot make the distance and the cap
+     governs -- which is a real counterplay, not a failure mode: back him
+     into a wall and he surfaces next to you. */
+  ESCAPE_PX: 420,
+  ARRIVE_PX: 60,   /* unreachable while he flees; kept for the toward-player form */
 };
 
 /* ═══ v2.3.2224: THE BLUE SLIME GOES OFF ═══
@@ -640,31 +671,43 @@ export const telegraphMethods = {
     const gone = !ps || ps.dead || ps.dying || ps.z !== zoneId;
 
     if (m._burPhase === 'pile') {
-      /* Grind toward where they are NOW (not a frozen point): the pile is
-         slow-motion pursuit, and freezing the aim would make walking aside
-         beat it every time with no counterplay needed. */
-      let arrived = false;
-      /* v2.3.2223: arrival cannot end the pile before its floor. */
+      /* v2.3.2236: FLEE from where they are NOW, not from a frozen point.
+         Live aim for the same reason the pursuit had it: freezing the
+         bearing would let the player cut a corner and meet him, which is
+         the opposite of an escape.  The sign is the only thing that
+         changed here -- the shape is the one that was already correct. */
+      let escaped = false;
+      /* v2.3.2223: the pile cannot end before its floor. */
       const _canEnd = now >= (m._burFloor || 0);
       if (!gone) {
-        const dx = (ps.x || 0) - m.x, dy = (ps.y || 0) - m.y;
+        const dx = m.x - (ps.x || 0), dy = m.y - (ps.y || 0);   /* AWAY (v2.3.2236) */
         const d = Math.hypot(dx, dy);
-        if (d <= BURROW.ARRIVE_PX) arrived = _canEnd;
-        else if (d > 0) {
-          /* v2.3.2223: `m.speed` -- which does not exist.  The field is
-             `m.spd` (0.4 for a snowman: 0.5 base x its 0.8 spdMult), so this
-             read undefined and fell back to 1, moving the pile at 3 px per
-             22ms tick = 135 px/s instead of the intended 54.  He crossed the
-             gap and surfaced almost immediately, which is most of why the
-             move felt short.  The fallback hid it: no crash, just a monster
-             moving at two and a half times its design speed. */
-          const step = (m.spd || 0.4) * BURROW.SPEED_MULT;
-          m.x += (dx / d) * step;
-          m.y += (dy / d) * step;
+        if (d >= BURROW.ESCAPE_PX) escaped = _canEnd;
+        else {
+          /* px/s -> px/tick against the room's own clock, so the speed
+             stays a comparison with the PLAYER (150 px/s) rather than a
+             multiple of the monster's walk.  v2.3.2223's incident is the
+             argument for that: the old form read `m.speed`, a field that
+             does not exist, and silently ran at 2.5x its design speed
+             because the fallback looked reasonable. */
+          const step = BURROW.FLEE_PX_S * (this.TICK_RATE / 1000);
+          /* Standing exactly on him leaves no bearing to flee along; pick
+             one rather than dividing by zero. */
+          const ux = d > 0 ? dx / d : 1, uy = d > 0 ? dy / d : 0;
+          m.x += ux * step;
+          m.y += uy * step;
+          /* He is running for the edge by construction, so he has to be
+             held inside it -- same pad the knockback clamp uses. */
+          const _z = this._getZoneConfig(zoneId);
+          if (_z) {
+            const _pad = this.TILE;
+            m.x = Math.max(_pad, Math.min(_z.w * this.TILE - _pad, m.x));
+            m.y = Math.max(_pad, Math.min(_z.h * this.TILE - _pad, m.y));
+          }
           this._markMonsterDirty(zoneId, m.id);
         }
       }
-      if (arrived || (gone && _canEnd) || now >= m._burUntil) {
+      if (escaped || (gone && _canEnd) || now >= m._burUntil) {
         m._burPhase = 'emerge';
         m._burUntil = now + BURROW.EMERGE_MS;
         m._invulnUntil = 0;            /* surfacing ends the immunity immediately */

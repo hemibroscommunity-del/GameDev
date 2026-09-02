@@ -170,3 +170,56 @@ windows he can be hurt in.
 
 The cap only binds when he cannot reach you; the floor is what you feel in a
 normal fight, because arrival ends the pile as soon as the floor has passed.
+
+
+## The pile RUNS, and it outruns you (v2.3.2236)
+
+Owner: "change snowman burrow behavior to move AWAY from the player and
+change the speed so that during burrow it moves away from the player more
+quickly than the default speed of the character moving towards it."
+
+| | before | after |
+|---|---|---|
+| direction | toward the player | **away** from the player |
+| speed | `m.spd x 3` = 54 px/s | **190 px/s** |
+| ends when | he reaches you (`ARRIVE_PX` 60) | he gets clear (`ESCAPE_PX` 420) |
+
+### The speed is measured against the player, not the monster
+
+A default character moves `calcMoveSpeed(0,0) / 5 x SPEED` = 2.5 px/frame at
+60fps = **150 px/s**. 190 is ~1.27x that, so walking straight at a fleeing
+pile loses ground — which is the whole point of the move.
+
+Stated plainly rather than glossed: **a fully specced character still catches
+him.** Agility caps at +60% and swiftness adds a flat +2.0, reaching 300
+px/s. Beating *that* would need ~1.3x the fastest build in the game, which is
+a different and much larger balance decision than the one asked for.
+
+The old form multiplied the monster's own walk (`m.spd x SPEED_MULT`), which
+is the wrong frame of reference for "faster than the player" and was also
+where v2.3.2223's bug lived — it read `m.speed`, a field that does not
+exist, and ran at 2.5x its design speed behind a plausible fallback. The
+speed is now px/s converted against the room's own `TICK_RATE`.
+
+### ESCAPE_PX is required, not decorative
+
+With the direction flipped, "he reached you" can never become true. Without
+an end condition of its own the pile would run to `PILE_MAX_MS` every time —
+8s at 190 px/s is 1520px across a 1024px zone, i.e. five seconds pinned
+against the map edge.
+
+`ESCAPE_PX` 420 sits just under what the floor buys (`PILE_MIN_MS` 2400ms x
+190 = 456px), so in open ground he surfaces as the floor expires and
+`PILE_MIN_MS` remains the duration the player feels.
+
+**Cornered, he cannot make the distance and the cap governs** — he surfaces
+next to you. That is counterplay, not a failure mode: back him into a wall
+and the escape fails. He is clamped inside the zone by the same one-tile pad
+the knockback clamp uses, because fleeing aims him at the edge by
+construction.
+
+### Client
+
+None. The client follows the server's position and plays the phase sheets it
+is told to; `mirror-audit` pins the phase names and the burrowing archetype
+table, neither of which moved.
