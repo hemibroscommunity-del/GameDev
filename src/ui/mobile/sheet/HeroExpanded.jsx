@@ -1198,7 +1198,13 @@ export const HeroExpanded = () => {
               try {
                 const info = statInfo(st.label) || { title: st.label, body: st.perText + ' per point.' };
                 const pv = R ? previewStatPoint(R, st.key, buildCat) : null;
-                const fmt = (v) => (st.pct ? n1(v * 100) : n1(v)) + (st.unit || '');
+                /* The row carries the NUMBER and, for a percentage, its sign
+                   ("0.8% -> 1.2%", "40.0 -> 48.0"): the row's full unit is
+                   prose ("% less damage", " power") and it ran the Defense
+                   and Elemental rows off the card's right edge (390px
+                   captures).  The label names the stat and the rate line
+                   above the scene says the words, so the row need not. */
+                const fmt = (v) => (st.pct ? n1(v * 100) + '%' : n1(v));
                 const rows = [];
                 if (pv) {
                   rows.push({ label: info.title, now: fmt(pv.statNow), after: pv.capped ? null : fmt(pv.statAfter) });
@@ -1214,7 +1220,9 @@ export const HeroExpanded = () => {
                   title: info.title + (st.atk ? ' · ' + ((PROG3_SKILL_META.find((k) => k.key === buildCat) || {}).label || '') : ''),
                   body: info.body, note: info.note,
                   perText: 'Each point: ' + st.perText,
-                  demo: <StatDemo stat={st.key} iconSrc={st.iconSrc} />,
+                  /* the scene draws YOUR figure, holding what you hold (v2.3.1914's
+                     active-weapon rule, same as the Equipment screen) */
+                  demo: <StatDemo stat={st.key} iconSrc={st.iconSrc} weapon={R ? getActiveWeapon(R) : null} shield={!!(R && R.shield)} />,
                   rows, capped: !!(pv && pv.capped),
                 });
               } catch (e) { /* an explainer must never block a spend */ }

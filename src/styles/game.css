@@ -3002,48 +3002,64 @@ html[data-orient="landscape"] .bt-dashboard{
   display:none!important;
 }
 
-/* ═══ v2.3.2216: THE STAT DEMOS — "a preview of what the effect does (exaggerated)" ═══
-   Owner, on the Points screen: "Small information ℹ️ next to the name.
-   Tapping it launches into a new window that describes its effect.  It also
-   has a preview of what the effect does (exaggerated)."
-   Two panes, NOW beside WITH MORE POINTS, each looping the same tiny scene so
-   the difference IS the explanation: the crit pane on the right flashes gold
-   twice as often, the swing on the right is twice as fast, the bar on the
-   right fills further.  Exaggerated on purpose -- these are not the real
-   per-point rates (those print underneath), they are what the stat is FOR.
-   Everything is CSS: no sprite, no canvas, nothing to preload, and the whole
-   thing goes still under prefers-reduced-motion with the end state showing. */
-.bt-sd{display:flex;gap:8px;height:98px}
-.bt-sd-pane{flex:1 1 0;min-width:0;position:relative;overflow:hidden;border-radius:9px;background:#111E23;border:1px solid rgba(229,237,233,.08)}
-.bt-sd-pane--after{border-color:rgba(216,170,88,.45);box-shadow:inset 0 0 0 1px rgba(216,170,88,.18)}
-.bt-sd-cap{position:absolute;left:7px;top:5px;font-size:8.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#8D9B98;line-height:1;pointer-events:none}
-.bt-sd-pane--after .bt-sd-cap{color:#D8AA58}
-.bt-sd-target{position:absolute;right:12px;bottom:14px;width:26px;height:26px;border-radius:50%;background:#2E4048;border:1px solid rgba(229,237,233,.14)}
-.bt-sd-target::after{content:"";position:absolute;inset:7px;border-radius:50%;background:#1A282E}
-.bt-sd-pop{position:absolute;left:var(--sd-x,50%);bottom:var(--sd-y,22px);transform:translate(-50%,0);font-weight:900;font-variant-numeric:tabular-nums;color:#F4F0E7;text-shadow:0 1px 0 #0A1216,0 0 6px rgba(0,0,0,.6);opacity:0;animation:bt-sd-pop var(--sd-dur,1.6s) ease-out infinite;animation-delay:var(--sd-delay,0s);white-space:nowrap;line-height:1}
-.bt-sd-pop--gold{color:#F2C860;text-shadow:0 1px 0 #3A2A08,0 0 10px rgba(242,200,96,.65)}
-.bt-sd-pop--red{color:#E8736F}
-.bt-sd-pop--miss{color:#8D9B98;font-style:italic;font-weight:800}
-.bt-sd-pop--burn{color:#F5A044;text-shadow:0 0 8px rgba(245,160,68,.7)}
-@keyframes bt-sd-pop{0%{opacity:0;transform:translate(-50%,8px) scale(.7)}12%{opacity:1;transform:translate(-50%,-2px) scale(1.06)}20%{transform:translate(-50%,-3px) scale(1)}62%{opacity:1;transform:translate(-50%,-16px) scale(1)}80%,100%{opacity:0;transform:translate(-50%,-26px) scale(1)}}
-.bt-sd-icon{position:absolute;left:50%;top:50%;width:34px;height:34px;object-fit:contain;transform:translate(-50%,-50%);pointer-events:none;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))}
-.bt-sd-swing{transform-origin:50% 95%;animation:bt-sd-swing var(--sd-dur,1.2s) ease-in-out infinite}
-@keyframes bt-sd-swing{0%{transform:translate(-50%,-50%) rotate(-38deg)}45%{transform:translate(-50%,-50%) rotate(42deg)}60%{transform:translate(-50%,-50%) rotate(36deg)}100%{transform:translate(-50%,-50%) rotate(-38deg)}}
-.bt-sd-bar{position:absolute;left:12px;right:12px;bottom:16px;height:12px;border-radius:999px;background:#0B161B;border:1px solid rgba(229,237,233,.1);overflow:hidden}
-.bt-sd-bar>i{display:block;height:100%;border-radius:999px;width:var(--sd-from,45%);background:var(--sd-color,#E35D5B);animation:bt-sd-fill 2.4s ease-in-out infinite}
-@keyframes bt-sd-fill{0%,18%{width:var(--sd-from,45%)}55%,85%{width:var(--sd-to,45%)}100%{width:var(--sd-from,45%)}}
-.bt-sd-figure{position:absolute;left:50%;bottom:14px;width:30px;height:30px;object-fit:contain;transform:translateX(-50%);filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))}
-.bt-sd-figure--dodge{animation:bt-sd-dodge 1.8s ease-in-out infinite}
-@keyframes bt-sd-dodge{0%,30%{transform:translateX(-50%);opacity:1}42%{transform:translateX(calc(-50% + 18px));opacity:.55}62%{transform:translateX(calc(-50% + 18px));opacity:.85}78%,100%{transform:translateX(-50%);opacity:1}}
-.bt-sd-slash{position:absolute;left:14px;top:50%;width:26px;height:3px;border-radius:2px;background:linear-gradient(90deg,rgba(244,240,231,0),#F4F0E7);transform:translateY(-50%) rotate(-28deg);opacity:0;animation:bt-sd-slash 1.8s ease-in infinite}
-@keyframes bt-sd-slash{0%,18%{opacity:0;transform:translate(-14px,-50%) rotate(-28deg)}28%{opacity:1}40%{opacity:1;transform:translate(34px,-50%) rotate(-28deg)}48%,100%{opacity:0;transform:translate(40px,-50%) rotate(-28deg)}}
-.bt-sd-in{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-weight:900;font-variant-numeric:tabular-nums;color:#E8736F;text-shadow:0 1px 0 #0A1216;opacity:0;animation:bt-sd-in 2s ease-out infinite;white-space:nowrap;line-height:1}
-@keyframes bt-sd-in{0%,10%{opacity:0;transform:translate(calc(-50% - 34px),-50%) scale(1)}30%{opacity:1;transform:translate(calc(-50% - 14px),-50%) scale(1)}48%{opacity:1;transform:translate(-50%,-50%) scale(var(--sd-hit,1))}70%{opacity:1;transform:translate(-50%,-50%) scale(var(--sd-hit,1))}85%,100%{opacity:0;transform:translate(-50%,-50%) scale(var(--sd-hit,1))}}
-.bt-sd-glow{position:absolute;left:50%;top:50%;width:40px;height:40px;border-radius:50%;transform:translate(-50%,-50%);background:radial-gradient(circle,rgba(245,160,68,.55),rgba(245,160,68,0) 70%);animation:bt-sd-glow 1.4s ease-in-out infinite;pointer-events:none}
-@keyframes bt-sd-glow{0%,100%{opacity:.45;transform:translate(-50%,-50%) scale(1)}50%{opacity:1;transform:translate(-50%,-50%) scale(var(--sd-glow,1.15))}}
+/* ═══ v2.3.2216: THE STAT SCENE — "a preview of what the effect does (exaggerated)" ═══
+   One scene per stat in the ℹ️ window (StatDemo.jsx), built from the
+   game's own pieces after the owner called the first CSS-only cut
+   "amateurish and goofy": your CharacterView figure, the slime off its real
+   strips, the real VitalBar, and hit numbers in the combat renderer's dress.
+   The beats are React state (a list of timeouts, no rAF -- see the note in
+   StatDemo.jsx); the motion between beats lives here.  Sizes are px on
+   purpose: the card is a fixed 320 max, and a number that scales with the
+   viewport would no longer be the 21/38px the world draws. */
+.bt-sd{overflow:hidden;border-radius:9px;background:#111E23;border:1px solid rgba(229,237,233,.08);contain:paint}
+.bt-sd-stage{position:relative;overflow:hidden;background:linear-gradient(180deg,rgba(0,0,0,0) 62%,rgba(0,0,0,.28) 100%)}
+/* the ground line the figures stand on: the hero's feet (canvas bottom -4px,
+   feet drawn 13px up it) and the slime's base row both land on it */
+.bt-sd-stage::after{content:"";position:absolute;left:0;right:0;bottom:9px;height:1px;background:rgba(229,237,233,.07);pointer-events:none}
+.bt-sd-hero{position:absolute;left:24px;bottom:-4px;line-height:0;will-change:transform}
+.bt-sd-hero--swing{animation:bt-sd-lunge .34s ease-out 1}
+@keyframes bt-sd-lunge{0%{transform:translateX(0)}35%{transform:translateX(12px)}100%{transform:translateX(0)}}
+.bt-sd-hero--dodge{animation:bt-sd-sidestep .6s ease-in-out 1}
+@keyframes bt-sd-sidestep{0%{transform:translateX(0);opacity:1}30%{transform:translateX(-18px);opacity:.6}70%{transform:translateX(-18px);opacity:.85}100%{transform:translateX(0);opacity:1}}
+/* the block mark on the hero's leading side, flashing once per orb */
+.bt-sd-shield{position:absolute;right:-16px;top:48px;width:30px;height:30px;object-fit:contain;animation:bt-sd-shield .7s ease-out 1 both;filter:drop-shadow(0 0 6px rgba(116,172,232,.7))}
+@keyframes bt-sd-shield{0%{opacity:0;transform:scale(.6)}25%{opacity:1;transform:scale(1.15)}60%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1)}}
+/* the slime: a strip of --sd-frames cells stepped through by moving the
+   background; idle loops, hit and shoot play once and hold their last cell
+   until the beat that puts idle back */
+/* steps(N, jump-none) lands on cells 0..N-1 inclusive and --sd-strip is the
+   LAST cell's offset: plain steps(N) to -N*128 holds an empty cell at 100%
+   with `forwards`, which is a slime that vanishes at the end of its squash
+   (seen in a capture at the harness's 4fps, where 100% is a frame you get). */
+.bt-sd-slime{position:absolute;right:16px;bottom:-33px;width:128px;height:128px;background-repeat:no-repeat;background-position:0 0;image-rendering:auto;animation:bt-sd-strip 1.2s steps(var(--sd-frames,24),jump-none) infinite}
+.bt-sd-slime--hit{animation:bt-sd-strip .8s steps(var(--sd-frames,24),jump-none) 1 forwards}
+.bt-sd-slime--shoot{animation:bt-sd-strip .42s steps(var(--sd-frames,8),jump-none) 1 forwards}
+@keyframes bt-sd-strip{from{background-position:0 0}to{background-position:var(--sd-strip,-2944px) 0}}
+/* the orb: from the slime's mouth to the hero, straight and quick */
+.bt-sd-orb{position:absolute;right:88px;bottom:34px;width:22px;height:22px;background-size:22px 22px;background-repeat:no-repeat;animation:bt-sd-orb .38s linear 1 both}
+@keyframes bt-sd-orb{from{transform:translateX(0)}to{transform:translateX(-120px)}}
+/* combat numbers, in DMG_STYLE's dress: Source Sans 3 800, the black stroke
+   under the fill (paint-order keeps the fill whole), rising as they fade */
+.bt-sd-pop{position:absolute;bottom:96px;display:inline-flex;align-items:center;gap:3px;font-family:'Source Sans 3',sans-serif;font-weight:800;line-height:1;white-space:nowrap;font-variant-numeric:tabular-nums;-webkit-text-stroke:3px #000;paint-order:stroke fill;text-shadow:0 1px 2px rgba(0,0,0,.6);animation:bt-sd-rise 1.05s ease-out 1 both;pointer-events:none}
+.bt-sd-pop--hero{left:calc(56px + var(--sd-dx,0px));transform:translateX(-50%)}
+.bt-sd-pop--slime{right:calc(80px - var(--sd-dx,0px));bottom:70px;transform:translateX(50%)}
+.bt-sd-pop-ic{display:block;width:auto;-webkit-text-stroke:0}
+@keyframes bt-sd-rise{0%{opacity:0;margin-bottom:-6px}12%{opacity:1;margin-bottom:0}70%{opacity:1;margin-bottom:18px}100%{opacity:0;margin-bottom:30px}}
+/* the point landing: the row's icon with a brass +1, rising once */
+.bt-sd-point{position:absolute;left:50%;top:14px;display:inline-flex;align-items:center;gap:5px;transform:translateX(-50%);animation:bt-sd-point .9s ease-out 1 both;pointer-events:none}
+.bt-sd-point img{width:28px;height:28px;object-fit:contain;filter:drop-shadow(0 0 6px rgba(216,170,88,.75))}
+.bt-sd-point b{font-family:'Source Sans 3',sans-serif;font-weight:800;font-size:21px;color:#D8AA58;-webkit-text-stroke:3px #000;paint-order:stroke fill;line-height:1}
+@keyframes bt-sd-point{0%{opacity:0;transform:translate(-50%,10px) scale(.8)}25%{opacity:1;transform:translate(-50%,0) scale(1.08)}45%{transform:translate(-50%,0) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-8px) scale(1)}}
+/* the vital: the icon and the real VitalBar; the trough's box lengthens
+   with the max (transition), the fill inside moves at the bar's own pace */
+.bt-sd-vital{display:flex;align-items:center;gap:6px;padding:5px 10px 6px;background:rgba(0,0,0,.22);border-top:1px solid rgba(229,237,233,.06)}
+.bt-sd-vital-ic{width:14px;height:14px;object-fit:contain;flex:none}
+.bt-sd-vital-w{display:flex;transition:width .45s ease-out}
+.bt-sd-vital-n{font-size:10px;font-weight:800;line-height:1;color:#fff;font-variant-numeric:tabular-nums;text-shadow:0 1px 2px rgba(0,0,0,.85),0 0 3px rgba(0,0,0,.7);display:flex;align-items:center}
+.bt-sd-vital-s{padding:0 2px;opacity:.6}
 @media (prefers-reduced-motion:reduce){
-  .bt-sd-pop,.bt-sd-in{animation:none;opacity:1;transform:translate(-50%,-10px)}
-  .bt-sd-swing,.bt-sd-figure--dodge,.bt-sd-slash,.bt-sd-glow{animation:none}
-  .bt-sd-slash{opacity:0}
-  .bt-sd-bar>i{animation:none;width:var(--sd-to,45%)}
+  .bt-sd-hero,.bt-sd-slime,.bt-sd-shield,.bt-sd-orb,.bt-sd-pop,.bt-sd-point{animation:none}
+  .bt-sd-pop{opacity:1;margin-bottom:8px}
+  .bt-sd-shield{opacity:1}
+  .bt-sd-vital-w{transition:none}
 }

@@ -122,7 +122,10 @@ export const InfoPopup = () => {
             {cur.rows.map((r, i) => (
               <div key={i} style={{
                 display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-                gap: 10, padding: '3px 0', fontSize: 12.5,
+                /* wrap, never overflow: a value the label leaves no room for
+                   drops under it instead of running off the card */
+                flexWrap: 'wrap',
+                gap: '0 10px', padding: '3px 0', fontSize: 12.5,
               }}>
                 <span style={{ color: COL.muted, fontSize: 10.5, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{r.label}</span>
                 <span style={{ color: COL.text, fontWeight: 800, whiteSpace: 'nowrap', textAlign: 'right' }}>

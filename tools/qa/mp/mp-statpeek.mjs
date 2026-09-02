@@ -134,6 +134,35 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const promisedCrit = Number(mCrit[2]);
   const promisedDps = Number(mDps[2]);
 
+  /* The rows must FIT: the Defense row once printed "0.8% less damage ->
+     1.2% less damage" and ran off the card (v2.3.2216 capture).  Checked on
+     the widest-worded stats, by the ellipsis/overflow detector the landscape
+     sweep uses, so a reworded unit fails here by name. */
+  for (const key of ['def', 'aspd', 'critDmg', 'elem', 'hp', 'stam', 'dodge', 'dmg']) {
+    await P.page.evaluate(() => { try { window.__btInfoPopup.close(); } catch (e) {} });
+    await P.page.waitForTimeout(250);
+    const tapped = await P.page.evaluate((k) => {
+      const i = document.querySelector(`[data-stat-info="${k}"]`);
+      if (!i) return false;
+      for (const type of ['pointerdown', 'pointerup']) {
+        i.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 1, pointerType: 'touch' }));
+      }
+      return true;
+    }, key);
+    /* the window is React state -- give it a render before measuring */
+    await P.page.waitForTimeout(350);
+    const fit = await P.page.evaluate((k) => {
+      const rows = document.querySelector('[data-infopopup-rows]');
+      const card = document.querySelector('[data-infopopup-card]');
+      if (!rows || !card) return { missing: true, rows: !!rows, card: !!card };
+      const cr = card.getBoundingClientRect();
+      const past = [...rows.querySelectorAll('span')].filter((el) => el.getBoundingClientRect().right > cr.right + 0.5).length;
+      return { past, scrollW: rows.scrollWidth, clientW: rows.clientWidth, text: (rows.innerText || '').slice(0, 120) };
+    }, key);
+    rec.ok(`the ${key} window's rows fit inside the card`,
+      tapped && !fit.missing && fit.past === 0 && fit.scrollW <= fit.clientW + 1, { tapped, ...fit });
+  }
+
   /* The window must get out of the way before the row can be tapped --
      and it has to be dismissable, which is the fourth thing InfoPopup
      promises (v2.3.2131: the scrim, the x, the button, and Escape). */
