@@ -4,7 +4,7 @@ import { VitalBar, VITAL_ICONS } from './VitalBar.jsx';
 import { DMG_CRIT_COLOR } from '@/rendering/systems/effectsRenderer.js';
 import { ELEMENTS } from '@/data/elements.js';
 
-/* ═══ v2.3.2216: WHAT A STAT IS FOR, SHOWN WITH THE GAME'S OWN PIECES ═══
+/* ═══ v2.3.2222: WHAT A STAT IS FOR, SHOWN WITH THE GAME'S OWN PIECES ═══
  *
  * Owner, on the Points screen: "Small information ℹ️ next to the name.
  * Tapping it launches into a new window that describes its effect.  It also

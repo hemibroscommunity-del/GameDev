@@ -134,7 +134,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the combat-type selector offers all three types',
     ['Melee', 'Bow', 'Magic'].every((n) => typeLabels.some((l) => l && l.startsWith(n))), typeLabels);
 
-  /* ═══ v2.3.2216: THE LANE SCROLLS NOW, AND THAT IS THE DESIGN ═══
+  /* ═══ v2.3.2222: THE LANE SCROLLS NOW, AND THAT IS THE DESIGN ═══
      History of this guard, because it has flipped and the flip is on
      purpose.  v2.3.1660: "all stats ... can be seen all at once without
      scrolling" -- after five of seven sat below an uncued fold.  v2.3.2176
@@ -369,7 +369,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   await P.ctx.close().catch(() => {});
 
-  /* ═══ v2.3.2214 -> v2.3.2216: AND ALL OF THAT, ON A PHONE ═══
+  /* ═══ v2.3.2214 -> v2.3.2222: AND ALL OF THAT, ON A PHONE ═══
      Everything above runs on this scenario's player at the harness's default
      1000x780 viewport, which is how v2.3.2199's ninth stat shipped off the
      bottom of a phone while CI was green.  So the same four properties are

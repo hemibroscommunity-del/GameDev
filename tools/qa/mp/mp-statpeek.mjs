@@ -81,7 +81,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('at rest the strip carries the overall DPS', /DPS\s*[\d.]+/.test(resting), resting.slice(0, 200));
 
   /* ── tap CRIT's ℹ️: the stat total from baseline, and the DPS it buys ──
-     v2.3.2216: the readout moved from a press-to-peek strip into the ℹ️
+     v2.3.2222: the readout moved from a press-to-peek strip into the ℹ️
      window (owner: "Tapping it launches into a new window that describes
      its effect").  Same two numbers, same regexes, read off the popup's
      rows instead of the strip.  The ℹ️ is found INSIDE the crit row, and
@@ -135,7 +135,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const promisedDps = Number(mDps[2]);
 
   /* The rows must FIT: the Defense row once printed "0.8% less damage ->
-     1.2% less damage" and ran off the card (v2.3.2216 capture).  Checked on
+     1.2% less damage" and ran off the card (v2.3.2222 capture).  Checked on
      the widest-worded stats, by the ellipsis/overflow detector the landscape
      sweep uses, so a reworded unit fails here by name. */
   for (const key of ['def', 'aspd', 'critDmg', 'elem', 'hp', 'stam', 'dodge', 'dmg']) {

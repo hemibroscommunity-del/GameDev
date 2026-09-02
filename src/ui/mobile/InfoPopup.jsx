@@ -94,7 +94,7 @@ export const InfoPopup = () => {
           fontSize: 13, lineHeight: 1.42, color: COL.text,
         }}>{cur.body}</div>
 
-        {/* ═══ v2.3.2216: THE POINTS SCREEN'S ℹ️ ═══
+        {/* ═══ v2.3.2222: THE POINTS SCREEN'S ℹ️ ═══
             Owner: "Tapping it launches into a new window that describes its
             effect.  It also has a preview of what the effect does
             (exaggerated)."  Three optional slots, all of them absent for

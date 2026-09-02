@@ -18,7 +18,7 @@ import {
 import { VitalBar, VITAL_ICONS, VITAL_LABEL, VITAL_TINT } from './VitalBar.jsx'; /* v2.3.1311; VITAL_LABEL v2.3.1883 */
 import { getEquippedSlots, getEquipContribs, GHOST_SRC } from './equipModel.js'; /* v2.3.1653 */
 import { previewStatPoint, overallDps } from './statPreview.js';                 /* v2.3.1766 */
-import { StatDemo } from './StatDemo.jsx';                                      /* v2.3.2216: the ℹ️ window's scene */
+import { StatDemo } from './StatDemo.jsx';                                      /* v2.3.2222: the ℹ️ window's scene */
 import { itemDetailBus } from '../dash/itemDetailBus.js';                        /* v2.3.1653 */
 import { heroSectionBus } from './heroSectionBus.js';                            /* v2.3.1668 */
 import { DASH_GAP, HERO_TAB_H } from './sheetGeometry.js';                      /* v2.3.1653; v2.3.1657 tabs */
@@ -111,7 +111,7 @@ export const HeroExpanded = () => {
   /* v2.3.1766: which stat the allocation tooltip is describing, or null for
      its resting state (the character's overall DPS).  Cleared when the sheet
      changes section so the strip never describes a stat that is off screen. */
-  /* v2.3.2216: the press-to-peek strip state is gone -- what a point buys
+  /* v2.3.2222: the press-to-peek strip state is gone -- what a point buys
      now opens in the ℹ️ window (openStatInfo below), and a resting readout
      has no state to hold. */
   const setSection = (s) => { _lastSection = s; setSectionState(s); };
@@ -1153,7 +1153,7 @@ export const HeroExpanded = () => {
           the accordion's open lane, so the selector and the section header
           are the same control.  Nothing underneath changed: the same
           prog3_allocate send, the same prog3StatCap gate; the press-to-peek
-          preview became the ℹ️ window in v2.3.2216.
+          preview became the ℹ️ window in v2.3.2222.
 
           THE POOL IS ONE POOL, and that is why the mockup's per-lane
           numbers are not here.  The owner, asked directly: "There is a
@@ -1185,7 +1185,7 @@ export const HeroExpanded = () => {
                Held on the component (not a ref) so the strip re-renders when
                it changes; null = resting, which shows overall DPS instead. */
             const n1 = (v) => (Math.round(v * 10) / 10).toFixed(1);
-            /* ═══ v2.3.2216: THE ℹ️ WINDOW ═══
+            /* ═══ v2.3.2222: THE ℹ️ WINDOW ═══
                Owner: "Small information ℹ️ next to the name.  Tapping it
                launches into a new window that describes its effect.  It
                also has a preview of what the effect does (exaggerated)."
@@ -1241,7 +1241,7 @@ export const HeroExpanded = () => {
                row spends from the lane you are standing in, so both read the
                same number. */
             const openPts = chanCaps ? prog3PoolFor(R, buildCat) : totalUnspent;
-            /* ═══ v2.3.2216: THE ROWS ARE TWICE THE SIZE, AND THE LANE SCROLLS ═══
+            /* ═══ v2.3.2222: THE ROWS ARE TWICE THE SIZE, AND THE LANE SCROLLS ═══
                Owner: "a larger display of the allocable combat stats.  The
                accordion type display will need to scroll down to show them
                all.  I'm thinking each stat container needs to be about twice
@@ -1398,7 +1398,7 @@ export const HeroExpanded = () => {
                 fontVariantNumeric: 'tabular-nums',
                 display: 'flex', flexDirection: 'column', justifyContent: 'center',
               }}>
-                {/* v2.3.2216: the strip is the RESTING readout only now (what a
+                {/* v2.3.2222: the strip is the RESTING readout only now (what a
                     point buys moved into the ℹ️ window), and it sits ABOVE the
                     lanes rather than below.  Measured: with Melee open, the two
                     collapsed lanes plus this strip under the last stat row
@@ -1448,7 +1448,7 @@ export const HeroExpanded = () => {
                       title={sk.label}
                       onPointerUp={(e) => { e.stopPropagation(); setBuildCat(sk.key); }}
                       style={{
-                        /* v2.3.2216: the OPEN header grows to 28 beside 48px rows; a
+                        /* v2.3.2222: the OPEN header grows to 28 beside 48px rows; a
                            collapsed one stays 24.  Everything below the last stat row
                            is what a scroll-to-the-end has to fit under the pinned
                            tabs + header, so the collapsed lanes stay slim on purpose. */
@@ -1522,7 +1522,7 @@ export const HeroExpanded = () => {
                       <span aria-hidden="true" style={{ flex: 'none', fontSize: 10, color: COL.muted, lineHeight: 1 }}>{open ? '\u25B2' : '\u25BC'}</span>
                     </div>
                     {open && (
-                      /* v2.3.2216: ONE column, full width (owner's pick), so
+                      /* v2.3.2222: ONE column, full width (owner's pick), so
                          every row is the same size by construction and the
                          name, the ℹ️ and a real [+] all have room.  Attack
                          first -- it is this lane's own -- then the shared

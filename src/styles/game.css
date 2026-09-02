@@ -3002,7 +3002,7 @@ html[data-orient="landscape"] .bt-dashboard{
   display:none!important;
 }
 
-/* ═══ v2.3.2216: THE STAT SCENE — "a preview of what the effect does (exaggerated)" ═══
+/* ═══ v2.3.2222: THE STAT SCENE — "a preview of what the effect does (exaggerated)" ═══
    One scene per stat in the ℹ️ window (StatDemo.jsx), built from the
    game's own pieces after the owner called the first CSS-only cut
    "amateurish and goofy": your CharacterView figure, the slime off its real
