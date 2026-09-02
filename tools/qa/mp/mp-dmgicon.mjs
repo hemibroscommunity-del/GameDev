@@ -122,7 +122,7 @@ async function shoot(P, staff) {
    zone -- the local prediction's popup is suppressed there. */
 async function serverHit(P, slot, opts) {
   await clear(P);
-  await P.page.evaluate(({ sl, peer }) => {
+  await P.page.evaluate(({ sl, peer, crit }) => {
     const S = window._gameState.current;
     /* Re-injected every time: in a server zone the worker's snapshot
        replaces S.monsters wholesale, so a monster planted once does not
@@ -136,11 +136,11 @@ async function serverHit(P, slot, opts) {
     }
     const payload = {
       monsterId: 'qa-icon', attackerId: peer ? 'qa-someone-else' : S.myId,
-      dmg: 11, hpPct: 0.9, isCrit: false,
+      dmg: 11, hpPct: 0.9, isCrit: !!crit,
     };
     if (sl) payload.slot = sl;
     window.__btDispatch({ type: 'monster_hit', payload });
-  }, { sl: slot, peer: !!(opts && opts.peer) });
+  }, { sl: slot, peer: !!(opts && opts.peer), crit: !!(opts && opts.crit) });
   /* A peer's number rides the smoothing queue (enqueuePeerDamage), which
      drips it out over a few frames -- so this polls rather than reading
      once: the release window and the popup's own TTL do not overlap for
@@ -224,6 +224,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
     console.log(`    monster_hit slot=${slot} -> ` + JSON.stringify(got));
     rec.ok(`the server's number for a ${slot} hit is marked '${want}'`,
       got.length === 1 && got[0].icon === want, got);
+  }
+
+  /* ── DEFECT 3 (v2.3.2233): THE CRIT IS NOT ALWAYS A SWORD ──
+     Owner, after the marks above shipped: "Damage still shows sword icon
+     (melee) for bow damage."  It did: the crit mark is a starburst with a
+     STEEL BLADE through it, stamped on every crit whatever dealt it -- and
+     since v2.3.2211 the crit is the loudest number on screen, so the one a
+     player is sure to read was the one asserting a sword. */
+  for (const [slot, want] of [['melee', 'sword'], ['ranged', 'arrow'], ['staff', 'spell']]) {
+    const got = await serverHit(P, slot, { crit: true });
+    console.log(`    CRIT slot=${slot} -> ` + JSON.stringify(got));
+    rec.ok(`a ${slot} CRIT is marked '${want}', not a bladed burst`,
+      got.length === 1 && got[0].icon === want, got);
+    rec.ok('...and still reads as a crit (big + gold)',
+      got.length === 1 && got[0].crit === true && got[0].color !== '#ffd08a', got);
   }
 
   /* ...and a PEER's hit gets the same treatment, which the client could

@@ -22,7 +22,7 @@ import {
 import { baseArchetypeOf, hitShapeOf, isIntangible /* v2.3.2224 */, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
 import { rollMonsterShard } from '@/data/shards.js';
-import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */ } from '@/game/combatHelpers.js';
+import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */, dropLocalRemnantOnce /* v2.3.2233 */ } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
@@ -667,19 +667,12 @@ export function updateArrows(S, deps) {
                   if (S._serverMonsters) {
                     m.curHp = 0;
                     hit = true;
-                    if (S.groundLoot && isRemnantSkull(m.type)) {
-                      var _shardG = rollMonsterShard(S.currentZone);
-                      S.groundLoot.push({
-                        x: m.x + (Math.random() - 0.5) * 12,
-                        y: m.y + (Math.random() - 0.5) * 12,
-                        coins: 0,
-                        xp: 0,
-                        skull: m.type,
-                        skullEmoji: '🦴',
-                        ts: Date.now(),
-                        shard: _shardG,
-                      });
-                    }
+                    /* v2.3.2233: ONCE -- see the note at the DoT twin in
+                       monsterCombat.js.  Every arrow that lands on a monster
+                       already at 0 hp (a pierce volley, a second shot in
+                       flight, anything during an exploding slime's fuse)
+                       came through here and minted another claimable pile. */
+                    dropLocalRemnantOnce(S, m);
                     return;
                   }
                   /* Mummy -> skeleton on overkill (v2.3.135). */

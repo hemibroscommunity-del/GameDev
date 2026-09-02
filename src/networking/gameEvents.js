@@ -57,6 +57,25 @@ import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHe
  * but a weapon swap inside the round trip, and for a peer it declines to
  * guess rather than marking their arrow with our sword. */
 const SLOT_ICON = { melee: 'sword', ranged: 'arrow', staff: 'spell' };
+
+/* ═══ v2.3.2233: A CRIT IS NOT ALWAYS A SWORD ═══
+ *
+ * Owner, after v2.3.2232 marked ordinary hits correctly: "Damage still shows
+ * sword icon (melee) for bow damage."  It did, and this is why -- the crit
+ * mark (/icons/ui/hero/crit.webp) is a gold starburst with a STEEL BLADE
+ * through it, and it was stamped on every critical hit whatever dealt it.
+ * Since v2.3.2211 a crit is also the loudest number on screen (38px in
+ * DMG_CRIT_COLOR against 21px white), so the one number a player is sure to
+ * read was the one asserting a sword.
+ *
+ * The crit reads as a crit from its SIZE and COLOUR alone -- that is what
+ * v2.3.2211 built and what the owner approved ("I like the new crit") -- so
+ * the icon slot is free to carry the thing it was getting wrong.  A crit now
+ * takes the weapon mark; `crit: true` still drives the big yellow treatment.
+ *
+ * If the burst is wanted back, the fix is per-weapon crit art (a burst with
+ * an arrow, a burst with a bolt) rather than one blade for all three; that
+ * is an art call, not a code one. */
 export function dmgIconForSlot(S, payload, isOwn) {
   const fromWire = payload && SLOT_ICON[payload.slot];
   if (fromWire) return fromWire;
@@ -1462,8 +1481,9 @@ export function processGameEvent(type, payload, S, deps) {
                       crit: !!payload.isCrit,
                       /* v2.3.2232: ...and a peer's arrow reads as an arrow.
                          Undefined until the worker names the slot -- better
-                         no mark than OUR weapon on THEIR hit. */
-                      iconKey: payload.isCrit ? 'crit' : dmgIconForSlot(S, payload, false),
+                         no mark than OUR weapon on THEIR hit.
+                         v2.3.2233: the crit takes the weapon here too. */
+                      iconKey: dmgIconForSlot(S, payload, false),
                     });
                   } else if (payload.ability || S._serverMonsters) {
                     /* v2.3.1733: OUR OWN stamina-ability hit.  The rule
@@ -1498,10 +1518,11 @@ export function processGameEvent(type, payload, S, deps) {
                        is wrong. */
                     pushDmgPopup(S, hitM.x || hitM.renderX, monsterPopupY(hitM, -20),
                       '-' + payload.dmg, payload.isCrit ? DMG_CRIT_COLOR : '#ffd08a',
-                      payload.isCrit
-                        ? { crit: true, iconKey: 'crit', special: !!S._ownSpecialRecent }
-                        /* v2.3.2232: the weapon that dealt it, not a flat sword. */
-                        : { iconKey: dmgIconForSlot(S, payload, true), special: !!S._ownSpecialRecent });  /* v2.3.2211; v2.3.2220 */
+                      /* v2.3.2232: the weapon that dealt it, not a flat sword.
+                         v2.3.2233: ...and that now includes the crit, which
+                         carried a bladed burst on bow and staff hits alike. */
+                      { crit: !!payload.isCrit, iconKey: dmgIconForSlot(S, payload, true),
+                        special: !!S._ownSpecialRecent });  /* v2.3.2211; v2.3.2220 */
                   } else if (payload.thorns) {
                     /* v2.3.1137: Thorns reflect is SERVER-rolled with no
                        local prediction (unlike swings), so our own thorns

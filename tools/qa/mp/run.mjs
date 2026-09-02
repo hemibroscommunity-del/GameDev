@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  remnant: () => import('./mp-remnant.mjs'), /* v2.3.2233: one monster leaves ONE claimable remnant, not dozens */
   skeleton: () => import('./mp-skeleton.mjs'), /* v2.3.2229: one hit unwraps the mummy, and the skeleton is bigger and faster */
   dmgicon: () => import('./mp-dmgicon.mjs'), /* v2.3.2232: the damage number names the weapon that dealt it */
   statdemo: () => import('./mp-statdemo.mjs'), /* v2.3.2230: the stat explainer's scene faces the slime, and the +1 lands on your head */

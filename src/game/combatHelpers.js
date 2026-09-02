@@ -9,7 +9,8 @@
    verbatim. window._gameState / window._setLevelUpMsg stay as runtime lookups
    by design (they are wired up inside the BroTown component each render). */
 import { xpRequired, recalcDerived, BT_AUDIO, BLOCK_ARC_HALF, monsterBodyOffsetY } from '@/data/index.js';
-import { hitMaterialOf } from '@/data/monsterVariants.js'; /* v2.3.2200: hit-feedback material table */
+import { hitMaterialOf, isRemnantSkull } from '@/data/monsterVariants.js'; /* v2.3.2200: hit-feedback material table; v2.3.2233: remnant guard */
+import { rollMonsterShard } from '@/data/shards.js';   /* v2.3.2233 */
 
 /* ═══ v2.3.1979: WHERE A LOCKED TARGET ACTUALLY IS, FOR AIMING ═══
    Owner: "Tap to lock on enemy sometimes does not hit the target.  I was
@@ -346,6 +347,50 @@ function distributeKillXpToBuild(R, killXp) {
   /* Reset usage tally for the next encounter — each kill's
      distribution reflects activity since the last kill. */
   R._buildUse = { power: 0, vitality: 0, endurance: 0, agility: 0, mind: 0 };
+}
+
+
+/* ═══ v2.3.2233: ONE LOCAL REMNANT PER MONSTER LIFE ═══
+ *
+ * Owner: "Slime remnants still have dozens dropping as loot now."  MEASURED:
+ * one fodder slime left 47 piles in 2.5 seconds (tools/qa/mp/mp-remnant.mjs).
+ *
+ * In a server zone the client never sets `alive = false` -- the worker owns
+ * the kill -- so a monster whose hp has reached 0 sits at `curHp <= 0 &&
+ * alive` until monster_kill arrives.  Both local kill blocks test exactly
+ * that, and neither remembered having fired: every DoT tick and every
+ * further hit inside that window minted another pile.  The exploding slime
+ * made it impossible to miss, because its fuse HOLDS that state for 1600ms
+ * by design (v2.3.2226 doubled it) -- but the bug is not the slime's.  Any
+ * monster lingering between its last point of damage and the worker's kill
+ * event does this.
+ *
+ * And these are not decoration: groundLoot.js credits a skull pile straight
+ * into the bag on pickup (remnantInvKey), and remnant piles are exempt from
+ * the 60s despawn, so they accumulate and every one of them is claimable.
+ * That is the owner's "dozens in my bag then fixes the amounts" -- the
+ * authoritative inventory sync correcting what the client invented.
+ *
+ * The flag lives on the monster object and is cleared where the client
+ * revives one (monsterCombat's respawn branch), so a monster that dies again
+ * next life drops its one pile again.
+ */
+export function dropLocalRemnantOnce(S, m) {
+  if (!S || !S.groundLoot || !m) return false;
+  if (!isRemnantSkull(m.type)) return false;
+  if (m._localRemnantDropped) return false;
+  m._localRemnantDropped = true;
+  S.groundLoot.push({
+    x: m.x + (Math.random() - 0.5) * 12,
+    y: m.y + (Math.random() - 0.5) * 12,
+    coins: 0,
+    xp: 0,
+    skull: m.type,
+    skullEmoji: '\u{1F9B4}',
+    ts: Date.now(),
+    shard: rollMonsterShard(S.currentZone),
+  });
+  return true;
 }
 
 /* v2.3.1188: the ONE way to spawn a floating damage/notice popup.  The
