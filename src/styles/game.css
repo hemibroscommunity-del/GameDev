@@ -3020,6 +3020,12 @@ html[data-orient="landscape"] .bt-dashboard{
 .bt-sd-hero--swing{animation:bt-sd-lunge .34s ease-out 1}
 @keyframes bt-sd-lunge{0%{transform:translateX(0)}35%{transform:translateX(12px)}100%{transform:translateX(0)}}
 .bt-sd-hero--dodge{animation:bt-sd-sidestep .6s ease-in-out 1}
+/* v2.3.2227: a RANGED attack.  The melee lunge steps INTO the slime; a bow
+   or a staff does the opposite -- the body settles back as the shot leaves,
+   and the thing that crosses the gap is the projectile, not the man.  Small
+   (5px against the lunge's 12) because the read here belongs to the arrow. */
+.bt-sd-hero--loose{animation:bt-sd-loose .26s ease-out 1}
+@keyframes bt-sd-loose{0%{transform:translateX(0)}30%{transform:translateX(-5px)}100%{transform:translateX(0)}}
 @keyframes bt-sd-sidestep{0%{transform:translateX(0);opacity:1}30%{transform:translateX(-18px);opacity:.6}70%{transform:translateX(-18px);opacity:.85}100%{transform:translateX(0);opacity:1}}
 /* the block mark on the hero's leading side, flashing once per orb */
 .bt-sd-shield{position:absolute;right:-16px;top:48px;width:30px;height:30px;object-fit:contain;animation:bt-sd-shield .7s ease-out 1 both;filter:drop-shadow(0 0 6px rgba(116,172,232,.7))}
@@ -3038,6 +3044,16 @@ html[data-orient="landscape"] .bt-dashboard{
 /* the orb: from the slime's mouth to the hero, straight and quick */
 .bt-sd-orb{position:absolute;right:88px;bottom:34px;width:22px;height:22px;background-size:22px 22px;background-repeat:no-repeat;animation:bt-sd-orb .38s linear 1 both}
 @keyframes bt-sd-orb{from{transform:translateX(0)}to{transform:translateX(-120px)}}
+/* v2.3.2227: the hero's shot -- the orb's mirror image.  Leaves the hand
+   (left:66px is just off the figure's centre line, at chest height) and
+   crosses to the slime in 200ms, which is the beat Script.strike already
+   waited before the squash, so the impact lands with the arrival and no
+   scene's rhythm moves.  The bolt steps its 4 cels over the same flight;
+   the arrow is one cel and simply travels.  Both sheets are painted
+   pointing east, the direction this scene fires, so no rotation. */
+.bt-sd-shot{position:absolute;left:66px;bottom:56px;background-repeat:no-repeat;background-position:0 0;image-rendering:auto;animation:bt-sd-fly .2s linear 1 both,bt-sd-strip .2s steps(var(--sd-frames,1),jump-none) 1 both}
+@keyframes bt-sd-fly{from{transform:translateX(0)}to{transform:translateX(120px)}}
+.bt-sd-shot--bow{image-rendering:pixelated}
 /* combat numbers, in DMG_STYLE's dress: Source Sans 3 800, the black stroke
    under the fill (paint-order keeps the fill whole), rising as they fade */
 .bt-sd-pop{position:absolute;bottom:96px;display:inline-flex;align-items:center;gap:3px;font-family:'Source Sans 3',sans-serif;font-weight:800;line-height:1;white-space:nowrap;font-variant-numeric:tabular-nums;-webkit-text-stroke:3px #000;paint-order:stroke fill;text-shadow:0 1px 2px rgba(0,0,0,.6);animation:bt-sd-rise 1.05s ease-out 1 both;pointer-events:none}
@@ -3069,7 +3085,7 @@ html[data-orient="landscape"] .bt-dashboard{
 .bt-sd-vital-n{font-size:10px;font-weight:800;line-height:1;color:#fff;font-variant-numeric:tabular-nums;text-shadow:0 1px 2px rgba(0,0,0,.85),0 0 3px rgba(0,0,0,.7);display:flex;align-items:center}
 .bt-sd-vital-s{padding:0 2px;opacity:.6}
 @media (prefers-reduced-motion:reduce){
-  .bt-sd-hero,.bt-sd-slime,.bt-sd-shield,.bt-sd-orb,.bt-sd-pop,.bt-sd-point{animation:none}
+  .bt-sd-hero,.bt-sd-slime,.bt-sd-shield,.bt-sd-orb,.bt-sd-shot,.bt-sd-pop,.bt-sd-point{animation:none}
   .bt-sd-pop{opacity:1;margin-bottom:8px}
   .bt-sd-shield{opacity:1}
   .bt-sd-vital-w{transition:none}

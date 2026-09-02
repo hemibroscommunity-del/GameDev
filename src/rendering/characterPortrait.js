@@ -416,7 +416,14 @@ export async function drawCharacterPortrait(canvas, opts) {
      reliably tellable by eye at 96px — a `dir` that silently fell back would
      look plausible in every screenshot.  Stamped on the canvas so a scenario
      reads the element it is asserting about rather than a global. */
-  try { canvas.__btDir = DIR; canvas.__btMirror = !!_mirror; } catch (e) { /* ignore */ }
+  /* v2.3.2227: the WEAPON, for the same reason and by the same means.  The
+     stat explainer picks the figure's weapon from the combat lane you are
+     reading rather than from your equipped slot, and a sword and a bow at
+     this size are not reliably tellable apart from a screenshot either. */
+  try {
+    canvas.__btDir = DIR; canvas.__btMirror = !!_mirror;
+    canvas.__btWeapon = (weapon && weapon.type) || null;
+  } catch (e) { /* ignore */ }
 
   ctx.clearRect(0, 0, FRAME, FRAME);
   /* Zoom the figure to fill the preview window, then shift it DOWN a touch.

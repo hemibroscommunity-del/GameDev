@@ -5363,6 +5363,22 @@ export function getActiveWeapon(rpg) {
   return rpg.weapon;
 }
 
+/* ═══ v2.3.2227: THE WEAPON A COMBAT LANE IS ABOUT ═══
+ * The Points screen lets you open ANY lane's stat rows while holding
+ * something else -- buildCat is set by tapping a lane header, activeSlot by
+ * swapping weapons -- so getActiveWeapon is the wrong question to ask when
+ * the thing on screen is captioned "Crit chance · Ranged".  This answers the
+ * lane's own question instead.  Null when that slot is empty, which is the
+ * honest answer: you do not own a bow, and borrowing the sword you DO own
+ * would put the contradiction straight back.
+ * Categories are prog3's (prog3CatFor): sword covers greatsword too. */
+export function weaponForCat(rpg, cat) {
+  if (!rpg) return null;
+  if (cat === 'bow') return rpg.rangedWeapon || null;
+  if (cat === 'staff') return rpg.staffWeapon || null;
+  return rpg.weapon || null;
+}
+
 /* v2.3.254: which swing SFX to play for the current melee weapon.
    Wood-tier sword (the bamboo stick) gets its own airier 'bamboo-swing'
    sample; everything else falls back to the canonical 'sword-swing'. */

@@ -3,6 +3,7 @@ import { CharacterView } from './CharacterView.jsx';
 import { VitalBar, VITAL_ICONS } from './VitalBar.jsx';
 import { DMG_CRIT_COLOR } from '@/rendering/systems/effectsRenderer.js';
 import { ELEMENTS } from '@/data/elements.js';
+import { prog3CatFor } from '@/data/prog3.js';   /* v2.3.2227: weapon type -> combat lane */
 
 /* ═══ v2.3.2222: WHAT A STAT IS FOR, SHOWN WITH THE GAME'S OWN PIECES ═══
  *
@@ -62,6 +63,34 @@ const SLIME = {
   shoot: { url: '/sprites/monsters/slime-shoot-v2.png', frames: 8 },
 };
 const ORB_URL = '/sprites/monsters/slime-projectile-v1.png';
+/* ═══ v2.3.2227: WHAT LEAVES YOUR HANDS ═══
+ * Owner: "Would it be better to show the character simulate attacking the
+ * slime with a weapon?  Maybe the combat primary skill they are viewing the
+ * stat demo through?"
+ *
+ * The scene's one attack beat was a LUNGE for everybody -- so the Bow and
+ * Magic lanes showed a man stepping toward a slime three feet away and the
+ * number simply appearing.  A ranged lane's whole tell is that the damage
+ * crosses the gap, so it now does, with the world's own projectiles: the
+ * pine arrow and the magic bolt effectsRenderer already loads
+ * (_fxLoad at v2.3.1881 / v2.3.1334), at the same URLs, so the cache is what
+ * answers here exactly as it does for the slime strips.
+ *
+ * BOTH SHEETS ARE DRAWN POINTING EAST, which is the direction this scene
+ * fires in (hero left, slime right), so neither needs a rotation -- the
+ * world rotates them by flight angle and 0 is the sheet as painted.
+ * The bolt is a 4-frame strip stepped by CSS, the same technique the slime
+ * uses; the arrow is a single cel.
+ *
+ * WHICH ONE is read off the WEAPON, not off the lane, and that is the more
+ * useful rule of the two: an attack row is already handed its lane's weapon
+ * (HeroExpanded v2.3.2227), so it follows the lane for free -- while a BODY
+ * row, which has no lane, correctly follows whatever you are actually
+ * holding.  No weapon: the lunge, which is what bare hands do. */
+const SHOT = {
+  bow:   { url: '/sprites/projectiles/arrow-pine.png?v=2.3.1881', w: 30, h: 8, frames: 1 },
+  staff: { url: '/sprites/projectiles/magic-bolt-v1.webp?v=2.3.1334', w: 34, h: 20, frames: 4 },
+};
 /* The combat renderer's popup icons, at the URLs it fetches them from
    (_loadPopupIcon appends ?v=2.3.2201; hero/crit.webp is the Crit row's own
    icon and is cached under that row's URL). */
@@ -82,7 +111,7 @@ const SCENE_H = 130;
    previous state.  `Script` collects them in order with a running clock so
    a scene reads as a story rather than as a table of milliseconds. */
 class Script {
-  constructor() { this.t = 0; this.steps = []; this.n = 0; }
+  constructor(shot) { this.t = 0; this.steps = []; this.n = 0; this.shot = shot || null; }
   at(dt, patch) { this.t += dt; this.steps.push({ t: this.t, patch }); return this; }
   /* One combat number over the hero or the slime.  Removed after it has
      risen and faded (the CSS animation is 1.05s). */
@@ -93,14 +122,26 @@ class Script {
     this.steps.push({ t: t + 1100, patch: (s) => ({ pops: s.pops.filter((p) => p.id !== id) }) });
     return this;
   }
-  /* The hero lunges; the slime squashes and a number comes off it. */
+  /* The hero attacks; the slime squashes and a number comes off it.
+     MELEE lunges.  RANGED looses a shot that crosses the gap and lands --
+     the flight IS the tell, so the impact beat is what it always was and
+     every scene's rhythm is unchanged (v2.3.2227).  `this.shot` is the
+     scene's weapon category, set by StatDemo before the script is built. */
   strike(text, kind, dx, extra) {
-    /* The lunge is a class toggled on, then off 340ms later (the length of
-       its CSS animation) -- NOT a keyed remount: the wrapper holds the
-       character's canvas, and a new key would repaint it every swing. */
-    this.at(0, (s) => ({ hero: { kind: 'swing', n: s.hero.n + 1 } }));
-    this.steps.push({ t: this.t + 340, patch: () => ({ hero: { kind: null, n: 0 } }) });
-    this.at(160, (s) => ({ slime: { kind: 'hit', n: s.slime.n + 1 }, ...(extra ? extra(s) : null) }));
+    /* The motion is a class toggled on, then off after its CSS animation --
+       NOT a keyed remount: the wrapper holds the character's canvas, and a
+       new key would repaint it every swing. */
+    const ranged = !!(this.shot && SHOT[this.shot]);
+    this.at(0, (s) => ({
+      hero: { kind: ranged ? 'loose' : 'swing', n: s.hero.n + 1 },
+      ...(ranged ? { shot: s.shot + 1 } : null),
+    }));
+    this.steps.push({ t: this.t + (ranged ? 260 : 340), patch: () => ({ hero: { kind: null, n: 0 } }) });
+    this.at(ranged ? 200 : 160, (s) => ({
+      slime: { kind: 'hit', n: s.slime.n + 1 },
+      ...(ranged ? { shot: 0 } : null),
+      ...(extra ? extra(s) : null),
+    }));
     this.pop('slime', text, kind, dx);
     this.steps.push({ t: this.t + 900, patch: () => ({ slime: { kind: 'idle', n: 0 } }) });
     return this;
@@ -123,7 +164,7 @@ class Script {
 
 const START = {
   pops: [], hero: { kind: null, n: 0 }, slime: { kind: 'idle', n: 0 },
-  orb: 0, point: 0, shield: 0, bar: null,
+  orb: 0, shot: 0, point: 0, shield: 0, bar: null,
 };
 
 /* Bars: `bar` is {kind, cur, max, base} where `base` is the max the trough
@@ -138,17 +179,17 @@ const hurt = (s, n) => ({ bar: { ...s.bar, cur: Math.max(0, s.bar.cur - n) } });
    AFTER half exaggerates the stat's job.  Text matches what the renderer
    would print: plain numbers off the slime, '-N' off you. */
 const SCENES = {
-  dmg: () => {
-    const sc = new Script();
+  dmg: (shot) => {
+    const sc = new Script(shot);
     sc.at(400).strike('12', 'hit').at(900).strike('12', 'hit', 10);
     sc.point();
     sc.at(400).strike('24', 'hit').at(900).strike('24', 'hit', 10);
     sc.at(700);
     return { script: sc, still: { pops: [{ id: 1, side: 'slime', text: '24', kind: 'hit' }] } };
   },
-  crit: () => {
+  crit: (shot) => {
     /* One in four goes gold; then every other one does. */
-    const sc = new Script();
+    const sc = new Script(shot);
     sc.at(400).strike('10', 'hit', -8).at(800).strike('10', 'hit', 8)
       .at(800).strike('10', 'hit', -8).at(800).strike('25', 'crit', 6);
     sc.point();
@@ -157,17 +198,17 @@ const SCENES = {
     sc.at(700);
     return { script: sc, still: { pops: [{ id: 1, side: 'slime', text: '25', kind: 'crit' }] } };
   },
-  critDmg: () => {
-    const sc = new Script();
+  critDmg: (shot) => {
+    const sc = new Script(shot);
     sc.at(400).strike('25', 'crit').at(1000).strike('25', 'crit', 8);
     sc.point();
     sc.at(400).strike('60', 'crit').at(1000).strike('60', 'crit', 8);
     sc.at(700);
     return { script: sc, still: { pops: [{ id: 1, side: 'slime', text: '60', kind: 'crit' }] } };
   },
-  aspd: () => {
+  aspd: (shot) => {
     /* Same numbers, twice as many of them in the same time. */
-    const sc = new Script();
+    const sc = new Script(shot);
     sc.at(400);
     for (let i = 0; i < 3; i++) sc.strike('10', 'hit', (i % 2) * 14 - 7).at(1000);
     sc.point();
@@ -176,10 +217,10 @@ const SCENES = {
     sc.at(500);
     return { script: sc, still: { pops: [{ id: 1, side: 'slime', text: '10', kind: 'hit', dx: -10 }, { id: 2, side: 'slime', text: '10', kind: 'hit', dx: 10 }] } };
   },
-  def: () => {
+  def: (shot) => {
     /* The same orb, twice; after the point the shield shows and it lands
        for less. */
-    const sc = new Script();
+    const sc = new Script(shot);
     sc.at(0, () => bar('hp', 100, 100));
     for (let i = 0; i < 2; i++) {
       sc.at(500).shoot((s) => hurt(s, 20)).pop('hero', '-20', 'hurt', i * 10 - 5);
@@ -192,9 +233,9 @@ const SCENES = {
     sc.at(800);
     return { script: sc, still: { ...bar('hp', 84, 100), shield: 1, pops: [{ id: 1, side: 'hero', text: '-8', kind: 'hurt' }] } };
   },
-  hp: () => {
+  hp: (shot) => {
     /* The bar you watched drain is half again as long after the point. */
-    const sc = new Script();
+    const sc = new Script(shot);
     sc.at(0, () => bar('hp', 100, 100));
     sc.at(500).shoot((s) => hurt(s, 40)).pop('hero', '-40', 'hurt');
     sc.at(700).shoot((s) => hurt(s, 40)).pop('hero', '-40', 'hurt', 8);
@@ -204,9 +245,9 @@ const SCENES = {
     sc.at(1000);
     return { script: sc, still: { ...bar('hp', 80, 160, 100), pops: [{ id: 1, side: 'hero', text: '-40', kind: 'hurt' }] } };
   },
-  dodge: () => {
+  dodge: (shot) => {
     /* Before: it lands.  After: you are not there when it arrives. */
-    const sc = new Script();
+    const sc = new Script(shot);
     sc.at(0, () => bar('hp', 100, 100));
     for (let i = 0; i < 2; i++) {
       sc.at(500).shoot((s) => hurt(s, 20)).pop('hero', '-20', 'hurt', i * 10 - 5);
@@ -221,10 +262,10 @@ const SCENES = {
     sc.at(800);
     return { script: sc, still: { ...bar('hp', 100, 100), pops: [{ id: 1, side: 'hero', text: 'Dodged!', kind: 'dodged' }] } };
   },
-  stam: () => {
+  stam: (shot) => {
     /* Three swings empty the bar; with the point it is longer and the same
        three leave half of it. */
-    const sc = new Script();
+    const sc = new Script(shot);
     sc.at(0, () => bar('stamina', 90, 90));
     sc.at(400);
     for (let i = 0; i < 3; i++) sc.strike('10', 'hit', (i % 2) * 14 - 7, (s) => ({ bar: { ...s.bar, cur: Math.max(0, s.bar.cur - 30) } })).at(700);
@@ -234,9 +275,9 @@ const SCENES = {
     sc.at(700);
     return { script: sc, still: { ...bar('stamina', 90, 180, 90), pops: [{ id: 1, side: 'slime', text: '10', kind: 'hit' }] } };
   },
-  elem: () => {
+  elem: (shot) => {
     /* A hit, then the burn ticks it leaves; the point makes the ticks bite. */
-    const sc = new Script();
+    const sc = new Script(shot);
     sc.at(400).strike('10', 'hit');
     for (let i = 0; i < 3; i++) sc.at(550).pop('slime', '2', 'burn', (i % 2) * 16 - 8);
     sc.point();
@@ -267,6 +308,27 @@ const Pop = ({ p }) => {
       style={{ color: st.color, fontSize: st.size, '--sd-dx': (p.dx || 0) + 'px' }}>
       {st.before && icon}<span>{p.text}</span>{!st.before && icon}
     </span>
+  );
+};
+
+/* The projectile the hero looses, in flight.  Keyed by the shot counter so
+   each loose is a fresh element and therefore a fresh run of the CSS
+   flight; the bolt additionally steps its 4-cel strip the way the slime
+   steps its own (v2.3.2227). */
+const Shot = ({ cat, n }) => {
+  const a = SHOT[cat];
+  if (!a) return null;
+  return (
+    <i key={'sh' + n} className={'bt-sd-shot bt-sd-shot--' + cat}
+      style={{
+        backgroundImage: `url(${a.url})`,
+        width: a.w, height: a.h,
+        backgroundSize: `${a.frames * a.w}px ${a.h}px`,
+        /* the same two knobs bt-sd-strip reads for the slime: how many cels
+           and how far to walk.  A 1-cel sheet walks 0px, so the arrow's
+           strip animation is a no-op rather than a special case. */
+        '--sd-frames': a.frames, '--sd-strip': -((a.frames - 1) * a.w) + 'px',
+      }} />
   );
 };
 
@@ -305,14 +367,20 @@ const reducedMotion = () => {
  *  on day one and its scene when somebody writes it. */
 export const StatDemo = ({ stat, iconSrc, weapon, shield }) => {
   const make = SCENES[stat];
+  /* v2.3.2227: the attack this scene plays, read off the weapon in the
+     figure's hands.  prog3CatFor is the game's own mapping (greatsword
+     counts as sword), so the scene cannot disagree with the lane the points
+     are actually being spent in.  `sword` and no weapon both mean the
+     lunge, which is why only bow/staff have a SHOT entry. */
+  const shot = weapon && weapon.type ? prog3CatFor(weapon.type) : null;
   const [s, setS] = React.useState(START);
   React.useEffect(() => {
     if (!make) return undefined;
-    if (reducedMotion()) { setS({ ...START, ...make().still }); return undefined; }
+    if (reducedMotion()) { setS({ ...START, ...make(shot).still }); return undefined; }
     let timers = [];
     let alive = true;
     const run = () => {
-      const { script } = make();
+      const { script } = make(shot);
       setS(START);
       for (const step of script.steps) {
         timers.push(setTimeout(() => { if (alive) setS((prev) => ({ ...prev, ...(step.patch ? step.patch(prev) : null) })); }, step.t));
@@ -322,7 +390,7 @@ export const StatDemo = ({ stat, iconSrc, weapon, shield }) => {
     };
     run();
     return () => { alive = false; timers.forEach(clearTimeout); };
-  }, [stat]);
+  }, [stat, shot]);   /* v2.3.2227: a scene built for a bow must be rebuilt when the lane changes */
   if (!make) return null;
   return (
     <div className="bt-sd" data-stat-demo={stat} aria-hidden="true">
@@ -337,6 +405,7 @@ export const StatDemo = ({ stat, iconSrc, weapon, shield }) => {
       </div>
       <Slime anim={s.slime} />
       {s.orb > 0 && <i key={'o' + s.orb} className="bt-sd-orb" style={{ backgroundImage: `url(${ORB_URL})` }} />}
+      {s.shot > 0 && <Shot cat={shot} n={s.shot} />}
       {s.pops.map((p) => <Pop key={p.id} p={p} />)}
       {s.point > 0 && (
         <span key={'p' + s.point} className="bt-sd-point">
