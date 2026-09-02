@@ -328,7 +328,11 @@ export const StatDemo = ({ stat, iconSrc, weapon, shield }) => {
     <div className="bt-sd" data-stat-demo={stat} aria-hidden="true">
       <div className="bt-sd-stage" style={{ height: SCENE_H }}>
       <div className={'bt-sd-hero' + (s.hero.kind ? ' bt-sd-hero--' + s.hero.kind : '')}>
-        <CharacterView size={HERO_SIZE} weapon={weapon} shield={shield} crop />
+        {/* v2.3.2225 (owner: "the character preview is facing the wrong way"):
+            southEAST, so he faces the slime.  The scene stands him on the
+            left and the slime on the right, and CharacterView's default
+            southwest turned his back on it. */}
+        <CharacterView size={HERO_SIZE} weapon={weapon} shield={shield} crop dir="southeast" />
         {s.shield > 0 && <img key={'s' + s.shield} className="bt-sd-shield" src={ICON.shield} alt="" draggable={false} />}
       </div>
       <Slime anim={s.slime} />

@@ -3046,7 +3046,18 @@ html[data-orient="landscape"] .bt-dashboard{
 .bt-sd-pop-ic{display:block;width:auto;-webkit-text-stroke:0}
 @keyframes bt-sd-rise{0%{opacity:0;margin-bottom:-6px}12%{opacity:1;margin-bottom:0}70%{opacity:1;margin-bottom:18px}100%{opacity:0;margin-bottom:30px}}
 /* the point landing: the row's icon with a brass +1, rising once */
-.bt-sd-point{position:absolute;left:50%;top:14px;display:inline-flex;align-items:center;gap:5px;transform:translateX(-50%);animation:bt-sd-point .9s ease-out 1 both;pointer-events:none}
+/* v2.3.2225 (owner: "show the +1 stat addition above the character's head
+   then disappear instead of in the middle between the character's and
+   monster").  Was left:50% -- dead centre of the stage, which is the gap
+   BETWEEN the two figures, so the point that lands on your character
+   appeared to land on neither.  Now over the hero: 56px is the figure's own
+   centre line, the same one .bt-sd-pop--hero rises from, and bottom:96px is
+   the line the hit numbers already rise off his head from -- reused rather
+   than picked, so "above the head" means one height in this scene and not
+   two.  Not higher: the stage is 130px with overflow:hidden, and a 28px
+   badge at 104 would have its top clipped off.  The rise-and-fade is
+   unchanged; it already ended at opacity 0. */
+.bt-sd-point{position:absolute;left:56px;bottom:96px;display:inline-flex;align-items:center;gap:5px;transform:translateX(-50%);animation:bt-sd-point .9s ease-out 1 both;pointer-events:none}
 .bt-sd-point img{width:28px;height:28px;object-fit:contain;filter:drop-shadow(0 0 6px rgba(216,170,88,.75))}
 .bt-sd-point b{font-family:'Source Sans 3',sans-serif;font-weight:800;font-size:21px;color:#D8AA58;-webkit-text-stroke:3px #000;paint-order:stroke fill;line-height:1}
 @keyframes bt-sd-point{0%{opacity:0;transform:translate(-50%,10px) scale(.8)}25%{opacity:1;transform:translate(-50%,0) scale(1.08)}45%{transform:translate(-50%,0) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-8px) scale(1)}}

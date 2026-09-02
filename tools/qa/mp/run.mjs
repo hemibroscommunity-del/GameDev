@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  statdemo: () => import('./mp-statdemo.mjs'), /* v2.3.2225: the stat explainer's scene faces the slime, and the +1 lands on your head */
   critpreview: () => import('./mp-critpreview.mjs'), /* v2.3.2213: crit vs normal on demand, no playthrough */
   basicwindup: () => import('./mp-basicwindup.mjs'), /* v2.3.2215: every monster tells you before it hits */
   feel: () => import('./mp-feel.mjs'), /* v2.3.2200: contact-synced hits, universal recoil, ground marks */
