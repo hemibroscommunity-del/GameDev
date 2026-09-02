@@ -28,6 +28,7 @@ import { PROG3 as SRV_PROG3 } from '../src/prog3.js';
 /* v2.3.1812: check 13 compares telegraph kit kinds against the client's
    render whitelist — see the block at the bottom for why it reads text. */
 import { TELEGRAPH as SRV_TELEGRAPH, BASIC_WINDUP as SRV_BASIC_WINDUP, BURROW_ARCH as SRV_BURROW_ARCH, SLIME_BURST as SRV_SLIME_BURST } from '../src/telegraph.js'; /* v2.3.2221; v2.3.2224 */
+import { FIRE_TRAIL as SRV_FIRE_TRAIL } from '../src/firetrail.js'; /* v2.3.2238 */
 import { PROG3 as CLIENT_PROG3 } from '../../src/data/prog3.js';
 import {
   ARCHETYPES, MONSTER_HP_CURVE, COOKING_RECIPES, QUEST_CHAINS,
@@ -853,6 +854,55 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     .filter((k) => !new RegExp('\\b' + k + ':').test(cliVariants));
   check('burst mirror: every exploding variant is a real one',
     strayBurst.length === 0, { strayBurst, declared: Object.keys(SRV_SLIME_BURST.VARIANTS) });
+}
+
+/* ═══ 21. v2.3.2238: THE FIRE GOBLIN'S FIRE TRAIL ═══
+   The trail's own rules are pinned deterministically in
+   server/test/firetrail.test.mjs.  What THAT suite cannot see is the four
+   places this system can be perfectly correct and completely inert:
+
+     - the client has no `fire_trail` case, so the fire is invisible while
+       it burns (the whitelist trap that has now caught the telegraph kits,
+       the basic wind-up, the burrow phases and the slime burst);
+     - the renderer has no branch, same outcome one layer down;
+     - _tickMonsters never calls the drop hook, so no patch is ever laid;
+     - movement.js never replays the snapshot, so a player who walks into
+       ember mid-chase burns on ground they cannot see.
+
+   Each is a silent, shipping-green failure.  Hence four text pins. */
+{
+  const cliSrc = readFileSync(new URL('../../src/networking/gameEvents.js', import.meta.url), 'utf8');
+  const cliRend = readFileSync(
+    new URL('../../src/rendering/systems/effectsRenderer.js', import.meta.url), 'utf8');
+  const srvTick = readFileSync(new URL('../src/index.js', import.meta.url), 'utf8');
+  const srvMove = readFileSync(new URL('../src/movement.js', import.meta.url), 'utf8');
+
+  check('firetrail mirror: the client handles the fire_trail event',
+    /case 'fire_trail'/.test(cliSrc), {});
+  check('firetrail mirror: ...and the renderer draws the patches',
+    /S\._fireTrail/.test(cliRend), {});
+  check('firetrail mirror: _tickMonsters lays the trail',
+    /this\._maybeDropFirePatch\(/.test(srvTick), {});
+  check('firetrail mirror: ...and burns it once per zone per tick',
+    /this\._tickFireTrail\(/.test(srvTick), {});
+  check('firetrail mirror: an arriving player is shown the ground already alight',
+    /this\._sendFireTrailSnapshot\(/.test(srvMove), {});
+  /* Every fire-laying variant must be a real one, or the table matches
+     nothing and the whole mechanic silently never fires -- the same check
+     the burst table gets above, for the same reason. */
+  const cliVars = readFileSync(
+    new URL('../../src/data/monsterVariants.js', import.meta.url), 'utf8');
+  const strayFire = Object.keys(SRV_FIRE_TRAIL.VARIANTS)
+    .filter((k) => !new RegExp('\\b' + k + ':').test(cliVars));
+  check('firetrail mirror: every fire-laying variant is a real one',
+    strayFire.length === 0, { strayFire, declared: Object.keys(SRV_FIRE_TRAIL.VARIANTS) });
+  /* v2.3.2238: and the local shield fallback must not eat a hit the worker
+     already resolved -- fire has no direction to face away from, so an
+     unguarded arc test would swallow every burn number.  Pinned because it
+     is one `!_srvResolved` that a future edit to this handler could drop
+     without anything else noticing. */
+  check('firetrail mirror: the client\'s block fallback yields to a server-resolved hit',
+    /S\._shieldUp && !_srvResolved && isAttackInShieldArc/.test(cliSrc), {});
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

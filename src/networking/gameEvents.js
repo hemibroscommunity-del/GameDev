@@ -1306,6 +1306,52 @@ export function processGameEvent(type, payload, S, deps) {
               }
               break;
             }
+          case 'fire_trail':
+            {
+              /* ═══ v2.3.2238: THE FIRE GOBLIN'S BURNING GROUND ═══
+                 Owner: "build the fire trail for the fire goblin."
+
+                 VISUAL ONLY, on exactly the terms monster_projectile set
+                 below: the server owns every point of the damage and
+                 delivers it as an ordinary monster_attack on each burn
+                 tick, reported from the PATCH so the handler's 160px
+                 attacker-distance gate passes.  This case exists so the
+                 fire the player is walking into is a thing they can see.
+
+                 Drawn rather than sprited, and that is a deliberate
+                 simplification rather than a corner cut: the patch is a
+                 flickering ember disc a Graphics call already makes well,
+                 and adding a strip would mean registering a loader in the
+                 preload manifest (CLAUDE.md's animation-preloading law)
+                 for an effect that does not need one.  No new asset, no
+                 new first-use hitch.
+
+                 THE RADIUS ON SCREEN IS THE RADIUS THE SERVER TESTS, the
+                 same promise the telegraph rings make: a hazard that drew
+                 itself smaller than it burns would be worse than one that
+                 did not draw itself at all. */
+              if (payload && payload.zone === S.currentZone && S.player) {
+                if (!S._fireTrail) S._fireTrail = [];
+                /* Bounded client-side too.  The server caps at
+                   FIRE_TRAIL.MAX_PER_ZONE (60); this is the same backstop
+                   against a flood the client did not expect, and it drops
+                   the OLDEST so the newest fire — the one under the
+                   goblin chasing you — is never the one discarded. */
+                if (S._fireTrail.length >= 80) S._fireTrail.shift();
+                S._fireTrail.push({
+                  zone: payload.zone,
+                  x: payload.x, y: payload.y,
+                  r: payload.r || 26,
+                  ts: Date.now(),
+                  /* The server sends the REMAINING life, which is what makes
+                     the zone-entry replay expire in step with everyone
+                     else's copy instead of restarting each patch's clock. */
+                  duration: Math.max(200, Math.min(15000, Number(payload.ms) || 4000)),
+                  arm: Math.max(0, Math.min(2000, Number(payload.arm) || 0)),
+                });
+              }
+              break;
+            }
           case 'monster_projectile':
             {
               /* v2.3.1640: server-thrown snowball — VISUAL ONLY.
@@ -1901,7 +1947,20 @@ export function processGameEvent(type, payload, S, deps) {
                  `blocked` flag above is the authority in a server zone — but it
                  has to agree with the new rule or a client-side block would
                  keep a hit the server just landed. */
-              if (S._shieldUp && isAttackInShieldArc(S, _atkX, _atkY)) {
+              /* ═══ v2.3.2238: ...AND THE LOCAL BLOCK MUST NOT EAT A HIT
+                 THE WORKER ALREADY RESOLVED ═══
+                 This branch is the FALLBACK — its own comment below says
+                 the worker's `blocked` flag is the authority in a server
+                 zone — but it was gated only on S._shieldUp, so it fired
+                 against server-resolved damage too and zeroed the number
+                 while player_state quietly dropped the HP.  That is the
+                 same class of bug as v2.3.2235's three filters, found in
+                 the same handler, and the fire trail is the case that
+                 makes it certain rather than theoretical: fire under your
+                 feet has no direction, so a shield pointed anywhere near
+                 it would swallow every tick's popup.  `_srvResolved` means
+                 the worker already priced block, parry and mitigation. */
+              if (S._shieldUp && !_srvResolved && isAttackInShieldArc(S, _atkX, _atkY)) {
                 /* Full block: no damage through.  (Was partial via
                    calcBlockReduction; user request is "the damage gets
                    blocked.")  In MP the server already skipped the
