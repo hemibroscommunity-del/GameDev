@@ -173,9 +173,19 @@ export const BASIC_WINDUP = {
 export const BURROW = {
   HP_FRAC: 0.5,        /* triggers the first time hp drops to half */
   CD_MS: 12000,        /* ...then a cooldown, so it stays a moment not a personality */
-  DIG_MS: 400,         /* vulnerable */
-  PILE_MAX_MS: 2500,   /* invulnerable, harmless, fast */
-  EMERGE_MS: 400,      /* vulnerable — the punish window */
+  /* v2.3.2222 (owner: "Burrow needs to last longer").  Every phase grew.
+     400ms across an 8-frame strip is 50ms a frame -- the dig and emerge
+     animations were over before they read as anything; 600 gives them 75. */
+  DIG_MS: 600,         /* vulnerable */
+  /* The pile ends on whichever comes FIRST: this cap, or reaching the
+     player.  So a raised cap alone would have changed nothing in the case
+     that actually felt short -- a player standing close when he burrows,
+     where arrival ends it almost at once.  Hence the floor: the pile is a
+     phase you can see even when the geometry is against it.  A long pile
+     costs the player nothing but time, because it cannot hurt them. */
+  PILE_MIN_MS: 1200,
+  PILE_MAX_MS: 4000,   /* invulnerable, harmless */
+  EMERGE_MS: 600,      /* vulnerable — the punish window */
   ARRIVE_PX: 60,
   SPEED_MULT: 3,
 };
@@ -498,18 +508,27 @@ export const telegraphMethods = {
          slow-motion pursuit, and freezing the aim would make walking aside
          beat it every time with no counterplay needed. */
       let arrived = false;
+      /* v2.3.2222: arrival cannot end the pile before its floor. */
+      const _canEnd = now >= (m._burFloor || 0);
       if (!gone) {
         const dx = (ps.x || 0) - m.x, dy = (ps.y || 0) - m.y;
         const d = Math.hypot(dx, dy);
-        if (d <= BURROW.ARRIVE_PX) arrived = true;
+        if (d <= BURROW.ARRIVE_PX) arrived = _canEnd;
         else if (d > 0) {
-          const step = (m.speed || 1) * BURROW.SPEED_MULT;
+          /* v2.3.2222: `m.speed` -- which does not exist.  The field is
+             `m.spd` (0.4 for a snowman: 0.5 base x its 0.8 spdMult), so this
+             read undefined and fell back to 1, moving the pile at 3 px per
+             22ms tick = 135 px/s instead of the intended 54.  He crossed the
+             gap and surfaced almost immediately, which is most of why the
+             move felt short.  The fallback hid it: no crash, just a monster
+             moving at two and a half times its design speed. */
+          const step = (m.spd || 0.4) * BURROW.SPEED_MULT;
           m.x += (dx / d) * step;
           m.y += (dy / d) * step;
           this._markMonsterDirty(zoneId, m.id);
         }
       }
-      if (arrived || gone || now >= m._burUntil) {
+      if (arrived || (gone && _canEnd) || now >= m._burUntil) {
         m._burPhase = 'emerge';
         m._burUntil = now + BURROW.EMERGE_MS;
         m._invulnUntil = 0;            /* surfacing ends the immunity immediately */
@@ -528,6 +547,7 @@ export const telegraphMethods = {
     if (m._burPhase === 'dig') {
       m._burPhase = 'pile';
       m._burUntil = now + BURROW.PILE_MAX_MS;
+      m._burFloor = now + BURROW.PILE_MIN_MS;   /* v2.3.2222 */
       /* The immunity is a TIMESTAMP that outlives the phase by nothing:
          _monsterDamageable reads only this, so even if a transition is ever
          dropped the worst case is a window he had already earned. */

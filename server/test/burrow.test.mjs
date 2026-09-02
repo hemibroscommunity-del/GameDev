@@ -48,7 +48,7 @@ function arm(distance) {
   snowman.x = ps.x + (distance === undefined ? 120 : distance);
   snowman.y = ps.y;
   snowman.spawnX = snowman.x; snowman.spawnY = snowman.y;
-  snowman._burPhase = null; snowman._burUntil = 0; snowman._burCd = 0;
+  snowman._burPhase = null; snowman._burUntil = 0; snowman._burCd = 0; snowman._burFloor = 0;
   snowman._invulnUntil = 0; snowman._bwUntil = 0; snowman.atkCd = 0;
   ps.dead = false; ps.dying = false; ps.z = 'frost'; ps.hp = ps.maxHp;
   room.eventBuffer.length = 0;
@@ -204,6 +204,48 @@ function toPile() {
   snowman._burPhase = null; snowman._burUntil = 0; snowman._invulnUntil = 0;
   room._tickMonsters();
   check('cooldown: he cannot immediately burrow again', !snowman._burPhase, snowman._burPhase);
+}
+
+// ── 10. v2.3.2222: the pile has a FLOOR, not just a cap ──
+{
+  arm(0);                                  /* player standing right on him */
+  room._tickMonsters();                    /* dig */
+  snowman._burUntil = Date.now() - 1;
+  room._tickMonsters();                    /* -> pile */
+  check('duration: the pile begins even at point-blank range',
+    snowman._burPhase === 'pile', snowman._burPhase);
+  /* Arrival is already true (distance 0), so without a floor this would
+     surface on the very next tick -- which is exactly the case that made
+     the move feel like it barely happened. */
+  snowman.x = ps.x; snowman.y = ps.y;
+  room._tickMonsters();
+  check('duration: ...and arrival cannot end it before the floor',
+    snowman._burPhase === 'pile', { phase: snowman._burPhase, floor: snowman._burFloor });
+  snowman._burFloor = Date.now() - 1;
+  room._tickMonsters();
+  check('duration: ...but does end it once the floor has passed',
+    snowman._burPhase === 'emerge', snowman._burPhase);
+}
+
+// ── 11. The pile travels at the snowman's OWN speed ──
+{
+  /* Inside aggro range -- the burrow STARTS in the aggro branch (he needs
+     somewhere to grind toward), so parking him at 400px meant he simply
+     wandered and the phase never began.  120 is close enough to aggro and
+     still 60px of travel from the arrival ring. */
+  arm();
+  room._tickMonsters();
+  snowman._burUntil = Date.now() - 1;
+  room._tickMonsters();                    /* -> pile */
+  const x0 = snowman.x;
+  room._tickMonsters();
+  const step = Math.abs(snowman.x - x0);
+  /* m.spd (0.4 for a snowman) x SPEED_MULT.  Pinned because the field was
+     read as `m.speed` -- which does not exist -- and silently fell back to
+     1, moving the pile at two and a half times its design speed. */
+  const want = (snowman.spd || 0.4) * BURROW.SPEED_MULT;
+  check('duration: the pile moves at m.spd x SPEED_MULT, not a fallback',
+    Math.abs(step - want) < 0.05, { step, want, spd: snowman.spd });
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
