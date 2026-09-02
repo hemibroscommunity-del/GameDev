@@ -91,7 +91,8 @@ import { HEIGHT_CATALOG, setBuildHeight } from '@/rendering/traits/buildCatalog.
    with the primary ones at 44px+; the sheet ends up SHORTER than
    v2.3.1257 anyway (three rows removed vs one control-height added). */
 export function NameModal(props) {
-  var _dragRotX = props._dragRotX,
+  var onBack = props.onBack,          /* v2.3.2219 */
+    _dragRotX = props._dragRotX,
     _swatchTile = props._swatchTile,
     _thumbTile = props._thumbTile,
     _buildTile = props._buildTile,           /* v2.3.1953 */
@@ -940,6 +941,33 @@ export function NameModal(props) {
     alt: '', draggable: false, "aria-hidden": true
   }),
   /*#__PURE__*/React.createElement("span", { className: "bt-cc-play-label" }, "Enter Bro Town")),
+  /* ═══ v2.3.2219: THE WAY BACK ═══
+     Owner: "Create a character need a back button to main menu."  The
+     creator is reached deliberately (CREATE CHARACTER on the splash), and
+     before this the only ways out of it were finishing a character or
+     reloading the page -- so changing your mind meant committing to a bro
+     you did not want.
+
+     This does NOT reopen what v2.3.2006 closed below.  That was a second
+     ENTRY -- a returning player asked the same question twice.  This is an
+     EXIT, and it is the only one.
+
+     Deliberately the same quiet text treatment as the roster's Back button
+     (CharacterPicker) rather than a plate: the gold action above it is meant
+     to be the thing you reach for, and a way out that competes with it is a
+     way out that gets pressed by accident. */
+  onBack ? /*#__PURE__*/React.createElement("button", {
+    type: 'button', className: "bt-cc-back",
+    onClick: onBack,
+    "aria-label": 'Back to the main menu',
+    style: {
+      display: 'block', margin: '10px auto 0', minHeight: 34, padding: 0,
+      background: 'none', border: 'none', cursor: 'pointer',
+      fontSize: 14, fontWeight: 700, color: '#8B9895',
+      fontFamily: 'Source Sans 3, sans-serif',
+      WebkitTapHighlightColor: 'transparent',
+    }
+  }, "Back") : null,
   /* ═══ v2.3.2006: THE RETURNING-PLAYER ROW IS GONE FROM HERE ═══
      Owner: "Remove button already have bro on trait creator screen."
 

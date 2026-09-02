@@ -50,6 +50,33 @@ import { LIVEOPS } from './liveops.js';
 import { PROG3 } from './prog3.js'; // v2.3.1659: the trained-skill combat rebuild config
 
 export const combatMethods = {
+  /* ═══ v2.3.2221: THE ONE DAMAGE-DENIAL GATE ═══
+   * Until now `m.alive` was the ONLY thing that could stop a monster taking
+   * damage, which is why the snowman's snow-pile phase could not be built:
+   * "invulnerable" that a damage-over-time tick still chews through is worse
+   * than no phase at all, and there are FIVE separate places that write
+   * monster hp plus a pet that picks its own targets.
+   *
+   * So the phase is expressed as ONE timestamp and read through ONE
+   * predicate. A timestamp, not a phase name, on purpose: it expires by
+   * itself. If a state machine ever drops a transition -- the monster is
+   * despawned mid-phase, a zone unloads, an exception skips the cleanup --
+   * the worst case is a monster that shrugs off hits for the remainder of a
+   * window it was already granted, never one that is invulnerable forever.
+   * A `_phase === 'pile'` check has no such floor.
+   *
+   * Kill credit is unaffected: this denies the write, so dmgByPlayer is
+   * never touched for a denied hit and every share already banked survives.
+   *
+   * Call sites (grep _monsterDamageable): _handleMonsterDamage and the
+   * elemental-collision path here, _applyMonsterDot in index.js, the
+   * block-thorns reflect in telegraph.js, _abilityStrikeMonster in
+   * abilities.js, and pet target acquisition in pets.js. */
+  _monsterDamageable(m, now) {
+    if (!m || !m.alive || m.hp <= 0) return false;
+    return !(m._invulnUntil && (now || Date.now()) < m._invulnUntil);
+  },
+
   /* v2.3.1734: Stone's Fracture, activated.  Thin prototype wrapper so
      every damage site reaches it the same way (`this._fractureDmgMult`)
      whether it lives in combat.js, index.js or burst.js — the module
@@ -633,7 +660,10 @@ export const combatMethods = {
     const monsters = this.monsters[zone];
     if (!monsters) return;
     const m = monsters.find(x => x.id === monsterId);
-    if (!m || !m.alive) return;
+    /* v2.3.2221: was `!m || !m.alive`.  Covers BOTH hp writes in this
+       function -- the normal hit below and the elemental-collision damage
+       further down -- because they share this entry. */
+    if (!this._monsterDamageable(m)) return;
 
     // Apply damage. Clamp the credited amount to the monster's remaining
     // HP so the overkill on the final blow doesn't inflate the killer's

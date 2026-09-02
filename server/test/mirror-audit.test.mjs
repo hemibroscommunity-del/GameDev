@@ -27,7 +27,7 @@ import { GameRoom } from '../src/index.js';
 import { PROG3 as SRV_PROG3 } from '../src/prog3.js';
 /* v2.3.1812: check 13 compares telegraph kit kinds against the client's
    render whitelist — see the block at the bottom for why it reads text. */
-import { TELEGRAPH as SRV_TELEGRAPH, BASIC_WINDUP as SRV_BASIC_WINDUP } from '../src/telegraph.js';
+import { TELEGRAPH as SRV_TELEGRAPH, BASIC_WINDUP as SRV_BASIC_WINDUP, BURROW_ARCH as SRV_BURROW_ARCH } from '../src/telegraph.js'; /* v2.3.2221 */
 import { PROG3 as CLIENT_PROG3 } from '../../src/data/prog3.js';
 import {
   ARCHETYPES, MONSTER_HP_CURVE, COOKING_RECIPES, QUEST_CHAINS,
@@ -55,7 +55,7 @@ import {
    below silently exercises the legacy raw-stat path on the client and the
    prog3 path on the server, which are not mirrors of each other and never
    were. */
-import { setProg3Enabled } from '../../src/data/prog3.js';
+import { setProg3Enabled, setProg3XEnabled, prog3CritPct, prog3CritMult, prog3CritFlat } from '../../src/data/prog3.js'; /* v2.3.2218 */
 import { createGatherNode as clientGatherNode, WOODCUTTING_TIERS as CLIENT_WOOD_TIERS } from '../../src/data/lifeSkills.js';
 import { FISHING_TIERS } from '../../src/data/lifeSkills.js';
 import { AMULET_TIERS, NUGGETS_PER_BAR, GOLD_NUGGET_DROP, GEM_DROP_RATES, GEM_EXTRACT_BASE_COST } from '../../src/data/items.js';
@@ -591,6 +591,199 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   const strayArch = Object.keys(SRV_BASIC_WINDUP.MS).filter((k) => k !== 'DEFAULT' && !archKeys.includes(k));
   check('windup mirror: every duration key is a real archetype (a typo would fall back to DEFAULT)',
     strayArch.length === 0, { strayArch, archKeys });
+
+  /* ═══ v2.3.2216: the throw strip must know WHICH basic it is drawing ═══
+     The snowman's only attack sheet is a snowball throw, but he melee-pokes
+     inside his 100px minRange — the range you actually fight him at.  Until
+     v2.3.2216 the client stamped the animation fields for both kinds, so a
+     melee poke played a throw: a ball appeared in his hand and no projectile
+     ever followed.  The fix is a _shootAnimKind stamp on the writer side and
+     a gate on the reader side, and it is worthless if either half is
+     dropped — so pin BOTH, the same way the whitelist above is pinned. */
+  check('windup mirror: gameEvents stamps _shootAnimKind from the wire ability',
+    /_shootAnimKind\s*=\s*payload\.ability/.test(src), {});
+  const rend = readFileSync(
+    new URL('../../src/rendering/systems/entityRenderer.js', import.meta.url), 'utf8');
+  check('windup mirror: ...and the renderer gates the throw strip on it',
+    /_shootAnimKind\s*!==\s*'swing'/.test(rend), {});
+  /* The release frame is what aligns the drawn ball with the real
+     projectile; if the strips are ever redrawn at a different length this
+     must move with them, so pin that it is inside the sheet. */
+  const sprites = readFileSync(
+    new URL('../../src/rendering/snowmanSprites.js', import.meta.url), 'utf8');
+  const relM = sprites.match(/ATTACK_RELEASE_FRAME\s*=\s*(\d+)/);
+  check('windup mirror: the snowman attack strips declare a release frame',
+    !!relM, { found: !!relM });
+  check('windup mirror: ...and it is inside the 8-frame strips as drawn',
+    !!relM && Number(relM[1]) > 0 && Number(relM[1]) < 8, relM && relM[1]);
+
+  /* ═══ v2.3.2217: the ball must leave his HAND, on the ball's own tick ═══
+     Two follow-ups to the same report.  The server can only place the
+     snowball at the monster's logical point (its feet), so the throwing-hand
+     offset is measured off the strips client-side — and a facing with no
+     entry silently falls back to south's hand, which is the quiet failure
+     this pins.  The release is then driven by the projectile event rather
+     than by the wind-up clock, because a tick boundary plus the wire put the
+     ball a beat behind the arm. */
+  const muzM = sprites.match(/const THROW_MUZZLE_PX = \{([\s\S]*?)\n\};/);
+  const muzKeys = muzM ? (muzM[1].match(/(\w+)\s*:\s*\{/g) || []).map((k) => k.replace(/\s*:\s*\{$/, '')) : [];
+  const dirM = sprites.match(/const DIR_MAP = \{([\s\S]*?)\n\};/);
+  const dirSrcs = dirM ? [...new Set((dirM[1].match(/src:\s*'(\w+)'/g) || []).map((k) => k.replace(/src:\s*'/, '').replace(/'$/, '')))] : [];
+  check('muzzle mirror: both the muzzle table and DIR_MAP are parseable',
+    muzKeys.length > 0 && dirSrcs.length > 0, { muzKeys, dirSrcs });
+  const muzMissing = dirSrcs.filter((d) => !muzKeys.includes(d));
+  check('muzzle mirror: every facing the strips are drawn from has a hand offset',
+    muzMissing.length === 0, { muzMissing, muzKeys, dirSrcs });
+  check('muzzle mirror: the renderer publishes the hand for the facing it draws',
+    /_muzzleX\s*=\s*_mz\.dx/.test(rend), {});
+  check('muzzle mirror: ...and the projectile launches from it',
+    /_muzzleX/.test(src) && /_sbX/.test(src), {});
+  check('release sync: the projectile event stamps the release instant',
+    /_throwReleaseAt\s*=\s*Date\.now\(\)/.test(src), {});
+  check('release sync: ...and the renderer waits for it rather than a clock',
+    /_throwReleaseAt/.test(rend) && /THROW_RELEASE_GRACE_MS/.test(rend), {});
+
+  /* ═══ v2.3.2217: the ball in the air is the ball in his hand ═══
+     snowball.png is CUT from frame 5 of the south throw strip, so it is a
+     generated asset that must be committed — miss it and the projectile
+     silently drops back to the procedural orb the owner asked us to
+     replace.  Pin the file, the loader (it rides loadSnowmanSprites, which
+     preloadZoneAssets awaits for frost — the preload law's zone exception)
+     and the consumer. */
+  let ballBytes = 0;
+  try {
+    ballBytes = readFileSync(new URL(
+      '../../public/sprites/monsters/snowman/snowball.png', import.meta.url)).length;
+  } catch { /* missing */ }
+  check('snowball art: the cut-out ball sprite is committed',
+    ballBytes > 0, { bytes: ballBytes });
+  check('snowball art: it loads with the rest of the snowman (per-zone preload)',
+    /loadSnowball\(\)/.test(sprites) && /snowball\.png/.test(sprites), {});
+  const fx = readFileSync(
+    new URL('../../src/rendering/systems/effectsRenderer.js', import.meta.url), 'utf8');
+  check('snowball art: ...and the thrown ball actually draws it',
+    /getSnowballTexture\(\)/.test(fx), {});
+  /* The procedural orb stays as the fallback — a ball you cannot see is a
+     ball you cannot dodge, and the art is a per-zone asset. */
+  check('snowball art: ...with the procedural orb kept as the fallback',
+    /cold rim/.test(fx), {});
+
+  /* ═══ v2.3.2217: the ball bursts where its flight ends ═══
+     Owner-supplied art, normalised into the repo's 8-frame strip.  Three
+     ways this dies quietly, so three pins: the strip goes missing; the
+     queue is filled but never drained (or vice versa); or the per-zone
+     preload entry is dropped, which turns it into exactly the first-use
+     texture load CLAUDE.md calls a regression. */
+  let burstBytes = 0;
+  try {
+    burstBytes = readFileSync(new URL(
+      '../../public/sprites/effects/snowball-burst-v1.png', import.meta.url)).length;
+  } catch { /* missing */ }
+  check('snowball burst: the strip is committed',
+    burstBytes > 0, { bytes: burstBytes });
+  const proj = readFileSync(
+    new URL('../../src/game/projectiles.js', import.meta.url), 'utf8');
+  /* BOTH endings must queue: reaching the aimed point (a dodge) and
+     reaching the player (a hit).  Bursting only on damage would make a
+     successful dodge look like the ball evaporated. */
+  /* Call sites only — the declaration itself reads `queueSnowballBurst(S, proj)` too. */
+  const queued = (proj.match(/queueSnowballBurst\(S, proj\); return false;/g) || []).length;
+  check('snowball burst: both ways a flight can end queue one',
+    queued === 2, { queued });
+  check('snowball burst: ...and the renderer drains that queue',
+    /_updateSnowballBursts/.test(fx) && /snowballBursts/.test(fx), {});
+  const pre = readFileSync(
+    new URL('../../src/rendering/preloadAnimations.js', import.meta.url), 'utf8');
+  check('snowball burst: ...and it is preloaded per-zone, not on first use',
+    /ensureSnowballBurstTex/.test(pre) && /tasks\.push\(Promise\.resolve\(ensureSnowballBurstTex/.test(pre), {});
+
+  /* ═══ v2.3.2218: THE CRIT THE POPUP PREDICTS IS THE CRIT THE SERVER ROLLS ═══
+     gameEvents skips the server's damage number for your OWN hits ("we
+     already show it locally"), so on your own swing the popup is purely
+     monsterCombat's local prediction and is never corrected on screen — the
+     HP bar just drains by a different figure.  That makes any drift here
+     invisible in play and permanent, which is how the swing path stayed on
+     the retired Power/Ferocity curves for the whole prog3 era while
+     calcDisplayDps and the Hero screen were moved over.
+
+     First: the client's own prog3 crit helpers must equal the server's
+     formula (these are what the fixed swing path calls). */
+  setProg3XEnabled(true);
+  const mkP3 = (crit, critDmg) => ({
+    prog3: { v: 3, sk: { sword: { level: 40 }, bow: { level: 1 }, staff: { level: 1 } },
+      atk: { sword: { crit, critDmg, dmg: 0 }, bow: {}, staff: {} }, alloc: {}, poolBy: {} },
+  });
+  let critDrift = null;
+  for (const [c, cd] of [[0, 0], [10, 10], [25, 25], [50, 75], [75, 100]]) {
+    const p = mkP3(c, cd);
+    const srvChance = SRV_PROG3.ATK.crit.base + c * SRV_PROG3.ATK.crit.per;
+    const srvMult = 1.5 + cd * SRV_PROG3.ATK.critDmg.per;
+    const cliChance = prog3CritPct(p, 'sword');
+    const cliMult = prog3CritMult(p, 'sword');
+    if (Math.abs(srvChance - cliChance) > 1e-9 || Math.abs(srvMult - cliMult) > 1e-9) {
+      critDrift = { c, cd, srvChance, cliChance, srvMult, cliMult }; break;
+    }
+  }
+  check('crit parity: the client crit helpers equal the server roll across the allocation range',
+    critDrift === null, critDrift);
+  check('crit parity: ...and no flat term under prog3, matching combat.js',
+    prog3CritFlat(mkP3(75, 100), 'sword') === 0, prog3CritFlat(mkP3(75, 100), 'sword'));
+  setProg3XEnabled(false);
+
+  /* Second: the swing path must actually CALL them.  The helpers being
+     correct is worth nothing if the popup does not read them — which was
+     exactly the state this pin was written for. */
+  const mc = readFileSync(
+    new URL('../../src/game/monsterCombat.js', import.meta.url), 'utf8');
+  for (const fn of ['prog3CritPct', 'prog3CritMult', 'prog3CritFlat']) {
+    check(`crit parity: the swing prediction calls ${fn}`, mc.includes(fn + '(_R6'), {});
+  }
+  /* The 8% floor and the staff x0.35 are legacy-only: the server applies
+     neither under prog3, so they must not run on the prog3 branch. */
+  check('crit parity: the legacy floor/staff-scalar sit behind the legacy branch',
+    /_p3Cat \? prog3CritPct/.test(mc) || /if \(_p3Cat\) \{/.test(mc), {});
+  /* combat.js multiplies the special in BEFORE anchoring, so anchoring
+     first and scaling after would multiply the FLOOR too. */
+  check('crit parity: the special multiplies in before the crit anchor',
+    /_specBase \* specialMult/.test(mc) && !/_critBase \* specialMult/.test(mc), {});
+
+  /* ═══ v2.3.2220: in a server zone the popup REPORTS, it does not guess ═══
+     Aligning the formula (v2.3.2218) could not align two separate
+     Math.random() calls: the worker rolls its own variance and its own crit
+     and discards the client's, so a local prediction is a second roll that
+     agrees only by luck — a client crit on a server non-crit prints ~2.5x
+     what landed.  The local number must therefore be gated to
+     client-authoritative zones, and the server's must be painted for our own
+     hits.  Either half alone reverts the bug or prints nothing at all. */
+  check('damage truth: the local number is gated to client-authoritative zones',
+    /if \(!S\._serverMonsters\) \{/.test(mc), {});
+  check('damage truth: ...and the server number is painted for our own hits',
+    /payload\.ability \|\| S\._serverMonsters/.test(src), {});
+
+  /* ═══ v2.3.2221: the burrow, on both sides of the wire ═══
+     The same whitelist trap as the telegraph kits and the basic wind-up: the
+     client drops ability names it does not know, so a phase the server sends
+     and the client has no branch for is a mechanic that ships fully working
+     and completely invisible.  And a phase with no RESYNC field strands a
+     player who joins mid-pile in front of a snowman that shrugs off hits. */
+  const burM = src.match(/var _burPhases = \{([^}]*)\}/);
+  const burClient = burM ? (burM[1].match(/(\w+)\s*:/g) || []).map((k) => k.replace(/\s*:$/, '')) : [];
+  check('burrow mirror: the client accepts every phase the server emits',
+    ['dig', 'pile', 'emerge'].every((k) => burClient.includes(k)), burClient);
+  check('burrow mirror: ...and every burrowing archetype is a real one',
+    Object.keys(SRV_BURROW_ARCH).every((k) => Object.keys(ARCHETYPES).includes(k)),
+    Object.keys(SRV_BURROW_ARCH));
+  const tickSrc = readFileSync(new URL('../src/tick.js', import.meta.url), 'utf8');
+  const wsSrc = readFileSync(
+    new URL('../../src/networking/wsClient.js', import.meta.url), 'utf8');
+  check('burrow mirror: the phase rides the wire for resyncs (w.ph)',
+    /w\.ph = m\._burPhase/.test(tickSrc) && /md\.ph/.test(wsSrc), {});
+  /* The pile reuses the boss IMMUNE flag rather than inventing a second
+     "cannot be hurt" concept the popup path would not know about. */
+  check('burrow mirror: the pile sets the existing _invulnerable flag',
+    /_invulnerable = payload\.phase === 'pile'/.test(src), {});
+  check('burrow mirror: ...and the renderer draws the phase sheets',
+    /getSnowmanPhaseFrame/.test(rend), {});
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

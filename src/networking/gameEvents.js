@@ -513,7 +513,7 @@ export function processGameEvent(type, payload, S, deps) {
               S.hitParticles = [];
               S.deathExplosions = [];
               S.arrows = [];
-              S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */
+              S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */ S.snowballBursts = []; /* v2.3.2217: and an undrained burst would pop in the new zone at old coords */
               S.player.x = _ddMX * TILE;
               S.player.y = (_ddH - 3) * TILE;
               S._zoneWipe = Date.now();
@@ -592,7 +592,7 @@ export function processGameEvent(type, payload, S, deps) {
                 S.hitParticles = [];
                 S.deathExplosions = [];
                 S.arrows = [];
-                S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */
+                S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */ S.snowballBursts = []; /* v2.3.2217: and an undrained burst would pop in the new zone at old coords */
                 S.player.x = Math.floor(_fz.w / 2) * TILE;
                 S.player.y = (_fz.h - 4) * TILE;
                 S._zoneWipe = Date.now();
@@ -756,6 +756,33 @@ export function processGameEvent(type, payload, S, deps) {
                  monster's own body.  Whitelisted like the kits (mirror-audit
                  pins the pair) so a future server kind cannot render an
                  arbitrary wire string. */
+              /* ═══ v2.3.2221: THE SNOW-PILE BURROW ═══
+                 Three phases off one ability, each with its own strip.  The
+                 pile sets _invulnerable, which is the SAME flag the boss
+                 phases already use — so the IMMUNE popup on a swing into it
+                 comes for free and reads identically to every other
+                 "you can't hurt this right now" in the game.
+
+                 Duration is stamped from the server's own ms, and the phase
+                 self-clears when it expires (see entityRenderer): the server
+                 sends no "done" event, and a delta cannot express a REMOVED
+                 field, so a client that missed the last transition must be
+                 able to recover on its own rather than hold the mound
+                 forever. */
+              var _burPhases = { dig: 1, pile: 1, emerge: 1 };
+              if (payload.ability === 'burrow' && _burPhases[payload.phase]) {
+                var _buM = (S.monsters || []).find(function (mm) { return mm.id === payload.monsterId; });
+                if (_buM) {
+                  var _buMs = Math.max(80, Math.min(6000, Number(payload.ms) || 400));
+                  _buM._burPhase = payload.phase;
+                  _buM._burFrom = Date.now();
+                  _buM._burUntil = Date.now() + _buMs;
+                  _buM._invulnerable = payload.phase === 'pile';
+                  /* A body mid-collapse has no swing to finish. */
+                  _buM._shootAnimEnd = 0; _buM._tgUntil = 0;
+                }
+                break;
+              }
               var _bwKinds = { swing: 1, throw: 1 };
               if (payload.phase === 'windup' && _bwKinds[payload.ability]) {
                 var _bwMs = Math.max(80, Math.min(3000, Number(payload.ms) || 400));
@@ -776,6 +803,19 @@ export function processGameEvent(type, payload, S, deps) {
                      wiring. */
                   _bwM._shootAnimStart = Date.now();
                   _bwM._shootAnimEnd = Date.now() + _bwMs;
+                  /* v2.3.2216: and WHICH basic this is, because the art is
+                     not interchangeable.  The snowman's only attack strip is
+                     a snowball throw, but he melee-pokes inside his 100px
+                     minRange — which is exactly where you stand to fight him
+                     — so stamping this field blind made every melee poke
+                     play a throw: a ball appeared in his hand and no
+                     projectile ever followed it.  The renderer gates the
+                     throw strip on this. */
+                  _bwM._shootAnimKind = payload.ability;
+                  /* v2.3.2217: a stale release from the PREVIOUS throw would
+                     make the renderer think this one has already left his
+                     hand, so it plays the follow-through over the wind-up. */
+                  _bwM._throwReleaseAt = 0;
                 }
                 break;
               }
@@ -1194,8 +1234,32 @@ export function processGameEvent(type, payload, S, deps) {
                  violate server authority (rule zero). */
               if (payload && payload.zone === S.currentZone && S.player) {
                 if (!S.slimeProjectiles) S.slimeProjectiles = [];
-                var _sbDx = (payload.tx || 0) - (payload.x || 0);
-                var _sbDy = (payload.ty || 0) - (payload.y || 0);
+                /* v2.3.2217: launch it from the THROWING HAND, and tell the
+                   renderer the ball is now real.
+
+                   The server creates the ball at the monster's logical point
+                   — the snowman's feet — because that is the only position
+                   it has.  Drawn from there it appeared at his base instead
+                   of out of his claw, 17-45px below the hand that just threw
+                   it (owner, 2026-09-01).  The renderer publishes the hand
+                   offset for the facing it is actually drawing
+                   (_muzzleX/_muzzleY, see snowmanSprites.throwMuzzle); a
+                   monster with no attack strip has none and launches from
+                   its own point exactly as before.
+
+                   Safe to move: this event is display-only.  The server
+                   already scheduled the impact and aimed at a frozen point,
+                   and delivers the damage itself — shifting the visual
+                   origin changes the drawn path and nothing else.  Travel
+                   time is unchanged (life is frames, speed is re-derived
+                   from the new distance), so it still lands exactly when
+                   the authoritative hit does. */
+                var _pmM = (S.monsters || []).find(function (mm) { return mm.id === payload.monsterId; });
+                if (_pmM) _pmM._throwReleaseAt = Date.now();
+                var _sbX = (payload.x || 0) + ((_pmM && Number(_pmM._muzzleX)) || 0);
+                var _sbY = (payload.y || 0) + ((_pmM && Number(_pmM._muzzleY)) || 0);
+                var _sbDx = (payload.tx || 0) - _sbX;
+                var _sbDy = (payload.ty || 0) - _sbY;
                 var _sbDist = Math.sqrt(_sbDx * _sbDx + _sbDy * _sbDy);
                 var _sbMs = Math.max(1, payload.travelMs || 900);
                 /* Derive the per-frame step from the server's own travel
@@ -1205,8 +1269,8 @@ export function processGameEvent(type, payload, S, deps) {
                    the rest of this simulator's frame-based life/speed. */
                 var _sbFrames = Math.max(1, Math.round((_sbMs / 1000) * 60));
                 S.slimeProjectiles.push({
-                  x: payload.x || 0,
-                  y: payload.y || 0,
+                  x: _sbX,
+                  y: _sbY,
                   ang: Math.atan2(_sbDy, _sbDx),
                   speed: _sbDist / _sbFrames,
                   life: _sbFrames,
@@ -1326,7 +1390,7 @@ export function processGameEvent(type, payload, S, deps) {
                       crit: !!payload.isCrit,
                       iconKey: payload.isCrit ? 'crit' : undefined,
                     });
-                  } else if (payload.ability) {
+                  } else if (payload.ability || S._serverMonsters) {
                     /* v2.3.1733: OUR OWN stamina-ability hit.  The rule
                        above ("skip our own — we already show it locally")
                        assumes a local prediction produced a popup, which is
@@ -1334,10 +1398,34 @@ export function processGameEvent(type, payload, S, deps) {
                        and Whirlwind: those are rolled entirely server-side
                        (see src/game/abilities.js), so with no branch here
                        the ability chips the HP bar and prints NOTHING.
-                       Same shape, same reason, as the thorns case below. */
+                       Same shape, same reason, as the thorns case below.
+
+                       ═══ v2.3.2220: AND NOW EVERY OWN HIT IN A SERVER ZONE ═══
+                       Owner: "I hit a 69 with a critical hit on a special
+                       attack and the snowman didn't die."  The number was
+                       never the damage.  In a server zone the worker rolls
+                       its own variance AND its own crit and ignores the
+                       client's entirely (_handleMonsterDamage: "Client
+                       damage number is no longer trusted"), so the local
+                       prediction was a SECOND, independent roll that only
+                       ever agreed with the truth by luck.  v2.3.2218 made
+                       the two use the same formula; it could not make two
+                       Math.random() calls return the same thing.  A client
+                       crit landing on a server non-crit shows ~2.5x the
+                       damage actually dealt.
+
+                       So the popup now reports the hit instead of guessing
+                       it.  Everything that has to feel instant — the flash,
+                       recoil, debris, decal, shake, knockback — is still
+                       local and unchanged; only the NUMBER waits for the
+                       truth, on the same schedule the HP bar already used.
+                       A number half a round-trip late beats a number that
+                       is wrong. */
                     pushDmgPopup(S, hitM.x || hitM.renderX, monsterPopupY(hitM, -20),
                       '-' + payload.dmg, payload.isCrit ? DMG_CRIT_COLOR : '#ffd08a',
-                      payload.isCrit ? { crit: true, iconKey: 'crit' } : undefined);  /* v2.3.2211 */
+                      payload.isCrit
+                        ? { crit: true, iconKey: 'crit', special: !!S._ownSpecialRecent }
+                        : { iconKey: 'sword', special: !!S._ownSpecialRecent });  /* v2.3.2211; v2.3.2220 */
                   } else if (payload.thorns) {
                     /* v2.3.1137: Thorns reflect is SERVER-rolled with no
                        local prediction (unlike swings), so our own thorns

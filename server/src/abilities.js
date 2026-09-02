@@ -263,7 +263,7 @@ export const abilityMethods = {
     const monsters = (zone && this.monsters[zone]) || [];
     const inRange = [];
     for (const m of monsters) {
-      if (!m || !m.alive || m.hp <= 0) continue;
+      if (!this._monsterDamageable(m)) continue;   /* v2.3.2221 */
       const dx = (m.x || 0) - (ps.x || 0);
       const dy = (m.y || 0) - (ps.y || 0);
       const d2 = dx * dx + dy * dy;
@@ -300,7 +300,7 @@ export const abilityMethods = {
      is the same one _applyMonsterDot uses.
      Returns true when the monster took damage. */
   _abilityStrikeMonster(zoneId, m, pid, ps, kind, cfg) {
-    if (!m || !m.alive || m.hp <= 0) return false;
+    if (!this._monsterDamageable(m)) return false;   /* v2.3.2221 */
     const rolled = this._computeAttackDamage(ps, 'melee', false);
     /* ANTICHEAT LOCKSTEP: the ordinary melee ceiling, applied to a roll
        that is a FRACTION of an ordinary melee roll.  Scaling down can
