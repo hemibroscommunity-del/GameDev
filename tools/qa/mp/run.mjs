@@ -26,6 +26,7 @@ const SCENARIOS = {
   critpreview: () => import('./mp-critpreview.mjs'), /* v2.3.2213: crit vs normal on demand, no playthrough */
   basicwindup: () => import('./mp-basicwindup.mjs'), /* v2.3.2215: every monster tells you before it hits */
   feel: () => import('./mp-feel.mjs'), /* v2.3.2200: contact-synced hits, universal recoil, ground marks */
+  slimeburst: () => import('./mp-slimeburst.mjs'), /* v2.3.2228: the blue slime's death burst plays, at peak size */
   introfit: () => import('./mp-introfit.mjs'), /* v2.3.2199: the loading bar is painted into the film, so the clip must not be cropped */
   capeattack: () => import('./mp-capeattack.mjs'), /* v2.3.2190: the cape stays on while you attack, anchored on the head */
   a2hs: () => import('./mp-a2hs.mjs'), /* v2.3.2159: the install instruction finds the right player */
@@ -305,6 +306,12 @@ for (const name of names) {
        and keep going, so one broken flow never hides the state of the rest. */
     rec.ok('scenario completed', false, String(e).slice(0, 400));
   }
+  /* v2.3.2228: a throw inside the render loop is caught and logged by
+     pixiRenderer rather than crashing, so nothing else in this harness would
+     ever notice it -- see takeRenderThrows.  Charged to whichever scenario
+     was running, because that is the one that can reproduce it. */
+  const _rt = H.takeRenderThrows();
+  if (_rt.length) rec.ok('the render loop did not throw', false, { threw: _rt.slice(0, 3) });
   console.log(`   (${((Date.now() - started) / 1000).toFixed(0)}s)\n`);
   all.push(...rec.rows());
 }
