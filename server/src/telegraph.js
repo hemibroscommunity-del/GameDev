@@ -190,6 +190,31 @@ export const BURROW = {
   SPEED_MULT: 3,
 };
 
+/* ═══ v2.3.2224: THE BLUE SLIME GOES OFF ═══
+ * Owner: "Once it reaches 0 health it goes to 3x or 4x its size and explodes
+ * in a blast radius. 60 damage if caught in the radius."
+ *
+ * So death is not the end of the fight -- it is the start of a two-second
+ * problem.  The swell IS the telegraph: nothing else warns you, and nothing
+ * else needs to, because a slime tripling in size in front of you is not
+ * subtle.  Walking out is always available; the radius is deliberately
+ * smaller than the distance a player covers in SWELL_MS, so getting caught
+ * is a choice (greed for the next kill) rather than a tax.
+ *
+ * DMG is FLAT, not a multiple of the slime's own damage: the owner named a
+ * number, and a fodder slime's dmg is small enough that a multiplier big
+ * enough to reach 60 would have swung wildly with monster level.  It still
+ * passes through MAX_HIT_PCT, so it cannot one-shot a fresh character --
+ * the same no-one-shots rail every telegraphed hit rides.
+ */
+export const SLIME_BURST = {
+  VARIANTS: { blueSlime: 1 },   /* a table: the next exploder is one line */
+  SWELL_MS: 800,                /* grow, then go */
+  SCALE: 3.5,                   /* owner: "3x or 4x" */
+  RADIUS: 110,                  /* ~the swollen body, so the ring matches the art */
+  DMG: 60,
+};
+
 /* Which archetypes own the move.  A table rather than an `=== 'snowman'`
  * so the next monster to get a burrow is one line, and so mirror-audit can
  * check the client's cue whitelist against something real. */
@@ -347,8 +372,13 @@ export const telegraphMethods = {
       });
       return 0;
     }
+    /* v2.3.2224: `kit.flat` is a FIXED amount (the slime burst's 60) rather
+       than a multiple of the monster's own damage -- a fodder slime's dmg is
+       small enough that a multiplier big enough to reach 60 would swing
+       wildly with monster level.  It still passes through MAX_HIT_PCT below,
+       so a flat number can never become a one-shot on a fresh character. */
     const raw = Math.min(
-      Math.ceil(m.dmg * kit.dmgMult),
+      kit.flat ? Math.ceil(kit.flat) : Math.ceil(m.dmg * kit.dmgMult),
       Math.max(1, Math.floor((ps.maxHp || 100) * TELEGRAPH.MAX_HIT_PCT)),
     );
     const res = this._applyDamage(ps, raw, false);
@@ -456,6 +486,83 @@ export const telegraphMethods = {
     if (Math.sqrt(dx * dx + dy * dy) > reach) return true;   /* they left: no damage, no event */
 
     this._resolveBasicSwingHit(zoneId, m, targetId, now);
+    return true;
+  },
+
+  /* ═══ v2.3.2224: THE BLUE SLIME'S DEATH BURST ═══
+     Does this monster answer death with an explosion rather than a corpse? */
+  _burstsOnDeath(m) {
+    return !!(m && m.variant && Object.prototype.hasOwnProperty.call(SLIME_BURST.VARIANTS, m.variant));
+  },
+
+  /* Called from the TOP of _resolveMonsterKill, which is the one place every
+     way of killing a monster funnels through -- melee, a damage-over-time
+     tick, an Element Burst, a stamina ability.  Intercepting there rather
+     than at each damage site is what stops "it only explodes when you kill
+     it with a sword".
+
+     Returns true if the kill is DEFERRED: the slime stays alive with 0 hp
+     while it swells, and the real kill runs when it goes off.  Nothing can
+     hurt it in the meantime -- _monsterDamageable already denies hp <= 0 --
+     so the window cannot be extended or cut short by more damage. */
+  _startSlimeBurst(zoneId, m, killerId, slot, now) {
+    if (!this._burstsOnDeath(m) || m._burstUntil) return false;
+    m._burstUntil = now + SLIME_BURST.SWELL_MS;
+    /* The killer is replayed into the real kill after the blast, so credit,
+       loot and XP land exactly as they would have. */
+    m._burstKiller = killerId || null;
+    m._burstSlot = slot || null;
+    m._attackingUntil = 0;
+    m._bwUntil = 0; m._bwTarget = null; m._bwKind = null;   /* no swing out of a corpse */
+    this.eventBuffer.push({
+      type: 'monster_ability',
+      payload: {
+        monsterId: m.id, zone: zoneId, ability: 'burst', phase: 'swell',
+        ms: SLIME_BURST.SWELL_MS, radius: SLIME_BURST.RADIUS,
+        scale: SLIME_BURST.SCALE,
+        ax: Math.round(m.x), ay: Math.round(m.y),
+      },
+    });
+    this._markMonsterDirty(zoneId, m.id);
+    return true;
+  },
+
+  /* Advance a swelling slime.  Runs in the tick beside the other phase
+     resolves, unconditionally and before aggro, so a player who runs away
+     still gets the explosion resolved rather than leaving a 0-hp slime
+     standing in the zone forever. */
+  _resolveSlimeBurst(zoneId, m, now) {
+    if (!m._burstUntil) return false;
+    if (now < m._burstUntil) return true;          /* still swelling */
+
+    /* EVERY player in the radius, not just the killer: it is an explosion. */
+    const r2 = SLIME_BURST.RADIUS * SLIME_BURST.RADIUS;
+    const kit = { kind: 'burst', radius: SLIME_BURST.RADIUS, dmgMult: 1, flat: SLIME_BURST.DMG };
+    let anyHit = false;
+    for (const pid of Object.keys(this.playerState)) {
+      const ps = this.playerState[pid];
+      if (!ps || ps.dead || ps.dying || ps.z !== zoneId) continue;
+      const dx = (ps.x || 0) - m.x, dy = (ps.y || 0) - m.y;
+      if (dx * dx + dy * dy > r2) continue;
+      this._telegraphHitPlayer(zoneId, m, pid, kit);
+      anyHit = true;
+    }
+    this.eventBuffer.push({
+      type: 'monster_ability',
+      payload: {
+        monsterId: m.id, zone: zoneId, ability: 'burst', phase: 'execute',
+        radius: SLIME_BURST.RADIUS, hit: anyHit,
+        ax: Math.round(m.x), ay: Math.round(m.y),
+      },
+    });
+
+    /* Now it actually dies -- with the credit it earned before it swelled. */
+    const killerId = m._burstKiller;
+    const slot = m._burstSlot;
+    m._burstUntil = 0; m._burstKiller = null; m._burstSlot = null;
+    m._burstDone = true;                     /* so the kill is not deferred twice */
+    this._resolveMonsterKill(zoneId, m, killerId, killerId ? this.playerState[killerId] : null, slot);
+    m._burstDone = false;
     return true;
   },
 

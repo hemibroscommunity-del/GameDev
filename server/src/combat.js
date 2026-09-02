@@ -1000,6 +1000,18 @@ export const combatMethods = {
   // Shared by weapon kills and elemental DoT/collision kills.  DoT kills
   // pass slot 'dot' so melee lifesteal correctly denies ('not-melee').
   _resolveMonsterKill(zone, m, killerId, killerPs, slot) {
+      /* ═══ v2.3.2224: SOME MONSTERS ANSWER DEATH WITH AN EXPLOSION ═══
+         The blue slime swells and goes off instead of dropping. Intercepted
+         HERE because this is the one place every way of killing a monster
+         funnels through -- melee, a damage-over-time tick, an Element Burst,
+         a stamina ability -- so it cannot end up as "it only explodes when
+         you kill it with a sword".
+
+         The kill is DEFERRED, not cancelled: _resolveSlimeBurst calls back
+         into this function with the same killer once the blast lands, so
+         credit, loot and XP are unchanged. `_burstDone` is what keeps that
+         second call from deferring forever. */
+      if (!m._burstDone && this._startSlimeBurst(zone, m, killerId, slot, Date.now())) return;
       m.alive = false;
       /* ═══ v2.3.2026: THE GOLDEN TICKET ROLLS HERE ═══
        * On the SERVER, on a real kill, because the server is authoritative for

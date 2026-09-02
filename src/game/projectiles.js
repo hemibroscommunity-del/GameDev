@@ -19,7 +19,7 @@ import {
   getEvasionPts, resolveCollision, rollPassiveDodge, spawnWeaponHitFX, staffAoeMult,
   monsterBodyOffsetY, monsterProceduralRadius, trainDefense, applyIronSkin, applyResilience, /* v2.3.1314 */
 } from '@/data/index.js';
-import { baseArchetypeOf, hitShapeOf, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
+import { baseArchetypeOf, hitShapeOf, isIntangible /* v2.3.2224 */, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
 import { rollMonsterShard } from '@/data/shards.js';
 import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */ } from '@/game/combatHelpers.js';
@@ -256,7 +256,12 @@ export function updateArrows(S, deps) {
                  -- one orb per monster; sister orbs pass it and fly on
                  to the rest of the pack (owner: special was 4-hitting
                  single monsters). */
-              if (!m.alive || a.hitIds.has(m.id) || (hit && !a.pierce) || a.stuckIn
+              /* v2.3.2224: `isIntangible` sits with !m.alive because it means
+                 the same thing to a projectile -- there is nothing here to
+                 collide with.  NOT added to hitIds, so a pierce shot does not
+                 spend one of its targets on a mound of snow, and the arrow
+                 flies on to whatever is behind it. */
+              if (!m.alive || isIntangible(m) || a.hitIds.has(m.id) || (hit && !a.pierce) || a.stuckIn
                   || (a.volleyHitIds && a.volleyHitIds.has(m.id))) return;
               /* Same y-offset fix as the melee path — fodder slimes
                  render at 96 px anchored at the feet, sprite mid-frame

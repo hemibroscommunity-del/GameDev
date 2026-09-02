@@ -695,6 +695,20 @@ export function setupWebSocket(ctx) {
                          mechanic that reads as a bug.  Only set when we do not
                          already have the phase, so it never fights the events'
                          finer timing. */
+                      /* v2.3.2224: a slime mid-swell, for joiners and
+                         resyncs.  Without it you can walk up to a slime
+                         standing at 0 hp with no warning at all, and the
+                         first thing you learn about the mechanic is 60
+                         damage. _burstFrom is set to NOW rather than
+                         back-dated: the swell then plays out over whatever
+                         is left of the fuse instead of snapping to full
+                         size, which is the honest read of "it is about to
+                         go off". */
+                      if (typeof md.bu === 'number' && md.bu > Date.now() && !localM._burstUntil) {
+                        localM._burstUntil = md.bu;
+                        localM._burstFrom = Date.now();
+                        localM._burstScale = localM._burstScale || 3.5;
+                      }
                       if (typeof md.ph === 'string' && md.ph && localM._burPhase !== md.ph) {
                         localM._burPhase = md.ph;
                         localM._burFrom = localM._burFrom || Date.now();

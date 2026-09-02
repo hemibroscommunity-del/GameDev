@@ -37,7 +37,7 @@ import {
   monsterBodyOffsetY, monsterMeleeHitRadius, monsterProceduralRadius, TOWN_SPAWN /* v2.3.1777 */
 } from '@/data/index.js';
 import { prog3Live, prog3CatFor, prog3CritPct, prog3CritMult, prog3CritFlat } from '@/data/prog3.js'; /* v2.3.2218 */
-import { MONSTER_VARIANTS, baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2200 */, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
+import { MONSTER_VARIANTS, baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2200 */, isIntangible /* v2.3.2224 */, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
 import { rollMonsterShard } from '@/data/shards.js';
 import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */ } from '@/game/combatHelpers.js';
@@ -1473,7 +1473,12 @@ export function updateMonsterCombat(S, deps) {
             /* Hit monsters */
             S.monsters.forEach(function (m) {
               if (!_contactOpen) return; /* v2.3.2200: blade not at target yet */
-              if (!m.alive || m._hitThisSwing) return;
+              /* v2.3.2224: the snow pile is not a target that refuses the hit
+                 -- it is not a target.  Sat beside !m.alive because it means
+                 the same thing to a swing, and BEFORE _hitThisSwing so the
+                 swing is not consumed either: the blade carries on to whoever
+                 is standing behind him. */
+              if (!m.alive || isIntangible(m) || m._hitThisSwing) return;
               /* Fodder slimes render as a 96 px sprite anchored at the
                  feet (m.y is feet-level).  Sprite frame bottom = m.y+8,
                  frame top = m.y-88, visual mid-frame = m.y-40.  The
@@ -1655,7 +1660,10 @@ export function updateMonsterCombat(S, deps) {
                   ? Math.max(_base * critMult, _rangeTop * CRIT_ANCHOR_MULT) + critFlat
                   : _base;
                 var dmg = Math.round(_critBase);
-                /* Boss invulnerability — can only be damaged during recovery phase */
+                /* Boss invulnerability — can only be damaged during recovery
+                   phase.  v2.3.2224: the burrow never reaches here (skipped
+                   above), so this popup stays what it always was: a BOSS
+                   cue, where the message is the mechanic. */
                 if (m._invulnerable) {
                   pushDmgPopup(S, m.x, m.y - 20, 'IMMUNE', '#888');
                   BT_AUDIO.beep(200, 0.03, 0.04, 'square');
