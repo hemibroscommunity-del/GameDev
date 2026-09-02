@@ -189,17 +189,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
          if it were gated too broadly, this would go silent. */
       rec.ok(`[${tag}] a melee hit is marked with the sword`,
         icons(sw).includes('sword'), sw);
-      /* The ranged half of that control is NOT asserted, and the reason is
-         the fixture rather than the code: an injected arrow does not
-         survive a frame in a client-rolled town (`arrows: 0` on the first
-         poll, no collision), while the same object flies and connects in a
-         server-settled one.  Driving it for real needs the auto-attack
-         loop, which needs a live monster this harness cannot spawn into
-         town.  Left as a marker rather than a passing assertion that does
-         not assert anything -- and the mode itself is a legacy remnant
-         (CLAUDE.md rule zero: there is no single-player mode). */
+      /* v2.3.2234: the ranged half of this control lives in mp-bowmark now,
+         and it drives a REAL arrow rather than an injected one.  What was
+         missing all along was not a fixture trick: the auto-attack loop is
+         gated on `S.autoAttack`, a toggle no scenario had ever set, so no
+         arrow was ever spawned and this leg skipped for two versions while
+         the owner kept reporting the bug it would have caught. */
       rec.skip(`[${tag}] a bow/staff hit keeps its own mark`,
-        'an injected arrow does not survive a frame in a client-rolled town');
+        'covered for real, with a live arrow and the auto-attack loop, by mp-bowmark');
     } else {
       /* ── DEFECT 2: ONE NUMBER PER HIT ──
          The worker rolls its own variance and crit and ignores ours, so a
