@@ -5710,7 +5710,18 @@ export const QUEST_CHAINS = {
       start: 'The Verdant Wilds went blue. Fast little things, and they spit. Six remnants.\n\n'
         + '🏹 That bow works at range — double-tap the LEFT joystick to swap to it.',
       progress: 'Six, from the blue ones.',
-      complete: 'You move like someone who knows the place now. Take the staff — same swap, one more slot.',
+      /* v2.3.2237 (owner: "add something clever from mayor bro after
+         finishing the quest ... watch out they explode ... then him
+         acknowledging his advice was too late").  The chunks split on a
+         blank line (dialogueChunks), so the beat lands as three taps: the
+         reward, the warning, and the moment he hears himself.  Placed on
+         tut_2 specifically because tut_2's blue slimes ARE the ones that
+         explode (v2.3.2224) -- the joke only works because he is warning
+         you about the exact thing you just spent six remnants learning. */
+      complete: 'You move like someone who knows the place now. Take the staff — same swap, one more slot.\n\n'
+        + 'One more thing, since you\'re headed back out. The blue ones swell up right before they go. When one does that, walk away — it bursts.\n\n'
+        + '...Six remnants\' worth, though. You\'d have met one already.\n\n'
+        + 'Right. Forget I said it. Glad you\'re standing.',
     },
   },
   tut_3: {
