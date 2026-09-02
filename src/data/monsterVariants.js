@@ -322,6 +322,25 @@ export function baseArchetypeOf(arch) {
 /* True if arch behaves like 'fodder' (either the raw archetype or a
    variant of it).  Convenience wrapper used by the legacy inline
    checks in BroTown.jsx. */
+/* ═══ v2.3.2224: IS THIS MONSTER INTANGIBLE RIGHT NOW? ═══
+   Owner: attacking the burrow phase should "not send any combat messages"
+   and projectiles should "travel right through it".
+
+   So the pile is not a target that refuses damage -- it is a target that is
+   not there.  The IMMUNE popup and its beep were the right call for a boss
+   phase, where the message IS the mechanic ("wait for the opening"); they
+   are the wrong call here, where the mound already reads as untouchable and
+   a popup on every swing turns a quiet moment into a wall of grey text.
+
+   Deliberately keyed on the burrow phase and NOT on `_invulnerable`: bosses
+   keep their IMMUNE feedback exactly as it was.  One predicate so the melee
+   sweep and the projectile pass cannot drift apart -- a sword that ignores
+   the pile and an arrow that stops dead on it would read as a bug in one of
+   the two. */
+export function isIntangible(m) {
+  return !!(m && m._burPhase === 'pile');
+}
+
 export function isFodderLike(arch) {
   return baseArchetypeOf(arch) === 'fodder';
 }

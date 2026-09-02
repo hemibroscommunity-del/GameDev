@@ -27,7 +27,7 @@ import { GameRoom } from '../src/index.js';
 import { PROG3 as SRV_PROG3 } from '../src/prog3.js';
 /* v2.3.1812: check 13 compares telegraph kit kinds against the client's
    render whitelist — see the block at the bottom for why it reads text. */
-import { TELEGRAPH as SRV_TELEGRAPH, BASIC_WINDUP as SRV_BASIC_WINDUP, BURROW_ARCH as SRV_BURROW_ARCH } from '../src/telegraph.js'; /* v2.3.2221 */
+import { TELEGRAPH as SRV_TELEGRAPH, BASIC_WINDUP as SRV_BASIC_WINDUP, BURROW_ARCH as SRV_BURROW_ARCH, SLIME_BURST as SRV_SLIME_BURST } from '../src/telegraph.js'; /* v2.3.2221; v2.3.2224 */
 import { PROG3 as CLIENT_PROG3 } from '../../src/data/prog3.js';
 import {
   ARCHETYPES, MONSTER_HP_CURVE, COOKING_RECIPES, QUEST_CHAINS,
@@ -784,6 +784,42 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     /_invulnerable = payload\.phase === 'pile'/.test(src), {});
   check('burrow mirror: ...and the renderer draws the phase sheets',
     /getSnowmanPhaseFrame/.test(rend), {});
+
+  /* v2.3.2224: the pile is INTANGIBLE, not merely invulnerable.  Owner:
+     attacking it should send no combat messages and projectiles should pass
+     through.  Both the melee sweep and the projectile pass must consult the
+     same predicate -- a sword that ignores the mound while an arrow stops
+     dead on it reads as a bug in whichever one you notice second. */
+  const projSrc = readFileSync(
+    new URL('../../src/game/projectiles.js', import.meta.url), 'utf8');
+  check('intangible: the melee sweep skips it beside !m.alive',
+    /!m\.alive \|\| isIntangible\(m\)/.test(mc), {});
+  check('intangible: ...and so does the projectile pass',
+    /!m\.alive \|\| isIntangible\(m\)/.test(projSrc), {});
+  /* Bosses keep their IMMUNE cue: there the message IS the mechanic. */
+  check('intangible: the IMMUNE popup is still reachable for boss phases',
+    /_invulnerable\) \{/.test(mc) && /'IMMUNE'/.test(mc), {});
+
+  /* ═══ v2.3.2224: the blue slime's death burst ═══
+     Same whitelist trap as every other ability: a phase the server emits and
+     the client has no branch for ships fully working and invisible -- and an
+     invisible telegraph on a 60-damage blast is worse than no blast. */
+  check('burst mirror: the client handles the burst ability',
+    /payload\.ability === 'burst'/.test(src), {});
+  check('burst mirror: ...both phases of it',
+    /phase === 'swell'/.test(src) && /phase === 'execute'/.test(src), {});
+  check('burst mirror: ...and the swell is drawn',
+    /_burstUntil/.test(rend), {});
+  check('burst mirror: the fuse rides the wire for resyncs (w.bu)',
+    /w\.bu = m\._burstUntil/.test(tickSrc) && /md\.bu/.test(wsSrc), {});
+  /* Every exploding variant must be a real variant, or the table silently
+     matches nothing and the mechanic never fires. */
+  const cliVariants = readFileSync(
+    new URL('../../src/data/monsterVariants.js', import.meta.url), 'utf8');
+  const strayBurst = Object.keys(SRV_SLIME_BURST.VARIANTS)
+    .filter((k) => !new RegExp('\\b' + k + ':').test(cliVariants));
+  check('burst mirror: every exploding variant is a real one',
+    strayBurst.length === 0, { strayBurst, declared: Object.keys(SRV_SLIME_BURST.VARIANTS) });
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

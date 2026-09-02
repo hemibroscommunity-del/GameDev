@@ -6951,6 +6951,24 @@ export class EntityRenderer {
       // Emoji — once per monster.  Hidden when the slime sprite is
       // rendering so the actual slime art isn't covered by a floating
       // green-circle emoji.
+      /* ═══ v2.3.2224: THE SLIME SWELLS ═══
+         Applied HERE, after every sprite branch has set its own scale and
+         before anything reads the display, so it works for whichever branch
+         drew this monster rather than being pasted into three of them.
+
+         Multiplied into the scale rather than set on the container: scaling
+         the container would blow up the shadow and the health bar with it,
+         and a health bar three times the size floating over a slime reads as
+         a rendering fault, not a mechanic. */
+      if (m._burstUntil && display._spriteBody) {
+        const _bsSpan = Math.max(1, m._burstUntil - (m._burstFrom || m._burstUntil));
+        const _bsT = Math.max(0, Math.min(1, (now - (m._burstFrom || now)) / _bsSpan));
+        /* Eased so it lurches at the end rather than creeping linearly --
+           the last moment is the one you have to react to. */
+        const _bsK = 1 + ((m._burstScale || 3.5) - 1) * (_bsT * _bsT);
+        display._spriteBody.scale.x *= _bsK;
+        display._spriteBody.scale.y *= _bsK;
+      }
       if (!display._emoji) {
         const emojiText = new Text({
           text: m.emoji || '🟢',

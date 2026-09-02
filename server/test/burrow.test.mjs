@@ -13,7 +13,7 @@
  * surfacing does not grant a free hit.
  */
 import { GameRoom } from '../src/index.js';
-import { BURROW, BURROW_ARCH } from '../src/telegraph.js';
+import { BURROW, BURROW_ARCH, SLIME_BURST, TELEGRAPH } from '../src/telegraph.js';
 
 const mockState = {
   storage: { get: async () => undefined, put: async () => {}, list: async () => new Map(), delete: async () => {} },
@@ -246,6 +246,101 @@ function toPile() {
   const want = (snowman.spd || 0.4) * BURROW.SPEED_MULT;
   check('duration: the pile moves at m.spd x SPEED_MULT, not a fallback',
     Math.abs(step - want) < 0.05, { step, want, spd: snowman.spd });
+}
+
+// ══════════════════════════════════════════════════════════════════
+// v2.3.2224: the blue slime's death burst
+// ══════════════════════════════════════════════════════════════════
+/* Zones spawn lazily (_ensureZoneMonsters), and this suite joined in frost,
+   so verdant has to be asked for explicitly before its slimes exist. */
+const verdant = room._ensureZoneMonsters('verdant') || [];
+const slime = verdant.find((m) => m.variant === 'blueSlime');
+check('burst: verdant fields a blue slime', !!slime, { count: verdant.length });
+
+function armSlime(dist) {
+  slime.alive = true; slime.hp = slime.maxHp;
+  slime.x = ps.x + (dist === undefined ? 40 : dist); slime.y = ps.y;
+  slime.spawnX = slime.x; slime.spawnY = slime.y;
+  slime._burstUntil = 0; slime._burstKiller = null; slime._burstDone = false;
+  ps.z = 'verdant'; ps.dead = false; ps.dying = false;
+  ps.hp = ps.maxHp; ps.x = ps.x; ps.blocking = false;
+  room.eventBuffer.length = 0;
+}
+const burstPhases = () => room.eventBuffer
+  .filter((e) => e.type === 'monster_ability' && e.payload.ability === 'burst')
+  .map((e) => e.payload.phase);
+
+// ── B1. Death defers into a swell, it does not drop ──
+{
+  armSlime();
+  room._applyMonsterDot('verdant', slime, slime.hp + 50, 'p1', 'burn');
+  check('burst: at 0 hp it is still ALIVE, swelling', slime.alive === true && slime._burstUntil > 0,
+    { alive: slime.alive, until: slime._burstUntil });
+  check('burst: ...and announces the swell', burstPhases().includes('swell'), burstPhases());
+  check('burst: ...and cannot be hurt while it swells (hp is already 0)',
+    room._monsterDamageable(slime) === false, { hp: slime.hp });
+}
+
+// ── B2. It goes off, damages what is in the radius, and only then dies ──
+{
+  const hp0 = ps.hp;
+  ps.x = slime.x; ps.y = slime.y;             /* standing in it */
+  slime._burstUntil = Date.now() - 1;
+  room.eventBuffer.length = 0;
+  room._tickMonsters();
+  check('burst: it explodes', burstPhases().includes('execute'), burstPhases());
+  check('burst: ...and hurts a player caught in the radius', ps.hp < hp0, { hp0, hp: ps.hp });
+  check('burst: ...and only now is it dead', slime.alive === false, { alive: slime.alive });
+}
+
+// ── B3. Walking out of the radius is the counterplay ──
+{
+  armSlime();
+  room._applyMonsterDot('verdant', slime, slime.hp + 50, 'p1', 'burn');
+  ps.x = slime.x + SLIME_BURST.RADIUS + 40;   /* clear of it */
+  ps.y = slime.y;
+  const hpSafe = ps.hp;
+  slime._burstUntil = Date.now() - 1;
+  room._tickMonsters();
+  check('burst: a player outside the radius takes nothing', ps.hp === hpSafe,
+    { hpSafe, hp: ps.hp, radius: SLIME_BURST.RADIUS });
+}
+
+// ── B4. EVERY kill path explodes, not just the sword ──
+{
+  armSlime();
+  ps.x = slime.x; ps.y = slime.y;
+  ps.weapon = { type: 'sword', tierMult: 1 };
+  slime.hp = 1;
+  await room.webSocketMessage(ws, JSON.stringify({
+    type: 'monster_damage', payload: { monsterId: slime.id, zone: 'verdant', slot: 'melee' },
+  }));
+  check('burst: a melee kill defers into the swell too',
+    slime.alive === true && slime._burstUntil > 0, { alive: slime.alive });
+}
+
+// ── B5. The damage is the owner's flat number, under the no-one-shot rail ──
+{
+  armSlime();
+  ps.x = slime.x; ps.y = slime.y;
+  ps.hp = ps.maxHp;
+  room._applyMonsterDot('verdant', slime, slime.hp + 50, 'p1', 'burn');
+  const before = ps.hp;
+  slime._burstUntil = Date.now() - 1;
+  room._tickMonsters();
+  const dealt = before - ps.hp;
+  const cap = Math.max(1, Math.floor((ps.maxHp || 100) * TELEGRAPH.MAX_HIT_PCT));
+  check('burst: deals the flat 60 (or the no-one-shot cap, whichever is lower)',
+    dealt > 0 && dealt <= Math.min(SLIME_BURST.DMG, cap) + 1,
+    { dealt, flat: SLIME_BURST.DMG, cap, maxHp: ps.maxHp });
+}
+
+// ── B6. A respawned slime is not still holding a lit fuse ──
+{
+  slime._burstUntil = Date.now() + 99999;
+  slime.alive = false; slime.respawnAt = Date.now() - 1;
+  room._tickMonsters();
+  check('burst: respawn clears the fuse', !slime._burstUntil, slime._burstUntil);
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

@@ -396,6 +396,10 @@ export const tickMethods = {
            ordinary snowman that shrugs off every hit, which reads as a bug
            rather than a mechanic. Old clients ignore the key. */
         if (m._burPhase) w.ph = m._burPhase;
+        /* v2.3.2224: a slime mid-swell, for the same reason w.ph exists —
+           joining next to one and seeing an ordinary slime standing at 0 hp
+           gives no warning at all before it goes off. */
+        if (m._burstUntil && m._burstUntil > ts) w.bu = m._burstUntil;
         return w;
       };
       // Gather-node deltas carry only state-change fields (alive /

@@ -1566,6 +1566,10 @@ export class GameRoom {
                so it may burrow again as soon as it drops to half. */
             m._burPhase = null; m._burUntil = 0; m._burTarget = null;
             m._invulnUntil = 0; m._burCd = 0; m._burFloor = 0;   /* v2.3.2223 */
+            /* v2.3.2224: and the death fuse — a respawned slime carrying
+               _burstUntil would explode on arrival, at full health. */
+            m._burstUntil = 0; m._burstKiller = null; m._burstSlot = null;
+            m._burstDone = false;
             // Revert any in-life variant transform (mummy -> skeleton)
             // so a respawned monster comes back in its original form
             // with the original spd.  Stamped at spawn time and
@@ -1643,6 +1647,10 @@ export class GameRoom {
            separate "can't attack" flag, the AI simply never reaches the
            attack code while he is a mound of snow. */
         if (this._resolveBurrow(zoneId, m, now)) continue;
+        /* v2.3.2224: and a slime mid-swell.  Unconditional and ahead of
+           aggro for the same reason: a player who walks away must not leave
+           a 0-hp slime standing in the zone with its fuse lit forever. */
+        if (this._resolveSlimeBurst(zoneId, m, now)) continue;
 
         /* v2.3.1640: resolve an in-flight snowball.  Deliberately OUTSIDE
            the aggro branch and ahead of it — a thrown ball is already in

@@ -769,6 +769,44 @@ export function processGameEvent(type, payload, S, deps) {
                  field, so a client that missed the last transition must be
                  able to recover on its own rather than hold the mound
                  forever. */
+              /* ═══ v2.3.2224: THE BLUE SLIME'S DEATH BURST ═══
+                 The swell IS the telegraph, so the ground ring uses the same
+                 _telegraphZones the kits draw -- one visual language for
+                 "this circle is about to hurt", rather than a second one the
+                 player has to learn. */
+              if (payload.ability === 'burst') {
+                var _sbM = (S.monsters || []).find(function (mm) { return mm.id === payload.monsterId; });
+                if (payload.phase === 'swell') {
+                  var _sbMs = Math.max(120, Math.min(4000, Number(payload.ms) || 800));
+                  if (_sbM) {
+                    _sbM._burstFrom = Date.now();
+                    _sbM._burstUntil = Date.now() + _sbMs;
+                    _sbM._burstScale = Math.max(1, Math.min(6, Number(payload.scale) || 3.5));
+                  }
+                  if (typeof payload.ax === 'number' && typeof payload.ay === 'number') {
+                    if (!S._telegraphZones) S._telegraphZones = [];
+                    S._telegraphZones.push({
+                      x: payload.ax, y: payload.ay, r: payload.radius || 110,
+                      ts: Date.now(), duration: _sbMs, color: '#7CFC5A',
+                    });
+                  }
+                } else if (payload.phase === 'execute') {
+                  if (_sbM) { _sbM._burstUntil = 0; _sbM._burstFrom = 0; }
+                  var _sbX = typeof payload.ax === 'number' ? payload.ax : (_sbM && _sbM.x) || 0;
+                  var _sbY = typeof payload.ay === 'number' ? payload.ay : (_sbM && _sbM.y) || 0;
+                  /* Goo on the ground where it went off, at the radius it
+                     actually covered -- the decal is the after-image that
+                     tells you how big the thing you dodged was. */
+                  try {
+                    spawnGroundDecal(S, _sbX, _sbY, 'fodder', {
+                      chance: 1, size: (payload.radius || 110) * 0.9, spread: (payload.radius || 110) * 0.55,
+                    });
+                  } catch (e) { /* decals are cosmetic */ }
+                  S.screenShake = Math.max(S.screenShake || 0, 10);
+                  BT_AUDIO.beep(90, 0.16, 0.09, 'sawtooth');
+                }
+                break;
+              }
               var _burPhases = { dig: 1, pile: 1, emerge: 1 };
               if (payload.ability === 'burrow' && _burPhases[payload.phase]) {
                 var _buM = (S.monsters || []).find(function (mm) { return mm.id === payload.monsterId; });
