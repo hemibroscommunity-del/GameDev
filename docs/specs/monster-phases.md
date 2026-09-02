@@ -236,3 +236,38 @@ Speed and the transform rule exist on both sides and are CI-pinned:
 `server/test/mirror-audit.test.mjs` fails the build if the two speeds drift.
 The client path is gated on `!S._serverMonsters`; in every live zone the
 worker decides and broadcasts `monster_transform`.
+
+
+## The blast's damage number reaches you (v2.3.2235)
+
+Owner: "I don't think I saw damage numbers on my own health bar (as the
+floaty disappearing number for damage taken) once slime exploded."
+
+The blast was landing — hp dropped — but the number never floated. The
+client's `monster_attack` handler ends in an unconditional `-N` with the
+heart, so anything missing was dropped upstream, and there were **three**
+filters that could do it, all written against melee "ghost hits" from
+monsters the client cannot see:
+
+| filter | what it asks | why a blast fails it |
+|---|---|---|
+| attacker in the local snapshot | "can I draw who hit me?" | the slime detonates **as it dies** |
+| attacker within 160px of the player NOW | "is it close enough to have reached me?" | resolved at **detonation**, and running is the right move |
+| `noProjectile` variant beyond 60px | "is this melee-only monster in reach?" | a 110px radius is not melee reach |
+
+Measured: the first two each swallow the number on their own, while the same
+payload floats one fine when neither trips (`tools/qa/mp/mp-burstdmg.mjs`).
+The blue slime carries no `noProjectile` flag so the third is not what hit
+the owner, but the next variant to get an AoE would have walked into it.
+
+The fix is the worker saying so. `_telegraphHitPlayer` now tags the event
+with the kit's `kind`, and the client treats a tagged hit as already
+resolved — it arrives with the authoritative `dmgTaken`, so there is nothing
+left to second-guess. `atkSrc` may now legitimately be null, and every read
+of it in that handler is guarded; the visuals point away from the payload's
+`attackerX/Y`, which a telegraph hit always carries.
+
+**Deploy order (rule 19):** an older worker sends no `ability` and every
+filter behaves exactly as it did. That case is pinned in the test — without
+it the change reads as "the client stopped filtering", which is a different
+and worse change.

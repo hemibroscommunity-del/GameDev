@@ -63,8 +63,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return { ticks, skulls: S.groundLoot.filter((l) => l.skull).length, type: m.archetype || m.type };
   });
   console.log('    held at 0hp-but-alive: ' + JSON.stringify(held));
-  rec.ok('the window was actually held open (guard -- 40+ passes)',
-    !!(held && held.ticks >= 40), held);
+  /* 20, not 40: the guard's job is to prove the block was re-entered MANY
+     times so that `skulls === 1` means something, and a 50ms interval over
+     2.5s only reaches its nominal ~50 on an idle machine -- running six
+     scenarios at once it came in at 34 and failed a threshold that was
+     measuring load rather than behaviour. */
+  rec.ok('the window was actually held open (guard -- 20+ passes)',
+    !!(held && held.ticks >= 20), held);
   rec.ok('...and one monster left exactly ONE claimable remnant pile, not dozens',
     !!(held && held.skulls === 1), held);
 

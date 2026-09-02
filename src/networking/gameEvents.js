@@ -1783,18 +1783,44 @@ export function processGameEvent(type, payload, S, deps) {
                  missed during initial sync stays invisible until a
                  zone change re-syncs. Server doesn't track player HP,
                  so dropping is safe — no desync to reconcile. */
-              if (!atkSrc) {
+              /* ═══ v2.3.2235: A TELEGRAPH HIT IS NOT A GHOST HIT ═══
+                 Owner, on the exploding slime: "I don't think I saw damage
+                 numbers on my own health bar ... once slime exploded."
+
+                 Both filters in this handler -- attacker-in-snapshot, and
+                 attacker-within-160px-of-where-we-are-NOW -- exist to
+                 suppress melee ghost hits from monsters the client cannot
+                 see.  They are the wrong question for a blast: it was
+                 resolved against where we stood at DETONATION, by a monster
+                 in the act of dying, and running from a swelling slime is
+                 the correct thing to do.  Measured: each filter swallows
+                 the number on its own (mp-burstdmg), while the same payload
+                 floats one fine when neither trips.
+
+                 `ability` is the worker saying "I resolved this one here"
+                 (telegraph.js v2.3.2235), and it comes with the authoritative
+                 dmgTaken, so there is nothing left to second-guess.  An older
+                 worker omits it and every filter below behaves exactly as it
+                 does today (rule 19). */
+              var _srvResolved = !!(payload.ability && S._serverMonsters
+                && typeof payload.dmgTaken === 'number');
+              if (!atkSrc && !_srvResolved) {
                 if (window.__dmgLog) try { console.log('[dmg] net-monster_attack DROPPED (not in snapshot)', { monsterId: payload.monsterId, srvAttackerXY: (typeof payload.attackerX === 'number') ? { x: Math.round(payload.attackerX), y: Math.round(payload.attackerY) } : null }); } catch (e) {}
                 break;
               }
               /* Prefer the server's authoritative position (payload.attackerX/Y)
                  over the local snapshot — the server's view is what decided the
                  attack should fire, and the snapshot can lag a few ticks. */
-              var _atkX = (typeof payload.attackerX === 'number') ? payload.attackerX : atkSrc.x;
-              var _atkY = (typeof payload.attackerY === 'number') ? payload.attackerY : atkSrc.y;
+              /* v2.3.2235: atkSrc may legitimately be null now (a blast from
+                 a monster already gone), so every read of it below is
+                 guarded.  The worker always sends attackerX/Y on a
+                 telegraph hit, which is why the visuals still have a source
+                 to point away from. */
+              var _atkX = (typeof payload.attackerX === 'number') ? payload.attackerX : (atkSrc ? atkSrc.x : S.player.x);
+              var _atkY = (typeof payload.attackerY === 'number') ? payload.attackerY : (atkSrc ? atkSrc.y : S.player.y);
               var _atkDx = _atkX - S.player.x, _atkDy = _atkY - S.player.y;
               var _atkDist = Math.sqrt(_atkDx * _atkDx + _atkDy * _atkDy);
-              if (_atkDist > 160) {
+              if (_atkDist > 160 && !_srvResolved) {
                 if (window.__dmgLog) try { console.log('[dmg] net-monster_attack DROPPED (out of range)', { monsterId: payload.monsterId, dist: Math.round(_atkDist) }); } catch (e) {}
                 break;
               }
@@ -1829,7 +1855,7 @@ export function processGameEvent(type, payload, S, deps) {
                    from the local snapshot) -- the null bypass existed only
                    while every monster was pinned to level 1; zone bands
                    are now unpinned (BALANCE-PLAN §7/BF-1). */
-                var _defUpBlk = trainDefense(R2, payload.dmg || 5, 0, atkSrc.level || null, false);
+                var _defUpBlk = trainDefense(R2, payload.dmg || 5, 0, (atkSrc && atkSrc.level) || null, false);
                 if (_defUpBlk) pushDmgPopup(S, S.player.x, S.player.y - 34, '🛡️ Defense Lv ' + _defUpBlk.level, '#60a5fa', { ts: Date.now() + 2 });
                 break;
               }
@@ -1846,9 +1872,13 @@ export function processGameEvent(type, payload, S, deps) {
                    damage entirely when a noProjectile attacker is
                    outside melee range so mummies / skeletons can
                    only land melee swings. */
-              var _atkArchKey = atkSrc.archetype || atkSrc.type;
+              var _atkArchKey = atkSrc ? (atkSrc.archetype || atkSrc.type) : null;   /* v2.3.2235: null on a blast from a departed monster */
               var _atkVariant = MONSTER_VARIANTS[_atkArchKey];
-              if (_atkVariant && _atkVariant.noProjectile && _atkDist > 60) {
+              /* v2.3.2235: ...and the melee-only filter is the same question
+                 a third time.  The blue slime carries no noProjectile flag so
+                 this is not what swallowed the owner's blast, but the next
+                 variant to get an AoE would walk straight into it. */
+              if (_atkVariant && _atkVariant.noProjectile && _atkDist > 60 && !_srvResolved) {
                 if (window.__dmgLog) try { console.log('[dmg] net-monster_attack DROPPED (noProjectile out of melee)', { monsterId: payload.monsterId, dist: Math.round(_atkDist), arch: _atkArchKey }); } catch (e) {}
                 break;
               }
@@ -1888,7 +1918,7 @@ export function processGameEvent(type, payload, S, deps) {
                 addBuildUse(R2, 'endurance', 3);
                 /* v2.3.1113: fallback block trains defense too.
                    v2.3.1140: ±5 gate live (see block above). */
-                trainDefense(R2, mDmg, 0, atkSrc.level || null, false);
+                trainDefense(R2, mDmg, 0, (atkSrc && atkSrc.level) || null, false);
               }
               /* Check dodge */
               if (S._dodgeRoll) break; /* in i-frames */
@@ -1905,7 +1935,7 @@ export function processGameEvent(type, payload, S, deps) {
                  to player_state. */
               if (dmgTaken2 > 0) {
                 /* v2.3.1140: ±5 gate live (see block above). */
-                var _defUpTk = trainDefense(R2, 0, Math.ceil(dmgTaken2), atkSrc.level || null, false);
+                var _defUpTk = trainDefense(R2, 0, Math.ceil(dmgTaken2), (atkSrc && atkSrc.level) || null, false);
                 if (_defUpTk) pushDmgPopup(S, S.player.x, S.player.y - 34, '🛡️ Defense Lv ' + _defUpTk.level, '#60a5fa', { ts: Date.now() + 2 });
               }
               if (window.__dmgLog) try {
