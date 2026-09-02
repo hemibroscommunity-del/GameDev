@@ -108,3 +108,55 @@ That makes the **swell the only telegraph**, which is why the fuse doubled in
 the same change — a slime tripling in size has to carry the whole warning now,
 and it needs the extra second to be a fair one. A real goo-burst strip is the
 upgrade.
+
+## v2.3.2227 — the explosion plays at the size it grew to
+
+Owner: "play the slime explosion animation at the peak swell size."
+
+The slime already **had** an explosion: `slime-death-v10` is a 15-frame death
+burst, drawn for `SLIME_DEATH_MS`. It was playing at 1x because detonation
+cleared the swell first, snapping the sprite back before the burst started —
+so the thing you watched blow up was not the thing that had just filled the
+screen.
+
+Detonation now hands the peak scale to the death burst (`m._burstPeakFrom`),
+and the renderer holds it **only while that burst is the frame being drawn**.
+Two events arrive separately here (the `execute` cue and the kill), so a fixed
+hold would either cut the explosion short or outlive it onto the remnants
+splat, which should stay normal size.
+
+## v2.3.2228 — "I never see the death animation play, it swells then freezes"
+
+The version above was wrong twice, and both mistakes are worth keeping written
+down because neither was visible in a screenshot or a build.
+
+**Where the hold lived.** The swell multiplier is applied once, after every
+sprite branch has set its own scale — the right place for a live monster, and
+the reason the swell works for whichever branch drew it. But the dead-monster
+branch `continue`s a thousand lines earlier. A corpse never reaches that line,
+so v2.3.2227's peak hold was **unreachable code**, and the sprite simply kept
+whatever scale the last live frame left on it. That is the freeze. The hold
+now lives inside the death branches themselves, where the explosion is drawn,
+bounded by the death window it sits in and cleared on the respawn edge.
+
+**What made it a freeze rather than a wrong size.** The same change read
+`display._deathDrewAt` one line *above* its own `const display` — a temporal
+dead zone `ReferenceError`, thrown on the first frame a fodder slime died.
+`pixiRenderer.js` wraps each system's update in a try/catch that logs once and
+carries on, deliberately, so one bad frame cannot take the game down. The cost
+is that a per-frame throw in the render loop is invisible: no crash, no
+`pageerror`, no failing screenshot. The monster loop just aborted at the
+corpse every frame — the corpse never reached its own draw, and **every
+monster iterated after it was skipped entirely**, left holding its last good
+frame. Lint cannot help here either: `no-undef` does not see a same-scope TDZ,
+and `no-use-before-define` reports 138 harmless closure references across
+`src/`, so it is not adoptable without churn in unrelated files.
+
+The guard is therefore behavioural, and it is repo-wide: the QA harness now
+collects `[pixi-render] … threw` from every scenario's console and fails
+whichever suite was on screen (`takeRenderThrows`, asserted per scenario in
+`run.mjs`). `tools/qa/mp/mp-slimeburst.mjs` covers this mechanic specifically,
+on both a raw fodder slime and a blue slime — a blue slime takes one branch
+more, because `MONSTER_VARIANTS` has an entry for it but `VARIANT_SPRITES`
+does not, so it is consulted by the variant death branch and then falls
+through to the slime splat.

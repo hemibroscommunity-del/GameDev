@@ -822,6 +822,29 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     /phase === 'swell'/.test(src) && /phase === 'execute'/.test(src), {});
   check('burst mirror: ...and the swell is drawn',
     /_burstUntil/.test(rend), {});
+  /* v2.3.2227: the slime's own explosion (slime-death-v10) must play at the
+     size it grew to.  Clearing the swell on detonation snapped the sprite
+     back to 1x first, so the thing that blew up was not the thing that had
+     filled the screen.  Both halves pinned: the stamp on detonation, and the
+     renderer holding peak while the explosion is the frame being drawn.
+     v2.3.2228: the hold moved INTO the death branches.  It first shipped
+     after them, where the general swell multiplier lives -- but the
+     dead-monster branch `continue`s long before that line, so a corpse never
+     reached it.  Hence the second pin: the multiplier has to be applied above
+     the `continue`, in the branch that draws the death frame.  A pin that
+     only asked for the field would have passed on the unreachable version. */
+  check('burst art: detonation hands the peak size to the death burst',
+    /_burstPeakFrom = Date\.now\(\)/.test(src), {});
+  const _deadBranch = rend.slice(rend.indexOf('if (!m.alive) {'), rend.indexOf('const emojiText = new Text('));
+  check('burst art: ...and the renderer holds it INSIDE the death branch',
+    /_peakK = m\._burstPeakFrom/.test(_deadBranch) && (_deadBranch.match(/\* _peakK/g) || []).length >= 2, {
+      declared: /_peakK = m\._burstPeakFrom/.test(_deadBranch),
+      applied: (_deadBranch.match(/\* _peakK/g) || []).length,
+    });
+  /* And the stamp must be cleared when the monster comes BACK, or its next,
+     ordinary death replays the explosion at 3.5x. */
+  check('burst art: ...and the peak stamp is dropped on respawn',
+    /_spawnFxAt = now;[\s\S]{0,400}?m\._burstPeakFrom = 0;/.test(rend), {});
   check('burst mirror: the fuse rides the wire for resyncs (w.bu)',
     /w\.bu = m\._burstUntil/.test(tickSrc) && /md\.bu/.test(wsSrc), {});
   /* Every exploding variant must be a real variant, or the table silently

@@ -209,7 +209,7 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
   ));
   const page = await ctx.newPage();
   const logs = [];
-  page.on('console', (m) => { if (m.type() === 'error') logs.push(`console ${m.text().slice(0, 200)}`); });
+  page.on('console', (m) => { if (m.type() === 'error') { logs.push(`console ${m.text().slice(0, 200)}`); _noteRenderThrow(name, m.text()); } });
   page.on('pageerror', (e) => logs.push(`pageerror ${String(e).slice(0, 200)}`));
   await page.addInitScript((p) => { window.BROTOWN_WS_URL = `ws://127.0.0.1:${p}`; }, wsPort);
   /* v2.3.1814: `phrase` seeds this context's Login Key BEFORE first paint, so
@@ -1202,6 +1202,26 @@ export async function closeNpcDialogue(P) {
   });
   await P.page.waitForTimeout(400);
 }
+
+/* ── the renderer must never throw ──────────────────────────────────────
+ * v2.3.2228: pixiRenderer.js wraps each system's update in a try/catch that
+ * logs ONCE and carries on -- deliberately, so one bad frame can't take the
+ * game down.  The cost is that a per-frame ReferenceError in the render loop
+ * is INVISIBLE: no crash, no pageerror, no failing screenshot, just a subtree
+ * of the scene that silently stops updating.  That is how the slime "swells
+ * then freezes" bug (a `display` read one line above its own `const`) reached
+ * a player, and how the v2.3.756 `_layerShirt` incident did before it.
+ *
+ * Every scenario drives the renderer, so every scenario can watch for it.
+ * Collected globally here and asserted once per scenario by run.mjs -- a
+ * renderer throw is never expected and never someone else's problem, so it
+ * fails whichever suite was on screen when it happened.
+ */
+const _renderThrows = [];
+function _noteRenderThrow(who, text) {
+  if (/\[pixi-render\].*threw/.test(text)) _renderThrows.push(`${who || 'player'}: ${text.slice(0, 240)}`);
+}
+export function takeRenderThrows() { return _renderThrows.splice(0, _renderThrows.length); }
 
 export function recorder(suite) {
   const rows = [];

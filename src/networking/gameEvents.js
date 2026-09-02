@@ -791,7 +791,17 @@ export function processGameEvent(type, payload, S, deps) {
                      slime tripling in size is the warning, and it needs the
                      extra time to be a fair one. */
                 } else if (payload.phase === 'execute') {
-                  if (_sbM) { _sbM._burstUntil = 0; _sbM._burstFrom = 0; }
+                  if (_sbM) {
+                    _sbM._burstUntil = 0; _sbM._burstFrom = 0;
+                    /* v2.3.2227: hand the peak size to the death burst.  The
+                       slime's own explosion (slime-death-v10, 15 frames) used
+                       to play at 1x because clearing the swell snapped the
+                       sprite back first -- so the thing that blew up was not
+                       the thing that had just filled the screen.  The
+                       renderer releases this on its own after the animation's
+                       length, which it owns. */
+                    _sbM._burstPeakFrom = Date.now();
+                  }
                   /* v2.3.2226: and the ground splat with it -- it was a
                      minted radial blob sized to the blast, which is a
                      code-drawn impact area by another name.  What is left is
