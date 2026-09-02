@@ -1137,7 +1137,10 @@ export class GameRoom {
     const SPEEDS = {
       fireGoblin: 1.5,
       mummy: 0.4,
-      skeleton: 1.4,
+      /* v2.3.2229 (owner: "Increase speed in skeleton phase 25%"):
+         1.4 -> 1.75.  This is the authority; src/data/monsterVariants.js
+         mirrors it and mirror-audit.test.mjs fails the build on drift. */
+      skeleton: 1.75,
       // v2.3.1147: the new verdant/mist reskins.  Fodder skins keep the
       // fodder base 0.5; the brute skins run at 0.5 like the client's
       // fishman/rockmonster cfg (NOTE: legacy tidal/hollows brutes have
@@ -1192,8 +1195,20 @@ export class GameRoom {
   // monster + emits a monster_transform event; the client plays the
   // shred animation locally on receipt and updates its archetype.
   _variantTransform(variantKey) {
+    /* ═══ v2.3.2229: THE FIRST HIT UNWRAPS THE MUMMY ═══
+       Owner: "change it so first hit makes the mummy to skeleton
+       transformation."  Was `{ at: 0.5 }` -- half its health, which took
+       about two hits (the client's incomingDmgScalar 0.5 was tuned for
+       exactly that) and made the mummy a health bar to chew through
+       before the interesting form arrived.
+       `onFirstDamage` is a FLAG rather than `at: 1`, because the test
+       below is `<=` against a fraction: at:1 is satisfied at full health
+       and would fire on spawn, before anything had touched it.  "Has
+       taken damage" is `hp < maxHp`, a different question.
+       Mirrored in src/data/monsterVariants.js (mummy.onFirstDamage) for
+       the client-local dungeon/SP path. */
     const T = {
-      mummy: { at: 0.5, to: 'skeleton' },
+      mummy: { onFirstDamage: true, to: 'skeleton' },
     };
     return T[variantKey] || null;
   }
@@ -1594,7 +1609,12 @@ export class GameRoom {
         // respawn resets m.hp and m.variant via re-spawn flow above).
         if (m.variant) {
           const tx = this._variantTransform(m.variant);
-          if (tx && m.maxHp > 0 && (m.hp / m.maxHp) <= tx.at) {
+          /* v2.3.2229: onFirstDamage = any damage at all; `at` stays the
+             threshold form for a future variant that wants one. */
+          const _fired = !tx ? false
+            : tx.onFirstDamage ? (m.hp < m.maxHp)
+            : (m.maxHp > 0 && (m.hp / m.maxHp) <= tx.at);
+          if (_fired) {
             const fromVariant = m.variant;
             const toVariant = tx.to;
             m.variant = toVariant;

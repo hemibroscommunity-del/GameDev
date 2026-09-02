@@ -5,7 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { infoPopupBus } from '../infoPopupBus.js';
 import { statInfo } from '../infoGlossary.js';
 import { COL, QUALITY_COLOR, panelStyle, getState } from '../dash/common.js';
-import { buildSkillUnspent, STAT_TO_WEAPON_CAT, getActiveWeapon } from '../../../data/gameSystems.js'; /* v2.3.1914: getActiveWeapon */
+import { buildSkillUnspent, STAT_TO_WEAPON_CAT, getActiveWeapon, weaponForCat } from '../../../data/gameSystems.js'; /* v2.3.1914: getActiveWeapon; v2.3.2231: weaponForCat */
 import { requestT2Category } from '../dash/T2Panel.jsx';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { CharacterView, FIGURE_W_FRAC } from './CharacterView.jsx'; /* v2.3.1815: the equip screen's own figure */
@@ -1220,9 +1220,33 @@ export const HeroExpanded = () => {
                   title: info.title + (st.atk ? ' · ' + ((PROG3_SKILL_META.find((k) => k.key === buildCat) || {}).label || '') : ''),
                   body: info.body, note: info.note,
                   perText: 'Each point: ' + st.perText,
-                  /* the scene draws YOUR figure, holding what you hold (v2.3.1914's
-                     active-weapon rule, same as the Equipment screen) */
-                  demo: <StatDemo stat={st.key} iconSrc={st.iconSrc} weapon={R ? getActiveWeapon(R) : null} shield={!!(R && R.shield)} />,
+                  /* ═══ v2.3.2231: THE FIGURE HOLDS THE LANE'S WEAPON ═══
+                     Owner: "Maybe the combat primary skill they are viewing
+                     the stat demo through?"
+
+                     It used to hold getActiveWeapon(R) -- v2.3.1914's rule,
+                     which is right for the Equipment screen because that
+                     screen IS about what you have equipped.  This window is
+                     not: you open a lane by tapping its header (setBuildCat),
+                     independently of which weapon is in your hand, so a
+                     sword-carrying player reading the Bow lane got a scene
+                     captioned "· Bow" with a sword in it -- the picture
+                     contradicting its own heading.
+
+                     An ATTACK row belongs to a lane and takes that lane's
+                     weapon.  A BODY row (HP/Defense/Dodge/Stamina/Elem
+                     Power) belongs to no lane -- its points apply whatever
+                     you are holding -- so it keeps the active weapon and
+                     behaves exactly as before.
+
+                     Empty-handed when the lane's slot is empty, deliberately:
+                     you do not own a bow, and lending you the sword you DO
+                     own is the contradiction this fixes.  Bare hands is a
+                     state the scene already draws (a character before the
+                     tutorial sword). */
+                  demo: <StatDemo stat={st.key} iconSrc={st.iconSrc}
+                    weapon={R ? (st.atk ? weaponForCat(R, buildCat) : getActiveWeapon(R)) : null}
+                    shield={!!(R && R.shield)} />,
                   rows, capped: !!(pv && pv.capped),
                 });
               } catch (e) { /* an explainer must never block a spend */ }
@@ -1443,6 +1467,13 @@ export const HeroExpanded = () => {
                   }}>
                     <div
                       role="button"
+                      /* v2.3.2231: the lane's KEY as a handle, the same
+                         contract data-section and data-stat-info carry.
+                         aria-label is display copy ("Melee", "Magic") and
+                         the Build->Points rename already cost five
+                         assertions once (v2.3.2013's note); the key is what
+                         setBuildCat actually stores. */
+                      data-prog3-lane={sk.key}
                       aria-label={`${sk.label}, level ${lvl}`}
                       aria-expanded={open}
                       title={sk.label}

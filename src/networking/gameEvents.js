@@ -35,6 +35,35 @@ import { applyServerMuteList } from '@/game/chatMute.js'; /* v2.3.1981 */
 import { pushAbilityRings } from '@/game/abilities.js'; /* v2.3.1735: a peer's bash draws the caster's own shockwave */
 import { friendsSrv } from '@/ui/mobile/sheet/friendsSync.js'; /* v2.3.1324 */
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
+
+/* ═══ v2.3.2232: THE DAMAGE NUMBER NAMES THE WEAPON THAT DEALT IT ═══
+ *
+ * Owner: "Monsters are showing melee damage from bow and melee and magic
+ * damage from magic."
+ *
+ * Since v2.3.2220 the popup for EVERY own hit in a server zone is painted
+ * from monster_hit rather than from the local prediction -- and that site
+ * passed `iconKey: 'sword'` flat, so a bow hit and a staff hit both came
+ * out marked as melee.  The mark had been right before: the local ranged
+ * prediction picks 'arrow'/'spell' (projectiles.js) and still does; what
+ * v2.3.2220 changed was WHICH popup the player ends up reading.
+ *
+ * `slot` now rides on the event (server/src/combat.js v2.3.2232), which
+ * also answers it for PEER hits -- another player's weapon is not knowable
+ * locally at any price, which is why peer numbers carried no mark at all.
+ *
+ * DEPLOY-ORDER (rule 19): an older worker sends no slot, so this falls back
+ * to the slot WE are holding.  That is right for our own hits at anything
+ * but a weapon swap inside the round trip, and for a peer it declines to
+ * guess rather than marking their arrow with our sword. */
+const SLOT_ICON = { melee: 'sword', ranged: 'arrow', staff: 'spell' };
+export function dmgIconForSlot(S, payload, isOwn) {
+  const fromWire = payload && SLOT_ICON[payload.slot];
+  if (fromWire) return fromWire;
+  if (!isOwn) return undefined;
+  const R = S && S.rpg;
+  return SLOT_ICON[(R && R.activeSlot) || 'melee'] || 'sword';
+}
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
 
 /* v2.3.1107: angle -> 8-way compass, same SECTORS convention as
@@ -1431,7 +1460,10 @@ export function processGameEvent(type, payload, S, deps) {
                          which is how a crit could read as ordinary depending
                          on which path produced its number. */
                       crit: !!payload.isCrit,
-                      iconKey: payload.isCrit ? 'crit' : undefined,
+                      /* v2.3.2232: ...and a peer's arrow reads as an arrow.
+                         Undefined until the worker names the slot -- better
+                         no mark than OUR weapon on THEIR hit. */
+                      iconKey: payload.isCrit ? 'crit' : dmgIconForSlot(S, payload, false),
                     });
                   } else if (payload.ability || S._serverMonsters) {
                     /* v2.3.1733: OUR OWN stamina-ability hit.  The rule
@@ -1468,7 +1500,8 @@ export function processGameEvent(type, payload, S, deps) {
                       '-' + payload.dmg, payload.isCrit ? DMG_CRIT_COLOR : '#ffd08a',
                       payload.isCrit
                         ? { crit: true, iconKey: 'crit', special: !!S._ownSpecialRecent }
-                        : { iconKey: 'sword', special: !!S._ownSpecialRecent });  /* v2.3.2211; v2.3.2220 */
+                        /* v2.3.2232: the weapon that dealt it, not a flat sword. */
+                        : { iconKey: dmgIconForSlot(S, payload, true), special: !!S._ownSpecialRecent });  /* v2.3.2211; v2.3.2220 */
                   } else if (payload.thorns) {
                     /* v2.3.1137: Thorns reflect is SERVER-rolled with no
                        local prediction (unlike swings), so our own thorns

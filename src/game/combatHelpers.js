@@ -134,18 +134,30 @@ function enqueuePeerDamage(S, key, floater) {
    queued number per source per frame, spaced by MIN_SPACING, force-flushing
    any head past MAX_HOLD so heavy DPS can't build an ever-growing backlog. */
 function releasePeerDamage(S, now) {
-  var Q = S._peerDmgQueue;
-  if (!Q) return;
-  /* Zone change: drop queued numbers from the previous zone so a stale
-     position never spawns into the new one.  Centralizes the clear across
-     every zone-transition path (dmgNumbers itself is never explicitly
-     cleared either -- it ages out -- so this stays in parity, just faster). */
+  /* ═══ v2.3.2232: PRIME THE ZONE STAMP BEFORE THE EMPTY-QUEUE BAILOUT ═══
+     This zone check used to sit BELOW `if (!Q) return`, and _peerDmgQueue is
+     created lazily by the first enqueue -- so for the whole span before any
+     peer damage arrived, this function returned early and _peerDmgZone was
+     never stamped.  The first peer number of a session therefore arrived,
+     was queued, and was WIPED on the very next frame by a zone-change clear
+     for a zone change that had not happened.  Exactly one number, silently,
+     per session; found while testing the weapon marks (mp-dmgicon), which
+     is the only reason a bug this quiet was ever going to surface.
+     Stamping first is also strictly more correct on its own terms: the
+     stamp describes where we ARE, not where the queue is. */
   if (S._peerDmgZone !== S.currentZone) {
+    /* Zone change: drop queued numbers from the previous zone so a stale
+       position never spawns into the new one.  Centralizes the clear across
+       every zone-transition path (dmgNumbers itself is never explicitly
+       cleared either -- it ages out -- so this stays in parity, just
+       faster). */
     S._peerDmgQueue = {};
     S._peerDmgLastRel = {};
     S._peerDmgZone = S.currentZone;
     return;
   }
+  var Q = S._peerDmgQueue;
+  if (!Q) return;
   var L = S._peerDmgLastRel || (S._peerDmgLastRel = {});
   for (var key in Q) {
     var q = Q[key];
