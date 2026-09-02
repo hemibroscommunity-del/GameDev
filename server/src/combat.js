@@ -868,7 +868,7 @@ export const combatMethods = {
           type: 'monster_hit',
           payload: {
             monsterId: m.id, zone, dmg: colDmg, isCrit: false,
-            attackerId: session.id, collision: col.id, slot: _effSlot,   /* v2.3.2228 */
+            attackerId: session.id, collision: col.id, slot: _effSlot,   /* v2.3.2232 */
             hpPct: Math.max(0, m.hp / m.maxHp),
           },
         });
@@ -985,7 +985,7 @@ export const combatMethods = {
         dmg: actualDmg,
         isCrit: rolled.isCrit,
         attackerId: session.id,
-        /* ═══ v2.3.2228: WHICH WEAPON DEALT IT ═══
+        /* ═══ v2.3.2232: WHICH WEAPON DEALT IT ═══
            Owner: "Monsters are showing melee damage from bow and melee and
            magic damage from magic."  The damage POPUP carries a weapon mark
            beside the number, and since v2.3.2220 this event is what paints

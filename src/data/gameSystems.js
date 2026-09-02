@@ -5363,7 +5363,7 @@ export function getActiveWeapon(rpg) {
   return rpg.weapon;
 }
 
-/* ═══ v2.3.2227: THE WEAPON A COMBAT LANE IS ABOUT ═══
+/* ═══ v2.3.2231: THE WEAPON A COMBAT LANE IS ABOUT ═══
  * The Points screen lets you open ANY lane's stat rows while holding
  * something else -- buildCat is set by tapping a lane header, activeSlot by
  * swapping weapons -- so getActiveWeapon is the wrong question to ask when

@@ -102,7 +102,7 @@ export function updateArrows(S, deps) {
                   if (_sm.curHp < 0) _sm.curHp = 0;
                 }
                 if (!S.dmgNumbers) S.dmgNumbers = [];
-                /* ═══ v2.3.2228: IN A SERVER ZONE THE NUMBER COMES FROM THE SERVER ═══
+                /* ═══ v2.3.2232: IN A SERVER ZONE THE NUMBER COMES FROM THE SERVER ═══
                    The other half of v2.3.2220, which did this for melee and
                    left ranged behind.  Above this line the shot has ALREADY
                    sent monster_damage and the worker rolls its own variance
@@ -155,7 +155,7 @@ export function updateArrows(S, deps) {
                       if (_lm.curHp < 0) _lm.curHp = 0;
                     }
                     if (!S.dmgNumbers) S.dmgNumbers = [];
-                    /* v2.3.2228: server-settled zones read the number off
+                    /* v2.3.2232: server-settled zones read the number off
                        monster_hit -- see the note on the in-flight tick. */
                     if (!S._serverMonsters) {
                       pushDmgPopup(S, _lm.x, monsterPopupY(_lm, -10), _lBase + '', '#ffe08a', { iconKey: 'arrow' });
@@ -643,7 +643,7 @@ export function updateArrows(S, deps) {
                 /* Cap display at the HP that was actually removed so the kill
                    blow doesn't show an inflated overkill number. */
                 var _displayDmg = Math.min(a.dmg, _hpBefore);
-                /* ═══ v2.3.2228: IN A SERVER ZONE THE NUMBER COMES FROM THE SERVER ═══
+                /* ═══ v2.3.2232: IN A SERVER ZONE THE NUMBER COMES FROM THE SERVER ═══
                    The other half of v2.3.2220, which did this for melee and
                    left ranged behind.  Above this line the shot has ALREADY
                    sent monster_damage and the worker rolls its own variance

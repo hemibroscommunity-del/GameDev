@@ -134,7 +134,7 @@ function enqueuePeerDamage(S, key, floater) {
    queued number per source per frame, spaced by MIN_SPACING, force-flushing
    any head past MAX_HOLD so heavy DPS can't build an ever-growing backlog. */
 function releasePeerDamage(S, now) {
-  /* ═══ v2.3.2228: PRIME THE ZONE STAMP BEFORE THE EMPTY-QUEUE BAILOUT ═══
+  /* ═══ v2.3.2232: PRIME THE ZONE STAMP BEFORE THE EMPTY-QUEUE BAILOUT ═══
      This zone check used to sit BELOW `if (!Q) return`, and _peerDmgQueue is
      created lazily by the first enqueue -- so for the whole span before any
      peer damage arrived, this function returned early and _peerDmgZone was

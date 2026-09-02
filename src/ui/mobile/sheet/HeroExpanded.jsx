@@ -5,7 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { infoPopupBus } from '../infoPopupBus.js';
 import { statInfo } from '../infoGlossary.js';
 import { COL, QUALITY_COLOR, panelStyle, getState } from '../dash/common.js';
-import { buildSkillUnspent, STAT_TO_WEAPON_CAT, getActiveWeapon, weaponForCat } from '../../../data/gameSystems.js'; /* v2.3.1914: getActiveWeapon; v2.3.2227: weaponForCat */
+import { buildSkillUnspent, STAT_TO_WEAPON_CAT, getActiveWeapon, weaponForCat } from '../../../data/gameSystems.js'; /* v2.3.1914: getActiveWeapon; v2.3.2231: weaponForCat */
 import { requestT2Category } from '../dash/T2Panel.jsx';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { CharacterView, FIGURE_W_FRAC } from './CharacterView.jsx'; /* v2.3.1815: the equip screen's own figure */
@@ -1220,7 +1220,7 @@ export const HeroExpanded = () => {
                   title: info.title + (st.atk ? ' · ' + ((PROG3_SKILL_META.find((k) => k.key === buildCat) || {}).label || '') : ''),
                   body: info.body, note: info.note,
                   perText: 'Each point: ' + st.perText,
-                  /* ═══ v2.3.2227: THE FIGURE HOLDS THE LANE'S WEAPON ═══
+                  /* ═══ v2.3.2231: THE FIGURE HOLDS THE LANE'S WEAPON ═══
                      Owner: "Maybe the combat primary skill they are viewing
                      the stat demo through?"
 
@@ -1467,7 +1467,7 @@ export const HeroExpanded = () => {
                   }}>
                     <div
                       role="button"
-                      /* v2.3.2227: the lane's KEY as a handle, the same
+                      /* v2.3.2231: the lane's KEY as a handle, the same
                          contract data-section and data-stat-info carry.
                          aria-label is display copy ("Melee", "Magic") and
                          the Build->Points rename already cost five

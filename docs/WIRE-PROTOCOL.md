@@ -133,7 +133,7 @@ sends). All of these are in `PRIVILEGED_EVENTS` unless noted.
 | `ping` | Heartbeat; client replies `pong` | ~2813 |
 | `loot_drop` / `loot_claimed` / `loot_despawn` | Ground-loot lifecycle fan-outs | [dispatcher] ~3035 / ~3047 / ~3070 |
 | `monster_attack` | Monster attack windup/strike against a player | [dispatcher] ~3389 |
-| `monster_hit` | **The truth** for damage dealt to a monster (client popups are local prediction). v2.3.2228: carries `slot` (`melee`/`ranged`/`staff`) — the slot the room RESOLVED, not the client's claim — so the damage number can be marked with the weapon that dealt it, for peer hits as well as your own. Display-only; nothing server-side reads it back. An older worker omits it and the client falls back to the slot it is holding (own hits) or to no mark at all (peers) | [dispatcher] ~3187 |
+| `monster_hit` | **The truth** for damage dealt to a monster (client popups are local prediction). v2.3.2232: carries `slot` (`melee`/`ranged`/`staff`) — the slot the room RESOLVED, not the client's claim — so the damage number can be marked with the weapon that dealt it, for peer hits as well as your own. Display-only; nothing server-side reads it back. An older worker omits it and the client falls back to the slot it is holding (own hits) or to no mark at all (peers) | [dispatcher] ~3187 |
 | `monster_kill` | Server-confirmed kill (drives loot/XP via credits) | [dispatcher] ~3222 |
 | `monster_transform` | Variant transform (e.g. remnant skull) | [dispatcher] ~3163 |
 | `pvp_hit` | Server-resolved PvP damage | [dispatcher] ~3890 |

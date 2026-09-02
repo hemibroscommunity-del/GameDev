@@ -6066,6 +6066,11 @@ export class EntityRenderer {
         if (m.alive) m._spawnFxAt = now;   /* first sighting is an arrival too */
       } else if (m.alive && m._fxWasAlive === false) {
         m._spawnFxAt = now;
+        /* v2.3.2228: and drop the burst peak stamp.  Cleared HERE, on the
+           respawn edge, rather than while alive -- the execute event stamps
+           it and the kill can land a frame later, so a clear-while-alive
+           pass would wipe it before the death branch below ever sees it. */
+        m._burstPeakFrom = 0;
       }
       m._fxWasAlive = !!m.alive;
       /* Mid-fight variant transform check (currently just mummy ->
@@ -6114,9 +6119,38 @@ export class EntityRenderer {
          if sheets aren't loaded yet -- otherwise the cleanup loop
          destroys it before the sprites resolve and the user sees a
          pop-out instead of an animation. */
+      /* v2.3.2228 QA probe: the body sprite AS IT STANDS, alive or dead.
+         __btMonHit is written further down, past the dead-monster `continue`,
+         so for a corpse it reports a stale frame from when it was still
+         alive -- which is exactly the window the death burst plays in.
+         Reads on demand rather than writing per frame. */
+      if (typeof window !== 'undefined' && !window.__btMonsterSprite) {
+        const _mdRef = this.monsterDisplays;
+        window.__btMonsterSprite = (mid) => {
+          const d = _mdRef.get(mid);
+          if (!d || !d._spriteBody) return null;
+          return {
+            sx: +d._spriteBody.scale.x.toFixed(3),
+            visible: !!d._spriteBody.visible,
+            drewDeathAt: d._deathDrewAt || 0,
+          };
+        };
+      }
       if (!m.alive) {
         const deathT = m._slimeDeathStart != null ? now - m._slimeDeathStart : null;
         const variantDeathMs = variant ? (variant.deathMs || 1000) : 0;
+        /* ═══ v2.3.2228: THE BURST PLAYS AT THE SIZE IT GREW TO ═══
+           Owner: "play the slime explosion animation at the peak swell size",
+           then "I never see the death animation play, it swells then freezes."
+           Both are the same mistake made twice.  The swell multiplier lives
+           after every sprite branch -- but the dead-monster branch `continue`s
+           long before that line, so a corpse never reached it: v2.3.2227's
+           hold was unreachable code, and the sprite simply kept whatever scale
+           the last ALIVE frame left on it (the freeze).  The hold belongs in
+           the death branches themselves, where the explosion is drawn.
+           Bounded by the death window it sits inside -- no timer, no reset
+           pass -- and by the respawn clear above. */
+        const _peakK = m._burstPeakFrom ? (m._burstScale || 3.5) : 1;
         if (variant && deathT != null && deathT >= 0 && deathT < variantDeathMs) {
           activeIds.add(m.id);
         }
@@ -6139,7 +6173,7 @@ export class EntityRenderer {
                crumble + dust burst) -- the variant scales itself
                back up at render time. */
             const deathPx = variant.deathScalePx || variant.liveScalePx || 64;
-            const baseScale = deathPx / 256;
+            const baseScale = (deathPx / 256) * _peakK;
             sb.scale.x = baseScale;
             sb.scale.y = baseScale;
             sb.y = display._size;
@@ -6186,8 +6220,8 @@ export class EntityRenderer {
               display._slimeFrame = frameIdx;
               sb.texture = tex;
             }
-            sb.scale.x = 96 / 128;
-            sb.scale.y = 96 / 128;
+            sb.scale.x = (96 / 128) * _peakK;
+            sb.scale.y = (96 / 128) * _peakK;
             /* v2.3.1824: the splat has its own baseline (row ~108, vs 86 for
                the live blob) — anchoring it on the live number would drop it
                24px through the floor at the moment of death. */

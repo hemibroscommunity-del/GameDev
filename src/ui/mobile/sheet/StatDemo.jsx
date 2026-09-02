@@ -3,7 +3,7 @@ import { CharacterView } from './CharacterView.jsx';
 import { VitalBar, VITAL_ICONS } from './VitalBar.jsx';
 import { DMG_CRIT_COLOR } from '@/rendering/systems/effectsRenderer.js';
 import { ELEMENTS } from '@/data/elements.js';
-import { prog3CatFor } from '@/data/prog3.js';   /* v2.3.2227: weapon type -> combat lane */
+import { prog3CatFor } from '@/data/prog3.js';   /* v2.3.2231: weapon type -> combat lane */
 
 /* ═══ v2.3.2222: WHAT A STAT IS FOR, SHOWN WITH THE GAME'S OWN PIECES ═══
  *
@@ -63,7 +63,7 @@ const SLIME = {
   shoot: { url: '/sprites/monsters/slime-shoot-v2.png', frames: 8 },
 };
 const ORB_URL = '/sprites/monsters/slime-projectile-v1.png';
-/* ═══ v2.3.2227: WHAT LEAVES YOUR HANDS ═══
+/* ═══ v2.3.2231: WHAT LEAVES YOUR HANDS ═══
  * Owner: "Would it be better to show the character simulate attacking the
  * slime with a weapon?  Maybe the combat primary skill they are viewing the
  * stat demo through?"
@@ -84,7 +84,7 @@ const ORB_URL = '/sprites/monsters/slime-projectile-v1.png';
  *
  * WHICH ONE is read off the WEAPON, not off the lane, and that is the more
  * useful rule of the two: an attack row is already handed its lane's weapon
- * (HeroExpanded v2.3.2227), so it follows the lane for free -- while a BODY
+ * (HeroExpanded v2.3.2231), so it follows the lane for free -- while a BODY
  * row, which has no lane, correctly follows whatever you are actually
  * holding.  No weapon: the lunge, which is what bare hands do. */
 const SHOT = {
@@ -125,7 +125,7 @@ class Script {
   /* The hero attacks; the slime squashes and a number comes off it.
      MELEE lunges.  RANGED looses a shot that crosses the gap and lands --
      the flight IS the tell, so the impact beat is what it always was and
-     every scene's rhythm is unchanged (v2.3.2227).  `this.shot` is the
+     every scene's rhythm is unchanged (v2.3.2231).  `this.shot` is the
      scene's weapon category, set by StatDemo before the script is built. */
   strike(text, kind, dx, extra) {
     /* The motion is a class toggled on, then off after its CSS animation --
@@ -314,7 +314,7 @@ const Pop = ({ p }) => {
 /* The projectile the hero looses, in flight.  Keyed by the shot counter so
    each loose is a fresh element and therefore a fresh run of the CSS
    flight; the bolt additionally steps its 4-cel strip the way the slime
-   steps its own (v2.3.2227). */
+   steps its own (v2.3.2231). */
 const Shot = ({ cat, n }) => {
   const a = SHOT[cat];
   if (!a) return null;
@@ -367,7 +367,7 @@ const reducedMotion = () => {
  *  on day one and its scene when somebody writes it. */
 export const StatDemo = ({ stat, iconSrc, weapon, shield }) => {
   const make = SCENES[stat];
-  /* v2.3.2227: the attack this scene plays, read off the weapon in the
+  /* v2.3.2231: the attack this scene plays, read off the weapon in the
      figure's hands.  prog3CatFor is the game's own mapping (greatsword
      counts as sword), so the scene cannot disagree with the lane the points
      are actually being spent in.  `sword` and no weapon both mean the
@@ -390,7 +390,7 @@ export const StatDemo = ({ stat, iconSrc, weapon, shield }) => {
     };
     run();
     return () => { alive = false; timers.forEach(clearTimeout); };
-  }, [stat, shot]);   /* v2.3.2227: a scene built for a bow must be rebuilt when the lane changes */
+  }, [stat, shot]);   /* v2.3.2231: a scene built for a bow must be rebuilt when the lane changes */
   if (!make) return null;
   return (
     <div className="bt-sd" data-stat-demo={stat} aria-hidden="true">

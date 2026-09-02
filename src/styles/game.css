@@ -3020,7 +3020,7 @@ html[data-orient="landscape"] .bt-dashboard{
 .bt-sd-hero--swing{animation:bt-sd-lunge .34s ease-out 1}
 @keyframes bt-sd-lunge{0%{transform:translateX(0)}35%{transform:translateX(12px)}100%{transform:translateX(0)}}
 .bt-sd-hero--dodge{animation:bt-sd-sidestep .6s ease-in-out 1}
-/* v2.3.2227: a RANGED attack.  The melee lunge steps INTO the slime; a bow
+/* v2.3.2231: a RANGED attack.  The melee lunge steps INTO the slime; a bow
    or a staff does the opposite -- the body settles back as the shot leaves,
    and the thing that crosses the gap is the projectile, not the man.  Small
    (5px against the lunge's 12) because the read here belongs to the arrow. */
@@ -3044,7 +3044,7 @@ html[data-orient="landscape"] .bt-dashboard{
 /* the orb: from the slime's mouth to the hero, straight and quick */
 .bt-sd-orb{position:absolute;right:88px;bottom:34px;width:22px;height:22px;background-size:22px 22px;background-repeat:no-repeat;animation:bt-sd-orb .38s linear 1 both}
 @keyframes bt-sd-orb{from{transform:translateX(0)}to{transform:translateX(-120px)}}
-/* v2.3.2227: the hero's shot -- the orb's mirror image.  Leaves the hand
+/* v2.3.2231: the hero's shot -- the orb's mirror image.  Leaves the hand
    (left:66px is just off the figure's centre line, at chest height) and
    crosses to the slime in 200ms, which is the beat Script.strike already
    waited before the squash, so the impact lands with the arrival and no

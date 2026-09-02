@@ -174,7 +174,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.screenshot({ path: 'tools/qa/mp/out/statdemo-scene.png' }).catch(() => {});
 
   /* ── 3. THE FIGURE HOLDS THE LANE'S WEAPON, AND ATTACKS WITH IT ──
-     v2.3.2227.  Owner: "Maybe the combat primary skill they are viewing the
+     v2.3.2231.  Owner: "Maybe the combat primary skill they are viewing the
      stat demo through?"  The melee lane is open and a sword is equipped, so
      the guard below is trivially satisfiable by the OLD behaviour too --
      which is why it is only the guard, and the Bow lane below is the test. */

@@ -1,4 +1,4 @@
-/* THE DAMAGE NUMBER SAYS WHICH WEAPON DEALT IT (v2.3.2228).
+/* THE DAMAGE NUMBER SAYS WHICH WEAPON DEALT IT (v2.3.2232).
  *
  * Owner: "Monsters are showing melee damage from bow and melee and magic
  * damage from magic."
@@ -185,7 +185,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (!serverMode) {
       /* Client-rolled zones keep the local prediction: it IS the truth
          there, so the number still comes from the swing and still carries
-         its mark.  This is the control for the gate added in v2.3.2228 --
+         its mark.  This is the control for the gate added in v2.3.2232 --
          if it were gated too broadly, this would go silent. */
       rec.ok(`[${tag}] a melee hit is marked with the sword`,
         icons(sw).includes('sword'), sw);
@@ -228,7 +228,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ...and a PEER's hit gets the same treatment, which the client could
      never do on its own: another player's weapon is not knowable locally,
-     which is why peer numbers carried no mark at all before v2.3.2228. */
+     which is why peer numbers carried no mark at all before v2.3.2232. */
   const peer = await serverHit(P, 'ranged', { peer: true });
   console.log('    monster_hit (peer, ranged) -> ' + JSON.stringify(peer));
   rec.ok("a PEER's bow hit is marked with the arrow too",

@@ -36,7 +36,7 @@ import { pushAbilityRings } from '@/game/abilities.js'; /* v2.3.1735: a peer's b
 import { friendsSrv } from '@/ui/mobile/sheet/friendsSync.js'; /* v2.3.1324 */
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 
-/* ═══ v2.3.2228: THE DAMAGE NUMBER NAMES THE WEAPON THAT DEALT IT ═══
+/* ═══ v2.3.2232: THE DAMAGE NUMBER NAMES THE WEAPON THAT DEALT IT ═══
  *
  * Owner: "Monsters are showing melee damage from bow and melee and magic
  * damage from magic."
@@ -48,7 +48,7 @@ import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHe
  * prediction picks 'arrow'/'spell' (projectiles.js) and still does; what
  * v2.3.2220 changed was WHICH popup the player ends up reading.
  *
- * `slot` now rides on the event (server/src/combat.js v2.3.2228), which
+ * `slot` now rides on the event (server/src/combat.js v2.3.2232), which
  * also answers it for PEER hits -- another player's weapon is not knowable
  * locally at any price, which is why peer numbers carried no mark at all.
  *
@@ -820,7 +820,17 @@ export function processGameEvent(type, payload, S, deps) {
                      slime tripling in size is the warning, and it needs the
                      extra time to be a fair one. */
                 } else if (payload.phase === 'execute') {
-                  if (_sbM) { _sbM._burstUntil = 0; _sbM._burstFrom = 0; }
+                  if (_sbM) {
+                    _sbM._burstUntil = 0; _sbM._burstFrom = 0;
+                    /* v2.3.2227: hand the peak size to the death burst.  The
+                       slime's own explosion (slime-death-v10, 15 frames) used
+                       to play at 1x because clearing the swell snapped the
+                       sprite back first -- so the thing that blew up was not
+                       the thing that had just filled the screen.  The
+                       renderer releases this on its own after the animation's
+                       length, which it owns. */
+                    _sbM._burstPeakFrom = Date.now();
+                  }
                   /* v2.3.2226: and the ground splat with it -- it was a
                      minted radial blob sized to the blast, which is a
                      code-drawn impact area by another name.  What is left is
@@ -1450,7 +1460,7 @@ export function processGameEvent(type, payload, S, deps) {
                          which is how a crit could read as ordinary depending
                          on which path produced its number. */
                       crit: !!payload.isCrit,
-                      /* v2.3.2228: ...and a peer's arrow reads as an arrow.
+                      /* v2.3.2232: ...and a peer's arrow reads as an arrow.
                          Undefined until the worker names the slot -- better
                          no mark than OUR weapon on THEIR hit. */
                       iconKey: payload.isCrit ? 'crit' : dmgIconForSlot(S, payload, false),
@@ -1490,7 +1500,7 @@ export function processGameEvent(type, payload, S, deps) {
                       '-' + payload.dmg, payload.isCrit ? DMG_CRIT_COLOR : '#ffd08a',
                       payload.isCrit
                         ? { crit: true, iconKey: 'crit', special: !!S._ownSpecialRecent }
-                        /* v2.3.2228: the weapon that dealt it, not a flat sword. */
+                        /* v2.3.2232: the weapon that dealt it, not a flat sword. */
                         : { iconKey: dmgIconForSlot(S, payload, true), special: !!S._ownSpecialRecent });  /* v2.3.2211; v2.3.2220 */
                   } else if (payload.thorns) {
                     /* v2.3.1137: Thorns reflect is SERVER-rolled with no

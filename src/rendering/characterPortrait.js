@@ -416,7 +416,7 @@ export async function drawCharacterPortrait(canvas, opts) {
      reliably tellable by eye at 96px — a `dir` that silently fell back would
      look plausible in every screenshot.  Stamped on the canvas so a scenario
      reads the element it is asserting about rather than a global. */
-  /* v2.3.2227: the WEAPON, for the same reason and by the same means.  The
+  /* v2.3.2231: the WEAPON, for the same reason and by the same means.  The
      stat explainer picks the figure's weapon from the combat lane you are
      reading rather than from your equipped slot, and a sword and a bow at
      this size are not reliably tellable apart from a screenshot either. */
