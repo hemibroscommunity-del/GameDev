@@ -55,7 +55,7 @@ import {
    below silently exercises the legacy raw-stat path on the client and the
    prog3 path on the server, which are not mirrors of each other and never
    were. */
-import { setProg3Enabled } from '../../src/data/prog3.js';
+import { setProg3Enabled, setProg3XEnabled, prog3CritPct, prog3CritMult, prog3CritFlat } from '../../src/data/prog3.js'; /* v2.3.2218 */
 import { createGatherNode as clientGatherNode, WOODCUTTING_TIERS as CLIENT_WOOD_TIERS } from '../../src/data/lifeSkills.js';
 import { FISHING_TIERS } from '../../src/data/lifeSkills.js';
 import { AMULET_TIERS, NUGGETS_PER_BAR, GOLD_NUGGET_DROP, GEM_DROP_RATES, GEM_EXTRACT_BASE_COST } from '../../src/data/items.js';
@@ -696,6 +696,56 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     new URL('../../src/rendering/preloadAnimations.js', import.meta.url), 'utf8');
   check('snowball burst: ...and it is preloaded per-zone, not on first use',
     /ensureSnowballBurstTex/.test(pre) && /tasks\.push\(Promise\.resolve\(ensureSnowballBurstTex/.test(pre), {});
+
+  /* ═══ v2.3.2218: THE CRIT THE POPUP PREDICTS IS THE CRIT THE SERVER ROLLS ═══
+     gameEvents skips the server's damage number for your OWN hits ("we
+     already show it locally"), so on your own swing the popup is purely
+     monsterCombat's local prediction and is never corrected on screen — the
+     HP bar just drains by a different figure.  That makes any drift here
+     invisible in play and permanent, which is how the swing path stayed on
+     the retired Power/Ferocity curves for the whole prog3 era while
+     calcDisplayDps and the Hero screen were moved over.
+
+     First: the client's own prog3 crit helpers must equal the server's
+     formula (these are what the fixed swing path calls). */
+  setProg3XEnabled(true);
+  const mkP3 = (crit, critDmg) => ({
+    prog3: { v: 3, sk: { sword: { level: 40 }, bow: { level: 1 }, staff: { level: 1 } },
+      atk: { sword: { crit, critDmg, dmg: 0 }, bow: {}, staff: {} }, alloc: {}, poolBy: {} },
+  });
+  let critDrift = null;
+  for (const [c, cd] of [[0, 0], [10, 10], [25, 25], [50, 75], [75, 100]]) {
+    const p = mkP3(c, cd);
+    const srvChance = SRV_PROG3.ATK.crit.base + c * SRV_PROG3.ATK.crit.per;
+    const srvMult = 1.5 + cd * SRV_PROG3.ATK.critDmg.per;
+    const cliChance = prog3CritPct(p, 'sword');
+    const cliMult = prog3CritMult(p, 'sword');
+    if (Math.abs(srvChance - cliChance) > 1e-9 || Math.abs(srvMult - cliMult) > 1e-9) {
+      critDrift = { c, cd, srvChance, cliChance, srvMult, cliMult }; break;
+    }
+  }
+  check('crit parity: the client crit helpers equal the server roll across the allocation range',
+    critDrift === null, critDrift);
+  check('crit parity: ...and no flat term under prog3, matching combat.js',
+    prog3CritFlat(mkP3(75, 100), 'sword') === 0, prog3CritFlat(mkP3(75, 100), 'sword'));
+  setProg3XEnabled(false);
+
+  /* Second: the swing path must actually CALL them.  The helpers being
+     correct is worth nothing if the popup does not read them — which was
+     exactly the state this pin was written for. */
+  const mc = readFileSync(
+    new URL('../../src/game/monsterCombat.js', import.meta.url), 'utf8');
+  for (const fn of ['prog3CritPct', 'prog3CritMult', 'prog3CritFlat']) {
+    check(`crit parity: the swing prediction calls ${fn}`, mc.includes(fn + '(_R6'), {});
+  }
+  /* The 8% floor and the staff x0.35 are legacy-only: the server applies
+     neither under prog3, so they must not run on the prog3 branch. */
+  check('crit parity: the legacy floor/staff-scalar sit behind the legacy branch',
+    /_p3Cat \? prog3CritPct/.test(mc) || /if \(_p3Cat\) \{/.test(mc), {});
+  /* combat.js multiplies the special in BEFORE anchoring, so anchoring
+     first and scaling after would multiply the FLOOR too. */
+  check('crit parity: the special multiplies in before the crit anchor',
+    /_specBase \* specialMult/.test(mc) && !/_critBase \* specialMult/.test(mc), {});
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

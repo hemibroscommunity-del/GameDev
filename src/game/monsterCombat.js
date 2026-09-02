@@ -36,6 +36,7 @@ import {
   trainDefense, applyIronSkin, applyResilience, /* v2.3.1314 */
   monsterBodyOffsetY, monsterMeleeHitRadius, monsterProceduralRadius, TOWN_SPAWN /* v2.3.1777 */
 } from '@/data/index.js';
+import { prog3Live, prog3CatFor, prog3CritPct, prog3CritMult, prog3CritFlat } from '@/data/prog3.js'; /* v2.3.2218 */
 import { MONSTER_VARIANTS, baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2200 */, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
 import { rollMonsterShard } from '@/data/shards.js';
@@ -98,27 +99,63 @@ export function updateMonsterCombat(S, deps) {
           /* §2.1 Crit — T1 stat (Power) is the baseline source; the
              equipped weapon CATEGORY's crit channel is the T2 amp (replaces
              the retired generic Ferocity stat). */
-          var _wCrit = getWeaponCritStat(_R6);
-          var critChance = calcCritChance(_R6.power, _wCrit);
-          /* v2.3.1133: crit MULT scales on the crit-DMG channel (Executioner /
-             Headshot / Arcane Focus), not the crit-CHANCE channel — the old
-             call passed _wCrit here, quietly drifting from the server which
-             used the retired Ferocity (0). */
-          var critMult = calcCritMult(_R6.power);
-          /* v2.3.1345: the crit-DMG channel is a FLAT accelerating
-             bonus on lucky hits now (added after the power mult). */
-          var critFlat = getWeaponCritFlat(_R6);
-          /* Baseline floor: at zero ferocity, calcCritChance returns 0%, which
-             meant a brand-new player could never grand-slam. Floor at 8% so a
-             grand slam is reachable from the first swing. Applied before the
-             staff multiplier so staff still scales as designed (~2.8% floor). */
-          critChance = Math.max(critChance, 0.08);
-          /* Staff has halved crit chance — lower DPS, higher AoE + variance */
-          var isStaffEquipped = (_R6.activeSlot === 'staff');
-          if (isStaffEquipped) {
-            critChance *= 0.35; /* 35% of normal crit rate */
+          /* ═══ v2.3.2218: PREDICT THE CRIT THE SERVER ACTUALLY ROLLS ═══
+             This block was prog3-BLIND.  Under prog3 the server rolls
+             chance = 1% + 0.4%/pt and multiplier = 1.5 + 1%/pt, both read
+             from the offense block of the weapon being swung; every line
+             below computed the retired Power/Ferocity curves instead.  For
+             a character with 75 crit / 100 critDmg points that is 8% at
+             x1.5 predicted against 31% at x2.5 rolled — crits appearing a
+             quarter as often and each one landing 40% short.
+
+             It was invisible because the two are never shown side by side:
+             gameEvents skips the server's own-hit number ("we already show
+             it locally"), so on your own swing the popup is ONLY this
+             prediction, and the HP bar drains by a different figure.
+
+             The correct helpers already existed and were already right —
+             calcDisplayDps and the Hero screen's Crit row have used them
+             since v2.3.2210.  Only this path, the one the player actually
+             watches, never called them. */
+          var _p3Cat = prog3Live(_R6) ? prog3CatFor((_activeWpn && _activeWpn.type) || 'sword') : null;
+          var critChance, critMult, critFlat;
+          if (_p3Cat) {
+            critChance = prog3CritPct(_R6, _p3Cat);
+            critMult = prog3CritMult(_R6, _p3Cat);
+            critFlat = prog3CritFlat(_R6, _p3Cat);
+            /* No 8% floor and no staff x0.35 here: the server applies
+               neither under prog3, and prog3CritPct's own 1% base is what
+               replaced the floor (an unallocated character can still crit).
+               Re-adding either would put the drift straight back. */
+          } else {
+            var _wCrit = getWeaponCritStat(_R6);
+            critChance = calcCritChance(_R6.power, _wCrit);
+            /* v2.3.1133: crit MULT scales on the crit-DMG channel (Executioner /
+               Headshot / Arcane Focus), not the crit-CHANCE channel — the old
+               call passed _wCrit here, quietly drifting from the server which
+               used the retired Ferocity (0). */
+            critMult = calcCritMult(_R6.power);
+            /* v2.3.1345: the crit-DMG channel is a FLAT accelerating
+               bonus on lucky hits now (added after the power mult). */
+            critFlat = getWeaponCritFlat(_R6);
+            /* Baseline floor: at zero ferocity, calcCritChance returns 0%, which
+               meant a brand-new player could never grand-slam. Floor at 8% so a
+               grand slam is reachable from the first swing. Applied before the
+               staff multiplier so staff still scales as designed (~2.8% floor). */
+            critChance = Math.max(critChance, 0.08);
+            /* Staff has halved crit chance — lower DPS, higher AoE + variance */
+            var isStaffEquipped = (_R6.activeSlot === 'staff');
+            if (isStaffEquipped) {
+              critChance *= 0.35; /* 35% of normal crit rate */
+            }
           }
-          if (((_R6$_amuletBonus2 = _R6._amuletBonus) === null || _R6$_amuletBonus2 === void 0 ? void 0 : _R6$_amuletBonus2.stat) === 'critDmg') critMult += _R6._amuletBonus.value / 100;
+          /* v2.3.2218: the amulet's critDmg rides the LEGACY branch only.
+             combat.js has no amulet crit term at all, so adding it under
+             prog3 would re-introduce a client-only bonus — the exact class
+             of drift this change removes.  Flagged to the owner rather than
+             resolved here: closing it either nerfs a real amulet or is a
+             server balance change, and neither is a display fix. */
+          if (!_p3Cat && ((_R6$_amuletBonus2 = _R6._amuletBonus) === null || _R6$_amuletBonus2 === void 0 ? void 0 : _R6$_amuletBonus2.stat) === 'critDmg') critMult += _R6._amuletBonus.value / 100;
           var invuln = Date.now() < S.respawnTimer;
           S.monsters.forEach(function (m) {
             if (!m.alive) {
@@ -1601,10 +1638,23 @@ export function updateMonsterCombat(S, deps) {
                   var _rng = calcDisplayDmgRange(_R6, _activeWpn);
                   _rangeTop = (_rng && _rng.max) || 0;
                 }
+                /* v2.3.2218: the SPECIAL multiplier goes in BEFORE the crit,
+                   because that is the order combat.js uses — it does
+                   `base *= 3` and only then anchors, so the anchor floors
+                   the already-tripled number and is NOT itself tripled.
+                   Applying it afterwards (as this did) multiplied the FLOOR
+                   too: a special crit whose ordinary crit fell under the
+                   anchor predicted 2 x rangeTop x 3 where the server paid
+                   max(base x 3 x critMult, 2 x rangeTop) — around 60% high
+                   on exactly the biggest, most-watched hit in the game.
+                   Safe to reorder: under prog3 calcSpecialDmg and
+                   calcWeaponDmg share prog3DmgTerm, so _specBase is the
+                   server's pre-special base term for term. */
+                var _base = _specBase * specialMult;
                 var _critBase = isCrit
-                  ? Math.max(_specBase * critMult, _rangeTop * CRIT_ANCHOR_MULT) + critFlat
-                  : _specBase;
-                var dmg = Math.round(_critBase * specialMult);
+                  ? Math.max(_base * critMult, _rangeTop * CRIT_ANCHOR_MULT) + critFlat
+                  : _base;
+                var dmg = Math.round(_critBase);
                 /* Boss invulnerability — can only be damaged during recovery phase */
                 if (m._invulnerable) {
                   pushDmgPopup(S, m.x, m.y - 20, 'IMMUNE', '#888');

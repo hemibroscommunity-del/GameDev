@@ -289,3 +289,64 @@ global manifest and spend startup budget on a strip most sessions never see.
 It is instead kicked from `preloadZoneAssets` for frost and **pushed into
 `tasks`**, so it is awaited behind the zone overlay — the preload law's
 zone-asset exception done properly, not a lazy first-use load.
+
+## Crit parity: the popup predicted a different crit than the server rolled (v2.3.2218)
+
+Asked to double-check that client-side crit damage matches the server, it
+did not. Three divergences, all under prog3, all on the number the player
+actually watches.
+
+**Why it stayed hidden.** `gameEvents` skips the server's damage number for
+your OWN hits ("skip our own — we already show it locally"), so on your own
+swing the popup is purely `monsterCombat`'s local prediction and is never
+corrected on screen. The monster's HP bar drains by the server's figure and
+the number floating off it is the client's. The two are never shown side by
+side, so drift here is invisible in play and permanent.
+
+**1. The swing path was prog3-blind.** It computed crit from the retired
+Power/Ferocity curves — `calcCritChance(power, ferocity)` with an 8% floor
+and a staff x0.35, and `calcCritMult(power)` — while the server rolls
+`1% + 0.4%/pt` and `1.5 + 1%/pt` from the offense block of the weapon being
+swung. Measured:
+
+| crit / critDmg pts | server chance | client chance | server mult | client mult |
+|---|---|---|---|---|
+| 0 / 0    |  1.0% |  8.0% | 1.50 | 1.50 |
+| 25 / 25  | 11.0% |  8.0% | 1.75 | 1.50 |
+| 75 / 100 | 31.0% |  8.0% | 2.50 | 1.50 |
+
+At a built-out allocation you saw crits about a quarter as often as they
+happened, and each one landed 40% short.
+
+The correct helpers already existed and were already right — `prog3CritPct`
+/ `prog3CritMult` / `prog3CritFlat`, used by `calcDisplayDps` and the Hero
+screen's Crit row since v2.3.2210. Only this path never called them. The 8%
+floor and staff x0.35 stay on the legacy branch: the server applies neither,
+and `prog3CritPct`'s own 1% base is what replaced the floor.
+
+**2. The special multiplied the crit FLOOR.** `combat.js` does `base *= 3`
+and *then* anchors, so the anchor floors an already-tripled number and is
+not itself tripled. The client anchored first and scaled after, so a special
+crit whose ordinary crit fell under the anchor predicted `2 x rangeTop x 3`
+against a server paying `max(base x 3 x critMult, 2 x rangeTop)` — roughly
+60% high on the biggest, most-watched hit in the game. Safe to reorder
+because under prog3 `calcSpecialDmg` and `calcWeaponDmg` share
+`prog3DmgTerm`, so the client's special base is the server's pre-special
+base term for term.
+
+**3. Amulet critDmg is client-only — NOT fixed, flagged.** The client added
+`_amuletBonus.value / 100` to the multiplier; `combat.js` has no amulet crit
+term at all. It is now confined to the legacy branch so it cannot re-open
+the drift, but closing it properly either nerfs a real amulet or is a server
+balance change. That is the owner's call, not a display fix.
+
+Note what parity does and does not mean here: both sides roll their own
+`Math.random()` for the crit and for damage variance, so the two numbers
+will never be equal on a given swing and are not meant to be. What must
+match is the formula and its inputs, so the prediction is drawn from the
+same distribution as the truth.
+
+`mirror-audit` pins the helpers numerically against the server formula
+across the allocation range, that the swing path calls all three, and that
+the special multiplies in before the anchor. Both halves were verified to
+fail against the pre-fix code.
