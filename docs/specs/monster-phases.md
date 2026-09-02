@@ -108,3 +108,21 @@ That makes the **swell the only telegraph**, which is why the fuse doubled in
 the same change — a slime tripling in size has to carry the whole warning now,
 and it needs the extra second to be a fair one. A real goo-burst strip is the
 upgrade.
+
+## v2.3.2227 — the explosion plays at the size it grew to
+
+Owner: "play the slime explosion animation at the peak swell size."
+
+The slime already **had** an explosion: `slime-death-v10` is a 15-frame death
+burst, drawn for `SLIME_DEATH_MS`. It was playing at 1x because detonation
+cleared the swell first, snapping the sprite back before the burst started —
+so the thing you watched blow up was not the thing that had just filled the
+screen.
+
+Detonation now hands the peak scale to the death burst, and the renderer
+holds it **only while that burst is the frame being drawn** — anchored to the
+animation rather than to a duration. Two events arrive separately here (the
+`execute` cue and the kill), so a fixed hold would either cut the explosion
+short or outlive it onto the remnants splat, which should stay normal size.
+`display._deathDrewAt === now` self-clears: no reset pass, and no timer
+running in parallel with the animation it is meant to be tracking.

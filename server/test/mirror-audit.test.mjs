@@ -822,6 +822,17 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     /phase === 'swell'/.test(src) && /phase === 'execute'/.test(src), {});
   check('burst mirror: ...and the swell is drawn',
     /_burstUntil/.test(rend), {});
+  /* v2.3.2227: the slime's own explosion (slime-death-v10) must play at the
+     size it grew to.  Clearing the swell on detonation snapped the sprite
+     back to 1x first, so the thing that blew up was not the thing that had
+     filled the screen.  Both halves pinned: the stamp on detonation, and the
+     renderer holding peak only while the explosion is the frame being drawn
+     (anchored to the animation, not a parallel timer that could outlive it
+     onto the remnants splat). */
+  check('burst art: detonation hands the peak size to the death burst',
+    /_burstPeakFrom = Date\.now\(\)/.test(src), {});
+  check('burst art: ...and the renderer holds it only while that burst draws',
+    /_deathDrewAt === now/.test(rend) && /_burstPeakFrom/.test(rend), {});
   check('burst mirror: the fuse rides the wire for resyncs (w.bu)',
     /w\.bu = m\._burstUntil/.test(tickSrc) && /md\.bu/.test(wsSrc), {});
   /* Every exploding variant must be a real variant, or the table silently

@@ -6172,7 +6172,14 @@ export class EntityRenderer {
           }
           continue;
         }
+        /* v2.3.2227: note the frame the death burst drew on, so the swell's
+           peak scale can be held for exactly as long as the explosion is on
+           screen -- and not a frame longer, which would scale the remnants
+           splat that follows it. Comparing to `now` self-clears: no reset
+           pass, and no timer running in parallel with the animation it is
+           supposed to be tracking. */
         if (isFodder && deathT != null && deathT >= 0 && deathT < SLIME_DEATH_MS && hasSlimeState('death')) {
+          display._deathDrewAt = now;
           activeIds.add(m.id);
           const display = this.monsterDisplays.get(m.id);
           if (display && display._spriteBody) {
@@ -6960,14 +6967,38 @@ export class EntityRenderer {
          the container would blow up the shadow and the health bar with it,
          and a health bar three times the size floating over a slime reads as
          a rendering fault, not a mechanic. */
-      if (m._burstUntil && display._spriteBody) {
-        const _bsSpan = Math.max(1, m._burstUntil - (m._burstFrom || m._burstUntil));
-        const _bsT = Math.max(0, Math.min(1, (now - (m._burstFrom || now)) / _bsSpan));
-        /* Eased so it lurches at the end rather than creeping linearly --
-           the last moment is the one you have to react to. */
-        const _bsK = 1 + ((m._burstScale || 3.5) - 1) * (_bsT * _bsT);
-        display._spriteBody.scale.x *= _bsK;
-        display._spriteBody.scale.y *= _bsK;
+      if ((m._burstUntil || m._burstPeakFrom) && display._spriteBody) {
+        let _bsK;
+        if (m._burstUntil) {
+          const _bsSpan = Math.max(1, m._burstUntil - (m._burstFrom || m._burstUntil));
+          const _bsT = Math.max(0, Math.min(1, (now - (m._burstFrom || now)) / _bsSpan));
+          /* Eased so it lurches at the end rather than creeping linearly --
+             the last moment is the one you have to react to. */
+          _bsK = 1 + ((m._burstScale || 3.5) - 1) * (_bsT * _bsT);
+        } else {
+          /* ═══ v2.3.2227: THE BURST PLAYS AT THE SIZE IT GREW TO ═══
+             Owner: "play the slime explosion animation at the peak swell
+             size."  The slime already HAS an explosion -- slime-death-v10 is
+             a 15-frame death burst -- but clearing the swell on detonation
+             snapped the sprite back to 1x first, so the thing you watched
+             blow up was not the thing that had just filled the screen.
+
+             Held at FULL peak (not the eased ramp) for exactly the death
+             animation's length, and the length is read from the renderer's
+             own SLIME_DEATH_MS rather than passed in, so the hold cannot
+             drift out of step with the animation it is holding for. */
+          /* Held only while the explosion is actually the thing being drawn.
+             Anchored to the animation rather than to a duration so the two
+             cannot drift apart -- the death event and the burst event arrive
+             separately, and a fixed hold would either cut the explosion
+             short or outlive it onto the splat. */
+          _bsK = (display._deathDrewAt === now) ? (m._burstScale || 3.5) : 1;
+          if (_bsK === 1 && now - m._burstPeakFrom > 2000) m._burstPeakFrom = 0;
+        }
+        if (_bsK !== 1) {
+          display._spriteBody.scale.x *= _bsK;
+          display._spriteBody.scale.y *= _bsK;
+        }
       }
       if (!display._emoji) {
         const emojiText = new Text({
