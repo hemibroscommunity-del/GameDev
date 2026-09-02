@@ -401,6 +401,25 @@ export const telegraphMethods = {
         monsterId: m.id, targetId: pid, dmg: raw, dmgTaken: res.dmgTaken,
         dodged: res.dodged, secondWind: res.secondWind || undefined,
         zone: zoneId, attackerX: m.x, attackerY: m.y,
+        /* ═══ v2.3.2235: SAY THAT THIS ONE WAS RESOLVED HERE ═══
+           Owner, on the exploding slime: "I don't think I saw damage
+           numbers on my own health bar ... once slime exploded."
+
+           The client's monster_attack handler drops an event when the
+           attacker is not in its local monster snapshot, or when the
+           attacker is more than 160px from where the player is NOW.  Both
+           filters were written against melee "ghost hits" and both are
+           the wrong question for a telegraph hit: this damage was resolved
+           against where the player stood at DETONATION, by a monster that
+           is in the act of dying, and the sane response to a swelling
+           slime is to run.  Measured -- each filter swallows the number on
+           its own (tools/qa/mp/mp-burstdmg.mjs).
+
+           The client cannot tell the two apart without being told, so this
+           tells it: the kit's kind, display-only, nothing server-side
+           reads it back.  Deploy-order (rule 19): an older worker omits
+           it and the client keeps its current filtering exactly. */
+        ability: (kit && kit.kind) || undefined,
       },
     });
     this._saveRpgVitals(pid, ps);
