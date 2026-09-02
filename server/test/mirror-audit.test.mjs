@@ -881,6 +881,31 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     /case 'fire_trail'/.test(cliSrc), {});
   check('firetrail mirror: ...and the renderer draws the patches',
     /S\._fireTrail/.test(cliRend), {});
+  /* ═══ v2.3.2239: THE OWNER'S ART ═══
+     Three ways the sheet can ship and do nothing, each pinned:
+       - it is not in the fxStrips load loop, so it never preloads (and
+         CLAUDE.md's animation-preloading law is broken silently);
+       - the sprite is added to a layer ABOVE the player, which is the bug
+         v2.3.2238 shipped: `particles` sits above `entities`/`player` in
+         pixiApp's WORLD_LAYER_NAMES, so burning GROUND painted over the
+         character standing on it;
+       - the scale comes from the sprite instead of the scorch plate, which
+         draws a lie about the radius the worker tests -- and this hazard
+         persists, so a player learns its edge by walking it. */
+  const cliFx = readFileSync(new URL('../../src/rendering/fxStrips.js', import.meta.url), 'utf8');
+  check('firetrail art: the strip is in the fxStrips preload loop',
+    /for \(const cfg of \[[^\]]*FIRE_TRAIL_FX[^\]]*\]\)/.test(cliFx), {});
+  check('firetrail art: ...and fxStripsReady is what the manifest awaits',
+    /export function fxStripsReady/.test(cliFx), {});
+  check('firetrail art: the patch sprite goes on the layer BELOW the player',
+    /this\.telegraphLayer\.addChild\(spr\)/.test(cliRend), {});
+  check('firetrail art: the scale is taken from the scorch plate, not the sprite',
+    /FIRE_TRAIL_PLATE_FRAC/.test(cliRend) && /FIRE_TRAIL_PLATE_FRAC/.test(cliFx), {});
+  /* The procedural discs are the FALLBACK, not a leftover: a sheet that
+     fails to load must degrade to a visible hazard, never to invisible
+     ground that still burns you. */
+  check('firetrail art: the procedural fallback is still there for a missing sheet',
+    /FIRE_TRAIL_FX\.frames\.length === 8/.test(cliRend), {});
   check('firetrail mirror: _tickMonsters lays the trail',
     /this\._maybeDropFirePatch\(/.test(srvTick), {});
   check('firetrail mirror: ...and burns it once per zone per tick',

@@ -147,26 +147,72 @@ fire trail is the case that makes it certain rather than theoretical: fire
 under your feet has no direction, so a shield pointed anywhere near it
 swallows every tick's number. Now gated on `!_srvResolved`.
 
-## Rendering
+## Rendering (v2.3.2239: the owner's art)
 
-Drawn with `Graphics` rather than a sprite strip, and that is a deliberate
-simplification: the patch is a flickering ember disc a draw call already
-makes well, and adding a strip would mean registering a loader in the preload
-manifest (CLAUDE.md's animation-preloading law) for an effect that does not
-need one. No new asset, no new first-use hitch.
+Eight frames of a flame guttering on a scorched plate, from the owner. The
+source grid lives at `assets/fx-source/fire-trail-grid.png`;
+`tools/import_fire_trail.mjs` turns it into
+`public/sprites/fx/fire-trail-v1.png`, the 2048×256 single-row strip the
+engine's fx loaders expect.
+
+**The importer is not `import_fx_sheet.mjs`** because the art cannot arrive
+in one row: the engine wants an 8:1 image and no generator will produce that
+aspect, so the sheet is a 4×2 grid that has to be unwrapped. Two measured
+facts make that safe, both re-printed on every run as the audit:
+
+- **The two rows sit at different heights in their cells** (row 0's art ends
+  at y=555 in a 627px cell, row 1's at y=374). Cut naively on the grid lines,
+  frame 4 → frame 5 jumps 180px and the loop looks broken. Each row gets its
+  own vertical offset.
+- **Within a row everything is already pinned** — horizontal centres to 1px,
+  baselines to 1px — which is what lets one transform serve a whole row. One
+  transform per row, never per frame: fitting each frame to its own bounding
+  box would re-centre a flame that is supposed to be flickering, and the fire
+  would breathe in place instead of licking.
+
+**The anchor is the scorch plate, not the sprite.** The flame is much taller
+than it is wide (≈281 vs ≈237 in the source), and only the plate corresponds
+to the radius the worker tests. Each cell is composed with the plate's centre
+at the cell centre, and the renderer scales by `FIRE_TRAIL_PLATE_FRAC`
+(113/256, **measured by the importer, not hand-tuned**) so the scorch on
+screen is exactly the circle the server burns. Same "never draw a lie about
+the reach" rule the element nova follows — and this hazard needs it more,
+because it persists and a player learns its edge by walking it.
+
+Each patch starts at its own frame offset, seeded from its spawn timestamp,
+so a trail of six does not lick in lockstep. The cycle is 560ms (~14fps),
+deliberately slower than it looks like it should be: the eight frames are
+eight independently drawn flames rather than a tweened one, so run fast they
+read as a strobe.
+
+Registered in `src/rendering/fxStrips.js`, whose `fxStripsReady()` the central
+manifest already awaits — so **preloading is satisfied by registration**, with
+no lazy first-use load. Global rather than per-zone: CLAUDE.md's ZONE-ASSET
+EXCEPTION is for multi-MB zone art, and this must be ready the instant a
+goblin starts running.
+
+### The layer bug this fixed
+
+v2.3.2238 drew the patches into `particleGfx` and its comment claimed they sat
+"UNDER the entities". They did not — `particles` sits **above** `entities` and
+`player` in `WORLD_LAYER_NAMES` (`pixiApp.js`), so burning *ground* was
+painting over the character standing on it. The patches now draw on the
+`telegraphs` layer, which is where a ground hazard belongs: below everything
+that walks through it, above the floor and its clutter.
+
+### The procedural discs remain the fallback
 
 Three stacked discs — charred brown edge (`#7c2d12`, the goblin's own decal
-colour), ember body (`#ea580c`, its hit tint), white-hot core — so it reads as
-burning ground and not as a coloured selection circle. The flicker is seeded
-per patch off its own spawn timestamp, so neighbouring patches breathe out of
-step the way real flame does.
+colour), ember body (`#ea580c`, its hit tint), hot core — drawn whenever the
+strip has not loaded. That is a requirement, not a leftover: `fxStripsReady()`
+settles rather than rejects precisely so a missing sheet degrades to a
+*visible* hazard, never to invisible ground that still burns you. Verified by
+deleting the sheet: the fallback paints and the two art-specific assertions
+fail, which is exactly the intended behaviour on both counts.
 
-**Drawn at the radius the server tests**, the same promise the telegraph
-rings make and for a stronger reason: this one persists, so a player learns
-its edge by walking it, and a lie about that edge is a lie they act on all
-fight. The life curve runs the *opposite* way to a telegraph ring, because it
-means the opposite thing — a wind-up ring fills toward the moment it goes
-off; a patch is hottest when it lands and gutters out as it dies.
+The life curve runs the *opposite* way to a telegraph ring, because it means
+the opposite thing — a wind-up ring fills toward the moment it goes off; a
+patch is hottest when it lands and gutters out as it dies.
 
 ## Testing
 
@@ -177,12 +223,28 @@ out, or strand itself in a zone forever. Negative-controlled — removing the
 chase gate fails rail 1 only; charging per patch fails rail 4; dropping the
 `ability` stamp fails the wire contract; removing `ARM_MS` fails rail 2.
 
-**`tools/qa/mp/mp-firetrail.mjs`** (13 assertions) drives a real browser
-against a real worker for the two halves the server suite cannot see: that
-the fire is actually painted (counted in pixels — measured bare 2 → lit ~180
-→ back to 2 once cleared), and that the burn's number reaches the health bar,
-including while blocking. Deploy-order controlled: an untagged burn is still
-filtered exactly as before.
+**`tools/qa/mp/mp-firetrail.mjs`** (16 assertions) drives a real browser
+against a real worker for the halves the server suite cannot see: that the
+fire is actually painted (counted in pixels — bare 2 → lit ~180 → back to 2
+once cleared), that it is the **art** and not the fallback, that the sheet is
+fetched as a real image during the loading screen, that the ground-hazard
+layer still sits below the player, and that the burn's number reaches the
+health bar including while blocking. Deploy-order controlled: an untagged
+burn is still filtered exactly as before.
+
+Two of those needed measuring rather than guessing, and both first cuts were
+wrong in instructive ways:
+
+- **The flame-height band.** Profiled on the real client, warm pixels run
+  from the patch centre up to about −50 and peak near −20, so the sample sits
+  at −30..−50 — past the fallback disc's 26px reach and inside the flame's. A
+  first cut sampled −62, the tip where there is almost nothing, and failed on
+  art that was drawing perfectly.
+- **The sheet-fetch check.** The harness serves `dist/` with an SPA fallback,
+  so a *missing* sheet still answers `200` — with `index.html`. Measured:
+  with the PNG deleted the status-only assertion still passed. It now
+  requires an `image/` content-type, and the negative control confirms it
+  fires (`text/html`).
 
 Ember is quest-gated server-side (`_zoneUnlocked`) and out of the harness's
 reach, so the browser scenario uses meadow and the exact payloads

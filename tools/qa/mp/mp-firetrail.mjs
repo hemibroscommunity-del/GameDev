@@ -83,6 +83,22 @@ const popped = (P) => P.page.evaluate((want) => (window._gameState.current.dmgNu
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Ashwalker', wsPort, webPort });
+  /* v2.3.2239: watch for the owner's sheet on the wire.  The pixel test
+     below cannot tell the sprite path from the procedural fallback -- both
+     paint warm pixels -- so a 404 or a renamed file would ship "working and
+     invisible art" with this file still green.  Two independent checks
+     close that: the sheet is fetched, and (further down) the flame reaches
+     ABOVE the ground, which a flat fallback disc never does. */
+  const sheetHits = [];
+  P.page.on('response', (r) => {
+    if (!r.url().includes('/sprites/fx/fire-trail')) return;
+    /* CONTENT-TYPE, not just the status.  The harness serves dist/ with an
+       SPA fallback, so a MISSING sheet still answers 200 -- with index.html.
+       Measured: deleting the PNG and re-running, this listener still saw a
+       200 and only the flame-height check below caught the fallback.  A
+       status-only assertion here would have been decoration. */
+    sheetHits.push({ url: r.url(), status: r.status(), type: r.headers()['content-type'] || '' });
+  });
   await H.enterWorld(P);
   await P.page.waitForTimeout(2500);
 
@@ -102,6 +118,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('a real server-authoritative zone to burn in (guard)',
     guard.srv && guard.zone === 'meadow', guard);
   if (!guard.srv) { await P.ctx.close().catch(() => {}); return; }
+
+  /* ── 0. THE OWNER'S SHEET LOADED ──
+     PRELOADING IS LAW (CLAUDE.md): the strip registers in fxStrips.js, whose
+     fxStripsReady() the central manifest awaits, so by the time the world is
+     up it must already be fetched -- not fetched later, on first sighting of
+     a patch. */
+  console.log('    SHEET REQUESTS -> ' + JSON.stringify(sheetHits));
+  rec.ok('the fire-trail sheet is fetched during the loading screen, as a real image',
+    sheetHits.length > 0
+      && sheetHits.every((h) => h.status === 200 && /^image\//.test(h.type)), sheetHits);
+
+  /* ── 0b. IT DRAWS UNDER THE THINGS STANDING IN IT ──
+     v2.3.2238 drew the patches into particleGfx, which sits ABOVE `entities`
+     and `player` -- burning GROUND painted over the character standing on
+     it.  Two halves pinned: the world stack still puts the telegraph layer
+     below the player (this), and the sprite is added to that layer
+     (mirror-audit's text pin, since a scenario cannot see a display list). */
+  const order = await P.page.evaluate(() => window.__btLayerOrder || null);
+  rec.ok('the ground-hazard layer still sits below the player',
+    !!order && order.indexOf('telegraphs') >= 0
+      && order.indexOf('telegraphs') < order.indexOf('player')
+      && order.indexOf('telegraphs') < order.indexOf('entities'),
+    order);
 
   /* ── 1. THE FIRE LANDS ON THE GROUND ── */
   await dropPatch(P, { dx: 0, dy: 0 });
@@ -202,6 +241,47 @@ export async function run({ browser, wsPort, webPort, rec }) {
     console.log('    WARM PIXELS after clearing: ' + out);
     rec.ok('...and the same ground goes dark when the fire is gone',
       out <= bare + 20 && out < lit / 4, { bare, lit, out });
+
+    /* ── IT IS THE ART, NOT THE FALLBACK ──
+       The fallback is a flat disc centred on the patch: it puts NOTHING
+       more than its 26px radius above the patch's own y.  The owner's
+       flame stands ~55px tall above the same point.  So warm pixels well
+       above the ground are the one signal that separates the two, and
+       without it this file would report a green on a sheet that never
+       loaded.
+
+       THE BAND IS MEASURED, NOT GUESSED.  Profiled on the real client, warm
+       pixels run from the patch centre up to about -50 and peak around -20:
+         dy    0  -10  -20  -30  -40  -50  -60
+         px   26   60   62   61   28   15    1
+       so the sample sits at -30..-50, past the fallback's reach and inside
+       the flame's.  A first cut sampled -62, which is the tip where there is
+       almost nothing, and failed on art that was drawing perfectly. */
+    for (const dx of [90, 110, 130]) await dropPatch(P, { dx, dy: 0, arm: 0, ms: 20000 });
+    await P.page.waitForTimeout(500);
+    const aboveBox = await P.page.evaluate((w) => {
+      const S = window._gameState.current;
+      const r = document.querySelector('canvas').getBoundingClientRect();
+      /* -40 +/- 10.  The fallback disc has radius 26, so its HIGHEST pixel
+         is at -26 and this band is empty for it by construction. */
+      const wx = S.player.x + 110, wy = S.player.y - 40;
+      const sx = r.left + (wx - S.camera.x) * (S._worldScaleX || 1);
+      const sy = r.top + (wy - S.camera.y) * (S._worldScaleY || 1);
+      const x = Math.round(sx - w / 2), y = Math.round(sy - 10);
+      if (x < 0 || y < 0 || x + w > innerWidth || y + 20 > innerHeight) return null;
+      return { x, y, width: w, height: 20 };
+    }, FIREW);
+    if (!aboveBox) {
+      rec.ok('the flame stands above the ground (the art, not the fallback)',
+        false, 'the sample band fell off screen');
+    } else {
+      const above = await warmCount(aboveBox);
+      console.log('    WARM PIXELS 30-50px ABOVE the patch: ' + above);
+      rec.ok('the flame stands above the ground (the art, not the fallback)',
+        above >= 25, { above, note: 'the fallback disc has radius 26 — this band is empty for it' });
+    }
+    await P.page.evaluate(() => { window._gameState.current._fireTrail = []; });
+    await P.page.waitForTimeout(300);
   }
 
   /* ── 4. THE BURN'S NUMBER REACHES THE HEALTH BAR ──

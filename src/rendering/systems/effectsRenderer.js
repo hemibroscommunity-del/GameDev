@@ -30,7 +30,7 @@ import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../data/monsterVariants.j
 import { ZONE_SHARDS } from '../../data/shards.js';
 import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in */
 import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2190: the worn cape, for the attack stand-ins */
-import { WHIRL_VORTEX, WHIRL_FX_MS } from '../fxStrips.js'; /* v2.3.1735 */
+import { WHIRL_VORTEX, WHIRL_FX_MS, FIRE_TRAIL_FX, FIRE_TRAIL_FX_MS, FIRE_TRAIL_PLATE_FRAC } from '../fxStrips.js'; /* v2.3.1735; v2.3.2239 fire trail */
 import { getEquip } from '../gearCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
@@ -1089,6 +1089,20 @@ export class EffectsRenderer {
 
     this.telegraphGfx = new Graphics();
     this.telegraphLayer.addChild(this.telegraphGfx);
+    /* ═══ v2.3.2239: THE FIRE TRAIL GETS ITS OWN GROUND SURFACE ═══
+       v2.3.2238 drew the patches into particleGfx, and its comment claimed
+       they sat "UNDER the entities".  They did not: `particles` is ABOVE
+       `entities` and `player` in WORLD_LAYER_NAMES (pixiApp.js), so burning
+       GROUND was painting over the character standing on it.  The telegraph
+       layer is where a ground hazard belongs -- below everything that walks
+       through it, above the floor and its clutter.
+
+       Its own Graphics rather than sharing telegraphGfx: that one is cleared
+       and rebuilt by _updateTelegraphs on its own schedule, and a persistent
+       hazard must not depend on another system's clear order. */
+    this.fireTrailGfx = new Graphics();
+    this.telegraphLayer.addChild(this.fireTrailGfx);
+    this.fireTrailSprites = [];
 
     this.overlayGfx = new Graphics();
     this.overlayLayer.addChild(this.overlayGfx);
@@ -1993,6 +2007,7 @@ export class EffectsRenderer {
     try { this._updateRemoteExtraction(S, now); } catch (e) { /* skip remote skill stand-in */ }
     this._updateProjectiles(S, now);
     this._updateTelegraphs(S, now);
+    this._updateFireTrail(S, now);   /* v2.3.2239 */
     this._updateOverlays(S, now);
     this._updateHUD(S, viewW, viewH, now);
   }
@@ -2068,63 +2083,6 @@ export class EffectsRenderer {
         gfx.fill({ color: col, alpha: 0.10 + age * 0.22 });
         gfx.circle(tz.x, tz.y, tz.r || 55);
         gfx.stroke({ color: col, width: 2, alpha: 0.45 + age * 0.45 });
-      }
-    }
-
-    /* ═══ v2.3.2238: THE FIRE GOBLIN'S BURNING GROUND ═══
-       server/src/firetrail.js lays these behind him while he chases; this
-       draws them.  Display only -- every point of the damage arrives on
-       monster_attack, exactly like the telegraph rings above.
-
-       DRAWN AT THE SERVER'S RADIUS, no bigger and no smaller.  Same rule
-       the telegraph markers follow and for a stronger reason: this one
-       persists, so a player will learn its edge by walking it, and a lie
-       about that edge is a lie they will act on all fight.
-
-       Sits in this ground pass, UNDER the entities, so the fire is floor
-       the player walks over rather than a sprite drawn on top of them.
-
-       The life curve runs the opposite way to a telegraph ring, because
-       it means the opposite thing: a wind-up ring fills toward the moment
-       it goes off, while a patch is hottest when it lands and gutters out
-       as it dies.  The last quarter fades, which is the only cue a player
-       gets that a tile is about to be safe again. */
-    if (S._fireTrail) {
-      for (let i = S._fireTrail.length - 1; i >= 0; i--) {
-        const ft = S._fireTrail[i];
-        /* A patch from a zone we have left is dead to us -- the server
-           stops ticking it against us the moment we cross, and leaving it
-           on screen would paint ember fire onto the town map (the exact
-           stale-entity bug the empty zone_state sends exist to stop). */
-        if (ft.zone && S.currentZone && ft.zone !== S.currentZone) { S._fireTrail.splice(i, 1); continue; }
-        const age = (now - ft.ts) / (ft.duration || 4000);
-        if (age >= 1) { S._fireTrail.splice(i, 1); continue; }
-        const r = ft.r || 26;
-        /* ARM: inert on the server for its first `arm` ms (firetrail.js
-           rail 2), and it says so -- a thin ring with no fill, so the
-           player can see the tile is claimed a beat before it can hurt. */
-        const armed = (now - ft.ts) >= (ft.arm || 0);
-        /* Guttering: full strength until three quarters gone, then out. */
-        const fade = age > 0.75 ? Math.max(0, 1 - (age - 0.75) / 0.25) : 1;
-        if (!armed) {
-          gfx.circle(ft.x, ft.y, r);
-          gfx.stroke({ color: 0xea580c, width: 2, alpha: 0.5 });
-        } else {
-          /* Three stacked discs -- charred edge, body, white-hot core --
-             rather than one flat fill, so it reads as burning ground and
-             not as a coloured selection circle. */
-          gfx.circle(ft.x, ft.y, r);
-          gfx.fill({ color: 0x7c2d12, alpha: 0.42 * fade });   /* the goblin's own decal brown */
-          /* The flicker is per-patch, not global: seeded off the spawn
-             timestamp so neighbouring patches breathe out of step with
-             each other the way real flame does.  Cheap (one sin) and it
-             is the whole difference between fire and a dot. */
-          const flick = 0.85 + 0.15 * Math.sin((now - ft.ts) / 90 + (ft.ts % 1000));
-          gfx.circle(ft.x, ft.y, r * 0.72 * flick);
-          gfx.fill({ color: 0xea580c, alpha: 0.55 * fade });   /* HIT_MATERIALS.fireGoblin tint */
-          gfx.circle(ft.x, ft.y, r * 0.34 * flick);
-          gfx.fill({ color: 0xfbbf24, alpha: 0.6 * fade });
-        }
       }
     }
 
@@ -5094,6 +5052,109 @@ export class EffectsRenderer {
       spr.alpha = age > FX_BURST_MS - 120 ? (FX_BURST_MS - age) / 120 : 1;
       spr.visible = true;
     }
+  }
+
+  /* ═══ v2.3.2239: THE FIRE GOBLIN'S BURNING GROUND ═══
+     server/src/firetrail.js lays these behind him while he chases; this
+     draws them, on the telegraph layer so they are floor the player walks
+     OVER rather than a sprite painted on top of them.
+
+     Display only: every point of the damage arrives on monster_attack, the
+     same contract the telegraph rings and the snowball visual already keep.
+
+     THE PLATE IS DRAWN AT THE RADIUS THE SERVER TESTS.  The sprite is much
+     taller than it is wide -- the flame is decoration, only the scorched
+     plate corresponds to the hitbox -- so the scale is taken from the plate
+     (FIRE_TRAIL_PLATE_FRAC, measured by tools/import_fire_trail.mjs) and not
+     from the sprite's own width.  Same "never draw a lie about the reach"
+     rule the element nova follows, and this one needs it more: the hazard
+     persists, so a player learns its edge by walking it, and a lie about
+     that edge is a lie they act on for the whole fight.
+
+     The art is one loop of eight independently drawn flames, so each patch
+     starts at its OWN frame offset (seeded from its spawn timestamp): a
+     trail of six patches all licking in lockstep reads as one animated
+     texture rather than six separate fires.
+
+     THE PROCEDURAL DISCS BELOW REMAIN THE FALLBACK, not a leftover.  A sheet
+     that fails to load must degrade to a visible hazard, never to invisible
+     ground that still burns you -- fxStripsReady() settles rather than
+     rejects for exactly this reason. */
+  _updateFireTrail(S, now) {
+    const gfx = this.fireTrailGfx;
+    gfx.clear();
+    const list = (S && S._fireTrail) || null;
+    const pool = this.fireTrailSprites;
+    if (!list || !list.length) {
+      for (const sp of pool) if (!sp.destroyed) sp.visible = false;
+      return;
+    }
+    const haveArt = FIRE_TRAIL_FX.frames.length === 8;
+    let used = 0;
+
+    for (let i = list.length - 1; i >= 0; i--) {
+      const ft = list[i];
+      /* A patch from a zone we have left is dead to us -- the server stops
+         ticking it against us the moment we cross, and leaving it on screen
+         would paint ember fire onto the town map (the same stale-entity bug
+         the empty zone_state sends exist to stop). */
+      if (ft.zone && S.currentZone && ft.zone !== S.currentZone) { list.splice(i, 1); continue; }
+      const age = (now - ft.ts) / (ft.duration || 4000);
+      if (age >= 1) { list.splice(i, 1); continue; }
+      const r = ft.r || 26;
+      /* ARM: inert on the server for its first `arm` ms (firetrail.js rail
+         2).  It says so rather than lying about being lit -- the tile is
+         claimed a beat before it can hurt. */
+      const armed = (now - ft.ts) >= (ft.arm || 0);
+      /* Guttering: full strength until three quarters gone, then out.  The
+         opposite curve to a telegraph ring, because it means the opposite
+         thing -- a wind-up fills toward the moment it fires; a patch is
+         hottest when it lands and dies down. */
+      const fade = age > 0.75 ? Math.max(0, 1 - (age - 0.75) / 0.25) : 1;
+
+      if (!armed) {
+        gfx.circle(ft.x, ft.y, r);
+        gfx.stroke({ color: 0xea580c, width: 2, alpha: 0.5 });
+        continue;
+      }
+      if (haveArt) {
+        let spr = pool[used];
+        if (!spr || spr.destroyed) {
+          spr = new Sprite(FIRE_TRAIL_FX.frames[0]);
+          spr.anchor.set(0.5, 0.5);          /* the cell is composed plate-centred */
+          this.telegraphLayer.addChild(spr);
+          pool[used] = spr;
+        }
+        used++;
+        /* Per-patch phase, so neighbours flicker out of step. */
+        const phase = ((now - ft.ts) / FIRE_TRAIL_FX_MS) + ((ft.ts % 1000) / 1000);
+        const fi = Math.floor(phase * 8) % 8;
+        spr.texture = FIRE_TRAIL_FX.frames[fi];
+        /* (2r) world px across the PLATE, not across the sprite: the plate
+           is FIRE_TRAIL_PLATE_FRAC of the 256px cell, so this puts the
+           scorch exactly on the circle the worker tests. */
+        spr.scale.set((r * 2) / (256 * FIRE_TRAIL_PLATE_FRAC));
+        spr.x = ft.x; spr.y = ft.y;
+        spr.alpha = fade;
+        spr.visible = true;
+      } else {
+        /* Fallback: the v2.3.2238 discs.  Charred edge, ember body, hot
+           core -- enough to read as burning ground when the sheet is
+           missing, which is all a fallback owes. */
+        gfx.circle(ft.x, ft.y, r);
+        gfx.fill({ color: 0x7c2d12, alpha: 0.42 * fade });
+        const flick = 0.85 + 0.15 * Math.sin((now - ft.ts) / 90 + (ft.ts % 1000));
+        gfx.circle(ft.x, ft.y, r * 0.72 * flick);
+        gfx.fill({ color: 0xea580c, alpha: 0.55 * fade });
+        gfx.circle(ft.x, ft.y, r * 0.34 * flick);
+        gfx.fill({ color: 0xfbbf24, alpha: 0.6 * fade });
+      }
+    }
+    /* Park the tail of the pool rather than destroying it: patches come and
+       go several times a second while a goblin chases, and churning Sprites
+       at that rate is the allocation pattern the leak hunt (v2.3.1751) was
+       written to find. */
+    for (let i = used; i < pool.length; i++) if (!pool[i].destroyed) pool[i].visible = false;
   }
 
   /* The whirlwind's vortex, played once under the caster while the gather
