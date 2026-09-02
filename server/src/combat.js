@@ -868,7 +868,7 @@ export const combatMethods = {
           type: 'monster_hit',
           payload: {
             monsterId: m.id, zone, dmg: colDmg, isCrit: false,
-            attackerId: session.id, collision: col.id,
+            attackerId: session.id, collision: col.id, slot: _effSlot,   /* v2.3.2228 */
             hpPct: Math.max(0, m.hp / m.maxHp),
           },
         });
@@ -985,6 +985,22 @@ export const combatMethods = {
         dmg: actualDmg,
         isCrit: rolled.isCrit,
         attackerId: session.id,
+        /* ═══ v2.3.2228: WHICH WEAPON DEALT IT ═══
+           Owner: "Monsters are showing melee damage from bow and melee and
+           magic damage from magic."  The damage POPUP carries a weapon mark
+           beside the number, and since v2.3.2220 this event is what paints
+           that popup for every own hit in a server zone -- but it did not
+           say which weapon, so the client had nothing to go on and printed
+           the sword on every hit, bow and staff included.
+
+           Display-only: nothing server-side reads it back, and it is the
+           slot this room already RESOLVED (_effSlot, not the client's raw
+           claim), so a forged slot cannot change what a peer sees.
+
+           It also fixes the peer half, which the client could not fix on
+           its own at any price: another player's weapon is not knowable
+           locally, so peer numbers carried no mark at all. */
+        slot: _effSlot,
         hpPct: Math.max(0, m.hp / m.maxHp),
       }
     });

@@ -6670,7 +6670,13 @@ export function monsterBodyOffsetY(archOrType) {
      was tuned against the old anchoring and was wrong even then — it is the
      reason "the hitbox is at their shadow" kept coming back. */
   if (archOrType === 'fodder') return 23;
-  if (archOrType === 'mummy' || archOrType === 'skeleton') return 48;
+  /* v2.3.2229: SPLIT FROM THE MUMMY -- the skeleton is drawn 1.25x
+     (liveScalePx 96 -> 120), so its body centre and hit radii scale with
+     it.  Leaving them at the mummy's numbers puts the aim point below the
+     drawn chest, which is the v2.3.1111 failure ("rode below the hit
+     circle") in a new place. */
+  if (archOrType === 'mummy') return 48;
+  if (archOrType === 'skeleton') return 60;   /* 120 / 2 */
   if (archOrType === 'fireGoblin') return 28;
   if (archOrType === 'snowman') return 19;
   /* v2.3.1536: every OTHER sprite-backed variant -- rockmonster, fishman,
@@ -6737,7 +6743,8 @@ export function monsterMeleeHitRadius(archOrType) {
   if (shape === 'fodder') return 24;
   if (shape === 'fireGoblin') return 14;
   if (shape === 'snowman') return 32;
-  if (shape === 'mummy' || shape === 'skeleton') return 40;
+  if (shape === 'mummy') return 40;
+  if (shape === 'skeleton') return 50;   /* v2.3.2229: 40 * 1.25, with the sprite */
   return monsterProceduralRadius(shape);
 }
 

@@ -930,6 +930,13 @@ export var BroTown = function BroTown(_ref0) {
     ZONES: ZONES,
     ELEMENTS: ELEMENTS,
     ARCHETYPES: ARCHETYPES,
+    /* v2.3.2229: the variant table and the body-centre offset, so a
+       scenario can check that the drawn figure and the hitbox derived from
+       it still agree.  They are separate hand-tuned constants in four
+       files and the failure mode of scaling one alone is invisible in a
+       screenshot -- arrows pass through a body they visibly hit. */
+    MONSTER_VARIANTS: MONSTER_VARIANTS,
+    monsterBodyOffsetY: DATA.monsterBodyOffsetY,
     DEPTH_CONFIG: DEPTH_CONFIG,
     ZONE_RESOURCES: ZONE_RESOURCES,
     COOKING_RECIPES: COOKING_RECIPES,
@@ -4905,7 +4912,8 @@ export var BroTown = function BroTown(_ref0) {
           var _off = _arch === 'fodder' ? 40
             : _arch === 'snowman' ? 19
             : _arch === 'fireGoblin' ? 28
-            : (_arch === 'mummy' || _arch === 'skeleton') ? 48
+            : _arch === 'mummy' ? 48
+            : _arch === 'skeleton' ? 60   /* v2.3.2229: 1.25x with the sprite */
             : 0;
           var _r = _arch === 'snowman' ? 13
             : _arch === 'fodder' ? 8

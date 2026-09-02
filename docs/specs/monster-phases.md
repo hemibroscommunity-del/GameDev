@@ -1,8 +1,9 @@
-# Monster combat phases (v2.3.2224)
+# Monster combat phases (v2.3.2229)
 
-Two phases built on the `_monsterDamageable` foundation from v2.3.2221. Both
+Three phases; the first two are built on the `_monsterDamageable` foundation from v2.3.2221. Both
 are owner-designed; this records the rules and the reasoning that is not
-obvious from the code.
+obvious from the code.  The mummy's is older than both and was undocumented
+until v2.3.2229 changed its trigger.
 
 ## The snow pile is INTANGIBLE, not merely invulnerable
 
@@ -76,3 +77,78 @@ learn about the mechanic 60 damage.
 **Still missing art:** the detonation itself is a ground decal, screen shake
 and a low tone. A goo-burst strip (8 frames, the `DEBRIS_BURSTS` shape) would
 be the upgrade.
+
+
+## The mummy unwraps on the FIRST hit
+
+Owner (v2.3.2229): "Make the skeleton scale larger for its size. It looks
+really thin. Increase speed in skeleton phase 25% and change it so first hit
+makes the mummy to skeleton transformation."
+
+Sky remaps every archetype to `mummy`, and a mummy has a second life: it
+sheds its bandages and comes back as a `skeleton` — faster, tougher, with its
+own death sheet. The phase itself predates this doc; what changed is when it
+starts, how fast the second form moves, and how big it draws.
+
+| | before | after |
+|---|---|---|
+| trigger | `hp / maxHp <= 0.5` | any damage at all (`hp < maxHp`) |
+| skeleton speed | 1.4 | 1.75 |
+| skeleton `liveScalePx` | 96 | 120 |
+
+### Why the trigger is a flag and not a number
+
+The obvious edit is `transformAt: 1`, and it is wrong. The test is `<=`
+against a fraction, and a full-health monster satisfies `hp / maxHp <= 1` —
+so the mummy would transform on spawn, before anything touched it. "Has taken
+damage" is `hp < maxHp`, which is a different question from "is below a
+fraction", so it gets its own flag: `onFirstDamage: true`.
+
+Both halves are pinned. `server/test/tick.test.mjs` asserts that an untouched
+mummy does **not** transform *and* that exactly one point of damage does;
+`tools/qa/mp/mp-skeleton.mjs` asserts the same pair on the client mirror. A
+test that only checked the second half would pass against `at: 1`.
+
+The mummy's `incomingDmgScalar: 0.5` was tuned so the old threshold took
+about two hits. It is left alone — the mummy phase is now one hit long
+either way — but its comment no longer describes a live constraint.
+
+### The scale change carries the hitboxes with it
+
+The skeleton is **not** drawn small. Measured on the sheets, its painted
+figure fills its 256 cell almost exactly as the mummy's does (max painted
+107×219 against the mummy's 114×210) and both sat at `liveScalePx: 96`. It is
+drawn **narrow** — bones where a mummy is bandaged bulk — and no scale fix
+addresses a silhouette. So the 1.25× is the owner's design call taken at face
+value, not a bug fix.
+
+What makes it more than a one-line change is that the figure's drawn height
+and its hit geometry are separate hand-tuned constants in four files, all
+written as `mummy || skeleton`:
+
+| file | constant | mummy | skeleton |
+|---|---|---|---|
+| `src/data/gameSystems.js` | `monsterBodyOffsetY` | 48 | 60 |
+| `src/data/gameSystems.js` | `monsterMeleeHitRadius` | 40 | 50 |
+| `src/game/projectiles.js` | `_hitR` (bow / staff) | 40 / 50 | 50 / 63 |
+| `src/ui/BroTown.jsx` | `_monBody` offset | 48 | 60 |
+
+Scaling the sprite and leaving these behind does not produce a
+wrong-looking monster; it produces arrows that pass through a body they
+visibly hit. v2.3.1111 names mummy/skeleton as exactly the case where a
+mis-aimed shot missed outright, so this was the tightest fit in the game
+before it got bigger. `mp-skeleton` asserts the invariant rather than the
+number: the body offset is half the drawn figure, for both forms.
+
+### Mirrors
+
+Speed and the transform rule exist on both sides and are CI-pinned:
+
+| | server (authority) | client (mirror) |
+|---|---|---|
+| speed | `_variantSpeed` (`server/src/index.js`) | `MONSTER_VARIANTS.skeleton.spd` |
+| trigger | `_variantTransform` + `_tickMonsters` | `maybeTransformMonster` (dungeon / client-rolled only) |
+
+`server/test/mirror-audit.test.mjs` fails the build if the two speeds drift.
+The client path is gated on `!S._serverMonsters`; in every live zone the
+worker decides and broadcasts `monster_transform`.

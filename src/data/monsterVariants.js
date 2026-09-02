@@ -63,10 +63,21 @@ export const MONSTER_VARIANTS = {
        effectsRenderer.js ground-loot fodder branch). */
     noProjectile: true,
     noFodderRemnants: true,
-    /* Transform trigger -- when m.curHp / m.maxHp drops below this,
-       the mummy plays transform.png frames then swaps archetype to
-       'skeleton' (see transformsTo).  Set false to disable. */
-    transformAt: 0.5,
+    /* ═══ v2.3.2229: THE FIRST HIT UNWRAPS IT ═══
+       Owner: "change it so first hit makes the mummy to skeleton
+       transformation."  Was `transformAt: 0.5` -- half its health, which
+       with incomingDmgScalar 0.5 took about two hits and made the mummy a
+       health bar to chew through before the interesting form showed up.
+       `onFirstDamage` fires the moment it has taken ANY damage instead.
+       A THRESHOLD CANNOT EXPRESS THIS.  transformAt: 1 with the old `<=`
+       test fires at full health, i.e. on spawn, before anyone touches it;
+       the condition is "hp < maxHp", which is a different question from
+       "hp is below a fraction".  Hence a flag rather than a number.
+       transformAt is kept for the shape (and for any future variant that
+       does want a threshold) but is no longer read for the mummy.
+       MIRRORED in server/src/index.js _variantTransform, the authority. */
+    onFirstDamage: true,
+    transformAt: 0.5,         /* unread while onFirstDamage is set */
     transformsTo: 'skeleton',
     transformFrameMs: 60,     /* 8 frames * 60 ms = 480 ms shred */
     transformHoldMs: 480,     /* total animation duration */
@@ -84,7 +95,24 @@ export const MONSTER_VARIANTS = {
                                  (server thinks it's still fodder),
                                  so the toughness bump rides on the
                                  client-side damage scalar instead. */
-    liveScalePx: 96,
+    /* ═══ v2.3.2229: THE SKELETON IS 1.25x ═══
+     Owner: "Make the skeleton scale larger for its size.  It looks really
+     thin."  MEASURED first, because the obvious cause was not the cause:
+     the skeleton's painted figure fills its 256 cell almost exactly as the
+     mummy's does (max painted 107x219 vs the mummy's 114x210), and both
+     sat at liveScalePx 96 -- so it was not drawn small, it is drawn
+     NARROW.  A skeleton is bones where a mummy is bandaged bulk, and no
+     amount of correcting a scale bug fixes a silhouette.  So this is the
+     owner's design call taken at face value: 96 -> 120, a straight 1.25x,
+     the same step its speed takes in the same version.
+     THE HITBOXES MOVE WITH IT.  monsterBodyOffsetY and the three hit radii
+     are hand-tuned constants keyed to the 96 figure (they are shared with
+     the mummy at `mummy || skeleton`), and leaving them behind would put
+     the aim point below the drawn chest -- exactly the failure v2.3.1111
+     describes, where a feet-aimed shot "rode below the hit circle" and
+     locked bow shots systematically missed.  Every one of those four sites
+     now splits mummy from skeleton; search v2.3.2229. */
+    liveScalePx: 120,
     walkFrameMs: 110,         /* Legacy time-based pacing -- no longer
                                  read by the v2.3.93 distance-driven
                                  walk loop; kept for documentation. */
@@ -102,7 +130,11 @@ export const MONSTER_VARIANTS = {
        which read too large per user). */
     deathScalePx: 144,
     remnantsScalePx: 48,
-    spd: 1.4,                 /* charges the player vs fodder's 0.5 */
+    /* v2.3.2229 (owner: "Increase speed in skeleton phase 25%"):
+       1.4 -> 1.75.  MIRRORED in server/src/index.js _variantSpeed, which
+       is the authority -- mirror-audit.test.mjs fails the build if the two
+       drift, and tick.test.mjs asserts the post-transform value. */
+    spd: 1.75,                /* charges the player vs fodder's 0.5 */
     /* Movement is server-authoritative.  The worker applies
        skeleton's spd via _variantSpeed when the mummy -> skeleton
        transform fires server-side (see _tickMonsters); a
@@ -579,7 +611,13 @@ export function maybeTransformMonster(m) {
      overkill hit from above transformAt doesn't skip the skeleton phase
      entirely -- without this, mummies that get one-shotted from full
      HP have no death sheet of their own and just pop out (v2.3.135). */
-  if (curHp > 0 && curHp / maxHp > v.transformAt) return false;
+  /* v2.3.2229: onFirstDamage -- any damage at all, rather than a fraction.
+     The `curHp > 0` allowance below still stands and still matters: an
+     overkill from full health has to fire too, or the mummy pops out of
+     existence instead of playing the skeleton's death sheet. */
+  if (v.onFirstDamage) {
+    if (curHp > 0 && curHp >= maxHp) return false;
+  } else if (curHp > 0 && curHp / maxHp > v.transformAt) return false;
   /* Trigger -- stamp the start time so the renderer plays the
      transform strip, then swap archetype/spd to the new form. */
   m._transformStart = Date.now();
