@@ -27,7 +27,7 @@ import { GameRoom } from '../src/index.js';
 import { PROG3 as SRV_PROG3 } from '../src/prog3.js';
 /* v2.3.1812: check 13 compares telegraph kit kinds against the client's
    render whitelist — see the block at the bottom for why it reads text. */
-import { TELEGRAPH as SRV_TELEGRAPH, BASIC_WINDUP as SRV_BASIC_WINDUP } from '../src/telegraph.js';
+import { TELEGRAPH as SRV_TELEGRAPH, BASIC_WINDUP as SRV_BASIC_WINDUP, BURROW_ARCH as SRV_BURROW_ARCH } from '../src/telegraph.js'; /* v2.3.2221 */
 import { PROG3 as CLIENT_PROG3 } from '../../src/data/prog3.js';
 import {
   ARCHETYPES, MONSTER_HP_CURVE, COOKING_RECIPES, QUEST_CHAINS,
@@ -759,6 +759,31 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     /if \(!S\._serverMonsters\) \{/.test(mc), {});
   check('damage truth: ...and the server number is painted for our own hits',
     /payload\.ability \|\| S\._serverMonsters/.test(src), {});
+
+  /* ═══ v2.3.2221: the burrow, on both sides of the wire ═══
+     The same whitelist trap as the telegraph kits and the basic wind-up: the
+     client drops ability names it does not know, so a phase the server sends
+     and the client has no branch for is a mechanic that ships fully working
+     and completely invisible.  And a phase with no RESYNC field strands a
+     player who joins mid-pile in front of a snowman that shrugs off hits. */
+  const burM = src.match(/var _burPhases = \{([^}]*)\}/);
+  const burClient = burM ? (burM[1].match(/(\w+)\s*:/g) || []).map((k) => k.replace(/\s*:$/, '')) : [];
+  check('burrow mirror: the client accepts every phase the server emits',
+    ['dig', 'pile', 'emerge'].every((k) => burClient.includes(k)), burClient);
+  check('burrow mirror: ...and every burrowing archetype is a real one',
+    Object.keys(SRV_BURROW_ARCH).every((k) => Object.keys(ARCHETYPES).includes(k)),
+    Object.keys(SRV_BURROW_ARCH));
+  const tickSrc = readFileSync(new URL('../src/tick.js', import.meta.url), 'utf8');
+  const wsSrc = readFileSync(
+    new URL('../../src/networking/wsClient.js', import.meta.url), 'utf8');
+  check('burrow mirror: the phase rides the wire for resyncs (w.ph)',
+    /w\.ph = m\._burPhase/.test(tickSrc) && /md\.ph/.test(wsSrc), {});
+  /* The pile reuses the boss IMMUNE flag rather than inventing a second
+     "cannot be hurt" concept the popup path would not know about. */
+  check('burrow mirror: the pile sets the existing _invulnerable flag',
+    /_invulnerable = payload\.phase === 'pile'/.test(src), {});
+  check('burrow mirror: ...and the renderer draws the phase sheets',
+    /getSnowmanPhaseFrame/.test(rend), {});
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

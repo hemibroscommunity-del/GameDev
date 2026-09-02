@@ -390,6 +390,12 @@ export const tickMethods = {
           hp: m.hp, alive: m.alive,
         };
         if (m._stunUntil && m._stunUntil > ts) w.st = m._stunUntil;
+        /* v2.3.2221: the burrow phase, following w.st's precedent exactly —
+           a conditional field, absent on the overwhelming majority of ticks.
+           Without it a client that joins or resyncs mid-pile renders an
+           ordinary snowman that shrugs off every hit, which reads as a bug
+           rather than a mechanic. Old clients ignore the key. */
+        if (m._burPhase) w.ph = m._burPhase;
         return w;
       };
       // Gather-node deltas carry only state-change fields (alive /

@@ -756,6 +756,33 @@ export function processGameEvent(type, payload, S, deps) {
                  monster's own body.  Whitelisted like the kits (mirror-audit
                  pins the pair) so a future server kind cannot render an
                  arbitrary wire string. */
+              /* ═══ v2.3.2221: THE SNOW-PILE BURROW ═══
+                 Three phases off one ability, each with its own strip.  The
+                 pile sets _invulnerable, which is the SAME flag the boss
+                 phases already use — so the IMMUNE popup on a swing into it
+                 comes for free and reads identically to every other
+                 "you can't hurt this right now" in the game.
+
+                 Duration is stamped from the server's own ms, and the phase
+                 self-clears when it expires (see entityRenderer): the server
+                 sends no "done" event, and a delta cannot express a REMOVED
+                 field, so a client that missed the last transition must be
+                 able to recover on its own rather than hold the mound
+                 forever. */
+              var _burPhases = { dig: 1, pile: 1, emerge: 1 };
+              if (payload.ability === 'burrow' && _burPhases[payload.phase]) {
+                var _buM = (S.monsters || []).find(function (mm) { return mm.id === payload.monsterId; });
+                if (_buM) {
+                  var _buMs = Math.max(80, Math.min(6000, Number(payload.ms) || 400));
+                  _buM._burPhase = payload.phase;
+                  _buM._burFrom = Date.now();
+                  _buM._burUntil = Date.now() + _buMs;
+                  _buM._invulnerable = payload.phase === 'pile';
+                  /* A body mid-collapse has no swing to finish. */
+                  _buM._shootAnimEnd = 0; _buM._tgUntil = 0;
+                }
+                break;
+              }
               var _bwKinds = { swing: 1, throw: 1 };
               if (payload.phase === 'windup' && _bwKinds[payload.ability]) {
                 var _bwMs = Math.max(80, Math.min(3000, Number(payload.ms) || 400));

@@ -156,6 +156,35 @@ export const BASIC_WINDUP = {
   },
 };
 
+/* ═══ v2.3.2221: THE SNOWMAN'S SNOW PILE ═══
+ * The signature mechanic from docs/specs/snowman-snow-pile.md, built on the
+ * _monsterDamageable gate that landed with it.  He collapses into a mound of
+ * churned snow, grinds toward his target, and reassembles.
+ *
+ * The shape that makes it fair: he trades ALL of his offence for ALL of his
+ * defence.  Untouchable AND harmless (owner: "The snowman can't attack you
+ * in this form either"), so it is a repositioning tool, not a damage window,
+ * and it cannot be spammed into a stalemate.  Entering and leaving both cost
+ * him -- dig and emerge are vulnerable, and emerging does NOT grant a free
+ * hit: the first attack after surfacing still plays its ordinary wind-up.
+ *
+ * ARRIVE_PX ends the pile early when he reaches you, so closing the distance
+ * is the whole point of the move rather than an accident of the timer. */
+export const BURROW = {
+  HP_FRAC: 0.5,        /* triggers the first time hp drops to half */
+  CD_MS: 12000,        /* ...then a cooldown, so it stays a moment not a personality */
+  DIG_MS: 400,         /* vulnerable */
+  PILE_MAX_MS: 2500,   /* invulnerable, harmless, fast */
+  EMERGE_MS: 400,      /* vulnerable — the punish window */
+  ARRIVE_PX: 60,
+  SPEED_MULT: 3,
+};
+
+/* Which archetypes own the move.  A table rather than an `=== 'snowman'`
+ * so the next monster to get a burrow is one line, and so mirror-audit can
+ * check the client's cue whitelist against something real. */
+export const BURROW_ARCH = { snowman: 1 };
+
 export function basicWindupMs(arch) {
   return Object.prototype.hasOwnProperty.call(BASIC_WINDUP.MS, arch)
     ? BASIC_WINDUP.MS[arch]
@@ -420,6 +449,108 @@ export const telegraphMethods = {
     return true;
   },
 
+  /* ═══ v2.3.2221: START THE BURROW ═══
+     Called from the tick when a snowman crosses half health.  Returns true
+     if the move began, so the caller can skip the rest of his AI this tick.
+
+     The dig is NOT invulnerable — _invulnUntil is stamped when the pile
+     begins, not here — because entering has to cost something.  Cancelling
+     any pending wind-up is deliberate: a swing stamped a moment ago must
+     not resolve out of a body that no longer has arms. */
+  _startBurrow(zoneId, m, targetId, now) {
+    if (!Object.prototype.hasOwnProperty.call(BURROW_ARCH, m.arch)) return false;
+    if (m._burPhase) return false;                     /* already mid-move */
+    if (m._burCd && now < m._burCd) return false;
+    if (!m.maxHp || m.hp / m.maxHp > BURROW.HP_FRAC) return false;
+    if (!targetId) return false;
+    m._burPhase = 'dig';
+    m._burUntil = now + BURROW.DIG_MS;
+    m._burTarget = targetId;
+    m._burCd = now + BURROW.CD_MS;    /* from the START, like the wind-up cooldown:
+                                         stamping it at the end would make the
+                                         move's own duration part of its downtime */
+    m._bwUntil = 0; m._bwTarget = null; m._bwKind = null;
+    m._attackingUntil = 0;
+    this.eventBuffer.push({
+      type: 'monster_ability',
+      payload: { monsterId: m.id, zone: zoneId, ability: 'burrow',
+                 phase: 'dig', ms: BURROW.DIG_MS },
+    });
+    this._markMonsterDirty(zoneId, m.id);
+    return true;
+  },
+
+  /* ═══ ADVANCE THE BURROW ═══
+     Returns true while he is busy with it, which is what keeps him from
+     attacking, acquiring targets or being moved by ordinary chase logic --
+     the harmlessness of the pile is this return value, not a separate flag.
+
+     Runs BEFORE aggro and unconditionally, the same placement and for the
+     same reason as the wind-up resolve: a player who walks away must not
+     strand him mid-phase forever. */
+  _resolveBurrow(zoneId, m, now) {
+    if (!m._burPhase) return false;
+    const ps = m._burTarget ? this.playerState[m._burTarget] : null;
+    const gone = !ps || ps.dead || ps.dying || ps.z !== zoneId;
+
+    if (m._burPhase === 'pile') {
+      /* Grind toward where they are NOW (not a frozen point): the pile is
+         slow-motion pursuit, and freezing the aim would make walking aside
+         beat it every time with no counterplay needed. */
+      let arrived = false;
+      if (!gone) {
+        const dx = (ps.x || 0) - m.x, dy = (ps.y || 0) - m.y;
+        const d = Math.hypot(dx, dy);
+        if (d <= BURROW.ARRIVE_PX) arrived = true;
+        else if (d > 0) {
+          const step = (m.speed || 1) * BURROW.SPEED_MULT;
+          m.x += (dx / d) * step;
+          m.y += (dy / d) * step;
+          this._markMonsterDirty(zoneId, m.id);
+        }
+      }
+      if (arrived || gone || now >= m._burUntil) {
+        m._burPhase = 'emerge';
+        m._burUntil = now + BURROW.EMERGE_MS;
+        m._invulnUntil = 0;            /* surfacing ends the immunity immediately */
+        this.eventBuffer.push({
+          type: 'monster_ability',
+          payload: { monsterId: m.id, zone: zoneId, ability: 'burrow',
+                     phase: 'emerge', ms: BURROW.EMERGE_MS },
+        });
+        this._markMonsterDirty(zoneId, m.id);
+      }
+      return true;
+    }
+
+    if (now < m._burUntil) return true;   /* dig or emerge still playing */
+
+    if (m._burPhase === 'dig') {
+      m._burPhase = 'pile';
+      m._burUntil = now + BURROW.PILE_MAX_MS;
+      /* The immunity is a TIMESTAMP that outlives the phase by nothing:
+         _monsterDamageable reads only this, so even if a transition is ever
+         dropped the worst case is a window he had already earned. */
+      m._invulnUntil = m._burUntil;
+      this.eventBuffer.push({
+        type: 'monster_ability',
+        payload: { monsterId: m.id, zone: zoneId, ability: 'burrow',
+                   phase: 'pile', ms: BURROW.PILE_MAX_MS },
+      });
+      this._markMonsterDirty(zoneId, m.id);
+      return true;
+    }
+
+    /* emerge finished — back to ordinary behaviour.  atkCd is left alone, so
+       his next swing still pays its own wind-up: surfacing is not a free hit. */
+    m._burPhase = null;
+    m._burUntil = 0;
+    m._burTarget = null;
+    m._invulnUntil = 0;
+    this._markMonsterDirty(zoneId, m.id);
+    return false;
+  },
+
   /* One basic swing vs one player, at IMPACT time.
      v2.3.2215: moved verbatim out of the _tickMonsters aggro branch so the
      wind-up resolve (which runs before aggro) can reach it.  Behaviour is
@@ -443,7 +574,9 @@ export const telegraphMethods = {
         this._queuePlayerStateFlush(targetId);
       }
       const _thornsPts = (blockerPs && !blockerPs.prog3 && blockerPs.defenseSpec && blockerPs.defenseSpec.thorns) || 0;
-      if (_thornsPts > 0 && m.hp > 0) {
+      /* v2.3.2221: thorns reflect is a monster hp write like any other --
+         a pile that cannot be swung at must not be hurt by being blocked. */
+      if (_thornsPts > 0 && this._monsterDamageable(m)) {
         const reflect = Math.min(Math.max(0, m.hp),
           Math.max(1, this._t2Flat(blockerPs, 'defense', 'thorns')));
         m.hp -= reflect;

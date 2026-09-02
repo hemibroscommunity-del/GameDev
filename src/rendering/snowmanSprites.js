@@ -128,6 +128,35 @@ export function getSnowballTexture() {
   return snowballTex;
 }
 
+/* ═══ v2.3.2221: THE SNOW-PILE BURROW ═══
+   Three single-direction strips (the mound has no facing worth reading —
+   it is a shape on the ground, and giving it five would be five sheets of
+   the same silhouette).  Loaded with the rest of the snowman, so they ride
+   the frost zone's preload and are ready before the overlay lifts. */
+const PHASE_SHEETS = { burrow: [], pile: [], emerge: [] };
+
+async function loadPhaseStrips() {
+  await Promise.all(Object.keys(PHASE_SHEETS).map((k) =>
+    loadStrip(`/sprites/monsters/snowman/snowman-${k}.png?v=${SPRITE_VERSION}`, PHASE_SHEETS[k])));
+}
+
+/* One frame of a burrow phase.  CLAMPED, not wrapped: dig and emerge are
+   one-shots that hold their final pose until the server moves the phase on,
+   and a loop would read as a stutter.  The PILE is the exception — it is a
+   travelling loop, so its caller passes wrap. */
+export function getPhaseFrame(phase, frameIdx, wrap) {
+  const list = PHASE_SHEETS[phase];
+  if (!list || list.length === 0) return null;
+  const n = list.length;
+  const i = wrap ? ((frameIdx % n) + n) % n : Math.max(0, Math.min(n - 1, frameIdx));
+  return list[i];
+}
+
+export function phaseFrameCount(phase) {
+  const list = PHASE_SHEETS[phase];
+  return (list && list.length) || 0;
+}
+
 async function loadRemnants() {
   try {
     const tex = await Assets.load(`/sprites/monsters/snowman-remnants.png?v=${SPRITE_VERSION}`);
@@ -170,6 +199,7 @@ export function loadSnowmanSprites() {
     ...SOURCE_DIRS.map(loadAttack),   /* v2.3.2215 */
     loadRemnants(), loadHit(), loadDeath(),
     loadSnowball(),   /* v2.3.2217 */
+    loadPhaseStrips(),   /* v2.3.2221 */
   ]);
   return loadPromise;
 }

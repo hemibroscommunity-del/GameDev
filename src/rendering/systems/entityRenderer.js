@@ -45,7 +45,8 @@ function slimeTintFor(variant, state) {
 import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount as snowmanFrameCount, getHitFrame as getSnowmanHitFrame, hitFrameCount as snowmanHitFrameCount, getDeathFrame as getSnowmanDeathFrame, deathFrameCount as snowmanDeathFrameCount,
   getAttackFrame as getSnowmanAttackFrame, attackFrameCount as snowmanAttackFrameCount, /* v2.3.2215 */
   attackReleaseFrame as snowmanAttackReleaseFrame, /* v2.3.2216 */
-  throwMuzzle as snowmanThrowMuzzle /* v2.3.2217 */
+  throwMuzzle as snowmanThrowMuzzle, /* v2.3.2217 */
+  getPhaseFrame as getSnowmanPhaseFrame, phaseFrameCount as snowmanPhaseFrameCount /* v2.3.2221 */
 } from '../snowmanSprites.js';
 import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, maybeTransformMonster } from '../../data/monsterVariants.js';
@@ -6810,6 +6811,31 @@ export class EntityRenderer {
              play AFTER it at the same cadence.  The follow-through fits
              inside the server's post-throw freeze (_attackingUntil is
              ms + 300), so he holds still through it instead of sliding. */
+          /* ═══ v2.3.2221: THE BURROW OWNS THE BODY ═══
+             Above the attack strip, the hit reaction and idle: while he is a
+             mound of snow there is no body to recoil, no arm to throw with
+             and no idle to breathe.  Self-clearing on expiry -- the server
+             sends no "done" event and a tick delta cannot express a REMOVED
+             field, so a client that misses the last transition has to be able
+             to recover rather than hold the mound forever. */
+          if (m._burPhase && now > (m._burUntil || 0) + 500) {
+            m._burPhase = null; m._invulnerable = false;
+          }
+          const burFc = m._burPhase ? snowmanPhaseFrameCount(
+            m._burPhase === 'dig' ? 'burrow' : m._burPhase) : 0;
+          let burTex = null;
+          if (m._burPhase && burFc > 0) {
+            const _sheet = m._burPhase === 'dig' ? 'burrow' : m._burPhase;
+            const _span = Math.max(1, (m._burUntil || 0) - (m._burFrom || 0));
+            /* The PILE loops -- it is a travelling shape that lasts until he
+               reaches you.  Dig and emerge are one-shots played once across
+               their own window and held on the final pose. */
+            const _looping = m._burPhase === 'pile';
+            const _idx = _looping
+              ? Math.floor((now - (m._burFrom || now)) / 90)
+              : Math.floor(((now - (m._burFrom || now)) / _span) * burFc);
+            burTex = getSnowmanPhaseFrame(_sheet, _idx, _looping);
+          }
           const atkFc = snowmanAttackFrameCount(facing);
           const atkRel = snowmanAttackReleaseFrame(facing);
           /* v2.3.2217: publish the throwing hand for THIS facing so the
@@ -6853,7 +6879,15 @@ export class EntityRenderer {
             && (!relAt || now < relAt + followFrames * atkPerF);
           let frameTex = null;
           let mirror = false;
-          if (inAtkWindow) {
+          if (burTex) {
+            /* Top priority, and NOT an early `continue`: everything after
+               this chain -- the HP bar above his head most of all -- still
+               has to run.  A mound of snow with no health bar would hide the
+               state of the fight at exactly the moment the player is deciding
+               whether to chase him or back off. */
+            frameTex = burTex;
+            mirror = false;   /* the mound has no facing worth reading */
+          } else if (inAtkWindow) {
             let aIdx;
             if (!relAt) {
               /* Winding up — or holding the cocked pose while the ball is in
