@@ -176,6 +176,13 @@ export const BURROW = {
   /* v2.3.2223 (owner: "Burrow needs to last longer").  Every phase grew.
      400ms across an 8-frame strip is 50ms a frame -- the dig and emerge
      animations were over before they read as anything; 600 gives them 75. */
+  /* v2.3.2225 (owner: "double burrow time").  The DOUBLING is on the pile —
+     the phase he is actually burrowed for.  Dig and emerge are the entry and
+     exit animations, and they are left alone deliberately: at 600ms an
+     8-frame strip already runs at 75ms a frame, and stretching them to 1200
+     would both drag the animation and hand out free hits, since those are
+     the two windows he can be hurt in.  Say the word if the whole move was
+     meant. */
   DIG_MS: 600,         /* vulnerable */
   /* The pile ends on whichever comes FIRST: this cap, or reaching the
      player.  So a raised cap alone would have changed nothing in the case
@@ -183,8 +190,8 @@ export const BURROW = {
      where arrival ends it almost at once.  Hence the floor: the pile is a
      phase you can see even when the geometry is against it.  A long pile
      costs the player nothing but time, because it cannot hurt them. */
-  PILE_MIN_MS: 1200,
-  PILE_MAX_MS: 4000,   /* invulnerable, harmless */
+  PILE_MIN_MS: 2400,   /* v2.3.2225: 1200 -> 2400 */
+  PILE_MAX_MS: 8000,   /* invulnerable, harmless. v2.3.2225: 4000 -> 8000 */
   EMERGE_MS: 600,      /* vulnerable — the punish window */
   ARRIVE_PX: 60,
   SPEED_MULT: 3,
@@ -209,7 +216,10 @@ export const BURROW = {
  */
 export const SLIME_BURST = {
   VARIANTS: { blueSlime: 1 },   /* a table: the next exploder is one line */
-  SWELL_MS: 800,                /* grow, then go */
+  SWELL_MS: 1600,               /* grow, then go.  v2.3.2226: 800 -> 1600 (owner) --
+                                   and it is now the ONLY warning, since the
+                                   drawn ring is gone, so the extra second is
+                                   carrying real weight rather than padding. */
   SCALE: 3.5,                   /* owner: "3x or 4x" */
   RADIUS: 110,                  /* ~the swollen body, so the ring matches the art */
   DMG: 60,

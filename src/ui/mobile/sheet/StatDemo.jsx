@@ -396,7 +396,7 @@ export const StatDemo = ({ stat, iconSrc, weapon, shield }) => {
     <div className="bt-sd" data-stat-demo={stat} aria-hidden="true">
       <div className="bt-sd-stage" style={{ height: SCENE_H }}>
       <div className={'bt-sd-hero' + (s.hero.kind ? ' bt-sd-hero--' + s.hero.kind : '')}>
-        {/* v2.3.2225 (owner: "the character preview is facing the wrong way"):
+        {/* v2.3.2230 (owner: "the character preview is facing the wrong way"):
             southEAST, so he faces the slime.  The scene stands him on the
             left and the slime on the right, and CharacterView's default
             southwest turned his back on it. */}

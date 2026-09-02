@@ -1,4 +1,4 @@
-/* THE STAT EXPLAINER'S SCENE IS AIMED THE RIGHT WAY (v2.3.2225)
+/* THE STAT EXPLAINER'S SCENE IS AIMED THE RIGHT WAY (v2.3.2230)
  *
  * Owner, on the ℹ️ window that v2.3.2222 added to the Points screen: "the
  * character preview is facing the wrong way.  Also show the +1 stat addition

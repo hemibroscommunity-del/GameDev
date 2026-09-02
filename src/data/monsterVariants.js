@@ -370,7 +370,23 @@ export function baseArchetypeOf(arch) {
    the pile and an arrow that stops dead on it would read as a bug in one of
    the two. */
 export function isIntangible(m) {
-  return !!(m && m._burPhase === 'pile');
+  if (!m) return false;
+  /* v2.3.2226: ...and a slime mid-death-swell.  Owner: "it shows dozens of
+     slimes in my bag then fixes the amounts."
+
+     The swell leaves the slime ALIVE with 0 hp for the length of its fuse,
+     which is a state nothing on the client had ever seen.  The melee sweep
+     saw a live monster, registered a hit, and fell straight into the local
+     kill block -- `if (m.curHp <= 0)` -- which spawns ground loot.  Every
+     swing during the fuse spawned another pile; the server ignored the
+     damage entirely and granted loot once, so the bag filled with phantom
+     drops until the next authoritative inventory sync corrected it.
+
+     Treating it as intangible fixes the cause rather than the symptom: the
+     server already denies all damage during the swell, so the client
+     agreeing that there is nothing to hit is what the two should have
+     matched on from the start.  A monster mid-death-throes is not a target. */
+  return !!(m._burPhase === 'pile' || m._burstUntil);
 }
 
 export function isFodderLike(arch) {

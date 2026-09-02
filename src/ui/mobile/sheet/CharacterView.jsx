@@ -60,7 +60,7 @@ import { getEquip, onEquipChange } from '@/rendering/gearCatalog.js';
 export const FIGURE_W_FRAC = 0.52;   /* window width, as a fraction of `size` */
 const FIGURE_CX_FRAC = 0.483;        /* measured centre of the painted figure */
 
-/* v2.3.2225: `dir` is a PROP now, defaulting to the southwest this view has
+/* v2.3.2230: `dir` is a PROP now, defaulting to the southwest this view has
    always drawn.  The Equipment screen's three-quarter facing was an owner
    pick (see the header) and is untouched; StatDemo needs the opposite one,
    because its scene puts a slime on the RIGHT and a hero facing away from
@@ -134,7 +134,7 @@ export const CharacterView = ({ size, weapon, shield, crop, dir }) => {
        object: the RPG state is replaced wholesale on every server delta, so
        keying on the reference alone would repaint the canvas several times a
        second. */
-  }, [rev, size, dir, weapon && (weapon.id || weapon.type), weapon && weapon.gearBase, !!shield]);   /* v2.3.2225: dir joins the deps -- a facing the effect never re-reads is a facing that silently sticks */
+  }, [rev, size, dir, weapon && (weapon.id || weapon.type), weapon && weapon.gearBase, !!shield]);   /* v2.3.2230: dir joins the deps -- a facing the effect never re-reads is a facing that silently sticks */
 
   const winW = crop ? Math.round(size * FIGURE_W_FRAC) : size;
   /* Slide the canvas so the figure's measured centre lands in the window's

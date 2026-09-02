@@ -152,3 +152,21 @@ still has to run. A mound with no health bar would hide the state of the
 fight at exactly the moment the player is deciding whether to chase or back
 off. The phase self-clears on expiry, because the server sends no "done"
 event and a tick delta cannot express a REMOVED field.
+
+## Durations (v2.3.2225)
+
+| phase | ms | vulnerable? |
+|---|---|---|
+| dig | 600 | yes |
+| pile floor | **2400** | no |
+| pile cap | **8000** | no |
+| emerge | 600 | yes |
+
+Owner: "double burrow time". The doubling is on the **pile** — the phase he
+is actually burrowed for. Dig and emerge are left alone on purpose: at 600ms
+an 8-frame strip already runs at 75ms a frame, and stretching them would both
+drag the animation and hand out free hits, since those are the only two
+windows he can be hurt in.
+
+The cap only binds when he cannot reach you; the floor is what you feel in a
+normal fight, because arrival ends the pile as soon as the floor has passed.

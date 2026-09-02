@@ -812,25 +812,20 @@ export function processGameEvent(type, payload, S, deps) {
                     _sbM._burstUntil = Date.now() + _sbMs;
                     _sbM._burstScale = Math.max(1, Math.min(6, Number(payload.scale) || 3.5));
                   }
-                  if (typeof payload.ax === 'number' && typeof payload.ay === 'number') {
-                    if (!S._telegraphZones) S._telegraphZones = [];
-                    S._telegraphZones.push({
-                      x: payload.ax, y: payload.ay, r: payload.radius || 110,
-                      ts: Date.now(), duration: _sbMs, color: '#7CFC5A',
-                    });
-                  }
+                  /* v2.3.2226: THE DRAWN RING IS GONE.  Owner: "remove code
+                     drawn impact areas for slime death" -- consistent with
+                     their standing call that procedural effects read as
+                     placeholder.  The SWELL is the telegraph now, on its own,
+                     which is why the fuse doubled in the same change: a
+                     slime tripling in size is the warning, and it needs the
+                     extra time to be a fair one. */
                 } else if (payload.phase === 'execute') {
                   if (_sbM) { _sbM._burstUntil = 0; _sbM._burstFrom = 0; }
-                  var _sbX = typeof payload.ax === 'number' ? payload.ax : (_sbM && _sbM.x) || 0;
-                  var _sbY = typeof payload.ay === 'number' ? payload.ay : (_sbM && _sbM.y) || 0;
-                  /* Goo on the ground where it went off, at the radius it
-                     actually covered -- the decal is the after-image that
-                     tells you how big the thing you dodged was. */
-                  try {
-                    spawnGroundDecal(S, _sbX, _sbY, 'fodder', {
-                      chance: 1, size: (payload.radius || 110) * 0.9, spread: (payload.radius || 110) * 0.55,
-                    });
-                  } catch (e) { /* decals are cosmetic */ }
+                  /* v2.3.2226: and the ground splat with it -- it was a
+                     minted radial blob sized to the blast, which is a
+                     code-drawn impact area by another name.  What is left is
+                     what does not look drawn: the camera kick and the sound.
+                     A real goo-burst strip is the upgrade here. */
                   S.screenShake = Math.max(S.screenShake || 0, 10);
                   BT_AUDIO.beep(90, 0.16, 0.09, 'sawtooth');
                 }

@@ -3062,7 +3062,7 @@ html[data-orient="landscape"] .bt-dashboard{
 .bt-sd-pop-ic{display:block;width:auto;-webkit-text-stroke:0}
 @keyframes bt-sd-rise{0%{opacity:0;margin-bottom:-6px}12%{opacity:1;margin-bottom:0}70%{opacity:1;margin-bottom:18px}100%{opacity:0;margin-bottom:30px}}
 /* the point landing: the row's icon with a brass +1, rising once */
-/* v2.3.2225 (owner: "show the +1 stat addition above the character's head
+/* v2.3.2230 (owner: "show the +1 stat addition above the character's head
    then disappear instead of in the middle between the character's and
    monster").  Was left:50% -- dead centre of the stage, which is the gap
    BETWEEN the two figures, so the point that lands on your character

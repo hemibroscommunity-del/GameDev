@@ -25,7 +25,7 @@ const WS = await H.freePort(), WEB = await H.freePort();
 const SCENARIOS = {
   skeleton: () => import('./mp-skeleton.mjs'), /* v2.3.2229: one hit unwraps the mummy, and the skeleton is bigger and faster */
   dmgicon: () => import('./mp-dmgicon.mjs'), /* v2.3.2227: the damage number names the weapon that dealt it */
-  statdemo: () => import('./mp-statdemo.mjs'), /* v2.3.2225: the stat explainer's scene faces the slime, and the +1 lands on your head */
+  statdemo: () => import('./mp-statdemo.mjs'), /* v2.3.2230: the stat explainer's scene faces the slime, and the +1 lands on your head */
   critpreview: () => import('./mp-critpreview.mjs'), /* v2.3.2213: crit vs normal on demand, no playthrough */
   basicwindup: () => import('./mp-basicwindup.mjs'), /* v2.3.2215: every monster tells you before it hits */
   feel: () => import('./mp-feel.mjs'), /* v2.3.2200: contact-synced hits, universal recoil, ground marks */

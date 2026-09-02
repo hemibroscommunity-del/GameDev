@@ -792,6 +792,8 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
      dead on it reads as a bug in whichever one you notice second. */
   const projSrc = readFileSync(
     new URL('../../src/game/projectiles.js', import.meta.url), 'utf8');
+  const cliVariants = readFileSync(
+    new URL('../../src/data/monsterVariants.js', import.meta.url), 'utf8');
   check('intangible: the melee sweep skips it beside !m.alive',
     /!m\.alive \|\| isIntangible\(m\)/.test(mc), {});
   check('intangible: ...and so does the projectile pass',
@@ -799,6 +801,16 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   /* Bosses keep their IMMUNE cue: there the message IS the mechanic. */
   check('intangible: the IMMUNE popup is still reachable for boss phases',
     /_invulnerable\) \{/.test(mc) && /'IMMUNE'/.test(mc), {});
+  /* ═══ v2.3.2226: a slime mid-swell is intangible TOO ═══
+     The swell leaves it ALIVE with 0 hp, a state the client had never seen.
+     The melee sweep saw a live monster and fell into the local kill block
+     (`if (m.curHp <= 0)`), which spawns ground loot -- once per swing, for
+     the whole fuse, while the server granted loot exactly once.  That is the
+     owner's "dozens of slimes in my bag then fixes the amounts".
+     If this predicate ever stops covering _burstUntil the duplication comes
+     straight back, and it comes back as an ECONOMY bug, not a visual one. */
+  check('intangible: ...and covers a slime mid-death-swell (the phantom-loot bug)',
+    /_burstUntil/.test(cliVariants) && /isIntangible/.test(cliVariants), {});
 
   /* ═══ v2.3.2224: the blue slime's death burst ═══
      Same whitelist trap as every other ability: a phase the server emits and
@@ -814,8 +826,6 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     /w\.bu = m\._burstUntil/.test(tickSrc) && /md\.bu/.test(wsSrc), {});
   /* Every exploding variant must be a real variant, or the table silently
      matches nothing and the mechanic never fires. */
-  const cliVariants = readFileSync(
-    new URL('../../src/data/monsterVariants.js', import.meta.url), 'utf8');
   const strayBurst = Object.keys(SRV_SLIME_BURST.VARIANTS)
     .filter((k) => !new RegExp('\\b' + k + ':').test(cliVariants));
   check('burst mirror: every exploding variant is a real one',
