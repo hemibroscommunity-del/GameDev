@@ -29,6 +29,25 @@ import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
+/* ═══ v2.3.2217: THE SNOWBALL BURSTS WHERE ITS FLIGHT ENDS ═══
+   The thrown ball had no impact at all — it simply stopped existing on the
+   frame it arrived (owner asked for the burst, and supplied the sheet).
+   Queued here rather than in the renderer's reap because BOTH ways a ball's
+   flight can end run through this function and only this function: life
+   running out (it reached the point it was aimed at — a dodge) and reaching
+   the player (a hit).  Reaping a destroyed sprite would also fire on a zone
+   change, spraying bursts for every ball in the air as you leave.
+
+   Both endings burst, deliberately: the ball is aimed at a frozen point and
+   lands there whether you moved or not, so bursting only on damage would
+   make a successful dodge look like the ball evaporated. */
+function queueSnowballBurst(S, proj) {
+  if (!proj || proj.kind !== 'snowball') return;
+  if (!S.snowballBursts) S.snowballBursts = [];
+  if (S.snowballBursts.length >= 12) return;   /* nothing drains it if FX are off */
+  S.snowballBursts.push({ x: proj.x, y: proj.y, at: Date.now() });
+}
+
 export function updateArrows(S, deps) {
   var P = S.player;
   var setRpgState = deps.setRpgState,
@@ -917,7 +936,7 @@ export function updateSlimeProjectiles(S) {
                CLAUDE.md's note about client-local logic being a legacy remnant
                applies).  Two lines, correct either way. */
             proj.life -= _sdt;
-            if (proj.life <= 0) return false;
+            if (proj.life <= 0) { queueSnowballBurst(S, proj); return false; }
             proj.x += Math.cos(proj.ang) * proj.speed * _sdt;
             proj.y += Math.sin(proj.ang) * proj.speed * _sdt;
             var pdx = P.x - proj.x, pdy = P.y - proj.y;
@@ -931,7 +950,7 @@ export function updateSlimeProjectiles(S) {
                double-hit the player and take damage authority back to the
                client (rule zero).  Despawn on contact and let the
                server's own event draw the popup, flash and particles. */
-            if (proj.displayOnly) return false;
+            if (proj.displayOnly) { queueSnowballBurst(S, proj); return false; }
             if (_pInvuln) return false;
             /* Shield blocks slime projectiles outright — no damage,
                no hit-react, plays the metal-clang shield-block SFX,

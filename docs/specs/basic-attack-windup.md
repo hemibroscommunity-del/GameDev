@@ -128,3 +128,225 @@ documents for the next author: `window.__btDispatch` is a test-injection
 helper that real inbound messages bypass (wrapping it observes nothing), and
 the player must WALK — a teleport is rejected by the anti-cheat speed cap,
 leaving client and server disagreeing about where the player stands.
+
+## Attack-strip timing: split at the release frame (v2.3.2216)
+
+An attack sheet is **not** uniform anticipation, and timing it as though it
+were is a bug that looks like lag. The snowman's 8-frame throw strips run
+0-4 wind-up (ball picked up, raised, body coiled), **5 release** (the ball is
+drawn detached and airborne), 6-7 follow-through with empty hands.
+
+v2.3.2215 spread all 8 evenly across the server's wind-up, which put the
+drawn release at 62.5% of a 350ms tell. The snowman threw at ~219ms, his
+drawn ball then vanished for the two empty frames, and the *real* projectile
+did not exist until 350ms — a ~130ms hole where he had visibly thrown
+nothing. Reported by the owner on 2026-09-01 as "an awkward disconnect
+between the snowball thrown from his hand and when the projectile appears."
+
+The rule: **anticipation frames fill the wind-up; the release frame starts
+at the instant the server creates the projectile; follow-through plays
+after.** Concretely `perFrame = windupMs / releaseIdx` (not
+`/(releaseIdx + 1)` — the release frame must *start* at the end, not end
+there), and the render window extends past `_shootAnimEnd` by
+`perFrame * (frameCount - releaseIdx)`. For the snowman that is 5 x 70ms of
+wind-up then 3 x 70ms of follow-through, which fits inside the server's
+`ms + 300` post-throw freeze, so he holds still through it.
+
+Latency does not reopen the gap: the wind-up event and the projectile both
+cross the wire, so both client timestamps shift by the same half-RTT.
+
+**Every new attack strip must declare its own release index**
+(`ATTACK_RELEASE_FRAME` in `snowmanSprites.js` is the pattern). A sheet whose
+projectile leaves mid-strip and is timed uniformly reproduces this exactly.
+
+## One strip per attack KIND (v2.3.2216)
+
+The wire carries `ability: 'swing' | 'throw'`, and the client stamps
+`_shootAnimKind` from it. This is load-bearing, not bookkeeping: the
+snowman's ranged band is `minRange: 100`, so inside 100px — which is exactly
+where you stand to fight him — he **melee-pokes**. v2.3.2215 stamped the
+animation fields for both kinds, so every melee poke played the snowball
+throw: a ball appeared in his hand and no projectile ever followed it.
+
+The renderer gates the throw strip on `_shootAnimKind !== 'swing'` (compared
+against `'swing'` rather than equality with `'throw'` so the client-local AI's
+unstamped shoot path still animates as it always did). `mirror-audit` pins
+both halves — the stamp and the gate — because either alone is useless.
+
+A melee attack strip for the snowman is **still missing art**; until it
+exists his melee poke shows the body throb only.
+
+## The ball leaves his hand, on the ball's own tick (v2.3.2217)
+
+Two follow-ups to the same playtest, after v2.3.2216 aligned *when* the
+release happens.
+
+**Where.** The server can only create the snowball at the monster's logical
+point, which for the snowman is his FEET — his sprite is anchored
+bottom-centre at `y = +13` and stands 64px tall, so the logical point sits
+near the bottom of the art. His hand is 17-45px above it and off to one
+side, so the ball popped into existence at his base rather than out of his
+claw.
+
+`snowmanSprites.throwMuzzle(facing)` now returns that offset, measured off
+frame 4 of each strip (the last frame the ball is still held) and stored as
+**source pixels**, so the anchor/scale maths lives in one place. The
+renderer publishes it for the facing it is actually drawing
+(`_muzzleX/_muzzleY`) because facing is renderer-derived from movement
+history — it is not on the wire. Mirrored facings negate x, exactly as the
+strip is flipped.
+
+The offsets are not interchangeable: he holds the ball overhead facing
+south, east and north (`dy` about -40 to -45) but low and to the side facing
+southwest (`dy` -17). One flat offset would be visibly wrong for at least
+one facing, which is why this is a table. Re-measure the same way if the art
+is redrawn: render frame 4 at 3-5x with a 16px grid and read the centre.
+
+Moving the launch point is safe because `monster_projectile` is display-only
+— the server scheduled the impact, aimed at a frozen point, and delivers the
+damage itself. Travel time is unchanged: `life` is in frames and `speed` is
+re-derived from the new distance, so the visual still lands exactly when the
+authoritative hit does.
+
+**When, exactly.** Timing the release to the wind-up's own end is right in
+theory but races it in practice: the server resolves on a tick boundary and
+the event crosses the wire, so the ball arrived a beat after the arm had
+thrown — a small residual lag. The release is now driven by
+`monster_projectile` itself, which cannot drift because it *is* the ball
+appearing. The anticipation frames hold on the cocked pose until it lands
+(normally a frame or two; it reads as weight), with
+`THROW_RELEASE_GRACE_MS` as the escape hatch — a throw wind-up **can**
+resolve into no ball at all (target gone, or an earlier ball still in the
+air), and without it he would hold the cocked pose forever.
+
+**The release frame is deliberately skipped.** Frame 5's entire content is a
+drawn ball in mid-air, and the engine now draws the real one at his hand on
+that same tick. Playing it would put two snowballs on screen a few px apart.
+The strip therefore runs 0-4, then 6-7.
+
+## The thrown ball is his own ball (v2.3.2217)
+
+The projectile was three stacked `Graphics` circles — a white orb with a
+cold rim — because when it was written there was no snowball sprite in the
+repo. Next to the detailed, shaded ball in his claw it read as "a plain
+white circle" (owner, 2026-09-01).
+
+There is one now, and it is the same drawing:
+`public/sprites/monsters/snowman/snowball.png` is **cut from frame 5 of the
+south throw strip**. That is the frame the wind-up deliberately skips — and
+it turns out to be the only place the artist drew the ball *in flight*:
+standalone, larger (it is coming toward the viewer), and free of the brown
+claw that wraps it in every held frame. Every frame-4 crop carries claw
+fragments; that one is clean. So the frame is not wasted after all — it
+became the projectile.
+
+Cut with a circular mask at r=16 centred on (32, 78) in the source cell,
+with a 1.5px soft edge. Wider radii pull in a dark arc from behind the
+ball; re-cut the same way if the art is redrawn.
+
+Drawn at the strips' own 0.5 scale, which is what makes the ball in the air
+and the ball in the hand read as one object. It does not rotate — the
+highlight is lit from one side, so spinning it would look wrong.
+
+It loads inside `loadSnowmanSprites`, so it rides the frost zone's
+`preloadZoneAssets` await and needs no separate registration (the preload
+law's zone-asset exception). **The procedural orb is kept as the fallback,
+not deleted:** the art is a per-zone asset, and a ball you cannot see is a
+ball you cannot dodge.
+
+## The ball bursts where its flight ends (v2.3.2217)
+
+The thrown snowball had no impact at all — it stopped existing on the frame
+it arrived. Owner-supplied art, normalised into the repo's 8-frame strip.
+
+**Normalising the sheet.** The source is a 4x2 grid at 1774x887. It was
+resampled with **one shared centre and one shared scale** across all eight
+frames, not fitted per cell: the burst grows 208px -> 389px -> 204px, and
+that expansion *is* the effect — fitting each frame to its own cell would
+have flattened it into a wobble. The artist's centres agree to within ~8px,
+so a single origin (224, 225) works. Frame 0 is the ball still intact, which
+hands off cleanly from the projectile.
+
+Output is **128px frames, not 256**: this draws at ~44px, so 256 would be
+six times oversampled for four times the VRAM on the iPhone this game is
+played on. Small isolated speckles in the source were dropped (components
+under 30px, away from the main mass).
+
+**Both endings burst.** `queueSnowballBurst` is called at the two — and
+only two — ways a ball's flight can end, both in `updateSlimeProjectiles`:
+life running out (it reached the point it was aimed at, i.e. you dodged) and
+reaching the player (a hit). Bursting only on damage would make a successful
+dodge look like the ball evaporated.
+
+It is queued there rather than in the renderer's sprite reap because the
+reap also fires on a zone change, which would spray bursts for every ball in
+the air as you leave. The queue is cleared at the same four sites that clear
+`slimeProjectiles` on zone load, is capped at 12, and is drained every frame
+whether or not the art loaded, so it cannot accumulate.
+
+**Preloaded per zone and awaited.** A module-scope `_fxLoad` would join the
+global manifest and spend startup budget on a strip most sessions never see.
+It is instead kicked from `preloadZoneAssets` for frost and **pushed into
+`tasks`**, so it is awaited behind the zone overlay — the preload law's
+zone-asset exception done properly, not a lazy first-use load.
+
+## Crit parity: the popup predicted a different crit than the server rolled (v2.3.2218)
+
+Asked to double-check that client-side crit damage matches the server, it
+did not. Three divergences, all under prog3, all on the number the player
+actually watches.
+
+**Why it stayed hidden.** `gameEvents` skips the server's damage number for
+your OWN hits ("skip our own — we already show it locally"), so on your own
+swing the popup is purely `monsterCombat`'s local prediction and is never
+corrected on screen. The monster's HP bar drains by the server's figure and
+the number floating off it is the client's. The two are never shown side by
+side, so drift here is invisible in play and permanent.
+
+**1. The swing path was prog3-blind.** It computed crit from the retired
+Power/Ferocity curves — `calcCritChance(power, ferocity)` with an 8% floor
+and a staff x0.35, and `calcCritMult(power)` — while the server rolls
+`1% + 0.4%/pt` and `1.5 + 1%/pt` from the offense block of the weapon being
+swung. Measured:
+
+| crit / critDmg pts | server chance | client chance | server mult | client mult |
+|---|---|---|---|---|
+| 0 / 0    |  1.0% |  8.0% | 1.50 | 1.50 |
+| 25 / 25  | 11.0% |  8.0% | 1.75 | 1.50 |
+| 75 / 100 | 31.0% |  8.0% | 2.50 | 1.50 |
+
+At a built-out allocation you saw crits about a quarter as often as they
+happened, and each one landed 40% short.
+
+The correct helpers already existed and were already right — `prog3CritPct`
+/ `prog3CritMult` / `prog3CritFlat`, used by `calcDisplayDps` and the Hero
+screen's Crit row since v2.3.2210. Only this path never called them. The 8%
+floor and staff x0.35 stay on the legacy branch: the server applies neither,
+and `prog3CritPct`'s own 1% base is what replaced the floor.
+
+**2. The special multiplied the crit FLOOR.** `combat.js` does `base *= 3`
+and *then* anchors, so the anchor floors an already-tripled number and is
+not itself tripled. The client anchored first and scaled after, so a special
+crit whose ordinary crit fell under the anchor predicted `2 x rangeTop x 3`
+against a server paying `max(base x 3 x critMult, 2 x rangeTop)` — roughly
+60% high on the biggest, most-watched hit in the game. Safe to reorder
+because under prog3 `calcSpecialDmg` and `calcWeaponDmg` share
+`prog3DmgTerm`, so the client's special base is the server's pre-special
+base term for term.
+
+**3. Amulet critDmg is client-only — NOT fixed, flagged.** The client added
+`_amuletBonus.value / 100` to the multiplier; `combat.js` has no amulet crit
+term at all. It is now confined to the legacy branch so it cannot re-open
+the drift, but closing it properly either nerfs a real amulet or is a server
+balance change. That is the owner's call, not a display fix.
+
+Note what parity does and does not mean here: both sides roll their own
+`Math.random()` for the crit and for damage variance, so the two numbers
+will never be equal on a given swing and are not meant to be. What must
+match is the formula and its inputs, so the prediction is drawn from the
+same distribution as the truth.
+
+`mirror-audit` pins the helpers numerically against the server formula
+across the allocation range, that the swing path calls all three, and that
+the special multiplies in before the anchor. Both halves were verified to
+fail against the pre-fix code.

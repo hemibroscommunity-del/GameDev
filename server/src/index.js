@@ -1558,6 +1558,14 @@ export class GameRoom {
                monster carrying _bwUntil would resolve a swing it started in
                a previous life, at a target that is no longer there. */
             m._bwUntil = 0; m._bwTarget = null; m._bwKind = null;
+            /* v2.3.2221: and the burrow, for the same reason plus a worse
+               one — a respawned monster still carrying _invulnUntil would
+               come back untouchable, and one still carrying _burPhase would
+               come back as a mound of snow that never reassembles.  The
+               COOLDOWN is deliberately not cleared: it is a fresh monster,
+               so it may burrow again as soon as it drops to half. */
+            m._burPhase = null; m._burUntil = 0; m._burTarget = null;
+            m._invulnUntil = 0; m._burCd = 0;
             // Revert any in-life variant transform (mummy -> skeleton)
             // so a respawned monster comes back in its original form
             // with the original spd.  Stamped at spawn time and
@@ -1629,6 +1637,12 @@ export class GameRoom {
            in the same place — before target acquisition, so a player who
            walks away cannot strand a pending swing that fires stale later. */
         if (this._resolveBasicWindup(zoneId, m, now)) continue;
+        /* v2.3.2221: and the snow-pile burrow, ahead of BOTH — a monster
+           mid-burrow has no arms to swing with and no target logic to run.
+           Returning true here is what makes the pile harmless: there is no
+           separate "can't attack" flag, the AI simply never reaches the
+           attack code while he is a mound of snow. */
+        if (this._resolveBurrow(zoneId, m, now)) continue;
 
         /* v2.3.1640: resolve an in-flight snowball.  Deliberately OUTSIDE
            the aggro branch and ahead of it — a thrown ball is already in
@@ -1878,6 +1892,17 @@ export class GameRoom {
                _resolveBasicWindup — travelMs remains the dodge window, this
                just puts a tell in front of it. */
             this._startBasicWindup(zoneId, m, nearest.id, now, 'throw', _rangedCfg.cd);
+          }
+
+          /* v2.3.2221: START the snow-pile burrow — ABOVE the telegraph kits
+             and the basic swing, because it is the move that replaces them.
+             Needs a live target for the same reason a cast does (he has to
+             have somewhere to grind toward), which is why the start lives
+             here in the aggro branch while the resolve runs unconditionally
+             above.  Gated on ccMoveMult with everything else: a frozen
+             snowman cannot dig either. */
+          if (ccMoveMult > 0 && this._startBurrow(zoneId, m, nearest.id, now)) {
+            continue;
           }
 
           /* v2.3.1730: START a telegraphed ability (brute slam, stalker
@@ -2550,7 +2575,9 @@ export class GameRoom {
      reflect needed a flag for at v2.3.1137.  It is a display tag only;
      nothing server-side reads it. */
   _applyMonsterDot(zoneId, m, rawDmg, sourceId, statusId, opts) {
-    if (!m || !m.alive || m.hp <= 0) return 0;
+    if (!this._monsterDamageable(m)) return 0;   /* v2.3.2221: a DoT tick into an
+       invulnerable phase DROPS -- it must not bank up and land on the way out,
+       which would make the phase a delay rather than an immunity. */
     const dmg = Math.min(Math.max(0, Math.round(rawDmg || 0)), Math.max(0, m.hp));
     if (dmg <= 0) return 0;
     m.hp -= dmg;

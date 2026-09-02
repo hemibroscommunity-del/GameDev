@@ -136,7 +136,12 @@ export const petMethods = {
     const monsterId = payload && payload.monsterId;
     const list = this.monsters[ps.z] || [];
     const m = list.find((x) => x.id === monsterId);
-    if (!m || !m.alive) return res({ captured: false, error: 'no-monster' });
+    /* v2.3.2221: a capture is the one way to remove a monster that is not
+       an hp write, so the phase gate has to be repeated here or the snow
+       pile could simply be trapped while it cannot be hit.  Reported as
+       'no-monster' rather than a new error string: the client's IMMUNE
+       cue already says why, and an unknown code would render blank. */
+    if (!this._monsterDamageable(m)) return res({ captured: false, error: 'no-monster' });
     if (m.maxHp > 0 && m.hp / m.maxHp > PETS.HP_THRESHOLD) return res({ captured: false, error: 'too-healthy' });
     const dx = m.x - ps.x, dy = m.y - ps.y;
     if (Math.sqrt(dx * dx + dy * dy) > PETS.CAPTURE_RANGE) return res({ captured: false, error: 'too-far' });

@@ -37,7 +37,7 @@ import { loadSlimeSprites } from './slimeSprites.js';
 import { loadSnowmanSprites } from './snowmanSprites.js';
 import { loadPlayerDeathSprites } from './playerDeathSprites.js';
 import { preloadStartZoneMap, loadWalkabilityMaps } from './tiledMaps.js';
-import { effectsAnimationsReady, ensureImpactTex } from './systems/effectsRenderer.js';
+import { effectsAnimationsReady, ensureImpactTex, ensureSnowballBurstTex } from './systems/effectsRenderer.js';
 import { fxStripsReady } from './fxStrips.js'; /* v2.3.1735: stun ring + whirl vortex (preloading is law) */
 import { preloadTraits } from './systems/entityRenderer.js';
 import { preloadCapes } from './capeSprites.js'; /* v2.3.2023: cosmetic capes are GLOBAL, not per-zone */
@@ -96,6 +96,10 @@ export async function preloadZoneAssets(zoneId) {
   if (zoneId === 'frost') {
     tasks.push(Promise.resolve(loadSnowmanSprites()).catch(() => {}));
     try { ensureImpactTex(); } catch (e) { /* effectsAnimationsReady tracks it */ }
+    /* v2.3.2217: the thrown ball's burst — AWAITED (pushed into tasks) rather
+       than fire-and-forget, so it is ready before the zone overlay lifts
+       instead of popping in on the first snowball that lands. */
+    tasks.push(Promise.resolve(ensureSnowballBurstTex()).catch(() => {}));
   }
   await Promise.allSettled(tasks);
 }

@@ -43,7 +43,10 @@ function slimeTintFor(variant, state) {
   return (variant && variant.tint) || 0xffffff;
 }
 import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount as snowmanFrameCount, getHitFrame as getSnowmanHitFrame, hitFrameCount as snowmanHitFrameCount, getDeathFrame as getSnowmanDeathFrame, deathFrameCount as snowmanDeathFrameCount,
-  getAttackFrame as getSnowmanAttackFrame, attackFrameCount as snowmanAttackFrameCount /* v2.3.2215 */
+  getAttackFrame as getSnowmanAttackFrame, attackFrameCount as snowmanAttackFrameCount, /* v2.3.2215 */
+  attackReleaseFrame as snowmanAttackReleaseFrame, /* v2.3.2216 */
+  throwMuzzle as snowmanThrowMuzzle, /* v2.3.2217 */
+  getPhaseFrame as getSnowmanPhaseFrame, phaseFrameCount as snowmanPhaseFrameCount /* v2.3.2221 */
 } from '../snowmanSprites.js';
 import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, maybeTransformMonster } from '../../data/monsterVariants.js';
@@ -4112,6 +4115,13 @@ const NAME_STYLE = new TextStyle({
    the monster object instead looks equivalent and is not: nothing sets that
    field on a real monster (only the QA fixtures do), so a hand-rolled
    fallback silently mis-places the ring on every live monster in the game. */
+/* v2.3.2217: how long the renderer waits for the projectile event before
+   playing the follow-through anyway.  A throw wind-up CAN resolve into no
+   ball at all (the target left, or an earlier ball is still in the air —
+   see _resolveBasicWindup), and without this he would hold the cocked pose
+   forever. */
+const THROW_RELEASE_GRACE_MS = 250;
+
 export function getMonsterSize(archetype) {
   /* Slime/fodder stays small (renders as a 50-px sprite, the 8-px
      circle is the procedural fallback / hitbox anchor).  Snowman
@@ -6783,19 +6793,116 @@ export class EntityRenderer {
           const inHitWindow = m._hitAnimEnd && now < m._hitAnimEnd && hitFc > 0;
           /* v2.3.2215: the snowball-throw wind-up.  Priority sits BELOW the
              hit reaction (being struck interrupts the throw, which is what
-             the recoil is for) and above idle.  Frame index is elapsed /
-             duration across the whole wind-up so the throw reads at whatever
-             length the server chose, and getSnowmanAttackFrame clamps to the
-             last frame rather than looping — a throw that restarted
-             mid-wind-up would read as a stutter. */
+             the recoil is for) and above idle.  getSnowmanAttackFrame clamps
+             rather than looping — a throw that restarted mid-wind-up would
+             read as a stutter.
+
+             v2.3.2216: SPLIT AT THE RELEASE FRAME, don't scale the strip.
+             The old code spread all 8 frames evenly across the wind-up, so
+             the drawn ball left his hand at 62.5% of the tell (~219ms of
+             350) while the server's real projectile did not exist until
+             100%.  The ball then vanished for the two empty follow-through
+             frames and reappeared as a projectile ~130ms later — the
+             disconnect the owner reported on 2026-09-01.
+
+             Now the ANTICIPATION frames (0..release) fill the wind-up
+             exactly, so the release pose lands on the same instant the
+             server creates the projectile, and the follow-through frames
+             play AFTER it at the same cadence.  The follow-through fits
+             inside the server's post-throw freeze (_attackingUntil is
+             ms + 300), so he holds still through it instead of sliding. */
+          /* ═══ v2.3.2221: THE BURROW OWNS THE BODY ═══
+             Above the attack strip, the hit reaction and idle: while he is a
+             mound of snow there is no body to recoil, no arm to throw with
+             and no idle to breathe.  Self-clearing on expiry -- the server
+             sends no "done" event and a tick delta cannot express a REMOVED
+             field, so a client that misses the last transition has to be able
+             to recover rather than hold the mound forever. */
+          if (m._burPhase && now > (m._burUntil || 0) + 500) {
+            m._burPhase = null; m._invulnerable = false;
+          }
+          const burFc = m._burPhase ? snowmanPhaseFrameCount(
+            m._burPhase === 'dig' ? 'burrow' : m._burPhase) : 0;
+          let burTex = null;
+          if (m._burPhase && burFc > 0) {
+            const _sheet = m._burPhase === 'dig' ? 'burrow' : m._burPhase;
+            const _span = Math.max(1, (m._burUntil || 0) - (m._burFrom || 0));
+            /* The PILE loops -- it is a travelling shape that lasts until he
+               reaches you.  Dig and emerge are one-shots played once across
+               their own window and held on the final pose. */
+            const _looping = m._burPhase === 'pile';
+            const _idx = _looping
+              ? Math.floor((now - (m._burFrom || now)) / 90)
+              : Math.floor(((now - (m._burFrom || now)) / _span) * burFc);
+            burTex = getSnowmanPhaseFrame(_sheet, _idx, _looping);
+          }
           const atkFc = snowmanAttackFrameCount(facing);
-          const inAtkWindow = !inHitWindow && m._shootAnimEnd && now < m._shootAnimEnd && atkFc > 0;
+          const atkRel = snowmanAttackReleaseFrame(facing);
+          /* v2.3.2217: publish the throwing hand for THIS facing so the
+             projectile can be launched from it (gameEvents reads these two
+             numbers on monster_projectile).  Stamped on the monster rather
+             than resolved there because facing is renderer-derived state —
+             it comes from movement history, not the wire. */
+          const _mz = snowmanThrowMuzzle(facing);
+          m._muzzleX = _mz.dx; m._muzzleY = _mz.dy;
+          const adur = Math.max(1, (m._shootAnimEnd || 0) - (m._shootAnimStart || 0));
+          /* One frame's worth of the wind-up.  The ANTICIPATION frames are
+             0..atkRel-1 (atkRel of them) — frame atkRel is the release
+             itself, so it must START at adur, not end there.  Dividing by
+             atkRel (not atkRel + 1) is what puts the drawn ball leaving his
+             hand on the exact tick the server creates the projectile. */
+          const atkPerF = adur / Math.max(1, atkRel);
+          /* v2.3.2217: THE RELEASE IS DRIVEN BY THE BALL, NOT BY A CLOCK.
+             v2.3.2216 timed the release to the wind-up's own end, which is
+             the right instant in theory but races it in practice: the server
+             resolves on a tick boundary and the event crosses the wire, so
+             the ball landed a beat after the arm had already thrown — the
+             "tiny subtle lag" the owner reported.  Now the anticipation
+             frames hold on the cocked pose until monster_projectile actually
+             arrives, which cannot drift because it IS the ball appearing.
+             The wait is normally a frame or two and reads as weight. */
+          const relAt = (m._throwReleaseAt && m._throwReleaseAt >= m._shootAnimStart)
+            ? m._throwReleaseAt
+            : (now >= m._shootAnimEnd + THROW_RELEASE_GRACE_MS
+                ? m._shootAnimEnd + THROW_RELEASE_GRACE_MS
+                : 0);
+          /* Frames after the release one: the release frame itself is SKIPPED
+             (see below), so the follow-through is everything past it. */
+          const followFrames = Math.max(0, atkFc - atkRel - 1);
+          /* v2.3.2216: never play the THROW strip for a melee poke (see the
+             _shootAnimKind stamp in gameEvents).  Compared against 'swing'
+             rather than equality with 'throw' so an unstamped write — the
+             client-local AI's shoot path — still animates as it always
+             did. */
+          const inAtkWindow = !inHitWindow && m._shootAnimEnd
+            && m._shootAnimKind !== 'swing' && atkFc > 0
+            && (!relAt || now < relAt + followFrames * atkPerF);
           let frameTex = null;
           let mirror = false;
-          if (inAtkWindow) {
-            const adur = Math.max(1, m._shootAnimEnd - m._shootAnimStart);
-            const at = (now - m._shootAnimStart) / adur;
-            const aFrame = getSnowmanAttackFrame(facing, Math.floor(at * atkFc));
+          if (burTex) {
+            /* Top priority, and NOT an early `continue`: everything after
+               this chain -- the HP bar above his head most of all -- still
+               has to run.  A mound of snow with no health bar would hide the
+               state of the fight at exactly the moment the player is deciding
+               whether to chase him or back off. */
+            frameTex = burTex;
+            mirror = false;   /* the mound has no facing worth reading */
+          } else if (inAtkWindow) {
+            let aIdx;
+            if (!relAt) {
+              /* Winding up — or holding the cocked pose while the ball is in
+                 flight to us across the wire. */
+              aIdx = Math.max(0, Math.min(atkRel - 1,
+                Math.floor((now - m._shootAnimStart) / atkPerF)));
+            } else {
+              /* Straight to the follow-through, SKIPPING the release frame:
+                 that frame's whole content is a drawn ball in mid-air, and
+                 the engine now draws the real one at his hand on this very
+                 tick.  Playing it would put two snowballs on screen at
+                 slightly different places. */
+              aIdx = atkRel + 1 + Math.floor((now - relAt) / atkPerF);
+            }
+            const aFrame = getSnowmanAttackFrame(facing, aIdx);
             if (aFrame) { frameTex = aFrame.tex; mirror = aFrame.mirror; }
           } else if (inHitWindow) {
             const dur = Math.max(1, m._hitAnimEnd - m._hitAnimStart);

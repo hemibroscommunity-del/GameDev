@@ -687,6 +687,20 @@ export function setupWebSocket(ctx) {
                       if (typeof md.st === 'number' && md.st > Date.now()) {
                         localM._stunUntil = Math.max(localM._stunUntil || 0, md.st);
                       }
+                      /* v2.3.2221: the burrow phase, for JOINERS AND RESYNCS.
+                         The monster_ability events drive the animation for
+                         anyone present when it starts; this is what saves the
+                         player who arrives mid-pile, who would otherwise see
+                         an ordinary snowman shrugging off every hit — a
+                         mechanic that reads as a bug.  Only set when we do not
+                         already have the phase, so it never fights the events'
+                         finer timing. */
+                      if (typeof md.ph === 'string' && md.ph && localM._burPhase !== md.ph) {
+                        localM._burPhase = md.ph;
+                        localM._burFrom = localM._burFrom || Date.now();
+                        localM._burUntil = Math.max(localM._burUntil || 0, Date.now() + 400);
+                        localM._invulnerable = md.ph === 'pile';
+                      }
                       /* Don't overwrite maxHp — it stays at the spawn value */
                       if (md.alive && !localM.alive) {
                         /* Monster respawned -- clear all per-life
