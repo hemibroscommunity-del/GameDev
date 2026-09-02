@@ -1565,7 +1565,7 @@ export class GameRoom {
                COOLDOWN is deliberately not cleared: it is a fresh monster,
                so it may burrow again as soon as it drops to half. */
             m._burPhase = null; m._burUntil = 0; m._burTarget = null;
-            m._invulnUntil = 0; m._burCd = 0; m._burFloor = 0;   /* v2.3.2222 */
+            m._invulnUntil = 0; m._burCd = 0; m._burFloor = 0;   /* v2.3.2223 */
             // Revert any in-life variant transform (mummy -> skeleton)
             // so a respawned monster comes back in its original form
             // with the original spd.  Stamped at spawn time and

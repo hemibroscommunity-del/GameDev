@@ -206,7 +206,7 @@ function toPile() {
   check('cooldown: he cannot immediately burrow again', !snowman._burPhase, snowman._burPhase);
 }
 
-// ── 10. v2.3.2222: the pile has a FLOOR, not just a cap ──
+// ── 10. v2.3.2223: the pile has a FLOOR, not just a cap ──
 {
   arm(0);                                  /* player standing right on him */
   room._tickMonsters();                    /* dig */
