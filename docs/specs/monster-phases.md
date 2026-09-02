@@ -76,3 +76,35 @@ learn about the mechanic 60 damage.
 **Still missing art:** the detonation itself is a ground decal, screen shake
 and a low tone. A goo-burst strip (8 frames, the `DEBRIS_BURSTS` shape) would
 be the upgrade.
+
+## v2.3.2226
+
+**The phantom-loot bug.** Owner: "it shows dozens of slimes in my bag then
+fixes the amounts."
+
+The swell leaves the slime **alive with 0 hp** for the length of its fuse —
+a state nothing on the client had ever seen. The melee sweep saw a live
+monster, registered a hit, and fell straight into the local kill block
+(`if (m.curHp <= 0)`), which pushes ground loot. Every swing during the fuse
+spawned another pile. The server ignored the damage entirely and granted loot
+exactly once, so the bag filled with phantom drops until the next
+authoritative inventory sync corrected them — hence "then fixes the amounts".
+
+Fixed at the cause, not the symptom: `isIntangible` now covers `_burstUntil`
+as well as the snow pile. The server already denies all damage during the
+swell, so the client agreeing there is nothing to hit is what the two should
+have matched on from the start. A monster mid-death-throes is not a target.
+
+Pinned, because it comes back as an **economy** bug rather than a visual one.
+
+**Fuse doubled**, 800 → 1600ms.
+
+**The code-drawn impact areas are gone.** The green ring and the ground splat
+both went: the ring was live `Graphics`, the splat a minted radial blob sized
+to the blast — a code-drawn impact area by another name. What is left is what
+does not look drawn: the swell, the camera kick and the sound.
+
+That makes the **swell the only telegraph**, which is why the fuse doubled in
+the same change — a slime tripling in size has to carry the whole warning now,
+and it needs the extra second to be a fair one. A real goo-burst strip is the
+upgrade.
