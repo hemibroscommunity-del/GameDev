@@ -21,6 +21,33 @@ In the commands below, replace `YOUR_KEY` with that password and
 `WORKER` with your worker's URL host (the same host the game's WebSocket
 uses — e.g. `brotown-server.<your-subdomain>.workers.dev`).
 
+## Testing your own game without playing through it (v2.3.2240)
+
+You don't need the commands below for this — it's built into the game.
+
+**Press and hold the zone name** at the top of the screen for about a second.
+A "Test panel" opens. Paste your admin key once (the same one from the setup
+above) and it's remembered on that device.
+
+From there you can:
+
+- **Unlock every gated zone** — opens Frost Ridge, Verdant Wilds, Wind Dunes
+  and the Flame Fields without playing the tutorial chain. It marks those
+  quests as *started*, not finished, so your save still looks like a real
+  player's.
+- **Warp** — from the World View map, tap a zone to be placed at its
+  trail-head, then walk in as normal.
+- **Give weapons + levels** — the three starter weapons and a chunk of levels,
+  so a high-level zone isn't instant death.
+- **Heal / refill** and **God mode** — top your bars up, or stop taking damage
+  while you watch a mechanic play out. God mode switches itself off after 20
+  minutes, so you can't leave it on by accident.
+
+Nobody else can use any of this: every button asks the worker for permission
+with your key, and without the key the buttons do nothing at all. "Forget key
+on this device" removes it if you're ever on a shared phone.
+
+
 ## Seeing what's happening
 
 Who's online, is the world ticking:

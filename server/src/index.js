@@ -57,6 +57,7 @@ import { arenaMethods } from './gladiator.js';
 import { dungeonMethods } from './dungeon.js';
 import { telegraphMethods } from './telegraph.js'; /* v2.3.1730 */
 import { fireTrailMethods } from './firetrail.js'; /* v2.3.2238 */
+import { devToolsMethods } from './devtools.js'; /* v2.3.2240 */
 import { abilityMethods } from './abilities.js'; /* v2.3.1733 */
 // v2.3.1128 (PR11): guild-quest verification -- server-checked
 // life-skill quest ladder, claims under guild_claims:<pid>.
@@ -4967,6 +4968,7 @@ Object.assign(GameRoom.prototype, dungeonMethods);
 // v2.3.1730: telegraphed standard-zone attacks -- see telegraph.js.
 Object.assign(GameRoom.prototype, telegraphMethods);
 Object.assign(GameRoom.prototype, fireTrailMethods); /* v2.3.2238 */
+Object.assign(GameRoom.prototype, devToolsMethods); /* v2.3.2240 */
 // v2.3.1733: stamina abilities + the milestone ladder -- see abilities.js.
 Object.assign(GameRoom.prototype, abilityMethods);
 // v2.3.1128 (PR11): guild-quest verification -- see guilds.js.

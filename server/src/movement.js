@@ -24,7 +24,10 @@ const ALWAYS_OPEN_ZONES = new Set(['town', 'worldview', 'farm_home', 'meadow']);
    by existing, and a retuned one cannot leave a stale lock behind.
    Object.create(null) is not needed — a Map is keyed by our own strings, and
    the values come from QUEST_REWARDS, never from a client. */
-const QUEST_ZONE_GATE = (() => {
+/* v2.3.2240: exported so the operator test kit (devtools.js) unlocks
+   exactly the gates _zoneUnlocked checks, derived from the same table --
+   a hand-written second list would drift the day a quest moves. */
+export const QUEST_ZONE_GATE = (() => {
   const m = new Map();
   for (const qid of Object.keys(QUEST_REWARDS)) {
     const z = QUEST_REWARDS[qid] && QUEST_REWARDS[qid].objective && QUEST_REWARDS[qid].objective.zone;

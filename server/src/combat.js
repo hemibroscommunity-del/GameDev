@@ -155,6 +155,21 @@ export const combatMethods = {
     if (ps._zoneEntryGraceUntil && Date.now() < ps._zoneEntryGraceUntil) {
       return { dmgTaken: 0, dodged: false, graced: true, dmgIntent: r };
     }
+    /* ═══ v2.3.2240: OPERATOR GOD MODE (server/src/devtools.js) ═══
+       Deliberately the SAME shape as the zone-entry grace directly above,
+       rather than a second immunity mechanism: one short-circuit, one place
+       damage can be zeroed, and `graced` keeps damage tracking honest so
+       lifesteal and kill credit behave exactly as they do during the entry
+       window (the v2.3.1345-era reason that flag exists at all).
+
+       In MEMORY ONLY -- `_godUntil` lives on playerState and never touches
+       the persisted rpg blob (handoff rule 1) -- and it always expires, so
+       it cannot be left on across a reconnect or a deploy, and it cannot end
+       up in a save file. Set only through the ADMIN_KEY-gated HTTP surface;
+       no websocket message can reach it. */
+    if (ps._godUntil && Date.now() < ps._godUntil) {
+      return { dmgTaken: 0, dodged: false, graced: true, dmgIntent: r };
+    }
     if (isBlock) {
       ps.lastDamageAt = Date.now();
       return { dmgTaken: 0, dodged: false };

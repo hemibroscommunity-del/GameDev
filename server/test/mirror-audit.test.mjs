@@ -930,5 +930,43 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     /S\._shieldUp && !_srvResolved && isAttackInShieldArc/.test(cliSrc), {});
 }
 
+/* ═══ 22. v2.3.2240: THE OWNER'S TEST PANEL ═══
+   The dev kit's own rules are pinned in server/test/devtools.test.mjs and its
+   reachability in tools/qa/mp/mp-devpanel.mjs.  What neither can see is the
+   SECURITY posture drifting: this feature is safe only because every
+   privileged action is an ADMIN_KEY-gated HTTP call and NOTHING is reachable
+   over the websocket.  A future session adding a convenient `dev_warp`
+   message would hand every client the zone gate, and no functional test
+   would notice, because the feature would still work. */
+{
+  const devSrv = readFileSync(new URL('../src/devtools.js', import.meta.url), 'utf8');
+  const idxSrv = readFileSync(new URL('../src/index.js', import.meta.url), 'utf8');
+  const panel = readFileSync(new URL('../../src/ui/panels/DevPanel.jsx', import.meta.url), 'utf8');
+  const header = readFileSync(new URL('../../src/ui/mobile/ZoneHeader.jsx', import.meta.url), 'utf8');
+  const combatSrc = readFileSync(new URL('../src/combat.js', import.meta.url), 'utf8');
+
+  check('devkit security: no dev_* websocket case exists in the worker',
+    !/case 'dev[_a-z]*':/.test(idxSrv), {});
+  check('devkit security: the panel opens no socket message of its own',
+    !/channel\.send\(/.test(panel) && !/sendEvent\(/.test(panel), {});
+  check('devkit security: every panel action goes through /api/admin',
+    /\/api\/admin/.test(panel) && /Authorization/.test(panel), {});
+  check('devkit security: the routes hang off the authenticated admin fetch',
+    /_devFetch\(request, path, json\)/.test(readFileSync(new URL('../src/admin.js', import.meta.url), 'utf8')), {});
+  /* God mode must stay in-memory and must stay bounded. */
+  check('devkit: god mode is read from playerState in _applyDamage',
+    /ps\._godUntil && Date\.now\(\) < ps\._godUntil/.test(combatSrc), {});
+  check('devkit: god mode is capped so it cannot be left on forever',
+    /GOD_MINUTES_MAX/.test(devSrv), {});
+  /* The unlock must derive from the gate the game reads, not a second list. */
+  check('devkit: the unlock derives from QUEST_ZONE_GATE itself',
+    /QUEST_ZONE_GATE/.test(devSrv), {});
+  /* The panel must remain reachable, and by the gesture the docs describe. */
+  check('devkit: the long-press trigger is still wired to the zone title',
+    /bt-zone-header__title/.test(header) && /onPointerDown=\{holdStart\}/.test(header), {});
+  check('devkit: ...and the panel is still what it opens',
+    /DevPanel\.jsx/.test(header), {});
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
