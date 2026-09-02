@@ -746,6 +746,19 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
      first and scaling after would multiply the FLOOR too. */
   check('crit parity: the special multiplies in before the crit anchor',
     /_specBase \* specialMult/.test(mc) && !/_critBase \* specialMult/.test(mc), {});
+
+  /* ═══ v2.3.2220: in a server zone the popup REPORTS, it does not guess ═══
+     Aligning the formula (v2.3.2218) could not align two separate
+     Math.random() calls: the worker rolls its own variance and its own crit
+     and discards the client's, so a local prediction is a second roll that
+     agrees only by luck — a client crit on a server non-crit prints ~2.5x
+     what landed.  The local number must therefore be gated to
+     client-authoritative zones, and the server's must be painted for our own
+     hits.  Either half alone reverts the bug or prints nothing at all. */
+  check('damage truth: the local number is gated to client-authoritative zones',
+    /if \(!S\._serverMonsters\) \{/.test(mc), {});
+  check('damage truth: ...and the server number is painted for our own hits',
+    /payload\.ability \|\| S\._serverMonsters/.test(src), {});
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

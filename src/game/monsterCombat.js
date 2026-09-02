@@ -1941,12 +1941,36 @@ export function updateMonsterCombat(S, deps) {
                    swap was doing the whole job alone.  The icon goes to the
                    crit mark too: a sword on a crit says the same thing as a
                    sword on a normal hit, which is nothing. */
-                if (isCrit && collisionResult) {
-                  pushDmgPopup(S, m.x, monsterPopupY(m, -20), 'ZAP ' + dmg, DMG_CRIT_COLOR, { iconKey: 'crit', crit: true, special: _isSpecialDmg });
-                } else if (isCrit) {
-                  pushDmgPopup(S, m.x, monsterPopupY(m, -20), String(dmg), DMG_CRIT_COLOR, { iconKey: 'crit', crit: true, special: _isSpecialDmg });
-                } else {
-                  pushDmgPopup(S, m.x, monsterPopupY(m, -20), '' + dmg, '#fff', { iconKey: 'sword', special: _isSpecialDmg });
+                /* ═══ v2.3.2220: IN A SERVER ZONE, DO NOT GUESS THE NUMBER ═══
+                   Owner: "I hit a 69 with a critical hit on a special attack
+                   and the snowman didn't die."  It didn't, because 69 was
+                   not what landed.  The worker rolls its own variance and
+                   its own crit and discards the client's, so this popup was
+                   an independent second roll -- a client crit on a server
+                   non-crit prints about 2.5x the damage actually dealt, and
+                   the sword variance alone can differ by 1.67x on top.
+                   v2.3.2218 aligned the FORMULA; nothing can align two
+                   separate Math.random() calls.
+
+                   gameEvents paints the authoritative number from
+                   monster_hit instead (search v2.3.2220 there).  Everything
+                   above this line -- flash, recoil, debris, decal, shake,
+                   knockback, the hit spark -- stays local and instant; only
+                   the number waits, on the same schedule the HP bar has
+                   always used.
+
+                   `dmg` is still computed above: the local path below needs
+                   it for client-authoritative zones, and _specialAttack's
+                   styling rides through S._ownSpecialRecent. */
+                S._ownSpecialRecent = _isSpecialDmg;
+                if (!S._serverMonsters) {
+                  if (isCrit && collisionResult) {
+                    pushDmgPopup(S, m.x, monsterPopupY(m, -20), 'ZAP ' + dmg, DMG_CRIT_COLOR, { iconKey: 'crit', crit: true, special: _isSpecialDmg });
+                  } else if (isCrit) {
+                    pushDmgPopup(S, m.x, monsterPopupY(m, -20), String(dmg), DMG_CRIT_COLOR, { iconKey: 'crit', crit: true, special: _isSpecialDmg });
+                  } else {
+                    pushDmgPopup(S, m.x, monsterPopupY(m, -20), '' + dmg, '#fff', { iconKey: 'sword', special: _isSpecialDmg });
+                  }
                 }
                 /* v2.3.254: "block N" mitigation indicator removed
                    alongside the level-diff scaling above. */

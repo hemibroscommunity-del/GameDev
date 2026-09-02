@@ -1363,7 +1363,7 @@ export function processGameEvent(type, payload, S, deps) {
                       crit: !!payload.isCrit,
                       iconKey: payload.isCrit ? 'crit' : undefined,
                     });
-                  } else if (payload.ability) {
+                  } else if (payload.ability || S._serverMonsters) {
                     /* v2.3.1733: OUR OWN stamina-ability hit.  The rule
                        above ("skip our own — we already show it locally")
                        assumes a local prediction produced a popup, which is
@@ -1371,10 +1371,34 @@ export function processGameEvent(type, payload, S, deps) {
                        and Whirlwind: those are rolled entirely server-side
                        (see src/game/abilities.js), so with no branch here
                        the ability chips the HP bar and prints NOTHING.
-                       Same shape, same reason, as the thorns case below. */
+                       Same shape, same reason, as the thorns case below.
+
+                       ═══ v2.3.2220: AND NOW EVERY OWN HIT IN A SERVER ZONE ═══
+                       Owner: "I hit a 69 with a critical hit on a special
+                       attack and the snowman didn't die."  The number was
+                       never the damage.  In a server zone the worker rolls
+                       its own variance AND its own crit and ignores the
+                       client's entirely (_handleMonsterDamage: "Client
+                       damage number is no longer trusted"), so the local
+                       prediction was a SECOND, independent roll that only
+                       ever agreed with the truth by luck.  v2.3.2218 made
+                       the two use the same formula; it could not make two
+                       Math.random() calls return the same thing.  A client
+                       crit landing on a server non-crit shows ~2.5x the
+                       damage actually dealt.
+
+                       So the popup now reports the hit instead of guessing
+                       it.  Everything that has to feel instant — the flash,
+                       recoil, debris, decal, shake, knockback — is still
+                       local and unchanged; only the NUMBER waits for the
+                       truth, on the same schedule the HP bar already used.
+                       A number half a round-trip late beats a number that
+                       is wrong. */
                     pushDmgPopup(S, hitM.x || hitM.renderX, monsterPopupY(hitM, -20),
                       '-' + payload.dmg, payload.isCrit ? DMG_CRIT_COLOR : '#ffd08a',
-                      payload.isCrit ? { crit: true, iconKey: 'crit' } : undefined);  /* v2.3.2211 */
+                      payload.isCrit
+                        ? { crit: true, iconKey: 'crit', special: !!S._ownSpecialRecent }
+                        : { iconKey: 'sword', special: !!S._ownSpecialRecent });  /* v2.3.2211; v2.3.2220 */
                   } else if (payload.thorns) {
                     /* v2.3.1137: Thorns reflect is SERVER-rolled with no
                        local prediction (unlike swings), so our own thorns
