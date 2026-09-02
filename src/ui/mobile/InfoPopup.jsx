@@ -94,6 +94,50 @@ export const InfoPopup = () => {
           fontSize: 13, lineHeight: 1.42, color: COL.text,
         }}>{cur.body}</div>
 
+        {/* ═══ v2.3.2216: THE POINTS SCREEN'S ℹ️ ═══
+            Owner: "Tapping it launches into a new window that describes its
+            effect.  It also has a preview of what the effect does
+            (exaggerated)."  Three optional slots, all of them absent for
+            every caller that predates this: the DEMO (a React node -- the
+            two-pane StatDemo), the per-point RATE line, and the ROWS of
+            real numbers (this stat now -> after one point, and the DPS that
+            point buys).  Same card, same four ways out, same z; the only new
+            thing on screen is what the stat does. */}
+        {cur.perText && (
+          <div data-infopopup-rate style={{
+            marginTop: 6, fontSize: 11.5, fontWeight: 800, color: COL.accent,
+            letterSpacing: '.02em',
+          }}>{cur.perText}</div>
+        )}
+        {cur.demo && (
+          <div data-infopopup-demo style={{ marginTop: 10 }}>{cur.demo}</div>
+        )}
+        {cur.rows && cur.rows.length > 0 && (
+          <div data-infopopup-rows style={{
+            marginTop: 10, padding: '7px 10px',
+            background: 'rgba(9,14,17,.42)',
+            border: '1px solid rgba(255,255,255,.06)',
+            borderRadius: 9, fontVariantNumeric: 'tabular-nums',
+          }}>
+            {cur.rows.map((r, i) => (
+              <div key={i} style={{
+                display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+                gap: 10, padding: '3px 0', fontSize: 12.5,
+              }}>
+                <span style={{ color: COL.muted, fontSize: 10.5, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{r.label}</span>
+                <span style={{ color: COL.text, fontWeight: 800, whiteSpace: 'nowrap', textAlign: 'right' }}>
+                  {r.now}
+                  {r.after != null && <> → <span style={{ color: '#59BF91' }}>{r.after}</span></>}
+                  {r.delta && <span style={{ color: r.after != null ? '#59BF91' : COL.muted, fontWeight: 700 }}> ({r.delta})</span>}
+                </span>
+              </div>
+            ))}
+            {cur.capped && (
+              <div style={{ marginTop: 4, fontSize: 10.5, color: COL.muted }}>At its cap — no more points can go here.</div>
+            )}
+          </div>
+        )}
+
         {cur.note && (
           <div data-infopopup-note style={{
             fontSize: 11.5, lineHeight: 1.4, color: COL.muted, marginTop: 7,

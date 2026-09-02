@@ -134,75 +134,109 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the combat-type selector offers all three types',
     ['Melee', 'Bow', 'Magic'].every((n) => typeLabels.some((l) => l && l.startsWith(n))), typeLabels);
 
-  /* ═══ THE OWNER'S ACTUAL REQUIREMENT ═══
-     "all stats allocable within the active primary combat stat can be
-     seen all at once without scrolling."  Measured, not eyeballed: the
-     Build section's content must not exceed its own scroll viewport.
-     The v2.3.1660 list needed 352px against a 145px body, so five of
-     seven stats sat below a fold with no scroll cue — this assertion is
-     what stops that regressing quietly. */
-  /* v2.3.2012: when this fails it now says WHAT is too tall.  "scrollH 223,
-     clientH 203" tells you the screen does not fit and nothing about where the
-     20px went, and this layout has a documented history of exactly that
-     argument -- v2.3.1922's own comments track a 146 -> 164 overflow through
-     a font-size change three rows deep.  The child list turns the next
-     failure into a diagnosis instead of a hunt. */
-  const fit = await P.page.evaluate(() => {
-    const btn = document.querySelector('[aria-label*="Crit"], [aria-label*="Defense"]');
-    if (!btn) return { err: 'no stat cell found' };
-    /* Walk up to the scrolling panel (the one with overflow-y auto). */
-    let el = btn.parentElement;
-    while (el && getComputedStyle(el).overflowY !== 'auto') el = el.parentElement;
-    if (!el) return { err: 'no scroll container' };
-    const over = el.scrollHeight - el.clientHeight;
-    const kids = over > 1 ? [...el.children].map((k) => {
-      const cs = getComputedStyle(k);
-      return {
-        tag: k.tagName.toLowerCase() + (k.className && typeof k.className === 'string' ? '.' + k.className.trim().split(/\s+/)[0] : ''),
-        h: Math.round(k.getBoundingClientRect().height),
-        flex: cs.flex,
-        mb: cs.marginBottom,
-      };
-    }) : undefined;
-    return { scrollH: el.scrollHeight, clientH: el.clientHeight, over: over > 0 ? over : 0, kids };
-  });
-  /* ═══ v2.3.2176: WHAT THIS GUARD IS ACTUALLY FOR ═══
-     It was "the Build screen fits without scrolling", and it is RELAXED
-     here deliberately rather than quietly -- the accordion the owner asked
-     for ("organize the whole screen around the source of the point": three
-     weapon lanes, one open) needs ~282px in portrait and the band gives
-     this section 203.  The 33dvh ceiling caps the band and the BAR-height
-     invariant (v2.3.1290) forbids growing it for one tab, so the content
-     cannot be made to fit without shrinking rows past the 10px floor.
+  /* ═══ v2.3.2216: THE LANE SCROLLS NOW, AND THAT IS THE DESIGN ═══
+     History of this guard, because it has flipped and the flip is on
+     purpose.  v2.3.1660: "all stats ... can be seen all at once without
+     scrolling" -- after five of seven sat below an uncued fold.  v2.3.2176
+     relaxed it to "the OPEN lane's controls are all in view" when the
+     accordion needed more than the band.  v2.3.2214 defended that at three
+     phone sizes after the ninth stat fell off the screen.
 
-     The INCIDENT the guard was written for (v2.3.1660) was not "scrolling
-     is bad" -- it was five of seven stats sitting below an uncued fold with
-     no way to know they existed.  So the property is restated as the thing
-     that actually protects the player, and it is STRICTER about the part
-     that matters:
-       - every one of the OPEN lane's seven controls is fully in view, no
-         scrolling required (asserted below, by rect, not by scrollHeight);
-       - and what does fall below is only the other lanes and the DPS strip,
-         at most one lane's worth, with the next lane's edge visible as the
-         cue -- plus the lane headers are position:sticky, so the three
-         weapons never scroll out of reach at all. */
-  const openFit = await P.page.evaluate(() => {
+     Then the owner: "a larger display of the allocable combat stats.  The
+     accordion type display will need to scroll down to show them all.  I'm
+     thinking each stat container needs to be about twice as large."  Rows
+     went 21px -> 48px, one full-width column, and the lane scrolls.
+
+     So what does the v2.3.1660 incident still forbid?  Not scrolling -- a
+     player who could not know a stat existed.  The property is restated as
+     the four things that actually protect against that:
+       1. every one of the lane's controls is rendered (present at once);
+       2. the FIRST is fully in view at rest -- the screen opens onto stats;
+       3. the LAST is fully in view once the lane is scrolled to the bottom
+          -- nothing is unreachable;
+       4. every row clears the 44pt line, which is the reason for the size.
+     A half-visible row at the fold is the scroll cue, and the lane headers
+     stay sticky (asserted below) so the three weapons never leave. */
+  const laneFit = await P.page.evaluate(async () => {
     const btn = document.querySelector('[aria-label*="Crit"], [aria-label*="Defense"]');
     if (!btn) return { err: 'no stat cell found' };
     let el = btn.parentElement;
     while (el && getComputedStyle(el).overflowY !== 'auto') el = el.parentElement;
     if (!el) return { err: 'no scroll container' };
-    const box = el.getBoundingClientRect();
-    const cells = [...document.querySelectorAll('[role="button"][aria-label*=" of "]')];
-    const below = cells.filter((c) => c.getBoundingClientRect().bottom > box.bottom + 1).length;
-    const above = cells.filter((c) => c.getBoundingClientRect().top < box.top - 1).length;
-    return { cells: cells.length, below, above,
-             over: Math.max(0, el.scrollHeight - el.clientHeight) };
+    const vh = window.innerHeight;
+    const rows = () => [...document.querySelectorAll('[role="button"][aria-label*=" of "]')];
+    const box = () => el.getBoundingClientRect();
+    const floor = () => Math.min(box().bottom, vh);
+    /* THE CEILING IS THE PINNED STACK, NOT THE PANEL'S TOP.  The section
+       tabs and the open lane's header are position:sticky inside this same
+       scroller, so a row can be inside the panel's box and still be under
+       them -- the first draft of this guard measured against box().top and
+       passed a row the player could not see (a screenshot at max scroll
+       showed ELEM POWER peeking out from under the tabs).  So: the lowest
+       bottom edge of any sticky element in the scroller is the ceiling. */
+    const ceiling = () => {
+      /* Only elements that are actually STUCK count -- a sticky element
+         sitting in normal flow (the collapsed BOW/MAGIC headers near the
+         bottom) is not a ceiling.  Stuck means its top is at the scroller's
+         top plus its own `top` offset; the first draft walked every sticky
+         element within 80px of the last one and chained straight through
+         the collapsed lanes, reporting a ceiling 100px lower than the real
+         one. */
+      let c = box().top;
+      for (const e of el.querySelectorAll('*')) {
+        const cs = getComputedStyle(e);
+        if (cs.position !== 'sticky') continue;
+        const b = e.getBoundingClientRect();
+        const stuckAt = box().top + (parseFloat(cs.top) || 0);
+        if (b.height > 0 && Math.abs(b.top - stuckAt) <= 1.5 && b.bottom > c) c = b.bottom;
+      }
+      return c;
+    };
+    const inView = (r) => { const b = r.getBoundingClientRect(); return b.top >= ceiling() - 1 && b.bottom <= floor() + 1; };
+    const settle = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    el.scrollTop = 0; await settle();
+    const all = rows();
+    const firstIn = all.length ? inView(all[0]) : false;
+    const heights = all.map((r) => Math.round(r.getBoundingClientRect().height));
+    const targets = all.map((r) => {
+      const i = r.querySelector('[data-stat-info]');
+      return i ? Math.round(Math.min(i.getBoundingClientRect().width, i.getBoundingClientRect().height)) : null;
+    });
+    /* REACHABLE means: there is a scroll position at which the last row is
+       wholly visible between the pinned stack and the floor.  Scroll so its
+       bottom meets the floor (clamped to the end of the content), then ask
+       whether its top clears the ceiling. */
+    const last = all[all.length - 1];
+    let lastIn = false, lastAtMax = null;
+    if (last) {
+      const want = el.scrollTop + (last.getBoundingClientRect().bottom - floor());
+      el.scrollTop = Math.max(0, Math.min(want, el.scrollHeight - el.clientHeight)); await settle();
+      lastIn = inView(last);
+      el.scrollTop = el.scrollHeight; await settle();
+      const b = last.getBoundingClientRect();
+      lastAtMax = Math.round(Math.min(b.bottom, floor()) - Math.max(b.top, ceiling()));   /* px of it still showing */
+    }
+    el.scrollTop = 0;
+    return { cells: all.length, firstIn, lastIn, lastAtMax, minRow: Math.min(...heights), minInfo: Math.min(...targets.filter((t) => t != null)),
+      panel: Math.round(box().height), over: Math.max(0, el.scrollHeight - el.clientHeight) };
   });
-  rec.ok('every one of the open lane\'s controls is in view without scrolling',
-    !openFit.err && openFit.cells === STAT_ROWS && openFit.below === 0 && openFit.above === 0, openFit);
-  rec.ok('...and what scrolls below is at most one lane, not a hidden screen',
-    !openFit.err && openFit.over <= 100, { over: openFit.over, ...fit });
+  rec.ok('every one of the open lane\'s controls is rendered (present at once)',
+    !laneFit.err && laneFit.cells === STAT_ROWS, laneFit);
+  rec.ok('...the first is fully in view at rest — the screen opens onto stats',
+    !laneFit.err && laneFit.firstIn, laneFit);
+  rec.ok('...the last is fully in view once scrolled to — nothing is unreachable',
+    !laneFit.err && laneFit.lastIn, laneFit);
+  /* And a flick that overshoots to the very end must not bury it: at max
+     scroll the last row is still WHOLLY between the pinned stack and the
+     floor.  This is why the resting DPS strip moved above the lanes: with
+     it and two collapsed lanes under the last row, a scroll to the end left
+     a 14px sliver of ELEM POWER peeking out from under the tabs. */
+  rec.ok('...and a scroll that overshoots to the end still shows all of it',
+    !laneFit.err && laneFit.lastAtMax >= laneFit.minRow - 1, laneFit);
+  rec.ok('...every row clears the 44pt line, which is what "twice as large" bought',
+    !laneFit.err && laneFit.minRow >= 44, laneFit);
+  rec.ok('...and every ℹ️ is a real thumb target, not a glyph',
+    !laneFit.err && laneFit.minInfo >= 30, laneFit);
   /* The three lanes are the navigation, so they must never scroll away. */
   rec.ok('...with the weapon lanes pinned (sticky) so navigation is always reachable',
     await P.page.evaluate(() => [...document.querySelectorAll('[role="button"][aria-label*="level"]')]
@@ -335,23 +369,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   await P.ctx.close().catch(() => {});
 
-  /* ═══ v2.3.2214: AND ALL OF THAT, ON A PHONE ═══
-     Everything above runs on THIS scenario's player, which takes the
-     harness's default 1000x780 viewport. That is why the fold assertions
-     passed while the screen was broken: v2.3.2199 added the dmg and elem
-     stats, taking the open lane from 7 rows to 9, and at 390x844 the ninth
-     -- ELEM POWER -- rendered at y 829..851 against a viewport ending at
-     844. Off the bottom of the screen, on the primary platform, and green
-     in CI.
-
-     A desktop-sized check of a phone layout is not a check. So the property
-     that actually protects the player -- every control of the OPEN lane is
-     fully reachable without scrolling -- is re-measured here at real device
-     sizes, and 375x667 is in the list deliberately: it is the smallest phone
-     the game supports, the section gets 187px there instead of 191, and the
-     first fix for this bug passed at 390x844 with one pixel to spare while
-     still clipping the SE. One viewport is how this shipped; one MORE
-     viewport would have shipped it again. */
+  /* ═══ v2.3.2214 -> v2.3.2216: AND ALL OF THAT, ON A PHONE ═══
+     Everything above runs on this scenario's player at the harness's default
+     1000x780 viewport, which is how v2.3.2199's ninth stat shipped off the
+     bottom of a phone while CI was green.  So the same four properties are
+     re-measured at three real device sizes, 375x667 deliberately among them:
+     it is the smallest phone the game supports and the one that caught the
+     first fix for that bug being one pixel from wrong. */
   for (const [w, h] of [[390, 844], [375, 667], [430, 932]]) {
     const M = await H.newPlayer(browser, { name: `Fit${w}`, wsPort, webPort,
       viewport: { width: w, height: h }, touch: true });
@@ -363,34 +387,59 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await M.page.locator('[aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]').first()
       .click({ timeout: 8000 }).catch(() => {});
     await M.page.waitForTimeout(700);
-    const fitPhone = await M.page.evaluate(() => {
+    const fitPhone = await M.page.evaluate(async () => {
       const btn = document.querySelector('[aria-label*="Crit"], [aria-label*="Defense"]');
       if (!btn) return { err: 'no stat cell found' };
       let el = btn.parentElement;
       while (el && getComputedStyle(el).overflowY !== 'auto') el = el.parentElement;
       if (!el) return { err: 'no scroll container' };
-      const box = el.getBoundingClientRect();
       const vh = window.innerHeight;
+      const rows = [...document.querySelectorAll('[role="button"][aria-label*=" of "]')];
+      const box = () => el.getBoundingClientRect();
       /* The floor is whichever comes first: the panel's own bottom edge, or
-         the bottom of the screen. Measuring only against the panel is how a
+         the bottom of the screen.  Measuring only against the panel is how a
          control that hangs off the phone still reads as "in view". */
-      const floor = Math.min(box.bottom, vh);
-      const cells = [...document.querySelectorAll('[role="button"][aria-label*=" of "]')];
-      const clipped = cells
-        .filter((c) => c.getBoundingClientRect().bottom > floor + 1)
-        .map((c) => (c.getAttribute('aria-label') || '').split(',')[0]);
-      const last = cells.reduce((m, c) => Math.max(m, c.getBoundingClientRect().bottom), 0);
-      return { cells: cells.length, clipped, margin: Math.round(floor - last),
-        panel: Math.round(box.height) };
+      const floor = () => Math.min(box().bottom, vh);
+      const ceiling = () => {           /* the STUCK tabs + lane header; see the desktop block */
+        let c = box().top;
+        for (const e of el.querySelectorAll('*')) {
+          const cs = getComputedStyle(e);
+          if (cs.position !== 'sticky') continue;
+          const b = e.getBoundingClientRect();
+          const stuckAt = box().top + (parseFloat(cs.top) || 0);
+          if (b.height > 0 && Math.abs(b.top - stuckAt) <= 1.5 && b.bottom > c) c = b.bottom;
+        }
+        return c;
+      };
+      const inView = (r) => { const b = r.getBoundingClientRect(); return b.top >= ceiling() - 1 && b.bottom <= floor() + 1; };
+      const settle = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      el.scrollTop = 0; await settle();
+      const firstIn = rows.length ? inView(rows[0]) : false;
+      const last = rows[rows.length - 1];
+      let lastIn = false, lastAtMax = null;
+      if (last) {
+        const want = el.scrollTop + (last.getBoundingClientRect().bottom - floor());
+        el.scrollTop = Math.max(0, Math.min(want, el.scrollHeight - el.clientHeight)); await settle();
+        lastIn = inView(last);
+        el.scrollTop = el.scrollHeight; await settle();
+        const b = last.getBoundingClientRect();
+        lastAtMax = Math.round(Math.min(b.bottom, floor()) - Math.max(b.top, ceiling()));
+      }
+      el.scrollTop = 0;
+      return { cells: rows.length, firstIn, lastIn, lastAtMax,
+        minRow: Math.min(...rows.map((r) => Math.round(r.getBoundingClientRect().height))),
+        panel: Math.round(box().height) };
     });
     rec.ok(`${w}x${h}: the open lane's ${STAT_ROWS} controls are all there (guard)`,
       !fitPhone.err && fitPhone.cells === STAT_ROWS, fitPhone);
-    rec.ok(`${w}x${h}: ...and none of them is drawn past the bottom of the screen`,
-      !fitPhone.err && fitPhone.clipped.length === 0, fitPhone);
-    /* Not just "it fits" -- it must fit with room, because "fits exactly"
-       is what the previous version of this layout did on one phone. */
-    rec.ok(`${w}x${h}: ...with real room under the last one, not a hair (${fitPhone.margin}px)`,
-      !fitPhone.err && fitPhone.margin >= 4, fitPhone);
+    rec.ok(`${w}x${h}: ...the first is fully in view at rest`,
+      !fitPhone.err && fitPhone.firstIn, fitPhone);
+    rec.ok(`${w}x${h}: ...and the last is fully in view once scrolled to`,
+      !fitPhone.err && fitPhone.lastIn, fitPhone);
+    rec.ok(`${w}x${h}: ...and still wholly showing after an overshoot to the end`,
+      !fitPhone.err && fitPhone.lastAtMax >= fitPhone.minRow - 1, fitPhone);
+    rec.ok(`${w}x${h}: ...with every row at 44px or more`,
+      !fitPhone.err && fitPhone.minRow >= 44, fitPhone);
     await M.ctx.close().catch(() => {});
   }
 }

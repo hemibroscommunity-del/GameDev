@@ -3001,3 +3001,49 @@ html[data-orient="landscape"] [data-dash-fold]{
 html[data-orient="landscape"] .bt-dashboard{
   display:none!important;
 }
+
+/* ═══ v2.3.2216: THE STAT DEMOS — "a preview of what the effect does (exaggerated)" ═══
+   Owner, on the Points screen: "Small information ℹ️ next to the name.
+   Tapping it launches into a new window that describes its effect.  It also
+   has a preview of what the effect does (exaggerated)."
+   Two panes, NOW beside WITH MORE POINTS, each looping the same tiny scene so
+   the difference IS the explanation: the crit pane on the right flashes gold
+   twice as often, the swing on the right is twice as fast, the bar on the
+   right fills further.  Exaggerated on purpose -- these are not the real
+   per-point rates (those print underneath), they are what the stat is FOR.
+   Everything is CSS: no sprite, no canvas, nothing to preload, and the whole
+   thing goes still under prefers-reduced-motion with the end state showing. */
+.bt-sd{display:flex;gap:8px;height:98px}
+.bt-sd-pane{flex:1 1 0;min-width:0;position:relative;overflow:hidden;border-radius:9px;background:#111E23;border:1px solid rgba(229,237,233,.08)}
+.bt-sd-pane--after{border-color:rgba(216,170,88,.45);box-shadow:inset 0 0 0 1px rgba(216,170,88,.18)}
+.bt-sd-cap{position:absolute;left:7px;top:5px;font-size:8.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#8D9B98;line-height:1;pointer-events:none}
+.bt-sd-pane--after .bt-sd-cap{color:#D8AA58}
+.bt-sd-target{position:absolute;right:12px;bottom:14px;width:26px;height:26px;border-radius:50%;background:#2E4048;border:1px solid rgba(229,237,233,.14)}
+.bt-sd-target::after{content:"";position:absolute;inset:7px;border-radius:50%;background:#1A282E}
+.bt-sd-pop{position:absolute;left:var(--sd-x,50%);bottom:var(--sd-y,22px);transform:translate(-50%,0);font-weight:900;font-variant-numeric:tabular-nums;color:#F4F0E7;text-shadow:0 1px 0 #0A1216,0 0 6px rgba(0,0,0,.6);opacity:0;animation:bt-sd-pop var(--sd-dur,1.6s) ease-out infinite;animation-delay:var(--sd-delay,0s);white-space:nowrap;line-height:1}
+.bt-sd-pop--gold{color:#F2C860;text-shadow:0 1px 0 #3A2A08,0 0 10px rgba(242,200,96,.65)}
+.bt-sd-pop--red{color:#E8736F}
+.bt-sd-pop--miss{color:#8D9B98;font-style:italic;font-weight:800}
+.bt-sd-pop--burn{color:#F5A044;text-shadow:0 0 8px rgba(245,160,68,.7)}
+@keyframes bt-sd-pop{0%{opacity:0;transform:translate(-50%,8px) scale(.7)}12%{opacity:1;transform:translate(-50%,-2px) scale(1.06)}20%{transform:translate(-50%,-3px) scale(1)}62%{opacity:1;transform:translate(-50%,-16px) scale(1)}80%,100%{opacity:0;transform:translate(-50%,-26px) scale(1)}}
+.bt-sd-icon{position:absolute;left:50%;top:50%;width:34px;height:34px;object-fit:contain;transform:translate(-50%,-50%);pointer-events:none;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))}
+.bt-sd-swing{transform-origin:50% 95%;animation:bt-sd-swing var(--sd-dur,1.2s) ease-in-out infinite}
+@keyframes bt-sd-swing{0%{transform:translate(-50%,-50%) rotate(-38deg)}45%{transform:translate(-50%,-50%) rotate(42deg)}60%{transform:translate(-50%,-50%) rotate(36deg)}100%{transform:translate(-50%,-50%) rotate(-38deg)}}
+.bt-sd-bar{position:absolute;left:12px;right:12px;bottom:16px;height:12px;border-radius:999px;background:#0B161B;border:1px solid rgba(229,237,233,.1);overflow:hidden}
+.bt-sd-bar>i{display:block;height:100%;border-radius:999px;width:var(--sd-from,45%);background:var(--sd-color,#E35D5B);animation:bt-sd-fill 2.4s ease-in-out infinite}
+@keyframes bt-sd-fill{0%,18%{width:var(--sd-from,45%)}55%,85%{width:var(--sd-to,45%)}100%{width:var(--sd-from,45%)}}
+.bt-sd-figure{position:absolute;left:50%;bottom:14px;width:30px;height:30px;object-fit:contain;transform:translateX(-50%);filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))}
+.bt-sd-figure--dodge{animation:bt-sd-dodge 1.8s ease-in-out infinite}
+@keyframes bt-sd-dodge{0%,30%{transform:translateX(-50%);opacity:1}42%{transform:translateX(calc(-50% + 18px));opacity:.55}62%{transform:translateX(calc(-50% + 18px));opacity:.85}78%,100%{transform:translateX(-50%);opacity:1}}
+.bt-sd-slash{position:absolute;left:14px;top:50%;width:26px;height:3px;border-radius:2px;background:linear-gradient(90deg,rgba(244,240,231,0),#F4F0E7);transform:translateY(-50%) rotate(-28deg);opacity:0;animation:bt-sd-slash 1.8s ease-in infinite}
+@keyframes bt-sd-slash{0%,18%{opacity:0;transform:translate(-14px,-50%) rotate(-28deg)}28%{opacity:1}40%{opacity:1;transform:translate(34px,-50%) rotate(-28deg)}48%,100%{opacity:0;transform:translate(40px,-50%) rotate(-28deg)}}
+.bt-sd-in{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-weight:900;font-variant-numeric:tabular-nums;color:#E8736F;text-shadow:0 1px 0 #0A1216;opacity:0;animation:bt-sd-in 2s ease-out infinite;white-space:nowrap;line-height:1}
+@keyframes bt-sd-in{0%,10%{opacity:0;transform:translate(calc(-50% - 34px),-50%) scale(1)}30%{opacity:1;transform:translate(calc(-50% - 14px),-50%) scale(1)}48%{opacity:1;transform:translate(-50%,-50%) scale(var(--sd-hit,1))}70%{opacity:1;transform:translate(-50%,-50%) scale(var(--sd-hit,1))}85%,100%{opacity:0;transform:translate(-50%,-50%) scale(var(--sd-hit,1))}}
+.bt-sd-glow{position:absolute;left:50%;top:50%;width:40px;height:40px;border-radius:50%;transform:translate(-50%,-50%);background:radial-gradient(circle,rgba(245,160,68,.55),rgba(245,160,68,0) 70%);animation:bt-sd-glow 1.4s ease-in-out infinite;pointer-events:none}
+@keyframes bt-sd-glow{0%,100%{opacity:.45;transform:translate(-50%,-50%) scale(1)}50%{opacity:1;transform:translate(-50%,-50%) scale(var(--sd-glow,1.15))}}
+@media (prefers-reduced-motion:reduce){
+  .bt-sd-pop,.bt-sd-in{animation:none;opacity:1;transform:translate(-50%,-10px)}
+  .bt-sd-swing,.bt-sd-figure--dodge,.bt-sd-slash,.bt-sd-glow{animation:none}
+  .bt-sd-slash{opacity:0}
+  .bt-sd-bar>i{animation:none;width:var(--sd-to,45%)}
+}

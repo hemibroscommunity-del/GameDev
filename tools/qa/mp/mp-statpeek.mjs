@@ -80,18 +80,44 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const resting = await stripText();
   rec.ok('at rest the strip carries the overall DPS', /DPS\s*[\d.]+/.test(resting), resting.slice(0, 200));
 
-  /* ── press CRIT: the stat total from baseline, and the DPS it buys ── */
+  /* ── tap CRIT's ℹ️: the stat total from baseline, and the DPS it buys ──
+     v2.3.2216: the readout moved from a press-to-peek strip into the ℹ️
+     window (owner: "Tapping it launches into a new window that describes
+     its effect").  Same two numbers, same regexes, read off the popup's
+     rows instead of the strip.  The ℹ️ is found INSIDE the crit row, and
+     tapped with pointerup because that is what the button listens for --
+     and the guard below proves the tap opened a window rather than spent
+     a point, which is the one thing the nested button must never do. */
+  const poolBefore = await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    return S && S.rpg && S.rpg.prog3 && S.rpg.prog3.pool ? S.rpg.prog3.pool.unspent : null;
+  });
   const pressed = await P.page.evaluate(() => {
-    const pills = [...document.querySelectorAll('[role="button"]')]
+    const pills = [...document.querySelectorAll('[role="button"][aria-label*=" of "]')]
       .filter((d) => /crit/i.test(d.getAttribute('aria-label') || ''));
     const el = pills.find((d) => !/crit dmg/i.test(d.getAttribute('aria-label') || '')) || pills[0];
-    if (!el) return false;
-    el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerId: 1, pointerType: 'touch' }));
+    const info = el && el.querySelector('[data-stat-info]');
+    if (!info) return false;
+    for (const type of ['pointerdown', 'pointerup']) {
+      info.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 1, pointerType: 'touch' }));
+    }
     return true;
   });
-  rec.ok('the Crit pill could be pressed', pressed);
+  rec.ok('the Crit row carries an ℹ️ and it could be tapped', pressed);
   await P.page.waitForTimeout(400);
-  const peek = await stripText();
+  const popup = await P.page.evaluate(() => {
+    const card = document.querySelector('[data-infopopup-card]');
+    const rows = document.querySelector('[data-infopopup-rows]');
+    const demo = document.querySelector('[data-stat-demo]');
+    const S = window._gameState && window._gameState.current;
+    return { open: !!card, text: rows ? (rows.innerText || '') : '',
+      demo: demo ? demo.getAttribute('data-stat-demo') : null,
+      pool: S && S.rpg && S.rpg.prog3 && S.rpg.prog3.pool ? S.rpg.prog3.pool.unspent : null };
+  });
+  rec.ok('...and a window opened rather than a point being spent',
+    popup.open && popup.pool === poolBefore, { ...popup, poolBefore });
+  rec.ok('...carrying the crit scene', popup.demo === 'crit', popup);
+  const peek = popup.text;
   const mCrit = CRIT_RE.exec(peek);
   const mDps = DPS_RE.exec(peek);
   rec.ok('...and the tooltip shows crit moving from its BASELINE total',
@@ -107,6 +133,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   const promisedCrit = Number(mCrit[2]);
   const promisedDps = Number(mDps[2]);
+
+  /* The window must get out of the way before the row can be tapped --
+     and it has to be dismissable, which is the fourth thing InfoPopup
+     promises (v2.3.2131: the scrim, the x, the button, and Escape). */
+  await P.page.evaluate(() => { try { window.__btInfoPopup.close(); } catch (e) {} });
+  await P.page.waitForTimeout(250);
 
   /* ── spend it for real, then ask the GAME what happened ── */
   await P.page.evaluate(() => {

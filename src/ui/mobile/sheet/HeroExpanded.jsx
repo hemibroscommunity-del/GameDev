@@ -18,6 +18,7 @@ import {
 import { VitalBar, VITAL_ICONS, VITAL_LABEL, VITAL_TINT } from './VitalBar.jsx'; /* v2.3.1311; VITAL_LABEL v2.3.1883 */
 import { getEquippedSlots, getEquipContribs, GHOST_SRC } from './equipModel.js'; /* v2.3.1653 */
 import { previewStatPoint, overallDps } from './statPreview.js';                 /* v2.3.1766 */
+import { StatDemo } from './StatDemo.jsx';                                      /* v2.3.2216: the ℹ️ window's scene */
 import { itemDetailBus } from '../dash/itemDetailBus.js';                        /* v2.3.1653 */
 import { heroSectionBus } from './heroSectionBus.js';                            /* v2.3.1668 */
 import { DASH_GAP, HERO_TAB_H } from './sheetGeometry.js';                      /* v2.3.1653; v2.3.1657 tabs */
@@ -110,8 +111,10 @@ export const HeroExpanded = () => {
   /* v2.3.1766: which stat the allocation tooltip is describing, or null for
      its resting state (the character's overall DPS).  Cleared when the sheet
      changes section so the strip never describes a stat that is off screen. */
-  const [statPeek, setStatPeek] = useState(null);
-  const setSection = (s) => { _lastSection = s; setStatPeek(null); setSectionState(s); };
+  /* v2.3.2216: the press-to-peek strip state is gone -- what a point buys
+     now opens in the ℹ️ window (openStatInfo below), and a resting readout
+     has no state to hold. */
+  const setSection = (s) => { _lastSection = s; setSectionState(s); };
   useEffect(() => {
     const id = setInterval(() => force(v => v + 1), 400);
     return () => clearInterval(id);
@@ -1149,8 +1152,8 @@ export const HeroExpanded = () => {
           — which has always meant "whose offense am I looking at" — is now
           the accordion's open lane, so the selector and the section header
           are the same control.  Nothing underneath changed: the same
-          prog3_allocate send, the same prog3StatCap gate, the same statPeek
-          preview on press.
+          prog3_allocate send, the same prog3StatCap gate; the press-to-peek
+          preview became the ℹ️ window in v2.3.2216.
 
           THE POOL IS ONE POOL, and that is why the mockup's per-lane
           numbers are not here.  The owner, asked directly: "There is a
@@ -1181,9 +1184,40 @@ export const HeroExpanded = () => {
             /* v2.3.1766: what the tooltip strip below is currently describing.
                Held on the component (not a ref) so the strip re-renders when
                it changes; null = resting, which shows overall DPS instead. */
-            const showPreview = (st) => {
-              try { setStatPeek({ key: st.key, atk: !!st.atk, label: st.label, cat: buildCat }); }
-              catch (e) { /* a tooltip must never block a spend */ }
+            const n1 = (v) => (Math.round(v * 10) / 10).toFixed(1);
+            /* ═══ v2.3.2216: THE ℹ️ WINDOW ═══
+               Owner: "Small information ℹ️ next to the name.  Tapping it
+               launches into a new window that describes its effect.  It
+               also has a preview of what the effect does (exaggerated)."
+               Replaces v2.3.1766's press-to-peek strip: the SAME
+               previewStatPoint supplies the numbers (this stat now -> after
+               one point, and the DPS that point buys), the glossary supplies
+               the words, and StatDemo supplies the picture.  One popup for
+               all of it, through the bus the Overview labels already use. */
+            const openStatInfo = (st) => {
+              try {
+                const info = statInfo(st.label) || { title: st.label, body: st.perText + ' per point.' };
+                const pv = R ? previewStatPoint(R, st.key, buildCat) : null;
+                const fmt = (v) => (st.pct ? n1(v * 100) : n1(v)) + (st.unit || '');
+                const rows = [];
+                if (pv) {
+                  rows.push({ label: info.title, now: fmt(pv.statNow), after: pv.capped ? null : fmt(pv.statAfter) });
+                  if (typeof pv.dpsDelta === 'number') {
+                    rows.push(pv.dpsDelta > 0.049
+                      ? { label: 'DPS', now: n1(pv.dpsNow), after: n1(pv.dpsAfter), delta: '+' + n1(pv.dpsDelta) }
+                      : { label: 'DPS', now: n1(pv.dpsNow), after: null, delta: 'does not change damage' });
+                  } else {
+                    rows.push({ label: 'DPS', now: '—', after: null, delta: 'equip a weapon to see' });
+                  }
+                }
+                infoPopupBus.open({
+                  title: info.title + (st.atk ? ' · ' + ((PROG3_SKILL_META.find((k) => k.key === buildCat) || {}).label || '') : ''),
+                  body: info.body, note: info.note,
+                  perText: 'Each point: ' + st.perText,
+                  demo: <StatDemo stat={st.key} iconSrc={st.iconSrc} />,
+                  rows, capped: !!(pv && pv.capped),
+                });
+              } catch (e) { /* an explainer must never block a spend */ }
             };
             /* Short forms for the collapsed lane summary only — the mockup's
                "CRIT 2/4  DMG 1/4  SPD 0/4".  The rows themselves keep the
@@ -1199,48 +1233,46 @@ export const HeroExpanded = () => {
                row spends from the lane you are standing in, so both read the
                same number. */
             const openPts = chanCaps ? prog3PoolFor(R, buildCat) : totalUnspent;
-            const ROW_H = 21;
-            /* ═══ v2.3.2214: THE NINTH STAT WAS OFF THE BOTTOM OF THE PHONE ═══
-               v2.3.2199 added `dmg` and `elem`, taking the lane from 7 stat
-               rows to 9 -- 4 attack, 5 character -- and the lane is as tall
-               as its TALLER column, so the CHARACTER side grew by one row.
-               Measured at 390x844: ELEM POWER rendered at y 829..851 with the
-               viewport ending at 844. The last stat the player was just given
-               was drawn off the bottom of the screen.
+            /* ═══ v2.3.2216: THE ROWS ARE TWICE THE SIZE, AND THE LANE SCROLLS ═══
+               Owner: "a larger display of the allocable combat stats.  The
+               accordion type display will need to scroll down to show them
+               all.  I'm thinking each stat container needs to be about twice
+               as large.  Maybe just the plus to allocate the stat and the
+               name."  And, asked: one full-width column; a small count under
+               the name; the pips go.
 
-               mp-prog3 did not catch it because that scenario runs at the
-               harness's DEFAULT 1000x780 desktop viewport, where the same
-               layout has room. The phone is the primary platform, so the
-               guard now measures there too (mp-prog3, v2.3.2214).
+               This REVERSES the constraint v2.3.2214 fought for two hours
+               ago -- every control of the open lane in view without
+               scrolling -- and does so on the owner's word, not by accident.
+               The 21px row was the floor of a design that refused to scroll;
+               a 48px row is the size a thumb actually wants, and the owner
+               has chosen the scroll.  So the guard in mp-prog3 is restated
+               with it: the lane's rows are all present, the FIRST is fully in
+               view at rest, the LAST is fully in view once scrolled to, and
+               every row clears the 44pt line.  What v2.3.1660 was actually
+               about -- stats a player could not know existed -- is still
+               pinned: a half-visible row at the fold IS the cue, and the lane
+               headers stay sticky so the three weapons never leave.
 
-               Most of it comes out of WHITESPACE rather than controls: the
-               row gap 3->2, the column caption's margin 3->1, the space under
-               the section tabs 4->2, and the open lane's header 26->22 (the
-               size a collapsed one already is). That was only enough at
-               390x844, with ONE pixel to spare -- and a 1px margin is not a
-               fix, it is the same bug waiting for a different phone. Measured
-               on an SE at 375x667, where the section gets 187px instead of
-               191, ELEM POWER was still clipped.
-
-               So ROW_H also drops 22 -> 21. That IS a control, and it is
-               stated rather than buried: the rows were already well under a
-               44pt target and this makes them 1px worse, which buys 5px
-               (four rows sit above the last one) and turns a 1px margin into
-               a real one on the smallest phone the game supports.
-
-               HONEST LIMIT: this buys back what two stats cost and very
-               little more. A tenth stat does not fit, and the answer then is
-               not another 2px -- it is structural, and the owner's call. The
-               CHARACTER block is the same five SHARED numbers in all three
-               lanes, so it could sit once below them instead of being
-               repeated inside each, which would free a whole column. That
-               contradicts the layout the owner specified in v2.3.2176, so it
-               is not done here. */
-            const LANE_GAP = 2;
+               THE ROW IS STILL THE BUTTON.  The [+] is decorative and the
+               whole row spends, as it has since v2.3.1668 ("a 120x30 cell is
+               a better thumb target than a 30px button") -- at 48px that
+               argument only got stronger.  The ℹ️ is the one REAL nested
+               control: it stops its own pointer events so a tap on it is
+               never a spend, which is the entire reason it exists as a
+               button rather than a glyph.  mp-prog3's contract -- every
+               spend control is `[role="button"][aria-label*=" of "]` -- is
+               untouched. */
+            const ROW_H = landPane ? 44 : 48;
+            const LANE_GAP = 4;
+            const ICON = landPane ? 22 : 26;
+            const INFO_W = landPane ? 30 : 34;
+            const PLUS_W = landPane ? 34 : 38;
             const statRow = (st) => {
               const pts = st.atk ? prog3AtkPts(R, buildCat, st.key) : prog3Pts(R, st.key);
               const cap = prog3StatCap(R, st.key);
               const canSpend = openPts > 0 && pts < cap;
+              const hasInfo = !!statInfo(st.label);
               return (
                 <div key={(st.atk ? buildCat + ':' : '') + st.key}
                   role="button"
@@ -1250,7 +1282,6 @@ export const HeroExpanded = () => {
                   aria-label={`${st.label}${st.atk ? ' for ' + buildCat : ''}, ${pts} of ${cap}. ${st.perText} per point.`}
                   aria-disabled={!canSpend}
                   title={`${st.label} — ${st.perText} per point`}
-                  onPointerDown={(e) => { e.stopPropagation(); showPreview(st); }}
                   onPointerUp={(e) => {
                     e.stopPropagation();
                     if (!canSpend || !S || !S.channel) return;
@@ -1268,45 +1299,64 @@ export const HeroExpanded = () => {
                   }}
                   style={{
                     minWidth: 0, height: ROW_H, flex: 'none', boxSizing: 'border-box',
-                    padding: '0 6px',
-                    display: 'flex', alignItems: 'center', gap: 5,
+                    padding: landPane ? '0 5px 0 6px' : '0 6px 0 8px',
+                    display: 'flex', alignItems: 'center', gap: landPane ? 6 : 8,
                     background: canSpend ? COL.accentFill : COL.wellSoft,
                     border: `1px solid ${canSpend ? COL.accent : COL.tileBor}`,
-                    borderRadius: 7,
+                    borderRadius: 10,
                     cursor: canSpend ? 'pointer' : 'default',
-                    opacity: canSpend ? 1 : 0.75,
+                    opacity: canSpend ? 1 : 0.8,
                     touchAction: 'manipulation',
                   }}>
-                  <div style={{
-                    flex: 1, minWidth: 0,
-                    fontSize: 10.5, fontWeight: 700, letterSpacing: '.02em',
-                    textTransform: 'uppercase', color: COL.text,
-                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                  }}>{st.label}</div>
-                  {/* Decorative: the ROW is the button (see the header note). */}
+                  <img src={st.iconSrc} alt="" draggable={false}
+                    style={{ width: ICON, height: ICON, objectFit: 'contain', flex: 'none', pointerEvents: 'none',
+                      filter: 'drop-shadow(0 1px 2px rgba(0,0,0,.45))' }} />
+                  <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2 }}>
+                    {/* Sideways the pane is ~200px and "ELEM POWER" does not fit
+                        beside an icon, an ℹ️ and a [+] on one line -- the
+                        landscape label sweep (mp-landscape-dash) caught three
+                        of nine ellipsised.  So the name WRAPS there instead of
+                        cropping: a 44px row holds two 10.5px lines and the
+                        count, and a label that renders whole is the whole
+                        point of that sweep. */}
+                    <div style={{
+                      fontSize: landPane ? 10.5 : 12.5, fontWeight: 800, letterSpacing: '.03em',
+                      textTransform: 'uppercase', color: COL.text, lineHeight: 1.05,
+                      whiteSpace: landPane ? 'normal' : 'nowrap', overflow: 'hidden',
+                      textOverflow: landPane ? 'clip' : 'ellipsis', wordBreak: 'normal',
+                    }}>{st.label}</div>
+                    {/* The count the owner chose to keep: where the points
+                        already are is what decides where the next one goes. */}
+                    <div style={{
+                      fontSize: 10.5, fontWeight: 700, color: COL.text2, lineHeight: 1.1,
+                      fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+                    }}>{pts} / {cap}</div>
+                  </div>
+                  {hasInfo && (
+                    <button type="button"
+                      data-stat-info={st.key}
+                      aria-label={`About ${st.label}`}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onPointerUp={(e) => { e.stopPropagation(); e.preventDefault(); openStatInfo(st); }}
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        flex: 'none', width: INFO_W, height: INFO_W, borderRadius: 999, padding: 0,
+                        background: 'transparent', border: `1.5px solid ${COL.borderStrong}`,
+                        color: COL.text2, fontSize: landPane ? 13 : 15, fontWeight: 900,
+                        fontFamily: 'Georgia, "Times New Roman", serif', fontStyle: 'italic', lineHeight: 1,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'pointer', touchAction: 'manipulation',
+                      }}>i</button>
+                  )}
+                  {/* Decorative: the ROW is the button (see the note above). */}
                   <span aria-hidden="true" style={{
-                    flex: 'none', width: 15, height: 15, borderRadius: 4,
+                    flex: 'none', width: PLUS_W, height: PLUS_W, borderRadius: 9,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     background: canSpend ? COL.accent : 'transparent',
                     border: `1px solid ${canSpend ? COL.accent : COL.tileBor}`,
                     color: canSpend ? '#20170D' : COL.muted,
-                    fontSize: 11, fontWeight: 900, lineHeight: 1,
+                    fontSize: landPane ? 20 : 23, fontWeight: 900, lineHeight: 1,
                   }}>+</span>
-                  {/* Four pips: the mockup's own readout of how full a stat
-                      is, at a glance, beside the exact number. */}
-                  <span aria-hidden="true" style={{ flex: 'none', display: 'flex', gap: 2 }}>
-                    {[0, 1, 2, 3].map((i) => (
-                      <span key={i} style={{
-                        width: 6, height: 6, borderRadius: 999,
-                        background: i < pts ? '#8AA9F9' : 'transparent',
-                        border: `1px solid ${i < pts ? '#8AA9F9' : COL.tileBor}`,
-                      }} />
-                    ))}
-                  </span>
-                  <div style={{
-                    flex: 'none', fontSize: 10.5, fontWeight: 800,
-                    color: COL.text2, fontVariantNumeric: 'tabular-nums',
-                  }}>{pts}/{cap}</div>
                 </div>
               );
             };
@@ -1321,14 +1371,7 @@ export const HeroExpanded = () => {
                 {sub && <span style={{ fontSize: 9, letterSpacing: '.04em', color: COL.muted, opacity: 0.8, whiteSpace: 'nowrap' }}>{sub}</span>}
               </div>
             );
-            const peekMeta = statPeek
-              ? (statPeek.atk ? prog3AtkMeta() : prog3BodyMeta()).find(m => m.key === statPeek.key)
-              : null;
-            const peek = (statPeek && R)
-              ? previewStatPoint(R, statPeek.key, statPeek.cat || buildCat) : null;
-            const restDps = (!peek && R) ? overallDps(R) : null;
-            const n1 = (v) => (Math.round(v * 10) / 10).toFixed(1);
-            const statTxt = (v) => (peekMeta && peekMeta.pct ? n1(v * 100) : n1(v)) + ((peekMeta && peekMeta.unit) || '');
+            const restDps = R ? overallDps(R) : null;
             return (
               <>
               {/* v2.3.2176: the pool has NO line of its own.  The portrait
@@ -1340,6 +1383,29 @@ export const HeroExpanded = () => {
                   the three combat types are always reachable — and each is
                   still `[role="button"][aria-label*="level"]`, the hook
                   mp-prog3 has used to find the type selector since v2.3.1668. */}
+              <div aria-live="polite" className="bt-stat-peek" style={{
+                marginBottom: 4, minHeight: 24, padding: '3px 9px', borderRadius: 8,
+                background: COL.wellSoft, border: `1px solid ${COL.tileBor}`,
+                fontSize: 10.5, lineHeight: 1.25, color: COL.text2,
+                fontVariantNumeric: 'tabular-nums',
+                display: 'flex', flexDirection: 'column', justifyContent: 'center',
+              }}>
+                {/* v2.3.2216: the strip is the RESTING readout only now (what a
+                    point buys moved into the ℹ️ window), and it sits ABOVE the
+                    lanes rather than below.  Measured: with Melee open, the two
+                    collapsed lanes plus this strip under the last stat row
+                    were more than a scroll-to-the-end could fit beneath the
+                    pinned tabs + header, so ELEM POWER slid under them at max
+                    scroll.  Up here it costs ~30px of rows at rest and buys
+                    the last row fully visible at the end on every phone -- and
+                    a new player reads the "tap the i" hint before the rows,
+                    which is where a hint belongs. */}
+                <div>
+                  {restDps
+                    ? <>Overall <span style={{ color: COL.text, fontWeight: 700 }}>DPS {n1(restDps.dps)}</span> with your {restDps.weaponName}. Tap the <b style={{ fontStyle: 'italic', fontFamily: 'Georgia, serif' }}>i</b> on a stat to see what a point buys.</>
+                    : 'Equip a weapon to see your DPS.'}
+                </div>
+              </div>
               {PROG3_SKILL_META.map((sk) => {
                 const open = buildCat === sk.key;
                 const lvl = prog3SkillLevel(R, sk.key);
@@ -1374,7 +1440,11 @@ export const HeroExpanded = () => {
                       title={sk.label}
                       onPointerUp={(e) => { e.stopPropagation(); setBuildCat(sk.key); }}
                       style={{
-                        height: 22, boxSizing: 'border-box', padding: '0 7px',
+                        /* v2.3.2216: the OPEN header grows to 28 beside 48px rows; a
+                           collapsed one stays 24.  Everything below the last stat row
+                           is what a scroll-to-the-end has to fit under the pinned
+                           tabs + header, so the collapsed lanes stay slim on purpose. */
+                        height: open ? 28 : 24, boxSizing: 'border-box', padding: '0 8px',
                         display: 'flex', alignItems: 'center', gap: 6,
                         cursor: 'pointer', touchAction: 'manipulation',
                         /* ═══ v2.3.2176: THE LANES NEVER SCROLL AWAY ═══
@@ -1444,62 +1514,21 @@ export const HeroExpanded = () => {
                       <span aria-hidden="true" style={{ flex: 'none', fontSize: 10, color: COL.muted, lineHeight: 1 }}>{open ? '\u25B2' : '\u25BC'}</span>
                     </div>
                     {open && (
-                      /* Two equal columns so all seven controls are one
-                         width by construction; stacked in the narrow
-                         landscape pane, where two columns cannot hold a
-                         label, a [+], four pips and a value. */
-                      <div style={{
-                        display: 'flex', flexDirection: landPane ? 'column' : 'row',
-                        gap: landPane ? 5 : 7, padding: '0 7px 6px',
-                      }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          {groupHead2(`${sk.label} Attack`)}
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: LANE_GAP }}>
-                            {prog3AtkMeta().map((m) => statRow({ ...m, atk: true }))}
-                          </div>
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          {groupHead2('Character', 'Shared')}
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: LANE_GAP }}>
-                            {prog3BodyMeta().map((m) => statRow({ ...m, atk: false }))}
-                          </div>
-                        </div>
+                      /* v2.3.2216: ONE column, full width (owner's pick), so
+                         every row is the same size by construction and the
+                         name, the ℹ️ and a real [+] all have room.  Attack
+                         first -- it is this lane's own -- then the shared
+                         block under its own caption. */
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: LANE_GAP, padding: '2px 7px 7px' }}>
+                        {groupHead2(`${sk.label} Attack`)}
+                        {prog3AtkMeta().map((m) => statRow({ ...m, atk: true }))}
+                        <div style={{ marginTop: 5 }}>{groupHead2('Character', 'Shared')}</div>
+                        {prog3BodyMeta().map((m) => statRow({ ...m, atk: false }))}
                       </div>
                     )}
                   </div>
                 );
               })}
-              <div aria-live="polite" className="bt-stat-peek" style={{
-                marginTop: 5, minHeight: 30, padding: '4px 9px', borderRadius: 8,
-                background: COL.wellSoft, border: `1px solid ${COL.tileBor}`,
-                fontSize: 10.5, lineHeight: 1.3, color: COL.text2,
-                fontVariantNumeric: 'tabular-nums',
-                display: 'flex', flexDirection: 'column', justifyContent: 'center',
-              }}>
-                {peek ? (
-                  <>
-                    <div style={{ color: COL.text, fontWeight: 700 }}>
-                      {(statPeek.label || '').toUpperCase()}
-                      {statPeek.atk ? ' · ' + String(buildCat).toUpperCase() : ''}
-                      {'  '}{statTxt(peek.statNow)} → <span style={{ color: '#59BF91' }}>{statTxt(peek.statAfter)}</span>
-                      {peek.capped ? ' (at cap)' : ''}
-                    </div>
-                    <div>
-                      {typeof peek.dpsDelta !== 'number'
-                        ? 'Equip a weapon to see what this is worth in damage.'
-                        : peek.dpsDelta > 0.049
-                          ? <>DPS {n1(peek.dpsNow)} → <span style={{ color: '#59BF91', fontWeight: 700 }}>{n1(peek.dpsAfter)}</span> {'(+' + n1(peek.dpsDelta) + ')'}</>
-                          : <>DPS {n1(peek.dpsNow)} — this stat does not change damage</>}
-                    </div>
-                  </>
-                ) : (
-                  <div>
-                    {restDps
-                      ? <>Overall <span style={{ color: COL.text, fontWeight: 700 }}>DPS {n1(restDps.dps)}</span> with your {restDps.weaponName}. Press a stat to see what a point buys.</>
-                      : 'Equip a weapon to see your DPS.'}
-                  </div>
-                )}
-              </div>
               </>
             );
           })()}

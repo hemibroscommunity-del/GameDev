@@ -48,6 +48,25 @@ export const STAT_INFO = _mk({
     body: 'How much extra a critical hit adds on top of the normal one.',
     note: 'Only pays off when you also have crit chance — the pair works together.', /* v2.3.2199 */
   },
+  /* v2.3.2216: the Points screen's ℹ️ opens this same table, so every
+     spendable stat needs a line here.  Three were missing -- a row with no
+     entry gets no ℹ️ at all (statInfo returns null on purpose), which would
+     have made three of nine rows silently un-explainable. */
+  'Atk Speed': {
+    title: 'Attack speed',
+    body: 'How quickly you swing, shoot or cast. Faster means more hits in the same time.',
+    note: 'Multiplies with your damage — a fast weapon with a small hit can out-damage a slow heavy one.',
+  },
+  'Max HP': {
+    title: 'Max HP',
+    body: 'How much damage you can take before you go down.',
+    note: 'More health also means more room for a potion or a retreat to matter.',
+  },
+  Stamina: {
+    title: 'Stamina',
+    body: 'The energy your special moves and dodges draw from.',
+    note: 'A bigger pool means more specials before you have to wait for it to refill.',
+  },
   /* v2.3.2199: the two new spendable stats. */
   'Elem Power': {
     title: 'Elemental power',
