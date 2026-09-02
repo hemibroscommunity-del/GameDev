@@ -216,7 +216,10 @@ export const BURROW = {
  */
 export const SLIME_BURST = {
   VARIANTS: { blueSlime: 1 },   /* a table: the next exploder is one line */
-  SWELL_MS: 800,                /* grow, then go */
+  SWELL_MS: 1600,               /* grow, then go.  v2.3.2226: 800 -> 1600 (owner) --
+                                   and it is now the ONLY warning, since the
+                                   drawn ring is gone, so the extra second is
+                                   carrying real weight rather than padding. */
   SCALE: 3.5,                   /* owner: "3x or 4x" */
   RADIUS: 110,                  /* ~the swollen body, so the ring matches the art */
   DMG: 60,
