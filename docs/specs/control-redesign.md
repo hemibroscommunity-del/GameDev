@@ -613,3 +613,111 @@ hold)" makes the attack the event and the drop its consequence, so the attack
 | 8.3 | Does the special break it too? | **Yes** — a special is an attack, and it shares the button. |
 | 8.4 | Does the "block 10 hits" quest still count? | **Yes** — it counts blocks, and a block still happens; only the drop went away. |
 | 8.5 | Shield Bash from a raised shield? | **Unchanged**, still exempt — it is the one move whose whole point is bashing out of a block. |
+
+---
+
+## 9. Targeting is automatic; the tap is the override (v2.3.2251)
+
+> Owner, after playing §8:
+> - "there should be a subtle visual perimeter around each monster that shows you when your contextual attack button can engage"
+> - "Change the auto targeting system to always be nearest enemy. Only way to pick target and lock it on is to tap on the monster"
+> - "The attack button isn't lit up when it becomes available (font hard to see)"
+> - "tutorial might need to change with the new attack system and lack of right joystick"
+
+### 9.1 The engage press is gone
+
+§7.1 made the press two-step: engage, then attack. Automatic acquisition removes
+the first step entirely — there is nothing left to engage, so **the right button
+is a plain attack button again**. `updateTargeting` is now the single writer of
+the automatic lock and runs every frame.
+
+`S.lockedTarget.src` replaces `viaPerimeter`, with the polarity flipped:
+
+| `src` | Who wrote it | Lifetime |
+|---|---|---|
+| `'auto'` | `updateTargeting`, every frame | re-points at the nearest; cleared past the hysteresis ring |
+| `'tap'` | the canvas tap, and only it | survives at **any** distance until it dies or you tap again |
+
+**The hysteresis survived the rewrite** and is load-bearing: an empty candidate
+list does not clear an auto lock, because the lock holds out to
+`TARGET_PERIMETER_PX × TARGET_HYST` (275px). Clearing at 220 makes a monster
+pacing the boundary flip the target several times a second, and every flip moves
+the reticle, the facing, the shield angle and the next shot's aim. `mp-target`
+pins this.
+
+Deleted with the cycling they served: `engageNearest`, `heldMonster`,
+`hasCandidate`, `candidatesByX`, `cycleTarget`, `TargetArrows.jsx`, the desktop
+`T` key, and the tutorial's "Switch target" step.
+
+### 9.2 A lock is no longer evidence of intent
+
+This is the trap in the change. Six sites used a bare `S.lockedTarget` as a
+proxy for "the player is fighting this" — fair while a lock only existed because
+the player asked for one. With acquisition automatic a lock is present whenever
+**any** monster is within 220px, so those sites would read "in combat" while you
+walk past a slime. The worst of them was the harvest button's priority rule,
+which would have suppressed **HARVEST** for good.
+
+`targeting.engagedStance(S)` is the replacement — *your thumb is on the attack
+button, or you tapped this target yourself* — and it gates: the harvest priority,
+the backpedal/target-relative movement, the rendered locked facing, the aim
+write, and the dodge's retreat-shot context. Sites that genuinely mean "point at
+the current target" (`shieldAimAngle`, `lockAimPoint`, the melee base angle,
+projectiles) keep reading the bare lock: they want the target, not the intent.
+
+### 9.3 The perimeter is painted on the ground
+
+§7.2 rejected a `TARGET_PERIMETER_PX` ring around every candidate — six 440px
+circles overlapping into background haze. The owner now wants a perimeter back,
+so it is a **different shape, not a fainter version of the rejected one**:
+
+- a small ellipse at each candidate's **feet**, sized from the shared
+  `monsterMeleeHitRadius` table (~68px across for a slime, ~120 for a skeleton),
+  not from the 220px engage radius;
+- drawn in the **`telegraphs` layer, below `entities`** — the rejected version
+  lived in `overlayWorld`, the topmost world layer, so it crossed every sprite
+  on screen. Down here nothing it draws ever crosses a monster or the player;
+- alpha ramped by distance, brightest at your feet, so the ring itself says how
+  close to engageable you are;
+- the current target's ring takes the reticle red when you **tapped** it and
+  brass when it is merely the nearest, so "pinned" and "automatic" look
+  different.
+
+At the ~250–320px spacing the server's farthest-point spawn placement produces,
+two of these can only touch when two monsters are standing on each other — and
+then their sprites overlap too, so the overlap is information rather than noise.
+
+The caret changed job with acquisition: it now marks the candidates that are
+**not** the target ("tap this one instead"). The target itself carries the
+ground ring and the reticle. Both are recorded in `__btAtkMark`.
+
+### 9.4 The button lights up
+
+Availability moved the wrap's opacity and nothing else, so the button faded in
+still wearing the joystick-era `0.5` resting opacity — a faint disc with faint
+text, exactly as reported. Now, stamped **inline** by the resolver:
+
+| | |
+|---|---|
+| opacity | `0.5` at rest → `1` when a press would do something |
+| border | transparent → brass, brighter focus tone when there is something to hit |
+| shadow | a hard brass spread ring, **zero blur** (LANTERN-SLATE: "no blur anywhere") |
+| label | 11px → 13px, with a real dark halo rather than a 1px drop |
+
+**Inline, not `game.css`**, and this is not a style preference: the disc's own
+`border` and `transform` are inline, and an inline declaration beats an author
+stylesheet without `!important` — a CSS tier ladder would simply never paint.
+**And never `background-color`**: `base.webp` is opaque edge to edge, so a fill
+paints *under* the sprite and is never seen. Both were caught by rendering the
+proposal in a real browser before it shipped.
+
+### 9.5 Judgement calls
+
+| # | Question | What I did |
+|---|---|---|
+| 9.1 | Does target-relative movement follow the AUTO target? | **No** — only `engagedStance`. Otherwise walking past a monster puts you in a backwards jog. |
+| 9.2 | Does tapping the same monster clear the target, or release it to auto? | **Release to auto.** With acquisition automatic, `null` means "resume", and the next frame re-acquires. |
+| 9.3 | How much nearer must a rival be before auto switches? | **12%** (`AUTO_SWITCH_MARGIN`). Pure nearest-every-frame flip-flops between two monsters at equal distance. |
+| 9.4 | Does the target keep the perimeter ring, or only the caret? | Ring **and** reticle; the caret goes to the others. |
+| 9.5 | Is "3 seconds" the pile or the whole burrow? | **The pile** (total move 4200ms), the same reading v2.3.2225 used. `PILE_MAX_MS 1800` makes the whole move 3s. |
+| 9.6 | Is "20 seconds" start-to-start or end-to-start? | **Both** — stamped at the start as the re-entry guard and re-stamped at the end, so 20s is a floor on downtime. Start-stamp alone gives 15.8s. |

@@ -13,6 +13,7 @@ import { BT_AUDIO, ELEMENTS, LUNGE_DAMAGE_MULT, LUNGE_DIRECTION_THRESHOLD, LUNGE
 import { addBuildUse, pushDmgPopup, lockAimPoint } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
+import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251 */
 
 export var triggerContextualDodge = function (S, R, ang) {
     if (S._dodgeRoll) return;
@@ -29,7 +30,11 @@ export var triggerContextualDodge = function (S, R, ang) {
     return doStandardDodge(S, R, ang);
   };
 export var resolveDodgeContext = function (S, swipeAng) {
-    var lt = S.lockedTarget && S.lockedTarget.ref;
+    /* v2.3.2251: a lock is acquired automatically now, so "there is a lock"
+       no longer means the player is fighting.  A retreat-shot is a combat
+       manoeuvre and should not fire because a slime happened to be in range
+       while you rolled; it needs the same intent test the facing uses. */
+    var lt = engagedStance(S) ? (S.lockedTarget && S.lockedTarget.ref) : null;
     if (!lt) return 'dodge';
     var P = S.player;
     var tx = lt.x - P.x, ty = lt.y - P.y;

@@ -21,7 +21,7 @@ export function effectsAnimationsReady() { return Promise.allSettled(_fxPreload)
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R, FISH_CUE_DY } from '@/data/constants.js';
-import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */ } from '@/data/index.js';
+import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */, monsterMeleeHitRadius /* v2.3.2251: sizes the ground ring to the body */ } from '@/data/index.js';
 import { gesturePose01 } from '@/game/gesturePose.js'; /* v2.3.2245 */
 import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1535 generalised */
@@ -1090,6 +1090,18 @@ export class EffectsRenderer {
 
     this.telegraphGfx = new Graphics();
     this.telegraphLayer.addChild(this.telegraphGfx);
+    /* ═══ v2.3.2251: THE ENGAGE PERIMETER, PAINTED ON THE GROUND ═══
+       Owner: "there should be a subtle visual perimeter around each monster
+       that shows you when your contextual attack button can engage."
+       Its own Graphics in the TELEGRAPH layer, which is BELOW `entities` --
+       that is the whole trick.  The version this replaces drew a 220px ring
+       per candidate into overlayWorld, the topmost world layer, so six of them
+       crossed every sprite on screen and read as background haze.  Down here
+       nothing it draws ever crosses a monster or the player: it reads as a
+       mark painted on the floor, the same category as the fire-trail scorch,
+       which is the category the eye forgives. */
+    this.engageRingGfx = new Graphics();
+    this.telegraphLayer.addChild(this.engageRingGfx);
     /* ═══ v2.3.2239: THE FIRE TRAIL GETS ITS OWN GROUND SURFACE ═══
        v2.3.2238 drew the patches into particleGfx, and its comment claimed
        they sat "UNDER the entities".  They did not: `particles` is ABOVE
@@ -3397,7 +3409,49 @@ export class EffectsRenderer {
          positive), and a mark drawn at the wrong y is indistinguishable
          from no mark at all in a crop. */
       const _marks = [];
-      if (_tc && _tc.length) {
+      /* ═══ v2.3.2251: A RING ON THE GROUND UNDER EVERY ENGAGEABLE MONSTER ═══
+         Sized from monsterMeleeHitRadius -- the SHARED per-archetype table the
+         swing hit-test already reads -- so it hugs the body it belongs to
+         (~68px across for a slime, ~120 for a skeleton) instead of being the
+         220px engage radius.  That is the difference that makes it subtle: at
+         the ~250-320px spacing the server's farthest-point spawn placement
+         produces, two of these can only touch when two monsters are standing
+         on each other, and then their sprites overlap too and the overlap is
+         information rather than noise.
+         Squashed to 0.38 for the house ground-plane perspective (the same
+         ratio the body shadows use), and ramped by distance -- brightest at
+         your feet, half strength out at the boundary -- so the ring itself
+         tells you how close to engageable you are.  `c.d2` is already on the
+         candidate (targeting.js), so the ramp costs one sqrt. */
+      const _erg = this.engageRingGfx;
+      if (_erg) _erg.clear();
+      if (_erg && _tc && _tc.length && !S._zoneLoading) {
+        const _lockNow = S.lockedTarget && S.lockedTarget.ref;
+        const _tapPick = !!(S.lockedTarget && S.lockedTarget.src === 'tap');
+        for (let i = 0; i < _tc.length; i++) {
+          const c = _tc[i];
+          if (!c || !Number.isFinite(c.x) || !Number.isFinite(c.y)) continue;
+          const mx = (c.m && (c.m.renderX != null ? c.m.renderX : c.m.x));
+          const my = (c.m && (c.m.renderY != null ? c.m.renderY : c.m.y));
+          if (!Number.isFinite(mx) || !Number.isFinite(my)) continue;
+          const rx = (monsterMeleeHitRadius(c.m && (c.m.arch || c.m.archetype || c.m.type)) || 24) + 10;
+          const ry = rx * 0.38;
+          const t = 1 - 0.5 * Math.min(1, Math.sqrt(c.d2) / (TARGET_PERIMETER_PX || 220));
+          const isCur = c.m === _lockNow;
+          /* The current target wears the ring the reticle colour when the
+             player PICKED it, so "this one is pinned" and "this one is just
+             the nearest" are visibly different states. */
+          const col = isCur ? (_tapPick ? 0xFF3C3C : 0xD8A85F) : 0xB9C1BF;
+          _erg.ellipse(mx, my, rx, ry);
+          _erg.stroke({ color: 0x14181A, width: 3, alpha: 0.26 * t });
+          _erg.ellipse(mx, my, rx, ry);
+          _erg.stroke({ color: col, width: isCur ? 1.7 : 1.1, alpha: (isCur ? 0.58 : 0.30) * t });
+        }
+      }
+      /* v2.3.2251: the same `_zoneLoading` guard the ground rings take -- marks
+         must not paint over a per-zone loading overlay, and it gives the QA
+         crop a way to suppress the whole indicator without moving the scene. */
+      if (_tc && _tc.length && !S._zoneLoading) {
         const _lockRef = S.lockedTarget && S.lockedTarget.ref;
         /* One shared bob so the whole set pulses together rather than
            shimmering independently -- a field of out-of-phase carets reads
@@ -3407,8 +3461,20 @@ export class EffectsRenderer {
         for (let i = 0; i < _tc.length; i++) {
           const c = _tc[i];
           if (!c || !Number.isFinite(c.x) || !Number.isFinite(c.y)) continue;
-          if (c.m === _lockRef) continue;   /* the reticle speaks for that one */
+          /* ═══ v2.3.2251: THE TARGET IS MARKED, IT IS JUST NOT CARETED ═══
+             This used to `continue` on the locked monster ("the reticle speaks
+             for that one"), which was fine while a lock was something you had
+             asked for.  With acquisition automatic the nearest candidate is
+             ALWAYS the lock, so the loop skipped it every frame -- no caret and,
+             worse, no entry in `_marks`, so __btAtkMark reported an empty field
+             whenever exactly one monster was in range.
+             Now the caret is what says "tap this one instead": it is drawn for
+             the candidates that are NOT the target, and the target's own ground
+             ring plus reticle carry it.  The mark is recorded either way, so
+             the probe describes the whole field. */
+          const isTarget = c.m === _lockRef;
           const nearest = i === 0;
+          if (isTarget) { _marks.push({ id: c.m && c.m.id, x: c.x, y: c.y, nearest: nearest, target: true }); continue; }
           /* The caret sits above the body, not above the feet.
              monsterBodyOffsetY is the SHARED table (data/gameSystems.js) that
              lockAimPoint, the swing hit-test and the projectile aim all read
@@ -3446,12 +3512,13 @@ export class EffectsRenderer {
             gfx.stroke({ color: 0x14181A, width: 3.5, alpha: _pulse * 0.5 });
             gfx.circle(c.x, c.y, 15);
             gfx.stroke({ color: 0xD8A85F, width: 1.5, alpha: _pulse * 0.85 });
-            if (Number.isFinite(TARGET_PERIMETER_PX)) {
-              gfx.circle(c.x, c.y, TARGET_PERIMETER_PX);
-              gfx.stroke({ color: 0xD8A85F, width: 1, alpha: 0.08 });
-            }
+            /* v2.3.2251: the 220px ring that used to be drawn here is GONE.
+               It was the last survivor of the rejected full-radius version and
+               it is what the new ground rings replace -- keeping both would
+               give the pack one big circle AND a small ring each, which is the
+               noise it is trying to fix. */
           }
-          _marks.push({ id: c.m && c.m.id, x: c.x, y: _cy, nearest: nearest });
+          _marks.push({ id: c.m && c.m.id, x: c.x, y: _cy, nearest: nearest, target: false });
         }
       }
       this._atkMarks = _marks;

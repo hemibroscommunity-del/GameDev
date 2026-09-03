@@ -35,21 +35,30 @@ const STEPS = [
      control that does not exist.  (Double-tap-and-hold is the SHIELD,
      which the ring covers separately.) */
   /* v2.3.2242: the right stick is a BUTTON now (docs/specs/control-redesign.md).
-     Hold = auto-attack the nearest enemy; a quick swipe on it = special. */
+     Hold = auto-attack the nearest enemy; a quick swipe on it = special.
+     v2.3.2251: and it is a plain attack button again -- the v2.3.2246 "press
+     once to engage" step is gone, because targeting is automatic now.  The
+     copy says what the button does and where the target comes from, since
+     the owner's rule ("always nearest, tap to pick") is invisible otherwise. */
   { key: 'attack', shape: 'circle', sels: ['.bt-rjoy-base'],
-    label: 'Attack', body: 'Hold the Attack button to fight the nearest enemy. A quick swipe on it is your special.' },
+    label: 'Attack', body: 'The button lights up when something is in reach. Tap it to swing, hold it to keep fighting, and flick across it for your special.' },
+  /* v2.3.2251: replaces the switch-target arrows, which are deleted.  This
+     is the one rule a player cannot discover by pressing things: the game
+     picks your target for you, and tapping is how you overrule it. */
+  { key: 'target', shape: null, sels: null,
+    label: 'Your target', body: 'You always aim at the closest enemy. Tap a different one to lock onto it instead, and tap it again to let go.' },
   /* v2.3.2242: the shield left the stick.  Its own button, under Attack,
      that only shows once there is something to block. */
   { key: 'shield', shape: 'circle', sels: ['[data-shield]'], anchorOptional: true,
     label: 'Shield', body: 'Tap to raise your shield. It stays up until you attack, tap again, or run out of stamina.' },
-  /* v2.3.2243: only on screen while two or more monsters are in range.
-     anchorOptional (post-review): these two steps ring their button when it
-     is on screen and read as a plain card when it is not -- the tour opens
-     in town, where neither exists, and mp-ctltut's rule that no declared
-     step may silently vanish is the right rule (v2.3.1803 lost two steps
-     that way for long enough to prove it). */
-  { key: 'target', shape: 'circle', sels: ['[data-target="next"]'], anchorOptional: true,
-    label: 'Switch target', body: 'Two enemies close? These arrows switch which one you are fighting.' },
+  /* v2.3.2243's switch-target arrows step is GONE with the arrows themselves
+     (v2.3.2251): with the target always the nearest enemy there is nothing to
+     cycle.  Its `target` key is reused by the card above so the tour keeps a
+     step teaching targeting -- mp-ctltut's rule is that no DECLARED step may
+     silently vanish, and this one is declared, just no longer anchored.
+     anchorOptional stays on the shield step below: the tour opens in town,
+     where that button does not exist, and it must read as a plain card there
+     rather than ringing empty air (v2.3.1803 lost two steps that way). */
   /* v2.3.1285: the 3-panel row is retired — the home view is the Bag
      compact grid (equipped row over recent items). */
   /* ═══ v2.3.1803: THIS STEP HAD BEEN DROPPING ITSELF ═══

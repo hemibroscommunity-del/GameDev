@@ -184,7 +184,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── v2.3.2246: press ONE engages, press TWO attacks ── */
   await seedFodder(P, 'qa_rb_1', 60);
   await P.page.waitForTimeout(400);
-  rec.ok('nothing is locked before the press', (await st(P)).lock === null);
+  /* ═══ v2.3.2251: THE LOCK ARRIVES BEFORE THE PRESS DOES ═══
+     This asserted `lock === null` before pressing, which was the whole premise
+     of the two-step press.  Targeting is automatic now (owner: "always be
+     nearest enemy"), so a monster inside the perimeter IS the target the
+     moment it gets there -- acquired by updateTargeting, not by a press. */
+  rec.ok('the nearest monster is targeted automatically, with no press at all',
+    (await st(P)).lock === 'qa_rb_1', await st(P));
   const visRmon = await discVis(P, 'R');
   rec.ok('a monster inside the targeting perimeter paints the right button, pressable',
     !!visRmon && visRmon.shown === true && visRmon.pe === 'auto', visRmon);
@@ -203,27 +209,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(600);
   rec.ok('...and back in portrait', (await discVis(P, 'R')).shown === true, await discVis(P, 'R'));
 
+  /* ═══ v2.3.2251: ONE PRESS, AND IT ATTACKS ═══
+     The v2.3.2246 two-step (press one engages, press two attacks) is gone with
+     the engage step -- there is nothing left for a press to acquire, so the
+     button is a plain attack button again.  Asserted as the property that
+     replaced it: the FIRST press swings, and it does not need a press before
+     it to become an attack button. */
   await P.page.evaluate(() => { const c = window.__centre('.bt-rjoy-base'); window.__touch(c.el, 'touchstart', c.x, c.y, 41); });
-  await P.page.waitForTimeout(200);
-  const engaged = await st(P);
-  rec.ok('the FIRST press ENGAGES: the nearest monster in the perimeter is locked', engaged.lock === 'qa_rb_1', engaged);
-  rec.ok('...and it does NOT swing — the button is not a standalone attack button any more',
-    engaged.swings === 0 && engaged.isSwinging === false, engaged);
-  rec.ok('...and it does NOT start the auto-attack', engaged.autoAttack === false, engaged);
-  await P.page.waitForTimeout(900);
-  rec.ok('...and holding that same press still never swings', (await st(P)).swings === 0, await st(P));
-  await P.page.evaluate(() => { const c = window.__centre('.bt-rjoy-base'); window.__touch(c.el, 'touchend', c.x, c.y, 41); });
-  await P.page.waitForTimeout(150);
-  const afterEngage = await st(P);
-  rec.ok('...and releasing an engage press does not spend the special either',
-    afterEngage.usedSwipe === false, afterEngage);
-  rec.ok('...and the lock outlives the finger, which is what makes press two an attack',
-    afterEngage.lock === 'qa_rb_1', afterEngage);
-  /* PRESS TWO: the lock is held, so the button is an attack button now. */
-  await P.page.evaluate(() => { const c = window.__centre('.bt-rjoy-base'); window.__touch(c.el, 'touchstart', c.x, c.y, 41); });
-  await P.page.waitForTimeout(150);
+  await P.page.waitForTimeout(250);
   const pressed = await st(P);
-  rec.ok('the SECOND press ATTACKS: auto-attack runs while the finger is down', pressed.autoAttack === true, pressed);
+  rec.ok('the FIRST press ATTACKS: auto-attack runs while the finger is down', pressed.autoAttack === true, pressed);
+  rec.ok('...at the target it already had, with no engage press in between',
+    pressed.lock === 'qa_rb_1', pressed);
   await P.page.waitForTimeout(1500);
   const held = await st(P);
   rec.ok('holding keeps swinging (>=2 swings in 1.6s at the 600ms cadence)', held.swings >= 2, held);

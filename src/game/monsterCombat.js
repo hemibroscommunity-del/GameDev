@@ -49,6 +49,7 @@ import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the shield hold */
+import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251 */
 
 export function updateMonsterCombat(S, deps) {
   var P = S.player;
@@ -1329,7 +1330,13 @@ export function updateMonsterCombat(S, deps) {
              fact, three readers, no lifetime. */
           var _lkRef = (S.lockedTarget && S.lockedTarget.ref) || null;
           var _lkMon = !!_lkRef && S.lockedTarget.type === 'monster';
-          if (_lkRef && (S.autoAttack || _lkMon)) {
+          /* v2.3.2251: `_lkMon` was "there is a monster lock", which meant
+             the player had asked for one.  Acquisition is automatic now, so
+             the body would swivel to face whatever wandered into the
+             perimeter while you were walking past.  engagedStance is the
+             intent test; the AIM POINT below still comes from the bare lock,
+             because that is the target either way. */
+          if (_lkRef && (S.autoAttack || (_lkMon && engagedStance(S)))) {
             var _lkPt = lockAimPoint(_lkRef);
             if (_lkPt) {
               S._aimAngle = Math.atan2(_lkPt.y - P.y, _lkPt.x - P.x);

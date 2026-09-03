@@ -871,7 +871,19 @@ export function processGameEvent(type, payload, S, deps) {
                      (_burUntil + 500) surfaced him on the client at 6.5s
                      while the worker still had him intangible -- and, now,
                      hurting to touch -- for another 1.5s.  9000 covers the
-                     cap with the same margin the old number had. */
+                     cap with the same margin the old number had.
+                     ═══ v2.3.2251: 9000 STAYS, THOUGH THE PILE IS NOW 3000 ═══
+                     Tightening this to match the new cap looks tidy and is a
+                     deploy-order regression: this client can meet a worker
+                     still running the 8000ms pile (the worker deploys on merge,
+                     the page can be a cached tab), and a 3000 ceiling would
+                     self-clear the mound five seconds early -- rendering an
+                     ordinary snowman who shrugs off hits and hurts to touch,
+                     which is the v2.3.2244 bug in the other direction.  The
+                     duration is carried on the event (`payload.ms`), so the
+                     client never needs to know the constant; this is only a
+                     sanity ceiling and it should stay ABOVE the largest value
+                     any live worker might send. */
                   var _buMs = Math.max(80, Math.min(9000, Number(payload.ms) || 400));
                   _buM._burPhase = payload.phase;
                   _buM._burFrom = Date.now();

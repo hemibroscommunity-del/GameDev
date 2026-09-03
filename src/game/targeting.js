@@ -36,6 +36,7 @@
  */
 import { TARGET_PERIMETER_PX, TARGET_HYST } from '@/data/index.js';
 import { isIntangible } from '@/data/monsterVariants.js';
+import { isPlayerDead } from '@/game/combatHelpers.js'; /* v2.3.2251: a corpse acquires nothing */
 
 function monPos(m) {
   const x = (typeof m.renderX === 'number' && isFinite(m.renderX)) ? m.renderX : m.x;
@@ -102,105 +103,139 @@ function lockHolds(S) {
  * mark, and keeps its old lifetime -- it ends when the monster dies (the
  * dead-lock clear in monsterCombat, which is separate and applies to every
  * lock), on zone change, or on another tap. */
-function perimeterOwned(S) {
+function tapOwned(S) {
   const lt = monsterLock(S);
-  return !!lt && lt.viaPerimeter === true;
+  return !!lt && lt.src === 'tap';
 }
 
-/* Once per frame (monsterCombat's tick): refresh the candidate list and
-   apply the persistence rule.  Cheap -- one pass over the zone's monsters. */
+/* How much nearer a rival has to be before the auto target switches to it.
+   Pure "nearest every frame" flip-flops between two monsters standing at
+   near-equal distance, and every flip moves the reticle, the body facing, the
+   shield angle and the next shot's aim -- a jitter the player reads as the
+   game being unable to make up its mind. 12% is enough to need a real step. */
+const AUTO_SWITCH_MARGIN = 0.88;
+
+/* Once per frame (monsterCombat's tick): refresh the candidate list, then
+   ACQUIRE.  Cheap -- one pass over the zone's monsters. */
 export function updateTargeting(S) {
   if (!S || !S.player) return;
   const cands = targetCandidates(S);
   S._targetCands = cands;
-  const lt = monsterLock(S);
-  /* v2.3.2246: ...and only if the perimeter is the thing that locked it. */
-  if (lt && perimeterOwned(S) && !lockHolds(S)) {
-    S.lockedTarget = null;
-    S._lockDroppedAt = Date.now();
-    S._lockDroppedWhy = monLive(lt.ref) ? 'range' : 'dead';
+
+  /* ═══ v2.3.2251: THE TARGET IS ALWAYS THE NEAREST, UNLESS YOU TAPPED ONE ═══
+     Owner: "Change the auto targeting system to always be nearest enemy. Only
+     way to pick target and lock it on is to tap on the monster."
+
+     So this function stopped being a janitor that only ever CLEARED a lock and
+     became the single writer of the automatic one.  Two kinds of lock now, and
+     `src` says which: 'tap' is a deliberate pick and is left completely alone
+     here, at any distance (that is what makes a bow snipe at 675px work, the
+     v2.3.2246 regression); 'auto' is this rule's own and it re-points every
+     frame at whatever is nearest.
+
+     THE GUARDS THAT USED TO LIVE IN engageNearest LIVE HERE NOW, because this
+     is where acquisition happens: a dead or dying player acquires nothing (a
+     corpse aiming at a monster was a real bug the shield/lock clear in
+     wsClient fixed), and a live NPC or player lock is a deliberate thing the
+     monster rule must not stamp over. */
+  const lt = S.lockedTarget;
+  if (lt && lt.ref && lt.type !== 'monster') return;   /* npc/player: not ours */
+  if (S._dying || S._zoneLoading || isPlayerDead(S)) {
+    if (S.lockedTarget) { S.lockedTarget = null; S._lockDroppedAt = Date.now(); S._lockDroppedWhy = 'dead'; }
+    return;
   }
-}
 
-/* ═══ v2.3.2246: THE PRESS HAS TWO MEANINGS, SO IT NEEDS TO ASK WHICH ═══
-   Owner: "right button (former right joystick) should not be a standalone
-   attack button anymore. After you engage with an enemy by pressing attack
-   within perimeter of it you auto lock on target and the button turns into
-   an attack button at that point."
+  /* A TAPPED lock survives until it dies or you tap again -- range never
+     clears it.  (v2.3.2246 §7.9: the range rule owns only the locks it made,
+     and now it makes them all except this one.) */
+  if (tapOwned(S)) {
+    if (!monLive(S.lockedTarget.ref)) {
+      S.lockedTarget = null;
+      S._lockDroppedAt = Date.now();
+      S._lockDroppedWhy = 'dead';
+    } else {
+      return;
+    }
+  }
 
-   So the button's press is ENGAGE with nothing locked and ATTACK with a lock
-   held, and the handler has to know which BEFORE it acts -- engageNearest
-   cannot tell it, because it returns the same monster whether it just locked
-   one or found one already locked.  This is that question, asked once, in the
-   module that owns the rule for what "still locked" means (the hysteresis
-   ring, not just a non-null field). */
-export function heldMonster(S) {
-  const lt = monsterLock(S);
-  if (!lt || !monLive(lt.ref)) return null;
-  /* A tapped lock is held at any distance (see perimeterOwned); a perimeter
-     lock is held while it is in the ring.  Either way, held means the next
-     press is an ATTACK, not another engage. */
-  return (lt.viaPerimeter === true) ? (lockHolds(S) ? lt.ref : null) : lt.ref;
-}
-
-/* Is there anything an ENGAGE press could pick up right now?  The button's
-   own liveness reads this (BroTown's per-frame resolver) as well as its
-   press, so "the button is on screen" and "the press will do something" are
-   the same fact by construction. */
-export function hasCandidate(S) {
-  const c = (S && S._targetCands) || null;
-  return !!(c && c.length);
-}
-
-/* Called on every Attack press.  Returns the monster now locked, or null. */
-export function engageNearest(S) {
-  if (!S || !S.player) return null;
-  /* A live NPC/player lock is deliberate; leave it. */
-  if (S.lockedTarget && S.lockedTarget.ref && S.lockedTarget.type !== 'monster') return null;
-  if (lockHolds(S)) return S.lockedTarget.ref;
-  const cands = S._targetCands || targetCandidates(S);
+  /* Everything below is the AUTO target. */
+  const cur = monsterLock(S);
   if (!cands.length) {
-    /* v2.3.2246: a TAPPED lock out of range is not cleared here either -- the
-       press that finds nothing to engage must not throw away a target the
-       player picked deliberately (a sniped monster across the zone). */
-    if (perimeterOwned(S)) S.lockedTarget = null;
-    return null;
+    /* THE HYSTERESIS SURVIVES THE REWRITE.  An empty candidate list means
+       nothing is inside the 220px perimeter -- but the lock is held out to
+       TARGET_HYST x that (275px), and dropping it at 220 is exactly the
+       flicker the ring was added to stop: a monster pacing the boundary would
+       lose and regain the target several times a second, and every flip moves
+       the reticle, the facing, the shield angle and the next shot's aim.
+       So the lock is only cleared once it fails lockHolds -- dead, or truly
+       past the ring. */
+    if (cur && !lockHolds(S)) {
+      S.lockedTarget = null;
+      S._lockDroppedAt = Date.now();
+      S._lockDroppedWhy = monLive(cur.ref) ? 'range' : 'dead';
+    }
+    return;
   }
-  const m = cands[0].m;
-  S.lockedTarget = { type: 'monster', id: m.id, ref: m, viaPerimeter: true };
-  S._engagedAt = Date.now();
-  return m;
+  const best = cands[0];
+  if (cur && monLive(cur.ref) && lockHolds(S)) {
+    /* fall through to the switch test below */
+    if (cur.ref === best.m) return;                    /* already on it */
+    /* Only switch for a MEANINGFULLY nearer rival -- see AUTO_SWITCH_MARGIN. */
+    const curD2 = (() => {
+      const p = monPos(cur.ref);
+      if (!p) return Infinity;
+      const dx = p.x - S.player.x, dy = p.y - S.player.y;
+      return dx * dx + dy * dy;
+    })();
+    if (best.d2 > curD2 * AUTO_SWITCH_MARGIN * AUTO_SWITCH_MARGIN) return;
+  }
+  /* Allocate only when the monster actually changes: this runs 60x a second
+     and a fresh object every frame would churn the field every consumer of
+     S.lockedTarget compares by reference. */
+  if (!cur || cur.ref !== best.m) {
+    S.lockedTarget = { type: 'monster', id: best.m.id, ref: best.m, src: 'auto' };
+  }
 }
 
-/* The candidates in screen-x order (left -> right), which is the order the
-   arrows walk.  Ties (same x) break on y so the order is stable. */
-export function candidatesByX(S) {
-  const cands = (S && S._targetCands) || [];
-  return cands.slice().sort((a, b) => (a.x - b.x) || (a.y - b.y));
+/* ═══ v2.3.2251: WHAT WENT, AND WHY ═══
+ * engageNearest / heldMonster / hasCandidate / candidatesByX / cycleTarget are
+ * gone.  Every one of them existed to serve the two-step press (v2.3.2246:
+ * press once to engage, again to attack) or the switch arrows (v2.3.2243), and
+ * the owner replaced both: "always be nearest enemy", "only way to pick target
+ * and lock it on is to tap on the monster".  With acquisition automatic there
+ * is nothing for a press to engage and nothing for an arrow to cycle, so the
+ * button is a plain attack button again and the arrows are deleted rather than
+ * left pointing at a system that no longer steps.
+ *
+ * `targetCandidates` stays -- the perimeter still decides who is in play, and
+ * both the auto rule above and the on-screen marks read it. */
+
+/* Is the current monster lock one the player picked by tapping? */
+export function isTapLock(S) {
+  return tapOwned(S);
 }
 
-/* Step the lock left (-1) or right (+1) through the candidates.  Wraps.
-   With nothing locked, the first press locks the nearest (so the arrows
-   never do nothing).  Returns the monster now locked, or null. */
-export function cycleTarget(S, dir) {
-  if (!S) return null;
-  const ordered = candidatesByX(S);
-  if (ordered.length === 0) return null;
+/* ═══ v2.3.2251: "AM I DELIBERATELY FIGHTING THIS?" ═══
+ * Before this, a monster lock existed only because the player had ASKED for
+ * one -- an Attack press or a tap -- so a bare `S.lockedTarget` was a fair
+ * proxy for intent, and half a dozen sites used it that way: the backpedal,
+ * the locked facing, the aim write, the lock beam, the dodge context, and
+ * (the dangerous one) the harvest button's priority rule.
+ *
+ * Automatic acquisition breaks that proxy completely.  A lock is now present
+ * whenever ANY monster is within the perimeter, whether or not the player has
+ * so much as looked at it -- so those sites would read "in combat" while you
+ * are standing at a tree with a slime wandering past, and the harvest button
+ * in particular would never appear again.
+ *
+ * This is the replacement, and it is deliberately narrow: you are fighting if
+ * your thumb is on the attack button, or if you picked this target yourself.
+ * Sites that genuinely mean "point at the current target" (shieldAimAngle,
+ * lockAimPoint, the melee base angle, projectiles) keep reading the bare lock
+ * -- they want the target, not the intent. */
+export function engagedStance(S) {
+  if (!S) return false;
+  if (S.autoAttack) return true;
   const lt = monsterLock(S);
-  let idx = -1;
-  if (lt) for (let i = 0; i < ordered.length; i++) if (ordered[i].m === lt.ref) { idx = i; break; }
-  let next;
-  if (idx < 0) {
-    /* Not among the candidates (nothing locked, or a tapped lock out of the
-       ring): start from the nearest, exactly like a press does. */
-    next = (S._targetCands && S._targetCands[0]) ? S._targetCands[0] : ordered[0];
-  } else {
-    const n = ordered.length;
-    next = ordered[(((idx + (dir < 0 ? -1 : 1)) % n) + n) % n];
-  }
-  const m = next.m;
-  S.lockedTarget = { type: 'monster', id: m.id, ref: m, viaPerimeter: true };
-  S._engagedAt = Date.now();
-  S._targetSwitchedAt = Date.now();
-  return m;
+  return !!lt && lt.src === 'tap';
 }

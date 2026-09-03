@@ -172,7 +172,15 @@ export const BASIC_WINDUP = {
  * is the whole point of the move rather than an accident of the timer. */
 export const BURROW = {
   HP_FRAC: 0.5,        /* triggers the first time hp drops to half */
-  CD_MS: 12000,        /* ...then a cooldown, so it stays a moment not a personality */
+  /* ═══ v2.3.2251: 12000 -> 20000, AND IT IS STAMPED AT BOTH ENDS ═══
+     Owner: "at least 20 seconds before the same snowman can do it again."
+     Stamped at the START (below, _startBurrow) as the re-entry guard it has
+     always been, AND re-stamped when the emerge finishes (_resolveBurrow), so
+     the 20s is a floor on DOWNTIME rather than on start-to-start spacing.
+     The start-stamp alone was defensible while the move was 9.2s of a 12s
+     cooldown; with the move now 4.2s it would have delivered 15.8s of quiet
+     and the owner would have reported it again. */
+  CD_MS: 20000,
   /* v2.3.2223 (owner: "Burrow needs to last longer").  Every phase grew.
      400ms across an 8-frame strip is 50ms a frame -- the dig and emerge
      animations were over before they read as anything; 600 gives them 75. */
@@ -190,8 +198,18 @@ export const BURROW = {
      where arrival ends it almost at once.  Hence the floor: the pile is a
      phase you can see even when the geometry is against it.  A long pile
      costs the player nothing but time, because it cannot hurt them. */
-  PILE_MIN_MS: 2400,   /* v2.3.2225: 1200 -> 2400 */
-  PILE_MAX_MS: 8000,   /* invulnerable. v2.3.2225: 4000 -> 8000 */
+  /* ═══ v2.3.2251: WAY SHORTER ═══
+     Owner: "Change snowman burrow to be way shorter.  Maybe 3 seconds."
+     Read as the PILE, which is the phase he is actually burrowed for and the
+     one v2.3.2225 doubled when the owner said "double burrow time" -- that
+     note asked "say the word if the whole move was meant" and nobody did, so
+     the same reading is kept here.  Total move is DIG 600 + 3000 + EMERGE 600
+     = 4200ms.  One word flips it: PILE_MAX_MS 1800 makes the whole move 3s.
+     The floor comes down with the cap (2400 would have exceeded it, so the
+     pile could never end early on arrival again -- the case v2.3.2223 added
+     the floor for). */
+  PILE_MIN_MS: 1200,   /* v2.3.2225: 1200 -> 2400; v2.3.2251: back to 1200 under the shorter cap */
+  PILE_MAX_MS: 3000,   /* invulnerable. v2.3.2225: 4000 -> 8000; v2.3.2251: 8000 -> 3000 */
   EMERGE_MS: 600,      /* vulnerable — the punish window */
   /* ═══ v2.3.2244: THE PILE CHASES AGAIN, AT HALF THE PACE IT FLED, AND IT HURTS TO TOUCH ═══
      Owner (control redesign): "Snowman burrow speed will decrease by 50% and
@@ -765,6 +783,13 @@ export const telegraphMethods = {
 
     /* emerge finished — back to ordinary behaviour.  atkCd is left alone, so
        his next swing still pays its own wind-up: surfacing is not a free hit. */
+    /* v2.3.2251: re-stamp the cooldown from HERE, the end of the move.  The
+       start-stamp in _startBurrow stays (it is the re-entry guard while the
+       move is running); this one is what makes the owner's "at least 20
+       seconds before the same snowman can do it again" a floor on the quiet
+       between burrows.  Without it a 4.2s move inside a 20s start-to-start
+       cooldown leaves only 15.8s, and "at least 20" would be false. */
+    m._burCd = now + BURROW.CD_MS;
     m._burPhase = null;
     m._burUntil = 0;
     m._burTarget = null;
