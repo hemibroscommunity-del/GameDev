@@ -4538,7 +4538,11 @@ export var BroTown = function BroTown(_ref0) {
         /* v2.3.1768b: capped by worldViewport(), so a bigger desktop box shows
            the SAME world scaled up rather than more of it.  Below the cap this
            returns exactly what these two lines used to compute. */
-        var _wv = worldViewport(canvas);
+        /* v2.3.2247: pass the zone so the viewport never exceeds the map
+           (owner: "don't zoom out larger than the screen area would show").
+           renderFrame passes the SAME id -- the two must agree or the player
+           drifts off-centre, the failure v2.3.1768b centralised this to stop. */
+        var _wv = worldViewport(canvas, S.currentZone);
         var W = _wv.W;
         var H = _wv.H;
         /* v2.3.1095: publish the logical world-viewport size so the projectile

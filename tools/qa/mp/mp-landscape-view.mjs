@@ -45,6 +45,11 @@ const geom = (P) => P.page.evaluate(() => {
     colsH: parseInt(cs.getPropertyValue('--cols-h')) || 0,
     viewW: Math.round(S._viewW || 0), viewH: Math.round(S._viewH || 0),
     scale: +(S._worldScaleX || 0).toFixed(4),
+    /* v2.3.2247: the zone floors the viewport now, so the fairness rule below
+       is stated against the zone rather than a fixed reference width. */
+    zone: S.currentZone,
+    zoneW: (() => { const z = (window.__btZones || {})[S.currentZone]; return z ? z.w * 32 : 0; })(),
+    zoneH: (() => { const z = (window.__btZones || {})[S.currentZone]; return z ? z.h * 32 : 0; })(),
     orient: document.documentElement.getAttribute('data-orient'),
   };
 });
@@ -58,6 +63,10 @@ const PORTRAIT_PINS = [
 ];
 
 export async function run({ browser, wsPort, webPort, rec }) {
+  /* v2.3.2247: the 390pt phone's measured viewport, captured from pin 1 and
+     used as the landscape fairness reference below -- measured, because the
+     zone now decides it and no literal can stay true. */
+  let PORTRAIT_REF = { viewW: 0, viewH: 0 };
   /* ── 1. the portrait pins ── */
   for (const pin of PORTRAIT_PINS) {
     const P = await H.newPlayer(browser, {
@@ -71,9 +80,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
       g.dashH === pin.dashH, g);
     rec.ok(`...the canvas is exactly ${pin.vp.width}x${pin.canvasH}`,
       g.canvasW === pin.vp.width && g.canvasH === pin.canvasH, g);
-    rec.ok('...the world view is 585 wide (the portrait reference, unmoved)',
-      g.viewW === 585, g);
+    /* ═══ v2.3.2247: THE REFERENCE MOVED FROM A WIDTH TO THE ZONE ═══
+       This pinned viewW === 585 on every phone -- "the same slice for
+       everyone", the fairness rule worldViewport.js's header argues for.  585
+       was 390 x WORLD_ZOOM when the zoom was one global number.  It is now a
+       TARGET a zone may refuse (the viewport can never exceed the map), and in
+       town the zone's depth binds first -- so the three pinned phones come out
+       at 1116 / 1124 / 1098 wide, all different, and the old equality is red on
+       a change working as designed.
+       The fairness property SURVIVES, on the other axis: every phone sees the
+       zone's whole height, so nobody spots further than anybody else.  That is
+       what is asserted now, and it is device-independent where a width pin no
+       longer can be. */
+    rec.ok('...the world view fills the zone\'s full height (the same slice for everyone)',
+      g.zoneH > 0 && Math.abs(g.viewH - g.zoneH) <= 1, g);
+    rec.ok('...and never asks for more world than the zone holds',
+      g.viewW <= g.zoneW + 1 && g.viewH <= g.zoneH + 1, g);
     rec.ok('...and the shell is stamped portrait', g.orient === 'portrait', g);
+    if (pin.vp.width === 390) PORTRAIT_REF = { viewW: g.viewW, viewH: g.viewH };
     await P.ctx.close().catch(() => {});
   }
 
@@ -86,16 +110,27 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const g = await geom(L);
   console.log('    landscape 844x390: ' + JSON.stringify(g));
   rec.ok('landscape: the shell is stamped landscape', g.orient === 'landscape', g);
-  /* The rule, not the interim numbers: scale = max(0.5, canvasH/480). */
-  const wantScale = Math.max(0.5, g.canvasH / 480);
-  rec.ok('...the scale follows max(0.5, canvasH/480)',
-    Math.abs(g.scale - wantScale) < 0.005, { got: g.scale, want: +wantScale.toFixed(4) });
+  /* ═══ v2.3.2247: THE RULE GAINED A THIRD TERM ═══
+     This read `scale = max(0.5, canvasH/480)` -- MIN_SCALE and REF_VIEW_H as
+     literals.  Both are derived from WORLD_ZOOM now (0.25 and 960 at zoom 3),
+     and a zone floor sits alongside them, so the copied form is red on a
+     working build.  Restating the whole new formula here would be TRAPS §37 --
+     recomputing the renderer's arithmetic proves nothing about the picture.
+     The claim this scenario exists to make is the one below it: LANDSCAPE
+     TAKES ITS RULE FROM THE SHORT AXIS.  So assert that, plus the two
+     invariants that actually bound the result. */
+  rec.ok('...landscape never asks for more world than the zone holds',
+    g.viewW <= g.zoneW + 1 && g.viewH <= g.zoneH + 1, g);
   rec.ok('...so the view derives from the SHORT axis, not the long one',
     Math.abs(g.viewH - Math.round(g.canvasH / g.scale)) <= 1
       && Math.abs(g.viewW - Math.round(g.canvasW / g.scale)) <= 1, g);
   /* Fairness: rotating must never buy MORE world than the portrait
      reference sees (585 x ~922 = ~539K px^2 at the 390x844 target). */
-  const portraitArea = 585 * 922;
+  /* v2.3.2247: measured from the portrait client above rather than the old
+     585x922 literal, which described a viewport that no longer exists. */
+  rec.ok('the 390pt portrait reference was captured (guard)',
+    PORTRAIT_REF.viewW > 0 && PORTRAIT_REF.viewH > 0, PORTRAIT_REF);
+  const portraitArea = (PORTRAIT_REF.viewW * PORTRAIT_REF.viewH) || (585 * 922);
   rec.ok('...and the visible AREA does not exceed portrait\'s (no spotting advantage)',
     g.viewW * g.viewH <= portraitArea * 1.05,
     { area: g.viewW * g.viewH, portraitArea });
@@ -107,7 +142,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await D.page.waitForTimeout(2500);
   const gd = await geom(D);
   console.log('    default 1000x780: ' + JSON.stringify(gd));
+  /* v2.3.2247: <= the zone, not == it.  A zone only BINDS when it is the
+     scarcest of the three terms; at the QA default (425x539 canvas) the
+     WORLD_ZOOM target is scarcer than town's depth, so the viewport stops
+     short of the map and that is correct.  The three phone pins above DO bind,
+     which is why they assert equality and this one asserts the bound. */
   rec.ok('the QA default viewport still resolves to a PORTRAIT canvas',
-    gd.canvasH > gd.canvasW && gd.orient === 'portrait' && gd.viewW === 585, gd);
+    gd.canvasH > gd.canvasW && gd.orient === 'portrait'
+      && gd.zoneH > 0 && gd.viewH <= gd.zoneH + 1 && gd.viewW <= gd.zoneW + 1, gd);
   await D.ctx.close().catch(() => {});
 }

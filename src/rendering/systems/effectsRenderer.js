@@ -3732,7 +3732,7 @@ export class EffectsRenderer {
    *  white rounded rectangle background + pointer tip + text.  Pooled
    *  per key as { container, bg (Graphics), text (Text), hasEmoji }
    *  in this.chatTexts.  Source can be either a player or an NPC. */
-  _renderChatBubble(key, sx, sy, text, age, totalMs = 5000) {
+  _renderChatBubble(key, sx, sy, text, age, totalMs = 5000, worldScale = 0) {
     const hasEmoji = !isAsciiOnly(text);
     let entry = this.chatTexts.get(key);
     if (entry && entry.text && entry.text.destroyed) {
@@ -3860,6 +3860,29 @@ export class EffectsRenderer {
     }
     entry.container.x = sx;
     entry.container.y = sy - 32;
+    /* ═══ v2.3.2247: THE BUBBLE HOLDS ITS READING SIZE ═══
+       The v2.3.1912 note above ends "Any future WORLD_ZOOM change moves this
+       again" -- and this is that change.  The bubble lives in the WORLD layer,
+       so what a player reads is fontSize x world scale, and v2.3.2247 makes
+       that scale PER ZONE: 21 x 0.601 = 12.6 effective px in a combat zone and
+       21 x 0.349 = 7.3 in town, against the 11px caption step that the 1912
+       bump existed to clear.  7px is not small type, it is unreadable type.
+
+       So the bubble counter-scales out of the world transform and holds the
+       14.0 effective px that v2.3.1912 settled on -- the size the owner asked
+       for ("chunkier and larger") stays the size they asked for in every zone.
+       Bumping fontSize instead would have to be re-bumped per zone, which is
+       the treadmill the 1912 note is complaining about.
+
+       worldScale 0 (an unknown/boot frame) leaves the bubble alone rather than
+       dividing by zero; it corrects itself on the next frame that knows. */
+    const _CHAT_TARGET_PX = 14.0;
+    if (worldScale > 0.01) {
+      const _cs = _CHAT_TARGET_PX / (21 * worldScale);
+      entry.container.scale.set(_cs);
+    } else {
+      entry.container.scale.set(1);
+    }
     entry.container.alpha = age > totalMs - 500 ? (totalMs - age) / 500 : 1;
     entry.container.visible = true;
     /* v2.3.1912: QA probe (tools/qa/mp/mp-chatfont.mjs).  Reports the
@@ -3905,7 +3928,7 @@ export class EffectsRenderer {
       if (pid !== S.myId && (source.zone || source.z || 'town') !== S.currentZone) continue;
       const sx = source.renderX || source.x || 0;
       const sy = source.renderY || source.y || 0;
-      this._renderChatBubble(pid, sx, sy, bubble.text, age);
+      this._renderChatBubble(pid, sx, sy, bubble.text, age, 5000, S._worldScaleX || 0);
       activeKeys.add(pid);
     }
 
@@ -3916,7 +3939,7 @@ export class EffectsRenderer {
       const age = now - npc.chatBubble.ts;
       if (age > 5000) continue;
       const key = 'npc:' + npc.id;
-      this._renderChatBubble(key, npc.x, npc.y, npc.chatBubble.text, age);
+      this._renderChatBubble(key, npc.x, npc.y, npc.chatBubble.text, age, 5000, S._worldScaleX || 0);
       activeKeys.add(key);
     }
 

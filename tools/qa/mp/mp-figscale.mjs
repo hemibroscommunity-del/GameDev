@@ -32,6 +32,11 @@ const scale = (P) => P.page.evaluate(() => {
     zone: S.currentZone,
     sx: S._worldScaleX || null,
     sy: S._worldScaleY || null,
+    /* v2.3.2247: the viewport and the zone that now bounds it, so the
+       assertions below can state the owner's rule instead of a fixed scale. */
+    viewW: Math.round(S._viewW || 0), viewH: Math.round(S._viewH || 0),
+    zoneW: (() => { const z = (window.__btZones || {})[S.currentZone]; return z ? z.w * 32 : 0; })(),
+    zoneH: (() => { const z = (window.__btZones || {})[S.currentZone]; return z ? z.h * 32 : 0; })(),
   };
 });
 
@@ -173,8 +178,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* THE CLAIM, stated as a comparison rather than an absolute: nobody can say
      what "too small" is in pixels, but "smaller out there than in town" is a
      fact with an answer. */
-  rec.ok('the world scale is the same in town and outside it',
-    inTown.sx && inSpoke.sx && Math.abs(inTown.sx - inSpoke.sx) < 0.001,
+  /* ═══ v2.3.2247: THE WORLD SCALE IS PER ZONE NOW, ON PURPOSE ═══
+     This asserted one global scale everywhere.  The owner asked for the game
+     zoomed out 50% and then bounded it -- "don't zoom out larger than the
+     screen area would show" -- so worldViewport floors the scale by the zone's
+     own size, and a zone that holds less world necessarily draws it bigger.
+     Measured here: town 0.349 (a 1664x1760 map can afford the full zoom-out),
+     Wind Dunes 0.601 (a 1024x1024 map cannot), the hub 0.400.  Three different
+     numbers is the feature, so the equality is deleted rather than loosened.
+
+     What still has to hold, and is asserted instead: no zone may show MORE
+     world than it contains (that is the owner's rule, and the void it exists
+     to prevent), and town -- the largest map -- must be the most zoomed out of
+     the three, which is the direction the whole change is about. */
+  rec.ok('no zone shows more world than its map holds (the owner\'s rule)',
+    inTown.viewW <= inTown.zoneW + 1 && inTown.viewH <= inTown.zoneH + 1
+      && inSpoke.viewW <= inSpoke.zoneW + 1 && inSpoke.viewH <= inSpoke.zoneH + 1,
+    { town: inTown, dunes: inSpoke });
+  rec.ok('...and the biggest map is the one drawn smallest (town < spoke)',
+    inTown.sx > 0 && inSpoke.sx > 0 && inTown.sx < inSpoke.sx,
     { town: inTown.sx, dunes: inSpoke.sx, hub: onHub.sx });
 
   if (boxTown && boxSpoke && boxTown.height > 0 && boxSpoke.height > 0) {

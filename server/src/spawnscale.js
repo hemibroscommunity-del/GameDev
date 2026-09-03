@@ -114,7 +114,7 @@ export const SPAWN_SCALE = {
   NODE_MAX: 3,               // per skill per zone — see the botfp note below
   DECAY_MS: 60000,           // held population sheds 1 player per minute
   SPAWN_CLEAR_PX: 300,       // don't materialise a monster in someone's face
-  TRIM_SAFE_PX: 600,         // never trim within this of a player
+  TRIM_SAFE_PX: 800,         // never trim within this of a player (v2.3.2247, see below)
   PLACE_TRIES: 12,           // rejection-sampling attempts for a spawn point
   /* v2.3.1983: how much a zone may GROW in one pass.  Two reasons, one
      measured and one felt.  Measured: ten people landing in a zone at once
@@ -294,10 +294,23 @@ export const spawnScaleMethods = {
   },
 
   /* Remove up to `want` SCALED monsters.  Never an authored one, never one
-     that is in use, and never one a player could SEE go: TRIM_SAFE_PX is
-     600, and the phone's world viewport is ~488x1056 px (worldViewport.js,
-     REF_VIEW_W), so 600 is a hair past the half-diagonal of the screen the
-     game is designed against.  Dead-and-waiting ones are taken first —
+     that is in use, and never one a player could SEE go.
+
+     v2.3.2247: 600 -> 800.  The rule is "past the half-diagonal of the screen
+     the game is designed against", and the client's zoom-out moved that screen.
+     The old note's "~488x1056" was already two zoom changes stale (it describes
+     WORLD_ZOOM 1.25); what matters is that the world viewport is now capped PER
+     ZONE by the zone's own size, so the biggest one that can hold scaled
+     monsters is a 40x40 zone (shadow/radiant) at 1280 world px deep:
+         phone   812 x 1280  -> half-diagonal 758
+         desktop 914 x 1280  -> half-diagonal 786
+     600 would let a monster wink out at the far corner of a screen it is still
+     drawn on.  800 clears the worst case with margin.  The 32x32 combat zones
+     come out at 606/629, which is why nobody had seen this at 600.
+
+     The consequence the paragraph below records -- a parked player holding
+     monsters near them -- gets slightly wider with the radius, and is still
+     bounded by the same MON_MAX cap.  Dead-and-waiting ones are taken first —
      among the off-screen candidates they are the cheapest to lose — but
      they are held to the same distance rule as the living, because a corpse
      removed mid-death-animation is a sprite vanishing in front of someone.

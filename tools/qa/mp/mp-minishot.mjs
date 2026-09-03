@@ -17,10 +17,14 @@
  */
 import * as H from './harness.mjs';
 
-/* The marker footprint on screen is ICON_PX (11) / BIG_ICON_PX (13).  Compare
-   at 12: the point is whether they differ where it counts, not in the detail
-   that only exists in the 32px authoring box. */
-const CMP = 12;
+/* Compare the glyphs at their real on-screen footprint: the point is whether
+   they differ where it counts, not in the detail that only exists in the 32px
+   authoring box.
+   v2.3.2247: was `const CMP = 12` with a header naming ICON_PX as (11)/(13) --
+   both stale (they were 12/14, and are 14/17 now).  A copied constant that
+   drifts twice is TRAPS §35; imported now, so the comparison follows the
+   icons whatever size they are next. */
+let CMP = 14;   /* replaced from window.__btMinimap.iconPx in run() */
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, {
@@ -31,6 +35,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   rec.ok('the minimap exposes its glyphs (guard)',
     await P.page.evaluate(() => !!window.__btIconDump), {});
+
+  /* v2.3.2247: compare at the icons' REAL footprint, read from the game. */
+  const _ic = await P.page.evaluate(() => (window.__btMinimap || {}).iconPx || null);
+  rec.ok('the minimap reports its own icon size (guard)', typeof _ic === 'number' && _ic > 0, { iconPx: _ic });
+  if (typeof _ic === 'number' && _ic > 0) CMP = _ic;
 
   /* Review strip, at a size a person can actually see. */
   const built = await P.page.evaluate(async () => {

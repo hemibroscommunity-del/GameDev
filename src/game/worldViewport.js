@@ -31,7 +31,8 @@
  * that they must agree or "the player drifts off-centre".  Two copies of a rule
  * that must match is a bug waiting its turn.
  */
-import { WORLD_ZOOM } from '@/data/constants.js';
+import { WORLD_ZOOM, TILE } from '@/data/constants.js';
+import { ZONES } from '@/data/zones.js'; /* v2.3.2247: the per-zone zoom ceiling */
 
 /* The design target, in WORLD px: a 390px-wide iPhone Safari viewport times
    WORLD_ZOOM.  390 is the width playViewport.js falls back to and the one the
@@ -80,7 +81,17 @@ export const REF_VIEW_W = Math.round(390 * WORLD_ZOOM);   /* 585 at WORLD_ZOOM 1
  *
  * STILL WIDTH ONLY. Height follows from the same scale, exactly as before; the
  * warning above about a second height constraint stands unchanged. */
-const MIN_SCALE = 0.5;
+/* ═══ v2.3.2247: DERIVED, OR IT QUIETLY BECOMES THE MAIN RULE ═══
+   0.5 was chosen against WORLD_ZOOM 1.5, where a 390pt phone sits at 0.667 and
+   the narrowest phone in circulation (320pt) wants 0.547 -- comfortably above,
+   which is what made it "a backstop and not a second rule fighting the first".
+   At WORLD_ZOOM 3 the intended scale is 0.333 and a literal 0.5 would clamp
+   EVERY phone, capping the owner's 50% zoom-out at 25% while looking like it
+   had worked.  Measured before this was derived: town came out at 0.500, not
+   the 0.349 its own map allows.
+   0.75/WORLD_ZOOM reproduces 0.5 at 1.5 exactly, so the relationship the note
+   above documents is the thing that is preserved, not the number. */
+const MIN_SCALE = 0.75 / WORLD_ZOOM;   /* 0.25 at WORLD_ZOOM 3 */
 
 /* ═══ v2.3.2156: LANDSCAPE GETS ITS OWN REFERENCE, ON THE OTHER AXIS ═══
  *
@@ -120,12 +131,17 @@ const MIN_SCALE = 0.5;
  * -- and it is BELOW portrait's area, so the interim state gives nobody an
  * advantage.  The QA scenario pins the final numbers, not the interim ones.
  */
-export const REF_VIEW_H = 480;
+/* v2.3.2247: derived, not a literal.  480 was 320*WORLD_ZOOM back when that
+   was 1.5, and the area-parity arithmetic above is what picked it -- so when
+   the owner asked for 50% more zoom-out, leaving this a literal would have
+   zoomed portrait out and left LANDSCAPE exactly where it was.  Kept as the
+   expression so the parity survives the next change to WORLD_ZOOM too. */
+export const REF_VIEW_H = Math.round(320 * WORLD_ZOOM);   /* 960 at WORLD_ZOOM 3 */
 
 /** The logical world viewport for a canvas, plus the world->CSS scale.
  *  W/H are WORLD px — what the camera centres and clamps against, and what the
  *  projectile sim measures screen edges in. */
-export function worldViewport(canvas) {
+export function worldViewport(canvas, zoneId) {
   const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
   const cssW = (canvas ? canvas.width : 0) / dpr;
   const cssH = (canvas ? canvas.height : 0) / dpr;
@@ -138,8 +154,34 @@ export function worldViewport(canvas) {
      shell -- whose canvas is aspect-locked to a PORTRAIT phone -- can never
      wander into the landscape branch however wide the monitor is. */
   const land = cssW > cssH;
-  const scale = land
+  let scale = land
     ? Math.max(MIN_SCALE, cssH / REF_VIEW_H)
     : Math.max(MIN_SCALE, cssW / REF_VIEW_W);
+  /* ═══ v2.3.2247: A ZONE MAY REFUSE THE ZOOM ═══
+     Owner: "don't zoom out larger than the screen area would show."
+
+     WORLD_ZOOM is a TARGET.  A zone only contains so much world, and past its
+     edge zooming out buys nothing to look at: the camera clamp (BroTown,
+     v2.3.819) hits its "map smaller than the viewport" branch, centres the map
+     and draws empty tray around it.  So the zone floors the scale -- a floor
+     and not a clamp-after-the-fact, because both callers derive W/H from this
+     one number and the camera must agree with the renderer by construction.
+
+     max() of three floors, and the two zone terms are per AXIS on purpose: a
+     zone is not always square (town 1664x1760, farm_home 960x800) and the
+     scarce axis has to win.  Whichever is scarcer for THIS canvas decides.
+
+     This also fixes a pre-existing case nobody had reported: at WORLD_ZOOM 1.5
+     a 390pt portrait phone already asked for 922px of world height, and
+     farm_home is only 800 deep -- so the farm has been drawing void bands
+     above and below since it shipped.  It now zooms in far enough to fill.
+
+     Unknown/missing zone id -> no floor, exactly as before this existed; the
+     boot frames before S.currentZone is set must not be special-cased into a
+     different scale, or the first frame jumps. */
+  const _z = zoneId && ZONES[zoneId];
+  if (_z) {
+    scale = Math.max(scale, cssW / (_z.w * TILE), cssH / (_z.h * TILE));
+  }
   return { W: cssW / scale, H: cssH / scale, scale };
 }
