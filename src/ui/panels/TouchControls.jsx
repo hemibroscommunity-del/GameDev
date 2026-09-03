@@ -48,6 +48,8 @@ export function TouchControls(props) {
     lJoyPreviewRef = props.lJoyPreviewRef,
     rJoyRef = props.rJoyRef,
     rLabelRef = props.rLabelRef,
+    rCueRef = props.rCueRef,     /* v2.3.2232: the harvest tool frame on the button face */
+    rRingRef = props.rRingRef,   /* v2.3.2232: the wind-up / reps ring around the rim */
     isLandscape = props.isLandscape;
   var _stateRef$current65;
   var discW = isLandscape ? RBTN.wLand : RBTN.w;
@@ -243,7 +245,40 @@ export function TouchControls(props) {
       strokeDasharray: "".concat(Math.PI * 2 * 28 / 100 * pct * 100, " 999")
     });
     return null;
-  }()), /*#__PURE__*/React.createElement("div", {
+  }()), /*#__PURE__*/React.createElement("svg", {
+    /* ═══ v2.3.2232: THE HARVEST RING ═══
+       Owner: "The gesture cues will be on the right button."  A second ring
+       inside the rim (the special-charge ring above is at r=28%): during
+       the wind-up it counts down to the window opening (dim); once the
+       gesture window is open it fills with reps (bright).  BroTown's loop
+       stamps strokeDasharray + stroke per frame; hidden when no harvest. */
+    ref: rRingRef,
+    style: {
+      position: 'absolute', inset: 0, width: '100%', height: '100%',
+      transform: 'rotate(-90deg)', pointerEvents: 'none', zIndex: 1, display: 'none',
+    },
+  }, React.createElement('circle', {
+    cx: '50%', cy: '50%', r: '40%', fill: 'none',
+    stroke: 'rgba(216,168,95,.85)', strokeWidth: 4, strokeLinecap: 'round',
+    strokeDasharray: '0 999',
+  })), /*#__PURE__*/React.createElement("div", {
+    /* ═══ v2.3.2232: THE TOOL ON THE BUTTON ═══
+       The owner's painted gesture strips (GESTURE_TOOLS in effectsRenderer:
+       pickaxe / axe / reel / pan, 8 cells across) used to float over the
+       node in the world; they now play on the button face, one cell at a
+       time via background-position, at the frame the thumb's gesture is on
+       (ex.cueFrame01).  BroTown's loop stamps backgroundImage / position /
+       display; hidden when no harvest is live. */
+    ref: rCueRef,
+    style: {
+      position: 'absolute', left: '50%', top: '50%',
+      width: isLandscape ? 64 : 58, height: isLandscape ? 64 : 58,
+      transform: 'translate(-50%,-56%)',
+      backgroundRepeat: 'no-repeat', backgroundSize: '800% 100%', backgroundPosition: '0% 0%',
+      pointerEvents: 'none', zIndex: 2, display: 'none',
+      imageRendering: 'auto',
+    },
+  }), /*#__PURE__*/React.createElement("div", {
     /* v2.3.2229: THE LABEL.  Centred in the well; BroTown's loop stamps
        the text so it can change with context without a React render.
        Lantern Slate caption type: 10/700 uppercase, warm-white on the
@@ -253,10 +288,12 @@ export function TouchControls(props) {
       position: 'absolute',
       inset: 0,
       display: 'flex',
-      alignItems: 'center',
+      alignItems: 'flex-end',      /* v2.3.2232: sits low so the tool frame above it stays clear */
       justifyContent: 'center',
+      paddingBottom: isLandscape ? 14 : 12,
+      boxSizing: 'border-box',
       pointerEvents: 'none',
-      zIndex: 2,
+      zIndex: 3,
       fontSize: isLandscape ? 12 : 11,
       fontWeight: 700,
       color: '#F7F2E7',

@@ -79,6 +79,7 @@ import { materialTint, weaponTint } from '../traits/materialTints.js'; /* v2.3.1
 import { combatGearUrls } from '../combatGear.js';
 import { getEquip, onEquipChange, isWearingArmor } from '../gearCatalog.js'; /* v2.3.1407: GEAR_CATALOG import dropped with the speculative all-states prewarm */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
+import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2232: harvest frames follow the hand */
 import { monsterDisplayName } from '@/data/gameDisplay.js'; /* v2.3.1918: monster name plates */
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
@@ -9087,13 +9088,30 @@ export class EntityRenderer {
            (raised -> strike -> raised), south-only. */
         const fc = playerFrameCount('mine', 'south') || 14;
         const cycle = cycleMs('mine', 'south');
-        frameIdx = Math.floor((now / cycle) * fc) % fc;
+        /* ═══ v2.3.2232: THE SWING FOLLOWS THE HAND ═══
+           Owner: "the animation frames will play at the speed the user is
+           performing the gesture (capped at a maximum speed not faster than a
+           leisurely gesture pace)."  While the gesture window is open the
+           frame comes from the gesture phase (ex.cueFrame01, written by
+           ExtractionSwipeLayer as the thumb pumps the button), CHASED at a
+           capped rate (gesturePose01) so a frantic pump still plays at a
+           leisurely pace and a still thumb holds the pose.  The wind-up
+           before the window opens keeps the clock loop -- a frozen figure
+           for up to ten seconds reads as a hang (control-redesign.md §5.11). */
+        const _gp = gesturePose01(S._extraction, now, 700);
+        frameIdx = (_gp != null) ? Math.max(0, Math.min(fc - 1, Math.floor(_gp * fc)))
+          : Math.floor((now / cycle) * fc) % fc;
       } else if (pose === 'fish') {
         /* Fishing rod-sway loops continuously for the whole gather window
            (waiting + ready), south-only. */
         const fc = playerFrameCount('fish', 'south') || 32;
         const cycle = cycleMs('fish', 'south');
-        frameIdx = Math.floor((now / cycle) * fc) % fc;
+        /* v2.3.2232: the reel drives the sway -- one finger-circle on the
+           button is one turn of the sway loop, capped at ~one turn per 450ms
+           (the same cap the reel marker has had since v2.3.1435). */
+        const _gpF = gesturePose01(S._extraction, now, 450, true);
+        frameIdx = (_gpF != null) ? Math.max(0, Math.min(fc - 1, Math.floor(_gpF * fc)))
+          : Math.floor((now / cycle) * fc) % fc;
       } else if (pose === 'dodge') {
         /* v2.3.1534: ONE-SHOT across the real roll window, clamped to the
            last frame — never modulo, or the tumble would restart mid-roll.

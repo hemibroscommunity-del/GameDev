@@ -51,6 +51,7 @@ import { startBuildWatch } from '@/game/buildWatch.js';
 import { TouchControls } from './panels/TouchControls.jsx';
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
 import { ShieldButton } from './panels/ShieldButton.jsx'; /* v2.3.2229: the shield is a toggle button under Attack */
+import { GESTURE_TOOL_URLS } from '@/game/gesturePose.js'; /* v2.3.2232: the tool strips the button face plays */
 import { TargetArrows } from './panels/TargetArrows.jsx'; /* v2.3.2230: switch targets when two or more are in the perimeter */
 import { engageNearest } from '@/game/targeting.js'; /* v2.3.2229: Attack engages the nearest monster in the perimeter */
 import { raiseShieldToggle, dropShield, shieldAimAngle } from '@/game/shieldToggle.js'; /* v2.3.2229 */
@@ -5143,70 +5144,87 @@ export var BroTown = function BroTown(_ref0) {
           var _cfd = nodeReachDist(S, S._campfire);
           if (_cfd != null && _cfd < closestDist) { closestDist = _cfd; S._proxNode = S._campfire; }
         }
-        var _tapN = S._tapNode || null;
-        if (_tapN) {
-          /* v2.3.1680: a node you have no tool for is not tappable either.
-             The renderer already hides it, so reaching here means a tap that
-             was registered before the tool was spent, or a node revived under
-             a bag that changed — either way, drop it rather than opening a
-             minigame the server will refuse. */
-          if (_tapN !== S._campfire && _tapN.nodeType && !hasGatherTool(S.rpg, _tapN.nodeType)) {
-            S._tapNode = null; _tapN = null;
-          }
-          var _tapLive = _tapN && (_tapN === S._campfire
-            ? !!(S._campfire && S._campfire.alive)
-            : !!(S.gatherNodes && S.gatherNodes.indexOf(_tapN) >= 0 && _tapN.alive
-                 && !(_tapN.respawnAt && Date.now() < _tapN.respawnAt)));
-          if (!_tapLive || nodeReachDist(S, _tapN) == null) { S._tapNode = null; _tapN = null; }
+        /* ═══ v2.3.2232: DETECTED BY PERIMETER ═══
+           Owner: "No resource extraction button in the middle of the screen
+           or needing to tap on the resource ... Resource extraction will be
+           detected by perimeter and contextual button will be tapped to
+           begin harvest."  So S._nearNode -- what the E key and the button
+           offer -- is the closest resource in reach again (S._proxNode),
+           gated on owning the tool for it; the v2.3.1448 tap latch
+           (_tapNode), the mid-screen shell and its per-frame re-anchoring
+           are gone.  Hidden while a harvest is live, as before: you are
+           already doing the thing it offers. */
+        {
+          var _pn = S._proxNode || null;
+          if (_pn && _pn !== S._campfire && _pn.nodeType && !hasGatherTool(S.rpg, _pn.nodeType)) _pn = null;
+          S._nearNode = S._extraction ? null : _pn;
         }
-        S._nearNode = _tapN;
-        /* v2.3.1432 (owner: "the contextual menu for cooking didn't go
-           away"): while a harvest attempt is ACTIVE, the interact prompt
-           is noise — you're already doing the thing it offers (and its
-           tap could restart the attempt).  Hide it for every skill; it
-           returns the moment the attempt ends or cancels. */
-        if (S._extraction) S._nearNode = null;
-        /* v2.3.1448: the shell is React-rendered, and React doesn't
-           re-render per frame — push the open/close edge into state the
-           moment it changes so a tap paints the shell immediately (and
-           walking away clears it just as fast). */
         if (S._nearNode !== promptNodeRef.current) {
           promptNodeRef.current = S._nearNode;
           setPromptNode(S._nearNode);
         }
-        /* v2.3.1409 (owner: "the ore resource contextual menu appeared too
-           far below the ore on screen"): anchor the interact prompt to the
-           NODE instead of the dashboard.  The button is React-rendered but
-           positioned imperatively here every frame (world -> CSS via the
-           published worldScale, mirroring ExtractionSwipeLayer's cue math),
-           because React doesn't re-render per camera move.  Sits just
-           below the node sprite; clamped to the viewport so an edge-of-
-           screen node never pushes the button off-screen or under the
-           dashboard.  Falls back to the class's dashboard anchor until
-           the first frame lands. */
+        /* ═══ v2.3.2232: THE BUTTON'S FACE, STAMPED PER FRAME ═══
+           The right button is contextual: ATTACK with a monster in the
+           perimeter (or nothing at all), HARVEST with a resource in reach and
+           no monster (control-redesign.md §5.10: Attack wins), and during a
+           harvest the owner's gesture cue -- the painted tool strip playing
+           at the thumb's own phase, a ring counting the wind-up down and then
+           filling with reps.  Imperative DOM writes rather than React state
+           because these change every frame while the loop already runs. */
         {
-          var _npEl = typeof document !== 'undefined' && document.getElementById('bt-node-prompt');
-          if (_npEl && S._nearNode && S.camera) {
-            var _nwx = (S._nearNode.x - S.camera.x) * (S._worldScaleX || 1);
-            /* v2.3.1447 (owner: "always make the shell appear directly
-               centered beneath the resource"): the shell's TOP sits just
-               below each type's visual BOTTOM.  Node sprites are
-               bottom-anchored at node.y (ore/tree art extends UP), the
-               pond is center-anchored (art reaches ~66px below node.y),
-               the campfire is drawn on the ground at node.y.  Offsets
-               tuned from headless screenshots. */
-            var _nvB = { tree: 10, oreVein: 8, fishSpot: 64, campfire: 14 }[S._nearNode.nodeType] || 10;
-            var _npW2 = (_npEl.offsetWidth || 200) / 2;
-            var _npH = _npEl.offsetHeight || 36;
-            var _nwy = (S._nearNode.y + _nvB - S.camera.y) * (S._worldScaleY || 1);
-            var _vw = window.innerWidth, _vh = window.innerHeight;
-            var _dashH = 0;
-            try { _dashH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dash-h')) || _vh * 0.25; } catch (e3) { _dashH = _vh * 0.25; }
-            var _npx = Math.max(_npW2 + 6, Math.min(_vw - _npW2 - 6, _nwx));
-            var _npy = Math.max(8, Math.min(_vh - _dashH - _npH - 8, _nwy));
-            _npEl.style.left = _npx + 'px';
-            _npEl.style.top = _npy + 'px';
-            _npEl.style.bottom = 'auto';
+          var _lbl = rLabelRef.current, _cue = rCueRef.current, _ring = rRingRef.current;
+          var _ex = S._extraction;
+          var _cands = S._targetCands || [];
+          /* Priority (control-redesign.md §5.10, revised while building):
+             a resource IN REACH beats a monster merely IN THE PERIMETER --
+             standing at a node is a deliberate act, and monsters leave a
+             harvester alone by rule (v2.3.1704); a HELD LOCK beats the
+             node, because a lock is the more deliberate act of the two
+             (tap the monster, or press Attack once before stepping up to
+             the node).  The first cut let any monster within 220px win,
+             and a snowman on the far side of a tree turned every chop
+             into a swing. */
+          var _lockHeld = !!(S.lockedTarget && S.lockedTarget.ref);
+          var _harvestCtx = !!(S._nearNode && !_lockHeld);
+          S._btnHarvest = _harvestCtx;
+          if (_lbl) {
+            var _want;
+            if (_ex) _want = (_ex.status === 'ready') ? ({ mining: 'PUMP', woodcutting: 'CHOP', fishing: 'REEL', cooking: 'FLIP' }[_ex.skill] || 'GO') : 'WAIT';
+            else if (_harvestCtx) _want = 'HARVEST';
+            else _want = 'ATTACK';
+            if (_lbl.textContent !== _want) _lbl.textContent = _want;
+          }
+          if (_cue) {
+            if (_ex && _ex.status === 'ready' && GESTURE_TOOL_URLS[_ex.skill]) {
+              var _url = 'url(' + GESTURE_TOOL_URLS[_ex.skill] + ')';
+              if (_cue.style.backgroundImage !== _url) _cue.style.backgroundImage = _url;
+              /* The strip is 8 cells across; background-size 800% puts one
+                 cell in the box and position N*100/7 % selects cell N. */
+              var _f01 = Math.max(0, Math.min(0.9999, _ex.cueFrame01 || 0));
+              var _cell = (_ex.skill === 'mining' || _ex.skill === 'woodcutting') ? Math.min(3, Math.floor(_f01 * 4)) : Math.floor(_f01 * 8);
+              var _pos = (_cell * 100 / 7).toFixed(2) + '% 0%';
+              if (_cue.style.backgroundPosition !== _pos) _cue.style.backgroundPosition = _pos;
+              if (_cue.style.display !== 'block') _cue.style.display = 'block';
+            } else if (_cue.style.display !== 'none') _cue.style.display = 'none';
+          }
+          if (_ring) {
+            if (_ex) {
+              var _c = _ring.firstChild;
+              var _frac, _col;
+              if (_ex.status === 'ready') { _frac = Math.max(0, Math.min(1, _ex.progress || 0)); _col = 'rgba(89,191,145,.95)'; }
+              else { var _span = Math.max(1, (_ex.windowOpensAt || 0) - (_ex.startedAt || 0)); _frac = Math.max(0, Math.min(1, (Date.now() - (_ex.startedAt || 0)) / _span)); _col = 'rgba(216,168,95,.55)'; }
+              /* r = 40% of the box: circumference in the SVG's own units --
+                 the box is square, so a percentage radius resolves against
+                 its width; stamp the dash as a fraction of 2*pi*r in px. */
+              var _rpx = (_ring.clientWidth || 96) * 0.4;
+              var _circ = 2 * Math.PI * _rpx;
+              if (_c) {
+                var _dash = (_circ * _frac).toFixed(1) + ' 9999';
+                if (_c.getAttribute('stroke-dasharray') !== _dash) _c.setAttribute('stroke-dasharray', _dash);
+                if (_c.getAttribute('stroke') !== _col) _c.setAttribute('stroke', _col);
+              }
+              if (_ring.style.display !== 'block') _ring.style.display = 'block';
+            } else if (_ring.style.display !== 'none') _ring.style.display = 'none';
           }
         }
 
@@ -7214,41 +7232,9 @@ export var BroTown = function BroTown(_ref0) {
       localStorage.setItem('bt_rpg', JSON.stringify(R));
     } catch (e2) {}
   }, []);
-  /* v2.3.1448 (owner: "only when a user touches the resource on screen
-     does the resource extraction menu pop up.  If they try to extract
-     while too far away a message pops up that says they're too far
-     away"): the canvas tap paths call this after their monster / NPC /
-     player checks have passed on the tap.  Returns true when a resource
-     handled it, so the caller can skip its "tap on empty space" branch.
-     A tap on a resource that's out of reach floats the warning instead
-     of opening the shell; a tap on bare ground closes an open shell. */
-  var _tapResourceAt = useCallback(function (cssX, cssY) {
-    var S = stateRef.current;
-    var hit = nodeAtScreen(S, cssX, cssY);
-    if (!hit) {
-      if (S._tapNode) { S._tapNode = null; S._nearNode = null; }
-      return false;
-    }
-    if (nodeReachDist(S, hit) == null) {
-      /* Throttled — a flurry of taps shouldn't stack popups on top of
-         each other (the popup lives ~1s). */
-      if (Date.now() - (S._farMsgAt || 0) > 700) {
-        S._farMsgAt = Date.now();
-        /* Floats over the PLAYER, not the resource: a resource you're too
-           far from is by definition near a screen edge, and the popup was
-           clipping off the side of the phone (verified in the probe). */
-        pushDmgPopup(S, S.player.x, S.player.y - 74, 'Too far away', '#FF7A6B', { ttl: 1.4, crit: true });
-        try { BT_AUDIO.beep(200, 0.05, 0.08, 'square'); } catch (e) {}
-      }
-      S._tapNode = null;
-      S._nearNode = null;
-      return true;
-    }
-    S._tapNode = hit;
-    S._nearNode = hit;
-    try { BT_AUDIO.beep(540, 0.04, 0.05, 'sine'); } catch (e) {}
-    return true;
-  }, []);
+  /* v2.3.2232: _tapResourceAt is gone with the shell it opened -- resources
+     are detected by perimeter (S._proxNode -> S._nearNode in the loop) and
+     harvested from the right button.  A tap on bare ground still unlocks. */
 
   var _desktopGather = useCallback(function () {
     var _R$lifeSkills;
@@ -7583,6 +7569,8 @@ export var BroTown = function BroTown(_ref0) {
   var lTouchId = useRef(null);
   var rJoyRef = useRef(null);
   var rLabelRef = useRef(null);   /* v2.3.2229: the button's contextual label */
+  var rCueRef = useRef(null);     /* v2.3.2232: the harvest tool frame on the button */
+  var rRingRef = useRef(null);    /* v2.3.2232: the wind-up / reps ring */
   var rJoyActive = useRef(false);
   var rTouchId = useRef(null);
   var lTrail = useRef([]);
@@ -7804,33 +7792,9 @@ export var BroTown = function BroTown(_ref0) {
       var r = c.getBoundingClientRect();
       return { x: clientX - r.left, y: clientY - r.top };
     };
-    var isGestureTouch = function (clientX, clientY) {
-      var S = stateRef.current;
-      var ex = S && S._extraction;
-      if (!ex || ex.status !== 'ready') return false;
-      var cam = S.camera, P = S.player;
-      if (!cam) return false;
-      var sx = S._worldScaleX || 1, sy = S._worldScaleY || 1;
-      var cx, cy;
-      if (ex.skill === 'fishing' && P) {
-        cx = (P.x - cam.x) * sx; cy = (P.y - 24 - cam.y) * sy;
-      } else {
-        var node = (ex.nodeRef && ex.nodeRef.alive) ? ex.nodeRef
-          : (S.gatherNodes && ex.nodeId ? S.gatherNodes.find(function (n) { return n.id === ex.nodeId; }) : null);
-        if (!node) return false;
-        var yOff = ex.skill === 'cooking' ? 40
-          : node.nodeType === 'tree' ? 96 : node.nodeType === 'oreVein' ? 36 : 30;
-        cx = (node.x - cam.x) * sx; cy = (node.y - yOff - cam.y) * sy;
-      }
-      var _p = clientToCanvas(clientX, clientY);   /* v2.3.2174 */
-      var dx = _p.x - cx, dy = _p.y - cy;
-      return (dx * dx + dy * dy) < (190 * 190);
-    };
-    /* v2.3.1287: tapping YOUR OWN character opens the chat composer —
-       Chat left the toolbar (owner, nav-system).  Same screen-space
-       anchor math as isReelTouch, tight ~48px radius over the sprite.
-       Checked at tap-CLASSIFICATION time (lE/rE), never at touchstart:
-       a drag that starts on the character must still move/aim. */
+    /* v2.3.2232: isGestureTouch is gone -- the harvest gesture is performed on
+       the right button (ExtractionSwipeLayer anchors on .bt-rjoy-base), so no
+       world-space touch is ever a gesture touch. */
     var isSelfTouch = function (clientX, clientY) {
       var S = stateRef.current;
       var cam = S && S.camera, P = S && S.player;
@@ -7855,12 +7819,8 @@ export var BroTown = function BroTown(_ref0) {
        sits inside exactly that circle — so "touch the resource to open
        its menu" opened chat instead.  Resource wins when its art is under
        the finger; a self-tap on bare character still opens chat. */
-    var tapResourceAtClient = function (clientX, clientY) {
-      var c = canvasRef.current;
-      if (!c) return false;
-      var r = c.getBoundingClientRect();
-      return _tapResourceAt(clientX - r.left, clientY - r.top);
-    };
+    var tapResourceAtClient = function (clientX, clientY) { return false; };   /* v2.3.2232: no tap-to-harvest */
+    /* (v2.3.2232: the client-coordinate wrapper went with _tapResourceAt.) */
     var openSelfChat = function () {
       try {
         var _busC = window.__broDashPanelBus;
@@ -7935,7 +7895,7 @@ export var BroTown = function BroTown(_ref0) {
       e.preventDefault();
       e.stopPropagation();
       var t = e.changedTouches[0];
-      if (isGestureTouch(t.clientX, t.clientY)) return;
+      /* v2.3.2232: the harvest gesture lives on the right button now, so the movement zone cedes nothing. */
       /* v2.3.1307: the v2.3.1283 "movement collapses the sheet"
          interlock is REMOVED (owner: players may just want to play
          with menus open).  The joystick zones end above the sheet
@@ -7986,8 +7946,6 @@ export var BroTown = function BroTown(_ref0) {
         if (!lts.moved && (endT - lts.startAt) < SELF_TAP_MAX_MS
             && isSelfTouch(t.clientX, t.clientY)) {
           lts.lastEndAt = 0;
-          /* v2.3.1448: resource art under the finger beats the chat gesture. */
-          if (tapResourceAtClient(t.clientX, t.clientY)) return;
           openSelfChat();
           return;
         }
@@ -8077,7 +8035,6 @@ export var BroTown = function BroTown(_ref0) {
       e.preventDefault();
       e.stopPropagation();
       var t = e.changedTouches[0];
-      if (isGestureTouch(t.clientX, t.clientY)) return;
       var rts = rTapState.current;
       rTouchId.current = t.identifier;
       rts.startAt = Date.now();
@@ -8108,8 +8065,6 @@ export var BroTown = function BroTown(_ref0) {
          twitch gesture, so a deliberate thumb dwell still counts. */
       if (!rts3.moved && (endT - rts3.startAt) < SELF_TAP_MAX_MS
           && isSelfTouch(t.clientX, t.clientY)) {
-        /* v2.3.1448: resource art under the finger beats the chat gesture. */
-        if (tapResourceAtClient(t.clientX, t.clientY)) return;
         openSelfChat();
         return;
       }
@@ -8142,6 +8097,26 @@ export var BroTown = function BroTown(_ref0) {
       rJoyActive.current = true;
       bSwipe.sx = t.clientX; bSwipe.sy = t.clientY; bSwipe.st = Date.now();
       bSwipe.lx = 0; bSwipe.ly = 0; bSwipe.lt = 0;
+      /* ═══ v2.3.2232: THE BUTTON IS CONTEXTUAL ═══
+         A harvest in progress owns the button: the press is the gesture
+         (ExtractionSwipeLayer takes it at the pointer level), not a swing.
+         A resource in reach with no monster in the perimeter: the press
+         STARTS the harvest -- exactly what the old shell's tap did.
+         Otherwise it is Attack. */
+      var Sb = stateRef.current;
+      if (Sb && Sb._extraction) { bSwipe.harvest = true; return; }
+      bSwipe.harvest = false;
+      if (Sb && Sb._btnHarvest && Sb._nearNode) {
+        var _hn = Sb._nearNode;
+        try {
+          if (_hn.nodeType === 'fishSpot') _startExtraction(_hn, 'fishing');
+          else if (_hn.nodeType === 'tree') _startExtraction(_hn, 'woodcutting');
+          else if (_hn.nodeType === 'oreVein') _startExtraction(_hn, 'mining');
+          else if (_hn.nodeType === 'campfire') _startCookingAtCampfire(_hn);
+        } catch (err) { /* refusal floats its own popup */ }
+        bSwipe.harvest = true;
+        return;
+      }
       handleRBtnPress();
       doSwing();
     };
@@ -8158,6 +8133,9 @@ export var BroTown = function BroTown(_ref0) {
       var t = findT(e.changedTouches, bTouchId.current);
       if (!t) return;
       bTouchId.current = null;
+      /* v2.3.2232: a harvest press is not a swing and its release is not a
+         flick -- a fast chop on the button must never fire the special. */
+      if (bSwipe.harvest) { bSwipe.harvest = false; rJoyActive.current = false; return; }
       /* Flick detection -- last-leg speed (recent burst) OR
          total-distance/total-duration speed (slow but committed). */
       var refX = bSwipe.lx || bSwipe.sx;
@@ -9123,7 +9101,7 @@ export var BroTown = function BroTown(_ref0) {
                landed on a resource (opens its shell, or warns that it's
                too far).  Monsters keep priority: one standing in front
                of a tree is still the thing you meant to tap. */
-            if (!_closest) _tapResourceAt(_cssX, _cssY);
+            /* v2.3.2232: no tap-to-harvest; the button offers what is in reach. */
           }
           ct.id = null;
           break;
@@ -9427,8 +9405,7 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.1448: resources come after the creature checks — a click on
          a resource opens its shell (or warns it's out of reach) instead
          of falling through to the unlock branch. */
-      if (_tapResourceAt(cssX, cssY)) return;
-      /* Tap on empty space = unlock */
+      /* Tap on empty space = unlock (v2.3.2232: resources are no longer tappable) */
       S.lockedTarget = null;
     }
   }), achievementMsg && Date.now() - achievementMsg.ts < 3000 && /*#__PURE__*/React.createElement("div", {
@@ -11014,133 +10991,7 @@ export var BroTown = function BroTown(_ref0) {
       setShowFurniture(true);
       BT_AUDIO.enterBuilding();
     }
-  }, "\uD83E\uDE91 Furniture Workshop"), promptNode && /*#__PURE__*/React.createElement("button", {
-    className: "bt-interact-prompt",
-    id: "bt-node-prompt", /* v2.3.1409: game loop re-anchors this to the node's screen pos each frame */
-    style: {
-      /* Inline 'bottom: 140' was hiding this button behind the 25vh
-         BottomDashboard on mobile.  Sit it just above the dashboard
-         instead (matches the class default ~ calc(25vh + 16px) but
-         a bit higher so it clears the mobile dashboard's top border
-         and stays below the joysticks at calc(25vh + 70px)).
-         v2.3.1409: this is now only the FIRST-FRAME fallback \u2014 the loop
-         moves the button to the node itself (owner: prompt was too far
-         below the ore). */
-      bottom: 'calc(var(--dash-h) + 24px)',
-      /* v2.3.1437 (owner shells): the green pill becomes the painted
-         brass-on-navy shell — icon well left, title + node name middle,
-         LV pill right, XP groove along the bottom (mock: the owner's
-         second sheet).  Fixed box at the shell's 3.34 aspect so the
-         loop's anchor/clamp math keeps using offsetWidth.
-         v2.3.1440 (owner: "about 50% smaller but keep the text
-         readable"): 264x79 -> 186x56 (~70% linear = half the area);
-         the type sizes below shrink less than the box so labels stay
-         legible at phone distance.
-         v2.3.1446 (owner: "reduced 50% further ... remove item name to
-         make room"): 186x56 -> 132x40 (same half-the-area rule as
-         v2.3.1440) and the subtitle line is GONE — the title centers
-         vertically in the freed space. */
-      width: 132,
-      height: 40,
-      padding: 0,
-      border: 'none',
-      background: 'transparent',
-      backgroundImage: 'url(/ui/lifeskill-shell.webp?v=2.3.1437)',
-      backgroundSize: '100% 100%',
-      overflow: 'visible',
-      textAlign: 'left'
-    },
-    onClick: function onClick(e) {
-      var _R$lifeSkills3;
-      e.preventDefault();
-      var S = stateRef.current,
-        node = S._nearNode,
-        R = S.rpg;
-      if (!node || !node.alive || !R) return;
-      if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
-      var skillName = node.skill || 'mining';
-      var skillLvl = ((_R$lifeSkills3 = R.lifeSkills) === null || _R$lifeSkills3 === void 0 || (_R$lifeSkills3 = _R$lifeSkills3[skillName]) === null || _R$lifeSkills3 === void 0 ? void 0 : _R$lifeSkills3.level) || 1;
-      if (false) { /* gathering level gate disabled — all resources harvestable at lvl 1 */
-        pushDmgPopup(S, node.x, node.y - 15, 'Need ' + skillName.charAt(0).toUpperCase() + skillName.slice(1) + ' Lv' + node.gatherLvl, '#D95C54');
-        BT_AUDIO.beep(200, 0.05, 0.08, 'square');
-        return;
-      }
-      /* v2.3.229: windowed-swipe extraction loop replaces the modals. */
-      if (node.nodeType === 'fishSpot')  { _startExtraction(node, 'fishing');     return; }
-      if (node.nodeType === 'tree')      { _startExtraction(node, 'woodcutting'); return; }
-      if (node.nodeType === 'oreVein')   { _startExtraction(node, 'mining');      return; }
-      if (node.nodeType === 'campfire')  { _startCookingAtCampfire(node);         return; }
-    },
-    onTouchStart: function onTouchStart(e) {
-      var _R$lifeSkills4;
-      e.preventDefault();
-      var S = stateRef.current,
-        node = S._nearNode,
-        R = S.rpg;
-      if (!node || !node.alive || !R) return;
-      if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
-      var skillName = node.skill || 'mining';
-      var skillLvl = ((_R$lifeSkills4 = R.lifeSkills) === null || _R$lifeSkills4 === void 0 || (_R$lifeSkills4 = _R$lifeSkills4[skillName]) === null || _R$lifeSkills4 === void 0 ? void 0 : _R$lifeSkills4.level) || 1;
-      if (false) { /* gathering level gate disabled — all resources harvestable at lvl 1 */
-        pushDmgPopup(S, node.x, node.y - 15, 'Need ' + skillName.charAt(0).toUpperCase() + skillName.slice(1) + ' Lv' + node.gatherLvl, '#D95C54');
-        BT_AUDIO.beep(200, 0.05, 0.08, 'square');
-        return;
-      }
-      /* v2.3.229: windowed-swipe extraction loop replaces the modals. */
-      if (node.nodeType === 'fishSpot')  { _startExtraction(node, 'fishing');     return; }
-      if (node.nodeType === 'tree')      { _startExtraction(node, 'woodcutting'); return; }
-      if (node.nodeType === 'oreVein')   { _startExtraction(node, 'mining');      return; }
-      if (node.nodeType === 'campfire')  { _startCookingAtCampfire(node);         return; }
-    },
-    onMouseDown: function onMouseDown(e) {
-      return e.preventDefault();
-    }
-  }, function () {
-    /* v2.3.1437: shell interior \u2014 computed once per render from the node
-       + the player's life skill.  Geometry in % of the 264x79 shell
-       (measured from the owner's art: icon well ~6-27% wide, LV pill
-       ~77-94%, XP groove along the bottom). */
-    var n = stateRef.current._nearNode || promptNode;   /* v2.3.1448: tap-held node */
-    var s = (n === null || n === void 0 ? void 0 : n.skill) || 'mining';
-    var _titles = { mining: 'MINE', woodcutting: 'CHOP', fishing: 'FISH', cooking: 'COOK' };
-    var _icons = {
-      mining: '/icons/items/ore-copper.webp?v=2.3.1452',
-      woodcutting: '/icons/items/wood-log.webp?v=2.3.1452',
-      fishing: '/icons/items/fish-minnow.webp?v=2.3.1452',
-      cooking: '/icons/items/cooked-minnow.webp?v=2.3.1452'
-    };
-    var _cols = { mining: '#38bdf8', woodcutting: '#fbbf24', fishing: '#6366f1', cooking: '#fb923c' };
-    var R = stateRef.current.rpg;
-    var _ls = R && R.lifeSkills && R.lifeSkills[s];
-    var _lvl = (_ls && _ls.level) || 1;
-    var _xp = (_ls && _ls.xp) || 0;
-    var _thr = Math.ceil(500 * Math.pow(1.08, _lvl - 1));  /* LIFE_SKILL_XP mirror */
-    var _frac = Math.max(0, Math.min(1, _xp / _thr));
-    /* v2.3.1446 (owner: "reduced 50% further ... remove item name to
-       make room"): the v2.3.1441 subtitle (bare resource name) is gone
-       — at 132x40 there's only room for the verb + pill, so the title
-       centers vertically where the two lines used to stack. */
-    return [
-      /*#__PURE__*/React.createElement("img", {
-        key: 'i', src: _icons[s], alt: '', draggable: false,
-        style: { position: 'absolute', left: '7%', top: '16%', width: '19%', height: '62%', objectFit: 'contain', pointerEvents: 'none' }
-      }),
-      /*#__PURE__*/React.createElement("div", {
-        key: 't',
-        style: { position: 'absolute', left: '30%', top: '50%', transform: 'translateY(-58%)', fontSize: 11, fontWeight: 800, color: '#f4f6f8', letterSpacing: 1, lineHeight: 1, pointerEvents: 'none', textShadow: '0 1px 2px rgba(0,0,0,.6)' }
-      }, stateRef.current._isDesktop && /*#__PURE__*/React.createElement("kbd", {
-        style: { background: 'rgba(255,255,255,.18)', padding: '0 3px', borderRadius: 3, fontSize: 7.5, marginRight: 3, verticalAlign: 'middle' }
-      }, "E"), _titles[s] || 'MINE'),
-      /*#__PURE__*/React.createElement("div", {
-        key: 'l',
-        style: { position: 'absolute', left: '76.5%', top: '28%', width: '17.5%', height: '40%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8.5, fontWeight: 800, color: '#f4f6f8', pointerEvents: 'none' }
-      }, 'LV ' + ((n && n.gatherLvl) || 1)),
-      /*#__PURE__*/React.createElement("div", {
-        key: 'p',
-        style: { position: 'absolute', left: '7%', bottom: '10%', width: (86 * _frac) + '%', maxWidth: '86%', height: '6%', background: _cols[s], borderRadius: 3, pointerEvents: 'none', boxShadow: '0 0 6px ' + _cols[s] }   /* v2.3.1446: 6% of the 40px shell ≈ the old 2.5px groove */
-      })
-    ];
-  }()), /*#__PURE__*/React.createElement(ExtractionSwipeLayer, {
+  }, "\uD83E\uDE91 Furniture Workshop"), /* v2.3.2232: the mid-screen harvest shell (#bt-node-prompt, the painted brass-on-navy pill that followed the node) is GONE -- the right button reads HARVEST when a resource is in reach and starts the harvest on a tap (bS in the touch effect). */ null, /*#__PURE__*/React.createElement(ExtractionSwipeLayer, {
     stateRef: stateRef,
     onSuccess: _succeedExtraction
   }), /* v2.3.1235: removed a literal "e.preventDefault();" STRING child —
@@ -11644,7 +11495,7 @@ export var BroTown = function BroTown(_ref0) {
      and z-index 6 so they sit over the world canvas but under all HUD
      (z>=20).  bt-desktop-hide drops them on desktop so the mouse reaches the
      canvas. */
-  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rLabelRef: rLabelRef, isLandscape: isLandscape }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until their milestone level unlocks them (AbilityButtons.jsx). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2229: the shield is a toggle button under the Attack button; it shows itself during combat (ShieldButton.jsx). */ /*#__PURE__*/React.createElement(ShieldButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2230: the target-switch arrows flank it while two or more monsters are in the perimeter (TargetArrows.jsx). */ /*#__PURE__*/React.createElement(TargetArrows, { stateRef: stateRef, isLandscape: isLandscape })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
+  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rLabelRef: rLabelRef, rCueRef: rCueRef, rRingRef: rRingRef, isLandscape: isLandscape }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until their milestone level unlocks them (AbilityButtons.jsx). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2229: the shield is a toggle button under the Attack button; it shows itself during combat (ShieldButton.jsx). */ /*#__PURE__*/React.createElement(ShieldButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2230: the target-switch arrows flank it while two or more monsters are in the perimeter (TargetArrows.jsx). */ /*#__PURE__*/React.createElement(TargetArrows, { stateRef: stateRef, isLandscape: isLandscape })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
      Not a style choice — a hard requirement this cost a round of QA to
      find.  .brotown-wrap is position:fixed, and Chrome treats that as its
      own stacking context, so EVERY element inside it is confined to one

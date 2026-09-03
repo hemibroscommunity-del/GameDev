@@ -697,6 +697,29 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   check('snowball burst: ...and it is preloaded per-zone, not on first use',
     /ensureSnowballBurstTex/.test(pre) && /tasks\.push\(Promise\.resolve\(ensureSnowballBurstTex/.test(pre), {});
 
+  /* ═══ v2.3.2232: THE HARVEST LIVES ON THE RIGHT BUTTON ═══
+     Owner: "No resource extraction button in the middle of the screen or
+     needing to tap on the resource or perform the gestures in the middle of
+     the screen area. ... The gesture cues will be on the right button."
+     Three pins: the mid-screen shell element is gone from BroTown; the
+     gesture layer anchors on the button; and the strip URLs the button face
+     plays (gesturePose.js GESTURE_TOOL_URLS) are the SAME files the world
+     renderer slices (effectsRenderer GESTURE_TOOLS) -- a hand-copied mirror,
+     which is exactly the kind this suite exists to hold in lockstep. */
+  const _bro = readFileSync(new URL('../../src/ui/BroTown.jsx', import.meta.url), 'utf8');
+  const _esl = readFileSync(new URL('../../src/ui/ExtractionSwipeLayer.jsx', import.meta.url), 'utf8');
+  const _gp = readFileSync(new URL('../../src/game/gesturePose.js', import.meta.url), 'utf8');
+  check('harvest on the button: the mid-screen shell element (#bt-node-prompt) is gone',
+    !/id:\s*["']bt-node-prompt["']/.test(_bro), {});
+  check('harvest on the button: the gesture layer anchors on the right button',
+    /querySelector\('\.bt-rjoy-base'\)/.test(_esl) && !/FISH_CUE_DY/.test(_esl), {});
+  const _urlsA = [...fx.matchAll(/url:\s*'([^']+gesture[^']+)'/g)].map((m) => m[1]).sort();
+  const _urlsB = [...(_gp.match(/'\/sprites\/tools\/[^']+'/g) || [])].map((u) => u.slice(1, -1)).sort();
+  check('harvest on the button: the button face plays the same tool strips the world renderer slices',
+    _urlsA.length === 4 && JSON.stringify(_urlsA) === JSON.stringify(_urlsB), { world: _urlsA, button: _urlsB });
+  check('harvest on the button: the character frames follow the hand (both renderers read gesturePose01)',
+    /gesturePose01\(/.test(rend) && /gesturePose01\(/.test(fx), {});
+
   /* ═══ v2.3.2230: MAGIC HITS AS WIDE AS AN ARROW ═══
      Owner: "Magic attack radius will be nerfed to be same as bow."  Two
      halves.  The reach claim the client sends for a PvP hit is

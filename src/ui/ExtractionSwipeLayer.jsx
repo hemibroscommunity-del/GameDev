@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from 'react';
 import { EXTRACT_REPS_TARGET, EXTRACT_REPS_DEFAULT, BT_AUDIO } from '@/data/gameSystems.js';
-import { FISH_CUE_DY } from '@/data/constants.js';
 
 /* v2.3.229 / v2.4 — ExtractionSwipeLayer
  *
@@ -13,7 +12,7 @@ import { FISH_CUE_DY } from '@/data/constants.js';
  *
  * Phase-2 is a SUSTAINED, per-skill gesture that fills a meter (reps):
  *   - mining:      up/down pump (vertical oscillation) -> 1 rep per full pump
- *   - woodcutting: horizontal chops toward the tree    -> 1 rep per tree-ward stroke
+ *   - woodcutting: horizontal chops                    -> 1 rep per stroke
  *   - fishing:     clockwise circular reel             -> 1 rep per full turn
  * When the meter reaches REPS_TARGET we grade the gesture (perfect/good/ok by
  * how fast it filled) and call onSuccess(accuracy), which routes to BroTown's
@@ -24,14 +23,36 @@ import { FISH_CUE_DY } from '@/data/constants.js';
  * The recognizer reads the full sampled path (not just start->end) so the
  * oscillation/rotation shapes are detectable. Anti-bot entropy/fingerprint
  * (swipeFp) is preserved on success.
+ *
+ * ═══ v2.3.2232: THE GESTURE IS PERFORMED ON THE RIGHT BUTTON ═══
+ * Owner: "No resource extraction button in the middle of the screen or
+ * needing to tap on the resource or perform the gestures in the middle of
+ * the screen area. ... The gesture will be performed on that right button
+ * (same gestures per resource). ... The gesture cues will be on the right
+ * button."
+ *
+ * So the cue's screen position is no longer the node (or the player, for
+ * fishing) -- it is the CENTRE OF THE RIGHT BUTTON (.bt-rjoy-base), and a
+ * gesture starts only when the finger goes down ON the button (its rect plus
+ * a thumb's worth of slack).  Everything after the start -- the pump, chop,
+ * reel and flip recognizers, the rep meter, the anti-bot fingerprint, the
+ * cueFrame01 the tool frame follows -- is untouched, because the owner asked
+ * for the SAME gestures.  Two consequences of the new anchor:
+ *   - chopping has no "tree-ward" on a disc, so either horizontal direction
+ *     scores (treeward 0, which the recognizer already accepted for a tree
+ *     directly above or below);
+ *   - the reel is a circle around the button centre, which is what a thumb
+ *     on a round button draws naturally.
+ * Moves and ups stay at the window so a stroke may run off the disc.
  */
 
 const MIN_SWIPE_LEN = 30; /* px — ignore micro-jitters before any motion counts */
 const STROKE_AMP = 40;    /* px — travel past the last turning point to count a half-stroke */
 const TWO_PI = Math.PI * 2;
-/* Start point must be within this many px of the on-screen cue to count.
-   Stops joystick deflections (the left stick lives bottom-left) registering. */
-const SWIPE_START_RADIUS = 160;
+/* v2.3.2232: a press counts as "on the button" inside its radius plus this
+   much slack -- the disc is 96/108px, a thumb pad is ~40px wide, and a start
+   a few px off the rim is still plainly aimed at the button. */
+const BUTTON_SLACK_PX = 14;
 
 function sign(n) { return n > 0 ? 1 : n < 0 ? -1 : 0; }
 
@@ -133,6 +154,25 @@ function gradeGesture(fillFrac, ent) {
   return 'ok';
 }
 
+/* v2.3.2232: the cue lives on the right button.  Its centre in CSS px.
+   DESKTOP has no right button (game.css hides the touch controls under
+   pointer:fine), so there the gesture anchors on the CHARACTER instead --
+   the mouse pumps / circles over the figure, which is where fishing's cue
+   always sat -- with a generous radius.  Null only before the HUD mounts. */
+export function buttonCueScreenPos(S) {
+  if (typeof document === 'undefined') return null;
+  const el = document.querySelector('.bt-rjoy-base');
+  if (el) {
+    const r = el.getBoundingClientRect();
+    if (r.width) return { x: r.left + r.width / 2, y: r.top + r.height / 2, r: r.width / 2, on: 'button' };
+  }
+  if (S && S.camera && S.player) {
+    const sx = S._worldScaleX || 1, sy = S._worldScaleY || 1;
+    return { x: (S.player.x - S.camera.x) * sx, y: (S.player.y - 24 - S.camera.y) * sy, r: 80, on: 'player' };
+  }
+  return null;
+}
+
 export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
   const swipeRef = useRef(null); /* { startX, startY, samples: [] } while pointer down */
 
@@ -149,50 +189,25 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
       (ex.nodeRef && ex.nodeRef.alive) ? ex.nodeRef
         : (S.gatherNodes && ex.nodeId ? S.gatherNodes.find(n => n.id === ex.nodeId) : null);
 
-    const cueScreenPos = (S, ex) => {
-      if (!S.camera) return null;
-      /* v2.3.1123: world->CSS conversion is screenX = (worldX - camera.x) * worldScale.
-         This gesture layer compared RAW world px to the touch's CSS px and dropped
-         the worldScale factor -- on mobile the renderer shows 1.25x more world than
-         CSS px (worldScale ~0.8), so the reel/gather cue landed ~20% off from where
-         the icon actually renders.  The onPointerDown SWIPE_START_RADIUS check then
-         rejected the touch and the gesture never started (fishing reel "not
-         registering", no meter fill).  Mirrors BroTown's v2.3.1111 tap fix + the
-         published S._worldScaleX/Y (pixiRenderer). Canvas is full-screen at the
-         viewport origin, so no rect offset is needed. */
-      const sx = S._worldScaleX || 1, sy = S._worldScaleY || 1;
-      /* Fishing centers the reel gesture on the CHARACTER (the rod's reel is
-         at the hands), matching the cue render in effectsRenderer — the user
-         circles their finger over the player to reel.  Resolved BEFORE the node
-         lookup: fishing only needs the player, and requiring the fish node here
-         meant a depleted/absent node returned null and bailed the gesture. */
-      if (ex.skill === 'fishing' && S.player) {
-        return { x: (S.player.x - S.camera.x) * sx, y: (S.player.y + FISH_CUE_DY - S.camera.y) * sy };
-      }
-      const node = nodeOf(S, ex);
-      if (!node) return null;
-      /* v2.3.853: cooking centers the swipe-up over the campfire/pan. */
-      if (ex.skill === 'cooking') {
-        return { x: (node.x - S.camera.x) * sx, y: (node.y - 40 - S.camera.y) * sy };
-      }
-      const yOff = node.nodeType === 'tree' ? 96 : node.nodeType === 'oreVein' ? 36 : 30;
-      return { x: (node.x - S.camera.x) * sx, y: (node.y - yOff - S.camera.y) * sy };
-    };
+    /* v2.3.2232: the cue is the button -- one anchor for every skill.
+       (Fishing used to centre on the character and the others on the node;
+       the world->CSS conversion those needed is gone with them.) */
+    const cueScreenPos = () => buttonCueScreenPos(stateRef && stateRef.current);
 
     const onPointerDown = (e) => {
       const ex = readyExtraction();
       if (!ex) return;
       const S = stateRef.current;
-      const cue = cueScreenPos(S, ex);
+      const cue = cueScreenPos();
       if (!cue) return;
       const x = e.clientX, y = e.clientY;
-      if (Math.hypot(x - cue.x, y - cue.y) > SWIPE_START_RADIUS) return;
+      /* v2.3.2232: ON the button, not merely near where a cue happened to be. */
+      if (Math.hypot(x - cue.x, y - cue.y) > cue.r + BUTTON_SLACK_PX) return;
 
-      /* Tree-ward horizontal sign for woodcutting (where the tree sits relative
-         to the player). 0 if (nearly) directly above/below -> accept either. */
-      let treeward = 0;
+      /* v2.3.2232: no tree-ward on a disc -- either horizontal stroke scores
+         (the recognizer's existing rule for a tree directly above/below). */
+      const treeward = 0;
       const node = nodeOf(S, ex);
-      if (node && S.player) treeward = sign(node.x - S.player.x);
 
       /* Resume the accumulator if this is a re-press within the same window,
          otherwise start fresh. Lives on the extraction record so progress and
@@ -221,6 +236,7 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
         ex._gesture.axisRef = (ex.skill === 'mining' || ex.skill === 'cooking') ? y : x;
         ex._gesture.dir = 0;
       }
+      ex._gestureDownAt = performance.now();   /* v2.3.2232: the button face reads this */
       swipeRef.current = { startX: x, startY: y, samples: [{ x, y, t: performance.now() }] };
     };
 
@@ -242,7 +258,8 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
     const countHalf = (g, d, skill) => {
       g.halfStrokes += 1;
       /* woodcutting: only the tree-ward swing scores a rep (return swing is free).
-         treeward 0 (tree directly above/below) -> accept either horizontal stroke. */
+         treeward 0 (tree directly above/below, or -- v2.3.2232 -- the button)
+         -> accept either horizontal stroke. */
       if (skill === 'woodcutting' && (g.treeward === 0 || d === g.treeward)) g.treewardStrokes += 1;
       /* mining: the DOWN half-stroke (d===1, screen y increasing) is the slam --
          spark + clink at the ore so the hit reads. */
@@ -307,16 +324,17 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
         stepOscillation(g, (ex.skill === 'mining' || ex.skill === 'cooking') ? y : x, ex.skill);
       }
 
-      /* v2.3.1417: GESTURE-TOOL FRAME DRIVER — the painted tool sprite in
-         the world cue (effectsRenderer._updateExtractionCue) plays its
-         8-frame sheet from this phase, so the tool physically follows the
-         finger (owner: "a pickaxe that moves frames depending on where
-         your finger moves when mining, or a reel that rotates when
-         fishing").  Fishing maps the accumulated circle angle straight to
-         the crank rotation (one finger-circle = one crank turn); the
-         stroke skills scrub the swing with signed finger deltas — mining
-         swings on the DOWN stroke, cooking flips on the UP flick, the axe
-         chops TOWARD the tree — and rewind on the return stroke. */
+      /* v2.3.1417: GESTURE-TOOL FRAME DRIVER — the painted tool sprite (on
+         the right button since v2.3.2232, see BroTown's harvest face) plays
+         its 8-frame sheet from this phase, so the tool physically follows the
+         finger.  Fishing maps the accumulated circle angle straight to the
+         crank rotation (one finger-circle = one crank turn); the stroke
+         skills scrub the swing with signed finger deltas — mining swings on
+         the DOWN stroke, cooking flips on the UP flick, the axe chops on
+         either stroke now — and rewind on the return stroke.
+         v2.3.2232: the CHARACTER's own harvest frames follow this same phase
+         (entityRenderer / effectsRenderer), which is the owner's "animation
+         frames will play at the speed the user is performing the gesture". */
       if (ex.skill === 'fishing') {
         ex.cueFrame01 = ((g.totalAngle / (Math.PI * 2)) % 1 + 1) % 1;
       } else {
@@ -327,10 +345,15 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
           let _d;
           if (ex.skill === 'mining') _d = (y - _prev.y) / SPAN;
           else if (ex.skill === 'cooking') _d = (_prev.y - y) / SPAN;
-          else _d = ((x - _prev.x) * (g.treeward || 1)) / SPAN;
+          else _d = Math.abs(x - _prev.x) / SPAN * (g.dir < 0 ? -1 : 1);
+          /* v2.3.2232: with no tree-ward, the axe advances on whichever
+             stroke is under way and rewinds on the reversal, so the swing
+             still reads as a chop and a return rather than a shimmy. */
+          if (ex.skill === 'woodcutting') _d = Math.abs(x - _prev.x) / SPAN * (g.dir === 0 ? 1 : (g.dir > 0 ? 1 : -1));
           ex.cueFrame01 = Math.max(0, Math.min(1, (ex.cueFrame01 || 0) + _d));
         }
       }
+      ex._gestureMovedAt = performance.now();   /* v2.3.2232 */
 
       const reps = repsFromGesture(ex.skill, g);
       const target = ex.repsTarget || repsTargetFor(ex.skill);
@@ -370,6 +393,22 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
          and the cue meter holds its progress. */
       swipeRef.current = null;
     };
+
+    /* v2.3.2232 QA probe (house style): is a gesture live, and where does the
+       layer think the button is -- neither is visible from a screenshot. */
+    try {
+      window.__btHarvest = () => {
+        const S = stateRef && stateRef.current;
+        const ex = S && S._extraction;
+        return {
+          status: ex ? ex.status : null, skill: ex ? ex.skill : null,
+          pressed: !!swipeRef.current, reps: ex ? +(ex.reps || 0).toFixed(2) : null,
+          progress: ex ? +(ex.progress || 0).toFixed(2) : null,
+          frame01: ex ? +(ex.cueFrame01 || 0).toFixed(3) : null,
+          cue: buttonCueScreenPos(S),
+        };
+      };
+    } catch (e) { /* non-browser */ }
 
     target.addEventListener('pointerdown', onPointerDown, { passive: false });
     target.addEventListener('pointermove', onPointerMove, { passive: false });
