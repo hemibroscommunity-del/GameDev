@@ -19,6 +19,19 @@ export function swingAttack(S) {
        mid-chop used to swap the character to a swing for a frame and leave the
        harvest running underneath. */
     if (S._extraction) return;
+    /* ═══ v2.3.2246: YOU DO NOT SWING AND BLOCK AT THE SAME TIME ═══
+       Owner: "you can both swing and block at the same time. That is not
+       right."  This overrules control-redesign.md §5.4, which allowed it on
+       the argument that the two controls no longer share one stick.  Held
+       here (and in specialAttack, and at the auto-attack gate in
+       monsterCombat) rather than in the button handler for the same reason
+       the _extraction gate above is: this loop is what fires bow and staff
+       shots, so gating only the press would have left ranged builds
+       shooting from behind a raised shield.
+       The other half of the exclusion is in shieldToggle.raiseShieldToggle,
+       which cancels an attack already in flight -- so whichever of the two
+       the player asks for LAST is the one they get. */
+    if (S._shieldUp) return;
 
     /* v2.3.1134: the manual tap gate honors Tempo like the auto-attack loop
        does, else tap-attackers get no benefit from the channel.  (The amulet
@@ -69,6 +82,10 @@ export function specialAttack(S) {
        mid-chop used to swap the character to a swing for a frame and leave the
        harvest running underneath. */
     if (S._extraction) return;
+    /* v2.3.2246: ...and no special from behind a raised shield either (see
+       swingAttack above).  The flick lives on the same button as the swing,
+       so exempting it would just move the owner's complaint. */
+    if (S._shieldUp) return;
 
     var R = S.rpg;
     var now = Date.now();

@@ -1295,17 +1295,54 @@ export function updateMonsterCombat(S, deps) {
              one place that already knows both facts; every reader is
              unchanged.  Unlocked, the old fallback (last aim, then facing)
              still applies, so a swing at air goes where the body points. */
-          if (S.autoAttack && S.lockedTarget && S.lockedTarget.ref) {
-            var _lkPt = lockAimPoint(S.lockedTarget.ref);
+          /* ═══ v2.3.2246: A HELD LOCK IS THE AIM, BUTTON OR NO BUTTON ═══
+             Owner: "Every move you make is now relative to that target (just
+             like the old targeting behavior when you tap on a monster to lock
+             on target). ... Player movement (backwards, left, right) should
+             revolve around the targeted monster so if you move backwards you
+             should be doing a backwards jog (just like behavior of former
+             controls moving down but angling up directionally with the right
+             joystick)."
+
+             The reference behaviour is exact: deflecting the old right stick
+             wrote _aimAngle AND set autoAttack in the same handler
+             (origin/main handleRJoyMove), so "aiming at the monster" and
+             "attacking it" were one act -- which is why v2.3.2242 could gate
+             this write on autoAttack and lose nothing.  With the lock doing
+             the stick's job, the lock is what has to drive the aim, and it
+             outlives the finger.  So: engaged means facing, and the whole
+             facing ladder (entityRenderer aimAttackActive), the backpedal
+             test (BroTown's movement step) and the shield angle read one
+             fact.
+             S._aiming stays gated on autoAttack DELIBERATELY.  On desktop the
+             mousemove handler does `if (S.autoAttack || S._aiming) S._aimAngle
+             = S._mouseAimAngle` (BroTown ~9187), so setting it here would let
+             a hovering cursor overwrite the lock aim every frame -- the two
+             writers would fight inside one frame and the winner would be
+             whichever ran last.
+             DERIVED, NOT STAMPED.  An earlier cut wrote the answer to
+             S._lockAim for the renderer to read; the renderer and the
+             movement step derive it from S.lockedTarget themselves instead,
+             because this whole block sits inside `if (S.monsters && S.rpg)`
+             and a flag that stops being refreshed is a flag that lies.  One
+             fact, three readers, no lifetime. */
+          var _lkRef = (S.lockedTarget && S.lockedTarget.ref) || null;
+          var _lkMon = !!_lkRef && S.lockedTarget.type === 'monster';
+          if (_lkRef && (S.autoAttack || _lkMon)) {
+            var _lkPt = lockAimPoint(_lkRef);
             if (_lkPt) {
               S._aimAngle = Math.atan2(_lkPt.y - P.y, _lkPt.x - P.x);
-              S._aiming = true;
+              if (S.autoAttack) S._aiming = true;
               S._facing = Math.abs(Math.cos(S._aimAngle)) > Math.abs(Math.sin(S._aimAngle))
                 ? (Math.cos(S._aimAngle) > 0 ? 'right' : 'left')
                 : (Math.sin(S._aimAngle) > 0 ? 'down' : 'up');
             }
           }
-          if (S.autoAttack && S.rpg && _eqWpn && Date.now() - S.swingTimer >= effectiveSwingCd + _staffCdExtra) {
+          /* v2.3.2246: ...and no auto-attack from behind a raised shield
+             (owner: "you can both swing and block at the same time. That is
+             not right").  THIS is the gate that matters for bow and staff --
+             they are fired from this loop, not from the tap handler. */
+          if (S.autoAttack && !S._shieldUp && S.rpg && _eqWpn && Date.now() - S.swingTimer >= effectiveSwingCd + _staffCdExtra) {
             /* Loot pickup freeze suppresses auto-swing — keeps the
                0.5s pickup animation clean instead of mid-swing. */
             var _lootSwingBlock = S._lootFreezeUntil && Date.now() < S._lootFreezeUntil;

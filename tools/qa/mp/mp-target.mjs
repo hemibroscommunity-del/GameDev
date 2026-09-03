@@ -10,6 +10,10 @@
  * which one Attack locks, whether the lock survives a target drifting to the
  * edge of the circle (and dies past it), and whether the arrows exist only
  * when there is something to switch between and step in screen-x order.
+ *
+ * v2.3.2246 adds the other side of that rule: the range test owns only the
+ * locks the PERIMETER made.  A lock the canvas tap wrote keeps its old
+ * lifetime at any distance -- see the block after the hysteresis assertions.
  */
 import * as H from './harness.mjs';
 
@@ -104,6 +108,52 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(250);
   s = await st(P);
   rec.ok('...and past the hysteresis ring the lock drops', s.lock === null && s.droppedWhy === 'range', s);
+
+  /* ── v2.3.2246: the range rule owns only the locks IT made ──
+     §5.1 of the spec always said a TAPPED lock outside the perimeter is left
+     alone by the persistence rule.  The code did not do that: updateTargeting
+     cleared any monster lock outside the ring, however it was made, so
+     tap-to-lock silently stopped working past 275px.  A bow plants at 675px
+     (1350 with Longshot), so locking a distant monster and sniping it -- which
+     worked before v2.3.2243 -- dropped the lock on the very next frame.  It
+     went unnoticed while the button swung at air regardless; with the button
+     hidden unless it can do something (v2.3.2246), a tapped lock is the ONLY
+     way to engage anything past the perimeter, so it has to stick. */
+  await seed(P, [{ id: 'far', dx: 620 }]);
+  await P.page.waitForTimeout(350);
+  s = await st(P);
+  rec.ok('guard: a monster 620px away is not a candidate (way outside the 220px perimeter)',
+    s.cands.length === 0 && s.lock === null, s);
+  /* Lock it the way a player does: tap it on the canvas.  Driven through the
+     state the tap writes, because a synthetic canvas click at 620px would
+     land off screen on a 390px phone. */
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const m = S.monsters.find((x) => x.id === 'far');
+    S.lockedTarget = { type: 'monster', id: m.id, ref: m };   /* no viaPerimeter — a tap */
+  });
+  await P.page.waitForTimeout(700);
+  s = await st(P);
+  rec.ok('a TAPPED lock survives being far outside the perimeter (bow range)',
+    s.lock === 'far', s);
+  rec.ok('...and the right button is on screen for it, because a lock is held',
+    (await P.page.evaluate(() => window.__btDiscVis().R.shown)) === true);
+  /* ...and an Attack press with a far tapped lock ATTACKS rather than
+     re-engaging: heldMonster() counts a tapped lock at any distance. */
+  await P.page.evaluate(() => { const S = window._gameState.current; S.__sw0 = S.swingTimer || 0; });
+  await P.page.evaluate(() => window.__tapSel('.bt-rjoy-base', 71));
+  await P.page.waitForTimeout(250);
+  const swung = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    return { moved: (S.swingTimer || 0) !== S.__sw0, lock: S.lockedTarget ? S.lockedTarget.id : null };
+  });
+  rec.ok('...and a press with that lock held ATTACKS (press two), it does not re-engage',
+    swung.moved === true && swung.lock === 'far', swung);
+  /* The other half of the same rule: a press that finds nothing to engage
+     must not throw the tapped lock away. */
+  rec.ok('...and the lock is still there after the press', (await st(P)).lock === 'far');
+  /* But a PERIMETER lock (made by the press) still drops at range — that rule
+     is unchanged, and the assertion above it in this file proves it. */
 
   /* ── three in range: arrows appear and walk left -> right ── */
   await seed(P, [{ id: 'mid', dx: 60 }, { id: 'left', dx: -120, dy: 10 }, { id: 'right', dx: 150, dy: -10 }]);

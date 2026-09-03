@@ -53,7 +53,8 @@ import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
 import { ShieldButton } from './panels/ShieldButton.jsx'; /* v2.3.2242: the shield is a toggle button under Attack */
 import { GESTURE_TOOL_URLS } from '@/game/gesturePose.js'; /* v2.3.2245: the tool strips the button face plays */
 import { TargetArrows } from './panels/TargetArrows.jsx'; /* v2.3.2243: switch targets when two or more are in the perimeter */
-import { engageNearest } from '@/game/targeting.js'; /* v2.3.2242: Attack engages the nearest monster in the perimeter */
+import { engageNearest, heldMonster, hasCandidate } from '@/game/targeting.js'; /* v2.3.2242: Attack engages the nearest monster in the perimeter; v2.3.2246: ...and the press asks which of the two it is */
+import { discHeld, discHoldProbe } from '@/game/controlVisibility.js'; /* v2.3.2246: the discs hide themselves unless onboarding is pointing at one */
 import { raiseShieldToggle, dropShield, shieldAimAngle } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { DuelRequestPanel } from './panels/DuelRequestPanel.jsx';
 import { ThreatIncomingPanel } from './panels/ThreatIncomingPanel.jsx';
@@ -4835,13 +4836,31 @@ export var BroTown = function BroTown(_ref0) {
            this loop is what fires bow and staff shots — gating only the tap
            handlers would have left ranged builds shooting mid-chop. */
         if (S._extraction) S.autoAttack = false;
+        /* ═══ v2.3.2246: A LOCK MAKES MOVEMENT TARGET-RELATIVE ═══
+           Owner: "Player movement (backwards, left, right) should revolve
+           around the targeted monster so if you move backwards you should be
+           doing a backwards jog (just like behavior of former controls moving
+           down but angling up directionally with the right joystick)."
+
+           _backpedaling is the flag that reverses the jog cycle and holds the
+           body on the aim (entityRenderer's aimAttackActive / isMovingBackward),
+           and it was computed only `if (S.autoAttack)` -- i.e. only while the
+           attack button was physically held.  That was faithful to the OLD
+           controls, where aiming and attacking were one gesture, and wrong
+           for the new ones, where the lock is the aim and survives the
+           finger.  So the backpedal test now runs whenever a MONSTER lock is
+           held, and the 0.5x speed stays where it was, under autoAttack: the
+           owner asked for a direction, not a slowdown, and halving a merely
+           engaged player's walk is a nerf nobody requested.
+           Derived from S.lockedTarget rather than a flag stamped by the
+           combat tick -- see the note in monsterCombat.js. */
+        var _lkFace = !!(S.lockedTarget && S.lockedTarget.ref && S.lockedTarget.type === 'monster');
         S._backpedaling = false;
-        if (S.autoAttack) {
-          finalSpd *= 0.5;
-          if (S._aimAngle != null && (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01)) {
-            var moveDotAim = dx * Math.cos(S._aimAngle) + dy * Math.sin(S._aimAngle);
-            if (moveDotAim < 0) S._backpedaling = true;
-          }
+        if (S.autoAttack) finalSpd *= 0.5;
+        if ((S.autoAttack || _lkFace) && S._aimAngle != null
+            && (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01)) {
+          var moveDotAim = dx * Math.cos(S._aimAngle) + dy * Math.sin(S._aimAngle);
+          if (moveDotAim < 0) S._backpedaling = true;
         }
 
         /* v2.3.1769: the frame-rate term.  Applied HERE, to the step, rather
@@ -5265,6 +5284,96 @@ export var BroTown = function BroTown(_ref0) {
               }
               if (_ring.style.display !== 'block') _ring.style.display = 'block';
             } else if (_ring.style.display !== 'none') _ring.style.display = 'none';
+          }
+
+          /* ═══ v2.3.2246: THE DISCS SHOW THEMSELVES ═══
+             Owner: "Hide the joystick overlays. Just show the left joystick
+             when you're moving the character. Just show the right contextual
+             button when there's input that can be interacted with."
+
+             One resolver, here, because this is already the block that knows
+             what the button's context IS -- the extraction, the node in
+             reach, the held lock, the candidate list.  Deciding visibility
+             anywhere else would be a second copy of that list, and the two
+             would drift.
+
+             THE LINGER.  Candidacy is a hard 220px test (targeting.js; the
+             hysteresis ring guards the LOCK, not the list), so a monster
+             pacing across the boundary would strobe the button on and off
+             several times a second.  400ms of linger costs nothing -- the
+             press still works the whole time it is up, because a candidate
+             at 221px is still a candidate the moment you lean in -- and it
+             turns a strobe into a fade.
+
+             THE HOLDS.  ControlsTutorial and QuestCoach teach both controls
+             in town, where neither has anything to do; they take a hold on
+             the side they are ringing (game/controlVisibility.js) and the
+             `||` below lets it through.  Without it the tour would draw its
+             ring around an invisible control and every existing assertion
+             would still pass, because a hidden box still measures.
+
+             pointerEvents on the RIGHT DISC and not the box: the box is
+             pass-through by design and a child's 'auto' beats a parent's
+             'none', so the disc is the only place that can decline the tap. */
+          var _now2 = Date.now();
+          if (_ex || _harvestCtx || _lockHeld || _cands.length) S._rBtnLiveUntil = _now2 + 400;
+          var _rOn = (S._rBtnLiveUntil || 0) > _now2 || discHeld('R');
+          /* Two facts, ANDed, because either one alone can get stuck: the
+             flag is cleared by handleJoystickEnd (bound to touchend AND
+             touchcancel) and lTouchId by the same handler, but if the
+             dual-joystick effect re-runs mid-touch its listeners come off
+             with a touch still down and whichever half it was holding is
+             never cleared.  ANDing fails in the safe direction -- a lost
+             clear hides the disc rather than pinning it on the world, which
+             is the thing being fixed. */
+          var _lOn = (!!S._lJoyHeld && lTouchId.current !== null)
+            || (S._lJoyPreviewUntil || 0) > _now2 || discHeld('L');
+          /* LEVEL-DRIVEN, COMPARED AGAINST THE DOM -- the same shape as the
+             label / cue / ring stamps above (`if (_lbl.textContent !==
+             _want)`), and for a reason worth writing down.  The first cut
+             cached the answer on S and wrote the style only when its own flag
+             flipped, which is wrong in this file: TouchControls is a React
+             component whose JSX carries the RESTING values (box opacity 0,
+             disc pointerEvents 'none'), so any re-render -- an orientation
+             change is the obvious one -- re-stamps those over whatever the
+             resolver had set, and a change-gated resolver never notices.  A
+             live button would have gone painted-but-dead until the next time
+             its context happened to change.  Reading the
+             element's own inline style makes a React reset self-healing on the
+             next frame, at the cost of one string compare each. */
+          var _rw = rWrapRef.current;
+          var _rWant = _rOn ? '1' : '0';
+          if (_rw && _rw.style.opacity !== _rWant) _rw.style.opacity = _rWant;
+          var _rd = rJoyRef.current;
+          var _peWant = _rOn ? 'auto' : 'none';
+          if (_rd && _rd.style.pointerEvents !== _peWant) _rd.style.pointerEvents = _peWant;
+          var _lw = lWrapRef.current;
+          var _lWant = _lOn ? '1' : '0';
+          if (_lw && _lw.style.opacity !== _lWant) _lw.style.opacity = _lWant;
+          /* The one EDGE, and it stays an edge: the button going away under a
+             thumb that is still holding it (the last monster died) has to let
+             go of the attack, or autoAttack stays latched on a control that is
+             no longer there. */
+          if (!_rOn && S._rBtnShown && S.autoAttack) { S.autoAttack = false; S._aiming = false; }
+          S._rBtnShown = _rOn;
+          S._lJoyShown = _lOn;
+          /* v2.3.2246: the probe, in the house style (__btShieldBtn,
+             __btCtlTutSteps).  "The disc is dark" and "the disc is painted"
+             each have several possible reasons and a screenshot names none of
+             them -- a left disc up with no thumb on it is a coach mark
+             holding it, not a broken resolver, and a test that could not tell
+             those apart would have to guess (TRAPS §28). */
+          if (typeof window !== 'undefined' && !window.__btDiscVis) {
+            window.__btDiscVis = function () {
+              var s2 = stateRef.current || {};
+              return { L: { shown: !!s2._lJoyShown, thumb: !!s2._lJoyHeld,
+                            preview: (s2._lJoyPreviewUntil || 0) > Date.now() },
+                       R: { shown: !!s2._rBtnShown, liveMs: Math.max(0, (s2._rBtnLiveUntil || 0) - Date.now()),
+                            cands: (s2._targetCands || []).length,
+                            lock: !!(s2.lockedTarget && s2.lockedTarget.ref),
+                            node: !!s2._nearNode, ex: !!s2._extraction },
+                       holds: discHoldProbe() };
+            };
           }
         }
 
@@ -7608,6 +7717,8 @@ export var BroTown = function BroTown(_ref0) {
   var joystickActive = useRef(false);
   var lTouchId = useRef(null);
   var rJoyRef = useRef(null);
+  var lWrapRef = useRef(null);    /* v2.3.2246: the two corner boxes are the visibility gates */
+  var rWrapRef = useRef(null);
   var rLabelRef = useRef(null);   /* v2.3.2242: the button's contextual label */
   var rCueRef = useRef(null);     /* v2.3.2245: the harvest tool frame on the button */
   var rRingRef = useRef(null);    /* v2.3.2245: the wind-up / reps ring */
@@ -7638,6 +7749,13 @@ export var BroTown = function BroTown(_ref0) {
        already carries transition:opacity .12s, so this reads as a
        smooth lift, not a blink. */
     base.style.opacity = '0.92';
+    /* v2.3.2246: "just show the left joystick when you're moving the
+       character" -- this handler runs on touchstart and every move in the
+       left zone, so it is exactly "a thumb is driving movement".  The corner
+       box's opacity is raised by the loop's one resolver rather than here,
+       so the coach-mark hold and the weapon-preview window cannot be
+       overwritten by a release a frame later. */
+    stateRef.current._lJoyHeld = true;
     var rect = base.getBoundingClientRect();
     /* v2.3.949: docked joystick.  The base sits in its left corner at 50%
        opacity and no longer follows the finger; deflection is measured from the
@@ -7691,6 +7809,7 @@ export var BroTown = function BroTown(_ref0) {
       lStickRef.current.style.opacity = '0';
     }
     var S = stateRef.current;
+    S._lJoyHeld = false;   /* v2.3.2246: the thumb is off; the disc fades out */
     /* Dodge roll disabled on joystick — use screen swipe instead */
     lTrail.current = [];
     S.stickX = 0;
@@ -7715,7 +7834,14 @@ export var BroTown = function BroTown(_ref0) {
     if (base) base.style.opacity = '0.92';
     var S = stateRef.current;
     if (!S) return;
-    try { engageNearest(S); } catch (e) { /* no candidates: still swings */ }
+    /* v2.3.2246: THE ATTACK PRESS DOES NOT RE-TARGET.  This used to call
+       engageNearest, which was right while one press did both jobs.  With
+       the two-step press (bS decides engage-or-attack from the lock) it is
+       actively wrong: reached only when a lock is already held, it would
+       hand the lock to the NEAREST candidate instead -- so a monster tapped
+       at bow range, with a slime wandering past your feet, would silently
+       become the slime the moment you pressed attack.  Engagement belongs to
+       bS alone now. */
     S.autoAttack = true;
     setAutoAttack(true);
   }, []);
@@ -8003,6 +8129,7 @@ export var BroTown = function BroTown(_ref0) {
             lts.lastEndAt = 0;
             if (lPreviewTimer.current) { clearTimeout(lPreviewTimer.current); lPreviewTimer.current = null; }
             if (lJoyPreviewRef.current) lJoyPreviewRef.current.style.display = 'none';
+            stateRef.current._lJoyPreviewUntil = 0;   /* v2.3.2246 */
             try { _desktopCycleWeapon(); } catch (err) {}
           } else {
             lts.lastEndAt = endT;
@@ -8041,9 +8168,18 @@ export var BroTown = function BroTown(_ref0) {
               } else {
                 lJoyPreviewRef.current.textContent = SLOT_ICON[nextSlot] || 'sword';
                 lJoyPreviewRef.current.style.display = 'flex';
+                /* ═══ v2.3.2246: THE PREVIEW LIVES INSIDE THE DISC ═══
+                   handleJoystickEnd ran a few lines above and let go of the
+                   disc, so with the box hidden by default this overlay would
+                   have opened inside an invisible parent -- the weapon-swap
+                   confirmation, which is the entire point of the single tap,
+                   would have shown nothing at all.  Hold the box up for the
+                   preview's own window. */
+                stateRef.current._lJoyPreviewUntil = Date.now() + PREVIEW_HOLD_MS;
                 if (lPreviewTimer.current) clearTimeout(lPreviewTimer.current);
                 lPreviewTimer.current = setTimeout(function () {
                   if (lJoyPreviewRef.current) lJoyPreviewRef.current.style.display = 'none';
+                  stateRef.current._lJoyPreviewUntil = 0;
                 }, PREVIEW_HOLD_MS);
               }
             }
@@ -8137,6 +8273,7 @@ export var BroTown = function BroTown(_ref0) {
       rJoyActive.current = true;
       bSwipe.sx = t.clientX; bSwipe.sy = t.clientY; bSwipe.st = Date.now();
       bSwipe.lx = 0; bSwipe.ly = 0; bSwipe.lt = 0;
+      bSwipe.engage = false;   /* v2.3.2246: reset up front, not only on the paths that set it */
       /* ═══ v2.3.2245: THE BUTTON IS CONTEXTUAL ═══
          A harvest in progress owns the button: the press is the gesture
          (ExtractionSwipeLayer takes it at the pointer level), not a swing.
@@ -8157,6 +8294,45 @@ export var BroTown = function BroTown(_ref0) {
         bSwipe.harvest = true;
         return;
       }
+      /* ═══ v2.3.2246: THE PRESS ENGAGES BEFORE IT ATTACKS ═══
+         Owner: "right button (former right joystick) should not be a
+         standalone attack button anymore. After you engage with an enemy by
+         pressing attack within perimeter of it you auto lock on target and
+         the button turns into an attack button at that point."
+
+         v2.3.2242 collapsed both halves into one press -- engage AND swing
+         AND start the auto-attack -- which is what made it a standalone
+         attack button: with nothing in range it swung at air, and with
+         something in range the engage was invisible underneath the swing.
+         Two states now, decided from the lock, which is the same fact the
+         label and the button's own visibility read:
+
+           lock held   -> ATTACK.  Unchanged: swing now, auto-attack while
+                          the finger stays down, flick for the special.
+           candidate   -> ENGAGE only.  Lock the nearest and stop.  No swing,
+                          no auto-attack, and bE must not read the release as
+                          a flick, or a brisk tap-to-engage would spend mana
+                          on a special aimed at a monster you had not yet
+                          picked.
+
+         Neither, which normally cannot happen because the button is not on
+         screen (see the visibility resolver): it swings, exactly as before.
+         That path is still reachable for one reason and it is a good one --
+         ControlsTutorial's `attack` step and QuestCoach's `attack` /
+         `special` marks hold the button visible in town to teach it, and a
+         lesson you cannot perform is worse than no lesson.  So the rule is
+         "if the button is on screen, a press does the most sensible thing it
+         can", and the visibility resolver is what makes that honest. */
+      if (Sb && !heldMonster(Sb) && hasCandidate(Sb)) {
+        try { engageNearest(Sb); } catch (err) { /* nothing to engage: falls through to nothing */ }
+        try { BT_AUDIO.beep(660, 0.05, 0.09, 'triangle'); } catch (err) { /* audio is best-effort */ }
+        bSwipe.engage = true;
+        var _egBase = rJoyRef.current;
+        if (_egBase) _egBase.style.opacity = '0.92';
+        rJoyActive.current = true;
+        return;
+      }
+      bSwipe.engage = false;
       handleRBtnPress();
       doSwing();
     };
@@ -8176,6 +8352,18 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.2245: a harvest press is not a swing and its release is not a
          flick -- a fast chop on the button must never fire the special. */
       if (bSwipe.harvest) { bSwipe.harvest = false; rJoyActive.current = false; return; }
+      /* v2.3.2246: ...and neither is an ENGAGE press.  Same reasoning: the
+         gesture that picked the target must not also spend the special on it.
+         The opacity is restored by hand because handleRBtnRelease (which
+         normally does it) also clears autoAttack, and an engage never set
+         it. */
+      if (bSwipe.engage) {
+        bSwipe.engage = false;
+        rJoyActive.current = false;
+        var _egB = rJoyRef.current;
+        if (_egB) _egB.style.opacity = '0.5';
+        return;
+      }
       /* Flick detection -- last-leg speed (recent burst) OR
          total-distance/total-duration speed (slow but committed). */
       var refX = bSwipe.lx || bSwipe.sx;
@@ -11535,7 +11723,7 @@ export var BroTown = function BroTown(_ref0) {
      and z-index 6 so they sit over the world canvas but under all HUD
      (z>=20).  bt-desktop-hide drops them on desktop so the mouse reaches the
      canvas. */
-  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rLabelRef: rLabelRef, rCueRef: rCueRef, rRingRef: rRingRef, isLandscape: isLandscape }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until their milestone level unlocks them (AbilityButtons.jsx). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2242: the shield is a toggle button under the Attack button; it shows itself during combat (ShieldButton.jsx). */ /*#__PURE__*/React.createElement(ShieldButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2243: the target-switch arrows flank it while two or more monsters are in the perimeter (TargetArrows.jsx). */ /*#__PURE__*/React.createElement(TargetArrows, { stateRef: stateRef, isLandscape: isLandscape })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
+  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rLabelRef: rLabelRef, rCueRef: rCueRef, rRingRef: rRingRef, lWrapRef: lWrapRef, rWrapRef: rWrapRef, isLandscape: isLandscape }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until their milestone level unlocks them (AbilityButtons.jsx). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2242: the shield is a toggle button under the Attack button; it shows itself during combat (ShieldButton.jsx). */ /*#__PURE__*/React.createElement(ShieldButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2243: the target-switch arrows flank it while two or more monsters are in the perimeter (TargetArrows.jsx). */ /*#__PURE__*/React.createElement(TargetArrows, { stateRef: stateRef, isLandscape: isLandscape })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
      Not a style choice — a hard requirement this cost a round of QA to
      find.  .brotown-wrap is position:fixed, and Chrome treats that as its
      own stacking context, so EVERY element inside it is confined to one

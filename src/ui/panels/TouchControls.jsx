@@ -50,6 +50,8 @@ export function TouchControls(props) {
     rLabelRef = props.rLabelRef,
     rCueRef = props.rCueRef,     /* v2.3.2245: the harvest tool frame on the button face */
     rRingRef = props.rRingRef,   /* v2.3.2245: the wind-up / reps ring around the rim */
+    lWrapRef = props.lWrapRef,   /* v2.3.2246: the left disc's corner box — the visibility gate */
+    rWrapRef = props.rWrapRef,   /* v2.3.2246: the right button's corner box — ditto */
     isLandscape = props.isLandscape;
   var _stateRef$current65;
   var discW = isLandscape ? RBTN.wLand : RBTN.w;
@@ -65,7 +67,30 @@ export function TouchControls(props) {
     style: { position: 'fixed', right: 0, top: 0, width: '50%', height: 'calc(100% - var(--sheet-h, var(--dash-h)))' /* v2.3.1307: zones end above the OPEN sheet so movement works with menus open */, zIndex: 6, touchAction: 'none', background: 'transparent', WebkitUserSelect: 'none', userSelect: 'none' }
   }), /* duplicate kb-hints removed — kept the one near joystick zone below */ /*#__PURE__*/React.createElement("div", {
     className: "bt-joystick-zone",
+    ref: lWrapRef,
+    'data-disc': 'L',
     style: {
+      /* ═══ v2.3.2246: HIDDEN UNTIL A THUMB IS ON IT ═══
+         Owner: "Hide the joystick overlays. Just show the left joystick when
+         you're moving the character."  So the corner box starts at opacity 0
+         and BroTown's per-frame resolver raises it while a finger drives
+         movement (or while the weapon-swap preview is open, or while a coach
+         mark points at it -- game/controlVisibility.js).
+         THE GATE IS ON THE BOX, NOT THE SPRITES.  The base/stick/knob each
+         carry their own opacity (the §10 engagement ladder: .5 at rest, .92
+         while dragged, stamped by handleJoystickMove/End), and v2.3.1233b is
+         on record for what happens when a container opacity MULTIPLIES with
+         those -- a 0.62 box under a 0.5 sprite gave a 31% rest opacity
+         nobody intended.  A BINARY 0/1 box cannot do that: at 1 every sprite
+         is exactly as bright as it was.
+         Opacity and not visibility/display, deliberately: the box keeps its
+         real bounding rect either way, which is what ControlsTutorial and
+         QuestCoach measure and what four QA scenarios probe, and opacity is
+         the property game.css already transitions (.22s, and none under
+         prefers-reduced-motion).  The disc is pointerEvents:'none' anyway --
+         movement input is the full-height [data-joyzone="L"] layer beneath --
+         so hiding it costs no input at all. */
+      opacity: 0,
       position: 'fixed',
       bottom: 'calc(var(--sheet-h, var(--dash-h)) + 70px)', /* v2.3.1307: disc rides above the open sheet */
       left: isLandscape ? 16 : 12,
@@ -179,7 +204,24 @@ export function TouchControls(props) {
        the expanded-sheet dim (game.css, nav-system PR B) can reach it —
        the left disc already had .bt-joystick-zone. */
     className: "bt-desktop-hide bt-rjoy-zone",
+    ref: rWrapRef,
+    'data-disc': 'R',
     style: {
+      /* ═══ v2.3.2246: SHOWN ONLY WHEN A PRESS WOULD DO SOMETHING ═══
+         Owner: "Just show the right contextual button when there's input that
+         can be interacted with."  BroTown's resolver raises this box when a
+         monster is inside the targeting perimeter, a lock is held, a resource
+         is in reach, or a harvest is running -- the same four facts that
+         decide what the LABEL says, read in the same place, so "the button is
+         on screen" and "the press does something" cannot drift apart.
+         Same binary-box reasoning as the left disc above.  The one difference
+         that matters: this disc IS the touch target (pointerEvents:'auto'
+         since v2.3.2242), and an opacity-0 element still takes taps -- so the
+         resolver switches the DISC's pointerEvents with the box's opacity.
+         Hidden, the tap falls through to [data-joyzone="R"] beneath, which
+         forwards it to the canvas as a lock-on click, which is exactly what
+         a tap on empty screen should do. */
+      opacity: 0,
       position: 'fixed',
       bottom: 'calc(var(--sheet-h, var(--dash-h)) + ' + RBTN.bottom + 'px)', /* v2.3.1307: disc rides above the open sheet */
       right: RBTN.right,
@@ -208,7 +250,15 @@ export function TouchControls(props) {
       /* v2.3.1236: mirrors the LEFT base's idle treatment (faint 0.5 rest,
          0.92 while a finger is down, same 0.12s opacity transition — the
          ladder is stamped by BroTown's press/release handlers). */
-      pointerEvents: 'auto',
+      /* v2.3.2246: 'none' is the RESTING value and BroTown's resolver turns
+         it on, not the other way round.  The box above starts hidden, so an
+         'auto' default would leave the button pressable-while-invisible for
+         the frames between this render and the resolver's first pass -- and a
+         phantom tap on a control the player cannot see is a worse failure
+         than a control that arrives a frame late.  The resolver compares
+         against this inline value every frame, so a re-render that re-stamps
+         it (an orientation change) is corrected on the next one. */
+      pointerEvents: 'none',
       touchAction: 'none',
       transition: 'opacity 0.12s ease',
       backgroundImage: 'url(/sprites/joystick/base.webp?v=2.3.102)',

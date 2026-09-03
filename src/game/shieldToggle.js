@@ -46,6 +46,20 @@ export function raiseShieldToggle(S) {
   if (S._shieldCdUntil && now < S._shieldCdUntil) return false;
   if (!S.rpg.shield) return false;
   if (S._shieldUp) return true;
+  /* ═══ v2.3.2246: RAISING THE SHIELD CANCELS THE ATTACK ═══
+     Owner: "you can both swing and block at the same time. That is not
+     right."  playerActions/monsterCombat refuse to START an attack while the
+     shield is up; this is the other direction -- the guard going up ends the
+     swing that is already in the air, so the two can never overlap for even
+     the 250ms of a swing window.
+     Written as plain field writes with no React setter, which is how
+     S.autoAttack is already cleared from the game loop when an extraction
+     starts (BroTown.jsx `if (S._extraction) S.autoAttack = false`); the
+     useState mirror is write-only and nothing reads it. */
+  S.autoAttack = false;
+  S.isSwinging = false;
+  S._swingSfxPending = false;
+  S._aiming = false;
   S._shieldUp = true;
   S._shieldAngle = shieldAimAngle(S);
   S.shieldActive = now;

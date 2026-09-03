@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { controlsTutorialBus } from './controlsTutorialBus.js';
+import { holdDisc, releaseDisc } from '@/game/controlVisibility.js'; /* v2.3.2246: the discs hide themselves; a tour that points at them says so */
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 
 /* v2.3.1205: REBUILT as live DOM-anchored annotations (previously a
@@ -179,6 +180,29 @@ export const ControlsTutorial = () => {
       window.removeEventListener('resize', measure);
       window.removeEventListener('orientationchange', measure);
     };
+  }, [open]);
+
+  /* ═══ v2.3.2246: THE TOUR HOLDS BOTH DISCS ON SCREEN ═══
+     v2.3.2246 hides the joystick overlays unless they have something to do
+     (owner: "Hide the joystick overlays"), and this tour is launched from
+     the More panel -- in town, with no monster in the perimeter and no
+     resource in reach, so by that rule NEITHER disc would be painted.  The
+     `move` and `attack` steps measure them with getBoundingClientRect, which
+     a hidden box still answers in full, so the spotlight would have rung two
+     invisible controls and mp-ctltut's "no declared step silently vanishes"
+     rule would have passed while the tour taught nothing.
+
+     Both sides for the whole open, rather than the side the current step
+     names: the tour is a short modal that exists to walk these two
+     controls, the step index and the measured-step array can disagree while
+     a re-measure is in flight, and a hold that cannot desync is worth more
+     here than one that is precise.  QuestCoach, which lives for as long as
+     onboarding does, takes the per-mark version instead. */
+  useEffect(() => {
+    if (!open) return undefined;
+    holdDisc('L', 'ctltut');
+    holdDisc('R', 'ctltut');
+    return () => { releaseDisc('L', 'ctltut'); releaseDisc('R', 'ctltut'); };
   }, [open]);
 
   if (!open || steps.length === 0) return null;

@@ -302,9 +302,9 @@ is the note.
 | # | Question the directive leaves open | Decision taken | Why |
 |---|---|---|---|
 | 5.1 | Does **tapping a monster** still lock on, now that Attack does? | **Yes, kept** as a manual override. | It is "the existing targeting system" the directive says Attack begins; removing it would take away the only way to pick a specific monster before it is in the perimeter. Cheap to keep, nothing conflicts. |
-| 5.2 | Attack pressed with **nothing in range** | Swings anyway, no lock, label dimmed. | Matches today (a swing at air is allowed) and keeps the button honest — it never silently does nothing. |
+| 5.2 | Attack pressed with **nothing in range** | ~~Swings anyway~~ → **the button is not on screen** (v2.3.2246). | REVISED by the owner: "right button ... should not be a standalone attack button anymore" + "just show the right contextual button when there's input that can be interacted with". The two together answer this one — with nothing in range there is nothing to press. The swing-at-air path survives for exactly one case, and only because the button is visible there: onboarding holds it on screen in town to teach it, and a lesson you cannot perform is worse than no lesson. See §7.1. |
 | 5.3 | What is "**during combat**" for the shield button? | Any monster candidate in range **or** a lock held **or** damage taken in the last 5s; and a shield equipped. | The renderer's own `_combatTriggers` predicate, minus `autoAttack`, so the button shows the moment a fight could start and lingers through a lull. |
-| 5.4 | **Attacking while the shield is up** | Allowed; the button keeps auto-attacking. | v2.3.97 chose "you do not fight and block at once" because both lived on one stick. They no longer do; two buttons, two hands' worth of intent. (Shield Bash keeps its own button; the old "tap attack while blocking = bash" gesture is gone with the double tap.) |
+| 5.4 | **Attacking while the shield is up** | ~~Allowed~~ → **REFUSED, both ways** (v2.3.2246). | OVERRULED by the owner: "you can both swing and block at the same time. That is not right." v2.3.97's original rule was right and this PR's reasoning (two buttons, two intents) was wrong. Enforced at the source in three places, not at the button: `swingAttack` and `specialAttack` refuse while `_shieldUp`, and so does the auto-attack gate in `monsterCombat` — which is the one bow and staff go through, so gating only the press would have left ranged builds shooting from behind a raised shield. And the other direction: `raiseShieldToggle` cancels an attack already in flight, so whichever the player asks for LAST is the one they get. Shield Bash is deliberately exempt — see §7.3. |
 | 5.5 | **Perimeter radius** | 220 world px. | ≈ the visible half-width of a phone in world units (390 CSS px / 0.8 scale ≈ 490 px across), so "in the perimeter" reads as "on screen and near me"; comfortably inside bow flight (340-675) and outside melee (50-72). One constant, easy to retune. |
 | 5.6 | Where exactly the **arrows** go vs the **shield button** — both are "beneath the right button" | ◀ [shield] ▶ in one row in the 70px band under the disc. | The band has room for three 40-48px targets (disc is 96 wide at right:50); it keeps everything thumb-reachable and reads as one cluster. |
 | 5.7 | "Magic attack **radius** … same as bow" — hit splash, flight range, or both? | Hit splash radius (and the special's multiplier) = arrow's; `WEAPON_TYPES.staff.range` = bow's; **flight distance untouched** (staff 340px, bow 675px). | "Radius" names the splash; the staff is already the shorter-flying weapon, and shortening it further would be a nerf the directive did not ask for. |
@@ -377,3 +377,187 @@ the same PR rather than left for a follow-up:
   records `extraction_start`; a pump gesture on the button fills reps and
   lands a `node_strike`; the mine frame index tracks `cueFrame01`, and a
   synthetic fast pump does not exceed the cap.
+- **Second pass (v2.3.2246)** `mp-rbutton` (extended): both discs dark with
+  nothing to do and the right one declining taps, while their boxes stay in
+  the layout so a coach mark can still measure them; the left disc paints on
+  a thumb and fades on release; press ONE engages and lands no swing, press
+  TWO attacks; the shield thumbnail is loaded, filter-free and readable while
+  the toggle is off; holding Attack with the shield up lands nothing over two
+  cadences; raising the shield mid-attack cancels it. `mp-engage` (new): the
+  indicator is marked on the candidate at the right coordinate (`__btAtkMark`)
+  and really painted (two frames of one crop differenced against a locked
+  control, because town cobble defeats a brass classifier — TRAPS §21);
+  away/toward/strafe around a held lock with no finger on the button; the
+  no-lock control where the stick owns the facing again; and the 400ms linger
+  that stops the button strobing on the perimeter edge.
+
+## 7. Second pass — what the owner reported after playing it (v2.3.2246)
+
+Six things, in the owner's words, and what each turned into.
+
+> "The right joystick button isn't an attack button anymore. There is an
+> attack indicator that will appear for nearby monsters (while in a monster's
+> detectable perimeter). Once you tap 'attack' (the contextual label that
+> appears on the joystick) the auto-targeting engages. Every move you make is
+> now relative to that target (just like the old targeting behavior when you
+> tap on a monster to lock on target)."
+>
+> "...right button (former right joystick) should not be a standalone attack
+> button anymore. After you engage with an enemy by pressing attack within
+> perimeter of it you auto lock on target and the button turns into an attack
+> button at that point. Player movement (backwards, left, right) should
+> revolve around the targeted monster so if you move backwards you should be
+> doing a backwards jog (just like behavior of former controls moving down but
+> angling up directionally with the right joystick)."
+
+### 7.1 The press is two-step
+
+v2.3.2242 collapsed engage and attack into one press — it locked, swung, AND
+started the auto-attack — which is precisely what made it read as a standalone
+attack button: with nothing in range it swung at air, and with something in
+range the engage was invisible underneath the swing.
+
+| State | Press does |
+|---|---|
+| Monster lock held | **ATTACK.** Swing now, auto-attack while held, flick = special. Unchanged. |
+| Candidate in the perimeter, no lock | **ENGAGE only.** Locks the nearest and stops. No swing, no auto-attack — and the release is not read as a flick, or a brisk tap-to-engage would spend mana on a special aimed at a monster you had not picked yet. |
+| Neither | Not on screen (§5.2). Reachable only while onboarding holds the button visible to teach it, where it swings as before. |
+
+The label stays **ATTACK** throughout: the owner named it as "the contextual
+label that appears on the joystick" for the pre-lock state, so it is not
+renamed to ENGAGE. What tells the two states apart is the world — the
+indicator on candidates (7.2) versus the red reticle on the lock.
+
+`targeting.heldMonster()` is the question the handler asks. It exists because
+`engageNearest` cannot answer it: it returns the same monster whether it just
+locked one or found one already locked, and "still locked" means inside the
+hysteresis ring, not merely non-null.
+
+### 7.2 The attack indicator
+
+There already was one and it was the wrong shape: a `TARGET_PERIMETER_PX`
+ring stroked around **every** candidate — a 440px-diameter circle centred on
+a monster, ~350 CSS px across on a 390px phone, six of them overlapping in a
+pack at alpha .14. It read as ambient noise, which is the likeliest reason
+the owner asked for an indicator that already existed.
+
+Now, per candidate: a small brass caret over the monster's head, bobbing, its
+height taken from `monsterBodyOffsetY` (the shared table the aim, the swing
+sweep and the projectiles all read, so it cannot drift per archetype). The
+NEAREST candidate — the one an ENGAGE press actually takes — gets a brighter
+caret plus a tight foot ring, and keeps the perimeter ring, alone, at alpha
+.08 so the boundary is still legible. Every mark is drawn with a dark keyline
+under the brass: the first cut was legible on grass and snow and all but
+vanished on the town cobble, which is nearly the same warm yellow. Graphics
+rather than a sprite, per CLAUDE.md's preloading law.
+
+### 7.3 Movement is relative to the target
+
+The backpedal flag (which reverses the jog cycle) and the aim-relative facing
+were computed only `if (S.autoAttack)` — only while the attack button was
+physically held. That was faithful to the OLD controls, where deflecting the
+right stick set `autoAttack` in the same handler, and wrong for a lock that
+outlives the finger. Three edits, one fact:
+
+- `monsterCombat` writes `_aimAngle` from the lock whenever a **monster** lock
+  is held, not only while attacking. `_aiming` stays gated on `autoAttack`,
+  deliberately: desktop's mousemove does `if (autoAttack || _aiming) _aimAngle
+  = _mouseAimAngle`, so setting it here would let a hovering cursor fight the
+  lock inside one frame.
+- `entityRenderer.aimAttackActive` gains a held-monster-lock term, which is
+  what makes the whole 8-way circle target-relative: before, moving TOWARD the
+  lock or strafing across it left the ladder to fall through to the joystick
+  and the body turned to follow the thumb.
+- BroTown's movement step computes the backpedal on a held lock too. The
+  **0.5x speed stays under `autoAttack`** — the owner asked for a direction,
+  not a slowdown, and halving a merely engaged player's walk is a nerf nobody
+  requested.
+
+NPC locks are excluded: tapping a shopkeeper locks one, and walking away from
+the mayor while staring at him is not a combat stance. There is no sideways
+strafe strip in the art (forward frames plus a reversed cycle), so a sideways
+push resolves to whichever of the two the dot product picks — exactly as the
+old right-stick controls did.
+
+### 7.4 Swing and block are exclusive — see §5.4 (overruled)
+
+### 7.5 The shield icon was painted black on black — see TRAPS §42
+
+> "Block button appears without an thumbnail icon until you actually tap block"
+
+`filter: brightness(0) opacity(.55)` on a `#34444B → #202C32` button. No
+filter in either state now; opacity carries idle. Inherited from `BlockRing`,
+where the same silhouette read against the world rather than against a dark
+button.
+
+### 7.6 The joystick overlays hide themselves — see LANTERN-SLATE-SPEC §10
+
+> "Hide the joystick overlays. Just show the left joystick when you're moving
+> the character. Just show the right contextual button when there's input that
+> can be interacted with."
+
+One per-frame resolver, in the same block that already decides what the
+button's LABEL says, because that block is the only place that knows the
+button's context; deciding visibility anywhere else would be a second copy of
+that list. Plus a 400ms linger (candidacy is a hard 220px test, so a monster
+pacing the boundary would strobe the button), `pointer-events` switched with
+the opacity (a hidden button must not take taps), and an explicit hold
+registry for onboarding (TRAPS §41).
+
+### 7.7 The snowman — no code defect; the worker has not shipped yet
+
+> "Snowman behavior isn't acting right (idk if it's because of the server or if
+> you misunderstood) but the snowman burrow should have its movement speed
+> reduced by 50% and move to attack you ... instead of running away from you
+> while burrowing."
+
+**It is the deploy order, and the owner named the possibility themselves.**
+`origin/main` — which is what the production worker is built from — carries
+PR #543's `FLEE_PX_S: 190` and `m.x - ps.x` (AWAY). This branch carries
+`PILE_PX_S: 95` and `ps.x - m.x` (TOWARD) with contact damage. A Pages preview
+of this branch talks to the **deployed** worker, so the pile the owner watched
+was #543's, not this one's. Verified rather than assumed: the client only
+animates the burrow phase (`gameEvents` stamps `_burPhase`/`_burUntil`,
+`entityRenderer` plays the strip) and never moves or predicts the pile, so
+direction is entirely server-side. The `burrow` suite pins the sign, the
+speed, the 40px contact ring, exactly one hit per second, the block arc and
+the full-duration pile. **Nothing to change; it starts working the moment this
+merges and `deploy-worker.yml` runs.**
+
+`PILE_PX_S` is left at **95** and §5.15's reading stands: the owner is
+describing the flee build ("instead of running away"), so 190 is still the
+speed being halved. One number if that is the wrong reading.
+
+### 7.8 New judgement calls (same tag)
+
+| # | Question | What was done |
+|---|---|---|
+| 7.a | Attack pressed while the shield is up: refuse, or drop the shield and swing? | **Refuse.** The shield is a deliberate toggle and auto-dropping it on an attack press would make the toggle feel unreliable — you would lose a guard by fumbling the other button. The escape is the one the player already knows: tap the shield off. |
+| 7.b | Shield raised mid-swing: refuse, or cancel? | **Cancel** (`autoAttack`, `isSwinging` and the pending swing SFX all cleared). "Not at the same time" has to include the 250ms a swing is in the air, or the exclusion is only true between swings. |
+| 7.c | Does **Shield Bash** still work from a raised shield? | **Yes, unchanged.** Bash-out-of-a-block is its signature use and `resolveCastAngle` reads the raised shield's angle for it by design. The owner's complaint is the basic swing, and an ability with its own button, cost and cooldown is not that. |
+| 7.d | Server enforcement of the exclusion? | **None; flagged.** `ps.blocking` is written from every `move` packet, so a forged client re-asserts it each tick — a server gate would have to either drop honest in-flight hits (a raise racing a swing already sent) or invent a "no guard for N ms after a swing" rule the client cannot mirror. The gap is not new: §5.4 *sanctioned* attacking while blocking until now, and blocking buys mitigation, not damage. The honest fix is the tick-wire field already flagged in §5.20. |
+| 7.e | Desktop parity for the two-step press? | **Unchanged.** Desktop has no contextual button; a click aims at the cursor and always has. The directive is about the touch surface. `Q` still toggles, and the exclusion reaches desktop for free — `_desktopShieldOn` goes through `raiseShieldToggle`, and the click path goes through `swingAttack` and the same auto-attack gate. |
+| 7.f | Should a held lock also halve movement speed? | **No** — see 7.3. |
+| 7.g | The weapon-swap preview draws INSIDE the left disc, which is now hidden on release | The disc is held up for the preview's own window (`_lJoyPreviewUntil`). Without it the single-tap confirmation — the entire point of the two-tap swap — would have opened inside an invisible parent. |
+| 7.i | A monster hitting you from OUTSIDE the perimeter (the snowman throws from 300px) and no attack button on screen | **Left hidden**, on the owner's own rule: a monster you cannot engage is not "input that can be interacted with". You are not defenceless — the SHIELD button uses the "hit in the last 5s" leg and does appear, dodge is unchanged, and §7.9 restored tap-to-lock at range so you can lock the thrower by tapping it and the attack button then appears for the held lock. Closing the distance or leaving are the intended answers (§5.17). |
+| 7.h | Onboarding teaches both controls in town, where neither has anything to do | An explicit hold registry (`game/controlVisibility.js`). ControlsTutorial holds both sides for its whole open (a short modal; a hold that cannot desync beats one that is precise); QuestCoach holds per-mark, and takes the hold *before* measuring — see TRAPS §41 for the closed loop that forces that ordering. |
+
+### 7.9 Found while doing this pass — tap-to-lock had lost its range
+
+Not something the owner reported; found because the hidden button made it
+matter. §5.1 says a tapped lock "outside the perimeter is left alone by the
+persistence rule" and the code did not do that: `updateTargeting` cleared
+**any** monster lock outside the hysteresis ring, however it was made. So
+tap-to-lock silently stopped working past 275px — and a bow plants at 675px
+(1350 with Longshot), so locking a distant monster and sniping it, which
+worked before v2.3.2243, dropped the lock on the next frame. It went
+unnoticed because the button swung at air anyway.
+
+With the button hidden unless it can do something, a tapped lock is now the
+**only** way to engage anything beyond the perimeter — including the snowman,
+which throws from 300px (§5.17) — so the gap had to close. The two writers in
+`targeting.js` (an Attack press, the switch arrows) stamp `viaPerimeter` on
+the lock they make, and the range rule only clears locks carrying that mark. A
+tapped lock keeps its old lifetime: it ends when the monster dies, on zone
+change, or on another tap. `heldMonster` counts a tapped lock at any distance,
+so a press with one held is press TWO — an attack, not a re-engage.

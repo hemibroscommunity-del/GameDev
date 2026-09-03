@@ -86,6 +86,27 @@ function lockHolds(S) {
   return dx * dx + dy * dy <= R * R;
 }
 
+/* ═══ v2.3.2246: THE RANGE RULE OWNS ONLY THE LOCKS IT MADE ═══
+ * §5.1 of the spec says a tapped lock "outside the perimeter is left alone by
+ * the persistence rule", and the code did not do that: updateTargeting
+ * cleared ANY monster lock outside the hysteresis ring, tapped or engaged.
+ * So tap-to-lock silently stopped working past 275px -- and a bow plants at
+ * 675px (up to 1350 with Longshot), so locking a distant monster and sniping
+ * it, which worked before v2.3.2243, dropped the lock on the next frame.
+ * That went unnoticed because the button still swung at air; with the button
+ * hidden unless it can do something (v2.3.2246), tap-to-lock is now the only
+ * way to engage anything beyond the perimeter, so the gap had to close.
+ *
+ * `viaPerimeter` is stamped by the two writers here (an Attack press and the
+ * switch arrows) and by nothing else; a lock the canvas tap wrote has no such
+ * mark, and keeps its old lifetime -- it ends when the monster dies (the
+ * dead-lock clear in monsterCombat, which is separate and applies to every
+ * lock), on zone change, or on another tap. */
+function perimeterOwned(S) {
+  const lt = monsterLock(S);
+  return !!lt && lt.viaPerimeter === true;
+}
+
 /* Once per frame (monsterCombat's tick): refresh the candidate list and
    apply the persistence rule.  Cheap -- one pass over the zone's monsters. */
 export function updateTargeting(S) {
@@ -93,11 +114,42 @@ export function updateTargeting(S) {
   const cands = targetCandidates(S);
   S._targetCands = cands;
   const lt = monsterLock(S);
-  if (lt && !lockHolds(S)) {
+  /* v2.3.2246: ...and only if the perimeter is the thing that locked it. */
+  if (lt && perimeterOwned(S) && !lockHolds(S)) {
     S.lockedTarget = null;
     S._lockDroppedAt = Date.now();
     S._lockDroppedWhy = monLive(lt.ref) ? 'range' : 'dead';
   }
+}
+
+/* ═══ v2.3.2246: THE PRESS HAS TWO MEANINGS, SO IT NEEDS TO ASK WHICH ═══
+   Owner: "right button (former right joystick) should not be a standalone
+   attack button anymore. After you engage with an enemy by pressing attack
+   within perimeter of it you auto lock on target and the button turns into
+   an attack button at that point."
+
+   So the button's press is ENGAGE with nothing locked and ATTACK with a lock
+   held, and the handler has to know which BEFORE it acts -- engageNearest
+   cannot tell it, because it returns the same monster whether it just locked
+   one or found one already locked.  This is that question, asked once, in the
+   module that owns the rule for what "still locked" means (the hysteresis
+   ring, not just a non-null field). */
+export function heldMonster(S) {
+  const lt = monsterLock(S);
+  if (!lt || !monLive(lt.ref)) return null;
+  /* A tapped lock is held at any distance (see perimeterOwned); a perimeter
+     lock is held while it is in the ring.  Either way, held means the next
+     press is an ATTACK, not another engage. */
+  return (lt.viaPerimeter === true) ? (lockHolds(S) ? lt.ref : null) : lt.ref;
+}
+
+/* Is there anything an ENGAGE press could pick up right now?  The button's
+   own liveness reads this (BroTown's per-frame resolver) as well as its
+   press, so "the button is on screen" and "the press will do something" are
+   the same fact by construction. */
+export function hasCandidate(S) {
+  const c = (S && S._targetCands) || null;
+  return !!(c && c.length);
 }
 
 /* Called on every Attack press.  Returns the monster now locked, or null. */
@@ -108,11 +160,14 @@ export function engageNearest(S) {
   if (lockHolds(S)) return S.lockedTarget.ref;
   const cands = S._targetCands || targetCandidates(S);
   if (!cands.length) {
-    if (monsterLock(S)) S.lockedTarget = null;
+    /* v2.3.2246: a TAPPED lock out of range is not cleared here either -- the
+       press that finds nothing to engage must not throw away a target the
+       player picked deliberately (a sniped monster across the zone). */
+    if (perimeterOwned(S)) S.lockedTarget = null;
     return null;
   }
   const m = cands[0].m;
-  S.lockedTarget = { type: 'monster', id: m.id, ref: m };
+  S.lockedTarget = { type: 'monster', id: m.id, ref: m, viaPerimeter: true };
   S._engagedAt = Date.now();
   return m;
 }
@@ -144,7 +199,7 @@ export function cycleTarget(S, dir) {
     next = ordered[(((idx + (dir < 0 ? -1 : 1)) % n) + n) % n];
   }
   const m = next.m;
-  S.lockedTarget = { type: 'monster', id: m.id, ref: m };
+  S.lockedTarget = { type: 'monster', id: m.id, ref: m, viaPerimeter: true };
   S._engagedAt = Date.now();
   S._targetSwitchedAt = Date.now();
   return m;

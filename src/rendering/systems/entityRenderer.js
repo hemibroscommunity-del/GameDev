@@ -8807,7 +8807,26 @@ export class EntityRenderer {
                          || isShielding
                          || (S.lastDamageTaken && Date.now() - S.lastDamageTaken < 5000);
     const isInCombat = !SHEATHED_DEFAULT_ENABLED || _combatTriggers;
-    const aimAttackActive = S._aimAngle != null && (S._backpedaling || (!isMoving && S.autoAttack));
+    /* ═══ v2.3.2246: AN ENGAGED BODY FACES WHAT IT IS ENGAGED WITH ═══
+       Owner: "Every move you make is now relative to that target."
+       The two original triggers only cover half of "relative": _backpedaling
+       fires when you move AWAY from the aim, and (!isMoving && autoAttack)
+       when you stand still and swing.  Move TOWARD the locked monster, or
+       strafe across it, and both are false -- the ladder fell through to the
+       `stickActive` branch and the body turned to face the joystick, so a
+       player circling a slime watched their character look where their thumb
+       pointed instead of at the thing they were fighting.  A held MONSTER
+       lock is the third trigger, which makes the whole 8-way circle
+       target-relative: forward jog toward it, reversed jog away from it
+       (isMovingBackward, just below), and the body pinned on it throughout.
+       (There is no sideways strafe STRIP -- the art is forward frames plus a
+       reversed cycle -- so a sideways push resolves to whichever of the two
+       the dot product picks, exactly as the old right-stick controls did.)
+       NPC locks are excluded on purpose: tapping a shopkeeper locks one, and
+       walking away from the mayor while staring at him is not a combat
+       stance. */
+    const lockFacing = !!(S.lockedTarget && S.lockedTarget.ref && S.lockedTarget.type === 'monster');
+    const aimAttackActive = S._aimAngle != null && (lockFacing || S._backpedaling || (!isMoving && S.autoAttack));
     /* useAimDirection drives the slowed + reverse jog animation —
        still want it true during a swing window so the legs stay in
        sync with the attack-locked body. */

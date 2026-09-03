@@ -21,7 +21,7 @@ export function effectsAnimationsReady() { return Promise.allSettled(_fxPreload)
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R, FISH_CUE_DY } from '@/data/constants.js';
-import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, TARGET_PERIMETER_PX /* v2.3.2243 */ } from '@/data/index.js';
+import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */ } from '@/data/index.js';
 import { gesturePose01 } from '@/game/gesturePose.js'; /* v2.3.2245 */
 import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1535 generalised */
@@ -3356,24 +3356,108 @@ export class EffectsRenderer {
     const gfx = this.overlayGfx;
     gfx.clear();
 
-    /* ═══ v2.3.2243: THE TARGETING PERIMETER, DRAWN ═══
-       Owner: "Monsters will have a circular perimeter around them for
-       targeting zone."  Every candidate (targeting.js: alive, tangible, and
-       the player inside its circle) gets a faint ring at the perimeter
-       radius; the locked one keeps its reticle below.  Faint on purpose --
-       Lantern Slate keeps the world the brightest thing on screen -- and
-       only for candidates, so a quiet field draws nothing. */
+    /* ═══ v2.3.2246: THE ATTACK INDICATOR ═══
+       Owner: "There is an attack indicator that will appear for nearby
+       monsters (while in a monster's detectable perimeter). Once you tap
+       'attack' ... the auto-targeting engages."
+
+       So the indicator's job is to say, per monster, "this one is in play --
+       a press picks it up".  v2.3.2243 answered the earlier directive
+       ("monsters will have a circular perimeter around them for targeting")
+       literally, by stroking a TARGET_PERIMETER_PX ring around every
+       candidate.  That is a 440px-diameter circle centred on a monster: at
+       the 0.8 world scale it is ~350 CSS px across on a 390px phone, and
+       with the six-per-zone spawn count this PR ships, standing in a pack
+       drew six of them overlapping across the whole screen at alpha .14.
+       It read as ambient noise, not as a per-monster cue -- which is the
+       most likely reason the owner asked for an indicator that already
+       existed.
+
+       What is drawn now, from the top:
+         - a small brass caret over every candidate's head, bobbing, so the
+           mark is ON the monster and scales with none of the geometry;
+         - a tighter foot ring on the NEAREST candidate, because that is the
+           one an ENGAGE press actually takes (targeting.engageNearest reads
+           cands[0]) and "which one" is the question the arrows exist to
+           answer;
+         - the perimeter ring kept for the nearest candidate ALONE, at a
+           lower alpha, so the boundary you have to stay inside is still
+           visible without six of them fighting.
+       The locked monster keeps its red reticle below and is skipped here:
+       one target, one mark.
+
+       Graphics, not a texture: CLAUDE.md's preloading law makes a new
+       lazily-loaded sprite a bug, and a caret is four lineTo calls. */
     try {
       const _tc = S._targetCands;
-      if (_tc && _tc.length && Number.isFinite(TARGET_PERIMETER_PX)) {
+      /* Probe, house style (__btMonHit, __btCoach, __btWorldProps): which
+         monsters got a mark this frame and where.  A pixel count alone
+         cannot answer that in town, where the cobble is very nearly the
+         brass the mark is drawn in (TRAPS §21 names this exact false
+         positive), and a mark drawn at the wrong y is indistinguishable
+         from no mark at all in a crop. */
+      const _marks = [];
+      if (_tc && _tc.length) {
         const _lockRef = S.lockedTarget && S.lockedTarget.ref;
+        /* One shared bob so the whole set pulses together rather than
+           shimmering independently -- a field of out-of-phase carets reads
+           as noise, which is the failure being fixed. */
+        const _bob = Math.sin(now / 320) * 3;
+        const _pulse = 0.55 + Math.sin(now / 320) * 0.2;
         for (let i = 0; i < _tc.length; i++) {
           const c = _tc[i];
           if (!c || !Number.isFinite(c.x) || !Number.isFinite(c.y)) continue;
-          const locked = c.m === _lockRef;
-          gfx.circle(c.x, c.y, TARGET_PERIMETER_PX);
-          gfx.stroke({ color: locked ? 0xff3c3c : 0xD8A85F, width: locked ? 1.5 : 1, alpha: locked ? 0.28 : 0.14 });
+          if (c.m === _lockRef) continue;   /* the reticle speaks for that one */
+          const nearest = i === 0;
+          /* The caret sits above the body, not above the feet.
+             monsterBodyOffsetY is the SHARED table (data/gameSystems.js) that
+             lockAimPoint, the swing hit-test and the projectile aim all read
+             for "how far above m.y the body centre is" -- 23 for a slime, 48
+             for a mummy, 60 for the 1.25x skeleton.  Twice it clears the head
+             of every archetype, including reskins, without a second per-arch
+             table here for a marker to drift out of sync with (v2.3.1535's
+             lesson: a variant that falls through lands its mark on the feet).
+             It takes an arch/type STRING, not the monster. */
+          const _off = monsterBodyOffsetY(c.m && (c.m.arch || c.m.archetype || c.m.type)) || 23;
+          const _cy = c.y - _off * 2 - 10 + _bob;
+          const _w = nearest ? 7 : 5;
+          const _h = nearest ? 6 : 4;
+          /* KEYLINE FIRST.  Brass (#D8A85F) is a warm sand yellow and so is
+             the town cobble -- the first cut of this was legible on grass and
+             snow and all but vanished on the town floor, which is also why
+             the QA crop had to stop classifying the colour and start
+             differencing frames instead.  A dark stroke one step wider,
+             under the brass, gives the mark its own edge on any ground.  Two
+             strokes of a three-point path, drawn per candidate; the same
+             trick the world labels use in CSS, done in Graphics because
+             CLAUDE.md's preloading law makes a new texture here a bug. */
+          const _caret = function (width, color, alpha) {
+            gfx.moveTo(c.x - _w, _cy);
+            gfx.lineTo(c.x, _cy + _h);
+            gfx.lineTo(c.x + _w, _cy);
+            gfx.stroke({ color: color, width: width, alpha: alpha });
+          };
+          const _cw = nearest ? 2.5 : 1.5;
+          const _ca = nearest ? _pulse : _pulse * 0.5;
+          _caret(_cw + 2.5, 0x14181A, _ca * 0.8);
+          _caret(_cw, 0xD8A85F, _ca);
+          if (nearest) {
+            gfx.circle(c.x, c.y, 15);
+            gfx.stroke({ color: 0x14181A, width: 3.5, alpha: _pulse * 0.5 });
+            gfx.circle(c.x, c.y, 15);
+            gfx.stroke({ color: 0xD8A85F, width: 1.5, alpha: _pulse * 0.85 });
+            if (Number.isFinite(TARGET_PERIMETER_PX)) {
+              gfx.circle(c.x, c.y, TARGET_PERIMETER_PX);
+              gfx.stroke({ color: 0xD8A85F, width: 1, alpha: 0.08 });
+            }
+          }
+          _marks.push({ id: c.m && c.m.id, x: c.x, y: _cy, nearest: nearest });
         }
+      }
+      this._atkMarks = _marks;
+      if (typeof window !== 'undefined' && !window.__btAtkMark) {
+        const _self = this;
+        window.__btAtkMark = function () { return (_self._atkMarks || []).slice(); };
       }
     } catch (e) {
       if (!this._candErrLogged) {

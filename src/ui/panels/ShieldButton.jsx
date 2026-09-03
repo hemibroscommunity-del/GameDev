@@ -105,8 +105,26 @@ export function ShieldButton(props) {
     style: {
       width: Math.round(size * 0.56), height: Math.round(size * 0.56),
       imageRendering: 'pixelated', pointerEvents: 'none',
-      /* Idle: the same silhouette read BlockRing used, so "off" is unmistakable. */
-      filter: on ? 'none' : 'brightness(0) opacity(0.55)',
+      /* ═══ v2.3.2246: THE ICON WAS PAINTED BLACK ON BLACK ═══
+         Owner: "Block button appears without an thumbnail icon until you
+         actually tap block."  Exactly what the code did: the idle style was
+         `filter: brightness(0) opacity(0.55)`, which forces EVERY pixel of
+         the sprite to black regardless of the source art, and the button
+         under it is a radial-gradient from #34444B to #202C32.  A black
+         silhouette at 55% on near-black slate is nothing at all -- so the
+         icon only appeared on the tap, when the filter went to 'none'.
+         It was inherited from BlockRing (deleted this branch), where the
+         same silhouette read against the WORLD, not against a dark button.
+         The fix is the house idiom rather than a different filter: nothing
+         else in this control cluster uses one.  AbilityButtons and
+         ElementBurstButton both express idle with OPACITY alone and say why
+         in as many words -- a CSS filter on a DOM overlay compositing over
+         the WebGL canvas is the documented iOS grain hazard (v2.3.948's
+         charge pie, v2.3.1236's joystick bases, CLAUDE.md's standing note).
+         So: no filter at any time, and the OFF state is the real shield art
+         at 0.6 against the slate fill, against the lit brass ring and warm
+         fill of the ON state. */
+      opacity: on ? 1 : 0.6,
     },
   }),
   React.createElement('span', {

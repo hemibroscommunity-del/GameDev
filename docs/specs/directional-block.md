@@ -10,6 +10,18 @@
 > only Part 3's "how you raise it" is superseded. See
 > `docs/specs/control-redesign.md`.
 >
+> **v2.3.2246: AND YOU CANNOT ATTACK WHILE IT IS UP.** Owner: "you can both
+> swing and block at the same time. That is not right."  v2.3.2242 had
+> allowed it (control-redesign.md §5.4, now overruled). The exclusion is
+> enforced at the source, not on the button: `swingAttack` and
+> `specialAttack` refuse while `_shieldUp`, so does the auto-attack gate in
+> `monsterCombat` (the path bow and staff shots take), and raising the shield
+> cancels an attack already in flight. **Shield Bash is exempt** —
+> bash-out-of-a-block is its signature use and `resolveCastAngle` reads the
+> raised guard's angle for it by design. The 0.5x move speed while blocking
+> (Part 3) is unchanged, so a raised shield is still the planted, trade-
+> mobility-for-guard stance this spec describes — it now trades offence too.
+>
 > **STATUS (v2.3.1726): directionality is LIVE.** The v2.3.1110 retirement
 > banner that used to sit here was superseded by v2.3.1705, which put the
 > ±60° arc (`BLOCK_ARC_HALF`, Part 3) back on every block path — client

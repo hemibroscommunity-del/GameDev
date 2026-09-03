@@ -6,6 +6,7 @@ import React from 'react';
    rather than reimplemented: it is four lines, but they encode the
    ranged/staff fallback to `weapon` and a copy here would drift. */
 import { getActiveWeapon } from '@/data/gameSystems.js';
+import { holdDisc, releaseDisc, discSideFor } from '@/game/controlVisibility.js'; /* v2.3.2246 */
 
 /* ═══════════════════════════════════════════════════════════════════
    QUEST COACH — the controls are taught by the questline (v2.3.1796)
@@ -445,6 +446,11 @@ export function QuestCoach(props) {
      hold the first render's `null` forever and re-set the same mark
      twelve times a second. */
   const viewRef = React.useRef(null);
+  /* v2.3.2246: which discs this coach is currently holding on screen, so the
+     set can be reconciled each tick rather than leaked.  See the hold note in
+     the selection loop, and TRAPS §41 for why the hold has to be taken before
+     the anchor is measured. */
+  const discHoldRef = React.useRef({ id: null, sides: [] });
   const doneRef = React.useRef(loadDone());
   const ringRef = React.useRef(null);
   const arcRef = React.useRef(null);
@@ -596,13 +602,58 @@ export function QuestCoach(props) {
       if ((tick++ % 5) !== 0) return;
       if (!rpg || (!inTutorial(rpg) && !preTutorial(rpg))) {
         if (viewRef.current) { viewRef.current = null; setView(null); }
+        /* v2.3.2246: the coach retired — let go of the discs. */
+        if (discHoldRef.current.sides.length) {
+          for (const sd of discHoldRef.current.sides) releaseDisc(sd, 'coach');
+          discHoldRef.current = { id: null, sides: [] };
+        }
         return;
       }
       let next = null;
+      /* ═══ v2.3.2246: THE HOLD HAS TO COME BEFORE THE MEASURE ═══
+         v2.3.2246 hides the right button unless a press would do something
+         (owner: "Just show the right contextual button when there's input
+         that can be interacted with"), and hiding it means switching the
+         disc's pointerEvents off -- it is the touch target, and an
+         opacity-0 element still takes taps.
+
+         That closes a loop on this file.  reachable() hit-tests the middle
+         of the anchor with elementFromPoint; with the disc declining taps,
+         the answer is the [data-joyzone="R"] layer underneath, which is not
+         inside `.bt-rjoy-base`, so measure() returns null, so the `attack`
+         and `special` marks are skipped, so nothing ever asks for the
+         button to be shown, so it stays hidden.  The lesson would have
+         vanished in silence -- and this file's own rule is that a skipped
+         mark is a mark nobody can see is missing.
+
+         So the hold is taken the moment a lesson is found LIVE, before its
+         anchors are measured at all: the disc comes up on this tick and the
+         mark measures on the next (~80ms later, the 5-frame stride).  Only
+         the FIRST live lesson holds, because that is the only one that can
+         be shown -- holding for every live lesson would pin both discs on
+         screen for the whole of onboarding, which is the thing the owner
+         asked to stop.
+         The LEFT disc has no such loop: its anchors carry
+         reach:'[data-joyzone="L"]' and the disc has been pointerEvents:'none'
+         since v2.3.816, so the zone answers the hit-test whether the disc is
+         painted or not. */
+      const wantSides = [];
       for (const L of LESSONS) {
         if (done[L.id]) continue;
         if (L.done && L.done(rpg)) { done[L.id] = true; saveDone(done); continue; }
         if (!L.live(rpg)) continue;
+        /* Collected for EVERY live lesson the walk reaches, not just the
+           first: the walk stops at the first one that MEASURES, and a lesson
+           can be live and fail to measure for exactly the reason this hold
+           exists.  So the set is "the lessons that were considered", which
+           ends at the shown one -- bounded, and it cannot miss the lesson
+           actually on screen the way holding only for the first live one
+           could (gear is live and unmeasurable in a phone's bag layout;
+           attack is the one displayed). */
+        for (const a of L.anchors) {
+          const sd = discSideFor(a.sel);
+          if (sd && wantSides.indexOf(sd) < 0) wantSides.push(sd);
+        }
         const rect = measure(L.anchors);
         if (!rect) continue;          /* off screen / covered / desktop — skip, don't block */
         next = { id: L.id, label: L.label, body: rect.body, shape: L.shape, rect: rect };
@@ -614,6 +665,17 @@ export function QuestCoach(props) {
           cycleArmed.current = true;
         }
         break;
+      }
+      /* v2.3.2246: reconcile the hold set against what the walk wanted.
+         Recomputed every tick rather than edge-gated, so a lesson finishing
+         (or the whole coach retiring) cannot leave a disc pinned on screen
+         for the rest of the session, and so a hold lost to a remount comes
+         back on its own.  holdDisc is a Set add -- re-asking is free. */
+      {
+        const prev = discHoldRef.current.sides;
+        for (const sd of prev) if (wantSides.indexOf(sd) < 0) releaseDisc(sd, 'coach');
+        for (const sd of wantSides) holdDisc(sd, 'coach');
+        discHoldRef.current = { id: null, sides: wantSides };
       }
       const cur = viewRef.current;
       const same = (!next && !cur) || (next && cur && next.id === cur.id
@@ -676,7 +738,12 @@ export function QuestCoach(props) {
       };
     } catch (_e) {}
     raf = requestAnimationFrame(step);
-    return function () { stop = true; cancelAnimationFrame(raf); };
+    return function () {
+      stop = true; cancelAnimationFrame(raf);
+      /* v2.3.2246: unmount releases too, so a remount cannot double-hold. */
+      for (const sd of discHoldRef.current.sides) releaseDisc(sd, 'coach');
+      discHoldRef.current = { id: null, sides: [] };
+    };
   }, [stateRef]);
 
   if (!view) return null;
