@@ -170,3 +170,34 @@ windows he can be hurt in.
 
 The cap only binds when he cannot reach you; the floor is what you feel in a
 normal fight, because arrival ends the pile as soon as the floor has passed.
+
+
+## v2.3.2231 — the pile hurts to touch, and it is slower
+
+Owner: "Snowman burrow speed will decrease by 50% and target to the player
+again (move towards them) but this time when the snowman touches you you
+will take damage (at a max rate of 1 time being damaged per second you
+remain in contact with it)."
+
+| | before | after |
+|---|---|---|
+| `SPEED_MULT` | 3 (≈54 px/s) | **1.5** (≈27 px/s) |
+| contact damage | none — the pile was harmless by rule | **`m.dmg` once per second** while inside `CONTACT_PX` (40, on the snowman's dy×1.5 melee ellipse) |
+| arrival (≤60px) | ends the pile after the floor | **no longer ends it** — the pile runs to `PILE_MAX_MS` (8s) or until the target is gone after the floor |
+
+**Why arrival had to go.** A pile that damages on contact cannot surface on
+contact, or the rule could fire at most once and only by accident. So the
+"arrive" is now the hurt, and the move is a slow eight-second hazard you are
+meant to walk away from. This is flagged as a judgement call in
+`docs/specs/control-redesign.md` §5.8.
+
+**Why it goes through `_monsterStrikePlayer`.** That is the one choke point
+every monster→player hit funnels through, so the touch gets the block arc
+(evaluated at impact — a shield facing the pile blocks it), the harvest
+shield, thorns, the hexer curse, defense XP and the `monster_attack` event
+for free. No second damage path, nothing for the client to learn: the pile
+stays intangible to the *player's* attacks, and the hit it deals arrives as an
+ordinary `monster_attack` from within the 160px guard.
+
+The table in "The mechanic" above is superseded for the **Pile** row: still
+untouchable, no longer harmless.

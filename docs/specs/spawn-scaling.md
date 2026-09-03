@@ -1,3 +1,5 @@
+> **v2.3.2231:** the base is **6** per wilderness zone now (owner: "Monsters per zone will increase to 6"), placed by farthest-point sampling (`_pickSpreadSpawn`, `server/src/index.js`) so they spread across the zone instead of stacking; the scaler's mid-session adds use the same picker. The formulas below are unchanged; read `base` as 6 where this doc says 3.
+
 # Population-scaled spawns — v2.3.1983
 
 Monsters and gather nodes now size themselves to **how many players are

@@ -73,11 +73,15 @@ const nodeCountOf = (z, type) => (room.nodes[z] || []).filter((n) => n.nodeType 
 // ── 1. THE MONSTER CURVE — exact caps at 1 / 5 / 15 ─────────────────────
 {
   const base = room._zoneBaseMonsterCount('meadow');
-  check('curve: authored meadow population is 3', base === 3, base);
+  /* v2.3.2231: six per zone (owner). */
+  check('curve: authored meadow population is 6', base === 6, base);
   /* cap = min(24, base + ceil((p-1) * 1.5)).  Written out rather than
      recomputed from the constants on purpose — the point of this block is
      that the SHIPPED numbers are these numbers. */
-  const expect = { 1: 3, 2: 5, 3: 6, 5: 9, 10: 17, 15: 24, 20: 24, 60: 24 };
+  /* v2.3.2231: base 6 -> the same +1.5/player ramp reaches the 24 ceiling
+     at 13 players instead of 15.  The ceiling is a LOAD number (see the
+     spawnscale.js header) and is deliberately not moved by a content change. */
+  const expect = { 1: 6, 2: 8, 3: 9, 5: 12, 10: 20, 13: 24, 15: 24, 20: 24, 60: 24 };
   for (const [p, want] of Object.entries(expect)) {
     const got = room._scaledMonsterCap('meadow', Number(p));
     check(`curve: ${p} player(s) in zone -> ${want} monsters`, got === want, { p, got, want });
@@ -86,10 +90,10 @@ const nodeCountOf = (z, type) => (room.nodes[z] || []).filter((n) => n.nodeType 
     room._scaledMonsterCap('meadow', 1) === base && room._scaledMonsterCap('meadow', 0) === base);
   check('curve: the hard ceiling is 24 and nothing exceeds it',
     [1, 5, 15, 50, 500].every((p) => room._scaledMonsterCap('meadow', p) <= SPAWN_SCALE.MON_MAX));
-  check('curve: the ceiling is reached at exactly 15 players',
-    room._scaledMonsterCap('meadow', 15) === SPAWN_SCALE.MON_MAX
-    && room._scaledMonsterCap('meadow', 14) < SPAWN_SCALE.MON_MAX,
-    { at14: room._scaledMonsterCap('meadow', 14), at15: room._scaledMonsterCap('meadow', 15) });
+  check('curve: the ceiling is reached at exactly 13 players (v2.3.2231: base 6)',
+    room._scaledMonsterCap('meadow', 13) === SPAWN_SCALE.MON_MAX
+    && room._scaledMonsterCap('meadow', 12) < SPAWN_SCALE.MON_MAX,
+    { at12: room._scaledMonsterCap('meadow', 12), at13: room._scaledMonsterCap('meadow', 13) });
   check('curve: monotonic in population',
     [...Array(30).keys()].every((i) => room._scaledMonsterCap('meadow', i + 1) >= room._scaledMonsterCap('meadow', i)));
   /* Town and unknown zones are not scalable and must stay empty of
@@ -139,8 +143,15 @@ const nodeCountOf = (z, type) => (room.nodes[z] || []).filter((n) => n.nodeType 
   check('respawn: per-player kill supply stays at or under the solo rate',
     [2, 5, 10, 15, 25].every((p) => perHead(p) <= solo + 0.5),
     { solo, curve: [1, 2, 5, 10, 15, 25].map((p) => +perHead(p).toFixed(1)) });
-  check('respawn: and never collapses (>= 60% of solo out to 25 players)',
-    [2, 5, 10, 15, 25].every((p) => perHead(p) >= solo * 0.6),
+  /* v2.3.2231: with the base at 6 (owner) and the 24 ceiling unchanged (a
+     LOAD number, see the spawnscale.js header and control-redesign.md §5.14),
+     a crowd's per-head supply now settles at about half of solo rather than
+     ~98%: the ramp adds the same 1.5/player it always did, but solo doubled.
+     Pinned at the new shape so a future change to either dial is a visible
+     decision rather than a drift: 2 players still >= 60%, 5-15 >= 45%,
+     25 >= 35%.  Raising the ceiling to restore parity needs its own load run. */
+  check('respawn: and never collapses (>= 60% at 2, >= 45% out to 15, >= 35% at 25)',
+    perHead(2) >= solo * 0.6 && [5, 10, 15].every((p) => perHead(p) >= solo * 0.45) && perHead(25) >= solo * 0.35,
     { curve: [2, 5, 10, 15, 25].map((p) => +perHead(p).toFixed(1)) });
   /* Dungeon instances keep the flat timer — their waves are _tickDungeons'
      business and must not be re-paced by who is standing in them. */
@@ -154,10 +165,10 @@ const nodeCountOf = (z, type) => (room.nodes[z] || []).filter((n) => n.nodeType 
   const now0 = 1000000;
   room._ensureZoneMonsters('meadow');
   room._ensureZoneNodes('meadow');
-  check('growth: a lone player gets the authored 3', (() => {
+  check('growth: a lone player gets the authored 6', (() => {
     populate('meadow', 1);
     room._spawnScaleZone('meadow', now0, 1);
-    return monsterCount('meadow') === 3 && nodeCountOf('meadow', 'oreVein') === 1;
+    return monsterCount('meadow') === 6 && nodeCountOf('meadow', 'oreVein') === 1;
   })(), { m: monsterCount('meadow'), ore: nodeCountOf('meadow', 'oreVein') });
 
   populate('meadow', 5);
@@ -170,7 +181,7 @@ const nodeCountOf = (z, type) => (room.nodes[z] || []).filter((n) => n.nodeType 
     monsterCount('meadow') - beforePass === SPAWN_SCALE.GROW_PER_PASS,
     { added: monsterCount('meadow') - beforePass, budget: SPAWN_SCALE.GROW_PER_PASS });
   settle('meadow', 5, now0 + 1);
-  check('growth: 5 players -> 9 monsters, 2 of each node', monsterCount('meadow') === 9
+  check('growth: 5 players -> 12 monsters, 2 of each node', monsterCount('meadow') === 12
     && nodeCountOf('meadow', 'oreVein') === 2 && nodeCountOf('meadow', 'tree') === 2
     && nodeCountOf('meadow', 'fishSpot') === 2,
     { m: monsterCount('meadow'), ore: nodeCountOf('meadow', 'oreVein') });
@@ -180,9 +191,9 @@ const nodeCountOf = (z, type) => (room.nodes[z] || []).filter((n) => n.nodeType 
   check('growth: 15 players -> the 24 ceiling, 3 of each node', monsterCount('meadow') === 24
     && nodeCountOf('meadow', 'oreVein') === 3, { m: monsterCount('meadow') });
   check('growth: ids are unique', new Set(room.monsters.meadow.map((m) => m.id)).size === 24);
-  check('growth: the authored 3 are unmarked; every added one is trimmable',
-    room.monsters.meadow.filter((m) => !m._scaled).length === 3
-    && room.monsters.meadow.filter((m) => m._scaled).length === 21);
+  check('growth: the authored 6 are unmarked; every added one is trimmable',
+    room.monsters.meadow.filter((m) => !m._scaled).length === 6
+    && room.monsters.meadow.filter((m) => m._scaled).length === 18);
   check('growth: a scaled monster is a REAL monster (stats, not a stub)',
     room.monsters.meadow.filter((m) => m._scaled).every((m) => m.maxHp > 0 && m.hp === m.maxHp
       && m.dmg > 0 && m.xp > 0 && m.alive === true && typeof m.arch === 'string'
@@ -237,7 +248,7 @@ const nodeCountOf = (z, type) => (room.nodes[z] || []).filter((n) => n.nodeType 
      it is why the count lands between the authored 3 and the old 24. */
   const leftover = room.monsters.meadow;
   check('damping: the world followed the cap back down',
-    leftover.length < 24 && leftover.length >= 3, leftover.length);
+    leftover.length < 24 && leftover.length >= 6, leftover.length);
   check('damping: nothing within sight of the remaining player was taken',
     leftover.filter((m) => Math.hypot(m.x - 100, m.y - 100) < SPAWN_SCALE.TRIM_SAFE_PX)
       .every((m) => true)
@@ -255,13 +266,13 @@ const nodeCountOf = (z, type) => (room.nodes[z] || []).filter((n) => n.nodeType 
        rationed. */
     const heldNow = room._zonePop.meadow.held;
     settle('meadow', 10, t + 1);
-    return heldNow === 10 && monsterCount('meadow') === 17;
+    return heldNow === 10 && monsterCount('meadow') === 20;
   })(), { held: room._zonePop.meadow.held, m: monsterCount('meadow') });
 
   check('damping: an EMPTY zone trims to authored size immediately', (() => {
     populate('meadow', 0);
     room._spawnScaleZone('meadow', t + 2, 0);
-    return room._zonePop.meadow.held === 0 && monsterCount('meadow') === 3
+    return room._zonePop.meadow.held === 0 && monsterCount('meadow') === 6
       && nodeCountOf('meadow', 'oreVein') === 1;
   })(), { held: room._zonePop.meadow.held, m: monsterCount('meadow') });
 }
@@ -303,7 +314,7 @@ const nodeCountOf = (z, type) => (room.nodes[z] || []).filter((n) => n.nodeType 
     protectedIds.slice(0, 4).every((id) => surviving.has(id)),
     protectedIds.slice(0, 4).filter((id) => !surviving.has(id)));
   check('safety: the authored spawns are never removed',
-    room.monsters.frost.filter((m) => !m._scaled).length === 3);
+    room.monsters.frost.filter((m) => !m._scaled).length === 6);
   check('safety: everything unengaged and far away WAS reclaimed',
     room.monsters.frost.filter((m) => m._scaled && m.x === 900).length === 0,
     room.monsters.frost.length);

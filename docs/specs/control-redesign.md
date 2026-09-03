@@ -311,6 +311,7 @@ is the note.
 | 5.11 | The harvest **wind-up** (2-10s, server-validated) has no gesture to drive the animation | The existing slow loop plays during `waiting`; the gesture takes over at `ready`. | A frozen character for up to ten seconds reads as a hang. The cap ("not faster than a leisurely pace") is applied to the gesture-driven phase, which is the one the directive describes. |
 | 5.12 | **Desktop** parity for target switching | `Tab` cycles candidates; everything else on desktop is unchanged (click attacks toward the mouse, `Q` toggles the shield, right-click special). | The directive is about the touch surface; desktop already has the toggle semantics it asks for. |
 | 5.13 | Pets, arena, duels, dungeon bosses | Unchanged. A duel opponent is still locked by tapping; the perimeter scan only considers monsters. | Out of the directive's scope; noted so nobody assumes otherwise. |
+| 5.14 | Six per zone vs the **crowd scaler** (`spawnscale.js`: +1.5 monsters per extra player, hard ceiling 24) | Base 6, ramp and ceiling unchanged — so a zone now hits its 24-monster ceiling at 13 players instead of 15, and per-head kills/minute in a crowd fall below the old "≥60% of solo" floor past ~10 players. | The 24 ceiling is a **load** number (`load-tick.mjs` proved 25/zone × 7 zones); a content change should not move it silently. Raising it to keep crowds at parity needs its own load run — the owner's call. |
 
 ---
 

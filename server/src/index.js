@@ -1199,19 +1199,69 @@ export class GameRoom {
   }
 
   // Spawn monsters for a zone
-  _spawnZoneMonsters(zoneId) {
-    const zone = this._getZoneConfig(zoneId);
-    if (!zone || !zone.spawns) return [];
+  /* ═══ v2.3.2231: SPREAD THE SPAWNS ═══
+     Owner: "Monsters per zone will increase to 6, but be spaced out more
+     evenly over the zone area to prevent too much monster overlap."
+
+     Farthest-point sampling: draw SPAWN_SPREAD_TRIES candidate points inside
+     the 4-tile margin and keep the one whose nearest neighbour (among the
+     monsters already placed, plus any `avoid` points such as players) is
+     farthest away.  With no neighbours yet the first point is simply random.
+     It is O(tries x placed) per spawn -- six spawns, sixteen tries, trivial
+     -- needs no walkable mask (the server has none), and turns "three
+     slimes on one tile" into a spread without the failure modes of a grid
+     (visible regularity) or true Poisson-disc (can fail to place).  Shared
+     by spawnscale.js's mid-session adds so a scaled zone stays spread too;
+     respawn returns each monster to its own spawnX/Y, so the spread
+     survives the fight. */
+  _pickSpreadSpawn(zone, placed, avoid, avoidClearPx) {
     const W = zone.w * this.TILE;
     const H = zone.h * this.TILE;
     const margin = 4 * this.TILE;
+    const TRIES = this.SPAWN_SPREAD_TRIES || 16;
+    let bx = margin + Math.random() * (W - margin * 2);
+    let by = margin + Math.random() * (H - margin * 2);
+    const others = placed || [];
+    const keepClear = avoid || [];
+    const clear = avoidClearPx || 0;
+    if (others.length === 0 && keepClear.length === 0) return { x: bx, y: by };
+    /* Two ranks: candidates that respect the `avoid` clearance (a player's
+       face, for the scaler) beat every candidate that does not, and within a
+       rank the farthest-from-the-nearest-neighbour wins.  So the clearance
+       is honoured whenever ANY draw can, and degrades to "as far as we
+       managed" only when the zone genuinely has no room -- never a silent
+       spawn on top of someone when there was somewhere else to put it. */
+    let bestScore = -Infinity;
+    for (let t = 0; t < TRIES; t++) {
+      const cx = margin + Math.random() * (W - margin * 2);
+      const cy = margin + Math.random() * (H - margin * 2);
+      let dMin = Infinity;
+      for (const o of others) {
+        const d = Math.hypot((o.x || 0) - cx, (o.y || 0) - cy);
+        if (d < dMin) dMin = d;
+      }
+      let dAvoid = Infinity;
+      for (const a of keepClear) {
+        const d = Math.hypot((a.x || 0) - cx, (a.y || 0) - cy);
+        if (d < dAvoid) dAvoid = d;
+      }
+      if (dAvoid < dMin) dMin = dAvoid;
+      const ok = dAvoid >= clear;
+      const score = (ok ? 1e6 : 0) + (dMin === Infinity ? 0 : dMin);
+      if (score > bestScore) { bestScore = score; bx = cx; by = cy; }
+    }
+    return { x: bx, y: by };
+  }
+
+  _spawnZoneMonsters(zoneId) {
+    const zone = this._getZoneConfig(zoneId);
+    if (!zone || !zone.spawns) return [];
     const monsters = [];
     let idx = 0;
     for (const spawn of zone.spawns) {
       for (let i = 0; i < spawn.count; i++) {
-        const x = margin + Math.random() * (W - margin * 2);
-        const y = margin + Math.random() * (H - margin * 2);
-        const m = this._makeZoneMonster(zoneId, zone, spawn, 'sm-' + zoneId + '-' + idx, x, y);
+        const pt = this._pickSpreadSpawn(zone, monsters, null);   /* v2.3.2231 */
+        const m = this._makeZoneMonster(zoneId, zone, spawn, 'sm-' + zoneId + '-' + idx, pt.x, pt.y);
         if (m) monsters.push(m);
         idx++;
       }

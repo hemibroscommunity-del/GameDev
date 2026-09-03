@@ -123,16 +123,51 @@ function toPile() {
     !snowman.dmgByPlayer || !snowman.dmgByPlayer.p1 || snowman.dmgByPlayer.p1 >= 0, snowman.dmgByPlayer);
 }
 
-// ── 4. The pile is HARMLESS — the owner's rule, and what makes it fair ──
+// ── 4. v2.3.2231: the pile HURTS TO TOUCH — once a second, and only in contact ──
+//    (It was HARMLESS from v2.3.2221 to v2.3.2230; the owner changed the rule:
+//     "when the snowman touches you you will take damage (at a max rate of 1
+//     time being damaged per second you remain in contact with it)".)
 {
+  ps.hp = ps.maxHp;
   const hpBefore = ps.hp;
   snowman.x = ps.x; snowman.y = ps.y;      /* right on top of the player */
   snowman.atkCd = 0;
+  snowman._burContactNextAt = 0;
   room.eventBuffer.length = 0;
-  for (let i = 0; i < 5; i++) room._tickMonsters();
-  check('pile: he cannot attack you in this form', ps.hp === hpBefore,
-    { hpBefore, hp: ps.hp });
-  check('pile: ...and starts no wind-up either', !snowman._bwUntil, snowman._bwUntil);
+  room._tickMonsters();
+  const hits = () => room.eventBuffer.filter((e) => e.type === 'monster_attack' && e.payload.monsterId === snowman.id);
+  check('contact: standing on the pile deals damage', ps.hp < hpBefore, { hpBefore, hp: ps.hp });
+  check('contact: ...as an ordinary monster_attack from the pile', hits().length === 1, hits().length);
+  check('contact: ...and still starts no wind-up (it is a touch, not a swing)', !snowman._bwUntil, snowman._bwUntil);
+  const hpAfterOne = ps.hp;
+  for (let i = 0; i < 20; i++) room._tickMonsters();   /* ~440ms of ticks, well inside the second */
+  check('contact: a second touch inside the same second does NOT hit again',
+    ps.hp === hpAfterOne && hits().length === 1, { hp: ps.hp, hpAfterOne, hits: hits().length });
+  snowman._burContactNextAt = Date.now() - 1;           /* the second is up */
+  room._tickMonsters();
+  check('contact: ...and does once the second has passed',
+    ps.hp < hpAfterOne && hits().length === 2, { hp: ps.hp, hpAfterOne, hits: hits().length });
+  /* Out of contact: no damage however long you stand there. */
+  const hpOut = ps.hp;
+  snowman.x = ps.x + BURROW.CONTACT_PX + 30; snowman.y = ps.y;
+  snowman._burContactNextAt = 0;
+  room._tickMonsters();
+  check('contact: out of the touch ring, no damage', ps.hp === hpOut && hits().length === 2, { hp: ps.hp, hpOut });
+  /* And the pile is still intangible to the player while it hurts them. */
+  check('contact: the pile stays invulnerable while it is hurting you',
+    room._monsterDamageable(snowman) === false, snowman._invulnUntil);
+  /* Facing him with a shield up blocks the touch, because it goes through
+     the same impact path a swing does. */
+  ps.hp = ps.maxHp; ps.blocking = true; ps.ba = Math.PI;   /* he is due west of the player after the step above? no: re-seat */
+  snowman.x = ps.x - 10; snowman.y = ps.y;                 /* 10px to the WEST */
+  ps.ba = Math.PI;                                         /* shield faces west */
+  snowman._burContactNextAt = 0;
+  room.eventBuffer.length = 0;
+  room._tickMonsters();
+  const blockedHit = room.eventBuffer.find((e) => e.type === 'monster_attack' && e.payload.monsterId === snowman.id);
+  check('contact: a shield facing the pile blocks the touch (impact-time arc, same as a swing)',
+    ps.hp === ps.maxHp && !!blockedHit && blockedHit.payload.blocked === true, { hp: ps.hp, blockedHit });
+  ps.blocking = false; ps.ba = null;
 }
 
 // ── 5. Emerging ends the immunity and is itself a punish window ──
@@ -214,17 +249,31 @@ function toPile() {
   room._tickMonsters();                    /* -> pile */
   check('duration: the pile begins even at point-blank range',
     snowman._burPhase === 'pile', snowman._burPhase);
-  /* Arrival is already true (distance 0), so without a floor this would
-     surface on the very next tick -- which is exactly the case that made
-     the move feel like it barely happened. */
+  /* v2.3.2231: ARRIVAL NO LONGER ENDS THE PILE AT ALL.  A pile that hurts
+     on contact cannot surface on contact, or the rule fires at most once
+     and only by accident.  It runs to the cap (or until the target is gone,
+     after the floor). */
   snowman.x = ps.x; snowman.y = ps.y;
   room._tickMonsters();
-  check('duration: ...and arrival cannot end it before the floor',
+  check('duration: standing on him does not end it before the floor',
     snowman._burPhase === 'pile', { phase: snowman._burPhase, floor: snowman._burFloor });
   snowman._burFloor = Date.now() - 1;
   room._tickMonsters();
-  check('duration: ...but does end it once the floor has passed',
-    snowman._burPhase === 'emerge', snowman._burPhase);
+  check('duration: ...nor after the floor (v2.3.2231: arrival is the hurt, not the end)',
+    snowman._burPhase === 'pile', snowman._burPhase);
+  snowman._burUntil = Date.now() - 1;
+  room._tickMonsters();
+  check('duration: the cap ends it', snowman._burPhase === 'emerge', snowman._burPhase);
+  /* And a target who is GONE ends it too, once the floor has passed.
+     "Gone" here is death rather than a zone change: with the only player
+     out of frost the zone is not active and _tickMonsters does not visit
+     it at all, so a zone-change fixture would measure nothing. */
+  arm(0); room._tickMonsters(); snowman._burUntil = Date.now() - 1; room._tickMonsters();
+  snowman._burFloor = Date.now() - 1;
+  ps.dead = true;
+  room._tickMonsters();
+  check('duration: a target who is gone ends it after the floor', snowman._burPhase === 'emerge', snowman._burPhase);
+  ps.dead = false;
 }
 
 // ── 11. The pile travels at the snowman's OWN speed ──
@@ -246,6 +295,13 @@ function toPile() {
   const want = (snowman.spd || 0.4) * BURROW.SPEED_MULT;
   check('duration: the pile moves at m.spd x SPEED_MULT, not a fallback',
     Math.abs(step - want) < 0.05, { step, want, spd: snowman.spd });
+  /* v2.3.2231 (owner: "burrow speed will decrease by 50%"): the multiplier
+     is pinned at exactly half of the 3 it shipped with. */
+  check('duration: ...and SPEED_MULT is half of the v2.3.2221 value (3 -> 1.5)',
+    BURROW.SPEED_MULT === 1.5, BURROW.SPEED_MULT);
+  check('duration: the contact ring is inside the melee reach (a mound, not an arm)',
+    BURROW.CONTACT_PX > 0 && BURROW.CONTACT_PX < 70 && BURROW.CONTACT_CD_MS === 1000,
+    { px: BURROW.CONTACT_PX, cd: BURROW.CONTACT_CD_MS });
 }
 
 // ══════════════════════════════════════════════════════════════════

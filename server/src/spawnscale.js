@@ -267,23 +267,17 @@ export const spawnScaleMethods = {
     const pool = [];
     for (const s of zone.spawns) for (let i = 0; i < (s.count || 0); i++) pool.push(s);
     if (pool.length === 0) return false;
-    const W = zone.w * this.TILE, H = zone.h * this.TILE;
-    const margin = 4 * this.TILE;
     if (!this._zoneSpawnSeq) this._zoneSpawnSeq = Object.create(null); // null-proto (TRAPS #6)
     let added = 0;
     for (let k = 0; k < want; k++) {
-      /* Rejection-sample a point away from everyone standing here: a
-         monster that materialises on top of a player reads as a bug even
-         when it is the feature working. */
-      let x = 0, y = 0, best = -1;
-      for (let att = 0; att < SPAWN_SCALE.PLACE_TRIES; att++) {
-        const cx = margin + Math.random() * (W - margin * 2);
-        const cy = margin + Math.random() * (H - margin * 2);
-        let dMin = Infinity;
-        for (const p of players) dMin = Math.min(dMin, Math.hypot((p.x || 0) - cx, (p.y || 0) - cy));
-        if (dMin > best) { best = dMin; x = cx; y = cy; }
-        if (dMin >= SPAWN_SCALE.SPAWN_CLEAR_PX) break;
-      }
+      /* v2.3.2231: the same farthest-point picker the authored spawns use
+         (index.js _pickSpreadSpawn), with the players standing here as
+         extra points to stay away from -- so a scaled add is spread from
+         the monsters already in the zone AND does not materialise on top
+         of anyone, which reads as a bug even when it is the feature
+         working.  (The old version avoided players only.) */
+      const _pt = this._pickSpreadSpawn(zone, list.filter((mm) => mm && mm.alive), players, SPAWN_SCALE.SPAWN_CLEAR_PX);
+      const x = _pt.x, y = _pt.y;
       const seq = (this._zoneSpawnSeq[zoneId] = (this._zoneSpawnSeq[zoneId] || 0) + 1);
       const spawn = pool[(seq - 1) % pool.length];
       /* Same builder the authored spawns use, so a scaled monster is

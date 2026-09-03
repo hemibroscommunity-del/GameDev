@@ -191,10 +191,36 @@ export const BURROW = {
      phase you can see even when the geometry is against it.  A long pile
      costs the player nothing but time, because it cannot hurt them. */
   PILE_MIN_MS: 2400,   /* v2.3.2225: 1200 -> 2400 */
-  PILE_MAX_MS: 8000,   /* invulnerable, harmless. v2.3.2225: 4000 -> 8000 */
+  PILE_MAX_MS: 8000,   /* invulnerable. v2.3.2225: 4000 -> 8000 */
   EMERGE_MS: 600,      /* vulnerable — the punish window */
-  ARRIVE_PX: 60,
-  SPEED_MULT: 3,
+  /* ═══ v2.3.2231: THE PILE HURTS TO TOUCH ═══
+     Owner: "Snowman burrow speed will decrease by 50% and target to the
+     player again (move towards them) but this time when the snowman touches
+     you you will take damage (at a max rate of 1 time being damaged per
+     second you remain in contact with it)."
+
+     SPEED_MULT 3 -> 1.5: half.  0.6 px/tick on a snowman's 0.4 spd = 27 px/s,
+     a slow grind you can always walk away from -- and now should.
+
+     ARRIVE_PX is GONE as an end condition.  It used to surface him the
+     moment he reached you (after the floor), which was right while the pile
+     was harmless: arrival was the move's whole point.  A pile that damages
+     on contact cannot end on contact, or the rule could fire at most once
+     and only by accident; so the pile now runs to PILE_MAX_MS (or until the
+     target is gone, after the floor) and the "arrive" is the hurt.  Spec
+     §5.8 in docs/specs/control-redesign.md records this as a judgement
+     call for the owner to review.
+
+     CONTACT_PX is the touch ring, measured on the same dy x 1.5 ellipse the
+     snowman's melee ring uses (index.js _yScale), so "touching" means the
+     same thing standing beside him as it does standing below him.  40 is
+     under his 70 melee reach on purpose: the pile is a mound, not an arm.
+     CONTACT_CD_MS is the owner's "1 time per second". */
+  ARRIVE_PX: 60,       /* kept for the client's wire mirror; no longer ends the pile */
+  SPEED_MULT: 1.5,     /* v2.3.2231: 3 -> 1.5 (owner: "decrease by 50%") */
+  CONTACT_PX: 40,
+  CONTACT_Y_SCALE: 1.5,
+  CONTACT_CD_MS: 1000,
 };
 
 /* ═══ v2.3.2224: THE BLUE SLIME GOES OFF ═══
@@ -593,6 +619,7 @@ export const telegraphMethods = {
     m._burPhase = 'dig';
     m._burUntil = now + BURROW.DIG_MS;
     m._burTarget = targetId;
+    m._burContactNextAt = 0;   /* v2.3.2231: a fresh pile may hurt at once */
     m._burCd = now + BURROW.CD_MS;    /* from the START, like the wind-up cooldown:
                                          stamping it at the end would make the
                                          move's own duration part of its downtime */
@@ -624,14 +651,29 @@ export const telegraphMethods = {
       /* Grind toward where they are NOW (not a frozen point): the pile is
          slow-motion pursuit, and freezing the aim would make walking aside
          beat it every time with no counterplay needed. */
-      let arrived = false;
-      /* v2.3.2223: arrival cannot end the pile before its floor. */
+      /* v2.3.2223: the floor -- nothing ends the pile before it. */
       const _canEnd = now >= (m._burFloor || 0);
       if (!gone) {
         const dx = (ps.x || 0) - m.x, dy = (ps.y || 0) - m.y;
         const d = Math.hypot(dx, dy);
-        if (d <= BURROW.ARRIVE_PX) arrived = _canEnd;
-        else if (d > 0) {
+        /* v2.3.2231: CONTACT.  Touching the pile hurts, at most once a
+           second while you stay in it.  Measured on the snowman's own melee
+           ellipse so the ring reads the same from every side.  Routed
+           through _monsterStrikePlayer -- the one choke point every
+           monster->player hit funnels through -- so the block arc (at
+           impact), the harvest shield, thorns, the hexer curse, defense XP
+           and the monster_attack event all apply with no second damage
+           path to keep honest.  The client needs nothing new: the pile
+           stays intangible to the PLAYER's attacks (isIntangible), and the
+           hit it deals arrives as an ordinary monster_attack from within
+           the 160px guard. */
+        const _cdx = dx, _cdy = dy * BURROW.CONTACT_Y_SCALE;
+        const touching = Math.sqrt(_cdx * _cdx + _cdy * _cdy) <= BURROW.CONTACT_PX;
+        if (touching && now >= (m._burContactNextAt || 0)) {
+          m._burContactNextAt = now + BURROW.CONTACT_CD_MS;
+          this._monsterStrikePlayer(zoneId, m, m._burTarget, m.x, m.y);
+        }
+        if (!touching && d > 0) {
           /* v2.3.2223: `m.speed` -- which does not exist.  The field is
              `m.spd` (0.4 for a snowman: 0.5 base x its 0.8 spdMult), so this
              read undefined and fell back to 1, moving the pile at 3 px per
@@ -645,7 +687,8 @@ export const telegraphMethods = {
           this._markMonsterDirty(zoneId, m.id);
         }
       }
-      if (arrived || (gone && _canEnd) || now >= m._burUntil) {
+      /* v2.3.2231: arrival no longer ends the pile (see BURROW). */
+      if ((gone && _canEnd) || now >= m._burUntil) {
         m._burPhase = 'emerge';
         m._burUntil = now + BURROW.EMERGE_MS;
         m._invulnUntil = 0;            /* surfacing ends the immunity immediately */
