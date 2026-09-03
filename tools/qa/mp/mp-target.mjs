@@ -233,12 +233,50 @@ export async function run({ browser, wsPort, webPort, rec }) {
   s = await st(P);
   rec.ok('the locked monster dying drops the lock', s.lock === null, s);
 
-  /* ── the pile is not a target ── */
+  /* ── the pile cannot be PICKED UP, but it can be KEPT ──
+     v2.3.2252, owner: "make the character keep his targeting on the snowman
+     even during burrow because you're still in active combat with him you just
+     can't damage him.  Makes it hard to use shield against him when auto
+     targeting of the monster drops."
+     Both halves matter and they pull opposite ways, so both are asserted: a
+     mound must never STEAL the target off a live monster (it cannot be hit),
+     and it must never LOSE the target it already had (the shield is pointed at
+     it, and he is about to surface underneath you). ── */
   await seed(P, [{ id: 'pile', dx: 70 }]);
   await P.page.evaluate(() => { const S = window._gameState.current; S.monsters[0]._burPhase = 'pile'; });
   await P.page.waitForTimeout(300);
   s = await st(P);
   rec.ok('an intangible snow pile is not a candidate', s.cands.length === 0, s);
+  /* Clear the lock first: `seed` puts him down LIVE, so the automatic rule
+     acquires him a frame before he burrows -- and keeping that is the other
+     half of this change.  What must not happen is a fresh acquisition once he
+     is already a mound. */
+  await P.page.evaluate(() => { window._gameState.current.lockedTarget = null; });
+  await P.page.waitForTimeout(400);
+  s = await st(P);
+  rec.ok('...and once released, a mound is never picked up as a NEW target',
+    s.lock === null, s);
+  /* Now the case the owner hit: he was ALREADY your target when he burrowed. */
+  await seed(P, [{ id: 'snowman', dx: 70 }]);
+  await P.page.waitForTimeout(400);
+  s = await st(P);
+  rec.ok('guard: the snowman is targeted before he burrows', s.lock === 'snowman', s);
+  await P.page.evaluate(() => { const S = window._gameState.current; S.monsters[0]._burPhase = 'pile'; });
+  await P.page.waitForTimeout(500);
+  s = await st(P);
+  rec.ok('the target STAYS on him while he is burrowed, so the shield keeps facing him',
+    s.lock === 'snowman', s);
+  rec.ok('...even though he has left the candidate list (he cannot be hit)',
+    s.cands.length === 0, s);
+  /* And he is released normally when he actually dies mid-pile. */
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const m = S.monsters[0];
+    m.alive = false; m.curHp = 0; m.respawnAt = Date.now() + 60000;
+  });
+  await P.page.waitForTimeout(300);
+  s = await st(P);
+  rec.ok('...but dying still drops it, burrowed or not', s.lock === null, s);
 
   await P.page.screenshot({ path: H.REPO + '/tools/qa/mp/.last-target.png' }).catch(() => {});
   await P.ctx.close().catch(() => {});

@@ -376,6 +376,61 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and neither does a second one (it is held, not charged)',
     afterBlock2.shield === true, afterBlock2);
 
+  /* ── ═══ v2.3.2252: THE SHIELD BASH BUTTON FOLLOWS THE SHIELD ═══ ──
+     Owner: "Make shield bash an ability for any level (no gates) the only
+     requirement is you must have your shield held.  Then the button for shield
+     bash appears."  Asserted off COMPUTED STYLE, never off whether a press
+     lands: this file's own header records that dispatchEvent ignores
+     pointer-events entirely, so a press landing proves nothing about
+     visibility.  The character here is at the ungated floor (level 3), which
+     is the whole point -- before this it needed level 4. ── */
+  const bashVis = () => P.page.evaluate(() => {
+    const el = document.querySelector('[data-ability="bash"]');
+    if (!el) return { present: false };
+    const cs = getComputedStyle(el);
+    return { present: true, shown: cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity) > 0.05 };
+  });
+  /* Self-contained: put the shield DOWN first rather than assuming the block
+     above left it that way -- a scenario that inherits state silently becomes
+     order-dependent, and this one is inserted between two shield tests. */
+  if ((await st(P)).shield === true) {
+    await P.page.evaluate(() => { const c = window.__centre('[data-shield]'); window.__touch(c.el, 'touchstart', c.x, c.y, 79); window.__touch(c.el, 'touchend', c.x, c.y, 79); });
+    await P.page.waitForTimeout(240);
+  }
+  rec.ok('guard: shield is down for the bash-button test', (await st(P)).shield === false, await st(P));
+  const bashDown = await bashVis();
+  rec.ok('with the shield DOWN there is no Shield Bash button', bashDown.present === false || bashDown.shown === false, bashDown);
+  await P.page.evaluate(() => { const c = window.__centre('[data-shield]'); window.__touch(c.el, 'touchstart', c.x, c.y, 80); window.__touch(c.el, 'touchend', c.x, c.y, 80); });
+  await P.page.waitForTimeout(260);
+  rec.ok('guard: the shield went up', (await st(P)).shield === true);
+  const bashUp = await bashVis();
+  rec.ok('...and raising it puts the Shield Bash button on screen, at level 3 (no level gate)',
+    bashUp.present === true && bashUp.shown === true, bashUp);
+  /* And the v2.3.2248 exemption, which nothing pinned until now: bash is the
+     one attack that does NOT break the hold -- bashing out of a block is its
+     whole point, and a bash that dropped the shield would delete its own
+     button mid-cooldown. */
+  await P.page.evaluate(() => {
+    const el = document.querySelector('[data-ability="bash"]');
+    if (el) { const b = el.getBoundingClientRect(); window.__touch(el, 'touchstart', b.x + b.width / 2, b.y + b.height / 2, 81); window.__touch(el, 'touchend', b.x + b.width / 2, b.y + b.height / 2, 81); }
+  });
+  await P.page.waitForTimeout(320);
+  const afterBash = await st(P);
+  rec.ok('a Shield Bash does NOT break the shield hold (it is the one attack that does not)',
+    afterBash.shield === true, afterBash);
+  const bashStill = await bashVis();
+  rec.ok('...so its button is still there for the next one', bashStill.shown === true, bashStill);
+  await P.page.evaluate(() => { const c = window.__centre('[data-shield]'); window.__touch(c.el, 'touchstart', c.x, c.y, 82); window.__touch(c.el, 'touchend', c.x, c.y, 82); });
+  await P.page.waitForTimeout(220);
+  rec.ok('guard: shield down again, and the bash button goes with it',
+    (await st(P)).shield === false && ((await bashVis()).shown !== true));
+  /* Put the shield back UP: the block below is the attack-breaks-the-hold
+     test and it needs a hold to break.  Restoring what this section borrowed
+     keeps the file order-independent in both directions. */
+  await P.page.evaluate(() => { const c = window.__centre('[data-shield]'); window.__touch(c.el, 'touchstart', c.x, c.y, 83); window.__touch(c.el, 'touchend', c.x, c.y, 83); });
+  await P.page.waitForTimeout(260);
+  rec.ok('guard: shield raised again for the attack-breaks-the-hold test', (await st(P)).shield === true);
+
   /* ── attacking is what breaks the hold ── */
   await P.page.evaluate(() => { const c = window.__centre('.bt-rjoy-base'); window.__touch(c.el, 'touchstart', c.x, c.y, 66); });
   await P.page.waitForTimeout(220);

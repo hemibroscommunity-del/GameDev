@@ -49,6 +49,26 @@ function monLive(m) {
   return !!m && m.alive && !(typeof m.curHp === 'number' && m.curHp <= 0) && !isIntangible(m);
 }
 
+/* ═══ v2.3.2252: A BURROWED SNOWMAN IS STILL YOUR FIGHT ═══
+ * Owner: "make the character keep his targeting on the snowman even during
+ * burrow because you're still in active combat with him you just can't damage
+ * him.  Makes it hard to use shield against him when auto targeting of the
+ * monster drops."
+ *
+ * `monLive` is false while he is a snow pile (isIntangible), which is right for
+ * ACQUIRING -- a mound you cannot hit must never steal the target off a live
+ * monster standing next to it -- and wrong for KEEPING.  Dropping the target
+ * mid-burrow points the shield away from the one thing that is about to hit
+ * you, at exactly the moment the shield is the whole point.
+ *
+ * So the two questions are separated: `monLive` still answers "can this be
+ * picked up", and this answers "is this still the thing I am fighting".  A
+ * corpse fails both; a snow pile passes only this one, and only because it is
+ * ALREADY the target -- the caller checks that. */
+function monHoldable(m) {
+  return !!m && m.alive && !(typeof m.curHp === 'number' && m.curHp <= 0);
+}
+
 /* Every monster the player could engage right now, nearest first. */
 export function targetCandidates(S, radiusPx) {
   const out = [];
@@ -79,7 +99,11 @@ function monsterLock(S) {
 function lockHolds(S) {
   const lt = monsterLock(S);
   if (!lt) return false;
-  if (!monLive(lt.ref)) return false;
+  /* v2.3.2252: monHoldable, not monLive -- a burrowed snowman is intangible but
+     is still the fight you are in, and this is the function that decides
+     whether the target survives.  Acquisition still uses monLive, so the pile
+     can never be PICKED UP as a new target. */
+  if (!monHoldable(lt.ref)) return false;
   const p = monPos(lt.ref);
   if (!p || !S.player) return false;
   const R = TARGET_PERIMETER_PX * TARGET_HYST;
@@ -149,7 +173,7 @@ export function updateTargeting(S) {
      clears it.  (v2.3.2246 §7.9: the range rule owns only the locks it made,
      and now it makes them all except this one.) */
   if (tapOwned(S)) {
-    if (!monLive(S.lockedTarget.ref)) {
+    if (!monHoldable(S.lockedTarget.ref)) {
       S.lockedTarget = null;
       S._lockDroppedAt = Date.now();
       S._lockDroppedWhy = 'dead';
@@ -172,12 +196,12 @@ export function updateTargeting(S) {
     if (cur && !lockHolds(S)) {
       S.lockedTarget = null;
       S._lockDroppedAt = Date.now();
-      S._lockDroppedWhy = monLive(cur.ref) ? 'range' : 'dead';
+      S._lockDroppedWhy = monHoldable(cur.ref) ? 'range' : 'dead';
     }
     return;
   }
   const best = cands[0];
-  if (cur && monLive(cur.ref) && lockHolds(S)) {
+  if (cur && monHoldable(cur.ref) && lockHolds(S)) {
     /* fall through to the switch test below */
     if (cur.ref === best.m) return;                    /* already on it */
     /* Only switch for a MEANINGFULLY nearer rival -- see AUTO_SWITCH_MARGIN. */

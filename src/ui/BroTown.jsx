@@ -4722,6 +4722,51 @@ export var BroTown = function BroTown(_ref0) {
         } else if (S._dodgeRoll && _playerDead) {
           S._dodgeRoll = null;
         }
+        /* ═══ v2.3.2252: THE SHIELD BASH CLOSES THE DISTANCE ═══
+           Owner: "Make yourself always dash to the enemy and make contact
+           whenever you use shield bash."  Stamped by game/abilities.castAbility
+           with the monster it named to the worker; driven here so it obeys the
+           same per-frame integration everything else does.
+
+           NOT a position jump, deliberately: the worker's anti-teleport check
+           rejects a step over ~80px, and a correction mid-bash would put the
+           player back where they started and guarantee the miss this exists to
+           fix.  Speed is a multiple of a walk, so a long close takes longer --
+           it never outruns what the movement validator will accept.
+
+           It stops at the monster's EDGE (contact range), not on its centre:
+           a shove delivered from inside the body reads as standing in it, and
+           the collision push-out would fight this loop for the frames it ran.
+           Ends on arrival, on the window expiring, or if the target dies -- the
+           window is the backstop for a target that keeps running. */
+        if (S._bashDash && !_playerDead) {
+          var _bd = S._bashDash;
+          var _bt = _bd.ref;
+          var _btLive = _bt && _bt.alive !== false && !(typeof _bt.curHp === 'number' && _bt.curHp <= 0);
+          if (!_btLive || Date.now() > _bd.until) {
+            S._bashDash = null;
+          } else {
+            var _btx = (typeof _bt.renderX === 'number' ? _bt.renderX : _bt.x);
+            var _bty = (typeof _bt.renderY === 'number' ? _bt.renderY : _bt.y);
+            var _bdx = _btx - S.player.x, _bdy = _bty - S.player.y;
+            var _bdist = Math.sqrt(_bdx * _bdx + _bdy * _bdy) || 1;
+            var _bstop = 46;   /* contact range: just outside the body */
+            if (_bdist <= _bstop) {
+              S._bashDash = null;
+            } else {
+              var _bstep = Math.min(_bdist - _bstop, 13 * (S._dtScale || 1));
+              var _bnx = S.player.x + (_bdx / _bdist) * _bstep;
+              var _bny = S.player.y + (_bdy / _bdist) * _bstep;
+              /* Honour the same collision the walk does -- a bash must not
+                 post the player through a cliff to reach something. */
+              var _bhs = 12;
+              if (!isSolid(_bnx - _bhs, S.player.y - _bhs) && !isSolid(_bnx + _bhs, S.player.y + _bhs)) S.player.x = _bnx;
+              if (!isSolid(S.player.x - _bhs, _bny - _bhs) && !isSolid(S.player.x + _bhs, _bny + _bhs)) S.player.y = _bny;
+            }
+          }
+        } else if (S._bashDash && _playerDead) {
+          S._bashDash = null;
+        }
         /* Movement gated by REAL stuns only (hexer / brute charge).
            The 250 ms hit-react lockout (_hitLockActive) no longer
            freezes movement -- in projectile-heavy zones like meadow
@@ -7886,13 +7931,28 @@ export var BroTown = function BroTown(_ref0) {
     if (base) base.style.opacity = '0.92';
     var S = stateRef.current;
     if (!S) return;
-    /* v2.3.2246: THE ATTACK PRESS DOES NOT RE-TARGET.  Kept, and now true by
-       construction rather than by care: v2.3.2251 moved acquisition into
-       updateTargeting, so nothing on the press path touches the lock at all.
-       The hazard it was written about -- a monster tapped at bow range
-       becoming the slime at your feet the moment you pressed attack -- is
-       still real, and a tap lock is what protects it: `src: 'tap'` is immune
-       to the auto rule until it dies or you tap again. */
+    /* ═══ v2.3.2252: THE FIRST TAP COMMITS TO THE NEAREST ENEMY ═══
+       Owner: "when the contextual attack button appears make it so your first
+       tap immediately locks on and fires an attack at the enemy closest to
+       you."  The swing already went out on the first tap (v2.3.2251) and the
+       nearest enemy was already the target -- what was missing is the LOCK:
+       the auto target re-points every frame, so a fight could slide onto
+       whatever drifted nearer mid-swing, and target-relative movement and the
+       shield's aim (both gated on engagedStance) never engaged from a tap.
+
+       So the press PROMOTES the automatic target to a deliberate one: same
+       monster, but `src: 'tap'`, which is immune to the nearest rule until it
+       dies or you tap it again.  One tap now buys the whole engaged stance --
+       the lock, the backwards jog, and a shield that keeps facing him.
+
+       v2.3.2246's rule that the press must not RE-target is intact and is why
+       this reads the existing lock rather than re-running the nearest search:
+       a monster tapped at bow range, with a slime at your feet, keeps its lock
+       -- promoting an already-tapped lock is a no-op. */
+    var _lt = S.lockedTarget;
+    if (_lt && _lt.ref && _lt.type === 'monster' && _lt.src !== 'tap') {
+      S.lockedTarget = { type: 'monster', id: _lt.id, ref: _lt.ref, src: 'tap' };
+    }
     S.autoAttack = true;
     setAutoAttack(true);
   }, []);

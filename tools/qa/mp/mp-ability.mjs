@@ -77,9 +77,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const push = list.push.bind(list);
     list.push = (p) => { try { window.__popups.push(p && p.text); } catch (e) {} return push(p); };
   });
+  /* ═══ v2.3.2252: PROVE THE ROUND TRIP ON WHIRLWIND, NOT BASH ═══
+     Shield Bash is ungated now (owner: "an ability for any level (no gates)"),
+     so it can no longer be refused for being locked -- and the reject it DOES
+     get, 'no-shield', is a string the client produces verbatim on its own
+     refusal path (game/abilities.js).  Seeing it would prove nothing about the
+     wire, which is the whole job of this section (TRAPS #18, leg 3: only the
+     worker could have said this).
+     Whirlwind is still gated at 8, so it keeps a reason the client cannot
+     invent at this level, and the proof keeps its shape. */
   await P.page.evaluate(() => {
     const S = window._gameState && window._gameState.current;
-    if (S && S.channel) S.channel.send({ type: 'ability', payload: { kind: 'bash' } });
+    if (S && S.channel) S.channel.send({ type: 'ability', payload: { kind: 'whirl' } });
   });
   await P.page.waitForTimeout(1500);
 
@@ -90,7 +99,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ONLY the worker knows the unlock level — the client-side refusal path
      never produces this string, so seeing it proves the round trip. */
   rec.ok('the worker refused it and the client SAID SO (ability_rejected has a handler now)',
-    popups.some((t) => typeof t === 'string' && /unlocks at level 4/i.test(t)), popups);
+    popups.some((t) => typeof t === 'string' && /unlocks at level 8/i.test(t)), popups);
 
   const stam1 = await H.adminPlayer(wsPort, myId).then((a) => a?.live?.stamina ?? null).catch(() => null);
   rec.ok('a locked cast spends no stamina on the worker', stam1 === stam0, { before: stam0, after: stam1 });
@@ -121,16 +130,34 @@ export async function run({ browser, wsPort, webPort, rec }) {
     window.__popups = [];
   });
   await P.page.waitForTimeout(700);
+  /* v2.3.2252: WHIRLWIND is the forged-level subject now.  Bash is ungated, so
+     forging a level cannot conjure its button -- and its real requirement, a
+     RAISED shield, is a stance the client owns by design rather than a cheat
+     the worker must refuse.  Whirl still gates at 8, so it is the one that
+     still proves "appearing buys nothing".
+     The count is 1, not 2: whirl renders on the forged level, and bash is
+     absent because the shield is equipped but not RAISED. */
   const fakeButtons = await P.page.evaluate(() => document.querySelectorAll('[data-ability]').length);
-  rec.ok('with the level present, BOTH ability buttons render', fakeButtons === 2, fakeButtons);
+  rec.ok('with the forged level present, the gated ability button renders', fakeButtons === 1, fakeButtons);
+  rec.ok('...and it is WHIRL — bash is absent because the shield is not raised',
+    (await P.page.evaluate(() => !!document.querySelector('[data-ability="whirl"]')
+      && !document.querySelector('[data-ability="bash"]'))) === true);
+  /* Sent RAW rather than by clicking the button, and the reason matters: the
+     client's own gate refuses a whirlwind with no weapon ("No weapon
+     equipped!") before anything reaches the wire, and that string is one the
+     client can produce by itself -- so a click would prove nothing about the
+     worker, which is this section's whole claim.  The raw send skips the local
+     prediction and lands on the worker's own level check, which is the thing
+     under test.  (The section above already proved the BUTTON renders on a
+     forged level; this proves that renders buy nothing.) */
   await P.page.evaluate(() => {
-    const el = document.querySelector('[data-ability="bash"]');
-    if (el) el.click();
+    const S = window._gameState && window._gameState.current;
+    if (S && S.channel) S.channel.send({ type: 'ability', payload: { kind: 'whirl' } });
   });
   await P.page.waitForTimeout(1500);
   const fakePopups = await P.page.evaluate(() => (window.__popups || []).slice());
   rec.ok('...but the worker still refuses it (the level it checks is its own)',
-    fakePopups.some((t) => typeof t === 'string' && /unlocks at level 4/i.test(t)), fakePopups);
+    fakePopups.some((t) => typeof t === 'string' && /unlocks at level 8/i.test(t)), fakePopups);
   const stamFake = await H.adminPlayer(wsPort, myId).then((a) => a?.live?.stamina ?? null).catch(() => null);
   rec.ok('...and the forged level costs the worker nothing', stamFake === stam0,
     { before: stam0, after: stamFake });

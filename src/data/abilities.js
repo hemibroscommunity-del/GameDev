@@ -18,7 +18,16 @@
 /* MIRROR OF server/src/abilities.js STAM_ABILITIES — identical by test. */
 export const STAM_ABILITIES = {
   bash: {
-    minLevel: 4,
+    /* ═══ v2.3.2252: NO LEVEL GATE ═══
+       Owner: "Make shield bash an ability for any level (no gates) the only
+       requirement is you must have your shield held."
+       Kept as 0 rather than deleted: `abilityUnlocked` compares
+       `charLevel >= cfg.minLevel`, and a MISSING field makes that
+       `n >= undefined` -> NaN -> false, i.e. permanently LOCKED, which is the
+       exact opposite of ungated.  0 is always true and never rejects.
+       The requirement moved to "a shield, and it is raised" -- see
+       game/abilities.js abilityStatus. */
+    minLevel: 0,
     staminaPct: 0.30,
     cooldownMs: 4000,
     dmgMult: 0.75,
@@ -26,6 +35,15 @@ export const STAM_ABILITIES = {
     stunMs: 1600,   /* v2.3.1736 (owner): was 800 */
     knockback: 90,
     needs: 'shield',
+    /* v2.3.2252: ...and it must be RAISED for the button to appear (client
+       rule; the server's authoritative requirement stays `needs`, because
+       ps.blocking is client-supplied on every move packet and a server gate on
+       it would be forgeable and lag-fragile). */
+    needsHeldShield: true,
+    /* v2.3.2252: how far the bash may CLOSE when it names its target.  240
+       covers the 220px targeting perimeter, so anything you can engage is
+       something you can bash to.  Only honoured for a declared target. */
+    reach: 240,
   },
   whirl: {
     minLevel: 8,
@@ -48,7 +66,11 @@ export const STAM_ABILITIES = {
    `burst: true` rather than a `kind` (there is no stamina-table entry to
    look up).  See the server copy for the full reasoning. */
 export const MILESTONES = {
-  4:  { kind: 'bash',  label: 'Shield Bash' },
+  /* v2.3.2252: rung 4 no longer UNLOCKS anything -- Shield Bash is ungated,
+     and leaving `kind: 'bash'` here would have the level-up celebration
+     announce "Shield Bash unlocked!" for a move the player has had since
+     level 1 (prog3.js reads MILESTONES[level].label for exactly that). */
+  4:  { label: 'Sturdy Arm' },
   5:  { points: 1,     label: 'Bonus stat point' },
   6:  { burst: true,   label: 'Element Burst' },
   8:  { kind: 'whirl', label: 'Whirlwind' },

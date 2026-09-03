@@ -110,7 +110,22 @@ export function abilityStatus(S, kind) {
   var cfg = abilityCfg(kind);
   if (!R || !cfg) return { visible: false };
   var level = prog3CharLevel(R);
-  var visible = abilityUnlocked(level, kind);
+  /* ═══ v2.3.2252: SHIELD BASH IS GATED ON THE SHIELD, NOT ON A LEVEL ═══
+     Owner: "Make shield bash an ability for any level (no gates) the only
+     requirement is you must have your shield held.  Then the button for shield
+     bash appears."  So its button is a function of the STANCE, not of
+     progression: a shield in hand and that shield raised.
+
+     Written as a per-kind requirement rather than an `if (kind === 'bash')`
+     branch, so the rule reads as data and the next ability with a stance
+     requirement declares one instead of adding a second branch.
+
+     `visible` is also what castAbility:141 gates on, so this is simultaneously
+     the button rule and the cast rule on touch AND desktop -- they cannot
+     disagree, which is the whole reason this function exists. */
+  var needsHeld = cfg.needsHeldShield === true;
+  var visible = abilityUnlocked(level, kind)
+    && (!needsHeld || (!!R.shield && !!(S && S._shieldUp)));
   var now = Date.now();
   var readyAt = cdMap(S)[kind] || 0;
   var cost = abilityStaminaCost(R, kind);
@@ -159,7 +174,43 @@ export function castAbility(S, kind) {
      lands within the tick and overwrites it (rule 20). */
   R.stamina = Math.max(0, (R.stamina || 0) - st.cost);
 
-  try { S.channel && S.channel.send({ type: 'ability', payload: { kind: kind } }); } catch (e) {}
+  /* ═══ v2.3.2252: A BASH NAMES ITS TARGET AND DASHES TO IT ═══
+     Owner: "Shield bash almost never makes contact with the enemy.  Make
+     yourself always dash to the enemy and make contact whenever you use shield
+     bash."
+
+     Two halves, and it needs both.  The worker's own scan is feet-to-feet at
+     70px while the player's collision ring parks them 58-84px from a monster's
+     feet -- against a mummy or a skeleton the bash could not land even while
+     touching.  So the cast NAMES the monster it is committing to, and the
+     worker validates that one against the longer `reach` (see its comment):
+     the server still owns the damage and still range-checks, it just checks
+     the distance the move is actually allowed to close.
+
+     The target is the one already on screen -- the lock, which is the nearest
+     enemy unless the player tapped another (v2.3.2251).  No second search, so
+     the monster you are pointed at is the monster you bash.
+     `targetId` is additive and optional: an older worker ignores it and falls
+     back to its radius scan, and a newer worker with an older client does the
+     same, so this ships in either order with no caps flag. */
+  var _bashLt = (kind === 'bash' && S.lockedTarget && S.lockedTarget.type === 'monster')
+    ? S.lockedTarget.ref : null;
+  var _bashId = _bashLt && _bashLt.id != null ? _bashLt.id : null;
+  try {
+    S.channel && S.channel.send({ type: 'ability',
+      payload: _bashId != null ? { kind: kind, targetId: _bashId } : { kind: kind } });
+  } catch (e) {}
+
+  /* THE DASH.  Integrated per frame by BroTown's movement block (never a
+     position jump), because the worker's anti-teleport rejects a step over
+     ~80px and a rejected correction would guarantee the miss it is meant to
+     fix.  It stops at the target's edge rather than inside it, so the shove
+     lands from contact range instead of shoving from on top of them. */
+  if (_bashLt) {
+    S._bashDash = { targetId: _bashId, ref: _bashLt, startTime: now, until: now + 260 };
+  } else {
+    S._bashDash = null;
+  }
 
   /* ═══ THE ANIMATION, WITHOUT THE HIT ═══
      The damage sweep that normally rides along with a swing is suppressed
