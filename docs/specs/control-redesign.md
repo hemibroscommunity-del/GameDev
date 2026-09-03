@@ -312,12 +312,48 @@ is the note.
 | 5.9 | Contact **damage amount** and **blocking** it | Full `m.dmg` per touch (the same number as his swing), once per second; the shield arc blocks it like any hit. | The directive names a rate, not an amount; routing through `_monsterStrikePlayer` is what gives the hit every existing rule (block at impact, harvest shield, no-one-shot rails) without a second damage path. |
 | 5.10 | Button **priority** when a monster and a resource are both in range | A resource **in reach** wins over a monster merely **in the perimeter**; a **held lock** wins over the resource. | Revised while building: the first cut let any monster within 220px win, and with six spread monsters a snowman on the far side of a tree turned every chop into a swing. Standing at a node is a deliberate act and monsters leave a harvester alone by rule (v2.3.1704); a lock (tap the monster, or press Attack before stepping up to the node) is the more deliberate act of the two, so it takes the button back. |
 | 5.11 | The harvest **wind-up** (2-10s, server-validated) has no gesture to drive the animation | The existing slow loop plays during `waiting`; the gesture takes over at `ready`. | A frozen character for up to ten seconds reads as a hang. The cap ("not faster than a leisurely pace") is applied to the gesture-driven phase, which is the one the directive describes. |
-| 5.12 | **Desktop** parity for target switching | `Tab` cycles candidates; everything else on desktop is unchanged (click attacks toward the mouse, `Q` toggles the shield, right-click special). | The directive is about the touch surface; desktop already has the toggle semantics it asks for. |
+| 5.12 | **Desktop** parity for target switching | `T` cycles candidates (`Shift+T` backwards; `Tab` was already the weapon cycle); everything else on desktop is unchanged (click attacks toward the mouse, `Q` is hold-to-block with `Q`+`E` = Shield Bash, right-click special). | The directive is about the touch surface; desktop already has the toggle semantics it asks for. |
 | 5.13 | Pets, arena, duels, dungeon bosses | Unchanged. A duel opponent is still locked by tapping; the perimeter scan only considers monsters. | Out of the directive's scope; noted so nobody assumes otherwise. |
 | 5.14 | Six per zone vs the **crowd scaler** (`spawnscale.js`: +1.5 monsters per extra player, hard ceiling 24) | Base 6, ramp and ceiling unchanged — so a zone now hits its 24-monster ceiling at 13 players instead of 15, and per-head kills/minute in a crowd fall below the old "≥60% of solo" floor past ~10 players. | The 24 ceiling is a **load** number (`load-tick.mjs` proved 25/zone × 7 zones); a content change should not move it silently. Raising it to keep crowds at parity needs its own load run — the owner's call. |
 | 5.15 | "Burrow speed will **decrease by 50%**" — half of *which* speed? | Half of **190 px/s** (v2.3.2236's flee speed, on the owner's build when the directive was written) → `PILE_PX_S` **95 px/s**, toward the player; not half of the original 54 px/s crawl. | "Target to the player *again*" dates the directive after v2.3.2236, so the speed the owner had just watched is the one being halved. 95 is under a default character's 150 px/s, so you can always walk away, and it is fast enough that standing still gets you touched — which the contact rule needs. Half the original crawl (27 px/s) would leave contact damage almost unreachable against anyone who moves. One constant to change if this is the wrong reading. |
+| 5.16 | **Fire trail** (v2.3.2238, merged from main during review) burns through its own damage path (`firetrail.js` → `_applyDamage`), never `_monsterStrikePlayer`: no block arc, no `blocked`, no harvest-shield check. | Left as main shipped it: fire under your feet is **unblockable**, so it never counts as a "successful block" and **does not lower the shield toggle**; it **does** count as being in combat (the shield button appears). | The directive ties auto-disengage to a *successful block*; a burn is not one. The harvest-shield gap (a harvester standing in fire takes the burn) is that feature's own question and is flagged here rather than patched from this PR: it weakens §5.10's "monsters leave a harvester alone" only near a fire goblin. |
+| 5.17 | The **snowman throws from 300px** (`MONSTER_RANGED_BY_ARCH`), outside the 220px perimeter — Attack cannot lock a thrower until he closes. | Tap-to-lock (§5.1) is the way to pick him early; the shield button now appears the moment a server-zone hit lands (`S.lastDamageTaken` is stamped from `monster_attack`/`pvp_hit`, which it never was before), so the block is available even with nothing in the perimeter. | Raising the perimeter to 300 to cover one archetype's throw band would make every other lock feel long-range; the snowman and the slime are the only ranged archetypes. If the owner wants the thrower lockable from the button, `TARGET_PERIMETER_PX` is the one number. |
+| 5.18 | **Pet capture** range is 200px (`pets.js CAPTURE_RANGE`) — Attack can lock a monster at 200–220px that Capture then refuses as "too far". | Unchanged; flagged. | Tap-to-lock could already lock at any distance, so this is not new; the fix is either `CAPTURE_RANGE ≥ 220` server-side or dimming Capture past 200px, and both belong to the pets system. |
+| 5.19 | **Dungeon** waves: does "six per zone, spread out" apply? | No — dungeon waves keep their own counts and uniform placement (`dungeon.js`). | The directive says "monsters per zone"; dungeon waves are a different pacing system with their own numbers, and the spread picker has no walkable mask for dungeon rooms. Flagged so it is a decision, not an omission. |
+| 5.20 | **Peer shield visibility** rides the unprivileged `player_shield` relay with no expiry (`_shieldTs` is stamped, never read). With the toggle dropping on every blocked hit, more relays flow, and a lost `up:false` leaves a party-mate's shield drawn up until their next raise/drop. | Unchanged; cosmetic, and not new (the hold-to-block relay had the same loss mode). | An expiry would hide a legitimately long-held toggle; the honest fix is reading the `blocking` flag the worker already receives on every move packet, which needs a tick-wire field — its own small PR. |
 
 ---
+
+### 5b. Folded in after the understand-workflow critique (same tags)
+
+A 13-map subsystem read of the merged tree (`wf_a2af8236-cf8`) turned up
+gaps the four commits had not covered. All are small and were folded into
+the same PR rather than left for a follow-up:
+
+- **The shield button never vanishes with the shield up** (`shieldButtonLive`):
+  a lock dropping or the last monster dying used to hide the button and
+  leave the shield raised — a slower walk with no way down but a dodge.
+  `mp-rbutton` now pins it.
+- **Death and duel end lower the shield and clear the lock** (`wsClient`
+  `player_died`, `respawn.js`, `gameEvents` `duel_end`): a corpse had kept
+  sending `blocking:true` on every move packet, and the first swing after
+  respawn aimed at a monster in the old zone.
+- **A server-zone hit counts as combat**: `S.lastDamageTaken` was only ever
+  stamped by the client-local legacy AI, so the "damage in the last 5s" leg
+  of the shield button's liveness rule was dead in every real zone (§5.17).
+- **The "block 10 hits" quest can complete in a server zone**: its counter
+  (`_questFlags.blocksLanded`) was likewise only written by the legacy AI
+  path; a worker-confirmed `monster_attack {blocked}` now counts.
+- **The snow pile is not a wall** (`_monBlock` skips `isIntangible`): the
+  client body-block held you at arm's length from a thing that is
+  intangible by rule and now hurts to touch, so contact was reachable only
+  when he moved into you.
+- **The client's burrow-phase ceiling** (`Math.min(6000, ms)`) predated
+  v2.3.2225's 8s pile, so the renderer's self-clear surfaced him on the
+  client 1.5s before the worker did; it is 9000 now.
+- **The tutorial's shield and target steps** ring their button when it is
+  on screen and read as a plain card when it is not (`anchorOptional`), so
+  `mp-ctltut`'s rule that no declared step silently vanishes still holds.
 
 ## 6. What the QA harness proves per PR
 

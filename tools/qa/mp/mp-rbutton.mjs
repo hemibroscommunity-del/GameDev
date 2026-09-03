@@ -219,11 +219,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
     window.__touch(z, 'touchend', r.x + r.width / 2, r.y + 80, 49);
   });
 
-  /* ── the button leaves when the fight does ── */
+  /* ── the button leaves when the fight does -- unless the shield is still up ── */
+  await P.page.evaluate(() => { const c = window.__centre('[data-shield]'); window.__touch(c.el, 'touchstart', c.x, c.y, 50); window.__touch(c.el, 'touchend', c.x, c.y, 50); });
+  await P.page.waitForTimeout(150);
+  rec.ok('raised again for the leave test', (await st(P)).shield === true);
   await P.page.evaluate(() => { const S = window._gameState.current; S.monsters = []; S.lockedTarget = null; S.lastDamageTaken = 0; });
   await P.page.waitForTimeout(600);
-  rec.ok('with no monster near and no lock, the shield button goes away',
-    (await P.page.evaluate(() => !!document.querySelector('[data-shield]'))) === false);
+  /* post-review: the first cut hid the button here with the shield still
+     up -- a slower walk and no way down but a dodge. */
+  rec.ok('the fight is over but the shield is UP: the button stays so it can be tapped off',
+    (await P.page.evaluate(() => { const e = document.querySelector('[data-shield]'); return e ? e.getAttribute('data-shield') : null; })) === 'up');
+  await P.page.evaluate(() => { const c = window.__centre('[data-shield]'); window.__touch(c.el, 'touchstart', c.x, c.y, 51); window.__touch(c.el, 'touchend', c.x, c.y, 51); });
+  await P.page.waitForTimeout(600);
+  rec.ok('...tapped down, with no monster near and no lock, the shield button goes away',
+    (await P.page.evaluate(() => !!document.querySelector('[data-shield]'))) === false
+    && (await st(P)).shield === false);
 
   await P.page.screenshot({ path: H.REPO + '/tools/qa/mp/.last-rbutton.png' }).catch(() => {});
   await P.ctx.close().catch(() => {});

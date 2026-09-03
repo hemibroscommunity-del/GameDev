@@ -39,11 +39,15 @@ const STEPS = [
     label: 'Attack', body: 'Hold the Attack button to fight the nearest enemy. A quick swipe on it is your special.' },
   /* v2.3.2242: the shield left the stick.  Its own button, under Attack,
      that only shows once there is something to block. */
-  { key: 'shield', shape: 'circle', sels: ['[data-shield]'],
+  { key: 'shield', shape: 'circle', sels: ['[data-shield]'], anchorOptional: true,
     label: 'Shield', body: 'Tap to raise your shield. It drops after one block, or when you dodge.' },
-  /* v2.3.2243: only on screen while two or more monsters are in range --
-     a step whose anchor is absent is dropped for that open, by design. */
-  { key: 'target', shape: 'circle', sels: ['[data-target="next"]'],
+  /* v2.3.2243: only on screen while two or more monsters are in range.
+     anchorOptional (post-review): these two steps ring their button when it
+     is on screen and read as a plain card when it is not -- the tour opens
+     in town, where neither exists, and mp-ctltut's rule that no declared
+     step may silently vanish is the right rule (v2.3.1803 lost two steps
+     that way for long enough to prove it). */
+  { key: 'target', shape: 'circle', sels: ['[data-target="next"]'], anchorOptional: true,
     label: 'Switch target', body: 'Two enemies close? These arrows switch which one you are fighting.' },
   /* v2.3.1285: the 3-panel row is retired — the home view is the Bag
      compact grid (equipped row over recent items). */
@@ -121,7 +125,11 @@ function measureSteps() {
       u.width = right - u.left;
       u.height = bottom - u.top;
     }
-    if (!u) continue;
+    if (!u) {
+      /* v2.3.2242: an anchor-optional step degrades to a card, not to nothing. */
+      if (s.anchorOptional) out.push({ ...s, rect: null, shape: null });
+      continue;
+    }
     out.push({ ...s, rect: u });
   }
   /* v2.3.1803: publish what survived.  A dropped step is invisible by

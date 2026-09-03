@@ -266,7 +266,7 @@ import { sendEmote as sendEmoteImpl, enterBuilding as enterBuildingImpl } from '
 /* v2.3.784: connection lifecycle extracted behavior-frozen (REBUILD-PLAN Phase 5);
    the Phase-4 dispatcher is now consumed by wsClient.js, not here. */
 import { setupWebSocket } from '@/networking/wsClient.js';
-import { MONSTER_VARIANTS } from '@/data/monsterVariants.js';
+import { MONSTER_VARIANTS, isIntangible } from '@/data/monsterVariants.js'; /* isIntangible: v2.3.2244 */
 import { shardByKey } from '@/data/shards.js';
 
 /* Destructure everything from DATA — the component body references 100+ symbols */
@@ -4956,6 +4956,13 @@ export var BroTown = function BroTown(_ref0) {
           for (var _mi = 0; _mi < ms.length; _mi++) {
             var _m = ms[_mi];
             if (!_m || !_m.alive) continue;
+            /* v2.3.2244 (post-review): a snow pile (or a slime mid-swell) is
+               not a wall.  It is intangible to your attacks by rule, and the
+               pile now hurts to TOUCH -- a body-block that held you at arm's
+               length would make that contact reachable only when he moves
+               into you, never when you move into him.  Walk over it; the
+               worker charges the touch. */
+            if (isIntangible(_m)) continue;
             var _b = _monBody(_m);
             var _rr = _b.r + hs;
             var _ndx = px - _m.x, _ndy = py - _b.by;

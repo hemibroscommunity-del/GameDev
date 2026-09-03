@@ -16,6 +16,7 @@
    body is untouched. Returns the effect cleanup (or undefined when gated
    by showNameModal/showLogin — same as the original early return). */
 import { processGameEvent } from '@/networking/gameEvents.js';
+import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { stashPendingZoneNodes } from '@/networking/nodeSync.js'; /* v2.3.1301: node self-heal */
 import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking/index.js';
 /* v2.3.1961: the ONE wire-key -> peer-field rename table, read by the join
@@ -1684,6 +1685,13 @@ export function setupWebSocket(ctx) {
                  is no longer the trigger (worker authoritative this slice). */
               if (!S.rpg || S._dying) break;
               S._dying = true;
+              /* v2.3.2242 (post-review): a corpse does not hold a shield or a
+                 grudge.  Left up, _shieldUp kept riding every move packet as
+                 blocking:true through the death and into the respawn, and
+                 the lock aimed the first swing after respawn at a monster
+                 in a zone we are no longer in. */
+              S.lockedTarget = null;
+              try { dropShield(S, 'dead'); } catch (e) { /* display-only */ }
               if (!S.rpg._compStats) S.rpg._compStats = createDefaultCompStats();
               S.rpg._compStats.deaths++;
               S._deathStart = Date.now();

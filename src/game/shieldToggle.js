@@ -95,6 +95,13 @@ export function toggleShield(S) {
    and a button that refuses is worse than no button. */
 export function shieldButtonLive(S, perimeterPx) {
   if (!S || !S.rpg || !S.rpg.shield) return false;
+  /* v2.3.2242 (post-review): a RAISED shield keeps its button.  The first
+     cut showed the button only "during combat", so a lock dropping or the
+     last monster dying while the shield was up took the button away and
+     left the shield up with no way to lower it but a dodge -- a slower
+     walk with nothing on screen explaining why.  Whatever else is true,
+     the thing you tapped on stays until you tap it off. */
+  if (S._shieldUp) return true;
   if (S.lockedTarget && S.lockedTarget.ref) return true;
   if (S.lastDamageTaken && Date.now() - S.lastDamageTaken < 5000) return true;
   const P = S.player;
