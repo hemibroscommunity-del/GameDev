@@ -121,13 +121,17 @@ const MIN_SCALE = 0.75 / WORLD_ZOOM;   /* 0.25 at WORLD_ZOOM 3 */
  * here, so this constant cannot change how a fight looks.
  * CHOSEN ON RENDERED SCREENSHOTS, not by argument.  tools/qa/mp/sweep-zoom.mjs
  * rebuilds the client at each candidate and shoots the same spot in town, so
- * the owner picked 0.45 by looking at five real builds side by side rather
+ * the owner picked this by looking at five real builds side by side rather
  * than from a description of them -- their words, on being shown the first
  * cut: "the bro is too small ... can you actually simulate at different sizes
- * so I don't have to do a bunch of guesswork."  0.45 puts him at ~64 px, and
- * still zooms town out ~33% from the pre-v2.3.2247 view.  Re-run the sweep
- * before moving this number. */
-export const FIGURE_SCALE_FLOOR = 0.45;
+ * so I don't have to do a bunch of guesswork."
+ *
+ * 0.45 first, then 0.50 after playing it (v2.3.2250).  0.50 draws the bro at
+ * ~72 px and still zooms town out ~25% from the pre-v2.3.2247 view; it also
+ * closes the town-vs-combat size gap further, since a combat zone floors at
+ * 0.601 on its own map size (1.20x apart now, against 1.34x at 0.45 and 1.72x
+ * with no floor at all).  Re-run the sweep before moving this number. */
+export const FIGURE_SCALE_FLOOR = 0.50;
 
 /* ═══ v2.3.2156: LANDSCAPE GETS ITS OWN REFERENCE, ON THE OTHER AXIS ═══
  *
