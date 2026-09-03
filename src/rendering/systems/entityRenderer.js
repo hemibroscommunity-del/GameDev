@@ -79,6 +79,7 @@ import { materialTint, weaponTint } from '../traits/materialTints.js'; /* v2.3.1
 import { combatGearUrls } from '../combatGear.js';
 import { getEquip, onEquipChange, isWearingArmor } from '../gearCatalog.js'; /* v2.3.1407: GEAR_CATALOG import dropped with the speculative all-states prewarm */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
+import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2245: harvest frames follow the hand */
 import { monsterDisplayName } from '@/data/gameDisplay.js'; /* v2.3.1918: monster name plates */
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
@@ -8806,7 +8807,26 @@ export class EntityRenderer {
                          || isShielding
                          || (S.lastDamageTaken && Date.now() - S.lastDamageTaken < 5000);
     const isInCombat = !SHEATHED_DEFAULT_ENABLED || _combatTriggers;
-    const aimAttackActive = S._aimAngle != null && (S._backpedaling || (!isMoving && S.autoAttack));
+    /* ═══ v2.3.2246: AN ENGAGED BODY FACES WHAT IT IS ENGAGED WITH ═══
+       Owner: "Every move you make is now relative to that target."
+       The two original triggers only cover half of "relative": _backpedaling
+       fires when you move AWAY from the aim, and (!isMoving && autoAttack)
+       when you stand still and swing.  Move TOWARD the locked monster, or
+       strafe across it, and both are false -- the ladder fell through to the
+       `stickActive` branch and the body turned to face the joystick, so a
+       player circling a slime watched their character look where their thumb
+       pointed instead of at the thing they were fighting.  A held MONSTER
+       lock is the third trigger, which makes the whole 8-way circle
+       target-relative: forward jog toward it, reversed jog away from it
+       (isMovingBackward, just below), and the body pinned on it throughout.
+       (There is no sideways strafe STRIP -- the art is forward frames plus a
+       reversed cycle -- so a sideways push resolves to whichever of the two
+       the dot product picks, exactly as the old right-stick controls did.)
+       NPC locks are excluded on purpose: tapping a shopkeeper locks one, and
+       walking away from the mayor while staring at him is not a combat
+       stance. */
+    const lockFacing = !!(S.lockedTarget && S.lockedTarget.ref && S.lockedTarget.type === 'monster');
+    const aimAttackActive = S._aimAngle != null && (lockFacing || S._backpedaling || (!isMoving && S.autoAttack));
     /* useAimDirection drives the slowed + reverse jog animation —
        still want it true during a swing window so the legs stay in
        sync with the attack-locked body. */
@@ -9087,13 +9107,30 @@ export class EntityRenderer {
            (raised -> strike -> raised), south-only. */
         const fc = playerFrameCount('mine', 'south') || 14;
         const cycle = cycleMs('mine', 'south');
-        frameIdx = Math.floor((now / cycle) * fc) % fc;
+        /* ═══ v2.3.2245: THE SWING FOLLOWS THE HAND ═══
+           Owner: "the animation frames will play at the speed the user is
+           performing the gesture (capped at a maximum speed not faster than a
+           leisurely gesture pace)."  While the gesture window is open the
+           frame comes from the gesture phase (ex.cueFrame01, written by
+           ExtractionSwipeLayer as the thumb pumps the button), CHASED at a
+           capped rate (gesturePose01) so a frantic pump still plays at a
+           leisurely pace and a still thumb holds the pose.  The wind-up
+           before the window opens keeps the clock loop -- a frozen figure
+           for up to ten seconds reads as a hang (control-redesign.md §5.11). */
+        const _gp = gesturePose01(S._extraction, now, 700);
+        frameIdx = (_gp != null) ? Math.max(0, Math.min(fc - 1, Math.floor(_gp * fc)))
+          : Math.floor((now / cycle) * fc) % fc;
       } else if (pose === 'fish') {
         /* Fishing rod-sway loops continuously for the whole gather window
            (waiting + ready), south-only. */
         const fc = playerFrameCount('fish', 'south') || 32;
         const cycle = cycleMs('fish', 'south');
-        frameIdx = Math.floor((now / cycle) * fc) % fc;
+        /* v2.3.2245: the reel drives the sway -- one finger-circle on the
+           button is one turn of the sway loop, capped at ~one turn per 450ms
+           (the same cap the reel marker has had since v2.3.1435). */
+        const _gpF = gesturePose01(S._extraction, now, 450, true);
+        frameIdx = (_gpF != null) ? Math.max(0, Math.min(fc - 1, Math.floor(_gpF * fc)))
+          : Math.floor((now / cycle) * fc) % fc;
       } else if (pose === 'dodge') {
         /* v2.3.1534: ONE-SHOT across the real roll window, clamped to the
            last frame — never modulo, or the tumble would restart mid-roll.

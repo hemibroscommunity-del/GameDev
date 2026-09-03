@@ -1,19 +1,43 @@
 import React from 'react';
+import { RBTN } from './ShieldButton.jsx';
 
-/* === TouchControls — the floating dual-joystick touch overlay === */
+/* === TouchControls — the left joystick + the contextual right BUTTON === */
 /* v2.3.890: extracted verbatim from the floating-joystick sibling run
-   in BroTown.jsx (left movement zone, right aim/combat zone, the two
-   joystick base+knob+preview stacks, and the legacy hidden shield
-   button). Render-only and behavior-frozen: the JSX (and its embedded
-   auto-attack-indicator / shield IIFEs) is unchanged; the DOM refs are
-   the SAME ref objects BroTown's dual-joystick touch effects bind to,
-   passed through as props (refs are stable, so the effects keep
-   working). The five elements were a contiguous tail of children of
-   their parent container; they are now wrapped in a Fragment and the
-   parent's closing tag + the rest of the tree stay in BroTown. 15
-   props: stateRef, the 11 joystick/zone/knob/preview/shield refs, and
-   the autoAttack / isLandscape / shieldUp render flags. 3 hoisted
-   stateRef.current optional-chaining temps declared locally. */
+   in BroTown.jsx.  Render-only: the DOM refs are the SAME ref objects
+   BroTown's touch effects bind to, passed through as props. */
+/* ═══ v2.3.2242: THE RIGHT STICK IS A BUTTON ═══
+   Owner: "The right thumbstick no longer acts as independent rotation
+   angle. It becomes a slightly larger contextual button. ... The contextual
+   button will say 'attack' on it."
+
+   What went: the rod + knob sprites and the deflection math that fed them
+   (handleRJoyMove), the shield-preview overlay the first tap of the old
+   double-tap showed, and the legacy hidden shield joystick element
+   (shieldJoyRef) that BroTown's dead sS/sM/sE handlers were bound to.
+
+   What stayed, on purpose:
+   - the class names (.bt-rjoy-zone / .bt-rjoy-base): the coach marks, the
+     controls tutorial, the expanded-sheet dim rule in game.css and the QA
+     rect probes all anchor on them, and nothing about "where the attack
+     control is" changed;
+   - the position (right:50, bottom: sheet-h + 70): SpecialChargePie and
+     ElementBurstButton measure themselves off it -- they read the width
+     from RBTN now instead of a hardcoded 83/98;
+   - the base sprite (metal ring + centre well), which reads as a button
+     just as well as it read as a stick socket;
+   - the special-charge cooldown ring drawn inside the disc.
+
+   THE DISC IS THE TOUCH TARGET NOW.  Since v2.3.816 the disc was visuals
+   only (pointerEvents:none) and the whole right half of the screen
+   (rZoneRef) was the input.  A button that fires from anywhere on half the
+   screen is not a button, so the disc takes pointer events itself and
+   BroTown binds the press/hold/flick handlers to rJoyRef.  rZoneRef keeps
+   one job -- forwarding a plain tap to the canvas (lock a monster by
+   tapping it, tap yourself to chat, tap a resource) -- and no longer aims
+   or attacks.
+
+   The label is the "contextual" half: BroTown stamps rLabelRef's text
+   (ATTACK today; HARVEST arrives with the life-skill PR). */
 export function TouchControls(props) {
   var stateRef = props.stateRef,
     lZoneRef = props.lZoneRef,
@@ -23,16 +47,14 @@ export function TouchControls(props) {
     knobRef = props.knobRef,
     lJoyPreviewRef = props.lJoyPreviewRef,
     rJoyRef = props.rJoyRef,
-    rStickRef = props.rStickRef,
-    rKnobRef = props.rKnobRef,
-    rJoyPreviewRef = props.rJoyPreviewRef,
-    shieldJoyRef = props.shieldJoyRef,
-    /* v2.3.1236: owner feedback — props.autoAttack no longer read here;
-       the red auto-attack ring it toggled is gone (see below). BroTown
-       still passes the prop; harmless. */
-    isLandscape = props.isLandscape,
-    shieldUp = props.shieldUp;
-  var _stateRef$current65, _stateRef$current69, _stateRef$current70;
+    rLabelRef = props.rLabelRef,
+    rCueRef = props.rCueRef,     /* v2.3.2245: the harvest tool frame on the button face */
+    rRingRef = props.rRingRef,   /* v2.3.2245: the wind-up / reps ring around the rim */
+    lWrapRef = props.lWrapRef,   /* v2.3.2246: the left disc's corner box — the visibility gate */
+    rWrapRef = props.rWrapRef,   /* v2.3.2246: the right button's corner box — ditto */
+    isLandscape = props.isLandscape;
+  var _stateRef$current65;
+  var discW = isLandscape ? RBTN.wLand : RBTN.w;
   return /*#__PURE__*/React.createElement(React.Fragment, null, React.createElement("div", {
     ref: lZoneRef,
     className: "bt-desktop-hide",
@@ -45,7 +67,30 @@ export function TouchControls(props) {
     style: { position: 'fixed', right: 0, top: 0, width: '50%', height: 'calc(100% - var(--sheet-h, var(--dash-h)))' /* v2.3.1307: zones end above the OPEN sheet so movement works with menus open */, zIndex: 6, touchAction: 'none', background: 'transparent', WebkitUserSelect: 'none', userSelect: 'none' }
   }), /* duplicate kb-hints removed — kept the one near joystick zone below */ /*#__PURE__*/React.createElement("div", {
     className: "bt-joystick-zone",
+    ref: lWrapRef,
+    'data-disc': 'L',
     style: {
+      /* ═══ v2.3.2246: HIDDEN UNTIL A THUMB IS ON IT ═══
+         Owner: "Hide the joystick overlays. Just show the left joystick when
+         you're moving the character."  So the corner box starts at opacity 0
+         and BroTown's per-frame resolver raises it while a finger drives
+         movement (or while the weapon-swap preview is open, or while a coach
+         mark points at it -- game/controlVisibility.js).
+         THE GATE IS ON THE BOX, NOT THE SPRITES.  The base/stick/knob each
+         carry their own opacity (the §10 engagement ladder: .5 at rest, .92
+         while dragged, stamped by handleJoystickMove/End), and v2.3.1233b is
+         on record for what happens when a container opacity MULTIPLIES with
+         those -- a 0.62 box under a 0.5 sprite gave a 31% rest opacity
+         nobody intended.  A BINARY 0/1 box cannot do that: at 1 every sprite
+         is exactly as bright as it was.
+         Opacity and not visibility/display, deliberately: the box keeps its
+         real bounding rect either way, which is what ControlsTutorial and
+         QuestCoach measure and what four QA scenarios probe, and opacity is
+         the property game.css already transitions (.22s, and none under
+         prefers-reduced-motion).  The disc is pointerEvents:'none' anyway --
+         movement input is the full-height [data-joyzone="L"] layer beneath --
+         so hiding it costs no input at all. */
+      opacity: 0,
       position: 'fixed',
       bottom: 'calc(var(--sheet-h, var(--dash-h)) + 70px)', /* v2.3.1307: disc rides above the open sheet */
       left: isLandscape ? 16 : 12,
@@ -86,15 +131,11 @@ export function TouchControls(props) {
       backgroundSize: '100% 100%',
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
-      /* v2.3.1236: drop-shadow filter REMOVED (here + the five siblings
+      /* v2.3.1236: drop-shadow filter REMOVED (here + the siblings
          below).  A CSS drop-shadow/filter on a DOM overlay compositing over
          the WebGL canvas produces grainy "static" on iOS -- the documented
          next suspect in CLAUDE.md's charge-pie history, and the same fix
-         SpecialChargePie itself got in v2.3.948.  These joystick sprites sit
-         directly under/around the special-charge counter and re-composite
-         every frame while aiming, which is exactly when the owner saw static
-         over the counter (v2.3.1236 report).  The sprite art carries its own
-         rim; no replacement shadow. */
+         SpecialChargePie itself got in v2.3.948. */
     }
   }, /*#__PURE__*/React.createElement("div", {
     /* Analog "stick" — anchored at joystick centre, grows toward the
@@ -120,8 +161,6 @@ export function TouchControls(props) {
       opacity: 0,
       pointerEvents: 'none',
       zIndex: 0,
-      /* v2.3.1236: drop-shadow removed (iOS WebGL static -- see the
-         joystick-base note above). */
     }
   }), /*#__PURE__*/React.createElement("div", {
     className: "bt-joystick-knob",
@@ -137,8 +176,6 @@ export function TouchControls(props) {
       backgroundSize: '100% 100%',
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
-      /* v2.3.1236: drop-shadow removed (iOS WebGL static -- see the
-         joystick-base note above). */
     }
   }), /*#__PURE__*/React.createElement("div", {
     /* Left-joystick weapon-swap preview overlay (v2.3.97).  Hidden by
@@ -167,56 +204,72 @@ export function TouchControls(props) {
        the expanded-sheet dim (game.css, nav-system PR B) can reach it —
        the left disc already had .bt-joystick-zone. */
     className: "bt-desktop-hide bt-rjoy-zone",
+    ref: rWrapRef,
+    'data-disc': 'R',
     style: {
+      /* ═══ v2.3.2246: SHOWN ONLY WHEN A PRESS WOULD DO SOMETHING ═══
+         Owner: "Just show the right contextual button when there's input that
+         can be interacted with."  BroTown's resolver raises this box when a
+         monster is inside the targeting perimeter, a lock is held, a resource
+         is in reach, or a harvest is running -- the same four facts that
+         decide what the LABEL says, read in the same place, so "the button is
+         on screen" and "the press does something" cannot drift apart.
+         Same binary-box reasoning as the left disc above.  The one difference
+         that matters: this disc IS the touch target (pointerEvents:'auto'
+         since v2.3.2242), and an opacity-0 element still takes taps -- so the
+         resolver switches the DISC's pointerEvents with the box's opacity.
+         Hidden, the tap falls through to [data-joyzone="R"] beneath, which
+         forwards it to the canvas as a lock-on click, which is exactly what
+         a tap on empty screen should do. */
+      opacity: 0,
       position: 'fixed',
-      bottom: 'calc(var(--sheet-h, var(--dash-h)) + 70px)', /* v2.3.1307: disc rides above the open sheet */
-      right: isLandscape ? 50 : 50,
+      bottom: 'calc(var(--sheet-h, var(--dash-h)) + ' + RBTN.bottom + 'px)', /* v2.3.1307: disc rides above the open sheet */
+      right: RBTN.right,
       zIndex: 30,
-      /* v2.3.816: visuals only -- touches handled by rZoneRef beneath. */
+      /* v2.3.2242: the container is still pass-through; the DISC inside it
+         is the touch target (see rJoyRef below). */
       pointerEvents: 'none',
-                  width: isLandscape ? 98 : 83,
-      height: isLandscape ? 98 : 83
+      width: discW,
+      height: discW
     }
   }, /*#__PURE__*/React.createElement("div", {
     ref: rJoyRef,
     className: "bt-rjoy-base",
+    'data-rbutton': '1',
     style: {
-      width: isLandscape ? 90 : 75,
-      height: isLandscape ? 90 : 75,
-      /* v2.3.949: DOCKED -- position:absolute centres the base in its right-corner
-         zone container, always visible at 50% opacity; relative-drag from the
-         touch origin (see handleRJoyMove). */
+      /* v2.3.2242: "slightly larger" -- 75/90 -> 96/108, and it now fills
+         its container rather than sitting inside a slightly bigger zone
+         box, because the zone box is no longer where touches land. */
+      width: discW,
+      height: discW,
       position: 'absolute',
       left: '50%',
       top: '50%',
       transform: 'translate(-50%,-50%)',
       opacity: 0.5,
-      /* v2.3.1236: owner feedback — right base now mirrors the LEFT
-         base's exact idle treatment (faint 0.5 rest, 0.92 while a
-         finger is down, same 0.12s opacity transition — the ladder is
-         stamped by BroTown's handleRJoyMove/handleRJoyEnd, unchanged).
-         pointerEvents 'none' added to match the left base; the legacy
-         borderRadius/touchAction pair is gone — touches have been
-         handled by rZoneRef since v2.3.816, so this element takes no
-         hit-tests and needs no circular hit shape. */
+      /* v2.3.1236: mirrors the LEFT base's idle treatment (faint 0.5 rest,
+         0.92 while a finger is down, same 0.12s opacity transition — the
+         ladder is stamped by BroTown's press/release handlers). */
+      /* v2.3.2246: 'none' is the RESTING value and BroTown's resolver turns
+         it on, not the other way round.  The box above starts hidden, so an
+         'auto' default would leave the button pressable-while-invisible for
+         the frames between this render and the resolver's first pass -- and a
+         phantom tap on a control the player cannot see is a worse failure
+         than a control that arrives a frame late.  The resolver compares
+         against this inline value every frame, so a re-render that re-stamps
+         it (an orientation change) is corrected on the next one. */
       pointerEvents: 'none',
+      touchAction: 'none',
       transition: 'opacity 0.12s ease',
       backgroundImage: 'url(/sprites/joystick/base.webp?v=2.3.102)',
       backgroundSize: '100% 100%',
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
-      /* v2.3.1236: drop-shadow removed (iOS WebGL static -- see the
-         joystick-base note above). */
+      WebkitUserSelect: 'none',
+      userSelect: 'none',
+      WebkitTouchCallout: 'none',
     }
-  }, /* v2.3.1236: owner feedback — the auto-attack red ring (2px
-        #D95C54 border + 0 0 12px red box-shadow, v2.3.99/v2.3.1233)
-        REMOVED.  It mounted the instant any right-half touch began
-        (rS sets autoAttack on touchstart), so the whole right stick
-        read as a "strange reddish blurriness" — the 12px-blurred red
-        glow over the semi-transparent base sprite.  The left stick has
-        no such overlay; removing it gives the two sticks identical
-        clean sprite chrome in both idle and engaged states. */
-  /*#__PURE__*/React.createElement("svg", {
+  }, /*#__PURE__*/React.createElement("svg", {
     style: {
       position: 'absolute',
       inset: 0,
@@ -242,196 +295,61 @@ export function TouchControls(props) {
       strokeDasharray: "".concat(Math.PI * 2 * 28 / 100 * pct * 100, " 999")
     });
     return null;
-  }()), /* Mana text removed — shown contextually above the player. */
-  null, /*#__PURE__*/React.createElement("div", {
-    /* Analog "stick" for the right joystick — mirrors lStickRef.  Width
-       and rotation are driven by handleRJoyMove.  v2.3.100: height
-       bumped 14 -> 22 to match the left joystick (user request:
-       "knob + rod much larger relative to the outer ring"). */
-    ref: rStickRef,
+  }()), /*#__PURE__*/React.createElement("svg", {
+    /* ═══ v2.3.2245: THE HARVEST RING ═══
+       Owner: "The gesture cues will be on the right button."  A second ring
+       inside the rim (the special-charge ring above is at r=28%): during
+       the wind-up it counts down to the window opening (dim); once the
+       gesture window is open it fills with reps (bright).  BroTown's loop
+       stamps strokeDasharray + stroke per frame; hidden when no harvest. */
+    ref: rRingRef,
     style: {
-      position: 'absolute',
-      left: '50%',
-      top: '50%',
-      width: 0,
-      height: 33,
-      marginTop: -16,
-      transformOrigin: '0% 50%',
-      transform: 'rotate(0rad)',
-      backgroundImage: 'url(/sprites/joystick/stick.webp?v=2.3.102)',
-      backgroundSize: '100% 100%',
-      backgroundRepeat: 'no-repeat',
-      backgroundPosition: 'center',
-      opacity: 0,
-      pointerEvents: 'none',
-      zIndex: 0,
-      /* v2.3.1236: drop-shadow removed (iOS WebGL static -- see the
-         joystick-base note above). */
-    }
+      position: 'absolute', inset: 0, width: '100%', height: '100%',
+      transform: 'rotate(-90deg)', pointerEvents: 'none', zIndex: 1, display: 'none',
+    },
+  }, React.createElement('circle', {
+    cx: '50%', cy: '50%', r: '40%', fill: 'none',
+    stroke: 'rgba(216,168,95,.85)', strokeWidth: 4, strokeLinecap: 'round',
+    strokeDasharray: '0 999',
+  })), /*#__PURE__*/React.createElement("div", {
+    /* ═══ v2.3.2245: THE TOOL ON THE BUTTON ═══
+       The owner's painted gesture strips (GESTURE_TOOLS in effectsRenderer:
+       pickaxe / axe / reel / pan, 8 cells across) used to float over the
+       node in the world; they now play on the button face, one cell at a
+       time via background-position, at the frame the thumb's gesture is on
+       (ex.cueFrame01).  BroTown's loop stamps backgroundImage / position /
+       display; hidden when no harvest is live. */
+    ref: rCueRef,
+    style: {
+      position: 'absolute', left: '50%', top: '50%',
+      width: isLandscape ? 64 : 58, height: isLandscape ? 64 : 58,
+      transform: 'translate(-50%,-56%)',
+      backgroundRepeat: 'no-repeat', backgroundSize: '800% 100%', backgroundPosition: '0% 0%',
+      pointerEvents: 'none', zIndex: 2, display: 'none',
+      imageRendering: 'auto',
+    },
   }), /*#__PURE__*/React.createElement("div", {
-    ref: rKnobRef,
-    style: {
-      /* v2.3.100: sprite-backed knob, bumped 24 -> 44 px so it reads
-         much larger relative to the outer ring (user request).  Same
-         drag math (translate from joystick center to clamped finger
-         pos) so no handleRJoyMove changes needed. */
-      position: 'absolute',
-      left: '50%',
-      top: '50%',
-      transform: 'translate(-50%,-50%)',
-      width: isLandscape ? 48 : 42,
-      height: isLandscape ? 48 : 42,
-      backgroundImage: 'url(/sprites/joystick/knob.webp?v=2.3.102)',
-      backgroundSize: '100% 100%',
-      backgroundRepeat: 'no-repeat',
-      backgroundPosition: 'center',
-      pointerEvents: 'none',
-      /* v2.3.1236: drop-shadow removed (iOS WebGL static -- see the
-         joystick-base note above). */
-    }
-  }, /* Knob left blank — active weapon is shown in WeaponSwapBar instead. */ null), /*#__PURE__*/React.createElement("div", {
-    /* Right-joystick shield preview overlay (v2.3.97).  Hidden by
-       default; shown for PREVIEW_HOLD_MS ms after a single tap as a
-       visual cue that "another tap-and-hold here activates shield."
-       The orbiting BlockRing glyph stays hidden until shield is
-       actually engaged (per user request: it serves as the active
-       arc indicator, not a static button). */
-    ref: rJoyPreviewRef,
+    /* v2.3.2242: THE LABEL.  Centred in the well; BroTown's loop stamps
+       the text so it can change with context without a React render.
+       Lantern Slate caption type: 10/700 uppercase, warm-white on the
+       dark well, one text-shadow so it holds up over the metal ring. */
+    ref: rLabelRef,
     style: {
       position: 'absolute',
       inset: 0,
-      display: 'none',
-      alignItems: 'center',
+      display: 'flex',
+      alignItems: 'flex-end',      /* v2.3.2245: sits low so the tool frame above it stays clear */
       justifyContent: 'center',
+      paddingBottom: isLandscape ? 14 : 12,
+      boxSizing: 'border-box',
       pointerEvents: 'none',
-      zIndex: 2,
-      fontSize: isLandscape ? 16 : 14,
-      fontWeight: 800,
-      color: 'rgba(150,200,255,0.95)',
-      textShadow: '0 1px 3px rgba(0,0,0,0.7), 0 0 6px rgba(80,140,255,0.5)',
-      letterSpacing: '0.05em',
+      zIndex: 3,
+      fontSize: isLandscape ? 12 : 11,
+      fontWeight: 700,
+      color: '#F7F2E7',
+      textShadow: '0 1px 2px rgba(0,0,0,.85)',
+      letterSpacing: '0.08em',
       textTransform: 'uppercase',
     }
-  }, 'shield'))), /*#__PURE__*/React.createElement("div", {
-    ref: shieldJoyRef,
-    className: "bt-desktop-hide bt-legacy-shield-removed",
-    style: {
-      // Legacy standalone shield button — removed v14.x in favor of BlockRing.
-      // Element kept in tree (display:none) because BroTown still references
-      // shieldJoyRef from non-render code paths; visible UI is now BlockRing.jsx.
-      display: 'none',
-      position: 'fixed',
-      bottom: isLandscape ? 102 : 96,
-      right: isLandscape ? 20 : 10,
-      zIndex: 30,
-      width: isLandscape ? 70 : 60,
-      height: isLandscape ? 70 : 60,
-      touchAction: 'none'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      width: '100%',
-      height: '100%',
-      borderRadius: '50%',
-      position: 'relative',
-      overflow: 'hidden',
-      border: '3px solid ' + (shieldUp ? 'rgba(96,165,250,.8)' : 'rgba(96,165,250,.2)'),
-      background: shieldUp ? 'radial-gradient(circle,rgba(96,165,250,.5) 0%,rgba(40,80,180,.3) 100%)' : 'radial-gradient(circle,rgba(50,60,100,.3) 0%,rgba(30,40,70,.2) 100%)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      boxShadow: shieldUp ? '0 0 15px rgba(96,165,250,.4)' : 'none',
-      cursor: 'pointer',
-      WebkitTouchCallout: 'none',
-      WebkitUserSelect: 'none',
-      userSelect: 'none'
-    }
-  }, function (_stateRef$current69) {
-    var R = (_stateRef$current69 = stateRef.current) === null || _stateRef$current69 === void 0 ? void 0 : _stateRef$current69.rpg;
-    if (!R) return null;
-    var stam = R.stamina || 0,
-      maxStam = R.maxStamina || 100;
-    var pct = Math.max(0, stam / maxStam);
-    var isLow = pct < 0.2;
-    var onCd = stateRef.current._shieldCdUntil && Date.now() < stateRef.current._shieldCdUntil;
-    var filledColor = onCd ? 'rgba(220,50,50,.4)' : isLow ? 'rgba(255,150,30,.4)' : pct > 0.5 ? 'rgba(50,180,100,.4)' : 'rgba(200,160,40,.4)';
-    var emptyColor = 'rgba(0,0,0,.3)';
-    var deg = Math.round(pct * 360);
-    return React.createElement('div', {
-      style: {
-        position: 'absolute',
-        inset: 0,
-        borderRadius: '50%',
-        background: "conic-gradient(from 0deg at 50% 50%, ".concat(filledColor, " 0deg, ").concat(filledColor, " ").concat(deg, "deg, ").concat(emptyColor, " ").concat(deg, "deg, ").concat(emptyColor, " 360deg)"),
-        mask: 'radial-gradient(circle,transparent 48%,black 49%)',
-        WebkitMask: 'radial-gradient(circle,transparent 48%,black 49%)',
-        pointerEvents: 'none',
-        zIndex: 0,
-        transform: 'rotate(-90deg)'
-      }
-    });
-  }(), shieldUp && function () {
-    var ang = stateRef.current._shieldAngle || 0;
-    var sz = isLandscape ? 70 : 60;
-    var r = sz * 0.35;
-    var ccx = sz / 2,
-      ccy = sz / 2;
-    return React.createElement('svg', {
-      style: {
-        position: 'absolute',
-        inset: 0,
-        width: '100%',
-        height: '100%',
-        pointerEvents: 'none',
-        zIndex: 2
-      }
-    }, React.createElement('line', {
-      x1: ccx,
-      y1: ccy,
-      x2: ccx + Math.cos(ang) * r,
-      y2: ccy + Math.sin(ang) * r,
-      stroke: 'rgba(96,165,250,.9)',
-      strokeWidth: 3,
-      strokeLinecap: 'round'
-    }));
-  }(), function (_stateRef$current70) {
-    var R = (_stateRef$current70 = stateRef.current) === null || _stateRef$current70 === void 0 ? void 0 : _stateRef$current70.rpg;
-    if (!R) return null;
-    var stam = Math.floor(R.stamina || 0),
-      maxStam = R.maxStamina || 100,
-      deficit = maxStam - stam;
-    var pct = stam / maxStam;
-    return React.createElement('div', {
-      style: {
-        position: 'absolute',
-        top: 2,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        pointerEvents: 'none',
-        textAlign: 'center',
-        lineHeight: 1,
-        zIndex: 2
-      }
-    }, React.createElement('div', {
-      style: {
-        fontSize: 10, // v2.3.1239: 10px font floor (was 5); fits 60px shield button
-        fontWeight: 700,
-        color: 'rgba(255,255,255,.5)',
-        letterSpacing: '.3px'
-      }
-    }, 'ENERGY'), React.createElement('div', {
-      style: {
-        fontSize: 10, // v2.3.1239: 10px font floor (was 8); stamina value on shield button
-        fontWeight: 900,
-        color: '#fff',
-        textShadow: '0 1px 2px rgba(0,0,0,.8)'
-      }
-    }, stam));
-  }(), /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: isLandscape ? 22 : 18,
-      pointerEvents: 'none',
-      zIndex: 1
-    }
-  }, "\uD83D\uDEE1\uFE0F"))));
+  }, 'Attack'))));
 }

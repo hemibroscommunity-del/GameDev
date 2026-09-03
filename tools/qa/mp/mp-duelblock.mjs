@@ -24,13 +24,15 @@ const duelState = (P) => H.readState(P, (S) => ({
   lock: S.lockedTarget ? { type: S.lockedTarget.type, id: S.lockedTarget.id } : null,
 }));
 
-/* `[data-lockon="block"]`, not a <button>. The lock-on ring's controls are
-   touch DIVs (LockOnActions), which is why the first cut of this scenario
-   reported "no block button" with the lock correctly set on both sides -- the
-   finder was wrong, not the fix. Visibility is checked too: a zero-box element
-   is present in the DOM and useless to a thumb. */
+/* `[data-shield]`, not a <button>.  v2.3.2242: the block control is the
+   ShieldButton under the Attack button (it shows whenever a lock is held,
+   which a duel sets), a touch DIV like the lock-on ring's controls were --
+   the first cut of this scenario reported "no block button" with the lock
+   correctly set on both sides because the finder was wrong, not the fix.
+   Visibility is checked too: a zero-box element is present in the DOM and
+   useless to a thumb. */
 const blockButton = (P) => P.page.evaluate(() => {
-  const el = document.querySelector('[data-lockon="block"]');
+  const el = document.querySelector('[data-shield]');
   if (!el) return { found: false };
   const r = el.getBoundingClientRect();
   return {

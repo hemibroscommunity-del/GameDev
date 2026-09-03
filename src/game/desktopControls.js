@@ -13,6 +13,7 @@
    S is stateRef.current; S.keys feeds the movement code that stayed in
    the game loop. */
 import { BT_AUDIO, getNpcQuest } from '@/data/index.js';
+import { cycleTarget } from '@/game/targeting.js'; /* v2.3.2243 */
 
 export function setupDesktopControls(S, deps) {
   var triggerContextualDodge = deps.triggerContextualDodge,
@@ -151,10 +152,12 @@ export function setupDesktopControls(S, deps) {
       }
 
       /* Q — toggle shield */
+      /* v2.3.2242: the touch shield is a toggle too now (ShieldButton), and
+         both sides go through shieldToggle.js -- the desktop wrappers
+         _desktopShieldOn/Off are what BroTown binds to that module. */
       if (e.code === 'KeyQ' && !e.repeat) {
         e.preventDefault();
         if (S._shieldUp) {
-          S._shieldUp = false;
           S._shieldKb = false;
           _desktopShieldOff();
         } else {
@@ -173,6 +176,14 @@ export function setupDesktopControls(S, deps) {
         return;
       }
 
+      /* v2.3.2243: T — cycle the locked target through the monsters in the
+         perimeter (Shift+T goes the other way).  The desktop twin of the
+         touch arrows; Tab was already the weapon cycle. */
+      if (e.code === 'KeyT' && !e.repeat) {
+        e.preventDefault();
+        try { cycleTarget(S, e.shiftKey ? -1 : 1); } catch (err) { /* nothing in range */ }
+        return;
+      }
       /* Tab — cycle weapon slot */
       if (e.code === 'Tab') {
         e.preventDefault();
@@ -251,7 +262,6 @@ export function setupDesktopControls(S, deps) {
       S.keys[e.key] = false;
       /* Release Q → drop shield */
       if (e.code === 'KeyQ' && S._shieldUp) {
-        S._shieldUp = false;
         S._shieldKb = false; /* v2.3.1726: stop the rAF mouse-steer too */
         _desktopShieldOff();
       }

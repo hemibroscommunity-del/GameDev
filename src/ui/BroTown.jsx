@@ -50,7 +50,12 @@ import { UpdateBanner } from './panels/UpdateBanner.jsx';
 import { startBuildWatch } from '@/game/buildWatch.js';
 import { TouchControls } from './panels/TouchControls.jsx';
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
-import { LockOnActions } from './panels/LockOnActions.jsx'; /* v2.3.1952 */
+import { ShieldButton } from './panels/ShieldButton.jsx'; /* v2.3.2242: the shield is a toggle button under Attack */
+import { GESTURE_TOOL_URLS } from '@/game/gesturePose.js'; /* v2.3.2245: the tool strips the button face plays */
+import { TargetArrows } from './panels/TargetArrows.jsx'; /* v2.3.2243: switch targets when two or more are in the perimeter */
+import { engageNearest, heldMonster, hasCandidate } from '@/game/targeting.js'; /* v2.3.2242: Attack engages the nearest monster in the perimeter; v2.3.2246: ...and the press asks which of the two it is */
+import { discHeld, discHoldProbe } from '@/game/controlVisibility.js'; /* v2.3.2246: the discs hide themselves unless onboarding is pointing at one */
+import { raiseShieldToggle, dropShield, shieldAimAngle } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { DuelRequestPanel } from './panels/DuelRequestPanel.jsx';
 import { ThreatIncomingPanel } from './panels/ThreatIncomingPanel.jsx';
 import { ChatPanel } from './panels/ChatPanel.jsx';
@@ -250,7 +255,7 @@ import { worldViewport } from '@/game/worldViewport.js'; /* v2.3.1768b */
 /* v2.3.817: §5.8 contextual dodge/lunge/retreat cluster extracted behavior-frozen. */
 import { triggerContextualDodge } from '@/game/dodge.js';
 /* v2.3.819: swing/special/shield action bodies extracted; component keeps thin useCallback wrappers. */
-import { swingAttack, specialAttack, raiseShield, elementBurst } from '@/game/playerActions.js';
+import { swingAttack, specialAttack, elementBurst } from '@/game/playerActions.js'; /* v2.3.2242: raiseShield superseded by game/shieldToggle.js */
 /* v2.3.1733: stamina abilities (Shield Bash / Whirlwind) — PR 5 of the
    combat overhaul.  The cast bodies live in @/game/abilities.js for the
    same reason the swing bodies do; this component keeps thin wrappers. */
@@ -262,7 +267,7 @@ import { sendEmote as sendEmoteImpl, enterBuilding as enterBuildingImpl } from '
 /* v2.3.784: connection lifecycle extracted behavior-frozen (REBUILD-PLAN Phase 5);
    the Phase-4 dispatcher is now consumed by wsClient.js, not here. */
 import { setupWebSocket } from '@/networking/wsClient.js';
-import { MONSTER_VARIANTS } from '@/data/monsterVariants.js';
+import { MONSTER_VARIANTS, isIntangible } from '@/data/monsterVariants.js'; /* isIntangible: v2.3.2244 */
 import { shardByKey } from '@/data/shards.js';
 
 /* Destructure everything from DATA — the component body references 100+ symbols */
@@ -4831,13 +4836,31 @@ export var BroTown = function BroTown(_ref0) {
            this loop is what fires bow and staff shots — gating only the tap
            handlers would have left ranged builds shooting mid-chop. */
         if (S._extraction) S.autoAttack = false;
+        /* ═══ v2.3.2246: A LOCK MAKES MOVEMENT TARGET-RELATIVE ═══
+           Owner: "Player movement (backwards, left, right) should revolve
+           around the targeted monster so if you move backwards you should be
+           doing a backwards jog (just like behavior of former controls moving
+           down but angling up directionally with the right joystick)."
+
+           _backpedaling is the flag that reverses the jog cycle and holds the
+           body on the aim (entityRenderer's aimAttackActive / isMovingBackward),
+           and it was computed only `if (S.autoAttack)` -- i.e. only while the
+           attack button was physically held.  That was faithful to the OLD
+           controls, where aiming and attacking were one gesture, and wrong
+           for the new ones, where the lock is the aim and survives the
+           finger.  So the backpedal test now runs whenever a MONSTER lock is
+           held, and the 0.5x speed stays where it was, under autoAttack: the
+           owner asked for a direction, not a slowdown, and halving a merely
+           engaged player's walk is a nerf nobody requested.
+           Derived from S.lockedTarget rather than a flag stamped by the
+           combat tick -- see the note in monsterCombat.js. */
+        var _lkFace = !!(S.lockedTarget && S.lockedTarget.ref && S.lockedTarget.type === 'monster');
         S._backpedaling = false;
-        if (S.autoAttack) {
-          finalSpd *= 0.5;
-          if (S._aimAngle != null && (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01)) {
-            var moveDotAim = dx * Math.cos(S._aimAngle) + dy * Math.sin(S._aimAngle);
-            if (moveDotAim < 0) S._backpedaling = true;
-          }
+        if (S.autoAttack) finalSpd *= 0.5;
+        if ((S.autoAttack || _lkFace) && S._aimAngle != null
+            && (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01)) {
+          var moveDotAim = dx * Math.cos(S._aimAngle) + dy * Math.sin(S._aimAngle);
+          if (moveDotAim < 0) S._backpedaling = true;
         }
 
         /* v2.3.1769: the frame-rate term.  Applied HERE, to the step, rather
@@ -4952,6 +4975,13 @@ export var BroTown = function BroTown(_ref0) {
           for (var _mi = 0; _mi < ms.length; _mi++) {
             var _m = ms[_mi];
             if (!_m || !_m.alive) continue;
+            /* v2.3.2244 (post-review): a snow pile (or a slime mid-swell) is
+               not a wall.  It is intangible to your attacks by rule, and the
+               pile now hurts to TOUCH -- a body-block that held you at arm's
+               length would make that contact reachable only when he moves
+               into you, never when you move into him.  Walk over it; the
+               worker charges the touch. */
+            if (isIntangible(_m)) continue;
             var _b = _monBody(_m);
             var _rr = _b.r + hs;
             var _ndx = px - _m.x, _ndy = py - _b.by;
@@ -5173,70 +5203,177 @@ export var BroTown = function BroTown(_ref0) {
           var _cfd = nodeReachDist(S, S._campfire);
           if (_cfd != null && _cfd < closestDist) { closestDist = _cfd; S._proxNode = S._campfire; }
         }
-        var _tapN = S._tapNode || null;
-        if (_tapN) {
-          /* v2.3.1680: a node you have no tool for is not tappable either.
-             The renderer already hides it, so reaching here means a tap that
-             was registered before the tool was spent, or a node revived under
-             a bag that changed — either way, drop it rather than opening a
-             minigame the server will refuse. */
-          if (_tapN !== S._campfire && _tapN.nodeType && !hasGatherTool(S.rpg, _tapN.nodeType)) {
-            S._tapNode = null; _tapN = null;
-          }
-          var _tapLive = _tapN && (_tapN === S._campfire
-            ? !!(S._campfire && S._campfire.alive)
-            : !!(S.gatherNodes && S.gatherNodes.indexOf(_tapN) >= 0 && _tapN.alive
-                 && !(_tapN.respawnAt && Date.now() < _tapN.respawnAt)));
-          if (!_tapLive || nodeReachDist(S, _tapN) == null) { S._tapNode = null; _tapN = null; }
+        /* ═══ v2.3.2245: DETECTED BY PERIMETER ═══
+           Owner: "No resource extraction button in the middle of the screen
+           or needing to tap on the resource ... Resource extraction will be
+           detected by perimeter and contextual button will be tapped to
+           begin harvest."  So S._nearNode -- what the E key and the button
+           offer -- is the closest resource in reach again (S._proxNode),
+           gated on owning the tool for it; the v2.3.1448 tap latch
+           (_tapNode), the mid-screen shell and its per-frame re-anchoring
+           are gone.  Hidden while a harvest is live, as before: you are
+           already doing the thing it offers. */
+        {
+          var _pn = S._proxNode || null;
+          if (_pn && _pn !== S._campfire && _pn.nodeType && !hasGatherTool(S.rpg, _pn.nodeType)) _pn = null;
+          S._nearNode = S._extraction ? null : _pn;
         }
-        S._nearNode = _tapN;
-        /* v2.3.1432 (owner: "the contextual menu for cooking didn't go
-           away"): while a harvest attempt is ACTIVE, the interact prompt
-           is noise — you're already doing the thing it offers (and its
-           tap could restart the attempt).  Hide it for every skill; it
-           returns the moment the attempt ends or cancels. */
-        if (S._extraction) S._nearNode = null;
-        /* v2.3.1448: the shell is React-rendered, and React doesn't
-           re-render per frame — push the open/close edge into state the
-           moment it changes so a tap paints the shell immediately (and
-           walking away clears it just as fast). */
         if (S._nearNode !== promptNodeRef.current) {
           promptNodeRef.current = S._nearNode;
           setPromptNode(S._nearNode);
         }
-        /* v2.3.1409 (owner: "the ore resource contextual menu appeared too
-           far below the ore on screen"): anchor the interact prompt to the
-           NODE instead of the dashboard.  The button is React-rendered but
-           positioned imperatively here every frame (world -> CSS via the
-           published worldScale, mirroring ExtractionSwipeLayer's cue math),
-           because React doesn't re-render per camera move.  Sits just
-           below the node sprite; clamped to the viewport so an edge-of-
-           screen node never pushes the button off-screen or under the
-           dashboard.  Falls back to the class's dashboard anchor until
-           the first frame lands. */
+        /* ═══ v2.3.2245: THE BUTTON'S FACE, STAMPED PER FRAME ═══
+           The right button is contextual: ATTACK with a monster in the
+           perimeter (or nothing at all), HARVEST with a resource in reach and
+           no monster (control-redesign.md §5.10: Attack wins), and during a
+           harvest the owner's gesture cue -- the painted tool strip playing
+           at the thumb's own phase, a ring counting the wind-up down and then
+           filling with reps.  Imperative DOM writes rather than React state
+           because these change every frame while the loop already runs. */
         {
-          var _npEl = typeof document !== 'undefined' && document.getElementById('bt-node-prompt');
-          if (_npEl && S._nearNode && S.camera) {
-            var _nwx = (S._nearNode.x - S.camera.x) * (S._worldScaleX || 1);
-            /* v2.3.1447 (owner: "always make the shell appear directly
-               centered beneath the resource"): the shell's TOP sits just
-               below each type's visual BOTTOM.  Node sprites are
-               bottom-anchored at node.y (ore/tree art extends UP), the
-               pond is center-anchored (art reaches ~66px below node.y),
-               the campfire is drawn on the ground at node.y.  Offsets
-               tuned from headless screenshots. */
-            var _nvB = { tree: 10, oreVein: 8, fishSpot: 64, campfire: 14 }[S._nearNode.nodeType] || 10;
-            var _npW2 = (_npEl.offsetWidth || 200) / 2;
-            var _npH = _npEl.offsetHeight || 36;
-            var _nwy = (S._nearNode.y + _nvB - S.camera.y) * (S._worldScaleY || 1);
-            var _vw = window.innerWidth, _vh = window.innerHeight;
-            var _dashH = 0;
-            try { _dashH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dash-h')) || _vh * 0.25; } catch (e3) { _dashH = _vh * 0.25; }
-            var _npx = Math.max(_npW2 + 6, Math.min(_vw - _npW2 - 6, _nwx));
-            var _npy = Math.max(8, Math.min(_vh - _dashH - _npH - 8, _nwy));
-            _npEl.style.left = _npx + 'px';
-            _npEl.style.top = _npy + 'px';
-            _npEl.style.bottom = 'auto';
+          var _lbl = rLabelRef.current, _cue = rCueRef.current, _ring = rRingRef.current;
+          var _ex = S._extraction;
+          var _cands = S._targetCands || [];
+          /* Priority (control-redesign.md §5.10, revised while building):
+             a resource IN REACH beats a monster merely IN THE PERIMETER --
+             standing at a node is a deliberate act, and monsters leave a
+             harvester alone by rule (v2.3.1704); a HELD LOCK beats the
+             node, because a lock is the more deliberate act of the two
+             (tap the monster, or press Attack once before stepping up to
+             the node).  The first cut let any monster within 220px win,
+             and a snowman on the far side of a tree turned every chop
+             into a swing. */
+          var _lockHeld = !!(S.lockedTarget && S.lockedTarget.ref);
+          var _harvestCtx = !!(S._nearNode && !_lockHeld);
+          S._btnHarvest = _harvestCtx;
+          if (_lbl) {
+            var _want;
+            if (_ex) _want = (_ex.status === 'ready') ? ({ mining: 'PUMP', woodcutting: 'CHOP', fishing: 'REEL', cooking: 'FLIP' }[_ex.skill] || 'GO') : 'WAIT';
+            else if (_harvestCtx) _want = 'HARVEST';
+            else _want = 'ATTACK';
+            if (_lbl.textContent !== _want) _lbl.textContent = _want;
+          }
+          if (_cue) {
+            if (_ex && _ex.status === 'ready' && GESTURE_TOOL_URLS[_ex.skill]) {
+              var _url = 'url(' + GESTURE_TOOL_URLS[_ex.skill] + ')';
+              if (_cue.style.backgroundImage !== _url) _cue.style.backgroundImage = _url;
+              /* The strip is 8 cells across; background-size 800% puts one
+                 cell in the box and position N*100/7 % selects cell N. */
+              var _f01 = Math.max(0, Math.min(0.9999, _ex.cueFrame01 || 0));
+              var _cell = (_ex.skill === 'mining' || _ex.skill === 'woodcutting') ? Math.min(3, Math.floor(_f01 * 4)) : Math.floor(_f01 * 8);
+              var _pos = (_cell * 100 / 7).toFixed(2) + '% 0%';
+              if (_cue.style.backgroundPosition !== _pos) _cue.style.backgroundPosition = _pos;
+              if (_cue.style.display !== 'block') _cue.style.display = 'block';
+            } else if (_cue.style.display !== 'none') _cue.style.display = 'none';
+          }
+          if (_ring) {
+            if (_ex) {
+              var _c = _ring.firstChild;
+              var _frac, _col;
+              if (_ex.status === 'ready') { _frac = Math.max(0, Math.min(1, _ex.progress || 0)); _col = 'rgba(89,191,145,.95)'; }
+              else { var _span = Math.max(1, (_ex.windowOpensAt || 0) - (_ex.startedAt || 0)); _frac = Math.max(0, Math.min(1, (Date.now() - (_ex.startedAt || 0)) / _span)); _col = 'rgba(216,168,95,.55)'; }
+              /* r = 40% of the box: circumference in the SVG's own units --
+                 the box is square, so a percentage radius resolves against
+                 its width; stamp the dash as a fraction of 2*pi*r in px. */
+              var _rpx = (_ring.clientWidth || 96) * 0.4;
+              var _circ = 2 * Math.PI * _rpx;
+              if (_c) {
+                var _dash = (_circ * _frac).toFixed(1) + ' 9999';
+                if (_c.getAttribute('stroke-dasharray') !== _dash) _c.setAttribute('stroke-dasharray', _dash);
+                if (_c.getAttribute('stroke') !== _col) _c.setAttribute('stroke', _col);
+              }
+              if (_ring.style.display !== 'block') _ring.style.display = 'block';
+            } else if (_ring.style.display !== 'none') _ring.style.display = 'none';
+          }
+
+          /* ═══ v2.3.2246: THE DISCS SHOW THEMSELVES ═══
+             Owner: "Hide the joystick overlays. Just show the left joystick
+             when you're moving the character. Just show the right contextual
+             button when there's input that can be interacted with."
+
+             One resolver, here, because this is already the block that knows
+             what the button's context IS -- the extraction, the node in
+             reach, the held lock, the candidate list.  Deciding visibility
+             anywhere else would be a second copy of that list, and the two
+             would drift.
+
+             THE LINGER.  Candidacy is a hard 220px test (targeting.js; the
+             hysteresis ring guards the LOCK, not the list), so a monster
+             pacing across the boundary would strobe the button on and off
+             several times a second.  400ms of linger costs nothing -- the
+             press still works the whole time it is up, because a candidate
+             at 221px is still a candidate the moment you lean in -- and it
+             turns a strobe into a fade.
+
+             THE HOLDS.  ControlsTutorial and QuestCoach teach both controls
+             in town, where neither has anything to do; they take a hold on
+             the side they are ringing (game/controlVisibility.js) and the
+             `||` below lets it through.  Without it the tour would draw its
+             ring around an invisible control and every existing assertion
+             would still pass, because a hidden box still measures.
+
+             pointerEvents on the RIGHT DISC and not the box: the box is
+             pass-through by design and a child's 'auto' beats a parent's
+             'none', so the disc is the only place that can decline the tap. */
+          var _now2 = Date.now();
+          if (_ex || _harvestCtx || _lockHeld || _cands.length) S._rBtnLiveUntil = _now2 + 400;
+          var _rOn = (S._rBtnLiveUntil || 0) > _now2 || discHeld('R');
+          /* Two facts, ANDed, because either one alone can get stuck: the
+             flag is cleared by handleJoystickEnd (bound to touchend AND
+             touchcancel) and lTouchId by the same handler, but if the
+             dual-joystick effect re-runs mid-touch its listeners come off
+             with a touch still down and whichever half it was holding is
+             never cleared.  ANDing fails in the safe direction -- a lost
+             clear hides the disc rather than pinning it on the world, which
+             is the thing being fixed. */
+          var _lOn = (!!S._lJoyHeld && lTouchId.current !== null)
+            || (S._lJoyPreviewUntil || 0) > _now2 || discHeld('L');
+          /* LEVEL-DRIVEN, COMPARED AGAINST THE DOM -- the same shape as the
+             label / cue / ring stamps above (`if (_lbl.textContent !==
+             _want)`), and for a reason worth writing down.  The first cut
+             cached the answer on S and wrote the style only when its own flag
+             flipped, which is wrong in this file: TouchControls is a React
+             component whose JSX carries the RESTING values (box opacity 0,
+             disc pointerEvents 'none'), so any re-render -- an orientation
+             change is the obvious one -- re-stamps those over whatever the
+             resolver had set, and a change-gated resolver never notices.  A
+             live button would have gone painted-but-dead until the next time
+             its context happened to change.  Reading the
+             element's own inline style makes a React reset self-healing on the
+             next frame, at the cost of one string compare each. */
+          var _rw = rWrapRef.current;
+          var _rWant = _rOn ? '1' : '0';
+          if (_rw && _rw.style.opacity !== _rWant) _rw.style.opacity = _rWant;
+          var _rd = rJoyRef.current;
+          var _peWant = _rOn ? 'auto' : 'none';
+          if (_rd && _rd.style.pointerEvents !== _peWant) _rd.style.pointerEvents = _peWant;
+          var _lw = lWrapRef.current;
+          var _lWant = _lOn ? '1' : '0';
+          if (_lw && _lw.style.opacity !== _lWant) _lw.style.opacity = _lWant;
+          /* The one EDGE, and it stays an edge: the button going away under a
+             thumb that is still holding it (the last monster died) has to let
+             go of the attack, or autoAttack stays latched on a control that is
+             no longer there. */
+          if (!_rOn && S._rBtnShown && S.autoAttack) { S.autoAttack = false; S._aiming = false; }
+          S._rBtnShown = _rOn;
+          S._lJoyShown = _lOn;
+          /* v2.3.2246: the probe, in the house style (__btShieldBtn,
+             __btCtlTutSteps).  "The disc is dark" and "the disc is painted"
+             each have several possible reasons and a screenshot names none of
+             them -- a left disc up with no thumb on it is a coach mark
+             holding it, not a broken resolver, and a test that could not tell
+             those apart would have to guess (TRAPS §28). */
+          if (typeof window !== 'undefined' && !window.__btDiscVis) {
+            window.__btDiscVis = function () {
+              var s2 = stateRef.current || {};
+              return { L: { shown: !!s2._lJoyShown, thumb: !!s2._lJoyHeld,
+                            preview: (s2._lJoyPreviewUntil || 0) > Date.now() },
+                       R: { shown: !!s2._rBtnShown, liveMs: Math.max(0, (s2._rBtnLiveUntil || 0) - Date.now()),
+                            cands: (s2._targetCands || []).length,
+                            lock: !!(s2.lockedTarget && s2.lockedTarget.ref),
+                            node: !!s2._nearNode, ex: !!s2._extraction },
+                       holds: discHoldProbe() };
+            };
           }
         }
 
@@ -6492,6 +6629,11 @@ export var BroTown = function BroTown(_ref0) {
            mouse plugged in. */
         if (S._shieldUp && S._shieldKb && typeof S._mouseAimAngle === 'number') {
           S._shieldAngle = S._mouseAimAngle;
+        } else if (S._shieldUp && S.lockedTarget && S.lockedTarget.ref) {
+          /* v2.3.2242: a raised shield faces the locked target every frame --
+             BlockRing's lerp used to do this; the toggle button has no
+             finger on it to steer, so the lock is the only steer there is. */
+          S._shieldAngle = shieldAimAngle(S);
         }
         if (S._shieldUp && S.rpg) {
           /* ═══ v2.3.1704: HOLDING A SHIELD IS FREE ═══
@@ -6520,15 +6662,10 @@ export var BroTown = function BroTown(_ref0) {
           S.shieldEnd = Date.now() + 250;
           if (BLOCK_COSTS_STAMINA && S.rpg.stamina <= 0) {
             S.rpg.stamina = 0;
-            S._shieldUp = false;
             S._shieldCdUntil = Date.now() + 2000;
-            S.shieldEnd = 0;
-            /* Flag the active double-tap-hold gesture as auto-released
-               so the right-joystick handler doesn't fire a second
-               endBlock + broadcast on the eventual touch-end. */
             S._shieldAutoReleased = true;
-            try { blockRingBus.endBlock(); } catch (e) {}
-            if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_shield', payload: { id: S.myId, up: false }});
+            /* v2.3.2242: the shared drop path (broadcast + bus + shieldEnd). */
+            dropShield(S, 'stamina');
           }
         } else {
           S.shieldEnd = 0;
@@ -7179,10 +7316,9 @@ export var BroTown = function BroTown(_ref0) {
     _useState224 = _slicedToArray(_useState223, 2),
     shieldCd = _useState224[0],
     setShieldCd = _useState224[1];
-  var _useState225 = useState(false),
-    _useState226 = _slicedToArray(_useState225, 2),
-    shieldUp = _useState226[0],
-    setShieldUp = _useState226[1];
+  /* v2.3.2242: the `shieldUp` React state is gone -- its only reader was
+     the legacy hidden shield joystick in TouchControls; ShieldButton polls
+     S._shieldUp directly. */
   var _useState227 = useState(3000),
     _useState228 = _slicedToArray(_useState227, 2),
     shieldStamina = _useState228[0],
@@ -7205,9 +7341,10 @@ export var BroTown = function BroTown(_ref0) {
 
   /* Legacy fishing/campfire/woodcutting systems removed — replaced by §18 Life Skills */
 
-  /* Shield — 80% damage reduction for 2s, stuns attacker, 10s cooldown */
+  /* Shield — v2.3.2242: one module owns raise/drop (game/shieldToggle.js);
+     this wrapper is what the desktop Q key reaches through _desktopShieldOn. */
   var doShield = useCallback(function () {
-    raiseShield(stateRef.current, { setShieldUp: setShieldUp });
+    raiseShieldToggle(stateRef.current);
   }, []);
   var sendEmote = useCallback(function (emoji) {
     sendEmoteImpl(stateRef.current, emoji, { setShowEmotes: setShowEmotes });
@@ -7244,41 +7381,9 @@ export var BroTown = function BroTown(_ref0) {
       localStorage.setItem('bt_rpg', JSON.stringify(R));
     } catch (e2) {}
   }, []);
-  /* v2.3.1448 (owner: "only when a user touches the resource on screen
-     does the resource extraction menu pop up.  If they try to extract
-     while too far away a message pops up that says they're too far
-     away"): the canvas tap paths call this after their monster / NPC /
-     player checks have passed on the tap.  Returns true when a resource
-     handled it, so the caller can skip its "tap on empty space" branch.
-     A tap on a resource that's out of reach floats the warning instead
-     of opening the shell; a tap on bare ground closes an open shell. */
-  var _tapResourceAt = useCallback(function (cssX, cssY) {
-    var S = stateRef.current;
-    var hit = nodeAtScreen(S, cssX, cssY);
-    if (!hit) {
-      if (S._tapNode) { S._tapNode = null; S._nearNode = null; }
-      return false;
-    }
-    if (nodeReachDist(S, hit) == null) {
-      /* Throttled — a flurry of taps shouldn't stack popups on top of
-         each other (the popup lives ~1s). */
-      if (Date.now() - (S._farMsgAt || 0) > 700) {
-        S._farMsgAt = Date.now();
-        /* Floats over the PLAYER, not the resource: a resource you're too
-           far from is by definition near a screen edge, and the popup was
-           clipping off the side of the phone (verified in the probe). */
-        pushDmgPopup(S, S.player.x, S.player.y - 74, 'Too far away', '#FF7A6B', { ttl: 1.4, crit: true });
-        try { BT_AUDIO.beep(200, 0.05, 0.08, 'square'); } catch (e) {}
-      }
-      S._tapNode = null;
-      S._nearNode = null;
-      return true;
-    }
-    S._tapNode = hit;
-    S._nearNode = hit;
-    try { BT_AUDIO.beep(540, 0.04, 0.05, 'sine'); } catch (e) {}
-    return true;
-  }, []);
+  /* v2.3.2245: _tapResourceAt is gone with the shell it opened -- resources
+     are detected by perimeter (S._proxNode -> S._nearNode in the loop) and
+     harvested from the right button.  A tap on bare ground still unlocks. */
 
   var _desktopGather = useCallback(function () {
     var _R$lifeSkills;
@@ -7498,9 +7603,7 @@ export var BroTown = function BroTown(_ref0) {
     doShield();
   }, [doShield]);
   var _desktopShieldOff = useCallback(function () {
-    stateRef.current._shieldUp = false;
-    setShieldUp(false);
-    if (stateRef.current.channel) stateRef.current.channel.send({ type: 'broadcast', event: 'player_shield', payload: { id: stateRef.current.myId, up: false }});
+    dropShield(stateRef.current, 'key');   /* v2.3.2242: shared drop path */
   }, []);
   var _desktopCycleWeapon = useCallback(function () {
     var _S2$rpg$weapon, _S2$rpg$rangedWeapon;
@@ -7614,13 +7717,13 @@ export var BroTown = function BroTown(_ref0) {
   var joystickActive = useRef(false);
   var lTouchId = useRef(null);
   var rJoyRef = useRef(null);
-  var rKnobRef = useRef(null);
-  var rStickRef = useRef(null);
+  var lWrapRef = useRef(null);    /* v2.3.2246: the two corner boxes are the visibility gates */
+  var rWrapRef = useRef(null);
+  var rLabelRef = useRef(null);   /* v2.3.2242: the button's contextual label */
+  var rCueRef = useRef(null);     /* v2.3.2245: the harvest tool frame on the button */
+  var rRingRef = useRef(null);    /* v2.3.2245: the wind-up / reps ring */
   var rJoyActive = useRef(false);
   var rTouchId = useRef(null);
-  var shieldJoyRef = useRef(null);
-  var shieldTouchId = useRef(null);
-  var shieldJoyActive = useRef(false);
   var lTrail = useRef([]);
   /* Double-tap gesture state for the joysticks (v2.3.97+).
      Right joystick: tap, then tap-and-hold within DOUBLE_TAP_WINDOW_MS
@@ -7630,12 +7733,12 @@ export var BroTown = function BroTown(_ref0) {
      Each tap (single-tap classification: no movement + brief duration)
      opens a preview window that renders an icon inside the joystick
      disc; the window auto-closes when the timer expires. */
-  var rJoyPreviewRef = useRef(null);
   var lJoyPreviewRef = useRef(null);
   var rTapState = useRef({ lastEndAt: 0, lastX: 0, lastY: 0, startAt: 0, startX: 0, startY: 0, moved: false });
   var lTapState = useRef({ lastEndAt: 0, lastX: 0, lastY: 0, startAt: 0, startX: 0, startY: 0, moved: false });
-  var rShieldGesture = useRef(false);
-  var rPreviewTimer = useRef(null);
+  /* v2.3.2242: rShieldGesture / rPreviewTimer / rJoyPreviewRef / rKnobRef /
+     rStickRef / shieldJoyRef / shieldTouchId / shieldJoyActive are gone with
+     the double-tap-hold gesture and the stick sprites. */
   var lPreviewTimer = useRef(null);
   var handleJoystickMove = useCallback(function (clientX, clientY) {
     var base = joystickRef.current;
@@ -7646,6 +7749,13 @@ export var BroTown = function BroTown(_ref0) {
        already carries transition:opacity .12s, so this reads as a
        smooth lift, not a blink. */
     base.style.opacity = '0.92';
+    /* v2.3.2246: "just show the left joystick when you're moving the
+       character" -- this handler runs on touchstart and every move in the
+       left zone, so it is exactly "a thumb is driving movement".  The corner
+       box's opacity is raised by the loop's one resolver rather than here,
+       so the coach-mark hold and the weapon-preview window cannot be
+       overwritten by a release a frame later. */
+    stateRef.current._lJoyHeld = true;
     var rect = base.getBoundingClientRect();
     /* v2.3.949: docked joystick.  The base sits in its left corner at 50%
        opacity and no longer follows the finger; deflection is measured from the
@@ -7699,99 +7809,56 @@ export var BroTown = function BroTown(_ref0) {
       lStickRef.current.style.opacity = '0';
     }
     var S = stateRef.current;
+    S._lJoyHeld = false;   /* v2.3.2246: the thumb is off; the disc fades out */
     /* Dodge roll disabled on joystick — use screen swipe instead */
     lTrail.current = [];
     S.stickX = 0;
     S.stickY = 0;
   }, []);
 
-  /* Right joystick — aim direction + auto-attack while held */
-  var rTrail = useRef([]);
-  var handleRJoyMove = useCallback(function (clientX, clientY) {
+  /* ═══ v2.3.2242: THE RIGHT CONTROL IS A BUTTON ═══
+     Owner: "The right thumbstick no longer acts as independent rotation
+     angle. It becomes a slightly larger contextual button ... Right button
+     will be held down to auto attack. The swipe on button will continue to
+     be the special attack."
+
+     handleRJoyMove used to turn a drag into S._aimAngle / S._facing /
+     S._aiming and the knob + rod transforms; handleRJoyEnd undid them.  All
+     of that is gone.  What is left is the §10 opacity ladder (rest .5,
+     ENGAGED .92 -- v2.3.1233) and the auto-attack flag.  Aim comes from the
+     LOCK now (monsterCombat writes S._aimAngle toward the locked target each
+     frame while the button is held), and the lock comes from engageNearest
+     on the press (game/targeting.js). */
+  var handleRBtnPress = useCallback(function () {
     var base = rJoyRef.current;
-    if (!base) return;
-    /* v2.3.1233: §10 ENGAGED step, same as the left stick above. */
-    base.style.opacity = '0.92';
-    var rect = base.getBoundingClientRect();
-    /* v2.3.949: docked combat joystick -- deflection measured from the touch
-       ORIGIN (relative drag from anywhere in the right zone), not the docked
-       base centre. */
-    var _rts = rTapState.current;
-    var bcx = (_rts && _rts.startX != null) ? _rts.startX : (rect.left + rect.width / 2),
-      bcy = (_rts && _rts.startY != null) ? _rts.startY : (rect.top + rect.height / 2);
-    var rawDx = clientX - bcx,
-      rawDy = clientY - bcy;
-    var dist = Math.sqrt(rawDx * rawDx + rawDy * rawDy);
-    var maxR = rect.width / 2 - 18;
-    var clampDist = Math.min(dist, maxR);
-    var angle = Math.atan2(rawDy, rawDx);
-    if (rKnobRef.current) {
-      var kx = Math.cos(angle) * clampDist,
-        ky = Math.sin(angle) * clampDist;
-      rKnobRef.current.style.transform = "translate(calc(-50% + ".concat(kx, "px), calc(-50% + ").concat(ky, "px))");
-    }
-    if (rStickRef.current) {
-      rStickRef.current.style.width = clampDist + 'px';
-      rStickRef.current.style.transform = 'rotate(' + angle + 'rad)';
-      rStickRef.current.style.opacity = clampDist > 4 ? '0.85' : '0';
-    }
+    if (base) base.style.opacity = '0.92';
     var S = stateRef.current;
-    if (dist > 8) {
-      var dirs = [['right', 0], ['down', Math.PI / 2], ['left', Math.PI], ['up', -Math.PI / 2]];
-      var best = 'right',
-        bestD = 99;
-      for (var _i42 = 0, _dirs = dirs; _i42 < _dirs.length; _i42++) {
-        var _dirs$_i = _slicedToArray(_dirs[_i42], 2),
-          d = _dirs$_i[0],
-          a = _dirs$_i[1];
-        var diff = Math.abs(angle - a);
-        if (diff > Math.PI) diff = Math.PI * 2 - diff;
-        if (diff < bestD) {
-          bestD = diff;
-          best = d;
-        }
-      }
-      S._facing = best;
-      S._aimAngle = angle;
-      S._aiming = true;
-      S._lastAimAngle = angle;
-      S.autoAttack = true;
-    }
-    rTrail.current.push({
-      x: rawDx,
-      y: rawDy,
-      t: performance.now()
-    });
-    if (rTrail.current.length > 60) rTrail.current.shift();
+    if (!S) return;
+    /* v2.3.2246: THE ATTACK PRESS DOES NOT RE-TARGET.  This used to call
+       engageNearest, which was right while one press did both jobs.  With
+       the two-step press (bS decides engage-or-attack from the lock) it is
+       actively wrong: reached only when a lock is already held, it would
+       hand the lock to the NEAREST candidate instead -- so a monster tapped
+       at bow range, with a slime wandering past your feet, would silently
+       become the slime the moment you pressed attack.  Engagement belongs to
+       bS alone now. */
+    S.autoAttack = true;
+    setAutoAttack(true);
   }, []);
-  var handleRJoyEnd = useCallback(function () {
+  var handleRBtnRelease = useCallback(function () {
     rJoyActive.current = false;
-    /* v2.3.949: docked combat joystick stays visible at 50% on release. */
-    if (rJoyRef.current) rJoyRef.current.style.opacity = '0.5';
-    if (rKnobRef.current) rKnobRef.current.style.transform = 'translate(-50%,-50%)';
-    if (rStickRef.current) {
-      rStickRef.current.style.width = '0px';
-      rStickRef.current.style.opacity = '0';
-    }
+    var base = rJoyRef.current;
+    if (base) base.style.opacity = '0.5';
     var S = stateRef.current;
+    if (!S) return;
     S.autoAttack = false;
     setAutoAttack(false);
-    /* Aim lock — hold direction 2.5s after release */
-    var aimCopy = S._aimAngle;
     S._aiming = false;
   }, []);
-
-  /* Shield joystick — hold+drag to aim shield direction */
-  var handleShieldMove = useCallback(function (clientX, clientY) {
-    var base = shieldJoyRef.current;
-    if (!base) return;
-    var rect = base.getBoundingClientRect();
-    var dx2 = clientX - (rect.left + rect.width / 2);
-    var dy2 = clientY - (rect.top + rect.height / 2);
-    if (Math.sqrt(dx2 * dx2 + dy2 * dy2) > 8) {
-      stateRef.current._shieldAngle = Math.atan2(dy2, dx2);
-    }
-  }, []);
+  /* The old names, kept as aliases so the effect deps below and any late
+     reader still resolve.  Behaviour is the press/release above. */
+  var handleRJoyMove = handleRBtnPress;
+  var handleRJoyEnd = handleRBtnRelease;
 
   /* iOS Safari left-edge swipe absorber (v2.3.112).  iOS treats a
      touchstart within ~20 px of the screen's left edge as the
@@ -7891,33 +7958,9 @@ export var BroTown = function BroTown(_ref0) {
       var r = c.getBoundingClientRect();
       return { x: clientX - r.left, y: clientY - r.top };
     };
-    var isGestureTouch = function (clientX, clientY) {
-      var S = stateRef.current;
-      var ex = S && S._extraction;
-      if (!ex || ex.status !== 'ready') return false;
-      var cam = S.camera, P = S.player;
-      if (!cam) return false;
-      var sx = S._worldScaleX || 1, sy = S._worldScaleY || 1;
-      var cx, cy;
-      if (ex.skill === 'fishing' && P) {
-        cx = (P.x - cam.x) * sx; cy = (P.y - 24 - cam.y) * sy;
-      } else {
-        var node = (ex.nodeRef && ex.nodeRef.alive) ? ex.nodeRef
-          : (S.gatherNodes && ex.nodeId ? S.gatherNodes.find(function (n) { return n.id === ex.nodeId; }) : null);
-        if (!node) return false;
-        var yOff = ex.skill === 'cooking' ? 40
-          : node.nodeType === 'tree' ? 96 : node.nodeType === 'oreVein' ? 36 : 30;
-        cx = (node.x - cam.x) * sx; cy = (node.y - yOff - cam.y) * sy;
-      }
-      var _p = clientToCanvas(clientX, clientY);   /* v2.3.2174 */
-      var dx = _p.x - cx, dy = _p.y - cy;
-      return (dx * dx + dy * dy) < (190 * 190);
-    };
-    /* v2.3.1287: tapping YOUR OWN character opens the chat composer —
-       Chat left the toolbar (owner, nav-system).  Same screen-space
-       anchor math as isReelTouch, tight ~48px radius over the sprite.
-       Checked at tap-CLASSIFICATION time (lE/rE), never at touchstart:
-       a drag that starts on the character must still move/aim. */
+    /* v2.3.2245: isGestureTouch is gone -- the harvest gesture is performed on
+       the right button (ExtractionSwipeLayer anchors on .bt-rjoy-base), so no
+       world-space touch is ever a gesture touch. */
     var isSelfTouch = function (clientX, clientY) {
       var S = stateRef.current;
       var cam = S && S.camera, P = S && S.player;
@@ -7942,12 +7985,8 @@ export var BroTown = function BroTown(_ref0) {
        sits inside exactly that circle — so "touch the resource to open
        its menu" opened chat instead.  Resource wins when its art is under
        the finger; a self-tap on bare character still opens chat. */
-    var tapResourceAtClient = function (clientX, clientY) {
-      var c = canvasRef.current;
-      if (!c) return false;
-      var r = c.getBoundingClientRect();
-      return _tapResourceAt(clientX - r.left, clientY - r.top);
-    };
+    var tapResourceAtClient = function (clientX, clientY) { return false; };   /* v2.3.2245: no tap-to-harvest */
+    /* (v2.3.2245: the client-coordinate wrapper went with _tapResourceAt.) */
     var openSelfChat = function () {
       try {
         var _busC = window.__broDashPanelBus;
@@ -8022,7 +8061,7 @@ export var BroTown = function BroTown(_ref0) {
       e.preventDefault();
       e.stopPropagation();
       var t = e.changedTouches[0];
-      if (isGestureTouch(t.clientX, t.clientY)) return;
+      /* v2.3.2245: the harvest gesture lives on the right button now, so the movement zone cedes nothing. */
       /* v2.3.1307: the v2.3.1283 "movement collapses the sheet"
          interlock is REMOVED (owner: players may just want to play
          with menus open).  The joystick zones end above the sheet
@@ -8073,8 +8112,6 @@ export var BroTown = function BroTown(_ref0) {
         if (!lts.moved && (endT - lts.startAt) < SELF_TAP_MAX_MS
             && isSelfTouch(t.clientX, t.clientY)) {
           lts.lastEndAt = 0;
-          /* v2.3.1448: resource art under the finger beats the chat gesture. */
-          if (tapResourceAtClient(t.clientX, t.clientY)) return;
           openSelfChat();
           return;
         }
@@ -8092,6 +8129,7 @@ export var BroTown = function BroTown(_ref0) {
             lts.lastEndAt = 0;
             if (lPreviewTimer.current) { clearTimeout(lPreviewTimer.current); lPreviewTimer.current = null; }
             if (lJoyPreviewRef.current) lJoyPreviewRef.current.style.display = 'none';
+            stateRef.current._lJoyPreviewUntil = 0;   /* v2.3.2246 */
             try { _desktopCycleWeapon(); } catch (err) {}
           } else {
             lts.lastEndAt = endT;
@@ -8130,9 +8168,18 @@ export var BroTown = function BroTown(_ref0) {
               } else {
                 lJoyPreviewRef.current.textContent = SLOT_ICON[nextSlot] || 'sword';
                 lJoyPreviewRef.current.style.display = 'flex';
+                /* ═══ v2.3.2246: THE PREVIEW LIVES INSIDE THE DISC ═══
+                   handleJoystickEnd ran a few lines above and let go of the
+                   disc, so with the box hidden by default this overlay would
+                   have opened inside an invisible parent -- the weapon-swap
+                   confirmation, which is the entire point of the single tap,
+                   would have shown nothing at all.  Hold the box up for the
+                   preview's own window. */
+                stateRef.current._lJoyPreviewUntil = Date.now() + PREVIEW_HOLD_MS;
                 if (lPreviewTimer.current) clearTimeout(lPreviewTimer.current);
                 lPreviewTimer.current = setTimeout(function () {
                   if (lJoyPreviewRef.current) lJoyPreviewRef.current.style.display = 'none';
+                  stateRef.current._lJoyPreviewUntil = 0;
                 }, PREVIEW_HOLD_MS);
               }
             }
@@ -8150,222 +8197,205 @@ export var BroTown = function BroTown(_ref0) {
         }
       }
     };
-    /* Right-joystick swipe-to-special.  Track start (sx/sy/st) on touch
-       down and the last known position (lx/ly/lt) on every move; on
-       touch end, if the recent motion qualifies as a flick, fire
-       doSpecialAttack using the flick direction as the aim angle. */
-    var rSwipe = { sx: 0, sy: 0, st: 0, lx: 0, ly: 0, lt: 0 };
+    /* ═══ v2.3.2242: THE RIGHT HALF FORWARDS TAPS; THE BUTTON FIGHTS ═══
+       rZoneRef (the whole right half, z6) used to BE the combat input: any
+       touch there was a relative drag that aimed and auto-attacked, a
+       double-tap-and-hold raised the shield, a flick was the special.  The
+       owner replaced the stick with a button, so the zone keeps exactly one
+       job -- forwarding a short tap to the canvas (tap a monster to lock on
+       manually, tap yourself to chat, tap a resource) -- and the DISC
+       (rJoyRef, pointerEvents:auto since v2.3.2242) takes press / hold /
+       flick.  Drags on the zone do nothing: the dodge is the LEFT-side
+       swipe and the owner kept it there. */
     var rS = function rS(e) {
-      /* v2.3.848: same chop-swipe guard as the left zone (see lS) so a
-         swipe started on the right half during a chop doesn't fire
-         attacks/aim instead of chopping. */
-      /* v2.3.1429: same de-blanketing as the left zone (see lS) — only
-         gesture-cue touches are ceded; the rest aim/attack normally. */
       e.preventDefault();
       e.stopPropagation();
       var t = e.changedTouches[0];
-      if (isGestureTouch(t.clientX, t.clientY)) return;
-      /* ═══ v2.3.1733: TAP ATTACK WHILE THE SHIELD IS UP = SHIELD BASH ═══
-         The plan's touch input for the ability, and it fits the existing
-         gesture vocabulary without taking anything away: while blocking,
-         this joystick's normal job (start auto-attacking) is already
-         suppressed — v2.3.97 decided you do not fight and block at once —
-         so the tap was doing nothing to override.  Placed BEFORE the
-         rTouchId claim so a second finger cannot steal the shield finger's
-         ownership of the joystick mid-block.
-         Refusals are silent-safe: castAbility floats its own popup for an
-         unaffordable or locked cast, and returns false so the touch simply
-         ends here either way. */
-      if (stateRef.current && stateRef.current._shieldUp) {
-        try { doShieldBash(); } catch (err) {}
-        return;
-      }
-      /* v2.3.1307: aim/attack no longer collapses the sheet — same
-         owner directive as the movement zone (see lS). */
-      var nowMs = Date.now();
       var rts = rTapState.current;
-      var dxLast = t.clientX - rts.lastX;
-      var dyLast = t.clientY - rts.lastY;
-      var isDoubleTap = rts.lastEndAt > 0
-        && (nowMs - rts.lastEndAt) < DOUBLE_TAP_WINDOW_MS
-        && (dxLast * dxLast + dyLast * dyLast) < DOUBLE_TAP_MAX_DIST_SQ_PX;
       rTouchId.current = t.identifier;
-      rJoyActive.current = true;
-      /* v2.3.949: docked combat joystick -- base stays in its corner (50%
-         opacity); do NOT move it to the finger.  The touch point recorded below
-         is the deflection origin (handleRJoyMove reads rTapState.startX/Y). */
-      rts.startAt = nowMs;
+      rts.startAt = Date.now();
       rts.startX = t.clientX;
       rts.startY = t.clientY;
       rts.moved = false;
-      if (isDoubleTap) {
-        /* Second tap of the double-tap-hold gesture: this touch is the
-           shield drag.  Suppress auto-attack/swing for this hold so the
-           player isn't fighting and blocking at once (per v2.3.97 user
-           choice), point the shield arc at the current touch location,
-           and activate the shield via the same path the dedicated
-           handler used. */
-        rts.lastEndAt = 0;
-        rShieldGesture.current = true;
-        if (rPreviewTimer.current) { clearTimeout(rPreviewTimer.current); rPreviewTimer.current = null; }
-        if (rJoyPreviewRef.current) rJoyPreviewRef.current.style.display = 'none';
-        /* v2.3.949: docked joystick -- the touch starts at the origin, so there's
-           no drag angle yet; seed the shield arc from the last aim and let rM's
-           drag (pivoting on the origin) steer it. */
-        {
-          var S2 = stateRef.current;
-          var ang = (S2._lastAimAngle != null) ? S2._lastAimAngle : 0;
-          S2._aimAngle = ang;
-          S2._shieldAngle = ang;
-        }
-        try { doShield(); } catch (err) {}
-        try { blockRingBus.beginBlock(); } catch (err) {}
-        return;
-      }
-      /* Normal swing/auto-attack path */
-      setAutoAttack(true);
-      stateRef.current.autoAttack = true;
-      rSwipe.sx = t.clientX;
-      rSwipe.sy = t.clientY;
-      rSwipe.st = nowMs;
-      rSwipe.lx = 0;
-      rSwipe.ly = 0;
-      rSwipe.lt = 0;
-      handleRJoyMove(t.clientX, t.clientY);
-      doSwing();
     };
     var rM = function rM(e) {
       if (rTouchId.current === null) return;
       var t = findT(e.touches, rTouchId.current);
       if (t) {
         e.preventDefault();
-        if (rShieldGesture.current) {
-          /* Shield-mode drag: update the block arc angle from the touch
-             position relative to the touch ORIGIN (v2.3.949: docked joystick,
-             so the pivot is where the finger went down, not the docked base).
-             Don't call handleRJoyMove -- that re-asserts auto-attack which the
-             shield gesture explicitly suppresses. */
-          var _rtsSh = rTapState.current;
-          {
-            var bcx2 = _rtsSh.startX, bcy2 = _rtsSh.startY;
-            var ang2 = Math.atan2(t.clientY - bcy2, t.clientX - bcx2);
-            var Ssh = stateRef.current;
-            Ssh._aimAngle = ang2;
-            Ssh._aiming = true;
-            Ssh._shieldAngle = ang2;
-          }
-          return;
-        }
         var rts2 = rTapState.current;
         var dxs = t.clientX - rts2.startX;
         var dys = t.clientY - rts2.startY;
         if (dxs * dxs + dys * dys > TAP_MAX_MOVE_SQ_PX) rts2.moved = true;
-        handleRJoyMove(t.clientX, t.clientY);
-        rSwipe.lx = t.clientX;
-        rSwipe.ly = t.clientY;
-        rSwipe.lt = Date.now();
       }
     };
     var rE = function rE(e) {
       if (rTouchId.current === null) return;
       var t = findT(e.changedTouches, rTouchId.current);
-      if (t) {
-        if (rShieldGesture.current) {
-          /* Release shield on the gesture-touch end.  Mirrors what
-             BlockRing.endBlock did when the orbiting glyph was the
-             touch target.  If the shield already auto-released due to
-             stamina depletion, skip the redundant broadcast + UI
-             update -- the game loop already handled it. */
-          rShieldGesture.current = false;
-          var Send = stateRef.current;
-          if (Send && !Send._shieldAutoReleased) {
-            Send._shieldUp = false;
-            if (Send.channel) {
-              try { Send.channel.send({ type: 'broadcast', event: 'player_shield', payload: { id: Send.myId, up: false } }); } catch (err) {}
-            }
-            try { setShieldUp(false); } catch (err) {}
-            try { blockRingBus.endBlock(); } catch (err) {}
+      if (!t) return;
+      rTouchId.current = null;
+      var rts3 = rTapState.current;
+      var endT = Date.now();
+      /* v2.3.1287: self-tap on the aim side opens chat -- no lock-on click.
+         Its own 400ms ceiling (SELF_TAP_MAX_MS): opening chat is not a
+         twitch gesture, so a deliberate thumb dwell still counts. */
+      if (!rts3.moved && (endT - rts3.startAt) < SELF_TAP_MAX_MS
+          && isSelfTouch(t.clientX, t.clientY)) {
+        openSelfChat();
+        return;
+      }
+      if (!rts3.moved && (endT - rts3.startAt) < TAP_MAX_DURATION_MS) {
+        /* v2.3.816: a tap on the combat side forwards a synthetic click to
+           the canvas so the existing tap-to-lock-on-target logic (monsters /
+           NPCs / players / empty-space unlock) keeps working now that the
+           floating zone sits over the canvas. */
+        try {
+          if (canvasRef.current) {
+            canvasRef.current.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, clientX: t.clientX, clientY: t.clientY }));
           }
-          if (Send) Send._shieldAutoReleased = false;
-          rTouchId.current = null;
-          handleRJoyEnd();
-          return;
-        }
-        /* Flick detection -- last-leg speed (recent burst) OR
-           total-distance/total-duration speed (slow but committed). */
-        var refX = rSwipe.lx || rSwipe.sx;
-        var refY = rSwipe.ly || rSwipe.sy;
-        var refT = rSwipe.lt || rSwipe.st;
-        var dx = t.clientX - refX, dy = t.clientY - refY;
-        var dist = Math.sqrt(dx * dx + dy * dy);
-        var dur = Date.now() - refT;
-        var spd = dist / Math.max(dur, 1);
-        var totalDx = t.clientX - rSwipe.sx, totalDy = t.clientY - rSwipe.sy;
-        var totalDist = Math.sqrt(totalDx * totalDx + totalDy * totalDy);
-        var totalDur = Date.now() - rSwipe.st;
-        var totalSpd = totalDist / Math.max(totalDur, 1);
-        var isFlick = (spd > 0.15 && dist > 8 && dur < 400)
-          || (totalSpd > 0.2 && totalDist > 15 && totalDur < 500);
-        if (isFlick) {
-          var Sfk = stateRef.current;
-          Sfk._hasUsedSwipe = true;
-          var useDx = totalDist > dist ? totalDx : dx;
-          var useDy = totalDist > dist ? totalDy : dy;
-          var flickAng = Math.atan2(useDy, useDx);
+        } catch (err) {}
+      }
+    };
+
+    /* THE BUTTON.  Press = engage + swing + auto-attack while held; release
+       = stop; a quick flick across it = special (the same classifier the
+       stick's release used -- last-leg speed OR total-path speed -- so the
+       gesture the coach teaches is byte-for-byte the one that fires). */
+    var bSwipe = { sx: 0, sy: 0, st: 0, lx: 0, ly: 0, lt: 0 };
+    var bTouchId = { current: null };
+    var bS = function bS(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var t = e.changedTouches[0];
+      if (!t) return;
+      if (bTouchId.current !== null) return;   /* one finger owns the button */
+      bTouchId.current = t.identifier;
+      rJoyActive.current = true;
+      bSwipe.sx = t.clientX; bSwipe.sy = t.clientY; bSwipe.st = Date.now();
+      bSwipe.lx = 0; bSwipe.ly = 0; bSwipe.lt = 0;
+      bSwipe.engage = false;   /* v2.3.2246: reset up front, not only on the paths that set it */
+      /* ═══ v2.3.2245: THE BUTTON IS CONTEXTUAL ═══
+         A harvest in progress owns the button: the press is the gesture
+         (ExtractionSwipeLayer takes it at the pointer level), not a swing.
+         A resource in reach with no monster in the perimeter: the press
+         STARTS the harvest -- exactly what the old shell's tap did.
+         Otherwise it is Attack. */
+      var Sb = stateRef.current;
+      if (Sb && Sb._extraction) { bSwipe.harvest = true; return; }
+      bSwipe.harvest = false;
+      if (Sb && Sb._btnHarvest && Sb._nearNode) {
+        var _hn = Sb._nearNode;
+        try {
+          if (_hn.nodeType === 'fishSpot') _startExtraction(_hn, 'fishing');
+          else if (_hn.nodeType === 'tree') _startExtraction(_hn, 'woodcutting');
+          else if (_hn.nodeType === 'oreVein') _startExtraction(_hn, 'mining');
+          else if (_hn.nodeType === 'campfire') _startCookingAtCampfire(_hn);
+        } catch (err) { /* refusal floats its own popup */ }
+        bSwipe.harvest = true;
+        return;
+      }
+      /* ═══ v2.3.2246: THE PRESS ENGAGES BEFORE IT ATTACKS ═══
+         Owner: "right button (former right joystick) should not be a
+         standalone attack button anymore. After you engage with an enemy by
+         pressing attack within perimeter of it you auto lock on target and
+         the button turns into an attack button at that point."
+
+         v2.3.2242 collapsed both halves into one press -- engage AND swing
+         AND start the auto-attack -- which is what made it a standalone
+         attack button: with nothing in range it swung at air, and with
+         something in range the engage was invisible underneath the swing.
+         Two states now, decided from the lock, which is the same fact the
+         label and the button's own visibility read:
+
+           lock held   -> ATTACK.  Unchanged: swing now, auto-attack while
+                          the finger stays down, flick for the special.
+           candidate   -> ENGAGE only.  Lock the nearest and stop.  No swing,
+                          no auto-attack, and bE must not read the release as
+                          a flick, or a brisk tap-to-engage would spend mana
+                          on a special aimed at a monster you had not yet
+                          picked.
+
+         Neither, which normally cannot happen because the button is not on
+         screen (see the visibility resolver): it swings, exactly as before.
+         That path is still reachable for one reason and it is a good one --
+         ControlsTutorial's `attack` step and QuestCoach's `attack` /
+         `special` marks hold the button visible in town to teach it, and a
+         lesson you cannot perform is worse than no lesson.  So the rule is
+         "if the button is on screen, a press does the most sensible thing it
+         can", and the visibility resolver is what makes that honest. */
+      if (Sb && !heldMonster(Sb) && hasCandidate(Sb)) {
+        try { engageNearest(Sb); } catch (err) { /* nothing to engage: falls through to nothing */ }
+        try { BT_AUDIO.beep(660, 0.05, 0.09, 'triangle'); } catch (err) { /* audio is best-effort */ }
+        bSwipe.engage = true;
+        var _egBase = rJoyRef.current;
+        if (_egBase) _egBase.style.opacity = '0.92';
+        rJoyActive.current = true;
+        return;
+      }
+      bSwipe.engage = false;
+      handleRBtnPress();
+      doSwing();
+    };
+    var bM = function bM(e) {
+      if (bTouchId.current === null) return;
+      var t = findT(e.touches, bTouchId.current);
+      if (t) {
+        e.preventDefault();
+        bSwipe.lx = t.clientX; bSwipe.ly = t.clientY; bSwipe.lt = Date.now();
+      }
+    };
+    var bE = function bE(e) {
+      if (bTouchId.current === null) return;
+      var t = findT(e.changedTouches, bTouchId.current);
+      if (!t) return;
+      bTouchId.current = null;
+      /* v2.3.2245: a harvest press is not a swing and its release is not a
+         flick -- a fast chop on the button must never fire the special. */
+      if (bSwipe.harvest) { bSwipe.harvest = false; rJoyActive.current = false; return; }
+      /* v2.3.2246: ...and neither is an ENGAGE press.  Same reasoning: the
+         gesture that picked the target must not also spend the special on it.
+         The opacity is restored by hand because handleRBtnRelease (which
+         normally does it) also clears autoAttack, and an engage never set
+         it. */
+      if (bSwipe.engage) {
+        bSwipe.engage = false;
+        rJoyActive.current = false;
+        var _egB = rJoyRef.current;
+        if (_egB) _egB.style.opacity = '0.5';
+        return;
+      }
+      /* Flick detection -- last-leg speed (recent burst) OR
+         total-distance/total-duration speed (slow but committed). */
+      var refX = bSwipe.lx || bSwipe.sx;
+      var refY = bSwipe.ly || bSwipe.sy;
+      var refT = bSwipe.lt || bSwipe.st;
+      var dx = t.clientX - refX, dy = t.clientY - refY;
+      var dist = Math.sqrt(dx * dx + dy * dy);
+      var dur = Date.now() - refT;
+      var spd = dist / Math.max(dur, 1);
+      var totalDx = t.clientX - bSwipe.sx, totalDy = t.clientY - bSwipe.sy;
+      var totalDist = Math.sqrt(totalDx * totalDx + totalDy * totalDy);
+      var totalDur = Date.now() - bSwipe.st;
+      var totalSpd = totalDist / Math.max(totalDur, 1);
+      var isFlick = (spd > 0.15 && dist > 8 && dur < 400)
+        || (totalSpd > 0.2 && totalDist > 15 && totalDur < 500);
+      if (isFlick) {
+        var Sfk = stateRef.current;
+        Sfk._hasUsedSwipe = true;
+        /* The flick direction still seeds the aim for an UNLOCKED special;
+           specialAttack itself prefers the locked target (lockAimPoint). */
+        var useDx = totalDist > dist ? totalDx : dx;
+        var useDy = totalDist > dist ? totalDy : dy;
+        var flickAng = Math.atan2(useDy, useDx);
+        if (!(Sfk.lockedTarget && Sfk.lockedTarget.ref)) {
           Sfk._aimAngle = flickAng;
           Sfk._facing = Math.abs(useDx) > Math.abs(useDy)
             ? (useDx > 0 ? 'right' : 'left')
             : (useDy > 0 ? 'down' : 'up');
-          doSpecialAttack();
         }
-        /* Tap classification for the next double-tap detection.  A tap
-           opens the shield preview window inside the right joystick
-           disc; the preview auto-hides after PREVIEW_HOLD_MS. */
-        var rts3 = rTapState.current;
-        var endT = Date.now();
-        var wasTap = !rts3.moved && (endT - rts3.startAt) < TAP_MAX_DURATION_MS && !isFlick;
-        /* v2.3.1287: self-tap on the aim side opens chat too — no
-           lock-on click, no shield preview (see lE).  Its own 400ms
-           ceiling (SELF_TAP_MAX_MS): opening chat is not a twitch
-           gesture, so a deliberate thumb dwell still counts. */
-        if (!rts3.moved && !isFlick && (endT - rts3.startAt) < SELF_TAP_MAX_MS
-            && isSelfTouch(t.clientX, t.clientY)) {
-          rts3.lastEndAt = 0;
-          rTouchId.current = null;
-          handleRJoyEnd();
-          /* v2.3.1448: resource art under the finger beats the chat gesture. */
-          if (tapResourceAtClient(t.clientX, t.clientY)) return;
-          openSelfChat();
-          return;
-        }
-        if (wasTap) {
-          rts3.lastEndAt = endT;
-          rts3.lastX = t.clientX;
-          rts3.lastY = t.clientY;
-          /* v2.3.816: a tap on the combat side forwards a synthetic click
-             to the canvas so the existing tap-to-lock-on-target logic
-             (monsters / NPCs / players / empty-space unlock) keeps working
-             now that the floating zone sits over the canvas.  The canvas
-             onTouchEnd no longer fires (zone is on top), so _touchHandledAt
-             is never set and the canvas onClick runs this once. */
-          try {
-            if (canvasRef.current) {
-              canvasRef.current.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, clientX: t.clientX, clientY: t.clientY }));
-            }
-          } catch (err) {}
-          if (rJoyPreviewRef.current) {
-            rJoyPreviewRef.current.style.display = 'flex';
-            if (rPreviewTimer.current) clearTimeout(rPreviewTimer.current);
-            rPreviewTimer.current = setTimeout(function () {
-              if (rJoyPreviewRef.current) rJoyPreviewRef.current.style.display = 'none';
-            }, PREVIEW_HOLD_MS);
-          }
-        } else {
-          rts3.lastEndAt = 0;
-        }
-        rTouchId.current = null;
-        handleRJoyEnd();
+        doSpecialAttack();
       }
+      handleRBtnRelease();
     };
     lBase.addEventListener('touchstart', lS, {
       passive: false
@@ -8421,49 +8451,26 @@ export var BroTown = function BroTown(_ref0) {
         passive: false
       });
     }
-    /* Shield joystick setup */
-    var sBase = shieldJoyRef === null || shieldJoyRef === void 0 ? void 0 : shieldJoyRef.current;
-    var sS = function sS(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      var t = e.changedTouches[0];
-      shieldTouchId.current = t.identifier;
-      shieldJoyActive.current = true;
-      doShield();
-      handleShieldMove(t.clientX, t.clientY);
-    };
-    var sM = function sM(e) {
-      if (shieldTouchId.current === null) return;
-      var t = findT(e.touches, shieldTouchId.current);
-      if (t) {
-        e.preventDefault();
-        handleShieldMove(t.clientX, t.clientY);
-      }
-    };
-    var sE = function sE(e) {
-      if (shieldTouchId.current === null) return;
-      var t = findT(e.changedTouches, shieldTouchId.current);
-      if (t) {
-        shieldTouchId.current = null;
-        shieldJoyActive.current = false;
-        stateRef.current._shieldUp = false;
-        setShieldUp(false);
-      }
-    };
-    if (sBase) {
-      sBase.addEventListener('touchstart', sS, {
+    /* v2.3.2242: the BUTTON's own listeners.  touchstart on the disc
+       (stopPropagation keeps it off the zone beneath); move/end at the
+       window so a flick may run off the disc, exactly as the stick's did. */
+    var bBase = rJoyRef.current;
+    if (bBase) {
+      bBase.addEventListener('touchstart', bS, {
         passive: false
       });
-      window.addEventListener('touchmove', sM, {
+      window.addEventListener('touchmove', bM, {
         passive: false
       });
-      window.addEventListener('touchend', sE, {
+      window.addEventListener('touchend', bE, {
         passive: false
       });
-      window.addEventListener('touchcancel', sE, {
+      window.addEventListener('touchcancel', bE, {
         passive: false
       });
     }
+    /* v2.3.2242: the legacy shield joystick (sS/sM/sE on shieldJoyRef) is
+       gone -- the shield is ShieldButton, a toggle, no handlers here. */
     return function () {
       window.removeEventListener('touchstart', _stampInput, { capture: true });
       window.removeEventListener('pointerdown', _stampInput, { capture: true });
@@ -8480,14 +8487,14 @@ export var BroTown = function BroTown(_ref0) {
         window.removeEventListener('touchend', rE);
         window.removeEventListener('touchcancel', rE);
       }
-      if (sBase) {
-        sBase.removeEventListener('touchstart', sS);
-        window.removeEventListener('touchmove', sM);
-        window.removeEventListener('touchend', sE);
-        window.removeEventListener('touchcancel', sE);
+      if (bBase) {
+        bBase.removeEventListener('touchstart', bS);
+        window.removeEventListener('touchmove', bM);
+        window.removeEventListener('touchend', bE);
+        window.removeEventListener('touchcancel', bE);
       }
     };
-  }, [showNameModal, showLogin, bootPhase, handleJoystickMove, handleJoystickEnd, handleRJoyMove, handleRJoyEnd, handleShieldMove, handleCanvasSwipe]);   /* v2.3.1869 */
+  }, [showNameModal, showLogin, bootPhase, handleJoystickMove, handleJoystickEnd, handleRJoyMove, handleRJoyEnd, handleCanvasSwipe]);   /* v2.3.1869; v2.3.2242: handleShieldMove gone */
 
   /* Keep keyboard open — focus input when game starts and periodically re-focus */
   useEffect(function () {
@@ -9322,7 +9329,7 @@ export var BroTown = function BroTown(_ref0) {
                landed on a resource (opens its shell, or warns that it's
                too far).  Monsters keep priority: one standing in front
                of a tree is still the thing you meant to tap. */
-            if (!_closest) _tapResourceAt(_cssX, _cssY);
+            /* v2.3.2245: no tap-to-harvest; the button offers what is in reach. */
           }
           ct.id = null;
           break;
@@ -9626,8 +9633,7 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.1448: resources come after the creature checks — a click on
          a resource opens its shell (or warns it's out of reach) instead
          of falling through to the unlock branch. */
-      if (_tapResourceAt(cssX, cssY)) return;
-      /* Tap on empty space = unlock */
+      /* Tap on empty space = unlock (v2.3.2245: resources are no longer tappable) */
       S.lockedTarget = null;
     }
   }), achievementMsg && Date.now() - achievementMsg.ts < 3000 && /*#__PURE__*/React.createElement("div", {
@@ -11213,133 +11219,7 @@ export var BroTown = function BroTown(_ref0) {
       setShowFurniture(true);
       BT_AUDIO.enterBuilding();
     }
-  }, "\uD83E\uDE91 Furniture Workshop"), promptNode && /*#__PURE__*/React.createElement("button", {
-    className: "bt-interact-prompt",
-    id: "bt-node-prompt", /* v2.3.1409: game loop re-anchors this to the node's screen pos each frame */
-    style: {
-      /* Inline 'bottom: 140' was hiding this button behind the 25vh
-         BottomDashboard on mobile.  Sit it just above the dashboard
-         instead (matches the class default ~ calc(25vh + 16px) but
-         a bit higher so it clears the mobile dashboard's top border
-         and stays below the joysticks at calc(25vh + 70px)).
-         v2.3.1409: this is now only the FIRST-FRAME fallback \u2014 the loop
-         moves the button to the node itself (owner: prompt was too far
-         below the ore). */
-      bottom: 'calc(var(--dash-h) + 24px)',
-      /* v2.3.1437 (owner shells): the green pill becomes the painted
-         brass-on-navy shell — icon well left, title + node name middle,
-         LV pill right, XP groove along the bottom (mock: the owner's
-         second sheet).  Fixed box at the shell's 3.34 aspect so the
-         loop's anchor/clamp math keeps using offsetWidth.
-         v2.3.1440 (owner: "about 50% smaller but keep the text
-         readable"): 264x79 -> 186x56 (~70% linear = half the area);
-         the type sizes below shrink less than the box so labels stay
-         legible at phone distance.
-         v2.3.1446 (owner: "reduced 50% further ... remove item name to
-         make room"): 186x56 -> 132x40 (same half-the-area rule as
-         v2.3.1440) and the subtitle line is GONE — the title centers
-         vertically in the freed space. */
-      width: 132,
-      height: 40,
-      padding: 0,
-      border: 'none',
-      background: 'transparent',
-      backgroundImage: 'url(/ui/lifeskill-shell.webp?v=2.3.1437)',
-      backgroundSize: '100% 100%',
-      overflow: 'visible',
-      textAlign: 'left'
-    },
-    onClick: function onClick(e) {
-      var _R$lifeSkills3;
-      e.preventDefault();
-      var S = stateRef.current,
-        node = S._nearNode,
-        R = S.rpg;
-      if (!node || !node.alive || !R) return;
-      if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
-      var skillName = node.skill || 'mining';
-      var skillLvl = ((_R$lifeSkills3 = R.lifeSkills) === null || _R$lifeSkills3 === void 0 || (_R$lifeSkills3 = _R$lifeSkills3[skillName]) === null || _R$lifeSkills3 === void 0 ? void 0 : _R$lifeSkills3.level) || 1;
-      if (false) { /* gathering level gate disabled — all resources harvestable at lvl 1 */
-        pushDmgPopup(S, node.x, node.y - 15, 'Need ' + skillName.charAt(0).toUpperCase() + skillName.slice(1) + ' Lv' + node.gatherLvl, '#D95C54');
-        BT_AUDIO.beep(200, 0.05, 0.08, 'square');
-        return;
-      }
-      /* v2.3.229: windowed-swipe extraction loop replaces the modals. */
-      if (node.nodeType === 'fishSpot')  { _startExtraction(node, 'fishing');     return; }
-      if (node.nodeType === 'tree')      { _startExtraction(node, 'woodcutting'); return; }
-      if (node.nodeType === 'oreVein')   { _startExtraction(node, 'mining');      return; }
-      if (node.nodeType === 'campfire')  { _startCookingAtCampfire(node);         return; }
-    },
-    onTouchStart: function onTouchStart(e) {
-      var _R$lifeSkills4;
-      e.preventDefault();
-      var S = stateRef.current,
-        node = S._nearNode,
-        R = S.rpg;
-      if (!node || !node.alive || !R) return;
-      if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
-      var skillName = node.skill || 'mining';
-      var skillLvl = ((_R$lifeSkills4 = R.lifeSkills) === null || _R$lifeSkills4 === void 0 || (_R$lifeSkills4 = _R$lifeSkills4[skillName]) === null || _R$lifeSkills4 === void 0 ? void 0 : _R$lifeSkills4.level) || 1;
-      if (false) { /* gathering level gate disabled — all resources harvestable at lvl 1 */
-        pushDmgPopup(S, node.x, node.y - 15, 'Need ' + skillName.charAt(0).toUpperCase() + skillName.slice(1) + ' Lv' + node.gatherLvl, '#D95C54');
-        BT_AUDIO.beep(200, 0.05, 0.08, 'square');
-        return;
-      }
-      /* v2.3.229: windowed-swipe extraction loop replaces the modals. */
-      if (node.nodeType === 'fishSpot')  { _startExtraction(node, 'fishing');     return; }
-      if (node.nodeType === 'tree')      { _startExtraction(node, 'woodcutting'); return; }
-      if (node.nodeType === 'oreVein')   { _startExtraction(node, 'mining');      return; }
-      if (node.nodeType === 'campfire')  { _startCookingAtCampfire(node);         return; }
-    },
-    onMouseDown: function onMouseDown(e) {
-      return e.preventDefault();
-    }
-  }, function () {
-    /* v2.3.1437: shell interior \u2014 computed once per render from the node
-       + the player's life skill.  Geometry in % of the 264x79 shell
-       (measured from the owner's art: icon well ~6-27% wide, LV pill
-       ~77-94%, XP groove along the bottom). */
-    var n = stateRef.current._nearNode || promptNode;   /* v2.3.1448: tap-held node */
-    var s = (n === null || n === void 0 ? void 0 : n.skill) || 'mining';
-    var _titles = { mining: 'MINE', woodcutting: 'CHOP', fishing: 'FISH', cooking: 'COOK' };
-    var _icons = {
-      mining: '/icons/items/ore-copper.webp?v=2.3.1452',
-      woodcutting: '/icons/items/wood-log.webp?v=2.3.1452',
-      fishing: '/icons/items/fish-minnow.webp?v=2.3.1452',
-      cooking: '/icons/items/cooked-minnow.webp?v=2.3.1452'
-    };
-    var _cols = { mining: '#38bdf8', woodcutting: '#fbbf24', fishing: '#6366f1', cooking: '#fb923c' };
-    var R = stateRef.current.rpg;
-    var _ls = R && R.lifeSkills && R.lifeSkills[s];
-    var _lvl = (_ls && _ls.level) || 1;
-    var _xp = (_ls && _ls.xp) || 0;
-    var _thr = Math.ceil(500 * Math.pow(1.08, _lvl - 1));  /* LIFE_SKILL_XP mirror */
-    var _frac = Math.max(0, Math.min(1, _xp / _thr));
-    /* v2.3.1446 (owner: "reduced 50% further ... remove item name to
-       make room"): the v2.3.1441 subtitle (bare resource name) is gone
-       — at 132x40 there's only room for the verb + pill, so the title
-       centers vertically where the two lines used to stack. */
-    return [
-      /*#__PURE__*/React.createElement("img", {
-        key: 'i', src: _icons[s], alt: '', draggable: false,
-        style: { position: 'absolute', left: '7%', top: '16%', width: '19%', height: '62%', objectFit: 'contain', pointerEvents: 'none' }
-      }),
-      /*#__PURE__*/React.createElement("div", {
-        key: 't',
-        style: { position: 'absolute', left: '30%', top: '50%', transform: 'translateY(-58%)', fontSize: 11, fontWeight: 800, color: '#f4f6f8', letterSpacing: 1, lineHeight: 1, pointerEvents: 'none', textShadow: '0 1px 2px rgba(0,0,0,.6)' }
-      }, stateRef.current._isDesktop && /*#__PURE__*/React.createElement("kbd", {
-        style: { background: 'rgba(255,255,255,.18)', padding: '0 3px', borderRadius: 3, fontSize: 7.5, marginRight: 3, verticalAlign: 'middle' }
-      }, "E"), _titles[s] || 'MINE'),
-      /*#__PURE__*/React.createElement("div", {
-        key: 'l',
-        style: { position: 'absolute', left: '76.5%', top: '28%', width: '17.5%', height: '40%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8.5, fontWeight: 800, color: '#f4f6f8', pointerEvents: 'none' }
-      }, 'LV ' + ((n && n.gatherLvl) || 1)),
-      /*#__PURE__*/React.createElement("div", {
-        key: 'p',
-        style: { position: 'absolute', left: '7%', bottom: '10%', width: (86 * _frac) + '%', maxWidth: '86%', height: '6%', background: _cols[s], borderRadius: 3, pointerEvents: 'none', boxShadow: '0 0 6px ' + _cols[s] }   /* v2.3.1446: 6% of the 40px shell ≈ the old 2.5px groove */
-      })
-    ];
-  }()), /*#__PURE__*/React.createElement(ExtractionSwipeLayer, {
+  }, "\uD83E\uDE91 Furniture Workshop"), /* v2.3.2245: the mid-screen harvest shell (#bt-node-prompt, the painted brass-on-navy pill that followed the node) is GONE -- the right button reads HARVEST when a resource is in reach and starts the harvest on a tap (bS in the touch effect). */ null, /*#__PURE__*/React.createElement(ExtractionSwipeLayer, {
     stateRef: stateRef,
     onSuccess: _succeedExtraction
   }), /* v2.3.1235: removed a literal "e.preventDefault();" STRING child —
@@ -11843,7 +11723,7 @@ export var BroTown = function BroTown(_ref0) {
      and z-index 6 so they sit over the world canvas but under all HUD
      (z>=20).  bt-desktop-hide drops them on desktop so the mouse reaches the
      canvas. */
-  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rStickRef: rStickRef, rKnobRef: rKnobRef, rJoyPreviewRef: rJoyPreviewRef, shieldJoyRef: shieldJoyRef, autoAttack: autoAttack, isLandscape: isLandscape, shieldUp: shieldUp }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until their milestone level unlocks them (AbilityButtons.jsx). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.1952: locking on to a monster raises block / dodge / special around the right joystick (LockOnActions.jsx). */ /*#__PURE__*/React.createElement(LockOnActions, { stateRef: stateRef, isLandscape: isLandscape, doSpecialAttack: doSpecialAttack })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
+  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rLabelRef: rLabelRef, rCueRef: rCueRef, rRingRef: rRingRef, lWrapRef: lWrapRef, rWrapRef: rWrapRef, isLandscape: isLandscape }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until their milestone level unlocks them (AbilityButtons.jsx). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2242: the shield is a toggle button under the Attack button; it shows itself during combat (ShieldButton.jsx). */ /*#__PURE__*/React.createElement(ShieldButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2243: the target-switch arrows flank it while two or more monsters are in the perimeter (TargetArrows.jsx). */ /*#__PURE__*/React.createElement(TargetArrows, { stateRef: stateRef, isLandscape: isLandscape })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
      Not a style choice — a hard requirement this cost a round of QA to
      find.  .brotown-wrap is position:fixed, and Chrome treats that as its
      own stacking context, so EVERY element inside it is confined to one

@@ -300,9 +300,16 @@ export const ARCHETYPES = {
  * zone) put ~L20 snowmen at the frost entrance because the world-view
  * exit spawns the player at the DEEP end of the depth lerp.  Restore
  * the per-zone bands only when depth content actually ships. */
+/* ═══ v2.3.2244: SIX PER ZONE ═══
+ * Owner: "Monsters per zone will increase to 6, but be spaced out more
+ * evenly over the zone area to prevent too much monster overlap."  The
+ * COUNT lives here (and in src/data/zones.js, which zones.test.mjs holds
+ * in lockstep); the SPACING is _spawnZoneMonsters' farthest-point picker
+ * (index.js), which spawnscale.js's mid-session adds share.  sky keeps its
+ * three archetypes at two each; mist keeps its 2:1 fodder:brute ratio. */
 export const ZONES = {
-      meadow:  { w:32, h:32, level:[1,2],  element:null,    secondary:null,    lawless:true, spawns:[{arch:'fodder',count:3}] },       /* band: [1,10] */
-      ember:   { w:32, h:32, level:[1,2], element:'flame', secondary:'stone', lawless:true, spawns:[{arch:'fodder',count:3}] },          /* band: [55,80] */
+      meadow:  { w:32, h:32, level:[1,2],  element:null,    secondary:null,    lawless:true, spawns:[{arch:'fodder',count:6}] },       /* band: [1,10] */
+      ember:   { w:32, h:32, level:[1,2], element:'flame', secondary:'stone', lawless:true, spawns:[{arch:'fodder',count:6}] },          /* band: [55,80] */
       /* v2.3.1147: verdant + mist populated -- they owned the [22,40]
        * band but spawned NOTHING, leaving a no-content hole between
        * frost/tidal (max 25) and hollows/sky (min 38) once zones
@@ -310,7 +317,7 @@ export const ZONES = {
        * sheets (see client ZONE_VARIANT_MAP: verdant fodder->mossSlime,
        * brute->thornShambler; mist fodder->mireWisp, brute->bogLurker).
        * Base archetypes carry ALL the stats -- variants are visual. */
-      mist:    { w:32, h:32, level:[1,2], element:'venom', secondary:'wind',  lawless:true, spawns:[{arch:'fodder',count:2},{arch:'brute',count:1}] },  /* band: [22,40] */
+      mist:    { w:32, h:32, level:[1,2], element:'venom', secondary:'wind',  lawless:true, spawns:[{arch:'fodder',count:4},{arch:'brute',count:2}] },  /* band: [22,40] */
       /* v2.3.1534 (owner: "remove the rock monster from this level"): the
        * brute spawn -- which skinned as thornShambler, the mossy
        * rockmonster -- is dropped, so Verdant Wilds is slimes only.  This
@@ -319,12 +326,12 @@ export const ZONES = {
        * (fast + squishy); the other 7 take the zone default mossSlime.
        * MIRROR of src/data/zones.js verdant.spawns -- zones.test.mjs compares
        * these two arrays with JSON equality, so they move together. */
-      verdant: { w:32, h:32, level:[1,2], element:'flora',  secondary:'venom',    lawless:true, spawns:[{arch:'fodder',count:3,variant:'blueSlime'}] }, /* band: [22,40]; v2.3.1675: all blue (owner) -- mirror of src/data/zones.js */
-      frost:   { w:32, h:32, level:[1,2],  element:'frost', secondary:'storm', lawless:true, spawns:[{arch:'snowman',count:3}] },        /* band: [8,25] */
-      thunder: { w:32, h:32, level:[1,2], element:'storm', secondary:'flame', lawless:true, spawns:[{arch:'fodder',count:3}] },          /* band: [55,80] */
-      hollows: { w:32, h:32, level:[1,2], element:'stone', secondary:'venom', lawless:true, spawns:[{arch:'brute',count:3}] },           /* band: [38,58] */
-      sky:     { w:32, h:32, level:[1,2], element:'wind',  secondary:'frost', lawless:true, spawns:[{arch:'stalker',count:1},{arch:'hexer',count:1},{arch:'volatile',count:1}] }, /* band: [38,58] */
-      tidal:   { w:32, h:32, level:[1,2],  element:'water', secondary:'venom', lawless:true, spawns:[{arch:'brute',count:3}] },          /* band: [8,25] */
+      verdant: { w:32, h:32, level:[1,2], element:'flora',  secondary:'venom',    lawless:true, spawns:[{arch:'fodder',count:6,variant:'blueSlime'}] }, /* band: [22,40]; v2.3.1675: all blue (owner) -- mirror of src/data/zones.js */
+      frost:   { w:32, h:32, level:[1,2],  element:'frost', secondary:'storm', lawless:true, spawns:[{arch:'snowman',count:6}] },        /* band: [8,25] */
+      thunder: { w:32, h:32, level:[1,2], element:'storm', secondary:'flame', lawless:true, spawns:[{arch:'fodder',count:6}] },          /* band: [55,80] */
+      hollows: { w:32, h:32, level:[1,2], element:'stone', secondary:'venom', lawless:true, spawns:[{arch:'brute',count:6}] },           /* band: [38,58] */
+      sky:     { w:32, h:32, level:[1,2], element:'wind',  secondary:'frost', lawless:true, spawns:[{arch:'stalker',count:2},{arch:'hexer',count:2},{arch:'volatile',count:2}] }, /* band: [38,58] */
+      tidal:   { w:32, h:32, level:[1,2],  element:'water', secondary:'venom', lawless:true, spawns:[{arch:'brute',count:6}] },          /* band: [8,25] */
     };
 
 /* v2.3.1625: the ZONE ID ALLOWLIST -- the only zone strings a client may

@@ -295,7 +295,16 @@ export function updateArrows(S, deps) {
                  default radius while monsterBodyOffsetY put its centre at
                  the feet.  See hitShapeOf. */
               var _archProj = hitShapeOf(m.archetype || m.type);
-              var _hitR = a.isStaff ? 30 : 18;
+              /* ═══ v2.3.2243: MAGIC HITS AS WIDE AS AN ARROW ═══
+                 Owner: "Magic attack radius will be nerfed to be same as
+                 bow."  The staff bolt used to carry its own, wider radius
+                 per archetype (30/38/40/44/50 vs the arrow's 18/27/26/32/40)
+                 -- the splash was the staff's identity.  Now both weapons
+                 read the ARROW column; the per-archetype numbers below are
+                 the measured body sizes and stay.  Detonation (staffAoeMult)
+                 and the x3 special still multiply the new base, so the
+                 channel is nerfed with it rather than silently deleted. */
+              var _hitR = 18;
               if (_archProj === 'fodder') {
                 /* Slime body is wider than the 18 px default — bump
                    the radius so arrows that visually hit the body
@@ -305,13 +314,13 @@ export function updateArrows(S, deps) {
                    but it is now a MEASURED number rather than a guess, and
                    it is paired with the anchor fix that finally puts the
                    centre it is measured from in the right place. */
-                _hitR = a.isStaff ? 38 : 27;
+                _hitR = 27;   /* v2.3.2243: was staff 38 */
               } else if (_archProj === 'fireGoblin') {
-                _hitR = a.isStaff ? 40 : 26;
+                _hitR = 26;   /* v2.3.2243: was staff 40 */
               } else if (_archProj === 'snowman') {
-                _hitR = a.isStaff ? 44 : 32;
+                _hitR = 32;   /* v2.3.2243: was staff 44 */
               } else if (_archProj === 'mummy') {
-                _hitR = a.isStaff ? 50 : 40;
+                _hitR = 40;   /* v2.3.2243: was staff 50 */
               } else if (_archProj === 'skeleton') {
                 /* v2.3.2229: 1.25x with the sprite (liveScalePx 96 -> 120).
                    Bow shots at a skeleton were already the tightest fit in
@@ -319,7 +328,7 @@ export function updateArrows(S, deps) {
                    case where a mis-aimed shot missed outright -- so a bigger
                    figure over an unchanged 40px circle would have been a
                    visible regression, not a cosmetic one. */
-                _hitR = a.isStaff ? 63 : 50;
+                _hitR = 50;   /* v2.3.2243: was staff 63 */
               } else {
                 /* v2.3.1536: sprite-less archetypes (the dungeon roster --
                    brute / swarm / sentinel / volatile / stalker / hexer)

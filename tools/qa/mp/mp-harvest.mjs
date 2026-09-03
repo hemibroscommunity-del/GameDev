@@ -164,12 +164,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const n = (S.gatherNodes || []).find((g) => g.alive);
     if (!n) return null;
     S.player.vx = 0; S.player.vy = 0;
-    /* Since v2.3.1448 proximity alone does not open the shell — "only when a
-       user touches the resource on screen does the resource extraction menu
-       pop up" — so the tap is what publishes S._nearNode.  Set the same way
-       mp-lifeskill does: the canvas hit-test is not what is under test here,
-       the wire is, and the BUTTON below is still clicked for real. */
-    S._tapNode = n;
+    /* v2.3.2245: proximity publishes S._nearNode again ("resource extraction
+       will be detected by perimeter"); nothing to tap. */
     return { id: n.id, x: n.x, y: n.y, nodeType: n.nodeType };
   });
   /* nodeType -> the skill startExtraction records and the `ex` code the client
@@ -179,24 +175,31 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const wantSkill = SKILL[nodeAt && nodeAt.nodeType] || 'woodcutting';
   await H.waitFor(P, (S) => (S._nearNode ? S._nearNode.id : null), (v) => v === nodeAt.id,
     { timeout: 15000, label: 'the tree becomes interactable' }).catch(() => {});
-  const prompted = await P.page.locator('#bt-node-prompt').count().catch(() => 0);
-  rec.ok('the node offers its harvest prompt', prompted >= 1, { prompted, nodeAt });
-  /* Dispatched IN PAGE rather than through Playwright's .click().  The prompt
-     is anchored over the node, which on a phone-sized viewport puts it under
-     the bottom dashboard — Playwright refuses to click an element another
-     element intercepts, and this scenario's original `.catch(() => {})`
-     swallowed that refusal, so every assertion below it failed for a reason
-     that had nothing to do with the code under test.  A real finger reaches
-     the button (the loop re-anchors it above the dashboard on a real phone);
-     the harness is the thing that cannot.  Its onClick is still the code
-     path being exercised. */
+  /* v2.3.2245: the mid-screen shell is gone -- the RIGHT BUTTON reads
+     HARVEST while a resource is in reach and a tap on it starts the harvest
+     (BroTown's bS).  Same code path the old prompt's onClick took
+     (_startExtraction), reached the way a thumb reaches it. */
+  await P.page.waitForTimeout(300);
+  const prompted = await P.page.evaluate(() => ((document.querySelector('.bt-rjoy-base') || {}).textContent || '').trim());
+  const promptDiag = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    return { near: S._nearNode ? S._nearNode.id : null, prox: S._proxNode ? S._proxNode.id : null,
+      cands: (S._targetCands || []).length, lock: S.lockedTarget ? S.lockedTarget.id : null,
+      ex: S._extraction ? S._extraction.skill : null, harvestCtx: !!S._btnHarvest,
+      axe: !!(S.rpg && S.rpg.inventory && S.rpg.inventory.woodcutting_axe) };
+  });
+  rec.ok('the right button offers the harvest (reads HARVEST with the node in reach)', /harvest/i.test(prompted), { prompted, promptDiag, nodeAt });
   const clicked = await P.page.evaluate(() => {
-    const el = document.getElementById('bt-node-prompt');
+    const el = document.querySelector('.bt-rjoy-base');
     if (!el) return false;
-    el.click();
+    const r = el.getBoundingClientRect();
+    const mk = (type) => new TouchEvent(type, { bubbles: true, cancelable: true,
+      touches: type === 'touchend' ? [] : [new Touch({ identifier: 71, target: el, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2 })],
+      changedTouches: [new Touch({ identifier: 71, target: el, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2 })] });
+    el.dispatchEvent(mk('touchstart')); el.dispatchEvent(mk('touchend'));
     return true;
   });
-  rec.ok('the harvest prompt could be pressed', clicked);
+  rec.ok('the harvest button could be pressed', clicked);
   await P.page.waitForTimeout(1200);
 
   const clientEx = await H.readState(P, (S) => (S._extraction ? S._extraction.skill : null));
@@ -216,44 +219,49 @@ export async function run({ browser, wsPort, webPort, rec }) {
     srv.ex === EXCODE[wantSkill], { srv, want: EXCODE[wantSkill] });
   rec.ok('...so the shield monsters read is UP', srv.shield === true, srv);
 
-  /* ═══ v2.3.1765: THE WHITE GESTURE DRAWS IN FRONT OF THE TREE ═══
-     Owner: "The woodcutting cue of the white gesture is still showing in the
-     layer behind the tree.  It needs to show in front of it."
-     STILL, because v2.3.1713 answered this by moving the CHOPPER to
-     gestureFront and left the animated finger on nodeGfx in gatherNodes,
-     under the trees.  Asserted as an ORDER between two layers read off the
-     live scene graph — the cue's own parent, and the parent of a real tree
-     sprite this frame — rather than against a hard-coded layer name, so the
-     check still means something if either side is moved again.
-     Checked here because this is the one scenario that already has a real
-     client mid-chop at a real worker-owned tree. */
-  const cueLayers = await P.page.evaluate(() => {
-    const probe = window._pixiRenderer && window._pixiRenderer.cueLayerProbe;
-    const S = window._gameState && window._gameState.current;
-    if (!probe || !S) return null;
-    const p = probe();
-    /* The tree's layer lives on the node object itself (node._pixiSprite),
-       which is where _updateGatherNodes parents it. */
-    const tree = (S.gatherNodes || []).find((n) => n && n.nodeType === 'tree' && n._pixiSprite && n._pixiSprite.parent);
-    return { ...p, treeLayer: tree ? tree._pixiSprite.parent.label : null };
+  /* ═══ v2.3.2245: THE CUE IS ON THE BUTTON ═══
+     Owner: "The gesture cues will be on the right button."  The v2.3.1765
+     layer-order check (the white finger in front of the tree) is retired
+     with the world cue it measured; what replaces it is read off the
+     button's face: a ring counting the wind-up down, then the painted axe
+     strip and the CHOP label once the gesture window opens. */
+  const faceWait = await P.page.evaluate(() => {
+    const base = document.querySelector('.bt-rjoy-base');
+    const ring = base && base.querySelector('svg[style*="rotate(-90deg)"]:not(:first-child)');
+    const rings = base ? Array.from(base.querySelectorAll('svg')) : [];
+    const S = window._gameState.current;
+    return { label: (base && base.textContent || '').trim(), rings: rings.map((r) => r.style.display),
+      status: S._extraction ? S._extraction.status : null };
   });
-  rec.ok('the cue-layer probe answered', !!cueLayers && !!cueLayers.cueLayer, cueLayers);
-  if (cueLayers && cueLayers.treeLayer) {
-    const depth = (l) => cueLayers.order.indexOf(l);
-    /* GUARD: if the cue and the trees ever land on the SAME layer the
-       comparison below is trivially satisfied by ">=" and proves nothing, so
-       require a strict ordering between two distinct layers. */
-    rec.ok('the cue and the trees are on different layers (guard)',
-      cueLayers.cueLayer !== cueLayers.treeLayer, cueLayers);
-    rec.ok('the white gesture cue draws IN FRONT of the tree it is chopping',
-      depth(cueLayers.cueLayer) > depth(cueLayers.treeLayer), cueLayers);
-    /* And the thing it was left behind on is genuinely below the trees —
-       naming the regression so a revert fails with the reason attached. */
-    rec.ok('...whereas nodeGfx, where it used to draw, is behind them',
-      depth(cueLayers.nodeGfxLayer) < depth(cueLayers.treeLayer), cueLayers);
-  } else {
-    rec.ok('a live tree sprite was on screen to compare against', false, cueLayers);
-  }
+  rec.ok('during the wind-up the button reads WAIT', /wait/i.test(faceWait.label), faceWait);
+  rec.ok('...and its harvest ring is showing (counting the wind-up down)', faceWait.rings.some((d) => d === 'block'), faceWait);
+  await H.waitFor(P, (S) => (S._extraction ? S._extraction.status : null), (v) => v === 'ready',
+    { timeout: 14000, label: 'the gesture window opens' }).catch(() => {});
+  await P.page.waitForTimeout(250);
+  const faceReady = await P.page.evaluate(() => {
+    const base = document.querySelector('.bt-rjoy-base');
+    const S = window._gameState.current;
+    const tool = base && Array.from(base.querySelectorAll('div')).find((d) => /gesture/.test(d.style.backgroundImage || ''));
+    return { label: (base && base.textContent || '').trim(), status: S._extraction ? S._extraction.status : null,
+      tool: tool ? { display: tool.style.display, img: tool.style.backgroundImage } : null,
+      probe: window.__btHarvest ? window.__btHarvest() : null };
+  });
+  rec.ok('once the window opens the button reads CHOP', /chop/i.test(faceReady.label) && faceReady.status === 'ready', faceReady);
+  rec.ok('...and the painted AXE strip is on the button face', !!(faceReady.tool && faceReady.tool.display === 'block' && /axe-gesture/.test(faceReady.tool.img)), faceReady);
+  /* This scenario runs on a DESKTOP pointer, where the touch controls are
+     hidden -- so the anchor falls back to the character (on: 'player'); on a
+     phone (mp-rbutton, mp-target) it is the button.  Either way it has a
+     thumb-sized radius. */
+  rec.ok('...and the gesture layer has an anchor (the button on a phone, the character on desktop)',
+    !!(faceReady.probe && faceReady.probe.cue && faceReady.probe.cue.r > 40 && /button|player/.test(faceReady.probe.cue.on)), faceReady.probe);
+  /* And nothing is drawn in the world for it: the tool sprite that used to
+     float over the node is hidden for good. */
+  const worldTool = await P.page.evaluate(() => {
+    const fx = window._pixiRenderer && window._pixiRenderer.effects;
+    const sp = fx && fx.gestureToolSprite;
+    return sp ? { visible: !!sp.visible } : { visible: false, none: true };
+  });
+  rec.ok('no gesture tool floats over the node any more', worldTool.visible === false, worldTool);
 
   /* ═══ AND IT ENDS ═══
      A shield that can stick is a worse bug than the one being fixed, so prove
@@ -325,7 +333,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the log\'s item card could be opened', lit);
   await P.page.waitForTimeout(500);
   const struck = await H.clickText(P, 'Light fire').then(() => true).catch(() => false);
-  rec.ok('...and it offers Light fire', struck);
+  const lightDiag = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    return { logs: (S.rpg && S.rpg.inventory && S.rpg.inventory.wood_pine) || 0, fire: !!S._firemaking,
+      ex: S._extraction ? S._extraction.skill : null, dead: !!(S.rpg && S.rpg.hp <= 0), zone: S.currentZone,
+      popups: (S.dmgNumbers || []).slice(-3).map((d) => d.text) };
+  });
+  rec.ok('...and it offers Light fire', struck, lightDiag);
   const fireSeen = await (async () => {
     const out = { ex: null, shield: false, clientFire: false };
     for (let i = 0; i < 24; i++) {
@@ -360,8 +374,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const n = S && S._campfire && S._campfire.alive ? S._campfire : null;
     if (!n) return null;
     S.player.vx = 0; S.player.vy = 0;
-    S._tapNode = n;                            /* same door the harvest half uses above */
-    return { x: n.x, y: n.y, zone: n.zone };
+    return { x: n.x, y: n.y, zone: n.zone };   /* v2.3.2245: proximity publishes it */
   });
   rec.ok('lighting the log actually produced a campfire to cook at', !!fireNode, fireNode);
   if (fireNode) {
@@ -370,12 +383,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await H.waitFor(P, (S) => (S._nearNode ? S._nearNode.nodeType : null), (v) => v === 'campfire',
       { timeout: 15000, label: 'the campfire becomes interactable' }).catch(() => {});
     const cookClicked = await P.page.evaluate(() => {
-      const el = document.getElementById('bt-node-prompt');
-      if (!el) return false;
-      el.click();
+      const el = document.querySelector('.bt-rjoy-base');
+      if (!el || !/harvest/i.test(el.textContent || '')) return false;
+      const r = el.getBoundingClientRect();
+      const mk = (type) => new TouchEvent(type, { bubbles: true, cancelable: true,
+        touches: type === 'touchend' ? [] : [new Touch({ identifier: 72, target: el, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2 })],
+        changedTouches: [new Touch({ identifier: 72, target: el, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2 })] });
+      el.dispatchEvent(mk('touchstart')); el.dispatchEvent(mk('touchend'));
       return true;
     });
-    rec.ok('the campfire offers a prompt that can be pressed', cookClicked);
+    const cookDiag = await P.page.evaluate(() => {
+      const S = window._gameState.current;
+      return { label: ((document.querySelector('.bt-rjoy-base') || {}).textContent || '').trim(),
+        near: S._nearNode ? S._nearNode.nodeType : null, prox: S._proxNode ? S._proxNode.nodeType : null,
+        fire: !!(S._campfire && S._campfire.alive), cands: (S._targetCands || []).length,
+        lock: S.lockedTarget ? S.lockedTarget.id : null, ex: S._extraction ? S._extraction.skill : null };
+    });
+    rec.ok('the campfire puts HARVEST on the right button, and it can be pressed', cookClicked, cookDiag);
     await P.page.waitForTimeout(1400);
     const cookCli = await H.readState(P, (S) => (S._extraction ? S._extraction.skill : null));
     rec.ok('the client believes it is cooking', cookCli === 'cooking', cookCli);

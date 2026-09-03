@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  engage: () => import('./mp-engage.mjs'), /* v2.3.2246: engaged movement is target-relative, and the attack indicator is painted */
   freshbuild: () => import('./mp-freshbuild.mjs'), /* v2.3.2237: a resumed app takes the new build; a live game is only offered it */
   devpanel: () => import('./mp-devpanel.mjs'), /* v2.3.2240: the owner's test panel */
   firetrail: () => import('./mp-firetrail.mjs'), /* v2.3.2238: the fire goblin's burning ground, drawn and felt */
@@ -84,7 +85,8 @@ const SCENARIOS = {
   jogsides: () => import('./mp-jogsides.mjs'), /* v2.3.2134: east and west are ONE mirrored sheet -- so an east-only bare shoulder is in the renderer, not the art */
   chatfeed: () => import('./mp-chatfeed.mjs'), /* v2.3.1980: players-online count + the world chat feed */
   lockaim: () => import('./mp-lockaim.mjs'), /* v2.3.1979: a locked-on bow shot has to actually hit */
-  lockon: () => import('./mp-lockon.mjs'), /* v2.3.1952: locking on raises block/dodge/special around the right joystick */
+  rbutton: () => import('./mp-rbutton.mjs'), /* v2.3.2242: the right control is a button — hold to attack, swipe for special, a shield toggle beneath it */
+  target: () => import('./mp-target.mjs'), /* v2.3.2243: the targeting perimeter, the lock that holds, the switch arrows, magic splash = arrow */
   tattoos: () => import('./mp-tattoos.mjs'), /* v2.3.1949: face + arm tattoos survive both server gates, end to end */
   roster: () => import('./mp-roster.mjs'), /* v2.3.1923: the device's character list — order, delete, the ten cap */
   drops: () => import('./mp-drops.mjs'), /* v2.3.1924: iron pieces to the bag, the gem to the glass */

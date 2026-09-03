@@ -36,7 +36,9 @@ function check(name, cond, detail) {
    constants and pure spawn math. */
 const room = new GameRoom({ storage: { get: async () => null, put: async () => {}, list: async () => new Map() } }, {});
 
-const TARGET_PER_ZONE = 3;
+/* v2.3.2244: six per zone (owner: "Monsters per zone will increase to 6,
+   but be spaced out more evenly").  The spacing half is pinned below. */
+const TARGET_PER_ZONE = 6;
 const wilderness = Object.keys(SERVER_ZONES);
 
 // ── 1. Monster density ──────────────────────────────────────────────────
@@ -57,6 +59,51 @@ const wilderness = Object.keys(SERVER_ZONES);
      should still field three, not three copies of one. */
   const skyArchs = new Set((SERVER_ZONES.sky.spawns || []).map((s) => s.arch));
   check('density sky: keeps all three archetypes', skyArchs.size === 3, [...skyArchs]);
+
+  /* ═══ v2.3.2244: SPREAD ═══
+     "spaced out more evenly over the zone area to prevent too much monster
+     overlap."  _spawnZoneMonsters places by farthest-point sampling
+     (_pickSpreadSpawn).  Measured rather than asserted by shape: over many
+     fresh spawns, the closest pair in a spread set must sit far apart on
+     average, and MUCH farther than the closest pair of six points dropped
+     uniformly at random in the same rectangle -- the baseline is computed
+     here, in the same run, so the pin is about the picker and not about
+     one lucky draw.  Sabotage-checked: with the picker replaced by uniform
+     random the ratio falls to ~1.0 and both assertions fail. */
+  const _minPair = (pts) => {
+    let best = Infinity;
+    for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) {
+      const d = Math.hypot(pts[i].x - pts[j].x, pts[i].y - pts[j].y);
+      if (d < best) best = d;
+    }
+    return best;
+  };
+  const RUNS = 60;
+  let spreadSum = 0, uniformSum = 0, tooClose = 0;
+  const zoneCfg = room._getZoneConfig('frost');
+  const W = zoneCfg.w * room.TILE, Hh = zoneCfg.h * room.TILE, margin = 4 * room.TILE;
+  for (let r = 0; r < RUNS; r++) {
+    const spawned = room._spawnZoneMonsters('frost');
+    const mp = _minPair(spawned);
+    spreadSum += mp;
+    if (mp < 64) tooClose++;
+    const uni = [];
+    for (let i = 0; i < spawned.length; i++) uni.push({ x: margin + Math.random() * (W - margin * 2), y: margin + Math.random() * (Hh - margin * 2) });
+    uniformSum += _minPair(uni);
+  }
+  const spreadAvg = spreadSum / RUNS, uniformAvg = uniformSum / RUNS;
+  check('spread: six frost spawns keep their closest pair >= 150px apart on average',
+    spreadAvg >= 150, { spreadAvg: Math.round(spreadAvg), uniformAvg: Math.round(uniformAvg) });
+  check('spread: ...at least 1.6x the closest pair of six uniformly random points',
+    spreadAvg >= uniformAvg * 1.6, { ratio: +(spreadAvg / uniformAvg).toFixed(2) });
+  check('spread: no spawn set stacks two monsters on one tile (closest pair < 64px) in more than 1 of 60 runs',
+    tooClose <= 1, { tooClose, RUNS });
+  /* Respawn returns each monster to its own spawn point, so the spread
+     survives the fight -- pinned so a future "respawn somewhere random"
+     cannot quietly undo the spacing. */
+  const set = room._spawnZoneMonsters('frost');
+  check('spread: every monster remembers its own spawn point (spawnX/Y == x/y at birth)',
+    set.every((m) => m.spawnX === m.x && m.spawnY === m.y), set.map((m) => [Math.round(m.x), Math.round(m.spawnX)]));
   const verdantVariant = (SERVER_ZONES.verdant.spawns || []).some((s) => s.variant === 'blueSlime');
   check('density verdant: keeps the blueSlime variant', verdantVariant, SERVER_ZONES.verdant.spawns);
 

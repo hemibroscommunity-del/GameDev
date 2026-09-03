@@ -30,6 +30,7 @@ import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1598: armou
 import { BT_API_BASE } from '@/networking/index.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse, pushDmgPopup, monsterPopupY, isAttackInShieldArc, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */ } from '@/game/combatHelpers.js';
+import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242: a landed block lowers the shield */
 import { handleChatEvent, handleEmoteEvent, handlePartyChatEvent, handleAreaChatEvent, handleWhisperEvent, handleWhisperErrorEvent } from '@/game/chat.js'; /* v2.3.2136: the @area / @user lanes */
 import { applyServerMuteList } from '@/game/chatMute.js'; /* v2.3.1981 */
 import { pushAbilityRings } from '@/game/abilities.js'; /* v2.3.1735: a peer's bash draws the caster's own shockwave */
@@ -864,7 +865,14 @@ export function processGameEvent(type, payload, S, deps) {
               if (payload.ability === 'burrow' && _burPhases[payload.phase]) {
                 var _buM = (S.monsters || []).find(function (mm) { return mm.id === payload.monsterId; });
                 if (_buM) {
-                  var _buMs = Math.max(80, Math.min(6000, Number(payload.ms) || 400));
+                  /* v2.3.2244 (post-review): the ceiling was 6000 from when
+                     PILE_MAX_MS was 4000; v2.3.2225 doubled the pile to 8000
+                     and left this behind, so the renderer's self-clear
+                     (_burUntil + 500) surfaced him on the client at 6.5s
+                     while the worker still had him intangible -- and, now,
+                     hurting to touch -- for another 1.5s.  9000 covers the
+                     cap with the same margin the old number had. */
+                  var _buMs = Math.max(80, Math.min(9000, Number(payload.ms) || 400));
                   _buM._burPhase = payload.phase;
                   _buM._burFrom = Date.now();
                   _buM._burUntil = Date.now() + _buMs;
@@ -1808,6 +1816,16 @@ export function processGameEvent(type, payload, S, deps) {
               }
               var R2 = S.rpg;
               if (!R2 || R2.hp <= 0) break;
+              /* v2.3.2242 (post-review): "IN COMBAT" HAS TO BE TRUE OF A
+                 SERVER-ZONE HIT.  The shield button's liveness rule
+                 (shieldToggle.js shieldButtonLive) counts damage taken in
+                 the last 5s, and S.lastDamageTaken was only ever stamped by
+                 the client-local legacy AI path -- so a snowman throwing
+                 from its 300px band, outside the 220px perimeter, could hit
+                 you and no shield button would appear.  The worker has just
+                 said we were struck; that is the stamp, before any of the
+                 display filters below decide whether to DRAW it. */
+              S.lastDamageTaken = Date.now();
               /* ── Out-of-range filter ──
                  The server's monster-attack ranging was firing damage
                  events for monsters the player can't see (off-screen or
@@ -1877,6 +1895,20 @@ export function processGameEvent(type, payload, S, deps) {
                  HP-damage path entirely.  Player_state will arrive
                  shortly after to mirror the authoritative stamina value. */
               if (payload.blocked) {
+                /* ═══ v2.3.2242: ONE BLOCK, THEN IT COMES DOWN ═══
+                   Owner: "Shield will automatically disengage upon receiving
+                   damage (successful block)."  The worker is the only thing
+                   that knows a block succeeded -- it resolves the arc at
+                   impact and says so on this payload -- so this is the one
+                   place the rule can live.  dropShield is idempotent, so a
+                   second blocked hit in the same tick is harmless. */
+                try { dropShield(S, 'blocked'); } catch (e) { /* display-only */ }
+                /* v2.3.2242 (post-review): the "block 10 hits" quest counted
+                   only the client-local legacy AI's blocks (monsterCombat
+                   ~863), so in every server zone it could never complete.
+                   A worker-confirmed block is the better evidence. */
+                if (!R2._questFlags) R2._questFlags = {};
+                R2._questFlags.blocksLanded = (R2._questFlags.blocksLanded || 0) + 1;
                 pushDmgPopup(S, S.player.x, S.player.y - 20, 'Blocked!', '#60a5fa');
                 var _staminaDrainBlock = typeof payload.staminaDrain === 'number' ? payload.staminaDrain : 15;
                 if (_staminaDrainBlock > 0) {
@@ -2476,6 +2508,10 @@ export function processGameEvent(type, payload, S, deps) {
               var dmgTaken = Math.max(1, rawDmg - pDef * 0.3);
               // §16.12 — Server already resolved block via historical state
               if (payload.blocked) dmgTaken = Math.ceil(dmgTaken * 0.25);
+              /* v2.3.2242: a blocked duel hit lowers the shield too -- same
+                 rule as the monster branch above, same one-line reason. */
+              if (payload.blocked) { try { dropShield(S, 'blocked'); } catch (e) { /* display-only */ } }
+              S.lastDamageTaken = Date.now();   /* v2.3.2242 (post-review): a duel hit is combat too */
               if (payload.isCrit) dmgTaken = Math.ceil(dmgTaken * 1.5);
               /* Prefer the server's resolved dmgTaken when present
                  (worker now applies HP damage and the value rides on
@@ -2825,6 +2861,11 @@ export function processGameEvent(type, payload, S, deps) {
                 var _won = payload.winner === S.myId;
                 S._activeDuel = null;
                 S._inDuel = null;
+                /* v2.3.2242 (post-review): the duel took the lock and may have
+                   raised the shield; neither outlives it.  A lock on a
+                   player is only ever a duel lock (duelLock.js). */
+                if (S.lockedTarget && S.lockedTarget.type === 'player') S.lockedTarget = null;
+                try { dropShield(S, 'duel_end'); } catch (e) { /* display-only */ }
                 pushDmgPopup(S, S.player.x, S.player.y - 40, _won ? ('DUEL WON!' + (payload.wager ? ' +' + payload.wager * 2 + 'g' : '')) : (payload.how === 'forfeit' ? 'Duel forfeited' : 'Duel lost' + (payload.wager ? ' -' + payload.wager + 'g' : '')), _won ? '#f5c542' : '#ff5e6c');
                 if (_won) BT_AUDIO.levelUp();else BT_AUDIO.beep(180, 0.1, 0.15, 'triangle');
               }

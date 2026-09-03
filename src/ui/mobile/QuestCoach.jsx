@@ -6,6 +6,7 @@ import React from 'react';
    rather than reimplemented: it is four lines, but they encode the
    ranged/staff fallback to `weapon` and a copy here would drift. */
 import { getActiveWeapon } from '@/data/gameSystems.js';
+import { holdDisc, releaseDisc, discSideFor } from '@/game/controlVisibility.js'; /* v2.3.2246 */
 
 /* ═══════════════════════════════════════════════════════════════════
    QUEST COACH — the controls are taught by the questline (v2.3.1796)
@@ -73,9 +74,16 @@ const INK = 'rgba(13,21,26,.92)';
 const MOVE_PX = 120;
 const TELEPORT_PX = 48;
 
-const BLOCK_HOLD_MS = 2000;
-const BLOCK_SECTORS = 8;
-const FULL_CIRCLE = (1 << BLOCK_SECTORS) - 1;
+/* v2.3.2242: the block lesson used to demand a 2s hold swept through all 8
+   sectors, because the double-tap-and-HOLD + drag-to-steer was the least
+   discoverable gesture in the game.  The shield is a TOGGLE BUTTON now
+   (ShieldButton.jsx) and points itself at the locked target, so there is
+   nothing to sweep and nothing to hold: the lesson is "you found the
+   button and raised it".  The old constants are kept as the probe's
+   `needMs`/`needSectors` shape (0 / 1) so a reader of __btCoach still
+   gets numbers, but only `raised` decides completion. */
+const BLOCK_HOLD_MS = 0;
+const BLOCK_SECTORS = 1;
 
 function loadDone() {
   try {
@@ -333,10 +341,11 @@ const LESSONS = [
        staff slots count, matching the special's gate exactly. */
     id: 'attack',
     shape: 'circle',
-    anchors: [{ sel: '.bt-rjoy-base', reach: '[data-joyzone="R"]',
-                body: 'Drag to attack.' },
-              { sel: '.bt-rjoy-zone', reach: '[data-joyzone="R"]',
-                body: 'Drag to attack.' }],
+    /* v2.3.2242: the stick is a BUTTON -- hold it, do not drag it. */
+    anchors: [{ sel: '.bt-rjoy-base', reach: '.bt-rjoy-base',
+                body: 'Hold to attack the nearest enemy.' },
+              { sel: '.bt-rjoy-zone', reach: '.bt-rjoy-base',
+                body: 'Hold to attack the nearest enemy.' }],
     label: 'Attack',
     live: function (rpg) { return !!getActiveWeapon(rpg); },
     done: null,     /* watched live -- see the isSwinging tracker below */
@@ -344,10 +353,11 @@ const LESSONS = [
   {
     id: 'special',
     shape: 'circle',
-    anchors: [{ sel: '.bt-rjoy-base', reach: '[data-joyzone="R"]',
-                body: 'A quick swipe on the right joystick.' },
-              { sel: '.bt-rjoy-zone', reach: '[data-joyzone="R"]',
-                body: 'A quick swipe on the right joystick.' }],
+    /* v2.3.2242: same gesture, on the Attack BUTTON now. */
+    anchors: [{ sel: '.bt-rjoy-base', reach: '.bt-rjoy-base',
+                body: 'A quick swipe on the Attack button.' },
+              { sel: '.bt-rjoy-zone', reach: '.bt-rjoy-base',
+                body: 'A quick swipe on the Attack button.' }],
     label: 'Special attack',
     /* ═══ v2.3.1797: THE SPECIAL IS PART OF THE TUTORIAL ═══
        Owner: "I think mayor bro ought to require you to perform your special
@@ -369,17 +379,16 @@ const LESSONS = [
   {
     id: 'block',
     shape: 'circle',
-    anchors: [{ sel: '.bt-rjoy-base', reach: '[data-joyzone="R"]',
-                body: 'Double-tap and HOLD — then turn all the way around.' },
-              { sel: '.bt-rjoy-zone', reach: '[data-joyzone="R"]',
-                body: 'Double-tap and HOLD — then turn all the way around.' }],
+    /* v2.3.2242: the shield is its own button under Attack (ShieldButton),
+       which only exists on screen while a fight is on or a lock is held --
+       so the mark falls back to the Attack button (where the shield button
+       will appear beneath) until a monster is close enough for it to show.
+       The lesson finishes the first time the shield goes up. */
+    anchors: [{ sel: '[data-shield]', reach: '[data-shield]',
+                body: 'Tap the shield to block. It drops after one hit.' },
+              { sel: '.bt-rjoy-base', reach: '.bt-rjoy-base',
+                body: 'Get close to a monster — a shield button appears below Attack. Tap it to block.' }],
     label: 'Raise the shield',
-    /* v2.3.1681b's dialogue line taught this in words and the owner still
-       asked for it again here, which is the tell: the double-tap-and-HOLD
-       is the least discoverable gesture in the game, and the fact that
-       dragging DURING the hold aims the shield is invisible until someone
-       shows you.  So the lesson is not "you pressed it" — it is the full
-       gesture, held, and swept through every direction. */
     live: function (rpg) { return !!rpg.shield; },
     done: null,     /* watched live — see the block tracker below */
   },
@@ -437,6 +446,11 @@ export function QuestCoach(props) {
      hold the first render's `null` forever and re-set the same mark
      twelve times a second. */
   const viewRef = React.useRef(null);
+  /* v2.3.2246: which discs this coach is currently holding on screen, so the
+     set can be reconciled each tick rather than leaked.  See the hold note in
+     the selection loop, and TRAPS §41 for why the hold has to be taken before
+     the anchor is measured. */
+  const discHoldRef = React.useRef({ id: null, sides: [] });
   const doneRef = React.useRef(loadDone());
   const ringRef = React.useRef(null);
   const arcRef = React.useRef(null);
@@ -577,41 +591,69 @@ export function QuestCoach(props) {
          trustworthy above. */
       if (S && S.isSwinging && !done.attack) { done.attack = true; saveDone(done); }
       if (S) {
+        /* v2.3.2242: raised once = learned.  The old hold-and-sweep tracker
+           measured a gesture that no longer exists (see BLOCK_HOLD_MS). */
         const b = blockRef.current;
-        if (S._shieldUp) {
-          if (b.last) b.ms += Math.min(120, now - b.last);
-          b.last = now;
-          if (typeof S._shieldAngle === 'number') {
-            const sec = ((Math.round(S._shieldAngle / (Math.PI * 2) * BLOCK_SECTORS) % BLOCK_SECTORS) + BLOCK_SECTORS) % BLOCK_SECTORS;
-            b.sectors |= (1 << sec);
-          }
-        } else {
-          b.last = 0;
-        }
-        /* Both conditions, as asked: held long enough AND swept the whole
-           circle.  A bitmask of 8 sectors is "360 degrees" in the only form
-           a gesture can actually be checked against.
-           Evaluated OUTSIDE the shield-is-up branch on purpose: the last
-           sector of the sweep is very often recorded on the same frame the
-           player lets go, and a check that only ran while the shield was up
-           would leave the lesson one frame short of finished, on screen,
-           after the player had done exactly what it asked. */
-        if (!done.block && b.ms >= BLOCK_HOLD_MS && b.sectors === FULL_CIRCLE) {
-          done.block = true; saveDone(done);
-        }
+        if (S._shieldUp) { b.sectors = 1; b.ms = Math.max(b.ms, 1); }
+        if (!done.block && b.sectors === 1) { done.block = true; saveDone(done); }
       }
 
       /* ── pick and place the mark, ~12x a second ── */
       if ((tick++ % 5) !== 0) return;
       if (!rpg || (!inTutorial(rpg) && !preTutorial(rpg))) {
         if (viewRef.current) { viewRef.current = null; setView(null); }
+        /* v2.3.2246: the coach retired — let go of the discs. */
+        if (discHoldRef.current.sides.length) {
+          for (const sd of discHoldRef.current.sides) releaseDisc(sd, 'coach');
+          discHoldRef.current = { id: null, sides: [] };
+        }
         return;
       }
       let next = null;
+      /* ═══ v2.3.2246: THE HOLD HAS TO COME BEFORE THE MEASURE ═══
+         v2.3.2246 hides the right button unless a press would do something
+         (owner: "Just show the right contextual button when there's input
+         that can be interacted with"), and hiding it means switching the
+         disc's pointerEvents off -- it is the touch target, and an
+         opacity-0 element still takes taps.
+
+         That closes a loop on this file.  reachable() hit-tests the middle
+         of the anchor with elementFromPoint; with the disc declining taps,
+         the answer is the [data-joyzone="R"] layer underneath, which is not
+         inside `.bt-rjoy-base`, so measure() returns null, so the `attack`
+         and `special` marks are skipped, so nothing ever asks for the
+         button to be shown, so it stays hidden.  The lesson would have
+         vanished in silence -- and this file's own rule is that a skipped
+         mark is a mark nobody can see is missing.
+
+         So the hold is taken the moment a lesson is found LIVE, before its
+         anchors are measured at all: the disc comes up on this tick and the
+         mark measures on the next (~80ms later, the 5-frame stride).  Only
+         the FIRST live lesson holds, because that is the only one that can
+         be shown -- holding for every live lesson would pin both discs on
+         screen for the whole of onboarding, which is the thing the owner
+         asked to stop.
+         The LEFT disc has no such loop: its anchors carry
+         reach:'[data-joyzone="L"]' and the disc has been pointerEvents:'none'
+         since v2.3.816, so the zone answers the hit-test whether the disc is
+         painted or not. */
+      const wantSides = [];
       for (const L of LESSONS) {
         if (done[L.id]) continue;
         if (L.done && L.done(rpg)) { done[L.id] = true; saveDone(done); continue; }
         if (!L.live(rpg)) continue;
+        /* Collected for EVERY live lesson the walk reaches, not just the
+           first: the walk stops at the first one that MEASURES, and a lesson
+           can be live and fail to measure for exactly the reason this hold
+           exists.  So the set is "the lessons that were considered", which
+           ends at the shown one -- bounded, and it cannot miss the lesson
+           actually on screen the way holding only for the first live one
+           could (gear is live and unmeasurable in a phone's bag layout;
+           attack is the one displayed). */
+        for (const a of L.anchors) {
+          const sd = discSideFor(a.sel);
+          if (sd && wantSides.indexOf(sd) < 0) wantSides.push(sd);
+        }
         const rect = measure(L.anchors);
         if (!rect) continue;          /* off screen / covered / desktop — skip, don't block */
         next = { id: L.id, label: L.label, body: rect.body, shape: L.shape, rect: rect };
@@ -623,6 +665,17 @@ export function QuestCoach(props) {
           cycleArmed.current = true;
         }
         break;
+      }
+      /* v2.3.2246: reconcile the hold set against what the walk wanted.
+         Recomputed every tick rather than edge-gated, so a lesson finishing
+         (or the whole coach retiring) cannot leave a disc pinned on screen
+         for the rest of the session, and so a hold lost to a remount comes
+         back on its own.  holdDisc is a Set add -- re-asking is free. */
+      {
+        const prev = discHoldRef.current.sides;
+        for (const sd of prev) if (wantSides.indexOf(sd) < 0) releaseDisc(sd, 'coach');
+        for (const sd of wantSides) holdDisc(sd, 'coach');
+        discHoldRef.current = { id: null, sides: wantSides };
       }
       const cur = viewRef.current;
       const same = (!next && !cur) || (next && cur && next.id === cur.id
@@ -653,15 +706,8 @@ export function QuestCoach(props) {
       const arc = arcRef.current;
       if (arc) {
         const b = blockRef.current;
-        let bits = 0;
-        for (let i = 0; i < BLOCK_SECTORS; i++) if (b.sectors & (1 << i)) bits++;
-        /* CLAMP EACH HALF SEPARATELY.  Clamping only the sum let a long
-           hold in one direction fill the whole bar — the bar read "done"
-           while the lesson correctly refused to finish, which is the worst
-           thing a progress bar can do. */
-        const p = Math.min(1, b.ms / BLOCK_HOLD_MS) * 0.5
-                + (bits / BLOCK_SECTORS) * 0.5;
-        arc.style.width = Math.round(p * 100) + '%';
+        /* v2.3.2242: a one-step lesson has a one-step bar. */
+        arc.style.width = (b.sectors === 1 ? 100 : 0) + '%';
       }
     };
     /* Dev probe, in the house style (__btWorldProps, __btStandInSkin): the
@@ -671,10 +717,9 @@ export function QuestCoach(props) {
     try {
       window.__btCoach = function () {
         const b = blockRef.current;
-        let bits = 0;
-        for (let i = 0; i < BLOCK_SECTORS; i++) if (b.sectors & (1 << i)) bits++;
         return { done: Object.assign({}, doneRef.current), heldMs: Math.round(b.ms),
-                 sectors: bits, needMs: BLOCK_HOLD_MS, needSectors: BLOCK_SECTORS,
+                 raised: b.sectors === 1,   /* v2.3.2242 */
+                 sectors: b.sectors, needMs: BLOCK_HOLD_MS, needSectors: BLOCK_SECTORS,
                  slots: Object.assign({}, seenSlots.current),
                  cycleArmed: cycleArmed.current,
                  /* v2.3.2130: the move lesson's progress, and which gate is
@@ -693,7 +738,12 @@ export function QuestCoach(props) {
       };
     } catch (_e) {}
     raf = requestAnimationFrame(step);
-    return function () { stop = true; cancelAnimationFrame(raf); };
+    return function () {
+      stop = true; cancelAnimationFrame(raf);
+      /* v2.3.2246: unmount releases too, so a remount cannot double-hold. */
+      for (const sd of discHoldRef.current.sides) releaseDisc(sd, 'coach');
+      discHoldRef.current = { id: null, sides: [] };
+    };
   }, [stateRef]);
 
   if (!view) return null;

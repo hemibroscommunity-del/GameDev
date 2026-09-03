@@ -374,13 +374,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
        the node and the bottom dashboard intercepts it at this viewport
        (mp-harvest v2.3.1706 hit the same wall).  Its onClick is still the code
        path being exercised. */
+    /* v2.3.2245: the harvest starts from the right button (reads HARVEST
+       with the node in reach), not from a mid-screen prompt. */
     const pressed = await A.page.evaluate(() => {
-      const el = document.getElementById('bt-node-prompt');
-      if (!el) return false;
-      el.click();
+      const el = document.querySelector('.bt-rjoy-base');
+      if (!el || !/harvest/i.test(el.textContent || '')) return false;
+      const r = el.getBoundingClientRect();
+      const mk = (type) => new TouchEvent(type, { bubbles: true, cancelable: true,
+        touches: type === 'touchend' ? [] : [new Touch({ identifier: 73, target: el, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2 })],
+        changedTouches: [new Touch({ identifier: 73, target: el, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2 })] });
+      el.dispatchEvent(mk('touchstart')); el.dispatchEvent(mk('touchend'));
       return true;
     });
-    if (!pressed) return { ok: false, why: 'the node offered no harvest prompt to press' };
+    if (!pressed) return { ok: false, why: 'the right button did not offer HARVEST to press' };
     await A.page.waitForTimeout(900);
     const ex = await H.readState(A, (S) => (S._extraction ? S._extraction.skill : null));
     if (!ex) return { ok: false, why: 'the prompt was pressed and no extraction started' };

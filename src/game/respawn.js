@@ -48,6 +48,7 @@ export function applyLocalRespawn(S, zone) {
   try { BT_AUDIO.startZoneAmbient(S.currentZone); } catch (e) {}
   S.map = generateZoneMap(S.currentZone);
   S.monsters = [];
+  S.lockedTarget = null;   /* v2.3.2242 (post-review): the monsters it pointed at are gone with the zone */
   S.gatherNodes = [];
   if (S.player) {
     S.player.x = (ZONES[S.currentZone] ? ZONES[S.currentZone].w / 2 : 16) * TILE;

@@ -223,3 +223,50 @@ construction.
 None. The client follows the server's position and plays the phase sheets it
 is told to; `mirror-audit` pins the phase names and the burrowing archetype
 table, neither of which moved.
+
+**Superseded the same day by v2.3.2244 below** (the control redesign): the
+pile chases again, at half this speed, and hurts to touch. The px/s form and
+the edge clamp introduced here stay.
+
+
+## v2.3.2244 — the pile chases again, at half the pace it fled, and it hurts to touch
+
+Owner (control redesign): "Snowman burrow speed will decrease by 50% and
+target to the player again (move towards them) but this time when the
+snowman touches you you will take damage (at a max rate of 1 time being
+damaged per second you remain in contact with it)."
+
+"Again" is the word that orders the two directives: v2.3.2236 above was
+built in a parallel session, and this one was given against it. The flee is
+reversed; the speed is halved from the speed he was seen fleeing at.
+
+| | v2.3.2236 | v2.3.2244 |
+|---|---|---|
+| direction | away from the player | **toward** the player (live aim, as before v2.3.2236) |
+| speed | `FLEE_PX_S` 190 px/s | **`PILE_PX_S` 95 px/s** — half; under a default character's 150 px/s, so you can always walk away |
+| contact damage | none — the pile was harmless by rule | **`m.dmg` once per second** while inside `CONTACT_PX` (40, on the snowman's dy×1.5 melee ellipse), through `_monsterStrikePlayer` |
+| ends when | `ESCAPE_PX` 420 clear (after the floor) | **the 8s cap, or the target gone after the floor** — neither arrival nor escape ends it |
+
+**Which "50%".** Half of 190 (the speed on the owner's build when the
+directive was written) rather than half of the original 54 px/s crawl. At
+27 px/s the contact rule would almost never fire against anyone who moves,
+which is the tell that it is not the reading meant. `PILE_PX_S` is the one
+number to change if the owner disagrees (`docs/specs/control-redesign.md`
+§5.15).
+
+**Why arrival had to go.** A pile that damages on contact cannot surface on
+contact, or the rule could fire at most once and only by accident. So the
+"arrive" is now the hurt, and the move is an eight-second hazard you are
+meant to walk away from. This is flagged as a judgement call in
+`docs/specs/control-redesign.md` §5.8.
+
+**Why it goes through `_monsterStrikePlayer`.** That is the one choke point
+every monster→player hit funnels through, so the touch gets the block arc
+(evaluated at impact — a shield facing the pile blocks it), the harvest
+shield, thorns, the hexer curse, defense XP and the `monster_attack` event
+for free. No second damage path, nothing for the client to learn: the pile
+stays intangible to the *player's* attacks, and the hit it deals arrives as an
+ordinary `monster_attack` from within the 160px guard.
+
+The table in "The mechanic" above is superseded for the **Pile** row: still
+untouchable, no longer harmless.

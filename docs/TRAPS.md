@@ -1465,3 +1465,89 @@ though, are not portable across dpr: state the viewport the number came from.
 
 **Related:** §34 (a colour probe is only as good as what is behind it), §37
 (measuring a drawing against the box that defines it).
+
+## §41 — A hidden control still measures, and still moves the hit-test (v2.3.2246)
+
+**Tempting:** the owner asks you to hide a HUD control until it has
+something to do. You gate its box (`opacity: 0`, or `visibility:hidden`,
+or `display:none`), the screenshots look right, and the whole QA suite
+stays green. Ship it.
+
+**Two things are now wrong and neither one fails a test.**
+
+**1. The onboarding still points at it, and still thinks it succeeded.**
+`ControlsTutorial.measureSteps` and `QuestCoach.measure` both locate their
+target with `document.querySelector` + `getBoundingClientRect`, and a box
+hidden by opacity or `visibility` answers that call *in full* — real
+left/top/width/height. So the spotlight ring is drawn in exactly the right
+place, around nothing, and every existing assertion passes: the step is
+"live", its rect is sane, `__btCtlTutSteps().dropped` is empty. The tour
+teaches a control the player cannot see. (`display:none` fails differently
+and more honestly — the rect goes to zero and the step is *dropped*, which
+at least `mp-ctltut` notices.)
+
+**2. Turning off `pointer-events` can delete the lesson entirely.**
+`QuestCoach.reachable()` hit-tests the middle of the anchor with
+`elementFromPoint` and only draws if the control itself (or its declared
+`reach`) answers. The right button IS the touch target, and an opacity-0
+element still takes taps, so hiding it *must* also set
+`pointer-events: none` — at which point `elementFromPoint` returns the
+half-screen `[data-joyzone="R"]` layer underneath, which is not inside
+`.bt-rjoy-base`, so `measure()` returns null, so the mark is skipped, so
+nothing ever asks for the button to be shown. A closed loop that presents
+as "the attack lesson just doesn't appear any more".
+
+**The fix is an explicit hold, taken before the measure.**
+`src/game/controlVisibility.js` is a tiny registry: onboarding calls
+`holdDisc(side, who)` for the control it is about to ring and releases it
+when it moves on, and the visibility resolver ors the holds in. QuestCoach
+takes its hold the moment a lesson is found LIVE — *before* `measure()` —
+which is what breaks loop 2. A Set of holder ids rather than a counter, so
+an effect that re-runs without cleanup cannot pin the control on for the
+session.
+
+**And test the visibility separately from the press.** `el.dispatchEvent`
+goes straight to the element's listeners and ignores `pointer-events`
+completely, so every touch-driven assertion keeps passing against a control
+the player can neither see nor press. This is §39 with its polarity
+flipped: there, "visible, enabled and stable" was what a *covered* button
+looked like; here, "the press worked" is what a *hidden* button looks like.
+`mp-rbutton` asserts opacity and `pointer-events` off the computed style,
+and never infers either from a press landing.
+
+**Related:** §39 (a covered button looks fine to Playwright), §20 (a fixed
+wrap is its own stacking context), §28 (a test that reports "not found" is
+worse than no test).
+
+## §42 — `brightness(0)` is not an "off" state on a dark button (v2.3.2246)
+
+**Tempting:** you have one sprite for a toggle and want an unmistakable
+OFF read, so you paint it as a silhouette: `filter: brightness(0)
+opacity(.55)`. It worked where the control used to live.
+
+**Wrong, and invisibly so.** `brightness(0)` forces every pixel to black
+*regardless of the source art*, so the result is legible only against a
+light ground. The shield toggle inherited this from `BlockRing`, which drew
+its silhouette over the WORLD; on its new home — a button filled
+`radial-gradient(#34444B → #202C32)` — a black shape at 55% is nothing at
+all. The owner reported it as "block button appears without an thumbnail
+icon until you actually tap block", which is exactly right: the icon
+existed and appeared the instant the tap flipped the filter to `none`.
+
+**The house rule already answers it, and for a second reason.** Nothing
+else in this control cluster uses a CSS `filter`: `AbilityButtons` and
+`ElementBurstButton` both express idle with OPACITY alone and both say why
+in a comment — a filter on a DOM overlay compositing over the WebGL canvas
+is the documented iOS grain hazard (v2.3.948's charge pie, v2.3.1236's
+joystick bases). So the fix for the icon is the fix for iOS: no filter in
+either state, opacity for idle, and the lit state carried by the button's
+own fill and border.
+
+**Assert the cause, not the pixels.** A brass-ish icon on a warm slate
+button is exactly the crop where a colour count lies (§21 — town cobble
+scored 4627 "brass" pixels in a 1496-pixel control crop). `mp-rbutton`
+asserts `getComputedStyle(img).filter === 'none'` and an opacity floor,
+which is the property that was actually wrong.
+
+**Related:** §21 (a loose pixel-classifier), §20 (an invisible overlay is
+rarely a z-index).

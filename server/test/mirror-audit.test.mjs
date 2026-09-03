@@ -698,6 +698,45 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   check('snowball burst: ...and it is preloaded per-zone, not on first use',
     /ensureSnowballBurstTex/.test(pre) && /tasks\.push\(Promise\.resolve\(ensureSnowballBurstTex/.test(pre), {});
 
+  /* ═══ v2.3.2245: THE HARVEST LIVES ON THE RIGHT BUTTON ═══
+     Owner: "No resource extraction button in the middle of the screen or
+     needing to tap on the resource or perform the gestures in the middle of
+     the screen area. ... The gesture cues will be on the right button."
+     Three pins: the mid-screen shell element is gone from BroTown; the
+     gesture layer anchors on the button; and the strip URLs the button face
+     plays (gesturePose.js GESTURE_TOOL_URLS) are the SAME files the world
+     renderer slices (effectsRenderer GESTURE_TOOLS) -- a hand-copied mirror,
+     which is exactly the kind this suite exists to hold in lockstep. */
+  const _bro = readFileSync(new URL('../../src/ui/BroTown.jsx', import.meta.url), 'utf8');
+  const _esl = readFileSync(new URL('../../src/ui/ExtractionSwipeLayer.jsx', import.meta.url), 'utf8');
+  const _gp = readFileSync(new URL('../../src/game/gesturePose.js', import.meta.url), 'utf8');
+  check('harvest on the button: the mid-screen shell element (#bt-node-prompt) is gone',
+    !/id:\s*["']bt-node-prompt["']/.test(_bro), {});
+  check('harvest on the button: the gesture layer anchors on the right button',
+    /querySelector\('\.bt-rjoy-base'\)/.test(_esl) && !/FISH_CUE_DY/.test(_esl), {});
+  const _urlsA = [...fx.matchAll(/url:\s*'([^']+gesture[^']+)'/g)].map((m) => m[1]).sort();
+  const _urlsB = [...(_gp.match(/'\/sprites\/tools\/[^']+'/g) || [])].map((u) => u.slice(1, -1)).sort();
+  check('harvest on the button: the button face plays the same tool strips the world renderer slices',
+    _urlsA.length === 4 && JSON.stringify(_urlsA) === JSON.stringify(_urlsB), { world: _urlsA, button: _urlsB });
+  check('harvest on the button: the character frames follow the hand (both renderers read gesturePose01)',
+    /gesturePose01\(/.test(rend) && /gesturePose01\(/.test(fx), {});
+
+  /* ═══ v2.3.2243: MAGIC HITS AS WIDE AS AN ARROW ═══
+     Owner: "Magic attack radius will be nerfed to be same as bow."  Two
+     halves.  The reach claim the client sends for a PvP hit is
+     WEAPON_TYPES[type].range -- staff must equal bow.  The splash radius is
+     projectiles.js's per-archetype _hitR table, which used to carry a wider
+     staff column as an `a.isStaff ? N : M` ternary; a single one left
+     anywhere in that block would quietly give the staff its splash back. */
+  check('magic = bow: the staff reach claim equals the bow reach claim',
+    WEAPON_TYPES.staff.range === WEAPON_TYPES.bow.range,
+    { staff: WEAPON_TYPES.staff.range, bow: WEAPON_TYPES.bow.range });
+  const _hitRBlock = proj.slice(proj.indexOf('var _hitR = 18;'), proj.indexOf('staffAoeMult(S.rpg)'));
+  check('magic = bow: no staff-only splash radius survives in the projectile hit table',
+    _hitRBlock.length > 100 && !/isStaff\s*\?\s*\d+\s*:\s*\d+/.test(_hitRBlock)
+    && /_hitR = 27;/.test(_hitRBlock) && /_hitR = 40;/.test(_hitRBlock),
+    { blockLen: _hitRBlock.length, staffTernaries: (_hitRBlock.match(/isStaff\s*\?/g) || []).length });
+
   /* ═══ v2.3.2218: THE CRIT THE POPUP PREDICTS IS THE CRIT THE SERVER ROLLS ═══
      gameEvents skips the server's damage number for your OWN hits ("we
      already show it locally"), so on your own swing the popup is purely

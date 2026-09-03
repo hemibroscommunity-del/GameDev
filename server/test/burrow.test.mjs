@@ -123,16 +123,51 @@ function toPile() {
     !snowman.dmgByPlayer || !snowman.dmgByPlayer.p1 || snowman.dmgByPlayer.p1 >= 0, snowman.dmgByPlayer);
 }
 
-// ── 4. The pile is HARMLESS — the owner's rule, and what makes it fair ──
+// ── 4. v2.3.2244: the pile HURTS TO TOUCH — once a second, and only in contact ──
+//    (It was HARMLESS from v2.3.2221 to v2.3.2243; the owner changed the rule:
+//     "when the snowman touches you you will take damage (at a max rate of 1
+//     time being damaged per second you remain in contact with it)".)
 {
+  ps.hp = ps.maxHp;
   const hpBefore = ps.hp;
   snowman.x = ps.x; snowman.y = ps.y;      /* right on top of the player */
   snowman.atkCd = 0;
+  snowman._burContactNextAt = 0;
   room.eventBuffer.length = 0;
-  for (let i = 0; i < 5; i++) room._tickMonsters();
-  check('pile: he cannot attack you in this form', ps.hp === hpBefore,
-    { hpBefore, hp: ps.hp });
-  check('pile: ...and starts no wind-up either', !snowman._bwUntil, snowman._bwUntil);
+  room._tickMonsters();
+  const hits = () => room.eventBuffer.filter((e) => e.type === 'monster_attack' && e.payload.monsterId === snowman.id);
+  check('contact: standing on the pile deals damage', ps.hp < hpBefore, { hpBefore, hp: ps.hp });
+  check('contact: ...as an ordinary monster_attack from the pile', hits().length === 1, hits().length);
+  check('contact: ...and still starts no wind-up (it is a touch, not a swing)', !snowman._bwUntil, snowman._bwUntil);
+  const hpAfterOne = ps.hp;
+  for (let i = 0; i < 20; i++) room._tickMonsters();   /* ~440ms of ticks, well inside the second */
+  check('contact: a second touch inside the same second does NOT hit again',
+    ps.hp === hpAfterOne && hits().length === 1, { hp: ps.hp, hpAfterOne, hits: hits().length });
+  snowman._burContactNextAt = Date.now() - 1;           /* the second is up */
+  room._tickMonsters();
+  check('contact: ...and does once the second has passed',
+    ps.hp < hpAfterOne && hits().length === 2, { hp: ps.hp, hpAfterOne, hits: hits().length });
+  /* Out of contact: no damage however long you stand there. */
+  const hpOut = ps.hp;
+  snowman.x = ps.x + BURROW.CONTACT_PX + 30; snowman.y = ps.y;
+  snowman._burContactNextAt = 0;
+  room._tickMonsters();
+  check('contact: out of the touch ring, no damage', ps.hp === hpOut && hits().length === 2, { hp: ps.hp, hpOut });
+  /* And the pile is still intangible to the player while it hurts them. */
+  check('contact: the pile stays invulnerable while it is hurting you',
+    room._monsterDamageable(snowman) === false, snowman._invulnUntil);
+  /* Facing him with a shield up blocks the touch, because it goes through
+     the same impact path a swing does. */
+  ps.hp = ps.maxHp; ps.blocking = true; ps.ba = Math.PI;   /* he is due west of the player after the step above? no: re-seat */
+  snowman.x = ps.x - 10; snowman.y = ps.y;                 /* 10px to the WEST */
+  ps.ba = Math.PI;                                         /* shield faces west */
+  snowman._burContactNextAt = 0;
+  room.eventBuffer.length = 0;
+  room._tickMonsters();
+  const blockedHit = room.eventBuffer.find((e) => e.type === 'monster_attack' && e.payload.monsterId === snowman.id);
+  check('contact: a shield facing the pile blocks the touch (impact-time arc, same as a swing)',
+    ps.hp === ps.maxHp && !!blockedHit && blockedHit.payload.blocked === true, { hp: ps.hp, blockedHit });
+  ps.blocking = false; ps.ba = null;
 }
 
 // ── 5. Emerging ends the immunity and is itself a punish window ──
@@ -214,29 +249,34 @@ function toPile() {
   room._tickMonsters();                    /* -> pile */
   check('duration: the pile begins even at point-blank range',
     snowman._burPhase === 'pile', snowman._burPhase);
-  /* v2.3.2236: this used to read "arrival cannot end it before the floor",
-     because the pile chased you and being at distance 0 satisfied arrival
-     immediately.  He flees now, so arrival is unreachable and the end
-     condition is ESCAPE_PX instead -- the two halves below are that new
-     contract, and the second one is the reason ESCAPE_PX had to exist at
-     all: without it a fleeing pile has NO end but the 8s cap. */
+  /* v2.3.2244: ARRIVAL NO LONGER ENDS THE PILE AT ALL.  A pile that hurts
+     on contact cannot surface on contact, or the rule fires at most once
+     and only by accident.  It runs to the cap (or until the target is gone,
+     after the floor). */
   snowman.x = ps.x; snowman.y = ps.y;
   room._tickMonsters();
-  check('duration: ...and it cannot end before the floor',
+  check('duration: standing on him does not end it before the floor',
     snowman._burPhase === 'pile', { phase: snowman._burPhase, floor: snowman._burFloor });
   /* THE FLOOR ALONE IS NOT ENOUGH ANY MORE.  Still standing on him, so he
      has not made the distance -- the old rule would have surfaced here. */
   snowman._burFloor = Date.now() - 1;
   snowman.x = ps.x; snowman.y = ps.y;
   room._tickMonsters();
-  check('duration: ...and the floor passing does not end it while he is still near',
-    snowman._burPhase === 'pile',
-    { phase: snowman._burPhase, dist: Math.hypot(snowman.x - ps.x, snowman.y - ps.y) });
-  /* ...but getting clear does. */
-  snowman.x = ps.x + BURROW.ESCAPE_PX + 10; snowman.y = ps.y;
+  check('duration: ...nor after the floor (v2.3.2244: arrival is the hurt, not the end)',
+    snowman._burPhase === 'pile', snowman._burPhase);
+  snowman._burUntil = Date.now() - 1;
   room._tickMonsters();
-  check('duration: ...and it ends once he has got ESCAPE_PX clear',
-    snowman._burPhase === 'emerge', snowman._burPhase);
+  check('duration: the cap ends it', snowman._burPhase === 'emerge', snowman._burPhase);
+  /* And a target who is GONE ends it too, once the floor has passed.
+     "Gone" here is death rather than a zone change: with the only player
+     out of frost the zone is not active and _tickMonsters does not visit
+     it at all, so a zone-change fixture would measure nothing. */
+  arm(0); room._tickMonsters(); snowman._burUntil = Date.now() - 1; room._tickMonsters();
+  snowman._burFloor = Date.now() - 1;
+  ps.dead = true;
+  room._tickMonsters();
+  check('duration: a target who is gone ends it after the floor', snowman._burPhase === 'emerge', snowman._burPhase);
+  ps.dead = false;
 }
 
 // ── 11. The pile travels at the snowman's OWN speed ──
@@ -253,25 +293,30 @@ function toPile() {
   const dx0 = Math.abs(snowman.x - ps.x);
   room._tickMonsters();
   const step = Math.abs(snowman.x - x0);
-  /* ═══ v2.3.2236: IT FLEES, AND IT OUTRUNS A DEFAULT CHARACTER ═══
-     The speed is pinned against the PLAYER rather than against the
-     monster's own walk, because that is the property the owner asked for:
-     "moves away from the player more quickly than the default speed of the
-     character moving towards it."  A default character is
-     calcMoveSpeed(0,0)/5 x SPEED = 2.5 px/frame at 60fps = 150 px/s.
-     Still pinned to a number, and for the original reason too: the old form
-     read `m.speed`, a field that does not exist, and ran at 2.5x its design
-     speed behind a plausible-looking fallback. */
+  /* ═══ v2.3.2244: IT CHASES AGAIN, AT HALF THE PACE IT FLED ═══
+     v2.3.2236 pinned the flee at FLEE_PX_S 190 px/s against the room clock
+     (the px/s form exists because the old m.spd x SPEED_MULT read `m.speed`,
+     a field that does not exist, and ran at 2.5x behind a fallback).  The
+     control redesign turns him back toward the player -- "target to the
+     player AGAIN" -- and halves the speed he was watched fleeing at.  So the
+     pins are: the form (px/s x tick), the number (half of 190), the
+     direction (TOWARD), and that a default character (150 px/s, i.e.
+     calcMoveSpeed(0,0)/5 x SPEED = 2.5 px/frame at 60fps) can walk away. */
   const PLAYER_PX_S = 150;
-  const want = BURROW.FLEE_PX_S * (room.TICK_RATE / 1000);
-  check('the pile moves at FLEE_PX_S against the room clock, not a fallback',
+  const want = BURROW.PILE_PX_S * (room.TICK_RATE / 1000);
+  check('the pile moves at PILE_PX_S against the room clock, not a fallback',
     Math.abs(step - want) < 0.05, { step, want, tick: room.TICK_RATE });
-  check('...which is faster than a default character walks at it',
-    BURROW.FLEE_PX_S > PLAYER_PX_S, { flee: BURROW.FLEE_PX_S, player: PLAYER_PX_S });
-  /* DIRECTION, which is the whole ask.  Toward-the-player was the old
-     behaviour and would pass every speed assertion above. */
-  check('...and it moves AWAY from the player, not toward them',
-    Math.abs(snowman.x - ps.x) > dx0, { before: dx0, after: Math.abs(snowman.x - ps.x) });
+  check('...and PILE_PX_S is half of the 190 px/s he fled at (v2.3.2236 -> v2.3.2244)',
+    BURROW.PILE_PX_S === 95, BURROW.PILE_PX_S);
+  check('...which a default character can walk away from',
+    BURROW.PILE_PX_S < PLAYER_PX_S, { pile: BURROW.PILE_PX_S, player: PLAYER_PX_S });
+  /* DIRECTION, which is the whole ask.  Away-from-the-player was v2.3.2236
+     and would pass every speed assertion above. */
+  check('...and it moves TOWARD the player, not away',
+    Math.abs(snowman.x - ps.x) < dx0, { before: dx0, after: Math.abs(snowman.x - ps.x) });
+  check('duration: the contact ring is inside the melee reach (a mound, not an arm)',
+    BURROW.CONTACT_PX > 0 && BURROW.CONTACT_PX < 70 && BURROW.CONTACT_CD_MS === 1000,
+    { px: BURROW.CONTACT_PX, cd: BURROW.CONTACT_CD_MS });
 }
 
 // ══════════════════════════════════════════════════════════════════

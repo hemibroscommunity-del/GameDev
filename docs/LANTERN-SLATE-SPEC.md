@@ -177,6 +177,31 @@ Same neutral language, higher opacity. No blur anywhere.
 - Joysticks: outer 104px `rgba(17,25,29,.28)` + 1px
   `rgba(247,242,231,.18)`; thumb 46px `rgba(17,25,29,.48)`; whole
   control .62 opacity at rest, .92 engaged. No texture.
+  - **v2.3.2246 — CONTEXTUAL, ABOVE THE LADDER.** Owner: "Hide the
+    joystick overlays. Just show the left joystick when you're moving
+    the character. Just show the right contextual button when there's
+    input that can be interacted with."  Neither control is on the
+    world at rest any more. Each corner box (`.bt-joystick-zone`,
+    `.bt-rjoy-zone`) carries a BINARY 0/1 opacity gate that
+    BroTown's per-frame resolver drives; the rest/engaged ladder above
+    is unchanged and lives, as before, on the sprite inside. Binary on
+    purpose — v2.3.1233b is on record for a fractional container
+    opacity multiplying with the sprite's own and producing a rest
+    value nobody chose.
+    - LEFT visible while a thumb drives movement, while the
+      weapon-swap preview window is open, or while onboarding holds it.
+    - RIGHT visible when a press would do something: a monster inside
+      the targeting perimeter, a lock held, a resource in reach, a
+      harvest running — plus a 400ms linger, because candidacy is a
+      hard 220px test and a monster pacing that boundary would
+      otherwise strobe the button.
+    - Hidden means **not pressable**: the right disc is the touch
+      target, and an opacity-0 element still takes taps, so the
+      resolver switches its `pointer-events` with the box's opacity.
+    - Onboarding takes an explicit HOLD (`game/controlVisibility.js`)
+      for the side it is ringing. A hidden box still answers
+      `getBoundingClientRect`, so without the hold a coach mark would
+      ring empty air and report success (TRAPS §41).
 - Modal scrim `rgba(8,16,20,.56)`.
 
 ## Bars

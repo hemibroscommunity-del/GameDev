@@ -21,7 +21,8 @@ export function effectsAnimationsReady() { return Promise.allSettled(_fxPreload)
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R, FISH_CUE_DY } from '@/data/constants.js';
-import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool} from '@/data/index.js';
+import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */ } from '@/data/index.js';
+import { gesturePose01 } from '@/game/gesturePose.js'; /* v2.3.2245 */
 import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1535 generalised */
 import { getRemnantsTexture as getSnowmanRemnantsTex, getSnowballTexture } from '../snowmanSprites.js'; /* v2.3.2217 */
@@ -3355,6 +3356,115 @@ export class EffectsRenderer {
     const gfx = this.overlayGfx;
     gfx.clear();
 
+    /* ═══ v2.3.2246: THE ATTACK INDICATOR ═══
+       Owner: "There is an attack indicator that will appear for nearby
+       monsters (while in a monster's detectable perimeter). Once you tap
+       'attack' ... the auto-targeting engages."
+
+       So the indicator's job is to say, per monster, "this one is in play --
+       a press picks it up".  v2.3.2243 answered the earlier directive
+       ("monsters will have a circular perimeter around them for targeting")
+       literally, by stroking a TARGET_PERIMETER_PX ring around every
+       candidate.  That is a 440px-diameter circle centred on a monster: at
+       the 0.8 world scale it is ~350 CSS px across on a 390px phone, and
+       with the six-per-zone spawn count this PR ships, standing in a pack
+       drew six of them overlapping across the whole screen at alpha .14.
+       It read as ambient noise, not as a per-monster cue -- which is the
+       most likely reason the owner asked for an indicator that already
+       existed.
+
+       What is drawn now, from the top:
+         - a small brass caret over every candidate's head, bobbing, so the
+           mark is ON the monster and scales with none of the geometry;
+         - a tighter foot ring on the NEAREST candidate, because that is the
+           one an ENGAGE press actually takes (targeting.engageNearest reads
+           cands[0]) and "which one" is the question the arrows exist to
+           answer;
+         - the perimeter ring kept for the nearest candidate ALONE, at a
+           lower alpha, so the boundary you have to stay inside is still
+           visible without six of them fighting.
+       The locked monster keeps its red reticle below and is skipped here:
+       one target, one mark.
+
+       Graphics, not a texture: CLAUDE.md's preloading law makes a new
+       lazily-loaded sprite a bug, and a caret is four lineTo calls. */
+    try {
+      const _tc = S._targetCands;
+      /* Probe, house style (__btMonHit, __btCoach, __btWorldProps): which
+         monsters got a mark this frame and where.  A pixel count alone
+         cannot answer that in town, where the cobble is very nearly the
+         brass the mark is drawn in (TRAPS §21 names this exact false
+         positive), and a mark drawn at the wrong y is indistinguishable
+         from no mark at all in a crop. */
+      const _marks = [];
+      if (_tc && _tc.length) {
+        const _lockRef = S.lockedTarget && S.lockedTarget.ref;
+        /* One shared bob so the whole set pulses together rather than
+           shimmering independently -- a field of out-of-phase carets reads
+           as noise, which is the failure being fixed. */
+        const _bob = Math.sin(now / 320) * 3;
+        const _pulse = 0.55 + Math.sin(now / 320) * 0.2;
+        for (let i = 0; i < _tc.length; i++) {
+          const c = _tc[i];
+          if (!c || !Number.isFinite(c.x) || !Number.isFinite(c.y)) continue;
+          if (c.m === _lockRef) continue;   /* the reticle speaks for that one */
+          const nearest = i === 0;
+          /* The caret sits above the body, not above the feet.
+             monsterBodyOffsetY is the SHARED table (data/gameSystems.js) that
+             lockAimPoint, the swing hit-test and the projectile aim all read
+             for "how far above m.y the body centre is" -- 23 for a slime, 48
+             for a mummy, 60 for the 1.25x skeleton.  Twice it clears the head
+             of every archetype, including reskins, without a second per-arch
+             table here for a marker to drift out of sync with (v2.3.1535's
+             lesson: a variant that falls through lands its mark on the feet).
+             It takes an arch/type STRING, not the monster. */
+          const _off = monsterBodyOffsetY(c.m && (c.m.arch || c.m.archetype || c.m.type)) || 23;
+          const _cy = c.y - _off * 2 - 10 + _bob;
+          const _w = nearest ? 7 : 5;
+          const _h = nearest ? 6 : 4;
+          /* KEYLINE FIRST.  Brass (#D8A85F) is a warm sand yellow and so is
+             the town cobble -- the first cut of this was legible on grass and
+             snow and all but vanished on the town floor, which is also why
+             the QA crop had to stop classifying the colour and start
+             differencing frames instead.  A dark stroke one step wider,
+             under the brass, gives the mark its own edge on any ground.  Two
+             strokes of a three-point path, drawn per candidate; the same
+             trick the world labels use in CSS, done in Graphics because
+             CLAUDE.md's preloading law makes a new texture here a bug. */
+          const _caret = function (width, color, alpha) {
+            gfx.moveTo(c.x - _w, _cy);
+            gfx.lineTo(c.x, _cy + _h);
+            gfx.lineTo(c.x + _w, _cy);
+            gfx.stroke({ color: color, width: width, alpha: alpha });
+          };
+          const _cw = nearest ? 2.5 : 1.5;
+          const _ca = nearest ? _pulse : _pulse * 0.5;
+          _caret(_cw + 2.5, 0x14181A, _ca * 0.8);
+          _caret(_cw, 0xD8A85F, _ca);
+          if (nearest) {
+            gfx.circle(c.x, c.y, 15);
+            gfx.stroke({ color: 0x14181A, width: 3.5, alpha: _pulse * 0.5 });
+            gfx.circle(c.x, c.y, 15);
+            gfx.stroke({ color: 0xD8A85F, width: 1.5, alpha: _pulse * 0.85 });
+            if (Number.isFinite(TARGET_PERIMETER_PX)) {
+              gfx.circle(c.x, c.y, TARGET_PERIMETER_PX);
+              gfx.stroke({ color: 0xD8A85F, width: 1, alpha: 0.08 });
+            }
+          }
+          _marks.push({ id: c.m && c.m.id, x: c.x, y: _cy, nearest: nearest });
+        }
+      }
+      this._atkMarks = _marks;
+      if (typeof window !== 'undefined' && !window.__btAtkMark) {
+        const _self = this;
+        window.__btAtkMark = function () { return (_self._atkMarks || []).slice(); };
+      }
+    } catch (e) {
+      if (!this._candErrLogged) {
+        this._candErrLogged = true;
+        console.error('[overlay] candidate rings threw', e && e.message, e && e.stack);
+      }
+    }
     // Lock-on reticle — defensive: a stale ref (e.g. monster killed
     // mid-frame) shouldn't take down the entire effects renderer.
     try {
@@ -7166,7 +7276,12 @@ export class EffectsRenderer {
       const CHOP_BASE = 12, CHOP_COUNT = 12;
       const CHOP_STRIKE_K = 9;    // frame WITHIN the 12 where the axe bites (sfx)
       const sp = this.chopSprite;
-      const k = Math.floor(now / CHOP_FRAME_MS) % CHOP_COUNT;
+      /* v2.3.2245: the chop follows the thumb once the window is open --
+         one stroke on the button is one downswing, capped at one per 700ms
+         (a leisurely chop); the wind-up before `ready` keeps the clock. */
+      const _gpC = gesturePose01(ex, now, 700);
+      const k = (_gpC != null) ? Math.max(0, Math.min(CHOP_COUNT - 1, Math.floor(_gpC * CHOP_COUNT)))
+        : Math.floor(now / CHOP_FRAME_MS) % CHOP_COUNT;
       const fi = Math.min(this._chopFrames.length - 1, CHOP_BASE + k);
       /* v2.3.1468: with leg armour equipped, draw the HOLLOW body (legs
          erased, silhouette outline kept) so the lumberjack's own legs
@@ -7285,7 +7400,12 @@ export class EffectsRenderer {
          chunkier crouched painting is going to get without looking shrunken. */
       const COOK_H = 62, COOK_FRAME_MS = 60;
       const sp = this.cookSprite;
-      const cookFi = Math.floor(now / COOK_FRAME_MS) % this._cookFrames.length;
+      /* v2.3.2245: the flip follows the thumb once the window is open (one
+         up-flick on the button is one flip, capped at one per 1600ms -- the
+         pan marker's own v2.3.1442 rate); the wind-up keeps the clock loop. */
+      const _gpK = gesturePose01(ex, now, 1600, true);
+      const cookFi = (_gpK != null) ? Math.max(0, Math.min(this._cookFrames.length - 1, Math.floor(_gpK * this._cookFrames.length)))
+        : Math.floor(now / COOK_FRAME_MS) % this._cookFrames.length;
       /* v2.3.1114: when leg armour is equipped, use the legs-erased body so the
          bare legs don't peek out behind the greaves; otherwise the normal body. */
       const _legsOn = getEquip('legs') !== 'none' && this._cookLeglessFrames.length === this._cookFrames.length;
@@ -7347,315 +7467,20 @@ export class EffectsRenderer {
       this._tintGearSprite(this.cookChestSprite, getEquip('chest'), 'cookChest');
       this._placeSkillTraitsOn('cook', sp, cookFi, 'south', false);
     }
-    /* The floating tool + swipe cue + pips only appear once the swipe
-       window is open; the chopper above already covers the wind-up. */
-    if (ex.status !== 'ready') return;
-    /* Pulse + gentle float so the tool reads as a grabbable "pick me up". */
-    const pulse = 1 + Math.sin(now / 80) * 0.12;
-    const bob = Math.sin(now / 300) * 4;
-    const cy = y + bob;
-    /* Soft shadow so the floating tool reads against bright zones. */
-    gfx.ellipse(x, y + 16, 10, 3);
-    gfx.fill({ color: 0x000000, alpha: 0.22 });
-    /* v2.3.1417: the floating tool is the owner's painted GESTURE sprite —
-       its frame follows the finger via ex.cueFrame01 (written live by
-       ExtractionSwipeLayer): the pickaxe swings with the mining drag, the
-       reel cranks with the fishing circles, the axe follows the chop
-       swipe, the pan flips with the up-flick.  Idle (no finger) holds the
-       last frame with the gentle bob.  The axe mirrors so it always chops
-       TOWARD the tree.  Procedural fallback below covers a still-loading
-       strip; fishing/cooking previously had no floating tool, so their
-       fallback is simply nothing (the gesture hint still renders). */
-    const _gt = GESTURE_TOOLS[ex.skill];
-    if (_gt && _gt.frames.length === 8 && this.gestureToolSprite) {
-      const f01 = Math.max(0, Math.min(0.9999, ex.cueFrame01 || 0));
-      const sp = this.gestureToolSprite;
-      /* v2.3.1421 (owner: "less frames... still travels too far — the
-         resource should obstruct the latter half of the animation, but
-         doesn't apply to cooking or fishing").  The swing tools play
-         only the FIRST HALF of their sheet (frames 0-3, wind-up through
-         early swing) — the poses past that would carry the head through
-         the resource, and the surface is where the swing ENDS now.  The
-         reel and pan keep the full 8 frames (they animate in place). */
-      const _swingTool = ex.skill === 'mining' || ex.skill === 'woodcutting';
-      /* v2.3.1435 (owner): the reel/pan DISPLAY phase now CHASES the raw
-         gesture phase instead of snapping to it —
-         - fishing: totalAngle arrives in per-pointermove jumps (a fast
-           crank moves 45°+ between events), so raw frames skipped and
-           the reel "looked choppy".  The chase caps the display at ~2.2
-           rev/s along the shortest wrap direction: even cadence, still
-           keeps up with any human crank.
-         - cooking: a flick raced all 8 flip frames in ~300ms ("slow the
-           animation to about half") — capped at one full flip per 800ms.
-         Swing tools stay 1:1 (their feel is the strike itself). */
-      /* v2.3.1442 (owner: cooking "still goes way too fast"): the chase
-         state moves ONTO the extraction record — the old this._toolDispF
-         survived between cooks, so the next attempt started with the pan
-         already flipped (~1) and visibly UNWOUND backwards before
-         tracking again ("something is wrong").  ex._dispF dies with the
-         attempt, so every cook starts flat.  Cook rate also slowed
-         another 2x (full flip 800ms -> 1600ms). */
-      let _dispF = f01;
-      if (ex.skill === 'cooking' || ex.skill === 'fishing') {
-        const _lastT = ex._dispT || now;
-        const _dt = Math.max(0, Math.min(100, now - _lastT));
-        ex._dispT = now;
-        let _cur = (ex._dispF != null) ? ex._dispF : (ex.skill === 'cooking' ? 0 : f01);
-        const _rate = _dt / (ex.skill === 'cooking' ? 1600 : 450);
-        if (ex.skill === 'fishing') {
-          let _d = f01 - _cur;
-          if (_d > 0.5) _d -= 1; else if (_d < -0.5) _d += 1;
-          _cur = ((_cur + Math.max(-_rate, Math.min(_rate, _d))) % 1 + 1) % 1;
-        } else {
-          const _d = f01 - _cur;
-          _cur = _cur + Math.max(-_rate, Math.min(_rate, _d));
-        }
-        ex._dispF = _cur;
-        _dispF = Math.max(0, Math.min(0.9999, _cur));
-      }
-      sp.texture = _gt.frames[_swingTool ? Math.min(3, Math.floor(f01 * 4)) : Math.floor(_dispF * 8)];
-      const s = _gt.h / 256;
-      sp.scale.set(ex.skill === 'woodcutting' && chopSign < 0 ? -s : s, s);
-      let _tpx = x + (_gt.dx || 0); /* v2.3.1418: owner nudges */
-      let _tpy = cy - 8 + (_gt.dy || 0);
-      /* v2.3.1419 (owner: the tool "moves through the resource
-         transparently" — it should "appear to strike it").  SURFACE
-         CLAMP: the swing tools no longer sit at a fixed point while
-         their frames change — the sprite TRAVELS along the swing with
-         the gesture phase and STOPS at the node's surface, so it can
-         never ghost through the art.  Pickaxe: hovers wound-up above
-         the rock, accelerates down onto its upper face.  Axe: winds
-         back on the player's side, drives into the trunk edge.  When
-         the swing bottoms out, a one-shot spark/chip burst fires AT
-         the contact point (edge-detected on the phase so holding the
-         finger down doesn't spray).  The node sizes mirror
-         NODE_SPRITE_HEIGHT_BASE x the tier step scale (BroTown's
-         proximity formula).  Reel/pan keep the fixed placement — they
-         animate in place by design. */
-      if (ex.skill === 'mining' || ex.skill === 'woodcutting') {
-        const _tStep = Math.min(10, Math.max(1, Math.ceil((node.gatherLvl || 1) / 10)));
-        const _nH = (node.nodeType === 'tree' ? 168 : 132) * (1 + (_tStep - 1) * 0.15);
-        const _ease = f01 * f01; /* accelerate into the strike */
-        let _cpx, _cpy; /* contact point on the surface */
-        /* v2.3.1421: travel SHORTENED (owner: "still travels too far") —
-           the arc now ends at the resource's rim, not deep in its body:
-           pickaxe stops at the ore's upper rim, axe stops just short of
-           the trunk. */
-        if (ex.skill === 'mining') {
-          _cpx = node.x + (_gt.dx || 0);
-          _cpy = node.y - _nH * 0.85 + (_gt.dy || 0);
-          const _hoverY = node.y - _nH - 20 + (_gt.dy || 0);
-          _tpx = _cpx;
-          _tpy = _hoverY + (_cpy - _hoverY) * _ease + bob * (1 - _ease);
-        } else {
-          _cpx = node.x - chopSign * 30;
-          _cpy = node.y - 64 + (_gt.dy || 0);
-          const _hoverX = node.x - chopSign * 62;
-          _tpx = _hoverX + (_cpx - chopSign * 10 - _hoverX) * _ease + (_gt.dx || 0);
-          _tpy = _cpy + bob * (1 - _ease);
-        }
-        if (f01 >= 0.9 && (ex._strikeP || 0) < 0.9 && S.hitParticles) {
-          for (let i = 0; i < 6; i++) {
-            S.hitParticles.push({
-              x: _cpx, y: _cpy,
-              vx: (Math.random() - 0.5) * 4 - (ex.skill === 'woodcutting' ? chopSign * 1.5 : 0),
-              vy: -Math.random() * 2.5 - 0.5,
-              life: 0.4,
-              color: ex.skill === 'mining' ? (i % 2 ? '#ffd27a' : '#fff2c0') : (i % 2 ? '#d9b98c' : '#f0e3c8'),
-              size: 1.7,
-            });
-          }
-          try {
-            /* v2.3.1423: mining's strike SOUND lives on the pump slam
-               (ExtractionSwipeLayer onSlam — every reversal, i.e. every
-               time the marker visually hits) — this full-drag burst is
-               particles-only for mining so the two never double.
-               v2.3.1427 (owner): chopping gets the real hatchet sample —
-               two distinct strikes in the clip, alternated per hit
-               (mine-strike pattern).  The old beep(340) placeholder was
-               silent anyway: beep() has been a no-op since v2.3.1103. */
-            const _au = (typeof window !== 'undefined') && window.BT_AUDIO;
-            if (_au && ex.skill === 'woodcutting') {
-              ex._chopSndAlt = !ex._chopSndAlt;
-              _au.play('axe-chop', { offset: ex._chopSndAlt ? 0.06 : 1.10, duration: 0.6, vol: 0.6 });
-            }
-            /* v2.3.1445: the painted wood-chip burst moved to the chopper
-               loop's strike frame (constant, owner request) — this
-               full-drag moment keeps the procedural spark particles only,
-               like mining. */
-          } catch (e) {}
-        }
-        ex._strikeP = f01;
-      }
-      sp.x = _tpx;
-      sp.y = _tpy;
-      sp.visible = true;
-      /* v2.3.1433 (owner: "anchor whatever food item sprite is being
-         cooked over the food that [was] drawn with the sprite sheet...
-         rotate what's being cooked so it lands upside down"): the pan
-         frames are food-less; the raw fish's bag icon rides the
-         measured per-frame anchors and flips through the arc. */
-      if (ex.skill === 'cooking' && _gt.food) {
-        this._panPos = { x: sp.x, y: sp.y, t: now };   /* v2.3.1445: grease emitter anchor */
-        this._placeCookFood(sp.x, sp.y, s, _dispF, ex.fishKey);
-        /* v2.3.1435: record the linger state — when the flip succeeds
-           mid-animation (success fires on the up-stroke, which used to
-           cut the pan off), the marker stays and finishes the slowed
-           flip from here (see the linger block above the early-return). */
-        this._cookLinger = { x: sp.x, y: sp.y, f: _dispF, fishKey: ex.fishKey, t: now, until: now + 2600 };   /* v2.3.1442: window fits the 1600ms flip + hold */
-      }
-    } else if (ex.skill === 'fishing' || ex.skill === 'cooking') {
-      /* no floating tool — the angler holds the rod / the cook holds the pan;
-         the gesture hint below is the whole cue (v2.3.853 for cooking). */
-      gfx.circle(x, cy, 16 * pulse);
-      gfx.fill({ color: 0x000000, alpha: 0.3 });
-    } else if (ex.skill === 'woodcutting') {
-      gfx.circle(x, cy, 16 * pulse);
-      gfx.fill({ color: 0x000000, alpha: 0.3 });
-      /* Axe icon: brown handle + grey head. */
-      gfx.rect(x - 2, cy - 12 * pulse, 4, 24 * pulse);
-      gfx.fill({ color: 0x6a4830, alpha: 0.95 });
-      gfx.moveTo(x - 2, cy - 8 * pulse);
-      gfx.lineTo(x - 14 * pulse, cy - 4 * pulse);
-      gfx.lineTo(x - 14 * pulse, cy + 6 * pulse);
-      gfx.lineTo(x - 2, cy + 2 * pulse);
-      gfx.fill({ color: 0xb0b0b0, alpha: 0.95 });
-    } else {
-      gfx.circle(x, cy, 16 * pulse);
-      gfx.fill({ color: 0x000000, alpha: 0.3 });
-      /* Mining: pickaxe — handle + curved double-tip head. */
-      gfx.rect(x - 2, cy - 12 * pulse, 4, 24 * pulse);
-      gfx.fill({ color: 0x6a4830, alpha: 0.95 });
-      gfx.moveTo(x - 14 * pulse, cy - 8 * pulse);
-      gfx.lineTo(x + 14 * pulse, cy - 8 * pulse);
-      gfx.lineTo(x + 10 * pulse, cy - 4 * pulse);
-      gfx.lineTo(x - 10 * pulse, cy - 4 * pulse);
-      gfx.fill({ color: 0x8a8a8a, alpha: 0.95 });
-    }
-
-    /* ── Phase-2 gesture hint + progress meter (v2.4) ──
-       The animated hint shows WHAT motion to make; the green outer ring + pips
-       show how much of the sustained gesture is done (ex.progress / ex.reps,
-       written live by ExtractionSwipeLayer). Hint fades as progress fills. */
-    const progress = Math.max(0, Math.min(1, ex.progress || 0));
-    const reps = ex.reps || 0;
-    const repsTarget = ex.repsTarget || 3;
-    const hintAlpha = 0.9 * (1 - 0.55 * progress);
-    const hintCol = 0xfff2a8;
-    /* v2.3.1435 (owner: "make the gesture cue a bit larger and make it a
-       consistent size across each life skill"): one shared size sheet —
-       every skill's cue below draws from these.
-       v2.3.1436 (owner: "the white gesture cues need to be larger",
-       verified frame-by-frame with headless screenshots): another ~1.5x
-       — stroke 4 -> 6, reach 20 -> 30, finger 21x13 -> 30x19. */
-    const HINT_W = 6;          /* stroke width everywhere */
-    const HINT_REACH = 30;     /* arrow half-length / streak length basis */
-    /* v2.3.1667: the finger sizes moved to module scope (CUE_FINGER_*) so
-       drawFingerCue and this block cannot drift apart. */
-    if (ex.skill === 'fishing') {
-      /* v2.3.1442 (owner: cues "still not consistent in color or size"):
-         the gold arc-arrow becomes the SAME white finger every skill
-         uses, orbiting the reel circle — a faint white track shows the
-         path and a white streak trails the fingertip. */
-      /* v2.3.1449 (owner: "the fishing gesture and marker need to be
-         shrank by about 70%"): FISHING-LOCAL scale — every length below
-         is derived from F_S so the shared HINT_W/FINGER_* sheet above is
-         untouched and mining/woodcutting/cooking keep the consistent
-         sizing the owner asked for in v2.3.1435/1436/1442.  Purely
-         cosmetic: the swipe hit-test is a fixed 160px start radius and
-         the rep counter integrates the finger's ANGLE about the cue
-         centre, so a smaller ring still reels at exactly the same rate. */
-      /* v2.3.1470 (owner): 2x with the marker — 0.3 -> 0.6. */
-      const F_S = 0.6;
-      const rA = 78 * F_S;   /* v2.3.1436: ENCIRCLES the reel art instead of hiding behind it */
-      const a = (now / 900) % (Math.PI * 2);
-      gfx.circle(x, y, rA);
-      gfx.stroke({ color: 0xffffff, width: Math.max(1, 2.5 * F_S), alpha: hintAlpha * 0.28 });
-      gfx.moveTo(x + Math.cos(a - 0.85) * rA, y + Math.sin(a - 0.85) * rA);
-      gfx.arc(x, y, rA, a - 0.85, a);
-      gfx.stroke({ color: 0xffffff, width: Math.max(1, HINT_W * F_S), alpha: hintAlpha * 0.5 });
-      const fx = x + Math.cos(a) * rA, fy = y + Math.sin(a) * rA;
-      /* v2.3.1667: the clockwise tangent IS the direction of travel, so it
-         is simply the angle now (a + PI/2).  Same drawing as before —
-         this branch is where drawFingerCue's construction came from. */
-      drawFingerCue(gfx, fx, fy, a + Math.PI / 2, hintAlpha, F_S);
-    } else if (ex.skill === 'woodcutting') {
-      /* v2.3.843: a finger demonstrates the chop gesture — wind UP away
-         from the tree, then SWIPE back toward it, on a loop ("do this a
-         few times").  dir points toward the tree (+1 right). */
-      const dir = chopSign;
-      const T = 1100;                         // one wind-up+chop cycle
-      const p = (now % T) / T;
-      const WIND = 24, REACH = 20;   /* v2.3.1436: scaled with the bigger finger */            // travel away / toward the tree
-      let off;                                // horizontal offset along the tree axis
-      if (p < 0.5) {                          // wind up: ease back away from tree
-        const t = p / 0.5; off = -dir * WIND * (t * t * (3 - 2 * t));
-      } else if (p < 0.68) {                  // chop: snap toward the tree
-        const t = (p - 0.5) / 0.18; off = -dir * WIND + dir * (WIND + REACH) * t;
-      } else {                                // recover: ease back to centre
-        const t = (p - 0.68) / 0.32; off = dir * REACH * (1 - (t * t * (3 - 2 * t)));
-      }
-      const fy = y + 26;
-      const fx = x + off;
-      const chopping = p >= 0.5 && p < 0.68;
-      /* v2.3.1667: point along TRAVEL, not at the tree.  Winding up moves
-         away (-dir) and the chop moves toward it (+dir), so the finger
-         now turns over on the backswing instead of sliding backwards
-         while still aimed forwards. */
-      const wcAngle = (chopping ? dir : -dir) > 0 ? 0 : Math.PI;
-      if (chopping) {
-        drawFingerStreak(gfx, fx, fy, wcAngle, HINT_REACH + 8, HINT_W, hintAlpha * 0.5);
-      }
-      drawFingerCue(gfx, fx, fy, wcAngle, hintAlpha, 1);
-    } else if (ex.skill === 'cooking') {
-      /* v2.3.853: a finger flicks UP to flip the fish, on a loop — dip down,
-         flick up, recover. */
-      const T = 1100;
-      const p = (now % T) / T;
-      const DOWN = 14, UP = 30;   /* v2.3.1436: scaled with the bigger finger */
-      let off;
-      if (p < 0.5) { const t = p / 0.5; off = DOWN * (t * t * (3 - 2 * t)); }        // settle down
-      else if (p < 0.68) { const t = (p - 0.5) / 0.18; off = DOWN - (DOWN + UP) * t; } // flick up
-      else { const t = (p - 0.68) / 0.32; off = -UP * (1 - (t * t * (3 - 2 * t))); }  // recover
-      const fx = x, fy = y + 30 + off;
-      const flicking = p >= 0.5 && p < 0.68;
-      /* v2.3.1667: settling DOWN points down (+PI/2), the flick points up
-         (-PI/2) — the finger turns over at the bottom of the dip, which
-         is what makes the gesture read as a flip rather than a bob. */
-      const ckAngle = flicking ? -Math.PI / 2 : Math.PI / 2;
-      if (flicking) {
-        drawFingerStreak(gfx, fx, fy, ckAngle, HINT_REACH + 8, HINT_W, hintAlpha * 0.5);
-      }
-      drawFingerCue(gfx, fx, fy, ckAngle, hintAlpha, 1);
-    } else {
-      /* v2.3.1442: the gold double-arrow becomes the SAME white finger,
-         pumping up-down on the mining axis (x+44 keeps it clear of the
-         ore body, v2.3.1436) with a white streak trailing the motion. */
-      const T = 1100;
-      const p = (now % T) / T;
-      const off = -Math.cos(p * Math.PI * 2) * HINT_REACH;
-      const vel = Math.sin(p * Math.PI * 2);
-      const ax = x + 44, ay = y + off;
-      /* v2.3.1667: the pump now points along its own velocity — down on
-         the down-stroke, up on the up-stroke.  Previously the finger was
-         pinned pointing up and slid backwards for half of every cycle. */
-      const mnAngle = vel > 0 ? Math.PI / 2 : -Math.PI / 2;
-      if (Math.abs(vel) > 0.35) {                 /* streak while moving */
-        drawFingerStreak(gfx, ax, ay, mnAngle, HINT_REACH - 4, HINT_W, hintAlpha * 0.5);
-      }
-      drawFingerCue(gfx, ax, ay, mnAngle, hintAlpha, 1);
-    }
-    /* Progress as a horizontal pip row beneath the tool (no ring — the old
-       circling ring read as a stray diagonal line and the user prefers just
-       the arrow + floating tool). Pips fill green as each rep completes. */
-    const pipGap = 8;
-    const pipY = y + 28;
-    const px0 = x - (repsTarget - 1) * pipGap / 2;
-    for (let i = 0; i < repsTarget; i++) {
-      const filled = (i + 1) <= Math.floor(reps + 1e-3);
-      gfx.circle(px0 + i * pipGap, pipY, 2.6);
-      gfx.fill({ color: filled ? 0x3dd497 : 0x2a3050, alpha: filled ? 1 : 0.6 });
-    }
+    /* ═══ v2.3.2245: THE WORLD CUE IS GONE ═══
+       Owner: "No resource extraction button in the middle of the screen or
+       needing to tap on the resource or perform the gestures in the middle
+       of the screen area. ... The gesture cues will be on the right button."
+       Everything that used to draw here past this line -- the floating tool
+       sprite travelling along the swing, the finger hint, the reps pips, the
+       pan-with-food marker and its post-flip linger -- now lives on the right
+       button's face (TouchControls rCueRef/rRingRef, stamped by BroTown's
+       loop from ex.cueFrame01 / ex.progress).  The character stand-ins above
+       (chopper, cook) and the SFX loops stay, and now play at the thumb's
+       pace (gesturePose01).  The mining strike sparks + clink fire from the
+       pump slam (ExtractionSwipeLayer onSlam), so nothing here is needed for
+       them either. */
+    void x; void y; void chopSign;
   }
 
   clear() {

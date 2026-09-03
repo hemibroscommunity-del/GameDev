@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { RBTN } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2242: right-button geometry */
 import { playIsLandscape } from './playViewport.js';
 import { specialManaCost } from '@/data/prog3.js';
 
@@ -93,7 +94,7 @@ export const SpecialChargePie = () => {
   /* Joystick footprint: bottom = var(--dash-h) + 70px, right = 50px,
      size = 83 (portrait) / 98 (landscape).  Indicator sits centered
      above it with an 8 px gap. */
-  const joyW = isLandscape ? 98 : 83;
+  const joyW = isLandscape ? RBTN.wLand : RBTN.w;   /* v2.3.2242: the disc grew; one source of truth */
   const size = 40;
   const cx = size / 2;
   const cy = size / 2;

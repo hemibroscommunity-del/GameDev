@@ -22,7 +22,8 @@
    src/ui/mobile/BlockRing.jsx):
 
        6      joystick touch zones (TouchControls lZone/rZone; canvas below)
-      10      in-ring HUD (BlockRing shield — deliberately under prompts)
+      10      (free since v2.3.2242 — BlockRing's orbiting shield glyph is
+              gone; the shield is a z31 toggle button, ShieldButton.jsx)
       16      party roster (PartyHUD side list)
       17-19   inline info panels in BroTown.jsx (quest tracker, zone
               title, death-drop notice, status effects — top-anchored)
