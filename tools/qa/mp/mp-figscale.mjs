@@ -203,10 +203,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const ratio = boxSpoke.height / boxTown.height;
     console.log('    drawn height town -> dunes: ' + boxTown.height + ' -> ' + boxSpoke.height
       + '  (x' + ratio.toFixed(3) + ')');
-    rec.ok('...and the drawn figure is the same height in both',
-      ratio > 0.9 && ratio < 1.1, { town: boxTown.height, dunes: boxSpoke.height, ratio });
+    /* ═══ v2.3.2249: THIS USED TO PASS ON NOTHING ═══
+       boxTown.height and boxSpoke.height came from H.figureBox, which returned
+       a FIXED 40x46 crop -- so "the same height in both" compared 46 with 46
+       and would have held whatever the renderer did.  It survived v2.3.2247
+       making the world scale per zone by measuring a constant.  v2.3.2249 made
+       the crop follow the world scale, so these numbers are now the figure.
+       Which means the honest claim is the opposite one, and it is worth
+       asserting: the figure tracks the WORLD SCALE and nothing else.  Town 0.45
+       against the Dunes' 0.601 is a 1.34x difference by design (a 1664x1760 map
+       can afford more zoom-out than a 1024x1024 one), and if the drawn height
+       ever stops matching that ratio, something is scaling the character on its
+       own -- which is exactly the bug v2.3.2141 fixed and this file exists to
+       catch. */
+    const scaleRatio = inSpoke.sx / inTown.sx;
+    rec.ok('...and the drawn figure tracks the world scale exactly (nothing scales him on his own)',
+      Math.abs(ratio - scaleRatio) < 0.12,
+      { town: boxTown.height, dunes: boxSpoke.height, ratio: +ratio.toFixed(3),
+        scaleRatio: +scaleRatio.toFixed(3), townScale: inTown.sx, dunesScale: inSpoke.sx });
   } else {
-    rec.skip('the drawn figure is the same height in both',
+    rec.skip('the drawn figure tracks the world scale exactly',
       'could not read the figure in one of the zones');
   }
 

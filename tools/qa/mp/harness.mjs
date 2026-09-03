@@ -887,18 +887,43 @@ export async function figureBox(P, { pad = 0, peerId = null } = {}) {
     return { x: r.left + (wx - S.camera.x) * (S._worldScaleX || 1),
              y: r.top + (wy - S.camera.y) * (S._worldScaleY || 1),
              vw: innerWidth, vh: innerHeight,
-             drawn: !!d, facing: S._facing || null };
+             drawn: !!d, facing: S._facing || null,
+             /* v2.3.2249: the crop has to follow the zoom -- see below. */
+             worldScale: S._worldScaleX || 1 };
   }, peerId);
   if (!c) return null;
-  const w = 40 + pad * 2, h = 46 + pad * 2;
-  const x = Math.round(c.x - 20 - pad), y = Math.round(c.y - 44 - pad);
+  /* ═══ v2.3.2249: THE CROP FOLLOWS THE ZOOM ═══
+     40x46 anchored 20 left and 44 up of the foot was measured against a world
+     scale of 2/3, which was the only scale the game had when v2.3.2078 tightened
+     this box.  v2.3.2247 made the scale PER ZONE, so a fixed CSS-px crop stopped
+     framing the character and started framing the character plus a margin of
+     whatever he is standing on: at scale 0.45 the figure is 67% of its old
+     linear size, so more than half the box is ground.
+
+     That is not a cosmetic drift -- it broke the CONTROLS, which is the part
+     that makes these scenarios evidence at all.  Measured: mp-facingside's
+     "with no drawings at all, none of the four colours appears on him" started
+     finding 14 blue and 6 red pixels of town cobble inside the box, i.e. the
+     no-art control was reading scenery as art (TRAPS §34, one zoom level down).
+
+     So the box scales with the live world scale and frames the same body at any
+     zoom.  REF_WORLD_SCALE is the scale it was calibrated at, not a tuning knob.
+
+     `k` rides along non-enumerably: a scenario whose threshold is an ABSOLUTE
+     pixel count calibrated at the old size divides by k*k to compare like with
+     like, instead of re-deriving a number every time the zoom moves. */
+  const REF_WORLD_SCALE = 2 / 3;
+  const k = Math.max(0.05, (c.worldScale || REF_WORLD_SCALE) / REF_WORLD_SCALE);
+  const w = Math.round(40 * k) + pad * 2, h = Math.round(46 * k) + pad * 2;
+  const x = Math.round(c.x - 20 * k - pad), y = Math.round(c.y - 44 * k - pad);
   if (x < 0 || y < 0 || x + w > c.vw || y + h > c.vh) return null;
   /* Geometry ONLY on the enumerable side: this object is handed straight to
      page.screenshot({ clip }), which is not the place to find out whether a
-     stray key is tolerated.  The two diagnostics ride non-enumerably. */
+     stray key is tolerated.  The diagnostics ride non-enumerably. */
   const box = { x, y, width: w, height: h };
   Object.defineProperty(box, 'facing', { value: c.facing, enumerable: false });
   Object.defineProperty(box, 'drawn', { value: c.drawn, enumerable: false });
+  Object.defineProperty(box, 'k', { value: k, enumerable: false });
   return box;
 }
 

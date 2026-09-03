@@ -200,8 +200,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!again && again.pink >= 10, again);
   rec.ok('...and the front print with it',
     !!again && again.green >= 10, again);
-  rec.ok('...and the back-of-head drawing goes away again',
-    !!again && again.red < 10, again);
+  /* ═══ v2.3.2249: AGAINST ITS OWN CONTROL, NOT AN ABSOLUTE ═══
+     `red < 10` and the `red >= 10` that proves the drawing IS showing were the
+     same number, which only worked while the figure was one fixed size: at
+     v2.3.2249's town scale the bro is 0.675x his old linear size, the whole
+     count collapses toward the threshold from both directions, and 17 stray
+     antialiased pixels beside a 314-pixel face tattoo read as "the back of his
+     head is showing" -- 17 being simultaneously above the bar that proves it IS
+     there.  A discriminator whose two sides meet is not discriminating.
+     The claim is comparative and is now written that way: turned to the camera,
+     there must be far less back-of-head ink than there was turned away.  Scale
+     cancels, so this survives the next zoom change; the old absolute stays as a
+     floor so it cannot pass by everything being zero. */
+  rec.ok('...and the back-of-head drawing goes away again (vs what it measured turned away)',
+    !!again && !!back && again.red < Math.max(10, back.red * 0.3),
+    { ...again, awayRed: back && back.red, bar: Math.max(10, (back && back.red || 0) * 0.3) });
 
   /* ── AND ANOTHER PLAYER SEES THE SAME TWO SIDES ──
      v2.3.2043 added a wire key, and a drawing key has to clear TWO server

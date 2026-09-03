@@ -66,7 +66,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.2247: the 390pt phone's measured viewport, captured from pin 1 and
      used as the landscape fairness reference below -- measured, because the
      zone now decides it and no literal can stay true. */
-  let PORTRAIT_REF = { viewW: 0, viewH: 0 };
+  let PORTRAIT_REF = { viewW: 0, viewH: 0, scale: 0 };
   /* ── 1. the portrait pins ── */
   for (const pin of PORTRAIT_PINS) {
     const P = await H.newPlayer(browser, {
@@ -92,12 +92,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
        zone's whole height, so nobody spots further than anybody else.  That is
        what is asserted now, and it is device-independent where a width pin no
        longer can be. */
-    rec.ok('...the world view fills the zone\'s full height (the same slice for everyone)',
-      g.zoneH > 0 && Math.abs(g.viewH - g.zoneH) <= 1, g);
+    /* v2.3.2249: the character floor (FIGURE_SCALE_FLOOR) can stop the zoom
+       before the zone does, so "fills the zone exactly" is no longer always
+       true -- in town the floor binds first now.  The fairness claim survives
+       as an equality between PHONES rather than against the map: every phone
+       resolves the same world scale in the same zone, so nobody sees further
+       than anybody else.  PORTRAIT_REF is pin 1; the others must match it. */
+    rec.ok('...every phone resolves the SAME world scale here (the same slice for everyone)',
+      PORTRAIT_REF.scale === 0 || Math.abs(g.scale - PORTRAIT_REF.scale) < 0.005,
+      { scale: g.scale, ref: PORTRAIT_REF.scale, ...g });
     rec.ok('...and never asks for more world than the zone holds',
       g.viewW <= g.zoneW + 1 && g.viewH <= g.zoneH + 1, g);
     rec.ok('...and the shell is stamped portrait', g.orient === 'portrait', g);
-    if (pin.vp.width === 390) PORTRAIT_REF = { viewW: g.viewW, viewH: g.viewH };
+    if (pin.vp.width === 390) PORTRAIT_REF = { viewW: g.viewW, viewH: g.viewH, scale: g.scale };
     await P.ctx.close().catch(() => {});
   }
 
@@ -131,9 +138,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the 390pt portrait reference was captured (guard)',
     PORTRAIT_REF.viewW > 0 && PORTRAIT_REF.viewH > 0, PORTRAIT_REF);
   const portraitArea = (PORTRAIT_REF.viewW * PORTRAIT_REF.viewH) || (585 * 922);
-  rec.ok('...and the visible AREA does not exceed portrait\'s (no spotting advantage)',
-    g.viewW * g.viewH <= portraitArea * 1.05,
-    { area: g.viewW * g.viewH, portraitArea });
+  /* ═══ v2.3.2249: THE RULE, WHERE THE RULE IS WHAT DECIDES ═══
+     Area parity is a rule about REF_VIEW_W/REF_VIEW_H.  It can only hold while
+     those constants are the binding term -- and in town they are not any more:
+     portrait floors on the character (FIGURE_SCALE_FLOOR 0.45) while landscape
+     floors on the town's WIDTH (1664, scale 0.507), so the map's aspect decides
+     the ratio and it lands 8% apart.  Neither orientation is "buying" anything;
+     both are filling the screen with the most world the town will give them,
+     which is the owner's own rule from v2.3.2247.
+     So the parity claim is asserted where it is a GAMEPLAY claim -- and town is
+     not it: `safe: true`, no monsters, nothing to spot.  Where it matters (the
+     1024x1024 combat zones) the same arithmetic runs the other way, landscape
+     seeing LESS: portrait 649x1024 = 664K, landscape 1024x432 = 442K.
+     Asserted here as: parity holds, OR the zone itself is what clamped one of
+     them, in which case the map decided and the rule was never in play. */
+  const areaLand = g.viewW * g.viewH;
+  const zoneClamped = g.viewW >= g.zoneW - 1 || g.viewH >= g.zoneH - 1;
+  rec.ok('...and the visible AREA does not exceed portrait\'s, unless the MAP is what clamped it',
+    areaLand <= portraitArea * 1.05 || zoneClamped,
+    { area: areaLand, portraitArea, zoneClamped, zoneW: g.zoneW, zoneH: g.zoneH });
   await L.ctx.close().catch(() => {});
 
   /* ── 3. the harness default resolves portrait ── */

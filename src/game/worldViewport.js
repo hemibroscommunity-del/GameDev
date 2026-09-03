@@ -93,6 +93,42 @@ export const REF_VIEW_W = Math.round(390 * WORLD_ZOOM);   /* 585 at WORLD_ZOOM 1
    above documents is the thing that is preserved, not the number. */
 const MIN_SCALE = 0.75 / WORLD_ZOOM;   /* 0.25 at WORLD_ZOOM 3 */
 
+/* ═══ v2.3.2249: HOW SMALL THE BRO IS ALLOWED TO GET ═══
+ * Owner, on the first cut: "the bro is too small."
+ *
+ * WORLD_ZOOM says how far out to zoom and the zone says how far out it CAN go;
+ * neither of them knows how big that leaves the character, and in town -- the
+ * deepest map, so the one that can afford the most zoom -- it left him 23 CSS
+ * px tall against about 40 before.  At that size his tattoos, cape and outfit
+ * stop resolving; the game's own cosmetic scenarios (mp-skinworld,
+ * mp-facingside) cannot find the art on him, which is the measurement that
+ * turned "looks small" into a number.
+ *
+ * So this is the third floor, and the only one that is a TASTE decision rather
+ * than arithmetic: MIN_SCALE guards a degenerate box, the zone terms guard
+ * against void, and this one guards the character.  It is deliberately a
+ * separate named constant and not folded into MIN_SCALE, because the next
+ * person to tune it should not have to work out which of the two they mean.
+ *
+ * The bro's drawn height on a 390x844 phone is very close to 66 * scale, so:
+ *      0.349  ->  23 px   (no floor: what the owner called too small)
+ *      0.45   ->  30 px
+ *      0.50   ->  33 px
+ *      0.55   ->  36 px
+ *      0.667  ->  44 px   (the pre-v2.3.2247 size, everywhere)
+ * Only town, worldview and the two 40x40 zones are affected -- the nine combat
+ * zones already floor at 0.601 on their own map size, above every candidate
+ * here, so this constant cannot change how a fight looks.
+ * CHOSEN ON RENDERED SCREENSHOTS, not by argument.  tools/qa/mp/sweep-zoom.mjs
+ * rebuilds the client at each candidate and shoots the same spot in town, so
+ * the owner picked 0.45 by looking at five real builds side by side rather
+ * than from a description of them -- their words, on being shown the first
+ * cut: "the bro is too small ... can you actually simulate at different sizes
+ * so I don't have to do a bunch of guesswork."  0.45 puts him at ~64 px, and
+ * still zooms town out ~33% from the pre-v2.3.2247 view.  Re-run the sweep
+ * before moving this number. */
+export const FIGURE_SCALE_FLOOR = 0.45;
+
 /* ═══ v2.3.2156: LANDSCAPE GETS ITS OWN REFERENCE, ON THE OTHER AXIS ═══
  *
  * Owner: "Landscape would be an optional view.  You can play in portrait or
@@ -183,5 +219,7 @@ export function worldViewport(canvas, zoneId) {
   if (_z) {
     scale = Math.max(scale, cssW / (_z.w * TILE), cssH / (_z.h * TILE));
   }
+  /* v2.3.2249: ...and never so far out that the character stops reading. */
+  scale = Math.max(scale, FIGURE_SCALE_FLOOR);
   return { W: cssW / scale, H: cssH / scale, scale };
 }

@@ -114,6 +114,7 @@ const SCENARIOS = {
   coachearly: () => import('./mp-coachearly.mjs'), /* v2.3.2130: is anything taught in the first minute? */
   wvlens: () => import('./mp-wvlens.mjs'), /* v2.3.2137: the magnifier draws a lens, not a line */
   figscale: () => import('./mp-figscale.mjs'), /* v2.3.2123: is the character smaller outside town? */
+  zoomshot: () => import('./mp-zoomshot.mjs'), /* v2.3.2249: what the bro LOOKS like at a given zoom — driven by sweep-zoom.mjs */
   chatjoy: () => import('./mp-chatjoy.mjs'), /* v2.3.2123: the world chat sitting on the joystick */
   dunes: () => import('./mp-dunes.mjs'), /* v2.3.2122: the Wind Dunes arrival you cannot walk out of */
   queststar: () => import('./mp-queststar.mjs'), /* v2.3.1906: the star after the objective is done */

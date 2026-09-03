@@ -266,8 +266,22 @@ const nodeCountOf = (z, type) => (room.nodes[z] || []).filter((n) => n.nodeType 
        rationed. */
     const heldNow = room._zonePop.meadow.held;
     settle('meadow', 10, t + 1);
-    return heldNow === 10 && monsterCount('meadow') === 20;
-  })(), { held: room._zonePop.meadow.held, m: monsterCount('meadow') });
+    /* ═══ v2.3.2249: THE ROSTER SIZE IS NOT A CONSTANT ANY MORE ═══
+       This pinned `=== 20`.  That number was only ever stable because the
+       previous down-trim reclaimed a fixed set, and it stopped being stable
+       when TRIM_SAFE_PX widened 600 -> 800 (v2.3.2247, following the client's
+       zoom-out): a wider "never trim in sight of a player" radius covers a
+       placement-dependent number of monsters, and placement has been randomised
+       since v2.3.2244 picks the farthest of 16 candidates.  Measured across
+       full-suite runs at 800: 20, 21 and 22, all correct.
+       So the exact roster is no longer asserted -- it is a random quantity and
+       pinning it tests the seed.  The CLAIM this check is named for is about
+       `held`, which moves in the same pass the player arrives, and that is
+       asserted exactly.  The roster is bounded instead: it rose, and it did not
+       exceed the cap. */
+    const m = monsterCount('meadow');
+    return heldNow === 10 && m >= 20 && m <= SPAWN_SCALE.MON_MAX;
+  })(), { held: room._zonePop.meadow.held, m: monsterCount('meadow'), cap: SPAWN_SCALE.MON_MAX });
 
   check('damping: an EMPTY zone trims to authored size immediately', (() => {
     populate('meadow', 0);

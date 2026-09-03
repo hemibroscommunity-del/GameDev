@@ -106,6 +106,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
      larger box cannot manufacture a pass -- the town has no pink in it. */
   const RUN_PAD = 26;
   const clip = (pad = 0) => H.figureBox(P, { pad });
+  /* v2.3.2249: the crop itself, for its scale factor k (see the normalisation
+     below).  Same call inkCount makes, so it reports the box actually used. */
+  const clipBox = async () => clip(0).catch(() => null);
   const inkCount = async (tag, pad = 0) => {
     const box = await clip(pad);
     /* v2.3.2078: a null box means the figure is not fully on the glass.
@@ -178,8 +181,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
      Twice the skin, which is what "anywhere skin is showing" cost.  The floor
      sits between the two, so putting any of the three boxes back fails here —
      and a bit of art tuning that moves the figure by a few pixels does not. */
-  rec.ok(`a full-grid tattoo covers the whole of the visible skin (${stand.south} px south, was 2396 with the inset boxes)`,
-    stand.south >= 3600, stand);
+  /* ═══ v2.3.2249: NORMALISED, BECAUSE THE FIGURE CAN CHANGE SIZE ═══
+     2396 / 4744 / 3600 were all measured at world scale 2/3, the only scale
+     the game had.  v2.3.2247 made it per zone and v2.3.2249 floors it at 0.45,
+     so town draws the bro at 0.675x his old linear size -- 46% of the pixels
+     for identical coverage.  Comparing that to 3600 would read a working
+     tattoo as a broken one.
+     figureBox scales its crop by the same k, so dividing the count by k*k puts
+     the measurement back in the units the three numbers above were written in.
+     The CLAIM is unchanged and so is its floor; only the yardstick moved. */
+  const _k = (await clipBox()) ;
+  const kk = _k && _k.k ? _k.k * _k.k : 1;
+  const southNorm = Math.round(stand.south / kk);
+  rec.ok(`a full-grid tattoo covers the whole of the visible skin (${southNorm} px south normalised, was 2396 with the inset boxes)`,
+    southNorm >= 3600, { ...stand, k: _k && _k.k, southNorm });
 
   /* ── MID-STRIDE ──
      See the header: the CLAIM here is that the ink is on the figure while he
