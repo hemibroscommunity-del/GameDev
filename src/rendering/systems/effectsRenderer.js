@@ -21,7 +21,7 @@ export function effectsAnimationsReady() { return Promise.allSettled(_fxPreload)
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R, FISH_CUE_DY } from '@/data/constants.js';
-import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool} from '@/data/index.js';
+import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, TARGET_PERIMETER_PX /* v2.3.2230 */ } from '@/data/index.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1535 generalised */
 import { getRemnantsTexture as getSnowmanRemnantsTex, getSnowballTexture } from '../snowmanSprites.js'; /* v2.3.2217 */
@@ -3340,6 +3340,31 @@ export class EffectsRenderer {
     const gfx = this.overlayGfx;
     gfx.clear();
 
+    /* ═══ v2.3.2230: THE TARGETING PERIMETER, DRAWN ═══
+       Owner: "Monsters will have a circular perimeter around them for
+       targeting zone."  Every candidate (targeting.js: alive, tangible, and
+       the player inside its circle) gets a faint ring at the perimeter
+       radius; the locked one keeps its reticle below.  Faint on purpose --
+       Lantern Slate keeps the world the brightest thing on screen -- and
+       only for candidates, so a quiet field draws nothing. */
+    try {
+      const _tc = S._targetCands;
+      if (_tc && _tc.length && Number.isFinite(TARGET_PERIMETER_PX)) {
+        const _lockRef = S.lockedTarget && S.lockedTarget.ref;
+        for (let i = 0; i < _tc.length; i++) {
+          const c = _tc[i];
+          if (!c || !Number.isFinite(c.x) || !Number.isFinite(c.y)) continue;
+          const locked = c.m === _lockRef;
+          gfx.circle(c.x, c.y, TARGET_PERIMETER_PX);
+          gfx.stroke({ color: locked ? 0xff3c3c : 0xD8A85F, width: locked ? 1.5 : 1, alpha: locked ? 0.28 : 0.14 });
+        }
+      }
+    } catch (e) {
+      if (!this._candErrLogged) {
+        this._candErrLogged = true;
+        console.error('[overlay] candidate rings threw', e && e.message, e && e.stack);
+      }
+    }
     // Lock-on reticle — defensive: a stale ref (e.g. monster killed
     // mid-frame) shouldn't take down the entire effects renderer.
     try {

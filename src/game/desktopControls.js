@@ -13,6 +13,7 @@
    S is stateRef.current; S.keys feeds the movement code that stayed in
    the game loop. */
 import { BT_AUDIO, getNpcQuest } from '@/data/index.js';
+import { cycleTarget } from '@/game/targeting.js'; /* v2.3.2230 */
 
 export function setupDesktopControls(S, deps) {
   var triggerContextualDodge = deps.triggerContextualDodge,
@@ -175,6 +176,14 @@ export function setupDesktopControls(S, deps) {
         return;
       }
 
+      /* v2.3.2230: T — cycle the locked target through the monsters in the
+         perimeter (Shift+T goes the other way).  The desktop twin of the
+         touch arrows; Tab was already the weapon cycle. */
+      if (e.code === 'KeyT' && !e.repeat) {
+        e.preventDefault();
+        try { cycleTarget(S, e.shiftKey ? -1 : 1); } catch (err) { /* nothing in range */ }
+        return;
+      }
       /* Tab — cycle weapon slot */
       if (e.code === 'Tab') {
         e.preventDefault();

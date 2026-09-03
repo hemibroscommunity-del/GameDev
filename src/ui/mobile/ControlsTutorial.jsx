@@ -41,6 +41,10 @@ const STEPS = [
      that only shows once there is something to block. */
   { key: 'shield', shape: 'circle', sels: ['[data-shield]'],
     label: 'Shield', body: 'Tap to raise your shield. It drops after one block, or when you dodge.' },
+  /* v2.3.2230: only on screen while two or more monsters are in range --
+     a step whose anchor is absent is dropped for that open, by design. */
+  { key: 'target', shape: 'circle', sels: ['[data-target="next"]'],
+    label: 'Switch target', body: 'Two enemies close? These arrows switch which one you are fighting.' },
   /* v2.3.1285: the 3-panel row is retired — the home view is the Bag
      compact grid (equipped row over recent items). */
   /* ═══ v2.3.1803: THIS STEP HAD BEEN DROPPING ITSELF ═══

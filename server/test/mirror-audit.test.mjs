@@ -697,6 +697,22 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   check('snowball burst: ...and it is preloaded per-zone, not on first use',
     /ensureSnowballBurstTex/.test(pre) && /tasks\.push\(Promise\.resolve\(ensureSnowballBurstTex/.test(pre), {});
 
+  /* ═══ v2.3.2230: MAGIC HITS AS WIDE AS AN ARROW ═══
+     Owner: "Magic attack radius will be nerfed to be same as bow."  Two
+     halves.  The reach claim the client sends for a PvP hit is
+     WEAPON_TYPES[type].range -- staff must equal bow.  The splash radius is
+     projectiles.js's per-archetype _hitR table, which used to carry a wider
+     staff column as an `a.isStaff ? N : M` ternary; a single one left
+     anywhere in that block would quietly give the staff its splash back. */
+  check('magic = bow: the staff reach claim equals the bow reach claim',
+    WEAPON_TYPES.staff.range === WEAPON_TYPES.bow.range,
+    { staff: WEAPON_TYPES.staff.range, bow: WEAPON_TYPES.bow.range });
+  const _hitRBlock = proj.slice(proj.indexOf('var _hitR = 18;'), proj.indexOf('staffAoeMult(S.rpg)'));
+  check('magic = bow: no staff-only splash radius survives in the projectile hit table',
+    _hitRBlock.length > 100 && !/isStaff\s*\?\s*\d+\s*:\s*\d+/.test(_hitRBlock)
+    && /_hitR = 27;/.test(_hitRBlock) && /_hitR = 40;/.test(_hitRBlock),
+    { blockLen: _hitRBlock.length, staffTernaries: (_hitRBlock.match(/isStaff\s*\?/g) || []).length });
+
   /* ═══ v2.3.2218: THE CRIT THE POPUP PREDICTS IS THE CRIT THE SERVER ROLLS ═══
      gameEvents skips the server's damage number for your OWN hits ("we
      already show it locally"), so on your own swing the popup is purely

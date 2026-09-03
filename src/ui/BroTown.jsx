@@ -51,6 +51,7 @@ import { startBuildWatch } from '@/game/buildWatch.js';
 import { TouchControls } from './panels/TouchControls.jsx';
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
 import { ShieldButton } from './panels/ShieldButton.jsx'; /* v2.3.2229: the shield is a toggle button under Attack */
+import { TargetArrows } from './panels/TargetArrows.jsx'; /* v2.3.2230: switch targets when two or more are in the perimeter */
 import { engageNearest } from '@/game/targeting.js'; /* v2.3.2229: Attack engages the nearest monster in the perimeter */
 import { raiseShieldToggle, dropShield, shieldAimAngle } from '@/game/shieldToggle.js'; /* v2.3.2229 */
 import { DuelRequestPanel } from './panels/DuelRequestPanel.jsx';
@@ -11643,7 +11644,7 @@ export var BroTown = function BroTown(_ref0) {
      and z-index 6 so they sit over the world canvas but under all HUD
      (z>=20).  bt-desktop-hide drops them on desktop so the mouse reaches the
      canvas. */
-  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rLabelRef: rLabelRef, isLandscape: isLandscape }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until their milestone level unlocks them (AbilityButtons.jsx). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2229: the shield is a toggle button under the Attack button; it shows itself during combat (ShieldButton.jsx). */ /*#__PURE__*/React.createElement(ShieldButton, { stateRef: stateRef, isLandscape: isLandscape })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
+  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rLabelRef: rLabelRef, isLandscape: isLandscape }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until their milestone level unlocks them (AbilityButtons.jsx). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2229: the shield is a toggle button under the Attack button; it shows itself during combat (ShieldButton.jsx). */ /*#__PURE__*/React.createElement(ShieldButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2230: the target-switch arrows flank it while two or more monsters are in the perimeter (TargetArrows.jsx). */ /*#__PURE__*/React.createElement(TargetArrows, { stateRef: stateRef, isLandscape: isLandscape })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
      Not a style choice — a hard requirement this cost a round of QA to
      find.  .brotown-wrap is position:fixed, and Chrome treats that as its
      own stacking context, so EVERY element inside it is confined to one

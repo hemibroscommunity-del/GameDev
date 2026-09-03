@@ -41,6 +41,7 @@ import { MONSTER_VARIANTS, baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.22
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
 import { rollMonsterShard } from '@/data/shards.js';
 import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */ } from '@/game/combatHelpers.js';
+import { updateTargeting } from '@/game/targeting.js'; /* v2.3.2230 */
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
 import { btRpc, getBtPlayerId, syncRpgToServer } from '@/networking/index.js';
@@ -1261,6 +1262,11 @@ export function updateMonsterCombat(S, deps) {
             var lt = S.lockedTarget;
             if (lt.type === 'monster' && (!lt.ref.alive || lt.ref.curHp <= 0)) S.lockedTarget = null;else if (lt.type === 'npc' && !lt.ref.alive) S.lockedTarget = null;
           }
+          /* v2.3.2230: the targeting perimeter -- refresh S._targetCands and
+             drop a monster lock that left the hysteresis ring (targeting.js).
+             Here, beside the dead-lock clear, because this is the one frame
+             hook every lock reader already trusts. */
+          try { updateTargeting(S); } catch (e) { /* a targeting fault must not stop the tick */ }
           /* Auto-attack: trigger swing/bow automatically */
           /* §4.5 Attack speed — base cooldown modified by amulet */
           var atkSpdAmulet = ((_S$rpg9 = S.rpg) === null || _S$rpg9 === void 0 || (_S$rpg9 = _S$rpg9._amuletBonus) === null || _S$rpg9 === void 0 ? void 0 : _S$rpg9.stat) === 'atkSpd' ? 1 + S.rpg._amuletBonus.value / 100 : 1.0;

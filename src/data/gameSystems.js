@@ -2638,7 +2638,10 @@ export const WEAPON_TYPES = {
   staff: {
     base: 8.54,
     speed: 1.0,
-    range: 120,
+    /* v2.3.2230 (owner: "Magic attack radius will be nerfed to be same as
+       bow"): 120 -> 200, the bow's.  This field is the PvP reach claim
+       (monsterCombat player_attack) -- the splash radius is in projectiles. */
+    range: 200,
     type: 'ranged',
     aoeCap: 3,
     aoeCone: Math.PI / 4,
@@ -5389,6 +5392,11 @@ export const SWING_ARC = Math.PI * 0.85;
    flight (340-675) and outside melee reach (50-72).  One constant, one knob;
    see docs/specs/control-redesign.md §5.5. */
 export const TARGET_PERIMETER_PX = 220;
+/* v2.3.2230: a lock HOLDS out to this multiple of the perimeter ("otherwise
+   the target stays locked on the same monster") -- the ring between 1.0 and
+   1.25 is the hysteresis that keeps a target on the edge from flickering
+   in and out of the lock every frame. */
+export const TARGET_HYST = 1.25;
 /* ═══ v2.3.2200: CONTACT-SYNCED MELEE ("floaty" fix #1) ═══
    The damage sweep used to run on frame 0 of the 300ms swing animation
    (entityRenderer SWORD_SWING_MS), so the popup/particles/knockback all
