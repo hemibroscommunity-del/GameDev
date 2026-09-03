@@ -11,13 +11,16 @@
  * the shield does not make you unkillable. Nothing on the server is gating a
  * duel differently.
  *
- * WHAT IS MISSING IS THE BUTTON. The on-screen block control lives in
- * LockOnActions, whose first line is `if (!S || !S.lockedTarget) return null;`.
- * Starting a duel has never set a lock. So through a whole duel there is no
- * block button anywhere on screen, and the only way to raise a shield is the
+ * WHAT IS MISSING IS THE BUTTON. The on-screen block control lived in
+ * LockOnActions, whose first line was `if (!S || !S.lockedTarget) return null;`.
+ * Starting a duel has never set a lock. So through a whole duel there was no
+ * block button anywhere on screen, and the only way to raise a shield was the
  * BlockRing gesture -- a double-tap-and-hold on the right joystick -- which
- * nothing in the duel tells you about. "Unable to block" is exactly what that
- * feels like.
+ * nothing in the duel told you about. "Unable to block" is exactly what that
+ * felt like.
+ * (v2.3.2229: the shield is a toggle button under the Attack button now,
+ * ShieldButton.jsx, and it shows whenever a lock is held -- so this lock is
+ * still what puts the block control on screen in a duel.)
  *
  * The lock is what a duel already MEANS: you are fighting that person, the
  * game aims at them, and the shield points at them. BroTown's own tap handler

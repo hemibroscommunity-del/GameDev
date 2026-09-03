@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { RBTN } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2229: right-button geometry */
 import { playIsLandscape } from './playViewport.js';
 import { PROG3, burstRefusal, burstWeapon } from '@/data/prog3.js';
 import { ELEMENTS } from '@/data/elements.js';
@@ -80,7 +81,7 @@ export const ElementBurstButton = () => {
 
   /* Joystick footprint, same measurements SpecialChargePie works from:
      bottom = var(--dash-h) + 70px, right = 50px, size 83 / 98. */
-  const joyW = isLandscape ? 98 : 83;
+  const joyW = isLandscape ? RBTN.wLand : RBTN.w;   /* v2.3.2229: the disc grew; one source of truth */
   const bottomVal = 'calc(var(--sheet-h, var(--dash-h)) + ' + (70 + (joyW - SIZE) / 2) + 'px)';
   const rightVal = (50 + joyW + 10) + 'px';
 

@@ -73,9 +73,16 @@ const INK = 'rgba(13,21,26,.92)';
 const MOVE_PX = 120;
 const TELEPORT_PX = 48;
 
-const BLOCK_HOLD_MS = 2000;
-const BLOCK_SECTORS = 8;
-const FULL_CIRCLE = (1 << BLOCK_SECTORS) - 1;
+/* v2.3.2229: the block lesson used to demand a 2s hold swept through all 8
+   sectors, because the double-tap-and-HOLD + drag-to-steer was the least
+   discoverable gesture in the game.  The shield is a TOGGLE BUTTON now
+   (ShieldButton.jsx) and points itself at the locked target, so there is
+   nothing to sweep and nothing to hold: the lesson is "you found the
+   button and raised it".  The old constants are kept as the probe's
+   `needMs`/`needSectors` shape (0 / 1) so a reader of __btCoach still
+   gets numbers, but only `raised` decides completion. */
+const BLOCK_HOLD_MS = 0;
+const BLOCK_SECTORS = 1;
 
 function loadDone() {
   try {
@@ -333,10 +340,11 @@ const LESSONS = [
        staff slots count, matching the special's gate exactly. */
     id: 'attack',
     shape: 'circle',
-    anchors: [{ sel: '.bt-rjoy-base', reach: '[data-joyzone="R"]',
-                body: 'Drag to attack.' },
-              { sel: '.bt-rjoy-zone', reach: '[data-joyzone="R"]',
-                body: 'Drag to attack.' }],
+    /* v2.3.2229: the stick is a BUTTON -- hold it, do not drag it. */
+    anchors: [{ sel: '.bt-rjoy-base', reach: '.bt-rjoy-base',
+                body: 'Hold to attack the nearest enemy.' },
+              { sel: '.bt-rjoy-zone', reach: '.bt-rjoy-base',
+                body: 'Hold to attack the nearest enemy.' }],
     label: 'Attack',
     live: function (rpg) { return !!getActiveWeapon(rpg); },
     done: null,     /* watched live -- see the isSwinging tracker below */
@@ -344,10 +352,11 @@ const LESSONS = [
   {
     id: 'special',
     shape: 'circle',
-    anchors: [{ sel: '.bt-rjoy-base', reach: '[data-joyzone="R"]',
-                body: 'A quick swipe on the right joystick.' },
-              { sel: '.bt-rjoy-zone', reach: '[data-joyzone="R"]',
-                body: 'A quick swipe on the right joystick.' }],
+    /* v2.3.2229: same gesture, on the Attack BUTTON now. */
+    anchors: [{ sel: '.bt-rjoy-base', reach: '.bt-rjoy-base',
+                body: 'A quick swipe on the Attack button.' },
+              { sel: '.bt-rjoy-zone', reach: '.bt-rjoy-base',
+                body: 'A quick swipe on the Attack button.' }],
     label: 'Special attack',
     /* ═══ v2.3.1797: THE SPECIAL IS PART OF THE TUTORIAL ═══
        Owner: "I think mayor bro ought to require you to perform your special
@@ -369,17 +378,16 @@ const LESSONS = [
   {
     id: 'block',
     shape: 'circle',
-    anchors: [{ sel: '.bt-rjoy-base', reach: '[data-joyzone="R"]',
-                body: 'Double-tap and HOLD — then turn all the way around.' },
-              { sel: '.bt-rjoy-zone', reach: '[data-joyzone="R"]',
-                body: 'Double-tap and HOLD — then turn all the way around.' }],
+    /* v2.3.2229: the shield is its own button under Attack (ShieldButton),
+       which only exists on screen while a fight is on or a lock is held --
+       so the mark falls back to the Attack button (where the shield button
+       will appear beneath) until a monster is close enough for it to show.
+       The lesson finishes the first time the shield goes up. */
+    anchors: [{ sel: '[data-shield]', reach: '[data-shield]',
+                body: 'Tap the shield to block. It drops after one hit.' },
+              { sel: '.bt-rjoy-base', reach: '.bt-rjoy-base',
+                body: 'Get close to a monster — a shield button appears below Attack. Tap it to block.' }],
     label: 'Raise the shield',
-    /* v2.3.1681b's dialogue line taught this in words and the owner still
-       asked for it again here, which is the tell: the double-tap-and-HOLD
-       is the least discoverable gesture in the game, and the fact that
-       dragging DURING the hold aims the shield is invisible until someone
-       shows you.  So the lesson is not "you pressed it" — it is the full
-       gesture, held, and swept through every direction. */
     live: function (rpg) { return !!rpg.shield; },
     done: null,     /* watched live — see the block tracker below */
   },
@@ -577,28 +585,11 @@ export function QuestCoach(props) {
          trustworthy above. */
       if (S && S.isSwinging && !done.attack) { done.attack = true; saveDone(done); }
       if (S) {
+        /* v2.3.2229: raised once = learned.  The old hold-and-sweep tracker
+           measured a gesture that no longer exists (see BLOCK_HOLD_MS). */
         const b = blockRef.current;
-        if (S._shieldUp) {
-          if (b.last) b.ms += Math.min(120, now - b.last);
-          b.last = now;
-          if (typeof S._shieldAngle === 'number') {
-            const sec = ((Math.round(S._shieldAngle / (Math.PI * 2) * BLOCK_SECTORS) % BLOCK_SECTORS) + BLOCK_SECTORS) % BLOCK_SECTORS;
-            b.sectors |= (1 << sec);
-          }
-        } else {
-          b.last = 0;
-        }
-        /* Both conditions, as asked: held long enough AND swept the whole
-           circle.  A bitmask of 8 sectors is "360 degrees" in the only form
-           a gesture can actually be checked against.
-           Evaluated OUTSIDE the shield-is-up branch on purpose: the last
-           sector of the sweep is very often recorded on the same frame the
-           player lets go, and a check that only ran while the shield was up
-           would leave the lesson one frame short of finished, on screen,
-           after the player had done exactly what it asked. */
-        if (!done.block && b.ms >= BLOCK_HOLD_MS && b.sectors === FULL_CIRCLE) {
-          done.block = true; saveDone(done);
-        }
+        if (S._shieldUp) { b.sectors = 1; b.ms = Math.max(b.ms, 1); }
+        if (!done.block && b.sectors === 1) { done.block = true; saveDone(done); }
       }
 
       /* ── pick and place the mark, ~12x a second ── */
@@ -653,15 +644,8 @@ export function QuestCoach(props) {
       const arc = arcRef.current;
       if (arc) {
         const b = blockRef.current;
-        let bits = 0;
-        for (let i = 0; i < BLOCK_SECTORS; i++) if (b.sectors & (1 << i)) bits++;
-        /* CLAMP EACH HALF SEPARATELY.  Clamping only the sum let a long
-           hold in one direction fill the whole bar — the bar read "done"
-           while the lesson correctly refused to finish, which is the worst
-           thing a progress bar can do. */
-        const p = Math.min(1, b.ms / BLOCK_HOLD_MS) * 0.5
-                + (bits / BLOCK_SECTORS) * 0.5;
-        arc.style.width = Math.round(p * 100) + '%';
+        /* v2.3.2229: a one-step lesson has a one-step bar. */
+        arc.style.width = (b.sectors === 1 ? 100 : 0) + '%';
       }
     };
     /* Dev probe, in the house style (__btWorldProps, __btStandInSkin): the
@@ -671,10 +655,9 @@ export function QuestCoach(props) {
     try {
       window.__btCoach = function () {
         const b = blockRef.current;
-        let bits = 0;
-        for (let i = 0; i < BLOCK_SECTORS; i++) if (b.sectors & (1 << i)) bits++;
         return { done: Object.assign({}, doneRef.current), heldMs: Math.round(b.ms),
-                 sectors: bits, needMs: BLOCK_HOLD_MS, needSectors: BLOCK_SECTORS,
+                 raised: b.sectors === 1,   /* v2.3.2229 */
+                 sectors: b.sectors, needMs: BLOCK_HOLD_MS, needSectors: BLOCK_SECTORS,
                  slots: Object.assign({}, seenSlots.current),
                  cycleArmed: cycleArmed.current,
                  /* v2.3.2130: the move lesson's progress, and which gate is

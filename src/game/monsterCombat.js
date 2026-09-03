@@ -1282,6 +1282,27 @@ export function updateMonsterCombat(S, deps) {
                      : _aSlot === 'ranged' ? S.rpg.rangedWeapon
                      : _aSlot === 'staff'  ? S.rpg.staffWeapon
                      :                       S.rpg.weapon;
+          /* ═══ v2.3.2229: NO STICK, SO THE LOCK IS THE AIM ═══
+             The right stick used to write S._aimAngle on every deflection and
+             the renderer's facing ladder, the aim caret, the backpedal test
+             and the shield all read it.  With the stick gone (the right
+             control is a button now) nothing wrote it during a fight, so a
+             player auto-attacking a slime to their left kept facing wherever
+             they had last WALKED.  Written here, once per frame while the
+             button is held and a target is locked, because this loop is the
+             one place that already knows both facts; every reader is
+             unchanged.  Unlocked, the old fallback (last aim, then facing)
+             still applies, so a swing at air goes where the body points. */
+          if (S.autoAttack && S.lockedTarget && S.lockedTarget.ref) {
+            var _lkPt = lockAimPoint(S.lockedTarget.ref);
+            if (_lkPt) {
+              S._aimAngle = Math.atan2(_lkPt.y - P.y, _lkPt.x - P.x);
+              S._aiming = true;
+              S._facing = Math.abs(Math.cos(S._aimAngle)) > Math.abs(Math.sin(S._aimAngle))
+                ? (Math.cos(S._aimAngle) > 0 ? 'right' : 'left')
+                : (Math.sin(S._aimAngle) > 0 ? 'down' : 'up');
+            }
+          }
           if (S.autoAttack && S.rpg && _eqWpn && Date.now() - S.swingTimer >= effectiveSwingCd + _staffCdExtra) {
             /* Loot pickup freeze suppresses auto-swing — keeps the
                0.5s pickup animation clean instead of mid-swing. */

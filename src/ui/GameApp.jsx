@@ -17,7 +17,6 @@ import { InspectCard } from './mobile/InspectCard.jsx';
 import { inspectCardBus } from './mobile/inspectCardBus.js';
 import { generateMockProfile } from './mobile/mockProfile.js';
 import { setEquip, getEquip, GEAR_CATALOG, GEAR_SLOTS, gearInventoryItems } from '@/rendering/gearCatalog.js';
-import { BlockRing } from './mobile/BlockRing.jsx';
 import { ZoneHeader } from './mobile/ZoneHeader.jsx'; /* v2.3.1333 */
 /* v2.3.1895: SpecialChargePie retired — the special-charge readout moved
    back under the character as the MP spend bar (entityRenderer
@@ -654,7 +653,11 @@ export const GameApp = () => {
       {/* InventorySurface, InspectCard, MoreOverlay are no longer mounted — */}
       {/* the bottom dashboard nests their content inside the --dash-h band. */}
       {/* Their buses still exist and are exercised by debug commands.      */}
-      <BlockRing />
+      {/* v2.3.2229: BlockRing (the orbiting drag-to-steer shield glyph) is
+          gone -- the shield is a toggle button under the right button now
+          (src/ui/panels/ShieldButton.jsx, mounted with the touch controls in
+          BroTown).  blockRingBus stays: the debug console and the hostile-
+          proximity poll below still write it. */}
       {/* v2.3.1734: Element Burst's touch input (COMBAT-OVERHAUL-PLAN
           PR 6).  Self-hiding — it mounts always and renders nothing
           until the character is level 6 with an enchanted weapon in

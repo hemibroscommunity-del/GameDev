@@ -33,8 +33,14 @@ const STEPS = [
      the one line of onboarding that mentions the special was teaching a
      control that does not exist.  (Double-tap-and-hold is the SHIELD,
      which the ring covers separately.) */
+  /* v2.3.2229: the right stick is a BUTTON now (docs/specs/control-redesign.md).
+     Hold = auto-attack the nearest enemy; a quick swipe on it = special. */
   { key: 'attack', shape: 'circle', sels: ['.bt-rjoy-base'],
-    label: 'Attack', body: 'Drag the right joystick to attack. A quick swipe triggers a special attack.' },
+    label: 'Attack', body: 'Hold the Attack button to fight the nearest enemy. A quick swipe on it is your special.' },
+  /* v2.3.2229: the shield left the stick.  Its own button, under Attack,
+     that only shows once there is something to block. */
+  { key: 'shield', shape: 'circle', sels: ['[data-shield]'],
+    label: 'Shield', body: 'Tap to raise your shield. It drops after one block, or when you dodge.' },
   /* v2.3.1285: the 3-panel row is retired — the home view is the Bag
      compact grid (equipped row over recent items). */
   /* ═══ v2.3.1803: THIS STEP HAD BEEN DROPPING ITSELF ═══

@@ -253,8 +253,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const cA = await waitCoach(P, 'attack');
   rec.ok('with a weapon in hand, the ordinary attack is taught first',
     !!(cA && cA.id === 'attack'), cA);
-  rec.ok('...and it names the drag, not the swipe',
-    !!(cA && /drag/i.test(cA.text) && !/swipe/i.test(cA.text)), cA && cA.text);
+  /* v2.3.2229: the stick is a button -- the lesson says HOLD, never drag. */
+  rec.ok('...and it names the hold, not the swipe',
+    !!(cA && /hold/i.test(cA.text) && !/swipe/i.test(cA.text) && !/drag/i.test(cA.text)), cA && cA.text);
   const rJoyA = await rectOf(P, '.bt-rjoy-base');
   if (rJoyA && cA && cA.ring) {
     const dx = Math.abs((cA.ring.left + cA.ring.width / 2) - (rJoyA.left + rJoyA.width / 2));
@@ -270,7 +271,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
         touches: end ? [] : [t], targetTouches: end ? [] : [t], changedTouches: [t],
       }));
     };
-    const z = document.querySelector('[data-joyzone="R"]');
+    /* v2.3.2229: the DISC is the touch target now (TouchControls), not the
+       half-screen zone -- a touch on the zone is a canvas tap, not an attack. */
+    const z = document.querySelector('.bt-rjoy-base');
     const r = z.getBoundingClientRect();
     window.__btAtkPt = { z, x: r.x + r.width / 2, y: r.y + r.height / 2 };
     window.__touch(z, 'touchstart', window.__btAtkPt.x, window.__btAtkPt.y, 31);
@@ -291,7 +294,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the drag really produced a swing (guard — a refused swing sets no flag)',
     !!(swung.coach && swung.coach.done && swung.coach.done.attack), swung);
   const afterAttack = await coach(P);
-  rec.ok('dragging the right joystick retires the attack lesson',
+  rec.ok('holding the Attack button retires the attack lesson',
     !afterAttack || afterAttack.id !== 'attack', afterAttack);
 
   /* ── 4. the special attack ──
@@ -344,77 +347,70 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('performing the special retires its lesson',
     !afterSpecial || afterSpecial.id !== 'special', { afterSpecial, firedTrk });
 
-  /* ── 5. the block lesson: the owner's whole gesture, not half of it ── */
+  /* ── 5. the block lesson: find the button, raise it once ──
+     v2.3.2229: the double-tap-and-HOLD + full-circle sweep is gone; the
+     shield is a toggle button under Attack that appears while a fight is on.
+     So the lesson is two beats -- the mark tells you where the button will
+     be, and the first raise finishes it. */
   const c4 = await waitCoach(P, 'block');
   rec.ok('with a shield on, the block lesson appears', !!(c4 && c4.id === 'block'), c4);
-  rec.ok('...and it teaches the HOLD and the turn, not just a tap',
-    !!(c4 && /hold/i.test(c4.text) && /(turn|around|circle)/i.test(c4.text)), c4 && c4.text);
+  rec.ok('...and it teaches the TAP on the shield button, not a hold or a turn',
+    !!(c4 && /tap/i.test(c4.text) && !/hold/i.test(c4.text) && !/turn|around|circle/i.test(c4.text)), c4 && c4.text);
   await P.page.screenshot({ path: 'tools/qa/mp/out/coach-3-block.png' });
-  const rJoy = await rectOf(P, '.bt-rjoy-base');
-  rec.ok('the right joystick is on screen to point at (guard)', !!rJoy, rJoy);
-  if (rJoy && c4 && c4.ring) {
-    const dx = Math.abs((c4.ring.left + c4.ring.width / 2) - (rJoy.left + rJoy.width / 2));
-    const dy = Math.abs((c4.ring.top + c4.ring.height / 2) - (rJoy.top + rJoy.height / 2));
-    rec.ok('the mark rings the RIGHT joystick', dx < 6 && dy < 6, { ring: c4.ring, rJoy, dx, dy });
-  }
-  /* "maybe text above the right joystick" — literally above it. */
-  if (rJoy && c4 && c4.card) {
-    rec.ok('the text sits ABOVE the right joystick, as asked',
-      c4.card.top + c4.card.height <= rJoy.top + 2, { card: c4.card, rJoy });
-  }
-
-  /* HOLDING ALONE IS NOT ENOUGH.  Raise the shield, hold it well past the
-     time requirement, but keep it pointed one way: the lesson must NOT
-     complete, because the half of the gesture that is worth teaching (drag
-     during the hold to aim) has not been used. */
+  /* Bring a monster close so the shield button exists to be pointed at. */
   await P.page.evaluate(() => {
     const S = window._gameState.current;
-    S._shieldUp = true; S._shieldAngle = 0;
+    S._serverMonsters = false;
+    S.monsters = [{
+      id: 'qa_coach_m', arch: 'fodder', archetype: 'fodder', type: 'fodder',
+      x: S.player.x + 70, y: S.player.y, renderX: S.player.x + 70, renderY: S.player.y,
+      spawnX: S.player.x + 70, spawnY: S.player.y, targetX: S.player.x + 70, targetY: S.player.y,
+      hp: 500, curHp: 500, maxHp: 500, dmg: 0, level: 1, gold: 0,
+      /* spd/vx/vy are not optional for a client-driven (town) fixture: the
+         local AI steps x += dir * spd, and an undefined spd is NaN by the
+         next frame -- which is how the first cut of this saw m.x === null. */
+      spd: 0, vx: 0, vy: 0,
+      alive: true, statuses: {}, _hitThisSwing: false, _atkCd: 0, _stunUntil: 0,
+      respawnAt: 0, moveTimer: 0, _stuckArrows: [],
+    }];
   });
-  await P.page.waitForTimeout(3200);
-  const held = await coach(P);
-  const heldTrk = await P.page.evaluate(() => window.__btCoach && window.__btCoach());
-  rec.ok('holding without turning does NOT finish the lesson',
-    !!(held && held.id === 'block'), { held, heldTrk });
-  /* Both halves, separately — the owner asked for a hold AND a turn, and a
-     single "is it done" flag cannot tell you which half is missing. */
-  rec.ok('...the hold is counted (well past the requirement)',
-    !!(heldTrk && heldTrk.heldMs >= heldTrk.needMs), heldTrk);
-  rec.ok('...and the turn is not, because there was none',
-    !!(heldTrk && heldTrk.sectors < heldTrk.needSectors), heldTrk);
-  /* And the bar says so.  A bar reading 100% next to a lesson that refuses
-     to finish is worse than no bar: the first cut clamped only the SUM, so
-     a long hold in one direction filled it. */
-  rec.ok('...and the progress bar does NOT read finished',
-    !!(held && held.progress && parseFloat(held.progress) > 0 && parseFloat(held.progress) < 100),
-    held && held.progress);
-
-  /* Now sweep the full circle while held — the owner's "rotate in a 360
-     degree circle" — and it completes. */
-  /* Swept from OUT HERE, one direction per step with a real pause between
-     them, rather than in a tight in-page rAF loop.  The in-page version
-     recorded two sectors out of eight: both loops are driven by the same
-     frame clock, so the writer and the reader interleaved and the coach only
-     ever sampled a couple of the angles.  A player's thumb moves in real
-     time; so does this. */
-  for (let i = 0; i < 8; i++) {
-    await P.page.evaluate((a) => {
-      const S = window._gameState.current;
-      /* Re-stamped every step: the shield is dropped by a dozen paths in
-         BroTown (death, zone change, sheet interlocks) and a sweep that
-         quietly lost it half way would look like a coach bug. */
-      S._shieldUp = true;
-      S._shieldAngle = a;
-    }, -Math.PI + (i / 8) * Math.PI * 2);
-    await P.page.waitForTimeout(120);
+  await P.page.waitForTimeout(700);
+  const shieldBtn = await rectOf(P, '[data-shield]');
+  const shieldDiag = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const el = document.querySelector('[data-shield]');
+    const m = (S.monsters || [])[0];
+    return { el: !!el, box: el ? el.getBoundingClientRect().toJSON() : null,
+      shield: !!(S.rpg && S.rpg.shield), monsters: (S.monsters || []).length,
+      dist: m && S.player ? Math.round(Math.hypot(m.x - S.player.x, m.y - S.player.y)) : null,
+      mx: m && m.x, my: m && m.y, px: S.player && S.player.x, py: S.player && S.player.y,
+      probe: window.__btShieldBtn ? window.__btShieldBtn() : 'no-probe',
+      alive: m ? m.alive : null, zone: S.currentZone, serverMon: S._serverMonsters };
+  });
+  rec.ok('a monster in range puts the shield button on screen (guard)', !!shieldBtn, shieldDiag);
+  if (!shieldBtn) { await P.ctx.close().catch(() => {}); return; }
+  const c4b = await coach(P);
+  if (shieldBtn && c4b && c4b.id === 'block' && c4b.ring) {
+    const dx = Math.abs((c4b.ring.left + c4b.ring.width / 2) - (shieldBtn.left + shieldBtn.width / 2));
+    const dy = Math.abs((c4b.ring.top + c4b.ring.height / 2) - (shieldBtn.top + shieldBtn.height / 2));
+    rec.ok('the mark moves onto the SHIELD button once it exists', dx < 6 && dy < 6, { ring: c4b.ring, shieldBtn, dx, dy });
   }
-  await P.page.waitForTimeout(900);
+  /* Not finished until it is actually raised. */
+  const heldTrk = await P.page.evaluate(() => window.__btCoach && window.__btCoach());
+  rec.ok('seeing the button does not finish the lesson', !!(heldTrk && !heldTrk.raised), heldTrk);
+  await P.page.evaluate(() => {
+    const e = document.querySelector('[data-shield]');
+    const r = e.getBoundingClientRect();
+    window.__touch(e, 'touchstart', r.x + r.width / 2, r.y + r.height / 2, 34);
+    window.__touch(e, 'touchend', r.x + r.width / 2, r.y + r.height / 2, 34);
+  });
+  await P.page.waitForTimeout(500);
   const sweptTrk = await P.page.evaluate(() => window.__btCoach && window.__btCoach());
-  rec.ok('the sweep is seen as a full circle', !!(sweptTrk && sweptTrk.sectors === sweptTrk.needSectors), sweptTrk);
+  rec.ok('tapping the shield button raises it (tracker sees it)', !!(sweptTrk && sweptTrk.raised), sweptTrk);
   const afterBlock = await coach(P);
-  rec.ok('holding the shield through a full turn finishes the lesson',
+  rec.ok('raising the shield once finishes the lesson',
     !afterBlock || afterBlock.id !== 'block', { afterBlock, sweptTrk });
-  await P.page.evaluate(() => { window._gameState.current._shieldUp = false; });
+  await P.page.evaluate(() => { const S = window._gameState.current; S._shieldUp = false; S.monsters = []; S.lockedTarget = null; });
 
   /* ── 5b. the turn-in pays two more weapons, and that is two more lessons ──
      Owner: "When player turns in quest and receives bow and staff there should

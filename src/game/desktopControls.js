@@ -151,10 +151,12 @@ export function setupDesktopControls(S, deps) {
       }
 
       /* Q — toggle shield */
+      /* v2.3.2229: the touch shield is a toggle too now (ShieldButton), and
+         both sides go through shieldToggle.js -- the desktop wrappers
+         _desktopShieldOn/Off are what BroTown binds to that module. */
       if (e.code === 'KeyQ' && !e.repeat) {
         e.preventDefault();
         if (S._shieldUp) {
-          S._shieldUp = false;
           S._shieldKb = false;
           _desktopShieldOff();
         } else {
@@ -251,7 +253,6 @@ export function setupDesktopControls(S, deps) {
       S.keys[e.key] = false;
       /* Release Q → drop shield */
       if (e.code === 'KeyQ' && S._shieldUp) {
-        S._shieldUp = false;
         S._shieldKb = false; /* v2.3.1726: stop the rAF mouse-steer too */
         _desktopShieldOff();
       }

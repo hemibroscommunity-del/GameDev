@@ -5379,6 +5379,16 @@ export function meleeSwingSfx(rpg) {
 export const SWING_COOLDOWN = 600;
 export const SWING_RANGE = 50;
 export const SWING_ARC = Math.PI * 0.85;
+/* ═══ v2.3.2229: THE TARGETING PERIMETER ═══
+   Owner: "Monsters will have a circular perimeter around them for targeting
+   zone. It'll be same for all weapon types."  A monster is engageable when
+   the player stands inside this circle around it; the Attack button locks
+   the nearest such monster.  220 world px is about the visible half-width of
+   a phone in world units (390 CSS px / 0.8 world scale), so "in the
+   perimeter" reads as "on screen and near me" -- comfortably inside bow
+   flight (340-675) and outside melee reach (50-72).  One constant, one knob;
+   see docs/specs/control-redesign.md §5.5. */
+export const TARGET_PERIMETER_PX = 220;
 /* ═══ v2.3.2200: CONTACT-SYNCED MELEE ("floaty" fix #1) ═══
    The damage sweep used to run on frame 0 of the 300ms swing animation
    (entityRenderer SWORD_SWING_MS), so the popup/particles/knockback all
