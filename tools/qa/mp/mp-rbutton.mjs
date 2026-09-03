@@ -308,7 +308,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
      two places for two different reasons: the attack paths refuse to START
      while the shield is up (playerActions + the auto-attack gate in
      monsterCombat, which is the one bow and staff go through), and raising
-     the shield cancels an attack already in flight (shieldToggle). */
+     the shield cancels an attack already in flight (shieldToggle).
+
+     ═══ v2.3.2248: WHICH ONE YIELDS CHANGED; THE EXCLUSION DID NOT ═══
+     The owner's shield rule now names attacking as the thing that ends a
+     block, so the attack no longer BOUNCES off a raised shield -- it lowers it
+     and goes through on the same press.  The property this block exists to
+     defend is still exactly true and is what is asserted: the two are never up
+     at once.  What is no longer true is "the press lands nothing", which was
+     never the owner's ask; it was v2.3.2246's way of achieving the exclusion,
+     and there is now a better one. */
   await P.page.evaluate(() => { const c = window.__centre('[data-shield]'); window.__touch(c.el, 'touchstart', c.x, c.y, 60); window.__touch(c.el, 'touchend', c.x, c.y, 60); });
   await P.page.waitForTimeout(180);
   rec.ok('guard: shield raised for the exclusion test', (await st(P)).shield === true);
@@ -316,15 +325,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.evaluate(() => { const c = window.__centre('.bt-rjoy-base'); window.__touch(c.el, 'touchstart', c.x, c.y, 61); });
   await P.page.waitForTimeout(1400);
   const whileBlocking = await st(P);
-  rec.ok('holding Attack with the shield UP lands no swing at all, over two cadences',
-    whileBlocking.swings === 0 && whileBlocking.isSwinging === false, whileBlocking);
-  rec.ok('...and the block is still up — the attack press did not quietly drop it',
-    whileBlocking.shield === true, whileBlocking);
+  rec.ok('holding Attack with the shield UP breaks the hold and the swing lands',
+    whileBlocking.swings > 0 && whileBlocking.droppedWhy === 'attack', whileBlocking);
+  rec.ok('...and the shield is DOWN while it swings — never both at once',
+    whileBlocking.shield === false, whileBlocking);
   await P.page.evaluate(() => { const c = window.__centre('.bt-rjoy-base'); window.__touch(c.el, 'touchend', c.x, c.y, 61); });
   await P.page.waitForTimeout(150);
-  await P.page.evaluate(() => { const c = window.__centre('[data-shield]'); window.__touch(c.el, 'touchstart', c.x, c.y, 62); window.__touch(c.el, 'touchend', c.x, c.y, 62); });
-  await P.page.waitForTimeout(180);
-  rec.ok('guard: shield lowered again', (await st(P)).shield === false);
+  /* v2.3.2248: the attack already lowered it, so this is a state check rather
+     than the second tap it used to be -- tapping here would RAISE it again. */
+  rec.ok('guard: shield still lowered after the attack', (await st(P)).shield === false);
   /* The other direction: the guard goes up mid-attack, finger still down. */
   await P.page.evaluate(() => { const c = window.__centre('.bt-rjoy-base'); window.__touch(c.el, 'touchstart', c.x, c.y, 63); });
   await P.page.waitForTimeout(320);
@@ -341,21 +350,43 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(180);
   rec.ok('guard: back to shield down for the block test below', (await st(P)).shield === false);
 
-  /* ── a successful block lowers it by itself ── */
+  /* ── ═══ v2.3.2248: A LANDED BLOCK KEEPS THE SHIELD UP ═══
+     This asserted the opposite until the owner played it: "Instead of dropping
+     the shield at first hit I want it to keep being held ... until you attack
+     (thus breaking the shield hold) or you tap the shield button again."
+     Inverted rather than deleted, because "the shield survives a hit" is the
+     new rule and needs a gate of its own -- and a SECOND blocked hit is
+     asserted too, since "drops on the second one" would pass a one-hit test. ── */
   await P.page.evaluate(() => { const c = window.__centre('[data-shield]'); window.__touch(c.el, 'touchstart', c.x, c.y, 46); window.__touch(c.el, 'touchend', c.x, c.y, 46); });
   await P.page.waitForTimeout(150);
   rec.ok('raised again for the block test', (await st(P)).shield === true);
-  await P.page.evaluate(() => {
-    const S = window._gameState.current;
-    const m = S.monsters[0];
-    /* The worker's own word for a landed block: monster_attack {blocked:true}. */
-    window.__btDispatch({ type: 'monster_attack', payload: {
-      monsterId: m.id, targetId: S.myId, dmg: 5, dmgTaken: 0, blocked: true,
-      zone: S.currentZone, attackerX: m.x, attackerY: m.y } });
-  });
-  await P.page.waitForTimeout(150);
-  const afterBlock = await st(P);
-  rec.ok('a blocked hit drops the shield automatically', afterBlock.shield === false && afterBlock.droppedWhy === 'blocked', afterBlock);
+  const landBlock = async (id) => {
+    await P.page.evaluate((tid) => {
+      const S = window._gameState.current;
+      const m = S.monsters[0];
+      /* The worker's own word for a landed block: monster_attack {blocked:true}. */
+      window.__btDispatch({ type: 'monster_attack', payload: {
+        monsterId: m.id, targetId: S.myId, dmg: 5, dmgTaken: 0, blocked: true,
+        zone: S.currentZone, attackerX: m.x, attackerY: m.y } });
+    }, id);
+    await P.page.waitForTimeout(150);
+    return st(P);
+  };
+  const afterBlock = await landBlock(1);
+  rec.ok('a blocked hit does NOT drop the shield -- the hold survives it',
+    afterBlock.shield === true, afterBlock);
+  const afterBlock2 = await landBlock(2);
+  rec.ok('...and neither does a second one (it is held, not charged)',
+    afterBlock2.shield === true, afterBlock2);
+
+  /* ── attacking is what breaks the hold ── */
+  await P.page.evaluate(() => { const c = window.__centre('.bt-rjoy-base'); window.__touch(c.el, 'touchstart', c.x, c.y, 66); });
+  await P.page.waitForTimeout(220);
+  const afterAtk = await st(P);
+  await P.page.evaluate(() => { const c = window.__centre('.bt-rjoy-base'); window.__touch(c.el, 'touchend', c.x, c.y, 66); });
+  await P.page.waitForTimeout(120);
+  rec.ok('attacking breaks the shield hold (owner: "thus breaking the shield hold")',
+    afterAtk.shield === false && afterAtk.droppedWhy === 'attack', afterAtk);
 
   /* ── a dodge cancels it ── */
   await P.page.evaluate(() => { const c = window.__centre('[data-shield]'); window.__touch(c.el, 'touchstart', c.x, c.y, 47); window.__touch(c.el, 'touchend', c.x, c.y, 47); });

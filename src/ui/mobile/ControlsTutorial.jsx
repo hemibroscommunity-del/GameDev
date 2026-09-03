@@ -41,7 +41,7 @@ const STEPS = [
   /* v2.3.2242: the shield left the stick.  Its own button, under Attack,
      that only shows once there is something to block. */
   { key: 'shield', shape: 'circle', sels: ['[data-shield]'], anchorOptional: true,
-    label: 'Shield', body: 'Tap to raise your shield. It drops after one block, or when you dodge.' },
+    label: 'Shield', body: 'Tap to raise your shield. It stays up until you attack, tap again, or run out of stamina.' },
   /* v2.3.2243: only on screen while two or more monsters are in range.
      anchorOptional (post-review): these two steps ring their button when it
      is on screen and read as a plain card when it is not -- the tour opens

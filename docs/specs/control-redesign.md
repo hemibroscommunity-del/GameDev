@@ -119,10 +119,10 @@ live, the wood-shield glyph BlockRing already loads.
   the thing you are fighting.
 - **Tap again** → shield down (same release path the double-tap gesture
   used, minus the gesture).
-- **Auto-disengage on a successful block**: the client already receives
-  `monster_attack {blocked:true, targetId:me}` (and the PvP equivalent);
-  that handler now drops the shield. One block, one hit, then it is down
-  until you tap again — that is the owner's rule.
+- ~~**Auto-disengage on a successful block**~~ — **REVERSED in v2.3.2248, see
+  §8.** The owner played it and overruled the original directive: "Instead of
+  dropping the shield at first hit I want it to keep being held." A landed
+  block no longer lowers the guard.
 - **Dodge cancels it**: `triggerContextualDodge` drops the shield before
   rolling.
 - Attacks while the shield is up: the button still auto-attacks (§5.4).
@@ -257,7 +257,8 @@ anywhere.
   (BlockRing's parry-flash bus stays for the server's `parried` event).
 - `src/ui/mobile/ControlsTutorial.jsx`, `src/ui/mobile/QuestCoach.jsx`,
   Mayor Bro's `tut_1` dialogue — copy: "Hold to attack. A quick swipe is
-  your special." / "Tap the shield to raise it. It drops after one block."
+  your special." / "Tap the shield to block." (v2.3.2248 rewrote the second
+  half: "It stays up until you attack or tap again.")
 - `tools/qa/mp/mp-lockon.mjs` → rewritten around the shield button;
   `mp-questcoach.mjs` wording asserts; `mp-tutspecial.mjs` still fires the
   desktop key (fine).
@@ -561,3 +562,54 @@ the lock they make, and the range rule only clears locks carrying that mark. A
 tapped lock keeps its old lifetime: it ends when the monster dies, on zone
 change, or on another tap. `heldMonster` counts a tapped lock at any distance,
 so a press with one held is press TWO — an attack, not a re-engage.
+
+
+---
+
+## 8. The shield is HELD, not spent (v2.3.2248)
+
+> Owner: "Instead of dropping the shield at first hit I want it to keep being
+> held. So whenever you touch the shield button the shield just stays up until
+> you attack (thus breaking the shield hold) or you tap the shield button
+> again. (The shield won't be overpowered because it costs stamina and can't be
+> held indefinitely)"
+
+This reverses §2's auto-disengage, which came from the owner's own earlier
+directive and did not survive contact with playing it. A guard that fell down
+after one hit meant a two-monster fight was mostly re-tapping the button.
+
+**The hold now ends on exactly three things**, and the owner's balance argument
+is the third:
+
+| Ends the hold | Where |
+|---|---|
+| You attack — swing, special, or holding auto-attack | `playerActions.swingAttack` / `.specialAttack`, and the auto-attack gate in `monsterCombat` |
+| You tap the shield button again | `shieldToggle.toggleShield` |
+| Stamina runs out | BroTown's auto-release (unchanged) |
+
+A landed block is now just a landed block. Dying, respawning, finishing a duel
+and dodging still lower it; none of those are the owner's list, and all of them
+are states where a raised shield is meaningless rather than a player decision.
+
+### The v2.3.2246 exclusion is intact — the yielding side swapped
+
+"You can both swing and block at the same time. That is not right" still holds.
+v2.3.2246 achieved it by making the attack **bounce off** a raised shield
+(`if (S._shieldUp) return`). That is now a **transition**: the shield comes
+down and the attack goes through on the same press. The two are still never
+both true on any frame — `mp-rbutton` asserts exactly that, and asserts the
+`droppedWhy === 'attack'` that proves which one yielded.
+
+Reading the owner's sentence: "until you attack (thus breaking the shield
+hold)" makes the attack the event and the drop its consequence, so the attack
+**lands** rather than being spent unlocking the shield. One press, not two.
+
+### 8.1 Judgement calls
+
+| # | Question | What I did |
+|---|---|---|
+| 8.1 | Does the attack press land, or is it consumed lowering the guard? | **It lands.** One press. |
+| 8.2 | Does a dodge still drop it? | **Yes, kept.** Not in the owner's list, but you cannot roll from behind a raised shield, and it was never the complaint. |
+| 8.3 | Does the special break it too? | **Yes** — a special is an attack, and it shares the button. |
+| 8.4 | Does the "block 10 hits" quest still count? | **Yes** — it counts blocks, and a block still happens; only the drop went away. |
+| 8.5 | Shield Bash from a raised shield? | **Unchanged**, still exempt — it is the one move whose whole point is bashing out of a block. |

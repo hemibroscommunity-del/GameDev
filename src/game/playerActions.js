@@ -10,6 +10,7 @@
    setter). All other references are module imports below. */
 import { SWING_COOLDOWN, SPECIAL_ATK_MULT, specialAtkMultFor, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, calcWeaponDmg, swingCooldownMult, specialManaCost, burstRefusal, burstWeapon, PROG3, ELEMENTS } from '@/data/index.js';
 import { addBuildUse, clearSwingHitFlags, pushDmgPopup, isPlayerDead, lockAimPoint } from '@/game/combatHelpers.js';
+import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the hold */
 
 export function swingAttack(S) {
     /* v2.3.1473: a corpse doesn't swing (see isPlayerDead). */
@@ -30,8 +31,19 @@ export function swingAttack(S) {
        shooting from behind a raised shield.
        The other half of the exclusion is in shieldToggle.raiseShieldToggle,
        which cancels an attack already in flight -- so whichever of the two
-       the player asks for LAST is the one they get. */
-    if (S._shieldUp) return;
+       the player asks for LAST is the one they get.
+
+       ═══ v2.3.2248: ATTACKING BREAKS THE HOLD, IT NO LONGER BOUNCES ═══
+       Owner: "the shield just stays up until you attack (thus breaking the
+       shield hold) or you tap the shield button again."  So this stopped
+       being a REFUSAL and became a TRANSITION: the guard comes down and the
+       swing goes through on the same press, rather than the press being
+       swallowed and the player pressing twice.
+
+       The exclusion the owner asked for in v2.3.2246 is untouched by that --
+       the shield is down BEFORE the swing starts, so the two still never
+       overlap for a single frame.  What changed is which one yields. */
+    if (S._shieldUp) dropShield(S, 'attack');
 
     /* v2.3.1134: the manual tap gate honors Tempo like the auto-attack loop
        does, else tap-attackers get no benefit from the channel.  (The amulet
@@ -84,8 +96,11 @@ export function specialAttack(S) {
     if (S._extraction) return;
     /* v2.3.2246: ...and no special from behind a raised shield either (see
        swingAttack above).  The flick lives on the same button as the swing,
-       so exempting it would just move the owner's complaint. */
-    if (S._shieldUp) return;
+       so exempting it would just move the owner's complaint.
+       v2.3.2248: and like the swing, it now BREAKS the hold rather than
+       bouncing off it -- a special is an attack, and the owner's rule names
+       attacking as the thing that ends a block. */
+    if (S._shieldUp) dropShield(S, 'attack');
 
     var R = S.rpg;
     var now = Date.now();

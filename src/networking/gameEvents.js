@@ -1895,14 +1895,21 @@ export function processGameEvent(type, payload, S, deps) {
                  HP-damage path entirely.  Player_state will arrive
                  shortly after to mirror the authoritative stamina value. */
               if (payload.blocked) {
-                /* ═══ v2.3.2242: ONE BLOCK, THEN IT COMES DOWN ═══
-                   Owner: "Shield will automatically disengage upon receiving
-                   damage (successful block)."  The worker is the only thing
-                   that knows a block succeeded -- it resolves the arc at
-                   impact and says so on this payload -- so this is the one
-                   place the rule can live.  dropShield is idempotent, so a
-                   second blocked hit in the same tick is harmless. */
-                try { dropShield(S, 'blocked'); } catch (e) { /* display-only */ }
+                /* ═══ v2.3.2248: THE BLOCK NO LONGER ENDS THE BLOCK ═══
+                   v2.3.2242 dropped the shield here, from the owner's original
+                   "Shield will automatically disengage upon receiving damage
+                   (successful block)."  Overruled by the owner after playing
+                   it: "Instead of dropping the shield at first hit I want it
+                   to keep being held ... until you attack (thus breaking the
+                   shield hold) or you tap the shield button again."
+                   So a landed block is now just a landed block.  The hold ends
+                   on exactly three things -- an attack (playerActions /
+                   monsterCombat), a second tap (toggleShield), or stamina
+                   running out (BroTown's auto-release) -- and the owner's own
+                   balance argument is the third of those: "it costs stamina
+                   and can't be held indefinitely".
+                   The quest counter below stays: it counts blocks, and a block
+                   still happened. */
                 /* v2.3.2242 (post-review): the "block 10 hits" quest counted
                    only the client-local legacy AI's blocks (monsterCombat
                    ~863), so in every server zone it could never complete.
@@ -2508,9 +2515,10 @@ export function processGameEvent(type, payload, S, deps) {
               var dmgTaken = Math.max(1, rawDmg - pDef * 0.3);
               // §16.12 — Server already resolved block via historical state
               if (payload.blocked) dmgTaken = Math.ceil(dmgTaken * 0.25);
-              /* v2.3.2242: a blocked duel hit lowers the shield too -- same
-                 rule as the monster branch above, same one-line reason. */
-              if (payload.blocked) { try { dropShield(S, 'blocked'); } catch (e) { /* display-only */ } }
+              /* v2.3.2248: a blocked duel hit no longer lowers the shield --
+                 same rule as the monster branch above, same one-line reason.
+                 A duel is where a shield that survives its first block matters
+                 most, so the two branches must not drift apart. */
               S.lastDamageTaken = Date.now();   /* v2.3.2242 (post-review): a duel hit is combat too */
               if (payload.isCrit) dmgTaken = Math.ceil(dmgTaken * 1.5);
               /* Prefer the server's resolved dmgTaken when present
