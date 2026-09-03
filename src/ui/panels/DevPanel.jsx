@@ -106,7 +106,37 @@ export const DevPanel = ({ onClose }) => {
          here — a typo in the key versus no key configured on the worker at
          all — and guessing between them wastes an afternoon. */
       if (res.status === 401) { setMsg('Key rejected (401). Check for a typo.'); return null; }
-      if (res.status === 404 && !j.ok) { setMsg(j.error === 'Not found' ? 'No ADMIN_KEY set on the worker (404).' : 'Not found (404) — is that character online?'); return null; }
+      if (res.status === 404 && !j.ok) {
+        if (j.error !== 'Not found') { setMsg('Not found (404) — is that character online?'); return null; }
+        /* ═══ TWO VERY DIFFERENT 404s, AND THEY LOOK IDENTICAL ═══
+           The admin surface answers {ok:false, error:'Not found'} with a 404
+           BOTH when no ADMIN_KEY is configured (the deliberate fail-closed
+           posture — the surface must be indistinguishable from a route that
+           does not exist) and when the key is fine but the worker predates
+           these routes.  That second case is the normal one right after
+           setting a key: Pages previews rebuild only the CLIENT, so the
+           worker keeps running whatever main last deployed.
+
+           Reported as "no key set", it sends the owner back to Cloudflare to
+           re-add a key that was never the problem.  So probe /overview,
+           which every worker since v2.3.1148 has had: if THAT answers, the
+           key is good and the worker is simply behind.  Deliberately not
+           solved by making the fail-closed 404 distinguishable — that would
+           trade away the security property on purpose. */
+        try {
+          const probe = await fetch(BT_API_BASE + '/api/admin/overview', { headers: { Authorization: 'Bearer ' + key } });
+          if (probe.ok) {
+            setMsg('Your key works, but this worker does not have the test routes yet — it needs the deploy that ships them.');
+          } else if (probe.status === 401) {
+            setMsg('Key rejected (401). Check for a typo.');
+          } else {
+            setMsg('No ADMIN_KEY set on the worker (404). See OPERATIONS.md.');
+          }
+        } catch (e) {
+          setMsg('No ADMIN_KEY set on the worker (404). See OPERATIONS.md.');
+        }
+        return null;
+      }
       if (!res.ok || !j.ok) { setMsg('Failed: ' + (j.error || res.status)); return null; }
       return j;
     } catch (e) {
