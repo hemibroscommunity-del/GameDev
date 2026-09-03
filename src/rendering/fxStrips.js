@@ -29,6 +29,35 @@ import { Assets, Rectangle, Texture } from 'pixi.js';
 export const STUN_STARS = { frames: [], url: '/sprites/fx/stun-stars-v1.png?v=2.3.1735' };
 export const WHIRL_VORTEX = { frames: [], url: '/sprites/fx/whirl-vortex-v1.png?v=2.3.1735' };
 
+/* ═══ v2.3.2239: THE FIRE GOBLIN'S BURNING GROUND (owner art) ═══
+ * Owner art replacing the procedural discs v2.3.2238 shipped with.  Eight
+ * frames of a flame guttering on a scorched plate, laid by
+ * server/src/firetrail.js and drawn by effectsRenderer.
+ *
+ * GLOBAL, not per-zone, and that is a real decision rather than a default.
+ * CLAUDE.md's ZONE-ASSET EXCEPTION exists for art you only need in the zone
+ * you are standing in -- 4MB zone maps and monster variants -- and this is
+ * 8 small cells that must be ready the instant a goblin starts running.  A
+ * per-zone load would put a fetch in front of the first patch he drops,
+ * which is exactly the first-use hitch the preloading law is about.
+ *
+ * PLATE_FRAC is the load-bearing number, and it is MEASURED, not chosen:
+ * tools/import_fire_trail.mjs composes each cell with the scorch plate's
+ * centre at the cell centre and prints the plate's width as a fraction of
+ * the 256px cell (113/256).  The renderer scales by it so the plate on
+ * screen is exactly the diameter the worker tests -- the "never draw a lie
+ * about the radius" rule the element nova and the telegraph rings already
+ * follow, and one this hazard needs MORE than they do, because it persists
+ * and a player learns its edge by walking it.  Re-run the importer if the
+ * art changes; do not hand-tune this. */
+export const FIRE_TRAIL_FX = { frames: [], url: '/sprites/fx/fire-trail-v1.png?v=2.3.2239' };
+export const FIRE_TRAIL_PLATE_FRAC = 113 / 256;
+/* One full flicker cycle.  Slower than it looks like it should be on
+   purpose: the eight frames are eight independently drawn flames rather than
+   a smoothly tweened one, so run fast they read as a strobe.  ~14fps lets
+   each frame land as a lick of flame. */
+export const FIRE_TRAIL_FX_MS = 560;
+
 /* ═══ v2.3.2070: THE PORTAL BEAM ═══
  * Owner: "Use this to indicate portal areas (where you go between zones)
  * instead of the double circles.  It should fade furthest from the zone
@@ -57,7 +86,7 @@ const _pending = [];
 _pending.push(Assets.load(PORTAL_BEAM.url).then((tex) => {
   if (tex && tex.source) PORTAL_BEAM.tex = tex;
 }).catch((err) => console.warn('[fx-strips] load failed', PORTAL_BEAM.url, err)));
-for (const cfg of [STUN_STARS, WHIRL_VORTEX]) {
+for (const cfg of [STUN_STARS, WHIRL_VORTEX, FIRE_TRAIL_FX]) {
   const p = Assets.load(cfg.url).then((tex) => {
     if (!tex || !tex.source) return;
     const fw = Math.floor(tex.source.width / 8);

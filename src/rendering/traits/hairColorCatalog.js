@@ -23,6 +23,38 @@ export const HAIR_COLOR_CATALOG = [
   { id: 'gray',    name: 'Gray',    swatch: '#9a9a9e', target: [156, 156, 162] },
   { id: 'red',     name: 'Red',     swatch: '#b5402a', target: [170, 58, 42] },
   { id: 'blue',    name: 'Blue',    swatch: '#3a5bd0', target: [74, 96, 200] },
+  /* ═══ v2.3.2241: MORE HAIR COLOURS (owner: "I was looking for pink, it
+     wasn't there") ═══
+     Pink is the ask; the rest fill gaps the same look-and-not-find would hit
+     next.  WHITE is the one that was arguably a bug rather than a gap: the
+     beard catalog has had it since it was written and hair never did, so a
+     player could give a character a white beard and not white hair.
+
+     `target` is the LIT colour -- the recolor is a brightness-ratio retint of
+     every opaque pixel, so a target that is too dark reads as mud on the
+     sprite's shadowed side.  These sit in the same brightness band as the
+     colours above (compare blonde [212,176,96] and blue [74,96,200]) rather
+     than being picked off a colour wheel, which is why the swatches look
+     more muted than a pure #FF00FF would.
+
+     The row they live in already scrolls with a "more waiting" fade
+     (NameModal's _colorRowRef), so a longer list needs no layout change.
+     They also join the randomiser automatically (BroTown's rpick over this
+     same catalog) -- which is the point: a random bro can now be pink.
+
+     Deploy-order: hair colour is a pure client cosmetic relayed as `hc`
+     (peerCosmetics) with no server validation, so a player on an older build
+     who meets a pink-haired character simply renders them in the sprite's
+     native colour rather than breaking -- hairColorTarget returns null for an
+     id it does not know. */
+  { id: 'pink',    name: 'Pink',    swatch: '#e86eaa', target: [232, 110, 170] },
+  { id: 'purple',  name: 'Purple',  swatch: '#9a5ac8', target: [150, 90, 200] },
+  { id: 'teal',    name: 'Teal',    swatch: '#46b4b4', target: [70, 180, 180] },
+  { id: 'green',   name: 'Green',   swatch: '#5aaf5f', target: [90, 175, 95] },
+  { id: 'orange',  name: 'Orange',  swatch: '#e18232', target: [225, 130, 50] },
+  /* Matched to the beard catalog's white byte-for-byte, so a white beard and
+     white hair are the same white. */
+  { id: 'white',   name: 'White',   swatch: '#e6e6ec', target: [228, 228, 234] },
 ];
 
 export function hairColorTarget(id) {
