@@ -28,6 +28,7 @@ import { PROG3 as SRV_PROG3 } from '../src/prog3.js';
 /* v2.3.1812: check 13 compares telegraph kit kinds against the client's
    render whitelist — see the block at the bottom for why it reads text. */
 import { TELEGRAPH as SRV_TELEGRAPH, BASIC_WINDUP as SRV_BASIC_WINDUP, BURROW_ARCH as SRV_BURROW_ARCH, SLIME_BURST as SRV_SLIME_BURST } from '../src/telegraph.js'; /* v2.3.2221; v2.3.2224 */
+import { FIRE_TRAIL as SRV_FIRE_TRAIL } from '../src/firetrail.js'; /* v2.3.2238 */
 import { PROG3 as CLIENT_PROG3 } from '../../src/data/prog3.js';
 import {
   ARCHETYPES, MONSTER_HP_CURVE, COOKING_RECIPES, QUEST_CHAINS,
@@ -892,6 +893,118 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     .filter((k) => !new RegExp('\\b' + k + ':').test(cliVariants));
   check('burst mirror: every exploding variant is a real one',
     strayBurst.length === 0, { strayBurst, declared: Object.keys(SRV_SLIME_BURST.VARIANTS) });
+}
+
+/* ═══ 21. v2.3.2238: THE FIRE GOBLIN'S FIRE TRAIL ═══
+   The trail's own rules are pinned deterministically in
+   server/test/firetrail.test.mjs.  What THAT suite cannot see is the four
+   places this system can be perfectly correct and completely inert:
+
+     - the client has no `fire_trail` case, so the fire is invisible while
+       it burns (the whitelist trap that has now caught the telegraph kits,
+       the basic wind-up, the burrow phases and the slime burst);
+     - the renderer has no branch, same outcome one layer down;
+     - _tickMonsters never calls the drop hook, so no patch is ever laid;
+     - movement.js never replays the snapshot, so a player who walks into
+       ember mid-chase burns on ground they cannot see.
+
+   Each is a silent, shipping-green failure.  Hence four text pins. */
+{
+  const cliSrc = readFileSync(new URL('../../src/networking/gameEvents.js', import.meta.url), 'utf8');
+  const cliRend = readFileSync(
+    new URL('../../src/rendering/systems/effectsRenderer.js', import.meta.url), 'utf8');
+  const srvTick = readFileSync(new URL('../src/index.js', import.meta.url), 'utf8');
+  const srvMove = readFileSync(new URL('../src/movement.js', import.meta.url), 'utf8');
+
+  check('firetrail mirror: the client handles the fire_trail event',
+    /case 'fire_trail'/.test(cliSrc), {});
+  check('firetrail mirror: ...and the renderer draws the patches',
+    /S\._fireTrail/.test(cliRend), {});
+  /* ═══ v2.3.2239: THE OWNER'S ART ═══
+     Three ways the sheet can ship and do nothing, each pinned:
+       - it is not in the fxStrips load loop, so it never preloads (and
+         CLAUDE.md's animation-preloading law is broken silently);
+       - the sprite is added to a layer ABOVE the player, which is the bug
+         v2.3.2238 shipped: `particles` sits above `entities`/`player` in
+         pixiApp's WORLD_LAYER_NAMES, so burning GROUND painted over the
+         character standing on it;
+       - the scale comes from the sprite instead of the scorch plate, which
+         draws a lie about the radius the worker tests -- and this hazard
+         persists, so a player learns its edge by walking it. */
+  const cliFx = readFileSync(new URL('../../src/rendering/fxStrips.js', import.meta.url), 'utf8');
+  check('firetrail art: the strip is in the fxStrips preload loop',
+    /for \(const cfg of \[[^\]]*FIRE_TRAIL_FX[^\]]*\]\)/.test(cliFx), {});
+  check('firetrail art: ...and fxStripsReady is what the manifest awaits',
+    /export function fxStripsReady/.test(cliFx), {});
+  check('firetrail art: the patch sprite goes on the layer BELOW the player',
+    /this\.telegraphLayer\.addChild\(spr\)/.test(cliRend), {});
+  check('firetrail art: the scale is taken from the scorch plate, not the sprite',
+    /FIRE_TRAIL_PLATE_FRAC/.test(cliRend) && /FIRE_TRAIL_PLATE_FRAC/.test(cliFx), {});
+  /* The procedural discs are the FALLBACK, not a leftover: a sheet that
+     fails to load must degrade to a visible hazard, never to invisible
+     ground that still burns you. */
+  check('firetrail art: the procedural fallback is still there for a missing sheet',
+    /FIRE_TRAIL_FX\.frames\.length === 8/.test(cliRend), {});
+  check('firetrail mirror: _tickMonsters lays the trail',
+    /this\._maybeDropFirePatch\(/.test(srvTick), {});
+  check('firetrail mirror: ...and burns it once per zone per tick',
+    /this\._tickFireTrail\(/.test(srvTick), {});
+  check('firetrail mirror: an arriving player is shown the ground already alight',
+    /this\._sendFireTrailSnapshot\(/.test(srvMove), {});
+  /* Every fire-laying variant must be a real one, or the table matches
+     nothing and the whole mechanic silently never fires -- the same check
+     the burst table gets above, for the same reason. */
+  const cliVars = readFileSync(
+    new URL('../../src/data/monsterVariants.js', import.meta.url), 'utf8');
+  const strayFire = Object.keys(SRV_FIRE_TRAIL.VARIANTS)
+    .filter((k) => !new RegExp('\\b' + k + ':').test(cliVars));
+  check('firetrail mirror: every fire-laying variant is a real one',
+    strayFire.length === 0, { strayFire, declared: Object.keys(SRV_FIRE_TRAIL.VARIANTS) });
+  /* v2.3.2238: and the local shield fallback must not eat a hit the worker
+     already resolved -- fire has no direction to face away from, so an
+     unguarded arc test would swallow every burn number.  Pinned because it
+     is one `!_srvResolved` that a future edit to this handler could drop
+     without anything else noticing. */
+  check('firetrail mirror: the client\'s block fallback yields to a server-resolved hit',
+    /S\._shieldUp && !_srvResolved && isAttackInShieldArc/.test(cliSrc), {});
+}
+
+/* ═══ 22. v2.3.2240: THE OWNER'S TEST PANEL ═══
+   The dev kit's own rules are pinned in server/test/devtools.test.mjs and its
+   reachability in tools/qa/mp/mp-devpanel.mjs.  What neither can see is the
+   SECURITY posture drifting: this feature is safe only because every
+   privileged action is an ADMIN_KEY-gated HTTP call and NOTHING is reachable
+   over the websocket.  A future session adding a convenient `dev_warp`
+   message would hand every client the zone gate, and no functional test
+   would notice, because the feature would still work. */
+{
+  const devSrv = readFileSync(new URL('../src/devtools.js', import.meta.url), 'utf8');
+  const idxSrv = readFileSync(new URL('../src/index.js', import.meta.url), 'utf8');
+  const panel = readFileSync(new URL('../../src/ui/panels/DevPanel.jsx', import.meta.url), 'utf8');
+  const header = readFileSync(new URL('../../src/ui/mobile/ZoneHeader.jsx', import.meta.url), 'utf8');
+  const combatSrc = readFileSync(new URL('../src/combat.js', import.meta.url), 'utf8');
+
+  check('devkit security: no dev_* websocket case exists in the worker',
+    !/case 'dev[_a-z]*':/.test(idxSrv), {});
+  check('devkit security: the panel opens no socket message of its own',
+    !/channel\.send\(/.test(panel) && !/sendEvent\(/.test(panel), {});
+  check('devkit security: every panel action goes through /api/admin',
+    /\/api\/admin/.test(panel) && /Authorization/.test(panel), {});
+  check('devkit security: the routes hang off the authenticated admin fetch',
+    /_devFetch\(request, path, json\)/.test(readFileSync(new URL('../src/admin.js', import.meta.url), 'utf8')), {});
+  /* God mode must stay in-memory and must stay bounded. */
+  check('devkit: god mode is read from playerState in _applyDamage',
+    /ps\._godUntil && Date\.now\(\) < ps\._godUntil/.test(combatSrc), {});
+  check('devkit: god mode is capped so it cannot be left on forever',
+    /GOD_MINUTES_MAX/.test(devSrv), {});
+  /* The unlock must derive from the gate the game reads, not a second list. */
+  check('devkit: the unlock derives from QUEST_ZONE_GATE itself',
+    /QUEST_ZONE_GATE/.test(devSrv), {});
+  /* The panel must remain reachable, and by the gesture the docs describe. */
+  check('devkit: the long-press trigger is still wired to the zone title',
+    /bt-zone-header__title/.test(header) && /onPointerDown=\{holdStart\}/.test(header), {});
+  check('devkit: ...and the panel is still what it opens',
+    /DevPanel\.jsx/.test(header), {});
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

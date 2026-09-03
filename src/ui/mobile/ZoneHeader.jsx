@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { COL, getState } from './dash/common.js';
 import { ZONES } from '../../data/zones.js';
 import { DEPTH_CONFIG } from '../../data/lifeSkills.js';
@@ -35,6 +35,31 @@ function zoneTitle(S) {
 export const ZoneHeader = ({ onExit }) => {
   const [, force] = useState(0);
   const [confirming, setConfirming] = useState(false);
+  /* v2.3.2240: the owner's test panel opens on a 1.2s press of the zone
+     name (src/ui/panels/DevPanel.jsx).  Here rather than in a HUD button
+     because the header is always on screen in the world and nobody
+     press-and-holds a title by accident — and the owner has asked more than
+     once to keep the HUD clear.  Lazily imported so the panel's code is not
+     in the bundle every player downloads on the critical path.
+     It is not a secret door: without the ADMIN_KEY the panel can do
+     nothing, because every action it offers is an authenticated HTTP call
+     (server/src/devtools.js). */
+  const [showDev, setShowDev] = useState(false);
+  const [DevPanelC, setDevPanelC] = useState(null);
+  const holdRef = useRef(null);
+  const openDev = () => {
+    import('../panels/DevPanel.jsx')
+      .then((m) => { setDevPanelC(() => m.DevPanel); setShowDev(true); })
+      .catch(() => {});
+  };
+  const holdStart = () => {
+    if (holdRef.current) clearTimeout(holdRef.current);
+    holdRef.current = setTimeout(openDev, 1200);
+  };
+  const holdEnd = () => {
+    if (holdRef.current) { clearTimeout(holdRef.current); holdRef.current = null; }
+  };
+  useEffect(() => holdEnd, []);
   useEffect(() => {
     const id = setInterval(() => force(v => v + 1), 500);
     return () => clearInterval(id);
@@ -74,9 +99,21 @@ export const ZoneHeader = ({ onExit }) => {
         >
           <img src={`/icons/ui/logout-door-icon.svg${V}`} alt="" draggable={false} />
         </button>
-        <div className="bt-zone-header__title">{zoneTitle(S)}</div>
+        <div
+          className="bt-zone-header__title"
+          onPointerDown={holdStart}
+          onPointerUp={holdEnd}
+          onPointerLeave={holdEnd}
+          onPointerCancel={holdEnd}
+          /* iOS Safari raises the callout/selection menu on a long press over
+             text, which would cover the panel the moment it opened. */
+          onContextMenu={(e) => e.preventDefault()}
+          style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
+        >{zoneTitle(S)}</div>
         <div className="bt-zone-header__balance" aria-hidden="true" />
       </header>
+
+      {showDev && DevPanelC && <DevPanelC onClose={() => setShowDev(false)} />}
 
       {confirming && (
         <div

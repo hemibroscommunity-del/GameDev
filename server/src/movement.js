@@ -24,7 +24,10 @@ const ALWAYS_OPEN_ZONES = new Set(['town', 'worldview', 'farm_home', 'meadow']);
    by existing, and a retuned one cannot leave a stale lock behind.
    Object.create(null) is not needed — a Map is keyed by our own strings, and
    the values come from QUEST_REWARDS, never from a client. */
-const QUEST_ZONE_GATE = (() => {
+/* v2.3.2240: exported so the operator test kit (devtools.js) unlocks
+   exactly the gates _zoneUnlocked checks, derived from the same table --
+   a hand-written second list would drift the day a quest moves. */
+export const QUEST_ZONE_GATE = (() => {
   const m = new Map();
   for (const qid of Object.keys(QUEST_REWARDS)) {
     const z = QUEST_REWARDS[qid] && QUEST_REWARDS[qid].objective && QUEST_REWARDS[qid].objective.zone;
@@ -443,6 +446,16 @@ export const movementMethods = {
             type: 'zone_loot', zone: ps.z, loot: zoneLootWire,
           }));
         }
+        /* v2.3.2238: ...and any ground the fire goblin has already set
+           alight (server/src/firetrail.js).  This is NOT cosmetic polish:
+           the patches burn on arrival whether or not they were drawn, and
+           a hazard that damages you off invisible ground is exactly the
+           "mystery damage with no visible attacker" the client's own range
+           filter was written to stop.  Sent as ordinary fire_trail events
+           on BOTH protocol versions rather than a new zone_state field, so
+           the snapshot's wire shape is untouched and an old client ignores
+           these the same way it ignores the live ones (rule 19). */
+        this._sendFireTrailSnapshot(ps.z, ws);
       } else {
         // Safe zone (town / farm_home) -- explicitly send empty
         // state for all three so the client clears stale entries

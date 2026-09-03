@@ -229,6 +229,12 @@ export const adminMethods = {
         });
       }
 
+      /* v2.3.2240: the owner's test kit.  Routed FIRST so it inherits the
+         auth and fail-closed 404 above; returns null when the path is not
+         its own, and falls through to the routes below. */
+      const _dev = await this._devFetch(request, path, json);
+      if (_dev) return _dev;
+
       if (request.method === 'POST' && path === '/grant') {
         const body = await request.json();
         const { playerId, kind, payload, note } = body || {};

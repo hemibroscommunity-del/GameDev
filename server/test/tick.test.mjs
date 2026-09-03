@@ -228,21 +228,36 @@ check('respawn dirties BOTH dirty structures',
   room.dirtyMonsters.has('meadow') && room.dirtyMonsterIds.meadow.has(m0.id));
 check('respawnAt=0 stays dead (noRespawn contract, dungeon guard)', m1.alive === false);
 
-// ── 5. variant transform (sky mummies -> skeleton at 50%) ──
+// ── 5. variant transform (sky mummies -> skeleton on the FIRST HIT) ──
+// v2.3.2229: the trigger moved from "hp <= 50%" to "has taken any damage"
+// (owner: "first hit makes the mummy to skeleton transformation").  The
+// two halves below are the whole contract: an UNTOUCHED mummy must not
+// transform -- `at: 1` with the old <= test would have fired on spawn, and
+// that is precisely why this is a flag and not a threshold -- and ONE point
+// of damage must.
 ps.z = 'sky';
 const skyMonsters = room._ensureZoneMonsters('sky');
 for (const m of skyMonsters) m._wanderPausedUntil = Date.now() + 600000;
 const mummy = skyMonsters.find((m) => m.variant === 'mummy');
 check('sky remaps spawns to the mummy variant', !!mummy, skyMonsters.map((m) => m.variant));
 if (mummy) {
-  mummy.hp = Math.floor(mummy.maxHp * 0.49);
+  // CONTROL FIRST: full health, a tick, and it is still a mummy.
+  clearDirty();
+  room._tickMonsters();
+  check('transform: an UNTOUCHED mummy does not transform (at:1 would have)',
+    mummy.variant === 'mummy'
+      && !room.eventBuffer.some((e) => e.type === 'monster_transform' && e.payload.id === mummy.id),
+    { variant: mummy.variant, hp: mummy.hp, maxHp: mummy.maxHp });
+
+  // ONE point of damage -- not half its health.
+  mummy.hp = mummy.maxHp - 1;
   clearDirty();
   room._tickMonsters();
   const tx = room.eventBuffer.find((e) => e.type === 'monster_transform' && e.payload.id === mummy.id);
-  check('transform: mummy at <=50% becomes skeleton + event emitted',
+  check('transform: ONE point of damage becomes skeleton + event emitted',
     !!tx && tx.payload.fromVariant === 'mummy' && tx.payload.toVariant === 'skeleton' && mummy.variant === 'skeleton',
     tx && tx.payload);
-  check('transform: skeleton speed applied (server drives the pace)', mummy.spd === 1.4, mummy.spd);
+  check('transform: skeleton speed applied (server drives the pace)', mummy.spd === 1.75, mummy.spd);
 }
 ps.z = 'meadow';
 

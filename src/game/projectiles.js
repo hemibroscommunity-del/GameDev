@@ -22,7 +22,7 @@ import {
 import { baseArchetypeOf, hitShapeOf, isIntangible /* v2.3.2224 */, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
 import { rollMonsterShard } from '@/data/shards.js';
-import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */ } from '@/game/combatHelpers.js';
+import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */, dropLocalRemnantOnce /* v2.3.2233 */ } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
@@ -102,7 +102,20 @@ export function updateArrows(S, deps) {
                   if (_sm.curHp < 0) _sm.curHp = 0;
                 }
                 if (!S.dmgNumbers) S.dmgNumbers = [];
-                pushDmgPopup(S, _sm.x, monsterPopupY(_sm, -10), _cBase + '', '#ffe08a', { iconKey: a.isStaff ? 'spell' : 'arrow' });
+                /* ═══ v2.3.2232: IN A SERVER ZONE THE NUMBER COMES FROM THE SERVER ═══
+                   The other half of v2.3.2220, which did this for melee and
+                   left ranged behind.  Above this line the shot has ALREADY
+                   sent monster_damage and the worker rolls its own variance
+                   and its own crit, ignoring ours -- so this popup was a
+                   second, independent roll that agreed with the truth only by
+                   luck, printed BESIDE the authoritative one from monster_hit.
+                   Two numbers per arrow, and the wrong one first.
+                   Everything above -- impact fx, stuck arrows, knockback,
+                   decals -- is still local and instant; only the NUMBER
+                   waits, on the schedule the HP bar already used. */
+                if (!S._serverMonsters) {
+                  pushDmgPopup(S, _sm.x, monsterPopupY(_sm, -10), _cBase + '', '#ffe08a', { iconKey: a.isStaff ? 'spell' : 'arrow' });
+                }
               }
               return true;
             }
@@ -142,7 +155,11 @@ export function updateArrows(S, deps) {
                       if (_lm.curHp < 0) _lm.curHp = 0;
                     }
                     if (!S.dmgNumbers) S.dmgNumbers = [];
-                    pushDmgPopup(S, _lm.x, monsterPopupY(_lm, -10), _lBase + '', '#ffe08a', { iconKey: 'arrow' });
+                    /* v2.3.2232: server-settled zones read the number off
+                       monster_hit -- see the note on the in-flight tick. */
+                    if (!S._serverMonsters) {
+                      pushDmgPopup(S, _lm.x, monsterPopupY(_lm, -10), _lBase + '', '#ffe08a', { iconKey: 'arrow' });
+                    }
                   }
                 }
               }
@@ -302,8 +319,16 @@ export function updateArrows(S, deps) {
                 _hitR = 26;   /* v2.3.2243: was staff 40 */
               } else if (_archProj === 'snowman') {
                 _hitR = 32;   /* v2.3.2243: was staff 44 */
-              } else if (_archProj === 'mummy' || _archProj === 'skeleton') {
+              } else if (_archProj === 'mummy') {
                 _hitR = 40;   /* v2.3.2243: was staff 50 */
+              } else if (_archProj === 'skeleton') {
+                /* v2.3.2229: 1.25x with the sprite (liveScalePx 96 -> 120).
+                   Bow shots at a skeleton were already the tightest fit in
+                   the game -- v2.3.1111's note names mummy/skeleton as the
+                   case where a mis-aimed shot missed outright -- so a bigger
+                   figure over an unchanged 40px circle would have been a
+                   visible regression, not a cosmetic one. */
+                _hitR = 50;   /* v2.3.2243: was staff 63 */
               } else {
                 /* v2.3.1536: sprite-less archetypes (the dungeon roster --
                    brute / swarm / sentinel / volatile / stalker / hexer)
@@ -627,7 +652,20 @@ export function updateArrows(S, deps) {
                 /* Cap display at the HP that was actually removed so the kill
                    blow doesn't show an inflated overkill number. */
                 var _displayDmg = Math.min(a.dmg, _hpBefore);
-                pushDmgPopup(S, m.x, monsterPopupY(m, -10), _displayDmg + '', '#ff9', { iconKey: a.isStaff ? 'spell' : 'arrow', special: !!a.isSpecial });
+                /* ═══ v2.3.2232: IN A SERVER ZONE THE NUMBER COMES FROM THE SERVER ═══
+                   The other half of v2.3.2220, which did this for melee and
+                   left ranged behind.  Above this line the shot has ALREADY
+                   sent monster_damage and the worker rolls its own variance
+                   and its own crit, ignoring ours -- so this popup was a
+                   second, independent roll that agreed with the truth only by
+                   luck, printed BESIDE the authoritative one from monster_hit.
+                   Two numbers per arrow, and the wrong one first.
+                   Everything above -- impact fx, stuck arrows, knockback,
+                   decals -- is still local and instant; only the NUMBER
+                   waits, on the schedule the HP bar already used. */
+                if (!S._serverMonsters) {
+                  pushDmgPopup(S, m.x, monsterPopupY(m, -10), _displayDmg + '', '#ff9', { iconKey: a.isStaff ? 'spell' : 'arrow', special: !!a.isSpecial });
+                }
                 if (m.curHp <= 0) {
                   /* In server-mode the network monster_killed event is
                      authoritative for XP/T1 distribution — only clamp
@@ -638,19 +676,12 @@ export function updateArrows(S, deps) {
                   if (S._serverMonsters) {
                     m.curHp = 0;
                     hit = true;
-                    if (S.groundLoot && isRemnantSkull(m.type)) {
-                      var _shardG = rollMonsterShard(S.currentZone);
-                      S.groundLoot.push({
-                        x: m.x + (Math.random() - 0.5) * 12,
-                        y: m.y + (Math.random() - 0.5) * 12,
-                        coins: 0,
-                        xp: 0,
-                        skull: m.type,
-                        skullEmoji: '🦴',
-                        ts: Date.now(),
-                        shard: _shardG,
-                      });
-                    }
+                    /* v2.3.2233: ONCE -- see the note at the DoT twin in
+                       monsterCombat.js.  Every arrow that lands on a monster
+                       already at 0 hp (a pierce volley, a second shot in
+                       flight, anything during an exploding slime's fuse)
+                       came through here and minted another claimable pile. */
+                    dropLocalRemnantOnce(S, m);
                     return;
                   }
                   /* Mummy -> skeleton on overkill (v2.3.135). */

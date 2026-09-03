@@ -5366,6 +5366,22 @@ export function getActiveWeapon(rpg) {
   return rpg.weapon;
 }
 
+/* ═══ v2.3.2231: THE WEAPON A COMBAT LANE IS ABOUT ═══
+ * The Points screen lets you open ANY lane's stat rows while holding
+ * something else -- buildCat is set by tapping a lane header, activeSlot by
+ * swapping weapons -- so getActiveWeapon is the wrong question to ask when
+ * the thing on screen is captioned "Crit chance · Ranged".  This answers the
+ * lane's own question instead.  Null when that slot is empty, which is the
+ * honest answer: you do not own a bow, and borrowing the sword you DO own
+ * would put the contradiction straight back.
+ * Categories are prog3's (prog3CatFor): sword covers greatsword too. */
+export function weaponForCat(rpg, cat) {
+  if (!rpg) return null;
+  if (cat === 'bow') return rpg.rangedWeapon || null;
+  if (cat === 'staff') return rpg.staffWeapon || null;
+  return rpg.weapon || null;
+}
+
 /* v2.3.254: which swing SFX to play for the current melee weapon.
    Wood-tier sword (the bamboo stick) gets its own airier 'bamboo-swing'
    sample; everything else falls back to the canonical 'sword-swing'. */
@@ -5712,7 +5728,18 @@ export const QUEST_CHAINS = {
       start: 'The Verdant Wilds went blue. Fast little things, and they spit. Six remnants.\n\n'
         + '🏹 That bow works at range — double-tap the LEFT joystick to swap to it.',
       progress: 'Six, from the blue ones.',
-      complete: 'You move like someone who knows the place now. Take the staff — same swap, one more slot.',
+      /* v2.3.2237 (owner: "add something clever from mayor bro after
+         finishing the quest ... watch out they explode ... then him
+         acknowledging his advice was too late").  The chunks split on a
+         blank line (dialogueChunks), so the beat lands as three taps: the
+         reward, the warning, and the moment he hears himself.  Placed on
+         tut_2 specifically because tut_2's blue slimes ARE the ones that
+         explode (v2.3.2224) -- the joke only works because he is warning
+         you about the exact thing you just spent six remnants learning. */
+      complete: 'You move like someone who knows the place now. Take the staff — same swap, one more slot.\n\n'
+        + 'One more thing, since you\'re headed back out. The blue ones swell up right before they go. When one does that, walk away — it bursts.\n\n'
+        + '...Six remnants\' worth, though. You\'d have met one already.\n\n'
+        + 'Right. Forget I said it. Glad you\'re standing.',
     },
   },
   tut_3: {
@@ -6672,7 +6699,13 @@ export function monsterBodyOffsetY(archOrType) {
      was tuned against the old anchoring and was wrong even then — it is the
      reason "the hitbox is at their shadow" kept coming back. */
   if (archOrType === 'fodder') return 23;
-  if (archOrType === 'mummy' || archOrType === 'skeleton') return 48;
+  /* v2.3.2229: SPLIT FROM THE MUMMY -- the skeleton is drawn 1.25x
+     (liveScalePx 96 -> 120), so its body centre and hit radii scale with
+     it.  Leaving them at the mummy's numbers puts the aim point below the
+     drawn chest, which is the v2.3.1111 failure ("rode below the hit
+     circle") in a new place. */
+  if (archOrType === 'mummy') return 48;
+  if (archOrType === 'skeleton') return 60;   /* 120 / 2 */
   if (archOrType === 'fireGoblin') return 28;
   if (archOrType === 'snowman') return 19;
   /* v2.3.1536: every OTHER sprite-backed variant -- rockmonster, fishman,
@@ -6739,7 +6772,8 @@ export function monsterMeleeHitRadius(archOrType) {
   if (shape === 'fodder') return 24;
   if (shape === 'fireGoblin') return 14;
   if (shape === 'snowman') return 32;
-  if (shape === 'mummy' || shape === 'skeleton') return 40;
+  if (shape === 'mummy') return 40;
+  if (shape === 'skeleton') return 50;   /* v2.3.2229: 40 * 1.25, with the sprite */
   return monsterProceduralRadius(shape);
 }
 

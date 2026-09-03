@@ -36,6 +36,54 @@ import { applyServerMuteList } from '@/game/chatMute.js'; /* v2.3.1981 */
 import { pushAbilityRings } from '@/game/abilities.js'; /* v2.3.1735: a peer's bash draws the caster's own shockwave */
 import { friendsSrv } from '@/ui/mobile/sheet/friendsSync.js'; /* v2.3.1324 */
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
+
+/* ═══ v2.3.2232: THE DAMAGE NUMBER NAMES THE WEAPON THAT DEALT IT ═══
+ *
+ * Owner: "Monsters are showing melee damage from bow and melee and magic
+ * damage from magic."
+ *
+ * Since v2.3.2220 the popup for EVERY own hit in a server zone is painted
+ * from monster_hit rather than from the local prediction -- and that site
+ * passed `iconKey: 'sword'` flat, so a bow hit and a staff hit both came
+ * out marked as melee.  The mark had been right before: the local ranged
+ * prediction picks 'arrow'/'spell' (projectiles.js) and still does; what
+ * v2.3.2220 changed was WHICH popup the player ends up reading.
+ *
+ * `slot` now rides on the event (server/src/combat.js v2.3.2232), which
+ * also answers it for PEER hits -- another player's weapon is not knowable
+ * locally at any price, which is why peer numbers carried no mark at all.
+ *
+ * DEPLOY-ORDER (rule 19): an older worker sends no slot, so this falls back
+ * to the slot WE are holding.  That is right for our own hits at anything
+ * but a weapon swap inside the round trip, and for a peer it declines to
+ * guess rather than marking their arrow with our sword. */
+const SLOT_ICON = { melee: 'sword', ranged: 'arrow', staff: 'spell' };
+
+/* ═══ v2.3.2233: A CRIT IS NOT ALWAYS A SWORD ═══
+ *
+ * Owner, after v2.3.2232 marked ordinary hits correctly: "Damage still shows
+ * sword icon (melee) for bow damage."  It did, and this is why -- the crit
+ * mark (/icons/ui/hero/crit.webp) is a gold starburst with a STEEL BLADE
+ * through it, and it was stamped on every critical hit whatever dealt it.
+ * Since v2.3.2211 a crit is also the loudest number on screen (38px in
+ * DMG_CRIT_COLOR against 21px white), so the one number a player is sure to
+ * read was the one asserting a sword.
+ *
+ * The crit reads as a crit from its SIZE and COLOUR alone -- that is what
+ * v2.3.2211 built and what the owner approved ("I like the new crit") -- so
+ * the icon slot is free to carry the thing it was getting wrong.  A crit now
+ * takes the weapon mark; `crit: true` still drives the big yellow treatment.
+ *
+ * If the burst is wanted back, the fix is per-weapon crit art (a burst with
+ * an arrow, a burst with a bolt) rather than one blade for all three; that
+ * is an art call, not a code one. */
+export function dmgIconForSlot(S, payload, isOwn) {
+  const fromWire = payload && SLOT_ICON[payload.slot];
+  if (fromWire) return fromWire;
+  if (!isOwn) return undefined;
+  const R = S && S.rpg;
+  return SLOT_ICON[(R && R.activeSlot) || 'melee'] || 'sword';
+}
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
 
 /* v2.3.1107: angle -> 8-way compass, same SECTORS convention as
@@ -1259,6 +1307,52 @@ export function processGameEvent(type, payload, S, deps) {
               }
               break;
             }
+          case 'fire_trail':
+            {
+              /* ═══ v2.3.2238: THE FIRE GOBLIN'S BURNING GROUND ═══
+                 Owner: "build the fire trail for the fire goblin."
+
+                 VISUAL ONLY, on exactly the terms monster_projectile set
+                 below: the server owns every point of the damage and
+                 delivers it as an ordinary monster_attack on each burn
+                 tick, reported from the PATCH so the handler's 160px
+                 attacker-distance gate passes.  This case exists so the
+                 fire the player is walking into is a thing they can see.
+
+                 Drawn rather than sprited, and that is a deliberate
+                 simplification rather than a corner cut: the patch is a
+                 flickering ember disc a Graphics call already makes well,
+                 and adding a strip would mean registering a loader in the
+                 preload manifest (CLAUDE.md's animation-preloading law)
+                 for an effect that does not need one.  No new asset, no
+                 new first-use hitch.
+
+                 THE RADIUS ON SCREEN IS THE RADIUS THE SERVER TESTS, the
+                 same promise the telegraph rings make: a hazard that drew
+                 itself smaller than it burns would be worse than one that
+                 did not draw itself at all. */
+              if (payload && payload.zone === S.currentZone && S.player) {
+                if (!S._fireTrail) S._fireTrail = [];
+                /* Bounded client-side too.  The server caps at
+                   FIRE_TRAIL.MAX_PER_ZONE (60); this is the same backstop
+                   against a flood the client did not expect, and it drops
+                   the OLDEST so the newest fire — the one under the
+                   goblin chasing you — is never the one discarded. */
+                if (S._fireTrail.length >= 80) S._fireTrail.shift();
+                S._fireTrail.push({
+                  zone: payload.zone,
+                  x: payload.x, y: payload.y,
+                  r: payload.r || 26,
+                  ts: Date.now(),
+                  /* The server sends the REMAINING life, which is what makes
+                     the zone-entry replay expire in step with everyone
+                     else's copy instead of restarting each patch's clock. */
+                  duration: Math.max(200, Math.min(15000, Number(payload.ms) || 4000)),
+                  arm: Math.max(0, Math.min(2000, Number(payload.arm) || 0)),
+                });
+              }
+              break;
+            }
           case 'monster_projectile':
             {
               /* v2.3.1640: server-thrown snowball — VISUAL ONLY.
@@ -1432,7 +1526,11 @@ export function processGameEvent(type, payload, S, deps) {
                          which is how a crit could read as ordinary depending
                          on which path produced its number. */
                       crit: !!payload.isCrit,
-                      iconKey: payload.isCrit ? 'crit' : undefined,
+                      /* v2.3.2232: ...and a peer's arrow reads as an arrow.
+                         Undefined until the worker names the slot -- better
+                         no mark than OUR weapon on THEIR hit.
+                         v2.3.2233: the crit takes the weapon here too. */
+                      iconKey: dmgIconForSlot(S, payload, false),
                     });
                   } else if (payload.ability || S._serverMonsters) {
                     /* v2.3.1733: OUR OWN stamina-ability hit.  The rule
@@ -1467,9 +1565,11 @@ export function processGameEvent(type, payload, S, deps) {
                        is wrong. */
                     pushDmgPopup(S, hitM.x || hitM.renderX, monsterPopupY(hitM, -20),
                       '-' + payload.dmg, payload.isCrit ? DMG_CRIT_COLOR : '#ffd08a',
-                      payload.isCrit
-                        ? { crit: true, iconKey: 'crit', special: !!S._ownSpecialRecent }
-                        : { iconKey: 'sword', special: !!S._ownSpecialRecent });  /* v2.3.2211; v2.3.2220 */
+                      /* v2.3.2232: the weapon that dealt it, not a flat sword.
+                         v2.3.2233: ...and that now includes the crit, which
+                         carried a bladed burst on bow and staff hits alike. */
+                      { crit: !!payload.isCrit, iconKey: dmgIconForSlot(S, payload, true),
+                        special: !!S._ownSpecialRecent });  /* v2.3.2211; v2.3.2220 */
                   } else if (payload.thorns) {
                     /* v2.3.1137: Thorns reflect is SERVER-rolled with no
                        local prediction (unlike swings), so our own thorns
@@ -1730,18 +1830,44 @@ export function processGameEvent(type, payload, S, deps) {
                  missed during initial sync stays invisible until a
                  zone change re-syncs. Server doesn't track player HP,
                  so dropping is safe — no desync to reconcile. */
-              if (!atkSrc) {
+              /* ═══ v2.3.2235: A TELEGRAPH HIT IS NOT A GHOST HIT ═══
+                 Owner, on the exploding slime: "I don't think I saw damage
+                 numbers on my own health bar ... once slime exploded."
+
+                 Both filters in this handler -- attacker-in-snapshot, and
+                 attacker-within-160px-of-where-we-are-NOW -- exist to
+                 suppress melee ghost hits from monsters the client cannot
+                 see.  They are the wrong question for a blast: it was
+                 resolved against where we stood at DETONATION, by a monster
+                 in the act of dying, and running from a swelling slime is
+                 the correct thing to do.  Measured: each filter swallows
+                 the number on its own (mp-burstdmg), while the same payload
+                 floats one fine when neither trips.
+
+                 `ability` is the worker saying "I resolved this one here"
+                 (telegraph.js v2.3.2235), and it comes with the authoritative
+                 dmgTaken, so there is nothing left to second-guess.  An older
+                 worker omits it and every filter below behaves exactly as it
+                 does today (rule 19). */
+              var _srvResolved = !!(payload.ability && S._serverMonsters
+                && typeof payload.dmgTaken === 'number');
+              if (!atkSrc && !_srvResolved) {
                 if (window.__dmgLog) try { console.log('[dmg] net-monster_attack DROPPED (not in snapshot)', { monsterId: payload.monsterId, srvAttackerXY: (typeof payload.attackerX === 'number') ? { x: Math.round(payload.attackerX), y: Math.round(payload.attackerY) } : null }); } catch (e) {}
                 break;
               }
               /* Prefer the server's authoritative position (payload.attackerX/Y)
                  over the local snapshot — the server's view is what decided the
                  attack should fire, and the snapshot can lag a few ticks. */
-              var _atkX = (typeof payload.attackerX === 'number') ? payload.attackerX : atkSrc.x;
-              var _atkY = (typeof payload.attackerY === 'number') ? payload.attackerY : atkSrc.y;
+              /* v2.3.2235: atkSrc may legitimately be null now (a blast from
+                 a monster already gone), so every read of it below is
+                 guarded.  The worker always sends attackerX/Y on a
+                 telegraph hit, which is why the visuals still have a source
+                 to point away from. */
+              var _atkX = (typeof payload.attackerX === 'number') ? payload.attackerX : (atkSrc ? atkSrc.x : S.player.x);
+              var _atkY = (typeof payload.attackerY === 'number') ? payload.attackerY : (atkSrc ? atkSrc.y : S.player.y);
               var _atkDx = _atkX - S.player.x, _atkDy = _atkY - S.player.y;
               var _atkDist = Math.sqrt(_atkDx * _atkDx + _atkDy * _atkDy);
-              if (_atkDist > 160) {
+              if (_atkDist > 160 && !_srvResolved) {
                 if (window.__dmgLog) try { console.log('[dmg] net-monster_attack DROPPED (out of range)', { monsterId: payload.monsterId, dist: Math.round(_atkDist) }); } catch (e) {}
                 break;
               }
@@ -1784,7 +1910,7 @@ export function processGameEvent(type, payload, S, deps) {
                    from the local snapshot) -- the null bypass existed only
                    while every monster was pinned to level 1; zone bands
                    are now unpinned (BALANCE-PLAN §7/BF-1). */
-                var _defUpBlk = trainDefense(R2, payload.dmg || 5, 0, atkSrc.level || null, false);
+                var _defUpBlk = trainDefense(R2, payload.dmg || 5, 0, (atkSrc && atkSrc.level) || null, false);
                 if (_defUpBlk) pushDmgPopup(S, S.player.x, S.player.y - 34, '🛡️ Defense Lv ' + _defUpBlk.level, '#60a5fa', { ts: Date.now() + 2 });
                 break;
               }
@@ -1801,9 +1927,13 @@ export function processGameEvent(type, payload, S, deps) {
                    damage entirely when a noProjectile attacker is
                    outside melee range so mummies / skeletons can
                    only land melee swings. */
-              var _atkArchKey = atkSrc.archetype || atkSrc.type;
+              var _atkArchKey = atkSrc ? (atkSrc.archetype || atkSrc.type) : null;   /* v2.3.2235: null on a blast from a departed monster */
               var _atkVariant = MONSTER_VARIANTS[_atkArchKey];
-              if (_atkVariant && _atkVariant.noProjectile && _atkDist > 60) {
+              /* v2.3.2235: ...and the melee-only filter is the same question
+                 a third time.  The blue slime carries no noProjectile flag so
+                 this is not what swallowed the owner's blast, but the next
+                 variant to get an AoE would walk straight into it. */
+              if (_atkVariant && _atkVariant.noProjectile && _atkDist > 60 && !_srvResolved) {
                 if (window.__dmgLog) try { console.log('[dmg] net-monster_attack DROPPED (noProjectile out of melee)', { monsterId: payload.monsterId, dist: Math.round(_atkDist), arch: _atkArchKey }); } catch (e) {}
                 break;
               }
@@ -1826,7 +1956,20 @@ export function processGameEvent(type, payload, S, deps) {
                  `blocked` flag above is the authority in a server zone — but it
                  has to agree with the new rule or a client-side block would
                  keep a hit the server just landed. */
-              if (S._shieldUp && isAttackInShieldArc(S, _atkX, _atkY)) {
+              /* ═══ v2.3.2238: ...AND THE LOCAL BLOCK MUST NOT EAT A HIT
+                 THE WORKER ALREADY RESOLVED ═══
+                 This branch is the FALLBACK — its own comment below says
+                 the worker's `blocked` flag is the authority in a server
+                 zone — but it was gated only on S._shieldUp, so it fired
+                 against server-resolved damage too and zeroed the number
+                 while player_state quietly dropped the HP.  That is the
+                 same class of bug as v2.3.2235's three filters, found in
+                 the same handler, and the fire trail is the case that
+                 makes it certain rather than theoretical: fire under your
+                 feet has no direction, so a shield pointed anywhere near
+                 it would swallow every tick's popup.  `_srvResolved` means
+                 the worker already priced block, parry and mitigation. */
+              if (S._shieldUp && !_srvResolved && isAttackInShieldArc(S, _atkX, _atkY)) {
                 /* Full block: no damage through.  (Was partial via
                    calcBlockReduction; user request is "the damage gets
                    blocked.")  In MP the server already skipped the
@@ -1843,7 +1986,7 @@ export function processGameEvent(type, payload, S, deps) {
                 addBuildUse(R2, 'endurance', 3);
                 /* v2.3.1113: fallback block trains defense too.
                    v2.3.1140: ±5 gate live (see block above). */
-                trainDefense(R2, mDmg, 0, atkSrc.level || null, false);
+                trainDefense(R2, mDmg, 0, (atkSrc && atkSrc.level) || null, false);
               }
               /* Check dodge */
               if (S._dodgeRoll) break; /* in i-frames */
@@ -1860,7 +2003,7 @@ export function processGameEvent(type, payload, S, deps) {
                  to player_state. */
               if (dmgTaken2 > 0) {
                 /* v2.3.1140: ±5 gate live (see block above). */
-                var _defUpTk = trainDefense(R2, 0, Math.ceil(dmgTaken2), atkSrc.level || null, false);
+                var _defUpTk = trainDefense(R2, 0, Math.ceil(dmgTaken2), (atkSrc && atkSrc.level) || null, false);
                 if (_defUpTk) pushDmgPopup(S, S.player.x, S.player.y - 34, '🛡️ Defense Lv ' + _defUpTk.level, '#60a5fa', { ts: Date.now() + 2 });
               }
               if (window.__dmgLog) try {

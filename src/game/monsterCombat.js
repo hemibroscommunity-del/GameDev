@@ -40,7 +40,7 @@ import { prog3Live, prog3CatFor, prog3CritPct, prog3CritMult, prog3CritFlat } fr
 import { MONSTER_VARIANTS, baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2200 */, isIntangible /* v2.3.2224 */, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
 import { rollMonsterShard } from '@/data/shards.js';
-import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */ } from '@/game/combatHelpers.js';
+import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */, dropLocalRemnantOnce /* v2.3.2233 */ } from '@/game/combatHelpers.js';
 import { updateTargeting } from '@/game/targeting.js'; /* v2.3.2243 */
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
@@ -166,6 +166,7 @@ export function updateMonsterCombat(S, deps) {
                 m.alive = true;
                 m.curHp = m.hp;
                 m.statuses = {}; /* clear statuses on respawn */
+                m._localRemnantDropped = false;   /* v2.3.2233: a new life drops its own pile */
                 /* Clear hit-marks accumulated in the previous life so a
                    freshly respawned monster doesn't appear with old
                    arrows / slashes / burns. */
@@ -228,19 +229,14 @@ export function updateMonsterCombat(S, deps) {
                  Drop a visual remnant pile so DoT kills leave debris too. */
               if (S._serverMonsters) {
                 m.curHp = 0; /* clamp for HP bar display */
-                if (S.groundLoot && isRemnantSkull(m.type)) {
-                  var _shardC = rollMonsterShard(S.currentZone);
-                  S.groundLoot.push({
-                    x: m.x + (Math.random() - 0.5) * 12,
-                    y: m.y + (Math.random() - 0.5) * 12,
-                    coins: 0,
-                    xp: 0,
-                    skull: m.type,
-                    skullEmoji: '🦴',
-                    ts: Date.now(),
-                    shard: _shardC,
-                  });
-                }
+                /* v2.3.2233: ONCE.  This block is re-entered on every DoT
+                   tick for as long as the monster sits at 0 hp with `alive`
+                   still true -- which in a server zone is the whole window
+                   between the last point of damage and the worker's
+                   monster_kill, and for an exploding slime is its entire
+                   1600ms fuse by design.  Unguarded it minted a claimable
+                   pile per tick; measured at 47 in 2.5s. */
+                dropLocalRemnantOnce(S, m);
                 return;
               }
               /* Mummy -> skeleton on overkill: fire the transform before

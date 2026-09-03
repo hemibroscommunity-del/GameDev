@@ -9,7 +9,8 @@
    verbatim. window._gameState / window._setLevelUpMsg stay as runtime lookups
    by design (they are wired up inside the BroTown component each render). */
 import { xpRequired, recalcDerived, BT_AUDIO, BLOCK_ARC_HALF, monsterBodyOffsetY } from '@/data/index.js';
-import { hitMaterialOf } from '@/data/monsterVariants.js'; /* v2.3.2200: hit-feedback material table */
+import { hitMaterialOf, isRemnantSkull } from '@/data/monsterVariants.js'; /* v2.3.2200: hit-feedback material table; v2.3.2233: remnant guard */
+import { rollMonsterShard } from '@/data/shards.js';   /* v2.3.2233 */
 
 /* ═══ v2.3.1979: WHERE A LOCKED TARGET ACTUALLY IS, FOR AIMING ═══
    Owner: "Tap to lock on enemy sometimes does not hit the target.  I was
@@ -134,18 +135,30 @@ function enqueuePeerDamage(S, key, floater) {
    queued number per source per frame, spaced by MIN_SPACING, force-flushing
    any head past MAX_HOLD so heavy DPS can't build an ever-growing backlog. */
 function releasePeerDamage(S, now) {
-  var Q = S._peerDmgQueue;
-  if (!Q) return;
-  /* Zone change: drop queued numbers from the previous zone so a stale
-     position never spawns into the new one.  Centralizes the clear across
-     every zone-transition path (dmgNumbers itself is never explicitly
-     cleared either -- it ages out -- so this stays in parity, just faster). */
+  /* ═══ v2.3.2232: PRIME THE ZONE STAMP BEFORE THE EMPTY-QUEUE BAILOUT ═══
+     This zone check used to sit BELOW `if (!Q) return`, and _peerDmgQueue is
+     created lazily by the first enqueue -- so for the whole span before any
+     peer damage arrived, this function returned early and _peerDmgZone was
+     never stamped.  The first peer number of a session therefore arrived,
+     was queued, and was WIPED on the very next frame by a zone-change clear
+     for a zone change that had not happened.  Exactly one number, silently,
+     per session; found while testing the weapon marks (mp-dmgicon), which
+     is the only reason a bug this quiet was ever going to surface.
+     Stamping first is also strictly more correct on its own terms: the
+     stamp describes where we ARE, not where the queue is. */
   if (S._peerDmgZone !== S.currentZone) {
+    /* Zone change: drop queued numbers from the previous zone so a stale
+       position never spawns into the new one.  Centralizes the clear across
+       every zone-transition path (dmgNumbers itself is never explicitly
+       cleared either -- it ages out -- so this stays in parity, just
+       faster). */
     S._peerDmgQueue = {};
     S._peerDmgLastRel = {};
     S._peerDmgZone = S.currentZone;
     return;
   }
+  var Q = S._peerDmgQueue;
+  if (!Q) return;
   var L = S._peerDmgLastRel || (S._peerDmgLastRel = {});
   for (var key in Q) {
     var q = Q[key];
@@ -334,6 +347,50 @@ function distributeKillXpToBuild(R, killXp) {
   /* Reset usage tally for the next encounter — each kill's
      distribution reflects activity since the last kill. */
   R._buildUse = { power: 0, vitality: 0, endurance: 0, agility: 0, mind: 0 };
+}
+
+
+/* ═══ v2.3.2233: ONE LOCAL REMNANT PER MONSTER LIFE ═══
+ *
+ * Owner: "Slime remnants still have dozens dropping as loot now."  MEASURED:
+ * one fodder slime left 47 piles in 2.5 seconds (tools/qa/mp/mp-remnant.mjs).
+ *
+ * In a server zone the client never sets `alive = false` -- the worker owns
+ * the kill -- so a monster whose hp has reached 0 sits at `curHp <= 0 &&
+ * alive` until monster_kill arrives.  Both local kill blocks test exactly
+ * that, and neither remembered having fired: every DoT tick and every
+ * further hit inside that window minted another pile.  The exploding slime
+ * made it impossible to miss, because its fuse HOLDS that state for 1600ms
+ * by design (v2.3.2226 doubled it) -- but the bug is not the slime's.  Any
+ * monster lingering between its last point of damage and the worker's kill
+ * event does this.
+ *
+ * And these are not decoration: groundLoot.js credits a skull pile straight
+ * into the bag on pickup (remnantInvKey), and remnant piles are exempt from
+ * the 60s despawn, so they accumulate and every one of them is claimable.
+ * That is the owner's "dozens in my bag then fixes the amounts" -- the
+ * authoritative inventory sync correcting what the client invented.
+ *
+ * The flag lives on the monster object and is cleared where the client
+ * revives one (monsterCombat's respawn branch), so a monster that dies again
+ * next life drops its one pile again.
+ */
+export function dropLocalRemnantOnce(S, m) {
+  if (!S || !S.groundLoot || !m) return false;
+  if (!isRemnantSkull(m.type)) return false;
+  if (m._localRemnantDropped) return false;
+  m._localRemnantDropped = true;
+  S.groundLoot.push({
+    x: m.x + (Math.random() - 0.5) * 12,
+    y: m.y + (Math.random() - 0.5) * 12,
+    coins: 0,
+    xp: 0,
+    skull: m.type,
+    skullEmoji: '\u{1F9B4}',
+    ts: Date.now(),
+    shard: rollMonsterShard(S.currentZone),
+  });
+  return true;
 }
 
 /* v2.3.1188: the ONE way to spawn a floating damage/notice popup.  The

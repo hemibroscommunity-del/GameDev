@@ -172,22 +172,91 @@ The cap only binds when he cannot reach you; the floor is what you feel in a
 normal fight, because arrival ends the pile as soon as the floor has passed.
 
 
-## v2.3.2244 — the pile hurts to touch, and it is slower
+## The pile RUNS, and it outruns you (v2.3.2236)
 
-Owner: "Snowman burrow speed will decrease by 50% and target to the player
-again (move towards them) but this time when the snowman touches you you
-will take damage (at a max rate of 1 time being damaged per second you
-remain in contact with it)."
+Owner: "change snowman burrow behavior to move AWAY from the player and
+change the speed so that during burrow it moves away from the player more
+quickly than the default speed of the character moving towards it."
 
 | | before | after |
 |---|---|---|
-| `SPEED_MULT` | 3 (≈54 px/s) | **1.5** (≈27 px/s) |
-| contact damage | none — the pile was harmless by rule | **`m.dmg` once per second** while inside `CONTACT_PX` (40, on the snowman's dy×1.5 melee ellipse) |
-| arrival (≤60px) | ends the pile after the floor | **no longer ends it** — the pile runs to `PILE_MAX_MS` (8s) or until the target is gone after the floor |
+| direction | toward the player | **away** from the player |
+| speed | `m.spd x 3` = 54 px/s | **190 px/s** |
+| ends when | he reaches you (`ARRIVE_PX` 60) | he gets clear (`ESCAPE_PX` 420) |
+
+### The speed is measured against the player, not the monster
+
+A default character moves `calcMoveSpeed(0,0) / 5 x SPEED` = 2.5 px/frame at
+60fps = **150 px/s**. 190 is ~1.27x that, so walking straight at a fleeing
+pile loses ground — which is the whole point of the move.
+
+Stated plainly rather than glossed: **a fully specced character still catches
+him.** Agility caps at +60% and swiftness adds a flat +2.0, reaching 300
+px/s. Beating *that* would need ~1.3x the fastest build in the game, which is
+a different and much larger balance decision than the one asked for.
+
+The old form multiplied the monster's own walk (`m.spd x SPEED_MULT`), which
+is the wrong frame of reference for "faster than the player" and was also
+where v2.3.2223's bug lived — it read `m.speed`, a field that does not
+exist, and ran at 2.5x its design speed behind a plausible fallback. The
+speed is now px/s converted against the room's own `TICK_RATE`.
+
+### ESCAPE_PX is required, not decorative
+
+With the direction flipped, "he reached you" can never become true. Without
+an end condition of its own the pile would run to `PILE_MAX_MS` every time —
+8s at 190 px/s is 1520px across a 1024px zone, i.e. five seconds pinned
+against the map edge.
+
+`ESCAPE_PX` 420 sits just under what the floor buys (`PILE_MIN_MS` 2400ms x
+190 = 456px), so in open ground he surfaces as the floor expires and
+`PILE_MIN_MS` remains the duration the player feels.
+
+**Cornered, he cannot make the distance and the cap governs** — he surfaces
+next to you. That is counterplay, not a failure mode: back him into a wall
+and the escape fails. He is clamped inside the zone by the same one-tile pad
+the knockback clamp uses, because fleeing aims him at the edge by
+construction.
+
+### Client
+
+None. The client follows the server's position and plays the phase sheets it
+is told to; `mirror-audit` pins the phase names and the burrowing archetype
+table, neither of which moved.
+
+**Superseded the same day by v2.3.2244 below** (the control redesign): the
+pile chases again, at half this speed, and hurts to touch. The px/s form and
+the edge clamp introduced here stay.
+
+
+## v2.3.2244 — the pile chases again, at half the pace it fled, and it hurts to touch
+
+Owner (control redesign): "Snowman burrow speed will decrease by 50% and
+target to the player again (move towards them) but this time when the
+snowman touches you you will take damage (at a max rate of 1 time being
+damaged per second you remain in contact with it)."
+
+"Again" is the word that orders the two directives: v2.3.2236 above was
+built in a parallel session, and this one was given against it. The flee is
+reversed; the speed is halved from the speed he was seen fleeing at.
+
+| | v2.3.2236 | v2.3.2244 |
+|---|---|---|
+| direction | away from the player | **toward** the player (live aim, as before v2.3.2236) |
+| speed | `FLEE_PX_S` 190 px/s | **`PILE_PX_S` 95 px/s** — half; under a default character's 150 px/s, so you can always walk away |
+| contact damage | none — the pile was harmless by rule | **`m.dmg` once per second** while inside `CONTACT_PX` (40, on the snowman's dy×1.5 melee ellipse), through `_monsterStrikePlayer` |
+| ends when | `ESCAPE_PX` 420 clear (after the floor) | **the 8s cap, or the target gone after the floor** — neither arrival nor escape ends it |
+
+**Which "50%".** Half of 190 (the speed on the owner's build when the
+directive was written) rather than half of the original 54 px/s crawl. At
+27 px/s the contact rule would almost never fire against anyone who moves,
+which is the tell that it is not the reading meant. `PILE_PX_S` is the one
+number to change if the owner disagrees (`docs/specs/control-redesign.md`
+§5.15).
 
 **Why arrival had to go.** A pile that damages on contact cannot surface on
 contact, or the rule could fire at most once and only by accident. So the
-"arrive" is now the hurt, and the move is a slow eight-second hazard you are
+"arrive" is now the hurt, and the move is an eight-second hazard you are
 meant to walk away from. This is flagged as a judgement call in
 `docs/specs/control-redesign.md` §5.8.
 

@@ -1,8 +1,10 @@
-# Monster combat phases (v2.3.2224)
+# Monster combat phases (v2.3.2229)
 
-Two phases built on the `_monsterDamageable` foundation from v2.3.2221. Both
-are owner-designed; this records the rules and the reasoning that is not
-obvious from the code.
+Three phases. The snow pile and the blue slime are built on the
+`_monsterDamageable` foundation from v2.3.2221; the mummy's is older than
+both and went undocumented until v2.3.2229 changed its trigger. All three are
+owner-designed; this records the rules and the reasoning that is not obvious
+from the code.
 
 ## The snow pile is INTANGIBLE, not merely invulnerable
 
@@ -77,7 +79,7 @@ learn about the mechanic 60 damage.
 and a low tone. A goo-burst strip (8 frames, the `DEBRIS_BURSTS` shape) would
 be the upgrade.
 
-## v2.3.2226
+## The blue slime, revisited (v2.3.2226)
 
 **The phantom-loot bug.** Owner: "it shows dozens of slimes in my bag then
 fixes the amounts."
@@ -160,3 +162,112 @@ on both a raw fodder slime and a blue slime — a blue slime takes one branch
 more, because `MONSTER_VARIANTS` has an entry for it but `VARIANT_SPRITES`
 does not, so it is consulted by the variant death branch and then falls
 through to the slime splat.
+
+## The mummy unwraps on the FIRST hit
+
+Owner (v2.3.2229): "Make the skeleton scale larger for its size. It looks
+really thin. Increase speed in skeleton phase 25% and change it so first hit
+makes the mummy to skeleton transformation."
+
+Sky remaps every archetype to `mummy`, and a mummy has a second life: it
+sheds its bandages and comes back as a `skeleton` — faster, tougher, with its
+own death sheet. The phase itself predates this doc; what changed is when it
+starts, how fast the second form moves, and how big it draws.
+
+| | before | after |
+|---|---|---|
+| trigger | `hp / maxHp <= 0.5` | any damage at all (`hp < maxHp`) |
+| skeleton speed | 1.4 | 1.75 |
+| skeleton `liveScalePx` | 96 | 120 |
+
+### Why the trigger is a flag and not a number
+
+The obvious edit is `transformAt: 1`, and it is wrong. The test is `<=`
+against a fraction, and a full-health monster satisfies `hp / maxHp <= 1` —
+so the mummy would transform on spawn, before anything touched it. "Has taken
+damage" is `hp < maxHp`, which is a different question from "is below a
+fraction", so it gets its own flag: `onFirstDamage: true`.
+
+Both halves are pinned. `server/test/tick.test.mjs` asserts that an untouched
+mummy does **not** transform *and* that exactly one point of damage does;
+`tools/qa/mp/mp-skeleton.mjs` asserts the same pair on the client mirror. A
+test that only checked the second half would pass against `at: 1`.
+
+The mummy's `incomingDmgScalar: 0.5` was tuned so the old threshold took
+about two hits. It is left alone — the mummy phase is now one hit long
+either way — but its comment no longer describes a live constraint.
+
+### The scale change carries the hitboxes with it
+
+The skeleton is **not** drawn small. Measured on the sheets, its painted
+figure fills its 256 cell almost exactly as the mummy's does (max painted
+107×219 against the mummy's 114×210) and both sat at `liveScalePx: 96`. It is
+drawn **narrow** — bones where a mummy is bandaged bulk — and no scale fix
+addresses a silhouette. So the 1.25× is the owner's design call taken at face
+value, not a bug fix.
+
+What makes it more than a one-line change is that the figure's drawn height
+and its hit geometry are separate hand-tuned constants in four files, all
+written as `mummy || skeleton`:
+
+| file | constant | mummy | skeleton |
+|---|---|---|---|
+| `src/data/gameSystems.js` | `monsterBodyOffsetY` | 48 | 60 |
+| `src/data/gameSystems.js` | `monsterMeleeHitRadius` | 40 | 50 |
+| `src/game/projectiles.js` | `_hitR` (bow / staff) | 40 / 50 | 50 / 63 |
+| `src/ui/BroTown.jsx` | `_monBody` offset | 48 | 60 |
+
+Scaling the sprite and leaving these behind does not produce a
+wrong-looking monster; it produces arrows that pass through a body they
+visibly hit. v2.3.1111 names mummy/skeleton as exactly the case where a
+mis-aimed shot missed outright, so this was the tightest fit in the game
+before it got bigger. `mp-skeleton` asserts the invariant rather than the
+number: the body offset is half the drawn figure, for both forms.
+
+### Mirrors
+
+Speed and the transform rule exist on both sides and are CI-pinned:
+
+| | server (authority) | client (mirror) |
+|---|---|---|
+| speed | `_variantSpeed` (`server/src/index.js`) | `MONSTER_VARIANTS.skeleton.spd` |
+| trigger | `_variantTransform` + `_tickMonsters` | `maybeTransformMonster` (dungeon / client-rolled only) |
+
+`server/test/mirror-audit.test.mjs` fails the build if the two speeds drift.
+The client path is gated on `!S._serverMonsters`; in every live zone the
+worker decides and broadcasts `monster_transform`.
+
+
+## The blast's damage number reaches you (v2.3.2235)
+
+Owner: "I don't think I saw damage numbers on my own health bar (as the
+floaty disappearing number for damage taken) once slime exploded."
+
+The blast was landing — hp dropped — but the number never floated. The
+client's `monster_attack` handler ends in an unconditional `-N` with the
+heart, so anything missing was dropped upstream, and there were **three**
+filters that could do it, all written against melee "ghost hits" from
+monsters the client cannot see:
+
+| filter | what it asks | why a blast fails it |
+|---|---|---|
+| attacker in the local snapshot | "can I draw who hit me?" | the slime detonates **as it dies** |
+| attacker within 160px of the player NOW | "is it close enough to have reached me?" | resolved at **detonation**, and running is the right move |
+| `noProjectile` variant beyond 60px | "is this melee-only monster in reach?" | a 110px radius is not melee reach |
+
+Measured: the first two each swallow the number on their own, while the same
+payload floats one fine when neither trips (`tools/qa/mp/mp-burstdmg.mjs`).
+The blue slime carries no `noProjectile` flag so the third is not what hit
+the owner, but the next variant to get an AoE would have walked into it.
+
+The fix is the worker saying so. `_telegraphHitPlayer` now tags the event
+with the kit's `kind`, and the client treats a tagged hit as already
+resolved — it arrives with the authoritative `dmgTaken`, so there is nothing
+left to second-guess. `atkSrc` may now legitimately be null, and every read
+of it in that handler is guarded; the visuals point away from the payload's
+`attackerX/Y`, which a telegraph hit always carries.
+
+**Deploy order (rule 19):** an older worker sends no `ability` and every
+filter behaves exactly as it did. That case is pinned in the test — without
+it the change reads as "the client stopped filtering", which is a different
+and worse change.

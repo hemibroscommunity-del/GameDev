@@ -58,7 +58,7 @@ Read first-hand for this document; line numbers are as of v2.3.2228.
 | Dodge | left-zone swipe → `handleCanvasSwipe` → `triggerContextualDodge` (`dodge.js`) | 250ms+ i-frames, moves the player directly. Does **not** touch the shield today. |
 | Magic vs bow | `projectiles.js` ~250-300: bolt hit radius per archetype (staff 30/38/40/44/50 vs arrow 18/27/26/32/40) ×3 on a special; `WEAPON_TYPES.staff.range 120` vs `bow 200`; flight `life` 68 vs 90 ticks | The staff's identity is a wider splash (Detonation channel scales it further). |
 | Monster count | `server/src/data.js ZONES` (3 per wilderness zone, 1+1+1 in sky) mirrored in `src/data/zones.js` (pinned by `zones.test.mjs` arch+count+order); `_spawnZoneMonsters` places each uniformly at random inside a 4-tile margin | Nothing keeps two spawns apart. `spawnscale.js` adds more with player count. |
-| Snowman pile | `telegraph.js BURROW` / `_resolveBurrow` | Pile grinds toward the target at `m.spd × SPEED_MULT(3)` = 1.2px/tick ≈ 54px/s, harmless and intangible, ends on arrival (≤60px, after the 2.4s floor) or at the 8s cap. |
+| Snowman pile | `telegraph.js BURROW` / `_resolveBurrow` | When this plan was written the pile ground toward the target at `m.spd × SPEED_MULT(3)` ≈ 54px/s and ended on arrival (≤60px, after the 2.4s floor) or at the 8s cap. **v2.3.2236 (PR #543, a parallel session, merged while this branch was in review) reversed it:** the pile FLEES at `FLEE_PX_S` 190px/s and ends at `ESCAPE_PX` 420. The directive's "target to the player *again*" was written against that build. Harmless and intangible either way. |
 | Life skills | `BroTown.jsx` proximity scan ~5124 (`S._proxNode` = nearest node in reach); tap on the node art (`_tapResourceAt`) opens the mid-screen shell (`.bt-interact-prompt`, 132×40, moved onto the node); its tap calls `startExtraction`; `ExtractionSwipeLayer.jsx` reads window-level pointer events **starting within 160px of the world cue** and counts reps; `effectsRenderer._updateExtractionCue` draws the floating tool + cue at the node; the character's mine/fish frames are **time-driven** (`now / cycle`), the chop/cook stand-ins likewise | The wind-up (`computeOpenDelay`, 2-10s) is server-validated: a `node_strike` earlier than the jittered window is dropped (`gathering.js:598`). |
 
 Everything else — the left stick, weapon-swap double tap, the ability
@@ -173,9 +173,11 @@ still scales the (now smaller) base. Flight distance is left alone (§5.7).
   (there is none server-side), and it turns "three slimes on one tile"
   into a spread. `spawnscale.js` mid-session additions use the same
   picker. Respawn keeps returning to `spawnX/Y`, so the spread survives.
-- **Snowman pile**: `SPEED_MULT` 3 → **1.5** (half). The pile keeps
-  grinding toward the target for its **whole duration** — arrival no
-  longer ends it (§5.8) — and while the target is within `CONTACT_PX`
+- **Snowman pile**: chases **toward** the player again (v2.3.2236's flee
+  reversed) at `PILE_PX_S` **95 px/s** — half the 190 px/s it fled at
+  (§5.15), kept in v2.3.2236's px/s-against-the-room-clock form. The pile
+  keeps grinding toward the target for its **whole duration** — neither
+  arrival nor escape ends it (§5.8) — and while the target is within `CONTACT_PX`
   (**40**, same dy×1.5 ellipse the snowman's melee ring uses) it calls
   `_monsterStrikePlayer` at most **once per 1000ms**
   (`m._burContactNextAt`). That helper is the one choke point every
@@ -273,8 +275,9 @@ anywhere.
 **PR 3**
 - `server/src/data.js`, `src/data/zones.js` — counts.
 - `server/src/index.js` `_spawnZoneMonsters` + `spawnscale.js` — placement.
-- `server/src/telegraph.js` — `BURROW.SPEED_MULT`, `CONTACT_PX`,
-  `CONTACT_CD_MS`, `_resolveBurrow` contact branch, arrival rule.
+- `server/src/telegraph.js` — `BURROW.PILE_PX_S` (replaces v2.3.2236's
+  `FLEE_PX_S`/`ESCAPE_PX`), `CONTACT_PX`, `CONTACT_CD_MS`, `_resolveBurrow`
+  bearing + contact branch, end rule (cap or target gone).
 - `server/test/burrow.test.mjs`, `zones.test.mjs`, new `spawn-spread`
   assertions; `docs/specs/snowman-snow-pile.md` durations table.
 
@@ -305,13 +308,14 @@ is the note.
 | 5.5 | **Perimeter radius** | 220 world px. | ≈ the visible half-width of a phone in world units (390 CSS px / 0.8 scale ≈ 490 px across), so "in the perimeter" reads as "on screen and near me"; comfortably inside bow flight (340-675) and outside melee (50-72). One constant, easy to retune. |
 | 5.6 | Where exactly the **arrows** go vs the **shield button** — both are "beneath the right button" | ◀ [shield] ▶ in one row in the 70px band under the disc. | The band has room for three 40-48px targets (disc is 96 wide at right:50); it keeps everything thumb-reachable and reads as one cluster. |
 | 5.7 | "Magic attack **radius** … same as bow" — hit splash, flight range, or both? | Hit splash radius (and the special's multiplier) = arrow's; `WEAPON_TYPES.staff.range` = bow's; **flight distance untouched** (staff 340px, bow 675px). | "Radius" names the splash; the staff is already the shorter-flying weapon, and shortening it further would be a nerf the directive did not ask for. |
-| 5.8 | Snowman pile: does **arrival still end** the pile? | **No** — the pile runs its full duration (`PILE_MAX_MS`, 8s) and emerges at the cap or when the target is gone. | "When the snowman touches you you will take damage… while you remain in contact" only makes sense if touching does not end the move. At half speed he crosses ~65px in the 2.4s floor, so with arrival-ends-pile the contact rule would almost never fire. |
+| 5.8 | Snowman pile: does **arrival still end** the pile? | **No** — the pile runs its full duration (`PILE_MAX_MS`, 8s) and emerges at the cap or when the target is gone. | "When the snowman touches you you will take damage… while you remain in contact" only makes sense if touching does not end the move. With arrival-ends-pile the contact rule could fire at most once, and only by accident, however fast he moves. |
 | 5.9 | Contact **damage amount** and **blocking** it | Full `m.dmg` per touch (the same number as his swing), once per second; the shield arc blocks it like any hit. | The directive names a rate, not an amount; routing through `_monsterStrikePlayer` is what gives the hit every existing rule (block at impact, harvest shield, no-one-shot rails) without a second damage path. |
 | 5.10 | Button **priority** when a monster and a resource are both in range | A resource **in reach** wins over a monster merely **in the perimeter**; a **held lock** wins over the resource. | Revised while building: the first cut let any monster within 220px win, and with six spread monsters a snowman on the far side of a tree turned every chop into a swing. Standing at a node is a deliberate act and monsters leave a harvester alone by rule (v2.3.1704); a lock (tap the monster, or press Attack before stepping up to the node) is the more deliberate act of the two, so it takes the button back. |
 | 5.11 | The harvest **wind-up** (2-10s, server-validated) has no gesture to drive the animation | The existing slow loop plays during `waiting`; the gesture takes over at `ready`. | A frozen character for up to ten seconds reads as a hang. The cap ("not faster than a leisurely pace") is applied to the gesture-driven phase, which is the one the directive describes. |
 | 5.12 | **Desktop** parity for target switching | `Tab` cycles candidates; everything else on desktop is unchanged (click attacks toward the mouse, `Q` toggles the shield, right-click special). | The directive is about the touch surface; desktop already has the toggle semantics it asks for. |
 | 5.13 | Pets, arena, duels, dungeon bosses | Unchanged. A duel opponent is still locked by tapping; the perimeter scan only considers monsters. | Out of the directive's scope; noted so nobody assumes otherwise. |
 | 5.14 | Six per zone vs the **crowd scaler** (`spawnscale.js`: +1.5 monsters per extra player, hard ceiling 24) | Base 6, ramp and ceiling unchanged — so a zone now hits its 24-monster ceiling at 13 players instead of 15, and per-head kills/minute in a crowd fall below the old "≥60% of solo" floor past ~10 players. | The 24 ceiling is a **load** number (`load-tick.mjs` proved 25/zone × 7 zones); a content change should not move it silently. Raising it to keep crowds at parity needs its own load run — the owner's call. |
+| 5.15 | "Burrow speed will **decrease by 50%**" — half of *which* speed? | Half of **190 px/s** (v2.3.2236's flee speed, on the owner's build when the directive was written) → `PILE_PX_S` **95 px/s**, toward the player; not half of the original 54 px/s crawl. | "Target to the player *again*" dates the directive after v2.3.2236, so the speed the owner had just watched is the one being halved. 95 is under a default character's 150 px/s, so you can always walk away, and it is fast enough that standing still gets you touched — which the contact rule needs. Half the original crawl (27 px/s) would leave contact damage almost unreachable against anyone who moves. One constant to change if this is the wrong reading. |
 
 ---
 

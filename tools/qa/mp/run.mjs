@@ -23,6 +23,15 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  freshbuild: () => import('./mp-freshbuild.mjs'), /* v2.3.2237: a resumed app takes the new build; a live game is only offered it */
+  devpanel: () => import('./mp-devpanel.mjs'), /* v2.3.2240: the owner's test panel */
+  firetrail: () => import('./mp-firetrail.mjs'), /* v2.3.2238: the fire goblin's burning ground, drawn and felt */
+  burstdmg: () => import('./mp-burstdmg.mjs'), /* v2.3.2235: the slime blast floats a damage number on YOU */
+  bowmark: () => import('./mp-bowmark.mjs'), /* v2.3.2234: a REAL bow shot, and the mark on its number */
+  remnant: () => import('./mp-remnant.mjs'), /* v2.3.2233: one monster leaves ONE claimable remnant, not dozens */
+  skeleton: () => import('./mp-skeleton.mjs'), /* v2.3.2229: one hit unwraps the mummy, and the skeleton is bigger and faster */
+  dmgicon: () => import('./mp-dmgicon.mjs'), /* v2.3.2232: the damage number names the weapon that dealt it */
+  statdemo: () => import('./mp-statdemo.mjs'), /* v2.3.2230: the stat explainer's scene faces the slime, and the +1 lands on your head */
   critpreview: () => import('./mp-critpreview.mjs'), /* v2.3.2213: crit vs normal on demand, no playthrough */
   basicwindup: () => import('./mp-basicwindup.mjs'), /* v2.3.2215: every monster tells you before it hits */
   feel: () => import('./mp-feel.mjs'), /* v2.3.2200: contact-synced hits, universal recoil, ground marks */

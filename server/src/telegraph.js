@@ -193,31 +193,45 @@ export const BURROW = {
   PILE_MIN_MS: 2400,   /* v2.3.2225: 1200 -> 2400 */
   PILE_MAX_MS: 8000,   /* invulnerable. v2.3.2225: 4000 -> 8000 */
   EMERGE_MS: 600,      /* vulnerable — the punish window */
-  /* ═══ v2.3.2244: THE PILE HURTS TO TOUCH ═══
-     Owner: "Snowman burrow speed will decrease by 50% and target to the
-     player again (move towards them) but this time when the snowman touches
-     you you will take damage (at a max rate of 1 time being damaged per
-     second you remain in contact with it)."
+  /* ═══ v2.3.2244: THE PILE CHASES AGAIN, AT HALF THE PACE IT FLED, AND IT HURTS TO TOUCH ═══
+     Owner (control redesign): "Snowman burrow speed will decrease by 50% and
+     target to the player again (move towards them) but this time when the
+     snowman touches you you will take damage (at a max rate of 1 time being
+     damaged per second you remain in contact with it)."
 
-     SPEED_MULT 3 -> 1.5: half.  0.6 px/tick on a snowman's 0.4 spd = 27 px/s,
-     a slow grind you can always walk away from -- and now should.
+     TWO DIRECTIVES, ONE WORD BETWEEN THEM.  v2.3.2236 (PR #543, a parallel
+     session, the same day) turned the pile into an ESCAPE: AWAY from the
+     player at FLEE_PX_S 190 px/s, ended by ESCAPE_PX 420.  This directive
+     was given against that build -- "target to the player AGAIN" -- and
+     turns him back round.  So "decrease by 50%" is read against the speed
+     the owner was watching him flee at: 190 / 2 = 95 px/s, kept in
+     v2.3.2236's px/s-against-the-room-clock form rather than the older
+     m.spd x SPEED_MULT (v2.3.2223's fallback bug is why that form is gone).
+     Half of the ORIGINAL 54 px/s crawl (27 px/s) is the other reading; it
+     would leave the contact rule below nearly unreachable against anyone
+     who moves, which is the tell that it is not the one meant.  Recorded as
+     §5.15 in docs/specs/control-redesign.md for the owner's review;
+     PILE_PX_S is the one number to change.
 
-     ARRIVE_PX is GONE as an end condition.  It used to surface him the
-     moment he reached you (after the floor), which was right while the pile
-     was harmless: arrival was the move's whole point.  A pile that damages
-     on contact cannot end on contact, or the rule could fire at most once
-     and only by accident; so the pile now runs to PILE_MAX_MS (or until the
-     target is gone, after the floor) and the "arrive" is the hurt.  Spec
-     §5.8 in docs/specs/control-redesign.md records this as a judgement
-     call for the owner to review.
+     95 is under a default character's 150 px/s (SPEED 2.5 px/frame at
+     60fps), so you can always walk away from him -- and now must, because:
 
      CONTACT_PX is the touch ring, measured on the same dy x 1.5 ellipse the
      snowman's melee ring uses (index.js _yScale), so "touching" means the
      same thing standing beside him as it does standing below him.  40 is
      under his 70 melee reach on purpose: the pile is a mound, not an arm.
-     CONTACT_CD_MS is the owner's "1 time per second". */
-  ARRIVE_PX: 60,       /* kept for the client's wire mirror; no longer ends the pile */
-  SPEED_MULT: 1.5,     /* v2.3.2244: 3 -> 1.5 (owner: "decrease by 50%") */
+     CONTACT_CD_MS is the owner's "1 time per second".
+
+     NEITHER ARRIVAL NOR ESCAPE ENDS THE PILE.  ESCAPE_PX was the end of a
+     fleeing pile and cannot be reached by one that chases.  ARRIVE_PX (60)
+     used to surface him the moment he reached you (after the floor), which
+     was right while the pile was harmless -- arrival was the move's whole
+     point.  A pile that damages on contact cannot end on contact, or the
+     rule could fire at most once and only by accident; so the pile now runs
+     to PILE_MAX_MS (or until the target is gone, after the floor) and the
+     "arrive" is the hurt.  Spec §5.8 in docs/specs/control-redesign.md
+     records this as a judgement call for the owner to review. */
+  PILE_PX_S: 95,       /* v2.3.2244: half of v2.3.2236's FLEE_PX_S 190, TOWARD the player */
   CONTACT_PX: 40,
   CONTACT_Y_SCALE: 1.5,
   CONTACT_CD_MS: 1000,
@@ -427,6 +441,25 @@ export const telegraphMethods = {
         monsterId: m.id, targetId: pid, dmg: raw, dmgTaken: res.dmgTaken,
         dodged: res.dodged, secondWind: res.secondWind || undefined,
         zone: zoneId, attackerX: m.x, attackerY: m.y,
+        /* ═══ v2.3.2235: SAY THAT THIS ONE WAS RESOLVED HERE ═══
+           Owner, on the exploding slime: "I don't think I saw damage
+           numbers on my own health bar ... once slime exploded."
+
+           The client's monster_attack handler drops an event when the
+           attacker is not in its local monster snapshot, or when the
+           attacker is more than 160px from where the player is NOW.  Both
+           filters were written against melee "ghost hits" and both are
+           the wrong question for a telegraph hit: this damage was resolved
+           against where the player stood at DETONATION, by a monster that
+           is in the act of dying, and the sane response to a swelling
+           slime is to run.  Measured -- each filter swallows the number on
+           its own (tools/qa/mp/mp-burstdmg.mjs).
+
+           The client cannot tell the two apart without being told, so this
+           tells it: the kit's kind, display-only, nothing server-side
+           reads it back.  Deploy-order (rule 19): an older worker omits
+           it and the client keeps its current filtering exactly. */
+        ability: (kit && kit.kind) || undefined,
       },
     });
     this._saveRpgVitals(pid, ps);
@@ -650,11 +683,13 @@ export const telegraphMethods = {
     if (m._burPhase === 'pile') {
       /* Grind toward where they are NOW (not a frozen point): the pile is
          slow-motion pursuit, and freezing the aim would make walking aside
-         beat it every time with no counterplay needed. */
+         beat it every time with no counterplay needed.  v2.3.2236 flipped
+         this sign to flee; v2.3.2244 flips it back (see BURROW) and keeps
+         v2.3.2236's px/s form and its edge clamp. */
       /* v2.3.2223: the floor -- nothing ends the pile before it. */
       const _canEnd = now >= (m._burFloor || 0);
       if (!gone) {
-        const dx = (ps.x || 0) - m.x, dy = (ps.y || 0) - m.y;
+        const dx = (ps.x || 0) - m.x, dy = (ps.y || 0) - m.y;   /* TOWARD again (v2.3.2244; v2.3.2236 had it AWAY) */
         const d = Math.hypot(dx, dy);
         /* v2.3.2244: CONTACT.  Touching the pile hurts, at most once a
            second while you stay in it.  Measured on the snowman's own melee
@@ -674,20 +709,27 @@ export const telegraphMethods = {
           this._monsterStrikePlayer(zoneId, m, m._burTarget, m.x, m.y);
         }
         if (!touching && d > 0) {
-          /* v2.3.2223: `m.speed` -- which does not exist.  The field is
-             `m.spd` (0.4 for a snowman: 0.5 base x its 0.8 spdMult), so this
-             read undefined and fell back to 1, moving the pile at 3 px per
-             22ms tick = 135 px/s instead of the intended 54.  He crossed the
-             gap and surfaced almost immediately, which is most of why the
-             move felt short.  The fallback hid it: no crash, just a monster
-             moving at two and a half times its design speed. */
-          const step = (m.spd || 0.4) * BURROW.SPEED_MULT;
+          /* px/s -> px/tick against the room's own clock (v2.3.2236), so
+             the speed is a comparison with the PLAYER (150 px/s) rather
+             than a multiple of the monster's walk.  v2.3.2223's incident
+             is the argument: the old form read `m.speed`, a field that
+             does not exist, and silently ran at 2.5x its design speed
+             because the fallback looked reasonable. */
+          const step = BURROW.PILE_PX_S * (this.TICK_RATE / 1000);
           m.x += (dx / d) * step;
           m.y += (dy / d) * step;
+          /* v2.3.2236's clamp, kept: a target hugging the edge would draw
+             him onto it -- same pad the knockback clamp uses. */
+          const _z = this._getZoneConfig(zoneId);
+          if (_z) {
+            const _pad = this.TILE;
+            m.x = Math.max(_pad, Math.min(_z.w * this.TILE - _pad, m.x));
+            m.y = Math.max(_pad, Math.min(_z.h * this.TILE - _pad, m.y));
+          }
           this._markMonsterDirty(zoneId, m.id);
         }
       }
-      /* v2.3.2244: arrival no longer ends the pile (see BURROW). */
+      /* v2.3.2244: neither arrival nor escape ends the pile (see BURROW). */
       if ((gone && _canEnd) || now >= m._burUntil) {
         m._burPhase = 'emerge';
         m._burUntil = now + BURROW.EMERGE_MS;

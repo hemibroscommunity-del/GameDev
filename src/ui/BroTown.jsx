@@ -934,6 +934,13 @@ export var BroTown = function BroTown(_ref0) {
     ZONES: ZONES,
     ELEMENTS: ELEMENTS,
     ARCHETYPES: ARCHETYPES,
+    /* v2.3.2229: the variant table and the body-centre offset, so a
+       scenario can check that the drawn figure and the hitbox derived from
+       it still agree.  They are separate hand-tuned constants in four
+       files and the failure mode of scaling one alone is invisible in a
+       screenshot -- arrows pass through a body they visibly hit. */
+    MONSTER_VARIANTS: MONSTER_VARIANTS,
+    monsterBodyOffsetY: DATA.monsterBodyOffsetY,
     DEPTH_CONFIG: DEPTH_CONFIG,
     ZONE_RESOURCES: ZONE_RESOURCES,
     COOKING_RECIPES: COOKING_RECIPES,
@@ -1222,7 +1229,32 @@ export var BroTown = function BroTown(_ref0) {
     staleBuild = _useStaleBuild2[0],
     setStaleBuild = _useStaleBuild2[1];
   useEffect(function () {
-    return startBuildWatch(function (info) { setStaleBuild(info); });
+    return startBuildWatch(function (info) {
+      /* ═══ v2.3.2237: ON A PRE-GAME SCREEN, JUST TAKE THE NEW BUILD ═══
+         Owner: "is there a way to make sure that if you play through the
+         mobile web app that it only pulls the latest version?"
+
+         The banner below is the right answer MID-GAME -- interrupting a
+         fight with a forced reload would be a worse bug than the staleness
+         it reports.  But on the login / checking screen, or with the intro
+         overlay still up, a reload costs the player nothing at all: there
+         is no fight to lose and no state to keep (it all lives on the
+         worker).  So there it is taken rather than offered, which closes
+         the case that actually bites -- an installed web app is RESUMED
+         rather than reloaded, so it lands on the pre-game screen still
+         running whatever bundle it had when it was last opened.
+
+         Read off window.__btPhase, which this component already stamps on
+         every render for exactly this class of question, rather than
+         threading a ref through an effect that deliberately has no deps. */
+      var _ph = null;
+      try { _ph = window.__btPhase || null; } catch (e) { /* ignore */ }
+      var _preGame = !!(_ph && (_ph.bootPhase === 'checking' || _ph.bootPhase === 'login' || _ph.showIntro));
+      if (_preGame) {
+        try { window.location.reload(); return; } catch (e) { /* fall through to the banner */ }
+      }
+      setStaleBuild(info);
+    });
   }, []);
   /* v2.3.1715: the desktop keyboard-hints strip can be dismissed (owner:
      "do a toggle on and off option for it too").  Read from storage in the
@@ -4909,7 +4941,8 @@ export var BroTown = function BroTown(_ref0) {
           var _off = _arch === 'fodder' ? 40
             : _arch === 'snowman' ? 19
             : _arch === 'fireGoblin' ? 28
-            : (_arch === 'mummy' || _arch === 'skeleton') ? 48
+            : _arch === 'mummy' ? 48
+            : _arch === 'skeleton' ? 60   /* v2.3.2229: 1.25x with the sprite */
             : 0;
           var _r = _arch === 'snowman' ? 13
             : _arch === 'fodder' ? 8

@@ -257,7 +257,10 @@ function toPile() {
   room._tickMonsters();
   check('duration: standing on him does not end it before the floor',
     snowman._burPhase === 'pile', { phase: snowman._burPhase, floor: snowman._burFloor });
+  /* THE FLOOR ALONE IS NOT ENOUGH ANY MORE.  Still standing on him, so he
+     has not made the distance -- the old rule would have surfaced here. */
   snowman._burFloor = Date.now() - 1;
+  snowman.x = ps.x; snowman.y = ps.y;
   room._tickMonsters();
   check('duration: ...nor after the floor (v2.3.2244: arrival is the hurt, not the end)',
     snowman._burPhase === 'pile', snowman._burPhase);
@@ -287,18 +290,30 @@ function toPile() {
   snowman._burUntil = Date.now() - 1;
   room._tickMonsters();                    /* -> pile */
   const x0 = snowman.x;
+  const dx0 = Math.abs(snowman.x - ps.x);
   room._tickMonsters();
   const step = Math.abs(snowman.x - x0);
-  /* m.spd (0.4 for a snowman) x SPEED_MULT.  Pinned because the field was
-     read as `m.speed` -- which does not exist -- and silently fell back to
-     1, moving the pile at two and a half times its design speed. */
-  const want = (snowman.spd || 0.4) * BURROW.SPEED_MULT;
-  check('duration: the pile moves at m.spd x SPEED_MULT, not a fallback',
-    Math.abs(step - want) < 0.05, { step, want, spd: snowman.spd });
-  /* v2.3.2244 (owner: "burrow speed will decrease by 50%"): the multiplier
-     is pinned at exactly half of the 3 it shipped with. */
-  check('duration: ...and SPEED_MULT is half of the v2.3.2221 value (3 -> 1.5)',
-    BURROW.SPEED_MULT === 1.5, BURROW.SPEED_MULT);
+  /* ═══ v2.3.2244: IT CHASES AGAIN, AT HALF THE PACE IT FLED ═══
+     v2.3.2236 pinned the flee at FLEE_PX_S 190 px/s against the room clock
+     (the px/s form exists because the old m.spd x SPEED_MULT read `m.speed`,
+     a field that does not exist, and ran at 2.5x behind a fallback).  The
+     control redesign turns him back toward the player -- "target to the
+     player AGAIN" -- and halves the speed he was watched fleeing at.  So the
+     pins are: the form (px/s x tick), the number (half of 190), the
+     direction (TOWARD), and that a default character (150 px/s, i.e.
+     calcMoveSpeed(0,0)/5 x SPEED = 2.5 px/frame at 60fps) can walk away. */
+  const PLAYER_PX_S = 150;
+  const want = BURROW.PILE_PX_S * (room.TICK_RATE / 1000);
+  check('the pile moves at PILE_PX_S against the room clock, not a fallback',
+    Math.abs(step - want) < 0.05, { step, want, tick: room.TICK_RATE });
+  check('...and PILE_PX_S is half of the 190 px/s he fled at (v2.3.2236 -> v2.3.2244)',
+    BURROW.PILE_PX_S === 95, BURROW.PILE_PX_S);
+  check('...which a default character can walk away from',
+    BURROW.PILE_PX_S < PLAYER_PX_S, { pile: BURROW.PILE_PX_S, player: PLAYER_PX_S });
+  /* DIRECTION, which is the whole ask.  Away-from-the-player was v2.3.2236
+     and would pass every speed assertion above. */
+  check('...and it moves TOWARD the player, not away',
+    Math.abs(snowman.x - ps.x) < dx0, { before: dx0, after: Math.abs(snowman.x - ps.x) });
   check('duration: the contact ring is inside the melee reach (a mound, not an arm)',
     BURROW.CONTACT_PX > 0 && BURROW.CONTACT_PX < 70 && BURROW.CONTACT_CD_MS === 1000,
     { px: BURROW.CONTACT_PX, cd: BURROW.CONTACT_CD_MS });
