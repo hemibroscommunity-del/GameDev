@@ -697,7 +697,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   check('snowball burst: ...and it is preloaded per-zone, not on first use',
     /ensureSnowballBurstTex/.test(pre) && /tasks\.push\(Promise\.resolve\(ensureSnowballBurstTex/.test(pre), {});
 
-  /* ═══ v2.3.2232: THE HARVEST LIVES ON THE RIGHT BUTTON ═══
+  /* ═══ v2.3.2245: THE HARVEST LIVES ON THE RIGHT BUTTON ═══
      Owner: "No resource extraction button in the middle of the screen or
      needing to tap on the resource or perform the gestures in the middle of
      the screen area. ... The gesture cues will be on the right button."
@@ -720,7 +720,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   check('harvest on the button: the character frames follow the hand (both renderers read gesturePose01)',
     /gesturePose01\(/.test(rend) && /gesturePose01\(/.test(fx), {});
 
-  /* ═══ v2.3.2230: MAGIC HITS AS WIDE AS AN ARROW ═══
+  /* ═══ v2.3.2243: MAGIC HITS AS WIDE AS AN ARROW ═══
      Owner: "Magic attack radius will be nerfed to be same as bow."  Two
      halves.  The reach claim the client sends for a PvP hit is
      WEAPON_TYPES[type].range -- staff must equal bow.  The splash radius is

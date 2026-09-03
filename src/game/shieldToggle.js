@@ -1,4 +1,4 @@
-/* ═══ v2.3.2229: THE SHIELD IS A TOGGLE ═══
+/* ═══ v2.3.2242: THE SHIELD IS A TOGGLE ═══
  *
  * Owner: "It'll be its own shield button that appears below the right button
  * during combat. Tapping it once holds the shield. Tapping it again

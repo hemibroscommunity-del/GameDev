@@ -13,7 +13,7 @@
    S is stateRef.current; S.keys feeds the movement code that stayed in
    the game loop. */
 import { BT_AUDIO, getNpcQuest } from '@/data/index.js';
-import { cycleTarget } from '@/game/targeting.js'; /* v2.3.2230 */
+import { cycleTarget } from '@/game/targeting.js'; /* v2.3.2243 */
 
 export function setupDesktopControls(S, deps) {
   var triggerContextualDodge = deps.triggerContextualDodge,
@@ -152,7 +152,7 @@ export function setupDesktopControls(S, deps) {
       }
 
       /* Q — toggle shield */
-      /* v2.3.2229: the touch shield is a toggle too now (ShieldButton), and
+      /* v2.3.2242: the touch shield is a toggle too now (ShieldButton), and
          both sides go through shieldToggle.js -- the desktop wrappers
          _desktopShieldOn/Off are what BroTown binds to that module. */
       if (e.code === 'KeyQ' && !e.repeat) {
@@ -176,7 +176,7 @@ export function setupDesktopControls(S, deps) {
         return;
       }
 
-      /* v2.3.2230: T — cycle the locked target through the monsters in the
+      /* v2.3.2243: T — cycle the locked target through the monsters in the
          perimeter (Shift+T goes the other way).  The desktop twin of the
          touch arrows; Tab was already the weapon cycle. */
       if (e.code === 'KeyT' && !e.repeat) {

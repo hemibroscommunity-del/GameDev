@@ -41,7 +41,7 @@ import { MONSTER_VARIANTS, baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.22
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
 import { rollMonsterShard } from '@/data/shards.js';
 import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */ } from '@/game/combatHelpers.js';
-import { updateTargeting } from '@/game/targeting.js'; /* v2.3.2230 */
+import { updateTargeting } from '@/game/targeting.js'; /* v2.3.2243 */
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
 import { btRpc, getBtPlayerId, syncRpgToServer } from '@/networking/index.js';
@@ -1262,7 +1262,7 @@ export function updateMonsterCombat(S, deps) {
             var lt = S.lockedTarget;
             if (lt.type === 'monster' && (!lt.ref.alive || lt.ref.curHp <= 0)) S.lockedTarget = null;else if (lt.type === 'npc' && !lt.ref.alive) S.lockedTarget = null;
           }
-          /* v2.3.2230: the targeting perimeter -- refresh S._targetCands and
+          /* v2.3.2243: the targeting perimeter -- refresh S._targetCands and
              drop a monster lock that left the hysteresis ring (targeting.js).
              Here, beside the dead-lock clear, because this is the one frame
              hook every lock reader already trusts. */
@@ -1288,7 +1288,7 @@ export function updateMonsterCombat(S, deps) {
                      : _aSlot === 'ranged' ? S.rpg.rangedWeapon
                      : _aSlot === 'staff'  ? S.rpg.staffWeapon
                      :                       S.rpg.weapon;
-          /* ═══ v2.3.2229: NO STICK, SO THE LOCK IS THE AIM ═══
+          /* ═══ v2.3.2242: NO STICK, SO THE LOCK IS THE AIM ═══
              The right stick used to write S._aimAngle on every deflection and
              the renderer's facing ladder, the aim caret, the backpedal test
              and the shield all read it.  With the stick gone (the right

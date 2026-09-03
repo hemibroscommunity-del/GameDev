@@ -253,7 +253,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const cA = await waitCoach(P, 'attack');
   rec.ok('with a weapon in hand, the ordinary attack is taught first',
     !!(cA && cA.id === 'attack'), cA);
-  /* v2.3.2229: the stick is a button -- the lesson says HOLD, never drag. */
+  /* v2.3.2242: the stick is a button -- the lesson says HOLD, never drag. */
   rec.ok('...and it names the hold, not the swipe',
     !!(cA && /hold/i.test(cA.text) && !/swipe/i.test(cA.text) && !/drag/i.test(cA.text)), cA && cA.text);
   const rJoyA = await rectOf(P, '.bt-rjoy-base');
@@ -271,7 +271,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         touches: end ? [] : [t], targetTouches: end ? [] : [t], changedTouches: [t],
       }));
     };
-    /* v2.3.2229: the DISC is the touch target now (TouchControls), not the
+    /* v2.3.2242: the DISC is the touch target now (TouchControls), not the
        half-screen zone -- a touch on the zone is a canvas tap, not an attack. */
     const z = document.querySelector('.bt-rjoy-base');
     const r = z.getBoundingClientRect();
@@ -348,7 +348,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !afterSpecial || afterSpecial.id !== 'special', { afterSpecial, firedTrk });
 
   /* ── 5. the block lesson: find the button, raise it once ──
-     v2.3.2229: the double-tap-and-HOLD + full-circle sweep is gone; the
+     v2.3.2242: the double-tap-and-HOLD + full-circle sweep is gone; the
      shield is a toggle button under Attack that appears while a fight is on.
      So the lesson is two beats -- the mark tells you where the button will
      be, and the first raise finishes it. */

@@ -2,7 +2,7 @@ import React from 'react';
 import { cycleTarget } from '@/game/targeting.js';
 import { RBTN } from './ShieldButton.jsx';
 
-/* ═══ v2.3.2230: THE TARGET-SWITCH ARROWS ═══
+/* ═══ v2.3.2243: THE TARGET-SWITCH ARROWS ═══
  *
  * Owner: "If multiple monsters in same perimeter there will be arrows above
  * the dashboard on that right side beneath the right button that allows you

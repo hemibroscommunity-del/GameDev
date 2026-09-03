@@ -164,7 +164,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const n = (S.gatherNodes || []).find((g) => g.alive);
     if (!n) return null;
     S.player.vx = 0; S.player.vy = 0;
-    /* v2.3.2232: proximity publishes S._nearNode again ("resource extraction
+    /* v2.3.2245: proximity publishes S._nearNode again ("resource extraction
        will be detected by perimeter"); nothing to tap. */
     return { id: n.id, x: n.x, y: n.y, nodeType: n.nodeType };
   });
@@ -175,7 +175,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const wantSkill = SKILL[nodeAt && nodeAt.nodeType] || 'woodcutting';
   await H.waitFor(P, (S) => (S._nearNode ? S._nearNode.id : null), (v) => v === nodeAt.id,
     { timeout: 15000, label: 'the tree becomes interactable' }).catch(() => {});
-  /* v2.3.2232: the mid-screen shell is gone -- the RIGHT BUTTON reads
+  /* v2.3.2245: the mid-screen shell is gone -- the RIGHT BUTTON reads
      HARVEST while a resource is in reach and a tap on it starts the harvest
      (BroTown's bS).  Same code path the old prompt's onClick took
      (_startExtraction), reached the way a thumb reaches it. */
@@ -219,7 +219,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     srv.ex === EXCODE[wantSkill], { srv, want: EXCODE[wantSkill] });
   rec.ok('...so the shield monsters read is UP', srv.shield === true, srv);
 
-  /* ═══ v2.3.2232: THE CUE IS ON THE BUTTON ═══
+  /* ═══ v2.3.2245: THE CUE IS ON THE BUTTON ═══
      Owner: "The gesture cues will be on the right button."  The v2.3.1765
      layer-order check (the white finger in front of the tree) is retired
      with the world cue it measured; what replaces it is read off the
@@ -374,7 +374,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const n = S && S._campfire && S._campfire.alive ? S._campfire : null;
     if (!n) return null;
     S.player.vx = 0; S.player.vy = 0;
-    return { x: n.x, y: n.y, zone: n.zone };   /* v2.3.2232: proximity publishes it */
+    return { x: n.x, y: n.y, zone: n.zone };   /* v2.3.2245: proximity publishes it */
   });
   rec.ok('lighting the log actually produced a campfire to cook at', !!fireNode, fireNode);
   if (fireNode) {

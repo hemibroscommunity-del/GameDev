@@ -193,7 +193,7 @@ export const BURROW = {
   PILE_MIN_MS: 2400,   /* v2.3.2225: 1200 -> 2400 */
   PILE_MAX_MS: 8000,   /* invulnerable. v2.3.2225: 4000 -> 8000 */
   EMERGE_MS: 600,      /* vulnerable — the punish window */
-  /* ═══ v2.3.2231: THE PILE HURTS TO TOUCH ═══
+  /* ═══ v2.3.2244: THE PILE HURTS TO TOUCH ═══
      Owner: "Snowman burrow speed will decrease by 50% and target to the
      player again (move towards them) but this time when the snowman touches
      you you will take damage (at a max rate of 1 time being damaged per
@@ -217,7 +217,7 @@ export const BURROW = {
      under his 70 melee reach on purpose: the pile is a mound, not an arm.
      CONTACT_CD_MS is the owner's "1 time per second". */
   ARRIVE_PX: 60,       /* kept for the client's wire mirror; no longer ends the pile */
-  SPEED_MULT: 1.5,     /* v2.3.2231: 3 -> 1.5 (owner: "decrease by 50%") */
+  SPEED_MULT: 1.5,     /* v2.3.2244: 3 -> 1.5 (owner: "decrease by 50%") */
   CONTACT_PX: 40,
   CONTACT_Y_SCALE: 1.5,
   CONTACT_CD_MS: 1000,
@@ -619,7 +619,7 @@ export const telegraphMethods = {
     m._burPhase = 'dig';
     m._burUntil = now + BURROW.DIG_MS;
     m._burTarget = targetId;
-    m._burContactNextAt = 0;   /* v2.3.2231: a fresh pile may hurt at once */
+    m._burContactNextAt = 0;   /* v2.3.2244: a fresh pile may hurt at once */
     m._burCd = now + BURROW.CD_MS;    /* from the START, like the wind-up cooldown:
                                          stamping it at the end would make the
                                          move's own duration part of its downtime */
@@ -656,7 +656,7 @@ export const telegraphMethods = {
       if (!gone) {
         const dx = (ps.x || 0) - m.x, dy = (ps.y || 0) - m.y;
         const d = Math.hypot(dx, dy);
-        /* v2.3.2231: CONTACT.  Touching the pile hurts, at most once a
+        /* v2.3.2244: CONTACT.  Touching the pile hurts, at most once a
            second while you stay in it.  Measured on the snowman's own melee
            ellipse so the ring reads the same from every side.  Routed
            through _monsterStrikePlayer -- the one choke point every
@@ -687,7 +687,7 @@ export const telegraphMethods = {
           this._markMonsterDirty(zoneId, m.id);
         }
       }
-      /* v2.3.2231: arrival no longer ends the pile (see BURROW). */
+      /* v2.3.2244: arrival no longer ends the pile (see BURROW). */
       if ((gone && _canEnd) || now >= m._burUntil) {
         m._burPhase = 'emerge';
         m._burUntil = now + BURROW.EMERGE_MS;

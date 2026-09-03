@@ -300,7 +300,7 @@ export const ARCHETYPES = {
  * zone) put ~L20 snowmen at the frost entrance because the world-view
  * exit spawns the player at the DEEP end of the depth lerp.  Restore
  * the per-zone bands only when depth content actually ships. */
-/* ═══ v2.3.2231: SIX PER ZONE ═══
+/* ═══ v2.3.2244: SIX PER ZONE ═══
  * Owner: "Monsters per zone will increase to 6, but be spaced out more
  * evenly over the zone area to prevent too much monster overlap."  The
  * COUNT lives here (and in src/data/zones.js, which zones.test.mjs holds

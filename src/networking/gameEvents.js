@@ -30,7 +30,7 @@ import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1598: armou
 import { BT_API_BASE } from '@/networking/index.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse, pushDmgPopup, monsterPopupY, isAttackInShieldArc, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */ } from '@/game/combatHelpers.js';
-import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2229: a landed block lowers the shield */
+import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242: a landed block lowers the shield */
 import { handleChatEvent, handleEmoteEvent, handlePartyChatEvent, handleAreaChatEvent, handleWhisperEvent, handleWhisperErrorEvent } from '@/game/chat.js'; /* v2.3.2136: the @area / @user lanes */
 import { applyServerMuteList } from '@/game/chatMute.js'; /* v2.3.1981 */
 import { pushAbilityRings } from '@/game/abilities.js'; /* v2.3.1735: a peer's bash draws the caster's own shockwave */
@@ -1752,7 +1752,7 @@ export function processGameEvent(type, payload, S, deps) {
                  HP-damage path entirely.  Player_state will arrive
                  shortly after to mirror the authoritative stamina value. */
               if (payload.blocked) {
-                /* ═══ v2.3.2229: ONE BLOCK, THEN IT COMES DOWN ═══
+                /* ═══ v2.3.2242: ONE BLOCK, THEN IT COMES DOWN ═══
                    Owner: "Shield will automatically disengage upon receiving
                    damage (successful block)."  The worker is the only thing
                    that knows a block succeeded -- it resolves the arc at
@@ -2342,7 +2342,7 @@ export function processGameEvent(type, payload, S, deps) {
               var dmgTaken = Math.max(1, rawDmg - pDef * 0.3);
               // §16.12 — Server already resolved block via historical state
               if (payload.blocked) dmgTaken = Math.ceil(dmgTaken * 0.25);
-              /* v2.3.2229: a blocked duel hit lowers the shield too -- same
+              /* v2.3.2242: a blocked duel hit lowers the shield too -- same
                  rule as the monster branch above, same one-line reason. */
               if (payload.blocked) { try { dropShield(S, 'blocked'); } catch (e) { /* display-only */ } }
               if (payload.isCrit) dmgTaken = Math.ceil(dmgTaken * 1.5);

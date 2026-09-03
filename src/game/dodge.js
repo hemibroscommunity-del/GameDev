@@ -12,11 +12,11 @@
 import { BT_AUDIO, ELEMENTS, LUNGE_DAMAGE_MULT, LUNGE_DIRECTION_THRESHOLD, LUNGE_IFRAMES_MS, LUNGE_STAMINA_FRACTION, RETREAT_SHOT_DAMAGE_MULT, RETREAT_SHOT_STAMINA_FRACTION, RETREAT_STAFF_CONE_RAD, applyStatus, calcWeaponDmg, getActiveWeapon } from '@/data/index.js';
 import { addBuildUse, pushDmgPopup, lockAimPoint } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
-import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2229 */
+import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 
 export var triggerContextualDodge = function (S, R, ang) {
     if (S._dodgeRoll) return;
-    /* ═══ v2.3.2229: A DODGE CANCELS THE BLOCK ═══
+    /* ═══ v2.3.2242: A DODGE CANCELS THE BLOCK ═══
        Owner: "Dodge will be a swipe on the left side of the screen as it
        already is and will cancel any blocking action by doing so."  Dropped
        BEFORE the roll resolves, so a lunge or retreat-shot (which spend

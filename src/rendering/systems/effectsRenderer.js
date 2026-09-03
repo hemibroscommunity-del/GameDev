@@ -21,8 +21,8 @@ export function effectsAnimationsReady() { return Promise.allSettled(_fxPreload)
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R, FISH_CUE_DY } from '@/data/constants.js';
-import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, TARGET_PERIMETER_PX /* v2.3.2230 */ } from '@/data/index.js';
-import { gesturePose01 } from '@/game/gesturePose.js'; /* v2.3.2232 */
+import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, TARGET_PERIMETER_PX /* v2.3.2243 */ } from '@/data/index.js';
+import { gesturePose01 } from '@/game/gesturePose.js'; /* v2.3.2245 */
 import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1535 generalised */
 import { getRemnantsTexture as getSnowmanRemnantsTex, getSnowballTexture } from '../snowmanSprites.js'; /* v2.3.2217 */
@@ -3341,7 +3341,7 @@ export class EffectsRenderer {
     const gfx = this.overlayGfx;
     gfx.clear();
 
-    /* ═══ v2.3.2230: THE TARGETING PERIMETER, DRAWN ═══
+    /* ═══ v2.3.2243: THE TARGETING PERIMETER, DRAWN ═══
        Owner: "Monsters will have a circular perimeter around them for
        targeting zone."  Every candidate (targeting.js: alive, tangible, and
        the player inside its circle) gets a faint ring at the perimeter
@@ -7074,7 +7074,7 @@ export class EffectsRenderer {
       const CHOP_BASE = 12, CHOP_COUNT = 12;
       const CHOP_STRIKE_K = 9;    // frame WITHIN the 12 where the axe bites (sfx)
       const sp = this.chopSprite;
-      /* v2.3.2232: the chop follows the thumb once the window is open --
+      /* v2.3.2245: the chop follows the thumb once the window is open --
          one stroke on the button is one downswing, capped at one per 700ms
          (a leisurely chop); the wind-up before `ready` keeps the clock. */
       const _gpC = gesturePose01(ex, now, 700);
@@ -7198,7 +7198,7 @@ export class EffectsRenderer {
          chunkier crouched painting is going to get without looking shrunken. */
       const COOK_H = 62, COOK_FRAME_MS = 60;
       const sp = this.cookSprite;
-      /* v2.3.2232: the flip follows the thumb once the window is open (one
+      /* v2.3.2245: the flip follows the thumb once the window is open (one
          up-flick on the button is one flip, capped at one per 1600ms -- the
          pan marker's own v2.3.1442 rate); the wind-up keeps the clock loop. */
       const _gpK = gesturePose01(ex, now, 1600, true);
@@ -7265,7 +7265,7 @@ export class EffectsRenderer {
       this._tintGearSprite(this.cookChestSprite, getEquip('chest'), 'cookChest');
       this._placeSkillTraitsOn('cook', sp, cookFi, 'south', false);
     }
-    /* ═══ v2.3.2232: THE WORLD CUE IS GONE ═══
+    /* ═══ v2.3.2245: THE WORLD CUE IS GONE ═══
        Owner: "No resource extraction button in the middle of the screen or
        needing to tap on the resource or perform the gestures in the middle
        of the screen area. ... The gesture cues will be on the right button."

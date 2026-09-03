@@ -1,6 +1,6 @@
 # Brotown UI Spec Reference — Directional Block Ring + Shield Mechanics
 
-> **STATUS (v2.3.2229): the INPUT changed — the shield is a toggle button.**
+> **STATUS (v2.3.2242): the INPUT changed — the shield is a toggle button.**
 > The double-tap-and-hold on the right stick, the orbiting BlockRing glyph
 > and the lock-on Block button are all gone; a `ShieldButton` under the
 > Attack button raises the shield on one tap and lowers it on the next, a

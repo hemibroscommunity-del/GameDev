@@ -33,15 +33,15 @@ const STEPS = [
      the one line of onboarding that mentions the special was teaching a
      control that does not exist.  (Double-tap-and-hold is the SHIELD,
      which the ring covers separately.) */
-  /* v2.3.2229: the right stick is a BUTTON now (docs/specs/control-redesign.md).
+  /* v2.3.2242: the right stick is a BUTTON now (docs/specs/control-redesign.md).
      Hold = auto-attack the nearest enemy; a quick swipe on it = special. */
   { key: 'attack', shape: 'circle', sels: ['.bt-rjoy-base'],
     label: 'Attack', body: 'Hold the Attack button to fight the nearest enemy. A quick swipe on it is your special.' },
-  /* v2.3.2229: the shield left the stick.  Its own button, under Attack,
+  /* v2.3.2242: the shield left the stick.  Its own button, under Attack,
      that only shows once there is something to block. */
   { key: 'shield', shape: 'circle', sels: ['[data-shield]'],
     label: 'Shield', body: 'Tap to raise your shield. It drops after one block, or when you dodge.' },
-  /* v2.3.2230: only on screen while two or more monsters are in range --
+  /* v2.3.2243: only on screen while two or more monsters are in range --
      a step whose anchor is absent is dropped for that open, by design. */
   { key: 'target', shape: 'circle', sels: ['[data-target="next"]'],
     label: 'Switch target', body: 'Two enemies close? These arrows switch which one you are fighting.' },

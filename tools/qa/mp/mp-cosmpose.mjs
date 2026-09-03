@@ -374,7 +374,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        the node and the bottom dashboard intercepts it at this viewport
        (mp-harvest v2.3.1706 hit the same wall).  Its onClick is still the code
        path being exercised. */
-    /* v2.3.2232: the harvest starts from the right button (reads HARVEST
+    /* v2.3.2245: the harvest starts from the right button (reads HARVEST
        with the node in reach), not from a mid-screen prompt. */
     const pressed = await A.page.evaluate(() => {
       const el = document.querySelector('.bt-rjoy-base');

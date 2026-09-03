@@ -5,7 +5,7 @@ import { RBTN } from './ShieldButton.jsx';
 /* v2.3.890: extracted verbatim from the floating-joystick sibling run
    in BroTown.jsx.  Render-only: the DOM refs are the SAME ref objects
    BroTown's touch effects bind to, passed through as props. */
-/* ═══ v2.3.2229: THE RIGHT STICK IS A BUTTON ═══
+/* ═══ v2.3.2242: THE RIGHT STICK IS A BUTTON ═══
    Owner: "The right thumbstick no longer acts as independent rotation
    angle. It becomes a slightly larger contextual button. ... The contextual
    button will say 'attack' on it."
@@ -48,8 +48,8 @@ export function TouchControls(props) {
     lJoyPreviewRef = props.lJoyPreviewRef,
     rJoyRef = props.rJoyRef,
     rLabelRef = props.rLabelRef,
-    rCueRef = props.rCueRef,     /* v2.3.2232: the harvest tool frame on the button face */
-    rRingRef = props.rRingRef,   /* v2.3.2232: the wind-up / reps ring around the rim */
+    rCueRef = props.rCueRef,     /* v2.3.2245: the harvest tool frame on the button face */
+    rRingRef = props.rRingRef,   /* v2.3.2245: the wind-up / reps ring around the rim */
     isLandscape = props.isLandscape;
   var _stateRef$current65;
   var discW = isLandscape ? RBTN.wLand : RBTN.w;
@@ -184,7 +184,7 @@ export function TouchControls(props) {
       bottom: 'calc(var(--sheet-h, var(--dash-h)) + ' + RBTN.bottom + 'px)', /* v2.3.1307: disc rides above the open sheet */
       right: RBTN.right,
       zIndex: 30,
-      /* v2.3.2229: the container is still pass-through; the DISC inside it
+      /* v2.3.2242: the container is still pass-through; the DISC inside it
          is the touch target (see rJoyRef below). */
       pointerEvents: 'none',
       width: discW,
@@ -195,7 +195,7 @@ export function TouchControls(props) {
     className: "bt-rjoy-base",
     'data-rbutton': '1',
     style: {
-      /* v2.3.2229: "slightly larger" -- 75/90 -> 96/108, and it now fills
+      /* v2.3.2242: "slightly larger" -- 75/90 -> 96/108, and it now fills
          its container rather than sitting inside a slightly bigger zone
          box, because the zone box is no longer where touches land. */
       width: discW,
@@ -246,7 +246,7 @@ export function TouchControls(props) {
     });
     return null;
   }()), /*#__PURE__*/React.createElement("svg", {
-    /* ═══ v2.3.2232: THE HARVEST RING ═══
+    /* ═══ v2.3.2245: THE HARVEST RING ═══
        Owner: "The gesture cues will be on the right button."  A second ring
        inside the rim (the special-charge ring above is at r=28%): during
        the wind-up it counts down to the window opening (dim); once the
@@ -262,7 +262,7 @@ export function TouchControls(props) {
     stroke: 'rgba(216,168,95,.85)', strokeWidth: 4, strokeLinecap: 'round',
     strokeDasharray: '0 999',
   })), /*#__PURE__*/React.createElement("div", {
-    /* ═══ v2.3.2232: THE TOOL ON THE BUTTON ═══
+    /* ═══ v2.3.2245: THE TOOL ON THE BUTTON ═══
        The owner's painted gesture strips (GESTURE_TOOLS in effectsRenderer:
        pickaxe / axe / reel / pan, 8 cells across) used to float over the
        node in the world; they now play on the button face, one cell at a
@@ -279,7 +279,7 @@ export function TouchControls(props) {
       imageRendering: 'auto',
     },
   }), /*#__PURE__*/React.createElement("div", {
-    /* v2.3.2229: THE LABEL.  Centred in the well; BroTown's loop stamps
+    /* v2.3.2242: THE LABEL.  Centred in the well; BroTown's loop stamps
        the text so it can change with context without a React render.
        Lantern Slate caption type: 10/700 uppercase, warm-white on the
        dark well, one text-shadow so it holds up over the metal ring. */
@@ -288,7 +288,7 @@ export function TouchControls(props) {
       position: 'absolute',
       inset: 0,
       display: 'flex',
-      alignItems: 'flex-end',      /* v2.3.2232: sits low so the tool frame above it stays clear */
+      alignItems: 'flex-end',      /* v2.3.2245: sits low so the tool frame above it stays clear */
       justifyContent: 'center',
       paddingBottom: isLandscape ? 14 : 12,
       boxSizing: 'border-box',

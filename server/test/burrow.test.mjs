@@ -123,8 +123,8 @@ function toPile() {
     !snowman.dmgByPlayer || !snowman.dmgByPlayer.p1 || snowman.dmgByPlayer.p1 >= 0, snowman.dmgByPlayer);
 }
 
-// ── 4. v2.3.2231: the pile HURTS TO TOUCH — once a second, and only in contact ──
-//    (It was HARMLESS from v2.3.2221 to v2.3.2230; the owner changed the rule:
+// ── 4. v2.3.2244: the pile HURTS TO TOUCH — once a second, and only in contact ──
+//    (It was HARMLESS from v2.3.2221 to v2.3.2243; the owner changed the rule:
 //     "when the snowman touches you you will take damage (at a max rate of 1
 //     time being damaged per second you remain in contact with it)".)
 {
@@ -249,7 +249,7 @@ function toPile() {
   room._tickMonsters();                    /* -> pile */
   check('duration: the pile begins even at point-blank range',
     snowman._burPhase === 'pile', snowman._burPhase);
-  /* v2.3.2231: ARRIVAL NO LONGER ENDS THE PILE AT ALL.  A pile that hurts
+  /* v2.3.2244: ARRIVAL NO LONGER ENDS THE PILE AT ALL.  A pile that hurts
      on contact cannot surface on contact, or the rule fires at most once
      and only by accident.  It runs to the cap (or until the target is gone,
      after the floor). */
@@ -259,7 +259,7 @@ function toPile() {
     snowman._burPhase === 'pile', { phase: snowman._burPhase, floor: snowman._burFloor });
   snowman._burFloor = Date.now() - 1;
   room._tickMonsters();
-  check('duration: ...nor after the floor (v2.3.2231: arrival is the hurt, not the end)',
+  check('duration: ...nor after the floor (v2.3.2244: arrival is the hurt, not the end)',
     snowman._burPhase === 'pile', snowman._burPhase);
   snowman._burUntil = Date.now() - 1;
   room._tickMonsters();
@@ -295,7 +295,7 @@ function toPile() {
   const want = (snowman.spd || 0.4) * BURROW.SPEED_MULT;
   check('duration: the pile moves at m.spd x SPEED_MULT, not a fallback',
     Math.abs(step - want) < 0.05, { step, want, spd: snowman.spd });
-  /* v2.3.2231 (owner: "burrow speed will decrease by 50%"): the multiplier
+  /* v2.3.2244 (owner: "burrow speed will decrease by 50%"): the multiplier
      is pinned at exactly half of the 3 it shipped with. */
   check('duration: ...and SPEED_MULT is half of the v2.3.2221 value (3 -> 1.5)',
     BURROW.SPEED_MULT === 1.5, BURROW.SPEED_MULT);

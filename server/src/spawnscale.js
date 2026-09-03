@@ -270,7 +270,7 @@ export const spawnScaleMethods = {
     if (!this._zoneSpawnSeq) this._zoneSpawnSeq = Object.create(null); // null-proto (TRAPS #6)
     let added = 0;
     for (let k = 0; k < want; k++) {
-      /* v2.3.2231: the same farthest-point picker the authored spawns use
+      /* v2.3.2244: the same farthest-point picker the authored spawns use
          (index.js _pickSpreadSpawn), with the players standing here as
          extra points to stay away from -- so a scaled add is spread from
          the monsters already in the zone AND does not materialise on top

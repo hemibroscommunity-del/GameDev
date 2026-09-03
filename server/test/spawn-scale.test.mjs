@@ -73,12 +73,12 @@ const nodeCountOf = (z, type) => (room.nodes[z] || []).filter((n) => n.nodeType 
 // ── 1. THE MONSTER CURVE — exact caps at 1 / 5 / 15 ─────────────────────
 {
   const base = room._zoneBaseMonsterCount('meadow');
-  /* v2.3.2231: six per zone (owner). */
+  /* v2.3.2244: six per zone (owner). */
   check('curve: authored meadow population is 6', base === 6, base);
   /* cap = min(24, base + ceil((p-1) * 1.5)).  Written out rather than
      recomputed from the constants on purpose — the point of this block is
      that the SHIPPED numbers are these numbers. */
-  /* v2.3.2231: base 6 -> the same +1.5/player ramp reaches the 24 ceiling
+  /* v2.3.2244: base 6 -> the same +1.5/player ramp reaches the 24 ceiling
      at 13 players instead of 15.  The ceiling is a LOAD number (see the
      spawnscale.js header) and is deliberately not moved by a content change. */
   const expect = { 1: 6, 2: 8, 3: 9, 5: 12, 10: 20, 13: 24, 15: 24, 20: 24, 60: 24 };
@@ -90,7 +90,7 @@ const nodeCountOf = (z, type) => (room.nodes[z] || []).filter((n) => n.nodeType 
     room._scaledMonsterCap('meadow', 1) === base && room._scaledMonsterCap('meadow', 0) === base);
   check('curve: the hard ceiling is 24 and nothing exceeds it',
     [1, 5, 15, 50, 500].every((p) => room._scaledMonsterCap('meadow', p) <= SPAWN_SCALE.MON_MAX));
-  check('curve: the ceiling is reached at exactly 13 players (v2.3.2231: base 6)',
+  check('curve: the ceiling is reached at exactly 13 players (v2.3.2244: base 6)',
     room._scaledMonsterCap('meadow', 13) === SPAWN_SCALE.MON_MAX
     && room._scaledMonsterCap('meadow', 12) < SPAWN_SCALE.MON_MAX,
     { at12: room._scaledMonsterCap('meadow', 12), at13: room._scaledMonsterCap('meadow', 13) });
@@ -143,7 +143,7 @@ const nodeCountOf = (z, type) => (room.nodes[z] || []).filter((n) => n.nodeType 
   check('respawn: per-player kill supply stays at or under the solo rate',
     [2, 5, 10, 15, 25].every((p) => perHead(p) <= solo + 0.5),
     { solo, curve: [1, 2, 5, 10, 15, 25].map((p) => +perHead(p).toFixed(1)) });
-  /* v2.3.2231: with the base at 6 (owner) and the 24 ceiling unchanged (a
+  /* v2.3.2244: with the base at 6 (owner) and the 24 ceiling unchanged (a
      LOAD number, see the spawnscale.js header and control-redesign.md §5.14),
      a crowd's per-head supply now settles at about half of solo rather than
      ~98%: the ramp adds the same 1.5/player it always did, but solo doubled.

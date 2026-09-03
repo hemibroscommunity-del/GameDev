@@ -1,4 +1,4 @@
-# Control redesign — the contextual right button (v2.3.2229 → v2.3.2232)
+# Control redesign — the contextual right button (v2.3.2242 → v2.3.2245)
 
 Owner directive, 2026-09-03. Quoted in full because every decision below
 is measured against it:
@@ -224,10 +224,10 @@ either order.
 
 | # | Tag | Side | Scope | Depends on |
 |---|---|---|---|---|
-| 1 | v2.3.2229 | client | §2.1 + §2.2: the button, hold-to-auto-attack, swipe special, shield toggle + auto-disengage, dodge cancels block, tutorial/coach copy, `mp-lockon` rewrite | — |
-| 2 | v2.3.2230 | client | §2.3: perimeter, engage-on-Attack, hysteresis, switch arrows, perimeter ring, magic radius = bow | 1 (the arrows live in the shield band) |
-| 3 | v2.3.2231 | server (+ `zones.js` mirror) | §2.4: six per zone, spread placement, pile half speed + contact damage | — |
-| 4 | v2.3.2232 | client | §2.5: harvest on the button, gesture on the button, cue on the button, gesture-speed animation | 1 |
+| 1 | v2.3.2242 | client | §2.1 + §2.2: the button, hold-to-auto-attack, swipe special, shield toggle + auto-disengage, dodge cancels block, tutorial/coach copy, `mp-lockon` rewrite | — |
+| 2 | v2.3.2243 | client | §2.3: perimeter, engage-on-Attack, hysteresis, switch arrows, perimeter ring, magic radius = bow | 1 (the arrows live in the shield band) |
+| 3 | v2.3.2244 | server (+ `zones.js` mirror) | §2.4: six per zone, spread placement, pile half speed + contact damage | — |
+| 4 | v2.3.2245 | client | §2.5: harvest on the button, gesture on the button, cue on the button, gesture-speed animation | 1 |
 
 **Deploy order.** PRs 1, 2, 4 send nothing new to the server: `blocking`
 and `ba` ride `move` as before, `player_shield` is the same broadcast,

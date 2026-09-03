@@ -1,4 +1,4 @@
-/* ═══ v2.3.2229 / v2.3.2230: TARGETING — the perimeter, the lock, the switch ═══
+/* ═══ v2.3.2242 / v2.3.2243: TARGETING — the perimeter, the lock, the switch ═══
  *
  * Owner: "Combat will rely on the auto targeting system. The contextual
  * button will say 'attack' on it to engage the enemy and begin the existing
@@ -13,18 +13,18 @@
  * canvas tap writes, read by the swing sweep, the projectile aim, the shield
  * angle, the reticle and the renderer's facing.  What this module adds:
  *
- *   - CANDIDATES (v2.3.2230): every alive, tangible monster whose
+ *   - CANDIDATES (v2.3.2243): every alive, tangible monster whose
  *     TARGET_PERIMETER_PX circle the player is standing inside, refreshed
  *     once per frame into S._targetCands (nearest first) so the arrows, the
  *     rings and the shield button all read one list.
- *   - ENGAGE (v2.3.2229): pressing Attack with no live lock locks the nearest
+ *   - ENGAGE (v2.3.2242): pressing Attack with no live lock locks the nearest
  *     candidate.  Nothing in range -> no lock, and the press still swings.
- *   - PERSISTENCE (v2.3.2230): a lock holds while its monster stays inside
+ *   - PERSISTENCE (v2.3.2243): a lock holds while its monster stays inside
  *     the perimeter x TARGET_HYST -- "otherwise the target stays locked on
  *     the same monster".  The hysteresis ring is what stops a target dancing
  *     on the edge from flickering in and out.  It drops on death, on leaving
  *     that ring, or on zone change (zoneTransitions already clears it).
- *   - SWITCH (v2.3.2230): with two or more candidates, cycleTarget steps
+ *   - SWITCH (v2.3.2243): with two or more candidates, cycleTarget steps
  *     through them in SCREEN-X order, so the left arrow always means "the
  *     one to the left of this one".
  *

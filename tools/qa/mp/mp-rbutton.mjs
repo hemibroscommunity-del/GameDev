@@ -1,4 +1,4 @@
-/* THE RIGHT CONTROL IS A BUTTON (v2.3.2229).
+/* THE RIGHT CONTROL IS A BUTTON (v2.3.2242).
  *
  * Owner: "The right thumbstick no longer acts as independent rotation angle.
  * It becomes a slightly larger contextual button ... Right button will be

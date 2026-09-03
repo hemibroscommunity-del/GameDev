@@ -18,7 +18,7 @@
  * BlockRing gesture -- a double-tap-and-hold on the right joystick -- which
  * nothing in the duel told you about. "Unable to block" is exactly what that
  * felt like.
- * (v2.3.2229: the shield is a toggle button under the Attack button now,
+ * (v2.3.2242: the shield is a toggle button under the Attack button now,
  * ShieldButton.jsx, and it shows whenever a lock is held -- so this lock is
  * still what puts the block control on screen in a duel.)
  *

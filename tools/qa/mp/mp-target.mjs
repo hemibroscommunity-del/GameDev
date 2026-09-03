@@ -1,4 +1,4 @@
-/* THE TARGETING PERIMETER (v2.3.2230).
+/* THE TARGETING PERIMETER (v2.3.2243).
  *
  * Owner: "Monsters will have a circular perimeter around them for targeting
  * zone. It'll be same for all weapon types. If multiple monsters in same

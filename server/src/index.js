@@ -1199,7 +1199,7 @@ export class GameRoom {
   }
 
   // Spawn monsters for a zone
-  /* ═══ v2.3.2231: SPREAD THE SPAWNS ═══
+  /* ═══ v2.3.2244: SPREAD THE SPAWNS ═══
      Owner: "Monsters per zone will increase to 6, but be spaced out more
      evenly over the zone area to prevent too much monster overlap."
 
@@ -1260,7 +1260,7 @@ export class GameRoom {
     let idx = 0;
     for (const spawn of zone.spawns) {
       for (let i = 0; i < spawn.count; i++) {
-        const pt = this._pickSpreadSpawn(zone, monsters, null);   /* v2.3.2231 */
+        const pt = this._pickSpreadSpawn(zone, monsters, null);   /* v2.3.2244 */
         const m = this._makeZoneMonster(zoneId, zone, spawn, 'sm-' + zoneId + '-' + idx, pt.x, pt.y);
         if (m) monsters.push(m);
         idx++;

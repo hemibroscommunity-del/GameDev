@@ -36,7 +36,7 @@ function check(name, cond, detail) {
    constants and pure spawn math. */
 const room = new GameRoom({ storage: { get: async () => null, put: async () => {}, list: async () => new Map() } }, {});
 
-/* v2.3.2231: six per zone (owner: "Monsters per zone will increase to 6,
+/* v2.3.2244: six per zone (owner: "Monsters per zone will increase to 6,
    but be spaced out more evenly").  The spacing half is pinned below. */
 const TARGET_PER_ZONE = 6;
 const wilderness = Object.keys(SERVER_ZONES);
@@ -60,7 +60,7 @@ const wilderness = Object.keys(SERVER_ZONES);
   const skyArchs = new Set((SERVER_ZONES.sky.spawns || []).map((s) => s.arch));
   check('density sky: keeps all three archetypes', skyArchs.size === 3, [...skyArchs]);
 
-  /* ═══ v2.3.2231: SPREAD ═══
+  /* ═══ v2.3.2244: SPREAD ═══
      "spaced out more evenly over the zone area to prevent too much monster
      overlap."  _spawnZoneMonsters places by farthest-point sampling
      (_pickSpreadSpawn).  Measured rather than asserted by shape: over many

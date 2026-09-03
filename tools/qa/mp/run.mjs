@@ -75,8 +75,8 @@ const SCENARIOS = {
   jogsides: () => import('./mp-jogsides.mjs'), /* v2.3.2134: east and west are ONE mirrored sheet -- so an east-only bare shoulder is in the renderer, not the art */
   chatfeed: () => import('./mp-chatfeed.mjs'), /* v2.3.1980: players-online count + the world chat feed */
   lockaim: () => import('./mp-lockaim.mjs'), /* v2.3.1979: a locked-on bow shot has to actually hit */
-  rbutton: () => import('./mp-rbutton.mjs'), /* v2.3.2229: the right control is a button — hold to attack, swipe for special, a shield toggle beneath it */
-  target: () => import('./mp-target.mjs'), /* v2.3.2230: the targeting perimeter, the lock that holds, the switch arrows, magic splash = arrow */
+  rbutton: () => import('./mp-rbutton.mjs'), /* v2.3.2242: the right control is a button — hold to attack, swipe for special, a shield toggle beneath it */
+  target: () => import('./mp-target.mjs'), /* v2.3.2243: the targeting perimeter, the lock that holds, the switch arrows, magic splash = arrow */
   tattoos: () => import('./mp-tattoos.mjs'), /* v2.3.1949: face + arm tattoos survive both server gates, end to end */
   roster: () => import('./mp-roster.mjs'), /* v2.3.1923: the device's character list — order, delete, the ten cap */
   drops: () => import('./mp-drops.mjs'), /* v2.3.1924: iron pieces to the bag, the gem to the glass */

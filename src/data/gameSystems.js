@@ -2638,7 +2638,7 @@ export const WEAPON_TYPES = {
   staff: {
     base: 8.54,
     speed: 1.0,
-    /* v2.3.2230 (owner: "Magic attack radius will be nerfed to be same as
+    /* v2.3.2243 (owner: "Magic attack radius will be nerfed to be same as
        bow"): 120 -> 200, the bow's.  This field is the PvP reach claim
        (monsterCombat player_attack) -- the splash radius is in projectiles. */
     range: 200,
@@ -5382,7 +5382,7 @@ export function meleeSwingSfx(rpg) {
 export const SWING_COOLDOWN = 600;
 export const SWING_RANGE = 50;
 export const SWING_ARC = Math.PI * 0.85;
-/* ═══ v2.3.2229: THE TARGETING PERIMETER ═══
+/* ═══ v2.3.2242: THE TARGETING PERIMETER ═══
    Owner: "Monsters will have a circular perimeter around them for targeting
    zone. It'll be same for all weapon types."  A monster is engageable when
    the player stands inside this circle around it; the Attack button locks
@@ -5392,7 +5392,7 @@ export const SWING_ARC = Math.PI * 0.85;
    flight (340-675) and outside melee reach (50-72).  One constant, one knob;
    see docs/specs/control-redesign.md §5.5. */
 export const TARGET_PERIMETER_PX = 220;
-/* v2.3.2230: a lock HOLDS out to this multiple of the perimeter ("otherwise
+/* v2.3.2243: a lock HOLDS out to this multiple of the perimeter ("otherwise
    the target stays locked on the same monster") -- the ring between 1.0 and
    1.25 is the hysteresis that keeps a target on the edge from flickering
    in and out of the lock every frame. */

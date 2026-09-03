@@ -73,7 +73,7 @@ const INK = 'rgba(13,21,26,.92)';
 const MOVE_PX = 120;
 const TELEPORT_PX = 48;
 
-/* v2.3.2229: the block lesson used to demand a 2s hold swept through all 8
+/* v2.3.2242: the block lesson used to demand a 2s hold swept through all 8
    sectors, because the double-tap-and-HOLD + drag-to-steer was the least
    discoverable gesture in the game.  The shield is a TOGGLE BUTTON now
    (ShieldButton.jsx) and points itself at the locked target, so there is
@@ -340,7 +340,7 @@ const LESSONS = [
        staff slots count, matching the special's gate exactly. */
     id: 'attack',
     shape: 'circle',
-    /* v2.3.2229: the stick is a BUTTON -- hold it, do not drag it. */
+    /* v2.3.2242: the stick is a BUTTON -- hold it, do not drag it. */
     anchors: [{ sel: '.bt-rjoy-base', reach: '.bt-rjoy-base',
                 body: 'Hold to attack the nearest enemy.' },
               { sel: '.bt-rjoy-zone', reach: '.bt-rjoy-base',
@@ -352,7 +352,7 @@ const LESSONS = [
   {
     id: 'special',
     shape: 'circle',
-    /* v2.3.2229: same gesture, on the Attack BUTTON now. */
+    /* v2.3.2242: same gesture, on the Attack BUTTON now. */
     anchors: [{ sel: '.bt-rjoy-base', reach: '.bt-rjoy-base',
                 body: 'A quick swipe on the Attack button.' },
               { sel: '.bt-rjoy-zone', reach: '.bt-rjoy-base',
@@ -378,7 +378,7 @@ const LESSONS = [
   {
     id: 'block',
     shape: 'circle',
-    /* v2.3.2229: the shield is its own button under Attack (ShieldButton),
+    /* v2.3.2242: the shield is its own button under Attack (ShieldButton),
        which only exists on screen while a fight is on or a lock is held --
        so the mark falls back to the Attack button (where the shield button
        will appear beneath) until a monster is close enough for it to show.
@@ -585,7 +585,7 @@ export function QuestCoach(props) {
          trustworthy above. */
       if (S && S.isSwinging && !done.attack) { done.attack = true; saveDone(done); }
       if (S) {
-        /* v2.3.2229: raised once = learned.  The old hold-and-sweep tracker
+        /* v2.3.2242: raised once = learned.  The old hold-and-sweep tracker
            measured a gesture that no longer exists (see BLOCK_HOLD_MS). */
         const b = blockRef.current;
         if (S._shieldUp) { b.sectors = 1; b.ms = Math.max(b.ms, 1); }
@@ -644,7 +644,7 @@ export function QuestCoach(props) {
       const arc = arcRef.current;
       if (arc) {
         const b = blockRef.current;
-        /* v2.3.2229: a one-step lesson has a one-step bar. */
+        /* v2.3.2242: a one-step lesson has a one-step bar. */
         arc.style.width = (b.sectors === 1 ? 100 : 0) + '%';
       }
     };
@@ -656,7 +656,7 @@ export function QuestCoach(props) {
       window.__btCoach = function () {
         const b = blockRef.current;
         return { done: Object.assign({}, doneRef.current), heldMs: Math.round(b.ms),
-                 raised: b.sectors === 1,   /* v2.3.2229 */
+                 raised: b.sectors === 1,   /* v2.3.2242 */
                  sectors: b.sectors, needMs: BLOCK_HOLD_MS, needSectors: BLOCK_SECTORS,
                  slots: Object.assign({}, seenSlots.current),
                  cycleArmed: cycleArmed.current,

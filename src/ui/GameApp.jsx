@@ -653,7 +653,7 @@ export const GameApp = () => {
       {/* InventorySurface, InspectCard, MoreOverlay are no longer mounted — */}
       {/* the bottom dashboard nests their content inside the --dash-h band. */}
       {/* Their buses still exist and are exercised by debug commands.      */}
-      {/* v2.3.2229: BlockRing (the orbiting drag-to-steer shield glyph) is
+      {/* v2.3.2242: BlockRing (the orbiting drag-to-steer shield glyph) is
           gone -- the shield is a toggle button under the right button now
           (src/ui/panels/ShieldButton.jsx, mounted with the touch controls in
           BroTown).  blockRingBus stays: the debug console and the hostile-

@@ -24,7 +24,7 @@ const duelState = (P) => H.readState(P, (S) => ({
   lock: S.lockedTarget ? { type: S.lockedTarget.type, id: S.lockedTarget.id } : null,
 }));
 
-/* `[data-shield]`, not a <button>.  v2.3.2229: the block control is the
+/* `[data-shield]`, not a <button>.  v2.3.2242: the block control is the
    ShieldButton under the Attack button (it shows whenever a lock is held,
    which a duel sets), a touch DIV like the lock-on ring's controls were --
    the first cut of this scenario reported "no block button" with the lock

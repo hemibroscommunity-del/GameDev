@@ -79,7 +79,7 @@ import { materialTint, weaponTint } from '../traits/materialTints.js'; /* v2.3.1
 import { combatGearUrls } from '../combatGear.js';
 import { getEquip, onEquipChange, isWearingArmor } from '../gearCatalog.js'; /* v2.3.1407: GEAR_CATALOG import dropped with the speculative all-states prewarm */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
-import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2232: harvest frames follow the hand */
+import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2245: harvest frames follow the hand */
 import { monsterDisplayName } from '@/data/gameDisplay.js'; /* v2.3.1918: monster name plates */
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
@@ -9088,7 +9088,7 @@ export class EntityRenderer {
            (raised -> strike -> raised), south-only. */
         const fc = playerFrameCount('mine', 'south') || 14;
         const cycle = cycleMs('mine', 'south');
-        /* ═══ v2.3.2232: THE SWING FOLLOWS THE HAND ═══
+        /* ═══ v2.3.2245: THE SWING FOLLOWS THE HAND ═══
            Owner: "the animation frames will play at the speed the user is
            performing the gesture (capped at a maximum speed not faster than a
            leisurely gesture pace)."  While the gesture window is open the
@@ -9106,7 +9106,7 @@ export class EntityRenderer {
            (waiting + ready), south-only. */
         const fc = playerFrameCount('fish', 'south') || 32;
         const cycle = cycleMs('fish', 'south');
-        /* v2.3.2232: the reel drives the sway -- one finger-circle on the
+        /* v2.3.2245: the reel drives the sway -- one finger-circle on the
            button is one turn of the sway loop, capped at ~one turn per 450ms
            (the same cap the reel marker has had since v2.3.1435). */
         const _gpF = gesturePose01(S._extraction, now, 450, true);

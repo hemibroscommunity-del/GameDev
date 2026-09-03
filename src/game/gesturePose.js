@@ -1,4 +1,4 @@
-/* ═══ v2.3.2232: GESTURE PHASE -> POSE PHASE, AT A LEISURELY CAP ═══
+/* ═══ v2.3.2245: GESTURE PHASE -> POSE PHASE, AT A LEISURELY CAP ═══
  *
  * Owner: "the animation frames will play at the speed the user is performing
  * the gesture (capped at a maximum speed not faster than a leisurely gesture
@@ -37,7 +37,7 @@ export function gesturePose01(ex, now, fullCycleMs, wraps) {
   return cur;
 }
 
-/* v2.3.2232: the owner's painted gesture strips, for the button face.  A
+/* v2.3.2245: the owner's painted gesture strips, for the button face.  A
    MIRROR of GESTURE_TOOLS in effectsRenderer.js (which slices the same files
    into Pixi textures for the chop-strike burst anchors); the URLs are the
    only thing shared, and mirror-audit pins the two lists equal. */

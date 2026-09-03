@@ -50,11 +50,11 @@ import { UpdateBanner } from './panels/UpdateBanner.jsx';
 import { startBuildWatch } from '@/game/buildWatch.js';
 import { TouchControls } from './panels/TouchControls.jsx';
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
-import { ShieldButton } from './panels/ShieldButton.jsx'; /* v2.3.2229: the shield is a toggle button under Attack */
-import { GESTURE_TOOL_URLS } from '@/game/gesturePose.js'; /* v2.3.2232: the tool strips the button face plays */
-import { TargetArrows } from './panels/TargetArrows.jsx'; /* v2.3.2230: switch targets when two or more are in the perimeter */
-import { engageNearest } from '@/game/targeting.js'; /* v2.3.2229: Attack engages the nearest monster in the perimeter */
-import { raiseShieldToggle, dropShield, shieldAimAngle } from '@/game/shieldToggle.js'; /* v2.3.2229 */
+import { ShieldButton } from './panels/ShieldButton.jsx'; /* v2.3.2242: the shield is a toggle button under Attack */
+import { GESTURE_TOOL_URLS } from '@/game/gesturePose.js'; /* v2.3.2245: the tool strips the button face plays */
+import { TargetArrows } from './panels/TargetArrows.jsx'; /* v2.3.2243: switch targets when two or more are in the perimeter */
+import { engageNearest } from '@/game/targeting.js'; /* v2.3.2242: Attack engages the nearest monster in the perimeter */
+import { raiseShieldToggle, dropShield, shieldAimAngle } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { DuelRequestPanel } from './panels/DuelRequestPanel.jsx';
 import { ThreatIncomingPanel } from './panels/ThreatIncomingPanel.jsx';
 import { ChatPanel } from './panels/ChatPanel.jsx';
@@ -254,7 +254,7 @@ import { worldViewport } from '@/game/worldViewport.js'; /* v2.3.1768b */
 /* v2.3.817: §5.8 contextual dodge/lunge/retreat cluster extracted behavior-frozen. */
 import { triggerContextualDodge } from '@/game/dodge.js';
 /* v2.3.819: swing/special/shield action bodies extracted; component keeps thin useCallback wrappers. */
-import { swingAttack, specialAttack, elementBurst } from '@/game/playerActions.js'; /* v2.3.2229: raiseShield superseded by game/shieldToggle.js */
+import { swingAttack, specialAttack, elementBurst } from '@/game/playerActions.js'; /* v2.3.2242: raiseShield superseded by game/shieldToggle.js */
 /* v2.3.1733: stamina abilities (Shield Bash / Whirlwind) — PR 5 of the
    combat overhaul.  The cast bodies live in @/game/abilities.js for the
    same reason the swing bodies do; this component keeps thin wrappers. */
@@ -5144,7 +5144,7 @@ export var BroTown = function BroTown(_ref0) {
           var _cfd = nodeReachDist(S, S._campfire);
           if (_cfd != null && _cfd < closestDist) { closestDist = _cfd; S._proxNode = S._campfire; }
         }
-        /* ═══ v2.3.2232: DETECTED BY PERIMETER ═══
+        /* ═══ v2.3.2245: DETECTED BY PERIMETER ═══
            Owner: "No resource extraction button in the middle of the screen
            or needing to tap on the resource ... Resource extraction will be
            detected by perimeter and contextual button will be tapped to
@@ -5163,7 +5163,7 @@ export var BroTown = function BroTown(_ref0) {
           promptNodeRef.current = S._nearNode;
           setPromptNode(S._nearNode);
         }
-        /* ═══ v2.3.2232: THE BUTTON'S FACE, STAMPED PER FRAME ═══
+        /* ═══ v2.3.2245: THE BUTTON'S FACE, STAMPED PER FRAME ═══
            The right button is contextual: ATTACK with a monster in the
            perimeter (or nothing at all), HARVEST with a resource in reach and
            no monster (control-redesign.md §5.10: Attack wins), and during a
@@ -6481,7 +6481,7 @@ export var BroTown = function BroTown(_ref0) {
         if (S._shieldUp && S._shieldKb && typeof S._mouseAimAngle === 'number') {
           S._shieldAngle = S._mouseAimAngle;
         } else if (S._shieldUp && S.lockedTarget && S.lockedTarget.ref) {
-          /* v2.3.2229: a raised shield faces the locked target every frame --
+          /* v2.3.2242: a raised shield faces the locked target every frame --
              BlockRing's lerp used to do this; the toggle button has no
              finger on it to steer, so the lock is the only steer there is. */
           S._shieldAngle = shieldAimAngle(S);
@@ -6515,7 +6515,7 @@ export var BroTown = function BroTown(_ref0) {
             S.rpg.stamina = 0;
             S._shieldCdUntil = Date.now() + 2000;
             S._shieldAutoReleased = true;
-            /* v2.3.2229: the shared drop path (broadcast + bus + shieldEnd). */
+            /* v2.3.2242: the shared drop path (broadcast + bus + shieldEnd). */
             dropShield(S, 'stamina');
           }
         } else {
@@ -7167,7 +7167,7 @@ export var BroTown = function BroTown(_ref0) {
     _useState224 = _slicedToArray(_useState223, 2),
     shieldCd = _useState224[0],
     setShieldCd = _useState224[1];
-  /* v2.3.2229: the `shieldUp` React state is gone -- its only reader was
+  /* v2.3.2242: the `shieldUp` React state is gone -- its only reader was
      the legacy hidden shield joystick in TouchControls; ShieldButton polls
      S._shieldUp directly. */
   var _useState227 = useState(3000),
@@ -7192,7 +7192,7 @@ export var BroTown = function BroTown(_ref0) {
 
   /* Legacy fishing/campfire/woodcutting systems removed — replaced by §18 Life Skills */
 
-  /* Shield — v2.3.2229: one module owns raise/drop (game/shieldToggle.js);
+  /* Shield — v2.3.2242: one module owns raise/drop (game/shieldToggle.js);
      this wrapper is what the desktop Q key reaches through _desktopShieldOn. */
   var doShield = useCallback(function () {
     raiseShieldToggle(stateRef.current);
@@ -7232,7 +7232,7 @@ export var BroTown = function BroTown(_ref0) {
       localStorage.setItem('bt_rpg', JSON.stringify(R));
     } catch (e2) {}
   }, []);
-  /* v2.3.2232: _tapResourceAt is gone with the shell it opened -- resources
+  /* v2.3.2245: _tapResourceAt is gone with the shell it opened -- resources
      are detected by perimeter (S._proxNode -> S._nearNode in the loop) and
      harvested from the right button.  A tap on bare ground still unlocks. */
 
@@ -7454,7 +7454,7 @@ export var BroTown = function BroTown(_ref0) {
     doShield();
   }, [doShield]);
   var _desktopShieldOff = useCallback(function () {
-    dropShield(stateRef.current, 'key');   /* v2.3.2229: shared drop path */
+    dropShield(stateRef.current, 'key');   /* v2.3.2242: shared drop path */
   }, []);
   var _desktopCycleWeapon = useCallback(function () {
     var _S2$rpg$weapon, _S2$rpg$rangedWeapon;
@@ -7568,9 +7568,9 @@ export var BroTown = function BroTown(_ref0) {
   var joystickActive = useRef(false);
   var lTouchId = useRef(null);
   var rJoyRef = useRef(null);
-  var rLabelRef = useRef(null);   /* v2.3.2229: the button's contextual label */
-  var rCueRef = useRef(null);     /* v2.3.2232: the harvest tool frame on the button */
-  var rRingRef = useRef(null);    /* v2.3.2232: the wind-up / reps ring */
+  var rLabelRef = useRef(null);   /* v2.3.2242: the button's contextual label */
+  var rCueRef = useRef(null);     /* v2.3.2245: the harvest tool frame on the button */
+  var rRingRef = useRef(null);    /* v2.3.2245: the wind-up / reps ring */
   var rJoyActive = useRef(false);
   var rTouchId = useRef(null);
   var lTrail = useRef([]);
@@ -7585,7 +7585,7 @@ export var BroTown = function BroTown(_ref0) {
   var lJoyPreviewRef = useRef(null);
   var rTapState = useRef({ lastEndAt: 0, lastX: 0, lastY: 0, startAt: 0, startX: 0, startY: 0, moved: false });
   var lTapState = useRef({ lastEndAt: 0, lastX: 0, lastY: 0, startAt: 0, startX: 0, startY: 0, moved: false });
-  /* v2.3.2229: rShieldGesture / rPreviewTimer / rJoyPreviewRef / rKnobRef /
+  /* v2.3.2242: rShieldGesture / rPreviewTimer / rJoyPreviewRef / rKnobRef /
      rStickRef / shieldJoyRef / shieldTouchId / shieldJoyActive are gone with
      the double-tap-hold gesture and the stick sprites. */
   var lPreviewTimer = useRef(null);
@@ -7657,7 +7657,7 @@ export var BroTown = function BroTown(_ref0) {
     S.stickY = 0;
   }, []);
 
-  /* ═══ v2.3.2229: THE RIGHT CONTROL IS A BUTTON ═══
+  /* ═══ v2.3.2242: THE RIGHT CONTROL IS A BUTTON ═══
      Owner: "The right thumbstick no longer acts as independent rotation
      angle. It becomes a slightly larger contextual button ... Right button
      will be held down to auto attack. The swipe on button will continue to
@@ -7792,7 +7792,7 @@ export var BroTown = function BroTown(_ref0) {
       var r = c.getBoundingClientRect();
       return { x: clientX - r.left, y: clientY - r.top };
     };
-    /* v2.3.2232: isGestureTouch is gone -- the harvest gesture is performed on
+    /* v2.3.2245: isGestureTouch is gone -- the harvest gesture is performed on
        the right button (ExtractionSwipeLayer anchors on .bt-rjoy-base), so no
        world-space touch is ever a gesture touch. */
     var isSelfTouch = function (clientX, clientY) {
@@ -7819,8 +7819,8 @@ export var BroTown = function BroTown(_ref0) {
        sits inside exactly that circle — so "touch the resource to open
        its menu" opened chat instead.  Resource wins when its art is under
        the finger; a self-tap on bare character still opens chat. */
-    var tapResourceAtClient = function (clientX, clientY) { return false; };   /* v2.3.2232: no tap-to-harvest */
-    /* (v2.3.2232: the client-coordinate wrapper went with _tapResourceAt.) */
+    var tapResourceAtClient = function (clientX, clientY) { return false; };   /* v2.3.2245: no tap-to-harvest */
+    /* (v2.3.2245: the client-coordinate wrapper went with _tapResourceAt.) */
     var openSelfChat = function () {
       try {
         var _busC = window.__broDashPanelBus;
@@ -7895,7 +7895,7 @@ export var BroTown = function BroTown(_ref0) {
       e.preventDefault();
       e.stopPropagation();
       var t = e.changedTouches[0];
-      /* v2.3.2232: the harvest gesture lives on the right button now, so the movement zone cedes nothing. */
+      /* v2.3.2245: the harvest gesture lives on the right button now, so the movement zone cedes nothing. */
       /* v2.3.1307: the v2.3.1283 "movement collapses the sheet"
          interlock is REMOVED (owner: players may just want to play
          with menus open).  The joystick zones end above the sheet
@@ -8021,14 +8021,14 @@ export var BroTown = function BroTown(_ref0) {
         }
       }
     };
-    /* ═══ v2.3.2229: THE RIGHT HALF FORWARDS TAPS; THE BUTTON FIGHTS ═══
+    /* ═══ v2.3.2242: THE RIGHT HALF FORWARDS TAPS; THE BUTTON FIGHTS ═══
        rZoneRef (the whole right half, z6) used to BE the combat input: any
        touch there was a relative drag that aimed and auto-attacked, a
        double-tap-and-hold raised the shield, a flick was the special.  The
        owner replaced the stick with a button, so the zone keeps exactly one
        job -- forwarding a short tap to the canvas (tap a monster to lock on
        manually, tap yourself to chat, tap a resource) -- and the DISC
-       (rJoyRef, pointerEvents:auto since v2.3.2229) takes press / hold /
+       (rJoyRef, pointerEvents:auto since v2.3.2242) takes press / hold /
        flick.  Drags on the zone do nothing: the dodge is the LEFT-side
        swipe and the owner kept it there. */
     var rS = function rS(e) {
@@ -8097,7 +8097,7 @@ export var BroTown = function BroTown(_ref0) {
       rJoyActive.current = true;
       bSwipe.sx = t.clientX; bSwipe.sy = t.clientY; bSwipe.st = Date.now();
       bSwipe.lx = 0; bSwipe.ly = 0; bSwipe.lt = 0;
-      /* ═══ v2.3.2232: THE BUTTON IS CONTEXTUAL ═══
+      /* ═══ v2.3.2245: THE BUTTON IS CONTEXTUAL ═══
          A harvest in progress owns the button: the press is the gesture
          (ExtractionSwipeLayer takes it at the pointer level), not a swing.
          A resource in reach with no monster in the perimeter: the press
@@ -8133,7 +8133,7 @@ export var BroTown = function BroTown(_ref0) {
       var t = findT(e.changedTouches, bTouchId.current);
       if (!t) return;
       bTouchId.current = null;
-      /* v2.3.2232: a harvest press is not a swing and its release is not a
+      /* v2.3.2245: a harvest press is not a swing and its release is not a
          flick -- a fast chop on the button must never fire the special. */
       if (bSwipe.harvest) { bSwipe.harvest = false; rJoyActive.current = false; return; }
       /* Flick detection -- last-leg speed (recent burst) OR
@@ -8223,7 +8223,7 @@ export var BroTown = function BroTown(_ref0) {
         passive: false
       });
     }
-    /* v2.3.2229: the BUTTON's own listeners.  touchstart on the disc
+    /* v2.3.2242: the BUTTON's own listeners.  touchstart on the disc
        (stopPropagation keeps it off the zone beneath); move/end at the
        window so a flick may run off the disc, exactly as the stick's did. */
     var bBase = rJoyRef.current;
@@ -8241,7 +8241,7 @@ export var BroTown = function BroTown(_ref0) {
         passive: false
       });
     }
-    /* v2.3.2229: the legacy shield joystick (sS/sM/sE on shieldJoyRef) is
+    /* v2.3.2242: the legacy shield joystick (sS/sM/sE on shieldJoyRef) is
        gone -- the shield is ShieldButton, a toggle, no handlers here. */
     return function () {
       window.removeEventListener('touchstart', _stampInput, { capture: true });
@@ -8266,7 +8266,7 @@ export var BroTown = function BroTown(_ref0) {
         window.removeEventListener('touchcancel', bE);
       }
     };
-  }, [showNameModal, showLogin, bootPhase, handleJoystickMove, handleJoystickEnd, handleRJoyMove, handleRJoyEnd, handleCanvasSwipe]);   /* v2.3.1869; v2.3.2229: handleShieldMove gone */
+  }, [showNameModal, showLogin, bootPhase, handleJoystickMove, handleJoystickEnd, handleRJoyMove, handleRJoyEnd, handleCanvasSwipe]);   /* v2.3.1869; v2.3.2242: handleShieldMove gone */
 
   /* Keep keyboard open — focus input when game starts and periodically re-focus */
   useEffect(function () {
@@ -9101,7 +9101,7 @@ export var BroTown = function BroTown(_ref0) {
                landed on a resource (opens its shell, or warns that it's
                too far).  Monsters keep priority: one standing in front
                of a tree is still the thing you meant to tap. */
-            /* v2.3.2232: no tap-to-harvest; the button offers what is in reach. */
+            /* v2.3.2245: no tap-to-harvest; the button offers what is in reach. */
           }
           ct.id = null;
           break;
@@ -9405,7 +9405,7 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.1448: resources come after the creature checks — a click on
          a resource opens its shell (or warns it's out of reach) instead
          of falling through to the unlock branch. */
-      /* Tap on empty space = unlock (v2.3.2232: resources are no longer tappable) */
+      /* Tap on empty space = unlock (v2.3.2245: resources are no longer tappable) */
       S.lockedTarget = null;
     }
   }), achievementMsg && Date.now() - achievementMsg.ts < 3000 && /*#__PURE__*/React.createElement("div", {
@@ -10991,7 +10991,7 @@ export var BroTown = function BroTown(_ref0) {
       setShowFurniture(true);
       BT_AUDIO.enterBuilding();
     }
-  }, "\uD83E\uDE91 Furniture Workshop"), /* v2.3.2232: the mid-screen harvest shell (#bt-node-prompt, the painted brass-on-navy pill that followed the node) is GONE -- the right button reads HARVEST when a resource is in reach and starts the harvest on a tap (bS in the touch effect). */ null, /*#__PURE__*/React.createElement(ExtractionSwipeLayer, {
+  }, "\uD83E\uDE91 Furniture Workshop"), /* v2.3.2245: the mid-screen harvest shell (#bt-node-prompt, the painted brass-on-navy pill that followed the node) is GONE -- the right button reads HARVEST when a resource is in reach and starts the harvest on a tap (bS in the touch effect). */ null, /*#__PURE__*/React.createElement(ExtractionSwipeLayer, {
     stateRef: stateRef,
     onSuccess: _succeedExtraction
   }), /* v2.3.1235: removed a literal "e.preventDefault();" STRING child —
@@ -11495,7 +11495,7 @@ export var BroTown = function BroTown(_ref0) {
      and z-index 6 so they sit over the world canvas but under all HUD
      (z>=20).  bt-desktop-hide drops them on desktop so the mouse reaches the
      canvas. */
-  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rLabelRef: rLabelRef, rCueRef: rCueRef, rRingRef: rRingRef, isLandscape: isLandscape }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until their milestone level unlocks them (AbilityButtons.jsx). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2229: the shield is a toggle button under the Attack button; it shows itself during combat (ShieldButton.jsx). */ /*#__PURE__*/React.createElement(ShieldButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2230: the target-switch arrows flank it while two or more monsters are in the perimeter (TargetArrows.jsx). */ /*#__PURE__*/React.createElement(TargetArrows, { stateRef: stateRef, isLandscape: isLandscape })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
+  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rLabelRef: rLabelRef, rCueRef: rCueRef, rRingRef: rRingRef, isLandscape: isLandscape }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until their milestone level unlocks them (AbilityButtons.jsx). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2242: the shield is a toggle button under the Attack button; it shows itself during combat (ShieldButton.jsx). */ /*#__PURE__*/React.createElement(ShieldButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2243: the target-switch arrows flank it while two or more monsters are in the perimeter (TargetArrows.jsx). */ /*#__PURE__*/React.createElement(TargetArrows, { stateRef: stateRef, isLandscape: isLandscape })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
      Not a style choice — a hard requirement this cost a round of QA to
      find.  .brotown-wrap is position:fixed, and Chrome treats that as its
      own stacking context, so EVERY element inside it is confined to one

@@ -2,7 +2,7 @@ import React from 'react';
 import { TARGET_PERIMETER_PX } from '@/data/index.js';
 import { toggleShield, shieldButtonLive } from '@/game/shieldToggle.js';
 
-/* ═══ v2.3.2229: THE SHIELD BUTTON ═══
+/* ═══ v2.3.2242: THE SHIELD BUTTON ═══
  *
  * Owner: "It'll be its own shield button that appears below the right button
  * during combat. Tapping it once holds the shield, tapping it again
@@ -32,7 +32,7 @@ import { toggleShield, shieldButtonLive } from '@/game/shieldToggle.js';
 const SHIELD_SPRITE = '/sprites/shields/wood-shield-front.png?v=2.3.1875';
 
 /* The disc's geometry, shared with TouchControls (right:50, bottom:+70,
-   96/108 wide since v2.3.2229). */
+   96/108 wide since v2.3.2242). */
 export const RBTN = { right: 50, bottom: 70, w: 96, wLand: 108 };
 
 export function ShieldButton(props) {

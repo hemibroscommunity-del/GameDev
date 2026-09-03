@@ -172,7 +172,7 @@ The cap only binds when he cannot reach you; the floor is what you feel in a
 normal fight, because arrival ends the pile as soon as the floor has passed.
 
 
-## v2.3.2231 — the pile hurts to touch, and it is slower
+## v2.3.2244 — the pile hurts to touch, and it is slower
 
 Owner: "Snowman burrow speed will decrease by 50% and target to the player
 again (move towards them) but this time when the snowman touches you you
