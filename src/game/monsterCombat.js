@@ -1395,10 +1395,58 @@ export function updateMonsterCombat(S, deps) {
                    v2.3.1979: ...and at the RENDERED position the hit-test
                    uses, so the shot does not lead a walking monster's hitbox. */
                 var _lockPt = lockAimPoint(S.lockedTarget && S.lockedTarget.ref);
+                /* ═══ v2.3.2260: THE SHOT GOES WHERE THE BODY IS POINTING ═══
+                   Owner: "Right now the flight path behavior of the bow and
+                   magic are both broken.  The line of site is stuck in a
+                   straight path either vertically or horizontally" -- clarified
+                   as the FLIGHT PATH, not the (correctly invisible) sight beam.
+
+                   This chain's last branch was `S._facing` quantised to four
+                   angles, and four is exactly what the owner was describing.
+                   FOUR separate mechanisms all arrive here, which is why it
+                   reads as "always broken" rather than "broken sometimes":
+
+                     1. THE AUTO-LOCK THAT USED TO SUPPLY THE ANGLE IS GONE.
+                        Until v2.3.2258 a bow player inside 220px auto-acquired
+                        a lock and the block above wrote _aimAngle toward it
+                        every frame, so branch one carried every shot.  Gating
+                        auto-targeting to melee (the owner's own rule: "you must
+                        tap on the monster") made UNLOCKED the normal state for
+                        ranged without giving the press-only path a substitute.
+                     2. A PRESS-AND-HOLD NEVER WRITES AN AIM.  rS does not call
+                        rJoyAim -- only rM does, past an 8px dead zone -- so
+                        holding to auto-attack without sweeping leaves _aiming
+                        false.
+                     3. THE DISC SWALLOWS THE THUMB.  v2.3.2258 forced the
+                        contextual button permanently live for ranged, and the
+                        button's handlers do not steer.
+                     4. AND `_facing` IS THE WALK DIRECTION, recomputed from
+                        velocity every frame (visualSystems.js).  So the arrow
+                        tracked the MOVEMENT stick: standing still it repeated
+                        the last walk cardinal, walking it followed the left
+                        thumb.  That is the "stuck on an axis" the owner sees.
+
+                   The fix is at the one point all four converge, and it is not
+                   a new invention -- it is the ladder the RENDERER already uses
+                   to point the body (entityRenderer: `_aimAngle != null ?
+                   _aimAngle : _facingAngle`).  The character has been visibly
+                   aiming one way while the arrow left on another, which is the
+                   same defect seen from the front.  `_facingAngle` is the
+                   smoothed CONTINUOUS heading that sits beside the quantised
+                   `_facing`, so the fallback stops being one of four angles.
+
+                   The stale-aim branch is deliberate: handleRBtnRelease clears
+                   `_aiming` but leaves `_aimAngle`, so an aim you set a moment
+                   ago is still the last direction you asked for, and it is
+                   already what the body is drawn pointing at.  Refusing to
+                   shoot along it while drawing the character aiming down it is
+                   the disagreement being closed. */
                 if (_lockPt) {
                   arrAngle = Math.atan2(_lockPt.y - _shotY, _lockPt.x - _shotX);
-                } else if (S._aiming && S._aimAngle != null) {
+                } else if (S._aimAngle != null) {
                   arrAngle = S._aimAngle;
+                } else if (typeof S._facingAngle === 'number') {
+                  arrAngle = S._facingAngle;
                 } else {
                   var fd = S._facing || 'down';
                   arrAngle = fd === 'right' ? 0 : fd === 'up' ? -Math.PI / 2 : fd === 'left' ? Math.PI : Math.PI / 2;

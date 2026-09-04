@@ -169,7 +169,22 @@ export function specialAttack(S) {
     S._hasUsedSwipe = true;
     var hasElement = activeWpn.element2 || activeWpn.element1;
     /* Aim direction — use finger swipe direction from right joystick, or locked target, or facing */
-    var aimAng = S._aimAngle || 0;
+    /* ═══ v2.3.2260: THE SPECIAL HAD ITS OWN FALLBACK, AND IT WAS DUE EAST ═══
+       The comment above says "or facing" and the code never did: `|| 0` is 0
+       RADIANS, so a bow or magic player who had never dragged the right stick
+       and had no lock fired every special horizontally, to the right.  That is
+       the second half of the owner's "stuck in a straight path either
+       vertically or horizontally" -- the ordinary auto-attack supplied the
+       vertical-or-horizontal (monsterCombat's 4-way `_facing` fallback) and
+       THIS supplied the horizontal, by a different code path with a different
+       floor, in the same fight.
+       Fixing only the auto-attack would have left the specials pointing east,
+       which is why this is here and not in a follow-up.  Same ladder as the
+       fire site and as the renderer's own body-facing: the aim you last set,
+       else the smoothed continuous heading, and 0 only if the player has
+       genuinely never faced anywhere.  The lock override below still wins. */
+    var aimAng = (S._aimAngle != null) ? S._aimAngle
+      : (typeof S._facingAngle === 'number' ? S._facingAngle : 0);
     /* v2.3.1111: aim at the body centre (see monsterCombat aim note).
        v2.3.1979: through lockAimPoint, which reads the RENDERED position the
        hit-test uses and returns null (rather than the world origin) when the

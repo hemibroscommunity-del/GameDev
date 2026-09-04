@@ -269,14 +269,29 @@ export function updateArrows(S, deps) {
                rides the bow grip and follows the aim, because it has not been
                loosed yet.  The stamp happens on the first frame after release.
 
-               STAFF BOLTS ARE LEFT HOMING.  The owner scoped this to "bow
-               weapons", and magic tracking is the staff's own character; they
-               have no `fromGrip` so they release immediately and would be the
-               bigger behaviour change of the two.  Flagged rather than assumed.
                v2.3.1425's stuck-in-monster arrows return above this line and
                never reach it; planting (below) already flies in absolute world
-               coords and is unaffected. */
-            var _straight = _released && !a.isStaff;
+               coords and is unaffected.
+
+               ═══ v2.3.2260: AND MAGIC FLIES STRAIGHT TOO ═══
+               v2.3.2258 left staff bolts homing and said so, on the reading
+               that the owner had scoped the request to "bow weapons".  The
+               follow-up settles it the other way: "the flight path behavior of
+               the bow and magic are BOTH broken", so both keep the line they
+               were fired on.
+
+               This is also load-bearing rather than cosmetic.  The same
+               version's fix for the cardinal flight path makes `_aiming` and
+               `_aimAngle` live for ranged again, and `freeAim` above is
+               `S._aiming ? S._aimAngle : null` -- re-read on EVERY frame by
+               every projectile that is not a released bow arrow.  Left as it
+               was, turning the aim back on would have silently restored
+               mid-flight steering to every staff bolt, to the three-orb
+               special line (v2.3.2259 -- the orbs would fan apart as the thumb
+               moved, undoing "the same linear path"), and to the retreat cone.
+               So the two changes have to ship together: the aim comes back,
+               and the projectiles stop listening to it after release. */
+            var _straight = _released;
             if (_straight && a._pathX == null) {
               /* First frame after release: freeze the launch point in ABSOLUTE
                  world coords, the grip offset included, and keep whatever angle

@@ -3717,6 +3717,21 @@ export class EffectsRenderer {
         && (aimState || meleeSwinging)
         && S.player
         && !S._shieldUp; /* shield arc has its own indicator; don't overlap */
+      /* ═══ v2.3.2260: THE PROBE, BECAUSE THE FIX NEXT DOOR THREATENS THIS ═══
+         "There is no visible line of site anymore (which is how I want it for
+         both magic and bow)" is a promise, and the same version's cardinal-aim
+         fix works by making `_aiming` / `_aimAngle` live for ranged again --
+         which is exactly the family of values `aimState` is built from.  The
+         beam is safe because `!isRanged` short-circuits first, but "safe by
+         operator precedence" is the kind of thing a later edit reorders without
+         noticing.  Asserted from outside now (mp-aimpath), in the house style
+         (__btAtkMark, __btPlayerDrawn): a scenario cannot look at a polygon
+         that was never drawn, so the renderer reports whether it drew it. */
+      if (typeof window !== 'undefined') {
+        window.__btSightBeam = function () {
+          return { visible: !!shouldDraw, ranged: !!isRanged, aimState: !!aimState, slot: slot || null };
+        };
+      }
       /* v2.3.940: melee shows its wild-swing AoE shape (a 360° core circle + a
          forward half-disc) instead of the reach beam, so the indicator matches
          the new melee hit shape exactly (shared GS_* constants).  (v2.3.939
