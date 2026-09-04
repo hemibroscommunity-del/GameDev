@@ -347,71 +347,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('performing the special retires its lesson',
     !afterSpecial || afterSpecial.id !== 'special', { afterSpecial, firedTrk });
 
-  /* ── 5. the block lesson: find the button, raise it once ──
-     v2.3.2242: the double-tap-and-HOLD + full-circle sweep is gone; the
-     shield is a toggle button under Attack that appears while a fight is on.
-     So the lesson is two beats -- the mark tells you where the button will
-     be, and the first raise finishes it. */
-  const c4 = await waitCoach(P, 'block');
-  rec.ok('with a shield on, the block lesson appears', !!(c4 && c4.id === 'block'), c4);
-  rec.ok('...and it teaches the TAP on the shield button, not a hold or a turn',
-    !!(c4 && /tap/i.test(c4.text) && !/hold/i.test(c4.text) && !/turn|around|circle/i.test(c4.text)), c4 && c4.text);
-  await P.page.screenshot({ path: 'tools/qa/mp/out/coach-3-block.png' });
-  /* Bring a monster close so the shield button exists to be pointed at. */
-  await P.page.evaluate(() => {
-    const S = window._gameState.current;
-    S._serverMonsters = false;
-    S.monsters = [{
-      id: 'qa_coach_m', arch: 'fodder', archetype: 'fodder', type: 'fodder',
-      x: S.player.x + 70, y: S.player.y, renderX: S.player.x + 70, renderY: S.player.y,
-      spawnX: S.player.x + 70, spawnY: S.player.y, targetX: S.player.x + 70, targetY: S.player.y,
-      hp: 500, curHp: 500, maxHp: 500, dmg: 0, level: 1, gold: 0,
-      /* spd/vx/vy are not optional for a client-driven (town) fixture: the
-         local AI steps x += dir * spd, and an undefined spd is NaN by the
-         next frame -- which is how the first cut of this saw m.x === null. */
-      spd: 0, vx: 0, vy: 0,
-      alive: true, statuses: {}, _hitThisSwing: false, _atkCd: 0, _stunUntil: 0,
-      respawnAt: 0, moveTimer: 0, _stuckArrows: [],
-    }];
-  });
-  await P.page.waitForTimeout(700);
-  const shieldBtn = await rectOf(P, '[data-shield]');
-  const shieldDiag = await P.page.evaluate(() => {
-    const S = window._gameState.current;
-    const el = document.querySelector('[data-shield]');
-    const m = (S.monsters || [])[0];
-    return { el: !!el, box: el ? el.getBoundingClientRect().toJSON() : null,
-      shield: !!(S.rpg && S.rpg.shield), monsters: (S.monsters || []).length,
-      dist: m && S.player ? Math.round(Math.hypot(m.x - S.player.x, m.y - S.player.y)) : null,
-      mx: m && m.x, my: m && m.y, px: S.player && S.player.x, py: S.player && S.player.y,
-      probe: window.__btShieldBtn ? window.__btShieldBtn() : 'no-probe',
-      alive: m ? m.alive : null, zone: S.currentZone, serverMon: S._serverMonsters };
-  });
-  rec.ok('a monster in range puts the shield button on screen (guard)', !!shieldBtn, shieldDiag);
-  if (!shieldBtn) { await P.ctx.close().catch(() => {}); return; }
-  const c4b = await coach(P);
-  if (shieldBtn && c4b && c4b.id === 'block' && c4b.ring) {
-    const dx = Math.abs((c4b.ring.left + c4b.ring.width / 2) - (shieldBtn.left + shieldBtn.width / 2));
-    const dy = Math.abs((c4b.ring.top + c4b.ring.height / 2) - (shieldBtn.top + shieldBtn.height / 2));
-    rec.ok('the mark moves onto the SHIELD button once it exists', dx < 6 && dy < 6, { ring: c4b.ring, shieldBtn, dx, dy });
-  }
-  /* Not finished until it is actually raised. */
-  const heldTrk = await P.page.evaluate(() => window.__btCoach && window.__btCoach());
-  rec.ok('seeing the button does not finish the lesson', !!(heldTrk && !heldTrk.raised), heldTrk);
-  await P.page.evaluate(() => {
-    const e = document.querySelector('[data-shield]');
-    const r = e.getBoundingClientRect();
-    window.__touch(e, 'touchstart', r.x + r.width / 2, r.y + r.height / 2, 34);
-    window.__touch(e, 'touchend', r.x + r.width / 2, r.y + r.height / 2, 34);
-  });
-  await P.page.waitForTimeout(500);
-  const sweptTrk = await P.page.evaluate(() => window.__btCoach && window.__btCoach());
-  rec.ok('tapping the shield button raises it (tracker sees it)', !!(sweptTrk && sweptTrk.raised), sweptTrk);
-  const afterBlock = await coach(P);
-  rec.ok('raising the shield once finishes the lesson',
-    !afterBlock || afterBlock.id !== 'block', { afterBlock, sweptTrk });
-  await P.page.evaluate(() => { const S = window._gameState.current; S._shieldUp = false; S.monsters = []; S.lockedTarget = null; });
-
   /* ── 5b. the turn-in pays two more weapons, and that is two more lessons ──
      Owner: "When player turns in quest and receives bow and staff there should
      be a tutorial requiring you equip them all and double tap the left joystick
@@ -515,6 +450,113 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('going round all three retires the lesson',
     !afterCycle || afterCycle.id !== 'cycle', afterCycle);
 
+  /* ── 5c. THE GUARD LESSON, WHICH MOVED HERE (v2.3.2269) ──
+     Owner: "Move the tutorial bit about raising the shield and alter it so that
+     it talks about the new controls (BOW and STAFF only).  It would make
+     perfect sense to have this portion right after turning in the first quest
+     to be seated with the bow and staff."
+
+     So it is tested where it now lives -- after 5b, which is the turn-in that
+     pays the bow and the staff -- and it tests the NEW gesture: a double tap on
+     the Attack button raises the guard, and it latches.  The old section that
+     stood at 5 drove the melee ShieldButton and is gone with the lesson it
+     described.
+
+     THE SLOT IS THE POINT.  The lesson is bow/staff-only and its tracker now
+     requires the slot to match, so this drives the gesture with the BOW active.
+     A melee raise must NOT complete it -- asserted below, because that is the
+     failure the tracker change exists to prevent and it is invisible otherwise. */
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const R = S.rpg;
+    R.activeSlot = 'ranged';
+    S._shieldUp = false;
+    S.autoAttack = false;
+    S._rTapAt = 0;
+  });
+  await P.page.waitForTimeout(600);
+  const g1 = await waitCoach(P, 'blockRanged');
+  rec.ok('after the turn-in and the weapons, the GUARD lesson appears',
+    !!(g1 && g1.id === 'blockRanged'), g1);
+  rec.ok('...and it teaches the DOUBLE TAP, not the old shield button',
+    !!(g1 && /double.?tap/i.test(g1.text) && !/shield button/i.test(g1.text)), g1 && g1.text);
+  await P.page.screenshot({ path: 'tools/qa/mp/out/coach-3-guard.png' });
+
+  /* A MELEE raise must not count.  Done first, so the pass below cannot be the
+     residue of this. */
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    S.rpg.activeSlot = 'melee';
+    S._shieldUp = true;
+  });
+  await P.page.waitForTimeout(500);
+  const meleeTrk = await P.page.evaluate(() => window.__btCoach && window.__btCoach());
+  rec.ok('raising the shield with MELEE does not credit a bow/staff lesson',
+    !!(meleeTrk && !meleeTrk.raised), meleeTrk);
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    S._shieldUp = false; S.rpg.activeSlot = 'ranged'; S._rTapAt = 0;
+  });
+  await P.page.waitForTimeout(400);
+
+  /* THE GESTURE ITSELF, through the real button and real touch events -- a
+     scenario that called raiseShieldToggle directly would prove the lesson
+     watches state and nothing about the control the lesson is teaching. */
+  const rBtn = await rectOf(P, '.bt-rjoy-base');
+  rec.ok('the Attack button is on screen to double-tap (guard)', !!rBtn, rBtn);
+  if (rBtn) {
+    const tapTwice = async () => P.page.evaluate(() => {
+      const e = document.querySelector('.bt-rjoy-base');
+      const r = e.getBoundingClientRect();
+      const x = r.x + r.width / 2, y = r.y + r.height / 2;
+      window.__touch(e, 'touchstart', x, y, 71);
+      window.__touch(e, 'touchend', x, y, 71);
+      return new Promise((res) => setTimeout(() => {
+        window.__touch(e, 'touchstart', x, y, 72);
+        window.__touch(e, 'touchend', x, y, 72);
+        res(true);
+      }, 90));
+    });
+    await tapTwice();
+    await P.page.waitForTimeout(500);
+    const up = await P.page.evaluate(() => {
+      const S = window._gameState.current;
+      return { shieldUp: !!S._shieldUp, slot: S.rpg && S.rpg.activeSlot,
+        coach: window.__btCoach && window.__btCoach() };
+    });
+    rec.ok('double-tapping Attack with the bow out RAISES the guard', up.shieldUp === true, up);
+    rec.ok('...and the lesson counts it', !!(up.coach && up.coach.raised), up.coach);
+    const afterGuard = await coach(P);
+    rec.ok('...and retires', !afterGuard || afterGuard.id !== 'blockRanged', { afterGuard, up });
+
+    /* IT LATCHES.  "Instead of needing to hold it down to keep shield up though
+       just leave the shield up" -- the fingers are long since off the button. */
+    await P.page.waitForTimeout(900);
+    const still = await P.page.evaluate(() => !!window._gameState.current._shieldUp);
+    rec.ok('the guard STAYS up with no finger on the control', still === true, { still });
+
+    /* AND A SINGLE TAP ENDS IT, which is the owner's "tap the right joystick
+       again, attack" -- on this weapon they are the same control, so one tap
+       both shoots and drops the guard. */
+    await P.page.evaluate(() => {
+      const e = document.querySelector('.bt-rjoy-base');
+      const r = e.getBoundingClientRect();
+      const x = r.x + r.width / 2, y = r.y + r.height / 2;
+      window.__touch(e, 'touchstart', x, y, 73);
+      window.__touch(e, 'touchend', x, y, 73);
+    });
+    await P.page.waitForTimeout(600);
+    const down = await P.page.evaluate(() => {
+      const S = window._gameState.current;
+      return { shieldUp: !!S._shieldUp, why: S._shieldDroppedWhy };
+    });
+    rec.ok('a single tap afterwards drops the guard again', down.shieldUp === false, down);
+  }
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    S._shieldUp = false; S.monsters = []; S.lockedTarget = null;
+  });
+
   /* ── 6. it is over when the lessons are learned ── */
   /* ═══ v2.3.2147: TWO MORE LESSONS TO LEARN FIRST ═══
      The coach gained a Login Key step and a tap-to-chat step after the shield
@@ -566,7 +608,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
      completing — the coach going quiet proves nothing on its own, because a
      lesson that never becomes LIVE is also quiet. */
   rec.ok('every lesson is written down by name',
-    !!remembered && ['equip', 'special', 'block', 'equipAll', 'cycle']
+    /* v2.3.2269: `block` became `blockRanged` -- a different gesture on a
+       different weapon, so a new id, which is also what makes the lesson show
+       again to a player who had already learned the melee one. */
+    !!remembered && ['equip', 'special', 'blockRanged', 'equipAll', 'cycle']
       .every((k) => new RegExp('"' + k + '":true').test(remembered)),
     remembered);
 

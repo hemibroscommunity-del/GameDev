@@ -74,6 +74,34 @@ import { discHeld, discHoldProbe } from '@/game/controlVisibility.js'; /* v2.3.2
  * would paint both sticks), and it does not fire on touchmove -- so a long drag
  * would not refresh it, which is the one case this must handle. */
 export const JOY_FADE_MS = 2000;
+/* ═══ v2.3.2269: THE GUARD COMES BACK TO THE RIGHT CONTROL, FOR BOW AND STAFF ═══
+ * Owner: "when BOW or STAFF (magic) are equipped, enable the double tap for
+ * raising shield.  Instead of needing to hold it down to keep shield up though
+ * just leave the shield up until you tap the right joystick again, attack, or
+ * make a dodge move."
+ *
+ * ALMOST ALL OF THIS ALREADY EXISTS, which is why the change is one branch.
+ * v2.3.2242 made the shield a LATCH (shieldToggle.js: raise, and it stays up),
+ * and all three exits the owner names are already wired and have been since
+ * then: a dodge drops it (game/dodge.js), an attack drops it (monsterCombat's
+ * auto-attack loop and playerActions, three sites, all `dropShield(S,
+ * 'attack')`), and tapping the control is an attack.  What v2.3.2242 removed --
+ * and what he is asking back for -- is the RAISE gesture on this control; it
+ * went because it was a double-tap-and-HOLD, and the hold is the half he does
+ * not want either.  So: the double tap returns, the hold does not.
+ *
+ * MEASURED FROM PRESS TO PRESS, not release to release like the left stick's
+ * cycle gesture.  Two reasons.  The window then spans a whole tap (down, up,
+ * down) rather than the gap between two, so it needs to be wider than the
+ * left's 220 -- 300 is two comfortable phone taps.  And the guard goes up on
+ * the second touch-DOWN, which is when the player expects it, rather than
+ * waiting for them to lift.
+ *
+ * handleRBtnPress is the only correct home for it: its own note says it is
+ * "the one place that sees every press on this side" -- both the zone's rS and
+ * the disc's bS come through it -- so a classifier anywhere else would miss
+ * half the presses. */
+export const RBTN_DBL_MS = 300;
 import { raiseShieldToggle, dropShield, shieldAimAngle } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { DuelRequestPanel } from './panels/DuelRequestPanel.jsx';
 import { ThreatIncomingPanel } from './panels/ThreatIncomingPanel.jsx';
@@ -8244,6 +8272,45 @@ export var BroTown = function BroTown(_ref0) {
        this reads the existing lock rather than re-running the nearest search:
        a monster tapped at bow range, with a slime at your feet, keeps its lock
        -- promoting an already-tapped lock is a no-op. */
+    /* ═══ v2.3.2269: SECOND TAP RAISES THE GUARD (bow and staff only) ═══
+       Scoped on activeSlot, the same classifier targeting.js and the fire path
+       already branch on.  MELEE IS UNTOUCHED: it keeps the ShieldButton toggle
+       v2.3.2242 built for it, and adding a gesture there would collide with the
+       lunge this very function fires on a first tap.
+
+       THE FIRST SHOT STILL GOES OUT, deliberately.  A bow tap fires on press,
+       so the only way to suppress the first of a pair would be to hold every
+       shot for 300ms and see whether a second arrives -- which would put a
+       third of a second of latency on every arrow in the game to serve a
+       gesture used a few times a fight.  So the pair reads as "shoot, then
+       guard", which is also what it looks like on screen.
+
+       AND IT MUST NOT SET autoAttack.  monsterCombat's loop drops the shield
+       whenever autoAttack is true (`if (S.autoAttack && S._shieldUp)
+       dropShield(S, 'attack')`) -- that is the owner's own "attack" exit -- so
+       a raise that left the flag set would be undone by the next tick and the
+       guard would flicker rather than latch.  The press is consumed instead:
+       cleared, returned true, no swing, no lunge.
+
+       `_rTapAt` is zeroed on use so three quick taps read as raise-then-single
+       rather than raise-then-raise.  While the shield is already UP this branch
+       stands aside entirely and the press behaves normally -- it fires, and the
+       loop above drops the guard, which is "attack" and "tap again" arriving as
+       the same gesture because on this weapon they are the same control. */
+    var _slot = S.rpg && S.rpg.activeSlot;
+    if (_slot === 'ranged' || _slot === 'staff') {
+      var _nowTap = Date.now();
+      var _prevTap = S._rTapAt || 0;
+      S._rTapAt = _nowTap;
+      if (!S._shieldUp && _prevTap > 0 && _nowTap - _prevTap <= RBTN_DBL_MS) {
+        S._rTapAt = 0;
+        S.autoAttack = false;
+        setAutoAttack(false);
+        S._aiming = false;
+        try { raiseShieldToggle(S); } catch (e) { /* refused: no shield, or on cooldown */ }
+        return true;
+      }
+    }
     var _lt = S.lockedTarget;
     if (_lt && _lt.ref && _lt.type === 'monster' && _lt.src !== 'tap') {
       S.lockedTarget = { type: 'monster', id: _lt.id, ref: _lt.ref, src: 'tap' };
