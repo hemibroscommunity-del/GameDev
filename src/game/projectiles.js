@@ -290,8 +290,34 @@ export function updateArrows(S, deps) {
                special line (v2.3.2259 -- the orbs would fan apart as the thumb
                moved, undoing "the same linear path"), and to the retreat cone.
                So the two changes have to ship together: the aim comes back,
-               and the projectiles stop listening to it after release. */
-            var _straight = _released;
+               and the projectiles stop listening to it after release.
+
+               ═══ v2.3.2261: ...AND MAGIC IS PUT BACK THE WAY IT WAS ═══
+               Owner: "Magic projectiles still need the ability to change course
+               with the right joystick rotation mid flight" / "Keep bow mechanics
+               the same."  Which is the pre-v2.3.2258 split exactly: the original
+               request that started all of this was scoped to BOW ("the
+               projectile to stay on the original flight path it was shot from"),
+               v2.3.2260 over-applied it to staff, and this puts the line back
+               where the owner drew it.
+
+               `!a.isStaff` restores BOTH halves of the freeze for magic, not
+               just the angle -- the origin too, because _pathX is only stamped
+               inside this branch.  So a staff bolt once again sweeps around the
+               PLAYER rather than around its launch point, which is what it did
+               before v2.3.2258 and therefore what "still need the ability" is
+               describing.  Worth naming because it is a second behaviour riding
+               on one flag: walking after a cast drags the bolt's line along with
+               you.  That was a real defect for BOWS (v2.3.2258's note) and is
+               the accepted cost of homing for magic; if it reads wrong in play
+               it is separable -- keep the origin stamp for staff and re-resolve
+               only the angle.
+
+               THE THREE ORBS STAY COLLINEAR.  They re-resolve a.ang from the
+               same lockPt / freeAim on the same frame, so they sweep together
+               and v2.3.2259's "same linear path" survives -- the line rotates,
+               it does not fan. */
+            var _straight = _released && !a.isStaff;
             if (_straight && a._pathX == null) {
               /* First frame after release: freeze the launch point in ABSOLUTE
                  world coords, the grip offset included, and keep whatever angle

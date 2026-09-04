@@ -275,8 +275,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   console.log(`    staff steer: ${JSON.stringify(steer)} ${JSON.stringify(before)} -> ${JSON.stringify(after)}`);
   if (before && after) {
-    rec.ok(`a magic bolt keeps the line it was fired on when the aim swings (${before.ang.toFixed(3)} -> ${after.ang.toFixed(3)})`,
-      Math.abs(after.ang - before.ang) < 0.02, { before, after });
+    /* ═══ v2.3.2261: INVERTED ON PURPOSE ═══
+       This asserted a magic bolt KEEPS its line, written to v2.3.2260's reading
+       that "bow and magic are both broken" covered the flight path for both.
+       The owner has since drawn the line where it was before v2.3.2258: "Magic
+       projectiles still need the ability to change course with the right
+       joystick rotation mid flight" / "Keep bow mechanics the same."  So magic
+       homes again and the assertion says so -- kept rather than deleted,
+       because a test that once claimed the opposite is the clearest record that
+       this is a decision and not an accident. */
+    rec.ok(`a magic bolt CHANGES COURSE when the aim swings mid-flight (${before.ang.toFixed(3)} -> ${after.ang.toFixed(3)})`,
+      Math.abs(after.ang - before.ang) > 0.2, { before, after, want: -2.2 });
   }
 
   /* ── 5. AND THE SIGHT BEAM IS STILL GONE ──
