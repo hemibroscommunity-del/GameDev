@@ -182,12 +182,34 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...yet both corner boxes still occupy their layout box, so a coach mark can measure them',
     !!vis0R && vis0R.w > 50 && !!vis0L && vis0L.w > 50, { R: vis0R, L: vis0L });
   await P.page.evaluate(() => { const c = window.__centre('[data-joyzone="L"]'); window.__touch(c.el, 'touchstart', c.x, c.y + 40, 30); window.__touch(c.el, 'touchmove', c.x + 30, c.y + 40, 30); });
-  await P.page.waitForTimeout(250);
+  /* ═══ v2.3.2260: 250ms WAS A READ OF THE CROSSFADE, NOT OF THE DECISION ═══
+     This assertion has been failing intermittently (0/4 runs idle, 3/3 under
+     CPU load) and was filed as a real defect.  It is not one: the corner boxes
+     carry `transition: opacity .22s ease` (game.css) and `discVis` reads
+     getComputedStyle, so a 250ms wait samples ~30ms past the end of a 220ms
+     interpolation -- on a loaded machine the frame that finishes the fade has
+     not been painted yet and the probe catches an intermediate value against a
+     `> 0.5` threshold.  Waiting past the transition rather than at its edge is
+     the fix; the resolver was never wrong. */
+  await P.page.waitForTimeout(450);
   const visLdown = await discVis(P, 'L');
   rec.ok('a thumb on the movement side paints the left joystick', !!visLdown && visLdown.shown === true, visLdown);
   await P.page.evaluate(() => { const c = window.__centre('[data-joyzone="L"]'); window.__touch(c.el, 'touchend', c.x + 30, c.y + 40, 30); });
+  /* ═══ v2.3.2260: AND IT NO LONGER GOES THE INSTANT THE THUMB LIFTS ═══
+     Owner: "Make the joysticks both each appear when input is detected ... then
+     fade to disappearing after 2 seconds of no input."  So this assertion is
+     inverted at 600ms -- still there is the new correct answer -- and the
+     disappearance is checked past the window instead.  mp-joyfade owns the full
+     rule for both sides and both weapons; these two lines keep this file's own
+     account of the left disc honest rather than silently stale. */
   await P.page.waitForTimeout(600);
-  rec.ok('...and it goes again when the thumb lifts', (await discVis(P, 'L')).shown === false, await discVis(P, 'L'));
+  const visLmid = await discVis(P, 'L');
+  rec.ok('...and it is STILL painted a moment after the thumb lifts (2s fade, v2.3.2260)',
+    !!visLmid && visLmid.shown === true, visLmid);
+  await P.page.waitForTimeout(2000);
+  const visLgone = await discVis(P, 'L');
+  rec.ok('...and it has gone once the 2s of no input have run out',
+    !!visLgone && visLgone.shown === false, visLgone);
 
   /* ── v2.3.2246: press ONE engages, press TWO attacks ── */
   await seedFodder(P, 'qa_rb_1', 60);

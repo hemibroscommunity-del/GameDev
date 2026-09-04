@@ -220,6 +220,7 @@ const SCENARIOS = {
   questkill: () => import('./mp-questkill.mjs'), /* v2.3.1972: the objective EARNED — kill it, and see the drop land */
   harvest: () => import('./mp-harvest.mjs'), /* v2.3.1704: extraction_start reaches the worker + the shield ends */
   ability: () => import('./mp-ability.mjs'), /* v2.3.1733: the stamina abilities reach the worker, and stay locked until their milestone */
+  joyfade: () => import('./mp-joyfade.mjs'), /* v2.3.2260: both sticks appear on input and fade after 2s; the right one stays while contextual */
   aimpath: () => import('./mp-aimpath.mjs'), /* v2.3.2260: bow and magic fly where you point, not along an axis */
   orbline: () => import('./mp-orbline.mjs'), /* v2.3.2259: the magic special is one line of three, and bow/staff start at 80% of the melee starter */
   firegear: () => import('./mp-firegear.mjs'), /* v2.3.1723: the fire-lighter's clothes sit on their body */
