@@ -4546,10 +4546,62 @@ function _broBadgeTexture() {
   return _broBadgeTex;
 }
 
+/* ═══ v2.3.2262: IN-WORLD TEXT IS A SCREEN MEASUREMENT ═══
+ *
+ * Owner: "increase any small font size when the game is zoomed out for stuff in
+ * the game world (name plates is one example)."
+ *
+ * pixiRenderer scales the WHOLE world container by cssW/viewW, so every glyph
+ * in it is multiplied by that too: the 10px name plate is 6 CSS px at the 0.60 a
+ * combat zone runs at, and smaller again with the dashboard open (which is what
+ * makes the world zoom out -- the owner's own discovery, and a keeper).  Nothing
+ * in this file has ever read the world scale.
+ *
+ * Same defect and same fix as v2.3.2255's combat marks: a SIZE that belongs to
+ * the world stays in world units, a size that belongs to the READER does not.
+ * A name is for the reader.
+ *
+ * TWO SCALES, AND ONLY ONE OF THEM IS UNDONE.  The camera zoom is compensated
+ * here.  The zone's own `playerScale` -- the vista perspective curve -- is NOT,
+ * because the plate is supposed to shrink with the figure it belongs to out
+ * there; the comment on the pill's construction says exactly that, and undoing
+ * it would hang full-size plates over the World View's specks.  Those two live
+ * in different places (worldContainer.scale vs display.scale), so compensating
+ * one leaves the other alone by construction.
+ *
+ * AND IT RE-RASTERISES, or it would be bigger AND BLURRIER -- the exact trap
+ * v2.3.1821 documents on this very plate.  A Pixi Text is a texture: growing its
+ * container resamples glyphs generated at the old size.  So the resolution moves
+ * with the scale, capped at 4 (beyond that the texture cost climbs for detail no
+ * screen resolves, and every player in the room carries one).
+ *
+ * Gated on a real change: the zoom moves on a zone change or a dashboard
+ * toggle, not per frame, and re-rasterising a Text every frame would be a
+ * per-entity texture upload. */
+const PLATE_ZOOM_MAX = 2.2;   /* bound the texture cost at extreme zoom-out */
+let _plateZoom = 1;
+export function setPlateZoom(worldScale) {
+  const w = (typeof worldScale === 'number' && worldScale > 0.01) ? worldScale : 1;
+  _plateZoom = Math.min(PLATE_ZOOM_MAX, Math.max(1, 1 / w));
+}
+
+function _fitPlateToZoom(display) {
+  const pill = display && display._namePill;
+  if (!pill) return;
+  if (display._pillZoom === _plateZoom) return;
+  display._pillZoom = _plateZoom;
+  pill.scale.set(_plateZoom);
+  const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+  const res = Math.min(4, Math.max(1, dpr * _plateZoom));
+  if (display._pillName && display._pillName.resolution !== res) display._pillName.resolution = res;
+  if (display._pillLevel && display._pillLevel.resolution !== res) display._pillLevel.resolution = res;
+}
+
 /* Drive one plate.  `visible` false parks it without touching the cache,
    so re-showing costs nothing. */
 function _updateNamePill(display, name, level, visible, broId) {
   if (!display || !display._namePill) return;
+  _fitPlateToZoom(display);
   const key = name + '|' + level + '|' + (broId ? 'v' : '');
   if (display._pillKey !== key) {
     display._pillKey = key;
@@ -8435,6 +8487,30 @@ export class EntityRenderer {
         scale: display.scale && typeof display.scale.y === 'number' ? display.scale.y : null,
         visible: display.visible,
       });
+      /* ═══ v2.3.2262: THE PLATE AS THE SCREEN SEES IT ═══
+         The owner's request is about legibility, which is a SCREEN size --
+         and the plate's own height is in world units, so reading it off the
+         object answers the wrong question (TRAPS §37, measuring a drawing
+         against the box that defines it).  getBounds() walks up through
+         worldContainer, so what comes back already has the camera zoom in it:
+         the number a reader's eye actually gets.
+         `res` rides along because growing a Pixi Text without moving its
+         resolution buys size at the cost of sharpness -- bigger AND blurrier,
+         the v2.3.1821 trap on this very plate -- so a test that checks the
+         size without checking the rasterisation would pass on the bad fix. */
+      window.__btPlateBox = () => {
+        const pill = display._namePill;
+        if (!pill || !pill.visible) return null;
+        let b = null;
+        try { b = pill.getBounds(); } catch (e) { return null; }
+        return {
+          w: b ? Math.round(b.width * 10) / 10 : 0,
+          h: b ? Math.round(b.height * 10) / 10 : 0,
+          zoom: display._pillZoom || 1,
+          res: (display._pillName && display._pillName.resolution) || 0,
+          fontPx: (display._pillName && display._pillName.style && display._pillName.style.fontSize) || 0,
+        };
+      };
     }
     /* Force visibility every frame — same defensive concern as the
        parent re-attach above.
