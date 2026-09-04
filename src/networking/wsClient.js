@@ -2679,7 +2679,22 @@ export function setupWebSocket(ctx) {
         if (document.getElementById('bt-resume-banner')) return;
         var _el = document.createElement('div');
         _el.id = 'bt-resume-banner';
-        _el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#1b2536;color:#fff;font:13px/1.5 sans-serif;padding:10px 12px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.5);';
+        /* ═══ v2.3.2255: THE BANNER CLEARS THE STATUS BAR ═══
+           Owner's screenshot of the installed app: "You were away, so your
+           character logged out." is painted INSIDE the iOS status bar -- the
+           text behind the clock, the middle behind the Dynamic Island, and the
+           "I'm back" button under the battery icon.  Measured off the native
+           capture: the banner occupies CSS y 11..33 on a phone whose top safe
+           area is 59px, so the one control that reconnects the player is both
+           illegible and partly untappable.
+           index.html sets viewport-fit=cover, so drawing under the status bar
+           is the DESIGNED behaviour and every top-pinned element has to clear
+           it for itself.  --sat is resize()'s measured top inset (v2.3.2255),
+           stamped beside --sab; the left/right terms are the same courtesy for
+           a sideways launch, where the Island takes a long edge. */
+        _el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#1b2536;color:#fff;font:13px/1.5 sans-serif;'
+          + 'padding:calc(10px + var(--sat, 0px)) calc(12px + var(--world-pad-r, 0px)) 10px calc(12px + var(--world-pad-l, 0px));'
+          + 'text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.5);';
         _el.textContent = text + ' ';
         var _btn = document.createElement('button');
         _btn.textContent = label;

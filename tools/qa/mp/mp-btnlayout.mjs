@@ -42,7 +42,13 @@ const rects = (P) => P.page.evaluate(() => {
     return { top: Math.round(b.top), bottom: Math.round(b.bottom), left: Math.round(b.left), right: Math.round(b.right), shown };
   };
   /* The dashboard's own top edge: whichever of the band elements is highest. */
-  const dashSel = ['.bt-dashboard', '.bt-bottom-dashboard', '[data-dash]', '.bt-navrail'];
+  const dashSel = ['.bt-dashboard', '.bt-bottom-dashboard', '[data-dash]', '.bt-navrail',
+    /* v2.3.2254: .bt-dashboard above is the same element in BOTH snaps -- it
+       simply grows to `expandedSheetHeight + var(--sab)` when a destination is
+       open (BottomDashboard, v2.3.2198) -- so the expanded rows measure against
+       the real painted top without a second selector.  .bt-land-sheet is the
+       sideways side-panel, kept for the landscape case. */
+    '.bt-land-sheet'];
   let dashTop = null;
   for (const s of dashSel) {
     const el = document.querySelector(s);
@@ -50,6 +56,7 @@ const rects = (P) => P.page.evaluate(() => {
     const b = el.getBoundingClientRect();
     if (b.height > 0 && (dashTop == null || b.top < dashTop)) dashTop = Math.round(b.top);
   }
+  const bus = window.__broDashPanelBus;
   const rootCS = getComputedStyle(document.documentElement);
   const cssBand = rootCS.getPropertyValue('--dash-h');
   const cssSheet = rootCS.getPropertyValue('--sheet-h');
@@ -57,6 +64,7 @@ const rects = (P) => P.page.evaluate(() => {
   return {
     dashTop, cssBand: cssBand.trim(), sheetH: cssSheet.trim(), sab: cssSab.trim(),
     innerH: window.innerHeight,
+    mode: (bus && bus.state && bus.state.mode) || null,
     attack: one('.bt-rjoy-base'), shield: one('[data-shield]'),
     bash: one('[data-ability="bash"]'), whirl: one('[data-ability="whirl"]'),
   };
@@ -84,6 +92,20 @@ const PHONES = [
      standalone launch by overriding the probe"). */
   { width: 390, height: 844, tag: 'iPhone 13 STANDALONE', sab: 34 },
   { width: 430, height: 932, tag: 'iPhone Pro Max STANDALONE', sab: 34 },
+  /* ═══ THE OWNER'S ACTUAL SCREEN (v2.3.2254) ═══
+     A native 1290x2796 screenshot -- an iPhone Pro Max, 430x932 CSS at 3x --
+     with the game installed to the home screen AND the dashboard sheet OPEN
+     on the bag.  Measured off that capture: the band's painted top edge sits
+     at CSS y 581.7, and the shield button (CSS x 308..356, so exactly its 48px
+     width) is CUT OFF there with roughly 18 CSS px of it behind the band.
+
+     The closed-bar rows above did not cover this: stampSheetH takes a
+     DIFFERENT branch when mode === 'expanded' (expandedSheetHeight, not
+     barHeight), so a fix verified with the sheet shut proves nothing about the
+     state the owner is actually playing in.  Both insets, so the expanded
+     branch is pinned with and without the home indicator. */
+  { width: 430, height: 932, tag: 'Pro Max SHEET OPEN', expand: 'bag' },
+  { width: 430, height: 932, tag: 'Pro Max STANDALONE + SHEET OPEN', sab: 34, expand: 'bag' },
 ];
 
 export async function run({ browser, wsPort, webPort, rec }) {
@@ -122,6 +144,10 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
     }];
   });
   await P.page.waitForTimeout(700);
+  if (phone.expand) {
+    await P.page.evaluate((d) => { window.__broDashPanelBus.open(d); }, phone.expand);
+    await P.page.waitForTimeout(900);
+  }
   await P.page.evaluate(() => { const c = window.__centre('[data-shield]'); if (c) { window.__touch(c.el, 'touchstart', c.x, c.y, 20); window.__touch(c.el, 'touchend', c.x, c.y, 20); } });
   await P.page.waitForTimeout(400);
 
@@ -134,6 +160,29 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
   console.log(`    LAYOUT ${tag}: ` + JSON.stringify(r));
   rec.ok(`${tag}: the dashboard band was found (guard)`,
     typeof r.dashTop === 'number' && r.dashTop > 0, r);
+  /* GUARD, and it caught a real silent pass: the first version of the expanded
+     rows measured a sheet that had never opened and went green anyway.  A row
+     that claims to test the open sheet must prove the sheet is open. */
+  rec.ok(`${tag}: guard: the sheet snap is what this row claims (${r.mode})`,
+    r.mode === (phone.expand ? 'expanded' : 'bar'), { mode: r.mode, wanted: phone.expand ? 'expanded' : 'bar' });
+
+  /* ═══ THE ROOT CAUSE, PINNED DIRECTLY (v2.3.2254) ═══
+     Every assertion above is a CONSEQUENCE -- a button that happens to clear a
+     band on one device at one size.  The defect itself is that two numbers
+     describing the same band disagreed: --dash-h counts the home-indicator
+     inset (v2.3.2178) and --sheet-h did not, so the controls hung 34px too low
+     on an installed phone.  Pin the numbers, not just their symptom, and the
+     next person who edits either formula fails here instead of on a phone.
+
+     Portrait only: sideways --dash-h is the inset ALONE (v2.3.2168 removed the
+     band), and the two are equal there for a different reason. */
+  const _band = parseFloat(r.cssBand) || 0, _sheet = parseFloat(r.sheetH) || 0;
+  rec.ok(`${tag}: --sheet-h and --dash-h agree (${_sheet} vs ${_band}) -- the controls hang from the same band the dashboard paints`,
+    Math.abs(_sheet - _band) < 0.6, { sheetH: _sheet, dashH: _band, sab: r.sab });
+  /* ...and the band PAINTS what it claims, so agreeing on a wrong number is
+     not a pass either. */
+  rec.ok(`${tag}: the band paints the height it declares (top ${r.dashTop} vs innerH ${r.innerH} - dash-h ${_band})`,
+    Math.abs(r.dashTop - (r.innerH - _band)) <= 2, { dashTop: r.dashTop, innerH: r.innerH, dashH: _band });
   rec.ok(`${tag}: guard: the shield is up, so the bash button exists`,
     !!r.bash && r.bash.shown === true, r.bash);
 
@@ -159,7 +208,7 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
       || r.bash.right <= r.shield.left || r.bash.left >= r.shield.right,
       { bash: r.bash, shield: r.shield });
   }
-  const slug = `${phone.width}x${phone.height}${phone.sab ? '-standalone' : ''}`;
+  const slug = `${phone.width}x${phone.height}${phone.sab ? '-standalone' : ''}${phone.expand ? '-open' : ''}`;
   await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/btnlayout-${slug}.png` });
 
   /* ═══ SLIDE DOWN FROM ATTACK ONTO THE SHIELD (v2.3.2254) ═══

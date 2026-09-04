@@ -38,7 +38,7 @@
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { dashMinBus } from './dashMinBus.js';
 import { playVw, playVh } from './playViewport.js';
-import { barHeight, expandedSheetHeight, drillSheetHeight, bandFootprint } from './sheet/sheetGeometry.js';
+import { expandedSheetHeight, drillSheetHeight, bandFootprint } from './sheet/sheetGeometry.js'; /* v2.3.2255: barHeight is reached through bandFootprint now, so the fold cannot be forgotten */
 
 /* Why the "has it changed?" test reads the DOM rather than a remembered
    value: a module-local memo would be asserting that this function is the
@@ -86,11 +86,15 @@ export function stampSheetH() {
      before resize() has built it simply sees 0, which is the right answer in
      a browser tab and is repaired by the next watchdog beat regardless.
 
-     NOT folded into the fold arithmetic: portrait-closed keeps barHeight()
-     rather than bandFootprint's folded height, so a minimised band leaves the
-     controls sitting a columns-row higher than they strictly need.  That is a
-     gap, not an occlusion, and narrowing it moves controls in a state nobody
-     has complained about. */
+     AND THE FOLD, which the first cut of this left alone as "a gap, not an
+     occlusion".  That was wrong.  --dash-h honours dashMinBus.min and this did
+     not, so a MINIMISED band left --sheet-h a whole columns row (205px at
+     430pt) taller than the band it describes -- and TouchControls sizes the
+     two joystick ZONES as `calc(100% - var(--sheet-h))`, so that overshoot is
+     not empty space above the controls, it is a strip of visible world at the
+     bottom of the screen that takes no touch input at all.  Ask bandFootprint,
+     which is what --dash-h asks, and the two can no longer disagree in any
+     portrait state.  Unfolded it returns barHeight and nothing moves. */
   let inset = 0;
   try {
     const probe = document.getElementById('bt-sab-probe');
@@ -100,9 +104,9 @@ export function stampSheetH() {
     /* Landscape already IS the inset -- bandFootprint returns it as the whole
        band height there (v2.3.2168), so adding it again would double it. */
     ? bandFootprint(vw, vh, dashMinBus.min, false, inset).dashH
-    : inset + (mode === 'expanded'
-      ? (dashboardPanelBus.state.stack.length > 1 ? drillSheetHeight(vw, vh) : expandedSheetHeight(vw, vh))
-      : barHeight(vw, vh));
+    : (mode === 'expanded'
+      ? inset + (dashboardPanelBus.state.stack.length > 1 ? drillSheetHeight(vw, vh) : expandedSheetHeight(vw, vh))
+      : bandFootprint(vw, vh, dashMinBus.min, false, inset).dashH);
   const root = document.documentElement;
   if (root.dataset.btSheet !== mode) root.dataset.btSheet = mode;
   const want = px + 'px';

@@ -3448,10 +3448,20 @@ export class EffectsRenderer {
           const _ringHot = !!(S.autoAttack || S.isSwinging
             || (S.swingTimer && Date.now() - S.swingTimer < 420));
           const col = isCur ? (_ringHot ? 0xFF3C3C : 0xD8A85F) : 0xB9C1BF;
+          /* ═══ v2.3.2255: THE LINE WEIGHT IS A SCREEN MEASUREMENT ═══
+             The ring's SIZE is the monster's footprint and stays in world
+             units -- it has to fit the body it belongs to.  Its THICKNESS is
+             not: 1.2 world px at the 0.60 a combat zone now runs at is a 0.72
+             CSS px line, which is under one device pixel on a 1x screen and a
+             grey smear on a 3x one.  That, and not the colour, is why "the red
+             circle is a bit hard to see" survived v2.3.2253's lift -- the lift
+             was in alpha and world width, and world width is the half that the
+             zoom kept taking back. */
+          const _rk = 1 / (S._worldScaleX > 0.01 ? S._worldScaleX : 1);
           _erg.ellipse(mx, my, rx, ry);
-          _erg.stroke({ color: 0x14181A, width: 3.5, alpha: 0.30 * t });
+          _erg.stroke({ color: 0x14181A, width: 3.5 * _rk, alpha: 0.30 * t });
           _erg.ellipse(mx, my, rx, ry);
-          _erg.stroke({ color: col, width: isCur ? 2.1 : 1.2, alpha: (isCur ? 0.75 : 0.34) * t });
+          _erg.stroke({ color: col, width: (isCur ? 2.4 : 1.5) * _rk, alpha: (isCur ? 0.85 : 0.5) * t });
         }
       }
       /* v2.3.2251: the same `_zoneLoading` guard the ground rings take -- marks
@@ -3463,7 +3473,13 @@ export class EffectsRenderer {
            shimmering independently -- a field of out-of-phase carets reads
            as noise, which is the failure being fixed. */
         const _bob = Math.sin(now / 320) * 3;
-        const _pulse = 0.55 + Math.sin(now / 320) * 0.2;
+        /* v2.3.2255: 0.55 +/- 0.2 bottomed the mark out at 0.35 alpha (0.19 for
+           a non-target) -- a mark that pulses down to invisible reads as a
+           flicker, not a state, and on the owner's lava screenshot the trough
+           is simply gone.  Same swing, lifted: 0.56..0.88.  The lock reticle
+           shares this, deliberately -- "the red circle is a bit hard to see"
+           was the other half of the same report. */
+        const _pulse = 0.72 + Math.sin(now / 320) * 0.16;
         /* v2.3.2253: are you ATTACKING?  The thumb on the button (autoAttack)
            or a swing still in flight -- the swing term is what stops the whole
            field flicking back to yellow between swings of a held attack, which
@@ -3512,12 +3528,38 @@ export class EffectsRenderer {
              height in world space; the per-archetype part is the body offset
              already in the term below) without leaving the monster behind. */
           const _off = monsterBodyOffsetY(c.m && (c.m.arch || c.m.archetype || c.m.type)) || 23;
-          const _cy = c.y - _off * 2 - 42 + _bob;
-          /* The TARGET's arrow is the big one -- it is the monster a press
-             takes -- and the rest are a step down.  Size, not colour, carries
-             "which one", because colour is spoken for: see below. */
-          const _w = isTarget ? 8 : 5;
-          const _h = isTarget ? 7 : 4;
+          /* ═══ v2.3.2255: THE MARK IS SIZED IN SCREEN PIXELS, NOT WORLD ONES ═══
+             Owner's screenshot of the Flame Fields, measured off the native
+             1290x2796 capture: the TARGET's arrow -- the big one -- rendered
+             (153,124,79) across image x594..622, y880..890.  That is brass
+             #D8A85F at pulse alpha over dark ground, and it is 9.3 x 3.7 CSS
+             PIXELS.  The other three goblins' arrows (_w 5, alpha _pulse*0.55)
+             come out 6 x 2.4 CSS px at a fifth of full opacity and cannot be
+             found in the image at all.
+
+             The geometry was in WORLD units, so the arrow is whatever the zoom
+             leaves it: 16 world px wide became 9.6 CSS px at the 0.601 a combat
+             zone now runs at.  This is the same defect the chat bubbles had and
+             for the same reason (v2.3.2247, _CHAT_TARGET_PX) -- a label that
+             belongs to the INTERFACE was measured in the world's units, so
+             zooming the world resized the interface.
+
+             And it is why the owner has now reported this twice.  v2.3.2253
+             answered "the red circle is a bit hard to see" by adding arrows and
+             recolouring; mp-arrowshot proved the arrows are DRAWN, which is not
+             the same claim as legible, and a 9px mark on a lava field where the
+             ground is already brass and the monster is already red is not.
+
+             Divide the geometry by the world scale and the numbers below become
+             CSS pixels: 22 across for the target, 15 for the rest.  The pill it
+             has to clear is still world-sized, so the TIP is pinned where
+             v2.3.2253 put it (that offset was chosen by rendering it) and the
+             arrow grows upward from there instead of down onto the nameplate. */
+          const _wsc = S._worldScaleX > 0.01 ? S._worldScaleX : 1;
+          const _k = 1 / _wsc;
+          const _w = (isTarget ? 11 : 7.5) * _k;
+          const _h = (isTarget ? 10 : 7) * _k;
+          const _cy = c.y - _off * 2 - 42 - (_h - 7) + _bob;
           /* KEYLINE FIRST.  Brass (#D8A85F) is a warm sand yellow and so is
              the town cobble -- the first cut of this was legible on grass and
              snow and all but vanished on the town floor, which is also why
@@ -3533,8 +3575,13 @@ export class EffectsRenderer {
             gfx.lineTo(c.x + _w, _cy);
             gfx.stroke({ color: color, width: width, alpha: alpha });
           };
-          const _cw = isTarget ? 2.8 : 1.6;
-          const _ca = isTarget ? _pulse : _pulse * 0.55;
+          const _cw = (isTarget ? 2.8 : 1.9) * _k;
+          /* v2.3.2255: the non-target arrows were _pulse * 0.55, which bottoms
+             out at 0.19 alpha -- on the measured screenshot that is below what
+             survives a lava background at all.  0.78 keeps the target clearly
+             the brighter of the two without spending a third channel on it
+             (size says which one, colour says whether you are attacking). */
+          const _ca = isTarget ? _pulse : _pulse * 0.78;
           /* ═══ v2.3.2253: YELLOW MEANS IN REACH, RED MEANS FIGHTING ═══
              Owner: "the arrow should be yellow if you're merely within combat
              distance and turn red when you're attacking (any close monster
@@ -3544,13 +3591,22 @@ export class EffectsRenderer {
              red".  That is why size and not colour says which one is the
              target: colour is already carrying the other axis, and a mark
              cannot say two things with one channel. */
-          _caret(_cw + 2.5, 0x14181A, _ca * 0.8);
+          /* v2.3.2255: the keyline adds ~1 CSS px of dark EITHER SIDE, and no
+             more.  At the old world widths it was 4.1 against a 1.6 brass --
+             2.6x -- so at combat-zone scale the player saw a dark chevron with
+             a sub-pixel yellow thread inside it, which is exactly what the
+             owner's screenshot shows and why the mark reads as an "X" rather
+             than a yellow arrow.  Brass has to be the wider half of this. */
+          _caret(_cw + 2.0 * _k, 0x14181A, _ca * 0.8);
           _caret(_cw, _atkHot ? 0xFF3C3C : 0xD8A85F, _ca);
           if (isTarget) {
-            gfx.circle(c.x, c.y, 15);
-            gfx.stroke({ color: 0x14181A, width: 3.5, alpha: _pulse * 0.5 });
-            gfx.circle(c.x, c.y, 15);
-            gfx.stroke({ color: _atkHot ? 0xFF3C3C : 0xD8A85F, width: 1.5, alpha: _pulse * 0.85 });
+            /* v2.3.2255: same rule as the ground ring -- the reticle's radius
+               belongs to the monster, its line weight belongs to the screen.
+               1.5 world px was a 0.9 CSS px hairline at combat-zone scale. */
+            gfx.circle(c.x, c.y, 15 * _k);
+            gfx.stroke({ color: 0x14181A, width: 3.5 * _k, alpha: _pulse * 0.5 });
+            gfx.circle(c.x, c.y, 15 * _k);
+            gfx.stroke({ color: _atkHot ? 0xFF3C3C : 0xD8A85F, width: 2.0 * _k, alpha: _pulse * 0.9 });
             /* v2.3.2251: the 220px ring that used to be drawn here is GONE.
                It was the last survivor of the rejected full-radius version and
                it is what the new ground rings replace -- keeping both would

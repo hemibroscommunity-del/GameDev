@@ -3100,11 +3100,21 @@ export var BroTown = function BroTown(_ref0) {
         _sabEl.style.cssText = 'position:fixed;left:-9999px;top:0;'
           + 'padding-bottom:env(safe-area-inset-bottom,0px);'
           + 'padding-left:env(safe-area-inset-left,0px);'
-          + 'padding-right:env(safe-area-inset-right,0px);';
+          + 'padding-right:env(safe-area-inset-right,0px);'
+          /* v2.3.2255: the FOURTH side.  index.html sets viewport-fit=cover so
+             the page draws under the status bar and the Dynamic Island, and
+             nothing read the top inset -- which is why the owner's resume
+             banner renders inside the clock (measured on their screenshot: the
+             banner at CSS y 11..33, the "I'm back" button under the battery,
+             on a phone whose top inset is 59px).  Same probe, one more
+             padding, for the reason the v2.3.2178 note already gives: a second
+             probe is a second thing to keep in sync with resize(). */
+          + 'padding-top:env(safe-area-inset-top,0px);';
         document.body.appendChild(_sabEl);
       }
       var _sabCS = getComputedStyle(_sabEl);
       var _sab = parseFloat(_sabCS.paddingBottom) || 0;
+      var _sat = parseFloat(_sabCS.paddingTop) || 0;   /* v2.3.2255 */
       var _insL = parseFloat(_sabCS.paddingLeft) || 0;
       var _insR = parseFloat(_sabCS.paddingRight) || 0;
       /* ═══ THE DASHBOARD TAKES THE CLEAR EDGE ═══
@@ -3194,6 +3204,12 @@ export var BroTown = function BroTown(_ref0) {
          itself with, and the QA harness simulates a standalone launch by
          overriding the probe exactly as it already simulates an Island. */
       document.documentElement.style.setProperty('--sab', _sab + 'px');
+      /* v2.3.2255: stamped BESIDE --sab and for the same reason -- so anything
+         pinned to the top of the screen can clear the status bar with one
+         number, and so a headless run can simulate it by overriding the probe.
+         env() cannot be set in a test; the probe can, which is the whole point
+         of measuring it here (v2.3.2178). */
+      document.documentElement.style.setProperty('--sat', _sat + 'px');
       document.documentElement.style.setProperty('--world-pad-l', _insL + 'px');
       document.documentElement.style.setProperty('--world-pad-r', _insR + 'px');
       /* ═══ v2.3.2176b: THE RESTING FOLD CHIP'S FOOTPRINT ═══
