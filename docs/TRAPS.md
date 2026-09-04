@@ -1600,3 +1600,48 @@ point of damage.
 
 **Related:** §35 (a test that copies a value out of the game), §37 (measuring
 a drawing against the box that defines it).
+
+---
+
+## §44 — Asking a moving value about a past event (v2.3.2261)
+
+**Tempting:** you need to know something about a moment that has passed — did
+the dash close the distance, what heading did the shot take, was the ability
+cast. The state is right there on `S`. Do the thing, wait for it to settle,
+read the field.
+
+**Wrong whenever the field keeps moving after the moment you care about**, which
+in a live game is most of them. Five instances in ONE session, all green-looking
+code, all reported as product bugs before anyone read the numbers:
+
+| the read | what actually moved | what it reported |
+|---|---|---|
+| `mp-dashhit`: gap measured 2.5s after the lunge | the monster WALKS — it is server-driven and alive | 69px on one run, 83px on the next, on identical code |
+| `mp-dashhit`: cooldown re-read after a 2500ms wait | the cooldown is 2500ms — the sample sat exactly on the boundary | `cdLeft: 0`, i.e. "never cast" |
+| `mp-dashhit`: stamina compared against max after the settle | stamina REGENERATES | a 10-point spend, refilled, read as "no spend" |
+| `mp-aimpath`: shot angle compared against `_facingAngle` | `_facingAngle` is SMOOTHED toward the last movement direction every frame | drifted ~0.5 rad; a finer poll did not close it |
+| `mp-rbutton`: `getComputedStyle` 250ms after a touch | the box carries `transition: opacity .22s` | 0/4 runs idle, 3/3 under load — read mid-crossfade against a `> 0.5` threshold |
+
+Two of those were filed as defects in the product. Both were the test.
+
+**What to do instead, in order of preference:**
+
+1. **Stamp the value at the moment it happens.** `fired.status` is captured on
+   the frame `maybeSwordDash` returns, so "it went on cooldown" needs no timing
+   at all. Anything the game already computes at the event is free.
+2. **Poll for the transition, not the clock.** Wait for `!S._bashDash` and
+   stamp the gap on THAT frame. `setInterval(…, 16)` inside one
+   `page.evaluate` returning a Promise is the idiom; a fixed
+   `waitForTimeout` is a guess about a duration you do not control.
+3. **Assert the cause, not a value downstream of it.** "The shot is not at the
+   phantom" plus "`aim === null && lock === null`" is exact and stable; "the
+   shot equals the body's heading" is neither. When the stable version is
+   available, prefer it even if it feels less direct.
+
+**And a settle wait is not a substitute for either.** Waiting longer makes the
+regen, the walk and the cooldown expiry MORE likely, not less. Every one of the
+five above got worse with a longer wait.
+
+**Related:** §35 (a test that copies a value out of the game), §37 (measuring a
+drawing against the box that defines it), §40 (a screenshot is not in CSS
+pixels).

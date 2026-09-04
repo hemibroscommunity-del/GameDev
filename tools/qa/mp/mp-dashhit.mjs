@@ -144,8 +144,31 @@ export async function run({ browser, wsPort, webPort, rec }) {
   console.log('    fired: ' + JSON.stringify(fired));
   rec.ok('the lunge fires against a server monster', fired.ok === true, fired);
 
-  /* Give the dash time to close, the strike to go out, the worker to roll it
-     and the broadcast to come back. */
+  /* ═══ CATCH THE GAP WHEN THE DASH ENDS, NOT WHENEVER WE LOOK ═══
+     A live server monster WALKS.  Reading the distance 2.5s after the lunge
+     measures where it wandered to, not where the dash finished -- one run gave
+     69px and the next 83px on identical code, which is the monster moving, not
+     the dash varying.  Poll for S._bashDash going null and stamp the gap on
+     that frame; the hp check below still gets its full settle time. */
+  const closed = await P.page.evaluate((id) => new Promise((resolve) => {
+    const S = window._gameState.current;
+    const t0 = Date.now();
+    const iv = setInterval(() => {
+      const done = !S._bashDash;
+      if (done || Date.now() - t0 > 3000) {
+        clearInterval(iv);
+        const m = (S.monsters || []).find((x) => x && String(x.id) === id);
+        resolve({ ended: done, ms: Date.now() - t0,
+          gap: m ? Math.round(Math.hypot(m.x - S.player.x, m.y - S.player.y)) : null });
+      }
+    }, 16);
+  }), armed.id);
+  console.log('    closed: ' + JSON.stringify(closed));
+  rec.ok(`the dash ended on its own (${closed.ms}ms)`, closed.ended === true, closed);
+  rec.ok(`...having CLOSED the distance to contact (${closed.gap}px at the moment it ended, from ${armed.gap})`,
+    closed.gap != null && closed.gap <= 80, { closed, from: armed.gap });
+
+  /* Now let the strike reach the worker and its damage come back. */
   await P.page.waitForTimeout(2500);
   const landed = await P.page.evaluate((id) => {
     const S = window._gameState.current;
@@ -164,24 +187,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the monster is still tracked after the lunge (guard)', landed.found === true, landed);
   rec.ok('...the dash finished and its held strike went out',
     landed.stillDashing === false && landed.stillPending === false, landed);
-  rec.ok(`...the lunge CLOSED the distance (${landed.gap}px, contact is 46)`,
-    landed.gap != null && landed.gap <= 80, landed);
+  /* The distance claim is made above, on the frame the dash ended -- see the
+     note there.  `landed.gap` is only logged now, as context for the hp read. */
   /* THE QUESTION THE OWNER ASKED. */
   rec.ok(`...and the monster actually LOST HP (${armed.hp} -> ${landed.hp})`,
     landed.hp != null && armed.hp != null && landed.hp < armed.hp,
     { before: armed.hp, after: landed.hp, ...landed });
-  /* ═══ NOT A STAMINA ASSERTION ═══
-     This read `landed.stam < maxStam` and failed on a run where everything else
-     passed: stamina REGENERATES, and the 2.5s this waits for the worker's
-     damage to come back is ample time to refill a 10-point spend.  It was
-     measuring the regen clock, not the cast.  The cast is already proven by the
-     assertions above -- the ability fired, the dash ran, the held strike went
-     out and the monster lost hp -- so the honest replacement is the one fact
-     those do not cover: that the worker AGREED it was on cooldown afterwards,
-     which only a cast it accepted can produce. */
-  const cd = await P.page.evaluate(() => (window.__btAbilityStatus ? window.__btAbilityStatus('sworddash') : null));
-  rec.ok('...and the lunge is on cooldown afterwards, so it really was cast',
-    !!cd && cd.cdLeft > 0, cd);
+  /* ═══ TWO BAD VERSIONS OF THIS ASSERTION, BOTH THE SAME MISTAKE ═══
+     First it read `landed.stam < maxStam` -- but stamina REGENERATES, and the
+     settle wait is ample to refill a 10-point spend, so it was measuring the
+     regen clock.  Then it re-read the cooldown after that same wait -- but the
+     cooldown is 2500ms and the wait is 2500ms, so it sampled the boundary and
+     read 0.  Both were the same error: asking a moving value about a past
+     event.
+     The cast is already stamped at the moment it happened -- `fired.status`
+     was captured on the frame maybeSwordDash returned -- so that is what is
+     asserted, and nothing here has to be timed at all. */
+  rec.ok(`...and the ability went on cooldown the moment it was cast (${fired.status && fired.status.cdLeft}ms)`,
+    !!fired.status && fired.status.cdLeft > 0, fired.status);
 
   await P.ctx.close().catch(() => {});
 }
