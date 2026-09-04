@@ -110,15 +110,38 @@ const MIN_SCALE = 0.75 / WORLD_ZOOM;   /* 0.25 at WORLD_ZOOM 3 */
  * separate named constant and not folded into MIN_SCALE, because the next
  * person to tune it should not have to work out which of the two they mean.
  *
- * The bro's drawn height on a 390x844 phone is very close to 66 * scale, so:
- *      0.349  ->  23 px   (no floor: what the owner called too small)
- *      0.45   ->  30 px
- *      0.50   ->  33 px
- *      0.55   ->  36 px
- *      0.667  ->  44 px   (the pre-v2.3.2247 size, everywhere)
+ * ═══ v2.3.2256b: THE TABLE BELOW WAS WRONG, TWICE OVER ═══
+ * It used to say "very close to 66 * scale" and list 0.50 -> 33 px, and then
+ * four lines further down it said 0.50 "draws the bro at ~72 px".  Both were
+ * in the same comment and neither was the character: 66 was the QA CROP BOX
+ * (tools/qa/mp/harness.mjs's 40x46-ish figure crop, which is roughly twice the
+ * figure -- TRAPS #37, measuring the box that defines a drawing instead of the
+ * drawing) and 72 was the sprite FRAME, the whole 256px animation cell with its
+ * transparent margin above the hat and below the feet, which is what
+ * mp-zoomshot printed until v2.3.2256.
+ *
+ * The real figure is 105.7 world px crown-to-foot -- (feet - crown + 1) x
+ * bodyDirScale x LOCAL_SCALE 0.421875 x PLAYER_SIZE_MULT 1.25, published every
+ * frame as S._bodyDrawH and measured live at 106.3.  So on a 390x844 phone in
+ * a browser tab (band 243, canvas 615):
+ *      0.349  ->  37 CSS px   (no floor: what the owner called too small)
+ *      0.45   ->  48 CSS px
+ *      0.50   ->  53 CSS px   <- FIGURE_SCALE_FLOOR
+ *      0.55   ->  58 CSS px
+ *      0.667  ->  70 CSS px   (the pre-v2.3.2247 size, everywhere)
  * Only town, worldview and the two 40x40 zones are affected -- the nine combat
  * zones already floor at 0.601 on their own map size, above every candidate
  * here, so this constant cannot change how a fight looks.
+ *
+ * AND THAT LAST SENTENCE IS THE ONE TO READ BEFORE RETUNING ANYTHING.  In a
+ * combat zone the figure's size is set ENTIRELY by the map: a 32x32 zone is
+ * 1024 world px and the canvas is ~600 CSS, so the height floor lands at
+ * ~0.60 and the viewport is already exactly the whole map.  There is no
+ * zoom-out headroom there at all -- the next pixel out is void tray.  Asked in
+ * 2026-09 to make the bro 75 DEVICE px (25 CSS) on a Pro Max, the honest answer
+ * was that no zone in the game is big enough: town, the deepest map, bottoms
+ * out at ~36 CSS px and ember has zero slack.  If that comes up again, the
+ * lever is the sprite (PLAYER_SIZE_MULT) or the map size, never this file.
  * CHOSEN ON RENDERED SCREENSHOTS, not by argument.  tools/qa/mp/sweep-zoom.mjs
  * rebuilds the client at each candidate and shoots the same spot in town, so
  * the owner picked this by looking at five real builds side by side rather
@@ -127,7 +150,8 @@ const MIN_SCALE = 0.75 / WORLD_ZOOM;   /* 0.25 at WORLD_ZOOM 3 */
  * so I don't have to do a bunch of guesswork."
  *
  * 0.45 first, then 0.50 after playing it (v2.3.2250).  0.50 draws the bro at
- * ~72 px and still zooms town out ~25% from the pre-v2.3.2247 view; it also
+ * ~53 CSS px (the ~72 this line used to claim was the sprite frame, see above)
+ * and still zooms town out ~25% from the pre-v2.3.2247 view; it also
  * closes the town-vs-combat size gap further, since a combat zone floors at
  * 0.601 on its own map size (1.20x apart now, against 1.34x at 0.45 and 1.72x
  * with no floor at all).  Re-run the sweep before moving this number. */
