@@ -59,24 +59,49 @@ export async function run({ browser, wsPort, webPort, rec }) {
     closed.scale > 0 && !!closed.plate && closed.plate.h > 0, closed);
   if (!closed.plate) { await P.ctx.close().catch(() => {}); return; }
 
-  /* Open the dashboard -- the same bus the sheet's own controls drive. */
-  await P.page.evaluate(() => { window.__broDashPanelBus.open('bag'); });
-  await P.page.waitForTimeout(1200);
+  /* ═══ THE FOLD CHIP, NOT A DESTINATION PANEL ═══
+     The first cut of this drove dashboardPanelBus.open('bag') and measured
+     nothing at all -- 0.6006 -> 0.6006, canvas 615 -> 615.  Opening a
+     DESTINATION grows the sheet the floating controls hang from; it does not
+     resize the CANVAS.  What the owner means by closing the dashboard is the
+     FOLD, and dashMinBus is the one geometry path (its own comment: "BroTown's
+     resize() listens for this").
+     Driven through the real chip rather than the bus, because the chip is what
+     a thumb presses and it is the thing that must keep working: `[data-dash-fold]`
+     carries the state as well, so the press can be proven to have landed. */
+  const foldBefore = await P.page.evaluate(() => {
+    const b = document.querySelector('[data-dash-fold]');
+    return b ? b.getAttribute('data-dash-fold') : null;
+  });
+  rec.ok('the dashboard fold chip is on screen (guard)', foldBefore === 'open', { foldBefore });
+  await P.page.evaluate(() => {
+    const b = document.querySelector('[data-dash-fold]');
+    if (b) b.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true }));
+  });
+  await P.page.waitForTimeout(1400);
+  const folded = await P.page.evaluate(() => {
+    const b = document.querySelector('[data-dash-fold]');
+    return b ? b.getAttribute('data-dash-fold') : null;
+  });
+  rec.ok('...and pressing it folds the band (guard)', folded === 'min', { foldBefore, folded });
   const open = await probe(P);
-  console.log('    dashboard open:   ' + JSON.stringify(open));
+  console.log('    dashboard folded: ' + JSON.stringify(open));
 
   /* ═══ 1. THE ZOOM THE OWNER ASKED TO KEEP ═══ */
-  rec.ok(`opening the dashboard zooms the world OUT (${closed.scale} -> ${open.scale})`,
-    open.scale < closed.scale - 0.001, { closed: closed.scale, open: open.scale });
-  rec.ok('...because the canvas is shorter, which is the whole mechanism',
-    open.canvasH < closed.canvasH, { closed: closed.canvasH, open: open.canvasH });
+  rec.ok(`FOLDING the dashboard away zooms the world IN (${closed.scale} -> ${open.scale})`,
+    open.scale > closed.scale + 0.001, { withBand: closed.scale, folded: open.scale });
+  rec.ok('...because the canvas is TALLER once the band is out of the way, which is the whole mechanism',
+    open.canvasH > closed.canvasH, { withBand: closed.canvasH, folded: open.canvasH });
 
-  await P.page.evaluate(() => { window.__broDashPanelBus.close(); });
-  await P.page.waitForTimeout(1200);
+  await P.page.evaluate(() => {
+    const b = document.querySelector('[data-dash-fold]');
+    if (b) b.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true }));
+  });
+  await P.page.waitForTimeout(1400);
   const reclosed = await probe(P);
-  console.log('    dashboard reclosed: ' + JSON.stringify(reclosed));
-  rec.ok(`...and closing it zooms back IN (${open.scale} -> ${reclosed.scale})`,
-    reclosed.scale > open.scale + 0.001, { open: open.scale, reclosed: reclosed.scale });
+  console.log('    dashboard restored: ' + JSON.stringify(reclosed));
+  rec.ok(`...and bringing the band back zooms OUT again (${open.scale} -> ${reclosed.scale})`,
+    reclosed.scale < open.scale - 0.001, { folded: open.scale, restored: reclosed.scale });
 
   /* ═══ 2. THE PLATE DOES NOT SHRINK WITH IT ═══
      The world scale dropped by a real fraction between the two states.  Left
@@ -84,17 +109,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
      because it is a child of the container that scale is applied to.  The
      assertion is that it does not: within a pixel of the same height, at both
      zooms. */
-  const ratio = open.scale / closed.scale;
+  const ratio = closed.scale / open.scale;   /* band-up scale over folded scale: < 1 */
   console.log(`    world scale ratio ${ratio.toFixed(3)}; plate h ${closed.plate.h} -> ${open.plate.h}`);
   rec.ok(`guard: the two states really are different zooms (x${ratio.toFixed(3)})`,
-    ratio < 0.97, { ratio, closed: closed.scale, open: open.scale });
-  rec.ok(`the name plate keeps its on-screen size when the world zooms out (${closed.plate.h}px -> ${open.plate.h}px)`,
-    Math.abs(open.plate.h - closed.plate.h) <= 1.5, { closed: closed.plate, open: open.plate, ratio });
-  /* ...and it would have shrunk without the fix: state the counterfactual, so a
-     reader can see what the assertion above is worth. */
-  rec.ok(`...where uncompensated it would have fallen to ${(closed.plate.h * ratio).toFixed(1)}px`,
-    open.plate.h > closed.plate.h * ratio + 0.5,
-    { would: +(closed.plate.h * ratio).toFixed(1), is: open.plate.h });
+    ratio < 0.97, { ratio, withBand: closed.scale, folded: open.scale });
+  rec.ok(`the name plate keeps its on-screen size at both zooms (${open.plate.h}px folded -> ${closed.plate.h}px with the band up)`,
+    Math.abs(open.plate.h - closed.plate.h) <= 1.5, { withBand: closed.plate, folded: open.plate, ratio });
+  /* ...and it WOULD have shrunk without the fix.  State the counterfactual, so a
+     reader can see what the assertion above is worth: uncompensated, the
+     band-up plate is the folded one times the scale ratio. */
+  rec.ok(`...where uncompensated the band-up plate would have fallen to ${(open.plate.h * ratio).toFixed(1)}px`,
+    closed.plate.h > open.plate.h * ratio + 0.5,
+    { would: +(open.plate.h * ratio).toFixed(1), is: closed.plate.h });
 
   /* ═══ 3. AND IT IS RASTERISED AT THE SIZE IT IS SHOWN ═══
      v2.3.1821 on this same plate: a Pixi Text is a texture, so growing its
@@ -102,8 +128,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
      bigger AND blurrier, which is not more legible.  The counter-scale is
      exactly that kind of growth, so the resolution is asserted with it. */
   rec.ok('...and its glyphs are rasterised for the size they are drawn at, not upscaled',
-    open.plate.res >= closed.plate.res && open.plate.res >= 1,
-    { closed: closed.plate.res, open: open.plate.res });
+    closed.plate.res >= open.plate.res && closed.plate.res >= 1,
+    { withBand: closed.plate.res, folded: open.plate.res });
 
   await P.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/worldtext-open.png' });
   await P.ctx.close().catch(() => {});
