@@ -145,7 +145,21 @@ export function WorldChatFeed() {
      left" — eventcapes.js draws that line and the chip keeps it): no chip
      beats a wrong number.  0 stays visible on purpose — "0/20 left" is the
      contest ending in public view, and it leaves when the event flag does. */
-  const ticketChip = (_crimson && typeof _crimson.remaining === 'number')
+  /* ═══ v2.3.2266: THE CONTEST IS OVER, SO ITS SCOREBOARD COMES DOWN ═══
+     Owner: "you can remove the golden ticket left notification.  The event is
+     over."
+
+     The chip was written to leave on its own -- the note above says "it leaves
+     when the event flag does" -- and it did not, so the flag it reads is still
+     set somewhere upstream and a running scoreboard for a finished contest was
+     taking a line off the top of his screen.  Turned off HERE rather than
+     chased upstream: the ledger, the bus and the server's cape accounting are
+     all still correct and still feed the cape itself, and the one thing that
+     was wrong was a permanent chip.
+     Kept as a constant rather than deleted so the next event is one word: the
+     render below and the empty-feed guard both read it, and both stay wired. */
+  const TICKET_CHIP_ENABLED = false;
+  const ticketChip = (TICKET_CHIP_ENABLED && _crimson && typeof _crimson.remaining === 'number')
     ? `${_crimson.remaining}/${_crimson.cap} golden tickets left`
     : null;
 
@@ -451,8 +465,18 @@ export function WorldChatFeed() {
           {/* The chevron is the affordance: it says this folds, which a bare
               label never did. Inline, because it is two lines of SVG and a
               texture that loads on first use is the regression CLAUDE.md names. */}
+          {/* ═══ v2.3.2266: IT POINTED THE WRONG WAY ═══
+              Owner: "the down arrow makes me think it expands it."  It did,
+              and the convention it was breaking is universal -- a chevron
+              points the way the content is about to GO.  Open, this feed folds
+              UPWARD into its own one-line header, so the arrow has to point up;
+              shut, tapping brings the messages back DOWN, so it points down.
+              It was exactly inverted: the rotation was keyed to `shut` when the
+              glyph's resting direction is already down.  Dropping the rotation
+              on `shut` and applying it while OPEN swaps the pair, which is one
+              character of change and the whole of the complaint. */}
           <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"
-            style={{ flex: '0 0 auto', transform: shut ? 'rotate(180deg)' : 'none' }}>
+            style={{ flex: '0 0 auto', transform: shut ? 'none' : 'rotate(180deg)' }}>
             <path d="M1 3.5 L5 7 L9 3.5" fill="none" stroke="#8FA3A0"
               strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
