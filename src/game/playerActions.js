@@ -8,7 +8,7 @@
    `stateRef.current._tutorialStep` read became `S._tutorialStep` (same
    object). raiseShield takes setShieldUp via deps (its only React
    setter). All other references are module imports below. */
-import { SWING_COOLDOWN, SPECIAL_ATK_MULT, specialAtkMultFor, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, calcWeaponDmg, swingCooldownMult, specialManaCost, burstRefusal, burstWeapon, PROG3, ELEMENTS } from '@/data/index.js';
+import { SWING_COOLDOWN, weaponSwingMult, SPECIAL_ATK_MULT, specialAtkMultFor, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, calcWeaponDmg, swingCooldownMult, specialManaCost, burstRefusal, burstWeapon, PROG3, ELEMENTS } from '@/data/index.js';
 import { addBuildUse, clearSwingHitFlags, pushDmgPopup, isPlayerDead, lockAimPoint } from '@/game/combatHelpers.js';
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the hold */
 
@@ -48,7 +48,7 @@ export function swingAttack(S) {
     /* v2.3.1134: the manual tap gate honors Tempo like the auto-attack loop
        does, else tap-attackers get no benefit from the channel.  (The amulet
        atkSpd bonus was never applied here — unchanged, out of scope.) */
-    if (!S.rpg || Date.now() - S.swingTimer < SWING_COOLDOWN * swingCooldownMult(S.rpg)) return;
+    if (!S.rpg || Date.now() - S.swingTimer < SWING_COOLDOWN * swingCooldownMult(S.rpg) * weaponSwingMult(S.rpg && S.rpg.activeSlot)) return;   /* v2.3.2265: the bow's 25% */
     if (S._playerStunUntil && Date.now() < S._playerStunUntil) return;
     var slot = S.rpg.activeSlot || 'melee';
     /* Ranged/staff: let the auto-attack loop fire the projectile on the
