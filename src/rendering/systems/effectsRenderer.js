@@ -3437,6 +3437,27 @@ export class EffectsRenderer {
           const ry = rx * 0.38;
           const t = 1 - 0.5 * Math.min(1, Math.sqrt(c.d2) / (TARGET_PERIMETER_PX || 220));
           const isCur = c.m === _lockNow;
+          /* ═══ v2.3.2262: ONE TARGET, ONE MARK -- AS THIS BLOCK ALREADY CLAIMED ═══
+             Owner: "Monsters still have two lock on circles on them."
+
+             The header of this very loop says "The locked monster keeps its red
+             reticle below and is SKIPPED HERE: one target, one mark."  It was
+             never skipped.  `isCur` only ever changed the COLOUR, so the locked
+             monster got this ground ring AND the lock reticle drawn ~250 lines
+             below -- two concentric circles on one body, both turning red
+             together the moment you attack (v2.3.2253 made them agree, which
+             made the pair MORE obviously a pair rather than fixing it).
+
+             The reticle is the better of the two to keep: it is the classic
+             "this is your target" mark, it pulses, it carries the four corner
+             ticks, and it is what the rest of the UI language points at.  The
+             ground ring's job is "these are the monsters you COULD engage",
+             which is exactly the set the locked one is no longer part of.
+
+             So the comment becomes true.  Everything else about the ring --
+             the footprint sizing, the distance ramp, the screen-space line
+             weight -- is untouched for the candidates that keep it. */
+          if (isCur) continue;
           /* ═══ v2.3.2253: THE RING FOLLOWS THE ARROW ═══
              It used to go red only for a TAPPED target, which meant the ground
              mark and the arrow above the head could disagree about what red
