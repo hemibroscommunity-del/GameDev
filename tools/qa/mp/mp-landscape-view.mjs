@@ -98,9 +98,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
        as an equality between PHONES rather than against the map: every phone
        resolves the same world scale in the same zone, so nobody sees further
        than anybody else.  PORTRAIT_REF is pin 1; the others must match it. */
-    rec.ok('...every phone resolves the SAME world scale here (the same slice for everyone)',
-      PORTRAIT_REF.scale === 0 || Math.abs(g.scale - PORTRAIT_REF.scale) < 0.005,
-      { scale: g.scale, ref: PORTRAIT_REF.scale, ...g });
+    /* ═══ v2.3.2257: BACK TO THE HEIGHT, WHICH IS WHERE IT BELONGED ═══
+       The fairness rule this line guards has been restated twice and the
+       second restatement was wrong.  v2.3.2247 moved it off the WIDTH (the
+       old viewW === 585 pin) and said so plainly: "The fairness property
+       SURVIVES, on the other axis: every phone sees the zone's whole height,
+       so nobody spots further than anybody else."  Then v2.3.2249 found the
+       flat FIGURE_SCALE_FLOOR binding in town on all three pinned phones and
+       restated it AGAIN, as an equality of SCALE -- which was true only
+       because one constant happened to be winning on every device in the
+       list.  It was measuring the floor, not the fairness: at 0.50 flat, the
+       three phones saw 1230 / 1174 / 1378 world px of height, which is the
+       property failing while its own assertion went green.
+
+       v2.3.2257's reference-zone floor makes town's scale cssH/1024 again, so
+       the three phones come out at three different SCALES and one identical
+       HEIGHT -- 1024 world px each, the reference zone's own depth.  That is
+       the v2.3.2247 property, restored, and it is what is asserted now. */
+    rec.ok(`...every phone sees the same world HEIGHT here (${g.viewH}px -- nobody spots further than anybody else)`,
+      PORTRAIT_REF.viewH === 0 || Math.abs(g.viewH - PORTRAIT_REF.viewH) <= 1,
+      { viewH: g.viewH, ref: PORTRAIT_REF.viewH, scale: g.scale, ...g });
     rec.ok('...and never asks for more world than the zone holds',
       g.viewW <= g.zoneW + 1 && g.viewH <= g.zoneH + 1, g);
     rec.ok('...and the shell is stamped portrait', g.orient === 'portrait', g);

@@ -247,6 +247,76 @@ export function worldViewport(canvas, zoneId) {
   if (_z) {
     scale = Math.max(scale, cssW / (_z.w * TILE), cssH / (_z.h * TILE));
   }
+  /* ═══ v2.3.2257: ONE CHARACTER SIZE, IN EVERY ZONE ═══
+     Owner: "I want the character to be exactly as large as he is right now in
+     the zones on main right now.  Use that size for in town and in the zones."
+
+     He was not the same size in both, and the floor above is why.  A zone's own
+     size decides its scale, so on a tall phone a 32x32 combat zone (1024 world
+     px against a ~655 CSS canvas) floors at 0.64 while town (1664x1760, far
+     more world than the canvas can want) never reaches its own floor at all
+     and falls through to FIGURE_SCALE_FLOOR's flat 0.50.  Measured on the
+     owner's installed Pro Max: 67.6 CSS px of character in a combat zone,
+     52.9 in town -- 28% apart, in the same game, walking through a portal.
+     (farm_home, the smallest map at 960x800, is 86.5: 64% bigger than town.)
+
+     So the figure floor stops being a hand-tuned constant and becomes a
+     REFERENCE ZONE: whatever scale a standard 32x32 combat zone would resolve
+     to on this canvas, every other zone gets at least that.  The nine combat
+     zones are unchanged BY CONSTRUCTION -- for them these two terms are
+     literally the same arithmetic as their own zone terms above -- which is
+     the first half of what the owner asked for.
+
+     Still a floor, so it can only ever zoom IN, and zooming in cannot make
+     void: the v2.3.2247 rule above is untouched and still wins wherever a map
+     is smaller than the reference (farm_home keeps its 0.82).  That one cannot
+     be brought DOWN to the reference without drawing the tray, so farm_home
+     stays the odd zone out; nothing can be done about that from here.
+
+     FIGURE_SCALE_FLOOR stays underneath as the short-phone case: below a ~512
+     CSS canvas the reference term drops under 0.50 and the flat floor is what
+     keeps the character legible, exactly as it was chosen to. */
+  const FIGURE_REF_PX = 32 * TILE;   /* the nine combat zones' own map size */
+  const _vref = _z && (land ? _z.refViewH : _z.refViewW);
+  /* ═══ v2.3.2257: ...EXCEPT THE VISTA, WHICH GETS ITS OLD ONE BACK ═══
+     Owner: "For character size in worldview revert to how big the character
+     was previously.  He's too small in worldview now."
+
+     He is, and by a number: the World View shrinks the figure on purpose with
+     a distance curve (ZONES.worldview.playerScale, near 0.55 -> far 0.03,
+     v2.3.859) and v2.3.2247 then multiplied that by a SECOND shrink when the
+     one width rule became a per-zone floor.  48x48 tiles is 1536 world px, so
+     the World View never reaches its own floor either and lands on the flat
+     0.50 -- against 0.735 under the pre-v2.3.2247 rule on this canvas.  His
+     figure went from 42.7 CSS px to 29.1: 68% of what it was.
+
+     The revert is the OLD RULE, not a new number: cssW / refViewW, which is
+     `Math.round(390 * 1.5)` -- the reference width at the WORLD_ZOOM of the
+     day (worldViewport.js at 2deb56a, the commit before v2.3.2247).  Carried
+     in zones.js rather than as a literal here, for the reason v2.3.1574 gives
+     about this very zone: the depth curve used to be hand-copied in three
+     places and they drifted.
+     Only the WORLD scale moves.  The perspective curve is untouched, so the
+     vista still shrinks him with distance -- that is the effect, and
+     mp-wvglass pins it on the container scale, which this does not touch.
+
+     ON THE SAME AXIS THE OLD RULE USED, which is the whole point of restoring
+     a rule rather than a number: sideways it was cssH / REF_VIEW_H (480), not
+     the width.  Spending the width in landscape gave 844/585 = 1.443 and blew
+     the vista up to nearly triple -- the first cut of this did exactly that,
+     and only a landscape row in the check table caught it. */
+  if (_vref > 0) {
+    /* INSTEAD OF the reference floor, not beside it.  The first cut had both
+       terms live and let max() pick, which is not a revert: on a tall canvas
+       (the band minimised, or sideways) cssH/1024 beats cssW/585 and the vista
+       comes out BIGGER than it ever was -- measured 14% over on a Pro Max with
+       the dashboard folded.  "As big as he was previously" has an exact answer
+       and this is it; the reference floor is for the zones that are supposed to
+       match each other, and the vista is explicitly not one of them. */
+    scale = Math.max(scale, (land ? cssH : cssW) / _vref);
+  } else {
+    scale = Math.max(scale, cssW / FIGURE_REF_PX, cssH / FIGURE_REF_PX);
+  }
   /* v2.3.2249: ...and never so far out that the character stops reading. */
   scale = Math.max(scale, FIGURE_SCALE_FLOOR);
   return { W: cssW / scale, H: cssH / scale, scale };
