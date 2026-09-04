@@ -273,17 +273,41 @@ export function specialAttack(S) {
          that can land all 3 on one target within ~100ms").  Checked, not
          assumed. */
       var _ORB_GAP_MS = 100;
-      /* Ticks are ~16.67 ms, and `life` is spent in ticks — held orbs do not
-         age (projectiles.js returns early), so no life compensation is
-         needed here and all three cover the same 560 px. */
+      /* ═══ v2.3.2262: FAST, MEDIUM, SLOW ═══
+         Owner: "space out the magic attack orbs in a novel way: I want the
+         first orb speed to be fast, the second orb speed to be medium, and the
+         third orb speed to be slow."
+
+         So the SPEEDS are the spacing now, and the launch stagger above stays
+         on top of it -- it is what made "3 hits in a row" reliable at point
+         blank (v2.3.2259), where a speed difference has no distance to open a
+         gap in.  Together the three separate hard: at one second they sit at
+         roughly 480 / 270 / 154 px from the caster.
+
+         RANGE IS HELD EQUAL, deliberately.  `life` is spent in TICKS, so three
+         speeds with one life would give three different reaches and the slow
+         orb would die short -- turning a spacing request into a range nerf on
+         the third hit.  Each life is solved from the same 560px the volley has
+         had since v2.3.1335, so all three still arrive.
+
+         The server was already sized for the cadence: its special lane allows
+         3 hits per 1200ms per monster, and at a typical 200px engagement the
+         three land about 0.42s, 0.77s and 1.24s out -- and because that lane is
+         a ROLLING 1200ms filter rather than a fixed window, the first stamp has
+         aged out by the time the third arrives. */
+      var _ORB_RANGE_PX = 560;
+      var _ORB_SPEEDS = [8, 5, 3.2];
       for (var si = 0; si < 3; si++) {
+        var _spd = _ORB_SPEEDS[si];
+        var _life = Math.round(_ORB_RANGE_PX / _spd);
         S.arrows.push({
           ang: aimAng,
           dist: 14,
           launchDelayMs: si * _ORB_GAP_MS,
+          speedPx: _spd,
           dmg: Math.round(_wpnDmg * specialAtkMultFor('staff')), /* v2.3.1397: 2x per orb, 0.6 haircut dropped (owner) */
-          life: 112, /* v2.3.1335: range -25% (750->560px at 5px/tick) */
-          maxLife: 112,
+          life: _life,      /* v2.3.1335's 560px reach, solved per speed */
+          maxLife: _life,
           hitIds: new Set(),
           isSpecial: true,
           isStaff: true,
@@ -299,7 +323,10 @@ export function specialAttack(S) {
       if (S.channel) {
         for (var _bcj = 0; _bcj < 3; _bcj++) {
           S.channel.send({ type: 'broadcast', event: 'player_projectile', payload: {
-            id: S.myId, x: Math.round(S.player.x), y: Math.round(S.player.y), ang: aimAng, isStaff: true, isSpecial: true, delayMs: _bcj * _ORB_GAP_MS, ts: now
+            id: S.myId, x: Math.round(S.player.x), y: Math.round(S.player.y), ang: aimAng, isStaff: true, isSpecial: true,
+            delayMs: _bcj * _ORB_GAP_MS,
+            speedPx: _ORB_SPEEDS[_bcj],   /* v2.3.2262: peers see the same fast/medium/slow spread */
+            ts: now
           }});
         }
       }

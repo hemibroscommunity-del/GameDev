@@ -246,7 +246,14 @@ export function updateArrows(S, deps) {
                `life` becomes fractional — every reader compares or divides
                (`life <= 0`, `life / 20` for the fade), none index by it. */
             var _pdt = S._dtScale || 1;
-            if (_released) a.dist += (a.isStaff ? 5 : 8 * (a._rangeMult || 1)) * _pdt;
+            /* v2.3.2262: `speedPx` is an optional per-projectile override.  The
+               magic special's three orbs each fly at their own speed (fast,
+               medium, slow -- owner), and speed is otherwise a property of the
+               weapon TYPE, so the override is the smallest way to let one
+               volley disagree with its own type.  Absent on everything else,
+               which keeps the bow's _rangeMult path exactly as it was. */
+            if (_released) a.dist += (a.speedPx != null ? a.speedPx
+              : (a.isStaff ? 5 : 8 * (a._rangeMult || 1))) * _pdt;
             a.life -= _pdt;
             /* ═══ v2.3.2258: A LOOSED ARROW KEEPS THE LINE IT WAS SHOT ON ═══
                Owner: "Instead of the projectile changing course mid flight with

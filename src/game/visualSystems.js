@@ -153,7 +153,7 @@ export function updateVisualSystems(S) {
               rp._renderY = _hY + Math.sin(rp.ang) * rp.dist;
               return true;
             }
-            rp.dist += rp.isStaff ? 5 : 8;
+            rp.dist += (rp.speedPx != null ? rp.speedPx : (rp.isStaff ? 5 : 8));
             rp.life--;
             if (rp.life <= 0) return false;
             var owner = S.others[rp.ownerId];

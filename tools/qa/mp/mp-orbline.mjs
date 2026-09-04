@@ -152,7 +152,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return (S.arrows || []).map((a) => ({
       ang: a.ang, dist: a.dist, isStaff: !!a.isStaff, isSpecial: !!a.isSpecial,
       launchDelayMs: a.launchDelayMs || 0, hasVolleySet: !!a.volleyHitIds,
-      life: a.life,
+      life: a.life, speedPx: a.speedPx,
     }));
   });
   console.log('    orbs: ' + JSON.stringify(fired));
@@ -175,10 +175,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
        change that did nothing. */
     rec.ok('...and no orb carries the shared volley hit set any more',
       fired.every((o) => o.hasVolleySet === false), fired.map((o) => o.hasVolleySet));
-    /* Held orbs must not age while they wait, or orb 3 falls short of the
-       line orb 1 flew. */
-    rec.ok('...every orb starts with the same flight budget',
-      fired.every((o) => Math.abs(o.life - fired[0].life) < 1e-9), fired.map((o) => o.life));
+    /* ═══ v2.3.2262: FAST, MEDIUM, SLOW ═══
+       Owner: "space out the magic attack orbs in a novel way: I want the first
+       orb speed to be fast, the second orb speed to be medium, and the third
+       orb speed to be slow."  The speeds are the spacing now; the launch
+       stagger asserted above stays on top of it, because at point blank a speed
+       difference has no distance in which to open a gap. */
+    const speeds = fired.map((o) => o.speedPx);
+    rec.ok(`...each orb flies at its own speed, fast to slow (${speeds.join(' / ')})`,
+      speeds.every((v) => typeof v === 'number' && v > 0)
+        && speeds[0] > speeds[1] && speeds[1] > speeds[2], speeds);
+    /* RANGE IS HELD EQUAL.  `life` is spent in ticks, so three speeds with one
+       life would give three different reaches and the slow orb would die short
+       -- turning a spacing request into a range nerf on the third hit.  This is
+       the assertion that stops that: speed x life must come out the same. */
+    const reach = fired.map((o) => Math.round(o.speedPx * o.life));
+    rec.ok(`...but they all cover the same ground, so the slow one still arrives (${reach.join(' / ')}px)`,
+      reach.every((r) => Math.abs(r - reach[0]) <= 6), { reach, speeds, lives: fired.map((o) => o.life) });
   }
 
   /* ════════════════ 3. A MONSTER ON THE LINE TAKES THREE HITS ════════════════
