@@ -110,6 +110,38 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return;
   }
 
+  /* ═══ v2.3.2259: THE OTHER END OF THE SAME GUARD ═══
+     The baseline check above is only half of the trustworthiness question,
+     and this file failed on the missing half for three runs before anyone
+     read the numbers: 490 px/s unthrottled (the correct 8 x 60) against 292
+     throttled, on a build where the integrator is fine and on the SAME
+     commit with every change stashed.
+
+     `S._dtScale` is clamped to 3 (BroTown.jsx `Math.max(0.2, Math.min(3,
+     delta/16.667))`) -- the anti-teleport clamp that stops a backgrounded tab
+     resuming with one enormous step.  Three frames' worth is 50 ms, so BELOW
+     20 fps the clamp is what decides the step and the arrow legitimately
+     covers less ground per second.  That is the game working as designed, and
+     no build can pass this ratio there.
+
+     The baseline threshold cannot express that, because what matters is the
+     THROTTLED sample: at 28 fps unthrottled the guard above is satisfied and
+     the 6x throttle still lands at 10-13 fps, deep inside the clamp.  So the
+     honest floor is on `slow.fps`, and it is derived from the clamp itself
+     rather than picked: 60 / 3 = 20 fps is exactly where the clamp starts to
+     bind.  Skipping is again the third answer -- this run measured the clamp,
+     not the integrator. */
+  const CLAMP_FLOOR_FPS = 60 / 3;
+  if (slow.fps < CLAMP_FLOOR_FPS) {
+    const why = `the throttled sample ran at ${slow.fps.toFixed(1)}fps, below the ${CLAMP_FLOOR_FPS}fps `
+      + 'where _dtScale\'s x3 clamp starts to bind -- under it the step is the clamp, not the speed, '
+      + 'so no build can hold this ratio';
+    rec.skip('the throttle really did change the frame rate (guard)', why);
+    rec.skip('an arrow covers the same ground per SECOND at either frame rate', why);
+    await P.ctx.close().catch(() => {});
+    return;
+  }
+
   /* GUARD: without a real frame-rate difference the comparison below holds on
      any build, fixed or not. */
   rec.ok('the throttle really did change the frame rate (guard)',

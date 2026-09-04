@@ -184,6 +184,22 @@ export function updateArrows(S, deps) {
                reset _released for every in-flight arrow -- they snapped back to
                the grip and froze for 110 ms ("arrows freeze mid-flight"). */
             if (a._bornTs == null) a._bornTs = Date.now();
+            /* ═══ v2.3.2259: A STAGGERED VOLLEY WAITS ITS TURN AT THE CASTER ═══
+               The staff special is three orbs on ONE ray now (playerActions.js);
+               what makes that three HITS rather than one wall is that each waits
+               `launchDelayMs` at the hand before it flies.  A held orb does not
+               advance, does not age and cannot hit -- so the trailing orbs cover
+               exactly the same 560 px the first one does.  (Spending `life`
+               while waiting would leave orb 3 sixty pixels short, and "the same
+               linear path" would then be true only near the caster.)
+               Distinct from the bow's nock (`fromGrip` + the 110 ms latch just
+               below), which deliberately DOES ride the grip and DOES age: that
+               is a draw animation, this is a queue. */
+            if (a.launchDelayMs > 0 && (Date.now() - a._bornTs) < a.launchDelayMs) {
+              a._renderX = P.x + Math.cos(a.ang) * a.dist;
+              a._renderY = P.y + Math.sin(a.ang) * a.dist;
+              return true;
+            }
             if (!a._released) a._released = !a.fromGrip || (Date.now() - a._bornTs) >= 110;
             var _released = a._released;
             if (a.fromGrip && (!_released || a._ox == null) && S._bowGripX != null) {
@@ -312,10 +328,17 @@ export function updateArrows(S, deps) {
               /* v2.3.1426: a stuck special takes no further hits -- the
                  bow special pierces, so without this gate it would keep
                  chaining through monsters after embedding in one.
-                 v2.3.1435: the staff-special volley shares volleyHitIds
-                 -- one orb per monster; sister orbs pass it and fly on
+                 v2.3.1435: the staff-special volley shared volleyHitIds
+                 -- one orb per monster; sister orbs passed it and flew on
                  to the rest of the pack (owner: special was 4-hitting
-                 single monsters). */
+                 single monsters).
+                 v2.3.2259: NOTHING SETS volleyHitIds ANY MORE.  The owner
+                 asked for the three-hits-on-one-monster shape back ("so
+                 that way a monster can get hit 3 times in a row"), so the
+                 staff special stopped sharing a set.  The guard is left
+                 standing because it is the mechanism a shared-hit volley
+                 needs and it is inert without the field -- but do not read
+                 it as live behaviour. */
               /* v2.3.2224: `isIntangible` sits with !m.alive because it means
                  the same thing to a projectile -- there is nothing here to
                  collide with.  NOT added to hitIds, so a pierce shot does not

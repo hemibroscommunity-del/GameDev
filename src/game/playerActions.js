@@ -224,16 +224,43 @@ export function specialAttack(S) {
          owner meant the BOW special sticks (projectiles.js), and its
          _bowBase above already carries the chip base.  Orbs die on
          their first hit again. */
-      /* v2.3.1435 (owner: "magic special is overpowered — often 4 hits
-         on one monster, regular hit plus the 3 orbs"): the volley
-         shares one hit set, so a monster can eat at most ONE orb of
-         the cone; the other orbs pass it and spread to the crowd. */
-      var _volleyHit = new Set();
-      for (var si = -1; si <= 1; si++) {
+      /* ═══ v2.3.2259: ONE LINE, THREE ORBS, THREE HITS ═══
+         Owner: "Instead of the current behavior I want the 3 orbs to follow
+         the same linear path in quick succession.  So that way a monster can
+         get hit 3 times in a row with the orbs instead of it going 3
+         different directions."
+
+         TWO things made the cone a cone, and a change to either one alone
+         does nothing:
+           - the ±0.25 rad fan on `ang`, now one shared aim angle;
+           - `volleyHitIds` (v2.3.1435), a hit set SHARED by the three orbs
+             so a monster could eat at most ONE of them.  That was the answer
+             to "magic special is overpowered — often 4 hits on one monster",
+             and it is exactly the behaviour being asked back for now, so the
+             shared set is gone.  Each orb keeps its own `hitIds`, which is
+             what stops one orb hitting one monster twice.
+
+         SUCCESSION IS A LAUNCH DELAY, NOT A TIMER.  Each orb waits
+         ORB_GAP_MS longer than the one before at the caster's hand
+         (projectiles.js honours `launchDelayMs`), so they peel off in order
+         ~100 ms apart along the same ray.  setTimeout would have spawned the
+         trailing orbs into whatever zone and state the player was in 100 ms
+         later — three arrows born on one frame cannot.
+
+         THE SERVER WAS ALREADY SIZED FOR THIS, which is why no mirror moves:
+         combat.js's special hit-cadence lane allows 3 hits per 1200 ms per
+         monster and its own comment names this exact case ("a 3-bolt cone
+         that can land all 3 on one target within ~100ms").  Checked, not
+         assumed. */
+      var _ORB_GAP_MS = 100;
+      /* Ticks are ~16.67 ms, and `life` is spent in ticks — held orbs do not
+         age (projectiles.js returns early), so no life compensation is
+         needed here and all three cover the same 560 px. */
+      for (var si = 0; si < 3; si++) {
         S.arrows.push({
-          volleyHitIds: _volleyHit,
-          ang: aimAng + si * 0.25,
+          ang: aimAng,
           dist: 14,
+          launchDelayMs: si * _ORB_GAP_MS,
           dmg: Math.round(_wpnDmg * specialAtkMultFor('staff')), /* v2.3.1397: 2x per orb, 0.6 haircut dropped (owner) */
           life: 112, /* v2.3.1335: range -25% (750->560px at 5px/tick) */
           maxLife: 112,
@@ -244,11 +271,15 @@ export function specialAttack(S) {
           ice: true
         });
       }
-      /* v2.3.840: broadcast the 3-bolt staff special cone so peers see it. */
+      /* v2.3.840: broadcast the staff special so peers see it.
+         v2.3.2259: same ray, same stagger — `delayMs` rides the payload so a
+         peer's three orbs arrive in the same order yours do.  Additive field:
+         an older client ignores it and draws all three at once, which is what
+         it drew before. */
       if (S.channel) {
-        for (var _bcj = -1; _bcj <= 1; _bcj++) {
+        for (var _bcj = 0; _bcj < 3; _bcj++) {
           S.channel.send({ type: 'broadcast', event: 'player_projectile', payload: {
-            id: S.myId, x: Math.round(S.player.x), y: Math.round(S.player.y), ang: aimAng + _bcj * 0.25, isStaff: true, isSpecial: true, ts: now
+            id: S.myId, x: Math.round(S.player.x), y: Math.round(S.player.y), ang: aimAng, isStaff: true, isSpecial: true, delayMs: _bcj * _ORB_GAP_MS, ts: now
           }});
         }
       }

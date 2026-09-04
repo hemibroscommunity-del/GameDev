@@ -52,7 +52,17 @@ export const gearMethods = {
     // mirror divides the same table).  Shared by _computeAttackDamage,
     // the _maxWeaponDmg cap, and _weaponSellValue -- sell values scale
     // down 4.8x in lockstep with the client (coins are NOT rescaled).
-    const T = { greatsword: 10, sword: 6.67, bow: 7.29, staff: 8.54 };
+    /* v2.3.2259 (owner: "Bump up the default weapon DPS of magic and bow.
+       They should both start roughly 20% lower than the default melee weapon
+       DPS"): bow 7.29 -> 12.80, staff 8.54 -> 13.44.  The full derivation --
+       why the reference is the Copper Great Sword, and why the bow's number
+       has to be higher than its DPS suggests (its 0.6-0.8 variance band means
+       0.70) -- lives on WEAPON_TYPES.bow in src/data/gameSystems.js.  THIS
+       TABLE IS THE AUTHORITATIVE ONE: _computeAttackDamage rolls from it, so
+       a one-sided edit there would change the item card and nothing else.
+       Sell value rides it too (_weaponSellValue): a pine bow goes 4 -> 7
+       coins, a pine staff 5 -> 7. */
+    const T = { greatsword: 10, sword: 6.67, bow: 12.80, staff: 13.44 };
     /* v2.3.1626: own-property lookup.  The comment below used to
        justify not validating `type` on the grounds that an unknown one
        "already falls back to the fists base" -- true for 'banana',

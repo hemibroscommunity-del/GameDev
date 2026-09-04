@@ -285,6 +285,7 @@ const {
   CLAN_COLORS, CLAN_CREATE_COST, CLAN_MAX_MEMBERS, CLAN_LOGO_SIZE, CLAN_TAG_MAX, CLAN_NAME_MAX,
   createMonster, createDefaultRpg, createDefaultLifeSkills, migrateLifeSkills,
   recalcDerived, getActiveWeapon, meleeSwingSfx, calcWeaponDmg, calcCritChance, calcCritMult,
+  calcDisplayDmgRange, calcDisplayDps, /* v2.3.2259: the two readouts the item card promises, on the autotest surface */
   getWeaponCritStat, awardWeaponXp, migrateWeaponT2,
   migrateDefenseT2, awardDefenseXp, getDefenseBlockBonus, getIronSkinReduction, getBlockStaminaMult,
   migrateGrids, getConditioningFlat, migrateUniformT2,
@@ -929,6 +930,17 @@ export var BroTown = function BroTown(_ref0) {
     spawnGatherNodes: spawnGatherNodes,
     generateZoneMap: generateZoneMap,
     calcWeaponDmg: calcWeaponDmg,
+    /* ═══ v2.3.2259: THE GAME'S OWN ANSWER TO "HOW MUCH DPS IS THAT?" ═══
+       The bow/staff retune is a claim about a RATIO between three specific
+       starting weapons, and that ratio is made of four things a test would
+       otherwise have to re-derive: the base, the tier multiplier, the
+       per-type variance band (the bow's is not centred on 1) and the
+       cadence (the staff alone pays +300 ms).  A scenario that recomputed
+       any of them would be checking its own arithmetic, not the game's
+       (TRAPS #35).  These are the exact functions the item card and the
+       Equipped pane read, so a test asks them what the player is shown. */
+    calcDisplayDmgRange: calcDisplayDmgRange,
+    calcDisplayDps: calcDisplayDps,
     calcCritChance: calcCritChance,
     xpRequired: xpRequired,
     ZONES: ZONES,

@@ -1551,3 +1551,52 @@ which is the property that was actually wrong.
 
 **Related:** §21 (a loose pixel-classifier), §20 (an invisible overlay is
 rarely a z-index).
+
+---
+
+## §43 — Two weapons' `base` numbers are not comparable, and the table does not say so (v2.3.2259)
+
+**Tempting:** the owner says magic and bow feel weak. `WEAPON_TYPES` is
+right there: greatsword 10, sword 6.67, bow 7.29, staff 8.54. The bow's
+number is above the sword's, so the report must be about something else —
+range, aim, the auto-target rules — and "bump their DPS up to 20% under
+melee" reads as a NERF. Say so, and ask what they really meant.
+
+**Wrong on every count, and the first draft of this change said all of it.**
+Four things sit between that column and DPS, and three of them are invisible
+where the number is written:
+
+| term | where it lives | what it does to the column |
+|---|---|---|
+| variance band | `calcWeaponDmg` / server `_computeAttackDamage` | melee `0.75-1.25` and staff `0.5-1.5` both MEAN 1.00; bow is `0.6-0.8`, mean **0.70** — a permanent 30% haircut folded in at v2.3.109 when the old flat `0.7x` bow multiplier was retired |
+| tier multiplier | `BLACKSMITH_TIERS` / `WOODWORKING_TIERS` | the melee starter is COPPER (1.12); both ranged starters are PINE (1.00) |
+| cadence | `SWING_COOLDOWN` + `_staffCdExtra` | 600 ms for everything, **+300 for the staff alone** |
+| `speed` | `WEAPON_TYPES` itself | **nothing.** It is dead (see `ui/mobile/sheet/equipModel.js`) — it reads exactly like the cadence and is not |
+
+Run the column through those and the starting kit is greatsword 18.67 DPS,
+bow 8.51 (**46%**), staff 9.49 (**51%**). The owner was reporting a real,
+large gap, "bump up" was the correct direction, and the reading that made it
+look like a contradiction came from comparing two numbers that are not in
+the same units.
+
+**Which weapon is "the default melee weapon" is also not a guess.** Mayor Bro
+hands out a Copper Great Sword on accepting `tut_1` (`QUEST_REWARDS
+grantOnAccept`) and the Pine Bow + Pine Staff on turning it in. Anchoring on
+the SWORD's 6.67 instead would have compared against a weapon the player has
+never held and produced a change of a few percent — an answer that looks
+responsive and fixes nothing.
+
+**What to do instead: ask the game.** `calcDisplayDmgRange` and
+`calcDisplayDps` already fold all four terms and are what the item card
+shows; both are on `window._gameFns`. `mp-orbline` reads them for the three
+real starting weapons and asserts the RATIO, so no scenario re-derives the
+formula (§35) and a change to any single term is caught by the one
+assertion.
+
+**And this column has a mirror.** `server/src/gear.js _weaponBase` is the
+authoritative copy — `_computeAttackDamage` rolls from it, and the client's
+is the display. Editing only the client changes the item card and not one
+point of damage.
+
+**Related:** §35 (a test that copies a value out of the game), §37 (measuring
+a drawing against the box that defines it).
