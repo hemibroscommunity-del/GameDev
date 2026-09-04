@@ -8192,6 +8192,7 @@ export var BroTown = function BroTown(_ref0) {
     S._facing = best;
     S._aimAngle = angle;
     S._aiming = true;
+    S._aimSrc = 'stick';   /* v2.3.2261: the player's own aim, not a lock's */
     S._rJoyLiveUntil = Date.now() + JOY_FADE_MS;   /* v2.3.2260: steering is input */
     /* v2.3.2258: _lastAimAngle has had no writer since PR #546 removed this
        function -- abilities and the renderer have been reading a permanently
@@ -9898,7 +9899,7 @@ export var BroTown = function BroTown(_ref0) {
          click handlers below still seed _aimAngle from _mouseAimAngle
          at attack-start, so attacks still aim where the cursor is. */
       S._mouseAimAngle = Math.atan2(worldY - S.player.y, worldX - S.player.x);
-      if (S.autoAttack || S._aiming) S._aimAngle = S._mouseAimAngle;
+      if (S.autoAttack || S._aiming) { S._aimAngle = S._mouseAimAngle; S._aimSrc = 'mouse'; }  /* v2.3.2261 */
       S._mouseWorldX = worldX;
       S._mouseWorldY = worldY;
       /* Update facing based on mouse aim */

@@ -183,7 +183,12 @@ export function specialAttack(S) {
        fire site and as the renderer's own body-facing: the aim you last set,
        else the smoothed continuous heading, and 0 only if the player has
        genuinely never faced anywhere.  The lock override below still wins. */
-    var aimAng = (S._aimAngle != null) ? S._aimAngle
+    /* v2.3.2261: ...and the same ladder as the fire site, for the same reason --
+       a lock-derived _aimAngle outlives its monster and nothing ever nulls it,
+       so a stale read of it fires the special at a ghost.  _lastAimAngle is the
+       player's own stick and only that. */
+    var aimAng = (S._aiming && S._aimAngle != null) ? S._aimAngle
+      : (S._lastAimAngle != null) ? S._lastAimAngle
       : (typeof S._facingAngle === 'number' ? S._facingAngle : 0);
     /* v2.3.1111: aim at the body centre (see monsterCombat aim note).
        v2.3.1979: through lockAimPoint, which reads the RENDERED position the

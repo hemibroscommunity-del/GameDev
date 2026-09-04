@@ -1340,6 +1340,16 @@ export function updateMonsterCombat(S, deps) {
             var _lkPt = lockAimPoint(_lkRef);
             if (_lkPt) {
               S._aimAngle = Math.atan2(_lkPt.y - P.y, _lkPt.x - P.x);
+              /* ═══ v2.3.2261: SAY WHERE THIS AIM CAME FROM ═══
+                 This write happens on every frame a lock is held, and neither
+                 _aimAngle nor _aiming has any writer that clears it -- so when
+                 the lock ends, both survive as a lock-derived residue that the
+                 fire chain cannot tell from a player's own aim.  That residue is
+                 the owner's "shooting an invisible monster": measured at exactly
+                 -1.571 rad with the lock already cleared and no monsters left in
+                 the zone.  One word of provenance lets targeting drop the aim
+                 with the lock that made it (see clearLockAim). */
+              S._aimSrc = 'lock';
               if (S.autoAttack) S._aiming = true;
               S._facing = Math.abs(Math.cos(S._aimAngle)) > Math.abs(Math.sin(S._aimAngle))
                 ? (Math.cos(S._aimAngle) > 0 ? 'right' : 'left')
@@ -1440,11 +1450,32 @@ export function updateMonsterCombat(S, deps) {
                    ago is still the last direction you asked for, and it is
                    already what the body is drawn pointing at.  Refusing to
                    shoot along it while drawing the character aiming down it is
-                   the disagreement being closed. */
+                   the disagreement being closed.
+
+                   ═══ v2.3.2261: AND THE RESIDUE UNDERNEATH IT ═══
+                   Clearing the ghost LOCK (targeting.js lockRefPresent) was only
+                   the first layer.  monsterCombat writes S._aimAngle toward a
+                   held lock on EVERY FRAME, and nothing in the client ever
+                   writes that field back to null -- so once a lock has existed,
+                   _aimAngle holds a lock-derived angle for the rest of the
+                   session.  With the ghost lock gone the chain fell straight
+                   onto that residue and kept shooting at the same empty ground:
+                   measured at exactly -1.571 rad with `lock: null` and no
+                   monsters in the zone.
+
+                   So the "aim you last set" branch reads _lastAimAngle, which is
+                   written in ONE place -- rJoyAim, the player's own stick -- and
+                   is therefore the only field in the game that actually means
+                   "the direction the player asked for".  _aimAngle is still
+                   preferred while _aiming is live, because that is a thumb
+                   steering right now; it is the STALE read of it that was wrong,
+                   not the fresh one. */
                 if (_lockPt) {
                   arrAngle = Math.atan2(_lockPt.y - _shotY, _lockPt.x - _shotX);
-                } else if (S._aimAngle != null) {
+                } else if (S._aiming && S._aimAngle != null) {
                   arrAngle = S._aimAngle;
+                } else if (S._lastAimAngle != null) {
+                  arrAngle = S._lastAimAngle;
                 } else if (typeof S._facingAngle === 'number') {
                   arrAngle = S._facingAngle;
                 } else {

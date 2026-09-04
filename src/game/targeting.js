@@ -69,6 +69,26 @@ function monHoldable(m) {
   return !!m && m.alive && !(typeof m.curHp === 'number' && m.curHp <= 0);
 }
 
+/* ═══ v2.3.2261: A LOCK'S AIM DIES WITH THE LOCK ═══
+ * monsterCombat writes S._aimAngle toward a held lock on every frame and sets
+ * S._aiming with it, and NEITHER has a writer that ever clears it.  So dropping
+ * the lock alone was not enough: the fire chain kept reading the residue and
+ * kept shooting at the ghost -- measured at exactly -1.571 rad with the lock
+ * already null and no monsters left in the zone.
+ *
+ * `_aimSrc` says who wrote the aim last.  If it was the LOCK, it goes with the
+ * lock.  If it was the player's stick or the desktop mouse, it is left entirely
+ * alone -- that IS the direction they asked for, and dropping it would bring
+ * back the cardinal fallback from the other side.
+ *
+ * Called from every site that drops a monster lock. */
+function clearLockAim(S) {
+  if (!S || S._aimSrc !== 'lock') return;
+  S._aimAngle = null;
+  S._aiming = false;
+  S._aimSrc = null;
+}
+
 /* ═══ v2.3.2261: A LOCK MUST STILL BE POINTING AT SOMETHING THAT IS HERE ═══
  *
  * Owner: "the monster somehow gets targeted twice (tap to lock AND auto target
@@ -250,9 +270,10 @@ export function updateTargeting(S) {
     S.lockedTarget = null;
     S._lockDroppedAt = Date.now();
     S._lockDroppedWhy = 'gone';
+    clearLockAim(S);
   }
   if (S._dying || S._zoneLoading || isPlayerDead(S)) {
-    if (S.lockedTarget) { S.lockedTarget = null; S._lockDroppedAt = Date.now(); S._lockDroppedWhy = 'dead'; }
+    if (S.lockedTarget) { S.lockedTarget = null; S._lockDroppedAt = Date.now(); S._lockDroppedWhy = 'dead'; clearLockAim(S); }
     return;
   }
 
@@ -264,6 +285,7 @@ export function updateTargeting(S) {
       S.lockedTarget = null;
       S._lockDroppedAt = Date.now();
       S._lockDroppedWhy = 'dead';
+      clearLockAim(S);
     } else {
       return;
     }
@@ -283,6 +305,7 @@ export function updateTargeting(S) {
       S.lockedTarget = null;
       S._lockDroppedAt = Date.now();
       S._lockDroppedWhy = 'weapon';
+      clearLockAim(S);
     }
     return;
   }
@@ -302,6 +325,7 @@ export function updateTargeting(S) {
       S.lockedTarget = null;
       S._lockDroppedAt = Date.now();
       S._lockDroppedWhy = monHoldable(cur.ref) ? 'range' : 'dead';
+      clearLockAim(S);
     }
     return;
   }
