@@ -103,24 +103,34 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`...and bringing the band back zooms OUT again (${open.scale} -> ${reclosed.scale})`,
     reclosed.scale < open.scale - 0.001, { folded: open.scale, restored: reclosed.scale });
 
-  /* ═══ 2. THE PLATE DOES NOT SHRINK WITH IT ═══
-     The world scale dropped by a real fraction between the two states.  Left
-     uncompensated the plate's on-screen height would drop by the SAME fraction,
-     because it is a child of the container that scale is applied to.  The
-     assertion is that it does not: within a pixel of the same height, at both
-     zooms. */
+  /* ═══ 2. THE PLATE SHRINKS LESS THAN THE WORLD, AND NOT BY NOTHING ═══
+     ═══ v2.3.2263: THE MIDDLE, PINNED FROM BOTH SIDES ═══
+     v2.3.2262 asserted the plate held EXACTLY its on-screen size across a zoom
+     change, which is what full 1/w compensation does -- and the owner's answer
+     to that build was "nameplates are now way too large", measured at 18 CSS px
+     of type over a 27 CSS px slime.  So the rule changed to sqrt(1/w)
+     (entityRenderer setPlateZoom) and this pair of assertions changed with it,
+     to a bound rather than an equality: the plate must shrink by LESS than the
+     world does, and by MORE than nothing.
+
+     Both counterfactuals are named on purpose.  An assertion that only said
+     "bigger than uncompensated" would pass for the too-large build this exists
+     to prevent coming back, and one that only said "smaller than compensated"
+     would pass for no compensation at all.  Between them there is one rule
+     left, and it is the one shipped. */
   const ratio = closed.scale / open.scale;   /* band-up scale over folded scale: < 1 */
-  console.log(`    world scale ratio ${ratio.toFixed(3)}; plate h ${closed.plate.h} -> ${open.plate.h}`);
+  const wantRatio = Math.sqrt(ratio);        /* what sqrt compensation predicts */
+  const gotRatio = closed.plate.h / open.plate.h;
+  console.log(`    world scale ratio ${ratio.toFixed(3)}; plate h ${open.plate.h} -> ${closed.plate.h}`
+    + ` (plate ratio ${gotRatio.toFixed(3)}, sqrt predicts ${wantRatio.toFixed(3)})`);
   rec.ok(`guard: the two states really are different zooms (x${ratio.toFixed(3)})`,
     ratio < 0.97, { ratio, withBand: closed.scale, folded: open.scale });
-  rec.ok(`the name plate keeps its on-screen size at both zooms (${open.plate.h}px folded -> ${closed.plate.h}px with the band up)`,
-    Math.abs(open.plate.h - closed.plate.h) <= 1.5, { withBand: closed.plate, folded: open.plate, ratio });
-  /* ...and it WOULD have shrunk without the fix.  State the counterfactual, so a
-     reader can see what the assertion above is worth: uncompensated, the
-     band-up plate is the folded one times the scale ratio. */
-  rec.ok(`...where uncompensated the band-up plate would have fallen to ${(open.plate.h * ratio).toFixed(1)}px`,
-    closed.plate.h > open.plate.h * ratio + 0.5,
-    { would: +(open.plate.h * ratio).toFixed(1), is: closed.plate.h });
+  rec.ok(`the plate shrinks LESS than the world does (plate x${gotRatio.toFixed(3)} vs world x${ratio.toFixed(3)})`,
+    gotRatio > ratio + 0.02, { gotRatio, ratio, withBand: closed.plate, folded: open.plate });
+  rec.ok('...and it is NOT pinned to a constant screen size either, which is what read as "way too large"',
+    gotRatio < 0.995, { gotRatio, withBand: closed.plate, folded: open.plate });
+  rec.ok(`...it tracks sqrt(zoom), the middle both of those miss (${gotRatio.toFixed(3)} vs ${wantRatio.toFixed(3)})`,
+    Math.abs(gotRatio - wantRatio) <= 0.04, { gotRatio, wantRatio, ratio });
 
   /* ═══ 3. AND IT IS RASTERISED AT THE SIZE IT IS SHOWN ═══
      v2.3.1821 on this same plate: a Pixi Text is a texture, so growing its

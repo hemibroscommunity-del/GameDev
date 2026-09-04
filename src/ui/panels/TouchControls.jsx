@@ -47,6 +47,7 @@ export function TouchControls(props) {
     knobRef = props.knobRef,
     lJoyPreviewRef = props.lJoyPreviewRef,
     rJoyRef = props.rJoyRef,
+    rBodyRef = props.rBodyRef,   /* v2.3.2263: the disc's painted metal, faded on its own */
     rLabelRef = props.rLabelRef,
     rCueRef = props.rCueRef,     /* v2.3.2245: the harvest tool frame on the button face */
     rRingRef = props.rRingRef,   /* v2.3.2245: the wind-up / reps ring around the rim */
@@ -283,15 +284,53 @@ export function TouchControls(props) {
       boxSizing: 'border-box',
       borderRadius: '50%',
       border: '2px solid transparent',
-      backgroundImage: 'url(/sprites/joystick/base.webp?v=2.3.102)',
-      backgroundSize: '100% 100%',
-      backgroundRepeat: 'no-repeat',
-      backgroundPosition: 'center',
+      /* v2.3.2263: the painted metal moved to its own child (rBodyRef, just
+         below) so it can go see-through on its own.  Nothing else about the
+         disc did: the lit border and its shadow are still declared here and
+         still stamped inline by BroTown's resolver. */
       WebkitUserSelect: 'none',
       userSelect: 'none',
       WebkitTouchCallout: 'none',
     }
-  }, /*#__PURE__*/React.createElement("svg", {
+  }, /*#__PURE__*/React.createElement("div", {
+    /* ═══ v2.3.2263: THE BUTTON STOPS HIDING WHAT YOU ARE FIGHTING ═══
+       Owner: "Attack button sometimes covers monster (not sure best way to
+       deal with it maybe 50% transparency during active combat?)"
+
+       Measured off his screenshot: the disc is ~88 CSS px across on a 430 px
+       viewport, sitting over the lower-right play area -- in that frame it
+       covers a Blue Slime, most of another monster's name plate, and part of
+       the bro himself.
+
+       50% of the WHOLE BUTTON is what he suggested and it is the one thing
+       this must not do: v2.3.2251 is the owner asking for the opposite -- "the
+       attack button isn't lit up when it becomes available (font hard to
+       see)" -- and it was fixed by taking the disc OFF its faint 0.5 rest and
+       lighting its edge.  Dimming the element would dim the label, the brass
+       border and the ring with it, because CSS opacity applies to the whole
+       subtree, and would hand back the exact complaint.
+
+       So the painted metal is a separate layer now and only IT fades.  The
+       label, the lit edge and the progress ring are siblings above it at full
+       strength: you can see the monster through the button and still read
+       ATTACK on it.  zIndex 0 keeps it under the label (3) and the tool cue
+       (2), and pointerEvents none keeps the touch target on the parent, so
+       nothing about WHERE the button can be pressed changes. */
+    ref: rBodyRef,
+    style: {
+      position: 'absolute',
+      inset: 0,
+      borderRadius: '50%',
+      zIndex: 0,
+      pointerEvents: 'none',
+      opacity: 1,
+      transition: 'opacity 0.18s ease',
+      backgroundImage: 'url(/sprites/joystick/base.webp?v=2.3.102)',
+      backgroundSize: '100% 100%',
+      backgroundRepeat: 'no-repeat',
+      backgroundPosition: 'center',
+    }
+  }), /*#__PURE__*/React.createElement("svg", {
     style: {
       position: 'absolute',
       inset: 0,
