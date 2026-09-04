@@ -10193,6 +10193,26 @@ export var BroTown = function BroTown(_ref0) {
                     pushDmgPopup(_S, _tapNodeBest.x, _tapNodeBest.y - 15,
                       'Too far away!', '#D95C54');
                   } catch (_e9) { /* popup is best-effort */ }
+                } else if (_tapNodeBest.nodeType && _tapNodeBest !== _S._campfire
+                    && !hasGatherTool(_S.rpg, _tapNodeBest.nodeType)) {
+                  /* ═══ v2.3.2273: THE TAP NEEDED THE TOOL GATE THE BUTTON HAS ═══
+                     The button path drops a node you have no tool for
+                     (`_pn = null`, above); this path, added in v2.3.2270, scanned
+                     S.gatherNodes raw and did not.  The renderer HIDES an
+                     untooled node but the entry stays in the list carrying its
+                     full 134x168 box -- so a tap on what looks like empty ground
+                     started a chop the worker then refused at both
+                     extraction_start and node_strike, in silence.  That is the
+                     same nothing-happens the owner reported for logs, arriving
+                     by a second route, and it would have outlived the fix for
+                     the first one.
+                     It SAYS so rather than doing nothing, for the reason the
+                     out-of-reach branch above says it: a tap that silently
+                     fails reads as a broken resource. */
+                  try {
+                    pushDmgPopup(_S, _tapNodeBest.x, _tapNodeBest.y - 15,
+                      'You need a tool for that', '#D95C54');
+                  } catch (_e11) { /* popup is best-effort */ }
                 } else if (!_S._extraction) {
                   /* Already harvesting: leave it alone -- you are doing the
                      thing the tap would start.

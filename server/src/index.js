@@ -948,8 +948,20 @@ export class GameRoom {
        a modified client cannot carry the shield around the zone.  Generously
        above NODE_STRIKE_RANGE (110) because the gather STANCE already sits ~86
        px off the node (startExtraction's mining/fishing snap) and the server's
-       view of a position lags the client's by up to a move throttle. */
-    this.EXTRACT_SHIELD_RANGE = 200;
+       view of a position lags the client's by up to a move throttle.
+       ═══ v2.3.2273: AND THE SAME HOLE THE STRIKE GATE HAD ═══
+       Two things above are stale and one of them was a bug.  The client does
+       NOT cancel at 90px: nodeReachDist has measured the sprite BOX since
+       v2.3.1450 and EXTRACT_CANCEL_R is 110 now, so an honest client keeps a
+       chop alive up to ~270px above a tree's anchor -- comfortably past this
+       200, which meant the harvest shield switched OFF partway through a
+       perfectly ordinary chop and the monsters the owner asked to be held off
+       came back.  Same root as the strike gate (see gathering.js
+       _nodeStrikeRange): a tree is 168px of art anchored at its foot, so
+       "standing at the tree" is nowhere near its anchor.  Raised to cover the
+       widest legitimate reach; still bounded, and EXTRACT_SHIELD_MS remains
+       the real backstop against a client that stops telling the truth. */
+    this.EXTRACT_SHIELD_RANGE = 290;
     /* ═══ v2.3.1765: THE SAME PEACE FOR COOKING AND FIREMAKING ═══
        Owner: "snowmen were still attacking me (attacks from enemies should
        stop during cooking and firemaking too)."
@@ -4236,6 +4248,13 @@ export class GameRoom {
         // strikes past the window-close as miss regardless of the
         // accuracy the client claimed, drops too-early strikes as
         // cheats, otherwise applies the existing harvest reward flow.
+        /* v2.3.2273: count it HERE, before the handler, so "the message never
+           arrived" (the TRAPS #18 shape -- the shim is an allowlist) can be
+           told apart from "a gate inside refused it".  Those two have the same
+           symptom for the player, and the harvest handshake has now been
+           reported broken three times without anyone able to tell which it
+           was.  Read beside lastStrike in the operator view. */
+        this._strikeSeen = (this._strikeSeen || 0) + 1;
         if (session.id) {
           this._handleNodeStrike(session, msg.payload || msg);
         }

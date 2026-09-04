@@ -227,6 +227,53 @@ export const gatheringMethods = {
     return 'perfect';
   },
 
+  /* ═══ v2.3.2273: THE STRIKE GATE HAS TO HONOUR THE SHAPE THE CLIENT DRAWS ═══
+   *
+   * Owner: "Chopped logs were not going into my inventory."  The third report
+   * of this symptom and the first one that is a geometry bug rather than a
+   * missing message (v2.3.1704) or a wiped axe (v2.3.1688).
+   *
+   * The two sides measured "am I at the node" differently, and only for TREES:
+   *   - the CLIENT measures distance to the sprite BOX plus a 56px pad
+   *     (BroTown nodeReachDist / nodeWorldBox).  A tier-1 tree is 168px of art
+   *     ANCHORED AT ITS FOOT and drawn in front of the character, and only the
+   *     trunk blocks movement -- so standing in the canopy, which is what "I am
+   *     at the tree" looks like, is a normal 120-240px from the anchor, and the
+   *     button says CHOP the whole way.
+   *   - the WORKER measured a flat 110px radius from the anchor and dropped
+   *     everything else with a bare `return`.
+   * Measured: 55% of the ground where the client offers a chop was refused here.
+   * Reproduced end to end by mp-chopyield from an ordinary spot in the canopy:
+   *   {"why":"out-of-range","dist":130,"max":110}
+   * and the refusal is invisible -- no error, no event, and the client has
+   * already played the tree falling because it predicts the deplete locally.
+   *
+   * MINING AND FISHING NEVER HIT IT, which is why it survived: startExtraction
+   * SNAPS the player to a fixed 86px / 67px stance for those two before any
+   * strike is sent (lifeSkillRewards.js).  Woodcutting has no snap branch, so
+   * its strike fires from wherever the thumb happened to be.
+   *
+   * So the range is DERIVED from the client's own geometry rather than raised
+   * to a number that felt safe: the half-diagonal of the same box the client
+   * tests, plus the same 56px pad, plus 24px of lag slack (the player keeps
+   * moving between the strike and the last `move` the worker applied).  Tier
+   * scaling mirrors nodeWorldBox's 15%-per-step exactly.  Ore and fish keep
+   * 110: their snaps land at 86 and 67, so widening them buys nothing and
+   * costs anti-cheat surface for no reason.
+   *
+   * It IS a wider anti-cheat surface for trees -- ~268px against 110 -- and
+   * that is the honest trade: it is bounded, derived from art the server can
+   * check, and the alternative is a gate that refuses over half of legitimate
+   * play in silence. */
+  _nodeStrikeRange(nodeType, tierLvl) {
+    if (nodeType !== 'tree') return this.NODE_STRIKE_RANGE;
+    const step = Math.min(10, Math.max(1, Math.ceil((tierLvl || 1) / 10)));
+    const h = 168 * (1 + (step - 1) * 0.15);   /* nodeWorldBox, tree */
+    const w = h * 0.8;
+    /* Base-anchored (ay = 1.0): the far corner of the box is (w/2, h) away. */
+    return Math.sqrt((w * 0.5) * (w * 0.5) + h * h) + 56 /* NODE_REACH_PAD */ + 24 /* lag slack */;
+  },
+
   _harvestSkillName(nodeType) {
     if (nodeType === 'tree') return 'woodcutting';
     if (nodeType === 'fishSpot') return 'fishing';
@@ -548,27 +595,76 @@ export const gatheringMethods = {
     };
   },
 
+  /* ═══ v2.3.2273: WHY A STRIKE PAID NOTHING ═══
+   *
+   * Owner: "Chopped logs were not going into my inventory."  The THIRD report
+   * of this symptom -- v2.3.1688 was the axe being wiped by death, v2.3.1704
+   * was extraction_start never leaving the browser (TRAPS #18) -- and each
+   * time the diagnosis cost days, for the same structural reason: every gate
+   * below is a bare `return`.  Nine of them, all silent, all indistinguishable
+   * from each other and from "the swipe never completed", and the client shows
+   * the tree falling regardless because it predicts the deplete locally.
+   *
+   * So the refusal now says which gate it was.  One string on the session,
+   * surfaced through the operator view beside `extracting` / `harvestShield`,
+   * which exist for exactly this reason (v2.3.1704's note: the browser's copy
+   * of the fact and the worker's copy disagreeing is the tell).  It is
+   * diagnosis only -- no gate changed, nothing is now allowed that was not
+   * allowed before -- and it costs one assignment on a path that runs at most
+   * once per harvest. */
+  _strikeRefused(session, why, extra) {
+    if (!session || !session.id) return;
+    /* Object.create(null): keyed by player id, which comes off the wire --
+       CLAUDE.md rule 4, and a plain {} silently no-ops on '__proto__' (three
+       incidents in one day, 2026-07-07). */
+    if (!this._lastStrikeById) this._lastStrikeById = Object.create(null);
+    this._lastStrikeById[session.id] = Object.assign({ why, at: Date.now() }, extra || {});
+  },
+
+  /** The operator view's read side.  Null when this player has not struck a
+   *  node since the room woke, which is itself an answer: a report of "logs
+   *  are not arriving" with nothing here means the strike never reached the
+   *  worker at all (the TRAPS #18 shape) rather than being refused by a gate. */
+  _lastStrikeFor(playerId) {
+    return (this._lastStrikeById && this._lastStrikeById[playerId]) || null;
+  },
+
   _handleNodeStrike(session, payload) {
     if (!session || !session.id) return;
     const { id, zone, accuracy, swipeFp } = payload || {};
-    if (!id || !zone) return;
+    if (!id || !zone) { this._strikeRefused(session, 'no-id-or-zone', { id: id || null, zone: zone || null }); return; }
     const list = this.nodes[zone];
-    if (!list) return;
+    if (!list) { this._strikeRefused(session, 'zone-has-no-nodes', { zone }); return; }
     const n = list.find((x) => x.id === id);
-    if (!n || !n.alive) return;
+    if (!n) { this._strikeRefused(session, 'node-not-found', { id, zone, known: list.length }); return; }
+    if (!n.alive) { this._strikeRefused(session, 'node-already-dead', { id, zone, respawnAt: n.respawnAt || 0 }); return; }
     /* Position gate -- player must actually be near the node.  The
        client's minigame wouldn't open without proximity but a
        handcrafted node_strike would; check anyway. */
     const ps = this.playerState[session.id];
-    if (!ps || ps.z !== zone || ps.dead || ps.disconnected) return;
+    if (!ps) { this._strikeRefused(session, 'no-player-state', {}); return; }
+    if (ps.z !== zone || ps.dead || ps.disconnected) {
+      this._strikeRefused(session, 'player-not-here', { psZone: ps.z, zone, dead: !!ps.dead, disconnected: !!ps.disconnected });
+      return;
+    }
     /* v2.3.1680: the tool gate again, on the PAYING path.  extraction_start
        already refuses, but that only records intent — a handcrafted
        node_strike skips it entirely, and this is the call that credits the
        harvest.  Gate both or the gate is decorative. */
-    if (!this._hasGatherTool(ps, this._harvestSkillName(n.nodeType))) return;
+    if (!this._hasGatherTool(ps, this._harvestSkillName(n.nodeType))) {
+      this._strikeRefused(session, 'no-tool', { skill: this._harvestSkillName(n.nodeType) });
+      return;
+    }
     const dx = ps.x - n.x;
     const dy = ps.y - n.y;
-    if (dx * dx + dy * dy > this.NODE_STRIKE_RANGE * this.NODE_STRIKE_RANGE) return;
+    /* v2.3.2273: per-node-type, mirroring the client's reach.  See
+       _nodeStrikeRange -- a flat 110 here refused over half of every
+       legitimate chop, silently. */
+    const strikeR = this._nodeStrikeRange(n.nodeType, n.tierLvl);
+    if (dx * dx + dy * dy > strikeR * strikeR) {
+      this._strikeRefused(session, 'out-of-range', { dist: Math.round(Math.sqrt(dx * dx + dy * dy)), max: Math.round(strikeR), nodeType: n.nodeType });
+      return;
+    }
 
     // ═══ Timing validation against the recorded extraction_start ═══
     //
@@ -598,6 +694,7 @@ export const gatheringMethods = {
         // can still complete.
         if (!session._extractionRejects) session._extractionRejects = 0;
         session._extractionRejects++;
+        this._strikeRefused(session, 'too-early', { earlyBy: earliestOpen - now, openDelayBase: ex.openDelayBase, sinceStart: now - ex.startedAt });
         return;
       }
       /* v2.3.1416 (owner: harvest windows no longer time out): the
@@ -659,7 +756,7 @@ export const gatheringMethods = {
     // Miss path: no inventory, no XP, no shard, no harvest_credit.
     // Client already knows it missed (it sent accuracy:'miss') so the
     // node delta broadcast is enough.
-    if (coercedAccuracy === 'miss') return;
+    if (coercedAccuracy === 'miss') { this._strikeRefused(session, 'miss', {}); return; }
 
     // v2.3.1146: behavioral anti-bot (botfp.js).  FLAG-ONLY per owner:
     // scores/flags never change gameplay; the two exceptions are the
@@ -672,6 +769,7 @@ export const gatheringMethods = {
       skill: this._harvestSkillName(n.nodeType), now,
     });
     if (!bot.grant) {
+      this._strikeRefused(session, 'antibot-cap', { accuracy: bot.accuracy || null });
       const wsCap = this._wsBySessionId(session.id);
       if (wsCap) this._sendPlayerState(wsCap, session.id);
       return;
@@ -685,6 +783,7 @@ export const gatheringMethods = {
        perfect-accuracy for the doubled yield + XP. */
     const ratedAccuracy = this._ratedHarvestAccuracy(ps, bot.accuracy);
     const invKey = this._harvestInvKey(n.nodeType, n.tierLvl);
+    this._strikeRefused(session, 'paid', { invKey, nodeType: n.nodeType });
     const yieldQty = this._harvestYieldMult(ratedAccuracy, n.nodeType);
     if (!ps.inventory) ps.inventory = {};
     ps.inventory[invKey] = (ps.inventory[invKey] || 0) + yieldQty;

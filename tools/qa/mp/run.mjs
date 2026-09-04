@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  chopyield: () => import('./mp-chopyield.mjs'), /* v2.3.2273: a finished harvest actually pays -- the one step mp-harvest stops short of */
   texdrift: () => import('./mp-texdrift.mjs'), /* v2.3.2272: does zone art come back when you leave the zone */
   perfdrift: () => import('./mp-perfdrift.mjs'), /* v2.3.2271: does the frame rate actually drift, and what grows with it */
   lockrings: () => import('./mp-lockrings.mjs'), /* v2.3.2263: how many rings are on the target, and whose they are */

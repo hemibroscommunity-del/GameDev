@@ -915,6 +915,12 @@ export async function initPixiRenderer(canvas) {
         count: typeof ent._specLen === 'number' ? ent._specLen : null,
         startedAt: ent._exStart || 0,
         visible: !!(ent[ent._exCode] && ent[ent._exCode].visible),
+        /* v2.3.2273: the peer figure's DRAWN size.  The chop height lived as a
+           literal in two places and drifted for ~230 versions -- a peer's
+           lumberjack 18% larger than your own, which single-client QA cannot
+           see.  Both sites now share CHOP_STANDIN_H; this is what lets a test
+           say so, by comparing against the local __btChopFigure(). */
+        scaleY: (ent[ent._exCode] && ent[ent._exCode].scale) ? ent[ent._exCode].scale.y : null,
       };
     },
     /* v2.3.138: dispose a single loot pile by direct object reference.

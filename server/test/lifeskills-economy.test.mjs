@@ -453,7 +453,13 @@ check('harvest: private harvest_credit carries the skill + XP',
 // 6c. out-of-range strike: rejected before any timing logic.
 n0.alive = true; n0.respawnAt = 0;
 const invBefore = ps.inventory[invKey] || 0;
-ps.x = n0.x + room.NODE_STRIKE_RANGE + 50; ps.y = n0.y;
+/* v2.3.2273: the strike range is per node type now -- a tree's is derived from
+   the sprite box the CLIENT measures reach against (gathering.js
+   _nodeStrikeRange), because a flat 110 here refused over half of every
+   legitimate chop in silence.  Anchoring this on the node's own range keeps the
+   assertion asking "is out-of-range refused" rather than "is 160px refused",
+   which would have flipped to a false green the moment a tree was rolled. */
+ps.x = n0.x + room._nodeStrikeRange(n0.nodeType, n0.tierLvl) + 50; ps.y = n0.y;
 await send(ws, 'extraction_start', { nodeId: n0.id, zone: 'meadow', skill: skillName });
 await send(ws, 'node_strike', { id: n0.id, zone: 'meadow', accuracy: 'good' });
 check('harvest: out-of-range strike rejected (node alive, nothing granted)',

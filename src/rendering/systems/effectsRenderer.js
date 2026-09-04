@@ -58,6 +58,28 @@ const SECTORS8 = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest'
    itself to the avatar's real per-facing height, so the shield divides by this
    to ride along instead of staying one fixed size while the figure changes. */
 const STANDIN_REF_BODY_H = 84;
+
+/* ═══ v2.3.2273: THE CHOPPER'S HEIGHT, IN ONE PLACE THIS TIME ═══
+ *
+ * Owner: "Woodcutting animation character is a bit too small increase by 10%."
+ * 95 -> 104.5.  Previous tunes on this same number: 84 -> 112 (v2.3.1348,
+ * +33%, owner), 112 -> 95 (v2.3.1476, -15%, owner).
+ *
+ * IT IS A CONSTANT NOW BECAUSE THE LITERAL EXISTED TWICE AND DRIFTED.  The
+ * local chopper (_updateExtractionCue) and the one other players see
+ * (_updateRemoteExtraction's SPEC table) each carried their own copy, and the
+ * note beside the second one records what that cost: v2.3.1476 took the local
+ * figure to 95 and did not touch the copy, so for ~230 versions every peer's
+ * lumberjack rendered 18% larger than your own -- invisible to single-client
+ * QA, which is why it survived that long.  The comment there asks the next
+ * person to remember; a shared constant means they do not have to.
+ *
+ * Everything on the figure derives from this one number -- the body scale
+ * (h/220), the 2x gear-layer scale (h/440) and the head traits, which read
+ * |sprite.scale.y| -- so armour and hat keep their proportions for free.
+ * COOK_H and the firemaking FH are deliberately NOT folded in: the owner asked
+ * for woodcutting only, and those two are already independent. */
+export const CHOP_STANDIN_H = 104.5;
 import { cycleMs as jogCycleMs, frameCount as jogFrameCount, resolveDirection } from '../playerSprites.js';
 import { jogWaistRow } from '../jogWaist.js';
 import { bowTorsoCutRow } from '../bowTorsoCut.js';
@@ -6047,14 +6069,17 @@ export class EffectsRenderer {
          chopper 112 -> 95 (owner: -15%) and never updated the copy here, so a
          peer's lumberjack has been rendering 18% larger than your own since
          then; cook follows the same pass's 82 -> 62.  If a local height moves
-         again, move it here in the same edit — nothing enforces the link. */
+         again, move it here in the same edit — nothing enforces the link.
+         v2.3.2273: for CHOP it now does.  Both sites read CHOP_STANDIN_H, so
+         the owner's +10% could not land on one figure and not the other.  cook
+         and fire still carry literals and still carry this warning. */
       /* v2.3.1715: `fh` is new and load-bearing.  The scale below used to divide
          by a hardcoded 220 — true of every stand-in strip until the firemaking
          art was replaced with 512-tall frames, at which point a peer lighting a
          fire would have rendered 2.3x oversized while their own client drew it
          correctly.  The frame height belongs beside the drawn height, not baked
          into the arithmetic. */
-      chop: { frames: this._chopFrames, h: 95, fh: 220, ms: 45, traitDir: 'east', from: 12, count: 12 },
+      chop: { frames: this._chopFrames, h: CHOP_STANDIN_H, fh: 220, ms: 45, traitDir: 'east', from: 12, count: 12 },
       cook: { frames: this._cookFrames, h: 62, fh: 220, ms: 60, traitDir: 'south' },
       /* v2.3.1749: `once` marks a strip that tells a STORY rather than
          cycling.  The firemaking frames run stand -> crouch -> spark -> flame
@@ -7703,7 +7728,7 @@ export class EffectsRenderer {
        player's side, faces the trunk (source faces right -> flip when the
        tree is on the player's LEFT). */
     if (ex.skill === 'woodcutting' && this.chopSprite && this._chopFrames.length) {
-      const CHOP_H = 95;          // drawn height; v2.3.1348: 84 -> 112 (+33%, owner request); v2.3.1476: 112 -> 95 (-15%, owner). Gear layers + traits derive from this same transform, so everything scales together.
+      const CHOP_H = CHOP_STANDIN_H;   // v2.3.2273: see the constant -- shared with the peer figure's SPEC row so the two can no longer drift.
       const CHOP_OFFSET = 30;     // px from the trunk to the figure's centre
       const CHOP_FRAME_MS = 45;   // ~22fps -> ~1.1s per swing loop
       /* v2.3.1131: play only the 12 downswing frames (source indices 12-23) --
@@ -7780,6 +7805,23 @@ export class EffectsRenderer {
       /* chopper faces RIGHT in source (east); flipped (scale.x<0) when the tree
          is on the player's left, i.e. chopSign<0 -> render the west view. */
       this._placeSkillTraitsOn('chop', sp, fi, 'east', chopSign < 0);
+      /* v2.3.2273 QA probe, house style (__btStandInCape, __btSwingTints): the
+         drawn size of the lumberjack, which nothing else exposes -- pixiRenderer's
+         bodyFigureProbe reads the WALKING body and cueLayerProbe reads layer
+         order, so a stand-in resize has never been assertable.  It is here rather
+         than as a screenshot because the thing that actually broke last time was
+         the LOCAL and PEER copies disagreeing, and two figures the same size look
+         the same on screen whether or not they are drawn from the same number. */
+      if (typeof window !== 'undefined') {
+        const _cg = this.chopLegsSprite || this.chopPantsSprite || null;
+        window.__btChopFigure = () => ({
+          visible: !!sp.visible,
+          scaleY: sp.scale.y,
+          drawnH: +(Math.abs(sp.scale.y) * 220).toFixed(2),
+          gearScaleY: _cg ? _cg.scale.y : null,
+          x: sp.x, y: sp.y,
+        });
+      }
     } else {
       this._chopLastFrame = -1;  // mining/fishing — no chopper, reset the edge
     }
