@@ -9049,6 +9049,22 @@ export class EntityRenderer {
        thing a size comparison has to know rather than assume. */
     display._lastPoseKey = pose;
     display._lastFacingKey = dir;
+    /* ═══ v2.3.2256: HOW TALL THE CHARACTER ACTUALLY IS, EVERY FRAME ═══
+       __btPlayerDrawn publishes `texture.height * sprite.scale.y`, which is the
+       whole 256px animation FRAME -- transparent margin above the hat and below
+       the feet included, about 1.7x the character inside it.  Every zoom
+       measurement this repo has taken read that number as "the figure", which
+       is TRAPS #37 exactly: measuring the box that defines the drawing instead
+       of the drawing.  The owner picked FIGURE_SCALE_FLOOR by LOOKING, so that
+       choice stands -- but the numbers printed beside those pictures were 70%
+       high, and the next person to tune this deserves the real one.
+       Crown-to-foot, this facing's own rows (v2.3.1836), in WORLD px.
+       S._swordBodyH is the same arithmetic but is only written when a weapon
+       stand-in is up; this is unconditional. */
+    {
+      const _br = bodyRows(pose, dir);
+      S._bodyDrawH = (_br.feet - _br.crown + 1) * bodyScale * (display.scale.y || 1);
+    }
     /* v2.3.551: set true once the full covering set hides the body, so the
        NFT/procedural fallbacks below don't draw a body in its place.  Declared
        at function scope (the NFT fallback is outside the spritesAvailable block). */
