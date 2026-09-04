@@ -534,5 +534,81 @@ const setCharLevel = (lvl) => {
     { owed, pool: vet.prog3.pool });
 }
 
+/* ═══ v2.3.2266: THE LUNGE REACHES AS FAR AS IT CAN CLOSE, AND THE WORKER
+   MOVES THE PLAYER THERE ═══
+ *
+ * Owner: "dash damage using the tap to lock on a far away monster gives an
+ * 'out of range' error."  Two halves, both pinned here:
+ *
+ *   1. `reach` was 240, sized in v2.3.2252 for the 220px targeting perimeter,
+ *      while tap-to-lock has no range limit and v2.3.2263 let the lunge close
+ *      up to 900.  The client crossed the gap, arrived, swung, and the worker
+ *      refused it against a bound belonging to a different feature.
+ *   2. The worker now PLACES the player at contact when it accepts a declared
+ *      lunge, instead of hoping the move stream got there first.  It cannot:
+ *      the dash runs at ~1560 px/s against a 500*dt+80 movement budget, so a
+ *      single bunched packet on a phone strands the server's copy.
+ *
+ * The refusal half matters as much as the acceptance half, so both are here --
+ * a reach that accepts everything would pass the first assertion and be a
+ * strictly worse bug.
+ */
+{
+  parkAll();
+  const far = meadow[0];
+  far.alive = true; far.hp = 900; far.maxHp = 900;
+  far.respawnAt = 0; far._stunUntil = 0; far._wanderPausedUntil = Date.now() + 600000;
+  far.x = 5000; far.y = 5000;
+  psA.x = 5000; psA.y = 5000 - 700;      /* 700px away: past the old 240, inside the new 900 */
+  psA.z = 'meadow';
+  psA.weapon = psA.weapon || { type: 'greatsword', tier: 'wood' };
+  psA.stamina = psA.maxStamina || 100;
+  if (psA._abilCd) psA._abilCd.sworddash = 0;
+  const hp0 = far.hp;
+  /* Stamp where the monster IS, before the cast.  The placement is computed
+     from this position, and the hit knocks the monster 40px and the room tick
+     moves it again -- measuring against where it ended up asks a moving value
+     about a past event, which is TRAPS #44 and read 5636px the first time. */
+  const mx0 = far.x, my0 = far.y;
+  await room.webSocketMessage(wsA, JSON.stringify({
+    type: 'ability', kind: 'sworddash', targetId: String(far.id),
+  }));
+  check('a lunge at a monster 700px away LANDS (it was refused at reach 240)',
+    far.hp < hp0, { before: hp0, after: far.hp });
+  const gap = Math.round(Math.hypot(mx0 - psA.x, my0 - psA.y));
+  check(`...and the worker MOVED the player to contact, so its copy is where the lunge ended (${gap}px)`,
+    gap >= 44 && gap <= 48, { gap, ps: { x: Math.round(psA.x), y: Math.round(psA.y) } });
+  check('...and the next move is treated as a first move, so the jump it just made is not read as a teleport',
+    psA.lastMoveAt === undefined, { lastMoveAt: psA.lastMoveAt });
+
+  /* BEYOND the reach is still refused -- the bound moved, it did not go away. */
+  psA.x = 5000; psA.y = 5000 - 1400;
+  psA.stamina = psA.maxStamina || 100;
+  if (psA._abilCd) psA._abilCd.sworddash = 0;
+  const hp1 = far.hp;
+  const beforeY = psA.y;
+  await room.webSocketMessage(wsA, JSON.stringify({
+    type: 'ability', kind: 'sworddash', targetId: String(far.id),
+  }));
+  check('a lunge at 1400px is STILL refused -- the bound moved, it did not go away',
+    far.hp === hp1, { before: hp1, after: far.hp });
+  check('...and a refused lunge does not move the player either',
+    psA.y === beforeY, { y: psA.y, was: beforeY });
+
+  /* BASH is deliberately not moved: it strikes on the PRESS, while the player
+     is still travelling (v2.3.2260), so placing them at the target would be a
+     lie about where the shove came from. */
+  psA.shield = psA.shield || { type: 'wood_shield' };
+  psA.x = 5000; psA.y = 5000 - 200;
+  psA.stamina = psA.maxStamina || 100;
+  if (psA._abilCd) psA._abilCd.bash = 0;
+  const bashY = psA.y;
+  await room.webSocketMessage(wsA, JSON.stringify({
+    type: 'ability', kind: 'bash', targetId: String(far.id),
+  }));
+  check('BASH does not move the player -- it strikes on the press, not on arrival',
+    psA.y === bashY, { y: psA.y, was: bashY });
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

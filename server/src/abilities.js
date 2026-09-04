@@ -90,7 +90,30 @@ export const STAM_ABILITIES = {
     stunMs: 1600,
     knockback: 40,
     needs: 'weapon',
-    reach: 240,
+    /* ═══ v2.3.2266: THE REACH IS WHAT THE LUNGE CAN CLOSE ═══
+       Owner: "dash damage using the tap to lock on a far away monster gives an
+       'out of range' error."  There is no such string in the game -- the only
+       range outcome a cast has is reject('whiff'), which the client floats as
+       "Missed!" -- so this is the behaviour being named, and the behaviour is
+       this number.
+
+       240 was chosen in v2.3.2252 to cover the 220px targeting perimeter, back
+       when a lunge could only be aimed at something inside it.  Tap-to-lock has
+       no range limit at all (it is a screen-space hit test, which is what makes
+       the 675px bow snipe work), and v2.3.2263 let the lunge's window grow with
+       the gap so it can now actually close up to DASH_MAX_REACH_PX -- 900, the
+       client's own travel cap.  So the client crosses 800px, arrives, swings,
+       and the worker refuses it against a bound set for a different feature.
+       The two numbers are the same fact and they are now the same number.
+
+       THIS IS NOT A WIDER ANONYMOUS HIT.  The radius scan above is untouched at
+       70; only a DECLARED target -- one monster, named by the client -- is
+       checked against `reach`, and the server still owns damageability, the
+       roll and the clamp.  What it buys a cheater is one melee-clamped hit per
+       2500ms cooldown and 10% stamina on a monster they could have walked to,
+       and the block below now MOVES them there, so the position they end up
+       claiming is the one the ability says they took. */
+    reach: 900,   /* v2.3.2252: 240; v2.3.2266: = client DASH_MAX_REACH_PX */
   },
   bash: {
     /* ═══ v2.3.2252: NO LEVEL GATE ═══
@@ -362,7 +385,49 @@ export const abilityMethods = {
         if (!this._monsterDamageable(m)) break;
         const dx = (m.x || 0) - (ps.x || 0);
         const dy = (m.y || 0) - (ps.y || 0);
-        if (dx * dx + dy * dy <= reach * reach) targets = [{ m, d2: dx * dx + dy * dy }];
+        const d2 = dx * dx + dy * dy;
+        if (d2 <= reach * reach) {
+          /* ═══ v2.3.2266: A LUNGE THE SERVER ACCEPTS IS A LUNGE THE SERVER
+             PERFORMS ═══
+             The client integrates the dash frame by frame and streams the
+             positions (v2.3.2263 put it in the move-broadcast gate), but that
+             stream is exactly what a phone loses: the lunge runs at ~1560 px/s,
+             which is ~103px per 66ms send against the movement validator's
+             500*dt+80 = 113px budget, so a single bunched packet is refused and
+             the worker keeps the pre-lunge position.  It then range-checks the
+             swing from a place the player left half a second ago.  That is not
+             a bug in the validator -- a sustained 1560 px/s genuinely is over
+             its cap -- and it cannot be fixed by trusting the client harder.
+
+             So the position stops being something the worker has to be talked
+             into and becomes something it DOES.  It has already charged the
+             stamina and the cooldown and decided this target is legal; placing
+             the player at contact is the same decision, written down.  It is
+             also what movement.js's own C-6 note recommends for the analogous
+             hole ("having it WRITE the entry position instead of accepting
+             msg.x/msg.y removes the bypass entirely and needs no heuristic").
+
+             46px is the client's DASH_STOP_PX -- the contact range its dash
+             stops at -- so the two copies land on the same spot rather than
+             fighting.  Only for SWORDDASH: bash strikes on the press while the
+             player is still travelling (v2.3.2260 left it that way
+             deliberately), so moving them there would be a lie about where the
+             shove came from.
+             lastMoveOkAt/lastMoveAt are cleared with it, so the very next move
+             packet is treated as a first move and compared against nothing --
+             otherwise the client's own arrival position, measured from a point
+             the server just jumped it to, would look like a teleport. */
+          if (kind === 'sworddash') {
+            const dist = Math.sqrt(d2) || 1;
+            const stop = 46;
+            if (dist > stop) {
+              ps.x = (m.x || 0) - (dx / dist) * stop;
+              ps.y = (m.y || 0) - (dy / dist) * stop;
+              ps.lastMoveAt = undefined;
+            }
+          }
+          targets = [{ m, d2 }];
+        }
         break;
       }
     }

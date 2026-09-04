@@ -49,7 +49,12 @@ export const STAM_ABILITIES = {
     stunMs: 1600,
     knockback: 40,
     needs: 'weapon',
-    reach: 240,
+    /* v2.3.2266: 240 -> 900, matching the client's own DASH_MAX_REACH_PX -- the
+       distance the lunge can actually close.  The server's copy carries the
+       reasoning; this half exists so the mirror assertion in
+       server/test/abilities.test.mjs keeps passing, and a drifted number here
+       is a button that lies about its range. */
+    reach: 900,
   },
   bash: {
     /* ═══ v2.3.2252: NO LEVEL GATE ═══
