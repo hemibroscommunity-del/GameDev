@@ -219,6 +219,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
       labelOpacity: label ? +getComputedStyle(label).opacity : null,
       pointerEvents: getComputedStyle(disc).pointerEvents,
       wrapOpacity: +getComputedStyle(disc.parentElement).opacity,
+      /* v2.3.2264: the warm wash.  Two background layers means the gradient is
+         painted over the sprite; one means bare metal. */
+      bodyBg: body ? getComputedStyle(body).backgroundImage : null,
+      bodyRect: body ? (() => { const r = body.getBoundingClientRect();
+        return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) }; })() : null,
     };
   });
   /* ═══ ONE TARGET, ONE RING (v2.3.2263) ═══
@@ -240,6 +245,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!btn && btn.bodyHasSprite === true && btn.bodyOpacity > 0.2 && btn.bodyOpacity < 0.7, btn);
   rec.ok('...and the LABEL is not faded with it, which is what v2.3.2251 asked for',
     !!btn && btn.labelText === 'ATTACK' && btn.labelOpacity === 1, btn);
+  /* ═══ v2.3.2264: SEE-THROUGH MUST NOT READ AS DISABLED ═══
+     Owner: "The problem is implying the button is inactive when it's partially
+     transparent.  Maybe only during combat it changes color (like to orange)
+     keeping its transparency."  So the two have to be true together -- faded
+     AND warm -- and the warm half has to be absent when there is nothing to
+     fight, or it stops meaning anything. */
+  rec.ok('...and the see-through disc is WARM, not greyed, so it reads as live',
+    !!btn && /linear-gradient/.test(btn.bodyBg || '') && /214,\s*138,\s*60/.test(btn.bodyBg || ''),
+    { bodyBg: btn && btn.bodyBg });
+  if (btn && btn.bodyRect) {
+    await P.page.screenshot({ path: `${out}/button-hot.png`,
+      clip: { x: btn.bodyRect.x - 6, y: btn.bodyRect.y - 6, width: btn.bodyRect.w + 12, height: btn.bodyRect.h + 12 } });
+  }
+
 
   const bLock = await boxFor('locked');
   const bPlain = await boxFor('plain');
@@ -249,6 +268,40 @@ export async function run({ browser, wsPort, webPort, rec }) {
   if (bLock) await P.page.screenshot({ path: `${out}/locked.png`, clip: { x: bLock.x, y: bLock.y, width: bLock.width, height: bLock.height } });
   if (bPlain) await P.page.screenshot({ path: `${out}/plain.png`, clip: { x: bPlain.x, y: bPlain.y, width: bPlain.width, height: bPlain.height } });
   console.log('    crops written to ' + out + ' (locked.png / plain.png)');
+
+  /* THE CONTROL, run LAST: it shoves the monsters off the map, which would
+     leave the ring camera above with nothing to frame.
+     Drop the target and empty the perimeter, and the disc must go drop the target and empty the perimeter, and the disc must go
+     back to plain opaque metal. */
+  const cold = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    S.lockedTarget = null;
+    (S.monsters || []).forEach((m) => { m.x += 4000; m.y += 4000; m.renderX = m.x; m.renderY = m.y; });
+    return true;
+  });
+  /* POLL FOR THE TRANSITION TO SETTLE, do not guess a wait.  The disc fades
+     over 0.18s and the first version of this read 0.953 -- a value on its way
+     to 1, asserted as though it were an end state.  That is TRAPS #44 in the
+     same file that documents it. */
+  const btnCold = await P.page.evaluate(() => new Promise((resolve) => {
+    const disc = document.querySelector('.bt-rjoy-base');
+    const body = disc && (disc.querySelector('div[style*="border-radius: 50%"]') || disc.firstElementChild);
+    if (!body) return resolve(null);
+    const t0 = Date.now();
+    let last = null, stable = 0;
+    const iv = setInterval(() => {
+      const o = +getComputedStyle(body).opacity;
+      if (last !== null && Math.abs(o - last) < 0.001) stable++; else stable = 0;
+      last = o;
+      if (stable >= 3 || Date.now() - t0 > 3000) {
+        clearInterval(iv);
+        resolve({ opacity: o, bg: getComputedStyle(body).backgroundImage, settledMs: Date.now() - t0 });
+      }
+    }, 60);
+  }));
+  console.log('    attack button, nothing to fight: ' + JSON.stringify(btnCold));
+  rec.ok('with nothing to fight the disc is opaque metal again, so the warm state MEANS something',
+    !!cold && !!btnCold && btnCold.opacity === 1 && !/linear-gradient/.test(btnCold.bg || ''), btnCold);
   console.log('    expected, in CSS px radius: reticle ' +
     (18 * (state.scaleX || 1)).toFixed(1) + ' (15..21 with its bob), candidate ellipse rx ' +
     (34 * (state.scaleX || 1)).toFixed(1) + ' ry ' + (34 * 0.38 * (state.scaleY || 1)).toFixed(1));

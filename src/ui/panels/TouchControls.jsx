@@ -1,6 +1,49 @@
 import React from 'react';
 import { RBTN } from './ShieldButton.jsx';
 
+/* ═══ v2.3.2264: THE DISC SAYS "HOT", IT DOES NOT SAY "OFF" ═══
+ * Owner, on v2.3.2263's see-through button: "the disc that holds the attack
+ * button isn't [reading as active].  The problem is implying the button is
+ * inactive when it's partially transparent.  Maybe only during combat it
+ * changes color (like to orange) keeping its transparency."
+ *
+ * Exactly right, and it is the oldest convention in UI: a faded control means
+ * DISABLED.  v2.3.2263 borrowed that appearance to stop the button covering
+ * monsters, and so made it say the opposite of what it meant -- the button is
+ * never more live than in the frames it had just started looking dead in.
+ *
+ * The transparency stays and the COLOUR carries the state instead.  A warm wash
+ * over the grey metal, so the see-through disc reads as lit rather than greyed
+ * out: the same pixels, warm instead of drained.
+ *
+ * ONE ELEMENT, TWO BACKGROUND LAYERS, rather than a tint node of its own.  CSS
+ * paints the first background-image in the list ON TOP, which is the only way
+ * to get colour over the sprite: a background-COLOUR paints underneath the
+ * image, and base.webp is opaque edge to edge -- the v2.3.2251 note on this
+ * very disc is about exactly that.  The resolver swaps between these two
+ * strings and touches nothing else.
+ *
+ * #D68A3C is the amber the renderer already uses for a warm world mark, so this
+ * is the palette's orange rather than a new one -- and it stays clear of both
+ * marks in the combat language, where brass #D8A85F means "in reach" and red
+ * #FF3C3C means "attacking".  The disc is neither: it is the button those two
+ * are about. */
+const RBTN_WASH = 'linear-gradient(rgba(214,138,60,0.62), rgba(214,138,60,0.62)), ';
+const RBTN_SPRITE = 'url(/sprites/joystick/base.webp?v=2.3.102)';
+export const RBTN_BODY_BG = RBTN_SPRITE;
+export const RBTN_BODY_BG_HOT = RBTN_WASH + RBTN_SPRITE;
+/* ...AND THE KNOB IS PART OF THE SAME FACE.  Rendered from base.webp's dark
+   well, the knob is a SEPARATE 42px sprite at zIndex 1, so v2.3.2263's fade
+   reached the metal ring and stopped at the dome in the middle of it -- which
+   is the half of the button actually sitting over the play area.  Measured off
+   the first render of the wash: the outer metal came back (185,127,75), warm
+   and see-through, and the knob (93,91,89), neutral and solid, in the same
+   frame.  It takes the same two treatments, or "the button is transparent now"
+   is only true of its rim. */
+const RKNOB_SPRITE = 'url(/sprites/joystick/knob.webp?v=2.3.102)';
+export const RKNOB_BG = RKNOB_SPRITE;
+export const RKNOB_BG_HOT = RBTN_WASH + RKNOB_SPRITE;
+
 /* === TouchControls — the left joystick + the contextual right BUTTON === */
 /* v2.3.890: extracted verbatim from the floating-joystick sibling run
    in BroTown.jsx.  Render-only: the DOM refs are the SAME ref objects
@@ -324,11 +367,13 @@ export function TouchControls(props) {
       zIndex: 0,
       pointerEvents: 'none',
       opacity: 1,
-      transition: 'opacity 0.18s ease',
-      backgroundImage: 'url(/sprites/joystick/base.webp?v=2.3.102)',
-      backgroundSize: '100% 100%',
-      backgroundRepeat: 'no-repeat',
-      backgroundPosition: 'center',
+      transition: 'opacity 0.18s ease, background-image 0.18s ease',
+      backgroundImage: RBTN_BODY_BG,
+      /* Two values each, so the wash layer is sized and placed like the sprite
+         when the resolver swaps in the two-layer stack. */
+      backgroundSize: '100% 100%, 100% 100%',
+      backgroundRepeat: 'no-repeat, no-repeat',
+      backgroundPosition: 'center, center',
     }
   }), /*#__PURE__*/React.createElement("svg", {
     style: {
@@ -402,10 +447,13 @@ export function TouchControls(props) {
       left: '50%',
       top: '50%',
       transform: 'translate(-50%,-50%)',
-      backgroundImage: 'url(/sprites/joystick/knob.webp?v=2.3.102)',
-      backgroundSize: '100% 100%',
-      backgroundRepeat: 'no-repeat',
-      backgroundPosition: 'center',
+      /* v2.3.2264: fades and warms with the disc it sits in -- see RKNOB_BG. */
+      opacity: 1,
+      transition: 'opacity 0.18s ease, background-image 0.18s ease',
+      backgroundImage: RKNOB_BG,
+      backgroundSize: '100% 100%, 100% 100%',
+      backgroundRepeat: 'no-repeat, no-repeat',
+      backgroundPosition: 'center, center',
       pointerEvents: 'none',
       /* No filter: a drop-shadow over the WebGL canvas is the documented iOS
          "static" (v2.3.1236, CLAUDE.md). */

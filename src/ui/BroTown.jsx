@@ -48,7 +48,7 @@ import { checkAccountLogin } from '@/networking/index.js';
 import { KeyboardHintsPanel } from './panels/KeyboardHintsPanel.jsx';
 import { UpdateBanner } from './panels/UpdateBanner.jsx';
 import { startBuildWatch } from '@/game/buildWatch.js';
-import { TouchControls } from './panels/TouchControls.jsx';
+import { TouchControls, RBTN_BODY_BG, RBTN_BODY_BG_HOT, RKNOB_BG, RKNOB_BG_HOT } from './panels/TouchControls.jsx'; /* v2.3.2264: the disc's resting vs combat wash */
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
 import { ShieldButton } from './panels/ShieldButton.jsx'; /* v2.3.2242: the shield is a toggle button under Attack */
 import { GESTURE_TOOL_URLS } from '@/game/gesturePose.js'; /* v2.3.2245: the tool strips the button face plays */
@@ -5664,9 +5664,23 @@ export var BroTown = function BroTown(_ref0) {
              opaque.  0.45 rather than the suggested 0.5 because the metal sits
              on a dark well: measured against the sprite, half strength still
              reads as a solid disc over foliage. */
+          /* v2.3.2264: ...and it goes WARM in the same frame, because a faded
+             control is the universal look of a disabled one and the owner read
+             it that way immediately.  Transparency says "you can see through
+             me", colour says "I am live"; the disc needs to say both at once.
+             One stamp, same change-gated pattern as every write around it. */
           var _bodyWant = _hot ? '0.45' : '1';
           var _rb = rBodyRef.current;
           if (_rb && _rb.style.opacity !== _bodyWant) _rb.style.opacity = _bodyWant;
+          var _bgWant = _hot ? RBTN_BODY_BG_HOT : RBTN_BODY_BG;
+          if (_rb && _rb.style.backgroundImage !== _bgWant) _rb.style.backgroundImage = _bgWant;
+          /* The knob is a separate sprite sitting in the middle of that face --
+             i.e. the part actually over the play area -- so it takes both
+             treatments too, or only the rim of the button is see-through. */
+          var _rk2 = rKnobRef.current;
+          var _kbgWant = _hot ? RKNOB_BG_HOT : RKNOB_BG;
+          if (_rk2 && _rk2.style.opacity !== _bodyWant) _rk2.style.opacity = _bodyWant;
+          if (_rk2 && _rk2.style.backgroundImage !== _kbgWant) _rk2.style.backgroundImage = _kbgWant;
           var _bcWant = _lit ? (_hot ? '#EAC675' : '#D8AA58') : 'transparent';
           if (_rd && _rd.style.borderColor !== _bcWant) _rd.style.borderColor = _bcWant;
           var _bsWant = _lit
