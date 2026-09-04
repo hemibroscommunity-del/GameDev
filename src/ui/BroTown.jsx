@@ -258,7 +258,8 @@ import { swingAttack, specialAttack, elementBurst } from '@/game/playerActions.j
 /* v2.3.1733: stamina abilities (Shield Bash / Whirlwind) — PR 5 of the
    combat overhaul.  The cast bodies live in @/game/abilities.js for the
    same reason the swing bodies do; this component keeps thin wrappers. */
-import { castAbility, abilityStatus, resolveCastAngle, BASH_POSE_MS, maybeSwordDash } from '@/game/abilities.js'; /* v2.3.2258: the sword's opening lunge */
+import { castAbility, abilityStatus, resolveCastAngle, BASH_POSE_MS, maybeSwordDash,
+  applyAbilityStrike, DASH_STEP_PX, DASH_MAX_STEP_PX, DASH_STOP_PX } from '@/game/abilities.js'; /* v2.3.2258: the sword's opening lunge; v2.3.2260: it strikes on arrival */
 /* v2.3.841: extraction + fishing/cooking/wood/mining reward bodies extracted; component keeps thin useCallback wrappers. */
 import { startExtraction, succeedExtraction, applyCookingResult } from '@/game/lifeSkillRewards.js';
 /* v2.3.842: emote + building-entry interaction bodies extracted; component keeps thin useCallback wrappers. */
@@ -4767,33 +4768,70 @@ export var BroTown = function BroTown(_ref0) {
            the collision push-out would fight this loop for the frames it ran.
            Ends on arrival, on the window expiring, or if the target dies -- the
            window is the backstop for a target that keeps running. */
+        /* ═══ v2.3.2260: ARRIVAL ENDS IT, AND ARRIVAL IS WHEN IT STRIKES ═══
+           Owner (of the sword lunge): "I want the character to zoom to the
+           enemy AND make a swing at it (all in one motion)."
+
+           Two changes here, and the numbers now come from game/abilities.js
+           rather than being literals at this end (see the note on
+           DASH_STEP_PX): the step is roughly doubled so the close reads as a
+           zoom, and the window stops being what ends the move -- arrival does.
+           Measured before: a lunge at 220px closed only to 103px because the
+           260ms clock ran out first, and a lock is acquired out to ~220.
+
+           `_endDash` is where the deferred strike goes off.  It fires on
+           ARRIVAL and on the window expiring (a target that outran you still
+           gets swung at, or the press would cost stamina for nothing), but NOT
+           when the target died or the player did -- there is nothing to hit,
+           and the worker would refuse it anyway. */
         if (S._bashDash && !_playerDead) {
           var _bd = S._bashDash;
           var _bt = _bd.ref;
           var _btLive = _bt && _bt.alive !== false && !(typeof _bt.curHp === 'number' && _bt.curHp <= 0);
-          if (!_btLive || Date.now() > _bd.until) {
+          var _endDash = function (strike) {
             S._bashDash = null;
+            if (strike && S._dashStrike) {
+              var _ds = S._dashStrike;
+              S._dashStrike = null;
+              try { applyAbilityStrike(S, _ds.kind, _ds.targetId); } catch (e) { /* a failed strike must not stop the frame */ }
+            } else if (!strike) {
+              S._dashStrike = null;
+            }
+          };
+          if (!_btLive) {
+            _endDash(false);
+          } else if (Date.now() > _bd.until) {
+            _endDash(true);
           } else {
             var _btx = (typeof _bt.renderX === 'number' ? _bt.renderX : _bt.x);
             var _bty = (typeof _bt.renderY === 'number' ? _bt.renderY : _bt.y);
             var _bdx = _btx - S.player.x, _bdy = _bty - S.player.y;
             var _bdist = Math.sqrt(_bdx * _bdx + _bdy * _bdy) || 1;
-            var _bstop = 46;   /* contact range: just outside the body */
+            var _bstop = DASH_STOP_PX;
             if (_bdist <= _bstop) {
-              S._bashDash = null;
+              _endDash(true);
             } else {
-              var _bstep = Math.min(_bdist - _bstop, 13 * (S._dtScale || 1));
+              var _bstep = Math.min(_bdist - _bstop,
+                Math.min(DASH_MAX_STEP_PX, DASH_STEP_PX * (S._dtScale || 1)));
               var _bnx = S.player.x + (_bdx / _bdist) * _bstep;
               var _bny = S.player.y + (_bdy / _bdist) * _bstep;
               /* Honour the same collision the walk does -- a bash must not
                  post the player through a cliff to reach something. */
               var _bhs = 12;
-              if (!isSolid(_bnx - _bhs, S.player.y - _bhs) && !isSolid(_bnx + _bhs, S.player.y + _bhs)) S.player.x = _bnx;
-              if (!isSolid(S.player.x - _bhs, _bny - _bhs) && !isSolid(S.player.x + _bhs, _bny + _bhs)) S.player.y = _bny;
+              var _moved = false;
+              if (!isSolid(_bnx - _bhs, S.player.y - _bhs) && !isSolid(_bnx + _bhs, S.player.y + _bhs)) { S.player.x = _bnx; _moved = true; }
+              if (!isSolid(S.player.x - _bhs, _bny - _bhs) && !isSolid(S.player.x + _bhs, _bny + _bhs)) { S.player.y = _bny; _moved = true; }
+              /* Blocked on BOTH axes: a wall is between you and the target and
+                 no amount of window will get you there.  Strike from here
+                 rather than grinding against the geometry for the rest of the
+                 backstop -- the worker range-checks anyway, so an out-of-reach
+                 lunge simply whiffs, which is the honest outcome. */
+              if (!_moved) _endDash(true);
             }
           }
         } else if (S._bashDash && _playerDead) {
           S._bashDash = null;
+          S._dashStrike = null;
         }
         /* Movement gated by REAL stuns only (hexer / brute charge).
            The 250 ms hit-react lockout (_hitLockActive) no longer
