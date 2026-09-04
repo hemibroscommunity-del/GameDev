@@ -1645,3 +1645,57 @@ five above got worse with a longer wait.
 **Related:** §35 (a test that copies a value out of the game), §37 (measuring a
 drawing against the box that defines it), §40 (a screenshot is not in CSS
 pixels).
+
+---
+
+## §45 — The preview client talks to the PRODUCTION worker (v2.3.2262)
+
+**The setup that makes this invisible:** Pages builds a preview for every PR, so
+a branch's CLIENT is one click away. The worker is not. `src/networking/index.js`
+hardcodes `wss://brotown-server.hemibroscommunity.workers.dev`, and
+`.github/workflows/deploy-worker.yml` deploys on `branches: [main]` only. So a
+preview build of a branch runs **new client code against the old server**.
+
+**What it looks like when you hit it:** the owner reported the sword lunge
+dealing no damage, twice, across two rounds of fixes. Everything on the client
+worked — the dash closed, the animation played, the stamina was spent. The
+worker's `_handleAbility` opens with
+
+```js
+if (!Object.prototype.hasOwnProperty.call(STAM_ABILITIES, kind)) return;
+```
+
+and the deployed worker had never heard of `sworddash`, which exists only on the
+branch. A silent return: no damage, no `ability_rejected`, nothing on screen.
+
+**Why the tests all passed.** `tools/qa/mp/run.mjs` boots a LOCAL worker from
+the branch's own `server/` directory. Every harness scenario therefore tests
+client-and-server-from-the-same-commit — the one configuration the person
+playtesting is *not* in. `mp-dashhit` was written specifically to test a real
+spoke zone against a real worker and still could not see it.
+
+**Two rounds of fixes were spent on a non-bug**, and worse, the tempting fix was
+actively dangerous: making the client apply its own dash damage would have
+"worked" on the preview and then double-billed every hit the moment the real
+worker caught up.
+
+**Check this FIRST whenever a server-authoritative behaviour is reported broken
+on a preview URL:**
+
+```
+git show origin/main:server/src/<file> | grep <the-new-thing>
+```
+
+Nothing back means the deployed worker cannot do it yet, and no client change
+will help.
+
+**And audit the whole server diff, not just the reported symptom.** The same
+branch also moved `_weaponBase` (bow 7.29 → 12.80, staff 8.54 → 13.44). The item
+CARD reads the client's table and showed the new numbers, while the worker rolled
+damage from the old ones — so the owner had been playtesting a ranged buff that
+was not in effect, with the UI telling him it was. `git diff origin/main...HEAD
+-- server/` is two seconds and names every one of these.
+
+**Related:** §35 (a test that copies a value out of the game), §44 (asking a
+moving value about a past event) — both are the same family: the measurement and
+the thing being measured are not the same object.
