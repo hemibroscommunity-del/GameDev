@@ -4806,6 +4806,32 @@ export var BroTown = function BroTown(_ref0) {
            and the worker would refuse it anyway. */
         if (S._bashDash && !_playerDead) {
           var _bd = S._bashDash;
+          /* ═══ v2.3.2261: THE DASH RE-BINDS ITS TARGET, LIKE THE LOCK DOES ═══
+             Owner: "Melee still doesn't register a hit when you use sword
+             dashing a monster."  In a clean harness run against a worker-driven
+             monster the lunge lands (mp-dashhit: 55 -> 43 hp, closing 200 ->
+             69px), so the mechanism is sound and the difference is the traffic:
+             spoke-zone monsters arrive over the wire, and a snapshot that
+             REPLACES the array hands back objects with the same ids and new
+             identities.  _bd.ref then points at an ORPHAN -- an object nothing
+             updates any more, so it reads permanently alive at a FROZEN
+             position.  The dash closes on where the monster used to be, and the
+             strike goes out from there; the worker range-checks from the
+             player's real position and the hit misses, with a full animation
+             and a spent bar to say it should not have.
+             Exactly the class of bug the ghost lock was (targeting.js
+             lockRefPresent, same version).  Same answer: match by id and
+             re-point at the live object, every frame, so the dash chases the
+             monster rather than its shadow. */
+          if (_bd.targetId != null && (S.monsters || []).indexOf(_bd.ref) < 0) {
+            var _list = S.monsters || [];
+            for (var _bi = 0; _bi < _list.length; _bi++) {
+              var _cand = _list[_bi];
+              /* String() on both sides: ids are numbers from local spawns and
+                 strings over the wire (see lockRefPresent). */
+              if (_cand && _cand.id != null && String(_cand.id) === String(_bd.targetId)) { _bd.ref = _cand; break; }
+            }
+          }
           var _bt = _bd.ref;
           var _btLive = _bt && _bt.alive !== false && !(typeof _bt.curHp === 'number' && _bt.curHp <= 0);
           var _endDash = function (strike) {

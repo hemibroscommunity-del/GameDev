@@ -170,8 +170,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`...and the monster actually LOST HP (${armed.hp} -> ${landed.hp})`,
     landed.hp != null && armed.hp != null && landed.hp < armed.hp,
     { before: armed.hp, after: landed.hp, ...landed });
-  rec.ok('...and the lunge cost stamina, so the client did cast it (guard)',
-    landed.stam < (setup.maxStam || 100), landed);
+  /* ═══ NOT A STAMINA ASSERTION ═══
+     This read `landed.stam < maxStam` and failed on a run where everything else
+     passed: stamina REGENERATES, and the 2.5s this waits for the worker's
+     damage to come back is ample time to refill a 10-point spend.  It was
+     measuring the regen clock, not the cast.  The cast is already proven by the
+     assertions above -- the ability fired, the dash ran, the held strike went
+     out and the monster lost hp -- so the honest replacement is the one fact
+     those do not cover: that the worker AGREED it was on cooldown afterwards,
+     which only a cast it accepted can produce. */
+  const cd = await P.page.evaluate(() => (window.__btAbilityStatus ? window.__btAbilityStatus('sworddash') : null));
+  rec.ok('...and the lunge is on cooldown afterwards, so it really was cast',
+    !!cd && cd.cdLeft > 0, cd);
 
   await P.ctx.close().catch(() => {});
 }
