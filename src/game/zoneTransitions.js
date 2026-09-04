@@ -26,8 +26,34 @@ import { _typeof } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { onZoneEntered } from '@/networking/nodeSync.js'; /* v2.3.1301: gather-node self-heal */
-import { preloadZoneAssets } from '@/rendering/preloadAnimations.js'; /* v2.3.1405: per-zone asset gate */
+import { preloadZoneAssets, freeZoneAssets } from '@/rendering/preloadAnimations.js'; /* v2.3.1405: per-zone asset gate; v2.3.2272: and its exit half */
 import { freeZoneMap, isZoneMapResident } from '@/rendering/tiledMaps.js'; /* v2.3.1405: map eviction + sync residency check */
+
+/* ═══ v2.3.2272: FREE THE ZONE YOU LEFT, ONE BEAT LATE ═══
+ *
+ * The companion to freeZoneMap at both of the sites below.  v2.3.1405 freed
+ * the departing zone's ~4MB map and nothing else, so monster variant art
+ * accumulated for the life of the page -- measured as a monotone +92MB across
+ * a four-zone tour that never came back (mp-texdrift; see freeZoneAssets).
+ *
+ * DEFERRED, and that is not a hedge.  Both call sites run in the frame that
+ * flips S.currentZone, and the renderer does not tear the old zone's display
+ * objects down until it NOTICES the flip on its next pass (pixiRenderer's
+ * onZoneChange -> entityRenderer.clear()).  Freeing synchronously would pull
+ * the sheets out from under monsters that are still parented for that one
+ * frame, which the variant modules answer by falling back to the procedural
+ * body -- a visible flicker on the way out of every zone.  A beat later there
+ * is nothing left pointing at them.  The map free gets away with being
+ * immediate because a destroyed ground sprite is already off the stage.
+ *
+ * Failure is silent by design: a zone whose art will not release is a leak,
+ * not a crash, and it must never cost the player their zone change. */
+function _freeLeftZoneAssets(fromZone, toZone) {
+  if (!fromZone || fromZone === toZone) return;
+  setTimeout(function () {
+    Promise.resolve(freeZoneAssets(fromZone, toZone)).catch(function () {});
+  }, 400);
+}
 
 /* ═══ v2.3.1693: KEEP PORTALS OFF THE MAP EDGE ═══
    Owner: "move the portals (to and from the worldview to the zones) a bit
@@ -461,6 +487,12 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                 if (_zl.from && _zl.from !== 'town' && _zl.from !== 'worldview') {
                   Promise.resolve(freeZoneMap(_zl.from)).catch(function () {});
                 }
+                /* v2.3.2272: and the variant sheets the zone we just left used
+                   and this one does not.  Not gated on the hub check above --
+                   town and worldview have no variants, so it costs nothing
+                   there, and gating it would be a second rule to keep in sync
+                   with which zones have monsters. */
+                _freeLeftZoneAssets(_zl.from, _tz);
                 /* fall through: run the entry body once, now that assets are warm */
               } else if (!isZoneMapResident(_tz)) {
                 var _zlObj = { toZone: _tz, from: S.currentZone, done: false, t: Date.now() }; /* v2.3.1406: t feeds the 20s failsafe */
@@ -897,6 +929,9 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
             if (_leftZone && _leftZone !== 'town' && _leftZone !== 'worldview') {
               Promise.resolve(freeZoneMap(_leftZone)).catch(function () {});
             }
+            /* v2.3.2272: same on the way back to a hub.  A hub needs no
+               variants, so this releases the whole spoke's art. */
+            _freeLeftZoneAssets(_leftZone, _retHub);
           }
         }
 

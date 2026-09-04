@@ -6530,8 +6530,30 @@ export class EntityRenderer {
             return st ? { scale: st, baseMult: MONSTER_SIZE_MULT } : null;
           };
         }
-        if (!window.__btMonScales) window.__btMonScales = Object.create(null);
-        window.__btMonScales[m.id] = display.scale.x;
+        /* ═══ v2.3.2272: THE WRITES ARE ARMED, THE READERS ARE ALWAYS THERE ═══
+           These four stores (two here, __btPeerShield / __btPeerSword below)
+           ran in the shipped render loop unconditionally, once per entity per
+           frame, and were the cheapest half of the owner's "slows down after
+           playing for a while":
+             - the maps are keyed by ENTITY ID and never pruned, and monster
+               ids are not reused -- spawnscale mints 'sm-<zone>-x<seq>' off a
+               counter that never resets, so every grow/trim cycle leaves
+               permanent keys behind for the life of the page;
+             - each write ALLOCATES a fresh object, ~700 a second at eight
+               monsters and four peers on a 60fps phone, all of it garbage;
+             - the two peer probes below also run several getChildIndex calls
+               per peer per frame -- children.indexOf in Pixi -- purely to fill
+               a store no shipped code reads.
+           So the writes now need arming and the game never arms them.  The
+           ACCESSORS are still defined unconditionally: a probe that vanishes
+           would break precheck's qa-handles gate and, worse, would read as
+           "the feature is broken" rather than "the probe is off".  The QA
+           harness arms it for every scenario in one line (harness.mjs
+           newPlayer), so no scenario changed. */
+        if (window.__btProbe) {
+          if (!window.__btMonScales) window.__btMonScales = Object.create(null);
+          window.__btMonScales[m.id] = display.scale.x;
+        }
         /* v2.3.2200 QA probe (mp-feel): the universal hit-recoil is a
            BODY-sprite squash + a 120ms tint pulse, neither readable off
            a screenshot — expose the body scale/tint the renderer
@@ -6543,7 +6565,7 @@ export class EntityRenderer {
           };
         }
         if (!window.__btMonHit) window.__btMonHit = Object.create(null);
-        if (display._spriteBody) {
+        if (window.__btProbe && display._spriteBody) {
           window.__btMonHit[m.id] = {
             sx: display._spriteBody.scale.x, sy: display._spriteBody.scale.y,
             tint: display._spriteBody.tint,
@@ -7907,8 +7929,13 @@ export class EntityRenderer {
           }
           /* QA probe (mp-peershield) — one entry per peer id. */
           try {
-            if (!window.__btPeerShield) window.__btPeerShield = {};
-            window.__btPeerShield[id] = {
+            /* v2.3.2272: armed only (see the note in _updateMonsters) -- the
+               three getChildIndex scans below are per peer per frame.
+               Object.create(null): peer ids come off the wire (CLAUDE.md
+               rule 4), and a peer calling itself __proto__ silently no-oped
+               this store on a plain {}. */
+            if (!window.__btPeerShield) window.__btPeerShield = Object.create(null);
+            if (window.__btProbe) window.__btPeerShield[id] = {
               on: !!(_shLo.visible || _shHi.visible),
               hasShield: _hasShield,
               facing, behind: _shLo.visible, front: _shHi.visible,
@@ -8364,8 +8391,9 @@ export class EntityRenderer {
         }
         /* QA probe (mp-peersword) — one entry per peer id. */
         try {
-          if (!window.__btPeerSword) window.__btPeerSword = {};
-          window.__btPeerSword[id] = {
+          /* v2.3.2272: armed only, and null-prototype -- as __btPeerShield. */
+          if (!window.__btPeerSword) window.__btPeerSword = Object.create(null);
+          if (window.__btProbe) window.__btPeerSword[id] = {
             facing, wpnType: oWpnType, inFront,
             wcIdx: display.getChildIndex(display._weaponContainer),
             bodyIdx, frontRefIdx,

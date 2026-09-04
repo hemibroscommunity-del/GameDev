@@ -584,6 +584,34 @@ export function ensureSnowballBurstTex() {
   return _snowballBurstLoad;
 }
 
+/* ═══ v2.3.2272: THE FROST-ONLY IMPACT ART GOES BACK TOO ═══
+ * Both sheets above are per-zone by the same reasoning the snowman sprites are,
+ * and both were missing the same thing: an exit.  mp-texdrift caught them as
+ * the ~6.5MB frost left behind after v2.3.2272's variant free had returned
+ * every other zone to its exact baseline -- a small, BOUNDED residue rather
+ * than the monotone climb, but the point of the change is a steady state of
+ * "the zone you are in", and two sheets that only frost uses are not that.
+ * Frames are destroyed WITHOUT their source and the source once after, because
+ * every frame here is a window onto the same TextureSource. */
+export async function freeFrostImpactTex() {
+  const { Assets } = await import('pixi.js');
+  const drop = (arr) => {
+    const src = arr && arr[0] && arr[0].source;
+    for (let i = 0; i < (arr ? arr.length : 0); i++) { try { arr[i].destroy(false); } catch (e) { /* gone */ } }
+    return src;
+  };
+  const s1 = drop(SNOWBALL_BURST.frames);
+  SNOWBALL_BURST.frames.length = 0;
+  _snowballBurstLoad = null;
+  const s2 = drop(IMPACT_TEX);
+  IMPACT_TEX = null;
+  _impactLoadStarted = false;
+  for (const [src, url] of [[s1, SNOWBALL_BURST.url], [s2, '/sprites/monsters/snowman/impact.png?v=2']]) {
+    try { await Assets.unload(url); } catch (e) { /* still referenced / never loaded */ }
+    try { if (src && !src.destroyed) src.destroy(); } catch (e) { /* already gone */ }
+  }
+}
+
 const DEBRIS_MS = 450;
 const DEBRIS_MIN_GAP_MS = 150;   /* per-monster dedup, the _impactSpawned posture */
 
@@ -1035,6 +1063,56 @@ function cssToHex(css) {
 /**
  * Manages all visual effects.
  */
+/* ═══ v2.3.2272: THE PEER RECOLOUR BAKES NEEDED THE CAP THEIR SIBLINGS HAVE ═══
+ *
+ * Owner: "the game slows down after playing for a while (like an accumulated
+ * frame rate drop)."
+ *
+ * _remoteBodyCache and _remoteSheetCache mint a full recoloured canvas -- a GPU
+ * TextureSource plus one frame Texture per column -- for every distinct
+ * (sheet, skin, pants, shoes) a peer swings a sword or looses an arrow in.  The
+ * note at the top of the local bake sizes one of these at ~4MB per peer skin.
+ * They were WRITE-ONLY: create, get, set, and nothing else in the file -- no
+ * delete, no cap, no clear, and not in the peer-leave sweep that already
+ * retires _remoteSkillSprites and _remoteSlashSprites when a player goes.
+ *
+ * That is the exact shape of the report.  The cache only grows while somebody
+ * ELSE is mid-swing near you, so it is driven by hours spent in a busy room
+ * rather than by anything you do -- and the catalogue ceiling is 14 skins x 14
+ * pants x 8 shoes (playerSkins.js) times every sheet, which for a shared room
+ * over an evening is unbounded in practice.  Being GPU-side, it is also
+ * invisible to performance.memory, so a heap graph would have said "fine".
+ *
+ * The fix is not new: it is the LRU every sibling cache in this pair of files
+ * already has -- _maskedBodyCache (entityRenderer, cap 520, re-inserts on hit)
+ * and _fishTopCache (cap 64, destroys the evicted).  Both idioms are kept here:
+ * a hit is re-inserted so the peers actually on screen stay hot, and an
+ * eviction destroys the frames AND the shared source, since the whole point is
+ * to hand the texture memory back.
+ *
+ * 24 is sized from what can be on screen rather than from the catalogue: it is
+ * comfortably more distinct peer appearances than a phone viewport can hold
+ * mid-swing at once, so a fight never thrashes, while an evening's worth of
+ * strangers can no longer accumulate. */
+const REMOTE_BAKE_CACHE_MAX = 24;
+
+function _trimBakeCache(cache) {
+  while (cache.size > REMOTE_BAKE_CACHE_MAX) {
+    const k0 = cache.keys().next().value;
+    const old = cache.get(k0);
+    cache.delete(k0);
+    /* Frames first WITHOUT their source, then the source once: every frame in
+       the array is a window onto the same TextureSource, so destroying it
+       through the first frame would leave the rest pointing at freed memory
+       for the length of this loop. */
+    try {
+      const src = old && old[0] && old[0].source;
+      for (let i = 0; i < old.length; i++) { try { old[i].destroy(false); } catch (e) { /* already gone */ } }
+      if (src && !src.destroyed) src.destroy();
+    } catch (e) { /* a cache entry that will not free is still evicted */ }
+  }
+}
+
 export class EffectsRenderer {
   constructor(layers) {
     this.particleLayer = layers.particles;
@@ -4927,12 +5005,25 @@ export class EffectsRenderer {
   _updateDebrisBursts(S, now) {
     const q = S && S._debrisBursts;
     if (q && q.length) {
-      if (!this._debrisLast) this._debrisLast = Object.create(null);
+      if (!this._debrisLast) { this._debrisLast = Object.create(null); this._debrisSweep = 0; }
       for (let i = 0; i < q.length; i++) {
         const b = q[i];
         const last = this._debrisLast[b.monsterId || ''] || 0;
         if (now - last < DEBRIS_MIN_GAP_MS) continue;
         this._debrisLast[b.monsterId || ''] = now;
+        /* v2.3.2272: and forget the ones that can no longer gate anything.
+           This is a monster-id-keyed map of last-burst stamps with no prune,
+           and monster ids are never reused (spawnscale's 'sm-<zone>-x<seq>'
+           counter never resets), so it grew for the life of the page.  Tiny
+           per entry, which is exactly why it would never have been found by
+           looking -- swept here, at the only site that writes it, against the
+           same gap that is the only thing the stamps are read for. */
+        if (++this._debrisSweep > 200) {
+          this._debrisSweep = 0;
+          for (const k in this._debrisLast) {
+            if (now - this._debrisLast[k] > DEBRIS_MIN_GAP_MS * 20) delete this._debrisLast[k];
+          }
+        }
         this._spawnDebrisBurst(b, now);
       }
       q.length = 0;
@@ -6269,7 +6360,9 @@ export class EffectsRenderer {
     if (!this._remoteBodyCache) this._remoteBodyCache = new Map();
     const key = cfgKey + '|' + o.skin + '|' + o.pants + '|' + o.shoes;
     let arr = this._remoteBodyCache.get(key);
-    if (arr) return arr;
+    /* Re-insert on hit so the LRU order is "least recently SEEN", not
+       "least recently baked" (entityRenderer.js:2043's idiom). */
+    if (arr) { this._remoteBodyCache.delete(key); this._remoteBodyCache.set(key, arr); return arr; }
     const img = this._bodyImgCache[cfg.bodyUrl];   // loaded by the local bake
     if (!img) return null;
     try {
@@ -6279,6 +6372,7 @@ export class EffectsRenderer {
       arr = [];
       for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * cfg.fw, 0, cfg.fw, cfg.fh) }));
       this._remoteBodyCache.set(key, arr);
+      _trimBakeCache(this._remoteBodyCache);
       return arr;
     } catch (e) { return null; }
   }
@@ -6292,7 +6386,7 @@ export class EffectsRenderer {
     if (!this._remoteSheetCache) this._remoteSheetCache = new Map();
     const key = url + '|' + o.skin + '|' + o.pants + '|' + o.shoes;
     let arr = this._remoteSheetCache.get(key);
-    if (arr) return arr;
+    if (arr) { this._remoteSheetCache.delete(key); this._remoteSheetCache.set(key, arr); return arr; }
     const img = this._bodyImgCache[url];
     if (!img) return null;
     try {
@@ -6302,6 +6396,7 @@ export class EffectsRenderer {
       arr = [];
       for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * fw, 0, fw, fh) }));
       this._remoteSheetCache.set(key, arr);
+      _trimBakeCache(this._remoteSheetCache);
       return arr;
     } catch (e) { return null; }
   }

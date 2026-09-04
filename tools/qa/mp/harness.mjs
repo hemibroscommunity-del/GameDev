@@ -212,6 +212,20 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
   page.on('console', (m) => { if (m.type() === 'error') { logs.push(`console ${m.text().slice(0, 200)}`); _noteRenderThrow(name, m.text()); } });
   page.on('pageerror', (e) => logs.push(`pageerror ${String(e).slice(0, 200)}`));
   await page.addInitScript((p) => { window.BROTOWN_WS_URL = `ws://127.0.0.1:${p}`; }, wsPort);
+  /* v2.3.2272: ARM THE PER-FRAME PROBES, for every scenario, here.
+     __btMonScales / __btMonHit / __btPeerShield / __btPeerSword used to be
+     written by the shipped render loop unconditionally -- an allocation per
+     entity per frame into id-keyed maps that were never pruned, plus several
+     getChildIndex scans per peer -- which was one of the accumulations behind
+     the owner's "slows down after playing for a while".  The writes are now
+     gated on this flag so a real player never pays for them.
+     It is armed in the HARNESS rather than in the five scenarios that read
+     them (mp-feel, mp-windup, mp-slimeburst, mp-peershield, mp-peersword)
+     because a scenario that forgets would not fail loudly -- it would read an
+     empty store and report the FEATURE as broken.  One arm, no scenario
+     changes, and nothing here stubs game code: the probes report what the
+     renderer actually wrote either way. */
+  await page.addInitScript(() => { window.__btProbe = true; });
   /* v2.3.1814: `phrase` seeds this context's Login Key BEFORE first paint, so
      a scenario can arrive as an EXISTING character.  It has to be an init
      script rather than a post-load write: the boot check that decides which

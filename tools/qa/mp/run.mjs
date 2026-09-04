@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  texdrift: () => import('./mp-texdrift.mjs'), /* v2.3.2272: does zone art come back when you leave the zone */
   perfdrift: () => import('./mp-perfdrift.mjs'), /* v2.3.2271: does the frame rate actually drift, and what grows with it */
   lockrings: () => import('./mp-lockrings.mjs'), /* v2.3.2263: how many rings are on the target, and whose they are */
   engage: () => import('./mp-engage.mjs'), /* v2.3.2246: engaged movement is target-relative, and the attack indicator is painted */

@@ -32,19 +32,19 @@
  * A settle report lands on window.__btPreloadReport so rigs (and
  * anyone debugging a first-use hitch) can verify coverage. */
 
-import { variantSpritesFor } from './monsterVariantSprites.js';
+import { variantSpritesFor, unloadVariantSprites } from './monsterVariantSprites.js';
 import { loadSlimeSprites } from './slimeSprites.js';
-import { loadSnowmanSprites } from './snowmanSprites.js';
+import { loadSnowmanSprites, unloadSnowmanSprites } from './snowmanSprites.js';
 import { loadPlayerDeathSprites } from './playerDeathSprites.js';
 import { preloadStartZoneMap, loadWalkabilityMaps } from './tiledMaps.js';
-import { effectsAnimationsReady, ensureImpactTex, ensureSnowballBurstTex } from './systems/effectsRenderer.js';
+import { effectsAnimationsReady, ensureImpactTex, ensureSnowballBurstTex, freeFrostImpactTex } from './systems/effectsRenderer.js'; /* v2.3.2272: the frost-only sheets get an exit */
 import { fxStripsReady } from './fxStrips.js'; /* v2.3.1735: stun ring + whirl vortex (preloading is law) */
 import { preloadTraits } from './systems/entityRenderer.js';
 import { preloadCapes } from './capeSprites.js'; /* v2.3.2023: cosmetic capes are GLOBAL, not per-zone */
 import { preloadFullsetFigures } from './gearSheets.js'; /* v2.3.1376: fullset knight figures */
 import { preloadJogHeadOverlays } from './playerSkins.js'; /* v2.3.1376: their head overlays */
 import { ZONE_VARIANT_MAP, MONSTER_VARIANTS, variantsForZone } from '../data/monsterVariants.js'; /* v2.3.1405: per-zone variant scoping */
-import { loadMonsterRecolor, recolorFamilyOf } from './monsterRecolor.js'; /* v2.3.1534: per-zone recolour */
+import { loadMonsterRecolor, recolorFamilyOf, freeMonsterRecolor } from './monsterRecolor.js'; /* v2.3.1534: per-zone recolour; v2.3.2272: and its release */
 import { loadNpcSprites } from './npcSprites.js'; /* v2.3.1672: NPC figure art */
 
 /* v2.3.1405 (owner: "per zone loading instead of one long pregame loading
@@ -102,6 +102,83 @@ export async function preloadZoneAssets(zoneId) {
     tasks.push(Promise.resolve(ensureSnowballBurstTex()).catch(() => {}));
   }
   await Promise.allSettled(tasks);
+}
+
+/* ═══ v2.3.2272: THE EXIT HALF OF PER-ZONE LOADING ═══
+ *
+ * Owner: "the game slows down after playing for a while (like an accumulated
+ * frame rate drop)."
+ *
+ * v2.3.1405 (the note above) moved three categories off the startup gate and
+ * onto per-zone loading, and freed exactly ONE of them on the way out: the
+ * ~4MB map.  The other two -- the monster variant sheets and frost's snowman --
+ * had no unload to call, so the steady state was not "the zone you are in", it
+ * was "everywhere you have been".
+ *
+ * Measured, before any of this was written (mp-texdrift, sampling resident
+ * decoded texture at the worldview hub between legs so the reading is always
+ * of the SAME zone):
+ *
+ *     hub 382.5MB -> ember 413 -> sky 449.2 -> frost 468.8 -> verdant 474.4
+ *
+ * Monotone, +92MB, and the ~6MB dip on each return is the map -- the one thing
+ * that WAS freed, and therefore the control proving the instrument can see a
+ * release when one happens.  Decoded, the art is much bigger than it looks on
+ * disk: fire-goblin is 1.9MB of PNG and 60.5MB of RGBA.
+ *
+ * ── WHAT IT WILL NOT FREE ──
+ * Anything the destination zone needs.  `toZoneId` is not optional politeness:
+ * verdant and mist share reskins of the same two sprite modules, so freeing
+ * "what the old zone used" without subtracting "what the new zone uses" would
+ * unload a sheet a monster standing in front of you is drawn from.  Passing no
+ * destination frees the outgoing zone's art outright, which is only correct
+ * when there is no destination.
+ *
+ * ── AND IT DOES NOT WEAKEN THE PRELOADING LAW ──
+ * Everything freed here is re-loaded by preloadZoneAssets, AWAITED behind the
+ * per-zone loading overlay -- the ZONE-ASSET EXCEPTION the law already carves
+ * out, and the same trade v2.3.1405 made for the map.  What is not touched is
+ * anything global: player, traits, fx, slime, capes, fullsets all stay warm.
+ *
+ * Recolours (loadMonsterRecolor) are deliberately left resident.  They are
+ * slime sheets -- tens of KB against the variants' tens of MB -- and their
+ * cache is keyed by (family, colour) rather than by zone, so freeing one on a
+ * zone exit would need a reverse index for no measurable return. */
+export async function freeZoneAssets(fromZoneId, toZoneId) {
+  if (!fromZoneId) return null;
+  const going = variantsForZone(fromZoneId);
+  if (going.has('mummy')) going.add('skeleton');   /* co-loaded; co-freed */
+  const keeping = toZoneId ? variantsForZone(toZoneId) : new Set();
+  if (keeping.has('mummy')) keeping.add('skeleton');
+  const drop = [];
+  for (const key of going) if (!keeping.has(key)) drop.push(key);
+  const tasks = [];
+  if (drop.length) tasks.push(Promise.resolve(unloadVariantSprites(drop)).catch(() => []));
+  if (fromZoneId === 'frost' && toZoneId !== 'frost') {
+    tasks.push(Promise.resolve(unloadSnowmanSprites()).catch(() => 0));
+    /* The ice-burst and snowball-burst strips are frost-only for the same
+       reason the snowman is; they were the ~6.5MB frost still kept after the
+       variant free had returned every other zone to its exact baseline. */
+    tasks.push(Promise.resolve(freeFrostImpactTex()).catch(() => {}));
+  }
+  /* And the retinted copies the departing zone's variants asked for.  Same
+     subtraction as the sheets: a colour the destination also uses stays.
+     Resolved through MONSTER_VARIANTS because the cache is keyed by (family,
+     colour) and only the variant knows both. */
+  const keptFam = new Set();
+  for (const key of keeping) {
+    const mv = MONSTER_VARIANTS[key];
+    if (mv && recolorFamilyOf(mv)) keptFam.add(recolorFamilyOf(mv) + '|' + String(mv.recolor));
+  }
+  for (const key of going) {
+    const mv = MONSTER_VARIANTS[key];
+    const fam = recolorFamilyOf(mv);
+    if (!fam) continue;
+    if (keptFam.has(fam + '|' + String(mv.recolor))) continue;
+    try { freeMonsterRecolor(mv); } catch (e) { /* a colour that will not free is a leak, not a crash */ }
+  }
+  await Promise.allSettled(tasks);
+  return { from: fromZoneId, to: toZoneId || null, dropped: drop };
 }
 
 export async function preloadWorldAnimations() {

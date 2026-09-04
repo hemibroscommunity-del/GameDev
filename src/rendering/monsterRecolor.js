@@ -172,6 +172,35 @@ export function hasRecoloredState(variant, state) {
   return !!(e && e.frames[state] && e.frames[state].length);
 }
 
+/* ═══ v2.3.2272: A RECOLOUR CAN BE GIVEN BACK ═══
+ * Owner: "the game slows down after playing for a while."  Each entry here is
+ * a full retinted COPY of a monster's sheets -- canvas-minted, so it is pure
+ * new GPU memory rather than a second view of art already resident -- and the
+ * cache had no delete in the file at all.  Per-zone loading built one on entry
+ * to every zone with a recoloured variant and nothing ever handed it back;
+ * mp-texdrift saw it as the ~4.5MB verdant kept after every other zone had
+ * returned to its exact baseline.
+ * Keyed by (family, colour) rather than by zone, so the caller passes the
+ * variant and this resolves the key the same way the two readers above do --
+ * there is no reverse index from zone to colour, and inventing one is how the
+ * freed set drifts from the loaded set. */
+export function freeMonsterRecolor(variant) {
+  const fam = recolorFamilyOf(variant);
+  const key = fam && keyOf(fam, variant.recolor);
+  const e = key && _cache.get(key);
+  if (!e) return false;
+  _cache.delete(key);
+  for (const state in e.frames) {
+    const list = e.frames[state];
+    /* Frames first without their source, then the source once: every frame in
+       a state shares one canvas-backed TextureSource. */
+    const src = list && list[0] && list[0].source;
+    for (let i = 0; i < (list ? list.length : 0); i++) { try { list[i].destroy(false); } catch (err) { /* gone */ } }
+    try { if (src && !src.destroyed) src.destroy(); } catch (err) { /* gone */ }
+  }
+  return true;
+}
+
 /** Recoloured frame Texture for this variant, or null if it isn't built. */
 export function getRecoloredFrame(variant, state, frameIdx) {
   const fam = recolorFamilyOf(variant);

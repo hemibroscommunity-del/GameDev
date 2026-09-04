@@ -12,6 +12,7 @@
 
 import {
   loadFireGoblinSprites,
+  unloadFireGoblinSprites,
   getFrame as fgWalkFrame,
   hasFrames as fgHasWalk,
   frameCount as fgWalkCount,
@@ -31,6 +32,7 @@ import {
 
 import {
   loadMummySprites,
+  unloadMummySprites,
   getFrame as mWalkFrame,
   hasFrames as mHasWalk,
   frameCount as mWalkCount,
@@ -41,6 +43,7 @@ import {
 
 import {
   loadSkeletonSprites,
+  unloadSkeletonSprites,
   getFrame as skWalkFrame,
   hasFrames as skHasWalk,
   frameCount as skWalkCount,
@@ -52,6 +55,7 @@ import {
 
 import {
   loadFishmanSprites,
+  unloadFishmanSprites,
   getFrame as fhWalkFrame,
   hasFrames as fhHasWalk,
   frameCount as fhWalkCount,
@@ -59,6 +63,7 @@ import {
 
 import {
   loadRockmonsterSprites,
+  unloadRockmonsterSprites,
   getFrame as rmWalkFrame,
   hasFrames as rmHasWalk,
   frameCount as rmWalkCount,
@@ -67,6 +72,7 @@ import {
 export const VARIANT_SPRITES = {
   fireGoblin: {
     load: loadFireGoblinSprites,
+    unload: unloadFireGoblinSprites,
     walk:   { get: fgWalkFrame,   has: fgHasWalk,   count: fgWalkCount   },
     attack: { get: fgAttackFrame, has: fgHasAttack, count: fgAttackCount },
     hit:    { get: fgHitFrame,    has: fgHasHit,    count: fgHitCount    },
@@ -80,6 +86,7 @@ export const VARIANT_SPRITES = {
   },
   mummy: {
     load: loadMummySprites,
+    unload: unloadMummySprites,
     walk:   { get: mWalkFrame, has: mHasWalk, count: mWalkCount },
     /* No attack/hit/death art yet -- renderer falls through to the
        generic fodder paths.  The transform field plays the one-shot
@@ -89,6 +96,7 @@ export const VARIANT_SPRITES = {
   },
   skeleton: {
     load: loadSkeletonSprites,
+    unload: unloadSkeletonSprites,
     /* Skeleton uses the run strip for both moving and standing
        (frame 0 holds the contact pose for the standing case in
        entityRenderer's idle branch). */
@@ -106,6 +114,7 @@ export const VARIANT_SPRITES = {
   },
   fishman: {
     load: loadFishmanSprites,
+    unload: unloadFishmanSprites,
     /* Single still pose; renderer dwells on the only frame while the
        entity translates around the map.  No attack/hit/death sheets --
        falls through to the brute generic paths. */
@@ -113,6 +122,7 @@ export const VARIANT_SPRITES = {
   },
   rockmonster: {
     load: loadRockmonsterSprites,
+    unload: unloadRockmonsterSprites,
     /* Same still-pose pattern as fishman -- one frame per direction,
        no attack/hit/death sheets, falls through to brute generic. */
     walk: { get: rmWalkFrame, has: rmHasWalk, count: rmWalkCount },
@@ -125,10 +135,12 @@ export const VARIANT_SPRITES = {
      here: useSlimeSheets routes them through the slime state branch. */
   thornShambler: {
     load: loadRockmonsterSprites,
+    unload: unloadRockmonsterSprites,
     walk: { get: rmWalkFrame, has: rmHasWalk, count: rmWalkCount },
   },
   bogLurker: {
     load: loadFishmanSprites,
+    unload: unloadFishmanSprites,
     walk: { get: fhWalkFrame, has: fhHasWalk, count: fhWalkCount },
   },
 };
@@ -160,4 +172,37 @@ export function variantSpritesFor(variantKey) {
     try { Promise.resolve(v.load()).catch(() => {}); } catch (e) { /* ignore */ }
   }
   return v;
+}
+
+
+/* ═══ v2.3.2272: RELEASE A SET OF VARIANTS, ONCE EACH ═══
+ *
+ * Owner: "the game slows down after playing for a while (like an accumulated
+ * frame rate drop)."  Measured as +92MB of resident decoded texture across a
+ * four-zone tour that never came back (mp-texdrift); see zoneTextures.js for
+ * the numbers and why nothing was freed before.
+ *
+ * DEDUPED BY LOADER, NOT BY KEY, and that is the whole reason this helper
+ * exists rather than a loop at the call site.  thornShambler and rockmonster
+ * are two variant keys over ONE sprite module (as are bogLurker and fishman --
+ * v2.3.1147's reskins share their source's sheets), so freeing by key would
+ * tear the art out from under a variant that is still in the zone being walked
+ * into, and would try to free the same module twice.
+ *
+ * The kicked-load set is cleared for the freed keys too: it exists so
+ * variantSpritesFor's lazy first-sighting fallback fires once, and a key left
+ * in it after its art is gone would leave that fallback permanently spent. */
+export function unloadVariantSprites(keys) {
+  const fns = new Set();
+  const freed = [];
+  for (const key of keys || []) {
+    const v = VARIANT_SPRITES[key];
+    if (!v || !v.unload || fns.has(v.unload)) continue;
+    fns.add(v.unload);
+    freed.push(key);
+  }
+  for (const key of keys || []) _variantLoadKicked.delete(key);
+  return Promise.all([...fns].map((fn) => {
+    try { return Promise.resolve(fn()).catch(() => 0); } catch (e) { return 0; }
+  })).then(() => freed);
 }

@@ -3,7 +3,7 @@
  * Creates the layered scene graph used by all render systems.
  */
 import { watchContextLoss } from '../debug/crashTrap.js';
-import { Application, Container } from 'pixi.js';
+import { Application, Cache, Container } from 'pixi.js';
 
 /**
  * Layer names in render order (back to front).
@@ -122,6 +122,79 @@ function buildScene(app) {
       let total = null;
       try { total = count(app.stage); } catch (e) { total = null; }
       return { total, byLayer };
+    };
+  }
+
+  /* ═══ v2.3.2272: HOW MUCH DECODED TEXTURE IS RESIDENT ═══
+   * The companion to __btScene, and the more important of the two for the
+   * owner's "slows down after playing for a while": a Pixi scene can hold a
+   * flat node count while the TEXTURE memory behind it climbs all session,
+   * and on iOS that climb is what turns into a frame rate that never comes
+   * back -- Safari starts evicting and re-uploading textures under GPU
+   * pressure rather than failing outright.
+   *
+   * It counts DECODED bytes (w * h * 4), not file bytes, because the decoded
+   * size is what occupies the GPU and the two are nowhere near each other: the
+   * fire goblin's sheets are 1.9MB of PNG on disk and 60.5MB once decoded.
+   * Sources are deduped by uid, so a sheet sliced into forty frame Textures
+   * counts once, the way the GPU counts it.
+   *
+   * Reaching into Cache's private map is deliberate and is why every step is
+   * wrapped: there is no public enumeration of what Assets is holding, and a
+   * probe that silently returns null on a future Pixi is better than one that
+   * throws inside a renderer.  Nothing in the game calls this. */
+  if (typeof window !== 'undefined') {
+    window.__btTex = function (want) {
+      try {
+        const map = Cache && (Cache._cache || Cache.cache);
+        if (!map || typeof map.forEach !== 'function') return null;
+        const seen = new Set();
+        let bytes = 0, sources = 0;
+        const take = (src) => {
+          if (!src || typeof src.uid === 'undefined' || seen.has(src.uid)) return;
+          /* A DESTROYED source is not resident, whatever the cache still says.
+             Canvas-minted textures (Texture.from(canvas) -- the monster
+             recolours, the peer bakes) stay keyed in Cache after their source
+             is destroyed, and counting those would report memory that has
+             already gone back, which is the exact error that makes a probe
+             worse than none: it would have said the recolour free did nothing. */
+          if (src.destroyed) return;
+          seen.add(src.uid);
+          sources++;
+          const w = src.pixelWidth || src.width || 0;
+          const h = src.pixelHeight || src.height || 0;
+          bytes += w * h * 4;
+        };
+        map.forEach((v) => {
+          if (!v) return;
+          if (v.source) take(v.source);              /* Texture */
+          else if (v.uid && v.resource !== undefined) take(v); /* TextureSource */
+          else if (v.textures) {                      /* Spritesheet */
+            for (const k in v.textures) { const t = v.textures[k]; if (t && t.source) take(t.source); }
+          }
+        });
+        /* `list` is opt-in because the answer is hundreds of URLs: __btTex()
+           for the totals, __btTex(true) when a residue has to be NAMED.
+           Sorted by size so the first rows are the ones worth reading. */
+        const out = { sources, mb: +(bytes / 1048576).toFixed(1), keys: map.size || null };
+        if (want) {
+          const rows = [];
+          const rseen = new Set();
+          map.forEach((v, k) => {
+            const src = v && (v.source || (v.uid && v.resource !== undefined ? v : null));
+            if (!src || src.destroyed || rseen.has(src.uid)) return;
+            /* Deduped by uid like the total above -- without this a sheet
+               sliced into forty frame Textures prints forty rows of its full
+               size and the list reads as a catastrophe that is not there. */
+            rseen.add(src.uid);
+            const w = src.pixelWidth || src.width || 0, h = src.pixelHeight || src.height || 0;
+            rows.push({ k: String(k), mb: +((w * h * 4) / 1048576).toFixed(2) });
+          });
+          rows.sort((a, b) => b.mb - a.mb);
+          out.list = rows;
+        }
+        return out;
+      } catch (e) { return null; }
     };
   }
 
