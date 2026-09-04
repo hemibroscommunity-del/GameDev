@@ -3400,6 +3400,55 @@ export class EffectsRenderer {
 
        Graphics, not a texture: CLAUDE.md's preloading law makes a new
        lazily-loaded sprite a bug, and a caret is four lineTo calls. */
+    /* ═══ v2.3.2263: HOW MANY RINGS DID THE TARGET ACTUALLY GET? ═══
+       Owner, three times: "I still see two lock on circles on my screen."  It
+       was answered twice by reading the code, and both readings named the wrong
+       pair -- the marks are drawn from three separate blocks in this file and
+       the one that mattered was 250 lines from the one that looked guilty.
+       So the renderer counts them instead, and mp-lockrings asserts the count.
+
+       It counts CIRCLES CENTRED ON THE LOCKED MONSTER, from anywhere in the
+       region below, rather than being incremented by hand at each drawer -- a
+       hand-placed counter only ever knows about the drawers its author knew
+       about, which is precisely the mistake being guarded against.  A future
+       ring, wherever it is added, is counted without anyone remembering to.
+
+       OPT-IN (window.__btRingProbe), so a frame in a player's hands does not
+       pay for a wrapper on a hot Graphics method. */
+    let _ringProbeRestore = null;
+    if (typeof window !== 'undefined' && window.__btRingProbe) {
+      const _lockM = S.lockedTarget && S.lockedTarget.ref;
+      const _lp = _lockM ? {
+        x: (_lockM.renderX != null ? _lockM.renderX : _lockM.x),
+        y: (_lockM.renderY != null ? _lockM.renderY : _lockM.y),
+      } : null;
+      const _origCircle = gfx.circle.bind(gfx);
+      const _seen = [];
+      gfx.circle = function (cx2, cy2, r2) {
+        /* The dark keyline and the brass line are two strokes of the SAME
+           circle, so a ring is counted by its RADIUS, not by its stroke: two
+           calls at one radius are one ring, two radii are two rings.  That is
+           the distinction the owner is making when he says "two circles".
+           The corner ticks are r <= 4 and are part of the reticle, not rings. */
+        if (_lp && r2 > 5 && Math.hypot(cx2 - _lp.x, cy2 - _lp.y) < 40) {
+          const rr = Math.round(r2);
+          if (!_seen.some((v) => Math.abs(v - rr) <= 2)) _seen.push(rr);
+        }
+        return _origCircle(cx2, cy2, r2);
+      };
+      _ringProbeRestore = () => {
+        gfx.circle = _origCircle;
+        this._lockRings = _seen.length;
+        this._lockRingRadii = _seen.slice();
+      };
+    }
+    if (typeof window !== 'undefined' && !window.__btLockRings) {
+      const _lr = this;
+      window.__btLockRings = function () {
+        window.__btRingProbe = true;     /* arm it; the next frame fills it in */
+        return { count: _lr._lockRings, radii: _lr._lockRingRadii || [] };
+      };
+    }
     try {
       const _tc = S._targetCands;
       /* Probe, house style (__btMonHit, __btCoach, __btWorldProps): which
@@ -3620,20 +3669,35 @@ export class EffectsRenderer {
              than a yellow arrow.  Brass has to be the wider half of this. */
           _caret(_cw + 2.0 * _k, 0x14181A, _ca * 0.8);
           _caret(_cw, _atkHot ? 0xFF3C3C : 0xD8A85F, _ca);
-          if (isTarget) {
-            /* v2.3.2255: same rule as the ground ring -- the reticle's radius
-               belongs to the monster, its line weight belongs to the screen.
-               1.5 world px was a 0.9 CSS px hairline at combat-zone scale. */
-            gfx.circle(c.x, c.y, 15 * _k);
-            gfx.stroke({ color: 0x14181A, width: 3.5 * _k, alpha: _pulse * 0.5 });
-            gfx.circle(c.x, c.y, 15 * _k);
-            gfx.stroke({ color: _atkHot ? 0xFF3C3C : 0xD8A85F, width: 2.0 * _k, alpha: _pulse * 0.9 });
-            /* v2.3.2251: the 220px ring that used to be drawn here is GONE.
-               It was the last survivor of the rejected full-radius version and
-               it is what the new ground rings replace -- keeping both would
-               give the pack one big circle AND a small ring each, which is the
-               noise it is trying to fix. */
-          }
+          /* ═══ v2.3.2263: THE SECOND BRASS CIRCLE, FOUND BY LOOKING ═══
+             Owner, for the third time: "I still see two lock on circles on my
+             screen."  v2.3.2262 answered the report by skipping the locked
+             monster in the GROUND-ring loop above, and the pair survived --
+             because the pair was never the ground ring and the reticle.  It
+             was THIS circle and the reticle, both brass, both on the body,
+             ~250 lines apart.
+
+             tools/qa/mp/mp-lockrings.mjs is how that was settled rather than
+             argued: two slimes in a real spoke zone, one TAP-locked and one
+             merely a candidate, cropped from the position the renderer
+             reports.  The locked one came back wearing two concentric brass
+             rings -- 15 CSS px radius here and 10.8 for the world-sized
+             reticle at the 0.6 combat zoom -- and the unlocked control came
+             back wearing the pale squashed ground ellipse and nothing else.
+             So the v2.3.2262 skip works and was aimed at the wrong pair.
+
+             THE RETICLE IS THE ONE THAT SURVIVES, for the reason v2.3.2262
+             already gave (it pulses, it carries the four corner ticks, it is
+             what the rest of the UI language points at) and for one it could
+             not have known: this block only runs for monsters in
+             `_targetCands`, i.e. inside the 220px perimeter.  A tap lock is
+             explicitly allowed to live outside it -- the bow snipe at 675px --
+             so keeping THIS one and dropping the reticle would leave a distant
+             tapped target wearing no mark at all.
+
+             What this circle knew and the reticle did not is that the radius
+             is a SCREEN measurement (`_k`); that half moves down to the
+             reticle with this deletion rather than being lost. */
           /* v2.3.2253: `target` and `hot` on the probe, so a scenario can
              assert the owner's two rules -- which monster is the target, and
              that the whole set turns red together when you attack -- without
@@ -3671,19 +3735,35 @@ export class EffectsRenderer {
           const _rtHot = !!(S.autoAttack || S.isSwinging
             || (S.swingTimer && now - S.swingTimer < 420));
           const _rtCol = _rtHot ? 0xff3c3c : 0xD8A85F;
-          const lockR = 18 + Math.sin(now / 250) * 3;
+          /* ═══ v2.3.2263: ...AND THE SURVIVOR INHERITS THE SCREEN MEASUREMENT
+             The circle deleted above was sized `15 * _k` -- a constant 15 CSS
+             px whatever the camera is doing -- while this one was 18 WORLD px,
+             which is 10.8 CSS px at the 0.60 a combat zone runs at and smaller
+             again in the World View.  That is the v2.3.2255 lesson (a mark for
+             the reader is measured in the reader's pixels) and it is the one
+             thing the duplicate had over the original, so it moves here rather
+             than dying with it.  15 keeps the surviving ring the size of the
+             OUTER of the two the owner has been looking at, so removing the
+             inner one is the only visible change.
+             The bob comes with it, scaled the same way, or the pulse would
+             breathe by a third of its amplitude at one zoom and a fifth at
+             another. */
+              const _rk = 1 / (S._worldScaleX > 0.01 ? S._worldScaleX : 1);
+          const lockR = (15 + Math.sin(now / 250) * 2.5) * _rk;
           /* Dark keyline first, same trick the arrow uses -- brass on town
-             cobble is brass on brass without one. */
+             cobble is brass on brass without one.  Widths are screen
+             measurements too: 2.4 world px is a 1.4 CSS px line at combat
+             zoom, which is the hairline v2.3.2255 was written about. */
           gfx.circle(lx, ly, lockR);
-          gfx.stroke({ color: 0x14181A, width: 4, alpha: 0.5 });
+          gfx.stroke({ color: 0x14181A, width: 3.5 * _rk, alpha: 0.5 });
           gfx.circle(lx, ly, lockR);
-          gfx.stroke({ color: _rtCol, width: 2.4, alpha: 0.9 });
+          gfx.stroke({ color: _rtCol, width: 2.2 * _rk, alpha: 0.9 });
           // Corner marks
           for (let c = 0; c < 4; c++) {
             const ca = (c / 4) * Math.PI * 2 + now / 1500;
             const cx = lx + Math.cos(ca) * lockR;
             const cy = ly + Math.sin(ca) * lockR;
-            gfx.circle(cx, cy, 2.4);
+            gfx.circle(cx, cy, 2.4 * _rk);
             gfx.fill({ color: _rtCol, alpha: 0.95 });
           }
         }
@@ -3694,6 +3774,7 @@ export class EffectsRenderer {
         console.error('[overlay] lock reticle threw', e && e.message, e && e.stack);
       }
     }
+    if (_ringProbeRestore) _ringProbeRestore();
 
     /* Bow / staff / melee line of sight — a beam-shaped ribbon (filled
        polygon) running along the aim direction, drawn while a weapon is

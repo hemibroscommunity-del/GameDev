@@ -48,7 +48,7 @@ import { checkAccountLogin } from '@/networking/index.js';
 import { KeyboardHintsPanel } from './panels/KeyboardHintsPanel.jsx';
 import { UpdateBanner } from './panels/UpdateBanner.jsx';
 import { startBuildWatch } from '@/game/buildWatch.js';
-import { TouchControls } from './panels/TouchControls.jsx';
+import { TouchControls, RBTN_BODY_BG, RBTN_BODY_BG_HOT, RKNOB_BG, RKNOB_BG_HOT } from './panels/TouchControls.jsx'; /* v2.3.2264: the disc's resting vs combat wash */
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
 import { ShieldButton } from './panels/ShieldButton.jsx'; /* v2.3.2242: the shield is a toggle button under Attack */
 import { GESTURE_TOOL_URLS } from '@/game/gesturePose.js'; /* v2.3.2245: the tool strips the button face plays */
@@ -279,7 +279,7 @@ import { swingAttack, specialAttack, elementBurst } from '@/game/playerActions.j
    combat overhaul.  The cast bodies live in @/game/abilities.js for the
    same reason the swing bodies do; this component keeps thin wrappers. */
 import { castAbility, abilityStatus, resolveCastAngle, BASH_POSE_MS, maybeSwordDash,
-  applyAbilityStrike, DASH_STEP_PX, DASH_MAX_STEP_PX, DASH_STOP_PX } from '@/game/abilities.js'; /* v2.3.2258: the sword's opening lunge; v2.3.2260: it strikes on arrival */
+  applyAbilityStrike, DASH_STEP_PX, DASH_MAX_STEP_PX, DASH_STOP_PX, DASH_MAX_REACH_PX } from '@/game/abilities.js'; /* v2.3.2258: the sword's opening lunge; v2.3.2260: it strikes on arrival */
 /* v2.3.841: extraction + fishing/cooking/wood/mining reward bodies extracted; component keeps thin useCallback wrappers. */
 import { startExtraction, succeedExtraction, applyCookingResult } from '@/game/lifeSkillRewards.js';
 /* v2.3.842: emote + building-entry interaction bodies extracted; component keeps thin useCallback wrappers. */
@@ -4839,6 +4839,20 @@ export var BroTown = function BroTown(_ref0) {
             if (strike && S._dashStrike) {
               var _ds = S._dashStrike;
               S._dashStrike = null;
+              /* ═══ v2.3.2263: SAY WHERE YOU LANDED, THEN SWING ═══
+                 The broadcast gate above now streams the dash, but this is the
+                 ARRIVAL frame: it runs before that gate does, and the strike
+                 goes out inside it.  Without this line the worker's newest
+                 position is one frame -- and one 26px step -- behind the swing
+                 it is about to range-check, on a move whose whole point is that
+                 the worker must believe you closed.  Same packet, same
+                 validator, nothing new trusted; wsClient's `ability`
+                 passthrough flushes it ahead of the cast (v2.3.1765) and
+                 WebSocket ordering does the rest. */
+              try {
+                if (S.channel) S.channel.send({ type: 'broadcast', event: 'move',
+                  payload: { x: S.player.x, y: S.player.y, z: S.currentZone, vx: 0, vy: 0 } });
+              } catch (e) {}
               try { applyAbilityStrike(S, _ds.kind, _ds.targetId); } catch (e) { /* a failed strike must not stop the frame */ }
             } else if (!strike) {
               S._dashStrike = null;
@@ -4847,6 +4861,18 @@ export var BroTown = function BroTown(_ref0) {
           if (!_btLive) {
             _endDash(false);
           } else if (Date.now() > _bd.until) {
+            _endDash(true);
+          } else if ((_bd.travelled || 0) >= (_bd.maxTravel || DASH_MAX_REACH_PX)) {
+            /* ═══ v2.3.2263: THE LUNGE IS BOUNDED IN DISTANCE, NOT ONLY TIME ═══
+               The window is derived from the gap now (abilities.dashWindowMs)
+               so a lunge across the screen can finish, which is the whole point
+               -- but a clock long enough for 900px is also long enough for
+               ~1350px at full speed, and a tap lock retained while walking away
+               would turn a 2.5s-cooldown swing into free travel across half a
+               zone.  So the travel is capped where the reach says it is, and
+               running out of it ends the move exactly as the clock does: it
+               still SWINGS, from where it got to, and the worker decides
+               whether that connects. */
             _endDash(true);
           } else {
             var _btx = (typeof _bt.renderX === 'number' ? _bt.renderX : _bt.x);
@@ -4859,6 +4885,7 @@ export var BroTown = function BroTown(_ref0) {
             } else {
               var _bstep = Math.min(_bdist - _bstop,
                 Math.min(DASH_MAX_STEP_PX, DASH_STEP_PX * (S._dtScale || 1)));
+              _bd.travelled = (_bd.travelled || 0) + _bstep;
               var _bnx = S.player.x + (_bdx / _bdist) * _bstep;
               var _bny = S.player.y + (_bdy / _bdist) * _bstep;
               /* Honour the same collision the walk does -- a bash must not
@@ -5623,6 +5650,37 @@ export var BroTown = function BroTown(_ref0) {
              the joystick base it replaced always looked like. */
           var _opWant = !_rLitCtx ? '0.5' : (rJoyActive.current ? '0.92' : '1');
           if (_rd && _rd.style.opacity !== _opWant) _rd.style.opacity = _opWant;
+          /* ═══ v2.3.2263: SEE-THROUGH WHILE THERE IS SOMETHING TO FIGHT ═══
+             Owner: "Attack button sometimes covers monster ... maybe 50%
+             transparency during active combat?"  Only the painted metal fades
+             (TouchControls' rBodyRef layer) -- the label, the lit edge and the
+             ring are siblings above it and keep full strength, so this does not
+             undo v2.3.2251's "the attack button isn't lit up ... font hard to
+             see".  See the note on the layer itself.
+             `_hot` is already exactly "a monster is in play": it is the term
+             that paints the button's brighter focus tone, so the button goes
+             see-through in the same frames it goes hot and in no others -- a
+             HARVEST press, which covers a tree rather than a monster, is left
+             opaque.  0.45 rather than the suggested 0.5 because the metal sits
+             on a dark well: measured against the sprite, half strength still
+             reads as a solid disc over foliage. */
+          /* v2.3.2264: ...and it goes WARM in the same frame, because a faded
+             control is the universal look of a disabled one and the owner read
+             it that way immediately.  Transparency says "you can see through
+             me", colour says "I am live"; the disc needs to say both at once.
+             One stamp, same change-gated pattern as every write around it. */
+          var _bodyWant = _hot ? '0.45' : '1';
+          var _rb = rBodyRef.current;
+          if (_rb && _rb.style.opacity !== _bodyWant) _rb.style.opacity = _bodyWant;
+          var _bgWant = _hot ? RBTN_BODY_BG_HOT : RBTN_BODY_BG;
+          if (_rb && _rb.style.backgroundImage !== _bgWant) _rb.style.backgroundImage = _bgWant;
+          /* The knob is a separate sprite sitting in the middle of that face --
+             i.e. the part actually over the play area -- so it takes both
+             treatments too, or only the rim of the button is see-through. */
+          var _rk2 = rKnobRef.current;
+          var _kbgWant = _hot ? RKNOB_BG_HOT : RKNOB_BG;
+          if (_rk2 && _rk2.style.opacity !== _bodyWant) _rk2.style.opacity = _bodyWant;
+          if (_rk2 && _rk2.style.backgroundImage !== _kbgWant) _rk2.style.backgroundImage = _kbgWant;
           var _bcWant = _lit ? (_hot ? '#EAC675' : '#D8AA58') : 'transparent';
           if (_rd && _rd.style.borderColor !== _bcWant) _rd.style.borderColor = _bcWant;
           var _bsWant = _lit
@@ -6653,7 +6711,30 @@ export var BroTown = function BroTown(_ref0) {
 
         /* Broadcast position — slim payload for speed */
         var now = performance.now();
-        var isMoving = dx || dy || S._dodgeRoll;
+        /* ═══ v2.3.2263: A LUNGE IS MOVEMENT, SO IT HAS TO BE BROADCAST LIKE ONE ═══
+           Owner: "Sword dash deals damage when attacking using the proximity
+           based targeted attack but not when you tap to lock on a monster from
+           across the screen.  It always says miss when I do that."
+
+           `dx`/`dy` are the STICK, and the lunge does not use it -- the dash
+           block writes S.player.x/y directly.  So with no thumb on the left
+           disc this whole gate was false for the entire dash, and the only
+           thing that sent a position was the 1s idle keepalive.  The worker
+           therefore still had the player standing where the lunge STARTED when
+           the strike arrived, and _handleAbility range-checks from exactly
+           that: radius 70, or `reach` 240 for a declared target.
+
+           Which is the owner's asymmetry, exactly.  A proximity lunge covers
+           ~150-200px, so the stale position is still inside 240 and the hit is
+           accepted; a lunge across the screen covers 500-800px, so it is not,
+           and the worker answers whiff -- "Missed!" -- while the client shows
+           the bro standing on top of the monster.  Measured: mp-dashhit's far
+           round closes 794 -> 48px on screen and the monster takes nothing.
+
+           S._dodgeRoll is already in this term for the identical reason -- it
+           is the other move that repositions the player without the stick --
+           so the lunge joins it rather than getting a mechanism of its own. */
+        var isMoving = dx || dy || S._dodgeRoll || S._bashDash;
         /* v2.3.396: also broadcast when the facing changes while standing
            (turning to aim without moving) so remote clients see the turn --
            the move payload now carries the true rendered facing (f). */
@@ -8009,6 +8090,7 @@ export var BroTown = function BroTown(_ref0) {
   var lTouchId = useRef(null);
   var rJoyRef = useRef(null);
   var lWrapRef = useRef(null);    /* v2.3.2246: the two corner boxes are the visibility gates */
+  var rBodyRef = useRef(null);   /* v2.3.2263: the right disc's painted metal, faded on its own */
   var rWrapRef = useRef(null);
   var rLabelRef = useRef(null);   /* v2.3.2242: the button's contextual label */
   var rCueRef = useRef(null);     /* v2.3.2245: the harvest tool frame on the button */
@@ -12291,7 +12373,7 @@ export var BroTown = function BroTown(_ref0) {
      and z-index 6 so they sit over the world canvas but under all HUD
      (z>=20).  bt-desktop-hide drops them on desktop so the mouse reaches the
      canvas. */
-  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rLabelRef: rLabelRef, rCueRef: rCueRef, rRingRef: rRingRef, rStickRef: rStickRef, rKnobRef: rKnobRef, lWrapRef: lWrapRef, rWrapRef: rWrapRef, isLandscape: isLandscape }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until their milestone level unlocks them (AbilityButtons.jsx). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2242: the shield is a toggle button under the Attack button; it shows itself during combat (ShieldButton.jsx). */ /*#__PURE__*/React.createElement(ShieldButton, { stateRef: stateRef, isLandscape: isLandscape })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
+  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rBodyRef: rBodyRef, rLabelRef: rLabelRef, rCueRef: rCueRef, rRingRef: rRingRef, rStickRef: rStickRef, rKnobRef: rKnobRef, lWrapRef: lWrapRef, rWrapRef: rWrapRef, isLandscape: isLandscape }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until their milestone level unlocks them (AbilityButtons.jsx). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2242: the shield is a toggle button under the Attack button; it shows itself during combat (ShieldButton.jsx). */ /*#__PURE__*/React.createElement(ShieldButton, { stateRef: stateRef, isLandscape: isLandscape })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
      Not a style choice — a hard requirement this cost a round of QA to
      find.  .brotown-wrap is position:fixed, and Chrome treats that as its
      own stacking context, so EVERY element inside it is confined to one

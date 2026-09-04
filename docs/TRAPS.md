@@ -1699,3 +1699,74 @@ was not in effect, with the UI telling him it was. `git diff origin/main...HEAD
 **Related:** §35 (a test that copies a value out of the game), §44 (asking a
 moving value about a past event) — both are the same family: the measurement and
 the thing being measured are not the same object.
+
+---
+
+## §46 — The worker only knows about movement the STICK made
+
+**v2.3.2263.** Owner: *"Sword dash deals damage when attacking using the
+proximity based targeted attack but not when you tap to lock on a monster from
+across the screen. It always says miss when I do that."*
+
+The lunge writes `S.player.x/y` directly, frame by frame. The move-broadcast
+gate in `BroTown.jsx` was
+
+```js
+var isMoving = dx || dy || S._dodgeRoll;      // dx/dy are the STICK
+```
+
+so with no thumb on the left disc the gate was false for the whole dash and the
+client sent **no position at all** while the player crossed the screen. Every
+server-side range check then used the pre-lunge position — `_handleAbility`
+measures from `ps.x/ps.y`, radius 70 or `reach` 240 for a declared target — so
+the worker answered `whiff` and the client floated "Missed!" over a bro standing
+on top of the monster. Measured in `mp-dashhit`: the worker's copy was exactly
+`travelled` px behind, i.e. it had not moved once.
+
+It also explains the *shape* of the report, which is what makes this worth
+writing down. A proximity lunge covers 150–200px, so the stale position is still
+inside `reach` and the hit lands; a lunge across the screen covers 500–800px, so
+it is not. **The same code produced "works" and "always misses" depending only on
+distance**, and the working case is what made three rounds of investigation look
+in the wrong place.
+
+`S._dodgeRoll` was already in that term for exactly the same reason. **Anything
+that repositions the player without the stick must join it** — a lunge, a roll, a
+knockback, a leap, a future grapple. If the server has to believe you are
+somewhere, you have to tell it you went there.
+
+**Related:** §44 (asking a moving value about a past event) — here the two
+copies of the position *are* the moving value, and the screen is not the one
+that decides.
+
+---
+
+## §47 — "Two marks that look like a pair" is not evidence of which two
+
+**v2.3.2263.** The owner reported two lock-on circles on one monster three
+times. It was answered twice by reading the renderer, and **both readings named
+the wrong pair** — the second one (v2.3.2262) even fixed the block whose own
+comment claimed the behaviour it did not have, and shipped confident.
+
+The marks are drawn from three separate places in `effectsRenderer.js`, hundreds
+of lines apart: a squashed pale ground ellipse per candidate, a brass circle
+inside the *caret* loop for the target, and the lock reticle. The pair the owner
+was seeing was the second and third. The first — the one that looked guilty,
+because it is the one the "one target, one mark" comment is attached to — was
+never involved.
+
+**What settled it in twenty minutes after two rounds of argument:** a controlled
+shot with a CONTROL. `tools/qa/mp/mp-lockrings.mjs` stands two monsters in a real
+spoke zone, taps one, and crops both from the position the renderer reports. The
+locked one came back wearing two brass rings; the unlocked one came back wearing
+the pale ellipse and nothing else. That single frame eliminates two of the three
+drawers without reading a line.
+
+**Do not count coloured pixels to answer this** (§21): the control crop lit up
+just as brightly as the target's, because the ATTACK button's brass ring and the
+gold `LV` on the name plate are both in frame. The renderer now reports the
+count itself — `window.__btLockRings()` tallies circles centred on the locked
+monster, from anywhere in the region, so a ring added later is counted without
+anyone remembering to count it.
+
+**Related:** §21 (a pixel count cannot tell brass from cobble).

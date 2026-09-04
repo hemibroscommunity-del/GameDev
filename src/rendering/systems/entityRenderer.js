@@ -4578,11 +4578,36 @@ function _broBadgeTexture() {
  * Gated on a real change: the zoom moves on a zone change or a dashboard
  * toggle, not per frame, and re-rasterising a Text every frame would be a
  * per-entity texture upload. */
-const PLATE_ZOOM_MAX = 2.2;   /* bound the texture cost at extreme zoom-out */
+/* ═══ v2.3.2263: HALF THE COMPENSATION, NOT ALL OF IT ═══
+ * Owner, on what v2.3.2262 shipped: "Nameplates are now way too large."
+ *
+ * The version above undid the camera zoom COMPLETELY -- 1/w -- which pins the
+ * plate at its full design size in screen pixels no matter how far out the
+ * camera is.  Measured on the owner's 1290x2796 capture at the 0.6006 a combat
+ * zone runs at: a monster plate is 12 (nameSize) x 1.5 (MONSTER_SIZE_MULT)
+ * = 18 CSS px of type over a blue slime that is 27 CSS px wide.  The plate is
+ * wider than the monster it labels, and with six monsters to a zone the plates
+ * collide with each other before the monsters do.
+ *
+ * The ask it came from is still real and is NOT being reverted: before
+ * v2.3.2262 the same plate was 12 x 1.5 x 0.6006 = 10.8 CSS px, and "increase
+ * any small font size when the game is zoomed out" is what the owner said about
+ * exactly that.  So the answer is a middle, and sqrt is the principled one: the
+ * plate still GROWS as the camera pulls back, at half the rate in log terms, so
+ * it can never outrun the scene the way a full undo does.
+ *
+ *     zoom 0.60  ->  x1.29  ->  13.9 CSS px   (was 10.8 before, 18.0 after)
+ *     zoom 0.75  ->  x1.15  ->  13.5 CSS px
+ *     zoom 1.00  ->  x1.00  ->  12.0 CSS px   (unchanged, by construction)
+ *
+ * Floored at 1 so zooming IN never shrinks the plate below its design size,
+ * and still capped, now at the sqrt of the old cap for the same reason it had
+ * one: a Text is a texture and every player in the room carries two. */
+const PLATE_ZOOM_MAX = 1.5;   /* bound the texture cost at extreme zoom-out */
 let _plateZoom = 1;
 export function setPlateZoom(worldScale) {
   const w = (typeof worldScale === 'number' && worldScale > 0.01) ? worldScale : 1;
-  _plateZoom = Math.min(PLATE_ZOOM_MAX, Math.max(1, 1 / w));
+  _plateZoom = Math.min(PLATE_ZOOM_MAX, Math.max(1, Math.sqrt(1 / w)));
 }
 
 function _fitPlateToZoom(display) {

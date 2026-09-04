@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  lockrings: () => import('./mp-lockrings.mjs'), /* v2.3.2263: how many rings are on the target, and whose they are */
   engage: () => import('./mp-engage.mjs'), /* v2.3.2246: engaged movement is target-relative, and the attack indicator is painted */
   freshbuild: () => import('./mp-freshbuild.mjs'), /* v2.3.2237: a resumed app takes the new build; a live game is only offered it */
   devpanel: () => import('./mp-devpanel.mjs'), /* v2.3.2240: the owner's test panel */

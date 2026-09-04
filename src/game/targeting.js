@@ -211,6 +211,57 @@ function tapOwned(S) {
    game being unable to make up its mind. 12% is enough to need a real step. */
 const AUTO_SWITCH_MARGIN = 0.88;
 
+/* ═══ v2.3.2263: A TAP PICKS THE FIGHT; IT DOES NOT OWN IT FOREVER ═══
+ * Owner: "the lock on targeting when attacking with melee isn't working the way
+ * I want when other monsters are nearer than the one you're locked on to.  I
+ * want the lock on system to go by the nearest monster for which one to target,
+ * not just the one you've been fighting."
+ *
+ * The rule that produced that is directly above: a tap-owned lock RETURNS out
+ * of updateTargeting before the automatic nearest rule can run, at any
+ * distance, until the monster dies or you tap again.  So one tap early in a
+ * fight pinned the target for the rest of it, and a slime standing on your feet
+ * could not take it off a goblin across the clearing.
+ *
+ * TWO THINGS STOP THIS BEING A REVERT of the rule it narrows, because both are
+ * live owner directives that a plain "always nearest" would break:
+ *
+ *   - A BOW OR STAFF TAP IS STILL ABSOLUTE.  v2.3.2251 made the tap the ONLY
+ *     way a ranged weapon acquires anything, and v2.3.2246's snipe at 675px
+ *     depends on the lock surviving far outside the 220px perimeter.  Nothing
+ *     is stolen from a weapon whose automatic rule does not run at all --
+ *     `autoAcquires` is the same classifier the rule below reads.
+ *   - A TAP IS PINNED BRIEFLY.  "Tap a monster across the screen, then press
+ *     Attack to lunge at it" is v2.3.2260's directive, and the press comes some
+ *     hundreds of ms after the tap.  Without a pin, a slime already at your
+ *     feet takes the lock in the very next FRAME and the lunge goes to the
+ *     wrong monster -- the new rule would break the previous round's feature.
+ *     TAP_PIN_MS covers thumb-to-thumb; after it, nearest wins.
+ *
+ * The steal itself reuses AUTO_SWITCH_MARGIN rather than inventing a second
+ * threshold, so "meaningfully nearer" means one thing in this file.  A tapped
+ * lock with NOTHING nearer is never touched here, which is what keeps a distant
+ * tapped target alive while you close on it. */
+const TAP_PIN_MS = 900;
+function tapStealable(S, cands) {
+  const lt = monsterLock(S);
+  if (!lt) return false;
+  /* Ranged and magic: the tap is the whole targeting system.  Never stolen. */
+  if (!autoAcquires(S)) return false;
+  /* Stamped on first sight rather than at the three tap sites, so a new one
+     cannot forget it and read as instantly stealable. */
+  if (lt.at == null) { lt.at = Date.now(); return false; }
+  if (Date.now() - lt.at < TAP_PIN_MS) return false;
+  if (!cands || !cands.length) return false;      /* nothing nearer to steal it */
+  const best = cands[0];
+  if (!best || best.m === lt.ref) return false;   /* already the nearest */
+  const p = monPos(lt.ref);
+  if (!p || !S.player) return false;
+  const dx = p.x - S.player.x, dy = p.y - S.player.y;
+  const curD2 = dx * dx + dy * dy;
+  return best.d2 <= curD2 * AUTO_SWITCH_MARGIN * AUTO_SWITCH_MARGIN;
+}
+
 /* Once per frame (monsterCombat's tick): refresh the candidate list, then
    ACQUIRE.  Cheap -- one pass over the zone's monsters. */
 /* ═══ v2.3.2258: ONLY A BLADE FINDS ITS OWN TARGET ═══
@@ -286,9 +337,14 @@ export function updateTargeting(S) {
       S._lockDroppedAt = Date.now();
       S._lockDroppedWhy = 'dead';
       clearLockAim(S);
-    } else {
+    } else if (!tapStealable(S, cands)) {
       return;
     }
+    /* else: fall through to the automatic rule below, which re-points at
+       cands[0].  Only reachable for MELEE and only with a genuinely nearer
+       candidate in hand -- see tapStealable -- so the `!cands.length` branch
+       under it, which would DROP a distant tapped lock, cannot be reached
+       from here. */
   }
 
   /* ═══ v2.3.2258: ...AND A BOW DOES NOT ═══

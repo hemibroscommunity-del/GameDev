@@ -82,6 +82,69 @@ export const DASH_STEP_PX = 26;
 export const DASH_MAX_STEP_PX = 60;
 export const DASH_WINDOW_MS = 420;
 export const DASH_STOP_PX = 46;   /* contact range: just outside the body */
+/* ═══ v2.3.2263: THE WINDOW IS A TRAVEL BUDGET, SO IT HAS TO KNOW THE TRAVEL ═══
+ * Owner: "Sword dash deals damage when attacking using the proximity based
+ * targeted attack but not when you tap to lock on a monster from across the
+ * screen.  Maybe it is a server anti cheat issue.  It always says miss."
+ *
+ * It is not the anti-cheat, and that was worth ruling out before touching the
+ * worker: replaying a real 560px lunge against a real GameRoom -- move packets
+ * at the client's own MOVE_GAP_SOLO_MS (66ms), 103px apart, then the ability --
+ * the worker accepted every packet (500 px/s x dt + 80px burst leaves ~10px of
+ * headroom at that cadence) and the lunge LANDED, 500 -> 490 hp.  The server
+ * is not what is refusing this.
+ *
+ * The client is, by arithmetic.  DASH_STEP_PX x 60 is 1560 px/s, so a FIXED
+ * 420ms window is a hard travel budget of ~655px (~504 on a phone dropping to
+ * the _dtScale clamp).  Tap-to-lock has no range limit at all -- it is a
+ * screen-space hit test, which is what makes the 675px bow snipe work -- and on
+ * the owner's viewport the world is ~716px across and ~1340px tall, so a
+ * monster he can see and tap is routinely further away than the dash can reach
+ * in 420ms.  The window then expires mid-flight, `_endDash(true)` strikes from
+ * wherever he got to, and the worker range-checks a player still hundreds of px
+ * away against `reach` 240 and answers whiff.  "Always says miss" is exactly
+ * what a budget shorter than the screen produces.
+ *
+ * So the window becomes what it was always described as -- a BACKSTOP -- by
+ * being derived from the gap it actually has to close, floored at the old 420
+ * (nothing gets shorter) and capped by a reach that is deliberately a little
+ * wider than the screen.  The cap is enforced on the TRAVEL as well as on the
+ * clock, or the lunge would quietly become a traversal move: at full speed the
+ * capped window alone would carry ~1350px, and a lock retained while walking
+ * away would be a free 2.5s-cooldown teleport across half a zone. */
+export const DASH_MAX_REACH_PX = 900;
+/* The step, expressed as the loop actually spends it. */
+export const DASH_SPEED_PX_PER_MS = DASH_STEP_PX * 60 / 1000;   /* 1.56 */
+/* Frames get dropped, and the loop's own _dtScale clamp of 3 caps recovery at
+   DASH_MAX_STEP_PX per frame -- 60 x 20fps = 1200 px/s against the nominal
+   1560.  MEASURED, rather than trusted: mp-dashhit's far round reports the
+   speed it actually achieved, and across runs on the same build that is 596 to
+   1254 px/s with _dtScale pinned at its clamp of 3 -- i.e. the loop can spend
+   less than half the nominal step, and the owner's phone is not a faster
+   machine than the one measuring it.  3.0 covers the slowest of those.
+   BEING GENEROUS HERE IS FREE, which is why it is not tuned finer: the window
+   is not what bounds the move.  Arrival ends it, the travel cap ends it, a
+   dead target ends it, a wall ends it -- and applyAbilityStrike re-stamps
+   _abilitySwingUntil to 460ms on arrival, so a window longer than the travel
+   needs does not hold the attack button down either.  The only case that
+   spends the whole clock is a target outrunning a 1560 px/s lunge, which no
+   monster in the game does. */
+export const DASH_SLOW_FRAME_ALLOW = 3.0;
+export const DASH_WINDOW_MAX_MS = Math.round(
+  DASH_MAX_REACH_PX / DASH_SPEED_PX_PER_MS * DASH_SLOW_FRAME_ALLOW) + 90;   /* ~869 */
+/* The gap a lunge has to close, and the window that covers it.  One function
+   so the dash record and the swing clock cannot disagree about how long the
+   move lasts -- they are the same number and they were both literals. */
+export function dashWindowMs(S, target) {
+  if (!S || !S.player || !target) return DASH_WINDOW_MS;
+  const tx = (typeof target.renderX === 'number') ? target.renderX : target.x;
+  const ty = (typeof target.renderY === 'number') ? target.renderY : target.y;
+  if (typeof tx !== 'number' || typeof ty !== 'number') return DASH_WINDOW_MS;
+  const dx = tx - S.player.x, dy = ty - S.player.y;
+  const gap = Math.max(0, Math.sqrt(dx * dx + dy * dy) - DASH_STOP_PX);
+  const need = Math.round(gap / DASH_SPEED_PX_PER_MS * DASH_SLOW_FRAME_ALLOW) + 90;
+  return Math.min(DASH_WINDOW_MAX_MS, Math.max(DASH_WINDOW_MS, need));
+}
 /* The shockwave's opening, 120° — the SAME span as the shield's own guard
    cone (BLOCK_ARC_HALF = PI/3 either side, src/data/gameSystems.js), so the
    shove is drawn across exactly the face of the shield that threw it. */
@@ -250,8 +313,15 @@ export function castAbility(S, kind) {
      tuning nudge from a rejected move that would snap the player back to where
      the dash began and guarantee the miss this exists to fix.  Capped well
      under it, so the speed can be tuned without re-deriving the validator. */
+  /* v2.3.2263: derived from the gap, not a literal -- see dashWindowMs.
+     `travelled` is the other half of the cap: the clock alone would let a
+     full-speed lunge carry ~1350px, which is a traversal move rather than a
+     swing.  Both are recorded on the dash so the movement block enforces them
+     without re-deriving either. */
+  var _dashWin = _bashLt ? dashWindowMs(S, _bashLt) : DASH_WINDOW_MS;
   if (_bashLt) {
-    S._bashDash = { targetId: _bashId, ref: _bashLt, startTime: now, until: now + DASH_WINDOW_MS };
+    S._bashDash = { targetId: _bashId, ref: _bashLt, startTime: now, until: now + _dashWin,
+      travelled: 0, maxTravel: DASH_MAX_REACH_PX };
   } else {
     S._bashDash = null;
   }
@@ -288,7 +358,12 @@ export function castAbility(S, kind) {
   if (_defer) {
     S._dashStrike = { kind: kind, targetId: _bashId, at: now };
     S.swingTimer = now;
-    S._abilitySwingUntil = now + DASH_WINDOW_MS + 460;
+    /* v2.3.2263: the SAME window the dash got.  These were both
+       DASH_WINDOW_MS, and leaving this one a literal while the dash grew would
+       let the auto-attack loop fire an ordinary swing partway through a long
+       lunge -- billing one thumb twice, which is the exact thing this line
+       exists to prevent. */
+    S._abilitySwingUntil = now + _dashWin + 460;
     return true;
   }
   S._dashStrike = null;

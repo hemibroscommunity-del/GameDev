@@ -1,6 +1,49 @@
 import React from 'react';
 import { RBTN } from './ShieldButton.jsx';
 
+/* ═══ v2.3.2264: THE DISC SAYS "HOT", IT DOES NOT SAY "OFF" ═══
+ * Owner, on v2.3.2263's see-through button: "the disc that holds the attack
+ * button isn't [reading as active].  The problem is implying the button is
+ * inactive when it's partially transparent.  Maybe only during combat it
+ * changes color (like to orange) keeping its transparency."
+ *
+ * Exactly right, and it is the oldest convention in UI: a faded control means
+ * DISABLED.  v2.3.2263 borrowed that appearance to stop the button covering
+ * monsters, and so made it say the opposite of what it meant -- the button is
+ * never more live than in the frames it had just started looking dead in.
+ *
+ * The transparency stays and the COLOUR carries the state instead.  A warm wash
+ * over the grey metal, so the see-through disc reads as lit rather than greyed
+ * out: the same pixels, warm instead of drained.
+ *
+ * ONE ELEMENT, TWO BACKGROUND LAYERS, rather than a tint node of its own.  CSS
+ * paints the first background-image in the list ON TOP, which is the only way
+ * to get colour over the sprite: a background-COLOUR paints underneath the
+ * image, and base.webp is opaque edge to edge -- the v2.3.2251 note on this
+ * very disc is about exactly that.  The resolver swaps between these two
+ * strings and touches nothing else.
+ *
+ * #D68A3C is the amber the renderer already uses for a warm world mark, so this
+ * is the palette's orange rather than a new one -- and it stays clear of both
+ * marks in the combat language, where brass #D8A85F means "in reach" and red
+ * #FF3C3C means "attacking".  The disc is neither: it is the button those two
+ * are about. */
+const RBTN_WASH = 'linear-gradient(rgba(214,138,60,0.62), rgba(214,138,60,0.62)), ';
+const RBTN_SPRITE = 'url(/sprites/joystick/base.webp?v=2.3.102)';
+export const RBTN_BODY_BG = RBTN_SPRITE;
+export const RBTN_BODY_BG_HOT = RBTN_WASH + RBTN_SPRITE;
+/* ...AND THE KNOB IS PART OF THE SAME FACE.  Rendered from base.webp's dark
+   well, the knob is a SEPARATE 42px sprite at zIndex 1, so v2.3.2263's fade
+   reached the metal ring and stopped at the dome in the middle of it -- which
+   is the half of the button actually sitting over the play area.  Measured off
+   the first render of the wash: the outer metal came back (185,127,75), warm
+   and see-through, and the knob (93,91,89), neutral and solid, in the same
+   frame.  It takes the same two treatments, or "the button is transparent now"
+   is only true of its rim. */
+const RKNOB_SPRITE = 'url(/sprites/joystick/knob.webp?v=2.3.102)';
+export const RKNOB_BG = RKNOB_SPRITE;
+export const RKNOB_BG_HOT = RBTN_WASH + RKNOB_SPRITE;
+
 /* === TouchControls — the left joystick + the contextual right BUTTON === */
 /* v2.3.890: extracted verbatim from the floating-joystick sibling run
    in BroTown.jsx.  Render-only: the DOM refs are the SAME ref objects
@@ -47,6 +90,7 @@ export function TouchControls(props) {
     knobRef = props.knobRef,
     lJoyPreviewRef = props.lJoyPreviewRef,
     rJoyRef = props.rJoyRef,
+    rBodyRef = props.rBodyRef,   /* v2.3.2263: the disc's painted metal, faded on its own */
     rLabelRef = props.rLabelRef,
     rCueRef = props.rCueRef,     /* v2.3.2245: the harvest tool frame on the button face */
     rRingRef = props.rRingRef,   /* v2.3.2245: the wind-up / reps ring around the rim */
@@ -283,15 +327,55 @@ export function TouchControls(props) {
       boxSizing: 'border-box',
       borderRadius: '50%',
       border: '2px solid transparent',
-      backgroundImage: 'url(/sprites/joystick/base.webp?v=2.3.102)',
-      backgroundSize: '100% 100%',
-      backgroundRepeat: 'no-repeat',
-      backgroundPosition: 'center',
+      /* v2.3.2263: the painted metal moved to its own child (rBodyRef, just
+         below) so it can go see-through on its own.  Nothing else about the
+         disc did: the lit border and its shadow are still declared here and
+         still stamped inline by BroTown's resolver. */
       WebkitUserSelect: 'none',
       userSelect: 'none',
       WebkitTouchCallout: 'none',
     }
-  }, /*#__PURE__*/React.createElement("svg", {
+  }, /*#__PURE__*/React.createElement("div", {
+    /* ═══ v2.3.2263: THE BUTTON STOPS HIDING WHAT YOU ARE FIGHTING ═══
+       Owner: "Attack button sometimes covers monster (not sure best way to
+       deal with it maybe 50% transparency during active combat?)"
+
+       Measured off his screenshot: the disc is ~88 CSS px across on a 430 px
+       viewport, sitting over the lower-right play area -- in that frame it
+       covers a Blue Slime, most of another monster's name plate, and part of
+       the bro himself.
+
+       50% of the WHOLE BUTTON is what he suggested and it is the one thing
+       this must not do: v2.3.2251 is the owner asking for the opposite -- "the
+       attack button isn't lit up when it becomes available (font hard to
+       see)" -- and it was fixed by taking the disc OFF its faint 0.5 rest and
+       lighting its edge.  Dimming the element would dim the label, the brass
+       border and the ring with it, because CSS opacity applies to the whole
+       subtree, and would hand back the exact complaint.
+
+       So the painted metal is a separate layer now and only IT fades.  The
+       label, the lit edge and the progress ring are siblings above it at full
+       strength: you can see the monster through the button and still read
+       ATTACK on it.  zIndex 0 keeps it under the label (3) and the tool cue
+       (2), and pointerEvents none keeps the touch target on the parent, so
+       nothing about WHERE the button can be pressed changes. */
+    ref: rBodyRef,
+    style: {
+      position: 'absolute',
+      inset: 0,
+      borderRadius: '50%',
+      zIndex: 0,
+      pointerEvents: 'none',
+      opacity: 1,
+      transition: 'opacity 0.18s ease, background-image 0.18s ease',
+      backgroundImage: RBTN_BODY_BG,
+      /* Two values each, so the wash layer is sized and placed like the sprite
+         when the resolver swaps in the two-layer stack. */
+      backgroundSize: '100% 100%, 100% 100%',
+      backgroundRepeat: 'no-repeat, no-repeat',
+      backgroundPosition: 'center, center',
+    }
+  }), /*#__PURE__*/React.createElement("svg", {
     style: {
       position: 'absolute',
       inset: 0,
@@ -363,10 +447,13 @@ export function TouchControls(props) {
       left: '50%',
       top: '50%',
       transform: 'translate(-50%,-50%)',
-      backgroundImage: 'url(/sprites/joystick/knob.webp?v=2.3.102)',
-      backgroundSize: '100% 100%',
-      backgroundRepeat: 'no-repeat',
-      backgroundPosition: 'center',
+      /* v2.3.2264: fades and warms with the disc it sits in -- see RKNOB_BG. */
+      opacity: 1,
+      transition: 'opacity 0.18s ease, background-image 0.18s ease',
+      backgroundImage: RKNOB_BG,
+      backgroundSize: '100% 100%, 100% 100%',
+      backgroundRepeat: 'no-repeat, no-repeat',
+      backgroundPosition: 'center, center',
       pointerEvents: 'none',
       /* No filter: a drop-shadow over the WebGL canvas is the documented iOS
          "static" (v2.3.1236, CLAUDE.md). */

@@ -2020,6 +2020,15 @@ export function setupWebSocket(ctx) {
                  Display only — the authoritative pools ride player_state,
                  so this never writes game state. */
               if (!msg.payload || !S.player) break;
+              /* v2.3.2263: stamp the last refusal, house-style probe.  The
+                 popup is the only trace a reject leaves, and a floating
+                 "Missed!" is not something a headless scenario can read -- so
+                 mp-dashhit could see that a lunge did no damage but not whether
+                 the WORKER refused it or the client never sent it, which are
+                 different bugs with the same symptom.  Display state only; the
+                 authoritative pools still ride player_state. */
+              S._lastAbilityReject = { kind: msg.payload.kind || null,
+                reason: msg.payload.reason || null, at: Date.now() };
               try {
                 pushDmgPopup(S, S.player.x, S.player.y - 30,
                   abilityRejectText(msg.payload), '#F2C14E', { ts: Date.now() });
