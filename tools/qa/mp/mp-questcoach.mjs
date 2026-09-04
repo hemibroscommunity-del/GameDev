@@ -551,6 +551,70 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return { shieldUp: !!S._shieldUp, why: S._shieldDroppedWhy };
     });
     rec.ok('a single tap afterwards drops the guard again', down.shieldUp === false, down);
+
+    /* ═══ v2.3.2271: THE PAIR MUST NOT COST YOU THE LOCK ═══
+       Found by an adversarial pass over the shipped v2.3.2269 gesture, not by
+       playing it.  The right ZONE's release forwards every short tap to the
+       canvas as a synthetic click (v2.3.816) -- the tap-to-lock path, which
+       TOGGLES -- so the pair that raises the guard was locking and then
+       unlocking the monster underneath it.  For bow and staff that tapped lock
+       is the only lock there is, so the gesture was quietly disarming the
+       player it was meant to protect.
+
+       Driven on the ZONE, not the disc: with no lock held the disc is
+       pointer-events:none for these weapons, so the zone is where a real
+       player's presses land, and the zone is the surface that forwards. */
+    await P.page.evaluate(() => {
+      const S = window._gameState.current;
+      S._shieldUp = false; S.rpg.activeSlot = 'ranged'; S._rTapAt = 0;
+      S._serverMonsters = false;
+      S.monsters = [{
+        id: 'qa_lock_m', arch: 'fodder', archetype: 'fodder', type: 'fodder',
+        x: S.player.x + 60, y: S.player.y, renderX: S.player.x + 60, renderY: S.player.y,
+        spawnX: S.player.x + 60, spawnY: S.player.y, targetX: S.player.x + 60, targetY: S.player.y,
+        hp: 500, curHp: 500, maxHp: 500, dmg: 0, level: 1, gold: 0, spd: 0, vx: 0, vy: 0,
+        alive: true, statuses: {}, _hitThisSwing: false, _atkCd: 0, _stunUntil: 0,
+        respawnAt: 0, moveTimer: 0, _stuckArrows: [],
+      }];
+      const m = S.monsters[0];
+      S.lockedTarget = { type: 'monster', id: m.id, ref: m, src: 'tap' };
+    });
+    await P.page.waitForTimeout(400);
+    const beforePair = await P.page.evaluate(() => {
+      const S = window._gameState.current;
+      return { lock: S.lockedTarget ? S.lockedTarget.id : null, shieldUp: !!S._shieldUp };
+    });
+    rec.ok('a tapped lock is held before the pair (guard)',
+      beforePair.lock === 'qa_lock_m' && beforePair.shieldUp === false, beforePair);
+    await P.page.evaluate(() => new Promise((res) => {
+      const z = document.querySelector('[data-joyzone="R"]');
+      const r = z.getBoundingClientRect();
+      const x = r.x + r.width / 2, y = r.y + r.height / 2;
+      window.__touch(z, 'touchstart', x, y, 81);
+      window.__touch(z, 'touchend', x, y, 81);
+      setTimeout(() => {
+        window.__touch(z, 'touchstart', x, y, 82);
+        window.__touch(z, 'touchend', x, y, 82);
+        res(true);
+      }, 90);
+    }));
+    await P.page.waitForTimeout(600);
+    const afterPair = await P.page.evaluate(() => {
+      const S = window._gameState.current;
+      return { lock: S.lockedTarget ? S.lockedTarget.id : null, shieldUp: !!S._shieldUp,
+        shieldWhy: S._shieldDroppedWhy, lockWhy: S._lockDroppedWhy,
+        monsters: (S.monsters || []).map((m) => m.id), serverMon: !!S._serverMonsters,
+        stash: S._rTapLockWas ? S._rTapLockWas.id : null };
+    });
+    console.log('    after the zone pair: ' + JSON.stringify(afterPair));
+    rec.ok('double-tapping the ZONE raises the guard too, not just the disc',
+      afterPair.shieldUp === true, afterPair);
+    rec.ok('...and the monster you had locked is STILL locked',
+      afterPair.lock === 'qa_lock_m', { beforePair, afterPair });
+    await P.page.evaluate(() => {
+      const S = window._gameState.current;
+      S._shieldUp = false; S.monsters = []; S.lockedTarget = null;
+    });
   }
   await P.page.evaluate(() => {
     const S = window._gameState.current;

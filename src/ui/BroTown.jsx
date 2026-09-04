@@ -8333,11 +8333,68 @@ export var BroTown = function BroTown(_ref0) {
       var _nowTap = Date.now();
       var _prevTap = S._rTapAt || 0;
       S._rTapAt = _nowTap;
+      /* ═══ v2.3.2271: REMEMBER THE LOCK THE FIRST TAP IS ABOUT TO COST ═══
+         Suppressing the SECOND tap's forward is not enough, and the test that
+         found this says why: the FIRST tap of the pair forwards too, and a tap
+         on empty ground is the documented unlock (v2.3.816 -> the canvas
+         onClick).  A thumb doing a double tap lands wherever it likes, which on
+         the right half of the screen is usually empty ground -- so raising the
+         guard cost the player the lock every time, on tap one, before the
+         gesture had even been recognised.
+         It cannot be prevented, because nothing knows tap one is half of a pair
+         until tap two arrives.  So it is UNDONE instead: the lock is stashed
+         here, at press time, while it is still intact, and put back below if a
+         pair completes.  Delaying the forward by the double-tap window was the
+         alternative and it would have put 300ms of latency on every lock-on in
+         the game to serve this one gesture. */
+      if (!S._shieldUp) {
+        /* A NEW pair forgets the old one's stash, so a lock from a minute ago
+           can never be restored over a deliberate unlock. */
+        if (_prevTap === 0 || _nowTap - _prevTap > RBTN_DBL_MS) S._rTapLockWas = null;
+        var _ltNow = S.lockedTarget;
+        /* ONLY WHEN THERE IS ONE, and that `only` is the whole fix: the first
+           version wrote null here whenever the lock was absent -- which on the
+           SECOND press of a pair it always is, because the first press's
+           release has just cleared it.  The stash was therefore erased one
+           statement before the restore below read it, and the test said so. */
+        if (_ltNow && _ltNow.type === 'monster' && _ltNow.ref) {
+          S._rTapLockWas = { type: 'monster', id: _ltNow.id, ref: _ltNow.ref,
+            src: _ltNow.src, at: _ltNow.at };
+        }
+      }
       if (!S._shieldUp && _prevTap > 0 && _nowTap - _prevTap <= RBTN_DBL_MS) {
         S._rTapAt = 0;
         S.autoAttack = false;
         setAutoAttack(false);
         S._aiming = false;
+        /* ═══ v2.3.2271: AND THE SECOND TAP MUST NOT REACH THE CANVAS ═══
+           The ZONE's release forwards every short tap to the canvas as a
+           synthetic click (v2.3.816), which is the tap-to-lock path -- and that
+           path TOGGLES: tapping the monster you already have locked clears it,
+           and a tap on empty ground clears it outright.  So the pair that
+           raises the guard was also locking and then UNLOCKING the monster,
+           and for bow and staff the tapped lock is the only lock there is
+           (v2.3.2258 gave those weapons no automatic one), taking the shield's
+           own aim with it.
+           Stamped rather than returned because rS discards handleRBtnPress's
+           return value -- only the DISC reads it -- and the release that has to
+           be suppressed is a different handler on a different surface.  The
+           release compares this against its own press start, so it suppresses
+           exactly the press the gesture consumed and never a later one. */
+        S._rShieldConsumedAt = Date.now();
+        /* Put back what tap one took, if it took anything and the monster is
+           still there to point at.  Presence is checked against S.monsters
+           rather than the ref's own fields -- an object that has left the zone
+           keeps `alive: true` forever, which is the ghost-lock bug v2.3.2261
+           was written for, and restoring one here would recreate it. */
+        var _lw = S._rTapLockWas;
+        if (_lw && _lw.ref && !S.lockedTarget) {
+          var _live = (S.monsters || []).indexOf(_lw.ref) >= 0
+            && _lw.ref.alive !== false
+            && !(typeof _lw.ref.curHp === 'number' && _lw.ref.curHp <= 0);
+          if (_live) S.lockedTarget = _lw;
+        }
+        S._rTapLockWas = null;
         try { raiseShieldToggle(S); } catch (e) { /* refused: no shield, or on cooldown */ }
         return true;
       }
@@ -8832,7 +8889,16 @@ export var BroTown = function BroTown(_ref0) {
         var rts2 = rTapState.current;
         var dxs = t.clientX - rts2.startX;
         var dys = t.clientY - rts2.startY;
-        if (dxs * dxs + dys * dys > TAP_MAX_MOVE_SQ_PX) rts2.moved = true;
+        if (dxs * dxs + dys * dys > TAP_MAX_MOVE_SQ_PX) {
+          rts2.moved = true;
+          /* v2.3.2271: a DRAG is not half of a double tap.  Without this, a
+             bow player's ordinary sweep-to-aim followed by a shot 300ms later
+             read as a pair and raised the guard they did not ask for.  The
+             left stick's cycle classifier guards the same hazard the same way
+             (see its `never counts as tap #1 or #2` note). */
+          var _Sdr = stateRef.current;
+          if (_Sdr) _Sdr._rTapAt = 0;
+        }
         /* v2.3.2260: the last leg of the drag, for rE's flick test.  Same three
            fields bE keeps (bSwipe.lx/ly/lt) so the two surfaces classify the
            same gesture the same way. */
@@ -8895,7 +8961,13 @@ export var BroTown = function BroTown(_ref0) {
         openSelfChat();
         return;
       }
-      if (!rts3.moved && (endT - rts3.startAt) < TAP_MAX_DURATION_MS) {
+      /* v2.3.2271: ...unless this press was the one that raised the guard --
+         see the note in handleRBtnPress.  Bounded to THIS press by comparing
+         against its own start, so a stale stamp cannot swallow a later tap. */
+      var _Sfw = stateRef.current;
+      var _shieldAte = !!(_Sfw && _Sfw._rShieldConsumedAt
+        && _Sfw._rShieldConsumedAt >= rts3.startAt);
+      if (!rts3.moved && !_shieldAte && (endT - rts3.startAt) < TAP_MAX_DURATION_MS) {
         /* v2.3.816: a tap on the combat side forwards a synthetic click to
            the canvas so the existing tap-to-lock-on-target logic (monsters /
            NPCs / players / empty-space unlock) keeps working now that the

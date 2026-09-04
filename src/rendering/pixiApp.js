@@ -87,6 +87,44 @@ function buildScene(app) {
   screenContainer.label = 'screen';
   app.stage.addChild(screenContainer);
 
+  /* ═══ v2.3.2271: HOW MANY THINGS ARE IN THE SCENE ═══
+   * Owner: "the game slows down after playing for a while (like an accumulated
+   * frame rate drop)."
+   *
+   * "Accumulated" names a shape -- something GROWS -- and the commonest way a
+   * Pixi game grows is display objects that are created per event and never
+   * destroyed.  That is invisible from the outside: a leaked Sprite parked at
+   * alpha 0 looks exactly like no leak at all, and the frame rate that would
+   * expose it is the one thing a headless desktop browser cannot measure
+   * honestly for a phone.
+   *
+   * A NODE COUNT CAN BE MEASURED HONESTLY ANYWHERE, which is the point of this
+   * probe: it is a property of the scene, not of the device, so a count that
+   * climbs over a run is a leak whether the box is doing 60fps or 6.  Broken
+   * down by the labelled top-level containers, so a rise says WHERE.
+   *
+   * Probe only, house style (__btAtkMark, __btCoach, __btBuild): no cost unless
+   * something calls it, and nothing in the game does. */
+  if (typeof window !== 'undefined') {
+    window.__btScene = function () {
+      const count = (c) => {
+        let n = 1;
+        const k = (c && c.children) || [];
+        for (let i = 0; i < k.length; i++) n += count(k[i]);
+        return n;
+      };
+      const byLayer = {};
+      try {
+        ((app.stage && app.stage.children) || []).forEach((c, i) => {
+          byLayer[(c && c.label) || ('layer' + i)] = count(c);
+        });
+      } catch (e) { /* a mid-teardown stage is not worth throwing over */ }
+      let total = null;
+      try { total = count(app.stage); } catch (e) { total = null; }
+      return { total, byLayer };
+    };
+  }
+
   const layers = {};
   for (const name of WORLD_LAYER_NAMES) {
     const layer = new Container();
