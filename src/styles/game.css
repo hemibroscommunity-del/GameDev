@@ -2919,6 +2919,36 @@ body:has([data-trade-drawer]) .bt-kb-chip{display:none}
   -webkit-user-select:text;user-select:text;-webkit-touch-callout:default;
 }
 
+/* ═══ v2.3.2268: THE DASHBOARD IS A SIBLING TOO ═══
+   Owner: "Disable the iOS long press on the dashboard.  It just highlighted my
+   whole screen."
+
+   Same defect as the chat card above, same cause, and the note above predicted
+   it: `.brotown-wrap` carries this recipe and it is easy to assume everything
+   drawn over the world inherits it.  <BottomDashboard /> is mounted as a
+   SIBLING of <BroTown> in GameApp, not inside its wrap, so it never has --
+   a long press anchors a document selection in a panel and, with nothing to
+   stop it, the drag runs across the whole play area.  Which is exactly what he
+   saw: not the dashboard highlighting, the SCREEN highlighting.
+
+   IN CSS, for the reasons the block above gives: -webkit-touch-callout does
+   not exist in desktop Chromium, so React's inline style drops it silently and
+   it cannot be read back or tested.
+
+   FIELDS OPT BACK IN, and this is the half that must not be forgotten -- an
+   inherited `none` does not merely stop selection on iOS, it makes a field
+   UNEDITABLE.  There are three of them under .bt-dashboard today and any panel
+   may add another, so the exception is by element rather than by name.
+   [contenteditable] joins them: nothing uses it here yet, and a future rich
+   field would otherwise be broken by a rule written before it existed. */
+.bt-dashboard{
+  -webkit-touch-callout:none;-webkit-user-select:none;user-select:none;
+  -webkit-tap-highlight-color:transparent;
+}
+.bt-dashboard textarea,.bt-dashboard input,.bt-dashboard [contenteditable]{
+  -webkit-user-select:text;user-select:text;-webkit-touch-callout:default;
+}
+
 /* ═══ v2.3.2157: LANDSCAPE — THE WORLD AS ITS OWN COMPLETE WINDOW ═══
    Owner: "Landscape would be an optional view", "No I don't want an overlay
    over the world", "You should be able to play the game with the menus open.
