@@ -154,11 +154,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const mk = (window.__btAtkMark() || [])[0] || null;
     return { my: m.y, mx: m.x, mark: mk };
   });
-  /* v2.3.2251: a TARGET mark is recorded at the monster's feet (its ground ring
-     is drawn there); only a caret sits 56px above the head.  Asserted on the
-     axis that still means something for both: the mark is on the monster. */
-  rec.ok('...at the monster’s own position, not adrift somewhere else on the map',
-    !!geo.mark && Math.abs(geo.mark.x - geo.mx) < 1 && Math.abs(geo.mark.y - geo.my) < 60, geo);
+  /* v2.3.2253: the target is caret-ed again (the owner asked for the arrow
+     back on it), so its mark is ABOVE the head, not at the feet as it was for
+     one version.  Asserted as the property rather than a pixel count: on the
+     monster's own column, above it, and close enough to be its mark and not
+     the next monster's -- a slime's caret sits ~91px up (body offset 23 x2,
+     plus the 42 that clears the name pill, plus the bob). */
+  rec.ok('...on the monster’s own column and above its head, not adrift on the map',
+    !!geo.mark && Math.abs(geo.mark.x - geo.mx) < 1
+      && geo.mark.y < geo.my && (geo.my - geo.mark.y) < 150, geo);
 
   /* The crop: tight on the caret so nothing else in frame can differ. */
   const caretBox = async () => P.page.evaluate(() => {

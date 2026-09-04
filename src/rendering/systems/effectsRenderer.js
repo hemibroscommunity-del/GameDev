@@ -3427,7 +3427,6 @@ export class EffectsRenderer {
       if (_erg) _erg.clear();
       if (_erg && _tc && _tc.length && !S._zoneLoading) {
         const _lockNow = S.lockedTarget && S.lockedTarget.ref;
-        const _tapPick = !!(S.lockedTarget && S.lockedTarget.src === 'tap');
         for (let i = 0; i < _tc.length; i++) {
           const c = _tc[i];
           if (!c || !Number.isFinite(c.x) || !Number.isFinite(c.y)) continue;
@@ -3438,14 +3437,21 @@ export class EffectsRenderer {
           const ry = rx * 0.38;
           const t = 1 - 0.5 * Math.min(1, Math.sqrt(c.d2) / (TARGET_PERIMETER_PX || 220));
           const isCur = c.m === _lockNow;
-          /* The current target wears the ring the reticle colour when the
-             player PICKED it, so "this one is pinned" and "this one is just
-             the nearest" are visibly different states. */
-          const col = isCur ? (_tapPick ? 0xFF3C3C : 0xD8A85F) : 0xB9C1BF;
+          /* ═══ v2.3.2253: THE RING FOLLOWS THE ARROW ═══
+             It used to go red only for a TAPPED target, which meant the ground
+             mark and the arrow above the head could disagree about what red
+             means.  One rule now, the owner's: yellow while a monster is merely
+             in reach, red while you are attacking -- so the two marks on the
+             same monster always say the same thing.  Lifted a little in weight
+             and alpha too, since "the red circle is a bit hard to see" was the
+             other half of the report. */
+          const _ringHot = !!(S.autoAttack || S.isSwinging
+            || (S.swingTimer && Date.now() - S.swingTimer < 420));
+          const col = isCur ? (_ringHot ? 0xFF3C3C : 0xD8A85F) : 0xB9C1BF;
           _erg.ellipse(mx, my, rx, ry);
-          _erg.stroke({ color: 0x14181A, width: 3, alpha: 0.26 * t });
+          _erg.stroke({ color: 0x14181A, width: 3.5, alpha: 0.30 * t });
           _erg.ellipse(mx, my, rx, ry);
-          _erg.stroke({ color: col, width: isCur ? 1.7 : 1.1, alpha: (isCur ? 0.58 : 0.30) * t });
+          _erg.stroke({ color: col, width: isCur ? 2.1 : 1.2, alpha: (isCur ? 0.75 : 0.34) * t });
         }
       }
       /* v2.3.2251: the same `_zoneLoading` guard the ground rings take -- marks
@@ -3458,23 +3464,29 @@ export class EffectsRenderer {
            as noise, which is the failure being fixed. */
         const _bob = Math.sin(now / 320) * 3;
         const _pulse = 0.55 + Math.sin(now / 320) * 0.2;
+        /* v2.3.2253: are you ATTACKING?  The thumb on the button (autoAttack)
+           or a swing still in flight -- the swing term is what stops the whole
+           field flicking back to yellow between swings of a held attack, which
+           would read as a fault rather than a state. */
+        const _atkHot = !!(S.autoAttack || S.isSwinging
+          || (S.swingTimer && now - S.swingTimer < 420));
         for (let i = 0; i < _tc.length; i++) {
           const c = _tc[i];
           if (!c || !Number.isFinite(c.x) || !Number.isFinite(c.y)) continue;
-          /* ═══ v2.3.2251: THE TARGET IS MARKED, IT IS JUST NOT CARETED ═══
-             This used to `continue` on the locked monster ("the reticle speaks
-             for that one"), which was fine while a lock was something you had
-             asked for.  With acquisition automatic the nearest candidate is
-             ALWAYS the lock, so the loop skipped it every frame -- no caret and,
-             worse, no entry in `_marks`, so __btAtkMark reported an empty field
-             whenever exactly one monster was in range.
-             Now the caret is what says "tap this one instead": it is drawn for
-             the candidates that are NOT the target, and the target's own ground
-             ring plus reticle carry it.  The mark is recorded either way, so
-             the probe describes the whole field. */
+          /* ═══ v2.3.2253: EVERY CANDIDATE GETS THE ARROW, TARGET INCLUDED ═══
+             Owner: "add the arrow above the monster head to show they are
+             targeted for combat (within their perimeter if the player crosses
+             that threshold) ... the red circle is a bit hard to see."
+
+             v2.3.2251 took the caret OFF the target and left the ground ring
+             and reticle to speak for it.  Those are ground marks under the
+             sprites, which is what makes them subtle -- and subtle is exactly
+             what the owner could not see.  So the arrow above the head is the
+             primary signal again, and it is drawn for EVERY monster whose
+             perimeter you have crossed, the target among them.  The ring stays
+             underneath as the quiet half. */
           const isTarget = c.m === _lockRef;
           const nearest = i === 0;
-          if (isTarget) { _marks.push({ id: c.m && c.m.id, x: c.x, y: c.y, nearest: nearest, target: true }); continue; }
           /* The caret sits above the body, not above the feet.
              monsterBodyOffsetY is the SHARED table (data/gameSystems.js) that
              lockAimPoint, the swing hit-test and the projectile aim all read
@@ -3484,10 +3496,28 @@ export class EffectsRenderer {
              table here for a marker to drift out of sync with (v2.3.1535's
              lesson: a variant that falls through lands its mark on the feet).
              It takes an arch/type STRING, not the monster. */
+          /* ═══ v2.3.2253: ABOVE THE NAMEPLATE, NOT BEHIND IT ═══
+             The first render of this put the arrow at `y - bodyOffset*2 - 10`,
+             which lands squarely on the monster's name pill and HP bar -- the
+             screenshot showed three arrows half-hidden behind "Slime LV 1",
+             which is most of why the owner could not see the mark.
+             Fixed by RAISING the mark 32 world px, not by riding
+             `m._popupTopOff`: that is the DAMAGE-NUMBER offset (-189 on a
+             fodder slime), and using it flung the arrow ~95 CSS px overhead,
+             clean off the monster and into the scenery.  Rendered both and
+             looked -- tools/qa/mp/mp-arrowshot.mjs is the camera, and it crops
+             from the marks the renderer reports so a bad offset shows up as a
+             bad picture instead of a passing assertion.
+             32 clears the name pill on every archetype (the pill is a fixed
+             height in world space; the per-archetype part is the body offset
+             already in the term below) without leaving the monster behind. */
           const _off = monsterBodyOffsetY(c.m && (c.m.arch || c.m.archetype || c.m.type)) || 23;
-          const _cy = c.y - _off * 2 - 10 + _bob;
-          const _w = nearest ? 7 : 5;
-          const _h = nearest ? 6 : 4;
+          const _cy = c.y - _off * 2 - 42 + _bob;
+          /* The TARGET's arrow is the big one -- it is the monster a press
+             takes -- and the rest are a step down.  Size, not colour, carries
+             "which one", because colour is spoken for: see below. */
+          const _w = isTarget ? 8 : 5;
+          const _h = isTarget ? 7 : 4;
           /* KEYLINE FIRST.  Brass (#D8A85F) is a warm sand yellow and so is
              the town cobble -- the first cut of this was legible on grass and
              snow and all but vanished on the town floor, which is also why
@@ -3503,22 +3533,35 @@ export class EffectsRenderer {
             gfx.lineTo(c.x + _w, _cy);
             gfx.stroke({ color: color, width: width, alpha: alpha });
           };
-          const _cw = nearest ? 2.5 : 1.5;
-          const _ca = nearest ? _pulse : _pulse * 0.5;
+          const _cw = isTarget ? 2.8 : 1.6;
+          const _ca = isTarget ? _pulse : _pulse * 0.55;
+          /* ═══ v2.3.2253: YELLOW MEANS IN REACH, RED MEANS FIGHTING ═══
+             Owner: "the arrow should be yellow if you're merely within combat
+             distance and turn red when you're attacking (any close monster
+             becomes red)."
+             So colour is a state of the PLAYER, not of the monster, and it is
+             applied to the whole set at once -- "any close monster becomes
+             red".  That is why size and not colour says which one is the
+             target: colour is already carrying the other axis, and a mark
+             cannot say two things with one channel. */
           _caret(_cw + 2.5, 0x14181A, _ca * 0.8);
-          _caret(_cw, 0xD8A85F, _ca);
-          if (nearest) {
+          _caret(_cw, _atkHot ? 0xFF3C3C : 0xD8A85F, _ca);
+          if (isTarget) {
             gfx.circle(c.x, c.y, 15);
             gfx.stroke({ color: 0x14181A, width: 3.5, alpha: _pulse * 0.5 });
             gfx.circle(c.x, c.y, 15);
-            gfx.stroke({ color: 0xD8A85F, width: 1.5, alpha: _pulse * 0.85 });
+            gfx.stroke({ color: _atkHot ? 0xFF3C3C : 0xD8A85F, width: 1.5, alpha: _pulse * 0.85 });
             /* v2.3.2251: the 220px ring that used to be drawn here is GONE.
                It was the last survivor of the rejected full-radius version and
                it is what the new ground rings replace -- keeping both would
                give the pack one big circle AND a small ring each, which is the
                noise it is trying to fix. */
           }
-          _marks.push({ id: c.m && c.m.id, x: c.x, y: _cy, nearest: nearest, target: false });
+          /* v2.3.2253: `target` and `hot` on the probe, so a scenario can
+             assert the owner's two rules -- which monster is the target, and
+             that the whole set turns red together when you attack -- without
+             trying to classify a colour out of a screenshot. */
+          _marks.push({ id: c.m && c.m.id, x: c.x, y: _cy, nearest: nearest, target: isTarget, hot: _atkHot });
         }
       }
       this._atkMarks = _marks;
@@ -3540,16 +3583,31 @@ export class EffectsRenderer {
         const lx = lt.x || lt.renderX || 0;
         const ly = lt.y || lt.renderY || 0;
         if (Number.isFinite(lx) && Number.isFinite(ly)) {
+          /* ═══ v2.3.2253: THE RETICLE OBEYS THE SAME RULE AS THE ARROW ═══
+             This was hard-coded red, and it is almost certainly the "red circle
+             is a bit hard to see" the owner reported: it sat on the target at
+             all times, so red meant nothing -- it could not distinguish "in
+             reach" from "attacking", and it competed with the two marks that
+             now do.  One rule across all three: brass while a monster is merely
+             in reach, red while you are attacking.  Slightly heavier too, since
+             legibility was the complaint. */
+          const _rtHot = !!(S.autoAttack || S.isSwinging
+            || (S.swingTimer && now - S.swingTimer < 420));
+          const _rtCol = _rtHot ? 0xff3c3c : 0xD8A85F;
           const lockR = 18 + Math.sin(now / 250) * 3;
+          /* Dark keyline first, same trick the arrow uses -- brass on town
+             cobble is brass on brass without one. */
           gfx.circle(lx, ly, lockR);
-          gfx.stroke({ color: 0xff3c3c, width: 2, alpha: 0.8 });
+          gfx.stroke({ color: 0x14181A, width: 4, alpha: 0.5 });
+          gfx.circle(lx, ly, lockR);
+          gfx.stroke({ color: _rtCol, width: 2.4, alpha: 0.9 });
           // Corner marks
           for (let c = 0; c < 4; c++) {
             const ca = (c / 4) * Math.PI * 2 + now / 1500;
             const cx = lx + Math.cos(ca) * lockR;
             const cy = ly + Math.sin(ca) * lockR;
-            gfx.circle(cx, cy, 2);
-            gfx.fill({ color: 0xff3c3c, alpha: 0.9 });
+            gfx.circle(cx, cy, 2.4);
+            gfx.fill({ color: _rtCol, alpha: 0.95 });
           }
         }
       }
