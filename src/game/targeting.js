@@ -69,6 +69,58 @@ function monHoldable(m) {
   return !!m && m.alive && !(typeof m.curHp === 'number' && m.curHp <= 0);
 }
 
+/* ═══ v2.3.2261: A LOCK MUST STILL BE POINTING AT SOMETHING THAT IS HERE ═══
+ *
+ * Owner: "the monster somehow gets targeted twice (tap to lock AND auto target
+ * active) I could see both lock circles at the same time.  It also forced me to
+ * shoot a different direction (as if shooting an invisible monster) even when a
+ * monster was close nearby."
+ *
+ * Both halves are one bug, and monHoldable above is where it lives: it reads
+ * the monster OBJECT'S OWN FIELDS and nothing else.  An object that has left
+ * S.monsters keeps `alive: true` and a positive `curHp` for as long as anything
+ * holds a reference to it -- forever, because nothing mutates a monster the
+ * zone has stopped tracking.  So:
+ *
+ *   - the tap branch of updateTargeting asks monHoldable, gets true, and
+ *     RETURNS -- the lock is immortal, and because that return sits above the
+ *     automatic rule the auto target can never take over either;
+ *   - lockAimPoint keeps answering with the ghost's frozen position, so every
+ *     shot flies at empty ground: "as if shooting an invisible monster";
+ *   - and the reticle keeps drawing there, which with a live monster nearby is
+ *     the "two lock circles at the same time".
+ *
+ * PRESENCE IS THE MISSING TEST, and it is cheap: S.monsters is the list the
+ * renderer draws and the hit tests read, so "in that array" is the authoritative
+ * definition of "still in this fight".
+ *
+ * IT RE-BINDS BEFORE IT DROPS, and that half matters more than the drop in the
+ * zone the owner actually plays in.  Spoke-zone monsters arrive over the wire;
+ * a snapshot that REPLACES the array hands back objects with the same ids and
+ * different identities, and a lock holding the old object would be dropped on
+ * every full sync even though the monster is standing right there.  So an id
+ * match re-points the lock at the live object and the fight continues -- which
+ * also repairs the position the aim and the dash read.  Only a lock whose id is
+ * nowhere in the zone is a ghost, and that one is cleared.
+ *
+ * Returns true if the lock is (still, or again) valid; false if it is gone. */
+function lockRefPresent(S) {
+  const lt = monsterLock(S);
+  if (!lt) return true;                       /* nothing locked: nothing to fix */
+  const list = (S && S.monsters) || [];
+  if (list.indexOf(lt.ref) >= 0) return true; /* same object, the common case */
+  if (lt.id != null) {
+    for (let i = 0; i < list.length; i++) {
+      const m = list[i];
+      /* String() on both sides: monster ids are numbers in some spawn paths and
+         strings over the wire, and a === between the two silently never matches
+         -- which would turn every full sync into a dropped lock. */
+      if (m && m.id != null && String(m.id) === String(lt.id)) { lt.ref = m; return true; }
+    }
+  }
+  return false;
+}
+
 /* Every monster the player could engage right now, nearest first. */
 export function targetCandidates(S, radiusPx) {
   const out = [];
@@ -190,6 +242,15 @@ export function updateTargeting(S) {
      monster rule must not stamp over. */
   const lt = S.lockedTarget;
   if (lt && lt.ref && lt.type !== 'monster') return;   /* npc/player: not ours */
+  /* v2.3.2261: before ANY branch below reads the lock -- including the tap
+     branch, which returns early and is what made the ghost immortal -- make the
+     lock point at a monster that is actually in this zone, or drop it.  See
+     lockRefPresent. */
+  if (!lockRefPresent(S)) {
+    S.lockedTarget = null;
+    S._lockDroppedAt = Date.now();
+    S._lockDroppedWhy = 'gone';
+  }
   if (S._dying || S._zoneLoading || isPlayerDead(S)) {
     if (S.lockedTarget) { S.lockedTarget = null; S._lockDroppedAt = Date.now(); S._lockDroppedWhy = 'dead'; }
     return;

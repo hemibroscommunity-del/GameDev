@@ -151,6 +151,66 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
   }
 
+  /* ── 3b. A DEAD LOCK MUST NOT KEEP AIMING FOR YOU ──
+     Owner: "It also forced me to shoot a different direction (as if shooting an
+     invisible monster) even when a monster was close nearby."
+
+     monsterCombat writes S._aimAngle toward a held lock EVERY FRAME, and nothing
+     in the client ever writes it back to null.  So once a lock has existed, that
+     field holds a lock-derived angle for the rest of the session.  v2.3.2260
+     relaxed the fire chain to use _aimAngle whenever it is non-null (to kill the
+     cardinal fallback) -- which turned that permanent residue into the aim.
+     Lock a monster, let the aim be written toward it, take the monster away, and
+     the shot must NOT still fly at the empty space where it stood. */
+  await armRanged(P, 'ranged');
+  const phantom = await P.page.evaluate(() => {
+    const S = window._gameState.current, F = window._gameFns || {};
+    const arch = Object.keys(F.ARCHETYPES || {}).find((k) => k === 'fodder');
+    S._serverMonsters = false;
+    /* Straight UP from the player, a direction nothing else in this file uses. */
+    const m = F.createMonster('phantom-1', arch, 2, S.player.x, S.player.y - 260, null);
+    m.alive = true; m.curHp = m.maxHp = 9000; m.spd = 0; m.vx = 0; m.vy = 0;
+    S.monsters = [m];
+    S.lockedTarget = { type: 'monster', id: 'phantom-1', ref: m, src: 'tap' };
+    S.autoAttack = true;             /* what makes monsterCombat write the lock aim */
+    S._facingAngle = 0.9;            /* the body's heading, deliberately elsewhere */
+    S._targetFacingAngle = 0.9;
+    return { mx: m.x, my: m.y };
+  });
+  await P.page.waitForTimeout(400);
+  const locked = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    return { aim: S._aimAngle, lastAim: S._lastAimAngle == null ? null : S._lastAimAngle };
+  });
+  rec.ok('the lock wrote an aim toward the monster (guard)',
+    locked.aim != null && Math.abs(locked.aim - (-Math.PI / 2)) < 0.2, locked);
+  /* Now the monster is gone -- killed and despawned, the ordinary end of a
+     fight.  The lock's ref is stale from this frame on. */
+  const gone = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    S.monsters = [];
+    S.arrows = [];
+    S.swingTimer = 0;
+    S.autoAttack = true;
+    return { aimBefore: S._aimAngle };
+  });
+  await P.page.waitForTimeout(800);
+  const ghost = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const a = (S.arrows || [])[0];
+    S.autoAttack = false;
+    return { ang: a ? a.ang : null, n: (S.arrows || []).length, aim: S._aimAngle,
+      lock: S.lockedTarget ? (S.lockedTarget.id || 'set') : null, facingAngle: S._facingAngle };
+  });
+  console.log(`    phantom: ${JSON.stringify(phantom)} ${JSON.stringify(locked)} ${JSON.stringify(gone)} -> ${JSON.stringify(ghost)}`);
+  rec.ok('a shot still goes out after the locked monster is gone (guard)', ghost.n > 0, ghost);
+  if (ghost.ang != null) {
+    rec.ok(`the shot does NOT keep flying at where the dead lock stood (${ghost.ang.toFixed(3)} rad vs the ghost's -1.571)`,
+      Math.abs(ghost.ang - (-Math.PI / 2)) > 0.2, ghost);
+    rec.ok(`...it falls back to the body's own heading instead (${ghost.facingAngle})`,
+      Math.abs(ghost.ang - ghost.facingAngle) < 0.05, ghost);
+  }
+
   /* ── 4. AND MAGIC KEEPS THE LINE IT WAS FIRED ON ──
      v2.3.2258 made bow arrows freeze their path at release and deliberately
      left staff bolts homing.  The owner's follow-up settles it the other way
