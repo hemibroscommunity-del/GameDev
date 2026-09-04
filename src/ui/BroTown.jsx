@@ -5474,7 +5474,38 @@ export var BroTown = function BroTown(_ref0) {
              engagedStance is the intent test the bare lock used to stand in
              for: your thumb on the button, or a target you tapped. */
           var _lockHeld = engagedStance(S);
-          var _harvestCtx = !!(S._nearNode && !_lockHeld);
+          /* ═══ v2.3.2270: A MONSTER IN THE PERIMETER BEATS A RESOURCE ═══
+             Owner: "If you're near a lifeskill extraction point prioritize
+             attacking nearby monsters instead of the contextual resource
+             extraction (if it comes up)."
+
+             The block below already CLAIMS this -- "ATTACK with a monster in
+             the perimeter ... HARVEST with a resource in reach and no monster
+             (control-redesign.md 5.10: Attack wins)" -- and did not do it.
+             `engagedStance` is an INTENT test (your thumb is on the button, or
+             you tapped this target), not a presence test, so a monster merely
+             standing next to you left the button reading HARVEST: the exact
+             case he is describing, where the thing about to hit you is not
+             what the button offers.
+
+             Presence, not candidacy.  S._targetCands is EMPTY for bow and
+             staff by design (v2.3.2258 gated auto-acquisition to melee), so
+             reading it here would have fixed this for swords only and left a
+             ranged player still being offered a tree with a goblin on him.
+             The scan is the same shape shieldButtonLive uses for the same
+             question, over the same perimeter. */
+          var _monNear = false;
+          if (S.monsters && S.player) {
+            var _mR = DATA.TARGET_PERIMETER_PX || 220;
+            for (var _mi = 0; _mi < S.monsters.length; _mi++) {
+              var _mm = S.monsters[_mi];
+              if (!_mm || !_mm.alive) continue;
+              if (typeof _mm.curHp === 'number' && _mm.curHp <= 0) continue;
+              var _mdx = _mm.x - S.player.x, _mdy = _mm.y - S.player.y;
+              if (_mdx * _mdx + _mdy * _mdy <= _mR * _mR) { _monNear = true; break; }
+            }
+          }
+          var _harvestCtx = !!(S._nearNode && !_lockHeld && !_monNear);
           S._btnHarvest = _harvestCtx;
           if (_lbl) {
             var _want;
@@ -8529,7 +8560,7 @@ export var BroTown = function BroTown(_ref0) {
        sits inside exactly that circle — so "touch the resource to open
        its menu" opened chat instead.  Resource wins when its art is under
        the finger; a self-tap on bare character still opens chat. */
-    var tapResourceAtClient = function (clientX, clientY) { return false; };   /* v2.3.2245: no tap-to-harvest */
+    var tapResourceAtClient = function (clientX, clientY) { return false; };   /* v2.3.2245: no tap-to-harvest. v2.3.2270 brought the tap back, but at the canvas tap site where the camera and the scale are already in scope -- see the note there; this stub stays only because the comment above still names it as a pattern. */
     /* (v2.3.2245: the client-coordinate wrapper went with _tapResourceAt.) */
     var openSelfChat = function () {
       try {
@@ -10027,11 +10058,87 @@ export var BroTown = function BroTown(_ref0) {
                 }
               }
             }
-            /* v2.3.1448: no monster under the finger — see if the tap
-               landed on a resource (opens its shell, or warns that it's
-               too far).  Monsters keep priority: one standing in front
-               of a tree is still the thing you meant to tap. */
-            /* v2.3.2245: no tap-to-harvest; the button offers what is in reach. */
+            /* ═══ v2.3.2270: TAPPING THE RESOURCE STARTS IT AGAIN ═══
+               Owner: "allow tapping on the resource to bring up the extraction
+               menu (assuming you're close enough)."
+
+               This is a deliberate REVERSAL of v2.3.2245, which deleted the
+               tap because the owner had asked for the opposite then ("No
+               resource extraction button in the middle of the screen or
+               needing to tap on the resource").  What he objected to was the
+               mid-screen shell and having tap be the ONLY way in -- and that
+               is not what comes back: the contextual button still offers what
+               is in reach, and this is a second way to reach it, which is what
+               "allow" means.  The v2.3.1448 tap LATCH (_tapNode, the held
+               node, the per-frame re-anchoring) stays deleted; a tap starts
+               the extraction directly, the same call the button makes.
+
+               MONSTERS KEEP PRIORITY, which the v2.3.1448 note above already
+               said and which is the same rule as the button's new one: this
+               runs only when nothing was found under the finger, so a goblin
+               in front of a tree is still the thing you meant to tap.
+
+               THE HIT TEST IS THE SPRITE, NOT THE ANCHOR.  A tree's anchor is
+               its base and its art is 100-260px of canopy above that, so a
+               radius around the anchor would refuse taps on most of what the
+               player can see -- the "resources showing that have no menu to
+               interact with it" complaint the proximity scan above was widened
+               for. nodeWorldBox is the same box nodeReachDist measures from,
+               so what you can tap and what you can reach are one shape. */
+            if (!_closest && _S.player) {
+              var _tapNodeBest = null, _tapNodeD = 44;   /* CSS px, generous for a thumb */
+              var _tapScan = function (n) {
+                if (!n || !n.alive || (n.respawnAt && Date.now() < n.respawnAt)) return;
+                var _nb = nodeWorldBox(_S, n);
+                var _nsx, _nsy;
+                if (_nb) {
+                  /* Centre of the drawn art, in screen space. */
+                  _nsx = ((_nb.l + _nb.r) / 2 - _cx) * _tapSX;
+                  _nsy = ((_nb.t + _nb.b) / 2 - _cy) * _tapSY;
+                  /* Inside the box is a hit at distance 0, so a tap anywhere on
+                     a tall sprite beats a nearer anchor of something small. */
+                  var _hw = ((_nb.r - _nb.l) / 2) * _tapSX, _hh = ((_nb.b - _nb.t) / 2) * _tapSY;
+                  var _ox = Math.max(Math.abs(_cssX - _nsx) - _hw, 0);
+                  var _oy = Math.max(Math.abs(_cssY - _nsy) - _hh, 0);
+                  var _od = Math.sqrt(_ox * _ox + _oy * _oy);
+                  if (_od < _tapNodeD) { _tapNodeD = _od; _tapNodeBest = n; }
+                  return;
+                }
+                _nsx = (n.x - _cx) * _tapSX; _nsy = (n.y - _cy) * _tapSY;
+                var _dd = Math.sqrt(Math.pow(_cssX - _nsx, 2) + Math.pow(_cssY - _nsy, 2));
+                if (_dd < _tapNodeD) { _tapNodeD = _dd; _tapNodeBest = n; }
+              };
+              if (_S.gatherNodes) _S.gatherNodes.forEach(_tapScan);
+              if (_S._campfire) _tapScan(_S._campfire);
+              if (_tapNodeBest) {
+                /* CLOSE ENOUGH, as he asked -- the same reach the button and
+                   the E key use, so the three cannot disagree about what is
+                   in range.  Out of reach says so rather than doing nothing:
+                   a tap that silently fails reads as a broken resource, which
+                   is what the v2.3.1717 NPC note calls the worse bug. */
+                if (nodeReachDist(_S, _tapNodeBest) == null) {
+                  try {
+                    pushDmgPopup(_S, _tapNodeBest.x, _tapNodeBest.y - 15,
+                      'Too far away!', '#D95C54');
+                  } catch (_e9) { /* popup is best-effort */ }
+                } else if (!_S._extraction) {
+                  /* Already harvesting: leave it alone -- you are doing the
+                     thing the tap would start.
+                     The SAME four-way dispatch the HARVEST button makes, so a
+                     tap and a press cannot start different things; written out
+                     rather than routed through _desktopGather, which finds its
+                     own node from proximity and would ignore the one under the
+                     finger. */
+                  try {
+                    var _tn = _tapNodeBest;
+                    if (_tn.nodeType === 'fishSpot') _startExtraction(_tn, 'fishing');
+                    else if (_tn.nodeType === 'tree') _startExtraction(_tn, 'woodcutting');
+                    else if (_tn.nodeType === 'oreVein') _startExtraction(_tn, 'mining');
+                    else if (_tn.nodeType === 'campfire') _startCookingAtCampfire(_tn);
+                  } catch (_e10) { /* refusal floats its own popup */ }
+                }
+              }
+            }
           }
           ct.id = null;
           break;
