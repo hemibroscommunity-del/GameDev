@@ -8374,7 +8374,7 @@ export var BroTown = function BroTown(_ref0) {
        = stop; a quick flick across it = special (the same classifier the
        stick's release used -- last-leg speed OR total-path speed -- so the
        gesture the coach teaches is byte-for-byte the one that fires). */
-    var bSwipe = { sx: 0, sy: 0, st: 0, lx: 0, ly: 0, lt: 0 };
+    var bSwipe = { sx: 0, sy: 0, st: 0, lx: 0, ly: 0, lt: 0, harvest: false, toShield: false };
     var bTouchId = { current: null };
     var bS = function bS(e) {
       e.preventDefault();
@@ -8386,6 +8386,10 @@ export var BroTown = function BroTown(_ref0) {
       rJoyActive.current = true;
       bSwipe.sx = t.clientX; bSwipe.sy = t.clientY; bSwipe.st = Date.now();
       bSwipe.lx = 0; bSwipe.ly = 0; bSwipe.lt = 0;
+      /* v2.3.2254: clear the slide latch HERE, not only on release -- a
+         touchcancel (a call, the notification shade, a palm) never reaches bE,
+         and a latch left standing would make the NEXT press a no-op. */
+      bSwipe.toShield = false;
       /* ═══ v2.3.2245: THE BUTTON IS CONTEXTUAL ═══
          A harvest in progress owns the button: the press is the gesture
          (ExtractionSwipeLayer takes it at the pointer level), not a swing.
@@ -8444,6 +8448,46 @@ export var BroTown = function BroTown(_ref0) {
       if (t) {
         e.preventDefault();
         bSwipe.lx = t.clientX; bSwipe.ly = t.clientY; bSwipe.lt = Date.now();
+        /* ═══ v2.3.2254: SLIDE DOWN FROM ATTACK ONTO THE SHIELD ═══
+           Owner: "I'd like it if I can just slide my finger down from the
+           attack button to the shield button and have it activate.  Right now
+           if I slide my finger down while attacking the shield button doesn't
+           activate."
+
+           It could not: the attack button captures the touch on touchstart and
+           every later move belongs to it, so the finger passes OVER the shield
+           button without the shield ever seeing an event.  The two controls are
+           siblings, not a slider, and the browser has no idea they are related.
+
+           So the ATTACK button watches for its own finger entering the shield's
+           box and raises the guard itself.  Read off the live rect rather than
+           a stored geometry, because the shield button only exists while it is
+           on screen and moves with the band.
+
+           Latched: once the slide has raised the shield, this press is a shield
+           press and nothing else.  Without the latch the finger could rock back
+           over the boundary and toggle the guard on and off several times in
+           one drag -- and, worse, the release would still be measured as a
+           flick and spend the special. */
+        if (!bSwipe.toShield && !bSwipe.harvest) {
+          var _shEl = document.querySelector('[data-shield]');
+          if (_shEl) {
+            var _shB = _shEl.getBoundingClientRect();
+            if (_shB.width > 0
+              && t.clientX >= _shB.left && t.clientX <= _shB.right
+              && t.clientY >= _shB.top && t.clientY <= _shB.bottom) {
+              var _Ssl = stateRef.current;
+              if (_Ssl && !_Ssl._shieldUp) {
+                bSwipe.toShield = true;
+                /* The attack ends first: raiseShieldToggle cancels a swing in
+                   flight (v2.3.2246), and this press stops being an attack the
+                   moment it becomes a shield press. */
+                try { handleRBtnRelease(); } catch (err) { /* release is best-effort */ }
+                try { raiseShieldToggle(_Ssl); } catch (err) { /* refused: no shield, or on cooldown */ }
+              }
+            }
+          }
+        }
       }
     };
     var bE = function bE(e) {
@@ -8454,6 +8498,12 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.2245: a harvest press is not a swing and its release is not a
          flick -- a fast chop on the button must never fire the special. */
       if (bSwipe.harvest) { bSwipe.harvest = false; rJoyActive.current = false; return; }
+      /* v2.3.2254: ...and neither is a slide onto the shield.  Same reasoning
+         one more time: the gesture that raised the guard must not also spend
+         the special on the way off the button.  A downward slide is a fast,
+         committed drag, which is exactly what the flick test below looks for,
+         so without this every shield-slide would fire a special too. */
+      if (bSwipe.toShield) { bSwipe.toShield = false; rJoyActive.current = false; return; }
       /* Flick detection -- last-leg speed (recent burst) OR
          total-distance/total-duration speed (slow but committed). */
       var refX = bSwipe.lx || bSwipe.sx;

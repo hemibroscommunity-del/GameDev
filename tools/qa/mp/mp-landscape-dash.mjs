@@ -90,8 +90,49 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rest.dashH <= Math.floor(390 / 3), { dashH: rest.dashH, ceiling: Math.floor(390 / 3) });
   rec.ok('...the world gets the WHOLE screen (canvas 844x390, play-w 844)',
     rest.canvasW === 844 && rest.canvasH === 390 && rest.playW === 844, rest);
-  rec.ok('...at the landscape view rule (scale canvasH/480, world 480 tall)',
-    Math.abs(rest.scale - 390 / 480) < 0.005 && rest.viewH === 480, rest);
+  /* ═══ v2.3.2254: THE VIEW RULE, RE-STATED AFTER THE ZOOM ═══
+     This used to pin `scale === 390/480 && viewH === 480` -- the literal
+     REF_VIEW_H of the day.  v2.3.2247 made the zoom a TARGET that a zone is
+     allowed to refuse (WORLD_ZOOM 3 asks for 960px of world height; town's
+     1664x1760 floors the scale at 844/1664 instead), so those two numbers went
+     stale the moment the zoom moved, and a pin that has to be re-typed every
+     time the game changes is not testing the game.
+
+     What the rule is FOR is durable and is what gets asserted now: sideways
+     the world must never show the out-of-bounds void.  And rather than
+     restating town's size here -- copying a constant is how a test stops
+     testing anything (TRAPS #35) -- ASK THE GAME.  Shove the camera far past
+     the map and read it back: BroTown's own clamp (v2.3.819) pins it to
+     ZONE - view when the map is bigger than the viewport, and drops it to a
+     NEGATIVE half-offset ("centre it, some void is unavoidable") when it is
+     not.  So a non-negative camera after the shove IS "no void", stated by
+     the code that decides it. */
+  const cam = await P.page.evaluate(async () => {
+    const S = window._gameState.current;
+    const keepX = S.camera.x, keepY = S.camera.y;
+    /* Shove it out of bounds on EVERY frame and keep the highest value the
+       clamp writes back.  One shove and one read is not enough: the frame
+       after the clamp pins the camera to the corner, the follow-lerp has
+       already started walking it back toward the player, so a single sample
+       reads the corner minus one lerp step. */
+    let maxX = -Infinity, maxY = -Infinity;
+    for (let i = 0; i < 12; i++) {
+      await new Promise((r) => requestAnimationFrame(() => r()));
+      if (S.camera.x < 1e8) maxX = Math.max(maxX, S.camera.x);
+      if (S.camera.y < 1e8) maxY = Math.max(maxY, S.camera.y);
+      S.camera.x = 1e9; S.camera.y = 1e9;
+    }
+    S.camera.x = keepX; S.camera.y = keepY;
+    return { maxX, maxY, viewW: S._viewW, viewH: S._viewH };
+  });
+  console.log('    camera clamp: ' + JSON.stringify(cam));
+  rec.ok('...and the landscape world never shows the void (camera clamps to a non-negative corner)',
+    cam.maxX >= 0 && cam.maxY >= 0, cam);
+  /* Deliberately NOT paired with a "the height axis carries the rule" check on
+     viewW/viewH: those two are cssW/scale and cssH/scale, so their ratio is
+     the canvas's own aspect no matter what the rule does.  That assertion
+     could never fail, which makes it worse than none (TRAPS #37 -- measuring a
+     drawing against the box that defines it tests arithmetic, not art). */
   rec.ok('...gold is a CHIP at the world\'s bottom centre, not a screen-length bar',
     !!rest.gold && Math.abs(rest.gold.cx - 844 / 2) <= 3 && rest.gold.bottom >= 370
       && /\d/.test(rest.gold.text), rest.gold);
