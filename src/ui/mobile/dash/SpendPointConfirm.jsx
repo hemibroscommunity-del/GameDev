@@ -149,6 +149,7 @@ export const SpendPointConfirm = () => {
      semantic-green "After" line, brass confirm / raised cancel at 44pt. */
   return (
     <div
+      className="bt-noselect"
       onPointerUp={(e) => { e.stopPropagation(); spendConfirmBus.close(); }}
       style={{
         position: 'fixed', inset: 0, zIndex: 60,

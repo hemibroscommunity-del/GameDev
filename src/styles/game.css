@@ -2949,6 +2949,41 @@ body:has([data-trade-drawer]) .bt-kb-chip{display:none}
   -webkit-user-select:text;user-select:text;-webkit-touch-callout:default;
 }
 
+/* ═══ v2.3.2273: THE SLOT SURFACES ARE SIBLINGS, NOT CHILDREN ═══
+   Owner: "Long press on the inventory slots works (this needs to be
+   disabled)."
+
+   The THIRD sighting of one defect -- chat (v2.3.2039), the dashboard
+   (v2.3.2268), now the bag -- and the reason it keeps coming back is that
+   `user-select` and `-webkit-touch-callout` are INHERITED: a surface is
+   protected only if one of its ancestors declares them, so every fixed
+   element mounted outside .bt-dashboard is a fresh copy of the same bug.
+   The bag has two parents.  Portrait puts the grids inside .bt-dashboard, so
+   v2.3.2268 already covers them; LANDSCAPE renders them in .bt-land-sheet, a
+   sibling declared earlier in the same fragment -- and the band itself is
+   display:none sideways, so nothing v2.3.2268 did reaches a slot in landscape
+   at all.  The item card a slot tap opens is outside the band in BOTH
+   orientations.
+
+   So it is a NAMED class this time rather than a fourth copy of the block:
+   the next fixed sibling someone adds is one className, not another incident.
+   The field exception is copied verbatim and is not optional -- an inherited
+   `none` does not just stop selection on iOS, it makes an input UNEDITABLE. */
+.bt-noselect{
+  -webkit-touch-callout:none;-webkit-user-select:none;user-select:none;
+  -webkit-tap-highlight-color:transparent;
+}
+.bt-noselect textarea,.bt-noselect input,.bt-noselect [contenteditable]{
+  -webkit-user-select:text;user-select:text;-webkit-touch-callout:default;
+}
+/* Belt to those braces: the two attributes every real slot already carries
+   (ItemTile / StashTile), so a grid that is re-parented tomorrow keeps the
+   protection without anyone remembering this file.  It does NOT replace the
+   ancestor class -- the EMPTY slot divs carry no such hook. */
+[data-inv-key],[data-tut="coach-gear"]{
+  -webkit-touch-callout:none;-webkit-user-select:none;user-select:none;
+}
+
 /* ═══ v2.3.2157: LANDSCAPE — THE WORLD AS ITS OWN COMPLETE WINDOW ═══
    Owner: "Landscape would be an optional view", "No I don't want an overlay
    over the world", "You should be able to play the game with the menus open.

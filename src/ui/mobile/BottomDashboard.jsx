@@ -966,7 +966,7 @@ export const BottomDashboard = () => {
           the world. */}
       {land && active ? (
         <div
-          className="bt-land-sheet"
+          className="bt-land-sheet bt-noselect" /* v2.3.2273: the landscape bag lives HERE, not under .bt-dashboard (which is display:none sideways) -- see game.css .bt-noselect */
           onPointerDown={(e) => e.stopPropagation()}
           style={{
             position: 'fixed',
@@ -1060,7 +1060,7 @@ export const BottomDashboard = () => {
           fits inside the container's width. */}
       {land ? (
         <div
-          className="bt-land-navdock"
+          className="bt-land-navdock bt-noselect"
           onPointerDown={(e) => e.stopPropagation()}
           style={{
             position: 'fixed',
