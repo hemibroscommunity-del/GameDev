@@ -177,17 +177,34 @@ const setCharLevel = (lvl) => {
   const stam0 = psA.stamina;
   await cast('bash');
   const r = rejects()[0];
-  check('char 3: Shield Bash is LOCKED and says so',
-    !!r && r.reason === 'locked' && r.need === STAM_ABILITIES.bash.minLevel, r);
-  check('...and a locked cast costs nothing and hits nothing',
-    m.hp === hp0 && psA.stamina === stam0 && hits().length === 0,
-    { hp: m.hp, stamina: psA.stamina, hits: hits().length });
+  /* ═══ v2.3.2252: BASH IS UNGATED, SO THESE TWO INVERT ═══
+     Owner: "Make shield bash an ability for any level (no gates) the only
+     requirement is you must have your shield held."  These asserted the level
+     gate that no longer exists -- rewritten to assert what replaced it: at the
+     ungated floor (char 3) a bash with a shield equipped LANDS, and it is not
+     refused for being locked.  The whirlwind assertions below are untouched
+     and are what still proves the ladder gates per rung. */
+  check('char 3: Shield Bash is NOT level-locked any more',
+    !r || r.reason !== 'locked', r);
+  check('...and at the ungated floor it lands, costing stamina',
+    hits().length === 1 && m.hp < hp0 && psA.stamina < stam0,
+    { hp: m.hp, hp0, stamina: psA.stamina, stam0, hits: hits().length, rejects: rejects() });
+  /* The shield is the requirement now, and it is server-authoritative. */
+  readyPlayer();
+  const _savedShield = psA.shield;
+  psA.shield = null;
+  arm(m, psA.x + 20, psA.y);
+  await cast('bash');
+  const rNo = rejects()[0];
+  check('char 3: ...but with NO shield it is refused, by the worker',
+    !!rNo && rNo.reason === 'no-shield', rNo);
+  psA.shield = _savedShield;
 
   setCharLevel(4);
   readyPlayer();
   arm(m, psA.x + 20, psA.y);
   await cast('bash');
-  check('char 4: Shield Bash lands', hits().length === 1 && m.hp < 5000,
+  check('char 4: Shield Bash still lands', hits().length === 1 && m.hp < 5000,
     { hits: hits().length, hp: m.hp, rejects: rejects() });
   check('...and the hit is tagged as the ability (the client needs it for the popup)',
     hits()[0] && hits()[0].payload.ability === 'bash', hits()[0] && hits()[0].payload);

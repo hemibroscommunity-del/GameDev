@@ -194,6 +194,13 @@ function toPile() {
   snowman._burUntil = Date.now() - 1;
   room._tickMonsters();                   /* emerge completes */
   check('emerge: the move ends cleanly', !snowman._burPhase, snowman._burPhase);
+  /* v2.3.2251: the cooldown is re-stamped HERE, at the end of the move, which
+     is what turns the owner's "at least 20 seconds before the same snowman can
+     do it again" into a floor on the QUIET rather than on start-to-start
+     spacing.  Without this the 4.2s move eats into the 20s and delivers 15.8. */
+  check('emerge: the cooldown is re-stamped from the END, so the 20s is real downtime',
+    snowman._burCd >= Date.now() + BURROW.CD_MS - 50,
+    { burCd: snowman._burCd, now: Date.now(), cd: BURROW.CD_MS });
   room._tickMonsters();                   /* first tick back in ordinary AI */
   check('emerge: his first attack still pays its wind-up (no free hit)',
     ps.hp === hpBefore, { hpBefore, hp: ps.hp, bw: snowman._bwUntil });
@@ -239,10 +246,26 @@ function toPile() {
   snowman._burPhase = null; snowman._burUntil = 0; snowman._invulnUntil = 0;
   room._tickMonsters();
   check('cooldown: he cannot immediately burrow again', !snowman._burPhase, snowman._burPhase);
+  /* v2.3.2251: the owner's number, pinned.  "At least 20 seconds before the
+     same snowman can do it again" -- asserted so a later tune has to argue
+     with this line rather than silently undo it. */
+  check('cooldown: it is at least the 20 seconds the owner asked for',
+    BURROW.CD_MS >= 20000, BURROW.CD_MS);
 }
 
 // ── 10. v2.3.2223: the pile has a FLOOR, not just a cap ──
 {
+  /* v2.3.2251: the owner's other number, pinned alongside its floor.  "Change
+     snowman burrow to be way shorter.  Maybe 3 seconds" -- read as the PILE
+     (the phase he is burrowed for), the same reading v2.3.2225 used when it
+     doubled this on "double burrow time".  The floor must stay strictly under
+     the cap or the pile can never end early on arrival, which is the case the
+     floor was added for in the first place. */
+  check('duration: the pile is the 3 seconds the owner asked for',
+    BURROW.PILE_MAX_MS === 3000, BURROW.PILE_MAX_MS);
+  check('duration: ...and the floor is still under the cap, so arrival can end it early',
+    BURROW.PILE_MIN_MS < BURROW.PILE_MAX_MS,
+    { floor: BURROW.PILE_MIN_MS, cap: BURROW.PILE_MAX_MS });
   arm(0);                                  /* player standing right on him */
   room._tickMonsters();                    /* dig */
   snowman._burUntil = Date.now() - 1;

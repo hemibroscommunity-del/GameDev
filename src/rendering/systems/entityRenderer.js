@@ -81,6 +81,7 @@ import { getEquip, onEquipChange, isWearingArmor } from '../gearCatalog.js'; /* 
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
 import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2245: harvest frames follow the hand */
 import { monsterDisplayName } from '@/data/gameDisplay.js'; /* v2.3.1918: monster name plates */
+import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251: a lock is automatic; intent is not */
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
 const COLLISION_GLOW_RANGE_PX = 80;
@@ -8825,7 +8826,10 @@ export class EntityRenderer {
        NPC locks are excluded on purpose: tapping a shopkeeper locks one, and
        walking away from the mayor while staring at him is not a combat
        stance. */
-    const lockFacing = !!(S.lockedTarget && S.lockedTarget.ref && S.lockedTarget.type === 'monster');
+    /* v2.3.2251: the RENDER twin of BroTown's _lkFace, and it has to use the
+       same predicate or the sprite faces the target while the movement code
+       does not.  A bare lock is automatic now — see targeting.engagedStance. */
+    const lockFacing = engagedStance(S);
     const aimAttackActive = S._aimAngle != null && (lockFacing || S._backpedaling || (!isMoving && S.autoAttack));
     /* useAimDirection drives the slowed + reverse jog animation —
        still want it true during a swing window so the legs stay in

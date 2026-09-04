@@ -52,8 +52,7 @@ import { TouchControls } from './panels/TouchControls.jsx';
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
 import { ShieldButton } from './panels/ShieldButton.jsx'; /* v2.3.2242: the shield is a toggle button under Attack */
 import { GESTURE_TOOL_URLS } from '@/game/gesturePose.js'; /* v2.3.2245: the tool strips the button face plays */
-import { TargetArrows } from './panels/TargetArrows.jsx'; /* v2.3.2243: switch targets when two or more are in the perimeter */
-import { engageNearest, heldMonster, hasCandidate } from '@/game/targeting.js'; /* v2.3.2242: Attack engages the nearest monster in the perimeter; v2.3.2246: ...and the press asks which of the two it is */
+import { isTapLock, engagedStance } from '@/game/targeting.js'; /* v2.3.2251: the target is acquired automatically; a tap is the only deliberate pick */
 import { discHeld, discHoldProbe } from '@/game/controlVisibility.js'; /* v2.3.2246: the discs hide themselves unless onboarding is pointing at one */
 import { raiseShieldToggle, dropShield, shieldAimAngle } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { DuelRequestPanel } from './panels/DuelRequestPanel.jsx';
@@ -4538,7 +4537,11 @@ export var BroTown = function BroTown(_ref0) {
         /* v2.3.1768b: capped by worldViewport(), so a bigger desktop box shows
            the SAME world scaled up rather than more of it.  Below the cap this
            returns exactly what these two lines used to compute. */
-        var _wv = worldViewport(canvas);
+        /* v2.3.2247: pass the zone so the viewport never exceeds the map
+           (owner: "don't zoom out larger than the screen area would show").
+           renderFrame passes the SAME id -- the two must agree or the player
+           drifts off-centre, the failure v2.3.1768b centralised this to stop. */
+        var _wv = worldViewport(canvas, S.currentZone);
         var W = _wv.W;
         var H = _wv.H;
         /* v2.3.1095: publish the logical world-viewport size so the projectile
@@ -4719,6 +4722,51 @@ export var BroTown = function BroTown(_ref0) {
         } else if (S._dodgeRoll && _playerDead) {
           S._dodgeRoll = null;
         }
+        /* ═══ v2.3.2252: THE SHIELD BASH CLOSES THE DISTANCE ═══
+           Owner: "Make yourself always dash to the enemy and make contact
+           whenever you use shield bash."  Stamped by game/abilities.castAbility
+           with the monster it named to the worker; driven here so it obeys the
+           same per-frame integration everything else does.
+
+           NOT a position jump, deliberately: the worker's anti-teleport check
+           rejects a step over ~80px, and a correction mid-bash would put the
+           player back where they started and guarantee the miss this exists to
+           fix.  Speed is a multiple of a walk, so a long close takes longer --
+           it never outruns what the movement validator will accept.
+
+           It stops at the monster's EDGE (contact range), not on its centre:
+           a shove delivered from inside the body reads as standing in it, and
+           the collision push-out would fight this loop for the frames it ran.
+           Ends on arrival, on the window expiring, or if the target dies -- the
+           window is the backstop for a target that keeps running. */
+        if (S._bashDash && !_playerDead) {
+          var _bd = S._bashDash;
+          var _bt = _bd.ref;
+          var _btLive = _bt && _bt.alive !== false && !(typeof _bt.curHp === 'number' && _bt.curHp <= 0);
+          if (!_btLive || Date.now() > _bd.until) {
+            S._bashDash = null;
+          } else {
+            var _btx = (typeof _bt.renderX === 'number' ? _bt.renderX : _bt.x);
+            var _bty = (typeof _bt.renderY === 'number' ? _bt.renderY : _bt.y);
+            var _bdx = _btx - S.player.x, _bdy = _bty - S.player.y;
+            var _bdist = Math.sqrt(_bdx * _bdx + _bdy * _bdy) || 1;
+            var _bstop = 46;   /* contact range: just outside the body */
+            if (_bdist <= _bstop) {
+              S._bashDash = null;
+            } else {
+              var _bstep = Math.min(_bdist - _bstop, 13 * (S._dtScale || 1));
+              var _bnx = S.player.x + (_bdx / _bdist) * _bstep;
+              var _bny = S.player.y + (_bdy / _bdist) * _bstep;
+              /* Honour the same collision the walk does -- a bash must not
+                 post the player through a cliff to reach something. */
+              var _bhs = 12;
+              if (!isSolid(_bnx - _bhs, S.player.y - _bhs) && !isSolid(_bnx + _bhs, S.player.y + _bhs)) S.player.x = _bnx;
+              if (!isSolid(S.player.x - _bhs, _bny - _bhs) && !isSolid(S.player.x + _bhs, _bny + _bhs)) S.player.y = _bny;
+            }
+          }
+        } else if (S._bashDash && _playerDead) {
+          S._bashDash = null;
+        }
         /* Movement gated by REAL stuns only (hexer / brute charge).
            The 250 ms hit-react lockout (_hitLockActive) no longer
            freezes movement -- in projectile-heavy zones like meadow
@@ -4854,7 +4902,13 @@ export var BroTown = function BroTown(_ref0) {
            engaged player's walk is a nerf nobody requested.
            Derived from S.lockedTarget rather than a flag stamped by the
            combat tick -- see the note in monsterCombat.js. */
-        var _lkFace = !!(S.lockedTarget && S.lockedTarget.ref && S.lockedTarget.type === 'monster');
+        /* v2.3.2251: engagedStance, not a bare lock.  Target-relative movement
+           (the backwards jog, the strafe, the body held toward the target) is
+           the owner's v2.3.2246 ask and it is right while you are FIGHTING --
+           but a lock is automatic now, so a bare test would put you in a
+           combat stance every time a slime wandered within 220px while you
+           were walking somewhere. */
+        var _lkFace = engagedStance(S);
         S._backpedaling = false;
         if (S.autoAttack) finalSpd *= 0.5;
         if ((S.autoAttack || _lkFace) && S._aimAngle != null
@@ -5242,8 +5296,17 @@ export var BroTown = function BroTown(_ref0) {
              (tap the monster, or press Attack once before stepping up to
              the node).  The first cut let any monster within 220px win,
              and a snowman on the far side of a tree turned every chop
-             into a swing. */
-          var _lockHeld = !!(S.lockedTarget && S.lockedTarget.ref);
+             into a swing.
+             ═══ v2.3.2251: A LOCK IS NO LONGER A DELIBERATE ACT ═══
+             Acquisition is automatic now, so `S.lockedTarget` is set whenever
+             ANY monster is inside the perimeter -- which is exactly the "any
+             monster within 220px wins" behaviour the paragraph above records
+             as a bug, reintroduced through the back door.  Left as a bare
+             lock test this would have suppressed the HARVEST button for good
+             the moment a slime wandered past your tree.
+             engagedStance is the intent test the bare lock used to stand in
+             for: your thumb on the button, or a target you tapped. */
+          var _lockHeld = engagedStance(S);
           var _harvestCtx = !!(S._nearNode && !_lockHeld);
           S._btnHarvest = _harvestCtx;
           if (_lbl) {
@@ -5347,6 +5410,39 @@ export var BroTown = function BroTown(_ref0) {
           var _rd = rJoyRef.current;
           var _peWant = _rOn ? 'auto' : 'none';
           if (_rd && _rd.style.pointerEvents !== _peWant) _rd.style.pointerEvents = _peWant;
+          /* ═══ v2.3.2251: AND IT LIGHTS UP ═══
+             Owner: "The attack button isn't lit up when it becomes available
+             (font hard to see)."  Availability moved the WRAP's opacity and
+             nothing else, so the button arrived wearing the 0.5 resting
+             opacity it inherited from the joystick it replaced -- a faint
+             disc with faint text on it, exactly as described.
+
+             Three writes, all inline and DOM-compared like the stamps above,
+             so a React re-render self-heals on the next frame:
+               opacity      0.5 at rest -> 1 when a press would do something
+               borderColor  transparent -> brass, so the disc has a lit EDGE
+               boxShadow    a hard brass spread ring, zero blur (LANTERN-SLATE
+                            §World HUD: "no blur anywhere")
+             Brass for a resource or a plain swing, the brighter focus tone
+             when there is something to hit -- so "there is a monster in
+             reach" and "you are standing at a tree" do not look identical.
+             NOT background-color: base.webp is opaque, so a fill would paint
+             under the sprite and never be seen. */
+          var _lit = _rOn && !discHeld('R');
+          var _hot = _rOn && (_cands.length || _lockHeld) && !_ex && !_harvestCtx;
+          /* The press ladder still owns the dip while a thumb is down (0.92,
+             v2.3.1236), so the resolver must not fight it every frame -- it
+             writes the RESTING value only, and 'resting' is 1 now rather than
+             the old faint 0.5.  handleRBtnRelease's own 0.5 write went with
+             this change; the resolver is the one place that decides. */
+          var _opWant = !_rOn ? '0.5' : (rJoyActive.current ? '0.92' : '1');
+          if (_rd && _rd.style.opacity !== _opWant) _rd.style.opacity = _opWant;
+          var _bcWant = _lit ? (_hot ? '#EAC675' : '#D8AA58') : 'transparent';
+          if (_rd && _rd.style.borderColor !== _bcWant) _rd.style.borderColor = _bcWant;
+          var _bsWant = _lit
+            ? (_hot ? '0 0 0 3px rgba(234,198,117,.22)' : '0 0 0 2px rgba(216,170,88,.16)')
+            : 'none';
+          if (_rd && _rd.style.boxShadow !== _bsWant) _rd.style.boxShadow = _bsWant;
           var _lw = lWrapRef.current;
           var _lWant = _lOn ? '1' : '0';
           if (_lw && _lw.style.opacity !== _lWant) _lw.style.opacity = _lWant;
@@ -7827,28 +7923,45 @@ export var BroTown = function BroTown(_ref0) {
      of that is gone.  What is left is the §10 opacity ladder (rest .5,
      ENGAGED .92 -- v2.3.1233) and the auto-attack flag.  Aim comes from the
      LOCK now (monsterCombat writes S._aimAngle toward the locked target each
-     frame while the button is held), and the lock comes from engageNearest
-     on the press (game/targeting.js). */
+     frame while the button is held).
+     v2.3.2251: and the lock is acquired automatically, every frame, by
+     targeting.updateTargeting -- the press no longer acquires anything. */
   var handleRBtnPress = useCallback(function () {
     var base = rJoyRef.current;
     if (base) base.style.opacity = '0.92';
     var S = stateRef.current;
     if (!S) return;
-    /* v2.3.2246: THE ATTACK PRESS DOES NOT RE-TARGET.  This used to call
-       engageNearest, which was right while one press did both jobs.  With
-       the two-step press (bS decides engage-or-attack from the lock) it is
-       actively wrong: reached only when a lock is already held, it would
-       hand the lock to the NEAREST candidate instead -- so a monster tapped
-       at bow range, with a slime wandering past your feet, would silently
-       become the slime the moment you pressed attack.  Engagement belongs to
-       bS alone now. */
+    /* ═══ v2.3.2252: THE FIRST TAP COMMITS TO THE NEAREST ENEMY ═══
+       Owner: "when the contextual attack button appears make it so your first
+       tap immediately locks on and fires an attack at the enemy closest to
+       you."  The swing already went out on the first tap (v2.3.2251) and the
+       nearest enemy was already the target -- what was missing is the LOCK:
+       the auto target re-points every frame, so a fight could slide onto
+       whatever drifted nearer mid-swing, and target-relative movement and the
+       shield's aim (both gated on engagedStance) never engaged from a tap.
+
+       So the press PROMOTES the automatic target to a deliberate one: same
+       monster, but `src: 'tap'`, which is immune to the nearest rule until it
+       dies or you tap it again.  One tap now buys the whole engaged stance --
+       the lock, the backwards jog, and a shield that keeps facing him.
+
+       v2.3.2246's rule that the press must not RE-target is intact and is why
+       this reads the existing lock rather than re-running the nearest search:
+       a monster tapped at bow range, with a slime at your feet, keeps its lock
+       -- promoting an already-tapped lock is a no-op. */
+    var _lt = S.lockedTarget;
+    if (_lt && _lt.ref && _lt.type === 'monster' && _lt.src !== 'tap') {
+      S.lockedTarget = { type: 'monster', id: _lt.id, ref: _lt.ref, src: 'tap' };
+    }
     S.autoAttack = true;
     setAutoAttack(true);
   }, []);
   var handleRBtnRelease = useCallback(function () {
     rJoyActive.current = false;
     var base = rJoyRef.current;
-    if (base) base.style.opacity = '0.5';
+    /* v2.3.2251: no 0.5 write here -- the resolver owns the resting value
+       and it is 1 while the button is live.  Knocking it to 0.5 on every
+       release would have un-lit the button mid-fight for a frame. */
     var S = stateRef.current;
     if (!S) return;
     S.autoAttack = false;
@@ -8273,7 +8386,6 @@ export var BroTown = function BroTown(_ref0) {
       rJoyActive.current = true;
       bSwipe.sx = t.clientX; bSwipe.sy = t.clientY; bSwipe.st = Date.now();
       bSwipe.lx = 0; bSwipe.ly = 0; bSwipe.lt = 0;
-      bSwipe.engage = false;   /* v2.3.2246: reset up front, not only on the paths that set it */
       /* ═══ v2.3.2245: THE BUTTON IS CONTEXTUAL ═══
          A harvest in progress owns the button: the press is the gesture
          (ExtractionSwipeLayer takes it at the pointer level), not a swing.
@@ -8323,16 +8435,6 @@ export var BroTown = function BroTown(_ref0) {
          lesson you cannot perform is worse than no lesson.  So the rule is
          "if the button is on screen, a press does the most sensible thing it
          can", and the visibility resolver is what makes that honest. */
-      if (Sb && !heldMonster(Sb) && hasCandidate(Sb)) {
-        try { engageNearest(Sb); } catch (err) { /* nothing to engage: falls through to nothing */ }
-        try { BT_AUDIO.beep(660, 0.05, 0.09, 'triangle'); } catch (err) { /* audio is best-effort */ }
-        bSwipe.engage = true;
-        var _egBase = rJoyRef.current;
-        if (_egBase) _egBase.style.opacity = '0.92';
-        rJoyActive.current = true;
-        return;
-      }
-      bSwipe.engage = false;
       handleRBtnPress();
       doSwing();
     };
@@ -8352,18 +8454,6 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.2245: a harvest press is not a swing and its release is not a
          flick -- a fast chop on the button must never fire the special. */
       if (bSwipe.harvest) { bSwipe.harvest = false; rJoyActive.current = false; return; }
-      /* v2.3.2246: ...and neither is an ENGAGE press.  Same reasoning: the
-         gesture that picked the target must not also spend the special on it.
-         The opacity is restored by hand because handleRBtnRelease (which
-         normally does it) also clears autoAttack, and an engage never set
-         it. */
-      if (bSwipe.engage) {
-        bSwipe.engage = false;
-        rJoyActive.current = false;
-        var _egB = rJoyRef.current;
-        if (_egB) _egB.style.opacity = '0.5';
-        return;
-      }
       /* Flick detection -- last-leg speed (recent burst) OR
          total-distance/total-duration speed (slow but committed). */
       var refX = bSwipe.lx || bSwipe.sx;
@@ -9318,10 +9408,19 @@ export var BroTown = function BroTown(_ref0) {
                 if (_d < _closestDist) { _closestDist = _d; _closest = m; }
               });
               if (_closest) {
+                /* ═══ v2.3.2251: THE TAP IS THE ONLY DELIBERATE PICK ═══
+                   Owner: "Only way to pick target and lock it on is to tap on
+                   the monster."  `src: 'tap'` is what makes this lock immune
+                   to the automatic nearest-enemy rule -- it survives at any
+                   distance (a bow snipe at 675px) until the monster dies or
+                   you tap it again.  Tapping the SAME monster releases it to
+                   the automatic rule rather than leaving you with no target;
+                   with acquisition automatic, `null` here means "resume", not
+                   "nothing", and the next frame re-points at the nearest. */
                 if (_S.lockedTarget && _S.lockedTarget.ref === _closest) {
                   _S.lockedTarget = null;
                 } else {
-                  _S.lockedTarget = { type: 'monster', id: _closest.id, ref: _closest };
+                  _S.lockedTarget = { type: 'monster', id: _closest.id, ref: _closest, src: 'tap' };
                 }
               }
             }
@@ -11723,7 +11822,7 @@ export var BroTown = function BroTown(_ref0) {
      and z-index 6 so they sit over the world canvas but under all HUD
      (z>=20).  bt-desktop-hide drops them on desktop so the mouse reaches the
      canvas. */
-  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rLabelRef: rLabelRef, rCueRef: rCueRef, rRingRef: rRingRef, lWrapRef: lWrapRef, rWrapRef: rWrapRef, isLandscape: isLandscape }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until their milestone level unlocks them (AbilityButtons.jsx). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2242: the shield is a toggle button under the Attack button; it shows itself during combat (ShieldButton.jsx). */ /*#__PURE__*/React.createElement(ShieldButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2243: the target-switch arrows flank it while two or more monsters are in the perimeter (TargetArrows.jsx). */ /*#__PURE__*/React.createElement(TargetArrows, { stateRef: stateRef, isLandscape: isLandscape })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
+  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rLabelRef: rLabelRef, rCueRef: rCueRef, rRingRef: rRingRef, lWrapRef: lWrapRef, rWrapRef: rWrapRef, isLandscape: isLandscape }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until their milestone level unlocks them (AbilityButtons.jsx). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2242: the shield is a toggle button under the Attack button; it shows itself during combat (ShieldButton.jsx). */ /*#__PURE__*/React.createElement(ShieldButton, { stateRef: stateRef, isLandscape: isLandscape })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
      Not a style choice — a hard requirement this cost a round of QA to
      find.  .brotown-wrap is position:fixed, and Chrome treats that as its
      own stacking context, so EVERY element inside it is confined to one

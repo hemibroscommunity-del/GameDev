@@ -119,8 +119,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await seedFodder(P, 'qa_eng_1', 120, 0);
   await P.page.waitForTimeout(500);
   const near = await st(P);
-  rec.ok('standing inside a monster’s targeting perimeter makes it a candidate',
-    near.cands === 1 && near.lock === null, near);
+  /* v2.3.2251: standing in the perimeter now TARGETS it as well as making it a
+     candidate -- acquisition is automatic (owner: "always be nearest enemy"),
+     so `lock === null` was the old two-step premise and is false by design. */
+  rec.ok('standing inside a monster’s targeting perimeter targets it, with no press',
+    near.cands === 1 && near.lock === 'qa_eng_1', near);
 
   /* ── the indicator, twice over ──
      THE PIXEL TEST NEEDED A DIFFERENT ARGUMENT IN TOWN.  The first cut
@@ -139,16 +142,27 @@ export async function run({ browser, wsPort, webPort, rec }) {
      at what coordinate.  A caret drawn 200px off screen and no caret at all
      look identical in a crop, which is the failure §28 is about. */
   const marks = await P.page.evaluate(() => (window.__btAtkMark ? window.__btAtkMark() : null));
-  rec.ok('the renderer marks the candidate (probe: one mark, on this monster, flagged nearest)',
-    !!marks && marks.length === 1 && marks[0].id === 'qa_eng_1' && marks[0].nearest === true, marks);
+  /* v2.3.2251: one candidate, and it is now automatically the TARGET -- so it
+     is recorded as `target: true` (ground ring + reticle) rather than caret-ed.
+     The caret's job changed with acquisition: it says "tap this one instead",
+     so it belongs to the candidates that are NOT the target. */
+  rec.ok('the renderer marks the candidate (probe: one mark, on this monster, as the target)',
+    !!marks && marks.length === 1 && marks[0].id === 'qa_eng_1' && marks[0].target === true, marks);
   const geo = await P.page.evaluate(() => {
     const S = window._gameState.current;
     const m = S.monsters[0];
     const mk = (window.__btAtkMark() || [])[0] || null;
     return { my: m.y, mx: m.x, mark: mk };
   });
-  rec.ok('...at the monster’s own x, clear of its head (56px up = the shared body-offset table x2 + 10)',
-    !!geo.mark && Math.abs(geo.mark.x - geo.mx) < 1 && Math.abs((geo.my - geo.mark.y) - 56) < 4, geo);
+  /* v2.3.2253: the target is caret-ed again (the owner asked for the arrow
+     back on it), so its mark is ABOVE the head, not at the feet as it was for
+     one version.  Asserted as the property rather than a pixel count: on the
+     monster's own column, above it, and close enough to be its mark and not
+     the next monster's -- a slime's caret sits ~91px up (body offset 23 x2,
+     plus the 42 that clears the name pill, plus the bob). */
+  rec.ok('...on the monster’s own column and above its head, not adrift on the map',
+    !!geo.mark && Math.abs(geo.mark.x - geo.mx) < 1
+      && geo.mark.y < geo.my && (geo.my - geo.mark.y) < 150, geo);
 
   /* The crop: tight on the caret so nothing else in frame can differ. */
   const caretBox = async () => P.page.evaluate(() => {
@@ -174,15 +188,30 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.screenshot({ path: H.REPO + '/tools/qa/mp/.last-engage-mark.png' }).catch(() => {});
     await P.page.screenshot({ path: H.REPO + '/tools/qa/mp/.last-engage-caret.png',
       clip: { x: Math.max(0, box.x - 70), y: Math.max(0, box.y - 40), width: 170, height: 170 } }).catch(() => {});
-    /* THE CONTROL: same monster, same ground, same camera, caret suppressed
-       by making it the lock. */
+    /* THE CONTROL: same monster, same ground, same camera, the mark suppressed
+       by taking the monster out of candidacy without moving it a pixel.
+       v2.3.2251: this used to suppress the caret by LOCKING the monster, which
+       worked while a lock was something the player asked for.  Acquisition is
+       automatic now, so the single candidate is already the lock and locking it
+       changes nothing -- the control compared a frame with itself and the
+       assertion would have passed on a renderer that drew nothing at all.
+       `_zoneLoading` is the one flag the indicator already honours (the marks
+       must not paint over a loading overlay), so it suppresses the whole set
+       while leaving the monster, the ground and the camera exactly as they
+       were -- which is what a control has to hold still. */
     await P.page.evaluate(() => {
-      const S = window._gameState.current;
-      const m = S.monsters[0];
-      S.lockedTarget = { type: 'monster', id: m.id, ref: m };
+      /* isIntangible takes a monster OUT of candidacy (targeting.monLive) while
+         the renderer keeps drawing it where it was -- the snow-pile rule,
+         reused.  Its real condition is `_burPhase === 'pile' || _burstUntil`
+         (data/monsterVariants.js), NOT an `isIntangible` property, so set the
+         one the function actually reads.  A flag the game loop owns
+         (_zoneLoading) is rewritten on the next frame and would not hold
+         still for the screenshot. */
+      const m = window._gameState.current.monsters[0];
+      m._burstUntil = Date.now() + 60000;
     });
-    await P.page.waitForTimeout(400);
-    rec.ok('guard: locking it takes the caret away (probe agrees)',
+    await P.page.waitForTimeout(450);
+    rec.ok('guard: the mark can be suppressed without moving the monster (probe agrees)',
       (await P.page.evaluate(() => window.__btAtkMark().length)) === 0);
     const shotB = await H.screenshotPixels(P, box);
     let moved = 0;
@@ -192,20 +221,35 @@ export async function run({ browser, wsPort, webPort, rec }) {
         || Math.abs(shotA.data[i + 1] - shotB.data[i + 1]) > 24
         || Math.abs(shotA.data[i + 2] - shotB.data[i + 2]) > 24) moved++;
     }
-    rec.ok('the indicator is really PAINTED: the crop changes when the caret is taken away',
+    rec.ok('the indicator is really PAINTED: the crop changes when the mark is taken away',
       moved > 20, { movedPx: moved, of: Math.round(n / shotA.channels), box });
+    await P.page.evaluate(() => {
+      const m = window._gameState.current.monsters[0];
+      m._burstUntil = 0;
+    });
+    await P.page.waitForTimeout(350);
   }
 
   /* ── 2. movement is relative to the lock, with no finger on the button ── */
+  /* ═══ v2.3.2251: A LOCK IS NOT ENGAGEMENT ANY MORE ═══
+     This block asserts the owner's v2.3.2246 rule -- movement revolves around
+     the target with no finger on the button -- and it used a bare lock to set
+     that state up, which was fair while a lock only existed because you had
+     asked for one.  Acquisition is automatic now, so a bare lock is present
+     whenever ANY monster is within 220px, and target-relative movement on that
+     would put you in a backwards jog every time a slime wandered past while
+     you were walking somewhere.
+     `src: 'tap'` is the deliberate pick -- the state targeting.engagedStance
+     reads -- so the rule is set up the way a player would: by tapping it. */
   await P.page.evaluate(() => {
     const S = window._gameState.current;
     const m = S.monsters[0];
-    S.lockedTarget = { type: 'monster', id: m.id, ref: m };
+    S.lockedTarget = { type: 'monster', id: m.id, ref: m, src: 'tap' };
     S.autoAttack = false;
   });
   await P.page.waitForTimeout(400);
   const engaged = await st(P);
-  rec.ok('guard: locked, and NOT attacking — this is the state the change is about',
+  rec.ok('guard: TAP-locked, and NOT attacking — this is the state the change is about',
     engaged.lock === 'qa_eng_1' && engaged.auto === false, engaged);
   rec.ok('...and the aim already points at the target with no finger down (east, body centre up)',
     typeof engaged.aim === 'number' && Math.abs(engaged.aim - Math.atan2(-23, 120)) < 0.15, engaged);

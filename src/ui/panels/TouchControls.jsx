@@ -260,7 +260,25 @@ export function TouchControls(props) {
          it (an orientation change) is corrected on the next one. */
       pointerEvents: 'none',
       touchAction: 'none',
-      transition: 'opacity 0.12s ease',
+      transition: 'opacity 0.12s ease, border-color 0.18s ease, box-shadow 0.18s ease',
+      /* ═══ v2.3.2251: SOMETHING TO LIGHT ═══
+         Owner: "The attack button isn't lit up when it becomes available
+         (font hard to see)."  Availability changed exactly two things -- the
+         wrap's opacity 0->1 and this disc's pointerEvents -- so the button
+         faded in still wearing its joystick-era 0.5 resting opacity, and
+         nothing about it said "press me".
+         The lit ladder is stamped INLINE by BroTown's resolver rather than
+         from game.css, and these three lines are why it has to be: an inline
+         border-color beats any stylesheet rule without !important, so the two
+         would fight and the stylesheet would lose.  Declared here with a
+         transparent colour but a real WIDTH, because growing a border from 0
+         to 2px would nudge the layout every time the button woke up.
+         And the lit state is carried on the BORDER and a shadow, never on
+         background-color: base.webp is opaque edge to edge, so a background
+         fill paints underneath the sprite and is never seen. */
+      boxSizing: 'border-box',
+      borderRadius: '50%',
+      border: '2px solid transparent',
       backgroundImage: 'url(/sprites/joystick/base.webp?v=2.3.102)',
       backgroundSize: '100% 100%',
       backgroundRepeat: 'no-repeat',
@@ -344,10 +362,16 @@ export function TouchControls(props) {
       boxSizing: 'border-box',
       pointerEvents: 'none',
       zIndex: 3,
-      fontSize: isLandscape ? 12 : 11,
+      /* v2.3.2251: the other half of "font hard to see".  11px is the caption
+         step -- the smallest type anywhere in the game -- sitting on a busy
+         painted sprite at 0.5 opacity, which is how a 700-weight label in the
+         lightest ink still read as faint.  Up one step, and the shadow becomes
+         a real dark halo rather than a 1px drop, so the glyphs keep their edge
+         over the bright plate of base.webp as well as over its dark socket. */
+      fontSize: isLandscape ? 14 : 13,
       fontWeight: 700,
       color: '#F7F2E7',
-      textShadow: '0 1px 2px rgba(0,0,0,.85)',
+      textShadow: '0 1px 2px rgba(0,0,0,.9), 0 0 4px rgba(0,0,0,.75)',
       letterSpacing: '0.08em',
       textTransform: 'uppercase',
     }

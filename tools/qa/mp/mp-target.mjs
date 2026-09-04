@@ -84,11 +84,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   let s = await st(P);
   rec.ok('a monster inside the perimeter is a candidate; one outside is not',
     s.cands.length === 1 && s.cands[0] === 'near', s);
-  rec.ok('with ONE candidate there are no switch arrows', s.arrows === 0, s);
-  await P.page.evaluate(() => window.__tapSel('.bt-rjoy-base', 51));
-  await P.page.waitForTimeout(150);
-  s = await st(P);
-  rec.ok('Attack locks the candidate', s.lock === 'near', s);
+  /* v2.3.2251: the switch arrows are deleted along with target cycling -- the
+     target is always the nearest and a tap is the only way to override it, so
+     there is nothing to step through.  What the arrows' absence proves now is
+     simply that nothing draws them. */
+  rec.ok('no switch arrows exist any more', s.arrows === 0, s);
+  rec.ok('the candidate is targeted automatically, with no press', s.lock === 'near', s);
 
   /* ── the lock HOLDS at the edge (hysteresis), and drops past it ── */
   await P.page.evaluate((PERIM) => {
@@ -130,7 +131,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.evaluate(() => {
     const S = window._gameState.current;
     const m = S.monsters.find((x) => x.id === 'far');
-    S.lockedTarget = { type: 'monster', id: m.id, ref: m };   /* no viaPerimeter — a tap */
+    /* v2.3.2251: `src: 'tap'` is the marker now (it replaced viaPerimeter, with
+       the polarity flipped: the AUTO locks are the marked ones by default and
+       the tap is the exception the range rule must not touch). */
+    S.lockedTarget = { type: 'monster', id: m.id, ref: m, src: 'tap' };
   });
   await P.page.waitForTimeout(700);
   s = await st(P);
@@ -138,8 +142,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     s.lock === 'far', s);
   rec.ok('...and the right button is on screen for it, because a lock is held',
     (await P.page.evaluate(() => window.__btDiscVis().R.shown)) === true);
-  /* ...and an Attack press with a far tapped lock ATTACKS rather than
-     re-engaging: heldMonster() counts a tapped lock at any distance. */
+  /* ...and an Attack press with a far tapped lock ATTACKS.  v2.3.2251: this
+     used to be "press two", the second half of the engage/attack pair; with
+     one press it is simply what the button does, and the point that survives
+     is that the press does not steal the lock back to something nearer. */
   await P.page.evaluate(() => { const S = window._gameState.current; S.__sw0 = S.swingTimer || 0; });
   await P.page.evaluate(() => window.__tapSel('.bt-rjoy-base', 71));
   await P.page.waitForTimeout(250);
@@ -147,7 +153,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const S = window._gameState.current;
     return { moved: (S.swingTimer || 0) !== S.__sw0, lock: S.lockedTarget ? S.lockedTarget.id : null };
   });
-  rec.ok('...and a press with that lock held ATTACKS (press two), it does not re-engage',
+  rec.ok('...and a press ATTACKS without stealing the lock back to something nearer',
     swung.moved === true && swung.lock === 'far', swung);
   /* The other half of the same rule: a press that finds nothing to engage
      must not throw the tapped lock away. */
@@ -155,40 +161,46 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* But a PERIMETER lock (made by the press) still drops at range — that rule
      is unchanged, and the assertion above it in this file proves it. */
 
-  /* ── three in range: arrows appear and walk left -> right ── */
+  /* ── ═══ v2.3.2251: THREE IN RANGE, AND THE NEAREST WINS ═══ ──
+     This section used to prove the switch arrows: three candidates, arrows on
+     screen, a count pill, and ◀ ▶ walking the lock in screen-x order with a
+     wrap.  All of it is deleted with the arrows (owner: "always be nearest
+     enemy.  Only way to pick target and lock it on is to tap on the monster"),
+     so what is asserted instead is the rule that replaced them -- and the two
+     halves that are easy to get wrong: the nearest is picked with no input at
+     all, and a TAP overrides it and then holds against the nearest rule. ── */
   await seed(P, [{ id: 'mid', dx: 60 }, { id: 'left', dx: -120, dy: 10 }, { id: 'right', dx: 150, dy: -10 }]);
   await P.page.waitForTimeout(400);
   s = await st(P);
   rec.ok('three candidates in the perimeter', s.cands.length === 3, s);
-  rec.ok('with TWO OR MORE candidates the switch arrows are on screen', s.arrows === 2, s);
-  await P.page.evaluate(() => window.__tapSel('.bt-rjoy-base', 52));
-  await P.page.waitForTimeout(150);
-  s = await st(P);
-  rec.ok('Attack locks the NEAREST of them (mid, 60px)', s.lock === 'mid', s);
-  rec.ok('...and the count pill says which of the three', s.count === '2/3', s);
-  /* Geometry: arrows flank the shield button in the band under the disc. */
-  const geo = await P.page.evaluate(() => {
-    const r = (sel) => { const e = document.querySelector(sel); if (!e) return null; const b = e.getBoundingClientRect(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; };
-    return { prev: r('[data-target="prev"]'), next: r('[data-target="next"]'), shield: r('[data-shield]'), disc: r('.bt-rjoy-base') };
+  rec.ok('the NEAREST of the three is targeted automatically (mid, 60px)', s.lock === 'mid', s);
+  rec.ok('...with no arrows and no pill to do it', s.arrows === 0 && s.count === null, s);
+  /* Tap the FAR one: the deliberate pick has to beat the nearest rule, and
+     keep beating it while a nearer monster is still standing there. */
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const m = S.monsters.find((x) => x.id === 'right');
+    S.lockedTarget = { type: 'monster', id: m.id, ref: m, src: 'tap' };
   });
-  rec.ok('the arrows sit beneath the right button, flanking the shield button (◀ shield ▶)',
-    !!(geo.prev && geo.next && geo.shield && geo.disc
-       && geo.prev.x < geo.shield.x && geo.shield.x < geo.next.x
-       && Math.abs(geo.prev.y - geo.shield.y) < 8 && geo.shield.y > geo.disc.y), geo);
-  await P.page.evaluate(() => window.__tapSel('[data-target="next"]', 53));
-  await P.page.waitForTimeout(150);
+  await P.page.waitForTimeout(500);
   s = await st(P);
-  rec.ok('▶ moves the lock to the monster to the RIGHT on screen', s.lock === 'right', s);
-  await P.page.evaluate(() => window.__tapSel('[data-target="next"]', 54));
-  await P.page.waitForTimeout(150);
+  rec.ok('tapping a further monster overrides the nearest rule', s.lock === 'right', s);
+  rec.ok('...and it KEEPS overriding it while a nearer one is in range',
+    s.lock === 'right' && s.cands.length === 3, s);
+  /* Releasing a tap returns you to the automatic rule rather than to nothing:
+     tapping the same monster again clears it, and the next frame re-acquires. */
+  await P.page.evaluate(() => { window._gameState.current.lockedTarget = null; });
+  await P.page.waitForTimeout(400);
   s = await st(P);
-  rec.ok('...and wraps round to the leftmost', s.lock === 'left', s);
-  await P.page.evaluate(() => window.__tapSel('[data-target="prev"]', 55));
-  await P.page.waitForTimeout(150);
-  s = await st(P);
-  rec.ok('◀ wraps back the other way', s.lock === 'right', s);
-  rec.ok('the arrows did not start an auto-attack under them',
-    (await P.page.evaluate(() => !!window._gameState.current.autoAttack)) === false);
+  rec.ok('releasing the tapped lock hands the target back to the nearest rule', s.lock === 'mid', s);
+  /* Re-tap 'right' so the sections below, which were written against a lock
+     on 'right', keep their premise. */
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const m = S.monsters.find((x) => x.id === 'right');
+    S.lockedTarget = { type: 'monster', id: m.id, ref: m, src: 'tap' };
+  });
+  await P.page.waitForTimeout(300);
 
   /* ── "otherwise the target stays locked": one leaves, the lock is untouched ── */
   await P.page.evaluate(() => {
@@ -198,7 +210,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   await P.page.waitForTimeout(250);
   s = await st(P);
-  rec.ok('a different candidate leaving the circle does not move the lock', s.lock === 'right' && s.cands.length === 2, s);
+  rec.ok('a different candidate leaving the circle does not move the tapped lock', s.lock === 'right' && s.cands.length === 2, s);
   await P.page.evaluate(() => {
     const S = window._gameState.current;
     const m = S.monsters.find((x) => x.id === 'mid');
@@ -206,7 +218,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   await P.page.waitForTimeout(400);
   s = await st(P);
-  rec.ok('down to one candidate the arrows go away, the lock stays', s.arrows === 0 && s.lock === 'right', s);
+  rec.ok('down to one candidate the tapped lock still stands', s.arrows === 0 && s.lock === 'right', s);
 
   /* ── the locked one dies: lock drops ── */
   await P.page.evaluate(() => {
@@ -221,12 +233,50 @@ export async function run({ browser, wsPort, webPort, rec }) {
   s = await st(P);
   rec.ok('the locked monster dying drops the lock', s.lock === null, s);
 
-  /* ── the pile is not a target ── */
+  /* ── the pile cannot be PICKED UP, but it can be KEPT ──
+     v2.3.2252, owner: "make the character keep his targeting on the snowman
+     even during burrow because you're still in active combat with him you just
+     can't damage him.  Makes it hard to use shield against him when auto
+     targeting of the monster drops."
+     Both halves matter and they pull opposite ways, so both are asserted: a
+     mound must never STEAL the target off a live monster (it cannot be hit),
+     and it must never LOSE the target it already had (the shield is pointed at
+     it, and he is about to surface underneath you). ── */
   await seed(P, [{ id: 'pile', dx: 70 }]);
   await P.page.evaluate(() => { const S = window._gameState.current; S.monsters[0]._burPhase = 'pile'; });
   await P.page.waitForTimeout(300);
   s = await st(P);
   rec.ok('an intangible snow pile is not a candidate', s.cands.length === 0, s);
+  /* Clear the lock first: `seed` puts him down LIVE, so the automatic rule
+     acquires him a frame before he burrows -- and keeping that is the other
+     half of this change.  What must not happen is a fresh acquisition once he
+     is already a mound. */
+  await P.page.evaluate(() => { window._gameState.current.lockedTarget = null; });
+  await P.page.waitForTimeout(400);
+  s = await st(P);
+  rec.ok('...and once released, a mound is never picked up as a NEW target',
+    s.lock === null, s);
+  /* Now the case the owner hit: he was ALREADY your target when he burrowed. */
+  await seed(P, [{ id: 'snowman', dx: 70 }]);
+  await P.page.waitForTimeout(400);
+  s = await st(P);
+  rec.ok('guard: the snowman is targeted before he burrows', s.lock === 'snowman', s);
+  await P.page.evaluate(() => { const S = window._gameState.current; S.monsters[0]._burPhase = 'pile'; });
+  await P.page.waitForTimeout(500);
+  s = await st(P);
+  rec.ok('the target STAYS on him while he is burrowed, so the shield keeps facing him',
+    s.lock === 'snowman', s);
+  rec.ok('...even though he has left the candidate list (he cannot be hit)',
+    s.cands.length === 0, s);
+  /* And he is released normally when he actually dies mid-pile. */
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const m = S.monsters[0];
+    m.alive = false; m.curHp = 0; m.respawnAt = Date.now() + 60000;
+  });
+  await P.page.waitForTimeout(300);
+  s = await st(P);
+  rec.ok('...but dying still drops it, burrowed or not', s.lock === null, s);
 
   await P.page.screenshot({ path: H.REPO + '/tools/qa/mp/.last-target.png' }).catch(() => {});
   await P.ctx.close().catch(() => {});

@@ -59,7 +59,16 @@
    identical, so a one-sided edit fails CI rather than shipping a lie. */
 export const STAM_ABILITIES = {
   bash: {
-    minLevel: 4,          /* MILESTONES[4] */
+    /* ═══ v2.3.2252: NO LEVEL GATE ═══
+       Owner: "Make shield bash an ability for any level (no gates) the only
+       requirement is you must have your shield held."
+       Kept as 0 rather than deleted: `abilityUnlocked` compares
+       `charLevel >= cfg.minLevel`, and a MISSING field makes that
+       `n >= undefined` -> NaN -> false, i.e. permanently LOCKED, which is the
+       exact opposite of ungated.  0 is always true and never rejects.
+       The requirement moved to "a shield, and it is raised" -- see
+       game/abilities.js abilityStatus. */
+    minLevel: 0,
     staminaPct: 0.30,     /* of maxStamina */
     cooldownMs: 4000,
     dmgMult: 0.75,        /* of a normal melee roll */
@@ -70,6 +79,15 @@ export const STAM_ABILITIES = {
     stunMs: 1600,
     knockback: 90,        /* px, vs 30 for a normal hit (combat.js) */
     needs: 'shield',
+    /* v2.3.2252: ...and it must be RAISED for the button to appear (client
+       rule; the server's authoritative requirement stays `needs`, because
+       ps.blocking is client-supplied on every move packet and a server gate on
+       it would be forgeable and lag-fragile). */
+    needsHeldShield: true,
+    /* v2.3.2252: how far the bash may CLOSE when it names its target.  240
+       covers the 220px targeting perimeter, so anything you can engage is
+       something you can bash to.  Only honoured for a declared target. */
+    reach: 240,
   },
   whirl: {
     minLevel: 8,          /* MILESTONES[8] */
@@ -134,7 +152,8 @@ export const STAM_ABILITIES = {
    module cycle noted at the top), so abilities.test.mjs imports both and
    asserts the two agree — one gate, one ladder entry, pinned together. */
 export const MILESTONES = {
-  4:  { kind: 'bash',  label: 'Shield Bash' },
+  /* v2.3.2252: see the client mirror -- rung 4 stops naming an ability. */
+  4:  { label: 'Sturdy Arm' },
   5:  { points: 1,     label: 'Bonus stat point' },
   6:  { burst: true,   label: 'Element Burst' },
   8:  { kind: 'whirl', label: 'Whirlwind' },
@@ -234,7 +253,10 @@ export const abilityMethods = {
     if (ps.dying || ps.disconnected) return;
 
     const level = this._abilCharLevel(ps);
-    if (level < cfg.minLevel) return reject('locked', { need: cfg.minLevel, have: level });
+    /* v2.3.2252: `cfg.minLevel &&` so an ungated ability (minLevel 0) never
+       takes this branch.  Whirlwind still carries 8 and still gates -- the
+       ladder gates per rung, it just no longer has a rung at 4. */
+    if (cfg.minLevel && level < cfg.minLevel) return reject('locked', { need: cfg.minLevel, have: level });
 
     /* Equipment gates, the v2.3.1682 lesson: a bash with no shield and a
        whirlwind with no sword are the "first swing is free" bug in a new
@@ -271,8 +293,43 @@ export const abilityMethods = {
     }
     inRange.sort((a, b) => a.d2 - b.d2);
     /* Bash is a single shove; whirlwind is the whole circle (bounded). */
-    const targets = (kind === 'bash') ? inRange.slice(0, 1)
+    let targets = (kind === 'bash') ? inRange.slice(0, 1)
       : inRange.slice(0, cfg.maxTargets || 8);
+
+    /* ═══ v2.3.2252: A BASH CLOSES THE DISTANCE, SO IT REACHES FURTHER ═══
+       Owner: "Shield bash almost never makes contact with the enemy.  Make
+       yourself always dash to the enemy and make contact whenever you use
+       shield bash."
+
+       It almost never made contact for a measurable reason.  The scan above is
+       feet-to-feet at radius 70, while every other combat system in the game
+       measures to the monster's BODY CENTRE -- and the player's own collision
+       ring parks them 58-84px from a monster's feet when they are visually
+       pressed against it.  For a mummy or a skeleton the closest position the
+       player can legally occupy is OUTSIDE 70px: the bash could not land even
+       while touching.  A sword swing reaches 96-122px to the same monster, so
+       the natural fighting distance was already 1.5-2x outside bash range.
+
+       The move is now a CLOSING move, so its reach is the distance it closes.
+       `reach` is used only when the client names the monster it dashed at --
+       the server still owns the damage, still checks damageability, and still
+       clamps the roll; what it accepts is a longer, DECLARED engagement rather
+       than an anonymous wider circle, so a client cannot use it to sweep a
+       crowd.  Falls back to the radius scan when no target is named, which is
+       what an older client sends: deploy-order safe in both directions, with
+       no caps flag, because the field is additive and optional. */
+    if (kind === 'bash' && !targets.length && payload && payload.targetId != null) {
+      const want = String(payload.targetId);
+      const reach = cfg.reach || cfg.radius;
+      for (const m of monsters) {
+        if (String(m.id) !== want) continue;
+        if (!this._monsterDamageable(m)) break;
+        const dx = (m.x || 0) - (ps.x || 0);
+        const dy = (m.y || 0) - (ps.y || 0);
+        if (dx * dx + dy * dy <= reach * reach) targets = [{ m, d2: dx * dx + dy * dy }];
+        break;
+      }
+    }
 
     let hits = 0;
     for (const t of targets) {

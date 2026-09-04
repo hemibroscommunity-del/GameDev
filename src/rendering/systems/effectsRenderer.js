@@ -21,7 +21,7 @@ export function effectsAnimationsReady() { return Promise.allSettled(_fxPreload)
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R, FISH_CUE_DY } from '@/data/constants.js';
-import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */ } from '@/data/index.js';
+import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */, monsterMeleeHitRadius /* v2.3.2251: sizes the ground ring to the body */ } from '@/data/index.js';
 import { gesturePose01 } from '@/game/gesturePose.js'; /* v2.3.2245 */
 import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1535 generalised */
@@ -1090,6 +1090,18 @@ export class EffectsRenderer {
 
     this.telegraphGfx = new Graphics();
     this.telegraphLayer.addChild(this.telegraphGfx);
+    /* ═══ v2.3.2251: THE ENGAGE PERIMETER, PAINTED ON THE GROUND ═══
+       Owner: "there should be a subtle visual perimeter around each monster
+       that shows you when your contextual attack button can engage."
+       Its own Graphics in the TELEGRAPH layer, which is BELOW `entities` --
+       that is the whole trick.  The version this replaces drew a 220px ring
+       per candidate into overlayWorld, the topmost world layer, so six of them
+       crossed every sprite on screen and read as background haze.  Down here
+       nothing it draws ever crosses a monster or the player: it reads as a
+       mark painted on the floor, the same category as the fire-trail scorch,
+       which is the category the eye forgives. */
+    this.engageRingGfx = new Graphics();
+    this.telegraphLayer.addChild(this.engageRingGfx);
     /* ═══ v2.3.2239: THE FIRE TRAIL GETS ITS OWN GROUND SURFACE ═══
        v2.3.2238 drew the patches into particleGfx, and its comment claimed
        they sat "UNDER the entities".  They did not: `particles` is ABOVE
@@ -3397,17 +3409,83 @@ export class EffectsRenderer {
          positive), and a mark drawn at the wrong y is indistinguishable
          from no mark at all in a crop. */
       const _marks = [];
-      if (_tc && _tc.length) {
+      /* ═══ v2.3.2251: A RING ON THE GROUND UNDER EVERY ENGAGEABLE MONSTER ═══
+         Sized from monsterMeleeHitRadius -- the SHARED per-archetype table the
+         swing hit-test already reads -- so it hugs the body it belongs to
+         (~68px across for a slime, ~120 for a skeleton) instead of being the
+         220px engage radius.  That is the difference that makes it subtle: at
+         the ~250-320px spacing the server's farthest-point spawn placement
+         produces, two of these can only touch when two monsters are standing
+         on each other, and then their sprites overlap too and the overlap is
+         information rather than noise.
+         Squashed to 0.38 for the house ground-plane perspective (the same
+         ratio the body shadows use), and ramped by distance -- brightest at
+         your feet, half strength out at the boundary -- so the ring itself
+         tells you how close to engageable you are.  `c.d2` is already on the
+         candidate (targeting.js), so the ramp costs one sqrt. */
+      const _erg = this.engageRingGfx;
+      if (_erg) _erg.clear();
+      if (_erg && _tc && _tc.length && !S._zoneLoading) {
+        const _lockNow = S.lockedTarget && S.lockedTarget.ref;
+        for (let i = 0; i < _tc.length; i++) {
+          const c = _tc[i];
+          if (!c || !Number.isFinite(c.x) || !Number.isFinite(c.y)) continue;
+          const mx = (c.m && (c.m.renderX != null ? c.m.renderX : c.m.x));
+          const my = (c.m && (c.m.renderY != null ? c.m.renderY : c.m.y));
+          if (!Number.isFinite(mx) || !Number.isFinite(my)) continue;
+          const rx = (monsterMeleeHitRadius(c.m && (c.m.arch || c.m.archetype || c.m.type)) || 24) + 10;
+          const ry = rx * 0.38;
+          const t = 1 - 0.5 * Math.min(1, Math.sqrt(c.d2) / (TARGET_PERIMETER_PX || 220));
+          const isCur = c.m === _lockNow;
+          /* ═══ v2.3.2253: THE RING FOLLOWS THE ARROW ═══
+             It used to go red only for a TAPPED target, which meant the ground
+             mark and the arrow above the head could disagree about what red
+             means.  One rule now, the owner's: yellow while a monster is merely
+             in reach, red while you are attacking -- so the two marks on the
+             same monster always say the same thing.  Lifted a little in weight
+             and alpha too, since "the red circle is a bit hard to see" was the
+             other half of the report. */
+          const _ringHot = !!(S.autoAttack || S.isSwinging
+            || (S.swingTimer && Date.now() - S.swingTimer < 420));
+          const col = isCur ? (_ringHot ? 0xFF3C3C : 0xD8A85F) : 0xB9C1BF;
+          _erg.ellipse(mx, my, rx, ry);
+          _erg.stroke({ color: 0x14181A, width: 3.5, alpha: 0.30 * t });
+          _erg.ellipse(mx, my, rx, ry);
+          _erg.stroke({ color: col, width: isCur ? 2.1 : 1.2, alpha: (isCur ? 0.75 : 0.34) * t });
+        }
+      }
+      /* v2.3.2251: the same `_zoneLoading` guard the ground rings take -- marks
+         must not paint over a per-zone loading overlay, and it gives the QA
+         crop a way to suppress the whole indicator without moving the scene. */
+      if (_tc && _tc.length && !S._zoneLoading) {
         const _lockRef = S.lockedTarget && S.lockedTarget.ref;
         /* One shared bob so the whole set pulses together rather than
            shimmering independently -- a field of out-of-phase carets reads
            as noise, which is the failure being fixed. */
         const _bob = Math.sin(now / 320) * 3;
         const _pulse = 0.55 + Math.sin(now / 320) * 0.2;
+        /* v2.3.2253: are you ATTACKING?  The thumb on the button (autoAttack)
+           or a swing still in flight -- the swing term is what stops the whole
+           field flicking back to yellow between swings of a held attack, which
+           would read as a fault rather than a state. */
+        const _atkHot = !!(S.autoAttack || S.isSwinging
+          || (S.swingTimer && now - S.swingTimer < 420));
         for (let i = 0; i < _tc.length; i++) {
           const c = _tc[i];
           if (!c || !Number.isFinite(c.x) || !Number.isFinite(c.y)) continue;
-          if (c.m === _lockRef) continue;   /* the reticle speaks for that one */
+          /* ═══ v2.3.2253: EVERY CANDIDATE GETS THE ARROW, TARGET INCLUDED ═══
+             Owner: "add the arrow above the monster head to show they are
+             targeted for combat (within their perimeter if the player crosses
+             that threshold) ... the red circle is a bit hard to see."
+
+             v2.3.2251 took the caret OFF the target and left the ground ring
+             and reticle to speak for it.  Those are ground marks under the
+             sprites, which is what makes them subtle -- and subtle is exactly
+             what the owner could not see.  So the arrow above the head is the
+             primary signal again, and it is drawn for EVERY monster whose
+             perimeter you have crossed, the target among them.  The ring stays
+             underneath as the quiet half. */
+          const isTarget = c.m === _lockRef;
           const nearest = i === 0;
           /* The caret sits above the body, not above the feet.
              monsterBodyOffsetY is the SHARED table (data/gameSystems.js) that
@@ -3418,10 +3496,28 @@ export class EffectsRenderer {
              table here for a marker to drift out of sync with (v2.3.1535's
              lesson: a variant that falls through lands its mark on the feet).
              It takes an arch/type STRING, not the monster. */
+          /* ═══ v2.3.2253: ABOVE THE NAMEPLATE, NOT BEHIND IT ═══
+             The first render of this put the arrow at `y - bodyOffset*2 - 10`,
+             which lands squarely on the monster's name pill and HP bar -- the
+             screenshot showed three arrows half-hidden behind "Slime LV 1",
+             which is most of why the owner could not see the mark.
+             Fixed by RAISING the mark 32 world px, not by riding
+             `m._popupTopOff`: that is the DAMAGE-NUMBER offset (-189 on a
+             fodder slime), and using it flung the arrow ~95 CSS px overhead,
+             clean off the monster and into the scenery.  Rendered both and
+             looked -- tools/qa/mp/mp-arrowshot.mjs is the camera, and it crops
+             from the marks the renderer reports so a bad offset shows up as a
+             bad picture instead of a passing assertion.
+             32 clears the name pill on every archetype (the pill is a fixed
+             height in world space; the per-archetype part is the body offset
+             already in the term below) without leaving the monster behind. */
           const _off = monsterBodyOffsetY(c.m && (c.m.arch || c.m.archetype || c.m.type)) || 23;
-          const _cy = c.y - _off * 2 - 10 + _bob;
-          const _w = nearest ? 7 : 5;
-          const _h = nearest ? 6 : 4;
+          const _cy = c.y - _off * 2 - 42 + _bob;
+          /* The TARGET's arrow is the big one -- it is the monster a press
+             takes -- and the rest are a step down.  Size, not colour, carries
+             "which one", because colour is spoken for: see below. */
+          const _w = isTarget ? 8 : 5;
+          const _h = isTarget ? 7 : 4;
           /* KEYLINE FIRST.  Brass (#D8A85F) is a warm sand yellow and so is
              the town cobble -- the first cut of this was legible on grass and
              snow and all but vanished on the town floor, which is also why
@@ -3437,21 +3533,35 @@ export class EffectsRenderer {
             gfx.lineTo(c.x + _w, _cy);
             gfx.stroke({ color: color, width: width, alpha: alpha });
           };
-          const _cw = nearest ? 2.5 : 1.5;
-          const _ca = nearest ? _pulse : _pulse * 0.5;
+          const _cw = isTarget ? 2.8 : 1.6;
+          const _ca = isTarget ? _pulse : _pulse * 0.55;
+          /* ═══ v2.3.2253: YELLOW MEANS IN REACH, RED MEANS FIGHTING ═══
+             Owner: "the arrow should be yellow if you're merely within combat
+             distance and turn red when you're attacking (any close monster
+             becomes red)."
+             So colour is a state of the PLAYER, not of the monster, and it is
+             applied to the whole set at once -- "any close monster becomes
+             red".  That is why size and not colour says which one is the
+             target: colour is already carrying the other axis, and a mark
+             cannot say two things with one channel. */
           _caret(_cw + 2.5, 0x14181A, _ca * 0.8);
-          _caret(_cw, 0xD8A85F, _ca);
-          if (nearest) {
+          _caret(_cw, _atkHot ? 0xFF3C3C : 0xD8A85F, _ca);
+          if (isTarget) {
             gfx.circle(c.x, c.y, 15);
             gfx.stroke({ color: 0x14181A, width: 3.5, alpha: _pulse * 0.5 });
             gfx.circle(c.x, c.y, 15);
-            gfx.stroke({ color: 0xD8A85F, width: 1.5, alpha: _pulse * 0.85 });
-            if (Number.isFinite(TARGET_PERIMETER_PX)) {
-              gfx.circle(c.x, c.y, TARGET_PERIMETER_PX);
-              gfx.stroke({ color: 0xD8A85F, width: 1, alpha: 0.08 });
-            }
+            gfx.stroke({ color: _atkHot ? 0xFF3C3C : 0xD8A85F, width: 1.5, alpha: _pulse * 0.85 });
+            /* v2.3.2251: the 220px ring that used to be drawn here is GONE.
+               It was the last survivor of the rejected full-radius version and
+               it is what the new ground rings replace -- keeping both would
+               give the pack one big circle AND a small ring each, which is the
+               noise it is trying to fix. */
           }
-          _marks.push({ id: c.m && c.m.id, x: c.x, y: _cy, nearest: nearest });
+          /* v2.3.2253: `target` and `hot` on the probe, so a scenario can
+             assert the owner's two rules -- which monster is the target, and
+             that the whole set turns red together when you attack -- without
+             trying to classify a colour out of a screenshot. */
+          _marks.push({ id: c.m && c.m.id, x: c.x, y: _cy, nearest: nearest, target: isTarget, hot: _atkHot });
         }
       }
       this._atkMarks = _marks;
@@ -3473,16 +3583,31 @@ export class EffectsRenderer {
         const lx = lt.x || lt.renderX || 0;
         const ly = lt.y || lt.renderY || 0;
         if (Number.isFinite(lx) && Number.isFinite(ly)) {
+          /* ═══ v2.3.2253: THE RETICLE OBEYS THE SAME RULE AS THE ARROW ═══
+             This was hard-coded red, and it is almost certainly the "red circle
+             is a bit hard to see" the owner reported: it sat on the target at
+             all times, so red meant nothing -- it could not distinguish "in
+             reach" from "attacking", and it competed with the two marks that
+             now do.  One rule across all three: brass while a monster is merely
+             in reach, red while you are attacking.  Slightly heavier too, since
+             legibility was the complaint. */
+          const _rtHot = !!(S.autoAttack || S.isSwinging
+            || (S.swingTimer && now - S.swingTimer < 420));
+          const _rtCol = _rtHot ? 0xff3c3c : 0xD8A85F;
           const lockR = 18 + Math.sin(now / 250) * 3;
+          /* Dark keyline first, same trick the arrow uses -- brass on town
+             cobble is brass on brass without one. */
           gfx.circle(lx, ly, lockR);
-          gfx.stroke({ color: 0xff3c3c, width: 2, alpha: 0.8 });
+          gfx.stroke({ color: 0x14181A, width: 4, alpha: 0.5 });
+          gfx.circle(lx, ly, lockR);
+          gfx.stroke({ color: _rtCol, width: 2.4, alpha: 0.9 });
           // Corner marks
           for (let c = 0; c < 4; c++) {
             const ca = (c / 4) * Math.PI * 2 + now / 1500;
             const cx = lx + Math.cos(ca) * lockR;
             const cy = ly + Math.sin(ca) * lockR;
-            gfx.circle(cx, cy, 2);
-            gfx.fill({ color: 0xff3c3c, alpha: 0.9 });
+            gfx.circle(cx, cy, 2.4);
+            gfx.fill({ color: _rtCol, alpha: 0.95 });
           }
         }
       }
@@ -3732,7 +3857,7 @@ export class EffectsRenderer {
    *  white rounded rectangle background + pointer tip + text.  Pooled
    *  per key as { container, bg (Graphics), text (Text), hasEmoji }
    *  in this.chatTexts.  Source can be either a player or an NPC. */
-  _renderChatBubble(key, sx, sy, text, age, totalMs = 5000) {
+  _renderChatBubble(key, sx, sy, text, age, totalMs = 5000, worldScale = 0) {
     const hasEmoji = !isAsciiOnly(text);
     let entry = this.chatTexts.get(key);
     if (entry && entry.text && entry.text.destroyed) {
@@ -3860,6 +3985,29 @@ export class EffectsRenderer {
     }
     entry.container.x = sx;
     entry.container.y = sy - 32;
+    /* ═══ v2.3.2247: THE BUBBLE HOLDS ITS READING SIZE ═══
+       The v2.3.1912 note above ends "Any future WORLD_ZOOM change moves this
+       again" -- and this is that change.  The bubble lives in the WORLD layer,
+       so what a player reads is fontSize x world scale, and v2.3.2247 makes
+       that scale PER ZONE: 21 x 0.601 = 12.6 effective px in a combat zone and
+       21 x 0.349 = 7.3 in town, against the 11px caption step that the 1912
+       bump existed to clear.  7px is not small type, it is unreadable type.
+
+       So the bubble counter-scales out of the world transform and holds the
+       14.0 effective px that v2.3.1912 settled on -- the size the owner asked
+       for ("chunkier and larger") stays the size they asked for in every zone.
+       Bumping fontSize instead would have to be re-bumped per zone, which is
+       the treadmill the 1912 note is complaining about.
+
+       worldScale 0 (an unknown/boot frame) leaves the bubble alone rather than
+       dividing by zero; it corrects itself on the next frame that knows. */
+    const _CHAT_TARGET_PX = 14.0;
+    if (worldScale > 0.01) {
+      const _cs = _CHAT_TARGET_PX / (21 * worldScale);
+      entry.container.scale.set(_cs);
+    } else {
+      entry.container.scale.set(1);
+    }
     entry.container.alpha = age > totalMs - 500 ? (totalMs - age) / 500 : 1;
     entry.container.visible = true;
     /* v2.3.1912: QA probe (tools/qa/mp/mp-chatfont.mjs).  Reports the
@@ -3905,7 +4053,7 @@ export class EffectsRenderer {
       if (pid !== S.myId && (source.zone || source.z || 'town') !== S.currentZone) continue;
       const sx = source.renderX || source.x || 0;
       const sy = source.renderY || source.y || 0;
-      this._renderChatBubble(pid, sx, sy, bubble.text, age);
+      this._renderChatBubble(pid, sx, sy, bubble.text, age, 5000, S._worldScaleX || 0);
       activeKeys.add(pid);
     }
 
@@ -3916,7 +4064,7 @@ export class EffectsRenderer {
       const age = now - npc.chatBubble.ts;
       if (age > 5000) continue;
       const key = 'npc:' + npc.id;
-      this._renderChatBubble(key, npc.x, npc.y, npc.chatBubble.text, age);
+      this._renderChatBubble(key, npc.x, npc.y, npc.chatBubble.text, age, 5000, S._worldScaleX || 0);
       activeKeys.add(key);
     }
 

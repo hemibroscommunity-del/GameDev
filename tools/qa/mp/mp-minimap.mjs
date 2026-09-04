@@ -28,7 +28,12 @@
  */
 import * as H from './harness.mjs';
 
-const BOX = 104;              /* MINIMAP_PX  */
+/* v2.3.2247: was `const BOX = 104`, a copy of MINIMAP_PX -- exactly the shape
+   TRAPS §35 warns about, and it went stale the moment the box was halved.
+   Now read off the live probe (window.__btMinimap.box) inside run(), because
+   a static import of minimapRenderer.js pulls pixi.js and '@/…' aliases that
+   plain node cannot resolve. */
+let BOX = 104;   /* replaced from the probe before any assertion runs */
 const EPS = 1.5;
 
 async function at(P, x, y) {
@@ -44,6 +49,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Mini', wsPort, webPort, viewport: { width: 390, height: 844 } });
   await H.enterWorld(P);
   await P.page.waitForTimeout(3000);
+
+  /* v2.3.2247: take the box size from the game, not from a copy up top. */
+  const _box = await P.page.evaluate(() => (window.__btMinimap || {}).box || null);
+  rec.ok('the minimap reports its own box size (guard)', typeof _box === 'number' && _box > 0, { box: _box });
+  if (typeof _box === 'number' && _box > 0) BOX = _box;
 
   /* v2.3.1813: the probe points are DERIVED from the zone, not typed in.
      They used to be (100 / 1536 / 2972), measured for the 96x30 clifftop —

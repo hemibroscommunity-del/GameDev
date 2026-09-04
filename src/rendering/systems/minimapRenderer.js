@@ -58,9 +58,18 @@ import { ZONES } from '@/data/zones.js';
 import { TILE } from '@/data/constants.js';
 import { questRouteExits } from '@/game/questRoute.js'; /* v2.3.1817: which portal the active quest wants; v2.3.2128: plural */
 
-/* Box size in CSS px.  104 is ~27% of a 390px phone's width — big enough
-   that a 3px dot reads, small enough to leave the corner usable. */
-export const MINIMAP_PX = 104;
+/* Box size in CSS px.
+   v2.3.1781: 104, ~27% of a 390px phone's width.
+   ═══ v2.3.2247: 104 -> 52 ═══
+   Owner: "shrink the minimap size by 50% but increase the size of the icons
+   on it."  Halving the box halves SCALE with it, so the same slice of world
+   (WINDOW_WORLD, unchanged) is drawn at half the size -- and because every
+   marker below is sized in CSS px and deliberately does NOT scale with SCALE,
+   the icons get twice as big RELATIVE to the map for free.  The bumps below
+   are on top of that, which is why they are modest: 12->14 and 14->17 lands
+   the glyphs at ~2.3x their old share of the box.  Much past that and the
+   markers stop being marks ON a map and become the map. */
+export const MINIMAP_PX = 52;
 /* How much world the box spans, in world px.  960 = 30 tiles ~= 1.6x the
    player's own viewport width (585 at WORLD_ZOOM 1.5) — enough context to
    plan a route without a monster dot going sub-pixel.
@@ -73,7 +82,7 @@ export const MINIMAP_PX = 104;
    Tying the two together is deliberate: if the town ever gets deeper, both
    numbers can move, and this comment is the second place to check. */
 export const WINDOW_WORLD = 960;
-const MARGIN = 10;   /* clears the 2px outer ring above */
+/* v2.3.2247: MARGIN removed — it was the corner gap the owner asked to close. */
 
 /* Icon footprint in CSS px.  11 is the smallest a distinct SHAPE survives at
    on a phone — below that everything becomes the same grey lozenge and only
@@ -87,13 +96,16 @@ const MARGIN = 10;   /* clears the 2px outer ring above */
    the two sizes is kept (the things you steer by stay the larger pair), and
    mp-minishot's pairwise distinctness check is what proves the bigger
    glyphs still tell each other apart rather than merging into blobs. */
-const ICON_PX = 12;
-const BIG_ICON_PX = 14;   /* buildings and quest markers: the things you steer by */
+/* v2.3.2247: 12 -> 14 and 14 -> 17, owner's "increase the size of the icons".
+   The ratio between the pair is kept, as v2.3.1819 kept it: the things you
+   steer by stay the larger of the two. */
+const ICON_PX = 14;
+const BIG_ICON_PX = 17;   /* buildings and quest markers: the things you steer by */
 const SCALE = MINIMAP_PX / WINDOW_WORLD;
 
 /* Marker radius in CSS px, and colours.  Lantern Slate (docs/LANTERN-SLATE-SPEC.md):
    brass is the one accent, hp-red for hostiles, xp-green for other bros. */
-const DOT_R = 3;
+const DOT_R = 4;   /* v2.3.2247: 3 -> 4, same reason as the icons above */
 const C_FRAME_BG   = 0x111e23;   /* COL.well  — recessed tray, and the void outside the zone */
 /* v2.3.1792: the flat ground.  A step up from the tray so the zone's EDGE
    still reads, and dark/desaturated so every marker colour — brass, red,
@@ -245,6 +257,14 @@ export class MinimapRenderer {
     this.root = new Container();
     this.root.label = 'minimap';
     this.root.visible = false;
+    /* ═══ v2.3.2247: 20% TRANSPARENT ═══
+       Owner: "Make it 20% transparent."  Container alpha, NOT a filter: a
+       filter over the WebGL canvas is the iOS grain hazard the shield icon was
+       just moved off (v2.3.2246 / TRAPS §42), and alpha on the root is one
+       multiply the compositor already does.  Set once -- nothing else writes
+       root.alpha, so the per-child alphas (the 0.42 shadow, the 0.75 ring)
+       keep their own relationships and simply ride this. */
+    this.root.alpha = 0.8;
     hudLayer.addChild(this.root);
 
     /* Recessed tray behind the map, so a not-yet-resident texture reads as
@@ -254,11 +274,11 @@ export class MinimapRenderer {
        the box has to read as a separate object sitting on top of the world,
        not as a lighter patch of it. */
     this.shadow = new Graphics();
-    this.shadow.roundRect(-2, -2, MINIMAP_PX + 4, MINIMAP_PX + 4, 10).fill({ color: 0x000000, alpha: 0.42 });
+    this.shadow.roundRect(-2, -2, MINIMAP_PX + 4, MINIMAP_PX + 4, 7).fill({ color: 0x000000, alpha: 0.42 });
     this.root.addChild(this.shadow);
 
     this.bg = new Graphics();
-    this.bg.roundRect(0, 0, MINIMAP_PX, MINIMAP_PX, 8).fill(C_FRAME_BG);
+    this.bg.roundRect(0, 0, MINIMAP_PX, MINIMAP_PX, 6).fill(C_FRAME_BG);
     this.root.addChild(this.bg);
 
     /* Everything that pans lives under `pan`, so the map image and every
@@ -295,13 +315,13 @@ export class MinimapRenderer {
     this.pan.addChild(this.markers);
 
     this.maskG = new Graphics();
-    this.maskG.roundRect(0, 0, MINIMAP_PX, MINIMAP_PX, 8).fill(0xffffff);
+    this.maskG.roundRect(0, 0, MINIMAP_PX, MINIMAP_PX, 6).fill(0xffffff);
     this.root.addChild(this.maskG);
     this.clip.mask = this.maskG;
 
     /* Brass hairline on top of the clipped content. */
     this.border = new Graphics();
-    this.border.roundRect(0.5, 0.5, MINIMAP_PX - 1, MINIMAP_PX - 1, 8)
+    this.border.roundRect(0.5, 0.5, MINIMAP_PX - 1, MINIMAP_PX - 1, 6)
       .stroke({ width: 1, color: C_BORDER, alpha: 0.75 });
     this.root.addChild(this.border);
 
@@ -309,7 +329,7 @@ export class MinimapRenderer {
     this._buildIcons();
     this._pool = [];
     this._used = 0;
-    this._topInset = MARGIN;
+    this._topInset = 0;
     this._insetFor = null;   /* the cssH the inset was measured at */
 
     /* Player marker sits above every other marker.  v2.3.1783: a CHEVRON, not
@@ -608,18 +628,29 @@ export class MinimapRenderer {
    *  because that rail is `50px + env(safe-area-inset-top)` — on a notched
    *  iPhone the inset is real and a constant would put the box back under the
    *  bar on exactly the primary platform.  Re-measured only when the canvas
-   *  size changes (rotation, resize), so it is not a per-frame layout read. */
+   *  size changes (rotation, resize), so it is not a per-frame layout read.
+   *
+   *  ═══ v2.3.2247: THE GAP GOES, THE RAIL CLEARANCE STAYS ═══
+   *  Owner now: "anchor it to the top right corner ... right now there's some
+   *  space between."  Two different numbers were making that space and only
+   *  one of them is the gap: the MARGIN padding is dropped on both axes, but
+   *  the rail's own height is NOT, because zeroing that is precisely the bug
+   *  the owner reported the first time (the box cut off by the zone-name bar).
+   *  "Top right corner of the game screen" is read as the top right of the
+   *  playable screen — flush against the rail and the right edge, no padding.
+   *  With no rail present (it is absent on some layouts) the box goes to 0 and
+   *  is genuinely in the corner. */
   _measureTopInset(canvas, cssH) {
     if (this._insetFor === cssH) return this._topInset;
     this._insetFor = cssH;
-    let inset = MARGIN;
+    let inset = 0;
     try {
       const cv = canvas || document.querySelector('canvas');
       const hdr = document.querySelector('.bt-zone-header');
       if (cv && hdr) {
         const c = cv.getBoundingClientRect();
         const h = hdr.getBoundingClientRect();
-        if (h.height > 0) inset = Math.max(MARGIN, Math.round(h.bottom - c.top) + MARGIN);
+        if (h.height > 0) inset = Math.max(0, Math.round(h.bottom - c.top));
       }
     } catch (e) { /* keep the default */ }
     this._topInset = inset;
@@ -698,7 +729,12 @@ export class MinimapRenderer {
     this.pan.x = spanW <= MINIMAP_PX ? (MINIMAP_PX - spanW) / 2 : Math.max(MINIMAP_PX - spanW, Math.min(0, wantX));
     this.pan.y = spanH <= MINIMAP_PX ? (MINIMAP_PX - spanH) / 2 : Math.max(MINIMAP_PX - spanH, Math.min(0, wantY));
 
-    this.root.x = Math.round(cssW - MINIMAP_PX - MARGIN);
+    /* ═══ v2.3.2247: FLUSH TO THE CORNER ═══
+       Owner: "anchor it to the top right corner of the game screen (right now
+       there's some space between)."  The MARGIN term is that space; it goes.
+       The 2px shadow ring still sits outside the box, so the visible edge
+       lands 2px in rather than bleeding off-canvas. */
+    this.root.x = Math.round(cssW - MINIMAP_PX);
     this.root.y = this._measureTopInset(canvas, cssH);
     this.root.visible = true;
 
@@ -887,6 +923,21 @@ export class MinimapRenderer {
           return out;
         })(),
         topInset: this.root.y,
+        /* ═══ v2.3.2247: THE BOX'S OWN NUMBERS, ON THE PROBE ═══
+           mp-minimap carried `const BOX = 104` and mp-minishot `const CMP =
+           12` -- copies that went stale the moment the box was halved and the
+           icons grown, which is TRAPS §35 exactly ("ask the game. Every one of
+           those values has a live handle").  They could not simply IMPORT the
+           constants: this module pulls in pixi.js and '@/…' aliases that plain
+           node cannot resolve, so a static import turns the whole scenario
+           into a load error.  A probe field is the handle that actually works
+           from a page context. */
+        box: MINIMAP_PX,
+        iconPx: ICON_PX,
+        bigIconPx: BIG_ICON_PX,
+        dotR: DOT_R,
+        alpha: this.root.alpha,
+        rootX: this.root.x,
         facingRot: this._player.rotation,
         playerBoxX: P.x * SCALE + this.pan.x,
         playerBoxY: P.y * SCALE + this.pan.y,

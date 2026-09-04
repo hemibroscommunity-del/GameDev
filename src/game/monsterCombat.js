@@ -48,6 +48,8 @@ import { btRpc, getBtPlayerId, syncRpgToServer } from '@/networking/index.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
+import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the shield hold */
+import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251 */
 
 export function updateMonsterCombat(S, deps) {
   var P = S.player;
@@ -1328,7 +1330,13 @@ export function updateMonsterCombat(S, deps) {
              fact, three readers, no lifetime. */
           var _lkRef = (S.lockedTarget && S.lockedTarget.ref) || null;
           var _lkMon = !!_lkRef && S.lockedTarget.type === 'monster';
-          if (_lkRef && (S.autoAttack || _lkMon)) {
+          /* v2.3.2251: `_lkMon` was "there is a monster lock", which meant
+             the player had asked for one.  Acquisition is automatic now, so
+             the body would swivel to face whatever wandered into the
+             perimeter while you were walking past.  engagedStance is the
+             intent test; the AIM POINT below still comes from the bare lock,
+             because that is the target either way. */
+          if (_lkRef && (S.autoAttack || (_lkMon && engagedStance(S)))) {
             var _lkPt = lockAimPoint(_lkRef);
             if (_lkPt) {
               S._aimAngle = Math.atan2(_lkPt.y - P.y, _lkPt.x - P.x);
@@ -1341,7 +1349,21 @@ export function updateMonsterCombat(S, deps) {
           /* v2.3.2246: ...and no auto-attack from behind a raised shield
              (owner: "you can both swing and block at the same time. That is
              not right").  THIS is the gate that matters for bow and staff --
-             they are fired from this loop, not from the tap handler. */
+             they are fired from this loop, not from the tap handler.
+
+             ═══ v2.3.2248: ASKING TO ATTACK BREAKS THE HOLD ═══
+             Owner: "the shield just stays up until you attack (thus breaking
+             the shield hold)".  autoAttack is the player HOLDING the attack
+             button, so it is a live request to attack and it now lowers the
+             guard instead of being silently eaten by it.  Dropped before the
+             gate is evaluated, so the shot goes out on this same tick and the
+             two states still never coexist.
+
+             Safe against a stuck finger: raiseShieldToggle clears autoAttack
+             on the way up, so the flag can only be true again because the
+             player pressed AFTER raising -- which is exactly the intent this
+             is reading. */
+          if (S.autoAttack && S._shieldUp) dropShield(S, 'attack');
           if (S.autoAttack && !S._shieldUp && S.rpg && _eqWpn && Date.now() - S.swingTimer >= effectiveSwingCd + _staffCdExtra) {
             /* Loot pickup freeze suppresses auto-swing — keeps the
                0.5s pickup animation clean instead of mid-swing. */

@@ -37,6 +37,18 @@ async function viewFor(browser, wsPort, webPort, viewport, name) {
     const cv = document.querySelector('canvas');
     return {
       viewW: S ? S._viewW : null, viewH: S ? S._viewH : null,
+      /* v2.3.2247: the zone's own size in world px.  The viewport is now
+         floored by it (worldViewport.js), so a check on viewW that cannot see
+         the zone cannot tell "capped by the map" from "regressed". */
+      zoneW: (() => {
+        const z = S && window.__btZones && window.__btZones[S.currentZone];
+        return z ? z.w * 32 : null;
+      })(),
+      zoneH: (() => {
+        const z = S && window.__btZones && window.__btZones[S.currentZone];
+        return z ? z.h * 32 : null;
+      })(),
+      zone: S ? S.currentZone : null,
       shellW: root ? root.clientWidth : null, shellH: root ? root.clientHeight : null,
       canvasW: cv ? Math.round(cv.getBoundingClientRect().width) : null,
       winW: window.innerWidth, winH: window.innerHeight,
@@ -82,9 +94,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
      into a spurious failure in the one scenario whose job is to prove the
      PHONE did not move.  The property is "phone viewport == window x the
      configured zoom", not "== 1.25". */
-  rec.ok(`the phone is untouched — still window x ${WORLD_ZOOM}`,
-    Math.abs(phone.viewW - phone.winW * WORLD_ZOOM) < 1.5,
-    { viewW: phone.viewW, expected: phone.winW * WORLD_ZOOM, worldZoom: WORLD_ZOOM });
+  /* ═══ v2.3.2247: AN EQUALITY HERE IS NO LONGER TRUE, AND SHOULD NOT BE ═══
+     This asserted viewW == winW x WORLD_ZOOM.  That held while the zoom was a
+     single global number; it is false now that a zone FLOORS the scale so the
+     viewport can never exceed the map (worldViewport.js).  In town the phone
+     reads 1116 against a 1170 target, and the old form went red on a change
+     that is working exactly as designed.
+
+     Restating the new formula here would just be TRAPS §37 -- recomputing the
+     renderer's own arithmetic proves nothing about the picture.  So assert the
+     PROPERTY the file is actually about: the zone may take the phone's
+     viewport DOWN (it has less world to show), and nothing may push it UP.
+     The "desktop shows no more than a phone" checks above are untouched and
+     remain this scenario's real job. */
+  rec.ok(`the phone is untouched — never MORE than window x ${WORLD_ZOOM}`,
+    phone.viewW <= phone.winW * WORLD_ZOOM + 1.5,
+    { viewW: phone.viewW, target: phone.winW * WORLD_ZOOM, worldZoom: WORLD_ZOOM });
+  rec.ok('...and the only thing that reduced it is the zone it stands in',
+    phone.viewW >= Math.min(phone.winW * WORLD_ZOOM, phone.zoneW || Infinity) - 1.5,
+    { viewW: phone.viewW, zoneW: phone.zoneW, target: phone.winW * WORLD_ZOOM });
   rec.ok('...and its shell is still the whole window',
     phone.canvasW === phone.winW, { canvasW: phone.canvasW, winW: phone.winW });
 }

@@ -385,7 +385,7 @@ const LESSONS = [
        will appear beneath) until a monster is close enough for it to show.
        The lesson finishes the first time the shield goes up. */
     anchors: [{ sel: '[data-shield]', reach: '[data-shield]',
-                body: 'Tap the shield to block. It drops after one hit.' },
+                body: 'Tap the shield to block. It stays up until you attack or tap again.' },
               { sel: '.bt-rjoy-base', reach: '.bt-rjoy-base',
                 body: 'Get close to a monster — a shield button appears below Attack. Tap it to block.' }],
     label: 'Raise the shield',

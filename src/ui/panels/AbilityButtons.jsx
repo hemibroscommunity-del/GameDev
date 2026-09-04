@@ -1,6 +1,7 @@
 import React from 'react';
 import { ABILITY_META } from '@/data/index.js';
 import { abilityStatus, castAbility } from '@/game/abilities.js';
+import { blockRingBus } from '@/ui/mobile/blockRingBus.js'; /* v2.3.2252: the bash button follows the shield's edge, not a 200ms poll */
 
 /* ═══ v2.3.1733: THE ABILITY BUTTONS ═══
  *
@@ -38,7 +39,17 @@ export function AbilityButtons(props) {
   var setTick = _tick[1];
   React.useEffect(function () {
     var id = setInterval(function () { setTick(function (v) { return (v + 1) % 1000000; }); }, 200);
-    return function () { clearInterval(id); };
+    /* ═══ v2.3.2252: THE SHIELD MOVES THIS BUTTON, SO IT MUST NOT WAIT ═══
+       Shield Bash's button is visible exactly while the shield is RAISED
+       (game/abilities.abilityStatus).  On the 200ms poll alone that reads as a
+       button that arrives late and lingers after the shield drops -- and the
+       lingering half is worse than cosmetic: a tap in that window routes into
+       castAbility, which re-checks the live state and refuses, so the button is
+       on screen and dead.  blockRingBus is the bus shieldToggle already emits
+       on for every raise and drop, so the button re-renders on the same edge
+       the shield does. */
+    var off = blockRingBus.subscribe(function () { setTick(function (v) { return (v + 1) % 1000000; }); });
+    return function () { clearInterval(id); try { off(); } catch (e) { /* already gone */ } };
   }, [setTick]);
 
   var S = stateRef && stateRef.current;

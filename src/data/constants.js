@@ -4,38 +4,48 @@ export const TILE = 32;
 /* v2.3.1090: world zoom-out factor. The logical viewport (W/H) is enlarged by
    this factor so the renderer shows WORLD_ZOOM× more world than CSS pixels,
    which makes the world scale = cssW/viewW = 1/WORLD_ZOOM (e.g. 0.8 at 1.25).
-   Restores the historical "0.8 world scale" feel the game shipped with before
-   the viewport lost its 1.25 factor and everything read 20% too big/zoomed-in.
    Consumed by BOTH the render call (src/game/renderFrame.js) and the camera
    centering (src/ui/BroTown.jsx) so the two stay consistent; world<->screen
    conversions (tap-to-lock) read the published S._worldScaleX/Y instead of
    assuming 1.0, so they track this automatically. Tune on the preview.
 
-   v2.3.1780: 1.25 -> 1.5, settled on a preview build in two steps.
+   v2.3.1780: 1.25 -> 1.5.
 
-   Owner first asked to see "the game area zoomed out 50% more as the standard
-   view", which is 1.875 (scale 0.8 -> 0.5333, 1.5x more world each way).  Two
-   things came out of looking at that on a phone:
+   ═══ v2.3.2247: 1.5 -> 3.0, AND THE CEILING MOVED INTO worldViewport ═══
 
-   1. It reads too far out.  Owner: "it needs to be about 25-33% more zoomed
-      in from here."  25% in from 1.875 is exactly 1.5.
-   2. At 1.875 the viewport is TALLER THAN THE TOWN.  Measured on a 390x844
-      phone the canvas is 615 CSS px tall, so viewH = 615 * WORLD_ZOOM: 1153
-      world px at 1.875, against a town plateau only 30 tiles = 960 px deep.
-      The camera's v2.3.819 clamp then centres a map smaller than the view and
-      leaves ~96px of void above and below.  Not a clamp bug -- that branch is
-      deliberate -- but it IS the hard ceiling on this constant while the town
-      is 30 tiles deep.  1.5 puts viewH at 922, inside 960 with margin.
+   Owner: "the game is too zoomed in ... zoom out the game screen area by 50%
+   (this should make player smaller)", then, on being shown the ceiling below,
+   "don't zoom out larger than the screen area would show."
 
-   So 1.5 is both the requested feel and the largest value the current maps
-   can carry.  If the town ever gets deeper, that ceiling moves with it, and
-   this comment is where to check the arithmetic before raising this number.
+   3.0 is exactly half the old world scale, i.e. the requested 50%: on a 390pt
+   phone 1/1.5 = 0.667 becomes 1/3 = 0.333 and the bro renders half as tall.
 
-   Net from where this started: scale 0.8 -> 0.6667, i.e. 20% more world
-   visible in each direction (44% more area), and the bro renders ~17%
-   smaller.  The HUD and keybind hints do NOT scale with the world, so they
-   cover proportionally more of the screen than they used to. */
-export const WORLD_ZOOM = 1.5;
+   WHY THIS IS NO LONGER THE WHOLE STORY.  The v2.3.1780 note that used to live
+   here capped this constant at ~1.5 because "at 1.875 the viewport is TALLER
+   THAN THE TOWN ... a town plateau only 30 tiles = 960 px deep".  That was
+   true of the 96x30 plateau and has been WRONG since v2.3.1813 re-fused the
+   town from a new pair of halves: town is 52x55 tiles = 1664x1760 world px,
+   so it is now the DEEPEST zone in the game, not the shallowest.  The owner
+   is the one who caught it ("the town is actually larger, its two images
+   fused together").  Deleted rather than corrected in place, because the
+   conclusion it fed -- that ONE number can be checked against ONE map -- is
+   the part that was wrong.
+
+   The real ceiling is PER ZONE and belongs to the zone, not to this constant:
+
+       town       1664x1760      worldview  1536x1536
+       shadow/radiant 1280x1280  farm_home   960x 800
+       the nine combat zones     1024x1024
+
+   A 1024px-deep zone does not CONTAIN 1845px of world to show, so past its own
+   limit zooming out buys void, not view -- the camera clamp's "map smaller
+   than the viewport" branch (BroTown, v2.3.819) centres it and draws empty
+   tray above and below.  So worldViewport() now floors the scale per zone and
+   this number is a TARGET the zone is allowed to refuse: town takes nearly all
+   of it (scale 0.349, bro 48% smaller), a combat zone stops at its own edge
+   (0.60, 10% smaller).  Raising this further only ever moves the town and the
+   hubs; the combat zones move when their ART gets bigger, and nowhere else. */
+export const WORLD_ZOOM = 3.0;
 
 /* Ore is mined from one tile NORTH of the vein (so the south-facing swing
    lines up over the rock). The player must stand within MINE_SPOT_R of that

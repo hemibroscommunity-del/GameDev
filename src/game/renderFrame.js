@@ -36,7 +36,9 @@ export function renderFrame(S, deps) {
              Must match the camera-centering W/H in BroTown.jsx. */
           /* v2.3.1768b: same worldViewport() the camera reads, so "must match
              the camera-centering W/H" is guaranteed instead of hoped for. */
-          var _wv = worldViewport(canvas);
+          /* v2.3.2247: same zone id the camera passes, so the per-zone zoom
+             floor resolves identically in both -- see worldViewport.js. */
+          var _wv = worldViewport(canvas, S.currentZone);
           var W = _wv.W;
           var H = _wv.H;
           try {
