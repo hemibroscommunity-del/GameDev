@@ -178,6 +178,9 @@ function hideZoneLoadingOverlay() {
  *                 each one to the owner's CURRENT position every frame, so a
  *                 shooter who zoned out teleported their arrow across the map.
  *   _whirlFx / _bashPose / _fxBursts — short-lived, but free.
+ *   _bashDash / _dashStrike — the lunge in flight (v2.3.2260).  Not merely
+ *                 short-lived: the record REFERENCES a monster in the zone
+ *                 you left, and the movement block would keep closing on it.
  *
  * Called from every clear block instead of adding six lines to each, so the
  * next zone-change path cannot half-adopt the list. */
@@ -194,6 +197,14 @@ export function clearZoneLocalFx(S) {
   S._remoteProjectiles = [];
   S._whirlFx = null;
   S._bashPose = null;
+  /* ═══ v2.3.2260: A LUNGE DOES NOT FOLLOW YOU THROUGH A DOOR ═══
+     The dash record holds a REF to a monster in the zone you just left, and
+     since v2.3.2260 it also holds the strike it will fire on arrival -- so a
+     zone change mid-lunge would leave the movement block chasing a monster
+     that is not here and then sending an `ability` for it.  Cleared with the
+     rest of the zone-local state, in the one list that cannot be half-adopted. */
+  S._bashDash = null;
+  S._dashStrike = null;
   S._fxBursts = [];
 }
 

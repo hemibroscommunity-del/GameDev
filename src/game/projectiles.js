@@ -184,6 +184,22 @@ export function updateArrows(S, deps) {
                reset _released for every in-flight arrow -- they snapped back to
                the grip and froze for 110 ms ("arrows freeze mid-flight"). */
             if (a._bornTs == null) a._bornTs = Date.now();
+            /* ═══ v2.3.2259: A STAGGERED VOLLEY WAITS ITS TURN AT THE CASTER ═══
+               The staff special is three orbs on ONE ray now (playerActions.js);
+               what makes that three HITS rather than one wall is that each waits
+               `launchDelayMs` at the hand before it flies.  A held orb does not
+               advance, does not age and cannot hit -- so the trailing orbs cover
+               exactly the same 560 px the first one does.  (Spending `life`
+               while waiting would leave orb 3 sixty pixels short, and "the same
+               linear path" would then be true only near the caster.)
+               Distinct from the bow's nock (`fromGrip` + the 110 ms latch just
+               below), which deliberately DOES ride the grip and DOES age: that
+               is a draw animation, this is a queue. */
+            if (a.launchDelayMs > 0 && (Date.now() - a._bornTs) < a.launchDelayMs) {
+              a._renderX = P.x + Math.cos(a.ang) * a.dist;
+              a._renderY = P.y + Math.sin(a.ang) * a.dist;
+              return true;
+            }
             if (!a._released) a._released = !a.fromGrip || (Date.now() - a._bornTs) >= 110;
             var _released = a._released;
             if (a.fromGrip && (!_released || a._ox == null) && S._bowGripX != null) {
@@ -230,12 +246,103 @@ export function updateArrows(S, deps) {
                `life` becomes fractional — every reader compares or divides
                (`life <= 0`, `life / 20` for the fade), none index by it. */
             var _pdt = S._dtScale || 1;
-            if (_released) a.dist += (a.isStaff ? 5 : 8 * (a._rangeMult || 1)) * _pdt;
+            /* v2.3.2262: `speedPx` is an optional per-projectile override.  The
+               magic special's three orbs each fly at their own speed (fast,
+               medium, slow -- owner), and speed is otherwise a property of the
+               weapon TYPE, so the override is the smallest way to let one
+               volley disagree with its own type.  Absent on everything else,
+               which keeps the bow's _rangeMult path exactly as it was. */
+            if (_released) a.dist += (a.speedPx != null ? a.speedPx
+              : (a.isStaff ? 5 : 8 * (a._rangeMult || 1))) * _pdt;
             a.life -= _pdt;
-            if (lockPt) a.ang = Math.atan2(lockPt.y - (P.y + _oy), lockPt.x - (P.x + _ox));
-            else if (freeAim !== null) a.ang = freeAim;
-            a._renderX = P.x + _ox + Math.cos(a.ang) * a.dist;
-            a._renderY = P.y + _oy + Math.sin(a.ang) * a.dist;
+            /* ═══ v2.3.2258: A LOOSED ARROW KEEPS THE LINE IT WAS SHOT ON ═══
+               Owner: "Instead of the projectile changing course mid flight with
+               rotational change of the right joystick, I now want the projectile
+               to stay on the original flight path it was shot from and to stay
+               on that path until termination."
+
+               TWO things tied a flying arrow to the present, not one.  The
+               obvious one is the angle: `a.ang` was rewritten every frame from
+               the LIVE lock point or the LIVE aim angle, so turning the stick
+               swept the arrow round with it.  The other is the origin --
+               position was `P.x + _ox + cos(ang) * dist`, measured from where
+               the player IS, so walking after the shot dragged the whole flight
+               line along behind you.  A path is an origin AND a direction; both
+               have to be stamped at release or it is not the path it was shot
+               on.
+
+               BEFORE release the old behaviour is exactly right and is kept:
+               while the arrow is nocked (the 110ms in v2.3.1095's latch) it
+               rides the bow grip and follows the aim, because it has not been
+               loosed yet.  The stamp happens on the first frame after release.
+
+               v2.3.1425's stuck-in-monster arrows return above this line and
+               never reach it; planting (below) already flies in absolute world
+               coords and is unaffected.
+
+               ═══ v2.3.2260: AND MAGIC FLIES STRAIGHT TOO ═══
+               v2.3.2258 left staff bolts homing and said so, on the reading
+               that the owner had scoped the request to "bow weapons".  The
+               follow-up settles it the other way: "the flight path behavior of
+               the bow and magic are BOTH broken", so both keep the line they
+               were fired on.
+
+               This is also load-bearing rather than cosmetic.  The same
+               version's fix for the cardinal flight path makes `_aiming` and
+               `_aimAngle` live for ranged again, and `freeAim` above is
+               `S._aiming ? S._aimAngle : null` -- re-read on EVERY frame by
+               every projectile that is not a released bow arrow.  Left as it
+               was, turning the aim back on would have silently restored
+               mid-flight steering to every staff bolt, to the three-orb
+               special line (v2.3.2259 -- the orbs would fan apart as the thumb
+               moved, undoing "the same linear path"), and to the retreat cone.
+               So the two changes have to ship together: the aim comes back,
+               and the projectiles stop listening to it after release.
+
+               ═══ v2.3.2261: ...AND MAGIC IS PUT BACK THE WAY IT WAS ═══
+               Owner: "Magic projectiles still need the ability to change course
+               with the right joystick rotation mid flight" / "Keep bow mechanics
+               the same."  Which is the pre-v2.3.2258 split exactly: the original
+               request that started all of this was scoped to BOW ("the
+               projectile to stay on the original flight path it was shot from"),
+               v2.3.2260 over-applied it to staff, and this puts the line back
+               where the owner drew it.
+
+               `!a.isStaff` restores BOTH halves of the freeze for magic, not
+               just the angle -- the origin too, because _pathX is only stamped
+               inside this branch.  So a staff bolt once again sweeps around the
+               PLAYER rather than around its launch point, which is what it did
+               before v2.3.2258 and therefore what "still need the ability" is
+               describing.  Worth naming because it is a second behaviour riding
+               on one flag: walking after a cast drags the bolt's line along with
+               you.  That was a real defect for BOWS (v2.3.2258's note) and is
+               the accepted cost of homing for magic; if it reads wrong in play
+               it is separable -- keep the origin stamp for staff and re-resolve
+               only the angle.
+
+               THE THREE ORBS STAY COLLINEAR.  They re-resolve a.ang from the
+               same lockPt / freeAim on the same frame, so they sweep together
+               and v2.3.2259's "same linear path" survives -- the line rotates,
+               it does not fan. */
+            var _straight = _released && !a.isStaff;
+            if (_straight && a._pathX == null) {
+              /* First frame after release: freeze the launch point in ABSOLUTE
+                 world coords, the grip offset included, and keep whatever angle
+                 the aim resolved to on this frame -- that is the line the shot
+                 was actually taken along. */
+              if (lockPt) a.ang = Math.atan2(lockPt.y - (P.y + _oy), lockPt.x - (P.x + _ox));
+              else if (freeAim !== null) a.ang = freeAim;
+              a._pathX = P.x + _ox;
+              a._pathY = P.y + _oy;
+            }
+            if (!_straight) {
+              if (lockPt) a.ang = Math.atan2(lockPt.y - (P.y + _oy), lockPt.x - (P.x + _ox));
+              else if (freeAim !== null) a.ang = freeAim;
+            }
+            var _bx = a._pathX != null ? a._pathX : P.x + _ox;
+            var _by = a._pathY != null ? a._pathY : P.y + _oy;
+            a._renderX = _bx + Math.cos(a.ang) * a.dist;
+            a._renderY = _by + Math.sin(a.ang) * a.dist;
             if (a.life <= 0) return false;
             /* v2.3.1095: range / screen-edge limit (regular arrows, not staff
                magic).  Once a flying arrow nears the visible edge or exceeds the
@@ -269,10 +376,17 @@ export function updateArrows(S, deps) {
               /* v2.3.1426: a stuck special takes no further hits -- the
                  bow special pierces, so without this gate it would keep
                  chaining through monsters after embedding in one.
-                 v2.3.1435: the staff-special volley shares volleyHitIds
-                 -- one orb per monster; sister orbs pass it and fly on
+                 v2.3.1435: the staff-special volley shared volleyHitIds
+                 -- one orb per monster; sister orbs passed it and flew on
                  to the rest of the pack (owner: special was 4-hitting
-                 single monsters). */
+                 single monsters).
+                 v2.3.2259: NOTHING SETS volleyHitIds ANY MORE.  The owner
+                 asked for the three-hits-on-one-monster shape back ("so
+                 that way a monster can get hit 3 times in a row"), so the
+                 staff special stopped sharing a set.  The guard is left
+                 standing because it is the mechanism a shared-hit volley
+                 needs and it is inert without the field -- but do not read
+                 it as live behaviour. */
               /* v2.3.2224: `isIntangible` sits with !m.alive because it means
                  the same thing to a projectile -- there is nothing here to
                  collide with.  NOT added to hitIds, so a pierce shot does not

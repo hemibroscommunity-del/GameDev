@@ -58,6 +58,40 @@
    availability.  server/test/abilities.test.mjs asserts the two objects are
    identical, so a one-sided edit fails CI rather than shipping a lie. */
 export const STAM_ABILITIES = {
+  /* ═══ v2.3.2258: THE SWORD'S OPENING LUNGE ═══
+     Owner: "For ONLY melee (sword) ... the default first attack will be very
+     similar to 'shield bash' (you can even re-use the mechanic but for sword)
+     and keep the stun enemy effect.  I've been feeling like melee is a little
+     underpowered so this should help.  Also make the cost of sword dash 10%
+     stamina."
+
+     So it IS the bash mechanic, re-pointed: the same declared-target dash that
+     v2.3.2252 built to make a shove connect (name the monster, close the gap
+     frame by frame, let the worker validate the longer reach), with a sword's
+     numbers instead of a shield's.  Differences from bash, all deliberate:
+       needs 'weapon' rather than 'shield', and no needsHeldShield -- this is
+         what a sword does, not what a raised guard does;
+       staminaPct 0.10, the owner's number, against bash's 0.30;
+       dmgMult 1.0, because this REPLACES the first swing rather than adding a
+         second move on top of it -- 0.75 would have made opening with it a
+         damage LOSS, which is the opposite of "melee is underpowered";
+       knockback 40 against bash's 90: a lunge closes distance, and shoving the
+         target back out of reach on the opening hit would undo the dash;
+       stunMs 1600 unchanged -- "keep the stun enemy effect", verbatim.
+     cooldownMs is the real limiter (see game/abilities.js maybeSwordDash): the
+     move is "the first attack of an engagement", and 2500 is what stops a
+     release-and-re-press from making every swing a lunge. */
+  sworddash: {
+    minLevel: 0,
+    staminaPct: 0.10,
+    cooldownMs: 2500,
+    dmgMult: 1.0,
+    radius: 70,
+    stunMs: 1600,
+    knockback: 40,
+    needs: 'weapon',
+    reach: 240,
+  },
   bash: {
     /* ═══ v2.3.2252: NO LEVEL GATE ═══
        Owner: "Make shield bash an ability for any level (no gates) the only
@@ -293,7 +327,9 @@ export const abilityMethods = {
     }
     inRange.sort((a, b) => a.d2 - b.d2);
     /* Bash is a single shove; whirlwind is the whole circle (bounded). */
-    let targets = (kind === 'bash') ? inRange.slice(0, 1)
+    /* v2.3.2258: sworddash is a single lunge, like bash -- one target, the
+       nearest.  Whirlwind is still the whole circle. */
+    let targets = (kind === 'bash' || kind === 'sworddash') ? inRange.slice(0, 1)
       : inRange.slice(0, cfg.maxTargets || 8);
 
     /* ═══ v2.3.2252: A BASH CLOSES THE DISTANCE, SO IT REACHES FURTHER ═══
@@ -318,7 +354,7 @@ export const abilityMethods = {
        crowd.  Falls back to the radius scan when no target is named, which is
        what an older client sends: deploy-order safe in both directions, with
        no caps flag, because the field is additive and optional. */
-    if (kind === 'bash' && !targets.length && payload && payload.targetId != null) {
+    if ((kind === 'bash' || kind === 'sworddash') && !targets.length && payload && payload.targetId != null) {
       const want = String(payload.targetId);
       const reach = cfg.reach || cfg.radius;
       for (const m of monsters) {

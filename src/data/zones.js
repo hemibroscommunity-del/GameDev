@@ -40,6 +40,28 @@ export const ZONES = {
     spawns: [],
     atmosphere: { tint: 'rgba(180,200,230,0.03)', vignette: 'rgba(80,110,150,0.05)' },
     playerScale: { near: 0.55, far: 0.03, curve: 0.6 },
+    /* ═══ v2.3.2257: THE VISTA KEEPS THE PRE-v2.3.2247 WIDTH RULE ═══
+       Owner: "For character size in worldview revert to how big the character
+       was previously.  He's too small in worldview now."
+       He is: playerScale above already shrinks him on purpose, and v2.3.2247's
+       per-zone floors then shrank the WORLD too -- 48x48 is 1536 world px, so
+       this zone never reaches its own floor and drops to the flat
+       FIGURE_SCALE_FLOOR.  0.50 against the 0.735 the old rule gave on a 430pt
+       phone: 29.1 CSS px of character where there used to be 42.7.
+       585 is `Math.round(390 * 1.5)` -- REF_VIEW_W at the WORLD_ZOOM of the
+       day, read off worldViewport.js at 2deb56a, the commit before v2.3.2247.
+       It is a floor like every other term, so it can only zoom IN and can
+       never draw void: 1536 world px against a 585-wide view has room to
+       spare.  worldViewport reads these; nothing else does.
+
+       BOTH AXES, because the old rule had both.  The first cut carried only
+       the width and applied it in either orientation, which is not the rule it
+       claims to restore: sideways, pre-v2.3.2247 used REF_VIEW_H = 480 on the
+       HEIGHT (the two-widths law, v2.3.2156).  Spending the width there gave
+       844/585 = 1.443 -- the vista zoomed to nearly triple, the figure from
+       31.9 to 83.9 CSS px.  Caught by putting a landscape row in the table. */
+    refViewW: Math.round(390 * 1.5),   /* 585 -- portrait */
+    refViewH: 480,                     /* sideways, the same commit's REF_VIEW_H */
     /* ═══ v2.3.2124: THE MAGNIFYING GLASS ═══
        Owner: "there was a fair point about the character being too small in
        worldview.  Maybe it can show character full size but through a

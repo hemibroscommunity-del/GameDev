@@ -71,6 +71,51 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and it does NOT quietly reconnect behind the banner',
     stayedOut.live === false && stayedOut.status === 'idle', stayedOut);
 
+  /* ═══ v2.3.2255: THE BANNER MUST CLEAR THE STATUS BAR ═══
+     Owner's screenshot of the installed app: this exact banner painted INSIDE
+     the iOS status bar -- its text behind the clock, its middle behind the
+     Dynamic Island, and the "I'm back" button under the battery icon.
+     Measured off the native 1290x2796 capture, the banner sat at CSS y 11..33
+     on a phone whose top safe area is 59px, so the one control that puts the
+     player back in the world was illegible and partly untappable.
+
+     index.html sets viewport-fit=cover, so drawing under the status bar is the
+     DESIGN and every top-pinned element has to clear it itself.  env() cannot
+     be set in a headless browser -- which is exactly why resize() measures it
+     off #bt-sab-probe and stamps it (v2.3.2178's mechanic, now with the fourth
+     side).  Override the probe and the whole chain is testable. */
+  const bannerTop = async (inset) => A.page.evaluate((px) => {
+    let st = document.getElementById('bt-sat-sim');
+    if (!st) { st = document.createElement('style'); st.id = 'bt-sat-sim'; document.head.appendChild(st); }
+    st.textContent = px > 0 ? `#bt-sab-probe{padding-top:${px}px!important}` : '';
+    window.dispatchEvent(new Event('resize'));
+    return new Promise((r) => setTimeout(() => {
+      const el = document.getElementById('bt-resume-banner');
+      if (!el) return r(null);
+      const cs = getComputedStyle(el);
+      const b = el.getBoundingClientRect();
+      const btn = el.querySelector('button');
+      r({
+        sat: getComputedStyle(document.documentElement).getPropertyValue('--sat').trim(),
+        top: Math.round(b.top), padTop: Math.round(parseFloat(cs.paddingTop) || 0),
+        contentTop: Math.round(b.top + (parseFloat(cs.paddingTop) || 0)),
+        btnTop: btn ? Math.round(btn.getBoundingClientRect().top) : null,
+      });
+    }, 700));
+  }, inset);
+
+  const satOff = await bannerTop(0);
+  rec.ok('in a browser tab the banner is unchanged (no inset, no gap)',
+    !!satOff && satOff.padTop === 10 && satOff.sat === '0px', satOff);
+  const satOn = await bannerTop(59);
+  rec.ok('installed, the measured top inset reaches the layout as --sat',
+    !!satOn && satOn.sat === '59px', satOn);
+  rec.ok(`...and the banner's text starts BELOW the status bar (content top ${satOn && satOn.contentTop} vs inset 59)`,
+    !!satOn && satOn.contentTop >= 59, satOn);
+  rec.ok(`...and so does the button that reconnects you (top ${satOn && satOn.btnTop})`,
+    !!satOn && satOn.btnTop !== null && satOn.btnTop >= 59, satOn);
+  await bannerTop(0);   /* leave the page as we found it for the rest of the run */
+
   /* And a human can come back. */
   const backBtn = await A.page.$('#bt-resume-banner button');
   rec.ok('the resume button is a real button', !!backBtn);

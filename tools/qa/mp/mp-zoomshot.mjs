@@ -65,6 +65,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* The character's drawn height, measured the way mp-figscale measures it:
      figureBox is a fixed CSS-px crop, so it cannot report the height directly
      at every scale -- the live probe can. */
+  /* ═══ v2.3.2256: THE NUMBER THIS CAMERA PRINTS WAS THE SPRITE FRAME ═══
+     __btPlayerDrawn().height is `texture.height * sprite.scale.y` -- the whole
+     256px animation FRAME, transparent margin above the hat and below the feet
+     included.  The character inside it is `(feet - crown + 1) * bodyDirScale *
+     LOCAL_SCALE`, which entityRenderer publishes every frame as S._bodyDrawH
+     (v2.3.2256; S._swordBodyH is the same arithmetic but only while a weapon
+     stand-in is up, so it reads null on a bare-handed character).  The frame is about 1.7x the body, so every reading
+     this camera has printed -- including the ones the owner and I looked at
+     while choosing FIGURE_SCALE_FLOOR -- overstated the character by roughly
+     70%.  The CHOICE was made by looking at the pictures, so it stands; the
+     numbers beside them did not.  Both are printed now, and the body is the
+     headline. */
   const drawn = await P.page.evaluate(() => {
     const S = window._gameState.current;
     const d = window.__btPlayerDrawn ? window.__btPlayerDrawn() : null;
@@ -75,12 +87,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
        number means nothing -- v2.3.2124 records the measurement that went
        wrong by using only the first. */
     const persp = typeof d.scale === 'number' && d.scale > 0 ? d.scale : 1;
-    return d.height * persp * (S._worldScaleX || 1);
+    const ws = S._worldScaleX || 1;
+    /* _swordBodyH already carries the per-zone display scale, so it must NOT be
+       multiplied by `persp` again. */
+    /* _bodyDrawH (v2.3.2256) already carries the per-zone display scale, so it
+       must NOT be multiplied by `persp` again. */
+    const bw = typeof S._bodyDrawH === 'number' && S._bodyDrawH > 0 ? S._bodyDrawH : null;
+    return { frameCssPx: d.height * persp * ws, bodyCssPx: bw != null ? bw * ws : null, bodyWorldPx: bw };
   });
 
   const line = {
     tag, ...geom, dpr,
-    figureCssPx: drawn != null ? +(drawn).toFixed(1) : null,
+    bodyCssPx: drawn && drawn.bodyCssPx != null ? +drawn.bodyCssPx.toFixed(1) : null,
+    bodyDevicePx: drawn && drawn.bodyCssPx != null ? Math.round(drawn.bodyCssPx * dpr) : null,
+    bodyWorldPx: drawn && drawn.bodyWorldPx != null ? +drawn.bodyWorldPx.toFixed(1) : null,
+    frameCssPx: drawn && drawn.frameCssPx != null ? +drawn.frameCssPx.toFixed(1) : null,
     boxFacing: box ? box.facing : null,
     shot,
   };

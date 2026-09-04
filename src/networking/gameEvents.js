@@ -1288,6 +1288,17 @@ export function processGameEvent(type, payload, S, deps) {
                 x: payload.x, y: payload.y, ang: payload.ang,
                 isStaff: payload.isStaff, isSpecial: !!payload.isSpecial, dist: 14,
                 life: payload.isStaff ? 68 : 90, /* v2.3.1335: mirror the -25% range */
+                /* v2.3.2259: the staff special's three orbs share one ray and
+                   are spaced in TIME (playerActions.js), so a peer needs the
+                   same stagger or all three draw on top of each other and read
+                   as one orb.  Absent/legacy payload -> 0 -> old behaviour. */
+                holdUntil: Date.now() + (Number(payload.delayMs) > 0 ? Math.min(1000, Number(payload.delayMs)) : 0),
+                /* v2.3.2262: the magic special's orbs fly fast / medium / slow,
+                   so a peer needs the speed too or all three drift together and
+                   the spread the caster sees is not the spread anyone else does.
+                   Clamped, and absent on every other projectile -> the type's
+                   own speed, exactly as before. */
+                speedPx: (Number(payload.speedPx) > 0 ? Math.min(20, Number(payload.speedPx)) : null),
                 ts: Date.now(), ownerId: payload.id
               });
               /* v2.3.1011: a bow shot (non-staff) drives the remote bow-draw

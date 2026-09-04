@@ -4,7 +4,7 @@
  */
 import { createPixiApp } from './pixiApp.js';
 import { TileRenderer } from './systems/tileRenderer.js';
-import { EntityRenderer, prewarmMaskedBodyFrames, prewarmAltWornSets, planPrewarmProgress, uploadBakedTextures, uploadGearTextures, registerPrewarmRenderer } from './systems/entityRenderer.js';
+import { EntityRenderer, prewarmMaskedBodyFrames, prewarmAltWornSets, planPrewarmProgress, uploadBakedTextures, uploadGearTextures, registerPrewarmRenderer, setPlateZoom } from './systems/entityRenderer.js'; /* v2.3.2262: setPlateZoom keeps in-world text readable when the world zooms out */
 import { EffectsRenderer, prewarmDmgFontPipe, FIRE_FRAME_MS } from './systems/effectsRenderer.js';
 import { FpsOverlay } from './systems/fpsOverlay.js';
 import { MinimapRenderer } from './systems/minimapRenderer.js'; /* v2.3.1781 */
@@ -279,6 +279,12 @@ export async function initPixiRenderer(canvas) {
        coords: screenX = (worldX - camera.x) * scaleX. */
     S._worldScaleX = scaleX;
     S._worldScaleY = scaleY;
+    /* v2.3.2262: the in-world TEXT counter-scales against this, so it stays
+       readable when the world zooms out (owner).  Published through a setter
+       rather than read off S inside entityRenderer, because the plate update
+       runs per entity per frame and a module-scope number costs nothing;
+       see setPlateZoom for what is compensated and what deliberately is not. */
+    try { setPlateZoom(scaleX); } catch (e) { /* renderer must not die for a font size */ }
 
     // Camera offset: cx/cy are top-left of viewport in world coords.
     // With scale applied, world position X maps to screen position X*scale.

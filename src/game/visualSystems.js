@@ -141,7 +141,19 @@ export function updateVisualSystems(S) {
         /* ── Remote projectile simulation ── */
         if (S._remoteProjectiles && S._remoteProjectiles.length > 0) {
           S._remoteProjectiles = S._remoteProjectiles.filter(function(rp) {
-            rp.dist += rp.isStaff ? 5 : 8;
+            /* v2.3.2259: a staggered volley orb waits at its owner's hand.
+               Neither distance NOR life advances while it waits -- the same
+               rule the local orbs follow (projectiles.js), so what a peer
+               sees covers the same ground as what the caster sees. */
+            if (rp.holdUntil && Date.now() < rp.holdUntil) {
+              var _hOwner = S.others[rp.ownerId];
+              var _hX = _hOwner ? (_hOwner.renderX || _hOwner.x) : rp.x;
+              var _hY = _hOwner ? (_hOwner.renderY || _hOwner.y) : rp.y;
+              rp._renderX = _hX + Math.cos(rp.ang) * rp.dist;
+              rp._renderY = _hY + Math.sin(rp.ang) * rp.dist;
+              return true;
+            }
+            rp.dist += (rp.speedPx != null ? rp.speedPx : (rp.isStaff ? 5 : 8));
             rp.life--;
             if (rp.life <= 0) return false;
             var owner = S.others[rp.ownerId];

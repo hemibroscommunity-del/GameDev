@@ -169,7 +169,27 @@ export function specialAttack(S) {
     S._hasUsedSwipe = true;
     var hasElement = activeWpn.element2 || activeWpn.element1;
     /* Aim direction — use finger swipe direction from right joystick, or locked target, or facing */
-    var aimAng = S._aimAngle || 0;
+    /* ═══ v2.3.2260: THE SPECIAL HAD ITS OWN FALLBACK, AND IT WAS DUE EAST ═══
+       The comment above says "or facing" and the code never did: `|| 0` is 0
+       RADIANS, so a bow or magic player who had never dragged the right stick
+       and had no lock fired every special horizontally, to the right.  That is
+       the second half of the owner's "stuck in a straight path either
+       vertically or horizontally" -- the ordinary auto-attack supplied the
+       vertical-or-horizontal (monsterCombat's 4-way `_facing` fallback) and
+       THIS supplied the horizontal, by a different code path with a different
+       floor, in the same fight.
+       Fixing only the auto-attack would have left the specials pointing east,
+       which is why this is here and not in a follow-up.  Same ladder as the
+       fire site and as the renderer's own body-facing: the aim you last set,
+       else the smoothed continuous heading, and 0 only if the player has
+       genuinely never faced anywhere.  The lock override below still wins. */
+    /* v2.3.2261: ...and the same ladder as the fire site, for the same reason --
+       a lock-derived _aimAngle outlives its monster and nothing ever nulls it,
+       so a stale read of it fires the special at a ghost.  _lastAimAngle is the
+       player's own stick and only that. */
+    var aimAng = (S._aiming && S._aimAngle != null) ? S._aimAngle
+      : (S._lastAimAngle != null) ? S._lastAimAngle
+      : (typeof S._facingAngle === 'number' ? S._facingAngle : 0);
     /* v2.3.1111: aim at the body centre (see monsterCombat aim note).
        v2.3.1979: through lockAimPoint, which reads the RENDERED position the
        hit-test uses and returns null (rather than the world origin) when the
@@ -224,19 +244,70 @@ export function specialAttack(S) {
          owner meant the BOW special sticks (projectiles.js), and its
          _bowBase above already carries the chip base.  Orbs die on
          their first hit again. */
-      /* v2.3.1435 (owner: "magic special is overpowered — often 4 hits
-         on one monster, regular hit plus the 3 orbs"): the volley
-         shares one hit set, so a monster can eat at most ONE orb of
-         the cone; the other orbs pass it and spread to the crowd. */
-      var _volleyHit = new Set();
-      for (var si = -1; si <= 1; si++) {
+      /* ═══ v2.3.2259: ONE LINE, THREE ORBS, THREE HITS ═══
+         Owner: "Instead of the current behavior I want the 3 orbs to follow
+         the same linear path in quick succession.  So that way a monster can
+         get hit 3 times in a row with the orbs instead of it going 3
+         different directions."
+
+         TWO things made the cone a cone, and a change to either one alone
+         does nothing:
+           - the ±0.25 rad fan on `ang`, now one shared aim angle;
+           - `volleyHitIds` (v2.3.1435), a hit set SHARED by the three orbs
+             so a monster could eat at most ONE of them.  That was the answer
+             to "magic special is overpowered — often 4 hits on one monster",
+             and it is exactly the behaviour being asked back for now, so the
+             shared set is gone.  Each orb keeps its own `hitIds`, which is
+             what stops one orb hitting one monster twice.
+
+         SUCCESSION IS A LAUNCH DELAY, NOT A TIMER.  Each orb waits
+         ORB_GAP_MS longer than the one before at the caster's hand
+         (projectiles.js honours `launchDelayMs`), so they peel off in order
+         ~100 ms apart along the same ray.  setTimeout would have spawned the
+         trailing orbs into whatever zone and state the player was in 100 ms
+         later — three arrows born on one frame cannot.
+
+         THE SERVER WAS ALREADY SIZED FOR THIS, which is why no mirror moves:
+         combat.js's special hit-cadence lane allows 3 hits per 1200 ms per
+         monster and its own comment names this exact case ("a 3-bolt cone
+         that can land all 3 on one target within ~100ms").  Checked, not
+         assumed. */
+      var _ORB_GAP_MS = 100;
+      /* ═══ v2.3.2262: FAST, MEDIUM, SLOW ═══
+         Owner: "space out the magic attack orbs in a novel way: I want the
+         first orb speed to be fast, the second orb speed to be medium, and the
+         third orb speed to be slow."
+
+         So the SPEEDS are the spacing now, and the launch stagger above stays
+         on top of it -- it is what made "3 hits in a row" reliable at point
+         blank (v2.3.2259), where a speed difference has no distance to open a
+         gap in.  Together the three separate hard: at one second they sit at
+         roughly 480 / 270 / 154 px from the caster.
+
+         RANGE IS HELD EQUAL, deliberately.  `life` is spent in TICKS, so three
+         speeds with one life would give three different reaches and the slow
+         orb would die short -- turning a spacing request into a range nerf on
+         the third hit.  Each life is solved from the same 560px the volley has
+         had since v2.3.1335, so all three still arrive.
+
+         The server was already sized for the cadence: its special lane allows
+         3 hits per 1200ms per monster, and at a typical 200px engagement the
+         three land about 0.42s, 0.77s and 1.24s out -- and because that lane is
+         a ROLLING 1200ms filter rather than a fixed window, the first stamp has
+         aged out by the time the third arrives. */
+      var _ORB_RANGE_PX = 560;
+      var _ORB_SPEEDS = [8, 5, 3.2];
+      for (var si = 0; si < 3; si++) {
+        var _spd = _ORB_SPEEDS[si];
+        var _life = Math.round(_ORB_RANGE_PX / _spd);
         S.arrows.push({
-          volleyHitIds: _volleyHit,
-          ang: aimAng + si * 0.25,
+          ang: aimAng,
           dist: 14,
+          launchDelayMs: si * _ORB_GAP_MS,
+          speedPx: _spd,
           dmg: Math.round(_wpnDmg * specialAtkMultFor('staff')), /* v2.3.1397: 2x per orb, 0.6 haircut dropped (owner) */
-          life: 112, /* v2.3.1335: range -25% (750->560px at 5px/tick) */
-          maxLife: 112,
+          life: _life,      /* v2.3.1335's 560px reach, solved per speed */
+          maxLife: _life,
           hitIds: new Set(),
           isSpecial: true,
           isStaff: true,
@@ -244,11 +315,18 @@ export function specialAttack(S) {
           ice: true
         });
       }
-      /* v2.3.840: broadcast the 3-bolt staff special cone so peers see it. */
+      /* v2.3.840: broadcast the staff special so peers see it.
+         v2.3.2259: same ray, same stagger — `delayMs` rides the payload so a
+         peer's three orbs arrive in the same order yours do.  Additive field:
+         an older client ignores it and draws all three at once, which is what
+         it drew before. */
       if (S.channel) {
-        for (var _bcj = -1; _bcj <= 1; _bcj++) {
+        for (var _bcj = 0; _bcj < 3; _bcj++) {
           S.channel.send({ type: 'broadcast', event: 'player_projectile', payload: {
-            id: S.myId, x: Math.round(S.player.x), y: Math.round(S.player.y), ang: aimAng + _bcj * 0.25, isStaff: true, isSpecial: true, ts: now
+            id: S.myId, x: Math.round(S.player.x), y: Math.round(S.player.y), ang: aimAng, isStaff: true, isSpecial: true,
+            delayMs: _bcj * _ORB_GAP_MS,
+            speedPx: _ORB_SPEEDS[_bcj],   /* v2.3.2262: peers see the same fast/medium/slow spread */
+            ts: now
           }});
         }
       }

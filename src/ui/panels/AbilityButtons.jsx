@@ -2,6 +2,19 @@ import React from 'react';
 import { ABILITY_META } from '@/data/index.js';
 import { abilityStatus, castAbility } from '@/game/abilities.js';
 import { blockRingBus } from '@/ui/mobile/blockRingBus.js'; /* v2.3.2252: the bash button follows the shield's edge, not a 200ms poll */
+import { RBTN } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2254: the disc's real height, so this column cannot land on it */
+
+/* ═══ v2.3.2254: HOW FAR ABOVE THE ATTACK DISC ═══
+   Owner: the shield-bash button "needs to move up".
+   The anchor was the literal 178px, which is 70 (the disc's own bottom) + 96
+   (its PORTRAIT height) + 12 -- a number derived once, against one
+   orientation, and then frozen.  Sideways the disc is 108 tall (RBTN.wLand,
+   v2.3.2242 grew both), so its top edge is at exactly 178 and this column has
+   been sitting ON it: the two boxes share the 50..76px strip off the right
+   edge, so the overlap is real, not merely adjacent.
+   Derived from RBTN instead, with a gap wide enough to read as a separate
+   control in both orientations rather than a bump on the disc. */
+const DISC_GAP = 34;
 
 /* ═══ v2.3.1733: THE ABILITY BUTTONS ═══
  *
@@ -68,9 +81,12 @@ export function AbilityButtons(props) {
     className: 'bt-desktop-hide',
     style: {
       position: 'fixed',
-      /* Above the right joystick disc (which sits at sheet-h + 70) and clear
-         of the sheet, so an open menu never traps the buttons. */
-      bottom: 'calc(var(--sheet-h, var(--dash-h)) + 178px)',
+      /* Above the right (combat) disc and clear of the sheet, so an open menu
+         never traps the buttons.  RBTN.bottom is where the disc starts and
+         RBTN.w/wLand is how tall it is -- one source of truth with
+         TouchControls, which draws it from the same two numbers. */
+      bottom: 'calc(var(--sheet-h, var(--dash-h)) + '
+        + (RBTN.bottom + (isLandscape ? RBTN.wLand : RBTN.w) + DISC_GAP) + 'px)',
       right: isLandscape ? 22 : 18,
       zIndex: 31,
       display: 'flex',

@@ -2628,7 +2628,47 @@ export const WEAPON_TYPES = {
     emoji: '🗡️'
   },
   bow: {
-    base: 7.29,
+    /* ═══ v2.3.2259: THE TWO RANGED WEAPONS START AT 80% OF MELEE ═══
+       Owner: "Bump up the default weapon DPS of magic and bow.  They should
+       both start roughly 20% lower than the default melee weapon DPS."
+
+       THE DEFAULT MELEE WEAPON IS THE COPPER GREAT SWORD -- the thing Mayor
+       Bro hands you on accepting tut_1 (server/src/data.js QUEST_REWARDS
+       grantOnAccept).  The default ranged pair is the Pine Bow and Pine
+       Staff from the same quest's turn-in.  So the comparison is between
+       those three items on a fresh character, not between raw `base`
+       numbers, and it has to carry the two things that make raw bases lie:
+
+         TIER      greatsword is copper (tierMult 1.12); both pine are 1.00.
+         VARIANCE  calcWeaponDmg's per-type band is not centred on 1 for
+                   every weapon.  Melee rolls 0.75-1.25 (mean 1.00) and
+                   staff 0.5-1.5 (mean 1.00), but BOW rolls 0.6-0.8 -- mean
+                   0.70.  That 30% haircut is deliberate (v2.3.109 folded
+                   the old flat 0.7x bow multiplier into the band) and it is
+                   invisible in the table, so a bow "base" is not comparable
+                   to anybody else's base.
+         CADENCE   SWING_COOLDOWN is 600 ms for everything; the staff alone
+                   pays +300 (monsterCombat's _staffCdExtra).  WEAPON_TYPES
+                   `speed` is NOT cadence -- nothing in combat reads it (see
+                   the note in ui/mobile/sheet/equipModel.js) -- so the
+                   greatsword's 0.7 buys it nothing and the bow's 1.2 costs
+                   it nothing.
+
+       Where that left us, mean DPS on the starting kit:
+         Copper Great Sword  10   x1.12 x1.00 / 0.6s = 18.67
+         Pine Bow            7.29 x1.00 x0.70 / 0.6s =  8.51   (46% of melee)
+         Pine Staff          8.54 x1.00 x1.00 / 0.9s =  9.49   (51% of melee)
+       -- which is the owner's report, measured.  80% of 18.67 is 14.93, so
+       the bases solve to bow 12.80 and staff 13.44.
+
+       The BAND stays as it is on both: it is the weapon's feel (the bow is
+       the predictable one, the staff the swingy one) and re-centring the
+       bow's would have moved the same 30% under a different name.  `base`
+       is the one tuning knob, and every consumer rides it -- the display
+       range, the special, the anti-cheat ceiling (_maxWeaponDmg) and sell
+       value all derive from this number on both sides, so nothing drifts.
+       MIRROR-PINNED: server/src/gear.js _weaponBase carries the same pair. */
+    base: 12.80,
     speed: 1.2,
     range: 200,
     type: 'ranged',
@@ -2636,7 +2676,11 @@ export const WEAPON_TYPES = {
     emoji: '🏹'
   },
   staff: {
-    base: 8.54,
+    /* v2.3.2259: 8.54 -> 13.44, the staff half of the 80%-of-melee retune
+       above (the staff pays the +300 ms cast penalty, which is why its base
+       lands higher than the bow's for the same DPS).  See the bow's note for
+       the whole derivation.  Mirror: server/src/gear.js _weaponBase. */
+    base: 13.44,
     speed: 1.0,
     /* v2.3.2243 (owner: "Magic attack radius will be nerfed to be same as
        bow"): 120 -> 200, the bow's.  This field is the PvP reach claim

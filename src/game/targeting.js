@@ -69,6 +69,78 @@ function monHoldable(m) {
   return !!m && m.alive && !(typeof m.curHp === 'number' && m.curHp <= 0);
 }
 
+/* ═══ v2.3.2261: A LOCK'S AIM DIES WITH THE LOCK ═══
+ * monsterCombat writes S._aimAngle toward a held lock on every frame and sets
+ * S._aiming with it, and NEITHER has a writer that ever clears it.  So dropping
+ * the lock alone was not enough: the fire chain kept reading the residue and
+ * kept shooting at the ghost -- measured at exactly -1.571 rad with the lock
+ * already null and no monsters left in the zone.
+ *
+ * `_aimSrc` says who wrote the aim last.  If it was the LOCK, it goes with the
+ * lock.  If it was the player's stick or the desktop mouse, it is left entirely
+ * alone -- that IS the direction they asked for, and dropping it would bring
+ * back the cardinal fallback from the other side.
+ *
+ * Called from every site that drops a monster lock. */
+function clearLockAim(S) {
+  if (!S || S._aimSrc !== 'lock') return;
+  S._aimAngle = null;
+  S._aiming = false;
+  S._aimSrc = null;
+}
+
+/* ═══ v2.3.2261: A LOCK MUST STILL BE POINTING AT SOMETHING THAT IS HERE ═══
+ *
+ * Owner: "the monster somehow gets targeted twice (tap to lock AND auto target
+ * active) I could see both lock circles at the same time.  It also forced me to
+ * shoot a different direction (as if shooting an invisible monster) even when a
+ * monster was close nearby."
+ *
+ * Both halves are one bug, and monHoldable above is where it lives: it reads
+ * the monster OBJECT'S OWN FIELDS and nothing else.  An object that has left
+ * S.monsters keeps `alive: true` and a positive `curHp` for as long as anything
+ * holds a reference to it -- forever, because nothing mutates a monster the
+ * zone has stopped tracking.  So:
+ *
+ *   - the tap branch of updateTargeting asks monHoldable, gets true, and
+ *     RETURNS -- the lock is immortal, and because that return sits above the
+ *     automatic rule the auto target can never take over either;
+ *   - lockAimPoint keeps answering with the ghost's frozen position, so every
+ *     shot flies at empty ground: "as if shooting an invisible monster";
+ *   - and the reticle keeps drawing there, which with a live monster nearby is
+ *     the "two lock circles at the same time".
+ *
+ * PRESENCE IS THE MISSING TEST, and it is cheap: S.monsters is the list the
+ * renderer draws and the hit tests read, so "in that array" is the authoritative
+ * definition of "still in this fight".
+ *
+ * IT RE-BINDS BEFORE IT DROPS, and that half matters more than the drop in the
+ * zone the owner actually plays in.  Spoke-zone monsters arrive over the wire;
+ * a snapshot that REPLACES the array hands back objects with the same ids and
+ * different identities, and a lock holding the old object would be dropped on
+ * every full sync even though the monster is standing right there.  So an id
+ * match re-points the lock at the live object and the fight continues -- which
+ * also repairs the position the aim and the dash read.  Only a lock whose id is
+ * nowhere in the zone is a ghost, and that one is cleared.
+ *
+ * Returns true if the lock is (still, or again) valid; false if it is gone. */
+function lockRefPresent(S) {
+  const lt = monsterLock(S);
+  if (!lt) return true;                       /* nothing locked: nothing to fix */
+  const list = (S && S.monsters) || [];
+  if (list.indexOf(lt.ref) >= 0) return true; /* same object, the common case */
+  if (lt.id != null) {
+    for (let i = 0; i < list.length; i++) {
+      const m = list[i];
+      /* String() on both sides: monster ids are numbers in some spawn paths and
+         strings over the wire, and a === between the two silently never matches
+         -- which would turn every full sync into a dropped lock. */
+      if (m && m.id != null && String(m.id) === String(lt.id)) { lt.ref = m; return true; }
+    }
+  }
+  return false;
+}
+
 /* Every monster the player could engage right now, nearest first. */
 export function targetCandidates(S, radiusPx) {
   const out = [];
@@ -141,10 +213,36 @@ const AUTO_SWITCH_MARGIN = 0.88;
 
 /* Once per frame (monsterCombat's tick): refresh the candidate list, then
    ACQUIRE.  Cheap -- one pass over the zone's monsters. */
+/* ═══ v2.3.2258: ONLY A BLADE FINDS ITS OWN TARGET ═══
+   Owner: "For ONLY melee (sword) I want to keep the auto targeting behavior
+   that exists now (also within proximity of monster attack button appears) ...
+   For magic and ranged, I do not want the auto targeting behavior when you get
+   in proximity of monsters.  You must tap on the monster for auto-targeting
+   behavior to take effect."
+
+   S.rpg.activeSlot is the classifier the rest of the game already branches on
+   ('ranged' the bow, 'staff' the magic, anything else -- including a legacy
+   unset slot -- melee), so this reads the same field entityRenderer,
+   monsterCombat and the equip screen read.  Defaulting the unknown case to
+   MELEE is deliberate: melee is the case that keeps the old behaviour, so a
+   slot this function has not heard of degrades to what shipped rather than to
+   a silently disarmed one. */
+export function autoAcquires(S) {
+  const slot = S && S.rpg && S.rpg.activeSlot;
+  return !(slot === 'ranged' || slot === 'staff');
+}
+
 export function updateTargeting(S) {
   if (!S || !S.player) return;
   const cands = targetCandidates(S);
-  S._targetCands = cands;
+  /* THE PERIMETER MARKS GO WITH THE RULE THEY ADVERTISE.  _targetCands is what
+     draws the carets and ground rings and what lights the attack button hot
+     (BroTown's `_cands`), and every one of those answers the question "who will
+     this take if you press it".  With a bow the answer is "nobody, until you
+     tap one", so leaving the marks up would promise an engagement that is not
+     going to happen.  The TAPPED target keeps its reticle -- that is drawn from
+     S.lockedTarget in its own block, not from this list. */
+  S._targetCands = autoAcquires(S) ? cands : [];
 
   /* ═══ v2.3.2251: THE TARGET IS ALWAYS THE NEAREST, UNLESS YOU TAPPED ONE ═══
      Owner: "Change the auto targeting system to always be nearest enemy. Only
@@ -164,8 +262,18 @@ export function updateTargeting(S) {
      monster rule must not stamp over. */
   const lt = S.lockedTarget;
   if (lt && lt.ref && lt.type !== 'monster') return;   /* npc/player: not ours */
+  /* v2.3.2261: before ANY branch below reads the lock -- including the tap
+     branch, which returns early and is what made the ghost immortal -- make the
+     lock point at a monster that is actually in this zone, or drop it.  See
+     lockRefPresent. */
+  if (!lockRefPresent(S)) {
+    S.lockedTarget = null;
+    S._lockDroppedAt = Date.now();
+    S._lockDroppedWhy = 'gone';
+    clearLockAim(S);
+  }
   if (S._dying || S._zoneLoading || isPlayerDead(S)) {
-    if (S.lockedTarget) { S.lockedTarget = null; S._lockDroppedAt = Date.now(); S._lockDroppedWhy = 'dead'; }
+    if (S.lockedTarget) { S.lockedTarget = null; S._lockDroppedAt = Date.now(); S._lockDroppedWhy = 'dead'; clearLockAim(S); }
     return;
   }
 
@@ -177,9 +285,29 @@ export function updateTargeting(S) {
       S.lockedTarget = null;
       S._lockDroppedAt = Date.now();
       S._lockDroppedWhy = 'dead';
+      clearLockAim(S);
     } else {
       return;
     }
+  }
+
+  /* ═══ v2.3.2258: ...AND A BOW DOES NOT ═══
+     Below this line is the automatic rule, and with a ranged or magic weapon it
+     does not run at all.  Reached only when the lock is NOT tap-owned (that
+     case returned above and is untouched at any distance -- it is what makes a
+     bow snipe work), so anything still held here is an 'auto' lock this rule
+     made, most likely while a sword was equipped a moment ago.  Dropping it on
+     the weapon swap is the honest move: it was acquired by a rule that no
+     longer applies, and leaving it would let a player keep a free lock simply
+     by drawing the bow after walking up. */
+  if (!autoAcquires(S)) {
+    if (monsterLock(S)) {
+      S.lockedTarget = null;
+      S._lockDroppedAt = Date.now();
+      S._lockDroppedWhy = 'weapon';
+      clearLockAim(S);
+    }
+    return;
   }
 
   /* Everything below is the AUTO target. */
@@ -197,6 +325,7 @@ export function updateTargeting(S) {
       S.lockedTarget = null;
       S._lockDroppedAt = Date.now();
       S._lockDroppedWhy = monHoldable(cur.ref) ? 'range' : 'dead';
+      clearLockAim(S);
     }
     return;
   }

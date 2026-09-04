@@ -138,8 +138,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and it is "slightly larger" than the 75px stick was', !!disc && disc.w >= 90, disc && { w: disc.w });
   const label = await P.page.evaluate(() => (document.querySelector('.bt-rjoy-base') || {}).textContent || '');
   rec.ok('...and it says Attack', /attack/i.test(label), label);
+  /* ═══ v2.3.2258: THE KNOB IS BACK, SO THIS PIN INVERTS ═══
+     v2.3.2242 asserted the knob was GONE, because the owner had just replaced
+     the right joystick with a button.  He has now played the result and asked
+     for the other half back: "I want both joysticks back and restore the
+     previous behavior right joystick for auto attack and rotation.  BUT I also
+     want the right joystick to keep its contextual button properties that
+     exist now."  Both, on one control -- so the knob has to be there AND the
+     contextual label above has to keep saying what a press will do. */
   const stick = await P.page.evaluate(() => !!document.querySelector('.bt-rjoy-base .bt-joystick-knob'));
-  rec.ok('the stick knob is gone from the right control', stick === false);
+  rec.ok('the right control is a joystick again -- it has its knob back', stick === true);
   rec.ok('no lock-on arc buttons exist any more',
     (await P.page.evaluate(() => document.querySelectorAll('[data-lockon]').length)) === 0);
 
@@ -174,12 +182,34 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...yet both corner boxes still occupy their layout box, so a coach mark can measure them',
     !!vis0R && vis0R.w > 50 && !!vis0L && vis0L.w > 50, { R: vis0R, L: vis0L });
   await P.page.evaluate(() => { const c = window.__centre('[data-joyzone="L"]'); window.__touch(c.el, 'touchstart', c.x, c.y + 40, 30); window.__touch(c.el, 'touchmove', c.x + 30, c.y + 40, 30); });
-  await P.page.waitForTimeout(250);
+  /* ═══ v2.3.2260: 250ms WAS A READ OF THE CROSSFADE, NOT OF THE DECISION ═══
+     This assertion has been failing intermittently (0/4 runs idle, 3/3 under
+     CPU load) and was filed as a real defect.  It is not one: the corner boxes
+     carry `transition: opacity .22s ease` (game.css) and `discVis` reads
+     getComputedStyle, so a 250ms wait samples ~30ms past the end of a 220ms
+     interpolation -- on a loaded machine the frame that finishes the fade has
+     not been painted yet and the probe catches an intermediate value against a
+     `> 0.5` threshold.  Waiting past the transition rather than at its edge is
+     the fix; the resolver was never wrong. */
+  await P.page.waitForTimeout(450);
   const visLdown = await discVis(P, 'L');
   rec.ok('a thumb on the movement side paints the left joystick', !!visLdown && visLdown.shown === true, visLdown);
   await P.page.evaluate(() => { const c = window.__centre('[data-joyzone="L"]'); window.__touch(c.el, 'touchend', c.x + 30, c.y + 40, 30); });
+  /* ═══ v2.3.2260: AND IT NO LONGER GOES THE INSTANT THE THUMB LIFTS ═══
+     Owner: "Make the joysticks both each appear when input is detected ... then
+     fade to disappearing after 2 seconds of no input."  So this assertion is
+     inverted at 600ms -- still there is the new correct answer -- and the
+     disappearance is checked past the window instead.  mp-joyfade owns the full
+     rule for both sides and both weapons; these two lines keep this file's own
+     account of the left disc honest rather than silently stale. */
   await P.page.waitForTimeout(600);
-  rec.ok('...and it goes again when the thumb lifts', (await discVis(P, 'L')).shown === false, await discVis(P, 'L'));
+  const visLmid = await discVis(P, 'L');
+  rec.ok('...and it is STILL painted a moment after the thumb lifts (2s fade, v2.3.2260)',
+    !!visLmid && visLmid.shown === true, visLmid);
+  await P.page.waitForTimeout(2000);
+  const visLgone = await discVis(P, 'L');
+  rec.ok('...and it has gone once the 2s of no input have run out',
+    !!visLgone && visLgone.shown === false, visLgone);
 
   /* ── v2.3.2246: press ONE engages, press TWO attacks ── */
   await seedFodder(P, 'qa_rb_1', 60);
@@ -457,23 +487,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('a left-side swipe dodges', afterDodge.roll === true, afterDodge);
   rec.ok('...and the dodge cancels the block', afterDodge.shield === false && afterDodge.droppedWhy === 'dodge', afterDodge);
 
-  /* ── a tap on the right half outside the button no longer attacks ── */
-  await P.page.waitForTimeout(700);
-  await P.page.evaluate(() => { const S = window._gameState.current; S.__swings = 0; S.autoAttack = false; });
-  await P.page.evaluate(() => {
-    const z = document.querySelector('[data-joyzone="R"]');
-    const r = z.getBoundingClientRect();
-    window.__touch(z, 'touchstart', r.x + r.width / 2, r.y + 80, 49);
-  });
-  await P.page.waitForTimeout(150);
-  const zoneHeld = await st(P);
-  rec.ok('a touch on the right half OUTSIDE the button is not an attack', zoneHeld.autoAttack === false && zoneHeld.swings === 0, zoneHeld);
-  await P.page.evaluate(() => {
-    const z = document.querySelector('[data-joyzone="R"]');
-    const r = z.getBoundingClientRect();
-    window.__touch(z, 'touchend', r.x + r.width / 2, r.y + 80, 49);
-  });
-
   /* ── the button leaves when the fight does -- unless the shield is still up ── */
   await P.page.evaluate(() => { const c = window.__centre('[data-shield]'); window.__touch(c.el, 'touchstart', c.x, c.y, 50); window.__touch(c.el, 'touchend', c.x, c.y, 50); });
   await P.page.waitForTimeout(150);
@@ -489,6 +502,95 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...tapped down, with no monster near and no lock, the shield button goes away',
     (await P.page.evaluate(() => !!document.querySelector('[data-shield]'))) === false
     && (await st(P)).shield === false);
+
+  /* ═══ THE RIGHT HALF IS THE JOYSTICK AGAIN (v2.3.2258) ═══
+     LAST, on purpose.  This block presses and drags the zone, nulls the lock
+     and releases -- state the shield-button tests above are sensitive to, and
+     when it sat mid-file it turned the "shield button goes away" assertion red
+     by leaving the fight looking live.  New assertions do not get to reorder
+     old ones. */
+  /* ── the right half outside the button IS the joystick again (v2.3.2258) ── */
+  await P.page.waitForTimeout(700);
+  await P.page.evaluate(() => { const S = window._gameState.current; S.__swings = 0; S.autoAttack = false; });
+  await P.page.evaluate(() => {
+    const z = document.querySelector('[data-joyzone="R"]');
+    const r = z.getBoundingClientRect();
+    window.__touch(z, 'touchstart', r.x + r.width / 2, r.y + 80, 49);
+  });
+  await P.page.waitForTimeout(150);
+  const zoneHeld = await st(P);
+  /* ═══ v2.3.2258: THIS PIN INVERTS TOO ═══
+     v2.3.2242 made the right half inert -- the disc was the only combat input
+     -- and this asserted it.  The owner has played that and asked for the
+     other half back: "I want both joysticks back and restore the previous
+     behavior right joystick for auto attack and rotation."  The zone is the
+     STICK again (a press auto-attacks, a drag aims) and the disc stays the
+     contextual BUTTON, which is the rest of his sentence.  A press outside the
+     button therefore MUST attack now, and the assertion says so. */
+  rec.ok('a touch on the right half outside the button holds the attack (the stick is back)',
+    zoneHeld.autoAttack === true, zoneHeld);
+  /* ...and a DRAG on it aims, which is the "rotation" half of the request.
+     ═══ WITH THE LOCK DROPPED FIRST, AND THAT IS THE DESIGN ═══
+     monsterCombat re-aims at the locked target every frame while the attack is
+     held (monsterCombat.js:1342), so a lock BEATS the stick -- the first cut of
+     this assertion held a lock and measured the stomp: _lastAimAngle showed the
+     stick's PI and _aimAngle showed the lock's -1.16.  That is correct and is
+     the melee auto-targeting the owner asked to keep ("For ONLY melee (sword) I
+     want to keep the auto targeting behavior that exists now"): a lock means
+     "aim at this".  Rotation is what governs when there is NO lock -- which is
+     every bow and staff shot now that ranged does not auto-acquire, and melee
+     with nothing in the perimeter.  So the test drops the lock, which is the
+     state the stick actually steers in. */
+  await P.page.evaluate(() => { window._gameState.current.lockedTarget = null; });
+  await P.page.waitForTimeout(60);
+  const aimBefore = await P.page.evaluate(() => window._gameState.current._lastAimAngle);
+  await P.page.evaluate(() => {
+    const z = document.querySelector('[data-joyzone="R"]');
+    const r = z.getBoundingClientRect();
+    window.__touch(z, 'touchmove', r.x + r.width / 2 - 60, r.y + 80, 49);
+  });
+  await P.page.waitForTimeout(120);
+  const zoneAimed = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    return { aim: S._aimAngle, aiming: !!S._aiming, facing: S._facing, last: S._lastAimAngle };
+  });
+  /* MEASURED ON _lastAimAngle AND _facing, not on _aimAngle.  _aimAngle is a
+     SHARED field with two other writers that both outrank a stick by design --
+     monsterCombat aims it at a locked target every frame (:1342), and the
+     desktop mouse path re-points it from _mouseAimAngle whenever autoAttack is
+     on (BroTown:9540).  This harness is a real browser with a real cursor, so
+     the mouse writer is live here and is not on the owner's phone: the first
+     cut of this assertion read _aimAngle and measured that, reporting the
+     stick's PI in _lastAimAngle beside the cursor's -1.16 in _aimAngle.
+     _lastAimAngle is the stick's own record and nothing else writes it, which
+     makes it the honest witness for "did the drag rotate". */
+  /* The drag runs 60px LEFT along the zone's own row, so the stick's angle
+     must come out near PI.  _facing is not asserted for the same reason
+     _aimAngle is not: both are re-stamped by monsterCombat and by the desktop
+     mouse path in the frames after the drag, and this harness has a cursor. */
+  rec.ok(`...and with no lock, dragging it left rotates the stick (${aimBefore} -> ${zoneAimed.last})`,
+    zoneAimed.aiming === true && typeof zoneAimed.last === 'number'
+      && Math.abs(zoneAimed.last) > Math.PI / 2,
+    { before: aimBefore, after: zoneAimed, wanted: 'about PI' });
+  /* _lastAimAngle has had no writer since PR #546 deleted handleRJoyMove --
+     abilities and the renderer read it and got undefined.  Restored with the
+     stick, and pinned here so the next deletion is noticed. */
+  rec.ok('...and it writes _lastAimAngle again, which nothing has since PR #546',
+    typeof zoneAimed.last === 'number', zoneAimed);
+  await P.page.evaluate(() => {
+    const z = document.querySelector('[data-joyzone="R"]');
+    const r = z.getBoundingClientRect();
+    window.__touch(z, 'touchend', r.x + r.width / 2 - 60, r.y + 80, 49);
+  });
+  await P.page.waitForTimeout(120);
+  const zoneUp = await st(P);
+  rec.ok('...and letting go stops the attack', zoneUp.autoAttack === false, zoneUp);
+  await P.page.evaluate(() => {
+    const z = document.querySelector('[data-joyzone="R"]');
+    const r = z.getBoundingClientRect();
+    window.__touch(z, 'touchend', r.x + r.width / 2, r.y + 80, 49);
+  });
+
 
   await P.page.screenshot({ path: H.REPO + '/tools/qa/mp/.last-rbutton.png' }).catch(() => {});
   await P.ctx.close().catch(() => {});

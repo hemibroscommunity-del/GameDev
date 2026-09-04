@@ -1551,3 +1551,151 @@ which is the property that was actually wrong.
 
 **Related:** §21 (a loose pixel-classifier), §20 (an invisible overlay is
 rarely a z-index).
+
+---
+
+## §43 — Two weapons' `base` numbers are not comparable, and the table does not say so (v2.3.2259)
+
+**Tempting:** the owner says magic and bow feel weak. `WEAPON_TYPES` is
+right there: greatsword 10, sword 6.67, bow 7.29, staff 8.54. The bow's
+number is above the sword's, so the report must be about something else —
+range, aim, the auto-target rules — and "bump their DPS up to 20% under
+melee" reads as a NERF. Say so, and ask what they really meant.
+
+**Wrong on every count, and the first draft of this change said all of it.**
+Four things sit between that column and DPS, and three of them are invisible
+where the number is written:
+
+| term | where it lives | what it does to the column |
+|---|---|---|
+| variance band | `calcWeaponDmg` / server `_computeAttackDamage` | melee `0.75-1.25` and staff `0.5-1.5` both MEAN 1.00; bow is `0.6-0.8`, mean **0.70** — a permanent 30% haircut folded in at v2.3.109 when the old flat `0.7x` bow multiplier was retired |
+| tier multiplier | `BLACKSMITH_TIERS` / `WOODWORKING_TIERS` | the melee starter is COPPER (1.12); both ranged starters are PINE (1.00) |
+| cadence | `SWING_COOLDOWN` + `_staffCdExtra` | 600 ms for everything, **+300 for the staff alone** |
+| `speed` | `WEAPON_TYPES` itself | **nothing.** It is dead (see `ui/mobile/sheet/equipModel.js`) — it reads exactly like the cadence and is not |
+
+Run the column through those and the starting kit is greatsword 18.67 DPS,
+bow 8.51 (**46%**), staff 9.49 (**51%**). The owner was reporting a real,
+large gap, "bump up" was the correct direction, and the reading that made it
+look like a contradiction came from comparing two numbers that are not in
+the same units.
+
+**Which weapon is "the default melee weapon" is also not a guess.** Mayor Bro
+hands out a Copper Great Sword on accepting `tut_1` (`QUEST_REWARDS
+grantOnAccept`) and the Pine Bow + Pine Staff on turning it in. Anchoring on
+the SWORD's 6.67 instead would have compared against a weapon the player has
+never held and produced a change of a few percent — an answer that looks
+responsive and fixes nothing.
+
+**What to do instead: ask the game.** `calcDisplayDmgRange` and
+`calcDisplayDps` already fold all four terms and are what the item card
+shows; both are on `window._gameFns`. `mp-orbline` reads them for the three
+real starting weapons and asserts the RATIO, so no scenario re-derives the
+formula (§35) and a change to any single term is caught by the one
+assertion.
+
+**And this column has a mirror.** `server/src/gear.js _weaponBase` is the
+authoritative copy — `_computeAttackDamage` rolls from it, and the client's
+is the display. Editing only the client changes the item card and not one
+point of damage.
+
+**Related:** §35 (a test that copies a value out of the game), §37 (measuring
+a drawing against the box that defines it).
+
+---
+
+## §44 — Asking a moving value about a past event (v2.3.2261)
+
+**Tempting:** you need to know something about a moment that has passed — did
+the dash close the distance, what heading did the shot take, was the ability
+cast. The state is right there on `S`. Do the thing, wait for it to settle,
+read the field.
+
+**Wrong whenever the field keeps moving after the moment you care about**, which
+in a live game is most of them. Five instances in ONE session, all green-looking
+code, all reported as product bugs before anyone read the numbers:
+
+| the read | what actually moved | what it reported |
+|---|---|---|
+| `mp-dashhit`: gap measured 2.5s after the lunge | the monster WALKS — it is server-driven and alive | 69px on one run, 83px on the next, on identical code |
+| `mp-dashhit`: cooldown re-read after a 2500ms wait | the cooldown is 2500ms — the sample sat exactly on the boundary | `cdLeft: 0`, i.e. "never cast" |
+| `mp-dashhit`: stamina compared against max after the settle | stamina REGENERATES | a 10-point spend, refilled, read as "no spend" |
+| `mp-aimpath`: shot angle compared against `_facingAngle` | `_facingAngle` is SMOOTHED toward the last movement direction every frame | drifted ~0.5 rad; a finer poll did not close it |
+| `mp-rbutton`: `getComputedStyle` 250ms after a touch | the box carries `transition: opacity .22s` | 0/4 runs idle, 3/3 under load — read mid-crossfade against a `> 0.5` threshold |
+
+Two of those were filed as defects in the product. Both were the test.
+
+**What to do instead, in order of preference:**
+
+1. **Stamp the value at the moment it happens.** `fired.status` is captured on
+   the frame `maybeSwordDash` returns, so "it went on cooldown" needs no timing
+   at all. Anything the game already computes at the event is free.
+2. **Poll for the transition, not the clock.** Wait for `!S._bashDash` and
+   stamp the gap on THAT frame. `setInterval(…, 16)` inside one
+   `page.evaluate` returning a Promise is the idiom; a fixed
+   `waitForTimeout` is a guess about a duration you do not control.
+3. **Assert the cause, not a value downstream of it.** "The shot is not at the
+   phantom" plus "`aim === null && lock === null`" is exact and stable; "the
+   shot equals the body's heading" is neither. When the stable version is
+   available, prefer it even if it feels less direct.
+
+**And a settle wait is not a substitute for either.** Waiting longer makes the
+regen, the walk and the cooldown expiry MORE likely, not less. Every one of the
+five above got worse with a longer wait.
+
+**Related:** §35 (a test that copies a value out of the game), §37 (measuring a
+drawing against the box that defines it), §40 (a screenshot is not in CSS
+pixels).
+
+---
+
+## §45 — The preview client talks to the PRODUCTION worker (v2.3.2262)
+
+**The setup that makes this invisible:** Pages builds a preview for every PR, so
+a branch's CLIENT is one click away. The worker is not. `src/networking/index.js`
+hardcodes `wss://brotown-server.hemibroscommunity.workers.dev`, and
+`.github/workflows/deploy-worker.yml` deploys on `branches: [main]` only. So a
+preview build of a branch runs **new client code against the old server**.
+
+**What it looks like when you hit it:** the owner reported the sword lunge
+dealing no damage, twice, across two rounds of fixes. Everything on the client
+worked — the dash closed, the animation played, the stamina was spent. The
+worker's `_handleAbility` opens with
+
+```js
+if (!Object.prototype.hasOwnProperty.call(STAM_ABILITIES, kind)) return;
+```
+
+and the deployed worker had never heard of `sworddash`, which exists only on the
+branch. A silent return: no damage, no `ability_rejected`, nothing on screen.
+
+**Why the tests all passed.** `tools/qa/mp/run.mjs` boots a LOCAL worker from
+the branch's own `server/` directory. Every harness scenario therefore tests
+client-and-server-from-the-same-commit — the one configuration the person
+playtesting is *not* in. `mp-dashhit` was written specifically to test a real
+spoke zone against a real worker and still could not see it.
+
+**Two rounds of fixes were spent on a non-bug**, and worse, the tempting fix was
+actively dangerous: making the client apply its own dash damage would have
+"worked" on the preview and then double-billed every hit the moment the real
+worker caught up.
+
+**Check this FIRST whenever a server-authoritative behaviour is reported broken
+on a preview URL:**
+
+```
+git show origin/main:server/src/<file> | grep <the-new-thing>
+```
+
+Nothing back means the deployed worker cannot do it yet, and no client change
+will help.
+
+**And audit the whole server diff, not just the reported symptom.** The same
+branch also moved `_weaponBase` (bow 7.29 → 12.80, staff 8.54 → 13.44). The item
+CARD reads the client's table and showed the new numbers, while the worker rolled
+damage from the old ones — so the owner had been playtesting a ranged buff that
+was not in effect, with the UI telling him it was. `git diff origin/main...HEAD
+-- server/` is two seconds and names every one of these.
+
+**Related:** §35 (a test that copies a value out of the game), §44 (asking a
+moving value about a past event) — both are the same family: the measurement and
+the thing being measured are not the same object.

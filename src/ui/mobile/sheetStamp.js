@@ -38,7 +38,7 @@
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { dashMinBus } from './dashMinBus.js';
 import { playVw, playVh } from './playViewport.js';
-import { barHeight, expandedSheetHeight, drillSheetHeight, bandFootprint } from './sheet/sheetGeometry.js';
+import { expandedSheetHeight, drillSheetHeight, bandFootprint } from './sheet/sheetGeometry.js'; /* v2.3.2255: barHeight is reached through bandFootprint now, so the fold cannot be forgotten */
 
 /* Why the "has it changed?" test reads the DOM rather than a remembered
    value: a module-local memo would be asserting that this function is the
@@ -60,11 +60,53 @@ export function stampSheetH() {
      identity row's own height in every mode.  bandFootprint, not a literal,
      so this and the canvas can never disagree about what the band costs.
      v2.3.1311e: in portrait a drill panel (stack depth > 1) is taller. */
+  /* ═══ v2.3.2254: THE HOME INDICATOR BELONGS TO THIS NUMBER TOO ═══
+     Owner, on an installed launch: the shield/bash controls sit "behind the
+     dashboard right now (portrait)".  Measured on a simulated standalone
+     iPhone 13 they do -- the shield button's bottom 22px are under the band
+     (mp-btnlayout) -- and the arithmetic says why.
+
+     --dash-h counts the home-indicator inset (v2.3.2178: the band paints
+     `height:var(--dash-h)` with the inset as padding, so the inset is INSIDE
+     the band's height).  --sheet-h, which is what every floating control
+     actually hangs from, did not.  In a browser tab both are the same number
+     and nothing shows; added to the home screen env(safe-area-inset-bottom)
+     becomes ~34px, the band grows by it, the controls do not move, and the
+     whole stack loses one inset of clearance from the bottom up.  The shield
+     sits lowest (+12px), so it is the one that goes under.
+
+     v2.3.2178 fixed this same disagreement for the band's OWN rows and could
+     not have covered these: they are not in the band, they float above it.
+     One term, added in the one place --sheet-h is computed.
+
+     Read off the probe LIVE, like every other input here (the file's rule),
+     and NOT off the --sab stamp: resize() calls this BEFORE it stamps --sab,
+     so the stamp is one frame stale on the pass that matters.  The probe is
+     read and never created here -- DebugOverlay's precedent -- so a call
+     before resize() has built it simply sees 0, which is the right answer in
+     a browser tab and is repaired by the next watchdog beat regardless.
+
+     AND THE FOLD, which the first cut of this left alone as "a gap, not an
+     occlusion".  That was wrong.  --dash-h honours dashMinBus.min and this did
+     not, so a MINIMISED band left --sheet-h a whole columns row (205px at
+     430pt) taller than the band it describes -- and TouchControls sizes the
+     two joystick ZONES as `calc(100% - var(--sheet-h))`, so that overshoot is
+     not empty space above the controls, it is a strip of visible world at the
+     bottom of the screen that takes no touch input at all.  Ask bandFootprint,
+     which is what --dash-h asks, and the two can no longer disagree in any
+     portrait state.  Unfolded it returns barHeight and nothing moves. */
+  let inset = 0;
+  try {
+    const probe = document.getElementById('bt-sab-probe');
+    if (probe) inset = parseFloat(getComputedStyle(probe).paddingBottom) || 0;
+  } catch (e) { /* no probe yet: 0 is correct in a tab, and the watchdog re-runs */ }
   const px = (vw > vh)
-    ? bandFootprint(vw, vh, dashMinBus.min, false).dashH
+    /* Landscape already IS the inset -- bandFootprint returns it as the whole
+       band height there (v2.3.2168), so adding it again would double it. */
+    ? bandFootprint(vw, vh, dashMinBus.min, false, inset).dashH
     : (mode === 'expanded'
-      ? (dashboardPanelBus.state.stack.length > 1 ? drillSheetHeight(vw, vh) : expandedSheetHeight(vw, vh))
-      : barHeight(vw, vh));
+      ? inset + (dashboardPanelBus.state.stack.length > 1 ? drillSheetHeight(vw, vh) : expandedSheetHeight(vw, vh))
+      : bandFootprint(vw, vh, dashMinBus.min, false, inset).dashH);
   const root = document.documentElement;
   if (root.dataset.btSheet !== mode) root.dataset.btSheet = mode;
   const want = px + 'px';

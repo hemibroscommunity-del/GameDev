@@ -24,7 +24,8 @@
  * press and every ability would silently deal double damage.
  */
 import { BT_AUDIO, abilityCfg, abilityStaminaCost, abilityUnlocked, isAbilitiesEnabled,
-  prog3CharLevel, getActiveWeapon } from '@/data/index.js';
+  prog3CharLevel, getActiveWeapon,
+  meleeSwingSfx /* v2.3.2260: the lunge borrows the swing's own per-weapon sound */ } from '@/data/index.js';
 import { isPlayerDead, pushDmgPopup } from '@/game/combatHelpers.js';
 
 /* Local cooldown clocks, keyed by our OWN constant names (never a client- or
@@ -62,6 +63,25 @@ function cdMap(S) {
    damage-sweep suppression lifts — a pose outliving the window would leave
    the shield up through the next ordinary swing. */
 export const BASH_POSE_MS = 460;
+
+/* ═══ v2.3.2260: THE DASH'S OWN NUMBERS, IN ONE PLACE ═══
+ * The lunge and the bash both close the distance by the same per-frame
+ * integration in BroTown's movement block, and it had these as bare literals
+ * (13 and 260) at the two ends of the codebase that have to agree.  Named and
+ * shared, because the measurement that forced them to change -- a dash fired
+ * at 220px arriving 57px short -- is a relationship BETWEEN them and the
+ * ability's declared `reach`, not a property of either one.
+ *
+ * DASH_STEP_PX is per 60fps-frame and is multiplied by S._dtScale, so
+ * DASH_MAX_STEP_PX is the real guard: the worker's anti-teleport rejects a
+ * move over ~80px in one step, and a rejected correction snaps the player back
+ * to where the dash began -- the exact miss the dash exists to prevent.
+ * DASH_WINDOW_MS is a BACKSTOP for a target that keeps running; arrival is
+ * what normally ends the move. */
+export const DASH_STEP_PX = 26;
+export const DASH_MAX_STEP_PX = 60;
+export const DASH_WINDOW_MS = 420;
+export const DASH_STOP_PX = 46;   /* contact range: just outside the body */
 /* The shockwave's opening, 120° — the SAME span as the shield's own guard
    cone (BLOCK_ARC_HALF = PI/3 either side, src/data/gameSystems.js), so the
    shove is drawn across exactly the face of the shield that threw it. */
@@ -193,24 +213,109 @@ export function castAbility(S, kind) {
      `targetId` is additive and optional: an older worker ignores it and falls
      back to its radius scan, and a newer worker with an older client does the
      same, so this ships in either order with no caps flag. */
-  var _bashLt = (kind === 'bash' && S.lockedTarget && S.lockedTarget.type === 'monster')
+  /* v2.3.2258: sworddash is the same move with a sword's numbers, so it takes
+     the same declared target and the same frame-by-frame dash. */
+  var _dashKind = (kind === 'bash' || kind === 'sworddash');
+  var _bashLt = (_dashKind && S.lockedTarget && S.lockedTarget.type === 'monster')
     ? S.lockedTarget.ref : null;
   var _bashId = _bashLt && _bashLt.id != null ? _bashLt.id : null;
-  try {
-    S.channel && S.channel.send({ type: 'ability',
-      payload: _bashId != null ? { kind: kind, targetId: _bashId } : { kind: kind } });
-  } catch (e) {}
-
   /* THE DASH.  Integrated per frame by BroTown's movement block (never a
      position jump), because the worker's anti-teleport rejects a step over
      ~80px and a rejected correction would guarantee the miss it is meant to
      fix.  It stops at the target's edge rather than inside it, so the shove
      lands from contact range instead of shoving from on top of them. */
+  /* ═══ v2.3.2260: THE WINDOW WAS SHORTER THAN THE REACH ═══
+     Owner (of the sword lunge): "I want the character to zoom to the enemy AND
+     make a swing at it (all in one motion)."  Measured on the real function
+     before changing anything -- fire at a locked monster and sample the
+     player's position:
+
+         gap 150px  ->  closed to 46px   (contact: arrived)
+         gap 220px  ->  closed to 103px  (stopped 57px short)
+
+     The dash is declared at `reach` 240 and a lock is acquired out to ~220, so
+     the case it fails is the ordinary one.  260ms at 13px per 60fps-frame is
+     ~200px of travel IF every frame lands, and DASH_STEP_PX is multiplied by
+     _dtScale, which is itself clamped to 3 -- so on a phone that drops frames
+     the clock runs out with the player in open ground.
+
+     Both terms move, and the window stops being what decides: the step is
+     roughly doubled so the close reads as a ZOOM rather than a jog, and the
+     window becomes a BACKSTOP for a target that keeps running rather than the
+     thing that ends the move.  ARRIVAL ends it (the `_bdist <= _bstop` branch
+     in BroTown's movement block), which is what the owner asked for.
+
+     THE PER-FRAME CAP IS NOT DECORATION: the worker's anti-teleport rejects a
+     step over ~80px, and DASH_STEP_PX x the _dtScale clamp of 3 is 78 -- one
+     tuning nudge from a rejected move that would snap the player back to where
+     the dash began and guarantee the miss this exists to fix.  Capped well
+     under it, so the speed can be tuned without re-deriving the validator. */
   if (_bashLt) {
-    S._bashDash = { targetId: _bashId, ref: _bashLt, startTime: now, until: now + 260 };
+    S._bashDash = { targetId: _bashId, ref: _bashLt, startTime: now, until: now + DASH_WINDOW_MS };
   } else {
     S._bashDash = null;
   }
+
+  /* ═══ v2.3.2260: THE LUNGE STRIKES WHEN IT ARRIVES, NOT WHEN IT LEAVES ═══
+     The second half of "all in one motion".  Everything below -- the swing
+     animation, the peer broadcast, the rings, the sound, and the `ability`
+     message the WORKER resolves the hit from -- used to fire on the press,
+     while the player was still travelling.  So the swing played at the old
+     position and was over before arrival, and the worker measured the hit from
+     where the dash STARTED (combat-side: _handleAbility reads ps.x/ps.y the
+     moment the message lands, with the declared-target `reach` fallback doing
+     the real work).  Two events, in the wrong order.
+
+     For sworddash the strike is now stashed and fired by the movement block
+     when the dash ends -- so the sequence is close, then hit, and the worker
+     range-checks from where the player actually ended up, which is strictly
+     more likely to connect than where they began.
+
+     BASH IS DELIBERATELY UNCHANGED.  Its shove and stun landing on the press
+     is what the owner tuned in v2.3.2252, its pose is a shield rather than a
+     swing, and it was not what was asked about.  It still gets the longer,
+     faster dash above, which is the half of v2.3.2252's own directive ("make
+     yourself always dash to the enemy and make contact") that was falling
+     short for the same reason.
+
+     THE SUPPRESSION AND THE SWING CLOCK ARE STAMPED NOW, NOT AT ARRIVAL.  The
+     press set S.autoAttack, so without them the auto-attack loop would fire an
+     ORDINARY swing during the ~150ms of travel and bill the same thumb twice.
+     swingTimer holds the loop off for its whole cooldown and _abilitySwingUntil
+     covers travel + the strike's own 460ms window; applyAbilityStrike re-stamps
+     both when it lands. */
+  var _defer = (kind === 'sworddash' && !!_bashLt);
+  if (_defer) {
+    S._dashStrike = { kind: kind, targetId: _bashId, at: now };
+    S.swingTimer = now;
+    S._abilitySwingUntil = now + DASH_WINDOW_MS + 460;
+    return true;
+  }
+  S._dashStrike = null;
+  applyAbilityStrike(S, kind, _bashId);
+  return true;
+}
+
+/* ═══ v2.3.2260: THE HALF OF A CAST THAT CAN BE MADE TO WAIT ═══
+ * Extracted from castAbility unchanged in behaviour, so that a lunge can run
+ * it on ARRIVAL instead of on the press (see the note above).  Everything
+ * here is "the ability going off": the message the worker resolves from, the
+ * animation, what peers see, the rings and the sound.  Everything that must
+ * happen on the PRESS -- the cooldown, the stamina, the dash record, the
+ * sweep suppression -- stays in castAbility.
+ *
+ * Called with the target id the cast committed to so the worker's declared-
+ * target fallback still names the same monster it named before.
+ */
+export function applyAbilityStrike(S, kind, targetId) {
+  var R = S && S.rpg;
+  var cfg = abilityCfg(kind);
+  if (!R || !cfg) return false;
+  var now = Date.now();
+  try {
+    S.channel && S.channel.send({ type: 'ability',
+      payload: targetId != null ? { kind: kind, targetId: targetId } : { kind: kind } });
+  } catch (e) {}
 
   /* ═══ THE ANIMATION, WITHOUT THE HIT ═══
      The damage sweep that normally rides along with a swing is suppressed
@@ -306,6 +411,15 @@ export function castAbility(S, kind) {
       BT_AUDIO.beep(180, 0.16, 0.22, 'square');
       setTimeout(function () { return BT_AUDIO.beep(120, 0.12, 0.18, 'sawtooth'); }, 70);
     }
+  } else if (kind === 'sworddash') {
+    /* ═══ v2.3.2260: A LUNGE SOUNDS LIKE A SWORD ═══
+       This branch was `else`, so sworddash -- added at v2.3.2258 and never
+       given a sound of its own -- fell into WHIRLWIND's wind-impact sample.
+       The owner asked for the lunge to "make a swing at it"; it should sound
+       like the swing it is.  meleeSwingSfx is the same per-weapon rotation the
+       ordinary swing and the tapped swing both use (v2.3.1798), so a lunge with
+       a greatsword and a swing with a greatsword cannot drift apart. */
+    try { BT_AUDIO.play(meleeSwingSfx(R), { vol: 0.9 }); } catch (e) {}
   } else {
     /* v2.3.1738: the owner's wind-impact sample, same shape as bash above —
        fired on the cast, with the synth stand-in kept as the fallback for the
@@ -319,4 +433,66 @@ export function castAbility(S, kind) {
     }
   }
   return true;
+}
+
+/* ═══ v2.3.2258: THE FIRST ATTACK OF AN ENGAGEMENT IS A LUNGE ═══
+ * Owner: "For ONLY melee (sword) ... the default first attack will be very
+ * similar to 'shield bash' (you can even re-use the mechanic but for sword)
+ * and keep the stun enemy effect.  I've been feeling like melee is a little
+ * underpowered so this should help."
+ *
+ * Called from the right control's PRESS -- both surfaces, the zone stick and
+ * the contextual disc, because either one can start a fight and the owner did
+ * not distinguish them.  Returns true when it took the press, in which case
+ * the caller's ordinary swing is skipped: castAbility stamps
+ * `_abilitySwingUntil`, which suppresses the normal damage sweep so the hit is
+ * billed once, by the worker, at the ability's own numbers.
+ *
+ * WHAT MAKES IT "THE FIRST ATTACK" is the cooldown, not a per-target flag.  A
+ * flag was the first design and it is worse: it needs an owner (clear on lock
+ * change? on release? on the monster's death?), and every one of those answers
+ * is a way for a player to re-lunge for free by tapping something else and
+ * tapping back.  2500ms says "once per engagement" without anything to keep in
+ * sync, and it degrades honestly -- a long fight gets another lunge, which is
+ * a fair reading of "melee is underpowered" anyway.
+ *
+ * NOT WHILE THE SHIELD IS UP: that press is bash's, and firing both off one
+ * thumb would spend 40% of the bar in a frame.  NOT FOR BOW OR STAFF: "For
+ * ONLY melee (sword)", and their slot is the same field targeting reads.
+ */
+export function maybeSwordDash(S) {
+  if (!S || !S.rpg || !S.player) return false;
+  var slot = S.rpg.activeSlot;
+  if (slot === 'ranged' || slot === 'staff') return false;
+  if (S._shieldUp) return false;
+  var lt = S.lockedTarget;
+  if (!lt || lt.type !== 'monster' || !lt.ref) return false;
+  var m = lt.ref;
+  if (m.alive === false || (m.curHp != null && m.curHp <= 0)) return false;
+  var st = abilityStatus(S, 'sworddash');
+  if (!st.visible || !st.equipped || st.cdLeft > 0 || !st.afford) return false;
+  return castAbility(S, 'sworddash') === true;
+}
+
+/* Dev probe, house style (__btAtkMark, __btPlayerDrawn): the lunge fires from
+   inside a touch handler, and a scenario cannot press a button and then ask
+   "was that a lunge or an ordinary swing?" without one -- both stamp
+   swingTimer.  Exposed as the same call the press makes, so the test drives
+   the real function rather than a re-implementation of its rules. */
+if (typeof window !== 'undefined') {
+  window.__btMaybeSwordDash = function () {
+    try { return maybeSwordDash(window._gameState && window._gameState.current); }
+    catch (e) { return null; }
+  };
+}
+
+/* Companion probe: WHY a lunge was refused.  A boolean false from
+   __btMaybeSwordDash has five possible causes and a scenario that cannot tell
+   them apart reports "it does not work" for a fixture that simply has no
+   sword. */
+if (typeof window !== 'undefined') {
+  window.__btAbilityStatus = function (kind) {
+    try { return abilityStatus(window._gameState && window._gameState.current, kind); }
+    catch (e) { return null; }
+  };
 }

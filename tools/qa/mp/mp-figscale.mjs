@@ -35,6 +35,12 @@ const scale = (P) => P.page.evaluate(() => {
     /* v2.3.2247: the viewport and the zone that now bounds it, so the
        assertions below can state the owner's rule instead of a fixed scale. */
     viewW: Math.round(S._viewW || 0), viewH: Math.round(S._viewH || 0),
+    /* v2.3.2257: the CHARACTER, which is what the parity claim below is about.
+       _bodyDrawH is crown-to-foot in world px through the renderer's own
+       bodyScale and per-zone display scale (v2.3.2256); times the world scale
+       it is the height a thumb actually sees. */
+    bodyWorldPx: S._bodyDrawH || null,
+    bodyCssPx: (S._bodyDrawH && S._worldScaleX) ? +(S._bodyDrawH * S._worldScaleX).toFixed(1) : null,
     zoneW: (() => { const z = (window.__btZones || {})[S.currentZone]; return z ? z.w * 32 : 0; })(),
     zoneH: (() => { const z = (window.__btZones || {})[S.currentZone]; return z ? z.h * 32 : 0; })(),
   };
@@ -178,26 +184,40 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* THE CLAIM, stated as a comparison rather than an absolute: nobody can say
      what "too small" is in pixels, but "smaller out there than in town" is a
      fact with an answer. */
-  /* ═══ v2.3.2247: THE WORLD SCALE IS PER ZONE NOW, ON PURPOSE ═══
-     This asserted one global scale everywhere.  The owner asked for the game
-     zoomed out 50% and then bounded it -- "don't zoom out larger than the
-     screen area would show" -- so worldViewport floors the scale by the zone's
-     own size, and a zone that holds less world necessarily draws it bigger.
-     Measured here: town 0.349 (a 1664x1760 map can afford the full zoom-out),
-     Wind Dunes 0.601 (a 1024x1024 map cannot), the hub 0.400.  Three different
-     numbers is the feature, so the equality is deleted rather than loosened.
+  /* ═══ v2.3.2257: THE OWNER REVERSED THIS, SO THE PIN REVERSES WITH HIM ═══
+     From v2.3.2247 until now this asserted "the biggest map is the one drawn
+     smallest (town < spoke)", and the note under it explained why three
+     different numbers were the feature: a zone that holds less world
+     necessarily draws it bigger.
 
-     What still has to hold, and is asserted instead: no zone may show MORE
-     world than it contains (that is the owner's rule, and the void it exists
-     to prevent), and town -- the largest map -- must be the most zoomed out of
-     the three, which is the direction the whole change is about. */
+     The owner has now looked at the result and asked for the opposite:
+       "I want the character to be exactly as large as he is right now in the
+        zones on main right now.  Use that size for in town and in the zones."
+     Measured on his installed Pro Max before the change: 67.6 CSS px of
+     character in a combat zone against 52.9 in town -- 28% apart, through one
+     portal.  So worldViewport floors every zone at the scale a 32x32 combat
+     zone resolves to on this canvas, and town == spoke is now the FEATURE.
+
+     Asserted on the FIGURE, not on the scale, because the figure is the thing
+     he was talking about and the scale is only how it gets there.  The
+     no-void rule below is untouched -- it is his other standing rule and both
+     hold at once, since the new term is a floor and floors only zoom in. */
   rec.ok('no zone shows more world than its map holds (the owner\'s rule)',
     inTown.viewW <= inTown.zoneW + 1 && inTown.viewH <= inTown.zoneH + 1
       && inSpoke.viewW <= inSpoke.zoneW + 1 && inSpoke.viewH <= inSpoke.zoneH + 1,
     { town: inTown, dunes: inSpoke });
-  rec.ok('...and the biggest map is the one drawn smallest (town < spoke)',
-    inTown.sx > 0 && inSpoke.sx > 0 && inTown.sx < inSpoke.sx,
-    { town: inTown.sx, dunes: inSpoke.sx, hub: onHub.sx });
+  rec.ok(`...and the character is the SAME SIZE in town as in a combat zone (${inTown.bodyCssPx} vs ${inSpoke.bodyCssPx} CSS px)`,
+    inTown.bodyCssPx > 0 && inSpoke.bodyCssPx > 0
+      && Math.abs(inTown.bodyCssPx - inSpoke.bodyCssPx) <= 0.6,
+    { town: inTown, dunes: inSpoke });
+  /* Guard: a parity assertion passes trivially if BOTH readings are the flat
+     FIGURE_SCALE_FLOOR, which is what happens on a short phone -- and that was
+     the state the old landview pin mistook for fairness.  This harness runs a
+     390x844 viewport, where the reference term (canvas 615 / 1024 = 0.601)
+     is above the 0.50 floor, so the equality above is the new rule working
+     rather than the old floor binding twice. */
+  rec.ok('...and it is the reference term doing it, not the flat floor binding twice',
+    inTown.sx > 0.51, { townScale: inTown.sx, flatFloor: 0.50 });
 
   if (boxTown && boxSpoke && boxTown.height > 0 && boxSpoke.height > 0) {
     const ratio = boxSpoke.height / boxTown.height;

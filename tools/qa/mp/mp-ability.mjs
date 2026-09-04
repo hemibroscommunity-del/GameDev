@@ -494,5 +494,149 @@ export async function run({ browser, wsPort, webPort, rec }) {
       { from, cast, drift: +Math.hypot(from.x - cast.x, from.y - cast.y).toFixed(2) });
   }
 
+  /* ═══ v2.3.2258: THE SWORD'S OPENING LUNGE ═══
+     Owner: "For ONLY melee (sword) ... the default first attack will be very
+     similar to 'shield bash' (you can even re-use the mechanic but for sword)
+     and keep the stun enemy effect.  I've been feeling like melee is a little
+     underpowered so this should help.  Also make the cost of sword dash 10%
+     stamina."
+
+     Three claims, and the third is the one that would ship broken quietly: it
+     must NOT fire for a bow, because "ONLY melee (sword)" is the whole first
+     clause of the sentence and a ranged lunge would be invisible in play until
+     someone noticed their stamina draining at range. */
+  const dashSetup = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    S.rpg.activeSlot = 'melee';
+    /* A sword in hand: abilityStatus gates `equipped` on R.weapon for a
+       needs:'weapon' ability, and this fixture's character starts bare-handed. */
+    if (!S.rpg.weapon) S.rpg.weapon = { name: 'QA Sword', type: 'sword', gearBase: 'ws_iron', quality: 'normal', tierMult: 1 };
+    S.rpg.stamina = S.rpg.maxStamina || 100;
+    S._shieldUp = false;
+    S._abilCd = null;
+    S._serverMonsters = false;
+    S.monsters = [{
+      id: 'qa_dash_1', arch: 'fodder', archetype: 'fodder', type: 'fodder',
+      x: S.player.x + 150, y: S.player.y, renderX: S.player.x + 150, renderY: S.player.y,
+      hp: 9000, curHp: 9000, maxHp: 9000, dmg: 0, level: 1, gold: 0, spd: 0, vx: 0, vy: 0,
+      alive: true, statuses: {}, _hitThisSwing: false, _atkCd: 0, _stunUntil: 0,
+      respawnAt: 0, moveTimer: 0, _stuckArrows: [],
+    }];
+    S.lockedTarget = { type: 'monster', id: 'qa_dash_1', ref: S.monsters[0], src: 'tap' };
+    const _st = window.__btAbilityStatus ? window.__btAbilityStatus('sworddash') : null;
+    return { stam: S.rpg.stamina, max: S.rpg.maxStamina || 100, slot: S.rpg.activeSlot, status: _st };
+  });
+  rec.ok('guard: a melee character, full stamina, locked on a monster 150px away',
+    dashSetup.slot === 'melee' && dashSetup.stam === dashSetup.max, dashSetup);
+
+  const dashed = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const before = S.rpg.stamina;
+    const ok = window.__btMaybeSwordDash ? window.__btMaybeSwordDash() : null;
+    return { ok, before, after: S.rpg.stamina, dash: S._bashDash ? { id: S._bashDash.targetId } : null };
+  });
+  rec.ok('pressing attack on a locked monster fires the lunge', dashed.ok === true, dashed);
+  rec.ok(`...and it costs 10% of the bar (${dashed.before} -> ${dashed.after} of ${dashSetup.max})`,
+    Math.abs((dashed.before - dashed.after) - Math.ceil(dashSetup.max * 0.10)) <= 1, dashed);
+  rec.ok('...and it names the monster it is closing on, so the dash has a destination',
+    !!dashed.dash && dashed.dash.id === 'qa_dash_1', dashed);
+
+  /* ═══ v2.3.2260: THE DASH IS A MOTION, SO MEASURE THE MOTION ═══
+     Owner: "for sword dash I want the character to zoom to the enemy AND make
+     a swing at it (all in one motion)."
+
+     Everything above this line asserts INTENT -- the ability fired, the bar
+     moved, a destination was named.  All three passed on a build where the
+     dash arrived 57px short of a monster 220px away and swung before it got
+     there, because none of them looks at the player's position or at WHEN the
+     swing goes off.  A test that only reads the record cannot see the move.
+
+     So: fire the real lunge, sample where the player actually ends up, and
+     assert the two halves of the owner's sentence separately.
+
+     220px is not an arbitrary distance.  It is the range a lock is acquired
+     at, so it is the ordinary case rather than a corner one, and it is where
+     the measurement that forced this change was taken. */
+  const dashRun = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    /* Fresh engagement: clear the 2500ms cooldown the lunge just took, and put
+       the monster back out at lock range. */
+    S._abilCd = null;
+    S.rpg.stamina = S.rpg.maxStamina || 100;
+    S._bashDash = null; S._dashStrike = null;
+    S.isSwinging = false;
+    const m = S.monsters[0];
+    m.x = m.renderX = S.player.x + 220;
+    m.y = m.renderY = S.player.y;
+    m.alive = true; m.curHp = 9000;
+    S.lockedTarget = { type: 'monster', id: 'qa_dash_1', ref: m, src: 'tap' };
+    const gap0 = Math.hypot(m.x - S.player.x, m.y - S.player.y);
+    const ok = window.__btMaybeSwordDash ? window.__btMaybeSwordDash() : null;
+    /* Read the frame the press produced, BEFORE any dash step has run: the
+       claim is that the strike waits, so at this instant it must be pending
+       and the swing must not have started. */
+    return {
+      ok, gap0: Math.round(gap0),
+      pendingAtCast: !!S._dashStrike,
+      swingingAtCast: !!S.isSwinging,
+      dashAtCast: !!S._bashDash,
+    };
+  });
+  rec.ok('a fresh lunge fires at lock range (guard)',
+    dashRun.ok === true && Math.abs(dashRun.gap0 - 220) <= 2, dashRun);
+  /* HALF ONE OF THE SENTENCE: the swing WAITS for the dash.  Before v2.3.2260
+     isSwinging went true on the press, so the swing played at the old position
+     and was over before arrival -- "two motions", which is what the owner was
+     describing. */
+  rec.ok('...the strike is held back while the dash runs, so it is one motion and not two',
+    dashRun.dashAtCast === true && dashRun.pendingAtCast === true && dashRun.swingingAtCast === false,
+    dashRun);
+
+  await P.page.waitForTimeout(900);
+  const dashEnd = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const m = S.monsters[0];
+    return {
+      gap: Math.round(Math.hypot(m.x - S.player.x, m.y - S.player.y)),
+      stillDashing: !!S._bashDash,
+      stillPending: !!S._dashStrike,
+      struck: (S._abilityFx && S._abilityFx.kind) || null,
+      swingAge: Date.now() - (S.swingTimer || 0),
+    };
+  });
+  console.log('    dash: ' + JSON.stringify(dashRun) + ' -> ' + JSON.stringify(dashEnd));
+  /* HALF TWO: it ZOOMS TO THE ENEMY.  Contact range is 46px (DASH_STOP_PX) and
+     the dash stops just outside the body; the tolerance is the one frame of
+     step it may overshoot the check by, not a licence to stop in open ground.
+     On the build this replaced the same run ended at 103px. */
+  rec.ok(`...and it closes all the way to contact range (ended ${dashEnd.gap}px away, was 103px before)`,
+    dashEnd.gap <= 60, dashEnd);
+  rec.ok('...the dash is over rather than still grinding',
+    dashEnd.stillDashing === false, dashEnd);
+  /* ...and the held strike actually went off when it landed.  Without this the
+     two assertions above are satisfied by a lunge that closes the distance and
+     then never attacks -- which would be worse than what it replaced. */
+  rec.ok('...and the strike it was holding fired on arrival',
+    dashEnd.stillPending === false && dashEnd.struck === 'sworddash', dashEnd);
+
+  /* The cooldown is what makes it "the FIRST attack" -- see maybeSwordDash. */
+  const twice = await P.page.evaluate(() => (window.__btMaybeSwordDash ? window.__btMaybeSwordDash() : null));
+  rec.ok('...and the very next press does NOT lunge again (it is the first attack, not every attack)',
+    twice === false, { second: twice });
+
+  /* ── and never with a bow ── */
+  const bowDash = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    S.rpg.activeSlot = 'ranged';
+    S.rpg.rangedWeapon = S.rpg.rangedWeapon || { name: 'Pine Bow', type: 'bow', gearBase: 'ww_pine', quality: 'normal', tierMult: 1 };
+    S.rpg.stamina = S.rpg.maxStamina || 100;
+    S._abilCd = null;
+    const before = S.rpg.stamina;
+    const ok = window.__btMaybeSwordDash ? window.__btMaybeSwordDash() : null;
+    return { ok, before, after: S.rpg.stamina };
+  });
+  rec.ok('a BOW never lunges -- "For ONLY melee (sword)"', bowDash.ok === false, bowDash);
+  rec.ok('...and it costs a ranged character nothing', bowDash.after === bowDash.before, bowDash);
+
   await P.ctx.close().catch(() => {});
 }

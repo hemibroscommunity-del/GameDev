@@ -110,15 +110,38 @@ const MIN_SCALE = 0.75 / WORLD_ZOOM;   /* 0.25 at WORLD_ZOOM 3 */
  * separate named constant and not folded into MIN_SCALE, because the next
  * person to tune it should not have to work out which of the two they mean.
  *
- * The bro's drawn height on a 390x844 phone is very close to 66 * scale, so:
- *      0.349  ->  23 px   (no floor: what the owner called too small)
- *      0.45   ->  30 px
- *      0.50   ->  33 px
- *      0.55   ->  36 px
- *      0.667  ->  44 px   (the pre-v2.3.2247 size, everywhere)
+ * ═══ v2.3.2256b: THE TABLE BELOW WAS WRONG, TWICE OVER ═══
+ * It used to say "very close to 66 * scale" and list 0.50 -> 33 px, and then
+ * four lines further down it said 0.50 "draws the bro at ~72 px".  Both were
+ * in the same comment and neither was the character: 66 was the QA CROP BOX
+ * (tools/qa/mp/harness.mjs's 40x46-ish figure crop, which is roughly twice the
+ * figure -- TRAPS #37, measuring the box that defines a drawing instead of the
+ * drawing) and 72 was the sprite FRAME, the whole 256px animation cell with its
+ * transparent margin above the hat and below the feet, which is what
+ * mp-zoomshot printed until v2.3.2256.
+ *
+ * The real figure is 105.7 world px crown-to-foot -- (feet - crown + 1) x
+ * bodyDirScale x LOCAL_SCALE 0.421875 x PLAYER_SIZE_MULT 1.25, published every
+ * frame as S._bodyDrawH and measured live at 106.3.  So on a 390x844 phone in
+ * a browser tab (band 243, canvas 615):
+ *      0.349  ->  37 CSS px   (no floor: what the owner called too small)
+ *      0.45   ->  48 CSS px
+ *      0.50   ->  53 CSS px   <- FIGURE_SCALE_FLOOR
+ *      0.55   ->  58 CSS px
+ *      0.667  ->  70 CSS px   (the pre-v2.3.2247 size, everywhere)
  * Only town, worldview and the two 40x40 zones are affected -- the nine combat
  * zones already floor at 0.601 on their own map size, above every candidate
  * here, so this constant cannot change how a fight looks.
+ *
+ * AND THAT LAST SENTENCE IS THE ONE TO READ BEFORE RETUNING ANYTHING.  In a
+ * combat zone the figure's size is set ENTIRELY by the map: a 32x32 zone is
+ * 1024 world px and the canvas is ~600 CSS, so the height floor lands at
+ * ~0.60 and the viewport is already exactly the whole map.  There is no
+ * zoom-out headroom there at all -- the next pixel out is void tray.  Asked in
+ * 2026-09 to make the bro 75 DEVICE px (25 CSS) on a Pro Max, the honest answer
+ * was that no zone in the game is big enough: town, the deepest map, bottoms
+ * out at ~36 CSS px and ember has zero slack.  If that comes up again, the
+ * lever is the sprite (PLAYER_SIZE_MULT) or the map size, never this file.
  * CHOSEN ON RENDERED SCREENSHOTS, not by argument.  tools/qa/mp/sweep-zoom.mjs
  * rebuilds the client at each candidate and shoots the same spot in town, so
  * the owner picked this by looking at five real builds side by side rather
@@ -127,7 +150,8 @@ const MIN_SCALE = 0.75 / WORLD_ZOOM;   /* 0.25 at WORLD_ZOOM 3 */
  * so I don't have to do a bunch of guesswork."
  *
  * 0.45 first, then 0.50 after playing it (v2.3.2250).  0.50 draws the bro at
- * ~72 px and still zooms town out ~25% from the pre-v2.3.2247 view; it also
+ * ~53 CSS px (the ~72 this line used to claim was the sprite frame, see above)
+ * and still zooms town out ~25% from the pre-v2.3.2247 view; it also
  * closes the town-vs-combat size gap further, since a combat zone floors at
  * 0.601 on its own map size (1.20x apart now, against 1.34x at 0.45 and 1.72x
  * with no floor at all).  Re-run the sweep before moving this number. */
@@ -222,6 +246,76 @@ export function worldViewport(canvas, zoneId) {
   const _z = zoneId && ZONES[zoneId];
   if (_z) {
     scale = Math.max(scale, cssW / (_z.w * TILE), cssH / (_z.h * TILE));
+  }
+  /* ═══ v2.3.2257: ONE CHARACTER SIZE, IN EVERY ZONE ═══
+     Owner: "I want the character to be exactly as large as he is right now in
+     the zones on main right now.  Use that size for in town and in the zones."
+
+     He was not the same size in both, and the floor above is why.  A zone's own
+     size decides its scale, so on a tall phone a 32x32 combat zone (1024 world
+     px against a ~655 CSS canvas) floors at 0.64 while town (1664x1760, far
+     more world than the canvas can want) never reaches its own floor at all
+     and falls through to FIGURE_SCALE_FLOOR's flat 0.50.  Measured on the
+     owner's installed Pro Max: 67.6 CSS px of character in a combat zone,
+     52.9 in town -- 28% apart, in the same game, walking through a portal.
+     (farm_home, the smallest map at 960x800, is 86.5: 64% bigger than town.)
+
+     So the figure floor stops being a hand-tuned constant and becomes a
+     REFERENCE ZONE: whatever scale a standard 32x32 combat zone would resolve
+     to on this canvas, every other zone gets at least that.  The nine combat
+     zones are unchanged BY CONSTRUCTION -- for them these two terms are
+     literally the same arithmetic as their own zone terms above -- which is
+     the first half of what the owner asked for.
+
+     Still a floor, so it can only ever zoom IN, and zooming in cannot make
+     void: the v2.3.2247 rule above is untouched and still wins wherever a map
+     is smaller than the reference (farm_home keeps its 0.82).  That one cannot
+     be brought DOWN to the reference without drawing the tray, so farm_home
+     stays the odd zone out; nothing can be done about that from here.
+
+     FIGURE_SCALE_FLOOR stays underneath as the short-phone case: below a ~512
+     CSS canvas the reference term drops under 0.50 and the flat floor is what
+     keeps the character legible, exactly as it was chosen to. */
+  const FIGURE_REF_PX = 32 * TILE;   /* the nine combat zones' own map size */
+  const _vref = _z && (land ? _z.refViewH : _z.refViewW);
+  /* ═══ v2.3.2257: ...EXCEPT THE VISTA, WHICH GETS ITS OLD ONE BACK ═══
+     Owner: "For character size in worldview revert to how big the character
+     was previously.  He's too small in worldview now."
+
+     He is, and by a number: the World View shrinks the figure on purpose with
+     a distance curve (ZONES.worldview.playerScale, near 0.55 -> far 0.03,
+     v2.3.859) and v2.3.2247 then multiplied that by a SECOND shrink when the
+     one width rule became a per-zone floor.  48x48 tiles is 1536 world px, so
+     the World View never reaches its own floor either and lands on the flat
+     0.50 -- against 0.735 under the pre-v2.3.2247 rule on this canvas.  His
+     figure went from 42.7 CSS px to 29.1: 68% of what it was.
+
+     The revert is the OLD RULE, not a new number: cssW / refViewW, which is
+     `Math.round(390 * 1.5)` -- the reference width at the WORLD_ZOOM of the
+     day (worldViewport.js at 2deb56a, the commit before v2.3.2247).  Carried
+     in zones.js rather than as a literal here, for the reason v2.3.1574 gives
+     about this very zone: the depth curve used to be hand-copied in three
+     places and they drifted.
+     Only the WORLD scale moves.  The perspective curve is untouched, so the
+     vista still shrinks him with distance -- that is the effect, and
+     mp-wvglass pins it on the container scale, which this does not touch.
+
+     ON THE SAME AXIS THE OLD RULE USED, which is the whole point of restoring
+     a rule rather than a number: sideways it was cssH / REF_VIEW_H (480), not
+     the width.  Spending the width in landscape gave 844/585 = 1.443 and blew
+     the vista up to nearly triple -- the first cut of this did exactly that,
+     and only a landscape row in the check table caught it. */
+  if (_vref > 0) {
+    /* INSTEAD OF the reference floor, not beside it.  The first cut had both
+       terms live and let max() pick, which is not a revert: on a tall canvas
+       (the band minimised, or sideways) cssH/1024 beats cssW/585 and the vista
+       comes out BIGGER than it ever was -- measured 14% over on a Pro Max with
+       the dashboard folded.  "As big as he was previously" has an exact answer
+       and this is it; the reference floor is for the zones that are supposed to
+       match each other, and the vista is explicitly not one of them. */
+    scale = Math.max(scale, (land ? cssH : cssW) / _vref);
+  } else {
+    scale = Math.max(scale, cssW / FIGURE_REF_PX, cssH / FIGURE_REF_PX);
   }
   /* v2.3.2249: ...and never so far out that the character stops reading. */
   scale = Math.max(scale, FIGURE_SCALE_FLOOR);
