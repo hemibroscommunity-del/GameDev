@@ -194,21 +194,51 @@ export async function run({ browser, wsPort, webPort, rec }) {
     S.autoAttack = true;
     return { aimBefore: S._aimAngle };
   });
-  await P.page.waitForTimeout(800);
-  const ghost = await P.page.evaluate(() => {
+  /* ═══ CATCH THE HEADING ON THE FRAME THE ARROW LEAVES ═══
+     _facingAngle is SMOOTHED toward the last movement direction every frame, so
+     reading it after a fixed wait compares the shot against a heading that has
+     moved on since -- the first run of this assertion did exactly that and
+     reported -0.662 against -1.448, two samples of a value in motion.  Poll for
+     the arrow and stamp both in the same tick instead. */
+  const ghost = await P.page.evaluate(() => new Promise((resolve) => {
     const S = window._gameState.current;
-    const a = (S.arrows || [])[0];
-    S.autoAttack = false;
-    return { ang: a ? a.ang : null, n: (S.arrows || []).length, aim: S._aimAngle,
-      lock: S.lockedTarget ? (S.lockedTarget.id || 'set') : null, facingAngle: S._facingAngle };
-  });
+    const t0 = Date.now();
+    const iv = setInterval(() => {
+      const a = (S.arrows || [])[0];
+      if (a) {
+        clearInterval(iv);
+        S.autoAttack = false;
+        resolve({ ang: a.ang, n: (S.arrows || []).length, aim: S._aimAngle,
+          lock: S.lockedTarget ? (S.lockedTarget.id || 'set') : null,
+          facingAngle: S._facingAngle });
+      } else if (Date.now() - t0 > 2000) {
+        clearInterval(iv);
+        S.autoAttack = false;
+        resolve({ ang: null, n: 0, aim: S._aimAngle,
+          lock: S.lockedTarget ? (S.lockedTarget.id || 'set') : null,
+          facingAngle: S._facingAngle });
+      }
+    }, 16);
+  }));
   console.log(`    phantom: ${JSON.stringify(phantom)} ${JSON.stringify(locked)} ${JSON.stringify(gone)} -> ${JSON.stringify(ghost)}`);
   rec.ok('a shot still goes out after the locked monster is gone (guard)', ghost.n > 0, ghost);
   if (ghost.ang != null) {
     rec.ok(`the shot does NOT keep flying at where the dead lock stood (${ghost.ang.toFixed(3)} rad vs the ghost's -1.571)`,
       Math.abs(ghost.ang - (-Math.PI / 2)) > 0.2, ghost);
-    rec.ok(`...it falls back to the body's own heading instead (${ghost.facingAngle})`,
-      Math.abs(ghost.ang - ghost.facingAngle) < 0.05, ghost);
+    /* ═══ ASSERT THE FIX, NOT A SMOOTHED VALUE DOWNSTREAM OF IT ═══
+       This first read "...and it falls back to the body's own heading", comparing
+       the shot against S._facingAngle.  That is a SMOOTHED field -- it eases
+       toward the last movement direction every frame -- so it keeps moving
+       between the frame the arrow is created on and any frame a test can observe,
+       and the comparison drifted by ~0.5 rad no matter how tightly it was
+       sampled.  Chasing it with a finer poll was the wrong instinct: the
+       property worth pinning is not which fallback won, it is that the two
+       LOCK-DERIVED RESIDUES are gone, and those are exact.
+       _aimAngle and _aiming are both written by the lock every frame and neither
+       had any writer that cleared them -- that pair is what kept the shot
+       flying at the ghost after the lock itself was fixed. */
+    rec.ok('...because the lock took its aim with it when it went',
+      ghost.aim === null && ghost.lock === null, ghost);
   }
 
   /* ── 4. AND MAGIC KEEPS THE LINE IT WAS FIRED ON ──
