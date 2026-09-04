@@ -25,7 +25,7 @@ import {
   GS_INNER_RADIUS, GS_OUTER_RADIUS, PVP_THREAT_DURATION,
   QUEST_CHAINS, QUEST_STATUS, RARE_DROP_CHANCE, RARE_DROP_ITEMS, RARITY_TIERS,
   RESPAWN_BASE, RESPAWN_ESCALATE, RESPAWN_ESCALATE_WINDOW, RESPAWN_MAX, SPECIAL_ATK_MULT, specialAtkMultFor,
-  SWING_ARC, SWING_COOLDOWN, SWING_RANGE, MELEE_CONTACT_MS /* v2.3.2200 */, TILE, WEAPON_TYPES, WELL_RESTED_XP_MULT,
+  SWING_ARC, SWING_COOLDOWN, weaponSwingMult /* v2.3.2265 */, SWING_RANGE, MELEE_CONTACT_MS /* v2.3.2200 */, TILE, WEAPON_TYPES, WELL_RESTED_XP_MULT,
   ZONES, ZONE_RESOURCES, applyStatus, awardWeaponXp, bowPierceCount, bowRangeMult, calcBlockReduction, calcCritChance,
   calcCritMult, calcDisplayDmgRange, calcSpecialDmg, calcWeaponDmg, cleaveArcBonus, createDefaultCompStats, createDefaultLifeSkills,
   CRIT_ANCHOR_MULT,
@@ -1271,7 +1271,7 @@ export function updateMonsterCombat(S, deps) {
           /* v2.3.1134: Tempo channel multiplies the cooldown AFTER the amulet
              (both sources stack; the 200ms floor still backstops).  The server's
              per-monster cadence floor assumes Tempo's -20% cap. */
-          var effectiveSwingCd = Math.max(200, Math.floor(SWING_COOLDOWN * swingCooldownMult(S.rpg) / atkSpdAmulet));
+          var effectiveSwingCd = Math.max(200, Math.floor(SWING_COOLDOWN * swingCooldownMult(S.rpg) * weaponSwingMult(S.rpg && S.rpg.activeSlot) / atkSpdAmulet));   /* v2.3.2265: the bow's 25% */
           /* Staff fires slower than bow — add the 300 ms penalty to the
              cooldown gate instead of pushing swingTimer into the future,
              which made every `Date.now() - swingTimer` reader negative

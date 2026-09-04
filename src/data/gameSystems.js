@@ -5014,7 +5014,7 @@ export function calcDisplayDmgRange(rpg, wpn) {
   /* v2.3.1207: Tempo folds into the period (see header); the staff's
      +300ms cast penalty is added AFTER the mult, unscaled, matching
      the auto-attack gate. */
-  var dmgMin, dmgMax, cdMs = SWING_COOLDOWN * swingCooldownMultFor(rpg, wpn.type);
+  var dmgMin, dmgMax, cdMs = SWING_COOLDOWN * swingCooldownMultFor(rpg, wpn.type) * weaponSwingMult(wpn.type);   /* v2.3.2265: the bow's 25% */
   if (wpn.type === 'bow')        { dmgMin = base * 0.6 + flat;  dmgMax = base * 0.8 + flat;  }
   else if (wpn.type === 'staff') { dmgMin = base * 0.5 + flat;  dmgMax = base * 1.5 + flat;  cdMs += 300; }
   else                           { dmgMin = base * 0.75 + flat; dmgMax = base * 1.25 + flat; }
@@ -5440,6 +5440,32 @@ export function meleeSwingSfx(rpg) {
 /* Legacy constants removed — weapon system uses WEAPON_TYPES + RARITY_TIERS */
 /* Monster system uses createMonster() with ARCHETYPES */
 export const SWING_COOLDOWN = 600;
+/* ═══ v2.3.2265: THE BOW DRAWS FASTER ═══
+ * Owner: "increase the attack speed of bow by 25%?  It's underpowered due to
+ * the more difficult mechanics."
+ *
+ * The mechanics he means are this session's.  v2.3.2258 took auto-targeting
+ * away from bow and staff ("you must tap on the monster") and v2.3.2262 turned
+ * the sight line off, so a bow now costs a deliberate tap per target and gives
+ * no aim assist, while a sword acquires by walking up.  Base damage was
+ * repriced for that in v2.3.2262 (7.29 -> 12.80); cadence is the other half and
+ * was left at the universal 600ms.
+ *
+ * 0.75 is 25% faster -- a 450ms period -- applied as a MULTIPLIER on the shared
+ * cooldown rather than as a bow-specific constant, so Tempo, the amulet and the
+ * -20% cap all keep composing exactly as they do for every other weapon.  It is
+ * read at the three places a cadence has to agree: the auto-attack loop, the
+ * manual tap gate, and the DPS the item card promises.  A cadence that is fast
+ * in two of them is a card that lies.
+ *
+ * NO SERVER CHANGE, checked rather than assumed: combat.js's hit-cadence floor
+ * is 210ms per (player, monster), and 450ms clears it with room to spare, so
+ * the worker accepts the faster shots without a mirrored table.  Client-only,
+ * safe in either deploy order. */
+export const BOW_SWING_MULT = 0.75;
+export function weaponSwingMult(slotOrType) {
+  return (slotOrType === 'ranged' || slotOrType === 'bow') ? BOW_SWING_MULT : 1;
+}
 export const SWING_RANGE = 50;
 export const SWING_ARC = Math.PI * 0.85;
 /* ═══ v2.3.2242: THE TARGETING PERIMETER ═══

@@ -4291,7 +4291,31 @@ function createMonsterDisplay(monster) {
      rather than both landing on the same number. The NPC plate (9) is left
      alone -- the owner named the character and the monster, and the town NPCs
      are the one population where a bigger plate would crowd the street. */
-  _attachNamePill(hpUi, 12, MONSTER_SIZE_MULT);   /* v2.3.2154: 10 -> 12 */
+  /* ═══ v2.3.2265: BACK DOWN, AND FURTHER THAN THE LAST CUT ═══
+     Owner, twice: "Nameplates are now way too large" (v2.3.2262's full zoom
+     compensation), then, of v2.3.2263's half-compensation, "reduce the font
+     size of the name plates.  It's huge."
+
+     v2.3.2263 changed the ZOOM RULE and left the base alone, which took a
+     third off and was still not the complaint.  Measured off this screenshot,
+     a 1290x2796 capture at the 0.6006 a combat zone runs at: the "Blue Slime
+     LV 1" plate is 130 CSS px wide on a 430 px screen -- most of a third of
+     the display, for a label on a slime 27 px across.  The type is not too
+     large for a phone; it is too large for the WORLD, and no zoom rule fixes
+     that because the ratio it is wrong against does not involve the zoom.
+
+     So the base comes down a third, which is the term v2.3.2154 raised (10 ->
+     12) when the owner asked for "a bit larger font" and which nothing has
+     touched since.  The sqrt zoom response from v2.3.2263 is KEPT -- plates
+     still grow as the camera pulls back, which is the ask that started this,
+     and it is now growing from a size that has room to.
+
+     The whole plate follows the number: _pillH is nameSize * 2 + 7, the LV
+     baseline is nameSize + 4, and the verified badge is derived from _pillH,
+     so this shrinks the pill and its contents together rather than leaving
+     small type rattling in a large box.  The RELATIONSHIP is preserved too --
+     yours has been one step above your peers' since v2.3.1681. */
+  _attachNamePill(hpUi, 8, MONSTER_SIZE_MULT);   /* v2.3.2154: 10 -> 12; v2.3.2265: 12 -> 8 */
   hpUi._namePill.y = size + 6;
 
   /* Single dynamic Graphics for everything that DOES change per frame:
@@ -5421,7 +5445,7 @@ function createPlayerDisplay() {
   /* v2.3.1681 (owner: "Player name and level in the pill beneath character
      need to be slightly larger for legibility").  10 -> 13; the plate sizes
      itself off this number, so the background grows with the text. */
-  _attachNamePill(container, 15, undefined, uiLayer);   /* v2.3.2154: 13 -> 15 */
+  _attachNamePill(container, 10, undefined, uiLayer);   /* v2.3.2154: 13 -> 15; v2.3.2265: 15 -> 10 (see the monster plate's note) */
 
   /* v2.3.1193: the local player's own threat skull (red = my threat
      countdown is running, white = ignored/expired fight window).  One
@@ -5751,7 +5775,7 @@ function createOtherPlayerDisplay() {
 
   /* v2.3.1566 (owner): same plate the local player gets, one size down —
      a remote name should not out-shout your own. */
-  _attachNamePill(container, 14, undefined, uiLayer);   /* v2.3.1681: 9 -> 12, still one down from your own; v2.3.2154 lifts the pair to 15/14 */
+  _attachNamePill(container, 9, undefined, uiLayer);   /* v2.3.1681: 9 -> 12, still one down from your own; v2.3.2154 lifts the pair to 15/14; v2.3.2265 brings them to 10/9 */
 
   /* v2.3.1193: threat skull above the nameplate (red = active threat
      countdown, white = ignored/expired fight window — see
