@@ -52,7 +52,7 @@ import { TouchControls } from './panels/TouchControls.jsx';
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
 import { ShieldButton } from './panels/ShieldButton.jsx'; /* v2.3.2242: the shield is a toggle button under Attack */
 import { GESTURE_TOOL_URLS } from '@/game/gesturePose.js'; /* v2.3.2245: the tool strips the button face plays */
-import { isTapLock, engagedStance } from '@/game/targeting.js'; /* v2.3.2251: the target is acquired automatically; a tap is the only deliberate pick */
+import { isTapLock, engagedStance, autoAcquires } from '@/game/targeting.js'; /* v2.3.2251: the target is acquired automatically; a tap is the only deliberate pick. v2.3.2258: ...for melee only */
 import { discHeld, discHoldProbe } from '@/game/controlVisibility.js'; /* v2.3.2246: the discs hide themselves unless onboarding is pointing at one */
 import { raiseShieldToggle, dropShield, shieldAimAngle } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { DuelRequestPanel } from './panels/DuelRequestPanel.jsx';
@@ -258,7 +258,7 @@ import { swingAttack, specialAttack, elementBurst } from '@/game/playerActions.j
 /* v2.3.1733: stamina abilities (Shield Bash / Whirlwind) — PR 5 of the
    combat overhaul.  The cast bodies live in @/game/abilities.js for the
    same reason the swing bodies do; this component keeps thin wrappers. */
-import { castAbility, abilityStatus, resolveCastAngle, BASH_POSE_MS } from '@/game/abilities.js';
+import { castAbility, abilityStatus, resolveCastAngle, BASH_POSE_MS, maybeSwordDash } from '@/game/abilities.js'; /* v2.3.2258: the sword's opening lunge */
 /* v2.3.841: extraction + fishing/cooking/wood/mining reward bodies extracted; component keeps thin useCallback wrappers. */
 import { startExtraction, succeedExtraction, applyCookingResult } from '@/game/lifeSkillRewards.js';
 /* v2.3.842: emote + building-entry interaction bodies extracted; component keeps thin useCallback wrappers. */
@@ -5396,6 +5396,21 @@ export var BroTown = function BroTown(_ref0) {
              'none', so the disc is the only place that can decline the tap. */
           var _now2 = Date.now();
           if (_ex || _harvestCtx || _lockHeld || _cands.length) S._rBtnLiveUntil = _now2 + 400;
+          /* ═══ v2.3.2258: A BOW NEEDS ITS STICK, TARGET OR NO TARGET ═══
+             Every term above is contextual -- something to hit, or something
+             to harvest -- which was exactly right while the right control was
+             a button whose only job was to swing at what the game had already
+             found for you.  It is the AIM STICK again now, and with a bow or
+             staff the game finds nothing for you by design (targeting's
+             autoAcquires: "You must tap on the monster").  Left as it was, a
+             ranged player would be holding a weapon with the control that
+             fires it invisible and pointerEvents:'none' until something
+             wandered inside 220px -- which is the one range a bow does not
+             want to be at.
+             Melee keeps the contextual rule unchanged, because that is the
+             half the owner said he likes: "also within proximity of monster
+             attack button appears". */
+          if (!autoAcquires(S)) S._rBtnLiveUntil = _now2 + 400;
           var _rOn = (S._rBtnLiveUntil || 0) > _now2 || discHeld('R');
           /* Two facts, ANDed, because either one alone can get stuck: the
              flag is cleared by handleJoystickEnd (bound to touchend AND
@@ -7848,9 +7863,14 @@ export var BroTown = function BroTown(_ref0) {
   var lJoyPreviewRef = useRef(null);
   var rTapState = useRef({ lastEndAt: 0, lastX: 0, lastY: 0, startAt: 0, startX: 0, startY: 0, moved: false });
   var lTapState = useRef({ lastEndAt: 0, lastX: 0, lastY: 0, startAt: 0, startX: 0, startY: 0, moved: false });
-  /* v2.3.2242: rShieldGesture / rPreviewTimer / rJoyPreviewRef / rKnobRef /
-     rStickRef / shieldJoyRef / shieldTouchId / shieldJoyActive are gone with
-     the double-tap-hold gesture and the stick sprites. */
+  /* v2.3.2242: rShieldGesture / rPreviewTimer / rJoyPreviewRef / shieldJoyRef /
+     shieldTouchId / shieldJoyActive are gone with the double-tap-hold gesture.
+     v2.3.2258: rKnobRef and rStickRef are BACK -- the right control is a
+     joystick again (owner: "I want both joysticks back and restore the
+     previous behavior right joystick for auto attack and rotation"), and these
+     are the two sprites that make a drag look like one. */
+  var rKnobRef = useRef(null);
+  var rStickRef = useRef(null);
   var lPreviewTimer = useRef(null);
   var handleJoystickMove = useCallback(function (clientX, clientY) {
     var base = joystickRef.current;
@@ -7971,9 +7991,72 @@ export var BroTown = function BroTown(_ref0) {
     }
     S.autoAttack = true;
     setAutoAttack(true);
+    /* ═══ v2.3.2258: AND THE FIRST ONE LUNGES ═══
+       Owner: "the default first attack will be very similar to 'shield bash'
+       ... I've been feeling like melee is a little underpowered."
+       After the promotion, so the lunge commits to the same monster the press
+       just committed to.  Returns true when it took the press; the caller
+       skips its ordinary swing, because castAbility has already stamped the
+       swing window and the worker will bill this hit at the ability's numbers.
+       Melee only, off cooldown, shield down -- see maybeSwordDash. */
+    try { return maybeSwordDash(S); } catch (e) { return false; }
+  }, []);
+  /* ═══ v2.3.2258: THE AIM, IN ONE PLACE ═══
+     v2.3.2242's deleted handleRJoyMove, restored from 588cf49 and given an
+     explicit ORIGIN so both surfaces can share it: the right-half ZONE (the
+     joystick, which measures from where the thumb went down -- v2.3.949's
+     relative drag) and the DISC (the contextual button, which measures from
+     where its own press started).  One copy, because two would drift, and the
+     4-way `_facing` quantisation in particular is the kind of thing that gets
+     re-typed slightly differently and then disagrees with the renderer. */
+  var rJoyAim = useCallback(function (clientX, clientY, originX, originY) {
+    var base = rJoyRef.current;
+    if (!base) return;
+    var rect = base.getBoundingClientRect();
+    var bcx = (originX != null) ? originX : (rect.left + rect.width / 2);
+    var bcy = (originY != null) ? originY : (rect.top + rect.height / 2);
+    var rawDx = clientX - bcx, rawDy = clientY - bcy;
+    var dist = Math.sqrt(rawDx * rawDx + rawDy * rawDy);
+    var maxR = rect.width / 2 - 18;
+    var clampDist = Math.min(dist, maxR);
+    var angle = Math.atan2(rawDy, rawDx);
+    if (rKnobRef.current) {
+      rKnobRef.current.style.transform = 'translate(calc(-50% + ' + (Math.cos(angle) * clampDist)
+        + 'px), calc(-50% + ' + (Math.sin(angle) * clampDist) + 'px))';
+    }
+    if (rStickRef.current) {
+      rStickRef.current.style.width = clampDist + 'px';
+      rStickRef.current.style.transform = 'rotate(' + angle + 'rad)';
+      rStickRef.current.style.opacity = clampDist > 4 ? '0.85' : '0';
+    }
+    var S = stateRef.current;
+    if (!S || dist <= 8) return;
+    var dirs = [['right', 0], ['down', Math.PI / 2], ['left', Math.PI], ['up', -Math.PI / 2]];
+    var best = 'right', bestD = 99;
+    for (var i = 0; i < dirs.length; i++) {
+      var diff = Math.abs(angle - dirs[i][1]);
+      if (diff > Math.PI) diff = Math.PI * 2 - diff;
+      if (diff < bestD) { bestD = diff; best = dirs[i][0]; }
+    }
+    S._facing = best;
+    S._aimAngle = angle;
+    S._aiming = true;
+    /* v2.3.2258: _lastAimAngle has had no writer since PR #546 removed this
+       function -- abilities and the renderer have been reading a permanently
+       undefined field ever since.  Restored with the rest of it. */
+    S._lastAimAngle = angle;
+    S.autoAttack = true;
   }, []);
   var handleRBtnRelease = useCallback(function () {
     rJoyActive.current = false;
+    /* v2.3.2258: the stick returns to centre.  Same three writes the pre-2242
+       handleRJoyEnd made; the base's own opacity is NOT reset here, because
+       since v2.3.2251 the resolver owns the resting value (see its note). */
+    if (rKnobRef.current) rKnobRef.current.style.transform = 'translate(-50%,-50%)';
+    if (rStickRef.current) {
+      rStickRef.current.style.width = '0px';
+      rStickRef.current.style.opacity = '0';
+    }
     var base = rJoyRef.current;
     /* v2.3.2251: no 0.5 write here -- the resolver owns the resting value
        and it is 1 while the button is live.  Knocking it to 0.5 on every
@@ -8336,6 +8419,30 @@ export var BroTown = function BroTown(_ref0) {
        (rJoyRef, pointerEvents:auto since v2.3.2242) takes press / hold /
        flick.  Drags on the zone do nothing: the dodge is the LEFT-side
        swipe and the owner kept it there. */
+    /* ═══ v2.3.2258: THE ZONE IS THE STICK AGAIN ═══
+       Owner: "I want both joysticks back and restore the previous behavior
+       right joystick for auto attack and rotation.  BUT I also want the right
+       joystick to keep its contextual button properties that exist now."
+
+       BOTH, and they do not need a gesture classifier to tell them apart,
+       because they were never the same element.  The right joystick's touch
+       target was ALWAYS this zone -- the whole right half, z6 -- and the disc
+       was pointerEvents:'none' visuals from v2.3.816 until v2.3.2242 made it a
+       button.  So the two halves of the owner's sentence map onto the two
+       surfaces that already exist:
+
+         THE DISC is the contextual BUTTON.  Untouched: HARVEST at a tree, the
+           gesture cue, ATTACK near a monster, press/hold/flick for the special.
+         THE ZONE is the JOYSTICK.  Anywhere else in the right half: press to
+           auto-attack, drag to aim.  A child's 'auto' beats a parent's 'none',
+           so a thumb that lands on the disc still gets the button and one that
+           lands beside it gets the stick.  Nothing has to guess.
+
+       This also closes a gap the button era left open and the owner is asking
+       about when he says "restore": the disc only exists when the game has
+       found you something (`_rOn`), so with a sword and nothing in the
+       perimeter there was no way to swing or to aim at all.  The zone has no
+       such gate -- it is the whole half of the screen, always. */
     var rS = function rS(e) {
       e.preventDefault();
       e.stopPropagation();
@@ -8346,6 +8453,13 @@ export var BroTown = function BroTown(_ref0) {
       rts.startX = t.clientX;
       rts.startY = t.clientY;
       rts.moved = false;
+      /* Same press the disc makes -- auto-attack on, and the automatic target
+         promoted to a deliberate one (v2.3.2252's "first tap commits").  For a
+         bow or staff the promotion is a no-op by construction: autoAcquires is
+         false, so there is no automatic lock to promote and the tap-forward in
+         rE below is the only way to get one, which is the owner's new rule. */
+      rJoyActive.current = true;
+      handleRBtnPress();
     };
     var rM = function rM(e) {
       if (rTouchId.current === null) return;
@@ -8356,6 +8470,11 @@ export var BroTown = function BroTown(_ref0) {
         var dxs = t.clientX - rts2.startX;
         var dys = t.clientY - rts2.startY;
         if (dxs * dxs + dys * dys > TAP_MAX_MOVE_SQ_PX) rts2.moved = true;
+        /* THE ROTATION.  v2.3.2242's deleted handleRJoyMove, restored from
+           588cf49: deflection from the touch ORIGIN (v2.3.949's relative drag),
+           an 8px dead zone, the 4-way _facing quantisation, and the rod + knob
+           transforms on the docked disc so the drag has something to look at. */
+        rJoyAim(t.clientX, t.clientY, rts2.startX, rts2.startY);
       }
     };
     var rE = function rE(e) {
@@ -8363,6 +8482,10 @@ export var BroTown = function BroTown(_ref0) {
       var t = findT(e.changedTouches, rTouchId.current);
       if (!t) return;
       rTouchId.current = null;
+      /* v2.3.2258: the stick lets go -- auto-attack off, aim released, rod and
+         knob back to centre.  Before the tap-forward below, so a tap that locks
+         a monster is not also left holding the attack down. */
+      handleRBtnRelease();
       var rts3 = rTapState.current;
       var endT = Date.now();
       /* v2.3.1287: self-tap on the aim side opens chat -- no lock-on click.
@@ -8455,7 +8578,10 @@ export var BroTown = function BroTown(_ref0) {
          lesson you cannot perform is worse than no lesson.  So the rule is
          "if the button is on screen, a press does the most sensible thing it
          can", and the visibility resolver is what makes that honest. */
-      handleRBtnPress();
+      /* v2.3.2258: the opening lunge REPLACES this press's swing when it
+         fires -- both would bill the same thumb twice, and castAbility has
+         already set the swing window and the animation. */
+      if (handleRBtnPress() === true) return;
       doSwing();
     };
     var bM = function bM(e) {
@@ -8504,6 +8630,49 @@ export var BroTown = function BroTown(_ref0) {
             }
           }
         }
+        /* ═══ v2.3.2258: AND IT IS A JOYSTICK AGAIN ═══
+           Owner: "I want both joysticks back and restore the previous behavior
+           right joystick for auto attack and rotation.  BUT I also want the
+           right joystick to keep its contextual button properties that exist
+           now.  So if you walk up to a tree for example the right joystick
+           still lets you harvest as that button."
+
+           BOTH, and the two never have to be told apart by a gesture -- the
+           CONTEXT decides, on touchstart, before a finger has moved.  bS
+           already claims the press as a HARVEST when a node is in reach
+           (v2.3.2245) and returns; anything it did not claim is a joystick
+           press, and this is its drag.  So "walk up to a tree and the button
+           harvests" and "drag to aim" cannot collide: at a tree the press was
+           never a joystick press to begin with.
+
+           The body of this is v2.3.2242's deleted handleRJoyMove, restored
+           from 588cf49 -- deflection measured from the touch ORIGIN rather
+           than the disc centre (v2.3.949's relative drag, so a thumb that
+           lands off-centre does not snap the aim), the same 8px dead zone, the
+           same 4-way _facing quantisation, and the same rod/knob transforms.
+
+           THE SLIDE-TO-SHIELD LATCH WINS (v2.3.2254).  Both are downward
+           drags, and they do not actually compete: deflection is clamped to
+           `maxR` = half the disc minus 18px, so an aim-down drag saturates
+           well inside the disc while the shield button sits ~58px below its
+           centre.  A finger that reaches the shield has left the joystick's
+           range behind, which is what makes the gesture readable -- but once
+           it latches, steering stops, or the aim would keep swinging while the
+           guard goes up. */
+        /* ═══ v2.3.2258: THE DISC DOES NOT STEER, AND THAT IS DELIBERATE ═══
+           A first cut had the button aim as well as the zone, so a drag that
+           happened to start on the disc would rotate too.  It broke the
+           SPECIAL: mp-rbutton's flick assertion went red (usedSwipe false,
+           four swings instead), because setting autoAttack from a touchmove
+           starts swinging mid-gesture and the flick that should have ended the
+           press stopped being classified as one.  Isolated by removing this
+           one call and re-running -- 62/64 back to 63/64.
+
+           It is also unnecessary.  The two surfaces already divide cleanly:
+           the ZONE is the joystick (rM -> rJoyAim, the whole right half), the
+           DISC is the contextual button the owner asked to keep -- HARVEST,
+           ATTACK, hold, and the flick for the special.  A thumb that wants to
+           aim has the other 90% of the right half to do it in. */
       }
     };
     var bE = function bE(e) {
@@ -9644,10 +9813,25 @@ export var BroTown = function BroTown(_ref0) {
           if (S.lockedTarget && S.lockedTarget.ref === closest) {
             S.lockedTarget = null;
           } else {
+            /* ═══ v2.3.2258: THIS IS THE TAP, SO IT HAS TO SAY SO ═══
+               `src` arrived in v2.3.2251 to separate a deliberate pick from the
+               automatic one, and every writer was updated except this one --
+               which is THE tap-a-monster path, the thing the field exists to
+               describe ("tap new = lock", right above).  Left untagged it read
+               as an 'auto' lock, so targeting's nearest rule was free to
+               re-point it on the very next frame: tapping a distant monster
+               with a slime at your feet silently snapped back to the slime.
+               It matters twice as much now.  The owner's new rule is "For magic
+               and ranged ... You must tap on the monster for auto-targeting
+               behavior to take effect", and updateTargeting enforces it by
+               CLEARING any non-tap lock while a bow or staff is out -- so
+               without this line the one gesture that is supposed to work for a
+               ranged weapon would be the one that cannot. */
             S.lockedTarget = {
               type: 'monster',
               id: closest.id,
-              ref: closest
+              ref: closest,
+              src: 'tap'
             };
           }
           return;
@@ -11888,7 +12072,7 @@ export var BroTown = function BroTown(_ref0) {
      and z-index 6 so they sit over the world canvas but under all HUD
      (z>=20).  bt-desktop-hide drops them on desktop so the mouse reaches the
      canvas. */
-  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rLabelRef: rLabelRef, rCueRef: rCueRef, rRingRef: rRingRef, lWrapRef: lWrapRef, rWrapRef: rWrapRef, isLandscape: isLandscape }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until their milestone level unlocks them (AbilityButtons.jsx). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2242: the shield is a toggle button under the Attack button; it shows itself during combat (ShieldButton.jsx). */ /*#__PURE__*/React.createElement(ShieldButton, { stateRef: stateRef, isLandscape: isLandscape })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
+  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rLabelRef: rLabelRef, rCueRef: rCueRef, rRingRef: rRingRef, rStickRef: rStickRef, rKnobRef: rKnobRef, lWrapRef: lWrapRef, rWrapRef: rWrapRef, isLandscape: isLandscape }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until their milestone level unlocks them (AbilityButtons.jsx). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2242: the shield is a toggle button under the Attack button; it shows itself during combat (ShieldButton.jsx). */ /*#__PURE__*/React.createElement(ShieldButton, { stateRef: stateRef, isLandscape: isLandscape })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
      Not a style choice — a hard requirement this cost a round of QA to
      find.  .brotown-wrap is position:fixed, and Chrome treats that as its
      own stacking context, so EVERY element inside it is confined to one

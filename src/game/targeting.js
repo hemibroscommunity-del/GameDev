@@ -141,10 +141,36 @@ const AUTO_SWITCH_MARGIN = 0.88;
 
 /* Once per frame (monsterCombat's tick): refresh the candidate list, then
    ACQUIRE.  Cheap -- one pass over the zone's monsters. */
+/* ═══ v2.3.2258: ONLY A BLADE FINDS ITS OWN TARGET ═══
+   Owner: "For ONLY melee (sword) I want to keep the auto targeting behavior
+   that exists now (also within proximity of monster attack button appears) ...
+   For magic and ranged, I do not want the auto targeting behavior when you get
+   in proximity of monsters.  You must tap on the monster for auto-targeting
+   behavior to take effect."
+
+   S.rpg.activeSlot is the classifier the rest of the game already branches on
+   ('ranged' the bow, 'staff' the magic, anything else -- including a legacy
+   unset slot -- melee), so this reads the same field entityRenderer,
+   monsterCombat and the equip screen read.  Defaulting the unknown case to
+   MELEE is deliberate: melee is the case that keeps the old behaviour, so a
+   slot this function has not heard of degrades to what shipped rather than to
+   a silently disarmed one. */
+export function autoAcquires(S) {
+  const slot = S && S.rpg && S.rpg.activeSlot;
+  return !(slot === 'ranged' || slot === 'staff');
+}
+
 export function updateTargeting(S) {
   if (!S || !S.player) return;
   const cands = targetCandidates(S);
-  S._targetCands = cands;
+  /* THE PERIMETER MARKS GO WITH THE RULE THEY ADVERTISE.  _targetCands is what
+     draws the carets and ground rings and what lights the attack button hot
+     (BroTown's `_cands`), and every one of those answers the question "who will
+     this take if you press it".  With a bow the answer is "nobody, until you
+     tap one", so leaving the marks up would promise an engagement that is not
+     going to happen.  The TAPPED target keeps its reticle -- that is drawn from
+     S.lockedTarget in its own block, not from this list. */
+  S._targetCands = autoAcquires(S) ? cands : [];
 
   /* ═══ v2.3.2251: THE TARGET IS ALWAYS THE NEAREST, UNLESS YOU TAPPED ONE ═══
      Owner: "Change the auto targeting system to always be nearest enemy. Only
@@ -180,6 +206,24 @@ export function updateTargeting(S) {
     } else {
       return;
     }
+  }
+
+  /* ═══ v2.3.2258: ...AND A BOW DOES NOT ═══
+     Below this line is the automatic rule, and with a ranged or magic weapon it
+     does not run at all.  Reached only when the lock is NOT tap-owned (that
+     case returned above and is untouched at any distance -- it is what makes a
+     bow snipe work), so anything still held here is an 'auto' lock this rule
+     made, most likely while a sword was equipped a moment ago.  Dropping it on
+     the weapon swap is the honest move: it was acquired by a rule that no
+     longer applies, and leaving it would let a player keep a free lock simply
+     by drawing the bow after walking up. */
+  if (!autoAcquires(S)) {
+    if (monsterLock(S)) {
+      S.lockedTarget = null;
+      S._lockDroppedAt = Date.now();
+      S._lockDroppedWhy = 'weapon';
+    }
+    return;
   }
 
   /* Everything below is the AUTO target. */

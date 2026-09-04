@@ -50,6 +50,10 @@ export function TouchControls(props) {
     rLabelRef = props.rLabelRef,
     rCueRef = props.rCueRef,     /* v2.3.2245: the harvest tool frame on the button face */
     rRingRef = props.rRingRef,   /* v2.3.2245: the wind-up / reps ring around the rim */
+    /* v2.3.2258: the rod and knob are BACK -- the right control is a joystick
+       again (see the aim block in BroTown's bM). */
+    rStickRef = props.rStickRef,
+    rKnobRef = props.rKnobRef,
     lWrapRef = props.lWrapRef,   /* v2.3.2246: the left disc's corner box — the visibility gate */
     rWrapRef = props.rWrapRef,   /* v2.3.2246: the right button's corner box — ditto */
     isLandscape = props.isLandscape;
@@ -313,7 +317,61 @@ export function TouchControls(props) {
       strokeDasharray: "".concat(Math.PI * 2 * 28 / 100 * pct * 100, " 999")
     });
     return null;
-  }()), /*#__PURE__*/React.createElement("svg", {
+  }()),
+  /* ═══ v2.3.2258: THE ROD AND THE KNOB COME BACK ═══
+     Owner: "I want both joysticks back and restore the previous behavior right
+     joystick for auto attack and rotation.  BUT I also want the right joystick
+     to keep its contextual button properties that exist now."
+
+     v2.3.2242 deleted these two elements when the right control became a plain
+     button.  They are the whole visual difference between a button and a
+     stick: without them a drag steers the aim with nothing on screen moving,
+     which reads as a dead control rather than a joystick.  Same sprites, same
+     geometry and same z-order as the LEFT stick above, so the two halves of
+     the control scheme look like one scheme.
+
+     They sit UNDER the label / cue / ring (zIndex 0 and 1 against their 1 and
+     2) because the contextual half is still the face of this control -- a
+     HARVEST press must never look like a stick mid-throw. */
+  /*#__PURE__*/React.createElement("div", {
+    ref: rStickRef,
+    style: {
+      position: 'absolute',
+      left: '50%',
+      top: '50%',
+      width: 0,
+      height: 33,
+      marginTop: -16,
+      transformOrigin: '0% 50%',
+      transform: 'rotate(0rad)',
+      backgroundImage: 'url(/sprites/joystick/stick.webp?v=2.3.102)',
+      backgroundSize: '100% 100%',
+      backgroundRepeat: 'no-repeat',
+      backgroundPosition: 'center',
+      opacity: 0,
+      pointerEvents: 'none',
+      zIndex: 0,
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "bt-joystick-knob",
+    ref: rKnobRef,
+    style: {
+      zIndex: 1,
+      width: isLandscape ? 48 : 42,
+      height: isLandscape ? 48 : 42,
+      position: 'absolute',
+      left: '50%',
+      top: '50%',
+      transform: 'translate(-50%,-50%)',
+      backgroundImage: 'url(/sprites/joystick/knob.webp?v=2.3.102)',
+      backgroundSize: '100% 100%',
+      backgroundRepeat: 'no-repeat',
+      backgroundPosition: 'center',
+      pointerEvents: 'none',
+      /* No filter: a drop-shadow over the WebGL canvas is the documented iOS
+         "static" (v2.3.1236, CLAUDE.md). */
+    }
+  }), /*#__PURE__*/React.createElement("svg", {
     /* ═══ v2.3.2245: THE HARVEST RING ═══
        Owner: "The gesture cues will be on the right button."  A second ring
        inside the rim (the special-charge ring above is at r=28%): during

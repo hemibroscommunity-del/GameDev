@@ -3694,7 +3694,27 @@ export class EffectsRenderer {
          actually swinging, so include that as a draw trigger (a manual tap-swing
          isn't necessarily in an aim state). */
       const meleeSwinging = isMelee && !!S._swordSwinging;
-      const shouldDraw = (isRanged ? aimState : (aimState || meleeSwinging))
+      /* ═══ v2.3.2258: NO SIGHT LINE FOR BOW OR STAFF ═══
+         Owner: "I also want to change the line of site: make it invisible (or
+         disable it I don't know the difference).  I feel like it's too much of
+         an advantage to have that on too (for both magic and bow)."
+
+         Invisible and disabled are the SAME THING here, which is worth writing
+         down because it is the question he asked.  This beam is drawn and
+         nothing else: it is a filled polygon in the effects layer, read by no
+         hit test, and there is no aim assist or snapping behind it -- the shot
+         goes where `_aimAngle` / the lock says regardless.  So not drawing it
+         removes the advantage rather than merely hiding it, which is what he
+         wants.  (If it had fed an assist, hiding the drawing would have kept
+         the advantage and been the opposite of the request.)
+
+         MELEE KEEPS ITS SHAPE.  He named magic and bow.  The melee branch below
+         is a different thing wearing the same code: the wild-swing AoE
+         (v2.3.940) whose whole contract is preview-matches-damage -- it is the
+         hit test drawn, not a sight line down the range, and it was itself
+         asked for as a "forward-sense affordance". */
+      const shouldDraw = !isRanged
+        && (aimState || meleeSwinging)
         && S.player
         && !S._shieldUp; /* shield arc has its own indicator; don't overlap */
       /* v2.3.940: melee shows its wild-swing AoE shape (a 360° core circle + a

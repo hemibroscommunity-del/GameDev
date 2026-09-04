@@ -193,7 +193,10 @@ export function castAbility(S, kind) {
      `targetId` is additive and optional: an older worker ignores it and falls
      back to its radius scan, and a newer worker with an older client does the
      same, so this ships in either order with no caps flag. */
-  var _bashLt = (kind === 'bash' && S.lockedTarget && S.lockedTarget.type === 'monster')
+  /* v2.3.2258: sworddash is the same move with a sword's numbers, so it takes
+     the same declared target and the same frame-by-frame dash. */
+  var _dashKind = (kind === 'bash' || kind === 'sworddash');
+  var _bashLt = (_dashKind && S.lockedTarget && S.lockedTarget.type === 'monster')
     ? S.lockedTarget.ref : null;
   var _bashId = _bashLt && _bashLt.id != null ? _bashLt.id : null;
   try {
@@ -319,4 +322,66 @@ export function castAbility(S, kind) {
     }
   }
   return true;
+}
+
+/* ═══ v2.3.2258: THE FIRST ATTACK OF AN ENGAGEMENT IS A LUNGE ═══
+ * Owner: "For ONLY melee (sword) ... the default first attack will be very
+ * similar to 'shield bash' (you can even re-use the mechanic but for sword)
+ * and keep the stun enemy effect.  I've been feeling like melee is a little
+ * underpowered so this should help."
+ *
+ * Called from the right control's PRESS -- both surfaces, the zone stick and
+ * the contextual disc, because either one can start a fight and the owner did
+ * not distinguish them.  Returns true when it took the press, in which case
+ * the caller's ordinary swing is skipped: castAbility stamps
+ * `_abilitySwingUntil`, which suppresses the normal damage sweep so the hit is
+ * billed once, by the worker, at the ability's own numbers.
+ *
+ * WHAT MAKES IT "THE FIRST ATTACK" is the cooldown, not a per-target flag.  A
+ * flag was the first design and it is worse: it needs an owner (clear on lock
+ * change? on release? on the monster's death?), and every one of those answers
+ * is a way for a player to re-lunge for free by tapping something else and
+ * tapping back.  2500ms says "once per engagement" without anything to keep in
+ * sync, and it degrades honestly -- a long fight gets another lunge, which is
+ * a fair reading of "melee is underpowered" anyway.
+ *
+ * NOT WHILE THE SHIELD IS UP: that press is bash's, and firing both off one
+ * thumb would spend 40% of the bar in a frame.  NOT FOR BOW OR STAFF: "For
+ * ONLY melee (sword)", and their slot is the same field targeting reads.
+ */
+export function maybeSwordDash(S) {
+  if (!S || !S.rpg || !S.player) return false;
+  var slot = S.rpg.activeSlot;
+  if (slot === 'ranged' || slot === 'staff') return false;
+  if (S._shieldUp) return false;
+  var lt = S.lockedTarget;
+  if (!lt || lt.type !== 'monster' || !lt.ref) return false;
+  var m = lt.ref;
+  if (m.alive === false || (m.curHp != null && m.curHp <= 0)) return false;
+  var st = abilityStatus(S, 'sworddash');
+  if (!st.visible || !st.equipped || st.cdLeft > 0 || !st.afford) return false;
+  return castAbility(S, 'sworddash') === true;
+}
+
+/* Dev probe, house style (__btAtkMark, __btPlayerDrawn): the lunge fires from
+   inside a touch handler, and a scenario cannot press a button and then ask
+   "was that a lunge or an ordinary swing?" without one -- both stamp
+   swingTimer.  Exposed as the same call the press makes, so the test drives
+   the real function rather than a re-implementation of its rules. */
+if (typeof window !== 'undefined') {
+  window.__btMaybeSwordDash = function () {
+    try { return maybeSwordDash(window._gameState && window._gameState.current); }
+    catch (e) { return null; }
+  };
+}
+
+/* Companion probe: WHY a lunge was refused.  A boolean false from
+   __btMaybeSwordDash has five possible causes and a scenario that cannot tell
+   them apart reports "it does not work" for a fixture that simply has no
+   sword. */
+if (typeof window !== 'undefined') {
+  window.__btAbilityStatus = function (kind) {
+    try { return abilityStatus(window._gameState && window._gameState.current, kind); }
+    catch (e) { return null; }
+  };
 }

@@ -232,10 +232,53 @@ export function updateArrows(S, deps) {
             var _pdt = S._dtScale || 1;
             if (_released) a.dist += (a.isStaff ? 5 : 8 * (a._rangeMult || 1)) * _pdt;
             a.life -= _pdt;
-            if (lockPt) a.ang = Math.atan2(lockPt.y - (P.y + _oy), lockPt.x - (P.x + _ox));
-            else if (freeAim !== null) a.ang = freeAim;
-            a._renderX = P.x + _ox + Math.cos(a.ang) * a.dist;
-            a._renderY = P.y + _oy + Math.sin(a.ang) * a.dist;
+            /* ═══ v2.3.2258: A LOOSED ARROW KEEPS THE LINE IT WAS SHOT ON ═══
+               Owner: "Instead of the projectile changing course mid flight with
+               rotational change of the right joystick, I now want the projectile
+               to stay on the original flight path it was shot from and to stay
+               on that path until termination."
+
+               TWO things tied a flying arrow to the present, not one.  The
+               obvious one is the angle: `a.ang` was rewritten every frame from
+               the LIVE lock point or the LIVE aim angle, so turning the stick
+               swept the arrow round with it.  The other is the origin --
+               position was `P.x + _ox + cos(ang) * dist`, measured from where
+               the player IS, so walking after the shot dragged the whole flight
+               line along behind you.  A path is an origin AND a direction; both
+               have to be stamped at release or it is not the path it was shot
+               on.
+
+               BEFORE release the old behaviour is exactly right and is kept:
+               while the arrow is nocked (the 110ms in v2.3.1095's latch) it
+               rides the bow grip and follows the aim, because it has not been
+               loosed yet.  The stamp happens on the first frame after release.
+
+               STAFF BOLTS ARE LEFT HOMING.  The owner scoped this to "bow
+               weapons", and magic tracking is the staff's own character; they
+               have no `fromGrip` so they release immediately and would be the
+               bigger behaviour change of the two.  Flagged rather than assumed.
+               v2.3.1425's stuck-in-monster arrows return above this line and
+               never reach it; planting (below) already flies in absolute world
+               coords and is unaffected. */
+            var _straight = _released && !a.isStaff;
+            if (_straight && a._pathX == null) {
+              /* First frame after release: freeze the launch point in ABSOLUTE
+                 world coords, the grip offset included, and keep whatever angle
+                 the aim resolved to on this frame -- that is the line the shot
+                 was actually taken along. */
+              if (lockPt) a.ang = Math.atan2(lockPt.y - (P.y + _oy), lockPt.x - (P.x + _ox));
+              else if (freeAim !== null) a.ang = freeAim;
+              a._pathX = P.x + _ox;
+              a._pathY = P.y + _oy;
+            }
+            if (!_straight) {
+              if (lockPt) a.ang = Math.atan2(lockPt.y - (P.y + _oy), lockPt.x - (P.x + _ox));
+              else if (freeAim !== null) a.ang = freeAim;
+            }
+            var _bx = a._pathX != null ? a._pathX : P.x + _ox;
+            var _by = a._pathY != null ? a._pathY : P.y + _oy;
+            a._renderX = _bx + Math.cos(a.ang) * a.dist;
+            a._renderY = _by + Math.sin(a.ang) * a.dist;
             if (a.life <= 0) return false;
             /* v2.3.1095: range / screen-edge limit (regular arrows, not staff
                magic).  Once a flying arrow nears the visible edge or exceeds the

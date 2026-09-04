@@ -134,7 +134,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
         respawnAt: 0, moveTimer: 0, _stuckArrows: [],
       }];
       window.__mon = S.monsters[0];
-      S.lockedTarget = { type: 'monster', id: 'qa_aim_1', ref: S.monsters[0] };
+      /* v2.3.2258: src 'tap' -- this scenario's whole subject is "Tap to lock on
+       enemy" (its header), and since v2.3.2251 that is what a tap writes.  With a
+       bow out, an untagged lock is now CLEARED by updateTargeting (ranged does not
+       auto-acquire), so the fixture has to lock the way a thumb does. */
+    S.lockedTarget = { type: 'monster', id: 'qa_aim_1', ref: S.monsters[0], src: 'tap' };
       S.swingTimer = 0;                       /* let the auto-attack fire now */
       window.__aim.perp = Infinity; window.__aim.samples = 0; window.__aim.atMin = null;
       window.__hpAtStart = window.__mon.curHp;
@@ -203,7 +207,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       respawnAt: 0, moveTimer: 0, _stuckArrows: [],
     }];
     window.__mon = S.monsters[0];
-    S.lockedTarget = { type: 'monster', id: 'qa_aim_2', ref: S.monsters[0] };
+    S.lockedTarget = { type: 'monster', id: 'qa_aim_2', ref: S.monsters[0], src: 'tap' };
     S.swingTimer = 0;
     window.__aim.perp = Infinity; window.__aim.samples = 0; window.__aim.atMin = null;
     window.__hpAtStart = window.__mon.curHp;
