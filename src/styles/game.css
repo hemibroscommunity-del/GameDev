@@ -774,11 +774,21 @@ input{font-family:inherit}
    ink stopped being a thing you can do; a new palette is this one rule.
 
    Every value below is measured against its own --w-bg and clears WCAG AA
-   (>=4.5:1). Four alternative palettes were rendered for the owner to choose
-   from; the numbers for all five are in the v2.3.2294 commit message. */
+   (>=4.5:1). Five palettes were rendered from the real drawer for the owner to
+   choose between (the sweep is still in mp-trade); v2.3.2296 is his pick, "B,
+   Sand & Mist" -- the lightest pair, and the one with the most ink headroom:
+   the muted ramp measures 5.24:1 on the sand and 5.10:1 on the mist against
+   4.80/4.68 for the shipped-by-default pair.
+   ONE NUMBER HE SHOULD KNOW, and it is why the row frames below arrived in the
+   same version: B's gray is only 1.08:1 against the cream lane it sits on,
+   where the first pick was 1.19:1. 1.08 is the exact separation he rejected at
+   v2.3.2282 ("make the buyer window more notably different shade"), so on its
+   own B's well would have stopped reading as a compartment. The per-row frames
+   carry that job now, which is what makes B admissible rather than a step
+   back. */
 .bt-t2-items{
   /* the surface */
-  --w-bg:#DCCBA8;                       /* light brown, "parchment"           */
+  --w-bg:#E3D4B4;                       /* light brown -- owner's option B    */
   --w-line:rgba(11,22,27,.17);
   --w-edge:inset 0 1px 0 rgba(255,255,255,.40);
   /* The ink on it. Every one of these is an ALIAS of the -on-invert ramp, not
@@ -799,6 +809,11 @@ input{font-family:inherit}
                                            so what sits IN it keeps light ink */
   --w-slot-line:transparent;
   --w-divider:var(--ui-line-on-invert, rgba(11,22,27,.14));
+  /* the line-item frame. A step stronger than the divider it replaces, because
+     it has to read as an edge on four sides rather than as a separator on
+     one -- and still well under the well's own --w-line, so the rows sit
+     INSIDE the compartment rather than competing with it. */
+  --w-row-line:rgba(11,22,27,.19);
   --w-line:rgba(11,22,27,.17);          /* the well's own edge, a step stronger
                                            than the row dividers inside it     */
   --w-btn-bg:rgba(11,22,27,.05);
@@ -829,7 +844,7 @@ input{font-family:inherit}
    separation the owner rejected once already ("make the buyer window more
    notably different shade"), i.e. no visible compartment at all. */
 .bt-t2-lane--theirs .bt-t2-items{
-  --w-bg:#C6CBCC;                       /* light gray                         */
+  --w-bg:#CFD5D7;                       /* light gray  -- owner's option B    */
   --w-line:rgba(11,22,27,.15);
   --w-edge:inset 0 1px 0 rgba(255,255,255,.45);
 }
@@ -851,10 +866,33 @@ input{font-family:inherit}
    the well is, and keying off the lane is now simply the wrong question. */
 .bt-t2-row{
   display:flex;align-items:center;gap:8px;
-  min-height:42px;padding:2px 0;box-sizing:border-box;
-  border-top:1px solid var(--w-divider, rgba(229,237,233,.07));
+  min-height:42px;box-sizing:border-box;
 }
-.bt-t2-row:first-of-type{border-top:none}
+/* ═══ v2.3.2296: EVERY LINE ITEM IS A ROW, ON BOTH SIDES ═══
+   Owner: "it looks like the other trader has a border around their line item
+   row. I also want borders around your rows line items."
+
+   What he was looking at was an accident of arithmetic rather than a style:
+   the buyer had ONE row, so the well's own border sat tight around it and read
+   as a frame on the item; yours had two, so the same border read as a frame
+   around the group. One of us was seeing a component that did not exist. It
+   does now, on both lanes, so the two sides finally look like the same thing
+   with different contents.
+
+   AND THIS IS NOT THE THING HE REJECTED AT v2.3.2291. That was a raised,
+   filled, shadowed card around every row INSIDE a framed lane with no well --
+   three drawn boxes deep, and "too many boxes within boxes" in his words. This
+   is a hairline and a 6px radius on a transparent ground: it separates rows
+   from each other, which the divider it replaces was already trying to do with
+   less. No fill, no shadow, no second surface. */
+.bt-t2-row{
+  border:1px solid var(--w-row-line, rgba(229,237,233,.10));
+  border-radius:6px;
+  padding:2px 7px;
+  margin:4px 0;
+}
+.bt-t2-row:first-of-type{margin-top:2px}
+.bt-t2-row:last-of-type{margin-bottom:2px}
 /* The art cell stays DARK on both wells. Item art is fixed webp authored
    against a near-black ground, so a light plate leaves every thumbnail
    floating on a ground ~10:1 from the one it was drawn on. v2.3.2291 had it

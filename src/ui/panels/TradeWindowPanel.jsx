@@ -453,9 +453,14 @@ function OfferRows({ offer, weapons, empty, onRemoveItem, onRemoveWeapon, goldSu
             onRemove={onRemoveWeapon ? () => onRemoveWeapon(w.seq) : null} ink={ink} />
         );
       })}
+      {/* v2.3.2296: gold is a LINE ITEM, so it wears the same frame as the rest
+          of them. It was an inline div with its own geometry, which is why it
+          sat a little differently from the item rows even before they were
+          framed -- and once they were, it would have been the one row in the
+          well without an edge. */}
       {gold > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 36, padding: '2px 0' }}>
-          <div style={{ width: 32, height: 32, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', background: ink.slot, border: ink.slotLine, borderRadius: 8 }}><GoldIcon /></div>
+        <div className="bt-t2-row" style={{ minHeight: 36 }}>
+          <div className="bt-t2-plate"><GoldIcon /></div>
           <div style={{ flex: 1, fontSize: 12, color: ink.name }}>Gold</div>
           <div style={{ fontSize: 14, fontWeight: 700, color: ink.gold, fontVariantNumeric: 'tabular-nums' }}>{gold}{goldSuffix || ''}</div>
         </div>
@@ -830,10 +835,13 @@ export function TradeWindowPanel(props) {
               <OfferRows offer={r.sent} weapons={r.sentWeapons} empty="Nothing" goldSuffix="G" />
             </div>
           </div>
+          {/* v2.3.2296: the receipt's own summary line, bolded with the Confirm
+              screen's -- same reason, and the two have to agree or "the totals
+              are bold" is true on one screen and not the other. */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-            <span style={{ ...laneHeader, marginBottom: 0, color: '#8D9B98' }}>Balance</span>
+            <span style={{ ...laneHeader, marginBottom: 0, fontWeight: 800, color: '#B6C1BE' }}>Balance</span>
             <GoldIcon />
-            <span style={{ fontSize: 14, fontWeight: 700, color: '#F4F0E7', fontVariantNumeric: 'tabular-nums' }}>{liveCoins}G</span>
+            <span style={{ fontSize: 15, fontWeight: 800, color: '#F4F0E7', fontVariantNumeric: 'tabular-nums' }}>{liveCoins}G</span>
           </div>
       </TradeDrawer>
     );
@@ -1066,8 +1074,13 @@ export function TradeWindowPanel(props) {
         {ls.length === 0 && gold === 0 && (
           <div style={{ fontSize: 12, color: WELL_INK.muted }}>Nothing</div>
         )}
+        {/* v2.3.2296: the Confirm screen's lines are line items too, so they
+            take the same frame the live window's and the receipt's do -- the
+            owner asked for it on "your rows line items", and a trade that
+            framed them on two screens out of three would change costume
+            halfway through. */}
         {ls.map((it) => (
-          <div key={it.text} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: WELL_INK.text, lineHeight: 1.5, padding: '1px 0' }}>
+          <div key={it.text} className="bt-t2-row" style={{ minHeight: 30, gap: 6, fontSize: 13, color: WELL_INK.text, lineHeight: 1.5 }}>
             {chip(<ItemThumb itemKey={it.key} size={20} fallback={it.glyph || '📦'} />)}
             <span>{it.text}</span>
           </div>
@@ -1076,15 +1089,24 @@ export function TradeWindowPanel(props) {
           /* NOTE #D8A94D, not the #D8AA58 used elsewhere -- a near-duplicate,
              so a find-and-replace on the other hex misses this line and leaves
              1.40:1 gold on the one screen whose job is to be read. */
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: WELL_INK.gold, fontWeight: 700, lineHeight: 1.5, padding: '1px 0' }}>
+          <div className="bt-t2-row" style={{ minHeight: 30, gap: 6, fontSize: 13, color: WELL_INK.gold, fontWeight: 700, lineHeight: 1.5 }}>
             {chip(<GoldIcon />)}<span>{gold} gold</span>
           </div>
         )}
         </div>
         {/* the totals sit OUTSIDE the well: they describe the pile rather than
             being part of it, which is the same separation the live screen makes
-            between the items and the gold controls. */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: ink.muted, marginTop: 6, paddingTop: 0 }}>
+            between the items and the gold controls.
+            v2.3.2296: and they are BOLD. Owner: "make the total amounts in the
+            trade window in bolded font so it's more clear that it's summarizing
+            the line items." At 11px regular in the muted ink they read as a
+            caption on the lane -- one more small grey line among several --
+            rather than as the sum of the rows above them. Weight is the right
+            channel for that: it says "this is a different KIND of line" without
+            spending a colour, and the ink stays on the lane's own ramp. Size
+            comes up one step with it, because 700 at 11px on this fill is
+            heavy rather than clear. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 700, color: ink.muted, marginTop: 6, paddingTop: 0 }}>
           <span>{ls.length} item{ls.length === 1 ? '' : 's'}</span>
           {gold > 0 && (<><span>·</span><GoldIcon /><span>{gold}</span></>)}
         </div>

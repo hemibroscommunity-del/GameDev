@@ -131,8 +131,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
      -- a custom property is what the CSS intends, and the fill is what the
      player sees. Decouple `background` from `--w-bg` and only this reader
      notices. */
-  const MY_TINT = 'rgb(220, 203, 168)';     /* #DCCBA8 light brown */
-  const THEIR_TINT = 'rgb(198, 203, 204)';  /* #C6CBCC light gray  */
+  /* v2.3.2296: the owner picked "B, Sand & Mist" off the five-palette sweep
+     below, so these move with it. Pinned to the token each well is supposed to
+     carry, exactly as the lane constants above are, and for the same reason:
+     the alternative ("the two are different") went vacuously green on a build
+     with every binding inverted. */
+  const MY_TINT = 'rgb(227, 212, 180)';     /* #E3D4B4 sand */
+  const THEIR_TINT = 'rgb(207, 213, 215)';  /* #CFD5D7 mist */
   const wellOk = (g) => !!(g && g.top && g.bottom)
     && g.top.well === THEIR_TINT && g.bottom.well === MY_TINT;
 
@@ -934,8 +939,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     + '--w-gold:#593E0A;--w-btn-fg:#223238;--w-rarity-common:#38474C;'
     + '--w-rarity-elemental:#17408A;--w-rarity-fusion:#59178C;--w-rarity-shift:#593E0A;';
   const SKINS = [
-    ['A-parchment-ash', '#DCCBA8', '#C6CBCC', ''],      /* shipped */
-    ['B-sand-mist',     '#E3D4B4', '#CFD5D7', ''],
+    ['A-parchment-ash', '#DCCBA8', '#C6CBCC', ''],
+    ['B-sand-mist',     '#E3D4B4', '#CFD5D7', ''],     /* shipped (owner's pick) */
     ['C-clay-stone',    '#D3BE9C', '#C2C7C6', DEEP],
     ['D-greige-steel',  '#D9C9B0', '#CBD0D0', ''],
     ['E-leather-ash',   '#CBB894', '#C6CBCC', DEEP],
@@ -975,7 +980,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     };
   });
   rec.ok('the palette sweep put the shipped tints back -- brown on your well, '
-    + 'gray on theirs', skinBack.mine === '#DCCBA8' && skinBack.theirs === '#C6CBCC', skinBack);
+    + 'gray on theirs', skinBack.mine === '#E3D4B4' && skinBack.theirs === '#CFD5D7', skinBack);
 
   /* ── the 2-3s delay, measured where it actually applies ──
      The cooldown runs from the last EDIT, so it has to be checked right after
