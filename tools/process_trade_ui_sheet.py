@@ -7,13 +7,14 @@ Input:  assets/icons-source/sheet-trade-ui.png  (1448x1086 RGBA, one kit on
         item plates, ornaments)
 Output: public/icons/ui/trade/<name>.webp
 
-NOTE (v2.3.2291): the trade window was rebuilt flat, in CSS, against the
-owner's SECOND kit -- the ornate frames this script cuts are no longer wired to
-anything.  Only icon-lane-coins.webp and icon-lane-bag.webp are kept in
-public/; the rest were deleted because public/ is copied verbatim into the
-build, so 1.1MB of unreferenced art would have shipped to every player.
-This script still slices the whole board faithfully, which is the point -- it
-is the regeneration path if that art is ever wanted again.  If you re-run it,
+NOTE (v2.3.2292): NOTHING this script cuts is wired to the game any more.
+The trade window was rebuilt flat in CSS at v2.3.2291, and at v2.3.2292 the two
+surviving lane icons were replaced by the traders' own character portraits --
+so public/icons/ui/trade/ is gone entirely rather than holding art nobody
+references.  public/ is copied verbatim into the build, so unreferenced art
+ships to every player for nothing.
+This script still slices the whole board faithfully, which is the point: it is
+the regeneration path if that art is ever wanted again.  If you re-run it,
 delete what you do not wire up before committing.
 
 WHY COMPONENT LABELLING AND NOT A GRID: the kit is a hand-laid board, not a

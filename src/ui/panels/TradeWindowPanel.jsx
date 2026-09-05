@@ -14,6 +14,19 @@ import { RARITY_TIERS } from '@/data/index.js';
    before — so an unmapped item degrades to what it already looked like
    rather than to a broken image. */
 import { thumbFor } from '../mobile/dash/InventoryPanel.jsx';
+/* ═══ v2.3.2292: THE TWO FACES ═══
+   Owner: "put your characters thumbnail before the 'you offer' and the other
+   trader's thumbnail of their character before theirs ... carry that through
+   the trade menus."
+   MINE comes from portraitStore, not from a second generator. BottomDashboard
+   is always mounted, already regenerates the bust on all twelve cosmetic
+   change events and already guards the async race with a sequence number --
+   writing a second copy of that here is precisely the "second hand-written
+   copy" characterPortrait's own header calls the shape this repo keeps paying
+   for. THEIRS is generated from their peer record through the shared recipe
+   (portraitOptsFromPeer), the same call InspectPlayerPanel makes. */
+import { portraitStore } from '../mobile/sheet/portraitStore.js';
+import { portraitDataUrl, portraitOptsFromPeer, portraitHasSubject } from '../../rendering/characterPortrait.js';
 
 /* === TradeWindowPanel — the two-sided trade window (v2.3.1132) === */
 /* Handoff item H: both players stage items + gold, both confirm, the
@@ -302,6 +315,19 @@ const stepBtn = (enabled) => ({
    Now: the bag tile stages ONE (and taps up by one), and every staged row
    carries − / + with your stack size beside it, so the quantity is a thing you
    set rather than a cycle you land on. */
+/* A 22px face, with the player's initial as the fallback. The fallback is not
+   decoration: a peer who is out of sight, a placeholder peer created by a tick,
+   or a portrait that fails to draw all produce no image, and a blank square
+   beside "You offer" would read as a broken icon rather than as a person. */
+function Face({ src, name, onLight }) {
+  const initial = ((name || '?').trim().charAt(0) || '?').toUpperCase();
+  return (
+    <span className={'bt-t2-face' + (onLight ? ' bt-t2-face--on-light' : '')} aria-hidden="true">
+      {src ? <img src={src} alt="" /> : <span className="bt-t2-face-ltr">{initial}</span>}
+    </span>
+  );
+}
+
 function StagedRow({ glyph, name, qty, have, rarityLabel, rarityColor, rarityTier, onRemove, onInc, onDec, ink = DARK_INK, rowTone = null }) {
   return (
     /* v2.3.2290: the owner's painted row slot. Three states share one
@@ -406,6 +432,38 @@ export function TradeWindowPanel(props) {
   const S = stateRef.current;
   const myId = S.myId;
   const [stage, setStage] = useState({});
+  /* ═══ v2.3.2292: BOTH PORTRAITS, RESOLVED UP HERE ═══
+     With the other five early returns below, these have to be unconditional --
+     the same Rules-of-Hooks constraint the v2.3.1754 note records a crash for.
+     `_otherId` is derived from props rather than from the `otherId` computed
+     after those returns, for the same reason. */
+  const _otherId = trade2 ? (trade2.a === myId ? trade2.b : trade2.a) : null;
+  /* Derived up here TOO, not just at :823. The receipt returns long before that
+     line and reads this name for its face -- referencing the later `const` from
+     inside the earlier return is a temporal dead zone, which crashed the whole
+     window ("Cannot access 'otherName' before initialization" took the React
+     tree, the WebGL context and the socket down with it). The later binding is
+     an alias of this one so there is still a single source. */
+  const _otherName = trade2 ? (trade2.a === myId ? trade2.bName : trade2.aName) : '';
+  const [, _facePing] = useState(0);
+  useEffect(() => portraitStore.subscribe(() => _facePing((v) => v + 1)), []);
+  const [theirFace, setTheirFace] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    setTheirFace(null);
+    const o = (_otherId && S.others) ? S.others[_otherId] : null;
+    /* portraitHasSubject rejects a tick-created placeholder peer, whose
+       cosmetics are all null and would draw a default body rather than that
+       person -- the letter tile is the better answer there. */
+    if (o && portraitHasSubject(o)) {
+      try {
+        portraitDataUrl(portraitOptsFromPeer(o), true)
+          .then((u) => { if (alive && u) setTheirFace(u); })
+          .catch(() => {});
+      } catch (e) { /* a portrait is never worth taking the window down for */ }
+    }
+    return () => { alive = false; };
+  }, [_otherId, S]);
   /* ═══ v2.3.2288: THE LADDER'S SIGN ═══
      Owner: "Put a subtract button near the clear button (that changes back to
      add once tapped again) that inverts all the gold from the buttons."
@@ -684,12 +742,22 @@ export function TradeWindowPanel(props) {
           {/* v2.3.2282: RECEIVED on top, SENT on the bottom -- see the lane-order
               note on the review screen. Your own pile is the bottom one on all
               three screens now, and it is the one on the lighter well. */}
-          <div style={{ ...laneHeader, color: '#8D9B98' }}>You received</div>
+          {/* v2.3.2292: the receipt's two headers moved INSIDE their lanes so
+              they can carry a face like the other two screens. The QA lane
+              readers already try closest('.bt-t2-lane') before the old
+              next-sibling shape, so this is the arrangement they prefer. */}
           <div className={theirLaneCls} style={theirWell}>
+            <div className="bt-t2-lane-hdr" style={{ color: theirInk.muted }}>
+              <Face src={theirFace} name={_otherName} onLight />
+              <span className="bt-t2-lane-name">You received</span>
+            </div>
             <OfferRows offer={r.received} weapons={r.receivedWeapons} empty="Nothing" goldSuffix="G" ink={theirInk} />
           </div>
-          <div style={{ ...laneHeader, color: '#8D9B98' }}>You sent</div>
           <div className={myLaneCls} style={myWell}>
+            <div className="bt-t2-lane-hdr" style={{ color: '#8D9B98' }}>
+              <Face src={portraitStore.get()} name="You" />
+              <span className="bt-t2-lane-name">You sent</span>
+            </div>
             <OfferRows offer={r.sent} weapons={r.sentWeapons} empty="Nothing" goldSuffix="G" />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
@@ -760,7 +828,7 @@ export function TradeWindowPanel(props) {
   if (trade2.state !== 'open' || !trade2.offers) return null;
 
   const otherId = trade2.a === myId ? trade2.b : trade2.a;
-  const otherName = trade2.a === myId ? trade2.bName : trade2.aName;
+  const otherName = _otherName;
   const iConfirmed = !!trade2.confirmed[myId];
   const theyConfirmed = !!trade2.confirmed[otherId];
   const inv = (rpgState && rpgState.inventory) || {};
@@ -913,12 +981,12 @@ export function TradeWindowPanel(props) {
     const chip = (node, ink) => (ink && ink.platedThumbs)
       ? (<span style={{ width: 24, height: 24, flex: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: ink.slot, borderRadius: 6 }}>{node}</span>)
       : node;
-    const side = (title, ls, gold, tone, well, ink) => (
+    const side = (title, ls, gold, tone, well, ink, face) => (
       /* v2.3.2290: the review lanes wear the same painted frame as the live
          ones -- one skin across all three trade screens, so the window does
          not change costume halfway through a trade. */
       <div className={well === theirWell ? theirLaneCls : myLaneCls} style={{ marginBottom: 8 }}>
-        <div className="bt-t2-lane-hdr" style={{ color: tone }}>{title}</div>
+        <div className="bt-t2-lane-hdr" style={{ color: tone }}>{face}<span className="bt-t2-lane-name">{title}</span></div>
         {ls.length === 0 && gold === 0 && (
           <div style={{ fontSize: 12, color: ink.muted }}>Nothing</div>
         )}
@@ -973,8 +1041,13 @@ export function TradeWindowPanel(props) {
               reorder. v2.3.2283 raised the stakes: it would also put the dark
               ramp on the light card, i.e. invisible text. Read the arguments,
               not the order. */}
-          {side('YOU RECEIVE', theirLines, theirGold, 'var(--ui-positive-on-invert, #1C5A40)', theirWell, theirInk)}
-          {side('YOU GIVE', myLines, myGold, '#D8635D', myWell, myInk)}
+          {/* v2.3.2292: the same two faces as the live screen, so the pile you
+              are about to hand over is labelled with the person you are handing
+              it to on every screen of the trade. */}
+          {side('YOU RECEIVE', theirLines, theirGold, 'var(--ui-positive-on-invert, #1C5A40)', theirWell, theirInk,
+            <Face src={theirFace} name={otherName} onLight />)}
+          {side('YOU GIVE', myLines, myGold, '#D8635D', myWell, myInk,
+            <Face src={portraitStore.get()} name="You" />)}
           {bigGold && !goldAck && (
             /* Owner: "large currency amounts trigger an explicit confirmation
                to catch typos." */
@@ -1078,8 +1151,8 @@ export function TradeWindowPanel(props) {
             mp-trade rather than by eye. Same trap as TRAPS §48: the ink has to
             travel with the fill, and a header that changes side changes ramp. */}
         <div className="bt-t2-lane-hdr" style={{ color: theirInk.muted }}>
-          <img className="bt-t2-lane-icon" src="/icons/ui/trade/icon-lane-coins.webp?v=2.3.2291" alt="" />
-          <span>{otherName} offers</span>
+          <Face src={theirFace} name={otherName} onLight />
+          <span className="bt-t2-lane-name">{otherName} offers</span>
           {/* v2.3.2291: the mockup's plain-language hint. It says whose pile
               this is in words, which is the signal that survives when a player
               cannot tell the two fills apart. */}
@@ -1118,8 +1191,8 @@ export function TradeWindowPanel(props) {
             icons the owner drew into the lane art, lifted out so the header
             they belong to can say something different on each screen. */}
         <div className="bt-t2-lane-hdr" style={{ color: '#8D9B98' }}>
-          <img className="bt-t2-lane-icon" src="/icons/ui/trade/icon-lane-bag.webp?v=2.3.2291" alt="" />
-          <span>You offer</span>
+          <Face src={portraitStore.get()} name="You" />
+          <span className="bt-t2-lane-name">You offer</span>
           <span className="bt-t2-lane-hint" style={{ color: iConfirmed ? '#55B98A' : '#8D9B98' }}>{iConfirmed ? 'Confirmed ✓' : 'Items from your inventory'}</span>
         </div>
           {/* v2.3.1235: batch-4 state-correction §3/§4 — my rows render my
@@ -1236,12 +1309,23 @@ export function TradeWindowPanel(props) {
               aria-label={goldMinus
                 ? 'Presets subtract gold. Tap to make them add again.'
                 : 'Presets add gold. Tap to make them subtract.'}
+              title={goldMinus ? 'Switch the presets back to adding' : 'Switch the presets to subtracting'}
               onClick={() => setGoldMinus((v) => !v)}
               style={{
+                /* v2.3.2292: ONE GLYPH, and it names the ACTION rather than the
+                   mode -- owner: "instead of the 'Add' button just have a
+                   symbol for minus (this is to invert the coin options if you
+                   want to reduce gold amounts)". So it shows − while the chips
+                   read +N, and + once they read -N: tap it to flip them. That
+                   is the opposite of the state-label reasoning at v2.3.2288,
+                   and it holds here because the seven chips are RIGHT THERE
+                   carrying the sign -- the button no longer has to say what
+                   mode you are in, only what it will do. Square, because a
+                   pill sized for two words around one character reads as a
+                   button missing its label. */
                 marginLeft: 'auto', flex: '0 0 auto',
-                minHeight: 30, padding: '4px 10px', borderRadius: 999,
-                fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                fontVariantNumeric: 'tabular-nums',
+                width: 34, minHeight: 34, padding: 0, borderRadius: 9,
+                fontSize: 16, fontWeight: 700, lineHeight: 1, cursor: 'pointer',
                 /* nowrap is FUNCTIONAL, not cosmetic: without it "- Subtract"
                    breaks inside the pill at narrow widths, the pill outgrows
                    its 30px minHeight and the 33px gold row grows with it --
@@ -1259,7 +1343,7 @@ export function TradeWindowPanel(props) {
                 background: goldMinus ? 'var(--ui-brass-soft, rgba(216,170,88,.15))' : '#293B41',
                 color: goldMinus ? '#D8AA58' : '#B6C1BE',
               }}
-            >{goldMinus ? '\u2212 Subtract' : '+ Add'}</button>
+            >{goldMinus ? '\uFF0B' : '\u2212'}</button>
           )}
           {(stage._gold || 0) > 0 && (
             <button

@@ -716,6 +716,18 @@ input{font-family:inherit}
 }
 .bt-t2-lane--theirs .bt-t2-lane-hdr{border-bottom-color:rgba(11,22,27,.14)}
 .bt-t2-lane-icon{width:18px;height:18px;flex:none;display:block}
+/* v2.3.2292: the trader's face. object-fit:cover because the portrait is a
+   headshot crop of a taller canvas -- letting it letterbox would put slate
+   bars either side of every player. */
+.bt-t2-face{
+  width:24px;height:24px;flex:none;border-radius:7px;overflow:hidden;
+  background:#0B161B;border:1px solid rgba(229,237,233,.16);
+  display:flex;align-items:center;justify-content:center;
+}
+.bt-t2-face img{width:100%;height:100%;object-fit:cover;display:block}
+.bt-t2-face-ltr{font-size:11px;font-weight:800;color:#8D9B98;line-height:1}
+.bt-t2-face--on-light{background:#CFCBBC;border-color:rgba(11,22,27,.18)}
+.bt-t2-face--on-light .bt-t2-face-ltr{color:#45565C}
 /* the right-hand hint ("Items from the other player") */
 .bt-t2-lane-hint{
   margin-left:auto;font-size:10px;font-weight:600;letter-spacing:.02em;

@@ -27,9 +27,15 @@ import * as H from './harness.mjs';
    from the body so "Buyer offers" cannot satisfy an assertion about the pile.
    The header row is now the first child, so the icon <img> is skipped by
    matching the SPAN rather than children[0]. */
+/* v2.3.2292: .bt-t2-lane-name, not "the first span in the header".
+   The lane headers carry a player FACE now, and that chip renders a span of its
+   own before the words -- so `querySelector('span')` started returning the
+   portrait (empty, or a fallback initial) and every lane read came back null.
+   The label has its own class for exactly this reason: a reader anchored on
+   position breaks the next time anything is added to the left of the text. */
 const LANE_FN = `() => {
   const hdr = [...document.querySelectorAll('.bt-t2-lane-hdr')].find((d) => {
-    const sp = d.querySelector('span');
+    const sp = d.querySelector('.bt-t2-lane-name');
     return sp && /\\boffers$/i.test((sp.textContent || '').trim());
   });
   if (!hdr) return null;
@@ -315,6 +321,42 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and then takes itself away, rather than sitting there saying nothing',
     (await chip('Clear')) === 'missing');
 
+  /* ═══ v2.3.2292: A FACE ON EACH SIDE ═══
+     Owner: "put your characters thumbnail before the 'you offer' and the other
+     trader's thumbnail of their character before theirs ... carry that through
+     the trade menus."
+     Asserted as "each header has a face that is a REAL PORTRAIT", not merely
+     "a face element exists": both sources can fail softly to the letter tile --
+     mine if portraitStore is empty, theirs if the peer lookup or the shared
+     recipe breaks -- and a letter tile is exactly what a silently broken
+     portrait looks like. Deliberately NOT asserted by comparing the two data
+     URLs: two fresh QA players can legitimately roll identical cosmetics, so
+     "they differ" would be flaky rather than strict. */
+  const faces = () => A.page.evaluate(() => {
+    const out = {};
+    for (const h of document.querySelectorAll('[data-trade-drawer] .bt-t2-lane-hdr')) {
+      const name = h.querySelector('.bt-t2-lane-name');
+      const face = h.querySelector('.bt-t2-face');
+      const img = face && face.querySelector('img');
+      if (!name) continue;
+      out[(name.textContent || '').trim()] = {
+        face: !!face,
+        real: !!(img && img.getAttribute('src')),
+        letter: !!(face && face.querySelector('.bt-t2-face-ltr')),
+      };
+    }
+    return out;
+  });
+  const f1 = await faces();
+  const theirKey = Object.keys(f1).find((k) => /offers$/i.test(k));
+  const mineKey = Object.keys(f1).find((k) => /^You offer$/i.test(k));
+  rec.ok('both lanes are headed by a face', !!theirKey && !!mineKey
+    && f1[theirKey].face && f1[mineKey].face, f1);
+  rec.ok('...and each is a real drawn portrait, not the letter fallback that a '
+    + 'broken lookup degrades to',
+    !!theirKey && !!mineKey && f1[theirKey].real && f1[mineKey].real
+      && !f1[theirKey].letter && !f1[mineKey].letter, f1);
+
   /* ═══ v2.3.2288: THE LADDER'S SIGN ═══
      Owner: "Put a subtract button near the clear button (that changes back to
      add once tapped again) that inverts all the gold from the buttons."
@@ -350,16 +392,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await A.page.locator('[data-trade-drawer] input[type="number"]').fill('100');
   await A.page.waitForTimeout(400);
   const signAdd = await signBtn();
-  rec.ok('once gold is staged the toggle appears, showing the mode the chips '
-    + 'are actually in', !!signAdd && signAdd.text === '+ Add' && signAdd.mode === 'add' && signAdd.pressed === 'false', signAdd);
+  /* v2.3.2292: ONE GLYPH, naming the ACTION not the mode. Owner: "instead of
+     the 'Add' button just have a symbol for minus ... to invert the coin
+     options". So it shows MINUS while the chips read +N, and PLUS once they
+     read -N. That inverts the v2.3.2288 reasoning on purpose and it holds
+     because the seven chips carry the sign themselves -- the mode is on
+     screen either way, so the button is free to say what it DOES.
+     Asserted on data-gold-mode for the state and on the glyph for the label,
+     which keeps the two facts separable: a reworded button reddens one line. */
+  rec.ok('once gold is staged the inverter appears, offering the sign the chips '
+    + 'are NOT in', !!signAdd && signAdd.text === '\u2212' && signAdd.mode === 'add' && signAdd.pressed === 'false', signAdd);
 
   await tapSign(); await A.page.waitForTimeout(350);
   const subLadder = await ladderNow();
   const signSub = await signBtn();
   rec.ok('THE ASK: tapping it inverts every chip on the ladder at once',
     subLadder.join(',') === '\u22121,\u22125,\u221225,\u221250,\u2212100,\u2212500,\u22121000', subLadder);
-  rec.ok('...and the button itself now reads Subtract, so it never contradicts '
-    + 'the chips it controls', !!signSub && signSub.text === '\u2212 Subtract' && signSub.mode === 'sub' && signSub.pressed === 'true', signSub);
+  rec.ok('...and once tapped it offers the way back, so the pair can never both '
+    + 'read the same sign', !!signSub && signSub.text === '\uFF0B' && signSub.mode === 'sub' && signSub.pressed === 'true', signSub);
 
   /* The toggle and Clear must not cost the drawer a second row -- see the fold
      note below; this is the same budget, spent horizontally instead. */
@@ -421,7 +471,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await tapSign(); await A.page.waitForTimeout(350);
   rec.ok('tapping it again changes back to add, exactly as asked',
     (await ladderNow()).join(',') === '+1,+5,+25,+50,+100,+500,+1000'
-      && (await signBtn()).text === '+ Add');
+      && (await signBtn()).mode === 'add');
 
   /* ── SUBTRACTING TO EXACTLY ZERO ──
      The dead end this has to avoid: at zero every subtract chip is disabled, so
@@ -441,7 +491,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await A.page.waitForTimeout(400);
   rec.ok('...and the next gold you stage starts in ADD, so the mode cannot '
     + 'survive invisibly into a trade you did not set it for',
-    (await ladderNow())[0] === '+1' && (await signBtn()).text === '+ Add',
+    (await ladderNow())[0] === '+1' && (await signBtn()).mode === 'add',
     { ladder: await ladderNow(), sign: await signBtn() });
 
   /* ═══ v2.3.2288: NO TINY UP/DOWN ARROWS ON THE GOLD FIELD ═══
@@ -512,7 +562,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const hdrs = [...document.querySelectorAll('[data-trade-drawer] .bt-t2-lane-hdr')];
     const pick = (rx) => {
       const hdr = hdrs.find((d) => {
-        const sp = d.querySelector('span');
+        const sp = d.querySelector('.bt-t2-lane-name');
         return sp && rx.test((sp.textContent || '').trim());
       });
       const well = hdr && hdr.closest('.bt-t2-lane');
@@ -556,7 +606,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        is null and the probe fell out with found:false and nothing checked. */
     const hdr = [...document.querySelectorAll('[data-trade-drawer] .bt-t2-lane-hdr')]
       .find((d) => {
-        const sp = d.querySelector('span');
+        const sp = d.querySelector('.bt-t2-lane-name');
         return sp && re.test((sp.textContent || '').trim());
       })
       || [...document.querySelectorAll('[data-trade-drawer] div')]
@@ -848,8 +898,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const laneGeom = (P, topRe, bottomRe) => P.page.evaluate(([tRe, bRe]) => {
     const find = (rx) => {
       const re = new RegExp(rx, 'i');
-      const el = [...document.querySelectorAll('[data-trade-drawer] div')]
-        .find((d) => d.children.length === 0 && re.test((d.textContent || '').trim()));
+      /* v2.3.2292: the label is a .bt-t2-lane-name SPAN on the review and
+         receipt screens now (it shares its header with a face), so the old
+         leaf-DIV finder matched nothing and every lane read came back null.
+         Both shapes are tried -- the class first, then the leaf div for any
+         screen still using a bare title. */
+      const el = [...document.querySelectorAll('[data-trade-drawer] .bt-t2-lane-name')]
+        .find((d) => re.test((d.textContent || '').trim()))
+        || [...document.querySelectorAll('[data-trade-drawer] div')]
+          .find((d) => d.children.length === 0 && re.test((d.textContent || '').trim()));
       if (!el) return null;
       /* v2.3.2290: find the LANE by class, not by "which of these has a
          background". With the owner's painted frame NONE of them does -- the
@@ -886,8 +943,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
      inversion was invisible to the suite. */
   const revTone = await A.page.evaluate(() => {
     const pick = (rx) => {
-      const el = [...document.querySelectorAll('[data-trade-drawer] div')]
-        .find((d) => d.children.length === 0 && rx.test((d.textContent || '').trim()));
+      const el = [...document.querySelectorAll('[data-trade-drawer] .bt-t2-lane-name')]
+        .find((d) => rx.test((d.textContent || '').trim()))
+        || [...document.querySelectorAll('[data-trade-drawer] div')]
+          .find((d) => d.children.length === 0 && rx.test((d.textContent || '').trim()));
       return el ? getComputedStyle(el).color : null;
     };
     return { receive: pick(/^YOU RECEIVE$/), give: pick(/^YOU GIVE$/) };
