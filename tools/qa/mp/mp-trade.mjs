@@ -16,8 +16,6 @@ import * as H from './harness.mjs';
 /* Text of the "<name> offers" well, i.e. what THIS player sees the OTHER one
  * putting up.  Anchors on the lane header and reads the well right after it,
  * so it can never accidentally match a number elsewhere on the page. */
-/* The header carries a second "confirmed ✓" span ONLY once they confirm, so
- * match on the first child's text and never on the child count. */
 /* v2.3.2290: anchored on the LANE, not on a sibling.
    The header used to sit outside the well and this read `nextElementSibling`.
    With the owner's painted frame the header moved INSIDE the lane, so that
@@ -546,6 +544,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the primary action is reachable without scrolling the drawer',
     !!fold && fold.overflowPx <= 0, fold);
 
+  /* v2.3.2293: the POSITIVE CONTROL for the review screen's absence check
+     below. An assertion that something is missing passes just as happily when
+     the selector is wrong as when the thing is genuinely gone -- so the same
+     selector is first shown to FIND the controls here, on the live window,
+     where they certainly exist. Without this the guard could rot into a
+     permanent green the next time a class is renamed. */
+  const editableOnLive = await A.page.evaluate(() => !!document.querySelector(
+    '[data-trade-drawer] button[data-gold-mode], [data-trade-drawer] .bt-t2-chip, [data-trade-drawer] input'));
+  rec.ok('the live window DOES carry offer-changing controls (the control for '
+    + 'the review-screen check below)', editableOnLive === true, { editableOnLive });
+
   await shot(A, '1-offer');
 
   /* v2.3.2282: the live drawer is the screen the other two were made to match,
@@ -685,8 +694,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* Stripped-down is the safety property: if the bag tray or the gold field
      survived onto this screen, "what you read is what you accept" would be
      false. */
+  /* v2.3.2293: anchored on CONTROLS, not on copy. Both halves of the old
+     condition were about to be permanently true -- "tap to add" was removed
+     with the explainers, and there has never been a `Send` button in this
+     panel at all -- so this safety guard would have gone green forever while
+     testing nothing. It now asks the question directly: does the review screen
+     render anything you could change the offer with? */
+  const editableOnReview = await A.page.evaluate(() => !!document.querySelector(
+    '[data-trade-drawer] button[data-gold-mode], [data-trade-drawer] .bt-t2-chip, [data-trade-drawer] input'));
   rec.ok('...with nothing on it that can change the trade',
-    !/tap to add/i.test(reviewA) && !(await btn(A, '^Send$')), reviewA.slice(0, 140));
+    editableOnReview === false, { editableOnReview, head: reviewA.slice(0, 140) });
 
   /* ═══ v2.3.2280: THE FORMAT NEVER JUMPS ═══
      Owner: "Yes bring the trade into the drawer too."  The review screen was
@@ -714,11 +731,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...seated on the dashboard, not floating above it',
     Math.abs(reviewFrame.bottom - reviewFrame.dashTop) <= 2, reviewFrame);
 
-  /* The footer's promise, measured. `Nothing on this screen can change the
-     trade` was false while the bag stayed attached: the band's own tiles were
-     still wired to addOne, and on a phone they sit directly under the drawer
-     where a thumb rests.  The server would have caught the edit -- it resets
-     both readies -- but the screen was making a promise the UI broke. */
+  /* v2.3.2293: the footer that used to make this promise in words is gone, but
+     the PROPERTY it described is the real one and stays pinned: the review
+     screen is what you accept, so nothing under it may still stage. The bag's
+     own tiles were wired to addOne and sit directly beneath the drawer where a
+     thumb rests; the server would have caught the edit, but the screen would
+     have been lying. */
   const bagOnReview = await A.page.evaluate(() =>
     !!(window.__broTradeBagBus && window.__broTradeBagBus.open));
   rec.ok('...and the bag lets go, so the footer\'s promise is true',
@@ -788,11 +806,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
      after is worse than one that does not claim to — and the rule is
      enforced on the worker anyway, where trade2.test.mjs pins it directly
      ("an accept inside the cooldown is refused (last-second swap)").
-     What IS stable and worth pinning here is that the screen TELLS the
-     player the rule, because an unexplained dead button reads as a broken
-     one. */
-  rec.ok('the review screen explains that an edit sends you both back',
-    /edits the offer/i.test(await cardText(A)), (await cardText(A)).slice(-120));
+     v2.3.2293: the follow-on assertion here pinned that the screen SAID so in
+     words. That footer is gone with the rest of the explainers, and there is
+     nothing left to assert about it -- the rule lives on the worker, where
+     trade2.test.mjs already pins it. Removed rather than weakened. */
   const acceptBtn = await btn(A, '^(Accept|Wait)');
   rec.ok('...and the accept is either counting down or live, never missing',
     !!acceptBtn, acceptBtn);

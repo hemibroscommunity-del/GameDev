@@ -197,7 +197,7 @@ const DRAWER_FRAME = {
 /* `title` is the header line every state shares (icon + one sentence);
    `onClose` renders the ✕ and is omitted only where a state has no way to
    leave that isn't one of its own buttons. */
-function TradeDrawer({ title, titleColor, subtitle, onClose, children }) {
+function TradeDrawer({ title, titleColor, onClose, children }) {
   return (
     <div
       data-trade-drawer=""
@@ -217,16 +217,7 @@ function TradeDrawer({ title, titleColor, subtitle, onClose, children }) {
             {title}
           </div>
         )}
-        {/* v2.3.2291: the mockup's one-line reassurance under the title. The
-            window's job is to be trusted, and this is the sentence that does
-            it before anyone reads a row. */}
-        {title && subtitle && (
-          <div style={{
-            textAlign: 'center', fontSize: 11, color: '#8D9B98',
-            marginTop: -4, marginBottom: 9,
-            paddingLeft: onClose ? 34 : 0, paddingRight: onClose ? 34 : 0,
-          }}>{subtitle}</div>
-        )}
+
         {children}
       </div>
     </div>
@@ -751,14 +742,18 @@ export function TradeWindowPanel(props) {
               <Face src={theirFace} name={_otherName} onLight />
               <span className="bt-t2-lane-name">You received</span>
             </div>
-            <OfferRows offer={r.received} weapons={r.receivedWeapons} empty="Nothing" goldSuffix="G" ink={theirInk} />
+            <div className="bt-t2-items">
+              <OfferRows offer={r.received} weapons={r.receivedWeapons} empty="Nothing" goldSuffix="G" ink={theirInk} />
+            </div>
           </div>
           <div className={myLaneCls} style={myWell}>
             <div className="bt-t2-lane-hdr" style={{ color: '#8D9B98' }}>
               <Face src={portraitStore.get()} name="You" />
               <span className="bt-t2-lane-name">You sent</span>
             </div>
-            <OfferRows offer={r.sent} weapons={r.sentWeapons} empty="Nothing" goldSuffix="G" />
+            <div className="bt-t2-items">
+              <OfferRows offer={r.sent} weapons={r.sentWeapons} empty="Nothing" goldSuffix="G" />
+            </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
             <span style={{ ...laneHeader, marginBottom: 0, color: '#8D9B98' }}>Balance</span>
@@ -987,6 +982,7 @@ export function TradeWindowPanel(props) {
          not change costume halfway through a trade. */
       <div className={well === theirWell ? theirLaneCls : myLaneCls} style={{ marginBottom: 8 }}>
         <div className="bt-t2-lane-hdr" style={{ color: tone }}>{face}<span className="bt-t2-lane-name">{title}</span></div>
+        <div className="bt-t2-items">
         {ls.length === 0 && gold === 0 && (
           <div style={{ fontSize: 12, color: ink.muted }}>Nothing</div>
         )}
@@ -1004,7 +1000,11 @@ export function TradeWindowPanel(props) {
             {chip(<GoldIcon />, ink)}<span>{gold} gold</span>
           </div>
         )}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: ink.muted, marginTop: 4, borderTop: ink.divider, paddingTop: 4 }}>
+        </div>
+        {/* the totals sit OUTSIDE the well: they describe the pile rather than
+            being part of it, which is the same separation the live screen makes
+            between the items and the gold controls. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: ink.muted, marginTop: 6, paddingTop: 0 }}>
           <span>{ls.length} item{ls.length === 1 ? '' : 's'}</span>
           {gold > 0 && (<><span>·</span><GoldIcon /><span>{gold}</span></>)}
         </div>
@@ -1102,13 +1102,18 @@ export function TradeWindowPanel(props) {
               onClick={() => send('trade2_ready', { ready: false })}
             >Back</button>
           </div>
-          {/* The cooldown is the owner's "2-3 second delay ... kills
-              last-second swap scams".  Saying WHY it is disabled matters: an
-              unexplained dead button reads as a broken one. */}
-          <div style={{ fontSize: 11, color: '#8D9B98', marginTop: 8, lineHeight: 1.45 }}>
-            Nothing on this screen can change the trade. If either of you edits the offer,
-            you both come back here and accept again.
-          </div>
+          {/* ═══ v2.3.2293: BOTH FOOTERS REMOVED ═══
+              Owner: "remove all the tiny info disclaimers and explainers".
+              This one stated the anti-switch rule and the live window's stated
+              the settlement guarantee, so the rule is now written nowhere in
+              the UI. Judged safe because no INFORMATION dies with it: the
+              server still enforces it, the bounce back to the offer screen is
+              unmistakable, and the event announces itself through the "Offer
+              changed — review and confirm again" notice, which is kept for
+              exactly that reason. Recorded here because a prior session called
+              this line "the one line the whole anti-scam screen exists to make
+              the player read" (WorldChatFeed.jsx) -- if it comes back, this is
+              the sentence and this is where it went. */}
       </TradeDrawer>
     );
   }
@@ -1132,8 +1137,7 @@ export function TradeWindowPanel(props) {
     /* v2.3.2280: the frame this state introduced is now TradeDrawer, shared
        with the other five states -- see the shell above. Same markup, same
        numbers; the ✕ still routes through requestLeave (v2.3.1235 §7). */
-    <TradeDrawer title={`Trading with ${otherName}`}
-      subtitle="Trade items and gold safely." onClose={requestLeave}>
+    <TradeDrawer title={`Trading with ${otherName}`} onClose={requestLeave}>
 
         {/* v2.3.1235: batch-4 state-correction §6 — "<name> confirmed ✓"
             positive check by their lane header, straight off the
@@ -1153,12 +1157,7 @@ export function TradeWindowPanel(props) {
         <div className="bt-t2-lane-hdr" style={{ color: theirInk.muted }}>
           <Face src={theirFace} name={otherName} onLight />
           <span className="bt-t2-lane-name">{otherName} offers</span>
-          {/* v2.3.2291: the mockup's plain-language hint. It says whose pile
-              this is in words, which is the signal that survives when a player
-              cannot tell the two fills apart. */}
-          {!theyConfirmed && !theyReady && (
-            <span className="bt-t2-lane-hint">Items from the other player</span>
-          )}
+
           {/* v2.3.2280: under the two-stage flow `confirmed` is only ever set
               on the REVIEW screen, so at the offer stage this header showed
               nothing at all and a player who had readied up looked, from the
@@ -1180,7 +1179,12 @@ export function TradeWindowPanel(props) {
             every presence assertion keeps passing. */}
           {/* v2.3.2283: ink passed EXPLICITLY, not inferred from "this is the
               call site with no handlers" -- same reasoning as tone and well. */}
-          <OfferRows offer={trade2.offers[otherId]} weapons={otherWpn} empty="Nothing staged yet" ink={theirInk} />
+          {/* v2.3.2293: the offered items get their own sunk well, so "what is on
+              the table" is visibly a different thing from the controls that
+              change it -- see .bt-t2-items. */}
+          <div className="bt-t2-items">
+            <OfferRows offer={trade2.offers[otherId]} weapons={otherWpn} empty="Nothing staged yet" ink={theirInk} />
+          </div>
         </div>
 
         {/* v2.3.1235: batch-4 state-correction §6 — "Editing offer" while
@@ -1193,23 +1197,24 @@ export function TradeWindowPanel(props) {
         <div className="bt-t2-lane-hdr" style={{ color: '#8D9B98' }}>
           <Face src={portraitStore.get()} name="You" />
           <span className="bt-t2-lane-name">You offer</span>
-          <span className="bt-t2-lane-hint" style={{ color: iConfirmed ? '#55B98A' : '#8D9B98' }}>{iConfirmed ? 'Confirmed ✓' : 'Items from your inventory'}</span>
+          {/* v2.3.2293: the hint half of this ternary is gone with the rest of
+              the explainers, but the span is NOT deleted -- its other half is a
+              live read of the server's confirm flag. It renders only when there
+              is a flag to report. */}
+          {iConfirmed && <span className="bt-t2-lane-hint" style={{ color: '#55B98A' }}>Confirmed ✓</span>}
         </div>
           {/* v2.3.1235: batch-4 state-correction §3/§4 — my rows render my
               staging mirror with Remove controls (existing trade2_set /
               trade2_unstage_weapon pathways); empty copy distinguishes an
-              empty BAG ("Your bag is empty" / "You can still offer gold")
-              from an unstaged one. */}
+              empty BAG ("Your bag is empty") from an unstaged one
+              ("Nothing staged yet"). */}
+          <div className="bt-t2-items">
           <OfferRows offer={stage} weapons={myWpn}
             inv={inv} onSetQty={setQty}
             onRemoveItem={removeItem}
             onRemoveWeapon={(seq) => send('trade2_unstage_weapon', { seq })}
-            empty={bagEmpty ? (
-              <span>
-                Your bag is empty
-                <span style={{ display: 'block', color: '#667875', marginTop: 2 }}>You can still offer gold</span>
-              </span>
-            ) : 'Tap an item in Bag below to add it'} />
+            empty={bagEmpty ? 'Your bag is empty' : 'Nothing staged yet'} />
+          </div>
 
         {/* ═══ v2.3.2149: THE IN-WINDOW BAG TRAY IS GONE ═══
             It was "THE item source for this trade (staging never touches the
@@ -1220,17 +1225,15 @@ export function TradeWindowPanel(props) {
             same bag inside the window would be two bags on one screen
             disagreeing about which one is yours.
 
-            Kept as a caption pointing DOWN at the real one, because a window
-            that used to hold the items and now does not needs to say where they
-            went. */}
-        {bagItems.length > 0 && (
-          <div style={{ ...laneHeader, color: '#8D9B98' }}>Tap an item in your bag below to add it</div>
-        )}
+            v2.3.2293: the caption that pointed DOWN at the real bag is gone
+            with the rest of the explainers (owner: "remove all the tiny info
+            disclaimers and explainers"). Your lane's empty state still says
+            "Nothing staged yet", so an unstaged offer is never silent. */}
 
         {weaponLane && stash.length > 0 && (
           <div style={{ marginBottom: 8 }}>
             <div style={{ ...laneHeader, color: '#8D9B98' }}>
-              Your weapons (tap to add) {myWpn.length >= T2_WPN_MAX ? '· max ' + T2_WPN_MAX : ''}
+              Your weapons {myWpn.length >= T2_WPN_MAX ? '· max ' + T2_WPN_MAX : ''}
             </div>
             <div className="ls-scrollbody" style={{ display: 'flex', flexWrap: 'wrap', gap: 4, maxHeight: 88, overflowY: 'auto' }}>
               {stash.map((w, i) => (
@@ -1309,7 +1312,6 @@ export function TradeWindowPanel(props) {
               aria-label={goldMinus
                 ? 'Presets subtract gold. Tap to make them add again.'
                 : 'Presets add gold. Tap to make them subtract.'}
-              title={goldMinus ? 'Switch the presets back to adding' : 'Switch the presets to subtracting'}
               onClick={() => setGoldMinus((v) => !v)}
               style={{
                 /* v2.3.2292: ONE GLYPH, and it names the ACTION rather than the
@@ -1513,9 +1515,6 @@ export function TradeWindowPanel(props) {
         {iConfirmed && !theyConfirmed && (
           <div style={{ fontSize: 11, color: '#B6C1BE', marginTop: 6 }}>Waiting for {otherName}…</div>
         )}
-        <div style={{ fontSize: 10, color: '#8D9B98', marginTop: 6 }}>
-          Changing either side resets both confirmations. The server swaps both sides at once — no scams possible.
-        </div>
     </TradeDrawer>
   );
 }

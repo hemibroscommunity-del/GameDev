@@ -728,11 +728,45 @@ input{font-family:inherit}
 .bt-t2-face-ltr{font-size:11px;font-weight:800;color:#8D9B98;line-height:1}
 .bt-t2-face--on-light{background:#CFCBBC;border-color:rgba(11,22,27,.18)}
 .bt-t2-face--on-light .bt-t2-face-ltr{color:#45565C}
-/* the right-hand hint ("Items from the other player") */
+/* v2.3.2293: the right-hand slot in a lane header. Its explainer copy was
+   removed with the rest; the rule stays because the surviving state readouts
+   (confirmed ✓ / ready ✓) sit in the same slot and lose their layout without
+   it. */
 .bt-t2-lane-hint{
   margin-left:auto;font-size:10px;font-weight:600;letter-spacing:.02em;
   text-transform:none;opacity:.85;
 }
+
+/* ── the offered-items well ──────────────────────────────────────────────
+   v2.3.2293: owner -- "under the you offer section (and other trader) I feel
+   like it needs its own subcontainer for like the line item window to more
+   clearly differentiate it from the area just below it where you're adding
+   more gold to the trade. Right now what's offered and options to add more
+   gold look like they bleed together too much."
+
+   NOT a return to the boxes-within-boxes he rejected at v2.3.2291. That was a
+   frame around EVERY ROW inside a framed lane; this is ONE recessed well around
+   the whole list, which is what separates "what is on the table" from "controls
+   that change it". A sunk surface rather than another raised card, so it reads
+   as a compartment in the lane rather than a second panel on top of it. */
+.bt-t2-items{
+  background:rgba(0,0,0,.24);
+  border:1px solid rgba(229,237,233,.07);
+  border-radius:8px;
+  padding:1px 8px 2px;
+  margin-top:6px;
+}
+/* On the buyer's cream lane a dark wash would read as a hole, so the well is
+   cut the other way: a touch darker than the card, with a light inner edge. */
+.bt-t2-lane--theirs .bt-t2-items{
+  background:rgba(11,22,27,.055);
+  border-color:rgba(11,22,27,.13);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35);
+}
+/* The lane's own hairline under the header is redundant once the well below it
+   draws its own edge -- two rules 6px apart is the "bleeding together" reading
+   in reverse. */
+.bt-t2-lane-hdr{border-bottom:none;padding-bottom:0}
 
 /* ── rows: hairlines, not frames ── */
 .bt-t2-row{

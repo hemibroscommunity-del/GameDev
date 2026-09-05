@@ -284,9 +284,12 @@ export function WorldChatFeed() {
            decision panel: the shut corner is a 36px bell, and the bell is
            chrome that sits in the lower-left at bottom:--dash-h+8 -- exactly
            where a band drawer's footer is.  Caught in the v2.3.2280 trade
-           screenshot: the bell was painted across "Nothing on this screen can
-           change the trade" on the Confirm screen, which is the one line the
-           whole anti-scam screen exists to make the player read.  The z-index
+           screenshot: the bell was painted across the
+           Confirm screen's footer -- the screen a player is meant to READ
+           before agreeing.  (That footer's words were removed at v2.3.2293
+           with the rest of the explainers; the overlap it exposed was never
+           about those words, it is that this shell paints over whatever the
+           drawer puts in its lower-left.)  The z-index
            does not save it -- this shell is a sibling OUTSIDE .brotown-wrap,
            so it paints over an in-wrap panel whatever the ladder says (the
            lesson already recorded at .bt-inspect in game.css).
