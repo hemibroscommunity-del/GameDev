@@ -283,8 +283,78 @@ export function autoAcquires(S) {
   return !(slot === 'ranged' || slot === 'staff');
 }
 
+/* ═══ v2.3.2285: ENGAGEMENT IS A MODE, NOT A MONSTER ═══
+ *
+ * Owner: "When you tap on a monster from a far distance with melee sword the
+ * character does not attack when they arrive at the monster."
+ *
+ * MEASURED (mp-tapswing): tap a monster 730px away, walk all the way to a gap
+ * of 4px, and the client never sends a single monster_damage. But the reason
+ * is not only that the swing has no driver except a held thumb -- it is that
+ * BY THE TIME YOU ARRIVE THE GAME HAS FORGOTTEN YOU CHOSE THIS FIGHT. The run
+ * recorded the lock coming back on the SAME monster id with src flipped from
+ * 'tap' to 'auto'.
+ *
+ * That flip is tapStealable doing its job (v2.3.2263, the owner's own "go by
+ * the nearest monster" directive): 900ms after the tap, anything 12% nearer
+ * takes the lock. Walk 730px across a spoke and you pass something. The lock
+ * then returns to your target when it is nearest again -- but as an automatic
+ * one, and engagedStance reads src === 'tap', so your expressed intent has
+ * been quietly erased by walking past a slime.
+ *
+ * So intent cannot live on the lock: the lock is allowed to move, and should.
+ * `_engaged` is the intent itself -- "I picked a fight" -- and it survives the
+ * lock moving between monsters, which is exactly what the nearest-target rule
+ * requires. It begins at a melee tap and ends when there is no monster lock at
+ * all: walk away from everything, or kill what is there, and you are out of
+ * combat. Nothing else needs to remember to clear it.
+ *
+ * MELEE ONLY. A bow or staff tap-lock is the ONLY lock those weapons get
+ * (v2.3.2258), so an engagement flag there would auto-fire arrows from a
+ * single tap forever. */
+/* THE ENGAGEMENT REMEMBERS THE MONSTER, NOT THE LOCK. Two measured failures
+   pushed it here. Keyed off "is anything locked" it died on the first empty
+   frame; with a 1.5s grace it still died crossing 723px of open ground between
+   monsters, because the lock legitimately comes and goes on a long walk and
+   only a fresh TAP could set it again. So the flag is anchored to the monster
+   the player actually picked: it lives while that monster is still in the
+   zone, however far away it is and whatever the lock is currently pointing at,
+   and it ends when the monster you chose is dead or gone. That is also the
+   natural end of a fight -- kill it and you are out of combat until you pick
+   another -- which keeps an idle player from swinging forever. */
+const ENGAGE_GRACE_MS = 1500;
+function _updateEngagement(S) {
+  const lt = monsterLock(S);
+  if (lt && lt.src === 'tap' && autoAcquires(S) && lt.id != null) {
+    S._engagedId = String(lt.id);
+  }
+  if (!S._engagedId) { S._engaged = false; return; }
+  /* Switching to a bow or staff ends it outright: a tap-lock is the only lock
+     those weapons get, so an engagement there would auto-fire arrows. */
+  if (!autoAcquires(S)) { S._engagedId = null; S._engaged = false; S._engagedGapAt = 0; return; }
+  const list = (S && S.monsters) || [];
+  let still = false;
+  for (let i = 0; i < list.length; i++) {
+    const m = list[i];
+    /* String() on both sides: ids are numbers in some spawn paths and strings
+       over the wire (see lockRefPresent). */
+    if (m && m.id != null && String(m.id) === S._engagedId) { still = monHoldable(m); break; }
+  }
+  if (still) { S._engaged = true; S._engagedGapAt = 0; return; }
+  /* Dead, or gone from the set -- which a delta tick can do for a frame, hence
+     the grace before the fight is called over. A zone change ends it here too,
+     because the id is simply not in the new zone's list. */
+  const now = Date.now();
+  if (!S._engagedGapAt) { S._engagedGapAt = now; return; }
+  if (now - S._engagedGapAt > ENGAGE_GRACE_MS) {
+    S._engaged = false; S._engagedId = null; S._engagedGapAt = 0;
+  }
+}
+
 export function updateTargeting(S) {
   if (!S || !S.player) return;
+  /* First, so every early return below still leaves the flag current. */
+  _updateEngagement(S);
   const cands = targetCandidates(S);
   /* THE PERIMETER MARKS GO WITH THE RULE THEY ADVERTISE.  _targetCands is what
      draws the carets and ground rings and what lights the attack button hot

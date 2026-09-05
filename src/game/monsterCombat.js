@@ -1374,7 +1374,62 @@ export function updateMonsterCombat(S, deps) {
              player pressed AFTER raising -- which is exactly the intent this
              is reading. */
           if (S.autoAttack && S._shieldUp) dropShield(S, 'attack');
-          if (S.autoAttack && !S._shieldUp && S.rpg && _eqWpn && Date.now() - S.swingTimer >= effectiveSwingCd + _staffCdExtra) {
+          /* ═══ v2.3.2285: ARRIVING AT A MONSTER YOU PICKED STARTS THE FIGHT ═══
+             Owner: "When you tap on a monster from a far distance with melee
+             sword the character does not attack when they arrive at the
+             monster."
+
+             The melee swing had exactly ONE driver -- S.autoAttack, a thumb
+             physically held on the attack control -- while every OTHER reader
+             of "am I engaged" honoured a more generous test that a tap
+             satisfies: the body turns to the monster and tracks it (just
+             above), the walk becomes a target-relative backpedal, the reticle
+             goes on, the dodge changes. So a tap made the character visibly
+             commit, walk the whole way in, and then stand there. The owner's
+             own directive is quoted in BroTown's press handler -- "your first
+             tap immediately locks on and fires an attack" -- and the comment
+             under it lists what one tap buys: the lock, the backwards jog, the
+             shield facing. The swing was left off that list.
+
+             AND IT READS S._engaged, NOT engagedStance. Measured
+             (mp-tapswing): over a 730px walk the tap lock is stolen by
+             anything 12% nearer once the 900ms pin lapses, and when the auto
+             rule later re-points at the ORIGINAL monster it comes back with
+             src 'auto' -- so engagedStance is false exactly when the player
+             arrives, and gating on it would have been a no-op in the reported
+             case. `_engaged` is the intent, and it survives the lock moving
+             between monsters, which the nearest-target rule requires.
+
+             MELEE ONLY (a bow tap-lock is the only lock that weapon gets, so
+             this would auto-fire arrows). IN REACH ONLY, using the sweep's own
+             geometry below, so the first swing is one that can land instead of
+             whiffing at air every 600ms. NOT during an ability window, or an
+             auto-engage swing would send an ordinary monster_damage for the
+             same engagement the worker is already resolving -- the double-bill
+             the sweep's own _abilFx guard exists to prevent. */
+          var _engSwing = false;
+          /* ...AND NOT WHILE A LUNGE IS IN FLIGHT. Caught by mp-ability and
+             mp-dashhit within one run: the engage reach works out at ~99px for
+             a slime (GS_OUTER_RADIUS 72 + the body radius), and the lunge flies
+             THROUGH that band on its way to contact at 46px. An auto-swing
+             fired mid-flight ends the dash where it stands -- measured, the
+             dash stopped at 100px instead of closing, and mp-dashhit's "closed
+             all 834px to contact" went with it. _abilitySwingUntil alone did
+             not cover it; _bashDash is the flight itself. */
+          if (!S.autoAttack && S._engaged && _aSlot === 'melee' && !S._shieldUp
+              && !S._bashDash
+              && !(S._abilitySwingUntil && Date.now() < S._abilitySwingUntil)) {
+            var _eLt = S.lockedTarget && S.lockedTarget.type === 'monster' ? S.lockedTarget.ref : null;
+            if (_eLt && _eLt.alive !== false && !(typeof _eLt.curHp === 'number' && _eLt.curHp <= 0)) {
+              var _eArch = hitShapeOf(_eLt.archetype || _eLt.type);
+              var _eX = (typeof _eLt.renderX === 'number') ? _eLt.renderX : _eLt.x;
+              var _eY = ((typeof _eLt.renderY === 'number') ? _eLt.renderY : _eLt.y) - monsterBodyOffsetY(_eArch);
+              var _eD = Math.sqrt((_eX - P.x) * (_eX - P.x) + (_eY - P.y) * (_eY - P.y))
+                - monsterMeleeHitRadius(_eArch);
+              _engSwing = _eD <= GS_OUTER_RADIUS;
+            }
+          }
+          if ((S.autoAttack || _engSwing) && !S._shieldUp && S.rpg && _eqWpn && Date.now() - S.swingTimer >= effectiveSwingCd + _staffCdExtra) {
             /* Loot pickup freeze suppresses auto-swing — keeps the
                0.5s pickup animation clean instead of mid-swing. */
             var _lootSwingBlock = S._lootFreezeUntil && Date.now() < S._lootFreezeUntil;
