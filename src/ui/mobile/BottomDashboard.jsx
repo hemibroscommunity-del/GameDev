@@ -966,7 +966,7 @@ export const BottomDashboard = () => {
           the world. */}
       {land && active ? (
         <div
-          className="bt-land-sheet"
+          className="bt-land-sheet bt-noselect" /* v2.3.2273: the landscape bag lives HERE, not under .bt-dashboard (which is display:none sideways) -- see game.css .bt-noselect */
           onPointerDown={(e) => e.stopPropagation()}
           style={{
             position: 'fixed',
@@ -1060,7 +1060,7 @@ export const BottomDashboard = () => {
           fits inside the container's width. */}
       {land ? (
         <div
-          className="bt-land-navdock"
+          className="bt-land-navdock bt-noselect"
           onPointerDown={(e) => e.stopPropagation()}
           style={{
             position: 'fixed',
@@ -1418,8 +1418,44 @@ export const BottomDashboard = () => {
           aria-label={dashMin ? 'Expand dashboard' : 'Minimize dashboard'}
           aria-expanded={!dashMin}
           data-dash-fold={dashMin ? 'min' : 'open'}
-          style={{ ...chipStyle, fontSize: 15 }}
-        >{dashMin ? '▴' : '▾'}</button>
+          /* ═══ v2.3.2266: A PILL THAT SAYS WHAT IT DOES ═══
+             Owner: "the down arrow to hide the entire dashboard is a little too
+             subtle.  Make it a pill that says CLOSE."
+
+             A 15px glyph in a 34px box, on a row that also carries the gold
+             readout and five nav chips, is the smallest thing on the busiest
+             strip -- and it hides the whole dashboard, which is the largest
+             thing it could do.  A word is the fix; it also removes the arrow's
+             own ambiguity, which is the same complaint he made about the world
+             chat's chevron in the same breath.
+
+             OPEN / CLOSE rather than a single label, because the control is a
+             toggle and a pill reading CLOSE while the dashboard is already
+             closed would be worse than the arrow.  Caption type from the
+             Lantern Slate scale (11/800 uppercase, .08em) so it matches the
+             other chrome, and `width: auto` with real padding so it sizes to its
+             word -- chipStyle's fixed 34px square would clip it.  The 44px
+             touch rule the row is built to (see the note above) is unaffected:
+             the box only gets wider.
+
+             NOT A LITERAL PILL, and that is deliberate rather than an
+             oversight: .bt-chisel draws its shape from a 9-sliced border-image
+             (game.css), so border-radius on this element paints nothing at all
+             -- the frame art owns the corners.  Forcing a true capsule would
+             mean dropping that frame and inventing a shape no other control in
+             the game wears.  What the owner asked for is a labelled button
+             instead of a subtle glyph, and this is that, in the house chrome
+             every neighbouring chip is already wearing. */
+          style={{
+            ...chipStyle,
+            width: 'auto',
+            minWidth: 34,
+            padding: '0 10px',
+            fontSize: 11,
+            fontWeight: 800,
+            letterSpacing: '.08em',
+          }}
+        >{dashMin ? 'OPEN' : 'CLOSE'}</button>
         {drill && (
           <button
             onPointerUp={(e) => { e.stopPropagation(); dashboardPanelBus.pop(); }}

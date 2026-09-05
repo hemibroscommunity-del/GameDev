@@ -828,6 +828,7 @@ export const ItemDetailPopup = () => {
     };
     return (
       <div onPointerDown={() => itemDetailBus.close()}
+        className="bt-noselect"
         style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 'var(--dash-h)', background: 'transparent', zIndex: 50, pointerEvents: 'auto' }}>
         <div ref={cardRef} onPointerDown={(e) => e.stopPropagation()} style={cardStyle}>
           {/* v2.3.1232: 11/600 uppercase section header + raised hairline close chip */}
@@ -929,6 +930,7 @@ export const ItemDetailPopup = () => {
     );
     return (
       <div onPointerDown={() => itemDetailBus.close()}
+        className="bt-noselect"
         style={{ position: 'fixed', inset: 0, background: 'transparent', zIndex: 50, pointerEvents: 'auto' }}>
         <div ref={cardRef} onPointerDown={(e) => e.stopPropagation()}
           style={{
@@ -994,6 +996,7 @@ export const ItemDetailPopup = () => {
     };
     return (
       <div onPointerDown={() => itemDetailBus.close()}
+        className="bt-noselect"
         style={{ position: 'fixed', inset: 0, background: 'transparent', zIndex: 50, pointerEvents: 'auto' }}>
         <div ref={cardRef} onPointerDown={(e) => e.stopPropagation()}
           style={{
@@ -1221,6 +1224,7 @@ export const ItemDetailPopup = () => {
 
   return (
     <div
+      className="bt-noselect"
       onPointerDown={onClose}
       style={{
         position: 'fixed', inset: 0,

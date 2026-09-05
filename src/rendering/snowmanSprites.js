@@ -13,7 +13,8 @@
  * the procedural archetype circle while the load is in flight.
  */
 
-import { Assets, Rectangle, Texture } from 'pixi.js';
+import { Rectangle, Texture } from 'pixi.js';
+import { loadTracked, unloadBundle } from './zoneTextures.js'; /* v2.3.2272: zone art must be releasable */
 
 const FRAME_W = 128;
 const FRAME_H = 128;
@@ -66,7 +67,7 @@ function dirShort(dir) {
 
 async function loadOne(dir) {
   try {
-    const tex = await Assets.load(`/sprites/monsters/snowman/snowman-${dirShort(dir)}.png?v=${SPRITE_VERSION}`);
+    const tex = await loadTracked('snowman', `/sprites/monsters/snowman/snowman-${dirShort(dir)}.png?v=${SPRITE_VERSION}`);
     if (!tex || !tex.source) return;
     const count = Math.max(1, Math.floor((tex.source.width || tex.width || 0) / FRAME_W));
     const frames = [];
@@ -87,7 +88,7 @@ async function loadOne(dir) {
    is how this shipped before the art existed. */
 async function loadAttack(dir) {
   try {
-    const tex = await Assets.load(`/sprites/monsters/snowman/snowman-attack-${dirShort(dir)}.png?v=${SPRITE_VERSION}`);
+    const tex = await loadTracked('snowman', `/sprites/monsters/snowman/snowman-attack-${dirShort(dir)}.png?v=${SPRITE_VERSION}`);
     if (!tex || !tex.source) return;
     const count = Math.max(1, Math.floor((tex.source.width || tex.width || 0) / FRAME_W));
     const frames = [];
@@ -114,7 +115,7 @@ let snowballTex = null;
 
 async function loadSnowball() {
   try {
-    const tex = await Assets.load(`/sprites/monsters/snowman/snowball.png?v=${SPRITE_VERSION}`);
+    const tex = await loadTracked('snowman', `/sprites/monsters/snowman/snowball.png?v=${SPRITE_VERSION}`);
     if (tex && tex.source) snowballTex = tex;
   } catch {
     /* missing — effectsRenderer falls back to its procedural orb */
@@ -159,7 +160,7 @@ export function phaseFrameCount(phase) {
 
 async function loadRemnants() {
   try {
-    const tex = await Assets.load(`/sprites/monsters/snowman-remnants.png?v=${SPRITE_VERSION}`);
+    const tex = await loadTracked('snowman', `/sprites/monsters/snowman-remnants.png?v=${SPRITE_VERSION}`);
     if (tex && tex.source) remnantsTex = tex;
   } catch {
     /* missing — caller falls back to procedural coin pile */
@@ -168,7 +169,7 @@ async function loadRemnants() {
 
 async function loadStrip(url, into) {
   try {
-    const tex = await Assets.load(url);
+    const tex = await loadTracked('snowman', url);
     if (!tex || !tex.source) return;
     const count = Math.max(1, Math.floor((tex.source.width || tex.width || 0) / FRAME_W));
     const list = [];
@@ -347,4 +348,20 @@ export function attackFrameCount(facing) {
 
 export function hasFrames() {
   return Object.keys(SHEETS).length > 0;
+}
+
+/* ═══ v2.3.2272: AND BACK AGAIN ═══
+ * Frost is the only snowman zone -- that is why v2.3.1405 moved these ~17.5MB
+ * (decoded) off the global preload gate in the first place.  It moved them to
+ * per-zone LOADING and stopped there; this is the exit half.  See
+ * zoneTextures.js for the measurement that made it necessary. */
+export function unloadSnowmanSprites() {
+  loadPromise = null;
+  for (const k in SHEETS) delete SHEETS[k];
+  for (const k in ATTACK_SHEETS) delete ATTACK_SHEETS[k];
+  remnantsTex = null;
+  hitFrames = [];
+  deathFrames = [];
+  snowballTex = null;
+  return unloadBundle('snowman');
 }

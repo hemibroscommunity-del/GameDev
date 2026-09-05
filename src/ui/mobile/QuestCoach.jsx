@@ -322,6 +322,54 @@ const LESSONS = [
     },
     done: null,     /* watched live — see the activeSlot tracker below */
   },
+  /* ═══ v2.3.2269: THE GUARD LESSON MOVES TO THE WEAPONS BEAT ═══
+     Owner: "Move the tutorial bit about raising the shield and alter it so
+     that it talks about the new controls (BOW and STAFF only).  It would make
+     perfect sense to have this portion right after turning in the first quest
+     to be seated with the bow and staff."
+
+     It sat after `special` and taught the melee ShieldButton.  It teaches the
+     new bow/staff double-tap now (BroTown handleRBtnPress, v2.3.2269), so it
+     has to come after the player HAS a bow or a staff -- otherwise it is a mark
+     for a gesture the game would refuse, which this file already holds is worse
+     than no mark at all (see the `attack` lesson's gate).
+
+     PLACED HERE RATHER THAN GATED LATER.  Lessons show one at a time in array
+     order among those that are live, so position and gate together decide when
+     it appears: sitting after `cycle` it cannot jump ahead of the weapons, and
+     `attack`/`special` -- live from the first sword, long before the turn-in --
+     have already had their turn by then.  The result is exactly the beat asked
+     for: turn in tut_1, equip the bow and staff, learn to cycle, learn to
+     guard.
+
+     THE ID CHANGED, and that is the point of changing it.  Completion is
+     remembered per browser under `bt_coach_v1`, so anyone who finished the old
+     melee `block` lesson would never be shown this one -- and this is a
+     different gesture on a different weapon, not a rewording.  A new id is the
+     cheapest way to say so; bumping LS_KEY was the alternative and it would
+     have re-taught every lesson in the game to every existing player. */
+  {
+    id: 'blockRanged',
+    shape: 'circle',
+    /* The gesture is ON the attack button now, so the mark points there and
+       needs no fallback -- the shield BUTTON's own coming-and-going was the
+       only reason the old lesson carried two anchors. */
+    anchors: [{ sel: '.bt-rjoy-base', reach: '.bt-rjoy-base',
+                body: 'With the bow or staff out, double-tap Attack to raise your shield.' },
+              { sel: '[data-joyzone="R"]', reach: '[data-joyzone="R"]',
+                body: 'Double-tap the right side to raise your shield.' }],
+    label: 'Guard with the bow',
+    /* Bow or staff IN HAND, a shield to raise, and the turn-in that paid them
+       -- the same `tut_1 === 'turnedIn'` gate equipAll uses, so the two cannot
+       disagree about when the weapons arrived. */
+    live: function (rpg) {
+      if (!rpg.shield) return false;
+      const q = rpg._quests || {};
+      if (q.tut_1 !== 'turnedIn') return false;
+      return !!(rpg.rangedWeapon || rpg.staffWeapon);
+    },
+    done: null,     /* watched live — see the block tracker below */
+  },
   {
     /* ═══ v2.3.2130: DRAG TO ATTACK ═══
        The other control nothing teaches.  The coach has taught the SPECIAL
@@ -375,22 +423,6 @@ const LESSONS = [
        meaning, in the two places a player meets it. */
     live: function (rpg) { return !!getActiveWeapon(rpg); },
     done: null,     /* watched live — see the _hasUsedSwipe tracker below */
-  },
-  {
-    id: 'block',
-    shape: 'circle',
-    /* v2.3.2242: the shield is its own button under Attack (ShieldButton),
-       which only exists on screen while a fight is on or a lock is held --
-       so the mark falls back to the Attack button (where the shield button
-       will appear beneath) until a monster is close enough for it to show.
-       The lesson finishes the first time the shield goes up. */
-    anchors: [{ sel: '[data-shield]', reach: '[data-shield]',
-                body: 'Tap the shield to block. It stays up until you attack or tap again.' },
-              { sel: '.bt-rjoy-base', reach: '.bt-rjoy-base',
-                body: 'Get close to a monster — a shield button appears below Attack. Tap it to block.' }],
-    label: 'Raise the shield',
-    live: function (rpg) { return !!rpg.shield; },
-    done: null,     /* watched live — see the block tracker below */
   },
   /* ═══ v2.3.2147: THE TWO THINGS NOBODY IS EVER TOLD ═══
      Owner: "During the first onboarding tutorial maybe after the shield
@@ -593,9 +625,19 @@ export function QuestCoach(props) {
       if (S) {
         /* v2.3.2242: raised once = learned.  The old hold-and-sweep tracker
            measured a gesture that no longer exists (see BLOCK_HOLD_MS). */
+        /* v2.3.2269: only a raise made WITH THE BOW OR STAFF counts.  The
+           lesson is about a gesture that exists on those weapons alone, and
+           `_shieldUp` is raised by the melee ShieldButton too -- so the old
+           bare test would have marked this learned for a player who tapped a
+           button they were never being taught, and they would never see it.
+           The slot is read at the moment the guard is up, which is the moment
+           the gesture would have been made. */
         const b = blockRef.current;
-        if (S._shieldUp) { b.sectors = 1; b.ms = Math.max(b.ms, 1); }
-        if (!done.block && b.sectors === 1) { done.block = true; saveDone(done); }
+        const _sl = S.rpg && S.rpg.activeSlot;
+        if (S._shieldUp && (_sl === 'ranged' || _sl === 'staff')) {
+          b.sectors = 1; b.ms = Math.max(b.ms, 1);
+        }
+        if (!done.blockRanged && b.sectors === 1) { done.blockRanged = true; saveDone(done); }
       }
 
       /* ── pick and place the mark, ~12x a second ── */
@@ -864,9 +906,27 @@ export function QuestCoach(props) {
           setView(null);
         },
         'aria-label': 'Dismiss tip',
+        /* ═══ v2.3.2284: HALF A TOUCH TARGET IS WHY IT "WOULD NOT GO AWAY" ═══
+           Owner: "allow the user to just tap on the messages to dismiss it" --
+           and his own demo reviewers said it plainer: "just won't go away no
+           matter what I do", "the message above the attack stick mask the
+           screen and not go down easily" (quoted above). A dismiss DID exist
+           since v2.3.2123; it was 22x22, half the 44pt minimum the rest of the
+           UI holds itself to, on the one element in this overlay that takes a
+           touch at all.
+           The CARD stays pointerEvents:'none' and must -- reachable() refuses
+           to draw a mark if anything but the control answers a hit-test at its
+           centre, so "never covers the control it points at" is built on this
+           overlay being invisible to hit-testing, and the equip lesson's card
+           sits right over the bag grid. Growing the ONE element that is
+           already 'auto' touches none of that.
+           Kept INSIDE the card's own bounds: a negative offset would put a
+           hit-test blocker outside the card footprint, possibly over the very
+           control being ringed. */
         style: {
-          position: 'absolute', top: 2, right: 2,
-          width: 22, height: 22, lineHeight: '20px', textAlign: 'center',
+          position: 'absolute', top: 0, right: 0,
+          width: 44, height: 44, textAlign: 'center',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
           padding: 0, borderRadius: 8,
           background: 'transparent', border: 0,
           color: 'rgba(244,240,231,.55)', fontSize: 15, fontWeight: 700,
@@ -879,8 +939,9 @@ export function QuestCoach(props) {
         style: {
           fontSize: 10, fontWeight: 800, letterSpacing: '.1em',
           textTransform: 'uppercase', color: BRASS, marginBottom: 2,
-          /* room for the X, so a long label cannot run under it */
-          paddingRight: 20,
+          /* room for the X, so a long label cannot run under it
+             (v2.3.2284: 20 -> 40, following the button to 44pt) */
+          paddingRight: 40,
         },
       }, view.label),
       React.createElement('div', {
@@ -889,7 +950,7 @@ export function QuestCoach(props) {
       /* Only the block lesson has something to fill: the other two are a
          single action, and a progress bar that jumps 0 -> 100 tells the
          player nothing they did not already see happen. */
-      view.id === 'block' && React.createElement('div', {
+      view.id === 'blockRanged' && React.createElement('div', {
         style: {
           marginTop: 6, height: 4, borderRadius: 2,
           background: 'rgba(244,240,231,.14)', overflow: 'hidden',

@@ -130,6 +130,54 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...but the message box itself stays selectable, or it would be '
        + 'uneditable on iOS', sel.textarea === 'text', sel);
 
+  /* ═══ v2.3.2268: THE DASHBOARD IS A SIBLING TOO ═══
+     Owner: "Disable the iOS long press on the dashboard.  It just highlighted
+     my whole screen."  Same defect, same cause and the same two halves as the
+     chat card above -- and the note on that fix predicted this one: anything
+     mounted BESIDE <BroTown> rather than inside its wrap misses the recipe.
+     Checked here rather than in a new scenario because the machinery that can
+     see it already lives in this file: the callout has to be read out of the
+     SHIPPED CSS, for the reason spelled out above. */
+  const dash = await A.page.evaluate(() => {
+    const el = document.querySelector('.bt-dashboard');
+    if (!el) return null;
+    const cs = getComputedStyle(el);
+    const field = el.querySelector('input, textarea');
+    return {
+      found: true,
+      shell: cs.webkitUserSelect || cs.userSelect,
+      fields: el.querySelectorAll('input, textarea').length,
+      field: field ? (getComputedStyle(field).webkitUserSelect || getComputedStyle(field).userSelect) : null,
+    };
+  });
+  const dashCss = await A.page.evaluate(async (hrefs) => {
+    for (const h of hrefs) {
+      try {
+        const t = await (await fetch(h)).text();
+        /* ALL of them, not the first: `.bt-dashboard` is declared twice --
+           the layout rule and the v2.3.2268 no-select rule -- and matching
+           only the first found the layout one and reported the callout
+           missing while it was in fact three lines below. */
+        const m = t.match(/\.bt-dashboard\{[^}]*\}/g);
+        if (m) return m.join('');
+      } catch (e) { /* try the next sheet */ }
+    }
+    return null;
+  }, sel.sheets);
+  rec.ok('the dashboard is on screen to check (guard)', !!dash && dash.found, dash);
+  rec.ok('the dashboard refuses text selection, so a long press cannot anchor one',
+    !!dash && dash.shell === 'none', dash);
+  rec.ok('...and its callout suppression survives the build and reaches the phone',
+    !!dashCss && /-webkit-touch-callout:\s*none/.test(dashCss), { dashCss });
+  /* The half that turns a cosmetic bug into a total one: an inherited `none`
+     does not just stop selection on iOS, it makes a field UNEDITABLE. */
+  if (dash && dash.fields > 0) {
+    rec.ok(`...while the ${dash.fields} field(s) inside it stay editable`,
+      dash.field === 'text', dash);
+  } else {
+    rec.skip('the dashboard\u2019s fields stay editable', 'no input mounted in this state');
+  }
+
   /* A real long press on the card, then: is anything selected? */
   const bb = await A.page.evaluate(() => {
     const r = document.querySelector('[data-chat-online]').getBoundingClientRect();

@@ -37,10 +37,40 @@
  * downgrade, and if it grew the melee reach it would be pay-to-be-lanky.
  */
 
+/* ═══ v2.3.2268: HEIGHT IS LOCKED TO AVERAGE, THE WAY FRAME ALREADY WAS ═══
+ *
+ * Owner: "I changed my mind on the build sizes during the create a character.
+ * It looks bad.  Use the medium (default) character only.  Remove it as an
+ * option in the trait picker and remove the tall and short build from the
+ * game."
+ *
+ * This is the same move v2.3.1996 made on FRAME_CATALOG, for the same reason
+ * and with the same one-line reach -- see that note below, every word of it
+ * applies here.  The catalog is the ONE place that decides what a height id may
+ * be, so emptying it to a single entry locks the axis everywhere at once rather
+ * than hiding a picker the store, the wire and the renderer would all still
+ * honour:
+ *
+ *   - heightMul('tall'|'short')   -> 1 (not found -> 1), so a peer still on an
+ *     older client with a tall build selected renders AVERAGE here.
+ *   - sanitizeHeight(anything)    -> 'average'.
+ *   - setBuildHeight('tall')      -> rejected; the store keeps 'average'.
+ *   - the localStorage read below fails its `some()` check, so a player who
+ *     picked Short or Tall before today loads average rather than being stuck
+ *     on a build the game no longer offers.  THAT is the migration, and it
+ *     needs no migration code: the guard was written for exactly this.
+ *   - wireHeight() is now always undefined, so 'ht' drops off the join frame
+ *     entirely -- there is nothing to relay when there is only one answer.
+ *
+ * The plumbing STAYS (buildScale still multiplies sy; 'ht' is still an allowed
+ * cosmetic key on the server).  It costs nothing at 1.00, and putting the
+ * heights back later is this array plus the picker, not a protocol change.
+ *
+ * With both axes now locked the BUILD TAB has nothing left to offer, so it
+ * goes from the picker too (NameModal) -- a tab whose only control is a
+ * single already-selected option is worse than no tab. */
 export const HEIGHT_CATALOG = [
-  { id: 'short',   name: 'Short',   mul: 0.88 },
   { id: 'average', name: 'Average', mul: 1.00 },
-  { id: 'tall',    name: 'Tall',    mul: 1.13 },
 ];
 
 /* ═══ v2.3.1996: FRAME IS LOCKED TO MEDIUM ═══
@@ -177,6 +207,25 @@ export function wireFrame() { return _frame === DEFAULT_FRAME ? undefined : _fra
  *  undefined and multiply a scale by NaN. */
 export function sanitizeHeight(id) {
   return HEIGHT_CATALOG.some((e) => e.id === id) ? id : DEFAULT_HEIGHT;
+}
+
+/* Dev probe, house style (__btAtkMark, __btMaybeSwordDash): what the STORE
+ * actually holds, which is not the same question as what the renderer drew.
+ * v2.3.2268 locks both axes by emptying their catalogs, and the thing that
+ * makes that safe is the localStorage guard rejecting a retired id -- a
+ * renderer that ignored `tall` while the store still held it would look
+ * identical on screen and hand the retired build straight back to the wire.
+ * mp-build asserts through this, so that distinction is testable rather than
+ * assumed. */
+if (typeof window !== 'undefined') {
+  window.__btBuild = function () {
+    return {
+      height: _height, frame: _frame,
+      heights: HEIGHT_CATALOG.map((e) => e.id),
+      frames: FRAME_CATALOG.map((e) => e.id),
+      wire: { ht: wireHeight(), fr: wireFrame() },
+    };
+  };
 }
 export function sanitizeFrame(id) {
   return FRAME_CATALOG.some((e) => e.id === id) ? id : DEFAULT_FRAME;

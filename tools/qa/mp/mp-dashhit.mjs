@@ -339,7 +339,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }, { sx: srv && srv.x, sy: srv && srv.y, id: armed2.id });
   const mv = await P.page.evaluate(() => window.__mv);
   console.log('    worker sees: ' + JSON.stringify({ srvX: srv && Math.round(srv.x), srvY: srv && Math.round(srv.y), ...srvGap, moves: mv }));
-  rec.ok(`the WORKER agrees the bro closed the distance (${srvGap && srvGap.serverToMonster}px on its copy, reach is 240)`,
+  rec.ok(`the WORKER agrees the bro closed the distance (${srvGap && srvGap.serverToMonster}px on its copy, reach is 900 since v2.3.2266)`,
     !!srvGap && srvGap.serverToMonster <= 240, { srv: srv && { x: srv.x, y: srv.y }, ...srvGap });
   rec.ok(`the far dash ended on its own (${closed2.ms}ms)`, closed2.ended === true, closed2);
   rec.ok(`...and it CLOSED all ${armed2.gap}px to contact (${closed2.gap}px when it ended)`,

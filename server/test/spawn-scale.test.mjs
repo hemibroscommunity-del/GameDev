@@ -122,16 +122,20 @@ const nodeCountOf = (z, type) => (room.nodes[z] || []).filter((n) => n.nodeType 
 // ── 3. THE RESPAWN CURVE — the dial the owner tunes by feel ─────────────
 {
   const T = room.RESPAWN_TIME;
-  check('respawn: the authored timer is still 15s', T === 15000, T);
+  /* v2.3.2278: 15s -> 18.75s (owner: "maybe 25% longer before next
+     respawn").  The numbers below move with it and are recomputed from the
+     same curve, not loosened -- the point of pinning them is that a change to
+     MON_RESPAWN_K or the floor cannot hide inside a tolerance. */
+  check('respawn: the authored timer is 18.75s', T === 18750, T);
   const at = (p) => {
     room._zonePop = room._zonePop || Object.create(null);
     room._zonePop.meadow = { held: p, decayAt: Date.now() };
     return room._monsterRespawnMs('meadow');
   };
   check('respawn: solo is untouched', at(1) === T, at(1));
-  check('respawn: 5 players -> 12.1s', at(5) === 12097, at(5));
-  check('respawn: 10 players -> 9.7s', at(10) === 9740, at(10));
-  check('respawn: 15 players -> 8.2s', at(15) === 8152, at(15));
+  check('respawn: 5 players -> 15.1s', at(5) === 15121, at(5));
+  check('respawn: 10 players -> 12.2s', at(10) === 12175, at(10));
+  check('respawn: 15 players -> 10.2s', at(15) === 10190, at(15));
   check('respawn: never below the 6s floor at any population',
     at(500) === SPAWN_SCALE.MON_RESPAWN_FLOOR_MS, at(500));
   check('respawn: monotonically faster as the zone fills',

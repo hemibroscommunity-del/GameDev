@@ -307,7 +307,25 @@ export const ControlsTutorial = () => {
       {/* Coach card — one per step, positioned opposite the spotlight. */}
       <div
         onPointerDown={(e) => e.stopPropagation()}
+        /* ═══ v2.3.2284: TAP THE CARD TO GO ON ═══
+           Owner: "allow that tap to proceed (or close) for dialogue window
+           behavior too". ADVANCE, never close: a tap that ended the tour on
+           step 2 of 7 would throw away the thing the player just opted into,
+           and "proceed" is the owner's own first word. Same shape NpcDialogue
+           has had since v2.3.1820.
+           THE BACKDROP DELIBERATELY GETS NOTHING. It is everything except this
+           card -- including the ring around the spotlit control -- so a player
+           who does the literal thing step 1 asks ("Drag the left joystick")
+           taps exactly there, and a backdrop handler would silently skip the
+           step they were obeying. v2.3.1235 also removed backdrop-tap-to-close
+           once already as an owner correction; this does not re-litigate it. */
+        onClick={(e) => {
+          e.stopPropagation();
+          if (isLast) onClose(); else setStep((n) => Math.min(total - 1, n + 1));
+        }}
         style={{
+          cursor: 'pointer',
+          touchAction: 'manipulation',
           position: 'absolute',
           top: cardTop,
           left: '50%',
@@ -326,7 +344,10 @@ export const ControlsTutorial = () => {
       >
         {/* ✕ close — 44px touch target, top-right of the card. */}
         <button
-          onClick={onClose}
+          /* v2.3.2284: stopPropagation, or this closes AND then the card
+             handler advances a closed tour. Same reason NpcDialogue guards its
+             own Next even though the window does the same thing. */
+          onClick={(e) => { e.stopPropagation(); onClose(); }}
           aria-label="Close tutorial"
           style={{
             position: 'absolute',
@@ -364,7 +385,10 @@ export const ControlsTutorial = () => {
           <div style={{ flex: 1 }} />
           {!isFirst && (
             <button
-              onClick={() => setStep(s => Math.max(0, s - 1))}
+              /* v2.3.2284: without this, Back steps back and the card handler
+                 immediately steps forward -- a visible no-op that reads as a
+                 broken button. */
+              onClick={(e) => { e.stopPropagation(); setStep(s => Math.max(0, s - 1)); }}
               style={{
                 ...btnBase,
                 background: COL.btnSurf,
@@ -374,7 +398,7 @@ export const ControlsTutorial = () => {
             >Back</button>
           )}
           <button
-            onClick={() => (isLast ? onClose() : setStep(s => Math.min(total - 1, s + 1)))}
+            onClick={(e) => { e.stopPropagation(); if (isLast) onClose(); else setStep(s => Math.min(total - 1, s + 1)); }}   /* v2.3.2284: else it double-steps */
             style={{
               ...btnBase,
               width: 88,

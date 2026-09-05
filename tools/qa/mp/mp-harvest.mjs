@@ -175,31 +175,101 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const wantSkill = SKILL[nodeAt && nodeAt.nodeType] || 'woodcutting';
   await H.waitFor(P, (S) => (S._nearNode ? S._nearNode.id : null), (v) => v === nodeAt.id,
     { timeout: 15000, label: 'the tree becomes interactable' }).catch(() => {});
-  /* v2.3.2245: the mid-screen shell is gone -- the RIGHT BUTTON reads
-     HARVEST while a resource is in reach and a tap on it starts the harvest
-     (BroTown's bS).  Same code path the old prompt's onClick took
-     (_startExtraction), reached the way a thumb reaches it. */
+  /* ═══ v2.3.2270: THE BUTTON YIELDS TO COMBAT, AND THE TAP IS THE WAY IN ═══
+     Owner: "If you're near a lifeskill extraction point prioritize attacking
+     nearby monsters instead of the contextual resource extraction (if it comes
+     up).  Also allow tapping on the resource to bring up the extraction menu
+     (assuming you're close enough)."
+
+     Those two halves are ONE change and this scenario is where that shows.  A
+     spoke zone spawns six monsters and this is a spoke zone, so with the new
+     rule the button reads ATTACK here essentially always -- which means the
+     harvest this file exists to test is now reached by TAPPING THE TREE, not by
+     pressing the button.  Both are asserted, in that order, because "the button
+     went to ATTACK" is only correct if the other way in works.
+
+     THE CONTROL IS THE MONSTERS THEMSELVES: cleared, the same button must go
+     back to reading HARVEST.  Without that this would pass just as well if the
+     button were broken. */
   await P.page.waitForTimeout(300);
-  const prompted = await P.page.evaluate(() => ((document.querySelector('.bt-rjoy-base') || {}).textContent || '').trim());
-  const promptDiag = await P.page.evaluate(() => {
+  const withMon = await P.page.evaluate(() => {
     const S = window._gameState.current;
-    return { near: S._nearNode ? S._nearNode.id : null, prox: S._proxNode ? S._proxNode.id : null,
-      cands: (S._targetCands || []).length, lock: S.lockedTarget ? S.lockedTarget.id : null,
-      ex: S._extraction ? S._extraction.skill : null, harvestCtx: !!S._btnHarvest,
-      axe: !!(S.rpg && S.rpg.inventory && S.rpg.inventory.woodcutting_axe) };
+    const P2 = S.player;
+    let near = 0;
+    (S.monsters || []).forEach((m) => {
+      if (!m || !m.alive) return;
+      const dx = m.x - P2.x, dy = m.y - P2.y;
+      if (dx * dx + dy * dy <= 220 * 220) near++;
+    });
+    return { label: ((document.querySelector('.bt-rjoy-base') || {}).textContent || '').trim(),
+      monstersInPerimeter: near, harvestCtx: !!S._btnHarvest,
+      near: S._nearNode ? S._nearNode.id : null };
   });
-  rec.ok('the right button offers the harvest (reads HARVEST with the node in reach)', /harvest/i.test(prompted), { prompted, promptDiag, nodeAt });
-  const clicked = await P.page.evaluate(() => {
-    const el = document.querySelector('.bt-rjoy-base');
-    if (!el) return false;
-    const r = el.getBoundingClientRect();
-    const mk = (type) => new TouchEvent(type, { bubbles: true, cancelable: true,
-      touches: type === 'touchend' ? [] : [new Touch({ identifier: 71, target: el, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2 })],
-      changedTouches: [new Touch({ identifier: 71, target: el, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2 })] });
-    el.dispatchEvent(mk('touchstart')); el.dispatchEvent(mk('touchend'));
-    return true;
+  console.log('    with monsters about: ' + JSON.stringify(withMon));
+  if (withMon.monstersInPerimeter > 0) {
+    rec.ok('with a monster in the perimeter the button offers ATTACK, not the tree',
+      /attack/i.test(withMon.label) && withMon.harvestCtx === false, withMon);
+  } else {
+    rec.skip('with a monster in the perimeter the button offers ATTACK',
+      'no monster within 220px at this spot');
+  }
+  /* THE CONTROL. */
+  const noMon = await P.page.evaluate(() => new Promise((resolve) => {
+    const S = window._gameState.current;
+    S._monstersStash = S.monsters;
+    S.monsters = [];
+    S.lockedTarget = null;
+    setTimeout(() => resolve({
+      label: ((document.querySelector('.bt-rjoy-base') || {}).textContent || '').trim(),
+      harvestCtx: !!S._btnHarvest, near: S._nearNode ? S._nearNode.id : null,
+    }), 500);
+  }));
+  console.log('    with the field cleared: ' + JSON.stringify(noMon));
+  rec.ok('...and with nothing to fight the same button offers the HARVEST again',
+    /harvest/i.test(noMon.label) && noMon.harvestCtx === true, noMon);
+  /* THE TAP IS TAKEN WHILE THE FIELD IS STILL CLEAR, and that is a fixture
+     decision worth writing down rather than a dodge.  Monsters keep priority
+     on the TAP as well as on the button -- the canvas hit-tests monsters first
+     and only falls through to resources when nothing was under the finger,
+     which is the v2.3.1448 rule this change deliberately kept.  So a snowman
+     wandering within the 40px tap radius of the tree eats the tap, correctly,
+     and at random: the first run of this passed and the second failed on
+     exactly that.  The monster case is already asserted above, on the button,
+     where it is deterministic; here the question is only whether a tap that
+     REACHES the tree starts the harvest, so the field is kept clear until it
+     has. */
+
+  /* ═══ AND NOW THE TAP, which is the path the owner asked for and the one a
+     player in a monster zone actually has.  Dispatched on the CANVAS at the
+     tree's own screen position -- the same arithmetic the tap handler uses --
+     rather than by calling _startExtraction, which would prove the extraction
+     works and nothing about the gesture that is supposed to reach it. */
+  const tapped = await P.page.evaluate((id) => {
+    const S = window._gameState.current;
+    const n = (S.gatherNodes || []).find((g) => g.id === id) || (S.gatherNodes || []).find((g) => g.alive);
+    if (!n) return { ok: false, why: 'no node' };
+    const cv = document.querySelector('canvas');
+    const r = cv.getBoundingClientRect();
+    const kx = S._worldScaleX || 1, ky = S._worldScaleY || 1;
+    const x = r.left + (n.x - S.camera.x) * kx;
+    const y = r.top + (n.y - 24 - S.camera.y) * ky;
+    const mk = (type, tgt) => new TouchEvent(type, { bubbles: true, cancelable: true,
+      touches: type === 'touchend' ? [] : [new Touch({ identifier: 88, target: tgt, clientX: x, clientY: y })],
+      changedTouches: [new Touch({ identifier: 88, target: tgt, clientX: x, clientY: y })] });
+    cv.dispatchEvent(mk('touchstart', cv));
+    cv.dispatchEvent(mk('touchend', cv));
+    return { ok: true, x: Math.round(x), y: Math.round(y), node: n.id, type: n.nodeType };
+  }, nodeAt && nodeAt.id);
+  console.log('    tapped the tree: ' + JSON.stringify(tapped));
+  rec.ok('the tree could be tapped on the canvas (guard)', tapped.ok === true, tapped);
+  await P.page.waitForTimeout(1200);
+  /* Put them back: the rest of the file measures a real zone, and a scenario
+     that quietly emptied it would be testing a different game. */
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    if (S._monstersStash) { S.monsters = S._monstersStash; S._monstersStash = null; }
   });
-  rec.ok('the harvest button could be pressed', clicked);
+  await P.page.waitForTimeout(300);
   await P.page.waitForTimeout(1200);
 
   const clientEx = await H.readState(P, (S) => (S._extraction ? S._extraction.skill : null));
@@ -382,14 +452,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
        node TYPE the prompt has latched instead. */
     await H.waitFor(P, (S) => (S._nearNode ? S._nearNode.nodeType : null), (v) => v === 'campfire',
       { timeout: 15000, label: 'the campfire becomes interactable' }).catch(() => {});
+    /* v2.3.2270: TAPPED, not pressed -- same reason as the tree above.  A
+       snowman inside the perimeter puts ATTACK on the button, which is the
+       rule the owner asked for, so the cook is reached the way he asked to be
+       able to reach it: by tapping the fire. */
     const cookClicked = await P.page.evaluate(() => {
-      const el = document.querySelector('.bt-rjoy-base');
-      if (!el || !/harvest/i.test(el.textContent || '')) return false;
-      const r = el.getBoundingClientRect();
+      const S = window._gameState.current;
+      const n = S._campfire;
+      if (!n || !n.alive) return false;
+      const cv = document.querySelector('canvas');
+      const r = cv.getBoundingClientRect();
+      const kx = S._worldScaleX || 1, ky = S._worldScaleY || 1;
+      const x = r.left + (n.x - S.camera.x) * kx;
+      const y = r.top + (n.y - S.camera.y) * ky;
       const mk = (type) => new TouchEvent(type, { bubbles: true, cancelable: true,
-        touches: type === 'touchend' ? [] : [new Touch({ identifier: 72, target: el, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2 })],
-        changedTouches: [new Touch({ identifier: 72, target: el, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2 })] });
-      el.dispatchEvent(mk('touchstart')); el.dispatchEvent(mk('touchend'));
+        touches: type === 'touchend' ? [] : [new Touch({ identifier: 72, target: cv, clientX: x, clientY: y })],
+        changedTouches: [new Touch({ identifier: 72, target: cv, clientX: x, clientY: y })] });
+      cv.dispatchEvent(mk('touchstart')); cv.dispatchEvent(mk('touchend'));
       return true;
     });
     const cookDiag = await P.page.evaluate(() => {
@@ -399,7 +478,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
         fire: !!(S._campfire && S._campfire.alive), cands: (S._targetCands || []).length,
         lock: S.lockedTarget ? S.lockedTarget.id : null, ex: S._extraction ? S._extraction.skill : null };
     });
-    rec.ok('the campfire puts HARVEST on the right button, and it can be pressed', cookClicked, cookDiag);
+    rec.ok('the campfire can be TAPPED to cook, with the button on ATTACK for the snowmen',
+      cookClicked, cookDiag);
     await P.page.waitForTimeout(1400);
     const cookCli = await H.readState(P, (S) => (S._extraction ? S._extraction.skill : null));
     rec.ok('the client believes it is cooking', cookCli === 'cooking', cookCli);

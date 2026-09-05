@@ -23,6 +23,12 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  arrowblast: () => import('./mp-arrowblast.mjs'), /* v2.3.2279: the bow special's blast finale, end to end */
+  chatlayer: () => import('./mp-chatlayer.mjs'), /* v2.3.2276: chat paints under the menus, and its composer stands down for them */
+  cooktap: () => import('./mp-cooktap.mjs'), /* v2.3.2274: a REAL tap on your own fire cooks, and does not open chat */
+  chopyield: () => import('./mp-chopyield.mjs'), /* v2.3.2273: a finished harvest actually pays -- the one step mp-harvest stops short of */
+  texdrift: () => import('./mp-texdrift.mjs'), /* v2.3.2272: does zone art come back when you leave the zone */
+  perfdrift: () => import('./mp-perfdrift.mjs'), /* v2.3.2271: does the frame rate actually drift, and what grows with it */
   lockrings: () => import('./mp-lockrings.mjs'), /* v2.3.2263: how many rings are on the target, and whose they are */
   engage: () => import('./mp-engage.mjs'), /* v2.3.2246: engaged movement is target-relative, and the attack indicator is painted */
   freshbuild: () => import('./mp-freshbuild.mjs'), /* v2.3.2237: a resumed app takes the new build; a live game is only offered it */
@@ -211,6 +217,9 @@ const SCENARIOS = {
   questclaim: () => import('./mp-questclaim.mjs'), /* v2.3.1884: the claim opens when it becomes claimable under your feet */
   freshquest: () => import('./mp-freshquest.mjs'),
   deathshield: () => import('./mp-deathshield.mjs'),
+  wvscale: () => import('./mp-wvscale.mjs'), /* v2.3.2287: your own art shrinks on the vista, and nothing changes off it */
+  tapswing: () => import('./mp-tapswing.mjs'), /* v2.3.2285: tap a monster, walk there -- does the swing ever start? */
+  deathstrip: () => import('./mp-deathstrip.mjs'), /* v2.3.2281: what is painted ON the corpse, from the screen's side rather than the display's */
   questprox: () => import('./mp-questprox.mjs'), /* v2.3.1701: the giver's dialogue opens on approach */
   questlegs: () => import('./mp-questlegs.mjs'), /* v2.3.1701: the quest greaves equip to the LEGS */
   authority: () => import('./mp-authority.mjs'), /* v2.3.1702: ability spends, firemaking + local-AI HP */

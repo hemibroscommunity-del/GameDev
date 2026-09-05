@@ -34,6 +34,32 @@ import * as H from './harness.mjs';
 import { QUEST_REWARDS } from '../../../server/src/data.js';
 const TUT1 = QUEST_REWARDS.tut_1;
 
+
+/* ═══ v2.3.2284: THE NEGATIVE THAT PROTECTS THE PLAYER ═══
+   Owner, adding tap-to-dismiss: "unless it requires the user to press an
+   accept button or make a decision."  The quest offer card IS that exception,
+   and it is the tutorial's own first and last decision -- tut_1 drives
+   NpcDialogue -> offer on accept, and -> claim on turn-in.  A stray tap that
+   closed the CLAIM face would dismiss a reward the player is already owed.
+   A REAL mouse click, not an in-page .click(): the point is that a finger
+   landing there does nothing, and .click() skips hit-testing entirely. */
+async function bodyTapKeepsOpen(P) {
+  const box = await P.page.evaluate(() => {
+    const card = document.querySelector('.bt-qoffer');
+    if (!card) return null;
+    /* aim ABOVE the actions row -- the title area, which is card body and not
+       a control. */
+    const t = card.querySelector('.bt-qoffer-title') || card;
+    const r = t.getBoundingClientRect();
+    return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+  });
+  if (!box) return { tapped: false, open: false };
+  await P.page.mouse.click(box.x, box.y);
+  await P.page.waitForTimeout(400);
+  const open = await P.page.evaluate(() => !!document.querySelector('.bt-qoffer'));
+  return { tapped: true, open, at: box };
+}
+
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Talker', wsPort, webPort });
   await H.enterWorld(P);
@@ -128,6 +154,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     onChunk: (t) => { script += '\n' + t; },
   });
   rec.ok('...and his lines lead to the offer panel', _landed === 'offer', { _landed });
+
+  const offerTap = await bodyTapKeepsOpen(P);
+  rec.ok('a tap on the offer card body does NOT close it — accepting a quest '
+    + 'is a decision', offerTap.tapped && offerTap.open, offerTap);
 
   /* ── the dialogue's art ── */
   const art = await P.page.evaluate(() => {
@@ -321,6 +351,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
      reward list live there now, behind his lines (v2.3.1820). */
   const _landedTurn = await H.advanceNpcDialogue(P);
   rec.ok('his lines lead to the claim panel', _landedTurn === 'offer', { _landedTurn });
+
+  const claimTap = await bodyTapKeepsOpen(P);
+  rec.ok('a tap on the claim card body does NOT close it — an earned reward '
+    + 'must not be tappable away', claimTap.tapped && claimTap.open, claimTap);
   let dlg = await H.bodyText(P);
   /* v2.3.1793: the reward card is a look-at-it change, so leave a picture of
      the moment it exists — the chooser is only on screen between "quest ready"

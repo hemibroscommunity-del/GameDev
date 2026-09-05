@@ -68,14 +68,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/a2hs.png',
     clip: { x: 0, y: 400, width: 390, height: 220 } });
 
-  /* dismissal is remembered */
-  await P.page.evaluate(() => {
-    const x = document.querySelector('[data-install-hint-dismiss]');
-    if (x) x.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+  /* ═══ v2.3.2284: TAP THE MESSAGE, NOT JUST THE ✕ ═══
+     Owner: "allow the user to just tap on the messages to dismiss it". This
+     card is the one tutorial-era surface with no auto-expire -- it appears
+     eight seconds into a first session and then sits there -- so it is the
+     clearest case of the ask.
+     Tapped on the BODY first, deliberately: if the body tap works the ✕ is
+     never reached, so the ✕'s own assertions below get a fresh card. */
+  const bodyBox = await P.page.evaluate(() => {
+    const el = document.querySelector('[data-install-hint]');
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    /* left third, so the click cannot land on the ✕ in the top-right */
+    return { x: Math.round(r.left + r.width * 0.25), y: Math.round(r.top + r.height * 0.6) };
   });
+  rec.ok('the hint card can be located to tap (guard)', !!bodyBox, bodyBox);
+  if (bodyBox) await P.page.mouse.click(bodyBox.x, bodyBox.y);
   await P.page.waitForTimeout(400);
-  rec.ok('dismissing removes the card', (await card(P)) === null);
-  rec.ok('...and writes the memory', await P.page.evaluate(() => {
+  rec.ok('tapping the message itself puts it away — the owner asked to tap, '
+    + 'not to hunt the ✕', (await card(P)) === null);
+  rec.ok('...and a body tap is remembered exactly like the ✕ is', await P.page.evaluate(() => {
     try { return localStorage.getItem('bt_a2hs_hint_done') === '1'; } catch (e) { return false; }
   }));
 
@@ -97,6 +109,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(600);
   rec.ok('Settings carries the way back for a dismissed hint', rowTapped);
   rec.ok('...which reopens the card past the dismissal memory', !!(await card(P)));
+
+  /* ═══ v2.3.2284: AND THE ✕ STILL WORKS, ON THE REOPENED CARD ═══
+     Tested here rather than earlier because this is the file's own proven way
+     to get a second card, and the body tap above consumed the first one.
+     A REAL click: this assertion used to dispatchEvent a synthetic 'pointerup',
+     which goes straight to the element's listeners and ignores hit-testing
+     (TRAPS §41) -- so it proved a handler existed, not that a finger could
+     reach it, and it went red the moment the handler moved from pointerup to
+     click even though the button was perfectly tappable. A real click proves
+     both and cannot rot the same way. */
+  await P.page.click('[data-install-hint-dismiss]').catch(() => {});
+  await P.page.waitForTimeout(400);
+  rec.ok('the ✕ still dismisses too, by a real tap', (await card(P)) === null);
+  rec.ok('...and writes the memory', await P.page.evaluate(() => {
+    try { return localStorage.getItem('bt_a2hs_hint_done') === '1'; } catch (e) { return false; }
+  }));
 
   await P.ctx.close().catch(() => {});
 }

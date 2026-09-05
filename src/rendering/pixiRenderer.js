@@ -903,6 +903,13 @@ export async function initPixiRenderer(canvas) {
        does it wrap" is a fact about a frame index living in a renderer
        closure; a screenshot cannot separate it from the terrain, and the game
        consumes nothing here. */
+    /* v2.3.2279: the bow special's blast -- how many are playing and how wide
+       each is DRAWN.  A screenshot cannot tell a 440px fireball from a 220px
+       one against unfamiliar ground, and the whole point of the mirror-pin
+       between arrowblast.js RADIUS and the client's TARGET_PERIMETER_PX is
+       that the ring drawn is the ring the worker hit. */
+    arrowBlastProbe: () => effectsRenderer.arrowBlastProbe(),
+    projScaleProbe: () => effectsRenderer.projScaleProbe(),   /* v2.3.2287 */
     remoteSkillProbe: (id) => {
       const e = effectsRenderer;
       const pool = e._remoteSkillSprites;
@@ -915,6 +922,12 @@ export async function initPixiRenderer(canvas) {
         count: typeof ent._specLen === 'number' ? ent._specLen : null,
         startedAt: ent._exStart || 0,
         visible: !!(ent[ent._exCode] && ent[ent._exCode].visible),
+        /* v2.3.2273: the peer figure's DRAWN size.  The chop height lived as a
+           literal in two places and drifted for ~230 versions -- a peer's
+           lumberjack 18% larger than your own, which single-client QA cannot
+           see.  Both sites now share CHOP_STANDIN_H; this is what lets a test
+           say so, by comparing against the local __btChopFigure(). */
+        scaleY: (ent[ent._exCode] && ent[ent._exCode].scale) ? ent[ent._exCode].scale.y : null,
       };
     },
     /* v2.3.138: dispose a single loot pile by direct object reference.

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useModalGuard } from '../mobile/modalGuardBus.js'; /* v2.3.2276 */
 import { BT_AUDIO, PVP_THREAT_BASE_COUNTDOWN, PVP_THREAT_COOLDOWN, REPUTATION, ZONES } from '@/data/index.js';
 import { _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 
@@ -70,6 +71,11 @@ var LS_SECONDARY = {
 };
 
 export function InspectPlayerPanel(props) {
+  /* v2.3.2276: stand the transient world chrome down while this is up.  The
+     guard had only ever been pushed by the three trade panels, so the chat
+     composer's full-play-area dismiss layer stayed live over a PLAYER menu --
+     which is one of the two the owner named. */
+  useModalGuard(React);
   var stateRef = props.stateRef,
     inspectPlayer = props.inspectPlayer,
     blockedList = props.blockedList,

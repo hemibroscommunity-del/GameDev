@@ -7,8 +7,9 @@
  * facing in its source orientation.
  */
 
-import { Assets, Rectangle, Texture } from 'pixi.js';
+import { Rectangle, Texture } from 'pixi.js';
 
+import { loadTracked, unloadBundle } from './zoneTextures.js'; /* v2.3.2272: zone art must be releasable */
 const FRAME_W = 256;
 const FRAME_H = 256;
 const SPRITE_VERSION = '2.3.135';
@@ -31,7 +32,7 @@ let loadPromise = null;
 
 async function loadStrip(url, key) {
   try {
-    const tex = await Assets.load(url);
+    const tex = await loadTracked('fishman', url);
     if (!tex || !tex.source) return;
     const count = Math.max(1, Math.floor((tex.source.width || tex.width || 0) / FRAME_W));
     const frames = [];
@@ -87,4 +88,20 @@ export function frameCount(facing) {
 
 export function hasFrames() {
   return Object.keys(walkSheets).length > 0;
+}
+
+
+/* ═══ v2.3.2272: AND BACK AGAIN ═══
+ * The counterpart to the loader above.  Everything this module holds lives in
+ * module-scope closures behind a memoised `loadPromise`, so before v2.3.2272
+ * a zone's art was resident for the life of the page once visited -- measured
+ * as a monotone +92MB across a four-zone tour (mp-texdrift).  Clearing the
+ * promise is the part that makes this re-enterable: without it the next
+ * load() would hand back a settled promise for textures that are gone.
+ * Called only from preloadAnimations' freeZoneAssets, which never frees art
+ * the zone you are walking INTO needs. */
+export function unloadFishmanSprites() {
+  loadPromise = null;
+  for (const k in walkSheets) delete walkSheets[k];
+  return unloadBundle('fishman');
 }

@@ -10,8 +10,9 @@
  * art at lookup time.
  */
 
-import { Assets, Rectangle, Texture } from 'pixi.js';
+import { Rectangle, Texture } from 'pixi.js';
 
+import { loadTracked, unloadBundle } from './zoneTextures.js'; /* v2.3.2272: zone art must be releasable */
 const FRAME_W = 256;
 const FRAME_H = 256;
 const SPRITE_VERSION = '2.3.63';
@@ -39,7 +40,7 @@ let loadPromise = null;
 
 async function loadStrip(url, into, key) {
   try {
-    const tex = await Assets.load(url);
+    const tex = await loadTracked('skeleton', url);
     if (!tex || !tex.source) return;
     const count = Math.max(1, Math.floor((tex.source.width || tex.width || 0) / FRAME_W));
     const frames = [];
@@ -55,14 +56,14 @@ async function loadStrip(url, into, key) {
 
 async function loadRemnants() {
   try {
-    const tex = await Assets.load(`/sprites/monsters/skeleton/remnants.png?v=${SPRITE_VERSION}`);
+    const tex = await loadTracked('skeleton', `/sprites/monsters/skeleton/remnants.png?v=${SPRITE_VERSION}`);
     if (tex && tex.source) remnantsTex = tex;
   } catch { /* missing -- effectsRenderer falls back to slime splat */ }
 }
 
 async function loadDeathStrip() {
   try {
-    const tex = await Assets.load(`/sprites/monsters/skeleton/death.png?v=${SPRITE_VERSION}`);
+    const tex = await loadTracked('skeleton', `/sprites/monsters/skeleton/death.png?v=${SPRITE_VERSION}`);
     if (!tex || !tex.source) return;
     const count = Math.max(1, Math.floor((tex.source.width || tex.width || 0) / FRAME_W));
     for (let i = 0; i < count; i++) {
@@ -146,4 +147,22 @@ export function hasDeathFrames() {
    the slime splat in that case unless variant.noFodderRemnants is set. */
 export function getRemnantsTexture() {
   return remnantsTex;
+}
+
+
+/* ═══ v2.3.2272: AND BACK AGAIN ═══
+ * The counterpart to the loader above.  Everything this module holds lives in
+ * module-scope closures behind a memoised `loadPromise`, so before v2.3.2272
+ * a zone's art was resident for the life of the page once visited -- measured
+ * as a monotone +92MB across a four-zone tour (mp-texdrift).  Clearing the
+ * promise is the part that makes this re-enterable: without it the next
+ * load() would hand back a settled promise for textures that are gone.
+ * Called only from preloadAnimations' freeZoneAssets, which never frees art
+ * the zone you are walking INTO needs. */
+export function unloadSkeletonSprites() {
+  loadPromise = null;
+  for (const k in runSheets) delete runSheets[k];
+  deathFrames = [];
+  remnantsTex = null;
+  return unloadBundle('skeleton');
 }

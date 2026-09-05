@@ -49,6 +49,54 @@ export async function run({ browser, wsPort, webPort, rec }) {
     s.steps.live.length === s.steps.all.length,
     { live: s.steps.live, all: s.steps.all, dropped: s.steps.dropped });
 
+  /* ═══ v2.3.2284: TAP THE CARD TO GO ON, TAP THE BACKDROP AND NOTHING ═══
+     Owner: "allow that tap to proceed (or close) for dialogue window behavior
+     too". Both polarities, because the backdrop half is a settled v2.3.1235
+     owner correction and the card half must not quietly re-open it. */
+  const stepNow = (P) => P.page.evaluate(() => {
+    const el = [...document.querySelectorAll('div')]
+      .find((d) => d.children.length === 0 && /^Step \d+ of \d+$/.test((d.textContent || '').trim()));
+    return el ? Number((el.textContent.match(/Step (\d+)/) || [])[1]) : null;
+  });
+  const cardBox = (P) => P.page.evaluate(() => {
+    const el = [...document.querySelectorAll('div')]
+      .find((d) => d.children.length === 0 && /^Step \d+ of \d+$/.test((d.textContent || '').trim()));
+    const card = el && el.closest('div[style*="position: absolute"]');
+    const r = (card || el).getBoundingClientRect();
+    return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + 8), t: Math.round(r.top), l: Math.round(r.left) };
+  });
+
+  const before = await stepNow(P);
+  const cb = await cardBox(P);
+  rec.ok('the tour reports which step it is on (guard)', before != null && !!cb, { before, cb });
+  if (before != null && cb) {
+    await P.page.mouse.click(cb.x, cb.y);
+    await P.page.waitForTimeout(350);
+    const afterCard = await stepNow(P);
+    rec.ok('tapping the coach card advances the step', afterCard === before + 1,
+      { before, afterCard });
+
+    /* 60px outside the card's left edge is backdrop -- and the backdrop is
+       also where the spotlit control lives, which is why it must stay inert. */
+    const bx = Math.max(4, cb.l - 60);
+    await P.page.mouse.click(bx, cb.y);
+    await P.page.waitForTimeout(350);
+    const afterBack = await stepNow(P);
+    rec.ok('tapping the dim backdrop does NOT advance or close — the spotlit '
+      + 'control is under it', afterBack === afterCard, { afterCard, afterBack });
+
+    /* The assertion that would have caught a missing stopPropagation: without
+       it, Back steps back and the card handler immediately steps forward. */
+    const tappedBack = await P.page.evaluate(() => {
+      const b = [...document.querySelectorAll('button')].find((x) => (x.textContent || '').trim() === 'Back');
+      if (!b) return false; b.click(); return true;
+    });
+    await P.page.waitForTimeout(350);
+    const afterBackBtn = await stepNow(P);
+    rec.ok('Back really steps back — the card tap does not double-fire through it',
+      tappedBack && afterBackBtn === afterCard - 1, { tappedBack, afterCard, afterBackBtn });
+  }
+
   /* Named, so a future drop says WHICH — "4 of 5" would send the next reader
      hunting through the registry. */
   for (const key of s.steps.all) {

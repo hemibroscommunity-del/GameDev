@@ -255,6 +255,63 @@ export const DevPanel = ({ onClose }) => {
             </button>
 
             <div style={label}>Key</div>
+            {/* ═══ v2.3.2277: RESOURCES FOR TESTING ═══
+                Owner: "also having access to extract resources for testing".
+                No new server code: /api/admin/grant has credited arbitrary
+                inventory keys since the operator API existed, and the QA
+                harness has used it all along -- what was missing was a button.
+                The TOOLS row is the one that actually unblocks him: without an
+                axe/pole/pickaxe the renderer draws no nodes at all and the
+                worker refuses both extraction_start and node_strike, so a
+                fresh character cannot test gathering however many logs you
+                hand him. */}
+            <div style={label}>Resources</div>
+            <button
+              type="button" style={btn(false)} disabled={busy || !myId}
+              onClick={async () => {
+                let n = 0;
+                for (const invKey of ['woodcutting_axe', 'fishing_pole', 'mining_pickaxe']) {
+                  const j = await call('/grant', { playerId: myId, kind: 'item', payload: { invKey, count: 1 }, note: 'Test panel: gathering tools' });
+                  if (j) n++;
+                }
+                setMsg(n ? 'Gathering tools granted (' + n + '/3) — trees, ponds and veins will draw now.' : 'Nothing granted.');
+                refresh();
+              }}>Give gathering tools (axe, pole, pickaxe)</button>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '6px 0' }}>
+              {[
+                { k: 'wood_pine_log', label: 'Logs' },
+                { k: 'ore_copper_ore', label: 'Copper' },
+                { k: 'fish_minnow', label: 'Minnow' },
+              ].map((r) => (
+                <button
+                  key={r.k} type="button" style={{ ...chip, minHeight: 34 }} disabled={busy || !myId}
+                  onClick={async () => {
+                    const j = await call('/grant', { playerId: myId, kind: 'item', payload: { invKey: r.k, count: 10 }, note: 'Test panel: resources' });
+                    if (j) { setMsg('+10 ' + r.label + '.'); refresh(); }
+                  }}>+10 {r.label}</button>
+              ))}
+            </div>
+
+            {/* ═══ v2.3.2277: FINISH EVERY QUEST ═══
+                Owner: "Having the finish all quests button will be good in
+                that mode."  A server op, because the worker is the only
+                durable writer of quest state and its echo overwrites any
+                client-local mark.  It pays no rewards -- see the note on
+                _devFinishQuests -- and it opens the gated zones as a side
+                effect, because 'turnedIn' satisfies the same gate 'active'
+                does.  Said on the button rather than left to be discovered. */}
+            <button
+              type="button" style={btn(false)} disabled={busy || !myId}
+              onClick={async () => {
+                const j = await call('/dev/quests', { playerId: myId });
+                if (j) {
+                  setMsg(j.finished
+                    ? 'Finished ' + j.finished + ' of ' + j.total + ' quests (no rewards paid) — the gated zones are open too.'
+                    : 'Every quest was already finished.');
+                  refresh();
+                }
+              }}>Finish all quests (no rewards)</button>
+
             <button type="button" style={{ ...btn(false), borderColor: COL.danger, color: COL.danger }} onClick={forgetKey}>
               Forget key on this device
             </button>

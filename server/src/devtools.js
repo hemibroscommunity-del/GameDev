@@ -145,6 +145,52 @@ export const devToolsMethods = {
     return { ok: true, ...out };
   },
 
+  /* ═══ v2.3.2277: FINISH EVERY QUEST ═══
+   *
+   * Owner: "starting fresh with new characters forces me to go through the
+   * tutorial to access zones that I usually need to playtest in ... Having the
+   * finish all quests button will be good in that mode."
+   *
+   * It has to be a SERVER op.  The worker is the only durable writer of
+   * ps._quests and its player_state echo overwrites whatever the client
+   * believes, so a client-side "mark them done" is undone by the next tick.
+   * And it has to be on the /api/admin HTTP road rather than a websocket
+   * message: server/test/mirror-audit.test.mjs asserts there is no
+   * `case 'dev...':` in the message switch and no channel.send in DevPanel,
+   * and devtools.test.mjs forges five such messages and asserts nothing
+   * happens.  Those pins are the reason a dev tool cannot be forged by a
+   * player in the shared room, so they are not obstacles to route around.
+   *
+   * THE QUEST IDS COME FROM THE SERVER'S OWN TABLE, never from the request
+   * body.  A body-supplied id would be a client-supplied map key, which is
+   * CLAUDE.md rule 4 and three separate '__proto__' incidents; iterating
+   * QUEST_REWARDS sidesteps the question rather than guarding it.
+   *
+   * IT PAYS NO REWARDS, deliberately.  The point is to clear the gates and
+   * empty the quest log, not to mint items -- and minting a full quest line's
+   * worth of gear into a live shared economy from a debug button is a
+   * different feature with different consequences.  /dev/kit is the one that
+   * hands out equipment, and it says so. */
+  _devFinishQuests(playerId) {
+    const t = this._devTarget(playerId);
+    if (!t) return { ok: false, error: 'player not online' };
+    const ps = t.ps;
+    if (!ps._quests) ps._quests = Object.create(null);   /* rule 4 */
+    const table = this._QUEST_REWARDS_DATA();
+    const finished = [];
+    for (const qid of Object.keys(table)) {
+      if (ps._quests[qid] === 'turnedIn') continue;
+      ps._quests[qid] = 'turnedIn';
+      finished.push(qid);
+    }
+    this._devPush(playerId, ps);
+    /* 'turnedIn' satisfies the zone gate the same way 'active' does, so this
+       opens the gated zones as a side effect -- reported rather than assumed,
+       because "finish quests" and "open zones" are two different asks and the
+       owner should not have to guess which button did what. */
+    return { ok: true, finished: finished.length, quests: finished, total: Object.keys(table).length };
+  },
+
   /* ═══ VITALS: refill, and optionally stop taking damage ═══ */
   _devVitals(playerId, opts) {
     const t = this._devTarget(playerId);
@@ -226,6 +272,7 @@ export const devToolsMethods = {
     if (path === '/dev/unlock') result = this._devUnlockZones(playerId);
     else if (path === '/dev/kit') result = this._devKit(playerId, body);
     else if (path === '/dev/vitals') result = this._devVitals(playerId, body);
+    else if (path === '/dev/quests') result = this._devFinishQuests(playerId);   /* v2.3.2277 */
     else return null;
 
     /* Same audit trail as every other mutating admin op: the owner can see

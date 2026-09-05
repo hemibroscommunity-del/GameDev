@@ -169,8 +169,40 @@ export async function run({ browser, wsPort, webPort, rec }) {
      so what is asserted instead is the rule that replaced them -- and the two
      halves that are easy to get wrong: the nearest is picked with no input at
      all, and a TAP overrides it and then holds against the nearest rule. ── */
+  /* ═══ v2.3.2273: LAND THE DASH BEFORE MEASURING FROM WHERE HE STANDS ═══
+     This section failed for a reason that had nothing to do with the rule it
+     tests, and the failure looked exactly like a broken rule: candidates came
+     back ["right","mid"] -- not nearest-first, and missing "left" entirely.
+     The cause is the press above.  An Attack press on a tapped lock 620px away
+     is a SWORD DASH, and it was still in flight when `seed` ran, so the three
+     monsters were placed relative to a player who then slid ~130px east out
+     from under them.  Recomputed from that: mid 60 -> 70px, right 150 -> 20px,
+     left -120 -> 250px and outside the 220px perimeter.  Which is the observed
+     list, in the observed order.  The rule was right the whole time.
+     TRAPS §44, in its usual costume: a value asked about a past event while it
+     is still moving.  So: cancel the dash, let the frame settle, THEN seed. */
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    S._bashDash = null;
+    S._abilitySwingUntil = 0;
+    S.autoAttack = false;
+    S.lockedTarget = null;
+    S.monsters = [];
+  });
+  await P.page.waitForTimeout(300);
   await seed(P, [{ id: 'mid', dx: 60 }, { id: 'left', dx: -120, dy: 10 }, { id: 'right', dx: 150, dy: -10 }]);
+  /* And prove the premise rather than assuming it: if the player is still
+     drifting, every assertion below is measuring the wrong distances and
+     should say so in those words instead of blaming the nearest rule. */
+  const _p0 = await P.page.evaluate(() => {
+    const S = window._gameState.current; return { x: S.player.x, y: S.player.y };
+  });
   await P.page.waitForTimeout(400);
+  const _p1 = await P.page.evaluate(() => {
+    const S = window._gameState.current; return { x: S.player.x, y: S.player.y };
+  });
+  rec.ok('the player is standing still, so the seeded distances are real (guard)',
+    Math.abs(_p1.x - _p0.x) < 4 && Math.abs(_p1.y - _p0.y) < 4, { _p0, _p1 });
   s = await st(P);
   rec.ok('three candidates in the perimeter', s.cands.length === 3, s);
   rec.ok('the NEAREST of the three is targeted automatically (mid, 60px)', s.lock === 'mid', s);

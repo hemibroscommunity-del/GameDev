@@ -81,6 +81,9 @@ const ITEM_EMOJI = {
   herb_firebloom: '🌺', herb_rock_vine: '🌿', herb_cloudpetal: '🌸',
   basic_trap: '🪤',
 };
+/* v2.3.2286: the owner's ladder, verbatim and in his order. Module scope so it
+   is one list rather than an array literal rebuilt on every render. */
+const GOLD_STEPS = [1, 5, 25, 50, 100, 500, 1000];
 const emojiFor = (k) => ITEM_EMOJI[k] || (k.startsWith('skull') ? '💀' : k.startsWith('shard') ? '💠' : '📦');
 const labelFor = (k) => k.replace(/^(fish|cooked_fish|wood|ore|herb)_/, '').replace(/_/g, ' ');
 /* v2.3.1235: batch-4 state-correction — hoisted from the component so
@@ -112,6 +115,136 @@ const GoldIcon = () => (
     onError={(e) => { e.currentTarget.replaceWith(document.createTextNode('💰')); }} />
 );
 
+/* ═══ v2.3.2280: ONE FRAME FOR ALL SIX TRADE STATES ═══
+ *
+ * Owner: "Yes bring the trade into the drawer too. And make sure it works
+ * end to end."
+ *
+ * v2.3.2149 moved ONLY the live offer window onto the band. The other five
+ * states this component can render -- the incoming invite, "waiting for them
+ * to open", the CONFIRM/review screen, the completion receipt and the
+ * settlement-failure notice -- each stayed a scrimmed `.bt-inspect-card`
+ * centred over the world. So a single trade jumped format twice: you staged
+ * items in a drawer attached to your bag, the screen went dark and a card
+ * flew to the middle to ask you to accept, and then it jumped back. The
+ * review screen is the one that matters most -- it is the anti-scam screen,
+ * the moment the player is asked to READ -- and it was the one that moved.
+ *
+ * WHAT THE SCRIM WAS DOING, AND WHY LOSING IT IS FINE HERE. On a card, the
+ * scrim is also the dismiss control: tap outside, panel closes. The drawer
+ * has no scrim by design (v2.3.2149: the scrim covered the bag, and the bag
+ * is the item source). Every state below therefore keeps an EXPLICIT control
+ * where the scrim tap used to be:
+ *   - invite       -> Decline (already there)
+ *   - invited      -> Cancel  (already there)
+ *   - review       -> the ✕, routed through requestLeave like the live window
+ *   - done/failed  -> a ✕ that closes early; both also self-close on a timer
+ * Nothing silently loses its way out.
+ *
+ * A COMPONENT, NOT A COPIED STYLE OBJECT. The five copies of `.bt-inspect` +
+ * `.bt-inspect-card` this replaces had already drifted apart from each other
+ * (three different widths, two different scrim alphas). One shell means the
+ * next change lands on all six at once.
+ */
+const DRAWER_FRAME = {
+  position: 'fixed', left: 6, right: 6,
+  bottom: 'var(--dash-h, 243px)',
+  maxHeight: 'min(52vh, 420px)',
+  display: 'flex', flexDirection: 'column',
+  background: 'var(--ui-sheet, #1E2E34)',
+  border: '1px solid rgba(229,237,233,.14)',
+  borderRadius: '10px 10px 0 0',
+  borderBottom: 'none',
+  color: 'var(--ui-text, #F4F0E7)',
+  /* Above the world chrome and the joystick discs (30/31), below the item
+     popup (100030) -- the shop drawer's own layer. */
+  zIndex: 40,
+  overflowY: 'auto',
+  padding: 10,
+  boxSizing: 'border-box',
+};
+
+/* `title` is the header line every state shares (icon + one sentence);
+   `onClose` renders the ✕ and is omitted only where a state has no way to
+   leave that isn't one of its own buttons. */
+function TradeDrawer({ title, titleColor, onClose, children }) {
+  return (
+    <div
+      data-trade-drawer=""
+      onPointerDown={(e) => e.stopPropagation()}
+      className="bt-chat-noselect"
+      style={DRAWER_FRAME}>
+      <div onClick={(e) => e.stopPropagation()} style={{ position: 'relative' }}>
+        {onClose && <button className="bt-inspect-close" onClick={onClose}>✕</button>}
+        {title && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700,
+            color: titleColor || '#F4F0E7', marginBottom: 8,
+            /* clear the ✕ so a long partner name never runs under it */
+            paddingRight: onClose ? 30 : 0,
+          }}>
+            <TradeIcon /> {title}
+          </div>
+        )}
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/* ═══ v2.3.2283: THE BUYER'S LANE IS A LIGHT CARD, SO ITS INK INVERTS ═══
+ *
+ * Owner: "Make the buyer window more notably different shade. Like a light
+ * gray."
+ *
+ * WHY THIS IS AN OBJECT AND NOT A `light` BOOLEAN. Fourteen ink sites live on
+ * nested children across THREE renderers (StagedRow, OfferRows, side), so a
+ * boolean forces a ternary at every one of them and writes the light palette
+ * out three times. One object means the fill and its ink cannot be changed
+ * apart -- which is the actual hazard here: a light card that kept the dark
+ * ramp would put its own text at 1.36:1 and its muted text at 1.87:1, i.e.
+ * invisible, and CSS inheritance would hand you that silently because every
+ * one of these sites sets `color` explicitly. docs/TRAPS.md carries it.
+ *
+ * DARK_INK is today's palette verbatim, and it is the DEFAULT PARAMETER on
+ * both renderers -- so every call site that does not opt in is byte-identical
+ * to v2.3.2282. Only the three buyer-lane sites pass anything. */
+const DARK_INK = {
+  slot: '#16262C', slotLine: '1px solid rgba(229,237,233,.08)',
+  text: '#F4F0E7', name: '#B6C1BE', qty: '#B6C1BE', muted: '#8D9B98',
+  gold: '#D8AA58', rarityFallback: '#8B9695', rarityByTier: null,
+  divider: '1px solid rgba(229,237,233,.11)', platedThumbs: false,
+};
+/* Object.create(null) per CLAUDE.md rule 4: keyed by a tier string that
+   arrives over the wire (w.weapon.tier), and a plain {} silently hands back
+   Object.prototype for '__proto__' -- fixed three times in one day
+   (duel.away v2.3.1175, party meta v2.3.1185, amulet tiers v2.3.1192). */
+const LIGHT_RARITY = Object.assign(Object.create(null), {
+  common:    'var(--ui-rarity-common-on-invert, #45565C)',
+  elemental: 'var(--ui-rarity-elemental-on-invert, #1D4FA8)',
+  fusion:    'var(--ui-rarity-fusion-on-invert, #6B21A8)',
+  shift:     'var(--ui-rarity-shift-on-invert, #6E4D0F)',
+});
+const LIGHT_INK = {
+  /* the 32px cell stays DARK on the light card -- it is the same slot
+     silhouette the bag uses, and it gives item art the near-black ground it
+     was authored against. A light plate is not an option: #B6C1BE on this
+     fill is 1.19:1, a smudge rather than a cell. */
+  slot: 'var(--ui-invert-slot, #16262C)', slotLine: '1px solid transparent',
+  text: 'var(--ui-text-on-invert, #111E23)',
+  name: 'var(--ui-text-on-invert-2, #293B41)',
+  qty:  'var(--ui-text-on-invert-2, #293B41)',
+  muted: 'var(--ui-text-on-invert-3, #45565C)',
+  gold: 'var(--ui-gold-on-invert, #6E4D0F)',
+  /* rarityByTier OVERRIDES the data colour rather than falling back to it:
+     RARITY_TIERS ships bright values authored for dark ground (shift gold is
+     1.05:1 here), and `rarityColor ||` would let every one of them through. */
+  rarityFallback: 'var(--ui-rarity-common-on-invert, #45565C)',
+  rarityByTier: LIGHT_RARITY,
+  divider: '1px solid var(--ui-line-on-invert, rgba(11,22,27,.14))',
+  platedThumbs: true,
+};
+
 /* v2.3.1235: batch-4 state-correction §4 — one staged entry as a compact
    row: 32px glyph well, name (+ rarity line when the entry carries one,
    i.e. weapons via RARITY_TIERS[tier]; plain inventory items have no
@@ -141,19 +274,28 @@ const stepBtn = (enabled) => ({
    Now: the bag tile stages ONE (and taps up by one), and every staged row
    carries − / + with your stack size beside it, so the quantity is a thing you
    set rather than a cycle you land on. */
-function StagedRow({ glyph, name, qty, have, rarityLabel, rarityColor, onRemove, onInc, onDec }) {
+function StagedRow({ glyph, name, qty, have, rarityLabel, rarityColor, rarityTier, onRemove, onInc, onDec, ink = DARK_INK }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: onRemove ? 44 : 36, padding: '2px 0' }}>
-      <div style={{ width: 32, height: 32, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, background: '#16262C', border: '1px solid rgba(229,237,233,.08)', borderRadius: 8 }}>{glyph}</div>
+      <div style={{ width: 32, height: 32, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, background: ink.slot, border: ink.slotLine, borderRadius: 8 }}>{glyph}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 12, color: '#B6C1BE', textTransform: 'capitalize', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
+        <div style={{ fontSize: 12, color: ink.name, textTransform: 'capitalize', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
         {rarityLabel ? (
-          <div style={{ fontSize: 10, color: rarityColor || '#8B9695' }}>{rarityLabel}</div>
+          /* v2.3.2283: the tier wins over the data colour on an inverted lane
+             -- see rarityByTier. On the dark lane both are absent and this is
+             the same expression it always was. */
+          <div style={{ fontSize: 10, color: (ink.rarityByTier && ink.rarityByTier[rarityTier]) || rarityColor || ink.rarityFallback }}>{rarityLabel}</div>
         ) : null}
       </div>
       {qty != null && !onInc && (
-        <div style={{ fontSize: 12, fontWeight: 700, color: '#B6C1BE', fontVariantNumeric: 'tabular-nums' }}>×{qty}</div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: ink.qty, fontVariantNumeric: 'tabular-nums' }}>×{qty}</div>
       )}
+      {/* v2.3.2283: the stepper branch below keeps its dark colours on purpose.
+          It is structurally unreachable from an inverted lane -- onInc and
+          onRemove are only ever passed for YOUR offer -- so theming it would
+          be dead code. If a "request this item" affordance is ever added to
+          the buyer's lane, these five colours go live on a light fill all at
+          once; that is the moment to thread them. */}
       {qty != null && onInc && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 2, flex: 'none' }}>
           <button aria-label={'One fewer ' + name} onClick={onDec} disabled={qty <= 0}
@@ -181,12 +323,15 @@ function StagedRow({ glyph, name, qty, have, rarityLabel, rarityColor, onRemove,
 /* v2.3.1235: trade-completion receipt — optional goldSuffix ("G") lets
    the receipt render its gold rows as "25G"; live-trade wells pass
    nothing and are byte-identical. */
-function OfferRows({ offer, weapons, empty, onRemoveItem, onRemoveWeapon, goldSuffix, inv, onSetQty }) {
+function OfferRows({ offer, weapons, empty, onRemoveItem, onRemoveWeapon, goldSuffix, inv, onSetQty, ink = DARK_INK }) {
   const entries = Object.entries(offer || {}).filter(([k, v]) => k !== '_gold' && v > 0);
   const gold = (offer && offer._gold) || 0;
   const wpns = weapons || [];
   if (!entries.length && !gold && !wpns.length) {
-    return <div style={{ fontSize: 11, color: '#8D9B98', padding: '8px 0' }}>{empty}</div>;
+    /* v2.3.2283: the EMPTY lane is the first thing a player sees when a trade
+       opens, so this is not a corner case -- on the light card the old
+       #8D9B98 would be 1.87:1. */
+    return <div style={{ fontSize: 11, color: ink.muted, padding: '8px 0' }}>{empty}</div>;
   }
   return (
     <div className="ls-scrollbody" style={{ maxHeight: 148, overflowY: 'auto' }}>
@@ -195,21 +340,22 @@ function OfferRows({ offer, weapons, empty, onRemoveItem, onRemoveWeapon, goldSu
           have={inv ? (inv[k] || 0) : null}
           onRemove={onRemoveItem ? () => onRemoveItem(k) : null}
           onInc={onSetQty ? () => onSetQty(k, v + 1) : null}
-          onDec={onSetQty ? () => onSetQty(k, v - 1) : null} />
+          onDec={onSetQty ? () => onSetQty(k, v - 1) : null} ink={ink} />
       ))}
       {wpns.map((w) => {
         const rt = (w.weapon && RARITY_TIERS[w.weapon.tier]) || null;
         return (
           <StagedRow key={'w' + w.seq} glyph="⚔️" name={wpnName(w)}
             rarityLabel={rt ? rt.label : null} rarityColor={rt ? rt.color : null}
-            onRemove={onRemoveWeapon ? () => onRemoveWeapon(w.seq) : null} />
+            rarityTier={w.weapon && w.weapon.tier}
+            onRemove={onRemoveWeapon ? () => onRemoveWeapon(w.seq) : null} ink={ink} />
         );
       })}
       {gold > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 36, padding: '2px 0' }}>
-          <div style={{ width: 32, height: 32, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#16262C', border: '1px solid rgba(229,237,233,.08)', borderRadius: 8 }}><GoldIcon /></div>
-          <div style={{ flex: 1, fontSize: 12, color: '#B6C1BE' }}>Gold</div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#D8AA58', fontVariantNumeric: 'tabular-nums' }}>{gold}{goldSuffix || ''}</div>
+          <div style={{ width: 32, height: 32, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', background: ink.slot, border: ink.slotLine, borderRadius: 8 }}><GoldIcon /></div>
+          <div style={{ flex: 1, fontSize: 12, color: ink.name }}>Gold</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: ink.gold, fontVariantNumeric: 'tabular-nums' }}>{gold}{goldSuffix || ''}</div>
         </div>
       )}
     </div>
@@ -228,6 +374,23 @@ export function TradeWindowPanel(props) {
   const S = stateRef.current;
   const myId = S.myId;
   const [stage, setStage] = useState({});
+  /* ═══ v2.3.2288: THE LADDER'S SIGN ═══
+     Owner: "Put a subtract button near the clear button (that changes back to
+     add once tapped again) that inverts all the gold from the buttons."
+     One flag, read by every chip.  It lives up here with the other hooks
+     because this component early-returns five times before the live window --
+     the same Rules-of-Hooks crash the v2.3.1754 note below documents.
+
+     RESET AT ZERO, AND HERE RATHER THAN AT EACH CALL SITE.  Gold reaches zero
+     down at least five paths (a chip, Clear, typing 0, the server rewriting the
+     offer, the trade ending), and subtract mode at zero is a dead end: every
+     chip would be disabled, so the ladder would sit there inert while the way
+     out -- the toggle -- looks like just another greyed control.  An effect on
+     the value catches all five without a reset anyone can forget to add to a
+     sixth.  Nothing flickers: the toggle only renders when there IS gold, so
+     the flip back is never on screen. */
+  const [goldMinus, setGoldMinus] = useState(false);
+  useEffect(() => { if (!(stage._gold || 0)) setGoldMinus(false); }, [stage._gold]);
   /* v2.3.1235: batch-4 state-correction §7 — leave-confirm strip (pure
      client UI, no wire message of its own) and §6 offer-changed notice
      (display of the server's confirm-reset, see wire map above). */
@@ -332,7 +495,22 @@ export function TradeWindowPanel(props) {
      `liveTrade` is deliberately false for the receipt and failure states too,
      so the bag is handed back the instant the trade stops being editable. */
   const bagTapRef = useRef(null);
-  const liveTrade = !!trade2 && !trade2.invite && trade2.state === 'open';
+  /* ═══ v2.3.2280: THE BAG LETS GO FOR THE REVIEW SCREEN ═══
+     The review screen tells the player, in its own footer, "Nothing on this
+     screen can change the trade." With the bag attached that was not true:
+     the band's tiles were still wired to addOne, so a tap on one staged an
+     item mid-review. The server catches it -- any edit resets both readies
+     and drops the pair back to the offer stage (trade2.js) -- so this was
+     never a scam route, but the screen was making a promise the UI broke,
+     and on a phone the bag sits directly under the drawer where a thumb
+     rests. Hand it back for the review, take it again on the way out.
+     Derived from trade2.a/trade2.b rather than myId/otherId because this
+     sits above the early returns those are computed below; both ready is
+     both ready whichever end you read it from. */
+  const reviewStage = !!(trade2 && !trade2.invite && trade2.state === 'open'
+    && S && S._serverCaps && S._serverCaps.trade2Review
+    && trade2.ready && !!trade2.ready[trade2.a] && !!trade2.ready[trade2.b]);
+  const liveTrade = !!trade2 && !trade2.invite && trade2.state === 'open' && !reviewStage;
   useEffect(() => {
     if (!liveTrade) return undefined;
     tradeBagBus.attach((k) => { if (bagTapRef.current) bagTapRef.current(k); });
@@ -348,13 +526,8 @@ export function TradeWindowPanel(props) {
      banner); primary = committed gold-gradient recipe (#EAC675 edge,
      #172126 ink, radius 10); secondary = raised #293B41 + strong
      hairline. */
-  const cardStyle = {
-    background: '#1E2E34',
-    border: '1px solid rgba(229,237,233,.20)',
-    borderRadius: 14,
-    boxShadow: '0 14px 30px rgba(4,7,9,.38)',
-    textAlign: 'left',
-  };
+  /* v2.3.2280: `cardStyle` retired with the last centred card -- every state
+     is a TradeDrawer now and the drawer frame carries the surface. */
   const primaryBtn = {
     minHeight: 44, borderRadius: 10, border: '1px solid #EAC675',
     background: 'linear-gradient(180deg,#E2B765,#D2A14D)', color: '#172126', fontSize: 13, fontWeight: 700, cursor: 'pointer',
@@ -368,12 +541,61 @@ export function TradeWindowPanel(props) {
   /* v2.3.1235: batch-4 rollout — corrected section-header ramp 11/700
      .14em; muted #8D9B98, confirmed = corrected positive #55B98A (the
      ✅ emoji was chrome — dropped). */
-  /* v2.3.1235: trade-completion receipt — laneHeader + wellStyle hoisted
-     above the state renders (values unchanged) so the receipt reuses the
-     exact live-window section-header and recessed-well recipes. */
+  /* v2.3.1235: trade-completion receipt — laneHeader + the well recipe
+     hoisted above the state renders so the receipt reuses the exact
+     live-window section-header and recessed-well recipes.
+     v2.3.2282: the one `wellStyle` became the owner-coded pair below. */
   const laneHeader = { fontSize: 11, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', marginBottom: 3 };
   /* v2.3.1235: batch-4 state-correction §3 — recessed offer well */
-  const wellStyle = { borderRadius: 8, background: '#111E23', border: '1px solid rgba(229,237,233,.11)', boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44)', padding: '2px 6px', marginBottom: 8 };
+  /* ═══ v2.3.2283: WHOSE PILE IS THIS ═══
+   *
+   * Owner: "shade color the trade windows differently if it's yours versus the
+   * other players", then "Make the buyer window more notably different shade.
+   * Like a light gray."
+   *
+   * v2.3.2282 answered the first ask inside the dark ladder -- yours on well,
+   * theirs on well-deep, plus a 3px rule down your edge -- and the two fills
+   * came out 1.08:1 apart, which is why there was a second ask. There is
+   * nothing brighter left down there: raised-high is ~1.6:1 against well, and
+   * raised puts the muted ink at 4.05:1, under AA. So the buyer's lane leaves
+   * the ladder entirely and becomes an INVERTED surface: a light card with
+   * dark ink (--ui-invert + the -on-invert ramp, game.css). ~11:1 apart now.
+   *
+   * THE SHADOWS ARE OPPOSITE, AND THAT IS THE POINT. A black INNER shadow on a
+   * fill nine times lighter than the sheet behind it reads as dirt smeared
+   * across the top, so their lane stops being a well sunk INTO the sheet and
+   * becomes a card raised OFF it. That is also the truer reading: their offer
+   * is the thing you inspect, yours is the tray you load. Do NOT let a later
+   * tidying pass merge WELL_SHADOW and CARD_SHADOW back into one constant --
+   * the two lanes need opposite recipes, and your lane is only 1.21:1 against
+   * the sheet, so its hairline and its inset ARE its box. Erase them and your
+   * lane becomes empty space under a bright card.
+   *
+   * `border` moved OUT of the shared base for the same reason: the dark
+   * hairline rgba(229,237,233,.11) composites to 1.03:1 on the light fill --
+   * no edge at all -- so each lane states its own.
+   *
+   * THE 3px RULE IS GONE. It existed to carry a distinction the fills could
+   * not; the fills carry it now, and a light rule on a light card is
+   * invisible anyway.
+   *
+   * STILL NOT THE ONLY SIGNAL: the headers name the owner in words, position
+   * is fixed (yours is always the bottom one), and only your lane's rows carry
+   * a stepper and a remove control. */
+  const WELL_SHADOW = 'inset 0 2px 4px rgba(0,0,0,.44)';   /* yours: sunk   */
+  const CARD_SHADOW = '0 1px 3px rgba(4,9,12,.42)';        /* theirs: raised */
+  /* minHeight so an EMPTY light lane reads as a card rather than as a bright
+     33px stripe -- the state a trade spends its first ten seconds in. Applied
+     to both so the two stay symmetric. */
+  const wellBase = { borderRadius: 8, padding: '2px 6px', marginBottom: 8, minHeight: 44, boxSizing: 'border-box' };
+  const theirWell = { ...wellBase, background: 'var(--ui-invert, #C8D2CF)', border: '1px solid var(--ui-line-on-invert, rgba(11,22,27,.14))', boxShadow: CARD_SHADOW };
+  const myWell = { ...wellBase, background: 'var(--ui-well, #111E23)', border: '1px solid rgba(229,237,233,.11)', boxShadow: WELL_SHADOW };
+  /* The ink travels with the fill, never separately -- see DARK_INK/LIGHT_INK.
+     A plain const, never a hook: this sits after the first early return and
+     before the other five, which is exactly the reach the receipt needs, and a
+     useMemo here would be the React #300 crash this file already documents
+     twice. */
+  const theirInk = LIGHT_INK, myInk = DARK_INK;
 
   /* v2.3.1235: trade-completion receipt — state==='done' renders the
      receipt INSIDE the same modal shell.  gameEvents.js only ever sets
@@ -387,26 +609,27 @@ export function TradeWindowPanel(props) {
     const r = trade2.receipt;
     const liveCoins = (rpgState && rpgState.coins) || 0; /* live rpg wallet = server-echoed value */
     return (
-      <div className="bt-inspect" style={{ background: 'rgba(4,9,12,0.52)' }} onClick={() => setTrade2(null)}>
-        <div className="bt-inspect-card" onClick={(e) => e.stopPropagation()} style={{ ...cardStyle, width: 320 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: '#55B98A', marginBottom: 8 }}>
-            <TradeIcon /> Trade complete ✓
+      /* v2.3.2280: the receipt stays on the band where the trade happened.
+         The ✕ closes it early -- what the scrim tap used to do -- and the
+         effect above still auto-closes it (~2800ms). */
+      <TradeDrawer title="Trade complete ✓" titleColor="#55B98A" onClose={() => setTrade2(null)}>
+          {/* v2.3.2282: RECEIVED on top, SENT on the bottom -- see the lane-order
+              note on the review screen. Your own pile is the bottom one on all
+              three screens now, and it is the one on the lighter well. */}
+          <div style={{ ...laneHeader, color: '#8D9B98' }}>You received</div>
+          <div style={theirWell}>
+            <OfferRows offer={r.received} weapons={r.receivedWeapons} empty="Nothing" goldSuffix="G" ink={theirInk} />
           </div>
           <div style={{ ...laneHeader, color: '#8D9B98' }}>You sent</div>
-          <div style={wellStyle}>
+          <div style={myWell}>
             <OfferRows offer={r.sent} weapons={r.sentWeapons} empty="Nothing" goldSuffix="G" />
-          </div>
-          <div style={{ ...laneHeader, color: '#8D9B98' }}>You received</div>
-          <div style={wellStyle}>
-            <OfferRows offer={r.received} weapons={r.receivedWeapons} empty="Nothing" goldSuffix="G" />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
             <span style={{ ...laneHeader, marginBottom: 0, color: '#8D9B98' }}>Balance</span>
             <GoldIcon />
             <span style={{ fontSize: 14, fontWeight: 700, color: '#F4F0E7', fontVariantNumeric: 'tabular-nums' }}>{liveCoins}G</span>
           </div>
-        </div>
-      </div>
+      </TradeDrawer>
     );
   }
 
@@ -421,27 +644,22 @@ export function TradeWindowPanel(props) {
      failed commit) — out of scope. */
   if (trade2.state === 'failed') {
     return (
-      <div className="bt-inspect" style={{ background: 'rgba(4,9,12,0.52)' }} onClick={() => setTrade2(null)}>
-        <div className="bt-inspect-card" onClick={(e) => e.stopPropagation()} style={{ ...cardStyle, width: 320 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: '#F4F0E7', marginBottom: 8 }}>
-            <TradeIcon /> Trade
-          </div>
+      <TradeDrawer title="Trade" onClose={() => setTrade2(null)}>
           <div style={{ borderRadius: 10, border: '1px solid #D8635D', background: 'transparent', color: '#D8635D', fontSize: 12, fontWeight: 700, padding: '10px 12px' }}>
             Trade failed — nothing was exchanged
           </div>
-        </div>
-      </div>
+      </TradeDrawer>
     );
   }
 
   // ── Incoming invite stub ──
   if (trade2.invite) {
     return (
-      <div className="bt-inspect" style={{ background: 'rgba(4,9,12,0.52)' /* v2.3.1235: batch-4 rollout — trade decisions take the strong confirm scrim */ }} onClick={() => setTrade2(null)}>
-        <div className="bt-inspect-card" onClick={(e) => e.stopPropagation()} style={{ ...cardStyle, width: 'min(360px, calc(100vw - 24px))' /* v2.3.1234: was 286 fixed — fill narrow phones, never overflow */ }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: '#F4F0E7', marginBottom: 10 }}>
-            <TradeIcon /> {trade2.fromName} wants to trade
-          </div>
+      /* v2.3.2280: no ✕ here on purpose. Decline is the answer to an
+         invite, and it SENDS trade2_cancel -- the scrim tap this replaces
+         did not, so a dismissed invite used to leave the other player
+         waiting on a request nobody had actually refused. */
+      <TradeDrawer title={`${trade2.fromName} wants to trade`}>
           <div style={{ display: 'flex', gap: 6 }}>
             <button
               style={{ ...primaryBtn, flex: 1, padding: '7px 0' }}
@@ -452,16 +670,14 @@ export function TradeWindowPanel(props) {
               onClick={() => { send('trade2_cancel'); setTrade2(null); }}
             >Decline</button>
           </div>
-        </div>
-      </div>
+      </TradeDrawer>
     );
   }
 
   // ── Waiting for the other side to open ──
   if (trade2.state === 'invited') {
     return (
-      <div className="bt-inspect" onClick={() => { send('trade2_cancel'); setTrade2(null); }}>
-        <div className="bt-inspect-card" onClick={(e) => e.stopPropagation()} style={{ ...cardStyle, width: 240 }}>
+      <TradeDrawer title="Trade" onClose={() => { send('trade2_cancel'); setTrade2(null); }}>
           {/* v2.3.1235: batch-4 rollout — waiting state stays readable
               secondary text (text-2 token). */}
           <div style={{ fontSize: 12, color: '#B6C1BE' }}>Trade request sent — waiting…</div>
@@ -469,8 +685,7 @@ export function TradeWindowPanel(props) {
             style={{ ...secondaryBtn, marginTop: 10, width: '100%', padding: '6px 0' }}
             onClick={() => { send('trade2_cancel'); setTrade2(null); }}
           >Cancel</button>
-        </div>
-      </div>
+      </TradeDrawer>
     );
   }
 
@@ -500,7 +715,11 @@ export function TradeWindowPanel(props) {
   const reviewFlow = !!(S && S._serverCaps && S._serverCaps.trade2Review);
   const iReady = !!(trade2.ready && trade2.ready[myId]);
   const theyReady = !!(trade2.ready && trade2.ready[otherId]);
-  const onReview = reviewFlow && iReady && theyReady;
+  /* v2.3.2280: the same fact as `reviewStage` above, kept under its old
+     name here so every read below is unchanged. Asserted identical rather
+     than recomputed -- two expressions for one stage is how the bag and the
+     screen would drift out of agreement. */
+  const onReview = reviewStage;
   /* The server refuses an accept within ACCEPT_COOLDOWN_MS of the last edit
      (trade2.js).  Mirrored here only so the button can SAY so and count down
      — the rule itself lives on the worker, because a cooldown a modified
@@ -573,9 +792,9 @@ export function TradeWindowPanel(props) {
 
   /* v2.3.1232: weapon chip style — magic violet from the semantic set
      (was the off-palette #a78bfa). */
-  /* v2.3.1235: trade-completion receipt — laneHeader + wellStyle moved
-     up beside cardStyle (shared with the receipt render); values are
-     unchanged. */
+  /* v2.3.1235: trade-completion receipt — laneHeader + the well recipe moved
+     up beside the shared styles (shared with the receipt render).
+     v2.3.2282: that well is now the myWell / theirWell pair. */
   /* v2.3.1235: batch-4 state-correction §6 — lane headers become a
      flex row: lane title left, live status right.  Both statuses are
      direct reads of server state (`confirmed` flags from the last
@@ -614,37 +833,77 @@ export function TradeWindowPanel(props) {
     const myLines = lines(mine, myWpn), theirLines = lines(theirs, otherWpn);
     const myGold = mine._gold || 0, theirGold = theirs._gold || 0;
     const bigGold = Math.max(myGold, theirGold) >= BIG_GOLD;
-    const side = (title, ls, gold, tone) => (
-      <div style={{ ...wellStyle, marginBottom: 8 }}>
+    /* v2.3.2282: `well` joins `tone` as a per-lane argument. Both are bound to
+       the lane's OWNER, and both are passed at the call site rather than
+       derived from position -- see the note there for why that distinction is
+       load-bearing on this particular screen. */
+    /* v2.3.2283: a 24px cell under the thumb on an inverted lane. Item art is
+       fixed webp authored against a near-black ground; the drawer and the
+       receipt already give it one (StagedRow's 32px plate) and this is the one
+       place it sat bare, which on a light card would leave every thumbnail
+       floating on a ground 12:1 from the one it was drawn on. */
+    const chip = (node, ink) => (ink && ink.platedThumbs)
+      ? (<span style={{ width: 24, height: 24, flex: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: ink.slot, borderRadius: 6 }}>{node}</span>)
+      : node;
+    const side = (title, ls, gold, tone, well, ink) => (
+      <div style={{ ...well, marginBottom: 8 }}>
         <div style={{ ...laneHeader, color: tone, marginBottom: 4 }}>{title}</div>
         {ls.length === 0 && gold === 0 && (
-          <div style={{ fontSize: 12, color: '#8D9B98' }}>Nothing</div>
+          <div style={{ fontSize: 12, color: ink.muted }}>Nothing</div>
         )}
         {ls.map((it) => (
-          <div key={it.text} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#F4F0E7', lineHeight: 1.5, padding: '1px 0' }}>
-            <ItemThumb itemKey={it.key} size={20} fallback={it.glyph || '📦'} />
+          <div key={it.text} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: ink.text, lineHeight: 1.5, padding: '1px 0' }}>
+            {chip(<ItemThumb itemKey={it.key} size={20} fallback={it.glyph || '📦'} />, ink)}
             <span>{it.text}</span>
           </div>
         ))}
         {gold > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#D8A94D', fontWeight: 700, lineHeight: 1.5, padding: '1px 0' }}>
-            <GoldIcon /><span>{gold} gold</span>
+          /* NOTE #D8A94D, not the #D8AA58 used elsewhere -- a near-duplicate,
+             so a find-and-replace on the other hex misses this line and leaves
+             1.40:1 gold on the one screen whose job is to be read. */
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: ink.gold, fontWeight: 700, lineHeight: 1.5, padding: '1px 0' }}>
+            {chip(<GoldIcon />, ink)}<span>{gold} gold</span>
           </div>
         )}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#8D9B98', marginTop: 4, borderTop: '1px solid rgba(229,237,233,.11)', paddingTop: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: ink.muted, marginTop: 4, borderTop: ink.divider, paddingTop: 4 }}>
           <span>{ls.length} item{ls.length === 1 ? '' : 's'}</span>
           {gold > 0 && (<><span>·</span><GoldIcon /><span>{gold}</span></>)}
         </div>
       </div>
     );
     return (
-      <div className="bt-inspect" style={{ background: 'rgba(4,9,12,0.62)' }} onClick={requestLeave}>
-        <div className="bt-inspect-card" onClick={(e) => e.stopPropagation()} style={{ ...cardStyle, width: 320 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: '#F4F0E7', marginBottom: 8 }}>
-            <TradeIcon /> Confirm with {otherName}
-          </div>
-          {side('YOU GIVE', myLines, myGold, '#D8635D')}
-          {side('YOU RECEIVE', theirLines, theirGold, '#55B98A')}
+      /* ═══ v2.3.2280: THE ANTI-SCAM SCREEN JOINS THE BAND ═══
+         This was the last state to fly to the middle of the screen behind a
+         scrim, and it is the one the player is meant to READ. Same drawer,
+         same place, same seam against the bag -- the offer they staged is
+         still where they staged it, one screen up.
+         The ✕ still routes through requestLeave, which is what the scrim tap
+         did. That used to be a DEAD CONTROL here: requestLeave sets
+         `leaveAsk`, and this screen never rendered the leave-confirm strip,
+         so a scrim tap mid-review did nothing at all and the player had no
+         way out but Back. The strip is rendered below now. */
+      <TradeDrawer title={`Confirm with ${otherName}`} onClose={requestLeave}>
+          {/* ═══ v2.3.2282: YOUR OWN PILE IS ALWAYS THE BOTTOM ONE ═══
+              Owner: "swap places so that your 'you give' is on bottom and 'you
+              receive' is on top ... This way it's consistent across all 3 trade
+              windows that the player offer is on the bottom."
+
+              The live offer drawer has always read theirs-then-yours; this
+              screen and the receipt read yours-then-theirs, so a single trade
+              flipped the two piles under your thumb twice -- on the one screen
+              whose entire job is to be READ carefully before you consent. All
+              three agree now.
+
+              TONE, WELL AND INK TRAVEL WITH THE LABEL, NOT WITH THE LINE.
+              `side` takes all three positionally, so swapping these two lines
+              while leaving the arguments in place would silently paint YOU
+              GIVE green and YOU RECEIVE red -- inverting the anti-scam colour
+              coding (v2.3.1754) while looking, in a diff, exactly like a
+              reorder. v2.3.2283 raised the stakes: it would also put the dark
+              ramp on the light card, i.e. invisible text. Read the arguments,
+              not the order. */}
+          {side('YOU RECEIVE', theirLines, theirGold, 'var(--ui-positive-on-invert, #1C5A40)', theirWell, theirInk)}
+          {side('YOU GIVE', myLines, myGold, '#D8635D', myWell, myInk)}
           {bigGold && !goldAck && (
             /* Owner: "large currency amounts trigger an explicit confirmation
                to catch typos." */
@@ -654,6 +913,26 @@ export function TradeWindowPanel(props) {
           )}
           {theyConfirmed && (
             <div style={{ fontSize: 12, color: '#55B98A', marginBottom: 6 }}>{otherName} has accepted — waiting on you.</div>
+          )}
+          {/* v2.3.2280: the leave-confirm strip the ✕/scrim has been setting
+              since v2.3.1235 without anything rendering it here. Same markup
+              and the same trade2_cancel send as the offer stage -- copied
+              rather than shared only because the offer stage's copy sits
+              inside its own scroll body. */}
+          {leaveAsk && (
+            <div style={{ borderRadius: 10, border: '1px solid rgba(229,237,233,.11)', background: '#111E23', padding: 8, marginBottom: 8 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#F4F0E7', marginBottom: 6 }}>Leave this trade?</div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  style={{ ...secondaryBtn, flex: 1, padding: '6px 0' }}
+                  onClick={() => setLeaveAsk(false)}
+                >Keep Trading</button>
+                <button
+                  style={{ flex: 1, padding: '6px 0', minHeight: 44, borderRadius: 10, fontSize: 13, fontWeight: 700, border: '1px solid #D8635D', background: 'transparent', color: '#D8635D', cursor: 'pointer' }}
+                  onClick={() => send('trade2_cancel')}
+                >Leave Trade</button>
+              </div>
+            </div>
           )}
           <div style={{ display: 'flex', gap: 6 }}>
             <button
@@ -686,8 +965,7 @@ export function TradeWindowPanel(props) {
             Nothing on this screen can change the trade. If either of you edits the offer,
             you both come back here and accept again.
           </div>
-        </div>
-      </div>
+      </TradeDrawer>
     );
   }
 
@@ -707,44 +985,38 @@ export function TradeWindowPanel(props) {
        to-leave, which is why the ✕ stays exactly where it was and still routes
        through requestLeave -- the leave guard, and its trade2_cancel, are
        untouched. */
-    <div
-      data-trade-drawer=""
-      onPointerDown={(e) => e.stopPropagation()}
-      className="bt-chat-noselect"
-      style={{
-        position: 'fixed', left: 6, right: 6,
-        bottom: 'var(--dash-h, 243px)',
-        maxHeight: 'min(52vh, 420px)',
-        display: 'flex', flexDirection: 'column',
-        background: 'var(--ui-sheet, #1E2E34)',
-        border: '1px solid rgba(229,237,233,.14)',
-        borderRadius: '10px 10px 0 0',
-        borderBottom: 'none',
-        color: 'var(--ui-text, #F4F0E7)',
-        /* Above the world chrome and the joystick discs (30/31), below the
-           item popup (100030) -- the shop drawer's own layer. */
-        zIndex: 40,
-        overflowY: 'auto',
-        padding: 10,
-        boxSizing: 'border-box',
-      }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ position: 'relative' }}>
-        <button className="bt-inspect-close" onClick={requestLeave /* v2.3.1235: batch-4 state-correction §7 */}>✕</button>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: '#F4F0E7', marginBottom: 8 }}>
-          <TradeIcon /> Trading with {otherName}
-        </div>
+    /* v2.3.2280: the frame this state introduced is now TradeDrawer, shared
+       with the other five states -- see the shell above. Same markup, same
+       numbers; the ✕ still routes through requestLeave (v2.3.1235 §7). */
+    <TradeDrawer title={`Trading with ${otherName}`} onClose={requestLeave}>
 
         {/* v2.3.1235: batch-4 state-correction §6 — "<name> confirmed ✓"
             positive check by their lane header, straight off the
             server's confirmed flag (was "· CONFIRMED" inline). */}
         <div style={{ ...laneHeaderRow, color: '#8D9B98' }}>
           <span>{otherName} offers</span>
-          {theyConfirmed && <span style={{ color: '#55B98A' }}>confirmed ✓</span>}
+          {/* v2.3.2280: under the two-stage flow `confirmed` is only ever set
+              on the REVIEW screen, so at the offer stage this header showed
+              nothing at all and a player who had readied up looked, from the
+              other side, exactly like one who was still shopping. `ready` is
+              server state from the same trade2_state echo (trade2.js _t2Wire)
+              -- a direct read, not a guess. */}
+          {theyConfirmed ? <span style={{ color: '#55B98A' }}>confirmed ✓</span>
+            : theyReady ? <span style={{ color: '#55B98A' }}>ready ✓</span> : null}
         </div>
         {/* v2.3.1235: batch-4 rollout — offer wells onto the corrected well
-            token #111E23 + .11 hairline (×3 below, incl. the item tray). */}
-        <div style={wellStyle}>
-          <OfferRows offer={trade2.offers[otherId]} weapons={otherWpn} empty="Nothing staged yet" />
+            token #111E23 + .11 hairline (×3 below, incl. the item tray).
+            v2.3.2282: the two offer wells split by OWNER -- theirs sunk to
+            well-deep, mine raised to well-soft. This lane's order was already
+            right (theirs on top) and is deliberately untouched: mp-trade's
+            lane reader finds this header and then takes its NEXT SIBLING as
+            the well, so moving a header without its well, or wrapping either
+            in a new div, makes it silently read the wrong player's pile while
+            every presence assertion keeps passing. */}
+        <div style={theirWell}>
+          {/* v2.3.2283: ink passed EXPLICITLY, not inferred from "this is the
+              call site with no handlers" -- same reasoning as tone and well. */}
+          <OfferRows offer={trade2.offers[otherId]} weapons={otherWpn} empty="Nothing staged yet" ink={theirInk} />
         </div>
 
         {/* v2.3.1235: batch-4 state-correction §6 — "Editing offer" while
@@ -754,7 +1026,7 @@ export function TradeWindowPanel(props) {
           <span>You offer</span>
           <span style={{ color: iConfirmed ? '#55B98A' : '#8D9B98' }}>{iConfirmed ? 'Confirmed ✓' : 'Editing offer'}</span>
         </div>
-        <div style={{ ...wellStyle, marginBottom: 6 }}>
+        <div style={{ ...myWell, marginBottom: 6 }}>
           {/* v2.3.1235: batch-4 state-correction §3/§4 — my rows render my
               staging mirror with Remove controls (existing trade2_set /
               trade2_unstage_weapon pathways); empty copy distinguishes an
@@ -822,6 +1094,10 @@ export function TradeWindowPanel(props) {
               (inputMode/pattern); the clamp to [0, coins] before the
               existing trade2_set send was already here (input hygiene). */}
           <input
+            /* v2.3.2288: .bt-nospin kills the browser's own up/down spin
+               buttons -- see the rule in game.css for why the type stays
+               "number" rather than becoming a text field. */
+            className="bt-nospin"
             type="number" min="0" max={coins} inputMode="numeric" pattern="[0-9]*"
             value={stage._gold || 0}
             onChange={(e) => {
@@ -833,6 +1109,138 @@ export function TradeWindowPanel(props) {
             style={{ width: 76, padding: '6px 8px', borderRadius: 8, border: '1px solid rgba(229,237,233,.11)' /* v2.3.1235: batch-4 rollout — well trough + brass tokens */, background: '#111E23', color: '#D8AA58', fontSize: 16 /* v2.3.1233b: iOS zoom guard */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', textAlign: 'right', outline: 'none' }}
           />
           <span style={{ fontSize: 11, color: '#8D9B98', fontVariantNumeric: 'tabular-nums' }}>of {coins}</span>
+          {/* v2.3.2286: inline, NOT under the ladder. As its own item in the
+              chip row it wrapped to a second line and stretched full width --
+              which read as a primary button and, worse, cost ~48px of a drawer
+              that is already capped at min(52vh,420px), pushing "Ready to
+              trade" below the fold. Beside the field it costs nothing: that
+              row had spare width, and this is where the number it clears is. */}
+          {/* v2.3.2288: the sign toggle, INLINE beside Clear -- "near the clear
+              button", and on this row it costs zero vertical pixels.  Its own
+              row would have spent ~42px of a drawer capped at min(52vh,420px),
+              which is exactly the budget that put "Ready to trade" under the
+              fold at v2.3.2286.
+
+              IT SHOWS THE MODE, NOT THE NEXT ACTION.  The other reading -- a
+              button naming what tapping it would switch TO -- puts the word
+              "Add" on screen at the same moment all seven chips read "-100",
+              a control contradicting the things it controls while real money
+              is on the table.  Here the button and the chips always agree, and
+              aria-pressed says the same thing to a screen reader.
+
+              GATED ON GOLD > 0, like Clear.  With nothing staged there is
+              nothing to subtract, so offering the mode would only let you into
+              the dead end the reset effect above exists to prevent. */}
+          {(stage._gold || 0) > 0 && (
+            <button
+              aria-pressed={goldMinus}
+              /* v2.3.2288: a stable hook for the QA suite. Selecting this
+                 control by its display copy would make every layout assertion
+                 collapse to "not found" the day the wording changes -- which is
+                 a red run that says nothing about the thing being measured. */
+              data-gold-mode={goldMinus ? 'sub' : 'add'}
+              aria-label={goldMinus
+                ? 'Presets subtract gold. Tap to make them add again.'
+                : 'Presets add gold. Tap to make them subtract.'}
+              onClick={() => setGoldMinus((v) => !v)}
+              style={{
+                marginLeft: 'auto', flex: '0 0 auto',
+                minHeight: 30, padding: '4px 10px', borderRadius: 999,
+                fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                fontVariantNumeric: 'tabular-nums',
+                /* nowrap is FUNCTIONAL, not cosmetic: without it "- Subtract"
+                   breaks inside the pill at narrow widths, the pill outgrows
+                   its 30px minHeight and the 33px gold row grows with it --
+                   straight into the fold budget that put "Ready to trade"
+                   under the dashboard at v2.3.2286. Do not remove it in a
+                   tidy-up. */
+                whiteSpace: 'nowrap',
+                /* The ON state is the brass-soft fill + brass hairline this
+                   codebase already uses for every other "this one is selected"
+                   control (.bt-cc-tab--on, .bt-paint-letter--on in game.css).
+                   Tokens, not new values: game.css forbids minting per-screen
+                   colours, and TRAPS SS48 already records this file carrying two
+                   near-duplicate brasses. */
+                border: '1px solid ' + (goldMinus ? 'var(--ui-brass, #D8AA58)' : 'rgba(229,237,233,.20)'),
+                background: goldMinus ? 'var(--ui-brass-soft, rgba(216,170,88,.15))' : '#293B41',
+                color: goldMinus ? '#D8AA58' : '#B6C1BE',
+              }}
+            >{goldMinus ? '\u2212 Subtract' : '+ Add'}</button>
+          )}
+          {(stage._gold || 0) > 0 && (
+            <button
+              aria-label="Offer no gold"
+              onClick={() => { const next = { ...stage }; delete next._gold; pushStage(next); }}
+              style={{
+                flex: '0 0 auto',
+                minHeight: 30, padding: '4px 10px', borderRadius: 999,
+                fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                border: '1px solid rgba(229,237,233,.20)',
+                background: '#293B41', color: '#B6C1BE',
+              }}
+            >Clear</button>
+          )}
+        </div>
+
+        {/* ═══ v2.3.2286: DENOMINATIONS, NOT A KEYPAD ═══
+            Owner: "For gold amounts to offer have preset amounts starting at 1
+            then 5 then 25, 50, then 100, 500, 1000 then a blank spot to enter."
+
+            THEY ADD, they do not set. The ladder is chip denominations, and the
+            "blank spot to enter" is the field above -- which already exists and
+            is where you type an exact number. If a chip SET the amount the
+            small end would be pointless (nobody offers exactly 1 gold) and 675
+            would still need the keyboard; adding lets you build any figure out
+            of taps, which is the thing the field is bad at on a phone.
+
+            DISABLED, NOT CLAMPED, when you cannot afford one more. A chip that
+            silently added less than it says would make the number under your
+            thumb disagree with the number on the chip. Same muted treatment the
+            weapon chips use at their cap, so "greyed" already means "at the
+            limit" in this panel.
+
+            The clear appears only once there is something to clear -- with
+            adding chips a reset is a necessity rather than a nicety, and a
+            permanently visible one would sit there saying nothing on the empty
+            offer every trade starts in. */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+          {GOLD_STEPS.map((amt) => {
+            /* v2.3.2288: one ladder, two signs.  In subtract mode a chip is
+               disabled when it would take you past zero, the mirror of the add
+               rule that disables what you cannot afford -- same principle both
+               ways, the number on the chip never disagreeing with the number it
+               would produce.  Landing exactly on zero DELETES the key rather
+               than staging a 0, which is what Clear and the field's own onChange
+               already do; a literal `_gold: 0` would ride the wire as an offer
+               of nothing and show up as a gold row worth zero. */
+            const cur = stage._gold || 0;
+            const over = goldMinus ? (cur - amt < 0) : (cur + amt > coins);
+            return (
+              <button
+                key={amt}
+                disabled={over}
+                aria-label={goldMinus
+                  ? ('Take back ' + amt + ' gold from your offer')
+                  : ('Offer ' + amt + ' more gold')}
+                onClick={() => {
+                  if (over) return;
+                  const next = { ...stage };
+                  const g = goldMinus ? Math.max(0, cur - amt) : Math.min(coins, cur + amt);
+                  if (g > 0) next._gold = g; else delete next._gold;
+                  pushStage(next);
+                }}
+                style={{
+                  flex: '1 1 auto', minWidth: 38, minHeight: 34,
+                  padding: '3px 5px', borderRadius: 999,
+                  fontSize: 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
+                  cursor: over ? 'not-allowed' : 'pointer',
+                  border: '1px solid ' + (over ? 'rgba(229,237,233,.11)' : 'rgba(216,170,88,.35)'),
+                  background: over ? 'transparent' : 'rgba(216,170,88,.10)',
+                  color: over ? '#667875' : '#D8AA58',
+                }}
+              >{goldMinus ? '\u2212' : '+'}{amt}</button>
+            );
+          })}
         </div>
 
         {/* v2.3.1235: batch-4 state-correction §6 — the server reset both
@@ -921,7 +1329,6 @@ export function TradeWindowPanel(props) {
         <div style={{ fontSize: 10, color: '#8D9B98', marginTop: 6 }}>
           Changing either side resets both confirmations. The server swaps both sides at once — no scams possible.
         </div>
-      </div>
-    </div>
+    </TradeDrawer>
   );
 }

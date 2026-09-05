@@ -217,10 +217,48 @@ async function newRoom(key) {
   check('state: ...and again once it is on', god.god === true && god.godMsLeft > 0, god);
 }
 
+// ── 9b. FINISH ALL QUESTS (v2.3.2277) ──
+//
+// Owner: "starting fresh with new characters forces me to go through the
+// tutorial to access zones that I usually need to playtest in ... Having the
+// finish all quests button will be good in that mode."
+//
+// The three things worth pinning are the three that could go wrong quietly:
+// that it marks EVERY quest in the server's own table (not a client-supplied
+// list), that it does NOT pay rewards (a debug button minting a full quest
+// line's gear into a live economy is a different feature), and that it opens
+// the gated zones as a side effect -- because 'turnedIn' satisfies the same
+// gate 'active' does, and the owner should not have to guess which button
+// did what.
+{
+  const { room } = await newRoom(KEY);
+  const ps = room.playerState.p1;
+  const before = { coins: ps.coins || 0, inv: JSON.stringify(ps.inventory || {}) };
+  const shut = await (await room._adminFetch(authed('/dev/state?id=p1'))).json();
+  check('quests: ember reads shut before finishing (guard)', shut.ok && shut.zones.ember === false, shut.zones);
+
+  const r = await room._adminFetch(authed('/dev/quests', { playerId: 'p1' }));
+  const body = await r.json();
+  check('quests: 200', r.status === 200 && body.ok, body);
+  check('quests: it finished the whole table', body.finished === body.total && body.total > 0, body);
+  const table = room._QUEST_REWARDS_DATA();
+  check('quests: ...and every id in it really is turnedIn',
+    Object.keys(table).every((q) => ps._quests[q] === 'turnedIn'),
+    Object.keys(table).filter((q) => ps._quests[q] !== 'turnedIn'));
+  check('quests: it paid NO rewards -- same purse, same bag',
+    (ps.coins || 0) === before.coins && JSON.stringify(ps.inventory || {}) === before.inv,
+    { before, after: { coins: ps.coins, inv: ps.inventory } });
+  const open = await (await room._adminFetch(authed('/dev/state?id=p1'))).json();
+  check('quests: ...and the gated zones opened with it', open.zones.ember === true, open.zones);
+
+  const again = await (await room._adminFetch(authed('/dev/quests', { playerId: 'p1' }))).json();
+  check('quests: running it twice is a clean no-op', again.ok && again.finished === 0, again);
+}
+
 // ── 10. AN UNKNOWN PLAYER IS AN ERROR, NOT A CRASH ──
 {
   const { room } = await newRoom(KEY);
-  for (const p of ['/dev/unlock', '/dev/kit', '/dev/vitals']) {
+  for (const p of ['/dev/unlock', '/dev/kit', '/dev/vitals', '/dev/quests']) {
     const r = await room._adminFetch(authed(p, { playerId: 'nobody' }));
     check('robust: ' + p + ' on an unknown player is a clean 404', r.status === 404, { status: r.status });
   }

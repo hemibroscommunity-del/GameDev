@@ -212,6 +212,12 @@ export function TradePanel(props) {
       color: '#8D9B98'
     }
   }, "Gold"), /*#__PURE__*/React.createElement("input", {
+    /* v2.3.2288: the same spin-button suppression the live trade window got.
+       This legacy gift-trade screen only renders against a worker with no
+       trade2 caps, but it is the same gold field with the same tiny up/down
+       arrows the owner asked to be rid of -- fixing one and not the other
+       would just make the defect depend on which server you reached. */
+    className: "bt-nospin",
     type: "number",
     min: "0",
     max: rpgState.coins || 0,

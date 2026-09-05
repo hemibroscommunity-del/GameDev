@@ -29,7 +29,7 @@ import { getRemnantsTexture as getSnowmanRemnantsTex, getSnowballTexture } from 
 import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../data/monsterVariants.js';
 import { ZONE_SHARDS } from '../../data/shards.js';
-import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in */
+import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up */
 import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2190: the worn cape, for the attack stand-ins */
 import { WHIRL_VORTEX, WHIRL_FX_MS, FIRE_TRAIL_FX, FIRE_TRAIL_FX_MS, FIRE_TRAIL_PLATE_FRAC } from '../fxStrips.js'; /* v2.3.1735; v2.3.2239 fire trail */
 import { getEquip } from '../gearCatalog.js';
@@ -58,6 +58,28 @@ const SECTORS8 = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest'
    itself to the avatar's real per-facing height, so the shield divides by this
    to ride along instead of staying one fixed size while the figure changes. */
 const STANDIN_REF_BODY_H = 84;
+
+/* ═══ v2.3.2273: THE CHOPPER'S HEIGHT, IN ONE PLACE THIS TIME ═══
+ *
+ * Owner: "Woodcutting animation character is a bit too small increase by 10%."
+ * 95 -> 104.5.  Previous tunes on this same number: 84 -> 112 (v2.3.1348,
+ * +33%, owner), 112 -> 95 (v2.3.1476, -15%, owner).
+ *
+ * IT IS A CONSTANT NOW BECAUSE THE LITERAL EXISTED TWICE AND DRIFTED.  The
+ * local chopper (_updateExtractionCue) and the one other players see
+ * (_updateRemoteExtraction's SPEC table) each carried their own copy, and the
+ * note beside the second one records what that cost: v2.3.1476 took the local
+ * figure to 95 and did not touch the copy, so for ~230 versions every peer's
+ * lumberjack rendered 18% larger than your own -- invisible to single-client
+ * QA, which is why it survived that long.  The comment there asks the next
+ * person to remember; a shared constant means they do not have to.
+ *
+ * Everything on the figure derives from this one number -- the body scale
+ * (h/220), the 2x gear-layer scale (h/440) and the head traits, which read
+ * |sprite.scale.y| -- so armour and hat keep their proportions for free.
+ * COOK_H and the firemaking FH are deliberately NOT folded in: the owner asked
+ * for woodcutting only, and those two are already independent. */
+export const CHOP_STANDIN_H = 104.5;
 import { cycleMs as jogCycleMs, frameCount as jogFrameCount, resolveDirection } from '../playerSprites.js';
 import { jogWaistRow } from '../jogWaist.js';
 import { bowTorsoCutRow } from '../bowTorsoCut.js';
@@ -560,6 +582,43 @@ for (const cfg of Object.values(DEBRIS_BURSTS)) {
    128px frames, not 256: this is a per-zone asset and it draws at ~44px,
    so 256 would be six times oversampled for four times the VRAM on the
    iPhone this game is played on. */
+/* ═══ v2.3.2279: THE BOW SPECIAL'S BLAST ═══
+ *
+ * Owner: "Add this explosion once the arrow is done adding tick damage for the
+ * final send off.  Make the explosion a large area about the size of the
+ * perimeter that a melee character can auto target a monster."
+ *
+ * Owner-supplied art, cut to the house shape: 8 frames of 256 in one strip,
+ * the same 2048x256 every other burst in this folder uses (grease, rocks,
+ * splash, woodchips), 2MB decoded.  GLOBAL, not per-zone: a bow travels, so
+ * this registers in preloadWorldAnimations and is warm before the intro
+ * overlay lifts -- the preloading LAW, and a first-use load on a 2MB strip is
+ * exactly the hitch it exists to forbid.
+ *
+ * DRAWN DIAMETER IS THE SERVER'S RADIUS, DOUBLED, and that is not decoration:
+ * the ring the player sees has to be the ring the worker hit, or the feature
+ * teaches a lie about its own reach.  arrowblast.js RADIUS mirrors
+ * TARGET_PERIMETER_PX (220) on the server side; this is the client end of the
+ * same pin. */
+const ARROW_BLAST = { frames: [], url: '/sprites/effects/arrow-blast-v1.webp?v=2.3.2279' };
+const ARROW_BLAST_MS = 620;        /* ~78ms a frame -- a bang, not a bloom */
+const ARROW_BLAST_D = 220 * 2;     /* drawn world px across, = 2 x the blast radius */
+let _arrowBlastLoad = null;
+export function ensureArrowBlastTex() {
+  if (_arrowBlastLoad) return _arrowBlastLoad;
+  _arrowBlastLoad = _fxLoad(ARROW_BLAST.url).then((tex) => {
+    if (!tex || !tex.source) return;
+    tex.source.scaleMode = 'linear';
+    const fw = Math.floor(tex.source.width / 8);
+    for (let i = 0; i < 8; i++) {
+      ARROW_BLAST.frames.push(new Texture({
+        source: tex.source, frame: new Rectangle(i * fw, 0, fw, tex.source.height),
+      }));
+    }
+  }).catch(() => {});   /* no blast is a cosmetic loss; the damage already landed */
+  return _arrowBlastLoad;
+}
+
 const SNOWBALL_BURST = { frames: [], url: '/sprites/effects/snowball-burst-v1.png?v=2.3.2217' };
 const SNOWBALL_BURST_MS = 420;    /* ~52ms a frame — a snowball, not a bomb */
 const SNOWBALL_BURST_H = 44;      /* drawn height in world px; the ball is 16 */
@@ -582,6 +641,34 @@ export function ensureSnowballBurstTex() {
     }
   }).catch(() => {}); /* no burst is a cosmetic loss, never a broken frame */
   return _snowballBurstLoad;
+}
+
+/* ═══ v2.3.2272: THE FROST-ONLY IMPACT ART GOES BACK TOO ═══
+ * Both sheets above are per-zone by the same reasoning the snowman sprites are,
+ * and both were missing the same thing: an exit.  mp-texdrift caught them as
+ * the ~6.5MB frost left behind after v2.3.2272's variant free had returned
+ * every other zone to its exact baseline -- a small, BOUNDED residue rather
+ * than the monotone climb, but the point of the change is a steady state of
+ * "the zone you are in", and two sheets that only frost uses are not that.
+ * Frames are destroyed WITHOUT their source and the source once after, because
+ * every frame here is a window onto the same TextureSource. */
+export async function freeFrostImpactTex() {
+  const { Assets } = await import('pixi.js');
+  const drop = (arr) => {
+    const src = arr && arr[0] && arr[0].source;
+    for (let i = 0; i < (arr ? arr.length : 0); i++) { try { arr[i].destroy(false); } catch (e) { /* gone */ } }
+    return src;
+  };
+  const s1 = drop(SNOWBALL_BURST.frames);
+  SNOWBALL_BURST.frames.length = 0;
+  _snowballBurstLoad = null;
+  const s2 = drop(IMPACT_TEX);
+  IMPACT_TEX = null;
+  _impactLoadStarted = false;
+  for (const [src, url] of [[s1, SNOWBALL_BURST.url], [s2, '/sprites/monsters/snowman/impact.png?v=2']]) {
+    try { await Assets.unload(url); } catch (e) { /* still referenced / never loaded */ }
+    try { if (src && !src.destroyed) src.destroy(); } catch (e) { /* already gone */ }
+  }
 }
 
 const DEBRIS_MS = 450;
@@ -1035,6 +1122,56 @@ function cssToHex(css) {
 /**
  * Manages all visual effects.
  */
+/* ═══ v2.3.2272: THE PEER RECOLOUR BAKES NEEDED THE CAP THEIR SIBLINGS HAVE ═══
+ *
+ * Owner: "the game slows down after playing for a while (like an accumulated
+ * frame rate drop)."
+ *
+ * _remoteBodyCache and _remoteSheetCache mint a full recoloured canvas -- a GPU
+ * TextureSource plus one frame Texture per column -- for every distinct
+ * (sheet, skin, pants, shoes) a peer swings a sword or looses an arrow in.  The
+ * note at the top of the local bake sizes one of these at ~4MB per peer skin.
+ * They were WRITE-ONLY: create, get, set, and nothing else in the file -- no
+ * delete, no cap, no clear, and not in the peer-leave sweep that already
+ * retires _remoteSkillSprites and _remoteSlashSprites when a player goes.
+ *
+ * That is the exact shape of the report.  The cache only grows while somebody
+ * ELSE is mid-swing near you, so it is driven by hours spent in a busy room
+ * rather than by anything you do -- and the catalogue ceiling is 14 skins x 14
+ * pants x 8 shoes (playerSkins.js) times every sheet, which for a shared room
+ * over an evening is unbounded in practice.  Being GPU-side, it is also
+ * invisible to performance.memory, so a heap graph would have said "fine".
+ *
+ * The fix is not new: it is the LRU every sibling cache in this pair of files
+ * already has -- _maskedBodyCache (entityRenderer, cap 520, re-inserts on hit)
+ * and _fishTopCache (cap 64, destroys the evicted).  Both idioms are kept here:
+ * a hit is re-inserted so the peers actually on screen stay hot, and an
+ * eviction destroys the frames AND the shared source, since the whole point is
+ * to hand the texture memory back.
+ *
+ * 24 is sized from what can be on screen rather than from the catalogue: it is
+ * comfortably more distinct peer appearances than a phone viewport can hold
+ * mid-swing at once, so a fight never thrashes, while an evening's worth of
+ * strangers can no longer accumulate. */
+const REMOTE_BAKE_CACHE_MAX = 24;
+
+function _trimBakeCache(cache) {
+  while (cache.size > REMOTE_BAKE_CACHE_MAX) {
+    const k0 = cache.keys().next().value;
+    const old = cache.get(k0);
+    cache.delete(k0);
+    /* Frames first WITHOUT their source, then the source once: every frame in
+       the array is a window onto the same TextureSource, so destroying it
+       through the first frame would leave the rest pointing at freed memory
+       for the length of this loop. */
+    try {
+      const src = old && old[0] && old[0].source;
+      for (let i = 0; i < old.length; i++) { try { old[i].destroy(false); } catch (e) { /* already gone */ } }
+      if (src && !src.destroyed) src.destroy();
+    } catch (e) { /* a cache entry that will not free is still evicted */ }
+  }
+}
+
 export class EffectsRenderer {
   constructor(layers) {
     this.particleLayer = layers.particles;
@@ -1991,6 +2128,30 @@ export class EffectsRenderer {
     /* v2.3.867: hide the skill-stand-in traits up front; whichever stand-in is
        active this frame (firemaking / chopper / cook) re-shows + places them. */
     hideSkillTraits(this.skillTraits);
+    /* ═══ v2.3.2281: A CORPSE IS NOT DOING ANYTHING ═══
+       Owner: "Make sure during death animation only that plays and character
+       doesn't have any items frozen in place around it."
+
+       The death path's own sweep (entityRenderer `_hideExceptDeep`) reaches
+       only the player's DISPLAY container. Every stand-in figure below is
+       drawn from THIS renderer's layers instead, off state that dying does not
+       clear -- so `_swordSwinging` was still true, `_extraction` still held a
+       node, and each of them re-showed itself over the corpse every frame.
+       Measured before the fix (mp-deathstrip): a cape, a hood, a shield and a
+       swing shirt left hanging mid-swing, and mid-harvest the whole lumberjack
+       still standing with the death animation not drawn at all.
+
+       Answered ONCE here rather than recomputed in each stand-in: the hold is
+       3.5s from the death stamp and a second copy of that number is how the
+       corpse and the figures on top of it come to disagree about whether it is
+       there. Each stand-in reads this in its existing "nothing to draw" early
+       return -- AFTER its hide preamble, and after the hideSkillTraits above,
+       so the gate does not need to know which layers any of them owns. A
+       stand-in added tomorrow that returns early on idle gets this for free
+       the moment it reads the flag; one that does not is visible to
+       mp-deathstrip, which asks the SCREEN what is on the corpse rather than
+       checking a list. */
+    this._selfCorpse = selfCorpseUp(S);
     this._updateParticles(S, now);
     this._updateDamageNumbers(S, now);
     this._updateCatchFlights(S, viewW, viewH, now);
@@ -2187,17 +2348,31 @@ export class EffectsRenderer {
           const o = S.others[oid];
           if (o && o._dodgeTrail) peer += o._dodgeTrail.length;
         }
-        return { rolling: !!S._dodgeRoll, mine: (S._dodgeTrail || []).length, peer };
+        /* v2.3.2287: + the radius the ghosts were actually drawn at, local
+           and peer.  The counts alone cannot see a vista-scale bug: a
+           full-size blob and a shrunken one are both "one ghost". */
+        return { rolling: !!S._dodgeRoll, mine: (S._dodgeTrail || []).length, peer,
+          mineR: this._dodgeGhostR != null ? this._dodgeGhostR : null,
+          peerR: this._dodgeGhostPeerR != null ? this._dodgeGhostPeerR : null };
       };
     }
 
-    // Dodge trail afterimages
+    /* Dodge trail afterimages.
+       v2.3.2287: the radius is scaled by zonePlayerScale AT THE GHOST'S OWN
+       position, not the player's.  On the vista (`worldview`, the only zone
+       whose scale is not a literal 1) the figure draws at 3-55% but this
+       circle was a flat 8px world radius, so your roll left a row of blue
+       blobs far bigger than the body that shed them.  Scaling per ghost and
+       not once per frame also makes the smear taper as you recede, which is
+       what a trail drawn in perspective has to do. */
     const trail = S._dodgeTrail || [];
     for (let i = trail.length - 1; i >= 0; i--) {
       const ghost = trail[i];
       const age = (now - ghost.ts) / 200;
       if (age >= 1) { trail.splice(i, 1); continue; }
-      gfx.circle(ghost.x, ghost.y, 8);
+      const gk = zonePlayerScale(S.currentZone, ghost.x, ghost.y, TILE) || 1;
+      this._dodgeGhostR = 8 * gk;
+      gfx.circle(ghost.x, ghost.y, 8 * gk);
       gfx.fill({ color: 0x3498db, alpha: (1 - age) * 0.3 });
     }
 
@@ -2219,7 +2394,13 @@ export class EffectsRenderer {
           const g = ot[i];
           const age = (now - g.ts) / 200;
           if (age >= 1) { ot.splice(i, 1); continue; }
-          gfx.circle(g.x, g.y, 8);
+          /* v2.3.2287: scaled exactly like the local ghosts above.  A
+             local-only exemption is the mistake v2.3.2124 shipped and
+             v2.3.2141 reverted — the two halves move together or a peer's
+             roll looks like a different move than your own. */
+          const gk = zonePlayerScale(S.currentZone, g.x, g.y, TILE) || 1;
+          this._dodgeGhostPeerR = 8 * gk;
+          gfx.circle(g.x, g.y, 8 * gk);
           gfx.fill({ color: 0x3498db, alpha: (1 - age) * 0.3 });
         }
       }
@@ -2707,6 +2888,11 @@ export class EffectsRenderer {
     const arrows = S.arrows || [];
     for (const a of arrows) {
       if (!a._renderX) continue;
+      /* v2.3.2287: the vista's perspective curve, at the arrow's OWN drawn
+         position -- the same rule the peer stand-ins follow, and literally 1
+         on every zone but worldview. See _placeMagicBolt for why the `|| 1`
+         guards matter more than the multiply does. */
+      const _pk = zonePlayerScale(S.currentZone, a._renderX, a._renderY, TILE) || 1;
       const elemColor = a._projElem && ELEMENTS[a._projElem] ? cssToHex(ELEMENTS[a._projElem].color) : 0xc8c8d0;
       const fadeA = Math.min(1, a.life / 20);
       /* v2.3.1095: a planted/falling arrow is stuck in the world -- no motion
@@ -2761,13 +2947,13 @@ export class EffectsRenderer {
       const _paintedSpecial = (isBowHeavy && ARROW_SPECIAL.frames.length)
         || (_isStaffSpecial && MAGIC_SPECIAL.frames.length);
       if (!_stuckPose && !(_isBasicStaffBolt && MAGIC_BOLT_FRAMES.length) && !_paintedSpecial) {
-        this._updateProjectileTrail(a, gfx, fadeA, /* isStaffProj */ a._isStaffProj || a.ice);
+        this._updateProjectileTrail(a, gfx, fadeA, /* isStaffProj */ a._isStaffProj || a.ice, _pk);
       }
 
       if (isBowHeavy && ARROW_SPECIAL.frames.length) {
         /* v2.3.1396: painted charged arrow (owner sheet) — golden flame
            wrap baked into the art, so the halo circles retire. */
-        this._placeSpecialFx(ARROW_SPECIAL, a, a._renderX, a._renderY, _angB, fadeA, now, _liveBolts);
+        this._placeSpecialFx(ARROW_SPECIAL, a, a._renderX, a._renderY, _angB, fadeA, now, _liveBolts, _pk);
       } else if (isBowHeavy) {
         /* Heavy bow shot — draw the arrow normally with a bright
            element-tinted halo around it.  Reads as a powered shot
@@ -2776,18 +2962,18 @@ export class EffectsRenderer {
            request so the special bow shot reads as much heavier and
            its damage radius matches the visual.
            v2.3.1396: fallback while the painted strip loads. */
-        gfx.circle(a._renderX, a._renderY, 39);
+        gfx.circle(a._renderX, a._renderY, 39 * _pk);
         gfx.fill({ color: 0xf5c542, alpha: fadeA * 0.25 });
-        gfx.circle(a._renderX, a._renderY, 27);
+        gfx.circle(a._renderX, a._renderY, 27 * _pk);
         gfx.fill({ color: elemColor, alpha: fadeA * 0.45 });
-        gfx.circle(a._renderX, a._renderY, 15);
+        gfx.circle(a._renderX, a._renderY, 15 * _pk);
         gfx.fill({ color: 0xfff2a8, alpha: fadeA * 0.55 });
-        this._drawArrow(gfx, a._renderX, a._renderY, _angB, elemColor, fadeA, 3);
+        this._drawArrow(gfx, a._renderX, a._renderY, _angB, elemColor, fadeA, 3 * _pk);
       } else if (_isStaffSpecial && MAGIC_SPECIAL.frames.length) {
         /* v2.3.1396: painted charged orb (owner sheet) — golden power
            halo baked into the art; the ring draw below stays as the
            pre-load fallback (and for non-staff ice projectiles). */
-        this._placeSpecialFx(MAGIC_SPECIAL, a, a._renderX, a._renderY, a.ang, fadeA, now, _liveBolts);
+        this._placeSpecialFx(MAGIC_SPECIAL, a, a._renderX, a._renderY, a.ang, fadeA, now, _liveBolts, _pk);
       } else if (a.isSpecial || a.ice) {
         /* Staff special / ice — bigger yellow glow ring so specials
            read as distinct from regular projectiles. Three concentric
@@ -2796,25 +2982,25 @@ export class EffectsRenderer {
             – mid element-tinted glow
             – bright element-tinted core */
         const sz = a._isStaffProj ? 2.0 : 1.6;
-        gfx.circle(a._renderX, a._renderY, 16 * sz);
+        gfx.circle(a._renderX, a._renderY, 16 * sz * _pk);
         gfx.fill({ color: 0xf5c542, alpha: fadeA * 0.22 });
-        gfx.circle(a._renderX, a._renderY, 12 * sz);
+        gfx.circle(a._renderX, a._renderY, 12 * sz * _pk);
         gfx.fill({ color: elemColor, alpha: fadeA * 0.35 });
-        gfx.circle(a._renderX, a._renderY, 7 * sz);
+        gfx.circle(a._renderX, a._renderY, 7 * sz * _pk);
         gfx.fill({ color: elemColor, alpha: fadeA * 0.9 });
-        gfx.circle(a._renderX, a._renderY, 7 * sz);
-        gfx.stroke({ color: 0xfff2a8, width: 1.5, alpha: fadeA * 0.85 });
+        gfx.circle(a._renderX, a._renderY, 7 * sz * _pk);
+        gfx.stroke({ color: 0xfff2a8, width: 1.5 * _pk, alpha: fadeA * 0.85 });
       } else if (a._isStaffProj) {
         /* v2.3.1334: painted 4-frame magic bolt (owner sheet).  The
            tail always points back toward the caster: rotation = the
            travel angle, art noses right.  Falls back to the old
            two-circle draw until the strip loads. */
         if (MAGIC_BOLT_FRAMES.length) {
-          this._placeMagicBolt(a, a._renderX, a._renderY, a.ang, fadeA, now, _liveBolts);
+          this._placeMagicBolt(a, a._renderX, a._renderY, a.ang, fadeA, now, _liveBolts, _pk);
         } else {
-          gfx.circle(a._renderX, a._renderY, 5);
+          gfx.circle(a._renderX, a._renderY, 5 * _pk);
           gfx.fill({ color: elemColor, alpha: fadeA * 0.8 });
-          gfx.circle(a._renderX, a._renderY, 9);
+          gfx.circle(a._renderX, a._renderY, 9 * _pk);
           gfx.fill({ color: elemColor, alpha: fadeA * 0.2 });
         }
       } else {
@@ -2828,7 +3014,17 @@ export class EffectsRenderer {
            two deliberately differ by `planting`, and only there. */
         /* v2.3.1915: a PLANTED arrow draws under the player. `planting` is
            still falling — in the air, so it stays in front until it lands. */
-        this._drawArrow(gfx, a._renderX, a._renderY, _angB, elemColor, fadeA, 1, _headless, !!a.planted);
+        this._drawArrow(gfx, a._renderX, a._renderY, _angB, elemColor, fadeA, 1 * _pk, _headless, !!a.planted);
+        /* v2.3.2287 QA probe, house style (__btChopFigure, __btStandInCape).
+           A screenshot cannot tell "the arrow shrank" from "the arrow was never
+           drawn", and the difference between those two is the whole risk of
+           this change -- a dropped `|| 1` makes the scale NaN and the arrow
+           vanishes in EVERY zone. Reports the multiplier and the resulting
+           drawn length so a test can assert an exact 52.5 off the vista. */
+        if (typeof window !== 'undefined') {
+          this._projScaleProbe = { zone: S.currentZone, pk: +_pk.toFixed(4),
+            drawnLenPx: +(ARROW_PINE.lenPx * _pk).toFixed(2) };
+        }
       }
     }
 
@@ -2853,29 +3049,34 @@ export class EffectsRenderer {
     const remote = S._remoteProjectiles || [];
     for (const rp of remote) {
       if (!rp._renderX) continue;
+      /* v2.3.2287: remote projectiles were never curved either. Unlike the
+         remote STAND-IN figures (:6288 / :6768 / :6923, curved since
+         v2.3.1574) this is a FIRST application, not a double one -- there is
+         no zonePlayerScale anywhere in this loop today. */
+      const _pk = zonePlayerScale(S.currentZone, rp._renderX, rp._renderY, TILE) || 1;
       /* v2.3.1334: basic remote staff bolts share the painted sprite
          (and skip the line trail — the art carries its own tail).
          v2.3.1396: remote SPECIALS share the painted special art too. */
       const _remoteBasicBolt = rp.isStaff && !rp.isSpecial && MAGIC_BOLT_FRAMES.length;
       const _remoteMagicSpec = rp.isStaff && rp.isSpecial && MAGIC_SPECIAL.frames.length;
       const _remoteArrowSpec = !rp.isStaff && rp.isSpecial && ARROW_SPECIAL.frames.length;
-      if (!_remoteBasicBolt && !_remoteMagicSpec && !_remoteArrowSpec) this._updateProjectileTrail(rp, gfx, 1.0, !!rp.isStaff);
+      if (!_remoteBasicBolt && !_remoteMagicSpec && !_remoteArrowSpec) this._updateProjectileTrail(rp, gfx, 1.0, !!rp.isStaff, _pk);
       if (rp.isStaff) {
         if (_remoteMagicSpec) {
-          this._placeSpecialFx(MAGIC_SPECIAL, rp, rp._renderX, rp._renderY, rp.ang, 0.95, now, _liveBolts);
+          this._placeSpecialFx(MAGIC_SPECIAL, rp, rp._renderX, rp._renderY, rp.ang, 0.95, now, _liveBolts, _pk);
         } else if (_remoteBasicBolt) {
-          this._placeMagicBolt(rp, rp._renderX, rp._renderY, rp.ang, 0.95, now, _liveBolts);
+          this._placeMagicBolt(rp, rp._renderX, rp._renderY, rp.ang, 0.95, now, _liveBolts, _pk);
         } else {
           /* v2.3.840: special staff bolts read bigger + golden with a halo. */
-          gfx.circle(rp._renderX, rp._renderY, rp.isSpecial ? 7 : 4);
+          gfx.circle(rp._renderX, rp._renderY, (rp.isSpecial ? 7 : 4) * _pk);
           gfx.fill({ color: rp.isSpecial ? 0xf5c542 : 0xa855f7, alpha: rp.isSpecial ? 0.95 : 0.8 });
-          if (rp.isSpecial) { gfx.circle(rp._renderX, rp._renderY, 11); gfx.stroke({ color: 0xfff2a8, width: 2, alpha: 0.6 }); }
+          if (rp.isSpecial) { gfx.circle(rp._renderX, rp._renderY, 11 * _pk); gfx.stroke({ color: 0xfff2a8, width: 2 * _pk, alpha: 0.6 }); }
         }
       } else if (_remoteArrowSpec) {
-        this._placeSpecialFx(ARROW_SPECIAL, rp, rp._renderX, rp._renderY, rp.ang + bend, 1.0, now, _liveBolts);
+        this._placeSpecialFx(ARROW_SPECIAL, rp, rp._renderX, rp._renderY, rp.ang + bend, 1.0, now, _liveBolts, _pk);
       } else {
-        this._drawArrow(gfx, rp._renderX, rp._renderY, rp.ang + bend, rp.isSpecial ? 0xf5c542 : 0xd4a574, rp.isSpecial ? 1.0 : 0.9);
-        if (rp.isSpecial) { gfx.circle(rp._renderX, rp._renderY, 9); gfx.stroke({ color: 0xfff2a8, width: 2, alpha: 0.55 }); }
+        this._drawArrow(gfx, rp._renderX, rp._renderY, rp.ang + bend, rp.isSpecial ? 0xf5c542 : 0xd4a574, rp.isSpecial ? 1.0 : 0.9, _pk);   /* v2.3.2287: 7th arg is SCALE, not alpha -- this call omitted it and relied on the default */
+        if (rp.isSpecial) { gfx.circle(rp._renderX, rp._renderY, 9 * _pk); gfx.stroke({ color: 0xfff2a8, width: 2 * _pk, alpha: 0.55 }); }
       }
     }
 
@@ -3085,14 +3286,22 @@ export class EffectsRenderer {
     }
   }
 
-  _placeMagicBolt(p, x, y, ang, alpha, now, liveSet) {
+  /* ═══ v2.3.2287: A PROJECTILE IS AN OBJECT STANDING AT A WORLD POINT ═══
+     Owner: "I shot an arrow and it was gigantic ... Character needs to stay at
+     small size through all animations in worldview."
+     The vista shrinks every BODY by a perspective curve, and the figure that
+     fires the arrow already takes it -- the missile did not, so a full-size
+     arrow flew out of a 0.03-scale archer. `pk` is that curve, sampled at the
+     projectile's own drawn position exactly as the peer stand-ins do, and it is
+     literally 1 on every zone but worldview.
+     THE `|| 1` IS LOAD-BEARING: a missing argument or an undefined zone
+     mid-transition makes this NaN, and a NaN scale does not draw a big arrow --
+     it draws NO arrow, in every zone. Every read is guarded. */
+  _placeMagicBolt(p, x, y, ang, alpha, now, liveSet, pk) {
     let sprite = p._boltSprite;
     if (!sprite || sprite.destroyed) {
       sprite = new Sprite(MAGIC_BOLT_FRAMES[0]);
       sprite.anchor.set(MAGIC_BOLT_ANCHOR.x, MAGIC_BOLT_ANCHOR.y);
-      /* 217x128 source frame; the orb core is ~100 px of it — 0.18
-         lands the head at ~18 px, matching the old 9 px-radius glow. */
-      sprite.scale.set(0.18);
       if (p._boltPhase == null) p._boltPhase = Math.floor(Math.random() * 4);
       this.projectileLayer.addChild(sprite);
       p._boltSprite = sprite;
@@ -3102,6 +3311,11 @@ export class EffectsRenderer {
       (Math.floor(now / MAGIC_BOLT_FRAME_MS) + (p._boltPhase || 0)) % MAGIC_BOLT_FRAMES.length
     ];
     if (sprite.texture !== frame) sprite.texture = frame;
+    /* 217x128 source frame; the orb core is ~100 px of it — 0.18 lands the head
+       at ~18 px, matching the old 9 px-radius glow.
+       v2.3.2287: set PER FRAME rather than once at construction, because the
+       vista curve changes as the bolt travels. */
+    sprite.scale.set(0.18 * (pk || 1));
     sprite.x = x;
     sprite.y = y;
     sprite.rotation = ang || 0;
@@ -3113,12 +3327,11 @@ export class EffectsRenderer {
    *  sprite — charged bow arrow or charged staff orb (cfg =
    *  ARROW_SPECIAL / MAGIC_SPECIAL).  Same flicker + anchor + reap
    *  contract as _placeMagicBolt; shared by local and remote. */
-  _placeSpecialFx(cfg, p, x, y, ang, alpha, now, liveSet) {
+  _placeSpecialFx(cfg, p, x, y, ang, alpha, now, liveSet, pk) {
     let sprite = p._fxSprite;
     if (!sprite || sprite.destroyed) {
       sprite = new Sprite(cfg.frames[0]);
       sprite.anchor.set(cfg.anchor.x, cfg.anchor.y);
-      sprite.scale.set(cfg.scale);
       if (p._fxPhase == null) p._fxPhase = Math.floor(Math.random() * 4);
       this.projectileLayer.addChild(sprite);
       p._fxSprite = sprite;
@@ -3128,6 +3341,7 @@ export class EffectsRenderer {
       (Math.floor(now / cfg.frameMs) + (p._fxPhase || 0)) % cfg.frames.length
     ];
     if (sprite.texture !== frame) sprite.texture = frame;
+    sprite.scale.set(cfg.scale * (pk || 1));   /* v2.3.2287: per frame, see _placeMagicBolt */
     sprite.x = x;
     sprite.y = y;
     sprite.rotation = ang || 0;
@@ -3144,7 +3358,11 @@ export class EffectsRenderer {
    *  Trail position is captured ONCE per render frame.  At the
    *  arrow's typical speed (8 px/frame), an 8-point trail covers
    *  ~64 px = a clear streak that doesn't lag behind reality. */
-  _updateProjectileTrail(p, gfx, fadeA, isOrb) {
+  /* v2.3.2287: the arrow probe's reader. Armed lazily like the rest -- no cost
+     unless something calls it, and nothing in the game does. */
+  projScaleProbe() { return this._projScaleProbe || null; }
+
+  _updateProjectileTrail(p, gfx, fadeA, isOrb, pk) {
     const TRAIL_LEN = 8;
     if (!p._trail) p._trail = [];
     /* Skip recording if we just teleported (e.g. zone change reset).
@@ -3169,7 +3387,7 @@ export class EffectsRenderer {
       gfx.stroke({
         /* Dark brown for arrows, lighter for orbs. */
         color: isOrb ? 0xc8c8d0 : 0x5a3820,
-        width: 0.4 + t * 1.6,
+        width: (0.4 + t * 1.6) * (pk || 1),   /* v2.3.2287 */
         alpha: fadeA * (0.05 + t * 0.45),
       });
     }
@@ -4927,12 +5145,25 @@ export class EffectsRenderer {
   _updateDebrisBursts(S, now) {
     const q = S && S._debrisBursts;
     if (q && q.length) {
-      if (!this._debrisLast) this._debrisLast = Object.create(null);
+      if (!this._debrisLast) { this._debrisLast = Object.create(null); this._debrisSweep = 0; }
       for (let i = 0; i < q.length; i++) {
         const b = q[i];
         const last = this._debrisLast[b.monsterId || ''] || 0;
         if (now - last < DEBRIS_MIN_GAP_MS) continue;
         this._debrisLast[b.monsterId || ''] = now;
+        /* v2.3.2272: and forget the ones that can no longer gate anything.
+           This is a monster-id-keyed map of last-burst stamps with no prune,
+           and monster ids are never reused (spawnscale's 'sm-<zone>-x<seq>'
+           counter never resets), so it grew for the life of the page.  Tiny
+           per entry, which is exactly why it would never have been found by
+           looking -- swept here, at the only site that writes it, against the
+           same gap that is the only thing the stamps are read for. */
+        if (++this._debrisSweep > 200) {
+          this._debrisSweep = 0;
+          for (const k in this._debrisLast) {
+            if (now - this._debrisLast[k] > DEBRIS_MIN_GAP_MS * 20) delete this._debrisLast[k];
+          }
+        }
         this._spawnDebrisBurst(b, now);
       }
       q.length = 0;
@@ -5307,6 +5538,7 @@ export class EffectsRenderer {
     }
     this._advanceSnowmanImpacts(now);
     this._updateSnowballBursts(S, now);
+    this._updateArrowBlasts(S, now);
   }
 
   /* v2.3.2217: drain the queue projectiles.js fills when a thrown snowball's
@@ -5346,6 +5578,74 @@ export class EffectsRenderer {
       const tex = SNOWBALL_BURST.frames[idx];
       if (tex && fx.sp.texture !== tex) fx.sp.texture = tex;
     }
+  }
+
+  /* v2.3.2279: drain the queue gameEvents fills when the worker broadcasts
+     arrow_boom, and advance the ones already playing.  Same one-shot shape as
+     _updateSnowballBursts and drained the same way -- whether or not the art
+     loaded -- so a missing texture cannot let the queue pile up.
+     EVERY client in the zone runs this, including the shooter: the blast is
+     drawn from the SERVER's broadcast rather than predicted locally, so there
+     is exactly one source of truth for where it went off and nobody sees a
+     second ghost explosion.  It costs the shooter a round trip, which for a
+     send-off after four seconds of ticking is not a latency anyone can feel. */
+  _updateArrowBlasts(S, now) {
+    const q = S && S.arrowBlasts;
+    if (q && q.length) {
+      if (ARROW_BLAST.frames.length) {
+        if (!this._arrowBlasts) this._arrowBlasts = [];
+        for (const b of q) {
+          const sp = new Sprite(ARROW_BLAST.frames[0]);
+          sp.anchor.set(0.5, 0.5);
+          const f0 = ARROW_BLAST.frames[0];
+          /* Sized off the SERVER's radius when it sent one, so a later retune
+             of the blast needs no client edit; ARROW_BLAST_D is the fallback
+             for an old worker that does not carry `r`. */
+          const across = (typeof b.r === 'number' && b.r > 0) ? b.r * 2 : ARROW_BLAST_D;
+          sp.scale.set(across / (f0.width || 256));
+          sp.x = b.x; sp.y = b.y;
+          /* Additive: it is a fireball over ground art, and the source is
+             drawn on black. */
+          sp.blendMode = 'add';
+          this.particleLayer.addChild(sp);
+          this._arrowBlasts.push({ sp, startedAt: b.at || now });
+        }
+      }
+      q.length = 0;
+    }
+    const list = this._arrowBlasts;
+    if (!list || !list.length) return;
+    for (let i = list.length - 1; i >= 0; i--) {
+      const fx = list[i];
+      const t = now - fx.startedAt;
+      if (t >= ARROW_BLAST_MS || fx.sp.destroyed) {
+        if (!fx.sp.destroyed) {
+          if (fx.sp.parent) fx.sp.parent.removeChild(fx.sp);
+          fx.sp.destroy();
+        }
+        list.splice(i, 1);
+        continue;
+      }
+      const idx = Math.min(7, Math.floor((t / ARROW_BLAST_MS) * 8));
+      const tex = ARROW_BLAST.frames[idx];
+      if (tex && fx.sp.texture !== tex) fx.sp.texture = tex;
+    }
+  }
+
+  /* QA probe (house style): how many blasts are playing and how big they are
+     drawn.  A screenshot cannot tell a 440px blast from a 220px one against
+     unfamiliar ground, and the whole point of the mirror-pin is that the ring
+     drawn is the ring the worker hit. */
+  arrowBlastProbe() {
+    const l = this._arrowBlasts || [];
+    return {
+      playing: l.length,
+      loaded: ARROW_BLAST.frames.length,
+      drawn: l.map((f) => ({
+        across: +(f.sp.width || 0).toFixed(1),
+        x: Math.round(f.sp.x), y: Math.round(f.sp.y),
+      })),
+    };
   }
 
   _spawnSnowmanImpact(m, sizeMul, now) {
@@ -5729,6 +6029,7 @@ export class EffectsRenderer {
   _updateFishingHole(S, now) {
     const ex = S && S._extraction;
     if (!ex || ex.skill !== 'fishing') return;
+    if (this._selfCorpse) return;   /* v2.3.2281 */
     const node = (ex.nodeRef && ex.nodeRef.alive) ? ex.nodeRef
                : (S.gatherNodes && ex.nodeId ? S.gatherNodes.find(n => n.id === ex.nodeId) : null);
     if (!node) return;
@@ -5827,6 +6128,7 @@ export class EffectsRenderer {
     if (this.fireChestSprite) this.fireChestSprite.visible = false;
     const fm = S && S._firemaking;
     if (!fm || !S.player || !this.fireSprite || !this._fireFrames.length) return;
+    if (this._selfCorpse) return;   /* v2.3.2281 */
     if (fm.doneAt && now > fm.doneAt) return;
     /* v2.3.1435 (owner): 1.75x (88 -> 154).  v2.3.1715: FRAME_MS 55 -> 200 with
        the 29-frame strip's retirement.  The number is the light's DURATION, not
@@ -5844,10 +6146,28 @@ export class EffectsRenderer {
     const fi = Math.min(this._fireFrames.length - 1, Math.floor(elapsed / FRAME_MS));
     const sp = this.fireSprite;
     sp.texture = this._fireFrames[fi];
-    const s = FH / FIRE_FH;
+    /* ═══ v2.3.2287: THE TERM THE PEER COPY GOT AND THIS ONE NEVER DID ═══
+       Owner: "I think when you start fires in worldview you're also gigantic."
+       v2.3.1574 fixed this for OTHER players, with the sentence "the stand-in
+       was sized in absolute pixels while the peer's BODY is scaled by the
+       zone's perspective curve" -- and left your own copy alone, because on a
+       normal zone the curve is 1 and nothing looks wrong. Same sentence, same
+       fix, your figure this time. See the peer twin at _updateRemoteExtraction. */
+    const pscale = zonePlayerScale(S.currentZone, S.player.x, S.player.y, TILE);
+    const s = (FH / FIRE_FH) * pscale;
     sp.scale.set(s, s);
     sp.x = S.player.x;
-    sp.y = S.player.y + 6;
+    sp.y = S.player.y + 6 * pscale;   /* the foot offset shrinks with the figure */
+    /* v2.3.2287 QA probe -- the sibling of __btChopFigure, which the fire
+       figure never had. */
+    if (typeof window !== 'undefined') {
+      const _fc = this.fireChestSprite || this.fireShirtSprite || null;
+      window.__btFireFigure = () => ({
+        visible: !!sp.visible, scaleY: sp.scale.y,
+        drawnH: +(Math.abs(sp.scale.y) * FIRE_FH).toFixed(2),
+        x: sp.x, y: sp.y, gearScaleY: _fc ? _fc.scale.y : null,
+      });
+    }
     sp.visible = true;
     /* ═══ v2.3.1713: THE SHIRT ═══
        Owner: "when lighting a fire the skin color and SHIRT go back to defaults."
@@ -5956,14 +6276,17 @@ export class EffectsRenderer {
          chopper 112 -> 95 (owner: -15%) and never updated the copy here, so a
          peer's lumberjack has been rendering 18% larger than your own since
          then; cook follows the same pass's 82 -> 62.  If a local height moves
-         again, move it here in the same edit — nothing enforces the link. */
+         again, move it here in the same edit — nothing enforces the link.
+         v2.3.2273: for CHOP it now does.  Both sites read CHOP_STANDIN_H, so
+         the owner's +10% could not land on one figure and not the other.  cook
+         and fire still carry literals and still carry this warning. */
       /* v2.3.1715: `fh` is new and load-bearing.  The scale below used to divide
          by a hardcoded 220 — true of every stand-in strip until the firemaking
          art was replaced with 512-tall frames, at which point a peer lighting a
          fire would have rendered 2.3x oversized while their own client drew it
          correctly.  The frame height belongs beside the drawn height, not baked
          into the arithmetic. */
-      chop: { frames: this._chopFrames, h: 95, fh: 220, ms: 45, traitDir: 'east', from: 12, count: 12 },
+      chop: { frames: this._chopFrames, h: CHOP_STANDIN_H, fh: 220, ms: 45, traitDir: 'east', from: 12, count: 12 },
       cook: { frames: this._cookFrames, h: 62, fh: 220, ms: 60, traitDir: 'south' },
       /* v2.3.1749: `once` marks a strip that tells a STORY rather than
          cycling.  The firemaking frames run stand -> crouch -> spark -> flame
@@ -6269,7 +6592,9 @@ export class EffectsRenderer {
     if (!this._remoteBodyCache) this._remoteBodyCache = new Map();
     const key = cfgKey + '|' + o.skin + '|' + o.pants + '|' + o.shoes;
     let arr = this._remoteBodyCache.get(key);
-    if (arr) return arr;
+    /* Re-insert on hit so the LRU order is "least recently SEEN", not
+       "least recently baked" (entityRenderer.js:2043's idiom). */
+    if (arr) { this._remoteBodyCache.delete(key); this._remoteBodyCache.set(key, arr); return arr; }
     const img = this._bodyImgCache[cfg.bodyUrl];   // loaded by the local bake
     if (!img) return null;
     try {
@@ -6279,6 +6604,7 @@ export class EffectsRenderer {
       arr = [];
       for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * cfg.fw, 0, cfg.fw, cfg.fh) }));
       this._remoteBodyCache.set(key, arr);
+      _trimBakeCache(this._remoteBodyCache);
       return arr;
     } catch (e) { return null; }
   }
@@ -6292,7 +6618,7 @@ export class EffectsRenderer {
     if (!this._remoteSheetCache) this._remoteSheetCache = new Map();
     const key = url + '|' + o.skin + '|' + o.pants + '|' + o.shoes;
     let arr = this._remoteSheetCache.get(key);
-    if (arr) return arr;
+    if (arr) { this._remoteSheetCache.delete(key); this._remoteSheetCache.set(key, arr); return arr; }
     const img = this._bodyImgCache[url];
     if (!img) return null;
     try {
@@ -6302,6 +6628,7 @@ export class EffectsRenderer {
       arr = [];
       for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * fw, 0, fw, fh) }));
       this._remoteSheetCache.set(key, arr);
+      _trimBakeCache(this._remoteSheetCache);
       return arr;
     } catch (e) { return null; }
   }
@@ -6437,7 +6764,14 @@ export class EffectsRenderer {
     const activeSlash = new Set();
     for (const id in others) {
       const o = others[id];
-      if (!o) continue;
+      /* v2.3.2281: a dead peer is not swinging. The pool sweep at the bottom
+         hides whoever is not in `active`, so dropping them here is the whole
+         fix -- the same gate `_updateRemoteExtraction` has carried since it
+         was written, which is why a peer's LUMBERJACK vanished on death and
+         their SWING stand-in did not: a corpse with a cape, a hood, a shield
+         and a swing shirt hanging on it, on everybody else's screen. Your own
+         screen is fixed in the same version, one file over. */
+      if (!o || o._isDead) continue;
       const wpn = o._swingWpn;
       const isMelee = !wpn || wpn === 'sword' || wpn === 'greatsword';
       const elapsed = now - (o._swingTs || 0);
@@ -6634,7 +6968,7 @@ export class EffectsRenderer {
     const active = new Set();
     for (const id in others) {
       const o = others[id];
-      if (!o || !o._bowShotAt) continue;
+      if (!o || o._isDead || !o._bowShotAt) continue;   /* v2.3.2281: see the swing */
       const elapsed = now - o._bowShotAt;
       if (elapsed < 0 || elapsed >= BOW_SHOT_MS) continue;
       const ang = (typeof o._bowShotAng === 'number') ? o._bowShotAng : 0;
@@ -6866,6 +7200,7 @@ export class EffectsRenderer {
     if (this.swordJogLegsGearSprite) this.swordJogLegsGearSprite.visible = false;
     if (this.slashSprite) this.slashSprite.visible = false;
     if (!S || !S._swordSwinging || !S.player || !this.swordSprite) return;
+    if (this._selfCorpse) return;   /* v2.3.2281: no swing on a corpse */
     /* v2.3.1396: painted crescent over the special swing — placed before
        the facing gate below, so the slash shows on EVERY aim direction
        (the stand-in body only exists for its authored facings, but the
@@ -7260,6 +7595,7 @@ export class EffectsRenderer {
         && (this._bowFrames[_rf[0]] || []).length);
     }
     if (!S || !S._bowShowing || !S.player || !this.bowSprite) return;
+    if (this._selfCorpse) return;   /* v2.3.2281 */
     const fmap = this._bowFacing[S._bowDir];
     if (!fmap) return;
     const cfg = this._bowCfg[fmap[0]];
@@ -7539,6 +7875,10 @@ export class EffectsRenderer {
       }
     }
     if (!ex || (ex.status !== 'ready' && ex.status !== 'waiting')) { this._chopLastFrame = -1; return; }
+    /* v2.3.2281: ...and neither is the lumberjack. This one matters most: the
+       gathering stand-in HIDES the display container outright, so without this
+       the corpse was not merely dressed, it was not drawn. */
+    if (this._selfCorpse) { this._chopLastFrame = -1; return; }
     /* v2.3.253: prefer stored node ref so SP nodes (no id) work too. */
     const node = (ex.nodeRef && ex.nodeRef.alive) ? ex.nodeRef
                : (S.gatherNodes && ex.nodeId
@@ -7608,7 +7948,7 @@ export class EffectsRenderer {
        player's side, faces the trunk (source faces right -> flip when the
        tree is on the player's LEFT). */
     if (ex.skill === 'woodcutting' && this.chopSprite && this._chopFrames.length) {
-      const CHOP_H = 95;          // drawn height; v2.3.1348: 84 -> 112 (+33%, owner request); v2.3.1476: 112 -> 95 (-15%, owner). Gear layers + traits derive from this same transform, so everything scales together.
+      const CHOP_H = CHOP_STANDIN_H;   // v2.3.2273: see the constant -- shared with the peer figure's SPEC row so the two can no longer drift.
       const CHOP_OFFSET = 30;     // px from the trunk to the figure's centre
       const CHOP_FRAME_MS = 45;   // ~22fps -> ~1.1s per swing loop
       /* v2.3.1131: play only the 12 downswing frames (source indices 12-23) --
@@ -7635,16 +7975,27 @@ export class EffectsRenderer {
       const _chopLegsOn = !!_chopLegsTex
         && this._chopLeglessFrames.length === this._chopFrames.length;
       sp.texture = (_chopLegsOn ? this._chopLeglessFrames : this._chopFrames)[fi];
-      const s = CHOP_H / 220;
+      /* v2.3.2287: the vista curve, as on the fire figure above and on the
+         peer twin. Sampled at the STAND-IN's own spot, not the player's --
+         the lumberjack stands at the tree, which on a perspective zone is a
+         different point on the curve. */
+      const _cx = node.x - chopSign * CHOP_OFFSET, _cy = node.y;
+      const pscale = zonePlayerScale(S.currentZone, _cx, _cy, TILE);
+      const s = (CHOP_H / 220) * pscale;
       sp.scale.set(chopSign < 0 ? -s : s, s);  // flip to face the trunk
-      sp.x = node.x - chopSign * CHOP_OFFSET;
-      sp.y = node.y + 6;
+      sp.x = _cx;
+      sp.y = _cy + 6 * pscale;
       sp.visible = true;
       /* v2.3.1131: gear layers over the lumberjack (mirror of the cook stand-in),
          gated on equipped gear and copying the body transform.  The layer strips
          are 2x (480x440), so they render at half the body's scale factor to reach
          the same on-screen height, and use the SAME flip sign as the body. */
-      const sL = CHOP_H / 440;
+      /* v2.3.2287: MANDATORY, not optional. This is the one local gear placer
+         that does not derive from sp.scale -- it has its own factor because
+         the layer strips are 2x. Curving the body and not this leaves a
+         full-size breastplate standing over a speck-sized lumberjack, which
+         is a worse artefact than the bug being fixed. */
+      const sL = (CHOP_H / 440) * pscale;
       const placeChopLayer = (spr, t) => {
         if (!spr) return;
         if (!t) { spr.visible = false; return; }
@@ -7685,6 +8036,23 @@ export class EffectsRenderer {
       /* chopper faces RIGHT in source (east); flipped (scale.x<0) when the tree
          is on the player's left, i.e. chopSign<0 -> render the west view. */
       this._placeSkillTraitsOn('chop', sp, fi, 'east', chopSign < 0);
+      /* v2.3.2273 QA probe, house style (__btStandInCape, __btSwingTints): the
+         drawn size of the lumberjack, which nothing else exposes -- pixiRenderer's
+         bodyFigureProbe reads the WALKING body and cueLayerProbe reads layer
+         order, so a stand-in resize has never been assertable.  It is here rather
+         than as a screenshot because the thing that actually broke last time was
+         the LOCAL and PEER copies disagreeing, and two figures the same size look
+         the same on screen whether or not they are drawn from the same number. */
+      if (typeof window !== 'undefined') {
+        const _cg = this.chopLegsSprite || this.chopPantsSprite || null;
+        window.__btChopFigure = () => ({
+          visible: !!sp.visible,
+          scaleY: sp.scale.y,
+          drawnH: +(Math.abs(sp.scale.y) * 220).toFixed(2),
+          gearScaleY: _cg ? _cg.scale.y : null,
+          x: sp.x, y: sp.y,
+        });
+      }
     } else {
       this._chopLastFrame = -1;  // mining/fishing — no chopper, reset the edge
     }
@@ -7751,14 +8119,18 @@ export class EffectsRenderer {
          bare legs don't peek out behind the greaves; otherwise the normal body. */
       const _legsOn = getEquip('legs') !== 'none' && this._cookLeglessFrames.length === this._cookFrames.length;
       sp.texture = (_legsOn ? this._cookLeglessFrames : this._cookFrames)[cookFi];
-      const s = COOK_H / 220;
+      /* v2.3.2287: the vista curve, as on the fire and chop figures. */
+      const pscale = zonePlayerScale(S.currentZone, node.x, node.y, TILE);
+      const s = (COOK_H / 220) * pscale;
       sp.scale.set(s, s);
       /* The pan hangs to the figure's RIGHT, so this offset is what keeps it
          over the flames — it has to track COOK_H or the pan slides off the
          fire.  v2.3.1429 doubled it with the 2x; v2.3.1710 scales it back by
-         the same ratio (14 * 62/82 = 10.6). */
-      sp.x = node.x - 11;
-      sp.y = node.y + 8;
+         the same ratio (14 * 62/82 = 10.6).
+         v2.3.2287: ...and it takes the curve for the same reason -- an offset
+         in flat pixels slides the pan off a shrunken fire. */
+      sp.x = node.x - 11 * pscale;
+      sp.y = node.y + 8 * pscale;
       sp.visible = true;
       /* v2.3.1113: draw the player's shirt over the cook torso, copying the
          cook sprite's exact transform so the 213x220 shirt frame aligns with

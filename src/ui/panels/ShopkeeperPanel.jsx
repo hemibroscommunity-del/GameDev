@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { shopBus } from '../mobile/shopBus.js';
+import { useModalGuard } from '../mobile/modalGuardBus.js'; /* v2.3.2276 */
 import { thumbFor, iconFor, ITEM_NAMES } from '../mobile/dash/InventoryPanel.jsx';
 
 /* ═══ v2.3.2059: THE MERCHANT DRAWER ═══
@@ -122,6 +123,15 @@ function ShelfSlot({ itemKey, count, price, selected, onTap, size }) {
 }
 
 export function ShopkeeperPanel() {
+  /* v2.3.2276: Diego's drawer was in NEITHER guard -- not modalGuardBus and
+     not _anyPanelOpen's uiBusyBus -- so the chat composer's dismiss layer sat
+     live over the shop window exactly as it once did over the trade one.
+     Gated on shopBus.open, NOT on mount: this component is mounted for the
+     whole session (GameApp renders it unconditionally and it returns null at
+     the bottom while the shop is shut), so a bare push pins the guard forever
+     and the chat box can never open again.  That is not hypothetical -- it is
+     what the first cut of this did, and mp-chatlayer caught it. */
+  useModalGuard(React, shopBus.open);
   const [, force] = useState(0);
   const [qty, setQty] = useState(1);
   const [quote, setQuote] = useState(null);    /* { key, qty, mode, total } */

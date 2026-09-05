@@ -153,6 +153,7 @@ import { chainScoreMethods } from './chainscore.js';
 // v2.3.1734: Element Burst (COMBAT-OVERHAUL-PLAN PR 6) -- the elemental
 // nova + its four server-side gates -- see burst.js.
 import { burstMethods } from './burst.js';
+import { arrowBlastMethods } from './arrowblast.js'; /* v2.3.2279: the bow special's blast finale */
 // v2.3.1983: population-scaled spawns -- monsters and gather nodes sized to
 // how many players are standing in THAT zone -- see spawnscale.js.
 import { spawnScaleMethods } from './spawnscale.js';
@@ -499,6 +500,14 @@ export const PRIVILEGED_EVENTS = new Set([
      exists for.  NOTE the client->server half is named `element_burst`
      and has its own switch case, so it never reaches this deny-list. */
   'element_nova',
+  /* v2.3.2279: the bow special's blast finale.  Server-emitted and purely
+     cosmetic -- every point of its damage rode monster_hit -- but forgeable
+     it would let one client paint a 220px fireball on every screen in the
+     zone, which is the class of thing this list exists for.  Its
+     client->server half is named `arrow_blast` and has its own switch case,
+     so it never reaches this deny-list (the element_burst/element_nova
+     arrangement, for the same reason). */
+  'arrow_boom',
   // v2.3.1147: server-emitted since the mummy->skeleton transform moved
   // server-side (v2.3.856 era) but never deny-listed -- a client could
   // forge cosmetic transforms on everyone's screen.  Closed.
@@ -812,7 +821,20 @@ export class GameRoom {
        now the intended pacing rather than an accident.  If it reads as dead
        air rather than breathing room, raise the per-zone spawn counts rather
        than winding this back, or the two will keep undoing each other. */
-    this.RESPAWN_TIME = 15000; // 15s respawn (3x the v2.3.1592 timer)
+    /* v2.3.2278 (owner: "Increase the spawn time a little bit for monsters.
+       Maybe 25% longer before next respawn."): 15000 -> 18750.
+       The note above says to raise the spawn COUNTS rather than wind this
+       back if it reads as dead air -- and since it was written the counts DID
+       go 3 -> 6 (data.js), so the zone the trade was measured against is
+       twice as full as the one described.  This is the other dial moving to
+       match, deliberately, not a reversal.
+       WHAT IT COSTS, in the terms that note asks for: solo supply goes from
+       6 kills / 15.0s = 24/min to 6 / 18.75s = 19.2/min, a real ~20% cut to
+       solo kill rate and therefore to XP, gold and quest-kill pacing.  The
+       crowd curve keeps its shape -- MON_RESPAWN_K is a slope, not a
+       duration, and the 6s floor only binds above 37 players in one zone
+       (it was 26), which the monster cap never reaches. */
+    this.RESPAWN_TIME = 18750; // 18.75s respawn (v2.3.2278: +25% on the 15s of v2.3.1739)
     this.MONSTER_AGGRO_RANGE = 120; // pixels
     /* v2.3.1639: per-archetype aggro overrides.  Absent = the 120 default,
        so nothing but the listed archetype changes behaviour.  Scoped the
@@ -948,8 +970,20 @@ export class GameRoom {
        a modified client cannot carry the shield around the zone.  Generously
        above NODE_STRIKE_RANGE (110) because the gather STANCE already sits ~86
        px off the node (startExtraction's mining/fishing snap) and the server's
-       view of a position lags the client's by up to a move throttle. */
-    this.EXTRACT_SHIELD_RANGE = 200;
+       view of a position lags the client's by up to a move throttle.
+       ═══ v2.3.2273: AND THE SAME HOLE THE STRIKE GATE HAD ═══
+       Two things above are stale and one of them was a bug.  The client does
+       NOT cancel at 90px: nodeReachDist has measured the sprite BOX since
+       v2.3.1450 and EXTRACT_CANCEL_R is 110 now, so an honest client keeps a
+       chop alive up to ~270px above a tree's anchor -- comfortably past this
+       200, which meant the harvest shield switched OFF partway through a
+       perfectly ordinary chop and the monsters the owner asked to be held off
+       came back.  Same root as the strike gate (see gathering.js
+       _nodeStrikeRange): a tree is 168px of art anchored at its foot, so
+       "standing at the tree" is nowhere near its anchor.  Raised to cover the
+       widest legitimate reach; still bounded, and EXTRACT_SHIELD_MS remains
+       the real backstop against a client that stops telling the truth. */
+    this.EXTRACT_SHIELD_RANGE = 290;
     /* ═══ v2.3.1765: THE SAME PEACE FOR COOKING AND FIREMAKING ═══
        Owner: "snowmen were still attacking me (attacks from enemies should
        stop during cooking and firemaking too)."
@@ -2694,7 +2728,14 @@ export class GameRoom {
     this.eventBuffer.push({
       type: 'monster_hit',
       payload: {
-        monsterId: m.id, zone: zoneId, dmg, isCrit: false,
+        /* v2.3.2279: isCrit is an OPT now, defaulting to the false this has
+           always sent.  It was hardcoded because this pipeline was written for
+           status ticks, which have no crit to report -- but it is also the
+           shared path every non-swing damage SOURCE routes through, and the
+           arrow blast rolls a real crit.  Printed as an ordinary number, the
+           crit anchor's whole point (v2.3.2212: "it always reads as a spike")
+           is invisible for anything that comes through here. */
+        monsterId: m.id, zone: zoneId, dmg, isCrit: !!(opts && opts.isCrit),
         attackerId: sourceId, status: statusId,
         burst: !!(opts && opts.burst),
         hpPct: Math.max(0, m.hp / m.maxHp),
@@ -4230,12 +4271,31 @@ export class GameRoom {
         }
         break;
 
+      /* ═══ v2.3.2279: THE BOW SPECIAL'S BLAST ═══
+         The client owns the arrow and its damage-over-time timer (the worker
+         has never modelled either), so only the browser knows when the DoT
+         ends -- it says so here and the worker decides everything that
+         matters: who is caught, and what they take.  The payload carries a
+         position and nothing else; no target list, no number. */
+      case 'arrow_blast':
+        if (session.id) {
+          this._handleArrowBlast(session, msg.payload || msg);
+        }
+        break;
+
       case 'node_strike':
         // Client reports the swipe-landed event for an extraction.
         // Server validates timing vs. extraction_start record, treats
         // strikes past the window-close as miss regardless of the
         // accuracy the client claimed, drops too-early strikes as
         // cheats, otherwise applies the existing harvest reward flow.
+        /* v2.3.2273: count it HERE, before the handler, so "the message never
+           arrived" (the TRAPS #18 shape -- the shim is an allowlist) can be
+           told apart from "a gate inside refused it".  Those two have the same
+           symptom for the player, and the harvest handshake has now been
+           reported broken three times without anyone able to tell which it
+           was.  Read beside lastStrike in the operator view. */
+        this._strikeSeen = (this._strikeSeen || 0) + 1;
         if (session.id) {
           this._handleNodeStrike(session, msg.payload || msg);
         }
@@ -5078,5 +5138,6 @@ Object.assign(GameRoom.prototype, chatModMethods);
 Object.assign(GameRoom.prototype, prog3Methods); /* v2.3.1659 */
 Object.assign(GameRoom.prototype, chainScoreMethods); /* v2.3.1664 */
 Object.assign(GameRoom.prototype, burstMethods); /* v2.3.1734 */
+Object.assign(GameRoom.prototype, arrowBlastMethods); /* v2.3.2279 */
 // v2.3.1983: population-scaled spawns -- see spawnscale.js.
 Object.assign(GameRoom.prototype, spawnScaleMethods);

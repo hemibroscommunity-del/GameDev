@@ -74,6 +74,34 @@ import { discHeld, discHoldProbe } from '@/game/controlVisibility.js'; /* v2.3.2
  * would paint both sticks), and it does not fire on touchmove -- so a long drag
  * would not refresh it, which is the one case this must handle. */
 export const JOY_FADE_MS = 2000;
+/* ═══ v2.3.2269: THE GUARD COMES BACK TO THE RIGHT CONTROL, FOR BOW AND STAFF ═══
+ * Owner: "when BOW or STAFF (magic) are equipped, enable the double tap for
+ * raising shield.  Instead of needing to hold it down to keep shield up though
+ * just leave the shield up until you tap the right joystick again, attack, or
+ * make a dodge move."
+ *
+ * ALMOST ALL OF THIS ALREADY EXISTS, which is why the change is one branch.
+ * v2.3.2242 made the shield a LATCH (shieldToggle.js: raise, and it stays up),
+ * and all three exits the owner names are already wired and have been since
+ * then: a dodge drops it (game/dodge.js), an attack drops it (monsterCombat's
+ * auto-attack loop and playerActions, three sites, all `dropShield(S,
+ * 'attack')`), and tapping the control is an attack.  What v2.3.2242 removed --
+ * and what he is asking back for -- is the RAISE gesture on this control; it
+ * went because it was a double-tap-and-HOLD, and the hold is the half he does
+ * not want either.  So: the double tap returns, the hold does not.
+ *
+ * MEASURED FROM PRESS TO PRESS, not release to release like the left stick's
+ * cycle gesture.  Two reasons.  The window then spans a whole tap (down, up,
+ * down) rather than the gap between two, so it needs to be wider than the
+ * left's 220 -- 300 is two comfortable phone taps.  And the guard goes up on
+ * the second touch-DOWN, which is when the player expects it, rather than
+ * waiting for them to lift.
+ *
+ * handleRBtnPress is the only correct home for it: its own note says it is
+ * "the one place that sees every press on this side" -- both the zone's rS and
+ * the disc's bS come through it -- so a classifier anywhere else would miss
+ * half the presses. */
+export const RBTN_DBL_MS = 300;
 import { raiseShieldToggle, dropShield, shieldAimAngle } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { DuelRequestPanel } from './panels/DuelRequestPanel.jsx';
 import { ThreatIncomingPanel } from './panels/ThreatIncomingPanel.jsx';
@@ -203,6 +231,7 @@ import { firemakingBus } from './mobile/firemakingBus.js';
 import { eatBus } from './mobile/eatBus.js';
 import { blockRingBus } from './mobile/blockRingBus.js';
 import { chatBubbleBus } from './mobile/chatBubbleBus.js'; /* v2.3.1287: self-tap opens chat */
+import { tapDismiss, TAP_DISMISS_STYLE } from './tapDismiss.js'; /* v2.3.2284 */
 import { chatLogBus } from './mobile/chatLogBus.js'; /* v2.3.1980: the world-chat feed listens here */
 import { controlsTutorialBus } from './mobile/controlsTutorialBus.js';
 /* v2.3.1796: the questline teaches the controls by flashing the real one
@@ -2737,6 +2766,9 @@ export var BroTown = function BroTown(_ref0) {
     clanData: setClanData, party: setParty, welcome: setShowWelcome,
     mayorGreeting: setShowMayorGreeting, tourPrompt: setShowTourPrompt,
     intro: setShowIntro,
+    /* v2.3.2284: the two world toasts, so a scenario can raise one without
+       performing a real pickup -- they had no route in at all. */
+    collectMsg: setCollectMsg, achievementMsg: setAchievementMsg,
     /* These three panels are gated on a COMPANION value, not just their
        boolean — capturing them needs both halves set. */
     chatOpen: setChatOpen,              // the real chat gate (showChatLog is dead state, below)
@@ -4669,7 +4701,7 @@ export var BroTown = function BroTown(_ref0) {
             S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
             S.hitParticles = [];
             S.arrows = [];
-            S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */ S.snowballBursts = []; /* v2.3.2217: and an undrained burst would pop in the new zone at old coords */
+            S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */ S.snowballBursts = []; /* v2.3.2217: and an undrained burst would pop in the new zone at old coords */ S.arrowBlasts = []; /* v2.3.2279: same, for the bow blast */
             S._ambientParticles = [];
             if (S.channel) {
               try { S.channel.send({ type: 'broadcast', event: 'move', payload: { x: P.x, y: P.y, z: S.currentZone, vx: 0, vy: 0 } }); } catch (e) {}
@@ -5446,7 +5478,38 @@ export var BroTown = function BroTown(_ref0) {
              engagedStance is the intent test the bare lock used to stand in
              for: your thumb on the button, or a target you tapped. */
           var _lockHeld = engagedStance(S);
-          var _harvestCtx = !!(S._nearNode && !_lockHeld);
+          /* ═══ v2.3.2270: A MONSTER IN THE PERIMETER BEATS A RESOURCE ═══
+             Owner: "If you're near a lifeskill extraction point prioritize
+             attacking nearby monsters instead of the contextual resource
+             extraction (if it comes up)."
+
+             The block below already CLAIMS this -- "ATTACK with a monster in
+             the perimeter ... HARVEST with a resource in reach and no monster
+             (control-redesign.md 5.10: Attack wins)" -- and did not do it.
+             `engagedStance` is an INTENT test (your thumb is on the button, or
+             you tapped this target), not a presence test, so a monster merely
+             standing next to you left the button reading HARVEST: the exact
+             case he is describing, where the thing about to hit you is not
+             what the button offers.
+
+             Presence, not candidacy.  S._targetCands is EMPTY for bow and
+             staff by design (v2.3.2258 gated auto-acquisition to melee), so
+             reading it here would have fixed this for swords only and left a
+             ranged player still being offered a tree with a goblin on him.
+             The scan is the same shape shieldButtonLive uses for the same
+             question, over the same perimeter. */
+          var _monNear = false;
+          if (S.monsters && S.player) {
+            var _mR = DATA.TARGET_PERIMETER_PX || 220;
+            for (var _mi = 0; _mi < S.monsters.length; _mi++) {
+              var _mm = S.monsters[_mi];
+              if (!_mm || !_mm.alive) continue;
+              if (typeof _mm.curHp === 'number' && _mm.curHp <= 0) continue;
+              var _mdx = _mm.x - S.player.x, _mdy = _mm.y - S.player.y;
+              if (_mdx * _mdx + _mdy * _mdy <= _mR * _mR) { _monNear = true; break; }
+            }
+          }
+          var _harvestCtx = !!(S._nearNode && !_lockHeld && !_monNear);
           S._btnHarvest = _harvestCtx;
           if (_lbl) {
             var _want;
@@ -7830,6 +7893,108 @@ export var BroTown = function BroTown(_ref0) {
     _startExtraction(node, 'cooking', { fishKey: fishKey });
   }, []);
 
+  /* ═══ v2.3.2274: ONE TAP-TO-HARVEST, REACHABLE FROM EVERY SURFACE ═══
+   *
+   * Owner: "Make sure tapping on a fire to cook fish works.  I received
+   * feedback that it does not."
+   *
+   * It did not, and the reason is that v2.3.2270 put the tap in the one place
+   * a finger on a phone can never reach.  The two touch zones
+   * (TouchControls, `[data-joyzone]`) are `position:fixed`, 50% wide each,
+   * full height above the dashboard, at zIndex 6 -- they cover the canvas
+   * edge-to-edge and their touchstart handlers stopPropagation.  So the
+   * canvas's own onTouchEnd, which is where v2.3.2270 wrote the tap, fires on
+   * DESKTOP and nowhere else.  What a phone actually produces is the zones'
+   * synthetic `click` forward (v2.3.816), landing in the canvas onClick --
+   * and that handler had no resource branch at all: it fell straight through
+   * to "tap on empty space = unlock".
+   *
+   * And a second one on the same gesture, which matters most for the case the
+   * owner named: a campfire is lit AT THE PLAYER'S OWN FEET, so it sits inside
+   * isSelfTouch's 52px circle, and both zone releases call openSelfChat() and
+   * return before any forward.  Tapping your own fire opened the chat box.
+   * v2.3.1448 solved exactly this by giving the resource precedence; v2.3.2245
+   * replaced that helper with `return false` and v2.3.2270 did not bring it
+   * back -- the stub's own comment still describes the pattern it no longer is.
+   *
+   * WHY IT SHIPPED GREEN: mp-harvest starts its cook with
+   * `cv.dispatchEvent(new TouchEvent(...))` straight on the canvas element,
+   * which goes to that element's listeners and ignores hit-testing entirely --
+   * TRAPS §41, the trap that exists for precisely this.
+   *
+   * So the scan and the dispatch live HERE, once, and all three doors call in:
+   * the canvas onClick (phones, via the zone forward), the canvas onTouchEnd
+   * (desktop and the strip of canvas below the zones when a sheet is open),
+   * and tapResourceAtClient (the zone release, ahead of the self-tap chat).
+   * A fifth copy of the four-way fishSpot/tree/oreVein/campfire switch is how
+   * the three that already exist drifted apart; there is not going to be one.
+   *
+   * Returns true when it consumed the tap, so a caller can stop. */
+  var _tapHarvestAtCss = useCallback(function (cssX, cssY) {
+    var _S = stateRef.current;
+    if (!_S || !_S.player || !_S.camera) return false;
+    var _cx = _S.camera.x, _cy = _S.camera.y;
+    var _tapSX = _S._worldScaleX || 1, _tapSY = _S._worldScaleY || 1;
+    var _tapNodeBest = null, _tapNodeD = 44;   /* CSS px, generous for a thumb */
+    /* THE HIT TEST IS THE SPRITE, NOT THE ANCHOR.  A tree's anchor is its base
+       and its art is 100-260px of canopy above that, so a radius around the
+       anchor would refuse taps on most of what the player can see.
+       nodeWorldBox is the same box nodeReachDist measures from, so what you
+       can tap and what you can reach are one shape. */
+    var _tapScan = function (n) {
+      if (!n || !n.alive || (n.respawnAt && Date.now() < n.respawnAt)) return;
+      var _nb = nodeWorldBox(_S, n);
+      var _nsx, _nsy;
+      if (_nb) {
+        _nsx = ((_nb.l + _nb.r) / 2 - _cx) * _tapSX;
+        _nsy = ((_nb.t + _nb.b) / 2 - _cy) * _tapSY;
+        /* Inside the box is a hit at distance 0, so a tap anywhere on a tall
+           sprite beats a nearer anchor of something small. */
+        var _hw = ((_nb.r - _nb.l) / 2) * _tapSX, _hh = ((_nb.b - _nb.t) / 2) * _tapSY;
+        var _ox = Math.max(Math.abs(cssX - _nsx) - _hw, 0);
+        var _oy = Math.max(Math.abs(cssY - _nsy) - _hh, 0);
+        var _od = Math.sqrt(_ox * _ox + _oy * _oy);
+        if (_od < _tapNodeD) { _tapNodeD = _od; _tapNodeBest = n; }
+        return;
+      }
+      _nsx = (n.x - _cx) * _tapSX; _nsy = (n.y - _cy) * _tapSY;
+      var _dd = Math.sqrt(Math.pow(cssX - _nsx, 2) + Math.pow(cssY - _nsy, 2));
+      if (_dd < _tapNodeD) { _tapNodeD = _dd; _tapNodeBest = n; }
+    };
+    if (_S.gatherNodes) _S.gatherNodes.forEach(_tapScan);
+    if (_S._campfire) _tapScan(_S._campfire);
+    if (!_tapNodeBest) return false;
+    /* CLOSE ENOUGH, as he asked -- the same reach the button and the E key
+       use, so the three cannot disagree about what is in range.  Out of reach
+       SAYS so rather than doing nothing: a tap that silently fails reads as a
+       broken resource, which the v2.3.1717 NPC note calls the worse bug. */
+    if (nodeReachDist(_S, _tapNodeBest) == null) {
+      try { pushDmgPopup(_S, _tapNodeBest.x, _tapNodeBest.y - 15, 'Too far away!', '#D95C54'); } catch (_e9) { /* best-effort */ }
+      return true;
+    }
+    /* v2.3.2273: the tool gate the button path has had all along.  The
+       renderer HIDES an untooled node but the entry stays in the list with its
+       full box, so a tap on apparently-empty ground started a harvest the
+       worker then refused twice over, in silence. */
+    if (_tapNodeBest.nodeType && _tapNodeBest !== _S._campfire
+        && !hasGatherTool(_S.rpg, _tapNodeBest.nodeType)) {
+      try { pushDmgPopup(_S, _tapNodeBest.x, _tapNodeBest.y - 15, 'You need a tool for that', '#D95C54'); } catch (_e11) { /* best-effort */ }
+      return true;
+    }
+    /* Already harvesting: leave it alone -- you are doing the thing the tap
+       would start.  Still consumed, so the caller does not fall through to
+       clearing the lock or opening chat under the finger. */
+    if (_S._extraction) return true;
+    try {
+      var _tn = _tapNodeBest;
+      if (_tn.nodeType === 'fishSpot') _startExtraction(_tn, 'fishing');
+      else if (_tn.nodeType === 'tree') _startExtraction(_tn, 'woodcutting');
+      else if (_tn.nodeType === 'oreVein') _startExtraction(_tn, 'mining');
+      else if (_tn.nodeType === 'campfire') _startCookingAtCampfire(_tn);
+    } catch (_e10) { /* refusal floats its own popup */ }
+    return true;
+  }, []);
+
   /* Called from the swipe handler when a valid swipe lands during the
      'ready' window. Routes to the existing per-skill reward applier
      so XP + inventory + server node_strike all run unchanged. */
@@ -8244,6 +8409,102 @@ export var BroTown = function BroTown(_ref0) {
        this reads the existing lock rather than re-running the nearest search:
        a monster tapped at bow range, with a slime at your feet, keeps its lock
        -- promoting an already-tapped lock is a no-op. */
+    /* ═══ v2.3.2269: SECOND TAP RAISES THE GUARD (bow and staff only) ═══
+       Scoped on activeSlot, the same classifier targeting.js and the fire path
+       already branch on.  MELEE IS UNTOUCHED: it keeps the ShieldButton toggle
+       v2.3.2242 built for it, and adding a gesture there would collide with the
+       lunge this very function fires on a first tap.
+
+       THE FIRST SHOT STILL GOES OUT, deliberately.  A bow tap fires on press,
+       so the only way to suppress the first of a pair would be to hold every
+       shot for 300ms and see whether a second arrives -- which would put a
+       third of a second of latency on every arrow in the game to serve a
+       gesture used a few times a fight.  So the pair reads as "shoot, then
+       guard", which is also what it looks like on screen.
+
+       AND IT MUST NOT SET autoAttack.  monsterCombat's loop drops the shield
+       whenever autoAttack is true (`if (S.autoAttack && S._shieldUp)
+       dropShield(S, 'attack')`) -- that is the owner's own "attack" exit -- so
+       a raise that left the flag set would be undone by the next tick and the
+       guard would flicker rather than latch.  The press is consumed instead:
+       cleared, returned true, no swing, no lunge.
+
+       `_rTapAt` is zeroed on use so three quick taps read as raise-then-single
+       rather than raise-then-raise.  While the shield is already UP this branch
+       stands aside entirely and the press behaves normally -- it fires, and the
+       loop above drops the guard, which is "attack" and "tap again" arriving as
+       the same gesture because on this weapon they are the same control. */
+    var _slot = S.rpg && S.rpg.activeSlot;
+    if (_slot === 'ranged' || _slot === 'staff') {
+      var _nowTap = Date.now();
+      var _prevTap = S._rTapAt || 0;
+      S._rTapAt = _nowTap;
+      /* ═══ v2.3.2271: REMEMBER THE LOCK THE FIRST TAP IS ABOUT TO COST ═══
+         Suppressing the SECOND tap's forward is not enough, and the test that
+         found this says why: the FIRST tap of the pair forwards too, and a tap
+         on empty ground is the documented unlock (v2.3.816 -> the canvas
+         onClick).  A thumb doing a double tap lands wherever it likes, which on
+         the right half of the screen is usually empty ground -- so raising the
+         guard cost the player the lock every time, on tap one, before the
+         gesture had even been recognised.
+         It cannot be prevented, because nothing knows tap one is half of a pair
+         until tap two arrives.  So it is UNDONE instead: the lock is stashed
+         here, at press time, while it is still intact, and put back below if a
+         pair completes.  Delaying the forward by the double-tap window was the
+         alternative and it would have put 300ms of latency on every lock-on in
+         the game to serve this one gesture. */
+      if (!S._shieldUp) {
+        /* A NEW pair forgets the old one's stash, so a lock from a minute ago
+           can never be restored over a deliberate unlock. */
+        if (_prevTap === 0 || _nowTap - _prevTap > RBTN_DBL_MS) S._rTapLockWas = null;
+        var _ltNow = S.lockedTarget;
+        /* ONLY WHEN THERE IS ONE, and that `only` is the whole fix: the first
+           version wrote null here whenever the lock was absent -- which on the
+           SECOND press of a pair it always is, because the first press's
+           release has just cleared it.  The stash was therefore erased one
+           statement before the restore below read it, and the test said so. */
+        if (_ltNow && _ltNow.type === 'monster' && _ltNow.ref) {
+          S._rTapLockWas = { type: 'monster', id: _ltNow.id, ref: _ltNow.ref,
+            src: _ltNow.src, at: _ltNow.at };
+        }
+      }
+      if (!S._shieldUp && _prevTap > 0 && _nowTap - _prevTap <= RBTN_DBL_MS) {
+        S._rTapAt = 0;
+        S.autoAttack = false;
+        setAutoAttack(false);
+        S._aiming = false;
+        /* ═══ v2.3.2271: AND THE SECOND TAP MUST NOT REACH THE CANVAS ═══
+           The ZONE's release forwards every short tap to the canvas as a
+           synthetic click (v2.3.816), which is the tap-to-lock path -- and that
+           path TOGGLES: tapping the monster you already have locked clears it,
+           and a tap on empty ground clears it outright.  So the pair that
+           raises the guard was also locking and then UNLOCKING the monster,
+           and for bow and staff the tapped lock is the only lock there is
+           (v2.3.2258 gave those weapons no automatic one), taking the shield's
+           own aim with it.
+           Stamped rather than returned because rS discards handleRBtnPress's
+           return value -- only the DISC reads it -- and the release that has to
+           be suppressed is a different handler on a different surface.  The
+           release compares this against its own press start, so it suppresses
+           exactly the press the gesture consumed and never a later one. */
+        S._rShieldConsumedAt = Date.now();
+        /* Put back what tap one took, if it took anything and the monster is
+           still there to point at.  Presence is checked against S.monsters
+           rather than the ref's own fields -- an object that has left the zone
+           keeps `alive: true` forever, which is the ghost-lock bug v2.3.2261
+           was written for, and restoring one here would recreate it. */
+        var _lw = S._rTapLockWas;
+        if (_lw && _lw.ref && !S.lockedTarget) {
+          var _live = (S.monsters || []).indexOf(_lw.ref) >= 0
+            && _lw.ref.alive !== false
+            && !(typeof _lw.ref.curHp === 'number' && _lw.ref.curHp <= 0);
+          if (_live) S.lockedTarget = _lw;
+        }
+        S._rTapLockWas = null;
+        try { raiseShieldToggle(S); } catch (e) { /* refused: no shield, or on cooldown */ }
+        return true;
+      }
+    }
     var _lt = S.lockedTarget;
     if (_lt && _lt.ref && _lt.type === 'monster' && _lt.src !== 'tap') {
       S.lockedTarget = { type: 'monster', id: _lt.id, ref: _lt.ref, src: 'tap' };
@@ -8462,8 +8723,17 @@ export var BroTown = function BroTown(_ref0) {
        sits inside exactly that circle — so "touch the resource to open
        its menu" opened chat instead.  Resource wins when its art is under
        the finger; a self-tap on bare character still opens chat. */
-    var tapResourceAtClient = function (clientX, clientY) { return false; };   /* v2.3.2245: no tap-to-harvest */
-    /* (v2.3.2245: the client-coordinate wrapper went with _tapResourceAt.) */
+    /* v2.3.2274: UN-STUBBED.  v2.3.2245 replaced this with `return false` when
+       the tap was removed; v2.3.2270 brought the tap back and put it only on
+       the canvas, which is unreachable through the zones -- so the precedence
+       the comment above describes went on describing something that no longer
+       existed.  It is a thin wrapper now: client px -> canvas px, then the one
+       shared scan (_tapHarvestAtCss).  Returning true means the resource took
+       the tap and the caller must not also open chat. */
+    var tapResourceAtClient = function (clientX, clientY) {
+      var _p = clientToCanvas(clientX, clientY);
+      return _tapHarvestAtCss(_p.x, _p.y);
+    };
     var openSelfChat = function () {
       try {
         var _busC = window.__broDashPanelBus;
@@ -8586,6 +8856,19 @@ export var BroTown = function BroTown(_ref0) {
            BEFORE the double-tap weapon-cycle classifier, so a self-tap
            never counts as tap #1 or #2 of a cycle, and no synthetic
            lock-on click is forwarded.  Own 400ms ceiling (see rE). */
+        /* ═══ v2.3.2274: A RESOURCE UNDER THE FINGER BEATS THE CHAT GESTURE ═══
+           Exactly the precedence v2.3.1448 established and v2.3.2245 lost when
+           it stubbed tapResourceAtClient out.  It matters most for the case
+           the owner named: a campfire is lit AT YOUR OWN FEET, so it sits
+           inside isSelfTouch's 52px circle -- tapping your own fire to cook
+           opened the chat box instead, every time.  A self-tap on bare
+           character still opens chat, because the helper only consumes when
+           art is actually under the thumb. */
+        if (!lts.moved && (endT - lts.startAt) < SELF_TAP_MAX_MS
+            && tapResourceAtClient(t.clientX, t.clientY)) {
+          lts.lastEndAt = 0;
+          return;
+        }
         if (!lts.moved && (endT - lts.startAt) < SELF_TAP_MAX_MS
             && isSelfTouch(t.clientX, t.clientY)) {
           lts.lastEndAt = 0;
@@ -8734,7 +9017,16 @@ export var BroTown = function BroTown(_ref0) {
         var rts2 = rTapState.current;
         var dxs = t.clientX - rts2.startX;
         var dys = t.clientY - rts2.startY;
-        if (dxs * dxs + dys * dys > TAP_MAX_MOVE_SQ_PX) rts2.moved = true;
+        if (dxs * dxs + dys * dys > TAP_MAX_MOVE_SQ_PX) {
+          rts2.moved = true;
+          /* v2.3.2271: a DRAG is not half of a double tap.  Without this, a
+             bow player's ordinary sweep-to-aim followed by a shot 300ms later
+             read as a pair and raised the guard they did not ask for.  The
+             left stick's cycle classifier guards the same hazard the same way
+             (see its `never counts as tap #1 or #2` note). */
+          var _Sdr = stateRef.current;
+          if (_Sdr) _Sdr._rTapAt = 0;
+        }
         /* v2.3.2260: the last leg of the drag, for rE's flick test.  Same three
            fields bE keeps (bSwipe.lx/ly/lt) so the two surfaces classify the
            same gesture the same way. */
@@ -8792,12 +9084,24 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.1287: self-tap on the aim side opens chat -- no lock-on click.
          Its own 400ms ceiling (SELF_TAP_MAX_MS): opening chat is not a
          twitch gesture, so a deliberate thumb dwell still counts. */
+      /* v2.3.2274: as in lE -- the resource under the finger wins over the
+         chat gesture.  See the note there. */
+      if (!rts3.moved && (endT - rts3.startAt) < SELF_TAP_MAX_MS
+          && tapResourceAtClient(t.clientX, t.clientY)) {
+        return;
+      }
       if (!rts3.moved && (endT - rts3.startAt) < SELF_TAP_MAX_MS
           && isSelfTouch(t.clientX, t.clientY)) {
         openSelfChat();
         return;
       }
-      if (!rts3.moved && (endT - rts3.startAt) < TAP_MAX_DURATION_MS) {
+      /* v2.3.2271: ...unless this press was the one that raised the guard --
+         see the note in handleRBtnPress.  Bounded to THIS press by comparing
+         against its own start, so a stale stamp cannot swallow a later tap. */
+      var _Sfw = stateRef.current;
+      var _shieldAte = !!(_Sfw && _Sfw._rShieldConsumedAt
+        && _Sfw._rShieldConsumedAt >= rts3.startAt);
+      if (!rts3.moved && !_shieldAte && (endT - rts3.startAt) < TAP_MAX_DURATION_MS) {
         /* v2.3.816: a tap on the combat side forwards a synthetic click to
            the canvas so the existing tap-to-lock-on-target logic (monsters /
            NPCs / players / empty-space unlock) keeps working now that the
@@ -9960,11 +10264,40 @@ export var BroTown = function BroTown(_ref0) {
                 }
               }
             }
-            /* v2.3.1448: no monster under the finger — see if the tap
-               landed on a resource (opens its shell, or warns that it's
-               too far).  Monsters keep priority: one standing in front
-               of a tree is still the thing you meant to tap. */
-            /* v2.3.2245: no tap-to-harvest; the button offers what is in reach. */
+            /* ═══ v2.3.2270: TAPPING THE RESOURCE STARTS IT AGAIN ═══
+               Owner: "allow tapping on the resource to bring up the extraction
+               menu (assuming you're close enough)."
+
+               This is a deliberate REVERSAL of v2.3.2245, which deleted the
+               tap because the owner had asked for the opposite then ("No
+               resource extraction button in the middle of the screen or
+               needing to tap on the resource").  What he objected to was the
+               mid-screen shell and having tap be the ONLY way in -- and that
+               is not what comes back: the contextual button still offers what
+               is in reach, and this is a second way to reach it, which is what
+               "allow" means.  The v2.3.1448 tap LATCH (_tapNode, the held
+               node, the per-frame re-anchoring) stays deleted; a tap starts
+               the extraction directly, the same call the button makes.
+
+               MONSTERS KEEP PRIORITY, which the v2.3.1448 note above already
+               said and which is the same rule as the button's new one: this
+               runs only when nothing was found under the finger, so a goblin
+               in front of a tree is still the thing you meant to tap.
+
+               THE HIT TEST IS THE SPRITE, NOT THE ANCHOR.  A tree's anchor is
+               its base and its art is 100-260px of canopy above that, so a
+               radius around the anchor would refuse taps on most of what the
+               player can see -- the "resources showing that have no menu to
+               interact with it" complaint the proximity scan above was widened
+               for. nodeWorldBox is the same box nodeReachDist measures from,
+               so what you can tap and what you can reach are one shape. */
+            if (!_closest && _S.player) {
+              /* v2.3.2274: the shared helper, not a fourth copy.  This handler
+                 is the DESKTOP door (and the strip of canvas exposed below the
+                 touch zones when a sheet is open); the phone's tap arrives as
+                 a synthetic click in onClick, which now calls the same thing. */
+              _tapHarvestAtCss(_cssX, _cssY);
+            }
           }
           ct.id = null;
           break;
@@ -10280,19 +10613,39 @@ export var BroTown = function BroTown(_ref0) {
           return;
         }
       }
-      /* v2.3.1448: resources come after the creature checks — a click on
-         a resource opens its shell (or warns it's out of reach) instead
-         of falling through to the unlock branch. */
-      /* Tap on empty space = unlock (v2.3.2245: resources are no longer tappable) */
+      /* ═══ v2.3.2274: AND HERE IS WHERE A PHONE'S TAP ACTUALLY ARRIVES ═══
+         v2.3.1448's note below has described a branch that was not here since
+         v2.3.2245, and v2.3.2270 put the tap back on the canvas's onTouchEnd
+         instead -- a handler a finger cannot reach, because the two touch
+         zones cover the canvas and stopPropagation.  What a phone produces is
+         the zones' synthetic click forward (v2.3.816), which lands right here.
+         AFTER the monster / NPC / other-player checks, which is what keeps
+         "monsters beat resources" true, and BEFORE the unlock, so a tap that
+         starts a harvest does not also throw your target away.
+         Desktop reaches this too (the zones are bt-desktop-hide), which adds
+         click-to-harvest there alongside the E key -- welcome, and the reach
+         and tool gates are the same ones the button uses. */
+      if (_tapHarvestAtCss(cssX, cssY)) return;
+      /* Tap on empty space = unlock */
       S.lockedTarget = null;
     }
-  }), achievementMsg && Date.now() - achievementMsg.ts < 3000 && /*#__PURE__*/React.createElement("div", {
+  }), achievementMsg && Date.now() - achievementMsg.ts < 3000 && /*#__PURE__*/React.createElement("div", Object.assign({}, tapDismiss(function () { setAchievementMsg(null); }), {
+    /* ═══ v2.3.2284: IT WAS ALREADY EATING THE TAP ═══
+       This toast and the collect one below set no pointerEvents and carried no
+       handler, and they are siblings of the world tap layer inside a container
+       that sets no pointer-events either -- so they inherited 'auto' and
+       swallowed every tap that landed on them, doing nothing with it. Sitting
+       at 20% and 30% height, dead centre of the play area, on a toast that
+       fires on every pickup. So this is not "add a convenience", it is "the
+       blocker that was already there now does the obvious thing". */
     style: {
       position: 'absolute',
       top: '20%',
       left: '50%',
       transform: 'translate(-50%,-50%)',
       zIndex: 22,
+      cursor: TAP_DISMISS_STYLE.cursor,
+      touchAction: TAP_DISMISS_STYLE.touchAction,
       padding: '12px 24px',
       borderRadius: 14,
       background: 'rgba(216,168,95,.9)',      border: '2px solid rgba(255,255,255,.3)',
@@ -10300,7 +10653,7 @@ export var BroTown = function BroTown(_ref0) {
       animation: 'scoreReveal .4s cubic-bezier(.22,1,.36,1)',
       boxShadow: '0 4px 20px rgba(216,168,95,.5)'
     }
-  }, /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 32
     }
@@ -10320,20 +10673,25 @@ export var BroTown = function BroTown(_ref0) {
       color: '#fff',
       marginTop: 2
     }
-  }, achievementMsg.name)), collectMsg && Date.now() - collectMsg.ts < 2000 && /*#__PURE__*/React.createElement("div", {
+  }, achievementMsg.name)), collectMsg && Date.now() - collectMsg.ts < 2000 && /*#__PURE__*/React.createElement("div", Object.assign({}, tapDismiss(function () { setCollectMsg(null); }), {
+    /* v2.3.2284: see the achievement toast above -- same defect, and this is
+       the one a player meets constantly, because it fires on every harvest and
+       every loot pickup. */
     style: {
       position: 'absolute',
       top: '30%',
       left: '50%',
       transform: 'translate(-50%,-50%)',
       zIndex: 20,
+      cursor: TAP_DISMISS_STYLE.cursor,
+      touchAction: TAP_DISMISS_STYLE.touchAction,
       padding: '10px 20px',
       borderRadius: 12,
       background: 'rgba(17,25,29,.94)' /* v2.3.1233: spec world-overlay ink; blur removed */,      border: '1.5px solid rgba(216,169,77,.4)',
       textAlign: 'center',
       animation: 'scoreReveal .35s cubic-bezier(.22,1,.36,1)'
     }
-  }, /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 28
     }

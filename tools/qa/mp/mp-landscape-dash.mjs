@@ -727,5 +727,66 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...with Auto handing the decision back when it is chosen again',
     pinned.back === 'left', pinned);
 
+  /* ═══ v2.3.2273: A LONG PRESS ON A SLOT MUST NOT SELECT THE SCREEN ═══
+     Owner: "Long press on the inventory slots works (this needs to be
+     disabled)."  Third sighting of one defect -- chat v2.3.2039, the dashboard
+     v2.3.2268, now the bag -- because user-select is INHERITED and every fixed
+     element mounted outside .bt-dashboard is a fresh copy of it.  This is the
+     LANDSCAPE half, which is the half v2.3.2268 could never have covered: the
+     band is display:none sideways and the grids render in .bt-land-sheet, its
+     SIBLING.  Asserted through getComputedStyle rather than by reading the
+     stylesheet, so it survives the class being renamed and fails if the
+     inheritance chain is broken by a re-parenting -- which is the actual
+     failure mode, three times running. */
+  /* Open a panel first: the sheet only exists while one is up, and the
+     assertions above leave it closed.  Bag, because slots are the surface the
+     owner named -- and put something IN it through the WORKER, so a real tile
+     renders and the slot assertion has something to stand on rather than
+     skipping on an empty grid. */
+  const _myId = await H.readState(P, (S) => S.myId);
+  await H.grant(wsPort, _myId, 'item', { invKey: 'wood_pine_log', count: 3 }).catch(() => {});
+  await H.waitFor(P, (S) => (S.rpg?.inventory || {}).wood_pine_log || 0, (n) => n >= 1,
+    { timeout: 15000 }).catch(() => {});
+  await P.page.evaluate(() => {
+    /* And put something IN the bag, or the grid is all empty slots and the
+       slot assertion below has nothing to stand on.  A client-side seed is
+       honest here: the question is what CSS a rendered tile inherits, which is
+       a rendering fact, not a wire one. */
+    try { window.__broDashPanelBus.open('bag'); } catch (e) {}
+  });
+  await P.page.waitForTimeout(1200);
+  const noSel = await P.page.evaluate(() => {
+    const sheet = document.querySelector('.bt-land-sheet');
+    const pick = (el) => {
+      if (!el) return null;
+      const cs = getComputedStyle(el);
+      return { us: cs.userSelect || cs.webkitUserSelect || null,
+        callout: cs.webkitTouchCallout || null };
+    };
+    /* A REAL slot, not the container: the question is what a finger lands on. */
+    const slot = document.querySelector('.bt-land-sheet [data-inv-key]')
+      || document.querySelector('[data-inv-key]');
+    /* And a field inside the same subtree, because an inherited `none` does
+       not merely stop selection on iOS -- it makes an input uneditable, which
+       would be a worse bug than the one being fixed. */
+    const field = document.querySelector('.bt-land-sheet input, .bt-land-sheet textarea');
+    return { sheet: pick(sheet), slot: pick(slot), field: pick(field),
+      hasSheet: !!sheet, hasSlot: !!slot, hasField: !!field };
+  });
+  console.log('    landscape select: ' + JSON.stringify(noSel));
+  rec.ok('the landscape sheet refuses text selection (guard: it exists at all)',
+    !!noSel.hasSheet && noSel.sheet && noSel.sheet.us === 'none', noSel);
+  if (noSel.hasSlot) {
+    rec.ok('...and a bag slot inherits it, so a long press selects nothing',
+      noSel.slot && noSel.slot.us === 'none', noSel);
+  } else {
+    rec.skip('...and a bag slot inherits it, so a long press selects nothing',
+      'no [data-inv-key] tile on screen in this state');
+  }
+  if (noSel.hasField) {
+    rec.ok('...while a text field inside it stays editable (the half that breaks iOS)',
+      noSel.field && noSel.field.us !== 'none', noSel);
+  }
+
   await P.ctx.close().catch(() => {});
 }

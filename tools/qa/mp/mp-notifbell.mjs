@@ -89,6 +89,32 @@ const fingerTap = async (P, drift = 4) => {
   await cdp.detach();
 };
 
+
+/* ═══ v2.3.2275: CROPS, BECAUSE THE OWNER ASKED TO SEE THE CONTROL ═══
+ * Owner: "can you show me a preview of what the 'hide alerts' button looks
+ * like now (for chat that minimizes into the notification bell)".
+ * A 390x844 full-viewport shot answers "where is it" and not "what does it
+ * look like" -- the control is 36x36 shut and 226x28 open, i.e. under 2% of
+ * that frame.  Written against H.REPO rather than a bare relative path so the
+ * files land in the same place whatever the working directory is (the two
+ * shots below predate that and are fixed here too). */
+const crop = async (P, name, sel, pad) => {
+  const r = await P.page.evaluate((s) => {
+    const e = document.querySelector(s);
+    if (!e) return null;
+    const b = e.getBoundingClientRect();
+    return { x: b.left, y: b.top, width: b.width, height: b.height };
+  }, sel);
+  if (!r || r.width < 2) { console.log('    (no crop for ' + sel + ')'); return null; }
+  const path = `${H.REPO}/tools/qa/mp/out/${name}.png`;
+  await P.page.screenshot({ path, clip: {
+    x: Math.max(0, r.x - pad), y: Math.max(0, r.y - pad),
+    width: Math.min(r.width + pad * 2, 4000), height: Math.min(r.height + pad * 2, 4000),
+  } });
+  console.log('    wrote ' + path + '  (' + Math.round(r.width) + 'x' + Math.round(r.height) + ' CSS)');
+  return path;
+};
+
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Bellringer', wsPort, webPort,
     touch: true, viewport: { width: 390, height: 844 }, dpr: 2 });
@@ -150,7 +176,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
     shut.solidArea > 0 && shut.solidArea < 2500, shut);
   rec.ok('and the joystick disc itself is not covered', shut.discStolen === false, shut);
 
-  await P.page.screenshot({ path: 'tools/qa/mp/out/notifbell-shut.png' });
+  /* Clear the coach card first, or it parks "MOVE / Drag to move." over the
+     header in the open shot -- which is what the committed notifbell-open.png
+     shows today, and it is the header the owner wants to look at. */
+  await P.page.evaluate(() => {
+    try { document.querySelectorAll('[data-coach-dismiss]').forEach((b) => b.click()); } catch (e) {}
+  });
+  await P.page.waitForTimeout(500);
+  await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/notifbell-shut.png` });
+  await crop(P, 'notifbell-crop-shut', '[data-world-chat-toggle]', 40);
 
   /* ── 4. THE BELL OPENS AND CLOSES ── */
   await fingerTap(P);                                   /* v2.3.2175 */
@@ -159,7 +193,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('a REAL finger tap (with drift) opens the notifications', open.expanded === 'true', open);
   rec.ok('...and the messages are there', !!open.list && open.list.h > 0, open);
   rec.ok('...and opening clears the unread badge', open.badge === null, open);
-  await P.page.screenshot({ path: 'tools/qa/mp/out/notifbell-open.png' });
+  await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/notifbell-open.png` });
+  /* The header alone -- the crop that actually answers the question. */
+  await crop(P, 'notifbell-crop-header', '[data-world-chat-toggle]', 6);
+  /* ...and in context, sitting on its own message list. */
+  await crop(P, 'notifbell-crop-open', '[data-world-chat]', 8);
+
+  /* v2.3.2275: pin the chevron's DIRECTION, since that is the thing the owner
+     reported ("the down arrow makes me think it expands it") and a one-
+     character edit at WorldChatFeed's transform is all it takes to re-invert
+     it.  matrix(-1,0,0,-1,0,0) IS rotate(180deg). */
+  const chev = await P.page.evaluate(() => {
+    const svgs = document.querySelectorAll('[data-world-chat-toggle] svg');
+    const last = svgs[svgs.length - 1];
+    return last ? { transform: getComputedStyle(last).transform, count: svgs.length } : null;
+  });
+  console.log('    open-header chevron: ' + JSON.stringify(chev));
+  rec.ok('the open header\'s chevron points UP (it collapses; a down arrow read as "expands")',
+    !!chev && chev.transform === 'matrix(-1, 0, 0, -1, 0, 0)', chev);
 
   await fingerTap(P);                                   /* v2.3.2175 */
   await P.page.waitForTimeout(700);

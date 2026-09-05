@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { chromeSilenced, onGuardChange } from './modalGuardBus.js'; /* v2.3.2145 */
+import { chromeSilenced, guardActive, onGuardChange } from './modalGuardBus.js'; /* v2.3.2145 */
 import { chatLogBus } from './chatLogBus.js';
 import { uiBusyBus } from './uiBusyBus.js';   /* v2.3.2085 */
 import { capeStatusBus } from './capeStatusBus.js'; /* v2.3.2118 */
@@ -145,7 +145,21 @@ export function WorldChatFeed() {
      left" — eventcapes.js draws that line and the chip keeps it): no chip
      beats a wrong number.  0 stays visible on purpose — "0/20 left" is the
      contest ending in public view, and it leaves when the event flag does. */
-  const ticketChip = (_crimson && typeof _crimson.remaining === 'number')
+  /* ═══ v2.3.2266: THE CONTEST IS OVER, SO ITS SCOREBOARD COMES DOWN ═══
+     Owner: "you can remove the golden ticket left notification.  The event is
+     over."
+
+     The chip was written to leave on its own -- the note above says "it leaves
+     when the event flag does" -- and it did not, so the flag it reads is still
+     set somewhere upstream and a running scoreboard for a finished contest was
+     taking a line off the top of his screen.  Turned off HERE rather than
+     chased upstream: the ledger, the bus and the server's cape accounting are
+     all still correct and still feed the cape itself, and the one thing that
+     was wrong was a permanent chip.
+     Kept as a constant rather than deleted so the next event is one word: the
+     render below and the empty-feed guard both read it, and both stay wired. */
+  const TICKET_CHIP_ENABLED = false;
+  const ticketChip = (TICKET_CHIP_ENABLED && _crimson && typeof _crimson.remaining === 'number')
     ? `${_crimson.remaining}/${_crimson.cap} golden tickets left`
     : null;
 
@@ -261,6 +275,28 @@ export function WorldChatFeed() {
            owner NAMED ("chat, etc"), and it is what the silence control has to
            actually silence. One flag answers both. */
         zIndex: 25,
+        /* ═══ v2.3.2280: THE BELL STANDS DOWN TOO ═══
+           Owner: "Chat should always be the bottom layer if any menus open up
+           beside it (want it beneath trade menus, player menus, etc)."
+
+           v2.3.2145 faded the MESSAGES under the guard and deliberately left
+           the shell alone, which was right for a mute.  It is not right for a
+           decision panel: the shut corner is a 36px bell, and the bell is
+           chrome that sits in the lower-left at bottom:--dash-h+8 -- exactly
+           where a band drawer's footer is.  Caught in the v2.3.2280 trade
+           screenshot: the bell was painted across "Nothing on this screen can
+           change the trade" on the Confirm screen, which is the one line the
+           whole anti-scam screen exists to make the player read.  The z-index
+           does not save it -- this shell is a sibling OUTSIDE .brotown-wrap,
+           so it paints over an in-wrap panel whatever the ladder says (the
+           lesson already recorded at .bt-inspect in game.css).
+
+           guardActive(), NOT chromeSilenced(): muting your notifications must
+           never take away the bell, because the bell is how you get chat back.
+           A panel owning the screen is the only case that hides it, and it
+           comes back the moment the panel closes. */
+        opacity: guardActive() ? 0 : 1,
+        transition: 'opacity 140ms ease',
         pointerEvents: 'none',
         fontFamily: 'Source Sans 3, sans-serif',
       }}
@@ -324,7 +360,12 @@ export function WorldChatFeed() {
              is over it, for the same reason the list does it (v2.3.2085) --
              a button under a sheet that still takes the tap is the bug that
              file's header is about. */
-          pointerEvents: busy ? 'none' : 'auto',
+          /* v2.3.2280: ...and 'none' while a decision panel owns the screen,
+             for the same reason again. The shell above fades to 0 under the
+             guard; an invisible control that still takes the tap is strictly
+             worse than a visible one, and this one sits over a band drawer's
+             lower-left corner. */
+          pointerEvents: (busy || guardActive()) ? 'none' : 'auto',
           /* ═══ v2.3.2155: SHUT IS A 36px BELL, OPEN IS THE OLD HEADER ═══
              This control has always been the one thing in this corner that
              takes a tap, and it sits at z-index 25 over [data-joyzone="L"] --
@@ -451,8 +492,18 @@ export function WorldChatFeed() {
           {/* The chevron is the affordance: it says this folds, which a bare
               label never did. Inline, because it is two lines of SVG and a
               texture that loads on first use is the regression CLAUDE.md names. */}
+          {/* ═══ v2.3.2266: IT POINTED THE WRONG WAY ═══
+              Owner: "the down arrow makes me think it expands it."  It did,
+              and the convention it was breaking is universal -- a chevron
+              points the way the content is about to GO.  Open, this feed folds
+              UPWARD into its own one-line header, so the arrow has to point up;
+              shut, tapping brings the messages back DOWN, so it points down.
+              It was exactly inverted: the rotation was keyed to `shut` when the
+              glyph's resting direction is already down.  Dropping the rotation
+              on `shut` and applying it while OPEN swaps the pair, which is one
+              character of change and the whole of the complaint. */}
           <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"
-            style={{ flex: '0 0 auto', transform: shut ? 'rotate(180deg)' : 'none' }}>
+            style={{ flex: '0 0 auto', transform: shut ? 'none' : 'rotate(180deg)' }}>
             <path d="M1 3.5 L5 7 L9 3.5" fill="none" stroke="#8FA3A0"
               strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
           </svg>

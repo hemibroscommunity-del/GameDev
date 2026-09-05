@@ -195,6 +195,28 @@ export const adminMethods = {
                                 (all of _extractionShielded's clauses hold) */
           live: ps ? { coins: ps.coins, level: ps.level, hp: ps.hp, zone: ps.z, x: ps.x, y: ps.y, dead: !!ps.dead, disconnected: !!ps.disconnected,
             ex: ps.ex || null, extracting: !!this.extractions[id], harvestShield: !!this._extractionShielded(id),
+            /* v2.3.2273: WHAT HAPPENED TO THE LAST node_strike.
+               `{ why, at, ... }` -- 'paid' when the bag was credited, otherwise
+               the name of the gate that refused it (node-already-dead,
+               out-of-range, no-tool, too-early, antibot-cap, ...).  Every one
+               of those gates was a bare `return`, which is why "chopped logs
+               are not going into my inventory" has now been reported three
+               times and diagnosed from scratch three times: the client shows
+               the tree falling either way, because it predicts the deplete
+               locally and grants nothing (lifeSkillRewards, `if
+               (!S._serverGatherNodes)`).  See gathering.js _strikeRefused. */
+            lastStrike: this._lastStrikeFor(id),
+            /* ...and how many node_strike messages the switch has seen at all,
+               room-wide.  0 with a client that swears it sent one is the
+               allowlist shape; >0 with lastStrike null means the handler ran
+               and returned before its first stamp. */
+            strikesSeen: this._strikeSeen || 0,
+            /* v2.3.2279: why a bow-special blast was refused, if it was.  Same
+               reasoning as lastStrike above: every gate in _handleArrowBlast is
+               a silent return (a message would only tell a modified client
+               which bound it hit), and a silent refusal is indistinguishable
+               from a feature that never fired. */
+            arrowBlast: this._arrowBlastRejectsFor(id),
             /* v2.3.1765: where the worker believed this player stood when it
                last processed an `ability` cast (abilities.js).  Shield Bash
                reaches 70px from that point with no slack for lag, so "it

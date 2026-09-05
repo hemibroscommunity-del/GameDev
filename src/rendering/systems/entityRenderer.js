@@ -3766,7 +3766,18 @@ function _orderTraitsAndWeapon(display, facingIdx, hatId) {
         if (display.getChildIndex(phead) > bi) display.setChildIndex(phead, bi);
       } else {
         let ref = -1;
-        for (const s of [display._spriteBody, display._gearLegs, display._gearChest, display._gearShoulders]) {
+        /* ═══ v2.3.2278: _gearShirt WAS MISSING FROM THIS LIST ═══
+           Owner (v2.3.1914): "When fishing that hand needs to be over the
+           shirt during the reel animation instead of under it."  That fix has
+           been a NO-OP ever since, for the commonest character there is.
+           The list is what the head/hand overlay is lifted ABOVE.  With only
+           a tee on, the sole visible member was _spriteBody (child index 3) --
+           and _bodyHead is index 4, so `hi < ref` was 4 < 3, false, and no
+           lift ever happened; _gearShirt is index 10 and drew straight over
+           the reeling hand.  Leg armour reaches the same end by a different
+           road (_gearLegs is index 9, above _bodyHead), which is the case the
+           owner reported.  Adding the shirt fixes both and the default. */
+        for (const s of [display._spriteBody, display._gearShirt, display._gearLegs, display._gearChest, display._gearShoulders]) {
           if (s && s.visible && s.parent === display) ref = Math.max(ref, display.getChildIndex(s));
         }
         if (ref >= 0 && phead.parent === display) { const hi = display.getChildIndex(phead); if (hi < ref) display.setChildIndex(phead, ref); }
@@ -4470,6 +4481,40 @@ function _applyBuildScale(display, pscale, heightId, frameId) {
      origin, so growth below the origin is 24 * (sy - 1) container units, times
      the zone/player scale that turns container units into world ones. */
   return -_feetOffsetUnits(display) * (b.sy - 1) * pscale;
+}
+
+/* ═══ v2.3.2281: IS THE LOCAL CORPSE ON SCREEN RIGHT NOW ═══
+ *
+ * Owner: "Sometimes the death animation still shows character wearing items as
+ * it dies (like frozen in place). I think the cape does this. Maybe other items
+ * too. Make sure during death animation only that plays."
+ *
+ * The self-death branch below has always computed this inline, and it was the
+ * ONLY thing that knew it -- which is why the answer was wrong everywhere else.
+ * The death sweep it guards (`_hideExceptDeep`, v2.3.1887) reaches only the
+ * player's own display container, and the stand-in figures drawn for the
+ * player -- the swing, the bow shot, the lumberjack, the cook, the fire -- do
+ * not live there. They live in the effects renderer's own layers, are driven
+ * by state (`_swordSwinging`, `_extraction`) that dying does not clear, and so
+ * kept re-showing themselves over the corpse every frame. Measured
+ * (mp-deathstrip): dying mid-swing left a cape, a hood, a shield and a swing
+ * shirt hanging on the body, and dying mid-harvest left the whole lumberjack
+ * standing there with the death animation not drawn AT ALL -- the gathering
+ * stand-in hides the display, so the corpse was behind a figure that had
+ * stopped moving.
+ *
+ * Exported so the effects renderer asks the same question rather than keeping
+ * a second copy of the 3.5s hold. Two expressions for one fact is how the
+ * corpse and the things drawn on top of it disagree about whether it is there.
+ *
+ * hp <= 0 is not enough on its own: the local-monster death path restores hp
+ * synchronously, and the corpse is held for 3.5s from the timestamp after
+ * that -- which is most of the window the owner is describing. */
+export const SELF_DEATH_HOLD_MS = 3500;
+export function selfCorpseUp(S) {
+  if (!S) return false;
+  if (S.rpg && S.rpg.hp <= 0) return true;
+  return !!(S._deathStart && (Date.now() - S._deathStart) < SELF_DEATH_HOLD_MS);
 }
 
 function _hideExceptDeep(display, keep) {
@@ -6530,8 +6575,30 @@ export class EntityRenderer {
             return st ? { scale: st, baseMult: MONSTER_SIZE_MULT } : null;
           };
         }
-        if (!window.__btMonScales) window.__btMonScales = Object.create(null);
-        window.__btMonScales[m.id] = display.scale.x;
+        /* ═══ v2.3.2272: THE WRITES ARE ARMED, THE READERS ARE ALWAYS THERE ═══
+           These four stores (two here, __btPeerShield / __btPeerSword below)
+           ran in the shipped render loop unconditionally, once per entity per
+           frame, and were the cheapest half of the owner's "slows down after
+           playing for a while":
+             - the maps are keyed by ENTITY ID and never pruned, and monster
+               ids are not reused -- spawnscale mints 'sm-<zone>-x<seq>' off a
+               counter that never resets, so every grow/trim cycle leaves
+               permanent keys behind for the life of the page;
+             - each write ALLOCATES a fresh object, ~700 a second at eight
+               monsters and four peers on a 60fps phone, all of it garbage;
+             - the two peer probes below also run several getChildIndex calls
+               per peer per frame -- children.indexOf in Pixi -- purely to fill
+               a store no shipped code reads.
+           So the writes now need arming and the game never arms them.  The
+           ACCESSORS are still defined unconditionally: a probe that vanishes
+           would break precheck's qa-handles gate and, worse, would read as
+           "the feature is broken" rather than "the probe is off".  The QA
+           harness arms it for every scenario in one line (harness.mjs
+           newPlayer), so no scenario changed. */
+        if (window.__btProbe) {
+          if (!window.__btMonScales) window.__btMonScales = Object.create(null);
+          window.__btMonScales[m.id] = display.scale.x;
+        }
         /* v2.3.2200 QA probe (mp-feel): the universal hit-recoil is a
            BODY-sprite squash + a 120ms tint pulse, neither readable off
            a screenshot — expose the body scale/tint the renderer
@@ -6543,7 +6610,7 @@ export class EntityRenderer {
           };
         }
         if (!window.__btMonHit) window.__btMonHit = Object.create(null);
-        if (display._spriteBody) {
+        if (window.__btProbe && display._spriteBody) {
           window.__btMonHit[m.id] = {
             sx: display._spriteBody.scale.x, sy: display._spriteBody.scale.y,
             tint: display._spriteBody.tint,
@@ -7907,8 +7974,13 @@ export class EntityRenderer {
           }
           /* QA probe (mp-peershield) — one entry per peer id. */
           try {
-            if (!window.__btPeerShield) window.__btPeerShield = {};
-            window.__btPeerShield[id] = {
+            /* v2.3.2272: armed only (see the note in _updateMonsters) -- the
+               three getChildIndex scans below are per peer per frame.
+               Object.create(null): peer ids come off the wire (CLAUDE.md
+               rule 4), and a peer calling itself __proto__ silently no-oped
+               this store on a plain {}. */
+            if (!window.__btPeerShield) window.__btPeerShield = Object.create(null);
+            if (window.__btProbe) window.__btPeerShield[id] = {
               on: !!(_shLo.visible || _shHi.visible),
               hasShield: _hasShield,
               facing, behind: _shLo.visible, front: _shHi.visible,
@@ -8091,8 +8163,15 @@ export class EntityRenderer {
             if ((pose !== 'jog' || _fsR) && ((pose !== 'hit' && pose !== 'mine') || _rworn.length > 0)) _placePickupHead(display, spriteBody, other.skin, other.pants, other.shoes, pose, dir, frameIdx, _rJogPhase);
             display._headBehindGear = (pose === 'jog' && dir === 'east' && !!_fsR); /* v2.3.1553 */
             spriteBody.visible = !(_rfull && !!getPickupHeadFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx));
-            /* v2.3.1123: lift the angler's head above the fishing chest plate. */
-            if (pose === 'fish' && _rworn.some(w => w.k && w.k.indexOf('chest:') === 0)) _placeFishHead(display, spriteBody, tex);
+            /* v2.3.1123: lift the angler's head above the fishing chest plate.
+               v2.3.2278: above their LEG armour too.  This was chest-only, so
+               a peer fishing in greaves lost the same hand the local player
+               did -- and worse, it was invisible to whoever was wearing them,
+               which is the shape of the owner's separate report that peers
+               are missing items his own screen shows.  The shirt needs no
+               entry here: on the remote path it is baked into the body
+               texture rather than drawn as an overlay (see just below). */
+            if (pose === 'fish' && _rworn.length > 0) _placeFishHead(display, spriteBody, tex);
           } catch (e) { if (display._bodyHead) display._bodyHead.visible = false; spriteBody.visible = true; }
           /* shirt is baked into the body (see getBodyFrame above); no overlay. */
           if (display._shirtSprite) display._shirtSprite.visible = false;
@@ -8364,8 +8443,9 @@ export class EntityRenderer {
         }
         /* QA probe (mp-peersword) — one entry per peer id. */
         try {
-          if (!window.__btPeerSword) window.__btPeerSword = {};
-          window.__btPeerSword[id] = {
+          /* v2.3.2272: armed only, and null-prototype -- as __btPeerShield. */
+          if (!window.__btPeerSword) window.__btPeerSword = Object.create(null);
+          if (window.__btProbe) window.__btPeerSword[id] = {
             facing, wpnType: oWpnType, inFront,
             wcIdx: display.getChildIndex(display._weaponContainer),
             bodyIdx, frontRefIdx,
@@ -8665,13 +8745,25 @@ export class EntityRenderer {
        _deathStart assignment), seed it ourselves.  Cleared on
        respawn by the handlers, so this only kicks in when nothing
        else set it. */
-    const SELF_DEATH_HOLD_MS = 3500;
     if (S.rpg && S.rpg.hp <= 0 && !S._deathStart) {
       S._deathStart = Date.now();
     }
     const _selfElapsed = S._deathStart ? Date.now() - S._deathStart : Infinity;
-    const selfDead = _selfElapsed < SELF_DEATH_HOLD_MS || !!(S.rpg && S.rpg.hp <= 0);
+    const selfDead = selfCorpseUp(S);
     if (selfDead) {
+      /* ═══ v2.3.2281: THE CORPSE WAS INSIDE A HIDDEN CONTAINER ═══
+         The gathering stand-in does not merely draw over the body, it hides
+         this whole display -- and nothing here turned it back on, so dying
+         while chopping or cooking played NO death animation at all: a frozen
+         lumberjack, and the corpse behind him in an invisible container.
+         The peer path has had this line since v2.3.1092 with the note "a
+         harvest stand-in may have hidden this container last frame; the corpse
+         renders through it"; the local path, which is the one the player
+         actually watches themselves die in, never got it. Found by
+         mp-deathstrip reporting `corpse: false` on a mid-harvest death while
+         every worn layer read clean -- the absence a hide-list test cannot
+         see, because there was nothing left to hide. */
+      if (!display.visible) display.visible = true;
       if (display.alpha !== 1) display.alpha = 1;
       if (display.rotation !== 0) display.rotation = 0;
       const _selfSpriteBody = display._spriteBody;
@@ -9444,7 +9536,14 @@ export class EntityRenderer {
              so it needed asking about separately rather than being covered by
              _chestW. */
           const _shirtW = (() => { const _si = getEquip('shirt'); return !!(_si && _si !== 'none'); })();
-          if (pose === 'fish' && (_chestW || _shirtW)) _placeFishHead(display, spriteBody, tex);
+          /* v2.3.2278: _legsW joins them.  Owner: "Fishing animation the reel
+             hand while wearing leg armor gets cut off."  The overlay is the
+             ONLY layer that can sit above _gearLegs, and it was not being
+             built at all for an angler in greaves and nothing else -- so the
+             greaves drew over the reeling fist and there was nothing to lift.
+             Still gated on the three rather than made unconditional: a bare
+             player needs no canvas bake to look right. */
+          if (pose === 'fish' && (_chestW || _shirtW || _legsW)) _placeFishHead(display, spriteBody, tex);
         } catch (e) { if (display._bodyHead) display._bodyHead.visible = false; spriteBody.visible = true; }
         /* ═══ v2.3.1872: THE SOUTH BLOCK'S JOGGING LEGS ═══
            Placed HERE, after the masked/fullset body has been resolved, because

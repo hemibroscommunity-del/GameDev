@@ -83,6 +83,49 @@
   --ui-header: #27393F;
   --ui-card: #24363C;
   --ui-well-deep: #0B161B;
+  /* ═══ v2.3.2283: THE INVERTED SURFACE ROLE ═══
+     Owner, twice: "shade color the trade windows differently if it's yours
+     versus the other players" then "Make the buyer window more notably
+     different shade. Like a light gray."
+
+     NOT a fifth rung on the depth ladder and NOT a per-screen gray. The four
+     depth roles above still own ELEVATION on dark and are untouched. This is
+     an OWNERSHIP role: a region authored by the OTHER party reads as a light
+     card with dark ink, the same way a brass button already carries
+     --ui-text-on-accent. The only new thing is that the light fill is neutral
+     rather than brass, and the neutral is --ui-text-secondary #B6C1BE's own
+     tint (same R-G / B-G channel offsets), so no new hue enters the palette.
+
+     WHY NOT A DARKER STEP. There is nothing admissible left inside the dark
+     ladder: --ui-raised-high is ~1.6:1 against --ui-well, and --ui-raised puts
+     --ui-text-muted at 4.05:1, under AA. The two lanes as shipped were 1.08:1
+     apart, which is why the owner had to ask twice.
+
+     HARD RULE: every ink inside an inverted region MUST come from the
+     -on-invert ramp below. The normal --ui-text-* ramp FAILS AA here
+     (--ui-text #F4F0E7 is 1.36:1 on this fill, --ui-text-muted #8D9B98 is
+     1.87:1) and CSS inheritance hands it to you silently -- see docs/TRAPS.md.
+     Ratios below are measured against --ui-invert. */
+  --ui-invert:                     #C8D2CF;             /* the light card              */
+  --ui-invert-slot:                #16262C;             /* dark cell IN it    10.07:1  */
+  --ui-text-on-invert:             #111E23;             /* primary            11.00:1  */
+  --ui-text-on-invert-2:           #293B41;             /* secondary           7.56:1  */
+  --ui-text-on-invert-3:           #45565C;             /* muted / captions    4.96:1  */
+  --ui-line-on-invert:             rgba(11,22,27,.14);  /* edge, 1.31:1 -- parity with
+                                                           the dark well's 1.32:1     */
+  --ui-gold-on-invert:             #6E4D0F;             /* 4.97:1  dark antique brass  */
+  --ui-positive-on-invert:         #1C5A40;             /* 5.25:1  "YOU RECEIVE"       */
+  --ui-danger-on-invert:           #7A2C28;             /* 6.12:1  (unused today)      */
+  /* Rarity lives here, not in the panel: RARITY_TIERS is app-global data
+     (src/data/gameSystems.js), so its inverted form is app-global too. This is
+     what stops a future session "fixing" rarity by darkening RARITY_TIERS
+     itself, which would retint weapon rarity everywhere -- the Enchanter and
+     the remote-player weapon tint included. v2.3.1233 already had to undo one
+     of those. */
+  --ui-rarity-common-on-invert:    #45565C;             /* 4.96:1                      */
+  --ui-rarity-elemental-on-invert: #1D4FA8;             /* 4.96:1                      */
+  --ui-rarity-fusion-on-invert:    #6B21A8;             /* 5.64:1                      */
+  --ui-rarity-shift-on-invert:     #6E4D0F;             /* 4.97:1  Shift IS the gold   */
   --ui-text: #F4F0E7;
   --ui-text-secondary: #B6C1BE;
   --ui-text-muted: #8D9B98;
@@ -567,6 +610,53 @@ body{font-family:'Source Sans 3',system-ui,sans-serif;color:var(--txt);font-size
 img{display:block}
 button{cursor:pointer;font-family:inherit}
 input{font-family:inherit}
+
+/* ═══ v2.3.2288: A NUMBER FIELD WITHOUT THE TINY ARROWS ═══
+   Owner: "get rid of the tiny up and down arrows next to the gold amount in
+   trade menu."  Those are the browser's own spin buttons, which every engine
+   draws inside an <input type="number"> and none of them let you style away
+   from an inline style -- they are shadow pseudo-elements, so this has to be a
+   real rule in a real stylesheet.
+
+   WHY THE TYPE STAYS "number".  The obvious alternative is type="text" +
+   inputMode="numeric", which has no spinners anywhere and needs no CSS.  It was
+   rejected on two counts.  (1) The trade gold field is addressed as
+   `input[type="number"]` by five separate selectors in tools/qa/mp/mp-trade.mjs
+   -- changing the type to dodge a visual defect would quietly unbind the suite
+   that guards the whole gold ladder, and a scenario that stops finding its
+   element does not fail loudly, it fails as a null.  (2) The primary platform is
+   iPhone Safari, where the keyboard is the thing that must not regress; leaving
+   the type alone leaves the keypad provably identical, whereas type="text"
+   makes it depend on inputMode support.  The spinners cost one CSS rule; the
+   keypad is not worth a coin flip.
+
+   BOTH HALVES ARE DELIBERATE.  Firefox honours `appearance:textfield` on the
+   input; WebKit/Blink need the ::-webkit-*-spin-button pseudo-elements zeroed.
+   Which of the two does the work in current Chrome could NOT be settled here:
+   headless Chromium paints no clickable spin button on ANY of the three
+   variants (measured -- a click on the arrow zone of a plain type=number does
+   not increment, with or without either rule), and this sandbox has no display
+   to test a headed browser against.  With no way to prove the standards-track
+   half sufficient on its own, both are written; do not "simplify" this to one.
+
+   WHERE THE OWNER IS SEEING THEM: not on the phone.  iOS Safari has never drawn
+   spin buttons on type=number, so this is a desktop-browser fix, and asking him
+   to check it on the iPhone would have him correctly report that nothing
+   changed.
+
+   WHAT THIS DOES NOT DO: hiding the widget does not disable STEPPING.  ArrowUp
+   on the focused field still takes 100 to 101 (measured, in all three variants),
+   and in the trade window every step rides onChange -> pushStage -> trade2_set,
+   which the worker answers by resetting both confirms.  That is pre-existing
+   behaviour of the field and untouched here; the owner asked for the arrows to
+   go, not for the keyboard to stop working.
+
+   Scoped to a class rather than to `input[type=number]` globally: this is the
+   one field the owner asked about, and a bare-element rule would silently
+   restyle every future number input in the game. */
+.bt-nospin{appearance:textfield;-moz-appearance:textfield}
+.bt-nospin::-webkit-outer-spin-button,
+.bt-nospin::-webkit-inner-spin-button{-webkit-appearance:none;appearance:none;margin:0}
 
 /* v2.3.1233: dead-CSS sweep — .back-to-site, .bt-player-count,
    .bt-players-btn, .bt-chatlog*, .bt-combat-bar/btn, .bt-chat-fab/bar/
@@ -2917,6 +3007,93 @@ body:has([data-trade-drawer]) .bt-kb-chip{display:none}
 }
 .bt-chat-noselect textarea,.bt-chat-noselect input{
   -webkit-user-select:text;user-select:text;-webkit-touch-callout:default;
+}
+
+/* ═══ v2.3.2268: THE DASHBOARD IS A SIBLING TOO ═══
+   Owner: "Disable the iOS long press on the dashboard.  It just highlighted my
+   whole screen."
+
+   Same defect as the chat card above, same cause, and the note above predicted
+   it: `.brotown-wrap` carries this recipe and it is easy to assume everything
+   drawn over the world inherits it.  <BottomDashboard /> is mounted as a
+   SIBLING of <BroTown> in GameApp, not inside its wrap, so it never has --
+   a long press anchors a document selection in a panel and, with nothing to
+   stop it, the drag runs across the whole play area.  Which is exactly what he
+   saw: not the dashboard highlighting, the SCREEN highlighting.
+
+   IN CSS, for the reasons the block above gives: -webkit-touch-callout does
+   not exist in desktop Chromium, so React's inline style drops it silently and
+   it cannot be read back or tested.
+
+   FIELDS OPT BACK IN, and this is the half that must not be forgotten -- an
+   inherited `none` does not merely stop selection on iOS, it makes a field
+   UNEDITABLE.  There are three of them under .bt-dashboard today and any panel
+   may add another, so the exception is by element rather than by name.
+   [contenteditable] joins them: nothing uses it here yet, and a future rich
+   field would otherwise be broken by a rule written before it existed. */
+.bt-dashboard{
+  -webkit-touch-callout:none;-webkit-user-select:none;user-select:none;
+  -webkit-tap-highlight-color:transparent;
+}
+.bt-dashboard textarea,.bt-dashboard input,.bt-dashboard [contenteditable]{
+  -webkit-user-select:text;user-select:text;-webkit-touch-callout:default;
+}
+
+/* ═══ v2.3.2273: THE SLOT SURFACES ARE SIBLINGS, NOT CHILDREN ═══
+   Owner: "Long press on the inventory slots works (this needs to be
+   disabled)."
+
+   The THIRD sighting of one defect -- chat (v2.3.2039), the dashboard
+   (v2.3.2268), now the bag -- and the reason it keeps coming back is that
+   `user-select` and `-webkit-touch-callout` are INHERITED: a surface is
+   protected only if one of its ancestors declares them, so every fixed
+   element mounted outside .bt-dashboard is a fresh copy of the same bug.
+   The bag has two parents.  Portrait puts the grids inside .bt-dashboard, so
+   v2.3.2268 already covers them; LANDSCAPE renders them in .bt-land-sheet, a
+   sibling declared earlier in the same fragment -- and the band itself is
+   display:none sideways, so nothing v2.3.2268 did reaches a slot in landscape
+   at all.  The item card a slot tap opens is outside the band in BOTH
+   orientations.
+
+   So it is a NAMED class this time rather than a fourth copy of the block:
+   the next fixed sibling someone adds is one className, not another incident.
+   The field exception is copied verbatim and is not optional -- an inherited
+   `none` does not just stop selection on iOS, it makes an input UNEDITABLE. */
+.bt-noselect{
+  -webkit-touch-callout:none;-webkit-user-select:none;user-select:none;
+  -webkit-tap-highlight-color:transparent;
+}
+.bt-noselect textarea,.bt-noselect input,.bt-noselect [contenteditable]{
+  -webkit-user-select:text;user-select:text;-webkit-touch-callout:default;
+}
+/* ═══ v2.3.2276: THE CHAT DISMISS SHEET STANDS DOWN FOR A DECISION SURFACE ═══
+   Owner: "Chat should always be the bottom layer if any menus open up beside
+   it (want it beneath trade menus, player menus, etc)."
+
+   modalGuardBus is the primary mechanism and a panel opts in with one line
+   (useModalGuard).  This is the belt, and it exists because of what this
+   particular element is: a TRANSPARENT, full-play-area sheet whose only job is
+   to catch the next tap anywhere.  When it is wrong it does not look wrong --
+   it silently eats the tap you aimed at an Accept button, which is the
+   v2.3.2145 incident in one sentence.  A panel added next year that forgets
+   the hook still gets this.
+
+   pointer-events only, never display or opacity: hiding it would leave the
+   composer shut on screen and open to the toolbar toggle, which ChatBubble's
+   own note calls out as the worse bug.  :has() is already relied on in this
+   file (see the .bt-inspect chip rule), so the support floor is not new. */
+body:has(.bt-inspect) [data-chat-dismiss],
+body:has([data-trade-drawer]) [data-chat-dismiss],
+body:has([data-shop-panel]) [data-chat-dismiss]{
+  pointer-events:none !important;
+}
+
+/* Belt to those braces: the two attributes every real slot already carries
+   (ItemTile / StashTile), so a grid that is re-parented tomorrow keeps the
+   protection without anyone remembering this file.  It does NOT replace the
+   ancestor class -- the EMPTY slot divs carry no such hook. */
+[data-inv-key],[data-tut="coach-gear"]{
+  -webkit-touch-callout:none;-webkit-user-select:none;user-select:none;
 }
 
 /* ═══ v2.3.2157: LANDSCAPE — THE WORLD AS ITS OWN COMPLETE WINDOW ═══

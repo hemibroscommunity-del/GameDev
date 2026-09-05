@@ -24,8 +24,9 @@
  * procedural circle) while the load is in flight.
  */
 
-import { Assets, Rectangle, Texture } from 'pixi.js';
+import { Rectangle, Texture } from 'pixi.js';
 
+import { loadTracked, unloadBundle } from './zoneTextures.js'; /* v2.3.2272: zone art must be releasable */
 const FRAME_W = 256;
 const FRAME_H = 256;
 
@@ -104,7 +105,7 @@ let loadPromise = null;
 
 async function loadStrip(url, into, key) {
   try {
-    const tex = await Assets.load(url);
+    const tex = await loadTracked('fireGoblin', url);
     if (!tex || !tex.source) return;
     const count = Math.max(1, Math.floor((tex.source.width || tex.width || 0) / FRAME_W));
     const frames = [];
@@ -141,14 +142,14 @@ export function loadFireGoblinSprites() {
 
 async function loadFireball() {
   try {
-    const tex = await Assets.load(`/sprites/monsters/fire-goblin/fireball.png?v=${SPRITE_VERSION}`);
+    const tex = await loadTracked('fireGoblin', `/sprites/monsters/fire-goblin/fireball.png?v=${SPRITE_VERSION}`);
     if (tex && tex.source) fireballTex = tex;
   } catch { /* missing — caller falls back to slime orb */ }
 }
 
 async function loadDeathStrip() {
   try {
-    const tex = await Assets.load(`/sprites/monsters/fire-goblin/death.png?v=${SPRITE_VERSION}`);
+    const tex = await loadTracked('fireGoblin', `/sprites/monsters/fire-goblin/death.png?v=${SPRITE_VERSION}`);
     if (!tex || !tex.source) return;
     const count = Math.max(1, Math.floor((tex.source.width || tex.width || 0) / FRAME_W));
     for (let i = 0; i < count; i++) {
@@ -162,7 +163,7 @@ async function loadDeathStrip() {
 
 async function loadRemnants() {
   try {
-    const tex = await Assets.load(`/sprites/monsters/fire-goblin/remnants.png?v=${SPRITE_VERSION}`);
+    const tex = await loadTracked('fireGoblin', `/sprites/monsters/fire-goblin/remnants.png?v=${SPRITE_VERSION}`);
     if (tex && tex.source) remnantsTex = tex;
   } catch { /* missing — caller falls back to slime remnants */ }
 }
@@ -260,4 +261,25 @@ export function getRemnantsTexture() {
 /* Single-frame fireball projectile texture.  See FIREBALL_BASE_ANG. */
 export function getFireballTexture() {
   return fireballTex;
+}
+
+
+/* ═══ v2.3.2272: AND BACK AGAIN ═══
+ * The counterpart to the loader above.  Everything this module holds lives in
+ * module-scope closures behind a memoised `loadPromise`, so before v2.3.2272
+ * a zone's art was resident for the life of the page once visited -- measured
+ * as a monotone +92MB across a four-zone tour (mp-texdrift).  Clearing the
+ * promise is the part that makes this re-enterable: without it the next
+ * load() would hand back a settled promise for textures that are gone.
+ * Called only from preloadAnimations' freeZoneAssets, which never frees art
+ * the zone you are walking INTO needs. */
+export function unloadFireGoblinSprites() {
+  loadPromise = null;
+  for (const k in walkSheets) delete walkSheets[k];
+  for (const k in attackSheets) delete attackSheets[k];
+  for (const k in hitSheets) delete hitSheets[k];
+  deathFrames = [];
+  remnantsTex = null;
+  fireballTex = null;
+  return unloadBundle('fireGoblin');
 }

@@ -20,7 +20,7 @@ import { HEADWEAR_CATALOG, headwearIsSolid, setHeadwear } from '@/rendering/trai
 import { SHIRT_CATALOG, setShirt } from '@/rendering/traits/shirtCatalog.js';
 import { SHIRT_COLOR_CATALOG, setShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
 import { recolorEnabled, SOLID_ONLY_HAT_COLOR } from '@/rendering/traits/recolorOptions.js';
-import { HEIGHT_CATALOG, setBuildHeight } from '@/rendering/traits/buildCatalog.js';   /* v2.3.1953; v2.3.1996: frame picker removed */
+import { HEIGHT_CATALOG } from '@/rendering/traits/buildCatalog.js';   /* v2.3.1953; v2.3.1996: frame picker removed; v2.3.2268: the tab went with the height axis, so `setBuildHeight` has no caller left here -- HEIGHT_CATALOG stays because the unreached _buildTile branch below still names it, and that branch is the restoration path */
 
 /* === NameModal — the character-creator / name-entry splash screen === */
 /* v2.3.888: extracted verbatim from the `if (showNameModal) { ... }`
@@ -187,27 +187,27 @@ export function NameModal(props) {
       set: function (id) { setPants(id); setPantsSel(id); }, colors: null },
     shoes: { label: 'Shoes', kind: 'swatch', spriteCat: null, catalog: SHOES_CATALOG, sel: shoesSel,
       set: function (id) { setShoes(id); setShoesSel(id); }, colors: null },
-    /* ═══ v2.3.1953: BUILD ═══
-       Owner: "is there a way to add 'height' to your character as an option?"
-       ... "Maybe also frame wideness (thin, medium, large)".
+    /* ═══ v2.3.2268: THE BUILD TAB IS GONE ═══
+       Owner: "I changed my mind on the build sizes during the create a
+       character.  It looks bad.  Use the medium (default) character only.
+       Remove it as an option in the trait picker and remove the tall and short
+       build from the game."
 
-       It fits the EXISTING two-row shape exactly, which is why it needed no
-       new layout: the options strip carries the three heights and the row
-       below it — the one every other tab uses for colours — carries the three
-       frames.  The v2.3.1252 constant-height guarantee therefore holds for
-       free, so opening this tab does not resize the stage or the character.
-       `kind: 'build'` only tells the renderer below to use _buildTile (a
-       labelled silhouette) instead of a swatch or a sprite thumb; everything
-       else about the tab is the same machinery. */
-    /* v2.3.1996: HEIGHT ONLY.  The frame row (thin/medium/large) is gone by
-       owner directive -- "keep the medium build only and only allow the height
-       to change" -- and with it this tab's `colors`/`setColor`, so the colour
-       row below the options goes blank here the way it already does for every
-       other type that has none.  The lock itself is in FRAME_CATALOG, not
-       here; dropping the picker alone would have left the store and the wire
-       still able to carry a wide build. */
-    build: { label: 'Build', kind: 'build', spriteCat: null, catalog: HEIGHT_CATALOG, sel: heightSel,
-      set: function (id) { setBuildHeight(id); setHeightSel(id); } }
+       v2.3.1996 locked the FRAME axis to medium and left the tab standing on
+       its height row; with HEIGHT_CATALOG now locked to average as well
+       (buildCatalog, v2.3.2268) the tab's only control would be one
+       already-selected option, which is worse than no tab.
+
+       THE TAB LIST NEEDS NO EDIT: it ends in
+       `.filter(function (x) { return !!_typeDefs[x.t]; })`, so a type with no
+       definition here drops out of the strip on its own.  That filter was put
+       there for exactly this and is why removing the entry is the whole change.
+       The grid goes 9 tabs -> 8, so the clean 3x3 the v2.3.1953 note mentions
+       becomes 3+3+2; the tabs keep their width and their touch target, which is
+       what that note was actually protecting.
+       `kind: 'build'` and its _buildTile renderer are LEFT IN PLACE, unreached:
+       they are what a future height axis would switch back on, and deleting
+       them would make restoring the feature a rebuild rather than two lines. */
   };
   /* v2.3.1251: primary groups reuse the existing painted category art
      in /ui/welcome/cat/ — no emoji, no new assets.  A group with one

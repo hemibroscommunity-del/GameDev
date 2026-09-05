@@ -48,6 +48,59 @@ function queueSnowballBurst(S, proj) {
   S.snowballBursts.push({ x: proj.x, y: proj.y, at: Date.now() });
 }
 
+/* ═══ v2.3.2279: THE BOW SPECIAL'S FINAL SEND-OFF ═══
+ *
+ * Owner: "Add this explosion once the arrow is done adding tick damage for the
+ * final send off.  Make the explosion a large area about the size of the
+ * perimeter that a melee character can auto target a monster.  Make it about
+ * 3x the damage of the base damage bow attack for any caught in the blast
+ * radius."
+ *
+ * CALLED FROM BOTH DoT ENDS, because the special has two and they are equally
+ * real: the arrow that EMBEDS in a monster and chips it every 500ms for 4s,
+ * and the arrow that MISSES, plants in the ground, and ticks a 100px radius on
+ * the same clock.  Wiring only the first would make a miss a dud rather than a
+ * delayed area denial, and "once the arrow is done adding tick damage" is true
+ * of both.  A plain (non-special) arrow never ticks and never gets here -- the
+ * isSpecial gate below is what keeps an ordinary shot from detonating.
+ *
+ * FIRING ON EVERY END CONDITION IS DELIBERATE, including the host dying early:
+ * the arrow has finished its work either way, and swallowing the blast exactly
+ * when you were winning would read as a bug.  What it structurally CANNOT fire
+ * on is a zone change or your own death -- both clear S.arrows wholesale
+ * without ever running the filter this lives inside.  That is a guarantee
+ * rather than a guard, which is worth saying out loud because the next reader
+ * will go looking for the guard.
+ *
+ * THE CLIENT SENDS INTENT AND A POSITION.  No target list, no number: the
+ * worker decides who is caught and what they take (server/src/arrowblast.js),
+ * which is the only way this can be damage at all.  Gated on S.channel rather
+ * than on S._serverMonsters -- precheck's town-gate rule, and the reason is
+ * real: _serverMonsters is false in TOWN, so gating on it would mean the blast
+ * silently never happens there. */
+function _arrowSendOff(S, a, bx, by) {
+  if (!S || !a || a._blasted || !a.isSpecial || a.isStaff) return;
+  if (typeof bx !== 'number' || typeof by !== 'number') return;
+  a._blasted = true;   /* a re-entrant frame must not send twice */
+  if (S.channel) {
+    try {
+      S.channel.send({ type: 'arrow_blast', payload: { zone: S.currentZone, x: bx, y: by } });
+    } catch (e) { /* the DoT already landed either way */ }
+    return;
+  }
+  /* Offline / dungeon fallback, mirroring the local branch the ticks take.
+     3x the frozen base, which is what the worker's special roll comes to. */
+  if (!S.arrowBlasts) S.arrowBlasts = [];
+  S.arrowBlasts.push({ x: bx, y: by, r: 220, at: Date.now() });
+  var _bd = Math.max(1, Math.round((a.baseDmg || 1) * 3));
+  (S.monsters || []).forEach(function (m) {
+    if (!m || !m.alive || m.curHp <= 0) return;
+    var dx = m.x - bx, dy = m.y - by;
+    if (dx * dx + dy * dy > 220 * 220) return;
+    m.curHp = Math.max(0, m.curHp - _bd);
+  });
+}
+
 export function updateArrows(S, deps) {
   var P = S.player;
   var setRpgState = deps.setRpgState,
@@ -81,7 +134,12 @@ export function updateArrows(S, deps) {
             if (a.stuckIn) {
               var _sm = a.stuckIn;
               var _sAge = Date.now() - a.stuckAt;
-              if (_sAge >= 4000 || !_sm || !_sm.alive || _sm.curHp <= 0) return false;
+              if (_sAge >= 4000 || !_sm || !_sm.alive || _sm.curHp <= 0) {
+                _arrowSendOff(S, a,
+                  (typeof a._renderX === 'number') ? a._renderX : (_sm ? _sm.x : null),
+                  (typeof a._renderY === 'number') ? a._renderY : (_sm ? _sm.y : null));
+                return false;
+              }
               var _smx = (typeof _sm.renderX === 'number') ? _sm.renderX : _sm.x;
               var _smy = ((typeof _sm.renderY === 'number') ? _sm.renderY : _sm.y) - monsterBodyOffsetY(_sm.archetype || _sm.type);
               a._renderX = _smx + (a._stickOx || 0);
@@ -162,6 +220,17 @@ export function updateArrows(S, deps) {
                     }
                   }
                 }
+              }
+              if (_pAge >= _pLife) {
+                /* The ground-planted arrow's DoT ends here, and it is a real
+                   one: 4s of 500ms ticks in a 100px radius for a special
+                   (the block just above).  An earlier draft of this change
+                   claimed the planted arrow "never ticked" and detonated only
+                   the stuck one -- wrong, and it would have made a miss feel
+                   like a dud instead of a delayed area denial. */
+                _arrowSendOff(S, a,
+                  (a._plantX != null) ? a._plantX : a._renderX,
+                  (a._plantY != null) ? a._plantY : a._renderY);
               }
               return _pAge < _pLife;
             }
