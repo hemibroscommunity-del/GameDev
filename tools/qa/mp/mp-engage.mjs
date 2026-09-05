@@ -209,6 +209,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
          still for the screenshot. */
       const m = window._gameState.current.monsters[0];
       m._burstUntil = Date.now() + 60000;
+      /* v2.3.2295: AND DROP THE LOCK. Intangibility alone no longer suppresses
+         every mark. It works by taking the monster out of `_targetCands`, which
+         used to be where all of them came from -- but the target's mark is now
+         a chip drawn from S.lockedTarget so that a tap-lock outside the 220px
+         perimeter still wears one (the bow snipe at 675px; effectsRenderer's
+         note says why the reticle it replaced had to work at any range). And a
+         lock is deliberately KEPT through intangibility: monHoldable, v2.3.2252,
+         so the shield goes on facing the thing about to hit you --
+         mp-target.mjs:299 asserts that as a feature.
+         So the two scenarios were about to encode opposite expectations of one
+         state. Neither behaviour is wrong; this CONTROL was simply written when
+         one switch turned off every mark, and now needs both. Nothing
+         re-acquires while the monster is intangible (it is out of the candidate
+         list, which is where acquisition reads from), so the lock stays down
+         until _burstUntil is cleared below. */
+      window._gameState.current.lockedTarget = null;
     });
     await P.page.waitForTimeout(450);
     rec.ok('guard: the mark can be suppressed without moving the monster (probe agrees)',

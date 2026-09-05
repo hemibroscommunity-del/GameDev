@@ -96,6 +96,60 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and one at your level does not',
     !!cold && !/ef4444|16729156/i.test(cold.levelFill || ''), cold);
 
+  /* ═══ v2.3.2295: THE PLATE GOES RED WHILE IT IS HITTING YOU ═══
+     Owner: "change the monster name plate to a red background when they're
+     actively attacking you."
+
+     mp-moncue proves the CHAIN (the worker's monster_attack reaching the
+     plate) against real server monsters. This proves the PLATE, on the two
+     things a chain test cannot reach cleanly: that only the attacker turns
+     red, and that the level ink comes back afterwards.
+
+     THE SECOND ONE IS THE TRAP, and it is the one the assertion above walked
+     past. The danger tint #ef4444 measures 4.86:1 on the normal plate and
+     1.9:1 on the alarm red -- TRAPS §48's "a light surface inherits AA-failing
+     ink", run in Graphics rather than in CSS. So the alarm has to take the
+     whole ramp with it and hand it back, and "hands it back" is the half that
+     silently rots: the plate is cached on a key, and a state left out of that
+     key sticks on whichever value it was last painted with. The fixture above
+     only passes today because its monsters have dmg:0 and never attack -- it
+     has never seen the two states meet. */
+  const alarmed = await P.page.evaluate(async () => {
+    const S = window._gameState.current;
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const target = (S.monsters || []).find((m) => m.level === 42);
+    if (!target) return null;
+    target._atkMeUntil = Date.now() + 8000;
+    await sleep(500);
+    const on = (window.__btMonsterPlates || {}).plates || [];
+    const hotOn = on.find((p) => p.level === 'LV 42') || null;
+    const others = on.filter((p) => p.level !== 'LV 42').map((p) => ({ level: p.level, alarm: p.alarm }));
+    target._atkMeUntil = 0;
+    await sleep(500);
+    const off = (window.__btMonsterPlates || {}).plates || [];
+    return { hotOn: hotOn, others: others, hotOff: off.find((p) => p.level === 'LV 42') || null };
+  });
+  rec.ok('the attacked monster reports its plate in the alarm state (guard)',
+    !!(alarmed && alarmed.hotOn), alarmed);
+  if (alarmed && alarmed.hotOn) {
+    rec.ok('the monster hitting you wears a red plate',
+      alarmed.hotOn.alarm === true, alarmed.hotOn);
+    /* ...and the plate was REBUILT for it. The rounded rect is redrawn only
+       when the cache key changes, and for a monster the name and level never
+       change after frame one -- so an alarm left out of that key sets the flag
+       and paints nothing, forever. */
+    rec.ok('...and the plate was actually repainted for it, not just flagged',
+      /\|!$/.test(String(alarmed.hotOn.pillKey || '')), alarmed.hotOn);
+    rec.ok('...while the monsters standing next to it do not',
+      alarmed.others.every((p) => p.alarm !== true), alarmed.others);
+    rec.ok('...and its LV line leaves the danger red, which is 1.9:1 on that fill',
+      !/ef4444|16729156/i.test(String(alarmed.hotOn.levelFill || '')), alarmed.hotOn);
+    /* The half that rots silently: coming BACK. */
+    rec.ok('...and when it stops, the plate and the danger red both return',
+      !!alarmed.hotOff && alarmed.hotOff.alarm === false
+        && /ef4444|16729156/i.test(String(alarmed.hotOff.levelFill || '')), alarmed.hotOff);
+  }
+
   if (process.env.BT_SHOT) await P.page.screenshot({ path: process.env.BT_SHOT });
 
   /* ═══ v2.3.2154: AND THE PLATE IS BIG ENOUGH TO READ ═══

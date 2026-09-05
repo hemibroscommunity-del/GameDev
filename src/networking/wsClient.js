@@ -710,6 +710,60 @@ export function setupWebSocket(ctx) {
                         localM._burstFrom = Date.now();
                         localM._burstScale = localM._burstScale || 3.5;
                       }
+                      /* ═══ v2.3.2295: "IT JUST NOTICED YOU" IS A TRANSITION ═══
+                         The worker sends `tg` -- the id of the player this
+                         monster is chasing -- only while it has one. Compared
+                         against the LAST value we held, not against nothing:
+                         a monster that was already coming for you when you
+                         first laid eyes on it has not just noticed you, and
+                         flashing for it would fire the cue for the whole zone
+                         on every join. `_tgPrev` is seeded from the snapshot
+                         (state_sync / zone_monsters) precisely so that first
+                         sighting is a baseline rather than an edge.
+
+                         _aggroTs is the EXISTING field entityRenderer's notice
+                         cue reads, written by the local AI since the local-AI
+                         days. Reviving it rather than adding a parallel one
+                         means the cue works identically in a local-AI zone and
+                         a server zone -- and it is why this is three lines
+                         rather than a new renderer.
+
+                         `_aggroed` is deliberately NOT set. It drives a
+                         separate always-on threat arrow above the head, which
+                         is a different mark from the notice flash and would
+                         put a second permanent chevron over every chasing
+                         monster -- exactly the "two marks on one monster"
+                         the last four versions have been unpicking. */
+                      if (md.tg !== undefined) {
+                        var _tgPrev = localM._tgPrev;
+                        if (md.tg === S.myId && _tgPrev !== undefined && _tgPrev !== S.myId) {
+                          localM._aggroTs = Date.now();
+                        }
+                        localM._tgPrev = md.tg;
+                        /* Keep the plain field in step with the wire too. The
+                           snapshot maps copy `tg` off the spread, so without
+                           this it would freeze at whatever the zone snapshot
+                           said and read as a stale answer to "who is this
+                           monster chasing" -- which is exactly how the first
+                           cut of mp-moncue came to see tg:null on a monster
+                           that was, at that instant, chasing the player. */
+                        localM.tg = md.tg;
+                        /* ═══ AND IT CLEARS A STUCK THREAT ARROW ═══
+                           `_aggroed` drives a separate orange arrow on the
+                           monster's body (entityRenderer, `threatArrow`). In a
+                           server zone the local AI that used to clear it never
+                           runs -- but ONE writer is not behind that gate: the
+                           retaliation stamp on being hit (monsterCombat.js and
+                           projectiles.js). So every monster you have ever hit
+                           in a server zone has worn that arrow permanently,
+                           with nothing anywhere able to take it off.
+                           CLEARED HERE, NEVER SET. Setting it from `tg` would
+                           light the arrow on every chasing monster -- a fourth
+                           mark on a head that now carries three, which is the
+                           clutter the last five versions have been unpicking.
+                           This only ends a state that could not end. */
+                        if (md.tg !== S.myId) localM._aggroed = false;
+                      }
                       if (typeof md.ph === 'string' && md.ph && localM._burPhase !== md.ph) {
                         localM._burPhase = md.ph;
                         localM._burFrom = localM._burFrom || Date.now();
@@ -1033,6 +1087,12 @@ export function setupWebSocket(ctx) {
                     alive: m.alive, statuses: {}, _hitThisSwing: false,
                     _atkCd: 0, _stunUntil: 0, respawnAt: 0, moveTimer: 0, targetX: m.x, targetY: m.y,
                     _stuckArrows: [],
+                    /* v2.3.2295: the notice cue's baseline. The spread above
+                       already copies `tg` itself; this is the SEPARATE "what
+                       did we last know" slot the edge test compares against,
+                       and seeding it here is what makes a first sighting not
+                       an edge. */
+                    _tgPrev: m.tg !== undefined ? m.tg : null,
                   });
                   /* Apply per-zone variant skin (see monsterVariants.js).
                      Maps ember fodder -> fireGoblin so the renderer + AI
@@ -2489,6 +2549,8 @@ export function setupWebSocket(ctx) {
               alive: m.alive, statuses: {}, _hitThisSwing: false,
               _atkCd: 0, _stunUntil: 0, respawnAt: 0, moveTimer: 0, targetX: m.x, targetY: m.y,
               _stuckArrows: [],
+              /* v2.3.2295: see the state_sync copy of this map. */
+              _tgPrev: m.tg !== undefined ? m.tg : null,
             });
             applyZoneVariant(local, S.currentZone);
             /* See state_sync handler -- mirror the same spawn

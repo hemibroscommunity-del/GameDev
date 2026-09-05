@@ -1193,6 +1193,11 @@ export const joinMethods = {
         x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, dmg: m.dmg,
         xp: m.xp, gold: m.gold, spd: m.spd, emoji: m.emoji, color: m.color,
         alive: m.alive,
+        /* v2.3.2295: who it is chasing at the moment you join -- the baseline
+           the notice cue needs. Without it every monster already aggroed on
+           you would read as having JUST noticed you the first time it moves.
+           See tick.js. */
+        tg: m.targetId || null,
         /* v2.3.1535: the variant this monster actually spawned as.  Until now
            the client re-derived it from ZONE_VARIANT_MAP, which maps a whole
            ARCHETYPE and so cannot express "7 green slimes and 1 blue one".

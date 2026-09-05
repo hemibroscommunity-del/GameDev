@@ -400,6 +400,39 @@ export const tickMethods = {
            joining next to one and seeing an ordinary slime standing at 0 hp
            gives no warning at all before it goes off. */
         if (m._burstUntil && m._burstUntil > ts) w.bu = m._burstUntil;
+        /* ═══ v2.3.2295: WHO THIS MONSTER IS CHASING ═══
+           Owner: "on the monsters when they notice you put a brief exclamation
+           point over their head to cue you in that you're being targeted."
+
+           The client has had `_aggroed`/`_aggroTs` and a 600ms flash since the
+           local-AI days, and both are DEAD in production: monsterCombat.js
+           skips all local AI when server monsters are active, so nothing has
+           written those fields in a server zone for a long time and the cue
+           has never fired for a real player. The server has always known --
+           m.targetId, set in the chase branch of index.js -- it just never
+           said so. It does now, and the flash comes back to life.
+
+           The PLAYER ID, not a boolean "targeting you". `buildFor` serialises
+           ONE payload per (zone, protocolVersion) and shares it across every
+           recipient in that zone, so a recipient-relative field would either
+           be wrong for everyone but the first or force a per-session
+           serialisation of the hottest message in the game. An id is the same
+           for all of them; the client compares it to its own.
+
+           Conditional, exactly like w.st/w.ph/w.bu above: a wandering monster
+           (the overwhelming majority, most ticks) sends nothing. Old clients
+           ignore the key, and a v1 session gets it in its full list on the
+           same terms -- so this is deploy-order safe in both directions. */
+        if (m.targetId) w.tg = m.targetId;
+        /* ...and for a short window after it DROPS one, an explicit null. The
+           cue is an edge, so a client that only ever hears "chasing X" holds
+           that forever: the same monster re-acquiring you later would look like
+           no change at all and never flash again. Two seconds is many ticks --
+           the monster is dirty on the tick it loses aggro (it stops) and on the
+           ones after (it wanders) -- so the null lands even if a frame is
+           dropped, and then costs nothing again. index.js stamps _tgLost at
+           both places a target is cleared. */
+        else if (m._tgLost && ts - m._tgLost < 2000) w.tg = null;
         return w;
       };
       // Gather-node deltas carry only state-change fields (alive /

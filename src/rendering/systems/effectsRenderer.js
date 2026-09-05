@@ -3664,7 +3664,13 @@ export class EffectsRenderer {
       const _lr = this;
       window.__btLockRings = function () {
         window.__btRingProbe = true;     /* arm it; the next frame fills it in */
-        return { count: _lr._lockRings, radii: _lr._lockRingRadii || [] };
+        /* v2.3.2295: `chips` alongside `count`. The wrapper below counts
+           CIRCLES, which after this version should be none on the target at
+           all -- so a report of rings alone could not tell "the chip replaced
+           the reticle" from "the target lost its mark entirely", and those are
+           a fix and a regression wearing the same number. */
+        return { count: _lr._lockRings, radii: _lr._lockRingRadii || [],
+          chips: _lr._lockChips || 0 };
       };
     }
     try {
@@ -3790,6 +3796,15 @@ export class EffectsRenderer {
              perimeter you have crossed, the target among them.  The ring stays
              underneath as the quiet half. */
           const isTarget = c.m === _lockRef;
+          /* v2.3.2295: the TARGET is skipped here now -- it wears the chip
+             drawn after this loop instead. v2.3.2253 deliberately gave every
+             candidate the caret "target included", because at that point the
+             target's other mark was a ground reticle and the owner could not
+             see it. The chip replaces that reticle above the head, in the same
+             band as this caret, so leaving the caret on would put two marks in
+             one place on one monster -- which is the pair this file has spent
+             four versions unpicking. */
+          if (c.m === _lockRef) continue;
           const nearest = i === 0;
           /* The caret sits above the body, not above the feet.
              monsterBodyOffsetY is the SHARED table (data/gameSystems.js) that
@@ -3923,6 +3938,99 @@ export class EffectsRenderer {
           _marks.push({ id: c.m && c.m.id, x: c.x, y: _cy, nearest: nearest, target: isTarget, hot: _atkHot });
         }
       }
+      /* ═══ v2.3.2295: THE TARGET WEARS A CHIP ABOVE ITS HEAD ═══
+         Owner: "instead of the circle reticle to show a monster is being
+         targeted just have a small/medium size orange pointer chip above the
+         monsters head (like an upside down triangle)."
+
+         So the reticle -- a pulsing circle with four orbiting corner ticks,
+         drawn at the target's FEET some 250 lines below this -- is gone, and
+         this is what replaces it.
+
+         IT IS DELIBERATELY NOT IN THE CANDIDATE LOOP ABOVE. That loop runs
+         only for monsters inside the 220px engage perimeter, and a tap lock is
+         explicitly allowed to live outside it -- the bow snipe at 675px. That
+         is the exact reason v2.3.2263 kept the reticle and deleted the OTHER
+         brass circle: killing the reticle without moving its "works at any
+         range" property somewhere would leave a distant tapped target wearing
+         no mark at all. Here is where that property moved to.
+
+         FILLED, where the candidate carets are stroked. Colour is already
+         carrying whether you are attacking (the owner's rule from v2.3.2253:
+         "yellow if you're merely within combat distance, red when you're
+         attacking"), so it cannot also say which one is the target -- weight
+         and shape do. A solid chip against four thin chevrons reads instantly,
+         at a glance, on a phone.
+
+         Sized in SCREEN pixels (`_k`), like every other mark in this region
+         since v2.3.2255: 19 CSS px across and 11 tall, which is the "small /
+         medium" the owner asked for and roughly the footprint the old reticle
+         occupied. The dark rim is not decoration -- this mark lands on town
+         cobble, desert sand and snow, and orange on two of those is orange on
+         orange (TRAPS §21). */
+      /* MONSTERS ONLY, and that is the owner's own scoping: "instead of the
+         circle reticle to show a MONSTER is being targeted". S.lockedTarget
+         also holds a duel opponent (type 'player', duelLock.js) and a tapped
+         NPC (type 'npc', BroTown.jsx) -- the reticle drew on all three without
+         ever checking, and those two keep it, below. A chip is placed from
+         monsterBodyOffsetY, which is a per-ARCHETYPE table: a peer resolves to
+         nothing in it and falls to the 23 default, which would hang the mark
+         at a slime's head height over a standing player. The three shapes are
+         exhaustive -- every one of the seven assignments in the codebase sets
+         `type` to one of them. */
+      const _lockIsMon = !!(S.lockedTarget && S.lockedTarget.type === 'monster');
+      const _lockChip = _lockIsMon && S.lockedTarget.ref;
+      this._lockChips = 0;
+      if (_lockChip && _lockChip.alive !== false && !S._zoneLoading) {
+        const _cxp = _lockChip.renderX != null ? _lockChip.renderX : _lockChip.x;
+        const _cyp = _lockChip.renderY != null ? _lockChip.renderY : _lockChip.y;
+        if (Number.isFinite(_cxp) && Number.isFinite(_cyp)) {
+          const _ck = 1 / (S._worldScaleX > 0.01 ? S._worldScaleX : 1);
+          /* The SHARED per-archetype table (data/gameSystems.js), twice, for
+             the same reason the caret above reads it: it is what lockAimPoint,
+             the swing hit-test and the projectile aim all use for "how far
+             above m.y the body is", so a reskin cannot land this mark on a
+             monster's feet the way v2.3.1535 records. The extra 42 clears the
+             name pill, and was chosen by rendering it. */
+          const _coff = monsterBodyOffsetY(_lockChip.arch || _lockChip.archetype || _lockChip.type) || 23;
+          const _chot = !!(S.autoAttack || S.isSwinging
+            || (S.swingTimer && now - S.swingTimer < 420));
+          /* The bob is a SCREEN measurement like everything else here. The
+             caret's own bob (above) is still in world units and breathes by a
+             third of its amplitude at one zoom and a fifth at another --
+             v2.3.2263 made exactly this correction to the reticle's pulse and
+             it did not reach the carets. Not fixing theirs here: it is a
+             separate mark with its own tuning and this change has no business
+             moving it. */
+          const _cbob = Math.sin(now / 320) * 3 * _ck;
+          /* 16.4 CSS px across, 11 tall, plus a 2.6px rim -- so ~19 overall.
+             mp-arrowshot already fixes a numeric meaning for "small/medium" on
+             the target's mark: it measures the mark by frame-differencing a
+             34px crop and gates it at 12..24 CSS px, with the upper bound there
+             to catch a measurement that has saturated its own crop rather than
+             found a mark. The first cut of the chip was 19 across plus a 3.2
+             rim, which reached the crop edge and reported 34 -- the exact
+             failure that bound exists to catch, and it caught it. */
+          const _chw = 7.2 * _ck;
+          const _chh = 11 * _ck;
+          const _ctop = _cyp - _coff * 2 - 42 + _cbob;
+          const _cpoly = [
+            _cxp - _chw, _ctop,
+            _cxp + _chw, _ctop,
+            _cxp,        _ctop + _chh,
+          ];
+          gfx.poly(_cpoly);
+          gfx.stroke({ color: 0x14181A, width: 2.6 * _ck, alpha: 0.8 });
+          gfx.poly(_cpoly);
+          gfx.fill({ color: _chot ? 0xFF3C3C : 0xF08A2E, alpha: 0.95 });
+          this._lockChips = 1;
+          /* Pushed onto the same probe list the carets use, with target:true,
+             so every scenario that asks __btAtkMark "which monster is the
+             target" keeps its answer after the mark moved out of that loop. */
+          _marks.push({ id: _lockChip.id, x: _cxp, y: _ctop, nearest: false,
+            target: true, hot: _chot, chip: true });
+        }
+      }
       this._atkMarks = _marks;
       if (typeof window !== 'undefined' && !window.__btAtkMark) {
         const _self = this;
@@ -3934,54 +4042,36 @@ export class EffectsRenderer {
         console.error('[overlay] candidate rings threw', e && e.message, e && e.stack);
       }
     }
-    // Lock-on reticle — defensive: a stale ref (e.g. monster killed
-    // mid-frame) shouldn't take down the entire effects renderer.
+    /* ═══ v2.3.2295: THE RETICLE SURVIVES ONLY FOR WHAT IS NOT A MONSTER ═══
+       The owner asked for the chip "to show a MONSTER is being targeted", and
+       S.lockedTarget is not always a monster: duelLock.js locks your duel
+       opponent (type 'player') and tapping a townsfolk locks them (type 'npc').
+       The block below never checked -- it drew this ring on all three -- so
+       deleting it outright would have quietly taken the mark off your duel
+       opponent, which is the one target in the game you most need to keep
+       track of. They keep the ring they have had all along; the monster gets
+       the chip. */
     try {
-      if (S.lockedTarget && S.lockedTarget.ref && S.lockedTarget.ref.alive !== false) {
-        const lt = S.lockedTarget.ref;
-        const lx = lt.x || lt.renderX || 0;
-        const ly = lt.y || lt.renderY || 0;
+      const _rtT = S.lockedTarget;
+      if (_rtT && _rtT.type !== 'monster' && _rtT.ref && _rtT.ref.alive !== false) {
+        const _rtRef = _rtT.ref;
+        const lx = _rtRef.renderX != null ? _rtRef.renderX : _rtRef.x;
+        const ly = _rtRef.renderY != null ? _rtRef.renderY : _rtRef.y;
         if (Number.isFinite(lx) && Number.isFinite(ly)) {
-          /* ═══ v2.3.2253: THE RETICLE OBEYS THE SAME RULE AS THE ARROW ═══
-             This was hard-coded red, and it is almost certainly the "red circle
-             is a bit hard to see" the owner reported: it sat on the target at
-             all times, so red meant nothing -- it could not distinguish "in
-             reach" from "attacking", and it competed with the two marks that
-             now do.  One rule across all three: brass while a monster is merely
-             in reach, red while you are attacking.  Slightly heavier too, since
-             legibility was the complaint. */
+          /* v2.3.2253's rule, unchanged: brass while merely locked, red while
+             you are attacking. v2.3.2263's screen measurement, unchanged. */
           const _rtHot = !!(S.autoAttack || S.isSwinging
             || (S.swingTimer && now - S.swingTimer < 420));
           const _rtCol = _rtHot ? 0xff3c3c : 0xD8A85F;
-          /* ═══ v2.3.2263: ...AND THE SURVIVOR INHERITS THE SCREEN MEASUREMENT
-             The circle deleted above was sized `15 * _k` -- a constant 15 CSS
-             px whatever the camera is doing -- while this one was 18 WORLD px,
-             which is 10.8 CSS px at the 0.60 a combat zone runs at and smaller
-             again in the World View.  That is the v2.3.2255 lesson (a mark for
-             the reader is measured in the reader's pixels) and it is the one
-             thing the duplicate had over the original, so it moves here rather
-             than dying with it.  15 keeps the surviving ring the size of the
-             OUTER of the two the owner has been looking at, so removing the
-             inner one is the only visible change.
-             The bob comes with it, scaled the same way, or the pulse would
-             breathe by a third of its amplitude at one zoom and a fifth at
-             another. */
-              const _rk = 1 / (S._worldScaleX > 0.01 ? S._worldScaleX : 1);
+          const _rk = 1 / (S._worldScaleX > 0.01 ? S._worldScaleX : 1);
           const lockR = (15 + Math.sin(now / 250) * 2.5) * _rk;
-          /* Dark keyline first, same trick the arrow uses -- brass on town
-             cobble is brass on brass without one.  Widths are screen
-             measurements too: 2.4 world px is a 1.4 CSS px line at combat
-             zoom, which is the hairline v2.3.2255 was written about. */
           gfx.circle(lx, ly, lockR);
           gfx.stroke({ color: 0x14181A, width: 3.5 * _rk, alpha: 0.5 });
           gfx.circle(lx, ly, lockR);
           gfx.stroke({ color: _rtCol, width: 2.2 * _rk, alpha: 0.9 });
-          // Corner marks
           for (let c = 0; c < 4; c++) {
             const ca = (c / 4) * Math.PI * 2 + now / 1500;
-            const cx = lx + Math.cos(ca) * lockR;
-            const cy = ly + Math.sin(ca) * lockR;
-            gfx.circle(cx, cy, 2.4 * _rk);
+            gfx.circle(lx + Math.cos(ca) * lockR, ly + Math.sin(ca) * lockR, 2.4 * _rk);
             gfx.fill({ color: _rtCol, alpha: 0.95 });
           }
         }
@@ -3992,6 +4082,25 @@ export class EffectsRenderer {
         console.error('[overlay] lock reticle threw', e && e.message, e && e.stack);
       }
     }
+    /* ═══ v2.3.2295: ...AND IS GONE FOR MONSTERS ═══
+       Owner: "instead of the circle reticle to show a monster is being
+       targeted just have a small/medium size orange pointer chip above the
+       monsters head (like an upside down triangle)."
+
+       What stood here was a pulsing circle with four orbiting corner ticks,
+       drawn at the target's feet, brass while in reach and red while
+       attacking. Three earlier versions had already narrowed the marks on a
+       target down to this one (v2.3.2262 dropped its ground ring, v2.3.2263
+       dropped a second brass circle) -- so removing it leaves the target with
+       exactly one mark, which is what those versions were reaching for anyway.
+
+       ITS ONE LOAD-BEARING PROPERTY MOVED, IT WAS NOT LOST. v2.3.2263 kept
+       this block over the other circle specifically because it draws for a
+       target at ANY range, and a tap lock may sit outside the 220px candidate
+       perimeter (the bow snipe at 675px). The chip is drawn from
+       S.lockedTarget for the same reason, in its own block outside the
+       candidate loop -- see the note there. mp-lockrings asserts both halves:
+       no circle on the target, exactly one chip. */
     if (_ringProbeRestore) _ringProbeRestore();
 
     /* Bow / staff / melee line of sight — a beam-shaped ribbon (filled

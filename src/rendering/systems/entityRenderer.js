@@ -143,6 +143,13 @@ const PEER_HPBAR_Y = -48;
 const PEER_HPBAR_HOLD_MS = 8000;
 const MONSTER_HPBAR_W = 44;
 const MONSTER_HPBAR_H = Math.round(MONSTER_HPBAR_W * HPBAR_ASPECT); /* 13 */
+/* v2.3.2295: how long the notice cue stays up. Owner asked for "brief"; the
+   dot this replaced ran 600ms, which on a phone at arm's length is a flicker
+   rather than a cue -- and since nothing wrote _aggroTs in a server zone, that
+   600 had never been judged against anything real. 1100 holds full opacity for
+   the first two thirds and fades out over the last, so it reads as an event
+   with a beginning rather than as something already ending. */
+const NOTICE_MS = 1100;
 const PLAYER_HPBAR_W = 76;
 const PLAYER_HPBAR_H = Math.round(PLAYER_HPBAR_W * HPBAR_ASPECT);   /* 22 */
 const HPBAR_FLASH_MS = 160;   /* white flash on damage */
@@ -4693,10 +4700,21 @@ function _fitPlateToZoom(display) {
 
 /* Drive one plate.  `visible` false parks it without touching the cache,
    so re-showing costs nothing. */
-function _updateNamePill(display, name, level, visible, broId) {
+/* v2.3.2295: `alarm` -- this plate's owner is attacking you right now, so the
+   plate goes red. Owner: "change the monster name plate to a red background
+   when they're actively attacking you."
+   It joins the KEY rather than being applied after it. The whole point of
+   _pillKey is that the rounded-rect is rebuilt only when something about it
+   changed, and for a monster the name and level never change after frame one
+   -- so a fill written outside the key would be written once and then never
+   again, i.e. the plate would go red and stay red for the life of the monster.
+   In the key, a state change is a rebuild and nothing else is.
+   Optional and last: every existing caller passes five arguments and is
+   byte-identical. */
+function _updateNamePill(display, name, level, visible, broId, alarm) {
   if (!display || !display._namePill) return;
   _fitPlateToZoom(display);
-  const key = name + '|' + level + '|' + (broId ? 'v' : '');
+  const key = name + '|' + level + '|' + (broId ? 'v' : '') + (alarm ? '|!' : '');
   if (display._pillKey !== key) {
     display._pillKey = key;
     display._pillName.text = name;
@@ -4728,10 +4746,19 @@ function _updateNamePill(display, name, level, visible, broId) {
     display._pillLevel.x = bPad / 2;
     display._pillBg.clear();
     display._pillBg.roundRect(-w / 2, 0, w, h, 9);
-    display._pillBg.fill({ color: 0x0D161B, alpha: 0.82 });
-    display._pillBg.stroke({ color: 0xE5EDE9, alpha: 0.18, width: 1 });
+    /* #7A1D1D at .94, not a bright red: the plate carries TEXT, and the name
+       has to stay the most legible thing on it. #F4F0E7 measures 9.14:1 on
+       this fill (16.09:1 on the normal one), so the alarm state costs
+       legibility without losing it. A brighter red would read louder and say
+       less -- #9B2020 drops the level line to 3.74:1, under AA. */
+    display._pillBg.fill({ color: alarm ? 0x7A1D1D : 0x0D161B, alpha: alarm ? 0.94 : 0.82 });
+    display._pillBg.stroke({ color: alarm ? 0xFF8A8A : 0xE5EDE9, alpha: alarm ? 0.55 : 0.18, width: 1 });
   }
   display._namePill.visible = !!visible;
+  /* For the QA probe (__btMonsterPlates). A colour read back off a Graphics is
+     not something Pixi offers, and a screenshot cannot tell this red from the
+     danger-level red or from a red monster behind it (TRAPS §21). */
+  display._pillAlarm = !!alarm;
 }
 
 
@@ -7255,6 +7282,19 @@ export class EntityRenderer {
         const minHeadroomY = -size - 22;
         const topY = Math.min(visualTopY, minHeadroomY);
         const barY = topY - 2 - MONSTER_HPBAR_H / 2;
+        /* v2.3.2295: the top of the whole above-head band -- the HP bar's own
+           upper edge -- stashed for anything that has to sit ABOVE the monster
+           rather than on it. Everything in this block already knows where the
+           sprite really ends (the variant / snowman / fodder cases above);
+           anything drawn from outside it was guessing, which is how the aggro
+           dot came to sit at `-size - 20` -- 28 local px, i.e. halfway up a
+           96px slime rather than over its head. Stashed rather than
+           recomputed, because a second copy of this per-archetype maths is
+           exactly the drift v2.3.1535 records.
+           _hpUi carries the same x/y/scale as this container (mirrored every
+           frame in _updateMonsters), so a value local to one is local to the
+           other. */
+        display._markTopY = barY - MONSTER_HPBAR_H / 2;
         /* v2.3.1338: stamp the bar-top anchor on the game monster so
            combat popups spawn ABOVE the health bar (owner: damage
            numbers rise from over the bar, not over the sprite body).
@@ -7392,16 +7432,49 @@ export class EntityRenderer {
           nameSize: _pui && _pui._pillName ? Number(_pui._pillName.style.fontSize) : null,
           lvlSize: _pui && _pui._pillLevel ? Number(_pui._pillLevel.style.fontSize) : null,
           y: _pillNode ? _pillNode.y : null,
+          /* v2.3.2295: is this plate in its attacking-you state, and does the
+             notice cue think this monster just spotted you. Both read off the
+             renderer rather than off game state, so what the scenario asserts
+             is what was drawn. */
+          alarm: !!(_pui && _pui._pillAlarm),
+          /* The cache key the plate was last REBUILT under. _pillAlarm alone
+             says what the renderer intended; this says whether the rounded
+             rect was actually repainted for it. Fold `alarm` out of the key
+             and the flag still flips while the plate stays dark forever --
+             a state that is true in the code and invisible on the screen,
+             which is the whole failure mode this project keeps re-finding. */
+          pillKey: _pui ? String(_pui._pillKey || '') : null,
+          /* the top of the notice mark, in world units -- see its draw site */
+          noticeY: display._noticeWorldY != null ? Math.round(display._noticeWorldY) : null,
+          my: Math.round(m.y),
+          notice: !!(m._aggroTs && now - m._aggroTs < NOTICE_MS),
+          /* how far into the cue's life this frame is, so a camera can be
+             pointed at it while it is at full strength rather than during its
+             fade -- see the note in mp-moncue */
+          noticeAge: m._aggroTs ? (now - m._aggroTs) : null,
           hasOldLvlText: !!display._lvlText,
         });
       }
       const _plateUi = display._hpUi;
       if (_plateUi && _plateUi._namePill) {
         const _plvlDanger = m.level != null && m.level >= ((S.rpg && S.rpg.level) || 1) + 5;
-        _updateNamePill(_plateUi, monsterDisplayName(m.archetype || m.type), m.level == null ? 1 : m.level, true, null);
-        if (_plvlDanger !== _plateUi._lastLvlDanger) {
+        /* v2.3.2295: stamped by the monster_attack handler (gameEvents.js) when
+           the worker says THIS monster hit ME. A window rather than a flag --
+           there is no "stopped attacking" message, so the plate has to time
+           itself out. */
+        const _plateAlarm = !!(m._atkMeUntil && now < m._atkMeUntil);
+        _updateNamePill(_plateUi, monsterDisplayName(m.archetype || m.type), m.level == null ? 1 : m.level, true, null, _plateAlarm);
+        /* v2.3.2295: the LEVEL line has to move with the fill. The danger red
+           #ef4444 is 4.86:1 on the normal plate and 1.9:1 on the alarm one --
+           the same light-fill-keeps-the-dark-ink trap TRAPS §48 records for the
+           trade lanes, in a Graphics rather than in CSS. So the alarm state
+           takes the whole ramp with it, and the danger red is what it returns
+           to. Both states are in the cache key or the second transition would
+           not repaint. */
+        if (_plvlDanger !== _plateUi._lastLvlDanger || _plateAlarm !== _plateUi._lastLvlAlarm) {
           _plateUi._lastLvlDanger = _plvlDanger;
-          _plateUi._pillLevel.style.fill = _plvlDanger ? '#ef4444' : '#D8AA58';
+          _plateUi._lastLvlAlarm = _plateAlarm;
+          _plateUi._pillLevel.style.fill = _plateAlarm ? '#FFD9D9' : (_plvlDanger ? '#ef4444' : '#D8AA58');
         }
       }
 
@@ -7412,7 +7485,12 @@ export class EntityRenderer {
       const statuses = m.statuses || {};
       const statusKeys = Object.keys(statuses);
       const numStatuses = statusKeys.length;
-      const aggroFlash = m._aggroTs && now - m._aggroTs < 600;
+      /* v2.3.2295: 600 -> 1100ms. Owner: "when they notice you put a BRIEF
+         exclamation point over their head". 600ms of a fading 4px dot on a
+         phone held at arm's length is not a cue, it is a flicker -- and until
+         v2.3.2295 wired the worker's `tg` through, nothing set _aggroTs in a
+         server zone at all, so this had never actually been seen in play. */
+      const aggroFlash = m._aggroTs && now - m._aggroTs < NOTICE_MS;
       const threatArrow = m._aggroed && S.player;
       const stunActive = m._stunUntil && now < m._stunUntil;
       /* Stun countdown text -- pooled Text on the monster container;
@@ -7496,10 +7574,98 @@ export class EntityRenderer {
           }
         }
 
+        /* ═══ v2.3.2295: THE NOTICE CUE IS AN EXCLAMATION MARK ═══
+           Owner: "on the monsters when they notice you put a brief exclamation
+           point over their head to cue you in that you're being targeted."
+
+           It replaces a 4px dot that was (a) not shaped like anything, (b) at
+           `-size - 20`, which is over the BODY of every sprite-backed monster
+           rather than over its head, and (c) dead code in production since
+           local monster AI was switched off -- see the `tg` note in
+           wsClient.js. So all three halves are fixed at once: it is written
+           from the worker's own aggro, it sits on the shared above-head anchor,
+           and it is a mark you can name.
+
+           GRAPHICS, NOT A TEXTURE. CLAUDE.md's preloading law makes a new
+           lazily-loaded sprite a bug, and this is a rounded bar and a dot. A
+           Pixi Text would be worse than a sprite -- it rasterises on first use,
+           which is a hitch at the exact moment something is about to attack
+           you.
+
+           KEYLINE FIRST, one step wider, the same trick the attack carets and
+           the block caret use: this lands on grass, town cobble, desert sand,
+           snow and lava, and a single red mark disappears against two of them.
+
+           POP THEN HOLD THEN FADE. A mark that only fades reads as something
+           ending; one that arrives reads as something starting, which is the
+           whole message. */
         if (aggroFlash) {
-          const age = (now - m._aggroTs) / 600;
-          dynGfx.circle(0, -size - 20, 4);
-          dynGfx.fill({ color: 0xff5e6c, alpha: 1 - age });
+          const age = (now - m._aggroTs) / NOTICE_MS;
+          /* Grows past its size in the first ~120ms and settles back. */
+          const _pop = age < 0.11 ? 0.55 + (age / 0.11) * 0.62
+            : 1.17 - Math.min(1, (age - 0.11) / 0.24) * 0.17;
+          /* Full opacity for two thirds of its life, then out. Fading from
+             frame one is what made the old dot read as a glitch. */
+          const _fade = age < 0.66 ? 1 : 1 - (age - 0.66) / 0.34;
+          /* Same half-compensation the name plate takes (setPlateZoom): a cue
+             for the READER should not shrink to nothing when the world zooms
+             out, and should not be pinned so hard that it dwarfs the monster
+             when it zooms in. */
+          const _nz = _plateZoom * _pop;
+          /* The shared above-head anchor, with the small procedural fallback
+             for a monster whose HP block has not run yet (frame one). */
+          const _nTop = (display._markTopY != null ? display._markTopY : -size - 30);
+          /* Sized by looking, not by arithmetic. The first cut was 3.6 x 12
+             container units with a 1.85x dark shape FILLED behind it, and the
+             screenshot showed the problem immediately: at the 0.6 a combat
+             zone runs at that is a 4 x 14 CSS px mark, and the oversized dark
+             fill read as a brown blob with a thin red thread inside rather
+             than as a red mark with an edge -- the identical failure v2.3.2255
+             records for the attack carets, where "the keyline adds ~1 CSS px
+             of dark EITHER SIDE, and no more" was the fix. So: half again as
+             big, and the dark half is a STROKE around the shape instead of a
+             larger copy of it. */
+          const _bw = 6.5 * _nz;
+          const _bh = 18 * _nz;
+          const _gap = _bw * 0.8;
+          /* Drawn UPWARD from the anchor: the dot sits just above the monster
+             and the stem rises, so a taller mark never reaches down onto the
+             sprite. */
+          /* ═══ WHERE IT SITS, AND HOW THAT WAS SETTLED ═══
+             _nTop is the top of the monster's whole above-head band (the HP
+             bar's upper edge), so the dot sits just clear of that and the
+             stem rises from it. On a slime that puts the mark between about
+             121 and 166 world px above the feet, with the target chip below it
+             at 91 -- the two never touch.
+
+             That ordering was GUESSED WRONG once and is now measured. A
+             screenshot in which the "!" could not be found was read as the
+             chip painting over it, and the mark was raised 30 container units
+             to "clear" a collision that was not happening: what the screenshot
+             actually showed was the first cut of this mark being small and
+             half-faded. The raise then put it 217 px over a 64px slime, i.e.
+             in the sky, off every crop -- which looked exactly like the
+             collision it was supposed to have fixed.
+             Two marks drawn by two renderers into two coordinate spaces cannot
+             be compared by eye, so they are compared by number instead: the
+             draw stashes its world y below, __btAtkMark reports the chip's,
+             and mp-moncue asserts the order. */
+          const _dotY = _nTop - 4 * _nz - _bw * 0.6;
+          const _bang = () => {
+            dynGfx.circle(0, _dotY, _bw * 0.6);
+            dynGfx.roundRect(-_bw / 2, _dotY - _gap - _bh, _bw, _bh, _bw * 0.5);
+          };
+          _bang();
+          dynGfx.stroke({ color: 0x14181A, width: 2.4 * _nz, alpha: _fade * 0.85 });
+          _bang();
+          dynGfx.fill({ color: 0xFF4B4B, alpha: _fade });
+          /* Where it actually landed, in WORLD units, for the probe. The two
+             marks that can collide up here are drawn in different files and
+             different spaces, so "is the ! above the chip" is not a question
+             either file can answer alone -- and when they DID collide nothing
+             failed, because a mark drawn underneath another one is still
+             drawn. This is what lets a scenario ask. */
+          display._noticeWorldY = m.y + (_dotY - _gap - _bh) * (display.scale && display.scale.y ? display.scale.y : 1);
         }
 
         if (threatArrow) {

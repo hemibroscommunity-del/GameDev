@@ -1643,6 +1643,9 @@ export class GameRoom {
             m.hp = m.maxHp;
             m.x = m.spawnX;
             m.y = m.spawnY;
+            /* v2.3.2295: a respawn drops the target too -- same reasoning as
+               the aggro-loss stamp below. */
+            if (m.targetId) m._tgLost = now;
             m.targetId = null;
             m.atkCd = 0;
             /* ═══ v2.3.1709: A RESPAWNED MONSTER COMES BACK CLEAN ═══
@@ -2098,6 +2101,18 @@ export class GameRoom {
           // per target was ~5 px, the user-reported "severely
           // limited" symptom.  Targets now persist until reached or
           // the leash pull-back overrides.
+          /* v2.3.2295: stamp the moment aggro is LOST, so the wire can say so.
+             tick.js sends `tg` only while a monster has a target, which alone
+             would mean the client never learns that a target was dropped -- and
+             the notice cue is an EDGE, so a client holding a stale "chasing
+             you" would never fire again if the same monster re-acquired you.
+             Walk away and come back and there would be no cue, which is the
+             most ordinary way a player meets one.
+             A TIMESTAMP rather than a flag cleared on send: monsterWire runs
+             once per (zone, protocolVersion) pair, i.e. more than once per tick
+             for the same monster, so anything it mutates is wrong for whichever
+             call comes second. This it only reads. */
+          if (m.targetId) m._tgLost = now;
           m.targetId = null;
           /* v2.3.1639: drop any unpaid knockback debt on aggro loss, so a
              monster shoved and then abandoned doesn't bank it and glide on

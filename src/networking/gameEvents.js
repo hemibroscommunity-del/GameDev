@@ -1892,6 +1892,26 @@ export function processGameEvent(type, payload, S, deps) {
                  this just suppresses the visual "ghost hit" in the
                  normal case. */
               var atkSrc = (payload.monsterId && S.monsters) ? S.monsters.find(function (mm) { return mm.id === payload.monsterId; }) : null;
+              /* ═══ v2.3.2295: THE PLATE GOES RED WHILE IT IS HITTING YOU ═══
+                 Owner: "change the monster name plate to a red background when
+                 they're actively attacking you."
+
+                 No new wire field for this one: the worker has always named
+                 the victim on the swing itself, and we are already inside the
+                 `payload.targetId === S.myId` branch, so reaching this line at
+                 all means the server just said this monster hit ME.
+
+                 A WINDOW, not a flag, because there is no "stopped attacking"
+                 message to turn it off -- a monster that loses aggro, dies at
+                 range or walks away simply stops swinging. 2.6s is a little
+                 over the slowest archetype's swing gap, so a monster in a real
+                 exchange stays red between blows while one that has actually
+                 disengaged clears within a beat.
+
+                 Stamped BEFORE the display filters below, on the same footing
+                 as S.lastDamageTaken above: the filters decide whether to draw
+                 a number, not whether the hit happened. */
+              if (atkSrc) atkSrc._atkMeUntil = Date.now() + 2600;
               /* Drop the event when the attacker isn't in our local
                  monster snapshot — even if the server provided
                  attackerX/Y. If the client doesn't have the monster
