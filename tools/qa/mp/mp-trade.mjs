@@ -1262,6 +1262,61 @@ export async function run({ browser, wsPort, webPort, rec }) {
      and half of what they see is now the tint inside the lane -- a receipt that
      agreed on lanes while disagreeing on wells would satisfy the old form of
      this check completely. */
+  /* ═══ v2.3.2297: THE RECEIPT'S THREE BEATS ═══
+     Owner: "when the trade completes I think it would be cool to show what you
+     sent for a second then collapse down that window to just show what the
+     other trader gave you and have it do a 'jump to bag' effect for the items
+     they gave you."
+
+     Three claims, and each one fails differently: the sent lane is up at first
+     (or the first beat never happened), it folds (or the card never becomes
+     "what they gave you"), and the received rows fly (or the goods arrive with
+     no idea where they went). The geometry above was all read at beat one --
+     deliberately, since that is when both lanes exist to be compared. */
+  const beat1 = await A.page.evaluate(() => ({
+    folded: !!document.querySelector('.bt-t2-fold--out'),
+    fold: !!document.querySelector('.bt-t2-fold'),
+    flies: document.querySelectorAll('[data-trade-fly]').length,
+  }));
+  rec.ok('beat one: the receipt shows BOTH piles, with the sent lane still up',
+    beat1.fold === true && beat1.folded === false, beat1);
+
+  /* The fold is at 1100ms and the toss at 1400 with a 110ms stagger, so this
+     lands mid-flight rather than after it. Polled rather than slept: a fixed
+     wait would be measuring this machine's frame budget. */
+  let beat2 = null;
+  const tBeat = Date.now();
+  while (Date.now() - tBeat < 4000) {
+    const b = await A.page.evaluate(() => ({
+      folded: !!document.querySelector('.bt-t2-fold--out'),
+      flies: document.querySelectorAll('[data-trade-fly]').length,
+      /* the title ELEMENT, not the drawer's first line of innerText -- that
+         is the ✕, which is what the first cut of this read. */
+      title: ((document.querySelector('[data-trade-drawer] [data-trade-title]') || {}).textContent || '').trim(),
+      recvRows: document.querySelectorAll('[data-recv-well] [data-trade-row]').length,
+    }));
+    if (b.folded && b.flies > 0) { beat2 = b; break; }
+    if (b.folded && !beat2) beat2 = b;
+    await A.page.waitForTimeout(60);
+  }
+  if (beat2) await shot(A, '4-receipt-folded');
+  rec.ok('beat two: the lane showing what you SENT folds away',
+    !!beat2 && beat2.folded === true, beat2);
+  rec.ok('...and the card renames itself to what is left on it',
+    !!beat2 && /gave you/i.test(beat2.title || ''), beat2);
+  /* The received rows are still THERE -- folding the wrong lane would satisfy
+     the assertion above and leave the card showing what you handed over. */
+  rec.ok('...with the pile you were PAID still on it', !!beat2 && beat2.recvRows > 0, beat2);
+  rec.ok('beat three: what they gave you flies to the bag',
+    !!beat2 && beat2.flies > 0, beat2);
+
+  /* And it cleans up after itself. The clones live on document.body, outside
+     React's tree, so nothing else in the app would ever collect them -- a leak
+     here is item art pinned over the game for the rest of the session. */
+  await A.page.waitForTimeout(1400);
+  const flown = await A.page.evaluate(() => document.querySelectorAll('[data-trade-fly]').length);
+  rec.ok('...and every flying copy is torn down when it lands', flown === 0, { flown });
+
   rec.ok('...and shaded the same way round as the other two screens, wells '
     + 'included',
     laneOk(recGeom) && laneOk(revGeom) && laneOk(liveGeom)

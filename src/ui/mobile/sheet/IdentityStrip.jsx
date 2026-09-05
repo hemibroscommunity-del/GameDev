@@ -190,7 +190,13 @@ export const IdentityStrip = ({ band = false, gutter = 0, trackW = null }) => {
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           minWidth: 0,
         }}>
-          <span style={{
+          {/* v2.3.2297: `data-purse` is a TARGET, not a style hook. The trade
+              receipt tosses the gold you were just paid toward the place it
+              lands, and "the place it lands" has to be findable from another
+              file without guessing at a class or matching on a number that
+              changes every second. One attribute, read by
+              TradeWindowPanel's tossToBag. */}
+          <span data-purse="1" style={{
             flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 4,
           }}>
             <img src="/icons/popups/gold.webp" alt="" draggable={false} style={{

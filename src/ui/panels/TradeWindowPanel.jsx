@@ -206,8 +206,11 @@ function TradeDrawer({ title, titleColor, onClose, children }) {
       style={DRAWER_FRAME}>
       <div onClick={(e) => e.stopPropagation()} style={{ position: 'relative' }}>
         {onClose && <button className="bt-t2-close" aria-label="Close" onClick={onClose}>✕</button>}
+        {/* v2.3.2297: a hook on the title, because the receipt now CHANGES it
+            mid-card and "the title says X" was otherwise only readable as the
+            drawer's first line of innerText -- which is the ✕. */}
         {title && (
-          <div style={{
+          <div data-trade-title="" style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             gap: 8, fontSize: 14, fontWeight: 800,
             color: titleColor || '#F4F0E7', marginBottom: 8,
@@ -369,13 +372,17 @@ function Face({ src, name, onLight }) {
   );
 }
 
-function StagedRow({ glyph, name, qty, have, rarityLabel, rarityColor, rarityTier, onRemove, onInc, onDec, ink = WELL_INK, rowTone = null }) {
+function StagedRow({ glyph, name, qty, have, rarityLabel, rarityColor, rarityTier, onRemove, onInc, onDec, ink = WELL_INK, rowTone = null, rowKey = null }) {
   return (
     /* v2.3.2290: the owner's painted row slot. Three states share one
        geometry (see .bt-t2-row in game.css), so a row does not change size
        when it lights up -- a control that moves between the two taps of a
        stepper is a control you mis-tap. */
+    /* v2.3.2297: data-trade-row is what the receipt's toss animation walks --
+       it needs the row's DOM node AND the inventory key it stands for, and the
+       key is the half a class name cannot carry. Inert everywhere else. */
     <div className={'bt-t2-row' + (rowTone === 'gold' ? ' bt-t2-row--gold' : rowTone === 'active' ? ' bt-t2-row--active' : '')}
+      data-trade-row={rowKey || undefined}
       style={{ minHeight: onRemove ? 44 : 38 }}>
       <div className="bt-t2-plate">{glyph}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -438,7 +445,7 @@ function OfferRows({ offer, weapons, empty, onRemoveItem, onRemoveWeapon, goldSu
   return (
     <div className="ls-scrollbody" style={{ maxHeight: 148, overflowY: 'auto' }}>
       {entries.map(([k, v]) => (
-        <StagedRow key={k} glyph={<ItemThumb itemKey={k} fallback={emojiFor(k)} />} name={labelFor(k)} qty={v}
+        <StagedRow key={k} rowKey={k} glyph={<ItemThumb itemKey={k} fallback={emojiFor(k)} />} name={labelFor(k)} qty={v}
           have={inv ? (inv[k] || 0) : null}
           onRemove={onRemoveItem ? () => onRemoveItem(k) : null}
           onInc={onSetQty ? () => onSetQty(k, v + 1) : null}
@@ -447,7 +454,7 @@ function OfferRows({ offer, weapons, empty, onRemoveItem, onRemoveWeapon, goldSu
       {wpns.map((w) => {
         const rt = (w.weapon && RARITY_TIERS[w.weapon.tier]) || null;
         return (
-          <StagedRow key={'w' + w.seq} glyph="⚔️" name={wpnName(w)}
+          <StagedRow key={'w' + w.seq} rowKey={'w:' + w.seq} glyph="⚔️" name={wpnName(w)}
             rarityLabel={rt ? rt.label : null} rarityColor={rt ? rt.color : null}
             rarityTier={w.weapon && w.weapon.tier}
             onRemove={onRemoveWeapon ? () => onRemoveWeapon(w.seq) : null} ink={ink} />
@@ -459,7 +466,7 @@ function OfferRows({ offer, weapons, empty, onRemoveItem, onRemoveWeapon, goldSu
           framed -- and once they were, it would have been the one row in the
           well without an edge. */}
       {gold > 0 && (
-        <div className="bt-t2-row" style={{ minHeight: 36 }}>
+        <div className="bt-t2-row" data-trade-row="_gold" style={{ minHeight: 36 }}>
           <div className="bt-t2-plate"><GoldIcon /></div>
           <div style={{ flex: 1, fontSize: 12, color: ink.name }}>Gold</div>
           <div style={{ fontSize: 14, fontWeight: 700, color: ink.gold, fontVariantNumeric: 'tabular-nums' }}>{gold}{goldSuffix || ''}</div>
@@ -467,6 +474,90 @@ function OfferRows({ offer, weapons, empty, onRemoveItem, onRemoveWeapon, goldSu
       )}
     </div>
   );
+}
+
+/* ═══ v2.3.2297: THE GOODS GO TO THE BAG, VISIBLY ═══
+ *
+ * Owner: "when the trade completes I think it would be cool to show what you
+ * sent for a second then collapse down that window to just show what the other
+ * trader gave you and have it do a 'jump to bag' effect for the items they
+ * gave you."
+ *
+ * The receipt used to state both piles and vanish, which told you what
+ * happened but never showed you WHERE it went -- and "where it went" is the
+ * one thing a player checks after handing something over. So the sent lane
+ * gets its beat and then folds away, and what you were paid flies to the place
+ * it now lives.
+ *
+ * A CLONE, not the row. Animating the row itself would collapse the lane it is
+ * in mid-flight and drag the rest of the list up under it; and the row is
+ * inside a scroll body, so a transform would be clipped by it. The clone is
+ * position:fixed on <body>, which is outside every one of those.
+ *
+ * TRANSFORM AND OPACITY ONLY, deliberately: those two are the pair a browser
+ * can hand to the compositor, so a dozen of them cost no layout. This lands on
+ * top of a live WebGL canvas on a phone; anything that reflows here is felt.
+ *
+ * It is also entirely BEST-EFFORT. Every lookup is guarded and every failure
+ * is a silent no-op: the receipt is a two-second read-only card, and a missing
+ * bag tile (dashboard folded, filter on another tab) must cost you an
+ * animation, never the card. */
+function tossToBag(fromNode, toRect, delay) {
+  if (!fromNode || !toRect || typeof document === 'undefined') return;
+  var from = fromNode.getBoundingClientRect();
+  if (!from.width || !from.height) return;
+  var fly = fromNode.cloneNode(true);
+  fly.removeAttribute('data-trade-row');
+  /* A marker rather than an anonymous div. The clone is the only part of this
+     animation that exists outside React, so it is the only part a scenario can
+     count -- and "did the goods actually fly" is otherwise a claim nothing can
+     check. Also what makes a leaked clone findable if one ever survives its
+     teardown. */
+  fly.setAttribute('data-trade-fly', '1');
+  fly.style.cssText = 'position:fixed;left:' + from.left + 'px;top:' + from.top + 'px;'
+    + 'width:' + from.width + 'px;height:' + from.height + 'px;margin:0;'
+    + 'z-index:2147483000;pointer-events:none;box-sizing:border-box;'
+    + 'transition:transform .58s cubic-bezier(.34,.86,.42,1),opacity .58s ease-in;';
+  document.body.appendChild(fly);
+  var dx = (toRect.left + toRect.width / 2) - (from.left + from.width / 2);
+  var dy = (toRect.top + toRect.height / 2) - (from.top + from.height / 2);
+  var t1 = setTimeout(function () {
+    fly.style.transform = 'translate(' + Math.round(dx) + 'px,' + Math.round(dy) + 'px) scale(.42)';
+    fly.style.opacity = '0.05';
+  }, delay || 20);
+  var t2 = setTimeout(function () { try { fly.remove(); } catch (e) {} }, (delay || 20) + 640);
+  return function () { clearTimeout(t1); clearTimeout(t2); try { fly.remove(); } catch (e) {} };
+}
+
+/* Where a given line item ends up, as a rect. Items land in the bag tile that
+   now holds them; gold lands on the purse in the identity strip (data-purse,
+   IdentityStrip.jsx); a weapon lands in the loadout. Each falls back to the
+   dashboard's own top edge, which is the honest answer to "downward, into your
+   stuff" when the specific slot is not on screen -- a bag whose filter is on
+   another tab has no tile to fly to, and a toss into nowhere reads worse than
+   a toss toward the band. */
+function landingRect(key) {
+  if (typeof document === 'undefined') return null;
+  var el = null;
+  try {
+    if (key === '_gold') {
+      el = document.querySelector('[data-purse]') || document.querySelector('.bt-land-gold');
+    } else if (key && key.indexOf('w:') === 0) {
+      el = document.querySelector('[data-loadout-slot], [data-weapon-slot]');
+    } else if (key) {
+      el = document.querySelector('[data-inv-key="' + (window.CSS && CSS.escape ? CSS.escape(key) : key) + '"]');
+    }
+    if (!el) el = document.querySelector('[data-dash-fold]');
+  } catch (e) { el = null; }
+  if (!el) return null;
+  var r = el.getBoundingClientRect();
+  if (!r.width || !r.height) return null;
+  /* the dashboard fallback is a whole band -- aim at the TOP of it rather than
+     its centre, or the goods fly past the bag and off the bottom of a phone. */
+  if (el.hasAttribute && el.hasAttribute('data-dash-fold')) {
+    return { left: r.left, top: r.top, width: r.width, height: Math.min(40, r.height) };
+  }
+  return r;
 }
 
 export function TradeWindowPanel(props) {
@@ -614,8 +705,53 @@ export function TradeWindowPanel(props) {
   const terminalState = trade2 && trade2.state;
   useEffect(() => {
     if (terminalState !== 'done' && terminalState !== 'failed') return undefined;
-    const t = setTimeout(() => setTrade2(null), terminalState === 'done' ? 2800 : 2200);
+    /* v2.3.2297: 2800 -> 4200 for the receipt. The card now has three beats to
+       get through -- both piles, the fold, the toss -- and 2800 was cut to fit
+       a card that just sat there. The failure notice is unchanged; it has
+       nothing to play. */
+    const t = setTimeout(() => setTrade2(null), terminalState === 'done' ? 4200 : 2200);
     return () => clearTimeout(t);
+  }, [terminalState]);
+
+  /* ═══ v2.3.2297: THE RECEIPT'S THREE BEATS ═══
+     Owner: "show what you sent for a second then collapse down that window to
+     just show what the other trader gave you and have it do a 'jump to bag'
+     effect for the items they gave you."
+
+     Beat 1 (0-1100ms): both piles, exactly as before -- the confirmation that
+     the thing you agreed to is the thing that happened.
+     Beat 2 (1100ms): the sent lane folds away. What you gave is settled; what
+     you were paid is the part you still have a question about.
+     Beat 3 (1400ms): each received row flies to where it now lives, staggered
+     so a three-item trade reads as three arrivals rather than one blur.
+
+     A HOOK, and unconditional, because the receipt sits behind six early
+     returns in this component and a hook after one of them is the React #300
+     crash this file already documents twice. */
+  const [recPhase, setRecPhase] = useState('both');
+  useEffect(() => {
+    if (terminalState !== 'done') { setRecPhase('both'); return undefined; }
+    setRecPhase('both');
+    const undo = [];
+    const tFold = setTimeout(() => setRecPhase('collapsed'), 1100);
+    const tToss = setTimeout(() => {
+      let rows = [];
+      try {
+        rows = [].slice.call(document.querySelectorAll('[data-recv-well] [data-trade-row]'));
+      } catch (e) { rows = []; }
+      rows.forEach((row, i) => {
+        const stop = tossToBag(row, landingRect(row.getAttribute('data-trade-row')), 20 + i * 110);
+        if (stop) undo.push(stop);
+      });
+    }, 1400);
+    return () => {
+      clearTimeout(tFold); clearTimeout(tToss);
+      /* Every clone is torn down with the effect. They live on <body>, outside
+         React's tree, so nothing else would ever collect them -- and a receipt
+         dismissed early by its ✕ mid-flight would otherwise leave item art
+         pinned to the screen over the game. */
+      undo.forEach((fn) => { try { fn(); } catch (e) {} });
+    };
   }, [terminalState]);
 
   /* ═══ v2.3.2149: YOUR REAL BAG IS THE ITEM SOURCE ═══
@@ -804,8 +940,12 @@ export function TradeWindowPanel(props) {
     return (
       /* v2.3.2280: the receipt stays on the band where the trade happened.
          The ✕ closes it early -- what the scrim tap used to do -- and the
-         effect above still auto-closes it (~2800ms). */
-      <TradeDrawer title="Trade complete ✓" titleColor="#55B98A" onClose={() => setTrade2(null)}>
+         effect above still auto-closes it (~4200ms since v2.3.2297).
+         v2.3.2297: the title moves with the card. Once the sent lane has
+         folded away, "Trade complete" is describing a card that is now showing
+         exactly one thing, and naming that thing is the point of folding. */
+      <TradeDrawer title={recPhase === 'collapsed' ? ((_otherName || 'They') + ' gave you') : 'Trade complete ✓'}
+        titleColor="#55B98A" onClose={() => setTrade2(null)}>
           {/* v2.3.2282: RECEIVED on top, SENT on the bottom -- see the lane-order
               note on the review screen. Your own pile is the bottom one on all
               three screens now, and it is the one on the lighter well. */}
@@ -818,7 +958,9 @@ export function TradeWindowPanel(props) {
               <Face src={theirFace} name={_otherName} onLight />
               <span className="bt-t2-lane-name">You received</span>
             </div>
-            <div className="bt-t2-items">
+            {/* v2.3.2297: data-recv-well is what the toss walks for rows -- the
+                SENT lane has rows too, and they are not going anywhere. */}
+            <div className="bt-t2-items" data-recv-well="1">
               {/* v2.3.2294: no `ink` on either receipt lane now. Both piles sit
                   in a .bt-t2-items well, and a well states its own ramp in CSS
                   -- so the two lanes read the same WELL_INK default and each
@@ -826,13 +968,21 @@ export function TradeWindowPanel(props) {
               <OfferRows offer={r.received} weapons={r.receivedWeapons} empty="Nothing" goldSuffix="G" />
             </div>
           </div>
-          <div className={myLaneCls} style={myWell}>
-            <div className="bt-t2-lane-hdr" style={{ color: '#8D9B98' }}>
-              <Face src={portraitStore.get()} name="You" />
-              <span className="bt-t2-lane-name">You sent</span>
-            </div>
-            <div className="bt-t2-items">
-              <OfferRows offer={r.sent} weapons={r.sentWeapons} empty="Nothing" goldSuffix="G" />
+          {/* v2.3.2297: the sent lane gets its beat and then folds. It is
+              WRAPPED rather than styled directly because a lane collapsing has
+              to take its own bottom margin with it, and .bt-t2-lane's margin is
+              outside its box. */}
+          <div className={'bt-t2-fold' + (recPhase === 'collapsed' ? ' bt-t2-fold--out' : '')}>
+            <div style={{ minHeight: 0, overflow: 'hidden' }}>
+              <div className={myLaneCls} style={myWell}>
+                <div className="bt-t2-lane-hdr" style={{ color: '#8D9B98' }}>
+                  <Face src={portraitStore.get()} name="You" />
+                  <span className="bt-t2-lane-name">You sent</span>
+                </div>
+                <div className="bt-t2-items">
+                  <OfferRows offer={r.sent} weapons={r.sentWeapons} empty="Nothing" goldSuffix="G" />
+                </div>
+              </div>
             </div>
           </div>
           {/* v2.3.2296: the receipt's own summary line, bolded with the Confirm

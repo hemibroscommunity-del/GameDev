@@ -912,6 +912,29 @@ input{font-family:inherit}
 }
 .bt-t2-plate img,.bt-t2-plate svg{width:20px;height:20px;display:block}
 
+/* ── the receipt's folding lane ────────────────────────────────────────────
+   v2.3.2297: owner -- "collapse down that window to just show what the other
+   trader gave you". A grid whose single row goes 1fr -> 0fr, which is the one
+   way to animate a box to nothing without knowing how tall it was: max-height
+   needs a guess that either clips a long pile or eases through empty space
+   after a short one, and height:auto does not animate at all.
+   The child needs min-height:0 and overflow:hidden or grid refuses to take it
+   below its content height -- that pair is the whole trick, and dropping
+   either one makes this rule silently do nothing. */
+.bt-t2-fold{
+  display:grid;
+  grid-template-rows:1fr;
+  transition:grid-template-rows .34s cubic-bezier(.4,0,.2,1), opacity .28s ease-out;
+  opacity:1;
+}
+.bt-t2-fold--out{grid-template-rows:0fr;opacity:0}
+@media (prefers-reduced-motion: reduce){
+  /* The fold is information rather than decoration -- it is what turns the card
+     into "here is what they gave you" -- so it still happens, just without the
+     travel. */
+  .bt-t2-fold{transition:none}
+}
+
 /* ── the small square controls ────────────────────────────────
    The stepper and the remove ✕, and they only ever render inside a well
    (StagedRow). v2.3.2294 made that well light on BOTH lanes, so the dark slate
