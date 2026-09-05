@@ -611,6 +611,53 @@ img{display:block}
 button{cursor:pointer;font-family:inherit}
 input{font-family:inherit}
 
+/* ═══ v2.3.2288: A NUMBER FIELD WITHOUT THE TINY ARROWS ═══
+   Owner: "get rid of the tiny up and down arrows next to the gold amount in
+   trade menu."  Those are the browser's own spin buttons, which every engine
+   draws inside an <input type="number"> and none of them let you style away
+   from an inline style -- they are shadow pseudo-elements, so this has to be a
+   real rule in a real stylesheet.
+
+   WHY THE TYPE STAYS "number".  The obvious alternative is type="text" +
+   inputMode="numeric", which has no spinners anywhere and needs no CSS.  It was
+   rejected on two counts.  (1) The trade gold field is addressed as
+   `input[type="number"]` by five separate selectors in tools/qa/mp/mp-trade.mjs
+   -- changing the type to dodge a visual defect would quietly unbind the suite
+   that guards the whole gold ladder, and a scenario that stops finding its
+   element does not fail loudly, it fails as a null.  (2) The primary platform is
+   iPhone Safari, where the keyboard is the thing that must not regress; leaving
+   the type alone leaves the keypad provably identical, whereas type="text"
+   makes it depend on inputMode support.  The spinners cost one CSS rule; the
+   keypad is not worth a coin flip.
+
+   BOTH HALVES ARE DELIBERATE.  Firefox honours `appearance:textfield` on the
+   input; WebKit/Blink need the ::-webkit-*-spin-button pseudo-elements zeroed.
+   Which of the two does the work in current Chrome could NOT be settled here:
+   headless Chromium paints no clickable spin button on ANY of the three
+   variants (measured -- a click on the arrow zone of a plain type=number does
+   not increment, with or without either rule), and this sandbox has no display
+   to test a headed browser against.  With no way to prove the standards-track
+   half sufficient on its own, both are written; do not "simplify" this to one.
+
+   WHERE THE OWNER IS SEEING THEM: not on the phone.  iOS Safari has never drawn
+   spin buttons on type=number, so this is a desktop-browser fix, and asking him
+   to check it on the iPhone would have him correctly report that nothing
+   changed.
+
+   WHAT THIS DOES NOT DO: hiding the widget does not disable STEPPING.  ArrowUp
+   on the focused field still takes 100 to 101 (measured, in all three variants),
+   and in the trade window every step rides onChange -> pushStage -> trade2_set,
+   which the worker answers by resetting both confirms.  That is pre-existing
+   behaviour of the field and untouched here; the owner asked for the arrows to
+   go, not for the keyboard to stop working.
+
+   Scoped to a class rather than to `input[type=number]` globally: this is the
+   one field the owner asked about, and a bare-element rule would silently
+   restyle every future number input in the game. */
+.bt-nospin{appearance:textfield;-moz-appearance:textfield}
+.bt-nospin::-webkit-outer-spin-button,
+.bt-nospin::-webkit-inner-spin-button{-webkit-appearance:none;appearance:none;margin:0}
+
 /* v2.3.1233: dead-CSS sweep — .back-to-site, .bt-player-count,
    .bt-players-btn, .bt-chatlog*, .bt-combat-bar/btn, .bt-chat-fab/bar/
    input, .bt-fab-group removed (zero consumers; verified by tree-wide

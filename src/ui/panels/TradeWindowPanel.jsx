@@ -374,6 +374,23 @@ export function TradeWindowPanel(props) {
   const S = stateRef.current;
   const myId = S.myId;
   const [stage, setStage] = useState({});
+  /* ═══ v2.3.2288: THE LADDER'S SIGN ═══
+     Owner: "Put a subtract button near the clear button (that changes back to
+     add once tapped again) that inverts all the gold from the buttons."
+     One flag, read by every chip.  It lives up here with the other hooks
+     because this component early-returns five times before the live window --
+     the same Rules-of-Hooks crash the v2.3.1754 note below documents.
+
+     RESET AT ZERO, AND HERE RATHER THAN AT EACH CALL SITE.  Gold reaches zero
+     down at least five paths (a chip, Clear, typing 0, the server rewriting the
+     offer, the trade ending), and subtract mode at zero is a dead end: every
+     chip would be disabled, so the ladder would sit there inert while the way
+     out -- the toggle -- looks like just another greyed control.  An effect on
+     the value catches all five without a reset anyone can forget to add to a
+     sixth.  Nothing flickers: the toggle only renders when there IS gold, so
+     the flip back is never on screen. */
+  const [goldMinus, setGoldMinus] = useState(false);
+  useEffect(() => { if (!(stage._gold || 0)) setGoldMinus(false); }, [stage._gold]);
   /* v2.3.1235: batch-4 state-correction §7 — leave-confirm strip (pure
      client UI, no wire message of its own) and §6 offer-changed notice
      (display of the server's confirm-reset, see wire map above). */
@@ -1077,6 +1094,10 @@ export function TradeWindowPanel(props) {
               (inputMode/pattern); the clamp to [0, coins] before the
               existing trade2_set send was already here (input hygiene). */}
           <input
+            /* v2.3.2288: .bt-nospin kills the browser's own up/down spin
+               buttons -- see the rule in game.css for why the type stays
+               "number" rather than becoming a text field. */
+            className="bt-nospin"
             type="number" min="0" max={coins} inputMode="numeric" pattern="[0-9]*"
             value={stage._gold || 0}
             onChange={(e) => {
@@ -1094,12 +1115,64 @@ export function TradeWindowPanel(props) {
               that is already capped at min(52vh,420px), pushing "Ready to
               trade" below the fold. Beside the field it costs nothing: that
               row had spare width, and this is where the number it clears is. */}
+          {/* v2.3.2288: the sign toggle, INLINE beside Clear -- "near the clear
+              button", and on this row it costs zero vertical pixels.  Its own
+              row would have spent ~42px of a drawer capped at min(52vh,420px),
+              which is exactly the budget that put "Ready to trade" under the
+              fold at v2.3.2286.
+
+              IT SHOWS THE MODE, NOT THE NEXT ACTION.  The other reading -- a
+              button naming what tapping it would switch TO -- puts the word
+              "Add" on screen at the same moment all seven chips read "-100",
+              a control contradicting the things it controls while real money
+              is on the table.  Here the button and the chips always agree, and
+              aria-pressed says the same thing to a screen reader.
+
+              GATED ON GOLD > 0, like Clear.  With nothing staged there is
+              nothing to subtract, so offering the mode would only let you into
+              the dead end the reset effect above exists to prevent. */}
+          {(stage._gold || 0) > 0 && (
+            <button
+              aria-pressed={goldMinus}
+              /* v2.3.2288: a stable hook for the QA suite. Selecting this
+                 control by its display copy would make every layout assertion
+                 collapse to "not found" the day the wording changes -- which is
+                 a red run that says nothing about the thing being measured. */
+              data-gold-mode={goldMinus ? 'sub' : 'add'}
+              aria-label={goldMinus
+                ? 'Presets subtract gold. Tap to make them add again.'
+                : 'Presets add gold. Tap to make them subtract.'}
+              onClick={() => setGoldMinus((v) => !v)}
+              style={{
+                marginLeft: 'auto', flex: '0 0 auto',
+                minHeight: 30, padding: '4px 10px', borderRadius: 999,
+                fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                fontVariantNumeric: 'tabular-nums',
+                /* nowrap is FUNCTIONAL, not cosmetic: without it "- Subtract"
+                   breaks inside the pill at narrow widths, the pill outgrows
+                   its 30px minHeight and the 33px gold row grows with it --
+                   straight into the fold budget that put "Ready to trade"
+                   under the dashboard at v2.3.2286. Do not remove it in a
+                   tidy-up. */
+                whiteSpace: 'nowrap',
+                /* The ON state is the brass-soft fill + brass hairline this
+                   codebase already uses for every other "this one is selected"
+                   control (.bt-cc-tab--on, .bt-paint-letter--on in game.css).
+                   Tokens, not new values: game.css forbids minting per-screen
+                   colours, and TRAPS SS48 already records this file carrying two
+                   near-duplicate brasses. */
+                border: '1px solid ' + (goldMinus ? 'var(--ui-brass, #D8AA58)' : 'rgba(229,237,233,.20)'),
+                background: goldMinus ? 'var(--ui-brass-soft, rgba(216,170,88,.15))' : '#293B41',
+                color: goldMinus ? '#D8AA58' : '#B6C1BE',
+              }}
+            >{goldMinus ? '\u2212 Subtract' : '+ Add'}</button>
+          )}
           {(stage._gold || 0) > 0 && (
             <button
               aria-label="Offer no gold"
               onClick={() => { const next = { ...stage }; delete next._gold; pushStage(next); }}
               style={{
-                marginLeft: 'auto', flex: '0 0 auto',
+                flex: '0 0 auto',
                 minHeight: 30, padding: '4px 10px', borderRadius: 999,
                 fontSize: 11, fontWeight: 700, cursor: 'pointer',
                 border: '1px solid rgba(229,237,233,.20)',
@@ -1132,16 +1205,28 @@ export function TradeWindowPanel(props) {
             offer every trade starts in. */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
           {GOLD_STEPS.map((amt) => {
-            const over = (stage._gold || 0) + amt > coins;
+            /* v2.3.2288: one ladder, two signs.  In subtract mode a chip is
+               disabled when it would take you past zero, the mirror of the add
+               rule that disables what you cannot afford -- same principle both
+               ways, the number on the chip never disagreeing with the number it
+               would produce.  Landing exactly on zero DELETES the key rather
+               than staging a 0, which is what Clear and the field's own onChange
+               already do; a literal `_gold: 0` would ride the wire as an offer
+               of nothing and show up as a gold row worth zero. */
+            const cur = stage._gold || 0;
+            const over = goldMinus ? (cur - amt < 0) : (cur + amt > coins);
             return (
               <button
                 key={amt}
                 disabled={over}
-                aria-label={'Offer ' + amt + ' more gold'}
+                aria-label={goldMinus
+                  ? ('Take back ' + amt + ' gold from your offer')
+                  : ('Offer ' + amt + ' more gold')}
                 onClick={() => {
                   if (over) return;
                   const next = { ...stage };
-                  next._gold = Math.min(coins, (stage._gold || 0) + amt);
+                  const g = goldMinus ? Math.max(0, cur - amt) : Math.min(coins, cur + amt);
+                  if (g > 0) next._gold = g; else delete next._gold;
                   pushStage(next);
                 }}
                 style={{
@@ -1153,7 +1238,7 @@ export function TradeWindowPanel(props) {
                   background: over ? 'transparent' : 'rgba(216,170,88,.10)',
                   color: over ? '#667875' : '#D8AA58',
                 }}
-              >+{amt}</button>
+              >{goldMinus ? '\u2212' : '+'}{amt}</button>
             );
           })}
         </div>

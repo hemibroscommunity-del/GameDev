@@ -291,6 +291,156 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and then takes itself away, rather than sitting there saying nothing',
     (await chip('Clear')) === 'missing');
 
+  /* ═══ v2.3.2288: THE LADDER'S SIGN ═══
+     Owner: "Put a subtract button near the clear button (that changes back to
+     add once tapped again) that inverts all the gold from the buttons."
+     Driven through the real toggle and read off the real chips, so what is
+     measured is the thing on screen and not a flag on the staging object. */
+  const ladderNow = () => A.page.evaluate(() => [...document.querySelectorAll('[data-trade-drawer] button')]
+    .map((b) => (b.textContent || '').trim()).filter((t) => /^[+\u2212]\d+$/.test(t)));
+  /* Selected on the stable data-gold-mode hook, never on the words: a helper
+     that finds its element by display copy turns every assertion below into
+     "not found" the day the label is reworded, and a null is not a measurement
+     of anything (TRAPS SS29). The TEXT is still asserted -- just not used to
+     locate the button. */
+  const signBtn = () => A.page.evaluate(() => {
+    const b = document.querySelector('[data-trade-drawer] button[data-gold-mode]');
+    return b ? { text: b.textContent.trim(), mode: b.getAttribute('data-gold-mode'),
+      pressed: b.getAttribute('aria-pressed') } : null;
+  });
+
+  /* Tapping it goes through the hook too, for the same reason: a reworded label
+     should redden the ONE assertion about the label, not silently stop eight
+     behavioural assertions from ever engaging subtract mode. */
+  const tapSign = () => A.page.evaluate(() => {
+    const b = document.querySelector('[data-trade-drawer] button[data-gold-mode]');
+    if (!b) return 'missing';
+    b.click(); return 'ok';
+  });
+
+  /* Gold is 0 here -- the Clear block above just emptied it. */
+  rec.ok('with nothing staged the sign toggle keeps Clear\'s company and stays '
+    + 'away: subtract mode on an empty offer is a ladder where every chip is '
+    + 'disabled', (await signBtn()) === null);
+
+  await A.page.locator('[data-trade-drawer] input[type="number"]').fill('100');
+  await A.page.waitForTimeout(400);
+  const signAdd = await signBtn();
+  rec.ok('once gold is staged the toggle appears, showing the mode the chips '
+    + 'are actually in', !!signAdd && signAdd.text === '+ Add' && signAdd.mode === 'add' && signAdd.pressed === 'false', signAdd);
+
+  await tapSign(); await A.page.waitForTimeout(350);
+  const subLadder = await ladderNow();
+  const signSub = await signBtn();
+  rec.ok('THE ASK: tapping it inverts every chip on the ladder at once',
+    subLadder.join(',') === '\u22121,\u22125,\u221225,\u221250,\u2212100,\u2212500,\u22121000', subLadder);
+  rec.ok('...and the button itself now reads Subtract, so it never contradicts '
+    + 'the chips it controls', !!signSub && signSub.text === '\u2212 Subtract' && signSub.mode === 'sub' && signSub.pressed === 'true', signSub);
+
+  /* The toggle and Clear must not cost the drawer a second row -- see the fold
+     note below; this is the same budget, spent horizontally instead. */
+  const goldRow = await A.page.evaluate(() => {
+    const d = document.querySelector('[data-trade-drawer]');
+    const inp = d.querySelector('input[type="number"]');
+    const btns = [...d.querySelectorAll('button')];
+    const sign = d.querySelector('button[data-gold-mode]');
+    const clr = btns.find((x) => (x.textContent || '').trim() === 'Clear');
+    if (!inp || !sign || !clr) return null;
+    const i = inp.getBoundingClientRect(), sg = sign.getBoundingClientRect(), c = clr.getBoundingClientRect();
+    return { signDrop: Math.round(sg.top - i.top), clearDrop: Math.round(c.top - i.top), vw: window.innerWidth };
+  });
+  rec.ok('the toggle and Clear share the gold field\'s row instead of wrapping '
+    + 'onto a new one, which is the budget that put the primary action under '
+    + 'the fold last time',
+    !!goldRow && Math.abs(goldRow.signDrop) < 20 && Math.abs(goldRow.clearDrop) < 20, goldRow);
+
+  /* ── AND ON A PHONE, WHICH IS THE PLATFORM THAT MATTERS ──
+     This scenario runs at 1000x780 (harness.mjs default), so the check above
+     measures a desktop row and would stay green while the pill wrapped on every
+     real device. The primary platform is iPhone Safari, so the row is measured
+     again at 375px -- iPhone SE / 13 mini, the narrowest phone still on a
+     supported iOS -- and the viewport is put straight back so the remaining
+     assertions run on the width they were written for. */
+  await A.page.setViewportSize({ width: 375, height: 812 });
+  await A.page.waitForTimeout(500);
+  const goldRowNarrow = await A.page.evaluate(() => {
+    const d = document.querySelector('[data-trade-drawer]');
+    const inp = d && d.querySelector('input[type="number"]');
+    const btns = d ? [...d.querySelectorAll('button')] : [];
+    const sign = d.querySelector('button[data-gold-mode]');
+    const clr = btns.find((x) => (x.textContent || '').trim() === 'Clear');
+    if (!inp || !sign || !clr) return null;
+    const i = inp.getBoundingClientRect(), sg = sign.getBoundingClientRect(), c = clr.getBoundingClientRect();
+    const dr = d.getBoundingClientRect();
+    return {
+      signDrop: Math.round(sg.top - i.top), clearDrop: Math.round(c.top - i.top),
+      clearRight: Math.round(c.right), drawerRight: Math.round(dr.right),
+      spillPx: Math.round(c.right - dr.right), vw: window.innerWidth,
+    };
+  });
+  rec.ok('...and it still shares that row on a 375px iPhone, where the word '
+    + 'pill actually has to fit',
+    !!goldRowNarrow && Math.abs(goldRowNarrow.signDrop) < 20
+      && Math.abs(goldRowNarrow.clearDrop) < 20, goldRowNarrow);
+  rec.ok('...without Clear being pushed off the edge of the drawer to do it',
+    !!goldRowNarrow && goldRowNarrow.spillPx <= 0, goldRowNarrow);
+  await A.page.setViewportSize({ width: 1000, height: 780 });
+  await A.page.waitForTimeout(500);
+
+  await chip('\u221225'); await A.page.waitForTimeout(350);
+  rec.ok('a chip in subtract mode takes the gold back off the offer',
+    (await goldNow()) === 75, { gold: await goldNow() });
+  rec.ok('...and one that would take you past zero is disabled, the mirror of '
+    + 'the rule that disables what you cannot afford',
+    (await chip('\u22121000')) === 'disabled');
+
+  await tapSign(); await A.page.waitForTimeout(350);
+  rec.ok('tapping it again changes back to add, exactly as asked',
+    (await ladderNow()).join(',') === '+1,+5,+25,+50,+100,+500,+1000'
+      && (await signBtn()).text === '+ Add');
+
+  /* ── SUBTRACTING TO EXACTLY ZERO ──
+     The dead end this has to avoid: at zero every subtract chip is disabled, so
+     a stuck subtract mode would leave the ladder inert with the way out looking
+     like just another greyed control. Reaching zero clears the offer AND the
+     mode, and re-staging proves the mode really reset rather than merely being
+     hidden with the toggle. */
+  await A.page.locator('[data-trade-drawer] input[type="number"]').fill('25');
+  await A.page.waitForTimeout(400);
+  await tapSign(); await A.page.waitForTimeout(350);
+  await chip('\u221225'); await A.page.waitForTimeout(400);
+  rec.ok('subtracting the last of it empties the offer rather than staging a '
+    + 'gold row worth zero', (await goldNow()) === 0, { gold: await goldNow() });
+  rec.ok('...and both the toggle and Clear take themselves away with it',
+    (await signBtn()) === null && (await chip('Clear')) === 'missing');
+  await A.page.locator('[data-trade-drawer] input[type="number"]').fill('50');
+  await A.page.waitForTimeout(400);
+  rec.ok('...and the next gold you stage starts in ADD, so the mode cannot '
+    + 'survive invisibly into a trade you did not set it for',
+    (await ladderNow())[0] === '+1' && (await signBtn()).text === '+ Add',
+    { ladder: await ladderNow(), sign: await signBtn() });
+
+  /* ═══ v2.3.2288: NO TINY UP/DOWN ARROWS ON THE GOLD FIELD ═══
+     Owner: "get rid of the tiny up and down arrows next to the gold amount."
+     ASSERTED AS COMPUTED STYLE, NOT AS PIXELS OR A CLICK, and deliberately:
+     headless Chromium renders no spin buttons AT ALL -- a corner click on a
+     plain type=number does not increment here -- so a behavioural test would
+     pass on an unfixed build for the wrong reason. What IS observable is the
+     property the fix sets, `appearance`, which reads `auto` unstyled and
+     `textfield` once the rule bites; deleting the class or the rule turns this
+     red. The type check is the other half of the fix: the field stays a number
+     input so the iOS keypad is untouched and the five `input[type="number"]`
+     selectors in this file keep finding it. */
+  const spin = await A.page.evaluate(() => {
+    const el = document.querySelector('[data-trade-drawer] input[type="number"]');
+    if (!el) return null;
+    return { type: el.type, cls: el.className, appearance: getComputedStyle(el).appearance };
+  });
+  rec.ok('the gold field has the browser\'s own up/down spin buttons styled off',
+    !!spin && /bt-nospin/.test(spin.cls) && spin.appearance === 'textfield', spin);
+  rec.ok('...and is STILL a number input, so the iOS keypad and every selector '
+    + 'in this file survive the fix', !!spin && spin.type === 'number', spin);
+
   /* A chip you cannot afford is disabled, not silently clamped -- the number
      under your thumb must not disagree with the number on the chip. */
   const purse = await coins(A);
