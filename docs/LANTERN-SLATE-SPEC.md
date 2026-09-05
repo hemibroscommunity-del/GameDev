@@ -44,6 +44,8 @@ brass accent.
 | icon plate | `#A2AAA5` → `#7F8A89` | legacy token; not used by the approved ribbon |
 | icon plate active | `#D8C69F` → `#BDA16E` | legacy token; replaced by a brass edge |
 | **invert** | **`#C8D2CF`** | **light card for a region authored by ANOTHER party (v2.3.2283) — see below** |
+| **well tint — yours** | **`#DCCBA8`** | **light brown ground for the offered-items well on YOUR trade lane (v2.3.2294) — see below** |
+| **well tint — theirs** | **`#C6CBCC`** | **light gray ground for the same well on the other trader's lane (v2.3.2294)** |
 | dashboard tray | `#2E4754` | lighter shared field behind the three modules |
 | dashboard panel | `#10222A` | Bag / Loadout / Build functional wells |
 | dashboard ribbon | `#10232A` | inset navigation ribbon |
@@ -76,6 +78,40 @@ brass accent.
 not an elevation one: the four depth roles (sheet / raised / well / well-deep)
 still own elevation on dark and are unchanged by it. Its one licensed meaning
 is *this region was authored by the other party* — the buyer's lane in a trade.
+
+**v2.3.2294 — the ownership semantic became symmetric, by owner directive.**
+Owner: *"make the sub container that holds the line items a light brown color.
+Make the other trader have a light gray color. This way it keeps the color
+separation between traders but gives a visual difference in their respective
+line item window."*
+
+So the offered-items well (`.bt-t2-items`) is a light ground on BOTH trade
+lanes, tinted warm on yours and cool on theirs. Read against the rule above
+this looks like a violation, and it is worth being precise about why it is not:
+
+- The licensed meaning is **ownership**, and it still is. What changed is that
+  ownership is now stated for both parties rather than only the other one —
+  the ground says *whose pile this is*, warm for yours and cool for theirs.
+  Yours being light is the same one semantic applied symmetrically, not a
+  second semantic.
+- It is emphatically NOT the inadmissible framing, which is *"the well needs a
+  lighter option so the items read as a compartment"*. Elevation is still owned
+  by the four dark depth roles; the lane that holds the well is unchanged
+  (`#12212B` yours, `#DFDCD0` theirs), and the tint is bounded to the well —
+  never the lane, never the drawer, never a panel.
+- It stays inside the ~85 / 10 / 5 budget: two ~330×70 wells inside one
+  drawer, on one screen of the game.
+
+**Reviewers: this is the ONLY extension of the light neutral, and the same
+rejection stands for any other.** A third light surface asked for as "a lighter
+option", or this one widened past `.bt-t2-items`, is the light-and-airy palette
+growing back through the side door that v2.3.1227 closed.
+
+**The ink for these two tints is declared in the same CSS rule as the fill**
+(`.bt-t2-items` defines the whole `--w-*` set, and each token is an alias of
+the `-on-invert` ramp). That is the mechanism, not a convention: a fill can no
+longer be changed without its ink because they are the same rule. See
+docs/TRAPS.md §48.
 
 Dark ink on a light fill is already first-class here (`--ui-text-on-accent` on
 every brass button); the only new thing is that the fill is neutral rather than
@@ -358,3 +394,16 @@ as primary identity where an icon exists. The three dashboard wells and
 toolbar micro-bevels are deliberate structural exceptions documented in
 §8–9; do not replace them with dividers, textures, or accent-colored
 modules.
+
+**Fourth documented exception (v2.3.2294): the trade lanes' offered-items
+well.** A tinted, bordered well nested inside a lane card is a nested card by
+the letter of the line above, and it is here by owner directive — *"it needs
+its own subcontainer for like the line item window to more clearly
+differentiate it from the area just below it where you're adding more gold to
+the trade"* (v2.3.2293), then tinted at v2.3.2294. It is licensed because it
+separates **what is on the table** from **the controls that change it**, which
+is a boundary of meaning rather than ornament, and it is bounded: ONE well per
+lane, around the whole list, never per row. The per-row frames of v2.3.2290
+were exactly the "ornamental or nested cards" this line forbids and the owner
+rejected them in those words ("too many boxes within boxes"). Do not reintroduce
+a third level.

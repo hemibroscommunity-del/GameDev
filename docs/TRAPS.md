@@ -1789,11 +1789,40 @@ flips.** Measured on the shipped `--ui-invert #C8D2CF`:
 None of that throws, nothing lints, and no screenshot test that looks at
 LAYOUT notices. It ships as a light card with invisible writing on it.
 
-**The rule:** an inverted region carries its ink with it, as ONE value. In
-`TradeWindowPanel.jsx` that is the `ink` theme object (`DARK_INK` / `LIGHT_INK`)
-threaded through `StagedRow`, `OfferRows` and `side()` — never a `light`
-boolean, which writes the palette out once per renderer and lets a fill change
-land without its ink.
+**The rule:** an inverted region carries its ink with it, as ONE value — never
+a `light` boolean, which writes the palette out once per renderer and lets a
+fill change land without its ink.
+
+**v2.3.2294 moved the mechanism from JS into CSS, and the rule got stronger for
+it.** The owner asked for the offered-items well to be tinted on BOTH lanes, so
+YOUR well became a light ground inside a DARK lane — §48 run a second time, in
+the harder direction, on the side that had never had a single contrast
+assertion. The `ink` object satisfied the rule *by everyone remembering to pass
+it*, and two of the three call sites did not pass it at all: the live window and
+the receipt fell through to the `ink = DARK_INK` default parameter, so
+`grep DARK_INK` found neither of them. The ramp now lives in the same CSS rule
+as the fill (`.bt-t2-items` in `game.css` declares the whole `--w-*` set; the
+buyer's rule overrides only the ground), and `WELL_INK` in the panel is nothing
+but `var(--w-*)` lookups. Text resolves the ramp from the well it is physically
+inside. Forgetting to pass the ink stopped being possible; there is nothing to
+pass.
+
+Two things the CSS move does NOT do, both of which had to be fixed by hand:
+
+- **It does not reach a hardcoded hex.** `StagedRow`'s stepper carried
+  `#F4F0E7` and `#8D9B98` under a v2.3.2283 comment arguing the branch was
+  "structurally unreachable from an inverted lane, so theming it would be dead
+  code". True while YOUR lane was the dark one; this change inverted the
+  premise and made that branch the most exposed thing in the window.
+- **It does not protect inheriting text.** Custom properties inherit but do not
+  enforce, so anything inside the well setting no colour of its own falls to the
+  body's `#F4F0E7`. `.bt-t2-items` sets `color:var(--w-text)` for that, and
+  `.bt-t2-plate` sets `color:var(--w-slot-ink)` to opt back out — the art cell
+  inside the well is dark, so the same failure exists one level in and inverted.
+
+`DARK_INK` / `LIGHT_INK` survive, narrowed to the LANE — the two lane headers
+and the review screen's totals line sit on the lane fill, which is a different
+ground from the well six pixels below them.
 
 **Three secondary traps, each of which bit during this change:**
 
@@ -1814,15 +1843,48 @@ land without its ink.
 
 3. **Near-duplicate hexes.** The gold figure is `#D8AA58` in `OfferRows` and
    `#D8A94D` in `side()`. A find-and-replace on one leaves the other at 1.40:1
-   on the one screen whose whole job is to be read.
+   on the one screen whose whole job is to be read. v2.3.2294 nearly minted a
+   second namespace of these — `#6E4D0F` and `#45565C` as both `--ui-*-on-invert`
+   and `--w-*` — and each `--w-*` ink token is an ALIAS of the ramp
+   (`--w-gold: var(--ui-gold-on-invert)`) rather than a copy of its value. A
+   palette variant overrides `--w-*` directly and never touches the ramp, so
+   aliasing costs nothing.
 
-**What catches it:** `mp-trade.mjs` reads the buyer lane's real rendered
-colours and computes the ratio **in-page** rather than pinning hexes, so it
-survives a token retune and still fails a half-migration. Asserted twice — once
-on the empty lane and once on the receipt, where the lane has real rows —
-because the empty lane has exactly one word in it and the gold figure, the ink
-most likely to be missed, is not that word. Mutation-checked: pointing the
-buyer lane back at `DARK_INK` fails both, naming "Gold" at 1.19:1 and "3G" at
-1.38:1.
+**What catches it:** `mp-trade.mjs` reads the real rendered colours and computes
+the ratio **in-page** rather than pinning hexes, so it survives a token retune
+and still fails a half-migration. Mutation-checked: pointing the buyer lane back
+at `DARK_INK` fails it, naming "Gold" at 1.19:1 and "3G" at 1.38:1.
+
+**v2.3.2294 rebuilt the probe around the fact that a lane now holds two
+grounds.** It used to take ONE background — the lane's — and ratio every
+descendant against it. Once the offered rows moved onto a tinted well that is
+false in both directions: on your lane, dark row text measured against the dark
+lane reads 1.1:1 and fails a change that is correct; on the buyer's lane, pale
+ink measured against the cream LANE while it actually stands on the darker WELL
+is flattered by ×1.19, which turns three tokens sitting 0.2 above AA into three
+that look like they have 0.9 of headroom. So:
+
+- each element's ground is resolved by walking up to the nearest ancestor that
+  actually paints one, skipping surfaces below alpha .9 (a translucent wash
+  composites over what is behind it and is not a ground);
+- direction is checked against that ground rather than fixed — dark ink belongs
+  on a light surface and light ink on a dark one, and one lane now holds one of
+  each;
+- it runs on **four** surfaces, not two: both live lanes, both Confirm-screen
+  lanes, and the receipt. The Confirm screen had never had a colour of its own
+  measured, and `side()` renders its own well markup, so it is the one surface
+  where a well ink can be wrong on its own;
+- disabled controls are exempt (WCAG 2.1 SC 1.4.3 exempts inactive components,
+  and a disabled chip that met AA would look affordable), and the exempted count
+  is reported so the exemption cannot quietly grow;
+- elements the walk cannot place are COUNTED, not dropped — a probe that
+  silently measures less is how three vacuous checks got into this file.
+
+And the tints themselves are pinned per lane on all three screens
+(`MY_TINT`/`THEIR_TINT` beside the existing `MY_WELL`/`THEIR_WELL`), because
+without that you could swap the two well tints over and the whole suite stayed
+green — the same vacuity this file already records for the lanes ("41/41 on a
+build with every owner->well binding INVERTED"), reintroduced one nesting level
+down. Mutation-checked: swapping them fails four assertions.
 
 **Related:** §21 (a pixel count cannot tell brass from cobble).

@@ -240,7 +240,15 @@ function TradeDrawer({ title, titleColor, onClose, children }) {
  *
  * DARK_INK is today's palette verbatim, and it is the DEFAULT PARAMETER on
  * both renderers -- so every call site that does not opt in is byte-identical
- * to v2.3.2282. Only the three buyer-lane sites pass anything. */
+ * to v2.3.2282. Only the three buyer-lane sites pass anything.
+ *
+ * v2.3.2294 NARROWED BOTH OF THESE TO THE LANE. The offered rows moved onto a
+ * tinted well that declares its own ramp in CSS (WELL_INK, below), so these two
+ * objects no longer dress any row, plate, thumbnail or gold figure. What is
+ * left on the lane fill is the two lane headers and the review screen's totals
+ * line -- which is why the objects keep their full shape rather than being
+ * trimmed to {muted}: the argument they travel as is the LANE's ramp, and a
+ * one-field object would invite the next reader to pass a bare string. */
 const DARK_INK = {
   slot: '#16262C', slotLine: '1px solid rgba(229,237,233,.08)',
   text: '#F4F0E7', name: '#B6C1BE', qty: '#B6C1BE', muted: '#8D9B98',
@@ -274,6 +282,48 @@ const LIGHT_INK = {
   rarityFallback: 'var(--ui-rarity-common-on-invert, #45565C)',
   rarityByTier: LIGHT_RARITY,
   divider: '1px solid var(--ui-line-on-invert, rgba(11,22,27,.14))',
+  platedThumbs: true,
+};
+
+/* ═══ v2.3.2294: THE WELL'S INK IS THE WELL'S OWN CSS ═══
+ *
+ * The owner asked for the offered-items well to be tinted -- light brown on
+ * your lane, light gray on theirs. That makes YOUR well a LIGHT ground sitting
+ * inside a DARK lane, so the whole ramp inside it has to flip; and it fires
+ * the hazard the v2.3.2283 note below StagedRow predicted in so many words
+ * ("these five colours go live on a light fill all at once").
+ *
+ * DARK_INK/LIGHT_INK solved that by convention: the fill and its ink were two
+ * things a call site had to remember to pass together. This is the same idea
+ * with the remembering taken out. Every value here resolves from the well
+ * element the text is actually inside (.bt-t2-items in game.css defines the
+ * whole --w-* set, and the buyer's rule overrides only the ground), so ONE ink
+ * object serves both wells and a future retint is one CSS rule with no JS
+ * change at all. Fill and ink cannot drift because they are the same rule.
+ *
+ * The fallbacks are the DARK ramp on purpose: if this object were ever used
+ * outside a .bt-t2-items -- the one thing the CSS cannot enforce -- it degrades
+ * to what the dark lane wants rather than to nothing.
+ *
+ * DARK_INK and LIGHT_INK survive for the LANE, which is a different ground:
+ * the two lane headers and the review screen's totals line sit OUTSIDE the
+ * well, on the lane fill, and still need the ramp that matches it. */
+const WELL_RARITY = Object.assign(Object.create(null), {
+  common:    'var(--w-rarity-common, #8B9695)',
+  elemental: 'var(--w-rarity-elemental, #1D4FA8)',
+  fusion:    'var(--w-rarity-fusion, #6B21A8)',
+  shift:     'var(--w-rarity-shift, #D8AA58)',
+});
+const WELL_INK = {
+  slot: 'var(--w-slot, #16262C)', slotLine: '1px solid var(--w-slot-line, transparent)',
+  text: 'var(--w-text, #F4F0E7)',
+  name: 'var(--w-text-2, #B6C1BE)',
+  qty:  'var(--w-text-2, #B6C1BE)',
+  muted: 'var(--w-text-3, #8D9B98)',
+  gold: 'var(--w-gold, #D8AA58)',
+  rarityFallback: 'var(--w-rarity-common, #8B9695)',
+  rarityByTier: WELL_RARITY,
+  divider: '1px solid var(--w-divider, rgba(229,237,233,.11))',
   platedThumbs: true,
 };
 
@@ -319,7 +369,7 @@ function Face({ src, name, onLight }) {
   );
 }
 
-function StagedRow({ glyph, name, qty, have, rarityLabel, rarityColor, rarityTier, onRemove, onInc, onDec, ink = DARK_INK, rowTone = null }) {
+function StagedRow({ glyph, name, qty, have, rarityLabel, rarityColor, rarityTier, onRemove, onInc, onDec, ink = WELL_INK, rowTone = null }) {
   return (
     /* v2.3.2290: the owner's painted row slot. Three states share one
        geometry (see .bt-t2-row in game.css), so a row does not change size
@@ -340,18 +390,21 @@ function StagedRow({ glyph, name, qty, have, rarityLabel, rarityColor, rarityTie
       {qty != null && !onInc && (
         <div style={{ fontSize: 12, fontWeight: 700, color: ink.qty, fontVariantNumeric: 'tabular-nums' }}>×{qty}</div>
       )}
-      {/* v2.3.2283: the stepper branch below keeps its dark colours on purpose.
-          It is structurally unreachable from an inverted lane -- onInc and
-          onRemove are only ever passed for YOUR offer -- so theming it would
-          be dead code. If a "request this item" affordance is ever added to
-          the buyer's lane, these five colours go live on a light fill all at
-          once; that is the moment to thread them. */}
+      {/* v2.3.2294: THAT MOMENT ARRIVED, from the other direction. The
+          v2.3.2283 note here said this branch could keep its dark colours
+          because it is "structurally unreachable from an inverted lane -- onInc
+          and onRemove are only ever passed for YOUR offer". True then. But the
+          owner has now tinted the WELL rather than the lane, and your well is
+          the light brown one, so your own stepper is the first thing to land on
+          a light fill: #F4F0E7 on #DCCBA8 is 1.06:1 and the /have suffix 2.22:1
+          -- a control that reads as blank. Threaded through `ink` like every
+          other site, which on a well resolves to the dark ramp via --w-*. */}
       {qty != null && onInc && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 2, flex: 'none' }}>
           <button aria-label={'One fewer ' + name} onClick={onDec} disabled={qty <= 0}
             className="bt-t2-sq">−</button>
-          <div style={{ minWidth: 40, textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#F4F0E7', fontVariantNumeric: 'tabular-nums' }}>
-            {qty}<span style={{ color: '#8D9B98', fontWeight: 400 }}>/{have}</span>
+          <div style={{ minWidth: 40, textAlign: 'center', fontSize: 12, fontWeight: 700, color: ink.text, fontVariantNumeric: 'tabular-nums' }}>
+            {qty}<span style={{ color: ink.muted, fontWeight: 400 }}>/{have}</span>
           </div>
           <button aria-label={'One more ' + name} onClick={onInc} disabled={have != null && qty >= have}
             className="bt-t2-sq">+</button>
@@ -372,7 +425,7 @@ function StagedRow({ glyph, name, qty, have, rarityLabel, rarityColor, rarityTie
 /* v2.3.1235: trade-completion receipt — optional goldSuffix ("G") lets
    the receipt render its gold rows as "25G"; live-trade wells pass
    nothing and are byte-identical. */
-function OfferRows({ offer, weapons, empty, onRemoveItem, onRemoveWeapon, goldSuffix, inv, onSetQty, ink = DARK_INK }) {
+function OfferRows({ offer, weapons, empty, onRemoveItem, onRemoveWeapon, goldSuffix, inv, onSetQty, ink = WELL_INK }) {
   const entries = Object.entries(offer || {}).filter(([k, v]) => k !== '_gold' && v > 0);
   const gold = (offer && offer._gold) || 0;
   const wpns = weapons || [];
@@ -428,14 +481,27 @@ export function TradeWindowPanel(props) {
      the same Rules-of-Hooks constraint the v2.3.1754 note records a crash for.
      `_otherId` is derived from props rather than from the `otherId` computed
      after those returns, for the same reason. */
-  const _otherId = trade2 ? (trade2.a === myId ? trade2.b : trade2.a) : null;
+  /* v2.3.2294: ...OR out of the receipt. Every trade2 state carries a/b except
+     'done', which gameEvents.js builds fresh around the receipt -- so on the
+     receipt this expression evaluated `undefined === myId` (false), took the
+     other branch, and handed back `trade2.a`, i.e. undefined again. The face
+     drew a '?'. The receipt now carries otherId/otherName and they are the
+     fallback, which keeps the three screens saying the same thing about who
+     you traded with. */
+  const _otherId = trade2
+    ? ((trade2.a === myId ? trade2.b : trade2.a)
+      || (trade2.receipt && trade2.receipt.otherId) || null)
+    : null;
   /* Derived up here TOO, not just at :823. The receipt returns long before that
      line and reads this name for its face -- referencing the later `const` from
      inside the earlier return is a temporal dead zone, which crashed the whole
      window ("Cannot access 'otherName' before initialization" took the React
      tree, the WebGL context and the socket down with it). The later binding is
      an alias of this one so there is still a single source. */
-  const _otherName = trade2 ? (trade2.a === myId ? trade2.bName : trade2.aName) : '';
+  const _otherName = trade2
+    ? ((trade2.a === myId ? trade2.bName : trade2.aName)
+      || (trade2.receipt && trade2.receipt.otherName) || '')
+    : '';
   const [, _facePing] = useState(0);
   useEffect(() => portraitStore.subscribe(() => _facePing((v) => v + 1)), []);
   const [theirFace, setTheirFace] = useState(null);
@@ -711,7 +777,12 @@ export function TradeWindowPanel(props) {
      A plain const, never a hook: this sits after the first early return and
      before the other five, which is exactly the reach the receipt needs, and a
      useMemo here would be the React #300 crash this file already documents
-     twice. */
+     twice.
+     v2.3.2294: these are the LANE's ink now, and the lane is what is left once
+     the offered rows moved onto their own tinted well. Read them as "the ramp
+     for text sitting directly on this lane's fill" -- the headers, and the
+     review screen's totals line. Anything inside a .bt-t2-items takes its ramp
+     from the well instead, and does not come through here at all. */
   const theirInk = LIGHT_INK, myInk = DARK_INK;
 
   /* v2.3.1235: trade-completion receipt — state==='done' renders the
@@ -743,7 +814,11 @@ export function TradeWindowPanel(props) {
               <span className="bt-t2-lane-name">You received</span>
             </div>
             <div className="bt-t2-items">
-              <OfferRows offer={r.received} weapons={r.receivedWeapons} empty="Nothing" goldSuffix="G" ink={theirInk} />
+              {/* v2.3.2294: no `ink` on either receipt lane now. Both piles sit
+                  in a .bt-t2-items well, and a well states its own ramp in CSS
+                  -- so the two lanes read the same WELL_INK default and each
+                  resolves it against the tint it is actually on. */}
+              <OfferRows offer={r.received} weapons={r.receivedWeapons} empty="Nothing" goldSuffix="G" />
             </div>
           </div>
           <div className={myLaneCls} style={myWell}>
@@ -973,22 +1048,27 @@ export function TradeWindowPanel(props) {
        receipt already give it one (StagedRow's 32px plate) and this is the one
        place it sat bare, which on a light card would leave every thumbnail
        floating on a ground 12:1 from the one it was drawn on. */
-    const chip = (node, ink) => (ink && ink.platedThumbs)
-      ? (<span style={{ width: 24, height: 24, flex: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: ink.slot, borderRadius: 6 }}>{node}</span>)
-      : node;
+    const chip = (node) => (
+      <span style={{ width: 24, height: 24, flex: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: WELL_INK.slot, borderRadius: 6 }}>{node}</span>
+    );
     const side = (title, ls, gold, tone, well, ink, face) => (
       /* v2.3.2290: the review lanes wear the same painted frame as the live
          ones -- one skin across all three trade screens, so the window does
          not change costume halfway through a trade. */
       <div className={well === theirWell ? theirLaneCls : myLaneCls} style={{ marginBottom: 8 }}>
         <div className="bt-t2-lane-hdr" style={{ color: tone }}>{face}<span className="bt-t2-lane-name">{title}</span></div>
+        {/* v2.3.2294: everything from here to the close of .bt-t2-items is on the
+            WELL, not on the lane, so it reads WELL_INK. The `ink` argument is
+            still the LANE's -- it dresses the totals line below, which sits
+            outside the well on the lane fill. Two grounds, two ramps, and the
+            boundary is the div. */}
         <div className="bt-t2-items">
         {ls.length === 0 && gold === 0 && (
-          <div style={{ fontSize: 12, color: ink.muted }}>Nothing</div>
+          <div style={{ fontSize: 12, color: WELL_INK.muted }}>Nothing</div>
         )}
         {ls.map((it) => (
-          <div key={it.text} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: ink.text, lineHeight: 1.5, padding: '1px 0' }}>
-            {chip(<ItemThumb itemKey={it.key} size={20} fallback={it.glyph || '📦'} />, ink)}
+          <div key={it.text} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: WELL_INK.text, lineHeight: 1.5, padding: '1px 0' }}>
+            {chip(<ItemThumb itemKey={it.key} size={20} fallback={it.glyph || '📦'} />)}
             <span>{it.text}</span>
           </div>
         ))}
@@ -996,8 +1076,8 @@ export function TradeWindowPanel(props) {
           /* NOTE #D8A94D, not the #D8AA58 used elsewhere -- a near-duplicate,
              so a find-and-replace on the other hex misses this line and leaves
              1.40:1 gold on the one screen whose job is to be read. */
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: ink.gold, fontWeight: 700, lineHeight: 1.5, padding: '1px 0' }}>
-            {chip(<GoldIcon />, ink)}<span>{gold} gold</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: WELL_INK.gold, fontWeight: 700, lineHeight: 1.5, padding: '1px 0' }}>
+            {chip(<GoldIcon />)}<span>{gold} gold</span>
           </div>
         )}
         </div>
@@ -1177,13 +1257,16 @@ export function TradeWindowPanel(props) {
             the well, so moving a header without its well, or wrapping either
             in a new div, makes it silently read the wrong player's pile while
             every presence assertion keeps passing. */}
-          {/* v2.3.2283: ink passed EXPLICITLY, not inferred from "this is the
-              call site with no handlers" -- same reasoning as tone and well. */}
           {/* v2.3.2293: the offered items get their own sunk well, so "what is on
               the table" is visibly a different thing from the controls that
-              change it -- see .bt-t2-items. */}
+              change it -- see .bt-t2-items.
+              v2.3.2294: and that well is now TINTED, which is also what retired
+              the explicit `ink={theirInk}` that stood here since v2.3.2283. The
+              ink no longer has to be inferred OR passed: it is declared on the
+              well, so text picks up the ramp for the ground it is standing on
+              whichever lane the well happens to be in. */}
           <div className="bt-t2-items">
-            <OfferRows offer={trade2.offers[otherId]} weapons={otherWpn} empty="Nothing staged yet" ink={theirInk} />
+            <OfferRows offer={trade2.offers[otherId]} weapons={otherWpn} empty="Nothing staged yet" />
           </div>
         </div>
 

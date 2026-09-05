@@ -3111,6 +3111,17 @@ export function processGameEvent(type, payload, S, deps) {
                   sentWeapons: (payload.weapons && payload.weapons[S.myId]) || [],
                   receivedWeapons: (payload.weapons && payload.weapons[_t2OtherId]) || [],
                   otherName: payload.a === S.myId ? (payload.bName || 'Trader') : (payload.aName || 'Trader'),
+                  /* v2.3.2294: and their ID, so the receipt can draw their
+                     PORTRAIT and not just their name. The 'done' snapshot is
+                     the only trade2 state that does not carry a/b -- it is
+                     built here rather than forwarded -- so the panel's
+                     `trade2.a === myId ? trade2.b : trade2.a` came back
+                     undefined on the receipt and its face fell through to the
+                     '?' placeholder, on the one screen of the three the owner
+                     actually looks at last. otherName has been in this object
+                     since v2.3.1235 and nothing ever read it; both are read
+                     now. */
+                  otherId: _t2OtherId,
                 };
                 var _t2PreCoins = S.rpg ? S.rpg.coins : null;      /* pre-trade coins */
                 var _t2PreInv = S.rpg ? S.rpg.inventory : null;    /* pre-trade inventory ref */
