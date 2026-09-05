@@ -112,6 +112,83 @@ const GoldIcon = () => (
     onError={(e) => { e.currentTarget.replaceWith(document.createTextNode('💰')); }} />
 );
 
+/* ═══ v2.3.2280: ONE FRAME FOR ALL SIX TRADE STATES ═══
+ *
+ * Owner: "Yes bring the trade into the drawer too. And make sure it works
+ * end to end."
+ *
+ * v2.3.2149 moved ONLY the live offer window onto the band. The other five
+ * states this component can render -- the incoming invite, "waiting for them
+ * to open", the CONFIRM/review screen, the completion receipt and the
+ * settlement-failure notice -- each stayed a scrimmed `.bt-inspect-card`
+ * centred over the world. So a single trade jumped format twice: you staged
+ * items in a drawer attached to your bag, the screen went dark and a card
+ * flew to the middle to ask you to accept, and then it jumped back. The
+ * review screen is the one that matters most -- it is the anti-scam screen,
+ * the moment the player is asked to READ -- and it was the one that moved.
+ *
+ * WHAT THE SCRIM WAS DOING, AND WHY LOSING IT IS FINE HERE. On a card, the
+ * scrim is also the dismiss control: tap outside, panel closes. The drawer
+ * has no scrim by design (v2.3.2149: the scrim covered the bag, and the bag
+ * is the item source). Every state below therefore keeps an EXPLICIT control
+ * where the scrim tap used to be:
+ *   - invite       -> Decline (already there)
+ *   - invited      -> Cancel  (already there)
+ *   - review       -> the ✕, routed through requestLeave like the live window
+ *   - done/failed  -> a ✕ that closes early; both also self-close on a timer
+ * Nothing silently loses its way out.
+ *
+ * A COMPONENT, NOT A COPIED STYLE OBJECT. The five copies of `.bt-inspect` +
+ * `.bt-inspect-card` this replaces had already drifted apart from each other
+ * (three different widths, two different scrim alphas). One shell means the
+ * next change lands on all six at once.
+ */
+const DRAWER_FRAME = {
+  position: 'fixed', left: 6, right: 6,
+  bottom: 'var(--dash-h, 243px)',
+  maxHeight: 'min(52vh, 420px)',
+  display: 'flex', flexDirection: 'column',
+  background: 'var(--ui-sheet, #1E2E34)',
+  border: '1px solid rgba(229,237,233,.14)',
+  borderRadius: '10px 10px 0 0',
+  borderBottom: 'none',
+  color: 'var(--ui-text, #F4F0E7)',
+  /* Above the world chrome and the joystick discs (30/31), below the item
+     popup (100030) -- the shop drawer's own layer. */
+  zIndex: 40,
+  overflowY: 'auto',
+  padding: 10,
+  boxSizing: 'border-box',
+};
+
+/* `title` is the header line every state shares (icon + one sentence);
+   `onClose` renders the ✕ and is omitted only where a state has no way to
+   leave that isn't one of its own buttons. */
+function TradeDrawer({ title, titleColor, onClose, children }) {
+  return (
+    <div
+      data-trade-drawer=""
+      onPointerDown={(e) => e.stopPropagation()}
+      className="bt-chat-noselect"
+      style={DRAWER_FRAME}>
+      <div onClick={(e) => e.stopPropagation()} style={{ position: 'relative' }}>
+        {onClose && <button className="bt-inspect-close" onClick={onClose}>✕</button>}
+        {title && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700,
+            color: titleColor || '#F4F0E7', marginBottom: 8,
+            /* clear the ✕ so a long partner name never runs under it */
+            paddingRight: onClose ? 30 : 0,
+          }}>
+            <TradeIcon /> {title}
+          </div>
+        )}
+        {children}
+      </div>
+    </div>
+  );
+}
+
 /* v2.3.1235: batch-4 state-correction §4 — one staged entry as a compact
    row: 32px glyph well, name (+ rarity line when the entry carries one,
    i.e. weapons via RARITY_TIERS[tier]; plain inventory items have no
@@ -332,7 +409,22 @@ export function TradeWindowPanel(props) {
      `liveTrade` is deliberately false for the receipt and failure states too,
      so the bag is handed back the instant the trade stops being editable. */
   const bagTapRef = useRef(null);
-  const liveTrade = !!trade2 && !trade2.invite && trade2.state === 'open';
+  /* ═══ v2.3.2280: THE BAG LETS GO FOR THE REVIEW SCREEN ═══
+     The review screen tells the player, in its own footer, "Nothing on this
+     screen can change the trade." With the bag attached that was not true:
+     the band's tiles were still wired to addOne, so a tap on one staged an
+     item mid-review. The server catches it -- any edit resets both readies
+     and drops the pair back to the offer stage (trade2.js) -- so this was
+     never a scam route, but the screen was making a promise the UI broke,
+     and on a phone the bag sits directly under the drawer where a thumb
+     rests. Hand it back for the review, take it again on the way out.
+     Derived from trade2.a/trade2.b rather than myId/otherId because this
+     sits above the early returns those are computed below; both ready is
+     both ready whichever end you read it from. */
+  const reviewStage = !!(trade2 && !trade2.invite && trade2.state === 'open'
+    && S && S._serverCaps && S._serverCaps.trade2Review
+    && trade2.ready && !!trade2.ready[trade2.a] && !!trade2.ready[trade2.b]);
+  const liveTrade = !!trade2 && !trade2.invite && trade2.state === 'open' && !reviewStage;
   useEffect(() => {
     if (!liveTrade) return undefined;
     tradeBagBus.attach((k) => { if (bagTapRef.current) bagTapRef.current(k); });
@@ -348,13 +440,8 @@ export function TradeWindowPanel(props) {
      banner); primary = committed gold-gradient recipe (#EAC675 edge,
      #172126 ink, radius 10); secondary = raised #293B41 + strong
      hairline. */
-  const cardStyle = {
-    background: '#1E2E34',
-    border: '1px solid rgba(229,237,233,.20)',
-    borderRadius: 14,
-    boxShadow: '0 14px 30px rgba(4,7,9,.38)',
-    textAlign: 'left',
-  };
+  /* v2.3.2280: `cardStyle` retired with the last centred card -- every state
+     is a TradeDrawer now and the drawer frame carries the surface. */
   const primaryBtn = {
     minHeight: 44, borderRadius: 10, border: '1px solid #EAC675',
     background: 'linear-gradient(180deg,#E2B765,#D2A14D)', color: '#172126', fontSize: 13, fontWeight: 700, cursor: 'pointer',
@@ -387,11 +474,10 @@ export function TradeWindowPanel(props) {
     const r = trade2.receipt;
     const liveCoins = (rpgState && rpgState.coins) || 0; /* live rpg wallet = server-echoed value */
     return (
-      <div className="bt-inspect" style={{ background: 'rgba(4,9,12,0.52)' }} onClick={() => setTrade2(null)}>
-        <div className="bt-inspect-card" onClick={(e) => e.stopPropagation()} style={{ ...cardStyle, width: 320 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: '#55B98A', marginBottom: 8 }}>
-            <TradeIcon /> Trade complete ✓
-          </div>
+      /* v2.3.2280: the receipt stays on the band where the trade happened.
+         The ✕ closes it early -- what the scrim tap used to do -- and the
+         effect above still auto-closes it (~2800ms). */
+      <TradeDrawer title="Trade complete ✓" titleColor="#55B98A" onClose={() => setTrade2(null)}>
           <div style={{ ...laneHeader, color: '#8D9B98' }}>You sent</div>
           <div style={wellStyle}>
             <OfferRows offer={r.sent} weapons={r.sentWeapons} empty="Nothing" goldSuffix="G" />
@@ -405,8 +491,7 @@ export function TradeWindowPanel(props) {
             <GoldIcon />
             <span style={{ fontSize: 14, fontWeight: 700, color: '#F4F0E7', fontVariantNumeric: 'tabular-nums' }}>{liveCoins}G</span>
           </div>
-        </div>
-      </div>
+      </TradeDrawer>
     );
   }
 
@@ -421,27 +506,22 @@ export function TradeWindowPanel(props) {
      failed commit) — out of scope. */
   if (trade2.state === 'failed') {
     return (
-      <div className="bt-inspect" style={{ background: 'rgba(4,9,12,0.52)' }} onClick={() => setTrade2(null)}>
-        <div className="bt-inspect-card" onClick={(e) => e.stopPropagation()} style={{ ...cardStyle, width: 320 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: '#F4F0E7', marginBottom: 8 }}>
-            <TradeIcon /> Trade
-          </div>
+      <TradeDrawer title="Trade" onClose={() => setTrade2(null)}>
           <div style={{ borderRadius: 10, border: '1px solid #D8635D', background: 'transparent', color: '#D8635D', fontSize: 12, fontWeight: 700, padding: '10px 12px' }}>
             Trade failed — nothing was exchanged
           </div>
-        </div>
-      </div>
+      </TradeDrawer>
     );
   }
 
   // ── Incoming invite stub ──
   if (trade2.invite) {
     return (
-      <div className="bt-inspect" style={{ background: 'rgba(4,9,12,0.52)' /* v2.3.1235: batch-4 rollout — trade decisions take the strong confirm scrim */ }} onClick={() => setTrade2(null)}>
-        <div className="bt-inspect-card" onClick={(e) => e.stopPropagation()} style={{ ...cardStyle, width: 'min(360px, calc(100vw - 24px))' /* v2.3.1234: was 286 fixed — fill narrow phones, never overflow */ }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: '#F4F0E7', marginBottom: 10 }}>
-            <TradeIcon /> {trade2.fromName} wants to trade
-          </div>
+      /* v2.3.2280: no ✕ here on purpose. Decline is the answer to an
+         invite, and it SENDS trade2_cancel -- the scrim tap this replaces
+         did not, so a dismissed invite used to leave the other player
+         waiting on a request nobody had actually refused. */
+      <TradeDrawer title={`${trade2.fromName} wants to trade`}>
           <div style={{ display: 'flex', gap: 6 }}>
             <button
               style={{ ...primaryBtn, flex: 1, padding: '7px 0' }}
@@ -452,16 +532,14 @@ export function TradeWindowPanel(props) {
               onClick={() => { send('trade2_cancel'); setTrade2(null); }}
             >Decline</button>
           </div>
-        </div>
-      </div>
+      </TradeDrawer>
     );
   }
 
   // ── Waiting for the other side to open ──
   if (trade2.state === 'invited') {
     return (
-      <div className="bt-inspect" onClick={() => { send('trade2_cancel'); setTrade2(null); }}>
-        <div className="bt-inspect-card" onClick={(e) => e.stopPropagation()} style={{ ...cardStyle, width: 240 }}>
+      <TradeDrawer title="Trade" onClose={() => { send('trade2_cancel'); setTrade2(null); }}>
           {/* v2.3.1235: batch-4 rollout — waiting state stays readable
               secondary text (text-2 token). */}
           <div style={{ fontSize: 12, color: '#B6C1BE' }}>Trade request sent — waiting…</div>
@@ -469,8 +547,7 @@ export function TradeWindowPanel(props) {
             style={{ ...secondaryBtn, marginTop: 10, width: '100%', padding: '6px 0' }}
             onClick={() => { send('trade2_cancel'); setTrade2(null); }}
           >Cancel</button>
-        </div>
-      </div>
+      </TradeDrawer>
     );
   }
 
@@ -500,7 +577,11 @@ export function TradeWindowPanel(props) {
   const reviewFlow = !!(S && S._serverCaps && S._serverCaps.trade2Review);
   const iReady = !!(trade2.ready && trade2.ready[myId]);
   const theyReady = !!(trade2.ready && trade2.ready[otherId]);
-  const onReview = reviewFlow && iReady && theyReady;
+  /* v2.3.2280: the same fact as `reviewStage` above, kept under its old
+     name here so every read below is unchanged. Asserted identical rather
+     than recomputed -- two expressions for one stage is how the bag and the
+     screen would drift out of agreement. */
+  const onReview = reviewStage;
   /* The server refuses an accept within ACCEPT_COOLDOWN_MS of the last edit
      (trade2.js).  Mirrored here only so the button can SAY so and count down
      — the rule itself lives on the worker, because a cooldown a modified
@@ -638,11 +719,17 @@ export function TradeWindowPanel(props) {
       </div>
     );
     return (
-      <div className="bt-inspect" style={{ background: 'rgba(4,9,12,0.62)' }} onClick={requestLeave}>
-        <div className="bt-inspect-card" onClick={(e) => e.stopPropagation()} style={{ ...cardStyle, width: 320 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: '#F4F0E7', marginBottom: 8 }}>
-            <TradeIcon /> Confirm with {otherName}
-          </div>
+      /* ═══ v2.3.2280: THE ANTI-SCAM SCREEN JOINS THE BAND ═══
+         This was the last state to fly to the middle of the screen behind a
+         scrim, and it is the one the player is meant to READ. Same drawer,
+         same place, same seam against the bag -- the offer they staged is
+         still where they staged it, one screen up.
+         The ✕ still routes through requestLeave, which is what the scrim tap
+         did. That used to be a DEAD CONTROL here: requestLeave sets
+         `leaveAsk`, and this screen never rendered the leave-confirm strip,
+         so a scrim tap mid-review did nothing at all and the player had no
+         way out but Back. The strip is rendered below now. */
+      <TradeDrawer title={`Confirm with ${otherName}`} onClose={requestLeave}>
           {side('YOU GIVE', myLines, myGold, '#D8635D')}
           {side('YOU RECEIVE', theirLines, theirGold, '#55B98A')}
           {bigGold && !goldAck && (
@@ -654,6 +741,26 @@ export function TradeWindowPanel(props) {
           )}
           {theyConfirmed && (
             <div style={{ fontSize: 12, color: '#55B98A', marginBottom: 6 }}>{otherName} has accepted — waiting on you.</div>
+          )}
+          {/* v2.3.2280: the leave-confirm strip the ✕/scrim has been setting
+              since v2.3.1235 without anything rendering it here. Same markup
+              and the same trade2_cancel send as the offer stage -- copied
+              rather than shared only because the offer stage's copy sits
+              inside its own scroll body. */}
+          {leaveAsk && (
+            <div style={{ borderRadius: 10, border: '1px solid rgba(229,237,233,.11)', background: '#111E23', padding: 8, marginBottom: 8 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#F4F0E7', marginBottom: 6 }}>Leave this trade?</div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  style={{ ...secondaryBtn, flex: 1, padding: '6px 0' }}
+                  onClick={() => setLeaveAsk(false)}
+                >Keep Trading</button>
+                <button
+                  style={{ flex: 1, padding: '6px 0', minHeight: 44, borderRadius: 10, fontSize: 13, fontWeight: 700, border: '1px solid #D8635D', background: 'transparent', color: '#D8635D', cursor: 'pointer' }}
+                  onClick={() => send('trade2_cancel')}
+                >Leave Trade</button>
+              </div>
+            </div>
           )}
           <div style={{ display: 'flex', gap: 6 }}>
             <button
@@ -686,8 +793,7 @@ export function TradeWindowPanel(props) {
             Nothing on this screen can change the trade. If either of you edits the offer,
             you both come back here and accept again.
           </div>
-        </div>
-      </div>
+      </TradeDrawer>
     );
   }
 
@@ -707,39 +813,24 @@ export function TradeWindowPanel(props) {
        to-leave, which is why the ✕ stays exactly where it was and still routes
        through requestLeave -- the leave guard, and its trade2_cancel, are
        untouched. */
-    <div
-      data-trade-drawer=""
-      onPointerDown={(e) => e.stopPropagation()}
-      className="bt-chat-noselect"
-      style={{
-        position: 'fixed', left: 6, right: 6,
-        bottom: 'var(--dash-h, 243px)',
-        maxHeight: 'min(52vh, 420px)',
-        display: 'flex', flexDirection: 'column',
-        background: 'var(--ui-sheet, #1E2E34)',
-        border: '1px solid rgba(229,237,233,.14)',
-        borderRadius: '10px 10px 0 0',
-        borderBottom: 'none',
-        color: 'var(--ui-text, #F4F0E7)',
-        /* Above the world chrome and the joystick discs (30/31), below the
-           item popup (100030) -- the shop drawer's own layer. */
-        zIndex: 40,
-        overflowY: 'auto',
-        padding: 10,
-        boxSizing: 'border-box',
-      }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ position: 'relative' }}>
-        <button className="bt-inspect-close" onClick={requestLeave /* v2.3.1235: batch-4 state-correction §7 */}>✕</button>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: '#F4F0E7', marginBottom: 8 }}>
-          <TradeIcon /> Trading with {otherName}
-        </div>
+    /* v2.3.2280: the frame this state introduced is now TradeDrawer, shared
+       with the other five states -- see the shell above. Same markup, same
+       numbers; the ✕ still routes through requestLeave (v2.3.1235 §7). */
+    <TradeDrawer title={`Trading with ${otherName}`} onClose={requestLeave}>
 
         {/* v2.3.1235: batch-4 state-correction §6 — "<name> confirmed ✓"
             positive check by their lane header, straight off the
             server's confirmed flag (was "· CONFIRMED" inline). */}
         <div style={{ ...laneHeaderRow, color: '#8D9B98' }}>
           <span>{otherName} offers</span>
-          {theyConfirmed && <span style={{ color: '#55B98A' }}>confirmed ✓</span>}
+          {/* v2.3.2280: under the two-stage flow `confirmed` is only ever set
+              on the REVIEW screen, so at the offer stage this header showed
+              nothing at all and a player who had readied up looked, from the
+              other side, exactly like one who was still shopping. `ready` is
+              server state from the same trade2_state echo (trade2.js _t2Wire)
+              -- a direct read, not a guess. */}
+          {theyConfirmed ? <span style={{ color: '#55B98A' }}>confirmed ✓</span>
+            : theyReady ? <span style={{ color: '#55B98A' }}>ready ✓</span> : null}
         </div>
         {/* v2.3.1235: batch-4 rollout — offer wells onto the corrected well
             token #111E23 + .11 hairline (×3 below, incl. the item tray). */}
@@ -921,7 +1012,6 @@ export function TradeWindowPanel(props) {
         <div style={{ fontSize: 10, color: '#8D9B98', marginTop: 6 }}>
           Changing either side resets both confirmations. The server swaps both sides at once — no scams possible.
         </div>
-      </div>
-    </div>
+    </TradeDrawer>
   );
 }

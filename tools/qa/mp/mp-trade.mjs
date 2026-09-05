@@ -51,6 +51,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const { A, B } = await H.joinPair(browser, { wsPort, webPort, nameA: 'Trader', nameB: 'Buyer' });
   const aId = await H.readState(A, (S) => S.myId);
   const bId = await H.readState(B, (S) => S.myId);
+  /* v2.3.2280: the owner cannot test player-to-player trading alone, and
+     asked to be SHOWN it.  Captured from inside this scenario rather than a
+     separate staged reproduction, so every frame is a state the assertions
+     around it have just proved is real. */
+  const shot = (P, name) => P.page.screenshot({
+    path: H.REPO + '/tools/qa/mp/out/trade-' + name + '.png',
+  }).catch(() => {});
 
   /* ── seed both sides ── */
   await H.grant(wsPort, aId, 'gold', { amount: 500 });
@@ -196,6 +203,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!art && art.item.length > 0 && art.item.every((i) => i.w > 0), art);
   rec.ok('the gold amount shows the gold icon, loaded',
     !!art && art.gold.length > 0 && art.gold.every((i) => i.w > 0), art);
+  await shot(A, '1-offer');
 
   /* ═══ v2.3.1754: THE TWO-STAGE HANDSHAKE, THROUGH THE REAL BUTTONS ═══
      Owner: "once both ready up, show a second, stripped-down screen ... Both
@@ -214,8 +222,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const b = [...document.querySelectorAll('button')].find((x) => x.offsetParent && new RegExp(rx).test(x.textContent || ''));
     if (!b || b.disabled) return false; b.click(); return true;
   }, re);
+  /* v2.3.2280: every trade state is a drawer on the band now -- the review
+     screen was the last centred `.bt-inspect-card` and it moved. The card
+     selector stays as a fallback so this scenario still reads a worker/client
+     pair from before the move rather than reporting an empty string, which
+     would fail as "no YOU GIVE" and point at the wrong thing. */
   const cardText = (P) => P.page.evaluate(() => {
-    const c = document.querySelector('.bt-inspect-card');
+    const c = document.querySelector('[data-trade-drawer]') || document.querySelector('.bt-inspect-card');
     return c ? (c.innerText || '').replace(/\s+/g, ' ').trim() : '';
   });
 
@@ -235,6 +248,62 @@ export async function run({ browser, wsPort, webPort, rec }) {
      false. */
   rec.ok('...with nothing on it that can change the trade',
     !/tap to add/i.test(reviewA) && !(await btn(A, '^Send$')), reviewA.slice(0, 140));
+
+  /* ═══ v2.3.2280: THE FORMAT NEVER JUMPS ═══
+     Owner: "Yes bring the trade into the drawer too."  The review screen was
+     the last state that flew to the middle of the screen behind a scrim, so
+     one trade changed shape twice.  Asserted as BOTH halves -- the review
+     content is inside the drawer marker AND no centred card exists anywhere
+     -- because rendering the drawer while ALSO leaving the old card up would
+     satisfy either half alone. */
+  const reviewFrame = await A.page.evaluate(() => {
+    const d = document.querySelector('[data-trade-drawer]');
+    return {
+      inDrawer: !!(d && /YOU GIVE/.test(d.innerText || '')),
+      cards: document.querySelectorAll('.bt-inspect-card').length,
+      bottom: d ? Math.round(d.getBoundingClientRect().bottom) : -1,
+      /* the CSS fallback in the frame is 243px, so an unstamped var must
+         resolve to the same number here or this measures the wrong seam */
+      dashTop: Math.round(window.innerHeight - (parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue('--dash-h')) || 243)),
+    };
+  });
+  rec.ok('the review screen renders in the band drawer, not a centred card',
+    reviewFrame.inDrawer && reviewFrame.cards === 0, reviewFrame);
+  /* It JOINS the band rather than floating over it -- the seam is the whole
+     point of the drawer frame (left/right 6, bottom pinned to --dash-h). */
+  rec.ok('...seated on the dashboard, not floating above it',
+    Math.abs(reviewFrame.bottom - reviewFrame.dashTop) <= 2, reviewFrame);
+
+  /* The footer's promise, measured. `Nothing on this screen can change the
+     trade` was false while the bag stayed attached: the band's own tiles were
+     still wired to addOne, and on a phone they sit directly under the drawer
+     where a thumb rests.  The server would have caught the edit -- it resets
+     both readies -- but the screen was making a promise the UI broke. */
+  const bagOnReview = await A.page.evaluate(() =>
+    !!(window.__broTradeBagBus && window.__broTradeBagBus.open));
+  rec.ok('...and the bag lets go, so the footer\'s promise is true',
+    bagOnReview === false, { bagOpen: bagOnReview });
+
+  /* ═══ v2.3.2280: THE ✕ WAS A DEAD CONTROL HERE ═══
+     requestLeave sets `leaveAsk`, and the review screen never rendered the
+     leave-confirm strip -- so the scrim tap it was wired to did nothing at
+     all, and Back was the only way off this screen.  Driven through the real
+     button: ✕ asks, Keep Trading returns you to the SAME review screen (it
+     must not have dropped a ready on the way). */
+  const tapClose = (P) => P.page.evaluate(() => {
+    const b = document.querySelector('[data-trade-drawer] .bt-inspect-close');
+    if (!b) return false; b.click(); return true;
+  });
+  rec.ok('the review screen has a ✕', await tapClose(A));
+  await A.page.waitForTimeout(400);
+  rec.ok('...and it asks before leaving instead of doing nothing',
+    /Leave this trade\?/.test(await cardText(A)), (await cardText(A)).slice(0, 160));
+  await tap(A, 'Keep Trading');
+  await A.page.waitForTimeout(500);
+  rec.ok('...Keep Trading puts you back on the review screen, still ready',
+    /YOU GIVE/.test(await cardText(A)) && !/Leave this trade\?/.test(await cardText(A)),
+    (await cardText(A)).slice(0, 120));
   /* An edit drags BOTH players out of review — the property that stops a
      last-second swap being accepted by someone reading a stale summary. */
   await tap(B, 'Back');
@@ -351,7 +420,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     locked ? undefined : await A.page.evaluate(() => ({
       buttons: [...document.querySelectorAll('button')].filter((b) => b.offsetParent)
         .map((b) => (b.textContent || '').trim() + (b.disabled ? ' [disabled]' : '')),
-      card: ((document.querySelector('.bt-inspect-card') || {}).innerText || '').replace(/\s+/g, ' ').slice(0, 200),
+      card: ((document.querySelector('[data-trade-drawer]') || document.querySelector('.bt-inspect-card') || {}).innerText || '').replace(/\s+/g, ' ').slice(0, 200),
     })));
 
   /* ── ANTI-SWITCH: change the offer after readying; both readies reset ── */
@@ -366,6 +435,39 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await tap(A, 'Ready to trade');
   await tap(B, 'Ready to trade');
   await A.page.waitForTimeout(3200);
+  /* The showcase frame: taken HERE rather than at the first review because
+     this is the one where both lanes have something in them -- a give-only
+     summary would show the owner half a trade. */
+  await shot(A, '2-review');
+
+  /* ═══ v2.3.2280: THE BELL STANDS DOWN WITH THE REST OF THE CHAT ═══
+     Owner: "Chat should always be the bottom layer if any menus open up
+     beside it."  The shut chat corner is a 36px bell pinned to
+     bottom:--dash-h+8 -- the same lower-left corner a band drawer's footer
+     occupies -- and it lives OUTSIDE .brotown-wrap, so it paints over an
+     in-wrap panel whatever the z-ladder says. Seen doing exactly that in the
+     first drawer screenshot, across the Confirm screen's "Nothing on this
+     screen can change the trade" line.
+     Both halves asserted: invisible AND not taking the tap, because an
+     invisible control that still swallows a tap is the worse of the two. */
+  const bell = await A.page.evaluate(() => {
+    const shell = document.querySelector('[data-world-chat]');
+    if (!shell) return { shell: false };
+    const btn = shell.querySelector('button');
+    const r = btn && btn.getBoundingClientRect();
+    return {
+      shell: true,
+      opacity: parseFloat(getComputedStyle(shell).opacity),
+      taps: btn ? getComputedStyle(btn).pointerEvents : 'no-button',
+      /* what the browser actually hands a finger at the bell's centre */
+      hit: r && r.width ? (document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) || {}).tagName : null,
+      overFooter: !!(r && r.width && document.querySelector('[data-trade-drawer]')
+        && r.top < document.querySelector('[data-trade-drawer]').getBoundingClientRect().bottom),
+    };
+  });
+  rec.ok('the chat bell stands down while the trade drawer owns the screen',
+    bell.shell && bell.opacity === 0 && bell.taps === 'none', bell);
+
   await tap(A, '^Accept');
   await A.page.waitForTimeout(800);
   await tap(B, '^Accept');
@@ -391,6 +493,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   rec.ok('the trade completes', done,
     settleDbg ? { ...settleDbg, pageErrors: (A.logs || []).slice(-4) } : null);
+  /* Immediately: the receipt closes itself ~2800ms after it appears. */
+  await shot(A, '3-receipt');
 
   await A.page.waitForTimeout(3000);
   const aCoins1 = await coins(A), bCoins1 = await coins(B);

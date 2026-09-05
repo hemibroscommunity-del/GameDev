@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { chromeSilenced, onGuardChange } from './modalGuardBus.js'; /* v2.3.2145 */
+import { chromeSilenced, guardActive, onGuardChange } from './modalGuardBus.js'; /* v2.3.2145 */
 import { chatLogBus } from './chatLogBus.js';
 import { uiBusyBus } from './uiBusyBus.js';   /* v2.3.2085 */
 import { capeStatusBus } from './capeStatusBus.js'; /* v2.3.2118 */
@@ -275,6 +275,28 @@ export function WorldChatFeed() {
            owner NAMED ("chat, etc"), and it is what the silence control has to
            actually silence. One flag answers both. */
         zIndex: 25,
+        /* ═══ v2.3.2280: THE BELL STANDS DOWN TOO ═══
+           Owner: "Chat should always be the bottom layer if any menus open up
+           beside it (want it beneath trade menus, player menus, etc)."
+
+           v2.3.2145 faded the MESSAGES under the guard and deliberately left
+           the shell alone, which was right for a mute.  It is not right for a
+           decision panel: the shut corner is a 36px bell, and the bell is
+           chrome that sits in the lower-left at bottom:--dash-h+8 -- exactly
+           where a band drawer's footer is.  Caught in the v2.3.2280 trade
+           screenshot: the bell was painted across "Nothing on this screen can
+           change the trade" on the Confirm screen, which is the one line the
+           whole anti-scam screen exists to make the player read.  The z-index
+           does not save it -- this shell is a sibling OUTSIDE .brotown-wrap,
+           so it paints over an in-wrap panel whatever the ladder says (the
+           lesson already recorded at .bt-inspect in game.css).
+
+           guardActive(), NOT chromeSilenced(): muting your notifications must
+           never take away the bell, because the bell is how you get chat back.
+           A panel owning the screen is the only case that hides it, and it
+           comes back the moment the panel closes. */
+        opacity: guardActive() ? 0 : 1,
+        transition: 'opacity 140ms ease',
         pointerEvents: 'none',
         fontFamily: 'Source Sans 3, sans-serif',
       }}
@@ -338,7 +360,12 @@ export function WorldChatFeed() {
              is over it, for the same reason the list does it (v2.3.2085) --
              a button under a sheet that still takes the tap is the bug that
              file's header is about. */
-          pointerEvents: busy ? 'none' : 'auto',
+          /* v2.3.2280: ...and 'none' while a decision panel owns the screen,
+             for the same reason again. The shell above fades to 0 under the
+             guard; an invisible control that still takes the tap is strictly
+             worse than a visible one, and this one sits over a band drawer's
+             lower-left corner. */
+          pointerEvents: (busy || guardActive()) ? 'none' : 'auto',
           /* ═══ v2.3.2155: SHUT IS A 36px BELL, OPEN IS THE OLD HEADER ═══
              This control has always been the one thing in this corner that
              takes a tap, and it sits at z-index 25 over [data-joyzone="L"] --
