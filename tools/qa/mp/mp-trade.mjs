@@ -106,8 +106,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
      the owner's "notably different shade", kept through the reskin as an inset
      over the painted interior. So the check is: theirs is washed, mine is not,
      and theirs is on top. Swap the bindings and it still fails. */
-  const MY_WELL = 'rgb(17, 30, 35)';        /* --ui-well   #111E23 */
-  const THEIR_WELL = 'rgb(200, 210, 207)'; /* --ui-invert #C8D2CF */
+  /* v2.3.2291: the flat kit's fills, sampled from the owner's own mockup. */
+  const MY_WELL = 'rgb(18, 33, 43)';        /* #12212B */
+  const THEIR_WELL = 'rgb(223, 220, 208)';  /* #DFDCD0 */
   const laneOk = (g) => !!(g && g.top && g.bottom)
     && g.top.top < g.bottom.top
     && g.top.bg === THEIR_WELL && g.bottom.bg === MY_WELL;

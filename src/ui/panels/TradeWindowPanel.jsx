@@ -184,7 +184,7 @@ const DRAWER_FRAME = {
 /* `title` is the header line every state shares (icon + one sentence);
    `onClose` renders the ✕ and is omitted only where a state has no way to
    leave that isn't one of its own buttons. */
-function TradeDrawer({ title, titleColor, onClose, children }) {
+function TradeDrawer({ title, titleColor, subtitle, onClose, children }) {
   return (
     <div
       data-trade-drawer=""
@@ -192,7 +192,7 @@ function TradeDrawer({ title, titleColor, onClose, children }) {
       className="bt-chat-noselect"
       style={DRAWER_FRAME}>
       <div onClick={(e) => e.stopPropagation()} style={{ position: 'relative' }}>
-        {onClose && <button className="bt-t2-close" aria-label="Close" onClick={onClose} />}
+        {onClose && <button className="bt-t2-close" aria-label="Close" onClick={onClose}>✕</button>}
         {title && (
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -203,6 +203,16 @@ function TradeDrawer({ title, titleColor, onClose, children }) {
           }}>
             {title}
           </div>
+        )}
+        {/* v2.3.2291: the mockup's one-line reassurance under the title. The
+            window's job is to be trusted, and this is the sentence that does
+            it before anyone reads a row. */}
+        {title && subtitle && (
+          <div style={{
+            textAlign: 'center', fontSize: 11, color: '#8D9B98',
+            marginTop: -4, marginBottom: 9,
+            paddingLeft: onClose ? 34 : 0, paddingRight: onClose ? 34 : 0,
+          }}>{subtitle}</div>
         )}
         {children}
       </div>
@@ -322,16 +332,16 @@ function StagedRow({ glyph, name, qty, have, rarityLabel, rarityColor, rarityTie
       {qty != null && onInc && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 2, flex: 'none' }}>
           <button aria-label={'One fewer ' + name} onClick={onDec} disabled={qty <= 0}
-            className="bt-t2-sq bt-t2-sq--minus" />
+            className="bt-t2-sq">−</button>
           <div style={{ minWidth: 40, textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#F4F0E7', fontVariantNumeric: 'tabular-nums' }}>
             {qty}<span style={{ color: '#8D9B98', fontWeight: 400 }}>/{have}</span>
           </div>
           <button aria-label={'One more ' + name} onClick={onInc} disabled={have != null && qty >= have}
-            className="bt-t2-sq bt-t2-sq--plus" />
+            className="bt-t2-sq">+</button>
         </div>
       )}
       {onRemove && (
-        <button aria-label={'Remove ' + name} onClick={onRemove} className="bt-t2-sq bt-t2-sq--x" />
+        <button aria-label={'Remove ' + name} onClick={onRemove} className="bt-t2-sq bt-t2-sq--x">✕</button>
       )}
     </div>
   );
@@ -560,20 +570,21 @@ export function TradeWindowPanel(props) {
      The gold face carries DARK ink because it is a light surface; that is the
      same trap TRAPS §48 records for the inverted lane, and the reason the
      colour is not simply inherited. */
+  /* v2.3.2291: flat faces, matching his second kit and the dashboard. Still
+     edited on the OBJECTS rather than at the eight call sites that spread them
+     -- a missed site would be a leftover carved button beside a flat one. */
   const btnFace = {
-    minHeight: 48, padding: '0 6px',
-    border: '16px solid transparent',
-    background: 'none',
+    minHeight: 46, padding: '0 10px', borderRadius: 10,
     fontSize: 14, fontWeight: 800, cursor: 'pointer',
     touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent',
   };
   const primaryBtn = {
-    ...btnFace, color: '#3A2606',
-    borderImage: "url('/icons/ui/trade/btn-primary.webp?v=2.3.2290') 40 fill / 16px stretch",
+    ...btnFace, color: '#2A1D06', border: '1px solid #C9A659',
+    background: 'linear-gradient(180deg,#EBC46E 0%,#D9A94F 100%)',
   };
   const secondaryBtn = {
-    ...btnFace, color: '#EAF2F5',
-    borderImage: "url('/icons/ui/trade/btn-secondary.webp?v=2.3.2290') 40 fill / 16px stretch",
+    ...btnFace, color: '#EAF2F5', border: '1px solid #35505E',
+    background: '#1B2C36',
   };
   /* v2.3.1232: module header — 11/600 uppercase per spec typography */
   /* v2.3.1235: batch-4 rollout — corrected section-header ramp 11/700
@@ -1048,7 +1059,8 @@ export function TradeWindowPanel(props) {
     /* v2.3.2280: the frame this state introduced is now TradeDrawer, shared
        with the other five states -- see the shell above. Same markup, same
        numbers; the ✕ still routes through requestLeave (v2.3.1235 §7). */
-    <TradeDrawer title={`Trading with ${otherName}`} onClose={requestLeave}>
+    <TradeDrawer title={`Trading with ${otherName}`}
+      subtitle="Trade items and gold safely." onClose={requestLeave}>
 
         {/* v2.3.1235: batch-4 state-correction §6 — "<name> confirmed ✓"
             positive check by their lane header, straight off the
@@ -1066,8 +1078,14 @@ export function TradeWindowPanel(props) {
             mp-trade rather than by eye. Same trap as TRAPS §48: the ink has to
             travel with the fill, and a header that changes side changes ramp. */}
         <div className="bt-t2-lane-hdr" style={{ color: theirInk.muted }}>
-          <img className="bt-t2-lane-icon" src="/icons/ui/trade/icon-lane-coins.webp?v=2.3.2290" alt="" />
+          <img className="bt-t2-lane-icon" src="/icons/ui/trade/icon-lane-coins.webp?v=2.3.2291" alt="" />
           <span>{otherName} offers</span>
+          {/* v2.3.2291: the mockup's plain-language hint. It says whose pile
+              this is in words, which is the signal that survives when a player
+              cannot tell the two fills apart. */}
+          {!theyConfirmed && !theyReady && (
+            <span className="bt-t2-lane-hint">Items from the other player</span>
+          )}
           {/* v2.3.2280: under the two-stage flow `confirmed` is only ever set
               on the REVIEW screen, so at the offer stage this header showed
               nothing at all and a player who had readied up looked, from the
@@ -1075,8 +1093,8 @@ export function TradeWindowPanel(props) {
               server state from the same trade2_state echo (trade2.js _t2Wire)
               -- a direct read, not a guess. */}
           {/* and the same for the green: #55B98A is ~2:1 on the light card. */}
-          {theyConfirmed ? <span style={{ marginLeft: 'auto', color: 'var(--ui-positive-on-invert, #1C5A40)' }}>confirmed ✓</span>
-            : theyReady ? <span style={{ marginLeft: 'auto', color: 'var(--ui-positive-on-invert, #1C5A40)' }}>ready ✓</span> : null}
+          {theyConfirmed ? <span className="bt-t2-lane-hint" style={{ color: 'var(--ui-positive-on-invert, #1C5A40)' }}>confirmed ✓</span>
+            : theyReady ? <span className="bt-t2-lane-hint" style={{ color: 'var(--ui-positive-on-invert, #1C5A40)' }}>ready ✓</span> : null}
         </div>
         {/* v2.3.1235: batch-4 rollout — offer wells onto the corrected well
             token #111E23 + .11 hairline (×3 below, incl. the item tray).
@@ -1100,9 +1118,9 @@ export function TradeWindowPanel(props) {
             icons the owner drew into the lane art, lifted out so the header
             they belong to can say something different on each screen. */}
         <div className="bt-t2-lane-hdr" style={{ color: '#8D9B98' }}>
-          <img className="bt-t2-lane-icon" src="/icons/ui/trade/icon-lane-bag.webp?v=2.3.2290" alt="" />
+          <img className="bt-t2-lane-icon" src="/icons/ui/trade/icon-lane-bag.webp?v=2.3.2291" alt="" />
           <span>You offer</span>
-          <span style={{ marginLeft: 'auto', color: iConfirmed ? '#55B98A' : '#8D9B98' }}>{iConfirmed ? 'Confirmed ✓' : 'Editing offer'}</span>
+          <span className="bt-t2-lane-hint" style={{ color: iConfirmed ? '#55B98A' : '#8D9B98' }}>{iConfirmed ? 'Confirmed ✓' : 'Items from your inventory'}</span>
         </div>
           {/* v2.3.1235: batch-4 state-correction §3/§4 — my rows render my
               staging mirror with Remove controls (existing trade2_set /
@@ -1119,7 +1137,6 @@ export function TradeWindowPanel(props) {
                 <span style={{ display: 'block', color: '#667875', marginTop: 2 }}>You can still offer gold</span>
               </span>
             ) : 'Tap an item in Bag below to add it'} />
-        </div>
 
         {/* ═══ v2.3.2149: THE IN-WINDOW BAG TRAY IS GONE ═══
             It was "THE item source for this trade (staging never touches the
@@ -1318,6 +1335,15 @@ export function TradeWindowPanel(props) {
               >{goldMinus ? '\u2212' : '+'}{amt}</button>
             );
           })}
+        </div>
+        {/* ═══ v2.3.2291: YOUR SIDE IS ONE PANEL ═══
+            The gold field and its ladder used to float below the lane as a
+            loose section, so "your offer" was two boxes with a gap between
+            them while the buyer's was one. The owner's mockup draws them as a
+            single panel -- rows, then the amount, then the ladder -- and it is
+            right: the gold IS part of your offer, and closing the lane here
+            says so. It also removes the last of the stacked-container look he
+            objected to. */}
         </div>
 
         {/* v2.3.1235: batch-4 state-correction §6 — the server reset both

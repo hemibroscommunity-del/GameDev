@@ -657,147 +657,134 @@ input{font-family:inherit}
 .bt-nospin{appearance:textfield;-moz-appearance:textfield}
 
 /* ═══════════════════════════════════════════════════════════════════════
-   v2.3.2290: THE TRADE WINDOW'S PAINTED SKIN
-   Owner: "How about using these assets for the trade menu", with a kit and a
-   mockup of the finished window.
+   v2.3.2291: THE TRADE WINDOW, FLAT — the owner's second kit
+   He replaced the ornate gold kit with a flat one and a mockup, saying the
+   first read as "too many boxes within boxes" and "deviates a lot from the
+   theme I'm using for the dashboard". Both were right.
 
-   The art is sliced by tools/process_trade_ui_sheet.py from
-   assets/icons-source/sheet-trade-ui.png into /icons/ui/trade/*.webp.  Same
-   border-image technique the .bt-chisel toolbar buttons have used since
-   v2.3.1334, so this is a second SKIN in an existing system rather than a new
-   one: `url(...) <slice in SOURCE px> fill / <border width in CSS px> stretch`.
+   THIS IS CSS, NOT SLICED ART, and that is a deliberate reversal of v2.3.2290.
+   The new kit is flat — solid fills, 1px borders, one radius — which is exactly
+   what CSS draws natively and stays crisp at every size and DPR. Slicing it
+   would have re-imported three problems the first kit taught us:
+     - it bakes its labels into the art again (+1 … +1000, "Ready to trade"),
+       and those labels change at runtime (subtract mode reads -25);
+     - its pieces sit on a mottled beige wash with partial alpha, so each would
+       ship a halo;
+     - a bitmap fill stops at the padding box, which is the exact defect the
+       owner spotted last round: "the white doesn't look good cause the fill
+       isn't reaching the edges".
+   Built from the dashboard's own tokens instead, "matches the dashboard" is
+   true by construction rather than by eye — and it adds zero KB.
 
-   WHY THE FRAMES ARE DERIVED AND NARROW.  The kit bakes its labels into the
-   art -- the chips read "+1000", the lanes read "BUYER OFFERS" -- and bakes a
-   thumbnail plate into the row slots.  None of that can be fixed here: a chip
-   reads "-25" in subtract mode, the lanes are relabelled on the review and
-   receipt screens, and a row's thumbnail is whatever is in it.  So the slicer
-   rebuilds each as [left cap | 2 clean columns | right cap]; the middle
-   stretches to any width and the text is real HTML on top, which also keeps it
-   sharp at every size and translatable.
+   ONE BOX LEVEL. Drawer -> lane -> row was three frames deep; rows are now
+   plain flex lines separated by hairlines, so the only drawn container is the
+   lane itself. That is the whole of the "boxes within boxes" complaint.
+   Colours are sampled from his mockup: cream #DFDCD0 for the buyer's panel,
+   #12212B for yours, #20303C for a chip. */
 
-   The numbers below are not guesses.  They were tuned by rendering the frames
-   at 390px in Chromium and looking: the lane's hairline rule had to leave the
-   art entirely (inside a stretched middle slice it smears down the lane and
-   parks its end diamond at half height -- it is a CSS gradient now), and the
-   lane's right cap had to come down from 50 to 30 source px to stop that
-   diamond riding along in the corner.
-
-   NO backdrop-filter anywhere in here: blur compositing over the WebGL canvas
-   is the documented iOS hazard (see the charge-pie history in CLAUDE.md). */
-/* NO `fill`, deliberately, and this is the one decision in here that is about
-   testability as much as looks.  With `fill` the art paints the lane's interior
-   and the element's own background-color is never seen -- which means
-   getComputedStyle reports rgba(0,0,0,0) for BOTH lanes, and every check that
-   the buyer's side is shaded differently silently compares two identical
-   blanks.  That is the same vacuous-pass this file's history keeps recording.
-   Without `fill` the frame still draws (border + corners) and the interior is a
-   real colour: readable by the suite, and the honest place to keep the owner's
-   "notably different shade".
-   12px borders, not 18: at 18 the two lanes cost 72px of a drawer capped at
-   min(52vh,420px) and pushed "Ready to trade" 57px under the dashboard --
-   measured, not guessed. */
+/* ── lanes ── */
 .bt-t2-lane{
-  border:12px solid transparent;
-  border-image:url('/icons/ui/trade/lane-frame.webp?v=2.3.2290') 28 30 28 28 / 12px 11px 12px 12px stretch;
-  background:var(--ui-well,#111E23);
   border-radius:10px;
-  padding:0 3px 2px;
-  margin-bottom:5px;
+  padding:8px 10px 9px;
+  margin-bottom:8px;
+  border:1px solid #35505E;
+  /* background-COLOR as well as the gradient, deliberately. A bare
+     `background:linear-gradient(...)` sets only background-image, so
+     getComputedStyle().backgroundColor comes back rgba(0,0,0,0) -- and both the
+     which-lane-is-whose check and the contrast probe in mp-trade read exactly
+     that property. With the gradient alone they saw two transparent lanes and
+     computed every text ratio against black. It is also the honest fallback if
+     the gradient ever fails to paint. */
+  background-color:#12212B;
+  background-image:linear-gradient(180deg,#15272F 0%,#12212B 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.045), 0 2px 5px rgba(0,0,0,.30);
 }
-/* The buyer's lane, kept light through the reskin -- see the note in
-   TradeWindowPanel. A real fill, so its contrast is measurable. */
-.bt-t2-lane--theirs{background:var(--ui-invert,#C8D2CF)}
-/* The header rule the art no longer carries.  Drawn here so it sits under a
-   label whose words change per screen. */
+/* The buyer's side is a light card -- the owner asked for "a notably different
+   shade. Like a light gray", and his own mockup draws it cream. A background,
+   not a bitmap, so it reaches every edge and every corner. */
+.bt-t2-lane--theirs{
+  background-color:#DFDCD0;
+  background-image:linear-gradient(180deg,#E6E3D8 0%,#DFDCD0 100%);
+  border-color:#B9B5A6;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5), 0 2px 5px rgba(0,0,0,.30);
+}
 .bt-t2-lane-hdr{
-  position:relative;
   display:flex;align-items:center;gap:7px;
-  padding:0 2px 7px;
   font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
+  padding-bottom:7px;margin-bottom:2px;
+  border-bottom:1px solid rgba(229,237,233,.10);
 }
-.bt-t2-lane-hdr::after{
-  content:'';position:absolute;left:2px;right:2px;bottom:2px;height:1px;
-  background:linear-gradient(90deg,rgba(216,170,88,.55),rgba(216,170,88,.18) 70%,rgba(216,170,88,0));
+.bt-t2-lane--theirs .bt-t2-lane-hdr{border-bottom-color:rgba(11,22,27,.14)}
+.bt-t2-lane-icon{width:18px;height:18px;flex:none;display:block}
+/* the right-hand hint ("Items from the other player") */
+.bt-t2-lane-hint{
+  margin-left:auto;font-size:10px;font-weight:600;letter-spacing:.02em;
+  text-transform:none;opacity:.85;
 }
-.bt-t2-lane-icon{width:20px;height:20px;flex:none;display:block}
 
-/* Row slots.  Three states, one geometry, so a row never changes size when it
-   becomes selected -- the thing that would move a control out from under a
-   thumb mid-tap. */
+/* ── rows: hairlines, not frames ── */
 .bt-t2-row{
-  border:9px solid transparent;
-  border-image:url('/icons/ui/trade/row-frame.webp?v=2.3.2290') 14 15 fill / 9px stretch;
-  min-height:42px;display:flex;align-items:center;gap:6px;
-  padding:0 3px;margin-bottom:3px;box-sizing:border-box;
+  display:flex;align-items:center;gap:8px;
+  min-height:42px;padding:2px 0;box-sizing:border-box;
+  border-top:1px solid rgba(229,237,233,.07);
 }
-.bt-t2-row--gold{border-image-source:url('/icons/ui/trade/row-frame-gold.webp?v=2.3.2290')}
-.bt-t2-row--active{border-image-source:url('/icons/ui/trade/row-frame-active.webp?v=2.3.2290')}
+.bt-t2-row:first-of-type{border-top:none}
+.bt-t2-lane--theirs .bt-t2-row{border-top-color:rgba(11,22,27,.10)}
+.bt-t2-plate{
+  width:32px;height:32px;flex:none;border-radius:8px;
+  background:#0B161B;border:1px solid rgba(229,237,233,.12);
+  display:flex;align-items:center;justify-content:center;
+}
+.bt-t2-lane--theirs .bt-t2-plate{background:#CFCBBC;border-color:rgba(11,22,27,.16)}
+.bt-t2-plate img,.bt-t2-plate svg{width:20px;height:20px;display:block}
 
-/* The denomination chips.  Seven on ONE row is the mockup's own layout, and it
-   is also the fold budget: a second row costs ~38px of a drawer capped at
-   min(52vh,420px), which is what put the primary button under the dashboard at
-   v2.3.2286.  9px caps and an 11px label are what makes seven fit at 375px. */
-.bt-t2-chip{
-  border:9px solid transparent;
-  border-image:url('/icons/ui/trade/chip-frame.webp?v=2.3.2290') 16 17 fill / 9px stretch;
-  background:none;
-  color:#F2C65A;
-  font:700 11px/1 'Source Sans 3',sans-serif;
-  font-variant-numeric:tabular-nums;
-  min-height:34px;padding:0;flex:1 1 0;min-width:0;
+/* ── the small square controls ── */
+.bt-t2-sq{
+  width:34px;height:34px;flex:none;padding:0;
+  border-radius:8px;border:1px solid #35505E;background:#1B2C36;
+  color:#DCE6EA;font:700 15px/1 'Source Sans 3',sans-serif;
+  display:flex;align-items:center;justify-content:center;
   cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
 }
-.bt-t2-chip:disabled{
-  border-image-source:url('/icons/ui/trade/chip-frame-off.webp?v=2.3.2290');
-  color:#8B9799;cursor:not-allowed;
-}
-.bt-t2-chiprow{display:flex;flex-wrap:nowrap;gap:3px;margin-bottom:6px}
+.bt-t2-sq:disabled{opacity:.42;cursor:not-allowed}
+.bt-t2-sq--x{color:#9FB0B6}
 
-/* Buttons.  The gold face carries dark ink because it is a LIGHT surface --
-   the same trap TRAPS §48 records for the inverted trade lane. */
+/* ── the denomination chips ── */
+.bt-t2-chiprow{display:flex;flex-wrap:nowrap;gap:4px;margin-bottom:8px}
+.bt-t2-chip{
+  flex:1 1 0;min-width:0;min-height:34px;padding:0 2px;
+  border-radius:8px;border:1px solid #35505E;background:#20303C;
+  color:#E8D9A8;font:700 11px/1 'Source Sans 3',sans-serif;
+  font-variant-numeric:tabular-nums;
+  cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+}
+.bt-t2-chip:active{border-color:var(--ui-brass,#D8AA58);background:#2A3B45}
+.bt-t2-chip:disabled{
+  background:#22333D;border-color:#2C4250;color:#6C7F88;cursor:not-allowed;
+}
+
+/* ── buttons ── */
 .bt-t2-btn{
-  border:20px solid transparent;
-  border-image:url('/icons/ui/trade/btn-secondary.webp?v=2.3.2290') 40 fill / 20px stretch;
-  background:none;color:#EAF2F5;
+  min-height:46px;padding:0 10px;border-radius:10px;
+  border:1px solid #35505E;background:#1B2C36;color:#EAF2F5;
   font:800 14px/1 'Source Sans 3',sans-serif;
-  min-height:44px;padding:0 6px;
   cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
 }
 .bt-t2-btn--primary{
-  border-image-source:url('/icons/ui/trade/btn-primary.webp?v=2.3.2290');
-  color:#3A2606;
+  border-color:#C9A659;
+  background:linear-gradient(180deg,#EBC46E 0%,#D9A94F 100%);
+  color:#2A1D06;
 }
-.bt-t2-btn--primary:active{border-image-source:url('/icons/ui/trade/btn-primary-hot.webp?v=2.3.2290')}
+.bt-t2-btn--primary:active{background:linear-gradient(180deg,#D9A94F 0%,#C79A45 100%)}
 .bt-t2-btn:disabled{opacity:.5;cursor:not-allowed}
 
-/* Small square controls: the row stepper and remove.  44px of TOUCH on a 32px
-   face, via padding on the hit area rather than a bigger picture. */
-.bt-t2-sq{
-  width:32px;height:32px;flex:none;border:none;background:none;padding:0;
-  background-repeat:no-repeat;background-position:center;background-size:100% 100%;
-  cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
-}
-.bt-t2-sq--minus{background-image:url('/icons/ui/trade/btn-minus.webp?v=2.3.2290')}
-.bt-t2-sq--plus{background-image:url('/icons/ui/trade/btn-plus.webp?v=2.3.2290')}
-.bt-t2-sq--x{background-image:url('/icons/ui/trade/btn-x.webp?v=2.3.2290')}
-.bt-t2-sq--minus:disabled{background-image:url('/icons/ui/trade/btn-minus-off.webp?v=2.3.2290')}
-.bt-t2-sq--plus:disabled{background-image:url('/icons/ui/trade/btn-plus-off.webp?v=2.3.2290')}
-.bt-t2-sq:disabled{cursor:not-allowed}
-
-/* The item plate, which the kit paints as its own framed square. */
-.bt-t2-plate{
-  width:36px;height:36px;flex:none;
-  background:url('/icons/ui/trade/slot-item.webp?v=2.3.2290') center/100% 100% no-repeat;
-  display:flex;align-items:center;justify-content:center;
-}
-.bt-t2-plate img,.bt-t2-plate svg{width:22px;height:22px;display:block}
-
-/* The panel's own close, and the coin the gold row is titled with. */
+/* ── the drawer's close ── */
 .bt-t2-close{
   position:absolute;top:-2px;right:-2px;z-index:2;
-  width:34px;height:34px;border:none;padding:0;
-  background:url('/icons/ui/trade/btn-close-danger.webp?v=2.3.2290') center/100% 100% no-repeat;
+  width:36px;height:36px;padding:0;
+  border-radius:9px;border:1px solid #35505E;background:#1B2C36;
+  color:#CBD8DD;font:700 15px/1 'Source Sans 3',sans-serif;
+  display:flex;align-items:center;justify-content:center;
   cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
 }
 
