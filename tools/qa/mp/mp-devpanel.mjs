@@ -123,6 +123,43 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const godOn = await P.page.evaluate(() => !!Array.from(document.querySelectorAll('button')).find((n) => (n.textContent || '').indexOf('God mode ON') >= 0));
   rec.ok('...and the panel reflects the server, not a local guess', godOn, {});
 
+  /* ── 8b. RESOURCES AND QUESTS (v2.3.2277) ──
+     Owner: "also having access to extract resources for testing ... Having the
+     finish all quests button will be good in that mode."
+     Both are asserted against the WORKER, not against the panel's own message
+     line: the panel says what it believes, and the whole reason these two ops
+     live on the admin HTTP road is that the worker is the only thing whose
+     copy of a bag or a quest log is real. */
+  await holdTitle(P, 1500);
+  await P.page.waitForTimeout(900);
+  rec.ok('the panel reopens for the resource row', await panelUp(P), {});
+  const invBefore = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    return (S.rpg && S.rpg.inventory) ? { ...S.rpg.inventory } : {};
+  });
+  rec.ok('there is a gathering-tools button', await tap(P, 'Give gathering tools'), {});
+  /* Three sequential grants, each a round trip. */
+  await P.page.waitForTimeout(3500);
+  const invAfter = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    return (S.rpg && S.rpg.inventory) ? { ...S.rpg.inventory } : {};
+  });
+  console.log('    TOOLS -> ' + JSON.stringify(['woodcutting_axe', 'fishing_pole', 'mining_pickaxe']
+    .map((k) => k + ':' + (invAfter[k] || 0)).join(' ')));
+  rec.ok('all three gathering tools reach the bag (the thing that actually unblocks harvesting)',
+    ['woodcutting_axe', 'fishing_pole', 'mining_pickaxe'].every((k) => (invAfter[k] || 0) >= 1),
+    { invBefore, invAfter });
+
+  await holdTitle(P, 1500);
+  await P.page.waitForTimeout(900);
+  rec.ok('the panel reopens for the quest row', await panelUp(P), {});
+  rec.ok('there is a finish-all-quests button', await tap(P, 'Finish all quests'), {});
+  await P.page.waitForTimeout(2500);
+  const qSrv = await devState(myId);
+  console.log('    ZONES AFTER FINISH -> ' + JSON.stringify(qSrv.zones));
+  rec.ok('finishing the quests opens the gated zones on the WORKER',
+    !!(qSrv.zones && Object.values(qSrv.zones).every((v) => v === true)), qSrv.zones);
+
   /* ── 9. FORGETTING THE KEY LEAVES NOTHING BEHIND ── */
   rec.ok('there is a forget button', await tap(P, 'Forget key'), {});
   await P.page.waitForTimeout(600);
