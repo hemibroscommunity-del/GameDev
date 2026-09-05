@@ -237,6 +237,91 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!art && art.item.length > 0 && art.item.every((i) => i.w > 0), art);
   rec.ok('the gold amount shows the gold icon, loaded',
     !!art && art.gold.length > 0 && art.gold.every((i) => i.w > 0), art);
+  /* ═══ v2.3.2286: THE GOLD LADDER, THROUGH THE REAL BUTTONS ═══
+     Owner: "For gold amounts to offer have preset amounts starting at 1 then 5
+     then 25, 50, then 100, 500, 1000 then a blank spot to enter."
+     Driven by real clicks and read back off the FIELD, so this measures what
+     the player sees rather than the staging object -- and the field is the
+     "blank spot", so the two halves of the ask are checked against each other. */
+  const goldNow = () => A.page.evaluate(() => {
+    const el = document.querySelector('[data-trade-drawer] input[type="number"]');
+    return el ? Number(el.value) : null;
+  });
+  const chip = (label) => A.page.evaluate((t) => {
+    const b = [...document.querySelectorAll('[data-trade-drawer] button')]
+      .find((x) => (x.textContent || '').trim() === t);
+    if (!b) return 'missing';
+    if (b.disabled) return 'disabled';
+    b.click(); return 'ok';
+  }, label);
+
+  const ladder = await A.page.evaluate(() => [...document.querySelectorAll('[data-trade-drawer] button')]
+    .map((b) => (b.textContent || '').trim()).filter((t) => /^\+\d+$/.test(t)));
+  rec.ok('the gold ladder is there, in the owner\'s order',
+    ladder.join(',') === '+1,+5,+25,+50,+100,+500,+1000', ladder);
+
+  /* Reset to nothing first: the stepper walk above left gold staged. */
+  await A.page.evaluate(() => {
+    const el = document.querySelector('[data-trade-drawer] input[type="number"]');
+    if (el) { const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+      set.call(el, '0'); el.dispatchEvent(new Event('input', { bubbles: true })); }
+  });
+  await A.page.waitForTimeout(500);
+  const from = await goldNow();
+  await chip('+25'); await A.page.waitForTimeout(350);
+  const after25 = await goldNow();
+  await chip('+5'); await A.page.waitForTimeout(350);
+  const after30 = await goldNow();
+  rec.ok('a preset ADDS to the offer rather than replacing it, so amounts can '
+    + 'be built out of taps', from === 0 && after25 === 25 && after30 === 30,
+    { from, after25, after30 });
+
+  /* The field is the "blank spot to enter" and it still owns the exact number. */
+  await A.page.locator('[data-trade-drawer] input[type="number"]').fill('7');
+  await A.page.waitForTimeout(400);
+  const typed = await goldNow();
+  await chip('+1'); await A.page.waitForTimeout(350);
+  rec.ok('...and typing an exact amount still works, with the presets adding on top',
+    typed === 7 && (await goldNow()) === 8, { typed, then: await goldNow() });
+
+  /* Clear only exists once there is something to clear. */
+  rec.ok('a Clear appears once gold is staged', (await chip('Clear')) === 'ok');
+  await A.page.waitForTimeout(400);
+  rec.ok('...and it empties the offer', (await goldNow()) === 0);
+  rec.ok('...and then takes itself away, rather than sitting there saying nothing',
+    (await chip('Clear')) === 'missing');
+
+  /* A chip you cannot afford is disabled, not silently clamped -- the number
+     under your thumb must not disagree with the number on the chip. */
+  const purse = await coins(A);
+  rec.ok('a preset larger than the purse is disabled, not silently clamped',
+    purse < 1000 ? (await chip('+1000')) === 'disabled' : true, { purse });
+
+  await A.page.locator('[data-trade-drawer] input[type="number"]').fill('100');
+  await A.page.waitForTimeout(400);
+
+  /* ═══ v2.3.2286: THE PRIMARY ACTION STAYS ABOVE THE FOLD ═══
+     The drawer is capped at min(52vh, 420px) and scrolls, so anything added to
+     it spends a height budget that nothing was measuring. The ladder's first
+     cut put Clear on a second row and pushed "Ready to trade" under the
+     dashboard band -- reachable only by scrolling a panel most players would
+     not think to scroll. Caught by eye in the screenshot; asserted here so the
+     next thing added to this drawer cannot spend the same budget silently. */
+  const fold = await A.page.evaluate(() => {
+    const d = document.querySelector('[data-trade-drawer]');
+    const b = [...d.querySelectorAll('button')]
+      .find((x) => /Ready to trade|Confirm trade|Add an item/.test(x.textContent || ''));
+    if (!b) return null;
+    const dr = d.getBoundingClientRect(), br = b.getBoundingClientRect();
+    return {
+      label: b.textContent.trim(),
+      overflowPx: Math.round(br.bottom - dr.bottom),
+      scrolls: d.scrollHeight > d.clientHeight + 1,
+    };
+  });
+  rec.ok('the primary action is reachable without scrolling the drawer',
+    !!fold && fold.overflowPx <= 0, fold);
+
   await shot(A, '1-offer');
 
   /* v2.3.2282: the live drawer is the screen the other two were made to match,

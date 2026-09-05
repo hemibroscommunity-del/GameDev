@@ -81,6 +81,9 @@ const ITEM_EMOJI = {
   herb_firebloom: '🌺', herb_rock_vine: '🌿', herb_cloudpetal: '🌸',
   basic_trap: '🪤',
 };
+/* v2.3.2286: the owner's ladder, verbatim and in his order. Module scope so it
+   is one list rather than an array literal rebuilt on every render. */
+const GOLD_STEPS = [1, 5, 25, 50, 100, 500, 1000];
 const emojiFor = (k) => ITEM_EMOJI[k] || (k.startsWith('skull') ? '💀' : k.startsWith('shard') ? '💠' : '📦');
 const labelFor = (k) => k.replace(/^(fish|cooked_fish|wood|ore|herb)_/, '').replace(/_/g, ' ');
 /* v2.3.1235: batch-4 state-correction — hoisted from the component so
@@ -1085,6 +1088,74 @@ export function TradeWindowPanel(props) {
             style={{ width: 76, padding: '6px 8px', borderRadius: 8, border: '1px solid rgba(229,237,233,.11)' /* v2.3.1235: batch-4 rollout — well trough + brass tokens */, background: '#111E23', color: '#D8AA58', fontSize: 16 /* v2.3.1233b: iOS zoom guard */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', textAlign: 'right', outline: 'none' }}
           />
           <span style={{ fontSize: 11, color: '#8D9B98', fontVariantNumeric: 'tabular-nums' }}>of {coins}</span>
+          {/* v2.3.2286: inline, NOT under the ladder. As its own item in the
+              chip row it wrapped to a second line and stretched full width --
+              which read as a primary button and, worse, cost ~48px of a drawer
+              that is already capped at min(52vh,420px), pushing "Ready to
+              trade" below the fold. Beside the field it costs nothing: that
+              row had spare width, and this is where the number it clears is. */}
+          {(stage._gold || 0) > 0 && (
+            <button
+              aria-label="Offer no gold"
+              onClick={() => { const next = { ...stage }; delete next._gold; pushStage(next); }}
+              style={{
+                marginLeft: 'auto', flex: '0 0 auto',
+                minHeight: 30, padding: '4px 10px', borderRadius: 999,
+                fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                border: '1px solid rgba(229,237,233,.20)',
+                background: '#293B41', color: '#B6C1BE',
+              }}
+            >Clear</button>
+          )}
+        </div>
+
+        {/* ═══ v2.3.2286: DENOMINATIONS, NOT A KEYPAD ═══
+            Owner: "For gold amounts to offer have preset amounts starting at 1
+            then 5 then 25, 50, then 100, 500, 1000 then a blank spot to enter."
+
+            THEY ADD, they do not set. The ladder is chip denominations, and the
+            "blank spot to enter" is the field above -- which already exists and
+            is where you type an exact number. If a chip SET the amount the
+            small end would be pointless (nobody offers exactly 1 gold) and 675
+            would still need the keyboard; adding lets you build any figure out
+            of taps, which is the thing the field is bad at on a phone.
+
+            DISABLED, NOT CLAMPED, when you cannot afford one more. A chip that
+            silently added less than it says would make the number under your
+            thumb disagree with the number on the chip. Same muted treatment the
+            weapon chips use at their cap, so "greyed" already means "at the
+            limit" in this panel.
+
+            The clear appears only once there is something to clear -- with
+            adding chips a reset is a necessity rather than a nicety, and a
+            permanently visible one would sit there saying nothing on the empty
+            offer every trade starts in. */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+          {GOLD_STEPS.map((amt) => {
+            const over = (stage._gold || 0) + amt > coins;
+            return (
+              <button
+                key={amt}
+                disabled={over}
+                aria-label={'Offer ' + amt + ' more gold'}
+                onClick={() => {
+                  if (over) return;
+                  const next = { ...stage };
+                  next._gold = Math.min(coins, (stage._gold || 0) + amt);
+                  pushStage(next);
+                }}
+                style={{
+                  flex: '1 1 auto', minWidth: 38, minHeight: 34,
+                  padding: '3px 5px', borderRadius: 999,
+                  fontSize: 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
+                  cursor: over ? 'not-allowed' : 'pointer',
+                  border: '1px solid ' + (over ? 'rgba(229,237,233,.11)' : 'rgba(216,170,88,.35)'),
+                  background: over ? 'transparent' : 'rgba(216,170,88,.10)',
+                  color: over ? '#667875' : '#D8AA58',
+                }}
+              >+{amt}</button>
+            );
+          })}
         </div>
 
         {/* v2.3.1235: batch-4 state-correction §6 — the server reset both
