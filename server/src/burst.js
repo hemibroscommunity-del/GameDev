@@ -104,7 +104,10 @@ export const burstMethods = {
      spread onto the room, and a `function` declaration in the middle of it is
      a syntax error rather than a helper. */
   _burstCost(ps) {
-    return Math.floor(((ps && ps.maxMana) || 100) / 5);
+    /* v2.3.2302: one block, priced through the single server primitive
+       (_blockCost) rather than a second hardcoded fifth -- the count is now a
+       ladder, so a literal /5 here would undercharge a maxed caster. */
+    return this._blockCost(ps, 'mana', 1);
   },
 
   /* The four gates, in one place so the handler and the tests read the same

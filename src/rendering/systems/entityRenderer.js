@@ -8,6 +8,7 @@ import { propsForZone, propFootprint } from '../../data/worldProps.js'; /* v2.3.
 import { TILE } from '@/data/constants.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { ELEMENTS } from '@/data/elements.js';
+import { rpgBlocks } from '@/data/abilities.js'; /* v2.3.2302: the block ladder */
 /* v2.3.1183: status-id -> element lookup, built once at import time.
    _updateMonsters used to run Object.values(ELEMENTS).find(...) per
    status per monster per FRAME -- an array + closure allocation and a
@@ -20,7 +21,7 @@ import { lookupCollision, PVP_THREAT_CONSENT_MS } from '@/data/gameSystems.js';
 import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrameCount, dodgeSheetDir } from '../playerSprites.js';
 import { getShieldFrame } from '../shieldSprites.js';
 import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX, HELD_SHIELD_PX } from '../backShield.js'; /* v2.3.1784; HELD_ v2.3.1798 */
-import { STUN_STARS, STUN_SPIN_MS, BLOCK_BARS, blocksFor } from '../fxStrips.js'; /* v2.3.1735: the owner's stun ring; v2.3.2300: his 5-block resource strips */
+import { STUN_STARS, STUN_SPIN_MS, BLOCK_BARS, BLOCK_GEOM, blocksFor } from '../fxStrips.js'; /* v2.3.1735: the owner's stun ring; v2.3.2300: his 5-block resource strips */
 import { jogWaistRow } from '../jogWaist.js'; /* v2.3.1341: stable waist band */
 import { getFrame as getSlimeBaseFrame, hasState as hasSlimeState, frameCount as slimeFrameCount, SLIME_BASE_ROW, SLIME_FRAME_PX } from '../slimeSprites.js';
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1573 generalised */
@@ -5993,6 +5994,30 @@ const RES_BLOCK_H = Math.round(RES_BLOCK_W * 98 / 273);
    the MP bar because this said `40 + ...` while MP had moved to 52, and the
    suite did not catch it (it only asserts enY > mpY, which stayed true). */
 const RES_EN_Y = RES_MP_Y + RES_BLOCK_H + 3;
+/* ═══ v2.3.2302: THE ROW GETS LONGER, NOT TALLER ═══
+   The block COUNT now grows with investment (5 base, 10 fully invested), and
+   the owner chose "one row that gets longer" over a second row.
+
+   RES_BLOCK_H deliberately stays keyed to the sheet's aspect AT THE FIVE-BLOCK
+   WIDTH. It is a per-BAR aspect, not a per-block one, so deriving it from a
+   widened bar would make a ten-block bar 55 tall and shove RES_EN_Y 28 units
+   down into the terrain -- which is the v2.3.1896c incident wearing a new hat.
+
+   RES_BAR_MAX_W caps the growth. Unclamped, ten blocks is ~145 display units
+   = ~107 CSS px in town: wider than the ATTACK disc (96), 27% of a 390pt
+   screen, and 4.6x the character's own silhouette -- and half again as wide in
+   farm_home, whose scale floor is 0.82 rather than town's ~0.589. Clamped at
+   118 the bar never passes ~87 CSS px in town, the squeeze only starts at nine
+   blocks, and because the HEIGHT is held the compression reads as "more,
+   tighter blocks" rather than as distortion. Holding the total at 76 instead
+   was the other option and is worse: a block would be 4 CSS px wide, which is
+   not a countable thing. */
+const RES_BAR_MAX_W = 118;
+const RES_SRC_CELL = BLOCK_GEOM.cell;
+const RES_SRC_PITCH = BLOCK_GEOM.pitch;
+const _barSrcW = (n) => RES_SRC_CELL + (n - 5) * RES_SRC_PITCH;
+const _barScaleX = (n) => Math.min(RES_BLOCK_W / RES_SRC_CELL, RES_BAR_MAX_W / _barSrcW(n));
+const _barWidth = (n) => Math.round(_barScaleX(n) * _barSrcW(n));
 const RES_HOLD_MS = 1000;      /* full alpha for a second after the last spend */
 const RES_FADE_MS = 1000;      /* then a second of fade — gone at 2s */
 const RES_SLIDE_MS = 420;      /* how long the spent chunk takes to leave */
@@ -6054,7 +6079,7 @@ function _resGlideProgress(gfx, now) {
 }
 
 /* One bar.  Returns its alpha, so the caller can decide about the plate. */
-function _drawResourceBar(gfx, sprite, kind, cur, max, y, now) {
+function _drawResourceBar(gfx, sprite, kind, cur, max, y, now, n) {
   const m = Math.max(1, max || 1);
   const v = Math.max(0, Math.min(m, cur || 0));
   /* Seed on the first frame so arriving at partial MP does not read as a
@@ -6148,20 +6173,51 @@ function _drawResourceBar(gfx, sprite, kind, cur, max, y, now) {
   }
   gfx.alpha = alpha;
   if (sprite) {
-    const frames = (BLOCK_BARS[kind] && BLOCK_BARS[kind].frames) || [];
-    const lit = blocksFor(v, m);
+    const parts = BLOCK_BARS[kind] && BLOCK_BARS[kind].parts;
+    const N = Math.max(1, Math.floor(n || 5));
+    const lit = blocksFor(v, m, N);
     /* No sheet (a 404, or a frame before the preload settled) means no bar --
        NOT a half-drawn one. The preloading law makes the second case a bug
        rather than a state to design for, and the manifest awaits these; this
        is the honest degradation for the first. */
-    if (frames.length === 6) {
-      if (sprite.texture !== frames[lit]) sprite.texture = frames[lit];
-      sprite.width = RES_BLOCK_W;
-      sprite.height = RES_BLOCK_H;
+    if (parts) {
+      const k = _barScaleX(N);
+      const W = _barWidth(N);
+      const L = -W / 2;          /* the container sits at x=0, so the bar grows
+                                    symmetrically about the player's centre --
+                                    this is what preserves the anchor(0.5, 0)
+                                    semantics the single sprite used to have. */
       sprite.x = 0;
       sprite.y = y;
       sprite.alpha = alpha;
       sprite.visible = true;
+
+      const capW = BLOCK_GEOM.cap * k;
+      sprite._capL.x = L;            sprite._capL.width = capW;  sprite._capL.height = RES_BLOCK_H;
+      sprite._mid.x = L + capW;      sprite._mid.width = Math.max(0, W - capW * 2); sprite._mid.height = RES_BLOCK_H;
+      sprite._capR.x = L + W - capW; sprite._capR.width = capW;  sprite._capR.height = RES_BLOCK_H;
+
+      /* v2.3.2302: cells are POOLED, never destroyed when N changes. N moves
+         on a level-up, an allocation and a respec -- all of which can happen
+         mid-fight -- and `new Sprite()` on the frame the sixth block arrives
+         is a hitch on the one frame the player is actually watching the bar.
+         Grow to fit, then hide the surplus. */
+      while (sprite._cells.length < N) {
+        const c = new Sprite(parts.empty);
+        c.anchor.set(0, 0);
+        sprite.addChild(c);
+        sprite._cells.push(c);
+      }
+      for (let i = 0; i < sprite._cells.length; i++) {
+        const c = sprite._cells[i];
+        if (i >= N) { c.visible = false; continue; }
+        const tex = i < lit ? parts.lit : parts.empty;
+        if (c.texture !== tex) c.texture = tex;
+        c.x = L + k * (BLOCK_GEOM.first + RES_SRC_PITCH * i);
+        c.width = BLOCK_GEOM.cellW * k;
+        c.height = RES_BLOCK_H;
+        c.visible = true;
+      }
     } else {
       sprite.visible = false;
     }
@@ -11946,15 +12002,30 @@ export class EntityRenderer {
          gates for nodes that must exist together go out of step the first time
          someone reorders them. anchor (0.5, 0) so `y` means the same thing it
          meant for the old roundRect: the TOP of the bar. */
-      const mkBlocks = () => {
-        const sp = new Sprite();
-        sp.anchor.set(0.5, 0);
+      /* v2.3.2302: a Container, not a Sprite -- the bar is now assembled from
+         a cap/middle/cap frame plus N block cells, because the six sheet
+         frames are fixed-width five-block pictures and cannot express six.
+         The FIELD NAMES are kept (d._resMpBlocks / d._resEnBlocks): the death
+         sweep, _resourceBarsUp and the probe all key off .visible/.alpha,
+         which a Container has just as a Sprite does.
+         NOTE it is added to `d`, not d._uiLayer, so it does NOT get the
+         inverse-scale treatment the HUD layer applies. Inert today because
+         both build axes are locked to a single 1.00 entry -- but a bar up to
+         118 units wide would stretch visibly if body heights ever return. */
+      const mkBlocks = (kind) => {
+        const sp = new Container();
         sp.visible = false;
+        const parts = BLOCK_BARS[kind] && BLOCK_BARS[kind].parts;
+        const mk = (tex) => { const q = new Sprite(tex || Texture.EMPTY); q.anchor.set(0, 0); sp.addChild(q); return q; };
+        sp._capL = mk(parts && parts.capL);
+        sp._mid = mk(parts && parts.mid);
+        sp._capR = mk(parts && parts.capR);
+        sp._cells = [];
         d.addChild(sp);
         return sp;
       };
-      d._resMpBlocks = mkBlocks();
-      d._resEnBlocks = mkBlocks();
+      d._resMpBlocks = mkBlocks('mana');
+      d._resEnBlocks = mkBlocks('stamina');
     }
     /* v2.3.1896d: a corpse wears no spend bars.  _updatePlayerHud runs AFTER
        _updatePlayer in the same frame, and _hudMpEmpty/_hudStamEmpty are BOTH
@@ -12002,7 +12073,7 @@ export class EntityRenderer {
          sprites, the death sweep hides them, and a future readout that wants
          text again has somewhere to put it. */
       const _resAlphaMp = _drawResourceBar(d._hudMpEmpty, d._resMpBlocks, 'mana',
-        R.mana, R.maxMana, RES_MP_Y, now);
+        R.mana, R.maxMana, RES_MP_Y, now, rpgBlocks(R, 'mana'));
       if (d._resMpLabel && d._resMpLabel.visible) d._resMpLabel.visible = false;
       if (d._resMpSpent && d._resMpSpent.visible) d._resMpSpent.visible = false;
       if (d._hudMpSprite && d._hudMpSprite.visible) d._hudMpSprite.visible = false;
@@ -12020,7 +12091,7 @@ export class EntityRenderer {
          drift.  RES_EN_Y is fixed, so this bar holds its position whether or
          not the MP bar above it is drawn. */
       const _resAlphaEn = _drawResourceBar(d._hudStamEmpty, d._resEnBlocks, 'stamina',
-        R.stamina, R.maxStamina, RES_EN_Y, now);
+        R.stamina, R.maxStamina, RES_EN_Y, now, rpgBlocks(R, 'stamina'));
       if (d._resEnLabel && d._resEnLabel.visible) d._resEnLabel.visible = false;
       if (d._resEnSpent && d._resEnSpent.visible) d._resEnSpent.visible = false;
       if (d._hudStamSprite && d._hudStamSprite.visible) d._hudStamSprite.visible = false;
@@ -12043,15 +12114,29 @@ export class EntityRenderer {
              on screen, which is how three vacuous checks got into this repo.
              blocksFor is the same function the draw uses -- the probe must not
              re-derive the number it is meant to be checking. */
-          mpBlocks: blocksFor(R.mana, R.maxMana),
-          enBlocks: blocksFor(R.stamina, R.maxStamina),
+          mpBlocks: blocksFor(R.mana, R.maxMana, rpgBlocks(R, 'mana')),
+          enBlocks: blocksFor(R.stamina, R.maxStamina, rpgBlocks(R, 'stamina')),
           mpBlocksDrawn: d._resMpBlocks && d._resMpBlocks.visible,
           enBlocksDrawn: d._resEnBlocks && d._resEnBlocks.visible,
-          blockW: RES_BLOCK_W, blockH: RES_BLOCK_H,
+          /* v2.3.2302: the COUNT and the WIDTH, so a test can pin the ladder.
+             Without these the suite could only see how many blocks are LIT,
+             and a build that never grew the row past five would read exactly
+             like a full five-block bar. mpCellsDrawn counts the cells actually
+             on screen, which is the only field that catches the row failing to
+             grow while the count says it did. */
+          mpBlockCount: rpgBlocks(R, 'mana'),
+          enBlockCount: rpgBlocks(R, 'stamina'),
+          mpCellsDrawn: d._resMpBlocks && d._resMpBlocks._cells
+            ? d._resMpBlocks._cells.filter((c) => c.visible).length : 0,
+          enCellsDrawn: d._resEnBlocks && d._resEnBlocks._cells
+            ? d._resEnBlocks._cells.filter((c) => c.visible).length : 0,
+          mpBarW: _barWidth(rpgBlocks(R, 'mana')),
+          enBarW: _barWidth(rpgBlocks(R, 'stamina')),
+          blockW: RES_BLOCK_W, blockH: RES_BLOCK_H, barMaxW: RES_BAR_MAX_W,
           mpSpent: d._hudMpEmpty._resSpentAmt, enSpent: d._hudStamEmpty._resSpentAmt,
           mpSpentText: null, enSpentText: null,
           mpSpentX: null, enSpentX: null, mpSpentA: null, enSpentA: null,
-          barRight: RES_BLOCK_W / 2,
+          barRight: _barWidth(rpgBlocks(R, 'mana')) / 2,
         };
       }
     }

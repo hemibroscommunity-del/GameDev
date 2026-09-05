@@ -432,7 +432,12 @@ export const cookingMethods = {
       if (typeof ps.maxMana !== 'number') ps.maxMana = 100;
       this._clearTimedBuffs(ps);   /* v2.3.2063: one effect at a time */
       ps.mana = ps.maxMana;
-      ps._buffs.manaFlat = manaSurgePerTick(PROG3.SPECIAL_MANA_COST, REGEN_TICKS * this.TICK_RATE);
+      /* v2.3.2302: sized off the LIVE cost, not the dead flat constant.  The
+         draught promises "special attacks constantly"; PROG3.SPECIAL_MANA_COST
+         has been a fiction since v2.3.2298 made the cost a share of the pool,
+         so the item under-funded a high-Magic caster badly.  One block per
+         tick is the promise, at whatever count the caster is on. */
+      ps._buffs.manaFlat = manaSurgePerTick(this._blockCost(ps, 'mana', 1), REGEN_TICKS * this.TICK_RATE);
       const durMs = Math.max(1, Math.floor(item.duration || 180)) * 1000;
       ps._buffs.mana = Date.now() + durMs;
     } else if (item.effect === 'spdBuff') {

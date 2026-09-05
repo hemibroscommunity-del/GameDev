@@ -223,10 +223,15 @@ const setCharLevel = (lvl) => {
   readyPlayer();
   const m = arm(meadow[0], psA.x + 20, psA.y);
 
-  const cost = Math.ceil(psA.maxStamina * STAM_ABILITIES.bash.staminaPct);
+  /* v2.3.2302: whole blocks, not a percentage.  Derived from the LIVE
+     playerState rather than from a bare maxStamina, because the block size
+     needs the count as well as the pool -- a bare object falls back to five
+     blocks and would price this identically whether the ladder works or not. */
+  const cost = STAM_ABILITIES.bash.blocks * Math.floor(psA.maxStamina / psA.stamBlocks);
   await cast('bash');
-  check('a cast spends exactly staminaPct of the pool',
-    psA.stamina === psA.maxStamina - cost, { spent: psA.maxStamina - psA.stamina, cost });
+  check('a cast spends exactly one block of the pool',
+    psA.stamina === psA.maxStamina - cost,
+    { spent: psA.maxStamina - psA.stamina, cost, maxStamina: psA.maxStamina, blocks: psA.stamBlocks });
 
   /* Immediately again: the server's own cooldown must refuse it. */
   const stamMid = psA.stamina;

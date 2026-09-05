@@ -105,7 +105,7 @@ export const STAM_ABILITIES = {
      release-and-re-press from making every swing a lunge. */
   sworddash: {
     minLevel: 0,
-    staminaPct: 0,
+    blocks: 0,            /* free, v2.3.2298 (owner) */
     cooldownMs: 2500,
     dmgMult: 1.0,
     radius: 70,
@@ -148,7 +148,7 @@ export const STAM_ABILITIES = {
        The requirement moved to "a shield, and it is raised" -- see
        game/abilities.js abilityStatus. */
     minLevel: 0,
-    staminaPct: 0.20,     /* of maxStamina -- one block, v2.3.2298 */
+    blocks: 1,            /* ONE block, at every count -- v2.3.2302 */
     cooldownMs: 4000,
     dmgMult: 0.75,        /* of a normal melee roll */
     radius: 70,           /* px; a shove has to reach about as far as a swing */
@@ -170,7 +170,7 @@ export const STAM_ABILITIES = {
   },
   whirl: {
     minLevel: 8,          /* MILESTONES[8] */
-    staminaPct: 0.20,
+    blocks: 1,            /* ONE block, at every count -- v2.3.2302 */
     cooldownMs: 6000,
     dmgMult: 1.00,
     /* ═══ v2.3.1738: THE VACUUM (owner) ═══
@@ -238,6 +238,60 @@ export const MILESTONES = {
   8:  { kind: 'whirl', label: 'Whirlwind' },
   10: { stamMult: 1.25, label: 'Second Wind' },
 };
+
+/* ═══ v2.3.2302: THE BLOCK COUNT IS A LADDER, NOT A CONSTANT ═══
+   v2.3.2298 made a block a FIFTH of the pool so "one special = one block" was
+   true at every level.  The price of that -- flagged to the owner at the time
+   -- was that levelling Magic bought a BIGGER cast rather than MORE casts,
+   reversing the v2.3.1734 decision that existed for exactly that reason.  The
+   owner's answer (2026-09-05) is not to move the cost off the pool again but
+   to move the DIVISOR: the row gets longer.  5 blocks at base, 10 fully
+   invested, one more every 20 points.  A block is still exactly one special at
+   every level, so the cost is maxPool / blockCount and SHRINKS as N grows.
+
+   ONE ladder for both pools: mana counts Magic LEVELS (1..100), stamina counts
+   allocated stam POINTS (0..100).  Same domain, same rungs, one sentence to
+   explain: "every 20 puts another block on the bar."
+
+   Keyed on the PROGRESSION INPUT, never on maxMana/maxStamina.  The legacy
+   pool path folds amulet and gear bonuses into those, so a gear-derived count
+   would make one block stop being one cast the moment you swapped a necklace.
+
+   Its own ladder rather than MILESTONES: that one is keyed on CHARACTER level,
+   tops out at rung 10, and already carries stamMult pinned by the suite. */
+export const BLOCKS = {
+  base:  5,
+  max:   10,
+  rungs: [20, 40, 60, 80, 100],   /* invested value granting the 6th..10th */
+};
+
+/* Blocks earned by `invested` (Magic level, or allocated stam points). */
+export function blocksAt(invested) {
+  const v = Math.max(0, Math.floor(Number(invested) || 0));
+  let n = BLOCKS.base;
+  for (let i = 0; i < BLOCKS.rungs.length; i++) if (v >= BLOCKS.rungs[i]) n += 1;
+  return Math.max(BLOCKS.base, Math.min(BLOCKS.max, n));
+}
+
+/* The count a LIVE player is on, read off the playerState the recompute
+   stamped.  Clamped rather than trusted, and the fallback is what keeps a
+   legacy blob (no prog3) on the five blocks its client draws. */
+export function poolBlocks(ps, pool) {
+  const n = ps && (pool === 'mana' ? ps.manaBlocks : ps.stamBlocks);
+  return (typeof n === 'number' && n >= BLOCKS.base && n <= BLOCKS.max)
+    ? Math.floor(n) : BLOCKS.base;
+}
+
+/* ONE block, in pool units.  FLOOR, not ceil, and that matters: the readout
+   lights floor((v*N)/max) blocks, so a cost that rounded UP would show a block
+   the worker then refuses to spend -- which is the bug the five-block bar has
+   carried since v2.3.2298 (ceil costs against a floor readout).
+   It is exact, not approximate: for max >= 100 and N in 5..10,
+   floor(max / floor(max/N)) === N, so a full bar is always exactly N casts. */
+export function blockSize(ps, pool) {
+  const max = (pool === 'mana' ? ps && ps.maxMana : ps && ps.maxStamina) || 100;
+  return Math.max(1, Math.floor(max / poolBlocks(ps, pool)));
+}
 
 /* Max-stamina multiplier earned by character level.  Read by
  * _prog3Recompute (server) and recalcDerived (client) — both, or the bar
@@ -349,8 +403,9 @@ export const abilityMethods = {
     const readyAt = ps._abilCd[kind] || 0;
     if (now < readyAt) return reject('cooldown', { ms: readyAt - now });
 
-    const maxStam = ps.maxStamina || 100;
-    const cost = Math.ceil(maxStam * cfg.staminaPct);
+    /* v2.3.2302: whole blocks, not a percentage.  ceil-against-a-floor-readout
+       was the old mismatch -- the bar could show a block the worker refused. */
+    const cost = cfg.blocks > 0 ? cfg.blocks * blockSize(ps, 'stamina') : 0;
     const have = Math.floor(ps.stamina || 0);
     if (have < cost) return reject('stamina', { cost, have });
 
@@ -634,10 +689,13 @@ export const abilityMethods = {
 
 /* Re-export so a caller that already imports this module can price a cost
    without reaching into the table (and so the mirror test has one import). */
-export function abilityStaminaCost(maxStamina, kind) {
+export function abilityStaminaCost(ps, kind) {
+  /* v2.3.2302: takes the PLAYER now, not a bare maxStamina -- the cost needs
+     the block count as well as the pool, and passing both separately is how
+     the two halves drift apart. */
   const cfg = Object.prototype.hasOwnProperty.call(STAM_ABILITIES, kind) ? STAM_ABILITIES[kind] : null;
   if (!cfg) return 0;
-  return Math.ceil((maxStamina || 100) * cfg.staminaPct);
+  return cfg.blocks > 0 ? cfg.blocks * blockSize(ps, 'stamina') : 0;
 }
 
 /* Kept honest by server/test/abilities.test.mjs: the ladder must never name

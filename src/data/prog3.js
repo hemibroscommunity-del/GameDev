@@ -15,6 +15,12 @@
  * additionally requires rpg.prog3 itself (adopted from player_state —
  * server-owned, never written locally except by the ack handlers). */
 
+/* v2.3.2302: the ONE cost primitive, shared with the ability table.
+   abilities.js imports nothing, so this direction cannot cycle -- and it
+   is the same direction the server uses (server/src/prog3.js imports
+   abilities.js, never the reverse). */
+import { rpgBlockSize } from './abilities.js';
+
 export const PROG3 = {
   SKILLS: ['sword', 'bow', 'staff'], // storage keys; displayed Melee / Bow / Magic
   LEVEL_CAP: 100,
@@ -196,14 +202,19 @@ export function isElemBurstEnabled() { return _burstCaps; }
    talking to. Both charge a fifth now (index.js _abilityCost), so there is one
    answer and no flag to get wrong. */
 export function specialManaCost(rpg) {
-  return Math.floor(((rpg && rpg.maxMana) || 100) / 5);
+  /* v2.3.2302: one block, and a block is maxMana/N where N grows with Magic
+     (5 at base, 10 fully invested).  So levelling Magic buys MORE casts again
+     -- what v2.3.1734 wanted and v2.3.2298 accidentally reversed -- while a
+     block stays exactly one special at every level. */
+  return rpgBlockSize(rpg, 'mana');
 }
 
 /* v2.3.2298: and the Element Burst costs the same one block. It was a flat 25
    alongside the special's flat 25; both are a fifth now, so "a special costs a
    block" is true of every special rather than of most of them. */
 export function burstManaCost(rpg) {
-  return Math.floor(((rpg && rpg.maxMana) || 100) / 5);
+  /* v2.3.2302: the same one block, through the same primitive. */
+  return rpgBlockSize(rpg, 'mana');
 }
 
 /* The weapon the burst will actually fire, client-side.  Deliberately NOT

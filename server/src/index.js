@@ -2653,9 +2653,9 @@ export class GameRoom {
   // snappy UX (the dash animates immediately); server's value wins.
   _abilityCost(ps, type, tier) {
     if (!ps) return 0;
-    if (type === 'dodge')   return Math.ceil((ps.maxStamina || 100) * 0.20);
-    if (type === 'lunge')   return Math.ceil((ps.maxStamina || 100) * 0.25);
-    if (type === 'retreat') return Math.ceil((ps.maxStamina || 100) * 0.20);
+    if (type === 'dodge')   return this._blockCost(ps, 'stamina', 1);  /* v2.3.2302: one block */
+    if (type === 'lunge')   return this._blockCost(ps, 'stamina', 1);  /* v2.3.2302: was 0.25 of the bar -- a bar you COUNT cannot charge a block and a quarter */
+    if (type === 'retreat') return this._blockCost(ps, 'stamina', 1);  /* v2.3.2302: one block */
     /* Swipe (special attack).
        v2.3.172 made the cost floor(maxMana / 5) so the HUD's 5-segment
        charge meter drained exactly one segment per cast.  That contract
@@ -2687,7 +2687,7 @@ export class GameRoom {
        An old worker charges floor(maxMana/5) and so does this one, so old and
        new clients now predict the same number against either -- strictly safer
        than the state it replaces. */
-    if (type === 'swipe')   return Math.floor((ps.maxMana || 100) / 5);
+    if (type === 'swipe')   return this._blockCost(ps, 'mana', 1);     /* v2.3.2302: one block, at whatever count you are on */
     return 0;
   }
 

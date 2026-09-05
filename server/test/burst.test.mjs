@@ -76,56 +76,82 @@ async function join(ws, id) {
   const ps = room.playerState.bp_burst_mana;
   const session = room.sessions.get(ws);
 
-  /* ═══ v2.3.2298: THIS SECTION ASSERTS THE OPPOSITE OF WHAT IT USED TO ═══
-     It was written for v2.3.1734, which made the special's mana cost FLAT so
-     that levelling Magic bought casts -- the section header still calls the
-     fraction "the whole bug". The owner has reversed that decision:
+  /* ═══ v2.3.2302: THIS SECTION HAS NOW BEEN REVERSED TWICE. READ THIS. ═══
+     v2.3.1734 made the special's mana cost FLAT so that levelling Magic bought
+     more casts. v2.3.2298 made it a FIFTH of the pool, for the owner's block
+     readout -- which bought a clean "one special = one block" at the price of
+     making casts-per-bar flat at 5 forever, and this section was rewritten to
+     pin that invariance on purpose.
 
-       "instead of seeing tiny percentages and trying to do mental math each
-        time stamina or mana is used, I want just 5 blocks ... All special
-        attacks will cost one block."
+     The owner's answer (2026-09-05), told that levelling Magic no longer
+     bought casts: "I'd prefer just adding more blocks". So the cost stays a
+     share of the pool -- one block, always -- and the DIVISOR moves instead:
+     5 blocks at base, 10 fully invested, one more every 20 Magic levels
+     (abilities.js blocksAt). Casts-per-bar rises again AND a block is still
+     exactly one special. Both properties at once, which is why this is not
+     simply a revert to v2.3.1734.
 
-     A block is a fifth of the pool, so one special is floor(maxMana/5) again.
-     The v2.3.1734 note is still TRUE and is the price of the readout: with a
-     proportional cost you get five casts per bar at Magic 1 and five at Magic
-     100, and since regen is also a percentage of max the sustained rate does
-     not move either. What Magic buys is no longer casts but the SIZE of a cast.
+     WHY THE FIXTURES BELOW USE A RECOMPUTED playerState AND NOT A BARE OBJECT:
+     the block count is stamped by _prog3Recompute, and poolBlocks() falls back
+     to 5 for anything that lacks it. `room._abilityCost({maxMana: 350}, ...)`
+     therefore prices at a FIFTH no matter what the ladder says -- so a test
+     written that way passes identically whether the ladder works or is deleted.
+     That is exactly how the previous version of this assertion survived this
+     change: it read 5,5,5,5,5 from objects that never had a count. */
+  const psAt = (magicLvl) => {
+    ps.prog3.sk.staff.level = magicLvl;
+    room._prog3Recompute(ps);
+    return ps;
+  };
 
-     The tests below are rewritten rather than deleted, and rewritten to assert
-     the invariance ON PURPOSE rather than to leave a hole where an assertion
-     used to be. If casts-per-bar ever stops being exactly 5, either someone
-     has restored the flat cost or the block readout has quietly started lying
-     about how many specials you have left -- and that is worth failing over in
-     both directions. */
-  check('a special costs ONE BLOCK -- a fifth of the pool, at any pool size',
-    room._abilityCost({ maxMana: 100 }, 'swipe') === 20
-    && room._abilityCost({ maxMana: 250 }, 'swipe') === 50
-    && room._abilityCost({ maxMana: 999 }, 'swipe') === 199,
-    { at100: room._abilityCost({ maxMana: 100 }, 'swipe'),
-      at250: room._abilityCost({ maxMana: 250 }, 'swipe'),
-      at999: room._abilityCost({ maxMana: 999 }, 'swipe') });
+  check('a special still costs exactly ONE BLOCK at every Magic level',
+    [1, 10, 30, 50, 100].every((lvl) => {
+      const p = psAt(lvl);
+      return room._abilityCost(p, 'swipe') === Math.floor(p.maxMana / p.manaBlocks);
+    }),
+    [1, 10, 30, 50, 100].map((lvl) => {
+      const p = psAt(lvl);
+      return { lvl, maxMana: p.maxMana, blocks: p.manaBlocks, cost: room._abilityCost(p, 'swipe') };
+    }));
 
   const castsAt = (magicLvl) => {
-    ps.prog3.sk.staff.level = magicLvl;
-    room._prog3Recompute(ps);
-    return Math.floor(ps.maxMana / room._abilityCost(ps, 'swipe'));
+    const p = psAt(magicLvl);
+    return Math.floor(p.maxMana / room._abilityCost(p, 'swipe'));
   };
   const curve = [1, 10, 30, 50, 100].map(castsAt);
-  check('...so the bar is worth exactly five specials at every Magic level, '
-    + 'which is what makes a five-block readout honest',
-    curve.every((c) => c === 5), { levels: [1, 10, 30, 50, 100], casts: curve });
+  check('...and the bar is worth MORE specials as Magic rises -- 5 at the '
+    + 'bottom, 10 fully invested, which is the whole point of the ladder',
+    curve[0] === 5 && curve[curve.length - 1] === 10
+      && curve.every((c, i) => i === 0 || c >= curve[i - 1]),
+    { levels: [1, 10, 30, 50, 100], casts: curve });
+
+  check('...and a full bar is EXACTLY N casts, never N minus a sliver -- '
+    + 'the readout floors, so a cost that rounded up would show a block the '
+    + 'worker refuses to spend',
+    [1, 10, 30, 50, 100].every((lvl) => {
+      const p = psAt(lvl);
+      return Math.floor(p.maxMana / room._abilityCost(p, 'swipe')) === p.manaBlocks;
+    }),
+    [1, 10, 30, 50, 100].map((lvl) => {
+      const p = psAt(lvl);
+      return { lvl, blocks: p.manaBlocks, casts: Math.floor(p.maxMana / room._abilityCost(p, 'swipe')) };
+    }));
 
   /* Same tick constant the regen loop uses (index.js: maxMana x 0.018 out of
-     combat). Invariant by construction, and named as such so the next reader
-     does not "fix" it. */
+     combat).  v2.3.2302: this used to assert INVARIANCE and now asserts the
+     opposite, for the same reason as the curve above.  Mana regen is a
+     percentage of max, so seconds-per-cast is 1/(N x rate): with the count
+     fixed at 5 it was level-invariant by construction, and with the count on a
+     ladder a maxed caster sustains roughly twice the rate of a fresh one.
+     That is a real second balance change riding along with the readout, and it
+     is pinned here so it is a decision rather than a discovery. */
   const secsPerCast = (magicLvl) => {
-    ps.prog3.sk.staff.level = magicLvl;
-    room._prog3Recompute(ps);
-    return room._abilityCost(ps, 'swipe') / (ps.maxMana * 0.018);
+    const p = psAt(magicLvl);
+    return room._abilityCost(p, 'swipe') / (p.maxMana * 0.018);
   };
-  check('...and the sustained rate is level-invariant too -- the known cost of '
-    + 'the block readout, not an oversight',
-    Math.abs(secsPerCast(100) - secsPerCast(1)) < secsPerCast(1) * 0.05,
+  check('...and the sustained rate improves with Magic too -- a maxed caster '
+    + 'refills a block about twice as fast as a fresh one',
+    secsPerCast(100) < secsPerCast(1) * 0.6,
     { at1: secsPerCast(1).toFixed(2), at100: secsPerCast(100).toFixed(2) });
 
   ps.prog3.sk.staff.level = 1;

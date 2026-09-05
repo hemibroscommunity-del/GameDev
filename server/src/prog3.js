@@ -276,7 +276,7 @@ export const PROG3 = {
    because _prog3Recompute below is the one place max stamina is computed
    for a prog3 player, and the client mirror (recalcDerived) carries the
    same multiplier.  Move one, move both. */
-import { staminaMilestoneMult, MILESTONES } from './abilities.js';
+import { staminaMilestoneMult, MILESTONES, blocksAt, blockSize } from './abilities.js';
 
 /* XP to go from trained level L to L+1.  The legacy weaponXpRequired
  * curve (280 × 1.16^L, gameSystems.js) reused verbatim (§3-A), shifted
@@ -527,6 +527,15 @@ export const prog3Methods = {
     return (typeof v === 'number' && def) ? Math.max(0, Math.min(def.cap, v)) : 0;
   },
 
+  /* v2.3.2302: N blocks of one pool -- the ONLY cost primitive on the server.
+     _abilityCost, _burstCost and _handleAbility all price through this, so
+     "one block" cannot come to mean three different numbers in three files the
+     way the hardcoded fifth did. */
+  _blockCost(ps, pool, blocks) {
+    const n = (blocks == null) ? 1 : blocks;
+    return n <= 0 ? 0 : n * blockSize(ps, pool);
+  },
+
   _prog3CharLevel(ps) {
     const p3 = ps && ps.prog3;
     if (!p3 || !p3.sk) return 3;
@@ -561,10 +570,22 @@ export const prog3Methods = {
        which is the opposite of what a level-10 reward should feel like.
        Mirrored by recalcDerived's prog3 branch (src/data/gameSystems.js);
        both read staminaMilestoneMult so the number has one home. */
-    ps.maxStamina = Math.floor((100 + this._prog3Pts(ps, 'stam') * PROG3.BODY.stam.per)
+    const stamPts = this._prog3Pts(ps, 'stam');
+    ps.maxStamina = Math.floor((100 + stamPts * PROG3.BODY.stam.per)
       * staminaMilestoneMult(ps.level));
-    const magicLvl = (ps.prog3.sk && ps.prog3.sk.staff && ps.prog3.sk.staff.level) || 1;
+    /* v2.3.2302: clamped, which it was NOT before -- the client mirror has
+       always clamped, and the block ladder turns that latent asymmetry into a
+       visible one (an out-of-range level would buy a block the client never
+       draws). */
+    const magicLvl = Math.max(1, Math.min(PROG3.LEVEL_CAP,
+      (ps.prog3.sk && ps.prog3.sk.staff && ps.prog3.sk.staff.level) || 1));
     ps.maxMana = Math.floor(100 + magicLvl * PROG3.MANA_PER_MAGIC_LEVEL);
+    /* v2.3.2302: the block counts, computed in the SAME place and from the
+       SAME inputs as the pools they divide -- that adjacency is the whole
+       defence against the two drifting apart.  Derived, never stored: no new
+       storage key, and join recomputes before the first cost is ever priced. */
+    ps.manaBlocks = blocksAt(magicLvl);
+    ps.stamBlocks = blocksAt(stamPts);
     if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;
     ps.hp = Math.min(ps.hp, ps.maxHp);
     if (typeof ps.stamina !== 'number') ps.stamina = ps.maxStamina;

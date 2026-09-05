@@ -64,7 +64,7 @@ export const STAM_ABILITIES = {
      release-and-re-press from making every swing a lunge. */
   sworddash: {
     minLevel: 0,
-    staminaPct: 0,
+    blocks: 0,            /* free, v2.3.2298 (owner) */
     cooldownMs: 2500,
     dmgMult: 1.0,
     radius: 70,
@@ -89,7 +89,7 @@ export const STAM_ABILITIES = {
        The requirement moved to "a shield, and it is raised" -- see
        game/abilities.js abilityStatus. */
     minLevel: 0,
-    staminaPct: 0.20,
+    blocks: 1,            /* ONE block, at every count -- v2.3.2302 */
     cooldownMs: 4000,
     dmgMult: 0.75,
     radius: 70,
@@ -108,7 +108,7 @@ export const STAM_ABILITIES = {
   },
   whirl: {
     minLevel: 8,
-    staminaPct: 0.20,
+    blocks: 1,            /* ONE block, at every count -- v2.3.2302 */
     cooldownMs: 6000,
     dmgMult: 1.00,
     radius: 240,    /* v2.3.1738 (owner): the vacuum — was 60 */
@@ -163,8 +163,46 @@ export function abilityCfg(kind) {
 export function abilityStaminaCost(rpg, kind) {
   var cfg = abilityCfg(kind);
   if (!cfg) return 0;
-  return Math.ceil(((rpg && rpg.maxStamina) || 100) * cfg.staminaPct);
+  return cfg.blocks > 0 ? cfg.blocks * rpgBlockSize(rpg, 'stamina') : 0;
 }
+
+/* ═══ v2.3.2302: THE BLOCK LADDER (mirror of server/src/abilities.js) ═══
+   Byte-identical to the server's, and pinned that way by
+   server/test/abilities.test.mjs -- a drifted cost is a button that promises
+   a cast the worker refuses.  5 blocks at base, 10 fully invested, one more
+   every 20 points of investment (Magic level for mana, allocated stam points
+   for stamina). */
+export var BLOCKS = {
+  base:  5,
+  max:   10,
+  rungs: [20, 40, 60, 80, 100],
+};
+
+export function blocksAt(invested) {
+  var v = Math.max(0, Math.floor(Number(invested) || 0));
+  var n = BLOCKS.base;
+  for (var i = 0; i < BLOCKS.rungs.length; i++) if (v >= BLOCKS.rungs[i]) n += 1;
+  return Math.max(BLOCKS.base, Math.min(BLOCKS.max, n));
+}
+
+/* The count for a live character.  Falls back to 5 whenever the server has
+   not advertised the feature (see setBlockScaleEnabled) or has not stamped a
+   count -- against an old worker the client must keep predicting the fifths
+   that worker actually charges, or the charge pie lies. */
+export function rpgBlocks(rpg, pool) {
+  if (!_blockScale) return BLOCKS.base;
+  var n = rpg && (pool === 'mana' ? rpg.manaBlocks : rpg.stamBlocks);
+  return (typeof n === 'number' && n >= BLOCKS.base && n <= BLOCKS.max) ? Math.floor(n) : BLOCKS.base;
+}
+
+export function rpgBlockSize(rpg, pool) {
+  var max = (pool === 'mana' ? rpg && rpg.maxMana : rpg && rpg.maxStamina) || 100;
+  return Math.max(1, Math.floor(max / rpgBlocks(rpg, pool)));
+}
+
+var _blockScale = false;
+export function setBlockScaleEnabled(on) { _blockScale = !!on; }
+export function isBlockScaleEnabled() { return _blockScale; }
 
 var _enabled = false;
 export function setAbilitiesEnabled(on) { _enabled = !!on; }

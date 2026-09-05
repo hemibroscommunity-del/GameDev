@@ -266,4 +266,112 @@ export async function run({ browser, wsPort, webPort, rec }) {
         r(b.mpBlocks === 0);
       }));
     })), null);
+
+  /* ══ 9. v2.3.2302: THE ROW GROWS WITH INVESTMENT ══
+     Everything above describes a BASE character, who has five blocks -- which
+     is why none of it changed when the ladder landed, and why none of it can
+     detect the ladder failing. That is the whole point of this section: a
+     build where the count never grew past five would read identically to every
+     assertion above.
+
+     Two halves, deliberately separate:
+       a) the client's own derivation (blocksAt via recalcDerived) -- does a
+          maxed Magic character COMPUTE ten blocks;
+       b) the renderer -- given ten, does it actually DRAW ten cells on a
+          longer bar. `mpCellsDrawn` counts sprites really on screen, so a
+          count that says ten while the art still shows five fails here. */
+  const ladder = await P.page.evaluate(() => new Promise((res) => {
+    const S = window._gameState.current;
+    const R = S.rpg;
+    const snap = () => {
+      const b = window.__btResourceBars || {};
+      return { count: b.mpBlockCount, cells: b.mpCellsDrawn, w: b.mpBarW,
+        lit: b.mpBlocks, enCount: b.enBlockCount, enCells: b.enCellsDrawn };
+    };
+    const before = { maxMana: R.maxMana, staff: R.prog3 && R.prog3.sk && R.prog3.sk.staff.level,
+      stam: R.prog3 && R.prog3.alloc && R.prog3.alloc.stam };
+    const out = { capOn: !!(S._serverCaps && S._serverCaps.blockScale) };
+    R.mana = R.maxMana; R.stamina = R.maxStamina;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      out.base = snap();
+      /* Max out BOTH inputs through the real client derivation, not by poking
+         the counts -- that is what makes this a test of blocksAt rather than
+         of the renderer reading a number we handed it. */
+      R.prog3.sk.staff.level = 100;
+      R.prog3.alloc.stam = 100;
+      window.__btRecalc ? window.__btRecalc(R) : null;
+      out.derived = { manaBlocks: R.manaBlocks, stamBlocks: R.stamBlocks, maxMana: R.maxMana };
+      R.mana = R.maxMana; R.stamina = R.maxStamina;
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        out.maxed = snap();
+        /* spend ONE block at the new count and confirm the readout drops by
+           exactly one light -- the property the whole feature rests on. */
+        R.mana = R.maxMana - Math.floor(R.maxMana / (R.manaBlocks || 5));
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          out.afterOneCast = snap();
+          R.prog3.sk.staff.level = before.staff; R.prog3.alloc.stam = before.stam;
+          if (window.__btRecalc) window.__btRecalc(R);
+          R.mana = R.maxMana; R.stamina = R.maxStamina;
+          res(out);
+        }));
+      }));
+    }));
+  }));
+  console.log('    ladder: ' + JSON.stringify(ladder));
+
+  rec.ok('a base character is on five blocks', ladder.base && ladder.base.count === 5, ladder.base);
+  rec.ok('maxing Magic and Body derives TEN blocks on both pools',
+    !!ladder.derived && ladder.derived.manaBlocks === 10 && ladder.derived.stamBlocks === 10, ladder.derived);
+  rec.ok('...and the renderer actually DRAWS ten cells, not five',
+    !!ladder.maxed && ladder.maxed.cells === 10 && ladder.maxed.enCells === 10, ladder.maxed);
+  rec.ok('...on a bar that is genuinely longer than the five-block one',
+    !!ladder.maxed && !!ladder.base && ladder.maxed.w > ladder.base.w, 
+    { base: ladder.base && ladder.base.w, maxed: ladder.maxed && ladder.maxed.w });
+  rec.ok('...but still within the width cap, so it cannot swallow the screen',
+    !!ladder.maxed && ladder.maxed.w <= 118, ladder.maxed);
+  rec.ok('a full ten-block bar reads ten, and one cast puts out exactly one',
+    !!ladder.maxed && ladder.maxed.lit === 10
+      && !!ladder.afterOneCast && ladder.afterOneCast.lit === 9,
+    { full: ladder.maxed && ladder.maxed.lit, afterOne: ladder.afterOneCast && ladder.afterOneCast.lit });
+
+  /* v2.3.2302: the owner asked to SEE it at both ends of the ladder before
+     the width cap is final, so capture the same frame at five blocks and at
+     ten rather than describing the difference in numbers. */
+  const clipBox = async () => P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const c = document.querySelector('canvas');
+    if (!c) return null;
+    const r = c.getBoundingClientRect();
+    const cx = r.left + (S.player.x - S.camera.x) * (S._worldScaleX || 1);
+    const cy = r.top + (S.player.y - S.camera.y) * (S._worldScaleY || 1);
+    const x = Math.max(0, Math.round(cx - 110)), y = Math.max(0, Math.round(cy - 70));
+    return { x, y, width: Math.min(innerWidth - x, 220), height: Math.min(innerHeight - y, 190) };
+  });
+  const shootAt = async (staff, stam, file) => {
+    /* Set the level, THEN settle at full for a frame, THEN spend. The bar only
+       reveals on a DECREASE, and raising Magic raises maxMana -- so jumping
+       straight to "full minus one block" at the new max is an increase from
+       the old pool, which the bar correctly reads as a refill and does not
+       show. The first capture attempt got a nameplate for exactly this. */
+    await P.page.evaluate((cfg) => {
+      const R = window._gameState.current.rpg;
+      R.prog3.sk.staff.level = cfg.staff;
+      R.prog3.alloc.stam = cfg.stam;
+      if (window.__btRecalc) window.__btRecalc(R);
+      R.mana = R.maxMana; R.stamina = R.maxStamina;
+    }, { staff, stam });
+    await P.page.waitForTimeout(300);
+    await P.page.evaluate(() => {
+      const R = window._gameState.current.rpg;
+      R.mana = R.maxMana - Math.floor(R.maxMana / (R.manaBlocks || 5));
+      R.stamina = R.maxStamina - Math.floor(R.maxStamina / (R.stamBlocks || 5));
+    });
+    await P.page.waitForTimeout(350);
+    const box = await clipBox();
+    await P.page.screenshot(Object.assign({ path: `${H.REPO}/tools/qa/mp/out/${file}` },
+      box && box.width > 60 ? { clip: box } : {})).catch(() => {});
+  };
+  await shootAt(1, 0, 'resbars-5blocks.png');
+  await shootAt(100, 100, 'resbars-10blocks.png');
+  console.log('    previews: out/resbars-5blocks.png, out/resbars-10blocks.png');
 }

@@ -24,7 +24,7 @@ import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking
 import { peerCosmeticsFromWire, applyPeerCosmetics } from '@/networking/peerCosmetics.js';
 import { revealBus } from '@/ui/reveal/revealBus.js'; /* v2.3.1925 */
 import { applyCharacterRecord, hasStoredCharacter, publishCharRecord } from '@/game/characterRecord.js'; /* v2.3.1814: the stored name+look */
-import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, DEATH_GOLD_PENALTY, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setProg3XEnabled, isProg3XEnabled, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, PROG3_SKILL_META, PROG3 } from '@/data/index.js';
+import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, DEATH_GOLD_PENALTY, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setProg3XEnabled, isProg3XEnabled, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, setBlockScaleEnabled, PROG3_SKILL_META, PROG3 } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { usesClientSideMovement, MONSTER_VARIANTS, isRemnantSkull, applyZoneVariant } from '@/data/monsterVariants.js';
 import { rollMonsterShard, shardByKey } from '@/data/shards.js';
@@ -1034,6 +1034,13 @@ export function setupWebSocket(ctx) {
                    on every cast and the charge pie draws segments the
                    worker will not fund (rule 19). */
                 setElemBurstEnabled(!!(S._serverCaps && S._serverCaps.elemBurst));
+                /* v2.3.2302: the block LADDER, on its own narrow flag.  Against
+                   a worker that has not advertised it the client must keep
+                   predicting fifths and drawing five blocks, because that is
+                   what such a worker actually charges -- gating this on
+                   elemBurst instead would turn every pre-2302 worker into a
+                   client that promises ten casts and gets five. */
+                setBlockScaleEnabled(!!(S._serverCaps && S._serverCaps.blockScale));
                 if (S.rpg) recalcDerived(S.rpg);
               } catch (e) {}
               var others = {};
@@ -1459,6 +1466,11 @@ export function setupWebSocket(ctx) {
                 maxStamina: typeof msg.payload.maxStamina === 'number' ? msg.payload.maxStamina : null,
                 mana: typeof msg.payload.mana === 'number' ? msg.payload.mana : null,
                 maxMana: typeof msg.payload.maxMana === 'number' ? msg.payload.maxMana : null,
+                /* v2.3.2302: the block counts, present-gated like the pools --
+                   an old worker sends neither and the client keeps its own
+                   five-block default rather than reading undefined as zero. */
+                manaBlocks: typeof msg.payload.manaBlocks === 'number' ? msg.payload.manaBlocks : null,
+                stamBlocks: typeof msg.payload.stamBlocks === 'number' ? msg.payload.stamBlocks : null,
               };
               /* Food buff timers -- worker is authoritative for the
                  endsAt timestamps so a cheater can't extend their
@@ -2655,6 +2667,14 @@ export function setupWebSocket(ctx) {
          with is not invented for the test — server/test/drops.test.mjs pins
          what the worker actually emits. */
       try { window.__btLootCredit = function (p) { _applyLootCredit(p, S); }; } catch (e) {}
+      /* v2.3.2302: the same QA/debug seam for the derived-stat recompute.
+         The block COUNT is derived from Magic level and allocated stam points
+         (recalcDerived -> blocksAt), and a headless run needs to move those
+         inputs and see the count follow WITHOUT poking the count itself --
+         otherwise the test proves only that the renderer can draw a number it
+         was handed, not that the ladder computes one.  The alternative is
+         levelling Magic to 100 in a headless browser. */
+      try { window.__btRecalc = function (r) { return recalcDerived(r || S.rpg); }; } catch (e) {}
 
 
       ws.onclose = function (event) {
