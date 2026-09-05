@@ -231,6 +231,7 @@ import { firemakingBus } from './mobile/firemakingBus.js';
 import { eatBus } from './mobile/eatBus.js';
 import { blockRingBus } from './mobile/blockRingBus.js';
 import { chatBubbleBus } from './mobile/chatBubbleBus.js'; /* v2.3.1287: self-tap opens chat */
+import { tapDismiss, TAP_DISMISS_STYLE } from './tapDismiss.js'; /* v2.3.2284 */
 import { chatLogBus } from './mobile/chatLogBus.js'; /* v2.3.1980: the world-chat feed listens here */
 import { controlsTutorialBus } from './mobile/controlsTutorialBus.js';
 /* v2.3.1796: the questline teaches the controls by flashing the real one
@@ -2765,6 +2766,9 @@ export var BroTown = function BroTown(_ref0) {
     clanData: setClanData, party: setParty, welcome: setShowWelcome,
     mayorGreeting: setShowMayorGreeting, tourPrompt: setShowTourPrompt,
     intro: setShowIntro,
+    /* v2.3.2284: the two world toasts, so a scenario can raise one without
+       performing a real pickup -- they had no route in at all. */
+    collectMsg: setCollectMsg, achievementMsg: setAchievementMsg,
     /* These three panels are gated on a COMPANION value, not just their
        boolean — capturing them needs both halves set. */
     chatOpen: setChatOpen,              // the real chat gate (showChatLog is dead state, below)
@@ -10625,13 +10629,23 @@ export var BroTown = function BroTown(_ref0) {
       /* Tap on empty space = unlock */
       S.lockedTarget = null;
     }
-  }), achievementMsg && Date.now() - achievementMsg.ts < 3000 && /*#__PURE__*/React.createElement("div", {
+  }), achievementMsg && Date.now() - achievementMsg.ts < 3000 && /*#__PURE__*/React.createElement("div", Object.assign({}, tapDismiss(function () { setAchievementMsg(null); }), {
+    /* ═══ v2.3.2284: IT WAS ALREADY EATING THE TAP ═══
+       This toast and the collect one below set no pointerEvents and carried no
+       handler, and they are siblings of the world tap layer inside a container
+       that sets no pointer-events either -- so they inherited 'auto' and
+       swallowed every tap that landed on them, doing nothing with it. Sitting
+       at 20% and 30% height, dead centre of the play area, on a toast that
+       fires on every pickup. So this is not "add a convenience", it is "the
+       blocker that was already there now does the obvious thing". */
     style: {
       position: 'absolute',
       top: '20%',
       left: '50%',
       transform: 'translate(-50%,-50%)',
       zIndex: 22,
+      cursor: TAP_DISMISS_STYLE.cursor,
+      touchAction: TAP_DISMISS_STYLE.touchAction,
       padding: '12px 24px',
       borderRadius: 14,
       background: 'rgba(216,168,95,.9)',      border: '2px solid rgba(255,255,255,.3)',
@@ -10639,7 +10653,7 @@ export var BroTown = function BroTown(_ref0) {
       animation: 'scoreReveal .4s cubic-bezier(.22,1,.36,1)',
       boxShadow: '0 4px 20px rgba(216,168,95,.5)'
     }
-  }, /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 32
     }
@@ -10659,20 +10673,25 @@ export var BroTown = function BroTown(_ref0) {
       color: '#fff',
       marginTop: 2
     }
-  }, achievementMsg.name)), collectMsg && Date.now() - collectMsg.ts < 2000 && /*#__PURE__*/React.createElement("div", {
+  }, achievementMsg.name)), collectMsg && Date.now() - collectMsg.ts < 2000 && /*#__PURE__*/React.createElement("div", Object.assign({}, tapDismiss(function () { setCollectMsg(null); }), {
+    /* v2.3.2284: see the achievement toast above -- same defect, and this is
+       the one a player meets constantly, because it fires on every harvest and
+       every loot pickup. */
     style: {
       position: 'absolute',
       top: '30%',
       left: '50%',
       transform: 'translate(-50%,-50%)',
       zIndex: 20,
+      cursor: TAP_DISMISS_STYLE.cursor,
+      touchAction: TAP_DISMISS_STYLE.touchAction,
       padding: '10px 20px',
       borderRadius: 12,
       background: 'rgba(17,25,29,.94)' /* v2.3.1233: spec world-overlay ink; blur removed */,      border: '1.5px solid rgba(216,169,77,.4)',
       textAlign: 'center',
       animation: 'scoreReveal .35s cubic-bezier(.22,1,.36,1)'
     }
-  }, /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 28
     }

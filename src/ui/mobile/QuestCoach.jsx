@@ -906,9 +906,27 @@ export function QuestCoach(props) {
           setView(null);
         },
         'aria-label': 'Dismiss tip',
+        /* ═══ v2.3.2284: HALF A TOUCH TARGET IS WHY IT "WOULD NOT GO AWAY" ═══
+           Owner: "allow the user to just tap on the messages to dismiss it" --
+           and his own demo reviewers said it plainer: "just won't go away no
+           matter what I do", "the message above the attack stick mask the
+           screen and not go down easily" (quoted above). A dismiss DID exist
+           since v2.3.2123; it was 22x22, half the 44pt minimum the rest of the
+           UI holds itself to, on the one element in this overlay that takes a
+           touch at all.
+           The CARD stays pointerEvents:'none' and must -- reachable() refuses
+           to draw a mark if anything but the control answers a hit-test at its
+           centre, so "never covers the control it points at" is built on this
+           overlay being invisible to hit-testing, and the equip lesson's card
+           sits right over the bag grid. Growing the ONE element that is
+           already 'auto' touches none of that.
+           Kept INSIDE the card's own bounds: a negative offset would put a
+           hit-test blocker outside the card footprint, possibly over the very
+           control being ringed. */
         style: {
-          position: 'absolute', top: 2, right: 2,
-          width: 22, height: 22, lineHeight: '20px', textAlign: 'center',
+          position: 'absolute', top: 0, right: 0,
+          width: 44, height: 44, textAlign: 'center',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
           padding: 0, borderRadius: 8,
           background: 'transparent', border: 0,
           color: 'rgba(244,240,231,.55)', fontSize: 15, fontWeight: 700,
@@ -921,8 +939,9 @@ export function QuestCoach(props) {
         style: {
           fontSize: 10, fontWeight: 800, letterSpacing: '.1em',
           textTransform: 'uppercase', color: BRASS, marginBottom: 2,
-          /* room for the X, so a long label cannot run under it */
-          paddingRight: 20,
+          /* room for the X, so a long label cannot run under it
+             (v2.3.2284: 20 -> 40, following the button to 44pt) */
+          paddingRight: 40,
         },
       }, view.label),
       React.createElement('div', {

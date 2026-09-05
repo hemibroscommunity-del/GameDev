@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { tapDismiss, TAP_DISMISS_STYLE } from '../tapDismiss.js'; /* v2.3.2284 */
 import { installHintBus } from './installHintBus.js';
 
 /* ═══ v2.3.2159: THE ADD-TO-HOME-SCREEN CARD ═══
@@ -82,10 +83,27 @@ export function InstallHint() {
   }, []);
 
   if (!show) return null;
+  /* v2.3.2284: ONE dismissal moment for the whole file. The ✕ used to write
+     the memory and hide inline on pointerup while nothing else could dismiss
+     at all; with the card itself now tappable, two idioms in one file is how
+     a ✕ press dismisses on pointerup and then has its synthesised click land
+     on the world underneath. Both routes are onClick and both come here. */
+  const dismiss = () => {
+    try { localStorage.setItem(KEY, '1'); } catch (err) { /* private window */ }
+    setShow(false);
+  };
   return (
     <div
       data-install-hint=""
+      /* Owner: "allow the user to just tap on the messages to dismiss it".
+         This is the one tutorial-era card with NO auto-expire -- it appears
+         eight seconds into a first session on iPhone Safari and then sits
+         until the ✕ is found -- it is pure instruction with nothing to
+         decide, and its body was swallowing taps for nothing. */
+      {...tapDismiss(dismiss)}
       style={{
+        cursor: TAP_DISMISS_STYLE.cursor,
+        touchAction: TAP_DISMISS_STYLE.touchAction,
         position: 'fixed',
         /* v2.3.2174: centred over the WORLD, not the screen — with a
            landscape panel open, screen-centre is partly underneath it.
@@ -123,11 +141,8 @@ export function InstallHint() {
       <button
         data-install-hint-dismiss=""
         aria-label="Dismiss"
-        onPointerUp={(e) => {
-          e.stopPropagation();
-          try { localStorage.setItem(KEY, '1'); } catch (err) { /* private window */ }
-          setShow(false);
-        }}
+        /* v2.3.2284: onClick, matching the card -- see `dismiss` above. */
+        onClick={(e) => { e.stopPropagation(); dismiss(); }}
         style={{
           width: 44, height: 44, flex: '0 0 auto',
           margin: '-6px -6px 0 0',
