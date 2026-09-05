@@ -97,6 +97,91 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok('the founder sees a 2-member roster', !!ca && ca.members === 2, ca);
       rec.ok('the recruit sees the same clan', !!cb && cb.tag === 'HQA' && cb.name === 'Harness Crew', cb);
     }
+
+      /* ── v2.3.2301: LEAVING ACTUALLY LEAVES ──
+         The button was local-only: it nulled the client's own state while the
+         registry kept you a member, so the clan came back on the next reload.
+         B (the recruit) leaves, so A's clan survives and the roster is still
+         readable afterwards.
+
+         Everything CLIENT-LOCAL about leaving passed against the broken build
+         -- the old handler set exactly the values a naive check would read --
+         so only assertions that require the SERVER to have acted are worth
+         writing here. */
+      /* __broLegacyUI.clan() TOGGLES (same trap the invite step above
+         documents), and B's panel is already open from accepting the invite --
+         so calling it blind CLOSES it.  Drive it until the button is really
+         there, and scroll it into view: it sits at the bottom of a long
+         panel. */
+      let leaveReady = false;
+      for (let i = 0; i < 4 && !leaveReady; i++) {
+        leaveReady = await B.page.evaluate(() => {
+          const b = [...document.querySelectorAll('button')].find((x) => x.offsetParent && /Leave Clan/.test(x.textContent));
+          if (b) { b.scrollIntoView({ block: 'center' }); return true; }
+          return false;
+        });
+        if (leaveReady) break;
+        await B.page.evaluate(() => window.__broLegacyUI && window.__broLegacyUI.clan());
+        await B.page.waitForTimeout(800);
+      }
+      rec.ok('the clan panel offers "Leave Clan"', leaveReady);
+      await B.page.evaluate(() => {
+        const b = [...document.querySelectorAll('button')].find((x) => x.offsetParent && /Leave Clan/.test(x.textContent));
+        if (b) b.click();                            /* first tap arms */
+      });
+      await B.page.waitForTimeout(400);
+      const armedLabel = await B.page.evaluate(() => {
+        const b = [...document.querySelectorAll('button')].find((x) => x.getAttribute('data-leave-armed') === '1');
+        return b ? b.textContent : null;
+      });
+      rec.ok('the second tap is armed, and says what it will do',
+        !!armedLabel && /Tap again/.test(armedLabel), armedLabel);
+      /* B is not the last member (A founded it), so this must NOT be the
+         disband wording -- that copy is reserved for a one-person clan. */
+      rec.ok('a non-final member is not threatened with disbanding',
+        !!armedLabel && !/DISBAND/.test(armedLabel), armedLabel);
+      await B.page.evaluate(() => {
+        const b = [...document.querySelectorAll('button')].find((x) => x.getAttribute('data-leave-armed') === '1');
+        if (b) b.click();
+      });
+
+      /* 1. The founder's roster shrinks with no reload anywhere. Fails against
+            the broken build: nothing removed B server-side, so no clan_state
+            was ever sent to A. */
+      const shrank = await H.waitFor(A, (S) => (S._clanData ? S._clanData.members.length : 0), (n) => n === 1,
+        { timeout: 20000, label: 'A sees the roster shrink' }).then(() => true).catch(() => false);
+      rec.ok('the founder sees the roster shrink, with no reload', shrank, await clan(A));
+
+      /* 2. Peer tag clears in-session. Assert BEFORE any reload: afterwards A
+            has processed player_leave/player_join and rebuilt B from scratch,
+            whose field list carries no clanTag -- so it would pass vacuously. */
+      /* The reader runs INSIDE the page, so it cannot close over bId (a Node
+         value) -- return the whole id->tag map and pick B out here. */
+      const tagsOf = (P) => H.readState(P, (S) => {
+        const out = {};
+        for (const k of Object.keys(S.others || {})) out[k] = (S.others[k] || {}).clanTag || null;
+        return out;
+      });
+      const tagGone = await H.waitFor(A, (S) => {
+        const out = {};
+        for (const k of Object.keys(S.others || {})) out[k] = (S.others[k] || {}).clanTag || null;
+        return out;
+      }, (m) => !m[bId], { timeout: 15000, label: "B's tag clears on A's screen" })
+        .then(() => true).catch(() => false);
+      rec.ok('the leaver\'s clan tag clears on every other screen', tagGone, await tagsOf(A));
+
+      /* 3. THE HEADLINE: reload B. This is the assertion the whole change
+            exists for, and the one that fails hardest against the old build --
+            join re-echoed the clan straight back.
+            Wait on a POSITIVE signal (caps can only be true after state_sync)
+            rather than a fixed sleep: a bare timeout races, and it fails OPEN
+            -- reading too early sees null on the broken build too. */
+      await B.page.reload();
+      await H.enterWorld(B);
+      await H.waitFor(B, (S) => !!(S._serverCaps && S._serverCaps.clans), Boolean,
+        { timeout: 30000, label: 'B is resynced with the worker' }).catch(() => {});
+      const afterReload = await clan(B);
+      rec.ok('...and the clan does NOT come back on reload', afterReload === null, afterReload);
   }
 
   await A.ctx.close(); await B.ctx.close();

@@ -193,6 +193,13 @@ export function ClanPanel(props) {
     : Array.from({ length: CLAN_LOGO_SIZE }, function () {
       return new Array(CLAN_LOGO_SIZE).fill(-1);
     });
+  /* v2.3.2301: is this player the last one in? Read from the SERVER-truth
+     roster (clan_state -> S._clanData -> clanData), never from a local guess:
+     the server dissolves a clan whose last member leaves, and the armed Leave
+     label has to say "DISBAND" in exactly the case the server will delete.
+     `|| 1` matches every other members.length read in this file -- a clan you
+     are in always contains at least you, even before the roster arrives. */
+  var soloInClan = !!clanData && (((clanData.members || []).length || 1) <= 1);
   return React.createElement("div", {
     className: "bt-inspect",
     onClick: function onClick() {
@@ -800,7 +807,13 @@ export function ClanPanel(props) {
     }
   }, function () {
     var S = stateRef.current;
-    var otherClans = {};
+    /* v2.3.2301: Object.create(null), not {} -- this map is keyed by
+       o.rpgData.clanTag, a CLIENT-SUPPLIED string the server never stamps
+       (_clanStampTag only touches the top-level data.clanTag).  A peer
+       reporting the tag '__proto__' would silently no-op the assignment on a
+       plain object.  Same defect class as duel.away, party meta and amulet
+       tiers -- three separate incidents in one day. */
+    var otherClans = Object.create(null);
     Object.entries(S.others).forEach(function (_ref147) {
       var _o$rpgData;
       var _ref148 = _slicedToArray(_ref147, 2),
@@ -932,12 +945,47 @@ export function ClanPanel(props) {
         return;
       }
       setLeaveArmed(false);
+      var S = stateRef.current;
+      /* ═══ v2.3.2301: LEAVING NOW REACHES THE SERVER ═══
+         This button was local-only since it was written: it nulled clanData
+         and S._clanData and dropped the bt_clan cache, while the room's
+         registry still held you as a member.  So the clan came BACK on the
+         next reload -- and worse, in between, Create Clan bounced "Already in
+         a clan" and accepting an invite failed silently, with the UI insisting
+         you had left.  The server command has existed since v2.3.1125; only
+         the send was missing.
+
+         Deliberately NO optimistic local clear on the server path: the worker
+         can now REFUSE (you cannot desert mid-war), and wiping the UI over a
+         refusal is exactly the lying UI this change exists to remove.  The
+         clan_state {clan:null} echo does all three writebacks. */
+      if (S._serverCaps && S._serverCaps.clans) {
+        if (S.channel) S.channel.send({ type: 'broadcast', event: 'clan_leave', payload: {} });
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Leaving clan...', '#D95C54');
+        return;
+      }
+      /* Legacy-worker path (a worker rolled back past v2.3.1125, or one where
+         live-ops has forced caps.clans off): unchanged local wipe, so the
+         button is never dead.  The war objects are clan-scoped, so they go
+         with it -- without that, a stale _activeClanWar keeps ticking toward a
+         phantom "WAR WON!" for a clan you are no longer in. */
       setClanData(null);
-      stateRef.current._clanData = null;
+      S._clanData = null;
+      S._activeClanWar = null;
+      S._warTarget = null;
+      S._warTargetData = null;
       try {
         localStorage.removeItem('bt_clan');
       } catch (e) {}
-      pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Left clan', '#D95C54');
+      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Left clan', '#D95C54');
     }
-  }, leaveArmed ? "Tap again to leave the clan" : "Leave Clan"))));
+    /* v2.3.2301: the armed label tells the truth about what the second tap
+       actually does.  For the LAST member the server dissolves the clan and
+       frees its name and tag for anyone to take -- "leave" is much too gentle
+       a word for a one-way delete, and this is the only moment the player is
+       told. */
+  }, leaveArmed
+    ? (soloInClan ? ("Tap again to DISBAND [" + (clanData.tag || '') + "] — the clan and its name are gone")
+      : "Tap again to leave the clan")
+    : "Leave Clan"))));
 }

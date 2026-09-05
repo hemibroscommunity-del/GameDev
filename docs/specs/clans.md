@@ -90,9 +90,18 @@ was pure forgery surface.
 
 ## Tests
 
-`server/test/clans.test.mjs` (33 assertions, in `npm test`): creation
+`server/test/clans.test.mjs` (59 assertions, in `npm test`): creation
 economics + validation + persistence, handshake forgery immunity, tag
 stamping/stripping, leader-only war declares, lawless-zone requirement,
 score-by-server-death only (zone/duel/monster/non-clan exclusions),
 endsAt resolution + flat rewards + offline-mail payout + double-resolve
 guard, kick/leave/succession/dissolution.
+
+v2.3.2301 adds section 9, the wire-driven leave: the command routed
+through the real message switch rather than called directly (section 4
+calls the handler, so it cannot catch a typo'd `case`), the tag cleared
+from `playerState` and session data and every peer's screen, and the
+mid-war refusal. Its fixture order matters — the refusal case runs LAST
+on its own clan, because when the guard is missing the leave succeeds and
+every later "her tag is gone" assertion then passes for the wrong reason,
+about a player who is in no clan at all.

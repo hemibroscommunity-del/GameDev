@@ -2934,6 +2934,11 @@ export function setupWebSocket(ctx) {
     /* v2.3.1185: party commands -- same server-truth-renderer posture
        as trade2; invite/accept clicks should not sit in a batch. */
     'party_invite', 'party_accept', 'party_decline', 'party_leave', 'party_kick', 'party_chat',
+    /* v2.3.2301: clan_leave, for the same reason party_leave is here.  The
+       Leave button became a server-truth renderer (it no longer clears its own
+       UI and waits for the clan_state echo), so a 33ms batch behind position
+       updates is 33ms of a button that looks broken. */
+    'clan_leave',
     /* v2.3.2136: the two new chat lanes.  Priority for the same reason
        party_chat is -- a line you just typed should not sit in the 33ms
        input batch behind position updates. */

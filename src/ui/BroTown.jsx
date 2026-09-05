@@ -6625,7 +6625,15 @@ export var BroTown = function BroTown(_ref0) {
           /* Award rewards */
           var isWinner = S._clanData && cWin === S._clanData.tag;
           var reward = cWin === 'tie' ? CLAN_WAR_REWARDS.loser : isWinner ? CLAN_WAR_REWARDS.winner : CLAN_WAR_REWARDS.loser;
-          if (S.rpg) {
+          /* v2.3.2301: gated, matching its already-gated sibling in
+             gameEvents.js.  This was the last ungated legacy clan payout in
+             the client -- a local coin/AP mint the worker never authorised.
+             It became reachable in a new way once Leave Clan started actually
+             leaving: leave, let a stale _activeClanWar run out its timer, and
+             collect a phantom "WAR WON!" plus gold for a clan you are not in.
+             Against a registry-capable worker the war is settled server-side;
+             this branch is the legacy-worker path only. */
+          if (S.rpg && !(S._serverCaps && S._serverCaps.clans)) {
             S.rpg.coins += reward.gold;
             S.rpg.achievementPoints = (S.rpg.achievementPoints || 0) + reward.ap;
             if (S.rpg._compStats) S.rpg._compStats.totalGoldEarned += reward.gold;
@@ -6645,7 +6653,9 @@ export var BroTown = function BroTown(_ref0) {
             }).reduce(function (s, k) {
               return s + k.points;
             }, 0);
-            if (myKills >= totalTeamKills) {
+            if (myKills >= totalTeamKills && !(S._serverCaps && S._serverCaps.clans)) {
+              /* v2.3.2301: same gate as the base payout above -- the MVP bonus
+                 is the same unauthorised local mint, one branch deeper. */
               S.rpg.coins += CLAN_WAR_REWARDS.mvp.gold;
               S.rpg.achievementPoints += CLAN_WAR_REWARDS.mvp.ap;
               pushDmgPopup(S, P.x, P.y - 70, 'MVP! +' + CLAN_WAR_REWARDS.mvp.gold + 'G +' + CLAN_WAR_REWARDS.mvp.ap + 'AP', '#D8A94D');
