@@ -909,6 +909,7 @@ export async function initPixiRenderer(canvas) {
        between arrowblast.js RADIUS and the client's TARGET_PERIMETER_PX is
        that the ring drawn is the ring the worker hit. */
     arrowBlastProbe: () => effectsRenderer.arrowBlastProbe(),
+    projScaleProbe: () => effectsRenderer.projScaleProbe(),   /* v2.3.2287 */
     remoteSkillProbe: (id) => {
       const e = effectsRenderer;
       const pool = e._remoteSkillSprites;

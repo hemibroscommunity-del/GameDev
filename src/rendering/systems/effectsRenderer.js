@@ -2348,17 +2348,31 @@ export class EffectsRenderer {
           const o = S.others[oid];
           if (o && o._dodgeTrail) peer += o._dodgeTrail.length;
         }
-        return { rolling: !!S._dodgeRoll, mine: (S._dodgeTrail || []).length, peer };
+        /* v2.3.2287: + the radius the ghosts were actually drawn at, local
+           and peer.  The counts alone cannot see a vista-scale bug: a
+           full-size blob and a shrunken one are both "one ghost". */
+        return { rolling: !!S._dodgeRoll, mine: (S._dodgeTrail || []).length, peer,
+          mineR: this._dodgeGhostR != null ? this._dodgeGhostR : null,
+          peerR: this._dodgeGhostPeerR != null ? this._dodgeGhostPeerR : null };
       };
     }
 
-    // Dodge trail afterimages
+    /* Dodge trail afterimages.
+       v2.3.2287: the radius is scaled by zonePlayerScale AT THE GHOST'S OWN
+       position, not the player's.  On the vista (`worldview`, the only zone
+       whose scale is not a literal 1) the figure draws at 3-55% but this
+       circle was a flat 8px world radius, so your roll left a row of blue
+       blobs far bigger than the body that shed them.  Scaling per ghost and
+       not once per frame also makes the smear taper as you recede, which is
+       what a trail drawn in perspective has to do. */
     const trail = S._dodgeTrail || [];
     for (let i = trail.length - 1; i >= 0; i--) {
       const ghost = trail[i];
       const age = (now - ghost.ts) / 200;
       if (age >= 1) { trail.splice(i, 1); continue; }
-      gfx.circle(ghost.x, ghost.y, 8);
+      const gk = zonePlayerScale(S.currentZone, ghost.x, ghost.y, TILE) || 1;
+      this._dodgeGhostR = 8 * gk;
+      gfx.circle(ghost.x, ghost.y, 8 * gk);
       gfx.fill({ color: 0x3498db, alpha: (1 - age) * 0.3 });
     }
 
@@ -2380,7 +2394,13 @@ export class EffectsRenderer {
           const g = ot[i];
           const age = (now - g.ts) / 200;
           if (age >= 1) { ot.splice(i, 1); continue; }
-          gfx.circle(g.x, g.y, 8);
+          /* v2.3.2287: scaled exactly like the local ghosts above.  A
+             local-only exemption is the mistake v2.3.2124 shipped and
+             v2.3.2141 reverted — the two halves move together or a peer's
+             roll looks like a different move than your own. */
+          const gk = zonePlayerScale(S.currentZone, g.x, g.y, TILE) || 1;
+          this._dodgeGhostPeerR = 8 * gk;
+          gfx.circle(g.x, g.y, 8 * gk);
           gfx.fill({ color: 0x3498db, alpha: (1 - age) * 0.3 });
         }
       }
@@ -2868,6 +2888,11 @@ export class EffectsRenderer {
     const arrows = S.arrows || [];
     for (const a of arrows) {
       if (!a._renderX) continue;
+      /* v2.3.2287: the vista's perspective curve, at the arrow's OWN drawn
+         position -- the same rule the peer stand-ins follow, and literally 1
+         on every zone but worldview. See _placeMagicBolt for why the `|| 1`
+         guards matter more than the multiply does. */
+      const _pk = zonePlayerScale(S.currentZone, a._renderX, a._renderY, TILE) || 1;
       const elemColor = a._projElem && ELEMENTS[a._projElem] ? cssToHex(ELEMENTS[a._projElem].color) : 0xc8c8d0;
       const fadeA = Math.min(1, a.life / 20);
       /* v2.3.1095: a planted/falling arrow is stuck in the world -- no motion
@@ -2922,13 +2947,13 @@ export class EffectsRenderer {
       const _paintedSpecial = (isBowHeavy && ARROW_SPECIAL.frames.length)
         || (_isStaffSpecial && MAGIC_SPECIAL.frames.length);
       if (!_stuckPose && !(_isBasicStaffBolt && MAGIC_BOLT_FRAMES.length) && !_paintedSpecial) {
-        this._updateProjectileTrail(a, gfx, fadeA, /* isStaffProj */ a._isStaffProj || a.ice);
+        this._updateProjectileTrail(a, gfx, fadeA, /* isStaffProj */ a._isStaffProj || a.ice, _pk);
       }
 
       if (isBowHeavy && ARROW_SPECIAL.frames.length) {
         /* v2.3.1396: painted charged arrow (owner sheet) — golden flame
            wrap baked into the art, so the halo circles retire. */
-        this._placeSpecialFx(ARROW_SPECIAL, a, a._renderX, a._renderY, _angB, fadeA, now, _liveBolts);
+        this._placeSpecialFx(ARROW_SPECIAL, a, a._renderX, a._renderY, _angB, fadeA, now, _liveBolts, _pk);
       } else if (isBowHeavy) {
         /* Heavy bow shot — draw the arrow normally with a bright
            element-tinted halo around it.  Reads as a powered shot
@@ -2937,18 +2962,18 @@ export class EffectsRenderer {
            request so the special bow shot reads as much heavier and
            its damage radius matches the visual.
            v2.3.1396: fallback while the painted strip loads. */
-        gfx.circle(a._renderX, a._renderY, 39);
+        gfx.circle(a._renderX, a._renderY, 39 * _pk);
         gfx.fill({ color: 0xf5c542, alpha: fadeA * 0.25 });
-        gfx.circle(a._renderX, a._renderY, 27);
+        gfx.circle(a._renderX, a._renderY, 27 * _pk);
         gfx.fill({ color: elemColor, alpha: fadeA * 0.45 });
-        gfx.circle(a._renderX, a._renderY, 15);
+        gfx.circle(a._renderX, a._renderY, 15 * _pk);
         gfx.fill({ color: 0xfff2a8, alpha: fadeA * 0.55 });
-        this._drawArrow(gfx, a._renderX, a._renderY, _angB, elemColor, fadeA, 3);
+        this._drawArrow(gfx, a._renderX, a._renderY, _angB, elemColor, fadeA, 3 * _pk);
       } else if (_isStaffSpecial && MAGIC_SPECIAL.frames.length) {
         /* v2.3.1396: painted charged orb (owner sheet) — golden power
            halo baked into the art; the ring draw below stays as the
            pre-load fallback (and for non-staff ice projectiles). */
-        this._placeSpecialFx(MAGIC_SPECIAL, a, a._renderX, a._renderY, a.ang, fadeA, now, _liveBolts);
+        this._placeSpecialFx(MAGIC_SPECIAL, a, a._renderX, a._renderY, a.ang, fadeA, now, _liveBolts, _pk);
       } else if (a.isSpecial || a.ice) {
         /* Staff special / ice — bigger yellow glow ring so specials
            read as distinct from regular projectiles. Three concentric
@@ -2957,25 +2982,25 @@ export class EffectsRenderer {
             – mid element-tinted glow
             – bright element-tinted core */
         const sz = a._isStaffProj ? 2.0 : 1.6;
-        gfx.circle(a._renderX, a._renderY, 16 * sz);
+        gfx.circle(a._renderX, a._renderY, 16 * sz * _pk);
         gfx.fill({ color: 0xf5c542, alpha: fadeA * 0.22 });
-        gfx.circle(a._renderX, a._renderY, 12 * sz);
+        gfx.circle(a._renderX, a._renderY, 12 * sz * _pk);
         gfx.fill({ color: elemColor, alpha: fadeA * 0.35 });
-        gfx.circle(a._renderX, a._renderY, 7 * sz);
+        gfx.circle(a._renderX, a._renderY, 7 * sz * _pk);
         gfx.fill({ color: elemColor, alpha: fadeA * 0.9 });
-        gfx.circle(a._renderX, a._renderY, 7 * sz);
-        gfx.stroke({ color: 0xfff2a8, width: 1.5, alpha: fadeA * 0.85 });
+        gfx.circle(a._renderX, a._renderY, 7 * sz * _pk);
+        gfx.stroke({ color: 0xfff2a8, width: 1.5 * _pk, alpha: fadeA * 0.85 });
       } else if (a._isStaffProj) {
         /* v2.3.1334: painted 4-frame magic bolt (owner sheet).  The
            tail always points back toward the caster: rotation = the
            travel angle, art noses right.  Falls back to the old
            two-circle draw until the strip loads. */
         if (MAGIC_BOLT_FRAMES.length) {
-          this._placeMagicBolt(a, a._renderX, a._renderY, a.ang, fadeA, now, _liveBolts);
+          this._placeMagicBolt(a, a._renderX, a._renderY, a.ang, fadeA, now, _liveBolts, _pk);
         } else {
-          gfx.circle(a._renderX, a._renderY, 5);
+          gfx.circle(a._renderX, a._renderY, 5 * _pk);
           gfx.fill({ color: elemColor, alpha: fadeA * 0.8 });
-          gfx.circle(a._renderX, a._renderY, 9);
+          gfx.circle(a._renderX, a._renderY, 9 * _pk);
           gfx.fill({ color: elemColor, alpha: fadeA * 0.2 });
         }
       } else {
@@ -2989,7 +3014,17 @@ export class EffectsRenderer {
            two deliberately differ by `planting`, and only there. */
         /* v2.3.1915: a PLANTED arrow draws under the player. `planting` is
            still falling — in the air, so it stays in front until it lands. */
-        this._drawArrow(gfx, a._renderX, a._renderY, _angB, elemColor, fadeA, 1, _headless, !!a.planted);
+        this._drawArrow(gfx, a._renderX, a._renderY, _angB, elemColor, fadeA, 1 * _pk, _headless, !!a.planted);
+        /* v2.3.2287 QA probe, house style (__btChopFigure, __btStandInCape).
+           A screenshot cannot tell "the arrow shrank" from "the arrow was never
+           drawn", and the difference between those two is the whole risk of
+           this change -- a dropped `|| 1` makes the scale NaN and the arrow
+           vanishes in EVERY zone. Reports the multiplier and the resulting
+           drawn length so a test can assert an exact 52.5 off the vista. */
+        if (typeof window !== 'undefined') {
+          this._projScaleProbe = { zone: S.currentZone, pk: +_pk.toFixed(4),
+            drawnLenPx: +(ARROW_PINE.lenPx * _pk).toFixed(2) };
+        }
       }
     }
 
@@ -3014,29 +3049,34 @@ export class EffectsRenderer {
     const remote = S._remoteProjectiles || [];
     for (const rp of remote) {
       if (!rp._renderX) continue;
+      /* v2.3.2287: remote projectiles were never curved either. Unlike the
+         remote STAND-IN figures (:6288 / :6768 / :6923, curved since
+         v2.3.1574) this is a FIRST application, not a double one -- there is
+         no zonePlayerScale anywhere in this loop today. */
+      const _pk = zonePlayerScale(S.currentZone, rp._renderX, rp._renderY, TILE) || 1;
       /* v2.3.1334: basic remote staff bolts share the painted sprite
          (and skip the line trail — the art carries its own tail).
          v2.3.1396: remote SPECIALS share the painted special art too. */
       const _remoteBasicBolt = rp.isStaff && !rp.isSpecial && MAGIC_BOLT_FRAMES.length;
       const _remoteMagicSpec = rp.isStaff && rp.isSpecial && MAGIC_SPECIAL.frames.length;
       const _remoteArrowSpec = !rp.isStaff && rp.isSpecial && ARROW_SPECIAL.frames.length;
-      if (!_remoteBasicBolt && !_remoteMagicSpec && !_remoteArrowSpec) this._updateProjectileTrail(rp, gfx, 1.0, !!rp.isStaff);
+      if (!_remoteBasicBolt && !_remoteMagicSpec && !_remoteArrowSpec) this._updateProjectileTrail(rp, gfx, 1.0, !!rp.isStaff, _pk);
       if (rp.isStaff) {
         if (_remoteMagicSpec) {
-          this._placeSpecialFx(MAGIC_SPECIAL, rp, rp._renderX, rp._renderY, rp.ang, 0.95, now, _liveBolts);
+          this._placeSpecialFx(MAGIC_SPECIAL, rp, rp._renderX, rp._renderY, rp.ang, 0.95, now, _liveBolts, _pk);
         } else if (_remoteBasicBolt) {
-          this._placeMagicBolt(rp, rp._renderX, rp._renderY, rp.ang, 0.95, now, _liveBolts);
+          this._placeMagicBolt(rp, rp._renderX, rp._renderY, rp.ang, 0.95, now, _liveBolts, _pk);
         } else {
           /* v2.3.840: special staff bolts read bigger + golden with a halo. */
-          gfx.circle(rp._renderX, rp._renderY, rp.isSpecial ? 7 : 4);
+          gfx.circle(rp._renderX, rp._renderY, (rp.isSpecial ? 7 : 4) * _pk);
           gfx.fill({ color: rp.isSpecial ? 0xf5c542 : 0xa855f7, alpha: rp.isSpecial ? 0.95 : 0.8 });
-          if (rp.isSpecial) { gfx.circle(rp._renderX, rp._renderY, 11); gfx.stroke({ color: 0xfff2a8, width: 2, alpha: 0.6 }); }
+          if (rp.isSpecial) { gfx.circle(rp._renderX, rp._renderY, 11 * _pk); gfx.stroke({ color: 0xfff2a8, width: 2 * _pk, alpha: 0.6 }); }
         }
       } else if (_remoteArrowSpec) {
-        this._placeSpecialFx(ARROW_SPECIAL, rp, rp._renderX, rp._renderY, rp.ang + bend, 1.0, now, _liveBolts);
+        this._placeSpecialFx(ARROW_SPECIAL, rp, rp._renderX, rp._renderY, rp.ang + bend, 1.0, now, _liveBolts, _pk);
       } else {
-        this._drawArrow(gfx, rp._renderX, rp._renderY, rp.ang + bend, rp.isSpecial ? 0xf5c542 : 0xd4a574, rp.isSpecial ? 1.0 : 0.9);
-        if (rp.isSpecial) { gfx.circle(rp._renderX, rp._renderY, 9); gfx.stroke({ color: 0xfff2a8, width: 2, alpha: 0.55 }); }
+        this._drawArrow(gfx, rp._renderX, rp._renderY, rp.ang + bend, rp.isSpecial ? 0xf5c542 : 0xd4a574, rp.isSpecial ? 1.0 : 0.9, _pk);   /* v2.3.2287: 7th arg is SCALE, not alpha -- this call omitted it and relied on the default */
+        if (rp.isSpecial) { gfx.circle(rp._renderX, rp._renderY, 9 * _pk); gfx.stroke({ color: 0xfff2a8, width: 2 * _pk, alpha: 0.55 }); }
       }
     }
 
@@ -3246,14 +3286,22 @@ export class EffectsRenderer {
     }
   }
 
-  _placeMagicBolt(p, x, y, ang, alpha, now, liveSet) {
+  /* ═══ v2.3.2287: A PROJECTILE IS AN OBJECT STANDING AT A WORLD POINT ═══
+     Owner: "I shot an arrow and it was gigantic ... Character needs to stay at
+     small size through all animations in worldview."
+     The vista shrinks every BODY by a perspective curve, and the figure that
+     fires the arrow already takes it -- the missile did not, so a full-size
+     arrow flew out of a 0.03-scale archer. `pk` is that curve, sampled at the
+     projectile's own drawn position exactly as the peer stand-ins do, and it is
+     literally 1 on every zone but worldview.
+     THE `|| 1` IS LOAD-BEARING: a missing argument or an undefined zone
+     mid-transition makes this NaN, and a NaN scale does not draw a big arrow --
+     it draws NO arrow, in every zone. Every read is guarded. */
+  _placeMagicBolt(p, x, y, ang, alpha, now, liveSet, pk) {
     let sprite = p._boltSprite;
     if (!sprite || sprite.destroyed) {
       sprite = new Sprite(MAGIC_BOLT_FRAMES[0]);
       sprite.anchor.set(MAGIC_BOLT_ANCHOR.x, MAGIC_BOLT_ANCHOR.y);
-      /* 217x128 source frame; the orb core is ~100 px of it — 0.18
-         lands the head at ~18 px, matching the old 9 px-radius glow. */
-      sprite.scale.set(0.18);
       if (p._boltPhase == null) p._boltPhase = Math.floor(Math.random() * 4);
       this.projectileLayer.addChild(sprite);
       p._boltSprite = sprite;
@@ -3263,6 +3311,11 @@ export class EffectsRenderer {
       (Math.floor(now / MAGIC_BOLT_FRAME_MS) + (p._boltPhase || 0)) % MAGIC_BOLT_FRAMES.length
     ];
     if (sprite.texture !== frame) sprite.texture = frame;
+    /* 217x128 source frame; the orb core is ~100 px of it — 0.18 lands the head
+       at ~18 px, matching the old 9 px-radius glow.
+       v2.3.2287: set PER FRAME rather than once at construction, because the
+       vista curve changes as the bolt travels. */
+    sprite.scale.set(0.18 * (pk || 1));
     sprite.x = x;
     sprite.y = y;
     sprite.rotation = ang || 0;
@@ -3274,12 +3327,11 @@ export class EffectsRenderer {
    *  sprite — charged bow arrow or charged staff orb (cfg =
    *  ARROW_SPECIAL / MAGIC_SPECIAL).  Same flicker + anchor + reap
    *  contract as _placeMagicBolt; shared by local and remote. */
-  _placeSpecialFx(cfg, p, x, y, ang, alpha, now, liveSet) {
+  _placeSpecialFx(cfg, p, x, y, ang, alpha, now, liveSet, pk) {
     let sprite = p._fxSprite;
     if (!sprite || sprite.destroyed) {
       sprite = new Sprite(cfg.frames[0]);
       sprite.anchor.set(cfg.anchor.x, cfg.anchor.y);
-      sprite.scale.set(cfg.scale);
       if (p._fxPhase == null) p._fxPhase = Math.floor(Math.random() * 4);
       this.projectileLayer.addChild(sprite);
       p._fxSprite = sprite;
@@ -3289,6 +3341,7 @@ export class EffectsRenderer {
       (Math.floor(now / cfg.frameMs) + (p._fxPhase || 0)) % cfg.frames.length
     ];
     if (sprite.texture !== frame) sprite.texture = frame;
+    sprite.scale.set(cfg.scale * (pk || 1));   /* v2.3.2287: per frame, see _placeMagicBolt */
     sprite.x = x;
     sprite.y = y;
     sprite.rotation = ang || 0;
@@ -3305,7 +3358,11 @@ export class EffectsRenderer {
    *  Trail position is captured ONCE per render frame.  At the
    *  arrow's typical speed (8 px/frame), an 8-point trail covers
    *  ~64 px = a clear streak that doesn't lag behind reality. */
-  _updateProjectileTrail(p, gfx, fadeA, isOrb) {
+  /* v2.3.2287: the arrow probe's reader. Armed lazily like the rest -- no cost
+     unless something calls it, and nothing in the game does. */
+  projScaleProbe() { return this._projScaleProbe || null; }
+
+  _updateProjectileTrail(p, gfx, fadeA, isOrb, pk) {
     const TRAIL_LEN = 8;
     if (!p._trail) p._trail = [];
     /* Skip recording if we just teleported (e.g. zone change reset).
@@ -3330,7 +3387,7 @@ export class EffectsRenderer {
       gfx.stroke({
         /* Dark brown for arrows, lighter for orbs. */
         color: isOrb ? 0xc8c8d0 : 0x5a3820,
-        width: 0.4 + t * 1.6,
+        width: (0.4 + t * 1.6) * (pk || 1),   /* v2.3.2287 */
         alpha: fadeA * (0.05 + t * 0.45),
       });
     }
@@ -6089,10 +6146,28 @@ export class EffectsRenderer {
     const fi = Math.min(this._fireFrames.length - 1, Math.floor(elapsed / FRAME_MS));
     const sp = this.fireSprite;
     sp.texture = this._fireFrames[fi];
-    const s = FH / FIRE_FH;
+    /* ═══ v2.3.2287: THE TERM THE PEER COPY GOT AND THIS ONE NEVER DID ═══
+       Owner: "I think when you start fires in worldview you're also gigantic."
+       v2.3.1574 fixed this for OTHER players, with the sentence "the stand-in
+       was sized in absolute pixels while the peer's BODY is scaled by the
+       zone's perspective curve" -- and left your own copy alone, because on a
+       normal zone the curve is 1 and nothing looks wrong. Same sentence, same
+       fix, your figure this time. See the peer twin at _updateRemoteExtraction. */
+    const pscale = zonePlayerScale(S.currentZone, S.player.x, S.player.y, TILE);
+    const s = (FH / FIRE_FH) * pscale;
     sp.scale.set(s, s);
     sp.x = S.player.x;
-    sp.y = S.player.y + 6;
+    sp.y = S.player.y + 6 * pscale;   /* the foot offset shrinks with the figure */
+    /* v2.3.2287 QA probe -- the sibling of __btChopFigure, which the fire
+       figure never had. */
+    if (typeof window !== 'undefined') {
+      const _fc = this.fireChestSprite || this.fireShirtSprite || null;
+      window.__btFireFigure = () => ({
+        visible: !!sp.visible, scaleY: sp.scale.y,
+        drawnH: +(Math.abs(sp.scale.y) * FIRE_FH).toFixed(2),
+        x: sp.x, y: sp.y, gearScaleY: _fc ? _fc.scale.y : null,
+      });
+    }
     sp.visible = true;
     /* ═══ v2.3.1713: THE SHIRT ═══
        Owner: "when lighting a fire the skin color and SHIRT go back to defaults."
@@ -7900,16 +7975,27 @@ export class EffectsRenderer {
       const _chopLegsOn = !!_chopLegsTex
         && this._chopLeglessFrames.length === this._chopFrames.length;
       sp.texture = (_chopLegsOn ? this._chopLeglessFrames : this._chopFrames)[fi];
-      const s = CHOP_H / 220;
+      /* v2.3.2287: the vista curve, as on the fire figure above and on the
+         peer twin. Sampled at the STAND-IN's own spot, not the player's --
+         the lumberjack stands at the tree, which on a perspective zone is a
+         different point on the curve. */
+      const _cx = node.x - chopSign * CHOP_OFFSET, _cy = node.y;
+      const pscale = zonePlayerScale(S.currentZone, _cx, _cy, TILE);
+      const s = (CHOP_H / 220) * pscale;
       sp.scale.set(chopSign < 0 ? -s : s, s);  // flip to face the trunk
-      sp.x = node.x - chopSign * CHOP_OFFSET;
-      sp.y = node.y + 6;
+      sp.x = _cx;
+      sp.y = _cy + 6 * pscale;
       sp.visible = true;
       /* v2.3.1131: gear layers over the lumberjack (mirror of the cook stand-in),
          gated on equipped gear and copying the body transform.  The layer strips
          are 2x (480x440), so they render at half the body's scale factor to reach
          the same on-screen height, and use the SAME flip sign as the body. */
-      const sL = CHOP_H / 440;
+      /* v2.3.2287: MANDATORY, not optional. This is the one local gear placer
+         that does not derive from sp.scale -- it has its own factor because
+         the layer strips are 2x. Curving the body and not this leaves a
+         full-size breastplate standing over a speck-sized lumberjack, which
+         is a worse artefact than the bug being fixed. */
+      const sL = (CHOP_H / 440) * pscale;
       const placeChopLayer = (spr, t) => {
         if (!spr) return;
         if (!t) { spr.visible = false; return; }
@@ -8033,14 +8119,18 @@ export class EffectsRenderer {
          bare legs don't peek out behind the greaves; otherwise the normal body. */
       const _legsOn = getEquip('legs') !== 'none' && this._cookLeglessFrames.length === this._cookFrames.length;
       sp.texture = (_legsOn ? this._cookLeglessFrames : this._cookFrames)[cookFi];
-      const s = COOK_H / 220;
+      /* v2.3.2287: the vista curve, as on the fire and chop figures. */
+      const pscale = zonePlayerScale(S.currentZone, node.x, node.y, TILE);
+      const s = (COOK_H / 220) * pscale;
       sp.scale.set(s, s);
       /* The pan hangs to the figure's RIGHT, so this offset is what keeps it
          over the flames — it has to track COOK_H or the pan slides off the
          fire.  v2.3.1429 doubled it with the 2x; v2.3.1710 scales it back by
-         the same ratio (14 * 62/82 = 10.6). */
-      sp.x = node.x - 11;
-      sp.y = node.y + 8;
+         the same ratio (14 * 62/82 = 10.6).
+         v2.3.2287: ...and it takes the curve for the same reason -- an offset
+         in flat pixels slides the pan off a shrunken fire. */
+      sp.x = node.x - 11 * pscale;
+      sp.y = node.y + 8 * pscale;
       sp.visible = true;
       /* v2.3.1113: draw the player's shirt over the cook torso, copying the
          cook sprite's exact transform so the 213x220 shirt frame aligns with

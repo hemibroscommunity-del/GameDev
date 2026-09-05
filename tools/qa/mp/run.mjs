@@ -217,6 +217,7 @@ const SCENARIOS = {
   questclaim: () => import('./mp-questclaim.mjs'), /* v2.3.1884: the claim opens when it becomes claimable under your feet */
   freshquest: () => import('./mp-freshquest.mjs'),
   deathshield: () => import('./mp-deathshield.mjs'),
+  wvscale: () => import('./mp-wvscale.mjs'), /* v2.3.2287: your own art shrinks on the vista, and nothing changes off it */
   tapswing: () => import('./mp-tapswing.mjs'), /* v2.3.2285: tap a monster, walk there -- does the swing ever start? */
   deathstrip: () => import('./mp-deathstrip.mjs'), /* v2.3.2281: what is painted ON the corpse, from the screen's side rather than the display's */
   questprox: () => import('./mp-questprox.mjs'), /* v2.3.1701: the giver's dialogue opens on approach */
