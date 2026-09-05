@@ -149,8 +149,25 @@ const GoldIcon = () => (
 const DRAWER_FRAME = {
   position: 'fixed', left: 6, right: 6,
   bottom: 'var(--dash-h, 243px)',
-  maxHeight: 'min(52vh, 420px)',
+  /* v2.3.2290: 52vh/420 -> 58vh/468. The owner's painted frame costs real
+     height -- two lanes with 12px carved borders and a header row inside each
+     -- and at the old cap "Ready to trade" sat 24px under the fold (measured,
+     not guessed: mp-trade's own fold assertion). The drawer is anchored to the
+     dashboard band and grows UPWARD, so this takes more of the world and none
+     of the bag; his mockup shows the window at about this share of the screen
+     with the bag still open beneath it. */
+  maxHeight: 'min(58vh, 468px)',
   display: 'flex', flexDirection: 'column',
+  /* v2.3.2290: the drawer SHELL keeps its plain frame for now. The owner's
+     ornate panel art (panel-frame.webp + medallion.webp, both sliced and
+     shipped) was fitted here and backed out again: its carved border is 26px a
+     side, which on a drawer already capped by the dashboard left the primary
+     buttons clipped against the footed base, and the centred medallion landed
+     on the title. Both are solvable -- the title row needs to clear the
+     medallion, and the shell needs its own inner scroll box so the base is not
+     part of the scrolling area -- but that is a layout change to the drawer
+     itself rather than a skin, and it is not worth shipping half-done over a
+     window that trades real items. The art is in the repo, ready. */
   background: 'var(--ui-sheet, #1E2E34)',
   border: '1px solid rgba(229,237,233,.14)',
   borderRadius: '10px 10px 0 0',
@@ -175,15 +192,16 @@ function TradeDrawer({ title, titleColor, onClose, children }) {
       className="bt-chat-noselect"
       style={DRAWER_FRAME}>
       <div onClick={(e) => e.stopPropagation()} style={{ position: 'relative' }}>
-        {onClose && <button className="bt-inspect-close" onClick={onClose}>✕</button>}
+        {onClose && <button className="bt-t2-close" aria-label="Close" onClick={onClose} />}
         {title && (
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            gap: 8, fontSize: 14, fontWeight: 800,
             color: titleColor || '#F4F0E7', marginBottom: 8,
             /* clear the ✕ so a long partner name never runs under it */
-            paddingRight: onClose ? 30 : 0,
+            paddingRight: onClose ? 34 : 0, paddingLeft: onClose ? 34 : 0,
           }}>
-            <TradeIcon /> {title}
+            {title}
           </div>
         )}
         {children}
@@ -274,10 +292,15 @@ const stepBtn = (enabled) => ({
    Now: the bag tile stages ONE (and taps up by one), and every staged row
    carries − / + with your stack size beside it, so the quantity is a thing you
    set rather than a cycle you land on. */
-function StagedRow({ glyph, name, qty, have, rarityLabel, rarityColor, rarityTier, onRemove, onInc, onDec, ink = DARK_INK }) {
+function StagedRow({ glyph, name, qty, have, rarityLabel, rarityColor, rarityTier, onRemove, onInc, onDec, ink = DARK_INK, rowTone = null }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: onRemove ? 44 : 36, padding: '2px 0' }}>
-      <div style={{ width: 32, height: 32, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, background: ink.slot, border: ink.slotLine, borderRadius: 8 }}>{glyph}</div>
+    /* v2.3.2290: the owner's painted row slot. Three states share one
+       geometry (see .bt-t2-row in game.css), so a row does not change size
+       when it lights up -- a control that moves between the two taps of a
+       stepper is a control you mis-tap. */
+    <div className={'bt-t2-row' + (rowTone === 'gold' ? ' bt-t2-row--gold' : rowTone === 'active' ? ' bt-t2-row--active' : '')}
+      style={{ minHeight: onRemove ? 44 : 38 }}>
+      <div className="bt-t2-plate">{glyph}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 12, color: ink.name, textTransform: 'capitalize', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
         {rarityLabel ? (
@@ -299,17 +322,16 @@ function StagedRow({ glyph, name, qty, have, rarityLabel, rarityColor, rarityTie
       {qty != null && onInc && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 2, flex: 'none' }}>
           <button aria-label={'One fewer ' + name} onClick={onDec} disabled={qty <= 0}
-            style={stepBtn(qty > 0)}>−</button>
+            className="bt-t2-sq bt-t2-sq--minus" />
           <div style={{ minWidth: 40, textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#F4F0E7', fontVariantNumeric: 'tabular-nums' }}>
             {qty}<span style={{ color: '#8D9B98', fontWeight: 400 }}>/{have}</span>
           </div>
           <button aria-label={'One more ' + name} onClick={onInc} disabled={have != null && qty >= have}
-            style={stepBtn(have == null || qty < have)}>+</button>
+            className="bt-t2-sq bt-t2-sq--plus" />
         </div>
       )}
       {onRemove && (
-        <button aria-label={'Remove ' + name} onClick={onRemove}
-          style={{ width: 44, height: 44, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', color: '#8D9B98', fontSize: 14, cursor: 'pointer', padding: 0 }}>✕</button>
+        <button aria-label={'Remove ' + name} onClick={onRemove} className="bt-t2-sq bt-t2-sq--x" />
       )}
     </div>
   );
@@ -528,14 +550,30 @@ export function TradeWindowPanel(props) {
      hairline. */
   /* v2.3.2280: `cardStyle` retired with the last centred card -- every state
      is a TradeDrawer now and the drawer frame carries the surface. */
+  /* ═══ v2.3.2290: THE OWNER'S PAINTED BUTTON FACES ═══
+     Changed HERE rather than at the call sites on purpose: these two objects
+     are spread into eight buttons across the invite, live, review, receipt and
+     failure screens, each adding its own flex and padding.  Restyling the
+     objects reskins all eight and cannot miss one -- and a missed one would be
+     a flat button sitting next to a painted one, which is worse than either.
+
+     The gold face carries DARK ink because it is a light surface; that is the
+     same trap TRAPS §48 records for the inverted lane, and the reason the
+     colour is not simply inherited. */
+  const btnFace = {
+    minHeight: 48, padding: '0 6px',
+    border: '16px solid transparent',
+    background: 'none',
+    fontSize: 14, fontWeight: 800, cursor: 'pointer',
+    touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent',
+  };
   const primaryBtn = {
-    minHeight: 44, borderRadius: 10, border: '1px solid #EAC675',
-    background: 'linear-gradient(180deg,#E2B765,#D2A14D)', color: '#172126', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+    ...btnFace, color: '#3A2606',
+    borderImage: "url('/icons/ui/trade/btn-primary.webp?v=2.3.2290') 40 fill / 16px stretch",
   };
   const secondaryBtn = {
-    minHeight: 44, borderRadius: 10,
-    border: '1px solid rgba(229,237,233,.20)',
-    background: '#293B41', color: '#F4F0E7', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+    ...btnFace, color: '#EAF2F5',
+    borderImage: "url('/icons/ui/trade/btn-secondary.webp?v=2.3.2290') 40 fill / 16px stretch",
   };
   /* v2.3.1232: module header — 11/600 uppercase per spec typography */
   /* v2.3.1235: batch-4 rollout — corrected section-header ramp 11/700
@@ -587,9 +625,28 @@ export function TradeWindowPanel(props) {
   /* minHeight so an EMPTY light lane reads as a card rather than as a bright
      33px stripe -- the state a trade spends its first ten seconds in. Applied
      to both so the two stay symmetric. */
-  const wellBase = { borderRadius: 8, padding: '2px 6px', marginBottom: 8, minHeight: 44, boxSizing: 'border-box' };
-  const theirWell = { ...wellBase, background: 'var(--ui-invert, #C8D2CF)', border: '1px solid var(--ui-line-on-invert, rgba(11,22,27,.14))', boxShadow: CARD_SHADOW };
-  const myWell = { ...wellBase, background: 'var(--ui-well, #111E23)', border: '1px solid rgba(229,237,233,.11)', boxShadow: WELL_SHADOW };
+  /* ═══ v2.3.2290: THE OWNER'S PAINTED LANE ═══
+     The frame, corners and well now come from his kit (.bt-t2-lane), so these
+     are no longer a fill and a border -- they are the little that sits ON that
+     frame.
+
+     THE SHADE DIFFERENCE SURVIVES THE RESKIN, deliberately. His mockup draws
+     both lanes in the same blue and tells them apart by header icon, label and
+     position; but he had asked, in so many words, for the buyer's side to be
+     "a notably different shade. Like a light gray", and a reskin is not a
+     reason to quietly drop a thing he asked for. So the buyer's lane keeps a
+     light wash OVER the painted interior and keeps its inverted ink -- the
+     frame is his, the at-a-glance whose-is-whose is still there, and going to
+     the mockup's uniform blue is one line (drop theirWash and swap theirInk to
+     DARK_INK) if he prefers it. */
+  const wellBase = { boxSizing: 'border-box' };
+  const theirWell = { ...wellBase };
+  const myWell = { ...wellBase };
+  /* The shade lives in a CLASS, not an inline box-shadow: a shadow is invisible
+     to getComputedStyle().backgroundColor, which is what every contrast and
+     which-lane-is-whose check in mp-trade reads. */
+  const theirLaneCls = 'bt-t2-lane bt-t2-lane--theirs';
+  const myLaneCls = 'bt-t2-lane';
   /* The ink travels with the fill, never separately -- see DARK_INK/LIGHT_INK.
      A plain const, never a hook: this sits after the first early return and
      before the other five, which is exactly the reach the receipt needs, and a
@@ -617,11 +674,11 @@ export function TradeWindowPanel(props) {
               note on the review screen. Your own pile is the bottom one on all
               three screens now, and it is the one on the lighter well. */}
           <div style={{ ...laneHeader, color: '#8D9B98' }}>You received</div>
-          <div style={theirWell}>
+          <div className={theirLaneCls} style={theirWell}>
             <OfferRows offer={r.received} weapons={r.receivedWeapons} empty="Nothing" goldSuffix="G" ink={theirInk} />
           </div>
           <div style={{ ...laneHeader, color: '#8D9B98' }}>You sent</div>
-          <div style={myWell}>
+          <div className={myLaneCls} style={myWell}>
             <OfferRows offer={r.sent} weapons={r.sentWeapons} empty="Nothing" goldSuffix="G" />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
@@ -846,8 +903,11 @@ export function TradeWindowPanel(props) {
       ? (<span style={{ width: 24, height: 24, flex: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: ink.slot, borderRadius: 6 }}>{node}</span>)
       : node;
     const side = (title, ls, gold, tone, well, ink) => (
-      <div style={{ ...well, marginBottom: 8 }}>
-        <div style={{ ...laneHeader, color: tone, marginBottom: 4 }}>{title}</div>
+      /* v2.3.2290: the review lanes wear the same painted frame as the live
+         ones -- one skin across all three trade screens, so the window does
+         not change costume halfway through a trade. */
+      <div className={well === theirWell ? theirLaneCls : myLaneCls} style={{ marginBottom: 8 }}>
+        <div className="bt-t2-lane-hdr" style={{ color: tone }}>{title}</div>
         {ls.length === 0 && gold === 0 && (
           <div style={{ fontSize: 12, color: ink.muted }}>Nothing</div>
         )}
@@ -993,7 +1053,20 @@ export function TradeWindowPanel(props) {
         {/* v2.3.1235: batch-4 state-correction §6 — "<name> confirmed ✓"
             positive check by their lane header, straight off the
             server's confirmed flag (was "· CONFIRMED" inline). */}
-        <div style={{ ...laneHeaderRow, color: '#8D9B98' }}>
+        <div className={theirLaneCls} style={theirWell}>
+        {/* v2.3.2290: the header lives INSIDE the frame now, which is where the
+            owner's mockup puts it -- icon, label, hairline, then the pile. The
+            QA lane readers used to take the header's NEXT SIBLING as the well;
+            they now take its PARENT, which is this frame. That is the more
+            honest anchor anyway: the thing being measured is the lane, and it
+            is now the element that actually carries the lane's shading. */}
+        {/* v2.3.2290: theirInk.muted, NOT the dark ramp's #8D9B98. Moving this
+            header inside the lane put it on the light card, and the first cut
+            left it on the dark colour -- 1.87:1, caught by the ink probe in
+            mp-trade rather than by eye. Same trap as TRAPS §48: the ink has to
+            travel with the fill, and a header that changes side changes ramp. */}
+        <div className="bt-t2-lane-hdr" style={{ color: theirInk.muted }}>
+          <img className="bt-t2-lane-icon" src="/icons/ui/trade/icon-lane-coins.webp?v=2.3.2290" alt="" />
           <span>{otherName} offers</span>
           {/* v2.3.2280: under the two-stage flow `confirmed` is only ever set
               on the REVIEW screen, so at the offer stage this header showed
@@ -1001,8 +1074,9 @@ export function TradeWindowPanel(props) {
               other side, exactly like one who was still shopping. `ready` is
               server state from the same trade2_state echo (trade2.js _t2Wire)
               -- a direct read, not a guess. */}
-          {theyConfirmed ? <span style={{ color: '#55B98A' }}>confirmed ✓</span>
-            : theyReady ? <span style={{ color: '#55B98A' }}>ready ✓</span> : null}
+          {/* and the same for the green: #55B98A is ~2:1 on the light card. */}
+          {theyConfirmed ? <span style={{ marginLeft: 'auto', color: 'var(--ui-positive-on-invert, #1C5A40)' }}>confirmed ✓</span>
+            : theyReady ? <span style={{ marginLeft: 'auto', color: 'var(--ui-positive-on-invert, #1C5A40)' }}>ready ✓</span> : null}
         </div>
         {/* v2.3.1235: batch-4 rollout — offer wells onto the corrected well
             token #111E23 + .11 hairline (×3 below, incl. the item tray).
@@ -1013,7 +1087,6 @@ export function TradeWindowPanel(props) {
             the well, so moving a header without its well, or wrapping either
             in a new div, makes it silently read the wrong player's pile while
             every presence assertion keeps passing. */}
-        <div style={theirWell}>
           {/* v2.3.2283: ink passed EXPLICITLY, not inferred from "this is the
               call site with no handlers" -- same reasoning as tone and well. */}
           <OfferRows offer={trade2.offers[otherId]} weapons={otherWpn} empty="Nothing staged yet" ink={theirInk} />
@@ -1022,11 +1095,15 @@ export function TradeWindowPanel(props) {
         {/* v2.3.1235: batch-4 state-correction §6 — "Editing offer" while
             my side is editable, "Confirmed ✓" once the server echoes my
             confirm flag. */}
-        <div style={{ ...laneHeaderRow, color: '#8D9B98' }}>
+        <div className={myLaneCls} style={{ ...myWell, marginBottom: 6 }}>
+        {/* v2.3.2290: mine gets the money bag, theirs the coin stack -- the two
+            icons the owner drew into the lane art, lifted out so the header
+            they belong to can say something different on each screen. */}
+        <div className="bt-t2-lane-hdr" style={{ color: '#8D9B98' }}>
+          <img className="bt-t2-lane-icon" src="/icons/ui/trade/icon-lane-bag.webp?v=2.3.2290" alt="" />
           <span>You offer</span>
-          <span style={{ color: iConfirmed ? '#55B98A' : '#8D9B98' }}>{iConfirmed ? 'Confirmed ✓' : 'Editing offer'}</span>
+          <span style={{ marginLeft: 'auto', color: iConfirmed ? '#55B98A' : '#8D9B98' }}>{iConfirmed ? 'Confirmed ✓' : 'Editing offer'}</span>
         </div>
-        <div style={{ ...myWell, marginBottom: 6 }}>
           {/* v2.3.1235: batch-4 state-correction §3/§4 — my rows render my
               staging mirror with Remove controls (existing trade2_set /
               trade2_unstage_weapon pathways); empty copy distinguishes an
@@ -1203,7 +1280,10 @@ export function TradeWindowPanel(props) {
             adding chips a reset is a necessity rather than a nicety, and a
             permanently visible one would sit there saying nothing on the empty
             offer every trade starts in. */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+        {/* v2.3.2290: seven on ONE row, which is how the owner's mockup draws
+            it and also the fold budget -- a second row costs ~38px of a drawer
+            already capped at min(52vh,420px). */}
+        <div className="bt-t2-chiprow">
           {GOLD_STEPS.map((amt) => {
             /* v2.3.2288: one ladder, two signs.  In subtract mode a chip is
                disabled when it would take you past zero, the mirror of the add
@@ -1229,15 +1309,12 @@ export function TradeWindowPanel(props) {
                   if (g > 0) next._gold = g; else delete next._gold;
                   pushStage(next);
                 }}
-                style={{
-                  flex: '1 1 auto', minWidth: 38, minHeight: 34,
-                  padding: '3px 5px', borderRadius: 999,
-                  fontSize: 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
-                  cursor: over ? 'not-allowed' : 'pointer',
-                  border: '1px solid ' + (over ? 'rgba(229,237,233,.11)' : 'rgba(216,170,88,.35)'),
-                  background: over ? 'transparent' : 'rgba(216,170,88,.10)',
-                  color: over ? '#667875' : '#D8AA58',
-                }}
+                /* v2.3.2290: the owner's painted pill. The lit and dimmed
+                   faces are the two he drew, so "greyed" still means "at the
+                   limit" -- and :disabled swaps the art, which means the
+                   affordance can never disagree with the button's own
+                   disabled state. */
+                className="bt-t2-chip"
               >{goldMinus ? '\u2212' : '+'}{amt}</button>
             );
           })}

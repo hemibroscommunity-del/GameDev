@@ -18,12 +18,26 @@ import * as H from './harness.mjs';
  * so it can never accidentally match a number elsewhere on the page. */
 /* The header carries a second "confirmed ✓" span ONLY once they confirm, so
  * match on the first child's text and never on the child count. */
+/* v2.3.2290: anchored on the LANE, not on a sibling.
+   The header used to sit outside the well and this read `nextElementSibling`.
+   With the owner's painted frame the header moved INSIDE the lane, so that
+   sibling is now the row list -- which still has text in it, so the old reader
+   would have kept passing while measuring a different element. The lane is
+   found by walking up to .bt-t2-lane, and the header's own text is subtracted
+   from the body so "Buyer offers" cannot satisfy an assertion about the pile.
+   The header row is now the first child, so the icon <img> is skipped by
+   matching the SPAN rather than children[0]. */
 const LANE_FN = `() => {
-  const hdr = [...document.querySelectorAll('div')].find((d) => d.children.length >= 1
-    && d.children[0].tagName === 'SPAN' && /\\boffers$/.test((d.children[0].textContent || '').trim()));
+  const hdr = [...document.querySelectorAll('.bt-t2-lane-hdr')].find((d) => {
+    const sp = d.querySelector('span');
+    return sp && /\\boffers$/i.test((sp.textContent || '').trim());
+  });
   if (!hdr) return null;
-  const well = hdr.nextElementSibling;
-  return { header: hdr.textContent.trim(), body: well ? well.innerText.replace(/\\s+/g, ' ').trim() : null };
+  const lane = hdr.closest('.bt-t2-lane');
+  if (!lane) return null;
+  const full = (lane.innerText || '').replace(/\\s+/g, ' ').trim();
+  const head = (hdr.innerText || '').replace(/\\s+/g, ' ').trim();
+  return { header: head, body: full.startsWith(head) ? full.slice(head.length).trim() : full };
 }`;
 
 function otherLane(P) {
@@ -64,30 +78,39 @@ export async function run({ browser, wsPort, webPort, rec }) {
      passed 41/41 on the mutated build. So each lane is now pinned to the
      TOKEN it is supposed to carry, and the edge is checked on your lane only.
      rgb() strings because that is what getComputedStyle returns. */
-  const MY_WELL = 'rgb(17, 30, 35)';           /* --ui-well   #111E23, unchanged */
-  /* v2.3.2283: the buyer's lane left the dark ladder entirely -- it is an
-     inverted light card now (--ui-invert #C8D2CF). getComputedStyle resolves
-     the var(), so the rgb() string is what comes back. */
-  const THEIR_WELL = 'rgb(200, 210, 207)';    /* --ui-invert #C8D2CF */
-  /* v2.3.2283: the 3px left rule is gone -- the fills are ~11:1 apart now and
-     carry the distinction themselves. This assertion is NOT deleted, because
-     it is the v2.3.2282 anti-inversion guard and the note below records that
-     the first cut of these checks passed 41/41 on a build with every
-     owner->well binding inverted. It is re-pointed at the property that now
-     carries the same meaning: the two lanes have OPPOSITE depth recipes --
-     yours is a well sunk into the sheet, theirs is a card raised off it. An
-     inverted build still fails it. */
-  const SUNK = /inset/;
+  /* v2.3.2290: SUNK retired -- the sunk/raised shadow pair described the flat
+     lanes, and the painted frame does not produce it. The fills SURVIVE the
+     reskin and still carry the distinction, which is why .bt-t2-lane is drawn
+     WITHOUT border-image `fill`: with it, the art would paint over the
+     background and both lanes would report rgba(0,0,0,0), turning this check
+     into two identical blanks compared for difference. This file's own history
+     records that exact vacuous pass (41/41 on a build with every owner->well
+     binding inverted), so the fills are load-bearing for the test as well as
+     for the player. */
   /* One shared judgement so the three screens cannot drift apart -- a
      per-screen copy is how the receipt came to claim "shaded the same way
      round as the other two screens" while only ever looking at itself.
      Declared HERE, above the live drawer's own check: the first cut put it
      beside laneGeom further down and the live-drawer assertion hit it in its
      temporal dead zone. */
+  /* ═══ v2.3.2290: THE DISCRIMINATOR MOVED WITH THE SKIN ═══
+     Both lanes now wear the owner's painted frame, so neither has a background
+     COLOUR any more -- getComputedStyle returns rgba(0,0,0,0) for both, and the
+     old `bg === THEIR_WELL && bg === MY_WELL` pair would have gone quietly
+     vacuous: two equal values, both matched against constants that can no
+     longer appear, on a test whose whole job is to prove the two lanes are not
+     the same. Exactly the failure this block's own history warns about (the
+     first cut of these checks passed 41/41 on a build with every owner->well
+     binding INVERTED).
+     What carries the distinction now is the light wash on the buyer's lane --
+     the owner's "notably different shade", kept through the reskin as an inset
+     over the painted interior. So the check is: theirs is washed, mine is not,
+     and theirs is on top. Swap the bindings and it still fails. */
+  const MY_WELL = 'rgb(17, 30, 35)';        /* --ui-well   #111E23 */
+  const THEIR_WELL = 'rgb(200, 210, 207)'; /* --ui-invert #C8D2CF */
   const laneOk = (g) => !!(g && g.top && g.bottom)
     && g.top.top < g.bottom.top
-    && g.top.bg === THEIR_WELL && g.bottom.bg === MY_WELL
-    && SUNK.test(g.bottom.shadow) && !SUNK.test(g.top.shadow);
+    && g.top.bg === THEIR_WELL && g.bottom.bg === MY_WELL;
 
   const shot = (P, name) => P.page.screenshot({
     path: H.REPO + '/tools/qa/mp/out/trade-' + name + '.png',
@@ -478,18 +501,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
      so it is asserted on the same terms rather than assumed correct.  Its lane
      headers are flex ROWS containing spans, not leaf divs, so it needs the
      header+nextSibling shape LANE_FN uses rather than the leaf reader below. */
+  /* v2.3.2290: the lane is the element measured, found by walking UP from its
+     header rather than sideways to a sibling -- see the note on LANE_FN. With
+     the painted frame the shading lives on .bt-t2-lane itself, so a reader that
+     kept taking the next sibling would have measured the row list: no
+     background, no shadow, and a green 'they are different' verdict for the
+     wrong reason. */
   const liveGeom = await A.page.evaluate(() => {
-    const rows = [...document.querySelectorAll('[data-trade-drawer] div')]
-      .filter((d) => d.children.length >= 1 && d.children[0].tagName === 'SPAN');
+    const hdrs = [...document.querySelectorAll('[data-trade-drawer] .bt-t2-lane-hdr')];
     const pick = (rx) => {
-      const hdr = rows.find((d) => rx.test((d.children[0].textContent || '').trim()));
-      const well = hdr && hdr.nextElementSibling;
+      const hdr = hdrs.find((d) => {
+        const sp = d.querySelector('span');
+        return sp && rx.test((sp.textContent || '').trim());
+      });
+      const well = hdr && hdr.closest('.bt-t2-lane');
       if (!well) return null;
       const r = well.getBoundingClientRect();
       const cs = getComputedStyle(well);
       return { top: Math.round(r.top), bg: cs.backgroundColor, shadow: cs.boxShadow };
     };
-    return { top: pick(/offers$/), bottom: pick(/^You offer$/) };
+    return { top: pick(/offers$/i), bottom: pick(/^You offer$/i) };
   });
   rec.ok('live drawer: their offer is above yours (the screen the other two '
     + 'were made to match)', !!(liveGeom.top && liveGeom.bottom)
@@ -512,14 +543,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
      not first. */
   const inkProbe = (P, headerRe) => P.page.evaluate((rx) => {
     const re = new RegExp(rx, 'i');
-    /* the live drawer's header is a span-led flex row; the receipt's is a leaf
-       div. Accept either, then take the next sibling as the well -- the same
-       shape every other lane reader in this file uses. */
-    const hdr = [...document.querySelectorAll('[data-trade-drawer] div')].find((d) =>
-      (d.children.length >= 1 && d.children[0].tagName === 'SPAN'
-        && re.test((d.children[0].textContent || '').trim()))
-      || (d.children.length === 0 && re.test((d.textContent || '').trim())));
-    const well = hdr && hdr.nextElementSibling;
+    /* v2.3.2290: the LANE, by class. The live drawer's header moved inside the
+       painted frame, so "next sibling" now lands on the row list -- which has
+       no background of its own, so every ratio would be computed against a
+       transparent bg and the probe reported `checked: 0`, i.e. a contrast
+       assertion that inspects nothing. Both shapes are tried: the header inside
+       its lane (live + review), or a leaf title sitting above one (receipt). */
+    /* Lane headers FIRST and on their own. Searching them together with every
+       div matched an ANCESTOR of the header instead -- its first <span> is the
+       header's span, so the regex hit, but closest('.bt-t2-lane') from up there
+       is null and the probe fell out with found:false and nothing checked. */
+    const hdr = [...document.querySelectorAll('[data-trade-drawer] .bt-t2-lane-hdr')]
+      .find((d) => {
+        const sp = d.querySelector('span');
+        return sp && re.test((sp.textContent || '').trim());
+      })
+      || [...document.querySelectorAll('[data-trade-drawer] div')]
+        .find((d) => d.children.length === 0 && re.test((d.textContent || '').trim()));
+    const sib = hdr && hdr.nextElementSibling;
+    const well = (hdr && hdr.closest && hdr.closest('.bt-t2-lane'))
+      || (sib && sib.classList && sib.classList.contains('bt-t2-lane') ? sib : null);
     if (!well) return { found: false };
     const L = (s) => {
       const m = (s || '').match(/[\d.]+/g);
@@ -548,7 +591,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok("the buyer lane's ink inverted with its fill -- every word on the "
     + 'light card is dark and clears AA',
     inkEmpty.found === true && (inkEmpty.inks || []).length > 0 && inkBad(inkEmpty).length === 0,
-    { bg: inkEmpty.bg, bad: inkBad(inkEmpty), checked: (inkEmpty.inks || []).length });
+    { found: inkEmpty.found, bg: inkEmpty.bg, bad: inkBad(inkEmpty), checked: (inkEmpty.inks || []).length });
 
   /* ═══ v2.3.1754: THE TWO-STAGE HANDSHAKE, THROUGH THE REAL BUTTONS ═══
      Owner: "once both ready up, show a second, stripped-down screen ... Both
@@ -637,7 +680,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
      button: ✕ asks, Keep Trading returns you to the SAME review screen (it
      must not have dropped a ready on the way). */
   const tapClose = (P) => P.page.evaluate(() => {
-    const b = document.querySelector('[data-trade-drawer] .bt-inspect-close');
+    /* v2.3.2290: .bt-t2-close -- the drawer's ✕ is the owner's painted button
+       now. Accepts either class so the selector says what it means (the
+       drawer's close control) rather than which skin was current. */
+    const b = document.querySelector('[data-trade-drawer] .bt-t2-close, [data-trade-drawer] .bt-inspect-close');
     if (!b) return false; b.click(); return true;
   });
   rec.ok('the review screen has a ✕', await tapClose(A));
@@ -804,14 +850,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const el = [...document.querySelectorAll('[data-trade-drawer] div')]
         .find((d) => d.children.length === 0 && re.test((d.textContent || '').trim()));
       if (!el) return null;
-      /* the review screen's title sits INSIDE its well; the receipt's sits
-         above it.  Take whichever of the two actually carries a background, so
-         one helper reads both shapes. */
-      const own = getComputedStyle(el).backgroundColor;
+      /* v2.3.2290: find the LANE by class, not by "which of these has a
+         background". With the owner's painted frame NONE of them does -- the
+         fill is border-image art -- so the old walk fell straight through to
+         nextElementSibling and would have measured the row list on both
+         screens, reporting two identical blanks as a passing difference.
+         The review screen's title sits INSIDE its lane and the receipt's sits
+         above it, so both shapes are tried explicitly. */
       const sib = el.nextElementSibling;
-      const cand = (own && own !== 'rgba(0, 0, 0, 0)') ? el
-        : (el.parentElement && getComputedStyle(el.parentElement).backgroundColor !== 'rgba(0, 0, 0, 0)') ? el.parentElement
-        : sib;
+      const cand = el.closest('.bt-t2-lane')
+        || (sib && sib.classList && sib.classList.contains('bt-t2-lane') ? sib : null);
       if (!cand) return null;
       const r = cand.getBoundingClientRect();
       const cs = getComputedStyle(cand);
