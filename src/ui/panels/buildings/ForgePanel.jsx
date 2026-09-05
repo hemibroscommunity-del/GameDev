@@ -23,6 +23,58 @@ export function ForgePanel(props) {
   var _sf = React.useState(false);
   var showFade = _sf[0],
     setShowFade = _sf[1];
+  /* ═══ v2.3.2289: SALVAGE ARMS BEFORE IT FIRES ═══
+     Salvage was one tap, and the tap was final: it deletes the item outright
+     (an equipped weapon is replaced with Fists) and writes straight to
+     localStorage.  Nothing is escrowed, nothing is sent to the worker, and
+     there is no undo -- so a mis-tap on a phone cost a weapon someone had
+     built.  Every other irreversible thing in this game asks first.
+
+     A SECOND TAP ON THE SAME BUTTON, not a modal or a new row.  The trade
+     window's own note on its leave-confirm says why ("on a phone an extra
+     modal over a modal is where taps go to die"), and this panel already
+     scrolls -- a strip that appears mid-list would shift the row under your
+     thumb between the two taps, which is the one thing a confirmation must
+     never do.  The armed button keeps its exact box; only the fill and the
+     words change.
+
+     ARMED PER SLOT, AND IT EXPIRES.  Keyed by slot key so arming the Shield
+     never leaves the Amulet hot, and a 4s timer disarms it again: a button
+     that stayed armed indefinitely would just be the original one-tap hazard
+     with extra steps waiting for your next stray tap. */
+  var _sv = React.useState(null);
+  var salvageArm = _sv[0],
+    setSalvageArm = _sv[1];
+  React.useEffect(function () {
+    if (!salvageArm) return undefined;
+    var t = setTimeout(function () {
+      setSalvageArm(null);
+    }, 4000);
+    return function () {
+      clearTimeout(t);
+    };
+  }, [salvageArm]);
+  /* A DOUBLE-TAP MUST NOT WALK STRAIGHT THROUGH THE GATE.  Arm-then-fire on
+     two taps means the ordinary iOS double-tap -- and the fat-fingered
+     repeat that a laggy frame invites -- destroys the item just as fast as
+     the ungated button did.  A confirmation that the accident can satisfy is
+     not a confirmation.  350ms is above a comfortable double-tap interval and
+     far below a deliberate read-and-decide. */
+  var SALV_DEAD_MS = 350;
+  /* Returns true only for a tap that should DESTROY. Every other tap arms,
+     re-arms, or is swallowed. Shared by the equipped rows and the stash rows
+     so the two cannot drift -- the stash button was ungated for the whole of
+     this panel's life precisely because it was a second copy nobody edited. */
+  var salvageGate = function salvageGate(key, item) {
+    var now = Date.now();
+    if (!salvageArm || salvageArm.key !== key) {
+      setSalvageArm({ key: key, at: now, item: item || null });
+      return false;
+    }
+    if (now - salvageArm.at < SALV_DEAD_MS) return false;
+    setSalvageArm(null);
+    return true;
+  };
   var scrollBodyRef = React.useRef(null);
   var measureFade = React.useCallback(function () {
     var el = scrollBodyRef.current;
@@ -1098,6 +1150,7 @@ export function ForgePanel(props) {
     var isAmulet = s.key === 'amulet';
     var salvReturns = isAmulet ? getAmuletSalvageReturns(s.item) : getSalvageReturns(s.item);
     var canSalvage = !hasGem && salvReturns;
+    var salvArmed = !!salvageArm && salvageArm.key === s.key; /* v2.3.2289 */
     var extractCost = hasGem ? gemExtractCost(s.item) : 0;
     var canAffordExtract = rpgState.coins >= extractCost;
     return /*#__PURE__*/React.createElement("div", {
@@ -1213,10 +1266,16 @@ export function ForgePanel(props) {
         cursor: 'pointer',
         fontFamily: 'inherit',
         border: '1px solid #D8635D',
-        background: 'transparent',
+        /* v2.3.2289: the armed fill is the danger tint this codebase already
+           uses (InventoryPanel/CookPanel), not a new red -- and it stays an
+           OUTLINE button, because filled red was retired at v2.3.1235. */
+        background: salvArmed ? 'rgba(216,99,93,.15)' : 'transparent',
         color: '#D8635D'
       },
+      'data-salvage-armed': salvArmed ? '1' : '0',
       onClick: function onClick() {
+        /* v2.3.2289: first tap arms, second tap destroys. */
+        if (!salvageGate(s.key, null)) return;
         var R = stateRef.current.rpg;
         if (!R.inventory) R.inventory = {};
         /* Apply salvage returns */
@@ -1247,9 +1306,11 @@ export function ForgePanel(props) {
           localStorage.setItem('bt_rpg', JSON.stringify(R));
         } catch (e) {}
       }
-    }, "Salvage \u2192 ", salvReturns.map(function (r) {
-      return r.qty + '× ' + r.label;
-    }).join(' + ')), !hasGem && !canSalvage && /*#__PURE__*/React.createElement("div", {
+    }, salvArmed
+      ? 'Tap again \u2014 this destroys your ' + s.label
+      : 'Salvage \u2192 ' + salvReturns.map(function (r) {
+        return r.qty + '\xD7 ' + r.label;
+      }).join(' + ')), !hasGem && !canSalvage && /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
         color: '#8D9B98',
@@ -1280,6 +1341,9 @@ export function ForgePanel(props) {
     if (!sw.gearBase) return null;
     var hasGem = !!(sw.element1 || sw.element2);
     var salvReturns = !hasGem ? getSalvageReturns(sw) : null;
+    /* v2.3.2289: the stash rows get the same gate as the equipped ones. */
+    var stashKey = 'stash:' + si;
+    var stashArmed = !!salvageArm && salvageArm.key === stashKey;
     return /*#__PURE__*/React.createElement("div", {
       key: si,
       style: {
@@ -1366,16 +1430,27 @@ export function ForgePanel(props) {
         fontFamily: 'inherit',
         flexShrink: 0,
         border: '1px solid #D8635D',
-        background: 'transparent',
+        background: stashArmed ? 'rgba(216,99,93,.15)' : 'transparent',
         color: '#D8635D'
       },
+      'data-salvage-armed': stashArmed ? '1' : '0',
       onClick: function onClick() {
+        /* v2.3.2289: armed on the ROW OBJECT, not on its index.  The stash is
+           an array spliced by position and a trade can drop a weapon into it
+           between the two taps -- an index captured at arm time would then
+           point at a neighbour, and the confirmation would destroy something
+           the player never armed.  Re-finding the object is correct however
+           the array shifted, and a row that vanished in the gap simply
+           disarms instead of taking the item that slid into its place. */
+        if (!salvageGate(stashKey, sw)) return;
         var R = stateRef.current.rpg;
         if (!R.inventory) R.inventory = {};
+        var _si = R.weaponStash ? R.weaponStash.indexOf(sw) : -1;
+        if (_si < 0) return;
         salvReturns.forEach(function (ret) {
           if (ret.type === 'gold') R.coins += ret.qty;else if (ret.type === 'goldBars') R.goldBars = (R.goldBars || 0) + ret.qty;else R.inventory[ret.key] = (R.inventory[ret.key] || 0) + ret.qty;
         });
-        R.weaponStash.splice(si, 1);
+        R.weaponStash.splice(_si, 1);
         pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Salvaged stash item', '#D95C54');
         BT_AUDIO.beep(200, 0.1, 0.12, 'sawtooth');
         setRpgState(_objectSpread({}, R));
@@ -1383,7 +1458,7 @@ export function ForgePanel(props) {
           localStorage.setItem('bt_rpg', JSON.stringify(R));
         } catch (e) {}
       }
-    }, "Salvage"), !hasGem && !salvReturns && /*#__PURE__*/React.createElement("span", {
+    }, stashArmed ? "Tap again" : "Salvage"), !hasGem && !salvReturns && /*#__PURE__*/React.createElement("span", {
       style: {
         fontSize: 11 /* v2.3.1235: batch-3 rollout \u2014 11px text floor */,
         color: '#667875'

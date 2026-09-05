@@ -157,6 +157,105 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(1100);
   rec.ok('D: ...and returning re-opens the claim', await open(), await probe());
 
+  /* ══ E. v2.3.2289: THE BACKDROP NO LONGER THROWS THE CLAIM AWAY ══
+     Owner: "tapping just outside the reward card dismisses a reward you've
+     earned."  The card already refuses to give the reward face a "Not now"
+     -- its own comment says a not-now there "is a way to lose track of
+     payment you are owed" -- and the full-viewport scrim handed that exact
+     escape straight back, with a live dismiss band a couple of centimetres
+     under the Claim button.
+
+     DRIVEN WITH REAL MOUSE CLICKS AT REAL COORDINATES, never an in-page
+     .click(): a synthetic click ignores hit-testing, so it would prove a
+     handler exists rather than that a finger landing there does anything.
+     That exact miss let v2.3.1827 ship an unclaimable reward. */
+  const bandTap = async () => P.page.evaluate(() => {
+    const card = document.querySelector('.bt-qoffer, .bt-npcdlg');
+    if (!card) return null;
+    const r = card.getBoundingClientRect();
+    const gap = window.innerHeight - r.bottom;
+    if (gap < 40) return { tapped: false, gap: Math.round(gap) };
+    return { tapped: true, x: Math.round(r.left + r.width / 2),
+      y: Math.round(r.bottom + Math.min(gap - 8, 40)), gap: Math.round(gap) };
+  });
+  const clickBand = async () => {
+    const b = await bandTap();
+    if (!b || !b.tapped) return b;
+    await P.page.mouse.click(b.x, b.y);
+    await P.page.waitForTimeout(450);
+    return b;
+  };
+
+  /* Stand at him with the quest READY, so the claim face is up. */
+  await place(0, 34);
+  await P.page.waitForTimeout(1200);
+  const face = () => P.page.evaluate(() => ({
+    qoffer: !!document.querySelector('.bt-qoffer'),
+    npcdlg: !!document.querySelector('.bt-npcdlg'),
+  }));
+  rec.ok('E: the claim screen is up (guard)', await open(), await face());
+
+  /* BOTH FACES, SEPARATELY.  The claim flow is two screens sharing one scrim
+     class -- he talks (NpcDialogue), then you claim (QuestOfferPanel) -- and
+     the first cut of this test only ever reached the TALK one, so it passed
+     against a build with the payout screen's backdrop still live.  Each is
+     now asserted where it actually renders. */
+  const talkFace = await face();
+  rec.ok('E: the talk face is the one on screen first (guard)',
+    talkFace.npcdlg === true && talkFace.qoffer === false, talkFace);
+  const eBand = await clickBand();
+  rec.ok('E: THE HAZARD, talk face — a tap in the scrim below the card no '
+    + 'longer throws away a quest you have finished',
+    !!eBand && eBand.tapped === true && (await open()), { band: eBand, open: await open(), face: await face() });
+
+  await H.advanceNpcDialogue(P);
+  await P.page.waitForTimeout(400);
+  const payFace = await face();
+  rec.ok('E: ...and advancing reaches the payout card itself (guard)',
+    payFace.qoffer === true, payFace);
+  const pBand = await clickBand();
+  rec.ok('E: THE HAZARD, payout card — the same tap beside Claim Reward does '
+    + 'not throw the reward away either',
+    !!pBand && pBand.tapped === true && (await open()), { band: pBand, open: await open(), face: await face() });
+
+  /* The deliberate exit still exists, and a REAL click on it works -- an
+     inert backdrop with no ✕ would just be a modal you cannot leave. */
+  const xBox = await P.page.evaluate(() => {
+    const x = document.querySelector('[data-qa="dlg-close"]');
+    if (!x) return null;
+    const r = x.getBoundingClientRect();
+    return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2),
+      w: Math.round(r.width), h: Math.round(r.height) };
+  });
+  rec.ok('E: ...and there is a deliberate ✕ to leave by, at a real touch size',
+    !!xBox && xBox.w >= 40 && xBox.h >= 40, xBox);
+  if (xBox) {
+    await P.page.mouse.click(xBox.x, xBox.y);
+    await P.page.waitForTimeout(450);
+    /* Standing on him, the proximity opener may bring the claim straight back
+       -- that is the v2.3.1884 behaviour step C pins.  What is asserted is
+       that the ✕ was REACHABLE and fired, so step away first. */
+    await place(420, 0);
+    await P.page.waitForTimeout(700);
+    rec.ok('E: ...and a real click on it does close the card',
+      !(await open()), await probe());
+  }
+
+  /* THE SCOPING TWIN: an OFFER has nothing owed, so its backdrop still
+     dismisses. Applying the lock to both faces would make an unaccepted
+     quest undismissable, which is a different bug. */
+  await setState({ tut_1: 'available' }, {});
+  await place(0, 34);
+  await P.page.waitForTimeout(1300);
+  if (await open()) {
+    const oBand = await clickBand();
+    rec.ok('E: ...while an OFFER still dismisses on a backdrop tap, because '
+      + 'nothing is owed yet',
+      !!oBand && oBand.tapped === true && !(await open()), { band: oBand, open: await open() });
+  } else {
+    rec.skip('an offer still dismisses on a backdrop tap', 'offer face did not open');
+  }
+
   await P.page.evaluate(() => { try { cancelAnimationFrame(window.__qRaf); } catch (e) {} });
   await P.ctx.close().catch(() => {});
 }

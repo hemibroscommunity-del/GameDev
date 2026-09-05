@@ -24,6 +24,39 @@ export function DuelRequestPanel(props) {
   var stateRef = props.stateRef,
     duelRequest = props.duelRequest,
     setDuelRequest = props.setDuelRequest;
+  /* ═══ v2.3.2289: THE BACKDROP NO LONGER ANSWERS FOR YOU ═══
+     The scrim tap was `setDuelRequest(null)` and nothing else: the card went
+     away, the duel did not happen, and the player who challenged you was never
+     told.  They stood there with no reply until the server's 120s
+     CHALLENGE_TTL swept the challenge -- silently, so a dismissal and a
+     timeout looked identical from their side.
+
+     THE BACKDROP IS NOW INERT rather than "declines for you", which was the
+     first cut of this fix.  Both answers notify: Accept and Decline each send,
+     so the reported complaint -- the challenger never hears back -- is fixed by
+     removing the third, silent exit either way.  What decides it is what the
+     stray tap COSTS.  This scrim is a full-viewport portal, so on a phone it is
+     nearly the entire screen, and nothing anywhere can re-raise a dismissed
+     challenge: a mis-tap that refuses for you throws away a duel (and its
+     wager) that the player may well have wanted.  A mis-tap that does nothing
+     costs one deliberate tap on one of two buttons that are already there.
+
+     This is the opposite call from the trade invite at v2.3.2280, and for a
+     reason that is about the surface rather than the policy: that one is a
+     bottom drawer with no backdrop at all, so there was no third exit to make
+     inert -- only a ✕ to remove. */
+  var decline = function decline() {
+    var S2 = stateRef.current;
+    if (S2.channel) S2.channel.send({
+      type: 'broadcast',
+      event: 'duel_decline',
+      payload: {
+        target: duelRequest.fromId,
+        from: S2.myId
+      }
+    });
+    setDuelRequest(null);
+  };
   return createPortal(React.createElement("div", {
     className: "bt-inspect",
     style: {
@@ -40,7 +73,8 @@ export function DuelRequestPanel(props) {
       background: 'rgba(4,9,12,0.52)' /* v2.3.1235: duel-confirmation scrim */
     },
     onClick: function onClick() {
-      return setDuelRequest(null);
+      /* Inert on purpose -- see the note above. Swallowed rather than left
+         undefined so the tap cannot fall through to the world behind. */
     }
   }, /*#__PURE__*/React.createElement("div", {
     className: "bt-inspect-card",
@@ -183,17 +217,6 @@ export function DuelRequestPanel(props) {
       fontSize: 13,
       cursor: 'pointer'
     },
-    onClick: function onClick() {
-      var S2 = stateRef.current;
-      if (S2.channel) S2.channel.send({
-        type: 'broadcast',
-        event: 'duel_decline',
-        payload: {
-          target: duelRequest.fromId,
-          from: S2.myId
-        }
-      });
-      setDuelRequest(null);
-    }
+    onClick: decline
   }, "Decline")))), document.body);
 }

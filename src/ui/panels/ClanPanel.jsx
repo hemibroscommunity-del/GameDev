@@ -156,6 +156,25 @@ export function ClanPanel(props) {
     setRpgState = props.setRpgState,
     setShowClanPanel = props.setShowClanPanel,
     stateRef = props.stateRef;
+  /* ═══ v2.3.2289: LEAVING ARMS BEFORE IT FIRES ═══
+     Leave Clan was one tap and irreversible from the player's side: it drops
+     clanData, clears the bt_clan cache and walks you out, with no undo and no
+     way back in without an invite.  Same second-tap gate as the forge's
+     salvage, for the same reason and in the same shape -- see the note there.
+     Expires after 4s so an armed button does not sit waiting for a later
+     stray tap. */
+  var _lv = React.useState(false);
+  var leaveArmed = _lv[0],
+    setLeaveArmed = _lv[1];
+  React.useEffect(function () {
+    if (!leaveArmed) return undefined;
+    var t = setTimeout(function () {
+      setLeaveArmed(false);
+    }, 4000);
+    return function () {
+      clearTimeout(t);
+    };
+  }, [leaveArmed]);
   var _clanData$members, _clanData$members2;
   var createDefaultClan; /* phantom: undefined in BroTown too — see header */
   /* v2.3.1614: A SERVER-CREATED CLAN HAS NO LOGO, and this panel used to
@@ -899,10 +918,20 @@ export function ClanPanel(props) {
       fontWeight: 700,
       cursor: 'pointer',
       border: '1px solid #D8635D',
-      background: 'transparent',
+      /* v2.3.2289: the armed fill is the danger tint already in use elsewhere
+         (InventoryPanel/CookPanel); still an outline button, since filled red
+         was retired at v2.3.1235. */
+      background: leaveArmed ? 'rgba(216,99,93,.15)' : 'transparent',
       color: '#D8635D'
     },
+    'data-leave-armed': leaveArmed ? '1' : '0',
     onClick: function onClick() {
+      /* v2.3.2289: first tap arms, second tap leaves. */
+      if (!leaveArmed) {
+        setLeaveArmed(true);
+        return;
+      }
+      setLeaveArmed(false);
       setClanData(null);
       stateRef.current._clanData = null;
       try {
@@ -910,5 +939,5 @@ export function ClanPanel(props) {
       } catch (e) {}
       pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Left clan', '#D95C54');
     }
-  }, "Leave Clan"))));
+  }, leaveArmed ? "Tap again to leave the clan" : "Leave Clan"))));
 }

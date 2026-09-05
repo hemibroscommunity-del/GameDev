@@ -202,6 +202,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
     { label: 'B sees the duel challenge', timeout: 20000 }).then(() => true).catch(() => false);
   rec.ok('the challenge reaches the other player', sawChallenge);
   if (sawChallenge) {
+    /* ── v2.3.2289: THE BACKDROP DOES NOT ANSWER FOR YOU ──
+       A tap on the scrim used to clear the card and send nothing: the duel was
+       refused locally and the challenger was never told, so a dismissal and a
+       120s silent timeout looked identical from their side. The backdrop is
+       inert now -- Accept and Decline both notify, so removing the third,
+       SILENT exit is the fix. Driven with a real mouse click well away from
+       the card, because a synthetic dispatch would ignore hit-testing and
+       prove nothing about where a thumb actually lands. */
+    const scrimPt = await B.page.evaluate(() => {
+      const card = document.querySelector('.bt-inspect-card');
+      if (!card) return null;
+      const r = card.getBoundingClientRect();
+      const gap = window.innerHeight - r.bottom;
+      if (gap < 40) return { tapped: false, gap: Math.round(gap) };
+      return { tapped: true, x: Math.round(r.left + r.width / 2),
+        y: Math.round(r.bottom + Math.min(gap - 8, 40)) };
+    });
+    if (scrimPt && scrimPt.tapped) {
+      await B.page.mouse.click(scrimPt.x, scrimPt.y);
+      await B.page.waitForTimeout(600);
+      const stillUp = await B.page.evaluate(() => /Duel Challenge/.test(document.body.textContent || ''));
+      rec.ok('a tap on the backdrop no longer throws the challenge away silently',
+        stillUp === true, { scrimPt, stillUp });
+    } else {
+      rec.skip('a tap on the backdrop no longer throws the challenge away silently',
+        'no scrim band below the card at this viewport');
+    }
     await H.clickText(B, 'Decline');
     await B.page.waitForTimeout(1500);
     const [da, db] = await Promise.all([duelState(A), duelState(B)]);
