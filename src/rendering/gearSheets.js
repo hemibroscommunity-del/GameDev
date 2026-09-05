@@ -19,7 +19,7 @@ import { artHash } from './traits/playerArt.js';   /* v2.3.1940: shared drawing 
 import { GEAR_SLOTS, GEAR_CATALOG } from './gearCatalog.js';
 import { upscaleToFrameHeight, antialiasUpscaledCanvas, downscaleByFactor, DISPLAY_DS } from './spriteScale.js'; /* v2.3.1110 upscale; v2.3.1341 AA; v2.3.1408 fullset display-downscale */
 import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless WebP, fall back to PNG */
-import { gearArt } from './gearVariants.js'; /* v2.3.1757: recoloured sets share their donor's sheets */
+import { gearArt, gearArtSafe } from './gearVariants.js'; /* v2.3.1757: recoloured sets share their donor's sheets */
 
 const FRAME_W = 256;
 const FRAME_H = 256;
@@ -203,7 +203,11 @@ export function getGearFrame(slot, item, pose, dir, frameIdx) {
      recoloured from.  Keying on the variant id instead would load a second
      identical copy of every sheet and hand back the memory the tint pipeline
      exists to save.  The colour is applied by the draw site (gearTint). */
-  item = gearArt(item);
+  /* v2.3.2303: ...and NULL for an art set that does not ship.  These ids come
+     off the wire (a peer's equip), and an unknown one used to be interpolated
+     straight into the sheet URL -- see GEAR_ART_SETS. */
+  item = gearArtSafe(slot, item);
+  if (!item) return null;
   const key = slot + '/' + item + '/' + pose + '/' + dir;
   const entry = _sheets[key];
   if (entry === undefined) { buildSheet(key, slot, item, pose, dir); return null; }

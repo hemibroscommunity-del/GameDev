@@ -37,7 +37,7 @@ import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { recolorBodyToCanvas, recolorStandInSkin, DEFAULT_SKIN_TARGET, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange } from '../playerSkins.js'; /* v2.3.1710: + the skin-only stand-in recolour (the cook) */
 import { getGearFrame } from '../gearSheets.js';
-import { gearTint, gearArt } from '../gearVariants.js'; /* v2.3.1764: the swing wears the same metal; v2.3.1772: ...and finds its sheets */
+import { gearTint, gearArt, gearArtSafe } from '../gearVariants.js'; /* v2.3.1764: the swing wears the same metal; v2.3.1772: ...and finds its sheets */
 import { materialTint, weaponTint } from '../traits/materialTints.js';
 import { upscaleToFrameHeight } from '../spriteScale.js'; /* v2.3.1112: restore downscaled-on-disk sword stand-in strips to their authored frame height */
 import { AIM_CARET, AIM_CARET_EDGE } from '../aimCaret.js'; /* v2.3.1799 */
@@ -1935,6 +1935,26 @@ export class EffectsRenderer {
     this._gearStripFrame('shirt', 'tshirt', 'fire', 'south', FIRE_FW, 0);
     this._gearStripFrame('chest', 'steelplate', 'fire', 'south', FIRE_FW, 0);
     this._gearStripFrame('legs', 'steelgreaves', 'fire', 'south', FIRE_FW, 0);
+    /* v2.3.2303: ...and the two poses that were missed, for the same reason
+       and under the same law.  A peer cooking or chopping is about to start
+       wearing their clothes (the remote gear block below), and warming these
+       here is what keeps that from becoming a mid-animation load.
+       WHY NOT preloadCombatGear (combatGear.js): that calls Assets.load, which
+       fills the Pixi ASSETS cache only.  _gearStripFrame keeps its own SLICE
+       cache (this._gearStrips) and, cold, returns null for a frame while it
+       schedules the cut -- so a hot Assets cache still draws nothing on the
+       first frame.  Routing through _gearStripFrame here registers with
+       effectsAnimationsReady(), which preloadWorldAnimations awaits, so the
+       SLICES exist before the intro overlay lifts.
+       chop-west and cook-south ship for all three slots (checked on disk), and
+       as above these three items are the only ones with sheets, so nothing is
+       guessed.  Recolours (copperplate, ironplate...) resolve through gearArt()
+       to the same steel art, so they are covered by these. */
+    for (const [pose, dir, fw] of [['cook', 'south', 213], ['chop', 'west', 480]]) {
+      this._gearStripFrame('shirt', 'tshirt', pose, dir, fw, 0);
+      this._gearStripFrame('chest', 'steelplate', pose, dir, fw, 0);
+      this._gearStripFrame('legs', 'steelgreaves', pose, dir, fw, 0);
+    }
   }
 
   /* ═══ v2.3.1710: THE COOK WEARS THE PLAYER'S SKIN ═══
@@ -6395,8 +6415,15 @@ export class EffectsRenderer {
          fire would have rendered 2.3x oversized while their own client drew it
          correctly.  The frame height belongs beside the drawn height, not baked
          into the arithmetic. */
-      chop: { frames: this._chopFrames, h: CHOP_STANDIN_H, fh: 220, ms: 45, traitDir: 'east', from: 12, count: 12 },
-      cook: { frames: this._cookFrames, h: 62, fh: 220, ms: 60, traitDir: 'south' },
+      /* v2.3.2303: `legless` and `gear` join the row.  The LOCAL chopper and
+         cook both swap the body to a legs-erased strip when greaves resolve
+         (v2.3.1468 / v2.3.1114) so their own legs cannot show around the
+         armour; the remote twin drew the solid body unconditionally, which
+         reproduces the exact artefact those two versions exist to prevent.
+         `gear` is the strip geometry for this pose -- pose/dir/frame-width --
+         so the placer below reads one table instead of three literals. */
+      chop: { frames: this._chopFrames, legless: this._chopLeglessFrames, h: CHOP_STANDIN_H, fh: 220, ms: 45, traitDir: 'east', from: 12, count: 12, gear: { pose: 'chop', dir: 'west', fw: 480 } },
+      cook: { frames: this._cookFrames, legless: this._cookLeglessFrames, h: 62, fh: 220, ms: 60, traitDir: 'south', gear: { pose: 'cook', dir: 'south', fw: 213 } },
       /* v2.3.1749: `once` marks a strip that tells a STORY rather than
          cycling.  The firemaking frames run stand -> crouch -> spark -> flame
          -> stand-with-fire-lit, so the free-running `% frames.length` this
@@ -6404,7 +6431,7 @@ export class EffectsRenderer {
          itself out and relighting, on a loop, starting from whatever frame the
          wall clock happened to land on.  `from`/`count` restrict chop to the
          12 downswing frames the LOCAL chopper plays. */
-      fire: { frames: this._fireFrames, h: 154, fh: FIRE_FH, ms: FIRE_FRAME_MS, traitDir: 'south', once: true },
+      fire: { frames: this._fireFrames, h: 154, fh: FIRE_FH, ms: FIRE_FRAME_MS, traitDir: 'south', once: true, gear: { pose: 'fire', dir: 'south', fw: FIRE_FW } },
       /* v2.3.1713: NOTE — cook and fire now hand a peer's stand-in the LOCAL
          player's baked skin, because these arrays are the local bake (cook
          since v2.3.1710, fire since this change).  A peer's cook has quietly
@@ -6412,8 +6439,14 @@ export class EffectsRenderer {
          figure joins it rather than diverging.  Doing it properly means one
          ~4MB bake PER PEER SKIN, which is exactly the resident-memory trade the
          cook's bake notes refuse — so it stays deliberate and written down.
-         Their head traits DO follow them (_placeSkillTraitsOnFor, v2.3.1574),
-         and neither remote figure draws gear at all, so no shirt either. */
+         Their head traits DO follow them (_placeSkillTraitsOnFor, v2.3.1574).
+         v2.3.2303: ...and now their CLOTHES follow them too, which makes this
+         oddity visible for the first time: a peer at a campfire is drawn with
+         YOUR skin and THEIR shirt, plate and greaves. The trade is unchanged
+         and still deliberate -- per-peer skin is the ~4MB-per-skin bake this
+         note refuses, on a platform that has lost its WebGL context to this
+         subsystem twice -- but it is now something the owner can actually see,
+         so it is written here rather than left to be discovered. */
     };
     for (const id in others) {
       const o = others[id];
@@ -6452,7 +6485,29 @@ export class EffectsRenderer {
         fi = _base + (Math.floor(now / spec.ms) % _count);
       }
       const _fiClamped = Math.min(spec.frames.length - 1, fi);
-      sp.texture = spec.frames[_fiClamped];
+      /* ═══ v2.3.2303: THE GEAR INDEX IS NOT THE BODY INDEX ═══
+         chop's row carries `from: 12`, so _fiClamped is a BODY index of 12..23
+         into a 24-frame sheet while the gear strips are 12-frame. Handing the
+         body index to _gearStripFrame hits its `Math.min(fi, e.length - 1)`
+         clamp and FREEZES the armour on its last frame for the whole swing
+         while the body animates underneath. The local chopper keeps the two
+         apart for exactly this reason (body CHOP_BASE + k, gear k). */
+      const _gearIx = _fiClamped - _base;
+      ent._gearIx = _gearIx;   /* v2.3.2303: published for the QA probe -- see below */
+      const _eq = o.equip || {};
+      const _gg = spec.gear;
+      /* Resolved BEFORE the body texture, because whether the greaves land
+         decides which body strip is drawn (see the legless swap below). */
+      const _legsTex = _gg ? this._gearStripFrame('legs', _eq.legs, _gg.pose, _gg.dir, _gg.fw,
+        _gg.pose === 'fire' ? _fiClamped : _gearIx) : null;
+      /* v2.3.2303: the legs-erased body, gated on the greaves frame RESOLVING
+         rather than merely on legs being equipped -- chop's gate shape, which
+         is the safer of the two: a legs item with no art for this pose, or a
+         sheet still loading, would otherwise render a legless peer with
+         nothing drawn over the gap. */
+      const _leglessOn = !!_legsTex && !!spec.legless
+        && spec.legless.length === spec.frames.length;
+      sp.texture = (_leglessOn ? spec.legless : spec.frames)[_fiClamped];
       /* v2.3.1749: recorded for remoteSkillProbe (pixiRenderer facade).  A
          frame INDEX is the fact under test — whether the peer's fire plays
          once in order or wraps — and neither window._gameState nor a
@@ -6471,7 +6526,27 @@ export class EffectsRenderer {
          Same curve, same position, so the two now shrink together. */
       const pscale = zonePlayerScale(zone, ox, oy, TILE);
       const s = (spec.h / spec.fh) * pscale;   /* v2.3.1715: per-strip frame height, was a hardcoded 220 */
-      sp.scale.set(s, s);
+      /* ═══ v2.3.2303: WHICH SIDE OF THE TRUNK ═══
+         The local chopper flips to face the tree it is working (chopSign, off
+         the node in _updateExtractionCue). A watcher has no node -- so this
+         path never flipped, and a peer chopping a tree on their LEFT has been
+         drawn chopping away from it. The watcher does have the same
+         S.gatherNodes list, so the nearest live tree is the same answer.
+         Falls back to +1, the sheet's native facing, which is what shipped. */
+      let _sign = 1;
+      if (code === 'chop') {
+        let _best = null, _bestD = 96 * 96;
+        const _nodes = (S && S.gatherNodes) || [];
+        for (let _i = 0; _i < _nodes.length; _i++) {
+          const _n = _nodes[_i];
+          if (!_n || _n.nodeType !== 'tree' || _n.depleted) continue;
+          const _dx = (_n.x || 0) - ox, _dy = (_n.y || 0) - oy;
+          const _d2 = _dx * _dx + _dy * _dy;
+          if (_d2 < _bestD) { _bestD = _d2; _best = _n; }
+        }
+        if (_best) _sign = _best.x >= ox ? 1 : -1;
+      }
+      sp.scale.set(_sign < 0 ? -s : s, s);
       sp.x = ox;
       sp.y = oy + 6 * pscale;                 /* foot offset shrinks with the figure */
       sp.visible = true;
@@ -6494,13 +6569,20 @@ export class EffectsRenderer {
          (v2.3.1050/1764). This is that same block, on the pose that was
          missed.
 
-         FIRE ONLY, deliberately. The offsets in FIRE_GEAR_REG were measured
-         against this strip (tools/measure_fire_gear_reg.mjs) and mean nothing
-         on the chop and cook cells, and no gear strips are cut for those
-         poses -- so a generic version here would either draw nothing or draw
-         it in the wrong place. Those two stay bare until their art exists,
-         which is the honest state rather than a guess. */
-      if (code === 'fire') {
+         v2.3.2303: NO LONGER FIRE ONLY, and the paragraph that used to sit
+         here was simply WRONG. It said "no gear strips are cut for those
+         poses" -- but chop-west.png and cook-south.png ship for all three
+         slots and the LOCAL cook and chopper have been reading them since
+         v2.3.1113/1131. So a peer cooking or chopping was drawn bare-chested
+         while their own screen composited shirt, plate and greaves, and their
+         head traits followed them the whole time (the trait call below sits
+         outside this gate) -- a correctly-headed, correctly-caped, undressed
+         cook. That is the owner's "items missing on other characters during
+         certain animations that don't appear missing on your own screen".
+         Fire keeps FIRE_GEAR_REG's per-frame offsets, which WERE measured
+         against its strip and do mean nothing on the other two; cook and chop
+         copy the body transform the way their local placers do. */
+      if (_gg) {
         if (!ent.gear) {
           /* Created AFTER the body sprite and BEFORE the traits below, so the
              layer order falls out of creation order: body, legs, shirt, plate,
@@ -6508,33 +6590,61 @@ export class EffectsRenderer {
           const mkg = () => { const g = new Sprite(); g.visible = false; this.gestureLayer.addChild(g); return g; };
           ent.gear = { legs: mkg(), shirt: mkg(), chest: mkg() };
         }
-        const _eq = o.equip || {};
-        const _placeFireGear = (slot) => (spr, tex) => {
+        const _placeGear = (slot) => (spr, tex) => {
           if (!spr) return;
           if (!tex) { spr.visible = false; return; }
-          const reg = FIRE_GEAR_REG[slot];
-          const off = (reg && reg.off && reg.off[_fiClamped]) || [0, 0];
-          const k = (reg && reg.scale) || 1;
           spr.anchor.set(0.5, 1);
           spr.texture = tex;
-          spr.scale.set(sp.scale.x * k, sp.scale.y * k);
-          spr.x = sp.x + off[0] * sp.scale.x;
-          spr.y = sp.y + off[1] * sp.scale.y;
+          if (code === 'fire') {
+            const reg = FIRE_GEAR_REG[slot];
+            const off = (reg && reg.off && reg.off[_fiClamped]) || [0, 0];
+            const k = (reg && reg.scale) || 1;
+            spr.scale.set(sp.scale.x * k, sp.scale.y * k);
+            spr.x = sp.x + off[0] * sp.scale.x;
+            spr.y = sp.y + off[1] * sp.scale.y;
+          } else {
+            /* v2.3.2303: chop's layer strips are 2x (480x440) against a 220
+               body, so they render at HALF the body factor to reach the same
+               on-screen height -- the local placer's sL, derived here from the
+               body scale rather than re-stated as a constant.  Cook's strips
+               are 1:1 with its body, so it copies the transform outright.
+               Both inherit sp.scale.x's SIGN, which is what makes the armour
+               flip with the chopper instead of against him. */
+            const lk = (code === 'chop') ? 0.5 : 1;
+            spr.scale.set(sp.scale.x * lk, sp.scale.y * lk);
+            spr.x = sp.x;
+            spr.y = sp.y;
+          }
           spr.visible = true;
         };
+        /* fire's registration offsets were measured per BODY frame, so it keeps
+           the body index; the other two index their own 12-frame strips. */
+        const _gi = (code === 'fire') ? _fiClamped : _gearIx;
         /* Legs first so the shirt hangs in front of the greaves, then the
            shirt, then the plate -- the local path's order, for its reasons. */
-        _placeFireGear('legs')(ent.gear.legs,
-          this._gearStripFrame('legs', _eq.legs, 'fire', 'south', FIRE_FW, _fiClamped));
+        _placeGear('legs')(ent.gear.legs, _legsTex);
         const _oShirt = (_eq.shirt !== undefined) ? _eq.shirt
           : ((o.shirt && o.shirt !== 'none') ? 'tshirt' : 'none');
-        this._placeSwingShirt(ent.gear.shirt, _placeFireGear('shirt'), _oShirt, _eq.chest,
-          'fire', 'south', FIRE_FW, _fiClamped, o.shirtColor, o.shirt || 'tshirt');
-        _placeFireGear('chest')(ent.gear.chest,
-          this._gearStripFrame('chest', _eq.chest, 'fire', 'south', FIRE_FW, _fiClamped));
+        /* ═══ v2.3.2303: THE COOK SHIRT IS PINNED, HERE TOO ═══
+           gear/shirt/tshirt/cook-south.png is 24 DIFFERENT garments, not 24
+           poses of one -- luminance swings 12.3% and the mask width 104->126px
+           frame to frame at 16.7fps.  That is the owner's already-reported
+           "flashing shirt", and v2.3.1710 fixed it locally by pinning to frame
+           22 (chosen by measurement: fewest uncovered torso pixels, luminance
+           within 2% of the sheet median).  Indexing this by the live frame
+           would reproduce that bug on everyone ELSE's screen.  Legs and chest
+           take the live index -- the same note records that those two sheets
+           were baked properly and are steady. */
+        const _shirtIx = (code === 'cook') ? 22 : _gi;
+        this._placeSwingShirt(ent.gear.shirt, _placeGear('shirt'), _oShirt, _eq.chest,
+          _gg.pose, _gg.dir, _gg.fw, _shirtIx, o.shirtColor, o.shirt || 'tshirt');
+        _placeGear('chest')(ent.gear.chest,
+          this._gearStripFrame('chest', _eq.chest, _gg.pose, _gg.dir, _gg.fw, _gi));
         /* Their metals, off the already-relayed equip ids (v2.3.1764). */
         if (ent.gear.legs) ent.gear.legs.tint = gearTint(_eq.legs);
         if (ent.gear.chest) ent.gear.chest.tint = gearTint(_eq.chest);
+      } else if (ent.gear) {
+        ent.gear.legs.visible = false; ent.gear.shirt.visible = false; ent.gear.chest.visible = false;
       }
       /* v2.3.1574 (owner: "doesn't reflect any trait items worn by them").
          The LOCAL figures composite the player's hair/beard/hat onto the
@@ -6627,7 +6737,11 @@ export class EffectsRenderer {
        was right on an invisible strip.  Resolving here covers all nine call
        sites (swing, bow, chop, cook, fire, shirt, and the two remote poses)
        and keeps the shared-cache property: copper and steel are one entry. */
-    item = gearArt(item);
+    /* v2.3.2303: ...and NULL for an art set that does not ship.  Same reason
+       as getGearFrame: `item` here can be a PEER's equip id straight off the
+       wire, and it is interpolated into the fetch URL below. */
+    item = gearArtSafe(slot, item);
+    if (!item) return null;
     const key = slot + '/' + item + '/' + pose + '/' + dir;
     let e = this._gearStrips[key];
     if (e === undefined) {

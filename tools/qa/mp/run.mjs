@@ -243,6 +243,7 @@ const SCENARIOS = {
   questbanner: () => import('./mp-questbanner.mjs'), /* v2.3.1745: QUEST ACCEPTED! / QUEST COMPLETED! over the dialogue */
   zonefx: () => import('./mp-zonefx.mjs'), /* v2.3.1748: what follows you through an exit, and what leaks in */
   firepeer: () => import('./mp-firepeer.mjs'), /* v2.3.2146: is the peer DRAWN while lighting a fire? */
+  cookpeer: () => import('./mp-cookpeer.mjs'), /* v2.3.2303: ...and do they wear their clothes while cooking and chopping? */
   remoteanim: () => import('./mp-remoteanim.mjs'), /* v2.3.1749: what the other player sees you doing */
   gearown: () => import('./mp-gearown.mjs'), /* v2.3.1750: armour you have not earned is not offered */
   pine: () => import('./mp-pine.mjs'), /* v2.3.1763: the first wood tier */
