@@ -1892,6 +1892,26 @@ export function processGameEvent(type, payload, S, deps) {
                  this just suppresses the visual "ghost hit" in the
                  normal case. */
               var atkSrc = (payload.monsterId && S.monsters) ? S.monsters.find(function (mm) { return mm.id === payload.monsterId; }) : null;
+              /* ═══ v2.3.2295: THE PLATE GOES RED WHILE IT IS HITTING YOU ═══
+                 Owner: "change the monster name plate to a red background when
+                 they're actively attacking you."
+
+                 No new wire field for this one: the worker has always named
+                 the victim on the swing itself, and we are already inside the
+                 `payload.targetId === S.myId` branch, so reaching this line at
+                 all means the server just said this monster hit ME.
+
+                 A WINDOW, not a flag, because there is no "stopped attacking"
+                 message to turn it off -- a monster that loses aggro, dies at
+                 range or walks away simply stops swinging. 2.6s is a little
+                 over the slowest archetype's swing gap, so a monster in a real
+                 exchange stays red between blows while one that has actually
+                 disengaged clears within a beat.
+
+                 Stamped BEFORE the display filters below, on the same footing
+                 as S.lastDamageTaken above: the filters decide whether to draw
+                 a number, not whether the hit happened. */
+              if (atkSrc) atkSrc._atkMeUntil = Date.now() + 2600;
               /* Drop the event when the attacker isn't in our local
                  monster snapshot — even if the server provided
                  attackerX/Y. If the client doesn't have the monster
@@ -3111,6 +3131,17 @@ export function processGameEvent(type, payload, S, deps) {
                   sentWeapons: (payload.weapons && payload.weapons[S.myId]) || [],
                   receivedWeapons: (payload.weapons && payload.weapons[_t2OtherId]) || [],
                   otherName: payload.a === S.myId ? (payload.bName || 'Trader') : (payload.aName || 'Trader'),
+                  /* v2.3.2294: and their ID, so the receipt can draw their
+                     PORTRAIT and not just their name. The 'done' snapshot is
+                     the only trade2 state that does not carry a/b -- it is
+                     built here rather than forwarded -- so the panel's
+                     `trade2.a === myId ? trade2.b : trade2.a` came back
+                     undefined on the receipt and its face fell through to the
+                     '?' placeholder, on the one screen of the three the owner
+                     actually looks at last. otherName has been in this object
+                     since v2.3.1235 and nothing ever read it; both are read
+                     now. */
+                  otherId: _t2OtherId,
                 };
                 var _t2PreCoins = S.rpg ? S.rpg.coins : null;      /* pre-trade coins */
                 var _t2PreInv = S.rpg ? S.rpg.inventory : null;    /* pre-trade inventory ref */

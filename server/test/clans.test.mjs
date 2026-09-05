@@ -19,6 +19,12 @@
  *   7. Resolution: endsAt via tick, winner by score, flat gold rewards
  *      via _creditPlayer (offline member -> inbox), double-resolve
  *      no-op.
+ *   9. v2.3.2301 wire-driven leave: clan_leave routed through the real
+ *      message switch (not the handler directly); the tag cleared from
+ *      playerState AND session data AND every peer's screen; survivor
+ *      keeps the clan; succession; last-out dissolves and frees the tag;
+ *      leaving twice is a no-op; desertion refused mid-war while a kick
+ *      is still allowed.
  */
 import { GameRoom } from '../src/index.js';
 import { CLANS } from '../src/clans.js';
@@ -228,6 +234,134 @@ check('last leave dissolves the clan', !room._clans.has(redClan.id) && !state._s
   await room._observeClanInvite('bp_cl_bob', { payload: { target: 'b'.repeat(64) } });
   check('invite sweep: a 64-char target is still accepted',
     room._clanInvites.size === before + 1, { size: room._clanInvites.size, before });
+}
+
+// ── 9. v2.3.2301: wire-driven leave ──
+// The Leave Clan button was local-only until now: it nulled the client's own
+// state while the registry kept you a member, so the clan came back on the
+// next reload.  The server command has existed since v2.3.1125 -- only the
+// send was missing.  Turning the send on makes the whole removal path
+// reachable from a real client for the first time, which is what these
+// assertions cover.
+//
+// TWO THINGS ABOUT THE SHAPE OF THIS SECTION, both learned the hard way:
+//
+//  a) It routes through webSocketMessage, not straight at the handler like
+//     section 4 does.  A suite that only calls the handler cannot catch a
+//     typo'd `case` label (TRAPS #18), and the entire bug being fixed here
+//     was "the message never arrives".
+//  b) The mid-war REFUSAL test is last, deliberately.  It was written first,
+//     and against a build without the guard the refusal does not happen --
+//     so Hana actually left, and every later assertion about "her tag is
+//     gone" then passed for the wrong reason, on a player who was not in a
+//     clan at all.  A cascading fixture turns real assertions vacuous.
+{
+  const cmd = (ws, type, payload) =>
+    room.webSocketMessage(ws, JSON.stringify({ type, payload: payload || {} }));
+
+  const wsG = fakeWs('greg'); const wsH = fakeWs('hana'); const wsI = fakeWs('ivan');
+  await join(wsG, 'bp_cl_greg', 'Greg');
+  await join(wsH, 'bp_cl_hana', 'Hana');
+  await join(wsI, 'bp_cl_ivan', 'Ivan');
+  const topUp = () => { room.playerState['bp_cl_greg'].coins = 5000; room.playerState['bp_cl_hana'].coins = 5000; room.playerState['bp_cl_ivan'].coins = 5000; };
+  topUp();
+
+  const enlist = async (leaderId, ws, id) => {
+    await room._observeClanInvite(leaderId, { payload: { target: id } });
+    await room._handleClanJoinAccept(sessionOf(id), { inviter: leaderId });
+  };
+
+  await room._handleClanCreate(sessionOf('bp_cl_greg'), { name: 'Green Team', tag: 'GRN', color1: '#0f0' });
+  await enlist('bp_cl_greg', wsH, 'bp_cl_hana');
+  check('9.0 fixture: GRN has two members', room._clanOf('bp_cl_greg') && room._clanOf('bp_cl_greg').members.length === 2);
+
+  // Only join.js stamps the tag onto playerState; _handleClanCreate and
+  // _handleClanJoinAccept stamp session.data alone.  These players joined
+  // BEFORE their clan existed, so without this reconnect playerState never
+  // carries a tag -- and "the tag is gone from playerState" passes happily
+  // against the broken build.  Rejoining is what a real member does on every
+  // reconnect, and it is the only way the field under test gets populated.
+  await join(wsH, 'bp_cl_hana', 'Hana');
+  check('9.2a positive control: a reconnected member HAS the tag on playerState',
+    room.playerState['bp_cl_hana'].clanTag === 'GRN', room.playerState['bp_cl_hana'].clanTag);
+
+  wsH.sent.length = 0; wsI.sent.length = 0;
+  await cmd(wsH, 'clan_leave');
+  check('9.1 clan_leave routes through the message switch', !room._clanOf('bp_cl_hana'));
+  check('9.2 leaving strips the tag from playerState',
+    !room.playerState['bp_cl_hana'].clanTag && !room.playerState['bp_cl_hana'].clanColor1,
+    { ps: room.playerState['bp_cl_hana'].clanTag });
+  check('9.2b ...and from session data too', !sessionOf('bp_cl_hana').data.clanTag);
+  {
+    const upd = msgsOfType(wsI, 'player_update').filter((m) => m.id === 'bp_cl_hana');
+    check('9.3 peers are told the tag is gone',
+      upd.length >= 1 && upd[upd.length - 1].data.clanTag === null && upd[upd.length - 1].data.clanColor1 === null,
+      upd.map((m) => m.data));
+    check('9.3b the leaver is not sent their own peer update',
+      msgsOfType(wsH, 'player_update').filter((m) => m.id === 'bp_cl_hana').length === 0);
+  }
+  check('9.5 the survivor keeps the clan', !!room._clanOf('bp_cl_greg') && room._clanOf('bp_cl_greg').members.length === 1);
+  // The only storage assertion that bites: makeState().put stores the LIVE
+  // object and _clanRemoveMember mutates it in place, so re-reading
+  // 'clan:<id>' hands back the same in-memory object and proves nothing.
+  // A delete is real.
+  check('9.5b the leaver\'s clan_by_player key is deleted', !state._store.has('clan_by_player:bp_cl_hana'));
+
+  // 9.4: kick walks the same removal path, so it gains the same two fixes.
+  await enlist('bp_cl_greg', wsH, 'bp_cl_hana');
+  await join(wsH, 'bp_cl_hana', 'Hana');       // repopulate playerState.clanTag
+  check('9.4a positive control: rejoined and tagged again', room.playerState['bp_cl_hana'].clanTag === 'GRN');
+  wsI.sent.length = 0;
+  await cmd(wsG, 'clan_kick', { target: 'bp_cl_hana' });
+  check('9.4 a kick strips playerState and tells peers',
+    !room.playerState['bp_cl_hana'].clanTag
+      && msgsOfType(wsI, 'player_update').some((m) => m.id === 'bp_cl_hana' && m.data.clanTag === null),
+    { ps: room.playerState['bp_cl_hana'].clanTag });
+
+  // 9.6: succession, then the dissolve.
+  await enlist('bp_cl_greg', wsH, 'bp_cl_hana');
+  const grnId = room._clanOf('bp_cl_greg').id;
+  await cmd(wsG, 'clan_leave');   // the LEADER leaves a populated clan
+  check('9.6 leadership passes to the remaining member',
+    room._clanOf('bp_cl_hana') && room._clanOf('bp_cl_hana').leaderId === 'bp_cl_hana',
+    room._clanOf('bp_cl_hana'));
+
+  // 9.8: the last member out dissolves the clan and frees the name+tag. This
+  // is the owner-visible consequence the armed button now spells out.
+  await cmd(wsH, 'clan_leave');
+  check('9.8 the last member out dissolves the clan',
+    !room._clans.has(grnId) && !state._store.has('clan:' + grnId));
+  check('9.8b ...and the tag is free to take again',
+    ![...room._clans.values()].some((c) => c.tag === 'GRN'));
+
+  // 9.9: idempotency, which is why this path needs no opId. Counted, not
+  // compared to zero -- an assertion that the count is 0 would also pass if
+  // the command silently stopped working.
+  const clansAtEnd = room._clans.size;
+  wsH.sent.length = 0;
+  await cmd(wsH, 'clan_leave');
+  await cmd(wsH, 'clan_leave');
+  check('9.9 leaving twice is a no-op, not an error',
+    msgsOfType(wsH, 'clan_state').length === 0 && room._clans.size === clansAtEnd,
+    { states: msgsOfType(wsH, 'clan_state').length, clans: room._clans.size, was: clansAtEnd });
+
+  // 9.7 LAST, on its own fresh fixture, so a missing guard cannot corrupt
+  // anything above it.
+  topUp();
+  await room._handleClanCreate(sessionOf('bp_cl_greg'), { name: 'Green Two', tag: 'GRT', color1: '#0f0' });
+  await enlist('bp_cl_greg', wsH, 'bp_cl_hana');
+  await room._handleClanCreate(sessionOf('bp_cl_ivan'), { name: 'Ivan Legion', tag: 'IVN' });
+  await room._handleClanWarDeclare(sessionOf('bp_cl_greg'), { defenderTag: 'IVN', zone: 'meadow' });
+  const grt = room._clanOf('bp_cl_greg');
+  check('9.7a fixture: GRT is at war',
+    [...room._clanWars.values()].some((w) => w.status === 'active' && (w.challenger.clanId === grt.id || w.defender.clanId === grt.id)));
+  wsH.sent.length = 0;
+  await cmd(wsH, 'clan_leave');
+  check('9.7 leaving is refused mid-war',
+    !!room._clanOf('bp_cl_hana') && msgsOfType(wsH, 'clan_error').some((m) => m.payload.text === 'Cannot leave during a clan war'),
+    { stillIn: !!room._clanOf('bp_cl_hana'), errs: msgsOfType(wsH, 'clan_error').map((m) => m.payload.text) });
+  check('9.7b ...and a kick is still allowed mid-war (a leader ejecting a griefer)',
+    await (async () => { await cmd(wsG, 'clan_kick', { target: 'bp_cl_hana' }); return !room._clanOf('bp_cl_hana'); })());
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

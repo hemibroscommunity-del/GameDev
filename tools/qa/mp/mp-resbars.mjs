@@ -76,181 +76,302 @@ export async function run({ browser, wsPort, webPort, rec }) {
          hidden, which is the whole point of "they stay in those positions" ── */
   rec.ok('energy keeps its y with MP hidden (space is reserved)',
     !!en && en.en > 0.9 && en.mp <= 0.01 && en.enY === rest.enY, { en, rest });
+  /* ═══ v2.3.2300: SECTIONS 6 AND 7 ARE NOW ABOUT BLOCKS ═══
+     They tested the sliding chunk and the gliding "-N", and both are gone with
+     the proportional fill. Owner: "instead of seeing tiny percentages and
+     trying to do mental math each time stamina or mana is used, I want just 5
+     blocks." The chunk and the number were that arithmetic, animated -- with a
+     block readout the answer to "how much just left" is a block, visibly.
 
-  /* ── 6. THE SLIDE ──
-     Sampled INSIDE one page evaluation on animation frames.  A harness
-     round-trip costs 50-150ms and the slide lasts 420, so sampling across the
-     wire would read two settled frames and call a working slide broken (the
-     same mistake that misread the screenshots of this feature first time). */
+     Rewritten rather than deleted, because the QUESTION those sections asked
+     is still the right one: does the bar tell you what just happened? It is
+     asked of the blocks now.
+
+     The block count is the load-bearing claim of the whole feature. A block is
+     a fifth of the pool and every special costs exactly one (v2.3.2298), so
+     "blocks lit" IS "specials you can still afford" -- and if that stops being
+     true the readout is lying about the thing it exists to say. */
   await P.page.waitForTimeout(2500);
-  const sampled = await P.page.evaluate(() => new Promise((res) => {
+  const blocks = await P.page.evaluate(() => {
     const S = window._gameState.current;
-    const seen = [];
-    const num = [];
-    /* PIN the spent value for the sample window.  Mana is server-authoritative:
-       a bare local subtraction is overwritten by the next player_state delta,
-       mana pops back up, and the chunk correctly collapses — which is the
-       right behaviour and the wrong fixture.  Pinning measures the animation
-       instead of the round-trip. */
-    const target = Math.max(0, (S.rpg.mana || 0) - 40);
-    S.rpg.mana = target;
-    const t0 = performance.now();
-    const tick = () => {
-      const s2 = window._gameState.current;
-      if (s2 && s2.rpg) s2.rpg.mana = target;
-      const b = window.__btResourceBars;
-      if (b && b.mpGhostX != null) seen.push({ t: Math.round(performance.now() - t0), x: +b.mpGhostX.toFixed(2), w: +b.mpGhostW.toFixed(2) });
-      /* v2.3.1897: the "-N" rides the same sample window as the chunk — one
-         evaluation, so the two readings describe the same frames and cannot
-         be blamed on each other's timing. */
-      if (b && b.mpSpentX != null) num.push({ t: Math.round(performance.now() - t0), x: b.mpSpentX, txt: b.mpSpentText, amt: b.mpSpent, right: b.barRight, a: b.mpSpentA, barA: b.mp });
-      /* v2.3.1898: 2200ms, not 500 — the number now drifts across the bar's
-         whole hold+fade, and a 500ms window would sample the first quarter of
-         it and call a 26px drift a 6px one.  The chunk's own samples simply
-         stop arriving after 420ms (mpGhostX goes null), which is correct. */
-      if (performance.now() - t0 < 2200) requestAnimationFrame(tick);
-      else res({ seen, num });
+    const R = S.rpg;
+    const read = () => {
+      const b = window.__btResourceBars || {};
+      return { mp: b.mpBlocks, en: b.enBlocks, mpDrawn: b.mpBlocksDrawn, enDrawn: b.enBlocksDrawn,
+        w: b.blockW, h: b.blockH };
     };
-    requestAnimationFrame(tick);
-  }));
-  const slide = sampled.seen;
-  const num = sampled.num;
-  console.log(`    slide samples: ${slide.length}, x ${slide.length ? slide[0].x + ' -> ' + slide[slide.length - 1].x : 'n/a'}`);
-  rec.ok('the spent chunk is drawn at all', slide.length >= 3, { n: slide.length });
-  rec.ok('...and it SLIDES RIGHT (x strictly increases)',
-    slide.length >= 3 && slide[slide.length - 1].x > slide[0].x + 2,
-    { first: slide[0], last: slide[slide.length - 1] });
-  rec.ok('...keeping its width — it is the amount spent, not a shrinking wipe',
-    slide.length >= 3 && Math.abs(slide[slide.length - 1].w - slide[0].w) < 0.5,
-    { first: slide[0], last: slide[slide.length - 1] });
-
-  /* ── 7. THE SPENT NUMBER (v2.3.1897) ──
-     Owner: "I want the resource number spent to glide to the right of the
-     resource bar (as a negative number)".  Three separate claims, so three
-     separate assertions: it is a NEGATIVE number, it is RIGHT OF the bar, and
-     it GLIDES.  Asserting only that a text node exists would pass on a "-0"
-     parked on top of the bar. */
-  console.log(`    spent-number samples: ${num.length}, ${num.length ? num[0].txt + ' x ' + num[0].x + ' -> ' + num[num.length - 1].x + ' (bar right edge ' + num[0].right + ')' : 'n/a'}`);
-  rec.ok('the spent NUMBER is drawn', num.length >= 3, { n: num.length });
-  rec.ok('...reading as a negative number of the amount spent',
-    num.length >= 3 && /^-\d+$/.test(num[0].txt) && num[0].txt === '-40',
-    { txt: num.length ? num[0].txt : null, amt: num.length ? num[0].amt : null });
-  rec.ok('...positioned to the RIGHT of the bar, clear of its border',
-    num.length >= 3 && num.every((s2) => s2.x > s2.right),
-    { first: num[0], right: num[0] && num[0].right });
-  /* v2.3.1898, owner: "I saw the number appear but not gliding.  I want the
-     numbers to slowly move right then fade."  Two failure modes to exclude,
-     and "x went up" excludes neither on its own:
-       - it barely moves (the old 13px/420ms, which read as parked), so
-         require most of the travel to actually happen; and
-       - it moves in one jump and then sits, so require it to be STILL MOVING
-         in the back half — that is the difference between a glide and a pop. */
-  const mid = num[Math.floor(num.length / 2)];
-  rec.ok('...and it GLIDES right, covering real ground',
-    num.length >= 8 && num[num.length - 1].x - num[0].x > 18,
-    { first: num[0], last: num[num.length - 1], travelled: num.length ? +(num[num.length - 1].x - num[0].x).toFixed(2) : null });
-  rec.ok('...still moving in the SECOND half (a glide, not a pop-and-park)',
-    num.length >= 8 && num[num.length - 1].x - mid.x > 4,
-    { mid, last: num[num.length - 1] });
-  rec.ok('...never drifting so far it leaves the character behind',
-    num.length >= 3 && num[num.length - 1].x < num[0].right + 60,
-    { last: num[num.length - 1], right: num[0] && num[0].right });
-
-  /* v2.3.1898, owner: "the glide numbers need to match the same timing as the
-     resource bars for appearing and fading."  Asserted as an IDENTITY on every
-     sampled frame rather than by checking two timestamps: same alpha, always,
-     is the only form of this that cannot drift when the fade is retuned. */
-  const drift = num.filter((s2) => Math.abs(s2.a - s2.barA) > 0.02);
-  rec.ok('...sharing the BAR\'s alpha exactly, frame for frame',
-    num.length >= 8 && drift.length === 0,
-    { samples: num.length, mismatched: drift.slice(0, 3) });
-  /* And that alpha is genuinely a fade, not a constant 1 the identity above
-     would also satisfy — the vacuous-pass trap this file keeps hitting. */
-  const faded = num.filter((s2) => s2.a < 0.9);
-  rec.ok('...and that shared alpha really does fade within the window',
-    faded.length >= 2 && num[0].a > 0.9,
-    { first: num[0] && num[0].a, last: num[num.length - 1] && num[num.length - 1].a, fadingSamples: faded.length });
-
-  /* ── 8. A BURST OF SPENDS (v2.3.1899) ──
-     Owner: "The spent energy numbers glide and fade correctly but not the mp
-     numbers.  It's still the quick still pop up."
-
-     Both bars run identical code, so the fault was in the DATA, not the
-     drawing: mana gets spent REPEATEDLY (town regen pays 10% of max every
-     ~670ms, so you can cast again immediately), and every further spend used
-     to snap the number back to its origin — it restarted before it had
-     travelled far enough to read as motion.  Energy only looked right
-     because it was being spent once.
-
-     Sections 6-7 above spend ONCE and would pass with this fully broken,
-     which is exactly how it shipped.  This drives three spends and a
-     fractional regen dip through one rAF window. */
-  /* Refill the pool FIRST.  The sections above spend mana repeatedly and the
-     idle harness character barely regenerates, so by here the pool was empty
-     — every step below then clamped at 0, no drop was ever detected, and the
-     accumulation check measured nothing.  (It failed loudly rather than
-     passing vacuously only because it asserts a RISE; "amt > 0" would have
-     sailed through on a stuck value.)  A rise is a refill, not a spend, so
-     this reveals no bar. */
-  await P.page.evaluate(() => {
-    const S = window._gameState.current;
-    if (S && S.rpg) S.rpg.mana = S.rpg.maxMana || 100;
+    /* BLOCK MULTIPLES, not percentages. maxMana is 102 at Magic 1, so
+       round(102 * 0.6) is 61 -- which is 2.99 fifths and floors to 2, not 3.
+       The first cut of this read that as a bug in the readout; it was the
+       fixture asking for "60% of the bar" when the thing under test counts
+       fifths. A player spends blocks, so the test spends blocks. */
+    const at = (n) => new Promise((res) => {
+      /* SPENT DOWN FROM FULL, which is the only state a player is ever in.
+         Two cuts of this got it wrong in the same way, from opposite ends: max
+         is not a multiple of five (maxMana is 102 at Magic 1, a block is
+         floor(102/5) = 20), so "n blocks held" and "full minus (5-n) casts" are
+         different numbers. 4 x 20 is 80, which is 3.92 fifths of 102 and
+         correctly reads THREE -- but a player never holds 80, they hold 102-20
+         = 82, which is 4.02 fifths and reads four.
+         The readout was right both times. The fixture was inventing a pool
+         state the game cannot produce, and then calling the honest answer a
+         bug. Spend down from full, exactly as casting does. */
+      R.mana = R.maxMana - (5 - n) * Math.floor(R.maxMana / 5);
+      R.stamina = R.maxStamina - (5 - n) * Math.floor(R.maxStamina / 5);
+      requestAnimationFrame(() => requestAnimationFrame(() => res(Object.assign({ n }, read()))));
+    });
+    /* ...and one deliberately AWKWARD value: maxMana - 1, which is a hair under
+       full and must show four, because four is how many casts are left. */
+    const justUnder = () => new Promise((res) => {
+      R.mana = R.maxMana - 1;
+      R.stamina = R.maxStamina - 1;
+      requestAnimationFrame(() => requestAnimationFrame(() => res(Object.assign({ n: 'max-1' }, read()))));
+    });
+    return (async () => {
+      const out = [];
+      for (const n of [5, 4, 3, 2, 1, 0]) out.push(await at(n));
+      out.push(await justUnder());
+      return out;
+    })();
   });
-  await P.page.waitForTimeout(2500);
-  const burst = await P.page.evaluate(() => new Promise((res) => {
-    const S = window._gameState.current;
-    const seen = [];
-    const floor0 = 0;
-    let pin = Math.max(floor0, (S.rpg.mana || 0) - 20);
-    const t0 = performance.now();
-    /* Each step is a further spend landing while the bar is still up, except
-       the 0.4 dip — that is the shape town regen actually delivers (mana
-       arrives fractional: 77 -> 77.1 -> 90 -> 90.1), and a sub-half-unit dip
-       used to round to an amount of 0 and BLANK a live number mid-glide. */
-    const steps = [{ at: 600, d: 15 }, { at: 1100, d: 0.4 }, { at: 1500, d: 12 }];
-    let next = 0;
-    const tick = () => {
-      const el = performance.now() - t0;
-      if (next < steps.length && el >= steps[next].at) { pin = Math.max(floor0, pin - steps[next].d); next++; }
-      const s2 = window._gameState.current;
-      if (s2 && s2.rpg) s2.rpg.mana = pin;
-      const b = window.__btResourceBars;
-      if (b && b.mp > 0.01) seen.push({ t: Math.round(el), x: b.mpSpentX, amt: b.mpSpent, a: b.mpSpentA, barA: b.mp, mana: Math.round((s2.rpg.mana || 0) * 10) / 10, pin: Math.round(pin * 10) / 10 });
-      if (el < 2400) requestAnimationFrame(tick); else res(seen);
-    };
-    requestAnimationFrame(tick);
-  }));
-  const backwards = burst.filter((f, i) => i > 0 && f.x != null && burst[i - 1].x != null && f.x < burst[i - 1].x - 0.01);
-  const blanked = burst.filter((f) => f.barA > 0.01 && (f.x == null || !f.amt));
-  console.log(`    burst samples: ${burst.length}, amt ${burst.length ? burst[0].amt + ' -> ' + burst[burst.length - 1].amt : 'n/a'}, x ${burst.length ? burst[0].x + ' -> ' + burst[burst.length - 1].x : 'n/a'}`);
-  rec.ok('the pool actually had mana to spend (fixture guard)',
-    burst.length > 0 && burst[0].pin > 5, { first: burst[0] });
-  rec.ok('a burst of spends keeps the number on screen throughout',
-    burst.length >= 12, { n: burst.length });
-  rec.ok('...and it NEVER snaps back to the origin (the reported "still pop up")',
-    burst.length >= 12 && backwards.length === 0,
-    { jumps: backwards.slice(0, 3) });
-  rec.ok('...still covering ground across the whole burst',
-    burst.length >= 12 && burst[burst.length - 1].x - burst[0].x > 12,
-    { first: burst[0], last: burst[burst.length - 1] });
-  /* v2.3.1900, owner: "Successive expenditures of mp and energy are treated
-     cumulatively (numbers keep adding up the more you spend) I just want the
-     expended amount."  The fixture spends 20, then 15, then a 0.4 regen dip,
-     then 12 — so the distinct amounts the number shows must be exactly
-     [20, 15, 12]: each spend on its own, the dip changing nothing.  Asserting
-     the whole sequence rather than just the last value is what separates
-     "per-spend" from "accumulating" AND from "stuck on the first". */
-  const amts = burst.map((f) => f.amt).filter((a, i, arr) => i === 0 || a !== arr[i - 1]);
-  rec.ok('...showing THIS spend, not a running total',
-    JSON.stringify(amts) === JSON.stringify([20, 15, 12]), { amts });
-  rec.ok('...and a fractional regen dip never BLANKS a live number',
-    blanked.length === 0, { blanked: blanked.slice(0, 3) });
-  /* The dip is the reason the amount is not overwritten blindly: it rounds to
-     0.  Prove the fixture actually delivered one, or the guard above is
-     testing nothing. */
-  rec.ok('...(the fixture really did deliver a sub-unit dip)',
-    burst.some((f, i) => i > 0 && f.mana < burst[i - 1].mana - 0.01 && f.mana > burst[i - 1].mana - 1),
-    { manas: burst.map((f) => f.mana).slice(0, 24) });
+  const at = (n) => blocks.find((b) => b.n === n) || {};
+  console.log('    blocks held -> shown: ' + blocks.map((b) => b.n + '->' + b.mp).join(' '));
+  rec.ok('a full bar shows all five blocks', at(5).mp === 5 && at(5).en === 5, at(5));
+  rec.ok('an empty bar shows none', at(0).mp === 0 && at(0).en === 0, at(0));
+  rec.ok('every block held is a block shown, on both bars',
+    at(4).mp === 4 && at(3).mp === 3 && at(2).mp === 2 && at(1).mp === 1
+    && at(4).en === 4 && at(3).en === 3 && at(2).en === 2 && at(1).en === 1,
+    blocks.map((b) => ({ n: b.n, mp: b.mp, en: b.en })));
+  /* MANA AND STAMINA ARE DIFFERENT POOLS and this is the one place that shows.
+     maxStamina is a clean 100 on a fresh character, maxMana is 102 (Magic 1 x
+     2.5 on top of 100), so the two have different remainders above their fifth
+     block -- and both still read five when full. Asserted together because a
+     readout that only worked on the divisible pool would pass every other
+     check in this file. */
+  rec.ok('...and both pools read FULL as five, whether or not the max divides '
+    + 'by five', at(5).mp === 5 && at(5).en === 5,
+    { mp: at(5).mp, en: at(5).en });
+  /* FLOOR, not round, and this is the assertion that fails if anyone
+     "smooths" the display: one short of full is FOUR blocks, because four is
+     how many specials you can still cast. A fifth block there would promise a
+     cast the worker refuses. */
+  rec.ok('...and it FLOORS -- a hair under full is four blocks, because that '
+    + 'is how many specials are left',
+    at('max-1').mp === 4 && at('max-1').en === 4, at('max-1'));
 
-  await P.ctx.close().catch(() => {});
+  /* Drawn, not merely computed. The count above comes from the renderer's own
+     probe, but a probe can report a number for a sprite that never made it on
+     screen -- which is exactly the class of pass this file's history is full
+     of. */
+  const drawn = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    S.rpg.mana = Math.round(S.rpg.maxMana * 0.6);
+    return new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(() => {
+      const b = window.__btResourceBars || {};
+      res({ mpDrawn: b.mpBlocksDrawn, mp: b.mpBlocks, alpha: b.mp, w: b.blockW, h: b.blockH });
+    })));
+  });
+  rec.ok('the block bar is actually on screen while the spend is up, not just '
+    + 'reported', drawn.mpDrawn === true && drawn.alpha > 0.01, drawn);
+  /* And it is the owner's art at his aspect, not a squashed one: his frames are
+     273x98, so a 76px-wide bar is 27 tall. Five blocks crushed into the old
+     16px slot stop reading as five things. */
+  rec.ok('...at the sheet\'s own proportions, so the five blocks stay countable',
+    drawn.w === 76 && drawn.h === 27, drawn);
+
+
+  /* ═══ v2.3.2300: A BURST OF SPENDS, COUNTED IN BLOCKS ═══
+     This section tested the gliding "-N" across a burst -- that it never
+     snapped back, never went cumulative, never blanked on a regen tick. All of
+     those were about a NUMBER that no longer exists (see section 6).
+
+     What survives is the question underneath: cast repeatedly and does the
+     readout keep telling the truth? In blocks that is sharper than it ever was
+     with a bar, because the answer is countable: four specials from full must
+     leave exactly one block.
+
+     Driven in exact block multiples rather than percentages of max. The first
+     cut of this set the pool to round(max * 0.6) and got 2 blocks instead of 3
+     -- correctly, because maxMana is 102 at Magic 1 and 61/102 is 2.99 fifths.
+     That is the readout being honest and the fixture being sloppy: a test that
+     wants "three blocks left" has to spend block-sized amounts, which is what
+     the player does. */
+  const burst = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const R = S.rpg;
+    const block = Math.floor(R.maxMana / 5);
+    const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    return (async () => {
+      const seen = [];
+      R.mana = R.maxMana;
+      await frame();
+      seen.push({ cast: 0, mana: R.mana, blocks: (window.__btResourceBars || {}).mpBlocks });
+      for (let i = 1; i <= 5; i++) {
+        R.mana = Math.max(0, R.mana - block);
+        await frame();
+        seen.push({ cast: i, mana: R.mana, blocks: (window.__btResourceBars || {}).mpBlocks });
+      }
+      return { block, seen, maxMana: R.maxMana };
+    })();
+  });
+  console.log('    one block = ' + burst.block + ' mana of ' + burst.maxMana
+    + '; casts -> blocks: ' + burst.seen.map((x) => x.cast + ':' + x.blocks).join(' '));
+  rec.ok('a full bar is five blocks and each cast takes exactly one',
+    burst.seen.length === 6
+    && burst.seen[0].blocks === 5 && burst.seen[1].blocks === 4
+    && burst.seen[2].blocks === 3 && burst.seen[3].blocks === 2
+    && burst.seen[4].blocks === 1, burst.seen);
+  /* THE CLAIM THE WHOLE FEATURE RESTS ON: blocks showing = specials you can
+     still afford. Five casts from full, and the fifth is the last one. */
+  rec.ok('...and the fifth cast is the last the bar had in it',
+    burst.seen[5] && burst.seen[5].blocks === 0, burst.seen[5]);
+  /* Never negative, never wrapping -- a floor on a pool the server can push
+     below zero mid-echo would otherwise read as a full bar. */
+  /* ═══ THE PICTURE ═══
+     Owner: "Send me a preview of what it looks like in game." The bars only
+     exist for two seconds after a spend, so this stages one on each pool and
+     photographs the window rather than hoping to catch one. Cropped to the
+     player, because a full-page shot of a 780x1688 canvas takes long enough in
+     headless to land inside the fade -- the same lesson mp-moncue learned about
+     photographing a mark with a clock on it. */
+  await P.page.evaluate(() => {
+    const R = window._gameState.current.rpg;
+    const mb = Math.floor(R.maxMana / 5), sb = Math.floor(R.maxStamina / 5);
+    R.mana = R.maxMana; R.stamina = R.maxStamina;
+    /* two casts of mana, one of stamina, so the shot shows two DIFFERENT
+       counts rather than one number twice */
+    setTimeout(() => { R.mana = R.maxMana - 2 * mb; R.stamina = R.maxStamina - sb; }, 60);
+  });
+  await P.page.waitForTimeout(420);
+  const shotBox = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const cv = document.querySelector('canvas');
+    if (!cv || !S.camera || !S.player) return null;
+    const r = cv.getBoundingClientRect();
+    const cx = r.left + (S.player.x - S.camera.x) * (S._worldScaleX || 1);
+    const cy = r.top + (S.player.y - S.camera.y) * (S._worldScaleY || 1);
+    const x = Math.max(0, Math.round(cx - 110)), y = Math.max(0, Math.round(cy - 70));
+    return { x, y, width: Math.min(innerWidth - x, 220), height: Math.min(innerHeight - y, 190) };
+  });
+  await P.page.screenshot(Object.assign({ path: `${H.REPO}/tools/qa/mp/out/resbars-blocks.png` },
+    shotBox && shotBox.width > 60 ? { clip: shotBox } : {})).catch(() => {});
+
+  rec.ok('...and a bar spent past empty still reads empty, not full',
+    await P.page.evaluate(() => new Promise((r) => {
+      const R = window._gameState.current.rpg;
+      R.mana = -5;
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        const b = window.__btResourceBars || {};
+        R.mana = R.maxMana;
+        r(b.mpBlocks === 0);
+      }));
+    })), null);
+
+  /* ══ 9. v2.3.2302: THE ROW GROWS WITH INVESTMENT ══
+     Everything above describes a BASE character, who has five blocks -- which
+     is why none of it changed when the ladder landed, and why none of it can
+     detect the ladder failing. That is the whole point of this section: a
+     build where the count never grew past five would read identically to every
+     assertion above.
+
+     Two halves, deliberately separate:
+       a) the client's own derivation (blocksAt via recalcDerived) -- does a
+          maxed Magic character COMPUTE ten blocks;
+       b) the renderer -- given ten, does it actually DRAW ten cells on a
+          longer bar. `mpCellsDrawn` counts sprites really on screen, so a
+          count that says ten while the art still shows five fails here. */
+  const ladder = await P.page.evaluate(() => new Promise((res) => {
+    const S = window._gameState.current;
+    const R = S.rpg;
+    const snap = () => {
+      const b = window.__btResourceBars || {};
+      return { count: b.mpBlockCount, cells: b.mpCellsDrawn, w: b.mpBarW,
+        lit: b.mpBlocks, enCount: b.enBlockCount, enCells: b.enCellsDrawn };
+    };
+    const before = { maxMana: R.maxMana, staff: R.prog3 && R.prog3.sk && R.prog3.sk.staff.level,
+      stam: R.prog3 && R.prog3.alloc && R.prog3.alloc.stam };
+    const out = { capOn: !!(S._serverCaps && S._serverCaps.blockScale) };
+    R.mana = R.maxMana; R.stamina = R.maxStamina;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      out.base = snap();
+      /* Max out BOTH inputs through the real client derivation, not by poking
+         the counts -- that is what makes this a test of blocksAt rather than
+         of the renderer reading a number we handed it. */
+      R.prog3.sk.staff.level = 100;
+      R.prog3.alloc.stam = 100;
+      window.__btRecalc ? window.__btRecalc(R) : null;
+      out.derived = { manaBlocks: R.manaBlocks, stamBlocks: R.stamBlocks, maxMana: R.maxMana };
+      R.mana = R.maxMana; R.stamina = R.maxStamina;
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        out.maxed = snap();
+        /* spend ONE block at the new count and confirm the readout drops by
+           exactly one light -- the property the whole feature rests on. */
+        R.mana = R.maxMana - Math.floor(R.maxMana / (R.manaBlocks || 5));
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          out.afterOneCast = snap();
+          R.prog3.sk.staff.level = before.staff; R.prog3.alloc.stam = before.stam;
+          if (window.__btRecalc) window.__btRecalc(R);
+          R.mana = R.maxMana; R.stamina = R.maxStamina;
+          res(out);
+        }));
+      }));
+    }));
+  }));
+  console.log('    ladder: ' + JSON.stringify(ladder));
+
+  rec.ok('a base character is on five blocks', ladder.base && ladder.base.count === 5, ladder.base);
+  rec.ok('maxing Magic and Body derives TEN blocks on both pools',
+    !!ladder.derived && ladder.derived.manaBlocks === 10 && ladder.derived.stamBlocks === 10, ladder.derived);
+  rec.ok('...and the renderer actually DRAWS ten cells, not five',
+    !!ladder.maxed && ladder.maxed.cells === 10 && ladder.maxed.enCells === 10, ladder.maxed);
+  rec.ok('...on a bar that is genuinely longer than the five-block one',
+    !!ladder.maxed && !!ladder.base && ladder.maxed.w > ladder.base.w, 
+    { base: ladder.base && ladder.base.w, maxed: ladder.maxed && ladder.maxed.w });
+  rec.ok('...but still within the width cap, so it cannot swallow the screen',
+    !!ladder.maxed && ladder.maxed.w <= 118, ladder.maxed);
+  rec.ok('a full ten-block bar reads ten, and one cast puts out exactly one',
+    !!ladder.maxed && ladder.maxed.lit === 10
+      && !!ladder.afterOneCast && ladder.afterOneCast.lit === 9,
+    { full: ladder.maxed && ladder.maxed.lit, afterOne: ladder.afterOneCast && ladder.afterOneCast.lit });
+
+  /* v2.3.2302: the owner asked to SEE it at both ends of the ladder before
+     the width cap is final, so capture the same frame at five blocks and at
+     ten rather than describing the difference in numbers. */
+  const clipBox = async () => P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const c = document.querySelector('canvas');
+    if (!c) return null;
+    const r = c.getBoundingClientRect();
+    const cx = r.left + (S.player.x - S.camera.x) * (S._worldScaleX || 1);
+    const cy = r.top + (S.player.y - S.camera.y) * (S._worldScaleY || 1);
+    const x = Math.max(0, Math.round(cx - 110)), y = Math.max(0, Math.round(cy - 70));
+    return { x, y, width: Math.min(innerWidth - x, 220), height: Math.min(innerHeight - y, 190) };
+  });
+  const shootAt = async (staff, stam, file) => {
+    /* Set the level, THEN settle at full for a frame, THEN spend. The bar only
+       reveals on a DECREASE, and raising Magic raises maxMana -- so jumping
+       straight to "full minus one block" at the new max is an increase from
+       the old pool, which the bar correctly reads as a refill and does not
+       show. The first capture attempt got a nameplate for exactly this. */
+    await P.page.evaluate((cfg) => {
+      const R = window._gameState.current.rpg;
+      R.prog3.sk.staff.level = cfg.staff;
+      R.prog3.alloc.stam = cfg.stam;
+      if (window.__btRecalc) window.__btRecalc(R);
+      R.mana = R.maxMana; R.stamina = R.maxStamina;
+    }, { staff, stam });
+    await P.page.waitForTimeout(300);
+    await P.page.evaluate(() => {
+      const R = window._gameState.current.rpg;
+      R.mana = R.maxMana - Math.floor(R.maxMana / (R.manaBlocks || 5));
+      R.stamina = R.maxStamina - Math.floor(R.maxStamina / (R.stamBlocks || 5));
+    });
+    await P.page.waitForTimeout(350);
+    const box = await clipBox();
+    await P.page.screenshot(Object.assign({ path: `${H.REPO}/tools/qa/mp/out/${file}` },
+      box && box.width > 60 ? { clip: box } : {})).catch(() => {});
+  };
+  await shootAt(1, 0, 'resbars-5blocks.png');
+  await shootAt(100, 100, 'resbars-10blocks.png');
+  console.log('    previews: out/resbars-5blocks.png, out/resbars-10blocks.png');
 }

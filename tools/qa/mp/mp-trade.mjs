@@ -16,14 +16,32 @@ import * as H from './harness.mjs';
 /* Text of the "<name> offers" well, i.e. what THIS player sees the OTHER one
  * putting up.  Anchors on the lane header and reads the well right after it,
  * so it can never accidentally match a number elsewhere on the page. */
-/* The header carries a second "confirmed ✓" span ONLY once they confirm, so
- * match on the first child's text and never on the child count. */
+/* v2.3.2290: anchored on the LANE, not on a sibling.
+   The header used to sit outside the well and this read `nextElementSibling`.
+   With the owner's painted frame the header moved INSIDE the lane, so that
+   sibling is now the row list -- which still has text in it, so the old reader
+   would have kept passing while measuring a different element. The lane is
+   found by walking up to .bt-t2-lane, and the header's own text is subtracted
+   from the body so "Buyer offers" cannot satisfy an assertion about the pile.
+   The header row is now the first child, so the icon <img> is skipped by
+   matching the SPAN rather than children[0]. */
+/* v2.3.2292: .bt-t2-lane-name, not "the first span in the header".
+   The lane headers carry a player FACE now, and that chip renders a span of its
+   own before the words -- so `querySelector('span')` started returning the
+   portrait (empty, or a fallback initial) and every lane read came back null.
+   The label has its own class for exactly this reason: a reader anchored on
+   position breaks the next time anything is added to the left of the text. */
 const LANE_FN = `() => {
-  const hdr = [...document.querySelectorAll('div')].find((d) => d.children.length >= 1
-    && d.children[0].tagName === 'SPAN' && /\\boffers$/.test((d.children[0].textContent || '').trim()));
+  const hdr = [...document.querySelectorAll('.bt-t2-lane-hdr')].find((d) => {
+    const sp = d.querySelector('.bt-t2-lane-name');
+    return sp && /\\boffers$/i.test((sp.textContent || '').trim());
+  });
   if (!hdr) return null;
-  const well = hdr.nextElementSibling;
-  return { header: hdr.textContent.trim(), body: well ? well.innerText.replace(/\\s+/g, ' ').trim() : null };
+  const lane = hdr.closest('.bt-t2-lane');
+  if (!lane) return null;
+  const full = (lane.innerText || '').replace(/\\s+/g, ' ').trim();
+  const head = (hdr.innerText || '').replace(/\\s+/g, ' ').trim();
+  return { header: head, body: full.startsWith(head) ? full.slice(head.length).trim() : full };
 }`;
 
 function otherLane(P) {
@@ -64,30 +82,64 @@ export async function run({ browser, wsPort, webPort, rec }) {
      passed 41/41 on the mutated build. So each lane is now pinned to the
      TOKEN it is supposed to carry, and the edge is checked on your lane only.
      rgb() strings because that is what getComputedStyle returns. */
-  const MY_WELL = 'rgb(17, 30, 35)';           /* --ui-well   #111E23, unchanged */
-  /* v2.3.2283: the buyer's lane left the dark ladder entirely -- it is an
-     inverted light card now (--ui-invert #C8D2CF). getComputedStyle resolves
-     the var(), so the rgb() string is what comes back. */
-  const THEIR_WELL = 'rgb(200, 210, 207)';    /* --ui-invert #C8D2CF */
-  /* v2.3.2283: the 3px left rule is gone -- the fills are ~11:1 apart now and
-     carry the distinction themselves. This assertion is NOT deleted, because
-     it is the v2.3.2282 anti-inversion guard and the note below records that
-     the first cut of these checks passed 41/41 on a build with every
-     owner->well binding inverted. It is re-pointed at the property that now
-     carries the same meaning: the two lanes have OPPOSITE depth recipes --
-     yours is a well sunk into the sheet, theirs is a card raised off it. An
-     inverted build still fails it. */
-  const SUNK = /inset/;
+  /* v2.3.2290: SUNK retired -- the sunk/raised shadow pair described the flat
+     lanes, and the painted frame does not produce it. The fills SURVIVE the
+     reskin and still carry the distinction, which is why .bt-t2-lane is drawn
+     WITHOUT border-image `fill`: with it, the art would paint over the
+     background and both lanes would report rgba(0,0,0,0), turning this check
+     into two identical blanks compared for difference. This file's own history
+     records that exact vacuous pass (41/41 on a build with every owner->well
+     binding inverted), so the fills are load-bearing for the test as well as
+     for the player. */
   /* One shared judgement so the three screens cannot drift apart -- a
      per-screen copy is how the receipt came to claim "shaded the same way
      round as the other two screens" while only ever looking at itself.
      Declared HERE, above the live drawer's own check: the first cut put it
      beside laneGeom further down and the live-drawer assertion hit it in its
      temporal dead zone. */
+  /* ═══ v2.3.2290: THE DISCRIMINATOR MOVED WITH THE SKIN ═══
+     Both lanes now wear the owner's painted frame, so neither has a background
+     COLOUR any more -- getComputedStyle returns rgba(0,0,0,0) for both, and the
+     old `bg === THEIR_WELL && bg === MY_WELL` pair would have gone quietly
+     vacuous: two equal values, both matched against constants that can no
+     longer appear, on a test whose whole job is to prove the two lanes are not
+     the same. Exactly the failure this block's own history warns about (the
+     first cut of these checks passed 41/41 on a build with every owner->well
+     binding INVERTED).
+     What carries the distinction now is the light wash on the buyer's lane --
+     the owner's "notably different shade", kept through the reskin as an inset
+     over the painted interior. So the check is: theirs is washed, mine is not,
+     and theirs is on top. Swap the bindings and it still fails. */
+  /* v2.3.2291: the flat kit's fills, sampled from the owner's own mockup. */
+  const MY_WELL = 'rgb(18, 33, 43)';        /* #12212B */
+  const THEIR_WELL = 'rgb(223, 220, 208)';  /* #DFDCD0 */
   const laneOk = (g) => !!(g && g.top && g.bottom)
     && g.top.top < g.bottom.top
-    && g.top.bg === THEIR_WELL && g.bottom.bg === MY_WELL
-    && SUNK.test(g.bottom.shadow) && !SUNK.test(g.top.shadow);
+    && g.top.bg === THEIR_WELL && g.bottom.bg === MY_WELL;
+  /* ═══ v2.3.2294: AND THE SAME QUESTION ONE LEVEL DOWN ═══
+     Everything above reads `.bt-t2-lane`, and the constants are even NAMED
+     MY_WELL/THEIR_WELL while holding LANE fills. That was harmless while the
+     lane was the only shaded thing in the window. It is not any more: the
+     owner asked for the offered-items well to be tinted too -- brown on yours,
+     gray on theirs -- and with only the lane checks in place you could swap
+     those two tints over and this suite would stay entirely green. That is the
+     exact vacuity the block above documents twice ("41/41 on a build with
+     every owner->well binding INVERTED"), reintroduced one nesting level down,
+     so it gets the same treatment: pinned to the token each well is supposed
+     to carry, on all three screens.
+     The COMPUTED backgroundColor, deliberately, not getPropertyValue('--w-bg')
+     -- a custom property is what the CSS intends, and the fill is what the
+     player sees. Decouple `background` from `--w-bg` and only this reader
+     notices. */
+  /* v2.3.2296: the owner picked "B, Sand & Mist" off the five-palette sweep
+     below, so these move with it. Pinned to the token each well is supposed to
+     carry, exactly as the lane constants above are, and for the same reason:
+     the alternative ("the two are different") went vacuously green on a build
+     with every binding inverted. */
+  const MY_TINT = 'rgb(227, 212, 180)';     /* #E3D4B4 sand */
+  const THEIR_TINT = 'rgb(207, 213, 215)';  /* #CFD5D7 mist */
+  const wellOk = (g) => !!(g && g.top && g.bottom)
+    && g.top.well === THEIR_TINT && g.bottom.well === MY_TINT;
 
   const shot = (P, name) => P.page.screenshot({
     path: H.REPO + '/tools/qa/mp/out/trade-' + name + '.png',
@@ -291,6 +343,48 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and then takes itself away, rather than sitting there saying nothing',
     (await chip('Clear')) === 'missing');
 
+  /* ═══ v2.3.2292: A FACE ON EACH SIDE ═══
+     Owner: "put your characters thumbnail before the 'you offer' and the other
+     trader's thumbnail of their character before theirs ... carry that through
+     the trade menus."
+     Asserted as "each header has a face that is a REAL PORTRAIT", not merely
+     "a face element exists": both sources can fail softly to the letter tile --
+     mine if portraitStore is empty, theirs if the peer lookup or the shared
+     recipe breaks -- and a letter tile is exactly what a silently broken
+     portrait looks like. Deliberately NOT asserted by comparing the two data
+     URLs: two fresh QA players can legitimately roll identical cosmetics, so
+     "they differ" would be flaky rather than strict. */
+  const faces = () => A.page.evaluate(() => {
+    const out = {};
+    for (const h of document.querySelectorAll('[data-trade-drawer] .bt-t2-lane-hdr')) {
+      const name = h.querySelector('.bt-t2-lane-name');
+      const face = h.querySelector('.bt-t2-face');
+      const img = face && face.querySelector('img');
+      if (!name) continue;
+      /* v2.3.2294: `sig` -- a fingerprint of the portrait's data URL, so the
+         receipt can be checked against what the live window drew rather than
+         merely against "an image is present", which any image satisfies. Kept
+         short on purpose: the whole URL in a failure payload is tens of KB. */
+      const src = img && img.getAttribute('src');
+      out[(name.textContent || '').trim()] = {
+        face: !!face,
+        real: !!src,
+        letter: !!(face && face.querySelector('.bt-t2-face-ltr')),
+        sig: src ? (src.length + ':' + src.slice(-24)) : null,
+      };
+    }
+    return out;
+  });
+  const f1 = await faces();
+  const theirKey = Object.keys(f1).find((k) => /offers$/i.test(k));
+  const mineKey = Object.keys(f1).find((k) => /^You offer$/i.test(k));
+  rec.ok('both lanes are headed by a face', !!theirKey && !!mineKey
+    && f1[theirKey].face && f1[mineKey].face, f1);
+  rec.ok('...and each is a real drawn portrait, not the letter fallback that a '
+    + 'broken lookup degrades to',
+    !!theirKey && !!mineKey && f1[theirKey].real && f1[mineKey].real
+      && !f1[theirKey].letter && !f1[mineKey].letter, f1);
+
   /* ═══ v2.3.2288: THE LADDER'S SIGN ═══
      Owner: "Put a subtract button near the clear button (that changes back to
      add once tapped again) that inverts all the gold from the buttons."
@@ -326,16 +420,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await A.page.locator('[data-trade-drawer] input[type="number"]').fill('100');
   await A.page.waitForTimeout(400);
   const signAdd = await signBtn();
-  rec.ok('once gold is staged the toggle appears, showing the mode the chips '
-    + 'are actually in', !!signAdd && signAdd.text === '+ Add' && signAdd.mode === 'add' && signAdd.pressed === 'false', signAdd);
+  /* v2.3.2292: ONE GLYPH, naming the ACTION not the mode. Owner: "instead of
+     the 'Add' button just have a symbol for minus ... to invert the coin
+     options". So it shows MINUS while the chips read +N, and PLUS once they
+     read -N. That inverts the v2.3.2288 reasoning on purpose and it holds
+     because the seven chips carry the sign themselves -- the mode is on
+     screen either way, so the button is free to say what it DOES.
+     Asserted on data-gold-mode for the state and on the glyph for the label,
+     which keeps the two facts separable: a reworded button reddens one line. */
+  rec.ok('once gold is staged the inverter appears, offering the sign the chips '
+    + 'are NOT in', !!signAdd && signAdd.text === '\u2212' && signAdd.mode === 'add' && signAdd.pressed === 'false', signAdd);
 
   await tapSign(); await A.page.waitForTimeout(350);
   const subLadder = await ladderNow();
   const signSub = await signBtn();
   rec.ok('THE ASK: tapping it inverts every chip on the ladder at once',
     subLadder.join(',') === '\u22121,\u22125,\u221225,\u221250,\u2212100,\u2212500,\u22121000', subLadder);
-  rec.ok('...and the button itself now reads Subtract, so it never contradicts '
-    + 'the chips it controls', !!signSub && signSub.text === '\u2212 Subtract' && signSub.mode === 'sub' && signSub.pressed === 'true', signSub);
+  rec.ok('...and once tapped it offers the way back, so the pair can never both '
+    + 'read the same sign', !!signSub && signSub.text === '\uFF0B' && signSub.mode === 'sub' && signSub.pressed === 'true', signSub);
 
   /* The toggle and Clear must not cost the drawer a second row -- see the fold
      note below; this is the same budget, spent horizontally instead. */
@@ -397,7 +499,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await tapSign(); await A.page.waitForTimeout(350);
   rec.ok('tapping it again changes back to add, exactly as asked',
     (await ladderNow()).join(',') === '+1,+5,+25,+50,+100,+500,+1000'
-      && (await signBtn()).text === '+ Add');
+      && (await signBtn()).mode === 'add');
 
   /* ── SUBTRACTING TO EXACTLY ZERO ──
      The dead end this has to avoid: at zero every subtract chip is disabled, so
@@ -417,7 +519,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await A.page.waitForTimeout(400);
   rec.ok('...and the next gold you stage starts in ADD, so the mode cannot '
     + 'survive invisibly into a trade you did not set it for',
-    (await ladderNow())[0] === '+1' && (await signBtn()).text === '+ Add',
+    (await ladderNow())[0] === '+1' && (await signBtn()).mode === 'add',
     { ladder: await ladderNow(), sign: await signBtn() });
 
   /* ═══ v2.3.2288: NO TINY UP/DOWN ARROWS ON THE GOLD FIELD ═══
@@ -472,30 +574,55 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the primary action is reachable without scrolling the drawer',
     !!fold && fold.overflowPx <= 0, fold);
 
+  /* v2.3.2293: the POSITIVE CONTROL for the review screen's absence check
+     below. An assertion that something is missing passes just as happily when
+     the selector is wrong as when the thing is genuinely gone -- so the same
+     selector is first shown to FIND the controls here, on the live window,
+     where they certainly exist. Without this the guard could rot into a
+     permanent green the next time a class is renamed. */
+  const editableOnLive = await A.page.evaluate(() => !!document.querySelector(
+    '[data-trade-drawer] button[data-gold-mode], [data-trade-drawer] .bt-t2-chip, '
+    + '[data-trade-drawer] .bt-t2-sq, [data-trade-drawer] input'));
+  rec.ok('the live window DOES carry offer-changing controls (the control for '
+    + 'the review-screen check below)', editableOnLive === true, { editableOnLive });
+
   await shot(A, '1-offer');
 
   /* v2.3.2282: the live drawer is the screen the other two were made to match,
      so it is asserted on the same terms rather than assumed correct.  Its lane
      headers are flex ROWS containing spans, not leaf divs, so it needs the
      header+nextSibling shape LANE_FN uses rather than the leaf reader below. */
+  /* v2.3.2290: the lane is the element measured, found by walking UP from its
+     header rather than sideways to a sibling -- see the note on LANE_FN. With
+     the painted frame the shading lives on .bt-t2-lane itself, so a reader that
+     kept taking the next sibling would have measured the row list: no
+     background, no shadow, and a green 'they are different' verdict for the
+     wrong reason. */
   const liveGeom = await A.page.evaluate(() => {
-    const rows = [...document.querySelectorAll('[data-trade-drawer] div')]
-      .filter((d) => d.children.length >= 1 && d.children[0].tagName === 'SPAN');
+    const hdrs = [...document.querySelectorAll('[data-trade-drawer] .bt-t2-lane-hdr')];
     const pick = (rx) => {
-      const hdr = rows.find((d) => rx.test((d.children[0].textContent || '').trim()));
-      const well = hdr && hdr.nextElementSibling;
+      const hdr = hdrs.find((d) => {
+        const sp = d.querySelector('.bt-t2-lane-name');
+        return sp && rx.test((sp.textContent || '').trim());
+      });
+      const well = hdr && hdr.closest('.bt-t2-lane');
       if (!well) return null;
       const r = well.getBoundingClientRect();
       const cs = getComputedStyle(well);
-      return { top: Math.round(r.top), bg: cs.backgroundColor, shadow: cs.boxShadow };
+      const items = well.querySelector('.bt-t2-items');
+      return { top: Math.round(r.top), bg: cs.backgroundColor, shadow: cs.boxShadow,
+        well: items ? getComputedStyle(items).backgroundColor : null };
     };
-    return { top: pick(/offers$/), bottom: pick(/^You offer$/) };
+    return { top: pick(/offers$/i), bottom: pick(/^You offer$/i) };
   });
   rec.ok('live drawer: their offer is above yours (the screen the other two '
     + 'were made to match)', !!(liveGeom.top && liveGeom.bottom)
     && liveGeom.top.top < liveGeom.bottom.top, liveGeom);
   rec.ok('...and YOUR lane carries the your-side shading here too',
     laneOk(liveGeom), liveGeom);
+  rec.ok('...and the offered-items wells inside them carry the two tints the '
+    + 'owner asked for -- brown on yours, gray on theirs',
+    wellOk(liveGeom), liveGeom);
 
   /* ═══ v2.3.2283: THE INK INVERTED WITH THE FILL ═══
      The failure mode this change can actually ship is a HALF migration: the
@@ -512,14 +639,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
      not first. */
   const inkProbe = (P, headerRe) => P.page.evaluate((rx) => {
     const re = new RegExp(rx, 'i');
-    /* the live drawer's header is a span-led flex row; the receipt's is a leaf
-       div. Accept either, then take the next sibling as the well -- the same
-       shape every other lane reader in this file uses. */
-    const hdr = [...document.querySelectorAll('[data-trade-drawer] div')].find((d) =>
-      (d.children.length >= 1 && d.children[0].tagName === 'SPAN'
-        && re.test((d.children[0].textContent || '').trim()))
-      || (d.children.length === 0 && re.test((d.textContent || '').trim())));
-    const well = hdr && hdr.nextElementSibling;
+    /* v2.3.2290: the LANE, by class. The live drawer's header moved inside the
+       painted frame, so "next sibling" now lands on the row list -- which has
+       no background of its own, so every ratio would be computed against a
+       transparent bg and the probe reported `checked: 0`, i.e. a contrast
+       assertion that inspects nothing. Both shapes are tried: the header inside
+       its lane (live + review), or a leaf title sitting above one (receipt). */
+    /* Lane headers FIRST and on their own. Searching them together with every
+       div matched an ANCESTOR of the header instead -- its first <span> is the
+       header's span, so the regex hit, but closest('.bt-t2-lane') from up there
+       is null and the probe fell out with found:false and nothing checked. */
+    const hdr = [...document.querySelectorAll('[data-trade-drawer] .bt-t2-lane-hdr')]
+      .find((d) => {
+        const sp = d.querySelector('.bt-t2-lane-name');
+        return sp && re.test((sp.textContent || '').trim());
+      })
+      || [...document.querySelectorAll('[data-trade-drawer] div')]
+        .find((d) => d.children.length === 0 && re.test((d.textContent || '').trim()));
+    const sib = hdr && hdr.nextElementSibling;
+    const well = (hdr && hdr.closest && hdr.closest('.bt-t2-lane'))
+      || (sib && sib.classList && sib.classList.contains('bt-t2-lane') ? sib : null);
     if (!well) return { found: false };
     const L = (s) => {
       const m = (s || '').match(/[\d.]+/g);
@@ -528,27 +667,102 @@ export async function run({ browser, wsPort, webPort, rec }) {
         .map((v) => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)));
       return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
     };
-    const bg = L(getComputedStyle(well).backgroundColor);
+    /* ═══ v2.3.2294: EACH WORD IS MEASURED AGAINST THE GROUND IT IS ON ═══
+       This used to take ONE background -- the lane's -- and compare every ink
+       in the subtree to it. That held while a lane was one flat colour. It is
+       false now: the offered rows sit on a tinted well INSIDE the lane, so on
+       your lane the true grounds are #12212B for the header and #DCCBA8 six
+       pixels below it, and a single figure is wrong for one of them by about
+       10:1. Read against the lane, dark row text on the brown well would have
+       been reported as 1.1:1 and failed a change that is in fact correct --
+       and, far worse, on the buyer's lane the reverse: measuring pale ink
+       against the cream LANE while it actually sits on the darker well
+       flatters every ratio, which is a probe that passes what it should catch.
+       So the ground is resolved per element by walking up to the nearest
+       ancestor that actually paints one.
+
+       ALPHA < .9 IS NOT A GROUND. A translucent wash (the stepper buttons are
+       rgba(11,22,27,.05)) composites over whatever is behind it; taking it as
+       the ground would measure the ✕ against a colour nothing renders. The
+       walk passes through those, which costs at most ~2% on the ratio and
+       never invents a surface. */
+    const groundOf = (el) => {
+      for (let n = el; n; n = n.parentElement) {
+        const c = getComputedStyle(n).backgroundColor;
+        const m = (c || '').match(/[\d.]+/g);
+        if (!m) continue;
+        const a = m.length > 3 ? Number(m[3]) : 1;
+        if (a >= 0.9) return L(c);
+        if (n === document.body) break;
+      }
+      return null;
+    };
     const out = [];
+    let skipped = 0, ungrounded = 0;
     for (const el of well.querySelectorAll('*')) {
       const t = (el.textContent || '').trim();
       /* leaf text nodes only -- a wrapper's textContent is its children's */
       if (!t || el.children.length) continue;
+      /* v2.3.2294: DISABLED CONTROLS ARE EXEMPT, and this is the one place the
+         bar is lowered, so it is worth being exact about why. Widening the
+         probe to your lane swept in the gold chip ladder, which sits in the
+         lane but OUTSIDE the well, and the two presets you cannot afford came
+         back at 3.13:1. That is not a regression and not something to fix:
+         WCAG 2.1 SC 1.4.3 exempts inactive components by name, and a disabled
+         chip that met AA would look affordable. The house rule (UI-BIBLE, and
+         the stepBtn note in the panel) is "disabled reads as muted, never
+         invisible", which 3.13:1 satisfies. The count is reported either way so
+         the exemption cannot quietly grow to cover a live control. */
+      if (el.disabled || (el.closest && el.closest('button:disabled,[disabled],[aria-disabled="true"]'))) { skipped++; continue; }
       const ink = L(getComputedStyle(el).color);
-      if (ink == null) continue;
+      const bg = groundOf(el);
+      /* An element whose walk reaches <body> without hitting an opaque surface
+         has no ground to be measured against, so it can only be dropped -- but
+         dropped SILENTLY it would shrink `checked` while the assertion, which
+         only asks for checked > 0, stayed green. Counted and reported instead;
+         it should always be zero, and a number here means the probe stopped
+         seeing part of the window. */
+      if (ink == null || bg == null) { ungrounded++; continue; }
       out.push({ t: t.slice(0, 14),
         ratio: +(((Math.max(bg, ink) + 0.05) / (Math.min(bg, ink) + 0.05)).toFixed(2)),
-        darker: ink < bg });
+        /* the DIRECTION has to match the ground, not a fixed expectation: dark
+           ink belongs on a light surface and light ink on a dark one, and a
+           lane now holds one of each. .18 is sRGB middle grey -- the standard
+           is-this-surface-light-or-dark line, not a number read off this
+           window's palette, so a retint cannot walk out from under it. The two
+           grounds in play sit far either side of it (#12212B is .014, #DCCBA8
+           is .59). */
+        sided: (bg > 0.18) === (ink < bg) });
     }
-    return { found: true, bg, inks: out };
+    return { found: true, bg: L(getComputedStyle(well).backgroundColor), inks: out, skipped, ungrounded };
   }, headerRe);
-  const inkBad = (r) => (r.inks || []).filter((i) => i.ratio < 4.5 || !i.darker);
+  const inkBad = (r) => (r.inks || []).filter((i) => i.ratio < 4.5 || !i.sided);
+  /* One judgement for all four probes, so a new screen cannot be added on a
+     weaker one. `ungrounded` in the condition and not merely in the payload:
+     an element the walk could not place is an element this probe stopped
+     measuring, and a probe that quietly measures less is how the last three
+     vacuous checks in this file happened. */
+  const inkOk = (r, min) => !!r && r.found === true
+    && (r.inks || []).length >= (min || 1) && inkBad(r).length === 0 && r.ungrounded === 0;
+  const inkDbg = (r) => ({ found: r.found, bad: inkBad(r),
+    checked: (r.inks || []).length, disabledSkipped: r.skipped, ungrounded: r.ungrounded });
 
   const inkEmpty = await inkProbe(A, 'offers$');
   rec.ok("the buyer lane's ink inverted with its fill -- every word on the "
-    + 'light card is dark and clears AA',
-    inkEmpty.found === true && (inkEmpty.inks || []).length > 0 && inkBad(inkEmpty).length === 0,
-    { bg: inkEmpty.bg, bad: inkBad(inkEmpty), checked: (inkEmpty.inks || []).length });
+    + 'light card is dark and clears AA', inkOk(inkEmpty), inkDbg(inkEmpty));
+
+  /* v2.3.2294: and YOUR lane, which was never probed because it was the plain
+     dark one -- there was nothing to get wrong. Tinting your well made it the
+     riskier of the two: it is the only place in the window where a LIGHT
+     surface sits inside a DARK frame, so it is where an ink that failed to
+     follow its fill reads as an empty row rather than as a wrong colour. It is
+     also the only lane with controls in its well (the stepper and the remove
+     ✕), i.e. the five hardcoded colours the panel's own v2.3.2283 note said
+     would "go live on a light fill all at once". */
+  const inkMine = await inkProbe(A, '^You offer$');
+  rec.ok('YOUR lane too: the tinted well took the dark ramp with it, controls '
+    + 'included, while the header above it kept the light one',
+    inkOk(inkMine), inkDbg(inkMine));
 
   /* ═══ v2.3.1754: THE TWO-STAGE HANDSHAKE, THROUGH THE REAL BUTTONS ═══
      Owner: "once both ready up, show a second, stripped-down screen ... Both
@@ -591,8 +805,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* Stripped-down is the safety property: if the bag tray or the gold field
      survived onto this screen, "what you read is what you accept" would be
      false. */
+  /* v2.3.2293: anchored on CONTROLS, not on copy. Both halves of the old
+     condition were about to be permanently true -- "tap to add" was removed
+     with the explainers, and there has never been a `Send` button in this
+     panel at all -- so this safety guard would have gone green forever while
+     testing nothing. It now asks the question directly: does the review screen
+     render anything you could change the offer with? */
+  /* v2.3.2294: .bt-t2-sq joins the set -- the stepper and the remove ✕ are
+     offer-changing controls every bit as much as a gold chip, and they were the
+     one family this guard could not see. */
+  const editableOnReview = await A.page.evaluate(() => !!document.querySelector(
+    '[data-trade-drawer] button[data-gold-mode], [data-trade-drawer] .bt-t2-chip, '
+    + '[data-trade-drawer] .bt-t2-sq, [data-trade-drawer] input'));
   rec.ok('...with nothing on it that can change the trade',
-    !/tap to add/i.test(reviewA) && !(await btn(A, '^Send$')), reviewA.slice(0, 140));
+    editableOnReview === false, { editableOnReview, head: reviewA.slice(0, 140) });
 
   /* ═══ v2.3.2280: THE FORMAT NEVER JUMPS ═══
      Owner: "Yes bring the trade into the drawer too."  The review screen was
@@ -620,11 +846,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...seated on the dashboard, not floating above it',
     Math.abs(reviewFrame.bottom - reviewFrame.dashTop) <= 2, reviewFrame);
 
-  /* The footer's promise, measured. `Nothing on this screen can change the
-     trade` was false while the bag stayed attached: the band's own tiles were
-     still wired to addOne, and on a phone they sit directly under the drawer
-     where a thumb rests.  The server would have caught the edit -- it resets
-     both readies -- but the screen was making a promise the UI broke. */
+  /* v2.3.2293: the footer that used to make this promise in words is gone, but
+     the PROPERTY it described is the real one and stays pinned: the review
+     screen is what you accept, so nothing under it may still stage. The bag's
+     own tiles were wired to addOne and sit directly beneath the drawer where a
+     thumb rests; the server would have caught the edit, but the screen would
+     have been lying. */
   const bagOnReview = await A.page.evaluate(() =>
     !!(window.__broTradeBagBus && window.__broTradeBagBus.open));
   rec.ok('...and the bag lets go, so the footer\'s promise is true',
@@ -637,7 +864,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
      button: ✕ asks, Keep Trading returns you to the SAME review screen (it
      must not have dropped a ready on the way). */
   const tapClose = (P) => P.page.evaluate(() => {
-    const b = document.querySelector('[data-trade-drawer] .bt-inspect-close');
+    /* v2.3.2290: .bt-t2-close -- the drawer's ✕ is the owner's painted button
+       now. Accepts either class so the selector says what it means (the
+       drawer's close control) rather than which skin was current. */
+    const b = document.querySelector('[data-trade-drawer] .bt-t2-close, [data-trade-drawer] .bt-inspect-close');
     if (!b) return false; b.click(); return true;
   });
   rec.ok('the review screen has a ✕', await tapClose(A));
@@ -673,6 +903,85 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('an edit drags BOTH players back off the review screen',
     !/YOU GIVE/.test(await cardText(A)), (await cardText(A)).slice(0, 80));
 
+  /* ═══ v2.3.2294: THE PALETTE SWEEP ═══
+     Owner: "make the sub container that holds the line items a light brown
+     color. Make the other trader have a light gray color ... Maybe a different
+     color than light brown and a light gray would work better but I want to
+     see a preview."
+
+     So the candidates are rendered HERE rather than mocked up somewhere else:
+     this is the real drawer, in a real trade, with real staged items and gold
+     under a real worker. A mockup cannot show you that the ✕ went pale on
+     parchment or that the gold figure lost its ring -- the thing being chosen
+     is legibility on the actual content, and the actual content only exists at
+     this point in this scenario.
+
+     IT RUNS HERE, after the edit above, and not beside the '1-offer'
+     screenshot where it was first written. Up there the buyer's lane is still
+     empty, so four of the five candidates would have shown the gray well as a
+     bare strip reading "Nothing staged yet" -- a preview of the one state that
+     cannot tell you whether the gray works under rows of items. B's 3 gold
+     lands with that edit, so from this line on both wells have content in
+     them.
+
+     Only the WELL's own custom properties are overridden, which is the whole
+     claim v2.3.2294 makes: a palette is one CSS rule and the ink comes with
+     it, so a sweep like this needs no rebuild and no JS. The two deep-ramp
+     entries exist because the richer browns drop the standard muted ink under
+     AA (#45565C on #CBB894 is 3.95:1) -- they carry a darker ramp instead, and
+     the sweep is the proof that swapping a ramp is also just this rule.
+
+     These are screenshots, not assertions. The assertion is the last line: the
+     sweep has to leave the shipped palette exactly as it found it, or every
+     colour check below this point would be measuring whatever the last variant
+     painted. */
+  const DEEP = '--w-text:#0D171B;--w-text-2:#223238;--w-text-3:#38474C;'
+    + '--w-gold:#593E0A;--w-btn-fg:#223238;--w-rarity-common:#38474C;'
+    + '--w-rarity-elemental:#17408A;--w-rarity-fusion:#59178C;--w-rarity-shift:#593E0A;';
+  const SKINS = [
+    ['A-parchment-ash', '#DCCBA8', '#C6CBCC', ''],
+    ['B-sand-mist',     '#E3D4B4', '#CFD5D7', ''],     /* shipped (owner's pick) */
+    ['C-clay-stone',    '#D3BE9C', '#C2C7C6', DEEP],
+    ['D-greige-steel',  '#D9C9B0', '#CBD0D0', ''],
+    ['E-leather-ash',   '#CBB894', '#C6CBCC', DEEP],
+  ];
+  for (const [name, mine, theirs, deep] of SKINS) {
+    await A.page.evaluate(([m, t, d]) => {
+      let el = document.getElementById('qa-skin');
+      if (!el) { el = document.createElement('style'); el.id = 'qa-skin'; document.head.appendChild(el); }
+      /* [data-trade-drawer] prefixes lift specificity above game.css's own
+         `.bt-t2-items` / `.bt-t2-lane--theirs .bt-t2-items` without !important,
+         so what renders is a real cascade win rather than a special case. */
+      el.textContent = '[data-trade-drawer] .bt-t2-items{--w-bg:' + m + ';' + d + '}'
+        + '[data-trade-drawer] .bt-t2-lane--theirs .bt-t2-items{--w-bg:' + t + ';}';
+    }, [mine, theirs, deep]);
+    await A.page.waitForTimeout(90);
+    const box = await A.page.evaluate(() => {
+      const d = document.querySelector('[data-trade-drawer]');
+      if (!d) return null;
+      const r = d.getBoundingClientRect();
+      return { x: Math.max(0, Math.floor(r.left) - 6), y: Math.max(0, Math.floor(r.top) - 6),
+        width: Math.ceil(r.width) + 12, height: Math.ceil(r.height) + 12 };
+    });
+    await A.page.screenshot({ path: H.REPO + '/tools/qa/mp/out/trade-skin-' + name + '.png',
+      clip: box || undefined }).catch(() => {});
+  }
+  await A.page.evaluate(() => { const el = document.getElementById('qa-skin'); if (el) el.remove(); });
+  await A.page.waitForTimeout(90);
+
+  const skinBack = await A.page.evaluate(() => {
+    const pick = (sel) => {
+      const el = document.querySelector(sel);
+      return el ? getComputedStyle(el).getPropertyValue('--w-bg').trim() : null;
+    };
+    return {
+      mine: pick('[data-trade-drawer] .bt-t2-lane:not(.bt-t2-lane--theirs) .bt-t2-items'),
+      theirs: pick('[data-trade-drawer] .bt-t2-lane--theirs .bt-t2-items'),
+    };
+  });
+  rec.ok('the palette sweep put the shipped tints back -- brown on your well, '
+    + 'gray on theirs', skinBack.mine === '#E3D4B4' && skinBack.theirs === '#CFD5D7', skinBack);
+
   /* ── the 2-3s delay, measured where it actually applies ──
      The cooldown runs from the last EDIT, so it has to be checked right after
      one.  The first cut asserted it immediately after both sides readied — by
@@ -691,11 +1000,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
      after is worse than one that does not claim to — and the rule is
      enforced on the worker anyway, where trade2.test.mjs pins it directly
      ("an accept inside the cooldown is refused (last-second swap)").
-     What IS stable and worth pinning here is that the screen TELLS the
-     player the rule, because an unexplained dead button reads as a broken
-     one. */
-  rec.ok('the review screen explains that an edit sends you both back',
-    /edits the offer/i.test(await cardText(A)), (await cardText(A)).slice(-120));
+     v2.3.2293: the follow-on assertion here pinned that the screen SAID so in
+     words. That footer is gone with the rest of the explainers, and there is
+     nothing left to assert about it -- the rule lives on the worker, where
+     trade2.test.mjs already pins it. Removed rather than weakened. */
   const acceptBtn = await btn(A, '^(Accept|Wait)');
   rec.ok('...and the accept is either counting down or live, never missing',
     !!acceptBtn, acceptBtn);
@@ -801,21 +1109,32 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const laneGeom = (P, topRe, bottomRe) => P.page.evaluate(([tRe, bRe]) => {
     const find = (rx) => {
       const re = new RegExp(rx, 'i');
-      const el = [...document.querySelectorAll('[data-trade-drawer] div')]
-        .find((d) => d.children.length === 0 && re.test((d.textContent || '').trim()));
+      /* v2.3.2292: the label is a .bt-t2-lane-name SPAN on the review and
+         receipt screens now (it shares its header with a face), so the old
+         leaf-DIV finder matched nothing and every lane read came back null.
+         Both shapes are tried -- the class first, then the leaf div for any
+         screen still using a bare title. */
+      const el = [...document.querySelectorAll('[data-trade-drawer] .bt-t2-lane-name')]
+        .find((d) => re.test((d.textContent || '').trim()))
+        || [...document.querySelectorAll('[data-trade-drawer] div')]
+          .find((d) => d.children.length === 0 && re.test((d.textContent || '').trim()));
       if (!el) return null;
-      /* the review screen's title sits INSIDE its well; the receipt's sits
-         above it.  Take whichever of the two actually carries a background, so
-         one helper reads both shapes. */
-      const own = getComputedStyle(el).backgroundColor;
+      /* v2.3.2290: find the LANE by class, not by "which of these has a
+         background". With the owner's painted frame NONE of them does -- the
+         fill is border-image art -- so the old walk fell straight through to
+         nextElementSibling and would have measured the row list on both
+         screens, reporting two identical blanks as a passing difference.
+         The review screen's title sits INSIDE its lane and the receipt's sits
+         above it, so both shapes are tried explicitly. */
       const sib = el.nextElementSibling;
-      const cand = (own && own !== 'rgba(0, 0, 0, 0)') ? el
-        : (el.parentElement && getComputedStyle(el.parentElement).backgroundColor !== 'rgba(0, 0, 0, 0)') ? el.parentElement
-        : sib;
+      const cand = el.closest('.bt-t2-lane')
+        || (sib && sib.classList && sib.classList.contains('bt-t2-lane') ? sib : null);
       if (!cand) return null;
       const r = cand.getBoundingClientRect();
       const cs = getComputedStyle(cand);
-      return { top: Math.round(r.top), bg: cs.backgroundColor, shadow: cs.boxShadow };
+      const items = cand.querySelector('.bt-t2-items');
+      return { top: Math.round(r.top), bg: cs.backgroundColor, shadow: cs.boxShadow,
+        well: items ? getComputedStyle(items).backgroundColor : null };
     };
     return { top: find(tRe), bottom: find(bRe) };
   }, [topRe, bottomRe]);
@@ -837,8 +1156,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
      inversion was invisible to the suite. */
   const revTone = await A.page.evaluate(() => {
     const pick = (rx) => {
-      const el = [...document.querySelectorAll('[data-trade-drawer] div')]
-        .find((d) => d.children.length === 0 && rx.test((d.textContent || '').trim()));
+      const el = [...document.querySelectorAll('[data-trade-drawer] .bt-t2-lane-name')]
+        .find((d) => rx.test((d.textContent || '').trim()))
+        || [...document.querySelectorAll('[data-trade-drawer] div')]
+          .find((d) => d.children.length === 0 && rx.test((d.textContent || '').trim()));
       return el ? getComputedStyle(el).color : null;
     };
     return { receive: pick(/^YOU RECEIVE$/), give: pick(/^YOU GIVE$/) };
@@ -848,6 +1169,75 @@ export async function run({ browser, wsPort, webPort, rec }) {
      YOU GIVE is unchanged: its lane is still dark. */
   rec.ok('YOU RECEIVE is still green and YOU GIVE still red after the reorder',
     revTone.receive === 'rgb(28, 90, 64)' && revTone.give === 'rgb(216, 99, 93)', revTone);
+  rec.ok('...and the Confirm screen tints its two wells the same way round as '
+    + 'the live one', wellOk(revGeom), revGeom);
+
+  /* ═══ v2.3.2299: THE SUBTOTALS READ AS SUBTOTALS ═══
+     Owner asked for this twice -- "make the total amounts in the trade window in
+     bolded font so it's more clear that it's summarizing the line items", then
+     "I want bolding subtotals on the confirm with buyer screen" after the first
+     attempt shipped at weight 700 and still read as a caption. What was
+     defeating it was the muted ink, not the weight, so BOTH are pinned here.
+
+     The ink is asserted RELATIVELY -- brighter than the muted ramp on the same
+     lane -- rather than against a hex. A hex pins the palette and this window
+     has been retinted four times in two days; "it is not the caption colour" is
+     the property that actually matters and it survives a retune. The muted
+     sample is the empty-lane word on the other screen... no: it is taken from a
+     muted element on the SAME lane, so the two are being compared on one
+     ground. */
+  const subs = await A.page.evaluate(() => {
+    const lum = (c) => {
+      const m = (c || '').match(/[\d.]+/g);
+      if (!m || m.length < 3) return null;
+      const v = m.slice(0, 3).map(Number).map((x) => x / 255)
+        .map((x) => (x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4)));
+      return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
+    };
+    return [...document.querySelectorAll('[data-trade-drawer] [data-trade-subtotal]')].map((el) => {
+      const cs = getComputedStyle(el);
+      const lane = el.closest('.bt-t2-lane');
+      const laneBg = lane ? lum(getComputedStyle(lane).backgroundColor) : null;
+      const ink = lum(cs.color);
+      /* the muted sample: the lane's own header, which is on ink.muted */
+      const hdr = lane && lane.querySelector('.bt-t2-lane-hdr');
+      const muted = hdr ? lum(getComputedStyle(hdr).color) : null;
+      return {
+        theirs: !!(lane && lane.classList.contains('bt-t2-lane--theirs')),
+        weight: Number(cs.fontWeight), size: parseFloat(cs.fontSize),
+        ratio: (ink != null && laneBg != null)
+          ? +(((Math.max(ink, laneBg) + 0.05) / (Math.min(ink, laneBg) + 0.05)).toFixed(2)) : null,
+        mutedRatio: (muted != null && laneBg != null)
+          ? +(((Math.max(muted, laneBg) + 0.05) / (Math.min(muted, laneBg) + 0.05)).toFixed(2)) : null,
+        text: (el.textContent || '').trim().slice(0, 20),
+      };
+    });
+  });
+  rec.ok('both lanes report a subtotal line (guard)', subs.length === 2, subs);
+  rec.ok('the subtotals are BOLD -- 800, not the 700 that still read as a caption',
+    subs.length === 2 && subs.every((x) => x.weight >= 800), subs);
+  rec.ok('...and big enough to be one, at 13px or more',
+    subs.length === 2 && subs.every((x) => x.size >= 13), subs);
+  /* The half that was actually wrong the first time. */
+  rec.ok('...and standing off the MUTED ramp, which is what made weight alone '
+    + 'do nothing',
+    subs.length === 2 && subs.every((x) => x.ratio != null && x.mutedRatio != null
+      && x.ratio > x.mutedRatio * 1.15), subs);
+
+  /* ═══ v2.3.2294: THE CONFIRM SCREEN'S INK, WHICH NOTHING EVER READ ═══
+     inkEmpty and inkMine probe the live drawer and inkFull the receipt; the
+     screen in between -- the one whose entire job is to be READ carefully
+     before you consent -- has never had a single colour of its own measured.
+     It is not a copy of the other two either: `side()` renders its own
+     .bt-t2-items with its own line-item and gold-figure markup, so it is the
+     one surface where a well ink can be wrong on its own. Both lanes, because
+     this screen is where they sit closest together. */
+  const inkRevMine = await inkProbe(A, '^YOU GIVE$');
+  const inkRevTheirs = await inkProbe(A, '^YOU RECEIVE$');
+  rec.ok('the Confirm screen reads: every figure on both wells clears AA '
+    + 'against the tint it is standing on',
+    inkOk(inkRevMine) && inkOk(inkRevTheirs),
+    { give: inkDbg(inkRevMine), receive: inkDbg(inkRevTheirs) });
 
   /* ═══ v2.3.2280: THE BELL STANDS DOWN WITH THE REST OF THE CHAT ═══
      Owner: "Chat should always be the bottom layer if any menus open up
@@ -917,14 +1307,109 @@ export async function run({ browser, wsPort, webPort, rec }) {
      near-duplicates and a find-and-replace catches only one of them. */
   const inkFull = await inkProbe(A, '^You received$');
   rec.ok("...and with real rows in it, not just the empty-lane word",
-    inkFull.found === true && (inkFull.inks || []).length >= 2 && inkBad(inkFull).length === 0,
-    { bg: inkFull.bg, bad: inkBad(inkFull), checked: (inkFull.inks || []).length });
+    inkOk(inkFull, 2), inkDbg(inkFull));
 
-  rec.ok('...and shaded the same way round as the other two screens',
+  /* v2.3.2294: the wells joined the lanes in this comparison. "Shaded the same
+     way round as the other two screens" is a claim about what the player sees,
+     and half of what they see is now the tint inside the lane -- a receipt that
+     agreed on lanes while disagreeing on wells would satisfy the old form of
+     this check completely. */
+  /* ═══ v2.3.2297: THE RECEIPT'S THREE BEATS ═══
+     Owner: "when the trade completes I think it would be cool to show what you
+     sent for a second then collapse down that window to just show what the
+     other trader gave you and have it do a 'jump to bag' effect for the items
+     they gave you."
+
+     Three claims, and each one fails differently: the sent lane is up at first
+     (or the first beat never happened), it folds (or the card never becomes
+     "what they gave you"), and the received rows fly (or the goods arrive with
+     no idea where they went). The geometry above was all read at beat one --
+     deliberately, since that is when both lanes exist to be compared. */
+  const beat1 = await A.page.evaluate(() => ({
+    folded: !!document.querySelector('.bt-t2-fold--out'),
+    fold: !!document.querySelector('.bt-t2-fold'),
+    flies: document.querySelectorAll('[data-trade-fly]').length,
+  }));
+  rec.ok('beat one: the receipt shows BOTH piles, with the sent lane still up',
+    beat1.fold === true && beat1.folded === false, beat1);
+
+  /* The fold is at 1100ms and the toss at 1400 with a 110ms stagger, so this
+     lands mid-flight rather than after it. Polled rather than slept: a fixed
+     wait would be measuring this machine's frame budget. */
+  let beat2 = null;
+  const tBeat = Date.now();
+  while (Date.now() - tBeat < 4000) {
+    const b = await A.page.evaluate(() => ({
+      folded: !!document.querySelector('.bt-t2-fold--out'),
+      flies: document.querySelectorAll('[data-trade-fly]').length,
+      /* the title ELEMENT, not the drawer's first line of innerText -- that
+         is the ✕, which is what the first cut of this read. */
+      title: ((document.querySelector('[data-trade-drawer] [data-trade-title]') || {}).textContent || '').trim(),
+      recvRows: document.querySelectorAll('[data-recv-well] [data-trade-row]').length,
+    }));
+    if (b.folded && b.flies > 0) { beat2 = b; break; }
+    if (b.folded && !beat2) beat2 = b;
+    await A.page.waitForTimeout(60);
+  }
+  if (beat2) await shot(A, '4-receipt-folded');
+  rec.ok('beat two: the lane showing what you SENT folds away',
+    !!beat2 && beat2.folded === true, beat2);
+  rec.ok('...and the card renames itself to what is left on it',
+    !!beat2 && /gave you/i.test(beat2.title || ''), beat2);
+  /* The received rows are still THERE -- folding the wrong lane would satisfy
+     the assertion above and leave the card showing what you handed over. */
+  rec.ok('...with the pile you were PAID still on it', !!beat2 && beat2.recvRows > 0, beat2);
+  rec.ok('beat three: what they gave you flies to the bag',
+    !!beat2 && beat2.flies > 0, beat2);
+
+  /* And it cleans up after itself. The clones live on document.body, outside
+     React's tree, so nothing else in the app would ever collect them -- a leak
+     here is item art pinned over the game for the rest of the session. */
+  await A.page.waitForTimeout(1400);
+  const flown = await A.page.evaluate(() => document.querySelectorAll('[data-trade-fly]').length);
+  rec.ok('...and every flying copy is torn down when it lands', flown === 0, { flown });
+
+  rec.ok('...and shaded the same way round as the other two screens, wells '
+    + 'included',
     laneOk(recGeom) && laneOk(revGeom) && laneOk(liveGeom)
+    && wellOk(recGeom) && wellOk(revGeom) && wellOk(liveGeom)
     && recGeom.bottom.bg === revGeom.bottom.bg && recGeom.bottom.bg === liveGeom.bottom.bg
-    && recGeom.top.bg === revGeom.top.bg && recGeom.top.bg === liveGeom.top.bg,
+    && recGeom.top.bg === revGeom.top.bg && recGeom.top.bg === liveGeom.top.bg
+    && recGeom.bottom.well === liveGeom.bottom.well && recGeom.top.well === liveGeom.top.well,
     { receipt: recGeom, review: revGeom, live: liveGeom });
+
+  /* ═══ v2.3.2294: WHO YOU TRADED WITH, ON THE LAST SCREEN TOO ═══
+     The owner asked for the two traders' faces to be carried "through the
+     trade menus" (v2.3.2292), and the receipt was quietly the one screen that
+     did not. Every trade2 state carries a/b except 'done', which gameEvents.js
+     builds fresh around the receipt object -- so the panel's
+     `trade2.a === myId ? trade2.b : trade2.a` came back undefined there and
+     Face fell through to its unknown-person '?'. Invisible to this suite for
+     two versions, because a face is not text and nothing here had ever read
+     one; visible in the receipt screenshot the moment anyone looked at it.
+     BOTH lanes are checked, not just the one that was broken: your own side
+     reads from portraitStore and would fail exactly the same way if that ever
+     came back empty. */
+  const f3 = await faces();
+  const recTheirs = Object.keys(f3).find((k) => /^You received$/i.test(k));
+  const recMine = Object.keys(f3).find((k) => /^You sent$/i.test(k));
+  rec.ok('the receipt is headed by two real portraits too, not the '
+    + 'unknown-person letter tile',
+    !!recTheirs && !!recMine && f3[recTheirs].real && f3[recMine].real
+      && !f3[recTheirs].letter && !f3[recMine].letter, f3);
+  /* The half that actually pins the fix. Restoring only the NAME to the receipt
+     clears the check above's sibling on the live screen and clears the '?', yet
+     leaves the portrait missing -- a receipt that still looks unlike the two
+     screens before it. So the claim is equality with what the live window drew,
+     fingerprint and all: the same person, drawn the same way, on all three
+     screens. f1 is the live drawer's reading of the same two chips. */
+  rec.ok('...and they are the same two faces the live window drew, not a '
+    + 'thinner fallback the receipt settled for',
+    !!recTheirs && !!recMine && !!theirKey && !!mineKey
+    && f3[recTheirs].sig === f1[theirKey].sig
+    && f3[recMine].sig === f1[mineKey].sig,
+    { receipt: { theirs: f3[recTheirs], mine: f3[recMine] },
+      live: { theirs: f1[theirKey], mine: f1[mineKey] } });
 
   await A.page.waitForTimeout(3000);
   const aCoins1 = await coins(A), bCoins1 = await coins(B);

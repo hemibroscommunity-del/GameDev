@@ -287,27 +287,81 @@ export const trade2Methods = {
     this._t2Broadcast(s, { settled: true });
   },
 
+  /* ═══ v2.3.2289: A DECLINED INVITE HAS TO REACH THE INVITER ═══
+   * Declining a trade invite cleared the invite and told NOBODY.  The
+   * invitee's client did send trade2_cancel -- that half has always worked --
+   * but the server answered by deleting the keys silently, so the player who
+   * asked sat looking at "Trade request sent - waiting..." until they gave up
+   * and reloaded.  The TTL sweep below had the same hole: an invite could
+   * expire and neither end was told, so the drawer outlived the invite that
+   * justified it.
+   *
+   * NO NEW WIRE TYPE, and that is the point.  trade2_state {state:'cancelled',
+   * reason} is already privileged (index.js) and the client has mapped
+   * 'declined' and 'expired' to their popups since v2.3.1132 -- it simply
+   * never received one for an invite.  So this is deploy-order safe in both
+   * directions with no caps flag: a new worker clears an old client's drawer,
+   * and a new client against an old worker sees exactly today's behaviour.
+   *
+   * SENT PAST THE RELAY, VIA _t2Send.  These go straight down the socket
+   * rather than through eventBuffer, so they cannot be confused with the
+   * relayed broadcasts the wire-audit deny-list governs.
+   *
+   * TWO GUARDS EARNED THE HARD WAY.  A peer holding an OPEN session is
+   * skipped: a stale invite key must never blank a trade window that actually
+   * went live.  And `told` dedupes, because both directions of a handshake can
+   * be present at once (A>B and B>A) and one tap must not fire two popups at
+   * the same player. */
+  _t2ClearInvites(playerId, reason) {
+    if (!this._t2Invites) return;
+    const told = new Set();
+    for (const k of [...this._t2Invites.keys()]) {
+      let peer = null;
+      if (k.startsWith(playerId + '>')) peer = k.slice(playerId.length + 1);
+      else if (k.endsWith('>' + playerId)) peer = k.slice(0, k.length - playerId.length - 1);
+      if (peer === null) continue;
+      this._t2Invites.delete(k);
+      if (!peer || peer === playerId || told.has(peer)) continue;
+      if (this._t2SessionFor(peer)) continue;
+      told.add(peer);
+      this._t2Send(peer, 'trade2_state', { state: 'cancelled', reason });
+    }
+  },
+
   _handleTrade2Cancel(session) {
     const s = this._t2SessionFor(session.id);
     if (s) this._t2Cancel(s, 'declined');
-    // Also clear any outbound invite so a decline really declines.
-    if (this._t2Invites) {
-      for (const k of [...this._t2Invites.keys()]) {
-        if (k.startsWith(session.id + '>') || k.endsWith('>' + session.id)) this._t2Invites.delete(k);
-      }
-    }
+    // Also clear any outbound invite so a decline really declines -- and now
+    // tells the other end, which is what makes it a decline rather than a
+    // disappearance.
+    this._t2ClearInvites(session.id, 'declined');
   },
 
   // Disconnect hook (webSocketClose) + tick sweep.
   _trade2OnDisconnect(playerId) {
     const s = this._t2SessionFor(playerId);
     if (s) this._t2Cancel(s, 'disconnected');
+    /* v2.3.2289: closing the tab is the other silent decline. */
+    this._t2ClearInvites(playerId, 'disconnected');
   },
 
   _tickTrades2(now) {
     if (this._t2Invites) {
-      for (const [k, ts] of this._t2Invites) {
-        if (now - ts > TRADE2.INVITE_TTL) this._t2Invites.delete(k);
+      for (const [k, ts] of [...this._t2Invites]) {
+        if (now - ts <= TRADE2.INVITE_TTL) continue;
+        this._t2Invites.delete(k);
+        /* v2.3.2289: tell BOTH ends -- the inviter's waiting drawer and the
+           invitee's incoming card are both stale the moment this key dies.
+           Correctness never rested on this tick (_handleTrade2Open already
+           re-checks invite freshness), so a player who is gone by now simply
+           misses a notice that no longer matters. */
+        const gt = k.indexOf('>');
+        if (gt <= 0) continue;
+        const from = k.slice(0, gt), to = k.slice(gt + 1);
+        for (const pid of [from, to]) {
+          if (!pid || this._t2SessionFor(pid)) continue;
+          this._t2Send(pid, 'trade2_state', { state: 'cancelled', reason: 'expired' });
+        }
       }
     }
     if (this._trades2) {

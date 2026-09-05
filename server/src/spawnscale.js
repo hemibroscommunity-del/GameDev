@@ -431,6 +431,12 @@ export const spawnScaleMethods = {
       x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, dmg: m.dmg,
       xp: m.xp, gold: m.gold, spd: m.spd, emoji: m.emoji, color: m.color,
       alive: m.alive,
+      /* v2.3.2295: who it is chasing, so a client that JOINS or changes zone
+         starts with the truth rather than with undefined. That baseline is
+         what stops the notice cue firing for every already-aggroed monster in
+         the zone the moment you walk in -- "it just noticed you" is a
+         TRANSITION, and a transition needs a previous value. See tick.js. */
+      tg: m.targetId || null,
     }));
     const nodes = (this._ensureZoneNodes(zoneId) || []).map((n) => ({
       id: n.id, nodeType: n.nodeType, x: n.x, y: n.y,

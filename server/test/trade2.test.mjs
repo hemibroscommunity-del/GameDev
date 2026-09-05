@@ -200,6 +200,47 @@ await cmd(wss.b, 'trade2_open', { target: P('a') });
 check('expired invite does not complete (fresh invite instead)', room._trades2.size === 0 && lastState(wss.b).state === 'invited');
 await cmd(wss.b, 'trade2_cancel');
 
+/* ── 7b. v2.3.2289: A DECLINE HAS TO REACH THE INVITER ──
+   The invitee's client always sent trade2_cancel; the server cleared the
+   invite keys and told nobody, so the inviter's "Trade request sent -
+   waiting..." drawer never went away.  Asserted from the INVITER's socket,
+   because the bug was never visible from the decliner's side. */
+{
+  await cmd(wss.a, 'trade2_open', { target: P('b') });
+  check('7b guard: A is waiting on an invite', lastState(wss.a).state === 'invited', lastState(wss.a));
+  wss.a.sent.length = 0;
+  await cmd(wss.b, 'trade2_cancel');
+  const told = lastState(wss.a);
+  check('declining an invite tells the inviter, instead of leaving them waiting',
+    !!told && told.state === 'cancelled' && told.reason === 'declined', told);
+  check('...exactly once, not once per direction of the handshake',
+    msgsOfType(wss.a, 'trade2_state').length === 1, msgsOfType(wss.a, 'trade2_state').length);
+  check('...and the invite is really gone', room._t2Invites.size === 0, room._t2Invites.size);
+
+  /* An invite that ages out is the same stale drawer, so both ends hear. */
+  await cmd(wss.a, 'trade2_open', { target: P('b') });
+  room._t2Invites.set(P('a') + '>' + P('b'), Date.now() - TRADE2.INVITE_TTL - 1000);
+  wss.a.sent.length = 0; wss.b.sent.length = 0;
+  room._tickTrades2(Date.now());
+  check('an invite that expires tells the inviter too',
+    (lastState(wss.a) || {}).reason === 'expired', lastState(wss.a));
+  check('...and the invitee, whose incoming card is equally stale',
+    (lastState(wss.b) || {}).reason === 'expired', lastState(wss.b));
+
+  /* The guard that matters: a stale key must never blank a LIVE window. */
+  await cmd(wss.a, 'trade2_open', { target: P('b') });
+  await cmd(wss.b, 'trade2_open', { target: P('a') });
+  check('7b guard: a live session exists', !!room._t2SessionFor(P('a')));
+  room._t2Invites.set(P('a') + '>' + P('b'), Date.now() - TRADE2.INVITE_TTL - 1000);
+  wss.a.sent.length = 0;
+  room._tickTrades2(Date.now());
+  check('a stale invite key does NOT cancel a trade window that went live',
+    msgsOfType(wss.a, 'trade2_state').filter((m) => m.payload.state === 'cancelled').length === 0
+      && !!room._t2SessionFor(P('a')));
+  await cmd(wss.a, 'trade2_cancel');
+  await cmd(wss.b, 'trade2_cancel');
+}
+
 // ── 8. deny-list ──
 room.eventBuffer.length = 0;
 await cmd(wss.c, 'trade2_state', { state: 'done', settled: true });

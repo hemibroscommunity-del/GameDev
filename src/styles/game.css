@@ -655,6 +655,346 @@ input{font-family:inherit}
    one field the owner asked about, and a bare-element rule would silently
    restyle every future number input in the game. */
 .bt-nospin{appearance:textfield;-moz-appearance:textfield}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   v2.3.2291: THE TRADE WINDOW, FLAT — the owner's second kit
+   He replaced the ornate gold kit with a flat one and a mockup, saying the
+   first read as "too many boxes within boxes" and "deviates a lot from the
+   theme I'm using for the dashboard". Both were right.
+
+   THIS IS CSS, NOT SLICED ART, and that is a deliberate reversal of v2.3.2290.
+   The new kit is flat — solid fills, 1px borders, one radius — which is exactly
+   what CSS draws natively and stays crisp at every size and DPR. Slicing it
+   would have re-imported three problems the first kit taught us:
+     - it bakes its labels into the art again (+1 … +1000, "Ready to trade"),
+       and those labels change at runtime (subtract mode reads -25);
+     - its pieces sit on a mottled beige wash with partial alpha, so each would
+       ship a halo;
+     - a bitmap fill stops at the padding box, which is the exact defect the
+       owner spotted last round: "the white doesn't look good cause the fill
+       isn't reaching the edges".
+   Built from the dashboard's own tokens instead, "matches the dashboard" is
+   true by construction rather than by eye — and it adds zero KB.
+
+   ONE BOX LEVEL. Drawer -> lane -> row was three frames deep; rows are now
+   plain flex lines separated by hairlines, so the only drawn container is the
+   lane itself. That is the whole of the "boxes within boxes" complaint.
+   Colours are sampled from his mockup: cream #DFDCD0 for the buyer's panel,
+   #12212B for yours, #20303C for a chip. */
+
+/* ── lanes ── */
+.bt-t2-lane{
+  border-radius:10px;
+  padding:8px 10px 9px;
+  margin-bottom:8px;
+  border:1px solid #35505E;
+  /* background-COLOR as well as the gradient, deliberately. A bare
+     `background:linear-gradient(...)` sets only background-image, so
+     getComputedStyle().backgroundColor comes back rgba(0,0,0,0) -- and both the
+     which-lane-is-whose check and the contrast probe in mp-trade read exactly
+     that property. With the gradient alone they saw two transparent lanes and
+     computed every text ratio against black. It is also the honest fallback if
+     the gradient ever fails to paint. */
+  background-color:#12212B;
+  background-image:linear-gradient(180deg,#15272F 0%,#12212B 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.045), 0 2px 5px rgba(0,0,0,.30);
+}
+/* The buyer's side is a light card -- the owner asked for "a notably different
+   shade. Like a light gray", and his own mockup draws it cream. A background,
+   not a bitmap, so it reaches every edge and every corner. */
+.bt-t2-lane--theirs{
+  background-color:#DFDCD0;
+  background-image:linear-gradient(180deg,#E6E3D8 0%,#DFDCD0 100%);
+  border-color:#B9B5A6;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5), 0 2px 5px rgba(0,0,0,.30);
+}
+.bt-t2-lane-hdr{
+  display:flex;align-items:center;gap:7px;
+  font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
+  padding-bottom:7px;margin-bottom:2px;
+  border-bottom:1px solid rgba(229,237,233,.10);
+}
+.bt-t2-lane--theirs .bt-t2-lane-hdr{border-bottom-color:rgba(11,22,27,.14)}
+.bt-t2-lane-icon{width:18px;height:18px;flex:none;display:block}
+/* v2.3.2292: the trader's face. object-fit:cover because the portrait is a
+   headshot crop of a taller canvas -- letting it letterbox would put slate
+   bars either side of every player. */
+.bt-t2-face{
+  width:24px;height:24px;flex:none;border-radius:7px;overflow:hidden;
+  background:#0B161B;border:1px solid rgba(229,237,233,.16);
+  display:flex;align-items:center;justify-content:center;
+}
+.bt-t2-face img{width:100%;height:100%;object-fit:cover;display:block}
+.bt-t2-face-ltr{font-size:11px;font-weight:800;color:#8D9B98;line-height:1}
+.bt-t2-face--on-light{background:#CFCBBC;border-color:rgba(11,22,27,.18)}
+.bt-t2-face--on-light .bt-t2-face-ltr{color:#45565C}
+/* v2.3.2293: the right-hand slot in a lane header. Its explainer copy was
+   removed with the rest; the rule stays because the surviving state readouts
+   (confirmed ✓ / ready ✓) sit in the same slot and lose their layout without
+   it. */
+.bt-t2-lane-hint{
+  margin-left:auto;font-size:10px;font-weight:600;letter-spacing:.02em;
+  text-transform:none;opacity:.85;
+}
+
+/* ── the offered-items well ──────────────────────────────────────────────
+   v2.3.2293: owner -- "under the you offer section (and other trader) I feel
+   like it needs its own subcontainer for like the line item window to more
+   clearly differentiate it from the area just below it where you're adding
+   more gold to the trade. Right now what's offered and options to add more
+   gold look like they bleed together too much."
+
+   NOT a return to the boxes-within-boxes he rejected at v2.3.2291. That was a
+   frame around EVERY ROW inside a framed lane; this is ONE recessed well around
+   the whole list, which is what separates "what is on the table" from "controls
+   that change it". A sunk surface rather than another raised card, so it reads
+   as a compartment in the lane rather than a second panel on top of it. */
+/* ═══ v2.3.2294: THE WELL IS TINTED, AND IT CARRIES ITS OWN INK ═══
+   Owner -- "make the sub container that holds the line items a light brown
+   color. Make the other trader have a light gray color. This way it keeps the
+   color separation between traders but gives a visual difference in their
+   respective line item window."
+
+   So the two wells differ by HUE (warm ~40deg / 24% sat vs cool ~190deg / 3%)
+   while the lanes keep the LIGHTNESS difference they already had. Whose pile
+   you are looking at is now carried by two independent signals instead of one.
+
+   WHY THE INK LIVES IN THIS RULE. Tinting MY well makes it a LIGHT ground
+   sitting inside a DARK lane, so every colour inside it has to flip at once.
+   That is the trap this project has already shipped twice -- TRAPS §48, and
+   the v2.3.2290 lane header that went out at 1.87:1 -- and it is nasty because
+   a light fill that kept the dark ramp is not a wrong colour, it is INVISIBLE
+   TEXT, handed to you silently by inheritance since every site sets `color`
+   explicitly.
+   v2.3.2283 answered that with a JS object (LIGHT_INK) passed beside the fill.
+   It worked, but it was a CONVENTION: someone had to remember to pass it, and
+   the panel needed three paragraphs telling them to. The ink is defined HERE
+   now, in the same rule as the fill it was measured on, and the panel's ink
+   object is nothing but var(--w-*) lookups. Changing a fill and forgetting its
+   ink stopped being a thing you can do; a new palette is this one rule.
+
+   Every value below is measured against its own --w-bg and clears WCAG AA
+   (>=4.5:1). Five palettes were rendered from the real drawer for the owner to
+   choose between (the sweep is still in mp-trade); v2.3.2296 is his pick, "B,
+   Sand & Mist" -- the lightest pair, and the one with the most ink headroom:
+   the muted ramp measures 5.24:1 on the sand and 5.10:1 on the mist against
+   4.80/4.68 for the shipped-by-default pair.
+   ONE NUMBER HE SHOULD KNOW, and it is why the row frames below arrived in the
+   same version: B's gray is only 1.08:1 against the cream lane it sits on,
+   where the first pick was 1.19:1. 1.08 is the exact separation he rejected at
+   v2.3.2282 ("make the buyer window more notably different shade"), so on its
+   own B's well would have stopped reading as a compartment. The per-row frames
+   carry that job now, which is what makes B admissible rather than a step
+   back. */
+.bt-t2-items{
+  /* the surface */
+  --w-bg:#E3D4B4;                       /* light brown -- owner's option B    */
+  --w-line:rgba(11,22,27,.17);
+  --w-edge:inset 0 1px 0 rgba(255,255,255,.40);
+  /* The ink on it. Every one of these is an ALIAS of the -on-invert ramp, not
+     a copy of its value: #6E4D0F and #45565C would otherwise each exist in two
+     namespaces at once, which is TRAPS §48's third secondary trap (the
+     near-duplicate hex that a find-and-replace fixes in one place only).
+     Aliasing costs nothing here -- a palette variant overrides --w-* directly
+     and never touches the ramp, which is how the two deep-ink candidates in
+     mp-trade's sweep work. Ratios shown are against this rule's own --w-bg,
+     which is what they have to clear; the ramp's own comments up at :109 are
+     measured against --ui-invert and are a different number for the same hex. */
+  --w-text:var(--ui-text-on-invert, #111E23);          /* 10.66:1  primary    */
+  --w-text-2:var(--ui-text-on-invert-2, #293B41);      /*  7.32:1  names, qty */
+  --w-text-3:var(--ui-text-on-invert-3, #45565C);      /*  4.80:1  muted      */
+  --w-gold:var(--ui-gold-on-invert, #6E4D0F);          /*  4.81:1  dark brass */
+  --w-slot:var(--ui-invert-slot, #16262C);             /*  9.76:1  art cell   */
+  --w-slot-ink:#F4F0E7;                 /* the art cell is DARK on both wells,
+                                           so what sits IN it keeps light ink */
+  --w-slot-line:transparent;
+  --w-divider:var(--ui-line-on-invert, rgba(11,22,27,.14));
+  /* the line-item frame. A step stronger than the divider it replaces, because
+     it has to read as an edge on four sides rather than as a separator on
+     one -- and still well under the well's own --w-line, so the rows sit
+     INSIDE the compartment rather than competing with it. */
+  --w-row-line:rgba(11,22,27,.19);
+  --w-line:rgba(11,22,27,.17);          /* the well's own edge, a step stronger
+                                           than the row dividers inside it     */
+  --w-btn-bg:rgba(11,22,27,.05);
+  --w-btn-line:rgba(11,22,27,.24);
+  --w-btn-fg:var(--ui-text-on-invert-2, #293B41);      /*  7.32:1  stepper    */
+  --w-rarity-common:var(--ui-rarity-common-on-invert, #45565C);       /* 4.80 */
+  --w-rarity-elemental:var(--ui-rarity-elemental-on-invert, #1D4FA8); /* 4.81 */
+  --w-rarity-fusion:var(--ui-rarity-fusion-on-invert, #6B21A8);       /* 5.46 */
+  --w-rarity-shift:var(--ui-rarity-shift-on-invert, #6E4D0F);         /* 4.81 */
+
+  background:var(--w-bg);
+  border:1px solid var(--w-line);
+  box-shadow:var(--w-edge);
+  /* Inheritance lands on the right ramp by default. Custom properties inherit
+     but do not ENFORCE: anything added inside this well that sets no colour of
+     its own would otherwise fall through to the body's #F4F0E7, i.e. the exact
+     invisible-text failure the --w-* set exists to make impossible. Today every
+     such node happens to be an emoji fallback, whose colour comes from the font
+     rather than from `color`; this is so that stays true of the next one. */
+  color:var(--w-text);
+  border-radius:8px;
+  padding:3px 8px 4px;
+  margin-top:6px;
+}
+/* The other trader's well: the same ink, a cooler ground. It is deliberately a
+   little DARKER than its cream lane rather than lighter (1.19:1). A lighter
+   tint on a lane this bright lands at 1.00-1.08:1 -- which is precisely the
+   separation the owner rejected once already ("make the buyer window more
+   notably different shade"), i.e. no visible compartment at all. */
+.bt-t2-lane--theirs .bt-t2-items{
+  --w-bg:#CFD5D7;                       /* light gray  -- owner's option B    */
+  --w-line:rgba(11,22,27,.15);
+  --w-edge:inset 0 1px 0 rgba(255,255,255,.45);
+}
+/* The well's own --w-line is declared with the ink above rather than beside the
+   fill, so this rule overrides only the three surface tokens. That is the
+   check: if a palette variant ever needs a fourth line here, the ink and the
+   ground have started to disagree and one of them is in the wrong rule. */
+/* The lane's own hairline under the header is redundant once the well below it
+   draws its own edge -- two rules 6px apart is the "bleeding together" reading
+   in reverse. */
+.bt-t2-lane-hdr{border-bottom:none;padding-bottom:0}
+
+/* ── rows: hairlines, not frames ──────────────────────────
+   Each rule reads the WELL's token with the pre-tint dark value as its
+   fallback, so a row rendered outside a well (none today) still looks right
+   and a row inside one cannot be left on the dark ramp. The old
+   `.bt-t2-lane--theirs .bt-t2-row` / `.bt-t2-plate` overrides are gone with
+   the same stroke: the LANE is no longer what decides the ground under a row,
+   the well is, and keying off the lane is now simply the wrong question. */
+.bt-t2-row{
+  display:flex;align-items:center;gap:8px;
+  min-height:42px;box-sizing:border-box;
+}
+/* ═══ v2.3.2296: EVERY LINE ITEM IS A ROW, ON BOTH SIDES ═══
+   Owner: "it looks like the other trader has a border around their line item
+   row. I also want borders around your rows line items."
+
+   What he was looking at was an accident of arithmetic rather than a style:
+   the buyer had ONE row, so the well's own border sat tight around it and read
+   as a frame on the item; yours had two, so the same border read as a frame
+   around the group. One of us was seeing a component that did not exist. It
+   does now, on both lanes, so the two sides finally look like the same thing
+   with different contents.
+
+   AND THIS IS NOT THE THING HE REJECTED AT v2.3.2291. That was a raised,
+   filled, shadowed card around every row INSIDE a framed lane with no well --
+   three drawn boxes deep, and "too many boxes within boxes" in his words. This
+   is a hairline and a 6px radius on a transparent ground: it separates rows
+   from each other, which the divider it replaces was already trying to do with
+   less. No fill, no shadow, no second surface. */
+.bt-t2-row{
+  border:1px solid var(--w-row-line, rgba(229,237,233,.10));
+  border-radius:6px;
+  padding:2px 7px;
+  margin:4px 0;
+}
+.bt-t2-row:first-of-type{margin-top:2px}
+.bt-t2-row:last-of-type{margin-bottom:2px}
+/* The art cell stays DARK on both wells. Item art is fixed webp authored
+   against a near-black ground, so a light plate leaves every thumbnail
+   floating on a ground ~10:1 from the one it was drawn on. v2.3.2291 had it
+   both ways at once -- `.bt-t2-lane--theirs .bt-t2-plate{background:#CFCBBC}`
+   painted the buyer's cells light while the panel's LIGHT_INK note two files
+   away said this cell stays dark. One rule now, so the two cannot disagree. */
+.bt-t2-plate{
+  width:32px;height:32px;flex:none;border-radius:8px;
+  background:var(--w-slot, #0B161B);
+  border:1px solid var(--w-slot-line, rgba(229,237,233,.12));
+  /* ...and it opts back OUT of the well's inherited dark ink, because the cell
+     itself is dark. Without this the `color:var(--w-text)` above would put
+     near-black text on a near-black plate -- the same failure as the well, one
+     level in and inverted. */
+  color:var(--w-slot-ink, #F4F0E7);
+  display:flex;align-items:center;justify-content:center;
+}
+.bt-t2-plate img,.bt-t2-plate svg{width:20px;height:20px;display:block}
+
+/* ── the receipt's folding lane ────────────────────────────────────────────
+   v2.3.2297: owner -- "collapse down that window to just show what the other
+   trader gave you". A grid whose single row goes 1fr -> 0fr, which is the one
+   way to animate a box to nothing without knowing how tall it was: max-height
+   needs a guess that either clips a long pile or eases through empty space
+   after a short one, and height:auto does not animate at all.
+   The child needs min-height:0 and overflow:hidden or grid refuses to take it
+   below its content height -- that pair is the whole trick, and dropping
+   either one makes this rule silently do nothing. */
+.bt-t2-fold{
+  display:grid;
+  grid-template-rows:1fr;
+  transition:grid-template-rows .34s cubic-bezier(.4,0,.2,1), opacity .28s ease-out;
+  opacity:1;
+}
+.bt-t2-fold--out{grid-template-rows:0fr;opacity:0}
+@media (prefers-reduced-motion: reduce){
+  /* The fold is information rather than decoration -- it is what turns the card
+     into "here is what they gave you" -- so it still happens, just without the
+     travel. */
+  .bt-t2-fold{transition:none}
+}
+
+/* ── the small square controls ────────────────────────────────
+   The stepper and the remove ✕, and they only ever render inside a well
+   (StagedRow). v2.3.2294 made that well light on BOTH lanes, so the dark slate
+   brick they used to be would sit on parchment like a hole punched in it --
+   and this is exactly the branch the v2.3.2283 note called "structurally
+   unreachable from an inverted lane", i.e. the five hardcoded colours it said
+   would "go live on a light fill all at once". They just did. They read the
+   well's button tokens now, dark values kept as the fallback. */
+.bt-t2-sq{
+  width:34px;height:34px;flex:none;padding:0;
+  border-radius:8px;
+  border:1px solid var(--w-btn-line, #35505E);
+  background:var(--w-btn-bg, #1B2C36);
+  color:var(--w-btn-fg, #DCE6EA);
+  font:700 15px/1 'Source Sans 3',sans-serif;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+}
+.bt-t2-sq:disabled{opacity:.42;cursor:not-allowed}
+.bt-t2-sq--x{color:var(--w-text-3, #9FB0B6)}
+
+/* ── the denomination chips ── */
+.bt-t2-chiprow{display:flex;flex-wrap:nowrap;gap:4px;margin-bottom:8px}
+.bt-t2-chip{
+  flex:1 1 0;min-width:0;min-height:34px;padding:0 2px;
+  border-radius:8px;border:1px solid #35505E;background:#20303C;
+  color:#E8D9A8;font:700 11px/1 'Source Sans 3',sans-serif;
+  font-variant-numeric:tabular-nums;
+  cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+}
+.bt-t2-chip:active{border-color:var(--ui-brass,#D8AA58);background:#2A3B45}
+.bt-t2-chip:disabled{
+  background:#22333D;border-color:#2C4250;color:#6C7F88;cursor:not-allowed;
+}
+
+/* ── buttons ── */
+.bt-t2-btn{
+  min-height:46px;padding:0 10px;border-radius:10px;
+  border:1px solid #35505E;background:#1B2C36;color:#EAF2F5;
+  font:800 14px/1 'Source Sans 3',sans-serif;
+  cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+}
+.bt-t2-btn--primary{
+  border-color:#C9A659;
+  background:linear-gradient(180deg,#EBC46E 0%,#D9A94F 100%);
+  color:#2A1D06;
+}
+.bt-t2-btn--primary:active{background:linear-gradient(180deg,#D9A94F 0%,#C79A45 100%)}
+.bt-t2-btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* ── the drawer's close ── */
+.bt-t2-close{
+  position:absolute;top:-2px;right:-2px;z-index:2;
+  width:36px;height:36px;padding:0;
+  border-radius:9px;border:1px solid #35505E;background:#1B2C36;
+  color:#CBD8DD;font:700 15px/1 'Source Sans 3',sans-serif;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+}
+
 .bt-nospin::-webkit-outer-spin-button,
 .bt-nospin::-webkit-inner-spin-button{-webkit-appearance:none;appearance:none;margin:0}
 

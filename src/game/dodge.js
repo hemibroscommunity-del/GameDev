@@ -9,7 +9,7 @@
    refs; the only external references are the module imports below. Each
    was `var X = function...` in the component; `export var` here keeps the
    bodies byte-identical and the cross-calls resolve within the module. */
-import { BT_AUDIO, ELEMENTS, LUNGE_DAMAGE_MULT, LUNGE_DIRECTION_THRESHOLD, LUNGE_IFRAMES_MS, LUNGE_STAMINA_FRACTION, RETREAT_SHOT_DAMAGE_MULT, RETREAT_SHOT_STAMINA_FRACTION, RETREAT_STAFF_CONE_RAD, applyStatus, calcWeaponDmg, getActiveWeapon } from '@/data/index.js';
+import { BT_AUDIO, ELEMENTS, LUNGE_DAMAGE_MULT, LUNGE_DIRECTION_THRESHOLD, LUNGE_IFRAMES_MS, LUNGE_STAMINA_FRACTION, RETREAT_SHOT_DAMAGE_MULT, RETREAT_SHOT_STAMINA_FRACTION, RETREAT_STAFF_CONE_RAD, applyStatus, calcWeaponDmg, getActiveWeapon, rpgBlockSize } from '@/data/index.js';
 import { addBuildUse, pushDmgPopup, lockAimPoint } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
@@ -51,7 +51,7 @@ export var resolveDodgeContext = function (S, swipeAng) {
     return 'dodge';
   };
 export var doStandardDodge = function (S, R, ang) {
-    var dodgeCost = Math.ceil((R.maxStamina || 100) * 0.2);
+    var dodgeCost = rpgBlockSize(R, 'stamina');   /* v2.3.2302: one block */
     if ((R.stamina || 0) < dodgeCost) return;
     /* Server-authoritative stamina in MP: send ability_use and let the
        worker validate + deduct.  Local predict for snappy bar feedback;
@@ -81,7 +81,7 @@ export var doStandardDodge = function (S, R, ang) {
 export var doLunge = function (S, R, ang) {
     /* v2.3.213: no melee weapon -> fall back to a plain dodge. */
     if (!R.weapon) return doStandardDodge(S, R, ang);
-    var lungeCost = Math.ceil((R.maxStamina || 100) * (LUNGE_STAMINA_FRACTION || 0.25));
+    var lungeCost = rpgBlockSize(R, 'stamina');   /* v2.3.2302: one block -- was 0.25, a block and a quarter on a bar you count */
     if ((R.stamina || 0) < lungeCost) return doStandardDodge(S, R, ang);
     var lt = S.lockedTarget && S.lockedTarget.ref;
     if (!lt || !lt.alive) return doStandardDodge(S, R, ang);
@@ -134,7 +134,7 @@ export var doRetreatShot = function (S, R, ang) {
     var _rwSlot = R.activeSlot || 'ranged';
     var _rwEq = _rwSlot === 'staff' ? R.staffWeapon : R.rangedWeapon;
     if (!_rwEq) return doStandardDodge(S, R, ang);
-    var retCost = Math.ceil((R.maxStamina || 100) * (RETREAT_SHOT_STAMINA_FRACTION || 0.20));
+    var retCost = rpgBlockSize(R, 'stamina');     /* v2.3.2302: one block */
     if ((R.stamina || 0) < retCost) return doStandardDodge(S, R, ang);
     var lt = S.lockedTarget && S.lockedTarget.ref;
     if (!lt || !lt.alive) return doStandardDodge(S, R, ang);

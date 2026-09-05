@@ -51,7 +51,10 @@ export function dialogueChunks(text) {
 }
 
 export const NpcDialogue = (props) => {
-  const { npcName, text, onDone, onClose, ctaLabel } = props;
+  /* v2.3.2289: `lockScrim` makes the backdrop inert. Opt-in and default-off,
+     so every existing caller behaves exactly as before -- see the note on the
+     scrim below for which screen asks for it and why. */
+  const { npcName, text, onDone, onClose, ctaLabel, lockScrim } = props;
   const chunks = React.useMemo(() => dialogueChunks(text), [text]);
   const [i, setI] = React.useState(0);
   /* Reset when the SPEECH changes, not when the component happens to
@@ -83,8 +86,54 @@ export const NpcDialogue = (props) => {
      — caught by a Playwright click timing out where an in-page .click()
      (which skips hit-testing) had been passing. */
   return createPortal((
-    <div className="bt-npcdlg-scrim" onClick={onClose}>
-      <div className="bt-npcdlg" onClick={(e) => { e.stopPropagation(); advance(); }}>
+    /* ═══ v2.3.2289: A BACKDROP THAT THROWS AWAY A FINISHED QUEST ═══
+       This scrim is `position:fixed; inset:0` behind a card capped at 420px,
+       so on a phone there is a live dismiss band a couple of centimetres tall
+       directly under the button you are aiming at. Undershoot the CTA and the
+       screen closes.
+
+       That is harmless while he is OFFERING you something -- an offer you have
+       not taken costs nothing to dismiss, and "Not now" is right there. It is
+       not harmless once the quest is DONE: the same tap drops the claim
+       screen. Nothing is forfeited (the worker holds the quest at 'active'
+       until a real turn-in), but getting back to it means walking out past the
+       125px clear radius and returning, hearing his lines again and re-picking
+       the XP skill, because that choice is deliberately panel-local.
+
+       So the caller decides, per screen, and only the claim face locks it. */
+    <div className="bt-npcdlg-scrim" onClick={lockScrim ? undefined : onClose}>
+      <div className="bt-npcdlg" style={{ position: 'relative' }} onClick={(e) => { e.stopPropagation(); advance(); }}>
+        {lockScrim && (
+          /* v2.3.2289: the deliberate exit that replaces the accidental one.
+             Making the backdrop inert without this would leave the one screen
+             you reach by finishing a quest with no way out but claiming, and a
+             modal you cannot leave is a worse bug than the one being fixed. A
+             44px corner control is not something a thumb aimed at the button
+             below lands on by mistake, which was the whole complaint. */
+          <button
+            type="button"
+            data-qa="dlg-close"
+            aria-label="Close. Your reward stays waiting for you."
+            onClick={(e) => { e.stopPropagation(); onClose && onClose(); }}
+            style={{
+              position: 'absolute', top: 0, right: 0, width: 44, height: 44,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'transparent', border: 'none', color: '#8D9B98',
+              fontSize: 14, lineHeight: 1, cursor: 'pointer', padding: 0,
+            }}
+          >
+            {/* v2.3.2289: an SVG cross, NOT a "✕" character.  A text glyph here
+                lands inside the card's textContent, and half a dozen quest
+                scenarios read that text to check what Mayor Bro is saying --
+                they started matching "✕ MAYOR BRO ..." and failed on wording
+                that had not changed.  An icon has no text node, so the card
+                still reads as exactly the words in it. */}
+            <svg width="13" height="13" viewBox="0 0 13 13" aria-hidden="true" focusable="false">
+              <path d="M2 2 L11 11 M11 2 L2 11" stroke="currentColor" strokeWidth="1.6"
+                strokeLinecap="round" fill="none" />
+            </svg>
+          </button>
+        )}
         <div className="bt-npcdlg-art">
           {(art.head || art.full) && (
             <img

@@ -190,6 +190,24 @@ export const clanMethods = {
   async _handleClanLeave(session) {
     if (!session || !session.id) return;
     await this._clansEnsure();
+    /* v2.3.2301: no desertion mid-war.  A war freezes its roster at declare
+       time (`members: [...clan.members]` below) and pays THAT snapshot out,
+       but scoring reads LIVE membership -- so leaving mid-war kept the
+       guaranteed payout while making you unscoreable for the other side, and
+       a LAST member leaving dissolved a clan the war object still points at
+       by clanId, leaving a ghost that blocks the survivor's next declare for
+       the rest of the 30-minute timer.  All three were unreachable until now
+       only because no client had ever sent clan_leave (the command has
+       existed since v2.3.1125; only the button was local-only). */
+    const clan = this._clanOf(session.id);
+    if (clan) {
+      for (const w of this._clanWars.values()) {
+        if (w.status === 'active'
+          && (w.challenger.clanId === clan.id || w.defender.clanId === clan.id)) {
+          return this._clanError(session.id, 'Cannot leave during a clan war');
+        }
+      }
+    }
     await this._clanRemoveMember(session.id);
   },
 
@@ -218,11 +236,29 @@ export const clanMethods = {
       await this.state.storage.put('clan:' + clan.id, clan);
       for (const pid of clan.members) this._clanSendState(pid);
     }
+    /* v2.3.2301: the tag has to come off BOTH server copies AND off every
+       peer's screen.  Two separate leaks, both invisible until the client
+       started actually sending clan_leave:
+
+       1. join stamps the tag onto session.data AND playerState, but removal
+          stamped only session.data.  getAllPlayerData() spreads
+          `{...playerState[id], ...session.data}`, and a `delete` on
+          session.data cannot overwrite a key the playerState spread still
+          carries -- so every NEW joiner's state_sync re-served the stale tag.
+       2. Online peers were never told at all.  The only writer of
+          S.others[id].clanTag is the delta merge (Object.assign, which cannot
+          REMOVE a key), the 2s track relay carries no clanTag once you are
+          clanless, and the monster/player tick wire has no clan fields.  So
+          peers kept rendering [TAG] for the rest of their session. */
+    const lws = this._wsBySessionId(playerId);
     const ps = this.playerState[playerId];
-    if (ps) {
-      const session = [...this.sessions.values()].find((s) => s.id === playerId);
-      if (session) this._clanStampTag(playerId, session.data);
-    }
+    if (ps) this._clanStampTag(playerId, ps);
+    const lsession = [...this.sessions.values()].find((s) => s.id === playerId);
+    if (lsession) this._clanStampTag(playerId, lsession.data);
+    /* null, not delete: the peer merge is Object.assign, so a falsy VALUE is
+       the only way to clear a key across the wire.  Every reader is
+       truthiness-gated, so null renders as "no tag" rather than as "null". */
+    this.broadcastExcept(lws, { type: 'player_update', id: playerId, data: { clanTag: null, clanColor1: null } });
     this._clanSendState(playerId);
   },
 

@@ -536,8 +536,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return { ok, before, after: S.rpg.stamina, dash: S._bashDash ? { id: S._bashDash.targetId } : null };
   });
   rec.ok('pressing attack on a locked monster fires the lunge', dashed.ok === true, dashed);
-  rec.ok(`...and it costs 10% of the bar (${dashed.before} -> ${dashed.after} of ${dashSetup.max})`,
-    Math.abs((dashed.before - dashed.after) - Math.ceil(dashSetup.max * 0.10)) <= 1, dashed);
+  /* v2.3.2298: it costs NOTHING now, by owner directive -- "sword dash will
+     change to 0 stamina (or magic if it was that) cost for melee characters".
+     The 10% this used to assert was his number at v2.3.2258 and it is his
+     number that replaced it. Asserted as EXACTLY zero rather than "cheap": the
+     limiter on this move is its 2500ms cooldown, and a dash that quietly cost 1
+     would still drain a bar over a long fight, which is the thing being
+     removed. */
+  rec.ok(`...and it costs NOTHING -- the cooldown is its limiter, not the bar (${dashed.before} -> ${dashed.after} of ${dashSetup.max})`,
+    dashed.after === dashed.before, dashed);
   rec.ok('...and it names the monster it is closing on, so the dash has a destination',
     !!dashed.dash && dashed.dash.id === 'qa_dash_1', dashed);
 

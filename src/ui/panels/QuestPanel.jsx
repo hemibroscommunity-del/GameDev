@@ -295,6 +295,10 @@ export function QuestPanel(props) {
       npcName: questPanel.quest.npc,
       text: _speech,
       ctaLabel: _isOffer ? 'See the quest' : (_canTurnIn ? 'Claim reward' : 'Close'),
+      /* v2.3.2289: lock the backdrop only on the face that leads to a payout.
+         An offer stays dismissible (nothing is owed yet) and so does a
+         progress check-in (there is nothing to lose and its CTA is 'Close'). */
+      lockScrim: !_isOffer && _canTurnIn,
       onClose: function () { return setQuestPanel(null); },
       onDone: function () {
         if (_hasDecision) setStage('act');

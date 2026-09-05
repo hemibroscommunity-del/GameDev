@@ -76,48 +76,92 @@ async function join(ws, id) {
   const ps = room.playerState.bp_burst_mana;
   const session = room.sessions.get(ws);
 
-  check('special cost is FLAT — the whole bug was that it was a fraction of max',
-    room._abilityCost({ maxMana: 100 }, 'swipe') === PROG3.SPECIAL_MANA_COST
-    && room._abilityCost({ maxMana: 999 }, 'swipe') === PROG3.SPECIAL_MANA_COST,
-    { at100: room._abilityCost({ maxMana: 100 }, 'swipe'), at999: room._abilityCost({ maxMana: 999 }, 'swipe') });
+  /* ═══ v2.3.2302: THIS SECTION HAS NOW BEEN REVERSED TWICE. READ THIS. ═══
+     v2.3.1734 made the special's mana cost FLAT so that levelling Magic bought
+     more casts. v2.3.2298 made it a FIFTH of the pool, for the owner's block
+     readout -- which bought a clean "one special = one block" at the price of
+     making casts-per-bar flat at 5 forever, and this section was rewritten to
+     pin that invariance on purpose.
 
-  /* THE REGRESSION TEST FOR THE ACTUAL BUG.  Under the old formula this
-     array is [5,5,5,5,5] — five casts per bar at every Magic level in the
-     game.  It is the single assertion that fails if anyone restores
-     floor(maxMana/5). */
-  const castsAt = (magicLvl) => {
+     The owner's answer (2026-09-05), told that levelling Magic no longer
+     bought casts: "I'd prefer just adding more blocks". So the cost stays a
+     share of the pool -- one block, always -- and the DIVISOR moves instead:
+     5 blocks at base, 10 fully invested, one more every 20 Magic levels
+     (abilities.js blocksAt). Casts-per-bar rises again AND a block is still
+     exactly one special. Both properties at once, which is why this is not
+     simply a revert to v2.3.1734.
+
+     WHY THE FIXTURES BELOW USE A RECOMPUTED playerState AND NOT A BARE OBJECT:
+     the block count is stamped by _prog3Recompute, and poolBlocks() falls back
+     to 5 for anything that lacks it. `room._abilityCost({maxMana: 350}, ...)`
+     therefore prices at a FIFTH no matter what the ladder says -- so a test
+     written that way passes identically whether the ladder works or is deleted.
+     That is exactly how the previous version of this assertion survived this
+     change: it read 5,5,5,5,5 from objects that never had a count. */
+  const psAt = (magicLvl) => {
     ps.prog3.sk.staff.level = magicLvl;
     room._prog3Recompute(ps);
-    return Math.floor(ps.maxMana / room._abilityCost(ps, 'swipe'));
+    return ps;
+  };
+
+  check('a special still costs exactly ONE BLOCK at every Magic level',
+    [1, 10, 30, 50, 100].every((lvl) => {
+      const p = psAt(lvl);
+      return room._abilityCost(p, 'swipe') === Math.floor(p.maxMana / p.manaBlocks);
+    }),
+    [1, 10, 30, 50, 100].map((lvl) => {
+      const p = psAt(lvl);
+      return { lvl, maxMana: p.maxMana, blocks: p.manaBlocks, cost: room._abilityCost(p, 'swipe') };
+    }));
+
+  const castsAt = (magicLvl) => {
+    const p = psAt(magicLvl);
+    return Math.floor(p.maxMana / room._abilityCost(p, 'swipe'));
   };
   const curve = [1, 10, 30, 50, 100].map(castsAt);
-  check('casts per bar RISES with Magic (was a flat 5 at every level)',
-    curve[0] < curve[1] && curve[1] < curve[2] && curve[2] < curve[3] && curve[3] < curve[4],
+  check('...and the bar is worth MORE specials as Magic rises -- 5 at the '
+    + 'bottom, 10 fully invested, which is the whole point of the ladder',
+    curve[0] === 5 && curve[curve.length - 1] === 10
+      && curve.every((c, i) => i === 0 || c >= curve[i - 1]),
     { levels: [1, 10, 30, 50, 100], casts: curve });
-  check('the floor is 4 casts and the cap is materially more',
-    curve[0] === 4 && curve[4] >= 12, curve);
 
-  /* The SUSTAINED rate moves too, which the old system also froze: regen
-     pays a percentage of maxMana, so with a proportional cost the seconds
-     per cast were identical at every level.  Same tick constant the regen
-     loop uses (index.js: maxMana × 0.018 out of combat). */
+  check('...and a full bar is EXACTLY N casts, never N minus a sliver -- '
+    + 'the readout floors, so a cost that rounded up would show a block the '
+    + 'worker refuses to spend',
+    [1, 10, 30, 50, 100].every((lvl) => {
+      const p = psAt(lvl);
+      return Math.floor(p.maxMana / room._abilityCost(p, 'swipe')) === p.manaBlocks;
+    }),
+    [1, 10, 30, 50, 100].map((lvl) => {
+      const p = psAt(lvl);
+      return { lvl, blocks: p.manaBlocks, casts: Math.floor(p.maxMana / room._abilityCost(p, 'swipe')) };
+    }));
+
+  /* Same tick constant the regen loop uses (index.js: maxMana x 0.018 out of
+     combat).  v2.3.2302: this used to assert INVARIANCE and now asserts the
+     opposite, for the same reason as the curve above.  Mana regen is a
+     percentage of max, so seconds-per-cast is 1/(N x rate): with the count
+     fixed at 5 it was level-invariant by construction, and with the count on a
+     ladder a maxed caster sustains roughly twice the rate of a fresh one.
+     That is a real second balance change riding along with the readout, and it
+     is pinned here so it is a decision rather than a discovery. */
   const secsPerCast = (magicLvl) => {
-    ps.prog3.sk.staff.level = magicLvl;
-    room._prog3Recompute(ps);
-    return room._abilityCost(ps, 'swipe') / (ps.maxMana * 0.018);
+    const p = psAt(magicLvl);
+    return room._abilityCost(p, 'swipe') / (p.maxMana * 0.018);
   };
-  check('sustained seconds-per-cast FALLS with Magic (was invariant by construction)',
-    secsPerCast(100) < secsPerCast(1) * 0.5,
+  check('...and the sustained rate improves with Magic too -- a maxed caster '
+    + 'refills a block about twice as fast as a fresh one',
+    secsPerCast(100) < secsPerCast(1) * 0.6,
     { at1: secsPerCast(1).toFixed(2), at100: secsPerCast(100).toFixed(2) });
 
-  // spend path still deducts exactly the flat cost, once
   ps.prog3.sk.staff.level = 1;
   room._prog3Recompute(ps);
   ps.mana = ps.maxMana;
   const before = ps.mana;
+  const oneBlock = room._abilityCost(ps, 'swipe');
   room._handleAbilityUse(session, { type: 'swipe', tier: 3 });
-  check('ability_use deducts exactly the flat cost (tier does not change it)',
-    ps.mana === before - PROG3.SPECIAL_MANA_COST, { before, after: ps.mana });
+  check('ability_use deducts exactly one block (tier does not change it)',
+    ps.mana === before - oneBlock, { before, after: ps.mana, oneBlock });
 
   ps.mana = 1;
   ws.sent.length = 0;
@@ -204,11 +248,15 @@ const setEligible = () => {
 }
 {
   setEligible();
-  ps.mana = PROG3.BURST_MANA_COST - 1;
+  /* v2.3.2298: the burst costs a block too, so the "one short" fixture is one
+     under the computed cost rather than under a constant that no longer sets
+     it. */
+  const burstBlock = room._burstCost(ps);
+  ps.mana = burstBlock - 1;
   cast();
   check('GATE mana: one short is refused with reason "mana", and spends nothing',
     novas().length === 0 && lastReject() && lastReject().reason === 'mana'
-    && ps.mana === PROG3.BURST_MANA_COST - 1, { reject: lastReject(), mana: ps.mana });
+    && ps.mana === burstBlock - 1, { reject: lastReject(), mana: ps.mana, burstBlock });
 }
 {
   setEligible();
@@ -271,7 +319,8 @@ const setEligible = () => {
   check('the nova reports the radius it actually tested',
     nova && nova.payload.r === PROG3.BURST_RADIUS, nova && nova.payload.r);
   check('mana is spent EXACTLY once for the whole nova',
-    ps.mana === manaBefore - PROG3.BURST_MANA_COST, { before: manaBefore, after: ps.mana });
+    ps.mana === manaBefore - room._burstCost(ps),
+    { before: manaBefore, after: ps.mana, block: room._burstCost(ps) });
   check('the element\'s status lands on the target', !!inRange.statuses.burn, inRange.statuses);
   const hits = room.eventBuffer.filter((e) => e.type === 'monster_hit' && e.payload.burst);
   check('each hit rides monster_hit tagged burst:true (the caster\'s own popup)',
@@ -295,7 +344,7 @@ const setEligible = () => {
   const manaBefore2 = ps.mana;
   cast();
   check('a nova that hits nothing still costs mana and still fires',
-    ps.mana === manaBefore2 - PROG3.BURST_MANA_COST && novas().length === 1
+    ps.mana === manaBefore2 - room._burstCost(ps) && novas().length === 1
     && novas()[0].payload.targets.length === 0, { mana: ps.mana, targets: novas()[0].payload.targets });
 }
 

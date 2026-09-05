@@ -1234,12 +1234,40 @@ export function npcDialogueOpen(P) {
 }
 
 /** Close whichever half is up, the way a player does — the scrim. */
+/* v2.3.2289: the ✕ FIRST, then the scrim.
+   This used to click only `.bt-npcdlg-scrim`, which stopped being an exit on
+   the claim face when that backdrop was made inert (a stray tap beside Claim
+   Reward was throwing the screen away).  A helper that clicks a dead element
+   does not fail -- it returns happily and the panel stays open, so the caller
+   fails several assertions later for a reason unrelated to what it was
+   testing.  Hence the check below: if the click did NOTHING, say so here.
+
+   "Did nothing" is judged by NODE IDENTITY, not by "is a panel open".  Closing
+   a claim-ready panel while you are stood on the NPC legitimately re-opens it
+   on the next frame (the proximity opener releases on ready, BroTown.jsx), and
+   the old helper hid that behind a blind 400ms wait.  A re-opened panel is a
+   DIFFERENT DOM node, so `replaced` separates "it closed and the game brought
+   it back" from "the control is dead" -- which is the distinction the throw
+   needs and the reason this is not simply `!open`. */
 export async function closeNpcDialogue(P) {
-  await P.page.evaluate(() => {
+  const r = await P.page.evaluate(async () => {
+    const q = () => document.querySelector('.bt-npcdlg, .bt-qoffer');
+    const before = q();
+    if (!before) return { how: 'nothing-open' };
+    const x = document.querySelector('[data-qa="dlg-close"]');
     const s = document.querySelector('.bt-npcdlg-scrim');
-    if (s) s.click();
+    let how = 'none';
+    if (x) { x.click(); how = 'close-button'; }
+    else if (s) { s.click(); how = 'scrim'; }
+    await new Promise((res) => setTimeout(res, 400));
+    const after = q();
+    return { how, closed: !after, replaced: !!after && after !== before };
   });
-  await P.page.waitForTimeout(400);
+  if (r.how !== 'nothing-open' && r.how !== 'none' && !r.closed && !r.replaced) {
+    throw new Error('closeNpcDialogue: clicked the ' + r.how
+      + ' and nothing changed -- the control is dead');
+  }
+  return r.how;
 }
 
 /* ── the renderer must never throw ──────────────────────────────────────

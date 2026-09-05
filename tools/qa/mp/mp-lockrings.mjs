@@ -14,9 +14,17 @@
  * drawer owns which ring.
  *
  * The numbers to compare against, both from effectsRenderer:
- *   lock reticle   circle, world radius 18 +/- 3, four corner dots
  *   candidate ring ellipse, rx = monsterMeleeHitRadius + 10 (34 for a slime),
  *                  ry = rx * 0.38
+ *
+ * v2.3.2295: the lock reticle -- "circle, world radius 18 +/- 3, four corner
+ * dots" -- is gone. Owner: "instead of the circle reticle to show a monster is
+ * being targeted just have a small/medium size orange pointer chip above the
+ * monsters head (like an upside down triangle)." So the question this file
+ * asks flips from "how many rings" to "did the ring become a chip", and the
+ * two halves of that have to be asserted TOGETHER: rings-on-target going to
+ * zero is a fix if the chip arrived and a regression if it did not, and one
+ * number cannot tell those apart.
  */
 import * as H from './harness.mjs';
 
@@ -235,8 +243,47 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(300);                                                    /* let a frame run */
   const rings = await P.page.evaluate(() => (window.__btLockRings ? window.__btLockRings() : null));
   console.log('    lock rings drawn on the target: ' + JSON.stringify(rings));
-  rec.ok(`the locked monster wears exactly ONE ring (drawn: ${rings && rings.count}, radii ${JSON.stringify(rings && rings.radii)})`,
-    !!rings && rings.count === 1, rings);
+  /* ═══ v2.3.2295: THE RING BECAME A CHIP ═══
+     Both halves, in two assertions, because they fail for different reasons
+     and the fix for each is in a different place. Zero circles proves the
+     reticle really went (a deleted draw call, effectsRenderer); one chip
+     proves its replacement really arrived, including for a target the
+     candidate loop never sees. The renderer counts the circles itself by
+     wrapping gfx.circle, so a FUTURE ring added anywhere in that file is
+     caught by the first of these without anyone remembering to. */
+  rec.ok(`no circle is drawn on the locked monster any more (drawn: ${rings && rings.count}, radii ${JSON.stringify(rings && rings.radii)})`,
+    !!rings && rings.count === 0, rings);
+  rec.ok(`...and it wears exactly ONE pointer chip instead (chips: ${rings && rings.chips})`,
+    !!rings && rings.chips === 1, rings);
+  /* And the chip is ABOVE the monster, not on it -- an upside-down triangle
+     drawn at the feet would satisfy both counts above and be the wrong mark.
+     __btAtkMark reports where the renderer actually put it; the body centre is
+     monsterBodyOffsetY above m.y (23 for a slime), so a mark over the head is
+     comfortably above that, and the SIGN is the part worth pinning. */
+  const chipMark = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const t = S.lockedTarget && S.lockedTarget.ref;
+    const tid = t ? t.id : null;
+    const ms = (window.__btAtkMark ? window.__btAtkMark() : []) || [];
+    return {
+      mk: ms.find((x) => x && x.target) || null,
+      my: t ? (t.renderY != null ? t.renderY : t.y) : null,
+      /* every mark standing on the TARGET's monster, chip and caret alike */
+      onTarget: ms.filter((x) => x && x.id === tid).length,
+      marks: ms.length,
+    };
+  });
+  rec.ok('the chip sits above the monster it marks, not on it',
+    !!chipMark.mk && chipMark.my != null && (chipMark.my - chipMark.mk.y) > 40, chipMark);
+  /* One mark, one monster: the candidate loop drew its caret for the target
+     too ("EVERY CANDIDATE GETS THE ARROW, TARGET INCLUDED", v2.3.2253), and
+     leaving that on would stack a chevron and a chip in the same band on the
+     same head -- the pair this file exists to count. Asserted by MONSTER ID
+     rather than by "how many marks are on screen": the unlocked control
+     monster carries one of its own, and a count that included it would be
+     green for the wrong reason. */
+  rec.ok('...and it is the only mark on that monster -- the candidate caret '
+    + 'stands down for the target', chipMark.onTarget === 1, chipMark);
 
   console.log('    attack button: ' + JSON.stringify(btn));
   rec.ok('the attack button is up, lit and pressable with monsters in play (guard)',
@@ -302,7 +349,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   console.log('    attack button, nothing to fight: ' + JSON.stringify(btnCold));
   rec.ok('with nothing to fight the disc is opaque metal again, so the warm state MEANS something',
     !!cold && !!btnCold && btnCold.opacity === 1 && !/linear-gradient/.test(btnCold.bg || ''), btnCold);
-  console.log('    expected, in CSS px radius: reticle ' +
-    (18 * (state.scaleX || 1)).toFixed(1) + ' (15..21 with its bob), candidate ellipse rx ' +
-    (34 * (state.scaleX || 1)).toFixed(1) + ' ry ' + (34 * 0.38 * (state.scaleY || 1)).toFixed(1));
+  console.log('    expected, in CSS px: target chip 19 wide x 11 tall (screen-'
+    + 'measured, so the zoom does not change it), candidate ellipse rx '
+    + (34 * (state.scaleX || 1)).toFixed(1) + ' ry ' + (34 * 0.38 * (state.scaleY || 1)).toFixed(1));
 }

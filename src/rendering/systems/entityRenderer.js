@@ -8,6 +8,7 @@ import { propsForZone, propFootprint } from '../../data/worldProps.js'; /* v2.3.
 import { TILE } from '@/data/constants.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { ELEMENTS } from '@/data/elements.js';
+import { rpgBlocks } from '@/data/abilities.js'; /* v2.3.2302: the block ladder */
 /* v2.3.1183: status-id -> element lookup, built once at import time.
    _updateMonsters used to run Object.values(ELEMENTS).find(...) per
    status per monster per FRAME -- an array + closure allocation and a
@@ -20,7 +21,7 @@ import { lookupCollision, PVP_THREAT_CONSENT_MS } from '@/data/gameSystems.js';
 import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrameCount, dodgeSheetDir } from '../playerSprites.js';
 import { getShieldFrame } from '../shieldSprites.js';
 import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX, HELD_SHIELD_PX } from '../backShield.js'; /* v2.3.1784; HELD_ v2.3.1798 */
-import { STUN_STARS, STUN_SPIN_MS } from '../fxStrips.js'; /* v2.3.1735: the owner's stun ring */
+import { STUN_STARS, STUN_SPIN_MS, BLOCK_BARS, BLOCK_GEOM, blocksFor } from '../fxStrips.js'; /* v2.3.1735: the owner's stun ring; v2.3.2300: his 5-block resource strips */
 import { jogWaistRow } from '../jogWaist.js'; /* v2.3.1341: stable waist band */
 import { getFrame as getSlimeBaseFrame, hasState as hasSlimeState, frameCount as slimeFrameCount, SLIME_BASE_ROW, SLIME_FRAME_PX } from '../slimeSprites.js';
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1573 generalised */
@@ -143,6 +144,13 @@ const PEER_HPBAR_Y = -48;
 const PEER_HPBAR_HOLD_MS = 8000;
 const MONSTER_HPBAR_W = 44;
 const MONSTER_HPBAR_H = Math.round(MONSTER_HPBAR_W * HPBAR_ASPECT); /* 13 */
+/* v2.3.2295: how long the notice cue stays up. Owner asked for "brief"; the
+   dot this replaced ran 600ms, which on a phone at arm's length is a flicker
+   rather than a cue -- and since nothing wrote _aggroTs in a server zone, that
+   600 had never been judged against anything real. 1100 holds full opacity for
+   the first two thirds and fades out over the last, so it reads as an event
+   with a beginning rather than as something already ending. */
+const NOTICE_MS = 1100;
 const PLAYER_HPBAR_W = 76;
 const PLAYER_HPBAR_H = Math.round(PLAYER_HPBAR_W * HPBAR_ASPECT);   /* 22 */
 const HPBAR_FLASH_MS = 160;   /* white flash on damage */
@@ -4693,10 +4701,21 @@ function _fitPlateToZoom(display) {
 
 /* Drive one plate.  `visible` false parks it without touching the cache,
    so re-showing costs nothing. */
-function _updateNamePill(display, name, level, visible, broId) {
+/* v2.3.2295: `alarm` -- this plate's owner is attacking you right now, so the
+   plate goes red. Owner: "change the monster name plate to a red background
+   when they're actively attacking you."
+   It joins the KEY rather than being applied after it. The whole point of
+   _pillKey is that the rounded-rect is rebuilt only when something about it
+   changed, and for a monster the name and level never change after frame one
+   -- so a fill written outside the key would be written once and then never
+   again, i.e. the plate would go red and stay red for the life of the monster.
+   In the key, a state change is a rebuild and nothing else is.
+   Optional and last: every existing caller passes five arguments and is
+   byte-identical. */
+function _updateNamePill(display, name, level, visible, broId, alarm) {
   if (!display || !display._namePill) return;
   _fitPlateToZoom(display);
-  const key = name + '|' + level + '|' + (broId ? 'v' : '');
+  const key = name + '|' + level + '|' + (broId ? 'v' : '') + (alarm ? '|!' : '');
   if (display._pillKey !== key) {
     display._pillKey = key;
     display._pillName.text = name;
@@ -4728,10 +4747,19 @@ function _updateNamePill(display, name, level, visible, broId) {
     display._pillLevel.x = bPad / 2;
     display._pillBg.clear();
     display._pillBg.roundRect(-w / 2, 0, w, h, 9);
-    display._pillBg.fill({ color: 0x0D161B, alpha: 0.82 });
-    display._pillBg.stroke({ color: 0xE5EDE9, alpha: 0.18, width: 1 });
+    /* #7A1D1D at .94, not a bright red: the plate carries TEXT, and the name
+       has to stay the most legible thing on it. #F4F0E7 measures 9.14:1 on
+       this fill (16.09:1 on the normal one), so the alarm state costs
+       legibility without losing it. A brighter red would read louder and say
+       less -- #9B2020 drops the level line to 3.74:1, under AA. */
+    display._pillBg.fill({ color: alarm ? 0x7A1D1D : 0x0D161B, alpha: alarm ? 0.94 : 0.82 });
+    display._pillBg.stroke({ color: alarm ? 0xFF8A8A : 0xE5EDE9, alpha: alarm ? 0.55 : 0.18, width: 1 });
   }
   display._namePill.visible = !!visible;
+  /* For the QA probe (__btMonsterPlates). A colour read back off a Graphics is
+     not something Pixi offers, and a screenshot cannot tell this red from the
+     danger-level red or from a red monster behind it (TRAPS §21). */
+  display._pillAlarm = !!alarm;
 }
 
 
@@ -5953,7 +5981,43 @@ const RES_MP_Y = 52;
    and clipped its readout — caught in the screenshot, not by the suite, which
    only asserts enY > mpY and was still true.  Deriving it makes the two
    impossible to separate again. */
-const RES_EN_Y = RES_MP_Y + RES_BAR_H + RES_BORDER * 2 + 3;
+/* v2.3.2300: the block sheet's own aspect. His frames are 273x98, so a bar
+   drawn 76 wide is 27 tall -- taller than the 20 the old bar plus its keyline
+   occupied, which is why RES_EN_Y is re-derived below rather than left at a
+   number tuned for the old one. 76 keeps the width the owner has been looking
+   at since v2.3.1896c; the height follows the art rather than being squashed
+   into the old slot, because five blocks squeezed to 16px stop reading as five
+   things. */
+const RES_BLOCK_W = 76;
+const RES_BLOCK_H = Math.round(RES_BLOCK_W * 98 / 273);
+/* Derived, never a literal -- v2.3.1896c records the energy bar climbing INTO
+   the MP bar because this said `40 + ...` while MP had moved to 52, and the
+   suite did not catch it (it only asserts enY > mpY, which stayed true). */
+const RES_EN_Y = RES_MP_Y + RES_BLOCK_H + 3;
+/* ═══ v2.3.2302: THE ROW GETS LONGER, NOT TALLER ═══
+   The block COUNT now grows with investment (5 base, 10 fully invested), and
+   the owner chose "one row that gets longer" over a second row.
+
+   RES_BLOCK_H deliberately stays keyed to the sheet's aspect AT THE FIVE-BLOCK
+   WIDTH. It is a per-BAR aspect, not a per-block one, so deriving it from a
+   widened bar would make a ten-block bar 55 tall and shove RES_EN_Y 28 units
+   down into the terrain -- which is the v2.3.1896c incident wearing a new hat.
+
+   RES_BAR_MAX_W caps the growth. Unclamped, ten blocks is ~145 display units
+   = ~107 CSS px in town: wider than the ATTACK disc (96), 27% of a 390pt
+   screen, and 4.6x the character's own silhouette -- and half again as wide in
+   farm_home, whose scale floor is 0.82 rather than town's ~0.589. Clamped at
+   118 the bar never passes ~87 CSS px in town, the squeeze only starts at nine
+   blocks, and because the HEIGHT is held the compression reads as "more,
+   tighter blocks" rather than as distortion. Holding the total at 76 instead
+   was the other option and is worse: a block would be 4 CSS px wide, which is
+   not a countable thing. */
+const RES_BAR_MAX_W = 118;
+const RES_SRC_CELL = BLOCK_GEOM.cell;
+const RES_SRC_PITCH = BLOCK_GEOM.pitch;
+const _barSrcW = (n) => RES_SRC_CELL + (n - 5) * RES_SRC_PITCH;
+const _barScaleX = (n) => Math.min(RES_BLOCK_W / RES_SRC_CELL, RES_BAR_MAX_W / _barSrcW(n));
+const _barWidth = (n) => Math.round(_barScaleX(n) * _barSrcW(n));
 const RES_HOLD_MS = 1000;      /* full alpha for a second after the last spend */
 const RES_FADE_MS = 1000;      /* then a second of fade — gone at 2s */
 const RES_SLIDE_MS = 420;      /* how long the spent chunk takes to leave */
@@ -6015,7 +6079,7 @@ function _resGlideProgress(gfx, now) {
 }
 
 /* One bar.  Returns its alpha, so the caller can decide about the plate. */
-function _drawResourceBar(gfx, kind, cur, max, y, now) {
+function _drawResourceBar(gfx, sprite, kind, cur, max, y, now, n) {
   const m = Math.max(1, max || 1);
   const v = Math.max(0, Math.min(m, cur || 0));
   /* Seed on the first frame so arriving at partial MP does not read as a
@@ -6074,39 +6138,88 @@ function _drawResourceBar(gfx, kind, cur, max, y, now) {
     if (since <= RES_HOLD_MS) alpha = 1;
     else if (since <= RES_HOLD_MS + RES_FADE_MS) alpha = 1 - (since - RES_HOLD_MS) / RES_FADE_MS;
   }
-  gfx.clear();
-  if (alpha <= 0.01) { gfx.alpha = 0; return 0; }
-  gfx.alpha = alpha;
+  /* ═══ v2.3.2300: FIVE BLOCKS, NOT A PROPORTIONAL BAR ═══
+     Owner: "instead of seeing tiny percentages and trying to do mental math
+     each time stamina or mana is used, I want just 5 blocks (with thick borders
+     between them but all connected inside a rectangle)."
 
-  const x0 = -RES_BAR_W / 2;
-  const fillW = RES_BAR_W * (v / m);
-  /* v2.3.1896: border first and OUTSIDE the track, so the white keyline is a
-     full RES_BORDER thick on every side.  Drawn as a filled rounded rect under
-     an inset one rather than as a stroke: a stroke straddles the path and
-     would give RES_BORDER/2 of white and let the fill touch it. */
-  gfx.roundRect(x0 - RES_BORDER, y - RES_BORDER,
-    RES_BAR_W + RES_BORDER * 2, RES_BAR_H + RES_BORDER * 2, (RES_BAR_H / 2) + RES_BORDER)
-    .fill({ color: RES_BORDER_COL });
-  gfx.roundRect(x0, y, RES_BAR_W, RES_BAR_H, RES_BAR_H / 2).fill({ color: RES_TRACK });
-  if (fillW > 0.5) {
-    gfx.roundRect(x0, y, fillW, RES_BAR_H, RES_BAR_H / 2).fill({ color: RES_FILL[kind] });
-  }
-  const slide = since / RES_SLIDE_MS;
-  gfx._resSlideT = slide;
-  gfx._resSpentT = _resGlideProgress(gfx, now);   /* v2.3.1899 */
+     Everything ABOVE this line is untouched -- the spend detection, the
+     hold-then-fade clock, the re-arm on a second spend. That is the behaviour
+     v2.3.1895-1900 tuned with the owner over five rounds and none of it was
+     what he is complaining about. What changes is only what gets DRAWN, so the
+     bars still appear on a spend, hold for a second, fade by two, and hold
+     their reserved positions.
+
+     THE GRAPHICS STOPS DRAWING AND KEEPS ITS JOB. Every `_res*` field the
+     probe publishes and the death-reset sweep clears lives on this object, and
+     moving that bookkeeping onto the sprite would mean touching both the
+     revive path and the keep-list. It is the state; the sprite is the view.
+
+     THE SLIDING CHUNK AND THE "-N" ARE GONE with the proportional fill. They
+     existed to make a fraction legible as a quantity ("how much of the bar just
+     left"), which is precisely the mental arithmetic being removed -- and with
+     a block readout the answer is visible without a number, because a whole
+     block goes out. Their bookkeeping is nulled rather than left stale, so the
+     probe reports the absence rather than the last value from before the swap. */
+  gfx.clear();
+  gfx._resSlideT = 1;
+  gfx._resSpentT = 1;
   gfx._resGhostX = null; gfx._resGhostW = 0;
-  if (slide < 1) {
-    const fromW = RES_BAR_W * (Math.min(m, gfx._resFrom) / m);
-    const chunkW = Math.max(0, fromW - fillW);
-    if (chunkW > 0.5) {
-      const travel = (RES_BAR_W - fillW) * slide;
-      gfx.roundRect(x0 + fillW + travel, y, chunkW, RES_BAR_H, RES_BAR_H / 2)
-        .fill({ color: RES_GHOST[kind], alpha: (1 - slide) * 0.9 });
-      /* Published so "the amount used slides right" can be MEASURED.  A
-         screenshot cannot check it: a harness round-trip costs ~900ms and the
-         slide is 420, so every frame it can catch is already settled. */
-      gfx._resGhostX = x0 + fillW + travel;
-      gfx._resGhostW = chunkW;
+  gfx._resSpentAmt = 0;
+  if (alpha <= 0.01) {
+    gfx.alpha = 0;
+    if (sprite) { sprite.visible = false; sprite.alpha = 0; }
+    return 0;
+  }
+  gfx.alpha = alpha;
+  if (sprite) {
+    const parts = BLOCK_BARS[kind] && BLOCK_BARS[kind].parts;
+    const N = Math.max(1, Math.floor(n || 5));
+    const lit = blocksFor(v, m, N);
+    /* No sheet (a 404, or a frame before the preload settled) means no bar --
+       NOT a half-drawn one. The preloading law makes the second case a bug
+       rather than a state to design for, and the manifest awaits these; this
+       is the honest degradation for the first. */
+    if (parts) {
+      const k = _barScaleX(N);
+      const W = _barWidth(N);
+      const L = -W / 2;          /* the container sits at x=0, so the bar grows
+                                    symmetrically about the player's centre --
+                                    this is what preserves the anchor(0.5, 0)
+                                    semantics the single sprite used to have. */
+      sprite.x = 0;
+      sprite.y = y;
+      sprite.alpha = alpha;
+      sprite.visible = true;
+
+      const capW = BLOCK_GEOM.cap * k;
+      sprite._capL.x = L;            sprite._capL.width = capW;  sprite._capL.height = RES_BLOCK_H;
+      sprite._mid.x = L + capW;      sprite._mid.width = Math.max(0, W - capW * 2); sprite._mid.height = RES_BLOCK_H;
+      sprite._capR.x = L + W - capW; sprite._capR.width = capW;  sprite._capR.height = RES_BLOCK_H;
+
+      /* v2.3.2302: cells are POOLED, never destroyed when N changes. N moves
+         on a level-up, an allocation and a respec -- all of which can happen
+         mid-fight -- and `new Sprite()` on the frame the sixth block arrives
+         is a hitch on the one frame the player is actually watching the bar.
+         Grow to fit, then hide the surplus. */
+      while (sprite._cells.length < N) {
+        const c = new Sprite(parts.empty);
+        c.anchor.set(0, 0);
+        sprite.addChild(c);
+        sprite._cells.push(c);
+      }
+      for (let i = 0; i < sprite._cells.length; i++) {
+        const c = sprite._cells[i];
+        if (i >= N) { c.visible = false; continue; }
+        const tex = i < lit ? parts.lit : parts.empty;
+        if (c.texture !== tex) c.texture = tex;
+        c.x = L + k * (BLOCK_GEOM.first + RES_SRC_PITCH * i);
+        c.width = BLOCK_GEOM.cellW * k;
+        c.height = RES_BLOCK_H;
+        c.visible = true;
+      }
+    } else {
+      sprite.visible = false;
     }
   }
   return alpha;
@@ -7255,6 +7368,19 @@ export class EntityRenderer {
         const minHeadroomY = -size - 22;
         const topY = Math.min(visualTopY, minHeadroomY);
         const barY = topY - 2 - MONSTER_HPBAR_H / 2;
+        /* v2.3.2295: the top of the whole above-head band -- the HP bar's own
+           upper edge -- stashed for anything that has to sit ABOVE the monster
+           rather than on it. Everything in this block already knows where the
+           sprite really ends (the variant / snowman / fodder cases above);
+           anything drawn from outside it was guessing, which is how the aggro
+           dot came to sit at `-size - 20` -- 28 local px, i.e. halfway up a
+           96px slime rather than over its head. Stashed rather than
+           recomputed, because a second copy of this per-archetype maths is
+           exactly the drift v2.3.1535 records.
+           _hpUi carries the same x/y/scale as this container (mirrored every
+           frame in _updateMonsters), so a value local to one is local to the
+           other. */
+        display._markTopY = barY - MONSTER_HPBAR_H / 2;
         /* v2.3.1338: stamp the bar-top anchor on the game monster so
            combat popups spawn ABOVE the health bar (owner: damage
            numbers rise from over the bar, not over the sprite body).
@@ -7392,16 +7518,49 @@ export class EntityRenderer {
           nameSize: _pui && _pui._pillName ? Number(_pui._pillName.style.fontSize) : null,
           lvlSize: _pui && _pui._pillLevel ? Number(_pui._pillLevel.style.fontSize) : null,
           y: _pillNode ? _pillNode.y : null,
+          /* v2.3.2295: is this plate in its attacking-you state, and does the
+             notice cue think this monster just spotted you. Both read off the
+             renderer rather than off game state, so what the scenario asserts
+             is what was drawn. */
+          alarm: !!(_pui && _pui._pillAlarm),
+          /* The cache key the plate was last REBUILT under. _pillAlarm alone
+             says what the renderer intended; this says whether the rounded
+             rect was actually repainted for it. Fold `alarm` out of the key
+             and the flag still flips while the plate stays dark forever --
+             a state that is true in the code and invisible on the screen,
+             which is the whole failure mode this project keeps re-finding. */
+          pillKey: _pui ? String(_pui._pillKey || '') : null,
+          /* the top of the notice mark, in world units -- see its draw site */
+          noticeY: display._noticeWorldY != null ? Math.round(display._noticeWorldY) : null,
+          my: Math.round(m.y),
+          notice: !!(m._aggroTs && now - m._aggroTs < NOTICE_MS),
+          /* how far into the cue's life this frame is, so a camera can be
+             pointed at it while it is at full strength rather than during its
+             fade -- see the note in mp-moncue */
+          noticeAge: m._aggroTs ? (now - m._aggroTs) : null,
           hasOldLvlText: !!display._lvlText,
         });
       }
       const _plateUi = display._hpUi;
       if (_plateUi && _plateUi._namePill) {
         const _plvlDanger = m.level != null && m.level >= ((S.rpg && S.rpg.level) || 1) + 5;
-        _updateNamePill(_plateUi, monsterDisplayName(m.archetype || m.type), m.level == null ? 1 : m.level, true, null);
-        if (_plvlDanger !== _plateUi._lastLvlDanger) {
+        /* v2.3.2295: stamped by the monster_attack handler (gameEvents.js) when
+           the worker says THIS monster hit ME. A window rather than a flag --
+           there is no "stopped attacking" message, so the plate has to time
+           itself out. */
+        const _plateAlarm = !!(m._atkMeUntil && now < m._atkMeUntil);
+        _updateNamePill(_plateUi, monsterDisplayName(m.archetype || m.type), m.level == null ? 1 : m.level, true, null, _plateAlarm);
+        /* v2.3.2295: the LEVEL line has to move with the fill. The danger red
+           #ef4444 is 4.86:1 on the normal plate and 1.9:1 on the alarm one --
+           the same light-fill-keeps-the-dark-ink trap TRAPS §48 records for the
+           trade lanes, in a Graphics rather than in CSS. So the alarm state
+           takes the whole ramp with it, and the danger red is what it returns
+           to. Both states are in the cache key or the second transition would
+           not repaint. */
+        if (_plvlDanger !== _plateUi._lastLvlDanger || _plateAlarm !== _plateUi._lastLvlAlarm) {
           _plateUi._lastLvlDanger = _plvlDanger;
-          _plateUi._pillLevel.style.fill = _plvlDanger ? '#ef4444' : '#D8AA58';
+          _plateUi._lastLvlAlarm = _plateAlarm;
+          _plateUi._pillLevel.style.fill = _plateAlarm ? '#FFD9D9' : (_plvlDanger ? '#ef4444' : '#D8AA58');
         }
       }
 
@@ -7412,7 +7571,12 @@ export class EntityRenderer {
       const statuses = m.statuses || {};
       const statusKeys = Object.keys(statuses);
       const numStatuses = statusKeys.length;
-      const aggroFlash = m._aggroTs && now - m._aggroTs < 600;
+      /* v2.3.2295: 600 -> 1100ms. Owner: "when they notice you put a BRIEF
+         exclamation point over their head". 600ms of a fading 4px dot on a
+         phone held at arm's length is not a cue, it is a flicker -- and until
+         v2.3.2295 wired the worker's `tg` through, nothing set _aggroTs in a
+         server zone at all, so this had never actually been seen in play. */
+      const aggroFlash = m._aggroTs && now - m._aggroTs < NOTICE_MS;
       const threatArrow = m._aggroed && S.player;
       const stunActive = m._stunUntil && now < m._stunUntil;
       /* Stun countdown text -- pooled Text on the monster container;
@@ -7496,10 +7660,98 @@ export class EntityRenderer {
           }
         }
 
+        /* ═══ v2.3.2295: THE NOTICE CUE IS AN EXCLAMATION MARK ═══
+           Owner: "on the monsters when they notice you put a brief exclamation
+           point over their head to cue you in that you're being targeted."
+
+           It replaces a 4px dot that was (a) not shaped like anything, (b) at
+           `-size - 20`, which is over the BODY of every sprite-backed monster
+           rather than over its head, and (c) dead code in production since
+           local monster AI was switched off -- see the `tg` note in
+           wsClient.js. So all three halves are fixed at once: it is written
+           from the worker's own aggro, it sits on the shared above-head anchor,
+           and it is a mark you can name.
+
+           GRAPHICS, NOT A TEXTURE. CLAUDE.md's preloading law makes a new
+           lazily-loaded sprite a bug, and this is a rounded bar and a dot. A
+           Pixi Text would be worse than a sprite -- it rasterises on first use,
+           which is a hitch at the exact moment something is about to attack
+           you.
+
+           KEYLINE FIRST, one step wider, the same trick the attack carets and
+           the block caret use: this lands on grass, town cobble, desert sand,
+           snow and lava, and a single red mark disappears against two of them.
+
+           POP THEN HOLD THEN FADE. A mark that only fades reads as something
+           ending; one that arrives reads as something starting, which is the
+           whole message. */
         if (aggroFlash) {
-          const age = (now - m._aggroTs) / 600;
-          dynGfx.circle(0, -size - 20, 4);
-          dynGfx.fill({ color: 0xff5e6c, alpha: 1 - age });
+          const age = (now - m._aggroTs) / NOTICE_MS;
+          /* Grows past its size in the first ~120ms and settles back. */
+          const _pop = age < 0.11 ? 0.55 + (age / 0.11) * 0.62
+            : 1.17 - Math.min(1, (age - 0.11) / 0.24) * 0.17;
+          /* Full opacity for two thirds of its life, then out. Fading from
+             frame one is what made the old dot read as a glitch. */
+          const _fade = age < 0.66 ? 1 : 1 - (age - 0.66) / 0.34;
+          /* Same half-compensation the name plate takes (setPlateZoom): a cue
+             for the READER should not shrink to nothing when the world zooms
+             out, and should not be pinned so hard that it dwarfs the monster
+             when it zooms in. */
+          const _nz = _plateZoom * _pop;
+          /* The shared above-head anchor, with the small procedural fallback
+             for a monster whose HP block has not run yet (frame one). */
+          const _nTop = (display._markTopY != null ? display._markTopY : -size - 30);
+          /* Sized by looking, not by arithmetic. The first cut was 3.6 x 12
+             container units with a 1.85x dark shape FILLED behind it, and the
+             screenshot showed the problem immediately: at the 0.6 a combat
+             zone runs at that is a 4 x 14 CSS px mark, and the oversized dark
+             fill read as a brown blob with a thin red thread inside rather
+             than as a red mark with an edge -- the identical failure v2.3.2255
+             records for the attack carets, where "the keyline adds ~1 CSS px
+             of dark EITHER SIDE, and no more" was the fix. So: half again as
+             big, and the dark half is a STROKE around the shape instead of a
+             larger copy of it. */
+          const _bw = 6.5 * _nz;
+          const _bh = 18 * _nz;
+          const _gap = _bw * 0.8;
+          /* Drawn UPWARD from the anchor: the dot sits just above the monster
+             and the stem rises, so a taller mark never reaches down onto the
+             sprite. */
+          /* ═══ WHERE IT SITS, AND HOW THAT WAS SETTLED ═══
+             _nTop is the top of the monster's whole above-head band (the HP
+             bar's upper edge), so the dot sits just clear of that and the
+             stem rises from it. On a slime that puts the mark between about
+             121 and 166 world px above the feet, with the target chip below it
+             at 91 -- the two never touch.
+
+             That ordering was GUESSED WRONG once and is now measured. A
+             screenshot in which the "!" could not be found was read as the
+             chip painting over it, and the mark was raised 30 container units
+             to "clear" a collision that was not happening: what the screenshot
+             actually showed was the first cut of this mark being small and
+             half-faded. The raise then put it 217 px over a 64px slime, i.e.
+             in the sky, off every crop -- which looked exactly like the
+             collision it was supposed to have fixed.
+             Two marks drawn by two renderers into two coordinate spaces cannot
+             be compared by eye, so they are compared by number instead: the
+             draw stashes its world y below, __btAtkMark reports the chip's,
+             and mp-moncue asserts the order. */
+          const _dotY = _nTop - 4 * _nz - _bw * 0.6;
+          const _bang = () => {
+            dynGfx.circle(0, _dotY, _bw * 0.6);
+            dynGfx.roundRect(-_bw / 2, _dotY - _gap - _bh, _bw, _bh, _bw * 0.5);
+          };
+          _bang();
+          dynGfx.stroke({ color: 0x14181A, width: 2.4 * _nz, alpha: _fade * 0.85 });
+          _bang();
+          dynGfx.fill({ color: 0xFF4B4B, alpha: _fade });
+          /* Where it actually landed, in WORLD units, for the probe. The two
+             marks that can collide up here are drawn in different files and
+             different spaces, so "is the ! above the chip" is not a question
+             either file can answer alone -- and when they DID collide nothing
+             failed, because a mark drawn underneath another one is still
+             drawn. This is what lets a scenario ask. */
+          display._noticeWorldY = m.y + (_dotY - _gap - _bh) * (display.scale && display.scale.y ? display.scale.y : 1);
         }
 
         if (threatArrow) {
@@ -11745,6 +11997,35 @@ export class EntityRenderer {
       };
       d._resMpSpent = mkSpent();
       d._resEnSpent = mkSpent();
+      /* v2.3.2300: the two block bars. In the SAME gate as the text nodes for
+         the reason the comment above gives about the "-N" pair -- separate
+         gates for nodes that must exist together go out of step the first time
+         someone reorders them. anchor (0.5, 0) so `y` means the same thing it
+         meant for the old roundRect: the TOP of the bar. */
+      /* v2.3.2302: a Container, not a Sprite -- the bar is now assembled from
+         a cap/middle/cap frame plus N block cells, because the six sheet
+         frames are fixed-width five-block pictures and cannot express six.
+         The FIELD NAMES are kept (d._resMpBlocks / d._resEnBlocks): the death
+         sweep, _resourceBarsUp and the probe all key off .visible/.alpha,
+         which a Container has just as a Sprite does.
+         NOTE it is added to `d`, not d._uiLayer, so it does NOT get the
+         inverse-scale treatment the HUD layer applies. Inert today because
+         both build axes are locked to a single 1.00 entry -- but a bar up to
+         118 units wide would stretch visibly if body heights ever return. */
+      const mkBlocks = (kind) => {
+        const sp = new Container();
+        sp.visible = false;
+        const parts = BLOCK_BARS[kind] && BLOCK_BARS[kind].parts;
+        const mk = (tex) => { const q = new Sprite(tex || Texture.EMPTY); q.anchor.set(0, 0); sp.addChild(q); return q; };
+        sp._capL = mk(parts && parts.capL);
+        sp._mid = mk(parts && parts.mid);
+        sp._capR = mk(parts && parts.capR);
+        sp._cells = [];
+        d.addChild(sp);
+        return sp;
+      };
+      d._resMpBlocks = mkBlocks('mana');
+      d._resEnBlocks = mkBlocks('stamina');
     }
     /* v2.3.1896d: a corpse wears no spend bars.  _updatePlayerHud runs AFTER
        _updatePlayer in the same frame, and _hudMpEmpty/_hudStamEmpty are BOTH
@@ -11770,6 +12051,11 @@ export class EntityRenderer {
       if (d._resEnLabel) d._resEnLabel.visible = false;
       if (d._resMpSpent) d._resMpSpent.visible = false;
       if (d._resEnSpent) d._resEnSpent.visible = false;
+      /* v2.3.2300: and the block bars. A corpse wears no spend bars -- the same
+         rule, and the same reason they are hidden HERE rather than added to the
+         death keep-list (v2.3.1896d: hide by exception, not by list). */
+      if (d._resMpBlocks) { d._resMpBlocks.visible = false; d._resMpBlocks.alpha = 0; }
+      if (d._resEnBlocks) { d._resEnBlocks.visible = false; d._resEnBlocks.alpha = 0; }
       this._resourceBarsUp = false;
       if (typeof window !== 'undefined') {
         window.__btResourceBars = {
@@ -11778,10 +12064,18 @@ export class EntityRenderer {
         };
       }
     } else {
-      const _resAlphaMp = _drawResourceBar(d._hudMpEmpty, 'mana',
-        R.mana, R.maxMana, RES_MP_Y, now);
-      _drawResourceLabel(d._resMpLabel, R.mana, R.maxMana, RES_MP_Y, _resAlphaMp);
-      _drawResourceSpent(d._resMpSpent, d._hudMpEmpty, 'mana', RES_MP_Y, _resAlphaMp);
+      /* v2.3.2300: the block sprite replaces the proportional fill, and the
+         two TEXT readouts go with it. The on-bar "72 / 100" is the "tiny
+         percentages ... mental math" the owner asked to be rid of, and the
+         gliding "-N" is the same arithmetic in motion -- with five blocks the
+         answer to "how much just left" is a block, visibly. Both nodes are kept
+         and parked rather than deleted: they are made in one lazy gate with the
+         sprites, the death sweep hides them, and a future readout that wants
+         text again has somewhere to put it. */
+      const _resAlphaMp = _drawResourceBar(d._hudMpEmpty, d._resMpBlocks, 'mana',
+        R.mana, R.maxMana, RES_MP_Y, now, rpgBlocks(R, 'mana'));
+      if (d._resMpLabel && d._resMpLabel.visible) d._resMpLabel.visible = false;
+      if (d._resMpSpent && d._resMpSpent.visible) d._resMpSpent.visible = false;
       if (d._hudMpSprite && d._hudMpSprite.visible) d._hudMpSprite.visible = false;
       if (d._hudMpTextFull && d._hudMpTextFull.visible) d._hudMpTextFull.visible = false;
       if (d._hudMpTextEmpty && d._hudMpTextEmpty.visible) d._hudMpTextEmpty.visible = false;
@@ -11796,10 +12090,10 @@ export class EntityRenderer {
          renderer and the same timings rather than a second set that could
          drift.  RES_EN_Y is fixed, so this bar holds its position whether or
          not the MP bar above it is drawn. */
-      const _resAlphaEn = _drawResourceBar(d._hudStamEmpty, 'stamina',
-        R.stamina, R.maxStamina, RES_EN_Y, now);
-      _drawResourceLabel(d._resEnLabel, R.stamina, R.maxStamina, RES_EN_Y, _resAlphaEn);
-      _drawResourceSpent(d._resEnSpent, d._hudStamEmpty, 'stamina', RES_EN_Y, _resAlphaEn);
+      const _resAlphaEn = _drawResourceBar(d._hudStamEmpty, d._resEnBlocks, 'stamina',
+        R.stamina, R.maxStamina, RES_EN_Y, now, rpgBlocks(R, 'stamina'));
+      if (d._resEnLabel && d._resEnLabel.visible) d._resEnLabel.visible = false;
+      if (d._resEnSpent && d._resEnSpent.visible) d._resEnSpent.visible = false;
       if (d._hudStamSprite && d._hudStamSprite.visible) d._hudStamSprite.visible = false;
       if (d._hudStamTextFull && d._hudStamTextFull.visible) d._hudStamTextFull.visible = false;
       if (d._hudStamTextEmpty && d._hudStamTextEmpty.visible) d._hudStamTextEmpty.visible = false;
@@ -11814,14 +12108,35 @@ export class EntityRenderer {
           enGhostX: d._hudStamEmpty._resGhostX, enGhostW: d._hudStamEmpty._resGhostW,
           /* v2.3.1897: the gliding "-N" — text, x, and the bar edge it starts
              from, so the suite can prove it is RIGHT OF the bar and moving. */
+          /* v2.3.2300: what the player can actually COUNT. The old fields
+             described a proportional fill and a gliding "-N" that no longer
+             exist; reporting them would be a probe describing a bar that is not
+             on screen, which is how three vacuous checks got into this repo.
+             blocksFor is the same function the draw uses -- the probe must not
+             re-derive the number it is meant to be checking. */
+          mpBlocks: blocksFor(R.mana, R.maxMana, rpgBlocks(R, 'mana')),
+          enBlocks: blocksFor(R.stamina, R.maxStamina, rpgBlocks(R, 'stamina')),
+          mpBlocksDrawn: d._resMpBlocks && d._resMpBlocks.visible,
+          enBlocksDrawn: d._resEnBlocks && d._resEnBlocks.visible,
+          /* v2.3.2302: the COUNT and the WIDTH, so a test can pin the ladder.
+             Without these the suite could only see how many blocks are LIT,
+             and a build that never grew the row past five would read exactly
+             like a full five-block bar. mpCellsDrawn counts the cells actually
+             on screen, which is the only field that catches the row failing to
+             grow while the count says it did. */
+          mpBlockCount: rpgBlocks(R, 'mana'),
+          enBlockCount: rpgBlocks(R, 'stamina'),
+          mpCellsDrawn: d._resMpBlocks && d._resMpBlocks._cells
+            ? d._resMpBlocks._cells.filter((c) => c.visible).length : 0,
+          enCellsDrawn: d._resEnBlocks && d._resEnBlocks._cells
+            ? d._resEnBlocks._cells.filter((c) => c.visible).length : 0,
+          mpBarW: _barWidth(rpgBlocks(R, 'mana')),
+          enBarW: _barWidth(rpgBlocks(R, 'stamina')),
+          blockW: RES_BLOCK_W, blockH: RES_BLOCK_H, barMaxW: RES_BAR_MAX_W,
           mpSpent: d._hudMpEmpty._resSpentAmt, enSpent: d._hudStamEmpty._resSpentAmt,
-          mpSpentText: d._resMpSpent && d._resMpSpent.visible ? d._resMpSpent.text : null,
-          enSpentText: d._resEnSpent && d._resEnSpent.visible ? d._resEnSpent.text : null,
-          mpSpentX: d._resMpSpent && d._resMpSpent.visible ? +d._resMpSpent.x.toFixed(2) : null,
-          enSpentX: d._resEnSpent && d._resEnSpent.visible ? +d._resEnSpent.x.toFixed(2) : null,
-          mpSpentA: d._resMpSpent && d._resMpSpent.visible ? +d._resMpSpent.alpha.toFixed(3) : null,
-          enSpentA: d._resEnSpent && d._resEnSpent.visible ? +d._resEnSpent.alpha.toFixed(3) : null,
-          barRight: RES_BAR_W / 2 + RES_BORDER,
+          mpSpentText: null, enSpentText: null,
+          mpSpentX: null, enSpentX: null, mpSpentA: null, enSpentA: null,
+          barRight: _barWidth(rpgBlocks(R, 'mana')) / 2,
         };
       }
     }

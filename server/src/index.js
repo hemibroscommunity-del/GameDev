@@ -1643,6 +1643,9 @@ export class GameRoom {
             m.hp = m.maxHp;
             m.x = m.spawnX;
             m.y = m.spawnY;
+            /* v2.3.2295: a respawn drops the target too -- same reasoning as
+               the aggro-loss stamp below. */
+            if (m.targetId) m._tgLost = now;
             m.targetId = null;
             m.atkCd = 0;
             /* ═══ v2.3.1709: A RESPAWNED MONSTER COMES BACK CLEAN ═══
@@ -2098,6 +2101,18 @@ export class GameRoom {
           // per target was ~5 px, the user-reported "severely
           // limited" symptom.  Targets now persist until reached or
           // the leash pull-back overrides.
+          /* v2.3.2295: stamp the moment aggro is LOST, so the wire can say so.
+             tick.js sends `tg` only while a monster has a target, which alone
+             would mean the client never learns that a target was dropped -- and
+             the notice cue is an EDGE, so a client holding a stale "chasing
+             you" would never fire again if the same monster re-acquired you.
+             Walk away and come back and there would be no cue, which is the
+             most ordinary way a player meets one.
+             A TIMESTAMP rather than a flag cleared on send: monsterWire runs
+             once per (zone, protocolVersion) pair, i.e. more than once per tick
+             for the same monster, so anything it mutates is wrong for whichever
+             call comes second. This it only reads. */
+          if (m.targetId) m._tgLost = now;
           m.targetId = null;
           /* v2.3.1639: drop any unpaid knockback debt on aggro loss, so a
              monster shoved and then abandoned doesn't bank it and glide on
@@ -2638,9 +2653,9 @@ export class GameRoom {
   // snappy UX (the dash animates immediately); server's value wins.
   _abilityCost(ps, type, tier) {
     if (!ps) return 0;
-    if (type === 'dodge')   return Math.ceil((ps.maxStamina || 100) * 0.20);
-    if (type === 'lunge')   return Math.ceil((ps.maxStamina || 100) * 0.25);
-    if (type === 'retreat') return Math.ceil((ps.maxStamina || 100) * 0.20);
+    if (type === 'dodge')   return this._blockCost(ps, 'stamina', 1);  /* v2.3.2302: one block */
+    if (type === 'lunge')   return this._blockCost(ps, 'stamina', 1);  /* v2.3.2302: was 0.25 of the bar -- a bar you COUNT cannot charge a block and a quarter */
+    if (type === 'retreat') return this._blockCost(ps, 'stamina', 1);  /* v2.3.2302: one block */
     /* Swipe (special attack).
        v2.3.172 made the cost floor(maxMana / 5) so the HUD's 5-segment
        charge meter drained exactly one segment per cast.  That contract
@@ -2654,7 +2669,25 @@ export class GameRoom {
        contract survives; it just stopped being five.
        payload.tier still rides the wire for back-compat but has not
        affected cost since v2.3.172 (it scales DAMAGE, not cost). */
-    if (type === 'swipe')   return PROG3.SPECIAL_MANA_COST;
+    /* ═══ v2.3.2298: BACK TO ONE FIFTH, BY OWNER DIRECTIVE ═══
+       "All special attacks will cost one block." A block is a fifth of the
+       pool, so this is floor(maxMana / 5) again -- which is what v2.3.172 set
+       and v2.3.1734 flattened.
+
+       THE NOTE ABOVE IS STILL TRUE and is the cost of the change: a cost that
+       is a fraction of max is five casts per bar at Magic 1 and five casts per
+       bar at Magic 100, and since the regen tick is also a percentage of max,
+       levelling Magic no longer buys casts. What it buys instead is the SIZE of
+       a cast -- maxMana feeds nothing else -- so mana progression now reads as
+       "each block is worth more" rather than "you get more casts". That is a
+       real trade and the owner made it knowingly: the readout he asked for
+       shows five blocks and one special, and a special that ate a sixth of the
+       bar would make the picture a lie.
+       Deploy-order note: this UNDOES the split the elemBurst cap was carrying.
+       An old worker charges floor(maxMana/5) and so does this one, so old and
+       new clients now predict the same number against either -- strictly safer
+       than the state it replaces. */
+    if (type === 'swipe')   return this._blockCost(ps, 'mana', 1);     /* v2.3.2302: one block, at whatever count you are on */
     return 0;
   }
 

@@ -98,8 +98,50 @@ export const QuestOfferPanel = (props) => {
      — caught by a Playwright click timing out where an in-page .click()
      (which skips hit-testing) had been passing. */
   return createPortal((
-    <div className="bt-npcdlg-scrim" onClick={onClose}>
-      <div className="bt-qoffer" onClick={(e) => e.stopPropagation()}>
+    /* ═══ v2.3.2289: THE BACKDROP HONOURS THE CARD'S OWN POLICY ═══
+       Twenty lines below, this panel deliberately withholds a "Not now" from
+       the reward face, and says why: "A finished quest's reward is already
+       earned, so a 'not now' there is a way to lose track of payment you are
+       owed." The scrim then handed that exact escape back -- a full-viewport
+       dismiss with a live band right under the Claim button.
+
+       Now the backdrop follows the same rule the buttons do: dismissible while
+       he is offering, inert once you are owed. The reward is not destroyed
+       either way (the worker keeps the quest claimable), so this is about not
+       making you walk back for it. */
+    <div className="bt-npcdlg-scrim" onClick={offering ? onClose : undefined}>
+      <div className="bt-qoffer" style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+        {!offering && (
+          /* v2.3.2289: the deliberate exit that replaces the accidental one.
+             Making the backdrop inert without this would leave the one screen
+             you reach by finishing a quest with no way out but claiming, and a
+             modal you cannot leave is a worse bug than the one being fixed. A
+             44px corner control is not something a thumb aimed at the button
+             below lands on by mistake, which was the whole complaint. */
+          <button
+            type="button"
+            data-qa="dlg-close"
+            aria-label="Close. Your reward stays waiting for you."
+            onClick={(e) => { e.stopPropagation(); onClose && onClose(); }}
+            style={{
+              position: 'absolute', top: 0, right: 0, width: 44, height: 44,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'transparent', border: 'none', color: '#8D9B98',
+              fontSize: 14, lineHeight: 1, cursor: 'pointer', padding: 0,
+            }}
+          >
+            {/* v2.3.2289: an SVG cross, NOT a "✕" character.  A text glyph here
+                lands inside the card's textContent, and half a dozen quest
+                scenarios read that text to check what Mayor Bro is saying --
+                they started matching "✕ MAYOR BRO ..." and failed on wording
+                that had not changed.  An icon has no text node, so the card
+                still reads as exactly the words in it. */}
+            <svg width="13" height="13" viewBox="0 0 13 13" aria-hidden="true" focusable="false">
+              <path d="M2 2 L11 11 M11 2 L2 11" stroke="currentColor" strokeWidth="1.6"
+                strokeLinecap="round" fill="none" />
+            </svg>
+          </button>
+        )}
         <div className="bt-qoffer-kicker">{offering ? 'New Quest' : 'Quest Complete'}</div>
         <div className="bt-qoffer-title">{quest && quest.title}</div>
 

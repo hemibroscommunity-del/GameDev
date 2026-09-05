@@ -92,6 +92,24 @@ export const burstMethods = {
     return { slot: 'melee', w: ps && ps.weapon };
   },
 
+  /* v2.3.2298: one block, exactly like the special attack. Owner: "all special
+     attacks will cost one block", and a block is a fifth of the pool. It was a
+     flat PROG3.BURST_MANA_COST (25) beside the special's flat 25; both are a
+     fifth now, so "a special costs a block" is true of EVERY special rather
+     than of most of them -- and the readout that shows five blocks does not
+     have to carve out an exception for this one.
+     Reads maxMana off the SERVER's playerState, which is its only writer, so a
+     client that inflates its own pool buys nothing. A METHOD on this mixin
+     rather than a bare function: everything in this file is one object literal
+     spread onto the room, and a `function` declaration in the middle of it is
+     a syntax error rather than a helper. */
+  _burstCost(ps) {
+    /* v2.3.2302: one block, priced through the single server primitive
+       (_blockCost) rather than a second hardcoded fifth -- the count is now a
+       ladder, so a literal /5 here would undercharge a maxed caster. */
+    return this._blockCost(ps, 'mana', 1);
+  },
+
   /* The four gates, in one place so the handler and the tests read the same
      decision.  Returns null when the cast is legal, else a machine-readable
      reason the client turns into a one-line popup ("Element Burst needs an
@@ -110,7 +128,8 @@ export const burstMethods = {
     /* THE ENCHANT GATE.  element1 is written by the enchant/forge path and
        sanitized on load, so this is server truth about server state. */
     if (!w.element1 || !ELEMENT_STATUS[w.element1]) return 'no_element';
-    if ((ps.mana || 0) < PROG3.BURST_MANA_COST) return 'mana';
+    /* v2.3.2298: one block, like every other special -- see _abilityCost. */
+    if ((ps.mana || 0) < this._burstCost(ps)) return 'mana';
     /* In-memory cooldown (handoff rule 11: combat scratch is not persisted
        — a deploy just hands everyone their burst back, which is the right
        failure direction for a 3 s timer). */
@@ -137,7 +156,7 @@ export const burstMethods = {
             type: 'ability_rejected',
             payload: {
               type: BURST_ABILITY_KIND, pool: 'mana', reason: refusal,
-              cost: PROG3.BURST_MANA_COST, have: (ps && ps.mana) || 0,
+              cost: this._burstCost(ps), have: (ps && ps.mana) || 0,
             },
           }));
         } catch (e) {}
@@ -151,7 +170,7 @@ export const burstMethods = {
 
     /* Spend + stamp BEFORE resolving, so an exception in the damage loop
        cannot leave a free cast behind. */
-    ps.mana = Math.max(0, (ps.mana || 0) - PROG3.BURST_MANA_COST);
+    ps.mana = Math.max(0, (ps.mana || 0) - this._burstCost(ps));
     ps._burstCdUntil = now + PROG3.BURST_CD_MS;
     /* v2.3.1704 parity with _handleMonsterDamage: casting ends an
        extraction, so a burst can't be fired from behind the harvest

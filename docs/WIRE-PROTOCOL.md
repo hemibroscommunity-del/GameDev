@@ -396,7 +396,7 @@ Summary of the wire-visible changes:
 | `inbox_delivered` | Offline-mail delivery: `{entries: [{kind, payload, note, source}], queued}` | inbox-escrow.md |
 | `duel_end` | Server duel resolution: `{winner, loser, wager, how: kill\|death\|forfeit\|timeout}` | duels.md |
 | `gamble_result` | Server-rolled gamble outcome (private): `{won, wager, payout}` | gambling.md |
-| `clan_state` / `clan_error` / `clan_war_kill` / `clan_war_end` | Clan registry echo + war referee | clans.md |
+| `clan_state` / `clan_error` / `clan_war_kill` / `clan_war_end` | Clan registry echo + war referee (private; `clan_create` / `clan_invite` / `clan_join_accept` / `clan_leave` / `clan_kick` / `clan_war_declare` c→s cases, all gated client-side on `caps.clans`). v2.3.2301: `clan_leave` finally has a SENDER — the button had been local-only, so the registry kept you a member and the clan returned on reload. Removal now also emits `player_update {clanTag:null, clanColor1:null}` to peers, because the peer merge is `Object.assign` and cannot remove a key | clans.md |
 | `arena_match_start` / `arena_match_result` / `arena_tournament_complete` | Arena bracket (matches are duels) | arena.md |
 | `dungeon_started` / `dungeon_wave` / `dungeon_boss` / `dungeon_complete` / `dungeon_error` | Instanced dungeons (private; `dungeon_start` c→s case) | dungeons.md |
 | `dungeon_boss_ability` | v2.3.1194 boss ability telegraph/execute notice (private to players inside; client handler is display-only — damage rides `monster_attack`). v2.3.1199 adds kind `enrage` (soft anti-stall timer; `{stacks, pct}` extras) on the same type | dungeons.md |

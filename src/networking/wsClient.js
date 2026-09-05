@@ -24,7 +24,7 @@ import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking
 import { peerCosmeticsFromWire, applyPeerCosmetics } from '@/networking/peerCosmetics.js';
 import { revealBus } from '@/ui/reveal/revealBus.js'; /* v2.3.1925 */
 import { applyCharacterRecord, hasStoredCharacter, publishCharRecord } from '@/game/characterRecord.js'; /* v2.3.1814: the stored name+look */
-import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, DEATH_GOLD_PENALTY, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setProg3XEnabled, isProg3XEnabled, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, PROG3_SKILL_META, PROG3 } from '@/data/index.js';
+import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, DEATH_GOLD_PENALTY, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setProg3XEnabled, isProg3XEnabled, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, setBlockScaleEnabled, PROG3_SKILL_META, PROG3 } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { usesClientSideMovement, MONSTER_VARIANTS, isRemnantSkull, applyZoneVariant } from '@/data/monsterVariants.js';
 import { rollMonsterShard, shardByKey } from '@/data/shards.js';
@@ -710,6 +710,60 @@ export function setupWebSocket(ctx) {
                         localM._burstFrom = Date.now();
                         localM._burstScale = localM._burstScale || 3.5;
                       }
+                      /* ═══ v2.3.2295: "IT JUST NOTICED YOU" IS A TRANSITION ═══
+                         The worker sends `tg` -- the id of the player this
+                         monster is chasing -- only while it has one. Compared
+                         against the LAST value we held, not against nothing:
+                         a monster that was already coming for you when you
+                         first laid eyes on it has not just noticed you, and
+                         flashing for it would fire the cue for the whole zone
+                         on every join. `_tgPrev` is seeded from the snapshot
+                         (state_sync / zone_monsters) precisely so that first
+                         sighting is a baseline rather than an edge.
+
+                         _aggroTs is the EXISTING field entityRenderer's notice
+                         cue reads, written by the local AI since the local-AI
+                         days. Reviving it rather than adding a parallel one
+                         means the cue works identically in a local-AI zone and
+                         a server zone -- and it is why this is three lines
+                         rather than a new renderer.
+
+                         `_aggroed` is deliberately NOT set. It drives a
+                         separate always-on threat arrow above the head, which
+                         is a different mark from the notice flash and would
+                         put a second permanent chevron over every chasing
+                         monster -- exactly the "two marks on one monster"
+                         the last four versions have been unpicking. */
+                      if (md.tg !== undefined) {
+                        var _tgPrev = localM._tgPrev;
+                        if (md.tg === S.myId && _tgPrev !== undefined && _tgPrev !== S.myId) {
+                          localM._aggroTs = Date.now();
+                        }
+                        localM._tgPrev = md.tg;
+                        /* Keep the plain field in step with the wire too. The
+                           snapshot maps copy `tg` off the spread, so without
+                           this it would freeze at whatever the zone snapshot
+                           said and read as a stale answer to "who is this
+                           monster chasing" -- which is exactly how the first
+                           cut of mp-moncue came to see tg:null on a monster
+                           that was, at that instant, chasing the player. */
+                        localM.tg = md.tg;
+                        /* ═══ AND IT CLEARS A STUCK THREAT ARROW ═══
+                           `_aggroed` drives a separate orange arrow on the
+                           monster's body (entityRenderer, `threatArrow`). In a
+                           server zone the local AI that used to clear it never
+                           runs -- but ONE writer is not behind that gate: the
+                           retaliation stamp on being hit (monsterCombat.js and
+                           projectiles.js). So every monster you have ever hit
+                           in a server zone has worn that arrow permanently,
+                           with nothing anywhere able to take it off.
+                           CLEARED HERE, NEVER SET. Setting it from `tg` would
+                           light the arrow on every chasing monster -- a fourth
+                           mark on a head that now carries three, which is the
+                           clutter the last five versions have been unpicking.
+                           This only ends a state that could not end. */
+                        if (md.tg !== S.myId) localM._aggroed = false;
+                      }
                       if (typeof md.ph === 'string' && md.ph && localM._burPhase !== md.ph) {
                         localM._burPhase = md.ph;
                         localM._burFrom = localM._burFrom || Date.now();
@@ -980,6 +1034,13 @@ export function setupWebSocket(ctx) {
                    on every cast and the charge pie draws segments the
                    worker will not fund (rule 19). */
                 setElemBurstEnabled(!!(S._serverCaps && S._serverCaps.elemBurst));
+                /* v2.3.2302: the block LADDER, on its own narrow flag.  Against
+                   a worker that has not advertised it the client must keep
+                   predicting fifths and drawing five blocks, because that is
+                   what such a worker actually charges -- gating this on
+                   elemBurst instead would turn every pre-2302 worker into a
+                   client that promises ten casts and gets five. */
+                setBlockScaleEnabled(!!(S._serverCaps && S._serverCaps.blockScale));
                 if (S.rpg) recalcDerived(S.rpg);
               } catch (e) {}
               var others = {};
@@ -1033,6 +1094,12 @@ export function setupWebSocket(ctx) {
                     alive: m.alive, statuses: {}, _hitThisSwing: false,
                     _atkCd: 0, _stunUntil: 0, respawnAt: 0, moveTimer: 0, targetX: m.x, targetY: m.y,
                     _stuckArrows: [],
+                    /* v2.3.2295: the notice cue's baseline. The spread above
+                       already copies `tg` itself; this is the SEPARATE "what
+                       did we last know" slot the edge test compares against,
+                       and seeding it here is what makes a first sighting not
+                       an edge. */
+                    _tgPrev: m.tg !== undefined ? m.tg : null,
                   });
                   /* Apply per-zone variant skin (see monsterVariants.js).
                      Maps ember fodder -> fireGoblin so the renderer + AI
@@ -1399,6 +1466,11 @@ export function setupWebSocket(ctx) {
                 maxStamina: typeof msg.payload.maxStamina === 'number' ? msg.payload.maxStamina : null,
                 mana: typeof msg.payload.mana === 'number' ? msg.payload.mana : null,
                 maxMana: typeof msg.payload.maxMana === 'number' ? msg.payload.maxMana : null,
+                /* v2.3.2302: the block counts, present-gated like the pools --
+                   an old worker sends neither and the client keeps its own
+                   five-block default rather than reading undefined as zero. */
+                manaBlocks: typeof msg.payload.manaBlocks === 'number' ? msg.payload.manaBlocks : null,
+                stamBlocks: typeof msg.payload.stamBlocks === 'number' ? msg.payload.stamBlocks : null,
               };
               /* Food buff timers -- worker is authoritative for the
                  endsAt timestamps so a cheater can't extend their
@@ -2489,6 +2561,8 @@ export function setupWebSocket(ctx) {
               alive: m.alive, statuses: {}, _hitThisSwing: false,
               _atkCd: 0, _stunUntil: 0, respawnAt: 0, moveTimer: 0, targetX: m.x, targetY: m.y,
               _stuckArrows: [],
+              /* v2.3.2295: see the state_sync copy of this map. */
+              _tgPrev: m.tg !== undefined ? m.tg : null,
             });
             applyZoneVariant(local, S.currentZone);
             /* See state_sync handler -- mirror the same spawn
@@ -2593,6 +2667,14 @@ export function setupWebSocket(ctx) {
          with is not invented for the test — server/test/drops.test.mjs pins
          what the worker actually emits. */
       try { window.__btLootCredit = function (p) { _applyLootCredit(p, S); }; } catch (e) {}
+      /* v2.3.2302: the same QA/debug seam for the derived-stat recompute.
+         The block COUNT is derived from Magic level and allocated stam points
+         (recalcDerived -> blocksAt), and a headless run needs to move those
+         inputs and see the count follow WITHOUT poking the count itself --
+         otherwise the test proves only that the renderer can draw a number it
+         was handed, not that the ladder computes one.  The alternative is
+         levelling Magic to 100 in a headless browser. */
+      try { window.__btRecalc = function (r) { return recalcDerived(r || S.rpg); }; } catch (e) {}
 
 
       ws.onclose = function (event) {
@@ -2872,6 +2954,11 @@ export function setupWebSocket(ctx) {
     /* v2.3.1185: party commands -- same server-truth-renderer posture
        as trade2; invite/accept clicks should not sit in a batch. */
     'party_invite', 'party_accept', 'party_decline', 'party_leave', 'party_kick', 'party_chat',
+    /* v2.3.2301: clan_leave, for the same reason party_leave is here.  The
+       Leave button became a server-truth renderer (it no longer clears its own
+       UI and waits for the clan_state echo), so a 33ms batch behind position
+       updates is 33ms of a button that looks broken. */
+    'clan_leave',
     /* v2.3.2136: the two new chat lanes.  Priority for the same reason
        party_chat is -- a line you just typed should not sit in the 33ms
        input batch behind position updates. */

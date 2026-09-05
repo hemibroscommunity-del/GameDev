@@ -39,7 +39,7 @@ import {
 /* v2.3.1733: the char-10 milestone's max-stamina multiplier (mirror of the
    server's staminaMilestoneMult) — recalcDerived's prog3 branch is the
    client twin of _prog3Recompute, so the term has to appear in both. */
-import { staminaMilestoneMult } from './abilities.js';
+import { staminaMilestoneMult, blocksAt } from './abilities.js';
 
 /* v2.3.1186: pure-display exports (BT_AUDIO, BT_ACHIEVEMENTS, MASKS,
    tile colors, generateZoneMap, emote/NPC tables) moved to
@@ -5326,6 +5326,12 @@ export function recalcDerived(rpg) {
     rpg.maxStamina = Math.floor((100 + prog3Pts(rpg, 'stam') * PROG3.BODY.stam.per)
       * staminaMilestoneMult(p3lvl));
     rpg.maxMana = Math.floor(100 + prog3SkillLevel(rpg, 'staff') * PROG3.MANA_PER_MAGIC_LEVEL);
+    /* v2.3.2302: the block counts, mirroring _prog3Recompute exactly and from
+       the same inputs -- Magic LEVEL for mana, allocated stam POINTS for
+       stamina.  A server echo overwrites these; this is the local prediction
+       so the bar and the charge pie are right between echoes. */
+    rpg.manaBlocks = blocksAt(prog3SkillLevel(rpg, 'staff'));
+    rpg.stamBlocks = blocksAt(prog3Pts(rpg, 'stam'));
     rpg._amuletBonus = (rpg.amulet && rpg.amulet.gem) ? getAmuletBonus(rpg.amulet) : null;
     rpg._shieldBonus = (rpg.shield && rpg.shield.gem) ? getShieldBonus(rpg.shield) : null;
     rpg.hp = Math.min(rpg.hp, rpg.maxHp);

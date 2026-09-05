@@ -79,6 +79,29 @@ export const PORTAL_BEAM = { tex: null, url: '/sprites/fx/portal-beam.webp?v=2.3
 /* One full turn of the star ring.  Slow enough to read as a daze rather than
    a strobe; matches the 700ms period of the procedural orbit it replaces so
    the feel does not change, only the art. */
+/* ═══ v2.3.2300: THE FIVE-BLOCK RESOURCE READOUT ═══
+ * Owner: "instead of seeing tiny percentages and trying to do mental math each
+ * time stamina or mana is used, I want just 5 blocks (with thick borders
+ * between them but all connected inside a rectangle). Use this sprite sheet."
+ *
+ * His sheet, sliced by tools/slice_block_bars.py into two strips of SIX frames
+ * each. Six, not five: an empty bar is a frame too, and the strip is ordered so
+ * the INDEX IS THE NUMBER OF FILLED BLOCKS -- frames[0] is empty, frames[5] is
+ * full. The sheet itself counts down; the slicer reverses it precisely so no
+ * call site ever writes `5 - filled`, which is one subtraction away from
+ * showing a full bar at zero stamina.
+ *
+ * HERE rather than in a new module because this file is already awaited by the
+ * central preload manifest (fxStripsReady, preloadAnimations.js). CLAUDE.md's
+ * preloading law wants every animation asset loaded before the intro overlay
+ * lifts, and a resource bar is the worst possible thing to load lazily: its
+ * first use is the first time you spend mana, i.e. mid-fight. GLOBAL, not
+ * per-zone -- the bars follow their owner into every zone. */
+export const BLOCK_BARS = {
+  stamina: { frames: [], url: '/icons/ui/blocks-stam.webp?v=2.3.2300' },
+  mana:    { frames: [], url: '/icons/ui/blocks-mp.webp?v=2.3.2300' },
+};
+
 export const STUN_SPIN_MS = 700;
 export const WHIRL_FX_MS = 520;
 
@@ -98,6 +121,72 @@ for (const cfg of [STUN_STARS, WHIRL_VORTEX, FIRE_TRAIL_FX]) {
     }
   }).catch((err) => console.warn('[fx-strips] load failed', cfg.url, err));
   _pending.push(p);
+}
+
+/* v2.3.2300: the two block strips, six frames each. Same shape as the loop
+   above but a different frame count, so it is its own loop rather than a
+   parameter on that one -- the 8 there is the animation cell count and means
+   something different from the 6 here. */
+for (const cfg of [BLOCK_BARS.stamina, BLOCK_BARS.mana]) {
+  const p = Assets.load(cfg.url).then((tex) => {
+    if (!tex || !tex.source) return;
+    const fw = Math.floor(tex.source.width / 6);
+    const H = tex.source.height;
+    for (let i = 0; i < 6; i++) {
+      cfg.frames.push(new Texture({
+        source: tex.source,
+        frame: new Rectangle(i * fw, 0, fw, H),
+      }));
+    }
+    /* ═══ v2.3.2302: THE SAME SHEET, CUT INTO A BAR THAT CAN GROW ═══
+       The row is no longer always five blocks (abilities.js blocksAt: 5 at
+       base, 10 fully invested), and the six frames above are fixed-width
+       five-block pictures -- they cannot express six blocks, let alone ten.
+       So the bar is rebuilt from pieces of the SAME already-loaded texture:
+       a left cap, a stretchable dark middle, a right cap, and one block cell
+       stamped N times over the top.
+
+       No new art, no new download, no new preload registration -- which is
+       what keeps the animation-preloading law satisfied. It is also why the
+       `?v=` cache key above must NOT move: the image is unchanged, and
+       bumping it would make every returning player re-fetch 78KB for nothing.
+
+       Geometry measured off the shipped WebPs, both of which agree: a 22px
+       left cap, five ~30px blocks on a 49.5px pitch starting at x=22, a
+       ~23px right cap. `mid` is cut from x58-66, deep inside the 53-71 gutter
+       between blocks 1 and 2, so it is pure frame with no block edge in it
+       and no antialiased neighbour bleeding into the stretch. `empty` and
+       `lit` use the IDENTICAL rectangle in frame 0 and frame 5, so a lit
+       block lands pixel-for-pixel where the unlit one was. */
+    cfg.parts = {
+      capL:  new Texture({ source: tex.source, frame: new Rectangle(0, 0, 18, H) }),
+      capR:  new Texture({ source: tex.source, frame: new Rectangle(fw - 18, 0, 18, H) }),
+      mid:   new Texture({ source: tex.source, frame: new Rectangle(58, 0, 8, H) }),
+      empty: new Texture({ source: tex.source, frame: new Rectangle(19, 0, 36, H) }),
+      lit:   new Texture({ source: tex.source, frame: new Rectangle(5 * fw + 19, 0, 36, H) }),
+    };
+  }).catch((err) => console.warn('[fx-strips] load failed', cfg.url, err));
+  _pending.push(p);
+}
+
+/* v2.3.2302: source geometry, exported so the renderer lays the bar out from
+   the SAME numbers the slicer cut it with rather than a second copy. */
+export const BLOCK_GEOM = { cell: 273, pitch: 49.5, first: 19, cellW: 36, cap: 18 };
+
+/* How many blocks are lit for a pool. FLOOR, and that is the contract the whole
+   readout rests on: a block is a fifth of the pool and every special costs
+   exactly one (v2.3.2298), so "blocks showing" IS "specials you can still
+   afford". Rounding up would show five blocks at 81% and promise a cast the
+   worker would refuse. */
+export function blocksFor(cur, max, n) {
+  /* v2.3.2302: N is a parameter now, not a hardcoded 5 -- the row grows with
+     investment (abilities.js blocksAt).  FLOOR still, and the cost side floors
+     to match: floor(max/N) per block means a full bar is exactly N casts and
+     each spend puts out exactly one light. */
+  const N = Math.max(1, Math.floor(n || 5));
+  const m = Math.max(1, max || 1);
+  const v = Math.max(0, Math.min(m, cur || 0));
+  return Math.max(0, Math.min(N, Math.floor((v * N) / m)));
 }
 
 /* Awaited by the central manifest.  allSettled, not all: a missing sheet must

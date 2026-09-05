@@ -401,6 +401,12 @@ export const persistenceMethods = {
           maxStamina: typeof ps.maxStamina === 'number' ? ps.maxStamina : 100,
           mana: typeof ps.mana === 'number' ? ps.mana : (ps.maxMana || 100),
           maxMana: typeof ps.maxMana === 'number' ? ps.maxMana : 100,
+          /* v2.3.2302: the block counts ride the same echo as the pools they
+             divide.  The client needs them to draw the right bar length AND to
+             predict the right cost -- if it had the pool but not the count it
+             would price a special at a fifth of a bar that holds ten. */
+          manaBlocks: typeof ps.manaBlocks === 'number' ? ps.manaBlocks : 5,
+          stamBlocks: typeof ps.stamBlocks === 'number' ? ps.stamBlocks : 5,
           // Active food buff timers.  Client renders the buff icons +
           // computes its own multipliers; server's view is authoritative
           // for the timer (cheater can't extend by writing _dmgBuff =
