@@ -1172,6 +1172,58 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and the Confirm screen tints its two wells the same way round as '
     + 'the live one', wellOk(revGeom), revGeom);
 
+  /* ═══ v2.3.2299: THE SUBTOTALS READ AS SUBTOTALS ═══
+     Owner asked for this twice -- "make the total amounts in the trade window in
+     bolded font so it's more clear that it's summarizing the line items", then
+     "I want bolding subtotals on the confirm with buyer screen" after the first
+     attempt shipped at weight 700 and still read as a caption. What was
+     defeating it was the muted ink, not the weight, so BOTH are pinned here.
+
+     The ink is asserted RELATIVELY -- brighter than the muted ramp on the same
+     lane -- rather than against a hex. A hex pins the palette and this window
+     has been retinted four times in two days; "it is not the caption colour" is
+     the property that actually matters and it survives a retune. The muted
+     sample is the empty-lane word on the other screen... no: it is taken from a
+     muted element on the SAME lane, so the two are being compared on one
+     ground. */
+  const subs = await A.page.evaluate(() => {
+    const lum = (c) => {
+      const m = (c || '').match(/[\d.]+/g);
+      if (!m || m.length < 3) return null;
+      const v = m.slice(0, 3).map(Number).map((x) => x / 255)
+        .map((x) => (x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4)));
+      return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
+    };
+    return [...document.querySelectorAll('[data-trade-drawer] [data-trade-subtotal]')].map((el) => {
+      const cs = getComputedStyle(el);
+      const lane = el.closest('.bt-t2-lane');
+      const laneBg = lane ? lum(getComputedStyle(lane).backgroundColor) : null;
+      const ink = lum(cs.color);
+      /* the muted sample: the lane's own header, which is on ink.muted */
+      const hdr = lane && lane.querySelector('.bt-t2-lane-hdr');
+      const muted = hdr ? lum(getComputedStyle(hdr).color) : null;
+      return {
+        theirs: !!(lane && lane.classList.contains('bt-t2-lane--theirs')),
+        weight: Number(cs.fontWeight), size: parseFloat(cs.fontSize),
+        ratio: (ink != null && laneBg != null)
+          ? +(((Math.max(ink, laneBg) + 0.05) / (Math.min(ink, laneBg) + 0.05)).toFixed(2)) : null,
+        mutedRatio: (muted != null && laneBg != null)
+          ? +(((Math.max(muted, laneBg) + 0.05) / (Math.min(muted, laneBg) + 0.05)).toFixed(2)) : null,
+        text: (el.textContent || '').trim().slice(0, 20),
+      };
+    });
+  });
+  rec.ok('both lanes report a subtotal line (guard)', subs.length === 2, subs);
+  rec.ok('the subtotals are BOLD -- 800, not the 700 that still read as a caption',
+    subs.length === 2 && subs.every((x) => x.weight >= 800), subs);
+  rec.ok('...and big enough to be one, at 13px or more',
+    subs.length === 2 && subs.every((x) => x.size >= 13), subs);
+  /* The half that was actually wrong the first time. */
+  rec.ok('...and standing off the MUTED ramp, which is what made weight alone '
+    + 'do nothing',
+    subs.length === 2 && subs.every((x) => x.ratio != null && x.mutedRatio != null
+      && x.ratio > x.mutedRatio * 1.15), subs);
+
   /* ═══ v2.3.2294: THE CONFIRM SCREEN'S INK, WHICH NOTHING EVER READ ═══
      inkEmpty and inkMine probe the live drawer and inkFull the receipt; the
      screen in between -- the one whose entire job is to be READ carefully

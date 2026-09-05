@@ -1256,9 +1256,20 @@ export function TradeWindowPanel(props) {
             spending a colour, and the ink stays on the lane's own ramp. Size
             comes up one step with it, because 700 at 11px on this fill is
             heavy rather than clear. */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 700, color: ink.muted, marginTop: 6, paddingTop: 0 }}>
+        {/* v2.3.2299: bolder, because v2.3.2296's bold did not read as bold.
+            Owner, again: "I want bolding subtotals on the confirm with buyer
+            screen." The weight was already 700 -- what was defeating it was the
+            INK. A muted grey at 12px is a caption whatever its weight, and this
+            line was still on ink.muted, the same ramp the empty-lane word and
+            the removed explainers used. So the ink comes up a step to the
+            secondary ramp (7.56:1 on the cream lane, against the muted ramp's
+            4.96), the weight to 800, the size to 13, and the gold FIGURE takes
+            the gold ink so the number reads as a value rather than as part of a
+            sentence -- which is what the row it is summing does one line above.
+            Weight without contrast is not emphasis; it is the same grey, thicker. */}
+        <div data-trade-subtotal="" style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 800, color: ink.name, marginTop: 7, paddingTop: 0 }}>
           <span>{ls.length} item{ls.length === 1 ? '' : 's'}</span>
-          {gold > 0 && (<><span>·</span><GoldIcon /><span>{gold}</span></>)}
+          {gold > 0 && (<><span style={{ color: ink.muted, fontWeight: 700 }}>·</span><GoldIcon /><span style={{ color: ink.gold, fontVariantNumeric: 'tabular-nums' }}>{gold}</span></>)}
         </div>
       </div>
     );
