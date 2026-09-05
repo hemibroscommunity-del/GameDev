@@ -224,8 +224,33 @@ export const ChatBubble = () => {
      Whatever was typed is kept -- the composer restores it on reopen -- so
      nothing a player wrote is thrown away by a trade invite landing. */
   React.useEffect(() => onGuardChange(() => {
-    if (guardActive() && chatBubbleBus.open) { try { chatBubbleBus.close(); } catch (e) { /* ignore */ } }
+    /* ═══ v2.3.2276: setOpen(false), BECAUSE close() DOES NOT EXIST ═══
+       chatBubbleBus exposes open / setOpen / toggle / subscribe and nothing
+       else, so `close()` threw a TypeError straight into the empty catch
+       below -- the state never changed, no listener fired, and the composer's
+       full-play-area tap catcher stayed mounted over whatever had just
+       opened.  Silent for the whole life of the guard.
+       The belt at `if (guardActive()) return null` did NOT save it: this
+       component re-renders only on chatBubbleBus.subscribe, and a throw here
+       changes nothing to subscribe to.  What that belt covers is the other
+       ORDER -- a panel already open when the composer opens -- which happens
+       to be the order mp-tradetap drives, which is why it has read green
+       while the owner's order (chat open, then a trade invite lands) was
+       broken. */
+    if (guardActive() && chatBubbleBus.open) { try { chatBubbleBus.setOpen(false); } catch (e) { /* ignore */ } }
   }), []);
+
+  /* ═══ v2.3.2276: AND RECONCILE THE OTHER ORDER ═══
+     The listener above catches "a panel opened while the chat box was up".
+     This catches "the chat box was opened while a panel was already up" --
+     there is no guard CHANGE to listen for in that direction, so the bus
+     would keep saying open while this renders null, and the toolbar's Chat
+     button would then need two taps to bring it back.  An effect with no
+     dependency array runs after every render including the null one, and it
+     terminates: setOpen(false) is a no-op once the state is already false. */
+  React.useEffect(() => {
+    if (guardActive() && chatBubbleBus.open) chatBubbleBus.setOpen(false);
+  });
 
   if (!chatBubbleBus.open) return null;
   /* Belt as well as braces: a panel that opens in the same commit as this
@@ -304,6 +329,13 @@ export const ChatBubble = () => {
           button, defeating the toggle.  Play-area tap still dismisses. */}
       <div
         onPointerDown={close}
+        /* v2.3.2276: a hook for the CSS belt in game.css.  The guard bus is the
+           primary mechanism and a panel opts in with one line -- but this sheet
+           is the single most damaging thing on the screen when it is wrong (it
+           is transparent, it covers the whole play area, and it eats the tap
+           you aimed at an Accept button), so it also stands down by selector
+           for anything that forgets. */
+        data-chat-dismiss=""
         /* The dismiss layer covers the whole play area, so a long press
            landing on it is a long press "on the game" as far as the player is
            concerned -- and it is outside .brotown-wrap for the same reason the

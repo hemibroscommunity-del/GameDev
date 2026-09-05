@@ -67,6 +67,38 @@ export function setNotificationsMuted(on) {
 /** The one question every transient surface asks: should I stand down? */
 export function chromeSilenced() { return _depth > 0 || _muted; }
 
+/* ═══ v2.3.2276: THE GUARD, AS ONE LINE A PANEL CAN OPT INTO ═══
+ *
+ * Owner: "Chat should always be the bottom layer if any menus open up beside
+ * it (want it beneath trade menus, player menus, etc)."
+ *
+ * guardPush had exactly three call sites, all of them trade panels, so a
+ * PLAYER menu -- which the owner names -- stood nothing down.  Measured in a
+ * real browser (mp-chatlayer): the chat FEED already loses to an open
+ * `.bt-inspect` panel, so "painted underneath" is not the missing half.  What
+ * is missing is the composer's dismiss layer, a transparent full-play-area
+ * sheet whose whole job is to catch the next tap -- and it does not care what
+ * it is above.
+ *
+ * A hook rather than a copied useEffect because the three existing call sites
+ * are already three copies of the same line, and this is about to be more.
+ *
+ * `active` IS NOT OPTIONAL POLITENESS, and the first cut of this shipped
+ * without it and was caught by mp-chatlayer within the hour.  The three trade
+ * panels are mounted CONDITIONALLY -- their mount is their visibility -- so a
+ * bare push on mount is right for them.  ShopkeeperPanel is not: it is mounted
+ * unconditionally in GameApp and returns null while the shop is shut, so
+ * pushing on mount pinned the guard for the whole session and the chat box
+ * could never open again.  Pass the panel's own "am I showing" expression
+ * wherever the two differ; the default keeps the mount-is-visibility case a
+ * one-liner. */
+export function useModalGuard(React, active = true) {
+  React.useEffect(() => {
+    if (!active) return undefined;
+    return guardPush();
+  }, [active]);
+}
+
 export function onGuardChange(fn) {
   _listeners.push(fn);
   return () => { const i = _listeners.indexOf(fn); if (i >= 0) _listeners.splice(i, 1); };

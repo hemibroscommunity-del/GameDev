@@ -2976,6 +2976,28 @@ body:has([data-trade-drawer]) .bt-kb-chip{display:none}
 .bt-noselect textarea,.bt-noselect input,.bt-noselect [contenteditable]{
   -webkit-user-select:text;user-select:text;-webkit-touch-callout:default;
 }
+/* ═══ v2.3.2276: THE CHAT DISMISS SHEET STANDS DOWN FOR A DECISION SURFACE ═══
+   Owner: "Chat should always be the bottom layer if any menus open up beside
+   it (want it beneath trade menus, player menus, etc)."
+
+   modalGuardBus is the primary mechanism and a panel opts in with one line
+   (useModalGuard).  This is the belt, and it exists because of what this
+   particular element is: a TRANSPARENT, full-play-area sheet whose only job is
+   to catch the next tap anywhere.  When it is wrong it does not look wrong --
+   it silently eats the tap you aimed at an Accept button, which is the
+   v2.3.2145 incident in one sentence.  A panel added next year that forgets
+   the hook still gets this.
+
+   pointer-events only, never display or opacity: hiding it would leave the
+   composer shut on screen and open to the toolbar toggle, which ChatBubble's
+   own note calls out as the worse bug.  :has() is already relied on in this
+   file (see the .bt-inspect chip rule), so the support floor is not new. */
+body:has(.bt-inspect) [data-chat-dismiss],
+body:has([data-trade-drawer]) [data-chat-dismiss],
+body:has([data-shop-panel]) [data-chat-dismiss]{
+  pointer-events:none !important;
+}
+
 /* Belt to those braces: the two attributes every real slot already carries
    (ItemTile / StashTile), so a grid that is re-parented tomorrow keeps the
    protection without anyone remembering this file.  It does NOT replace the
