@@ -55,6 +55,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
      asked to be SHOWN it.  Captured from inside this scenario rather than a
      separate staged reproduction, so every frame is a state the assertions
      around it have just proved is real. */
+  /* ═══ v2.3.2282: WHICH SHADE, NOT MERELY "TWO SHADES" ═══
+     The first cut of these assertions compared the two lanes to EACH OTHER
+     (`top.bg !== bottom.bg`). That is unfalsifiable in the direction that
+     matters: inverting every owner->well binding in the panel -- their pile
+     lighter, yours sunk, the exact regression the panel's own comment calls
+     load-bearing -- still leaves the two backgrounds unequal, and the suite
+     passed 41/41 on the mutated build. So each lane is now pinned to the
+     TOKEN it is supposed to carry, and the edge is checked on your lane only.
+     rgb() strings because that is what getComputedStyle returns. */
+  const MY_WELL = 'rgb(17, 30, 35)';        /* --ui-well      #111E23 */
+  const THEIR_WELL = 'rgb(11, 22, 27)';     /* --ui-well-deep #0B161B */
+  const MY_EDGE = /rgba\(229, 237, 233, 0\.3\).*inset/;   /* the 3px left rule */
+  /* One shared judgement so the three screens cannot drift apart -- a
+     per-screen copy is how the receipt came to claim "shaded the same way
+     round as the other two screens" while only ever looking at itself.
+     Declared HERE, above the live drawer's own check: the first cut put it
+     beside laneGeom further down and the live-drawer assertion hit it in its
+     temporal dead zone. */
+  const laneOk = (g) => !!(g && g.top && g.bottom)
+    && g.top.top < g.bottom.top
+    && g.top.bg === THEIR_WELL && g.bottom.bg === MY_WELL
+    && MY_EDGE.test(g.bottom.shadow) && !MY_EDGE.test(g.top.shadow);
+
   const shot = (P, name) => P.page.screenshot({
     path: H.REPO + '/tools/qa/mp/out/trade-' + name + '.png',
   }).catch(() => {});
@@ -204,6 +227,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the gold amount shows the gold icon, loaded',
     !!art && art.gold.length > 0 && art.gold.every((i) => i.w > 0), art);
   await shot(A, '1-offer');
+
+  /* v2.3.2282: the live drawer is the screen the other two were made to match,
+     so it is asserted on the same terms rather than assumed correct.  Its lane
+     headers are flex ROWS containing spans, not leaf divs, so it needs the
+     header+nextSibling shape LANE_FN uses rather than the leaf reader below. */
+  const liveGeom = await A.page.evaluate(() => {
+    const rows = [...document.querySelectorAll('[data-trade-drawer] div')]
+      .filter((d) => d.children.length >= 1 && d.children[0].tagName === 'SPAN');
+    const pick = (rx) => {
+      const hdr = rows.find((d) => rx.test((d.children[0].textContent || '').trim()));
+      const well = hdr && hdr.nextElementSibling;
+      if (!well) return null;
+      const r = well.getBoundingClientRect();
+      const cs = getComputedStyle(well);
+      return { top: Math.round(r.top), bg: cs.backgroundColor, shadow: cs.boxShadow };
+    };
+    return { top: pick(/offers$/), bottom: pick(/^You offer$/) };
+  });
+  rec.ok('live drawer: their offer is above yours (the screen the other two '
+    + 'were made to match)', !!(liveGeom.top && liveGeom.bottom)
+    && liveGeom.top.top < liveGeom.bottom.top, liveGeom);
+  rec.ok('...and YOUR lane carries the your-side shading here too',
+    laneOk(liveGeom), liveGeom);
 
   /* ═══ v2.3.1754: THE TWO-STAGE HANDSHAKE, THROUGH THE REAL BUTTONS ═══
      Owner: "once both ready up, show a second, stripped-down screen ... Both
@@ -440,6 +486,67 @@ export async function run({ browser, wsPort, webPort, rec }) {
      summary would show the owner half a trade. */
   await shot(A, '2-review');
 
+  /* ═══ v2.3.2282: YOUR OWN PILE IS THE BOTTOM ONE, ON EVERY SCREEN ═══
+     Owner: "swap places so that your 'you give' is on bottom and 'you receive'
+     is on top ... This way it's consistent across all 3 trade windows that the
+     player offer is on the bottom.  Also shade color the trade windows
+     differently if it's yours versus the other players."
+
+     Measured by SCREEN POSITION, not DOM index: "on the bottom" is a claim
+     about where the player's thumb finds it, and a flex/order rule could
+     satisfy one and not the other.
+
+     The lanes are found by their heading text and the well is the heading's
+     next sibling -- the same shape the live-drawer reader below uses, and the
+     structure the panel comments now warn against breaking. */
+  const laneGeom = (P, topRe, bottomRe) => P.page.evaluate(([tRe, bRe]) => {
+    const find = (rx) => {
+      const re = new RegExp(rx, 'i');
+      const el = [...document.querySelectorAll('[data-trade-drawer] div')]
+        .find((d) => d.children.length === 0 && re.test((d.textContent || '').trim()));
+      if (!el) return null;
+      /* the review screen's title sits INSIDE its well; the receipt's sits
+         above it.  Take whichever of the two actually carries a background, so
+         one helper reads both shapes. */
+      const own = getComputedStyle(el).backgroundColor;
+      const sib = el.nextElementSibling;
+      const cand = (own && own !== 'rgba(0, 0, 0, 0)') ? el
+        : (el.parentElement && getComputedStyle(el.parentElement).backgroundColor !== 'rgba(0, 0, 0, 0)') ? el.parentElement
+        : sib;
+      if (!cand) return null;
+      const r = cand.getBoundingClientRect();
+      const cs = getComputedStyle(cand);
+      return { top: Math.round(r.top), bg: cs.backgroundColor, shadow: cs.boxShadow };
+    };
+    return { top: find(tRe), bottom: find(bRe) };
+  }, [topRe, bottomRe]);
+
+
+  const revGeom = await laneGeom(A, 'YOU RECEIVE', 'YOU GIVE');
+  rec.ok('Confirm screen: YOU RECEIVE is above YOU GIVE, so your own pile is '
+    + 'the bottom one', !!(revGeom.top && revGeom.bottom)
+    && revGeom.top.top < revGeom.bottom.top, revGeom);
+  rec.ok('...and YOUR lane carries the your-side shading, not just a different one',
+    laneOk(revGeom), revGeom);
+
+  /* ═══ THE ANTI-SCAM COLOUR CODING, WHICH THIS CHANGE PUT AT RISK ═══
+     `side()` takes tone and well as POSITIONAL arguments, and this change
+     reordered its two call sites. Swapping the lines without moving the
+     arguments would paint YOU GIVE green and YOU RECEIVE red -- inverting
+     v2.3.1754's whole point while looking, in a diff, exactly like a
+     reorder. Nothing in this file read a foreground colour before, so that
+     inversion was invisible to the suite. */
+  const revTone = await A.page.evaluate(() => {
+    const pick = (rx) => {
+      const el = [...document.querySelectorAll('[data-trade-drawer] div')]
+        .find((d) => d.children.length === 0 && rx.test((d.textContent || '').trim()));
+      return el ? getComputedStyle(el).color : null;
+    };
+    return { receive: pick(/^YOU RECEIVE$/), give: pick(/^YOU GIVE$/) };
+  });
+  rec.ok('YOU RECEIVE is still green and YOU GIVE still red after the reorder',
+    revTone.receive === 'rgb(85, 185, 138)' && revTone.give === 'rgb(216, 99, 93)', revTone);
+
   /* ═══ v2.3.2280: THE BELL STANDS DOWN WITH THE REST OF THE CHAT ═══
      Owner: "Chat should always be the bottom layer if any menus open up
      beside it."  The shut chat corner is a 36px bell pinned to
@@ -495,6 +602,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     settleDbg ? { ...settleDbg, pageErrors: (A.logs || []).slice(-4) } : null);
   /* Immediately: the receipt closes itself ~2800ms after it appears. */
   await shot(A, '3-receipt');
+  const recGeom = await laneGeom(A, '^You received$', '^You sent$');
+  rec.ok('receipt: You received is above You sent, so your own pile is the '
+    + 'bottom one here too', !!(recGeom.top && recGeom.bottom)
+    && recGeom.top.top < recGeom.bottom.top, recGeom);
+  /* This one names the other two screens, so it has to actually compare
+     against them rather than against itself. */
+  rec.ok('...and shaded the same way round as the other two screens',
+    laneOk(recGeom) && laneOk(revGeom) && laneOk(liveGeom)
+    && recGeom.bottom.bg === revGeom.bottom.bg && recGeom.bottom.bg === liveGeom.bottom.bg
+    && recGeom.top.bg === revGeom.top.bg && recGeom.top.bg === liveGeom.top.bg,
+    { receipt: recGeom, review: revGeom, live: liveGeom });
 
   await A.page.waitForTimeout(3000);
   const aCoins1 = await coins(A), bCoins1 = await coins(B);

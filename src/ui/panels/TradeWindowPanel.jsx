@@ -455,12 +455,66 @@ export function TradeWindowPanel(props) {
   /* v2.3.1235: batch-4 rollout — corrected section-header ramp 11/700
      .14em; muted #8D9B98, confirmed = corrected positive #55B98A (the
      ✅ emoji was chrome — dropped). */
-  /* v2.3.1235: trade-completion receipt — laneHeader + wellStyle hoisted
-     above the state renders (values unchanged) so the receipt reuses the
-     exact live-window section-header and recessed-well recipes. */
+  /* v2.3.1235: trade-completion receipt — laneHeader + the well recipe
+     hoisted above the state renders so the receipt reuses the exact
+     live-window section-header and recessed-well recipes.
+     v2.3.2282: the one `wellStyle` became the owner-coded pair below. */
   const laneHeader = { fontSize: 11, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', marginBottom: 3 };
   /* v2.3.1235: batch-4 state-correction §3 — recessed offer well */
-  const wellStyle = { borderRadius: 8, background: '#111E23', border: '1px solid rgba(229,237,233,.11)', boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44)', padding: '2px 6px', marginBottom: 8 };
+  /* ═══ v2.3.2282: WHOSE PILE IS THIS ═══
+   *
+   * Owner: "shade color the trade windows differently if it's yours versus
+   * the other players."
+   *
+   * DEPTH, NOT HUE, and that is not timidity -- inside THIS panel every hue is
+   * already spoken for: red #D8635D is YOU GIVE and cancel/failure, green
+   * #55B98A is confirmed/ready on both live lane headers AND the YOU RECEIVE
+   * title, brass #D8AA58 is the gold sitting inside these very wells, violet
+   * #9A76D3 is the weapon chips, blue #599FE5 is the offer-changed notice.
+   * A sixth hue here would collide with one of them, and peers also carry an
+   * arbitrary per-player identity colour, so any tint can land beside a player
+   * already wearing it. game.css states the instrument outright: "four depth
+   * roles only (sheet / raised / well / well-deep); hierarchy comes from these
+   * shared roles -- do NOT mint per-screen grays."
+   *
+   * TWO SIGNALS, BECAUSE THE FILL ALONE CANNOT DO IT. The obvious move --
+   * put the two lanes on the two ends of the depth ladder -- runs into two
+   * walls at once, and both were measured rather than guessed:
+   *
+   *   1. The ladder's four roles are sheet #1E2E34, card #24363C, well
+   *      #111E23, well-deep #0B161B. The tempting fifth, well-soft #16262C,
+   *      is a v2.3.1227 legacy ALIAS, not one of the four -- so reaching for
+   *      it is exactly the "per-screen gray" the rule forbids.
+   *   2. On the review screen the lane title sits INSIDE its own well, so the
+   *      well is the backdrop for the #D8635D "YOU GIVE" label. Lightening
+   *      that well to #16262C takes the label from 4.75:1 to 4.35:1 -- under
+   *      WCAG AA's 4.5:1 for 11px bold. Making the anti-scam screen's most
+   *      important word harder to read is not a trade worth making for a
+   *      shade. (#1E2E34 is 3.92:1 and #24363C is 3.51:1, so "move the title
+   *      out of the well" is worse still, not better.)
+   *
+   * What survives both walls is well #111E23 vs well-deep #0B161B -- both
+   * sanctioned, my lane's backdrop byte-identical to today so no label moves
+   * -- and that pair is only 1.08:1 apart, which on a phone in daylight is
+   * nothing. So the fill is the quiet half, and the visible half is an EDGE:
+   * a 3px inset rule down the left of YOUR lane, drawn in the shadow so it
+   * costs no layout and shifts no text. An edge is the instrument the spec
+   * already uses to carry identity ("a thin EDGE language, never a tile
+   * fill"), it survives greyscale, and it cannot change the contrast of
+   * anything painted on top of it.
+   *
+   * NOT the only signal, and it must never become it: the lane HEADERS name
+   * the owner in words, position is fixed (yours is always the bottom one),
+   * and only your lane's rows carry a -/+ stepper and a remove control. The
+   * shading reinforces those; it does not replace them.
+   *
+   * Everything else is deliberately IDENTICAL between the two -- same
+   * hairline, same radius, same padding -- so only the two properties that
+   * carry the meaning have to be kept in sync. */
+  const WELL_SHADOW = 'inset 0 2px 4px rgba(0,0,0,.44)';
+  const wellBase = { borderRadius: 8, border: '1px solid rgba(229,237,233,.11)', padding: '2px 6px', marginBottom: 8 };
+  const theirWell = { ...wellBase, background: 'var(--ui-well-deep, #0B161B)', boxShadow: WELL_SHADOW };
+  const myWell = { ...wellBase, background: 'var(--ui-well, #111E23)', boxShadow: 'inset 3px 0 0 rgba(229,237,233,.30), ' + WELL_SHADOW };
 
   /* v2.3.1235: trade-completion receipt — state==='done' renders the
      receipt INSIDE the same modal shell.  gameEvents.js only ever sets
@@ -478,13 +532,16 @@ export function TradeWindowPanel(props) {
          The ✕ closes it early -- what the scrim tap used to do -- and the
          effect above still auto-closes it (~2800ms). */
       <TradeDrawer title="Trade complete ✓" titleColor="#55B98A" onClose={() => setTrade2(null)}>
-          <div style={{ ...laneHeader, color: '#8D9B98' }}>You sent</div>
-          <div style={wellStyle}>
-            <OfferRows offer={r.sent} weapons={r.sentWeapons} empty="Nothing" goldSuffix="G" />
-          </div>
+          {/* v2.3.2282: RECEIVED on top, SENT on the bottom -- see the lane-order
+              note on the review screen. Your own pile is the bottom one on all
+              three screens now, and it is the one on the lighter well. */}
           <div style={{ ...laneHeader, color: '#8D9B98' }}>You received</div>
-          <div style={wellStyle}>
+          <div style={theirWell}>
             <OfferRows offer={r.received} weapons={r.receivedWeapons} empty="Nothing" goldSuffix="G" />
+          </div>
+          <div style={{ ...laneHeader, color: '#8D9B98' }}>You sent</div>
+          <div style={myWell}>
+            <OfferRows offer={r.sent} weapons={r.sentWeapons} empty="Nothing" goldSuffix="G" />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
             <span style={{ ...laneHeader, marginBottom: 0, color: '#8D9B98' }}>Balance</span>
@@ -654,9 +711,9 @@ export function TradeWindowPanel(props) {
 
   /* v2.3.1232: weapon chip style — magic violet from the semantic set
      (was the off-palette #a78bfa). */
-  /* v2.3.1235: trade-completion receipt — laneHeader + wellStyle moved
-     up beside cardStyle (shared with the receipt render); values are
-     unchanged. */
+  /* v2.3.1235: trade-completion receipt — laneHeader + the well recipe moved
+     up beside the shared styles (shared with the receipt render).
+     v2.3.2282: that well is now the myWell / theirWell pair. */
   /* v2.3.1235: batch-4 state-correction §6 — lane headers become a
      flex row: lane title left, live status right.  Both statuses are
      direct reads of server state (`confirmed` flags from the last
@@ -695,8 +752,12 @@ export function TradeWindowPanel(props) {
     const myLines = lines(mine, myWpn), theirLines = lines(theirs, otherWpn);
     const myGold = mine._gold || 0, theirGold = theirs._gold || 0;
     const bigGold = Math.max(myGold, theirGold) >= BIG_GOLD;
-    const side = (title, ls, gold, tone) => (
-      <div style={{ ...wellStyle, marginBottom: 8 }}>
+    /* v2.3.2282: `well` joins `tone` as a per-lane argument. Both are bound to
+       the lane's OWNER, and both are passed at the call site rather than
+       derived from position -- see the note there for why that distinction is
+       load-bearing on this particular screen. */
+    const side = (title, ls, gold, tone, well) => (
+      <div style={{ ...well, marginBottom: 8 }}>
         <div style={{ ...laneHeader, color: tone, marginBottom: 4 }}>{title}</div>
         {ls.length === 0 && gold === 0 && (
           <div style={{ fontSize: 12, color: '#8D9B98' }}>Nothing</div>
@@ -730,8 +791,25 @@ export function TradeWindowPanel(props) {
          so a scrim tap mid-review did nothing at all and the player had no
          way out but Back. The strip is rendered below now. */
       <TradeDrawer title={`Confirm with ${otherName}`} onClose={requestLeave}>
-          {side('YOU GIVE', myLines, myGold, '#D8635D')}
-          {side('YOU RECEIVE', theirLines, theirGold, '#55B98A')}
+          {/* ═══ v2.3.2282: YOUR OWN PILE IS ALWAYS THE BOTTOM ONE ═══
+              Owner: "swap places so that your 'you give' is on bottom and 'you
+              receive' is on top ... This way it's consistent across all 3 trade
+              windows that the player offer is on the bottom."
+
+              The live offer drawer has always read theirs-then-yours; this
+              screen and the receipt read yours-then-theirs, so a single trade
+              flipped the two piles under your thumb twice -- on the one screen
+              whose entire job is to be READ carefully before you consent. All
+              three agree now.
+
+              TONE AND WELL TRAVEL WITH THE LABEL, NOT WITH THE LINE. `side`
+              takes both positionally, so swapping these two lines while
+              leaving the arguments in place would silently paint YOU GIVE
+              green and YOU RECEIVE red -- inverting the anti-scam colour
+              coding (v2.3.1754) while looking, in a diff, exactly like a
+              reorder. Read the arguments, not the order. */}
+          {side('YOU RECEIVE', theirLines, theirGold, '#55B98A', theirWell)}
+          {side('YOU GIVE', myLines, myGold, '#D8635D', myWell)}
           {bigGold && !goldAck && (
             /* Owner: "large currency amounts trigger an explicit confirmation
                to catch typos." */
@@ -833,8 +911,15 @@ export function TradeWindowPanel(props) {
             : theyReady ? <span style={{ color: '#55B98A' }}>ready ✓</span> : null}
         </div>
         {/* v2.3.1235: batch-4 rollout — offer wells onto the corrected well
-            token #111E23 + .11 hairline (×3 below, incl. the item tray). */}
-        <div style={wellStyle}>
+            token #111E23 + .11 hairline (×3 below, incl. the item tray).
+            v2.3.2282: the two offer wells split by OWNER -- theirs sunk to
+            well-deep, mine raised to well-soft. This lane's order was already
+            right (theirs on top) and is deliberately untouched: mp-trade's
+            lane reader finds this header and then takes its NEXT SIBLING as
+            the well, so moving a header without its well, or wrapping either
+            in a new div, makes it silently read the wrong player's pile while
+            every presence assertion keeps passing. */}
+        <div style={theirWell}>
           <OfferRows offer={trade2.offers[otherId]} weapons={otherWpn} empty="Nothing staged yet" />
         </div>
 
@@ -845,7 +930,7 @@ export function TradeWindowPanel(props) {
           <span>You offer</span>
           <span style={{ color: iConfirmed ? '#55B98A' : '#8D9B98' }}>{iConfirmed ? 'Confirmed ✓' : 'Editing offer'}</span>
         </div>
-        <div style={{ ...wellStyle, marginBottom: 6 }}>
+        <div style={{ ...myWell, marginBottom: 6 }}>
           {/* v2.3.1235: batch-4 state-correction §3/§4 — my rows render my
               staging mirror with Remove controls (existing trade2_set /
               trade2_unstage_weapon pathways); empty copy distinguishes an
