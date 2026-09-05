@@ -83,6 +83,49 @@
   --ui-header: #27393F;
   --ui-card: #24363C;
   --ui-well-deep: #0B161B;
+  /* ═══ v2.3.2283: THE INVERTED SURFACE ROLE ═══
+     Owner, twice: "shade color the trade windows differently if it's yours
+     versus the other players" then "Make the buyer window more notably
+     different shade. Like a light gray."
+
+     NOT a fifth rung on the depth ladder and NOT a per-screen gray. The four
+     depth roles above still own ELEVATION on dark and are untouched. This is
+     an OWNERSHIP role: a region authored by the OTHER party reads as a light
+     card with dark ink, the same way a brass button already carries
+     --ui-text-on-accent. The only new thing is that the light fill is neutral
+     rather than brass, and the neutral is --ui-text-secondary #B6C1BE's own
+     tint (same R-G / B-G channel offsets), so no new hue enters the palette.
+
+     WHY NOT A DARKER STEP. There is nothing admissible left inside the dark
+     ladder: --ui-raised-high is ~1.6:1 against --ui-well, and --ui-raised puts
+     --ui-text-muted at 4.05:1, under AA. The two lanes as shipped were 1.08:1
+     apart, which is why the owner had to ask twice.
+
+     HARD RULE: every ink inside an inverted region MUST come from the
+     -on-invert ramp below. The normal --ui-text-* ramp FAILS AA here
+     (--ui-text #F4F0E7 is 1.36:1 on this fill, --ui-text-muted #8D9B98 is
+     1.87:1) and CSS inheritance hands it to you silently -- see docs/TRAPS.md.
+     Ratios below are measured against --ui-invert. */
+  --ui-invert:                     #C8D2CF;             /* the light card              */
+  --ui-invert-slot:                #16262C;             /* dark cell IN it    10.07:1  */
+  --ui-text-on-invert:             #111E23;             /* primary            11.00:1  */
+  --ui-text-on-invert-2:           #293B41;             /* secondary           7.56:1  */
+  --ui-text-on-invert-3:           #45565C;             /* muted / captions    4.96:1  */
+  --ui-line-on-invert:             rgba(11,22,27,.14);  /* edge, 1.31:1 -- parity with
+                                                           the dark well's 1.32:1     */
+  --ui-gold-on-invert:             #6E4D0F;             /* 4.97:1  dark antique brass  */
+  --ui-positive-on-invert:         #1C5A40;             /* 5.25:1  "YOU RECEIVE"       */
+  --ui-danger-on-invert:           #7A2C28;             /* 6.12:1  (unused today)      */
+  /* Rarity lives here, not in the panel: RARITY_TIERS is app-global data
+     (src/data/gameSystems.js), so its inverted form is app-global too. This is
+     what stops a future session "fixing" rarity by darkening RARITY_TIERS
+     itself, which would retint weapon rarity everywhere -- the Enchanter and
+     the remote-player weapon tint included. v2.3.1233 already had to undo one
+     of those. */
+  --ui-rarity-common-on-invert:    #45565C;             /* 4.96:1                      */
+  --ui-rarity-elemental-on-invert: #1D4FA8;             /* 4.96:1                      */
+  --ui-rarity-fusion-on-invert:    #6B21A8;             /* 5.64:1                      */
+  --ui-rarity-shift-on-invert:     #6E4D0F;             /* 4.97:1  Shift IS the gold   */
   --ui-text: #F4F0E7;
   --ui-text-secondary: #B6C1BE;
   --ui-text-muted: #8D9B98;

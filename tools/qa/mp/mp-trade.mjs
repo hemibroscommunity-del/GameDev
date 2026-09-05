@@ -64,9 +64,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
      passed 41/41 on the mutated build. So each lane is now pinned to the
      TOKEN it is supposed to carry, and the edge is checked on your lane only.
      rgb() strings because that is what getComputedStyle returns. */
-  const MY_WELL = 'rgb(17, 30, 35)';        /* --ui-well      #111E23 */
-  const THEIR_WELL = 'rgb(11, 22, 27)';     /* --ui-well-deep #0B161B */
-  const MY_EDGE = /rgba\(229, 237, 233, 0\.3\).*inset/;   /* the 3px left rule */
+  const MY_WELL = 'rgb(17, 30, 35)';           /* --ui-well   #111E23, unchanged */
+  /* v2.3.2283: the buyer's lane left the dark ladder entirely -- it is an
+     inverted light card now (--ui-invert #C8D2CF). getComputedStyle resolves
+     the var(), so the rgb() string is what comes back. */
+  const THEIR_WELL = 'rgb(200, 210, 207)';    /* --ui-invert #C8D2CF */
+  /* v2.3.2283: the 3px left rule is gone -- the fills are ~11:1 apart now and
+     carry the distinction themselves. This assertion is NOT deleted, because
+     it is the v2.3.2282 anti-inversion guard and the note below records that
+     the first cut of these checks passed 41/41 on a build with every
+     owner->well binding inverted. It is re-pointed at the property that now
+     carries the same meaning: the two lanes have OPPOSITE depth recipes --
+     yours is a well sunk into the sheet, theirs is a card raised off it. An
+     inverted build still fails it. */
+  const SUNK = /inset/;
   /* One shared judgement so the three screens cannot drift apart -- a
      per-screen copy is how the receipt came to claim "shaded the same way
      round as the other two screens" while only ever looking at itself.
@@ -76,7 +87,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const laneOk = (g) => !!(g && g.top && g.bottom)
     && g.top.top < g.bottom.top
     && g.top.bg === THEIR_WELL && g.bottom.bg === MY_WELL
-    && MY_EDGE.test(g.bottom.shadow) && !MY_EDGE.test(g.top.shadow);
+    && SUNK.test(g.bottom.shadow) && !SUNK.test(g.top.shadow);
 
   const shot = (P, name) => P.page.screenshot({
     path: H.REPO + '/tools/qa/mp/out/trade-' + name + '.png',
@@ -250,6 +261,59 @@ export async function run({ browser, wsPort, webPort, rec }) {
     && liveGeom.top.top < liveGeom.bottom.top, liveGeom);
   rec.ok('...and YOUR lane carries the your-side shading here too',
     laneOk(liveGeom), liveGeom);
+
+  /* ═══ v2.3.2283: THE INK INVERTED WITH THE FILL ═══
+     The failure mode this change can actually ship is a HALF migration: the
+     buyer's lane goes light and some ink inside it stays on the dark ramp,
+     which is not a wrong colour but INVISIBLE TEXT (#F4F0E7 is 1.36:1 on the
+     card, #8D9B98 is 1.87:1). Nothing in this suite read an ink colour before
+     v2.3.2282's tone check, and nothing read one INSIDE a lane at all.
+
+     Computed in-page from the real rendered colours rather than pinned to
+     hexes, so it survives a token retune -- the owner may well walk the shade
+     up or down -- and still catches every ink that failed to follow. Every
+     text node in the lane is checked, not the first one: the gold figure and
+     the muted count line are the two most likely to be missed, and they are
+     not first. */
+  const inkProbe = (P, headerRe) => P.page.evaluate((rx) => {
+    const re = new RegExp(rx, 'i');
+    /* the live drawer's header is a span-led flex row; the receipt's is a leaf
+       div. Accept either, then take the next sibling as the well -- the same
+       shape every other lane reader in this file uses. */
+    const hdr = [...document.querySelectorAll('[data-trade-drawer] div')].find((d) =>
+      (d.children.length >= 1 && d.children[0].tagName === 'SPAN'
+        && re.test((d.children[0].textContent || '').trim()))
+      || (d.children.length === 0 && re.test((d.textContent || '').trim())));
+    const well = hdr && hdr.nextElementSibling;
+    if (!well) return { found: false };
+    const L = (s) => {
+      const m = (s || '').match(/[\d.]+/g);
+      if (!m || m.length < 3) return null;
+      const c = m.slice(0, 3).map(Number).map((v) => v / 255)
+        .map((v) => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)));
+      return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+    };
+    const bg = L(getComputedStyle(well).backgroundColor);
+    const out = [];
+    for (const el of well.querySelectorAll('*')) {
+      const t = (el.textContent || '').trim();
+      /* leaf text nodes only -- a wrapper's textContent is its children's */
+      if (!t || el.children.length) continue;
+      const ink = L(getComputedStyle(el).color);
+      if (ink == null) continue;
+      out.push({ t: t.slice(0, 14),
+        ratio: +(((Math.max(bg, ink) + 0.05) / (Math.min(bg, ink) + 0.05)).toFixed(2)),
+        darker: ink < bg });
+    }
+    return { found: true, bg, inks: out };
+  }, headerRe);
+  const inkBad = (r) => (r.inks || []).filter((i) => i.ratio < 4.5 || !i.darker);
+
+  const inkEmpty = await inkProbe(A, 'offers$');
+  rec.ok("the buyer lane's ink inverted with its fill -- every word on the "
+    + 'light card is dark and clears AA',
+    inkEmpty.found === true && (inkEmpty.inks || []).length > 0 && inkBad(inkEmpty).length === 0,
+    { bg: inkEmpty.bg, bad: inkBad(inkEmpty), checked: (inkEmpty.inks || []).length });
 
   /* ═══ v2.3.1754: THE TWO-STAGE HANDSHAKE, THROUGH THE REAL BUTTONS ═══
      Owner: "once both ready up, show a second, stripped-down screen ... Both
@@ -544,8 +608,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     };
     return { receive: pick(/^YOU RECEIVE$/), give: pick(/^YOU GIVE$/) };
   });
+  /* v2.3.2283: green became the DARK green of the inverted ramp
+     (--ui-positive-on-invert #1C5A40) -- #55B98A is 1.56:1 on the light card.
+     YOU GIVE is unchanged: its lane is still dark. */
   rec.ok('YOU RECEIVE is still green and YOU GIVE still red after the reorder',
-    revTone.receive === 'rgb(85, 185, 138)' && revTone.give === 'rgb(216, 99, 93)', revTone);
+    revTone.receive === 'rgb(28, 90, 64)' && revTone.give === 'rgb(216, 99, 93)', revTone);
 
   /* ═══ v2.3.2280: THE BELL STANDS DOWN WITH THE REST OF THE CHAT ═══
      Owner: "Chat should always be the bottom layer if any menus open up
@@ -608,6 +675,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     && recGeom.top.top < recGeom.bottom.top, recGeom);
   /* This one names the other two screens, so it has to actually compare
      against them rather than against itself. */
+  /* The live-drawer read above happens while the buyer's lane is still EMPTY,
+     so it only ever sees one word. The receipt's buyer lane carries a real
+     row -- a glyph plate, a label and a gold figure -- and the gold figure is
+     the ink most likely to be missed, because #D8A94D and #D8AA58 are
+     near-duplicates and a find-and-replace catches only one of them. */
+  const inkFull = await inkProbe(A, '^You received$');
+  rec.ok("...and with real rows in it, not just the empty-lane word",
+    inkFull.found === true && (inkFull.inks || []).length >= 2 && inkBad(inkFull).length === 0,
+    { bg: inkFull.bg, bad: inkBad(inkFull), checked: (inkFull.inks || []).length });
+
   rec.ok('...and shaded the same way round as the other two screens',
     laneOk(recGeom) && laneOk(revGeom) && laneOk(liveGeom)
     && recGeom.bottom.bg === revGeom.bottom.bg && recGeom.bottom.bg === liveGeom.bottom.bg

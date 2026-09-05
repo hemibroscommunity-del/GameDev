@@ -1770,3 +1770,59 @@ monster, from anywhere in the region, so a ring added later is counted without
 anyone remembering to count it.
 
 **Related:** §21 (a pixel count cannot tell brass from cobble).
+
+## §48 — A light surface inherits AA-failing ink, silently (v2.3.2283)
+
+The owner asked for the other player's trade lane to be "a light gray". The
+fill is one line. What is not one line is that **every ink inside that region
+was authored for a dark ground and none of it complains when the ground
+flips.** Measured on the shipped `--ui-invert #C8D2CF`:
+
+| ink | role | on the light card |
+|---|---|---|
+| `#F4F0E7` | primary body text | **1.36:1** |
+| `#B6C1BE` | item name, "Gold" label | **1.19:1** |
+| `#8D9B98` | muted, empty-lane copy, counts | **1.87:1** |
+| `#D8AA58` / `#D8A94D` | gold figures | **1.38 / 1.40:1** |
+| `#55B98A` | the "YOU RECEIVE" title | **1.56:1** |
+
+None of that throws, nothing lints, and no screenshot test that looks at
+LAYOUT notices. It ships as a light card with invisible writing on it.
+
+**The rule:** an inverted region carries its ink with it, as ONE value. In
+`TradeWindowPanel.jsx` that is the `ink` theme object (`DARK_INK` / `LIGHT_INK`)
+threaded through `StagedRow`, `OfferRows` and `side()` — never a `light`
+boolean, which writes the palette out once per renderer and lets a fill change
+land without its ink.
+
+**Three secondary traps, each of which bit during this change:**
+
+1. **The shared style object.** `wellBase` carried `border` and `boxShadow` for
+   both lanes. The dark hairline `rgba(229,237,233,.11)` composites to 1.03:1
+   on a light fill — no edge at all — and a black *inset* shadow on a fill 9:1
+   lighter than the sheet reads as dirt. Both had to move onto the lanes: the
+   dark lane stays a sunk well, the light one becomes a raised card.
+
+2. **Rarity colour comes from `src/data`, not from the panel.** Grepping
+   `TradeWindowPanel.jsx` proves nothing about it. `RARITY_TIERS` ships four
+   coloured tiers authored for dark ground (shift gold is **1.05:1** here), and
+   `rarityColor || fallback` lets every one of them through — the fallback only
+   fires when the data is absent. The inverted map must **override**, not fall
+   back. Do NOT "fix" this by darkening `RARITY_TIERS`: that retints weapon
+   rarity across the whole app, including the Enchanter and the remote-player
+   weapon tint. v2.3.1233 already had to undo one of those.
+
+3. **Near-duplicate hexes.** The gold figure is `#D8AA58` in `OfferRows` and
+   `#D8A94D` in `side()`. A find-and-replace on one leaves the other at 1.40:1
+   on the one screen whose whole job is to be read.
+
+**What catches it:** `mp-trade.mjs` reads the buyer lane's real rendered
+colours and computes the ratio **in-page** rather than pinning hexes, so it
+survives a token retune and still fails a half-migration. Asserted twice — once
+on the empty lane and once on the receipt, where the lane has real rows —
+because the empty lane has exactly one word in it and the gold figure, the ink
+most likely to be missed, is not that word. Mutation-checked: pointing the
+buyer lane back at `DARK_INK` fails both, naming "Gold" at 1.19:1 and "3G" at
+1.38:1.
+
+**Related:** §21 (a pixel count cannot tell brass from cobble).

@@ -189,6 +189,59 @@ function TradeDrawer({ title, titleColor, onClose, children }) {
   );
 }
 
+/* ═══ v2.3.2283: THE BUYER'S LANE IS A LIGHT CARD, SO ITS INK INVERTS ═══
+ *
+ * Owner: "Make the buyer window more notably different shade. Like a light
+ * gray."
+ *
+ * WHY THIS IS AN OBJECT AND NOT A `light` BOOLEAN. Fourteen ink sites live on
+ * nested children across THREE renderers (StagedRow, OfferRows, side), so a
+ * boolean forces a ternary at every one of them and writes the light palette
+ * out three times. One object means the fill and its ink cannot be changed
+ * apart -- which is the actual hazard here: a light card that kept the dark
+ * ramp would put its own text at 1.36:1 and its muted text at 1.87:1, i.e.
+ * invisible, and CSS inheritance would hand you that silently because every
+ * one of these sites sets `color` explicitly. docs/TRAPS.md carries it.
+ *
+ * DARK_INK is today's palette verbatim, and it is the DEFAULT PARAMETER on
+ * both renderers -- so every call site that does not opt in is byte-identical
+ * to v2.3.2282. Only the three buyer-lane sites pass anything. */
+const DARK_INK = {
+  slot: '#16262C', slotLine: '1px solid rgba(229,237,233,.08)',
+  text: '#F4F0E7', name: '#B6C1BE', qty: '#B6C1BE', muted: '#8D9B98',
+  gold: '#D8AA58', rarityFallback: '#8B9695', rarityByTier: null,
+  divider: '1px solid rgba(229,237,233,.11)', platedThumbs: false,
+};
+/* Object.create(null) per CLAUDE.md rule 4: keyed by a tier string that
+   arrives over the wire (w.weapon.tier), and a plain {} silently hands back
+   Object.prototype for '__proto__' -- fixed three times in one day
+   (duel.away v2.3.1175, party meta v2.3.1185, amulet tiers v2.3.1192). */
+const LIGHT_RARITY = Object.assign(Object.create(null), {
+  common:    'var(--ui-rarity-common-on-invert, #45565C)',
+  elemental: 'var(--ui-rarity-elemental-on-invert, #1D4FA8)',
+  fusion:    'var(--ui-rarity-fusion-on-invert, #6B21A8)',
+  shift:     'var(--ui-rarity-shift-on-invert, #6E4D0F)',
+});
+const LIGHT_INK = {
+  /* the 32px cell stays DARK on the light card -- it is the same slot
+     silhouette the bag uses, and it gives item art the near-black ground it
+     was authored against. A light plate is not an option: #B6C1BE on this
+     fill is 1.19:1, a smudge rather than a cell. */
+  slot: 'var(--ui-invert-slot, #16262C)', slotLine: '1px solid transparent',
+  text: 'var(--ui-text-on-invert, #111E23)',
+  name: 'var(--ui-text-on-invert-2, #293B41)',
+  qty:  'var(--ui-text-on-invert-2, #293B41)',
+  muted: 'var(--ui-text-on-invert-3, #45565C)',
+  gold: 'var(--ui-gold-on-invert, #6E4D0F)',
+  /* rarityByTier OVERRIDES the data colour rather than falling back to it:
+     RARITY_TIERS ships bright values authored for dark ground (shift gold is
+     1.05:1 here), and `rarityColor ||` would let every one of them through. */
+  rarityFallback: 'var(--ui-rarity-common-on-invert, #45565C)',
+  rarityByTier: LIGHT_RARITY,
+  divider: '1px solid var(--ui-line-on-invert, rgba(11,22,27,.14))',
+  platedThumbs: true,
+};
+
 /* v2.3.1235: batch-4 state-correction §4 — one staged entry as a compact
    row: 32px glyph well, name (+ rarity line when the entry carries one,
    i.e. weapons via RARITY_TIERS[tier]; plain inventory items have no
@@ -218,19 +271,28 @@ const stepBtn = (enabled) => ({
    Now: the bag tile stages ONE (and taps up by one), and every staged row
    carries − / + with your stack size beside it, so the quantity is a thing you
    set rather than a cycle you land on. */
-function StagedRow({ glyph, name, qty, have, rarityLabel, rarityColor, onRemove, onInc, onDec }) {
+function StagedRow({ glyph, name, qty, have, rarityLabel, rarityColor, rarityTier, onRemove, onInc, onDec, ink = DARK_INK }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: onRemove ? 44 : 36, padding: '2px 0' }}>
-      <div style={{ width: 32, height: 32, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, background: '#16262C', border: '1px solid rgba(229,237,233,.08)', borderRadius: 8 }}>{glyph}</div>
+      <div style={{ width: 32, height: 32, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, background: ink.slot, border: ink.slotLine, borderRadius: 8 }}>{glyph}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 12, color: '#B6C1BE', textTransform: 'capitalize', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
+        <div style={{ fontSize: 12, color: ink.name, textTransform: 'capitalize', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
         {rarityLabel ? (
-          <div style={{ fontSize: 10, color: rarityColor || '#8B9695' }}>{rarityLabel}</div>
+          /* v2.3.2283: the tier wins over the data colour on an inverted lane
+             -- see rarityByTier. On the dark lane both are absent and this is
+             the same expression it always was. */
+          <div style={{ fontSize: 10, color: (ink.rarityByTier && ink.rarityByTier[rarityTier]) || rarityColor || ink.rarityFallback }}>{rarityLabel}</div>
         ) : null}
       </div>
       {qty != null && !onInc && (
-        <div style={{ fontSize: 12, fontWeight: 700, color: '#B6C1BE', fontVariantNumeric: 'tabular-nums' }}>×{qty}</div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: ink.qty, fontVariantNumeric: 'tabular-nums' }}>×{qty}</div>
       )}
+      {/* v2.3.2283: the stepper branch below keeps its dark colours on purpose.
+          It is structurally unreachable from an inverted lane -- onInc and
+          onRemove are only ever passed for YOUR offer -- so theming it would
+          be dead code. If a "request this item" affordance is ever added to
+          the buyer's lane, these five colours go live on a light fill all at
+          once; that is the moment to thread them. */}
       {qty != null && onInc && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 2, flex: 'none' }}>
           <button aria-label={'One fewer ' + name} onClick={onDec} disabled={qty <= 0}
@@ -258,12 +320,15 @@ function StagedRow({ glyph, name, qty, have, rarityLabel, rarityColor, onRemove,
 /* v2.3.1235: trade-completion receipt — optional goldSuffix ("G") lets
    the receipt render its gold rows as "25G"; live-trade wells pass
    nothing and are byte-identical. */
-function OfferRows({ offer, weapons, empty, onRemoveItem, onRemoveWeapon, goldSuffix, inv, onSetQty }) {
+function OfferRows({ offer, weapons, empty, onRemoveItem, onRemoveWeapon, goldSuffix, inv, onSetQty, ink = DARK_INK }) {
   const entries = Object.entries(offer || {}).filter(([k, v]) => k !== '_gold' && v > 0);
   const gold = (offer && offer._gold) || 0;
   const wpns = weapons || [];
   if (!entries.length && !gold && !wpns.length) {
-    return <div style={{ fontSize: 11, color: '#8D9B98', padding: '8px 0' }}>{empty}</div>;
+    /* v2.3.2283: the EMPTY lane is the first thing a player sees when a trade
+       opens, so this is not a corner case -- on the light card the old
+       #8D9B98 would be 1.87:1. */
+    return <div style={{ fontSize: 11, color: ink.muted, padding: '8px 0' }}>{empty}</div>;
   }
   return (
     <div className="ls-scrollbody" style={{ maxHeight: 148, overflowY: 'auto' }}>
@@ -272,21 +337,22 @@ function OfferRows({ offer, weapons, empty, onRemoveItem, onRemoveWeapon, goldSu
           have={inv ? (inv[k] || 0) : null}
           onRemove={onRemoveItem ? () => onRemoveItem(k) : null}
           onInc={onSetQty ? () => onSetQty(k, v + 1) : null}
-          onDec={onSetQty ? () => onSetQty(k, v - 1) : null} />
+          onDec={onSetQty ? () => onSetQty(k, v - 1) : null} ink={ink} />
       ))}
       {wpns.map((w) => {
         const rt = (w.weapon && RARITY_TIERS[w.weapon.tier]) || null;
         return (
           <StagedRow key={'w' + w.seq} glyph="⚔️" name={wpnName(w)}
             rarityLabel={rt ? rt.label : null} rarityColor={rt ? rt.color : null}
-            onRemove={onRemoveWeapon ? () => onRemoveWeapon(w.seq) : null} />
+            rarityTier={w.weapon && w.weapon.tier}
+            onRemove={onRemoveWeapon ? () => onRemoveWeapon(w.seq) : null} ink={ink} />
         );
       })}
       {gold > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 36, padding: '2px 0' }}>
-          <div style={{ width: 32, height: 32, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#16262C', border: '1px solid rgba(229,237,233,.08)', borderRadius: 8 }}><GoldIcon /></div>
-          <div style={{ flex: 1, fontSize: 12, color: '#B6C1BE' }}>Gold</div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#D8AA58', fontVariantNumeric: 'tabular-nums' }}>{gold}{goldSuffix || ''}</div>
+          <div style={{ width: 32, height: 32, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', background: ink.slot, border: ink.slotLine, borderRadius: 8 }}><GoldIcon /></div>
+          <div style={{ flex: 1, fontSize: 12, color: ink.name }}>Gold</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: ink.gold, fontVariantNumeric: 'tabular-nums' }}>{gold}{goldSuffix || ''}</div>
         </div>
       )}
     </div>
@@ -461,60 +527,55 @@ export function TradeWindowPanel(props) {
      v2.3.2282: the one `wellStyle` became the owner-coded pair below. */
   const laneHeader = { fontSize: 11, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', marginBottom: 3 };
   /* v2.3.1235: batch-4 state-correction §3 — recessed offer well */
-  /* ═══ v2.3.2282: WHOSE PILE IS THIS ═══
+  /* ═══ v2.3.2283: WHOSE PILE IS THIS ═══
    *
-   * Owner: "shade color the trade windows differently if it's yours versus
-   * the other players."
+   * Owner: "shade color the trade windows differently if it's yours versus the
+   * other players", then "Make the buyer window more notably different shade.
+   * Like a light gray."
    *
-   * DEPTH, NOT HUE, and that is not timidity -- inside THIS panel every hue is
-   * already spoken for: red #D8635D is YOU GIVE and cancel/failure, green
-   * #55B98A is confirmed/ready on both live lane headers AND the YOU RECEIVE
-   * title, brass #D8AA58 is the gold sitting inside these very wells, violet
-   * #9A76D3 is the weapon chips, blue #599FE5 is the offer-changed notice.
-   * A sixth hue here would collide with one of them, and peers also carry an
-   * arbitrary per-player identity colour, so any tint can land beside a player
-   * already wearing it. game.css states the instrument outright: "four depth
-   * roles only (sheet / raised / well / well-deep); hierarchy comes from these
-   * shared roles -- do NOT mint per-screen grays."
+   * v2.3.2282 answered the first ask inside the dark ladder -- yours on well,
+   * theirs on well-deep, plus a 3px rule down your edge -- and the two fills
+   * came out 1.08:1 apart, which is why there was a second ask. There is
+   * nothing brighter left down there: raised-high is ~1.6:1 against well, and
+   * raised puts the muted ink at 4.05:1, under AA. So the buyer's lane leaves
+   * the ladder entirely and becomes an INVERTED surface: a light card with
+   * dark ink (--ui-invert + the -on-invert ramp, game.css). ~11:1 apart now.
    *
-   * TWO SIGNALS, BECAUSE THE FILL ALONE CANNOT DO IT. The obvious move --
-   * put the two lanes on the two ends of the depth ladder -- runs into two
-   * walls at once, and both were measured rather than guessed:
+   * THE SHADOWS ARE OPPOSITE, AND THAT IS THE POINT. A black INNER shadow on a
+   * fill nine times lighter than the sheet behind it reads as dirt smeared
+   * across the top, so their lane stops being a well sunk INTO the sheet and
+   * becomes a card raised OFF it. That is also the truer reading: their offer
+   * is the thing you inspect, yours is the tray you load. Do NOT let a later
+   * tidying pass merge WELL_SHADOW and CARD_SHADOW back into one constant --
+   * the two lanes need opposite recipes, and your lane is only 1.21:1 against
+   * the sheet, so its hairline and its inset ARE its box. Erase them and your
+   * lane becomes empty space under a bright card.
    *
-   *   1. The ladder's four roles are sheet #1E2E34, card #24363C, well
-   *      #111E23, well-deep #0B161B. The tempting fifth, well-soft #16262C,
-   *      is a v2.3.1227 legacy ALIAS, not one of the four -- so reaching for
-   *      it is exactly the "per-screen gray" the rule forbids.
-   *   2. On the review screen the lane title sits INSIDE its own well, so the
-   *      well is the backdrop for the #D8635D "YOU GIVE" label. Lightening
-   *      that well to #16262C takes the label from 4.75:1 to 4.35:1 -- under
-   *      WCAG AA's 4.5:1 for 11px bold. Making the anti-scam screen's most
-   *      important word harder to read is not a trade worth making for a
-   *      shade. (#1E2E34 is 3.92:1 and #24363C is 3.51:1, so "move the title
-   *      out of the well" is worse still, not better.)
+   * `border` moved OUT of the shared base for the same reason: the dark
+   * hairline rgba(229,237,233,.11) composites to 1.03:1 on the light fill --
+   * no edge at all -- so each lane states its own.
    *
-   * What survives both walls is well #111E23 vs well-deep #0B161B -- both
-   * sanctioned, my lane's backdrop byte-identical to today so no label moves
-   * -- and that pair is only 1.08:1 apart, which on a phone in daylight is
-   * nothing. So the fill is the quiet half, and the visible half is an EDGE:
-   * a 3px inset rule down the left of YOUR lane, drawn in the shadow so it
-   * costs no layout and shifts no text. An edge is the instrument the spec
-   * already uses to carry identity ("a thin EDGE language, never a tile
-   * fill"), it survives greyscale, and it cannot change the contrast of
-   * anything painted on top of it.
+   * THE 3px RULE IS GONE. It existed to carry a distinction the fills could
+   * not; the fills carry it now, and a light rule on a light card is
+   * invisible anyway.
    *
-   * NOT the only signal, and it must never become it: the lane HEADERS name
-   * the owner in words, position is fixed (yours is always the bottom one),
-   * and only your lane's rows carry a -/+ stepper and a remove control. The
-   * shading reinforces those; it does not replace them.
-   *
-   * Everything else is deliberately IDENTICAL between the two -- same
-   * hairline, same radius, same padding -- so only the two properties that
-   * carry the meaning have to be kept in sync. */
-  const WELL_SHADOW = 'inset 0 2px 4px rgba(0,0,0,.44)';
-  const wellBase = { borderRadius: 8, border: '1px solid rgba(229,237,233,.11)', padding: '2px 6px', marginBottom: 8 };
-  const theirWell = { ...wellBase, background: 'var(--ui-well-deep, #0B161B)', boxShadow: WELL_SHADOW };
-  const myWell = { ...wellBase, background: 'var(--ui-well, #111E23)', boxShadow: 'inset 3px 0 0 rgba(229,237,233,.30), ' + WELL_SHADOW };
+   * STILL NOT THE ONLY SIGNAL: the headers name the owner in words, position
+   * is fixed (yours is always the bottom one), and only your lane's rows carry
+   * a stepper and a remove control. */
+  const WELL_SHADOW = 'inset 0 2px 4px rgba(0,0,0,.44)';   /* yours: sunk   */
+  const CARD_SHADOW = '0 1px 3px rgba(4,9,12,.42)';        /* theirs: raised */
+  /* minHeight so an EMPTY light lane reads as a card rather than as a bright
+     33px stripe -- the state a trade spends its first ten seconds in. Applied
+     to both so the two stay symmetric. */
+  const wellBase = { borderRadius: 8, padding: '2px 6px', marginBottom: 8, minHeight: 44, boxSizing: 'border-box' };
+  const theirWell = { ...wellBase, background: 'var(--ui-invert, #C8D2CF)', border: '1px solid var(--ui-line-on-invert, rgba(11,22,27,.14))', boxShadow: CARD_SHADOW };
+  const myWell = { ...wellBase, background: 'var(--ui-well, #111E23)', border: '1px solid rgba(229,237,233,.11)', boxShadow: WELL_SHADOW };
+  /* The ink travels with the fill, never separately -- see DARK_INK/LIGHT_INK.
+     A plain const, never a hook: this sits after the first early return and
+     before the other five, which is exactly the reach the receipt needs, and a
+     useMemo here would be the React #300 crash this file already documents
+     twice. */
+  const theirInk = LIGHT_INK, myInk = DARK_INK;
 
   /* v2.3.1235: trade-completion receipt — state==='done' renders the
      receipt INSIDE the same modal shell.  gameEvents.js only ever sets
@@ -537,7 +598,7 @@ export function TradeWindowPanel(props) {
               three screens now, and it is the one on the lighter well. */}
           <div style={{ ...laneHeader, color: '#8D9B98' }}>You received</div>
           <div style={theirWell}>
-            <OfferRows offer={r.received} weapons={r.receivedWeapons} empty="Nothing" goldSuffix="G" />
+            <OfferRows offer={r.received} weapons={r.receivedWeapons} empty="Nothing" goldSuffix="G" ink={theirInk} />
           </div>
           <div style={{ ...laneHeader, color: '#8D9B98' }}>You sent</div>
           <div style={myWell}>
@@ -756,24 +817,35 @@ export function TradeWindowPanel(props) {
        the lane's OWNER, and both are passed at the call site rather than
        derived from position -- see the note there for why that distinction is
        load-bearing on this particular screen. */
-    const side = (title, ls, gold, tone, well) => (
+    /* v2.3.2283: a 24px cell under the thumb on an inverted lane. Item art is
+       fixed webp authored against a near-black ground; the drawer and the
+       receipt already give it one (StagedRow's 32px plate) and this is the one
+       place it sat bare, which on a light card would leave every thumbnail
+       floating on a ground 12:1 from the one it was drawn on. */
+    const chip = (node, ink) => (ink && ink.platedThumbs)
+      ? (<span style={{ width: 24, height: 24, flex: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: ink.slot, borderRadius: 6 }}>{node}</span>)
+      : node;
+    const side = (title, ls, gold, tone, well, ink) => (
       <div style={{ ...well, marginBottom: 8 }}>
         <div style={{ ...laneHeader, color: tone, marginBottom: 4 }}>{title}</div>
         {ls.length === 0 && gold === 0 && (
-          <div style={{ fontSize: 12, color: '#8D9B98' }}>Nothing</div>
+          <div style={{ fontSize: 12, color: ink.muted }}>Nothing</div>
         )}
         {ls.map((it) => (
-          <div key={it.text} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#F4F0E7', lineHeight: 1.5, padding: '1px 0' }}>
-            <ItemThumb itemKey={it.key} size={20} fallback={it.glyph || '📦'} />
+          <div key={it.text} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: ink.text, lineHeight: 1.5, padding: '1px 0' }}>
+            {chip(<ItemThumb itemKey={it.key} size={20} fallback={it.glyph || '📦'} />, ink)}
             <span>{it.text}</span>
           </div>
         ))}
         {gold > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#D8A94D', fontWeight: 700, lineHeight: 1.5, padding: '1px 0' }}>
-            <GoldIcon /><span>{gold} gold</span>
+          /* NOTE #D8A94D, not the #D8AA58 used elsewhere -- a near-duplicate,
+             so a find-and-replace on the other hex misses this line and leaves
+             1.40:1 gold on the one screen whose job is to be read. */
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: ink.gold, fontWeight: 700, lineHeight: 1.5, padding: '1px 0' }}>
+            {chip(<GoldIcon />, ink)}<span>{gold} gold</span>
           </div>
         )}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#8D9B98', marginTop: 4, borderTop: '1px solid rgba(229,237,233,.11)', paddingTop: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: ink.muted, marginTop: 4, borderTop: ink.divider, paddingTop: 4 }}>
           <span>{ls.length} item{ls.length === 1 ? '' : 's'}</span>
           {gold > 0 && (<><span>·</span><GoldIcon /><span>{gold}</span></>)}
         </div>
@@ -802,14 +874,16 @@ export function TradeWindowPanel(props) {
               whose entire job is to be READ carefully before you consent. All
               three agree now.
 
-              TONE AND WELL TRAVEL WITH THE LABEL, NOT WITH THE LINE. `side`
-              takes both positionally, so swapping these two lines while
-              leaving the arguments in place would silently paint YOU GIVE
-              green and YOU RECEIVE red -- inverting the anti-scam colour
+              TONE, WELL AND INK TRAVEL WITH THE LABEL, NOT WITH THE LINE.
+              `side` takes all three positionally, so swapping these two lines
+              while leaving the arguments in place would silently paint YOU
+              GIVE green and YOU RECEIVE red -- inverting the anti-scam colour
               coding (v2.3.1754) while looking, in a diff, exactly like a
-              reorder. Read the arguments, not the order. */}
-          {side('YOU RECEIVE', theirLines, theirGold, '#55B98A', theirWell)}
-          {side('YOU GIVE', myLines, myGold, '#D8635D', myWell)}
+              reorder. v2.3.2283 raised the stakes: it would also put the dark
+              ramp on the light card, i.e. invisible text. Read the arguments,
+              not the order. */}
+          {side('YOU RECEIVE', theirLines, theirGold, 'var(--ui-positive-on-invert, #1C5A40)', theirWell, theirInk)}
+          {side('YOU GIVE', myLines, myGold, '#D8635D', myWell, myInk)}
           {bigGold && !goldAck && (
             /* Owner: "large currency amounts trigger an explicit confirmation
                to catch typos." */
@@ -920,7 +994,9 @@ export function TradeWindowPanel(props) {
             in a new div, makes it silently read the wrong player's pile while
             every presence assertion keeps passing. */}
         <div style={theirWell}>
-          <OfferRows offer={trade2.offers[otherId]} weapons={otherWpn} empty="Nothing staged yet" />
+          {/* v2.3.2283: ink passed EXPLICITLY, not inferred from "this is the
+              call site with no handlers" -- same reasoning as tone and well. */}
+          <OfferRows offer={trade2.offers[otherId]} weapons={otherWpn} empty="Nothing staged yet" ink={theirInk} />
         </div>
 
         {/* v2.3.1235: batch-4 state-correction §6 — "Editing offer" while

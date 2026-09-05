@@ -43,6 +43,7 @@ brass accent.
 | toolbar | `#10181D` | separate darkest lower shelf |
 | icon plate | `#A2AAA5` → `#7F8A89` | legacy token; not used by the approved ribbon |
 | icon plate active | `#D8C69F` → `#BDA16E` | legacy token; replaced by a brass edge |
+| **invert** | **`#C8D2CF`** | **light card for a region authored by ANOTHER party (v2.3.2283) — see below** |
 | dashboard tray | `#2E4754` | lighter shared field behind the three modules |
 | dashboard panel | `#10222A` | Bag / Loadout / Build functional wells |
 | dashboard ribbon | `#10232A` | inset navigation ribbon |
@@ -68,6 +69,28 @@ brass accent.
 | accent-fill | `#3B3427` | subtle active bg on dark |
 | focus ring | `#F0C878` | 2px focus / selected inner ring |
 | text-on-accent | `#20170D` | text/icon on brass buttons |
+
+## Inverted surfaces (v2.3.2283)
+
+`--ui-invert` is the system's ONLY light neutral. It is an **ownership** role,
+not an elevation one: the four depth roles (sheet / raised / well / well-deep)
+still own elevation on dark and are unchanged by it. Its one licensed meaning
+is *this region was authored by the other party* — the buyer's lane in a trade.
+
+Dark ink on a light fill is already first-class here (`--ui-text-on-accent` on
+every brass button); the only new thing is that the fill is neutral rather than
+brass.
+
+**Every ink inside an inverted region MUST come from the `-on-invert` ramp**
+(`--ui-text-on-invert`, `-2`, `-3`, `--ui-gold-on-invert`,
+`--ui-positive-on-invert`, the four `--ui-rarity-*-on-invert`). The normal
+ramp fails WCAG AA on it — `--ui-text` lands at 1.36:1 — and CSS hands it to
+you silently. docs/TRAPS.md §48 has the measurements and the three secondary
+traps.
+
+**Reviewers: reject this token as a generic "lighter option".** It exists for
+one semantic. The light-and-airy palette was built, previewed and rejected at
+v2.3.1227; a light theme must not grow back through this side door.
 
 ## Semantic + rarity
 
