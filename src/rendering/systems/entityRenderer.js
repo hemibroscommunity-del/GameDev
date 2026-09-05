@@ -20,7 +20,7 @@ import { lookupCollision, PVP_THREAT_CONSENT_MS } from '@/data/gameSystems.js';
 import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrameCount, dodgeSheetDir } from '../playerSprites.js';
 import { getShieldFrame } from '../shieldSprites.js';
 import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX, HELD_SHIELD_PX } from '../backShield.js'; /* v2.3.1784; HELD_ v2.3.1798 */
-import { STUN_STARS, STUN_SPIN_MS } from '../fxStrips.js'; /* v2.3.1735: the owner's stun ring */
+import { STUN_STARS, STUN_SPIN_MS, BLOCK_BARS, blocksFor } from '../fxStrips.js'; /* v2.3.1735: the owner's stun ring; v2.3.2300: his 5-block resource strips */
 import { jogWaistRow } from '../jogWaist.js'; /* v2.3.1341: stable waist band */
 import { getFrame as getSlimeBaseFrame, hasState as hasSlimeState, frameCount as slimeFrameCount, SLIME_BASE_ROW, SLIME_FRAME_PX } from '../slimeSprites.js';
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1573 generalised */
@@ -5980,7 +5980,19 @@ const RES_MP_Y = 52;
    and clipped its readout — caught in the screenshot, not by the suite, which
    only asserts enY > mpY and was still true.  Deriving it makes the two
    impossible to separate again. */
-const RES_EN_Y = RES_MP_Y + RES_BAR_H + RES_BORDER * 2 + 3;
+/* v2.3.2300: the block sheet's own aspect. His frames are 273x98, so a bar
+   drawn 76 wide is 27 tall -- taller than the 20 the old bar plus its keyline
+   occupied, which is why RES_EN_Y is re-derived below rather than left at a
+   number tuned for the old one. 76 keeps the width the owner has been looking
+   at since v2.3.1896c; the height follows the art rather than being squashed
+   into the old slot, because five blocks squeezed to 16px stop reading as five
+   things. */
+const RES_BLOCK_W = 76;
+const RES_BLOCK_H = Math.round(RES_BLOCK_W * 98 / 273);
+/* Derived, never a literal -- v2.3.1896c records the energy bar climbing INTO
+   the MP bar because this said `40 + ...` while MP had moved to 52, and the
+   suite did not catch it (it only asserts enY > mpY, which stayed true). */
+const RES_EN_Y = RES_MP_Y + RES_BLOCK_H + 3;
 const RES_HOLD_MS = 1000;      /* full alpha for a second after the last spend */
 const RES_FADE_MS = 1000;      /* then a second of fade — gone at 2s */
 const RES_SLIDE_MS = 420;      /* how long the spent chunk takes to leave */
@@ -6042,7 +6054,7 @@ function _resGlideProgress(gfx, now) {
 }
 
 /* One bar.  Returns its alpha, so the caller can decide about the plate. */
-function _drawResourceBar(gfx, kind, cur, max, y, now) {
+function _drawResourceBar(gfx, sprite, kind, cur, max, y, now) {
   const m = Math.max(1, max || 1);
   const v = Math.max(0, Math.min(m, cur || 0));
   /* Seed on the first frame so arriving at partial MP does not read as a
@@ -6101,39 +6113,57 @@ function _drawResourceBar(gfx, kind, cur, max, y, now) {
     if (since <= RES_HOLD_MS) alpha = 1;
     else if (since <= RES_HOLD_MS + RES_FADE_MS) alpha = 1 - (since - RES_HOLD_MS) / RES_FADE_MS;
   }
-  gfx.clear();
-  if (alpha <= 0.01) { gfx.alpha = 0; return 0; }
-  gfx.alpha = alpha;
+  /* ═══ v2.3.2300: FIVE BLOCKS, NOT A PROPORTIONAL BAR ═══
+     Owner: "instead of seeing tiny percentages and trying to do mental math
+     each time stamina or mana is used, I want just 5 blocks (with thick borders
+     between them but all connected inside a rectangle)."
 
-  const x0 = -RES_BAR_W / 2;
-  const fillW = RES_BAR_W * (v / m);
-  /* v2.3.1896: border first and OUTSIDE the track, so the white keyline is a
-     full RES_BORDER thick on every side.  Drawn as a filled rounded rect under
-     an inset one rather than as a stroke: a stroke straddles the path and
-     would give RES_BORDER/2 of white and let the fill touch it. */
-  gfx.roundRect(x0 - RES_BORDER, y - RES_BORDER,
-    RES_BAR_W + RES_BORDER * 2, RES_BAR_H + RES_BORDER * 2, (RES_BAR_H / 2) + RES_BORDER)
-    .fill({ color: RES_BORDER_COL });
-  gfx.roundRect(x0, y, RES_BAR_W, RES_BAR_H, RES_BAR_H / 2).fill({ color: RES_TRACK });
-  if (fillW > 0.5) {
-    gfx.roundRect(x0, y, fillW, RES_BAR_H, RES_BAR_H / 2).fill({ color: RES_FILL[kind] });
-  }
-  const slide = since / RES_SLIDE_MS;
-  gfx._resSlideT = slide;
-  gfx._resSpentT = _resGlideProgress(gfx, now);   /* v2.3.1899 */
+     Everything ABOVE this line is untouched -- the spend detection, the
+     hold-then-fade clock, the re-arm on a second spend. That is the behaviour
+     v2.3.1895-1900 tuned with the owner over five rounds and none of it was
+     what he is complaining about. What changes is only what gets DRAWN, so the
+     bars still appear on a spend, hold for a second, fade by two, and hold
+     their reserved positions.
+
+     THE GRAPHICS STOPS DRAWING AND KEEPS ITS JOB. Every `_res*` field the
+     probe publishes and the death-reset sweep clears lives on this object, and
+     moving that bookkeeping onto the sprite would mean touching both the
+     revive path and the keep-list. It is the state; the sprite is the view.
+
+     THE SLIDING CHUNK AND THE "-N" ARE GONE with the proportional fill. They
+     existed to make a fraction legible as a quantity ("how much of the bar just
+     left"), which is precisely the mental arithmetic being removed -- and with
+     a block readout the answer is visible without a number, because a whole
+     block goes out. Their bookkeeping is nulled rather than left stale, so the
+     probe reports the absence rather than the last value from before the swap. */
+  gfx.clear();
+  gfx._resSlideT = 1;
+  gfx._resSpentT = 1;
   gfx._resGhostX = null; gfx._resGhostW = 0;
-  if (slide < 1) {
-    const fromW = RES_BAR_W * (Math.min(m, gfx._resFrom) / m);
-    const chunkW = Math.max(0, fromW - fillW);
-    if (chunkW > 0.5) {
-      const travel = (RES_BAR_W - fillW) * slide;
-      gfx.roundRect(x0 + fillW + travel, y, chunkW, RES_BAR_H, RES_BAR_H / 2)
-        .fill({ color: RES_GHOST[kind], alpha: (1 - slide) * 0.9 });
-      /* Published so "the amount used slides right" can be MEASURED.  A
-         screenshot cannot check it: a harness round-trip costs ~900ms and the
-         slide is 420, so every frame it can catch is already settled. */
-      gfx._resGhostX = x0 + fillW + travel;
-      gfx._resGhostW = chunkW;
+  gfx._resSpentAmt = 0;
+  if (alpha <= 0.01) {
+    gfx.alpha = 0;
+    if (sprite) { sprite.visible = false; sprite.alpha = 0; }
+    return 0;
+  }
+  gfx.alpha = alpha;
+  if (sprite) {
+    const frames = (BLOCK_BARS[kind] && BLOCK_BARS[kind].frames) || [];
+    const lit = blocksFor(v, m);
+    /* No sheet (a 404, or a frame before the preload settled) means no bar --
+       NOT a half-drawn one. The preloading law makes the second case a bug
+       rather than a state to design for, and the manifest awaits these; this
+       is the honest degradation for the first. */
+    if (frames.length === 6) {
+      if (sprite.texture !== frames[lit]) sprite.texture = frames[lit];
+      sprite.width = RES_BLOCK_W;
+      sprite.height = RES_BLOCK_H;
+      sprite.x = 0;
+      sprite.y = y;
+      sprite.alpha = alpha;
+      sprite.visible = true;
+    } else {
+      sprite.visible = false;
     }
   }
   return alpha;
@@ -11911,6 +11941,20 @@ export class EntityRenderer {
       };
       d._resMpSpent = mkSpent();
       d._resEnSpent = mkSpent();
+      /* v2.3.2300: the two block bars. In the SAME gate as the text nodes for
+         the reason the comment above gives about the "-N" pair -- separate
+         gates for nodes that must exist together go out of step the first time
+         someone reorders them. anchor (0.5, 0) so `y` means the same thing it
+         meant for the old roundRect: the TOP of the bar. */
+      const mkBlocks = () => {
+        const sp = new Sprite();
+        sp.anchor.set(0.5, 0);
+        sp.visible = false;
+        d.addChild(sp);
+        return sp;
+      };
+      d._resMpBlocks = mkBlocks();
+      d._resEnBlocks = mkBlocks();
     }
     /* v2.3.1896d: a corpse wears no spend bars.  _updatePlayerHud runs AFTER
        _updatePlayer in the same frame, and _hudMpEmpty/_hudStamEmpty are BOTH
@@ -11936,6 +11980,11 @@ export class EntityRenderer {
       if (d._resEnLabel) d._resEnLabel.visible = false;
       if (d._resMpSpent) d._resMpSpent.visible = false;
       if (d._resEnSpent) d._resEnSpent.visible = false;
+      /* v2.3.2300: and the block bars. A corpse wears no spend bars -- the same
+         rule, and the same reason they are hidden HERE rather than added to the
+         death keep-list (v2.3.1896d: hide by exception, not by list). */
+      if (d._resMpBlocks) { d._resMpBlocks.visible = false; d._resMpBlocks.alpha = 0; }
+      if (d._resEnBlocks) { d._resEnBlocks.visible = false; d._resEnBlocks.alpha = 0; }
       this._resourceBarsUp = false;
       if (typeof window !== 'undefined') {
         window.__btResourceBars = {
@@ -11944,10 +11993,18 @@ export class EntityRenderer {
         };
       }
     } else {
-      const _resAlphaMp = _drawResourceBar(d._hudMpEmpty, 'mana',
+      /* v2.3.2300: the block sprite replaces the proportional fill, and the
+         two TEXT readouts go with it. The on-bar "72 / 100" is the "tiny
+         percentages ... mental math" the owner asked to be rid of, and the
+         gliding "-N" is the same arithmetic in motion -- with five blocks the
+         answer to "how much just left" is a block, visibly. Both nodes are kept
+         and parked rather than deleted: they are made in one lazy gate with the
+         sprites, the death sweep hides them, and a future readout that wants
+         text again has somewhere to put it. */
+      const _resAlphaMp = _drawResourceBar(d._hudMpEmpty, d._resMpBlocks, 'mana',
         R.mana, R.maxMana, RES_MP_Y, now);
-      _drawResourceLabel(d._resMpLabel, R.mana, R.maxMana, RES_MP_Y, _resAlphaMp);
-      _drawResourceSpent(d._resMpSpent, d._hudMpEmpty, 'mana', RES_MP_Y, _resAlphaMp);
+      if (d._resMpLabel && d._resMpLabel.visible) d._resMpLabel.visible = false;
+      if (d._resMpSpent && d._resMpSpent.visible) d._resMpSpent.visible = false;
       if (d._hudMpSprite && d._hudMpSprite.visible) d._hudMpSprite.visible = false;
       if (d._hudMpTextFull && d._hudMpTextFull.visible) d._hudMpTextFull.visible = false;
       if (d._hudMpTextEmpty && d._hudMpTextEmpty.visible) d._hudMpTextEmpty.visible = false;
@@ -11962,10 +12019,10 @@ export class EntityRenderer {
          renderer and the same timings rather than a second set that could
          drift.  RES_EN_Y is fixed, so this bar holds its position whether or
          not the MP bar above it is drawn. */
-      const _resAlphaEn = _drawResourceBar(d._hudStamEmpty, 'stamina',
+      const _resAlphaEn = _drawResourceBar(d._hudStamEmpty, d._resEnBlocks, 'stamina',
         R.stamina, R.maxStamina, RES_EN_Y, now);
-      _drawResourceLabel(d._resEnLabel, R.stamina, R.maxStamina, RES_EN_Y, _resAlphaEn);
-      _drawResourceSpent(d._resEnSpent, d._hudStamEmpty, 'stamina', RES_EN_Y, _resAlphaEn);
+      if (d._resEnLabel && d._resEnLabel.visible) d._resEnLabel.visible = false;
+      if (d._resEnSpent && d._resEnSpent.visible) d._resEnSpent.visible = false;
       if (d._hudStamSprite && d._hudStamSprite.visible) d._hudStamSprite.visible = false;
       if (d._hudStamTextFull && d._hudStamTextFull.visible) d._hudStamTextFull.visible = false;
       if (d._hudStamTextEmpty && d._hudStamTextEmpty.visible) d._hudStamTextEmpty.visible = false;
@@ -11980,14 +12037,21 @@ export class EntityRenderer {
           enGhostX: d._hudStamEmpty._resGhostX, enGhostW: d._hudStamEmpty._resGhostW,
           /* v2.3.1897: the gliding "-N" — text, x, and the bar edge it starts
              from, so the suite can prove it is RIGHT OF the bar and moving. */
+          /* v2.3.2300: what the player can actually COUNT. The old fields
+             described a proportional fill and a gliding "-N" that no longer
+             exist; reporting them would be a probe describing a bar that is not
+             on screen, which is how three vacuous checks got into this repo.
+             blocksFor is the same function the draw uses -- the probe must not
+             re-derive the number it is meant to be checking. */
+          mpBlocks: blocksFor(R.mana, R.maxMana),
+          enBlocks: blocksFor(R.stamina, R.maxStamina),
+          mpBlocksDrawn: d._resMpBlocks && d._resMpBlocks.visible,
+          enBlocksDrawn: d._resEnBlocks && d._resEnBlocks.visible,
+          blockW: RES_BLOCK_W, blockH: RES_BLOCK_H,
           mpSpent: d._hudMpEmpty._resSpentAmt, enSpent: d._hudStamEmpty._resSpentAmt,
-          mpSpentText: d._resMpSpent && d._resMpSpent.visible ? d._resMpSpent.text : null,
-          enSpentText: d._resEnSpent && d._resEnSpent.visible ? d._resEnSpent.text : null,
-          mpSpentX: d._resMpSpent && d._resMpSpent.visible ? +d._resMpSpent.x.toFixed(2) : null,
-          enSpentX: d._resEnSpent && d._resEnSpent.visible ? +d._resEnSpent.x.toFixed(2) : null,
-          mpSpentA: d._resMpSpent && d._resMpSpent.visible ? +d._resMpSpent.alpha.toFixed(3) : null,
-          enSpentA: d._resEnSpent && d._resEnSpent.visible ? +d._resEnSpent.alpha.toFixed(3) : null,
-          barRight: RES_BAR_W / 2 + RES_BORDER,
+          mpSpentText: null, enSpentText: null,
+          mpSpentX: null, enSpentX: null, mpSpentA: null, enSpentA: null,
+          barRight: RES_BLOCK_W / 2,
         };
       }
     }

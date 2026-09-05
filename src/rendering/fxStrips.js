@@ -79,6 +79,29 @@ export const PORTAL_BEAM = { tex: null, url: '/sprites/fx/portal-beam.webp?v=2.3
 /* One full turn of the star ring.  Slow enough to read as a daze rather than
    a strobe; matches the 700ms period of the procedural orbit it replaces so
    the feel does not change, only the art. */
+/* ═══ v2.3.2300: THE FIVE-BLOCK RESOURCE READOUT ═══
+ * Owner: "instead of seeing tiny percentages and trying to do mental math each
+ * time stamina or mana is used, I want just 5 blocks (with thick borders
+ * between them but all connected inside a rectangle). Use this sprite sheet."
+ *
+ * His sheet, sliced by tools/slice_block_bars.py into two strips of SIX frames
+ * each. Six, not five: an empty bar is a frame too, and the strip is ordered so
+ * the INDEX IS THE NUMBER OF FILLED BLOCKS -- frames[0] is empty, frames[5] is
+ * full. The sheet itself counts down; the slicer reverses it precisely so no
+ * call site ever writes `5 - filled`, which is one subtraction away from
+ * showing a full bar at zero stamina.
+ *
+ * HERE rather than in a new module because this file is already awaited by the
+ * central preload manifest (fxStripsReady, preloadAnimations.js). CLAUDE.md's
+ * preloading law wants every animation asset loaded before the intro overlay
+ * lifts, and a resource bar is the worst possible thing to load lazily: its
+ * first use is the first time you spend mana, i.e. mid-fight. GLOBAL, not
+ * per-zone -- the bars follow their owner into every zone. */
+export const BLOCK_BARS = {
+  stamina: { frames: [], url: '/icons/ui/blocks-stam.webp?v=2.3.2300' },
+  mana:    { frames: [], url: '/icons/ui/blocks-mp.webp?v=2.3.2300' },
+};
+
 export const STUN_SPIN_MS = 700;
 export const WHIRL_FX_MS = 520;
 
@@ -98,6 +121,35 @@ for (const cfg of [STUN_STARS, WHIRL_VORTEX, FIRE_TRAIL_FX]) {
     }
   }).catch((err) => console.warn('[fx-strips] load failed', cfg.url, err));
   _pending.push(p);
+}
+
+/* v2.3.2300: the two block strips, six frames each. Same shape as the loop
+   above but a different frame count, so it is its own loop rather than a
+   parameter on that one -- the 8 there is the animation cell count and means
+   something different from the 6 here. */
+for (const cfg of [BLOCK_BARS.stamina, BLOCK_BARS.mana]) {
+  const p = Assets.load(cfg.url).then((tex) => {
+    if (!tex || !tex.source) return;
+    const fw = Math.floor(tex.source.width / 6);
+    for (let i = 0; i < 6; i++) {
+      cfg.frames.push(new Texture({
+        source: tex.source,
+        frame: new Rectangle(i * fw, 0, fw, tex.source.height),
+      }));
+    }
+  }).catch((err) => console.warn('[fx-strips] load failed', cfg.url, err));
+  _pending.push(p);
+}
+
+/* How many blocks are lit for a pool. FLOOR, and that is the contract the whole
+   readout rests on: a block is a fifth of the pool and every special costs
+   exactly one (v2.3.2298), so "blocks showing" IS "specials you can still
+   afford". Rounding up would show five blocks at 81% and promise a cast the
+   worker would refuse. */
+export function blocksFor(cur, max) {
+  const m = Math.max(1, max || 1);
+  const v = Math.max(0, Math.min(m, cur || 0));
+  return Math.max(0, Math.min(5, Math.floor((v * 5) / m)));
 }
 
 /* Awaited by the central manifest.  allSettled, not all: a missing sheet must
