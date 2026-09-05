@@ -3766,7 +3766,18 @@ function _orderTraitsAndWeapon(display, facingIdx, hatId) {
         if (display.getChildIndex(phead) > bi) display.setChildIndex(phead, bi);
       } else {
         let ref = -1;
-        for (const s of [display._spriteBody, display._gearLegs, display._gearChest, display._gearShoulders]) {
+        /* ═══ v2.3.2278: _gearShirt WAS MISSING FROM THIS LIST ═══
+           Owner (v2.3.1914): "When fishing that hand needs to be over the
+           shirt during the reel animation instead of under it."  That fix has
+           been a NO-OP ever since, for the commonest character there is.
+           The list is what the head/hand overlay is lifted ABOVE.  With only
+           a tee on, the sole visible member was _spriteBody (child index 3) --
+           and _bodyHead is index 4, so `hi < ref` was 4 < 3, false, and no
+           lift ever happened; _gearShirt is index 10 and drew straight over
+           the reeling hand.  Leg armour reaches the same end by a different
+           road (_gearLegs is index 9, above _bodyHead), which is the case the
+           owner reported.  Adding the shirt fixes both and the default. */
+        for (const s of [display._spriteBody, display._gearShirt, display._gearLegs, display._gearChest, display._gearShoulders]) {
           if (s && s.visible && s.parent === display) ref = Math.max(ref, display.getChildIndex(s));
         }
         if (ref >= 0 && phead.parent === display) { const hi = display.getChildIndex(phead); if (hi < ref) display.setChildIndex(phead, ref); }
@@ -8118,8 +8129,15 @@ export class EntityRenderer {
             if ((pose !== 'jog' || _fsR) && ((pose !== 'hit' && pose !== 'mine') || _rworn.length > 0)) _placePickupHead(display, spriteBody, other.skin, other.pants, other.shoes, pose, dir, frameIdx, _rJogPhase);
             display._headBehindGear = (pose === 'jog' && dir === 'east' && !!_fsR); /* v2.3.1553 */
             spriteBody.visible = !(_rfull && !!getPickupHeadFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx));
-            /* v2.3.1123: lift the angler's head above the fishing chest plate. */
-            if (pose === 'fish' && _rworn.some(w => w.k && w.k.indexOf('chest:') === 0)) _placeFishHead(display, spriteBody, tex);
+            /* v2.3.1123: lift the angler's head above the fishing chest plate.
+               v2.3.2278: above their LEG armour too.  This was chest-only, so
+               a peer fishing in greaves lost the same hand the local player
+               did -- and worse, it was invisible to whoever was wearing them,
+               which is the shape of the owner's separate report that peers
+               are missing items his own screen shows.  The shirt needs no
+               entry here: on the remote path it is baked into the body
+               texture rather than drawn as an overlay (see just below). */
+            if (pose === 'fish' && _rworn.length > 0) _placeFishHead(display, spriteBody, tex);
           } catch (e) { if (display._bodyHead) display._bodyHead.visible = false; spriteBody.visible = true; }
           /* shirt is baked into the body (see getBodyFrame above); no overlay. */
           if (display._shirtSprite) display._shirtSprite.visible = false;
@@ -9472,7 +9490,14 @@ export class EntityRenderer {
              so it needed asking about separately rather than being covered by
              _chestW. */
           const _shirtW = (() => { const _si = getEquip('shirt'); return !!(_si && _si !== 'none'); })();
-          if (pose === 'fish' && (_chestW || _shirtW)) _placeFishHead(display, spriteBody, tex);
+          /* v2.3.2278: _legsW joins them.  Owner: "Fishing animation the reel
+             hand while wearing leg armor gets cut off."  The overlay is the
+             ONLY layer that can sit above _gearLegs, and it was not being
+             built at all for an angler in greaves and nothing else -- so the
+             greaves drew over the reeling fist and there was nothing to lift.
+             Still gated on the three rather than made unconditional: a bare
+             player needs no canvas bake to look right. */
+          if (pose === 'fish' && (_chestW || _shirtW || _legsW)) _placeFishHead(display, spriteBody, tex);
         } catch (e) { if (display._bodyHead) display._bodyHead.visible = false; spriteBody.visible = true; }
         /* ═══ v2.3.1872: THE SOUTH BLOCK'S JOGGING LEGS ═══
            Placed HERE, after the masked/fullset body has been resolved, because

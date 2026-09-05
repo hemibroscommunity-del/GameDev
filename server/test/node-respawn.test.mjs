@@ -195,8 +195,15 @@ const wilderness = Object.keys(SERVER_ZONES);
      nudges it, that should be a deliberate edit here and a conversation,
      not a quiet drift.  The relationship the next two checks pin (positive,
      and slower for nodes) is what must never break regardless. */
-  check('respawn: monsters are on the slow clock (3x the v2.3.1592 timer)',
-    room.RESPAWN_TIME === 15000, room.RESPAWN_TIME);
+  /* v2.3.2278: 15000 -> 18750, owner ("Increase the spawn time a little bit
+     for monsters.  Maybe 25% longer before next respawn.").  This is the
+     deliberate edit and the conversation the note above asks for, not a quiet
+     drift.  WORTH KNOWING FOR NEXT TIME: the node timer is 20000 and the
+     invariant two checks below is that nodes are SLOWER than monsters -- that
+     gap was 5000ms and is now 1250ms, so one more nudge of this size inverts
+     it and the assertion below is what will say so. */
+  check('respawn: monsters are on the slow clock (18.75s)',
+    room.RESPAWN_TIME === 18750, room.RESPAWN_TIME);
   check('respawn: nodes are on the quick clock', room.NODE_RESPAWN_TIME === 20000, room.NODE_RESPAWN_TIME);
   /* Floors, not exact values, for the invariants that actually matter: a
      0ms respawn would make monsters unkillable-feeling and spam the wire. */

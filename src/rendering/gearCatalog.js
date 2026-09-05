@@ -154,6 +154,12 @@ if (typeof window !== 'undefined') {
   window.__btGearCatalog = () => ({
     chest: (GEAR_CATALOG.chest || []).map((c) => c.id),
     legs: (GEAR_CATALOG.legs || []).map((c) => c.id),
+    /* v2.3.2278: what is WORN, not just what exists.  A scenario that sets a
+       slot with __btGearSet and then asserts a rendering outcome has to be
+       able to prove the slot really took -- mp-fishhand's greaves case passes
+       for the wrong reason if the tee is still on, because the shirt reaches
+       the same branch by a different road. */
+    worn: { chest: getEquip('chest'), legs: getEquip('legs'), shirt: getEquip('shirt') },
   });
 }
 export function onEquipChange(slot, fn) { return _stores[slot] ? _stores[slot].on(fn) : () => {}; }

@@ -812,7 +812,20 @@ export class GameRoom {
        now the intended pacing rather than an accident.  If it reads as dead
        air rather than breathing room, raise the per-zone spawn counts rather
        than winding this back, or the two will keep undoing each other. */
-    this.RESPAWN_TIME = 15000; // 15s respawn (3x the v2.3.1592 timer)
+    /* v2.3.2278 (owner: "Increase the spawn time a little bit for monsters.
+       Maybe 25% longer before next respawn."): 15000 -> 18750.
+       The note above says to raise the spawn COUNTS rather than wind this
+       back if it reads as dead air -- and since it was written the counts DID
+       go 3 -> 6 (data.js), so the zone the trade was measured against is
+       twice as full as the one described.  This is the other dial moving to
+       match, deliberately, not a reversal.
+       WHAT IT COSTS, in the terms that note asks for: solo supply goes from
+       6 kills / 15.0s = 24/min to 6 / 18.75s = 19.2/min, a real ~20% cut to
+       solo kill rate and therefore to XP, gold and quest-kill pacing.  The
+       crowd curve keeps its shape -- MON_RESPAWN_K is a slope, not a
+       duration, and the 6s floor only binds above 37 players in one zone
+       (it was 26), which the monster cap never reaches. */
+    this.RESPAWN_TIME = 18750; // 18.75s respawn (v2.3.2278: +25% on the 15s of v2.3.1739)
     this.MONSTER_AGGRO_RANGE = 120; // pixels
     /* v2.3.1639: per-archetype aggro overrides.  Absent = the 120 default,
        so nothing but the listed archetype changes behaviour.  Scoped the

@@ -58,5 +58,41 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and it is an arm, not the whole torso (v2.3.1123 still holds)',
     top.grip < top.w * top.h * 0.12, top);
 
+  /* ═══ v2.3.2278: AND THE CASE THE OWNER ACTUALLY REPORTED ═══
+     Owner: "Fishing animation the reel hand while wearing leg armor gets cut
+     off."  Everything above runs on the DEFAULT character, whose tee is what
+     makes _shirtW true -- so the overlay was being built for the reason the
+     shirt case needs, and the greaves case was never exercised at all.  With
+     the shirt OFF and greaves ON, the local gate was `(_chestW || _shirtW)`
+     and neither held: no overlay was built, so there was nothing to lift, and
+     _gearLegs (child index 9, above _bodyHead at 4) drew straight over the
+     reeling fist.
+     Stripping the shirt first is the whole point of the fixture -- leaving it
+     on would let _shirtW carry the assertion and it would pass against the
+     unfixed build. */
+  await P.page.evaluate(() => {
+    /* CLEAR THE PROBE FIRST.  __btFishTop is written by _placeFishHead, and
+       the whole question below is whether that function runs at all for a
+       legs-only angler -- so a stale reading from the shirt phase above would
+       make this pass against the very build it exists to fail. */
+    window.__btFishTop = null;
+    window.__btGearSet('shirt', 'none');
+    window.__btGearSet('chest', 'none');
+    window.__btGearSet('legs', 'steelgreaves');
+  });
+  await P.page.waitForTimeout(1400);
+  const worn = await P.page.evaluate(() => (window.__btGearCatalog ? window.__btGearCatalog() : null));
+  const legs = await P.page.evaluate(() => window.__btFishTop || null);
+  console.log('    greaves-only overlay: ' + JSON.stringify(legs));
+  rec.ok('greaves on, shirt off, chest off (guard: the other two must not carry this)',
+    !!(worn && worn.worn) && worn.worn.legs === 'steelgreaves'
+      && worn.worn.shirt === 'none' && worn.worn.chest === 'none', worn && worn.worn);
+  rec.ok('the overlay is built for a legs-only angler at all (it was not)',
+    !!legs && legs.rod > 0, legs);
+  rec.ok('...and the reel hand rides up over the greaves',
+    !!legs && legs.grip > 0, legs);
+  rec.ok('...still an arm, not the torso',
+    !!legs && legs.grip < legs.w * legs.h * 0.12, legs);
+
   await P.ctx.close().catch(() => {});
 }
