@@ -16,6 +16,28 @@
  */
 
 /* MIRROR OF server/src/abilities.js STAM_ABILITIES — identical by test. */
+  /* ═══ v2.3.2298: ONE SPECIAL, ONE BLOCK ═══
+     Owner: "instead of seeing tiny percentages and trying to do mental math
+     each time stamina or mana is used, I want just 5 blocks ... All special
+     attacks will cost one block. ... Sword dash will change to 0 stamina (or
+     magic if it was that) cost for melee characters."
+
+     A block is one FIFTH of the pool, so "one block" is staminaPct 0.20 and
+     stays one block at every level -- which is the whole reason these costs
+     were already percentages rather than flat numbers. maxStamina grows with
+     progression points, and a flat cost would quietly become half a block on a
+     high-level character while the bar still showed five.
+
+     bash 0.30 -> 0.20 and whirl 0.40 -> 0.20. Whirl gets CHEAPER by half a
+     block and bash by a third, which is a real buff and is the owner's call --
+     the point of the readout is that a special costs a block you can see, and
+     a whirl that ate two would make the number on screen a lie.
+
+     sworddash 0.10 -> 0. Not "cheap", zero: it is the opening move of a melee
+     engagement (game/abilities.js maybeSwordDash), gated by a 2500ms cooldown
+     rather than by stamina, and the cooldown is what stops every swing being a
+     lunge. Charging a block for the move that STARTS a fight would mean opening
+     a fight costs you a fifth of the bar you fight with. */
 export const STAM_ABILITIES = {
   /* ═══ v2.3.2258: THE SWORD'S OPENING LUNGE ═══
      Owner: "For ONLY melee (sword) ... the default first attack will be very
@@ -42,7 +64,7 @@ export const STAM_ABILITIES = {
      release-and-re-press from making every swing a lunge. */
   sworddash: {
     minLevel: 0,
-    staminaPct: 0.10,
+    staminaPct: 0,
     cooldownMs: 2500,
     dmgMult: 1.0,
     radius: 70,
@@ -67,7 +89,7 @@ export const STAM_ABILITIES = {
        The requirement moved to "a shield, and it is raised" -- see
        game/abilities.js abilityStatus. */
     minLevel: 0,
-    staminaPct: 0.30,
+    staminaPct: 0.20,
     cooldownMs: 4000,
     dmgMult: 0.75,
     radius: 70,
@@ -86,7 +108,7 @@ export const STAM_ABILITIES = {
   },
   whirl: {
     minLevel: 8,
-    staminaPct: 0.40,
+    staminaPct: 0.20,
     cooldownMs: 6000,
     dmgMult: 1.00,
     radius: 240,    /* v2.3.1738 (owner): the vacuum — was 60 */

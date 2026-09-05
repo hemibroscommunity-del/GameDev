@@ -76,48 +76,66 @@ async function join(ws, id) {
   const ps = room.playerState.bp_burst_mana;
   const session = room.sessions.get(ws);
 
-  check('special cost is FLAT — the whole bug was that it was a fraction of max',
-    room._abilityCost({ maxMana: 100 }, 'swipe') === PROG3.SPECIAL_MANA_COST
-    && room._abilityCost({ maxMana: 999 }, 'swipe') === PROG3.SPECIAL_MANA_COST,
-    { at100: room._abilityCost({ maxMana: 100 }, 'swipe'), at999: room._abilityCost({ maxMana: 999 }, 'swipe') });
+  /* ═══ v2.3.2298: THIS SECTION ASSERTS THE OPPOSITE OF WHAT IT USED TO ═══
+     It was written for v2.3.1734, which made the special's mana cost FLAT so
+     that levelling Magic bought casts -- the section header still calls the
+     fraction "the whole bug". The owner has reversed that decision:
 
-  /* THE REGRESSION TEST FOR THE ACTUAL BUG.  Under the old formula this
-     array is [5,5,5,5,5] — five casts per bar at every Magic level in the
-     game.  It is the single assertion that fails if anyone restores
-     floor(maxMana/5). */
+       "instead of seeing tiny percentages and trying to do mental math each
+        time stamina or mana is used, I want just 5 blocks ... All special
+        attacks will cost one block."
+
+     A block is a fifth of the pool, so one special is floor(maxMana/5) again.
+     The v2.3.1734 note is still TRUE and is the price of the readout: with a
+     proportional cost you get five casts per bar at Magic 1 and five at Magic
+     100, and since regen is also a percentage of max the sustained rate does
+     not move either. What Magic buys is no longer casts but the SIZE of a cast.
+
+     The tests below are rewritten rather than deleted, and rewritten to assert
+     the invariance ON PURPOSE rather than to leave a hole where an assertion
+     used to be. If casts-per-bar ever stops being exactly 5, either someone
+     has restored the flat cost or the block readout has quietly started lying
+     about how many specials you have left -- and that is worth failing over in
+     both directions. */
+  check('a special costs ONE BLOCK -- a fifth of the pool, at any pool size',
+    room._abilityCost({ maxMana: 100 }, 'swipe') === 20
+    && room._abilityCost({ maxMana: 250 }, 'swipe') === 50
+    && room._abilityCost({ maxMana: 999 }, 'swipe') === 199,
+    { at100: room._abilityCost({ maxMana: 100 }, 'swipe'),
+      at250: room._abilityCost({ maxMana: 250 }, 'swipe'),
+      at999: room._abilityCost({ maxMana: 999 }, 'swipe') });
+
   const castsAt = (magicLvl) => {
     ps.prog3.sk.staff.level = magicLvl;
     room._prog3Recompute(ps);
     return Math.floor(ps.maxMana / room._abilityCost(ps, 'swipe'));
   };
   const curve = [1, 10, 30, 50, 100].map(castsAt);
-  check('casts per bar RISES with Magic (was a flat 5 at every level)',
-    curve[0] < curve[1] && curve[1] < curve[2] && curve[2] < curve[3] && curve[3] < curve[4],
-    { levels: [1, 10, 30, 50, 100], casts: curve });
-  check('the floor is 4 casts and the cap is materially more',
-    curve[0] === 4 && curve[4] >= 12, curve);
+  check('...so the bar is worth exactly five specials at every Magic level, '
+    + 'which is what makes a five-block readout honest',
+    curve.every((c) => c === 5), { levels: [1, 10, 30, 50, 100], casts: curve });
 
-  /* The SUSTAINED rate moves too, which the old system also froze: regen
-     pays a percentage of maxMana, so with a proportional cost the seconds
-     per cast were identical at every level.  Same tick constant the regen
-     loop uses (index.js: maxMana × 0.018 out of combat). */
+  /* Same tick constant the regen loop uses (index.js: maxMana x 0.018 out of
+     combat). Invariant by construction, and named as such so the next reader
+     does not "fix" it. */
   const secsPerCast = (magicLvl) => {
     ps.prog3.sk.staff.level = magicLvl;
     room._prog3Recompute(ps);
     return room._abilityCost(ps, 'swipe') / (ps.maxMana * 0.018);
   };
-  check('sustained seconds-per-cast FALLS with Magic (was invariant by construction)',
-    secsPerCast(100) < secsPerCast(1) * 0.5,
+  check('...and the sustained rate is level-invariant too -- the known cost of '
+    + 'the block readout, not an oversight',
+    Math.abs(secsPerCast(100) - secsPerCast(1)) < secsPerCast(1) * 0.05,
     { at1: secsPerCast(1).toFixed(2), at100: secsPerCast(100).toFixed(2) });
 
-  // spend path still deducts exactly the flat cost, once
   ps.prog3.sk.staff.level = 1;
   room._prog3Recompute(ps);
   ps.mana = ps.maxMana;
   const before = ps.mana;
+  const oneBlock = room._abilityCost(ps, 'swipe');
   room._handleAbilityUse(session, { type: 'swipe', tier: 3 });
-  check('ability_use deducts exactly the flat cost (tier does not change it)',
-    ps.mana === before - PROG3.SPECIAL_MANA_COST, { before, after: ps.mana });
+  check('ability_use deducts exactly one block (tier does not change it)',
+    ps.mana === before - oneBlock, { before, after: ps.mana, oneBlock });
 
   ps.mana = 1;
   ws.sent.length = 0;
@@ -204,11 +222,15 @@ const setEligible = () => {
 }
 {
   setEligible();
-  ps.mana = PROG3.BURST_MANA_COST - 1;
+  /* v2.3.2298: the burst costs a block too, so the "one short" fixture is one
+     under the computed cost rather than under a constant that no longer sets
+     it. */
+  const burstBlock = room._burstCost(ps);
+  ps.mana = burstBlock - 1;
   cast();
   check('GATE mana: one short is refused with reason "mana", and spends nothing',
     novas().length === 0 && lastReject() && lastReject().reason === 'mana'
-    && ps.mana === PROG3.BURST_MANA_COST - 1, { reject: lastReject(), mana: ps.mana });
+    && ps.mana === burstBlock - 1, { reject: lastReject(), mana: ps.mana, burstBlock });
 }
 {
   setEligible();
@@ -271,7 +293,8 @@ const setEligible = () => {
   check('the nova reports the radius it actually tested',
     nova && nova.payload.r === PROG3.BURST_RADIUS, nova && nova.payload.r);
   check('mana is spent EXACTLY once for the whole nova',
-    ps.mana === manaBefore - PROG3.BURST_MANA_COST, { before: manaBefore, after: ps.mana });
+    ps.mana === manaBefore - room._burstCost(ps),
+    { before: manaBefore, after: ps.mana, block: room._burstCost(ps) });
   check('the element\'s status lands on the target', !!inRange.statuses.burn, inRange.statuses);
   const hits = room.eventBuffer.filter((e) => e.type === 'monster_hit' && e.payload.burst);
   check('each hit rides monster_hit tagged burst:true (the caster\'s own popup)',
@@ -295,7 +318,7 @@ const setEligible = () => {
   const manaBefore2 = ps.mana;
   cast();
   check('a nova that hits nothing still costs mana and still fires',
-    ps.mana === manaBefore2 - PROG3.BURST_MANA_COST && novas().length === 1
+    ps.mana === manaBefore2 - room._burstCost(ps) && novas().length === 1
     && novas()[0].payload.targets.length === 0, { mana: ps.mana, targets: novas()[0].payload.targets });
 }
 

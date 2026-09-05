@@ -2669,7 +2669,25 @@ export class GameRoom {
        contract survives; it just stopped being five.
        payload.tier still rides the wire for back-compat but has not
        affected cost since v2.3.172 (it scales DAMAGE, not cost). */
-    if (type === 'swipe')   return PROG3.SPECIAL_MANA_COST;
+    /* ═══ v2.3.2298: BACK TO ONE FIFTH, BY OWNER DIRECTIVE ═══
+       "All special attacks will cost one block." A block is a fifth of the
+       pool, so this is floor(maxMana / 5) again -- which is what v2.3.172 set
+       and v2.3.1734 flattened.
+
+       THE NOTE ABOVE IS STILL TRUE and is the cost of the change: a cost that
+       is a fraction of max is five casts per bar at Magic 1 and five casts per
+       bar at Magic 100, and since the regen tick is also a percentage of max,
+       levelling Magic no longer buys casts. What it buys instead is the SIZE of
+       a cast -- maxMana feeds nothing else -- so mana progression now reads as
+       "each block is worth more" rather than "you get more casts". That is a
+       real trade and the owner made it knowingly: the readout he asked for
+       shows five blocks and one special, and a special that ate a sixth of the
+       bar would make the picture a lie.
+       Deploy-order note: this UNDOES the split the elemBurst cap was carrying.
+       An old worker charges floor(maxMana/5) and so does this one, so old and
+       new clients now predict the same number against either -- strictly safer
+       than the state it replaces. */
+    if (type === 'swipe')   return Math.floor((ps.maxMana || 100) / 5);
     return 0;
   }
 
