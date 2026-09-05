@@ -3094,6 +3094,16 @@ export function setupWebSocket(ctx) {
           ws.send(JSON.stringify(msg));
           return;
         }
+        /* v2.3.2279: the bow special's blast.  Same allowlist rule as every
+           line around it -- a type with no passthrough here is silently
+           dropped and the feature runs on nothing (TRAPS #18).  This one
+           would fail in the quietest way of all: the DoT would tick out
+           exactly as before and the explosion simply would never happen, with
+           no error anywhere. */
+        if (msg.type === 'arrow_blast') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
         if (msg.type === 'loot_pickup') {
           ws.send(JSON.stringify(msg));
           return;

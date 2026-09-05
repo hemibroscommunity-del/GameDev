@@ -582,6 +582,43 @@ for (const cfg of Object.values(DEBRIS_BURSTS)) {
    128px frames, not 256: this is a per-zone asset and it draws at ~44px,
    so 256 would be six times oversampled for four times the VRAM on the
    iPhone this game is played on. */
+/* ═══ v2.3.2279: THE BOW SPECIAL'S BLAST ═══
+ *
+ * Owner: "Add this explosion once the arrow is done adding tick damage for the
+ * final send off.  Make the explosion a large area about the size of the
+ * perimeter that a melee character can auto target a monster."
+ *
+ * Owner-supplied art, cut to the house shape: 8 frames of 256 in one strip,
+ * the same 2048x256 every other burst in this folder uses (grease, rocks,
+ * splash, woodchips), 2MB decoded.  GLOBAL, not per-zone: a bow travels, so
+ * this registers in preloadWorldAnimations and is warm before the intro
+ * overlay lifts -- the preloading LAW, and a first-use load on a 2MB strip is
+ * exactly the hitch it exists to forbid.
+ *
+ * DRAWN DIAMETER IS THE SERVER'S RADIUS, DOUBLED, and that is not decoration:
+ * the ring the player sees has to be the ring the worker hit, or the feature
+ * teaches a lie about its own reach.  arrowblast.js RADIUS mirrors
+ * TARGET_PERIMETER_PX (220) on the server side; this is the client end of the
+ * same pin. */
+const ARROW_BLAST = { frames: [], url: '/sprites/effects/arrow-blast-v1.webp?v=2.3.2279' };
+const ARROW_BLAST_MS = 620;        /* ~78ms a frame -- a bang, not a bloom */
+const ARROW_BLAST_D = 220 * 2;     /* drawn world px across, = 2 x the blast radius */
+let _arrowBlastLoad = null;
+export function ensureArrowBlastTex() {
+  if (_arrowBlastLoad) return _arrowBlastLoad;
+  _arrowBlastLoad = _fxLoad(ARROW_BLAST.url).then((tex) => {
+    if (!tex || !tex.source) return;
+    tex.source.scaleMode = 'linear';
+    const fw = Math.floor(tex.source.width / 8);
+    for (let i = 0; i < 8; i++) {
+      ARROW_BLAST.frames.push(new Texture({
+        source: tex.source, frame: new Rectangle(i * fw, 0, fw, tex.source.height),
+      }));
+    }
+  }).catch(() => {});   /* no blast is a cosmetic loss; the damage already landed */
+  return _arrowBlastLoad;
+}
+
 const SNOWBALL_BURST = { frames: [], url: '/sprites/effects/snowball-burst-v1.png?v=2.3.2217' };
 const SNOWBALL_BURST_MS = 420;    /* ~52ms a frame — a snowball, not a bomb */
 const SNOWBALL_BURST_H = 44;      /* drawn height in world px; the ball is 16 */
@@ -5420,6 +5457,7 @@ export class EffectsRenderer {
     }
     this._advanceSnowmanImpacts(now);
     this._updateSnowballBursts(S, now);
+    this._updateArrowBlasts(S, now);
   }
 
   /* v2.3.2217: drain the queue projectiles.js fills when a thrown snowball's
@@ -5459,6 +5497,74 @@ export class EffectsRenderer {
       const tex = SNOWBALL_BURST.frames[idx];
       if (tex && fx.sp.texture !== tex) fx.sp.texture = tex;
     }
+  }
+
+  /* v2.3.2279: drain the queue gameEvents fills when the worker broadcasts
+     arrow_boom, and advance the ones already playing.  Same one-shot shape as
+     _updateSnowballBursts and drained the same way -- whether or not the art
+     loaded -- so a missing texture cannot let the queue pile up.
+     EVERY client in the zone runs this, including the shooter: the blast is
+     drawn from the SERVER's broadcast rather than predicted locally, so there
+     is exactly one source of truth for where it went off and nobody sees a
+     second ghost explosion.  It costs the shooter a round trip, which for a
+     send-off after four seconds of ticking is not a latency anyone can feel. */
+  _updateArrowBlasts(S, now) {
+    const q = S && S.arrowBlasts;
+    if (q && q.length) {
+      if (ARROW_BLAST.frames.length) {
+        if (!this._arrowBlasts) this._arrowBlasts = [];
+        for (const b of q) {
+          const sp = new Sprite(ARROW_BLAST.frames[0]);
+          sp.anchor.set(0.5, 0.5);
+          const f0 = ARROW_BLAST.frames[0];
+          /* Sized off the SERVER's radius when it sent one, so a later retune
+             of the blast needs no client edit; ARROW_BLAST_D is the fallback
+             for an old worker that does not carry `r`. */
+          const across = (typeof b.r === 'number' && b.r > 0) ? b.r * 2 : ARROW_BLAST_D;
+          sp.scale.set(across / (f0.width || 256));
+          sp.x = b.x; sp.y = b.y;
+          /* Additive: it is a fireball over ground art, and the source is
+             drawn on black. */
+          sp.blendMode = 'add';
+          this.particleLayer.addChild(sp);
+          this._arrowBlasts.push({ sp, startedAt: b.at || now });
+        }
+      }
+      q.length = 0;
+    }
+    const list = this._arrowBlasts;
+    if (!list || !list.length) return;
+    for (let i = list.length - 1; i >= 0; i--) {
+      const fx = list[i];
+      const t = now - fx.startedAt;
+      if (t >= ARROW_BLAST_MS || fx.sp.destroyed) {
+        if (!fx.sp.destroyed) {
+          if (fx.sp.parent) fx.sp.parent.removeChild(fx.sp);
+          fx.sp.destroy();
+        }
+        list.splice(i, 1);
+        continue;
+      }
+      const idx = Math.min(7, Math.floor((t / ARROW_BLAST_MS) * 8));
+      const tex = ARROW_BLAST.frames[idx];
+      if (tex && fx.sp.texture !== tex) fx.sp.texture = tex;
+    }
+  }
+
+  /* QA probe (house style): how many blasts are playing and how big they are
+     drawn.  A screenshot cannot tell a 440px blast from a 220px one against
+     unfamiliar ground, and the whole point of the mirror-pin is that the ring
+     drawn is the ring the worker hit. */
+  arrowBlastProbe() {
+    const l = this._arrowBlasts || [];
+    return {
+      playing: l.length,
+      loaded: ARROW_BLAST.frames.length,
+      drawn: l.map((f) => ({
+        across: +(f.sp.width || 0).toFixed(1),
+        x: Math.round(f.sp.x), y: Math.round(f.sp.y),
+      })),
+    };
   }
 
   _spawnSnowmanImpact(m, sizeMul, now) {

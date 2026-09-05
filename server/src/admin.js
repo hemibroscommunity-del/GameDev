@@ -211,6 +211,12 @@ export const adminMethods = {
                allowlist shape; >0 with lastStrike null means the handler ran
                and returned before its first stamp. */
             strikesSeen: this._strikeSeen || 0,
+            /* v2.3.2279: why a bow-special blast was refused, if it was.  Same
+               reasoning as lastStrike above: every gate in _handleArrowBlast is
+               a silent return (a message would only tell a modified client
+               which bound it hit), and a silent refusal is indistinguishable
+               from a feature that never fired. */
+            arrowBlast: this._arrowBlastRejectsFor(id),
             /* v2.3.1765: where the worker believed this player stood when it
                last processed an `ability` cast (abilities.js).  Shield Bash
                reaches 70px from that point with no slack for lag, so "it

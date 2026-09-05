@@ -562,7 +562,7 @@ export function processGameEvent(type, payload, S, deps) {
               S.hitParticles = [];
               S.deathExplosions = [];
               S.arrows = [];
-              S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */ S.snowballBursts = []; /* v2.3.2217: and an undrained burst would pop in the new zone at old coords */
+              S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */ S.snowballBursts = []; /* v2.3.2217: and an undrained burst would pop in the new zone at old coords */ S.arrowBlasts = []; /* v2.3.2279: same, for the bow blast */
               S.player.x = _ddMX * TILE;
               S.player.y = (_ddH - 3) * TILE;
               S._zoneWipe = Date.now();
@@ -641,7 +641,7 @@ export function processGameEvent(type, payload, S, deps) {
                 S.hitParticles = [];
                 S.deathExplosions = [];
                 S.arrows = [];
-                S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */ S.snowballBursts = []; /* v2.3.2217: and an undrained burst would pop in the new zone at old coords */
+                S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */ S.snowballBursts = []; /* v2.3.2217: and an undrained burst would pop in the new zone at old coords */ S.arrowBlasts = []; /* v2.3.2279: same, for the bow blast */
                 S.player.x = Math.floor(_fz.w / 2) * TILE;
                 S.player.y = (_fz.h - 4) * TILE;
                 S._zoneWipe = Date.now();
@@ -682,6 +682,38 @@ export function processGameEvent(type, payload, S, deps) {
                 x: _pX, y: _pY, ts: Date.now(), color: '#8FD6A0', maxR: 46, duration: 320,
               });
               BT_AUDIO.beep(880, 0.07, 0.16, 'triangle');
+            }
+            break;
+
+          /* ═══ v2.3.2279: THE BOW SPECIAL'S BLAST -- the visual half ═══
+             Server-emitted (server/src/arrowblast.js) and DISPLAY-ONLY: every
+             point of its damage already arrived on monster_hit, so a client
+             that drops this still has a correct game, it just misses the
+             fireball.  Drawn for EVERYONE in the zone, including the shooter
+             -- the client does not predict it -- so there is one source of
+             truth for where it went off and nobody sees a second ghost
+             explosion beside the real one.
+             The queue is drained by effectsRenderer._updateArrowBlasts, which
+             sizes the sprite off `r`, the server's own blast radius, so a
+             retune on the worker needs no client edit. */
+          case 'arrow_boom':
+            {
+              if (!payload) break;
+              if (payload.zone && S.currentZone && payload.zone !== S.currentZone) break;
+              if (typeof payload.x !== 'number' || typeof payload.y !== 'number') break;
+              if (!S.arrowBlasts) S.arrowBlasts = [];
+              /* Bounded: a burst of these must never grow the queue faster
+                 than the renderer drains it (one frame). */
+              if (S.arrowBlasts.length < 8) {
+                S.arrowBlasts.push({ x: payload.x, y: payload.y, r: payload.r, at: Date.now() });
+              }
+              /* v2.3.2279 QA: the server's own blast point, kept after the
+                 renderer drains the queue.  A scenario that inferred it from
+                 the arrow's last known position measured the wrong circle --
+                 a stuck arrow rides a monster that is still walking. */
+              S._lastArrowBoom = { x: payload.x, y: payload.y, r: payload.r, at: Date.now(),
+                targets: payload.targets || [] };
+              try { BT_AUDIO.play('tree-fall', { vol: 0.7 }); } catch (e) { /* audio is best-effort */ }
             }
             break;
 

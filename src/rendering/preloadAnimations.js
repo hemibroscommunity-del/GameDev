@@ -37,7 +37,7 @@ import { loadSlimeSprites } from './slimeSprites.js';
 import { loadSnowmanSprites, unloadSnowmanSprites } from './snowmanSprites.js';
 import { loadPlayerDeathSprites } from './playerDeathSprites.js';
 import { preloadStartZoneMap, loadWalkabilityMaps } from './tiledMaps.js';
-import { effectsAnimationsReady, ensureImpactTex, ensureSnowballBurstTex, freeFrostImpactTex } from './systems/effectsRenderer.js'; /* v2.3.2272: the frost-only sheets get an exit */
+import { effectsAnimationsReady, ensureImpactTex, ensureSnowballBurstTex, freeFrostImpactTex, ensureArrowBlastTex } from './systems/effectsRenderer.js'; /* v2.3.2272: the frost-only sheets get an exit */
 import { fxStripsReady } from './fxStrips.js'; /* v2.3.1735: stun ring + whirl vortex (preloading is law) */
 import { preloadTraits } from './systems/entityRenderer.js';
 import { preloadCapes } from './capeSprites.js'; /* v2.3.2023: cosmetic capes are GLOBAL, not per-zone */
@@ -196,6 +196,13 @@ export async function preloadWorldAnimations() {
        because a still image in a module named "strips" is exactly the kind
        of thing a later reader assumes was forgotten. */
     fxStrips: fxStripsReady(),
+    /* v2.3.2279: the bow special's blast.  GLOBAL rather than per-zone -- a
+       bow goes everywhere its owner does, so there is no zone to scope it to,
+       and the ZONE-ASSET EXCEPTION only covers art a single zone uses.  2MB
+       decoded, registered here per the preloading LAW: a first-use load on a
+       strip this size is precisely the mid-play hitch the law forbids, and it
+       would land at the most dramatic moment the bow has. */
+    arrowBlast: ensureArrowBlastTex(),
     traits: preloadTraits(),
     /* v2.3.2023: five stills per cape.  Global rather than per-zone -- a cape
        is worn everywhere, so it belongs on the gate with the player's own

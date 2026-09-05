@@ -153,6 +153,7 @@ import { chainScoreMethods } from './chainscore.js';
 // v2.3.1734: Element Burst (COMBAT-OVERHAUL-PLAN PR 6) -- the elemental
 // nova + its four server-side gates -- see burst.js.
 import { burstMethods } from './burst.js';
+import { arrowBlastMethods } from './arrowblast.js'; /* v2.3.2279: the bow special's blast finale */
 // v2.3.1983: population-scaled spawns -- monsters and gather nodes sized to
 // how many players are standing in THAT zone -- see spawnscale.js.
 import { spawnScaleMethods } from './spawnscale.js';
@@ -499,6 +500,14 @@ export const PRIVILEGED_EVENTS = new Set([
      exists for.  NOTE the client->server half is named `element_burst`
      and has its own switch case, so it never reaches this deny-list. */
   'element_nova',
+  /* v2.3.2279: the bow special's blast finale.  Server-emitted and purely
+     cosmetic -- every point of its damage rode monster_hit -- but forgeable
+     it would let one client paint a 220px fireball on every screen in the
+     zone, which is the class of thing this list exists for.  Its
+     client->server half is named `arrow_blast` and has its own switch case,
+     so it never reaches this deny-list (the element_burst/element_nova
+     arrangement, for the same reason). */
+  'arrow_boom',
   // v2.3.1147: server-emitted since the mummy->skeleton transform moved
   // server-side (v2.3.856 era) but never deny-listed -- a client could
   // forge cosmetic transforms on everyone's screen.  Closed.
@@ -2719,7 +2728,14 @@ export class GameRoom {
     this.eventBuffer.push({
       type: 'monster_hit',
       payload: {
-        monsterId: m.id, zone: zoneId, dmg, isCrit: false,
+        /* v2.3.2279: isCrit is an OPT now, defaulting to the false this has
+           always sent.  It was hardcoded because this pipeline was written for
+           status ticks, which have no crit to report -- but it is also the
+           shared path every non-swing damage SOURCE routes through, and the
+           arrow blast rolls a real crit.  Printed as an ordinary number, the
+           crit anchor's whole point (v2.3.2212: "it always reads as a spike")
+           is invisible for anything that comes through here. */
+        monsterId: m.id, zone: zoneId, dmg, isCrit: !!(opts && opts.isCrit),
         attackerId: sourceId, status: statusId,
         burst: !!(opts && opts.burst),
         hpPct: Math.max(0, m.hp / m.maxHp),
@@ -4255,6 +4271,18 @@ export class GameRoom {
         }
         break;
 
+      /* ═══ v2.3.2279: THE BOW SPECIAL'S BLAST ═══
+         The client owns the arrow and its damage-over-time timer (the worker
+         has never modelled either), so only the browser knows when the DoT
+         ends -- it says so here and the worker decides everything that
+         matters: who is caught, and what they take.  The payload carries a
+         position and nothing else; no target list, no number. */
+      case 'arrow_blast':
+        if (session.id) {
+          this._handleArrowBlast(session, msg.payload || msg);
+        }
+        break;
+
       case 'node_strike':
         // Client reports the swipe-landed event for an extraction.
         // Server validates timing vs. extraction_start record, treats
@@ -5110,5 +5138,6 @@ Object.assign(GameRoom.prototype, chatModMethods);
 Object.assign(GameRoom.prototype, prog3Methods); /* v2.3.1659 */
 Object.assign(GameRoom.prototype, chainScoreMethods); /* v2.3.1664 */
 Object.assign(GameRoom.prototype, burstMethods); /* v2.3.1734 */
+Object.assign(GameRoom.prototype, arrowBlastMethods); /* v2.3.2279 */
 // v2.3.1983: population-scaled spawns -- see spawnscale.js.
 Object.assign(GameRoom.prototype, spawnScaleMethods);
