@@ -4483,6 +4483,40 @@ function _applyBuildScale(display, pscale, heightId, frameId) {
   return -_feetOffsetUnits(display) * (b.sy - 1) * pscale;
 }
 
+/* ═══ v2.3.2281: IS THE LOCAL CORPSE ON SCREEN RIGHT NOW ═══
+ *
+ * Owner: "Sometimes the death animation still shows character wearing items as
+ * it dies (like frozen in place). I think the cape does this. Maybe other items
+ * too. Make sure during death animation only that plays."
+ *
+ * The self-death branch below has always computed this inline, and it was the
+ * ONLY thing that knew it -- which is why the answer was wrong everywhere else.
+ * The death sweep it guards (`_hideExceptDeep`, v2.3.1887) reaches only the
+ * player's own display container, and the stand-in figures drawn for the
+ * player -- the swing, the bow shot, the lumberjack, the cook, the fire -- do
+ * not live there. They live in the effects renderer's own layers, are driven
+ * by state (`_swordSwinging`, `_extraction`) that dying does not clear, and so
+ * kept re-showing themselves over the corpse every frame. Measured
+ * (mp-deathstrip): dying mid-swing left a cape, a hood, a shield and a swing
+ * shirt hanging on the body, and dying mid-harvest left the whole lumberjack
+ * standing there with the death animation not drawn AT ALL -- the gathering
+ * stand-in hides the display, so the corpse was behind a figure that had
+ * stopped moving.
+ *
+ * Exported so the effects renderer asks the same question rather than keeping
+ * a second copy of the 3.5s hold. Two expressions for one fact is how the
+ * corpse and the things drawn on top of it disagree about whether it is there.
+ *
+ * hp <= 0 is not enough on its own: the local-monster death path restores hp
+ * synchronously, and the corpse is held for 3.5s from the timestamp after
+ * that -- which is most of the window the owner is describing. */
+export const SELF_DEATH_HOLD_MS = 3500;
+export function selfCorpseUp(S) {
+  if (!S) return false;
+  if (S.rpg && S.rpg.hp <= 0) return true;
+  return !!(S._deathStart && (Date.now() - S._deathStart) < SELF_DEATH_HOLD_MS);
+}
+
 function _hideExceptDeep(display, keep) {
   const ui = display._uiLayer;
   for (let i = 0; i < display.children.length; i++) {
@@ -8711,13 +8745,25 @@ export class EntityRenderer {
        _deathStart assignment), seed it ourselves.  Cleared on
        respawn by the handlers, so this only kicks in when nothing
        else set it. */
-    const SELF_DEATH_HOLD_MS = 3500;
     if (S.rpg && S.rpg.hp <= 0 && !S._deathStart) {
       S._deathStart = Date.now();
     }
     const _selfElapsed = S._deathStart ? Date.now() - S._deathStart : Infinity;
-    const selfDead = _selfElapsed < SELF_DEATH_HOLD_MS || !!(S.rpg && S.rpg.hp <= 0);
+    const selfDead = selfCorpseUp(S);
     if (selfDead) {
+      /* ═══ v2.3.2281: THE CORPSE WAS INSIDE A HIDDEN CONTAINER ═══
+         The gathering stand-in does not merely draw over the body, it hides
+         this whole display -- and nothing here turned it back on, so dying
+         while chopping or cooking played NO death animation at all: a frozen
+         lumberjack, and the corpse behind him in an invisible container.
+         The peer path has had this line since v2.3.1092 with the note "a
+         harvest stand-in may have hidden this container last frame; the corpse
+         renders through it"; the local path, which is the one the player
+         actually watches themselves die in, never got it. Found by
+         mp-deathstrip reporting `corpse: false` on a mid-harvest death while
+         every worn layer read clean -- the absence a hide-list test cannot
+         see, because there was nothing left to hide. */
+      if (!display.visible) display.visible = true;
       if (display.alpha !== 1) display.alpha = 1;
       if (display.rotation !== 0) display.rotation = 0;
       const _selfSpriteBody = display._spriteBody;

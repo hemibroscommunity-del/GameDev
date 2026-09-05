@@ -29,7 +29,7 @@ import { getRemnantsTexture as getSnowmanRemnantsTex, getSnowballTexture } from 
 import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../data/monsterVariants.js';
 import { ZONE_SHARDS } from '../../data/shards.js';
-import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in */
+import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up */
 import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2190: the worn cape, for the attack stand-ins */
 import { WHIRL_VORTEX, WHIRL_FX_MS, FIRE_TRAIL_FX, FIRE_TRAIL_FX_MS, FIRE_TRAIL_PLATE_FRAC } from '../fxStrips.js'; /* v2.3.1735; v2.3.2239 fire trail */
 import { getEquip } from '../gearCatalog.js';
@@ -2128,6 +2128,30 @@ export class EffectsRenderer {
     /* v2.3.867: hide the skill-stand-in traits up front; whichever stand-in is
        active this frame (firemaking / chopper / cook) re-shows + places them. */
     hideSkillTraits(this.skillTraits);
+    /* ═══ v2.3.2281: A CORPSE IS NOT DOING ANYTHING ═══
+       Owner: "Make sure during death animation only that plays and character
+       doesn't have any items frozen in place around it."
+
+       The death path's own sweep (entityRenderer `_hideExceptDeep`) reaches
+       only the player's DISPLAY container. Every stand-in figure below is
+       drawn from THIS renderer's layers instead, off state that dying does not
+       clear -- so `_swordSwinging` was still true, `_extraction` still held a
+       node, and each of them re-showed itself over the corpse every frame.
+       Measured before the fix (mp-deathstrip): a cape, a hood, a shield and a
+       swing shirt left hanging mid-swing, and mid-harvest the whole lumberjack
+       still standing with the death animation not drawn at all.
+
+       Answered ONCE here rather than recomputed in each stand-in: the hold is
+       3.5s from the death stamp and a second copy of that number is how the
+       corpse and the figures on top of it come to disagree about whether it is
+       there. Each stand-in reads this in its existing "nothing to draw" early
+       return -- AFTER its hide preamble, and after the hideSkillTraits above,
+       so the gate does not need to know which layers any of them owns. A
+       stand-in added tomorrow that returns early on idle gets this for free
+       the moment it reads the flag; one that does not is visible to
+       mp-deathstrip, which asks the SCREEN what is on the corpse rather than
+       checking a list. */
+    this._selfCorpse = selfCorpseUp(S);
     this._updateParticles(S, now);
     this._updateDamageNumbers(S, now);
     this._updateCatchFlights(S, viewW, viewH, now);
@@ -5948,6 +5972,7 @@ export class EffectsRenderer {
   _updateFishingHole(S, now) {
     const ex = S && S._extraction;
     if (!ex || ex.skill !== 'fishing') return;
+    if (this._selfCorpse) return;   /* v2.3.2281 */
     const node = (ex.nodeRef && ex.nodeRef.alive) ? ex.nodeRef
                : (S.gatherNodes && ex.nodeId ? S.gatherNodes.find(n => n.id === ex.nodeId) : null);
     if (!node) return;
@@ -6046,6 +6071,7 @@ export class EffectsRenderer {
     if (this.fireChestSprite) this.fireChestSprite.visible = false;
     const fm = S && S._firemaking;
     if (!fm || !S.player || !this.fireSprite || !this._fireFrames.length) return;
+    if (this._selfCorpse) return;   /* v2.3.2281 */
     if (fm.doneAt && now > fm.doneAt) return;
     /* v2.3.1435 (owner): 1.75x (88 -> 154).  v2.3.1715: FRAME_MS 55 -> 200 with
        the 29-frame strip's retirement.  The number is the light's DURATION, not
@@ -6663,7 +6689,14 @@ export class EffectsRenderer {
     const activeSlash = new Set();
     for (const id in others) {
       const o = others[id];
-      if (!o) continue;
+      /* v2.3.2281: a dead peer is not swinging. The pool sweep at the bottom
+         hides whoever is not in `active`, so dropping them here is the whole
+         fix -- the same gate `_updateRemoteExtraction` has carried since it
+         was written, which is why a peer's LUMBERJACK vanished on death and
+         their SWING stand-in did not: a corpse with a cape, a hood, a shield
+         and a swing shirt hanging on it, on everybody else's screen. Your own
+         screen is fixed in the same version, one file over. */
+      if (!o || o._isDead) continue;
       const wpn = o._swingWpn;
       const isMelee = !wpn || wpn === 'sword' || wpn === 'greatsword';
       const elapsed = now - (o._swingTs || 0);
@@ -6860,7 +6893,7 @@ export class EffectsRenderer {
     const active = new Set();
     for (const id in others) {
       const o = others[id];
-      if (!o || !o._bowShotAt) continue;
+      if (!o || o._isDead || !o._bowShotAt) continue;   /* v2.3.2281: see the swing */
       const elapsed = now - o._bowShotAt;
       if (elapsed < 0 || elapsed >= BOW_SHOT_MS) continue;
       const ang = (typeof o._bowShotAng === 'number') ? o._bowShotAng : 0;
@@ -7092,6 +7125,7 @@ export class EffectsRenderer {
     if (this.swordJogLegsGearSprite) this.swordJogLegsGearSprite.visible = false;
     if (this.slashSprite) this.slashSprite.visible = false;
     if (!S || !S._swordSwinging || !S.player || !this.swordSprite) return;
+    if (this._selfCorpse) return;   /* v2.3.2281: no swing on a corpse */
     /* v2.3.1396: painted crescent over the special swing — placed before
        the facing gate below, so the slash shows on EVERY aim direction
        (the stand-in body only exists for its authored facings, but the
@@ -7486,6 +7520,7 @@ export class EffectsRenderer {
         && (this._bowFrames[_rf[0]] || []).length);
     }
     if (!S || !S._bowShowing || !S.player || !this.bowSprite) return;
+    if (this._selfCorpse) return;   /* v2.3.2281 */
     const fmap = this._bowFacing[S._bowDir];
     if (!fmap) return;
     const cfg = this._bowCfg[fmap[0]];
@@ -7765,6 +7800,10 @@ export class EffectsRenderer {
       }
     }
     if (!ex || (ex.status !== 'ready' && ex.status !== 'waiting')) { this._chopLastFrame = -1; return; }
+    /* v2.3.2281: ...and neither is the lumberjack. This one matters most: the
+       gathering stand-in HIDES the display container outright, so without this
+       the corpse was not merely dressed, it was not drawn. */
+    if (this._selfCorpse) { this._chopLastFrame = -1; return; }
     /* v2.3.253: prefer stored node ref so SP nodes (no id) work too. */
     const node = (ex.nodeRef && ex.nodeRef.alive) ? ex.nodeRef
                : (S.gatherNodes && ex.nodeId

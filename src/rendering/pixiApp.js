@@ -125,6 +125,80 @@ function buildScene(app) {
     };
   }
 
+  /* ═══ v2.3.2281: WHAT IS ACTUALLY DRAWN ON TOP OF THE CORPSE ═══
+   *
+   * Owner: "Sometimes the death animation still shows character wearing items
+   * as it dies (like frozen in place). I think the cape does this. Maybe other
+   * items too."
+   *
+   * "Maybe other items too" is the part that needs an instrument. The death
+   * path already hides by EXCEPTION (v2.3.1887, after a hand-written hide list
+   * missed the slung shield for two months) -- but only within the player's
+   * own display container. Anything drawn for the player from SOMEWHERE ELSE
+   * in the scene graph -- the gathering/attack stand-ins and their trait
+   * sprites live in the effects renderer's own layers, not under the display
+   * -- is outside that sweep entirely, and mp-deathshield, which enumerates
+   * the display's children, cannot see it either. Both would report a clean
+   * corpse while the screen showed a floating cape.
+   *
+   * So this asks the question from the SCREEN's side instead of the display's:
+   * walk the whole stage and report every visible, textured node whose bounds
+   * land near a given screen point, whatever container it belongs to. Answers
+   * "what is on top of the corpse" rather than "did we remember this layer".
+   *
+   * Identified by TEXTURE SOURCE LABEL, which for anything Assets loaded is
+   * its URL -- so the answer names the art file, and a floating cape reads as
+   * a cape rather than as an anonymous Sprite.
+   *
+   * Probe only, house style: no cost unless something calls it, and nothing in
+   * the game does. */
+  if (typeof window !== 'undefined') {
+    window.__btCorpse = function (sx, sy, radius) {
+      const out = [];
+      const R = typeof radius === 'number' ? radius : 90;
+      const walk = (node, layer) => {
+        if (!node || node.visible === false) return;
+        /* alpha 0 paints nothing; treat it as hidden so the answer is what
+           the player can SEE, not what the graph happens to hold. */
+        if (typeof node.alpha === 'number' && node.alpha <= 0.01) return;
+        if (node.texture && node.texture.source) {
+          let b = null;
+          try { b = node.getBounds(); } catch (e) { b = null; }
+          if (b && b.width > 0 && b.height > 0) {
+            const cx = b.x + b.width / 2, cy = b.y + b.height / 2;
+            if (Math.abs(cx - sx) <= R + b.width / 2 && Math.abs(cy - sy) <= R + b.height / 2) {
+              const src = node.texture.source;
+              /* A canvas-baked texture (a recolour) has no URL to name it, and
+                 "Sprite" tells the next reader nothing about which figure it
+                 belongs to.  Walk up to three labelled ancestors so a bake can
+                 still be placed -- which container drew it is the question
+                 actually being asked. */
+              const path = [];
+              for (let p = node.parent, n = 0; p && n < 6 && path.length < 3; p = p.parent, n++) {
+                if (p.label) path.push(String(p.label));
+              }
+              out.push({
+                layer,
+                label: String((src && src.label) || node.label || '?').split('?')[0],
+                path,
+                w: Math.round(b.width), h: Math.round(b.height),
+                dx: Math.round(cx - sx), dy: Math.round(cy - sy),
+              });
+            }
+          }
+        }
+        const kids = node.children || [];
+        for (let i = 0; i < kids.length; i++) walk(kids[i], layer);
+      };
+      try {
+        ((app.stage && app.stage.children) || []).forEach((c, i) => {
+          walk(c, (c && c.label) || ('layer' + i));
+        });
+      } catch (e) { /* a mid-teardown stage is not worth throwing over */ }
+      return out;
+    };
+  }
+
   /* ═══ v2.3.2272: HOW MUCH DECODED TEXTURE IS RESIDENT ═══
    * The companion to __btScene, and the more important of the two for the
    * owner's "slows down after playing for a while": a Pixi scene can hold a
