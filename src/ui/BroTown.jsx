@@ -7889,6 +7889,108 @@ export var BroTown = function BroTown(_ref0) {
     _startExtraction(node, 'cooking', { fishKey: fishKey });
   }, []);
 
+  /* ═══ v2.3.2274: ONE TAP-TO-HARVEST, REACHABLE FROM EVERY SURFACE ═══
+   *
+   * Owner: "Make sure tapping on a fire to cook fish works.  I received
+   * feedback that it does not."
+   *
+   * It did not, and the reason is that v2.3.2270 put the tap in the one place
+   * a finger on a phone can never reach.  The two touch zones
+   * (TouchControls, `[data-joyzone]`) are `position:fixed`, 50% wide each,
+   * full height above the dashboard, at zIndex 6 -- they cover the canvas
+   * edge-to-edge and their touchstart handlers stopPropagation.  So the
+   * canvas's own onTouchEnd, which is where v2.3.2270 wrote the tap, fires on
+   * DESKTOP and nowhere else.  What a phone actually produces is the zones'
+   * synthetic `click` forward (v2.3.816), landing in the canvas onClick --
+   * and that handler had no resource branch at all: it fell straight through
+   * to "tap on empty space = unlock".
+   *
+   * And a second one on the same gesture, which matters most for the case the
+   * owner named: a campfire is lit AT THE PLAYER'S OWN FEET, so it sits inside
+   * isSelfTouch's 52px circle, and both zone releases call openSelfChat() and
+   * return before any forward.  Tapping your own fire opened the chat box.
+   * v2.3.1448 solved exactly this by giving the resource precedence; v2.3.2245
+   * replaced that helper with `return false` and v2.3.2270 did not bring it
+   * back -- the stub's own comment still describes the pattern it no longer is.
+   *
+   * WHY IT SHIPPED GREEN: mp-harvest starts its cook with
+   * `cv.dispatchEvent(new TouchEvent(...))` straight on the canvas element,
+   * which goes to that element's listeners and ignores hit-testing entirely --
+   * TRAPS §41, the trap that exists for precisely this.
+   *
+   * So the scan and the dispatch live HERE, once, and all three doors call in:
+   * the canvas onClick (phones, via the zone forward), the canvas onTouchEnd
+   * (desktop and the strip of canvas below the zones when a sheet is open),
+   * and tapResourceAtClient (the zone release, ahead of the self-tap chat).
+   * A fifth copy of the four-way fishSpot/tree/oreVein/campfire switch is how
+   * the three that already exist drifted apart; there is not going to be one.
+   *
+   * Returns true when it consumed the tap, so a caller can stop. */
+  var _tapHarvestAtCss = useCallback(function (cssX, cssY) {
+    var _S = stateRef.current;
+    if (!_S || !_S.player || !_S.camera) return false;
+    var _cx = _S.camera.x, _cy = _S.camera.y;
+    var _tapSX = _S._worldScaleX || 1, _tapSY = _S._worldScaleY || 1;
+    var _tapNodeBest = null, _tapNodeD = 44;   /* CSS px, generous for a thumb */
+    /* THE HIT TEST IS THE SPRITE, NOT THE ANCHOR.  A tree's anchor is its base
+       and its art is 100-260px of canopy above that, so a radius around the
+       anchor would refuse taps on most of what the player can see.
+       nodeWorldBox is the same box nodeReachDist measures from, so what you
+       can tap and what you can reach are one shape. */
+    var _tapScan = function (n) {
+      if (!n || !n.alive || (n.respawnAt && Date.now() < n.respawnAt)) return;
+      var _nb = nodeWorldBox(_S, n);
+      var _nsx, _nsy;
+      if (_nb) {
+        _nsx = ((_nb.l + _nb.r) / 2 - _cx) * _tapSX;
+        _nsy = ((_nb.t + _nb.b) / 2 - _cy) * _tapSY;
+        /* Inside the box is a hit at distance 0, so a tap anywhere on a tall
+           sprite beats a nearer anchor of something small. */
+        var _hw = ((_nb.r - _nb.l) / 2) * _tapSX, _hh = ((_nb.b - _nb.t) / 2) * _tapSY;
+        var _ox = Math.max(Math.abs(cssX - _nsx) - _hw, 0);
+        var _oy = Math.max(Math.abs(cssY - _nsy) - _hh, 0);
+        var _od = Math.sqrt(_ox * _ox + _oy * _oy);
+        if (_od < _tapNodeD) { _tapNodeD = _od; _tapNodeBest = n; }
+        return;
+      }
+      _nsx = (n.x - _cx) * _tapSX; _nsy = (n.y - _cy) * _tapSY;
+      var _dd = Math.sqrt(Math.pow(cssX - _nsx, 2) + Math.pow(cssY - _nsy, 2));
+      if (_dd < _tapNodeD) { _tapNodeD = _dd; _tapNodeBest = n; }
+    };
+    if (_S.gatherNodes) _S.gatherNodes.forEach(_tapScan);
+    if (_S._campfire) _tapScan(_S._campfire);
+    if (!_tapNodeBest) return false;
+    /* CLOSE ENOUGH, as he asked -- the same reach the button and the E key
+       use, so the three cannot disagree about what is in range.  Out of reach
+       SAYS so rather than doing nothing: a tap that silently fails reads as a
+       broken resource, which the v2.3.1717 NPC note calls the worse bug. */
+    if (nodeReachDist(_S, _tapNodeBest) == null) {
+      try { pushDmgPopup(_S, _tapNodeBest.x, _tapNodeBest.y - 15, 'Too far away!', '#D95C54'); } catch (_e9) { /* best-effort */ }
+      return true;
+    }
+    /* v2.3.2273: the tool gate the button path has had all along.  The
+       renderer HIDES an untooled node but the entry stays in the list with its
+       full box, so a tap on apparently-empty ground started a harvest the
+       worker then refused twice over, in silence. */
+    if (_tapNodeBest.nodeType && _tapNodeBest !== _S._campfire
+        && !hasGatherTool(_S.rpg, _tapNodeBest.nodeType)) {
+      try { pushDmgPopup(_S, _tapNodeBest.x, _tapNodeBest.y - 15, 'You need a tool for that', '#D95C54'); } catch (_e11) { /* best-effort */ }
+      return true;
+    }
+    /* Already harvesting: leave it alone -- you are doing the thing the tap
+       would start.  Still consumed, so the caller does not fall through to
+       clearing the lock or opening chat under the finger. */
+    if (_S._extraction) return true;
+    try {
+      var _tn = _tapNodeBest;
+      if (_tn.nodeType === 'fishSpot') _startExtraction(_tn, 'fishing');
+      else if (_tn.nodeType === 'tree') _startExtraction(_tn, 'woodcutting');
+      else if (_tn.nodeType === 'oreVein') _startExtraction(_tn, 'mining');
+      else if (_tn.nodeType === 'campfire') _startCookingAtCampfire(_tn);
+    } catch (_e10) { /* refusal floats its own popup */ }
+    return true;
+  }, []);
+
   /* Called from the swipe handler when a valid swipe lands during the
      'ready' window. Routes to the existing per-skill reward applier
      so XP + inventory + server node_strike all run unchanged. */
@@ -8617,8 +8719,17 @@ export var BroTown = function BroTown(_ref0) {
        sits inside exactly that circle — so "touch the resource to open
        its menu" opened chat instead.  Resource wins when its art is under
        the finger; a self-tap on bare character still opens chat. */
-    var tapResourceAtClient = function (clientX, clientY) { return false; };   /* v2.3.2245: no tap-to-harvest. v2.3.2270 brought the tap back, but at the canvas tap site where the camera and the scale are already in scope -- see the note there; this stub stays only because the comment above still names it as a pattern. */
-    /* (v2.3.2245: the client-coordinate wrapper went with _tapResourceAt.) */
+    /* v2.3.2274: UN-STUBBED.  v2.3.2245 replaced this with `return false` when
+       the tap was removed; v2.3.2270 brought the tap back and put it only on
+       the canvas, which is unreachable through the zones -- so the precedence
+       the comment above describes went on describing something that no longer
+       existed.  It is a thin wrapper now: client px -> canvas px, then the one
+       shared scan (_tapHarvestAtCss).  Returning true means the resource took
+       the tap and the caller must not also open chat. */
+    var tapResourceAtClient = function (clientX, clientY) {
+      var _p = clientToCanvas(clientX, clientY);
+      return _tapHarvestAtCss(_p.x, _p.y);
+    };
     var openSelfChat = function () {
       try {
         var _busC = window.__broDashPanelBus;
@@ -8741,6 +8852,19 @@ export var BroTown = function BroTown(_ref0) {
            BEFORE the double-tap weapon-cycle classifier, so a self-tap
            never counts as tap #1 or #2 of a cycle, and no synthetic
            lock-on click is forwarded.  Own 400ms ceiling (see rE). */
+        /* ═══ v2.3.2274: A RESOURCE UNDER THE FINGER BEATS THE CHAT GESTURE ═══
+           Exactly the precedence v2.3.1448 established and v2.3.2245 lost when
+           it stubbed tapResourceAtClient out.  It matters most for the case
+           the owner named: a campfire is lit AT YOUR OWN FEET, so it sits
+           inside isSelfTouch's 52px circle -- tapping your own fire to cook
+           opened the chat box instead, every time.  A self-tap on bare
+           character still opens chat, because the helper only consumes when
+           art is actually under the thumb. */
+        if (!lts.moved && (endT - lts.startAt) < SELF_TAP_MAX_MS
+            && tapResourceAtClient(t.clientX, t.clientY)) {
+          lts.lastEndAt = 0;
+          return;
+        }
         if (!lts.moved && (endT - lts.startAt) < SELF_TAP_MAX_MS
             && isSelfTouch(t.clientX, t.clientY)) {
           lts.lastEndAt = 0;
@@ -8956,6 +9080,12 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.1287: self-tap on the aim side opens chat -- no lock-on click.
          Its own 400ms ceiling (SELF_TAP_MAX_MS): opening chat is not a
          twitch gesture, so a deliberate thumb dwell still counts. */
+      /* v2.3.2274: as in lE -- the resource under the finger wins over the
+         chat gesture.  See the note there. */
+      if (!rts3.moved && (endT - rts3.startAt) < SELF_TAP_MAX_MS
+          && tapResourceAtClient(t.clientX, t.clientY)) {
+        return;
+      }
       if (!rts3.moved && (endT - rts3.startAt) < SELF_TAP_MAX_MS
           && isSelfTouch(t.clientX, t.clientY)) {
         openSelfChat();
@@ -10158,78 +10288,11 @@ export var BroTown = function BroTown(_ref0) {
                for. nodeWorldBox is the same box nodeReachDist measures from,
                so what you can tap and what you can reach are one shape. */
             if (!_closest && _S.player) {
-              var _tapNodeBest = null, _tapNodeD = 44;   /* CSS px, generous for a thumb */
-              var _tapScan = function (n) {
-                if (!n || !n.alive || (n.respawnAt && Date.now() < n.respawnAt)) return;
-                var _nb = nodeWorldBox(_S, n);
-                var _nsx, _nsy;
-                if (_nb) {
-                  /* Centre of the drawn art, in screen space. */
-                  _nsx = ((_nb.l + _nb.r) / 2 - _cx) * _tapSX;
-                  _nsy = ((_nb.t + _nb.b) / 2 - _cy) * _tapSY;
-                  /* Inside the box is a hit at distance 0, so a tap anywhere on
-                     a tall sprite beats a nearer anchor of something small. */
-                  var _hw = ((_nb.r - _nb.l) / 2) * _tapSX, _hh = ((_nb.b - _nb.t) / 2) * _tapSY;
-                  var _ox = Math.max(Math.abs(_cssX - _nsx) - _hw, 0);
-                  var _oy = Math.max(Math.abs(_cssY - _nsy) - _hh, 0);
-                  var _od = Math.sqrt(_ox * _ox + _oy * _oy);
-                  if (_od < _tapNodeD) { _tapNodeD = _od; _tapNodeBest = n; }
-                  return;
-                }
-                _nsx = (n.x - _cx) * _tapSX; _nsy = (n.y - _cy) * _tapSY;
-                var _dd = Math.sqrt(Math.pow(_cssX - _nsx, 2) + Math.pow(_cssY - _nsy, 2));
-                if (_dd < _tapNodeD) { _tapNodeD = _dd; _tapNodeBest = n; }
-              };
-              if (_S.gatherNodes) _S.gatherNodes.forEach(_tapScan);
-              if (_S._campfire) _tapScan(_S._campfire);
-              if (_tapNodeBest) {
-                /* CLOSE ENOUGH, as he asked -- the same reach the button and
-                   the E key use, so the three cannot disagree about what is
-                   in range.  Out of reach says so rather than doing nothing:
-                   a tap that silently fails reads as a broken resource, which
-                   is what the v2.3.1717 NPC note calls the worse bug. */
-                if (nodeReachDist(_S, _tapNodeBest) == null) {
-                  try {
-                    pushDmgPopup(_S, _tapNodeBest.x, _tapNodeBest.y - 15,
-                      'Too far away!', '#D95C54');
-                  } catch (_e9) { /* popup is best-effort */ }
-                } else if (_tapNodeBest.nodeType && _tapNodeBest !== _S._campfire
-                    && !hasGatherTool(_S.rpg, _tapNodeBest.nodeType)) {
-                  /* ═══ v2.3.2273: THE TAP NEEDED THE TOOL GATE THE BUTTON HAS ═══
-                     The button path drops a node you have no tool for
-                     (`_pn = null`, above); this path, added in v2.3.2270, scanned
-                     S.gatherNodes raw and did not.  The renderer HIDES an
-                     untooled node but the entry stays in the list carrying its
-                     full 134x168 box -- so a tap on what looks like empty ground
-                     started a chop the worker then refused at both
-                     extraction_start and node_strike, in silence.  That is the
-                     same nothing-happens the owner reported for logs, arriving
-                     by a second route, and it would have outlived the fix for
-                     the first one.
-                     It SAYS so rather than doing nothing, for the reason the
-                     out-of-reach branch above says it: a tap that silently
-                     fails reads as a broken resource. */
-                  try {
-                    pushDmgPopup(_S, _tapNodeBest.x, _tapNodeBest.y - 15,
-                      'You need a tool for that', '#D95C54');
-                  } catch (_e11) { /* popup is best-effort */ }
-                } else if (!_S._extraction) {
-                  /* Already harvesting: leave it alone -- you are doing the
-                     thing the tap would start.
-                     The SAME four-way dispatch the HARVEST button makes, so a
-                     tap and a press cannot start different things; written out
-                     rather than routed through _desktopGather, which finds its
-                     own node from proximity and would ignore the one under the
-                     finger. */
-                  try {
-                    var _tn = _tapNodeBest;
-                    if (_tn.nodeType === 'fishSpot') _startExtraction(_tn, 'fishing');
-                    else if (_tn.nodeType === 'tree') _startExtraction(_tn, 'woodcutting');
-                    else if (_tn.nodeType === 'oreVein') _startExtraction(_tn, 'mining');
-                    else if (_tn.nodeType === 'campfire') _startCookingAtCampfire(_tn);
-                  } catch (_e10) { /* refusal floats its own popup */ }
-                }
-              }
+              /* v2.3.2274: the shared helper, not a fourth copy.  This handler
+                 is the DESKTOP door (and the strip of canvas exposed below the
+                 touch zones when a sheet is open); the phone's tap arrives as
+                 a synthetic click in onClick, which now calls the same thing. */
+              _tapHarvestAtCss(_cssX, _cssY);
             }
           }
           ct.id = null;
@@ -10546,10 +10609,20 @@ export var BroTown = function BroTown(_ref0) {
           return;
         }
       }
-      /* v2.3.1448: resources come after the creature checks — a click on
-         a resource opens its shell (or warns it's out of reach) instead
-         of falling through to the unlock branch. */
-      /* Tap on empty space = unlock (v2.3.2245: resources are no longer tappable) */
+      /* ═══ v2.3.2274: AND HERE IS WHERE A PHONE'S TAP ACTUALLY ARRIVES ═══
+         v2.3.1448's note below has described a branch that was not here since
+         v2.3.2245, and v2.3.2270 put the tap back on the canvas's onTouchEnd
+         instead -- a handler a finger cannot reach, because the two touch
+         zones cover the canvas and stopPropagation.  What a phone produces is
+         the zones' synthetic click forward (v2.3.816), which lands right here.
+         AFTER the monster / NPC / other-player checks, which is what keeps
+         "monsters beat resources" true, and BEFORE the unlock, so a tap that
+         starts a harvest does not also throw your target away.
+         Desktop reaches this too (the zones are bt-desktop-hide), which adds
+         click-to-harvest there alongside the E key -- welcome, and the reach
+         and tool gates are the same ones the button uses. */
+      if (_tapHarvestAtCss(cssX, cssY)) return;
+      /* Tap on empty space = unlock */
       S.lockedTarget = null;
     }
   }), achievementMsg && Date.now() - achievementMsg.ts < 3000 && /*#__PURE__*/React.createElement("div", {
