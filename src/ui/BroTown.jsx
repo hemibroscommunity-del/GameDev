@@ -686,9 +686,14 @@ function _spawnTownNpcs() {
      record went with him, so this is not a dormant entry waiting to be
      re-enabled; see the note at the end of NPC_DATA. */
   var ACTIVE_NPCS = ['Mayor Bro', 'Blacksmith Bro', 'Diego', 'Lil Bro']; /* v2.3.1775 */
+/* v2.3.2305: hoisted out of the frame loop, where it was a local `var` that a
+   tap handler could not reach. Both doors into an NPC -- walking up to him and
+   tapping him -- now measure reach with the SAME number instead of one of them
+   copying it, which is how a magic 90 becomes a magic 90 and an 85. */
   return NPC_DATA.filter(function (n) { return ACTIVE_NPCS.indexOf(n.name) >= 0; })
     .map(function (npc) { return _objectSpread({}, npc); });
 }
+var NPC_PROX_OPEN = 90, NPC_PROX_CLEAR = 125;
 
 export var BroTown = function BroTown(_ref0) {
   var _stateRef$current, _stateRef$current2, _minigameInstance$win, _minigameInstance$win2, _rpgState$lifeSkills3, _rpgState$lifeSkills4, _rpgState$lifeSkills5, _rpgState$lifeSkills6, _rpgState$lifeSkills0, _rpgState$weapon, _rpgState$rangedWeapo, _rpgState$armor, _rpgState$lifeSkills1, _ELEMENTS$rpgState$am2, _ELEMENTS$rpgState$sh2, _rpgState$lifeSkills14, _rpgState$lifeSkills18, _stateRef$current7, _rpgState$_compStats, _rpgState$_compStats2, _rpgState$_compStats3, _rpgState$_compStats4, _rpgState$_compStats5, _rpgState$_compStats6, _rpgState$_compStats7, _rpgState$_compStats8, _arenaStatus$currentM, _arenaStatus$currentM2, _arenaTournament$play5, _MKT_CATEGORIES$mktCa, _rpgState$lifeSkills21, _rpgState$lifeSkills29, _rpgState$lifeSkills33, _rpgState$lifeSkills36, _stateRef$current18, _stateRef$current19, _stateRef$current20, _stateRef$current$_sl, _stateRef$current21, _stateRef$current22, _stateRef$current$_fe, _stateRef$current23, _stateRef$current24, _stateRef$current$_sl2, _stateRef$current25, _clanData$members, _clanData$members2, _questPanel$npcRef, _incomingTrade$offer, _RARITY_TIERS$rpgStat, _rpgState$armor2, _rpgState$armor3, _rpgState$armor4, _AMULET_TIERS$rpgStat, _ELEMENTS$rpgState$am4, _ELEMENTS$rpgState$am5, _ELEMENTS$rpgState$am6, _BLACKSMITH_TIERS$rpg, _BLACKSMITH_TIERS$rpg2, _rpgState$lifeSkills37, _rpgState$lifeSkills38, _rpgState$lifeSkills39, _rpgState$lifeSkills40, _rpgState$lifeSkills42, _stateRef$current30, _REPUTATION$stateRef$, _REPUTATION$stateRef$2, _stateRef$current31, _ZONES, _stateRef$current33, _REPUTATION$inspectPl, _REPUTATION$inspectPl2, _inspectPlayer$bro$di, _inspectPlayer$rpgDat, _stateRef$current40, _stateRef$current41, _stateRef$current42, _stateRef$current43, _stateRef$current44, _stateRef$current45, _stateRef$current46, _stateRef$current47, _stateRef$current48, _stateRef$current49, _stateRef$current50, _stateRef$current51, _stateRef$current52, _stateRef$current53, _stateRef$current54, _stateRef$current55, _stateRef$current56, _stateRef$current57, _stateRef$current58, _stateRef$current$_ne, _stateRef$current$_ne2, _stateRef$current$_ne3, _stateRef$current$_ne4, _window$matchMedia, _window;
@@ -6037,7 +6042,8 @@ export var BroTown = function BroTown(_ref0) {
              step now — but an opener that does not fire when you walk up is
              the worse failure of the two, and it is the one that was
              reported. */
-          var NPC_PROX_OPEN = 90, NPC_PROX_CLEAR = 125;
+          /* v2.3.2305: NPC_PROX_OPEN / NPC_PROX_CLEAR are module-scope now -- the
+             tap path needs the same reach and could not see a local. */
           var _px = S.player ? S.player.x : 0, _py = S.player ? S.player.y : 0;
           var _latched = S._npcProxLatch || null;
           var _pn = S._nearNpc;
@@ -8648,6 +8654,96 @@ export var BroTown = function BroTown(_ref0) {
   }, [showNameModal, showLogin, bootPhase]);   /* v2.3.1869 */
 
   /* Dual joystick — each finger tracked independently */
+  /* ═══ v2.3.2305: TAPPING A CHARACTER TO TALK ═══
+     Owner: "Tapping on a character to talk is difficult."
+
+     THE OBVIOUS DIAGNOSIS IS WRONG. The target is already an 88x88 CSS px
+     circle at every zoom (NPC_TAP_R 44, measured after the viewport scale is
+     applied) -- twice Apple's 44pt minimum. Making it bigger would not have
+     helped, and one of the real causes gets WORSE the bigger it is.
+
+     What was actually happening, in descending order:
+
+     1. A tap on the right half of the screen SWINGS AT HIM. The right
+        control's touchstart calls handleRBtnPress unconditionally, which
+        sets autoAttack, and the swing loop hits NPCs: they have hp, they
+        take damage, and at hp <= 0 they go `alive = false` for ten seconds.
+        While dead BOTH doors are shut -- the tap loop and the proximity
+        opener each skip a dead NPC. So "tapping to talk is difficult" was
+        often "I have knocked him out by tapping at him".
+     2. The self-chat circle claims the tap first. It is 52 world px around
+        your own body, and the proximity opener leaves you standing ~14px
+        from him, so that circle covers his legs and feet -- the part you aim
+        at. Resources already won this argument at v2.3.2274; NPCs now do too.
+     3. Three of the four NPCs had no answer. Only the quest branch existed,
+        so Diego (shop), Blacksmith Bro and Lil Bro could not be talked to by
+        tapping at all, and failed silently.
+     4. First-in-array won rather than nearest, so Lil Bro could shadow Diego.
+
+     This is the one shared scan; the canvas click, both joystick releases and
+     the attack-suppression test all go through it, so they cannot disagree. */
+  var npcAtCss = function (cssX, cssY) {
+    var S = stateRef.current;
+    if (!S || !S.npcs || !S.camera) return null;
+    var sx = S._worldScaleX || 1.0, sy = S._worldScaleY || 1.0;
+    var cx = S.camera.x, cy = S.camera.y;
+    var NPC_TAP_RISE = 26, NPC_TAP_R = 44;
+    var best = null, bestD = Infinity;
+    for (var i = 0; i < S.npcs.length; i++) {
+      var n = S.npcs[i];
+      if (!n || !n.alive) continue;
+      var dx = cssX - (n.x - cx) * sx;
+      var dy = cssY - ((n.y - cy) * sy - NPC_TAP_RISE);
+      var d = Math.sqrt(dx * dx + dy * dy);
+      /* NEAREST wins, matching the monster scan just above the click
+         handler. First-in-array let Lil Bro shadow Diego. */
+      if (d < NPC_TAP_R && d < bestD) { bestD = d; best = n; }
+    }
+    return best;
+  };
+  var tapNpcAtCss = function (cssX, cssY) {
+    var S = stateRef.current;
+    var npc = npcAtCss(cssX, cssY);
+    /* v2.3.2305: what the scan DECIDED, for the QA harness. The outcome of a
+       tap on a character is otherwise only visible as a panel opening or a
+       floating line, and a test that reads those is really testing the panel
+       and the popup queue -- it cannot tell "nothing was under the finger"
+       from "he was found and had nothing to say", which are opposite bugs. */
+    var _mark = function (r) {
+      if (typeof window !== 'undefined') {
+        window.__btNpcTap = { at: [Math.round(cssX), Math.round(cssY)], npc: npc ? npc.name : null, result: r, ts: Date.now() };
+      }
+      return r !== 'miss';
+    };
+    if (!npc) return _mark('miss');
+    var P = S.player;
+    var _d = Math.sqrt(Math.pow(npc.x - P.x, 2) + Math.pow(npc.y - P.y, 2));
+    /* Out of reach is answered, not ignored. A tap that does nothing at all
+       reads as a broken character -- the same reason the E key says this. */
+    if (_d > NPC_PROX_OPEN) {
+      pushDmgPopup(S, npc.x, npc.y - 30, 'Too far away!', '#D8A94D');
+      return _mark('far');
+    }
+    var npcQ = getNpcQuest(S.rpg, npc.name);
+    if (npcQ) {
+      /* v2.3.1701: a TAP arms the same latch the proximity opener uses, so
+         closing a dialogue you opened by hand while standing on him does not
+         get one straight back from the loop. Both doors, one latch. */
+      S._npcProxLatch = { npc: npc, ready: _npcQuestReady(S, npcQ) };
+      setQuestPanel({ npc: npc.name, quest: npcQ.quest, status: npcQ.status, npcRef: npc });
+      return _mark('quest');
+    }
+    if (npc.shop) {
+      /* The latch matters here too: without it the per-frame proximity
+         opener reopens the shop the instant you close it while still
+         standing inside its radius -- the loop v2.3.1701 exists to stop. */
+      S._npcProxLatch = { npc: npc, ready: false };
+      try { shopBus.setOpen(true); } catch (_e) {}
+      return _mark('shop');
+    }
+    pushDmgPopup(S, npc.x, npc.y - 30, npc.name + ' has nothing for you right now', '#B6C1BE');
+    return _mark('nothing');
+  };
   useEffect(function () {
     /* v2.3.1869: bootPhase — the login door (v2.3.1814) is a third pre-game
        screen this guard never knew about, and the refs below only exist once
@@ -8743,6 +8839,10 @@ export var BroTown = function BroTown(_ref0) {
     var tapResourceAtClient = function (clientX, clientY) {
       var _p = clientToCanvas(clientX, clientY);
       return _tapHarvestAtCss(_p.x, _p.y);
+    };
+    var tapNpcAtClient = function (clientX, clientY) {
+      var _p = clientToCanvas(clientX, clientY);
+      return tapNpcAtCss(_p.x, _p.y);
     };
     var openSelfChat = function () {
       try {
@@ -8876,6 +8976,19 @@ export var BroTown = function BroTown(_ref0) {
            art is actually under the thumb. */
         if (!lts.moved && (endT - lts.startAt) < SELF_TAP_MAX_MS
             && tapResourceAtClient(t.clientX, t.clientY)) {
+          lts.lastEndAt = 0;
+          return;
+        }
+        /* v2.3.2305: ...and an NPC beats the self-chat circle for the same
+           reason a campfire does. That circle is 52 WORLD px around your own
+           body, and the proximity opener leaves you standing ~14px from him,
+           so it covers his legs and feet -- the part of a character a player
+           actually aims at. Ordered AFTER the resource test so v2.3.2274's
+           campfire case is untouched, and it RETURNS like that one does: fall
+           through and the canvas click below runs the same scan a second time,
+           which used to toggle the lock straight back off. */
+        if (!lts.moved && (endT - lts.startAt) < SELF_TAP_MAX_MS
+            && tapNpcAtClient(t.clientX, t.clientY)) {
           lts.lastEndAt = 0;
           return;
         }
@@ -9017,6 +9130,18 @@ export var BroTown = function BroTown(_ref0) {
          false, so there is no automatic lock to promote and the tap-forward in
          rE below is the only way to get one, which is the owner's new rule. */
       rJoyActive.current = true;
+      /* v2.3.2305: an earlier draft of this change suppressed the press when
+         the touch started over an NPC, on the theory that tapping a character
+         swings at him (NPCs do have hp, and at zero they drop for ten seconds
+         during which both doors to talking are shut).
+         MEASURED, AND IT DOES NOT HAPPEN ON A TAP: the release clears
+         autoAttack before the swing cooldown elapses, so a quick tap never
+         lands one -- with the guard reverted, an armed character tapping an
+         NPC six times leaves both his hp and the autoAttack flag untouched.
+         The guard was removed rather than kept "just in case", because it has
+         a real cost in the other direction: this is the ATTACK control, and
+         suppressing it whenever a townsperson is under the thumb would eat
+         legitimate swings at a monster standing next to one. */
       handleRBtnPress();
     };
     var rM = function rM(e) {
@@ -9098,6 +9223,13 @@ export var BroTown = function BroTown(_ref0) {
          chat gesture.  See the note there. */
       if (!rts3.moved && (endT - rts3.startAt) < SELF_TAP_MAX_MS
           && tapResourceAtClient(t.clientX, t.clientY)) {
+        return;
+      }
+      /* v2.3.2305: an NPC beats the self-chat circle here too -- see the note
+         in lE. This side matters more, because this is the half of the screen
+         where the touchstart used to start a swing at him. */
+      if (!rts3.moved && (endT - rts3.startAt) < SELF_TAP_MAX_MS
+          && tapNpcAtClient(t.clientX, t.clientY)) {
         return;
       }
       if (!rts3.moved && (endT - rts3.startAt) < SELF_TAP_MAX_MS
@@ -10306,7 +10438,21 @@ export var BroTown = function BroTown(_ref0) {
                  is the DESKTOP door (and the strip of canvas exposed below the
                  touch zones when a sheet is open); the phone's tap arrives as
                  a synthetic click in onClick, which now calls the same thing. */
-              _tapHarvestAtCss(_cssX, _cssY);
+              if (!_tapHarvestAtCss(_cssX, _cssY)) {
+                /* ═══ v2.3.2305: ...AND THE NPC DOOR, WHICH WAS MISSING ═══
+                   This handler stamps _touchHandledAt, which makes the canvas
+                   onClick skip its own tap logic for ~600ms -- so on every
+                   route that lands here, the NPC branch in onClick was DEAD
+                   CODE and a tap on a character did nothing at all. That is
+                   the largest remaining part of the owner's "tapping on a
+                   character to talk is difficult": not a small target, a
+                   swallowed tap.
+                   Ordered after monsters and resources, matching the rule the
+                   two notes above already state: whatever is under the finger
+                   wins, and a character is the last thing checked because he
+                   is the least likely to be in front of something else. */
+                tapNpcAtCss(_cssX, _cssY);
+              }
             }
           }
           ct.id = null;
@@ -10482,59 +10628,18 @@ export var BroTown = function BroTown(_ref0) {
         }
       }
       /* Check NPCs — tap opens quest dialog if available, otherwise lock-on */
-      if (S.npcs) {
-        var _iterator2 = _createForOfIteratorHelper(S.npcs),
-          _step2;
-        try {
-          for (_iterator2.s(); !(_step2 = _iterator2.n()).done;) {
-            var npc = _step2.value;
-            if (!npc.alive) continue;
-            var nsx = (npc.x - cx) * SCALE_X,
-              nsy = (npc.y - cy) * SCALE_Y;
-            /* ═══ v2.3.1717: CLICK THE NPC, NOT HIS ANKLES ═══
-               A judge could not click Mayor Bro.  Measured by sweeping real
-               clicks on a 10px grid around him: the only points that opened
-               his dialogue were x -20..+20, y -20..+30 RELATIVE TO HIS FEET
-               -- a ~40x50 patch on the ground under him.  npc.x/y is the
-               sprite's bottom-centre anchor, so a 30px circle on it sits on
-               his ankles while his body and head, the parts you actually aim
-               at, are 25-70px ABOVE and missed entirely.  Silently.
-               So: raise the test point onto his torso and widen it.  Radius
-               44 about his mid-body covers head to feet and keeps the 44px
-               tap-target guidance the rest of the UI follows. */
-            var NPC_TAP_RISE = 26, NPC_TAP_R = 44;
-            if (Math.sqrt(Math.pow(cssX - nsx, 2) + Math.pow(cssY - (nsy - NPC_TAP_RISE), 2)) < NPC_TAP_R) {
-              /* Check if NPC has a quest */
-              var npcQ = getNpcQuest(S.rpg, npc.name);
-              if (npcQ) {
-                /* v2.3.1701: a TAP arms the same latch the proximity opener
-                   uses, so closing a dialogue you opened by hand while
-                   standing on him does not get one straight back from the
-                   loop.  Both doors, one latch. */
-                S._npcProxLatch = { npc: npc, ready: _npcQuestReady(S, npcQ) };
-                setQuestPanel({
-                  npc: npc.name,
-                  quest: npcQ.quest,
-                  status: npcQ.status,
-                  npcRef: npc
-                });
-                return;
-              }
-              /* No quest — just lock on */
-              if (S.lockedTarget && S.lockedTarget.ref === npc) S.lockedTarget = null;else S.lockedTarget = {
-                type: 'npc',
-                id: npc.name,
-                ref: npc
-              };
-              return;
-            }
-          }
-        } catch (err) {
-          _iterator2.e(err);
-        } finally {
-          _iterator2.f();
-        }
-      }
+      /* ═══ v2.3.2305: ONE SCAN, SHARED ═══
+         This loop used to carry its own copy of the hit test and its own
+         action list. It is now the same tapNpcAtCss the joystick releases and
+         the attack-suppression test use, so the four entry points cannot
+         disagree about who was tapped or what happens next.
+         THE LOCK-ON FALLBACK IS GONE, and that is a fix rather than a tidy-up:
+         an NPC lock short-circuits updateTargeting entirely (it returns early
+         for any non-monster lock), so tapping a character with no quest
+         silently disabled automatic monster acquisition until you re-tapped
+         him, tapped something else, or changed zone. With every NPC now
+         answering a tap, nothing needs to write that lock. */
+      if (tapNpcAtCss(cssX, cssY)) return;
       /* Check other players for lock-on OR inspect */
       for (var _i43 = 0, _Object$entries7 = Object.entries(S.others); _i43 < _Object$entries7.length; _i43++) {
         var _Object$entries7$_i = _slicedToArray(_Object$entries7[_i43], 2),
