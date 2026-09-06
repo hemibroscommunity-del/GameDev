@@ -84,7 +84,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (!S || !S.player) return false;
       if (!Array.isArray(S.gatherNodes)) S.gatherNodes = [];
       const node = {
-        id: 'qa_node_' + skill, nodeType: skill === 'woodcutting' ? 'tree' : 'fire',
+        id: 'qa_node_' + skill,
+        nodeType: skill === 'woodcutting' ? 'tree' : (skill === 'mining' ? 'rock' : 'fire'),
         x: S.player.x, y: S.player.y, alive: true, hp: 999, maxHp: 999, r: 40,
       };
       S.gatherNodes = S.gatherNodes.filter((n) => n && !String(n.id || '').startsWith('qa_node_'));
@@ -157,6 +158,76 @@ export async function run({ browser, wsPort, webPort, rec }) {
       { frame: chop.probe.frame, base: chop.probe.base, gearIx: chop.probe.gearIx });
     rec.ok('...and the chopper is still on screen', !!chop.probe.visible, chop.probe);
   }
+
+  /* ══ v2.3.2304: THE SLUNG SHIELD'S GATE WAS DEAD ══
+     It tested other._extraction / other._firemaking, neither of which is
+     written ANYWHERE in the tree -- both were always undefined, so the gate
+     never fired and a peer wore their shield on their back through every
+     harvest.
+     TESTED ON MINING, NOT COOKING, and that distinction is the whole reason
+     the first cut of this assertion was vacuous: cook/chop/fire hide the
+     peer's entire container anyway, so the shield block never runs and the
+     probe writes nothing -- an assertion phrased as "no shield" then passes
+     against the broken build for the wrong reason. Mining leaves the body up,
+     so it is the state where this gate is the only thing holding the line. */
+  await B.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    if (S && S.rpg) S.rpg.shield = { name: 'Pine Shield', type: 'shield', gearBase: 'pine' };
+    if (S) S._extraction = null;
+  });
+  /* Two full presence cycles: the shield rides the ~2s broadcast, not the
+     high-rate position packet. 1.5s was not enough and the positive control
+     said so. */
+  await A.page.waitForTimeout(4200);
+  const shieldIdle = await A.page.evaluate((pid) => (window.__btPeerShield || {})[pid] || null, bId);
+  rec.ok('positive control: an idle peer with a shield DOES wear it slung',
+    !!shieldIdle && shieldIdle.hasShield && shieldIdle.on, shieldIdle);
+
+  await B.page.evaluate(() => { window.__qaHarvest('mining'); });
+  await A.page.waitForTimeout(2600);
+  const shieldMining = await A.page.evaluate((pid) => (window.__btPeerShield || {})[pid] || null, bId);
+  rec.ok('...and takes it off to mine', !!shieldMining && shieldMining.hasShield && !shieldMining.on,
+    shieldMining);
+
+  /* ══ v2.3.2304: THE JOIN-FRAME COSMETIC HOLE ══
+     state_sync built its peer literal by hand and Object.assigned only the
+     RENAMED wire keys, so every same-named cosmetic (rpgData, cape, wpnType,
+     ...) was discarded and did not arrive until the first ~2s relay. Three of
+     them are read by the renderer immediately, so a peer already in the room
+     appeared for up to two seconds with no cape, no slung shield and the wrong
+     weapon.
+
+     CATCHING IT NEEDS A PRE-LOAD HOOK, and the first cut of this assertion was
+     vacuous without one: polling after enterWorld() resolves is far too late --
+     relays have already landed by then, so the field is present either way. An
+     init script runs before the bundle, so its 10ms poll catches the very
+     first frame in which the peer exists at all, which IS the state_sync
+     frame. B already has a shield equipped from the block above, so rpgData is
+     the field under test. */
+  const C = await H.newPlayer(browser, {
+    name: 'Latecomer', wsPort, webPort, guest: true,
+    init: () => {
+      window.__firstPeer = null;
+      const _t = setInterval(() => {
+        const S = window._gameState && window._gameState.current;
+        const ids = (S && S.others) ? Object.keys(S.others) : [];
+        if (!ids.length) return;
+        const o = S.others[ids[0]];
+        window.__firstPeer = {
+          id: ids[0],
+          hasRpgData: !!o.rpgData,
+          hasShield: !!(o.rpgData && o.rpgData.shield),
+        };
+        clearInterval(_t);
+      }, 10);
+    },
+  });
+  await H.enterWorld(C);
+  const firstPeer = await C.page.evaluate(() => window.__firstPeer || null);
+  rec.ok('a peer already in the room arrives WITH their rpgData on the very '
+    + 'first frame they exist, not two seconds later',
+    !!firstPeer && firstPeer.hasRpgData, firstPeer);
+  await C.ctx.close();
 
   /* v2.3.2303: and a picture, because the numbers above cannot see the failure
      mode that matters most. entityRenderer HIDES the peer's whole body
