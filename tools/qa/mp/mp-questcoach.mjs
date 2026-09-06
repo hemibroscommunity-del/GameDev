@@ -646,17 +646,72 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('opening the Login Key panel retires the Login Key lesson',
     learnedKey, { learnedKey });
 
+  /* v2.3.2306: photograph the lesson. "A circle on your character that grows
+     and shrinks" is the owner's own wording and no number can confirm it --
+     the ring's pulse is a CSS animation, so the picture is the only honest
+     check that it landed ON him rather than beside him. */
+  {
+    const shown = await coach(P);
+    if (shown && shown.id === 'chatTap') {
+      await P.page.screenshot({ path: 'tools/qa/mp/out/coach-5-chattap.png' });
+      console.log('    chat lesson ring: ' + JSON.stringify(shown.ring));
+    }
+    rec.ok('the tap-to-chat lesson actually SHOWS on a phone (its old canvas '
+      + 'anchor was covered by the touch zone, so it never drew)',
+      !!shown && shown.id === 'chatTap', shown && shown.id);
+    /* The ring must be ON the bro, not merely somewhere: his own screen point
+       is where isSelfTouch measures the tap from. */
+    const onBro = await P.page.evaluate((ring) => {
+      const S = window._gameState && window._gameState.current;
+      const c = document.querySelector('canvas');
+      if (!S || !c || !ring) return null;
+      const r = c.getBoundingClientRect();
+      const bx = r.left + (S.player.x - S.camera.x) * (S._worldScaleX || 1);
+      const by = r.top + (S.player.y - 24 - S.camera.y) * (S._worldScaleY || 1);
+      return { dx: Math.round(Math.abs((ring.left + ring.width / 2) - bx)),
+        dy: Math.round(Math.abs((ring.top + ring.height / 2) - by)) };
+    }, shown && shown.ring);
+    rec.ok('...and the ring is centred on the character', 
+      !!onBro && onBro.dx <= 6 && onBro.dy <= 6, onBro);
+  }
+
+  /* ═══ v2.3.2306: THE CHAT LESSON WATCHES THE GESTURE, NOT THE PANEL ═══
+     It used to be credited by the chat bubble merely being open -- and the
+     trackers run above the coach's own gate, so ANY self-tap at any point in
+     a browser's life wrote it done, including long after the tutorial. It now
+     watches the taught gesture (openSelfChat's stamp) and only counts one that
+     happened AFTER the mark went up.
+     So opening the composer directly must NOT retire it -- that is the bug
+     being fixed, and asserting it here is what stops the arming being quietly
+     removed later. */
   await P.page.evaluate(() => {
     try { if (window.__broChatBubbleBus) window.__broChatBubbleBus.setOpen(true); } catch (e) {}
   });
   await P.page.waitForTimeout(900);
-  const learnedChat = await P.page.evaluate(() => {
+  const notByPanel = await P.page.evaluate(() => {
     const d = JSON.parse(localStorage.getItem('bt_coach_v1') || '{}');
     try { if (window.__broChatBubbleBus) window.__broChatBubbleBus.setOpen(false); } catch (e) {}
-    return !!d.chat;
+    return !d.chatTap;
   });
-  rec.ok('...and opening the chat composer retires the tap-to-chat lesson',
-    learnedChat, { learnedChat });
+  rec.ok('opening the chat composer by itself does NOT retire the lesson -- '
+    + 'the gesture is what is being taught', notByPanel, { notByPanel });
+
+  /* Now the gesture itself, stamped the way openSelfChat stamps it. */
+  const learnedChat = await P.page.evaluate(() => new Promise((res) => {
+    const S = window._gameState && window._gameState.current;
+    if (S) S._chatBySelfTap = Date.now();
+    setTimeout(() => {
+      const d = JSON.parse(localStorage.getItem('bt_coach_v1') || '{}');
+      res({ done: !!d.chatTap, coach: (window.__btCoach ? window.__btCoach() : null) });
+    }, 900);
+  }));
+  rec.ok('...but tapping yourself to chat does retire it',
+    learnedChat.done, learnedChat);
+  rec.ok('...and it was ARMED first (credited by a tap that answered the mark, '
+    + 'not by one from before it was ever shown)',
+    !!(learnedChat.coach && learnedChat.coach.chatArmed > 0
+       && learnedChat.coach.chatBySelfTap >= learnedChat.coach.chatArmed),
+    learnedChat.coach);
 
   await P.page.waitForTimeout(800);
   const end = await coach(P);

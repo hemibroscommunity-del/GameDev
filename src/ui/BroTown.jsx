@@ -8845,6 +8845,12 @@ export var BroTown = function BroTown(_ref0) {
       return tapNpcAtCss(_p.x, _p.y);
     };
     var openSelfChat = function () {
+      /* v2.3.2306: stamp the GESTURE, for the coach's chat lesson. A state
+         stamp rather than a callback pushed into this control -- the coach
+         polls state and never has hooks pushed at it, the same way
+         _hasUsedSwipe and _rShieldConsumedAt already work. It watches the tap
+         specifically: opening chat some other way is not the lesson. */
+      try { stateRef.current._chatBySelfTap = Date.now(); } catch (_e0) {}
       try {
         var _busC = window.__broDashPanelBus;
         if (_busC && _busC.state.mode !== 'bar') _busC.toBar(); /* v2.3.1290 */
