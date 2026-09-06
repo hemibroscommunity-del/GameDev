@@ -271,7 +271,7 @@ import { wireSpriteSheets } from '@/game/spriteSheets.js';
 import { wireSlimeAudio } from '@/game/slimeAudio.js';
 import { wireOrientationSync } from '@/game/orientationSync.js';
 /* v2.3.765: combat helpers extracted behavior-frozen (docs/REBUILD-PLAN.md Phase 0). */
-import { releasePeerDamage, addBuildProg, pushDmgPopup, monsterPopupY } from '@/game/combatHelpers.js';
+import { releasePeerDamage, addBuildProg, pushDmgPopup, monsterPopupY, rangedAimAngle } from '@/game/combatHelpers.js';
 import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822: stuck-dead watchdog */
 /* v2.3.767: chat send + chat/emote handlers extracted behavior-frozen (REBUILD-PLAN Phase 2). */
 import { sendChatMessage } from '@/game/chat.js';
@@ -5755,6 +5755,50 @@ export var BroTown = function BroTown(_ref0) {
             ? (_hot ? '0 0 0 3px rgba(234,198,117,.22)' : '0 0 0 2px rgba(216,170,88,.16)')
             : 'none';
           if (_rd && _rd.style.boxShadow !== _bsWant) _rd.style.boxShadow = _bsWant;
+          /* ═══ v2.3.2307: THE BOW'S AIM ARROW ═══
+             Owner: an arrow on the right control, spanning it, pointing where
+             the shot will go.
+
+             "The attack phase" is the LABEL's own contextual state, reused
+             here rather than re-derived, so the mark and the word under it can
+             never disagree -- plus the one fire gate the label does not carry:
+             a raised shield means nothing can fire, and an arrow pointing
+             confidently while that is true would be a lie.
+
+             It reads rangedAimAngle, the SAME ladder the fire site uses, from
+             the live grip offset. The fire site still measures its lock branch
+             from the absolute grip point, which is only refreshed during the
+             ~360ms a shot is showing and is therefore stale between shots --
+             a real divergence, left alone deliberately: changing the fire
+             site's origin is a combat change and does not belong in a HUD
+             change. Logged as a follow-up. */
+          var _aimBox = document.querySelector('[data-aim-arrow]');
+          if (_aimBox) {
+            var _bowAim = !!(S.rpg && S.rpg.activeSlot === 'ranged') && !_ex && !_harvestCtx && !S._shieldUp;
+            var _aimWant = _bowAim ? 'block' : 'none';
+            if (_aimBox.style.display !== _aimWant) _aimBox.style.display = _aimWant;
+            if (_bowAim) {
+              var _ox = P.x + (S._bowGripDX || 0);
+              var _oy = P.y + (S._bowGripDY || 0);
+              var _aa = rangedAimAngle(S, _ox, _oy);
+              var _deg = _aa.ang * 180 / Math.PI;
+              var _g = _aimBox.querySelector('[data-aim-rot]');
+              var _rWant = 'rotate(' + _deg.toFixed(1) + ' 50 50)';
+              if (_g && _g.getAttribute('transform') !== _rWant) _g.setAttribute('transform', _rWant);
+              /* Livelier while a thumb is actually steering; legible but quiet
+                 while merely armed -- _lastAimAngle has no writer that clears
+                 it, by design, so a player who dragged once and walked away
+                 keeps a correct-but-old heading. Correct (the shot does go
+                 there) and it should not look authoritative. */
+              var _aWant = (S.autoAttack || S._aiming) ? '0.95' : '0.55';
+              if (_aimBox.style.opacity !== _aWant) _aimBox.style.opacity = _aWant;
+              S._aimArrowDeg = _deg;
+              S._aimArrowSrc = _aa.src;
+            } else {
+              S._aimArrowDeg = null;
+              S._aimArrowSrc = null;
+            }
+          }
           var _lw = lWrapRef.current;
           var _lWant = _lOn ? '1' : '0';
           if (_lw && _lw.style.opacity !== _lWant) _lw.style.opacity = _lWant;
@@ -5790,6 +5834,29 @@ export var BroTown = function BroTown(_ref0) {
                             lock: !!(s2.lockedTarget && s2.lockedTarget.ref),
                             node: !!s2._nearNode, ex: !!s2._extraction },
                        holds: discHoldProbe() };
+            };
+          }
+          /* v2.3.2307: the aim arrow's own probe. The SOURCE is published
+             alongside the angle because a test that can only see the angle
+             cannot tell "it is following the lock" from "it happens to agree
+             with the last drag" -- which is exactly the confusion that let
+             v2.3.2254-2262 ship four mechanisms feeding one wrong fallback. */
+          if (typeof window !== 'undefined' && !window.__btAimArrow) {
+            window.__btAimArrow = function () {
+              var s3 = stateRef.current || {};
+              var box = document.querySelector('[data-aim-arrow]');
+              var g = box && box.querySelector('[data-aim-rot]');
+              var r = box ? box.getBoundingClientRect() : null;
+              return {
+                deg: (typeof s3._aimArrowDeg === 'number') ? +s3._aimArrowDeg.toFixed(1) : null,
+                src: s3._aimArrowSrc || null,
+                shown: !!(box && box.style.display !== 'none'),
+                opacity: box ? box.style.opacity : null,
+                transform: g ? g.getAttribute('transform') : null,
+                rect: r ? { w: Math.round(r.width), h: Math.round(r.height) } : null,
+                filter: box ? getComputedStyle(box).filter : null,
+                pe: box ? getComputedStyle(box).pointerEvents : null,
+              };
             };
           }
         }

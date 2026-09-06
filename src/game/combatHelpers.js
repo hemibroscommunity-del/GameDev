@@ -48,6 +48,42 @@ import { rollMonsterShard } from '@/data/shards.js';   /* v2.3.2233 */
    flew off toward the top-left corner of the map at a constant bearing.
    Returning null here says "no usable lock" so callers fall back to the
    facing, instead of confidently shooting at nothing. */
+/* ═══ v2.3.2307: ONE LADDER FOR "WHERE WILL THIS SHOT GO" ═══
+ * The bow's firing direction was a five-branch chain written out at the fire
+ * site. The owner now wants an ARROW on the right control showing where the
+ * shot will go -- and an arrow that re-derives that chain would be right the
+ * day it ships and wrong the next time someone edits one of the five branches.
+ *
+ * That is not hypothetical: v2.3.2254-2262 is exactly this failure. Four
+ * separate mechanisms fed one 4-way fallback, and shots went due EAST while
+ * every individual piece looked correct. TRAPS #44 and mp-aimpath exist
+ * because of it.
+ *
+ * So the ladder lives here, the fire site calls it, and the HUD arrow calls
+ * it. `src` is returned for the QA probe: a test that can only see the ANGLE
+ * cannot tell "the lock" from "the last drag that happened to agree with it".
+ *
+ * NOT shared with the SPECIAL's ladder (playerActions.js), which is genuinely
+ * different -- four branches floored at zero with the lock applied after, from
+ * a different origin. Merging them would be a behaviour change wearing a
+ * refactor's clothes. */
+export function rangedAimAngle(S, originX, originY) {
+  var lockPt = lockAimPoint(S && S.lockedTarget && S.lockedTarget.ref);
+  if (lockPt) {
+    return { ang: Math.atan2(lockPt.y - originY, lockPt.x - originX), src: 'lock' };
+  }
+  /* A thumb steering RIGHT NOW beats any remembered heading. It is the stale
+     read of _aimAngle that was wrong at v2.3.2262, not the fresh one. */
+  if (S && S._aiming && S._aimAngle != null) return { ang: S._aimAngle, src: 'aiming' };
+  if (S && S._lastAimAngle != null) return { ang: S._lastAimAngle, src: 'last' };
+  if (S && typeof S._facingAngle === 'number') return { ang: S._facingAngle, src: 'facing' };
+  var fd = (S && S._facing) || 'down';
+  return {
+    ang: fd === 'right' ? 0 : fd === 'up' ? -Math.PI / 2 : fd === 'left' ? Math.PI : Math.PI / 2,
+    src: 'facing4',
+  };
+}
+
 export function lockAimPoint(t) {
   if (!t) return null;
   var x = (typeof t.renderX === 'number' && isFinite(t.renderX)) ? t.renderX : t.x;

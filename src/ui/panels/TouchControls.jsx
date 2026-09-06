@@ -248,6 +248,77 @@ export function TouchControls(props) {
       textTransform: 'uppercase',
     }
   }))), /*#__PURE__*/React.createElement("div", {
+    /* ═══ v2.3.2307: THE BOW SHOWS YOU WHERE THE SHOT WILL GO ═══
+       Owner: "For bow, during the attack phase show a pointer in the form of
+       an arrow on the right joystick (spanning the whole length of it) that
+       points in the direction you will be firing at."
+
+       ITS OWN BOX, and both halves of that matter:
+       - NOT a child of .bt-rjoy-base. That disc is border-box with a 2px
+         border, so an inset:0 child is 92px inside a 96px control and could
+         never "span the whole length of it".
+       - NOT a child of .bt-rjoy-zone either. That wrap's opacity is the
+         contextual gate, and for a bow it is CLOSED by design: a ranged
+         player is deliberately given no auto-target candidates, so a bow user
+         standing with no tapped lock has a hidden disc -- and an arrow inside
+         it would be invisible in exactly the case the owner is asking about.
+         (Pinning the disc visible instead is what v2.3.2258 did and v2.3.2260
+         undid; and holding it would make it take touches again.)
+
+       It steers nothing: pointerEvents none, so it can never be what a hit
+       test returns and can never swallow a press.
+       NO CSS FILTER -- drop-shadows over the WebGL canvas produce the
+       documented iOS "static" (TRAPS #42), so legibility comes from a dark
+       edge stroke under the fill, the same rule the world aim caret uses. */
+    className: "bt-desktop-hide bt-rjoy-aim",
+    'data-aim-arrow': '1',
+    style: {
+      position: 'fixed',
+      bottom: 'calc(var(--sheet-h, var(--dash-h)) + ' + RBTN.bottom + 'px)',
+      right: RBTN.right,
+      width: discW,
+      height: discW,
+      /* just above the wrap's 30, so it reads OVER the metal rather than
+         behind an opaque base.webp */
+      zIndex: 31,
+      pointerEvents: 'none',
+      display: 'none',
+      opacity: 0,
+    }
+  }, /*#__PURE__*/React.createElement("svg", {
+    viewBox: '0 0 100 100',
+    width: '100%',
+    height: '100%',
+    'aria-hidden': 'true',
+    style: { display: 'block', overflow: 'visible' }
+  }, /*#__PURE__*/React.createElement("g", {
+    'data-aim-rot': '1',
+    /* SVG rotate is clockwise-positive with y down, which is the same
+       convention the world angle uses -- so the resolver writes the angle
+       straight in with NO sign flip. */
+    transform: 'rotate(0 50 50)'
+  }, /*#__PURE__*/React.createElement("path", {
+    /* One normalised shaft-and-head pointing EAST (angle 0), drawn in a
+       0..100 box so the 96/108px sizing is done by width/height and no pixel
+       count is baked into the path. Spans the full box, as asked. */
+    d: 'M6 50 L66 50 M66 50 L52 38 M66 50 L52 62 M66 50 L94 50',
+    fill: 'none',
+    stroke: '#0A1014',
+    strokeWidth: 11,
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round'
+  }), /*#__PURE__*/React.createElement("path", {
+    d: 'M6 50 L66 50 M66 50 L52 38 M66 50 L52 62 M66 50 L94 50',
+    fill: 'none',
+    /* The world aim caret's blue, borrowed on purpose: brass is reserved by
+       the UI spec for focus/selection/premium, and inventing a new accent is
+       forbidden -- so the compliant choice is the colour that already means
+       "this is where you are aiming". */
+    stroke: '#74D0FF',
+    strokeWidth: 6,
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round'
+  })))), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1288: bt-rjoy-zone names the right disc's corner container so
        the expanded-sheet dim (game.css, nav-system PR B) can reach it —
        the left disc already had .bt-joystick-zone. */
