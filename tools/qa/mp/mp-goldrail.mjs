@@ -93,6 +93,23 @@ const railGeom = (P) => P.page.evaluate(() => {
          what the extra width should do with the glyph. */
       dx: ir ? Math.round((ir.left + ir.width / 2) - cx) : null,
       dy: ir ? Math.round((ir.top + ir.height / 2) - cy) : null,
+      /* ═══ v2.3.2321: THE CORNERS HAVE TO BE ALIVE ═══
+         border-radius clips HIT-TESTING, not just paint, so a round button's
+         corners are not merely empty -- they are dead, and a rect that only
+         looks like a rect would pass every width check above while giving the
+         thumb nothing back.  Measured 5px inside each corner of the button's
+         own box: circles answered 0 of 20 corner probes, the rects answer 20. */
+      corners: (() => {
+        const IN = 5;
+        const at = (x, y) => {
+          const el = document.elementFromPoint(Math.round(x), Math.round(y));
+          return !!(el && el.closest('[data-nav]') === b);
+        };
+        return [at(r.left + IN, r.top + IN), at(r.right - IN, r.top + IN),
+          at(r.left + IN, r.bottom - IN), at(r.right - IN, r.bottom - IN)]
+          .filter(Boolean).length;
+      })(),
+      radius: getComputedStyle(b).borderRadius,
     };
   });
 });
@@ -185,6 +202,13 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
   rec.ok(T + '...with the icon still centred in the wider box, both axes',
     rail.every((b) => b.dx !== null && Math.abs(b.dx) <= 1 && Math.abs(b.dy) <= 2),
     rail.map((b) => b.id + ':' + b.dx + ',' + b.dy));
+  /* The owner asked for rectangles to reclaim the corners the circles threw
+     away; this is the assertion that the corners came back.  A shape-only
+     check (radius !== 999px) would pass on a rect that some later overlay
+     covers -- what matters is whether a finger there reaches the button. */
+  rec.ok(T + '...and all four corners of each button are LIVE, not clipped away',
+    rail.every((b) => b.corners === 4),
+    rail.map((b) => b.id + ':' + b.corners + '/4 r=' + b.radius));
   rec.ok(T + '...every one of them on screen and answering its own centre',
     rail.every((b) => b.answers === 'self' && b.left >= 0 && b.right <= phone.width),
     rail.map((b) => b.id + ':' + b.answers + ' [' + b.left + '..' + b.right + ']'));

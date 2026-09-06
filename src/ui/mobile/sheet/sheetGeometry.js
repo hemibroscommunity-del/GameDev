@@ -444,7 +444,13 @@ export function navButtonSize(vw, vh) {
      which feeds barHeight, which is --dash-h: the BAR-height invariant that
      mp-btnlayout sweeps five viewports to protect, and reallocating the
      canvas to buy 4px of button is the wrong trade.  Width was the ask. */
-  return { w: Math.min(Math.max(w, 26), 44), h: identityRowHeight(vw, vh) - 2 * NAV_GAP };
+  /* v2.3.2321: the ceiling goes to 56 so it stops being the binding
+     constraint anywhere a phone is likely to be.  It is not a widening on its
+     own -- the DERIVATION still decides, and at 390 it lands at 46 -- but with
+     a rounded rectangle the box IS the target, so the two pixels the old 44
+     ceiling was clipping are two real pixels rather than corners nobody could
+     hit.  Wider screens take what their row actually has: 54 at 430. */
+  return { w: Math.min(Math.max(w, 26), 56), h: identityRowHeight(vw, vh) - 2 * NAV_GAP };
 }
 
 /* v2.3.1653: the leftmost x the nav group may start at.  It WAS the weapon
