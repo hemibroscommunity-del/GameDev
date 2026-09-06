@@ -30,7 +30,10 @@ import { readyQuestCount } from './sheet/questModel.js';           /* v2.3.1298 
 import { sheetTransition } from './sheet/motion.js';            /* v2.3.1283 */
 import { bagUnseen, bagEntryKey } from './sheet/bagUnseenModel.js'; /* v2.3.1312 */
 import { COMBAT_SKILLS, unspentPointsTotal } from './sheet/heroModel.js'; /* v2.3.1311: hero toolbar badge; v2.3.1635: shared unspent total */
-import { IdentityStrip } from './sheet/IdentityStrip.jsx';      /* v2.3.1635: persistent identity row */
+/* v2.3.1635 -> v2.3.2320: IdentityStrip's band import is gone with the band
+   purse (see the row below).  The component's other branch has no caller in
+   src/ either -- that predates this change -- so the file is now reference
+   material rather than live code, and it says so at its top. */
 import { HeroExpanded } from './sheet/HeroExpanded.jsx';        /* v2.3.1286 */
 import { InventoryPanel }              from './dash/InventoryPanel.jsx';
 import { ItemDetailPopup }             from './dash/ItemDetailPopup.jsx';
@@ -1041,7 +1044,14 @@ export const BottomDashboard = () => {
           band that carried the other one no longer renders), so the
           v2.3.1563 one-count rule holds by construction.  pointer-events
           none: it is a readout over the touch zones, never a control. */}
-      {land ? <LandGoldChip /> : null}
+      {/* v2.3.2320: the landscape gold chip retires with the band purse.
+          Sideways the count sat at the world's bottom centre because the band
+          does not exist there and the top rail had nowhere to put it; the
+          rail has a purse column now, and it spans the world's width in
+          landscape too (game.css's html[data-orient="landscape"] block), so
+          the same readout serves both orientations from the same place.  One
+          count, one code path, and the one-count rule holds without a
+          second component to keep in step. */}
 
       {/* ═══ v2.3.2166: THE LANDSCAPE NAV DOCK ═══
           Owner: "the dashboard buttons (for dashboard bag view, character
@@ -1477,20 +1487,44 @@ export const BottomDashboard = () => {
             user already reads as "where this goes back to".  maxWidth keeps a
             long drill title from ever pushing the gold off its own row; the
             ellipsis is the backstop, not the plan. */}
-        {drill && (
-          <div style={{
-            flex: 'none', minWidth: 0, maxWidth: 132,
-            fontSize: 13,
-            fontWeight: 700,
-            letterSpacing: '.10em',
-            textTransform: 'uppercase',
-            color: COL.text,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}>{active ? active.title : ''}</div>
-        )}
-        <IdentityStrip band />
+        {/* ═══ v2.3.2320: THE TITLE TAKES THE SQUEEZE, NOT THE BUTTONS ═══
+            (the component is DrillTitle, below — it also decides when there is
+            too little room for a word to be worth printing)
+            `flex: 'none'` meant this element always got its natural width and
+            whatever came after it went off the screen.  Measured on a 390px
+            phone with Settings drilled open, that is exactly what happened:
+            CLOSE (75.9) + back chip (34) + this title (82.4) + the nav group
+            (204) + gaps ran to 408 inside 382, the gold purse beside it was
+            the only flexible child so it collapsed to zero, and the rail still
+            overflowed — the "More" button's centre sat 22px PAST the right
+            edge.  Nothing clipped it (this row is overflow:visible); it was
+            simply not there to tap, and QuestCoach's Login Key lesson, which
+            hit-tests that exact button, retired itself in silence (TRAPS 41).
+
+            So the title flexes and the buttons do not.  A truncated word is a
+            cosmetic loss; an unreachable button is a functional one, and the
+            buttons are what the owner asked to make BIGGER in this same
+            message.  Be straight about the cost: with 44px buttons the title
+            has ~16px on a 390px phone in a drilled panel, so it reads as an
+            ellipsis there and only widens back out on larger screens.  The
+            maxWidth stays as the other bound. */}
+        {drill && <DrillTitle text={active ? active.title : ''} />}
+        {/* v2.3.2320: the identity strip is GONE from this row.  Its last
+            content was the gold purse and the purse moved to the zone header
+            rail (owner: "very top right on the top bar that lists the zone
+            name"); IdentityStrip's band branch now returns null and the file
+            carries the full reasoning.  What that buys is this row's middle,
+            which is what the same message asked for — "make the 5 dashboard
+            navigation buttons wider to increase tap surface".
+
+            It also fixes a real defect nobody had reported: with the purse in
+            here the row's children measured 486px inside 382, and the purse
+            was the ONLY flexible one, so it collapsed to zero and the rail
+            still overflowed — on a drilled screen the "More" button's centre
+            sat 22px OFF the right edge of a 390px phone.  Nothing clipped it
+            (the row is overflow:visible), it was simply unreachable, which is
+            TRAPS 41's silent failure: QuestCoach's Login Key lesson measures
+            that button and skips itself when it cannot be reached. */}
         {/* Track 3, right-aligned.  The group is WIDER than the narrow
             track (132 vs 90 at 390w) and deliberately overflows it to the
             LEFT: track 2 holds only the DPS anchor box, which is pinned to
@@ -1550,44 +1584,66 @@ export const BottomDashboard = () => {
 };
 
 /* v2.3.1332: frame via .bt-chisel — layout only here. */
-/* v2.3.2168: the landscape gold chip (see the render-site comment).  Reads
-   the same R.coins IdentityStrip reads and ticks itself once a second —
-   gold moves on server settlement, not per frame, and a 1s readout lag on
-   a coin count is invisible while a live subscription here would be a new
-   wire into a component that renders four elements. */
-const LandGoldChip = () => {
-  const [, force] = useState(0);
+/* v2.3.2168 -> RETIRED v2.3.2320: the landscape gold chip (`.bt-land-gold`)
+   drew the count at the world's bottom centre, because sideways there is no
+   band to carry it (sheetGeometry: "the ONLY count on a landscape screen") and
+   the zone rail had only an empty spacer at its right.  That spacer is the
+   purse now, in both orientations — the rail narrows to the world's width in
+   landscape and takes the Island's inset as padding — so this component would
+   be the second live count on the screen, which is the thing the one-count
+   rule exists to prevent.  TradeWindowPanel's gold toss kept a
+   `.bt-land-gold` fallback behind `[data-purse]`; the rail carries
+   `data-purse` in both orientations, so the fallback is dead and the toss
+   still lands. */
+/* ═══ v2.3.2320: THE DRILL TITLE SHOWS A WORD OR NOTHING ═══
+ * The label beside the back chip on a drilled screen ("SETTINGS", "BUILD",
+ * "LOADOUT") shares its row with the CLOSE pill, the back chip and five nav
+ * buttons, and after those it has ~16px on a 390px phone.  Left to truncate,
+ * "Settings" rendered on screen as "S." — captured, not guessed.  A two-glyph
+ * stub is worse than no label: it reads as a rendering bug, and it says less
+ * than the lit nav button already does.
+ *
+ * So the box is `flex: 1 1 0` — it takes the row's leftover and its width does
+ * NOT depend on what is in it, which is the whole trick.  Sizing from content
+ * would make hiding the text shrink the box, which would then measure narrow
+ * forever; with a zero basis the measurement is of the SPACE, so the text can
+ * come and go without moving the thing that decides.
+ *
+ * The threshold is the width of about four uppercase glyphs at this size plus
+ * an ellipsis.  Below it there is no word to show, so none is shown; above it
+ * the ordinary text-overflow does the rest.  On a wider phone the label is
+ * simply there.
+ *
+ * The alternative was to hold the label's width in sheetGeometry's reservation
+ * and take it off the buttons — but reserving for it needs ~190px and derives
+ * buttons NARROWER than the 36 the owner asked to grow.  That trade is the
+ * wrong way round: the label is chrome, the buttons are the thing you touch. */
+const DRILL_TITLE_MIN = 52;
+const DrillTitle = ({ text }) => {
+  const ref = useRef(null);
+  const [room, setRoom] = useState(DRILL_TITLE_MIN);
   useEffect(() => {
-    const id = setInterval(() => force((v) => (v + 1) % 1000000), 1000);
-    return () => clearInterval(id);
+    const el = ref.current;
+    if (!el) return undefined;
+    const measure = () => setRoom(el.clientWidth);
+    measure();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
   }, []);
-  const R = (window._gameState && window._gameState.current && window._gameState.current.rpg) || {};
-  const gold = R.coins || R.gold || 0;
   return (
-    <div className="bt-land-gold" aria-label={`${gold} gold`} style={{
-      position: 'fixed',
-      /* v2.3.2174: centred over the WORLD, wherever the world starts.
-         --world-x is the world's left edge (0 whenever the panel is on the
-         right), so this needs no knowledge of the side — the same stamp
-         that offsets the wrap re-centres the chip. */
-      left: 'calc(var(--world-x, 0px) + var(--play-w, 100%) / 2)',
-      transform: 'translateX(-50%)',
-      bottom: 'calc(var(--sab, 0px) + 6px)',
-      zIndex: 30,
-      display: 'flex', alignItems: 'center', gap: 5,
-      padding: '4px 10px',
-      background: 'rgba(13,22,27,.78)',
-      border: '1px solid rgba(229,237,233,.16)',
-      borderRadius: 999,
-      pointerEvents: 'none',
-    }}>
-      <img src="/icons/popups/gold.webp" alt="" draggable={false}
-        style={{ width: 16, height: 16, objectFit: 'contain' }} />
-      <span className="bt-coin-glimmer" style={{
-        color: COL.gold, fontSize: 14, fontWeight: 800,
-        fontVariantNumeric: 'tabular-nums', lineHeight: 1,
-      }}>{Number(gold).toLocaleString()}</span>
-    </div>
+    <div ref={ref} style={{
+      flex: '1 1 0', minWidth: 0, maxWidth: 132,
+      fontSize: 13,
+      fontWeight: 700,
+      letterSpacing: '.10em',
+      textTransform: 'uppercase',
+      color: COL.text,
+      whiteSpace: 'nowrap',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+    }}>{room >= DRILL_TITLE_MIN ? text : ''}</div>
   );
 };
 

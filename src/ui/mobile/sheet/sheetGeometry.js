@@ -417,7 +417,34 @@ export function navButtonSize(vw, vh) {
      DPS width on buttons that were already big enough — while the NAME,
      which the owner widened deliberately at v2.3.1650, paid for it.  The
      surplus goes back to the identity row instead. */
-  return { w: Math.min(Math.max(w, 26), 36), h: identityRowHeight(vw, vh) - 2 * NAV_GAP };
+  /* ═══ v2.3.2320: THE CEILING GOES BACK UP, 36 -> 44 ═══
+     Owner: "make the 5 dashboard navigation buttons wider to increase tap
+     surface".  He is asking for what the house rule already demands:
+     docs/UI-BIBLE.md — "Touch targets: 44x44pt minimum for anything
+     tappable (Apple HIG).  Visuals may be smaller; the hit area may not."
+     Measured, these were 36 x 44 — compliant on one axis only.
+
+     The v2.3.1655 reason for the 36 has expired rather than been overruled.
+     It protected the identity row's NAME, and there is no name on that row
+     any more: the strip shed the portrait (v2.3.1848), the stat row
+     (v2.3.1849), the name and level and XP (v2.3.1853/1857), and finally
+     the gold purse (v2.3.2320, to the zone header).  The row it was
+     yielding to is empty, so the surplus has nowhere to go back to.
+
+     44 IS A CEILING, NOT A WIDTH.  The derivation below still decides, and on
+     narrow phones it lands under the ceiling: 44 at 390 and above, 43 at 375,
+     40 at 360, 32 at 320.  All of those are wider than the 26-36 they replace
+     at the same widths (320 sat ON the floor before), and nothing down to 320
+     reaches the floor now.  Below ~300 it still would, which is what a floor
+     is for.
+
+     HEIGHT IS NOT 44 EVERYWHERE, and that is deliberate, not an oversight.
+     `h` comes from identityRowHeight, which is 40 + (vh <= 720 ? 8 : 12) —
+     so an SE-class phone gets 40 tall.  Raising it would raise the row,
+     which feeds barHeight, which is --dash-h: the BAR-height invariant that
+     mp-btnlayout sweeps five viewports to protect, and reallocating the
+     canvas to buy 4px of button is the wrong trade.  Width was the ask. */
+  return { w: Math.min(Math.max(w, 26), 44), h: identityRowHeight(vw, vh) - 2 * NAV_GAP };
 }
 
 /* v2.3.1653: the leftmost x the nav group may start at.  It WAS the weapon
@@ -430,7 +457,32 @@ export function navButtonSize(vw, vh) {
    it) is exactly what pays for the fifth nav button — the owner's trade,
    made explicit here rather than absorbed silently.  What the line still
    has to fit: the portrait, an XP bar, and the gold count. */
-const IDENTITY_MIN_LINE = 40 + 6 + 40 + 6 + 60; /* portrait, XP, gold */
+/* ═══ v2.3.2320: THE RESERVATION WAS FOR THINGS NOBODY DRAWS ═══
+   152px held back a 40px portrait, a 40px XP bar and a 60px gold count.  The
+   portrait went at v2.3.1848, the XP pair at v2.3.1853/1857, and the purse
+   moved to the zone header rail in this change — after which IdentityStrip's
+   band branch returns null and BottomDashboard does not mount it at all.  A
+   reservation for three retired elements is not caution, it is a leak: it is
+   why the rail derived 34px at 360 and hit its 26px floor at 320.
+
+   WHAT THE ROW ACTUALLY HOLDS to the left of the buttons, measured, is the
+   CLOSE pill at 75.9 — and, on a drilled screen, a 34px back chip after it.
+   122 is those two plus the three 4px gaps around them.
+
+   THE DRILL STATE IS IN THE NUMBER ON PURPOSE, and it was tempting to leave
+   it out: reserving only for the pill derives 44px buttons at 360 instead of
+   40, which looks like a straight win.  It is not.  At 360, CLOSE + back chip
+   + a 244px rail + padding comes to 374 inside 360 — measured, the rail hung
+   6px off the right edge of the phone — and a nav button that is partly off
+   the screen is the exact silent failure this change exists to fix.  A
+   reservation that is only true on the resting screen is not a reservation.
+
+   The drill TITLE is still not covered, and cannot be: reserving for it as
+   well needs ~190 and derives buttons narrower than the 36 this replaces.  It
+   flexes instead (BottomDashboard gives it `flex: 0 1 auto` and an ellipsis),
+   so on a drilled screen it is the title that gets abbreviated rather than the
+   buttons that leave the phone. */
+const IDENTITY_MIN_LINE = 122; /* the CLOSE pill, the drill back chip, gaps */
 function navGroupLeftLimit(vw) {
   return DASH_GAP + IDENTITY_MIN_LINE;
 }

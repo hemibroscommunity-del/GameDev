@@ -1,18 +1,31 @@
-/* THE BAND'S COMPACT SUMMARY (v2.3.1848).
+/* THE BAND'S COMPACT SUMMARY (v2.3.1848) — AND ITS RETIREMENT (v2.3.2320).
  *
- * Owner: "in the top dashboard where it shows the character head preview I
- * want to replace it with a compact summary like this" — NAME · LV n, an XP
- * bar with a percentage, and DPS / DEF / HP / coins — plus "the XP bar will
- * need to be shown based on whatever weapon is closest to the next level
- * with a little weapon icon preceding it."
+ * Owner, then: "in the top dashboard where it shows the character head preview
+ * I want to replace it with a compact summary like this" — NAME · LV n, an XP
+ * bar with a percentage, and DPS / DEF / HP / coins.
  *
- * The claim that is easy to make and hard to keep is the XP bar's.  "A bar
- * appears" is true of the bar that was already there; "it tracks the closest
- * weapon" is a statement about which of three numbers won, and the only way
- * to test it is to CHANGE which one wins and require the row to follow.  So
- * this drives the bar three times — melee ahead, then bow ahead, then magic
- * ahead — and checks both the icon and the percentage each time.  A build
- * that hard-coded the melee icon passes the first pass perfectly.
+ * Owner, since, four more times: cut the stat row, cut the name and level, cut
+ * the XP pair ("the dashboard menu has the 3 skills on it already for xp"),
+ * and finally "move gold amount display to very top right on the top bar that
+ * lists the zone name".  Each cut because something else on screen already
+ * said it — and the last one empties the block, so the summary is gone.
+ *
+ * WHAT THIS FILE IS NOW, in two halves:
+ *
+ *   1. The summary's ABSENCE, and the two things that outlived it: the row it
+ *      lived in still has to fit, and the character screen still has to be one
+ *      tap away — it was the summary that made it so, and now it is the rail's
+ *      Character button.  Where the gold WENT is mp-goldrail's subject, not
+ *      this one's.
+ *
+ *   2. The three combat skill cards below it, unchanged and still the bulk of
+ *      this file.  The claim that is easy to make and hard to keep is the XP
+ *      bar's: "a bar appears" is true of the bar that was already there, while
+ *      "it tracks the closest weapon" is a statement about which of three
+ *      numbers won.  So this drives the bar three times — melee ahead, then
+ *      bow ahead, then magic ahead — and checks both the icon and the
+ *      percentage each time.  A build that hard-coded the melee icon passes
+ *      the first pass perfectly.
  */
 import * as H from './harness.mjs';
 
@@ -214,98 +227,85 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   await P.page.waitForTimeout(600);
 
-  const band = await readBand(P);
-  rec.ok('the band summary is there (guard)', !!(band && band.found), band);
-  /* The pool really is stocked — without this the badge assertion below is
-     vacuous, since a character with nothing to spend draws no badge either
-     way and the check would pass on the code it is meant to catch. */
-  const pool = await P.page.evaluate(() => {
-    const p = window._gameState.current.rpg.prog3;
-    return (p && p.pool) || 0;
-  });
-  rec.ok('the character has unspent points to nag about (guard)', pool > 0, { pool });
-
-  /* ── the head is GONE ──
-     Asserted as "no portrait image", not "the summary exists": both could be
-     true at once if the summary were added beside the head, which is the
-     obvious way to satisfy the request and not what was asked. */
-  const portraitGone = !(band.imgs || []).some((sizeSrc) =>
-    /profile\.webp|data:image\/(png|webp)/i.test(sizeSrc || ''));
-  rec.ok('the head preview is gone from the band', portraitGone, { imgs: band.imgs });
-
-  /* ── what the band says now ── */
-  const all = (band.texts || []).join(' ');
-  rec.ok('it shows the coins', /\b75\b/.test(all), band.texts);
-  /* ═══ v2.3.1853: EVERYTHING ELSE IS GONE FROM THE BAND ═══
-     Four rounds of cuts, each because something else on screen already said
-     it: the portrait, then DPS/DEF/HP, then the name and level, and now the
-     XP pair — owner: "actually just put the coins there.  The dashboard
-     menu has the 3 skills on it already for xp."
-
-     Every one is asserted ABSENT.  A removal nothing checks is one the next
-     person restores by accident, and "less on the band" has been the whole
-     direction of this pass. */
-  rec.ok('...and nothing else — no stat row', !/DPS|DEF|\bHP\b/.test(all), band.texts);
-  rec.ok('...no name or level', !/BANDIT/i.test(all) && !/\bLV\b/i.test(all), band.texts);
-  rec.ok('...no XP pair', !/\d+\/\d+/.test(all), band.texts);
-  rec.ok('...and no bar left to paint', (band.fills || []).length === 0, { fills: band.fills });
-  rec.ok('...nor the unspent-points badge',
-    !(band.texts || []).some((t) => /^\+\d+$/.test(t)), band.texts);
-  /* v2.3.1857 (owner: "center the coins within that extra space, remove the
-     dot to the left of it").  Centred is asserted as a MEASUREMENT — the
-     purse's midpoint against the strip's — because "it moved right a bit"
-     and "it is centred" look the same in a screenshot. */
-  rec.ok('the coins are centred in the strip',
-    !!(band.coinMid != null && band.box
-      && Math.abs(band.coinMid - (band.box.right - band.box.w / 2)) <= 2),
-    { coinMid: band.coinMid, stripMid: band.box && Math.round(band.box.right - band.box.w / 2) });
-
-  /* It still opens Hero — the portrait was the button, and the button is the
-     only reason the character screen is reachable from the resting band. */
-  await P.page.evaluate(() => {
-    const hero = [...document.querySelectorAll('[role="button"][aria-label="Hero"]')]
-      .filter((el) => el.offsetParent !== null)[0];
-    if (hero) hero.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
-  });
-  await P.page.waitForTimeout(900);
-  const opened = await P.page.evaluate(() =>
-    !!document.querySelector('canvas[aria-label="Your character"]'));
-  rec.ok('tapping the summary still opens Hero', opened, {});
-  await P.page.evaluate(() => { window.__broDashPanelBus.toBar(); });
-  await P.page.waitForTimeout(400);
-
-  /* ── it FITS ──
-     A summary that overflows its strip is the failure this replaces a
-     40px portrait to avoid. */
-  const fit = await readBand(P);
-  console.log('    band lines', JSON.stringify(fit.lines));
-  rec.ok('the summary does not overflow its own row',
-    fit.overflowX === false, { box: fit.box, lines: fit.lines });
-  rec.ok('...and stays inside the viewport',
-    !!(fit.box && fit.box.right <= fit.vw + 1), { right: fit.box && fit.box.right, vw: fit.vw });
-  /* Three lines where there were two: the summary must still end above the
-     row beneath it.  Skipped rather than failed when that row cannot be
-     found, so a renamed selector reports "not checked" instead of a red. */
-  rec.ok('...and its third line does not spill into the row below',
-    fit.overflowY === false
-      && (fit.belowTop == null || fit.bottom <= fit.belowTop + 1),
-    { bottom: fit.bottom, belowTop: fit.belowTop, overflowY: fit.overflowY });
-  /* A RICH player.  75 coins is four glyphs; a real purse is nine with the
-     separators, and the difference is most of a stat chip.  This is the
-     assertion that decided where the coins live.  On the original stat line
-     they fit at 75 and overflowed the strip; on the single line they sit
-     beside the XP bar, which is the flexible element that gives way. */
+  /* ═══ v2.3.2320: THE SUMMARY IS GONE, AND THAT IS THE ASSERTION NOW ═══
+   * Owner, in the same message that asked for wider nav buttons: "Move gold
+   * amount display to very top right on the top bar that lists the zone name."
+   *
+   * The purse was the last thing left in this strip — the portrait went at
+   * v2.3.1848, the stat row at v2.3.1849, the name and level and the XP pair
+   * at v2.3.1853/1857 — so moving it empties the block, and IdentityStrip's
+   * band branch returns null while BottomDashboard stops mounting it.
+   *
+   * The eight assertions that stood here measured the summary's contents and
+   * are not rewritten to "check the same thing in the header": that is
+   * mp-goldrail's job, and it does it properly (one count on the screen, in
+   * both orientations, drilled and not).  What is kept here is what only this
+   * file was ever watching — that the row the summary lived in still fits, and
+   * that the ONE job the summary did besides reading out numbers, being the
+   * way to the character screen, still has an owner.
+   *
+   * Every absence below is asserted against a SEVEN-FIGURE purse.  A band with
+   * 75 coins in it and a band with none look identical to a regex that is
+   * looking for a comma. */
   await P.page.evaluate(() => {
     window._gameState.current.rpg.coins = 1234567;
     try { window.__broDashPanelBus.toBar(); } catch (e) {}
   });
-  await P.page.waitForTimeout(600);
-  const rich = await readBand(P);
-  rec.ok('...even with a seven-figure purse',
-    rich.overflowX === false && !!(rich.box && rich.box.right <= rich.vw + 1),
-    { box: rich.box, texts: rich.texts });
-  rec.ok('...which is still fully printed, not truncated',
-    (rich.texts || []).some((t) => /1,234,567/.test(t)), { texts: rich.texts });
+  await P.page.waitForTimeout(700);
+
+  const band = await readBand(P);
+  rec.ok('the band summary is GONE — the strip retired with its last readout',
+    !band.found, band);
+
+  const inBand = await P.page.evaluate(() => {
+    const dash = document.querySelector('.bt-dashboard');
+    if (!dash) return { dash: false };
+    const leaves = [...dash.querySelectorAll('*')]
+      .filter((el) => !el.children.length && (el.textContent || '').trim())
+      .map((el) => (el.textContent || '').trim());
+    /* The identity row is the absolute row that owns the fold chip. */
+    const fold = dash.querySelector('[data-dash-fold]');
+    const row = fold ? fold.parentElement : null;
+    const r = row ? row.getBoundingClientRect() : null;
+    return {
+      dash: true,
+      gold: leaves.filter((t) => t.indexOf('1,234,567') !== -1),
+      row: r ? { w: Math.round(r.width), right: Math.round(r.right) } : null,
+      over: row ? row.scrollWidth - row.clientWidth : null,
+      kids: row ? [...row.children].map((k) => (k.getAttribute('data-dash-fold') ? 'CLOSE'
+        : (k.querySelector('.bt-navrail') || k.classList.contains('bt-navrail')) ? 'rail'
+          : ((k.textContent || '').trim().slice(0, 12) || k.tagName))) : null,
+      vw: window.innerWidth,
+    };
+  });
+  rec.ok('...and no gold count is left anywhere in the band',
+    inBand.dash && inBand.gold.length === 0, inBand.gold);
+  rec.ok('...the identity row now holds the CLOSE pill and the rail, nothing else',
+    !!inBand.kids && inBand.kids.length === 2
+      && inBand.kids[0] === 'CLOSE' && inBand.kids[1] === 'rail', inBand.kids);
+  /* The overflow check the old block did on the strip, done on the ROW — which
+     is the thing that was actually overflowing.  With the purse in here the
+     row's children came to 486 inside 382 and the rail hung off the phone. */
+  rec.ok('...and the row fits inside itself and inside the phone',
+    inBand.over !== null && inBand.over <= 1
+      && !!inBand.row && inBand.row.right <= inBand.vw + 1, inBand);
+
+  /* ── HERO IS STILL REACHABLE ──
+     The summary was a button: the portrait was the way to the character screen
+     from the resting band (v2.3.1637), and the whole block inherited that job
+     at v2.3.1848.  Retiring it is only safe because the rail's own Character
+     button is right there — so this taps THAT, for real, through the harness's
+     hit-testing opener rather than by dispatching an event at a node.  A
+     synthetic dispatch would pass on a button buried under something else,
+     which is the failure mode this row has actually had. */
+  await H.openDest(P, 'Character', { timeout: 8000 });
+  await P.page.waitForTimeout(900);
+  const opened = await P.page.evaluate(() =>
+    !!document.querySelector('canvas[aria-label="Your character"]'));
+  rec.ok('Hero is still one real tap away, from the rail instead of the summary',
+    opened, {});
+  await P.page.evaluate(() => { window.__broDashPanelBus.toBar(); });
+  await P.page.waitForTimeout(400);
   await P.page.evaluate(() => {
     window._gameState.current.rpg.coins = 75;
     try { window.__broDashPanelBus.toBar(); } catch (e) {}

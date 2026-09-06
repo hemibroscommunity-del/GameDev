@@ -1950,3 +1950,63 @@ as the unload had existed. Better still, make the loader idempotent —
 place cannot reproduce this.
 
 **Related:** §21 (an instrument that measures the wrong quantity reports green).
+
+---
+
+## §50 — A derived-geometry reservation outlives the things it reserved (v2.3.2320)
+
+**The plausible move:** widen the dashboard's five nav buttons by raising the
+ceiling in `navButtonSize` (`sheetGeometry.js`), leaving the reservation that
+feeds it alone.
+
+**Why it is wrong, twice over.**
+
+The buttons' width is DERIVED, not chosen: `navButtonSize` takes the row's
+width, subtracts `navGroupLeftLimit` — which is `DASH_GAP + IDENTITY_MIN_LINE`
+— and splits what is left five ways, then clamps. So the ceiling only bites
+when the derivation comes out ABOVE it. At 390px it derived 40 against a 36
+ceiling, so raising the ceiling did something; at 360 it derived 34 and at 320
+it hit the 26 floor, so raising the ceiling did *nothing at all* on the phones
+where the buttons were smallest. A change that reads as "make the buttons
+bigger" would have improved only the widest screens.
+
+`IDENTITY_MIN_LINE` was `40 + 6 + 40 + 6 + 60 /* portrait, XP, gold */` = 152.
+By the time it was touched, the band drew NONE of those three: the portrait
+went at v2.3.1848, the XP pair at v2.3.1853/1857, and the purse moved to the
+zone header at v2.3.2320. 152px of the row was being held back for elements
+that no longer existed. **A reservation constant is a claim about what a row
+contains, and it goes stale silently — nothing fails when the thing it protects
+is deleted.** Grep for a reservation's justification in the render tree before
+trusting the number.
+
+**The second trap, which is the expensive one: reserve for the WORST state, not
+the resting one.** The honest replacement looked like 88 (the CLOSE pill and
+its gap — everything the resting row holds). That derives 44px buttons at both
+390 and 360 and looks strictly better. Measured, it hangs the rail 6px off the
+right edge of a 360px phone whenever a panel is DRILLED, because a drilled row
+also carries a 34px back chip. The reservation has to cover the transient state
+or the transient state overflows; 122 covers it, at the cost of 40px buttons on
+a 360 instead of 44.
+
+**Why nothing caught the pre-existing version of this.** The same row already
+overflowed before any of this: with the purse in it, a drilled 390px phone put
+the "More" button at x 376..412 — its centre 4px past the screen edge. It was
+not clipped (the row is `overflow: visible`), it was simply not there. **An
+off-screen element still reports a perfect `getBoundingClientRect`**, so every
+existing assertion that read a rect stayed green, and `QuestCoach`'s Login Key
+lesson — which hit-tests that exact button and is the only prompt telling a
+player how not to lose their character — retired itself in silence (§41).
+
+**What catches it:** `tools/qa/mp/mp-goldrail.mjs` hit-tests each nav button's
+own centre with `document.elementFromPoint` and requires the button itself to
+answer, at two widths, drilled and not. On the build before the fix it reports
+`more:null [376..412]` — nothing answers — which is the shape of evidence a
+rect check cannot produce.
+
+**Rule to apply next time:** when a layout number is derived, change the
+DERIVATION and prove it at three widths and in every state the row has; a
+ceiling alone helps only the widest screen, and a rect alone cannot tell you
+whether a finger can reach the thing.
+
+**Related:** §41 (a lesson that measures unreachable is skipped in silence),
+§21 (an instrument that measures the wrong quantity reports green).

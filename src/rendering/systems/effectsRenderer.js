@@ -41,6 +41,7 @@ import { gearTint, gearArt, gearArtSafe } from '../gearVariants.js'; /* v2.3.176
 import { materialTint, weaponTint } from '../traits/materialTints.js';
 import { upscaleToFrameHeight } from '../spriteScale.js'; /* v2.3.1112: restore downscaled-on-disk sword stand-in strips to their authored frame height */
 import { AIM_CARET, AIM_CARET_EDGE } from '../aimCaret.js'; /* v2.3.1799 */
+import { rangedAimAngle } from '@/game/combatHelpers.js'; /* v2.3.2320: the bow sight line uses the SAME ladder the arrow does */
 import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX } from '../backShield.js'; /* v2.3.1784 */
 import { registerBowBodyFrames, BLOCK_STANDIN_HAND, BLOCK_OFFHAND, BLOCK_OFFHAND_PX, BLOCK_OFFHAND_ENABLED, BLOCK_OFFHAND_ART_ANG } from '../blockArm.js'; /* v2.3.1785; v2.3.1833 the away-facing hand; v2.3.1864 the off-hand weapon */
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js'; /* v2.3.1864 */
@@ -4262,16 +4263,20 @@ export class EffectsRenderer {
        no circle on the target, exactly one chip. */
     if (_ringProbeRestore) _ringProbeRestore();
 
-    /* Bow / staff / melee line of sight — a beam-shaped ribbon (filled
-       polygon) running along the aim direction, drawn while a weapon is
-       equipped AND the player is aiming, locked on, or auto-attacking.
+    /* Bow / melee line of sight — a beam-shaped ribbon (filled polygon)
+       running along the aim direction.  WHEN it is drawn is not one rule:
+       melee draws it while aiming, locked on, auto-attacking or mid-swing;
+       the bow draws it only while ATTACKING (v2.3.2320); magic never draws
+       it at all (v2.3.2258).  The gate below is the authority — this
+       sentence has been wrong twice by being edited later than the code.
        The two long edges are sine-wavy and the wave PHASE shifts with
        `now`, so the borders shimmer + drift along the beam — reads like
        a flowing energy stream rather than a hard hitscan line.  Top and
        bottom edges run 180° out of phase so the beam pulses width-wise.
-       Melee uses the same shape, shorter length (sword/shield needed a
-       forward-sense affordance per user request — same visual language
-       as bow/staff, just compressed to roughly the attack range). */
+       Melee no longer uses this shape at all — v2.3.940 replaced its reach
+       beam with the wild-swing AoE (a core circle plus a forward half-disc)
+       so the indicator matches the hit test exactly.  What is left in the
+       ranged arm below is the beam proper, and only the bow reaches it. */
     {
       const slot = S.rpg && S.rpg.activeSlot;
       const isRanged = slot === 'ranged' || slot === 'staff';
@@ -4301,8 +4306,49 @@ export class EffectsRenderer {
          (v2.3.940) whose whole contract is preview-matches-damage -- it is the
          hit test drawn, not a sight line down the range, and it was itself
          asked for as a "forward-sense affordance". */
-      const shouldDraw = !isRanged
-        && (aimState || meleeSwinging)
+      /* ═══ v2.3.2320: THE BOW GETS ITS SIGHT LINE BACK — WHILE ATTACKING ═══
+         Owner: "I want to give archers a little buff by restoring the previous
+         line of site visual only with now.  Slight wavy line one while
+         attacking one."
+
+         CALLING IT A BUFF IS THE ONE THING TO BE STRAIGHT ABOUT: it is not
+         one, and it cannot be.  Read v2.3.2258 above — this beam is drawn and
+         nothing else, no hit test reads it and no aim assist sits behind it,
+         so what comes back is legibility, not power.  If the owner wants
+         archers actually stronger that is damage, cadence or range, and it
+         should be asked for out loud rather than arrive inside a visual.
+
+         WHAT CHANGED FROM THE OLD BEHAVIOUR, deliberately, twice:
+
+         1. BOW ONLY.  v2.3.2258 turned this off for magic AND bow, and only
+            the bow half is being reversed.  `isStaff` is tested EXPLICITLY
+            rather than left to the `!isRanged` short-circuit that used to
+            protect magic — v2.3.2260's note called that "safe by operator
+            precedence ... the kind of thing a later edit reorders without
+            noticing", and re-admitting one of the two ranged slots is exactly
+            such an edit.
+
+         2. WHILE ATTACKING, not while aiming.  The old gate was `aimState`,
+            which also drew on a bare lock or a bare drag.  "While attacking"
+            is `S.autoAttack` — the fire control held down — plus a BOW_SHOT_MS
+            tail off the last arrow so the line does not strobe off between
+            shots in a volley.  This is narrower than what was removed, which
+            is what he asked for.
+
+         AND IT MUST BE A REAL BOW.  The block header used to claim it drew
+         "while a weapon is equipped"; the code only ever tested the SLOT (the
+         header is rewritten above, and this is the line that makes the old
+         claim true rather than merely deleting it).  monsterCombat
+         refuses to fire with an empty slot (`_eqWpn`), so without this a
+         player holding the button with slot 'ranged' and nothing in it would
+         get a line of sight down which no arrow ever travels. */
+      const isStaff = slot === 'staff';
+      const isBow = slot === 'ranged';
+      const hasBow = !!(S.rpg && S.rpg.rangedWeapon);
+      const bowFiring = isBow && hasBow && (!!S.autoAttack
+        || (S._bowShotAt && (now - S._bowShotAt) < BOW_SHOT_MS));
+      const shouldDraw = !isStaff
+        && (bowFiring || (isMelee && (aimState || meleeSwinging)))
         && S.player
         && !S._shieldUp; /* shield arc has its own indicator; don't overlap */
       /* ═══ v2.3.2260: THE PROBE, BECAUSE THE FIX NEXT DOOR THREATENS THIS ═══
@@ -4315,9 +4361,67 @@ export class EffectsRenderer {
          noticing.  Asserted from outside now (mp-aimpath), in the house style
          (__btAtkMark, __btPlayerDrawn): a scenario cannot look at a polygon
          that was never drawn, so the renderer reports whether it drew it. */
+      /* ═══ v2.3.2320: ONE AIM LADDER FOR THE BOW, AND IT IS THE ARROW'S ═══
+         Hoisted above the probe so the probe can report it, and rewritten for
+         the bow because the fire site moved out from under this block while
+         the beam was dark.
+
+         The old ladder here was FOUR branches measured from the player's FEET:
+         `atan2(lt.y - P.y, lt.x - P.x)` on a lock, then a bare `_aimAngle`,
+         then `_facingAngle`, then 0.  Since v2.3.2258 the shot goes through
+         `rangedAimAngle` (combatHelpers) — FIVE branches from the GRIP, with
+         the lock resolved through `lockAimPoint`.  Restoring the old ladder
+         would have drawn a line that disagrees with the arrow in three
+         separately-documented ways:
+
+           - the lock branch aimed at the target's FEET from the player's
+             FEET, which is the parallel-lines geometry v2.3.1979 fixed, and
+             `(lt.x || 0)` aims at the world ORIGIN when a coordinate is NaN;
+           - `_aimAngle` with no `_aiming` guard is the stale read v2.3.2262
+             fixed, and `_lastAimAngle` — a thumb-set heading the shot honours
+             — was not in this ladder at all;
+           - the final `aimA = 0` is due EAST, the v2.3.2254-2262 failure
+             itself.
+
+         And the beam DRAWS from the grip while computing its angle from the
+         feet, so it was internally inconsistent as well.  combatHelpers' own
+         comment says the extraction stays because "inlining it again would put
+         the same trap back for the next feature that needs to know where a
+         shot is going".  This is that feature, so it calls the function.
+
+         MELEE IS UNTOUCHED and keeps its own ladder below: that branch is not
+         a sight line, it is the wild-swing AoE drawn (v2.3.940), and its
+         contract is preview-matches-DAMAGE, against a different hit test. */
+      const _useGrip = isBow && S._bowGripDX != null && S._bowGripDY != null;
+      const _beamOrigin = S.player
+        ? { x: _useGrip ? S.player.x + S._bowGripDX : S.player.x,
+          y: _useGrip ? S.player.y + S._bowGripDY : S.player.y }
+        : null;
+      let _beamAng = null, _beamSrc = null;
+      if (shouldDraw && _beamOrigin) {
+        if (isBow) {
+          const _ra = rangedAimAngle(S, _beamOrigin.x, _beamOrigin.y);
+          _beamAng = _ra.ang; _beamSrc = _ra.src;
+        } else if (S.lockedTarget && S.lockedTarget.ref) {
+          const lt = S.lockedTarget.ref;
+          _beamAng = Math.atan2((lt.y || 0) - S.player.y, (lt.x || 0) - S.player.x);
+          _beamSrc = 'melee-lock';
+        } else if (S._aimAngle != null) { _beamAng = S._aimAngle; _beamSrc = 'melee-aim'; }
+        else if (S._facingAngle != null) { _beamAng = S._facingAngle; _beamSrc = 'melee-facing'; }
+        else { _beamAng = 0; _beamSrc = 'melee-zero'; }
+      }
       if (typeof window !== 'undefined') {
         window.__btSightBeam = function () {
-          return { visible: !!shouldDraw, ranged: !!isRanged, aimState: !!aimState, slot: slot || null };
+          /* v2.3.2320: `angle` and `origin` join the probe.  "The beam is
+             drawn" and "the beam points where the arrow goes" are different
+             claims, and only the second one is what a sight line is FOR — a
+             line that disagrees with the shot is worse than no line.  A
+             scenario cannot read a polygon, so the renderer reports the
+             heading it drew and where it drew it from. */
+          return { visible: !!shouldDraw, ranged: !!isRanged, aimState: !!aimState,
+            slot: slot || null, firing: !!bowFiring,
+            angle: _beamAng, src: _beamSrc,
+            origin: _beamOrigin ? { x: _beamOrigin.x, y: _beamOrigin.y } : null };
         };
       }
       /* v2.3.940: melee shows its wild-swing AoE shape (a 360° core circle + a
@@ -4327,17 +4431,7 @@ export class EffectsRenderer {
          type 'sword' so it never showed -- all melee uses the wild swing.) */
       if (shouldDraw) {
         const P = S.player;
-        let aimA;
-        if (isLocked) {
-          const lt = S.lockedTarget.ref;
-          aimA = Math.atan2((lt.y || 0) - P.y, (lt.x || 0) - P.x);
-        } else if (S._aimAngle != null) {
-          aimA = S._aimAngle;
-        } else if (S._facingAngle != null) {
-          aimA = S._facingAngle;   // tap-swing with no active aim: use body facing
-        } else {
-          aimA = 0;
-        }
+        const aimA = _beamAng;   /* v2.3.2320: computed above, so the probe sees it */
         if (isMelee) {
           /* v2.3.1134: Cleave widens the preview exactly like the hit test in
              monsterCombat — preview-matches-damage is the v2.3.939 contract. */
@@ -4392,8 +4486,12 @@ export class EffectsRenderer {
           gfx.closePath();
           gfx.stroke({ color: AIM_CARET_EDGE, width: 1.5, alpha: 0.6 });
         } else {
-        /* Ranged / staff: the reach beam (melee now uses the AoE shape above).
-           The `: 95` fallback is retained for any non-ranged that reaches here. */
+        /* Ranged: the reach beam (melee uses the AoE shape above).  Since
+           v2.3.2320 only the BOW reaches here — staff is excluded at the gate
+           and melee takes the branch above — so the `: 95` arm is unreachable
+           today.  It stays anyway: collapsing it to a bare 280 would silently
+           hand melee a 280px beam the day anything else falls through, and the
+           v2.3.940 contract for that branch is a 95px hit shape. */
         const lineLen = isRanged ? 280 : 95;
         const halfW = 2;          // half-width of beam at neutral
         const waveAmp = 1.6;      // edge wave amplitude in px
@@ -4408,9 +4506,12 @@ export class EffectsRenderer {
            player's feet, so the arrow flies down the MIDDLE of the line of
            sight rather than parallel-and-offset to it.  Staff/melee keep the
            feet origin; if no grip has been published yet, fall back to feet. */
-        const _useGrip = slot === 'ranged' && S._bowGripDX != null && S._bowGripDY != null;
-        const originX = _useGrip ? P.x + S._bowGripDX : P.x;
-        const originY = _useGrip ? P.y + S._bowGripDY : P.y;
+        /* v2.3.2320: the origin is the one hoisted above the probe — the same
+           point the angle was measured from, and the same point the probe
+           reports.  It used to be recomputed here, which is how the beam came
+           to draw from the grip along an angle taken from the feet. */
+        const originX = _beamOrigin.x;
+        const originY = _beamOrigin.y;
         const top = [];
         const bot = [];
         for (let i = 0; i <= segments; i++) {
