@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  goldrail: () => import('./mp-goldrail.mjs'), /* v2.3.2320: the purse moves to the zone rail and the nav buttons take its room */
   arrowblast: () => import('./mp-arrowblast.mjs'), /* v2.3.2279: the bow special's blast finale, end to end */
   chatlayer: () => import('./mp-chatlayer.mjs'), /* v2.3.2276: chat paints under the menus, and its composer stands down for them */
   cooktap: () => import('./mp-cooktap.mjs'), /* v2.3.2274: a REAL tap on your own fire cooks, and does not open chat */
@@ -33,6 +34,8 @@ const SCENARIOS = {
   moncue: () => import('./mp-moncue.mjs'),       /* v2.3.2295: the notice "!" and the red plate, against REAL server monsters */
   engage: () => import('./mp-engage.mjs'), /* v2.3.2246: engaged movement is target-relative, and the attack indicator is painted */
   freshbuild: () => import('./mp-freshbuild.mjs'), /* v2.3.2237: a resumed app takes the new build; a live game is only offered it */
+  lootsize: () => import('./mp-lootsize.mjs'), /* v2.3.2316: ground loot and coins draw at 2x */
+  lockchip: () => import('./mp-lockchip.mjs'), /* v2.3.2313: the lock-on chip sits above the sprite, on a snowman and a slime */
   slimeorb: () => import('./mp-slimeorb.mjs'), /* v2.3.2310: the blue slime's ball is drawn at the size it is meant to be */
   snowburrow: () => import('./mp-snowburrow.mjs'), /* v2.3.2309: the burrowing snowman is still drawn on the second visit to frost */
   devwarp: () => import('./mp-devwarp.mjs'), /* v2.3.2308: the test panel's zone chips, pressed for real, from anywhere */
@@ -248,7 +251,6 @@ const SCENARIOS = {
   firepeer: () => import('./mp-firepeer.mjs'), /* v2.3.2146: is the peer DRAWN while lighting a fire? */
   cookpeer: () => import('./mp-cookpeer.mjs'), /* v2.3.2303: ...and do they wear their clothes while cooking and chopping? */
   npctap: () => import('./mp-npctap.mjs'), /* v2.3.2305: tapping a character to talk -- and NOT hitting him */
-  aimarrow: () => import('./mp-aimarrow.mjs'), /* v2.3.2307: does the bow's arrow point where the shot goes? */
   remoteanim: () => import('./mp-remoteanim.mjs'), /* v2.3.1749: what the other player sees you doing */
   gearown: () => import('./mp-gearown.mjs'), /* v2.3.1750: armour you have not earned is not offered */
   pine: () => import('./mp-pine.mjs'), /* v2.3.1763: the first wood tier */

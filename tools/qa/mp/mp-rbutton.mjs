@@ -192,6 +192,41 @@ export async function run({ browser, wsPort, webPort, rec }) {
      `> 0.5` threshold.  Waiting past the transition rather than at its edge is
      the fix; the resolver was never wrong. */
   await P.page.waitForTimeout(450);
+
+  /* ═══ v2.3.2317: THE ROD MATCHES THE ASSEMBLY, AND THE ARROW IS GONE ═══
+     Owner: "the joystick rod isn't semi transparent like the rest of the
+     joystick assembly", and separately "remove the arrow pointing idea on the
+     right joystick".
+
+     The rod is only drawn while a thumb is dragging, which is exactly the
+     state this section is already in -- so it is measured here rather than in
+     a scenario of its own. Asserted as EQUALITY WITH THE DISC rather than
+     against a number: the old bug was two independent constants for one
+     object, and pinning the rod to its own new literal would rebuild that. */
+  const rodVsDisc = await P.page.evaluate(() => {
+    const disc = document.querySelector('.bt-joystick-base') || document.querySelector('[data-disc="L"] > div');
+    const zone = document.querySelector('[data-disc="L"]');
+    const rod = zone ? [...zone.querySelectorAll('div')].find((d) => /joystick\/stick/.test(d.style.backgroundImage || '')) : null;
+    if (!rod) return { err: 'no rod' };
+    const src = disc || zone;
+    return {
+      rod: rod.style.opacity,
+      disc: src ? src.style.opacity : null,
+      width: rod.style.width,
+    };
+  });
+  console.log('    ROD vs DISC -> ' + JSON.stringify(rodVsDisc));
+  rec.ok('the joystick rod is drawn while dragging (guard)',
+    !rodVsDisc.err && parseFloat(rodVsDisc.width) > 0 && parseFloat(rodVsDisc.rod) > 0, rodVsDisc);
+  rec.ok('...and wears the same opacity as the rest of the assembly, not its own number',
+    !rodVsDisc.err && rodVsDisc.disc != null
+      && Math.abs(parseFloat(rodVsDisc.rod) - parseFloat(rodVsDisc.disc)) < 0.02, rodVsDisc);
+  /* The arrow is gone from the DOM entirely -- not merely hidden, which a
+     display:none check would also accept on a build that still shipped it. */
+  const arrowGone = await P.page.evaluate(() =>
+    document.querySelectorAll('[data-aim-arrow], .bt-rjoy-aim').length);
+  rec.ok('the bow aim arrow is gone from the right control', arrowGone === 0, { found: arrowGone });
+
   const visLdown = await discVis(P, 'L');
   rec.ok('a thumb on the movement side paints the left joystick', !!visLdown && visLdown.shown === true, visLdown);
   await P.page.evaluate(() => { const c = window.__centre('[data-joyzone="L"]'); window.__touch(c.el, 'touchend', c.x + 30, c.y + 40, 30); });

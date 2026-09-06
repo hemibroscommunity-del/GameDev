@@ -36,11 +36,20 @@ const geom = (P) => P.page.evaluate(() => {
   const sheet = document.querySelector('.bt-land-sheet');
   const sh = sheet ? sheet.getBoundingClientRect() : null;
   const zh = document.querySelector('.bt-zone-header');
-  /* v2.3.2168: the gold chip that replaced the bar's screen-length readout */
-  const gold = document.querySelector('.bt-land-gold');
+  /* v2.3.2168: the gold chip that replaced the bar's screen-length readout.
+     v2.3.2320: ...and which the zone rail's own purse column replaced in turn
+     (owner: "move gold amount display to very top right on the top bar that
+     lists the zone name").  The chip is gone, so this reads the rail — and
+     `chip` is kept as an explicit ABSENCE, because "the readout moved" and
+     "there are now two of them" both leave a readout in the rail. */
+  const gold = document.querySelector('.bt-zone-header__balance');
   const goldR = gold ? gold.getBoundingClientRect() : null;
   return {
-    gold: goldR ? { cx: Math.round(goldR.left + goldR.width / 2), bottom: Math.round(goldR.bottom), text: (gold.textContent || '').trim() } : null,
+    chip: !!document.querySelector('.bt-land-gold'),
+    gold: goldR ? { cx: Math.round(goldR.left + goldR.width / 2),
+      left: Math.round(goldR.left), right: Math.round(goldR.right),
+      top: Math.round(goldR.top), bottom: Math.round(goldR.bottom),
+      text: (gold.textContent || '').trim() } : null,
     canvasW: Math.round(r.width), canvasH: Math.round(r.height),
     dashH: parseInt(cs.getPropertyValue('--dash-h')) || 0,
     colsH: parseInt(cs.getPropertyValue('--cols-h')) || 0,
@@ -133,9 +142,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
      the canvas's own aspect no matter what the rule does.  That assertion
      could never fail, which makes it worse than none (TRAPS #37 -- measuring a
      drawing against the box that defines it tests arithmetic, not art). */
-  rec.ok('...gold is a CHIP at the world\'s bottom centre, not a screen-length bar',
-    !!rest.gold && Math.abs(rest.gold.cx - 844 / 2) <= 3 && rest.gold.bottom >= 370
-      && /\d/.test(rest.gold.text), rest.gold);
+  /* v2.3.2320: the count is in the zone rail's right column now, not a chip at
+     the world's bottom centre.  Asserted at the world's RIGHT EDGE and at the
+     TOP, which is the pair of facts that distinguishes the new home from the
+     old one — a check that only said "a gold readout exists" would have passed
+     on either. */
+  rec.ok('...gold reads out at the TOP RIGHT of the zone rail, and the bottom chip is gone',
+    !!rest.gold && !rest.chip && rest.gold.top < 60
+      && rest.gold.right >= rest.playW - 20 && /\d/.test(rest.gold.text),
+    { gold: rest.gold, chip: rest.chip, playW: rest.playW });
   /* ═══ v2.3.2174: THE PANEL TAKES THE CLEAR EDGE ═══
      Owner: "The iPhone has a punch hole that's awkward since it goes right
      through the menus."  With no Island to dodge (headless, both insets 0)
@@ -198,10 +213,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!open.sheet && open.sheet.top <= 1 && Math.abs(open.sheet.bottom - 390) <= 2, open.sheet);
   rec.ok('...still no band painted anywhere (the bar stays gone with a sheet open)',
     !open.band || open.band.h === 0, open.band);
-  rec.ok('...and the gold chip re-centres over the NARROWED world, off the sheet',
-    !!open.gold && Math.abs(open.gold.cx - (open.worldX + open.playW / 2)) <= 3
-      && open.gold.cx > open.worldX + 20
-      && open.gold.cx < open.worldX + open.playW - 20,
+  /* v2.3.2320: the rail narrows to the world with the sheet open (it is told
+     --world-x and --play-w by the same stamp that offsets the wrap), so the
+     purse rides its right edge instead of re-centring.  Its right edge landing
+     on the world's is the whole claim — off the sheet, and not left behind at
+     the old screen-width edge underneath it. */
+  rec.ok('...and the gold readout rides the NARROWED world\'s right edge, off the sheet',
+    !!open.gold && Math.abs(open.gold.right - (open.worldX + open.playW)) <= 12
+      && open.gold.left > open.worldX + 20,
     { gold: open.gold, worldX: open.worldX, playW: open.playW });
   /* v2.3.2176: the one-position law (v2.3.1637b) is now measured between
      two OPEN states -- the buttons do not exist at rest to compare against,
@@ -655,7 +674,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...opening it there yields the world\'s RIGHT edge, not its left',
     flipOpen.side === 'right' && flipOpen.worldX === 0 && flipOpen.canvasX === 0
       && !!flipOpen.sheet && Math.abs(flipOpen.sheet.x - flipOpen.playW) <= 1
-      && Math.abs(flipOpen.gold.cx - flipOpen.playW / 2) <= 3, flipOpen);
+      && Math.abs(flipOpen.gold.right - flipOpen.playW) <= 12, flipOpen);
   /* Put the probe back so nothing after this inherits a fake notch. */
   await P.page.evaluate(async () => {
     const st = document.getElementById('bt-fake-island');

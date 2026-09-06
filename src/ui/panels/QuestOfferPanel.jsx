@@ -109,7 +109,10 @@ export const QuestOfferPanel = (props) => {
        he is offering, inert once you are owed. The reward is not destroyed
        either way (the worker keeps the quest claimable), so this is about not
        making you walk back for it. */
-    <div className="bt-npcdlg-scrim" onClick={offering ? onClose : undefined}>
+    /* v2.3.2311: `bt-noselect` for the same reason as NpcDialogue -- see the
+       note there. This panel portals into document.body too, so it inherits
+       nothing from .brotown-wrap and needs its own declaration. */
+    <div className="bt-npcdlg-scrim bt-noselect" onClick={offering ? onClose : undefined}>
       <div className="bt-qoffer" style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
         {!offering && (
           /* v2.3.2289: the deliberate exit that replaces the accidental one.

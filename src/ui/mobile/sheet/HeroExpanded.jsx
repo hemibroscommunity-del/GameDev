@@ -108,6 +108,19 @@ export const HeroExpanded = () => {
      Defaults to whatever you are actually holding, so opening Build
      mid-fight lands on the weapon you were just swinging. */
   const [buildCatState, setBuildCat] = useState(null);
+  /* ═══ v2.3.2315: AN ACCORDION THAT CLOSES ═══
+     Owner: "the stat allocation accordion menu doesn't collapse when I tap
+     on it."  It did not, and the header said why: it called
+     setBuildCat(sk.key) -- a SET, not a toggle -- so tapping the open lane
+     re-selected the lane it was already on and nothing moved.
+
+     A closed state could not be expressed in buildCat alone, either:
+     `buildCatState || prog3ActiveCat(R)` falls back to the lane for the
+     weapon you are holding, so clearing it re-opens that one rather than
+     closing everything. Hence a separate flag -- which also keeps buildCat
+     a valid category at all times, so the seven stat controls, the point
+     pools and the prog3_allocate payload need no null handling. */
+  const [laneClosed, setLaneClosed] = useState(false);
   /* v2.3.1766: which stat the allocation tooltip is describing, or null for
      its resting state (the character's overall DPS).  Cleared when the sheet
      changes section so the strip never describes a stat that is off screen. */
@@ -126,7 +139,10 @@ export const HeroExpanded = () => {
   const _req = heroSectionBus.take();
   if (_req) {
     if (_req.section && _req.section !== _lastSection) { _lastSection = _req.section; setSectionState(_req.section); }
-    if (_req.cat) setBuildCat(_req.cat);
+    /* v2.3.2315: and re-open, or a COMBAT pill would deep-link you to a lane
+       that stays collapsed -- the request means "show me this", and honouring
+       half of it is worse than ignoring it. */
+    if (_req.cat) { setBuildCat(_req.cat); setLaneClosed(false); }
   }
 
   const S = getState();
@@ -1439,7 +1455,7 @@ export const HeroExpanded = () => {
                 </div>
               </div>
               {PROG3_SKILL_META.map((sk) => {
-                const open = buildCat === sk.key;
+                const open = !laneClosed && buildCat === sk.key;
                 const lvl = prog3SkillLevel(R, sk.key);
                 /* v2.3.2176: what THIS lane can spend — its own channelled
                    points plus any legacy ones.  Against an old worker there
@@ -1477,7 +1493,17 @@ export const HeroExpanded = () => {
                       aria-label={`${sk.label}, level ${lvl}`}
                       aria-expanded={open}
                       title={sk.label}
-                      onPointerUp={(e) => { e.stopPropagation(); setBuildCat(sk.key); }}
+                      /* v2.3.2315: a TOGGLE. Tapping the open lane closes it;
+                         tapping any other opens that one. Still one lane at a
+                         time -- the default is unchanged, so the seven controls
+                         are on screen exactly as before until you choose
+                         otherwise (which is what mp-prog3 pins). */
+                      onPointerUp={(e) => {
+                        e.stopPropagation();
+                        if (open) { setLaneClosed(true); return; }
+                        setBuildCat(sk.key);
+                        setLaneClosed(false);
+                      }}
                       style={{
                         /* v2.3.2222: the OPEN header grows to 28 beside 48px rows; a
                            collapsed one stays 24.  Everything below the last stat row
@@ -1532,9 +1558,14 @@ export const HeroExpanded = () => {
                           ))}
                         </span>
                       )}
+                      {/* v2.3.2315: 10 -> 13. Owner: "the level label needs to
+                          increase in size for legibility." It is one of two
+                          things a COLLAPSED lane exists to tell you (the other
+                          is its name), so it was the smallest type on the row
+                          carrying some of its most useful information. */}
                       <span style={{
                         flex: open ? 1 : 'none', textAlign: 'right',
-                        fontSize: 10, fontWeight: 800, color: COL.text2,
+                        fontSize: 13, fontWeight: 800, color: COL.text2,
                         fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
                       }}>LV {lvl}</span>
                       {/* v2.3.2176: the lane's OWN points — the number the
@@ -1550,7 +1581,19 @@ export const HeroExpanded = () => {
                           fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
                         }}>{lanePts} PT{lanePts === 1 ? '' : 'S'}</span>
                       )}
-                      <span aria-hidden="true" style={{ flex: 'none', fontSize: 10, color: COL.muted, lineHeight: 1 }}>{open ? '\u25B2' : '\u25BC'}</span>
+                      {/* ═══ v2.3.2315: THE ARROW IS A CONTROL, SO IT LOOKS LIKE ONE ═══
+                          Owner: "the expand and unexpand up/down arrows ...
+                          needs to increase in size for legibility."
+                          10px of COL.muted is the dimmest, smallest thing on a
+                          row it is meant to be the affordance for -- and as of
+                          this version it finally does something in both
+                          directions, so it has to read as pressable. 14px and
+                          the brighter ink; open takes the accent, because the
+                          lane it belongs to is the one you are working in. */}
+                      <span aria-hidden="true" style={{
+                        flex: 'none', fontSize: 14, lineHeight: 1,
+                        color: open ? COL.accent : COL.text2,
+                      }}>{open ? '\u25B2' : '\u25BC'}</span>
                     </div>
                     {open && (
                       /* v2.3.2222: ONE column, full width (owner's pick), so
