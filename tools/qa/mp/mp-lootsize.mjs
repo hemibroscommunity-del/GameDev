@@ -126,6 +126,69 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.skip('the coin is drawn at twice its old size', 'this drop carried no coin');
   }
 
+  /* ═══ v2.3.2318: IT BOBS, AND IT FLASHES BEFORE IT GOES ═══
+     Owner: "make the monster loot while on the ground slightly bob up and
+     down", and "make it fade then show full opacity for about the last 10
+     seconds before it disappears".
+
+     Remnants were explicitly EXCLUDED from the bob as "a settled pile" -- i.e.
+     every monster drop in the game, which is the one category he was looking
+     at. So the bob is measured on a REMNANT specifically; a test that watched
+     a coin would have passed throughout the bug.
+     Sampled on rAF, and the pile is re-asserted each frame so the worker's
+     tick cannot take it away mid-measurement. */
+  const motion = await P.page.evaluate(() => new Promise((res) => {
+    const S = window._gameState.current;
+    const l = (S.groundLoot || [])[0];
+    if (!l) { res(null); return; }
+    const ys = [];
+    const t0 = Date.now();
+    const step = () => {
+      const sp = l._pixiSprite;
+      if (sp && !sp.destroyed) ys.push(sp.y);
+      if (Date.now() - t0 < 1600) { requestAnimationFrame(step); return; }
+      res({ n: ys.length, span: ys.length ? +(Math.max.apply(null, ys) - Math.min.apply(null, ys)).toFixed(2) : 0 });
+    };
+    requestAnimationFrame(step);
+  }));
+  console.log('    BOB -> ' + JSON.stringify(motion));
+  rec.ok('the pile was sampled over time (guard)', !!motion && motion.n >= 6, motion);
+  /* "Slightly": amplitude 2.5 world px, so a full swing is ~5. A floor of 2
+     separates it from the dead-still 0 it used to be without pinning the
+     exact number; the ceiling keeps "slightly" honest. */
+  rec.ok('a monster remnant bobs on the ground instead of sitting dead still',
+    !!motion && motion.span >= 2 && motion.span <= 12, motion);
+
+  /* THE LAST CALL. Age the pile into its final ten seconds and watch the
+     alpha: it must move (a pulse) AND come back to full, which is what he
+     asked for -- "fade THEN show full opacity". A monotone ramp, which is what
+     shipped before, fails the second half. */
+  const flash = await P.page.evaluate(() => new Promise((res) => {
+    const S = window._gameState.current;
+    const l = (S.groundLoot || [])[0];
+    if (!l) { res(null); return; }
+    /* 8 seconds left of a 30s life. */
+    l.ts = Date.now() - 22000;
+    const a = [];
+    const t0 = Date.now();
+    const step = () => {
+      const sp = l._pixiSprite;
+      if (sp && !sp.destroyed) a.push(sp.alpha);
+      if (Date.now() - t0 < 1800) { requestAnimationFrame(step); return; }
+      res({ n: a.length, min: a.length ? +Math.min.apply(null, a).toFixed(3) : null,
+            max: a.length ? +Math.max.apply(null, a).toFixed(3) : null });
+    };
+    requestAnimationFrame(step);
+  }));
+  console.log('    LAST-CALL ALPHA -> ' + JSON.stringify(flash));
+  rec.ok('the expiring pile was sampled (guard)', !!flash && flash.n >= 6, flash);
+  rec.ok('a pile in its last seconds pulses rather than just dimming',
+    !!flash && (flash.max - flash.min) >= 0.2, flash);
+  rec.ok('...and comes back to FULL opacity, which is the half a plain fade misses',
+    !!flash && flash.max >= 0.95, flash);
+  rec.ok('...without ever going invisible before it actually goes',
+    !!flash && flash.min >= 0.25, flash);
+
   /* THE THING THAT MUST NOT HAVE MOVED. A size change that also changed how
      close you must stand to collect would be a gameplay change nobody asked
      for: the pickup radius is a hard-coded 20 world px in groundLoot.js and

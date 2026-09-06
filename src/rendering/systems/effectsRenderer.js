@@ -5049,7 +5049,14 @@ export class EffectsRenderer {
       }
       activeLoot.add(l);
       this._knownLoot.add(l);
-      /* Fodder + variant loot has no bob; it's a settled puddle/pile. */
+      /* ═══ v2.3.2318: EVERYTHING ON THE GROUND BOBS ═══
+         Owner: "make the monster loot while on the ground slightly bob up and
+         down."  It did not: remnants were explicitly excluded here as "a
+         settled puddle/pile", which is every monster drop in the game -- so
+         the one category he was looking at was the one category holding
+         still. The exclusion goes; the amplitude stays small, because
+         "slightly" is the word he used and a pile that swings reads as a
+         floating pickup rather than something lying on the floor. */
       const isFodder = l.skull === 'fodder' || !!MONSTER_VARIANTS[l.skull];
       /* v2.3.190: visual pile offset.  Shifts every l.y+bob reference
          (gold glow, icon, count, etc) down by 18 px (was 8 in v2.3.190;
@@ -5058,8 +5065,33 @@ export class EffectsRenderer {
          center.  Pickup hit detection in BroTown is unaffected --
          this is purely a visual offset. */
       const PILE_Y_OFFSET = 38;
-      const bob = (isFodder ? 0 : Math.sin(age * 3) * 2) + PILE_Y_OFFSET;
-      const alpha = age > 25 ? (30 - age) / 5 : 1;
+      const bob = Math.sin(age * 3) * 2.5 + PILE_Y_OFFSET;
+      /* ═══ v2.3.2318: A LAST CALL, NOT A QUIET FADE ═══
+         Owner: "monster loot that's almost timing out and disappearing make it
+         fade then show full opacity for about the last 10 seconds before it
+         disappears."
+
+         Read as a PULSE over the final stretch -- fade down, come back to
+         full, repeat -- rather than the old monotone ramp, which was the
+         single linear fade over the last five seconds below. A pile that
+         simply gets dimmer is easy to stop noticing at exactly the moment it
+         most needs noticing; one that keeps returning to full opacity keeps
+         catching the eye. The pulse also QUICKENS as the clock runs out, so
+         the cue says how long is left rather than just "soon".
+
+         It never reaches zero before the pile actually goes: the floor is
+         0.35, so the thing you are being warned about stays visible for the
+         whole warning. Life is 30s (the despawn a few lines above), so the
+         last ten is age 20 onward. */
+      const LOOT_LIFE = 30;
+      const LOOT_FLASH_S = 10;
+      const _leftS = LOOT_LIFE - age;
+      let alpha = 1;
+      if (_leftS <= LOOT_FLASH_S) {
+        const _urg = Math.max(0, Math.min(1, 1 - _leftS / LOOT_FLASH_S));
+        const _rate = 3 + _urg * 9;
+        alpha = 0.35 + 0.65 * (0.5 + 0.5 * Math.cos(age * _rate));
+      }
 
       if (l.isDeathDrop) {
         /* Pulsing red-orange aura that gets faster + brighter as the
