@@ -1296,6 +1296,53 @@ export const BottomDashboard = () => {
               a new road: 34px of dead space above every panel on an
               installed phone, and 34px of panel falling off the bottom. */}
           <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', marginTop: 'calc(var(--dash-h, 145px) - var(--cols-h, 93px) - var(--sab, 0px))' }}>
+            {/* ═══ v2.3.2320b: THE DRILL TITLE COMES BACK DOWN HERE ═══
+                v2.3.1922 moved it UP into the toolbar row, and its reasoning
+                was sound at the time: the 44px header it replaced sat in the
+                flex flow ABOVE the row's reservation and was therefore drawn
+                UNDERNEATH the toolbar, which is what produced "the gold amount
+                is over the back button".
+
+                What changed is that the toolbar row ran out of width.  Drilled
+                on a 390px phone it carries the CLOSE pill (76), the back chip
+                (34) and five nav buttons (244 at the width the owner asked
+                for) — 354 of 382 before the title gets a pixel.  There is no
+                button width that fits a nine-character title beside those:
+                even the 36px buttons this replaced needed 29, and what
+                actually happened at 36 was that the row silently overflowed
+                and the "More" button left the screen.
+
+                And the title is not decoration.  mp-loginkey asserts BOTH that
+                the drilled panel is named and that its name renders WHOLE —
+                "a title that renames itself longer fails by silently becoming
+                LOGIN K... rather than by throwing".  Hiding it, or letting it
+                ellipsise, breaks a promise somebody wrote a test for.
+
+                So it comes back down — but INSIDE the reservation, not above
+                it, which is the specific mistake v2.3.1922 fixed.  This div
+                already carries the toolbar's full height as marginTop, so
+                anything in it starts below the toolbar and cannot be drawn
+                under it.  And it costs 24px of panel height rather than the
+                44px header that left: one line of caption type, not a bar.
+
+                The back chip stays in the toolbar row.  It is a control you
+                aim at, it has lived at that spot since v2.3.1922, and moving
+                it would be the thing the one-position rule (v2.3.1637b) exists
+                to prevent. */}
+            {drill && (
+              <div style={{
+                flex: 'none',
+                padding: '0 2px 6px',
+                fontSize: 13,
+                fontWeight: 700,
+                letterSpacing: '.10em',
+                textTransform: 'uppercase',
+                color: COL.text2,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}>{active ? active.title : ''}</div>
+            )}
             {Active && <Active />}
           </div>
         </>
@@ -1475,40 +1522,17 @@ export const BottomDashboard = () => {
         )}
         {/* v2.3.692: the LOADOUT / BUILD ColHeader treatment (13px, .10em
             tracking, uppercase) so every open panel title reads the same.
-            v2.3.1922: it sits NEXT TO the back chip and takes its natural
-            width, rather than centring in the row on flex:1.
-
-            Centred was what the old standalone header could afford; in a
-            shared row it is not.  Measured: between the gold readout's right
-            edge (111) and the nav group's left (185) there is ~62px, and
-            IdentityStrip flexes into the same leftover — so a centred title
-            rendered "BUILD" as "B U...".  Beside the chip it has ~145px and
-            needs about 50, and back-chip-then-label is the pattern a phone
-            user already reads as "where this goes back to".  maxWidth keeps a
-            long drill title from ever pushing the gold off its own row; the
-            ellipsis is the backstop, not the plan. */}
-        {/* ═══ v2.3.2320: THE TITLE TAKES THE SQUEEZE, NOT THE BUTTONS ═══
-            (the component is DrillTitle, below — it also decides when there is
-            too little room for a word to be worth printing)
-            `flex: 'none'` meant this element always got its natural width and
-            whatever came after it went off the screen.  Measured on a 390px
-            phone with Settings drilled open, that is exactly what happened:
-            CLOSE (75.9) + back chip (34) + this title (82.4) + the nav group
-            (204) + gaps ran to 408 inside 382, the gold purse beside it was
-            the only flexible child so it collapsed to zero, and the rail still
-            overflowed — the "More" button's centre sat 22px PAST the right
-            edge.  Nothing clipped it (this row is overflow:visible); it was
-            simply not there to tap, and QuestCoach's Login Key lesson, which
-            hit-tests that exact button, retired itself in silence (TRAPS 41).
-
-            So the title flexes and the buttons do not.  A truncated word is a
-            cosmetic loss; an unreachable button is a functional one, and the
-            buttons are what the owner asked to make BIGGER in this same
-            message.  Be straight about the cost: with 44px buttons the title
-            has ~16px on a 390px phone in a drilled panel, so it reads as an
-            ellipsis there and only widens back out on larger screens.  The
-            maxWidth stays as the other bound. */}
-        {drill && <DrillTitle text={active ? active.title : ''} />}
+            v2.3.1922: the title sat HERE, next to the back chip, taking its
+            natural width.
+            v2.3.2320b: it is gone from this row — see the note in the panel
+            body, which is where it went and why.  The short version is that
+            with five 44px buttons this row has 28px left over on a 390px
+            phone after CLOSE and the back chip, and the title has to render
+            whole (mp-loginkey asserts it). */}
+        {/* v2.3.2320b: the title is NOT in this row any more — it moved into
+            the panel body just above (full reasoning there).  What stays here
+            is the back chip, which is a control rather than a label, and the
+            row's width now goes to the buttons the owner asked to widen. */}
         {/* v2.3.2320: the identity strip is GONE from this row.  Its last
             content was the gold purse and the purse moved to the zone header
             rail (owner: "very top right on the top bar that lists the zone
@@ -1595,58 +1619,6 @@ export const BottomDashboard = () => {
    `.bt-land-gold` fallback behind `[data-purse]`; the rail carries
    `data-purse` in both orientations, so the fallback is dead and the toss
    still lands. */
-/* ═══ v2.3.2320: THE DRILL TITLE SHOWS A WORD OR NOTHING ═══
- * The label beside the back chip on a drilled screen ("SETTINGS", "BUILD",
- * "LOADOUT") shares its row with the CLOSE pill, the back chip and five nav
- * buttons, and after those it has ~16px on a 390px phone.  Left to truncate,
- * "Settings" rendered on screen as "S." — captured, not guessed.  A two-glyph
- * stub is worse than no label: it reads as a rendering bug, and it says less
- * than the lit nav button already does.
- *
- * So the box is `flex: 1 1 0` — it takes the row's leftover and its width does
- * NOT depend on what is in it, which is the whole trick.  Sizing from content
- * would make hiding the text shrink the box, which would then measure narrow
- * forever; with a zero basis the measurement is of the SPACE, so the text can
- * come and go without moving the thing that decides.
- *
- * The threshold is the width of about four uppercase glyphs at this size plus
- * an ellipsis.  Below it there is no word to show, so none is shown; above it
- * the ordinary text-overflow does the rest.  On a wider phone the label is
- * simply there.
- *
- * The alternative was to hold the label's width in sheetGeometry's reservation
- * and take it off the buttons — but reserving for it needs ~190px and derives
- * buttons NARROWER than the 36 the owner asked to grow.  That trade is the
- * wrong way round: the label is chrome, the buttons are the thing you touch. */
-const DRILL_TITLE_MIN = 52;
-const DrillTitle = ({ text }) => {
-  const ref = useRef(null);
-  const [room, setRoom] = useState(DRILL_TITLE_MIN);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return undefined;
-    const measure = () => setRoom(el.clientWidth);
-    measure();
-    if (typeof ResizeObserver === 'undefined') return undefined;
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-  return (
-    <div ref={ref} style={{
-      flex: '1 1 0', minWidth: 0, maxWidth: 132,
-      fontSize: 13,
-      fontWeight: 700,
-      letterSpacing: '.10em',
-      textTransform: 'uppercase',
-      color: COL.text,
-      whiteSpace: 'nowrap',
-      overflow: 'hidden',
-      textOverflow: 'ellipsis',
-    }}>{room >= DRILL_TITLE_MIN ? text : ''}</div>
-  );
-};
-
 const chipStyle = {
   width: 34, height: 34,
   display: 'flex',
