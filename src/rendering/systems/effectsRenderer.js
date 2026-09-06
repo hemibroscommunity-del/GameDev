@@ -4085,7 +4085,35 @@ export class EffectsRenderer {
              failure that bound exists to catch, and it caught it. */
           const _chw = 7.2 * _ck;
           const _chh = 11 * _ck;
-          const _ctop = _cyp - _coff * 2 - 42 + _cbob;
+          /* ═══ v2.3.2313: HUNG FROM THE BAND, NOT FROM A HIT OFFSET ═══
+             Owner: "the locked on orange monster chip needs to be moved a
+             little higher, it's on the head of the snowman."
+
+             It was, and the arithmetic below says why. `_coff * 2 - 42` treats
+             a per-archetype HIT offset as if it were half the drawn height --
+             true for the shapes whose table entry is exactly that, and false
+             for the snowman, whose 19 is a hand-tuned aim point rather than
+             half of the ~96 world px he is actually drawn at. Measured on a
+             real client: the chip's tip sat 3 screen px BELOW the top of his
+             sprite.
+
+             The renderer that draws him already knows where he ends and now
+             publishes it (m._bandTopOff, entityRenderer) -- the top of the
+             above-head band, in world units, from the one place that has the
+             per-archetype maths. Hanging the chip's TIP there puts it just
+             clear of the art on every shape instead of on one of them:
+             measured 8 px of daylight over the snowman and 4 over a slime,
+             where before it overlapped both and only showed on the snowman
+             because his art fills his frame.
+             It also keeps the documented ordering with the "!" notice, which
+             rises from the same band top upward -- the chip hangs below it,
+             so the two still never touch.
+             The old formula stays as the FALLBACK for the frame before the
+             stamp exists (a monster's first frame, or one with no display
+             yet); it is what shipped, so falling back cannot be a regression. */
+          const _ctop = (_lockChip._bandTopOff != null
+            ? _cyp + _lockChip._bandTopOff - _chh
+            : _cyp - _coff * 2 - 42) + _cbob;
           const _cpoly = [
             _cxp - _chw, _ctop,
             _cxp + _chw, _ctop,

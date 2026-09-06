@@ -6412,6 +6412,18 @@ export class EntityRenderer {
                the hole, while "sprite dark and body lit" is merely the wrong
                art, which is a different bug with the same first symptom. */
             bodyVisible: !!(d._body && d._body.visible),
+            /* v2.3.2313: where the drawn body actually IS, in screen px.
+               Marks above a monster's head are placed from a per-archetype
+               table of hit offsets, which is not the same thing as the drawn
+               height -- so "is the chip clear of the sprite" cannot be
+               answered from the table, only from the bounds. */
+            bounds: (function () {
+              try {
+                const b = d._spriteBody.getBounds();
+                return { top: Math.round(b.y), bottom: Math.round(b.y + b.height),
+                  h: Math.round(b.height) };
+              } catch (e) { return null; }
+            })(),
           };
         };
       }
@@ -7438,7 +7450,26 @@ export class EntityRenderer {
            the same move: it was compensating for the missing 1.5x, and left
            as-is would fling popups ~50px too high on slimes. */
         const _uiScale = (display._hpUi && display._hpUi.scale && display._hpUi.scale.y) || MONSTER_SIZE_MULT;
-        m._popupTopOff = (barY - MONSTER_HPBAR_H / 2) * _uiScale - POPUP_BAR_CLEAR;
+        /* ═══ v2.3.2313: THE BAND TOP, IN WORLD UNITS, FOR EVERYONE ═══
+           The same quantity display._markTopY holds locally, converted once
+           here into the world space that consumers outside this file live in.
+           v2.3.2295 stashed the local copy "for anything that has to sit ABOVE
+           the monster rather than on it" and warned in the same breath that
+           "anything drawn from outside it was guessing" -- and the target chip,
+           added in that very version, was drawn from effectsRenderer and did
+           guess: it placed itself from monsterBodyOffsetY, a per-archetype HIT
+           offset, using `offset x 2` as a stand-in for the drawn height.
+           That holds for the shapes whose offset IS half their height (mummy,
+           skeleton, and the liveScalePx rule) and fails on the snowman, whose
+           19 is a hand-tuned aim point for an oddly-anchored sprite, not half
+           of the ~96 world px he is drawn at. Measured: the chip's tip landed
+           3 screen px BELOW the top of his sprite -- on his head, which is
+           exactly what the owner reported.
+           Publishing the band means the chip stops guessing. It is the same
+           local-vs-world mistake v2.3.1638 records for the damage popup one
+           line below, in a second consumer. */
+        m._bandTopOff = (barY - MONSTER_HPBAR_H / 2) * _uiScale;
+        m._popupTopOff = m._bandTopOff - POPUP_BAR_CLEAR;
         display._hpHeart.width = MONSTER_HPBAR_W;
         display._hpHeart.height = MONSTER_HPBAR_H;
         display._hpHeart.x = 0;  /* anchor already centered at creation */
