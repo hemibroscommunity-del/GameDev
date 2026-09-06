@@ -197,6 +197,21 @@ const FIRE_SKIN_OPTS = { maxBR: 0.50, minGR: 0.45, maxGR: 0.80, minBlob: 1800 };
  * (a lumberjack, a cook), and nobody has reported them.  The predicate is shared
  * with the layer choice a few lines below rather than written twice, so the two
  * cannot disagree about which figure this is. */
+/* ═══ v2.3.2310: A PROJECTILE'S SHEET IS NOT ALWAYS 256 ═══
+ * projectileScalePx (monsterVariants) is stated in ON-SCREEN pixels, so the
+ * divisor that turns it into a Sprite scale has to be the source's real width.
+ * It was hard-coded to 256 -- true of the fire goblin's fireball.png and false
+ * of the recoloured slime orb, which is 128, so the blue slime's ball drew at
+ * half the size the constant asked for.  Measuring costs one property read per
+ * texture change and cannot go stale when new art lands at a new size.
+ * 256 is kept as the fallback so a texture that will not answer behaves exactly
+ * as it did before this change. */
+function _projSrcPx(tex) {
+  if (!tex) return 256;
+  const w = (tex.frame && tex.frame.width) || tex.width || (tex.source && tex.source.width) || 0;
+  return w > 0 ? w : 256;
+}
+
 function _isGatheringStandIn(skillKey) {
   return skillKey === 'chop' || skillKey === 'cook' || skillKey === 'fire';
 }
@@ -1269,6 +1284,29 @@ export class EffectsRenderer {
        entries here so we can destroy orphans after the simulator
        drops a projectile from S.slimeProjectiles. */
     this.slimeProjSprites = [];
+    /* Dev probe, house style (cf. window.__btBundles): how big is each ball
+       ACTUALLY drawn, and from which art.  The reported bug was a size, and a
+       size is the one thing no existing probe could answer -- the scale is
+       resolved from three different branches and a screenshot cannot tell an
+       8px blue orb from a 25px one at a glance.  tools/qa/mp/mp-slimeorb.mjs
+       reads this.  v2.3.2310. */
+    if (typeof window !== 'undefined') {
+      const _spsRef = this.slimeProjSprites;
+      window.__btSlimeProj = () => _spsRef
+        .filter((e) => e && e.sprite && !e.sprite.destroyed)
+        .map((e) => ({
+          kind: (e.proj && e.proj.kind) || 'slime',
+          /* On-screen px: the frame's own width times the scale the branch
+             chose.  This is the number the owner is looking at. */
+          px: +(((e.sprite.texture && (e.sprite.texture.frame
+            ? e.sprite.texture.frame.width : e.sprite.texture.width)) || 0)
+            * Math.abs(e.sprite.scale.x)).toFixed(1),
+          scale: +Math.abs(e.sprite.scale.x).toFixed(4),
+          srcPx: (e.sprite.texture && (e.sprite.texture.frame
+            ? e.sprite.texture.frame.width : e.sprite.texture.width)) || 0,
+          visible: !!e.sprite.visible,
+        }));
+    }
 
     /* v2.3.1334: tracked Sprite instances for the painted magic bolt
        (basic staff projectiles, local + remote) — same reap pattern
@@ -3153,7 +3191,7 @@ export class EffectsRenderer {
         if (tex) {
           projTex = tex;
           projBaseAng = vSprites.projectile.baseAng || 0;
-          projScale = (variant && variant.projectileScalePx ? variant.projectileScalePx : 16) / 256;
+          projScale = (variant && variant.projectileScalePx ? variant.projectileScalePx : 16) / _projSrcPx(tex);
           break;
         }
         /* ═══ v2.3.1691: A RECOLOURED SLIME THROWS A RECOLOURED BALL ═══
@@ -3172,7 +3210,21 @@ export class EffectsRenderer {
           if (rtex) {
             projTex = rtex;
             projBaseAng = 0;
-            projScale = (variant.projectileScalePx ? variant.projectileScalePx : 16) / 256;
+            /* ═══ v2.3.2310: MEASURE THE SHEET, DO NOT ASSUME IT ═══
+               Owner: "make the blue slime projectiles larger by about 4x."
+
+               projectileScalePx is stated in ON-SCREEN pixels, so the divisor
+               has to be the source's real width.  256 was hard-coded from the
+               fire goblin's fireball.png, which is genuinely 256 -- but the
+               only art that reaches THIS branch is the recoloured slime orb,
+               and slime-projectile-v1.png is 128.  So the default 16 drew at
+               EIGHT px, half of what the constant says, while a plain green
+               slime's identical orb drew at 25.6 (the 0.2 fallback below, on
+               the same 128 sheet).  The blue ball was a third the size of the
+               green one, which is what the owner was looking at.
+               Measuring fixes it for both branches at once and cannot drift:
+               the fireball still resolves 24/256, unchanged. */
+            projScale = (variant.projectileScalePx ? variant.projectileScalePx : 16) / _projSrcPx(rtex);
             break;
           }
         }
