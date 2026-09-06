@@ -179,6 +179,14 @@ async function loadStrip(url, into) {
         frame: new Rectangle(i * FRAME_W, 0, FRAME_W, FRAME_H),
       }));
     }
+    /* v2.3.2309: REPLACE, don't append.  The reset above is the fix for the
+       reported bug; this is the fix for its CLASS.  A strip that is loaded
+       twice without its array being cleared in between stacks two generations
+       of frames, and the older generation's source is by then destroyed --
+       eight invisible frames in front of eight good ones.  Making the load
+       idempotent means a future array added to PHASE_SHEETS cannot reproduce
+       this by being forgotten in one more place. */
+    into.length = 0;
     into.push(...list);
   } catch {
     /* missing — caller skips and falls back to idle */
@@ -363,5 +371,54 @@ export function unloadSnowmanSprites() {
   hitFrames = [];
   deathFrames = [];
   snowballTex = null;
+  /* ═══ v2.3.2309: AND THE BURROW STRIPS ═══
+     Owner: "sometimes the burrow snowman sprite disappears, then once that
+     stage is complete he reappears."
+
+     This list was written in v2.3.2272 and covered every piece of module
+     state EXCEPT these three arrays -- the burrow's own art, added a version
+     earlier in v2.3.2221.  Every other monster module resets all of its
+     state (checked: fireGoblin, skeleton, mummy, fishman, rockmonster); the
+     snowman was the only one with a container the list forgot, and the
+     forgotten one was the burrow.
+
+     WHY THE OMISSION MADE HIM INVISIBLE RATHER THAN JUST WASTING MEMORY.
+     unloadBundle destroys the SOURCES behind these sub-textures, and the
+     array kept holding them.  loadStrip appends, so the next visit to frost
+     stacked eight live frames on top of eight dead ones and phaseFrameCount
+     answered 16.  The renderer indexes across that whole length: the dig and
+     the emerge are one-shots spread over their own duration, so their FIRST
+     HALF landed on dead textures and drew nothing at all; the pile loops at
+     90ms a frame, so it blinked -- 720ms gone, 720ms there.  Hence "sometimes"
+     and hence "once that stage is complete he reappears": the idle sheets
+     above WERE reset, so the moment the phase ended he was solid again.
+     First visit to frost is always perfect, which is why this survived. */
+  for (const k in PHASE_SHEETS) PHASE_SHEETS[k].length = 0;
   return unloadBundle('snowman');
+}
+
+/* Dev probe, house style (cf. window.__btBundles in zoneTextures.js): what is
+   actually in each strip and whether its texture still has a live source.  The
+   bug above was invisible to every existing instrument -- __btBundles counts
+   URLs, not frames, and a destroyed texture is still a truthy object that a
+   Sprite accepts in silence -- so the frame counts and the liveness are what a
+   test has to be able to read.  tools/qa/mp/mp-snowburrow.mjs reads this. */
+if (typeof window !== 'undefined') {
+  window.__btSnowmanSheets = function () {
+    const out = { idleDirs: Object.keys(SHEETS).length, attackDirs: Object.keys(ATTACK_SHEETS).length,
+      hit: hitFrames.length, death: deathFrames.length, phases: {} };
+    for (const k in PHASE_SHEETS) {
+      const list = PHASE_SHEETS[k];
+      let dead = 0;
+      for (const t of list) {
+        const src = t && t.source;
+        /* A destroyed TextureSource keeps the object but loses the pixels.
+           Pixi marks it `destroyed`; belt-and-braces, a zero width means the
+           same thing to anything that tries to draw it. */
+        if (!src || src.destroyed || !(src.width > 0)) dead++;
+      }
+      out.phases[k] = { frames: list.length, dead: dead };
+    }
+    return out;
+  };
 }

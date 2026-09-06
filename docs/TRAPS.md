@@ -1888,3 +1888,65 @@ build with every owner->well binding INVERTED"), reintroduced one nesting level
 down. Mutation-checked: swapping them fails four assertions.
 
 **Related:** §21 (a pixel count cannot tell brass from cobble).
+
+## §49 — A freed texture is still a truthy object, and it draws NOTHING (v2.3.2309)
+
+**The report:** "Sometimes the burrow snowman sprite disappears. Then once that
+stage is complete he reappears."
+
+**What it actually was.** `unloadSnowmanSprites()` (v2.3.2272) resets every
+piece of module state in `snowmanSprites.js` — `SHEETS`, `ATTACK_SHEETS`,
+`hitFrames`, `deathFrames`, `remnantsTex`, `snowballTex`, `loadPromise` — except
+the three burrow strips in `PHASE_SHEETS`, which had been added one version
+earlier (v2.3.2221). `unloadBundle('snowman')` then destroyed the SOURCES
+behind them while the arrays went on holding the sub-textures, and `loadStrip`
+APPENDS. So a second visit to frost stacked eight live frames on top of eight
+dead ones and `phaseFrameCount` answered 16. The renderer indexes across the
+whole length: dig and emerge are one-shots spread over their own duration, so
+their first half drew nothing; the pile loops at 90ms a frame, so it blinked
+720ms on, 720ms off.
+
+**The trap, and it is the general one:** a `Texture` whose source has been
+destroyed is still a truthy object. Assigning it to a `Sprite` succeeds, the
+sprite stays `visible: true`, keeps its scale, keeps its parent — and draws a
+hole. No warning, no exception at the assignment. Every guard in the renderer
+is written as `if (frameTex)`, and every one of them passes.
+
+**Three failures that look identical to a player, and must not be conflated:**
+
+| what the player sees | sprite | texture | procedural `_body` |
+|---|---|---|---|
+| nothing drawn (this bug) | visible | source destroyed | hidden |
+| wrong art drawn | hidden | — | visible |
+| no monster at all | no display object | — | — |
+
+A test that asserts only `visible` cannot tell the first row from a working
+build. `window.__btMonsterSprite` now reports `texAlive` and `bodyVisible`
+beside it for exactly that reason.
+
+**Why the existing instruments were blind.** `mp-texdrift` measures resident
+texture SOURCES in MB and passed throughout — the leaked objects were
+sub-textures pointing at sources that were correctly freed, so they cost
+essentially nothing and the memory probe had nothing to see. `window.__btBundles`
+counts URLs per bundle, not frames per strip. The leak was in a shape neither
+one measures.
+
+**What catches it:** `tools/qa/mp/mp-snowburrow.mjs` does a real
+frost → World View → frost round trip and asserts the strips neither grow nor
+hold a dead frame, then puts a real server snowman through all three phases and
+reads what the renderer left on screen. Mutation-checked: reverting the reset
+turns six assertions red — `frames: 16, dead: 8` on the return visit, 7 holes in
+11 pile samples — and the harness's own render-throw guard fires with
+`Cannot read properties of null (reading 'addressModeU')`, Pixi binding a
+destroyed source.
+
+**Rule to apply next time:** an unload function and the module's mutable state
+must be checked against each other as a LIST, not from memory. Every sibling
+module (`fireGoblinSprites`, `skeletonSprites`, `mummySprites`, `fishmanSprites`,
+`rockmonsterSprites`) resets all of its own state; the snowman was the only one
+with a container the reset list had missed, and it had been missed for as long
+as the unload had existed. Better still, make the loader idempotent —
+`loadStrip` now clears before it pushes, so a container forgotten in one more
+place cannot reproduce this.
+
+**Related:** §21 (an instrument that measures the wrong quantity reports green).

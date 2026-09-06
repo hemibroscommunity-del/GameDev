@@ -6390,10 +6390,28 @@ export class EntityRenderer {
         window.__btMonsterSprite = (mid) => {
           const d = _mdRef.get(mid);
           if (!d || !d._spriteBody) return null;
+          /* ═══ v2.3.2309: "VISIBLE" WAS NEVER THE WHOLE QUESTION ═══
+             A Sprite whose texture's source has been destroyed is still
+             visible:true, still scaled, still parented -- and draws NOTHING,
+             silently.  That is precisely how the burrow strips failed after a
+             frost round trip (see unloadSnowmanSprites), and no probe in the
+             tree could see it.  So report the TEXTURE's liveness beside the
+             flag: a test that reads only `visible` cannot tell a drawn sprite
+             from a hole in the screen. */
+          const _t = d._spriteBody.texture;
+          const _src = _t && _t.source;
           return {
             sx: +d._spriteBody.scale.x.toFixed(3),
             visible: !!d._spriteBody.visible,
             drewDeathAt: d._deathDrewAt || 0,
+            texW: _t ? (_t.frame ? _t.frame.width : _t.width) : 0,
+            srcW: _src ? (_src.width || 0) : 0,
+            texAlive: !!(_src && !_src.destroyed && _src.width > 0),
+            /* The procedural fallback body.  Drawn INSTEAD of the sprite when
+               there is no frame at all -- so "sprite dark and body dark" is
+               the hole, while "sprite dark and body lit" is merely the wrong
+               art, which is a different bug with the same first symptom. */
+            bodyVisible: !!(d._body && d._body.visible),
           };
         };
       }

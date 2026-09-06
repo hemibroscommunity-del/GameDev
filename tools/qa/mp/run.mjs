@@ -33,6 +33,7 @@ const SCENARIOS = {
   moncue: () => import('./mp-moncue.mjs'),       /* v2.3.2295: the notice "!" and the red plate, against REAL server monsters */
   engage: () => import('./mp-engage.mjs'), /* v2.3.2246: engaged movement is target-relative, and the attack indicator is painted */
   freshbuild: () => import('./mp-freshbuild.mjs'), /* v2.3.2237: a resumed app takes the new build; a live game is only offered it */
+  snowburrow: () => import('./mp-snowburrow.mjs'), /* v2.3.2309: the burrowing snowman is still drawn on the second visit to frost */
   devwarp: () => import('./mp-devwarp.mjs'), /* v2.3.2308: the test panel's zone chips, pressed for real, from anywhere */
   devpanel: () => import('./mp-devpanel.mjs'), /* v2.3.2240: the owner's test panel */
   firetrail: () => import('./mp-firetrail.mjs'), /* v2.3.2238: the fire goblin's burning ground, drawn and felt */
