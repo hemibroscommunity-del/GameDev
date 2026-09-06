@@ -419,6 +419,46 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and it says to use whichever you like best',
     !!(cC && /like best/i.test(cC.text)), cC && cC.text);
   await P.page.screenshot({ path: 'tools/qa/mp/out/coach-5-cycle.png' });
+
+  /* ═══ v2.3.2319: THE SWAP-WEAPONS MESSAGE IS THE ONE HE NAMED ═══
+     Owner: "the swap weapons message in tutorial needs layer change so it can
+     be tap to dismiss."
+
+     This lesson IS that message -- its label is literally "Swap weapons" -- and
+     v2.3.2312 already made every coach card take a tap, so no code changed for
+     this ask. Worth checking on THIS lesson rather than arguing "the card
+     component is shared, so it must hold here too": that is reasoning of
+     exactly the kind this repo keeps being wrong about.
+
+     THE LAYER IS WHAT IS ASSERTED, which is also what he asked for. His card
+     rings the LEFT joystick, so the fall-through that swung a weapon on the
+     login-key card applies here -- and "what answers a finger at the card's
+     centre" is the whole of that bug.
+     NOT the tap itself: dismissing retires the lesson, and three assertions
+     further down still need it up (the cycle counter, the single-swap check,
+     and the retire-on-third-slot check, which a premature dismissal would make
+     pass vacuously). The dismissal MECHANISM is proven on the guard lesson in
+     this same file, on the same shared card. */
+  const cycleCard = await rectOf(P, '[data-coach-card]');
+  rec.ok('the swap-weapons card is on screen (guard)', !!cycleCard, cycleCard);
+  if (cycleCard) {
+    const layer = await P.page.evaluate((b) => {
+      const el = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+      const card = document.querySelector('[data-coach-card]');
+      return {
+        answers: el ? (el.closest('[data-coach]') ? 'coach'
+          : (el.closest('[data-joyzone]') ? 'joyzone' : el.tagName)) : null,
+        cardPE: card ? getComputedStyle(card).pointerEvents : null,
+        id: card ? card.getAttribute('data-coach-card') : null,
+      };
+    }, cycleCard);
+    console.log('    SWAP-WEAPONS LAYER -> ' + JSON.stringify(layer));
+    rec.ok('...and it is the swap-weapons lesson being measured (guard)',
+      layer.id === 'cycle', layer);
+    rec.ok('a finger on the swap-weapons message lands on the MESSAGE, not the '
+      + 'joystick underneath it', layer.answers === 'coach', layer);
+    rec.ok('...so it can take the tap that dismisses it', layer.cardPE === 'auto', layer);
+  }
   const lJoy = await rectOf(P, '.bt-joystick-zone');
   rec.ok('the left joystick is on screen at this viewport (guard)', !!lJoy, lJoy);
   if (lJoy && cC && cC.ring) {
