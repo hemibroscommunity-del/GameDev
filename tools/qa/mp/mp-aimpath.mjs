@@ -365,6 +365,37 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return { mx: Math.round(m.x), my: Math.round(m.y),
       px: Math.round(S.player.x), py: Math.round(S.player.y) };
   });
+  /* ═══ THE FIRST ARROW IS NOT THE ONE TO MEASURE ═══
+     Both the shot and the beam launch from the bow's teal GRIP -- but the grip
+     is published by the renderer while it draws the bow stand-in, so before the
+     first shot animation has painted a frame there is no grip and BOTH fall
+     back to the player's feet.  That fallback is deliberate and documented at
+     the draw site.  What it does to a test is subtler: the first arrow can be
+     fired from the FEET on one frame and the beam sampled from the GRIP two
+     frames later, and the two disagree by ~0.15 rad for a completely legitimate
+     reason.  Measured, exactly that: arrow 2.613 (feet + the fodder body offset)
+     against beam 2.464 (grip + the same offset), on a loaded machine where the
+     renderer had not yet painted a bow frame.  It passed on an idle one, which
+     is the worst kind of green.
+     So: wait for the grip to exist, THEN clear the arrows and measure the next
+     shot.  If it never publishes, say so -- a silent comparison of two
+     different origins is what produced the false reading in the first place. */
+  const gripUp = await P.page.evaluate(() => new Promise((resolve) => {
+    const S = window._gameState.current;
+    const t0 = Date.now();
+    const iv = setInterval(() => {
+      if (S._bowGripDX != null && S._bowGripDY != null) {
+        clearInterval(iv);
+        S.arrows = [];          /* discard everything fired before the grip */
+        resolve({ dx: S._bowGripDX, dy: S._bowGripDY });
+      } else if (Date.now() - t0 > 6000) {
+        clearInterval(iv);
+        resolve({ dx: null, dy: null, timeout: true });
+      }
+    }, 16);
+  }));
+  rec.ok('the bow has published its grip, so shot and beam share an origin (guard)',
+    gripUp.dx != null, gripUp);
   /* Stamp the arrow's heading and the beam's in the SAME tick.  Both are
      recomputed every frame off a lock whose ref moves, so two reads separated
      by a wait compare two different frames -- the mistake the phantom block
@@ -378,12 +409,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (a && b) {
         clearInterval(iv);
         resolve({ arrow: a.ang, beam: b.angle, src: b.src, visible: b.visible,
-          firing: b.firing, origin: b.origin });
-      } else if (Date.now() - t0 > 3000) {
+          firing: b.firing, origin: b.origin, grip: S._bowGripDX });
+      } else if (Date.now() - t0 > 4000) {
         clearInterval(iv);
         resolve({ arrow: a ? a.ang : null, beam: b ? b.angle : null,
           src: b ? b.src : null, visible: b ? b.visible : null,
-          firing: b ? b.firing : null, origin: b ? b.origin : null, timeout: true });
+          firing: b ? b.firing : null, origin: b ? b.origin : null,
+          grip: S._bowGripDX, timeout: true });
       }
     }, 16);
   }));
