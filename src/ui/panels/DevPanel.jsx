@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { COL, getState } from '../mobile/dash/common.js';
 import { BT_API_BASE } from '../../networking/index.js';
-import { WORLDVIEW_EXITS, TILE } from '../../data/index.js';
+import { WORLDVIEW_EXITS } from '../../data/index.js';
 
 /* ═══ v2.3.2240: THE OWNER'S TEST PANEL ═══
  *
@@ -164,21 +164,32 @@ export const DevPanel = ({ onClose }) => {
     setKey(''); setState(null); setMsg('Key cleared from this device.');
   };
 
-  /* Stand on the trail-head; handleZoneTransitions does the rest. */
+  /* ═══ v2.3.2308: FROM WHEREVER YOU ARE STANDING ═══
+     This used to place you on a trail-head and required you to already be on
+     the World View; from town -- where a session starts -- the chips printed
+     "head there first" and did nothing at all.  Proven, not assumed:
+     mp-devwarp pressed the Flame Fields chip from town and the player was
+     still in town thirty seconds later on both the client and the worker.
+
+     Now it hands a DESTINATION to the game loop (driveDevWarp in
+     zoneTransitions.js), which walks the game's own front doors one leg at a
+     time -- town -> World View -> the spoke, or out of a spoke through its
+     return marker first.  Every leg is a real zone entry, so the per-zone
+     asset preload behind the loading overlay still happens and the
+     animation-preloading law is untouched.  Nothing here reimplements a
+     transition, which is why it cannot drift from the one players use. */
   const warp = (zoneId) => {
     const st = getState();
     if (!st || !st.player) return;
-    if (st.currentZone !== 'worldview') { setMsg('Warp works from the World View map — head there first.'); return; }
+    if (st.currentZone === zoneId) { setMsg('You are already there.'); return; }
     const ex = WORLDVIEW_EXITS.find((e) => e.zoneId === zoneId);
     if (!ex) { setMsg('No door to ' + zoneId + ' on the World View.'); return; }
-    st.player.x = ex.tx * TILE + TILE / 2;
-    st.player.y = ex.ty * TILE + TILE / 2;
-    setMsg('Standing at the ' + (ex.label || zoneId) + ' trail-head — walk in.');
+    st._devWarp = { to: zoneId, legs: 0, t: Date.now(), nextAt: 0 };
+    setMsg('Heading to ' + (ex.label || zoneId) + '…');
     if (onClose) onClose();
   };
 
   const zoneRows = WORLDVIEW_EXITS.filter((e) => e.zoneId !== 'town');
-  const onWorldview = S && S.currentZone === 'worldview';
 
   return (
     <div style={box} onPointerDown={(e) => { if (e.target === e.currentTarget && onClose) onClose(); }}>
@@ -226,16 +237,15 @@ export const DevPanel = ({ onClose }) => {
             )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7, marginBottom: 4 }}>
               {zoneRows.map((e) => (
-                <button key={e.zoneId} type="button" style={{ ...chip, opacity: onWorldview ? 1 : 0.5 }}
+                <button key={e.zoneId} type="button" style={chip}
                   onClick={() => warp(e.zoneId)}>
                   {e.label}
                 </button>
               ))}
             </div>
             <div style={{ color: COL.muted, fontSize: 12, marginBottom: 2 }}>
-              {onWorldview
-                ? 'Puts you on the trail-head; walk in as normal.'
-                : 'Go to the World View map to use these.'}
+              Works from anywhere — it walks you through the doors, so each zone
+              still loads properly on the way in.
             </div>
 
             <div style={label}>Character</div>

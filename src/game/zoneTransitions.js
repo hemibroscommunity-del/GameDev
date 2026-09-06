@@ -234,8 +234,140 @@ export function clearZoneLocalFx(S) {
   S._fxBursts = [];
 }
 
+/* ═══ v2.3.2308: THE TEST PANEL'S ZONE TELEPORT, FROM WHEREVER YOU ARE ═══
+ *
+ * Owner (backlog): an admin mode with zone teleport.
+ *
+ * The chips have existed since v2.3.2240 and they only worked from the World
+ * View -- from town, which is where a session starts and where the owner
+ * spends most of it, tapping one printed "head there first" and did nothing.
+ * Measured, not assumed: mp-devwarp pressed the Flame Fields chip from town
+ * and the player was still in town thirty seconds later, on the client AND on
+ * the worker.  mp-devpanel never caught it because it does not press the
+ * chips -- it drives a synthetic `move` message instead, so the one control
+ * the owner's thumb actually lands on was the one thing untested.
+ *
+ * WHY IT IS NOT A TELEPORT, STILL.  Entering a zone is a long, load-bearing
+ * sequence: the per-zone asset preload behind the loading overlay (CLAUDE.md's
+ * ZONE-ASSET EXCEPTION), freeing the map you left, zone dimensions, ambient
+ * audio, discovery, quest flags, depth reset, monster and node spawning, and
+ * the server move.  A dev button that set S.currentZone directly would skip
+ * the preload -- breaking the animation-preloading law outright -- and would
+ * drift from the real path until it started reporting bugs that do not exist.
+ *
+ * SO IT WALKS THROUGH THE FRONT DOORS, one per leg, and the doors are the
+ * game's own: the hub graph here is exactly TOWN_EXITS and WORLDVIEW_EXITS,
+ * the same two tables every other consumer reads, so a spoke that opens or
+ * closes tomorrow is routed correctly tomorrow with no edit here.  Town has
+ * exactly ONE door (the World View), which is why a one-leg warp could never
+ * have worked from town: town -> ember is two legs through the overworld, and
+ * ember -> frost is three.
+ *
+ * From inside a spoke the way out is its return marker (map tile 9), the same
+ * tile the walk-home branch below triggers on -- so leaving is the ordinary
+ * exit, not a second mechanism that could disagree with it.
+ *
+ * IT COSTS A REAL PLAYER ONE FALSY CHECK PER FRAME.  Everything else is
+ * behind `S._devWarp`, which nothing but the panel ever sets.
+ */
+var DEV_WARP_LEG_CAP = 6;        /* town->worldview->spoke is 2; a spoke start adds 1 */
+var DEV_WARP_MS = 60000;         /* four per-zone loads behind the overlay, generously */
+var DEV_WARP_SETTLE_MS = 500;    /* let the door answer before re-placing on it */
+
+function devWarpSay(S, text, sub) {
+  if (typeof window !== 'undefined' && typeof window._setLevelUpMsg === 'function') {
+    window._setLevelUpMsg({ kind: 'warning', text: text, sub: sub || '', ts: Date.now() });
+  } else if (S && S.player) {
+    pushDmgPopup(S, S.player.x, S.player.y - 30, text, '#f5c542', { ttl: 3 });
+  }
+}
+
+/* The nearest return marker in the zone you are standing in.  A full scan of
+   a ~50x50 map, run once per LEG rather than per frame -- the walk-home
+   branch's own 5x5 neighbourhood scan cannot be reused because the whole
+   point is that the player is nowhere near a marker yet. */
+function nearestReturnMarker(S, P) {
+  if (!S.map) return null;
+  var px = Math.floor(P.x / TILE), py = Math.floor(P.y / TILE);
+  var best = null, bestD = Infinity;
+  for (var y = 0; y < S.map.length; y++) {
+    var row = S.map[y];
+    if (!row) continue;
+    for (var x = 0; x < row.length; x++) {
+      if (row[x] !== 9) continue;
+      var d = Math.abs(x - px) + Math.abs(y - py);
+      if (d < bestD) { bestD = d; best = { tx: x, ty: y }; }
+    }
+  }
+  return best;
+}
+
+export function driveDevWarp(S) {
+  var w = S && S._devWarp;
+  if (!w) return;
+  var P = S.player;
+  if (!P) return;
+
+  if (S.currentZone === w.to) {
+    S._devWarp = null;
+    return;
+  }
+  /* A leg is loading behind the per-zone overlay.  Touching the player mid-load
+     is how you orphan the gate (v2.3.1406) -- wait it out. */
+  if (S._zoneLoading) return;
+  /* A dungeon is an instance the hub graph knows nothing about; its own exit is
+     the only way out and it is not a door in either table. */
+  if (S._inDungeon) {
+    S._devWarp = null;
+    devWarpSay(S, 'Leave the dungeon first', 'The zone chips route through the overworld');
+    return;
+  }
+  if (w.legs >= DEV_WARP_LEG_CAP || Date.now() - w.t > DEV_WARP_MS) {
+    S._devWarp = null;
+    /* The likeliest cause by far, and it is fixable from the same panel: the
+       Mayor gate and the per-zone quest gate both bounce you back silently
+       from the client side, and "Finish all quests" clears both. */
+    devWarpSay(S, 'Could not reach ' + w.to, 'Tap "Finish all quests" in the test panel, then try again');
+    return;
+  }
+  if (w.nextAt && Date.now() < w.nextAt) return;
+
+  var door = null;
+  if (S.currentZone === 'town' || S.currentZone === 'worldview') {
+    var exits = S.currentZone === 'town' ? TOWN_EXITS : WORLDVIEW_EXITS;
+    var i;
+    for (i = 0; i < exits.length; i++) { if (exits[i].zoneId === w.to) { door = exits[i]; break; } }
+    if (!door) {
+      /* No direct door from this hub -- hop to the other one and re-decide
+         from there.  This is the whole of the routing: two hubs, and every
+         spoke hangs off the World View. */
+      var otherHub = S.currentZone === 'town' ? 'worldview' : 'town';
+      for (i = 0; i < exits.length; i++) { if (exits[i].zoneId === otherHub) { door = exits[i]; break; } }
+    }
+    if (!door) {
+      S._devWarp = null;
+      devWarpSay(S, 'No route to ' + w.to, 'That spoke is closed on the World View map');
+      return;
+    }
+    P.x = door.tx * TILE + TILE / 2;
+    P.y = door.ty * TILE + TILE / 2;
+  } else {
+    var mk = nearestReturnMarker(S, P);
+    if (!mk) {
+      S._devWarp = null;
+      devWarpSay(S, 'No way out of ' + S.currentZone, 'This zone has no return marker');
+      return;
+    }
+    P.x = mk.tx * TILE + TILE / 2;
+    P.y = mk.ty * TILE + TILE / 2;
+  }
+  w.legs++;
+  w.nextAt = Date.now() + DEV_WARP_SETTLE_MS;
+}
+
 export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
   var P = S.player;
+  driveDevWarp(S);   /* v2.3.2308: one leg of a pending test-panel warp */
         /* v2.3.1406: STUCK-GATE FAILSAFE.  S._zoneLoading is normally
            consumed by the hub-exit gate below, but that only runs while
            the player is in a hub AND still within the armed exit's

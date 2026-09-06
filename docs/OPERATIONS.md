@@ -35,8 +35,11 @@ From there you can:
   and the Flame Fields without playing the tutorial chain. It marks those
   quests as *started*, not finished, so your save still looks like a real
   player's.
-- **Warp** — from the World View map, tap a zone to be placed at its
-  trail-head, then walk in as normal.
+- **Warp** — tap a zone name and you'll be taken there, from wherever you're
+  standing. It walks you out through the ordinary doors (town → World View →
+  the zone), so each zone still loads its art properly on the way in and you
+  see the usual loading spinner for a moment. If a zone won't open, it stops
+  and tells you — usually the fix is **Finish all quests** first.
 - **Give weapons + levels** — the three starter weapons and a chunk of levels,
   so a high-level zone isn't instant death.
 - **Heal / refill** and **God mode** — top your bars up, or stop taking damage
