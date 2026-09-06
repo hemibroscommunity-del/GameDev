@@ -282,6 +282,18 @@ export const MONSTER_VARIANTS = {
     tint: 0x4488cc,          /* fallback only -- see recolor */
     recolor: [58, 122, 208], /* #3a7ad0 */
     spd: 1.15,
+    /* ═══ v2.3.2310: THE BALL YOU CAN SEE COMING ═══
+       Owner: "make the blue slime projectiles larger by about 4x."
+       It was drawing at EIGHT on-screen px -- not because anything asked for
+       eight, but because this variant had no entry here and the shared default
+       (16) was divided by a hard-coded 256 while the recoloured orb sheet is
+       128.  So it rendered at half of a default that was already well under
+       the 25.6 px a PLAIN slime's identical orb gets from the fallback path.
+       32 is the owner's 4x against what he was actually looking at, and it
+       lands the blue ball a little above the green one -- which is the right
+       way round: the blue slime is the fast one, and its shot is the one you
+       have least time to read. */
+    projectileScalePx: 32,
   },
   mireWisp: {
     baseArchetype: 'fodder',

@@ -40,7 +40,7 @@ import { prog3Live, prog3CatFor, prog3CritPct, prog3CritMult, prog3CritFlat } fr
 import { MONSTER_VARIANTS, baseArchetypeOf, hitShapeOf, hitMaterialOf /* v2.3.2200 */, isIntangible /* v2.3.2224 */, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
 import { rollMonsterShard } from '@/data/shards.js';
-import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */, dropLocalRemnantOnce /* v2.3.2233 */ } from '@/game/combatHelpers.js';
+import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc, lockAimPoint, spawnHitDebris, spawnGroundDecal /* v2.3.2200 */, dropLocalRemnantOnce /* v2.3.2233 */, rangedAimAngle } from '@/game/combatHelpers.js';
 import { updateTargeting } from '@/game/targeting.js'; /* v2.3.2243 */
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
@@ -1525,18 +1525,13 @@ export function updateMonsterCombat(S, deps) {
                    preferred while _aiming is live, because that is a thumb
                    steering right now; it is the STALE read of it that was wrong,
                    not the fresh one. */
-                if (_lockPt) {
-                  arrAngle = Math.atan2(_lockPt.y - _shotY, _lockPt.x - _shotX);
-                } else if (S._aiming && S._aimAngle != null) {
-                  arrAngle = S._aimAngle;
-                } else if (S._lastAimAngle != null) {
-                  arrAngle = S._lastAimAngle;
-                } else if (typeof S._facingAngle === 'number') {
-                  arrAngle = S._facingAngle;
-                } else {
-                  var fd = S._facing || 'down';
-                  arrAngle = fd === 'right' ? 0 : fd === 'up' ? -Math.PI / 2 : fd === 'left' ? Math.PI : Math.PI / 2;
-                }
+                /* v2.3.2307: the five branches that used to be written out here
+                   are now rangedAimAngle (combatHelpers), because the HUD aim
+                   arrow has to read the SAME ladder -- an arrow with its own
+                   copy would be right the day it shipped and wrong the next
+                   time one branch changed, which is v2.3.2254-2262 verbatim.
+                   Behaviour is unchanged: same order, same origin. */
+                arrAngle = rangedAimAngle(S, _shotX, _shotY).ang;
                 if (!S.arrows) S.arrows = [];
                 S.arrows.push({
                   ang: arrAngle,

@@ -105,7 +105,34 @@ function saveDone(done) {
    its lesson is skipped for this tick — the same degrade-to-fewer-callouts
    rule ControlsTutorial has used since v2.3.1205, and the reason the
    joystick lessons simply do not appear on a desktop pointer. */
-function measure(anchors) {
+function measure(anchors, L, S) {
+  /* ═══ v2.3.2306: A LESSON ABOUT SOMETHING THAT IS NOT IN THE DOM ═══
+     Every other lesson rings a DOM control. This one rings the PLAYER, who is
+     painted on the canvas -- so it brings its own rect instead of a selector.
+     Strictly additive: a lesson without worldRect takes the loop below
+     unchanged. */
+  if (L && typeof L.worldRect === 'function') {
+    let wr = null;
+    try { wr = L.worldRect(S); } catch (_e) { wr = null; }
+    if (wr) {
+      /* Reachability is still asked, and still honestly: the touch zones are
+         what a finger actually hits over the play field, so they are the
+         reach. Without this the lesson would draw over an open modal. */
+      const el = document.querySelector(L.reach || 'canvas');
+      if (!el) return null;
+      const okR = { left: wr.left, top: wr.top, width: wr.width, height: wr.height,
+        bottom: wr.top + wr.height };
+      if (okR.bottom < 0 || okR.top > window.innerHeight) return null;
+      if (!reachable(el, okR, L.reach)) return null;
+      return { left: wr.left, top: wr.top, width: wr.width, height: wr.height, body: wr.body || (anchors[0] && anchors[0].body) };
+    }
+    /* v2.3.2306: an anchor-optional lesson degrades to a CARD, not to
+       nothing -- ControlsTutorial records losing two steps that way. A null
+       rect here means the bro is off screen or the camera is mid-transition,
+       which is a frame, not a reason to drop the lesson. */
+    if (L.anchorOptional) return { left: 0, top: 0, width: 0, height: 0, body: (anchors[0] && anchors[0].body) };
+    return null;
+  }
   for (const a of anchors) {
     let el = null;
     try { el = document.querySelector(a.sel); } catch (_e) {}
@@ -143,7 +170,11 @@ function reachable(el, r, reach) {
   let top = null;
   try { top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); } catch (_e) {}
   if (!top) return false;
-  if (top === el || el.contains(top)) return true;
+  /* v2.3.2306: `el` is guarded because a world-anchored lesson can call this
+     with none. The try/catch above wraps only elementFromPoint, so
+     `el.contains` on a null would be a TypeError -- and this function is
+     shared by eight working lessons. */
+  if (el && (top === el || el.contains(top))) return true;
   if (reach) { try { if (top.closest(reach)) return true; } catch (_e) {} }
   return false;
 }
@@ -435,6 +466,58 @@ const LESSONS = [
      urgent, which is exactly why they belong last rather than in the middle of
      a fight lesson. */
   {
+    /* ═══ v2.3.2306: THE LESSON THAT NEVER DREW ═══
+       Owner, twice: "During the tutorial mention that tapping on your
+       character allows you to chat with others in the room this is a
+       multiplayer server! Show a circle on your character that grows and
+       shrinks during that notification."
+
+       The second ask is the tell. A `chat` lesson has existed since v2.3.2147
+       and has never appeared on a phone: its anchor was the CANVAS, and
+       measure() hit-tests the middle of its anchor -- where a full-height
+       [data-joyzone] sits on top. So elementFromPoint answered the zone,
+       closest('canvas') was null, and the lesson was silently skipped by the
+       degrade-to-nothing rule. It measured only on DESKTOP, where the gesture
+       it teaches does not exist at all (openSelfChat is called from the two
+       zone releases and nowhere else). That is TRAPS #41, exactly.
+
+       So it rings the bro himself now, via worldRect, and its reach is the
+       touch zone -- which is the honest answer to "what would a finger hit
+       here" over the play field, and also the honest platform test: no zones,
+       no gesture, no lesson.
+
+       Re-id'd from `chat` so the tightened tracker below starts fresh, WITHOUT
+       bumping LS_KEY (that would re-teach every lesson to everyone). */
+    id: 'chatTap',
+    shape: 'circle',
+    anchors: [{ body: 'Everyone here is a real player. Tap yourself to say something.' }],
+    /* The bro's live screen circle, using the SAME arithmetic isSelfTouch uses
+       to decide the tap, inverted. The radius is 52 WORLD px scaled by
+       _worldScaleX ON PURPOSE: the ring's size IS the tap target, so pinning
+       it to a fixed CSS radius would make the ring lie about where you can
+       actually tap. (v2.3.2255's screen-space rule, read the right way round:
+       a mark that MEANS a world distance stays in world units.) */
+    worldRect: function (S) {
+      const P = S && S.player, cam = S && S.camera;
+      if (!P || !cam) return null;
+      const c = document.querySelector('canvas');
+      if (!c) return null;
+      const cr = c.getBoundingClientRect();
+      const sx = S._worldScaleX || 1, sy = S._worldScaleY || 1;
+      const cxp = cr.left + (P.x - cam.x) * sx;
+      const cyp = cr.top + (P.y - 24 - cam.y) * sy;
+      const rad = 52 * sx;
+      if (!isFinite(cxp) || !isFinite(cyp) || rad < 4) return null;
+      return { left: cxp - rad, top: cyp - rad, width: rad * 2, height: rad * 2 };
+    },
+    /* The zones are the reach AND the platform test -- see the note above. */
+    reach: '[data-joyzone]',
+    anchorOptional: true,
+    label: 'This is a live server',
+    live: function (rpg) { return !!rpg.shield; },
+    done: null,     /* watched live -- see the chat tracker below */
+  },
+  {
     id: 'passkey',
     shape: 'rect',
     /* The rail's More button, because it is on screen whatever panel you are
@@ -451,22 +534,6 @@ const LESSONS = [
        owner asked for it after the shield. */
     live: function (rpg) { return !!rpg.shield; },
     done: null,     /* watched live — see the passkey tracker below */
-  },
-  {
-    id: 'chat',
-    shape: 'circle',
-    /* THE CHARACTER IS NOT IN THE DOM -- he is painted on the canvas -- so
-       there is no selector for the thing this lesson is about. The canvas is
-       the honest anchor: the ring lands on the play area, and the words say
-       where to tap. ControlsTutorial has taught this in passing since
-       v2.3.1287 ("Menus live down here. Tap your character to chat."), bundled
-       into the toolbar step where it reads as a footnote; the owner asking for
-       it again is the tell that a footnote was not enough. */
-    anchors: [{ sel: 'canvas', reach: 'canvas',
-                body: 'Tap your own character to open chat.' }],
-    label: 'Tap yourself to chat',
-    live: function (rpg) { return !!rpg.shield; },
-    done: null,     /* watched live — see the chat tracker below */
   },
 ];
 
@@ -495,6 +562,9 @@ export function QuestCoach(props) {
      tracker — equipping a weapon changes activeSlot, so counting from session
      start credited the player for the previous lesson's equips. */
   const cycleArmed = React.useRef(false);
+  /* v2.3.2306: WHEN the chat lesson was first shown, so its tracker can tell a
+     tap that answers it from one that happened at any point beforehand. */
+  const chatArmed = React.useRef(0);
   const blockRef = React.useRef({ ms: 0, sectors: 0, last: 0 });
   /* v2.3.2130: how far the bro has actually walked, in world px.  A ref for
      the same reason as the others -- it ticks every frame and only its
@@ -573,10 +643,21 @@ export function QuestCoach(props) {
           }
         } catch (e) { /* a lesson tracker must never break the frame */ }
       }
-      if (!done.chat) {
+      /* ═══ v2.3.2306: ARMED, LIKE THE CYCLE COUNTER ═══
+         This used to credit the lesson whenever the chat bubble was open --
+         and the trackers run ABOVE the coach's own gate, so ANY incidental
+         self-tap at any point in a browser's life, long after the tutorial
+         finished, wrote it done. That is v2.3.1809's cycle bug verbatim, and
+         the answer is already in this file: arm when the mark is first shown
+         and compare against the armed-at stamp, not against truthiness.
+         It also watches the TAP rather than the bubble: openSelfChat stamps
+         _chatBySelfTap, which is the gesture being taught. Opening chat any
+         other way is not this lesson. (A state stamp, not a callback pushed
+         into the control -- the design rule at the top of this file.) */
+      if (!done.chatTap && chatArmed.current) {
         try {
-          const _cb = window.__broChatBubbleBus;
-          if (_cb && _cb.open === true) { done.chat = true; saveDone(done); }
+          const _st = S && S._chatBySelfTap;
+          if (_st && _st >= chatArmed.current) { done.chatTap = true; saveDone(done); }
         } catch (e) { /* as above */ }
       }
       /* ═══ v2.3.2130: DID THEY WALK, AND DID THEY SWING? ═══
@@ -696,11 +777,14 @@ export function QuestCoach(props) {
           const sd = discSideFor(a.sel);
           if (sd && wantSides.indexOf(sd) < 0) wantSides.push(sd);
         }
-        const rect = measure(L.anchors);
+        /* v2.3.2306: the lesson and the live state go in too -- a
+           world-anchored lesson (chatTap) brings its own rect. */
+        const rect = measure(L.anchors, L, stateRef && stateRef.current);
         if (!rect) continue;          /* off screen / covered / desktop — skip, don't block */
         next = { id: L.id, label: L.label, body: rect.body, shape: L.shape, rect: rect };
         /* Arm the cycle counter the first time its mark is chosen, seeded with
            the slot the player is on so that one does not count as a swap. */
+        if (L.id === 'chatTap' && !chatArmed.current) chatArmed.current = Date.now();
         if (L.id === 'cycle' && !cycleArmed.current) {
           seenSlots.current = Object.create(null);
           if (rpg) seenSlots.current[rpg.activeSlot || 'melee'] = true;
@@ -764,6 +848,14 @@ export function QuestCoach(props) {
                  sectors: b.sectors, needMs: BLOCK_HOLD_MS, needSectors: BLOCK_SECTORS,
                  slots: Object.assign({}, seenSlots.current),
                  cycleArmed: cycleArmed.current,
+                 /* v2.3.2306: the chat lesson's two halves. `chatArmed` is when
+                    its mark first went up and `chatBySelfTap` is when the
+                    taught gesture last happened -- a test that could only see
+                    `done` could not tell a lesson that was ANSWERED from one
+                    credited by an incidental tap made before it was ever
+                    shown, which is the bug this arming fixes. */
+                 chatArmed: chatArmed.current,
+                 chatBySelfTap: (stateRef && stateRef.current && stateRef.current._chatBySelfTap) || 0,
                  /* v2.3.2130: the move lesson's progress, and which gate is
                     holding the coach open.  Both are invisible from outside --
                     a test that could only see "no mark" could not tell a coach

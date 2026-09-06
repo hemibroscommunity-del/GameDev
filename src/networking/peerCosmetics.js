@@ -123,6 +123,40 @@ export function peerCosmeticsFromWire(wire) {
   return out;
 }
 
+/* ═══ v2.3.2304: THE KEYS THAT ARRIVE UNDER THEIR OWN NAME ═══
+ * The doc above says these "already arrive under the field name the renderer
+ * reads, so the relay's Object.assign carries them correctly on its own."
+ * True of the RELAY road -- and false of the two JOIN roads (state_sync and
+ * player_join), which build a hand-written peer literal and then Object.assign
+ * only the RENAMED keys from peerCosmeticsFromWire. Every same-named key was
+ * therefore dropped on join and did not arrive until the first ~2s relay.
+ *
+ * Three of them are read by the renderer immediately: rpgData (the slung
+ * shield), cape, and wpnType (the weapon look). So for up to two seconds a
+ * peer had no cape, no shield on their back, and the wrong weapon.
+ *
+ * NOT fixed by adding these to the server's JOIN_COSMETIC_KEYS: the cape is
+ * stamped server-side on the relay road precisely to stop a client granting
+ * itself a contest-prize cape, and widening the join road without that stamp
+ * would re-open the forgery hole. The server already ships all of these in the
+ * join snapshot; the client was throwing them away. */
+export const PEER_PASSTHROUGH_FIELDS = Object.freeze([
+  'cape', 'rpgData', 'wpnType', 'wpnMat', 'rep', 'mask', 'pet',
+]);
+
+/** JOIN road: the same-named cosmetic keys, copied straight across.
+ *  Only keys actually present are written, so a worker that does not send one
+ *  leaves the peer literal's own default alone. */
+export function peerPassthroughFromWire(wire) {
+  const src = wire || {};
+  const out = {};
+  for (let i = 0; i < PEER_PASSTHROUGH_FIELDS.length; i++) {
+    const k = PEER_PASSTHROUGH_FIELDS[i];
+    if (Object.prototype.hasOwnProperty.call(src, k) && src[k] !== undefined) out[k] = src[k];
+  }
+  return out;
+}
+
 /** RELAY road: apply a `track` fan-out to an existing peer, in place.
  *  DELTA SEMANTICS ON PURPOSE — only keys the payload actually carries are
  *  written.  `track` omits a drawing entirely when the canvas is blank

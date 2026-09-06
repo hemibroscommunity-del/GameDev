@@ -6390,10 +6390,28 @@ export class EntityRenderer {
         window.__btMonsterSprite = (mid) => {
           const d = _mdRef.get(mid);
           if (!d || !d._spriteBody) return null;
+          /* ═══ v2.3.2309: "VISIBLE" WAS NEVER THE WHOLE QUESTION ═══
+             A Sprite whose texture's source has been destroyed is still
+             visible:true, still scaled, still parented -- and draws NOTHING,
+             silently.  That is precisely how the burrow strips failed after a
+             frost round trip (see unloadSnowmanSprites), and no probe in the
+             tree could see it.  So report the TEXTURE's liveness beside the
+             flag: a test that reads only `visible` cannot tell a drawn sprite
+             from a hole in the screen. */
+          const _t = d._spriteBody.texture;
+          const _src = _t && _t.source;
           return {
             sx: +d._spriteBody.scale.x.toFixed(3),
             visible: !!d._spriteBody.visible,
             drewDeathAt: d._deathDrewAt || 0,
+            texW: _t ? (_t.frame ? _t.frame.width : _t.width) : 0,
+            srcW: _src ? (_src.width || 0) : 0,
+            texAlive: !!(_src && !_src.destroyed && _src.width > 0),
+            /* The procedural fallback body.  Drawn INSTEAD of the sprite when
+               there is no frame at all -- so "sprite dark and body dark" is
+               the hole, while "sprite dark and body lit" is merely the wrong
+               art, which is a different bug with the same first symptom. */
+            bodyVisible: !!(d._body && d._body.visible),
           };
         };
       }
@@ -8015,7 +8033,24 @@ export class EntityRenderer {
 
       // Use pre-computed interpolated position
       display.x = other.renderX || other.x || 0;
-      display.y = other.renderY || other.y || 0;
+      /* ═══ v2.3.2304: TWO REFINEMENTS THE PEER NEVER GOT ═══
+         1. THE MINING LIFT. The mine-south sheet has a rock baked in under
+            the boots; the local miner is raised 8px so it tucks behind the
+            ore (v2.3.1476). The peer was not, so a mining peer stood in a
+            second, floating rock.
+         2. ABOVE THE TREES. The local miner and fisher are promoted from the
+            player layer to the gesture layer so scenery cannot swallow them;
+            a peer stayed in the entity layer, so a tree could eat a peer who
+            was mining or fishing.
+         Both read the peer's relayed harvest code, which is the remote twin
+         of the local _exSkill. */
+      const _oEx = other._ex || null;
+      display.y = (other.renderY || other.y || 0) - (_oEx === 'mine' ? 8 : 0);
+      {
+        const _peerLayer = ((_oEx === 'mine' || _oEx === 'fish') && this.gestureLayer)
+          ? this.gestureLayer : this.entityLayer;
+        if (display.parent !== _peerLayer) _peerLayer.addChild(display);
+      }
       /* ═══ v2.3.2083: WHERE A PEER WAS ACTUALLY DRAWN ═══
          The local player has had __btPlayerDrawn since v2.3.2078; a peer had
          nothing, so a QA crop around another player was derived from
@@ -8211,7 +8246,25 @@ export class EntityRenderer {
         const _shLo = display._shieldBackLo, _shHi = display._shieldBackHi;
         if (_shLo && _shHi) {
           const _hasShield = !!(other.rpgData && other.rpgData.shield);
-          const _place = (_hasShield && !isHit && !other._dying && !other._extraction && !other._firemaking)
+          /* ═══ v2.3.2304: THIS GATE WAS DEAD ═══
+             It tested `other._extraction` and `other._firemaking`. Neither is
+             written ANYWHERE in the tree -- those two names only ever appear on
+             S (the LOCAL state). A peer's harvest arrives as `other._ex`
+             (wsClient, the player_update merge), so both terms were always
+             undefined and the gate never fired.
+             Replaced with the LOCAL rule, which is what it was trying to be:
+             the slung shield shows on stand/jog only, and never inside an
+             attack window -- otherwise it hangs in the air over a body the
+             swing stand-in has already hidden. chop/cook/fire are covered
+             anyway (the whole container is hidden for those), so what actually
+             changes here is mine/fish/dodge and the two attack windows. */
+          const _shSwing = (() => {
+            const _sw = other._swingWpn;
+            const _isMelee = !_sw || _sw === 'sword' || _sw === 'greatsword';
+            return (_isMelee && other._swingTs && (now - other._swingTs) < SWORD_SWING_MS)
+              || (other._bowShotAt && (now - other._bowShotAt) < BOW_SHOT_MS);
+          })();
+          const _place = (_hasShield && !isHit && !other._dying && !other._ex && !_shSwing)
             ? backShieldPlacement(facingIdx, isMoving, bobY)
             : null;
           if (!_place) {
@@ -8323,7 +8376,25 @@ export class EntityRenderer {
            above -- a peer's pants print must not be built from my local store,
            and anything that is not exactly a well-formed drawing becomes null. */
         const _oBodyArt = _remoteBodyArt(other, mirror);
-        let tex = getBodyFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, _oShirtT, _oShirtKey, other.eyeColor, _oBodyArt);
+        /* ═══ v2.3.2304: A PEER'S FISHING ROD KEEPS ITS COLOUR ═══
+           The LOCAL fisher draws the raw fish sheet rather than a recoloured
+           body, because the pink rod and line are baked into that art and the
+           body-region recolour mis-paints them. The remote path had no such
+           exception, so a peer's rod WAS re-tinted -- the two sides simply
+           disagreed about the same frame.
+           Fixed by giving the remote the raw sheet (not by giving the local a
+           recolour): 'fish' is on neither preloadBodyAll's pose list nor
+           preloadGear's sets, so a per-peer fish bake would be a NEW
+           first-cast texture load -- a preloading-law violation created to fix
+           a parity one. It is also the right way round for iPhone VRAM, where
+           the body-sheet cache is keyed per (combo, pose, dir) with no cap.
+           HONEST ABOUT THE TRADE: on the raw sheet a fishing character loses
+           their skin tone, trousers, shoes, eye colour and any drawings. That
+           is already what you see of YOURSELF today; this makes peers match.
+           The durable fix is re-cut fish art with the rod on its own layer. */
+        let tex = pose === 'fish'
+          ? getFrame('fish', 'south', frameIdx)
+          : getBodyFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, _oShirtT, _oShirtKey, other.eyeColor, _oBodyArt);
         if (!tex) tex = getBodyFrame(other.skin, other.pants, other.shoes, 'stand', dir, 0, _oShirtT, _oShirtKey, other.eyeColor, _oBodyArt);
         if (tex) {
           /* Reassign texture whenever it differs — same self-heal as
@@ -8420,12 +8491,25 @@ export class EntityRenderer {
                a peer fishing in greaves lost the same hand the local player
                did -- and worse, it was invisible to whoever was wearing them,
                which is the shape of the owner's separate report that peers
-               are missing items his own screen shows.  The shirt needs no
-               entry here: on the remote path it is baked into the body
-               texture rather than drawn as an overlay (see just below). */
-            if (pose === 'fish' && _rworn.length > 0) _placeFishHead(display, spriteBody, tex);
+               are missing items his own screen shows.
+               v2.3.2304: ...and the SHIRT belongs here too.  The paragraph
+               that used to end this note said the shirt "is baked into the
+               body texture rather than drawn as an overlay" -- that has been
+               false since v2.3.756 retired the baked shirt: _oShirtT is a
+               hardcoded null a few lines up and the shirt is passed to
+               _placeGear as an equip id like every other layer.  So a peer
+               fishing in a plain tee (no chest, no greaves) lost the reel hand
+               while the LOCAL path, which tests chest OR shirt OR legs, kept
+               it.  Matching the local test. */
+            const _fishWorn = _rworn.length > 0 || (_oShirtEquip && _oShirtEquip !== 'none');
+            if (pose === 'fish' && _fishWorn) _placeFishHead(display, spriteBody, tex);
           } catch (e) { if (display._bodyHead) display._bodyHead.visible = false; spriteBody.visible = true; }
-          /* shirt is baked into the body (see getBodyFrame above); no overlay. */
+          /* v2.3.2304: the shirt is drawn by _placeGear as an equip layer, not
+             baked into the body -- this sprite is the RETIRED baked-shirt node
+             (v2.3.756) and stays hidden because nothing draws it any more, not
+             because the shirt lives in the body texture.  The old comment here
+             claimed the latter and misled the fish-hand gate above for two
+             versions. */
           if (display._shirtSprite) display._shirtSprite.visible = false;
           /* always show the remote's hair/hat/beard (no helmet to hide them). */
           _crownOverride = _fsR ? _fullsetCrown(dir, _rJogPhase) : null; /* v2.3.1389 */
@@ -8730,6 +8814,13 @@ export class EntityRenderer {
             '_gearShirt', '_gearLegs', '_gearChest', '_gearShoulders', '_gearHead']) {
             if (display[_k]) display[_k].visible = false;
           }
+          /* v2.3.2304: ...and the cape, for the reason spelled out on the
+             local twin of this block. Same defect, both paths -- which is the
+             fourth time a fix has had to land twice in this file because the
+             local and remote renders are parallel implementations. */
+          if (display._capeSprite) display._capeSprite.visible = false;
+          if (display._capeBackSprite) display._capeBackSprite.visible = false;
+          if (display._capeHoodMask) display._capeHoodMask._btReady = false;
           if (display._weaponContainer) display._weaponContainer.visible = false;
         }
       }
@@ -9176,8 +9267,16 @@ export class EntityRenderer {
          - The composited arm still draws, exactly on top of the torso's own —
            it was cut from this art at this scale, so it aligns by construction
            — and it is what carries the shield's hand position.
-         - Peers are unaffected: a peer's block is not broadcast (see PR #438),
-           so nothing here can desync.
+         - Peers are unaffected by THIS body swap, so nothing here can desync.
+           v2.3.2304 CORRECTION: the old wording said "a peer's block is not
+           broadcast (see PR #438)". That is false and has been for a long
+           while -- shieldToggle.js and playerActions.js both send
+           player_shield, gameEvents writes it to the peer's _shieldUp, and
+           this file reads that flag for the held-shield sprite. What a peer
+           does NOT have is a block POSE (this swap), which is a missing
+           feature rather than a missing broadcast. Left as a feature gap on
+           purpose -- adding it is its own change -- but the reason is now
+           stated correctly so nobody rules it out on a false premise.
 
        GATED ON THE ART BEING LOADED.  A bow shot lasts 400ms, so if its
        stand-in were ever missing you would barely see it; a block is held, so
@@ -9951,6 +10050,20 @@ export class EntityRenderer {
                         display._gearShoulders, display._gearHead]) {
         if (_g) _g.visible = false;
       }
+      /* ═══ v2.3.2304: THE CAPE GOES WITH THE BODY ═══
+         _placeCape bails on `!sb.visible`, and its own header says that is
+         what holds the line -- but the CALL ORDER defeats it: _placeCape runs
+         earlier in the pass than this hide block, so it has already drawn
+         against a body that was still visible. And `pose` never reads 'swing'
+         during a sword swing (the ladder yields stand/jog/hit), so the
+         hidden-pose list never fires either. The result was two capes: the
+         worn one hanging over a hidden body while the stand-in drew its own.
+         The hood mask is cleared with them -- leaving it set clips the hair to
+         a hood that is not on screen, which is a bald patch rather than a
+         cosmetic slip. */
+      if (display._capeSprite) display._capeSprite.visible = false;
+      if (display._capeBackSprite) display._capeBackSprite.visible = false;
+      if (display._capeHoodMask) display._capeHoodMask._btReady = false;
       /* Publish the avatar's foot world-Y so the stand-in (effectsRenderer)
          plants its feet exactly where the real body's feet were, instead of
          floating up.  The body is anchored frame-centre (256-frame, feet row

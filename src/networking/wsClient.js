@@ -21,7 +21,7 @@ import { stashPendingZoneNodes } from '@/networking/nodeSync.js'; /* v2.3.1301: 
 import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking/index.js';
 /* v2.3.1961: the ONE wire-key -> peer-field rename table, read by the join
    snapshot, both self-heal placeholders and the 2s track relay below. */
-import { peerCosmeticsFromWire, applyPeerCosmetics } from '@/networking/peerCosmetics.js';
+import { peerCosmeticsFromWire, peerPassthroughFromWire, applyPeerCosmetics } from '@/networking/peerCosmetics.js';
 import { revealBus } from '@/ui/reveal/revealBus.js'; /* v2.3.1925 */
 import { applyCharacterRecord, hasStoredCharacter, publishCharRecord } from '@/game/characterRecord.js'; /* v2.3.1814: the stored name+look */
 import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, DEATH_GOLD_PENALTY, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setProg3XEnabled, isProg3XEnabled, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, setBlockScaleEnabled, PROG3_SKILL_META, PROG3 } from '@/data/index.js';
@@ -1076,7 +1076,26 @@ export function setupWebSocket(ctx) {
                   rpgHp: _data.rpgHp || 50,
                   rpgMaxHp: _data.rpgMaxHp || 50,
                   zone: _data.z || 'town'
-                }, peerCosmeticsFromWire(_data));
+                  /* ═══ v2.3.2304: THE JOIN-FRAME COSMETIC HOLE ═══
+                     peerCosmeticsFromWire only maps keys the wire RENAMES.
+                     This literal is hand-written and never Object.assigns the
+                     raw payload, so every SAME-NAMED cosmetic the worker sent
+                     -- cape, rpgData, wpnType, wpnMat, rep, mask, pet -- was
+                     thrown away here and did not arrive until the first ~2s
+                     relay. Three of those are read by the renderer straight
+                     away, so for up to two seconds a peer already in the room
+                     had no cape, no shield slung on their back and the wrong
+                     weapon in hand.
+                     NOTE this is the ONLY one of the three peer literals with
+                     the hole: the player_join and player_update paths both
+                     Object.assign the raw data on the very next line.
+                     NOT fixed server-side by widening JOIN_COSMETIC_KEYS -- the
+                     cape is stamped by the worker on the relay road precisely
+                     so a client cannot grant itself a prize cape, and adding
+                     it to the join road without that stamp would re-open the
+                     forgery hole. The worker already sends all of these; the
+                     client was discarding them. */
+                }, peerCosmeticsFromWire(_data), peerPassthroughFromWire(_data));
               }
               S.others = others;
               setPlayerCount(msg.playerCount || Object.keys(others).length + 1);

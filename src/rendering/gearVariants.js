@@ -29,10 +29,50 @@ export const GEAR_VARIANTS = {
   irongreaves: { slot: 'legs', art: 'steelgreaves', material: 'iron', name: 'Iron Greaves' },
 };
 
+/* ═══ v2.3.2303: THE ART SETS THAT ACTUALLY SHIP ═══
+ * Every gear loader interpolates a resolved art id straight into
+ * `/sprites/gear/<slot>/<item>/<pose>-<dir>.png`, and the ids it resolves come
+ * off the WIRE -- a peer's eqc/eql/eqs, which the worker admits as arbitrary
+ * strings capped at 64 chars (server/src/index.js, the `eqc/eql/eqs/eqst`
+ * sanitiser).  The server's own comment there claims "the receiving renderer
+ * looks the id up in its own gear catalog and draws nothing for one it does
+ * not know."  That was not true: gearArt() below returns an unknown id
+ * UNCHANGED, so a crafted equip id reached the fetch.
+ *
+ * Three things that bought: wearing the RETIRED steel set on every other
+ * screen (v2.3.1761 removed the catalog row, not the art); making every other
+ * client fetch an arbitrary same-origin path; and rotating a fresh id every
+ * couple of seconds to grow the loaders' caches without bound on everyone
+ * else's device.
+ *
+ * One art set ships per slot, so the allow-list is exact rather than a
+ * pattern.  A variant resolves to its `art` first (copper -> steel), so
+ * recolours are covered without being listed.  Anything not here resolves to
+ * null and the sprite simply does not draw -- which is what the server comment
+ * always said happened. */
+export const GEAR_ART_SETS = {
+  shirt: ['tshirt'],
+  chest: ['steelplate'],
+  legs: ['steelgreaves'],
+  belt: ['chainbelt'],
+  fullset: ['steel'],
+};
+
 /** The art set a gear id draws from.  Non-variants are their own art. */
 export function gearArt(item) {
-  const v = item && GEAR_VARIANTS[item];
+  const v = item && Object.prototype.hasOwnProperty.call(GEAR_VARIANTS, item)
+    ? GEAR_VARIANTS[item] : null;
   return v ? v.art : item;
+}
+
+/** gearArt(), but null for anything this slot has no sheets for.  Every loader
+ *  that builds a sprite URL must go through this, not gearArt(). */
+export function gearArtSafe(slot, item) {
+  const art = gearArt(item);
+  if (!art || typeof art !== 'string') return null;
+  const ok = Object.prototype.hasOwnProperty.call(GEAR_ART_SETS, slot)
+    && GEAR_ART_SETS[slot].indexOf(art) !== -1;
+  return ok ? art : null;
 }
 
 /** The material id a gear id is worn in, or null for native art. */

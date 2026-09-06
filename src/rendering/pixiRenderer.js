@@ -928,6 +928,33 @@ export async function initPixiRenderer(canvas) {
            see.  Both sites now share CHOP_STANDIN_H; this is what lets a test
            say so, by comparing against the local __btChopFigure(). */
         scaleY: (ent[ent._exCode] && ent[ent._exCode].scale) ? ent[ent._exCode].scale.y : null,
+        /* v2.3.2303: the peer's CLOTHES.  Until this version the gear block was
+           gated `if (code === 'fire')`, so a peer cooking or chopping was drawn
+           bare-chested while their own screen composited all three layers --
+           the owner's "items missing on other characters during certain
+           animations that don't appear missing on your own screen".
+           `hasTex` is separate from `visible` on purpose and is the assertion
+           that actually bites: a recoloured set resolves through gearArt to its
+           donor art, and a call site that built a URL from the raw equip id
+           404s SILENTLY and draws nothing -- while a tint applied to that empty
+           sprite still reports the right colour (the v2.3.1772 trap, where a
+           passing test measured colour on an invisible strip). */
+        gear: ent.gear ? {
+          legs: { visible: !!ent.gear.legs.visible, hasTex: !!(ent.gear.legs.texture && ent.gear.legs.texture.frame), tint: ent.gear.legs.tint },
+          shirt: { visible: !!ent.gear.shirt.visible, hasTex: !!(ent.gear.shirt.texture && ent.gear.shirt.texture.frame), tint: ent.gear.shirt.tint },
+          chest: { visible: !!ent.gear.chest.visible, hasTex: !!(ent.gear.chest.texture && ent.gear.chest.texture.frame), tint: ent.gear.chest.tint },
+        } : null,
+        /* The body sprite's own flip, so a test can pin that a peer chopping a
+           tree on their left faces it (v2.3.2303) rather than away from it. */
+        /* v2.3.2303: the index handed to the GEAR loader, which is NOT the
+           body index. chop's row carries `from: 12`, so the body runs 12..23
+           while the gear strips are 12-frame -- passing the body index clamps
+           the armour on its last frame for the whole swing while the body
+           animates underneath. Asserting on `frame` alone cannot see that;
+           this is the field that can. */
+        gearIx: typeof ent._gearIx === 'number' ? ent._gearIx : null,
+        signX: (ent[ent._exCode] && ent[ent._exCode].scale)
+          ? (ent[ent._exCode].scale.x < 0 ? -1 : 1) : null,
       };
     },
     /* v2.3.138: dispose a single loot pile by direct object reference.
