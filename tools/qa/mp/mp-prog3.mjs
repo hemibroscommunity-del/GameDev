@@ -237,6 +237,86 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !laneFit.err && laneFit.minRow >= 44, laneFit);
   rec.ok('...and every ℹ️ is a real thumb target, not a glyph',
     !laneFit.err && laneFit.minInfo >= 30, laneFit);
+
+  /* ═══ v2.3.2315: THE ACCORDION ACTUALLY CLOSES ═══
+     Owner: "the stat allocation accordion menu doesn't collapse when I tap on
+     it."  It did not: the header called setBuildCat(sk.key), a SET rather
+     than a toggle, so tapping the open lane re-selected the lane it was
+     already on.
+
+     THREE TAPS, because a one-tap test cannot tell a toggle from a break.
+     "It closed" would also pass on a build that closed and could never
+     reopen, and "a second lane opens" would pass on the old set-only code --
+     which is the exact behaviour being replaced. So: close it, reopen it,
+     then move to a different lane. */
+  const laneState = () => P.page.evaluate(() => {
+    const rows = [...document.querySelectorAll('[data-prog3-lane]')];
+    return {
+      lanes: rows.length,
+      open: rows.filter((r) => r.getAttribute('aria-expanded') === 'true')
+        .map((r) => r.getAttribute('data-prog3-lane')),
+    };
+  });
+  const tapLane = (key) => P.page.evaluate((k) => {
+    const el = document.querySelector(`[data-prog3-lane="${k}"]`);
+    if (!el) return false;
+    const r = el.getBoundingClientRect();
+    const o = { bubbles: true, cancelable: true, pointerId: 1, pointerType: 'touch',
+      clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 };
+    el.dispatchEvent(new PointerEvent('pointerdown', o));
+    el.dispatchEvent(new PointerEvent('pointerup', o));
+    return true;
+  }, key);
+
+  const l0 = await laneState();
+  rec.ok('exactly one lane is open to begin with (guard)',
+    l0.lanes === 3 && l0.open.length === 1, l0);
+  const wasOpen = l0.open[0];
+  if (wasOpen) {
+    rec.ok('the open lane can be tapped (guard)', await tapLane(wasOpen), {});
+    await P.page.waitForTimeout(350);
+    const l1 = await laneState();
+    rec.ok('tapping the OPEN lane collapses it -- the whole ask',
+      l1.open.length === 0, { before: wasOpen, after: l1 });
+
+    await tapLane(wasOpen);
+    await P.page.waitForTimeout(350);
+    const l2 = await laneState();
+    /* Without this a build that collapsed and stuck would look fixed. */
+    rec.ok('...and tapping it again re-opens it, so the collapse is not a trap',
+      l2.open.length === 1 && l2.open[0] === wasOpen, l2);
+
+    const other = ['sword', 'bow', 'staff'].find((k) => k !== wasOpen);
+    await tapLane(other);
+    await P.page.waitForTimeout(350);
+    const l3 = await laneState();
+    /* One at a time is the design, and the toggle must not have broken it. */
+    rec.ok('...while tapping a DIFFERENT lane still switches to it, one open at a time',
+      l3.open.length === 1 && l3.open[0] === other, { other, l3 });
+    await tapLane(wasOpen);
+    await P.page.waitForTimeout(300);
+  }
+
+  /* ═══ v2.3.2315: AND THE TWO THINGS HE HAS TO READ ARE READABLE ═══
+     Owner: "the expand and unexpand up/down arrows and level label needs to
+     increase in size for legibility."  Both were 10px, and the arrow was
+     COL.muted -- the dimmest, smallest thing on a row it is the affordance
+     for. Asserted as a floor rather than an exact value so a later type
+     retune is free to go bigger, and read off the RENDERED style so a change
+     that only edits a constant somewhere else cannot pass. */
+  const legibility = await P.page.evaluate(() => {
+    const lane = document.querySelector('[data-prog3-lane]');
+    if (!lane) return null;
+    const spans = [...lane.querySelectorAll('span')];
+    const arrow = spans.find((x) => /[\u25B2\u25BC]/.test(x.textContent || ''));
+    const lv = spans.find((x) => /^LV\s/.test((x.textContent || '').trim()));
+    const px = (el) => (el ? parseFloat(getComputedStyle(el).fontSize) : null);
+    return { arrow: px(arrow), lv: px(lv),
+      arrowColor: arrow ? getComputedStyle(arrow).color : null };
+  });
+  rec.ok('the expand/collapse arrow is big enough to read', !!legibility && legibility.arrow >= 13, legibility);
+  rec.ok('...and the level label with it', !!legibility && legibility.lv >= 12, legibility);
+
   /* The three lanes are the navigation, so they must never scroll away. */
   rec.ok('...with the weapon lanes pinned (sticky) so navigation is always reachable',
     await P.page.evaluate(() => [...document.querySelectorAll('[role="button"][aria-label*="level"]')]

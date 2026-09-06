@@ -1187,6 +1187,25 @@ function _trimBakeCache(cache) {
   }
 }
 
+/* ═══ v2.3.2316: GROUND LOOT AT TWICE THE SIZE ═══
+ * Owner: "sprite size for monster loot while on the ground increase by 2x
+ * (includes coin too)."
+ *
+ * ONE multiplier at module scope rather than five edited numbers, because the
+ * sizes it scales live in five branches -- the slime splat, a variant's own
+ * remnantsScalePx, the snowman's remnants, the standalone coin pile, and the
+ * coin that rides ON a monster's remnants (this method). That last one is the
+ * one a hunt-and-edit pass misses: it is in a different method from the other
+ * four, and it is the coin the owner actually sees on a monster drop.
+ *
+ * PURELY VISUAL, checked rather than assumed: the pickup radius is a
+ * hard-coded 20 world px in groundLoot.js (`lDist < 20`) and the magnet range
+ * 50, neither derived from these numbers. So nothing here moves collection
+ * range -- the one way a size change could quietly become a gameplay change.
+ * WORLD px, like everything on the loot layer, so it scales with zoom exactly
+ * as the old size did. */
+const LOOT_SCALE = 2;
+
 export class EffectsRenderer {
   constructor(layers) {
     this.particleLayer = layers.particles;
@@ -4074,7 +4093,24 @@ export class EffectsRenderer {
              it did not reach the carets. Not fixing theirs here: it is a
              separate mark with its own tuning and this change has no business
              moving it. */
-          const _cbob = Math.sin(now / 320) * 3 * _ck;
+          /* ═══ v2.3.2314: A BOB YOU CAN ACTUALLY SEE ═══
+             Owner: "make the orange chip cue bob up and down while over the
+             monsters head."
+
+             It already bobbed -- 3 CSS px at a ~2s period, which on a phone,
+             against a chip 11px tall, is a wobble you have to be told about
+             to notice. He was asking for it after v2.3.2313 finally lifted
+             the chip off the snowman's head, i.e. the first time it was
+             somewhere he could watch it. So this is an amplitude change, not
+             a new mechanic: 3 -> 6 px, and the period down from ~2010ms to
+             ~1260ms so the motion reads as alive rather than as drift.
+
+             SCREEN px (_ck), like every other measurement in this region: a
+             bob in world units breathes by a third of its size at one zoom
+             and a fifth at another, which is the correction v2.3.2263 made
+             to the old reticle's pulse. */
+          const CHIP_BOB = 6;
+          const _cbob = Math.sin(now / 200) * CHIP_BOB * _ck;
           /* 16.4 CSS px across, 11 tall, plus a 2.6px rim -- so ~19 overall.
              mp-arrowshot already fixes a numeric meaning for "small/medium" on
              the target's mark: it measures the mark by frame-differencing a
@@ -4111,9 +4147,32 @@ export class EffectsRenderer {
              The old formula stays as the FALLBACK for the frame before the
              stamp exists (a monster's first frame, or one with no display
              yet); it is what shipped, so falling back cannot be a regression. */
+          /* THE BOB IS PAID FOR OUT OF HEADROOM, NOT OUT OF THE CLEARANCE.
+             v2.3.2313 hung the chip's TIP at the band top; adding a bigger
+             swing to that would push the tip BELOW the band on every down
+             stroke and put it straight back on the snowman's head -- the bug
+             that version just fixed, reintroduced by the polish on top of it.
+             So the rest position rises by the amplitude: at the BOTTOM of the
+             swing the tip sits exactly where v2.3.2313 put it, and the whole
+             bob happens in the empty space above. Worst case is unchanged by
+             construction rather than by luck. */
+          /* Plus a 2px standoff so the tip never sits flush against the band
+             even at the bottom of the swing. Measured across runs, the flush
+             version came out between 6 and 9 px clear of the sprite depending
+             on which phase the sampler caught -- fine to look at, but it left
+             mp-lockchip's floor a couple of pixels from tripping on nothing.
+             Two pixels of daylight is cheap and makes the margin real rather
+             than lucky. */
+          /* +5, not +2. Measured per frame across runs, a 2px standoff left the
+             chip 4-6px clear of a SLIME at its worst -- and a slime's bounds
+             move too (it squashes through its idle), so that margin was thin
+             enough to be luck. 5 puts the tightest shape at ~8px and the
+             snowman at ~18, which is daylight on both without the mark
+             drifting away from the head it belongs to. */
+          const _cstand = (CHIP_BOB + 5) * _ck;
           const _ctop = (_lockChip._bandTopOff != null
-            ? _cyp + _lockChip._bandTopOff - _chh
-            : _cyp - _coff * 2 - 42) + _cbob;
+            ? _cyp + _lockChip._bandTopOff - _chh - _cstand
+            : _cyp - _coff * 2 - 42 - _cstand) + _cbob;
           const _cpoly = [
             _cxp - _chw, _ctop,
             _cxp + _chw, _ctop,
@@ -4892,7 +4951,7 @@ export class EffectsRenderer {
       l._pixiCoinSprite.y = anchorY;
       l._pixiCoinSprite.alpha = (owned ? 1 : 0.4) * alpha;
       l._pixiCoinSprite.tint = owned ? 0xffffff : 0x555555;
-      l._pixiCoinSprite.scale.set(12 / (l._pixiCoinSprite.texture.width || 12));
+      l._pixiCoinSprite.scale.set((12 * LOOT_SCALE) / (l._pixiCoinSprite.texture.width || 12));
       l._pixiCoinSprite.visible = true;
     }
     if (owned) {
@@ -4916,6 +4975,59 @@ export class EffectsRenderer {
     const gfx = this.lootGfx;
     gfx.clear();
 
+    /* ═══ v2.3.2316: GROUND LOOT AT TWICE THE SIZE ═══
+       Owner: "sprite size for monster loot while on the ground increase by 2x
+       (includes coin too)."
+
+       ONE multiplier rather than four edited numbers, because the sizes it
+       scales live in four different branches (the slime splat, a variant's
+       own remnantsScalePx, the snowman's remnants, and the coin) and a later
+       "make it a bit smaller" should be one number, not a hunt.
+
+       PURELY VISUAL, and that was checked rather than assumed: the pickup
+       radius is a hard-coded 20 world px in groundLoot.js (`lDist < 20`) and
+       the magnet range 50, neither derived from these draw sizes. So nothing
+       here moves collection range, which is the one way a size change could
+       have quietly become a gameplay change.
+       WORLD px, like everything on the loot layer -- so it scales with zoom
+       exactly as the old size did, which is what makes it read as "2x" from
+       the seat rather than 2x at one zoom and 1.2x at another. */
+    this._lootProbeScale = S._worldScaleX || 1;   /* v2.3.2316: for the probe below */
+    /* Dev probe, house style (cf. window.__btAtkMark, __btSlimeProj): how big
+       is each ground pile ACTUALLY drawn, in world px and on screen. The ask
+       was a SIZE, and nothing in the tree could report one -- the scale is
+       chosen in four branches from three different constants, so a test that
+       read a constant would not be reading what the player sees.
+       tools/qa/mp/mp-lootsize.mjs reads this. v2.3.2316. */
+    if (typeof window !== 'undefined' && !window.__btLootSprites) {
+      const _selfL = this;
+      /* The world scale is captured per call from the live state the render
+         loop hands in, not stored -- _updateGroundLoot receives S every
+         frame and a probe holding a stale copy would report last frame's
+         zoom. */
+      window.__btLootSprites = function () {
+        const sx = _selfL._lootProbeScale || 1;
+        const out = [];
+        const add = (e, sp, kind) => {
+          if (!sp || sp.destroyed || !sp.visible) return;
+          const texW = (sp.texture && (sp.texture.frame ? sp.texture.frame.width : sp.texture.width)) || 0;
+          const world = texW * Math.abs(sp.scale.x);
+          out.push({ kind, skull: e.skull || null,
+            worldPx: +world.toFixed(1), screenPx: +(world * sx).toFixed(1) });
+        };
+        for (const e of (_selfL._knownLoot || [])) {
+          if (!e) continue;
+          /* BOTH pooled sprites. _pixiSprite is the pile's own art (a remnant,
+             or the coin when there is no remnant); _pixiCoinSprite is the coin
+             that rides on TOP of a remnant, drawn by a different method. A
+             probe that reported only the first would have been blind to the
+             very sprite the owner called out. */
+          add(e, e._pixiSprite, e.skull ? 'remnant' : 'coin');
+          add(e, e._pixiCoinSprite, 'coinOnPile');
+        }
+        return out;
+      };
+    }
     const loot = S.groundLoot || [];
     /* Track which loot entries we've created Pixi children for so we
        can dispose orphans.  When the player picks loot up, BroTown
@@ -5165,7 +5277,7 @@ export class EffectsRenderer {
           l._pixiSprite.alpha = alpha;
           /* Slime splat renders at 48 px on-screen; variant remnants
              use their own remnantsScalePx (default 48). */
-          const targetPx = variantRemnTex ? (variant.remnantsScalePx || 48) : 48;
+          const targetPx = (variantRemnTex ? (variant.remnantsScalePx || 48) : 48) * LOOT_SCALE;
           l._pixiSprite.scale.set(targetPx / (l._pixiSprite.texture.width || targetPx));
           l._pixiSprite.visible = true;
           /* Coin sits ON TOP of the remnants when gold rides on this drop.
@@ -5202,7 +5314,7 @@ export class EffectsRenderer {
            to be applied explicitly. */
         l._pixiSprite.y = l.y + 38;
         l._pixiSprite.alpha = 1;
-        l._pixiSprite.scale.set(48 / (l._pixiSprite.texture.width || 128));
+        l._pixiSprite.scale.set((48 * LOOT_SCALE) / (l._pixiSprite.texture.width || 128));
         l._pixiSprite.visible = true;
         /* Coin sits on top of the wreck when gold rides on this drop. */
         const snOwn = !l.recipients || !S.myId || l.recipients.includes(S.myId);
@@ -5243,7 +5355,7 @@ export class EffectsRenderer {
           l._pixiSprite.y = l.y + 3 + bob;
           l._pixiSprite.alpha = (ownsThis ? 1 : 0.5) * alpha;
           l._pixiSprite.tint = ownsThis ? 0xffffff : 0x555555;
-          l._pixiSprite.scale.set(14 / (l._pixiSprite.texture.width || 14));
+          l._pixiSprite.scale.set((14 * LOOT_SCALE) / (l._pixiSprite.texture.width || 14));
           l._pixiSprite.visible = true;
         } else {
           gfx.circle(l.x - 3, l.y + 2 + bob, 4);
