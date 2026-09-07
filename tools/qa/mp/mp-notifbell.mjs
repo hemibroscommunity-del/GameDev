@@ -74,16 +74,46 @@ const look = (P) => P.page.evaluate(() => {
    tap drifts a few pixels; that is the path worth testing.  CDP touch events
    are the only way to produce it faithfully (page.tap() sends a clean tap
    with no drift, which is the easy case). */
+/* ═══ v2.3.2325: AND IT REPORTS WHAT IT ACTUALLY TOUCHED ═══
+   The two failures below cost an afternoon to name, and the reason is that
+   this helper reported nothing at all: it dispatched a touch at a point and
+   left you to guess what was under it.  It was the QuestCoach card, sitting
+   at zIndex 31 OUTSIDE .brotown-wrap with pointerEvents:'auto' since
+   v2.3.2312, covering the open header's top 20 of 28px -- which is exactly
+   why the first tap (on the bell, 143px lower) worked and the second did
+   not.  Nothing about the failure said so.
+   So the reading is taken at the tap point, up front, and printed.  A tap
+   that lands on something other than this button is a fact this file should
+   state, not a mystery it should leave for the next reader. */
 const fingerTap = async (P, drift = 4) => {
   const a = await P.page.evaluate(() => {
     const e = document.querySelector('[data-world-chat-toggle]');
     const r = e.getBoundingClientRect();
-    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    const x = r.left + r.width / 2, y = r.top + r.height / 2;
+    const hit = document.elementFromPoint(Math.round(x), Math.round(y));
+    const path = (el) => { const out = []; for (let n = el; n && out.length < 4; n = n.parentElement) {
+      out.push(n.tagName.toLowerCase() + (n.id ? '#' + n.id : '')
+        + (n.className && typeof n.className === 'string' ? '.' + n.className.trim().split(/\s+/).join('.') : '')); }
+      return out.join(' < '); };
+    return { x, y,
+      onToggle: !!(hit && hit.closest && hit.closest('[data-world-chat-toggle]')),
+      over: hit ? path(hit) : '(nothing)' };
   });
+  if (!a.onToggle) {
+    console.log(`    !! the tap at ${Math.round(a.x)},${Math.round(a.y)} lands on `
+      + `${a.over} -- NOT the chat toggle`);
+  }
+  await touchAt(P, a.x, a.y, drift);
+};
+
+/* v2.3.2325: the same real touch, at a point of your choosing.  fingerTap
+   always aimed at the toggle; the tap-anywhere-to-close behaviour has to be
+   measured on a MESSAGE, which is not a button and cannot be clicked. */
+const touchAt = async (P, x, y, drift = 4) => {
   const cdp = await P.page.context().newCDPSession(P.page);
-  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: a.x, y: a.y }] });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
   await new Promise((r) => setTimeout(r, 40));
-  await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: a.x + drift, y: a.y + drift - 1 }] });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + drift, y: y + drift - 1 }] });
   await new Promise((r) => setTimeout(r, 40));
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await cdp.detach();
@@ -179,10 +209,46 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* Clear the coach card first, or it parks "MOVE / Drag to move." over the
      header in the open shot -- which is what the committed notifbell-open.png
      shows today, and it is the header the owner wants to look at. */
-  await P.page.evaluate(() => {
-    try { document.querySelectorAll('[data-coach-dismiss]').forEach((b) => b.click()); } catch (e) {}
-  });
-  await P.page.waitForTimeout(500);
+  /* ═══ v2.3.2325: THIS LINE NEVER CLEARED ANYTHING ═══
+     It called .click(), and the coach's dismiss is bound to onPointerUp and
+     nothing else (QuestCoach.jsx:1063, and the card body beside it at :1031).
+     A synthesised click is not a pointerup, so React heard nothing: the card
+     stayed exactly where it was for every version this comment claimed it was
+     being cleared.  That is why the committed notifbell-open.png shows the
+     "Drag to move." card parked over the header -- the screenshot this block
+     exists to prevent -- and why the two assertions after it fail: the card
+     is at zIndex 31 OUTSIDE .brotown-wrap with pointerEvents:'auto', its
+     bottom edge lands 6px past the open header's centre, and the second tap
+     hits the card instead of the button.  The first tap works because the
+     SHUT bell sits 143px lower, clear of it.
+
+     Real pointer events, then, and then WAIT for the card to actually be
+     gone rather than sleeping a flat 500ms and hoping -- a fixed sleep is
+     how this went unnoticed once already.
+
+     Dismissing one lesson can promote the NEXT one onto the screen -- the
+     handler marks this view done and the coach re-picks -- so this presses
+     until the overlay is gone rather than once, bounded so a coach that
+     refuses to leave fails here loudly instead of hanging. */
+  let coachGone = false;
+  for (let i = 0; i < 8 && !coachGone; i++) {
+    await P.page.evaluate(() => {
+      for (const b of document.querySelectorAll('[data-coach-dismiss]')) {
+        const r = b.getBoundingClientRect();
+        const o = { bubbles: true, cancelable: true, pointerId: 1, pointerType: 'touch',
+          clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 };
+        try {
+          b.dispatchEvent(new PointerEvent('pointerdown', o));
+          b.dispatchEvent(new PointerEvent('pointerup', o));
+        } catch (e) { b.click(); }   /* a browser with no PointerEvent ctor */
+      }
+    });
+    await P.page.waitForTimeout(220);
+    coachGone = await P.page.evaluate(() => !document.querySelector('[data-coach]'));
+  }
+  rec.ok('the coach card can be dismissed, so it is not parked over the header (guard)',
+    coachGone === true, { coachGone });
+  await P.page.waitForTimeout(300);
   await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/notifbell-shut.png` });
   await crop(P, 'notifbell-crop-shut', '[data-world-chat-toggle]', 40);
 
@@ -199,18 +265,34 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ...and in context, sitting on its own message list. */
   await crop(P, 'notifbell-crop-open', '[data-world-chat]', 8);
 
-  /* v2.3.2275: pin the chevron's DIRECTION, since that is the thing the owner
-     reported ("the down arrow makes me think it expands it") and a one-
-     character edit at WorldChatFeed's transform is all it takes to re-invert
-     it.  matrix(-1,0,0,-1,0,0) IS rotate(180deg). */
-  const chev = await P.page.evaluate(() => {
-    const svgs = document.querySelectorAll('[data-world-chat-toggle] svg');
-    const last = svgs[svgs.length - 1];
-    return last ? { transform: getComputedStyle(last).transform, count: svgs.length } : null;
+  /* ═══ v2.3.2325: THE CHEVRON IS GONE, AND WORDS TOOK ITS PLACE ═══
+     v2.3.2275 pinned the arrow's DIRECTION here, because the owner had
+     reported it pointing the wrong way ("the down arrow makes me think it
+     expands it") and one character at WorldChatFeed's transform could
+     re-invert it.  He has now asked for the arrow itself to go -- the whole
+     panel folds on a tap, so a 10px glyph aimed at one header strip was
+     pointing at a target that had stopped being special.
+     What replaces the assertion is the thing that replaced the glyph: the
+     open header has to SAY the gesture, because a panel that closes when you
+     touch it is not a convention a player can guess.  And it has to say it
+     WHOLE -- the header is 226px on this phone and the label, the badge and
+     this hint share it, so a hint clipped to an ellipsis would read as a
+     passing test and a broken sentence. */
+  const hint = await P.page.evaluate(() => {
+    const h = document.querySelector('[data-world-chat-hint]');
+    if (!h) return { present: false, svgs: document.querySelectorAll('[data-world-chat-toggle] svg').length };
+    const r = h.getBoundingClientRect();
+    return { present: true, text: (h.textContent || '').trim(),
+      w: Math.round(r.width), sw: h.scrollWidth,
+      svgs: document.querySelectorAll('[data-world-chat-toggle] svg').length };
   });
-  console.log('    open-header chevron: ' + JSON.stringify(chev));
-  rec.ok('the open header\'s chevron points UP (it collapses; a down arrow read as "expands")',
-    !!chev && chev.transform === 'matrix(-1, 0, 0, -1, 0, 0)', chev);
+  console.log('    open-header hint: ' + JSON.stringify(hint));
+  rec.ok('the open header says how to close it, in words', hint.present === true
+    && /tap to close/i.test(hint.text || ''), hint);
+  rec.ok('...and the sentence fits the header rather than being cut short',
+    hint.present === true && hint.sw <= hint.w + 1, hint);
+  rec.ok('...and the chevron it replaced is gone, not merely hidden',
+    hint.svgs === 0, hint);
 
   await fingerTap(P);                                   /* v2.3.2175 */
   await P.page.waitForTimeout(700);
@@ -218,4 +300,40 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('tapping it again folds it back to the bell',
     reshut.expanded === 'false' && reshut.list === null, reshut);
   rec.ok('...at the same little size it started', !!reshut.bell && reshut.bell.w <= 40, reshut.bell);
+
+  /* ═══ v2.3.2325: AND THE MESSAGES THEMSELVES FOLD IT ═══
+     The owner's actual sentence was "touching the world chat window once just
+     closes it", not "touching the header".  That is the half a header test
+     cannot see, and it is the half with the trap in it: the message list is
+     pointerEvents:'none' and MUST STAY THAT WAY (v2.3.2123 -- an interactive
+     list over the lower-left kills the joystick outright), so the tap is
+     classified at the window instead of handled by the list.  Which means
+     this can only be measured by putting a real finger on a message and
+     watching the panel fold.  Landing point taken from the LIST's own box,
+     30px below its top edge -- on a line, not on the header above it. */
+  await fingerTap(P);
+  await P.page.waitForTimeout(700);
+  const reopened = await look(P);
+  rec.ok('it opens again (guard)', reopened.expanded === 'true', reopened);
+  if (reopened.expanded === 'true' && reopened.list && reopened.list.h > 40) {
+    const onLine = { x: reopened.list.x + reopened.list.w / 2, y: reopened.list.y + 30 };
+    const overLine = await P.page.evaluate(({ x, y }) => {
+      const el = document.elementFromPoint(Math.round(x), Math.round(y));
+      return { inChat: !!(el && el.closest && el.closest('[data-world-chat]')),
+        tag: el ? el.tagName.toLowerCase() : '(nothing)' };
+    }, onLine);
+    /* The list must NOT answer the hit-test -- that is the joystick property
+       this feature was not allowed to spend.  Asserted here so a future
+       "just make the list tappable" cannot pass this file. */
+    rec.ok('the message the finger lands on is still invisible to hit-testing '
+         + '(the joystick keeps the corner)', overLine.inChat === false, overLine);
+    await touchAt(P, onLine.x, onLine.y);
+    await P.page.waitForTimeout(700);
+    const folded = await look(P);
+    rec.ok('tapping a MESSAGE — not the header — folds the feed to the bell',
+      folded.expanded === 'false' && folded.list === null, folded);
+  } else {
+    rec.ok('tapping a MESSAGE — not the header — folds the feed to the bell',
+      false, { why: 'the feed never reopened with a list to tap', reopened });
+  }
 }
