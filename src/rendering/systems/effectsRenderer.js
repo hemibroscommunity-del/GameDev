@@ -5465,9 +5465,23 @@ export class EffectsRenderer {
       const snowmanRemnantsTex = l.skull === 'snowman' ? getSnowmanRemnantsTex() : null;
       if (snowmanRemnantsTex) {
         /* Snowman death-scene sprite (pooled per loot).  Larger than the
-           slime splat — the art is a full broken-snowman scene.  No
-           bob and no expiry-fade: the art reads as a settled wreck on
-           the ground, not a hovering pickup. */
+           slime splat — the art is a full broken-snowman scene.
+
+           ═══ v2.3.2329: THE SNOWMAN BOBS TOO ═══
+           Owner: "The snowman remnants and coins don't have that subtle
+           floating effect when the loot is on the ground though.  Make sure
+           all monster remnants and loot has that effect."
+           v2.3.2318 made "everything on the ground bobs" true by removing
+           the exclusion from the variant branch above -- which is where the
+           mummy's remnants live, so the mummy was fine.  The snowman never
+           went through that branch.  It has had its own since v2.3.191, and
+           that one still said "no bob and no expiry-fade: a settled wreck,
+           not a hovering pickup" and pinned the wreck, its coin and its
+           shard at a flat +38 with alpha 1.  Same offset, no sine: exactly
+           the one pile in the game holding still.  The wreck, the coin on
+           it and the shard above it now ride the same `bob` and the same
+           last-call `alpha` as every other drop, so a snowman's loot warns
+           before it goes like everyone else's does. */
         if (!l._pixiSprite || l._pixiSprite.destroyed) {
           const sp = new Sprite(snowmanRemnantsTex);
           sp.anchor.set(0.5, 0.5);
@@ -5475,17 +5489,14 @@ export class EffectsRenderer {
           l._pixiSprite = sp;
         }
         l._pixiSprite.x = l.x;
-        /* v2.3.191: +18 to match the PILE_Y_OFFSET in the non-snowman
-           branch.  Snowman wrecks don't use `bob` so the offset has
-           to be applied explicitly. */
-        l._pixiSprite.y = l.y + 38;
-        l._pixiSprite.alpha = 1;
+        l._pixiSprite.y = l.y + bob;   /* bob already carries PILE_Y_OFFSET */
+        l._pixiSprite.alpha = alpha;
         l._pixiSprite.scale.set((48 * LOOT_SCALE) / (l._pixiSprite.texture.width || 128));
         l._pixiSprite.visible = true;
         /* Coin sits on top of the wreck when gold rides on this drop. */
         const snOwn = !l.recipients || !S.myId || l.recipients.includes(S.myId);
-        if (l.coins || l.recipients) this._renderCoinOverlay(l, l.y - 14 + 38, alpha, snOwn);
-        if (l.shard) this._renderShardOverlay(l, l.y - ((l.coins || l.recipients) ? 28 : 14) + 38, alpha);
+        if (l.coins || l.recipients) this._renderCoinOverlay(l, l.y - 14 + bob, alpha, snOwn);
+        if (l.shard) this._renderShardOverlay(l, l.y - ((l.coins || l.recipients) ? 28 : 14) + bob, alpha);
         this._renderOwnerLabel(l, snOwn, alpha);
         continue;
       }

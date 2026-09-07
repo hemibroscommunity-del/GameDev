@@ -55,6 +55,41 @@ function _freeLeftZoneAssets(fromZone, toZone) {
   }, 400);
 }
 
+/* ═══ v2.3.2328: ...AND DYING IS LEAVING A ZONE TOO ═══
+ *
+ * Every free above hangs off a WALK-OUT.  applyLocalRespawn (game/respawn.js)
+ * is the other way out of a combat zone, and it is by far the more common one
+ * -- it reassigns S.currentZone and rebuilds the map with no free of any kind,
+ * so the zone you died in stays resident for the life of the page.  Worse, its
+ * map stays in _residentZoneMaps, so the re-entry gate never arms again and no
+ * later transition frees it either: one death strands the art permanently.
+ *
+ * Measured by the audit that found it: a death in ember strands ~36.5 MB of
+ * decoded texture (30.5 MB of fire-goblin bundle + 6.0 MB map).  That is the
+ * same accumulation v2.3.2272 measured at +92 MB over a four-zone tour and
+ * fixed -- for the walk-out path only.  On a phone, where the tab is killed
+ * somewhere north of 250 MB, dying four times in four zones is the whole
+ * budget.
+ *
+ * BOTH halves are deferred here, where the walk-out frees the map immediately.
+ * That site can afford to: its comment explains the ground sprite is already
+ * destroyed by the hub's rebuild before it runs.  Respawn has no such
+ * guarantee -- it flips the zone and the renderer does not tear the old
+ * display down until it notices on its next pass -- so the map gets the same
+ * one-beat delay the variant sheets already take, for the same reason.
+ *
+ * Exported rather than duplicated: two copies of a release path is how one of
+ * them gets a fix and the other does not. */
+export function releaseLeftZoneArt(fromZone, toZone) {
+  if (!fromZone || fromZone === toZone) return;
+  if (fromZone !== 'town' && fromZone !== 'worldview') {
+    setTimeout(function () {
+      Promise.resolve(freeZoneMap(fromZone)).catch(function () {});
+    }, 400);
+  }
+  _freeLeftZoneAssets(fromZone, toZone);
+}
+
 /* ═══ v2.3.1693: KEEP PORTALS OFF THE MAP EDGE ═══
    Owner: "move the portals (to and from the worldview to the zones) a bit
    closer inside the map.  They're getting cut off by the dashboard a bit so

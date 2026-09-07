@@ -23,6 +23,9 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  lootbob: () => import('./mp-lootbob.mjs'), /* v2.3.2329: the snowman's wreck, coin and shard bob + pulse like every other pile */
+  ptorb: () => import('./mp-ptorb.mjs'), /* v2.3.2329: a Build point landing flares its row's orb, and only its row */
+  deathtex: () => import('./mp-deathtex.mjs'), /* v2.3.2328: dying releases the zone's art, like walking out does */
   abilslot: () => import('./mp-abilslot.mjs'), /* v2.3.2327: bash moves down-left of the disc; whirl is the sword's */
   buildcols: () => import('./mp-buildcols.mjs'), /* v2.3.2326: the Build lanes as three columns, photographed */
   bowside: () => import('./mp-bowside.mjs'), /* v2.3.2325: the idle bow mirrors when the body does (SE is a mirrored SW) */

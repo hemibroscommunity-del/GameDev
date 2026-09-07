@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 /* v2.3.2131: the stat rows below became tappable explainers -- see the
    note on sheetRow.  The words live in infoGlossary so the hero sheet and
    anywhere else that ever shows these rows read from one copy. */
@@ -457,6 +457,11 @@ export const HeroExpanded = () => {
   /* v2.3.1660: one definition (heroModel) — under prog3 this is THE
      pool, so the tab badge and the points chip both show it. */
   const totalUnspent = unspentPointsTotal(R);
+  /* v2.3.2329: per-stat memory of the last count each row rendered, so a row
+     can tell a SERVER-CONFIRMED increment from any other re-render.  A Map
+     keyed by the row key (a fixed table + lane, never client-supplied -- but
+     the rule is the rule).  See the orb in statRow for what reads it. */
+  const ptLandRef = useRef(new Map());
   const p3 = prog3Live(R);
   const buildCat = buildCatState || prog3ActiveCat(R);
 
@@ -1328,8 +1333,46 @@ export const HeroExpanded = () => {
               const cap = prog3StatCap(R, st.key);
               const canSpend = openPts > 0 && pts < cap;
               const hasInfo = !!statInfo(st.label);
+              /* ═══ v2.3.2329: THE POINT LANDS VISIBLY ═══
+                 Owner: "When you spend combat points it's kind of ambiguous
+                 whether it took effect or not.  Add something to the menu that
+                 makes a little effect whenever you add points.  Maybe it's a
+                 persistent orb or something next to that row's skill point."
+
+                 Why it was ambiguous: the tap only SENDS prog3_allocate (above).
+                 Nothing changes locally; the count moves when the worker echoes
+                 the new blob, a round trip later, by one digit of 10.5px text.
+                 So the moment the spend actually took had no marker at all.
+
+                 The marker is the moment the ECHO lands, deliberately -- not
+                 the tap.  A tap-time flash would say "I heard you" on a spend
+                 the worker then refused (cap, no points, wrong lane), which is
+                 a lie in the exact case the owner is asking about.  The orb
+                 flares when THIS row's count goes up, which only the worker
+                 can make happen, so what it says is "it took".
+
+                 Persistent, as asked: the orb is always there, dim, and solid
+                 once the stat is capped, so it also reads as "nothing more to
+                 put here".  The +1 rides beside it for under a second.
+
+                 Detected by comparing the count to what this row rendered LAST
+                 time (ptLandRef).  First sight of a row seeds the memory
+                 without flaring, so opening the sheet never lights every row.
+                 The flare holds 900ms: long enough for the 720ms animation to
+                 finish even if a re-render lands mid-way and would otherwise
+                 drop the class, short enough that two quick spends on one row
+                 each get their own (the element is keyed on the count, so the
+                 second remounts and restarts the animation). */
+              const lk = (st.atk ? buildCat + ':' : '') + st.key;
+              const nowMs = Date.now();
+              const seen = ptLandRef.current.get(lk);
+              if (!seen) ptLandRef.current.set(lk, { pts, at: 0 });
+              else if (pts > seen.pts) ptLandRef.current.set(lk, { pts, at: nowMs });
+              else if (pts !== seen.pts) ptLandRef.current.set(lk, { pts, at: seen.at });
+              const landAt = ptLandRef.current.get(lk).at;
+              const landed = landAt > 0 && (nowMs - landAt) < 900;
               return (
-                <div key={(st.atk ? buildCat + ':' : '') + st.key}
+                <div key={lk}
                   role="button"
                   /* The aria-label is a CONTRACT, not prose: mp-prog3 finds
                      every allocation control by `aria-label*=" of "` and reads
@@ -1389,7 +1432,21 @@ export const HeroExpanded = () => {
                     <div style={{
                       fontSize: 10.5, fontWeight: 700, color: COL.text2, lineHeight: 1.1,
                       fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
-                    }}>{pts} / {cap}</div>
+                    }}>
+                      {/* Shrink-wrapped so the +1 hangs off the ORB, not off the
+                          far edge of the label column (a column child stretches). */}
+                      <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                        <span>{pts} / {cap}</span>
+                        <span aria-hidden="true"
+                          key={'orb' + pts}
+                          data-pt-orb={lk}
+                          data-landed={landed ? '1' : undefined}
+                          className={'bt-pt-orb' + (landed ? ' bt-pt-orb-land' : '') + (pts >= cap ? ' bt-pt-orb-full' : '')} />
+                        {landed && (
+                          <span aria-hidden="true" key={'plus' + pts} className="bt-pt-plus">+1</span>
+                        )}
+                      </span>
+                    </div>
                   </div>
                   {hasInfo && (
                     <button type="button"
