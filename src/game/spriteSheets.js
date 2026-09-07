@@ -2,126 +2,35 @@ import { TILED_ZONE_MAPS, getWalkability, loadWalkabilityMaps, preloadAllTiledMa
 import { propsForZone, propFootprint } from '@/data/worldProps.js'; /* v2.3.1778: buildings block */
 import { ZONES, TILE } from '@/data/index.js';
 
-/* === spriteSheets — mount-time player/slime/weapon sheet + walkability loader ===
+/* === spriteSheets — mount-time walkability loader ===
    v2.3.900: extracted verbatim from a BroTown.jsx mount useEffect (empty
-   deps). Loads the per-direction player jog/hit sheets, slime sheets,
-   weapon sprites + hand anchors, and the Tiled walkability maps into the
-   refs BroTown's render loop reads. Behavior-frozen: the per-direction
-   frame-interval math, the image-load wiring, and the async map loads are
-   unchanged. The ten image/anchor refs come in via a `refs` object so the
-   body stays byte-identical (destructured back to the original names);
-   stateRef passes separately. Call from a useEffect with an empty dep
-   array. */
-export function wireSpriteSheets(stateRef, refs) {
-  var handAnchorsRef = refs.handAnchorsRef,
-    playerSpritesRef = refs.playerSpritesRef,
-    slimeDeathImgRef = refs.slimeDeathImgRef,
-    slimeHitImgRef = refs.slimeHitImgRef,
-    slimeIdleImgRef = refs.slimeIdleImgRef,
-    slimeProjectileImgRef = refs.slimeProjectileImgRef,
-    slimeRemnantsImgRef = refs.slimeRemnantsImgRef,
-    slimeShootImgRef = refs.slimeShootImgRef,
-    weaponHandlesRef = refs.weaponHandlesRef,
-    weaponSpritesRef = refs.weaponSpritesRef;
-    /* Source clip durations (ms), used to compute per-direction frame interval. */
-    var JOG_DURATION_MS = {
-      east: 1333, north: 2008, northeast: 1503, south: 2000, southwest: 1998,
-    };
-    var JOG_FRAMES = 24;
-    /* Hit-react sheets: 6 frames × 64×64 each (384×64), played once over
-       250 ms (≈ 24 fps source) when the player takes damage. The character
-       is locked from movement/actions during this window — see the
-       playerStunned check in the input section. */
-    var HIT_FRAMES = 6;
-    var HIT_DURATION_MS = 250;
-    var sheets = {};
-    var dirs = ['east', 'north', 'northeast', 'south', 'southwest'];
-    var poses = ['stand', 'jog', 'hit'];
-    var total = dirs.length * poses.length, loaded = 0;
-    poses.forEach(function (pose) {
-      dirs.forEach(function (dir) {
-        var img = new Image();
-        img.onload = function () {
-          var frames = pose === 'jog' ? JOG_FRAMES : pose === 'hit' ? HIT_FRAMES : 1;
-          var intervalMs = pose === 'jog' ? JOG_DURATION_MS[dir] / JOG_FRAMES
-                          : pose === 'hit' ? HIT_DURATION_MS / HIT_FRAMES
-                          : 1000;
-          sheets[pose + '-' + dir] = { img: img, frames: frames, w: 64, intervalMs: intervalMs };
-          loaded++;
-          if (loaded === total) playerSpritesRef.current = sheets;
-        };
-        img.onerror = function () { loaded++; if (loaded === total) playerSpritesRef.current = sheets; };
-        /* Cache-buster: bump v= each time sheet content or frame count changes. */
-        img.src = '/sprites/player/' + pose + '-' + dir + '.png?v=43'; /* v43: regenerated NE jog cycle (v2.3.708) */
-      });
-    });
+   deps).  Call from a useEffect with an empty dep array.
 
-    /* Weapon icons. Map weapon.type → image. Greatsword shares the sword
-       icon. */
-    var wsheets = {};
-    var wMap = {
-      sword:      '/sprites/weapons/swords/Sword1.webp',
-      greatsword: '/sprites/weapons/swords/Sword1.webp',
-      bow:        '/sprites/weapons/bows/Bow2.png',
-      staff:      '/sprites/weapons/staffs/Wizard%20Staff2.png',
-    };
-    var wTotal = Object.keys(wMap).length, wLoaded = 0;
-    Object.keys(wMap).forEach(function (type) {
-      var wImg = new Image();
-      wImg.onload = function () {
-        wsheets[type] = wImg;
-        wLoaded++;
-        if (wLoaded === wTotal) weaponSpritesRef.current = wsheets;
-      };
-      wImg.onerror = function () { wLoaded++; if (wLoaded === wTotal) weaponSpritesRef.current = wsheets; };
-      wImg.src = wMap[type] + '?v=1';
-    });
+   ═══ v2.3.2328: THE SPRITE HALF OF THIS MODULE IS GONE ═══
+   What was removed: the 15 player stand/jog/hit sheets at ?v=43, the four
+   weapon icons, the six slime sheets, anchors.json?v=3 and handles.json?v=2.
+   Every one of them was written into a ref that NOTHING READS.  Their only
+   consumer was the Canvas 2D drawSpriteCharacter/drawNft360 pair in
+   BroTown.jsx, which Rollup had already tree-shaken out of the shipped
+   bundle — but a bundler cannot shake a `new Image()` whose src is set,
+   because a network fetch is a side effect it must preserve.  So the
+   downloads kept happening for code that no longer shipped.
 
-    /* Per-frame hand anchors (built by the public/tools/anchor.html annotator).
-       Bump ?v= when re-annotating so cached copies don't shadow the new file. */
-    fetch('/sprites/player/anchors.json?v=3')
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (j) { if (j) handAnchorsRef.current = j; })
-      .catch(function () { /* missing file — sprite falls back to facing-based offset */ });
+   MEASURED on a cold load at 390x844 (tools/qa/mp/mp-coldload.mjs), before
+   and after: the 15 player sheets (1.091 MB), anchors.json?v=3 (0.022 MB),
+   handles.json?v=2, six slime sheets and three weapon icons all go to zero --
+   1.21 MB across 26 requests, of a 33.30 MB / 790-request total.  Worse
+   than dead weight in two places — the 15 player sheets were the SAME art
+   the live Pixi loader (playerSprites.js, ?v=101) already fetches as WebP,
+   so jog-south arrived twice in two formats and was decoded twice; and the
+   slime sheets and weapon icons arrived twice as well, once unversioned
+   here and once tagged by the live loader.
 
-    /* Per-weapon handle pixel (built by public/tools/weapon-anchor.html).
-       Without this the renderer assumes the handle is at the bottom-center
-       of the weapon image — wrong for diagonally-drawn sources. */
-    fetch('/sprites/weapons/handles.json?v=2')
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (j) { if (j) weaponHandlesRef.current = j; })
-      .catch(function () { /* missing — fall back to bottom-center */ });
-
-    /* Slime monster sprites — idle bob loop + death splash.  Sheets are
-       128 px tall; renderer reads frame count from naturalWidth / 128
-       so we can swap in new sheets with different frame counts without
-       touching render code (v4 was 8 frames, v5 is 24 frames). */
-    var slimeIdle = new Image();
-    slimeIdle.onload = function () { slimeIdleImgRef.current = slimeIdle; };
-    slimeIdle.src = '/sprites/monsters/slime-idle-v5.png';
-    var slimeDeath = new Image();
-    slimeDeath.onload = function () { slimeDeathImgRef.current = slimeDeath; };
-    slimeDeath.src = '/sprites/monsters/slime-death-v10.png';
-    /* Shoot/attack animation — same 8-frame sheet shape as idle/death.
-       Plays briefly when the slime lunges at the player so the attack
-       cadence reads visually. */
-    var slimeShoot = new Image();
-    slimeShoot.onload = function () { slimeShootImgRef.current = slimeShoot; };
-    slimeShoot.src = '/sprites/monsters/slime-shoot-v2.png';
-    /* Hit-reaction sheet — squash anim plays for 250 ms when a fodder
-       slime takes damage. Priority order in render: hit > shoot > idle. */
-    var slimeHit = new Image();
-    slimeHit.onload = function () { slimeHitImgRef.current = slimeHit; };
-    slimeHit.src = '/sprites/monsters/slime-hit-v1.png';
-    /* Projectile (single-frame orb) and remnants splat (single-frame
-       ground splatter for the inventory pickup drop). */
-    var slimeProj = new Image();
-    slimeProj.onload = function () { slimeProjectileImgRef.current = slimeProj; };
-    slimeProj.src = '/sprites/monsters/slime-projectile-v1.png';
-    var slimeRem = new Image();
-    slimeRem.onload = function () { slimeRemnantsImgRef.current = slimeRem; };
-    slimeRem.src = '/sprites/monsters/slime-remnants-v1.png';
-
+   The module keeps the half that is real: the Tiled preload, the painted
+   walkability grids, and the prop-footprint stamping that isSolid() reads.
+   This is the same cleanup the v2.3.1670 note below describes for the zone
+   swatch and tree loaders — the Canvas 2D path leaving in pieces. */
+export function wireSpriteSheets(stateRef) {
     /* Zone swatch + tree-sprite loaders removed — those were used
        only by the Canvas 2D rendering path (gather-node procedural
        tree replacement, ground-tile pattern fill).  The Pixi tile
