@@ -709,6 +709,41 @@ function debrisDotTex() {
   return _DEBRIS_DOT_TEX;
 }
 
+/* ═══ v2.3.2331: PARTICLES ARE SPRITES, NOT POLYGONS ═══
+ * _updateParticles used to draw every hit particle, death-explosion particle
+ * and dust puff into ONE Graphics with circle()+fill(), and clear() it every
+ * frame.  In Pixi 8 clear() calls onUpdate(), so the context is dirty every
+ * frame and buildContextBatches re-tessellates from scratch: each 2-3px dot
+ * becomes a 40-56 point polygon (buildCircle: n = ceil(2.3*sqrt(rx+ry)),
+ * m = n*8), fan-triangulated, with a fresh points array per shape -- and past
+ * ~4 dots the whole Graphics is over the 400-vertex isBatchable threshold and
+ * takes the slow path too.  ~360-500 array writes per particle per frame;
+ * at the 400-particle cap, 90k-200k writes a frame.  (Audit, verified against
+ * node_modules/pixi.js@8.17.1: GraphicsContext.mjs:662, buildContextBatches.mjs:90,
+ * buildCircle.mjs:46.)
+ *
+ * The same file already had the cheap idiom two methods away: ground splatter
+ * is a POOL OF SPRITES over one minted texture (_updateGroundSplatter).  Those
+ * three particle kinds do the same now.  This texture is HARD-EDGED on purpose
+ * -- the soft radial debris dot above would change how the dots look, and the
+ * point is a cheaper frame, not a different game.  One texture, so the whole
+ * field is one batch.  Module-scope and never freed, which TRAPS section 49
+ * says is right for anything that is not zone art.  The ring, arc and
+ * telegraph shapes stay on the Graphics: they are single digits a frame and
+ * genuinely need geometry. */
+let _HARD_DOT_TEX = null;
+const HARD_DOT_R = 7;
+function hardDotTex() {
+  if (_HARD_DOT_TEX) return _HARD_DOT_TEX;
+  const c = document.createElement('canvas');
+  c.width = 16; c.height = 16;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath(); ctx.arc(8, 8, HARD_DOT_R, 0, Math.PI * 2); ctx.fill();
+  _HARD_DOT_TEX = Texture.from(c);
+  return _HARD_DOT_TEX;
+}
+
 /* Minted ground-decal texture: three overlapping soft blobs, white so the
    splat entry's material color tints it.  Optional art upgrade:
    ground-splat-atlas-v1.webp (manifest) replaces this via the same tint
@@ -2264,6 +2299,7 @@ export class EffectsRenderer {
        checking a list. */
     this._selfCorpse = selfCorpseUp(S);
     this._updateParticles(S, now);
+    this._hideSpareDots();   /* v2.3.2331: park the pool's unused sprites */
     this._updateDamageNumbers(S, now);
     this._updateCatchFlights(S, viewW, viewH, now);
     this._updateFxBursts(S, now);   /* v2.3.1443 */
@@ -2298,9 +2334,61 @@ export class EffectsRenderer {
   }
 
   /* ── Particles ── */
+  /* v2.3.2331: one dot from the sprite pool.  Sprites are created on demand,
+     parented to the particle layer beside the Graphics, and never destroyed
+     -- hidden when unused (see _hideSpareDots).  The cap is above the 400
+     hit-particle ceiling plus a few explosions' worth; past it a dot is simply
+     not drawn, which is what the old Graphics cap did too. */
+  _dot(x, y, r, tint, alpha) {
+    if (!this._dotPool) this._dotPool = [];
+    if (this._dotUsed >= 700) return;
+    const pool = this._dotPool;
+    let sp = pool[this._dotUsed];
+    if (!sp || sp.destroyed) {
+      sp = new Sprite(hardDotTex());
+      sp.anchor.set(0.5, 0.5);
+      this.particleLayer.addChild(sp);
+      pool[this._dotUsed] = sp;
+    }
+    this._dotUsed++;
+    sp.x = x; sp.y = y;
+    const sc = r / HARD_DOT_R;
+    sp.scale.set(sc, sc);
+    if (sp.tint !== tint) sp.tint = tint;
+    sp.alpha = alpha;
+    if (!sp.visible) sp.visible = true;
+  }
+
+  _hideSpareDots() {
+    const pool = this._dotPool;
+    if (!pool) return;
+    const used = this._dotUsed || 0;
+    for (let i = used; i < pool.length; i++) {
+      const sp = pool[i];
+      if (sp && !sp.destroyed && sp.visible) sp.visible = false;
+    }
+    /* QA probe (tools/qa/mp/mp-partpool.mjs): what the field cost this frame.
+       Gated like every other per-frame probe (v2.3.2272) so a player never
+       pays for it; the accessor is defined once, unguarded, so a scenario
+       that forgot to arm reads null rather than "the feature is broken". */
+    if (typeof window !== 'undefined') {
+      if (!window.__btParticleStats) window.__btParticleStats = () => window.__btParticles || null;
+      if (window.__btProbe) {
+        const ctx = this.particleGfx && this.particleGfx.context;
+        let vis = 0;
+        for (let i = 0; i < pool.length; i++) if (pool[i] && pool[i].visible) vis++;
+        window.__btParticles = {
+          dots: used, pool: pool.length, visible: vis,
+          gfxInstr: ctx && ctx.instructions ? ctx.instructions.length : -1,
+        };
+      }
+    }
+  }
+
   _updateParticles(S, now) {
     const gfx = this.particleGfx;
     gfx.clear();
+    this._dotUsed = 0;   /* v2.3.2331: the pool starts every frame empty */
 
     /* v2.3.1674 (owner: "remove the glowing ring around the character").
        The World View player beacon is GONE.  History, so nobody re-adds it by
@@ -2328,8 +2416,7 @@ export class EffectsRenderer {
       p.vy += 0.15;
       p.life -= 0.04;
       if (p.life <= 0) { parts.splice(i, 1); continue; }
-      gfx.circle(p.x, p.y, (p.size || 2) * Math.min(1, p.life * 3));
-      gfx.fill({ color: cssToHex(p.color), alpha: Math.min(1, p.life * 2) });
+      this._dot(p.x, p.y, (p.size || 2) * Math.min(1, p.life * 3), cssToHex(p.color), Math.min(1, p.life * 2));
     }
 
     // Death explosion particles
@@ -2345,8 +2432,7 @@ export class EffectsRenderer {
         const py = exp.y + p.vy * age * 60 + age * age * 30;
         const pAlpha = Math.max(0, 1 - age / (p.life || 1));
         if (pAlpha <= 0) continue;
-        gfx.circle(px, py, (p.size || 2) * pAlpha);
-        gfx.fill({ color: cssToHex(p.color), alpha: pAlpha });
+        this._dot(px, py, (p.size || 2) * pAlpha, cssToHex(p.color), pAlpha);
       }
     }
 
@@ -2411,8 +2497,7 @@ export class EffectsRenderer {
       d.x += d.vx; d.y += d.vy;
       d.life -= d.decay;
       if (d.life <= 0) { dust.splice(i, 1); continue; }
-      gfx.circle(d.x, d.y, d.life * 3);
-      gfx.fill({ color: 0xb4aa8c, alpha: d.life * 0.4 });
+      this._dot(d.x, d.y, d.life * 3, 0xb4aa8c, d.life * 0.4);
     }
 
     // Ambient particles (zone-specific)
