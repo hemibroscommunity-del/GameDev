@@ -80,12 +80,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* Two frames in, photograph the burst around the figure. */
   await sample(P, 2);
   try {
+    /* figureBox's fields are not the {x,y,w,h} the first cut assumed, and a
+       NaN in a CDP clip is "Invalid parameters" with no hint which -- so the
+       box is normalised from whichever names it carries and every number is
+       checked before it goes anywhere near the wire. */
     let box = null;
     try { box = await H.figureBox(P, { pad: 0 }); } catch (e) { box = null; }
-    if (!box) box = await P.page.evaluate(() => ({ x: window.innerWidth / 2 - 20, y: window.innerHeight / 2 - 60, w: 40, h: 80 }));
-    if (box) {
-      const clip = { x: Math.max(0, Math.round(box.x - 110)), y: Math.max(0, Math.round(box.y - 120)),
-        width: Math.round(box.w + 220), height: Math.round(box.h + 200) };
+    const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+    let bx = box && num(box.x != null ? box.x : box.left), by = box && num(box.y != null ? box.y : box.top);
+    let bw = box && num(box.w != null ? box.w : box.width), bh = box && num(box.h != null ? box.h : box.height);
+    if (bx == null || by == null || bw == null || bh == null) {
+      const c = await P.page.evaluate(() => ({ x: window.innerWidth / 2 - 20, y: window.innerHeight / 2 - 70, w: 40, h: 80 }));
+      bx = c.x; by = c.y; bw = c.w; bh = c.h;
+      console.log('    photo: figure box unusable (' + JSON.stringify(box) + '), clipping the screen centre');
+    }
+    {
+      const vw = await P.page.evaluate(() => [window.innerWidth, window.innerHeight]);
+      const x = Math.max(0, Math.round(bx - 110)), y = Math.max(0, Math.round(by - 120));
+      const clip = { x, y, width: Math.min(vw[0] - x, Math.round(bw + 220)), height: Math.min(vw[1] - y, Math.round(bh + 200)) };
       const cdp = await P.page.context().newCDPSession(P.page);
       const shot = await cdp.send('Page.captureScreenshot', { format: 'png', clip: { ...clip, scale: 2 } });
       (await import('node:fs')).writeFileSync(`tools/qa/shots/particles-${process.env.PARTSHOT || 'after'}.png`, Buffer.from(shot.data, 'base64'));
@@ -114,8 +126,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('...and the pool is bounded', withProbe.every((f) => f.st.pool <= 700), withProbe[withProbe.length - 1].st);
   }
 
-  /* When the burst has burnt out, the pool is parked, not leaked. */
-  await P.page.waitForTimeout(3500);
+  /* When the burst has burnt out, the pool is parked, not leaked.  Wait for
+     the field to actually EMPTY rather than a fixed time: life decays per
+     FRAME (0.04), and this box runs anywhere from 6 to 18 frames a second, so
+     a fixed wait was green or red on frame-rate luck -- the first cut passed
+     once and failed once on identical code. */
+  await H.waitFor(P, (S) => (S.hitParticles || []).length + (S._dustPuffs || []).length,
+    (n) => n === 0, { timeout: 30000, label: 'the burst burns out' }).catch(() => {});
+  await P.page.waitForTimeout(2100);   /* past the explosion's own 2s reap */
   const after = await sample(P, 2);
   const last = after[1];
   rec.ok('when the field is empty, every pooled sprite is hidden and none is lit',
