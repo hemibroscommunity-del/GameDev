@@ -89,7 +89,7 @@ async function spendAndWait(P, row, { timeout = 15000, freeze = false } = {}) {
         for (const a of document.getAnimations()) {
           const el = a.effect && a.effect.target;
           if (el && (el.getAttribute('data-pt-orb') === k || el.classList.contains('bt-pt-plus'))) {
-            a.pause(); a.currentTime = 400;
+            a.pause(); a.currentTime = 420;
           }
         }
       }, row.key).catch(() => {});
@@ -147,7 +147,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      first cut of this photographed the orb already settled. The clip is
      small enough to land mid-animation, which is the picture the owner asked
      for. tools/qa/shots/ptorb-flare.png */
-  const shoot = async (label) => {
+  const shoot = async (label, document_k) => {
     const clip = await P.page.evaluate((ROW) => {
       const els = [...document.querySelectorAll(ROW)].map((e) => e.getBoundingClientRect())
         .filter((r) => r.bottom > 0 && r.top < window.innerHeight);
@@ -156,8 +156,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const bottom = Math.min(window.innerHeight, Math.max(...els.map((r) => r.bottom)) + 6);
       return { x: 0, y: top, width: window.innerWidth, height: bottom - top };
     }, ROW);
-    if (clip) await P.page.screenshot({ path: 'tools/qa/shots/ptorb-flare.png', clip });
-    console.log('    photo: ' + label);
+    /* RAW CDP, not page.screenshot(): Playwright's capture pipeline discards a
+       paused Web Animation and photographs the settled state (measured -- the
+       style engine reported transform x2.05 and a paused animation at 400ms
+       while the Playwright shot showed the dim dot).  Page.captureScreenshot
+       shows what the compositor has. */
+    const cdp = await P.page.context().newCDPSession(P.page);
+    const shot = await cdp.send('Page.captureScreenshot', { format: 'png', clip: { ...clip, scale: 2 } });
+    await cdp.detach();
+    /* Was the flare still on the row when the compositor drew that? The
+       style engine is asked AFTER the capture, so a frame that lost the
+       flare between the check and the shot is reported, not filed. */
+    const held = await P.page.evaluate((k) => {
+      const o = document.querySelector(`[data-pt-orb="${k}"]`);
+      const cs = o && getComputedStyle(o);
+      return !!(o && o.classList.contains('bt-pt-orb-land') && cs && /matrix\((1\.[5-9]|2)/.test(cs.transform));
+    }, document_k);
+    if (held) {
+      (await import('node:fs')).writeFileSync('tools/qa/shots/ptorb-flare.png', Buffer.from(shot.data, 'base64'));
+      console.log('    photo: ' + label);
+    } else {
+      console.log('    photo: the flare had cleared by the capture -- ' + label + ' NOT filed');
+    }
+    return held;
   };
   try {
     /* Was the frozen real flare still on the row when we got here? A regen
@@ -167,8 +188,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const o = document.querySelector(`[data-pt-orb="${k}"]`);
       return !!(o && o.classList.contains('bt-pt-orb-land') && o.getAnimations().some((a) => a.playState === 'paused'));
     }, target.key);
-    if (still) await shoot('the real flare, frozen at 400ms of 720');
-    else {
+    let filed = false;
+    if (still) filed = await shoot('the real flare, frozen at 420ms of 720', target.key);
+    if (!filed) {
       /* STAGED, and labelled as such: the class and the +1 are put on the row
          by hand and the animation paused at the same 400ms, purely so the
          picture shows the effect the assertions above already proved. */
@@ -180,10 +202,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
         o.parentElement.appendChild(p);
         for (const a of document.getAnimations()) {
           const el = a.effect && a.effect.target;
-          if (el === o || el === p) { a.pause(); a.currentTime = 400; }
+          if (el === o || el === p) { a.pause(); a.currentTime = 420; }
         }
       }, target.key);
-      await shoot('STAGED (a re-render had cleared the real flare before the capture) -- frozen at 400ms');
+      await shoot('STAGED (a re-render had cleared the real flare before the capture) -- frozen at 420ms', target.key);
     }
   } catch (e) { /* a missing picture is not a failed spend */ }
 

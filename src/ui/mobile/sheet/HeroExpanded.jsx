@@ -1358,9 +1358,9 @@ export const HeroExpanded = () => {
                  Detected by comparing the count to what this row rendered LAST
                  time (ptLandRef).  First sight of a row seeds the memory
                  without flaring, so opening the sheet never lights every row.
-                 The flare holds 900ms: long enough for the 720ms animation to
-                 finish even if a re-render lands mid-way and would otherwise
-                 drop the class, short enough that two quick spends on one row
+                 The flare holds 1300ms: long enough for the 720ms orb and the
+                 1100ms +1 to finish even if a re-render lands mid-way and would
+                 otherwise drop the class, short enough that two quick spends on one row
                  each get their own (the element is keyed on the count, so the
                  second remounts and restarts the animation). */
               const lk = (st.atk ? buildCat + ':' : '') + st.key;
@@ -1370,7 +1370,7 @@ export const HeroExpanded = () => {
               else if (pts > seen.pts) ptLandRef.current.set(lk, { pts, at: nowMs });
               else if (pts !== seen.pts) ptLandRef.current.set(lk, { pts, at: seen.at });
               const landAt = ptLandRef.current.get(lk).at;
-              const landed = landAt > 0 && (nowMs - landAt) < 900;
+              const landed = landAt > 0 && (nowMs - landAt) < 1300;
               return (
                 <div key={lk}
                   role="button"
