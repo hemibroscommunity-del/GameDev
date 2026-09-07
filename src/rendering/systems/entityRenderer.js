@@ -60,7 +60,7 @@ import { getFacialHair, FACIALHAIR_CATALOG } from '../traits/facialHairCatalog.j
 import { getHair, HAIR_CATALOG } from '../traits/hairCatalog.js';
 import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo */
 import { getEyeColor } from '../traits/eyeColorCatalog.js';   /* v2.3.1930: eye colour is per-player now, so every draw names whose eyes it means */
-import { DISPLAY_DS, downscaleByFactor } from '../spriteScale.js'; /* v2.3.1120: display-texture downscale + lockstep transform compensation */
+import { DISPLAY_DS, bakeDisplayCanvas } from '../spriteScale.js'; /* v2.3.1120: display-texture downscale + lockstep transform compensation; v2.3.2325: bakeDisplayCanvas, because the masked bake needs the EXACT-TEXEL 2x inverse, not the smooth one */
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.1953: height x frame render scale */
 import { getCapeTexture, getCapeHoodTexture, getCapeHoodMaskTexture } from '../capeSprites.js'; /* v2.3.2023: the cosmetic cape; v2.3.2186: its hood half + the hair clip */
 import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2023 */
@@ -2054,6 +2054,28 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
   try {
     cv = document.createElement('canvas'); cv.width = 256; cv.height = 256;
     const ctx = cv.getContext('2d');
+    /* ═══ v2.3.2325: THE ARMOURED FIGURE WAS RESAMPLED TWICE FOR NOTHING ═══
+       Owner: the character "looks soft like the textures are low resolution".
+       This bake works at 256 but is FED DISPLAY textures.  At DISPLAY_DS=2 the
+       body frame is 128px (playerSkins slices FRAME/DS) and every jog / stand /
+       hit / fish / mine gear sheet is 128px too since v2.3.1434 -- so every
+       drawImage below is an exact 2x pixel-double.  Canvas smoothing defaults
+       ON, so those doubles were BILINEAR: each texel came out a blend of itself
+       and its neighbour, and the tail of this function then resampled the whole
+       composite back down to 128.  Exact texels in, two resamples, mush out.
+       It is the SAME double-resample v2.3.1412 took off the body sheets and
+       v2.3.1434 took off the gear sheets -- left standing in the one place
+       BETWEEN them, which is why the armoured figure alone still looked soft
+       after both of those landed.  Nearest here plus the exact-texel inverse at
+       the tail make the round trip lossless.
+       BOTH ENDS MOVE TOGETHER or not at all: nearest up with the old smooth
+       downscale still blurs, and smooth up with a nearest downscale samples
+       that blend and smears WORSE than today.
+       Bonus: the skin/pants/shoes hue scoring and the alpha>40 figure tests
+       further down now read the artist's real colours instead of the in-between
+       shades bilinear invents -- the exact hazard spriteScale's file header
+       warns about for the recolour pipeline. */
+    ctx.imageSmoothingEnabled = false;
     const bf = bodyTex.frame;
     ctx.drawImage(bres, bf.x, bf.y, bf.width, bf.height, 0, 0, 256, 256);
     /* head+neck must always stay visible -- the chest plate has a neckline
@@ -2086,6 +2108,13 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
        (26 vs 169 at dilate 6). */
     const dilCv = document.createElement('canvas'); dilCv.width = 256; dilCv.height = 256;
     const dilCtx = dilCv.getContext('2d');
+    /* v2.3.2325: same exact 2x pixel-double as the body above.  A bilinear gear
+       edge here smeared the erase mask about half a display texel wider than the
+       art, so the destination-out below partly erased body pixels the plate does
+       not actually cover.  The dilation itself is unchanged: sampling only even
+       positions at the tail, the union over dx in [-6..6] is still exactly a
+       3-display-texel dilation, odd offsets included. */
+    dilCtx.imageSmoothingEnabled = false;
     for (const w of worn) {
       const gt = w.tex; const gr = gt && gt.source && gt.source.resource; if (!gr) continue;
       const gf = gt.frame;
@@ -2329,6 +2358,12 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
     try {
       const sc = document.createElement('canvas'); sc.width = 256; sc.height = 256;
       const sctx = sc.getContext('2d');
+      /* v2.3.2325: exact 2x.  This canvas is immediately thresholded at
+         alpha>30 into `gop`, so with smoothing on the silhouette's edge landed
+         wherever the bilinear ramp happened to cross 30 rather than on the art
+         -- a foot of slop the v2.3.1353 / v2.3.1359 peek-ring tightening then
+         had to fight. */
+      sctx.imageSmoothingEnabled = false;
       let wornChest = false, wornLegs = false;
       for (const w of worn) {
         const gt = w.tex; const gr = gt && gt.source && gt.source.resource; if (!gr) continue;
@@ -2527,6 +2562,10 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
             } else {
               const bcv = document.createElement('canvas'); bcv.width = 256; bcv.height = 256;
               const bctx = bcv.getContext('2d');
+              /* v2.3.2325: exact 2x.  These pixels are COPIED VERBATIM into the
+                 waist band below (d2[o] = bd[o]), so a bilinear belt sheet
+                 painted bilinear chain straight into the finished frame. */
+              bctx.imageSmoothingEnabled = false;
               const bfr = bt.frame;
               bctx.drawImage(br, bfr.x, bfr.y, bfr.width, bfr.height, 0, 0, 256, 256);
               const bd = bctx.getImageData(0, 0, 256, 256).data;
@@ -2650,8 +2689,19 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
      via bakeDisplayCanvas (the treatment the DS=2 'high' downscale, v2.3.1121,
      used to apply), so the visible bare-skin/shoe edges in the composite are
      smooth; the gear sheets were never display-downscaled in either era, so
-     their edges are unchanged by the DS flip and stay as-is. */
-  const t = Texture.from(downscaleByFactor(cv, DISPLAY_DS));
+     their edges are unchanged by the DS flip and stay as-is.
+     v2.3.2325: that v2.3.1237 premise went STALE the day v2.3.1412 landed.  At
+     DS=2 playerSkins' bakeDisplayCanvas now takes the exact-texel NEAREST
+     branch for the 128px-on-disk sheets, so the body pixels arriving here are
+     the artist's raw texels and the ONLY thing softening them was this bake's
+     own bilinear 2x up plus this 'high' 2x down.  bakeDisplayCanvas with
+     srcH = 256/DISPLAY_DS takes that same exact-texel branch (256 -> 128 is
+     every second texel, untouched), the exact inverse of the nearest draws
+     above: what the artist drew is what the armoured player wears.  At
+     DISPLAY_DS=1 it falls through to antialiasUpscaledCanvas with srcH >= h,
+     a pass-through -- byte-identical to the old downscaleByFactor(cv, 1)
+     no-op, so the documented rollback still behaves. */
+  const t = Texture.from(bakeDisplayCanvas(cv, Math.round(256 / DISPLAY_DS)));
   /* v2.3.1121: mipmaps on the masked (armoured) body too, so the shoe outline /
      bare-skin edges don't crawl while jogging in armour (same fix as the bare
      body sheets). Cheap on the downscaled texture. */
