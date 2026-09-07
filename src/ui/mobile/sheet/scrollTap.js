@@ -92,18 +92,28 @@ function scrollerOf(el) {
  */
 export function useScrollTap() {
   const g = useRef(null);
-  return (onTap) => ({
+  /* `inner` is for a control NESTED inside another one that also uses this --
+     the ℹ️ button sits inside the stat row it describes.  Both would see the
+     same bubbling touchstart, the outer one would run LAST and overwrite the
+     record, and the tap would spend a point instead of opening the window.
+     The handlers this replaced guarded that with their own stopPropagation on
+     pointerdown/pointerup; the flag keeps that property rather than dropping
+     it on the way through. */
+  return (onTap, { inner = false } = {}) => ({
     onPointerDown: (e) => {
+      if (inner) e.stopPropagation();
       g.current = { cancelled: false, x: e.clientX, y: e.clientY, sc: null, top: 0, onTap };
     },
     onPointerUp: (e) => {
       /* The ordinary path, unchanged: a tap the browser did not confiscate. */
       g.current = null;
       e.stopPropagation();
+      if (inner) e.preventDefault();
       onTap();
     },
     onPointerCancel: () => { if (g.current) g.current.cancelled = true; },
     onTouchStart: (e) => {
+      if (inner) e.stopPropagation();
       /* Read the scroller HERE, while the element is still on screen and the
          gesture has not moved anything — at touchend the answer would already
          include the scroll we are trying to detect. */
@@ -113,6 +123,7 @@ export function useScrollTap() {
         x: t ? t.clientX : 0, y: t ? t.clientY : 0, onTap };
     },
     onTouchEnd: (e) => {
+      if (inner) e.stopPropagation();
       const s = g.current;
       g.current = null;
       if (!s || !s.cancelled) return;   /* a clean tap already ran onPointerUp */

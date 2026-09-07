@@ -23,6 +23,7 @@ import { join } from 'node:path';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  buildcols: () => import('./mp-buildcols.mjs'), /* v2.3.2326: the Build lanes as three columns, photographed */
   bowside: () => import('./mp-bowside.mjs'), /* v2.3.2325: the idle bow mirrors when the body does (SE is a mirrored SW) */
   goldrail: () => import('./mp-goldrail.mjs'), /* v2.3.2320: the purse moves to the zone rail and the nav buttons take its room */
   arrowblast: () => import('./mp-arrowblast.mjs'), /* v2.3.2279: the bow special's blast finale, end to end */

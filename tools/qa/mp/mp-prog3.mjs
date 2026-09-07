@@ -238,6 +238,94 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and every ℹ️ is a real thumb target, not a glyph',
     !laneFit.err && laneFit.minInfo >= 30, laneFit);
 
+  /* ═══ v2.3.2326: AND FOR EVERY LANE, NOT JUST THE ONE WE LANDED ON ═══
+     The laneFit block above measures whichever lane prog3ActiveCat happens to
+     open for this character -- always Melee here -- and Melee is the ONE lane
+     that is fine.  The three lane headers stack, so each lane's first stat row
+     starts 29px lower than the last:
+
+         Melee open   row1 118.25..166.25   fully visible at every width
+         Bow   open   row1 147.25..195.25   43.75px of 48 at 390, 21.75 at 320
+         Magic open   row1 176.25..224.25   14.75px at 390, ZERO at 320
+
+     So with Magic selected on a 320px phone the first allocable stat is
+     entirely below the fold, and the scroll-edge fade is deliberately off
+     (HeroExpanded v2.3.2288, owner: "the last row is faded at the bottom"), so
+     nothing on screen says it is there.  That is the v2.3.1660 incident --
+     "a player who could not know a stat existed" -- live, and no assertion
+     could see it because none of them ever selected a different lane.
+
+     This loop selects each lane in turn and demands the same answer from all
+     three.  It is expected to FAIL until the columns land: a guard that goes
+     green the moment you write it is measuring nothing. */
+  const firstRowByLane = await P.page.evaluate(async () => {
+    const out = [];
+    const wait = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    /* Remember what was open, and put it back at the end. This probe walks all
+       three lanes, and everything below it is written against the lane
+       prog3ActiveCat picked -- leaving Magic open cost five later assertions
+       their screen the first time round. */
+    const was = (document.querySelector('[data-prog3-lane][aria-expanded="true"]') || {})
+      .dataset ? document.querySelector('[data-prog3-lane][aria-expanded="true"]').dataset.prog3Lane : null;
+    const press = async (el) => {
+      const r = el.getBoundingClientRect();
+      const o = { bubbles: true, cancelable: true, pointerId: 1, pointerType: 'touch',
+        clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 };
+      el.dispatchEvent(new PointerEvent('pointerdown', o));
+      el.dispatchEvent(new PointerEvent('pointerup', o));
+      await wait(); await new Promise((r2) => setTimeout(r2, 260));
+    };
+    for (const k of ['sword', 'bow', 'staff']) {
+      const head = document.querySelector(`[data-prog3-lane="${k}"]`);
+      if (!head) { out.push({ k, err: 'no lane' }); continue; }
+      if (head.getAttribute('aria-expanded') !== 'true') await press(head);
+      const btn = document.querySelector('[role="button"][aria-label*=" of "]');
+      if (!btn) { out.push({ k, err: 'no stat row' }); continue; }
+      let sc = btn.parentElement;
+      while (sc && getComputedStyle(sc).overflowY !== 'auto') sc = sc.parentElement;
+      if (sc) sc.scrollTop = 0;
+      await wait();
+      const b = btn.getBoundingClientRect();
+      const p = sc ? sc.getBoundingClientRect() : null;
+      /* The ceiling is the pinned stack, exactly as the block above defines it. */
+      let ceil = p ? p.top : 0;
+      if (sc) {
+        for (const e of sc.querySelectorAll('*')) {
+          const cs = getComputedStyle(e);
+          if (cs.position !== 'sticky') continue;
+          const bb = e.getBoundingClientRect();
+          const stuckAt = p.top + (parseFloat(cs.top) || 0);
+          if (bb.height > 0 && Math.abs(bb.top - stuckAt) <= 1.5 && bb.bottom > ceil) ceil = bb.bottom;
+        }
+      }
+      const floor = p ? Math.min(p.bottom, window.innerHeight) : window.innerHeight;
+      out.push({ k, top: Math.round(b.top), h: Math.round(b.height),
+        visible: Math.round(Math.max(0, Math.min(b.bottom, floor) - Math.max(b.top, ceil))),
+        full: b.top >= ceil - 1 && b.bottom <= floor + 1 });
+    }
+    /* Put the screen back the way we found it. */
+    if (was) {
+      const back = document.querySelector(`[data-prog3-lane="${was}"]`);
+      if (back && back.getAttribute('aria-expanded') !== 'true') await press(back);
+      let sc0 = document.querySelector('[role="button"][aria-label*=" of "]');
+      sc0 = sc0 && sc0.parentElement;
+      while (sc0 && getComputedStyle(sc0).overflowY !== 'auto') sc0 = sc0.parentElement;
+      if (sc0) sc0.scrollTop = 0;
+      await wait();
+    }
+    return out;
+  });
+  console.log('    first stat row, per lane: ' + JSON.stringify(firstRowByLane));
+  rec.ok('EVERY combat lane opens onto its first stat row, not just the default one',
+    firstRowByLane.every((r) => r.full === true), firstRowByLane);
+  /* And it should be the SAME row position whichever lane you picked -- a
+     layout where the answer depends on which of three you chose is the shape
+     of the bug above, even when all three happen to clear the fold. */
+  const tops = firstRowByLane.filter((r) => r.top != null).map((r) => r.top);
+  rec.ok('...at the same height for all three, so the choice cannot push it under the fold',
+    tops.length === 3 && (Math.max(...tops) - Math.min(...tops)) <= 1, { tops });
+
+
   /* ═══ v2.3.2315: THE ACCORDION ACTUALLY CLOSES ═══
      Owner: "the stat allocation accordion menu doesn't collapse when I tap on
      it."  It did not: the header called setBuildCat(sk.key), a SET rather
@@ -398,8 +486,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     console.log('    lane reachability — at top: ' + JSON.stringify(reach.atTop));
     console.log('                     at bottom: ' + JSON.stringify(reach.atBottom));
-    rec.ok('all three combat types can be reached without leaving this screen',
-      reach.onAtBottom === 3, reach);
+    /* v2.3.2326: onAtTop, not onAtBottom.  This printed onAtTop and asserted
+       only the bottom, because when it was written the answer at the top was
+       1 and the honest contract was "reachable from somewhere".  With the
+       lanes side by side it is 3 at rest, which is the whole point of the
+       change, so the printed number becomes the assertion. */
+    rec.ok('all three combat types are on screen AT REST, without scrolling for them',
+      reach.onAtTop === 3, reach);
   }
 
   /* ═══ v2.3.2315: AND THE TWO THINGS HE HAS TO READ ARE READABLE ═══
@@ -423,9 +516,63 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and the level label with it', !!legibility && legibility.lv >= 12, legibility);
 
   /* The three lanes are the navigation, so they must never scroll away. */
-  rec.ok('...with the weapon lanes pinned (sticky) so navigation is always reachable',
-    await P.page.evaluate(() => [...document.querySelectorAll('[role="button"][aria-label*="level"]')]
-      .every((l) => getComputedStyle(l).position === 'sticky')));
+  /* ═══ v2.3.2326: THE PROPERTY, NOT THE DECLARATION ═══
+     This asked whether every lane header carried `position: sticky`, which is
+     a fact about CSS and not about the player.  It was green the whole time
+     the other two combat types were sitting 413px below the panel with no cue
+     -- because sticky resolves inside each element's OWN containing block, and
+     a collapsed lane WAS its header, so it had nothing to stick through.  The
+     declaration was present and the effect was absent.
+     What the assertion was always for: the three weapons never scroll away.
+     Ask that instead, at the top, the middle and the bottom of the scroll --
+     and while we are here, ask the thing nobody asked, which is whether each
+     one is a thumb-sized target. */
+  const navAlways = await P.page.evaluate(async () => {
+    const wait = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    let sc = document.querySelector('[role="button"][aria-label*=" of "]');
+    sc = sc && sc.parentElement;
+    while (sc && getComputedStyle(sc).overflowY !== 'auto') sc = sc.parentElement;
+    if (!sc) return { err: 'no scroll container' };
+    const look = () => {
+      const p = sc.getBoundingClientRect();
+      return [...document.querySelectorAll('[data-prog3-lane]')].map((x) => {
+        const b = x.getBoundingClientRect();
+        return { k: x.getAttribute('data-prog3-lane'),
+          on: b.bottom > p.top + 1 && b.top < p.bottom - 1,
+          h: Math.round(b.height) };
+      });
+    };
+    const at = {};
+    for (const [tag, pos] of [['top', 0], ['mid', sc.scrollHeight / 2], ['max', sc.scrollHeight]]) {
+      sc.scrollTop = pos; await wait();
+      at[tag] = look();
+    }
+    sc.scrollTop = 0; await wait();
+    return at;
+  });
+  console.log('    navigation through the scroll: ' + JSON.stringify(navAlways));
+  rec.ok('the three combat types never scroll away — all on screen at top, middle and end',
+    !navAlways.err && ['top', 'mid', 'max'].every((t) => navAlways[t].length === 3
+      && navAlways[t].every((l) => l.on)), navAlways);
+  rec.ok('...and each is a real thumb target, not a strip',
+    !navAlways.err && navAlways.top.every((l) => l.h >= 44), navAlways.top);
+  /* ═══ v2.3.2326: THE FAILURE THAT WOULD LOOK LIKE FONT RENDERING ═══
+     A column is a fixed 44px box holding a two-line stack: icon 18 + gap 2 +
+     the LV line.  That last number is only 15 if someone SETS it -- left to
+     `normal`, Source Sans 3 gives 1.2-1.3, the stack becomes 37 in 35, and a
+     centred flex column overflows symmetrically: half a pixel off the icon's
+     top, half off the LV's descenders.  In a screenshot that reads as bad type
+     rendering, not as a bug, and not one existing assertion measures this box
+     -- minRow measures stat rows, pillGeom walks pills.  It would ship, and
+     the report would be "the columns look squashed" with nothing to point at.
+     So: ask the box directly. */
+  const colFit = await P.page.evaluate(() => [...document.querySelectorAll('[data-prog3-lane]')]
+    .map((c) => ({ k: c.getAttribute('data-prog3-lane'),
+      scrollH: c.scrollHeight, clientH: c.clientHeight,
+      scrollW: c.scrollWidth, clientW: c.clientWidth })));
+  console.log('    column fit: ' + JSON.stringify(colFit));
+  rec.ok('no combat column overflows its own box, vertically or horizontally',
+    colFit.every((c) => c.scrollH <= c.clientH + 1 && c.scrollW <= c.clientW + 1), colFit);
   /* ═══ v2.3.2176b: AND THE PIN DOES NOT LAND ON THE FIRST STAT ═══
      The assertion above passed on a build where the open lane's header sat
      32px BELOW where it belonged, on top of its own Crit row -- because it
@@ -439,14 +586,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const head = [...document.querySelectorAll('[role="button"][aria-label*="level"]')]
       .find((l) => l.getAttribute('aria-expanded') === 'true');
     if (!head) return { err: 'no open lane' };
-    const first = head.parentElement.querySelector('[role="button"][aria-label*=" of "]');
+    /* v2.3.2326: the body is a SIBLING of the selector now, not a child of a
+       lane, which is the whole point -- it is why the first stat row lands at
+       the same y whichever weapon you picked.  So it is found the way the
+       markup says to find it, through aria-controls, rather than by walking up
+       to a parent that no longer holds it. */
+    const bodyId = head.getAttribute('aria-controls');
+    const body = bodyId && document.getElementById(bodyId);
+    const first = (body || head.parentElement).querySelector('[role="button"][aria-label*=" of "]');
     if (!first) return { err: 'no stat row' };
     const h = head.getBoundingClientRect(); const f = first.getBoundingClientRect();
-    const lane = head.parentElement.getBoundingClientRect();
-    return { overlap: Math.round(h.bottom - f.top), intoLane: Math.round(h.top - lane.top) };
+    return { overlap: Math.round(h.bottom - f.top), viaAriaControls: !!body };
   });
-  rec.ok('...and the pinned header never covers the lane\'s own first stat',
-    !pinned.err && pinned.overlap <= 1 && pinned.intoLane <= 2, pinned);
+  rec.ok('...and the pinned selector never covers the first stat it controls',
+    !pinned.err && pinned.overlap <= 1, pinned);
 
   const cells = await P.page.locator('[aria-disabled][role="button"][aria-label*=" of "]').count().catch(() => 0);
   rec.ok('all allocatable stats are present at once', cells === STAT_ROWS, { cells, STAT_ROWS });
@@ -553,6 +706,142 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!cardText && /Melee/i.test(cardText.aria), cardText);
 
   await P.ctx.close().catch(() => {});
+
+  /* ═══ v2.3.2326: THE COLUMNS, ON THE NARROW PHONES, WITH POINTS TO SPEND ═══
+     Three columns share one row, so width is the thing that can go wrong, and
+     it goes wrong worst where there is least of it AND most to show: 320px
+     with an unspent-points badge on every column.  A default harness character
+     has an EMPTY pool by design (asserted at the top of this file), so without
+     seeding it this would be measuring the easy case -- no badge, no brass.
+     The recipe is mp-landscape-dash's (:541-549), which is the only other
+     non-empty-pool render in the suite.
+     320x568 is deliberately in the list even though nothing else in this file
+     goes that narrow: it is the width at which the OLD layout put Magic's
+     first stat row entirely below the fold. */
+  for (const [w, h] of [[390, 844], [360, 800], [320, 568]]) {
+    const N = await H.newPlayer(browser, { name: `Col${w}`, wsPort, webPort,
+      viewport: { width: w, height: h }, touch: true });
+    await H.enterWorld(N);
+    await N.page.waitForTimeout(2200);
+    await N.page.evaluate(() => {
+      const S = window._gameState && window._gameState.current; const R = S && S.rpg;
+      if (R && R.prog3) { R.prog3.pool = 6; R.prog3.poolBy = { sword: 1, bow: 4, staff: 1 }; }
+      if (S) S._serverCaps = Object.assign({}, S._serverCaps, { prog3Chan: true });
+    });
+    const gotThere = await H.openDest(N, 'Character').then(() => true).catch(() => false);
+    await N.page.waitForTimeout(500);
+    await N.page.locator('[aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]')
+      .first().click({ timeout: 8000 }).catch(() => {});
+    await N.page.waitForTimeout(800);
+    rec.ok(`${w}x${h}: the Build screen opened with points to spend (guard)`, gotThere === true, { gotThere });
+
+    const fit = await N.page.evaluate(() => {
+      const cols = [...document.querySelectorAll('[data-prog3-lane]')];
+      /* Every childless text node inside a column: the ones that would silently
+         ellipsise if a label outgrew its third of the row. */
+      const leaves = cols.flatMap((c) => [...c.querySelectorAll('*')]
+        .filter((e) => e.children.length === 0 && (e.textContent || '').trim())
+        .map((e) => ({ t: (e.textContent || '').trim(),
+          sw: e.scrollWidth, cw: e.clientWidth,
+          fs: parseFloat(getComputedStyle(e).fontSize) })));
+      return {
+        n: cols.length,
+        badges: cols.filter((c) => c.querySelector('[aria-label*="points to spend"]')).length,
+        boxes: cols.map((c) => ({ k: c.getAttribute('data-prog3-lane'),
+          w: Math.round(c.getBoundingClientRect().width),
+          h: Math.round(c.getBoundingClientRect().height),
+          overflowY: c.scrollHeight - c.clientHeight,
+          overflowX: c.scrollWidth - c.clientWidth })),
+        clipped: leaves.filter((l) => l.sw > l.cw + 1),
+        minFont: leaves.length ? Math.min(...leaves.map((l) => l.fs)) : null,
+      };
+    });
+    console.log(`    ${w}x${h} columns: ${JSON.stringify(fit)}`);
+    rec.ok(`${w}x${h}: three columns, each carrying its unspent-points badge (guard)`,
+      fit.n === 3 && fit.badges === 3, fit);
+    rec.ok(`${w}x${h}: no column overflows its own box`,
+      fit.boxes.every((b) => b.overflowY <= 1 && b.overflowX <= 1), fit.boxes);
+    rec.ok(`${w}x${h}: ...and every column is still a 44px thumb target`,
+      fit.boxes.every((b) => b.h >= 44), fit.boxes);
+    rec.ok(`${w}x${h}: ...with nothing on a column clipped to an ellipsis`,
+      fit.clipped.length === 0, fit.clipped);
+    rec.ok(`${w}x${h}: ...and nothing below the 9px type floor`,
+      fit.minFont !== null && fit.minFont >= 9, { minFont: fit.minFont });
+
+    /* ═══ v2.3.2326: THE BADGE MUST NOT SIT ON THE LABEL ═══
+       The unspent-points badge is absolutely positioned so that it costs the
+       two text lines no width.  That is the right call and it has a sharp
+       edge: an absolute element cannot change its siblings' scrollWidth, so
+       the clipping check above passes while the label runs clean underneath
+       the number.  Caught by LOOKING at a 320px shot -- "MELE1", "MAGI1" --
+       after every assertion on this screen was green.  Overlap is a question
+       about two boxes, so ask it about two boxes. */
+    const badgeFit = await N.page.evaluate(() => [...document.querySelectorAll('[data-prog3-lane]')]
+      .map((c) => {
+        const badge = c.querySelector('[aria-label*="points to spend"]');
+        /* Matched against the aria-label's own name, NOT against /^[A-Z]+$/ --
+           the first cut did that and skipped every column silently, because
+           the caps are textTransform and the DOM text is still "Melee".  A
+           guard that skips is a guard that passes. */
+        const name = (c.getAttribute('aria-label') || '').split(',')[0].trim();
+        const label = [...c.querySelectorAll('span')]
+          .find((e) => e.children.length === 0 && (e.textContent || '').trim() === name);
+        if (!badge || !label) {
+          return { k: c.getAttribute('data-prog3-lane'), skip: true,
+            why: !badge ? 'no badge (empty pool?)' : `no span reading "${name}"` };
+        }
+        const b = badge.getBoundingClientRect(), l = label.getBoundingClientRect();
+        return { k: c.getAttribute('data-prog3-lane'), text: label.textContent.trim(),
+          overlap: Math.round(Math.max(0, Math.min(b.right, l.right) - Math.max(b.left, l.left))) };
+      }));
+    console.log(`    ${w}x${h} badge vs label: ${JSON.stringify(badgeFit)}`);
+    rec.ok(`${w}x${h}: all three columns were actually measurable (guard)`,
+      badgeFit.every((b) => !b.skip), badgeFit);
+    rec.ok(`${w}x${h}: the points badge does not sit on top of the weapon's name`,
+      badgeFit.every((b) => b.skip || b.overlap === 0), badgeFit);
+
+    /* And the reason the whole change exists: the first spendable stat is
+       fully on screen for EVERY weapon, at the width where it was not. */
+    const rows = await N.page.evaluate(async () => {
+      const wait = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const out = [];
+      for (const k of ['sword', 'bow', 'staff']) {
+        const head = document.querySelector(`[data-prog3-lane="${k}"]`);
+        if (!head) { out.push({ k, err: 'no column' }); continue; }
+        if (head.getAttribute('aria-expanded') !== 'true') {
+          const r = head.getBoundingClientRect();
+          const o = { bubbles: true, cancelable: true, pointerId: 1, pointerType: 'touch',
+            clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 };
+          head.dispatchEvent(new PointerEvent('pointerdown', o));
+          head.dispatchEvent(new PointerEvent('pointerup', o));
+          await wait(); await new Promise((r2) => setTimeout(r2, 240));
+        }
+        const first = document.querySelector('[role="button"][aria-label*=" of "]');
+        if (!first) { out.push({ k, err: 'no stat row' }); continue; }
+        let sc = first.parentElement;
+        while (sc && getComputedStyle(sc).overflowY !== 'auto') sc = sc.parentElement;
+        if (sc) sc.scrollTop = 0;
+        await wait();
+        const b = first.getBoundingClientRect();
+        const p = sc ? sc.getBoundingClientRect() : null;
+        const sel = document.querySelector('[data-prog3-lane]').parentElement.getBoundingClientRect();
+        const ceil = p ? Math.max(p.top, sel.bottom) : sel.bottom;
+        const floor = p ? Math.min(p.bottom, window.innerHeight) : window.innerHeight;
+        out.push({ k, top: Math.round(b.top),
+          visible: Math.round(Math.max(0, Math.min(b.bottom, floor) - Math.max(b.top, ceil))),
+          full: b.top >= ceil - 1 && b.bottom <= floor + 1 });
+      }
+      return out;
+    });
+    console.log(`    ${w}x${h} first stat row: ${JSON.stringify(rows)}`);
+    rec.ok(`${w}x${h}: every weapon opens onto its first spendable stat`,
+      rows.every((r) => r.full === true), rows);
+    const tops = rows.filter((r) => r.top != null).map((r) => r.top);
+    rec.ok(`${w}x${h}: ...at the same height for all three`,
+      tops.length === 3 && (Math.max(...tops) - Math.min(...tops)) <= 1, { tops });
+
+    await N.ctx.close().catch(() => {});
+  }
 
   /* ═══ v2.3.2214 -> v2.3.2222: AND ALL OF THAT, ON A PHONE ═══
      Everything above runs on this scenario's player at the harness's default
