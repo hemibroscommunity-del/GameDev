@@ -162,3 +162,72 @@ was built BEFORE the risky slices — do not reorder those steps.
   room egress at the cap **24.5 → 4.0 MB/s**, for ~15% more tick CPU.
   Lesson for the next perf pass: measure bytes AND cycles — this repo's
   harness measured only cycles for a year, and the answer was in the bytes.
+
+## P6 — Server hot path, re-measured 2026-09-07 (v2.3.2335) — NOT YET SHIPPED
+
+A second in-process pass on the real GameRoom (mocked DO storage, virtual
+clock advancing 22 ms/tick so the 10 s save coalescer actually elapses;
+60 players / 175 mummies, moves at ~30 Hz, swings at the real 600 ms
+cadence, once spread over 7 zones and once all in one zone). CPU stays
+closed: **0.56 ms avg / 1.20 ms p95 / 4.3 ms max per tick**, every
+post-v2.3.1465 subsystem (fire trail, telegraph, burrow, burst,
+spawn-scale, threats, dungeons, parties, trades2) ≤ 0.01 ms/tick. What
+the pass DID find is on the wire and in storage, and it is deliberately
+held out of the client-only PR that recorded it (a worker deploy is a
+live-player disconnect; the owner prefers server merges at quiet hours).
+Ship these as ONE server-only PR, each with its suite extended:
+
+1. **Kill-path save is ~10× the regen storage floor** —
+   `server/src/combat.js` (`this._saveRpg(rid, recipPs)` in the kill
+   resolution, near the `_gemRawOnKill` call). Every kill is a full
+   `_saveRpg` (a `storage.put` of the whole blob) per recipient, so a
+   party farming at cadence writes an order of magnitude more than the
+   regen tick's coalesced saves. The pattern to copy is the v2.3.1619b
+   pool coalescer in `persistence.js` (`_saveRpgPools` /
+   `_saveRpgVitals`): a SHORT window (≈2 s, not the regen 10 s — a kill
+   carries loot/XP/coins, and a DO restart inside the window loses them),
+   with the vitals coalescer's "near death → persist now" escape hatch
+   kept for the same reason. Pin it in `test/combat-lifecycle` by
+   counting `put` calls per N kills.
+2. **Room-wide events are ~34% of tick egress** — `server/src/tick.js`
+   `buildFor(zone, pv, muted)`: the `events` buffer is the room's, so a
+   recipient in `frost` receives every `monster_hit` / loot / fx event
+   from `ember`. v2.3.1575 zone-scoped monsters and peers but not
+   events. Filter by `payload.zone` ONLY for event types that carry a
+   zone (combat fx, loot, monster events); anything without one (world
+   chat, party vitals, trade/duel invites, system notices) MUST stay
+   room-wide — those are the cross-zone features. Pin it in
+   `test/tick.test.mjs` next to the §10 overflow test with a byte count
+   per recipient, the way v2.3.1575 was measured (bytes, not calls — the
+   whole lesson of P5).
+3. **Same-zone peer fan-out is O(n²) in BYTES in the crowd case** —
+   `server/src/tick.js` `buildFor`: serialisation is already shared per
+   (zone, protocolVersion) group, so CPU is flat, but every one of N
+   recipients in a zone receives all N dirty peer records — 60 players
+   in one zone is 3,600 peer records per tick at 45 Hz, and it is the one
+   term that scales with the SQUARE of the crowd (the spread case above
+   never shows it). The mitigation is a per-frame peer budget: each tick
+   send the nearest K peers' deltas in full and round-robin the rest
+   (positions are dead-reckoned client-side already, so a peer updated
+   every 2nd–3rd tick at distance is not visible). Pin it with a bytes-
+   per-recipient assertion at 60-in-one-zone in `test/tick.test.mjs`.
+4. **`_tickParties` runs outside the v2.3.1562 `guard`** —
+   `server/src/tick.js`, the bare `this._tickParties(Date.now())` between
+   `guard('trades2', …)` and the regen block. Every other subsystem is
+   wrapped so a throw is counted and logged once instead of aborting the
+   tick; parties is the one that is not. One-line fix:
+   `guard('parties', () => this._tickParties(Date.now()))`. Trivial, but
+   it is the difference between "a party bug logs" and "a party bug
+   freezes the room".
+5. **`_economySnapshot` lists every rpg blob unbounded** —
+   `server/src/liveops.js`: `storage.list({ prefix: 'rpg:' })` with no
+   `limit`, walked into an array and sorted, on the daily metrics writer
+   AND the admin `/economy` endpoint. At today's population it is fine;
+   at a few thousand accounts it is a multi-MB read on the DO input gate
+   (rule 9). Paginate with `limit` + `startAfter`, and keep only the
+   top-N by coins as you go instead of materialising every player.
+
+Not in this list because they were checked and are healthy: no `await`
+in the tick body, per-tick allocation ~5N+40 short-lived objects with
+nothing retained, monster AI per-zone (≤24 monsters × players-in-zone),
+`_dungeonZonePlayers` ≤ 8 instances × N.
