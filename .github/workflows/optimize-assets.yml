@@ -12,9 +12,12 @@ name: Optimize sprite assets
 # Measured by tools/qa/qa-webp-lossless.mjs; the 78 were deleted in that version.
 #
 # So the trigger now includes the sprite art itself, which is what actually wants
-# converting. The bot's own commit would re-trigger that path, so it carries
-# [skip ci] — GitHub skips a push whose head commit message contains it. That is
-# what keeps this from looping, and it is why the marker must stay in the message.
+# converting. Two things stop the bot's own commit from looping back into this:
+# GitHub does not start a workflow run for a push authored with the repo's
+# GITHUB_TOKEN (documented), and the job-level `if` below refuses a bot actor
+# anyway. What it deliberately does NOT use is a [skip ci] marker in the commit
+# message: Cloudflare Pages honours that marker too, so the regenerated art would
+# land in git and never reach the site until somebody else happened to push.
 on:
   workflow_dispatch:
   push:
@@ -29,6 +32,8 @@ permissions:
 
 jobs:
   optimize:
+    # Belt and braces against a loop; the GITHUB_TOKEN rule above already covers it.
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -50,6 +55,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "No WebP changes to commit."
           else
-            git commit -m "chore: lossless WebP sprite copies for smaller downloads [skip ci]"
+            git commit -m "chore: lossless WebP sprite copies for smaller downloads"
             git push
           fi

@@ -2098,3 +2098,54 @@ sentence that has already cost this project two OOM incidents.
 **Related:** §42 (no CSS filter over the WebGL canvas — the other "it looks
 wrong on iOS" that had a mechanical cause), §21 (an instrument that measures
 the wrong quantity reports green).
+
+---
+
+## §52 — A CSS mask does not share the `<img>`'s download (v2.3.2328)
+
+**The shape.** Three of the six duplicate fetches on a cold load were the same
+file pulled twice, and all three had the same structure: an `<img src>` showing
+the art, and a CSS `mask`/`-webkit-mask` of the SAME URL sitting on top of it to
+confine a shimmer to the lettering.
+
+| art | shown by | masked by | wasted |
+|---|---|---|---|
+| `title/logo-plain.png` | `LoginScreen.jsx:206` | `--lg-logo` at `:218` | 373 KB |
+| `logo-brotown.webp` | `NameModal.jsx:638` | `game.css:1890` | 85 KB |
+| `sword.webp` | `NameModal.jsx:634` | `game.css:1891` | 31 KB |
+
+**Why it is a trap rather than an obvious bug.** Every instinct says one URL is
+one download — the second consumer should hit the memory cache. It does not: the
+mask is fetched as a different resource destination from the image, so it gets
+its own entry and its own request. Two of the three are ALREADY in the
+`<link rel="preload" as="image">` block in `index.html`, and were still fetched
+twice, which is the tell: the preload matched the `<img>` and did nothing for
+the mask. **A preload that does not match its consumer does not save a request,
+it adds one** — so "just preload it" is the wrong fix here and would have made
+the untouched third case worse.
+
+**How it was found.** Not by reading. `tools/qa/mp/mp-coldload.mjs` counts
+exact-URL duplicates on a real cold load; the three fell out of one table, and
+their shared cause was only visible because all three were listed together.
+
+**What it costs.** 0.48 MB per cold load at v2.3.2328, and it scales with the
+design: the shimmer is a house pattern, so every future one doubles its art.
+
+**The fix, if it is wanted.** Not a preload. A mask only reads ALPHA — the RGB
+is thrown away — so the mask URL should point at a small dedicated silhouette,
+not at the full-colour artwork. `logo-plain.png` is 373 KB of gold lettering
+being downloaded a second time so that a highlight can find out where the
+letters are. A white-on-transparent cut of the same silhouette is a fraction of
+that, and lossy is fine for it (nothing samples a mask's RGB) — which is exactly
+the job `tools/webp_convert.mjs` is still the right tool for, and the one place
+its Chromium-canvas lossiness genuinely does not matter (§ see the header of
+that file, and `optimize-sprites.mjs`, for where it is NOT).
+
+**Rule to apply next time:** when the same URL appears twice in a load, do not
+assume the browser will collapse it — check whether the two consumers are the
+same KIND of resource. `<img>` and CSS `background-image` share; a mask does
+not. And measure a preload's effect rather than assuming it helped.
+
+**Related:** §21 (an instrument that measures the wrong quantity reports green —
+here the instrument did not exist at all until v2.3.2328), §51 (the other "the
+art is bigger than what we draw" finding from the same measurement pass).

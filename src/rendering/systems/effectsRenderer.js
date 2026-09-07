@@ -23,6 +23,7 @@ import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R, FISH_CUE_DY } from '@/data/constants.js';
 import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */, monsterMeleeHitRadius /* v2.3.2251: sizes the ground ring to the body */ } from '@/data/index.js';
 import { gesturePose01 } from '@/game/gesturePose.js'; /* v2.3.2245 */
+import { loadWebpOrPng } from '../webpImage.js'; /* v2.3.2328: the sword/bow/legs loader asks for the smaller file too */
 import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1535 generalised */
 import { getRemnantsTexture as getSnowmanRemnantsTex, getSnowballTexture } from '../snowmanSprites.js'; /* v2.3.2217 */
@@ -1728,7 +1729,20 @@ export class EffectsRenderer {
        image, and rebake whenever the player changes their combo. */
     this._bodyStrips = [];      // [{ target, dir, url, cfg, ver }]
     this._bodyImgCache = {};    // url -> HTMLImageElement
-    const _loadImg = (u) => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = u; });
+    /* v2.3.2328: WebP-first, exactly like the other three sprite loaders.
+       This one fed the sword (SWORD_ART_VERSION 1101), the bow (BOW_ART_VERSION
+       963) and the jog legs (JOG_LEGS_VERSION 8) -- 4.32 MB of the cold load --
+       through a bare `new Image()`, so it was the only player-art path that
+       never asked for the smaller file.  Its siblings playerSprites.js,
+       playerSkins.js and gearSheets.js have used loadWebpOrPng since v2.3.1122;
+       measured, the sheets this loader pulls arrived as PNG while the SAME art
+       was arriving as WebP for the loader next door (jog-south twice, in two
+       formats, decoded twice).
+       Safe for the recolor _bakeBodyStrip runs on it: a twin only exists if
+       optimize-sprites.mjs proved it pixel-identical to the PNG, and the
+       build-time set in webpImage.js means a sheet without one loads its PNG
+       directly rather than probing for a file that is not there. */
+    const _loadImg = (u) => loadWebpOrPng(u);
     this._bakeBodyStrip = (rec) => {
       const img = this._bodyImgCache[rec.url];
       if (!img) return;

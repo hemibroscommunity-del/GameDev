@@ -32,6 +32,7 @@ export default [
         ...globals.browser,
         /* vite compile-time defines (vite.config.js `define`) */
         __BUILD_VERSION__: 'readonly',
+        __WEBP_TWINS__: 'readonly',   /* v2.3.2328: build-time set of sprites with a .webp twin (vite.config.js scanWebpTwins) */
         __BUILD_SHA__: 'readonly',
         __BUILD_TIME__: 'readonly',
         process: 'readonly',
