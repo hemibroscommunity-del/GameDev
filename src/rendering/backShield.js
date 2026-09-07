@@ -50,7 +50,37 @@ export const HELD_SHIELD_PX = BACK_SHIELD_PX;
    so the same 11px up-screen at S would lift it onto the back of the head.
    These place the shield's CENTRE, which does not move when the shield grows —
    so they are deliberately NOT scaled with BACK_SHIELD_PX. */
-const BACK_RX = 11, BACK_RY = 5, BACK_LIFT = 14;
+/* ═══ v2.3.2324: THE LIFT DROPS 14 -> 4 ═══
+   Owner: "there's a smudge looking tannish circle appearing on the south jog
+   ... could be the shoulder."  It is not the shoulder and it is not the
+   armour: it is THIS shield, and the A/B that settled it was toggling
+   `rpg.shield` on one standing character and changing nothing else.
+
+   THE ARITHMETIC OF THE SMUDGE.  The slung shield is placed at the body's
+   CENTRE plus `dy` (effectsRenderer's _placeStandInShield: `footY - bodyH*0.5
+   + place.dy`).  With bodyH ~84 world px the centre is 42 above the feet; at
+   S, dy was -sin(PI/2)*5 - 14 = -19, putting the shield's centre 61 above the
+   feet.  The shield is 72 across, so its top edge landed 97 above the feet on
+   an 84px figure -- 13px clear of the top of the head.  Facing the camera the
+   body hides the middle of it and what is left showing is a tan wooden rim
+   arcing over the head and past both shoulders.  That arc is the smudge.
+
+   WHY THE LIFT AND NOT THE SIZE.  72 is the owner's own number twice over --
+   v2.3.1784 "Double the size of the shield though" (36 -> 72), and v2.3.1798
+   "I prefer the larger look" when the HELD shield was made to match it.
+   Shrinking it here would quietly undo both.  The lift is a separate dial and
+   it is the one that is wrong: a shield slung on a back sits across the
+   shoulder blades, not above the skull.
+
+   At 4 the centre is 51 above the feet, so the disc sits behind the TORSO and
+   what shows past the silhouette is a crescent at each side at chest height --
+   which is what you would actually see of a round shield worn on someone's
+   back while they face you.  Captured at 390x844 dpr3 at S, SE and E before
+   and after; the head is clear in all three.
+
+   BACK_RX/BACK_RY are untouched: X displacement is what carries the shield
+   past the silhouette at E/W, and this change is about height only. */
+const BACK_RX = 11, BACK_RY = 5, BACK_LIFT = 4;
 
 /* The body art leans forward at a jog; a bolt-upright shield reads as
    detached.  Strongest at E/W, zero at N/S where the lean is in and out of the
