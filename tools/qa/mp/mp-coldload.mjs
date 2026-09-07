@@ -31,6 +31,16 @@
  * bg-loop.mp4 (1.07 MB) races the door and lands in only some runs, so the
  * grand total moves by a megabyte between identical builds.  Trust the
  * per-family lines, not the headline.
+ *
+ * v2.3.2332, two traps the first reader of a --json file fell into:
+ *   - each request's `t` is CDP's `timestamp`, in SECONDS on a monotonic
+ *     clock -- subtract the first request's `t` and multiply by 1000 before
+ *     reading gaps, or a 7.8 s span reads as 7.8 ms and the field looks dead;
+ *   - harness.mjs resolves REPO from ITS OWN file location, so this script
+ *     serves the dist/ that sits beside it.  Measuring a git worktree means
+ *     running the copy INSIDE that worktree (its tools/qa/mp/), never the
+ *     canonical one -- that would photograph the main checkout's build and
+ *     report your change as having no effect.
  */
 import * as H from './harness.mjs';
 import { writeFileSync } from 'node:fs';
