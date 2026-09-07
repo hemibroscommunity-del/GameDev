@@ -2010,3 +2010,91 @@ whether a finger can reach the thing.
 
 **Related:** §41 (a lesson that measures unreachable is skipped in silence),
 §21 (an instrument that measures the wrong quantity reports green).
+
+---
+
+## §51 — "The character looks soft, so give it the higher-res art" (v2.3.2325)
+
+**The report.** The owner, on an iPhone screenshot with the dashboard folded:
+the character "looks soft like the textures are low resolution".
+
+**Two causes, and only one of them is safe to fix.** They look like the same
+bug and they are not.
+
+### Cause A — the armoured bake resampled twice for nothing. FIXED, cheap.
+
+`_maskedBodyFrame` composites at 256 but is FED display textures. At
+`DISPLAY_DS = 2` the body frame is 128px and every jog / stand / hit / fish /
+mine gear sheet has been 128px since v2.3.1434, so all six `drawImage` calls
+into that canvas are an exact 2x pixel-double. **Canvas smoothing defaults
+ON**, so every one of them was bilinear, and the tail resampled the composite
+back down with the wide `'high'` kernel. Exact texels in, two resamples, mush
+out — in the one place BETWEEN the two fixes that removed exactly this
+elsewhere (v2.3.1412 body sheets, v2.3.1434 gear sheets), which is why the
+ARMOURED figure alone still looked soft after both landed.
+
+Fix: `imageSmoothingEnabled = false` on all four canvases, and
+`bakeDisplayCanvas` at the tail instead of `downscaleByFactor` so the halve
+takes the exact-texel branch. **Both ends must move together** — nearest up
+with a smooth down still blurs; smooth up with a nearest down samples the
+blend and smears WORSE than before.
+
+Measured by `tools/qa/bake-identity.mjs`: head-band texels altered vs the raw
+body frame went 651/669 -> 0/669 on jog-south, and the same to zero on five
+other cases. Zero cost, fewer filtered samples per bake.
+
+### Cause B — the native-256 stand art really is being thrown away. DO NOT "just fix" IT.
+
+The premise is TRUE and was verified twice. `stand-*.png` and `dodge-*.png`
+ship 256 NATIVE, `bakeDisplayCanvas`'s exact-texel branch only fires when
+`srcH === round(h / DISPLAY_DS)`, so they fall through to a Lanczos halve.
+That art is not a pixel-double of a 128 original: 0.9–1.7% of opaque aligned
+2x2 blocks are constant (a nearest double reads 100.00%), Nyquist-band energy
+is 3x its own smoothed twin, and `public/sprites/player/stand-*.jpeg` are
+**1024x1024** — the 256 PNGs are genuine 4x downscales of real renders. Real
+detail is being discarded, and the stand frame would go 2.69 -> 1.34 device px
+per texel on a dpr-3 phone. The win is real.
+
+**And the fix is still not contained.** What makes it look contained is that
+NO TUNED CONSTANT CHANGES — hats, beards, weapons, foot rows, waist bands and
+head seats are all 256-space and immune. What makes it wide:
+
+- **A write-order bug.** `entityRenderer.js` sets the body sprite's scale from
+  `DISPLAY_DS` BEFORE it chooses the texture (`:9938` vs `:9999` local,
+  `:8560` vs `:8610` remote). If bare stand is 256 and the masked bake still
+  emits 128, **putting a chest plate on halves the character.**
+- **`_placeBand` draws two different body textures on one transform** (stand
+  rows above the cut, jog rows below, `_placeSouthBlockLegs`). Mixed sizes
+  render the top half at twice the bottom half.
+- 13 `/ DISPLAY_DS` offset expressions across 6 functions, two loaders, and a
+  third filter state inside the bake that Cause A's fix just stabilised.
+- `bake-identity`'s own readback had to stop assuming 128 (done) or the proof
+  of Cause A breaks structurally the moment Cause B lands.
+
+**And the memory is the actual wall.** Only "stand-only, bake left at 128"
+comes in under ~15 MiB — and that is exactly the variant that trips the
+write-order bug and leaves the armoured figure unimproved. The blanket
+`bakeDisplayCanvas` change sweeps `dodge-*` in, and `PREWARM_POSES` includes
+`dodge`, so it costs ~+40 MiB for a 300ms roll. The pickup head is +12.7 MiB
+for a 0.5s loot freeze. Recorded ceilings: `spriteScale.js:43-61` (DS=1 ->
+~245MB and hard Safari OOM page kills), `gearSheets.js:103-118` (frost-zone
+OOM), CLAUDE.md's zone-asset exception (~60MB startup peak already "wonky").
+
+**If it is ever wanted, it is TWO PRs, in this order:**
+1. A no-behaviour-change normalisation: every `/ DISPLAY_DS` on the body path
+   becomes a size-derived factor, the scale writes move AFTER the texture
+   choice, `_placeBand` normalises per texture, the harness reads back at the
+   texture's own size. Prove rendering byte-identical at `DISPLAY_DS = 2`,
+   merge, live with it.
+2. THEN the one-line stand opt-in, revertible on its own.
+
+**Rule to apply next time:** a resolution complaint has a cheap half and an
+expensive half, and they are not distinguishable by looking. Measure which
+pixels are being destroyed and where, ship the half that is a lossless round
+trip, and cost the other half in MiB against this repo's OOM history before
+writing a line of it. "The art is higher-res than what we draw" is a true
+sentence that has already cost this project two OOM incidents.
+
+**Related:** §42 (no CSS filter over the WebGL canvas — the other "it looks
+wrong on iOS" that had a mechanical cause), §21 (an instrument that measures
+the wrong quantity reports green).

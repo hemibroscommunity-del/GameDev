@@ -86,7 +86,7 @@ for (const r of rows || []) {
   const ok = r.bad === 0 && r.opaque > 100;
   if (!ok) fails++;
   console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${who.padEnd(30)} `
-    + `rows 0..${r.band}, ${r.opaque} opaque, ${r.bad} altered   `
+    + `${r.px}px frame, rows 0..${r.band}, ${r.opaque} opaque, ${r.bad} altered   `
     + `[partial alpha ${r.partialA} raw -> ${r.partialB} baked]`);
   /* The negative control: the baked figure must not GROW past the raw one.
      Growth only, deliberately.  The first cut of this check tested distance

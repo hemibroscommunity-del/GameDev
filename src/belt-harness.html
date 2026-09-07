@@ -145,19 +145,26 @@ async function board(dir) {
    measured.  Driven by tools/qa/bake-identity.mjs. */
 async function measure() {
   const rows = [];
+  /* Sized from the texture's OWN frame, never from a literal 128.  The first
+     cut hardcoded the readback canvas, which made this proof quietly
+     conditional on every body texture being the display size it happens to be
+     today -- and the open question this was written to serve is exactly
+     whether some of them should stop being that size.  A check that breaks
+     structurally the moment its subject changes is not a check. */
   const read = (tex) => {
     const src = tex && tex.source && tex.source.resource;
     if (!src) return null;
-    const c = document.createElement('canvas'); c.width = 128; c.height = 128;
-    const x = c.getContext('2d'); x.imageSmoothingEnabled = false;
     const f = tex.frame;
-    x.drawImage(src, f.x, f.y, f.width, f.height, 0, 0, 128, 128);
-    return x.getImageData(0, 0, 128, 128).data;
+    const n = Math.max(1, Math.round(f.height));
+    const c = document.createElement('canvas'); c.width = n; c.height = n;
+    const x = c.getContext('2d'); x.imageSmoothingEnabled = false;
+    x.drawImage(src, f.x, f.y, f.width, f.height, 0, 0, n, n);
+    return { d: x.getImageData(0, 0, n, n).data, n };
   };
-  const bbox = (d) => {
-    let t = 128, b = -1, l = 128, r = -1;
-    for (let y = 0; y < 128; y++) for (let x = 0; x < 128; x++) {
-      if (d[(y * 128 + x) * 4 + 3] > 0) {
+  const bbox = (d, n) => {
+    let t = n, b = -1, l = n, r = -1;
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+      if (d[(y * n + x) * 4 + 3] > 0) {
         if (y < t) t = y; if (y > b) b = y;
         if (x < l) l = x; if (x > r) r = x;
       }
@@ -192,29 +199,41 @@ async function measure() {
     }
     if (!masked) { if (!rows.length || rows[rows.length - 1].pose !== c.pose) rows.push({ ...c, err: 'no bake' }); continue; }
     if (masked === body) { rows.push({ ...c, err: 'bake declined (raw body returned)' }); continue; }
-    const A = read(body), B = read(masked);
-    if (!A || !B) { rows.push({ ...c, err: 'unreadable' }); continue; }
+    const rawR = read(body), bakeR = read(masked);
+    if (!rawR || !bakeR) { rows.push({ ...c, err: 'unreadable' }); continue; }
+    /* A size disagreement is a REPORTABLE RESULT, not a crash.  If the bake
+       ever emits a frame at a different size from the body it was handed, the
+       character halves or doubles the moment armour goes on -- so this says
+       so in one line rather than throwing an index error four loops later. */
+    if (rawR.n !== bakeR.n) {
+      rows.push({ ...c, err: `size mismatch: raw ${rawR.n}px, baked ${bakeR.n}px `
+        + '-- the armoured figure would not match the bare one' });
+      continue;
+    }
+    const A = rawR.d, B = bakeR.d, N = rawR.n;
     /* The bake finds the neck line in 256-space from alpha>40; mirror it in
-       128-space and then stop TWO rows short, so a rounding difference of one
+       the frame's own space and then stop TWO rows short, so a rounding
+       difference of one
        row between the two spaces cannot put the neck restore itself inside
        the band being measured. */
-    let figTop = 128, figBot = -1;
-    for (let y = 0; y < 128; y++) for (let x = 0; x < 128; x++) {
-      if (A[(y * 128 + x) * 4 + 3] > 40) { if (y < figTop) figTop = y; if (y > figBot) figBot = y; break; }
+    let figTop = N, figBot = -1;
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+      if (A[(y * N + x) * 4 + 3] > 40) { if (y < figTop) figTop = y; if (y > figBot) figBot = y; break; }
     }
     const band = Math.max(0, Math.round(figTop + 0.33 * (figBot - figTop)) - 2);
     let opaque = 0, bad = 0, partialA = 0, partialB = 0;
-    for (let p = 0; p < band * 128; p++) {
+    for (let p = 0; p < band * N; p++) {
       const o = p * 4;
       if (A[o + 3] !== 255) continue;
       opaque++;
       if (A[o] !== B[o] || A[o + 1] !== B[o + 1] || A[o + 2] !== B[o + 2] || A[o + 3] !== B[o + 3]) bad++;
     }
-    for (let p = 0; p < 128 * 128; p++) {
+    for (let p = 0; p < N * N; p++) {
       if (A[p * 4 + 3] > 0 && A[p * 4 + 3] < 255) partialA++;
       if (B[p * 4 + 3] > 0 && B[p * 4 + 3] < 255) partialB++;
     }
-    rows.push({ ...c, band, opaque, bad, partialA, partialB, bodyBox: bbox(A), maskBox: bbox(B) });
+    rows.push({ ...c, px: N, band, opaque, bad, partialA, partialB,
+      bodyBox: bbox(A, N), maskBox: bbox(B, N) });
   }
   window.__bandCheck = rows;
 }
