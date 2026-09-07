@@ -118,6 +118,7 @@ function _rescueDisplacedArmor(S, slot, stashKey, incoming) {
   } catch (e) { /* never let this break the state echo */ }
 }
 import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822 */
+import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.2330: the player_state echo goes through the debouncer */
 /* Tick arrival timestamps — module-level so the buffer survives
  * WebSocket reconnects and can be sampled by the FPS/NET overlay.
  * performance.now() values, capped at ~5 minutes of history.  Bytes-per-tick
@@ -614,7 +615,18 @@ export function setupWebSocket(ctx) {
                   var _evt = msg.events[ei];
                   var payload = _evt.payload || _evt;
                   payload.id = payload.id || _evt.from;
-                  processGameEvent(_evt.type, payload, S, _gameEventDeps);
+                  /* v2.3.2330: one throwing handler used to abandon the rest of
+                     this tick's batch AND the monster/node deltas below it --
+                     up to EVENTS_PER_TICK_CAP events plus a 22ms tick of world
+                     state, for one bad payload.  A non-throwing try costs
+                     nothing on V8/JSC. */
+                  try { processGameEvent(_evt.type, payload, S, _gameEventDeps); }
+                  catch (_evErr) {
+                    if (!S._evErrLogged || Date.now() - S._evErrLogged > 5000) {
+                      S._evErrLogged = Date.now();
+                      console.warn('[events] handler threw for', _evt.type, _evErr && _evErr.message);
+                    }
+                  }
                 }
               }
               // Server gather-node state deltas (alive/respawnAt only;
@@ -1043,7 +1055,11 @@ export function setupWebSocket(ctx) {
                 setBlockScaleEnabled(!!(S._serverCaps && S._serverCaps.blockScale));
                 if (S.rpg) recalcDerived(S.rpg);
               } catch (e) {}
-              var others = {};
+              /* v2.3.2330: null-prototype.  Keyed by wire-supplied peer ids -- the
+                 TRAPS section 6 shape, fixed three times in one day elsewhere.  A
+                 plain {} silently no-ops on '__proto__'; nothing reads a prototype
+                 method off this map (Object.keys / for-in / direct index only). */
+              var others = Object.create(null);
               for (var _i34 = 0, _Object$entries6 = Object.entries(msg.players); _i34 < _Object$entries6.length; _i34++) {
                 var _Object$entries6$_i = _slicedToArray(_Object$entries6[_i34], 2),
                   _pid = _Object$entries6$_i[0],
@@ -1798,7 +1814,14 @@ export function setupWebSocket(ctx) {
                 if (_poolsFromServer[_pk] !== null) S.rpg[_pk] = _poolsFromServer[_pk];
               }
               setRpgState(_objectSpread({}, S.rpg));
-              try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
+              /* v2.3.2330: through the debouncer, not inline.  This case runs
+                 1.5-5 times a second through combat (every player_state echo),
+                 and each inline write was a full JSON.stringify of S.rpg (~4.5 KB
+                 mid-game) plus a synchronous main-thread disk write -- the exact
+                 shape rpgSave.js was written to stop on the kill path, still
+                 running on the most frequent message in the protocol.  bt_rpg is
+                 a warm-start cache; the worker blob is authoritative. */
+              saveRpgSoon();
               break;
             }
           case 'player_died':

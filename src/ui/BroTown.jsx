@@ -134,7 +134,7 @@ import { MINE_SPOT_R, WORLD_ZOOM, FARM_BED_TILE } from '@/data/constants.js';
    at boot; the only reader is the NPC wander clamp, dormant while
    NPC_DATA is empty. */
 import { CLAN_WAR_REWARDS, PET_LOOT_RADIUS, TOWN_W, TOWN_H, calcDisplayHeal,
-  hasGatherTool} from '@/data/index.js';
+  hasGatherTool } from '@/data/index.js';
 import { IntroVideo } from './IntroVideo.jsx';
 /* v2.3.1593: mayorWelcomeSeen dropped — its only caller was the greeting
    trigger the owner asked to remove.  MayorGreeting itself stays imported
@@ -770,7 +770,7 @@ export var BroTown = function BroTown(_ref0) {
       vy: 0,
       dir: 'down'
     },
-    others: {},
+    others: Object.create(null), /* v2.3.2330: keyed by peer ids -- never a plain {} (TRAPS section 6) */
     camera: {
       x: 0,
       y: 0
@@ -1349,6 +1349,10 @@ export var BroTown = function BroTown(_ref0) {
     _useState8 = _slicedToArray(_useState7, 2),
     showPlayerList = _useState8[0],
     setShowPlayerList = _useState8[1];
+  /* v2.3.2330: a ref mirror, so the 2 Hz roster interval (which has [] deps) can
+     see whether the panel is open without being re-subscribed on every toggle. */
+  var showPlayerListRef = useRef(false);
+  useEffect(function () { showPlayerListRef.current = !!showPlayerList; }, [showPlayerList]);
   var _useState9 = useState(null),
     _useState0 = _slicedToArray(_useState9, 2),
     inspectPlayer = _useState0[0],
@@ -5042,7 +5046,13 @@ export var BroTown = function BroTown(_ref0) {
               /* r = 40% of the box: circumference in the SVG's own units --
                  the box is square, so a percentage radius resolves against
                  its width; stamp the dash as a fraction of 2*pi*r in px. */
-              var _rpx = (_ring.clientWidth || 96) * 0.4;
+              /* v2.3.2330: clientWidth is a forced style recalc (on some frames a
+                 layout flush), and this ran every frame of every harvest after
+                 style writes on the ring's siblings, for a box whose size only
+                 changes on resize.  Re-read at most once a second. */
+              var _rnow = Date.now();
+              if (!_ring._rpxW || (_rnow - (_ring._rpxAt || 0)) > 1000) { _ring._rpxW = _ring.clientWidth || 96; _ring._rpxAt = _rnow; }
+              var _rpx = _ring._rpxW * 0.4;
               var _circ = 2 * Math.PI * _rpx;
               if (_c) {
                 var _dash = (_circ * _frac).toFixed(1) + ' 9999';
@@ -6944,7 +6954,14 @@ export var BroTown = function BroTown(_ref0) {
           stats: o.stats
         };
       });
-      setPlayerList(list);
+      /* v2.3.2330: only while the panel that reads it is open.  This runs
+         twice a second for the life of the session, and setPlayerList with a
+         freshly-built array re-rendered the ENTIRE BroTown tree each time --
+         ~167 createElement calls and 113 inline style objects, standing still
+         in town, for a list nobody was looking at.  The panel reads it on open
+         within the same half-second, so it is never more than one tick stale.
+         The achievement check below still runs every tick as it always did. */
+      if (showPlayerListRef.current) setPlayerList(list);
       /* Check achievements */
       var S2 = stateRef.current;
       if (S2.stats) {
@@ -9482,6 +9499,11 @@ export var BroTown = function BroTown(_ref0) {
     } catch (e4) {}
     var _clearSpin = function () { try { if (_rejoinSpin) { _rejoinSpin.remove(); _rejoinSpin = null; } } catch (e5) {} };
     Promise.resolve(introWaitRef.current).catch(function () {}).then(_clearSpin);
+    /* v2.3.2330: the SFX manifest loads once the gate has what it was waiting
+       for -- see BT_AUDIO.unlock for why it no longer loads at the login door. */
+    Promise.resolve(introWaitRef.current).catch(function () {}).then(function () {
+      try { BT_AUDIO.loadSfxManifest(); } catch (e) {}
+    });
     setTimeout(_clearSpin, 20000);
   }, []); /* mount-only by design: resumes happen once per page load */
 

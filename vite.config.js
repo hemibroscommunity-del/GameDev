@@ -104,6 +104,13 @@ export default defineConfig({
        reproduces the same bundle and its map.  crashTrap.js does not consult a
        map either -- it POSTs the raw stack string (crashTrap.js:66). */
     sourcemap: false,
+    /* v2.3.2330: react + react-dom + pixi.js in their own chunk.  One 2.57 MB
+       / 752 KB-gzip bundle meant every client deploy -- there were four in one
+       hour on judging day -- invalidated all of it, including the ~1 MB of
+       library code that had not changed in months.  Split, the vendor chunk's
+       hash only moves when a dependency does, so a returning player's browser
+       keeps it across deploys and re-downloads only the game. */
+    rollupOptions: { output: { manualChunks: { vendor: ['react', 'react-dom', 'pixi.js'] } } },
   },
   server: {
     port: 3000,

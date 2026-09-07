@@ -2953,7 +2953,15 @@ BT_AUDIO.unlock = function () {
   this._wakeCtx();
   this._unlocked = true;
   if (firstUnlock) this.fadeIn(1.2);
-  this.loadSfxManifest();
+  /* v2.3.2330: the SFX manifest no longer loads HERE.  unlock() runs on the
+     first gesture at the login door, so the manifest's 37 files (~1.1 MB)
+     all started within 7ms of each other, 1.6s after PLAY -- in the middle
+     of the sprite preload the loading gate was waiting on, competing with
+     it for the same connection.  BroTown kicks loadSfxManifest() the moment
+     the gate resolves instead (the intro clip then plays for ~4s, which is
+     more than the manifest needs).  The function is idempotent and every
+     player path kicks loadSample for a sample it finds missing, so a sound
+     asked for early is a one-off silence, never an error. */
   /* v2.3.1577: the session track starts here — this is the first gesture on
      the LOGIN screen (GameApp registers the handler at app level), so the
      music is playing before the player ever enters the world, and nothing
