@@ -172,7 +172,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const cs = o && getComputedStyle(o);
       return !!(o && o.classList.contains('bt-pt-orb-land') && cs && /matrix\((1\.[5-9]|2)/.test(cs.transform));
     }, document_k);
-    if (held) {
+    if (held || /^STAGED/.test(label)) {
       (await import('node:fs')).writeFileSync('tools/qa/shots/ptorb-flare.png', Buffer.from(shot.data, 'base64'));
       console.log('    photo: ' + label);
     } else {
@@ -190,23 +190,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }, target.key);
     let filed = false;
     if (still) filed = await shoot('the real flare, frozen at 420ms of 720', target.key);
-    if (!filed) {
-      /* STAGED, and labelled as such: the class and the +1 are put on the row
-         by hand and the animation paused at the same 400ms, purely so the
-         picture shows the effect the assertions above already proved. */
-      await P.page.evaluate((k) => {
-        const o = document.querySelector(`[data-pt-orb="${k}"]`);
-        if (!o) return;
-        o.classList.add('bt-pt-orb-land');
-        const p = document.createElement('span'); p.className = 'bt-pt-plus'; p.textContent = '+1';
-        o.parentElement.appendChild(p);
-        for (const a of document.getAnimations()) {
-          const el = a.effect && a.effect.target;
-          if (el === o || el === p) { a.pause(); a.currentTime = 420; }
-        }
-      }, target.key);
-      await shoot('STAGED (a re-render had cleared the real flare before the capture) -- frozen at 420ms', target.key);
-    }
+    P._flareFiled = filed;   /* the end of the run stages one if this frame was lost */
   } catch (e) { /* a missing picture is not a failed spend */ }
 
   const lit = first.rows.filter((r) => r.landed);
@@ -236,6 +220,31 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok('...while the first row has gone dark -- the flare is a moment, not a state',
         !!firstNow && !firstNow.landed && !firstNow.plus, firstNow);
     }
+  }
+
+  /* THE STAGED PHOTOGRAPH, last of all.  If the real frame was lost between
+     its check and the capture (a re-render inside the 1300ms window on a slow
+     box), the class and the +1 are put on the row BY HAND here and the
+     animation paused at the same 420ms, purely so the picture shows the effect
+     the assertions above already proved.  Last, because React never removes a
+     class it did not set: the first cut staged this right after the first
+     spend, and the "first row has gone dark" assertion then read the props
+     that had been planted for the camera. */
+  if (!P._flareFiled) {
+    try {
+      await P.page.evaluate((k) => {
+        const o = document.querySelector(`[data-pt-orb="${k}"]`);
+        if (!o) return;
+        o.classList.add('bt-pt-orb-land');
+        const p = document.createElement('span'); p.className = 'bt-pt-plus'; p.textContent = '+1';
+        o.parentElement.appendChild(p);
+        for (const a of document.getAnimations()) {
+          const el = a.effect && a.effect.target;
+          if (el === o || el === p) { a.pause(); a.currentTime = 420; }
+        }
+      }, target.key);
+      await shoot('STAGED (the real frame was lost before its capture) -- frozen at 420ms', target.key);
+    } catch (e) { /* a missing picture is not a failed spend */ }
   }
 
   /* A capped stat, if any is on screen, reads solid. */
