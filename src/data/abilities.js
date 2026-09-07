@@ -107,7 +107,25 @@ export const STAM_ABILITIES = {
     reach: 240,
   },
   whirl: {
-    minLevel: 8,
+    /* ═══ v2.3.2327: NO LEVEL GATE, AND SWORD ONLY ═══
+       Owner: "Change whirlwind so only an option for the melee character
+       (sword equipped) and begins as an option immediately (no level
+       gating)."
+
+       Two halves, and they pull in opposite directions on purpose: the
+       ability arrives at level 1 instead of 8, and in exchange it is no
+       longer offered to a bow or a staff at all.  It was already
+       `needs: 'weapon'`, but that only greyed the button OUT while holding a
+       bow -- an archer still had a Whirlwind button on screen that could
+       never fire.  Now the button is simply not there unless the melee
+       weapon is the one in your hands.
+
+       0 rather than deleting minLevel: `abilityUnlocked` compares
+       `charLevel >= cfg.minLevel`, so a MISSING field makes that
+       `n >= undefined` -> NaN -> false, i.e. permanently LOCKED -- the exact
+       opposite of ungated.  The same trap bash's comment records at
+       v2.3.2252. */
+    minLevel: 0,
     blocks: 1,            /* ONE block, at every count -- v2.3.2302 */
     cooldownMs: 6000,
     dmgMult: 1.00,
@@ -116,6 +134,13 @@ export const STAM_ABILITIES = {
     knockback: 0,   /* v2.3.1735: whirl gathers instead of shoving */
     pullTo: 34,     /* ...onto a ring this far from the caster */
     needs: 'weapon',
+    /* v2.3.2327: ...and the melee weapon must be the ACTIVE one.  Declared as
+       data, the way bash declares needsHeldShield, so the next ability with a
+       stance requirement adds a field rather than a branch.  Read by
+       game/abilities.js abilityStatus; the server's authoritative requirement
+       stays `needs: 'weapon'`, because which slot a client says it is holding
+       is client-supplied and a server gate on it would be forgeable. */
+    needsMeleeActive: true,
     maxTargets: 16,
   },
 };
@@ -134,7 +159,14 @@ export const MILESTONES = {
   4:  { label: 'Sturdy Arm' },
   5:  { points: 1,     label: 'Bonus stat point' },
   6:  { burst: true,   label: 'Element Burst' },
-  8:  { kind: 'whirl', label: 'Whirlwind' },
+  /* v2.3.2327: rung 8 stops naming an ability, for the reason rung 4 did at
+     v2.3.2252 -- Whirlwind is ungated now, and leaving `kind: 'whirl'` here
+     would have the level-up celebration announce "Whirlwind unlocked!" for a
+     move the player has had since level 1 (prog3.js reads
+     MILESTONES[level].label for exactly that).  It also has to go for a
+     harder reason: milestoneAbilityLevels() asserts every kind the ladder
+     names agrees with its minLevel, and 8 !== 0. */
+  8:  { label: 'Storm Footing' },
   10: { stamMult: 1.25, label: 'Second Wind' },
 };
 

@@ -4,17 +4,34 @@ import { abilityStatus, castAbility } from '@/game/abilities.js';
 import { blockRingBus } from '@/ui/mobile/blockRingBus.js'; /* v2.3.2252: the bash button follows the shield's edge, not a 200ms poll */
 import { RBTN } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2254: the disc's real height, so this column cannot land on it */
 
-/* ═══ v2.3.2254: HOW FAR ABOVE THE ATTACK DISC ═══
-   Owner: the shield-bash button "needs to move up".
-   The anchor was the literal 178px, which is 70 (the disc's own bottom) + 96
-   (its PORTRAIT height) + 12 -- a number derived once, against one
-   orientation, and then frozen.  Sideways the disc is 108 tall (RBTN.wLand,
-   v2.3.2242 grew both), so its top edge is at exactly 178 and this column has
-   been sitting ON it: the two boxes share the 50..76px strip off the right
-   edge, so the overlap is real, not merely adjacent.
-   Derived from RBTN instead, with a gap wide enough to read as a separate
-   control in both orientations rather than a bump on the disc. */
-const DISC_GAP = 34;
+/* ═══ v2.3.2327: DOWN AND TO THE LEFT OF THE ATTACK DISC ═══
+   Owner: "The shield bash button too far away.  Put it down and to the left
+   of the attack button."
+
+   It was ABOVE the disc (v2.3.2254 moved it up, when the ask was to get it off
+   the disc it was overlapping).  Measured on his phone at 390x844: the disc
+   sits at x 244..340 / y 435..531 and Bash was at x 324..372 / y 295..343 --
+   up and to the RIGHT of the disc's centre, and 140px from the thumb resting
+   on it.  That is the "too far away".
+
+   THE BUDGET IS TIGHTER THAN IT LOOKS, and it is what shapes this.  The
+   movement joystick's touch zone is the whole LEFT HALF of the play area
+   (data-joyzone="L", x 0..195 at this width) -- not the little disc you can
+   see, the half-screen.  A button that strays over it does not merely sit on
+   top of the joystick, it stops the joystick's touchstart from running at all
+   (the v2.3.2123 world-chat incident, same mechanism).  So the entire usable
+   band for a control left of the disc is 50vw..disc-left = 195..244 = 49px on
+   a 390 phone, and it SHRINKS on a narrower one: at 360 it is 34px, less than
+   one button wide.
+
+   Hence the clamp rather than a constant.  Preferred position is 4px left of
+   the disc; `50vw - size` is the hard floor that keeps the button's left edge
+   out of the movement zone at every width.  On a phone too narrow for both,
+   the button tucks against the disc's lower-left corner instead of crossing
+   the line -- overlapping a rounded disc's empty bounding-box corner costs a
+   few pixels of art, and crossing into the movement zone costs the player
+   their movement. */
+const DISC_EDGE_GAP = 4;
 
 /* ═══ v2.3.1733: THE ABILITY BUTTONS ═══
  *
@@ -77,30 +94,50 @@ export function AbilityButtons(props) {
   if (!live.length) return null;
 
   var size = isLandscape ? 54 : 48;
-  return React.createElement('div', {
-    className: 'bt-desktop-hide',
-    style: {
-      position: 'fixed',
-      /* Above the right (combat) disc and clear of the sheet, so an open menu
-         never traps the buttons.  RBTN.bottom is where the disc starts and
-         RBTN.w/wLand is how tall it is -- one source of truth with
-         TouchControls, which draws it from the same two numbers. */
-      bottom: 'calc(var(--sheet-h, var(--dash-h)) + '
-        + (RBTN.bottom + (isLandscape ? RBTN.wLand : RBTN.w) + DISC_GAP) + 'px)',
+  var discW = isLandscape ? RBTN.wLand : RBTN.w;
+
+  /* ═══ EACH ABILITY GETS ITS OWN SLOT, NOT A SHARED COLUMN ═══
+     The first cut of the move kept the two as one stacked column and put the
+     column down-left.  Measured at 360x800 that does not fit: two 48px buttons
+     plus their gap is 106px tall, the room under the disc is 58, so the upper
+     one rode back up beside the disc and clipped its circle by ~8px.  Widening
+     is not available either -- the band between the movement zone (50vw) and
+     the disc is 49px at 390 and 34px at 360, under one button wide.
+
+     The stacking was the problem, and it was self-inflicted: the owner asked
+     for the SHIELD BASH button to move, not for Whirlwind to.  So bash takes
+     the new down-left slot and whirl keeps the one the column has always had,
+     above the disc.  Two single buttons in two places, no stack to overflow --
+     and they are rarely both up anyway, since bash needs a raised shield and
+     whirl now needs a drawn sword. */
+  var slotStyle = function (kind) {
+    if (kind === 'bash') {
+      return {
+        /* Left of the disc where the right half is wide enough, and hard
+           against the movement zone's edge where it is not. */
+        right: 'min(' + (RBTN.right + discW + DISC_EDGE_GAP) + 'px, calc(50vw - ' + size + 'px))',
+        /* The SAME baseline as the shield button (ShieldButton's +12), so the
+           two read as one row of controls under the disc. */
+        bottom: 'calc(var(--sheet-h, var(--dash-h)) + 12px)',
+      };
+    }
+    /* Whirlwind: unchanged from v2.3.2254 -- above the disc, derived from
+       RBTN so it clears the taller landscape disc too. */
+    return {
       right: isLandscape ? 22 : 18,
-      zIndex: 31,
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 10,
-      WebkitUserSelect: 'none',
-      userSelect: 'none',
-    },
-  }, live.map(function (entry) {
+      bottom: 'calc(var(--sheet-h, var(--dash-h)) + '
+        + (RBTN.bottom + discW + 34) + 'px)',
+    };
+  };
+
+  return React.createElement(React.Fragment, null, live.map(function (entry) {
     var kind = entry.kind, st = entry.st;
     var meta = ABILITY_META[kind] || { label: kind, glyph: '?' };
     var ready = st.cdLeft <= 0 && st.afford && st.equipped;
+    var slot = slotStyle(kind);
     return React.createElement('div', {
       key: kind,
+      className: 'bt-desktop-hide',
       'data-ability': kind,
       onTouchStart: function (e) {
         e.preventDefault();
@@ -113,11 +150,16 @@ export function AbilityButtons(props) {
         try { castAbility(stateRef.current, kind); } catch (err) {}
       },
       style: {
+        position: 'fixed',
+        right: slot.right,
+        bottom: slot.bottom,
+        zIndex: 31,
         width: size,
         height: size,
         borderRadius: '50%',
-        position: 'relative',
         touchAction: 'none',
+        WebkitUserSelect: 'none',
+        userSelect: 'none',
         /* Lantern Slate: raised actionable surface, brass edge when live. */
         background: ready
           ? 'radial-gradient(circle, #34444B 0%, #202C32 100%)'

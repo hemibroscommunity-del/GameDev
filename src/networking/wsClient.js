@@ -1234,16 +1234,50 @@ export function setupWebSocket(ctx) {
             }
           case 'loot_pickup_rejected':
             {
-              /* v2.3.260 diagnostic: server tells us why a pickup
-                 silently failed (recipient mismatch, out-of-range,
-                 already-claimed, etc.).  Renders a small floater +
-                 console.log so the user can see which gate is firing
-                 instead of guessing why a pile won't grab.  Drop once
-                 the underlying issue is identified. */
+              /* ═══ v2.3.2327: THE DIAGNOSTIC WENT TO THE PLAYER ═══
+                 Owner, with a screenshot of it: "a persistent bug that
+                 happens sometimes, faint lettering pickup out of range".
+
+                 It is not a bug in the pickup so much as a v2.3.260 DEBUG
+                 FLOATER that outlived its investigation -- the comment that
+                 used to be here said so itself: "so the user can see which
+                 gate is firing instead of guessing why a pile won't grab.
+                 Drop once the underlying issue is identified."  Six years of
+                 versions later it is still printing raw server reason codes
+                 in yellow over the character.  Dropped; the console.log stays,
+                 which is where a diagnostic belongs.
+
+                 AND THE THING IT WAS DIAGNOSING IS STILL REAL, so the silence
+                 has to come with a fix rather than instead of one.  The
+                 geometry is marginal by design: LOOT_PICKUP_RANGE is 160 and
+                 the server's own comment budgets ~150 of it (pile spawns at
+                 the monster's centre ~40-60px away, client magnetism pulls the
+                 sprite up to 50px, the server's view of the player lags the
+                 move throttle by up to ~50px mid-walk).  When all three stack
+                 the request is refused -- and the client then sat on
+                 `_pickupPending` for a FIVE SECOND watchdog before it would
+                 try again, which is the "sometimes it just won't pick up" half
+                 of the report.
+
+                 So an out-of-range refusal now re-arms in 300ms instead of
+                 5000, bounded by a try counter so a pile the server will never
+                 grant cannot become a send loop.  Every other reason
+                 (recipient mismatch, already-claimed) is a permanent no for
+                 this player and keeps the slow watchdog -- retrying those
+                 fast would be the loop with none of the benefit. */
               if (!msg.payload || !S || !S.player) break;
               try { console.log('[loot_pickup_rejected]', msg.payload, 'myId=', S.myId); } catch (e) {}
-              if (S.dmgNumbers) {
-                pushDmgPopup(S, S.player.x, S.player.y - 24, 'pickup: ' + (msg.payload.reason || 'unknown'), '#f5c542');
+              if (msg.payload.reason === 'out-of-range' && msg.payload.lootId && S.groundLoot) {
+                for (var _rjI = 0; _rjI < S.groundLoot.length; _rjI++) {
+                  var _rjPile = S.groundLoot[_rjI];
+                  if (_rjPile.lootId !== msg.payload.lootId) continue;
+                  _rjPile._pickupTries = (_rjPile._pickupTries || 0) + 1;
+                  if (_rjPile._pickupTries <= 8) {
+                    _rjPile._pickupPending = false;
+                    _rjPile._pickupRetryAt = Date.now() + 300;
+                  }
+                  break;
+                }
               }
               break;
             }

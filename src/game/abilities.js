@@ -27,6 +27,7 @@ import { BT_AUDIO, abilityCfg, abilityStaminaCost, abilityUnlocked, isAbilitiesE
   prog3CharLevel, getActiveWeapon,
   meleeSwingSfx /* v2.3.2260: the lunge borrows the swing's own per-weapon sound */ } from '@/data/index.js';
 import { isPlayerDead, pushDmgPopup } from '@/game/combatHelpers.js';
+import { prog3ActiveCat } from '@/data/prog3.js';   /* v2.3.2327: whirlwind is the sword's */
 
 /* Local cooldown clocks, keyed by our OWN constant names (never a client- or
    wire-supplied string), so a plain object is safe here. */
@@ -207,8 +208,19 @@ export function abilityStatus(S, kind) {
      the button rule and the cast rule on touch AND desktop -- they cannot
      disagree, which is the whole reason this function exists. */
   var needsHeld = cfg.needsHeldShield === true;
+  /* ═══ v2.3.2327: WHIRLWIND IS THE SWORD'S ═══
+     Owner: "only an option for the melee character (sword equipped)".
+     `needs: 'weapon'` already existed and only reached `equipped` below, which
+     greys the button out -- so an archer had a Whirlwind button on screen that
+     could never fire.  A requirement that can never be met while you are
+     holding a bow belongs in `visible`, not in the disabled styling.
+     prog3ActiveCat is the same 'which lane am I holding' answer the Points
+     screen uses, so 'sword' here covers the greatsword too, and swapping
+     weapons moves the button on the same edge it moves everything else. */
+  var needsMelee = cfg.needsMeleeActive === true;
   var visible = abilityUnlocked(level, kind)
-    && (!needsHeld || (!!R.shield && !!(S && S._shieldUp)));
+    && (!needsHeld || (!!R.shield && !!(S && S._shieldUp)))
+    && (!needsMelee || (prog3ActiveCat(R) === 'sword' && !!R.weapon));
   var now = Date.now();
   var readyAt = cdMap(S)[kind] || 0;
   var cost = abilityStaminaCost(R, kind);

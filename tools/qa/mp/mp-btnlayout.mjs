@@ -194,12 +194,26 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
     rec.ok(`${tag}: the ${name} button sits clear of the dashboard (bottom ${box.bottom} vs dash top ${r.dashTop})`,
       box.bottom <= r.dashTop, { name, box, dashTop: r.dashTop });
   }
-  /* ...and the bash column clears the ATTACK DISC, which is the thing directly
-     under it.  Its old 178px anchor was 70 + the disc's PORTRAIT height + 12,
-     so sideways (a 108px disc) the two boxes met exactly (v2.3.2254). */
+  /* ...and the bash button clears the ATTACK DISC.
+     ═══ v2.3.2327: "CLEAR" IS BOTH AXES, NOT JUST THE VERTICAL ONE ═══
+     This asked `bash.bottom + 8 <= attack.top`, which is not "clear of" -- it
+     is "ABOVE", and it was written (v2.3.2254) when above is where the button
+     lived.  The owner has since moved it: "Put it down and to the left of the
+     attack button."  Down-and-left passes the real test and fails this one,
+     because the button now shares the disc's rows while sitting entirely to
+     its left (measured at 390x844: bash right 243, disc left 244).
+     Rewritten as the claim the sentence always made -- the two boxes do not
+     intersect -- which is true of the old placement and the new one, and which
+     would have caught a genuine overlap that the vertical-only form let past
+     on any layout where the button moved sideways. */
   if (r.bash && r.attack && r.bash.shown && r.attack.shown) {
-    rec.ok(`${tag}: the bash button sits clear of the attack disc (bash bottom ${r.bash.bottom} vs disc top ${r.attack.top})`,
-      r.bash.bottom + 8 <= r.attack.top, { bash: r.bash, attack: r.attack });
+    const gap = 4;
+    const clear = r.bash.right + gap <= r.attack.left
+      || r.bash.left >= r.attack.right + gap
+      || r.bash.bottom + gap <= r.attack.top
+      || r.bash.top >= r.attack.bottom + gap;
+    rec.ok(`${tag}: the bash button sits clear of the attack disc (no overlap on either axis)`,
+      clear, { bash: r.bash, attack: r.attack });
   }
   /* ...and they do not overlap each other. */
   if (r.bash && r.shield && r.bash.shown && r.shield.shown) {
