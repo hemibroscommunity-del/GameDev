@@ -19,6 +19,7 @@ import { VitalBar, VITAL_ICONS, VITAL_LABEL, VITAL_TINT } from './VitalBar.jsx';
 import { getEquippedSlots, getEquipContribs, GHOST_SRC } from './equipModel.js'; /* v2.3.1653 */
 import { previewStatPoint, overallDps } from './statPreview.js';                 /* v2.3.1766 */
 import { StatDemo } from './StatDemo.jsx';                                      /* v2.3.2222: the ℹ️ window's scene */
+import { useScrollTap } from './scrollTap.js';                                  /* v2.3.2326: a tap the scroller confiscated is still a tap */
 import { itemDetailBus } from '../dash/itemDetailBus.js';                        /* v2.3.1653 */
 import { heroSectionBus } from './heroSectionBus.js';                            /* v2.3.1668 */
 import { DASH_GAP, HERO_TAB_H } from './sheetGeometry.js';                      /* v2.3.1653; v2.3.1657 tabs */
@@ -121,6 +122,9 @@ export const HeroExpanded = () => {
      a valid category at all times, so the seven stat controls, the point
      pools and the prog3_allocate payload need no null handling. */
   const [laneClosed, setLaneClosed] = useState(false);
+  /* v2.3.2326: the lane headers live inside the sheet's scroller, which eats
+     any tap that drifts more than ~15px. See scrollTap.js. */
+  const scrollTap = useScrollTap();
   /* v2.3.1766: which stat the allocation tooltip is describing, or null for
      its resting state (the character's overall DPS).  Cleared when the sheet
      changes section so the strip never describes a stat that is off screen. */
@@ -1497,13 +1501,19 @@ export const HeroExpanded = () => {
                          tapping any other opens that one. Still one lane at a
                          time -- the default is unchanged, so the seven controls
                          are on screen exactly as before until you choose
-                         otherwise (which is what mp-prog3 pins). */
-                      onPointerUp={(e) => {
-                        e.stopPropagation();
+                         otherwise (which is what mp-prog3 pins).
+                         v2.3.2326: ...and the tap now has to SURVIVE to get
+                         here. It was an onPointerUp, and this header sits in
+                         the sheet's scroller: measured with real touch events,
+                         a finger that drifts 16px gets pointercancel and NO
+                         pointerup, so the toggle never ran. The owner reported
+                         it twice because the handler was right both times.
+                         See scrollTap.js for the sweep and the reasoning. */
+                      {...scrollTap(() => {
                         if (open) { setLaneClosed(true); return; }
                         setBuildCat(sk.key);
                         setLaneClosed(false);
-                      }}
+                      })}
                       style={{
                         /* v2.3.2222: the OPEN header grows to 28 beside 48px rows; a
                            collapsed one stays 24.  Everything below the last stat row

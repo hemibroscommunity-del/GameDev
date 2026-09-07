@@ -257,16 +257,57 @@ export async function run({ browser, wsPort, webPort, rec }) {
         .map((r) => r.getAttribute('data-prog3-lane')),
     };
   });
-  const tapLane = (key) => P.page.evaluate((k) => {
-    const el = document.querySelector(`[data-prog3-lane="${k}"]`);
-    if (!el) return false;
-    const r = el.getBoundingClientRect();
-    const o = { bubbles: true, cancelable: true, pointerId: 1, pointerType: 'touch',
-      clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 };
-    el.dispatchEvent(new PointerEvent('pointerdown', o));
-    el.dispatchEvent(new PointerEvent('pointerup', o));
+  /* ═══ v2.3.2326: THIS TEST WAS WHY THE BUG SHIPPED TWICE ═══
+     It dispatched PointerEvents STRAIGHT AT THE ELEMENT, which is not a tap --
+     it is a function call wearing a tap's clothes.  It cannot miss, cannot be
+     covered, cannot be cancelled, and cannot be stolen by a scroller, so it
+     was green through two rounds of the owner reporting the exact behaviour it
+     claims to pin ("the stat allocation accordion menu doesn't collapse",
+     then "tapping on the open accordion doesn't close it again").
+
+     What it could not see, measured with real CDP touch events on the running
+     game: the lane header lives in the sheet's scroller, and at ~15px of
+     finger travel the browser calls the touch a scroll, fires pointercancel,
+     and sends NO pointerup -- so the onPointerUp toggle never ran.  Every real
+     thumb drifts that far on a 28px row.
+
+         drift  0-12px   pointerup delivered      lane closes
+         drift 16-32px   POINTERCANCEL instead    nothing happens
+
+     So the tap is a REAL TOUCH now, through CDP, with drift -- the same
+     fingerTap idea mp-notifbell uses (v2.3.2175, for the same class of bug in
+     the world-chat bell).  DRIFT IS THE POINT: a pixel-perfect tap passes on
+     the broken build too, which is what a synthetic dispatch was really
+     asserting all along. */
+  const tapLane = async (key, drift = 18) => {
+    const at = await P.page.evaluate((k) => {
+      const el = document.querySelector(`[data-prog3-lane="${k}"]`);
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      const x = Math.round(r.left + r.width / 2), y = Math.round(r.top + r.height / 2);
+      /* Report what is really at that point: a lane below the fold answers
+         nothing, and a tap aimed there measures the wrong screen. */
+      const hit = document.elementFromPoint(x, y);
+      return { x, y, onLane: !!(hit && hit.closest && hit.closest(`[data-prog3-lane="${k}"]`)) };
+    }, key);
+    if (!at || !at.onLane) return false;
+    const cdp = await P.page.context().newCDPSession(P.page);
+    /* Upward drift: these headers sit at the TOP of the scroller, so a
+       downward drag there is an overscroll that moves nothing, and an upward
+       one at the bottom likewise.  Either way the panel does not move, which
+       is precisely the case the fix has to recover -- a gesture the browser
+       confiscated for a scroll that never happened. */
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: at.x, y: at.y }] });
+    for (let i = 1; i <= 4; i++) {
+      await new Promise((r) => setTimeout(r, 22));
+      await cdp.send('Input.dispatchTouchEvent', {
+        type: 'touchMove', touchPoints: [{ x: at.x, y: at.y + (drift * i) / 4 }] });
+    }
+    await new Promise((r) => setTimeout(r, 22));
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await cdp.detach();
     return true;
-  }, key);
+  };
 
   const l0 = await laneState();
   rec.ok('exactly one lane is open to begin with (guard)',
@@ -286,15 +327,79 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('...and tapping it again re-opens it, so the collapse is not a trap',
       l2.open.length === 1 && l2.open[0] === wasOpen, l2);
 
+    /* Scrolled into view first, on purpose and with a note: with one lane open
+       its seven stat rows push the other two headers ~413px BELOW the panel
+       (measured at 390x844: panel 653..844, bow header top 1257).  A tap aimed
+       at a rect that is off screen lands on whatever is really there, so this
+       would otherwise be measuring the wrong thing -- and the layout fact it
+       exposes is asserted on its own below. */
     const other = ['sword', 'bow', 'staff'].find((k) => k !== wasOpen);
-    await tapLane(other);
+    await P.page.evaluate(() => {
+      const el = document.querySelector('[data-prog3-lane]');
+      for (let n = el; n; n = n.parentElement)
+        if (n.scrollHeight - n.clientHeight > 4 && /auto|scroll/.test(getComputedStyle(n).overflowY)) { n.scrollTop = n.scrollHeight; break; }
+    });
+    await P.page.waitForTimeout(300);
+    await tapLane(other, -18);
     await P.page.waitForTimeout(350);
     const l3 = await laneState();
     /* One at a time is the design, and the toggle must not have broken it. */
     rec.ok('...while tapping a DIFFERENT lane still switches to it, one open at a time',
       l3.open.length === 1 && l3.open[0] === other, { other, l3 });
+    /* Put the screen back the way the rest of this file expects it, from the
+       TOP of the scroller where a downward drift cannot move anything. */
+    await P.page.evaluate(() => {
+      const el = document.querySelector('[data-prog3-lane]');
+      for (let n = el; n; n = n.parentElement)
+        if (n.scrollHeight - n.clientHeight > 4 && /auto|scroll/.test(getComputedStyle(n).overflowY)) { n.scrollTop = 0; break; }
+    });
+    await P.page.waitForTimeout(250);
     await tapLane(wasOpen);
     await P.page.waitForTimeout(300);
+
+    /* ═══ v2.3.2326: AND THE OTHER TWO COMBAT TYPES ARE REACHABLE ═══
+       HeroExpanded's v2.3.2176 note says "the three weapons stay on screen at
+       all times ... the NAVIGATION is sticky", and that is how this screen is
+       supposed to avoid repeating the v2.3.1660 incident (things below an
+       uncued fold, with the scroll-edge fade deliberately off).
+
+       Measured at 390x844 with one lane open, it does not hold: the panel is
+       653..844 and the other two headers sit at 1257 and 1286 -- 413px below
+       it, with no cue.  Each header is sticky INSIDE ITS OWN LANE div, and a
+       collapsed lane IS its header, so it has no travel to stick through.
+       They do all appear together once you scroll to the bottom, which is
+       where the claim came from.
+
+       Asserted as "reachable from somewhere", which is the honest current
+       contract, and printed either way so the number is visible when this
+       screen is redesigned. */
+    const reach = await P.page.evaluate(() => {
+      const el = document.querySelector('[data-prog3-lane]');
+      let sc = null;
+      for (let n = el; n; n = n.parentElement)
+        if (n.scrollHeight - n.clientHeight > 4 && /auto|scroll/.test(getComputedStyle(n).overflowY)) { sc = n; break; }
+      const look = () => {
+        const p = sc ? sc.getBoundingClientRect() : null;
+        return [...document.querySelectorAll('[data-prog3-lane]')].map((x) => {
+          const b = x.getBoundingClientRect();
+          return { k: x.getAttribute('data-prog3-lane'), top: Math.round(b.top),
+            on: p ? (b.bottom > p.top + 1 && b.top < p.bottom - 1) : true };
+        });
+      };
+      const was = sc ? sc.scrollTop : 0;
+      if (sc) sc.scrollTop = 0;
+      const atTop = look();
+      if (sc) sc.scrollTop = sc.scrollHeight;
+      const atBottom = look();
+      if (sc) sc.scrollTop = was;
+      return { atTop, atBottom,
+        onAtTop: atTop.filter((l) => l.on).length,
+        onAtBottom: atBottom.filter((l) => l.on).length };
+    });
+    console.log('    lane reachability — at top: ' + JSON.stringify(reach.atTop));
+    console.log('                     at bottom: ' + JSON.stringify(reach.atBottom));
+    rec.ok('all three combat types can be reached without leaving this screen',
+      reach.onAtBottom === 3, reach);
   }
 
   /* ═══ v2.3.2315: AND THE TWO THINGS HE HAS TO READ ARE READABLE ═══
@@ -461,11 +566,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
       viewport: { width: w, height: h }, touch: true });
     await H.enterWorld(M);
     await M.page.waitForTimeout(2200);
-    await M.page.locator('[aria-label="Hero"], [aria-label^="Hero"]').first()
-      .click({ timeout: 8000 }).catch(() => {});
+    /* ═══ v2.3.2326: THIS LOOP HAS BEEN MEASURING A CLOSED DASHBOARD ═══
+       It reached for [aria-label="Hero"] and swallowed the failure with
+       .catch(() => {}), so when that stopped finding anything the three phone
+       runs simply never opened the sheet -- and every assertion below reported
+       "no stat cell found" rather than saying the navigation had failed.
+       Fifteen red lines, at all three device sizes, on a screen that was fine:
+       the block that works ten lines up uses H.openDest(P, 'Character'), which
+       knows about the rail AND the More drawer and which label the rail
+       actually carries.  Use the same door.
+       The clicks are guarded now instead of silenced -- a scenario that cannot
+       reach its own screen must say so where it happened. */
+    const reached = await H.openDest(M, 'Character').then(() => true).catch(() => false);
+    rec.ok(`${w}x${h}: the character sheet opened (guard)`, reached === true, { reached });
     await M.page.waitForTimeout(600);
-    await M.page.locator('[aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]').first()
-      .click({ timeout: 8000 }).catch(() => {});
+    const onBuild = await M.page.locator('[aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]')
+      .first().click({ timeout: 8000 }).then(() => true).catch(() => false);
+    rec.ok(`${w}x${h}: ...and the Build tab with it (guard)`, onBuild === true, { onBuild });
     await M.page.waitForTimeout(700);
     const fitPhone = await M.page.evaluate(async () => {
       const btn = document.querySelector('[aria-label*="Crit"], [aria-label*="Defense"]');
