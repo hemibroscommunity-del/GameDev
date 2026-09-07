@@ -1128,11 +1128,30 @@ const LABEL_STYLE_EMOJI = new TextStyle({
   align: 'center',
 });
 
+/* v2.3.2328: memoised, because five of its sixteen call sites are inside
+   per-frame draw loops -- the hit particles (2299), death explosions (2316),
+   telegraph zones (2333), impact rings (2369) and ambient motes (2394) all
+   convert a colour string that was fixed when the particle was SPAWNED, once
+   per particle per frame for the ~25 frames it lives.  Each call allocated a
+   string (`.replace`) and ran `parseInt`; at the 400-particle cap that is
+   24,000 throwaway strings a second in the hottest loop in the renderer.
+   Memoising the function rather than caching on each particle (the shape used
+   at 5582 for ground splatter) covers all sixteen sites in one place and cannot
+   go stale if something ever does mutate a `.color` mid-life.
+   A MAP, not a plain object: the keys are colour strings that arrive from data
+   tables and from the wire, and a plain {} silently no-ops on '__proto__' --
+   fixed three times in one day in this repo (duel.away v2.3.1175, party meta
+   v2.3.1185, amulet tiers v2.3.1192).  The cap is a belt-and-braces bound on a
+   key space that is finite in practice (palette literals and ELEMENTS colours). */
+const _hexMemo = new Map();
 function cssToHex(css) {
   if (typeof css !== 'string') return 0xffffff;
+  const hit = _hexMemo.get(css);
+  if (hit !== undefined) return hit;
   const clean = css.replace('#', '');
-  if (clean.length === 6) return parseInt(clean, 16) || 0xffffff;
-  return 0xffffff;
+  const val = clean.length === 6 ? (parseInt(clean, 16) || 0xffffff) : 0xffffff;
+  if (_hexMemo.size < 512) _hexMemo.set(css, val);
+  return val;
 }
 
 /**

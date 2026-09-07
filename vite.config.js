@@ -62,7 +62,19 @@ export default defineConfig({
   build: {
     outDir: '../dist',
     emptyOutDir: true,
-    sourcemap: true,
+    /* v2.3.2328: source maps OFF for the deployed build.  `sourcemap: true`
+       emitted dist/assets/index-*.js.map at 11.95 MB -- 12% of a 98 MB Pages
+       deploy, rebuilt and re-uploaded on every push, for a file no player ever
+       fetches (a browser only requests a .map with devtools open).
+       NOTHING IS LOST by dropping it, and that is worth stating plainly rather
+       than dressing this up as a security fix: the repo is PUBLIC, so the map
+       disclosed nothing that github.com does not.  And any deployed build can be
+       symbolicated after the fact, exactly, because dist/version.json records
+       the git sha it was built from:
+         git checkout <sha> && npm run build -- --sourcemap
+       reproduces the same bundle and its map.  crashTrap.js does not consult a
+       map either -- it POSTs the raw stack string (crashTrap.js:66). */
+    sourcemap: false,
   },
   server: {
     port: 3000,

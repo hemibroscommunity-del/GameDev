@@ -117,9 +117,13 @@ function installPropOnlyGrids(S) {
    two disagreeing.  The map's own grid is the terrain; this is what is
    standing on it.
 
-   The grid is COPIED before stamping — loadWalkabilityMaps caches its fetch,
-   and stamping in place would compound every footprint again on a re-entry
-   until the town was solid. */
+   The grid is COPIED before stamping.  v2.3.2328: this used to justify the copy
+   with "loadWalkabilityMaps caches its fetch", which was simply not true — that
+   function had no cache of any kind, and the mask went over the wire once per
+   caller (measured: three times on one cold load).  It IS memoised now, which
+   makes the sentence true and the copy load-bearing for the reason it always
+   should have been: stamping a shared grid in place would compound every
+   footprint again on a re-entry until the town was solid. */
 function stampPropFootprints(zoneId, grid) {
   if (!grid || !grid.length) return grid;
   var zone = ZONES[zoneId];

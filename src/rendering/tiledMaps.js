@@ -266,7 +266,27 @@ export async function freeZoneMap(zoneId) {
  *  for walkable, false for blocked.  Failures are logged and skipped
  *  rather than rejecting — the caller falls back to procedural
  *  walkability when a zone's mask isn't available. */
+/* v2.3.2328: the in-flight promise, memoised.  This function had NO cache, and
+   two callers await it on the same boot — preloadAnimations.js:188 and
+   spriteSheets.js:63 — so the mask went over the wire once per caller.  Measured
+   on a cold load (tools/qa/mp/mp-coldload.mjs): worldview_v4.walk.json fetched
+   THREE times, 371 KB of the 33.30 MB total spent re-downloading 185 KB the
+   client already had.  The HTTP cache cannot help here because the requests
+   overlap — nothing has landed yet when the second one starts.
+   A stale comment in spriteSheets.js asserted this was already cached, which is
+   presumably why nobody looked; it is corrected in the same version.
+   Memoising the PROMISE (not the result) is the idiom this file already uses for
+   `_tilesetPromises` and `_mapPromises` two functions below, and it is the shape
+   that actually collapses concurrent callers rather than only sequential ones. */
+let _walkPromise = null;
+
 export async function loadWalkabilityMaps() {
+  if (_walkPromise) return _walkPromise;
+  _walkPromise = _loadWalkabilityMapsOnce();
+  return _walkPromise;
+}
+
+async function _loadWalkabilityMapsOnce() {
   const out = {};
   /* v2.3.1693: masks disabled by the owner (see WALK_MASKS_ENABLED above).
      Returning the empty map here — rather than editing the table or the
